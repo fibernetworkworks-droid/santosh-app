@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'device.dart';
 import 'nav.dart';
@@ -30,8 +30,8 @@ class SantoshApp extends StatefulWidget {
 
 class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
   bool _setup = false;
-  final _links = AppLinks();
-  StreamSubscription<Uri>? _linkSub;
+  static const _linkCh = EventChannel('santosh/links');
+  StreamSubscription? _linkSub;
 
   @override
   void initState() {
@@ -42,20 +42,14 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
     _listenForSignIn();
   }
 
-  Future<void> _listenForSignIn() async {
-    // santosh://auth?session=<token> comes back after Sign in with Google
-    Future<void> handle(Uri? uri) async {
-      if (uri == null || uri.host != 'auth') return;
-      final token = uri.queryParameters['session'];
-      if (token == null || token.isEmpty) return;
-      await widget.app.applySession(token);
+  void _listenForSignIn() {
+    // the native side sends the session token from santosh://auth?session=<token>
+    _linkSub = _linkCh.receiveBroadcastStream().listen((token) async {
+      final t = token?.toString() ?? '';
+      if (t.isEmpty) return;
+      await widget.app.applySession(t);
       if (widget.app.connected && mounted) setState(() => _setup = false);
-    }
-
-    try {
-      await handle(await _links.getInitialAppLink());
-    } catch (_) {}
-    _linkSub = _links.uriLinkStream.listen(handle, onError: (_) {});
+    }, onError: (_) {});
   }
 
   @override

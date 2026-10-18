@@ -24,6 +24,8 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         micChannel(flutterEngine)
+        linkChannel(flutterEngine)
+        handleIntent(intent)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "santosh/native").setMethodCallHandler { call, result ->
             try {
                 when (call.method) {
@@ -72,6 +74,35 @@ class MainActivity : FlutterActivity() {
     }
 
     private val main = Handler(Looper.getMainLooper())
+
+    @Volatile private var linkSink: EventChannel.EventSink? = null
+    @Volatile private var pendingLink: String? = null
+
+    private fun linkChannel(flutterEngine: FlutterEngine) {
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "santosh/links").setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                linkSink = events
+                pendingLink?.let { main.post { events.success(it) }; pendingLink = null }
+            }
+
+            override fun onCancel(arguments: Any?) { linkSink = null }
+        })
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        val data = intent?.data ?: return
+        if (data.scheme == "santosh" && data.host == "auth") {
+            val token = data.getQueryParameter("session") ?: return
+            val sink = linkSink
+            if (sink != null) main.post { sink.success(token) } else pendingLink = token
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
 
     private fun micChannel(flutterEngine: FlutterEngine) {
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, "santosh/mic").setStreamHandler(object : EventChannel.StreamHandler {

@@ -20,8 +20,6 @@ if kts.exists():
     if "isCoreLibraryDesugaringEnabled" not in g:
         g = g.replace("compileOptions {", "compileOptions {\n        isCoreLibraryDesugaringEnabled = true", 1)
     g = re.sub(r"minSdk\s*=\s*flutter\.minSdkVersion", "minSdk = 23", g)
-    g = re.sub(r"compileSdk\s*=\s*flutter\.compileSdkVersion", "compileSdk = 35", g)
-    g = re.sub(r"targetSdk\s*=\s*flutter\.targetSdkVersion", "targetSdk = 35", g)
     if "desugar_jdk_libs" not in g:
         g += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
     kts.write_text(g)
@@ -30,8 +28,6 @@ elif groovy.exists():
     if "coreLibraryDesugaringEnabled" not in g:
         g = g.replace("compileOptions {", "compileOptions {\n        coreLibraryDesugaringEnabled true", 1)
     g = re.sub(r"minSdk(Version)?\s*=?\s*flutter\.minSdkVersion", "minSdk = 23", g)
-    g = re.sub(r"compileSdk(Version)?\s*=?\s*flutter\.compileSdkVersion", "compileSdk 35", g)
-    g = re.sub(r"targetSdk(Version)?\s*=?\s*flutter\.targetSdkVersion", "targetSdk 35", g)
     if "desugar_jdk_libs" not in g:
         g += "\ndependencies {\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'\n}\n"
     groovy.write_text(g)
