@@ -36,51 +36,51 @@ GDRIVE_LABELS = {"drive_find": "Drive mein dhoondh raha hoon", "drive_read_file"
                  "doc_create": "Doc bana raha hoon"}
 
 
-def _require():
-    if not gdrive.configured():
+def _require(ctx: Ctx):
+    if not gdrive.configured(ctx.tenant_id):
         raise ToolError("Google Drive abhi connect nahi hai. Server par service account key (GOOGLE_SA_FILE) set karke "
                         "ek folder Santosh ki service-account email ko share kijiye.")
 
 
 async def drive_find(ctx: Ctx, query="", limit=15, **_):
-    _require()
+    _require(ctx)
     try:
-        files = await gdrive.find(query=str(query or ""), limit=int(limit or 15))
+        files = await gdrive.find(query=str(query or ""), limit=int(limit or 15), tenant_id=ctx.tenant_id)
     except gdrive.DriveError as e:
         raise ToolError(str(e))
     return {"count": len(files), "files": files}
 
 
 async def drive_read_file(ctx: Ctx, file_id, **_):
-    _require()
+    _require(ctx)
     try:
-        return await gdrive.read_file(str(file_id))
+        return await gdrive.read_file(str(file_id), tenant_id=ctx.tenant_id)
     except gdrive.DriveError as e:
         raise ToolError(str(e))
 
 
 async def sheet_read(ctx: Ctx, spreadsheet_id, range=None, **_):
-    _require()
+    _require(ctx)
     try:
-        return await gdrive.sheet_read(str(spreadsheet_id), range)
+        return await gdrive.sheet_read(str(spreadsheet_id), range, tenant_id=ctx.tenant_id)
     except gdrive.DriveError as e:
         raise ToolError(str(e))
 
 
 async def sheet_append(ctx: Ctx, spreadsheet_id, values, sheet_name=None, **_):
-    _require()
+    _require(ctx)
     if not isinstance(values, list) or not values:
         raise ToolError("values ek list honi chahiye (row ke cells).")
     try:
-        return await gdrive.sheet_append(str(spreadsheet_id), [str(v) for v in values], sheet_name)
+        return await gdrive.sheet_append(str(spreadsheet_id), [str(v) for v in values], sheet_name, tenant_id=ctx.tenant_id)
     except gdrive.DriveError as e:
         raise ToolError(str(e))
 
 
 async def doc_create(ctx: Ctx, title, content="", **_):
-    _require()
+    _require(ctx)
     try:
-        return await gdrive.doc_create(str(title), str(content or ""))
+        return await gdrive.doc_create(str(title), str(content or ""), tenant_id=ctx.tenant_id)
     except gdrive.DriveError as e:
         raise ToolError(str(e))
 

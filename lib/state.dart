@@ -66,6 +66,8 @@ class Santosh extends ChangeNotifier {
   bool realtimeVoice = false;
   String voiceDefault = 'Puck';
   List<Map<String, dynamic>> voices = [];
+  bool googleLogin = false;          // server offers Sign in with Google
+  Map<String, dynamic>? account;     // /api/me when signed in
   String? currentStep;
   int lastEventId = 0;
   List<Map<String, dynamic>> routines = [];
@@ -110,6 +112,7 @@ class Santosh extends ChangeNotifier {
       realtimeVoice = (h['features'] as List?)?.contains('realtime_voice') ?? false;
       voiceDefault = h['voice_default'] as String? ?? 'Puck';
       voices = List<Map<String, dynamic>>.from((h['voices'] as List?) ?? const []);
+      googleLogin = h['google_login'] == true;
       conversationId = fresh ? null : _prefs.getString('conv');
       if (conversationId != null) {
         try {
@@ -139,6 +142,7 @@ class Santosh extends ChangeNotifier {
       await Device.instance.askNotificationPermission();
       await refreshLists();
       await refreshRoutines();
+      await refreshAccount();
       for (final a in await api!.pendingActions()) {
         await _runAction(a);
       }
@@ -149,7 +153,34 @@ class Santosh extends ChangeNotifier {
     }
   }
 
-  Future<void> refreshReminders() async {
+  Future<void> refreshAccount() async {
+    try {
+      final m = await api!.me();
+      account = m['signed_in'] == true ? m : null;
+    } catch (_) {
+      account = null;
+    }
+    notifyListeners();
+  }
+
+  /// Save the session token that came back from Sign in with Google (used as the bearer).
+  Future<void> applySession(String token, {String? server}) async {
+    if (server != null && server.isNotEmpty) await _prefs.setString('server', server);
+    await _prefs.setString('key', token);
+    await connect(fresh: true);
+  }
+
+  Future<void> disconnectProvider(String provider) async {
+    try {
+      await api!.disconnect(provider);
+      await refreshAccount();
+    } catch (e) {
+      error = e.toString();
+      notifyListeners();
+    }
+  }
+
+    Future<void> refreshReminders() async {
     try {
       reminders = await api!.reminders();
       await _syncLocalReminders();

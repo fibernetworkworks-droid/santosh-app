@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 
 import 'device.dart';
@@ -27,6 +30,8 @@ class SantoshApp extends StatefulWidget {
 
 class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
   bool _setup = false;
+  final _links = AppLinks();
+  StreamSubscription<Uri>? _linkSub;
 
   @override
   void initState() {
@@ -34,10 +39,28 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _setup = !widget.app.configured;
     if (!_setup) widget.app.connect();
+    _listenForSignIn();
+  }
+
+  Future<void> _listenForSignIn() async {
+    // santosh://auth?session=<token> comes back after Sign in with Google
+    Future<void> handle(Uri? uri) async {
+      if (uri == null || uri.host != 'auth') return;
+      final token = uri.queryParameters['session'];
+      if (token == null || token.isEmpty) return;
+      await widget.app.applySession(token);
+      if (widget.app.connected && mounted) setState(() => _setup = false);
+    }
+
+    try {
+      await handle(await _links.getInitialLink());
+    } catch (_) {}
+    _linkSub = _links.uriLinkStream.listen(handle, onError: (_) {});
   }
 
   @override
   void dispose() {
+    _linkSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

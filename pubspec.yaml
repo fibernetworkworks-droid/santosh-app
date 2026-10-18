@@ -1,7 +1,7 @@
 name: santosh
 description: Santosh, your AI coworker. Android app for the Santosh Core backend.
 publish_to: "none"
-version: 0.5.0+6
+version: 0.6.0+7
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -21,6 +21,7 @@ dependencies:
   url_launcher: ^6.3.0
   file_picker: ^8.1.2
   webview_flutter: ^4.8.0
+  app_links: ^6.3.0
 
 dev_dependencies:
   flutter_test:

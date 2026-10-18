@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     # --- API protection: when set, every /api call needs "Authorization: Bearer <api_key>" ---
     api_key: str = ""
 
+    # --- multi-tenant product: Google sign-in + token encryption ---
+    secret_key: str = ""                    # encrypts stored tokens (set a long random value in production)
+    public_base_url: str = ""               # e.g. https://santosh.139-59-10-30.sslip.io (for the OAuth redirect)
+    google_oauth_client_id: str = ""
+    google_oauth_client_secret: str = ""
+    app_redirect_scheme: str = "santosh"    # deep link back into the phone app after sign-in
+
     # --- WhatsApp Cloud API (Meta) ---
     wa_dry_run: bool = True                 # True = simulate Meta, nothing is really sent
     wa_token: str = ""                      # permanent system-user access token

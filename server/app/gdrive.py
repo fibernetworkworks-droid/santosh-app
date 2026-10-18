@@ -28,8 +28,15 @@ class DriveError(Exception):
     pass
 
 
-def configured() -> bool:
+def configured(tenant_id: str | None = None) -> bool:
     st = get_settings()
+    if tenant_id:
+        try:
+            from . import google_auth
+            if google_auth.has_google(tenant_id):
+                return True
+        except Exception:
+            pass
     return bool(st.google_sa_file and os.path.exists(st.google_sa_file)) or bool(st.google_sa_json.strip())
 
 
@@ -45,9 +52,17 @@ def _creds():
         raise DriveError(f"Service account key padhne mein dikkat: {e}")
 
 
-def _svc(name, version):
+def _svc(name, version, tenant_id: str | None = None):
     from googleapiclient.discovery import build
-    return build(name, version, credentials=_creds(), cache_discovery=False)
+    creds = None
+    if tenant_id:
+        try:
+            from . import google_auth
+            if google_auth.has_google(tenant_id):
+                creds = google_auth.credentials_for(tenant_id)
+        except Exception as e:
+            log.warning("per-user google creds failed (%s); falling back to service account: %s", tenant_id, e)
+    return build(name, version, credentials=creds or _creds(), cache_discovery=False)
 
 
 def _folder() -> str:
@@ -55,8 +70,8 @@ def _folder() -> str:
 
 
 # ---------------- Drive ----------------
-def _find(query: str, limit: int):
-    svc = _svc("drive", "v3")
+def _find(query: str, limit: int, tenant_id=None):
+    svc = _svc("drive", "v3", tenant_id)
     q_parts = ["trashed = false"]
     folder = _folder()
     if folder:
@@ -78,9 +93,9 @@ def _find(query: str, limit: int):
     return out
 
 
-def _read_file(file_id: str):
+def _read_file(file_id: str, tenant_id=None):
     from googleapiclient.http import MediaIoBaseDownload
-    svc = _svc("drive", "v3")
+    svc = _svc("drive", "v3", tenant_id)
     try:
         meta = svc.files().get(fileId=file_id, fields="id,name,mimeType,webViewLink", supportsAllDrives=True).execute()
     except Exception as e:
@@ -110,8 +125,8 @@ def _read_file(file_id: str):
 
 
 # ---------------- Sheets ----------------
-def _sheet_read(sid: str, cell_range: str | None):
-    svc = _svc("sheets", "v4")
+def _sheet_read(sid: str, cell_range: str | None, tenant_id=None):
+    svc = _svc("sheets", "v4", tenant_id)
     rng = cell_range or "A1:Z200"
     try:
         res = svc.spreadsheets().values().get(spreadsheetId=sid, range=rng,
@@ -124,8 +139,8 @@ def _sheet_read(sid: str, cell_range: str | None):
             "rows": rows[:200]}
 
 
-def _sheet_append(sid: str, values: list, sheet_name: str | None):
-    svc = _svc("sheets", "v4")
+def _sheet_append(sid: str, values: list, sheet_name: str | None, tenant_id=None):
+    svc = _svc("sheets", "v4", tenant_id)
     rng = (sheet_name or "Sheet1")
     body = {"values": values if values and isinstance(values[0], list) else [values]}
     try:
@@ -138,9 +153,9 @@ def _sheet_append(sid: str, values: list, sheet_name: str | None):
 
 
 # ---------------- Docs ----------------
-def _doc_create(title: str, content: str):
-    docs = _svc("docs", "v1")
-    drive = _svc("drive", "v3")
+def _doc_create(title: str, content: str, tenant_id=None):
+    docs = _svc("docs", "v1", tenant_id)
+    drive = _svc("drive", "v3", tenant_id)
     try:
         doc = docs.documents().create(body={"title": title}).execute()
         doc_id = doc["documentId"]
@@ -173,21 +188,21 @@ def _explain(e) -> str:
 
 
 # ---------------- async wrappers ----------------
-async def find(query="", limit=15):
-    return await asyncio.to_thread(_find, query, limit)
+async def find(query="", limit=15, tenant_id=None):
+    return await asyncio.to_thread(_find, query, limit, tenant_id)
 
 
-async def read_file(file_id):
-    return await asyncio.to_thread(_read_file, file_id)
+async def read_file(file_id, tenant_id=None):
+    return await asyncio.to_thread(_read_file, file_id, tenant_id)
 
 
-async def sheet_read(sid, cell_range=None):
-    return await asyncio.to_thread(_sheet_read, sid, cell_range)
+async def sheet_read(sid, cell_range=None, tenant_id=None):
+    return await asyncio.to_thread(_sheet_read, sid, cell_range, tenant_id)
 
 
-async def sheet_append(sid, values, sheet_name=None):
-    return await asyncio.to_thread(_sheet_append, sid, values, sheet_name)
+async def sheet_append(sid, values, sheet_name=None, tenant_id=None):
+    return await asyncio.to_thread(_sheet_append, sid, values, sheet_name, tenant_id)
 
 
-async def doc_create(title, content=""):
-    return await asyncio.to_thread(_doc_create, title, content)
+async def doc_create(title, content="", tenant_id=None):
+    return await asyncio.to_thread(_doc_create, title, content, tenant_id)

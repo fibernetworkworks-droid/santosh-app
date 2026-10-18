@@ -60,6 +60,10 @@ class Api {
   }
 
   Future<Map<String, dynamic>> health() async => Map<String, dynamic>.from(await _send('GET', '/healthz'));
+
+  Future<Map<String, dynamic>> me() async => Map<String, dynamic>.from(await _send('GET', '/api/me'));
+  Future<void> disconnect(String provider) async => _send('DELETE', '/api/connections/$provider');
+  Uri googleSignInUrl() => _u('/auth/google/start');
   Future<String> newConversation() async => (await _send('POST', '/api/conversations'))['id'] as String;
   Future<void> checkConversation(String id) async => _send('GET', '/api/conversations/$id/messages');
   Future<void> sendMessage(String conv, String text, {bool voice = false}) async =>

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../state.dart';
 import 'glass.dart';
 
@@ -19,7 +21,28 @@ class _SetupScreenState extends State<SetupScreen> {
   final _name = TextEditingController();
   late String _lang = widget.app.language;
   bool _busy = false;
+  bool _advanced = false;
   String? _err;
+
+  Future<void> _google() async {
+    final url = _server.text.trim();
+    if (url.isEmpty || url == 'https://') {
+      setState(() => _err = 'Pehle Santosh server address daaliye, phir Google se sign in.');
+      return;
+    }
+    try {
+      final h = await Api(url, '').health();
+      if (h['google_login'] != true) {
+        setState(() => _err = 'Is server par Google sign-in abhi on nahi hai.');
+        return;
+      }
+      await widget.app.saveSettings(server: url, lang: _lang);
+      // opens Google consent; the app comes back via the santosh:// deep link
+      await launchUrl(widget.app.api?.googleSignInUrl() ?? Api(url, '').googleSignInUrl(), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      setState(() => _err = 'Google sign-in shuru nahi hua: $e');
+    }
+  }
 
   Future<void> _go() async {
     setState(() {
@@ -84,7 +107,22 @@ class _SetupScreenState extends State<SetupScreen> {
                     keyboardType: TextInputType.url,
                     decoration: const InputDecoration(labelText: 'Santosh server address', hintText: 'https://santosh.yourdomain.com'),
                   ),
-                  TextField(controller: _key, obscureText: true, decoration: const InputDecoration(labelText: 'API key')),
+                  const SizedBox(height: 14),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _google,
+                    icon: const Icon(Icons.login_rounded, color: C.accent),
+                    label: const Text('Sign in with Google', style: TextStyle(color: C.chip, fontWeight: FontWeight.w700)),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50), side: const BorderSide(color: C.accent)),
+                  ),
+                  const SizedBox(height: 6),
+                  Center(
+                    child: TextButton(
+                      onPressed: () => setState(() => _advanced = !_advanced),
+                      child: Text(_advanced ? 'API key chhupao' : 'Ya API key se connect karein', style: const TextStyle(color: C.muted)),
+                    ),
+                  ),
+                  if (_advanced)
+                    TextField(controller: _key, obscureText: true, decoration: const InputDecoration(labelText: 'API key')),
                   if (_err != null) ...[
                     const SizedBox(height: 12),
                     Text(_err!, style: const TextStyle(color: C.bad, fontSize: 13)),

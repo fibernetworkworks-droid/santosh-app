@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket
-from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -39,16 +39,20 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.8.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.9.0", lifespan=lifespan)
 
 
 def require_key(request: Request) -> None:
+    from . import accounts
     key = get_settings().api_key
+    got = request.headers.get("authorization", "").removeprefix("Bearer ").strip() or request.query_params.get("key", "")
+    if key and got and hmac.compare_digest(got, key):
+        return
+    if got and accounts.tenant_for_session(got):   # a signed-in product user
+        return
     if not key:
         return
-    got = request.headers.get("authorization", "").removeprefix("Bearer ").strip() or request.query_params.get("key", "")
-    if not hmac.compare_digest(got, key):
-        raise HTTPException(401, "Missing or wrong API key")
+    raise HTTPException(401, "Missing or wrong API key")
 
 
 def _conv_or_404(conversation_id: str) -> Conversation:
@@ -68,7 +72,9 @@ def healthz():
     features = ["routines", "voice", "web"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if mail.configured() else []) + (["calendar"] if __import__("app.gcal", fromlist=["x"]).configured() else []) \
         + (["drive"] if __import__("app.gdrive", fromlist=["x"]).configured() else [])
-    return {"ok": True, "version": app.version, "dry_run": st.wa_dry_run, "model": st.anthropic_model,
+    from . import accounts
+    return {"ok": True, "version": app.version, "google_login": accounts.oauth_configured(),
+            "dry_run": st.wa_dry_run, "model": st.anthropic_model,
             "brain_configured": bool(st.anthropic_api_key), "features": features,
             "voices": [{"id": k, "style": v} for k, v in MALE_VOICES.items()], "voice_default": st.voice_default}
 
@@ -262,6 +268,89 @@ def cancel_reminder_api(reminder_id: str):
     reminders = life.upcoming_reminders(get_settings().tenant_id)
     bus.publish(conv, "reminders", {"reminders": reminders})
     return {"reminders": reminders}
+
+
+# ---------------- accounts (product: Sign in with Google) ----------------
+@app.get("/auth/google/start")
+def google_start(app_session: bool = True):
+    """The app opens this; we redirect to Google's consent screen."""
+    from . import accounts
+    try:
+        return RedirectResponse(accounts.start_google())
+    except accounts.AuthError as e:
+        raise HTTPException(503, str(e))
+
+
+@app.get("/auth/google/callback")
+async def google_callback(request: Request):
+    """Google returns here. We store tokens and hand the app a session token via a deep link."""
+    from . import accounts
+    code = request.query_params.get("code")
+    state = request.query_params.get("state", "")
+    err = request.query_params.get("error")
+    if err:
+        return HTMLResponse(f"<h3>Sign-in cancelled</h3><p>{err}</p>", status_code=400)
+    if not code:
+        raise HTTPException(400, "Missing code")
+    try:
+        res = await accounts.finish_google(code, state)
+    except accounts.AuthError as e:
+        return HTMLResponse(f"<h3>Sign-in nahi hua</h3><p>{e}</p>", status_code=400)
+    scheme = get_settings().app_redirect_scheme
+    deep = f"{scheme}://auth?session={res['session_token']}"
+    # the app registers this scheme; the page also shows the token in case the link doesn't auto-open
+    html = f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
+<body style="font-family:system-ui;text-align:center;padding:40px;background:#f3eefb">
+<h2>Santosh se juda! ✅</h2><p>{res['email']}</p>
+<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">App kholiye</a></p>
+<script>location.href={deep!r};</script></body>"""
+    return HTMLResponse(html)
+
+
+def _bearer(request: Request) -> str:
+    return request.headers.get("authorization", "").removeprefix("Bearer ").strip() or request.query_params.get("key", "")
+
+
+def current_tenant(request: Request) -> str:
+    """Resolve the caller: a product session token -> that user; the legacy API key -> 'default'."""
+    from . import accounts
+    tok = _bearer(request)
+    st = get_settings()
+    if st.api_key and tok and hmac.compare_digest(tok, st.api_key):
+        return st.tenant_id
+    uid = accounts.tenant_for_session(tok) if tok else None
+    if uid:
+        return uid
+    if not st.api_key:
+        return st.tenant_id
+    raise HTTPException(401, "Sign in first")
+
+
+@app.get("/api/me", dependencies=[Depends(require_key)])
+def api_me(request: Request):
+    from . import accounts
+    tok = _bearer(request)
+    uid = accounts.tenant_for_session(tok) if tok else None
+    if not uid:
+        return {"signed_in": False, "tenant": get_settings().tenant_id}
+    info = accounts.user_info(uid)
+    return {"signed_in": True, **(info or {})}
+
+
+@app.post("/api/logout", dependencies=[Depends(require_key)])
+def api_logout(request: Request):
+    from . import accounts
+    accounts.logout(_bearer(request))
+    return {"ok": True}
+
+
+@app.delete("/api/connections/{provider}", dependencies=[Depends(require_key)])
+def api_disconnect(provider: str, request: Request):
+    from . import accounts
+    uid = accounts.tenant_for_session(_bearer(request))
+    if not uid:
+        raise HTTPException(401, "Sign in first")
+    return {"disconnected": accounts.disconnect(uid, provider)}
 
 
 @app.websocket("/api/voice/ws")

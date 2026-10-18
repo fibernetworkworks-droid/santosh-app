@@ -86,6 +86,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       const SizedBox(height: 14),
       ListenableBuilder(listenable: app, builder: (context, _) => _BackgroundCard(app: app)),
       const SizedBox(height: 18),
+      ListenableBuilder(listenable: app, builder: (context, _) => app.account != null ? _AccountCard(app: app) : const SizedBox.shrink()),
+      if (app.account != null) const SizedBox(height: 18),
       Glass(
         child: Column(children: [
           TextField(controller: _name, decoration: const InputDecoration(labelText: 'Naam')),
@@ -262,6 +264,41 @@ class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObs
             await Future.delayed(const Duration(seconds: 2));
             await app.refreshBackgroundInfo();
           }),
+      ]),
+    );
+  }
+}
+
+
+/// Shows the signed-in Google account and connected services (product mode).
+class _AccountCard extends StatelessWidget {
+  const _AccountCard({required this.app});
+  final Santosh app;
+  @override
+  Widget build(BuildContext context) {
+    final acc = app.account!;
+    final conns = List<Map<String, dynamic>>.from(acc['connections'] as List? ?? const []);
+    return Glass(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.account_circle_rounded, color: C.accent, size: 36),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${acc['name'] ?? ''}'.isEmpty ? 'Signed in' : '${acc['name']}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+              Text('${acc['email'] ?? ''}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: 10),
+        for (final c in conns)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.check_circle_rounded, color: C.ok),
+            title: Text('${c['provider'] == 'google' ? 'Google' : c['provider']}  ·  ${c['account'] ?? ''}'),
+            subtitle: const Text('Gmail · Calendar · Drive · Docs · Sheets', style: TextStyle(fontSize: 11.5, color: C.muted)),
+            trailing: TextButton(onPressed: () => app.disconnectProvider(c['provider'] as String), child: const Text('Hatao')),
+          ),
       ]),
     );
   }

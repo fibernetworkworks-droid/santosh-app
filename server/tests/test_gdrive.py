@@ -65,8 +65,8 @@ def fake_svc(store):
 @pytest.fixture
 def g(monkeypatch):
     store = {}
-    monkeypatch.setattr(gdrive, "configured", lambda: True)
-    monkeypatch.setattr(gdrive, "_svc", lambda name, version: fake_svc(store)(name, version))
+    monkeypatch.setattr(gdrive, "configured", lambda tenant_id=None: True)
+    monkeypatch.setattr(gdrive, "_svc", lambda name, version, tenant_id=None: fake_svc(store)(name, version))
     monkeypatch.setattr(gdrive, "_folder", lambda: "FOLDER1")
 
     class FakeDL:
@@ -114,6 +114,6 @@ def test_doc_create_moves_to_folder(g):
 
 
 def test_not_configured(monkeypatch):
-    monkeypatch.setattr(gdrive, "configured", lambda: False)
+    monkeypatch.setattr(gdrive, "configured", lambda tenant_id=None: False)
     with pytest.raises(ToolError, match="connect nahi"):
         asyncio.run(dispatch("drive_find", {}, Ctx("default", "c")))
