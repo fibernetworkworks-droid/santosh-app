@@ -9,7 +9,7 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket
 from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.3.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.4.0", lifespan=lifespan)
 
 
 def require_key(request: Request) -> None:
@@ -63,8 +63,11 @@ def _conv_or_404(conversation_id: str) -> Conversation:
 @app.get("/healthz")
 def healthz():
     st = get_settings()
+    from .voice import MALE_VOICES
+    features = ["routines", "voice"] + (["realtime_voice"] if st.gemini_api_key else [])
     return {"ok": True, "version": app.version, "dry_run": st.wa_dry_run, "model": st.anthropic_model,
-            "brain_configured": bool(st.anthropic_api_key), "features": ["routines", "voice"]}
+            "brain_configured": bool(st.anthropic_api_key), "features": features,
+            "voices": [{"id": k, "style": v} for k, v in MALE_VOICES.items()], "voice_default": st.voice_default}
 
 
 @app.get("/")
@@ -256,6 +259,29 @@ def cancel_reminder_api(reminder_id: str):
     reminders = life.upcoming_reminders(get_settings().tenant_id)
     bus.publish(conv, "reminders", {"reminders": reminders})
     return {"reminders": reminders}
+
+
+@app.websocket("/api/voice/ws")
+async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "hi-IN"):
+    """Realtime voice call (Baat tab). See app/voice.py for the protocol."""
+    from . import voice as v
+    st = get_settings()
+    got = ws.headers.get("authorization", "").removeprefix("Bearer ").strip() or ws.query_params.get("key", "")
+    if st.api_key and not hmac.compare_digest(got, st.api_key):
+        await ws.close(code=4401)
+        return
+    with session() as s:
+        c = s.get(Conversation, conv)
+        ok = bool(c and c.tenant_id == st.tenant_id)
+    if not ok:
+        await ws.close(code=4404)
+        return
+    await ws.accept()
+    if not st.gemini_api_key:
+        await ws.send_text(json.dumps({"type": "error", "message": "Server par GEMINI_API_KEY set nahi hai."}))
+        await ws.close()
+        return
+    await v.Call(ws, conv, voice, lang).run()
 
 
 @app.get("/api/routines", dependencies=[Depends(require_key)])

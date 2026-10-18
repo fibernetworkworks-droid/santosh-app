@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     agent_max_steps: int = 14
     agent_max_tokens: int = 2000
 
+    # --- realtime voice (Baat tab): Gemini Live speech-to-speech, key from aistudio.google.com ---
+    gemini_api_key: str = ""
+    gemini_live_model: str = "gemini-3.8-live"
+    voice_default: str = "Puck"            # a male Gemini voice; the app can pick another
+    voice_silence_ms: int = 1100           # pause that ends your turn (higher = never cut off mid-thought)
+
     # --- storage ---
     database_url: str = "sqlite:///./santosh.db"
 

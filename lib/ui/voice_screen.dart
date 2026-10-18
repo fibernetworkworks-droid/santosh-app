@@ -81,9 +81,32 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
     });
     try {
       await _tts.setLanguage(app.language);
-      await _tts.setSpeechRate(.5);
-      await _tts.setPitch(1.05);
+      await _tts.setSpeechRate(.48);
+      await _tts.setPitch(.95);
+      await _pickMaleVoice();
     } catch (_) {}
+  }
+
+  /// Santosh is male: prefer a male voice for the language when the phone has one.
+  Future<void> _pickMaleVoice() async {
+    final list = await _tts.getVoices;
+    if (list is! List) return;
+    final lang = app.language.toLowerCase();
+    final mine = list.whereType<Map>().map((v) => {'name': '${v['name']}', 'locale': '${v['locale']}'})
+        .where((v) => v['locale']!.toLowerCase().replaceAll('_', '-') == lang)
+        .toList();
+    if (mine.isEmpty) return;
+    // Google voices: "...male..." in the name, or the known male Hindi voices
+    const knownMale = ['hi-in-x-hie', 'hi-in-x-hid', 'mr-in-x-mrd', 'en-in-x-ene', 'en-in-x-end'];
+    Map<String, String>? pick;
+    for (final v in mine) {
+      final n = v['name']!.toLowerCase();
+      if ((n.contains('male') && !n.contains('female')) || knownMale.any(n.startsWith)) {
+        pick = v;
+        if (n.contains('local')) break; // offline voice answers faster
+      }
+    }
+    if (pick != null) await _tts.setVoice(pick);
   }
 
   void _set(_V s, {String? hint}) {
@@ -133,7 +156,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
     await _stt.listen(
       localeId: app.language.replaceAll('-', '_'),
       listenFor: const Duration(seconds: 40),
-      pauseFor: const Duration(milliseconds: 2200),
+      pauseFor: const Duration(milliseconds: 3500), // don't cut you off mid-thought
       partialResults: true,
       cancelOnError: true,
       onSoundLevelChange: (db) {

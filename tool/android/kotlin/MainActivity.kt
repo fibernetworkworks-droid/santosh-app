@@ -9,6 +9,9 @@ import android.os.PowerManager
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import android.os.Handler
+import android.os.Looper
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 /** Flutter host + the "santosh/native" channel that controls the background service. */
@@ -20,6 +23,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        micChannel(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "santosh/native").setMethodCallHandler { call, result ->
             try {
                 when (call.method) {
@@ -51,12 +55,39 @@ class MainActivity : FlutterActivity() {
                         }
                         result.success(null)
                     }
+                    "voiceStart" -> {
+                        val err = VoiceAudio.start(this)
+                        if (err == "permission") requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 42)
+                        result.success(err)
+                    }
+                    "voicePlay" -> { (call.arguments as? ByteArray)?.let { VoiceAudio.play(it) }; result.success(null) }
+                    "voiceFlush" -> { VoiceAudio.flush(); result.success(null) }
+                    "voiceStop" -> { VoiceAudio.stop(this); result.success(null) }
                     else -> result.notImplemented()
                 }
             } catch (e: Exception) {
                 result.error("native", e.message, null)
             }
         }
+    }
+
+    private val main = Handler(Looper.getMainLooper())
+
+    private fun micChannel(flutterEngine: FlutterEngine) {
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "santosh/mic").setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                VoiceAudio.sink = { bytes -> main.post { events.success(bytes) } }
+            }
+
+            override fun onCancel(arguments: Any?) {
+                VoiceAudio.sink = null
+            }
+        })
+    }
+
+    override fun onDestroy() {
+        VoiceAudio.stop(this)
+        super.onDestroy()
     }
 
     override fun onResume() {

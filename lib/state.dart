@@ -41,6 +41,12 @@ class Santosh extends ChangeNotifier {
   bool get configured => serverUrl.isNotEmpty;
   /// Background mode: a native service keeps Santosh working while the app is closed.
   bool get background => _prefs.getBool('bg') ?? true;
+  /// Santosh's voice for live calls (a male Gemini voice id).
+  String get voiceName => _prefs.getString('voice') ?? voiceDefault;
+  Future<void> setVoice(String v) async {
+    await _prefs.setString('voice', v);
+    notifyListeners();
+  }
 
   Api? api;
   String? conversationId;
@@ -56,6 +62,10 @@ class Santosh extends ChangeNotifier {
   bool hasCalendar = false;
   /// While the voice screen is open it speaks replies itself.
   bool voiceMode = false;
+  /// The server can run live human-like voice calls (Gemini Live).
+  bool realtimeVoice = false;
+  String voiceDefault = 'Puck';
+  List<Map<String, dynamic>> voices = [];
   String? currentStep;
   int lastEventId = 0;
   List<Map<String, dynamic>> routines = [];
@@ -95,6 +105,9 @@ class Santosh extends ChangeNotifier {
       final h = await api!.health();
       dryRun = h['dry_run'] == true;
       brainReady = h['brain_configured'] == true;
+      realtimeVoice = (h['features'] as List?)?.contains('realtime_voice') ?? false;
+      voiceDefault = h['voice_default'] as String? ?? 'Puck';
+      voices = List<Map<String, dynamic>>.from((h['voices'] as List?) ?? const []);
       conversationId = fresh ? null : _prefs.getString('conv');
       if (conversationId != null) {
         try {

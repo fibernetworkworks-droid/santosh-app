@@ -122,6 +122,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
           ]),
+          if (app.realtimeVoice && app.voices.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text('Santosh ki awaaz (Baat tab)', style: TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final v in app.voices)
+                ChoiceChip(
+                  label: Text('${v['id']} · ${v['style']}'),
+                  selected: app.voiceName == v['id'],
+                  showCheckmark: false,
+                  selectedColor: C.accent,
+                  labelStyle: TextStyle(color: app.voiceName == v['id'] ? Colors.white : C.chip, fontWeight: FontWeight.w600, fontSize: 12.5),
+                  onSelected: (_) async {
+                    await app.setVoice(v['id'] as String);
+                    setState(() {});
+                  },
+                ),
+            ]),
+          ],
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Bolkar poochhun to Santosh bolkar jawab de'),
