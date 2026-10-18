@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write   # lets the main-branch build publish the APK as a GitHub release
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -21,15 +24,33 @@ jobs:
       - name: Generate the Android project
         run: flutter create --org com.newtika --project-name santosh --platforms android .
       - name: Apply Santosh Android settings
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: python3 tool/patch_android.py
       - run: flutter pub get
       - name: App icon
         run: dart run flutter_launcher_icons
-      - name: Analyze (report only)
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings || true
+      - name: Analyze (report only, shown as annotations)
+        run: |
+          dart analyze --format=machine lib > analyze.txt 2>/dev/null || true
+          while IFS='|' read -r sev type code file line col len msg; do
+            [ -n "$file" ] && echo "::warning file=${file#$PWD/},line=$line::$sev $code: $msg"
+          done < analyze.txt
+          true
       - name: Build APK
         run: flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
           name: santosh-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+      - name: Publish release (main branch, signed builds only)
+        if: github.ref == 'refs/heads/main' && env.SIGNED == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          gh release create "v$V-b${{ github.run_number }}" build/app/outputs/flutter-apk/app-release.apk \
+            --title "Santosh v$V (build ${{ github.run_number }})" \
+            --notes "Android app. On the phone open: https://github.com/${{ github.repository }}/releases/latest/download/app-release.apk" \
+            --latest

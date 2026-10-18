@@ -49,6 +49,36 @@ for old in (app / "src" / "main").rglob("MainActivity.*"):
     if old.parent != pkg:
         old.unlink()
 
+# Release signing with your own permanent key (GitHub secrets ANDROID_KEYSTORE_B64 + ANDROID_KEY_PASSWORD).
+# Same key every build = phone updates install over the old app. Without the secrets: debug signing.
+import base64, os
+ks_b64, ks_pw = os.environ.get("ANDROID_KEYSTORE_B64", "").strip(), os.environ.get("ANDROID_KEY_PASSWORD", "").strip()
+if ks_b64 and ks_pw:
+    (app / "santosh.p12").write_bytes(base64.b64decode(ks_b64))
+    pw = ks_pw.replace("\\", "\\\\").replace('"', '\\"')
+    if kts.exists():
+        g = kts.read_text()
+        block = ('    signingConfigs {\n        create("release") {\n            storeFile = file("santosh.p12")\n'
+                 f'            storePassword = "{pw}"\n            keyAlias = "santosh"\n            keyPassword = "{pw}"\n'
+                 '            storeType = "pkcs12"\n        }\n    }\n')
+        g = g.replace("    buildTypes {", block + "    buildTypes {", 1)
+        g = g.replace("signingConfig = signingConfigs.getByName(\"debug\")", "signingConfig = signingConfigs.getByName(\"release\")")
+        kts.write_text(g)
+    else:
+        g = groovy.read_text()
+        block = ("    signingConfigs {\n        release {\n            storeFile file('santosh.p12')\n"
+                 f'            storePassword "{pw}"\n            keyAlias "santosh"\n            keyPassword "{pw}"\n'
+                 "            storeType 'pkcs12'\n        }\n    }\n")
+        g = g.replace("    buildTypes {", block + "    buildTypes {", 1)
+        g = re.sub(r"signingConfig\s*=?\s*signingConfigs\.debug", "signingConfig = signingConfigs.release", g)
+        groovy.write_text(g)
+    print("Release signing: your permanent key")
+    if os.environ.get("GITHUB_ENV"):
+        with open(os.environ["GITHUB_ENV"], "a") as f:
+            f.write("SIGNED=yes\n")
+else:
+    print("Release signing: debug key (add the ANDROID_KEYSTORE_B64 and ANDROID_KEY_PASSWORD secrets for updates that install over the old app)")
+
 # flutter create adds a sample test that refers to a MyApp class we don't have
 t = root / "test" / "widget_test.dart"
 if t.exists() and "MyApp" in t.read_text():
