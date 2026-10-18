@@ -138,8 +138,9 @@ def live_config(voice: str, lang: str, context: str, handle: str | None):
                 prefix_padding_ms=300,
                 silence_duration_ms=st.voice_silence_ms,
             )),
-        enable_affective_dialog=True,                              # hears your tone, answers with emotion
-        proactivity=types.ProactivityConfig(proactive_audio=True),  # ignores TV / people in the background
+        # Native audio already hears your tone; these two extras are off unless the model supports them
+        enable_affective_dialog=True if st.voice_affective_dialog else None,
+        proactivity=types.ProactivityConfig(proactive_audio=True) if st.voice_proactive_audio else None,
         session_resumption=types.SessionResumptionConfig(handle=handle),
         context_window_compression=types.ContextWindowCompressionConfig(sliding_window=types.SlidingWindow()),
     )

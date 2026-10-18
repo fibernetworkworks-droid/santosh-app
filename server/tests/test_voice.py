@@ -103,7 +103,7 @@ def test_voice_call_end_to_end(env, monkeypatch):
     # config: male voice, patient turn-taking, tone-aware
     cfg = seen_cfg[0]
     assert cfg.speech_config.voice_config.prebuilt_voice_config.voice_name == "Achird"
-    assert cfg.enable_affective_dialog is True
+    assert cfg.enable_affective_dialog is None and cfg.proactivity is None   # 3.8-live rejects these
     aad = cfg.realtime_input_config.automatic_activity_detection
     assert aad.end_of_speech_sensitivity == types.EndSensitivity.END_SENSITIVITY_LOW and aad.silence_duration_ms >= 900
     names = {d.name for d in cfg.tools[0].function_declarations}
@@ -143,6 +143,9 @@ def test_voice_drops_settings_the_model_refuses(env, monkeypatch):
     fake = FakeSession(make_turns())
     configs = []
 
+    monkeypatch.setenv("VOICE_PROACTIVE_AUDIO", "true")
+    get_settings.cache_clear()
+
     @contextlib.asynccontextmanager
     async def picky_connect(config):
         configs.append(config)
@@ -158,7 +161,7 @@ def test_voice_drops_settings_the_model_refuses(env, monkeypatch):
             assert first["type"] == "ready"
             ws.send_text(json.dumps({"type": "end"}))
     assert len(configs) == 2 and configs[1].proactivity is None
-    assert configs[1].enable_affective_dialog is True          # everything else kept
+    assert configs[1].realtime_input_config is not None        # everything else kept
     assert "proactivity" in voice.UNSUPPORTED
     # later calls skip it from the start
     assert voice.live_config("Puck", "hi-IN", "", None).proactivity is None
