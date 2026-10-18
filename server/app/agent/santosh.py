@@ -1,4 +1,4 @@
-"""Santosh's agent loop: Claude decides, tools act, every step is streamed to the UI."""
+"""Santosh's agent loop: the brain (GLM or Claude, see llm.py) decides, tools act, every step is streamed to the UI."""
 from __future__ import annotations
 
 import asyncio
@@ -12,6 +12,7 @@ from ..config import get_settings
 from ..db import Message, session
 from ..events import bus
 from ..life import context_block
+from . import llm
 from .prompts import system_prompt
 from .tools import TOOL_LABELS, TOOLS, Ctx, ToolError, dispatch
 
@@ -120,6 +121,24 @@ VOICE_NOTE = ("[Voice mode: the user is speaking to you and your reply will be r
               "reply in Devanagari script so the voice pronounces it correctly; for other Indian languages use their own script.]")
 
 
+async def _think(brain: str, system: str, history: list[dict], settings) -> tuple[list[dict] | None, str]:
+    """One model call. Returns (blocks, stop_reason); blocks is None when GLM failed and Claude can step in."""
+    if brain == "glm":
+        try:
+            blocks, stop, usage = await llm.glm_create(system, TOOLS, history, settings.agent_max_tokens)
+            log.info("glm %s in=%s out=%s", settings.glm_model, usage.get("prompt_tokens"), usage.get("completion_tokens"))
+            return blocks, stop
+        except llm.LLMError as e:
+            if not (settings.anthropic_api_key or _client is not None):
+                raise
+            log.warning("GLM failed, using Claude for this turn: %s", e)
+            return None, ""
+    resp = await get_client().messages.create(
+        model=settings.anthropic_model, max_tokens=settings.agent_max_tokens,
+        system=system, tools=TOOLS, messages=history)
+    return [_block_to_dict(b) for b in resp.content], resp.stop_reason
+
+
 async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None = None, voice: bool = False) -> str:
     """Handle one user message end to end. Returns Santosh's final reply text."""
     settings = get_settings()
@@ -136,19 +155,20 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         history = _load_history(conversation_id)
         final_text = ""
         try:
-            client = get_client()
+            brain = llm.choose(history)
+            system = system_prompt(settings.wa_dry_run, context_block(tenant_id))
             for _ in range(settings.agent_max_steps):
-                resp = await client.messages.create(
-                    model=settings.anthropic_model, max_tokens=settings.agent_max_tokens,
-                    system=system_prompt(settings.wa_dry_run, context_block(tenant_id)), tools=TOOLS, messages=history)
-                blocks = [_block_to_dict(b) for b in resp.content]
+                blocks, stop = await _think(brain, system, history, settings)
+                if blocks is None:          # GLM failed: Claude takes over for the rest of this turn
+                    brain = "claude"
+                    blocks, stop = await _think(brain, system, history, settings)
                 history.append({"role": "assistant", "content": blocks})
                 texts = [b["text"] for b in blocks if b.get("type") == "text" and b.get("text", "").strip()]
                 _save(conversation_id, "assistant", blocks, display="\n\n".join(texts) or None)
                 if texts:
                     final_text = "\n\n".join(texts)
                     bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
-                if resp.stop_reason != "tool_use":
+                if stop != "tool_use":
                     break
                 results = []
                 for b in blocks:

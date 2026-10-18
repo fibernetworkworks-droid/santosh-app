@@ -14,6 +14,14 @@ class Settings(BaseSettings):
     agent_max_steps: int = 14
     agent_max_tokens: int = 2000
 
+    # --- low-cost chat brain: any OpenAI-compatible API (Z.ai GLM, or GLM self-hosted in India) ---
+    chat_llm: str = "auto"                  # auto (GLM if key set) | glm | claude
+    glm_api_key: str = ""
+    glm_base_url: str = "https://api.z.ai/api/paas/v4"
+    glm_model: str = "glm-4.7"
+    glm_temperature: float = 0.6
+    glm_thinking: str = "disabled"          # enabled | disabled | "" (don't send) — disabled = faster, cheaper replies
+
     # --- realtime voice (Baat tab): Gemini Live speech-to-speech, key from aistudio.google.com ---
     gemini_api_key: str = ""
     gemini_live_model: str = "gemini-3.8-live"
