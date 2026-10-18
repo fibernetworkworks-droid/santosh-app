@@ -139,7 +139,8 @@ class SantoshService : Service() {
         wl.acquire(20000)
         try {
             when (ev.optString("kind")) {
-                "message" -> if (payload.optString("role") == "assistant" && !MainActivity.visible) {
+                "message" -> if (payload.optString("role") == "assistant" && !MainActivity.visible &&
+                    !Actions.tooOld(ev.optString("at"), 10)) {
                     Notify.message(this, payload.optString("text"), id)
                 }
                 "device_action" -> {

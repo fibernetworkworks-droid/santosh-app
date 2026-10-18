@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api.dart';
 import 'device.dart';
+import 'native.dart';
 
 class FeedItem {
   FeedItem(this.kind, this.data);
@@ -38,6 +39,8 @@ class Santosh extends ChangeNotifier {
   String get language => _prefs.getString('lang') ?? 'hi-IN';
   bool get speakReplies => _prefs.getBool('speak') ?? true;
   bool get configured => serverUrl.isNotEmpty;
+  /// Background mode: a native service keeps Santosh working while the app is closed.
+  bool get background => _prefs.getBool('bg') ?? true;
 
   Api? api;
   String? conversationId;
@@ -47,6 +50,18 @@ class Santosh extends ChangeNotifier {
   bool typing = false;
   String? error;
   bool inBackground = false;
+  bool backgroundRunning = false;
+  String backgroundStatus = '';
+  bool batteryOptimized = false;
+  bool hasCalendar = false;
+  /// While the voice screen is open it speaks replies itself.
+  bool voiceMode = false;
+  String? currentStep;
+  int lastEventId = 0;
+  List<Map<String, dynamic>> routines = [];
+  final StreamController<Map<String, dynamic>> _replies = StreamController<Map<String, dynamic>>.broadcast();
+  /// Fresh replies from Santosh (not history replays). The voice screen listens to this.
+  Stream<Map<String, dynamic>> get replies => _replies.stream;
 
   final List<FeedItem> feed = [];
   final Map<String, FeedItem> _campaigns = {};
@@ -72,6 +87,7 @@ class Santosh extends ChangeNotifier {
     error = null;
     await _sub?.cancel();
     feed.clear();
+    lastEventId = 0;
     _campaigns.clear();
     _steps = null;
     api = Api(serverUrl, apiKey);
@@ -99,11 +115,15 @@ class Santosh extends ChangeNotifier {
         connected = false;
         notifyListeners();
       });
-      Timer(const Duration(seconds: 2), () => _replaying = false);
+      // once history has replayed, hand the latest event id to the background service
+      Timer(const Duration(seconds: 2), () {
+        _replaying = false;
+        applyBackground();
+      });
       await Device.instance.init();
       await Device.instance.askNotificationPermission();
-      await refreshReminders();
       await refreshLists();
+      await refreshRoutines();
       for (final a in await api!.pendingActions()) {
         await _runAction(a);
       }
@@ -117,9 +137,54 @@ class Santosh extends ChangeNotifier {
   Future<void> refreshReminders() async {
     try {
       reminders = await api!.reminders();
-      await Device.instance.syncReminders(reminders);
+      await _syncLocalReminders();
       notifyListeners();
     } catch (_) {}
+  }
+
+  /// With background mode on, the service shows reminders as the server fires them;
+  /// otherwise the phone schedules its own notifications.
+  Future<void> _syncLocalReminders() => Device.instance.syncReminders(backgroundRunning ? const [] : reminders);
+
+  Future<void> refreshRoutines() async {
+    try {
+      routines = await api!.routines();
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> cancelRoutine(String id) async {
+    try {
+      await api!.cancelRoutine(id);
+      routines.removeWhere((r) => r['id'] == id);
+    } catch (e) {
+      error = e.toString();
+    }
+    notifyListeners();
+  }
+
+  /// Start or stop the native background service to match the setting.
+  Future<void> applyBackground() async {
+    if (background && conversationId != null) {
+      await Native.start(server: serverUrl, key: apiKey, conv: conversationId!, after: lastEventId);
+    } else {
+      await Native.stop();
+    }
+    await refreshBackgroundInfo();
+    await refreshReminders();
+  }
+
+  Future<void> refreshBackgroundInfo() async {
+    backgroundRunning = await Native.running();
+    backgroundStatus = await Native.status();
+    batteryOptimized = await Native.batteryOptimized();
+    hasCalendar = await Native.hasCalendar();
+    notifyListeners();
+  }
+
+  Future<void> setBackground(bool on) async {
+    await _prefs.setBool('bg', on);
+    await applyBackground();
   }
 
   Future<void> refreshLists() async {
@@ -129,15 +194,19 @@ class Santosh extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> send(String text, {bool voice = false}) async {
+  /// [voice]: typed by speaking in chat (reply is read aloud). [spoken]: from the voice screen
+  /// (the server keeps the reply short and speakable).
+  Future<bool> send(String text, {bool voice = false, bool spoken = false}) async {
     text = text.trim();
-    if (text.isEmpty || api == null || conversationId == null) return;
+    if (text.isEmpty || api == null || conversationId == null) return false;
     _lastInputWasVoice = voice;
     try {
-      await api!.sendMessage(conversationId!, text);
+      await api!.sendMessage(conversationId!, text, voice: spoken);
+      return true;
     } catch (e) {
       error = 'Message nahi gaya: $e';
       notifyListeners();
+      return false;
     }
   }
 
@@ -175,25 +244,29 @@ class Santosh extends ChangeNotifier {
 
   Future<void> _onEvent(SantoshEvent ev) async {
     final p = ev.payload;
+    if (ev.id > lastEventId) lastEventId = ev.id;
     switch (ev.kind) {
       case 'message':
         if (p['role'] == 'user') _steps = null;
         feed.add(FeedItem('message', p));
         final fresh = !_replaying && ev.at.isAfter(_connectedAt.subtract(const Duration(seconds: 5)));
         if (p['role'] == 'assistant' && fresh) {
-          if (inBackground) Device.instance.showNow('Santosh', p['text'] as String? ?? '');
-          if (_lastInputWasVoice && speakReplies && p['source'] == 'agent') _speak(p['text'] as String? ?? '');
+          _replies.add(p);
+          if (inBackground && !backgroundRunning) Device.instance.showNow('Santosh', p['text'] as String? ?? '');
+          if (!voiceMode && _lastInputWasVoice && speakReplies && p['source'] == 'agent') _speak(p['text'] as String? ?? '');
         }
         break;
       case 'typing':
         typing = p['on'] == true && !_replaying;
         if (p['on'] == true) _steps = null;
+        if (!typing) currentStep = null;
         break;
       case 'step':
         if (_steps == null) {
           _steps = FeedItem('steps', {});
           feed.add(_steps!);
         }
+        if (!_replaying) currentStep = p['state'] == 'running' ? p['label'] as String? : currentStep;
         final i = _steps!.steps.indexWhere((s) => s['id'] == p['id']);
         if (i >= 0) {
           _steps!.steps[i] = p;
@@ -209,13 +282,17 @@ class Santosh extends ChangeNotifier {
         break;
       case 'reminders':
         reminders = List<Map<String, dynamic>>.from(p['reminders'] as List? ?? const []);
-        await Device.instance.syncReminders(reminders);
+        await _syncLocalReminders();
+        break;
+      case 'routines':
+        routines = List<Map<String, dynamic>>.from(p['routines'] as List? ?? const []);
         break;
       case 'lists':
         await refreshLists();
         break;
       case 'device_action':
-        await _runAction(p, at: ev.at);
+        // in the background the native service does it (screens can't be opened from the background)
+        if (!(inBackground && backgroundRunning)) await _runAction(p, at: ev.at);
         break;
       case 'device_action_result':
         if (p['status'] == 'done') {
@@ -234,6 +311,7 @@ class Santosh extends ChangeNotifier {
     final done = _prefs.getStringList('done_actions') ?? <String>[];
     if (done.contains(id)) return;
     if (at != null && DateTime.now().toUtc().difference(at) > const Duration(minutes: 15)) return;
+    if (!await Native.claim(id)) return; // the background service already did it
     final kept = done.length > 300 ? done.sublist(done.length - 300) : done;
     await _prefs.setStringList('done_actions', [...kept, id]);
     final err = await Device.instance.run(a);
@@ -254,6 +332,7 @@ class Santosh extends ChangeNotifier {
 
   @override
   void dispose() {
+    _replies.close();
     _sub?.cancel();
     super.dispose();
   }

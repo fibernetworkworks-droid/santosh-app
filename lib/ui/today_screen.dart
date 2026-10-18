@@ -8,6 +8,7 @@ class TodayScreen extends StatelessWidget {
   const TodayScreen({super.key, required this.app});
   final Santosh app;
 
+  static const routineRepeat = {'none': 'Ek baar', 'hourly': 'Har ghante', 'daily': 'Roz', 'weekdays': 'Mon–Fri', 'weekly': 'Har hafte', 'monthly': 'Har mahine'};
   static const repeatLabel = {'daily': 'Roz', 'weekdays': 'Mon–Fri', 'weekly': 'Har hafte', 'monthly': 'Har mahine'};
 
   @override
@@ -17,6 +18,7 @@ class TodayScreen extends StatelessWidget {
           onRefresh: () async {
             await app.refreshReminders();
             await app.refreshLists();
+            await app.refreshRoutines();
           },
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 24), children: [
             Text('Aaj aur aage', style: display(28)),
@@ -45,6 +47,35 @@ class TodayScreen extends StatelessWidget {
                           await app.api?.cancelReminder(r['id'] as String);
                           await app.refreshReminders();
                         },
+                      ),
+                    ),
+                ]),
+              ),
+            const SizedBox(height: 20),
+            const _Label('SANTOSH KE APNE KAAM'),
+            if (app.routines.isEmpty)
+              const Glass(child: Text('Santosh khud se koi kaam nahi kar raha. Boliye: "Har subah 7 baje Pune ka mausam aur aaj ke reminders bata dena".', style: TextStyle(color: C.muted)))
+            else
+              Glass(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: Column(children: [
+                  for (final r in app.routines)
+                    ListTile(
+                      leading: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(gradient: C.gradient, borderRadius: BorderRadius.circular(12)),
+                        child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 20),
+                      ),
+                      title: Text(r['title'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text([
+                        routineRepeat[r['repeat']] ?? '',
+                        if (r['next_run_local'] != null) 'Agla: ${r['next_run_local']}',
+                      ].where((x) => x.isNotEmpty).join(' · ')),
+                      trailing: IconButton(
+                        tooltip: 'Yeh kaam band karo',
+                        icon: const Icon(Icons.close_rounded, color: C.muted),
+                        onPressed: () => app.cancelRoutine(r['id'] as String),
                       ),
                     ),
                 ]),

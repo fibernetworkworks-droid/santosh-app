@@ -62,8 +62,20 @@ class Api {
   Future<Map<String, dynamic>> health() async => Map<String, dynamic>.from(await _send('GET', '/healthz'));
   Future<String> newConversation() async => (await _send('POST', '/api/conversations'))['id'] as String;
   Future<void> checkConversation(String id) async => _send('GET', '/api/conversations/$id/messages');
-  Future<void> sendMessage(String conv, String text) async =>
-      _send('POST', '/api/conversations/$conv/messages', body: {'text': text});
+  Future<void> sendMessage(String conv, String text, {bool voice = false}) async =>
+      _send('POST', '/api/conversations/$conv/messages', body: {'text': text, if (voice) 'voice': true});
+
+  /// Santosh's automatic jobs. Older servers (before v0.3) have none: returns an empty list.
+  Future<List<Map<String, dynamic>>> routines() async {
+    try {
+      return List<Map<String, dynamic>>.from((await _send('GET', '/api/routines'))['routines'] as List);
+    } on ApiException catch (e) {
+      if (e.status == 404) return [];
+      rethrow;
+    }
+  }
+
+  Future<void> cancelRoutine(String id) async => _send('POST', '/api/routines/$id/cancel');
 
   Future<List<Map<String, dynamic>>> reminders() async =>
       List<Map<String, dynamic>>.from((await _send('GET', '/api/reminders'))['reminders'] as List);

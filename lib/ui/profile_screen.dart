@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
 
@@ -83,6 +84,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 24), children: [
       Text('Profile', style: display(28)),
       const SizedBox(height: 14),
+      ListenableBuilder(listenable: app, builder: (context, _) => _BackgroundCard(app: app)),
+      const SizedBox(height: 18),
       Glass(
         child: Column(children: [
           TextField(controller: _name, decoration: const InputDecoration(labelText: 'Naam')),
@@ -162,5 +165,85 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ]),
       ),
     ]);
+  }
+}
+
+
+/// Background mode: Santosh keeps working (notifications, alarms, calendar, automatic jobs) with the app closed.
+class _BackgroundCard extends StatefulWidget {
+  const _BackgroundCard({required this.app});
+  final Santosh app;
+  @override
+  State<_BackgroundCard> createState() => _BackgroundCardState();
+}
+
+class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    widget.app.refreshBackgroundInfo();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState s) {
+    if (s == AppLifecycleState.resumed) widget.app.refreshBackgroundInfo(); // back from a settings screen
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final app = widget.app;
+    final on = app.background;
+    final st = app.backgroundStatus;
+    final statusText = !on
+        ? 'Band: app band hone par notifications aur phone ke kaam ruk jaate hain'
+        : !app.backgroundRunning
+            ? 'Shuru ho raha hai…'
+            : st == 'connected'
+                ? 'Chalu · Santosh duty par hai'
+                : st.isEmpty
+                    ? 'Chalu'
+                    : 'Chalu · $st';
+    Widget fix(String title, String sub, String button, Future<void> Function() onTap) => Container(
+          margin: const EdgeInsets.only(top: 10),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: const Color(0xE6FEF3C7), borderRadius: BorderRadius.circular(16)),
+          child: Row(children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF7C2D12))),
+                Text(sub, style: const TextStyle(fontSize: 12.5, color: Color(0xFF7C2D12))),
+              ]),
+            ),
+            TextButton(onPressed: onTap, child: Text(button)),
+          ]),
+        );
+    return Glass(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Background mein kaam', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text(statusText, style: TextStyle(color: on && app.backgroundRunning ? C.ok : C.muted, fontSize: 12.5)),
+          value: on,
+          onChanged: (v) => app.setBackground(v),
+        ),
+        const Text('App band ho tab bhi: Santosh ke jawab notification mein, alarm aur timer bajenge, calendar mein entry, aur Santosh ke roz ke kaam chalte rahenge.',
+            style: TextStyle(fontSize: 12.5, color: C.muted)),
+        if (on && app.batteryOptimized)
+          fix('Battery saver Santosh ko rok sakta hai', 'Santosh ko "Unrestricted / Don\'t optimize" par rakhiye', 'Theek karo', Native.askBattery),
+        if (on && !app.hasCalendar)
+          fix('Calendar permission', 'Taaki Santosh meetings seedha calendar mein save kare', 'Allow', () async {
+            await Native.askCalendar();
+            await Future.delayed(const Duration(seconds: 2));
+            await app.refreshBackgroundInfo();
+          }),
+      ]),
+    );
   }
 }

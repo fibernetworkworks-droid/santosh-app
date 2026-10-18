@@ -4,10 +4,12 @@ import 'package:speech_to_text/speech_to_text.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'live_santosh.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key, required this.app});
+  const ChatScreen({super.key, required this.app, this.onVoice});
   final Santosh app;
+  final VoidCallback? onVoice;
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
@@ -113,16 +115,19 @@ class _ChatScreenState extends State<ChatScreen> {
         margin: const EdgeInsets.fromLTRB(14, 8, 14, 6),
         padding: const EdgeInsets.all(10),
         child: Row(children: [
-          Avatar(online: app.connected),
+          LiveAvatar(online: app.connected, busy: app.typing),
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Santosh', style: display(20, w: FontWeight.w700)),
-              Text(app.connected ? 'Online · ${languages[app.language] ?? ''}' : 'Connect ho raha hai…',
+              Text(!app.connected ? 'Connect ho raha hai…' : app.typing ? (app.currentStep ?? 'Kaam kar raha hoon…') : 'Online · ${languages[app.language] ?? ''}',
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: app.connected ? C.ok : C.muted)),
             ]),
           ),
           if (app.dryRun) const Pill('WHATSAPP TEST', fg: C.warn, bg: Color(0xE6FEF3C7)),
+          if (widget.onVoice != null)
+            IconButton(tooltip: 'Bolkar baat karein', onPressed: widget.onVoice, icon: const Icon(Icons.graphic_eq_rounded, color: C.accent)),
           IconButton(tooltip: 'Naya chat', onPressed: () => app.connect(fresh: true), icon: const Icon(Icons.add_comment_outlined, color: C.chip)),
         ]),
       );
@@ -140,7 +145,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _hero() => Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Column(children: [
-          Image.asset('assets/images/santosh_happy.png', height: 190),
+          LiveSantosh(mood: app.typing ? 'working' : 'happy', size: 190),
           const SizedBox(height: 6),
           const Text('Boliye: "Kal subah 7 baje yaad dilana", "Doodh list mein daalo", "Pune ka mausam?"',
               textAlign: TextAlign.center, style: TextStyle(color: C.muted, fontSize: 13.5)),

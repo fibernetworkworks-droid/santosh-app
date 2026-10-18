@@ -7,6 +7,7 @@ import 'ui/glass.dart';
 import 'ui/profile_screen.dart';
 import 'ui/setup_screen.dart';
 import 'ui/today_screen.dart';
+import 'ui/voice_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +46,8 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
     if (s == AppLifecycleState.resumed && widget.app.configured) {
       widget.app.refreshReminders();
       widget.app.refreshLists();
+      widget.app.refreshRoutines();
+      widget.app.refreshBackgroundInfo();
     }
   }
 
@@ -73,7 +76,9 @@ class _HomeState extends State<Home> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      ChatScreen(app: widget.app),
+      ChatScreen(app: widget.app, onVoice: () => setState(() => _tab = 1)),
+      // built only while open: the 3D view and the microphone stop when you leave the tab
+      _tab == 1 ? VoiceScreen(app: widget.app) : const SizedBox.shrink(),
       TodayScreen(app: widget.app),
       ProfileScreen(app: widget.app, onReset: widget.onReset),
     ];
@@ -93,6 +98,7 @@ class _HomeState extends State<Home> {
             onDestinationSelected: (i) => setState(() => _tab = i),
             destinations: const [
               NavigationDestination(icon: Icon(Icons.chat_bubble_outline_rounded), selectedIcon: Icon(Icons.chat_bubble_rounded, color: C.accent), label: 'Chat'),
+              NavigationDestination(icon: Icon(Icons.graphic_eq_rounded), selectedIcon: Icon(Icons.graphic_eq_rounded, color: C.accent), label: 'Baat'),
               NavigationDestination(icon: Icon(Icons.event_note_outlined), selectedIcon: Icon(Icons.event_note_rounded, color: C.accent), label: 'Aaj'),
               NavigationDestination(icon: Icon(Icons.person_outline_rounded), selectedIcon: Icon(Icons.person_rounded, color: C.accent), label: 'Profile'),
             ],

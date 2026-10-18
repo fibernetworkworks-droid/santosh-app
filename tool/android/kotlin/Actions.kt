@@ -19,16 +19,16 @@ object Actions {
     private val DAYS = mapOf("sun" to Calendar.SUNDAY, "mon" to Calendar.MONDAY, "tue" to Calendar.TUESDAY,
         "wed" to Calendar.WEDNESDAY, "thu" to Calendar.THURSDAY, "fri" to Calendar.FRIDAY, "sat" to Calendar.SATURDAY)
 
-    /** Actions older than 15 minutes are stale (the server has already expired them). */
-    fun tooOld(at: String): Boolean {
+    /** Events older than [minutes] are stale (phone actions expire on the server after 15). */
+    fun tooOld(at: String, minutes: Int = 15): Boolean {
         if (Build.VERSION.SDK_INT < 26 || at.isEmpty()) return false
         return try {
             val t = java.time.OffsetDateTime.parse(at).toInstant().toEpochMilli()
-            System.currentTimeMillis() - t > 15 * 60 * 1000L
+            System.currentTimeMillis() - t > minutes * 60 * 1000L
         } catch (_: Exception) {
             try {
                 val t = java.time.LocalDateTime.parse(at).atZone(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
-                System.currentTimeMillis() - t > 15 * 60 * 1000L
+                System.currentTimeMillis() - t > minutes * 60 * 1000L
             } catch (_: Exception) { false }
         }
     }
