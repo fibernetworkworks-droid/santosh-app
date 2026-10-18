@@ -330,8 +330,8 @@ class Call:
             while not self.closed.is_set():
                 context = life.context_block(self.ctx.tenant_id)
                 try:
+                    started = asyncio.get_running_loop().time()
                     async with connector(live_config(self.voice, self.lang, context, self.handle)) as session:
-                        failures = 0
                         if first:
                             await self.send_json({"type": "ready", "voice": self.voice})
                             from google.genai import types
@@ -365,6 +365,10 @@ class Call:
                         failures += 1
                         if failures < 4:
                             continue
+                    # a session that dies within seconds is a real failure, not a normal reconnect
+                    lived = asyncio.get_running_loop().time() - started if "started" in locals() else 0
+                    if lived > 30:
+                        failures = 0
                     failures += 1
                     log.warning("voice session error (%s): %r", failures, e)
                     self.first_error = getattr(self, "first_error", None) or str(e)
