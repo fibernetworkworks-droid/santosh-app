@@ -53,7 +53,7 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
     }
 
     try {
-      await handle(await _links.getInitialLink());
+      await handle(await _links.getInitialAppLink());
     } catch (_) {}
     _linkSub = _links.uriLinkStream.listen(handle, onError: (_) {});
   }
