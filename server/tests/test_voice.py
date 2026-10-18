@@ -97,7 +97,7 @@ def test_voice_call_end_to_end(env, monkeypatch):
     assert {"type": "user_text", "text": "Kal subah saat baje ka alarm laga do"} in events
     assert {"type": "tool", "label": "Phone par alarm laga raha hoon", "state": "done"} in events
     assert len(got_audio) == 2 and fake.audio_in and fake.audio_in[0] == b"\x00\x01" * 320
-    assert fake.client_content, "greeting prompt sent on connect"
+    assert any("call just connected" in x for x in fake.texts), "greeting sent as live text"
     r = fake.tool_responses[0]
     assert r.id == "fc1" and r.response["result"]["sent_to_phone"] is True
     # config: male voice, patient turn-taking, tone-aware
@@ -163,3 +163,37 @@ def test_voice_drops_settings_the_model_refuses(env, monkeypatch):
     # later calls skip it from the start
     assert voice.live_config("Puck", "hi-IN", "", None).proactivity is None
     voice.UNSUPPORTED.clear()
+
+
+
+def test_voice_starts_fresh_when_resume_expired(env, monkeypatch):
+    """Real error from the phone: 1008 'BidiGenerateContent session not found or expired'."""
+    from app import main
+    from app.config import get_settings
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    get_settings.cache_clear()
+    fake = FakeSession(make_turns())
+    configs = []
+
+    @contextlib.asynccontextmanager
+    async def connect(config):
+        configs.append(config)
+        if config.session_resumption and config.session_resumption.handle:
+            raise Exception("1008 None. BidiGenerateContent session not found or expired")
+        yield fake
+
+    monkeypatch.setattr(voice, "connector", connect)
+    orig_run = voice.Call.run
+
+    async def run_with_stale_handle(self):
+        self.handle = "stale-handle"
+        await orig_run(self)
+
+    monkeypatch.setattr(voice.Call, "run", run_with_stale_handle)
+    with TestClient(main.app) as c:
+        conv = c.post("/api/conversations").json()["id"]
+        with c.websocket_connect(f"/api/voice/ws?conv={conv}") as ws:
+            assert json.loads(ws.receive_text())["type"] == "ready"
+            ws.send_text(json.dumps({"type": "end"}))
+    assert configs[0].session_resumption.handle == "stale-handle"
+    assert configs[-1].session_resumption.handle is None

@@ -335,9 +335,9 @@ class Call:
                         if first:
                             await self.send_json({"type": "ready", "voice": self.voice})
                             from google.genai import types
-                            await session.send_client_content(turns=types.Content(role="user", parts=[types.Part(
-                                text="(The call just connected. Greet the user warmly in one short, natural line, by name if you know it.)")]),
-                                turn_complete=True)
+                            # live text input (3.x Live models accept client_content only for seeding history)
+                            await session.send_realtime_input(
+                                text="(The call just connected. Greet the user warmly in one short, natural line, by name if you know it.)")
                             first = False
                         up = asyncio.create_task(self.uplink(session))
                         down = asyncio.create_task(self.downlink(session))
@@ -347,6 +347,7 @@ class Call:
                             t.cancel()
                         for t in done:
                             if t is not closed and not t.cancelled() and t.exception() is not None:
+                                log.warning("voice stream ended: %r", t.exception())
                                 raise t.exception()
                 except asyncio.CancelledError:
                     raise
@@ -357,10 +358,20 @@ class Call:
                         log.warning("Gemini refused setting %s; retrying without it", bad)
                         UNSUPPORTED.add(bad)
                         continue
+                    if self.handle and re.search(r"not found or expired|session.*expired|resum", str(e), re.I):
+                        # the old session is gone on Google's side: start a fresh one instead of resuming
+                        log.warning("resume failed (%s); starting a fresh voice session", e)
+                        self.handle = None
+                        failures += 1
+                        if failures < 4:
+                            continue
                     failures += 1
-                    log.warning("voice session error (%s): %s", failures, e)
+                    log.warning("voice session error (%s): %r", failures, e)
+                    self.first_error = getattr(self, "first_error", None) or str(e)
                     if failures >= 3 or self.closed.is_set():
-                        await self.send_json({"type": "error", "message": f"Voice connection toot gaya: {e}"})
+                        first = getattr(self, "first_error", None)
+                        detail = str(e) if not first or first == str(e) else f"{first} (phir: {e})"
+                        await self.send_json({"type": "error", "message": f"Voice connection toot gaya: {detail}"})
                         break
                     await asyncio.sleep(0.5 * failures)
         finally:
