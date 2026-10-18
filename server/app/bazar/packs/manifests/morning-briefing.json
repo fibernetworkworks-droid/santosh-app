@@ -1,0 +1,29 @@
+{
+  "id": "morning-briefing",
+  "name": "Morning briefing",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Weather, agenda, bills due, news in one message",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 945,
+  "executor": "native",
+  "config": {
+    "skill": "briefing"
+  },
+  "tools": [
+    {
+      "name": "morning_brief",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "brief",
+    "aaj ka plan",
+    "good morning",
+    "today"
+  ]
+}

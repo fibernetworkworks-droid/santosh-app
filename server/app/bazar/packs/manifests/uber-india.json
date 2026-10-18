@@ -1,0 +1,33 @@
+{
+  "id": "uber-india",
+  "name": "Uber India",
+  "category": "Travel & Commute",
+  "sub_category": "Rides",
+  "pack_type": "Connector pack",
+  "layer": "L3",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Compare fare and ETA where available, open Uber India with pickup and drop set; user taps Book",
+  "notes": "Deep link with pickup/drop",
+  "master_list_row": 403,
+  "executor": "ride",
+  "config": {
+    "package": "com.ubercab",
+    "link": "https://m.uber.com/ul/?action=setPickup&pickup[latitude]={plat}&pickup[longitude]={plng}&dropoff[latitude]={dlat}&dropoff[longitude]={dlng}&dropoff[nickname]={dname}",
+    "verified": true
+  },
+  "tools": [
+    {
+      "name": "ride_link",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "cab",
+    "auto",
+    "ride",
+    "taxi",
+    "rickshaw",
+    "uber"
+  ]
+}

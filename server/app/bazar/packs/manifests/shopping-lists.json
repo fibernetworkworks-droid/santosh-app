@@ -1,0 +1,36 @@
+{
+  "id": "shopping-lists",
+  "name": "Shopping lists",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Shared family lists that turn into orders",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 944,
+  "executor": "native",
+  "config": {
+    "skill": "lists"
+  },
+  "tools": [
+    {
+      "name": "add_to_list",
+      "tier": 1
+    },
+    {
+      "name": "show_list",
+      "tier": 0
+    },
+    {
+      "name": "clear_list",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "list",
+    "yadi",
+    "list mein"
+  ]
+}

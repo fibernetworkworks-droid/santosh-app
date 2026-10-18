@@ -1,0 +1,37 @@
+{
+  "id": "whatsapp-marketing-automation",
+  "name": "WhatsApp marketing automation",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Build template, get approval, run campaign, report",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 953,
+  "executor": "native",
+  "config": {
+    "skill": "wa_marketing"
+  },
+  "tools": [
+    {
+      "name": "create_template",
+      "tier": 1
+    },
+    {
+      "name": "template_status",
+      "tier": 0
+    },
+    {
+      "name": "send_campaign",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "whatsapp campaign",
+    "marketing",
+    "broadcast",
+    "template"
+  ]
+}

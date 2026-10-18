@@ -1,0 +1,35 @@
+{
+  "id": "family-profiles",
+  "name": "Family profiles",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Addresses, sizes, diets for each family member",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 949,
+  "executor": "native",
+  "config": {
+    "skill": "family"
+  },
+  "tools": [
+    {
+      "name": "save_family_member",
+      "tier": 1
+    },
+    {
+      "name": "get_family",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "family",
+    "mummy",
+    "papa",
+    "wife",
+    "beta",
+    "beti"
+  ]
+}

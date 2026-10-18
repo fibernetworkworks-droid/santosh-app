@@ -197,6 +197,12 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       case 'email':
         return _EmailCard(v: it.data, app: app);
+      case 'bazar':
+        return _BazarCard(v: it.data, app: app);
+      case 'open':
+        return _OpenCard(v: it.data, app: app);
+      case 'link':
+        return _LinkCard(v: it.data, app: app);
       case 'campaign':
         return _CampaignCard(v: it.data, app: app);
       default:
@@ -438,4 +444,152 @@ class _EmailCard extends StatelessWidget {
       app.notifyChange();
     }
   }
+}
+
+
+/// Santosh Bazar confirm card. Amount, payee and items come from the server, never from the chat text.
+class _BazarCard extends StatelessWidget {
+  const _BazarCard({required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = v['status'] as String? ?? 'pending';
+    final busy = v['busy'] == true;
+    final items = (v['items'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    final demo = v['demo'] == true;
+    final result = v['result'] as Map?;
+    final open = result?['open'] as Map?;
+    String chip = 'APPROVE KAREIN';
+    Color chipFg = C.warn;
+    if (status == 'approved' || status == 'auto') { chip = 'APPROVED'; chipFg = C.ok; }
+    if (status == 'rejected') { chip = 'CANCEL'; chipFg = C.muted; }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            Icon(v['tier'] == 3 ? Icons.currency_rupee_rounded : Icons.shopping_bag_outlined, color: C.accent, size: 20),
+            const SizedBox(width: 8),
+            Expanded(child: Text((v['title'] as String? ?? '').replaceFirst('[DEMO] ', ''),
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5))),
+            Pill(chip, fg: chipFg),
+          ]),
+          if (demo) const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text('DEMO: test bill hai, asli paise nahi katenge.', style: TextStyle(color: C.warn, fontSize: 12.5, fontWeight: FontWeight.w600))),
+          const SizedBox(height: 8),
+          if ((v['payee'] as String? ?? '').isNotEmpty)
+            Text('Kisko: ${v['payee']}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          for (final i in items.take(12))
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(children: [
+                Expanded(child: Text(i['name'] as String? ?? '', style: const TextStyle(fontSize: 13.5, color: Color(0xFF3B3360)))),
+                Text(i['price'] as String? ?? '', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+              ]),
+            ),
+          if ((v['amount'] as String? ?? '').isNotEmpty) ...[
+            const Divider(height: 16),
+            Row(children: [
+              const Expanded(child: Text('Total', style: TextStyle(fontWeight: FontWeight.w700))),
+              Text(v['amount'] as String, style: display(20, w: FontWeight.w700)),
+            ]),
+          ],
+          const SizedBox(height: 4),
+          Text(v['pay_method'] as String? ?? '', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+          if (v['needs_pin'] == true && status == 'pending')
+            const Text('UPI PIN sirf aapke UPI app mein daaliye. Santosh kabhi PIN nahi maangega.', style: TextStyle(color: C.muted, fontSize: 12)),
+          if (status == 'pending') ...[
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: GradientButton(label: busy ? 'Ho raha hai…' : 'Approve', height: 46, icon: Icons.check_rounded,
+                  onTap: busy ? null : () => app.decideBazar(v['id'] as String, 'approve'))),
+              const SizedBox(width: 8),
+              TextButton(onPressed: busy ? null : () => app.decideBazar(v['id'] as String, 'reject'), child: const Text('Cancel')),
+            ]),
+          ],
+          if (result != null && (result['message'] as String? ?? '').isNotEmpty)
+            Padding(padding: const EdgeInsets.only(top: 8), child: Text(result['message'] as String, style: const TextStyle(fontSize: 13))),
+          if (open != null && status != 'pending') ...[
+            const SizedBox(height: 8),
+            _openButtons(context, app, Map<String, dynamic>.from(open)),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+Widget _openButtons(BuildContext context, Santosh app, Map<String, dynamic> open) {
+  if (open['kind'] == 'links') {
+    final links = (open['links'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    return Wrap(spacing: 8, runSpacing: 8, children: [
+      for (final l in links)
+        ActionChip(avatar: const Icon(Icons.send_rounded, size: 16), label: Text(l['name'] as String? ?? ''),
+            onPressed: () => app.openBazar({'url': l['url']})),
+    ]);
+  }
+  if (open['kind'] == 'share') {
+    return SelectableText(open['text'] as String? ?? '', style: const TextStyle(fontSize: 13));
+  }
+  return OutlinedButton.icon(
+    icon: Icon(open['kind'] == 'upi' ? Icons.currency_rupee_rounded : Icons.open_in_new_rounded),
+    label: Text(open['label'] as String? ?? 'Kholiye'),
+    onPressed: () async {
+      final r = await app.openBazar(open);
+      if (r != 'ok' && context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(r)));
+    },
+  );
+}
+
+class _OpenCard extends StatelessWidget {
+  const _OpenCard({required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Glass(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text(v['pack'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            if ((v['message'] as String? ?? '').isNotEmpty)
+              Padding(padding: const EdgeInsets.only(top: 4), child: Text(v['message'] as String, style: const TextStyle(fontSize: 13))),
+            const SizedBox(height: 8),
+            _openButtons(context, app, v),
+          ]),
+        ),
+      );
+}
+
+class _LinkCard extends StatelessWidget {
+  const _LinkCard({required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Glass(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text('${v['name']} jodiye', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text('Ek baar apne account se login kijiye (OTP unke page par aayega). Phir Santosh aapke liye order kar sakta hai.',
+                    style: TextStyle(fontSize: 13))),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.link_rounded),
+              label: Text('${v['name']} link karein'),
+              onPressed: () async {
+                final err = await app.linkApp(v['pack_id'] as String);
+                if (err != null && context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+              },
+            ),
+          ]),
+        ),
+      );
 }

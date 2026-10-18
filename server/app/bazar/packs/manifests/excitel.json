@@ -1,0 +1,39 @@
+{
+  "id": "excitel",
+  "name": "Excitel",
+  "category": "Bills & Utilities",
+  "sub_category": "Mobile, broadband & DTH",
+  "pack_type": "Biller pack",
+  "layer": "L2",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Detect plan and usage, recommend the right plan, recharge or pay Excitel bill",
+  "notes": "All biller packs share one BBPS partner integration",
+  "master_list_row": 342,
+  "executor": "bbps",
+  "config": {
+    "biller_category": "broadband",
+    "biller_name": "Excitel",
+    "input_fields": [
+      "customer_id_or_landline"
+    ],
+    "biller_id": null
+  },
+  "tools": [
+    {
+      "name": "fetch_bill",
+      "tier": 0
+    },
+    {
+      "name": "pay_bill",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "wifi",
+    "broadband",
+    "internet bill",
+    "fiber",
+    "excitel"
+  ]
+}

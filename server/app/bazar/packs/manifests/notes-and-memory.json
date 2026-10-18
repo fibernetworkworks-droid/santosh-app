@@ -1,0 +1,33 @@
+{
+  "id": "notes-and-memory",
+  "name": "Notes & memory",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Remember what the user tells Santosh and recall it later",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 943,
+  "executor": "native",
+  "config": {
+    "skill": "notes"
+  },
+  "tools": [
+    {
+      "name": "save_note",
+      "tier": 1
+    },
+    {
+      "name": "search_notes",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "note",
+    "yaad rakh",
+    "likh lo",
+    "remember"
+  ]
+}

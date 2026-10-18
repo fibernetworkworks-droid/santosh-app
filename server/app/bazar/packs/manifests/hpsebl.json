@@ -1,0 +1,42 @@
+{
+  "id": "hpsebl",
+  "name": "HPSEBL",
+  "category": "Bills & Utilities",
+  "sub_category": "Electricity boards",
+  "pack_type": "Biller pack",
+  "layer": "L2",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Fetch HPSEBL bill by consumer number, show amount and due date, pay via BBPS partner, save receipt, set next reminder",
+  "notes": "All biller packs share one BBPS partner integration",
+  "master_list_row": 303,
+  "executor": "bbps",
+  "config": {
+    "biller_category": "electricity",
+    "biller_name": "HPSEBL",
+    "input_fields": [
+      "consumer_number"
+    ],
+    "biller_id": null
+  },
+  "tools": [
+    {
+      "name": "fetch_bill",
+      "tier": 0
+    },
+    {
+      "name": "pay_bill",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "bijli",
+    "light bill",
+    "electricity",
+    "vij",
+    "वीज",
+    "बिजली",
+    "lightbill",
+    "hpsebl"
+  ]
+}

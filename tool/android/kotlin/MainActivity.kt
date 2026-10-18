@@ -46,6 +46,7 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
                     "isRunning" -> result.success(SantoshService.running)
+                    "openExternal" -> result.success(openExternal(call.argument<String>("url") ?: "", call.argument<String>("package") ?: ""))
                     "status" -> result.success(Store.status(this))
                     "claim" -> result.success(Store.claim(this, call.argument<String>("id") ?: ""))
                     "batteryOptimized" -> result.success(batteryOptimized())
@@ -91,10 +92,56 @@ class MainActivity : FlutterActivity() {
 
     private fun handleIntent(intent: Intent?) {
         val data = intent?.data ?: return
-        if (data.scheme == "santosh" && data.host == "auth") {
-            val token = data.getQueryParameter("session") ?: return
-            val sink = linkSink
-            if (sink != null) main.post { sink.success(token) } else pendingLink = token
+        val msg = when {
+            data.scheme == "santosh" && data.host == "auth" -> data.getQueryParameter("session") ?: return
+            data.scheme == "santosh" && data.host == "bazar" -> "bazar:linked=" + (data.getQueryParameter("linked") ?: "0")
+            else -> return
+        }
+        val sink = linkSink
+        if (sink != null) main.post { sink.success(msg) } else pendingLink = msg
+    }
+
+    private fun installed(pkg: String): Boolean = try {
+        packageManager.getPackageInfo(pkg, 0); true
+    } catch (_: Exception) { false }
+
+    /** Opens a UPI payment, an app link or an app. Only called from a user tap, so Android allows it.
+     *  Santosh never sees the UPI PIN: the user types it in their UPI app. */
+    private fun openExternal(url: String, pkg: String): String {
+        try {
+            if (url.isNotBlank()) {
+                val uri = Uri.parse(url)
+                val scheme = uri.scheme ?: ""
+                if (scheme !in setOf("upi", "tez", "phonepe", "paytmmp", "https", "http", "intent")) return "Link sahi nahi hai"
+                if (scheme in setOf("upi", "tez", "phonepe", "paytmmp")) {
+                    // prefer the chosen app; fall back to the standard upi:// chooser (every UPI app handles it)
+                    if (pkg.isNotBlank() && installed(pkg)) {
+                        val generic = Uri.parse("upi://pay?" + (uri.encodedQuery ?: ""))
+                        val i = Intent(Intent.ACTION_VIEW, generic).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        try { startActivity(i); return "ok" } catch (_: Exception) {}
+                        try { startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return "ok" } catch (_: Exception) {}
+                    }
+                    val generic = Intent(Intent.ACTION_VIEW, Uri.parse("upi://pay?" + (uri.encodedQuery ?: "")))
+                    startActivity(Intent.createChooser(generic, "Kis UPI app se pay karein?").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    return "ok"
+                }
+                val i = Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                if (pkg.isNotBlank() && installed(pkg)) i.setPackage(pkg)
+                try { startActivity(i); return "ok" } catch (_: Exception) { i.setPackage(null); startActivity(i); return "ok" }
+            }
+            if (pkg.isNotBlank()) {
+                val launch = packageManager.getLaunchIntentForPackage(pkg)
+                if (launch != null) { startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return "ok" }
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } catch (_: Exception) {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$pkg")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
+                return "App install nahi hai; Play Store khol diya"
+            }
+            return "Kholne ke liye kuch nahi mila"
+        } catch (e: Exception) {
+            return "Nahi khul paya: ${e.message ?: e.javaClass.simpleName}"
         }
     }
 

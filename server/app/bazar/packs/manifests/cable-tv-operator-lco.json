@@ -1,0 +1,33 @@
+{
+  "id": "cable-tv-operator-lco",
+  "name": "Cable TV operator (LCO)",
+  "category": "Bazar Shops",
+  "sub_category": "Local merchant template",
+  "pack_type": "Bazar shop template",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Monthly collection and pack changes — fully done by Santosh on Bazar rails",
+  "notes": "One template, unlimited merchants; launch in Akola and Pune",
+  "master_list_row": 920,
+  "executor": "shop",
+  "config": {
+    "template": "cable-tv-operator-lco",
+    "mode": "due_payment"
+  },
+  "tools": [
+    {
+      "name": "get_due",
+      "tier": 0
+    },
+    {
+      "name": "pay_due",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "cable",
+    "cable bill",
+    "tv bill"
+  ]
+}

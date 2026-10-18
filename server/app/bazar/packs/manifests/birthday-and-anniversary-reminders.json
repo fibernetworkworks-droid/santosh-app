@@ -1,0 +1,33 @@
+{
+  "id": "birthday-and-anniversary-reminders",
+  "name": "Birthday & anniversary reminders",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Remind and suggest a gift or message",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 951,
+  "executor": "native",
+  "config": {
+    "skill": "birthdays"
+  },
+  "tools": [
+    {
+      "name": "add_birthday",
+      "tier": 1
+    },
+    {
+      "name": "upcoming_birthdays",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "birthday",
+    "janamdin",
+    "vadhdivas",
+    "anniversary"
+  ]
+}

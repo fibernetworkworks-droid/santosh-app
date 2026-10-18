@@ -35,6 +35,10 @@ EMAIL_LABELS = {"email_check": "Inbox dekh raha hoon", "email_read": "Email padh
 
 
 def _require(ctx: Ctx):
+    from ..config import get_settings
+    if mail.configured() and ctx.tenant_id != get_settings().tenant_id:
+        raise ToolError("Aapka email abhi Santosh se connect nahi hai (server ka email sirf owner ke liye hai). "
+                        "Apna Gmail jodne ka option jald aa raha hai.")
     if not mail.configured():
         raise ToolError("Email abhi connect nahi hai. Server ke .env mein EMAIL_ADDRESS aur EMAIL_PASSWORD (app password) daaliye.")
 

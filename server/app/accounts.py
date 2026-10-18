@@ -170,6 +170,22 @@ def issue_session(user_id: str) -> str:
     return token
 
 
+def is_owner_email(email: str) -> bool:
+    st = get_settings()
+    owners = {e.strip().lower() for e in (st.owner_emails or st.email_address or "").split(",") if e.strip()}
+    return bool(email) and email.strip().lower() in owners
+
+
+def tenant_of_user(user_id: str) -> str:
+    """Every signed-in person gets their own tenant (their user id). The server owner's Google account maps to the
+    owner tenant, so their existing chats, reminders and .env-connected email/calendar/drive stay theirs alone."""
+    with session() as s:
+        u = s.get(User, user_id)
+        if u and is_owner_email(u.email):
+            return get_settings().tenant_id
+    return user_id
+
+
 def tenant_for_session(token: str) -> str | None:
     with session() as s:
         row = s.scalar(select(AppSession).where(AppSession.token_hash == _hash(token)))

@@ -25,6 +25,9 @@ class Native {
 
   static Future<bool> batteryOptimized() async => await _call<bool>('batteryOptimized') ?? false;
   static Future<void> askBattery() async => _call('askBattery');
+  /// Open a UPI payment / app link / app (from a user tap). Returns "ok" or a short reason.
+  static Future<String> openExternal({String url = '', String package = ''}) async =>
+      await _call<String>('openExternal', {'url': url, 'package': package}) ?? 'Is phone par nahi khul sakta';
   static Future<bool> hasCalendar() async => await _call<bool>('hasCalendar') ?? false;
   static Future<void> askCalendar() async => _call('askCalendar');
 }

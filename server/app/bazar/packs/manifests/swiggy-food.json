@@ -1,0 +1,37 @@
+{
+  "id": "swiggy-food",
+  "name": "Swiggy Food",
+  "category": "Food & Dining",
+  "sub_category": "Food delivery apps",
+  "pack_type": "Connector pack",
+  "layer": "L1",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Pick restaurant by budget, diet and rating; build cart; place order; track delivery",
+  "notes": "Official MCP live",
+  "master_list_row": 1,
+  "executor": "mcp",
+  "config": {
+    "provider": "swiggy_food",
+    "endpoint_setting": "mcp_swiggy_food_url",
+    "money_tool_patterns": [
+      "place_order",
+      "checkout",
+      "confirm",
+      "pay",
+      "book",
+      "reserve"
+    ]
+  },
+  "tools": [],
+  "keywords": [
+    "swiggy",
+    "khana",
+    "food",
+    "lunch",
+    "dinner",
+    "biryani",
+    "order food",
+    "jevan"
+  ]
+}

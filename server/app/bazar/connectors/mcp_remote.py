@@ -1,0 +1,209 @@
+"""L1 packs: apps that publish an official agent endpoint (MCP) — Swiggy Food, Instamart, Dineout, Zomato, Zepto.
+
+The user links their account once (the provider's OAuth/OTP flow, done in the app); the token is stored encrypted.
+Santosh lists the provider's own tools and calls them. Any tool that places an order, pays or books is Tier 2:
+the call is frozen server-side, the user sees a confirm card built from the provider's latest cart result, and only
+then is the exact frozen call sent.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import time
+from typing import Any, Callable, Protocol
+
+from sqlalchemy import select
+
+from ..db import Connection, Transaction
+from ..packs.registry import Pack
+from .base import Ctx, NeedsApproval, ToolError, ToolSpec, rupees
+
+CART_WORDS = ("cart", "checkout", "review", "summary", "bill")
+TOTAL_KEYS = ("grand_total", "total_payable", "to_pay", "total_amount", "order_total", "total", "amount")
+
+
+class RemoteTools(Protocol):
+    def list_tools(self) -> list[dict[str, Any]]: ...
+    def call_tool(self, name: str, args: dict[str, Any]) -> dict[str, Any]: ...
+
+
+class McpHttpRemote:
+    """Sync wrapper over the official MCP Python SDK (streamable HTTP transport)."""
+
+    def __init__(self, url: str, token: str):
+        self.url, self.token = url, token
+
+    async def _with_session(self, fn: Callable[[Any], Any]) -> Any:
+        from mcp import ClientSession
+        headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
+        try:  # MCP Python SDK 2.x
+            from mcp.client.streamable_http import create_mcp_http_client, streamable_http_client
+        except ImportError:  # SDK 1.x
+            from mcp.client.streamable_http import streamablehttp_client
+            async with streamablehttp_client(self.url, headers=headers) as (read, write, _):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    return await fn(session)
+        async with create_mcp_http_client(headers=headers) as http:
+            async with streamable_http_client(self.url, http_client=http) as streams:
+                read, write = streams[0], streams[1]
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    return await fn(session)
+
+    @staticmethod
+    def _attr(obj: Any, *names: str) -> Any:
+        for n in names:
+            if hasattr(obj, n):
+                return getattr(obj, n)
+        return None
+
+    def list_tools(self) -> list[dict[str, Any]]:
+        async def go(s):
+            res = await s.list_tools()
+            return [{"name": t.name, "description": t.description or "",
+                     "input_schema": self._attr(t, "input_schema", "inputSchema") or {"type": "object"}}
+                    for t in res.tools]
+        return asyncio.run(self._with_session(go))
+
+    def call_tool(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
+        async def go(s):
+            res = await s.call_tool(name, args)
+            texts = [c.text for c in res.content if getattr(c, "type", "") == "text"]
+            out: dict[str, Any] = {"is_error": bool(self._attr(res, "is_error", "isError")), "text": "\n".join(texts)}
+            structured = self._attr(res, "structured_content", "structuredContent")
+            if structured:
+                out["data"] = structured
+            else:
+                for t in texts:
+                    try:
+                        out["data"] = json.loads(t)
+                        break
+                    except ValueError:
+                        continue
+            return out
+        return asyncio.run(self._with_session(go))
+
+
+def _find_total(obj: Any) -> int | None:
+    """Best-effort: provider cart payloads differ. Returns paise. Rupee floats/strings are converted."""
+    if isinstance(obj, dict):
+        for k in TOTAL_KEYS:
+            if k in obj and isinstance(obj[k], (int, float, str)):
+                v = obj[k]
+                try:
+                    f = float(str(v).replace("₹", "").replace(",", ""))
+                except ValueError:
+                    continue
+                if k.endswith("_paise") or (isinstance(v, int) and v > 100_000):
+                    return int(f)
+                return int(round(f * 100))
+        for v in obj.values():
+            t = _find_total(v)
+            if t is not None:
+                return t
+    if isinstance(obj, list):
+        for v in obj:
+            t = _find_total(v)
+            if t is not None:
+                return t
+    return None
+
+
+def _find_items(obj: Any) -> list[dict[str, Any]]:
+    if isinstance(obj, dict):
+        for k in ("items", "cart_items", "line_items", "products"):
+            if isinstance(obj.get(k), list):
+                out = []
+                for it in obj[k][:20]:
+                    if isinstance(it, dict):
+                        name = it.get("name") or it.get("title") or it.get("item_name") or "Item"
+                        q = it.get("quantity") or it.get("qty")
+                        out.append({"name": f"{name}" + (f" × {q}" if q else ""), "price_paise": None})
+                return out
+        for v in obj.values():
+            r = _find_items(v)
+            if r:
+                return r
+    return []
+
+
+class McpExecutor:
+    name = "mcp"
+    _cache: dict[str, tuple[float, list[dict[str, Any]]]] = {}
+
+    def __init__(self, remote_factory: Callable[[str, str], RemoteTools] | None = None):
+        self.remote_factory = remote_factory or (lambda url, tok: McpHttpRemote(url, tok))
+
+    def _endpoint(self, pack: Pack, ctx: Ctx) -> str:
+        url = getattr(ctx.settings, pack.config["endpoint_setting"], "")
+        if not url:
+            raise ToolError(f"{pack.name} agent access is not configured yet.")
+        return url
+
+    def _remote(self, pack: Pack, ctx: Ctx) -> RemoteTools:
+        conn = ctx.session.scalars(select(Connection).where(Connection.user_id == ctx.user.id,
+                                                            Connection.provider == pack.config["provider"],
+                                                            Connection.status == "active")).first()
+        if not conn:
+            raise ToolError(f"NOT_LINKED: Link your {pack.name} account once (Santosh app > Profile > Apps > {pack.name}), "
+                            "then I can order for you.")
+        from ..mcp_auth import LinkError, access_token
+        try:
+            token = access_token(ctx.session, conn)
+        except LinkError:
+            raise ToolError(f"NOT_LINKED: Your {pack.name} sign-in expired. Please link it again in the Santosh app.")
+        return self.remote_factory(self._endpoint(pack, ctx), token)
+
+    def tool_specs(self, pack: Pack, ctx: Ctx) -> list[ToolSpec]:
+        key = pack.id + ":" + ctx.user.id
+        hit = self._cache.get(key)
+        if hit and time.time() - hit[0] < 600:
+            tools = hit[1]
+        else:
+            tools = self._remote(pack, ctx).list_tools()
+            self._cache[key] = (time.time(), tools)
+        return [ToolSpec(t["name"], f"[{pack.name}] {t['description']}"[:1000], t["input_schema"] or {"type": "object"},
+                         pack.tier_of(t["name"])) for t in tools]
+
+    def call(self, pack: Pack, tool: str, args: dict[str, Any], ctx: Ctx) -> dict[str, Any] | NeedsApproval:
+        tier = pack.tier_of(tool)
+        state = dict((ctx.task.result or {}).get("mcp_last") or {}) if ctx.task else {}
+        if tier >= 2:
+            last = state.get(pack.id, {})
+            total = _find_total(last.get("data")) if last else None
+            low = tool.lower()
+            if total is None and any(w in low for w in ("book", "reserv", "cancel")):
+                # table bookings / cancellations have no cart: show exactly what will be sent
+                summary = ", ".join(f"{k}: {v}" for k, v in list(args.items())[:8])[:300] or tool
+                return NeedsApproval(tier=2, title=f"{pack.name}: {tool.replace('_', ' ')}", payee=pack.name, amount_paise=0,
+                                     items=[{"name": summary, "price_paise": None}], pay_method=f"As per {pack.name}",
+                                     action={"executor": "mcp", "pack_id": pack.id, "name": tool, "args": args})
+            if total is None:
+                raise ToolError("Show me the cart first: call the provider's cart or review tool before placing the order.")
+            return NeedsApproval(tier=2, title="Confirm order", payee=pack.name, amount_paise=total,
+                                 items=_find_items(last.get("data")) or [{"name": "Cart on " + pack.name, "price_paise": total}],
+                                 pay_method=f"Payment inside {pack.name}",
+                                 action={"executor": "mcp", "pack_id": pack.id, "name": tool, "args": args},
+                                 preview={"provider_total": rupees(total)})
+        res = self._remote(pack, ctx).call_tool(tool, args)
+        if res.get("is_error"):
+            raise ToolError(f"{pack.name} said: {res.get('text', '')[:300]}")
+        if any(w in tool.lower() for w in CART_WORDS) and res.get("data") is not None:
+            state[pack.id] = {"tool": tool, "data": res["data"], "at": time.time()}
+            if ctx.task is not None:
+                from sqlalchemy.orm.attributes import flag_modified
+                ctx.task.result = {**(ctx.task.result or {}), "mcp_last": state}
+                flag_modified(ctx.task, "result")
+        return {"text": res.get("text", "")[:4000], "data": res.get("data")}
+
+    def execute(self, pack: Pack, action: str, args: dict[str, Any], ctx: Ctx) -> dict[str, Any]:
+        res = self._remote(pack, ctx).call_tool(action, args)
+        if res.get("is_error"):
+            raise ToolError(f"{pack.name} could not place it: {res.get('text', '')[:300]}")
+        last = ((ctx.task.result if ctx.task else {}).get("mcp_last") or {}).get(pack.id, {})
+        total = _find_total(last.get("data")) or 0
+        ctx.session.add(Transaction(user_id=ctx.user.id, task_id=ctx.task.id if ctx.task else "", kind="order",
+                                    provider=pack.id, amount_paise=total, status="completed",
+                                    meta={"tool": action, "response": res.get("data") or res.get("text", "")[:2000]}))
+        return {"status": "placed", "provider": pack.name, "response": res.get("data") or res.get("text", "")[:2000]}

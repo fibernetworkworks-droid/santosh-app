@@ -36,13 +36,17 @@ GCAL_LABELS = {"calendar_agenda": "Calendar dekh raha hoon", "calendar_add_event
                "calendar_find_event": "Event dhoondh raha hoon", "calendar_cancel_event": "Event hata raha hoon"}
 
 
-def _require():
+def _require(ctx=None):
+    from ..config import get_settings
+    if gcal.configured() and ctx is not None and ctx.tenant_id != get_settings().tenant_id:
+        raise ToolError("Aapka Google Calendar abhi Santosh se connect nahi hai (server ka calendar sirf owner ke liye hai). "
+                        "Tab tak add_calendar_event se phone calendar mein daal sakte hain.")
     if not gcal.configured():
         raise ToolError("Google Calendar abhi connect nahi hai. (Gmail app password wale account par CalDAV se chalta hai.)")
 
 
 async def calendar_agenda(ctx: Ctx, from_date=None, to_date=None, **_):
-    _require()
+    _require(ctx)
     tz = life.tz_of(ctx.tenant_id)
     from datetime import datetime
     today = datetime.now(tz).date()
@@ -61,7 +65,7 @@ async def calendar_agenda(ctx: Ctx, from_date=None, to_date=None, **_):
 
 
 async def calendar_add_event(ctx: Ctx, title, start, end=None, location="", description="", attendees=None, **_):
-    _require()
+    _require(ctx)
     tz = life.tz_of(ctx.tenant_id)
     try:
         s = life.parse_local(start, tz)
@@ -81,7 +85,7 @@ async def calendar_add_event(ctx: Ctx, title, start, end=None, location="", desc
 
 
 async def calendar_find_event(ctx: Ctx, query, days=30, **_):
-    _require()
+    _require(ctx)
     try:
         events = await gcal.find(str(query), days=int(days or 30))
     except gcal.CalError as e:
@@ -90,7 +94,7 @@ async def calendar_find_event(ctx: Ctx, query, days=30, **_):
 
 
 async def calendar_cancel_event(ctx: Ctx, event_id, **_):
-    _require()
+    _require(ctx)
     try:
         return await gcal.cancel(str(event_id))
     except gcal.CalError as e:

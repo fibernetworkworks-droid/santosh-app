@@ -1,0 +1,43 @@
+{
+  "id": "medical-store",
+  "name": "Medical store",
+  "category": "Bazar Shops",
+  "sub_category": "Local merchant template",
+  "pack_type": "Bazar shop template",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Prescription upload, refill reminders, delivery — fully done by Santosh on Bazar rails",
+  "notes": "One template, unlimited merchants; launch in Akola and Pune",
+  "master_list_row": 816,
+  "executor": "shop",
+  "config": {
+    "template": "medical-store",
+    "mode": "catalog"
+  },
+  "tools": [
+    {
+      "name": "search_items",
+      "tier": 0
+    },
+    {
+      "name": "build_cart",
+      "tier": 1
+    },
+    {
+      "name": "place_order",
+      "tier": 2
+    },
+    {
+      "name": "order_status",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "medical",
+    "dawai",
+    "medicine",
+    "goli",
+    "aushadh"
+  ]
+}

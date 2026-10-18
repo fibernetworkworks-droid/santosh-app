@@ -188,11 +188,12 @@ def _save_turn(conv: str, user_text: str, reply: str) -> None:
 
 
 class Call:
-    def __init__(self, ws: WebSocket, conv: str, voice: str, lang: str):
+    def __init__(self, ws: WebSocket, conv: str, voice: str, lang: str, tenant: str | None = None):
         st = get_settings()
         self.ws, self.conv, self.lang = ws, conv, lang
         self.voice = voice if voice in MALE_VOICES else st.voice_default
-        self.ctx = Ctx(st.tenant_id, conv)
+        self.ctx = Ctx(tenant or st.tenant_id, conv)
+        self.tenant = tenant or st.tenant_id
         self.audio: asyncio.Queue = asyncio.Queue(maxsize=400)
         self.closed = asyncio.Event()
         self.muted = False

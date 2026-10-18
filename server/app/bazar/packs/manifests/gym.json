@@ -1,0 +1,32 @@
+{
+  "id": "gym",
+  "name": "Gym",
+  "category": "Bazar Shops",
+  "sub_category": "Local merchant template",
+  "pack_type": "Bazar shop template",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Membership, attendance, renewal reminders — fully done by Santosh on Bazar rails",
+  "notes": "One template, unlimited merchants; launch in Akola and Pune",
+  "master_list_row": 890,
+  "executor": "shop",
+  "config": {
+    "template": "gym",
+    "mode": "due_payment"
+  },
+  "tools": [
+    {
+      "name": "get_due",
+      "tier": 0
+    },
+    {
+      "name": "pay_due",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "gym",
+    "membership"
+  ]
+}

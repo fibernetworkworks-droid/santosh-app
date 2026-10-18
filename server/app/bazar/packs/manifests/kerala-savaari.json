@@ -1,0 +1,33 @@
+{
+  "id": "kerala-savaari",
+  "name": "Kerala Savaari",
+  "category": "Travel & Commute",
+  "sub_category": "Rides",
+  "pack_type": "Connector pack",
+  "layer": "L3",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Compare fare and ETA where available, open Kerala Savaari with pickup and drop set; user taps Book",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 409,
+  "executor": "ride",
+  "config": {
+    "package": "",
+    "link": "",
+    "verified": false
+  },
+  "tools": [
+    {
+      "name": "ride_link",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "cab",
+    "auto",
+    "ride",
+    "taxi",
+    "rickshaw",
+    "kerala"
+  ]
+}

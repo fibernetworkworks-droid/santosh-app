@@ -1,0 +1,33 @@
+{
+  "id": "spend-report",
+  "name": "Spend report",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Monthly category summary from SMS and statements",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 946,
+  "executor": "native",
+  "config": {
+    "skill": "spend"
+  },
+  "tools": [
+    {
+      "name": "import_sms",
+      "tier": 1
+    },
+    {
+      "name": "spend_report",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "kharcha",
+    "spend",
+    "kharch",
+    "expense report"
+  ]
+}

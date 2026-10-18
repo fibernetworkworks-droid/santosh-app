@@ -1,0 +1,33 @@
+{
+  "id": "ola",
+  "name": "Ola",
+  "category": "Travel & Commute",
+  "sub_category": "Rides",
+  "pack_type": "Connector pack",
+  "layer": "L3",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Compare fare and ETA where available, open Ola with pickup and drop set; user taps Book",
+  "notes": "Deep link",
+  "master_list_row": 404,
+  "executor": "ride",
+  "config": {
+    "package": "com.olacabs.customer",
+    "link": "https://book.olacabs.com/?lat={plat}&lng={plng}&drop_lat={dlat}&drop_lng={dlng}",
+    "verified": false
+  },
+  "tools": [
+    {
+      "name": "ride_link",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "cab",
+    "auto",
+    "ride",
+    "taxi",
+    "rickshaw",
+    "ola"
+  ]
+}

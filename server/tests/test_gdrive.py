@@ -67,7 +67,7 @@ def g(monkeypatch):
     store = {}
     monkeypatch.setattr(gdrive, "configured", lambda tenant_id=None: True)
     monkeypatch.setattr(gdrive, "_svc", lambda name, version, tenant_id=None: fake_svc(store)(name, version))
-    monkeypatch.setattr(gdrive, "_folder", lambda: "FOLDER1")
+    monkeypatch.setattr(gdrive, "_folder", lambda tenant_id=None: "FOLDER1")
 
     class FakeDL:
         def __init__(self, buf, req): self.buf = buf; self.n = 0

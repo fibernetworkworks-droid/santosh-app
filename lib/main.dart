@@ -47,6 +47,10 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
     _linkSub = _linkCh.receiveBroadcastStream().listen((token) async {
       final t = token?.toString() ?? '';
       if (t.isEmpty) return;
+      if (t.startsWith('bazar:')) {
+        widget.app.onBazarLinked(t.endsWith('=1'));
+        return;
+      }
       await widget.app.applySession(t);
       if (widget.app.connected && mounted) setState(() => _setup = false);
     }, onError: (_) {});

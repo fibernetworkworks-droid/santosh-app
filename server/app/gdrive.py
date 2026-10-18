@@ -37,6 +37,8 @@ def configured(tenant_id: str | None = None) -> bool:
                 return True
         except Exception:
             pass
+    if tenant_id and tenant_id != st.tenant_id:
+        return False  # the service account / shared folder belongs to the server owner only
     return bool(st.google_sa_file and os.path.exists(st.google_sa_file)) or bool(st.google_sa_json.strip())
 
 
@@ -62,18 +64,23 @@ def _svc(name, version, tenant_id: str | None = None):
                 creds = google_auth.credentials_for(tenant_id)
         except Exception as e:
             log.warning("per-user google creds failed (%s); falling back to service account: %s", tenant_id, e)
+    if creds is None and tenant_id and tenant_id != get_settings().tenant_id:
+        raise DriveError("Aapka Google Drive abhi connect nahi hai. App mein 'Sign in with Google' se jodiye.")
     return build(name, version, credentials=creds or _creds(), cache_discovery=False)
 
 
-def _folder() -> str:
-    return get_settings().google_drive_folder_id.strip()
+def _folder(tenant_id: str | None = None) -> str:
+    st = get_settings()
+    if tenant_id and tenant_id != st.tenant_id:
+        return ""  # a signed-in user's own Drive: search all of it
+    return st.google_drive_folder_id.strip()
 
 
 # ---------------- Drive ----------------
 def _find(query: str, limit: int, tenant_id=None):
     svc = _svc("drive", "v3", tenant_id)
     q_parts = ["trashed = false"]
-    folder = _folder()
+    folder = _folder(tenant_id)
     if folder:
         q_parts.append(f"'{folder}' in parents")
     if query:
@@ -162,7 +169,7 @@ def _doc_create(title: str, content: str, tenant_id=None):
         if content:
             docs.documents().batchUpdate(documentId=doc_id, body={
                 "requests": [{"insertText": {"location": {"index": 1}, "text": content}}]}).execute()
-        folder = _folder()
+        folder = _folder(tenant_id)
         if folder:
             # move it into the shared folder so the user sees it
             cur = drive.files().get(fileId=doc_id, fields="parents", supportsAllDrives=True).execute()
@@ -172,7 +179,7 @@ def _doc_create(title: str, content: str, tenant_id=None):
     except Exception as e:
         raise DriveError(_explain(e))
     return {"id": doc_id, "title": title, "link": link,
-            "note": "" if _folder() else "Tip: naya doc service account ke Drive mein bana; use dekhne ke liye folder share rakhiye (GOOGLE_DRIVE_FOLDER_ID)."}
+            "note": "" if (_folder(tenant_id) or (tenant_id and tenant_id != get_settings().tenant_id)) else "Tip: naya doc service account ke Drive mein bana; use dekhne ke liye folder share rakhiye (GOOGLE_DRIVE_FOLDER_ID)."}
 
 
 def _explain(e) -> str:

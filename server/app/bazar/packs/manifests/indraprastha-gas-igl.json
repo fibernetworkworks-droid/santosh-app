@@ -1,0 +1,38 @@
+{
+  "id": "indraprastha-gas-igl",
+  "name": "Indraprastha Gas (IGL)",
+  "category": "Bills & Utilities",
+  "sub_category": "Piped gas & LPG",
+  "pack_type": "Biller pack",
+  "layer": "L2",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Fetch and pay Indraprastha Gas (IGL) bill, or book refill; remind on the usual cycle",
+  "notes": "All biller packs share one BBPS partner integration",
+  "master_list_row": 321,
+  "executor": "bbps",
+  "config": {
+    "biller_category": "piped_gas",
+    "biller_name": "Indraprastha Gas (IGL)",
+    "input_fields": [
+      "customer_id"
+    ],
+    "biller_id": null
+  },
+  "tools": [
+    {
+      "name": "fetch_bill",
+      "tier": 0
+    },
+    {
+      "name": "pay_bill",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "gas bill",
+    "png",
+    "pipe gas",
+    "indraprastha gas"
+  ]
+}

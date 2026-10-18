@@ -120,6 +120,25 @@ class Api {
   Future<Map<String, dynamic>> campaignAction(String id, String action) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/campaigns/$id/action', body: {'action': action}));
 
+  // ---------------- Santosh Bazar ----------------
+  Future<Map<String, dynamic>> bazarDecide(String id, String decision) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/approvals/$id', body: {'decision': decision}));
+  Future<List<Map<String, dynamic>>> bazarPending() async =>
+      List<Map<String, dynamic>>.from(((await _send('GET', '/api/bazar/approvals/pending'))['approvals'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<Map<String, dynamic>> bazarCatalog() async => Map<String, dynamic>.from(await _send('GET', '/api/bazar/catalog'));
+  Future<List<Map<String, dynamic>>> bazarApps() async =>
+      List<Map<String, dynamic>>.from(((await _send('GET', '/api/bazar/connections'))['apps'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<String> bazarLink(String packId) async => (await _send('POST', '/api/bazar/connections/$packId/link'))['url'] as String;
+  Future<void> bazarUnlink(String packId) async => _send('DELETE', '/api/bazar/connections/$packId');
+  Future<Map<String, dynamic>> bazarSettings() async => Map<String, dynamic>.from(await _send('GET', '/api/bazar/settings'));
+  Future<Map<String, dynamic>> saveBazarSettings(Map<String, dynamic> s) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/bazar/settings', body: s));
+  Future<Map<String, dynamic>> bazarActivity() async => Map<String, dynamic>.from(await _send('GET', '/api/bazar/activity'));
+  Future<List<Map<String, dynamic>>> bazarContacts() async =>
+      List<Map<String, dynamic>>.from(((await _send('GET', '/api/bazar/contacts'))['contacts'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<void> bazarAddContact(String name, {String upi = '', String phone = ''}) async =>
+      _send('POST', '/api/bazar/contacts', body: {'name': name, 'upi_id': upi, 'phone': phone});
+
   Future<Map<String, dynamic>> uploadLeads(String conv, String filename, List<int> bytes) async {
     final req = http.MultipartRequest('POST', _u('/api/leads/upload'))
       ..fields['conversation_id'] = conv

@@ -303,6 +303,8 @@ def init_db(url: str | None = None):
             cur.execute("PRAGMA foreign_keys=ON")
             cur.close()
     Base.metadata.create_all(_engine)
+    from .bazar.db import init_tables as _bazar_tables
+    _bazar_tables(_engine)
     _Session = sessionmaker(_engine, expire_on_commit=False)
     return _engine
 

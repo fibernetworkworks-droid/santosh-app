@@ -39,7 +39,26 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.9.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.10.0", lifespan=lifespan)
+
+
+def _bearer(request: Request) -> str:
+    return request.headers.get("authorization", "").removeprefix("Bearer ").strip() or request.query_params.get("key", "")
+
+
+def current_tenant(request: Request) -> str:
+    """Resolve the caller: a product session token -> that user; the legacy API key -> 'default'."""
+    from . import accounts
+    tok = _bearer(request)
+    st = get_settings()
+    if st.api_key and tok and hmac.compare_digest(tok, st.api_key):
+        return st.tenant_id
+    uid = accounts.tenant_for_session(tok) if tok else None
+    if uid:
+        return accounts.tenant_of_user(uid)
+    if not st.api_key:
+        return st.tenant_id
+    raise HTTPException(401, "Sign in first")
 
 
 def require_key(request: Request) -> None:
@@ -55,10 +74,10 @@ def require_key(request: Request) -> None:
     raise HTTPException(401, "Missing or wrong API key")
 
 
-def _conv_or_404(conversation_id: str) -> Conversation:
+def _conv_or_404(conversation_id: str, tenant: str) -> Conversation:
     with session() as s:
         c = s.get(Conversation, conversation_id)
-        if not c or c.tenant_id != get_settings().tenant_id:
+        if not c or c.tenant_id != tenant:
             raise HTTPException(404, "Conversation not found")
         return c
 
@@ -69,14 +88,16 @@ def healthz():
     st = get_settings()
     from .voice import MALE_VOICES
     from . import mail
-    features = ["routines", "voice", "web"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if mail.configured() else []) + (["calendar"] if __import__("app.gcal", fromlist=["x"]).configured() else []) \
         + (["drive"] if __import__("app.gdrive", fromlist=["x"]).configured() else [])
     from . import accounts
     return {"ok": True, "version": app.version, "google_login": accounts.oauth_configured(),
             "dry_run": st.wa_dry_run, "model": st.anthropic_model,
             "brain_configured": bool(st.anthropic_api_key), "features": features,
-            "voices": [{"id": k, "style": v} for k, v in MALE_VOICES.items()], "voice_default": st.voice_default}
+            "voices": [{"id": k, "style": v} for k, v in MALE_VOICES.items()], "voice_default": st.voice_default,
+            "bazar": {"packs": len(__import__("app.bazar.packs.registry", fromlist=["x"]).registry().packs),
+                      "bills_live": __import__("app.bazar.config", fromlist=["x"]).get_settings().bills_live}}
 
 
 @app.get("/")
@@ -94,9 +115,9 @@ class NewMessage(BaseModel):
 
 
 @app.post("/api/conversations", dependencies=[Depends(require_key)])
-def create_conversation():
+def create_conversation(tenant: str = Depends(current_tenant)):
     with session() as s:
-        c = Conversation(tenant_id=get_settings().tenant_id)
+        c = Conversation(tenant_id=tenant)
         s.add(c)
         s.flush()
         cid = c.id
@@ -109,8 +130,8 @@ def create_conversation():
 
 
 @app.get("/api/conversations/{conversation_id}/messages", dependencies=[Depends(require_key)])
-def list_messages(conversation_id: str):
-    _conv_or_404(conversation_id)
+def list_messages(conversation_id: str, tenant: str = Depends(current_tenant)):
+    _conv_or_404(conversation_id, tenant)
     with session() as s:
         rows = s.scalars(select(Message).where(Message.conversation_id == conversation_id, Message.display.is_not(None))
                          .order_by(Message.id)).all()
@@ -118,17 +139,17 @@ def list_messages(conversation_id: str):
 
 
 @app.post("/api/conversations/{conversation_id}/messages", status_code=202, dependencies=[Depends(require_key)])
-async def post_message(conversation_id: str, body: NewMessage, background: BackgroundTasks):
-    _conv_or_404(conversation_id)
+async def post_message(conversation_id: str, body: NewMessage, background: BackgroundTasks, tenant: str = Depends(current_tenant)):
+    _conv_or_404(conversation_id, tenant)
     bus.publish(conversation_id, "message", {"role": "user", "text": body.text, "source": "user"})
-    background.add_task(run_turn, conversation_id, body.text, None, body.voice)
+    background.add_task(run_turn, conversation_id, body.text, tenant, body.voice)
     return {"accepted": True}
 
 
 @app.get("/api/conversations/{conversation_id}/events", dependencies=[Depends(require_key)])
-async def events(conversation_id: str, request: Request, after: int = 0):
+async def events(conversation_id: str, request: Request, after: int = 0, tenant: str = Depends(current_tenant)):
     """Server-sent events: replays everything after `after`, then streams live."""
-    _conv_or_404(conversation_id)
+    _conv_or_404(conversation_id, tenant)
     last = int(request.headers.get("last-event-id") or after or 0)
     q = bus.subscribe(conversation_id)
 
@@ -159,17 +180,17 @@ async def events(conversation_id: str, request: Request, after: int = 0):
 
 # ---------------- leads ----------------
 @app.post("/api/leads/upload", dependencies=[Depends(require_key)])
-async def upload_leads(file: UploadFile = File(...), conversation_id: str | None = Form(None)):
+async def upload_leads(file: UploadFile = File(...), conversation_id: str | None = Form(None), tenant: str = Depends(current_tenant)):
     data = await file.read()
     if len(data) > MAX_UPLOAD:
         raise HTTPException(413, "File is larger than 10 MB")
     try:
-        res = import_leads(file.filename or "leads.csv", data, get_settings().tenant_id)
+        res = import_leads(file.filename or "leads.csv", data, tenant)
     except ValueError as e:
         raise HTTPException(400, str(e))
     out = res.as_dict()
     if conversation_id:
-        _conv_or_404(conversation_id)
+        _conv_or_404(conversation_id, tenant)
         bus.publish(conversation_id, "upload", {"filename": file.filename, **out})
     return out
 
@@ -253,19 +274,19 @@ from .db import DeviceAction, ListItem, MemoryFact, Profile, Reminder  # noqa: E
 
 
 @app.get("/api/reminders", dependencies=[Depends(require_key)])
-def get_reminders(include_done: bool = False):
-    return {"reminders": life.upcoming_reminders(get_settings().tenant_id, include_done=include_done)}
+def get_reminders(include_done: bool = False, tenant: str = Depends(current_tenant)):
+    return {"reminders": life.upcoming_reminders(tenant, include_done=include_done)}
 
 
 @app.post("/api/reminders/{reminder_id}/cancel", dependencies=[Depends(require_key)])
-def cancel_reminder_api(reminder_id: str):
+def cancel_reminder_api(reminder_id: str, tenant: str = Depends(current_tenant)):
     with session() as s:
         r = s.get(Reminder, reminder_id)
-        if not r or r.tenant_id != get_settings().tenant_id:
+        if not r or r.tenant_id != tenant:
             raise HTTPException(404, "Reminder not found")
         r.status = "cancelled"
         conv = r.conversation_id
-    reminders = life.upcoming_reminders(get_settings().tenant_id)
+    reminders = life.upcoming_reminders(tenant)
     bus.publish(conv, "reminders", {"reminders": reminders})
     return {"reminders": reminders}
 
@@ -307,32 +328,13 @@ async def google_callback(request: Request):
     return HTMLResponse(html)
 
 
-def _bearer(request: Request) -> str:
-    return request.headers.get("authorization", "").removeprefix("Bearer ").strip() or request.query_params.get("key", "")
-
-
-def current_tenant(request: Request) -> str:
-    """Resolve the caller: a product session token -> that user; the legacy API key -> 'default'."""
-    from . import accounts
-    tok = _bearer(request)
-    st = get_settings()
-    if st.api_key and tok and hmac.compare_digest(tok, st.api_key):
-        return st.tenant_id
-    uid = accounts.tenant_for_session(tok) if tok else None
-    if uid:
-        return uid
-    if not st.api_key:
-        return st.tenant_id
-    raise HTTPException(401, "Sign in first")
-
-
 @app.get("/api/me", dependencies=[Depends(require_key)])
 def api_me(request: Request):
     from . import accounts
     tok = _bearer(request)
     uid = accounts.tenant_for_session(tok) if tok else None
     if not uid:
-        return {"signed_in": False, "tenant": get_settings().tenant_id}
+        return {"signed_in": False, "tenant": current_tenant(request)}
     info = accounts.user_info(uid)
     return {"signed_in": True, **(info or {})}
 
@@ -359,12 +361,19 @@ async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "
     from . import voice as v
     st = get_settings()
     got = ws.headers.get("authorization", "").removeprefix("Bearer ").strip() or ws.query_params.get("key", "")
-    if st.api_key and not hmac.compare_digest(got, st.api_key):
+    from . import accounts
+    if st.api_key and got and hmac.compare_digest(got, st.api_key):
+        tenant = st.tenant_id
+    elif got and accounts.tenant_for_session(got):
+        tenant = accounts.tenant_of_user(accounts.tenant_for_session(got))
+    elif not st.api_key:
+        tenant = st.tenant_id
+    else:
         await ws.close(code=4401)
         return
     with session() as s:
         c = s.get(Conversation, conv)
-        ok = bool(c and c.tenant_id == st.tenant_id)
+        ok = bool(c and c.tenant_id == tenant)
     if not ok:
         await ws.close(code=4404)
         return
@@ -373,13 +382,12 @@ async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "
         await ws.send_text(json.dumps({"type": "error", "message": "Server par GEMINI_API_KEY set nahi hai."}))
         await ws.close()
         return
-    await v.Call(ws, conv, voice, lang).run()
+    await v.Call(ws, conv, voice, lang, tenant).run()
 
 
 @app.get("/api/emails/pending", dependencies=[Depends(require_key)])
-def pending_emails():
+def pending_emails(tenant: str = Depends(current_tenant)):
     from .db import EmailDraft
-    tenant = get_settings().tenant_id
     with session() as s:
         rows = s.scalars(select(EmailDraft).where(EmailDraft.tenant_id == tenant, EmailDraft.status == "pending")
                          .order_by(EmailDraft.id)).all()
@@ -395,11 +403,10 @@ class EmailEdit(BaseModel):
 
 
 @app.post("/api/emails/{draft_id}/send", dependencies=[Depends(require_key)])
-async def send_email_draft(draft_id: str, body: EmailEdit | None = None):
+async def send_email_draft(draft_id: str, body: EmailEdit | None = None, tenant: str = Depends(current_tenant)):
     """Approve and send. Optional fields let the user edit before sending."""
     from . import mail
     from .db import EmailDraft
-    tenant = get_settings().tenant_id
     with session() as s:
         d = s.get(EmailDraft, draft_id)
         if not d or d.tenant_id != tenant:
@@ -432,9 +439,8 @@ async def send_email_draft(draft_id: str, body: EmailEdit | None = None):
 
 
 @app.post("/api/emails/{draft_id}/cancel", dependencies=[Depends(require_key)])
-def cancel_email_draft(draft_id: str):
+def cancel_email_draft(draft_id: str, tenant: str = Depends(current_tenant)):
     from .db import EmailDraft
-    tenant = get_settings().tenant_id
     with session() as s:
         d = s.get(EmailDraft, draft_id)
         if not d or d.tenant_id != tenant:
@@ -447,16 +453,15 @@ def cancel_email_draft(draft_id: str):
 
 
 @app.get("/api/routines", dependencies=[Depends(require_key)])
-def get_routines():
+def get_routines(tenant: str = Depends(current_tenant)):
     from . import life
-    return {"routines": life.active_routines(get_settings().tenant_id)}
+    return {"routines": life.active_routines(tenant)}
 
 
 @app.post("/api/routines/{routine_id}/cancel", dependencies=[Depends(require_key)])
-def cancel_routine_api(routine_id: str):
+def cancel_routine_api(routine_id: str, tenant: str = Depends(current_tenant)):
     from . import life
     from .db import Routine
-    tenant = get_settings().tenant_id
     with session() as s:
         r = s.get(Routine, routine_id)
         if not r or r.tenant_id != tenant:
@@ -468,9 +473,9 @@ def cancel_routine_api(routine_id: str):
 
 
 @app.get("/api/lists", dependencies=[Depends(require_key)])
-def get_lists():
+def get_lists(tenant: str = Depends(current_tenant)):
     with session() as s:
-        rows = s.scalars(select(ListItem).where(ListItem.tenant_id == get_settings().tenant_id, ListItem.done.is_(False))
+        rows = s.scalars(select(ListItem).where(ListItem.tenant_id == tenant, ListItem.done.is_(False))
                          .order_by(ListItem.list_name, ListItem.id)).all()
         out: dict[str, list[dict]] = {}
         for r in rows:
@@ -479,25 +484,25 @@ def get_lists():
 
 
 @app.post("/api/lists/items/{item_id}/done", dependencies=[Depends(require_key)])
-def tick_item(item_id: int):
+def tick_item(item_id: int, tenant: str = Depends(current_tenant)):
     with session() as s:
         it = s.get(ListItem, item_id)
-        if not it or it.tenant_id != get_settings().tenant_id:
+        if not it or it.tenant_id != tenant:
             raise HTTPException(404, "Item not found")
         it.done = True
     return get_lists()
 
 
 @app.get("/api/memory", dependencies=[Depends(require_key)])
-def get_memory():
-    return {"facts": [{"id": f.id, "text": f.text} for f in life.memory_facts(get_settings().tenant_id)]}
+def get_memory(tenant: str = Depends(current_tenant)):
+    return {"facts": [{"id": f.id, "text": f.text} for f in life.memory_facts(tenant)]}
 
 
 @app.delete("/api/memory/{fact_id}", dependencies=[Depends(require_key)])
-def delete_memory(fact_id: int):
+def delete_memory(fact_id: int, tenant: str = Depends(current_tenant)):
     with session() as s:
         f = s.get(MemoryFact, fact_id)
-        if not f or f.tenant_id != get_settings().tenant_id:
+        if not f or f.tenant_id != tenant:
             raise HTTPException(404, "Not found")
         s.delete(f)
     return get_memory()
@@ -518,13 +523,12 @@ def _profile_out(p: Profile) -> dict:
 
 
 @app.get("/api/profile", dependencies=[Depends(require_key)])
-def get_profile_api():
-    return _profile_out(life.get_profile(get_settings().tenant_id))
+def get_profile_api(tenant: str = Depends(current_tenant)):
+    return _profile_out(life.get_profile(tenant))
 
 
 @app.put("/api/profile", dependencies=[Depends(require_key)])
-def put_profile(body: ProfileIn):
-    tenant = get_settings().tenant_id
+def put_profile(body: ProfileIn, tenant: str = Depends(current_tenant)):
     life.get_profile(tenant)
     with session() as s:
         p = s.get(Profile, tenant)
@@ -555,19 +559,19 @@ class ActionResult(BaseModel):
 
 
 @app.get("/api/device-actions/pending", dependencies=[Depends(require_key)])
-def pending_actions():
+def pending_actions(tenant: str = Depends(current_tenant)):
     """The phone asks this on start, so actions created while it was offline still run (within 15 minutes)."""
     with session() as s:
-        rows = s.scalars(select(DeviceAction).where(DeviceAction.tenant_id == get_settings().tenant_id,
+        rows = s.scalars(select(DeviceAction).where(DeviceAction.tenant_id == tenant,
                                                     DeviceAction.status == "pending").order_by(DeviceAction.created_at)).all()
         return {"actions": [{"id": a.id, "type": a.type, **a.payload} for a in rows]}
 
 
 @app.post("/api/device-actions/{action_id}/result", dependencies=[Depends(require_key)])
-def action_result(action_id: str, body: ActionResult):
+def action_result(action_id: str, body: ActionResult, tenant: str = Depends(current_tenant)):
     with session() as s:
         a = s.get(DeviceAction, action_id)
-        if not a or a.tenant_id != get_settings().tenant_id:
+        if not a or a.tenant_id != tenant:
             raise HTTPException(404, "Action not found")
         if a.status != "pending":
             return {"status": a.status}
@@ -580,3 +584,235 @@ def action_result(action_id: str, body: ActionResult):
         notify(conv, f"Phone par yeh nahi ho paya ({typ.replace('_', ' ')}): {body.detail or 'permission ya app ki dikkat'}. "
                      "Phone settings mein Santosh ko permission dekh lijiye.")
     return {"status": status}
+
+
+# ---------------- Santosh Bazar (159 packs) ----------------
+from .bazar import service as bazar  # noqa: E402
+from .bazar.connectors.base import ToolError as BazarError  # noqa: E402
+
+
+def _bz(fn, *a, **k):
+    try:
+        return fn(*a, **k)
+    except BazarError as e:
+        raise HTTPException(400, str(e))
+    except PermissionError:
+        raise HTTPException(403, "Not allowed for this shop")
+
+
+def _maybe_tenant(request: Request) -> str | None:
+    try:
+        return current_tenant(request)
+    except HTTPException:
+        return None
+
+
+@app.get("/api/bazar/catalog", dependencies=[Depends(require_key)])
+def bazar_catalog(tenant: str = Depends(current_tenant)):
+    return _bz(bazar.catalog, tenant)
+
+
+@app.get("/api/bazar/find", dependencies=[Depends(require_key)])
+def bazar_find_api(q: str = "", category: str = "", tenant: str = Depends(current_tenant)):
+    return _bz(bazar.find, tenant, q, category)
+
+
+class BazarDecision(BaseModel):
+    decision: str = Field(pattern="^(approve|reject)$")
+
+
+@app.get("/api/bazar/approvals/pending", dependencies=[Depends(require_key)])
+def bazar_pending(tenant: str = Depends(current_tenant)):
+    return {"approvals": bazar.pending_approvals(tenant)}
+
+
+@app.post("/api/bazar/approvals/{approval_id}", dependencies=[Depends(require_key)])
+async def bazar_decide(approval_id: str, body: BazarDecision, tenant: str = Depends(current_tenant)):
+    try:
+        return await asyncio.to_thread(bazar.decide, tenant, approval_id, body.decision)
+    except BazarError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/bazar/activity", dependencies=[Depends(require_key)])
+def bazar_activity_api(tenant: str = Depends(current_tenant)):
+    return bazar.activity(tenant)
+
+
+class BazarSettingsIn(BaseModel):
+    cap_per_order_rupees: float | None = Field(None, ge=0, le=5000)
+    cap_per_day_rupees: float | None = Field(None, ge=0, le=20000)
+    pincode: str | None = Field(None, max_length=10)
+    address: str | None = Field(None, max_length=400)
+    language: str | None = None
+    phone: str | None = Field(None, max_length=16)
+
+
+@app.get("/api/bazar/settings", dependencies=[Depends(require_key)])
+def bazar_settings_get(tenant: str = Depends(current_tenant)):
+    return bazar.get_user_settings(tenant)
+
+
+@app.put("/api/bazar/settings", dependencies=[Depends(require_key)])
+def bazar_settings_put(body: BazarSettingsIn, tenant: str = Depends(current_tenant)):
+    return _bz(bazar.set_user_settings, tenant, body.model_dump(exclude_none=True))
+
+
+class BazarContactIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    upi_id: str = ""
+    phone: str = ""
+    relation: str = ""
+
+
+@app.get("/api/bazar/contacts", dependencies=[Depends(require_key)])
+def bazar_contacts(tenant: str = Depends(current_tenant)):
+    return {"contacts": bazar.list_contacts(tenant)}
+
+
+@app.post("/api/bazar/contacts", dependencies=[Depends(require_key)])
+def bazar_contact_add(body: BazarContactIn, tenant: str = Depends(current_tenant)):
+    return _bz(bazar.add_contact, tenant, body.name, body.upi_id, body.phone, body.relation)
+
+
+@app.get("/api/bazar/connections", dependencies=[Depends(require_key)])
+def bazar_connections(tenant: str = Depends(current_tenant)):
+    return {"apps": bazar.connections(tenant)}
+
+
+@app.post("/api/bazar/connections/{pack_id}/link", dependencies=[Depends(require_key)])
+async def bazar_link(pack_id: str, tenant: str = Depends(current_tenant)):
+    try:
+        return {"url": await asyncio.to_thread(bazar.link_start, tenant, pack_id)}
+    except BazarError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/bazar/connections/{pack_id}", dependencies=[Depends(require_key)])
+def bazar_unlink(pack_id: str, tenant: str = Depends(current_tenant)):
+    return {"unlinked": _bz(bazar.unlink, tenant, pack_id)}
+
+
+@app.get("/bazar/link/callback")
+async def bazar_link_callback(state: str = "", code: str = "", error: str = ""):
+    from html import escape
+    scheme = get_settings().app_redirect_scheme
+    if error or not code:
+        msg, ok = f"Linking was cancelled ({escape(error or 'no code')}).", False
+    else:
+        try:
+            _, name = await asyncio.to_thread(bazar.link_finish, state, code)
+            msg, ok = f"{escape(name)} is now linked to Santosh.", True
+        except BazarError as e:
+            msg, ok = escape(str(e)), False
+    link = f"{scheme}://bazar?linked={'1' if ok else '0'}"
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
+<body style="font-family:sans-serif;padding:32px;text-align:center"><h2>{'✅' if ok else '⚠️'} {msg}</h2>
+<p><a href="{link}" style="font-size:18px">Back to Santosh</a></p><script>setTimeout(()=>location.href="{link}",800)</script>""")
+
+
+class BazarTokenIn(BaseModel):
+    tenant: str
+    provider: str
+    access_token: str = Field(min_length=8)
+    expires_in: int | None = None
+
+
+@app.post("/api/bazar/admin/connections")
+def bazar_admin_link(body: BazarTokenIn, request: Request):
+    st = get_settings()
+    if not st.api_key or not hmac.compare_digest(_bearer(request), st.api_key):
+        raise HTTPException(401, "Admin API key required")
+    _bz(bazar.link_token, body.tenant, body.provider, body.access_token, body.expires_in)
+    return {"linked": body.provider}
+
+
+@app.post("/bazar/webhooks/payment")
+async def bazar_payment_webhook(request: Request):
+    raw = await request.body()
+    if not bazar.verify_webhook(raw, request.headers.get("x-signature", "")):
+        raise HTTPException(401, "Bad or missing signature (set BAZAR_WEBHOOK_SECRET)")
+    try:
+        data = json.loads(raw)
+        ref, status = str(data["txn_ref"]), str(data.get("status", "")).upper()
+    except Exception:
+        raise HTTPException(422, "Body must be JSON with txn_ref and status")
+    return await asyncio.to_thread(lambda: _bz(bazar.payment_confirmed, ref, status == "SUCCESS", str(data.get("provider_ref", ""))))
+
+
+@app.post("/api/bazar/dev/simulate-payment/{txn_ref}", dependencies=[Depends(require_key)])
+def bazar_simulate(txn_ref: str, ok: bool = True):
+    from .bazar.config import get_settings as bz_settings
+    if bz_settings().env != "dev":
+        raise HTTPException(404, "Not found")
+    return _bz(bazar.payment_confirmed, txn_ref, ok, "SIMULATED")
+
+
+# merchants: a shop manages its orders with its own X-Shop-Token (shown once at onboarding)
+class ShopIn(BaseModel):
+    template_id: str
+    name: str = Field(min_length=2, max_length=160)
+    owner_phone: str
+    upi_id: str
+    city: str = ""
+    pincodes: list[str] = []
+    aliases: list[str] = []
+    languages: list[str] = ["mr", "hi", "en"]
+    min_order_rupees: float = 0
+    delivery_fee_rupees: float = 0
+    slots: list[str] = []
+
+
+class ShopItemIn(BaseModel):
+    name: str
+    price_rupees: float = Field(gt=0)
+    unit: str = "pc"
+    unit_qty: float = 1.0
+    aliases: list[str] = []
+    in_stock: bool = True
+    kind: str = "product"
+
+
+class OrderUpdateIn(BaseModel):
+    status: str | None = None
+    paid: bool = False
+
+
+class DueIn(BaseModel):
+    customer_ref: str
+    amount_rupees: float = Field(gt=0)
+    customer_phone: str = ""
+    description: str = ""
+    due_on: str | None = None
+
+
+@app.post("/api/bazar/shops", dependencies=[Depends(require_key)])
+def bazar_create_shop(body: ShopIn, tenant: str = Depends(current_tenant)):
+    return _bz(bazar.create_shop, tenant, body.model_dump())
+
+
+@app.get("/bazar/shops")
+def bazar_list_shops(template: str | None = None, pincode: str | None = None):
+    return bazar.list_shops(template, pincode)
+
+
+@app.post("/bazar/shops/{shop_id}/items")
+def bazar_shop_items(shop_id: str, items: list[ShopItemIn], request: Request):
+    return _bz(bazar.add_items, shop_id, [i.model_dump() for i in items], _maybe_tenant(request), request.headers.get("x-shop-token"))
+
+
+@app.get("/bazar/shops/{shop_id}/orders")
+def bazar_shop_orders(shop_id: str, request: Request, status: str | None = None):
+    return _bz(bazar.shop_orders, shop_id, _maybe_tenant(request), request.headers.get("x-shop-token"), status)
+
+
+@app.post("/bazar/shops/{shop_id}/orders/{order_id}")
+def bazar_shop_order_update(shop_id: str, order_id: str, body: OrderUpdateIn, request: Request):
+    return _bz(bazar.update_order, shop_id, order_id, body.status, body.paid, _maybe_tenant(request),
+               request.headers.get("x-shop-token"))
+
+
+@app.post("/bazar/shops/{shop_id}/dues")
+def bazar_shop_dues(shop_id: str, dues: list[DueIn], request: Request):
+    return _bz(bazar.upload_dues, shop_id, [d.model_dump() for d in dues], _maybe_tenant(request), request.headers.get("x-shop-token"))

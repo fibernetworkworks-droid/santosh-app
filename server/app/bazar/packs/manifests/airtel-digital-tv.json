@@ -1,0 +1,38 @@
+{
+  "id": "airtel-digital-tv",
+  "name": "Airtel Digital TV",
+  "category": "Bills & Utilities",
+  "sub_category": "Mobile, broadband & DTH",
+  "pack_type": "Biller pack",
+  "layer": "L2",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Detect plan and usage, recommend the right plan, recharge or pay Airtel Digital TV bill",
+  "notes": "All biller packs share one BBPS partner integration",
+  "master_list_row": 351,
+  "executor": "bbps",
+  "config": {
+    "biller_category": "dth",
+    "biller_name": "Airtel Digital TV",
+    "input_fields": [
+      "subscriber_id"
+    ],
+    "biller_id": null
+  },
+  "tools": [
+    {
+      "name": "fetch_bill",
+      "tier": 0
+    },
+    {
+      "name": "pay_bill",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "dth",
+    "tv recharge",
+    "dish",
+    "airtel digital tv"
+  ]
+}

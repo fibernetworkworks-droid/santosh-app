@@ -1,0 +1,43 @@
+{
+  "id": "sweet-shop-mithai",
+  "name": "Sweet shop (mithai)",
+  "category": "Bazar Shops",
+  "sub_category": "Local merchant template",
+  "pack_type": "Bazar shop template",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Festival boxes, bulk orders for functions — fully done by Santosh on Bazar rails",
+  "notes": "One template, unlimited merchants; launch in Akola and Pune",
+  "master_list_row": 804,
+  "executor": "shop",
+  "config": {
+    "template": "sweet-shop-mithai",
+    "mode": "catalog"
+  },
+  "tools": [
+    {
+      "name": "search_items",
+      "tier": 0
+    },
+    {
+      "name": "build_cart",
+      "tier": 1
+    },
+    {
+      "name": "place_order",
+      "tier": 2
+    },
+    {
+      "name": "order_status",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "mithai",
+    "sweet",
+    "pedha",
+    "laddu",
+    "barfi"
+  ]
+}

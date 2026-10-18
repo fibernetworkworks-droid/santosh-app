@@ -1,0 +1,29 @@
+{
+  "id": "medicine-reminder",
+  "name": "Medicine reminder",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Dose times and refill alerts",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 950,
+  "executor": "native",
+  "config": {
+    "skill": "medicine"
+  },
+  "tools": [
+    {
+      "name": "add_medicine",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "dawai yaad",
+    "medicine reminder",
+    "goli time",
+    "tablet"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "id": "reminders-and-alarms",
+  "name": "Reminders & alarms",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Set reminders and alarms by voice in any language",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 941,
+  "executor": "native",
+  "config": {
+    "skill": "reminders"
+  },
+  "tools": [
+    {
+      "name": "set_reminder",
+      "tier": 1
+    },
+    {
+      "name": "list_reminders",
+      "tier": 0
+    },
+    {
+      "name": "cancel_reminder",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "yaad",
+    "remind",
+    "reminder",
+    "alarm",
+    "uthana",
+    "athvan"
+  ]
+}

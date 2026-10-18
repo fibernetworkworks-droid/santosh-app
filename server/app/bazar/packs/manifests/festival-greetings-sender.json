@@ -1,0 +1,34 @@
+{
+  "id": "festival-greetings-sender",
+  "name": "Festival greetings sender",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Personalised WhatsApp greetings to a contact list",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 952,
+  "executor": "native",
+  "config": {
+    "skill": "greetings"
+  },
+  "tools": [
+    {
+      "name": "draft_greetings",
+      "tier": 0
+    },
+    {
+      "name": "send_greetings",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "wish",
+    "greeting",
+    "shubhechha",
+    "diwali",
+    "festival"
+  ]
+}

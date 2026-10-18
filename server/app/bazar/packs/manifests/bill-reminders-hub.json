@@ -1,0 +1,32 @@
+{
+  "id": "bill-reminders-hub",
+  "name": "Bill reminders hub",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "All dues in one place, 3-day and 1-day alerts",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 947,
+  "executor": "native",
+  "config": {
+    "skill": "bill_reminders"
+  },
+  "tools": [
+    {
+      "name": "add_bill_reminder",
+      "tier": 1
+    },
+    {
+      "name": "upcoming_bills",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "bill due",
+    "due date",
+    "emi"
+  ]
+}

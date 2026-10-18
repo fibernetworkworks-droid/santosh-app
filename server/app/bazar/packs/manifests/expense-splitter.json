@@ -1,0 +1,29 @@
+{
+  "id": "expense-splitter",
+  "name": "Expense splitter",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Split trip or flat expenses, UPI request links",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 948,
+  "executor": "native",
+  "config": {
+    "skill": "splitter"
+  },
+  "tools": [
+    {
+      "name": "split_expense",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "split",
+    "baant",
+    "hissa",
+    "divide"
+  ]
+}

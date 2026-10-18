@@ -1,0 +1,33 @@
+{
+  "id": "calendar-assistant",
+  "name": "Calendar assistant",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Add, move and remind events; daily agenda",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 942,
+  "executor": "native",
+  "config": {
+    "skill": "calendar"
+  },
+  "tools": [
+    {
+      "name": "add_event",
+      "tier": 1
+    },
+    {
+      "name": "agenda",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "meeting",
+    "calendar",
+    "event",
+    "schedule"
+  ]
+}

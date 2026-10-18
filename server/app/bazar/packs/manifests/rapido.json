@@ -1,0 +1,33 @@
+{
+  "id": "rapido",
+  "name": "Rapido",
+  "category": "Travel & Commute",
+  "sub_category": "Rides",
+  "pack_type": "Connector pack",
+  "layer": "L3",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Compare fare and ETA where available, open Rapido with pickup and drop set; user taps Book",
+  "notes": "Deep link",
+  "master_list_row": 405,
+  "executor": "ride",
+  "config": {
+    "package": "com.rapido.passenger",
+    "link": "",
+    "verified": false
+  },
+  "tools": [
+    {
+      "name": "ride_link",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "cab",
+    "auto",
+    "ride",
+    "taxi",
+    "rickshaw",
+    "rapido"
+  ]
+}

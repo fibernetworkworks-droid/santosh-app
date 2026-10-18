@@ -288,6 +288,24 @@ async def tick() -> None:
     await morning_briefings()
     await run_routines()
     expire_device_actions()
+    await bazar_reminders()
+
+
+_bazar_last = 0.0
+
+
+async def bazar_reminders() -> None:
+    """Bill / birthday / medicine reminders from Bazar packs (checked every 30 s)."""
+    global _bazar_last
+    import time
+    if time.time() - _bazar_last < 30:
+        return
+    _bazar_last = time.time()
+    from .bazar import service as bazar
+    try:
+        await asyncio.to_thread(bazar.fire_due_reminders)
+    except Exception:
+        log.exception("bazar reminders failed")
 
 
 async def run_forever(stop: asyncio.Event) -> None:

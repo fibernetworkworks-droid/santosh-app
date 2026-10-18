@@ -1,0 +1,34 @@
+{
+  "id": "zepto",
+  "name": "Zepto",
+  "category": "Grocery & Quick Commerce",
+  "sub_category": "Quick commerce",
+  "pack_type": "Connector pack",
+  "layer": "L1",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Turn a list or recipe into a cart, compare price and ETA, check out, track",
+  "notes": "MCP built by Zepto; confirm public access",
+  "master_list_row": 37,
+  "executor": "mcp",
+  "config": {
+    "provider": "zepto",
+    "endpoint_setting": "mcp_zepto_url",
+    "money_tool_patterns": [
+      "place_order",
+      "checkout",
+      "confirm",
+      "pay",
+      "book",
+      "reserve"
+    ]
+  },
+  "tools": [],
+  "keywords": [
+    "zepto",
+    "grocery",
+    "doodh",
+    "milk",
+    "mangwa"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "id": "zomato-district-dining-and-events",
+  "name": "Zomato District (Dining & Events)",
+  "category": "Food & Dining",
+  "sub_category": "Food delivery apps",
+  "pack_type": "Connector pack",
+  "layer": "L1",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Book tables, dining offers and event tickets",
+  "notes": "Verify agent access",
+  "master_list_row": 4,
+  "executor": "mcp",
+  "config": {
+    "provider": "district",
+    "endpoint_setting": "mcp_district_url",
+    "money_tool_patterns": [
+      "place_order",
+      "checkout",
+      "confirm",
+      "pay",
+      "book",
+      "reserve"
+    ]
+  },
+  "tools": [],
+  "keywords": [
+    "district",
+    "event",
+    "dining offer"
+  ]
+}

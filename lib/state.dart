@@ -78,6 +78,8 @@ class Santosh extends ChangeNotifier {
   final List<FeedItem> feed = [];
   final Map<String, FeedItem> _campaigns = {};
   final Map<String, FeedItem> _emails = {};
+  final Map<String, FeedItem> _bazar = {};   // confirm cards by approval id
+  int bazarLinkedTick = 0;                    // bumps when an app account got linked (Apps screen refreshes)
   FeedItem? _steps;
   List<Map<String, dynamic>> reminders = [];
   Map<String, dynamic> lists = {};
@@ -288,6 +290,45 @@ class Santosh extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Approve or cancel a Bazar confirm card. On approve, opens the UPI app / link right away (user tap).
+  Future<void> decideBazar(String id, String decision) async {
+    final it = _bazar[id];
+    if (it != null) it.data = {...it.data, 'busy': true};
+    notifyListeners();
+    try {
+      final r = await api!.bazarDecide(id, decision);
+      if (it != null) it.data = {...it.data, 'status': r['status'], 'busy': false, 'result': {'open': r['open'], 'message': (r['outcome'] as Map?)?['message'] ?? (r['outcome'] as Map?)?['error'] ?? ''}};
+      final open = r['open'] as Map?;
+      if (decision == 'approve' && open != null && (open['kind'] == 'upi' || open['kind'] == 'app')) {
+        final res = await Native.openExternal(url: open['url'] as String? ?? '', package: open['package'] as String? ?? '');
+        if (res != 'ok') feed.add(FeedItem('note', {'text': res}));
+      }
+    } catch (e) {
+      if (it != null) it.data = {...it.data, 'busy': false};
+      error = e.toString();
+    }
+    notifyListeners();
+  }
+
+  Future<String> openBazar(Map<String, dynamic> open) async =>
+      Native.openExternal(url: open['url'] as String? ?? '', package: open['package'] as String? ?? '');
+
+  Future<String?> linkApp(String packId) async {
+    try {
+      final url = await api!.bazarLink(packId);
+      final res = await Native.openExternal(url: url);
+      return res == 'ok' ? null : res;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  void onBazarLinked(bool ok) {
+    bazarLinkedTick++;
+    feed.add(FeedItem('note', {'text': ok ? 'App jud gaya ✓ Ab Santosh order kar sakta hai.' : 'App link nahi ho paya, dobara koshish kijiye.'}));
+    notifyListeners();
+  }
+
   Future<void> campaignAction(String id, String action) async {
     try {
       final v = await api!.campaignAction(id, action);
@@ -365,6 +406,23 @@ class Santosh extends ChangeNotifier {
         break;
       case 'lists':
         await refreshLists();
+        break;
+      case 'bazar_approval':
+        final id = p['id'] as String? ?? '';
+        final existing = _bazar[id];
+        if (existing != null) {
+          existing.data = {...existing.data, ...p};
+        } else {
+          _bazar[id] = FeedItem('bazar', Map<String, dynamic>.from(p));
+          feed.add(_bazar[id]!);
+          if (inBackground && !_replaying) Device.instance.showNow('Santosh: approve karein', '${p['title'] ?? ''} ${p['amount'] ?? ''}');
+        }
+        break;
+      case 'bazar_open':
+        feed.add(FeedItem('open', Map<String, dynamic>.from(p)));
+        break;
+      case 'bazar_link':
+        feed.add(FeedItem('link', Map<String, dynamic>.from(p)));
         break;
       case 'device_action':
         // in the background the native service does it (screens can't be opened from the background)

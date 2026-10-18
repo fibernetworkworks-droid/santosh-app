@@ -1,0 +1,43 @@
+{
+  "id": "msedcl-mahavitaran",
+  "name": "MSEDCL (Mahavitaran)",
+  "category": "Bills & Utilities",
+  "sub_category": "Electricity boards",
+  "pack_type": "Biller pack",
+  "layer": "L2",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Fetch MSEDCL (Mahavitaran) bill by consumer number, show amount and due date, pay via BBPS partner, save receipt, set next reminder",
+  "notes": "Home state; launch first",
+  "master_list_row": 260,
+  "executor": "bbps",
+  "config": {
+    "biller_category": "electricity",
+    "biller_name": "MSEDCL (Mahavitaran)",
+    "input_fields": [
+      "consumer_number",
+      "billing_unit"
+    ],
+    "biller_id": null
+  },
+  "tools": [
+    {
+      "name": "fetch_bill",
+      "tier": 0
+    },
+    {
+      "name": "pay_bill",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "bijli",
+    "light bill",
+    "electricity",
+    "vij",
+    "वीज",
+    "बिजली",
+    "lightbill",
+    "msedcl"
+  ]
+}

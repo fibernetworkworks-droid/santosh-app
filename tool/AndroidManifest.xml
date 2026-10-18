@@ -33,6 +33,32 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+        <!-- Santosh Bazar: UPI payments and the UPI / ride apps it can open -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="upi" />
+        </intent>
+        <package android:name="com.dreamplug.androidapp" />
+        <package android:name="com.freecharge.android" />
+        <package android:name="com.google.android.apps.nbu.paisa.user" />
+        <package android:name="com.jio.jiofinance" />
+        <package android:name="com.mobikwik_new" />
+        <package android:name="com.myairtelapp" />
+        <package android:name="com.naviapp" />
+        <package android:name="com.olacabs.customer" />
+        <package android:name="com.phonepe.app" />
+        <package android:name="com.popclub.android" />
+        <package android:name="com.rapido.passenger" />
+        <package android:name="com.ubercab" />
+        <package android:name="in.amazon.mShop.android.shopping" />
+        <package android:name="in.gokiwi.kiwitpap" />
+        <package android:name="in.juspay.jatrisaathi" />
+        <package android:name="in.juspay.nammayatri" />
+        <package android:name="in.org.npci.upiapp" />
+        <package android:name="money.fold.android" />
+        <package android:name="money.super.payments" />
+        <package android:name="net.one97.paytm" />
+        <package android:name="sinet.startup.inDriver" />
     </queries>
 
     <!-- usesCleartextTraffic lets you test against http://your-ip:8077; use https in production -->
@@ -61,6 +87,13 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="santosh" android:host="auth" />
+            </intent-filter>
+            <!-- Linking Swiggy / Zomato etc. returns here: santosh://bazar?linked=1 -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="santosh" android:host="bazar" />
             </intent-filter>
         </activity>
         <meta-data android:name="flutterEmbedding" android:value="2" />

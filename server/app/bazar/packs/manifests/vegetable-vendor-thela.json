@@ -1,0 +1,44 @@
+{
+  "id": "vegetable-vendor-thela",
+  "name": "Vegetable vendor (thela)",
+  "category": "Bazar Shops",
+  "sub_category": "Local merchant template",
+  "pack_type": "Bazar shop template",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Order by voice, today's prices, doorstep drop — fully done by Santosh on Bazar rails",
+  "notes": "One template, unlimited merchants; launch in Akola and Pune",
+  "master_list_row": 801,
+  "executor": "shop",
+  "config": {
+    "template": "vegetable-vendor-thela",
+    "mode": "catalog"
+  },
+  "tools": [
+    {
+      "name": "search_items",
+      "tier": 0
+    },
+    {
+      "name": "build_cart",
+      "tier": 1
+    },
+    {
+      "name": "place_order",
+      "tier": 2
+    },
+    {
+      "name": "order_status",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "sabzi",
+    "bhaji",
+    "vegetable",
+    "kanda",
+    "batata",
+    "tamatar"
+  ]
+}

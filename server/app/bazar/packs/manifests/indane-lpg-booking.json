@@ -1,0 +1,39 @@
+{
+  "id": "indane-lpg-booking",
+  "name": "Indane LPG booking",
+  "category": "Bills & Utilities",
+  "sub_category": "Piped gas & LPG",
+  "pack_type": "Biller pack",
+  "layer": "L2",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Fetch and pay Indane LPG booking bill, or book refill; remind on the usual cycle",
+  "notes": "All biller packs share one BBPS partner integration",
+  "master_list_row": 332,
+  "executor": "bbps",
+  "config": {
+    "biller_category": "lpg",
+    "biller_name": "Indane LPG booking",
+    "input_fields": [
+      "lpg_id_or_mobile"
+    ],
+    "biller_id": null
+  },
+  "tools": [
+    {
+      "name": "fetch_bill",
+      "tier": 0
+    },
+    {
+      "name": "pay_bill",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "cylinder",
+    "lpg",
+    "gas booking",
+    "silender",
+    "indane lpg booking"
+  ]
+}

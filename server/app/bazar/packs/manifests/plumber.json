@@ -1,0 +1,39 @@
+{
+  "id": "plumber",
+  "name": "Plumber",
+  "category": "Bazar Shops",
+  "sub_category": "Local merchant template",
+  "pack_type": "Bazar shop template",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Job request, visit slot, quote — fully done by Santosh on Bazar rails",
+  "notes": "One template, unlimited merchants; launch in Akola and Pune",
+  "master_list_row": 835,
+  "executor": "shop",
+  "config": {
+    "template": "plumber",
+    "mode": "booking"
+  },
+  "tools": [
+    {
+      "name": "search_items",
+      "tier": 0
+    },
+    {
+      "name": "book_slot",
+      "tier": 2
+    },
+    {
+      "name": "order_status",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "plumber",
+    "nal",
+    "leak",
+    "pipe",
+    "tap"
+  ]
+}

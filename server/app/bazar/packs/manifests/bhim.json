@@ -1,0 +1,37 @@
+{
+  "id": "bhim",
+  "name": "BHIM",
+  "category": "Payments & Fintech",
+  "sub_category": "UPI apps",
+  "pack_type": "Connector pack",
+  "layer": "L3",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Resolve contact to UPI ID, open BHIM with payee, amount and note pre-filled; user enters PIN",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 130,
+  "executor": "upi",
+  "config": {
+    "android_package": "in.org.npci.upiapp",
+    "scheme": "upi",
+    "package_verified": true
+  },
+  "tools": [
+    {
+      "name": "send_money",
+      "tier": 3
+    },
+    {
+      "name": "request_money",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "bhejo",
+    "send",
+    "pay",
+    "paise",
+    "transfer",
+    "bhim"
+  ]
+}

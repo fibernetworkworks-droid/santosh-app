@@ -1,0 +1,34 @@
+{
+  "id": "local-isp",
+  "name": "Local ISP",
+  "category": "Bazar Shops",
+  "sub_category": "Local merchant template",
+  "pack_type": "Bazar shop template",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Bill collection, complaints, plan upgrade — fully done by Santosh on Bazar rails",
+  "notes": "One template, unlimited merchants; launch in Akola and Pune",
+  "master_list_row": 921,
+  "executor": "shop",
+  "config": {
+    "template": "local-isp",
+    "mode": "due_payment"
+  },
+  "tools": [
+    {
+      "name": "get_due",
+      "tier": 0
+    },
+    {
+      "name": "pay_due",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "wifi bill",
+    "internet bill",
+    "isp",
+    "net ka bill"
+  ]
+}

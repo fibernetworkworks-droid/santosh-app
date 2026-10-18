@@ -1,0 +1,36 @@
+{
+  "id": "swiggy-instamart",
+  "name": "Swiggy Instamart",
+  "category": "Grocery & Quick Commerce",
+  "sub_category": "Quick commerce",
+  "pack_type": "Connector pack",
+  "layer": "L1",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Turn a list or recipe into a cart, compare price and ETA, check out, track",
+  "notes": "Official MCP; checkout coverage to be tested",
+  "master_list_row": 36,
+  "executor": "mcp",
+  "config": {
+    "provider": "swiggy_instamart",
+    "endpoint_setting": "mcp_swiggy_instamart_url",
+    "money_tool_patterns": [
+      "place_order",
+      "checkout",
+      "confirm",
+      "pay",
+      "book",
+      "reserve"
+    ]
+  },
+  "tools": [],
+  "keywords": [
+    "instamart",
+    "grocery",
+    "doodh",
+    "milk",
+    "sabzi",
+    "kirana",
+    "mangwa"
+  ]
+}

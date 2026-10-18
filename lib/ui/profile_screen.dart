@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'bazar_screen.dart';
 import 'glass.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -88,6 +89,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       const SizedBox(height: 18),
       ListenableBuilder(listenable: app, builder: (context, _) => app.account != null ? _AccountCard(app: app) : const SizedBox.shrink()),
       if (app.account != null) const SizedBox(height: 18),
+      Glass(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.storefront_rounded, color: C.accent),
+          title: const Text('Santosh Bazar · 159 apps', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('Bill, kirana, UPI, cab, Swiggy/Zomato · kharch ki seema'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BazarScreen(app: app))),
+        ),
+      ),
+      const SizedBox(height: 18),
       Glass(
         child: Column(children: [
           TextField(controller: _name, decoration: const InputDecoration(labelText: 'Naam')),
