@@ -34,6 +34,21 @@ elif groovy.exists():
 else:
     sys.exit("No app build.gradle(.kts) found")
 
+# Santosh's native side: background service, own alarms, calendar, boot restart
+pkg = app / "src" / "main" / "kotlin" / "com" / "newtika" / "santosh"
+pkg.mkdir(parents=True, exist_ok=True)
+for f in (root / "tool" / "android" / "kotlin").glob("*.kt"):
+    shutil.copy(f, pkg / f.name)
+for f in (root / "tool" / "android" / "res").rglob("*"):
+    if f.is_file():
+        dest = app / "src" / "main" / "res" / f.relative_to(root / "tool" / "android" / "res")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(f, dest)
+# flutter create may have put a Java or differently named MainActivity elsewhere; ours replaces it
+for old in (app / "src" / "main").rglob("MainActivity.*"):
+    if old.parent != pkg:
+        old.unlink()
+
 # flutter create adds a sample test that refers to a MyApp class we don't have
 t = root / "test" / "widget_test.dart"
 if t.exists() and "MyApp" in t.read_text():

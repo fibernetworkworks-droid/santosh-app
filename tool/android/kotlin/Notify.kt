@@ -1,0 +1,135 @@
+package com.newtika.santosh
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.media.AudioAttributes
+import android.media.RingtoneManager
+import android.os.Build
+
+/** All notifications the native side shows. */
+object Notify {
+    const val SERVICE_ID = 1717
+    private const val MSG_BASE = 3000
+    private const val MSG_SLOTS = 40
+    private const val CH_SERVICE = "santosh_service"
+    private const val CH_MESSAGES = "santosh_messages"
+    private const val CH_ALARM = "santosh_alarm"
+
+    private fun nm(ctx: Context) = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    fun piFlags() = PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0)
+
+    fun channels(ctx: Context) {
+        if (Build.VERSION.SDK_INT < 26) return
+        val m = nm(ctx)
+        m.createNotificationChannel(NotificationChannel(CH_SERVICE, "Santosh background", NotificationManager.IMPORTANCE_LOW).apply {
+            description = "Shows that Santosh is working while the app is closed"
+            setShowBadge(false)
+        })
+        m.createNotificationChannel(NotificationChannel(CH_MESSAGES, "Santosh messages", NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "Replies, reminders and reports from Santosh"
+            enableVibration(true)
+        })
+        m.createNotificationChannel(NotificationChannel(CH_ALARM, "Santosh alarms", NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "Alarms and timers set by Santosh"
+            setSound(
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
+                AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
+            )
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0, 800, 400, 800)
+        })
+    }
+
+    @Suppress("DEPRECATION")
+    private fun builder(ctx: Context, channel: String): Notification.Builder =
+        if (Build.VERSION.SDK_INT >= 26) Notification.Builder(ctx, channel) else Notification.Builder(ctx)
+
+    fun openApp(ctx: Context, req: Int): PendingIntent {
+        val i = Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        return PendingIntent.getActivity(ctx, req, i, piFlags())
+    }
+
+    fun service(ctx: Context, title: String, text: String): Notification {
+        channels(ctx)
+        return builder(ctx, CH_SERVICE)
+            .setSmallIcon(R.drawable.ic_stat_santosh)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setOngoing(true)
+            .setShowWhen(false)
+            .setContentIntent(openApp(ctx, 1))
+            .build()
+    }
+
+    @Suppress("DEPRECATION")
+    fun message(ctx: Context, text: String, eventId: Long) {
+        if (text.isBlank()) return
+        channels(ctx)
+        val clean = text.replace(Regex("[*_#`]"), "")
+        val b = builder(ctx, CH_MESSAGES)
+            .setSmallIcon(R.drawable.ic_stat_santosh)
+            .setContentTitle("Santosh")
+            .setContentText(clean)
+            .setStyle(Notification.BigTextStyle().bigText(clean))
+            .setAutoCancel(true)
+            .setContentIntent(openApp(ctx, 2))
+            .setCategory(Notification.CATEGORY_MESSAGE)
+        if (Build.VERSION.SDK_INT < 26) b.setPriority(Notification.PRIORITY_HIGH).setDefaults(Notification.DEFAULT_ALL)
+        nm(ctx).notify(MSG_BASE + (eventId % MSG_SLOTS).toInt(), b.build())
+    }
+
+    fun clearMessages(ctx: Context) {
+        val m = nm(ctx)
+        for (i in 0 until MSG_SLOTS) m.cancel(MSG_BASE + i)
+    }
+
+    @Suppress("DEPRECATION")
+    fun alarm(ctx: Context, id: Int, label: String, timeText: String) {
+        channels(ctx)
+        val full = Intent(ctx, AlarmActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION)
+            .putExtra("id", id).putExtra("label", label).putExtra("time", timeText)
+        val fullPi = PendingIntent.getActivity(ctx, id, full, piFlags())
+        val stop = Intent(ctx, AlarmReceiver::class.java).setAction(AlarmReceiver.DISMISS).putExtra("id", id)
+        val stopPi = PendingIntent.getBroadcast(ctx, id + 1, stop, piFlags())
+        val b = builder(ctx, CH_ALARM)
+            .setSmallIcon(R.drawable.ic_stat_santosh)
+            .setContentTitle("⏰ $label")
+            .setContentText("Santosh: $timeText")
+            .setCategory(Notification.CATEGORY_ALARM)
+            .setFullScreenIntent(fullPi, true)
+            .setContentIntent(fullPi)
+            .setOngoing(true)
+            .addAction(Notification.Action.Builder(null, "Band karo", stopPi).build())
+        if (Build.VERSION.SDK_INT >= 26) b.setTimeoutAfter(10 * 60 * 1000L)
+        if (Build.VERSION.SDK_INT < 26) {
+            b.setPriority(Notification.PRIORITY_MAX)
+                .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM), android.media.AudioManager.STREAM_ALARM)
+                .setVibrate(longArrayOf(0, 800, 400, 800))
+        }
+        val n = b.build()
+        n.flags = n.flags or Notification.FLAG_INSISTENT   // keeps ringing until dismissed
+        nm(ctx).notify(id, n)
+    }
+
+    fun cancel(ctx: Context, id: Int) = nm(ctx).cancel(id)
+
+    @Suppress("DEPRECATION")
+    fun tapToOpen(ctx: Context, id: Int, title: String, text: String, intent: Intent) {
+        channels(ctx)
+        val pi = PendingIntent.getActivity(ctx, id, intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), piFlags())
+        val b = builder(ctx, CH_MESSAGES)
+            .setSmallIcon(R.drawable.ic_stat_santosh)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+        if (Build.VERSION.SDK_INT < 26) b.setPriority(Notification.PRIORITY_HIGH)
+        nm(ctx).notify(id, b.build())
+    }
+}
