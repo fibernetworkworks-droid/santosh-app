@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:url_launcher/url_launcher.dart';
 
 /// Everything that has to happen on the phone itself: notifications, alarms, timers, calendar.
 class Device {
@@ -106,6 +107,11 @@ class Device {
             },
           ));
           return null;
+        case 'open_url':
+          final uri = Uri.tryParse(a['url'] as String? ?? '');
+          if (uri == null || !uri.hasScheme) return 'Link sahi nahi hai';
+          final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return ok ? null : 'Is link ko kholne wala app phone par nahi mila';
         default:
           return 'This app version does not know "${a['type']}" yet; please update the app.';
       }

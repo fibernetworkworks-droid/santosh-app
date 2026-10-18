@@ -41,6 +41,7 @@ VOICE_TOOL_NAMES = {
     "create_reminder", "list_reminders", "cancel_reminder", "set_phone_alarm", "set_phone_timer",
     "add_calendar_event", "remember", "forget", "list_add", "list_show", "list_done", "set_profile",
     "get_weather", "create_routine", "list_routines", "cancel_routine",
+    "google_search", "open_website", "open_on_phone",
 }
 
 DELEGATE = {
@@ -78,6 +79,7 @@ Language
 
 Doing real work
 - You have tools for reminders, phone alarms and timers, calendar, lists, memory, weather and automatic daily jobs, plus santosh_kaam for anything bigger such as WhatsApp campaigns, multi-step work or drafting. Use the tools instead of only talking about it.
+- Internet: use google_search for anything current or factual (news, prices, scores, train timings, shop numbers, rules) instead of guessing, and open_website to read a specific site. Speak the answer simply in one or two lines; don't read out links. Say "Google pe dekh raha hoon" while it searches. Use open_on_phone when the user wants a site opened on their phone.
 - While a tool runs, say a quick natural line like "ek second, laga deta hoon" and keep the conversation going. When the result comes back, tell it in one line. Never say something is done before the tool confirms it.
 - Work out exact dates and times from what the user says ("kal subah" is tomorrow 8 AM unless they gave a time). The user's local time now is {now}.
 

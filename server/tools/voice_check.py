@@ -117,6 +117,17 @@ async def main():
     every = ("system_instruction", "tools", "input_audio_transcription", "output_audio_transcription",
              "realtime_input_config", "enable_affective_dialog", "context_window_compression", "session_resumption")
     await run("minimal + everything except proactivity", plus(*every), say_text)
+    from app import web
+    try:
+        r = await web.google_search("aaj ka cricket score India")
+        print(f"OK   google_search: {r['answer'][:90]} ({len(r['sources'])} sources)")
+    except Exception as e:
+        print(f"FAIL google_search: {e}")
+    try:
+        r = await web.open_website("https://www.wikipedia.org")
+        print(f"OK   open_website: {r['title']} ({len(r['text'])} chars)")
+    except Exception as e:
+        print(f"FAIL open_website: {e}")
 
 
 asyncio.run(main())

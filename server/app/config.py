@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_live_model: str = "gemini-3.8-live"
     voice_default: str = "Puck"            # a male Gemini voice; the app can pick another
+    gemini_search_model: str = ""          # model used for Google Search answers (empty = newest Flash)
     voice_silence_ms: int = 1100           # pause that ends your turn (higher = never cut off mid-thought)
     # Optional Gemini extras; gemini-3.8-live rejects both today, so they are off until Google enables them
     voice_affective_dialog: bool = False

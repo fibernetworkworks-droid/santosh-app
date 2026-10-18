@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.4.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.5.0", lifespan=lifespan)
 
 
 def require_key(request: Request) -> None:
@@ -64,7 +64,7 @@ def _conv_or_404(conversation_id: str) -> Conversation:
 def healthz():
     st = get_settings()
     from .voice import MALE_VOICES
-    features = ["routines", "voice"] + (["realtime_voice"] if st.gemini_api_key else [])
+    features = ["routines", "voice", "web"] + (["realtime_voice", "google_search"] if st.gemini_api_key else [])
     return {"ok": True, "version": app.version, "dry_run": st.wa_dry_run, "model": st.anthropic_model,
             "brain_configured": bool(st.anthropic_api_key), "features": features,
             "voices": [{"id": k, "style": v} for k, v in MALE_VOICES.items()], "voice_default": st.voice_default}

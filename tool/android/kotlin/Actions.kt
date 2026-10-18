@@ -39,10 +39,21 @@ object Actions {
             "set_alarm" -> alarm(ctx, a)
             "set_timer" -> timer(ctx, a)
             "add_calendar_event" -> calendar(ctx, a)
+            "open_url" -> openUrl(ctx, a)
             else -> Pair(false, "Is app version ko '${a.optString("type")}' nahi aata; app update kijiye.")
         }
     } catch (e: Exception) {
         Pair(false, e.message ?: e.javaClass.simpleName)
+    }
+
+    /** Android won't open screens from the background, so a tap on the notification opens the link. */
+    private fun openUrl(ctx: Context, a: JSONObject): Pair<Boolean, String> {
+        val url = a.optString("url")
+        if (!url.startsWith("http://") && !url.startsWith("https://")) return Pair(false, "Link sahi nahi hai")
+        val title = a.optString("title").ifBlank { android.net.Uri.parse(url).host ?: url }
+        val view = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+        Notify.tapToOpen(ctx, (url.hashCode() and 0x7fffffff) % 100000 + 300_000, "Santosh: $title", "Tap karke kholiye", view)
+        return Pair(true, "Notification bheja hai; tap karte hi khul jayega")
     }
 
     private fun hhmm(h: Int, m: Int) = String.format("%02d:%02d", h, m)
