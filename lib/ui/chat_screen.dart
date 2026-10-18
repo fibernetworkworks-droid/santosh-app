@@ -5,6 +5,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import '../state.dart';
 import 'glass.dart';
 import 'live_santosh.dart';
+import '../nav.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, required this.app, this.onVoice});
@@ -164,7 +165,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     topLeft: Radius.circular(22), topRight: Radius.circular(22), bottomLeft: Radius.circular(22), bottomRight: Radius.circular(8))),
                 child: SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45)),
               )
-            : Glass(radius: 22, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13), child: SelectableText(text, style: const TextStyle(fontSize: 15, height: 1.45)));
+            : Glass(radius: 22, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13), child: linkText(text, const TextStyle(fontSize: 15, height: 1.45, color: C.ink)));
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Align(

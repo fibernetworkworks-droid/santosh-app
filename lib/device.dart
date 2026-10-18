@@ -6,6 +6,8 @@ import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:url_launcher/url_launcher.dart';
 
+import 'nav.dart';
+
 /// Everything that has to happen on the phone itself: notifications, alarms, timers, calendar.
 class Device {
   Device._();
@@ -110,6 +112,8 @@ class Device {
         case 'open_url':
           final uri = Uri.tryParse(a['url'] as String? ?? '');
           if (uri == null || !uri.hasScheme) return 'Link sahi nahi hai';
+          // inside Santosh's own browser when the app is open; another app for tel:, upi: etc.
+          if (await openInApp(uri.toString(), title: a['title'] as String?)) return null;
           final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
           return ok ? null : 'Is link ko kholne wala app phone par nahi mila';
         default:

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'device.dart';
+import 'nav.dart';
 import 'state.dart';
 import 'ui/chat_screen.dart';
 import 'ui/glass.dart';
@@ -54,6 +55,7 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
+        navigatorKey: navKey,
         title: 'Santosh',
         debugShowCheckedModeBanner: false,
         theme: santoshTheme(),
