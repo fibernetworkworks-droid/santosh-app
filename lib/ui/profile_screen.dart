@@ -92,8 +92,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       Glass(
         child: ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.storefront_rounded, color: C.accent),
-          title: const Text('Santosh Bazar · 159 apps', style: TextStyle(fontWeight: FontWeight.w700)),
+          leading: const Icon(Icons.power_rounded, color: C.accent),
+          title: const Text('Connectors · 159 plugins', style: TextStyle(fontWeight: FontWeight.w700)),
           subtitle: const Text('Bill, kirana, UPI, cab, Swiggy/Zomato · kharch ki seema'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BazarScreen(app: app))),
@@ -129,7 +129,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 selected: app.language == e.key,
                 showCheckmark: false,
                 selectedColor: C.accent,
-                labelStyle: TextStyle(color: app.language == e.key ? Colors.white : C.chip, fontWeight: FontWeight.w600),
+                labelStyle: TextStyle(color: app.language == e.key ? C.onAccent : C.chip, fontWeight: FontWeight.w600),
                 onSelected: (_) async {
                   await app.saveSettings(lang: e.key);
                   setState(() {});
@@ -147,7 +147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   selected: app.voiceName == v['id'],
                   showCheckmark: false,
                   selectedColor: C.accent,
-                  labelStyle: TextStyle(color: app.voiceName == v['id'] ? Colors.white : C.chip, fontWeight: FontWeight.w600, fontSize: 12.5),
+                  labelStyle: TextStyle(color: app.voiceName == v['id'] ? C.onAccent : C.chip, fontWeight: FontWeight.w600, fontSize: 12.5),
                   onSelected: (_) async {
                     await app.setVoice(v['id'] as String);
                     setState(() {});
@@ -246,12 +246,12 @@ class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObs
     Widget fix(String title, String sub, String button, Future<void> Function() onTap) => Container(
           margin: const EdgeInsets.only(top: 10),
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: const Color(0xE6FEF3C7), borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(color: const Color(0x2EFFB15C), borderRadius: BorderRadius.circular(16)),
           child: Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF7C2D12))),
-                Text(sub, style: const TextStyle(fontSize: 12.5, color: Color(0xFF7C2D12))),
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFFFD9A8))),
+                Text(sub, style: const TextStyle(fontSize: 12.5, color: Color(0xFFFFD9A8))),
               ]),
             ),
             TextButton(onPressed: onTap, child: Text(button)),

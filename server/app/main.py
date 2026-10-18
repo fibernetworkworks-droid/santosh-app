@@ -831,3 +831,23 @@ def bazar_shop_order_update(shop_id: str, order_id: str, body: OrderUpdateIn, re
 @app.post("/bazar/shops/{shop_id}/dues")
 def bazar_shop_dues(shop_id: str, dues: list[DueIn], request: Request):
     return _bz(bazar.upload_dues, shop_id, [d.model_dump() for d in dues], _maybe_tenant(request), request.headers.get("x-shop-token"))
+
+
+# ---------------- catch-up: what Santosh did while the phone was off ----------------
+@app.get("/api/catchup", dependencies=[Depends(require_key)])
+def catchup(since: str, tenant: str = Depends(current_tenant)):
+    from datetime import datetime, timezone
+    try:
+        t = datetime.fromisoformat(since.replace("Z", "+00:00"))
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=timezone.utc)
+    except ValueError:
+        raise HTTPException(400, "since must be an ISO time")
+    with session() as s:
+        convs = [c.id for c in s.scalars(select(Conversation).where(Conversation.tenant_id == tenant)).all()]
+        rows = s.scalars(select(Message).where(Message.conversation_id.in_(convs), Message.role == "assistant",
+                                               Message.in_history.is_(False), Message.created_at > t)
+                         .order_by(Message.id).limit(60)).all() if convs else []
+        items = [{"text": r.display or "", "at": r.created_at.isoformat()} for r in rows if (r.display or "").strip()]
+    pending = bazar.pending_approvals(tenant)
+    return {"items": items, "pending": pending, "count": len(items)}

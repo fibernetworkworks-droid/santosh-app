@@ -8,7 +8,8 @@ import 'package:speech_to_text/speech_to_text.dart';
 
 import '../state.dart';
 import 'glass.dart';
-import 'santosh3d.dart';
+import '../emotion.dart';
+import 'live_santosh.dart';
 
 enum _V { idle, listening, thinking, speaking }
 
@@ -23,7 +24,6 @@ class VoiceScreen extends StatefulWidget {
 class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin {
   final _stt = SpeechToText();
   final _tts = FlutterTts();
-  final _ctl = Santosh3DController();
   late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat();
 
   _V _state = _V.idle;
@@ -76,8 +76,8 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
     _tts.setCancelHandler(done);
     _tts.setErrorHandler((_) => done());
     _tts.setProgressHandler((text, start, end, word) {
-      // a little mouth pop on every word
-      _ctl.level(.45 + (word.length % 4) * .15);
+      // a little bob on every word he speaks
+      if (mounted) setState(() => _level = .45 + (word.length % 4) * .15);
     });
     try {
       await _tts.setLanguage(app.language);
@@ -114,14 +114,6 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
     setState(() {
       _state = s;
       _hint = hint;
-    });
-    _ctl.listen(s == _V.listening);
-    _ctl.talk(s == _V.speaking);
-    _ctl.mood(switch (s) {
-      _V.listening => 'happy',
-      _V.thinking => app.currentStep != null ? 'working' : 'thinking',
-      _V.speaking => 'happy',
-      _V.idle => 'idle',
     });
   }
 
@@ -162,8 +154,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
       onSoundLevelChange: (db) {
         // Android reports roughly -2..10 dB
         final v = ((db + 2) / 12).clamp(0.0, 1.0);
-        _level = _level * .6 + v * .4;
-        _ctl.level(_level);
+        if (mounted) setState(() => _level = _level * .6 + v * .4);
       },
       onResult: (r) {
         if (!mounted) return;
@@ -214,7 +205,6 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
   void _onApp() {
     if (!mounted) return;
     if (_state == _V.thinking) {
-      _ctl.mood(app.currentStep != null ? 'working' : 'thinking');
       setState(() {});
       if (!app.typing && _turnHadReply && _queue.isEmpty) _turnDone();
     }
@@ -311,10 +301,10 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
             label: const Text('Lagatar'),
             selected: _handsFree,
             showCheckmark: false,
-            avatar: Icon(_handsFree ? Icons.all_inclusive_rounded : Icons.touch_app_rounded, size: 18, color: _handsFree ? Colors.white : C.chip),
+            avatar: Icon(_handsFree ? Icons.all_inclusive_rounded : Icons.touch_app_rounded, size: 18, color: _handsFree ? C.onAccent : C.chip),
             selectedColor: C.accent,
-            backgroundColor: const Color(0xB3FFFFFF),
-            labelStyle: TextStyle(color: _handsFree ? Colors.white : C.chip, fontWeight: FontWeight.w700),
+            backgroundColor: const Color(0x14FFFFFF),
+            labelStyle: TextStyle(color: _handsFree ? C.onAccent : C.chip, fontWeight: FontWeight.w700),
             tooltip: 'Jawab ke baad apne aap phir sunna',
             onSelected: (v) => setState(() => _handsFree = v),
           ),
@@ -322,9 +312,26 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
       ),
       Expanded(
         child: Stack(children: [
-          Positioned.fill(child: Santosh3D(controller: _ctl)),
+          Positioned.fill(
+            child: Center(
+              child: ListenableBuilder(
+                listenable: app,
+                builder: (context, _) => LiveSantosh(
+                  feeling: switch (_state) {
+                    _V.listening => app.userStressed ? Mood.care : Mood.listening,
+                    _V.thinking => app.currentStep != null ? Mood.work : Mood.think,
+                    _V.speaking => const {Mood.happy, Mood.excited, Mood.care, Mood.wow}.contains(app.mood) ? app.mood : Mood.talking,
+                    _V.idle => app.mood,
+                  },
+                  level: _state == _V.idle ? 0 : _level,
+                  thought: _state != _V.speaking,
+                  size: 290,
+                ),
+              ),
+            ),
+          ),
           if (!app.connected)
-            const Positioned(left: 20, right: 20, top: 8, child: Pill('Server se connect ho raha hai…', fg: C.warn, bg: Color(0xE6FEF3C7))),
+            const Positioned(left: 20, right: 20, top: 8, child: Pill('Server se connect ho raha hai…', fg: C.warn, bg: Color(0x2EFFB15C))),
         ]),
       ),
       _captions(),
@@ -408,10 +415,10 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
                 shape: BoxShape.circle,
                 gradient: C.gradient,
                 boxShadow: [
-                  BoxShadow(color: const Color(0x667C3AED), blurRadius: 26 + (_state == _V.listening ? _level * 30 : 0), offset: const Offset(0, 10)),
+                  BoxShadow(color: const Color(0x59FFA046), blurRadius: 26 + (_state == _V.listening ? _level * 30 : 0), offset: const Offset(0, 10)),
                 ],
               ),
-              child: Icon(icon, color: Colors.white, size: 38),
+              child: Icon(icon, color: C.onAccent, size: 38),
             ),
           ),
         ),
@@ -443,7 +450,7 @@ class _OrbRings extends CustomPainter {
           final p = (t + i / 3) % 1;
           paint
             ..strokeWidth = 3
-            ..color = const Color(0xFFA21CAF).withOpacity((1 - p) * (.25 + level * .6));
+            ..color = const Color(0xFF2DD4BF).withOpacity((1 - p) * (.25 + level * .6));
           canvas.drawCircle(c, r + 6 + p * (18 + level * 36), paint);
         }
       case _V.thinking:
@@ -453,7 +460,7 @@ class _OrbRings extends CustomPainter {
           ..color = C.accent.withOpacity(.7);
         final a = t * 2 * math.pi;
         canvas.drawArc(Rect.fromCircle(center: c, radius: r + 9), a, 1.2, false, paint);
-        canvas.drawArc(Rect.fromCircle(center: c, radius: r + 9), a + math.pi, 1.2, false, paint..color = const Color(0xFFA21CAF).withOpacity(.6));
+        canvas.drawArc(Rect.fromCircle(center: c, radius: r + 9), a + math.pi, 1.2, false, paint..color = const Color(0xFF2DD4BF).withOpacity(.6));
       case _V.speaking:
         for (var i = 0; i < 2; i++) {
           final p = (t * 1.6 + i / 2) % 1;

@@ -404,3 +404,14 @@ def test_card_reaches_live_stream_from_worker_thread(bz):
 
     ev = asyncio.run(go())
     assert ev["kind"] == "bazar_approval" and ev["payload"]["title"].startswith("[DEMO]")
+
+
+def test_catchup_lists_what_happened_while_offline(bz):
+    from fastapi.testclient import TestClient
+    from app import main
+    from app.events import notify
+    notify(bz["conv"], "Diwali campaign 240 logon ko bhej diya.")
+    c = TestClient(main.app)
+    r = c.get("/api/catchup", params={"since": "2020-01-01T00:00:00Z"}).json()
+    assert r["count"] >= 1 and "Diwali" in r["items"][-1]["text"]
+    assert c.get("/api/catchup", params={"since": "bad"}).status_code == 400

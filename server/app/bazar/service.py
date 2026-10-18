@@ -45,7 +45,7 @@ STATUS_TEXT = {
     "ready": "ready",
     "demo": "demo mode: test bills only until the BBPS partner is live",
     "no_shop_yet": "no shop of this kind has joined Santosh Bazar yet",
-    "needs_link": "user must link this account once (Profile > Apps)",
+    "needs_link": "user must link this account once (Connect tab)",
     "not_configured": "provider access not configured on the server yet",
     "core": "built into Santosh",
 }
@@ -182,7 +182,7 @@ def find(tenant_id: str, query: str = "", category: str = "", limit: int = 6) ->
                     hits.append(p)
         hits = hits[:limit]
         if not hits:
-            return {"packs": [], "message": "No Santosh Bazar pack does this yet."}
+            return {"packs": [], "message": "No Santosh connector does this yet."}
         out = [_pack_out(s, user, p, with_tools=i < 4) for i, p in enumerate(hits)]
         return {"packs": out}
 

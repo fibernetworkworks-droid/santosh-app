@@ -146,7 +146,7 @@ class McpExecutor:
                                                             Connection.provider == pack.config["provider"],
                                                             Connection.status == "active")).first()
         if not conn:
-            raise ToolError(f"NOT_LINKED: Link your {pack.name} account once (Santosh app > Profile > Apps > {pack.name}), "
+            raise ToolError(f"NOT_LINKED: Link your {pack.name} account once (Santosh app > Connect tab > {pack.name}), "
                             "then I can order for you.")
         from ..mcp_auth import LinkError, access_token
         try:

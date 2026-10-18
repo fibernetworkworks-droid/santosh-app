@@ -120,6 +120,9 @@ class Api {
   Future<Map<String, dynamic>> campaignAction(String id, String action) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/campaigns/$id/action', body: {'action': action}));
 
+  Future<Map<String, dynamic>> catchup(DateTime since) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/catchup', query: {'since': since.toUtc().toIso8601String()}));
+
   Future<void> putLocation(double lat, double lng, {double? accuracy}) async =>
       _send('PUT', '/api/location', body: {'lat': lat, 'lng': lng, if (accuracy != null) 'accuracy_m': accuracy});
 

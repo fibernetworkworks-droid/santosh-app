@@ -50,7 +50,7 @@ VOICE_TOOL_NAMES = {
 
 DELEGATE = {
     "name": "santosh_kaam",
-    "description": ("Hand a bigger job to Santosh's full work brain: Santosh Bazar (pay bijli/gas/mobile/DTH bills, order "
+    "description": ("Hand a bigger job to Santosh's full work brain: Santosh Connectors (pay bijli/gas/mobile/DTH bills, order "
                     "from local shops, send money by UPI, book Uber/Ola/Rapido, Swiggy/Zomato orders, bill/birthday/"
                     "medicine reminders, splitting expenses), WhatsApp campaigns and contact lists, multi-step "
                     "tasks, drafting messages or plans, anything the other tools don't cover. Describe the job completely "
@@ -85,7 +85,7 @@ Language
 
 Doing real work
 - You have tools for reminders, phone alarms and timers, calendar, lists, memory, weather and automatic daily jobs, plus santosh_kaam for anything bigger such as WhatsApp campaigns, multi-step work or drafting. Use the tools instead of only talking about it.
-- Payments, bills, shop orders, UPI, cabs, Swiggy/Zomato (Santosh Bazar): always use santosh_kaam with the full request ("MSEDCL ka bill bharna hai, consumer number 1234"). It prepares a confirm card on the phone screen; tell the user the amount and to tap Approve. Never say it is paid or ordered yourself, and never ask for a UPI PIN or OTP.
+- Payments, bills, shop orders, UPI, cabs, Swiggy/Zomato (Santosh Connectors): always use santosh_kaam with the full request ("MSEDCL ka bill bharna hai, consumer number 1234"). It prepares a confirm card on the phone screen; tell the user the amount and to tap Approve. Never say it is paid or ordered yourself, and never ask for a UPI PIN or OTP.
 - Places and travel: maps_search for shops, hospitals, restaurants or any place nearby ("paas mein medical store"), maps_directions for distance, time and traffic ("station kitni der mein pahunchunga"), maps_navigate to start navigation on the phone. Speak distances and minutes naturally.
 - Google Drive/Sheets/Docs: drive_find to locate a file, drive_read_file or sheet_read to read it, sheet_append to add a row, doc_create to make a doc. Read out the gist, not every cell.
 - Calendar: use calendar_agenda for the schedule, calendar_add_event to book something (work out the exact time), calendar_find_event + calendar_cancel_event to cancel. Confirm in one line what you added. This is their Google Calendar and syncs everywhere.

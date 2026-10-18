@@ -1,4 +1,4 @@
-"""Santosh Bazar: 159 Indian app/biller/shop packs behind three tools, so the model's tool list stays small."""
+"""Santosh Connectors: 159 Indian app/biller/shop packs behind three tools, so the model's tool list stays small."""
 from __future__ import annotations
 
 import asyncio
@@ -9,7 +9,7 @@ from .tools import Ctx, ToolError
 
 BAZAR_TOOLS = [
     {"name": "bazar_find", "description": (
-        "Find Santosh Bazar packs for a task: bill payments (98 electricity/gas/LPG/mobile/broadband/DTH billers), local shops "
+        "Find Santosh Connectors (plugins) for a task: bill payments (98 electricity/gas/LPG/mobile/broadband/DTH billers), local shops "
         "(kirana, dairy, tiffin, medical, clinic, salon, plumber, local ISP...), UPI apps (PhonePe, GPay, Paytm, BHIM...), "
         "ride apps (Uber, Ola, Rapido...), food/grocery apps (Swiggy, Instamart, Zomato, Zepto, Dineout, District) and "
         "helpers (bill reminders, birthdays, medicine, spend report from bank SMS, expense split, family, festival greetings). "

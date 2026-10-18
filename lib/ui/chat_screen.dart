@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../state.dart';
+import 'approve_sheet.dart';
 import 'glass.dart';
 import 'live_santosh.dart';
 import '../nav.dart';
@@ -103,8 +106,8 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 8, 16, 12), children: [
               if (app.feed.length <= 1) _hero(),
-              for (final it in app.feed) _item(it),
-              if (app.typing) const Align(alignment: Alignment.centerLeft, child: _Typing()),
+              for (final it in app.feed) Stagger(key: ObjectKey(it), index: 0, child: _item(it)),
+              if (app.typing) Align(alignment: Alignment.centerLeft, child: _Typing(step: app.currentStep)),
             ]),
           ),
           _quick(),
@@ -116,7 +119,7 @@ class _ChatScreenState extends State<ChatScreen> {
         margin: const EdgeInsets.fromLTRB(14, 8, 14, 6),
         padding: const EdgeInsets.all(10),
         child: Row(children: [
-          LiveAvatar(online: app.connected, busy: app.typing),
+          LiveAvatar(online: app.connected, busy: app.typing, feeling: app.mood),
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -126,7 +129,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: app.connected ? C.ok : C.muted)),
             ]),
           ),
-          if (app.dryRun) const Pill('WHATSAPP TEST', fg: C.warn, bg: Color(0xE6FEF3C7)),
+          if (app.dryRun) const Pill('WHATSAPP TEST', fg: C.warn, bg: Color(0x2EFFB15C)),
           if (widget.onVoice != null)
             IconButton(tooltip: 'Bolkar baat karein', onPressed: widget.onVoice, icon: const Icon(Icons.graphic_eq_rounded, color: C.accent)),
           IconButton(tooltip: 'Naya chat', onPressed: () => app.connect(fresh: true), icon: const Icon(Icons.add_comment_outlined, color: C.chip)),
@@ -138,15 +141,15 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: const Color(0xE6FFEDD5), borderRadius: BorderRadius.circular(16)),
-          child: Text(onTap == null ? t : '$t  (dobara koshish ke liye tap kijiye)', style: const TextStyle(fontSize: 13, color: Color(0xFF7C2D12))),
+          decoration: BoxDecoration(color: const Color(0x2EFFB15C), borderRadius: BorderRadius.circular(16)),
+          child: Text(onTap == null ? t : '$t  (dobara koshish ke liye tap kijiye)', style: const TextStyle(fontSize: 13, color: Color(0xFFFFD9A8))),
         ),
       );
 
   Widget _hero() => Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Column(children: [
-          LiveSantosh(mood: app.typing ? 'working' : 'happy', size: 190),
+          LiveSantosh(feeling: app.mood, size: 200, thought: true),
           const SizedBox(height: 6),
           const Text('Boliye: "Kal subah 7 baje yaad dilana", "Doodh list mein daalo", "Pune ka mausam?"',
               textAlign: TextAlign.center, style: TextStyle(color: C.muted, fontSize: 13.5)),
@@ -161,7 +164,7 @@ class _ChatScreenState extends State<ChatScreen> {
         final bubble = me
             ? Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                decoration: BoxDecoration(gradient: C.gradient, borderRadius: const BorderRadius.only(
+                decoration: BoxDecoration(gradient: C.youGradient, boxShadow: const [BoxShadow(color: Color(0x597C5CFF), blurRadius: 18, offset: Offset(0, 6))], borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(22), topRight: Radius.circular(22), bottomLeft: Radius.circular(22), bottomRight: Radius.circular(8))),
                 child: SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45)),
               )
@@ -188,7 +191,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       _stepDot(s['state'] as String? ?? ''),
                       const SizedBox(width: 10),
-                      Flexible(child: Text(s['label'] as String? ?? '', style: const TextStyle(fontSize: 13, color: Color(0xFF3B3360)))),
+                      Flexible(child: Text(s['label'] as String? ?? '', style: const TextStyle(fontSize: 13, color: Color(0xFFD7D2F2)))),
                     ]),
                   ),
               ]),
@@ -208,7 +211,7 @@ class _ChatScreenState extends State<ChatScreen> {
       default:
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: Align(alignment: Alignment.centerRight, child: Pill(it.data['text'] as String? ?? '', bg: const Color(0xCCFFFFFF))),
+          child: Align(alignment: Alignment.centerRight, child: Pill(it.data['text'] as String? ?? '', bg: const Color(0x1FFFFFFF))),
         );
     }
   }
@@ -220,7 +223,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return Container(
       width: 20,
       height: 20,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: state == 'done' ? const Color(0xFF16A34A) : const Color(0xFFF59E0B)),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: state == 'done' ? const Color(0xFF34D399) : const Color(0xFFFFC27A)),
       child: Icon(state == 'done' ? Icons.check : Icons.priority_high, size: 13, color: Colors.white),
     );
   }
@@ -233,7 +236,7 @@ class _ChatScreenState extends State<ChatScreen> {
         for (final s in q)
           Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: ActionChip(label: Text(s), onPressed: () => app.send(s), backgroundColor: const Color(0xB3FFFFFF),
+            child: ActionChip(label: Text(s), onPressed: () => app.send(s), backgroundColor: const Color(0x14FFFFFF),
                 labelStyle: const TextStyle(color: C.chip, fontWeight: FontWeight.w600, fontSize: 13)),
           ),
       ]),
@@ -262,7 +265,7 @@ class _ChatScreenState extends State<ChatScreen> {
               return Semantics(
                 button: true,
                 label: typing ? 'Send' : (_listening ? 'Stop listening' : 'Speak to Santosh'),
-                child: GestureDetector(
+                child: Press(
                   onTap: typing ? _send : _mic,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -271,9 +274,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     decoration: BoxDecoration(
                       gradient: C.gradient,
                       borderRadius: BorderRadius.circular(17),
-                      boxShadow: [BoxShadow(color: const Color(0x5E7C3AED), blurRadius: _listening ? 26 : 16, spreadRadius: _listening ? 4 : 0)],
+                      boxShadow: [BoxShadow(color: const Color(0x59FFA046), blurRadius: _listening ? 26 : 16, spreadRadius: _listening ? 4 : 0)],
                     ),
-                    child: Icon(typing ? Icons.send_rounded : (_listening ? Icons.stop_rounded : Icons.mic_rounded), color: Colors.white),
+                    child: Icon(typing ? Icons.send_rounded : (_listening ? Icons.stop_rounded : Icons.mic_rounded), color: C.onAccent),
                   ),
                 ),
               );
@@ -283,13 +286,60 @@ class _ChatScreenState extends State<ChatScreen> {
       );
 }
 
-class _Typing extends StatelessWidget {
-  const _Typing();
+/// Santosh at work: his working pose, bouncing dots and what he is doing right now.
+class _Typing extends StatefulWidget {
+  const _Typing({this.step});
+  final String? step;
   @override
-  Widget build(BuildContext context) => const Glass(
-        radius: 18,
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: SizedBox(width: 40, child: LinearProgressIndicator(minHeight: 4, color: C.accent, backgroundColor: Color(0x226D3FE0))),
+  State<_Typing> createState() => _TypingState();
+}
+
+class _TypingState extends State<_Typing> with SingleTickerProviderStateMixin {
+  late final AnimationController _t = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat();
+  @override
+  void dispose() {
+    _t.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          AnimatedBuilder(
+            animation: _t,
+            builder: (context, c) => Transform.translate(offset: Offset(0, -3 * (math.sin(_t.value * 2 * math.pi)).abs()), child: c),
+            child: Image.asset('assets/images/santosh_working.png', height: 74),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Glass(
+              radius: 18,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                AnimatedBuilder(
+                  animation: _t,
+                  builder: (context, _) => Row(mainAxisSize: MainAxisSize.min, children: [
+                    for (var i = 0; i < 3; i++)
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: C.accent.withOpacity(.35 + .65 * (math.sin((_t.value - i * .18) * 2 * math.pi) * .5 + .5)),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ]),
+                ),
+                if (widget.step != null) ...[
+                  const SizedBox(width: 10),
+                  Flexible(child: Text(widget.step!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.chip))),
+                ],
+              ]),
+            ),
+          ),
+        ]),
       );
 }
 
@@ -312,7 +362,7 @@ class _CampaignCard extends StatelessWidget {
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 3),
             padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(color: const Color(0xB3FFFFFF), borderRadius: BorderRadius.circular(14)),
+            decoration: BoxDecoration(color: const Color(0x14FFFFFF), borderRadius: BorderRadius.circular(14)),
             child: Column(children: [
               Text('${x ?? 0}', style: display(22)),
               Text(label, style: const TextStyle(fontSize: 11, color: C.muted)),
@@ -338,8 +388,8 @@ class _CampaignCard extends StatelessWidget {
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: const Color(0xB3FFFFFF), borderRadius: BorderRadius.circular(14)),
-              child: Text('${tpl['preview'] ?? tpl['body']}', style: const TextStyle(fontSize: 13, color: Color(0xFF3B3360))),
+              decoration: BoxDecoration(color: const Color(0x14FFFFFF), borderRadius: BorderRadius.circular(14)),
+              child: Text('${tpl['preview'] ?? tpl['body']}', style: const TextStyle(fontSize: 13, color: Color(0xFFD7D2F2))),
             ),
           ],
           if (status == 'ready') ...[const SizedBox(height: 10), GradientButton(label: 'Haan, bhej do', height: 46, onTap: () => app.campaignAction(v['id'], 'send'))],
@@ -388,8 +438,8 @@ class _EmailCard extends StatelessWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: const Color(0xB3FFFFFF), borderRadius: BorderRadius.circular(14)),
-            child: Text(body, style: const TextStyle(fontSize: 13.5, height: 1.4, color: Color(0xFF3B3360))),
+            decoration: BoxDecoration(color: const Color(0x14FFFFFF), borderRadius: BorderRadius.circular(14)),
+            child: Text(body, style: const TextStyle(fontSize: 13.5, height: 1.4, color: Color(0xFFD7D2F2))),
           ),
           if (v['error'] != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(v['error'] as String, style: const TextStyle(color: C.bad, fontSize: 12))),
           if (status == 'pending' || status == 'failed') ...[
@@ -487,7 +537,7 @@ class _BazarCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Row(children: [
-                Expanded(child: Text(i['name'] as String? ?? '', style: const TextStyle(fontSize: 13.5, color: Color(0xFF3B3360)))),
+                Expanded(child: Text(i['name'] as String? ?? '', style: const TextStyle(fontSize: 13.5, color: Color(0xFFD7D2F2)))),
                 Text(i['price'] as String? ?? '', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
               ]),
             ),
@@ -505,8 +555,8 @@ class _BazarCard extends StatelessWidget {
           if (status == 'pending') ...[
             const SizedBox(height: 10),
             Row(children: [
-              Expanded(child: GradientButton(label: busy ? 'Ho raha hai…' : 'Approve', height: 46, icon: Icons.check_rounded,
-                  onTap: busy ? null : () => app.decideBazar(v['id'] as String, 'approve'))),
+              Expanded(child: GradientButton(label: busy ? 'Ho raha hai…' : 'Approve karein', height: 46, icon: Icons.check_rounded,
+                  onTap: busy ? null : () => showApproveSheet(context, app, v))),
               const SizedBox(width: 8),
               TextButton(onPressed: busy ? null : () => app.decideBazar(v['id'] as String, 'reject'), child: const Text('Cancel')),
             ]),

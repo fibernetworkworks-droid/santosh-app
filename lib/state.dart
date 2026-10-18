@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api.dart';
 import 'device.dart';
+import 'emotion.dart';
 import 'native.dart';
 
 class FeedItem {
@@ -75,10 +76,51 @@ class Santosh extends ChangeNotifier {
   /// Fresh replies from Santosh (not history replays). The voice screen listens to this.
   Stream<Map<String, dynamic>> get replies => _replies.stream;
 
+  // ---------------- Santosh's feelings ----------------
+  Mood mood = Mood.idle;
+  Timer? _moodTimer;
+  DateTime? _stressedUntil;      // you sounded stressed: he stays gentle for a while
+  bool get userStressed => _stressedUntil != null && DateTime.now().isBefore(_stressedUntil!);
+
+  void setMood(Mood m, {Duration hold = const Duration(seconds: 7)}) {
+    _moodTimer?.cancel();
+    mood = m;
+    if (hold > Duration.zero) {
+      _moodTimer = Timer(hold, () {
+        mood = typing ? Mood.think : (userStressed ? Mood.care : Mood.idle);
+        notifyListeners();
+      });
+    }
+    notifyListeners();
+  }
+
+  /// React to what you said (typed or spoken).
+  void feelUser(String text) {
+    final f = feel(text);
+    if (f == null) {
+      setMood(userStressed ? Mood.care : Mood.listening, hold: const Duration(seconds: 4));
+      return;
+    }
+    if (f.mood == Mood.care) _stressedUntil = DateTime.now().add(const Duration(minutes: 15));
+    if (f.mood == Mood.excited || f.mood == Mood.happy) _stressedUntil = null;
+    setMood(f.mood, hold: Duration(seconds: (5 + f.intensity * 6).round()));
+  }
+
+  /// React to what he himself says (so his body matches his words).
+  void feelReply(String text) {
+    final f = feel(text);
+    var m = f?.mood ?? Mood.happy;
+    if (m == Mood.think || m == Mood.work) m = Mood.happy; // he finished: no longer pondering
+    if (userStressed && m != Mood.excited) m = Mood.care;
+    setMood(m, hold: const Duration(seconds: 8));
+  }
+
   final List<FeedItem> feed = [];
   final Map<String, FeedItem> _campaigns = {};
   final Map<String, FeedItem> _emails = {};
   final Map<String, FeedItem> _bazar = {};   // confirm cards by approval id
+  List<Map<String, dynamic>> get pendingApprovals =>
+      [for (final it in _bazar.values) if ((it.data['status'] ?? 'pending') == 'pending') it.data];
   int bazarLinkedTick = 0;                    // bumps when an app account got linked (Apps screen refreshes)
   FeedItem? _steps;
   List<Map<String, dynamic>> reminders = [];
@@ -255,6 +297,7 @@ class Santosh extends ChangeNotifier {
     if (text.isEmpty || api == null || conversationId == null) return false;
     _lastInputWasVoice = voice;
     pushLocation(); // "near me", directions and cab pickup use where the phone is
+    feelUser(text);
     try {
       await api!.sendMessage(conversationId!, text, voice: spoken);
       return true;
@@ -315,6 +358,30 @@ class Santosh extends ChangeNotifier {
       error = e.toString();
     }
     notifyListeners();
+  }
+
+  /// When the app was last in front of you (for "Jab aap offline the").
+  Future<void> markSeen() async => _prefs.setString('last_seen', DateTime.now().toUtc().toIso8601String());
+
+  /// What Santosh did while you were away (≥ 2 hours), or null.
+  Future<Map<String, dynamic>?> catchUp() async {
+    final raw = _prefs.getString('last_seen');
+    if (raw == null) {
+      await markSeen();
+      return null;
+    }
+    if (api == null) return null;
+    final since = DateTime.tryParse(raw);
+    if (since == null || DateTime.now().toUtc().difference(since) < const Duration(hours: 2)) return null;
+    await markSeen();
+    try {
+      final r = await api!.catchup(since);
+      final n = (r['count'] as num? ?? 0).toInt() + ((r['pending'] as List?)?.length ?? 0);
+      if (n == 0) return null;
+      return {...r, 'away_hours': DateTime.now().toUtc().difference(since).inHours};
+    } catch (_) {
+      return null;
+    }
   }
 
   DateTime? _locAt;
@@ -400,6 +467,7 @@ class Santosh extends ChangeNotifier {
         final fresh = !_replaying && ev.at.isAfter(_connectedAt.subtract(const Duration(seconds: 5)));
         if (p['role'] == 'assistant' && fresh) {
           _syncBazar();
+          feelReply(p['text'] as String? ?? '');
           _replies.add(p);
           if (inBackground && !backgroundRunning) Device.instance.showNow('Santosh', p['text'] as String? ?? '');
           if (!voiceMode && _lastInputWasVoice && speakReplies && p['source'] == 'agent') _speak(p['text'] as String? ?? '');
@@ -409,6 +477,8 @@ class Santosh extends ChangeNotifier {
         typing = p['on'] == true && !_replaying;
         if (p['on'] == true) _steps = null;
         if (!typing) currentStep = null;
+        if (typing && mood != Mood.care && mood != Mood.excited && mood != Mood.wow) setMood(Mood.think, hold: Duration.zero);
+        if (!typing && !_replaying && (mood == Mood.think || mood == Mood.work)) setMood(userStressed ? Mood.care : Mood.idle, hold: Duration.zero);
         break;
       case 'step':
         if (_steps == null) {
@@ -416,6 +486,7 @@ class Santosh extends ChangeNotifier {
           feed.add(_steps!);
         }
         if (!_replaying) currentStep = p['state'] == 'running' ? p['label'] as String? : currentStep;
+        if (!_replaying && p['state'] == 'running' && mood != Mood.care) setMood(Mood.work, hold: Duration.zero);
         final i = _steps!.steps.indexWhere((s) => s['id'] == p['id']);
         if (i >= 0) {
           _steps!.steps[i] = p;
@@ -456,6 +527,7 @@ class Santosh extends ChangeNotifier {
           _bazar[id] = FeedItem('bazar', Map<String, dynamic>.from(p));
           feed.add(_bazar[id]!);
           if (inBackground && !_replaying) Device.instance.showNow('Santosh: approve karein', '${p['title'] ?? ''} ${p['amount'] ?? ''}');
+          if (!_replaying) setMood(Mood.think, hold: const Duration(seconds: 10));
         }
         break;
       case 'bazar_open':
@@ -509,6 +581,7 @@ class Santosh extends ChangeNotifier {
 
   @override
   void dispose() {
+    _moodTimer?.cancel();
     _replies.close();
     _sub?.cancel();
     super.dispose();

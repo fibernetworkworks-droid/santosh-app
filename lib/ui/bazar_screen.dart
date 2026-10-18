@@ -5,8 +5,9 @@ import 'glass.dart';
 
 /// Santosh Bazar: all 159 packs with live status, linked app accounts, spend limits and delivery details.
 class BazarScreen extends StatefulWidget {
-  const BazarScreen({super.key, required this.app});
+  const BazarScreen({super.key, required this.app, this.embedded = false});
   final Santosh app;
+  final bool embedded; // shown as the Connect tab (no back bar)
   @override
   State<BazarScreen> createState() => _BazarScreenState();
 }
@@ -184,9 +185,68 @@ class _BazarScreenState extends State<BazarScreen> {
         _ => C.muted,
       };
 
+  String _cat0 = '';
+
+  Widget _chip(String label, String value) {
+    final on = _cat0 == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Press(
+        onTap: () => setState(() => _cat0 = value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: on ? C.accent : const Color(0x17FFFFFF),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: on ? C.accent : const Color(0x29FFFFFF)),
+          ),
+          child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: on ? C.onAccent : C.ink)),
+        ),
+      ),
+    );
+  }
+
+  Widget _appCard(Map<String, dynamic> a) {
+    final st = a['status'] as String? ?? '';
+    final name = a['name'] as String? ?? '';
+    return Glass(
+      radius: 20,
+      padding: const EdgeInsets.all(14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: const Color(0x24FFB15C), borderRadius: BorderRadius.circular(11)),
+            child: Text(name.isEmpty ? '?' : name[0], style: display(16, color: C.accentSoft)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700))),
+        ]),
+        const SizedBox(height: 10),
+        switch (st) {
+          'needs_link' => GlassButton(label: 'Link karein', color: C.accentSoft, height: 38, onTap: () async {
+              final err = await app.linkApp(a['pack_id'] as String);
+              if (err != null && mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+            }),
+          'ready' => GlassButton(label: 'Juda hai · hatao', color: C.ok, height: 38, onTap: () async {
+              await app.api!.bazarUnlink(a['pack_id'] as String);
+              _load();
+            }),
+          _ => Container(height: 38, alignment: Alignment.center, child: Text(_statusText[st] ?? st, style: const TextStyle(color: C.faint, fontSize: 12.5, fontWeight: FontWeight.w700))),
+        },
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final packs = ((_cat?['packs'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).where((p) {
+      if (_cat0.isNotEmpty && p['executor'] != _cat0) return false;
       if (_filter.isEmpty) return true;
       final f = _filter.toLowerCase();
       return '${p['name']} ${p['category']} ${p['kind']}'.toLowerCase().contains(f);
@@ -195,46 +255,50 @@ class _BazarScreenState extends State<BazarScreen> {
     for (final p in packs) {
       byCat.putIfAbsent(p['category'] as String, () => []).add(p);
     }
-    return Scaffold(
-      appBar: AppBar(title: Text('Santosh Bazar · ${_cat?['total'] ?? 159} apps')),
-      body: RefreshIndicator(
+    final list = RefreshIndicator(
+        color: C.accent,
         onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+        child: ListView(padding: EdgeInsets.fromLTRB(16, widget.embedded ? 18 : 8, 16, 32), children: [
+          if (widget.embedded) ...[
+            Text('Connectors', style: display(28)),
+            const SizedBox(height: 4),
+            Text('${_cat?['total'] ?? 159} plugins · jodiye, Santosh inse kaam poora karega', style: const TextStyle(color: C.muted, fontSize: 13.5)),
+            const SizedBox(height: 16),
+          ],
           if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
           Glass(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Apps jodiye', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-              const SizedBox(height: 4),
-              const Text('Ek baar login, phir Santosh aapke account se order karega. Har order se pehle aapse poochega.',
-                  style: TextStyle(color: C.muted, fontSize: 12.5)),
-              const SizedBox(height: 8),
-              for (final a in _apps)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(a['name'] as String? ?? ''),
-                  subtitle: Text(_statusText[a['status']] ?? a['status'] as String? ?? '', style: TextStyle(color: _color(a['status'] as String? ?? ''))),
-                  trailing: switch (a['status']) {
-                    'needs_link' => FilledButton(
-                        onPressed: () async {
-                          final err = await app.linkApp(a['pack_id'] as String);
-                          if (err != null && context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
-                        },
-                        child: const Text('Link')),
-                    'ready' => TextButton(
-                        onPressed: () async {
-                          await app.api!.bazarUnlink(a['pack_id'] as String);
-                          _load();
-                        },
-                        child: const Text('Hatao')),
-                    _ => null,
-                  },
-                ),
+            radius: 18,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+            child: TextField(
+              style: const TextStyle(color: C.ink, fontSize: 15),
+              decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded, color: C.muted), hintText: 'Plugin dhoondhiye: bijli, kirana, Uber…',
+                  border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none),
+              onChanged: (v) => setState(() => _filter = v.trim()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              _chip('Sab', ''), _chip('Bills', 'bbps'), _chip('Dukaan', 'shop'), _chip('UPI', 'upi'), _chip('Cab', 'ride'),
+              _chip('Food apps', 'mcp'), _chip('Helpers', 'native'),
             ]),
+          ),
+          const SizedBox(height: 18),
+          const Caption('APNE ACCOUNTS CONNECT KAREIN'),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 1.45,
+            children: [for (final (i, a) in _apps.indexed) Stagger(index: i, child: _appCard(a))],
           ),
           const SizedBox(height: 14),
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Kharch ki seema (auto-approve)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+              Text('Kharch ki seema (auto-approve)', style: display(16)),
               const SizedBox(height: 4),
               const Text('0 = har kharch par aapka tap. Seema ke andar sirf pehle approve kiye hue dukaan/biller ka order apne aap hoga. '
                   'Kisi insaan ko paise hamesha aapke tap aur UPI PIN se hi jayenge.', style: TextStyle(color: C.muted, fontSize: 12.5)),
@@ -255,24 +319,25 @@ class _BazarScreenState extends State<BazarScreen> {
             child: ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.add_business_rounded, color: C.accent),
-              title: const Text('Dukaan jodiye', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: Text('Dukaan jodiye', style: display(15.5)),
               subtitle: const Text('Kirana, dairy, medical, tiffin… apni ya paas ki dukaan Santosh par laaiye'),
               onTap: () => _addShop(context),
             ),
           ),
-          const SizedBox(height: 14),
-          TextField(
-            decoration: const InputDecoration(prefixIcon: Icon(Icons.search), labelText: 'Dhoondhiye: bijli, kirana, phonepe, uber…'),
-            onChanged: (v) => setState(() => _filter = v.trim()),
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 18),
+          const Caption('SAB PLUGINS'),
           if (_cat == null && _err == null) const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())),
           for (final e in byCat.entries)
             Padding(
               padding: const EdgeInsets.only(top: 10),
               child: Glass(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
                 child: ExpansionTile(
                   tilePadding: EdgeInsets.zero,
+                  shape: const Border(),
+                  collapsedShape: const Border(),
+                  iconColor: C.accent,
+                  collapsedIconColor: C.muted,
                   title: Text('${e.key} · ${e.value.length}', style: const TextStyle(fontWeight: FontWeight.w700)),
                   initiallyExpanded: _filter.isNotEmpty,
                   children: [
@@ -281,8 +346,9 @@ class _BazarScreenState extends State<BazarScreen> {
                         dense: true,
                         contentPadding: EdgeInsets.zero,
                         title: Text(p['name'] as String? ?? ''),
-                        subtitle: Text(p['kind'] as String? ?? '', style: const TextStyle(fontSize: 12)),
-                        trailing: Pill(_statusText[p['status']] ?? '', fg: _color(p['status'] as String? ?? '')),
+                        subtitle: Text(p['kind'] as String? ?? '', style: const TextStyle(fontSize: 12, color: C.muted)),
+                        trailing: Pill((_statusText[p['status']] ?? '').toUpperCase(), fg: _color(p['status'] as String? ?? ''),
+                            bg: _color(p['status'] as String? ?? '').withOpacity(.14)),
                       ),
                   ],
                 ),
@@ -292,7 +358,12 @@ class _BazarScreenState extends State<BazarScreen> {
           const Text('Chat mein boliye: "MSEDCL ka bill bhar do", "Ramesh ke dukaan se 5 kilo atta", "Priya ko 500 bhejo PhonePe se", '
               '"Station ke liye Uber". Demo = test bill, asli paise nahi.', style: TextStyle(color: C.muted, fontSize: 12.5)),
         ]),
-      ),
+      );
+    if (widget.embedded) return list;
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(title: Text('Connectors · ${_cat?['total'] ?? 159} plugins')),
+      body: Aurora(child: SafeArea(child: list)),
     );
   }
 }

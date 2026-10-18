@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'device.dart';
+import 'emotion.dart';
 import 'nav.dart';
 import 'state.dart';
+import 'ui/bazar_screen.dart';
+import 'ui/catchup_screen.dart';
 import 'ui/chat_screen.dart';
 import 'ui/glass.dart';
 import 'ui/profile_screen.dart';
@@ -18,6 +21,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Device.instance.init();
   final app = await Santosh.load();
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light,
+    systemNavigationBarColor: Color(0xFF0B0A1A), systemNavigationBarIconBrightness: Brightness.light));
   runApp(SantoshApp(app: app));
 }
 
@@ -66,7 +72,12 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
     widget.app.inBackground = s != AppLifecycleState.resumed;
+    if (s == AppLifecycleState.paused) widget.app.markSeen();
     if (s == AppLifecycleState.resumed && widget.app.configured) {
+      widget.app.catchUp().then((r) {
+        final nav = navKey.currentState;
+        if (r != null && nav != null) nav.push(MaterialPageRoute(builder: (_) => CatchUpScreen(app: widget.app, data: r)));
+      });
       widget.app.refreshReminders();
       widget.app.refreshLists();
       widget.app.refreshRoutines();
@@ -99,44 +110,122 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   int _tab = 0;
 
+  void _go(int i) {
+    if (i == _tab) return;
+    HapticFeedback.selectionClick();
+    setState(() => _tab = i);
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = [
-      ChatScreen(app: widget.app, onVoice: () => setState(() => _tab = 1)),
-      // built only while open: the 3D view and the microphone stop when you leave the tab
-      _tab == 1
+      TodayScreen(app: widget.app, onTab: _go),
+      ChatScreen(app: widget.app, onVoice: () => _go(2)),
+      // built only while open: the microphone stops when you leave the tab
+      _tab == 2
           ? ListenableBuilder(
               listenable: widget.app,
               // live human-like call when the server has realtime voice, otherwise the phone's own speech
               builder: (context, _) => widget.app.realtimeVoice ? LiveVoiceScreen(app: widget.app) : VoiceScreen(app: widget.app),
             )
           : const SizedBox.shrink(),
-      TodayScreen(app: widget.app),
+      BazarScreen(app: widget.app, embedded: true),
       ProfileScreen(app: widget.app, onReset: widget.onReset),
     ];
     return Scaffold(
-      body: Aurora(child: SafeArea(bottom: false, child: IndexedStack(index: _tab, children: pages))),
-      bottomNavigationBar: SafeArea(
-        child: Glass(
-          margin: const EdgeInsets.fromLTRB(22, 0, 22, 10),
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          radius: 26,
-          child: NavigationBar(
+      extendBody: true,
+      body: ListenableBuilder(
+        listenable: widget.app,
+        builder: (context, child) => Aurora(tint: _tab == 2 ? moodStyles[widget.app.mood]!.aura : null, child: child!),
+        child: SafeArea(
+          bottom: false,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 280),
+            switchInCurve: Curves.easeOutCubic,
+            transitionBuilder: (c, a) => FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: const Offset(0, .015), end: Offset.zero).animate(a), child: c)),
+            child: KeyedSubtree(key: ValueKey(_tab), child: Padding(padding: const EdgeInsets.only(bottom: 92), child: pages[_tab])),
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(child: _NavBar(tab: _tab, onTap: _go)),
+    );
+  }
+}
+
+/// Floating glass tab bar with the live-voice button raised in the middle.
+class _NavBar extends StatelessWidget {
+  const _NavBar({required this.tab, required this.onTap});
+  final int tab;
+  final ValueChanged<int> onTap;
+
+  Widget _item(int i, IconData icon, IconData on, String label) {
+    final sel = tab == i;
+    return Expanded(
+      child: Semantics(
+        selected: sel,
+        button: true,
+        label: label,
+        child: Press(
+          onTap: () => onTap(i),
+          haptic: false,
+          child: SizedBox(
             height: 62,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            indicatorColor: const Color(0x226D3FE0),
-            selectedIndex: _tab,
-            onDestinationSelected: (i) => setState(() => _tab = i),
-            destinations: const [
-              NavigationDestination(icon: Icon(Icons.chat_bubble_outline_rounded), selectedIcon: Icon(Icons.chat_bubble_rounded, color: C.accent), label: 'Chat'),
-              NavigationDestination(icon: Icon(Icons.graphic_eq_rounded), selectedIcon: Icon(Icons.graphic_eq_rounded, color: C.accent), label: 'Baat'),
-              NavigationDestination(icon: Icon(Icons.event_note_outlined), selectedIcon: Icon(Icons.event_note_rounded, color: C.accent), label: 'Aaj'),
-              NavigationDestination(icon: Icon(Icons.person_outline_rounded), selectedIcon: Icon(Icons.person_rounded, color: C.accent), label: 'Profile'),
-            ],
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              AnimatedScale(scale: sel ? 1.12 : 1, duration: const Duration(milliseconds: 220), curve: Curves.easeOutBack,
+                  child: Icon(sel ? on : icon, color: sel ? C.accent : C.muted, size: 23)),
+              const SizedBox(height: 3),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: TextStyle(fontSize: 11, fontWeight: sel ? FontWeight.w800 : FontWeight.w600, color: sel ? C.accent : C.muted),
+                child: Text(label),
+              ),
+            ]),
           ),
         ),
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        child: SizedBox(
+          height: 84,
+          child: Stack(clipBehavior: Clip.none, alignment: Alignment.bottomCenter, children: [
+            Glass(
+              radius: 26,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              opacity: .1,
+              child: Row(children: [
+                _item(0, Icons.home_outlined, Icons.home_rounded, 'Aaj'),
+                _item(1, Icons.chat_bubble_outline_rounded, Icons.chat_bubble_rounded, 'Chat'),
+                const Expanded(child: SizedBox()),
+                _item(3, Icons.power_outlined, Icons.power_rounded, 'Connect'),
+                _item(4, Icons.person_outline_rounded, Icons.person_rounded, 'Main'),
+              ]),
+            ),
+            Positioned(
+              top: -4,
+              child: Semantics(
+                button: true,
+                label: 'Baat — live voice',
+                child: Press(
+                  onTap: () => onTap(2),
+                  child: Container(
+                    width: 62,
+                    height: 62,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const RadialGradient(colors: [Color(0xFFFFE3BE), Color(0xFFFF9A3C), Color(0xFFB45CFF)], stops: [0, .35, 1], center: Alignment(-.35, -.4)),
+                      boxShadow: [BoxShadow(color: const Color(0xFFFF8C3C).withOpacity(tab == 2 ? .75 : .5), blurRadius: tab == 2 ? 30 : 22, offset: const Offset(0, 8))],
+                      border: Border.all(color: Colors.white.withOpacity(tab == 2 ? .7 : .25), width: 2),
+                    ),
+                    child: const Icon(Icons.mic_rounded, color: C.onAccent, size: 28),
+                  ),
+                ),
+              ),
+            ),
+          ]),
+        ),
+      );
 }

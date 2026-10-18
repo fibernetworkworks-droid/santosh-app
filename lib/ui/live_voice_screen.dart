@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 import '../live_voice.dart';
 import '../state.dart';
 import 'glass.dart';
-import 'santosh3d.dart';
+import '../emotion.dart';
+import 'live_santosh.dart';
 
 enum _Act { idle, connecting, listening, userTalking, working, speaking }
 
@@ -19,7 +20,6 @@ class LiveVoiceScreen extends StatefulWidget {
 }
 
 class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProviderStateMixin {
-  final _ctl = Santosh3DController();
   late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat();
   LiveVoice? _call;
   Timer? _tick;
@@ -90,9 +90,6 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
         _tool = null;
       });
     }
-    _ctl.talk(false);
-    _ctl.listen(false);
-    _ctl.mood('idle');
   }
 
   void _onClosed(String? reason) {
@@ -105,9 +102,6 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
       _act = _Act.idle;
       _tool = null;
     });
-    _ctl.talk(false);
-    _ctl.listen(false);
-    _ctl.mood('idle');
   }
 
   void _onEvent(Map<String, dynamic> e) {
@@ -124,6 +118,8 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
         setState(() => _reply = e['text'] as String? ?? '');
       case 'turn_done':
         _turnOpen = false;
+        if (_heard.isNotEmpty) app.feelUser(_heard);
+        if (_reply.isNotEmpty) Future.delayed(const Duration(milliseconds: 600), () => mounted ? app.feelReply(_reply) : null);
       case 'tool':
         setState(() => _tool = e['state'] == 'running' ? e['label'] as String? : null);
       case 'error':
@@ -147,31 +143,39 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
     } else {
       next = _Act.listening;
     }
-    if (next != _act) setState(() => _act = next);
+    if (next != _act) {
+      if (next == _Act.userTalking) app.setMood(app.userStressed ? Mood.care : Mood.listening, hold: Duration.zero);
+      setState(() => _act = next);
+    } else if (next == _Act.speaking || next == _Act.userTalking) {
+      setState(() {}); // keep his body in time with the voice level
+    }
     switch (next) {
       case _Act.speaking:
-        _ctl.listen(false);
-        _ctl.talk(true);
-        _ctl.mood('happy');
-        _ctl.level(call.outLevel);
       case _Act.userTalking:
-        _ctl.talk(false);
-        _ctl.listen(true);
-        _ctl.mood('happy');
-        _ctl.level(call.inLevel);
       case _Act.working:
-        _ctl.talk(false);
-        _ctl.listen(false);
-        _ctl.mood('working');
       default:
-        _ctl.talk(false);
-        _ctl.listen(false);
-        _ctl.mood('idle');
+    }
+  }
+
+  /// What his body shows: who is talking first, then how he feels about it.
+  Mood _shownMood() {
+    switch (_act) {
+      case _Act.userTalking:
+        return app.userStressed ? Mood.care : Mood.listening;
+      case _Act.working:
+        return Mood.work;
+      case _Act.speaking:
+        const expressive = {Mood.happy, Mood.excited, Mood.care, Mood.wow};
+        return expressive.contains(app.mood) ? app.mood : Mood.talking;
+      case _Act.connecting:
+        return Mood.think;
+      default:
+        return app.mood == Mood.think || app.mood == Mood.work ? Mood.idle : app.mood;
     }
   }
 
   String get _status => switch (_act) {
-        _Act.idle => _note ?? 'Orb dabaiye aur Santosh se seedhe baat kijiye',
+        _Act.idle => _note ?? 'Call button dabaiye aur Santosh se seedhe baat kijiye',
         _Act.connecting => 'Santosh ko call lag raha hai…',
         _Act.listening => _muted ? 'Mic band hai' : 'Boliye, Santosh sun raha hai',
         _Act.userTalking => 'Sun raha hoon…',
@@ -193,10 +197,25 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
                   style: const TextStyle(color: C.muted, fontSize: 12.5, fontWeight: FontWeight.w600)),
             ]),
           ),
-          if (_inCall) const Pill('LIVE', fg: Colors.white, bg: Color(0xFFDC2626)),
+          if (_inCall) const Pill('● LIVE', fg: Colors.white, bg: Color(0xCCDC2626)),
+          if (!_inCall) ListenableBuilder(listenable: app, builder: (context, _) => Pill(moodStyles[app.mood]!.label, fg: moodStyles[app.mood]!.aura, bg: const Color(0x1FFFFFFF))),
         ]),
       ),
-      Expanded(child: Santosh3D(controller: _ctl)),
+      Expanded(
+        child: LayoutBuilder(
+          builder: (context, box) => Center(
+            child: ListenableBuilder(
+              listenable: app,
+              builder: (context, _) => LiveSantosh(
+                feeling: _shownMood(),
+                level: _act == _Act.speaking ? (_call?.outLevel ?? 0) : (_act == _Act.userTalking ? (_call?.inLevel ?? 0) : 0),
+                thought: _act != _Act.speaking,
+                size: math.min(box.maxHeight * .82, 330),
+              ),
+            ),
+          ),
+        ),
+      ),
       _captions(),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
@@ -274,11 +293,11 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
                   gradient: _inCall
                       ? const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFB91C1C)], begin: Alignment.topLeft, end: Alignment.bottomRight)
                       : C.gradient,
-                  boxShadow: const [BoxShadow(color: Color(0x667C3AED), blurRadius: 26, offset: Offset(0, 10))],
+                  boxShadow: [BoxShadow(color: (_inCall ? const Color(0xFFEF4444) : C.accent).withOpacity(.45), blurRadius: 28, offset: const Offset(0, 10))],
                 ),
                 child: _act == _Act.connecting
-                    ? const Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
-                    : Icon(_inCall ? Icons.call_end_rounded : Icons.call_rounded, color: Colors.white, size: 38),
+                    ? const Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator(color: C.onAccent, strokeWidth: 3))
+                    : Icon(_inCall ? Icons.call_end_rounded : Icons.call_rounded, color: _inCall ? Colors.white : C.onAccent, size: 38),
               ),
             ),
           ),
@@ -304,7 +323,7 @@ class _Rings extends CustomPainter {
           final k = (t + i / 3) % 1;
           p
             ..strokeWidth = 3
-            ..color = const Color(0xFFA21CAF).withOpacity((1 - k) * (.25 + inLevel * .7));
+            ..color = C.teal.withOpacity((1 - k) * (.25 + inLevel * .7));
           canvas.drawCircle(c, r + 6 + k * (16 + inLevel * 40), p);
         }
       case _Act.speaking:
