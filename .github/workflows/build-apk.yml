@@ -16,6 +16,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: "3.24.5"
           cache: true
       - name: Generate the Android project
         run: flutter create --org com.newtika --project-name santosh --platforms android .
