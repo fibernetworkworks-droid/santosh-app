@@ -131,3 +131,35 @@ def test_voice_rejects_bad_key_and_missing_gemini(env, monkeypatch):
         with c.websocket_connect(f"/api/voice/ws?conv={conv}", headers={"Authorization": "Bearer secret"}) as ws:
             ev = json.loads(ws.receive_text())
             assert ev["type"] == "error" and "GEMINI_API_KEY" in ev["message"]
+
+
+def test_voice_drops_settings_the_model_refuses(env, monkeypatch):
+    """Real error from the phone: 1007 'Unknown name "proactivity" at 'setup''. The call must still connect."""
+    from app import main
+    from app.config import get_settings
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    get_settings.cache_clear()
+    voice.UNSUPPORTED.clear()
+    fake = FakeSession(make_turns())
+    configs = []
+
+    @contextlib.asynccontextmanager
+    async def picky_connect(config):
+        configs.append(config)
+        if config.proactivity is not None:
+            raise Exception("1007 None. Invalid JSON payload received. Unknown name \"proactivity\" at 'setup': Cannot find field.")
+        yield fake
+
+    monkeypatch.setattr(voice, "connector", picky_connect)
+    with TestClient(main.app) as c:
+        conv = c.post("/api/conversations").json()["id"]
+        with c.websocket_connect(f"/api/voice/ws?conv={conv}") as ws:
+            first = json.loads(ws.receive_text())
+            assert first["type"] == "ready"
+            ws.send_text(json.dumps({"type": "end"}))
+    assert len(configs) == 2 and configs[1].proactivity is None
+    assert configs[1].enable_affective_dialog is True          # everything else kept
+    assert "proactivity" in voice.UNSUPPORTED
+    # later calls skip it from the start
+    assert voice.live_config("Puck", "hi-IN", "", None).proactivity is None
+    voice.UNSUPPORTED.clear()

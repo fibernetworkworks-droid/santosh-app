@@ -18,6 +18,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import re
 from datetime import datetime
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -91,6 +92,30 @@ def _tool_specs() -> list[dict]:
     return [t for t in TOOLS if t["name"] in VOICE_TOOL_NAMES] + [DELEGATE]
 
 
+# Settings this Gemini model refused ("Unknown name ..."); learned at runtime and skipped from then on.
+UNSUPPORTED: set[str] = set()
+
+
+def _snake(name: str) -> str:
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+
+def unsupported_field(err: Exception) -> str | None:
+    """'Unknown name "proactivity" at 'setup'' -> 'proactivity' (only for fields we can safely drop)."""
+    m = re.search(r'Unknown name \\?"(\w+)\\?"', str(err))
+    if not m:
+        return None
+    f = _snake(m.group(1))
+    return f if f in DROPPABLE and f not in UNSUPPORTED else None
+
+
+# nice-to-have settings: the call still works without them
+DROPPABLE = {"proactivity", "proactive_audio", "enable_affective_dialog", "context_window_compression",
+             "session_resumption", "output_audio_transcription", "input_audio_transcription",
+             "end_of_speech_sensitivity", "start_of_speech_sensitivity", "prefix_padding_ms", "silence_duration_ms",
+             "automatic_activity_detection", "realtime_input_config", "sliding_window"}
+
+
 def live_config(voice: str, lang: str, context: str, handle: str | None):
     from google.genai import types
     st = get_settings()
@@ -98,7 +123,7 @@ def live_config(voice: str, lang: str, context: str, handle: str | None):
     prompt = PERSONA.format(lang=lang, now=datetime.now(tz).strftime("%A %d %B %Y, %I:%M %p"), context=context or "(nothing saved yet)")
     decls = [types.FunctionDeclaration(name=t["name"], description=t["description"], parameters_json_schema=t["input_schema"])
              for t in _tool_specs()]
-    return types.LiveConnectConfig(
+    cfg = types.LiveConnectConfig(
         response_modalities=["AUDIO"],
         speech_config=types.SpeechConfig(
             voice_config=types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice))),
@@ -118,6 +143,17 @@ def live_config(voice: str, lang: str, context: str, handle: str | None):
         session_resumption=types.SessionResumptionConfig(handle=handle),
         context_window_compression=types.ContextWindowCompressionConfig(sliding_window=types.SlidingWindow()),
     )
+    for f in UNSUPPORTED:
+        if f == "proactive_audio":
+            f = "proactivity"
+        if f == "sliding_window":
+            f = "context_window_compression"
+        if f in type(cfg).model_fields:
+            setattr(cfg, f, None)
+        elif cfg.realtime_input_config and cfg.realtime_input_config.automatic_activity_detection is not None \
+                and f in type(cfg.realtime_input_config.automatic_activity_detection).model_fields:
+            setattr(cfg.realtime_input_config.automatic_activity_detection, f, None)
+    return cfg
 
 
 def _default_connector(config):
@@ -315,6 +351,12 @@ class Call:
                 except asyncio.CancelledError:
                     raise
                 except Exception as e:
+                    bad = unsupported_field(e)
+                    if bad:
+                        # this model doesn't know one optional setting: drop it and reconnect straight away
+                        log.warning("Gemini refused setting %s; retrying without it", bad)
+                        UNSUPPORTED.add(bad)
+                        continue
                     failures += 1
                     log.warning("voice session error (%s): %s", failures, e)
                     if failures >= 3 or self.closed.is_set():
