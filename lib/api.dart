@@ -136,6 +136,10 @@ class Api {
   Future<Map<String, dynamic>> bazarActivity() async => Map<String, dynamic>.from(await _send('GET', '/api/bazar/activity'));
   Future<List<Map<String, dynamic>>> bazarContacts() async =>
       List<Map<String, dynamic>>.from(((await _send('GET', '/api/bazar/contacts'))['contacts'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<Map<String, dynamic>> bazarCreateShop(Map<String, dynamic> shop) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/shops', body: shop));
+  Future<void> bazarShopItems(String shopId, List<Map<String, dynamic>> items) async =>
+      _send('POST', '/bazar/shops/$shopId/items', body: items);
   Future<void> bazarAddContact(String name, {String upi = '', String phone = ''}) async =>
       _send('POST', '/api/bazar/contacts', body: {'name': name, 'upi_id': upi, 'phone': phone});
 

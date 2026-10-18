@@ -98,6 +98,86 @@ class _BazarScreenState extends State<BazarScreen> {
     }
   }
 
+  /// Lines like "Atta, 53, kg" or "Haircut 150" -> items.
+  List<Map<String, dynamic>> _parseItems(String text) {
+    final out = <Map<String, dynamic>>[];
+    for (final raw in text.split('\n')) {
+      final line = raw.trim();
+      if (line.isEmpty) continue;
+      final m = RegExp(r'^(.+?)[,\s]+(?:rs\.?|₹)?\s*(\d+(?:\.\d+)?)\s*(?:[,/\s]+\s*(kg|g|l|ml|pc|pack|dozen|visit|month|session))?\s*$', caseSensitive: false)
+          .firstMatch(line);
+      if (m == null) continue;
+      final name = m.group(1)!.trim().replaceAll(RegExp(r'[,\-]+$'), '').trim();
+      out.add({'name': name, 'price_rupees': double.parse(m.group(2)!), 'unit': (m.group(3) ?? 'pc').toLowerCase(),
+        'aliases': [name.toLowerCase().split(' ').first]});
+    }
+    return out;
+  }
+
+  Future<void> _addShop(BuildContext context) async {
+    final shopPacks = ((_cat?['packs'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map))
+        .where((p) => p['executor'] == 'shop').toList();
+    if (shopPacks.isEmpty) return;
+    String tpl = shopPacks.firstWhere((p) => p['pack_id'] == 'kirana-store', orElse: () => shopPacks.first)['pack_id'] as String;
+    final name = TextEditingController();
+    final phone = TextEditingController();
+    final upi = TextEditingController();
+    final city = TextEditingController();
+    final pins = TextEditingController(text: _settings?['pincode'] as String? ?? '');
+    final aliases = TextEditingController();
+    final slots = TextEditingController(text: 'Aaj shaam 6-7, Kal subah 9-10');
+    final items = TextEditingController(text: 'Atta, 53, kg\nTel, 145, l\nSakhar, 46, kg');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setD) => AlertDialog(
+        title: const Text('Dukaan jodiye'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            DropdownButtonFormField<String>(
+              value: tpl,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Dukaan ka prakaar'),
+              items: [for (final p in shopPacks) DropdownMenuItem(value: p['pack_id'] as String, child: Text(p['name'] as String))],
+              onChanged: (v) => setD(() => tpl = v ?? tpl),
+            ),
+            TextField(controller: name, decoration: const InputDecoration(labelText: 'Dukaan ka naam')),
+            TextField(controller: aliases, decoration: const InputDecoration(labelText: 'Log kaise bulate hain (jaise: Ramesh bhau)')),
+            TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Maalik ka mobile')),
+            TextField(controller: upi, decoration: const InputDecoration(labelText: 'Dukaan ka UPI ID (paise yahin jayenge)')),
+            TextField(controller: city, decoration: const InputDecoration(labelText: 'Shehar')),
+            TextField(controller: pins, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Pincode (comma se)')),
+            TextField(controller: slots, decoration: const InputDecoration(labelText: 'Delivery samay (comma se)')),
+            TextField(controller: items, minLines: 3, maxLines: 10,
+                decoration: const InputDecoration(labelText: 'Saamaan: naam, daam, unit (har line ek)')),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Jodiye')),
+        ],
+      )),
+    );
+    if (ok != true) return;
+    List<String> csv(String t) => t.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    try {
+      final shop = await app.api!.bazarCreateShop({
+        'template_id': tpl, 'name': name.text.trim(), 'owner_phone': phone.text.trim(), 'upi_id': upi.text.trim(),
+        'city': city.text.trim(), 'pincodes': csv(pins.text), 'aliases': csv(aliases.text), 'slots': csv(slots.text),
+      });
+      final list = _parseItems(items.text);
+      if (list.isNotEmpty) await app.api!.bazarShopItems(shop['id'] as String, list);
+      if (!context.mounted) return;
+      await showDialog(context: context, builder: (ctx) => AlertDialog(
+        title: Text('${shop['name']} jud gayi ✓'),
+        content: SelectableText('${list.length} saamaan add hue.\n\nDukaan ka merchant token (dukaan wale ko dijiye, sirf ek baar dikhega):\n\n${shop['merchant_token']}'),
+        actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Theek hai'))],
+      ));
+      _load();
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
   Color _color(String st) => switch (st) {
         'ready' || 'core' => C.ok,
         'demo' || 'needs_link' => C.warn,
@@ -169,6 +249,16 @@ class _BazarScreenState extends State<BazarScreen> {
               const SizedBox(height: 10),
               GradientButton(label: 'Save', height: 46, onTap: _save),
             ]),
+          ),
+          const SizedBox(height: 14),
+          Glass(
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.add_business_rounded, color: C.accent),
+              title: const Text('Dukaan jodiye', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Kirana, dairy, medical, tiffin… apni ya paas ki dukaan Santosh par laaiye'),
+              onTap: () => _addShop(context),
+            ),
           ),
           const SizedBox(height: 14),
           TextField(

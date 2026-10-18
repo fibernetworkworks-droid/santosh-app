@@ -349,3 +349,34 @@ def test_owner_tenant_finds_owner_google_signin(bz, monkeypatch):
     assert google_auth.has_google("default")      # the owner's chats run as 'default'
     assert google_auth.has_google("usr_owner")
     assert not google_auth.has_google("usr_other")
+
+
+def test_agent_chat_runs_bazar_end_to_end(bz):
+    """Scripted Claude: find the pack, fetch the bill, ask to pay -> confirm card appears in the chat stream."""
+    import asyncio
+    from app.agent import run_turn, set_client
+    from tests.test_campaign_flow import ScriptedClaude, last_result, text, tool
+    conv = bz["conv"]
+    seen = {}
+
+    def after_find(msgs):
+        r = json.loads(last_result(msgs)["content"])
+        seen["find"] = r
+        return tool("bazar_run", {"pack_id": r["packs"][0]["pack_id"], "tool": "fetch_bill",
+                                  "args": {"consumer_number": "330012345678", "billing_unit": "4630"}}, 2)
+
+    def after_fetch(msgs):
+        r = json.loads(last_result(msgs)["content"])
+        seen["bill"] = r
+        return tool("bazar_run", {"pack_id": "msedcl-mahavitaran", "tool": "pay_bill", "args": {"bill_ref": r["bill_ref"]}}, 3)
+
+    def after_pay(msgs):
+        seen["pay"] = json.loads(last_result(msgs)["content"])
+        return text("Bill " + seen["bill"]["amount"] + " ka hai. Approve dabaiye.")
+
+    set_client(ScriptedClaude([tool("bazar_find", {"query": "msedcl bijli bill"}, 1), after_find, after_fetch, after_pay]))
+    out = asyncio.run(run_turn(conv, "MSEDCL ka bill bhar do", tenant_id="default"))
+    assert seen["find"]["packs"][0]["pack_id"] == "msedcl-mahavitaran"
+    assert seen["pay"]["needs_approval"] is True
+    assert "Approve" in out
+    assert _events(conv, "bazar_approval")[-1]["amount"] == seen["bill"]["amount"]
