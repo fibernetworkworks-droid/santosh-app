@@ -289,6 +289,24 @@ async def tick() -> None:
     await run_routines()
     expire_device_actions()
     await bazar_reminders()
+    await offline_digests()
+
+
+_offline_last = 0.0
+
+
+async def offline_digests() -> None:
+    """Phone silent for a while: email Santosh's updates (every 2 min check)."""
+    global _offline_last
+    import time
+    if time.time() - _offline_last < 120:
+        return
+    _offline_last = time.time()
+    from . import offline
+    try:
+        await offline.send_due()
+    except Exception:
+        log.exception("offline digest failed")
 
 
 _bazar_last = 0.0

@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../live_voice.dart';
+import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
 import '../emotion.dart';
@@ -40,11 +41,28 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
     super.initState();
     app.voiceMode = true;
     app.pushLocation();
+    app.addListener(_onApp);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onApp());
+  }
+
+  /// "Hey Santosh" was heard: pick up straight away.
+  void _onApp() {
+    if (!mounted || !app.autoCall) return;
+    app.autoCall = false;
+    if (!_inCall) _start();
+  }
+
+  /// Call over: give the mic back to the wake word, and drop the lock-screen view.
+  void _afterCall() {
+    Native.wakeResume();
+    app.leaveLockedMode();
   }
 
   @override
   void dispose() {
     app.voiceMode = false;
+    app.removeListener(_onApp);
+    if (_inCall) _afterCall();
     _tick?.cancel();
     _call?.stop();
     _pulse.dispose();
@@ -62,6 +80,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
       _note = null;
       _heard = _reply = '';
     });
+    await Native.wakePause();
     final call = LiveVoice(onEvent: _onEvent, onClosed: _onClosed);
     _call = call;
     final err = await call.start(
@@ -69,6 +88,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
     if (!mounted) return;
     if (err != null) {
       _call = null;
+      Native.wakeResume();
       setState(() {
         _inCall = false;
         _act = _Act.idle;
@@ -83,6 +103,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
     _tick?.cancel();
     await _call?.stop();
     _call = null;
+    _afterCall();
     if (mounted) {
       setState(() {
         _inCall = false;
@@ -95,6 +116,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
   void _onClosed(String? reason) {
     _tick?.cancel();
     _call = null;
+    _afterCall();
     if (!mounted) return;
     setState(() {
       if (_inCall && reason != null && reason.isNotEmpty) _note = 'Call band ho gayi: $reason';

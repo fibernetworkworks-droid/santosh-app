@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
 
@@ -88,6 +89,8 @@ class _ApproveSheet extends StatelessWidget {
           label: 'Slide karke approve karein',
           onDone: () async {
             Navigator.of(context).pop();
+            // money never moves from the lock screen: the phone's own PIN/fingerprint first
+            if (await Native.isLocked() && !await Native.requestUnlock()) return;
             await app.decideBazar(v['id'] as String, 'approve');
           },
         ),

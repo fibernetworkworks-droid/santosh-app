@@ -9,6 +9,7 @@
     <!-- background mode: a live link to Santosh while the app is closed -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Santosh's own alarms and timers when the app is closed -->
@@ -85,6 +86,15 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Long-press home / assistant gesture can open Santosh -->
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VOICE_COMMAND" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
             <!-- Sign in with Google returns here: santosh://auth?session=... -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
@@ -102,6 +112,22 @@
         </activity>
         <meta-data android:name="flutterEmbedding" android:value="2" />
 
+        <!-- "Hey Santosh" wake word (on-device) -->
+        <service
+            android:name=".WakeService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+        <!-- Quick-settings tile -->
+        <service
+            android:name=".SantoshTile"
+            android:exported="true"
+            android:icon="@drawable/ic_stat_santosh"
+            android:label="Santosh"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
         <!-- Santosh background mode -->
         <service
             android:name=".SantoshService"

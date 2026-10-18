@@ -48,6 +48,13 @@ def _bearer(request: Request) -> str:
 
 def current_tenant(request: Request) -> str:
     """Resolve the caller: a product session token -> that user; the legacy API key -> 'default'."""
+    t = _resolve_tenant(request)
+    from . import offline
+    offline.touch(t)   # any call from the phone means it is online
+    return t
+
+
+def _resolve_tenant(request: Request) -> str:
     from . import accounts
     tok = _bearer(request)
     st = get_settings()
@@ -166,6 +173,8 @@ async def events(conversation_id: str, request: Request, after: int = 0, tenant:
                 try:
                     ev = await asyncio.wait_for(q.get(), timeout=15)
                 except asyncio.TimeoutError:
+                    from . import offline
+                    offline.touch(tenant)   # the stream is still open: the phone is online
                     yield ": ping\n\n"
                     continue
                 if ev["id"] <= sent:
@@ -851,3 +860,32 @@ def catchup(since: str, tenant: str = Depends(current_tenant)):
         items = [{"text": r.display or "", "at": r.created_at.isoformat()} for r in rows if (r.display or "").strip()]
     pending = bazar.pending_approvals(tenant)
     return {"items": items, "pending": pending, "count": len(items)}
+
+
+# ---------------- "Hey Santosh" wake word (runs on the phone; the server only hands out the keyword) ----------------
+def _wake_file():
+    import os
+    st = get_settings()
+    f = st.wake_keyword_file.strip()
+    return f if f and os.path.isfile(f) else ""
+
+
+@app.get("/api/wake", dependencies=[Depends(require_key)])
+def wake_config(tenant: str = Depends(current_tenant)):
+    import os
+    st = get_settings()
+    f = _wake_file()
+    if not st.picovoice_access_key.strip():
+        return {"available": False, "reason": "Server par PICOVOICE_ACCESS_KEY set nahi hai"}
+    if not f:
+        return {"available": False, "reason": "Server par 'Hey Santosh' keyword file (WAKE_KEYWORD_FILE) nahi mili"}
+    return {"available": True, "access_key": st.picovoice_access_key.strip(), "sensitivity": st.wake_sensitivity,
+            "version": str(int(os.path.getmtime(f)))}
+
+
+@app.get("/api/wake/keyword", dependencies=[Depends(require_key)])
+def wake_keyword(tenant: str = Depends(current_tenant)):
+    f = _wake_file()
+    if not f:
+        raise HTTPException(404, "No keyword file")
+    return FileResponse(f, media_type="application/octet-stream", filename="hey_santosh.ppn")

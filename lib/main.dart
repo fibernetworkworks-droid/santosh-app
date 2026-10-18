@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'device.dart';
 import 'emotion.dart';
+import 'native.dart';
 import 'nav.dart';
 import 'state.dart';
 import 'ui/bazar_screen.dart';
@@ -53,6 +54,10 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
     _linkSub = _linkCh.receiveBroadcastStream().listen((token) async {
       final t = token?.toString() ?? '';
       if (t.isEmpty) return;
+      if (t.startsWith('wake:')) {
+        widget.app.wake(locked: t == 'wake:locked');
+        return;
+      }
       if (t.startsWith('bazar:')) {
         widget.app.onBazarLinked(t.endsWith('=1'));
         return;
@@ -109,6 +114,32 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   int _tab = 0;
+  int _seenBaat = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _seenBaat = widget.app.baatTick;
+    widget.app.addListener(_onApp);
+  }
+
+  @override
+  void dispose() {
+    widget.app.removeListener(_onApp);
+    super.dispose();
+  }
+
+  bool _wasLocked = false;
+
+  void _onApp() {
+    if (widget.app.baatTick != _seenBaat) {
+      _seenBaat = widget.app.baatTick;
+      if (mounted) setState(() => _tab = 2);
+    } else if (widget.app.lockedMode != _wasLocked && mounted) {
+      setState(() {});
+    }
+    _wasLocked = widget.app.lockedMode;
+  }
 
   void _go(int i) {
     if (i == _tab) return;
@@ -123,15 +154,41 @@ class _HomeState extends State<Home> {
       ChatScreen(app: widget.app, onVoice: () => _go(2)),
       // built only while open: the microphone stops when you leave the tab
       _tab == 2
-          ? ListenableBuilder(
-              listenable: widget.app,
-              // live human-like call when the server has realtime voice, otherwise the phone's own speech
-              builder: (context, _) => widget.app.realtimeVoice ? LiveVoiceScreen(app: widget.app) : VoiceScreen(app: widget.app),
-            )
+          ? LiveVoiceGate(app: widget.app)
           : const SizedBox.shrink(),
       BazarScreen(app: widget.app, embedded: true),
       ProfileScreen(app: widget.app, onReset: widget.onReset),
     ];
+    if (widget.app.lockedMode) {
+      // over the lock screen: just the call. Nothing else of the app is visible until the phone is unlocked.
+      return Scaffold(
+        body: Aurora(
+          tint: moodStyles[widget.app.mood]!.aura,
+          child: SafeArea(
+            child: Column(children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Row(children: [
+                  const Icon(Icons.lock_outline_rounded, color: C.teal, size: 18),
+                  const SizedBox(width: 6),
+                  const Expanded(child: Text('Phone locked · sirf Baat', style: TextStyle(color: C.teal, fontWeight: FontWeight.w700, fontSize: 13))),
+                  TextButton(
+                    onPressed: () async {
+                      if (await Native.requestUnlock()) {
+                        widget.app.lockedMode = false;
+                        widget.app.notifyChange();
+                      }
+                    },
+                    child: const Text('Unlock karke poora app'),
+                  ),
+                ]),
+              ),
+              Expanded(child: LiveVoiceGate(app: widget.app)),
+            ]),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       extendBody: true,
       body: ListenableBuilder(
@@ -227,5 +284,17 @@ class _NavBar extends StatelessWidget {
             ),
           ]),
         ),
+      );
+}
+
+
+/// Live human-like call when the server has realtime voice, otherwise the phone's own speech.
+class LiveVoiceGate extends StatelessWidget {
+  const LiveVoiceGate({super.key, required this.app});
+  final Santosh app;
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: app,
+        builder: (context, _) => app.realtimeVoice ? LiveVoiceScreen(app: app) : VoiceScreen(app: app),
       );
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../native.dart';
@@ -86,6 +87,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       Text('Profile', style: display(28)),
       const SizedBox(height: 14),
       ListenableBuilder(listenable: app, builder: (context, _) => _BackgroundCard(app: app)),
+      const SizedBox(height: 18),
+      const _WakeCard(),
       const SizedBox(height: 18),
       ListenableBuilder(listenable: app, builder: (context, _) => app.account != null ? _AccountCard(app: app) : const SizedBox.shrink()),
       if (app.account != null) const SizedBox(height: 18),
@@ -314,4 +317,71 @@ class _AccountCard extends StatelessWidget {
       ]),
     );
   }
+}
+
+
+/// "Hey Santosh": on-device wake word, works with the screen off and locked.
+class _WakeCard extends StatefulWidget {
+  const _WakeCard();
+  @override
+  State<_WakeCard> createState() => _WakeCardState();
+}
+
+class _WakeCardState extends State<_WakeCard> {
+  bool _on = false;
+  String _status = '';
+  Timer? _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+    _poll = Timer.periodic(const Duration(seconds: 3), (_) => _refresh());
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    final s = await Native.wakeStatus();
+    if (!mounted) return;
+    setState(() {
+      _on = s['on'] == true || s['wanted'] == true;
+      _status = (s['status'] as String?) ?? '';
+    });
+  }
+
+  Future<void> _toggle(bool on) async {
+    if (on) {
+      final r = await Native.wakeStart();
+      if (r == 'permission' && mounted) {
+        setState(() => _status = 'Mic ki permission dijiye, phir dobara chalu karein');
+      }
+    } else {
+      await Native.wakeStop();
+    }
+    await Future.delayed(const Duration(milliseconds: 600));
+    _refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) => Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            secondary: const Icon(Icons.hearing_rounded, color: C.teal),
+            title: const Text('“Hey Santosh”', style: TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: Text(_status.isNotEmpty
+                ? _status
+                : 'Phone lock ho ya screen band, bas boliye “Hey Santosh”. Awaaz phone par hi pehchani jaati hai.'),
+            value: _on,
+            onChanged: _toggle,
+          ),
+          const Text('Lock screen par sirf Baat khulti hai. Payment ke liye phone unlock karna zaroori hai.',
+              style: TextStyle(fontSize: 12, color: C.muted, height: 1.4)),
+        ]),
+      );
 }

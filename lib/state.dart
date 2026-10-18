@@ -384,6 +384,25 @@ class Santosh extends ChangeNotifier {
     }
   }
 
+  // ---- "Hey Santosh" ----
+  bool lockedMode = false;   // opened over the lock screen: only the voice call is shown
+  bool autoCall = false;     // start the call as soon as Baat opens
+  int baatTick = 0;          // bumps when Baat should come to the front
+
+  void wake({required bool locked}) {
+    lockedMode = locked;
+    autoCall = true;
+    baatTick++;
+    setMood(Mood.listening, hold: const Duration(seconds: 6));
+  }
+
+  Future<void> leaveLockedMode() async {
+    if (!lockedMode) return;
+    lockedMode = false;
+    notifyListeners();
+    await Native.leaveLockScreen();
+  }
+
   DateTime? _locAt;
 
   /// Send the phone's position to Santosh (at most once a minute).

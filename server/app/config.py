@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     google_oauth_client_secret: str = ""
     app_redirect_scheme: str = "santosh"    # deep link back into the phone app after sign-in
     google_maps_api_key: str = ""           # Maps Platform key: Places API (New), Routes API, Geocoding API
+    picovoice_access_key: str = ""          # "Hey Santosh" wake word (free at console.picovoice.ai)
+    wake_keyword_file: str = ""             # path to the Android .ppn trained for "Hey Santosh"
+    wake_sensitivity: float = 0.6
+    offline_email: bool = True              # phone offline > offline_after_min: email Santosh's updates
+    offline_after_min: int = 20
     owner_emails: str = ""                  # Google accounts that are the server owner (use the .env email/calendar/drive). Blank = EMAIL_ADDRESS
 
     # --- WhatsApp Cloud API (Meta) ---

@@ -288,6 +288,15 @@ class UserLocation(Base):
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class PhoneSeen(Base):
+    """Last time the tenant's phone talked to the server (live stream ping or any API call)."""
+    __tablename__ = "phone_seen"
+    tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    digest_upto_id: Mapped[int] = mapped_column(Integer, default=0)       # last notice already emailed
+    digest_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class KV(Base):
     __tablename__ = "kv"
     key: Mapped[str] = mapped_column(String(200), primary_key=True)

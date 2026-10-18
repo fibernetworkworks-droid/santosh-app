@@ -46,6 +46,23 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
                     "isRunning" -> result.success(SantoshService.running)
+                    "wakeStart" -> {
+                        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 44)
+                            result.success("permission")
+                        } else {
+                            WakeService.status = "Shuru ho raha hai…"
+                            WakeService.start(this)
+                            result.success("ok")
+                        }
+                    }
+                    "wakeStop" -> { WakeService.stop(this); WakeService.status = "Band"; result.success(null) }
+                    "wakeStatus" -> result.success(mapOf("on" to WakeService.running, "wanted" to WakeService.wanted(this), "status" to WakeService.status))
+                    "wakeResume" -> { WakeService.resume(this); result.success(null) }
+                    "wakePause" -> { WakeService.pauseFor(this); result.success(null) }
+                    "isLocked" -> result.success(keyguardLocked())
+                    "requestUnlock" -> requestUnlock { ok -> result.success(ok) }
+                    "leaveLockScreen" -> { leaveLockScreen(); result.success(null) }
                     "hasLocation" -> result.success(hasLocation())
                     "askLocation" -> {
                         if (!hasLocation()) requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 43)
@@ -96,7 +113,57 @@ class MainActivity : FlutterActivity() {
         })
     }
 
+    private fun keyguardLocked(): Boolean =
+        (getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager).isKeyguardLocked
+
+    /** Only a voice call may show over the lock screen; everything else asks to unlock first. */
+    private fun showOverLock(on: Boolean) {
+        if (Build.VERSION.SDK_INT >= 27) {
+            setShowWhenLocked(on)
+            setTurnScreenOn(on)
+        } else {
+            @Suppress("DEPRECATION")
+            val f = android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            if (on) window.addFlags(f) else window.clearFlags(f)
+        }
+    }
+
+    private fun requestUnlock(done: (Boolean) -> Unit) {
+        if (!keyguardLocked()) { done(true); return }
+        if (Build.VERSION.SDK_INT >= 26) {
+            (getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager).requestDismissKeyguard(this,
+                object : android.app.KeyguardManager.KeyguardDismissCallback() {
+                    override fun onDismissSucceeded() { showOverLock(false); done(true) }
+                    override fun onDismissCancelled() { done(false) }
+                    override fun onDismissError() { done(false) }
+                })
+        } else done(false)
+    }
+
+    private fun leaveLockScreen() {
+        if (keyguardLocked()) {
+            showOverLock(false)
+            moveTaskToBack(true)
+        } else showOverLock(false)
+        WakeService.resume(this)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        showOverLock(false)   // never stay above the lock screen after the call is gone
+    }
+
     private fun handleIntent(intent: Intent?) {
+        val action = intent?.action
+        if (action == WakeService.ACTION_WAKE || action == Intent.ACTION_ASSIST || action == "android.intent.action.VOICE_COMMAND") {
+            val locked = keyguardLocked()
+            if (locked && action == WakeService.ACTION_WAKE) showOverLock(true)
+            (getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager).cancel(WakeService.HEARD_ID)
+            val msg = if (locked) "wake:locked" else "wake:open"
+            val sink = linkSink
+            if (sink != null) main.post { sink.success(msg) } else pendingLink = msg
+            return
+        }
         val data = intent?.data ?: return
         val msg = when {
             data.scheme == "santosh" && data.host == "auth" -> data.getQueryParameter("session") ?: return
@@ -216,6 +283,11 @@ class MainActivity : FlutterActivity() {
     override fun onResume() {
         super.onResume()
         visible = true
+        // "Hey Santosh" after a phone restart: Android lets the mic service start only while the app is open
+        if (WakeService.wanted(this) && !WakeService.running &&
+            checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            try { WakeService.start(this) } catch (_: Exception) {}
+        }
         Notify.clearMessages(this)
     }
 

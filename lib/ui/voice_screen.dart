@@ -6,6 +6,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
 import '../emotion.dart';
@@ -48,6 +49,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
     app.voiceMode = true;
     _replySub = app.replies.listen(_onReply);
     app.addListener(_onApp);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onApp());
     _setupTts();
   }
 
@@ -55,6 +57,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
   void dispose() {
     app.voiceMode = false;
     app.removeListener(_onApp);
+    Native.wakeResume();
     _replySub?.cancel();
     _waitTimer?.cancel();
     _stt.cancel();
@@ -203,6 +206,11 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
   }
 
   void _onApp() {
+    if (app.autoCall && mounted) {
+      app.autoCall = false;
+      Native.wakePause();
+      _listen();
+    }
     if (!mounted) return;
     if (_state == _V.thinking) {
       setState(() {});
@@ -275,6 +283,8 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
     await _tts.stop();
     _endSpeak();
     _set(_V.idle);
+    Native.wakeResume();
+    app.leaveLockedMode();
   }
 
   String get _statusText => switch (_state) {

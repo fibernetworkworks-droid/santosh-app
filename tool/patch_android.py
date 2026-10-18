@@ -22,6 +22,8 @@ if kts.exists():
     g = re.sub(r"minSdk\s*=\s*flutter\.minSdkVersion", "minSdk = 23", g)
     if "desugar_jdk_libs" not in g:
         g += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+    if "porcupine-android" not in g:
+        g += '\ndependencies {\n    implementation("ai.picovoice:porcupine-android:4.0.2")\n}\n'
     kts.write_text(g)
 elif groovy.exists():
     g = groovy.read_text()
@@ -30,6 +32,8 @@ elif groovy.exists():
     g = re.sub(r"minSdk(Version)?\s*=?\s*flutter\.minSdkVersion", "minSdk = 23", g)
     if "desugar_jdk_libs" not in g:
         g += "\ndependencies {\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'\n}\n"
+    if "porcupine-android" not in g:
+        g += "\ndependencies {\n    implementation 'ai.picovoice:porcupine-android:4.0.2'\n}\n"
     groovy.write_text(g)
 else:
     sys.exit("No app build.gradle(.kts) found")
