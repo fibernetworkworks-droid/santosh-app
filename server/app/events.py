@@ -13,6 +13,7 @@ from .db import Event, Message, session
 class EventBus:
     def __init__(self) -> None:
         self._subs: dict[str, set[asyncio.Queue]] = defaultdict(set)
+        self._loops: dict[int, asyncio.AbstractEventLoop] = {}
 
     def publish(self, conversation_id: str, kind: str, payload: dict, campaign_id: str | None = None) -> dict:
         with session() as s:
@@ -22,16 +23,33 @@ class EventBus:
             data = {"id": ev.id, "kind": kind, "campaign_id": campaign_id, "payload": payload,
                     "at": ev.created_at.isoformat()}
         for q in list(self._subs.get(conversation_id, ())):
-            q.put_nowait(data)
+            loop = self._loops.get(id(q))
+            try:
+                running = asyncio.get_running_loop()
+            except RuntimeError:
+                running = None
+            if loop is not None and loop is not running:
+                # published from a worker thread (e.g. Bazar tools run in a thread): hand over safely
+                try:
+                    loop.call_soon_threadsafe(q.put_nowait, data)
+                except RuntimeError:
+                    pass  # that loop is closed
+            else:
+                q.put_nowait(data)
         return data
 
     def subscribe(self, conversation_id: str) -> asyncio.Queue:
         q: asyncio.Queue = asyncio.Queue()
         self._subs[conversation_id].add(q)
+        try:
+            self._loops[id(q)] = asyncio.get_running_loop()
+        except RuntimeError:
+            pass
         return q
 
     def unsubscribe(self, conversation_id: str, q: asyncio.Queue) -> None:
         self._subs[conversation_id].discard(q)
+        self._loops.pop(id(q), None)
 
     @staticmethod
     def backlog(conversation_id: str, after_id: int = 0, limit: int = 500) -> list[dict]:

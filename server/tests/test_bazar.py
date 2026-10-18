@@ -380,3 +380,27 @@ def test_agent_chat_runs_bazar_end_to_end(bz):
     assert seen["pay"]["needs_approval"] is True
     assert "Approve" in out
     assert _events(conv, "bazar_approval")[-1]["amount"] == seen["bill"]["amount"]
+
+
+def test_card_reaches_live_stream_from_worker_thread(bz):
+    """Bazar tools run in a thread; the live SSE listener must still wake up with the card."""
+    import asyncio
+    from app.events import bus
+    conv = bz["conv"]
+
+    async def go():
+        q = bus.subscribe(conv)
+        waiter = asyncio.ensure_future(q.get())   # the SSE stream is already waiting
+        await asyncio.sleep(0)
+        bill = await asyncio.to_thread(bz["svc"].run, "default", conv, "msedcl-mahavitaran", "fetch_bill",
+                                       {"consumer_number": "330012345678", "billing_unit": "4630"})
+        await asyncio.to_thread(bz["svc"].run, "default", conv, "msedcl-mahavitaran", "pay_bill", {"bill_ref": bill["bill_ref"]})
+        first = await asyncio.wait_for(waiter, timeout=2)
+        ev = first
+        while ev["kind"] != "bazar_approval":
+            ev = await asyncio.wait_for(q.get(), timeout=2)
+        bus.unsubscribe(conv, q)
+        return ev
+
+    ev = asyncio.run(go())
+    assert ev["kind"] == "bazar_approval" and ev["payload"]["title"].startswith("[DEMO]")
