@@ -18,6 +18,9 @@
     <!-- saving calendar events directly -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <!-- Google Maps in Santosh: "near me", directions, cab pickup (only while the app is open) -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <!-- Android 11+ only lets the app see these apps if it declares what it wants to do -->
     <queries>
@@ -46,6 +49,7 @@
         <package android:name="com.myairtelapp" />
         <package android:name="com.naviapp" />
         <package android:name="com.olacabs.customer" />
+        <package android:name="com.google.android.apps.maps" />
         <package android:name="com.phonepe.app" />
         <package android:name="com.popclub.android" />
         <package android:name="com.rapido.passenger" />

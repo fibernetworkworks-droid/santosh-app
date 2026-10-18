@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.10.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.11.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -90,7 +90,8 @@ def healthz():
     from . import mail
     features = ["routines", "voice", "web", "bazar"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if mail.configured() else []) + (["calendar"] if __import__("app.gcal", fromlist=["x"]).configured() else []) \
-        + (["drive"] if __import__("app.gdrive", fromlist=["x"]).configured() else [])
+        + (["drive"] if __import__("app.gdrive", fromlist=["x"]).configured() else []) \
+        + (["maps"] if __import__("app.maps", fromlist=["x"]).configured() else [])
     from . import accounts
     return {"ok": True, "version": app.version, "google_login": accounts.oauth_configured(),
             "dry_run": st.wa_dry_run, "model": st.anthropic_model,
@@ -326,6 +327,20 @@ async def google_callback(request: Request):
 <p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">App kholiye</a></p>
 <script>location.href={deep!r};</script></body>"""
     return HTMLResponse(html)
+
+
+class LocationIn(BaseModel):
+    lat: float = Field(ge=-90, le=90)
+    lng: float = Field(ge=-180, le=180)
+    accuracy_m: float | None = Field(None, ge=0)
+
+
+@app.put("/api/location", dependencies=[Depends(require_key)])
+def put_location(body: LocationIn, tenant: str = Depends(current_tenant)):
+    """The phone's position, so 'near me', directions and cab pickup use where the user actually is."""
+    from . import maps
+    maps.save_location(tenant, body.lat, body.lng, body.accuracy_m)
+    return {"ok": True}
 
 
 @app.get("/api/me", dependencies=[Depends(require_key)])

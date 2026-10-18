@@ -278,6 +278,16 @@ class OAuthState(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class UserLocation(Base):
+    """The phone's last known position (sent by the app), for 'near me', directions and cab pickup."""
+    __tablename__ = "user_locations"
+    tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    lat: Mapped[float] = mapped_column(Float)
+    lng: Mapped[float] = mapped_column(Float)
+    accuracy_m: Mapped[float | None] = mapped_column(Float, nullable=True)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class KV(Base):
     __tablename__ = "kv"
     key: Mapped[str] = mapped_column(String(200), primary_key=True)

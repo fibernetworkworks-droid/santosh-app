@@ -143,6 +143,11 @@ class Santosh extends ChangeNotifier {
       });
       await Device.instance.init();
       await Device.instance.askNotificationPermission();
+      if (!(_prefs.getBool('asked_location') ?? false)) {
+        await _prefs.setBool('asked_location', true);
+        await Native.askLocation();
+      }
+      pushLocation();
       await refreshLists();
       await refreshRoutines();
       await refreshAccount();
@@ -249,6 +254,7 @@ class Santosh extends ChangeNotifier {
     text = text.trim();
     if (text.isEmpty || api == null || conversationId == null) return false;
     _lastInputWasVoice = voice;
+    pushLocation(); // "near me", directions and cab pickup use where the phone is
     try {
       await api!.sendMessage(conversationId!, text, voice: spoken);
       return true;
@@ -309,6 +315,20 @@ class Santosh extends ChangeNotifier {
       error = e.toString();
     }
     notifyListeners();
+  }
+
+  DateTime? _locAt;
+
+  /// Send the phone's position to Santosh (at most once a minute).
+  Future<void> pushLocation() async {
+    if (api == null) return;
+    if (_locAt != null && DateTime.now().difference(_locAt!) < const Duration(minutes: 1)) return;
+    _locAt = DateTime.now();
+    try {
+      final l = await Native.location();
+      if (l == null) return;
+      await api!.putLocation((l['lat'] as num).toDouble(), (l['lng'] as num).toDouble(), accuracy: (l['accuracy'] as num?)?.toDouble());
+    } catch (_) {}
   }
 
   /// Safety net: show any pending confirm cards the live stream may have missed.

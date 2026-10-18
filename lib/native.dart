@@ -28,6 +28,13 @@ class Native {
   /// Open a UPI payment / app link / app (from a user tap). Returns "ok" or a short reason.
   static Future<String> openExternal({String url = '', String package = ''}) async =>
       await _call<String>('openExternal', {'url': url, 'package': package}) ?? 'Is phone par nahi khul sakta';
+  static Future<bool> hasLocation() async => await _call<bool>('hasLocation') ?? false;
+  static Future<void> askLocation() async => _call('askLocation');
+  /// {lat, lng, accuracy, time} or null (no permission / no fix).
+  static Future<Map<String, dynamic>?> location() async {
+    final m = await _call<Map>('location');
+    return m == null ? null : Map<String, dynamic>.from(m);
+  }
   static Future<bool> hasCalendar() async => await _call<bool>('hasCalendar') ?? false;
   static Future<void> askCalendar() async => _call('askCalendar');
 }

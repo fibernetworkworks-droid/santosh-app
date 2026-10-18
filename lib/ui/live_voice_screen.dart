@@ -39,6 +39,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
   void initState() {
     super.initState();
     app.voiceMode = true;
+    app.pushLocation();
   }
 
   @override

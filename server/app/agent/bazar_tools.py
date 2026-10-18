@@ -50,7 +50,41 @@ async def bazar_find(ctx: Ctx, query="", category="", **_):
     return await _call(service.find, ctx.tenant_id, str(query or ""), str(category or ""))
 
 
+async def _ride_points(ctx: Ctx, args: dict) -> dict:
+    """Cabs: turn place names into exact coordinates and use the phone's location as pickup."""
+    from .. import maps
+    args = dict(args or {})
+    here = maps.where_am_i(ctx.tenant_id)
+    drop, pickup = args.get("drop"), args.get("pickup")
+    if isinstance(drop, str):
+        drop = {"name": drop}
+    if isinstance(pickup, str):
+        pickup = None if maps._is_here(pickup) else {"name": pickup}
+    if maps.configured():
+        try:
+            if drop and drop.get("lat") is None and drop.get("name"):
+                g = await maps.geocode(drop["name"], near=here)
+                if g:
+                    drop = {"lat": g["lat"], "lng": g["lng"], "name": g["name"]}
+            if pickup and pickup.get("lat") is None and pickup.get("name"):
+                g = await maps.geocode(pickup["name"], near=here)
+                pickup = {"lat": g["lat"], "lng": g["lng"], "name": g["name"]} if g else None
+        except maps.MapsError:
+            pass
+    if not pickup and here and here.get("source") == "phone":
+        pickup = {"lat": here["lat"], "lng": here["lng"], "name": "Current location"}
+    if drop:
+        args["drop"] = drop
+    if pickup:
+        args["pickup"] = pickup
+    return args
+
+
 async def bazar_run(ctx: Ctx, pack_id, tool, args=None, **_):
+    from ..bazar.packs.registry import registry
+    p = registry().packs.get(str(pack_id))
+    if p is not None and p.executor == "ride":
+        args = await _ride_points(ctx, args or {})
     return await _call(service.run, ctx.tenant_id, ctx.conversation_id, str(pack_id), str(tool), args or {})
 
 

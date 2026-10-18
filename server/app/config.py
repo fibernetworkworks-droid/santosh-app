@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""
     app_redirect_scheme: str = "santosh"    # deep link back into the phone app after sign-in
+    google_maps_api_key: str = ""           # Maps Platform key: Places API (New), Routes API, Geocoding API
     owner_emails: str = ""                  # Google accounts that are the server owner (use the .env email/calendar/drive). Blank = EMAIL_ADDRESS
 
     # --- WhatsApp Cloud API (Meta) ---

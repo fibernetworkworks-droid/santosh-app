@@ -46,6 +46,12 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
                     "isRunning" -> result.success(SantoshService.running)
+                    "hasLocation" -> result.success(hasLocation())
+                    "askLocation" -> {
+                        if (!hasLocation()) requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 43)
+                        result.success(null)
+                    }
+                    "location" -> currentLocation { loc -> result.success(loc) }
                     "openExternal" -> result.success(openExternal(call.argument<String>("url") ?: "", call.argument<String>("package") ?: ""))
                     "status" -> result.success(Store.status(this))
                     "claim" -> result.success(Store.claim(this, call.argument<String>("id") ?: ""))
@@ -99,6 +105,45 @@ class MainActivity : FlutterActivity() {
         }
         val sink = linkSink
         if (sink != null) main.post { sink.success(msg) } else pendingLink = msg
+    }
+
+    private fun hasLocation(): Boolean =
+        checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    /** One fresh fix (Android 11+), else the newest last-known position. Null without permission. */
+    @android.annotation.SuppressLint("MissingPermission")
+    private fun currentLocation(done: (Map<String, Any>?) -> Unit) {
+        if (!hasLocation()) { done(null); return }
+        val lm = getSystemService(LOCATION_SERVICE) as android.location.LocationManager
+        fun pack(l: android.location.Location?): Map<String, Any>? =
+            l?.let { mapOf("lat" to it.latitude, "lng" to it.longitude, "accuracy" to it.accuracy.toDouble(), "time" to it.time) }
+        val providers = lm.getProviders(true)
+        var best: android.location.Location? = null
+        for (p in providers) {
+            val l = try { lm.getLastKnownLocation(p) } catch (_: Exception) { null } ?: continue
+            if (best == null || l.time > best!!.time) best = l
+        }
+        val fresh = best != null && System.currentTimeMillis() - best!!.time < 2 * 60 * 1000
+        if (fresh || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) { done(pack(best)); return }
+        val provider = when {
+            providers.contains(android.location.LocationManager.FUSED_PROVIDER) -> android.location.LocationManager.FUSED_PROVIDER
+            providers.contains(android.location.LocationManager.NETWORK_PROVIDER) -> android.location.LocationManager.NETWORK_PROVIDER
+            providers.contains(android.location.LocationManager.GPS_PROVIDER) -> android.location.LocationManager.GPS_PROVIDER
+            else -> null
+        }
+        if (provider == null) { done(pack(best)); return }
+        var answered = false
+        val fallback = best
+        val signal = android.os.CancellationSignal()
+        main.postDelayed({ if (!answered) { answered = true; signal.cancel(); done(pack(fallback)) } }, 8000)
+        try {
+            lm.getCurrentLocation(provider, signal, mainExecutor) { l ->
+                if (!answered) { answered = true; done(pack(l ?: fallback)) }
+            }
+        } catch (_: Exception) {
+            if (!answered) { answered = true; done(pack(fallback)) }
+        }
     }
 
     private fun installed(pkg: String): Boolean = try {
