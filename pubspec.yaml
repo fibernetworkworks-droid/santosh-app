@@ -1,0 +1,41 @@
+name: santosh
+description: Santosh, your AI coworker. Android app for the Santosh Core backend.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.2
+  shared_preferences: ^2.3.2
+  google_fonts: ^6.2.1
+  flutter_local_notifications: ^17.2.4
+  timezone: ^0.9.4
+  flutter_timezone: ^3.0.1
+  android_intent_plus: ^5.1.0
+  speech_to_text: ^6.6.2
+  flutter_tts: ^4.0.2
+  url_launcher: ^6.3.0
+  file_picker: ^8.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/images/santosh_head.png
+  adaptive_icon_background: "#EDE9FE"
+  adaptive_icon_foreground: assets/images/santosh_head.png
+  min_sdk_android: 23
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/

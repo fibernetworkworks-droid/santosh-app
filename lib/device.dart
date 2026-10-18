@@ -1,0 +1,148 @@
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:android_intent_plus/flag.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:timezone/data/latest_all.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
+
+/// Everything that has to happen on the phone itself: notifications, alarms, timers, calendar.
+class Device {
+  Device._();
+  static final Device instance = Device._();
+
+  final FlutterLocalNotificationsPlugin _notes = FlutterLocalNotificationsPlugin();
+  bool _ready = false;
+
+  static const _channel = AndroidNotificationDetails(
+    'santosh_reminders',
+    'Santosh reminders',
+    channelDescription: 'Reminders and updates from Santosh',
+    importance: Importance.high,
+    priority: Priority.high,
+  );
+
+  Future<void> init() async {
+    if (_ready) return;
+    tzdata.initializeTimeZones();
+    try {
+      tz.setLocalLocation(tz.getLocation(await FlutterTimezone.getLocalTimezone()));
+    } catch (_) {
+      tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
+    }
+    await _notes.initialize(const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')));
+    _ready = true;
+  }
+
+  Future<void> askNotificationPermission() async {
+    await _notes
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
+  }
+
+  int _idFor(String s) => s.hashCode & 0x7fffffff;
+
+  /// Show something right now (e.g. a Santosh update while the app is in the background).
+  Future<void> showNow(String title, String body) async {
+    await init();
+    await _notes.show(DateTime.now().millisecondsSinceEpoch & 0x7fffffff, title, body,
+        const NotificationDetails(android: _channel));
+  }
+
+  /// Keep the phone's scheduled notifications in sync with the reminders on the server,
+  /// so they still pop up when the app is closed or offline.
+  Future<void> syncReminders(List<Map<String, dynamic>> reminders) async {
+    await init();
+    final pending = await _notes.pendingNotificationRequests();
+    final keep = <int>{};
+    for (final r in reminders.take(60)) {
+      final due = DateTime.tryParse(r['due_at'] as String? ?? '');
+      if (due == null || due.isBefore(DateTime.now())) continue;
+      final id = _idFor(r['id'] as String);
+      keep.add(id);
+      await _notes.zonedSchedule(
+        id,
+        'Santosh',
+        'Yaad dila raha hoon: ${r['text']}',
+        tz.TZDateTime.from(due, tz.local),
+        const NotificationDetails(android: _channel),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    }
+    for (final p in pending) {
+      if (!keep.contains(p.id)) await _notes.cancel(p.id);
+    }
+  }
+
+  /// Runs one action from Santosh. Returns null on success, or a short reason on failure.
+  Future<String?> run(Map<String, dynamic> a) async {
+    try {
+      switch (a['type']) {
+        case 'set_alarm':
+          return await _alarm(a);
+        case 'set_timer':
+          await _launch(AndroidIntent(
+            action: 'android.intent.action.SET_TIMER',
+            arguments: <String, dynamic>{
+              'android.intent.extra.alarm.LENGTH': (a['seconds'] as num).toInt(),
+              'android.intent.extra.alarm.MESSAGE': a['label'] ?? 'Santosh timer',
+              'android.intent.extra.alarm.SKIP_UI': true,
+            },
+            flags: const <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+          ));
+          return null;
+        case 'add_calendar_event':
+          await _launch(AndroidIntent(
+            action: 'android.intent.action.INSERT',
+            data: 'content://com.android.calendar/events',
+            flags: const <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+            arguments: <String, dynamic>{
+              'title': a['title'] ?? 'Santosh',
+              // timestamps are > 2^31, so the platform channel sends them as Java longs as Android expects
+              'beginTime': (a['start_ms'] as num).toInt(),
+              'endTime': (a['end_ms'] as num).toInt(),
+              'eventLocation': a['location'] ?? '',
+              'description': a['notes'] ?? '',
+            },
+          ));
+          return null;
+        default:
+          return 'This app version does not know "${a['type']}" yet; please update the app.';
+      }
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<String?> _alarm(Map<String, dynamic> a) async {
+    const dayNums = {'sun': 1, 'mon': 2, 'tue': 3, 'wed': 4, 'thu': 5, 'fri': 6, 'sat': 7}; // java.util.Calendar
+    final days = ((a['days'] as List?) ?? const []).map((d) => dayNums[d]).whereType<int>().toList();
+    final base = <String, dynamic>{
+      'android.intent.extra.alarm.HOUR': (a['hour'] as num).toInt(),
+      'android.intent.extra.alarm.MINUTES': (a['minute'] as num).toInt(),
+      'android.intent.extra.alarm.MESSAGE': a['label'] ?? 'Santosh alarm',
+      'android.intent.extra.alarm.SKIP_UI': true,
+    };
+    if (days.isNotEmpty) {
+      try {
+        await _launch(AndroidIntent(
+          action: 'android.intent.action.SET_ALARM',
+          arguments: {...base, 'android.intent.extra.alarm.DAYS': days},
+          flags: const [Flag.FLAG_ACTIVITY_NEW_TASK],
+        ));
+        return null;
+      } catch (_) {
+        // some clock apps reject the repeat list; fall back to a one-time alarm below
+      }
+    }
+    await _launch(AndroidIntent(
+        action: 'android.intent.action.SET_ALARM', arguments: base, flags: const [Flag.FLAG_ACTIVITY_NEW_TASK]));
+    return null;
+  }
+
+  Future<void> _launch(AndroidIntent intent) async {
+    final can = await intent.canResolveActivity() ?? false;
+    if (!can) throw 'No app on this phone can handle it (clock or calendar app missing)';
+    await intent.launch();
+  }
+}
