@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     email_smtp_host: str = ""
     email_smtp_port: int = 587
     email_sender_name: str = ""             # name shown on sent mail (defaults to the address)
+    gcal_caldav_url: str = ""               # override CalDAV base (for Workspace/custom); blank = Gmail legacy endpoint
 
     # --- storage ---
     database_url: str = "sqlite:///./santosh.db"
