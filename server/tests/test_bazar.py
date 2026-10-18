@@ -334,3 +334,18 @@ def test_payment_webhook_needs_signature(bz, monkeypatch):
     sig = h.new(b"whsec", raw, hashlib.sha256).hexdigest()
     r = c.post("/bazar/webhooks/payment", content=raw, headers={"x-signature": sig})
     assert r.status_code == 400 and "Unknown payment" in r.text
+
+
+def test_owner_tenant_finds_owner_google_signin(bz, monkeypatch):
+    monkeypatch.setenv("EMAIL_ADDRESS", "owner@gmail.com")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    from app import accounts, google_auth
+    from app.db import OAuthConnection, User, session
+    with session() as s:
+        s.add(User(id="usr_owner", email="owner@gmail.com"))
+        s.add(OAuthConnection(user_id="usr_owner", provider="google", access_token_enc=accounts.encrypt("a"),
+                              refresh_token_enc=accounts.encrypt("r"), scopes="openid"))
+    assert google_auth.has_google("default")      # the owner's chats run as 'default'
+    assert google_auth.has_google("usr_owner")
+    assert not google_auth.has_google("usr_other")

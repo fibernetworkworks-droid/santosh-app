@@ -16,10 +16,24 @@ from .db import OAuthConnection, now, session
 log = logging.getLogger("santosh.google_auth")
 
 
+def _user_ids(s, tenant_id: str) -> list[str]:
+    """The owner tenant ('default') holds the owner's Google sign-in under their user id."""
+    ids = [tenant_id]
+    if tenant_id == get_settings().tenant_id:
+        from .db import User
+        ids += [u.id for u in s.scalars(select(User)).all() if accounts.is_owner_email(u.email)]
+    return ids
+
+
+def _google_conn(s, tenant_id: str):
+    return s.scalars(select(OAuthConnection).where(OAuthConnection.user_id.in_(_user_ids(s, tenant_id)),
+                                                   OAuthConnection.provider == "google")
+                     .order_by(OAuthConnection.id.desc())).first()
+
+
 def has_google(tenant_id: str) -> bool:
     with session() as s:
-        return s.scalar(select(OAuthConnection).where(OAuthConnection.user_id == tenant_id,
-                                                      OAuthConnection.provider == "google")) is not None
+        return _google_conn(s, tenant_id) is not None
 
 
 def credentials_for(tenant_id: str, scopes=None):
@@ -28,8 +42,7 @@ def credentials_for(tenant_id: str, scopes=None):
     from google.auth.transport.requests import Request
     st = get_settings()
     with session() as s:
-        conn = s.scalar(select(OAuthConnection).where(OAuthConnection.user_id == tenant_id,
-                                                      OAuthConnection.provider == "google"))
+        conn = _google_conn(s, tenant_id)
         if not conn or not conn.refresh_token_enc:
             return None
         creds = Credentials(
@@ -44,8 +57,7 @@ def credentials_for(tenant_id: str, scopes=None):
         try:
             creds.refresh(Request())
             with session() as s:
-                conn = s.scalar(select(OAuthConnection).where(OAuthConnection.user_id == tenant_id,
-                                                              OAuthConnection.provider == "google"))
+                conn = _google_conn(s, tenant_id)
                 if conn:
                     conn.access_token_enc = accounts.encrypt(creds.token)
                     if creds.expiry:
