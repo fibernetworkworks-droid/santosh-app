@@ -39,7 +39,12 @@ jobs:
           done < analyze.txt
           true
       - name: Build APK
-        run: flutter build apk --release
+        run: |
+          set -o pipefail
+          flutter build apk --release 2>&1 | tee /tmp/b.log || {
+            grep -iE "error|exception|because|incompatible|requires|not found|unresolved|failed|minSdk|compileSdk|namespace" /tmp/b.log | tail -50 | while IFS= read -r L; do echo "::error::$L"; done
+            exit 1
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: santosh-apk
