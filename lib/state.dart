@@ -139,6 +139,7 @@ class Santosh extends ChangeNotifier {
       Timer(const Duration(seconds: 2), () {
         _replaying = false;
         applyBackground();
+        _syncBazar();
       });
       await Device.instance.init();
       await Device.instance.askNotificationPermission();
@@ -310,6 +311,24 @@ class Santosh extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Safety net: show any pending confirm cards the live stream may have missed.
+  Future<void> _syncBazar() async {
+    try {
+      final pend = await api!.bazarPending();
+      var added = false;
+      for (final c in pend) {
+        final id = c['id'] as String? ?? '';
+        if (id.isEmpty || _bazar.containsKey(id)) continue;
+        _bazar[id] = FeedItem('bazar', c);
+        feed.add(_bazar[id]!);
+        added = true;
+      }
+      if (added) notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> refreshBazar() => _syncBazar();
+
   Future<String> openBazar(Map<String, dynamic> open) async =>
       Native.openExternal(url: open['url'] as String? ?? '', package: open['package'] as String? ?? '');
 
@@ -360,6 +379,7 @@ class Santosh extends ChangeNotifier {
         feed.add(FeedItem('message', p));
         final fresh = !_replaying && ev.at.isAfter(_connectedAt.subtract(const Duration(seconds: 5)));
         if (p['role'] == 'assistant' && fresh) {
+          _syncBazar();
           _replies.add(p);
           if (inBackground && !backgroundRunning) Device.instance.showNow('Santosh', p['text'] as String? ?? '');
           if (!voiceMode && _lastInputWasVoice && speakReplies && p['source'] == 'agent') _speak(p['text'] as String? ?? '');

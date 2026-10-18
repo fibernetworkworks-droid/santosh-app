@@ -71,6 +71,7 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
       widget.app.refreshLists();
       widget.app.refreshRoutines();
       widget.app.refreshBackgroundInfo();
+      widget.app.refreshBazar();
     }
   }
 
