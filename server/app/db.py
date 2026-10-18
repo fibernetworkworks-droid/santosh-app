@@ -216,6 +216,24 @@ class DeviceAction(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class EmailDraft(Base):
+    """An email Santosh wrote. It is sent only after the user approves it in the app."""
+    __tablename__ = "email_drafts"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("eml"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    conversation_id: Mapped[str] = mapped_column(String(40), index=True)
+    to_addr: Mapped[str] = mapped_column(String(1000))
+    cc_addr: Mapped[str] = mapped_column(String(1000), default="")
+    subject: Mapped[str] = mapped_column(String(500))
+    body: Mapped[str] = mapped_column(Text)
+    in_reply_to: Mapped[str | None] = mapped_column(String(500), nullable=True)   # Message-ID being replied to
+    references: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending")   # pending/sent/cancelled/failed
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class KV(Base):
     __tablename__ = "kv"
     key: Mapped[str] = mapped_column(String(200), primary_key=True)

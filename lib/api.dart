@@ -77,6 +77,22 @@ class Api {
 
   Future<void> cancelRoutine(String id) async => _send('POST', '/api/routines/$id/cancel');
 
+  Future<List<Map<String, dynamic>>> pendingEmails() async {
+    try {
+      return List<Map<String, dynamic>>.from((await _send('GET', '/api/emails/pending'))['emails'] as List);
+    } on ApiException catch (e) {
+      if (e.status == 404) return [];
+      rethrow;
+    }
+  }
+
+  Future<void> sendEmail(String id, {String? to, String? cc, String? subject, String? body}) async =>
+      _send('POST', '/api/emails/$id/send', body: {
+        if (to != null) 'to': to, if (cc != null) 'cc': cc, if (subject != null) 'subject': subject, if (body != null) 'body': body,
+      });
+
+  Future<void> cancelEmail(String id) async => _send('POST', '/api/emails/$id/cancel');
+
   Future<List<Map<String, dynamic>>> reminders() async =>
       List<Map<String, dynamic>>.from((await _send('GET', '/api/reminders'))['reminders'] as List);
   Future<void> cancelReminder(String id) async => _send('POST', '/api/reminders/$id/cancel');

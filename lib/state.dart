@@ -75,6 +75,7 @@ class Santosh extends ChangeNotifier {
 
   final List<FeedItem> feed = [];
   final Map<String, FeedItem> _campaigns = {};
+  final Map<String, FeedItem> _emails = {};
   FeedItem? _steps;
   List<Map<String, dynamic>> reminders = [];
   Map<String, dynamic> lists = {};
@@ -99,6 +100,7 @@ class Santosh extends ChangeNotifier {
     feed.clear();
     lastEventId = 0;
     _campaigns.clear();
+    _emails.clear();
     _steps = null;
     api = Api(serverUrl, apiKey);
     try {
@@ -233,6 +235,28 @@ class Santosh extends ChangeNotifier {
     }
   }
 
+  Future<void> sendEmail(String id, {String? to, String? cc, String? subject, String? body}) async {
+    try {
+      await api!.sendEmail(id, to: to, cc: cc, subject: subject, body: body);
+      final it = _emails[id];
+      if (it != null) it.data = {...it.data, 'status': 'sent'};
+    } catch (e) {
+      error = e.toString();
+    }
+    notifyListeners();
+  }
+
+  Future<void> cancelEmail(String id) async {
+    try {
+      await api!.cancelEmail(id);
+      final it = _emails[id];
+      if (it != null) it.data = {...it.data, 'status': 'cancelled'};
+    } catch (e) {
+      error = e.toString();
+    }
+    notifyListeners();
+  }
+
   Future<void> campaignAction(String id, String action) async {
     try {
       final v = await api!.campaignAction(id, action);
@@ -300,6 +324,14 @@ class Santosh extends ChangeNotifier {
       case 'routines':
         routines = List<Map<String, dynamic>>.from(p['routines'] as List? ?? const []);
         break;
+      case 'email_draft':
+        _emails[p['id'] as String] = FeedItem('email', Map<String, dynamic>.from(p));
+        feed.add(_emails[p['id']]!);
+        break;
+      case 'email_sent':
+        final it = _emails[p['id'] as String];
+        if (it != null) it.data = {...it.data, ...p};
+        break;
       case 'lists':
         await refreshLists();
         break;
@@ -342,6 +374,9 @@ class Santosh extends ChangeNotifier {
   }
 
   Future<void> stopSpeaking() async => _tts.stop();
+
+  /// Let the UI rebuild after an in-place edit of a feed item.
+  void notifyChange() => notifyListeners();
 
   @override
   void dispose() {

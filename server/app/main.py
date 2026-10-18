@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.5.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.6.0", lifespan=lifespan)
 
 
 def require_key(request: Request) -> None:
@@ -64,7 +64,9 @@ def _conv_or_404(conversation_id: str) -> Conversation:
 def healthz():
     st = get_settings()
     from .voice import MALE_VOICES
-    features = ["routines", "voice", "web"] + (["realtime_voice", "google_search"] if st.gemini_api_key else [])
+    from . import mail
+    features = ["routines", "voice", "web"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+        + (["email"] if mail.configured() else [])
     return {"ok": True, "version": app.version, "dry_run": st.wa_dry_run, "model": st.anthropic_model,
             "brain_configured": bool(st.anthropic_api_key), "features": features,
             "voices": [{"id": k, "style": v} for k, v in MALE_VOICES.items()], "voice_default": st.voice_default}
@@ -282,6 +284,76 @@ async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "
         await ws.close()
         return
     await v.Call(ws, conv, voice, lang).run()
+
+
+@app.get("/api/emails/pending", dependencies=[Depends(require_key)])
+def pending_emails():
+    from .db import EmailDraft
+    tenant = get_settings().tenant_id
+    with session() as s:
+        rows = s.scalars(select(EmailDraft).where(EmailDraft.tenant_id == tenant, EmailDraft.status == "pending")
+                         .order_by(EmailDraft.id)).all()
+        return {"emails": [{"id": d.id, "to": d.to_addr, "cc": d.cc_addr, "subject": d.subject, "body": d.body,
+                            "status": d.status} for d in rows]}
+
+
+class EmailEdit(BaseModel):
+    to: str | None = None
+    cc: str | None = None
+    subject: str | None = None
+    body: str | None = None
+
+
+@app.post("/api/emails/{draft_id}/send", dependencies=[Depends(require_key)])
+async def send_email_draft(draft_id: str, body: EmailEdit | None = None):
+    """Approve and send. Optional fields let the user edit before sending."""
+    from . import mail
+    from .db import EmailDraft
+    tenant = get_settings().tenant_id
+    with session() as s:
+        d = s.get(EmailDraft, draft_id)
+        if not d or d.tenant_id != tenant:
+            raise HTTPException(404, "Draft not found")
+        if d.status == "sent":
+            return {"status": "sent", "already": True}
+        if body:
+            if body.to is not None: d.to_addr = body.to.strip()[:1000]
+            if body.cc is not None: d.cc_addr = body.cc.strip()[:1000]
+            if body.subject is not None: d.subject = body.subject.strip()[:500]
+            if body.body is not None: d.body = body.body
+        to_addr, cc, subject, bod = d.to_addr, d.cc_addr, d.subject, d.body
+        irt, refs, conv = d.in_reply_to, d.references, d.conversation_id
+    if "@" not in to_addr:
+        raise HTTPException(400, "Recipient email is not valid")
+    try:
+        await mail.send_email(to_addr, subject, bod, cc=cc, in_reply_to=irt, references=refs)
+    except mail.MailError as e:
+        with session() as s:
+            d = s.get(EmailDraft, draft_id); d.status, d.error = "failed", str(e)
+        bus.publish(conv, "email_sent", {"id": draft_id, "status": "failed", "error": str(e), "to": to_addr})
+        raise HTTPException(502, str(e))
+    from .db import now as _now
+    with session() as s:
+        d = s.get(EmailDraft, draft_id); d.status, d.sent_at = "sent", _now()
+    bus.publish(conv, "email_sent", {"id": draft_id, "status": "sent", "to": to_addr, "subject": subject})
+    from .events import notify
+    notify(conv, f"Email bhej diya: {to_addr} ko \"{subject}\".")
+    return {"status": "sent", "to": to_addr}
+
+
+@app.post("/api/emails/{draft_id}/cancel", dependencies=[Depends(require_key)])
+def cancel_email_draft(draft_id: str):
+    from .db import EmailDraft
+    tenant = get_settings().tenant_id
+    with session() as s:
+        d = s.get(EmailDraft, draft_id)
+        if not d or d.tenant_id != tenant:
+            raise HTTPException(404, "Draft not found")
+        if d.status == "pending":
+            d.status = "cancelled"
+        conv = d.conversation_id
+    bus.publish(conv, "email_sent", {"id": draft_id, "status": "cancelled"})
+    return {"status": "cancelled"}
 
 
 @app.get("/api/routines", dependencies=[Depends(require_key)])

@@ -24,6 +24,15 @@ class Settings(BaseSettings):
     voice_affective_dialog: bool = False
     voice_proactive_audio: bool = False
 
+    # --- email (Baat/Chat can read your inbox and send approved replies). App password, not your login password. ---
+    email_address: str = ""
+    email_password: str = ""                # app password (Gmail/Outlook/Zoho "app password")
+    email_imap_host: str = ""               # auto-detected from the address when blank
+    email_imap_port: int = 993
+    email_smtp_host: str = ""
+    email_smtp_port: int = 587
+    email_sender_name: str = ""             # name shown on sent mail (defaults to the address)
+
     # --- storage ---
     database_url: str = "sqlite:///./santosh.db"
 
