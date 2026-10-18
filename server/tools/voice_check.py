@@ -96,16 +96,27 @@ async def send_audio(s):
     await s.send_realtime_input(audio_stream_end=True)
 
 
+def plus(*fields):
+    """Minimal config + the listed settings taken from Santosh's real config."""
+    def make():
+        f = full()
+        c = minimal()
+        for x in fields:
+            setattr(c, x, getattr(f, x))
+        return c
+    make.__name__ = "minimal + " + ", ".join(fields)
+    return make
+
+
 async def main():
     print(f"Model: {MODEL}\n")
     await run("minimal + live text", minimal, say_text)
-    await run("minimal + client_content text", minimal, say_client_content)
-    await run("minimal + audio", minimal, send_audio)
-    await run("full + live text", full, say_text)
-    await run("full + audio", full, send_audio)
-    for f in ("tools", "enable_affective_dialog", "proactivity", "realtime_input_config", "context_window_compression",
-              "session_resumption", "input_audio_transcription", "output_audio_transcription", "system_instruction"):
-        await run(f"full minus {f} + live text", without(f), say_text)
+    for f in ("system_instruction", "tools", "input_audio_transcription", "output_audio_transcription",
+              "realtime_input_config", "enable_affective_dialog", "context_window_compression", "session_resumption"):
+        await run(f"minimal + {f}", plus(f), say_text)
+    every = ("system_instruction", "tools", "input_audio_transcription", "output_audio_transcription",
+             "realtime_input_config", "enable_affective_dialog", "context_window_compression", "session_resumption")
+    await run("minimal + everything except proactivity", plus(*every), say_text)
 
 
 asyncio.run(main())
