@@ -17,7 +17,7 @@ dependencies:
   flutter_timezone: ^3.0.1
   android_intent_plus: ^5.1.0
   speech_to_text: ^6.6.2
-  flutter_tts: ^4.0.2
+  flutter_tts: 4.0.2
   url_launcher: ^6.3.0
   file_picker: ^8.1.2
 

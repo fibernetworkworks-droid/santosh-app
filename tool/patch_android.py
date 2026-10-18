@@ -40,3 +40,12 @@ if t.exists() and "MyApp" in t.read_text():
     t.unlink()
 
 print("Android project patched for Santosh.")
+
+# Kotlin Gradle plugin new enough for current AndroidX / plugin libraries
+for name in ("settings.gradle", "settings.gradle.kts"):
+    f = root / "android" / name
+    if f.exists():
+        s = f.read_text()
+        s2 = re.sub(r'(id[ (]+"org\.jetbrains\.kotlin\.android"\)?\s+version\s+")[^"]+(")', r'\g<1>2.2.20\g<2>', s)
+        f.write_text(s2)
+        print("Kotlin plugin set to 2.2.20 in", name, "(changed)" if s2 != s else "(pattern not found!)")
