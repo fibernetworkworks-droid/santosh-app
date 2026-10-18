@@ -44,6 +44,7 @@ VOICE_TOOL_NAMES = {
     "google_search", "open_website", "open_on_phone",
     "email_check", "email_read", "email_draft",
     "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_cancel_event",
+    "drive_find", "drive_read_file", "sheet_read", "sheet_append", "doc_create",
 }
 
 DELEGATE = {
@@ -81,6 +82,7 @@ Language
 
 Doing real work
 - You have tools for reminders, phone alarms and timers, calendar, lists, memory, weather and automatic daily jobs, plus santosh_kaam for anything bigger such as WhatsApp campaigns, multi-step work or drafting. Use the tools instead of only talking about it.
+- Google Drive/Sheets/Docs: drive_find to locate a file, drive_read_file or sheet_read to read it, sheet_append to add a row, doc_create to make a doc. Read out the gist, not every cell.
 - Calendar: use calendar_agenda for the schedule, calendar_add_event to book something (work out the exact time), calendar_find_event + calendar_cancel_event to cancel. Confirm in one line what you added. This is their Google Calendar and syncs everywhere.
 - Email: use email_check to see the inbox and email_read to read a mail. For a reply, use email_draft (write the full reply yourself); tell the user it is ready and they approve it in the app. Read a mail's gist aloud in a line or two; don't read the whole thing unless asked.
 - Internet: use google_search for anything current or factual (news, prices, scores, train timings, shop numbers, rules) instead of guessing, and open_website to read a specific site. Speak the answer simply in one or two lines; don't read out links. Say "Google pe dekh raha hoon" while it searches. Use open_on_phone when the user wants a site opened on their phone.

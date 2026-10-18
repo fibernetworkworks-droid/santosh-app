@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     email_sender_name: str = ""             # name shown on sent mail (defaults to the address)
     gcal_caldav_url: str = ""               # override CalDAV base (for Workspace/custom); blank = Gmail legacy endpoint
 
+    # --- Google Drive/Sheets/Docs (service account; share a folder with its email) ---
+    google_sa_file: str = ""                # path to the service-account JSON key on the server
+    google_sa_json: str = ""                # or the JSON inline
+    google_drive_folder_id: str = ""        # the shared folder to search in and create docs in (recommended)
+
     # --- storage ---
     database_url: str = "sqlite:///./santosh.db"
 
