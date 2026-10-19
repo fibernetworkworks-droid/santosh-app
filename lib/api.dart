@@ -44,10 +44,10 @@ class Api {
         if (apiKey.isNotEmpty) 'Authorization': 'Bearer $apiKey',
       };
 
-  Future<dynamic> _send(String method, String path, {Object? body, Map<String, String>? query}) async {
+  Future<dynamic> _send(String method, String path, {Object? body, Map<String, String>? query, Duration timeout = const Duration(seconds: 25)}) async {
     final req = http.Request(method, _u(path, query))..headers.addAll(_headers);
     if (body != null) req.body = jsonEncode(body);
-    final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 25)));
+    final res = await http.Response.fromStream(await _http.send(req).timeout(timeout));
     final text = utf8.decode(res.bodyBytes);
     if (res.statusCode >= 400) {
       var msg = 'Server error ${res.statusCode}';
@@ -125,6 +125,30 @@ class Api {
 
   Future<void> putLocation(double lat, double lng, {double? accuracy}) async =>
       _send('PUT', '/api/location', body: {'lat': lat, 'lng': lng, if (accuracy != null) 'accuracy_m': accuracy});
+
+  // ---------------- Mera PC (Santosh Desktop) ----------------
+  /// Absolute link for a server path like /api/pc/files/... (download links).
+  String absolute(String path) => path.startsWith('http') ? path : _u(path).toString();
+  Future<Map<String, dynamic>> pcPairStart() async => Map<String, dynamic>.from(await _send('POST', '/api/pc/pair/start'));
+  Future<List<Map<String, dynamic>>> pcDevices() async =>
+      List<Map<String, dynamic>>.from(((await _send('GET', '/api/pc/devices'))['devices'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<void> pcRemove(String id) async => _send('DELETE', '/api/pc/devices/$id');
+  Future<List<Map<String, dynamic>>> pcJobs() async =>
+      List<Map<String, dynamic>>.from(((await _send('GET', '/api/pc/jobs'))['jobs'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<List<Map<String, dynamic>>> pcSearch(String q, {String kind = 'any'}) async =>
+      List<Map<String, dynamic>>.from(((await _send('POST', '/api/pc/search', body: {'query': q, 'kind': kind}, timeout: const Duration(seconds: 40)))['results'] as List)
+          .map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<Map<String, dynamic>> pcPull(String path) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/pc/pull', body: {'path': path}, timeout: const Duration(seconds: 200)));
+  Future<Map<String, dynamic>> pcSend(String filename, List<int> bytes) async {
+    final req = http.MultipartRequest('POST', _u('/api/pc/send'))
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
+    final res = await http.Response.fromStream(await req.send().timeout(const Duration(seconds: 200)));
+    final body = jsonDecode(utf8.decode(res.bodyBytes));
+    if (res.statusCode >= 400) throw ApiException(res.statusCode, (body as Map)['detail']?.toString() ?? 'Upload failed');
+    return Map<String, dynamic>.from(body as Map);
+  }
 
   // ---------------- MCP servers ----------------
   Future<List<Map<String, dynamic>>> mcpList() async =>

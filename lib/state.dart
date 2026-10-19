@@ -555,6 +555,10 @@ class Santosh extends ChangeNotifier {
       case 'bazar_link':
         feed.add(FeedItem('link', Map<String, dynamic>.from(p)));
         break;
+      case 'pc_file':
+        feed.add(FeedItem('pc_file', Map<String, dynamic>.from(p)));
+        if (inBackground && !_replaying) Device.instance.showNow('PC se file aayi', p['name'] as String? ?? '');
+        break;
       case 'device_action':
         // in the background the native service does it (screens can't be opened from the background)
         if (!(inBackground && backgroundRunning)) await _runAction(p, at: ev.at);

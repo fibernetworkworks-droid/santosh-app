@@ -8,6 +8,7 @@ from typing import Any
 from ..connectors.base import Ctx, Executor, ToolError, ToolSpec
 from ..connectors.bbps import BBPSExecutor
 from ..connectors.mcp_remote import McpExecutor
+from ..connectors.pc import PcExecutor
 from ..connectors.native import NativeExecutor
 from ..connectors.rides import RideExecutor
 from ..connectors.shops import ShopExecutor
@@ -17,7 +18,7 @@ from ..packs.registry import Pack
 
 def default_executors() -> dict[str, Executor]:
     return {"mcp": McpExecutor(), "bbps": BBPSExecutor(), "upi": UpiExecutor(), "ride": RideExecutor(),
-            "shop": ShopExecutor(), "native": NativeExecutor()}
+            "shop": ShopExecutor(), "native": NativeExecutor(), "pc": PcExecutor()}
 
 
 @dataclass

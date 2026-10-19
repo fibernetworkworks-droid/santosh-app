@@ -3,6 +3,7 @@ collects delivery statuses and posts the final report into the chat."""
 from __future__ import annotations
 
 import asyncio
+import time
 import logging
 from datetime import timedelta
 
@@ -290,6 +291,23 @@ async def tick() -> None:
     expire_device_actions()
     await bazar_reminders()
     await offline_digests()
+    await pc_cleanup()
+
+
+_pc_last = 0.0
+
+
+async def pc_cleanup() -> None:
+    """Delete PC<->phone relay files after their time is up."""
+    global _pc_last
+    if time.time() - _pc_last < 1800:
+        return
+    _pc_last = time.time()
+    try:
+        from .pc import service as pcs
+        await asyncio.to_thread(pcs.cleanup_files)
+    except Exception:
+        log.exception("pc cleanup failed")
 
 
 _offline_last = 0.0

@@ -50,6 +50,8 @@ STATUS_TEXT = {
     "needs_link": "user must link this account once (Connect tab)",
     "not_configured": "provider access not configured on the server yet",
     "core": "built into Santosh",
+    "pc_offline": "the PC is offline: switch it on and open Santosh Desktop",
+    "pc_not_paired": "no PC paired yet: Santosh app > Main > Mera PC",
     "needs_key": "add this server's API key once in the Santosh app (Connect > MCP servers); never in chat",
 }
 
@@ -114,6 +116,13 @@ def pack_status(s, user: User, pack: Pack) -> str:
     if pack.executor == "shop":
         n = s.scalars(select(Shop.id).where(Shop.template_id == pack.config["template"], Shop.active.is_(True))).first()
         return "ready" if n else "no_shop_yet"
+    if pack.executor == "pc":
+        from ..pc.hub import hub
+        if hub.is_online(user.id):
+            return "ready"
+        from ..db import PcDevice
+        paired = s.scalars(select(PcDevice.id).where(PcDevice.tenant_id == user.id, PcDevice.revoked.is_(False))).first()
+        return "pc_offline" if paired else "pc_not_paired"
     if pack.executor == "mcp" and pack.config.get("custom"):
         try:
             h = custom_mcp.headers_for(s, pack, user.id)
@@ -262,6 +271,8 @@ def _run(tenant_id: str, conversation_id: str, pack_id: str, tool: str, args: di
     if pack is None or (pack.config.get("custom") and pack.config.get("owner") != tenant_id):
         raise ToolError(f"Unknown pack '{pack_id}'. Use bazar_find first.")
     args = args if isinstance(args, dict) else {}
+    if pack.executor == "pc" and tool in {t.name for t in pack.tools} and pack.tier_of(tool) < 2:
+        return _run_pc_read(tenant_id, pack, tool, args, events)
     with session() as s:
         user = ensure_user(s, tenant_id)
         status = pack_status(s, user, pack)
@@ -286,15 +297,34 @@ def _run(tenant_id: str, conversation_id: str, pack_id: str, tool: str, args: di
                            "Nothing is ordered or paid until they tap."}
         except ToolError as e:
             msg = str(e)
+            if msg.startswith("PC_OFFLINE: "):
+                raise ToolError(msg.removeprefix("PC_OFFLINE: "))
             if msg.startswith("NOT_LINKED: "):
                 events.append(("bazar_link", {"pack_id": pack.id, "name": pack.name}))
                 raise ToolError(msg.removeprefix("NOT_LINKED: "))
             raise
+        if isinstance(out, dict) and out.get("pc_file"):
+            events.append(("pc_file", out["pc_file"]))
+            out = {**out, "phone": "A download card for this file is shown in the chat."}
         act = _open_action(out)
         if act:
             events.append(("bazar_open", {**act, "pack": pack.name, "message": out.get("message", "")}))
             out = {**out, "phone": "An Open button is shown in the chat; the user taps it to continue."}
         return out
+
+
+def _run_pc_read(tenant_id: str, pack: Pack, tool: str, args: dict[str, Any], events: list) -> dict[str, Any]:
+    """PC reads run with no database transaction open: the PC's answer (and its file upload) may need to write."""
+    from types import SimpleNamespace
+    ctx = SimpleNamespace(user=SimpleNamespace(id=tenant_id), session=None, task=None, settings=get_settings())
+    try:
+        out = executors()["pc"].call(pack, tool, args, ctx)
+    except ToolError as e:
+        raise ToolError(str(e).removeprefix("PC_OFFLINE: "))
+    if isinstance(out, dict) and out.get("pc_file"):
+        events.append(("pc_file", out["pc_file"]))
+        out = {**out, "phone": "A download card for this file is shown in the chat."}
+    return out
 
 
 def decide(tenant_id: str, approval_id: str, decision: str) -> dict[str, Any]:

@@ -12,12 +12,12 @@ from app.bazar.packs.registry import registry
 
 def test_159_mvp_packs_load():
     reg = registry()
-    assert len(reg.packs) == 159
+    assert len(reg.packs) == 160   # 159 MVP packs + Mera PC
     assert all(p.phase == "MVP" for p in reg.packs.values())
     by = {}
     for p in reg.packs.values():
         by[p.executor] = by.get(p.executor, 0) + 1
-    assert by == {"bbps": 98, "shop": 20, "upi": 15, "native": 13, "ride": 7, "mcp": 6}
+    assert by == {"bbps": 98, "shop": 20, "upi": 15, "native": 13, "ride": 7, "mcp": 6, "pc": 1}
 
 
 def test_rupees_and_paise():

@@ -7,6 +7,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import '../state.dart';
 import 'approve_sheet.dart';
 import 'glass.dart';
+import 'pc_screen.dart';
 import 'live_santosh.dart';
 import '../nav.dart';
 
@@ -206,6 +207,8 @@ class _ChatScreenState extends State<ChatScreen> {
         return _OpenCard(v: it.data, app: app);
       case 'link':
         return _LinkCard(v: it.data, app: app);
+      case 'pc_file':
+        return PcFileCard(v: it.data, app: app);
       case 'campaign':
         return _CampaignCard(v: it.data, app: app);
       default:

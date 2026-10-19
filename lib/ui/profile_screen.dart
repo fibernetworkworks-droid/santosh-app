@@ -5,6 +5,7 @@ import '../native.dart';
 import '../state.dart';
 import 'bazar_screen.dart';
 import 'glass.dart';
+import 'pc_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -89,6 +90,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ListenableBuilder(listenable: app, builder: (context, _) => _BackgroundCard(app: app)),
       const SizedBox(height: 18),
       const _WakeCard(),
+      const SizedBox(height: 18),
+      Glass(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.computer_rounded, color: C.teal),
+          title: const Text('Mera PC', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('Office ka computer jodiye: files, print aur Tally phone se'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PcScreen(app: app))),
+        ),
+      ),
       const SizedBox(height: 18),
       ListenableBuilder(listenable: app, builder: (context, _) => app.account != null ? _AccountCard(app: app) : const SizedBox.shrink()),
       if (app.account != null) const SizedBox(height: 18),

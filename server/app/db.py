@@ -297,6 +297,57 @@ class PhoneSeen(Base):
     digest_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class PcDevice(Base):
+    """A computer paired with Santosh (Santosh Desktop). Only a hash of its token is stored."""
+    __tablename__ = "pc_devices"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("pc"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    name: Mapped[str] = mapped_column(String(120), default="PC")
+    os: Mapped[str] = mapped_column(String(60), default="")
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    info: Mapped[dict] = mapped_column(JSON, default=dict)       # folders, tally, version (reported by the PC)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    last_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class PcPairCode(Base):
+    __tablename__ = "pc_pair_codes"
+    code_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class PcJob(Base):
+    """Activity log: everything Santosh asked a PC to do."""
+    __tablename__ = "pc_jobs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("job"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    device_id: Mapped[str] = mapped_column(String(40), index=True)
+    action: Mapped[str] = mapped_column(String(40))
+    summary: Mapped[str] = mapped_column(String(300), default="")
+    status: Mapped[str] = mapped_column(String(16), default="sent")   # sent | done | error | timeout
+    error: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PcFile(Base):
+    """A file passing between the PC and the phone. Kept on the server for a short time only."""
+    __tablename__ = "pc_files"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("file"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    device_id: Mapped[str] = mapped_column(String(40), default="")
+    direction: Mapped[str] = mapped_column(String(10))               # to_phone | to_pc
+    name: Mapped[str] = mapped_column(String(255))
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    sha256: Mapped[str] = mapped_column(String(64), default="")
+    pc_path: Mapped[str] = mapped_column(Text, default="")
+    stored_path: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class KV(Base):
     __tablename__ = "kv"
     key: Mapped[str] = mapped_column(String(200), primary_key=True)

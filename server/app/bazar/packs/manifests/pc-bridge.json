@@ -1,0 +1,27 @@
+{
+  "id": "pc-bridge",
+  "name": "Mera PC (Santosh Desktop)",
+  "category": "Office & PC",
+  "sub_category": "PC bridge",
+  "pack_type": "Native",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Find, read and send files from the office PC to the phone; print; read Tally reports and make approved Tally entries",
+  "notes": "Needs Santosh Desktop paired on the PC",
+  "master_list_row": 0,
+  "executor": "pc",
+  "config": {},
+  "tools": [
+    {"name": "status", "tier": 0},
+    {"name": "search", "tier": 0},
+    {"name": "list", "tier": 0},
+    {"name": "read", "tier": 0},
+    {"name": "send_file", "tier": 0},
+    {"name": "save_file", "tier": 1},
+    {"name": "print", "tier": 2},
+    {"name": "tally_report", "tier": 0},
+    {"name": "tally_voucher", "tier": 2}
+  ],
+  "keywords": ["pc", "computer", "laptop", "office pc", "desktop", "file", "pdf", "tally", "ledger", "print", "invoice", "folder", "document"]
+}

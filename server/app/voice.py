@@ -46,6 +46,7 @@ VOICE_TOOL_NAMES = {
     "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_cancel_event",
     "drive_find", "drive_read_file", "sheet_read", "sheet_append", "doc_create",
     "maps_search", "maps_directions", "maps_navigate",
+    "pc_status", "pc_search", "pc_read", "pc_send_to_phone", "tally_report",
 }
 
 DELEGATE = {

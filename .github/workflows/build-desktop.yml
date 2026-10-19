@@ -1,0 +1,48 @@
+name: Build Santosh Desktop
+
+on:
+  push:
+    paths: ["desktop/**", ".github/workflows/build-desktop.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        working-directory: desktop
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller==6.11.1
+      - name: Smoke test
+        working-directory: desktop
+        run: |
+          python -m santosh_desktop --version
+          python -c "import santosh_desktop.app, santosh_desktop.tally, santosh_desktop.index"
+      - name: Build SantoshDesktop.exe
+        working-directory: desktop
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --name SantoshDesktop `
+            --hidden-import websockets.asyncio.client --hidden-import websockets.legacy.client `
+            --collect-submodules pypdf launcher.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SantoshDesktop
+          path: desktop/dist/SantoshDesktop.exe
+      - name: Publish (main branch)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release delete desktop-latest --yes --cleanup-tag || true
+          gh release create desktop-latest desktop/dist/SantoshDesktop.exe \
+            --title "Santosh Desktop (Windows)" --latest=false \
+            --notes "Connects your office PC to Santosh on your phone. Download: https://github.com/${{ github.repository }}/releases/download/desktop-latest/SantoshDesktop.exe"

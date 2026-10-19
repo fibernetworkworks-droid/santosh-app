@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.12.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.13.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -379,6 +379,170 @@ def api_disconnect(provider: str, request: Request):
     if not uid:
         raise HTTPException(401, "Sign in first")
     return {"disconnected": accounts.disconnect(uid, provider)}
+
+
+# ---------------------------------------------------------------- PC bridge (Santosh Desktop)
+class PairIn(BaseModel):
+    code: str
+    name: str = "PC"
+    os: str = ""
+
+
+class PcSearchIn(BaseModel):
+    query: str
+    kind: str = "any"
+
+
+class PcPullIn(BaseModel):
+    path: str
+
+
+def _pc_device(request: Request):
+    from .pc import service as pcs
+    tok = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
+    dev = pcs.device_for_token(tok)
+    if dev is None:
+        raise HTTPException(401, "This PC is not paired (or was removed). Pair it again from the Santosh app.")
+    return dev
+
+
+def _pc_err(e: Exception):
+    from .pc.hub import PcOffline
+    if isinstance(e, PcOffline):
+        raise HTTPException(409, "PC offline hai. PC on karke Santosh Desktop kholiye.")
+    raise HTTPException(400, str(e))
+
+
+@app.post("/api/pc/pair/start", dependencies=[Depends(require_key)])
+def pc_pair_start(tenant: str = Depends(current_tenant)):
+    from .pc import service as pcs
+    return pcs.pair_start(tenant)
+
+
+@app.post("/api/pc/pair")
+def pc_pair(body: PairIn, request: Request):
+    from .pc import service as pcs
+    try:
+        return pcs.pair_finish(body.code, body.name, body.os, request.client.host if request.client else "")
+    except pcs.PairError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.websocket("/api/pc/ws")
+async def pc_ws(ws: WebSocket):
+    from fastapi import WebSocketDisconnect
+    from .pc import service as pcs
+    from .pc.hub import hub
+    tok = ws.headers.get("authorization", "").removeprefix("Bearer ").strip() or ws.query_params.get("token", "")
+    dev = pcs.device_for_token(tok)
+    await ws.accept()
+    if dev is None:
+        await ws.close(code=4401)
+        return
+    try:
+        await hub.serve(ws, dev.id, dev.tenant_id)
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        log.exception("pc socket failed")
+
+
+@app.post("/api/pc/files")
+async def pc_upload(request: Request, file: UploadFile = File(...), path: str = Form("")):
+    """The PC uploads a file the phone asked for."""
+    from .pc import service as pcs
+    dev = _pc_device(request)
+    try:
+        row = await pcs.store_upload(file, dev.tenant_id, dev.id, "to_phone", path)
+    except pcs.PairError as e:
+        raise HTTPException(413, str(e))
+    return {"file_id": row.id, "name": row.name, "size": row.size}
+
+
+@app.get("/api/pc/files/{file_id}")
+def pc_download(file_id: str, exp: int = 0, sig: str = ""):
+    """Signed, expiring link the phone opens to download a PC file."""
+    from .pc import service as pcs
+    if not pcs.check_sig(file_id, exp, sig):
+        raise HTTPException(403, "This link expired. Ask Santosh to send the file again.")
+    f = pcs.get_file(file_id)
+    if f is None or f.direction != "to_phone" or not Path(f.stored_path).exists():
+        raise HTTPException(404, "File no longer available")
+    return FileResponse(f.stored_path, filename=f.name)
+
+
+@app.get("/api/pc/fetch/{file_id}")
+def pc_fetch(file_id: str, request: Request):
+    """The PC downloads a file the phone sent to it."""
+    from .pc import service as pcs
+    dev = _pc_device(request)
+    f = pcs.get_file(file_id)
+    if f is None or f.direction != "to_pc" or f.tenant_id != dev.tenant_id or not Path(f.stored_path).exists():
+        raise HTTPException(404, "File not found")
+    return FileResponse(f.stored_path, filename=f.name)
+
+
+@app.get("/api/pc/devices", dependencies=[Depends(require_key)])
+def pc_devices(tenant: str = Depends(current_tenant)):
+    from .pc import service as pcs
+    return {"devices": pcs.devices(tenant)}
+
+
+@app.delete("/api/pc/devices/{device_id}", dependencies=[Depends(require_key)])
+async def pc_remove(device_id: str, tenant: str = Depends(current_tenant)):
+    from .pc import service as pcs
+    from .pc.hub import hub
+    ok = pcs.revoke(tenant, device_id)
+    if ok:
+        await hub.kick(tenant, device_id)
+    return {"removed": ok}
+
+
+@app.get("/api/pc/jobs", dependencies=[Depends(require_key)])
+def pc_jobs(limit: int = 50, tenant: str = Depends(current_tenant)):
+    from .pc import service as pcs
+    return {"jobs": pcs.jobs(tenant, limit)}
+
+
+@app.post("/api/pc/search", dependencies=[Depends(require_key)])
+async def pc_search(body: PcSearchIn, tenant: str = Depends(current_tenant)):
+    from .pc.hub import hub
+    try:
+        return await hub.call(tenant, "search", {"query": body.query, "kind": body.kind, "limit": 30})
+    except Exception as e:
+        _pc_err(e)
+
+
+@app.post("/api/pc/pull", dependencies=[Depends(require_key)])
+async def pc_pull(body: PcPullIn, tenant: str = Depends(current_tenant)):
+    """Phone asks for one PC file; returns a download link."""
+    from .pc import service as pcs
+    from .pc.hub import hub
+    try:
+        out = await hub.call(tenant, "send_file", {"path": body.path})
+    except Exception as e:
+        _pc_err(e)
+    f = pcs.get_file(out.get("file_id", ""))
+    if f is None or f.tenant_id != tenant:
+        raise HTTPException(502, "The file did not arrive from the PC")
+    return pcs.public_file(f)
+
+
+@app.post("/api/pc/send", dependencies=[Depends(require_key)])
+async def pc_send(file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
+    """Phone sends a file to the PC's Santosh Inbox folder."""
+    from .pc import service as pcs
+    from .pc.hub import hub
+    if not hub.is_online(tenant):
+        raise HTTPException(409, "PC offline hai. PC on karke Santosh Desktop kholiye.")
+    try:
+        row = await pcs.store_upload(file, tenant, "", "to_pc")
+    except pcs.PairError as e:
+        raise HTTPException(413, str(e))
+    try:
+        return await hub.call(tenant, "save_file", {"file_id": row.id, "name": row.name, "url": f"/api/pc/fetch/{row.id}"})
+    except Exception as e:
+        _pc_err(e)
 
 
 @app.websocket("/api/voice/ws")
