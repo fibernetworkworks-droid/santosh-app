@@ -39,6 +39,35 @@ class NetGuard:
         return [f"--proxy-server=http://127.0.0.1:{self.port}", "--proxy-bypass-list=<-loopback>",
                 "--force-webrtc-ip-handling-policy=disable_non_proxied_udp", "--webrtc-ip-handling-policy=disable_non_proxied_udp"]
 
+    async def resolve_all(self, host: str, port: int) -> list[str]:
+        """Every checked IP for this host, IPv4 first (many servers have no working IPv6), or PermissionError."""
+        h = host.strip("[]").lower().rstrip(".")
+        if port not in ALLOWED_PORTS and not self.allow_private:
+            raise PermissionError(f"port {port}")
+        if h in _BLOCKED_HOSTS and not (self.allow_private and h == "localhost"):
+            raise PermissionError(h)
+        try:
+            ips = [ipaddress.ip_address(h)]
+        except ValueError:
+            infos = await asyncio.get_running_loop().getaddrinfo(h, port, type=socket.SOCK_STREAM)
+            ips = list(dict.fromkeys(ipaddress.ip_address(i[4][0]) for i in infos))
+        if not ips:
+            raise PermissionError("no address")
+        if not self.allow_private and not all(ip.is_global for ip in ips):
+            raise PermissionError(f"{h} is a local address")
+        ips.sort(key=lambda ip: ip.version)   # IPv4 first
+        return [str(ip) for ip in ips]
+
+    async def open(self, host: str, port: int):
+        """Connect to the first reachable checked address (short timeout per address)."""
+        last: Exception | None = None
+        for ip in (await self.resolve_all(host, port))[:4]:
+            try:
+                return await asyncio.wait_for(asyncio.open_connection(ip, port), 8)
+            except Exception as e:   # timeout / unreachable (e.g. IPv6 on a v4-only VPS): try the next one
+                last = e
+        raise last or OSError("unreachable")
+
     async def resolve(self, host: str, port: int) -> str:
         """The one IP to connect to, or raise PermissionError."""
         h = host.strip("[]").lower().rstrip(".")
@@ -73,8 +102,7 @@ class NetGuard:
             if method.upper() == "CONNECT":
                 host, _, port_s = target.rpartition(":")
                 port = int(port_s or 443)
-                ip = await self.resolve(host, port)
-                r2, w2 = await asyncio.wait_for(asyncio.open_connection(ip, port), 20)
+                r2, w2 = await self.open(host, port)
                 writer.write(b"HTTP/1.1 200 Connection established\r\n\r\n")
                 await writer.drain()
             else:
@@ -83,8 +111,7 @@ class NetGuard:
                 if u.scheme != "http" or not u.hostname:
                     raise PermissionError("bad request")
                 port = u.port or 80
-                ip = await self.resolve(u.hostname, port)
-                r2, w2 = await asyncio.wait_for(asyncio.open_connection(ip, port), 20)
+                r2, w2 = await self.open(u.hostname, port)
                 path = (u.path or "/") + (f"?{u.query}" if u.query else "")
                 keep = [ln for ln in lines[1:] if ln and not ln.lower().startswith(("proxy-", "connection:", "keep-alive:"))]
                 req = f"{method} {path} {version}\r\n" + "\r\n".join(keep) + "\r\nConnection: close\r\n\r\n"
