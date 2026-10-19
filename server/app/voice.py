@@ -41,7 +41,7 @@ VOICE_TOOL_NAMES = {
     "create_reminder", "list_reminders", "cancel_reminder", "set_phone_alarm", "set_phone_timer",
     "add_calendar_event", "remember", "forget", "list_add", "list_show", "list_done", "set_profile",
     "get_weather", "create_routine", "list_routines", "cancel_routine",
-    "google_search", "open_website", "open_on_phone",
+    "google_search", "open_website", "open_on_phone", "browse_web",
     "email_check", "email_read", "email_draft",
     "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_cancel_event",
     "drive_find", "drive_read_file", "sheet_read", "sheet_append", "doc_create",
@@ -87,6 +87,7 @@ Language
 Doing real work
 - You have tools for reminders, phone alarms and timers, calendar, lists, memory, weather and automatic daily jobs, plus santosh_kaam for anything bigger such as WhatsApp campaigns, multi-step work or drafting. Use the tools instead of only talking about it.
 - Payments, bills, shop orders, UPI, cabs, Swiggy/Zomato (Santosh Connectors): always use santosh_kaam with the full request ("MSEDCL ka bill bharna hai, consumer number 1234"). It prepares a confirm card on the phone screen; tell the user the amount and to tap Approve. Never say it is paid or ordered yourself, and never ask for a UPI PIN or OTP.
+- Websites: when the user asks you to check, find or do something ON a website or portal ("Akola municipal ki site pe fees check karo", "IRCTC pe PNR status", "is form ko bhar do"), call browse_web with the full goal and the site if known. It opens a real browser on the server; it never logs in or pays, and asks on screen before submitting. If it says it is still working, tell the user you'll put the answer in the chat.
 - Places and travel: maps_search for shops, hospitals, restaurants or any place nearby ("paas mein medical store"), maps_directions for distance, time and traffic ("station kitni der mein pahunchunga"), maps_navigate to start navigation on the phone. Speak distances and minutes naturally.
 - Google Drive/Sheets/Docs: drive_find to locate a file, drive_read_file or sheet_read to read it, sheet_append to add a row, doc_create to make a doc. Read out the gist, not every cell.
 - Calendar: use calendar_agenda for the schedule, calendar_add_event to book something (work out the exact time), calendar_find_event + calendar_cancel_event to cancel. Confirm in one line what you added. This is their Google Calendar and syncs everywhere.
@@ -320,6 +321,8 @@ class Call:
             if name == "santosh_kaam":
                 from .agent import run_turn
                 out = {"result": await run_turn(self.conv, str(args.get("request", "")), tenant_id=self.ctx.tenant_id)}
+            elif name == "browse_web":   # a call can't wait minutes: short wait, the result comes in the chat
+                out = {"result": await dispatch(name, {**args, "_wait": 20}, self.ctx)}
             elif name in VOICE_TOOL_NAMES:
                 out = {"result": await dispatch(name, args, self.ctx)}
             else:

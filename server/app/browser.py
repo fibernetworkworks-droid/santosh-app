@@ -72,9 +72,9 @@ def _call(method: str, path: str, *, json: dict | None = None, params: dict | No
     return r.json()
 
 
-def start(tenant: str, task: str, start_url: str = "") -> dict:
+def start(tenant: str, task: str, start_url: str = "", wait: float | None = None) -> dict:
     st = get_settings()
-    wait = max(0, min(int(st.browser_wait_seconds), 270))
+    wait = max(0, min(int(st.browser_wait_seconds if wait is None else wait), 270))
     return _call("POST", "/tasks", json={"tenant": tenant, "task": task, "start_url": start_url or "",
                                          "llm": llm_config(), "max_steps": max(3, min(st.browser_max_steps, 60)),
                                          "wait_seconds": wait}, timeout=wait + 40)
