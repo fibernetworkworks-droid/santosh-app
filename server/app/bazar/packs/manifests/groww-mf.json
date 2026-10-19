@@ -1,0 +1,46 @@
+{
+  "id": "groww-mf",
+  "name": "Groww MF",
+  "category": "Investing & Wealth",
+  "sub_category": "Brokers & MF apps",
+  "pack_type": "Connector pack",
+  "layer": "L4",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Read portfolio and contract notes, SIP reminders, P&L summary; open Groww MF order screen (no auto-trading)",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 228,
+  "wave": "P1",
+  "executor": "reader",
+  "config": {
+    "source_name": "Groww MF",
+    "kind": "investing",
+    "web": "",
+    "play_search": "https://play.google.com/store/search?q=Groww%20MF&c=apps"
+  },
+  "tools": [
+    {
+      "name": "import_messages",
+      "tier": 1
+    },
+    {
+      "name": "add_sip",
+      "tier": 1
+    },
+    {
+      "name": "summary",
+      "tier": 0
+    },
+    {
+      "name": "open_app",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "groww",
+    "groww mf",
+    "mutual fund",
+    "portfolio",
+    "sip"
+  ]
+}

@@ -10,6 +10,7 @@
   "description": "Build template, get approval, run campaign, report",
   "notes": "Runs on Newtika's own stack; no third-party dependency",
   "master_list_row": 953,
+  "wave": "MVP",
   "executor": "native",
   "config": {
     "skill": "wa_marketing"

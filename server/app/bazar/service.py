@@ -41,6 +41,7 @@ CORE_EQUIVALENT = {
     "lists": "list_add, list_show, list_done",
     "briefing": "set_profile(briefing_time) for the daily briefing, or create_routine",
     "wa_marketing": "check_template, submit_template, create_campaign (WhatsApp campaigns)",
+    "voice_notes": "nothing extra: the user sends the voice note in chat and Santosh hears it directly",
 }
 
 STATUS_TEXT = {

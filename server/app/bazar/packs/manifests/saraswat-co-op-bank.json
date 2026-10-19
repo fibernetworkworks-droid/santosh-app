@@ -1,0 +1,47 @@
+{
+  "id": "saraswat-co-op-bank",
+  "name": "Saraswat Co-op Bank",
+  "category": "Banking",
+  "sub_category": "Banks",
+  "pack_type": "Connector pack",
+  "layer": "L4",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Read Saraswat Co-op Bank SMS and statements the user shares; balance alerts, EMI and card due reminders, spend summary",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 204,
+  "wave": "P1",
+  "executor": "reader",
+  "config": {
+    "source_name": "Saraswat Co-op Bank",
+    "kind": "bank",
+    "web": "",
+    "play_search": "https://play.google.com/store/search?q=Saraswat%20Co-op%20Bank&c=apps"
+  },
+  "tools": [
+    {
+      "name": "import_messages",
+      "tier": 1
+    },
+    {
+      "name": "add_due",
+      "tier": 1
+    },
+    {
+      "name": "summary",
+      "tier": 0
+    },
+    {
+      "name": "open_app",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "balance",
+    "co-op",
+    "passbook",
+    "saraswat",
+    "saraswat co-op bank",
+    "statement"
+  ]
+}

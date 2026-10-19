@@ -1,0 +1,35 @@
+{
+  "id": "tax-deadline-assistant",
+  "name": "Tax deadline assistant",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "ITR, advance tax, GST due dates",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 977,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "tax_calendar"
+  },
+  "tools": [
+    {
+      "name": "tax_calendar",
+      "tier": 0
+    },
+    {
+      "name": "set_tax_reminders",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "tax deadline",
+    "itr",
+    "gst return",
+    "advance tax",
+    "tds"
+  ]
+}

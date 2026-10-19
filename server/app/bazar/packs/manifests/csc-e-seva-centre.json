@@ -1,0 +1,37 @@
+{
+  "id": "csc-e-seva-centre",
+  "name": "CSC / e-seva centre",
+  "category": "Bazar Shops",
+  "sub_category": "Local merchant template",
+  "pack_type": "Bazar shop template",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Service requests and document checklist — fully done by Santosh on Bazar rails",
+  "notes": "One template, unlimited merchants; launch in Akola and Pune",
+  "master_list_row": 927,
+  "wave": "P1",
+  "executor": "shop",
+  "config": {
+    "template": "csc-e-seva-centre",
+    "mode": "booking"
+  },
+  "tools": [
+    {
+      "name": "search_items",
+      "tier": 0
+    },
+    {
+      "name": "book_slot",
+      "tier": 2
+    },
+    {
+      "name": "order_status",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "csc",
+    "seva"
+  ]
+}

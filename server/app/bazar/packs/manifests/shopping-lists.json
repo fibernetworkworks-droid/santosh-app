@@ -10,6 +10,7 @@
   "description": "Shared family lists that turn into orders",
   "notes": "Runs on Newtika's own stack; no third-party dependency",
   "master_list_row": 944,
+  "wave": "MVP",
   "executor": "native",
   "config": {
     "skill": "lists"

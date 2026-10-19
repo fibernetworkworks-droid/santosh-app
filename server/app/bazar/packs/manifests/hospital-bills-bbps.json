@@ -1,0 +1,38 @@
+{
+  "id": "hospital-bills-bbps",
+  "name": "Hospital bills (BBPS)",
+  "category": "Bills & Utilities",
+  "sub_category": "Loan EMIs & subscriptions",
+  "pack_type": "Biller pack",
+  "layer": "L2",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Track Hospital bills (BBPS) due date, remind, pay via BBPS",
+  "notes": "All biller packs share one BBPS partner integration",
+  "master_list_row": 400,
+  "wave": "P1",
+  "executor": "bbps",
+  "config": {
+    "biller_category": "hospital",
+    "biller_name": "Hospital bills (BBPS)",
+    "input_fields": [
+      "hospital_name",
+      "patient_id"
+    ],
+    "biller_id": null
+  },
+  "tools": [
+    {
+      "name": "fetch_bill",
+      "tier": 0
+    },
+    {
+      "name": "pay_bill",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "hospital bill",
+    "hospital bills"
+  ]
+}

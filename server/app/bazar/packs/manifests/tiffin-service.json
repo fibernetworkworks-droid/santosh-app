@@ -10,6 +10,7 @@
   "description": "Daily lunch/dinner plan, pause/resume, monthly bill — fully done by Santosh on Bazar rails",
   "notes": "One template, unlimited merchants; launch in Akola and Pune",
   "master_list_row": 808,
+  "wave": "MVP",
   "executor": "shop",
   "config": {
     "template": "tiffin-service",

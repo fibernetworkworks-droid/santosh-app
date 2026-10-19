@@ -1,0 +1,36 @@
+{
+  "id": "ac-ir-remote",
+  "name": "AC remote (phone IR)",
+  "category": "Home Devices",
+  "sub_category": "AC",
+  "pack_type": "Home device pack",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Phones with an IR blaster (Redmi, POCO, OnePlus, iQOO…) work as the AC remote: on/off, temperature, mode; 24°C default, 20–28°C limits",
+  "notes": "Supported remote families: LG (classic + inverter), Midea/Coolix family. Each AC confirmed with a test beep at setup",
+  "master_list_row": 1003,
+  "wave": "Devices",
+  "executor": "device",
+  "config": {
+    "channel": "ir"
+  },
+  "tools": [
+    {
+      "name": "set_ac",
+      "tier": 1
+    },
+    {
+      "name": "ac_status",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "ac",
+    "a.c.",
+    "aircon",
+    "air conditioner",
+    "thanda",
+    "cooling"
+  ]
+}

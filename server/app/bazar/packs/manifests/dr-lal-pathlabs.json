@@ -1,0 +1,39 @@
+{
+  "id": "dr-lal-pathlabs",
+  "name": "Dr Lal PathLabs",
+  "category": "Health & Wellness",
+  "sub_category": "Pharmacy & labs",
+  "pack_type": "Connector pack",
+  "layer": "L3",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Upload prescription, compare medicine prices, order on Dr Lal PathLabs, set refill reminders",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 497,
+  "wave": "P1",
+  "executor": "handoff",
+  "config": {
+    "web": "",
+    "web_verified": false,
+    "play_search": "https://play.google.com/store/search?q=Dr%20Lal%20PathLabs&c=apps",
+    "steps": [
+      "Upload the prescription in the app",
+      "Santosh compares prices and sets refill reminders"
+    ],
+    "partner_pending": false
+  },
+  "tools": [
+    {
+      "name": "prepare",
+      "tier": 1
+    },
+    {
+      "name": "remind",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "dr lal pathlabs",
+    "pathlabs"
+  ]
+}

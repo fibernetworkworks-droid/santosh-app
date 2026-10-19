@@ -1,0 +1,37 @@
+{
+  "id": "price-tracker",
+  "name": "Price tracker",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Watch a product price across stores",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 966,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "price_tracker"
+  },
+  "tools": [
+    {
+      "name": "watch_price",
+      "tier": 1
+    },
+    {
+      "name": "record_price",
+      "tier": 1
+    },
+    {
+      "name": "list_watches",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "price drop",
+    "price track",
+    "sasta"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "id": "treebo",
+  "name": "Treebo",
+  "category": "Travel & Commute",
+  "sub_category": "Flights, trains, buses & hotels",
+  "pack_type": "Connector pack",
+  "layer": "L2",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Search options in budget, hold or pre-fill booking on Treebo, remind check-in and departure",
+  "notes": "Runs as prepare + open app until a partner API is signed; then switches to full booking",
+  "master_list_row": 423,
+  "wave": "P1",
+  "executor": "handoff",
+  "config": {
+    "web": "",
+    "web_verified": false,
+    "play_search": "https://play.google.com/store/search?q=Treebo&c=apps",
+    "steps": [
+      "Santosh finds options for your dates and budget",
+      "Book and pay in the app; Santosh saves tickets and reminds you"
+    ],
+    "partner_pending": true
+  },
+  "tools": [
+    {
+      "name": "prepare",
+      "tier": 1
+    },
+    {
+      "name": "remind",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "treebo"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "id": "fibe",
+  "name": "Fibe",
+  "category": "Payments & Fintech",
+  "sub_category": "Cards, credit & neobanks",
+  "pack_type": "Connector pack",
+  "layer": "L4",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Read dues and statements shared by user, remind before due date, open Fibe to pay",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 153,
+  "wave": "P1",
+  "executor": "reader",
+  "config": {
+    "source_name": "Fibe",
+    "kind": "card",
+    "web": "",
+    "play_search": "https://play.google.com/store/search?q=Fibe&c=apps"
+  },
+  "tools": [
+    {
+      "name": "import_messages",
+      "tier": 1
+    },
+    {
+      "name": "add_due",
+      "tier": 1
+    },
+    {
+      "name": "summary",
+      "tier": 0
+    },
+    {
+      "name": "open_app",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "balance",
+    "fibe",
+    "passbook",
+    "statement"
+  ]
+}

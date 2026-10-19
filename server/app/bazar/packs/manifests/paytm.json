@@ -10,6 +10,7 @@
   "description": "Resolve contact to UPI ID, open Paytm with payee, amount and note pre-filled; user enters PIN",
   "notes": "Uses UPI intent",
   "master_list_row": 129,
+  "wave": "MVP",
   "executor": "upi",
   "config": {
     "android_package": "net.one97.paytm",

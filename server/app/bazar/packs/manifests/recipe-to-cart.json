@@ -1,0 +1,29 @@
+{
+  "id": "recipe-to-cart",
+  "name": "Recipe to cart",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Turn a recipe into a grocery order",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 967,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "recipe"
+  },
+  "tools": [
+    {
+      "name": "ingredients_to_list",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "recipe",
+    "banane ke liye",
+    "ingredients"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "id": "university-of-mumbai-portal",
+  "name": "University of Mumbai portal",
+  "category": "Education & Exams",
+  "sub_category": "Exam portals",
+  "pack_type": "Gov service pack",
+  "layer": "L3",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Track University of Mumbai portal dates and results, pre-fill forms, remind fees and admit cards",
+  "notes": "Info + pre-fill + deep link; no login automation",
+  "master_list_row": 578,
+  "wave": "P1",
+  "executor": "handoff",
+  "config": {
+    "web": "https://mu.ac.in",
+    "web_verified": true,
+    "play_search": "https://play.google.com/store/search?q=University%20of%20Mumbai%20portal&c=apps",
+    "steps": [
+      "Keep photo, signature and certificates scanned",
+      "Santosh tracks form dates, fee deadline, admit card and result",
+      "Fee payment happens on the official portal"
+    ],
+    "partner_pending": false
+  },
+  "tools": [
+    {
+      "name": "prepare",
+      "tier": 1
+    },
+    {
+      "name": "remind",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "mumbai",
+    "university of mumbai portal"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "id": "ghmc-property-tax",
+  "name": "GHMC property tax",
+  "category": "Bills & Utilities",
+  "sub_category": "Water, property tax & municipal",
+  "pack_type": "Biller pack",
+  "layer": "L2",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Fetch GHMC property tax water bill or property tax due, pay, store receipt for the year",
+  "notes": "All biller packs share one BBPS partner integration",
+  "master_list_row": 374,
+  "wave": "P1",
+  "executor": "bbps",
+  "config": {
+    "biller_category": "water_property",
+    "biller_name": "GHMC property tax",
+    "input_fields": [
+      "consumer_or_property_id"
+    ],
+    "biller_id": null
+  },
+  "tools": [
+    {
+      "name": "fetch_bill",
+      "tier": 0
+    },
+    {
+      "name": "pay_bill",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "water bill",
+    "pani bill",
+    "paani bill",
+    "nal bill",
+    "property tax",
+    "ghar patti",
+    "gharpatti",
+    "house tax",
+    "malmatta kar",
+    "ghmc property tax"
+  ]
+}

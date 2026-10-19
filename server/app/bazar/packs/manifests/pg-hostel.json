@@ -1,0 +1,32 @@
+{
+  "id": "pg-hostel",
+  "name": "PG / hostel",
+  "category": "Bazar Shops",
+  "sub_category": "Local merchant template",
+  "pack_type": "Bazar shop template",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Room availability, rent reminders — fully done by Santosh on Bazar rails",
+  "notes": "One template, unlimited merchants; launch in Akola and Pune",
+  "master_list_row": 901,
+  "wave": "P1",
+  "executor": "shop",
+  "config": {
+    "template": "pg-hostel",
+    "mode": "due_payment"
+  },
+  "tools": [
+    {
+      "name": "get_due",
+      "tier": 0
+    },
+    {
+      "name": "pay_due",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "hostel"
+  ]
+}

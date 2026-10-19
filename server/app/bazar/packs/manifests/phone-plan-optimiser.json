@@ -1,0 +1,29 @@
+{
+  "id": "phone-plan-optimiser",
+  "name": "Phone plan optimiser",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Suggest cheaper recharge plans from usage",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 975,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "phone_plan"
+  },
+  "tools": [
+    {
+      "name": "compare_plans",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "plan sasta",
+    "best plan",
+    "recharge plan"
+  ]
+}

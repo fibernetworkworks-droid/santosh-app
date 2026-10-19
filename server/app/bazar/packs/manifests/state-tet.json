@@ -1,0 +1,40 @@
+{
+  "id": "state-tet",
+  "name": "State TET",
+  "category": "Education & Exams",
+  "sub_category": "Exam portals",
+  "pack_type": "Gov service pack",
+  "layer": "L3",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Track State TET dates and results, pre-fill forms, remind fees and admit cards",
+  "notes": "Info + pre-fill + deep link; no login automation",
+  "master_list_row": 576,
+  "wave": "P1",
+  "executor": "handoff",
+  "config": {
+    "web": "",
+    "web_verified": false,
+    "play_search": "https://play.google.com/store/search?q=State%20TET&c=apps",
+    "steps": [
+      "Keep photo, signature and certificates scanned",
+      "Santosh tracks form dates, fee deadline, admit card and result",
+      "Fee payment happens on the official portal"
+    ],
+    "partner_pending": false
+  },
+  "tools": [
+    {
+      "name": "prepare",
+      "tier": 1
+    },
+    {
+      "name": "remind",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "state",
+    "state tet"
+  ]
+}

@@ -10,6 +10,7 @@
   "description": "Compare fare and ETA where available, open Ola with pickup and drop set; user taps Book",
   "notes": "Deep link",
   "master_list_row": 404,
+  "wave": "MVP",
   "executor": "ride",
   "config": {
     "package": "com.olacabs.customer",

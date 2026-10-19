@@ -1,0 +1,32 @@
+{
+  "id": "warranty-tracker",
+  "name": "Warranty tracker",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Store bills, remind before warranty ends",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 973,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "warranty"
+  },
+  "tools": [
+    {
+      "name": "add_warranty",
+      "tier": 1
+    },
+    {
+      "name": "list_warranties",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "warranty",
+    "guarantee"
+  ]
+}

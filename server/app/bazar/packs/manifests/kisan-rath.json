@@ -1,0 +1,39 @@
+{
+  "id": "kisan-rath",
+  "name": "Kisan Rath",
+  "category": "Agriculture & Rural",
+  "sub_category": "Agri apps",
+  "pack_type": "Connector pack",
+  "layer": "L3",
+  "phase": "Phase 3",
+  "priority": "P1",
+  "description": "Crop advice in local language, input ordering on Kisan Rath, mandi prices, weather alerts",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 600,
+  "wave": "P1",
+  "executor": "handoff",
+  "config": {
+    "web": "",
+    "web_verified": false,
+    "play_search": "https://play.google.com/store/search?q=Kisan%20Rath&c=apps",
+    "steps": [
+      "Santosh explains in your language and finds the right scheme or input",
+      "Finish the order or application in the app"
+    ],
+    "partner_pending": false
+  },
+  "tools": [
+    {
+      "name": "prepare",
+      "tier": 1
+    },
+    {
+      "name": "remind",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "kisan rath",
+    "rath"
+  ]
+}

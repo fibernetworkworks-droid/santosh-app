@@ -10,6 +10,7 @@
   "description": "Festival boxes, bulk orders for functions — fully done by Santosh on Bazar rails",
   "notes": "One template, unlimited merchants; launch in Akola and Pune",
   "master_list_row": 804,
+  "wave": "MVP",
   "executor": "shop",
   "config": {
     "template": "sweet-shop-mithai",

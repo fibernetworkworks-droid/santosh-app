@@ -10,6 +10,7 @@
   "description": "Bill collection, complaints, plan upgrade — fully done by Santosh on Bazar rails",
   "notes": "One template, unlimited merchants; launch in Akola and Pune",
   "master_list_row": 921,
+  "wave": "MVP",
   "executor": "shop",
   "config": {
     "template": "local-isp",

@@ -56,11 +56,11 @@ def _kirana(svc, tenant="default"):
 
 def test_all_159_packs_have_a_status(bz):
     cat = bz["svc"].catalog("default")
-    assert cat["total"] == 160   # 159 MVP packs + Mera PC
+    assert cat["total"] == 682   # 159 MVP + 515 P1 + 6 devices + shopping + Mera PC
     st = cat["by_status"]
-    assert st["demo"] == 98 and st["core"] == 6 and st["no_shop_yet"] == 20 and st["needs_link"] == 4
+    assert st["demo"] == 98 + 44 and st["core"] == 7 and st["no_shop_yet"] == 20 + 122 and st["needs_link"] == 4
     assert st["not_configured"] == 2  # Zepto + District endpoints are blank
-    assert st["ready"] == 15 + 7 + 7  # UPI + rides + 7 native helpers
+    assert st["ready"] == 384  # UPI, rides, native helpers + P1 skills, readers, handoffs, devices, shopping
 
 
 def test_find_gives_tools(bz):
@@ -70,7 +70,7 @@ def test_find_gives_tools(bz):
     assert {t["tool"] for t in top["tools"]} == {"fetch_bill", "pay_bill"}
     r = bz["svc"].find("default", "kal subah reminder")
     assert any(p["status"] == "core" and "create_reminder" in p["use_core_tools"] for p in r["packs"])
-    assert bz["svc"].find("default", "")["total_packs"] == 160   # 159 MVP packs + Mera PC
+    assert bz["svc"].find("default", "")["total_packs"] == 682   # 159 MVP + 515 P1 + 6 devices + shopping + Mera PC
 
 
 def test_demo_bill_flow_never_sends_money_to_placeholder(bz):
@@ -310,7 +310,7 @@ def test_signed_in_users_are_isolated(bz, monkeypatch):
     # Kunal's Bazar data is his own
     c.post("/api/bazar/contacts", json={"name": "Amit", "upi_id": "amit@ybl"}, headers={"Authorization": f"Bearer {t_kunal}"})
     assert c.get("/api/bazar/contacts", headers={"Authorization": f"Bearer {t_owner}"}).json()["contacts"] == []
-    assert c.get("/api/bazar/catalog", headers={"Authorization": f"Bearer {t_kunal}"}).json()["total"] == 160   # 159 MVP packs + Mera PC
+    assert c.get("/api/bazar/catalog", headers={"Authorization": f"Bearer {t_kunal}"}).json()["total"] == 682   # 159 MVP + 515 P1 + 6 devices + shopping + Mera PC
     # the owner's .env email is not reachable by another signed-in user
     import asyncio
     from app.agent.tools import Ctx, dispatch

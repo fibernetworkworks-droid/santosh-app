@@ -1,0 +1,38 @@
+{
+  "id": "fortis",
+  "name": "Fortis",
+  "category": "Health & Wellness",
+  "sub_category": "Doctors & hospitals",
+  "pack_type": "Connector pack",
+  "layer": "L3",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Find doctor by specialty and slot, book on Fortis, remind appointment",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 508,
+  "wave": "P1",
+  "executor": "handoff",
+  "config": {
+    "web": "",
+    "web_verified": false,
+    "play_search": "https://play.google.com/store/search?q=Fortis&c=apps",
+    "steps": [
+      "Santosh picks specialty, area and a time window",
+      "Book the slot in the app; Santosh sets the appointment reminder"
+    ],
+    "partner_pending": false
+  },
+  "tools": [
+    {
+      "name": "prepare",
+      "tier": 1
+    },
+    {
+      "name": "remind",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "fortis"
+  ]
+}

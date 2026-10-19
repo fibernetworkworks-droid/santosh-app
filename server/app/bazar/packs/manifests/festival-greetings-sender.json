@@ -10,6 +10,7 @@
   "description": "Personalised WhatsApp greetings to a contact list",
   "notes": "Runs on Newtika's own stack; no third-party dependency",
   "master_list_row": 952,
+  "wave": "MVP",
   "executor": "native",
   "config": {
     "skill": "greetings"

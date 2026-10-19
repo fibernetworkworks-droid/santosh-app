@@ -10,6 +10,7 @@
   "description": "Compare fare and ETA where available, open Uber India with pickup and drop set; user taps Book",
   "notes": "Deep link with pickup/drop",
   "master_list_row": 403,
+  "wave": "MVP",
   "executor": "ride",
   "config": {
     "package": "com.ubercab",

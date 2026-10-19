@@ -1,0 +1,29 @@
+{
+  "id": "rent-receipt-generator",
+  "name": "Rent receipt generator",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Monthly rent receipts for HRA",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 964,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "rent_receipt"
+  },
+  "tools": [
+    {
+      "name": "rent_receipts",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "rent receipt",
+    "hra",
+    "kiraya receipt"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "subscription-manager",
+  "name": "Subscription manager",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "List all subscriptions and renewal dates",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 974,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "subscriptions"
+  },
+  "tools": [
+    {
+      "name": "add_subscription",
+      "tier": 1
+    },
+    {
+      "name": "list_subscriptions",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "subscription",
+    "subscriptions",
+    "renewal"
+  ]
+}

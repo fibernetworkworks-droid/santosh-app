@@ -1,0 +1,29 @@
+{
+  "id": "study-planner",
+  "name": "Study planner",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Exam countdown plans",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 970,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "study_plan"
+  },
+  "tools": [
+    {
+      "name": "make_study_plan",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "study plan",
+    "exam plan",
+    "timetable"
+  ]
+}

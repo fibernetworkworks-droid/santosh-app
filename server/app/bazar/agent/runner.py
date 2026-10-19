@@ -87,6 +87,8 @@ class Runner:
             step.note = "waiting for approval"
             step.output = {"approval_id": ap.id, "amount": rupees(ap.amount_paise)}
             task.status = "awaiting_approval"
+            if res.preview.get("message"):
+                task.reply = res.preview["message"]
             raise PausedForApproval(ap)
         step.output = _jsonable(res)
         return res
@@ -117,6 +119,9 @@ class Runner:
         ctx = Ctx(self.s, user, task, self.settings)  # type: ignore[arg-type]
         if not ok:
             txn.status = "failed"
+            if txn.kind == "commerce":
+                from ..commerce.service import CommerceService
+                CommerceService(self.s, self.settings).on_failed(txn)
             if task:
                 task.status, task.reply = "done", "The payment didn't go through. Nothing was charged; want to try again?"
             self.s.commit()
@@ -147,6 +152,9 @@ class Runner:
             txn.status = "completed"
             shop = self.s.get(Shop, txn.provider)
             reply = f"{shop.name if shop else 'The shop'} confirmed your payment of {rupees(txn.amount_paise)}."
+        elif txn.kind == "commerce":
+            from ..commerce.service import CommerceService
+            reply = CommerceService(self.s, self.settings).on_paid(txn)
         else:
             txn.status = "completed"
             reply = f"Payment of {rupees(txn.amount_paise)} done."

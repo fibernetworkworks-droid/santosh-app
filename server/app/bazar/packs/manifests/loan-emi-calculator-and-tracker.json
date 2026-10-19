@@ -1,0 +1,33 @@
+{
+  "id": "loan-emi-calculator-and-tracker",
+  "name": "Loan EMI calculator & tracker",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "EMI plan and payment tracking",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 965,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "emi"
+  },
+  "tools": [
+    {
+      "name": "emi_calc",
+      "tier": 0
+    },
+    {
+      "name": "track_emi",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "emi",
+    "loan emi",
+    "kist"
+  ]
+}

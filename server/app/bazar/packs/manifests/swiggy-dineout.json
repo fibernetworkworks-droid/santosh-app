@@ -10,6 +10,7 @@
   "description": "Find and book a table for N people at a time slot",
   "notes": "Official MCP live",
   "master_list_row": 3,
+  "wave": "MVP",
   "executor": "mcp",
   "config": {
     "provider": "swiggy_dineout",

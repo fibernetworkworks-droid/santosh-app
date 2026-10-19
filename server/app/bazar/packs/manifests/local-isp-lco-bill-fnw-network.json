@@ -10,6 +10,7 @@
   "description": "Detect plan and usage, recommend the right plan, recharge or pay Local ISP / LCO bill (FNW network) bill",
   "notes": "All biller packs share one BBPS partner integration",
   "master_list_row": 357,
+  "wave": "MVP",
   "executor": "bbps",
   "config": {
     "biller_category": "broadband",

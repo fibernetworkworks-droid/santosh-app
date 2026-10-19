@@ -1,0 +1,47 @@
+{
+  "id": "zerodha-kite",
+  "name": "Zerodha Kite",
+  "category": "Investing & Wealth",
+  "sub_category": "Brokers & MF apps",
+  "pack_type": "Connector pack",
+  "layer": "L4",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Read portfolio and contract notes, SIP reminders, P&L summary; open Zerodha Kite order screen (no auto-trading)",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 211,
+  "wave": "P1",
+  "executor": "reader",
+  "config": {
+    "source_name": "Zerodha Kite",
+    "kind": "investing",
+    "web": "",
+    "play_search": "https://play.google.com/store/search?q=Zerodha%20Kite&c=apps"
+  },
+  "tools": [
+    {
+      "name": "import_messages",
+      "tier": 1
+    },
+    {
+      "name": "add_sip",
+      "tier": 1
+    },
+    {
+      "name": "summary",
+      "tier": 0
+    },
+    {
+      "name": "open_app",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "kite",
+    "mutual fund",
+    "portfolio",
+    "sip",
+    "zerodha",
+    "zerodha kite"
+  ]
+}

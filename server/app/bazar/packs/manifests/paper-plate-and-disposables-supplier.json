@@ -10,6 +10,7 @@
   "description": "Bulk orders for functions — fully done by Santosh on Bazar rails",
   "notes": "One template, unlimited merchants; launch in Akola and Pune",
   "master_list_row": 910,
+  "wave": "MVP",
   "executor": "shop",
   "config": {
     "template": "paper-plate-and-disposables-supplier",

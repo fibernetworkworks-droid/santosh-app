@@ -10,6 +10,7 @@
   "description": "Remind and suggest a gift or message",
   "notes": "Runs on Newtika's own stack; no third-party dependency",
   "master_list_row": 951,
+  "wave": "MVP",
   "executor": "native",
   "config": {
     "skill": "birthdays"

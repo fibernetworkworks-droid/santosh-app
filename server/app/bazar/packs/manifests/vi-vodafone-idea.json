@@ -10,6 +10,7 @@
   "description": "Detect plan and usage, recommend the right plan, recharge or pay Vi (Vodafone Idea) bill",
   "notes": "All biller packs share one BBPS partner integration",
   "master_list_row": 337,
+  "wave": "MVP",
   "executor": "bbps",
   "config": {
     "biller_category": "mobile",

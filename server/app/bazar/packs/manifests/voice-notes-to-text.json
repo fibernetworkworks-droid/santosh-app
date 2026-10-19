@@ -1,0 +1,28 @@
+{
+  "id": "voice-notes-to-text",
+  "name": "Voice notes to text",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Transcribe and summarise voice notes",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 956,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "voice_notes"
+  },
+  "tools": [
+    {
+      "name": "transcribe",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "voice note",
+    "transcribe"
+  ]
+}

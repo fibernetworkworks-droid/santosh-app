@@ -1,0 +1,34 @@
+{
+  "id": "gst-invoice-maker",
+  "name": "GST invoice maker",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Create GST invoices by voice",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 959,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "gst_invoice"
+  },
+  "tools": [
+    {
+      "name": "set_business",
+      "tier": 1
+    },
+    {
+      "name": "create_invoice",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "invoice",
+    "gst bill",
+    "tax invoice",
+    "bill banao"
+  ]
+}

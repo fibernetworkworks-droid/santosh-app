@@ -10,6 +10,7 @@
   "description": "Fetch MESCOM bill by consumer number, show amount and due date, pay via BBPS partner, save receipt, set next reminder",
   "notes": "All biller packs share one BBPS partner integration",
   "master_list_row": 266,
+  "wave": "MVP",
   "executor": "bbps",
   "config": {
     "biller_category": "electricity",

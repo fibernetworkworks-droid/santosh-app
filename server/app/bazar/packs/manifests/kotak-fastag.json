@@ -1,0 +1,39 @@
+{
+  "id": "kotak-fastag",
+  "name": "Kotak FASTag",
+  "category": "Bills & Utilities",
+  "sub_category": "FASTag & tolls",
+  "pack_type": "Biller pack",
+  "layer": "L2",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Check Kotak FASTag FASTag balance, top up before trips, alert on low balance",
+  "notes": "All biller packs share one BBPS partner integration",
+  "master_list_row": 390,
+  "wave": "P1",
+  "executor": "bbps",
+  "config": {
+    "biller_category": "fastag",
+    "biller_name": "Kotak FASTag",
+    "input_fields": [
+      "vehicle_number"
+    ],
+    "biller_id": null
+  },
+  "tools": [
+    {
+      "name": "fetch_bill",
+      "tier": 0
+    },
+    {
+      "name": "pay_bill",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "fastag",
+    "fast tag",
+    "toll",
+    "kotak fastag"
+  ]
+}

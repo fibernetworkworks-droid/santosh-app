@@ -10,6 +10,7 @@
   "description": "Fetch and pay HP Gas booking bill, or book refill; remind on the usual cycle",
   "notes": "All biller packs share one BBPS partner integration",
   "master_list_row": 333,
+  "wave": "MVP",
   "executor": "bbps",
   "config": {
     "biller_category": "lpg",

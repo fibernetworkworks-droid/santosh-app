@@ -10,6 +10,7 @@
   "description": "Token / appointment booking, follow-up reminder — fully done by Santosh on Bazar rails",
   "notes": "One template, unlimited merchants; launch in Akola and Pune",
   "master_list_row": 817,
+  "wave": "MVP",
   "executor": "shop",
   "config": {
     "template": "clinic-gp",

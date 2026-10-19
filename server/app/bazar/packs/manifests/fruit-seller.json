@@ -1,0 +1,46 @@
+{
+  "id": "fruit-seller",
+  "name": "Fruit seller",
+  "category": "Bazar Shops",
+  "sub_category": "Local merchant template",
+  "pack_type": "Bazar shop template",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Seasonal fruit orders and gift boxes — fully done by Santosh on Bazar rails",
+  "notes": "One template, unlimited merchants; launch in Akola and Pune",
+  "master_list_row": 802,
+  "wave": "P1",
+  "executor": "shop",
+  "config": {
+    "template": "fruit-seller",
+    "mode": "catalog"
+  },
+  "tools": [
+    {
+      "name": "search_items",
+      "tier": 0
+    },
+    {
+      "name": "build_cart",
+      "tier": 1
+    },
+    {
+      "name": "place_order",
+      "tier": 2
+    },
+    {
+      "name": "order_status",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "aam",
+    "fal",
+    "fruit",
+    "fruits",
+    "kele",
+    "santre",
+    "seller"
+  ]
+}

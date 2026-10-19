@@ -10,6 +10,7 @@
   "description": "All dues in one place, 3-day and 1-day alerts",
   "notes": "Runs on Newtika's own stack; no third-party dependency",
   "master_list_row": 947,
+  "wave": "MVP",
   "executor": "native",
   "config": {
     "skill": "bill_reminders"

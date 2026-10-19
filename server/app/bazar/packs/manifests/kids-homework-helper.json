@@ -1,0 +1,29 @@
+{
+  "id": "kids-homework-helper",
+  "name": "Kids homework helper",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Explain homework in the child's language",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 969,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "homework"
+  },
+  "tools": [
+    {
+      "name": "homework_context",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "homework",
+    "gruhpath",
+    "padhai"
+  ]
+}

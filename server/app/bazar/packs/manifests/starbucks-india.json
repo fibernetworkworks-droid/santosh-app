@@ -1,0 +1,39 @@
+{
+  "id": "starbucks-india",
+  "name": "Starbucks India",
+  "category": "Food & Dining",
+  "sub_category": "Food delivery apps",
+  "pack_type": "Connector pack",
+  "layer": "L3",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Build the order and open Starbucks India at checkout with items pre-selected",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 22,
+  "wave": "P1",
+  "executor": "handoff",
+  "config": {
+    "web": "",
+    "web_verified": false,
+    "play_search": "https://play.google.com/store/search?q=Starbucks%20India&c=apps",
+    "steps": [
+      "Santosh builds your order list and budget",
+      "The app opens; confirm items and pay there"
+    ],
+    "partner_pending": false
+  },
+  "tools": [
+    {
+      "name": "prepare",
+      "tier": 1
+    },
+    {
+      "name": "remind",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "starbucks",
+    "starbucks india"
+  ]
+}

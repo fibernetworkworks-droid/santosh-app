@@ -10,6 +10,7 @@
   "description": "Addresses, sizes, diets for each family member",
   "notes": "Runs on Newtika's own stack; no third-party dependency",
   "master_list_row": 949,
+  "wave": "MVP",
   "executor": "native",
   "config": {
     "skill": "family"

@@ -1,0 +1,47 @@
+{
+  "id": "cdsl-easiest",
+  "name": "CDSL Easiest",
+  "category": "Investing & Wealth",
+  "sub_category": "Brokers & MF apps",
+  "pack_type": "Connector pack",
+  "layer": "L4",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Read portfolio and contract notes, SIP reminders, P&L summary; open CDSL Easiest order screen (no auto-trading)",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 233,
+  "wave": "P1",
+  "executor": "reader",
+  "config": {
+    "source_name": "CDSL Easiest",
+    "kind": "investing",
+    "web": "",
+    "play_search": "https://play.google.com/store/search?q=CDSL%20Easiest&c=apps"
+  },
+  "tools": [
+    {
+      "name": "import_messages",
+      "tier": 1
+    },
+    {
+      "name": "add_sip",
+      "tier": 1
+    },
+    {
+      "name": "summary",
+      "tier": 0
+    },
+    {
+      "name": "open_app",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "cdsl",
+    "cdsl easiest",
+    "easiest",
+    "mutual fund",
+    "portfolio",
+    "sip"
+  ]
+}

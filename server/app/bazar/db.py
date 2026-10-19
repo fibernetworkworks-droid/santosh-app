@@ -275,6 +275,196 @@ class KVState(Base):
     value: Mapped[str] = mapped_column(Text, default="")
 
 
+# ---------------- wave 2 (P1) skill data ----------------
+
+class Staff(Base):
+    __tablename__ = "bz_staff"
+    id: Mapped[str] = mapped_column(String(16), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("bz_users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    phone: Mapped[str] = mapped_column(String(20), default="")
+    monthly_salary_paise: Mapped[int] = mapped_column(Integer, default=0)
+    paid_leaves_per_month: Mapped[int] = mapped_column(Integer, default=0)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class Attendance(Base):
+    __tablename__ = "bz_attendance"
+    id: Mapped[str] = mapped_column(String(16), primary_key=True, default=_id)
+    staff_id: Mapped[str] = mapped_column(ForeignKey("bz_staff.id"), index=True)
+    day: Mapped[dt.date] = mapped_column(index=True)
+    status: Mapped[str] = mapped_column(String(10))  # present|absent|half
+
+
+class UdharEntry(Base):
+    __tablename__ = "bz_udhar"
+    id: Mapped[str] = mapped_column(String(16), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("bz_users.id"), index=True)
+    customer: Mapped[str] = mapped_column(String(120), index=True)
+    phone: Mapped[str] = mapped_column(String(20), default="")
+    amount_paise: Mapped[int] = mapped_column(Integer)  # + given on credit, - received
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
+
+
+class GeneratedDoc(Base):
+    __tablename__ = "bz_generated_docs"
+    id: Mapped[str] = mapped_column(String(16), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("bz_users.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(30))  # invoice|quotation|salary_slip|rent_receipt|resume
+    number: Mapped[str] = mapped_column(String(40), default="")
+    data: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    file_name: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
+
+
+# ---------------- home devices (v0.3) ----------------
+
+class Device(Base):
+    """A home device Santosh can reach.
+
+    channel: phone_media (Bluetooth speaker via the phone's media session) | bt_hid (TV paired with the phone as a
+    Bluetooth remote, plus DIAL on Wi-Fi) | ir (AC via the phone's IR blaster) | cloud (SmartThings / LG ThinQ /
+    Home Connect).
+    """
+    __tablename__ = "bz_devices"
+    id: Mapped[str] = mapped_column(String(16), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("bz_users.id"), index=True)
+    pack_id: Mapped[str] = mapped_column(String(80))
+    name: Mapped[str] = mapped_column(String(80))
+    room: Mapped[str] = mapped_column(String(40), default="")
+    kind: Mapped[str] = mapped_column(String(20))            # speaker|tv|ac|fridge|washer|other
+    channel: Mapped[str] = mapped_column(String(20))         # phone_media|bt_hid|ir|cloud
+    brand: Mapped[str] = mapped_column(String(40), default="")
+    protocol: Mapped[str] = mapped_column(String(30), default="")       # IR protocol once confirmed
+    provider: Mapped[str] = mapped_column(String(20), default="")       # cloud provider
+    external_id: Mapped[str] = mapped_column(String(120), default="")   # cloud device id
+    target: Mapped[dict[str, Any]] = mapped_column(default=dict)        # bt address, tv ip, …
+    state: Mapped[dict[str, Any]] = mapped_column(default=dict)         # last confirmed state (IR AC) / last alert keys
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
+
+
+class DeviceCommand(Base):
+    """A command the phone must carry out (IR, Bluetooth, DIAL). The phone reports back; IR AC state is saved only
+    after the phone confirms the signal was sent."""
+    __tablename__ = "bz_device_commands"
+    id: Mapped[str] = mapped_column(String(16), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("bz_users.id"), index=True)
+    device_id: Mapped[str] = mapped_column(String(16), index=True)
+    task_id: Mapped[str] = mapped_column(String(16), default="")
+    channel: Mapped[str] = mapped_column(String(20))
+    payload: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    new_state: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    status: Mapped[str] = mapped_column(String(12), default="sent")  # sent|done|failed
+    error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
+
+
+# ---------------- e-commerce (v0.4) ----------------
+
+class CommerceOffer(Base):
+    """A product offer returned by search, kept so later calls can refer to it by id (price is re-checked at quote)."""
+    __tablename__ = "bz_commerce_offers"
+    id: Mapped[str] = mapped_column(String(16), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    source: Mapped[str] = mapped_column(String(20))           # bazar|ondc|shopify|flipkart
+    data: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
+
+
+class CommerceCart(Base):
+    __tablename__ = "bz_commerce_carts"
+    id: Mapped[str] = mapped_column(String(16), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    source: Mapped[str] = mapped_column(String(20))
+    seller_key: Mapped[str] = mapped_column(String(200))      # one seller per cart
+    seller_name: Mapped[str] = mapped_column(String(200), default="")
+    lines: Mapped[list[Any]] = mapped_column(default=list)    # [{offer_id, ref, name, qty, unit_price_paise}]
+    meta: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    status: Mapped[str] = mapped_column(String(16), default="open")   # open|quoted|ordered|abandoned
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
+
+
+class CommerceQuote(Base):
+    """All-in price the user approves. Short-lived; the order is placed only against an unexpired quote."""
+    __tablename__ = "bz_commerce_quotes"
+    id: Mapped[str] = mapped_column(String(16), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    cart_id: Mapped[str] = mapped_column(String(16), index=True)
+    total_paise: Mapped[int] = mapped_column(Integer)
+    breakup: Mapped[list[Any]] = mapped_column(default=list)  # [{title, kind, amount_paise}]
+    disclosures: Mapped[dict[str, Any]] = mapped_column(default=dict)  # seller, returns, delivery, origin…
+    address: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    payment_mode: Mapped[str] = mapped_column(String(20), default="upi_intent")  # upi_intent|handoff
+    quote_hash: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime)
+    status: Mapped[str] = mapped_column(String(16), default="open")   # open|confirmed|expired|superseded
+    meta: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
+
+
+class CommerceOrder(Base):
+    __tablename__ = "bz_commerce_orders"
+    id: Mapped[str] = mapped_column(String(16), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    source: Mapped[str] = mapped_column(String(20))
+    seller_name: Mapped[str] = mapped_column(String(200), default="")
+    cart_id: Mapped[str] = mapped_column(String(16), default="")
+    quote_id: Mapped[str] = mapped_column(String(16), default="")
+    external_id: Mapped[str] = mapped_column(String(120), default="")
+    lines: Mapped[list[Any]] = mapped_column(default=list)
+    total_paise: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(24), default="payment_pending")
+    # payment_pending|placed|accepted|packed|shipped|out_for_delivery|delivered|cancelled|return_requested|returned|failed
+    payment_status: Mapped[str] = mapped_column(String(16), default="unpaid")
+    txn_ref: Mapped[str] = mapped_column(String(40), default="")
+    idempotency_key: Mapped[str] = mapped_column(String(80), default="", index=True)
+    history: Mapped[list[Any]] = mapped_column(default=list)  # [{at, status, note}]
+    meta: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
+
+
+class ConsentRecord(Base):
+    """Who approved what, for how much, through which surface (AP2-style cart mandate, audit trail)."""
+    __tablename__ = "bz_consent_records"
+    id: Mapped[str] = mapped_column(String(16), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    quote_id: Mapped[str] = mapped_column(String(16))
+    order_id: Mapped[str] = mapped_column(String(16), default="")
+    surface: Mapped[str] = mapped_column(String(30))          # santosh_card|mcp_elicitation|mcp_confirm_code
+    client_id: Mapped[str] = mapped_column(String(80), default="")
+    statement: Mapped[str] = mapped_column(Text)
+    amount_paise: Mapped[int] = mapped_column(Integer)
+    payee: Mapped[str] = mapped_column(String(200))
+    quote_hash: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
+
+
+class OndcMessage(Base):
+    """Async ONDC callbacks (on_search, on_select, …) received from seller apps."""
+    __tablename__ = "bz_ondc_messages"
+    id: Mapped[str] = mapped_column(String(16), primary_key=True, default=_id)
+    transaction_id: Mapped[str] = mapped_column(String(64), index=True)
+    message_id: Mapped[str] = mapped_column(String(64), index=True)
+    action: Mapped[str] = mapped_column(String(20))
+    bpp_id: Mapped[str] = mapped_column(String(200), default="")
+    payload: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    received_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
+
+
+class McpToken(Base):
+    """Per-user bearer tokens for the Santosh Commerce MCP server (stored as SHA-256)."""
+    __tablename__ = "bz_mcp_tokens"
+    id: Mapped[str] = mapped_column(String(16), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    label: Mapped[str] = mapped_column(String(80), default="")
+    scopes: Mapped[list[Any]] = mapped_column(default=lambda: ["commerce:read", "commerce:order"])
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
+
+
 # ---------------- engine / session (shared with Santosh core) ----------------
 
 def init_tables(engine) -> None:
@@ -286,6 +476,26 @@ def session_factory() -> Session:
     if core._Session is None:
         core.init_db()
     return core._Session()
+
+
+def get_session():
+    """FastAPI dependency: one bazar session per request, committed on success."""
+    s = session_factory()
+    try:
+        yield s
+        s.commit()
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+def init_engine(url: str | None = None):  # compatibility with MVP code paths
+    from .. import db as core
+    if core._Session is None:
+        core.init_db()
+    return core._engine if hasattr(core, "_engine") else None
 
 
 __all__ = [n for n in dir() if not n.startswith("_")] + ["select"]

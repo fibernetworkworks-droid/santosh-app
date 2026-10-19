@@ -10,6 +10,7 @@
   "description": "Compare fare and ETA where available, open Kerala Savaari with pickup and drop set; user taps Book",
   "notes": "Verify the app's agent / API / deep-link access before build",
   "master_list_row": 409,
+  "wave": "MVP",
   "executor": "ride",
   "config": {
     "package": "",

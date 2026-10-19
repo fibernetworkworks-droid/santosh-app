@@ -10,6 +10,7 @@
   "description": "Set reminders and alarms by voice in any language",
   "notes": "Runs on Newtika's own stack; no third-party dependency",
   "master_list_row": 941,
+  "wave": "MVP",
   "executor": "native",
   "config": {
     "skill": "reminders"

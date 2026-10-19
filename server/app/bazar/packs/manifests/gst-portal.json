@@ -1,0 +1,39 @@
+{
+  "id": "gst-portal",
+  "name": "GST portal",
+  "category": "Government Services",
+  "sub_category": "Citizen services",
+  "pack_type": "Gov service pack",
+  "layer": "L3",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Explain the process, pre-fill details, open GST portal at the right step, track status and remind",
+  "notes": "Info + pre-fill + deep link; no login automation",
+  "master_list_row": 779,
+  "wave": "P1",
+  "executor": "handoff",
+  "config": {
+    "web": "https://www.gst.gov.in",
+    "web_verified": true,
+    "play_search": "https://play.google.com/store/search?q=GST%20portal&c=apps",
+    "steps": [
+      "Keep Aadhaar, PAN and a recent photo ready",
+      "OTPs come to your Aadhaar-linked mobile; you type them, never Santosh",
+      "Santosh fills what it can from your profile and tracks the application number"
+    ],
+    "partner_pending": false
+  },
+  "tools": [
+    {
+      "name": "prepare",
+      "tier": 1
+    },
+    {
+      "name": "remind",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "gst portal"
+  ]
+}

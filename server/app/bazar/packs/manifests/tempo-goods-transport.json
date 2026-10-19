@@ -1,0 +1,38 @@
+{
+  "id": "tempo-goods-transport",
+  "name": "Tempo / goods transport",
+  "category": "Bazar Shops",
+  "sub_category": "Local merchant template",
+  "pack_type": "Bazar shop template",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Load, distance quote, booking — fully done by Santosh on Bazar rails",
+  "notes": "One template, unlimited merchants; launch in Akola and Pune",
+  "master_list_row": 855,
+  "wave": "P1",
+  "executor": "shop",
+  "config": {
+    "template": "tempo-goods-transport",
+    "mode": "booking"
+  },
+  "tools": [
+    {
+      "name": "search_items",
+      "tier": 0
+    },
+    {
+      "name": "book_slot",
+      "tier": 2
+    },
+    {
+      "name": "order_status",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "goods",
+    "tempo",
+    "transport"
+  ]
+}

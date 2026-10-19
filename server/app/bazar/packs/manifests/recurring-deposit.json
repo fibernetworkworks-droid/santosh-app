@@ -1,0 +1,39 @@
+{
+  "id": "recurring-deposit",
+  "name": "Recurring deposit",
+  "category": "Bills & Utilities",
+  "sub_category": "Loan EMIs & subscriptions",
+  "pack_type": "Biller pack",
+  "layer": "L2",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Track Recurring deposit due date, remind, pay via BBPS",
+  "notes": "All biller packs share one BBPS partner integration",
+  "master_list_row": 401,
+  "wave": "P1",
+  "executor": "bbps",
+  "config": {
+    "biller_category": "recurring_deposit",
+    "biller_name": "Recurring deposit",
+    "input_fields": [
+      "bank_name",
+      "rd_account_number"
+    ],
+    "biller_id": null
+  },
+  "tools": [
+    {
+      "name": "fetch_bill",
+      "tier": 0
+    },
+    {
+      "name": "pay_bill",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "rd",
+    "recurring deposit",
+    "recurring deposit"
+  ]
+}

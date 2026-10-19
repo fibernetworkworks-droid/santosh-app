@@ -44,6 +44,45 @@ class Settings(BaseSettings):
     shop_order_template: str = ""
     shop_order_template_lang: str = "hi"
 
+    files_dir: str = "./data/bazar_files"  # generated PDFs (invoices, slips, receipts, resumes)
+
+    # Home devices (v0.3). "sandbox" = offline stand-ins of the official clouds; "live" = real APIs.
+    device_cloud_mode: str = "sandbox"
+    smartthings_client_id: str = ""
+    smartthings_client_secret: str = ""
+    home_connect_client_id: str = ""
+    home_connect_client_secret: str = ""
+    lg_thinq_client_id: str = ""        # any stable id for your app, sent as x-client-id
+    lg_thinq_country: str = "IN"
+    lg_thinq_region: str = "kic"        # ThinQ Connect region host (api-<region>.lgthinq.com); confirm for India
+
+    # E-commerce (v0.4)
+    commerce_max_order_paise: int = 2_000_000       # ₹20,000 per order through Santosh
+    commerce_quote_ttl_seconds: int = 600           # a price quote is valid for 10 minutes
+    # ONDC buyer app. "sandbox" = in-process mock seller network + registry; "preprod"/"prod" = real network.
+    ondc_mode: str = "sandbox"
+    ondc_subscriber_id: str = "santosh.ainewtika.com"
+    ondc_subscriber_uri: str = "https://santosh.ainewtika.com/ondc"
+    ondc_unique_key_id: str = "santosh-k1"
+    ondc_signing_private_key: str = ""   # base64 ed25519 (scripts/ondc_keys.py)
+    ondc_signing_public_key: str = ""
+    ondc_encryption_private_key: str = ""  # base64 DER X25519
+    ondc_encryption_public_key: str = ""
+    ondc_gateway_url: str = "https://preprod.gateway.ondc.org/search"
+    ondc_registry_url: str = "https://preprod.registry.ondc.org/v2.0/lookup"
+    ondc_registry_public_key: str = ""   # ONDC's encryption public key for the /on_subscribe challenge
+    ondc_request_id: str = ""            # request_id from the ONDC portal, signed into ondc-site-verification.html
+    ondc_city_code: str = "std:0724"     # Akola
+    ondc_core_version: str = "1.2.0"
+    ondc_finder_fee_percent: str = "3"
+    ondc_wait_seconds: float = 6.0       # how long to collect on_search / wait for on_* callbacks
+    # Shopify Storefront MCP stores the user can shop (comma-separated myshopify or custom domains)
+    shopify_stores: str = ""
+    # Flipkart Affiliate API (search + prices + deep link; checkout happens in Flipkart)
+    flipkart_affiliate_id: str = ""
+    flipkart_affiliate_token: str = ""
+    commerce_sandbox_feeds: bool = True  # sandbox stand-ins for Shopify/Flipkart when no keys are set
+
     # ---- mapped from Santosh core settings ----
     @property
     def secret_key(self) -> str:
@@ -71,6 +110,10 @@ class Settings(BaseSettings):
     @property
     def wa_dry_run(self) -> bool:
         return core_settings().wa_dry_run
+
+    @property
+    def public_base_url(self) -> str:
+        return (core_settings().public_base_url or "http://127.0.0.1:8000").rstrip("/")
 
     @property
     def bills_live(self) -> bool:

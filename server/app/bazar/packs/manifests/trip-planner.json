@@ -1,0 +1,30 @@
+{
+  "id": "trip-planner",
+  "name": "Trip planner",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Itinerary, bookings checklist, packing list",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 971,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "trip"
+  },
+  "tools": [
+    {
+      "name": "make_trip",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "trip",
+    "tour",
+    "yatra",
+    "trip plan"
+  ]
+}

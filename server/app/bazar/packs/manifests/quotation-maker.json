@@ -1,0 +1,30 @@
+{
+  "id": "quotation-maker",
+  "name": "Quotation maker",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Create and send quotations",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 960,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "quotation"
+  },
+  "tools": [
+    {
+      "name": "create_quotation",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "quotation",
+    "quote",
+    "estimate",
+    "kotation"
+  ]
+}

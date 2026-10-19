@@ -1,0 +1,39 @@
+{
+  "id": "staff-attendance",
+  "name": "Staff attendance",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Attendance by WhatsApp for small teams",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 962,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "attendance"
+  },
+  "tools": [
+    {
+      "name": "add_staff",
+      "tier": 1
+    },
+    {
+      "name": "mark_attendance",
+      "tier": 1
+    },
+    {
+      "name": "attendance_report",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "attendance",
+    "hajri",
+    "present",
+    "absent",
+    "staff"
+  ]
+}

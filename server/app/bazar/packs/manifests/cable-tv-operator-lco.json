@@ -10,6 +10,7 @@
   "description": "Monthly collection and pack changes — fully done by Santosh on Bazar rails",
   "notes": "One template, unlimited merchants; launch in Akola and Pune",
   "master_list_row": 920,
+  "wave": "MVP",
   "executor": "shop",
   "config": {
     "template": "cable-tv-operator-lco",

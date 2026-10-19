@@ -1,0 +1,30 @@
+{
+  "id": "scam-message-checker",
+  "name": "Scam message checker",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Check if an SMS or call is a likely fraud",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 979,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "scam_check"
+  },
+  "tools": [
+    {
+      "name": "check_message",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "fraud",
+    "scam",
+    "fake message",
+    "dhokha"
+  ]
+}

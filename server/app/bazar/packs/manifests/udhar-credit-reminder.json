@@ -1,0 +1,43 @@
+{
+  "id": "udhar-credit-reminder",
+  "name": "Udhar (credit) reminder",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Polite WhatsApp reminders to customers who owe money",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 961,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "udhar"
+  },
+  "tools": [
+    {
+      "name": "add_udhar",
+      "tier": 1
+    },
+    {
+      "name": "settle_udhar",
+      "tier": 1
+    },
+    {
+      "name": "list_udhar",
+      "tier": 0
+    },
+    {
+      "name": "send_udhar_reminders",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "udhar",
+    "udhaar",
+    "baaki",
+    "credit",
+    "khata"
+  ]
+}

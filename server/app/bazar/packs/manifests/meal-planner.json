@@ -1,0 +1,33 @@
+{
+  "id": "meal-planner",
+  "name": "Meal planner",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Weekly veg/non-veg/jain meal plans with shopping list",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 968,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "meal_plan"
+  },
+  "tools": [
+    {
+      "name": "save_meal_plan",
+      "tier": 1
+    },
+    {
+      "name": "get_meal_plan",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "meal plan",
+    "khana plan",
+    "menu plan"
+  ]
+}

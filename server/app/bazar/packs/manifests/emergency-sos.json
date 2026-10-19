@@ -1,0 +1,30 @@
+{
+  "id": "emergency-sos",
+  "name": "Emergency SOS",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "One command to alert family with location",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 980,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "sos"
+  },
+  "tools": [
+    {
+      "name": "sos",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "sos",
+    "emergency",
+    "bachao",
+    "madad"
+  ]
+}

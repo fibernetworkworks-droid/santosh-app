@@ -10,6 +10,7 @@
   "description": "Turn a list or recipe into a cart, compare price and ETA, check out, track",
   "notes": "MCP built by Zepto; confirm public access",
   "master_list_row": 37,
+  "wave": "MVP",
   "executor": "mcp",
   "config": {
     "provider": "zepto",

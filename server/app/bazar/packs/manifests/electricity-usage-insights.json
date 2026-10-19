@@ -1,0 +1,29 @@
+{
+  "id": "electricity-usage-insights",
+  "name": "Electricity usage insights",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Compare monthly bills, saving tips",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 976,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "power_insights"
+  },
+  "tools": [
+    {
+      "name": "bill_insights",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "bijli kharcha",
+    "electricity usage",
+    "bill zyada"
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "id": "lg-thinq",
+  "name": "LG ThinQ",
+  "category": "Home Devices",
+  "sub_category": "Appliance cloud",
+  "pack_type": "Home device pack",
+  "layer": "L1",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "LG fridge temperature and door alerts, washer 'done' alerts, LG AC control — via the official ThinQ Connect API",
+  "notes": "User links with an LG personal access token today; ThinQ Business API partnership for scale",
+  "master_list_row": 1005,
+  "wave": "Devices",
+  "executor": "device",
+  "config": {
+    "channel": "cloud",
+    "provider": "lg_thinq",
+    "ac_control": true
+  },
+  "tools": [
+    {
+      "name": "sync_devices",
+      "tier": 0
+    },
+    {
+      "name": "device_status",
+      "tier": 0
+    },
+    {
+      "name": "set_ac",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "lg",
+    "thinq",
+    "fridge",
+    "washing",
+    "washer",
+    "ac"
+  ]
+}

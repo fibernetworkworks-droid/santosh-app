@@ -10,6 +10,7 @@
   "description": "Book tables, dining offers and event tickets",
   "notes": "Verify agent access",
   "master_list_row": 4,
+  "wave": "MVP",
   "executor": "mcp",
   "config": {
     "provider": "district",

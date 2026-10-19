@@ -1,0 +1,40 @@
+{
+  "id": "tata-cliq",
+  "name": "Tata CLiQ",
+  "category": "Shopping & Fashion",
+  "sub_category": "Marketplaces",
+  "pack_type": "Connector pack",
+  "layer": "L3",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Search, compare price across stores, track price drops, open Tata CLiQ on the chosen product",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 71,
+  "wave": "P1",
+  "executor": "handoff",
+  "config": {
+    "web": "",
+    "web_verified": false,
+    "play_search": "https://play.google.com/store/search?q=Tata%20CLiQ&c=apps",
+    "steps": [
+      "Santosh shortlists products by budget and compares prices",
+      "Buy in the app; Santosh tracks delivery and return window"
+    ],
+    "partner_pending": false
+  },
+  "tools": [
+    {
+      "name": "prepare",
+      "tier": 1
+    },
+    {
+      "name": "remind",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "cliq",
+    "tata",
+    "tata cliq"
+  ]
+}

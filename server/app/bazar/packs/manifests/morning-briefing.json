@@ -10,6 +10,7 @@
   "description": "Weather, agenda, bills due, news in one message",
   "notes": "Runs on Newtika's own stack; no third-party dependency",
   "master_list_row": 945,
+  "wave": "MVP",
   "executor": "native",
   "config": {
     "skill": "briefing"

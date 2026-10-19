@@ -1,0 +1,37 @@
+{
+  "id": "ca-tax-consultant",
+  "name": "CA / tax consultant",
+  "category": "Bazar Shops",
+  "sub_category": "Local merchant template",
+  "pack_type": "Bazar shop template",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Document collection and ITR/GST deadlines — fully done by Santosh on Bazar rails",
+  "notes": "One template, unlimited merchants; launch in Akola and Pune",
+  "master_list_row": 923,
+  "wave": "P1",
+  "executor": "shop",
+  "config": {
+    "template": "ca-tax-consultant",
+    "mode": "booking"
+  },
+  "tools": [
+    {
+      "name": "search_items",
+      "tier": 0
+    },
+    {
+      "name": "book_slot",
+      "tier": 2
+    },
+    {
+      "name": "order_status",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "consultant",
+    "tax"
+  ]
+}

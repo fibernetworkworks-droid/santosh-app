@@ -1,0 +1,69 @@
+{
+  "id": "santosh-shopping",
+  "name": "Santosh Shopping (ONDC + Bazar + brand stores)",
+  "category": "Shopping",
+  "sub_category": "Agentic commerce",
+  "pack_type": "Santosh commerce pack",
+  "layer": "L1",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Search across local Bazar shops, the ONDC open network, Shopify brand stores and Flipkart; cheapest first; all-in quote; pay by UPI with your PIN; track, cancel, return",
+  "notes": "Also exposed as the Santosh Commerce MCP server for Claude / ChatGPT / Gemini",
+  "master_list_row": 1007,
+  "wave": "Devices",
+  "executor": "commerce",
+  "config": {},
+  "tools": [
+    {
+      "name": "search_products",
+      "tier": 0
+    },
+    {
+      "name": "add_to_cart",
+      "tier": 1
+    },
+    {
+      "name": "view_cart",
+      "tier": 0
+    },
+    {
+      "name": "checkout",
+      "tier": 2
+    },
+    {
+      "name": "order_status",
+      "tier": 0
+    },
+    {
+      "name": "list_orders",
+      "tier": 0
+    },
+    {
+      "name": "cancel_order",
+      "tier": 1
+    },
+    {
+      "name": "request_return",
+      "tier": 1
+    },
+    {
+      "name": "get_buy_link",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "online",
+    "ondc",
+    "order",
+    "dhundo",
+    "search",
+    "sasta",
+    "price",
+    "daam",
+    "cart",
+    "flipkart",
+    "shopify",
+    "kharidna",
+    "khareedna"
+  ]
+}

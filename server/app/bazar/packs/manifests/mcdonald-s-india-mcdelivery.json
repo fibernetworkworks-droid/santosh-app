@@ -1,0 +1,39 @@
+{
+  "id": "mcdonald-s-india-mcdelivery",
+  "name": "McDonald's India (McDelivery)",
+  "category": "Food & Dining",
+  "sub_category": "Food delivery apps",
+  "pack_type": "Connector pack",
+  "layer": "L3",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Build the order and open McDonald's India (McDelivery) at checkout with items pre-selected",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 10,
+  "wave": "P1",
+  "executor": "handoff",
+  "config": {
+    "web": "",
+    "web_verified": false,
+    "play_search": "https://play.google.com/store/search?q=McDonald%27s%20India%20%28McDelivery%29&c=apps",
+    "steps": [
+      "Santosh builds your order list and budget",
+      "The app opens; confirm items and pay there"
+    ],
+    "partner_pending": false
+  },
+  "tools": [
+    {
+      "name": "prepare",
+      "tier": 1
+    },
+    {
+      "name": "remind",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "mcdonald's",
+    "mcdonald's india"
+  ]
+}

@@ -10,6 +10,7 @@
   "description": "Compare fare and ETA where available, open Yatri Sathi (Kolkata) with pickup and drop set; user taps Book",
   "notes": "Verify the app's agent / API / deep-link access before build",
   "master_list_row": 408,
+  "wave": "MVP",
   "executor": "ride",
   "config": {
     "package": "in.juspay.jatrisaathi",

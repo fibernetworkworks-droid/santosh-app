@@ -1,0 +1,39 @@
+{
+  "id": "irctc-rail-connect",
+  "name": "IRCTC Rail Connect",
+  "category": "Travel & Commute",
+  "sub_category": "Flights, trains, buses & hotels",
+  "pack_type": "Connector pack",
+  "layer": "L2",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Search options in budget, hold or pre-fill booking on IRCTC Rail Connect, remind check-in and departure",
+  "notes": "Runs as prepare + open app until a partner API is signed; then switches to full booking",
+  "master_list_row": 414,
+  "wave": "P1",
+  "executor": "handoff",
+  "config": {
+    "web": "https://www.irctc.co.in",
+    "web_verified": true,
+    "play_search": "https://play.google.com/store/search?q=IRCTC%20Rail%20Connect&c=apps",
+    "steps": [
+      "Santosh finds options for your dates and budget",
+      "Book and pay in the app; Santosh saves tickets and reminds you"
+    ],
+    "partner_pending": true
+  },
+  "tools": [
+    {
+      "name": "prepare",
+      "tier": 1
+    },
+    {
+      "name": "remind",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "irctc",
+    "irctc rail connect"
+  ]
+}

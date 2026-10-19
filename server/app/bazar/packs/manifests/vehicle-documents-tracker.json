@@ -1,0 +1,34 @@
+{
+  "id": "vehicle-documents-tracker",
+  "name": "Vehicle documents tracker",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Insurance, PUC, service and FASTag reminders",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 972,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "vehicle"
+  },
+  "tools": [
+    {
+      "name": "add_vehicle",
+      "tier": 1
+    },
+    {
+      "name": "list_vehicles",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "puc",
+    "insurance expiry",
+    "gaadi",
+    "vehicle"
+  ]
+}

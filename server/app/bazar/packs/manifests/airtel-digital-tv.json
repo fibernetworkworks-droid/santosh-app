@@ -10,6 +10,7 @@
   "description": "Detect plan and usage, recommend the right plan, recharge or pay Airtel Digital TV bill",
   "notes": "All biller packs share one BBPS partner integration",
   "master_list_row": 351,
+  "wave": "MVP",
   "executor": "bbps",
   "config": {
     "biller_category": "dth",

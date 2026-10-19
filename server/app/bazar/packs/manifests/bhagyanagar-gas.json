@@ -10,6 +10,7 @@
   "description": "Fetch and pay Bhagyanagar Gas bill, or book refill; remind on the usual cycle",
   "notes": "All biller packs share one BBPS partner integration",
   "master_list_row": 330,
+  "wave": "MVP",
   "executor": "bbps",
   "config": {
     "biller_category": "piped_gas",

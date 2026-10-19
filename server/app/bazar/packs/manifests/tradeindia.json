@@ -1,0 +1,38 @@
+{
+  "id": "tradeindia",
+  "name": "Tradeindia",
+  "category": "Business & SMB",
+  "sub_category": "Sell online & B2B",
+  "pack_type": "Connector pack",
+  "layer": "L3",
+  "phase": "Phase 3",
+  "priority": "P1",
+  "description": "List products, reply to enquiries, restock from Tradeindia",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 743,
+  "wave": "P1",
+  "executor": "handoff",
+  "config": {
+    "web": "",
+    "web_verified": false,
+    "play_search": "https://play.google.com/store/search?q=Tradeindia&c=apps",
+    "steps": [
+      "Santosh drafts listings and replies",
+      "Publish and accept orders in the seller app"
+    ],
+    "partner_pending": false
+  },
+  "tools": [
+    {
+      "name": "prepare",
+      "tier": 1
+    },
+    {
+      "name": "remind",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "tradeindia"
+  ]
+}

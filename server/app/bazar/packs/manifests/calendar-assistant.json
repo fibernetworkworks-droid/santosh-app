@@ -10,6 +10,7 @@
   "description": "Add, move and remind events; daily agenda",
   "notes": "Runs on Newtika's own stack; no third-party dependency",
   "master_list_row": 942,
+  "wave": "MVP",
   "executor": "native",
   "config": {
     "skill": "calendar"

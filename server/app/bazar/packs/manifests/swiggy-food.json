@@ -10,6 +10,7 @@
   "description": "Pick restaurant by budget, diet and rating; build cart; place order; track delivery",
   "notes": "Official MCP live",
   "master_list_row": 1,
+  "wave": "MVP",
   "executor": "mcp",
   "config": {
     "provider": "swiggy_food",

@@ -1,0 +1,41 @@
+{
+  "id": "loan-emi-any-bbps-lender",
+  "name": "Loan EMI (any BBPS lender)",
+  "category": "Bills & Utilities",
+  "sub_category": "Loan EMIs & subscriptions",
+  "pack_type": "Biller pack",
+  "layer": "L2",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Track Loan EMI (any BBPS lender) due date, remind, pay via BBPS",
+  "notes": "All biller packs share one BBPS partner integration",
+  "master_list_row": 393,
+  "wave": "P1",
+  "executor": "bbps",
+  "config": {
+    "biller_category": "loan_emi",
+    "biller_name": "Loan EMI (any BBPS lender)",
+    "input_fields": [
+      "lender_name",
+      "loan_account_number"
+    ],
+    "biller_id": null
+  },
+  "tools": [
+    {
+      "name": "fetch_bill",
+      "tier": 0
+    },
+    {
+      "name": "pay_bill",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "emi",
+    "loan",
+    "kist",
+    "hapta",
+    "loan emi"
+  ]
+}

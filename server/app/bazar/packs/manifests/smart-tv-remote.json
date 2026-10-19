@@ -1,0 +1,41 @@
+{
+  "id": "smart-tv-remote",
+  "name": "Smart TV remote",
+  "category": "Home Devices",
+  "sub_category": "TV",
+  "pack_type": "Home device pack",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Phone becomes a Bluetooth remote for the TV: volume, home, back, arrows, typing search; opens YouTube, Netflix, Hotstar",
+  "notes": "Android/Google TV and most smart TVs that accept a Bluetooth keyboard; YouTube/Netflix open over Wi-Fi (DIAL)",
+  "master_list_row": 1002,
+  "wave": "Devices",
+  "executor": "device",
+  "config": {
+    "channel": "bt_hid"
+  },
+  "tools": [
+    {
+      "name": "tv_keys",
+      "tier": 1
+    },
+    {
+      "name": "tv_open_app",
+      "tier": 1
+    },
+    {
+      "name": "tv_search",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "tv",
+    "television",
+    "youtube",
+    "hotstar",
+    "netflix",
+    "channel",
+    "remote"
+  ]
+}

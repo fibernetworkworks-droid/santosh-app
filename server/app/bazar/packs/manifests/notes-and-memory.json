@@ -10,6 +10,7 @@
   "description": "Remember what the user tells Santosh and recall it later",
   "notes": "Runs on Newtika's own stack; no third-party dependency",
   "master_list_row": 943,
+  "wave": "MVP",
   "executor": "native",
   "config": {
     "skill": "notes"

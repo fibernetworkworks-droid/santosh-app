@@ -10,6 +10,7 @@
   "description": "Turn a list or recipe into a cart, compare price and ETA, check out, track",
   "notes": "Official MCP; checkout coverage to be tested",
   "master_list_row": 36,
+  "wave": "MVP",
   "executor": "mcp",
   "config": {
     "provider": "swiggy_instamart",

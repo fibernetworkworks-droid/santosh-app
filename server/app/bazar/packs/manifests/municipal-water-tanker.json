@@ -1,0 +1,37 @@
+{
+  "id": "municipal-water-tanker",
+  "name": "Municipal water tanker",
+  "category": "Bills & Utilities",
+  "sub_category": "Loan EMIs & subscriptions",
+  "pack_type": "Biller pack",
+  "layer": "L2",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Track Municipal water tanker due date, remind, pay via BBPS",
+  "notes": "All biller packs share one BBPS partner integration",
+  "master_list_row": 398,
+  "wave": "P1",
+  "executor": "bbps",
+  "config": {
+    "biller_category": "water_tanker",
+    "biller_name": "Municipal water tanker",
+    "input_fields": [
+      "consumer_id"
+    ],
+    "biller_id": null
+  },
+  "tools": [
+    {
+      "name": "fetch_bill",
+      "tier": 0
+    },
+    {
+      "name": "pay_bill",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "tanker",
+    "municipal water tanker"
+  ]
+}

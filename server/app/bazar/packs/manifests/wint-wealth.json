@@ -1,0 +1,47 @@
+{
+  "id": "wint-wealth",
+  "name": "Wint Wealth",
+  "category": "Investing & Wealth",
+  "sub_category": "Brokers & MF apps",
+  "pack_type": "Connector pack",
+  "layer": "L4",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Read portfolio and contract notes, SIP reminders, P&L summary; open Wint Wealth order screen (no auto-trading)",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 235,
+  "wave": "P1",
+  "executor": "reader",
+  "config": {
+    "source_name": "Wint Wealth",
+    "kind": "investing",
+    "web": "",
+    "play_search": "https://play.google.com/store/search?q=Wint%20Wealth&c=apps"
+  },
+  "tools": [
+    {
+      "name": "import_messages",
+      "tier": 1
+    },
+    {
+      "name": "add_sip",
+      "tier": 1
+    },
+    {
+      "name": "summary",
+      "tier": 0
+    },
+    {
+      "name": "open_app",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "mutual fund",
+    "portfolio",
+    "sip",
+    "wealth",
+    "wint",
+    "wint wealth"
+  ]
+}

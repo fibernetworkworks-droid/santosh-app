@@ -1,0 +1,37 @@
+{
+  "id": "rent-payment",
+  "name": "Rent payment",
+  "category": "Bills & Utilities",
+  "sub_category": "Loan EMIs & subscriptions",
+  "pack_type": "Biller pack",
+  "layer": "L2",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Track Rent payment due date, remind, pay via BBPS",
+  "notes": "Rent is not a BBPS category: paid by UPI to the landlord; pair with Rent receipt generator",
+  "master_list_row": 402,
+  "wave": "P1",
+  "executor": "upi",
+  "config": {
+    "android_package": "",
+    "scheme": "upi",
+    "package_verified": false,
+    "purpose": "rent"
+  },
+  "tools": [
+    {
+      "name": "send_money",
+      "tier": 3
+    },
+    {
+      "name": "request_money",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "rent",
+    "kiraya",
+    "bhada",
+    "bhade"
+  ]
+}

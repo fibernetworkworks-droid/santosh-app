@@ -1,0 +1,38 @@
+{
+  "id": "helpr",
+  "name": "Helpr",
+  "category": "Home Services & Property",
+  "sub_category": "Home services",
+  "pack_type": "Connector pack",
+  "layer": "L3",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Book a slot for the service, pre-fill address and job on Helpr",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 685,
+  "wave": "P1",
+  "executor": "handoff",
+  "config": {
+    "web": "",
+    "web_verified": false,
+    "play_search": "https://play.google.com/store/search?q=Helpr&c=apps",
+    "steps": [
+      "Santosh fills the job, address and time window",
+      "Confirm the booking in the app"
+    ],
+    "partner_pending": false
+  },
+  "tools": [
+    {
+      "name": "prepare",
+      "tier": 1
+    },
+    {
+      "name": "remind",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "helpr"
+  ]
+}

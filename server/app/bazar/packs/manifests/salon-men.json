@@ -10,6 +10,7 @@
   "description": "Slot booking, queue status — fully done by Santosh on Bazar rails",
   "notes": "One template, unlimited merchants; launch in Akola and Pune",
   "master_list_row": 824,
+  "wave": "MVP",
   "executor": "shop",
   "config": {
     "template": "salon-men",

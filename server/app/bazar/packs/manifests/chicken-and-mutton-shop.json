@@ -10,6 +10,7 @@
   "description": "Cut, weight and slot; pre-order for Sunday — fully done by Santosh on Bazar rails",
   "notes": "One template, unlimited merchants; launch in Akola and Pune",
   "master_list_row": 805,
+  "wave": "MVP",
   "executor": "shop",
   "config": {
     "template": "chicken-and-mutton-shop",

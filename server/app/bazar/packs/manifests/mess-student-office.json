@@ -1,0 +1,34 @@
+{
+  "id": "mess-student-office",
+  "name": "Mess (student / office)",
+  "category": "Bazar Shops",
+  "sub_category": "Local merchant template",
+  "pack_type": "Bazar shop template",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Monthly mess plan, guest meals, attendance — fully done by Santosh on Bazar rails",
+  "notes": "One template, unlimited merchants; launch in Akola and Pune",
+  "master_list_row": 809,
+  "wave": "P1",
+  "executor": "shop",
+  "config": {
+    "template": "mess-student-office",
+    "mode": "due_payment"
+  },
+  "tools": [
+    {
+      "name": "get_due",
+      "tier": 0
+    },
+    {
+      "name": "pay_due",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "mess",
+    "office",
+    "student"
+  ]
+}

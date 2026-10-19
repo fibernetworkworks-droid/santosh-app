@@ -1,0 +1,40 @@
+{
+  "id": "credit-card-bill-bbps",
+  "name": "Credit card bill (BBPS)",
+  "category": "Bills & Utilities",
+  "sub_category": "Loan EMIs & subscriptions",
+  "pack_type": "Biller pack",
+  "layer": "L2",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Track Credit card bill (BBPS) due date, remind, pay via BBPS",
+  "notes": "All biller packs share one BBPS partner integration",
+  "master_list_row": 394,
+  "wave": "P1",
+  "executor": "bbps",
+  "config": {
+    "biller_category": "credit_card",
+    "biller_name": "Credit card bill (BBPS)",
+    "input_fields": [
+      "card_last4",
+      "registered_mobile"
+    ],
+    "biller_id": null
+  },
+  "tools": [
+    {
+      "name": "fetch_bill",
+      "tier": 0
+    },
+    {
+      "name": "pay_bill",
+      "tier": 2
+    }
+  ],
+  "keywords": [
+    "credit card bill",
+    "card bill",
+    "card due",
+    "credit card bill"
+  ]
+}

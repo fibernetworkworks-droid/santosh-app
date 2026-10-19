@@ -10,6 +10,7 @@
   "description": "Send PDF, print and bind, pick-up — fully done by Santosh on Bazar rails",
   "notes": "One template, unlimited merchants; launch in Akola and Pune",
   "master_list_row": 859,
+  "wave": "MVP",
   "executor": "shop",
   "config": {
     "template": "xerox-and-print-shop",

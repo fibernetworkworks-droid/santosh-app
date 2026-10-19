@@ -1,0 +1,28 @@
+{
+  "id": "form-filler",
+  "name": "Form filler",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Fill PDF forms from saved profile",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 978,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "form_filler"
+  },
+  "tools": [
+    {
+      "name": "profile_for_form",
+      "tier": 0
+    }
+  ],
+  "keywords": [
+    "form bharo",
+    "form fill"
+  ]
+}

@@ -10,7 +10,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 MANIFEST_DIR = Path(__file__).parent / "manifests"
-EXECUTORS = {"mcp", "bbps", "upi", "ride", "shop", "native", "pc"}
+EXECUTORS = {"mcp", "bbps", "upi", "ride", "shop", "native", "pc", "handoff", "reader", "device", "commerce"}
 LAYERS = {"L0", "L1", "L2", "L3", "L4"}
 
 
@@ -35,6 +35,7 @@ class Pack(BaseModel):
     config: dict[str, Any]
     tools: list[PackTool]
     keywords: list[str]
+    wave: str = "MVP"
 
     def tier_of(self, tool: str) -> int:
         for t in self.tools:
@@ -103,8 +104,10 @@ class Registry:
             raise KeyError(pack_id)
         return p
 
-    def all(self, phase: str | None = None, category: str | None = None) -> list[Pack]:
+    def all(self, phase: str | None = None, category: str | None = None, wave: str | None = None) -> list[Pack]:
         out = list(self.packs.values())
+        if wave:
+            out = [p for p in out if p.wave == wave]
         if phase:
             out = [p for p in out if p.phase == phase]
         if category:

@@ -1,0 +1,41 @@
+{
+  "id": "bluetooth-speaker",
+  "name": "Bluetooth speaker",
+  "category": "Home Devices",
+  "sub_category": "Speaker",
+  "pack_type": "Home device pack",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Play, pause, next song and volume on the speaker connected to your phone; 'Arijit ke gaane chalao'",
+  "notes": "Runs on the phone's media session; works with any Bluetooth speaker or headphones",
+  "master_list_row": 1001,
+  "wave": "Devices",
+  "executor": "device",
+  "config": {
+    "channel": "phone_media"
+  },
+  "tools": [
+    {
+      "name": "media",
+      "tier": 1
+    },
+    {
+      "name": "volume",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "gaana",
+    "gana",
+    "gaane",
+    "song",
+    "songs",
+    "music",
+    "speaker",
+    "awaaz",
+    "volume",
+    "bajao",
+    "gaani"
+  ]
+}

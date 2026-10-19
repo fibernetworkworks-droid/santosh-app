@@ -10,6 +10,7 @@
   "description": "Resolve contact to UPI ID, open Amazon Pay UPI with payee, amount and note pre-filled; user enters PIN",
   "notes": "Verify the app's agent / API / deep-link access before build",
   "master_list_row": 131,
+  "wave": "MVP",
   "executor": "upi",
   "config": {
     "android_package": "in.amazon.mShop.android.shopping",

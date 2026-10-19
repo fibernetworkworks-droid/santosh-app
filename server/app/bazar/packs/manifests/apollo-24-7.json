@@ -1,0 +1,39 @@
+{
+  "id": "apollo-24-7",
+  "name": "Apollo 24|7",
+  "category": "Health & Wellness",
+  "sub_category": "Pharmacy & labs",
+  "pack_type": "Connector pack",
+  "layer": "L3",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Upload prescription, compare medicine prices, order on Apollo 24|7, set refill reminders",
+  "notes": "Verify the app's agent / API / deep-link access before build",
+  "master_list_row": 490,
+  "wave": "P1",
+  "executor": "handoff",
+  "config": {
+    "web": "https://www.apollo247.com",
+    "web_verified": true,
+    "play_search": "https://play.google.com/store/search?q=Apollo%2024%7C7&c=apps",
+    "steps": [
+      "Upload the prescription in the app",
+      "Santosh compares prices and sets refill reminders"
+    ],
+    "partner_pending": false
+  },
+  "tools": [
+    {
+      "name": "prepare",
+      "tier": 1
+    },
+    {
+      "name": "remind",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "apollo",
+    "apollo 24|7"
+  ]
+}

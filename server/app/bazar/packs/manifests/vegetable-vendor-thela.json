@@ -10,6 +10,7 @@
   "description": "Order by voice, today's prices, doorstep drop — fully done by Santosh on Bazar rails",
   "notes": "One template, unlimited merchants; launch in Akola and Pune",
   "master_list_row": 801,
+  "wave": "MVP",
   "executor": "shop",
   "config": {
     "template": "vegetable-vendor-thela",

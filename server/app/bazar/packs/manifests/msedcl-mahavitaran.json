@@ -10,6 +10,7 @@
   "description": "Fetch MSEDCL (Mahavitaran) bill by consumer number, show amount and due date, pay via BBPS partner, save receipt, set next reminder",
   "notes": "Home state; launch first",
   "master_list_row": 260,
+  "wave": "MVP",
   "executor": "bbps",
   "config": {
     "biller_category": "electricity",

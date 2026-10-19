@@ -1,0 +1,29 @@
+{
+  "id": "salary-slip-generator",
+  "name": "Salary slip generator",
+  "category": "Santosh Native Skills",
+  "sub_category": "Built-in skill",
+  "pack_type": "Santosh native skill",
+  "layer": "L0",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Monthly salary slips for staff",
+  "notes": "Runs on Newtika's own stack; no third-party dependency",
+  "master_list_row": 963,
+  "wave": "P1",
+  "executor": "native",
+  "config": {
+    "skill": "salary"
+  },
+  "tools": [
+    {
+      "name": "salary_slips",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "salary slip",
+    "pagar",
+    "salary"
+  ]
+}

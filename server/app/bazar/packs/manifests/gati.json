@@ -1,0 +1,38 @@
+{
+  "id": "gati",
+  "name": "Gati",
+  "category": "Home Services & Property",
+  "sub_category": "Logistics & courier",
+  "pack_type": "Connector pack",
+  "layer": "L2",
+  "phase": "Phase 2",
+  "priority": "P1",
+  "description": "Get quote, book pickup, track shipment via Gati",
+  "notes": "Runs as prepare + open app until a partner API is signed; then switches to full booking",
+  "master_list_row": 709,
+  "wave": "P1",
+  "executor": "handoff",
+  "config": {
+    "web": "",
+    "web_verified": false,
+    "play_search": "https://play.google.com/store/search?q=Gati&c=apps",
+    "steps": [
+      "Santosh prepares pickup and drop details and parcel size",
+      "Book and pay in the app; Santosh tracks it"
+    ],
+    "partner_pending": true
+  },
+  "tools": [
+    {
+      "name": "prepare",
+      "tier": 1
+    },
+    {
+      "name": "remind",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    "gati"
+  ]
+}
