@@ -82,7 +82,7 @@ String _statusText(String s) => switch (s) {
       'accepted' => 'Haan kaha ✓',
       'declined' => 'Mana kiya',
       'snoozed' => 'Baad mein yaad dilayenge',
-      'handled' => 'Hoola sambhal raha hai',
+      'handled' => 'Hoola ne sambhal liya',
       'auto' => 'Niyam se seedha liya',
       'blocked' => 'Roka gaya',
       _ => s,
@@ -137,7 +137,7 @@ class _HoolaKnockCardState extends State<HoolaKnockCard> {
     final status = v['status'] as String? ?? 'pending';
     final open = status == 'pending' || status == 'snoozed';
     final slots = List<String>.from((v['slot_labels'] as List? ?? const []).map((e) => '$e'));
-    final text = (body['text'] as String? ?? '').trim();
+    final text = ((body['translated'] as String?) ?? (body['text'] as String? ?? '')).trim();
     final title = (body['title'] as String? ?? '').trim();
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -196,6 +196,15 @@ class _HoolaKnockCardState extends State<HoolaKnockCard> {
               TextButton(onPressed: _busy ? null : () => _do('decline'), child: const Text('Mana', style: TextStyle(color: C.bad))),
               TextButton(onPressed: _busy ? null : _later, child: const Text('Baad mein')),
             ]),
+            if (const {'message', 'ask', 'meeting', 'task', 'reminder', 'voice_note'}.contains(v['kind']))
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _busy ? null : () => _do('handle'),
+                  icon: const Icon(Icons.smart_toy_rounded, size: 18, color: C.teal),
+                  label: Text('${widget.app.aName}, tum sambhalo', style: const TextStyle(color: C.teal)),
+                ),
+              ),
           ] else ...[
             Padding(
               padding: const EdgeInsets.only(top: 8),

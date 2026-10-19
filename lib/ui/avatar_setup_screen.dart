@@ -37,6 +37,12 @@ const _share = {
   'email_address': 'Mera email ID',
   'address': 'Mera pata',
 };
+const _aboutKeys = {'business_info', 'office_hours', 'price_list'};
+const _aboutHint = {
+  'business_info': 'Business ke baare mein: kya karte hain, kahan, kaise sampark (sirf jo sab ko batana theek ho)',
+  'office_hours': 'Jaise: Som-Shani 10 se 7, Ravivar band',
+  'price_list': 'Jaise: ONT 1200, installation 500, 100 Mbps plan 599/mahina',
+};
 const _alone = {
   'fix_meetings': 'Khaali samay mein meeting khud fix kare',
   'answer_faq': 'Business ke aam sawaalon ka jawab khud de',
@@ -86,6 +92,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
     _rules.putIfAbsent('decide_alone', () => <String, dynamic>{});
     _rules.putIfAbsent('quiet', () => <String, dynamic>{'on': true, 'from': '22:00', 'to': '08:00', 'vip_can_ring': true});
     _rules.putIfAbsent('learning', () => <String, dynamic>{'learn_from_my_work': true, 'share_lessons': 'ask'});
+    _rules.putIfAbsent('about', () => <String, dynamic>{'business_info': '', 'office_hours': '', 'price_list': ''});
     _vip = TextEditingController(text: List<String>.from(_rules['vip'] as List? ?? const []).join(', '));
     _blocked = TextEditingController(text: List<String>.from(_rules['blocked_topics'] as List? ?? const []).join(', '));
   }
@@ -350,7 +357,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
           ]),
         ),
       _section(_gv('$_n doosron ko kya bata sakta hai')),
-      for (final e in _share.entries)
+      for (final e in _share.entries) ...[
         SwitchListTile(
           dense: true,
           contentPadding: EdgeInsets.zero,
@@ -358,6 +365,17 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
           value: share[e.key] == true,
           onChanged: (v) => setState(() => share[e.key] = v),
         ),
+        if (_aboutKeys.contains(e.key) && share[e.key] == true)
+          Glass(
+            child: TextFormField(
+              initialValue: (_sub('about')[e.key] as String?) ?? '',
+              minLines: 1,
+              maxLines: 5,
+              decoration: InputDecoration(border: InputBorder.none, hintText: _aboutHint[e.key]),
+              onChanged: (t) => _sub('about')[e.key] = t,
+            ),
+          ),
+      ],
       _section(_gv('$_n khud kya kar sakta hai'), 'Baaki sab pehle aapse poochhega. Paise kabhi aapke tap ke bina nahi.'),
       for (final e in _alone.entries)
         SwitchListTile(

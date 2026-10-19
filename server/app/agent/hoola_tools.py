@@ -56,7 +56,9 @@ HOOLA_TOOLS = [
          "upi_id": {"type": "string", "description": "The owner's own UPI ID for a payment_request"},
          "email": {"type": "string"},
          "name": {"type": "string"}, "phone": {"type": "string"}, "place": {"type": "string"},
-         "thread_id": {"type": "string", "description": "Continue an existing conversation"}},
+         "thread_id": {"type": "string", "description": "Continue an existing conversation"},
+         "handle": {"type": "boolean", "description": "Let the avatar carry on this conversation by itself until the goal is met (max 6 turns), e.g. fix a meeting time"},
+         "goal": {"type": "string", "description": "With handle: what the owner wants, e.g. 'kal 4 se 7 ke beech meeting fix karo'"}},
                       "required": ["to"]}},
     {"name": "hoola_reply", "description": "Answer the other avatar in a thread with what the owner said (thread_id from the card / note).",
      "input_schema": {"type": "object", "properties": {"thread_id": {"type": "string"}, "text": {"type": "string"}},
@@ -71,6 +73,11 @@ HOOLA_TOOLS = [
          "msg_id": {"type": "string"}, "action": {"type": "string", "enum": ["accept", "decline", "later", "handle"]},
          "slot": {"type": "integer"}, "minutes": {"type": "integer"}, "note": {"type": "string"}},
                       "required": ["msg_id", "action"]}},
+    {"name": "hoola_handle", "description": (
+        "Start or stop the avatar handling a conversation on its own (thread_id). action=start with goal, or stop "
+        "(back to asking the owner every time)."),
+     "input_schema": {"type": "object", "properties": {"thread_id": {"type": "string"}, "action": {"type": "string", "enum": ["start", "stop"]},
+                                                       "goal": {"type": "string"}}, "required": ["thread_id", "action"]}},
     {"name": "hoola_threads", "description": "Conversations between the owner's avatar and other avatars (optionally with one person).",
      "input_schema": {"type": "object", "properties": {"with": {"type": "string"}}}},
     {"name": "hoola_thread", "description": "One avatar-to-avatar conversation in full.",
@@ -82,7 +89,7 @@ HOOLA_LABELS = {"hoola_me": "Aapka Hoola ID dekh raha hoon", "hoola_find": "Hool
                 "hoola_answer_connect": "Request ka jawab de raha hoon", "hoola_set_connection": "Connection badal raha hoon",
                 "hoola_send": "Unke Hoola se baat kar raha hoon", "hoola_reply": "Jawab bhej raha hoon",
                 "hoola_inbox": "Aayi requests dekh raha hoon", "hoola_decide": "Aapka faisla bhej raha hoon",
-                "hoola_threads": "Baatein dekh raha hoon", "hoola_thread": "Baat-cheet padh raha hoon"}
+                "hoola_threads": "Baatein dekh raha hoon", "hoola_handle": "Baat khud sambhal raha hoon", "hoola_thread": "Baat-cheet padh raha hoon"}
 
 
 async def _t(fn, *a, **kw):
@@ -137,13 +144,14 @@ async def hoola_set_connection(ctx: Ctx, link_id="", who="", vip=None, nick=None
     return await _t(net.update_link, ctx.tenant_id, lid, vip=vip, nick=nick, relation=relation, verified=verified)
 
 
-async def hoola_send(ctx: Ctx, to, kind="message", text="", thread_id="", **kw):
+async def hoola_send(ctx: Ctx, to, kind="message", text="", thread_id="", handle=False, goal="", **kw):
     body: dict[str, Any] = {"text": str(text or "")}
     for k in ("title", "slots", "minutes", "file_id", "email_id", "attachment_id", "drive", "url", "amount", "upi_note",
               "upi_id", "email", "name", "phone", "place"):
         if kw.get(k) not in (None, "", []):
             body[k] = kw[k]
-    return await _t(net.send, ctx.tenant_id, str(to), kind or "message", body, str(text or "")[:80], thread_id or "")
+    return await _t(net.send, ctx.tenant_id, str(to), kind or "message", body, str(text or "")[:80], thread_id or "",
+                    bool(handle), str(goal or ""))
 
 
 async def hoola_reply(ctx: Ctx, thread_id, text, **_):
@@ -157,6 +165,16 @@ async def hoola_inbox(ctx: Ctx, **_):
 
 async def hoola_decide(ctx: Ctx, msg_id, action, slot=None, minutes=None, note="", **_):
     return await _t(net.decide, ctx.tenant_id, str(msg_id), action, slot, minutes, str(note or ""))
+
+
+async def hoola_handle(ctx: Ctx, thread_id, action, goal="", **_):
+    from ..net import handle as handling
+    t = await _t(net.thread, ctx.tenant_id, str(thread_id))
+    if action == "start":
+        await _t(handling.start, ctx.tenant_id, t["id"], str(goal or t.get("goal") or ""))
+        return {"status": "handling", "thread_id": t["id"]}
+    await _t(handling._set_mode, ctx.tenant_id, t["id"], "relay")
+    return {"status": "stopped", "thread_id": t["id"]}
 
 
 async def hoola_threads(ctx: Ctx, **kw):
@@ -174,4 +192,5 @@ HOOLA_HANDLERS = {"hoola_me": hoola_me, "hoola_find": hoola_find, "hoola_connect
                   "hoola_connections": hoola_connections, "hoola_answer_connect": hoola_answer_connect,
                   "hoola_set_connection": hoola_set_connection, "hoola_send": hoola_send, "hoola_reply": hoola_reply,
                   "hoola_inbox": hoola_inbox, "hoola_decide": hoola_decide, "hoola_threads": hoola_threads,
+                  "hoola_handle": hoola_handle,
                   "hoola_thread": hoola_thread}

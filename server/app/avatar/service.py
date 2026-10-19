@@ -104,6 +104,8 @@ DEFAULT_RULES: dict[str, Any] = {
     "quiet": {"on": True, "from": "22:00", "to": "08:00", "vip_can_ring": True},
     "language": "hinglish",          # how the avatar tells the owner what came in
     "learning": {"learn_from_my_work": True, "share_lessons": "ask"},   # never | ask | groups
+    # what the avatar may tell other avatars (only the parts switched on in "share" are ever used)
+    "about": {"business_info": "", "office_hours": "", "price_list": ""},
 }
 _ACCEPT_VALUES = {"auto", "ask", "never"}
 _ALWAYS_ASK = {"payment_request", "app_file"}      # money and app files can never come in on their own
@@ -152,6 +154,10 @@ def clean_rules(r: dict[str, Any] | None) -> dict[str, Any]:
             out["quiet"][k] = q[k]
     if str(r.get("language", "")).lower() in _LANGS:
         out["language"] = str(r["language"]).lower()
+    ab = r.get("about") or {}
+    for k in out["about"]:
+        if isinstance(ab.get(k), str):
+            out["about"][k] = ab[k].strip()[:3000]
     lr = r.get("learning") or {}
     if isinstance(lr.get("learn_from_my_work"), bool):
         out["learning"]["learn_from_my_work"] = lr["learn_from_my_work"]

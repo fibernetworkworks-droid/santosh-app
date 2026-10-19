@@ -421,7 +421,8 @@ def _require_active(tenant: str, peer: str) -> Link:
     return l
 
 
-def send(tenant: str, to: str, kind: str, body: dict[str, Any], subject: str = "", thread_id: str = "") -> dict[str, Any]:
+def send(tenant: str, to: str, kind: str, body: dict[str, Any], subject: str = "", thread_id: str = "",
+         handle: bool = False, goal: str = "") -> dict[str, Any]:
     """Owner -> own avatar -> peer avatar. Returns what happened on the other side (pending / auto / declined...)."""
     if kind not in REQUEST_KINDS:
         raise NetError("kind: " + ", ".join(sorted(REQUEST_KINDS)))
@@ -441,6 +442,9 @@ def send(tenant: str, to: str, kind: str, body: dict[str, Any], subject: str = "
     else:
         tkey = new_id("tk")
     tid = _thread(tenant, peer, tkey, subject or policy.body_text(body)[:80], kind, True)
+    if handle:
+        from . import handle as handling
+        handling.start(tenant, tid, goal or policy.body_text(body)[:500])
     res = _post(tenant, peer, kind, body, tkey, tid)
     c = idn.peer_card(peer)
     return {"status": res.get("status"), "reason": res.get("reason", ""), "thread_id": tid, "to": idn.label(c),
@@ -661,6 +665,9 @@ def _on_request(tenant: str, env: dict, card: dict, link: Link, rules: dict) -> 
         from . import share
         body = share.receive_hook(tenant, peer, kind, dict(body, _env=env["id"]))
         body.pop("_env", None)
+    if body.get("text"):
+        from .handle import translate_for_owner
+        body = translate_for_owner(tenant, card, body)
     d = policy.decide(tenant, rules, link, card, kind, body, in_my_thread=mine)
     scan = body.get("scan") or {}
     if scan.get("verdict") == "danger" and d["action"] != "block":
@@ -760,7 +767,7 @@ def _on_response(tenant: str, m: NetMsg, who: str) -> dict[str, Any]:
     elif m.kind == "declined":
         text = f"{who} abhi yeh nahi le sakte." + (f" {body.get('text', '')}" if body.get("text") else "")
     else:
-        text = f"{who}: {body.get('text', '')}"
+        text = f"{who}: {body.get('translated') or body.get('text', '')}"
     with session() as s:
         t = s.get(Thread, m.thread_id)
         if t is not None:
