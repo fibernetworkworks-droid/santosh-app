@@ -348,6 +348,45 @@ class PcFile(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class Artifact(Base):
+    """A page Santosh built for the user (app, calculator, tracker, chart, document...). Content lives in versions."""
+    __tablename__ = "artifacts"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("art"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    conversation_id: Mapped[str] = mapped_column(String(40), default="")
+    title: Mapped[str] = mapped_column(String(160), default="Santosh page")
+    summary: Mapped[str] = mapped_column(String(300), default="")
+    version: Mapped[int] = mapped_column(Integer, default=0)            # latest ready version (0 = none yet)
+    status: Mapped[str] = mapped_column(String(12), default="building")  # building | ready | failed
+    error: Mapped[str] = mapped_column(String(300), default="")
+    share_token: Mapped[str] = mapped_column(String(40), default="", index=True)
+    deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class ArtifactVersion(Base):
+    __tablename__ = "artifact_versions"
+    __table_args__ = (UniqueConstraint("artifact_id", "version"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    artifact_id: Mapped[str] = mapped_column(String(40), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    html: Mapped[str] = mapped_column(Text)
+    note: Mapped[str] = mapped_column(String(300), default="")         # what was asked for this version
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class ArtifactState(Base):
+    """What a page saved through window.santosh.storage (per artifact, per key)."""
+    __tablename__ = "artifact_state"
+    __table_args__ = (UniqueConstraint("artifact_id", "key"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    artifact_id: Mapped[str] = mapped_column(String(40), index=True)
+    key: Mapped[str] = mapped_column(String(120))
+    value: Mapped[dict] = mapped_column(JSON, default=dict)            # {"v": <any json>}
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class KV(Base):
     __tablename__ = "kv"
     key: Mapped[str] = mapped_column(String(200), primary_key=True)

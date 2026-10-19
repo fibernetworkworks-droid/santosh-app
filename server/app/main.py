@@ -1163,3 +1163,140 @@ def wake_keyword(tenant: str = Depends(current_tenant)):
     if not f.endswith(".onnx"):
         raise HTTPException(404, "WAKE_KEYWORD_FILE must be a hey_santosh.onnx (Santosh Wake)")
     return FileResponse(f, media_type="application/octet-stream", filename="hey_santosh.onnx")
+
+
+# ------------------------------------------------------------------ Santosh Artifacts
+class ArtShareIn(BaseModel):
+    on: bool = True
+
+
+class ArtStateIn(BaseModel):
+    key: str = Field(min_length=1, max_length=120)
+    value: object = None
+
+
+class ArtAskIn(BaseModel):
+    question: str = Field(min_length=1, max_length=2000)
+
+
+class ArtReviseIn(BaseModel):
+    request: str = Field(min_length=2, max_length=4000)
+
+
+@app.get("/api/artifacts", dependencies=[Depends(require_key)])
+def artifacts_list(tenant: str = Depends(current_tenant)):
+    from . import artifacts
+    return {"artifacts": artifacts.list_for(tenant)}
+
+
+@app.get("/api/artifacts/{aid}", dependencies=[Depends(require_key)])
+def artifact_detail(aid: str, tenant: str = Depends(current_tenant)):
+    from . import artifacts
+    d = artifacts.detail(tenant, aid)
+    if d is None:
+        raise HTTPException(404, "Not found")
+    return d
+
+
+@app.get("/api/artifacts/{aid}/view", dependencies=[Depends(require_key)])
+def artifact_view_link(aid: str, version: int = 0, tenant: str = Depends(current_tenant)):
+    from . import artifacts
+    a = artifacts.get(tenant, aid)
+    if a is None or not a.version:
+        raise HTTPException(404, "Page not ready yet")
+    v = version if 0 < version <= a.version else a.version
+    return {"url": artifacts.view_url(aid, v), "version": v}
+
+
+@app.post("/api/artifacts/{aid}/share", dependencies=[Depends(require_key)])
+def artifact_share(aid: str, body: ArtShareIn, tenant: str = Depends(current_tenant)):
+    from . import artifacts
+    r = artifacts.set_share(tenant, aid, body.on)
+    if r is None:
+        raise HTTPException(404, "Not found")
+    return r
+
+
+@app.delete("/api/artifacts/{aid}", dependencies=[Depends(require_key)])
+def artifact_delete(aid: str, tenant: str = Depends(current_tenant)):
+    from . import artifacts
+    if not artifacts.delete(tenant, aid):
+        raise HTTPException(404, "Not found")
+    return {"ok": True}
+
+
+@app.get("/api/artifacts/{aid}/state", dependencies=[Depends(require_key)])
+def artifact_state(aid: str, tenant: str = Depends(current_tenant)):
+    from . import artifacts
+    st = artifacts.state_all(tenant, aid)
+    if st is None:
+        raise HTTPException(404, "Not found")
+    return {"state": st}
+
+
+@app.put("/api/artifacts/{aid}/state", dependencies=[Depends(require_key)])
+def artifact_state_set(aid: str, body: ArtStateIn, tenant: str = Depends(current_tenant)):
+    from . import artifacts
+    try:
+        artifacts.state_set(tenant, aid, body.key, body.value)
+    except KeyError:
+        raise HTTPException(404, "Not found")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True}
+
+
+@app.post("/api/artifacts/{aid}/ask", dependencies=[Depends(require_key)])
+async def artifact_ask(aid: str, body: ArtAskIn, tenant: str = Depends(current_tenant)):
+    from . import artifacts
+    try:
+        return {"answer": await artifacts.ask(tenant, aid, body.question)}
+    except KeyError:
+        raise HTTPException(404, "Not found")
+    except ValueError as e:
+        raise HTTPException(429 if "sawaal" in str(e) else 400, str(e))
+    except Exception as e:
+        raise HTTPException(503, f"Santosh abhi jawab nahi de pa raha ({type(e).__name__})")
+
+
+@app.post("/api/artifacts/{aid}/revise", dependencies=[Depends(require_key)])
+async def artifact_revise(aid: str, body: ArtReviseIn, tenant: str = Depends(current_tenant)):
+    from . import artifacts
+    a = artifacts.get(tenant, aid)
+    if a is None:
+        raise HTTPException(404, "Not found")
+    try:
+        await artifacts.make(tenant, a.conversation_id, body.request, artifact_id=aid, wait=0)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(409, str(e))
+    return {"status": "building"}
+
+
+@app.get("/a/{aid}/{version}")
+def artifact_page(aid: str, version: int, exp: int = 0, sig: str = ""):
+    """The owner's signed, expiring link (opened inside the app). Sandboxed: the page can't reach Santosh's API."""
+    from . import artifacts
+    from .db import Artifact, session as dbs
+    if not artifacts.check(aid, version, exp, sig):
+        raise HTTPException(403, "Link expired. Santosh app se dobara kholiye.")
+    with dbs() as s:
+        a = s.get(Artifact, aid)
+        if a is None or a.deleted:
+            raise HTTPException(404, "Not found")
+        tenant = a.tenant_id
+    page = artifacts.latest_html(aid, version)
+    if page is None:
+        raise HTTPException(404, "Not found")
+    state = artifacts.state_all(tenant, aid) or {}
+    return HTMLResponse(artifacts.render(aid, version, page, state), headers=artifacts.headers())
+
+
+@app.get("/s/{token}")
+def artifact_shared(token: str):
+    """Public share link (latest version). Saved data is never included; it stays private to the owner."""
+    from . import artifacts
+    a = artifacts.by_share(token)
+    if a is None or not a.version:
+        raise HTTPException(404, "This link is off or doesn't exist")
+    page = artifacts.latest_html(a.id, a.version) or ""
+    return HTMLResponse(artifacts.render(a.id, a.version, page, None), headers=artifacts.headers())
