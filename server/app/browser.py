@@ -181,6 +181,8 @@ def deliver(tenant: str, conv: str, res: dict, background: bool = False) -> dict
             notify(conv, f"Yeh website Santosh ka browser nahi khol sakta: {res.get('reason') or 'blocked'}.")
         else:
             notify(conv, f"Website par kaam poora nahi ho paya. {answer or res.get('reason') or ''}".strip())
+    if status == "partial" and url.startswith("http"):
+        _open_button(conv, url, f"{site} kholiye", "Yeh page aap phone par khud dekh sakte hain.")
     if status == "partial":
         out["say"] = ("The browser could not fully finish; answer contains what it DID find and the pages visited. Tell "
                       "the user those findings honestly, say what is missing, and offer to try again or another way.")
