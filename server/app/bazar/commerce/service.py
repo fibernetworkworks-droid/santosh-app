@@ -10,7 +10,7 @@ Rules built in (Consumer Protection (E-Commerce) Rules + CCPA dark-pattern guide
 - Prices and stock are re-checked when quoting; a changed cart invalidates the quote.
 - Results are sorted by price; sponsored results (none today) would be labelled. MRP is shown as MRP, not as a
   "discount" claim.
-- Per-order cap (SANTOSH_COMMERCE_MAX_ORDER_PAISE); one seller per cart; idempotency keys on order placement.
+- Per-order cap (BAZAR_COMMERCE_MAX_ORDER_PAISE); one seller per cart; idempotency keys on order placement.
 - Seller name, returns, delivery time, country of origin and customer care are shown before payment.
 """
 from __future__ import annotations

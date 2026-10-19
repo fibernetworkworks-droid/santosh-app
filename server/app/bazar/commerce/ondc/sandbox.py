@@ -1,6 +1,6 @@
 """In-process stand-in for the ONDC network: registry, gateway and two seller apps (Akola grocery, electronics).
 
-Used when SANTOSH_ONDC_MODE=sandbox. Every request from Santosh is signature-checked with Santosh's public key, and
+Used when BAZAR_ONDC_MODE=sandbox. Every request from Santosh is signature-checked with Santosh's public key, and
 every callback is signed with the seller app's own key and delivered to OndcBuyer.receive — so the real signing,
 verification, message building and parsing code all run.
 """

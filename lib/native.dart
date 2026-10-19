@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/services.dart';
 
 /// Bridge to the Kotlin side (background service, own alarms, calendar, battery settings).
@@ -50,4 +52,20 @@ class Native {
   }
   static Future<bool> hasCalendar() async => await _call<bool>('hasCalendar') ?? false;
   static Future<void> askCalendar() async => _call('askCalendar');
+
+  // ---- Ghar: home devices (IR blaster, Bluetooth TV remote, DIAL, music) ----
+  /// {ir, bluetooth, bluetooth_on, tv_remote, bt_permission, remote_on}
+  static Future<Map<String, dynamic>> homeCaps() async =>
+      Map<String, dynamic>.from(await _call<Map>('homeCaps') ?? const {'ir': false, 'bluetooth': false, 'tv_remote': false});
+  /// Paired Bluetooth devices [{name, address, tv_like}], TVs first.
+  static Future<List<Map<String, dynamic>>> homePaired() async =>
+      ((await _call<List>('homePaired')) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  /// Asks for "Nearby devices" (Android 12+). Returns true when already allowed.
+  static Future<bool> homeAskBluetooth() async => await _call<bool>('homeAskBluetooth') ?? false;
+  /// Turns the "Santosh Remote" Bluetooth TV remote on/off. "ok", "permission" or a reason.
+  static Future<String> homeRemote(bool on) async => await _call<String>('homeRemote', {'on': on}) ?? 'Is phone par nahi chalta';
+  static Future<String> homeDiscoverable() async => await _call<String>('homeDiscoverable') ?? 'Is phone par nahi chalta';
+  /// Runs one server-built device command. Returns "ok" or a short reason ("permission" = Nearby devices not allowed).
+  static Future<String> homeRun(Map<String, dynamic> action) async =>
+      await _call<String>('homeRun', {'action': jsonEncode(action)}) ?? 'Is phone par home devices nahi chalte';
 }

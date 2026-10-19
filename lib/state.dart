@@ -571,7 +571,34 @@ class Santosh extends ChangeNotifier {
           feed.add(FeedItem('note', {'text': '${what[p['type']] ?? 'Ho gaya'} ✓'}));
         }
         break;
+      case 'home_device':
+        unawaited(_runHomeDevice(Map<String, dynamic>.from(p), at: ev.at));
+        break;
     }
+    notifyListeners();
+  }
+
+  /// A Ghar command from Santosh (AC by IR, TV by Bluetooth/DIAL, music): run it once on this phone, then tell the
+  /// server, which saves the AC's new state only when the phone says it was sent.
+  Future<void> _runHomeDevice(Map<String, dynamic> a, {DateTime? at}) async {
+    final id = a['command_id'] as String?;
+    if (id == null) return;
+    final done = _prefs.getStringList('done_home') ?? <String>[];
+    if (done.contains(id)) return;
+    // never fire an old AC/TV command when the chat history replays on start
+    if (at != null && DateTime.now().toUtc().difference(at) > const Duration(minutes: 2)) return;
+    final kept = done.length > 200 ? done.sublist(done.length - 200) : done;
+    await _prefs.setStringList('done_home', [...kept, id]);
+    var res = await Native.homeRun(a);
+    if (res == 'permission') {
+      await Native.homeAskBluetooth();
+      res = 'TV ke liye "Nearby devices" ki permission dijiye, phir dobara boliye.';
+    }
+    final ok = res == 'ok';
+    if (!ok) feed.add(FeedItem('note', {'text': 'Ghar: $res'}));
+    try {
+      await api?.homeResult(id, ok, ok ? '' : res);
+    } catch (_) {}
     notifyListeners();
   }
 

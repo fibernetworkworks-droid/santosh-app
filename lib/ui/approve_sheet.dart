@@ -23,6 +23,7 @@ class _ApproveSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = (v['items'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    final disclosures = (v['disclosures'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
     final demo = v['demo'] == true;
     final title = (v['title'] as String? ?? '').replaceFirst('[DEMO] ', '');
     return Glass(
@@ -71,10 +72,32 @@ class _ApproveSheet extends StatelessWidget {
           decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0x1FFFFFFF))),
           child: Column(children: [
             if ((v['payee'] as String? ?? '').isNotEmpty) _row('Kisko', v['payee'] as String),
-            for (final i in items.take(8)) _row(i['name'] as String? ?? '', i['price'] as String? ?? ''),
+            for (final i in items.take(12)) _row(i['name'] as String? ?? '', i['price'] as String? ?? ''),
             if ((v['pay_method'] as String? ?? '').isNotEmpty) _row('Payment', v['pay_method'] as String, last: true),
           ]),
         ),
+        if (disclosures.isNotEmpty) ...[
+          // shopping: seller, delivery, returns, origin, customer care — plain facts, shown before paying
+          const SizedBox(height: 10),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 190),
+            child: SingleChildScrollView(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                for (final d in disclosures)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      SizedBox(
+                        width: 112,
+                        child: Text(d['label'] as String? ?? '', style: const TextStyle(color: C.muted, fontSize: 12, height: 1.35)),
+                      ),
+                      Expanded(child: Text(d['value'] as String? ?? '', style: const TextStyle(fontSize: 12, height: 1.35))),
+                    ]),
+                  ),
+              ]),
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(Icons.verified_user_outlined, color: C.ok, size: 18),

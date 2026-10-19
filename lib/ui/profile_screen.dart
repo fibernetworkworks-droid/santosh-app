@@ -5,6 +5,7 @@ import '../native.dart';
 import '../state.dart';
 import 'bazar_screen.dart';
 import 'glass.dart';
+import 'home_devices_screen.dart';
 import 'pc_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -99,6 +100,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           subtitle: const Text('Office ka computer jodiye: files, print aur Tally phone se'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PcScreen(app: app))),
+        ),
+      ),
+      const SizedBox(height: 18),
+      Glass(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.home_rounded, color: C.accentSoft),
+          title: const Text('Ghar', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('AC, TV, speaker phone se · Samsung / LG / Bosch appliances'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HomeDevicesScreen(app: app))),
         ),
       ),
       const SizedBox(height: 18),

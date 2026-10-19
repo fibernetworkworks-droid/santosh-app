@@ -65,7 +65,7 @@ class OndcBuyer:
         self.http = httpx.Client(timeout=10.0, transport=transport)
         self.registry = Registry(settings, self.http)
         if not settings.ondc_signing_private_key:
-            raise ToolError("ONDC keys are not set (SANTOSH_ONDC_SIGNING_PRIVATE_KEY). Run scripts/ondc_keys.py.")
+            raise ToolError("ONDC keys are not set (BAZAR_ONDC_SIGNING_PRIVATE_KEY). Run tools/ondc_keys.py.")
 
     # ------------------------------------------------------------------ outbound
     def _ctx(self, action: str, domain: str, txn: str, bpp_id: str = "", bpp_uri: str = "") -> dict[str, Any]:

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../state.dart';
 import 'glass.dart';
 import 'mcp_screen.dart';
+import 'shopping_screen.dart';
 
 /// Santosh Bazar: all 159 packs with live status, linked app accounts, spend limits and delivery details.
 class BazarScreen extends StatefulWidget {
@@ -310,6 +311,17 @@ class _BazarScreenState extends State<BazarScreen> {
                 await Navigator.of(context).push(MaterialPageRoute(builder: (_) => McpScreen(app: app)));
                 _load();
               },
+            ),
+          ),
+          const SizedBox(height: 14),
+          Glass(
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.shopping_bag_rounded, color: C.accent),
+              title: Text('Santosh Shopping · orders', style: display(15.5)),
+              subtitle: const Text('ONDC, brand stores, paas ki dukaan · Claude / ChatGPT se bhi jodiye'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShoppingScreen(app: app))),
             ),
           ),
           const SizedBox(height: 14),

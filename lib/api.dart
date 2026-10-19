@@ -182,6 +182,13 @@ class Api {
   Future<Map<String, dynamic>> saveBazarSettings(Map<String, dynamic> s) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/bazar/settings', body: s));
   Future<Map<String, dynamic>> bazarActivity() async => Map<String, dynamic>.from(await _send('GET', '/api/bazar/activity'));
+  // Santosh Shopping: orders + tokens to connect Claude / ChatGPT to the Commerce MCP server
+  Future<List<Map<String, dynamic>>> shopOrders() async =>
+      List<Map<String, dynamic>>.from(((await _send('GET', '/api/bazar/commerce/orders'))['orders'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<Map<String, dynamic>> shopMcpTokens() async => Map<String, dynamic>.from(await _send('GET', '/api/bazar/commerce/mcp-tokens'));
+  Future<Map<String, dynamic>> shopMcpTokenCreate(String label) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/commerce/mcp-tokens', body: {'label': label}));
+  Future<void> shopMcpTokenRevoke(String id) async => _send('DELETE', '/api/bazar/commerce/mcp-tokens/$id');
   Future<List<Map<String, dynamic>>> bazarContacts() async =>
       List<Map<String, dynamic>>.from(((await _send('GET', '/api/bazar/contacts'))['contacts'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
   Future<Map<String, dynamic>> bazarCreateShop(Map<String, dynamic> shop) async =>
@@ -190,6 +197,31 @@ class Api {
       _send('POST', '/bazar/shops/$shopId/items', body: items);
   Future<void> bazarAddContact(String name, {String upi = '', String phone = ''}) async =>
       _send('POST', '/api/bazar/contacts', body: {'name': name, 'upi_id': upi, 'phone': phone});
+
+  // ---- Ghar (home devices) ----
+  Future<Map<String, dynamic>> homeDevices() async => Map<String, dynamic>.from(await _send('GET', '/api/bazar/devices'));
+  Future<Map<String, dynamic>> homeAdd(String kind, String name, {String room = '', String brand = '', Map<String, dynamic>? target}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/devices',
+          body: {'kind': kind, 'name': name, 'room': room, 'brand': brand, 'target': target ?? <String, dynamic>{}}));
+  Future<void> homeRemove(String id) async => _send('DELETE', '/api/bazar/devices/$id');
+  /// The test command for one AC remote type ({device_action, message}); the phone sends it and asks "did it beep?".
+  Future<Map<String, dynamic>> homeIrTest(String id, String protocol) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/devices/$id/ir-test', body: {'protocol': protocol}));
+  Future<Map<String, dynamic>> homeIrConfirm(String id, String protocol) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/devices/$id/ir-confirm', body: {'protocol': protocol}));
+  Future<Map<String, dynamic>> homeTvTest(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/devices/$id/tv-test'));
+  /// The phone reports whether it carried out a device command (IR AC state is saved only when ok).
+  Future<Map<String, dynamic>> homeResult(String commandId, bool ok, [String error = '']) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/devices/commands/$commandId/result',
+          body: {'ok': ok, 'error': error.length > 480 ? error.substring(0, 480) : error}));
+  Future<Map<String, dynamic>> homeLinkStart(String provider) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/devices/link/$provider'));
+  Future<Map<String, dynamic>> homeLinkLg(String token) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/devices/link/lg_thinq', body: {'token': token}, timeout: const Duration(seconds: 40)));
+  Future<void> homeUnlink(String provider) async => _send('DELETE', '/api/bazar/devices/link/$provider');
+  Future<Map<String, dynamic>> homeSync() async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/devices/sync', timeout: const Duration(seconds: 40)));
 
   Future<Map<String, dynamic>> uploadLeads(String conv, String filename, List<int> bytes) async {
     final req = http.MultipartRequest('POST', _u('/api/leads/upload'))

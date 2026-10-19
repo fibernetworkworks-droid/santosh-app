@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     ondc_subscriber_id: str = "santosh.ainewtika.com"
     ondc_subscriber_uri: str = "https://santosh.ainewtika.com/ondc"
     ondc_unique_key_id: str = "santosh-k1"
-    ondc_signing_private_key: str = ""   # base64 ed25519 (scripts/ondc_keys.py)
+    ondc_signing_private_key: str = ""   # base64 ed25519 (tools/ondc_keys.py)
     ondc_signing_public_key: str = ""
     ondc_encryption_private_key: str = ""  # base64 DER X25519
     ondc_encryption_public_key: str = ""

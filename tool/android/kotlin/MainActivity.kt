@@ -89,6 +89,41 @@ class MainActivity : FlutterActivity() {
                     "voicePlay" -> { (call.arguments as? ByteArray)?.let { VoiceAudio.play(it) }; result.success(null) }
                     "voiceFlush" -> { VoiceAudio.flush(); result.success(null) }
                     "voiceStop" -> { VoiceAudio.stop(this); result.success(null) }
+                    // ---- Ghar: home devices (IR AC, Bluetooth TV remote, DIAL, music) ----
+                    "homeCaps" -> result.success(HomeDevices.caps(this))
+                    "homePaired" -> result.success(HomeDevices.paired(this))
+                    "homeAskBluetooth" -> {
+                        if (Build.VERSION.SDK_INT >= 31 && !HomeDevices.hasBluetoothPermission(this)) {
+                            requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_ADVERTISE), 45)
+                        }
+                        result.success(HomeDevices.hasBluetoothPermission(this))
+                    }
+                    "homeRemote" -> {
+                        if (call.argument<Boolean>("on") == true) {
+                            val r = RemoteService.start(this)
+                            if (r == "permission" && Build.VERSION.SDK_INT >= 31) {
+                                requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_ADVERTISE), 45)
+                            }
+                            result.success(r)
+                        } else {
+                            RemoteService.stop(this)
+                            result.success("ok")
+                        }
+                    }
+                    "homeDiscoverable" -> {
+                        val r = try {
+                            startActivity(Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE)
+                                .putExtra(android.bluetooth.BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 120))
+                            "ok"
+                        } catch (e: Exception) {
+                            "Bluetooth settings nahi khul paye"
+                        }
+                        result.success(r)
+                    }
+                    "homeRun" -> {
+                        val json = call.argument<String>("action") ?: ""
+                        HomeDevices.run(this, json) { err -> main.post { result.success(err ?: "ok") } }
+                    }
                     else -> result.notImplemented()
                 }
             } catch (e: Exception) {
