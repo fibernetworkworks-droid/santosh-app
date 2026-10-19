@@ -48,6 +48,10 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
                     "isRunning" -> result.success(SantoshService.running)
+                    "pushInit" -> {
+                        SantoshPush.init(this, call.argument<String>("server") ?: "", call.argument<String>("key") ?: "")
+                        result.success(Store.pushToken(this))
+                    }
                     "wakeStart" -> {
                         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 44)

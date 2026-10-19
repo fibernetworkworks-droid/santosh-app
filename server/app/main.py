@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.15.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.16.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -99,7 +99,8 @@ def healthz():
         + (["email"] if mail.configured() else []) + (["calendar"] if __import__("app.gcal", fromlist=["x"]).configured() else []) \
         + (["drive"] if __import__("app.gdrive", fromlist=["x"]).configured() else []) \
         + (["maps"] if __import__("app.maps", fromlist=["x"]).configured() else []) \
-        + (["browser"] if __import__("app.browser", fromlist=["x"]).configured() else [])
+        + (["browser"] if __import__("app.browser", fromlist=["x"]).configured() else []) \
+        + (["push"] if __import__("app.push", fromlist=["x"]).configured() else [])
     from . import accounts
     return {"ok": True, "version": app.version, "google_login": accounts.oauth_configured(),
             "dry_run": st.wa_dry_run, "model": st.anthropic_model,
@@ -1300,3 +1301,23 @@ def artifact_shared(token: str):
         raise HTTPException(404, "This link is off or doesn't exist")
     page = artifacts.latest_html(a.id, a.version) or ""
     return HTMLResponse(artifacts.render(a.id, a.version, page, None), headers=artifacts.headers())
+
+
+# ------------------------------------------------------------------ push notifications (Firebase Cloud Messaging)
+class PushTokenIn(BaseModel):
+    token: str = Field(min_length=10, max_length=300)
+    platform: str = "android"
+
+
+@app.post("/api/push/token", dependencies=[Depends(require_key)])
+def push_token(body: PushTokenIn, tenant: str = Depends(current_tenant)):
+    from . import push
+    push.register(tenant, body.token, body.platform)
+    return {"ok": True, "push": push.configured()}
+
+
+@app.delete("/api/push/token", dependencies=[Depends(require_key)])
+def push_token_delete(body: PushTokenIn, tenant: str = Depends(current_tenant)):
+    from . import push
+    push.unregister(tenant, body.token)
+    return {"ok": True}

@@ -36,6 +36,11 @@ class EventBus:
                     pass  # that loop is closed
             else:
                 q.put_nowait(data)
+        try:   # also to the phone through Firebase, for when the app is closed or the screen is locked
+            from . import push
+            push.on_event(conversation_id, data)
+        except Exception:
+            pass
         return data
 
     def subscribe(self, conversation_id: str) -> asyncio.Queue:

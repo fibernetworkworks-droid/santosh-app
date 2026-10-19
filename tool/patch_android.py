@@ -88,6 +88,40 @@ if ks_b64 and ks_pw:
 else:
     print("Release signing: debug key (add the ANDROID_KEYSTORE_B64 and ANDROID_KEY_PASSWORD secrets for updates that install over the old app)")
 
+# Firebase Cloud Messaging (push when the app is closed): google-services.json + Gradle plugin + messaging library
+gs = root / "tool" / "android" / "google-services.json"
+if gs.exists():
+    shutil.copy(gs, app / "google-services.json")
+    for name in ("settings.gradle.kts", "settings.gradle"):
+        f = root / "android" / name
+        if f.exists():
+            s = f.read_text()
+            if "com.google.gms.google-services" not in s:
+                line = ('    id("com.google.gms.google-services") version "4.4.2" apply false\n' if name.endswith(".kts")
+                        else '    id "com.google.gms.google-services" version "4.4.2" apply false\n')
+                s = re.sub(r"(plugins\s*\{\n)", lambda m: m.group(1) + line, s, count=1)
+                f.write_text(s)
+    if kts.exists():
+        g = kts.read_text()
+        if "com.google.gms.google-services" not in g:
+            g = re.sub(r"(plugins\s*\{[^}]*?)(\n\})", lambda m: m.group(1) + '\n    id("com.google.gms.google-services")' + m.group(2), g, count=1)
+            g += ('\ndependencies {\n    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))\n'
+                  '    implementation("com.google.firebase:firebase-messaging")\n}\n')
+        kts.write_text(g)
+    else:
+        g = groovy.read_text()
+        if "com.google.gms.google-services" not in g:
+            g = re.sub(r"(plugins\s*\{[^}]*?)(\n\})", lambda m: m.group(1) + '\n    id "com.google.gms.google-services"' + m.group(2), g, count=1)
+            g += ("\ndependencies {\n    implementation platform('com.google.firebase:firebase-bom:33.5.1')\n"
+                  "    implementation 'com.google.firebase:firebase-messaging'\n}\n")
+        groovy.write_text(g)
+    print("Firebase messaging: on")
+else:
+    (pkg / "SantoshPush.kt").unlink(missing_ok=True)
+    m = app / "src" / "main" / "AndroidManifest.xml"
+    m.write_text(re.sub(r"\s*<service\s+android:name=\"\.SantoshPush\".*?</service>", "", m.read_text(), flags=re.S))
+    print("Firebase messaging: off (no tool/android/google-services.json)")
+
 # flutter create adds a sample test that refers to a MyApp class we don't have
 t = root / "test" / "widget_test.dart"
 if t.exists() and "MyApp" in t.read_text():

@@ -387,6 +387,16 @@ class ArtifactState(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class PushToken(Base):
+    """A phone's Firebase Cloud Messaging token (where Santosh sends pushes when the app is closed)."""
+    __tablename__ = "push_tokens"
+    token: Mapped[str] = mapped_column(String(300), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    platform: Mapped[str] = mapped_column(String(16), default="android")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    last_ok: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class KV(Base):
     __tablename__ = "kv"
     key: Mapped[str] = mapped_column(String(200), primary_key=True)

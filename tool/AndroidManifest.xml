@@ -132,6 +132,16 @@
             android:name=".CallService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+        <!-- Push messages from Santosh (Firebase Cloud Messaging) when the app is closed or the phone is locked -->
+        <service
+            android:name=".SantoshPush"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <meta-data android:name="firebase_analytics_collection_deactivated" android:value="true" />
+        <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false" />
         <!-- Quick-settings tile -->
         <service
             android:name=".SantoshTile"

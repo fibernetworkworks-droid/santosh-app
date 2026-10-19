@@ -19,6 +19,14 @@ object Store {
         e.apply()
     }
 
+    /** Server + key for push handling (phone-action results), without switching background mode on. */
+    fun saveLink(ctx: Context, server: String, key: String) {
+        p(ctx).edit().putString("server", server).putString("key", key).apply()
+    }
+
+    fun pushToken(ctx: Context) = p(ctx).getString("push_token", "") ?: ""
+    fun setPushToken(ctx: Context, t: String) = p(ctx).edit().putString("push_token", t).apply()
+
     fun server(ctx: Context) = p(ctx).getString("server", "") ?: ""
     fun key(ctx: Context) = p(ctx).getString("key", "") ?: ""
     fun conv(ctx: Context) = p(ctx).getString("conv", "") ?: ""

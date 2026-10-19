@@ -27,6 +27,7 @@ class Native {
 
   static Future<bool> batteryOptimized() async => await _call<bool>('batteryOptimized') ?? false;
   static Future<void> askBattery() async => _call('askBattery');
+  static Future<String?> pushInit(String server, String key) async => _call<String>('pushInit', {'server': server, 'key': key});
   static Future<bool> exactAlarms() async => await _call<bool>('exactAlarms') ?? true;
   static Future<void> askExactAlarms() async => _call('askExactAlarms');
   /// Open a UPI payment / app link / app (from a user tap). Returns "ok" or a short reason.

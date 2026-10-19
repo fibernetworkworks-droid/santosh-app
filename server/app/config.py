@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     omniroute_key: str = ""                 # an endpoint API key made in the OmniRoute dashboard
     omniroute_model: str = "santosh"        # a combo you create in OmniRoute (or "auto", or provider/model)
     omniroute_compression: str = "off"      # keep Santosh's prompts and tool results exactly as sent
+    # --- Push (Firebase Cloud Messaging HTTP v1): service-account JSON from Firebase > Project settings > Service accounts
+    fcm_service_account_file: str = ""
     # --- Santosh Browser: separate worker (server/browser_worker) running browser-use + headless Chromium ---
     browser_worker_url: str = ""            # e.g. http://127.0.0.1:8079 (empty = browsing off)
     browser_worker_key: str = ""            # same value as WORKER_KEY in the worker's env

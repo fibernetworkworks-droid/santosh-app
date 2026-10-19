@@ -61,6 +61,7 @@ class Santosh extends ChangeNotifier {
   String backgroundStatus = '';
   bool batteryOptimized = false;
   bool exactAlarms = true;
+  bool pushOn = false;   // this phone gets Firebase pushes (set once the token is known)
   bool hasCalendar = false;
   /// While the voice screen is open it speaks replies itself.
   bool voiceMode = false;
@@ -176,6 +177,9 @@ class Santosh extends ChangeNotifier {
       }
       conversationId ??= await api!.newConversation();
       await _prefs.setString('conv', conversationId!);
+      // push notifications when the app is closed / phone locked (the native side shows them; avoid doubles here)
+      final serverPush = (h['features'] as List?)?.contains('push') ?? false;
+      unawaited(Native.pushInit(serverUrl, apiKey).then((t) => pushOn = serverPush && (t ?? '').isNotEmpty));
       connected = true;
       _replaying = true;
       _connectedAt = DateTime.now().toUtc();
@@ -497,7 +501,7 @@ class Santosh extends ChangeNotifier {
           _syncBazar();
           feelReply(p['text'] as String? ?? '');
           _replies.add(p);
-          if (inBackground && !backgroundRunning) Device.instance.showNow('Santosh', p['text'] as String? ?? '');
+          if (inBackground && !backgroundRunning && !pushOn) Device.instance.showNow('Santosh', p['text'] as String? ?? '');
           if (!voiceMode && _lastInputWasVoice && speakReplies && p['source'] == 'agent') _speak(p['text'] as String? ?? '');
         }
         break;
@@ -554,7 +558,7 @@ class Santosh extends ChangeNotifier {
         } else {
           _bazar[id] = FeedItem('bazar', Map<String, dynamic>.from(p));
           feed.add(_bazar[id]!);
-          if (inBackground && !_replaying) Device.instance.showNow('Santosh: approve karein', '${p['title'] ?? ''} ${p['amount'] ?? ''}');
+          if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Santosh: approve karein', '${p['title'] ?? ''} ${p['amount'] ?? ''}');
           if (!_replaying) setMood(Mood.think, hold: const Duration(seconds: 10));
         }
         break;
@@ -566,7 +570,7 @@ class Santosh extends ChangeNotifier {
         break;
       case 'pc_file':
         feed.add(FeedItem('pc_file', Map<String, dynamic>.from(p)));
-        if (inBackground && !_replaying) {
+        if (inBackground && !_replaying && !pushOn) {
           Device.instance.showNow(p['source'] == 'bazar' ? 'Santosh ne PDF banaya' : 'PC se file aayi', p['name'] as String? ?? '');
         }
         break;
@@ -585,12 +589,12 @@ class Santosh extends ChangeNotifier {
         if (!_replaying) {
           latestArtifact = Map<String, dynamic>.from(_artifacts[aid]!.data);
           artifactTick++;
-          if (nowReady && inBackground) Device.instance.showNow('Santosh ne banaya', p['title'] as String? ?? '');
+          if (nowReady && inBackground && !pushOn) Device.instance.showNow('Santosh ne banaya', p['title'] as String? ?? '');
         }
         break;
       case 'device_action':
         // in the background the native service does it (screens can't be opened from the background)
-        if (!(inBackground && backgroundRunning)) await _runAction(p, at: ev.at);
+        if (!(inBackground && (backgroundRunning || pushOn))) await _runAction(p, at: ev.at);
         break;
       case 'device_action_result':
         if (p['status'] == 'done') {
