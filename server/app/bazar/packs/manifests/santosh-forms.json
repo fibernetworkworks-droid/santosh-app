@@ -1,0 +1,18 @@
+{
+  "id": "santosh-forms",
+  "name": "Santosh Forms",
+  "category": "Office & PC",
+  "sub_category": "Forms",
+  "pack_type": "Native",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Your Google Forms: make forms and quizzes from a sentence, edit questions, open / close, read and summarise answers, export to Sheets or Excel, new-answer alerts. Asks before sharing or deleting answered questions",
+  "notes": "Driven by the form_* tools; this pack holds the share / delete-answered-questions confirm cards",
+  "master_list_row": 0,
+  "executor": "forms",
+  "config": {},
+  "tools": [{"name": "confirm_change", "tier": 2}],
+  "keywords": ["google form", "form", "survey", "quiz", "registration", "feedback"],
+  "wave": "MVP"
+}

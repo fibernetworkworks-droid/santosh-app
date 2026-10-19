@@ -366,7 +366,7 @@ async def bazar_reminders() -> None:
         log.exception("bazar reminders failed")
 
 
-_mail_last = {"bulk": 0.0, "scheduled": 0.0, "watch": 0.0, "cal": 0.0}
+_mail_last = {"bulk": 0.0, "scheduled": 0.0, "watch": 0.0, "cal": 0.0, "forms": 0.0}
 
 
 async def mail_jobs() -> None:
@@ -387,6 +387,10 @@ async def mail_jobs() -> None:
         _mail_last["cal"] = t
         from .cal import service as cs
         jobs.append(cs.alerts_tick)
+    if t - _mail_last["forms"] >= 600:          # Google Forms: "N naye jawab" alerts
+        _mail_last["forms"] = t
+        from .forms import service as fsv
+        jobs.append(fsv.alerts_tick)
     for job in jobs:
         try:
             await asyncio.to_thread(job)

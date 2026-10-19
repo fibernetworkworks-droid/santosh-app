@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.21.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.22.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -101,6 +101,8 @@ def healthz():
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
         + (["drive"] if __import__("app.gdrive", fromlist=["x"]).configured() else []) \
         + (["sheets"] if __import__("app.sheets.accounts", fromlist=["x"]).oauth_ready() else []) \
+        + (["gdrive"] if __import__("app.drive.accounts", fromlist=["x"]).oauth_ready() else []) \
+        + (["forms"] if __import__("app.forms.accounts", fromlist=["x"]).oauth_ready() else []) \
         + (["maps"] if __import__("app.maps", fromlist=["x"]).configured() else []) \
         + (["browser"] if __import__("app.browser", fromlist=["x"]).configured() else []) \
         + (["push"] if __import__("app.push", fromlist=["x"]).configured() else [])
@@ -333,6 +335,14 @@ async def google_callback(request: Request):
     from .sheets.accounts import is_link_state as is_sheets_state
     if is_sheets_state(request.query_params.get("state", "")):  # "connect my Google Sheets"
         return await _finish_sheets_link(request)
+    from .drive.accounts import is_link_state as is_drive_state
+    if is_drive_state(request.query_params.get("state", "")):   # "connect my Google Drive"
+        from .drive.api import finish_page as drive_finish
+        return await drive_finish(request)
+    from .forms.accounts import is_link_state as is_form_state
+    if is_form_state(request.query_params.get("state", "")):    # "connect my Google Forms"
+        from .forms.api import finish_page as forms_finish
+        return await forms_finish(request)
     code = request.query_params.get("code")
     state = request.query_params.get("state", "")
     err = request.query_params.get("error")
@@ -922,6 +932,13 @@ def sheets_remove(key: str, tenant: str = Depends(current_tenant)):
     if not sa.remove(tenant, key):
         raise HTTPException(404, "Account not found")
     return _sheets_state(tenant)
+
+
+from .drive.api import make_router as _drive_router  # noqa: E402
+from .forms.api import make_router as _forms_router  # noqa: E402
+
+app.include_router(_drive_router(require_key, current_tenant))
+app.include_router(_forms_router(require_key, current_tenant))
 
 
 @app.get("/auth/microsoft/callback")

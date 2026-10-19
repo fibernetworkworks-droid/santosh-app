@@ -260,12 +260,20 @@ from .gdrive_tools import GDRIVE_HANDLERS, GDRIVE_LABELS, GDRIVE_TOOLS  # noqa: 
 from .sheets_tools import SHEETS_HANDLERS, SHEETS_LABELS, SHEETS_TOOLS  # noqa: E402
 
 # Google Sheets has its own full toolset now (per-user sign-in); the old service-account sheet tools step aside
-TOOLS.extend([t for t in GDRIVE_TOOLS if t["name"] not in SHEETS_HANDLERS])
-TOOL_LABELS.update(GDRIVE_LABELS)
-HANDLERS.update(GDRIVE_HANDLERS)
-TOOLS.extend(SHEETS_TOOLS)
-TOOL_LABELS.update(SHEETS_LABELS)
-HANDLERS.update(SHEETS_HANDLERS)
+from .drive_tools import DRIVE_HANDLERS, DRIVE_LABELS, DRIVE_TOOLS  # noqa: E402
+from .forms_tools import FORMS_HANDLERS, FORMS_LABELS, FORMS_TOOLS  # noqa: E402
+
+# Google Sheets and Google Drive have their own full toolsets now (per-user sign-in, service account as fallback);
+# the old service-account tools with the same names step aside
+_new = set(SHEETS_HANDLERS) | set(DRIVE_HANDLERS)
+TOOLS.extend([t for t in GDRIVE_TOOLS if t["name"] not in _new])
+TOOL_LABELS.update({k: v for k, v in GDRIVE_LABELS.items() if k not in _new})
+HANDLERS.update({k: v for k, v in GDRIVE_HANDLERS.items() if k not in _new})
+for _t, _l, _h in ((SHEETS_TOOLS, SHEETS_LABELS, SHEETS_HANDLERS), (DRIVE_TOOLS, DRIVE_LABELS, DRIVE_HANDLERS),
+                   (FORMS_TOOLS, FORMS_LABELS, FORMS_HANDLERS)):
+    TOOLS.extend(_t)
+    TOOL_LABELS.update(_l)
+    HANDLERS.update(_h)
 
 from .bazar_tools import BAZAR_HANDLERS, BAZAR_LABELS, BAZAR_TOOLS  # noqa: E402
 

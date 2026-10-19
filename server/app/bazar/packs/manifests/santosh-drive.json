@@ -1,0 +1,18 @@
+{
+  "id": "santosh-drive",
+  "name": "Santosh Drive",
+  "category": "Office & PC",
+  "sub_category": "Google Drive",
+  "pack_type": "Native",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Your Google Drive: find, read, upload, organise files, make Google Docs, send files to phone, PC or email. Asks before sharing, public links or Trash",
+  "notes": "Driven by the drive_* tools; this pack holds the share / public link / trash confirm cards",
+  "master_list_row": 0,
+  "executor": "drive",
+  "config": {},
+  "tools": [{"name": "confirm_change", "tier": 2}],
+  "keywords": ["drive", "google drive", "file", "folder", "share", "upload"],
+  "wave": "MVP"
+}

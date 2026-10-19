@@ -6,7 +6,9 @@ import '../state.dart';
 import 'artifacts_screen.dart';
 import 'bazar_screen.dart';
 import 'calendar_screen.dart';
+import 'drive_screen.dart';
 import 'email_screen.dart';
+import 'forms_screen.dart';
 import 'glass.dart';
 import 'lock_safe.dart';
 import 'home_devices_screen.dart';
@@ -105,6 +107,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
           subtitle: const Text('Office ka computer jodiye: files, print aur Tally phone se'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PcScreen(app: app))),
+        ),
+      ),
+      const SizedBox(height: 18),
+      Glass(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.add_to_drive_rounded, color: C.accent),
+          title: const Text('Google Drive', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('Files dhoondhna, padhna, phone / PC / email par bhejna, upload, share'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DriveScreen(app: app))),
+        ),
+      ),
+      const SizedBox(height: 18),
+      Glass(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.dynamic_form_rounded, color: C.accent2),
+          title: const Text('Google Forms', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('Form aur quiz banana, jawab ka summary, naye jawab par khabar'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FormsScreen(app: app))),
         ),
       ),
       const SizedBox(height: 18),

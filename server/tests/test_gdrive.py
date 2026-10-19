@@ -1,114 +1,46 @@
-"""Drive/Sheets/Docs tools against fake Google API services."""
+"""The server owner's older Google Drive route: the service account, limited to the shared folder."""
 import asyncio
 
+import httpx
 import pytest
 
-from app import gdrive
-from app.agent.tools import Ctx, ToolError, dispatch
+import app.drive.models  # noqa: F401
+from app.agent import drive_tools as dt
+from app.agent.tools import Ctx, ToolError
+from app.drive.client import FOLDER, GDOC
+from tests.test_drive import FakeDrive
 from tests.test_life import conv_ctx
 
 
-class Exec:
-    def __init__(self, result):
-        self._r = result
-    def execute(self):
-        return self._r
-
-
-class FakeFiles:
-    def __init__(self, store):
-        self.store = store
-    def list(self, **k):
-        self.store["list_q"] = k.get("q")
-        return Exec({"files": [
-            {"id": "f1", "name": "Leads Oct", "mimeType": "application/vnd.google-apps.spreadsheet", "modifiedTime": "2026-10-18T05:00:00Z", "webViewLink": "https://docs.google.com/s/f1"},
-            {"id": "f2", "name": "Proposal", "mimeType": "application/vnd.google-apps.document", "modifiedTime": "2026-10-17T05:00:00Z", "webViewLink": "https://docs.google.com/d/f2"},
-        ]})
-    def get(self, fileId=None, fields=None, supportsAllDrives=None):
-        meta = {"f2": {"id": "f2", "name": "Proposal", "mimeType": "application/vnd.google-apps.document", "webViewLink": "https://docs.google.com/d/f2", "parents": ["old"]}}
-        return Exec(meta.get(fileId, {"id": fileId, "name": "x", "mimeType": "text/plain", "webViewLink": "l", "parents": []}))
-    def export_media(self, fileId=None, mimeType=None):
-        return ("export", fileId)
-    def get_media(self, fileId=None, supportsAllDrives=None):
-        return ("media", fileId)
-    def update(self, **k):
-        self.store["moved"] = k
-        return Exec({})
-
-
-class FakeValues:
-    def __init__(self, store):
-        self.store = store
-    def get(self, spreadsheetId=None, range=None, valueRenderOption=None):
-        return Exec({"range": range or "Sheet1!A1:Z200", "values": [["Name", "Phone"], ["Ramesh", "98900"], ["Sita", "98901"]]})
-    def append(self, spreadsheetId=None, range=None, valueInputOption=None, insertDataOption=None, body=None):
-        self.store["appended"] = body
-        return Exec({"updates": {"updatedRows": len(body["values"]), "updatedRange": "Sheet1!A4"}})
-
-
-def fake_svc(store):
-    def build(name, version):
-        if name == "drive":
-            return type("D", (), {"files": lambda self: FakeFiles(store)})()
-        if name == "sheets":
-            return type("S", (), {"spreadsheets": lambda self: type("SS", (), {"values": lambda s2: FakeValues(store)})()})()
-        if name == "docs":
-            class Docs:
-                def documents(self):
-                    return type("DD", (), {
-                        "create": lambda s, body=None: Exec({"documentId": "newdoc"}),
-                        "batchUpdate": lambda s, documentId=None, body=None: Exec({}) or store.update({"doc_text": body})})()
-            return Docs()
-    return build
-
-
 @pytest.fixture
-def g(monkeypatch):
-    store = {}
-    monkeypatch.setattr(gdrive, "configured", lambda tenant_id=None: True)
-    monkeypatch.setattr(gdrive, "_svc", lambda name, version, tenant_id=None: fake_svc(store)(name, version))
-    monkeypatch.setattr(gdrive, "_folder", lambda tenant_id=None: "FOLDER1")
-
-    class FakeDL:
-        def __init__(self, buf, req): self.buf = buf; self.n = 0
-        def next_chunk(self):
-            if self.n == 0:
-                self.buf.write(b"Proposal body text for FNW."); self.n = 1
-                return (None, False)
-            return (None, True)
-    import app.gdrive as gd
-    monkeypatch.setattr("googleapiclient.http.MediaIoBaseDownload", FakeDL, raising=False)
-    # patch the symbol used inside _read_file
-    import sys, types
-    http_mod = types.ModuleType("googleapiclient.http"); http_mod.MediaIoBaseDownload = FakeDL
-    sys.modules["googleapiclient.http"] = http_mod
-    return store
+def sa(env, monkeypatch):
+    monkeypatch.setenv("GOOGLE_DRIVE_FOLDER_ID", "SHARED1")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    from app import gdrive
+    from app.drive import accounts as da
+    from app.mailbox import accounts as ma
+    monkeypatch.setattr(gdrive, "configured", lambda tenant_id=None: tenant_id in (None, "default"))
+    monkeypatch.setattr(da, "_service_token", lambda force: "at")
+    monkeypatch.setattr(da, "_service_email", lambda: "santosh@proj.iam.gserviceaccount.com")
+    fake = FakeDrive()
+    fake.add("SHARED1", "Santosh shared", FOLDER)
+    fake.add("in1", "Proposal FNW", GDOC, parents=["SHARED1"], content=b"Proposal body text")
+    fake.add("out1", "Proposal private", GDOC, parents=["root"], content=b"secret")
+    ma.set_http(httpx.Client(transport=httpx.MockTransport(fake)))
+    yield fake
+    ma.set_http(None)
 
 
-def test_find_scopes_to_folder(g):
+def test_owner_service_account_sees_only_the_shared_folder(sa):
     ctx = conv_ctx()
-    out = asyncio.run(dispatch("drive_find", {"query": "Leads"}, ctx))
-    assert out["count"] == 2 and out["files"][0]["type"] == "Google Sheet"
-    assert "FOLDER1" in g["list_q"] and "name contains 'Leads'" in g["list_q"]
+    out = asyncio.run(dt.DRIVE_HANDLERS["drive_find"](ctx, query="Proposal"))
+    names = [f["name"] for f in out["files"]]
+    assert names == ["Proposal FNW"]
+    text = asyncio.run(dt.DRIVE_HANDLERS["drive_read_file"](ctx, file="Proposal FNW"))
+    assert "Proposal body text" in text["text"]
 
 
-def test_read_google_doc_text(g):
-    ctx = conv_ctx()
-    out = asyncio.run(dispatch("drive_read_file", {"file_id": "f2"}, ctx))
-    assert out["type"] == "text" and "Proposal body text" in out["text"]
-
-
-# Google Sheets has its own tests now (tests/test_sheets.py)
-
-
-def test_doc_create_moves_to_folder(g):
-    ctx = conv_ctx()
-    out = asyncio.run(dispatch("doc_create", {"title": "FNW Plan", "content": "Hello"}, ctx))
-    assert out["id"] == "newdoc" and out["link"] == "l"
-    assert g["moved"]["addParents"] == "FOLDER1"
-
-
-def test_not_configured(monkeypatch):
-    monkeypatch.setattr(gdrive, "configured", lambda tenant_id=None: False)
-    with pytest.raises(ToolError, match="connect nahi"):
-        asyncio.run(dispatch("drive_find", {}, Ctx("default", "c")))
+def test_service_account_is_owner_only(sa):
+    with pytest.raises(ToolError, match="Profile > Google Drive"):
+        asyncio.run(dt.DRIVE_HANDLERS["drive_find"](Ctx("usr_other", "c"), query="x"))
