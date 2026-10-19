@@ -298,3 +298,22 @@ def test_blocked_sites_and_auth(site):
     r, unauth = run(go())
     assert r.status_code == 400 and "WhatsApp" in r.json()["detail"]
     assert unauth.status_code == 401
+
+
+@needs_browser
+def test_unfinished_task_returns_what_it_found_and_timeline(site):
+    base, srv = site
+    import worker
+
+    async def go():
+        worker.app.state.test_llm = FakeLLM([
+            lambda t: [{"click": {"index": find(t, "Fees")}}],
+            lambda t: [{"done": {"text": "Fee page found: Rs 25, but office timings page was not reachable.", "success": False}}],
+        ])
+        r = (await call("POST", "/tasks", json=body("fee and timings", base + "/"))).json()
+        live = (await call("GET", f"/tasks/{r['session_id']}/live", params={"tenant": "t1"})).json()
+        return r, live
+    r, live = run(go())
+    assert r["status"] == "partial", r
+    assert "Rs 25" in r["summary"] and "Pages dekhe" in r["summary"]
+    assert [s["step"] for s in live["timeline"]] == [1, 2] and live["timeline"][0]["do"] == "click"

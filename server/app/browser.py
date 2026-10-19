@@ -175,10 +175,15 @@ def deliver(tenant: str, conv: str, res: dict, background: bool = False) -> dict
     if background:
         if status == "done":
             notify(conv, answer or f"{site} par kaam ho gaya.")
+        elif status == "partial":
+            notify(conv, f"Poora nahi ho paya, par jo mila:\n{answer}".strip())
         elif status == "blocked":
             notify(conv, f"Yeh website Santosh ka browser nahi khol sakta: {res.get('reason') or 'blocked'}.")
         else:
             notify(conv, f"Website par kaam poora nahi ho paya. {answer or res.get('reason') or ''}".strip())
+    if status == "partial":
+        out["say"] = ("The browser could not fully finish; answer contains what it DID find and the pages visited. Tell "
+                      "the user those findings honestly, say what is missing, and offer to try again or another way.")
     if status == "blocked":
         out["reason"] = res.get("reason", "")
     if status == "failed":

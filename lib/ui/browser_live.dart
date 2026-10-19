@@ -14,6 +14,7 @@ class BrowserLive {
   static String label(Map<String, dynamic> v) => switch (v['status'] as String? ?? 'running') {
         'running' || 'starting' => 'LIVE',
         'done' => 'HO GAYA',
+        'partial' => 'ADHURA',
         'needs_confirm' => 'MANZOORI',
         'needs_payment' => 'PAYMENT AAP',
         'needs_user' => 'AAPKA STEP',
@@ -25,7 +26,7 @@ class BrowserLive {
   static Color color(Map<String, dynamic> v) => switch (v['status'] as String? ?? 'running') {
         'running' || 'starting' => const Color(0xFFDC2626),
         'done' => C.ok,
-        'needs_confirm' || 'needs_payment' || 'needs_user' => C.warn,
+        'needs_confirm' || 'needs_payment' || 'needs_user' || 'partial' => C.warn,
         _ => C.bad,
       };
 
@@ -162,9 +163,12 @@ class BrowserLiveCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              if (run)
-                Text(action.isEmpty ? 'Page padh raha hoon…' : action,
-                    maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.warn, fontSize: 12.5, fontWeight: FontWeight.w600))
+              if (run) ...[
+                for (final st in _lastSteps(l, 2))
+                  Text('✓ ${st['action']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.faint, fontSize: 11.5)),
+                Text(action.isEmpty ? 'Page padh raha hoon…' : '▶ $action',
+                    maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.warn, fontSize: 12.5, fontWeight: FontWeight.w600)),
+              ]
               else if (summary.isNotEmpty)
                 Text(summary, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Color(0xFFD7D2F2))),
               const SizedBox(height: 4),
@@ -196,6 +200,57 @@ Future<void> _stop(BuildContext context, Santosh app, String sid) async {
   } catch (_) {}
   if (context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Browser rok diya')));
+  }
+}
+
+List<Map<String, dynamic>> _lastSteps(Map<String, dynamic> l, int n) {
+  final t = (l['timeline'] as List?) ?? const [];
+  final all = t.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  return all.length <= n ? all : all.sublist(all.length - n);
+}
+
+/// Every step Santosh took on the web: what it did and on which page (newest at the bottom).
+class _Timeline extends StatelessWidget {
+  const _Timeline({required this.steps, required this.running});
+  final List<Map<String, dynamic>> steps;
+  final bool running;
+
+  @override
+  Widget build(BuildContext context) {
+    if (steps.isEmpty) {
+      return const Center(child: Text('Steps yahan dikhenge…', style: TextStyle(color: C.faint, fontSize: 12.5)));
+    }
+    return ListView.builder(
+      reverse: true,
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
+      itemCount: steps.length,
+      itemBuilder: (context, i) {
+        final st = steps[steps.length - 1 - i];
+        final last = i == 0 && running;
+        final host = _host(st['url'] as String? ?? '');
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(
+              width: 22,
+              height: 22,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: last ? C.accent : const Color(0x22FFFFFF), shape: BoxShape.circle),
+              child: Text('${st['step'] ?? ''}', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: last ? C.onAccent : C.chip)),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(st['action'] as String? ?? '', style: TextStyle(fontSize: 13, height: 1.3, color: last ? C.ink : const Color(0xFFD7D2F2))),
+                if (host.isNotEmpty || (st['do'] as String? ?? '').isNotEmpty)
+                  Text([if ((st['do'] as String? ?? '').isNotEmpty) st['do'], if (host.isNotEmpty) host].join(' · '),
+                      style: const TextStyle(fontSize: 11, color: C.faint)),
+              ]),
+            ),
+          ]),
+        );
+      },
+    );
   }
 }
 
@@ -245,11 +300,16 @@ class BrowserLiveScreen extends StatelessWidget {
                   ]),
                 ),
                 Expanded(
+                  flex: 5,
                   child: InteractiveViewer(
                     minScale: 1,
                     maxScale: 4,
                     child: Center(child: AspectRatio(aspectRatio: 1280 / 860, child: _frameBox(frame, fit: BoxFit.contain))),
                   ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: _Timeline(steps: _lastSteps(l, 60), running: run),
                 ),
                 Container(
                   width: double.infinity,

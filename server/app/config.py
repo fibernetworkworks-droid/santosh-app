@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     browser_worker_url: str = ""            # e.g. http://127.0.0.1:8079 (empty = browsing off)
     browser_worker_key: str = ""            # same value as WORKER_KEY in the worker's env
     browser_llm: str = "auto"               # auto (Claude when its key is set, else OmniRoute/GLM) | claude | omniroute | glm
-    browser_max_steps: int = 25
+    browser_max_steps: int = 40
     browser_wait_seconds: int = 100         # how long a chat turn waits before "I'll message you when done"
     glm_api_key: str = ""
     glm_base_url: str = "https://api.z.ai/api/paas/v4"
