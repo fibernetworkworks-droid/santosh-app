@@ -301,7 +301,7 @@ class _BazarScreenState extends State<BazarScreen> {
             child: ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.hub_rounded, color: C.teal),
-              title: Text('MCP servers · 3,184', style: display(15.5)),
+              title: Text('MCP servers · 50,000+', style: display(15.5)),
               subtitle: Text(_apps.any((a) => a['custom'] == true)
                   ? '${_apps.where((a) => a['custom'] == true).length} jude hue · GitHub, Notion, Jira, Zerodha, Tally aur bahut kuch'
                   : 'GitHub, Notion, Jira, Zerodha, Tally, database… koi bhi MCP server Santosh se jodiye'),

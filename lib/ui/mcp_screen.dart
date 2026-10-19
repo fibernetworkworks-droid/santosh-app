@@ -6,7 +6,7 @@ import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
 
-/// MCP servers: the user's connected servers plus the built-in directory of 3,184 community servers.
+/// MCP servers: the user's connected servers plus the built-in directory of ~50,700 MCP servers worldwide.
 class McpScreen extends StatefulWidget {
   const McpScreen({super.key, required this.app});
   final Santosh app;
@@ -14,8 +14,9 @@ class McpScreen extends StatefulWidget {
   State<McpScreen> createState() => _McpScreenState();
 }
 
-const _fields = ['Finance & Fintech', 'Communication', 'Databases', 'Search & Data Extraction', 'Knowledge & Memory',
-  'Marketing', 'Cloud Platforms', 'Travel & Transportation', 'Location Services', 'Social Media', 'Legal', 'Monitoring'];
+const _fields = ['Developer Tools', 'Finance & Fintech', 'Productivity', 'Communication', 'Databases', 'Search & Data Extraction',
+  'Knowledge & Memory', 'Browser Automation', 'Marketing', 'Cloud Platforms', 'Travel & Transportation', 'Location Services',
+  'Social Media', 'Security'];
 
 class _McpScreenState extends State<McpScreen> {
   List<Map<String, dynamic>> _mine = [];
@@ -234,13 +235,21 @@ class _McpScreenState extends State<McpScreen> {
           Wrap(spacing: 6, runSpacing: 6, children: [
             Pill(e['field'] as String? ?? ''),
             Pill(remote ? 'Online service' : 'Computer par chalta', fg: remote ? C.teal : C.faint),
+            if (e['source'] != null) Pill(e['source'] as String),
+            if (e['downloads_per_month'] != null) Pill('${e['downloads_per_month']}/mahina downloads'),
             if (e['caution'] != null) const Pill('Savdhani', fg: C.warn),
           ]),
+          if (e['install'] != null) ...[
+            const SizedBox(height: 6),
+            SelectableText(e['install'] as String, style: const TextStyle(fontFamily: 'monospace', fontSize: 11.5, color: C.chip)),
+          ],
           const SizedBox(height: 10),
           Row(children: [
-            Expanded(child: GlassButton(label: 'GitHub', height: 38, onTap: () => Native.openExternal(url: e['github'] as String? ?? ''))),
+            Expanded(child: GlassButton(label: 'GitHub', height: 38, onTap: () => Native.openExternal(url: (e['github'] ?? e['link']) as String? ?? ''))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Jodiye', color: C.accentSoft, height: 38, onTap: () => _addDialog(entry: e))),
+            Expanded(child: e['connect'] == 'not_allowed'
+                ? GlassButton(label: 'Allowed nahi', color: C.faint, height: 38, onTap: () => _snack(e['how_to_connect'] as String? ?? ''))
+                : GlassButton(label: 'Jodiye', color: C.accentSoft, height: 38, onTap: () => _addDialog(entry: e))),
           ]),
         ]),
       ),
@@ -254,7 +263,7 @@ class _McpScreenState extends State<McpScreen> {
       appBar: AppBar(title: const Text('MCP servers'), backgroundColor: Colors.transparent),
       body: Aurora(
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-          Text('${_stats?['total'] ?? 3184} servers ki directory · jo chahiye jodiye, Santosh unse kaam karega',
+          Text('${_stats?['total'] ?? 50762} servers ki directory · jo chahiye jodiye, Santosh unse kaam karega',
               style: const TextStyle(color: C.muted, fontSize: 13)),
           const SizedBox(height: 12),
           GradientButton(label: _busy ? 'Jod raha hoon…' : 'Pata daal kar jodiye', icon: Icons.add_rounded, height: 48,

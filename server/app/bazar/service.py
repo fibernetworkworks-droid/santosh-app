@@ -536,7 +536,7 @@ def unlink(tenant_id: str, pack_id: str) -> bool:
 def mcp_directory(query: str = "", field: str = "", limit: int = 8) -> dict[str, Any]:
     if not query and not field:
         return directory.stats()
-    return {"servers": directory.search(query or field, limit=limit, field=field)}
+    return {"servers": directory.search(query, limit=limit, field=field)}
 
 
 def mcp_list(tenant_id: str) -> list[dict[str, Any]]:

@@ -14,7 +14,7 @@ BAZAR_TOOLS = [
         "ride apps (Uber, Ola, Rapido...), food/grocery apps (Swiggy, Instamart, Zomato, Zepto, Dineout, District) and "
         "helpers (bill reminders, birthdays, medicine, spend report from bank SMS, expense split, family, festival greetings). "
         "Query in any language, e.g. 'bijli bill msedcl', 'kirana atta', 'phonepe', 'uber', 'swiggy biryani'. "
-        "Also searches the user's own MCP servers and, when few packs match, the MCP directory of 3,184 community "
+        "Also searches the user's own MCP servers and, when few packs match, the MCP directory of ~50,700 MCP servers worldwide "
         "servers (GitHub, Notion, Jira, Zerodha, Tally, databases, maps, research...) returned as mcp_directory. "
         "Returns matching packs with status and their tools (name, description, input_schema). Empty query = catalogue."),
      "input_schema": {"type": "object", "properties": {
@@ -34,7 +34,7 @@ BAZAR_TOOLS = [
          "action": {"type": "string", "enum": ["save", "list"]}, "name": {"type": "string"}, "upi_id": {"type": "string"},
          "phone": {"type": "string"}, "relation": {"type": "string"}}, "required": ["action"]}},
     {"name": "bazar_mcp", "description": (
-        "MCP servers the user connects to Santosh. action=directory: search the directory of 3,184 community MCP "
+        "MCP servers the user connects to Santosh. action=directory: search the directory of ~50,700 MCP "
         "servers (query and/or field like 'Finance & Fintech', 'Databases', 'Communication'); no query = counts by field. "
         "action=add: connect a remote server by its https MCP address (url; optional ref = owner/repo from the directory, "
         "name). Only use an address the user gave or that the directory/GitHub page states; never invent one. If it needs "

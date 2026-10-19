@@ -52,12 +52,19 @@ def _probe(status, headers=None):
 def test_directory_loaded_and_searchable():
     from app.bazar import directory
     st = directory.stats()
-    assert st["total"] == 3184 and st["fields"]["Finance & Fintech"] == 459
+    assert st["total"] == 50762 and st["sources"]["npm"] > 20000 and st["sources"]["PyPI"] > 20000
     hits = directory.search("tally", limit=5)
     assert any("tally" in h["ref"].lower() or "tally" in h["does"].lower() for h in hits)
-    z = directory.search("zerodha kite stocks", limit=3)
-    assert z and z[0]["ref"] == "aranjan/kite-mcp" and z[0]["connect"] == "local"
-    assert "caution" in directory.public(directory.get("kukapay/jupiter-mcp"))   # crypto swaps flagged
+    z = directory.search("zerodha kite", limit=10)
+    assert any("kite" in h["ref"].lower() for h in z)
+    assert directory.get("kukapay/jupiter-mcp")["c"] is True   # crypto swaps flagged
+    x = directory.get("https://pypi.org/project/jira-ticket-mcp/")
+    assert x and x["r"] == "jira-ticket-mcp"
+    j = [h for h in directory.search("jira ticket", limit=30) if h["ref"] == "jira-ticket-mcp"][0]
+    assert j["install"].startswith("uvx jira-ticket-mcp") and j["connect"] == "local"
+    t0 = __import__("time").time()
+    directory.search("postgres database read only", limit=10)
+    assert __import__("time").time() - t0 < 1.5
 
 
 @pytest.mark.parametrize("url", ["http://api.example.com/mcp", "https://localhost/mcp", "https://127.0.0.1/mcp",
@@ -71,6 +78,7 @@ def test_private_or_insecure_addresses_refused(mcp, url):
 def test_add_open_server_read_runs_write_needs_tap(mcp):
     svc, conv = mcp["svc"], mcp["conv"]
     out = svc.mcp_add("default", "https://tools.example.com/mcp", ref="aranjan/kite-mcp", probe_client=_probe(200))
+    assert out["name"] == "kite-mcp"
     assert out["status"] == "ready" and out["name"] == "kite-mcp"
     pid = out["pack_id"]
     found = svc.find("default", "kite")
@@ -126,3 +134,12 @@ def test_dead_address_not_saved(mcp):
 def test_find_offers_directory_when_no_pack(mcp):
     res = mcp["svc"].find("default", "jira issues")
     assert res.get("mcp_directory") and "directory_hint" in res
+
+
+def test_unofficial_whatsapp_automation_not_connectable(mcp):
+    from app.bazar import directory
+    from app.bazar.connectors.base import ToolError
+    hits = [h for h in directory.search("whatsapp", limit=30) if h["connect"] == "not_allowed"]
+    assert hits
+    with pytest.raises(ToolError, match="WhatsApp"):
+        mcp["svc"].mcp_add("default", "https://tools.example.com/mcp", ref=hits[0]["ref"], probe_client=_probe(200))

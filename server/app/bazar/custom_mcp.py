@@ -95,6 +95,9 @@ def create(s, user_id: str, url: str, name: str = "", ref: str = "") -> CustomMc
     if len(rows) >= MAX_PER_USER:
         raise UrlError(f"You can add up to {MAX_PER_USER} MCP servers. Remove one first.")
     entry = directory.get(ref) if ref else None
+    if entry and entry.get("blocked"):
+        raise UrlError("Santosh does not connect unofficial personal-WhatsApp automation. "
+                       "Use the official WhatsApp Business Platform instead.")
     if not name:
         name = entry["r"].split("/")[-1] if entry else (urlparse(url).hostname or "MCP server")
     row = CustomMcp(id="mcp-" + secrets.token_hex(5), user_id=user_id, name=name[:120], url=url,
