@@ -110,8 +110,11 @@ def test_running_task_reports_later(fw, monkeypatch):
     get_settings.cache_clear()
     w.state["start"] = {"session_id": "s9", "status": "running"}
     w.state["get"] = {"status": "done", "summary": "PNR 4512 is CONFIRMED, coach B2."}
+    heard = []
+    import app.voice as voice
+    monkeypatch.setattr(voice, "inject", lambda c, text: heard.append((c, text)) or 1)
     out = run_tool(conv, task="check PNR 4512")
-    assert out["status"] == "running" and "message" in out["say"]
+    assert out["status"] == "running" and "browse_result" in out["say"] and out["session_id"] == "s9"
     live = _events(conv, "browser")
     assert live and live[0]["session_id"] == "s9" and live[0]["status"] == "running"   # live card at once
     for _ in range(50):
@@ -119,6 +122,11 @@ def test_running_task_reports_later(fw, monkeypatch):
             break
         time.sleep(0.1)
     assert any("CONFIRMED" in (n or "") for n in _notices(conv))
+    assert heard and heard[0][0] == conv and "CONFIRMED" in heard[0][1]      # a live call hears it too
+    from app.agent.tools import Ctx
+    from app.agent.web_tools import browse_result
+    r = asyncio.run(browse_result(Ctx("default", conv), session_id="s9"))
+    assert r["status"] == "done" and "CONFIRMED" in r["answer"]
 
 
 def test_off_when_not_configured(bz, monkeypatch):  # noqa: F811

@@ -147,8 +147,10 @@ def deliver(tenant: str, conv: str, res: dict, background: bool = False) -> dict
             log.exception("browser event failed")
     if status == "running":
         follow(tenant, conv, sid)
-        out["say"] = ("The browser is still working on it. Tell the user you're on it and will message them in the "
-                      "chat as soon as it's done; don't wait.")
+        out["session_id"] = sid
+        out["say"] = ("The browser is still working on it (watch it live in the chat card). Tell the user you're on it; "
+                      "the result is posted in the chat automatically when done. If they ask about it before that, call "
+                      f"browse_result with session_id '{sid}' to get the current status or the final answer.")
         return out
     if status == "needs_confirm":
         from .bazar import service
@@ -172,6 +174,15 @@ def deliver(tenant: str, conv: str, res: dict, background: bool = False) -> dict
         if background:
             notify(conv, (answer + "\n\n" if answer else "") + msg)
         return out
+    if background and conv:
+        # a live voice call on this chat hears the result straight away
+        try:
+            from .voice import inject
+            note = {"done": "finished", "partial": "could not fully finish"}.get(status, status)
+            inject(conv, f"(Santosh Browser result, task {note}: {answer[:1500] or res.get('reason', '')}. "
+                         "Tell the user this now in one or two short lines.)")
+        except Exception:
+            log.exception("voice inject failed")
     if background:
         if status == "done":
             notify(conv, answer or f"{site} par kaam ho gaya.")

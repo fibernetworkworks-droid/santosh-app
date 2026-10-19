@@ -41,7 +41,7 @@ VOICE_TOOL_NAMES = {
     "create_reminder", "list_reminders", "cancel_reminder", "set_phone_alarm", "set_phone_timer",
     "add_calendar_event", "remember", "forget", "list_add", "list_show", "list_done", "set_profile",
     "get_weather", "create_routine", "list_routines", "cancel_routine",
-    "google_search", "open_website", "open_on_phone", "browse_web", "artifact_make", "artifact_list", "agent_army",
+    "google_search", "open_website", "open_on_phone", "browse_web", "artifact_make", "artifact_list", "agent_army", "browse_result",
     "email_check", "email_read", "email_draft",
     "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_cancel_event",
     "drive_find", "drive_read_file", "sheet_read", "sheet_append", "doc_create",
@@ -88,7 +88,7 @@ Doing real work
 - You have tools for reminders, phone alarms and timers, calendar, lists, memory, weather and automatic daily jobs, plus santosh_kaam for anything bigger such as WhatsApp campaigns, multi-step work or drafting. Use the tools instead of only talking about it.
 - Payments, bills, shop orders, UPI, cabs, Swiggy/Zomato (Santosh Connectors): always use santosh_kaam with the full request ("MSEDCL ka bill bharna hai, consumer number 1234"). It prepares a confirm card on the phone screen; tell the user the amount and to tap Approve. Never say it is paid or ordered yourself, and never ask for a UPI PIN or OTP.
 - Pages (artifacts): when the user wants something to use, keep, see or share (a calculator, tracker, hisaab, checklist, chart from their numbers, quiz, poster, price list, plan, simple game), call artifact_make with a complete brief: purpose, every number and detail they said, language and style. It builds on the server and pops up on their screen with an Open button in under a minute; keep talking meanwhile. To change one ("usme GST bhi add karo") call artifact_list for the id, then artifact_make with artifact_id and the change.
-- Websites: for bus/train/flight/hotel options and prices (redBus, MakeMyTrip, ixigo...), shopping prices, or anything ON a website or portal, call browse_web (not santosh_kaam, which only opens the app). When the user asks you to check, find or do something ON a website or portal ("Akola municipal ki site pe fees check karo", "IRCTC pe PNR status", "is form ko bhar do"), call browse_web with the full goal and the site if known. It opens a real browser on the server; it never logs in or pays, and asks on screen before submitting. If it says it is still working, tell the user you'll put the answer in the chat.
+- Websites: for bus/train/flight/hotel options and prices (redBus, MakeMyTrip, ixigo...), shopping prices, or anything ON a website or portal, call browse_web (not santosh_kaam, which only opens the app). When the user asks you to check, find or do something ON a website or portal ("Akola municipal ki site pe fees check karo", "IRCTC pe PNR status", "is form ko bhar do"), call browse_web with the full goal and the site if known. It opens a real browser on the server; it never logs in or pays, and asks on screen before submitting. If it says it is still working, tell the user you'll tell them as soon as it's done: the result will come to you in the call as a "(Santosh Browser result ...)" note; then tell the user the answer right away. If they ask before that, call browse_result.
 - Places and travel: maps_search for shops, hospitals, restaurants or any place nearby ("paas mein medical store"), maps_directions for distance, time and traffic ("station kitni der mein pahunchunga"), maps_navigate to start navigation on the phone. Speak distances and minutes naturally.
 - Google Drive/Sheets/Docs: drive_find to locate a file, drive_read_file or sheet_read to read it, sheet_append to add a row, doc_create to make a doc. Read out the gist, not every cell.
 - Calendar: use calendar_agenda for the schedule, calendar_add_event to book something (work out the exact time), calendar_find_event + calendar_cancel_event to cancel. Confirm in one line what you added. This is their Google Calendar and syncs everywhere.
@@ -193,6 +193,22 @@ def _save_turn(conv: str, user_text: str, reply: str) -> None:
     if reply:
         _save(conv, "assistant", [{"type": "text", "text": reply}], display=reply)
         bus.publish(conv, "message", {"role": "assistant", "text": reply, "source": "voice"})
+
+
+# live calls by conversation, so background results (e.g. Santosh Browser) can be spoken into the call
+ACTIVE: dict[str, list] = {}
+
+
+def inject(conversation_id: str, text: str) -> int:
+    """Hand a note to every live call on this conversation (thread-safe). Returns how many calls got it."""
+    n = 0
+    for loop, call in list(ACTIVE.get(conversation_id, [])):
+        try:
+            loop.call_soon_threadsafe(call.audio.put_nowait, ("text", text[:2000]))
+            n += 1
+        except RuntimeError:
+            pass
+    return n
 
 
 class Call:
@@ -325,7 +341,7 @@ class Call:
             elif name == "artifact_make":   # builds in the background; the page pops up on screen when ready
                 out = {"result": await dispatch(name, {**args, "_wait": 0}, self.ctx)}
             elif name == "browse_web":   # a call can't wait minutes: short wait, the result comes in the chat
-                out = {"result": await dispatch(name, {**args, "_wait": 20}, self.ctx)}
+                out = {"result": await dispatch(name, {**args, "_wait": 25}, self.ctx)}
             elif name in VOICE_TOOL_NAMES:
                 out = {"result": await dispatch(name, args, self.ctx)}
             else:
@@ -348,6 +364,8 @@ class Call:
         reader = asyncio.create_task(self.phone_reader())
         first = True
         failures = 0
+        me = (asyncio.get_running_loop(), self)
+        ACTIVE.setdefault(self.ctx.conversation_id, []).append(me)
         try:
             while not self.closed.is_set():
                 context = life.context_block(self.ctx.tenant_id)
@@ -401,6 +419,8 @@ class Call:
                         break
                     await asyncio.sleep(0.5 * failures)
         finally:
+            with contextlib.suppress(ValueError, KeyError):
+                ACTIVE[self.ctx.conversation_id].remove(me)
             for t in list(self._tools):
                 t.cancel()
             reader.cancel()

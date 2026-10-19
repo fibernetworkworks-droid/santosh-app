@@ -31,6 +31,10 @@ WEB_TOOLS = [
          "task": {"type": "string", "description": "What to do and what to report back"},
          "start_url": {"type": "string", "description": "Optional official website to start on"}},
          "required": ["task"]}},
+    {"name": "browse_result", "description": (
+        "Status or final answer of a Santosh Browser task (session_id from browse_web). Use when the user asks what "
+        "happened with a website task, or to get the result of one that was still running."),
+     "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}}, "required": ["session_id"]}},
     {"name": "open_on_phone", "description": (
         "Open a website or link on the user's phone (in their browser or the matching app), when they want to see "
         "or use it themselves: 'IRCTC ki site khol do', 'YouTube pe yeh gaana kholo', a map link, a payment page."),
@@ -39,7 +43,8 @@ WEB_TOOLS = [
 ]
 
 WEB_LABELS = {"google_search": "Google par dhoondh raha hoon", "open_website": "Website padh raha hoon",
-              "open_on_phone": "Phone par khol raha hoon", "browse_web": "Browser mein website par kaam kar raha hoon"}
+              "open_on_phone": "Phone par khol raha hoon", "browse_web": "Browser mein website par kaam kar raha hoon",
+              "browse_result": "Browser ka nateeja dekh raha hoon"}
 
 
 async def google_search(ctx: Ctx, query, **_):
@@ -81,4 +86,20 @@ async def browse_web(ctx: Ctx, task, start_url=None, _wait=None, **_):
     return await asyncio.to_thread(browser.deliver, ctx.tenant_id, ctx.conversation_id, res, False)
 
 
-WEB_HANDLERS = {"browse_web": browse_web, "google_search": google_search, "open_website": open_website, "open_on_phone": open_on_phone}
+async def browse_result(ctx: Ctx, session_id, **_):
+    import asyncio
+
+    from .. import browser
+    try:
+        res = await asyncio.to_thread(browser.get, ctx.tenant_id, str(session_id), 20)
+    except browser.BrowserError as e:
+        raise ToolError(f"That browser task isn't available any more ({e}). Run browse_web again if needed.")
+    res.pop("screenshot_jpeg_b64", None)
+    if res.get("status") in ("running", "starting"):
+        return {"status": "running", "steps_so_far": res.get("steps", 0), "url": res.get("url", ""),
+                "say": "Still working; tell the user it's on it (live card in chat)."}
+    return {"status": res.get("status"), "answer": res.get("summary", ""), "url": res.get("url", ""),
+            "reason": res.get("reason", "")}
+
+
+WEB_HANDLERS = {"browse_result": browse_result, "browse_web": browse_web, "google_search": google_search, "open_website": open_website, "open_on_phone": open_on_phone}
