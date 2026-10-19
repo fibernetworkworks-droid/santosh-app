@@ -103,7 +103,7 @@ class Hub:
                     if item is not None and item[1] == device_id and not item[0].done():
                         item[0].set_result(msg)
                 elif t == "info":
-                    conn.info = {k: msg.get(k) for k in ("name", "os", "version", "folders", "tally", "indexed", "inbox", "paused")}
+                    conn.info = {k: msg.get(k) for k in ("name", "os", "version", "folders", "tally", "indexed", "inbox", "paused", "control")}
                     service.save_info(device_id, conn.info)
                 elif t == "pong":
                     service.touch_device(device_id)

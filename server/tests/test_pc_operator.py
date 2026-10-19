@@ -145,3 +145,57 @@ def test_live_view_api_and_stop(op, monkeypatch):
         return o
     o = run(go())
     assert o.status == "cancelled"
+
+
+def test_hub_keeps_the_control_switch_from_the_pc():
+    """Regression: the PC's 'Santosh ko PC chalane dein' tick must survive the hub's info message."""
+    import asyncio
+    import json
+
+    from app.pc.hub import Hub
+
+    class WS:
+        def __init__(self):
+            self.msgs = [json.dumps({"type": "info", "name": "Office PC", "control": True, "paused": False})]
+            self.sent = []
+
+        async def send_text(self, t):
+            self.sent.append(t)
+
+        async def send_json(self, d):
+            self.sent.append(d)
+
+        async def receive_text(self):
+            if self.msgs:
+                return self.msgs.pop(0)
+            await asyncio.sleep(0.05)
+            raise RuntimeError("closed")
+
+        async def close(self, code=1000):
+            pass
+
+    h = Hub()
+    seen = {}
+
+    async def go():
+        ws = WS()
+        task = asyncio.create_task(h.serve(ws, "dev-x", "t-x"))
+        for _ in range(20):
+            await asyncio.sleep(0.01)
+            c = h.online("t-x")
+            if c and c[0].info:
+                seen.update(c[0].info)
+                break
+        try:
+            await task
+        except Exception:
+            pass
+    import app.pc.service as svc
+    orig = (svc.touch_device, svc.save_info)
+    svc.touch_device = lambda *a, **k: None
+    svc.save_info = lambda *a, **k: None
+    try:
+        asyncio.run(go())
+    finally:
+        svc.touch_device, svc.save_info = orig
+    assert seen.get("control") is True
