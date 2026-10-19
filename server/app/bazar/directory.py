@@ -51,6 +51,14 @@ _WA = re.compile(r"whats\s?app", re.I)
 _WA_OK = re.compile(r"business (platform|api)|cloud api|whatsapp business api|meta (graph|cloud)", re.I)
 
 
+_RE = re.compile(r"reverse[- ]?engineer|decompil|disassembl|binary analysis|\bghidra\b|\bida pro\b|\bfrida\b|"
+                 r"\bhopper\b|packet capture|\bpcap\b|jailbreak|crack", re.I)
+
+
+def risky(s: list) -> bool:
+    return bool(s[CAUTION]) or bool(_RE.search(f"{s[NAME]} {s[DOES]}"))
+
+
 def blocked(s: list) -> bool:
     """Unofficial personal-WhatsApp automation (WhatsApp Web / Baileys) breaks WhatsApp's terms and gets numbers banned.
     Santosh lists it but will not connect it; the official WhatsApp Business Platform is fine."""
@@ -96,9 +104,9 @@ def public(s: list) -> dict[str, Any]:
         out["connect"] = "not_allowed"
         out["how_to_connect"] = ("Santosh does not connect unofficial personal-WhatsApp automation (against WhatsApp's terms; "
                                  "numbers get banned). Use the official WhatsApp Business Platform instead.")
-    if s[CAUTION]:
-        out["caution"] = ("Can act on money, crypto, code or the computer. Santosh asks before every action; "
-                          "only add it if you trust the publisher.")
+    if risky(s):
+        out["caution"] = ("Can act on money, crypto, code or the computer (or inspects other software). Santosh asks "
+                          "before every action; only add it if you trust the publisher and use it on software you own.")
     return out
 
 
@@ -149,7 +157,7 @@ def get(ref: str) -> dict[str, Any] | None:
     s = _by_key().get((ref or "").strip().lower().rstrip("/"))
     if s is None:
         return None
-    return {"n": s[N], "r": s[NAME], "d": s[DOES], "f": s[FIELD], "c": s[CAUTION], "l": s[REPO] or s[LINK], "o": s[OFFICIAL],
+    return {"n": s[N], "r": s[NAME], "d": s[DOES], "f": s[FIELD], "c": risky(s), "l": s[REPO] or s[LINK], "o": s[OFFICIAL],
             "blocked": blocked(s)}
 
 
