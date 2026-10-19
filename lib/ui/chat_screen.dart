@@ -10,9 +10,11 @@ import 'artifact_screen.dart';
 import 'browser_live.dart';
 import 'calendar_screen.dart';
 import 'sheets_screen.dart';
+import 'slides_screen.dart';
 import 'forms_screen.dart';
 import 'glass.dart';
 import 'pc_screen.dart';
+import 'photos_screen.dart';
 import 'live_santosh.dart';
 import '../nav.dart';
 
@@ -212,6 +214,10 @@ class _ChatScreenState extends State<ChatScreen> {
         return SheetCard(v: it.data);
       case 'form':
         return FormCard(v: it.data);
+      case 'slides':
+        return SlidesCard(v: it.data);
+      case 'photos_pick':
+        return PhotosPickCard(v: it.data);
       case 'bazar':
         return _BazarCard(v: it.data, app: app);
       case 'open':

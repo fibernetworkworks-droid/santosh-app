@@ -159,6 +159,7 @@ class Santosh extends ChangeNotifier {
     _campaigns.clear();
     _emails.clear();
     _calEvents.clear();
+    _picks.clear();
     _artifacts.clear();
     _browsers.clear();
     _steps = null;
@@ -381,17 +382,23 @@ class Santosh extends ChangeNotifier {
   int sheetsLinkedTick = 0;
   int driveLinkedTick = 0;
   int formsLinkedTick = 0;
+  int slidesLinkedTick = 0;
+  int photosLinkedTick = 0;
   void onGoogleLinked(String what, bool ok) {
+    if (what == 'slides') slidesLinkedTick++;
+    if (what == 'photos') photosLinkedTick++;
     if (what == 'sheets') sheetsLinkedTick++;
     if (what == 'drive') driveLinkedTick++;
     if (what == 'forms') formsLinkedTick++;
-    final name = {'sheets': 'Google Sheets', 'drive': 'Google Drive', 'forms': 'Google Forms'}[what] ?? what;
+    final name = {'sheets': 'Google Sheets', 'drive': 'Google Drive', 'forms': 'Google Forms', 'slides': 'Google Slides',
+      'photos': 'Google Photos'}[what] ?? what;
     feed.add(FeedItem('note', {'text': ok ? '$name jud gaya ✓' : '$name nahi jud paya, dobara koshish kijiye.'}));
     notifyListeners();
   }
 
   int calendarLinkedTick = 0;                  // bumps when Google Calendar got connected
   final Map<String, FeedItem> _calEvents = {};
+  final Map<String, FeedItem> _picks = {};
   void onCalendarLinked(bool ok) {
     calendarLinkedTick++;
     feed.add(FeedItem('note', {'text': ok ? 'Google Calendar jud gaya ✓ Ab Santosh aapka schedule dekh aur bana sakta hai.' : 'Calendar nahi jud paya, dobara koshish kijiye.'}));
@@ -613,7 +620,18 @@ class Santosh extends ChangeNotifier {
         break;
       case 'sheet':
       case 'form':
+      case 'slides':
         feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
+        break;
+      case 'photos_pick':
+        final pk = '${p['pick_id']}';
+        final had = _picks[pk];
+        if (had != null) {
+          had.data = {...had.data, ...p};        // waiting -> ready
+        } else {
+          _picks[pk] = FeedItem('photos_pick', Map<String, dynamic>.from(p));
+          feed.add(_picks[pk]!);
+        }
         break;
       case 'calendar_event':
         final cid = '${p['id']}';

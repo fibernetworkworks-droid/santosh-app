@@ -1,0 +1,18 @@
+{
+  "id": "santosh-slides",
+  "name": "Santosh Slides",
+  "category": "Office & PC",
+  "sub_category": "Google Slides",
+  "pack_type": "Native",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Your Google Slides: build a full deck from a topic, read decks, add / edit / reorder slides, speaker notes, tables, export PDF or PowerPoint. Asks before deleting slides or sharing",
+  "notes": "Driven by the slides_* tools; this pack holds the delete / share confirm cards",
+  "master_list_row": 0,
+  "executor": "slides",
+  "config": {},
+  "tools": [{"name": "confirm_change", "tier": 2}],
+  "keywords": ["google slides", "presentation", "deck", "ppt", "slides"],
+  "wave": "MVP"
+}

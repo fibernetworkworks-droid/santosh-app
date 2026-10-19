@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.22.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.23.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -103,6 +103,8 @@ def healthz():
         + (["sheets"] if __import__("app.sheets.accounts", fromlist=["x"]).oauth_ready() else []) \
         + (["gdrive"] if __import__("app.drive.accounts", fromlist=["x"]).oauth_ready() else []) \
         + (["forms"] if __import__("app.forms.accounts", fromlist=["x"]).oauth_ready() else []) \
+        + (["slides"] if __import__("app.slides.accounts", fromlist=["x"]).oauth_ready() else []) \
+        + (["photos"] if __import__("app.photos.accounts", fromlist=["x"]).oauth_ready() else []) \
         + (["maps"] if __import__("app.maps", fromlist=["x"]).configured() else []) \
         + (["browser"] if __import__("app.browser", fromlist=["x"]).configured() else []) \
         + (["push"] if __import__("app.push", fromlist=["x"]).configured() else [])
@@ -335,6 +337,13 @@ async def google_callback(request: Request):
     from .sheets.accounts import is_link_state as is_sheets_state
     if is_sheets_state(request.query_params.get("state", "")):  # "connect my Google Sheets"
         return await _finish_sheets_link(request)
+    from .slides.accounts import is_link_state as is_slides_state
+    if is_slides_state(request.query_params.get("state", "")):  # "connect my Google Slides"
+        return await _finish_slides_link(request)
+    from .photos.accounts import is_link_state as is_photos_state
+    if is_photos_state(request.query_params.get("state", "")):  # "connect my Google Photos"
+        from .photos.api import finish_page as photos_finish
+        return await photos_finish(request)
     from .drive.accounts import is_link_state as is_drive_state
     if is_drive_state(request.query_params.get("state", "")):   # "connect my Google Drive"
         from .drive.api import finish_page as drive_finish
@@ -934,11 +943,56 @@ def sheets_remove(key: str, tenant: str = Depends(current_tenant)):
     return _sheets_state(tenant)
 
 
+# ---------------- Google Slides ----------------
+async def _finish_slides_link(request: Request) -> HTMLResponse:
+    from .slides import accounts as sla
+    from .slides.client import SlidesError
+    if request.query_params.get("error"):
+        return _linked_page("Google Slides", "slides", None, request.query_params["error"])
+    try:
+        view = await asyncio.to_thread(sla.finish_link, request.query_params.get("code", ""), request.query_params.get("state", ""))
+    except SlidesError as e:
+        return _linked_page("Google Slides", "slides", None, str(e))
+    return _linked_page("Google Slides", "slides", view["address"])
+
+
+def _slides_state(tenant: str) -> dict:
+    from .slides import accounts as sla
+    from .slides import service as slv
+    return {"accounts": sla.views(tenant), "can_link": sla.oauth_ready(), "recent": slv.recent(tenant)}
+
+
+@app.get("/api/slides/accounts", dependencies=[Depends(require_key)])
+def slides_accounts(tenant: str = Depends(current_tenant)):
+    return _slides_state(tenant)
+
+
+@app.get("/api/slides/link", dependencies=[Depends(require_key)])
+def slides_link(login_hint: str = "", tenant: str = Depends(current_tenant)):
+    from .slides import accounts as sla
+    from .slides.client import SlidesError
+    try:
+        return {"url": sla.start_link(tenant, login_hint)}
+    except SlidesError as e:
+        raise HTTPException(503, str(e))
+
+
+@app.delete("/api/slides/accounts/{key}", dependencies=[Depends(require_key)])
+def slides_remove(key: str, tenant: str = Depends(current_tenant)):
+    from .slides import accounts as sla
+    if not sla.remove(tenant, key):
+        raise HTTPException(404, "Account not found")
+    return _slides_state(tenant)
+
+
 from .drive.api import make_router as _drive_router  # noqa: E402
 from .forms.api import make_router as _forms_router  # noqa: E402
 
 app.include_router(_drive_router(require_key, current_tenant))
 app.include_router(_forms_router(require_key, current_tenant))
+from .photos.api import make_router as _photos_router  # noqa: E402
+
+app.include_router(_photos_router(require_key, current_tenant))
 
 
 @app.get("/auth/microsoft/callback")

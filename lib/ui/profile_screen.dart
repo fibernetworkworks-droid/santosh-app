@@ -13,7 +13,9 @@ import 'glass.dart';
 import 'lock_safe.dart';
 import 'home_devices_screen.dart';
 import 'pc_screen.dart';
+import 'photos_screen.dart';
 import 'sheets_screen.dart';
+import 'slides_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -129,6 +131,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
           subtitle: const Text('Form aur quiz banana, jawab ka summary, naye jawab par khabar'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FormsScreen(app: app))),
+        ),
+      ),
+      const SizedBox(height: 18),
+      Glass(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.slideshow_rounded, color: C.warn),
+          title: const Text('Google Slides', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('Kisi bhi topic par presentation, deck ka summary, PDF / PowerPoint'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SlidesScreen(app: app))),
+        ),
+      ),
+      const SizedBox(height: 18),
+      Glass(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.photo_library_rounded, color: C.accentSoft),
+          title: const Text('Google Photos', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('Photos chunkar bhejiye (email / Drive / PC) · Photos mein upload aur albums'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PhotosScreen(app: app))),
         ),
       ),
       const SizedBox(height: 18),

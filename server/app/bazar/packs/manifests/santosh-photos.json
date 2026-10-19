@@ -1,0 +1,18 @@
+{
+  "id": "santosh-photos",
+  "name": "Santosh Photos",
+  "category": "Office & PC",
+  "sub_category": "Google Photos",
+  "pack_type": "Native",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P1",
+  "description": "Google Photos: you pick photos in Google's picker and Santosh sends them to your phone, PC, Drive or email; Santosh uploads photos into albums. Asks before big uploads",
+  "notes": "Driven by the photos_* tools; Google lets apps read only picked photos and what the app uploaded (since 31 Mar 2025)",
+  "master_list_row": 0,
+  "executor": "photos",
+  "config": {},
+  "tools": [{"name": "confirm_change", "tier": 2}],
+  "keywords": ["google photos", "photos", "album", "picture"],
+  "wave": "MVP"
+}

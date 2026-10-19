@@ -123,6 +123,12 @@ class Api {
   Future<Map<String, dynamic>> formsState() => _gState('forms');
   Future<String> formsLinkUrl() => _gLink('forms');
   Future<Map<String, dynamic>> formsRemove(String key) => _gRemove('forms', key);
+  Future<Map<String, dynamic>> slidesState() => _gState('slides');
+  Future<String> slidesLinkUrl() => _gLink('slides');
+  Future<Map<String, dynamic>> slidesRemove(String key) => _gRemove('slides', key);
+  Future<Map<String, dynamic>> photosState() => _gState('photos');
+  Future<String> photosLinkUrl() => _gLink('photos');
+  Future<Map<String, dynamic>> photosRemove(String key) => _gRemove('photos', key);
 
   // ---- Google Calendar ----
   Future<Map<String, dynamic>> calendarState() async => Map<String, dynamic>.from(await _send('GET', '/api/calendar/accounts') as Map);
