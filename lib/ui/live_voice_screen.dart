@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../live_voice.dart';
 import '../native.dart';
 import '../state.dart';
+import 'artifact_screen.dart';
 import 'glass.dart';
 import '../emotion.dart';
 import 'live_santosh.dart';
@@ -224,19 +225,24 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
         ]),
       ),
       Expanded(
-        child: LayoutBuilder(
-          builder: (context, box) => Center(
-            child: ListenableBuilder(
-              listenable: app,
-              builder: (context, _) => LiveSantosh(
-                feeling: _shownMood(),
-                level: _act == _Act.speaking ? (_call?.outLevel ?? 0) : (_act == _Act.userTalking ? (_call?.inLevel ?? 0) : 0),
-                thought: _act != _Act.speaking,
-                size: math.min(box.maxHeight * .82, 330),
+        child: Stack(children: [
+          Positioned.fill(
+            child: LayoutBuilder(
+              builder: (context, box) => Center(
+                child: ListenableBuilder(
+                  listenable: app,
+                  builder: (context, _) => LiveSantosh(
+                    feeling: _shownMood(),
+                    level: _act == _Act.speaking ? (_call?.outLevel ?? 0) : (_act == _Act.userTalking ? (_call?.inLevel ?? 0) : 0),
+                    thought: _act != _Act.speaking,
+                    size: math.min(box.maxHeight * .82, 330),
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+          Positioned(left: 0, right: 0, bottom: 4, child: ArtifactCallPill(app: app)),
+        ]),
       ),
       _captions(),
       Padding(

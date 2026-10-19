@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'artifacts_screen.dart';
 import 'bazar_screen.dart';
 import 'glass.dart';
 import 'home_devices_screen.dart';
@@ -100,6 +101,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           subtitle: const Text('Office ka computer jodiye: files, print aur Tally phone se'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PcScreen(app: app))),
+        ),
+      ),
+      const SizedBox(height: 18),
+      Glass(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.auto_awesome_mosaic_rounded, color: C.accent),
+          title: const Text('Mere Artifacts', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('Santosh ke banaye apps, tracker, chart aur documents'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ArtifactsScreen(app: app))),
         ),
       ),
       const SizedBox(height: 18),

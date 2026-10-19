@@ -8,6 +8,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'artifact_screen.dart';
 import 'glass.dart';
 import '../emotion.dart';
 import 'live_santosh.dart';
@@ -342,6 +343,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
           ),
           if (!app.connected)
             const Positioned(left: 20, right: 20, top: 8, child: Pill('Server se connect ho raha hai…', fg: C.warn, bg: Color(0x2EFFB15C))),
+          Positioned(left: 0, right: 0, bottom: 4, child: ArtifactCallPill(app: app)),
         ]),
       ),
       _captions(),
