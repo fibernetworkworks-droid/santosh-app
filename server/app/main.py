@@ -901,6 +901,25 @@ def bazar_mcp_list(tenant: str = Depends(current_tenant)):
     return {"servers": _bz(bazar.mcp_list, tenant)}
 
 
+class FeaturedIn(BaseModel):
+    url: str = ""
+    key: str = ""
+    key_header: str = ""
+
+
+@app.get("/api/bazar/mcp/featured", dependencies=[Depends(require_key)])
+def bazar_mcp_featured(tenant: str = Depends(current_tenant)):
+    return {"connectors": _bz(bazar.mcp_featured, tenant)}
+
+
+@app.post("/api/bazar/mcp/featured/{fid}", dependencies=[Depends(require_key)])
+async def bazar_mcp_connect(fid: str, body: FeaturedIn, tenant: str = Depends(current_tenant)):
+    try:
+        return await asyncio.to_thread(bazar.mcp_connect_featured, tenant, fid, body.url, body.key, body.key_header)
+    except BazarError as e:
+        raise HTTPException(400, str(e))
+
+
 @app.get("/api/bazar/mcp/directory", dependencies=[Depends(require_key)])
 def bazar_mcp_directory(q: str = "", field: str = "", limit: int = 20):
     return _bz(bazar.mcp_directory, q, field, max(1, min(limit, 50)))

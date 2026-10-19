@@ -160,6 +160,11 @@ class Api {
   Future<Map<String, dynamic>> mcpKey(String packId, String key, {String header = ''}) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/bazar/mcp/$packId/key', body: {'key': key, 'header': header}));
   Future<void> mcpRemove(String packId) async => _send('DELETE', '/api/bazar/mcp/$packId');
+  Future<List<Map<String, dynamic>>> mcpFeatured() async =>
+      List<Map<String, dynamic>>.from(((await _send('GET', '/api/bazar/mcp/featured'))['connectors'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<Map<String, dynamic>> mcpConnectFeatured(String id, {String url = '', String key = '', String header = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/mcp/featured/$id', body: {'url': url, 'key': key, 'key_header': header},
+          timeout: const Duration(seconds: 40)));
 
   // ---------------- Santosh Bazar ----------------
   Future<Map<String, dynamic>> bazarDecide(String id, String decision) async =>

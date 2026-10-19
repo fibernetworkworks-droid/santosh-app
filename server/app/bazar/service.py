@@ -27,7 +27,7 @@ from .connectors.base import Ctx, ToolError, rupees, to_paise
 from .connectors.upi import valid_vpa
 from .db import (Approval, Connection, Contact, InstalledPack, Reminder, Shop, ShopDue, ShopItem, ShopOrder, Task,
                  Transaction, User)
-from . import custom_mcp, directory
+from . import custom_mcp, directory, featured
 from .db import CustomMcp
 from .packs.registry import Pack, Registry, registry
 
@@ -212,6 +212,11 @@ def find(tenant_id: str, query: str = "", category: str = "", limit: int = 6) ->
         hits = hits[:limit]
         out = [_pack_out(s, user, p, with_tools=i < 4) for i, p in enumerate(hits)]
         res: dict[str, Any] = {"packs": out}
+        feat = [f for f in featured.search(query, limit=4) if f["id"] not in {p.get("name", "").lower() for p in out}]
+        if feat:
+            res["featured_connectors"] = feat
+            res["featured_hint"] = ("Official app connectors. One-tap ones: call bazar_mcp action=connect with featured=<id>; "
+                                    "API-key ones are connected by the user in the app.")
         if len(out) < 3 or re.search(r"\bmcp\b", query.lower()):
             dir_hits = directory.search(query, limit=5)
             if dir_hits:
@@ -545,8 +550,44 @@ def mcp_list(tenant_id: str) -> list[dict[str, Any]]:
         return [custom_mcp.public(r, pack_status(s, user, custom_mcp.to_pack(r))) for r in custom_mcp.user_rows(s, user.id)]
 
 
+def mcp_featured(tenant_id: str) -> list[dict[str, Any]]:
+    """Popular apps with an official MCP server, and whether this user connected each."""
+    with session() as s:
+        user = ensure_user(s, tenant_id)
+        mine = {r.directory_ref: r for r in custom_mcp.user_rows(s, user.id) if r.directory_ref.startswith("featured:")}
+        out = []
+        for c in featured.items():
+            r = mine.get("featured:" + c["id"])
+            st = pack_status(s, user, custom_mcp.to_pack(r)) if r else ""
+            item = featured.public(c, st)
+            if r:
+                item["pack_id"] = r.id
+            out.append(item)
+        return out
+
+
+def mcp_connect_featured(tenant_id: str, fid: str, url: str = "", key: str = "", key_header: str = "",
+                         probe_client=None, conversation_id: str = "") -> dict[str, Any]:
+    c = featured.get(fid)
+    if c is None:
+        raise ToolError("Unknown connector")
+    if c.get("native"):
+        raise ToolError(f"{c['name']} is built into Santosh: {c['native']}")
+    if c["auth"] == "oauth_partner":
+        raise ToolError(f"{c['name']} only lets approved apps sign in. Santosh's partner access is pending.")
+    if c["auth"] == "per_user_url":
+        if not url:
+            raise ToolError(f"Paste your personal {c['name']} MCP address (from your {c['name']} account).")
+    else:
+        url = c["url"]
+    if c["auth"] == "api_key" and not key:
+        raise ToolError(f"{c['name']} needs its API key. Add it in the Santosh app (Connect > MCP servers), never in chat.")
+    return mcp_add(tenant_id, url, c["name"], "featured:" + c["id"], key, key_header or c.get("key_header", ""),
+                   probe_client=probe_client, conversation_id=conversation_id, description=c.get("does", ""))
+
+
 def mcp_add(tenant_id: str, url: str, name: str = "", ref: str = "", key: str = "", key_header: str = "",
-            probe_client=None, conversation_id: str = "") -> dict[str, Any]:
+            probe_client=None, conversation_id: str = "", description: str = "") -> dict[str, Any]:
     """Add a remote MCP server. Tries it right away; works out whether it needs a sign-in or a key."""
     url = (url or "").strip()
     if not url:
@@ -562,7 +603,7 @@ def mcp_add(tenant_id: str, url: str, name: str = "", ref: str = "", key: str = 
     with session() as s:
         user = ensure_user(s, tenant_id)
         try:
-            row = custom_mcp.create(s, user.id, url, name, ref)
+            row = custom_mcp.create(s, user.id, url, name, ref, description)
             if key:
                 custom_mcp.save_key(s, row, key, key_header)
         except custom_mcp.UrlError as e:

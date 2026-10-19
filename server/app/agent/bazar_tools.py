@@ -34,7 +34,10 @@ BAZAR_TOOLS = [
          "action": {"type": "string", "enum": ["save", "list"]}, "name": {"type": "string"}, "upi_id": {"type": "string"},
          "phone": {"type": "string"}, "relation": {"type": "string"}}, "required": ["action"]}},
     {"name": "bazar_mcp", "description": (
-        "MCP servers the user connects to Santosh. action=directory: search the directory of ~50,700 MCP "
+        "MCP servers the user connects to Santosh. action=featured: popular apps with an official MCP server (Notion, "
+        "Linear, Atlassian, Asana, Canva, HubSpot, Stripe, Razorpay...) and whether each is connected. action=connect with "
+        "featured=<id>: connect one (one-tap ones show a sign-in Link; API-key ones the user finishes in the app). "
+        "action=directory: search the directory of ~50,700 MCP "
         "servers (query and/or field like 'Finance & Fintech', 'Databases', 'Communication'); no query = counts by field. "
         "action=add: connect a remote server by its https MCP address (url; optional ref = owner/repo from the directory, "
         "name). Only use an address the user gave or that the directory/GitHub page states; never invent one. If it needs "
@@ -42,7 +45,8 @@ BAZAR_TOOLS = [
         "action=list: the user's servers and status. action=remove: disconnect (pack_id). After adding, use "
         "bazar_run with the returned pack_id; any tool that is not a plain read shows a confirm card first."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["directory", "add", "list", "remove"]},
+         "action": {"type": "string", "enum": ["featured", "connect", "directory", "add", "list", "remove"]},
+         "featured": {"type": "string", "description": "id from action=featured"},
          "query": {"type": "string"}, "field": {"type": "string"}, "url": {"type": "string"},
          "ref": {"type": "string"}, "name": {"type": "string"}, "pack_id": {"type": "string"}}, "required": ["action"]}},
     {"name": "bazar_activity", "description": "The user's recent Bazar orders and payments with their status.",
@@ -109,7 +113,14 @@ async def bazar_contact(ctx: Ctx, action, name="", upi_id="", phone="", relation
     return await _call(service.add_contact, ctx.tenant_id, str(name or ""), str(upi_id or ""), str(phone or ""), str(relation or ""))
 
 
-async def bazar_mcp(ctx: Ctx, action, query="", field="", url="", ref="", name="", pack_id="", **_):
+async def bazar_mcp(ctx: Ctx, action, query="", field="", url="", ref="", name="", pack_id="", featured="", **_):
+    if action == "featured":
+        return {"connectors": await _call(service.mcp_featured, ctx.tenant_id)}
+    if action == "connect":
+        def go_f():
+            return service.mcp_connect_featured(ctx.tenant_id, str(featured or name or ""), str(url or ""),
+                                                conversation_id=ctx.conversation_id)
+        return await _call(go_f)
     if action == "directory":
         return await _call(service.mcp_directory, str(query or ""), str(field or ""))
     if action == "list":
@@ -121,7 +132,7 @@ async def bazar_mcp(ctx: Ctx, action, query="", field="", url="", ref="", name="
             return service.mcp_add(ctx.tenant_id, str(url or ""), str(name or ""), str(ref or ""),
                                    conversation_id=ctx.conversation_id)
         return await _call(go)
-    raise ToolError("action must be directory, add, list or remove")
+    raise ToolError("action must be featured, connect, directory, add, list or remove")
 
 
 async def bazar_activity(ctx: Ctx, **_):

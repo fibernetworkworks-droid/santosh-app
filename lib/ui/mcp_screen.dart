@@ -53,11 +53,19 @@ class _McpScreenState extends State<McpScreen> {
     }
   }
 
+  List<Map<String, dynamic>> _featured = [];
+  String _fcat = '';
+
   Future<void> _loadMine() async {
     _seenTick = app.bazarLinkedTick;
     try {
-      final r = await app.api!.mcpList();
-      if (mounted) setState(() => _mine = r);
+      final r = await Future.wait([app.api!.mcpList(), app.api!.mcpFeatured()]);
+      if (mounted) {
+        setState(() {
+          _mine = r[0];
+          _featured = r[1];
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _err = e.toString());
     }
@@ -79,6 +87,118 @@ class _McpScreenState extends State<McpScreen> {
     } catch (e) {
       if (mounted) setState(() => _err = e.toString());
     }
+  }
+
+  Future<void> _connectFeatured(Map<String, dynamic> c) async {
+    final auth = c['auth'] as String? ?? '';
+    String url = '', key = '';
+    if (auth == 'oauth_partner') {
+      _snack(c['how_to_connect'] as String? ?? '');
+      return;
+    }
+    if (c['native'] != null) {
+      _snack('${c['name']} Santosh mein pehle se hai: ${c['native']}');
+      return;
+    }
+    if (auth == 'api_key' || auth == 'per_user_url') {
+      final t = TextEditingController();
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: C.bgBottom,
+          title: Text('${c['name']} jodiye'),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(c['how_to_connect'] as String? ?? '', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+            TextField(controller: t, obscureText: auth == 'api_key',
+                decoration: InputDecoration(labelText: auth == 'api_key' ? 'API key' : 'Aapka MCP address (https://…)')),
+            if ((c['docs'] as String? ?? '').isNotEmpty)
+              TextButton(onPressed: () => Native.openExternal(url: c['docs'] as String), child: const Text('Kahan milega? (docs)')),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne dein')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Jodiye')),
+          ],
+        ),
+      );
+      if (ok != true || t.text.trim().isEmpty) return;
+      if (auth == 'api_key') {
+        key = t.text.trim();
+      } else {
+        url = t.text.trim();
+      }
+    }
+    setState(() => _busy = true);
+    try {
+      final r = await app.api!.mcpConnectFeatured(c['id'] as String, url: url, key: key);
+      await _loadMine();
+      if (r['status'] == 'needs_link') {
+        final err = await app.linkApp(r['pack_id'] as String);
+        if (err != null) _snack(err);
+      } else {
+        _snack(r['status'] == 'ready' ? '${c['name']} jud gaya. Ab Santosh se kahiye.' : 'Key sahi nahi lagi');
+      }
+    } catch (e) {
+      _snack(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Widget _featuredGrid() {
+    final cats = <String>{for (final c in _featured) c['category'] as String};
+    final shown = _featured.where((c) => _fcat.isEmpty || c['category'] == _fcat).toList();
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: [
+          for (final cat in ['', ...cats])
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(label: Text(cat.isEmpty ? 'Sab' : cat), selected: _fcat == cat, showCheckmark: false,
+                  onSelected: (_) => setState(() => _fcat = cat)),
+            ),
+        ]),
+      ),
+      const SizedBox(height: 10),
+      GridView.count(
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 1.35,
+        children: [
+          for (final c in shown)
+            Glass(
+              radius: 18,
+              padding: const EdgeInsets.all(12),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Row(children: [
+                  Expanded(child: Text(c['name'] as String, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
+                  if (c['india'] == true) const Pill('India', fg: C.accentSoft),
+                ]),
+                const SizedBox(height: 2),
+                Text(c['does'] as String? ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: C.faint, fontSize: 11.5, height: 1.3)),
+                const Spacer(),
+                switch (c['status'] as String? ?? '') {
+                  'ready' => const GlassButton(label: 'Juda hai', color: C.ok, height: 34, onTap: null),
+                  'needs_link' => GlassButton(label: 'Sign in', color: C.accentSoft, height: 34, onTap: () async {
+                      final err = await app.linkApp(c['pack_id'] as String);
+                      if (err != null) _snack(err);
+                    }),
+                  _ => GlassButton(
+                      label: c['auth'] == 'oauth_partner' ? 'Jald aa raha' : (c['native'] != null ? 'Santosh mein hai' : 'Jodiye'),
+                      color: c['auth'] == 'oauth_partner' ? C.faint : C.accentSoft,
+                      height: 34,
+                      onTap: _busy ? null : () => _connectFeatured(c)),
+                },
+              ]),
+            ),
+        ],
+      ),
+    ]);
   }
 
   void _snack(String t) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t)));
@@ -269,6 +389,11 @@ class _McpScreenState extends State<McpScreen> {
           GradientButton(label: _busy ? 'Jod raha hoon…' : 'Pata daal kar jodiye', icon: Icons.add_rounded, height: 48,
               onTap: _busy ? null : () => _addDialog()),
           if (_err != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
+          if (_featured.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            Caption('POPULAR APPS · ${_featured.length}'),
+            _featuredGrid(),
+          ],
           if (_mine.isNotEmpty) ...[
             const SizedBox(height: 18),
             const Caption('AAPKE SERVERS'),

@@ -86,7 +86,7 @@ def user_rows(s, user_id: str) -> list[CustomMcp]:
                           .order_by(CustomMcp.created_at)).all())
 
 
-def create(s, user_id: str, url: str, name: str = "", ref: str = "") -> CustomMcp:
+def create(s, user_id: str, url: str, name: str = "", ref: str = "", description: str = "") -> CustomMcp:
     url = check_url(url)
     rows = user_rows(s, user_id)
     for r in rows:
@@ -101,7 +101,8 @@ def create(s, user_id: str, url: str, name: str = "", ref: str = "") -> CustomMc
     if not name:
         name = entry["r"].split("/")[-1] if entry else (urlparse(url).hostname or "MCP server")
     row = CustomMcp(id="mcp-" + secrets.token_hex(5), user_id=user_id, name=name[:120], url=url,
-                    directory_ref=entry["r"] if entry else "", description=(entry or {}).get("d", "")[:1000],
+                    directory_ref=entry["r"] if entry else (ref if ref.startswith("featured:") else ""),
+                    description=(description or (entry or {}).get("d", ""))[:1000],
                     caution=bool(entry and entry["c"]))
     s.add(row)
     s.flush()
