@@ -317,3 +317,18 @@ def test_unfinished_task_returns_what_it_found_and_timeline(site):
     assert r["status"] == "partial", r
     assert "Rs 25" in r["summary"] and "Pages dekhe" in r["summary"]
     assert [s["step"] for s in live["timeline"]] == [1, 2] and live["timeline"][0]["do"] == "click"
+
+
+@needs_browser
+def test_probe_reports_page_and_bot_blocks(site):
+    base, srv = site
+    import worker
+    PAGES["/blocked"] = "<html><head><title>Attention Required! | Cloudflare</title></head><body>Sorry, you have been blocked</body></html>"
+
+    async def go():
+        return (await call("POST", "/probe", json={"urls": [base + "/fees", base + "/blocked", "https://web.whatsapp.com/"]})).json()
+    r = run(go())["results"]
+    assert r[0]["title"] == "Fees" and "Rs 25" in r[0]["text"] and not r[0].get("site_blocks_bots")
+    assert "Headless" not in r[0]["browser_seen_as"]["user_agent"]
+    assert r[1]["site_blocks_bots"] is True
+    assert "refused by Santosh" in r[2]["error"]

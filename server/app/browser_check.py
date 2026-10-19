@@ -53,6 +53,25 @@ def main() -> int:
         line(good, f"real browser task ({int(time.time() - t0)} s)", json.dumps(res, ensure_ascii=False)[:600])
     except Exception as e:
         line(False, "real browser task", f"{type(e).__name__}: {e}")
+    print("\nOpening real sites (no AI) to see what each one shows this server...")
+    sites = ["https://duckduckgo.com/?q=birth+certificate+fees+akola", "https://www.bing.com/search?q=akola+municipal+corporation",
+             "https://www.india.gov.in/", "https://www.irctc.co.in/"]
+    extra = [a for a in sys.argv[1:] if a.startswith("http")]
+    try:
+        r = httpx.post(st.browser_worker_url.rstrip("/") + "/probe", json={"urls": (extra or sites)[:6]},
+                       headers={"x-worker-key": st.browser_worker_key}, timeout=300).json()
+        for it in r.get("results", []):
+            if it.get("error"):
+                print(f"FAIL {it['url']}  ->  {it['error']}")
+            elif it.get("site_blocks_bots"):
+                print(f"BLOCKED BY SITE {it['url']}  ->  {it.get('title')!r}: {it.get('text', '')[:160]}")
+            else:
+                print(f"OK   {it['url']}  ->  {it.get('title')!r} ({it.get('seconds')} s)")
+            if it.get("guard_refused"):
+                print(f"     Santosh filter refused: {it['guard_refused']}")
+        print("browser identity:", (r.get("results") or [{}])[0].get("browser_seen_as"))
+    except Exception as e:
+        print(f"FAIL site probe  ->  {type(e).__name__}: {e}")
     print("\nALL GOOD" if ok else "\nSee FAIL lines above (and: pm2 logs santosh-browser --lines 60 --nostream)")
     return 0 if ok else 1
 

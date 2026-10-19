@@ -44,6 +44,9 @@ MAX_SESSIONS = int(os.environ.get("MAX_SESSIONS", "2"))
 IDLE_SECONDS = int(os.environ.get("IDLE_SECONDS", "600"))
 CHROMIUM_PATH = os.environ.get("CHROMIUM_PATH", "")
 ALLOW_PRIVATE = os.environ.get("ALLOW_PRIVATE_NETWORK", "") == "1"   # tests only
+# A normal desktop Chrome identity: many sites (Cloudflare/Akamai bot checks) block "HeadlessChrome" outright.
+USER_AGENT = os.environ.get("BROWSER_USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                                                  "(KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36")
 
 SAFETY_PROMPT = """
 You are Santosh's web browser, working for one person in India. Rules that always apply:
@@ -270,14 +273,25 @@ async def open_session(sess: Session, cfg: dict, start_url: str, max_steps: int,
 
     sess.net = NetGuard(allow_private=ALLOW_PRIVATE)
     await sess.net.start()
-    prof = BrowserProfile(headless=True, keep_alive=True, executable_path=CHROMIUM_PATH or None,
-                          args=sess.net.chrome_args(), block_ip_addresses=not ALLOW_PRIVATE,
+    prof = make_profile(sess.net)
+    sess.browser = BrowserSession(browser_profile=prof)
+    vision = (cfg.get("provider") or "anthropic") == "anthropic"
+    await _agent(sess, cfg, start_url, max_steps, llm, vision)
+
+
+def make_profile(net: NetGuard):
+    from browser_use import BrowserProfile
+    return BrowserProfile(headless=True, keep_alive=True, executable_path=CHROMIUM_PATH or None,
+                          args=net.chrome_args() + ["--lang=en-IN", "--disable-blink-features=AutomationControlled"],
+                          user_agent=USER_AGENT, block_ip_addresses=not ALLOW_PRIVATE,
                           prohibited_domains=["web.whatsapp.com", "*.local", "*.internal", "localhost"] if not ALLOW_PRIVATE else ["web.whatsapp.com"],
                           user_data_dir=None, accept_downloads=False, chromium_sandbox=False, enable_default_extensions=False,
                           minimum_wait_page_load_time=0.4, wait_between_actions=0.4,
                           viewport={"width": 1280, "height": 860}, window_size={"width": 1280, "height": 860})
-    sess.browser = BrowserSession(browser_profile=prof)
-    vision = (cfg.get("provider") or "anthropic") == "anthropic"
+
+
+async def _agent(sess: Session, cfg: dict, start_url: str, max_steps: int, llm, vision: bool) -> None:
+    from browser_use import Agent
     task = sess.task + (f"\nStart at: {start_url}" if start_url else "")
 
     async def should_stop() -> bool:
@@ -557,6 +571,62 @@ async def approve(sid: str, body: ApproveIn, x_worker_key: str | None = Header(N
 
 class TenantIn(BaseModel):
     tenant: str
+
+
+class ProbeIn(BaseModel):
+    urls: list[str] = Field(min_length=1, max_length=6)
+
+
+@app.post("/probe")
+async def probe(body: ProbeIn, x_worker_key: str | None = Header(None)) -> dict[str, Any]:
+    """Diagnostics (no AI): open each URL in Santosh's browser and report what the page really shows, plus anything
+    the network guard refused. Tells "the site blocks this server" apart from "Santosh's filter blocked it"."""
+    _auth(x_worker_key)
+    from browser_use import BrowserSession
+    net = NetGuard(allow_private=ALLOW_PRIVATE)
+    await net.start()
+    br = BrowserSession(browser_profile=make_profile(net))
+    out = []
+    try:
+        await br.start()
+        for u in body.urls:
+            why = guard.url_problem(u, ALLOW_PRIVATE)
+            if why:
+                out.append({"url": u, "error": f"refused by Santosh: {why}"})
+                continue
+            before = len(net.blocked)
+            t0 = time.time()
+            item: dict[str, Any] = {"url": u}
+            try:
+                await asyncio.wait_for(br.navigate_to(u), 40)
+                await asyncio.sleep(2.5)
+                cdp = await br.get_or_create_cdp_session()
+                r = await cdp.cdp_client.send.Runtime.evaluate(
+                    params={"expression": "[document.title, (document.body ? document.body.innerText : '').slice(0, 500), navigator.userAgent, navigator.webdriver]",
+                            "returnByValue": True}, session_id=cdp.session_id)
+                vals = (r.get("result", {}).get("value") or ["", "", "", None]) + ["", "", "", None]
+                title, text, ua, wd = vals[:4]
+                item["browser_seen_as"] = {"user_agent": ua, "webdriver_flag": wd}
+                item.update(final_url=await br.get_current_page_url(), title=title,
+                            text=" ".join(str(text).split())[:400])
+                low = f"{title} {text}".lower()
+                if any(k in low for k in ("access denied", "you have been blocked", "attention required", "captcha",
+                                          "are you a robot", "unusual traffic", "forbidden", "request blocked",
+                                          "not available in your region", "bot detection", "verify you are human")):
+                    item["site_blocks_bots"] = True
+            except Exception as e:
+                item["error"] = f"{type(e).__name__}: {e}"[:300]
+            item["seconds"] = round(time.time() - t0, 1)
+            if len(net.blocked) > before:
+                item["guard_refused"] = net.blocked[before:][:10]
+            out.append(item)
+    finally:
+        try:
+            await br.kill()
+        except Exception:
+            pass
+        await net.stop()
+    return {"results": out, "user_agent": USER_AGENT}
 
 
 @app.get("/tasks/{sid}/live")
