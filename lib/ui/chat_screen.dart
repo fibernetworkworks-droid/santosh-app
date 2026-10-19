@@ -13,6 +13,7 @@ import 'sheets_screen.dart';
 import 'slides_screen.dart';
 import 'youtube_screen.dart';
 import 'appcheck_screen.dart';
+import 'hoola_cards.dart';
 import 'forms_screen.dart';
 import 'glass.dart';
 import 'notebook_screen.dart';
@@ -225,6 +226,12 @@ class _ChatScreenState extends State<ChatScreen> {
         return YouTubeCard(v: it.data);
       case 'app_check':
         return AppCheckCard(v: it.data);
+      case 'hoola_knock':
+        return HoolaKnockCard(key: ValueKey('hk${it.data['id']}'), v: it.data, app: app);
+      case 'hoola_connect':
+        return HoolaConnectCard(key: ValueKey('hc${it.data['id']}'), v: it.data, app: app);
+      case 'hoola_msg':
+        return HoolaMsgCard(v: it.data, app: app);
       case 'photos_pick':
         return PhotosPickCard(v: it.data);
       case 'bazar':

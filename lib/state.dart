@@ -100,6 +100,51 @@ class Santosh extends ChangeNotifier {
     }
   }
 
+  // ---------------- Hoola Network ----------------
+  final Map<String, FeedItem> _hoola = {};
+  int hoolaTick = 0;
+
+  /// Owner's decision on a knock card. Returns an error message or null.
+  Future<String?> hoolaDecide(String msgId, String action, {int? slot, int? minutes, String note = ''}) async {
+    try {
+      final r = await api!.netDecide(msgId, action, slot: slot, minutes: minutes, note: note);
+      final it = _hoola['hoola_knock:$msgId'];
+      if (it != null) it.data = {...it.data, 'status': r['status'] ?? action};
+      hoolaTick++;
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<String?> hoolaAnswer(String linkId, String action, {String relation = ''}) async {
+    try {
+      final r = await api!.netAnswer(linkId, action, relation: relation);
+      final it = _hoola['hoola_connect:$linkId'];
+      if (it != null) it.data = {...it.data, 'status': r['status'] ?? action};
+      hoolaTick++;
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// santosh://connect?c=CODE (from a Hoola QR / invite link).
+  Future<void> onConnectLink(String code) async {
+    if (api == null || code.isEmpty) return;
+    try {
+      final r = await api!.netConnect(invite: code);
+      final who = ((r['link'] as Map?)?['label'] as String?) ?? 'Hoola';
+      feed.add(FeedItem('note', {'text': r['status'] == 'active' ? '$who se jud gaye ✓' : 'Request bhej di: $who haan kahenge to dono Hoola baat kar sakenge.'}));
+    } catch (e) {
+      feed.add(FeedItem('note', {'text': 'Connect nahi hua: $e'}));
+    }
+    hoolaTick++;
+    notifyListeners();
+  }
+
   Api? api;
   String? conversationId;
   bool connected = false;
@@ -213,6 +258,7 @@ class Santosh extends ChangeNotifier {
     _picks.clear();
     _artifacts.clear();
     _browsers.clear();
+    _hoola.clear();
     _steps = null;
     api = Api(serverUrl, apiKey);
     try {
@@ -679,6 +725,22 @@ class Santosh extends ChangeNotifier {
       case 'youtube':
       case 'app_check':
         feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
+        break;
+      case 'hoola_knock':
+      case 'hoola_connect':
+        final hk = '${ev.kind}:${p['id']}';
+        final had = _hoola[hk];
+        if (had != null) {
+          had.data = {...had.data, ...p};
+        } else {
+          _hoola[hk] = FeedItem(ev.kind, Map<String, dynamic>.from(p));
+          feed.add(_hoola[hk]!);
+        }
+        hoolaTick++;
+        break;
+      case 'hoola_msg':
+        feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
+        hoolaTick++;
         break;
       case 'photos_pick':
         final pk = '${p['pick_id']}';

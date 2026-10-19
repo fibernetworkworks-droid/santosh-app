@@ -112,6 +112,19 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="santosh" android:host="auth" />
             </intent-filter>
+            <!-- Hoola QR / invite links: santosh://connect?c=CODE (and hoola://connect) -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="santosh" android:host="connect" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="hoola" android:host="connect" />
+            </intent-filter>
             <!-- Linking Swiggy / Zomato etc. returns here: santosh://bazar?linked=1 -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />

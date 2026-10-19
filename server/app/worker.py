@@ -366,7 +366,7 @@ async def bazar_reminders() -> None:
         log.exception("bazar reminders failed")
 
 
-_mail_last = {"bulk": 0.0, "scheduled": 0.0, "watch": 0.0, "cal": 0.0, "forms": 0.0, "photos": 0.0}
+_mail_last = {"bulk": 0.0, "scheduled": 0.0, "watch": 0.0, "cal": 0.0, "forms": 0.0, "photos": 0.0, "hoola": 0.0}
 
 
 async def mail_jobs() -> None:
@@ -395,6 +395,10 @@ async def mail_jobs() -> None:
         _mail_last["photos"] = t
         from .photos import service as phs
         jobs.append(phs.poll_tick)
+    if t - _mail_last["hoola"] >= 60:           # Hoola Network: snoozed requests, quiet hours over
+        _mail_last["hoola"] = t
+        from .net import service as hns
+        jobs.append(hns.tick)
     for job in jobs:
         try:
             await asyncio.to_thread(job)

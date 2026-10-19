@@ -108,6 +108,12 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name} ne PDF banaya" if p.get("source") == "bazar" else "PC se file aayi", str(p.get("name") or ""))
     if kind == "email_draft":
         return ("Email draft taiyaar", str(p.get("subject") or "Dekh kar bhejiye"))
+    if kind == "hoola_knock" and not p.get("quiet") and p.get("status") in (None, "pending"):
+        return (f"{p.get('from', 'Hoola')}", f"{p.get('what', '')}: {str((p.get('body') or {}).get('text') or '')[:200]}".strip(": "))
+    if kind == "hoola_connect" and p.get("status") == "incoming" and not p.get("quiet"):
+        return ("Connect request", f"{p.get('label', '')} judna chahte hain")
+    if kind == "hoola_msg" and not p.get("quiet") and not p.get("fyi"):
+        return (f"{name}: {p.get('from', '')}", str(p.get("text") or "")[:300])
     if kind == "bazar_open":
         msg = str(p.get("message") or "").strip()
         return (name, msg[:300]) if msg else None

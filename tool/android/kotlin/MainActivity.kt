@@ -223,6 +223,7 @@ class MainActivity : FlutterActivity() {
         val data = intent?.data ?: return
         val msg = when {
             data.scheme == "santosh" && data.host == "auth" -> data.getQueryParameter("session") ?: return
+            (data.scheme == "santosh" || data.scheme == "hoola") && data.host == "connect" -> "connect:" + (data.getQueryParameter("c") ?: return)
             data.scheme == "santosh" && data.host == "bazar" -> "bazar:linked=" + (data.getQueryParameter("linked") ?: "0")
             data.scheme == "santosh" && data.host == "mail" -> "mail:ok=" + (data.getQueryParameter("ok") ?: "0")
             data.scheme == "santosh" && data.host == "calendar" -> "calendar:ok=" + (data.getQueryParameter("ok") ?: "0")

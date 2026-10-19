@@ -16,3 +16,4 @@ mcp>=2.2  # 2.x MCPServer: Santosh Commerce MCP at /mcp/commerce (1.x still runs
 cryptography>=42
 reportlab>=4.0
 pypdf>=4.0           # reading PDF attachments in email
+segno>=1.6

@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.27.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.28.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -1070,6 +1070,175 @@ class NotebookAudioIn(BaseModel):
     language: str = "hinglish"
     focus: str = ""
     conversation_id: str = ""
+
+
+# ---------------- Hoola Network: avatars talk to avatars ----------------
+class NetMeIn(BaseModel):
+    handle: str | None = None
+    discoverable: bool | None = None
+    phone: str | None = None
+
+
+class NetConnectIn(BaseModel):
+    to: str = ""
+    invite: str = ""
+    relation: str = "friend"
+    note: str = ""
+
+
+class NetAnswerIn(BaseModel):
+    action: str
+    relation: str = ""
+
+
+class NetLinkIn(BaseModel):
+    vip: bool | None = None
+    nick: str | None = None
+    relation: str | None = None
+    verified: bool | None = None
+
+
+class NetDecideIn(BaseModel):
+    action: str
+    slot: int | None = None
+    minutes: int | None = None
+    note: str = ""
+
+
+class NetSendIn(BaseModel):
+    to: str
+    kind: str = "message"
+    body: dict = Field(default_factory=dict)
+    thread_id: str = ""
+
+
+class NetReplyIn(BaseModel):
+    text: str
+
+
+def _net(fn, *a, **kw):
+    from .net import identity as idn
+    from .net import service as net
+    try:
+        return fn(*a, **kw)
+    except (net.NetError, idn.IdError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/net/me", dependencies=[Depends(require_key)])
+def net_me(tenant: str = Depends(current_tenant)):
+    from .net import service as net
+    out = _net(net.me, tenant)
+    return {k: v for k, v in out.items() if k != "public_key"}
+
+
+@app.put("/api/net/me", dependencies=[Depends(require_key)])
+def net_me_put(body: NetMeIn, tenant: str = Depends(current_tenant)):
+    from .net import identity as idn
+    if body.handle:
+        _net(idn.set_handle, tenant, body.handle)
+    if body.discoverable is not None:
+        _net(idn.set_discovery, tenant, body.phone, body.discoverable)
+    return net_me(tenant)
+
+
+@app.post("/api/net/invite", dependencies=[Depends(require_key)])
+def net_invite(tenant: str = Depends(current_tenant)):
+    from .net import service as net
+    return _net(net.invite, tenant)
+
+
+@app.get("/api/net/find", dependencies=[Depends(require_key)])
+def net_find(q: str, tenant: str = Depends(current_tenant)):
+    from .net import service as net
+    return {"results": _net(net.find, tenant, q)}
+
+
+@app.post("/api/net/connect", dependencies=[Depends(require_key)])
+def net_connect(body: NetConnectIn, tenant: str = Depends(current_tenant)):
+    from .net import service as net
+    return _net(net.connect, tenant, body.to, body.invite, body.relation, body.note)
+
+
+@app.get("/api/net/connections", dependencies=[Depends(require_key)])
+def net_connections(status: str = "", tenant: str = Depends(current_tenant)):
+    from .net import service as net
+    return {"connections": _net(net.connections, tenant, status)}
+
+
+@app.post("/api/net/connections/{lid}", dependencies=[Depends(require_key)])
+def net_answer(lid: str, body: NetAnswerIn, tenant: str = Depends(current_tenant)):
+    from .net import service as net
+    return _net(net.answer_connect, tenant, lid, body.action, body.relation)
+
+
+@app.patch("/api/net/connections/{lid}", dependencies=[Depends(require_key)])
+def net_link_patch(lid: str, body: NetLinkIn, tenant: str = Depends(current_tenant)):
+    from .net import service as net
+    return _net(net.update_link, tenant, lid, vip=body.vip, nick=body.nick, relation=body.relation, verified=body.verified)
+
+
+@app.get("/api/net/inbox", dependencies=[Depends(require_key)])
+def net_inbox(tenant: str = Depends(current_tenant)):
+    from .net import service as net
+    return {"waiting": _net(net.inbox, tenant), "counts": net.counts(tenant)}
+
+
+@app.post("/api/net/inbox/{mid}", dependencies=[Depends(require_key)])
+def net_decide(mid: str, body: NetDecideIn, tenant: str = Depends(current_tenant)):
+    from .net import service as net
+    return _net(net.decide, tenant, mid, body.action, body.slot, body.minutes, body.note)
+
+
+@app.post("/api/net/send", dependencies=[Depends(require_key)])
+def net_send(body: NetSendIn, tenant: str = Depends(current_tenant)):
+    from .net import service as net
+    return _net(net.send, tenant, body.to, body.kind, body.body, "", body.thread_id)
+
+
+@app.get("/api/net/threads", dependencies=[Depends(require_key)])
+def net_threads(tenant: str = Depends(current_tenant)):
+    from .net import service as net
+    return {"threads": _net(net.threads, tenant)}
+
+
+@app.get("/api/net/threads/{tid}", dependencies=[Depends(require_key)])
+def net_thread(tid: str, tenant: str = Depends(current_tenant)):
+    from .net import service as net
+    return _net(net.thread, tenant, tid)
+
+
+@app.post("/api/net/threads/{tid}/reply", dependencies=[Depends(require_key)])
+def net_reply(tid: str, body: NetReplyIn, tenant: str = Depends(current_tenant)):
+    from .net import service as net
+    return _net(net.reply, tenant, tid, body.text)
+
+
+@app.get("/c/{code}", response_class=HTMLResponse)
+def net_invite_page(code: str):
+    """What a phone camera opens from a Hoola QR: who is inviting, and a button into the Hoola app."""
+    import html as _h
+    from .net import identity as idn
+    from .net.models import Invite
+    from .db import session as _s
+    with _s() as s:
+        inv = s.get(Invite, code)
+        owner = inv.tenant_id if inv else None
+    if not owner:
+        body = "<h2>Yeh invite purana ho gaya</h2><p>Naya QR ya link maangiye.</p>"
+    else:
+        c = idn.my_card(owner)
+        who = _h.escape(idn.label(c))
+        deep = f"santosh://connect?c={_h.escape(code)}"
+        body = (f"<h2>{who}</h2><p>@{_h.escape(c['handle'])} aapke Hoola se judna chahte hain.</p>"
+                f"<p><a class=b href='{deep}'>Hoola app mein kholiye</a></p>"
+                "<p class=s>Hoola nahi hai? <a href='https://github.com/fibernetworkworks-droid/santosh-app/releases/latest'>"
+                "Yahan se download kijiye</a>, phir yeh link dobara kholiye.</p>")
+    return HTMLResponse("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
+                        "<title>Hoola</title><style>body{font-family:system-ui,sans-serif;background:#0B0A1A;color:#F4F2FF;"
+                        "max-width:520px;margin:auto;padding:32px 20px}a{color:#FFB15C}.b{display:inline-block;padding:14px 22px;"
+                        "background:#FFB15C;color:#1B1030;border-radius:14px;text-decoration:none;font-weight:700}.s{color:#B9B3DA}"
+                        f"</style><h1>Hoola</h1>{body}")
 
 
 # ---------------- Hoola avatar: name, gender, voice, Mere Niyam ----------------
