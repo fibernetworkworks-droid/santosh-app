@@ -46,6 +46,15 @@ class HandoffExecutor:
             }
             if cfg.get("partner_pending"):
                 out["note"] = "Direct booking through Santosh starts once our partner API is live."
+            try:
+                from ... import browser
+                if browser.configured() and cfg.get("web"):
+                    out["next_step_for_assistant"] = (
+                        f"Don't stop at the Open button: first call browse_web with start_url='{cfg['web']}' and the full "
+                        f"goal (route, date, budget, filters) to actually search {pack.name} and get real options, prices "
+                        "and timings. Tell the user the best 3-5 options, then they book/pay themselves via the Open button.")
+            except Exception:
+                pass
             if ctx.task is not None:
                 ctx.task.result = {**(ctx.task.result or {}), "handoff": {"pack": pack.id, "goal": goal}}
             return out

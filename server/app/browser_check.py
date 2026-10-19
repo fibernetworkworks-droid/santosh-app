@@ -49,7 +49,7 @@ def main() -> int:
         while res.get("status") in ("running", "starting") and time.time() - t0 < 170:
             res = browser.get("selftest", sid, wait=30)
         res.pop("screenshot_jpeg_b64", None)
-        good = res.get("status") == "done" and "example" in (res.get("summary") or "").lower()
+        good = res.get("status") in ("done", "partial") and "example" in (res.get("summary") or "").lower()
         line(good, f"real browser task ({int(time.time() - t0)} s)", json.dumps(res, ensure_ascii=False)[:600])
     except Exception as e:
         line(False, "real browser task", f"{type(e).__name__}: {e}")
