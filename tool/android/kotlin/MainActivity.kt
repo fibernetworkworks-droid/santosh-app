@@ -81,6 +81,18 @@ class MainActivity : FlutterActivity() {
                     "batteryOptimized" -> result.success(batteryOptimized())
                     "askBattery" -> { askBattery(); result.success(null) }
                     "exactAlarms" -> result.success(exactAlarmsAllowed())
+                    "callStatus" -> result.success(mapOf("running" to CallService.running, "problem" to CallService.problem,
+                        "notifications" to notificationsAllowed(), "brand" to Build.MANUFACTURER.lowercase(),
+                        "batteryOptimized" to batteryOptimized()))
+                    "openAutostart" -> { openAutostart(); result.success(null) }
+                    "openNotificationSettings" -> {
+                        try {
+                            startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+                        } catch (_: Exception) {
+                            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                        }
+                        result.success(null)
+                    }
                     "askExactAlarms" -> { askExactAlarms(); result.success(null) }
                     "hasCalendar" -> result.success(hasCalendar())
                     "askCalendar" -> {
@@ -356,6 +368,30 @@ class MainActivity : FlutterActivity() {
             Intent("android.settings.APP_BATTERY_SETTINGS").setData(Uri.parse("package:$packageName")),   // Android 14+
             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:$packageName")),
             Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+        for (i in tries) {
+            try { startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return } catch (_: Exception) {}
+        }
+    }
+
+    private fun notificationsAllowed(): Boolean {
+        val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+        return if (Build.VERSION.SDK_INT >= 24) nm.areNotificationsEnabled() else true
+    }
+
+    /** Phone makers' own "autostart / background activity" screens (Vivo, Oppo, Realme, Xiaomi...), else app info. */
+    private fun openAutostart() {
+        val pkg = packageName
+        val tries = listOf(
+            Intent().setClassName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"),
+            Intent().setClassName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager"),
+            Intent().setClassName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity"),
+            Intent().setClassName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity"),
+            Intent().setClassName("com.coloros.safecenter", "com.coloros.safecenter.startupapp.StartupAppListActivity"),
+            Intent().setClassName("com.oppo.safe", "com.oppo.safe.permission.startup.StartupAppListActivity"),
+            Intent().setClassName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"),
+            Intent().setClassName("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"),
+            Intent("android.settings.APP_BATTERY_SETTINGS").setData(Uri.parse("package:$pkg")),
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:$pkg")))
         for (i in tries) {
             try { startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return } catch (_: Exception) {}
         }

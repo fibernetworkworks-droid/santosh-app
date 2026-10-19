@@ -19,7 +19,7 @@ object Notify {
     private const val CH_SERVICE = "santosh_service"
     private const val CH_MESSAGES = "santosh_messages"
     private const val CH_ALARM = "santosh_alarm"
-    private const val CH_CALL = "santosh_call"
+    private const val CH_CALL = "santosh_call_v2"
 
     private fun nm(ctx: Context) = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -36,10 +36,13 @@ object Notify {
             description = "Replies, reminders and reports from Santosh"
             enableVibration(true)
         })
-        m.createNotificationChannel(NotificationChannel(CH_CALL, "Santosh call", NotificationManager.IMPORTANCE_LOW).apply {
-            description = "Shows while you are on a voice call with Santosh"
+        m.deleteNotificationChannel("santosh_call")
+        m.createNotificationChannel(NotificationChannel(CH_CALL, "Santosh call", NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = "Shows while you are on a voice call with Santosh (also on the lock screen)"
             setShowBadge(false)
             setSound(null, null)
+            enableVibration(false)
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         })
         m.createNotificationChannel(NotificationChannel(CH_ALARM, "Santosh alarms", NotificationManager.IMPORTANCE_HIGH).apply {
             description = "Alarms and timers set by Santosh"
@@ -87,6 +90,7 @@ object Notify {
             .setUsesChronometer(true)
             .setWhen(System.currentTimeMillis())
             .setCategory(Notification.CATEGORY_CALL)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setContentIntent(openApp(ctx, 8))
         @Suppress("DEPRECATION")
         b.addAction(Notification.Action.Builder(0, "Call band karein", hangPi).build())

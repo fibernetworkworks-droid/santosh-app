@@ -27,6 +27,13 @@ class Native {
 
   static Future<bool> batteryOptimized() async => await _call<bool>('batteryOptimized') ?? false;
   static Future<void> askBattery() async => _call('askBattery');
+  static Future<Map<String, dynamic>> callStatus() async {
+    final m = await _call<Map>('callStatus');
+    return m == null ? <String, dynamic>{} : Map<String, dynamic>.from(m);
+  }
+
+  static Future<void> openAutostart() async => _call('openAutostart');
+  static Future<void> openNotificationSettings() async => _call('openNotificationSettings');
   static Future<String?> pushInit(String server, String key) async => _call<String>('pushInit', {'server': server, 'key': key});
   static Future<bool> exactAlarms() async => await _call<bool>('exactAlarms') ?? true;
   static Future<void> askExactAlarms() async => _call('askExactAlarms');

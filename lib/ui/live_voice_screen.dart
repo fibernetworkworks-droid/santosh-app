@@ -8,6 +8,7 @@ import '../native.dart';
 import '../state.dart';
 import 'artifact_screen.dart';
 import 'glass.dart';
+import 'lock_safe.dart';
 import '../emotion.dart';
 import 'live_santosh.dart';
 
@@ -32,6 +33,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
   String _reply = '';
   String? _tool;
   String? _note;
+  String? _lockIssue;   // why the call may stop when the phone locks (checked after the call starts)
   DateTime _lastHeard = DateTime.fromMillisecondsSinceEpoch(0);
   bool _turnOpen = false;
 
@@ -98,6 +100,11 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
       return;
     }
     _tick = Timer.periodic(const Duration(milliseconds: 50), (_) => _update());
+    Future.delayed(const Duration(seconds: 2), () async {
+      if (!mounted || !_inCall) return;
+      final st = await LockSafe.status();
+      if (mounted && _inCall) setState(() => _lockIssue = LockSafe.issue(st, inCall: true));
+    });
   }
 
   Future<void> _end() async {
@@ -244,6 +251,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
           Positioned(left: 0, right: 0, bottom: 4, child: ArtifactCallPill(app: app)),
         ]),
       ),
+      if (_inCall && _lockIssue != null) LockSafeBanner(text: _lockIssue!),
       _captions(),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),

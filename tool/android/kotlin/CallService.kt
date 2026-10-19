@@ -21,6 +21,8 @@ class CallService : Service() {
     companion object {
         const val ACTION_HANGUP = "com.newtika.santosh.CALL_HANGUP"
         @Volatile var running = false
+        /** Why the lock-screen keep-alive isn't on ("" = fine); shown in the app. */
+        @Volatile var problem = ""
         /** Set by MainActivity: ends the call in Flutter when the notification button is pressed. */
         @Volatile var onHangup: (() -> Unit)? = null
 
@@ -30,8 +32,10 @@ class CallService : Service() {
             try {
                 if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i) else ctx.startService(i)
                 running = true
-            } catch (_: Exception) {
+                problem = ""
+            } catch (e: Exception) {
                 // e.g. not allowed right now; the call still works while the app stays open
+                problem = "start: ${e.javaClass.simpleName}: ${e.message ?: ""}".take(200)
             }
         }
 
@@ -55,7 +59,8 @@ class CallService : Service() {
             } else {
                 startForeground(Notify.CALL_ID, n)
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            problem = "foreground: ${e.javaClass.simpleName}: ${e.message ?: ""}".take(200)
             running = false
             stopSelf()
             return START_NOT_STICKY

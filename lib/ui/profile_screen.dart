@@ -6,6 +6,7 @@ import '../state.dart';
 import 'artifacts_screen.dart';
 import 'bazar_screen.dart';
 import 'glass.dart';
+import 'lock_safe.dart';
 import 'home_devices_screen.dart';
 import 'pc_screen.dart';
 
@@ -309,6 +310,7 @@ class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObs
             style: TextStyle(fontSize: 12.5, color: C.muted)),
         if (on && app.batteryOptimized)
           fix('Battery saver Santosh ko rok sakta hai', 'Santosh ko "Unrestricted / Don\'t optimize" par rakhiye', 'Theek karo', Native.askBattery),
+        fix('Phone lock par bhi Santosh', 'Vivo/Oppo/Realme/Xiaomi par ek baar settings theek kijiye', 'Dekho', () => LockSafe.showFix(context)),
         if (!app.exactAlarms)
           fix('Alarm time par bajne ke liye', '"Alarms & reminders" ki permission dijiye', 'Allow', () async {
             await Native.askExactAlarms();
