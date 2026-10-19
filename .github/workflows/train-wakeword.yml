@@ -1,0 +1,46 @@
+name: Train Santosh Wake ("Hey Santosh")
+
+on:
+  workflow_dispatch:
+    inputs:
+      per_voice:
+        description: "Clips per voice (multi-speaker voices get 6x)"
+        default: "120"
+      epochs:
+        description: "Training epochs"
+        default: "40"
+  push:
+    paths: ["wakeword/train.py", ".github/workflows/train-wakeword.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  train:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install numpy scipy onnx onnxruntime soundfile piper-tts==1.8.0
+      - name: Train
+        run: |
+          python wakeword/train.py --work /tmp/wake --out tool/android/assets/wake \
+            --per-voice "${{ github.event.inputs.per_voice || '120' }}" --epochs "${{ github.event.inputs.epochs || '40' }}"
+          cp /tmp/wake/melspectrogram.onnx /tmp/wake/embedding_model.onnx tool/android/assets/wake/
+          cat tool/android/assets/wake/metrics.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: santosh-wake
+          path: tool/android/assets/wake/
+      - name: Save the model in the repo (main branch)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "santosh-wake-trainer"
+          git config user.email "actions@users.noreply.github.com"
+          git add tool/android/assets/wake
+          git commit -m "Santosh Wake: retrained Hey Santosh model (run ${{ github.run_number }})" || exit 0
+          git pull --rebase origin main && git push origin HEAD:main

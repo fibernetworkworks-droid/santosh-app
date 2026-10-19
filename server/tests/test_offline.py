@@ -31,16 +31,19 @@ def test_digest_only_when_phone_silent(env, monkeypatch):
 
 
 def test_wake_config(env, monkeypatch, tmp_path):
+    """Santosh Wake needs no keys: always available with the built-in model; the server can push a newer one."""
     from fastapi.testclient import TestClient
     from app import main
     from app.config import get_settings
     c = TestClient(main.app)
-    assert c.get("/api/wake").json()["available"] is False
-    ppn = tmp_path / "hey.ppn"
-    ppn.write_bytes(b"PPN")
-    monkeypatch.setenv("PICOVOICE_ACCESS_KEY", "pv-key")
-    monkeypatch.setenv("WAKE_KEYWORD_FILE", str(ppn))
+    j = c.get("/api/wake").json()
+    assert j["available"] and j["engine"] == "santosh-wake" and j["custom_model"] is False and j["threshold"] == 0.5
+    assert c.get("/api/wake/keyword").status_code == 404
+    model = tmp_path / "hey_santosh.onnx"
+    model.write_bytes(b"ONNX")
+    monkeypatch.setenv("WAKE_KEYWORD_FILE", str(model))
+    monkeypatch.setenv("WAKE_SENSITIVITY", "0.8")
     get_settings.cache_clear()
     j = c.get("/api/wake").json()
-    assert j["available"] and j["access_key"] == "pv-key"
-    assert c.get("/api/wake/keyword").content == b"PPN"
+    assert j["custom_model"] and j["version"] != "builtin" and j["threshold"] == 0.3
+    assert c.get("/api/wake/keyword").content == b"ONNX"

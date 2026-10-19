@@ -1,7 +1,5 @@
 package com.newtika.santosh
 
-import ai.picovoice.porcupine.PorcupineException
-import ai.picovoice.porcupine.PorcupineManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -22,8 +20,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * "Hey Santosh": listens for the wake word on the phone itself (Picovoice Porcupine, fully on-device —
- * no audio leaves the phone until you start talking to Santosh). Works with the screen off and locked.
+ * "Hey Santosh": listens for the wake word on the phone itself (Santosh Wake, our own on-device model — no audio
+ * leaves the phone until you start talking to Santosh, and no licence keys). Works with the screen off and locked.
  * Android requires a visible "mic in use" notification for this; the user can switch it off any time.
  */
 class WakeService : Service() {
@@ -63,7 +61,7 @@ class WakeService : Service() {
         fun wanted(ctx: Context) = ctx.getSharedPreferences("santosh_native", Context.MODE_PRIVATE).getBoolean("wake_on", false)
     }
 
-    private var porcupine: PorcupineManager? = null
+    private var engine: WakeEngine? = null
     private val main = Handler(Looper.getMainLooper())
     private val fallbackResume = Runnable { listen() }
 
@@ -95,7 +93,7 @@ class WakeService : Service() {
         } else if (intent?.action == ACTION_RESUME) {
             main.removeCallbacks(fallbackResume)
             listen()
-        } else if (porcupine == null) {
+        } else if (engine == null) {
             Thread({ prepareAndListen() }, "santosh-wake-setup").start()
         }
         return START_STICKY
@@ -108,28 +106,35 @@ class WakeService : Service() {
         super.onDestroy()
     }
 
-    /** Fetch the access key and the "Hey Santosh" keyword file from the Santosh server (once). */
+    /** Load the "Hey Santosh" model: the server may send a newer one; otherwise the one built into the app. */
     private fun prepareAndListen() {
+        var threshold = 0.5f
+        var model: ByteArray? = null
         try {
             val server = Store.server(this).trimEnd('/')
             val key = Store.key(this)
-            val cfg = JSONObject(get("$server/api/wake", key).toString(Charsets.UTF_8))
-            if (!cfg.optBoolean("available")) {
-                status = cfg.optString("reason", "Server par wake word set nahi hai")
-                main.post { stopSelf() }
-                return
+            if (server.isNotEmpty()) {
+                val cfg = JSONObject(get("$server/api/wake", key).toString(Charsets.UTF_8))
+                threshold = cfg.optDouble("threshold", 0.5).toFloat()
+                if (cfg.optBoolean("custom_model")) {
+                    val ver = cfg.optString("version", "1")
+                    val f = File(filesDir, "hey_santosh_$ver.onnx")
+                    if (!f.exists()) {
+                        filesDir.listFiles()?.filter { it.name.startsWith("hey_santosh_") }?.forEach { it.delete() }
+                        f.writeBytes(get("$server/api/wake/keyword", key))
+                    }
+                    model = f.readBytes()
+                }
             }
-            val access = cfg.getString("access_key")
-            val ver = cfg.optString("version", "1")
-            val ppn = File(filesDir, "hey_santosh_$ver.ppn")
-            if (!ppn.exists()) {
-                filesDir.listFiles()?.filter { it.name.startsWith("hey_santosh_") }?.forEach { it.delete() }
-                ppn.writeBytes(get("$server/api/wake/keyword", key))
-            }
-            val sens = cfg.optDouble("sensitivity", 0.6).toFloat()
-            main.post { build(access, ppn.absolutePath, sens) }
+        } catch (_: Exception) {
+            // offline or old server: the built-in model still works
+        }
+        try {
+            val bytes = model ?: WakeEngine.asset(this, "hey_santosh.onnx")
+            val t = threshold.coerceIn(0.2f, 0.95f)
+            main.post { build(bytes, t) }
         } catch (e: Exception) {
-            status = "Wake word load nahi hua: ${e.message ?: e.javaClass.simpleName}"
+            status = "Wake model nahi mila: ${e.message ?: e.javaClass.simpleName}"
             main.post { stopSelf() }
         }
     }
@@ -147,37 +152,28 @@ class WakeService : Service() {
         }
     }
 
-    private fun build(access: String, ppnPath: String, sensitivity: Float) {
+    private fun build(model: ByteArray, threshold: Float) {
         try {
-            porcupine = PorcupineManager.Builder()
-                .setAccessKey(access)
-                .setKeywordPaths(arrayOf(ppnPath))
-                .setSensitivities(floatArrayOf(sensitivity))
-                .build(applicationContext) { _ -> main.post { onWake() } }
+            engine = WakeEngine(applicationContext, model, threshold) { _ -> main.post { onWake() } }
             listen()
-        } catch (e: PorcupineException) {
+        } catch (e: Exception) {
             status = "Wake word chalu nahi hua: ${e.message}"
             stopSelf()
         }
     }
 
     private fun listen() {
-        try {
-            porcupine?.start()
-            status = "Sun raha hai: “Hey Santosh”"
-        } catch (e: PorcupineException) {
-            status = "Mic nahi mila: ${e.message}"
-        }
+        val e = engine ?: return
+        status = if (e.start()) "Sun raha hai: “Hey Santosh”" else e.lastError
     }
 
     private fun pause() {
-        try { porcupine?.stop() } catch (_: PorcupineException) {}
+        engine?.stop()
     }
 
     private fun release() {
-        try { porcupine?.stop() } catch (_: Exception) {}
-        try { porcupine?.delete() } catch (_: Exception) {}
-        porcupine = null
+        engine?.close()
+        engine = null
     }
 
     /** Heard "Hey Santosh": free the mic for the call, buzz, and bring Santosh up (over the lock screen too). */

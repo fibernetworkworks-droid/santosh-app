@@ -22,8 +22,8 @@ if kts.exists():
     g = re.sub(r"minSdk\s*=\s*flutter\.minSdkVersion", "minSdk = 23", g)
     if "desugar_jdk_libs" not in g:
         g += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
-    if "porcupine-android" not in g:
-        g += '\ndependencies {\n    implementation("ai.picovoice:porcupine-android:4.0.2")\n}\n'
+    if "onnxruntime-android" not in g:
+        g += '\ndependencies {\n    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")\n}\n'
     kts.write_text(g)
 elif groovy.exists():
     g = groovy.read_text()
@@ -32,8 +32,8 @@ elif groovy.exists():
     g = re.sub(r"minSdk(Version)?\s*=?\s*flutter\.minSdkVersion", "minSdk = 23", g)
     if "desugar_jdk_libs" not in g:
         g += "\ndependencies {\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'\n}\n"
-    if "porcupine-android" not in g:
-        g += "\ndependencies {\n    implementation 'ai.picovoice:porcupine-android:4.0.2'\n}\n"
+    if "onnxruntime-android" not in g:
+        g += "\ndependencies {\n    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.20.0'\n}\n"
     groovy.write_text(g)
 else:
     sys.exit("No app build.gradle(.kts) found")
@@ -48,6 +48,11 @@ for f in (root / "tool" / "android" / "res").rglob("*"):
         dest = app / "src" / "main" / "res" / f.relative_to(root / "tool" / "android" / "res")
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(f, dest)
+# Santosh Wake models (on-device "Hey Santosh")
+for f in (root / "tool" / "android" / "assets").rglob("*.onnx"):
+    dest = app / "src" / "main" / "assets" / f.relative_to(root / "tool" / "android" / "assets")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(f, dest)
 # flutter create may have put a Java or differently named MainActivity elsewhere; ours replaces it
 for old in (app / "src" / "main").rglob("MainActivity.*"):
     if old.parent != pkg:

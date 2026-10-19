@@ -1098,15 +1098,15 @@ def _wake_file():
 
 @app.get("/api/wake", dependencies=[Depends(require_key)])
 def wake_config(tenant: str = Depends(current_tenant)):
+    """Santosh Wake (our own on-device model). The app has the model built in; the server can push a newer one
+    (WAKE_KEYWORD_FILE = path to a hey_santosh.onnx from wakeword/train.py) and tune the threshold."""
     import os
     st = get_settings()
     f = _wake_file()
-    if not st.picovoice_access_key.strip():
-        return {"available": False, "reason": "Server par PICOVOICE_ACCESS_KEY set nahi hai"}
-    if not f:
-        return {"available": False, "reason": "Server par 'Hey Santosh' keyword file (WAKE_KEYWORD_FILE) nahi mili"}
-    return {"available": True, "access_key": st.picovoice_access_key.strip(), "sensitivity": st.wake_sensitivity,
-            "version": str(int(os.path.getmtime(f)))}
+    custom = bool(f) and f.endswith(".onnx")
+    sens = min(max(st.wake_sensitivity, 0.0), 1.0)
+    return {"available": True, "engine": "santosh-wake", "threshold": round(min(0.9, max(0.25, 1.1 - sens)), 3),
+            "sensitivity": sens, "custom_model": custom, "version": str(int(os.path.getmtime(f))) if custom else "builtin"}
 
 
 @app.get("/api/wake/keyword", dependencies=[Depends(require_key)])
@@ -1114,4 +1114,6 @@ def wake_keyword(tenant: str = Depends(current_tenant)):
     f = _wake_file()
     if not f:
         raise HTTPException(404, "No keyword file")
-    return FileResponse(f, media_type="application/octet-stream", filename="hey_santosh.ppn")
+    if not f.endswith(".onnx"):
+        raise HTTPException(404, "WAKE_KEYWORD_FILE must be a hey_santosh.onnx (Santosh Wake)")
+    return FileResponse(f, media_type="application/octet-stream", filename="hey_santosh.onnx")
