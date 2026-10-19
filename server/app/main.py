@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.19.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.20.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -96,7 +96,8 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     features = ["routines", "voice", "web", "bazar"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
-        + (["email"] if mail.configured() else []) + (["calendar"] if __import__("app.gcal", fromlist=["x"]).configured() else []) \
+        + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
+                         or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if __import__("app.gcal", fromlist=["x"]).configured() else []) \
         + (["drive"] if __import__("app.gdrive", fromlist=["x"]).configured() else []) \
         + (["maps"] if __import__("app.maps", fromlist=["x"]).configured() else []) \
         + (["browser"] if __import__("app.browser", fromlist=["x"]).configured() else []) \
@@ -321,6 +322,9 @@ def google_start(app_session: bool = True):
 async def google_callback(request: Request):
     """Google returns here. We store tokens and hand the app a session token via a deep link."""
     from . import accounts
+    from .mailbox.accounts import is_link_state
+    if is_link_state(request.query_params.get("state", "")):   # "connect my Gmail" from the app, not a sign-in
+        return await _finish_mail_link(request)
     code = request.query_params.get("code")
     state = request.query_params.get("state", "")
     err = request.query_params.get("error")
@@ -581,54 +585,36 @@ async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "
 @app.get("/api/emails/pending", dependencies=[Depends(require_key)])
 def pending_emails(tenant: str = Depends(current_tenant)):
     from .db import EmailDraft
+    from .mailbox import service as ms
     with session() as s:
-        rows = s.scalars(select(EmailDraft).where(EmailDraft.tenant_id == tenant, EmailDraft.status == "pending")
-                         .order_by(EmailDraft.id)).all()
-        return {"emails": [{"id": d.id, "to": d.to_addr, "cc": d.cc_addr, "subject": d.subject, "body": d.body,
-                            "status": d.status} for d in rows]}
+        rows = s.scalars(select(EmailDraft).where(EmailDraft.tenant_id == tenant, EmailDraft.status.in_(("pending", "scheduled")))
+                         .order_by(EmailDraft.created_at)).all()
+        return {"emails": [ms.draft_view(d) for d in rows]}
 
 
 class EmailEdit(BaseModel):
     to: str | None = None
     cc: str | None = None
+    bcc: str | None = None
     subject: str | None = None
     body: str | None = None
+    send_now: bool = False          # ignore the scheduled time and send at once
 
 
 @app.post("/api/emails/{draft_id}/send", dependencies=[Depends(require_key)])
 async def send_email_draft(draft_id: str, body: EmailEdit | None = None, tenant: str = Depends(current_tenant)):
-    """Approve and send. Optional fields let the user edit before sending."""
-    from . import mail
-    from .db import EmailDraft
-    with session() as s:
-        d = s.get(EmailDraft, draft_id)
-        if not d or d.tenant_id != tenant:
-            raise HTTPException(404, "Draft not found")
-        if d.status == "sent":
-            return {"status": "sent", "already": True}
-        if body:
-            if body.to is not None: d.to_addr = body.to.strip()[:1000]
-            if body.cc is not None: d.cc_addr = body.cc.strip()[:1000]
-            if body.subject is not None: d.subject = body.subject.strip()[:500]
-            if body.body is not None: d.body = body.body
-        to_addr, cc, subject, bod = d.to_addr, d.cc_addr, d.subject, d.body
-        irt, refs, conv = d.in_reply_to, d.references, d.conversation_id
-    if "@" not in to_addr:
-        raise HTTPException(400, "Recipient email is not valid")
+    """The user approved (optionally after editing). Sends now, or schedules when the draft has a send time."""
+    from .mailbox import service as ms
+    from .mailbox.base import MailError
+    edits = body.model_dump(exclude_none=True) if body else {}
+    if edits.pop("send_now", False):
+        edits["send_at"] = None
     try:
-        await mail.send_email(to_addr, subject, bod, cc=cc, in_reply_to=irt, references=refs)
-    except mail.MailError as e:
-        with session() as s:
-            d = s.get(EmailDraft, draft_id); d.status, d.error = "failed", str(e)
-        bus.publish(conv, "email_sent", {"id": draft_id, "status": "failed", "error": str(e), "to": to_addr})
+        return await asyncio.to_thread(ms.send_draft, tenant, draft_id, edits)
+    except LookupError:
+        raise HTTPException(404, "Draft not found")
+    except MailError as e:
         raise HTTPException(502, str(e))
-    from .db import now as _now
-    with session() as s:
-        d = s.get(EmailDraft, draft_id); d.status, d.sent_at = "sent", _now()
-    bus.publish(conv, "email_sent", {"id": draft_id, "status": "sent", "to": to_addr, "subject": subject})
-    from .events import notify
-    notify(conv, f"Email bhej diya: {to_addr} ko \"{subject}\".")
-    return {"status": "sent", "to": to_addr}
 
 
 @app.post("/api/emails/{draft_id}/cancel", dependencies=[Depends(require_key)])
@@ -638,11 +624,159 @@ def cancel_email_draft(draft_id: str, tenant: str = Depends(current_tenant)):
         d = s.get(EmailDraft, draft_id)
         if not d or d.tenant_id != tenant:
             raise HTTPException(404, "Draft not found")
-        if d.status == "pending":
+        if d.status in ("pending", "scheduled", "failed"):
             d.status = "cancelled"
         conv = d.conversation_id
     bus.publish(conv, "email_sent", {"id": draft_id, "status": "cancelled"})
     return {"status": "cancelled"}
+
+
+@app.post("/api/emails/{draft_id}/attachments", dependencies=[Depends(require_key)])
+async def add_email_attachment(draft_id: str, file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
+    """The user adds a file from the phone to a draft before sending."""
+    from .db import EmailDraft
+    from .mailbox import service as ms
+    from .mailbox.base import MailError
+    from .pc import service as pcs
+    with session() as s:
+        d = s.get(EmailDraft, draft_id)
+        if not d or d.tenant_id != tenant:
+            raise HTTPException(404, "Draft not found")
+        if d.status not in ("pending", "failed"):
+            raise HTTPException(409, "Yeh email ab badla nahi ja sakta")
+    try:
+        row = await pcs.store_upload(file, tenant, "", "mail")
+    except pcs.PairError as e:
+        raise HTTPException(413, str(e))
+    with session() as s:
+        d = s.get(EmailDraft, draft_id)
+        current = [{"file_id": a["file_id"]} if a.get("type") == "file" else
+                   {"email_id": a["email_id"], "attachment_id": a["attachment_id"]} if a.get("type") == "email" else
+                   {"artifact_id": a["artifact_id"]} for a in (d.attachments or [])]
+    try:
+        atts = await asyncio.to_thread(ms.describe_attachments, tenant, current + [{"file_id": row.id}])
+    except MailError as e:
+        raise HTTPException(413, str(e))
+    with session() as s:
+        d = s.get(EmailDraft, draft_id)
+        d.attachments = atts
+        view, conv = ms.draft_view(d), d.conversation_id
+    bus.publish(conv, "email_draft", view)
+    return view
+
+
+@app.delete("/api/emails/{draft_id}/attachments/{index}", dependencies=[Depends(require_key)])
+def remove_email_attachment(draft_id: str, index: int, tenant: str = Depends(current_tenant)):
+    from .db import EmailDraft
+    from .mailbox import service as ms
+    with session() as s:
+        d = s.get(EmailDraft, draft_id)
+        if not d or d.tenant_id != tenant:
+            raise HTTPException(404, "Draft not found")
+        atts = list(d.attachments or [])
+        if 0 <= index < len(atts) and d.status in ("pending", "failed"):
+            atts.pop(index)
+            d.attachments = atts or None
+        view, conv = ms.draft_view(d), d.conversation_id
+    bus.publish(conv, "email_draft", view)
+    return view
+
+
+# ---------------- mailboxes (Gmail / Outlook by sign-in, any email by app password) ----------------
+@app.get("/api/mail/accounts", dependencies=[Depends(require_key)])
+def mail_accounts(tenant: str = Depends(current_tenant)):
+    from .mailbox import accounts as ma
+    return {"accounts": ma.views(tenant),
+            "can_link": {"google": ma.oauth_ready("google"), "microsoft": ma.oauth_ready("microsoft")}}
+
+
+class ImapIn(BaseModel):
+    address: str
+    password: str
+    name: str = ""
+    imap_host: str = ""
+    imap_port: int = 993
+    smtp_host: str = ""
+    smtp_port: int = 0
+
+
+@app.post("/api/mail/accounts/imap", dependencies=[Depends(require_key)])
+async def mail_connect_imap(body: ImapIn, tenant: str = Depends(current_tenant)):
+    from .mailbox import accounts as ma
+    from .mailbox.base import MailError
+    try:
+        await asyncio.to_thread(ma.connect_imap, tenant, body.address, body.password, body.name, body.imap_host,
+                                body.imap_port, body.smtp_host, body.smtp_port)
+    except MailError as e:
+        raise HTTPException(400, str(e))
+    return {"accounts": ma.views(tenant)}
+
+
+@app.get("/api/mail/accounts/link", dependencies=[Depends(require_key)])
+def mail_link(provider: str, login_hint: str = "", tenant: str = Depends(current_tenant)):
+    """The app opens the returned URL in the browser; the provider sends the user back to our callback."""
+    from .mailbox import accounts as ma
+    from .mailbox.base import MailError
+    try:
+        return {"url": ma.start_link(tenant, provider, login_hint)}
+    except MailError as e:
+        raise HTTPException(503, str(e))
+
+
+class MailAccountEdit(BaseModel):
+    signature: str | None = None
+    default: bool | None = None
+
+
+@app.patch("/api/mail/accounts/{key}", dependencies=[Depends(require_key)])
+def mail_account_edit(key: str, body: MailAccountEdit, tenant: str = Depends(current_tenant)):
+    from .mailbox import accounts as ma
+    from .mailbox.base import MailError
+    try:
+        if body.signature is not None:
+            ma.set_signature(tenant, key, body.signature)
+        if body.default:
+            ma.set_default(tenant, key)
+    except MailError as e:
+        raise HTTPException(400, str(e))
+    return {"accounts": ma.views(tenant)}
+
+
+@app.delete("/api/mail/accounts/{key}", dependencies=[Depends(require_key)])
+def mail_account_remove(key: str, tenant: str = Depends(current_tenant)):
+    from .mailbox import accounts as ma
+    if not ma.remove(tenant, key):
+        raise HTTPException(404, "Mailbox not found")
+    return {"accounts": ma.views(tenant)}
+
+
+def _mail_linked_page(view: dict | None, error: str = "") -> HTMLResponse:
+    scheme = get_settings().app_redirect_scheme
+    deep = f"{scheme}://mail?ok={0 if error else 1}"
+    import html as _h
+    msg = (f"<h2>Email Santosh se juda! ✅</h2><p>{_h.escape(view['address'])}</p>" if view else
+           f"<h3>Email nahi juda</h3><p>{_h.escape(error)}</p>")
+    return HTMLResponse(f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
+<body style="font-family:system-ui;text-align:center;padding:40px;background:#f3eefb">{msg}
+<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">App kholiye</a></p>
+<script>setTimeout(function(){{location.href={deep!r}}},600);</script></body>""", status_code=400 if error else 200)
+
+
+async def _finish_mail_link(request: Request) -> HTMLResponse:
+    from .mailbox import accounts as ma
+    from .mailbox.base import MailError
+    if request.query_params.get("error"):
+        return _mail_linked_page(None, request.query_params.get("error_description") or request.query_params["error"])
+    try:
+        view = await asyncio.to_thread(ma.finish_link, request.query_params.get("code", ""), request.query_params.get("state", ""))
+    except MailError as e:
+        return _mail_linked_page(None, str(e))
+    return _mail_linked_page(view)
+
+
+@app.get("/auth/microsoft/callback")
+async def microsoft_callback(request: Request):
+    return await _finish_mail_link(request)
 
 
 @app.get("/api/routines", dependencies=[Depends(require_key)])

@@ -335,14 +335,52 @@ class Santosh extends ChangeNotifier {
     }
   }
 
-  Future<void> sendEmail(String id, {String? to, String? cc, String? subject, String? body}) async {
+  Future<void> sendEmail(String id, {String? to, String? cc, String? bcc, String? subject, String? body, bool sendNow = false}) async {
+    final it = _emails[id];
+    if (it != null) it.data = {...it.data, 'busy': true};
+    notifyListeners();
     try {
-      await api!.sendEmail(id, to: to, cc: cc, subject: subject, body: body);
+      final r = await api!.sendEmail(id, to: to, cc: cc, bcc: bcc, subject: subject, body: body, sendNow: sendNow);
+      if (it != null) {
+        it.data = {...it.data, 'status': r['status'] ?? 'sent', 'error': null,
+          if (to != null) 'to': to, if (cc != null) 'cc': cc, if (subject != null) 'subject': subject, if (body != null) 'body': body};
+      }
+    } catch (e) {
+      error = e.toString();
+      if (it != null) it.data = {...it.data, 'status': 'failed', 'error': e.toString()};
+    }
+    if (it != null) it.data = {...it.data, 'busy': false};
+    notifyListeners();
+  }
+
+  /// Add a file from the phone to an email draft. Returns an error text, or null.
+  Future<String?> addEmailAttachment(String id, String name, List<int> bytes) async {
+    try {
+      final v = await api!.addEmailAttachment(id, name, bytes);
       final it = _emails[id];
-      if (it != null) it.data = {...it.data, 'status': 'sent'};
+      if (it != null) it.data = {...it.data, ...v};
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<void> removeEmailAttachment(String id, int index) async {
+    try {
+      final v = await api!.removeEmailAttachment(id, index);
+      final it = _emails[id];
+      if (it != null) it.data = {...it.data, ...v};
     } catch (e) {
       error = e.toString();
     }
+    notifyListeners();
+  }
+
+  int mailLinkedTick = 0;                      // bumps when a mailbox got connected (Email screen refreshes)
+  void onMailLinked(bool ok) {
+    mailLinkedTick++;
+    feed.add(FeedItem('note', {'text': ok ? 'Email jud gaya ✓ Ab Santosh aapki mail padh aur likh sakta hai.' : 'Email nahi jud paya, dobara koshish kijiye.'}));
     notifyListeners();
   }
 
@@ -544,8 +582,13 @@ class Santosh extends ChangeNotifier {
         routines = List<Map<String, dynamic>>.from(p['routines'] as List? ?? const []);
         break;
       case 'email_draft':
-        _emails[p['id'] as String] = FeedItem('email', Map<String, dynamic>.from(p));
-        feed.add(_emails[p['id']]!);
+        final known = _emails[p['id'] as String];
+        if (known != null) {
+          known.data = {...known.data, ...p};      // same draft changed (file added / removed)
+        } else {
+          _emails[p['id'] as String] = FeedItem('email', Map<String, dynamic>.from(p));
+          feed.add(_emails[p['id']]!);
+        }
         break;
       case 'email_sent':
         final it = _emails[p['id'] as String];

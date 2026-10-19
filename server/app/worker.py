@@ -293,6 +293,7 @@ async def tick() -> None:
     await offline_digests()
     await pc_cleanup()
     await home_device_alerts()
+    await mail_jobs()
 
 
 _home_last = 0.0
@@ -363,6 +364,30 @@ async def bazar_reminders() -> None:
         await asyncio.to_thread(bazar.fire_due_reminders)
     except Exception:
         log.exception("bazar reminders failed")
+
+
+_mail_last = {"bulk": 0.0, "scheduled": 0.0, "watch": 0.0}
+
+
+async def mail_jobs() -> None:
+    """Email: bulk mail at its pace (every few seconds), scheduled sends (every minute), follow-ups (every 10 min)."""
+    from .mailbox import service as ms
+    t = time.time()
+    jobs = []
+    if t - _mail_last["bulk"] >= 3:
+        _mail_last["bulk"] = t
+        jobs.append(ms.bulk_tick)
+    if t - _mail_last["scheduled"] >= 60:
+        _mail_last["scheduled"] = t
+        jobs.append(ms.send_due_scheduled)
+    if t - _mail_last["watch"] >= 600:
+        _mail_last["watch"] = t
+        jobs.append(ms.check_watches)
+    for job in jobs:
+        try:
+            await asyncio.to_thread(job)
+        except Exception:
+            log.exception("mail job %s failed", job.__name__)
 
 
 async def run_forever(stop: asyncio.Event) -> None:

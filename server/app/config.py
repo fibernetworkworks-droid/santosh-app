@@ -53,6 +53,14 @@ class Settings(BaseSettings):
     email_smtp_host: str = ""
     email_smtp_port: int = 587
     email_sender_name: str = ""             # name shown on sent mail (defaults to the address)
+    # each user can also connect their own Gmail / Outlook (OAuth) or any mailbox (IMAP + app password) in the app
+    ms_oauth_client_id: str = ""            # Microsoft Entra app (Outlook / Hotmail / Microsoft 365 mail)
+    ms_oauth_client_secret: str = ""
+    ms_oauth_tenant: str = "common"         # "common" = personal + work accounts
+    mail_bulk_per_minute: int = 12          # bulk mail pace (each person gets their own mail)
+    mail_bulk_daily_cap: int = 300          # per mailbox per day (Gmail allows ~500 for personal accounts)
+    mail_bulk_max: int = 1000               # recipients in one bulk mail
+    mail_max_attach_mb: int = 18            # total attachments per mail (Gmail/Outlook limit is ~25 MB encoded)
     gcal_caldav_url: str = ""               # override CalDAV base (for Workspace/custom); blank = Gmail legacy endpoint
 
     # --- Google Drive/Sheets/Docs (service account; share a folder with its email) ---

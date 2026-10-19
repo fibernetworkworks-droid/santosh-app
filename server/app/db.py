@@ -232,6 +232,112 @@ class EmailDraft(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # added in v0.20 (all nullable so old databases gain them with ALTER TABLE)
+    bcc_addr: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    account: Mapped[str | None] = mapped_column(String(40), nullable=True)        # mailbox key (MailAccount id / "google" / "env")
+    thread_id: Mapped[str | None] = mapped_column(String(200), nullable=True)     # provider thread (Gmail threadId)
+    kind: Mapped[str | None] = mapped_column(String(12), nullable=True)           # new | reply | forward
+    attachments: Mapped[list | None] = mapped_column(JSON, nullable=True)         # [{type: email|file|artifact, ...}]
+    send_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # scheduled send
+    follow_up_days: Mapped[int | None] = mapped_column(Integer, nullable=True)    # remind if no reply after N days
+    sent_message_id: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class MailAccount(Base):
+    """A mailbox the user connected: Gmail / Outlook by OAuth, or any provider by IMAP + app password.
+    Tokens and passwords are stored encrypted."""
+    __tablename__ = "mail_accounts"
+    __table_args__ = (UniqueConstraint("tenant_id", "address", name="uq_mail_account"),)
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("mbx"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    kind: Mapped[str] = mapped_column(String(12))                  # gmail | outlook | imap
+    address: Mapped[str] = mapped_column(String(320))
+    display_name: Mapped[str] = mapped_column(String(120), default="")
+    signature: Mapped[str] = mapped_column(Text, default="")
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    access_token_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    refresh_token_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expiry: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    password_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    imap_host: Mapped[str] = mapped_column(String(200), default="")
+    imap_port: Mapped[int] = mapped_column(Integer, default=993)
+    smtp_host: Mapped[str] = mapped_column(String(200), default="")
+    smtp_port: Mapped[int] = mapped_column(Integer, default=587)
+    status: Mapped[str] = mapped_column(String(12), default="ok")   # ok | error
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class MailLinkState(Base):
+    """Anti-CSRF state while the user connects a mailbox by OAuth (remembers whose mailbox it is)."""
+    __tablename__ = "mail_link_states"
+    state: Mapped[str] = mapped_column(String(80), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
+    provider: Mapped[str] = mapped_column(String(12))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class MailContact(Base):
+    """People the user emails with, learned from their own mail, so "Swati ko mail karo" finds the address."""
+    __tablename__ = "mail_contacts"
+    __table_args__ = (UniqueConstraint("tenant_id", "email", name="uq_mail_contact"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    email: Mapped[str] = mapped_column(String(320))
+    name: Mapped[str] = mapped_column(String(200), default="")
+    score: Mapped[float] = mapped_column(Float, default=0)        # higher = emailed more / more recently
+    sent_to: Mapped[int] = mapped_column(Integer, default=0)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class MailWatch(Base):
+    """A follow-up: tell the user if nobody replied to a mail (their_reply), or if the user hasn't replied (my_reply)."""
+    __tablename__ = "mail_watches"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("mw"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    conversation_id: Mapped[str] = mapped_column(String(40), default="")
+    account: Mapped[str] = mapped_column(String(40), default="")
+    mode: Mapped[str] = mapped_column(String(12))                  # their_reply | my_reply
+    message_id: Mapped[str] = mapped_column(String(500), default="")
+    thread_id: Mapped[str] = mapped_column(String(200), default="")
+    email_ref: Mapped[str] = mapped_column(String(300), default="")   # Santosh email id, for "reply now"
+    subject: Mapped[str] = mapped_column(String(500), default="")
+    peer: Mapped[str] = mapped_column(String(320), default="")
+    since: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    status: Mapped[str] = mapped_column(String(12), default="waiting")   # waiting | replied | reminded | cancelled
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class BulkMail(Base):
+    """One email sent separately to many people (mail merge). Starts only after the user approves the card."""
+    __tablename__ = "bulk_mails"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("bulk"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    conversation_id: Mapped[str] = mapped_column(String(40), default="")
+    account: Mapped[str] = mapped_column(String(40), default="")
+    subject: Mapped[str] = mapped_column(String(500))
+    body: Mapped[str] = mapped_column(Text)
+    attachments: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    source: Mapped[str] = mapped_column(String(300), default="")
+    status: Mapped[str] = mapped_column(String(12), default="pending")   # pending | sending | done | cancelled
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    sent: Mapped[int] = mapped_column(Integer, default=0)
+    failed: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class BulkRecipient(Base):
+    __tablename__ = "bulk_recipients"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    bulk_id: Mapped[str] = mapped_column(String(40), index=True)
+    email: Mapped[str] = mapped_column(String(320))
+    name: Mapped[str] = mapped_column(String(200), default="")
+    fields: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(10), default="queued")    # queued | sent | failed
+    error: Mapped[str] = mapped_column(Text, default="")
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class User(Base):
@@ -422,10 +528,27 @@ def init_db(url: str | None = None):
             cur.execute("PRAGMA foreign_keys=ON")
             cur.close()
     Base.metadata.create_all(_engine)
+    _add_missing_columns(_engine)
     from .bazar.db import init_tables as _bazar_tables
     _bazar_tables(_engine)
     _Session = sessionmaker(_engine, expire_on_commit=False)
     return _engine
+
+
+def _add_missing_columns(engine) -> None:
+    """create_all() makes new tables but never new columns: add nullable columns added in later versions."""
+    from sqlalchemy import inspect, text
+    insp = inspect(engine)
+    for table in Base.metadata.sorted_tables:
+        if not insp.has_table(table.name):
+            continue
+        have = {c["name"] for c in insp.get_columns(table.name)}
+        for col in table.columns:
+            if col.name in have or not col.nullable or col.primary_key:
+                continue
+            ddl = f'ALTER TABLE {table.name} ADD COLUMN "{col.name}" {col.type.compile(dialect=engine.dialect)}'
+            with engine.begin() as conn:
+                conn.execute(text(ddl))
 
 
 @contextmanager

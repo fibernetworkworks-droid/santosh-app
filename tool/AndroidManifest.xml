@@ -119,6 +119,13 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="santosh" android:host="bazar" />
             </intent-filter>
+            <!-- Connecting Gmail / Outlook returns here: santosh://mail?ok=1 -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="santosh" android:host="mail" />
+            </intent-filter>
         </activity>
         <meta-data android:name="flutterEmbedding" android:value="2" />
 

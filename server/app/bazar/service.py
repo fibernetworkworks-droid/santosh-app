@@ -122,6 +122,9 @@ def pack_status(s, user: User, pack: Pack) -> str:
     if pack.executor == "shop":
         n = s.scalars(select(Shop.id).where(Shop.template_id == pack.config["template"], Shop.active.is_(True))).first()
         return "ready" if n else "no_shop_yet"
+    if pack.executor == "mail":
+        from ..mailbox.accounts import has_mail
+        return "ready" if has_mail(user.id) else "not_connected"
     if pack.executor == "pcop":
         from ..pc.hub import hub
         return "ready" if hub.is_online(user.id) else "pc_offline"

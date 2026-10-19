@@ -15,3 +15,4 @@ google-auth>=2.30
 mcp>=2.2  # 2.x MCPServer: Santosh Commerce MCP at /mcp/commerce (1.x still runs, without that endpoint)
 cryptography>=42
 reportlab>=4.0
+pypdf>=4.0           # reading PDF attachments in email

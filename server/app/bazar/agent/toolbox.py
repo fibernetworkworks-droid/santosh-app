@@ -10,6 +10,7 @@ from ..connectors.bbps import BBPSExecutor
 from ..connectors.mcp_remote import McpExecutor
 from ..connectors.pc import PcExecutor
 from ..connectors.browser import BrowserExecutor
+from ..connectors.mail import MailExecutor
 from ..connectors.pcop import PcOpExecutor
 from ..connectors.commerce import CommerceExecutor
 from ..connectors.device import DeviceExecutor
@@ -25,7 +26,7 @@ from ..packs.registry import Pack
 def default_executors() -> dict[str, Executor]:
     return {"mcp": McpExecutor(), "bbps": BBPSExecutor(), "upi": UpiExecutor(), "ride": RideExecutor(),
             "shop": ShopExecutor(), "native": Native2Executor(), "pc": PcExecutor(),
-            "handoff": HandoffExecutor(), "reader": ReaderExecutor(), "device": DeviceExecutor(), "commerce": CommerceExecutor(), "browser": BrowserExecutor(), "pcop": PcOpExecutor()}
+            "handoff": HandoffExecutor(), "reader": ReaderExecutor(), "device": DeviceExecutor(), "commerce": CommerceExecutor(), "browser": BrowserExecutor(), "pcop": PcOpExecutor(), "mail": MailExecutor()}
 
 
 @dataclass

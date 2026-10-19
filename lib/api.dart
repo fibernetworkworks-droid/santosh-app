@@ -90,10 +90,36 @@ class Api {
     }
   }
 
-  Future<void> sendEmail(String id, {String? to, String? cc, String? subject, String? body}) async =>
-      _send('POST', '/api/emails/$id/send', body: {
-        if (to != null) 'to': to, if (cc != null) 'cc': cc, if (subject != null) 'subject': subject, if (body != null) 'body': body,
-      });
+  Future<Map<String, dynamic>> sendEmail(String id, {String? to, String? cc, String? bcc, String? subject, String? body, bool sendNow = false}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/emails/$id/send', timeout: const Duration(seconds: 90), body: {
+        if (to != null) 'to': to, if (cc != null) 'cc': cc, if (bcc != null) 'bcc': bcc, if (subject != null) 'subject': subject,
+        if (body != null) 'body': body, if (sendNow) 'send_now': true,
+      }) as Map);
+
+  Future<Map<String, dynamic>> addEmailAttachment(String id, String filename, List<int> bytes) async {
+    final req = http.MultipartRequest('POST', _u('/api/emails/$id/attachments'))
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
+    final res = await http.Response.fromStream(await req.send().timeout(const Duration(seconds: 200)));
+    final body = jsonDecode(utf8.decode(res.bodyBytes));
+    if (res.statusCode >= 400) throw ApiException(res.statusCode, (body as Map)['detail']?.toString() ?? 'Upload failed');
+    return Map<String, dynamic>.from(body as Map);
+  }
+
+  Future<Map<String, dynamic>> removeEmailAttachment(String id, int index) async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/emails/$id/attachments/$index') as Map);
+
+  // ---- mailboxes: Gmail / Outlook by sign-in, any email by app password ----
+  Future<Map<String, dynamic>> mailAccounts() async => Map<String, dynamic>.from(await _send('GET', '/api/mail/accounts') as Map);
+  Future<String> mailLinkUrl(String provider, {String hint = ''}) async =>
+      (await _send('GET', '/api/mail/accounts/link', query: {'provider': provider, if (hint.isNotEmpty) 'login_hint': hint}))['url'] as String;
+  Future<Map<String, dynamic>> mailConnectImap(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/mail/accounts/imap', body: body, timeout: const Duration(seconds: 70)) as Map);
+  Future<Map<String, dynamic>> mailAccountEdit(String key, {String? signature, bool? makeDefault}) async =>
+      Map<String, dynamic>.from(await _send('PATCH', '/api/mail/accounts/$key',
+          body: {if (signature != null) 'signature': signature, if (makeDefault == true) 'default': true}) as Map);
+  Future<Map<String, dynamic>> mailAccountRemove(String key) async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/mail/accounts/$key') as Map);
 
   Future<void> cancelEmail(String id) async => _send('POST', '/api/emails/$id/cancel');
 

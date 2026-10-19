@@ -42,7 +42,8 @@ VOICE_TOOL_NAMES = {
     "add_calendar_event", "remember", "forget", "list_add", "list_show", "list_done", "set_profile",
     "get_weather", "create_routine", "list_routines", "cancel_routine",
     "google_search", "open_website", "open_on_phone", "browse_web", "artifact_make", "artifact_list", "agent_army", "browse_result", "pc_do", "pc_task_result",
-    "email_check", "email_read", "email_draft",
+    "email_check", "email_read", "email_draft", "email_triage", "email_forward", "email_action", "email_delete",
+    "email_follow_up", "email_contacts", "email_attachment", "email_accounts",
     "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_cancel_event",
     "drive_find", "drive_read_file", "sheet_read", "sheet_append", "doc_create",
     "maps_search", "maps_directions", "maps_navigate",
@@ -93,7 +94,7 @@ Doing real work
 - Places and travel: maps_search for shops, hospitals, restaurants or any place nearby ("paas mein medical store"), maps_directions for distance, time and traffic ("station kitni der mein pahunchunga"), maps_navigate to start navigation on the phone. Speak distances and minutes naturally.
 - Google Drive/Sheets/Docs: drive_find to locate a file, drive_read_file or sheet_read to read it, sheet_append to add a row, doc_create to make a doc. Read out the gist, not every cell.
 - Calendar: use calendar_agenda for the schedule, calendar_add_event to book something (work out the exact time), calendar_find_event + calendar_cancel_event to cancel. Confirm in one line what you added. This is their Google Calendar and syncs everywhere.
-- Email: use email_check to see the inbox and email_read to read a mail. For a reply, use email_draft (write the full reply yourself); tell the user it is ready and they approve it in the app. Read a mail's gist aloud in a line or two; don't read the whole thing unless asked.
+- Email: email_triage for "kya zaroori mail hai", email_check / email_read for the inbox, email_draft for a reply or new mail (write it yourself; names work as recipients), email_forward, email_action to archive or mark read, email_delete (approval card), email_follow_up for reminders. Drafts are approved in the app with Bhejo; say so. Read a mail's gist in a line or two; never read out OTPs or codes. Bulk mail to a list goes through santosh_kaam.
 - Internet: use google_search for anything current or factual (news, prices, scores, train timings, shop numbers, rules) instead of guessing, and open_website to read a specific site. Speak the answer simply in one or two lines; don't read out links. Say "Google pe dekh raha hoon" while it searches. Use open_on_phone when the user wants a site opened on their phone.
 - While a tool runs, say a quick natural line like "ek second, laga deta hoon" and keep the conversation going. When the result comes back, tell it in one line. Never say something is done before the tool confirms it.
 - Work out exact dates and times from what the user says ("kal subah" is tomorrow 8 AM unless they gave a time). The user's local time now is {now}.

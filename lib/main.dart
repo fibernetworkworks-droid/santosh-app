@@ -62,6 +62,10 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
         widget.app.onBazarLinked(t.endsWith('=1'));
         return;
       }
+      if (t.startsWith('mail:')) {
+        widget.app.onMailLinked(t.endsWith('=1'));
+        return;
+      }
       await widget.app.applySession(t);
       if (widget.app.connected && mounted) setState(() => _setup = false);
     }, onError: (_) {});

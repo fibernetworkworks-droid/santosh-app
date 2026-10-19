@@ -418,17 +418,32 @@ class _EmailCard extends StatelessWidget {
   final Map<String, dynamic> v;
   final Santosh app;
 
+  static String _size(num? b) {
+    final x = (b ?? 0).toDouble();
+    if (x >= 1024 * 1024) return '${(x / 1024 / 1024).toStringAsFixed(1)} MB';
+    if (x >= 1024) return '${(x / 1024).toStringAsFixed(0)} KB';
+    return x > 0 ? '${x.toInt()} B' : '';
+  }
+
   @override
   Widget build(BuildContext context) {
     final status = v['status'] as String? ?? 'pending';
+    final busy = v['busy'] == true;
     final to = v['to'] as String? ?? '';
     final subject = v['subject'] as String? ?? '';
     final body = v['body'] as String? ?? '';
+    final kind = v['kind'] as String? ?? 'new';
+    final atts = (v['attachments'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    final when = v['send_at_label'] as String?;
+    final editable = status == 'pending' || status == 'failed';
     Color chipFg = C.chip;
-    String chipText = 'DRAFT';
+    String chipText = when != null ? 'DRAFT · $when' : 'DRAFT';
     if (status == 'sent') { chipText = 'BHEJ DIYA'; chipFg = C.ok; }
+    if (status == 'sending') { chipText = 'JA RAHA HAI'; chipFg = C.accentSoft; }
+    if (status == 'scheduled') { chipText = 'BHEJEGA · ${when ?? ''}'; chipFg = C.warn; }
     if (status == 'cancelled') { chipText = 'CANCEL'; chipFg = C.muted; }
     if (status == 'failed') { chipText = 'FAIL'; chipFg = C.bad; }
+    final title = kind == 'reply' ? 'Email · jawab' : kind == 'forward' ? 'Email · forward' : 'Email';
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Glass(
@@ -436,35 +451,77 @@ class _EmailCard extends StatelessWidget {
           Row(children: [
             const Icon(Icons.mail_outline_rounded, color: C.accent, size: 20),
             const SizedBox(width: 8),
-            const Expanded(child: Text('Email', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5))),
-            Pill(chipText, fg: chipFg),
+            Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5))),
+            Flexible(child: Pill(chipText, fg: chipFg)),
           ]),
           const SizedBox(height: 8),
           _row('Ko', to),
           if ((v['cc'] as String? ?? '').isNotEmpty) _row('Cc', v['cc'] as String),
+          if ((v['bcc'] as String? ?? '').isNotEmpty) _row('Bcc', v['bcc'] as String),
           _row('Vishay', subject),
           const SizedBox(height: 8),
           Container(
             width: double.infinity,
+            constraints: const BoxConstraints(maxHeight: 320),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: const Color(0x14FFFFFF), borderRadius: BorderRadius.circular(14)),
-            child: Text(body, style: const TextStyle(fontSize: 13.5, height: 1.4, color: Color(0xFFD7D2F2))),
+            child: SingleChildScrollView(child: Text(body, style: const TextStyle(fontSize: 13.5, height: 1.4, color: Color(0xFFD7D2F2)))),
           ),
-          if (v['error'] != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(v['error'] as String, style: const TextStyle(color: C.bad, fontSize: 12))),
-          if (status == 'pending' || status == 'failed') ...[
-            const SizedBox(height: 10),
-            Row(children: [
-              Expanded(child: GradientButton(label: status == 'failed' ? 'Phir bhejo' : 'Bhejo', height: 46, icon: Icons.send_rounded,
-                  onTap: () => app.sendEmail(v['id'] as String,
-                      to: v['to'] as String?, cc: v['cc'] as String?, subject: v['subject'] as String?, body: v['body'] as String?))),
-              const SizedBox(width: 8),
-              IconButton(tooltip: 'Badlo', onPressed: () => _edit(context), icon: const Icon(Icons.edit_outlined, color: C.chip)),
-              IconButton(tooltip: 'Cancel', onPressed: () => app.cancelEmail(v['id'] as String), icon: const Icon(Icons.close_rounded, color: C.muted)),
+          if (atts.isNotEmpty || editable) ...[
+            const SizedBox(height: 8),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              for (var i = 0; i < atts.length; i++)
+                InputChip(
+                  avatar: const Icon(Icons.attach_file_rounded, size: 16, color: C.chip),
+                  label: Text('${atts[i]['name']}  ${_size(atts[i]['size'] as num?)}'.trim(), style: const TextStyle(fontSize: 12.5)),
+                  onDeleted: editable && !busy ? () => app.removeEmailAttachment(v['id'] as String, i) : null,
+                ),
+              if (editable)
+                ActionChip(
+                  avatar: const Icon(Icons.add_rounded, size: 16, color: C.accent),
+                  label: const Text('File jodiye', style: TextStyle(fontSize: 12.5)),
+                  onPressed: busy ? null : () => _attach(context),
+                ),
             ]),
           ],
+          if (v['error'] != null && status == 'failed')
+            Padding(padding: const EdgeInsets.only(top: 6), child: Text(v['error'] as String, style: const TextStyle(color: C.bad, fontSize: 12))),
+          if (editable) ...[
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: GradientButton(
+                  label: busy ? 'Bhej raha hoon…' : status == 'failed' ? 'Phir bhejo' : when != null ? 'Bhejo · $when' : 'Bhejo',
+                  height: 46, icon: when != null ? Icons.schedule_send_rounded : Icons.send_rounded,
+                  onTap: busy ? null : () => app.sendEmail(v['id'] as String,
+                      to: v['to'] as String?, cc: v['cc'] as String?, subject: v['subject'] as String?, body: v['body'] as String?))),
+              const SizedBox(width: 8),
+              IconButton(tooltip: 'Badlo', onPressed: busy ? null : () => _edit(context), icon: const Icon(Icons.edit_outlined, color: C.chip)),
+              IconButton(tooltip: 'Cancel', onPressed: busy ? null : () => app.cancelEmail(v['id'] as String), icon: const Icon(Icons.close_rounded, color: C.muted)),
+            ]),
+          ],
+          if (status == 'scheduled')
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(children: [
+                TextButton.icon(onPressed: busy ? null : () => app.sendEmail(v['id'] as String, sendNow: true),
+                    icon: const Icon(Icons.send_rounded, size: 18), label: const Text('Abhi bhejo')),
+                const Spacer(),
+                TextButton(onPressed: busy ? null : () => app.cancelEmail(v['id'] as String), child: const Text('Cancel', style: TextStyle(color: C.muted))),
+              ]),
+            ),
         ]),
       ),
     );
+  }
+
+  Future<void> _attach(BuildContext context) async {
+    final res = await FilePicker.platform.pickFiles(withData: true);
+    final f = res?.files.single;
+    if (f == null || f.bytes == null) return;
+    final err = await app.addEmailAttachment(v['id'] as String, f.name, f.bytes!);
+    if (err != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+    }
   }
 
   Widget _row(String k, String val) => Padding(
@@ -477,6 +534,7 @@ class _EmailCard extends StatelessWidget {
 
   Future<void> _edit(BuildContext context) async {
     final to = TextEditingController(text: v['to'] as String? ?? '');
+    final cc = TextEditingController(text: v['cc'] as String? ?? '');
     final subject = TextEditingController(text: v['subject'] as String? ?? '');
     final body = TextEditingController(text: v['body'] as String? ?? '');
     final ok = await showDialog<bool>(
@@ -486,6 +544,7 @@ class _EmailCard extends StatelessWidget {
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             TextField(controller: to, decoration: const InputDecoration(labelText: 'Ko (email)')),
+            TextField(controller: cc, decoration: const InputDecoration(labelText: 'Cc')),
             TextField(controller: subject, decoration: const InputDecoration(labelText: 'Vishay')),
             TextField(controller: body, minLines: 4, maxLines: 12, decoration: const InputDecoration(labelText: 'Email')),
           ]),
@@ -498,6 +557,7 @@ class _EmailCard extends StatelessWidget {
     );
     if (ok == true) {
       v['to'] = to.text.trim();
+      v['cc'] = cc.text.trim();
       v['subject'] = subject.text.trim();
       v['body'] = body.text;
       app.notifyChange();
