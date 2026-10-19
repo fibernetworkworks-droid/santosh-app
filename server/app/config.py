@@ -15,7 +15,12 @@ class Settings(BaseSettings):
     agent_max_tokens: int = 2000
 
     # --- low-cost chat brain: any OpenAI-compatible API (Z.ai GLM, or GLM self-hosted in India) ---
-    chat_llm: str = "auto"                  # auto (GLM if key set) | glm | claude
+    chat_llm: str = "auto"                  # auto (OmniRoute, else GLM, else Claude) | omniroute | glm | claude
+    # --- OmniRoute: open-source LLM gateway on this VPS (switches providers, fallback, cost routing) ---
+    omniroute_url: str = ""                 # e.g. http://127.0.0.1:20128/v1
+    omniroute_key: str = ""                 # an endpoint API key made in the OmniRoute dashboard
+    omniroute_model: str = "santosh"        # a combo you create in OmniRoute (or "auto", or provider/model)
+    omniroute_compression: str = "off"      # keep Santosh's prompts and tool results exactly as sent
     glm_api_key: str = ""
     glm_base_url: str = "https://api.z.ai/api/paas/v4"
     glm_model: str = "glm-4.7"

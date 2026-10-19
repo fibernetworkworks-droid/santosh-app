@@ -4,11 +4,15 @@ Santosh keeps every conversation in Anthropic's message format (text / tool_use 
 For a low-cost brain, any OpenAI-compatible chat API can be used instead: Z.ai GLM by default, or a
 self-hosted GLM (vLLM / SGLang) in an Indian data centre — only GLM_BASE_URL changes.
 
+OmniRoute (open-source LLM gateway, runs next to Santosh on the VPS) sits in front of many providers and switches
+between them by itself (combos, fallback, cost routing). Santosh then talks to one address.
+
 Routing (CHAT_LLM):
-  auto    GLM when GLM_API_KEY is set, otherwise Claude
-  glm     always GLM (Claude only as fallback when GLM is down)
-  claude  always Claude
-Claude is also used when a turn carries images/documents, or after GLM fails, so a GLM outage never
+  auto       OmniRoute when OMNIROUTE_URL is set, else GLM when GLM_API_KEY is set, else Claude
+  omniroute  always OmniRoute (Claude only as fallback when it is down)
+  glm        always GLM (Claude only as fallback)
+  claude     always Claude
+Claude is also used when a turn carries images/documents, or after the cheap brain fails, so an outage never
 leaves the user without an answer. Safety never depends on the model: payments and messages stay frozen
 server-side until the user approves them in the app.
 """
@@ -44,15 +48,44 @@ def glm_ready() -> bool:
     return bool(get_settings().glm_api_key)
 
 
-def choose(messages: list[dict]) -> str:
-    """'glm' or 'claude' for this turn."""
+def omniroute_ready() -> bool:
+    return bool(get_settings().omniroute_url)
+
+
+def cheap_brain() -> str | None:
+    """The OpenAI-compatible brain configured for chat, or None for Claude only."""
     st = get_settings()
     mode = (st.chat_llm or "auto").lower()
-    if mode == "claude" or not glm_ready():
+    if mode == "claude":
+        return None
+    if mode == "omniroute":
+        return "omniroute" if omniroute_ready() else None
+    if mode == "glm":
+        return "glm" if glm_ready() else None
+    if omniroute_ready():
+        return "omniroute"
+    return "glm" if glm_ready() else None
+
+
+def describe() -> str:
+    st = get_settings()
+    b = cheap_brain()
+    if b == "omniroute":
+        return "omniroute:" + st.omniroute_model
+    if b == "glm":
+        return "glm:" + st.glm_model
+    return "claude"
+
+
+def choose(messages: list[dict]) -> str:
+    """'omniroute', 'glm' or 'claude' for this turn."""
+    st = get_settings()
+    b = cheap_brain()
+    if b is None:
         return "claude"
     if _has_media(messages[-1:]) and st.anthropic_api_key:
         return "claude"          # pictures and PDFs go to the model that reads them well
-    return "glm"
+    return b
 
 
 def _has_media(messages: list[dict]) -> bool:
@@ -142,24 +175,45 @@ class LLMError(RuntimeError):
     pass
 
 
-async def glm_create(system: str, tools: list[dict], messages: list[dict], max_tokens: int) -> tuple[list[dict], str, dict]:
+def _target(brain: str) -> tuple[str, str, str, dict, dict]:
+    """(url, model, label, headers, extra body) for an OpenAI-compatible brain."""
     st = get_settings()
+    if brain == "omniroute":
+        h = {"x-omniroute-compression": st.omniroute_compression or "off"}   # never rewrite Santosh's tool results
+        if st.omniroute_key:
+            h["Authorization"] = f"Bearer {st.omniroute_key}"
+        return st.omniroute_url.rstrip("/") + "/chat/completions", st.omniroute_model, "OmniRoute", h, {}
+    extra = {"thinking": {"type": st.glm_thinking}} if st.glm_thinking in ("enabled", "disabled") else {}
+    return (st.glm_base_url.rstrip("/") + "/chat/completions", st.glm_model, "GLM",
+            {"Authorization": f"Bearer {st.glm_api_key}"}, extra)
+
+
+async def openai_create(brain: str, system: str, tools: list[dict], messages: list[dict],
+                        max_tokens: int) -> tuple[list[dict], str, dict]:
+    st = get_settings()
+    url, model, label, headers, extra = _target(brain)
     msgs, fns = to_openai(system, tools, messages)
-    body: dict = {"model": st.glm_model, "messages": msgs, "max_tokens": max_tokens, "temperature": st.glm_temperature}
+    body: dict = {"model": model, "messages": msgs, "max_tokens": max_tokens, "temperature": st.glm_temperature, **extra}
     if fns:
         body["tools"] = fns
         body["tool_choice"] = "auto"
-    if st.glm_thinking in ("enabled", "disabled"):
-        body["thinking"] = {"type": st.glm_thinking}   # Z.ai extension; self-hosted servers ignore it
-    url = st.glm_base_url.rstrip("/") + "/chat/completions"
     try:
-        r = await _client().post(url, json=body, headers={"Authorization": f"Bearer {st.glm_api_key}"})
+        r = await _client().post(url, json=body, headers=headers)
     except httpx.HTTPError as e:
-        raise LLMError(f"GLM not reachable: {e}") from e
+        raise LLMError(f"{label} not reachable: {e}") from e
     if r.status_code >= 400:
-        raise LLMError(f"GLM error {r.status_code}: {r.text[:300]}")
+        raise LLMError(f"{label} error {r.status_code}: {r.text[:300]}")
     data = r.json()
     blocks, stop = from_openai(data)
     if not blocks:
-        raise LLMError("GLM returned an empty answer")
-    return blocks, stop, data.get("usage") or {}
+        raise LLMError(f"{label} returned an empty answer")
+    usage = dict(data.get("usage") or {})
+    route = r.headers.get("x-omniroute-decision")
+    if route:
+        usage["route"] = route
+        usage["model"] = r.headers.get("x-omniroute-model", "")
+    return blocks, stop, usage
+
+
+async def glm_create(system: str, tools: list[dict], messages: list[dict], max_tokens: int) -> tuple[list[dict], str, dict]:
+    return await openai_create("glm", system, tools, messages, max_tokens)

@@ -102,7 +102,7 @@ def healthz():
     from . import accounts
     return {"ok": True, "version": app.version, "google_login": accounts.oauth_configured(),
             "dry_run": st.wa_dry_run, "model": st.anthropic_model,
-            "chat_brain": ("glm:" + st.glm_model) if (st.glm_api_key and st.chat_llm != "claude") else "claude",
+            "chat_brain": __import__("app.agent.llm", fromlist=["x"]).describe(),
             "brain_configured": bool(st.anthropic_api_key), "features": features,
             "voices": [{"id": k, "style": v} for k, v in MALE_VOICES.items()], "voice_default": st.voice_default,
             "bazar": {"packs": len(__import__("app.bazar.packs.registry", fromlist=["x"]).registry().packs),

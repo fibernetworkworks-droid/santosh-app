@@ -82,3 +82,36 @@ def test_choose(monkeypatch, env):
     from app.config import get_settings
     get_settings.cache_clear()
     assert llm.choose([{"role": "user", "content": "hi"}]) == "claude"
+
+
+def test_omniroute_brain(bz, monkeypatch):  # noqa: F811
+    """OmniRoute gateway: picked first in auto mode, keeps tool results uncompressed, falls back to Claude."""
+    monkeypatch.setenv("GLM_API_KEY", "glm-test")
+    monkeypatch.setenv("OMNIROUTE_URL", "http://127.0.0.1:20128/v1")
+    monkeypatch.setenv("OMNIROUTE_KEY", "sk-omni")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    from app.agent import llm, run_turn, set_client
+    from tests.test_campaign_flow import ScriptedClaude, text
+    assert llm.choose([{"role": "user", "content": "hi"}]) == "omniroute" and llm.describe() == "omniroute:santosh"
+    seen = []
+
+    def handler(req: httpx.Request):
+        seen.append(req)
+        body = json.loads(req.content)
+        assert str(req.url) == "http://127.0.0.1:20128/v1/chat/completions"
+        assert req.headers["authorization"] == "Bearer sk-omni" and req.headers["x-omniroute-compression"] == "off"
+        assert body["model"] == "santosh" and "thinking" not in body
+        return httpx.Response(200, headers={"x-omniroute-decision": "strategy=priority; provider=deepseek"},
+                              json={"choices": [{"message": {"content": "Namaste ji"}}]})
+    llm.set_http(httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    try:
+        assert asyncio.run(run_turn(bz["conv"], "namaste", tenant_id="default")) == "Namaste ji"
+        llm.set_http(httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(502, text="all providers down"))))
+        set_client(ScriptedClaude([text("Claude yahan hai")]))
+        assert asyncio.run(run_turn(bz["conv"], "phir se", tenant_id="default")) == "Claude yahan hai"
+    finally:
+        llm.set_http(None)
+    monkeypatch.setenv("CHAT_LLM", "glm")
+    get_settings.cache_clear()
+    assert llm.choose([{"role": "user", "content": "hi"}]) == "glm"

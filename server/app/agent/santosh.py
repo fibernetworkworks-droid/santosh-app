@@ -1,4 +1,4 @@
-"""Santosh's agent loop: the brain (GLM or Claude, see llm.py) decides, tools act, every step is streamed to the UI."""
+"""Santosh's agent loop: the brain (OmniRoute, GLM or Claude; see llm.py) decides, tools act, every step is streamed to the UI."""
 from __future__ import annotations
 
 import asyncio
@@ -123,15 +123,16 @@ VOICE_NOTE = ("[Voice mode: the user is speaking to you and your reply will be r
 
 async def _think(brain: str, system: str, history: list[dict], settings) -> tuple[list[dict] | None, str]:
     """One model call. Returns (blocks, stop_reason); blocks is None when GLM failed and Claude can step in."""
-    if brain == "glm":
+    if brain in ("glm", "omniroute"):
         try:
-            blocks, stop, usage = await llm.glm_create(system, TOOLS, history, settings.agent_max_tokens)
-            log.info("glm %s in=%s out=%s", settings.glm_model, usage.get("prompt_tokens"), usage.get("completion_tokens"))
+            blocks, stop, usage = await llm.openai_create(brain, system, TOOLS, history, settings.agent_max_tokens)
+            log.info("%s in=%s out=%s %s", llm.describe(), usage.get("prompt_tokens"), usage.get("completion_tokens"),
+                     usage.get("route", ""))
             return blocks, stop
         except llm.LLMError as e:
             if not (settings.anthropic_api_key or _client is not None):
                 raise
-            log.warning("GLM failed, using Claude for this turn: %s", e)
+            log.warning("%s failed, using Claude for this turn: %s", brain, e)
             return None, ""
     resp = await get_client().messages.create(
         model=settings.anthropic_model, max_tokens=settings.agent_max_tokens,
