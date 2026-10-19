@@ -56,6 +56,8 @@ def how(c: dict[str, Any]) -> str:
 def public(c: dict[str, Any], status: str = "") -> dict[str, Any]:
     out = {"id": c["id"], "name": c["name"], "category": c["category"], "does": c.get("does", ""), "auth": c["auth"],
            "one_tap": c["auth"] in ONE_TAP, "how_to_connect": how(c), "docs": c.get("source", "")}
+    if c.get("url_hint"):
+        out["url_hint"] = c["url_hint"]
     if c.get("india"):
         out["india"] = True
     if c.get("native"):

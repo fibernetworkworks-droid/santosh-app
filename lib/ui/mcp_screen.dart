@@ -109,6 +109,12 @@ class _McpScreenState extends State<McpScreen> {
           title: Text('${c['name']} jodiye'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(c['how_to_connect'] as String? ?? '', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+            if ((c['url_hint'] as String? ?? '').isNotEmpty)
+              Padding(padding: const EdgeInsets.only(top: 6),
+                  child: Text('Aisa dikhta hai: ${c['url_hint']}', style: const TextStyle(color: C.faint, fontSize: 11.5))),
+            if (c['id'] == 'razorpay')
+              const Padding(padding: EdgeInsets.only(top: 6),
+                  child: Text('Format: key_id:key_secret (Razorpay Dashboard > API Keys)', style: TextStyle(color: C.faint, fontSize: 11.5))),
             TextField(controller: t, obscureText: auth == 'api_key',
                 decoration: InputDecoration(labelText: auth == 'api_key' ? 'API key' : 'Aapka MCP address (https://…)')),
             if ((c['docs'] as String? ?? '').isNotEmpty)

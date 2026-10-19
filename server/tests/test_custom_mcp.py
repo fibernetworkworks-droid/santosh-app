@@ -31,11 +31,11 @@ def mcp(bz, monkeypatch):  # noqa: F811
     real = socket.getaddrinfo
 
     def fake_dns(host, *a, **k):
-        if host.endswith(".example.com"):
-            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443))]
         if host == "evil.example.net":
             return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.5", 443))]
-        return real(host, *a, **k)
+        if host[0].isdigit():
+            return real(host, *a, **k)
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443))]   # any public name
     monkeypatch.setattr(custom_mcp.socket, "getaddrinfo", fake_dns)
     ex = default_executors()
     ex["mcp"] = McpExecutor(remote_factory=lambda url, h: FakeRemote(url, h))
@@ -143,3 +143,41 @@ def test_unofficial_whatsapp_automation_not_connectable(mcp):
     assert hits
     with pytest.raises(ToolError, match="WhatsApp"):
         mcp["svc"].mcp_add("default", "https://tools.example.com/mcp", ref=hits[0]["ref"], probe_client=_probe(200))
+
+
+def test_featured_connectors(mcp):
+    from app.bazar import featured
+    from app.bazar.connectors.base import ToolError
+    svc = mcp["svc"]
+    items = featured.items()
+    assert len(items) >= 50 and items[0]["india"]           # Indian apps first
+    names = {c["name"] for c in items}
+    assert {"Notion", "Razorpay", "Zoho CRM", "Stripe", "Linear", "Zapier"} <= names
+    for c in items:
+        assert c["auth"] in {"oauth_dcr", "oauth_partner", "api_key", "per_user_url", "none"}
+        if c["auth"] in ("oauth_dcr", "api_key"):
+            assert c["url"].startswith("https://")
+    # one tap: OAuth server answers 401 -> sign-in link
+    out = svc.mcp_connect_featured("default", "notion", probe_client=_probe(401))
+    assert out["status"] == "needs_link" and out["name"] == "Notion"
+    lst = {c["id"]: c for c in svc.mcp_featured("default")}
+    assert lst["notion"]["status"] == "needs_link" and lst["notion"]["pack_id"] == out["pack_id"]
+    # Razorpay key_id:key_secret becomes a Basic header
+    monkey = __import__("app.bazar.custom_mcp", fromlist=["x"])
+    assert monkey is not None
+    r = svc.mcp_connect_featured("default", "razorpay", key="rzp_live_abc:sec123", probe_client=_probe(200))
+    assert r["status"] == "ready"
+    from app.db import session
+    with session() as s:
+        from app.bazar.db import CustomMcp
+        row = s.get(CustomMcp, r["pack_id"])
+        h = monkey.headers_for(s, monkey.to_pack(row), "default")
+    assert h["Authorization"].startswith("Basic ") and "rzp_live" not in h["Authorization"]
+    with pytest.raises(ToolError, match="built into Santosh"):
+        svc.mcp_connect_featured("default", "gmail")
+    with pytest.raises(ToolError, match="approved apps"):
+        svc.mcp_connect_featured("default", "slack")
+    with pytest.raises(ToolError, match="personal"):
+        svc.mcp_connect_featured("default", "zapier")
+    assert featured.search("notion pages")[0]["id"] == "notion"
+    assert svc.find("default", "linear issues")["featured_connectors"][0]["id"] == "linear"

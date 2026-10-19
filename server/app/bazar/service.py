@@ -582,6 +582,9 @@ def mcp_connect_featured(tenant_id: str, fid: str, url: str = "", key: str = "",
         url = c["url"]
     if c["auth"] == "api_key" and not key:
         raise ToolError(f"{c['name']} needs its API key. Add it in the Santosh app (Connect > MCP servers), never in chat.")
+    if key and c.get("key_format") == "basic" and ":" in key and not key.lower().startswith("basic "):
+        import base64
+        key = "Basic " + base64.b64encode(key.strip().encode()).decode()   # e.g. Razorpay key_id:key_secret
     return mcp_add(tenant_id, url, c["name"], "featured:" + c["id"], key, key_header or c.get("key_header", ""),
                    probe_client=probe_client, conversation_id=conversation_id, description=c.get("does", ""))
 

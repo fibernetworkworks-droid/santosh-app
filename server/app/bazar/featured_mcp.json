@@ -1,0 +1,958 @@
+{
+ "source": "Official vendor MCP endpoints for apps in Claude's connector directory, researched 2026-10-19",
+ "connectors": [
+  {
+   "id": "razorpay",
+   "name": "Razorpay",
+   "category": "Payments",
+   "url": "https://mcp.razorpay.com/mcp",
+   "url_hint": "",
+   "auth": "api_key",
+   "does": "Payments, orders, links and settlements",
+   "source": "https://razorpay.com/docs/mcp-server/remote.md",
+   "confidence": "medium",
+   "keywords": [
+    "razorpay",
+    "payments"
+   ],
+   "key_header": "Authorization",
+   "key_format": "basic",
+   "india": true
+  },
+  {
+   "id": "bigin-by-zoho",
+   "name": "Bigin by Zoho",
+   "category": "CRM & sales",
+   "url": "",
+   "url_hint": "",
+   "auth": "per_user_url",
+   "does": "Small-business CRM pipelines",
+   "source": "https://help.zoho.com/portal/en/kb/bigin/ai/zoho-mcp-for-bigin/articles/getting-started-with-zoho-mcp-for-bigin",
+   "confidence": "high",
+   "keywords": [
+    "bigin",
+    "zoho",
+    "crm",
+    "sales"
+   ],
+   "india": true
+  },
+  {
+   "id": "zoho-crm",
+   "name": "Zoho CRM",
+   "category": "CRM & sales",
+   "url": "",
+   "url_hint": "",
+   "auth": "per_user_url",
+   "does": "Leads, deals, contacts and modules",
+   "source": "https://www.zoho.com/analytics/api/v2/zoho-analytics-mcp-server/remote-mcp/zoho-mcp.html",
+   "confidence": "high",
+   "keywords": [
+    "zoho",
+    "crm",
+    "crm",
+    "sales"
+   ],
+   "india": true
+  },
+  {
+   "id": "mercury",
+   "name": "Mercury",
+   "category": "Payments",
+   "url": "https://mcp.mercury.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Business bank account data",
+   "source": "https://docs.mercury.com/docs/connecting-mercury-mcp",
+   "confidence": "high",
+   "keywords": [
+    "mercury",
+    "payments"
+   ]
+  },
+  {
+   "id": "paypal",
+   "name": "PayPal",
+   "category": "Payments",
+   "url": "https://mcp.paypal.com/http",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Invoices, orders and transactions",
+   "source": "https://developer.paypal.com/ai-tools/mcp-server.md",
+   "confidence": "high",
+   "keywords": [
+    "paypal",
+    "payments"
+   ]
+  },
+  {
+   "id": "ramp",
+   "name": "Ramp",
+   "category": "Payments",
+   "url": "https://mcp.ramp.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "Corporate cards and spend",
+   "source": "https://agents.ramp.com/docs/mcp/setup",
+   "confidence": "high",
+   "keywords": [
+    "ramp",
+    "payments"
+   ]
+  },
+  {
+   "id": "square",
+   "name": "Square",
+   "category": "Payments",
+   "url": "https://mcp.squareup.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "Orders, payments and catalogue",
+   "source": "https://developer.squareup.com/docs/mcp",
+   "confidence": "high",
+   "keywords": [
+    "square",
+    "payments"
+   ]
+  },
+  {
+   "id": "stripe",
+   "name": "Stripe",
+   "category": "Payments",
+   "url": "https://mcp.stripe.com",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Payments, customers and invoices",
+   "source": "https://edge-docs.stripe.com/mcp",
+   "confidence": "high",
+   "keywords": [
+    "stripe",
+    "payments"
+   ]
+  },
+  {
+   "id": "attio",
+   "name": "Attio",
+   "category": "CRM & sales",
+   "url": "https://mcp.attio.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "CRM records and lists",
+   "source": "https://mcpservers.org/remote-mcp-servers/attio",
+   "confidence": "medium",
+   "keywords": [
+    "attio",
+    "crm",
+    "sales"
+   ]
+  },
+  {
+   "id": "close-crm",
+   "name": "Close CRM",
+   "category": "CRM & sales",
+   "url": "https://mcp.close.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Leads, calls and pipeline",
+   "source": "https://developer.close.com/mcp.md",
+   "confidence": "high",
+   "keywords": [
+    "close",
+    "crm",
+    "crm",
+    "sales"
+   ]
+  },
+  {
+   "id": "hubspot",
+   "name": "HubSpot",
+   "category": "CRM & sales",
+   "url": "https://mcp.hubspot.com",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "CRM contacts, deals and reports",
+   "source": "https://developers.hubspot.com/mcp",
+   "confidence": "high",
+   "keywords": [
+    "hubspot",
+    "crm",
+    "sales"
+   ]
+  },
+  {
+   "id": "pipedrive",
+   "name": "Pipedrive",
+   "category": "CRM & sales",
+   "url": "https://mcp.pipedrive.ai/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Deals, leads and activities",
+   "source": "https://www.pipedrive.com/en/features/mcp-server",
+   "confidence": "medium",
+   "keywords": [
+    "pipedrive",
+    "crm",
+    "sales"
+   ]
+  },
+  {
+   "id": "salesforce",
+   "name": "Salesforce",
+   "category": "CRM & sales",
+   "url": "",
+   "url_hint": "https://api.salesforce.com/platform/mcp/v1/platform/{server}",
+   "auth": "per_user_url",
+   "does": "CRM records and reports",
+   "source": "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/guide/hosted-mcp-servers-overview.md",
+   "confidence": "medium",
+   "keywords": [
+    "salesforce",
+    "crm",
+    "sales"
+   ]
+  },
+  {
+   "id": "agentmail",
+   "name": "AgentMail",
+   "category": "Email & calendar",
+   "url": "https://mcp.agentmail.to/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Email inboxes for agents",
+   "source": "https://agentmail.to/docs/integrations/mcp.md",
+   "confidence": "high",
+   "keywords": [
+    "agentmail",
+    "email",
+    "calendar"
+   ]
+  },
+  {
+   "id": "calendly",
+   "name": "Calendly",
+   "category": "Email & calendar",
+   "url": "https://mcp.calendly.com/",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Booking links and scheduled events",
+   "source": "https://calendly.com/help/connect-calendly-to-your-ai-tools",
+   "confidence": "medium",
+   "keywords": [
+    "calendly",
+    "email",
+    "calendar"
+   ]
+  },
+  {
+   "id": "gmail",
+   "name": "Gmail",
+   "category": "Email & calendar",
+   "url": "https://gmailmcp.googleapis.com/mcp/v1",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "Read and draft email",
+   "source": "https://developers.google.com/workspace/guides/configure-mcp-servers",
+   "confidence": "high",
+   "keywords": [
+    "gmail",
+    "email",
+    "calendar"
+   ],
+   "native": "Google sign-in in Santosh (Main > Account) already gives Gmail, Calendar and Drive"
+  },
+  {
+   "id": "google-calendar",
+   "name": "Google Calendar",
+   "category": "Email & calendar",
+   "url": "https://calendarmcp.googleapis.com/mcp/v1",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "Events and availability",
+   "source": "https://developers.google.com/workspace/guides/configure-mcp-servers",
+   "confidence": "high",
+   "keywords": [
+    "google",
+    "calendar",
+    "email",
+    "calendar"
+   ],
+   "native": "Google sign-in in Santosh (Main > Account) already gives Gmail, Calendar and Drive"
+  },
+  {
+   "id": "microsoft-365",
+   "name": "Microsoft 365",
+   "category": "Email & calendar",
+   "url": "https://workiq.svc.cloud.microsoft/mcp",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "Outlook mail and calendar, Teams, SharePoint",
+   "source": "https://learn.microsoft.com/en-us/microsoft-365-copilot/extensibility/work-iq/mcp/overview",
+   "confidence": "medium",
+   "keywords": [
+    "microsoft",
+    "365",
+    "outlook",
+    "teams",
+    "work",
+    "email",
+    "calendar"
+   ]
+  },
+  {
+   "id": "airtable",
+   "name": "Airtable",
+   "category": "Files & data",
+   "url": "https://mcp.airtable.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Bases, tables and records",
+   "source": "https://airtable.com/developers/agents/mcp/getting-started",
+   "confidence": "high",
+   "keywords": [
+    "airtable",
+    "files",
+    "data"
+   ]
+  },
+  {
+   "id": "box",
+   "name": "Box",
+   "category": "Files & data",
+   "url": "https://mcp.box.com",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "Files and folders",
+   "source": "https://developer.box.com/guides/box-mcp/remote/index.md",
+   "confidence": "high",
+   "keywords": [
+    "box",
+    "files",
+    "data"
+   ]
+  },
+  {
+   "id": "dropbox",
+   "name": "Dropbox",
+   "category": "Files & data",
+   "url": "https://mcp.dropbox.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Files, folders and shared links",
+   "source": "https://help.dropbox.com/integrations/connect-dropbox-mcp-server",
+   "confidence": "medium",
+   "keywords": [
+    "dropbox",
+    "files",
+    "data"
+   ]
+  },
+  {
+   "id": "google-drive",
+   "name": "Google Drive",
+   "category": "Files & data",
+   "url": "https://drivemcp.googleapis.com/mcp/v1",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "Search and read files",
+   "source": "https://developers.google.com/workspace/guides/configure-mcp-servers",
+   "confidence": "high",
+   "keywords": [
+    "google",
+    "drive",
+    "files",
+    "data"
+   ],
+   "native": "Google sign-in in Santosh (Main > Account) already gives Gmail, Calendar and Drive"
+  },
+  {
+   "id": "google-sheets",
+   "name": "Google Sheets",
+   "category": "Files & data",
+   "url": "https://sheetsmcp.googleapis.com/mcp/v1",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "Read and update spreadsheets",
+   "source": "https://developers.google.com/workspace/guides/configure-mcp-servers",
+   "confidence": "high",
+   "keywords": [
+    "google",
+    "sheets",
+    "files",
+    "data"
+   ],
+   "native": "Google sign-in in Santosh (Main > Account) already gives Gmail, Calendar and Drive"
+  },
+  {
+   "id": "asana",
+   "name": "Asana",
+   "category": "Projects & notes",
+   "url": "https://mcp.asana.com/v2/mcp",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "Tasks, projects and goals",
+   "source": "https://developers.asana.com/docs/using-asanas-mcp-server",
+   "confidence": "high",
+   "keywords": [
+    "asana",
+    "projects",
+    "notes"
+   ]
+  },
+  {
+   "id": "atlassian",
+   "name": "Atlassian (Jira, Confluence)",
+   "category": "Projects & notes",
+   "url": "https://mcp.atlassian.com/v2/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Jira issues and Confluence pages",
+   "source": "https://developer.atlassian.com/cloud/rovo-mcp/",
+   "confidence": "medium",
+   "keywords": [
+    "atlassian",
+    "jira",
+    "confluence",
+    "projects",
+    "notes"
+   ]
+  },
+  {
+   "id": "clickup",
+   "name": "ClickUp",
+   "category": "Projects & notes",
+   "url": "https://mcp.clickup.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Tasks, docs and spaces",
+   "source": "https://mcpservers.org/remote-mcp-servers/clickup",
+   "confidence": "medium",
+   "keywords": [
+    "clickup",
+    "projects",
+    "notes"
+   ]
+  },
+  {
+   "id": "linear",
+   "name": "Linear",
+   "category": "Projects & notes",
+   "url": "https://mcp.linear.app/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Issues, projects and cycles",
+   "source": "https://linear.app/docs/mcp",
+   "confidence": "high",
+   "keywords": [
+    "linear",
+    "projects",
+    "notes"
+   ]
+  },
+  {
+   "id": "monday-com",
+   "name": "monday.com",
+   "category": "Projects & notes",
+   "url": "https://mcp.monday.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Boards, items, workflows and dashboards",
+   "source": "https://developer.monday.com/api-reference/docs/mondaycom-mcp",
+   "confidence": "high",
+   "keywords": [
+    "monday",
+    "com",
+    "projects",
+    "notes"
+   ]
+  },
+  {
+   "id": "notion",
+   "name": "Notion",
+   "category": "Projects & notes",
+   "url": "https://mcp.notion.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Search, read and update pages and databases",
+   "source": "https://developers.notion.com/guides/mcp/get-started-with-mcp.md",
+   "confidence": "high",
+   "keywords": [
+    "notion",
+    "projects",
+    "notes"
+   ]
+  },
+  {
+   "id": "todoist",
+   "name": "Todoist",
+   "category": "Projects & notes",
+   "url": "https://ai.todoist.net/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Tasks and projects",
+   "source": "https://mcpservers.org/remote-mcp-servers/todoist",
+   "confidence": "medium",
+   "keywords": [
+    "todoist",
+    "projects",
+    "notes"
+   ]
+  },
+  {
+   "id": "slack",
+   "name": "Slack",
+   "category": "Team chat",
+   "url": "https://mcp.slack.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "Read channels and send messages",
+   "source": "https://docs.slack.dev/ai/mcp-server/",
+   "confidence": "high",
+   "keywords": [
+    "slack",
+    "team",
+    "chat"
+   ]
+  },
+  {
+   "id": "bird",
+   "name": "Bird",
+   "category": "Messaging",
+   "url": "https://mcp.bird.com",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Email, SMS and WhatsApp Business messages",
+   "source": "https://bird.com/docs/ai/mcp-server",
+   "confidence": "high",
+   "keywords": [
+    "bird",
+    "messaging"
+   ]
+  },
+  {
+   "id": "make",
+   "name": "Make",
+   "category": "Automation",
+   "url": "",
+   "url_hint": "https://<MAKE_ZONE>/mcp/api/v1/u/<MCP_TOKEN>/sse",
+   "auth": "per_user_url",
+   "does": "Run Make scenarios",
+   "source": "https://developers.make.com/mcp-server/make-cloud-mcp-server",
+   "confidence": "medium",
+   "keywords": [
+    "make",
+    "automation"
+   ]
+  },
+  {
+   "id": "zapier",
+   "name": "Zapier",
+   "category": "Automation",
+   "url": "",
+   "url_hint": "https://mcp.zapier.com/api/v1/connect",
+   "auth": "per_user_url",
+   "does": "Run actions in 8,000+ apps",
+   "source": "https://docs.zapier.com/mcp/get-started/authentication",
+   "confidence": "high",
+   "keywords": [
+    "zapier",
+    "automation"
+   ]
+  },
+  {
+   "id": "shopify-storefront",
+   "name": "Shopify Storefront",
+   "category": "Commerce",
+   "url": "",
+   "url_hint": "https://{storedomain}/api/ucp/mcp",
+   "auth": "per_user_url",
+   "does": "Search a Shopify store's products and cart",
+   "source": "https://shopify.dev/docs/agents/catalog/storefront-mcp",
+   "confidence": "medium",
+   "keywords": [
+    "shopify",
+    "storefront",
+    "commerce"
+   ]
+  },
+  {
+   "id": "webflow",
+   "name": "Webflow",
+   "category": "Commerce",
+   "url": "https://mcp.webflow.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Sites, CMS and pages",
+   "source": "https://developers.webflow.com/mcp/reference/getting-started",
+   "confidence": "medium",
+   "keywords": [
+    "webflow",
+    "commerce"
+   ]
+  },
+  {
+   "id": "wix",
+   "name": "Wix",
+   "category": "Commerce",
+   "url": "https://mcp.wix.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Site, store and bookings",
+   "source": "https://dev.wix.com/docs/sdk/articles/use-the-wix-mcp/about-the-wix-mcp.md",
+   "confidence": "high",
+   "keywords": [
+    "wix",
+    "commerce"
+   ]
+  },
+  {
+   "id": "brevo",
+   "name": "Brevo",
+   "category": "Marketing",
+   "url": "https://mcp.brevo.com/v1/brevo/mcp",
+   "url_hint": "",
+   "auth": "api_key",
+   "does": "Email and SMS campaigns",
+   "source": "https://developers.brevo.com/docs/mcp-protocol.md",
+   "confidence": "high",
+   "keywords": [
+    "brevo",
+    "marketing"
+   ],
+   "key_header": "Authorization"
+  },
+  {
+   "id": "klaviyo",
+   "name": "Klaviyo",
+   "category": "Marketing",
+   "url": "https://mcp.klaviyo.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Email and SMS marketing",
+   "source": "https://developers.klaviyo.com/en/docs/connect_to_the_klaviyo_mcp_server.md",
+   "confidence": "high",
+   "keywords": [
+    "klaviyo",
+    "marketing"
+   ]
+  },
+  {
+   "id": "intercom",
+   "name": "Intercom",
+   "category": "Support",
+   "url": "https://mcp.intercom.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Conversations and contacts",
+   "source": "https://developers.intercom.com/docs/guides/mcp",
+   "confidence": "high",
+   "keywords": [
+    "intercom",
+    "support"
+   ]
+  },
+  {
+   "id": "tally",
+   "name": "Tally",
+   "category": "Forms",
+   "url": "https://api.tally.so/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Forms and submissions (Tally.so)",
+   "source": "https://developers.tally.so/api-reference/mcp",
+   "confidence": "high",
+   "keywords": [
+    "tally",
+    "forms"
+   ]
+  },
+  {
+   "id": "typeform",
+   "name": "Typeform",
+   "category": "Forms",
+   "url": "https://api.typeform.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Forms and responses",
+   "source": "https://www.typeform.com/developers/mcp/",
+   "confidence": "high",
+   "keywords": [
+    "typeform",
+    "forms"
+   ]
+  },
+  {
+   "id": "canva",
+   "name": "Canva",
+   "category": "Design",
+   "url": "https://mcp.canva.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Find, create and export designs",
+   "source": "https://www.canva.dev/docs/apps/mcp/access/",
+   "confidence": "medium",
+   "keywords": [
+    "canva",
+    "design"
+   ]
+  },
+  {
+   "id": "figma",
+   "name": "Figma",
+   "category": "Design",
+   "url": "https://mcp.figma.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "Design files and FigJam",
+   "source": "https://developers.figma.com/docs/figma-mcp-server/remote-server-installation",
+   "confidence": "high",
+   "keywords": [
+    "figma",
+    "design"
+   ]
+  },
+  {
+   "id": "gamma",
+   "name": "Gamma",
+   "category": "Design",
+   "url": "https://mcp.gamma.app/mcp",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "Presentations and docs",
+   "source": "https://developers.gamma.app/mcp/gamma-mcp-server",
+   "confidence": "medium",
+   "keywords": [
+    "gamma",
+    "design"
+   ]
+  },
+  {
+   "id": "miro",
+   "name": "Miro",
+   "category": "Design",
+   "url": "https://mcp.miro.com/",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Boards and diagrams",
+   "source": "https://developers.miro.com/docs/connecting-to-miro-mcp",
+   "confidence": "high",
+   "keywords": [
+    "miro",
+    "design"
+   ]
+  },
+  {
+   "id": "amplitude",
+   "name": "Amplitude",
+   "category": "Analytics",
+   "url": "https://mcp.amplitude.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Product analytics",
+   "source": "https://amplitude.com/docs/amplitude-ai/amplitude-mcp",
+   "confidence": "high",
+   "keywords": [
+    "amplitude",
+    "analytics"
+   ]
+  },
+  {
+   "id": "mixpanel",
+   "name": "Mixpanel",
+   "category": "Analytics",
+   "url": "https://mcp.mixpanel.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Product analytics",
+   "source": "https://docs.mixpanel.com/docs/mcp",
+   "confidence": "high",
+   "keywords": [
+    "mixpanel",
+    "analytics"
+   ]
+  },
+  {
+   "id": "posthog",
+   "name": "PostHog",
+   "category": "Analytics",
+   "url": "https://mcp.posthog.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Product analytics and flags",
+   "source": "https://posthog.com/docs/model-context-protocol/faq",
+   "confidence": "high",
+   "keywords": [
+    "posthog",
+    "analytics"
+   ]
+  },
+  {
+   "id": "tomtom-maps",
+   "name": "TomTom Maps",
+   "category": "Travel & maps",
+   "url": "https://mcp.tomtom.com/maps",
+   "url_hint": "",
+   "auth": "api_key",
+   "does": "Geocoding, routes and traffic",
+   "source": "https://github.com/tomtom-international/tomtom-maps-mcp",
+   "confidence": "high",
+   "keywords": [
+    "tomtom",
+    "maps",
+    "travel",
+    "maps"
+   ],
+   "key_header": "tomtom-api-key"
+  },
+  {
+   "id": "cloudflare",
+   "name": "Cloudflare",
+   "category": "Developer",
+   "url": "https://mcp.cloudflare.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "DNS, Workers and zones",
+   "source": "https://developers.cloudflare.com/agents/model-context-protocol/cloudflare/servers-for-cloudflare/index.md",
+   "confidence": "high",
+   "keywords": [
+    "cloudflare",
+    "developer"
+   ]
+  },
+  {
+   "id": "expo",
+   "name": "Expo",
+   "category": "Developer",
+   "url": "https://mcp.expo.dev/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Mobile app builds and updates",
+   "source": "https://docs.expo.dev/eas/ai/mcp.md",
+   "confidence": "high",
+   "keywords": [
+    "expo",
+    "developer"
+   ]
+  },
+  {
+   "id": "github",
+   "name": "GitHub",
+   "category": "Developer",
+   "url": "https://api.githubcopilot.com/mcp/",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "Repos, issues and pull requests",
+   "source": "https://docs.github.com/en/copilot/how-tos/provide-context/use-mcp-in-your-ide/set-up-the-github-mcp-server",
+   "confidence": "high",
+   "keywords": [
+    "github",
+    "developer"
+   ]
+  },
+  {
+   "id": "hugging-face",
+   "name": "Hugging Face",
+   "category": "Developer",
+   "url": "https://huggingface.co/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Models, datasets and Spaces",
+   "source": "https://huggingface.co/docs/hub/agents-mcp.md",
+   "confidence": "medium",
+   "keywords": [
+    "hugging",
+    "face",
+    "developer"
+   ]
+  },
+  {
+   "id": "neon",
+   "name": "Neon",
+   "category": "Developer",
+   "url": "https://mcp.neon.tech/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Serverless Postgres",
+   "source": "https://mcpservers.org/remote-mcp-servers/neon",
+   "confidence": "medium",
+   "keywords": [
+    "neon",
+    "developer"
+   ]
+  },
+  {
+   "id": "netlify",
+   "name": "Netlify",
+   "category": "Developer",
+   "url": "https://netlify-mcp.netlify.app/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Sites and deploys",
+   "source": "https://docs.netlify.com/build/build-with-ai/netlify-mcp-server/",
+   "confidence": "medium",
+   "keywords": [
+    "netlify",
+    "developer"
+   ]
+  },
+  {
+   "id": "postman",
+   "name": "Postman",
+   "category": "Developer",
+   "url": "https://mcp.postman.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "API collections and tests",
+   "source": "https://learning.postman.com/docs/developer/postman-api/postman-mcp-server/postman-mcp-remote-server.md",
+   "confidence": "high",
+   "keywords": [
+    "postman",
+    "developer"
+   ]
+  },
+  {
+   "id": "sentry",
+   "name": "Sentry",
+   "category": "Developer",
+   "url": "https://mcp.sentry.dev/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Errors and issues",
+   "source": "https://docs.sentry.io/ai/mcp/",
+   "confidence": "medium",
+   "keywords": [
+    "sentry",
+    "developer"
+   ]
+  },
+  {
+   "id": "supabase",
+   "name": "Supabase",
+   "category": "Developer",
+   "url": "https://mcp.supabase.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Databases, auth and storage",
+   "source": "https://supabase.com/changelog/39434-supabase-remote-mcp-server.md",
+   "confidence": "medium",
+   "keywords": [
+    "supabase",
+    "developer"
+   ]
+  },
+  {
+   "id": "vercel",
+   "name": "Vercel",
+   "category": "Developer",
+   "url": "https://mcp.vercel.com",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "Deployments and projects",
+   "source": "https://vercel.com/docs/ai-tooling/vercel-mcp",
+   "confidence": "high",
+   "keywords": [
+    "vercel",
+    "developer"
+   ]
+  }
+ ]
+}
