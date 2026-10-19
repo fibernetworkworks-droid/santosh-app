@@ -1,0 +1,18 @@
+{
+  "id": "pc-operator",
+  "name": "Mera PC · Santosh chalaye",
+  "category": "Office & PC",
+  "sub_category": "PC bridge",
+  "pack_type": "Native",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Santosh uses your PC like a person (sees the screen, opens apps, clicks, types) through Santosh Desktop; asks before sending, deleting, paying or installing",
+  "notes": "Driven by the pc_do tool; this pack only holds its confirm cards",
+  "master_list_row": 0,
+  "executor": "pcop",
+  "config": {},
+  "tools": [{"name": "confirm_step", "tier": 2}],
+  "keywords": ["pc", "computer", "laptop", "excel", "word", "tally", "app", "screen"],
+  "wave": "Devices"
+}

@@ -220,3 +220,27 @@ def test_offline_pc_is_reported(world):
     with pytest.raises(ToolError, match="offline"):
         world["svc"].run("default", world["conv"], "pc-bridge", "search", {"query": "x"})
     assert world["phone"].post("/api/pc/search", json={"query": "x"}).status_code == 409
+
+
+def test_pc_control_is_off_by_default_and_refuses_secrets(tmp_path, monkeypatch):
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "desktop"))
+    monkeypatch.setenv("SANTOSH_DESKTOP_HOME", str(tmp_path))
+    from santosh_desktop.actions import ActionError, Actions
+    from santosh_desktop.config import Config
+    from santosh_desktop.control import Control, ControlError
+    from santosh_desktop.index import Index
+    cfg = Config(server="http://x", folders=[str(tmp_path)])
+    acts = Actions(cfg, Index(tmp_path / "i.db"))
+    import pytest as _p
+    with _p.raises(ActionError, match="permission band"):
+        acts.handle("screen", {})
+    with _p.raises(ActionError, match="permission band"):
+        acts.handle("control", {"op": "click", "x": 1, "y": 1})
+    assert acts.info()["control"] is False
+    c = Control()
+    with _p.raises(ControlError, match="card or Aadhaar"):
+        c.act("type", text="4111 1111 1111 1111")
+    with _p.raises(ControlError, match="not allowed"):
+        c.act("key", keys="win+l")

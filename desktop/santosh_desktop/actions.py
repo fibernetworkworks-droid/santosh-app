@@ -15,6 +15,7 @@ from . import __version__, extract
 from .config import Config
 from .index import Index
 from .safety import Denied, allowed, roots, unique
+from .control import Control, ControlError
 from .tally import Tally, TallyError
 
 MAX_SEND = 50 * 1024 * 1024
@@ -31,6 +32,7 @@ class Actions:
         self.http = http or httpx.Client(timeout=httpx.Timeout(300, connect=20))
         self.tally = tally or Tally(cfg.tally_host, cfg.tally_port)
         self._tally_cache: tuple[float, dict[str, Any]] = (0.0, {})
+        self.control = Control()
 
     # ---------------- info ----------------
     def tally_status(self) -> dict[str, Any]:
@@ -44,7 +46,8 @@ class Actions:
     def info(self) -> dict[str, Any]:
         return {"type": "info", "name": self.cfg.name, "os": f"{platform.system()} {platform.release()}",
                 "version": __version__, "folders": [{"path": str(r), "label": r.name or str(r)} for r in roots(self.cfg.folders)],
-                "tally": self.tally_status(), "indexed": self.index.count(), "inbox": self.cfg.inbox, "paused": self.cfg.paused}
+                "tally": self.tally_status(), "indexed": self.index.count(), "inbox": self.cfg.inbox, "paused": self.cfg.paused,
+                "control": bool(self.cfg.control_enabled)}
 
     # ---------------- dispatcher ----------------
     def handle(self, action: str, args: dict[str, Any]) -> dict[str, Any]:
@@ -56,6 +59,8 @@ class Actions:
         try:
             return fn(**(args or {}))
         except Denied as e:
+            raise ActionError(str(e))
+        except ControlError as e:
             raise ActionError(str(e))
         except TallyError as e:
             raise ActionError(str(e))
@@ -69,6 +74,35 @@ class Actions:
         return p
 
     # ---------------- actions ----------------
+    # ---------------- using the PC (screen, mouse, keyboard, apps) ----------------
+    def _control_on(self) -> None:
+        if not self.cfg.control_enabled:
+            raise ActionError("PC chalane ki permission band hai. PC par Santosh Desktop > Settings > "
+                              "'Santosh ko PC chalane dein' on kijiye.")
+
+    def do_screen(self, max_width: int = 1280, **_) -> dict[str, Any]:
+        self._control_on()
+        return self.control.screen(int(max_width or 1280))
+
+    def do_control(self, op: str = "", x: Any = None, y: Any = None, text: str = "", keys: str = "", amount: int = 0,
+                   to_x: Any = None, to_y: Any = None, **_) -> dict[str, Any]:
+        self._control_on()
+        self.log(f"PC control: {op} {keys or ''}".strip())
+        return self.control.act(op, x, y, text, keys, amount, to_x, to_y)
+
+    def do_apps(self, **_) -> dict[str, Any]:
+        self._control_on()
+        return self.control.apps()
+
+    def do_open_app(self, name: str = "", **_) -> dict[str, Any]:
+        self._control_on()
+        self.log(f"App khol raha hoon: {name}")
+        return self.control.open_app(name)
+
+    def do_focus(self, title: str = "", **_) -> dict[str, Any]:
+        self._control_on()
+        return self.control.focus(title)
+
     def do_status(self, **_) -> dict[str, Any]:
         i = self.info()
         i.pop("type", None)

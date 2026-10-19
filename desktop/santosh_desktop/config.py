@@ -73,6 +73,7 @@ class Config:
     folders: list[str] = field(default_factory=list)
     inbox: str = field(default_factory=default_inbox)
     paused: bool = False
+    control_enabled: bool = False   # "Santosh ko PC chalane dein": screen, mouse, keyboard, apps
     tally_host: str = "localhost"
     tally_port: int = 9000
     name: str = field(default_factory=lambda: platform.node() or "PC")

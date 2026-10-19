@@ -12,7 +12,7 @@ from app.bazar.packs.registry import registry
 
 def test_159_mvp_packs_load():
     reg = registry()
-    assert len(reg.packs) == 683   # 159 MVP + 515 P1 + 6 devices + shopping + Mera PC + Santosh Browser
+    assert len(reg.packs) == 684   # 159 MVP + 515 P1 + 6 devices + shopping + Mera PC + Santosh Browser + PC operator
     assert len(reg.all(wave="MVP")) == 160
     by = {}
     for p in reg.all(wave="MVP"):
@@ -22,7 +22,7 @@ def test_159_mvp_packs_load():
     for p in reg.packs.values():
         by[p.executor] = by.get(p.executor, 0) + 1
     assert by == {"bbps": 142, "shop": 142, "upi": 16, "native": 40, "ride": 7, "mcp": 6, "pc": 1,
-                  "handoff": 227, "reader": 94, "device": 6, "commerce": 1, "browser": 1}
+                  "handoff": 227, "reader": 94, "device": 6, "commerce": 1, "browser": 1, "pcop": 1}
 
 
 def test_rupees_and_paise():

@@ -33,3 +33,57 @@ def _handler(api: str):
 
 
 PC_HANDLERS = {api: _handler(api) for api in _NAMES}
+
+
+# ---- Santosh uses the PC like a person (Santosh PC Operator) ----
+PC_TOOLS.append({"name": "pc_do", "description": (
+    "[Mera PC] Santosh uses the user's PC like a person: sees the screen, opens apps, clicks, types, presses keys, "
+    "to finish a task end to end in ANY desktop app (Tally, Excel, Word, Chrome, Busy, Marg, email apps, any "
+    "software). Use when the user wants something DONE on the PC that the file/Tally tools can't do: 'Excel mein "
+    "sales sheet banao', 'Tally kholo aur ledger dikhao', 'PC pe Chrome mein IRCTC kholo', 'Word mein letter likho'. "
+    "Describe the full goal with every detail. The user watches it live; it asks on the phone before sending, "
+    "submitting, deleting, paying, installing or changing settings, and never types passwords/OTPs. Needs 'Santosh "
+    "ko PC chalane dein' switched on in Santosh Desktop. Slow (a few seconds per step)."),
+    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}}, "required": ["task"]}})
+PC_TOOLS.append({"name": "pc_task_result", "description": "[Mera PC] Status or result of a pc_do task (session_id).",
+                 "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}}, "required": ["session_id"]}})
+PC_LABELS.update({"pc_do": "PC par kaam kar raha hoon", "pc_task_result": "PC ka kaam dekh raha hoon"})
+
+
+async def pc_do(ctx: Ctx, task, _wait=None, **_):
+    from ..pc import operator
+    task = str(task or "").strip()
+    if len(task) < 3:
+        raise ToolError("Batayiye PC par kya karna hai")
+    try:
+        r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, wait=150 if _wait is None else float(_wait))
+    except PermissionError as e:
+        raise ToolError(str(e))
+    except RuntimeError as e:
+        if "PC_OFFLINE" in str(e):
+            raise ToolError("PC offline hai. PC on karke Santosh Desktop kholiye (ya Santosh app > Mera PC se jodiye).")
+        raise ToolError(str(e))
+    r.pop("timeline", None)
+    if r["status"] in ("running", "needs_confirm"):
+        r["say"] = ("Still working on the PC (live card in chat; a confirm card appears if a step needs approval). The "
+                    "result is posted automatically; if asked before that, call pc_task_result with session_id "
+                    f"'{r['session_id']}'.")
+    return r
+
+
+async def pc_task_result(ctx: Ctx, session_id, **_):
+    from ..pc import operator
+    op = operator.get(ctx.tenant_id, str(session_id))
+    if op is None:
+        raise ToolError("That PC task isn't available any more.")
+    if not op.done_event.is_set():
+        try:
+            await asyncio.wait_for(asyncio.shield(op.done_event.wait()), 20)
+        except asyncio.TimeoutError:
+            pass
+    r = op.live()
+    r.pop("timeline", None)
+    return r
+
+
+PC_HANDLERS.update({"pc_do": pc_do, "pc_task_result": pc_task_result})

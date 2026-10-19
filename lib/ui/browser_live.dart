@@ -149,7 +149,7 @@ class BrowserLiveCard extends StatelessWidget {
                 const Icon(Icons.travel_explore_rounded, color: C.accent, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(site.isEmpty ? 'Santosh Browser' : 'Santosh Browser · $site',
+                  child: Text(l['source'] == 'pc' ? 'Santosh · Mera PC' : (site.isEmpty ? 'Santosh Browser' : 'Santosh Browser · $site'),
                       maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 ),
                 Pill(run ? '● ${BrowserLive.label(l)}' : BrowserLive.label(l), fg: Colors.white, bg: BrowserLive.color(l).withOpacity(.85)),
@@ -159,7 +159,7 @@ class BrowserLiveCard extends StatelessWidget {
                 onTap: () => BrowserLive.open(context, app, {...v, ...l}),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: AspectRatio(aspectRatio: 1280 / 860, child: _frameBox(frame)),
+                  child: AspectRatio(aspectRatio: l['source'] == 'pc' ? 16 / 9 : 1280 / 860, child: _frameBox(frame)),
                 ),
               ),
               const SizedBox(height: 8),
@@ -276,7 +276,7 @@ class BrowserLiveScreen extends StatelessWidget {
           backgroundColor: const Color(0xFF070912),
           appBar: AppBar(
             backgroundColor: const Color(0xFF0E1220),
-            title: const Text('Santosh Browser · live'),
+            title: Text(sid.startsWith('pcop_') ? 'Mera PC · live' : 'Santosh Browser · live'),
           ),
           body: _LiveFeed(
             app: app,
@@ -304,7 +304,7 @@ class BrowserLiveScreen extends StatelessWidget {
                   child: InteractiveViewer(
                     minScale: 1,
                     maxScale: 4,
-                    child: Center(child: AspectRatio(aspectRatio: 1280 / 860, child: _frameBox(frame, fit: BoxFit.contain))),
+                    child: Center(child: AspectRatio(aspectRatio: sid.startsWith('pcop_') ? 16 / 9 : 1280 / 860, child: _frameBox(frame, fit: BoxFit.contain))),
                   ),
                 ),
                 Expanded(

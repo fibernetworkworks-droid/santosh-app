@@ -27,6 +27,9 @@ class App:
         self.bridge = Bridge(self.cfg, self.actions, on_status=lambda s: self.events.put(("status", s)),
                              on_unpaired=lambda: self.events.put(("unpaired", "")))
         self.reindex = Reindexer(self.actions, on_done=lambda n: self.events.put(("indexed", n)))
+        self.actions.control.on_activity = lambda what: self.events.put(("control", what))
+        self._banner = None
+        self._banner_at = 0.0
 
         self.root = tk.Tk()
         self.root.title("Santosh Desktop")
@@ -154,6 +157,17 @@ class App:
             save(self.cfg)
             self.bridge.push_info()
         ttk.Checkbutton(s, text="Rokiye (Santosh is PC par kuch nahi karega)", variable=paused, command=toggle_pause).pack(anchor="w", padx=12)
+        control = tk.BooleanVar(value=self.cfg.control_enabled)
+
+        def toggle_control() -> None:
+            self.cfg.control_enabled = control.get()
+            save(self.cfg)
+            self.bridge.push_info()
+            self._log("PC chalana: " + ("ON (Santosh screen dekh kar apps chala sakta hai)" if control.get() else "OFF"))
+        ttk.Checkbutton(s, text="Santosh ko PC chalane dein (screen, mouse, keyboard, apps)", variable=control,
+                        command=toggle_control).pack(anchor="w", padx=12)
+        tk.Label(s, text="Chalate waqt upar orange patti dikhegi; 'Rokiye' dabaiye ya mouse ko screen ke upar-baayen kone mein le jaiye.",
+                 bg=PANEL, fg=MUTED, wraplength=490, justify="left", font=("Segoe UI", 8)).pack(anchor="w", padx=12)
         if autostart.supported():
             ttk.Checkbutton(s, text="Windows ke saath shuru karein", variable=auto,
                             command=lambda: autostart.set_enabled(auto.get())).pack(anchor="w", padx=12)
@@ -201,9 +215,46 @@ class App:
                     self.bridge.push_info()
                 elif kind == "unpaired":
                     self._render()
+                elif kind == "control":
+                    self._show_banner(v)
         except queue.Empty:
             pass
+        import time as _t
+        if self._banner is not None and _t.time() - self._banner_at > 10:
+            self._banner.destroy()
+            self._banner = None
         self.root.after(250, self._pump)
+
+    def _show_banner(self, what: str) -> None:
+        """Always-on-top strip while Santosh uses the PC, with a stop button."""
+        import time as _t
+        tk = self.tk
+        self._banner_at = _t.time()
+        if self._banner is None:
+            b = tk.Toplevel(self.root)
+            b.overrideredirect(True)
+            b.attributes("-topmost", True)
+            try:
+                b.attributes("-alpha", 0.92)
+            except tk.TclError:
+                pass
+            b.configure(bg=ACCENT)
+            sw = self.root.winfo_screenwidth()
+            b.geometry(f"520x40+{max(0, sw // 2 - 260)}+6")
+            self._banner_lbl = tk.Label(b, text="", bg=ACCENT, fg=INK, font=("Segoe UI", 10, "bold"))
+            self._banner_lbl.pack(side="left", padx=10)
+
+            def stop() -> None:
+                self.cfg.paused = True
+                save(self.cfg)
+                self.bridge.push_info()
+                self._log("Aapne Santosh ko rok diya (Resume ke liye Settings mein 'Rokiye' hataiye).")
+                b.destroy()
+                self._banner = None
+                self._render()
+            tk.Button(b, text="Rokiye", command=stop, bg=INK, fg="white", relief="flat").pack(side="right", padx=8, pady=6)
+            self._banner = b
+        self._banner_lbl.configure(text=f"🤖 Santosh is PC ko chala raha hai · {what[:40]}")
 
     def quit(self) -> None:
         self.bridge.stop()

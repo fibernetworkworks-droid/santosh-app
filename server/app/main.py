@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.18.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.19.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -1328,6 +1328,12 @@ def push_token_delete(body: PushTokenIn, tenant: str = Depends(current_tenant)):
 @app.get("/api/browser/{sid}/live", dependencies=[Depends(require_key)])
 def browser_live(sid: str, tenant: str = Depends(current_tenant)):
     from . import browser
+    if sid.startswith("pcop_"):
+        from .pc import operator
+        op = operator.get(tenant, sid)
+        if op is None:
+            raise HTTPException(404, "not found")
+        return op.live()
     try:
         return browser.live(tenant, sid)
     except browser.BrowserError as e:
@@ -1338,6 +1344,12 @@ def browser_live(sid: str, tenant: str = Depends(current_tenant)):
 def browser_frame(sid: str, tenant: str = Depends(current_tenant)):
     from fastapi.responses import Response
     from . import browser
+    if sid.startswith("pcop_"):
+        from .pc import operator
+        op = operator.get(tenant, sid)
+        if op is None or not op.frame:
+            raise HTTPException(404, "no frame yet")
+        return Response(op.frame, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
     try:
         img = browser.frame(tenant, sid)
     except browser.BrowserError as e:
@@ -1348,6 +1360,11 @@ def browser_frame(sid: str, tenant: str = Depends(current_tenant)):
 @app.post("/api/browser/{sid}/stop", dependencies=[Depends(require_key)])
 def browser_stop(sid: str, tenant: str = Depends(current_tenant)):
     from . import browser
+    if sid.startswith("pcop_"):
+        from .pc import operator
+        if not operator.stop(tenant, sid):
+            raise HTTPException(404, "not found")
+        return {"session_id": sid, "status": "cancelled"}
     try:
         return browser.cancel(tenant, sid)
     except browser.BrowserError as e:

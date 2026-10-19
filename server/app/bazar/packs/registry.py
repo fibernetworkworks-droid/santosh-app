@@ -10,7 +10,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 MANIFEST_DIR = Path(__file__).parent / "manifests"
-EXECUTORS = {"mcp", "bbps", "upi", "ride", "shop", "native", "pc", "handoff", "reader", "device", "commerce", "browser"}
+EXECUTORS = {"mcp", "bbps", "upi", "ride", "shop", "native", "pc", "handoff", "reader", "device", "commerce", "browser", "pcop"}
 LAYERS = {"L0", "L1", "L2", "L3", "L4"}
 
 
