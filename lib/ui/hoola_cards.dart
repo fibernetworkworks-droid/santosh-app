@@ -819,3 +819,63 @@ class _HoolaTicketCardState extends State<HoolaTicketCard> {
     );
   }
 }
+
+
+/// The owner's avatar wants to send something that needs the owner's own tap (a file, an email, a contact, a place,
+/// a payment request, or a message with phone numbers / IDs in it).
+class HoolaOutboxCard extends StatefulWidget {
+  const HoolaOutboxCard({super.key, required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+  @override
+  State<HoolaOutboxCard> createState() => _HoolaOutboxCardState();
+}
+
+class _HoolaOutboxCardState extends State<HoolaOutboxCard> {
+  String? _done;
+
+  Future<void> _act(String a) async {
+    try {
+      await widget.app.api!.netOutbox(widget.v['id'] as String, a);
+      if (mounted) setState(() => _done = a == 'send' ? 'Bhej diya ✓' : 'Nahi bheja');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = widget.v;
+    final body = Map<String, dynamic>.from(v['body'] as Map? ?? const {});
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Icon(Icons.outbox_rounded, color: C.accent),
+            const SizedBox(width: 8),
+            Expanded(child: Text('${v['to'] ?? ''} ko bhejein?', style: const TextStyle(fontWeight: FontWeight.w700))),
+          ]),
+          Text('Aapka tap chahiye: ${v['reason'] ?? ''}', style: const TextStyle(color: C.warn, fontSize: 12.5)),
+          if ((v['text'] ?? '') != '')
+            Container(
+              margin: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
+              child: Text(v['text'] as String, style: const TextStyle(fontSize: 13)),
+            ),
+          if ((body['name'] ?? body['place'] ?? body['email_id'] ?? '') != '')
+            Text('${body['name'] ?? body['place'] ?? 'email'}', style: const TextStyle(color: C.chip, fontSize: 12.5)),
+          if (_done == null)
+            Row(children: [
+              Expanded(child: GradientButton(label: 'Bhejo', icon: Icons.send_rounded, height: 42, onTap: () => _act('send'))),
+              const SizedBox(width: 8),
+              TextButton(onPressed: () => _act('cancel'), child: const Text('Mat bhejo')),
+            ])
+          else
+            Padding(padding: const EdgeInsets.only(top: 6), child: Text(_done!, style: const TextStyle(color: C.ok))),
+        ]),
+      ),
+    );
+  }
+}

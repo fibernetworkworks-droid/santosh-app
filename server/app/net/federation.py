@@ -17,6 +17,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import re
 import time
 from email.utils import formatdate, parsedate_to_datetime
 from typing import Any
@@ -151,6 +152,8 @@ def _remote_card(domain: str) -> dict[str, Any]:
         _close(c)
     if card.get("protocol") != PROTOCOL or (card.get("domain") or "").lower() != domain.lower() or not card.get("server_key"):
         raise FedError(f"{domain} ka Hoola card sahi nahi hai.")
+    if len(_cards) > 2000:
+        _cards.clear()
     _cards[domain] = (time.time(), card)
     return card
 
@@ -178,6 +181,8 @@ def verify_request(method: str, path: str, headers: dict[str, str], body: bytes)
         Ed25519PublicKey.from_public_bytes(base64.b64decode(card["server_key"])).verify(base64.b64decode(h.get("x-hoola-sig", "")), msg)
     except Exception:
         raise FedError("server signature galat")
+    if len(_rate) > 5000:
+        _rate.clear()
     win = _rate.setdefault(domain, [])
     now = time.time()
     win[:] = [t for t in win if now - t < 60]
@@ -195,12 +200,13 @@ def send(env: dict[str, Any]) -> dict[str, Any]:
     if blocked(domain):
         return {"ok": False, "status": "refused", "reason": "Yeh server block hai."}
     try:
-        card = _remote_card(domain)
+        _remote_card(domain)
         body = json.dumps(env, ensure_ascii=False, separators=(",", ":")).encode()
         path = "/hoola/inbox"
         c = _client()
         try:
-            r = c.post(card.get("inbox") or base_url(domain) + path, content=body, headers=_sign_request("POST", path, body))
+            # always our own idea of the server's address (never a URL the remote card suggests)
+            r = c.post(base_url(domain) + path, content=body, headers=_sign_request("POST", path, body))
         finally:
             _close(c)
         data = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
@@ -246,24 +252,33 @@ def lookup(handle: str, domain: str) -> str:
 
 def fetch_share(sender: str, share_id: str, me_addr: str) -> tuple[str, str, bytes, str]:
     from .service import NetError
+    from urllib.parse import quote, unquote
     _, domain = idn.split(sender)
-    path = f"/hoola/share/{share_id}"
+    if not re.fullmatch(r"sh_[\w-]{10,40}", share_id or ""):
+        raise NetError("File ka pata galat hai.")
+    path = f"/hoola/share/{share_id}?for={quote(me_addr, safe='')}"
+    limit = 26 * 1024 * 1024
     try:
         _remote_card(domain)
         c = _client()
         try:
-            r = c.get(base_url(domain) + path, params={"for": me_addr}, headers=_sign_request("GET", path, b""))
+            with c.stream("GET", base_url(domain) + path, headers=_sign_request("GET", path, b"")) as r:
+                if r.status_code != 200:
+                    raise NetError("File ab uplabdh nahi hai.")
+                if int(r.headers.get("content-length") or 0) > limit:
+                    raise NetError("File bahut badi hai.")
+                buf = bytearray()
+                for chunk in r.iter_bytes():
+                    buf += chunk
+                    if len(buf) > limit:
+                        raise NetError("File bahut badi hai.")
+                headers = dict(r.headers)
         finally:
             _close(c)
     except (FedError, httpx.HTTPError) as e:
         raise NetError(f"File nahi aayi: {e}")
-    if r.status_code != 200:
-        raise NetError("File ab uplabdh nahi hai.")
-    if len(r.content) > 26 * 1024 * 1024:
-        raise NetError("File bahut badi hai.")
-    from urllib.parse import unquote
-    name = unquote(r.headers.get("x-hoola-name", "file"))
-    return name, r.headers.get("content-type", "application/octet-stream"), r.content, r.headers.get("x-hoola-sha256", "")
+    name = unquote(headers.get("x-hoola-name", "file"))
+    return name, headers.get("content-type", "application/octet-stream"), bytes(buf), headers.get("x-hoola-sha256", "")
 
 
 # ---------------------------------------------------------------- incoming (called by the HTTP routes)
@@ -291,7 +306,8 @@ def public_lookup(handle: str) -> dict[str, Any] | None:
 
 
 def serve_share(headers: dict[str, str], share_id: str, for_addr: str) -> tuple[str, str, bytes, str]:
-    domain = verify_request("GET", f"/hoola/share/{share_id}", headers, b"")
+    from urllib.parse import quote
+    domain = verify_request("GET", f"/hoola/share/{share_id}?for={quote(for_addr, safe='')}", headers, b"")
     if idn.split(for_addr)[1] != domain:
         raise FedError("yeh file us server ke liye nahi")
     from .share import fetch_share as local_fetch
@@ -316,6 +332,13 @@ def a2a(body: dict[str, Any]) -> dict[str, Any]:
         return {"jsonrpc": "2.0", "id": rid, "error": {"code": -32602, "message": "metadata.to must be a public Hoola business handle; text required"}}
     if policy.secret_found(text):
         return {"jsonrpc": "2.0", "id": rid, "error": {"code": -32602, "message": "Never send PIN / OTP / passwords / card numbers"}}
+    win = _rate.setdefault("a2a:" + row.tenant_id, [])
+    now = time.time()
+    win[:] = [t for t in win if now - t < 3600]
+    if len(win) >= 30:
+        return {"jsonrpc": "2.0", "id": rid, "error": {"code": -32000, "message": "Too many messages to this business; try later"}}
+    win.append(now)
+    text = policy.quote(text, 1500)
     from .service import tell
     try:
         tell(row.tenant_id, "hoola_msg", {"kind": "a2a", "from": "Bahar ka AI agent (A2A)", "fyi": False,

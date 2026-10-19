@@ -748,6 +748,7 @@ class Santosh extends ChangeNotifier {
         if (p['quiet'] != true) feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
         hoolaTick++;
         break;
+      case 'hoola_outbox':
       case 'hoola_ticket':
       case 'hoola_chain':
         feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));

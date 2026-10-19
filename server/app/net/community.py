@@ -224,7 +224,7 @@ def _check(kind: str, data: dict[str, Any]) -> dict[str, Any]:
     if kind not in KINDS:
         raise NetError("Samaj mein: question, answer, card, skill ya alert.")
     out: dict[str, Any] = {"kind": kind}
-    if policy.secret_found(f"{data.get('text') or ''} {data.get('title') or ''}"):
+    if policy.secret_found(policy.all_text(data)):
         raise NetError("Samaj mein PIN / OTP / password / card / Aadhaar jaisi jaankari nahi.")
     text, _ = scrub(str(data.get("text") or ""), keep_money=kind in ("card", "answer"))
     title, _ = scrub(str(data.get("title") or ""), keep_money=True)
@@ -293,8 +293,11 @@ def post(tenant: str, cid: str, kind: str, data: dict[str, Any]) -> dict[str, An
 
 def _store(tenant: str, cid: str, it: dict[str, Any]) -> CommunityItem:
     with session() as s:
-        row = s.scalars(select(CommunityItem).where(CommunityItem.tenant_id == tenant, CommunityItem.item_id == it["item_id"])).first()
+        row = s.scalars(select(CommunityItem).where(CommunityItem.tenant_id == tenant, CommunityItem.cid == cid,
+                                                    CommunityItem.item_id == it["item_id"])).first()
         if row is None:
+            if s.scalars(select(CommunityItem).where(CommunityItem.tenant_id == tenant, CommunityItem.item_id == it["item_id"])).first():
+                raise NetError("item id clash")             # never let one community touch another's items
             row = CommunityItem(tenant_id=tenant, cid=cid, item_id=it["item_id"], kind=it["kind"], author=it["author"],
                                 author_label=it.get("author_label", ""), parent=it.get("parent", ""), title=it.get("title", ""),
                                 text=it.get("text", ""), data=it.get("data") or {}, status=it.get("status", "available"))
@@ -409,7 +412,7 @@ def _push_update(hub_tenant: str, it: CommunityItem) -> None:
             _post(hub_tenant, m.address, "sam_update", {"cid": it.cid, "update": upd}, "tk_" + it.cid)
     if it.status == "recalled":
         from .learning import recall
-        recall(it.item_id)
+        recall(hub_tenant, it.cid, it.item_id)
 
 
 def _hub_rate(hub_tenant: str, cid: str, item_id: str, by: str, helpful: bool) -> dict[str, Any]:
@@ -424,8 +427,7 @@ def _hub_rate(hub_tenant: str, cid: str, item_id: str, by: str, helpful: bool) -
         else:
             it.unhelpful += 1
         old = it.created_at if it.created_at.tzinfo else it.created_at.replace(tzinfo=now().tzinfo)
-        if it.status == "waiting" and it.helpful >= 2 and it.reports == 0 and now() - old >= timedelta(hours=24):
-            it.status, became = "available", True
+        _ = old                                            # skills always need a moderator (ratings alone can't approve)
         author = it.author
         m = s.scalars(select(CommunityMember).where(CommunityMember.cid == cid, CommunityMember.address == author)).first()
         if m is not None:
@@ -714,38 +716,68 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules:
     if kind == "sam_welcome":
         for it in (body.get("items") or [])[:40]:
             if isinstance(it, dict) and it.get("item_id") and it.get("kind") in KINDS:
-                _store(tenant, cid, it)
+                ok, it2 = _valid_item(it)
+                if ok:
+                    try:
+                        _store(tenant, cid, it2)
+                    except NetError:
+                        continue
         tell(tenant, "hoola_samaj", {"cid": cid, "community": name, "event": "joined", "fyi": True},
              f"Samaj '{name}' mein aa gaye.")
         return {"ok": True, "status": "active"}
     if kind == "sam_item":
         it = body.get("item") or {}
-        if not isinstance(it, dict) or it.get("kind") not in KINDS:
-            return {"ok": False, "status": "refused", "reason": "bad item"}
-        if policy.secret_found(f"{it.get('title', '')} {it.get('text', '')}"):
-            return {"ok": False, "status": "refused", "reason": "mana ki gayi jaankari"}
-        if it.get("kind") == "skill":
-            from .learning import validate_skill
-            try:
-                it["data"] = {"skill": validate_skill((it.get("data") or {}).get("skill"))}
-            except NetError:
-                return {"ok": False, "status": "refused", "reason": "skill check failed"}
-        _store(tenant, cid, it)
+        ok, it = _valid_item(it)
+        if not ok:
+            return {"ok": False, "status": "refused", "reason": "item check failed"}
+        try:
+            _store(tenant, cid, it)
+        except NetError:
+            return {"ok": False, "status": "refused", "reason": "item id"}
         _show(tenant, cid, it)
         return {"ok": True, "status": "ok"}
     if kind == "sam_update":
         upd = body.get("update") or {}
+        found = False
         with session() as s:
-            row = s.scalars(select(CommunityItem).where(CommunityItem.tenant_id == tenant, CommunityItem.item_id == upd.get("item_id"))).first()
+            row = s.scalars(select(CommunityItem).where(CommunityItem.tenant_id == tenant, CommunityItem.cid == cid,
+                                                        CommunityItem.item_id == upd.get("item_id"))).first()
             if row is not None:
-                for k in ("status", "helpful", "unhelpful", "reports"):
-                    if k in upd:
-                        setattr(row, k, upd[k])
-        if upd.get("status") == "recalled":
+                found = True
+                if upd.get("status") in ("waiting", "available", "hidden", "removed", "recalled"):
+                    row.status = upd["status"]
+                for k in ("helpful", "unhelpful", "reports"):
+                    if isinstance(upd.get(k), int):
+                        setattr(row, k, max(0, upd[k]))
+        if found and upd.get("status") == "recalled":
             from .learning import recall
-            recall(str(upd.get("item_id")))
+            recall(tenant, cid, str(upd.get("item_id")))
         return {"ok": True, "status": "ok"}
     return {"ok": False, "status": "refused", "reason": "unknown"}
+
+
+def _valid_item(it: Any) -> tuple[bool, dict[str, Any]]:
+    """An item that came from a hub: shape, no forbidden details, skills re-checked."""
+    if not isinstance(it, dict) or it.get("kind") not in KINDS or not str(it.get("item_id") or "").startswith("sitem_"):
+        return False, {}
+    it = {k: it.get(k) for k in ("item_id", "kind", "author", "author_label", "parent", "title", "text", "data", "status",
+                                 "helpful", "unhelpful", "reports")}
+    it["title"], it["text"] = str(it.get("title") or "")[:200], str(it.get("text") or "")[:3000]
+    it["author_label"] = policy.clean_name(it.get("author_label"), 120)
+    it["data"] = it.get("data") if isinstance(it.get("data"), dict) else {}
+    if it.get("status") not in ("available", "waiting", "hidden", "removed", "recalled"):
+        it["status"] = "available"
+    for k in ("helpful", "unhelpful", "reports"):
+        it[k] = it[k] if isinstance(it.get(k), int) else 0
+    if policy.secret_found(policy.all_text(it)):
+        return False, {}
+    if it["kind"] == "skill":
+        from .learning import validate_skill
+        try:
+            it["data"] = {"skill": validate_skill((it.get("data") or {}).get("skill"))}
+        except NetError:
+            return False, {}
+    return True, it
 
 
 def install_skill(tenant: str, item: str) -> dict[str, Any]:

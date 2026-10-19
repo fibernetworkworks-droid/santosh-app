@@ -240,8 +240,7 @@ def _accept_post(hub_tenant: str, gid: str, author: str, kind: str, body: dict[s
     active = {m.address for m in _members(gid)}
     if author not in active:
         raise NetError("Aap is group mein nahi hain.")
-    text = policy.body_text(body)
-    if policy.secret_found(text):
+    if policy.secret_found(policy.all_text({k: v for k, v in body.items() if k != "_bytes"})):
         raise NetError("Group mein OTP / PIN / password / card / Aadhaar jaisi jaankari nahi bheji ja sakti.")
     since = now() - timedelta(days=1)
     with session() as s:
@@ -316,7 +315,7 @@ def post(tenant: str, gid: str, kind: str = "message", text: str = "", title: st
             except NetError:
                 raise NetError(f"'{assign_to}' group mein nahi mila.")
         body["assign_to"] = found
-    if policy.secret_found(policy.body_text(body)):
+    if policy.secret_found(policy.all_text(body)):
         raise NetError("Group mein OTP / PIN / password / card / Aadhaar jaisi jaankari nahi bheji ja sakti.")
     if kind == "file":
         from . import share
@@ -480,9 +479,12 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules:
             if g is None:
                 g = GroupRow(tenant_id=tenant, gid=gid, hub=sender)
                 s.add(g)
+            elif g.hub != sender:
+                return {"ok": False, "status": "refused", "reason": "group id kisi aur ka hai"}
             if g.status == "active":
                 return {"ok": True, "status": "active"}
-            g.hub, g.name, g.emoji, g.status = sender, str(body.get("name") or "Mandali")[:80], str(body.get("emoji") or "👥")[:8], "invited"
+            g.name = policy.clean_name(body.get("name") or "Mandali", 80) or "Mandali"
+            g.emoji, g.status = str(body.get("emoji") or "👥")[:8], "invited"
             s.flush()
             s.expunge(g)
         tell(tenant, "hoola_group", view(g) | {"event": "invite", "from": who},
@@ -497,6 +499,8 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules:
             m = s.scalars(select(GroupMember).where(GroupMember.gid == gid, GroupMember.address == sender)).first()
             if m is None:
                 return {"ok": False, "status": "refused", "reason": "member nahi"}
+            if kind in ("group_post", "group_task_update") and m.status != "active":
+                return {"ok": False, "status": "refused", "reason": "member active nahi"}
             if kind == "group_join" and m.status == "invited":
                 m.status = "active"
             elif kind == "group_decline" and m.status == "invited":
@@ -511,6 +515,8 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules:
                      f"{who} {'group mein aa gaye' if kind == 'group_join' else 'ne group chhoda'}: {name}.")
             return {"ok": True, "status": "ok"}
         if kind == "group_task_update":
+            if body.get("task_status") not in ("accepted", "done", "declined"):
+                return {"ok": False, "status": "refused", "reason": "status"}
             _on_task_update(hub_tenant, body, sender)
             return {"ok": True, "status": "ok"}
         try:
@@ -525,8 +531,12 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules:
         if g is None or g.hub != sender or g.status not in ("active", "invited"):
             return {"ok": False, "status": "refused", "reason": "group nahi"}
         if kind == "group_update":
-            g.name, g.emoji = str(body.get("name") or g.name)[:80], str(body.get("emoji") or g.emoji)[:8]
-            g.members = list(body.get("members") or [])[:MAX_MEMBERS]
+            g.name = policy.clean_name(body.get("name") or g.name, 80) or g.name
+            g.emoji = str(body.get("emoji") or g.emoji)[:8]
+            g.members = [{"address": str(m.get("address", ""))[:200], "label": policy.clean_name(m.get("label"), 120),
+                          "handle": policy.clean_name(m.get("handle"), 120).replace(" ", ""),
+                          "role": "admin" if m.get("role") == "admin" else "member"}
+                         for m in list(body.get("members") or [])[:MAX_MEMBERS] if isinstance(m, dict)]
             return {"ok": True, "status": "ok"}
         if kind == "group_remove":
             g.status = "removed"
@@ -545,8 +555,11 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules:
             tell(tenant, "hoola_group_post", {"gid": gid, "group": name, "kind": "task_update", "text": body.get("text", ""),
                                               "post_id": body.get("post_id"), "quiet": True})
             return {"ok": True, "status": "ok"}
-        if policy.secret_found(policy.body_text(body)):
+        if policy.secret_found(policy.all_text(body)):
             return {"ok": False, "status": "refused", "reason": "mana ki gayi jaankari"}
+        if body.get("kind") not in POST_KINDS or not str(body.get("post_id") or "").startswith("gpost_"):
+            return {"ok": False, "status": "refused", "reason": "post galat"}
+        body = dict(body, author_label=policy.clean_name(body.get("author_label"), 120))
         if body.get("share_id"):
             from . import share
             body = share.receive_hook(tenant, sender, "file", dict(body, _env=env["id"]))

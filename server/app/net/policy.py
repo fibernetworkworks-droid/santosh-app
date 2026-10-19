@@ -57,6 +57,38 @@ def body_text(body: dict[str, Any]) -> str:
     return "\n".join(parts)
 
 
+def all_text(obj: Any, depth: int = 0) -> str:
+    """Every string anywhere in a body (keys and values, nested), for the forbidden-detail check."""
+    if depth > 6:
+        return ""
+    if isinstance(obj, str):
+        return obj
+    if isinstance(obj, (int, float)) and not isinstance(obj, bool):
+        return str(obj)
+    if isinstance(obj, dict):
+        return "\n".join(f"{k} {all_text(v, depth + 1)}" for k, v in list(obj.items())[:200])
+    if isinstance(obj, (list, tuple)):
+        return "\n".join(all_text(v, depth + 1) for v in list(obj)[:200])
+    return ""
+
+
+_CTRL = re.compile(r"[\x00-\x1f\x7f\u2028\u2029\u202a-\u202e\u2066-\u2069]+")
+
+
+def quote(text: Any, limit: int = 500) -> str:
+    """Peer text for an owner's note / prompt: one line, no control characters, quotes neutralised, clipped."""
+    t = _CTRL.sub(" ", str(text or ""))
+    t = t.replace('"', "'").replace("[", "(").replace("]", ")").replace("{", "(").replace("}", ")")
+    t = re.sub(r"\s+", " ", t).strip()
+    return t[:limit] + ("…" if len(t) > limit else "")
+
+
+def clean_name(text: Any, limit: int = 40) -> str:
+    """A display name that came from someone else (owner / avatar / group name): letters, digits, spaces, . ' - only."""
+    t = re.sub(r"[^\w .'\-&]", "", _CTRL.sub(" ", str(text or "")), flags=re.UNICODE)
+    return re.sub(r"\s+", " ", t).strip()[:limit]
+
+
 def rule_key(kind: str, body: dict[str, Any]) -> str:
     if kind == "file" and str(body.get("name", "")).lower().endswith(APP_EXT):
         return "app_file"
@@ -132,7 +164,7 @@ def decide(tenant: str, rules: dict[str, Any], link, card: dict[str, Any] | None
            in_my_thread: bool = False) -> dict[str, Any]:
     """-> {'action': block|decline|auto|ask, 'reason': str, 'vip': bool, 'quiet': bool}"""
     text = body_text(body)
-    secret = secret_found(text)
+    secret = secret_found(all_text(body))
     if secret:
         return {"action": "block", "reason": f"is mein {secret} jaisi jaankari thi (Hoola yeh kabhi aage nahi bhejta)",
                 "vip": False, "quiet": False}

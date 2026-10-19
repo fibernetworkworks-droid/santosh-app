@@ -133,9 +133,9 @@ def test_connect_and_talk_across_servers(remote):
         tampered = dict(remote.envelope(me, "message", {"text": "hello"}), body={"text": "evil"})
         assert _post(cl, remote, tampered).json()["status"] == "refused"
         # a file from the other server is fetched with a signed request, then checked like any file
-        remote.files["sh_remote1"] = b"Plan: open Nashik office in December. " * 4
-        fe = remote.envelope(me, "file", {"text": "Plan", "name": "plan.txt", "size": 140, "share_id": "sh_remote1",
-                                          "sha256": hashlib.sha256(remote.files["sh_remote1"]).hexdigest()})
+        remote.files["sh_remote1abcdef"] = b"Plan: open Nashik office in December. " * 4
+        fe = remote.envelope(me, "file", {"text": "Plan", "name": "plan.txt", "size": 140, "share_id": "sh_remote1abcdef",
+                                          "sha256": hashlib.sha256(remote.files["sh_remote1abcdef"]).hexdigest()})
         assert _post(cl, remote, fe).json()["status"] == "pending"
         assert ev("default", "hoola_knock")[-1]["scan"]["verdict"] == "clear"
 

@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.34.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.34.1", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -1196,6 +1196,12 @@ def net_decide(mid: str, body: NetDecideIn, tenant: str = Depends(current_tenant
 def net_send(body: NetSendIn, tenant: str = Depends(current_tenant)):
     from .net import service as net
     return _net(net.send, tenant, body.to, body.kind, body.body, "", body.thread_id, body.handle, body.goal)
+
+
+@app.post("/api/net/outbox/{oid}", dependencies=[Depends(require_key)])
+def net_outbox(oid: str, body: NetAnswerIn, tenant: str = Depends(current_tenant)):
+    from .net import service as net
+    return _net(net.outbox_decide, tenant, oid, body.action)
 
 
 @app.get("/api/net/threads", dependencies=[Depends(require_key)])

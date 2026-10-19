@@ -246,12 +246,12 @@ def contact(tenant: str, business: str) -> str:
             mine.status, mine.relation = "active", "business"
         if btenant:
             theirs = s.scalars(select(Link).where(Link.tenant_id == btenant, Link.peer == me)).first()
-            if theirs is not None and theirs.status == "blocked":
+            if theirs is not None and theirs.status in ("blocked", "declined"):
                 raise NetError("Yeh business abhi aapse baat nahi le raha.")
             if theirs is None:
                 s.add(Link(tenant_id=btenant, peer=me, status="active", relation="business", via="customer"))
-            elif theirs.status != "active":
-                theirs.status = "active"
+            elif theirs.status in ("requested", "incoming"):
+                theirs.status = "active"         # a pending personal request becomes a customer connection
     return addr
 
 
@@ -290,6 +290,11 @@ def _webhook(b: Business, payload: dict[str, Any]) -> str:
     if not b.webhook_url:
         return ""
     import httpx
+    from ..bazar.custom_mcp import UrlError, check_url
+    try:
+        check_url(b.webhook_url)                 # re-checked every time (the name could now point inside)
+    except UrlError:
+        return "blocked"
     body = json.dumps(payload, ensure_ascii=False).encode()
     secret = idn._fernet().decrypt(b.webhook_secret.encode()).decode() if b.webhook_secret else ""
     sig = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest() if secret else ""
@@ -369,6 +374,19 @@ def webhook_in(tenant: str, body: bytes, signature: str) -> dict[str, Any]:
     if not hmac.compare_digest(want, signature or ""):
         raise NetError("bad signature")
     data = json.loads(body.decode() or "{}")
+    import time
+    ts = data.get("ts")
+    if not isinstance(ts, (int, float)) or abs(time.time() - float(ts)) > 300:
+        raise NetError("ts (unix seconds) chahiye, 5 minute ke andar")
+    nonce = str(data.get("nonce") or "")
+    if not 8 <= len(nonce) <= 80:
+        raise NetError("nonce chahiye")
+    from .models import Seen
+    key = f"wh:{tenant}:{nonce}"
+    with session() as s:
+        if s.get(Seen, key):
+            raise NetError("replay")
+        s.add(Seen(env_id=key[:80]))
     return update_ticket(tenant, str(data.get("ticket") or ""), str(data.get("status") or ""), str(data.get("note") or ""))
 
 
@@ -378,7 +396,7 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules:
         b = _biz(tenant)
         if b is None:
             return {"ok": False, "status": "refused", "reason": "business nahi"}
-        if policy.secret_found(str(body.get("text") or "")):
+        if policy.secret_found(policy.all_text(body)):
             return {"ok": False, "status": "refused", "reason": "mana ki gayi jaankari"}
         if policy.too_many(tenant, sender):
             return {"ok": False, "status": "refused", "reason": "bahut shikayatein"}
@@ -406,6 +424,9 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules:
         eta = f" Hum {b.hours} ke beech dekhte hain." if b.hours else ""
         return {"ok": True, "status": "ticket", "ticket": number, "eta": eta.strip()}
     if kind == "biz_update":
+        if body.get("status") not in ("open", "assigned", "in_progress", "resolved", "closed") or policy.secret_found(policy.all_text(body)):
+            return {"ok": False, "status": "refused", "reason": "update galat"}
+        body = dict(body, note=policy.quote(body.get("note"), 600), ticket=policy.clean_name(body.get("ticket"), 30))
         with session() as s:
             mt = s.scalars(select(CustomerTicket).where(CustomerTicket.tenant_id == tenant, CustomerTicket.business == sender,
                                                         CustomerTicket.number == str(body.get("ticket") or ""))).first()

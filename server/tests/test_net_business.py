@@ -136,7 +136,8 @@ def test_operator_badge_and_webhook_in(env, hooks):
         from app.net import identity as idn
         assert idn.my_card("kunal")["business"] is True
         biz.complain("ravi", "@kunal.raj", "Bill galat aaya hai is mahine")
-        body = json.dumps({"ticket": "T-1001", "status": "in_progress", "note": "Billing team dekh rahi hai"}).encode()
+        import time
+        body = json.dumps({"ticket": "T-1001", "status": "in_progress", "note": "Billing team dekh rahi hai", "ts": time.time(), "nonce": "n0nce-12345"}).encode()
         sig = "sha256=" + hmac.new(b"s3cret", body, hashlib.sha256).hexdigest()
         r = c.post("/hooks/hoola/kunal.raj/ticket", content=body, headers={"X-Hoola-Signature": sig})
         assert r.status_code == 200 and r.json()["status"] == "in_progress"

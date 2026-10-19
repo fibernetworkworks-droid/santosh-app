@@ -278,22 +278,41 @@ def my_card(tenant: str) -> dict[str, Any]:
 
 
 def remember_peer(card: dict[str, Any]) -> dict[str, Any]:
-    """Store / refresh what we know about a peer. Returns {'key_changed': bool}."""
-    addr = card["address"]
+    """Store / refresh what we know about a peer (names cleaned). A changed key is NOT taken: it waits as pending_key
+    until the owner re-verifies the safety code. Returns {'key_changed': bool}."""
+    from .policy import clean_name
+    addr = str(card.get("address") or "")
+    if not addr:
+        return {"key_changed": False}
     with session() as s:
         p = s.get(Peer, addr)
         changed = False
         if p is None:
-            p = Peer(address=addr)
+            p = Peer(address=addr, public_key=str(card.get("public_key") or ""))
             s.add(p)
         elif p.public_key and card.get("public_key") and p.public_key != card["public_key"]:
             changed = True
             p.key_changed_at = now()
-        for k in ("handle", "owner_name", "avatar_name", "avatar_gender", "public_key", "server", "verified", "business"):
-            if k in card and card[k] is not None:
-                setattr(p, k, card[k])
+            p.pending_key = str(card["public_key"])
+        p.handle = clean_name(card.get("handle") or p.handle, 120).replace(" ", "")
+        p.owner_name = clean_name(card.get("owner_name") or p.owner_name, 60)
+        p.avatar_name = clean_name(card.get("avatar_name") or p.avatar_name, 30)
+        p.avatar_gender = "f" if card.get("avatar_gender") == "f" else "m"
+        p.server = clean_name(card.get("server") or p.server, 120).replace(" ", "")
+        p.business = bool(card.get("business"))
+        p.verified = False                                    # a remote server cannot vouch for its users here
         p.updated_at = now()
     return {"key_changed": changed}
+
+
+def accept_new_key(addr: str) -> bool:
+    """The owner compared the safety code again: take the pending key."""
+    with session() as s:
+        p = s.get(Peer, addr)
+        if p is None or not p.pending_key:
+            return False
+        p.public_key, p.pending_key = p.pending_key, None
+        return True
 
 
 def peer_card(addr: str) -> dict[str, Any] | None:
@@ -313,5 +332,7 @@ def label(card: dict[str, Any] | None) -> str:
     """'Kunal ka Raju' / 'Meghana ki Meera'."""
     if not card:
         return "Anjaan Hoola"
+    from .policy import clean_name
     ka = "ki" if card.get("avatar_gender") == "f" else "ka"
-    return f"{card.get('owner_name') or '@' + str(card.get('handle'))} {ka} {card.get('avatar_name') or 'Hoola'}"
+    owner = clean_name(card.get("owner_name"), 60) or "@" + clean_name(card.get("handle"), 60)
+    return f"{owner} {ka} {clean_name(card.get('avatar_name'), 30) or 'Hoola'}"

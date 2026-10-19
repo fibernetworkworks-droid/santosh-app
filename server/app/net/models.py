@@ -42,6 +42,7 @@ class Peer(Base):
     verified: Mapped[bool] = mapped_column(Boolean, default=False)
     business: Mapped[bool] = mapped_column(Boolean, default=False)
     key_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pending_key: Mapped[str | None] = mapped_column(Text, nullable=True)        # a changed key waits for the owner
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -110,6 +111,23 @@ class NetMsg(Base):
     reason: Mapped[str] = mapped_column(Text, default="")
     snooze_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     quiet: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class Outbox(Base):
+    """Something the owner's avatar wants to send that needs the owner's own tap first (files, emails, contacts,
+    location, payment requests, or a text carrying phone numbers / addresses / IDs)."""
+    __tablename__ = "hoola_outbox"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("hob"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    to: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[str] = mapped_column(String(24))
+    body: Mapped[dict] = mapped_column(JSON, default=dict)
+    thread_id: Mapped[str] = mapped_column(String(40), default="")
+    handle: Mapped[bool] = mapped_column(Boolean, default=False)
+    goal: Mapped[str] = mapped_column(Text, default="")
+    reason: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(10), default="waiting")       # waiting | sent | cancelled
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

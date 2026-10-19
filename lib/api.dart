@@ -307,6 +307,9 @@ class Api {
   Future<Map<String, dynamic>> netChainAct(String id, String action, {String to = '', String note = ''}) async =>
       _hm(await _send('POST', '/api/net/chains/$id', body: {'action': action, 'to': to, 'note': note}, timeout: const Duration(seconds: 60)));
 
+  Future<Map<String, dynamic>> netOutbox(String id, String action) async =>
+      _hm(await _send('POST', '/api/net/outbox/$id', body: {'action': action}, timeout: const Duration(seconds: 60)));
+
   // ---------------- Hoola avatar ----------------
   Future<Map<String, dynamic>> avatarGet() async => Map<String, dynamic>.from(await _send('GET', '/api/avatar'));
   Future<Map<String, dynamic>> avatarPut(Map<String, dynamic> body) async =>
