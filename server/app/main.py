@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.26.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.27.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -95,7 +95,7 @@ def healthz():
     st = get_settings()
     from .voice import MALE_VOICES
     from . import mail
-    features = ["routines", "voice", "web", "bazar"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -110,7 +110,7 @@ def healthz():
         + (["browser"] if __import__("app.browser", fromlist=["x"]).configured() else []) \
         + (["push"] if __import__("app.push", fromlist=["x"]).configured() else [])
     from . import accounts
-    return {"ok": True, "version": app.version, "google_login": accounts.oauth_configured(),
+    return {"ok": True, "app": "Hoola", "version": app.version, "google_login": accounts.oauth_configured(),
             "dry_run": st.wa_dry_run, "model": st.anthropic_model,
             "chat_brain": __import__("app.agent.llm", fromlist=["x"]).describe(),
             "brain_configured": bool(st.anthropic_api_key), "features": features,
@@ -1070,6 +1070,48 @@ class NotebookAudioIn(BaseModel):
     language: str = "hinglish"
     focus: str = ""
     conversation_id: str = ""
+
+
+# ---------------- Hoola avatar: name, gender, voice, Mere Niyam ----------------
+class AvatarIn(BaseModel):
+    name: str | None = None
+    gender: str | None = None
+    voice: str | None = None
+    setup_done: bool | None = None
+    rules: dict | None = None
+
+
+class RulesTextIn(BaseModel):
+    text: str
+
+
+@app.get("/api/avatar", dependencies=[Depends(require_key)])
+def avatar_get(tenant: str = Depends(current_tenant)):
+    from .avatar import service as av
+    return av.get(tenant)
+
+
+@app.put("/api/avatar", dependencies=[Depends(require_key)])
+def avatar_put(body: AvatarIn, tenant: str = Depends(current_tenant)):
+    from .avatar import service as av
+    try:
+        return av.save(tenant, body.name, body.gender, body.voice, body.setup_done, body.rules)
+    except av.AvatarError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/avatar/rules/parse", dependencies=[Depends(require_key)])
+async def avatar_rules_parse(body: RulesTextIn, tenant: str = Depends(current_tenant)):
+    """Owner's own words -> proposed rules (not saved until PUT /api/avatar with rules)."""
+    from .avatar import service as av
+    try:
+        cur = av.get(tenant)
+        rules = await av.parse_rules(body.text, cur["rules"])
+    except av.AvatarError as e:
+        raise HTTPException(400, str(e))
+    except Exception:
+        raise HTTPException(503, "Abhi niyam samajh nahi paaye; neeche se khud chuniye.")
+    return {"rules": rules, "rules_summary": av.rules_summary(rules, cur["name"])}
 
 
 # ---------------- App Jaanch (REA static checks of APK / EXE files; nothing is run) ----------------

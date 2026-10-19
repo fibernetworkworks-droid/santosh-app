@@ -19,6 +19,7 @@ import 'sheets_screen.dart';
 import 'slides_screen.dart';
 import 'youtube_screen.dart';
 import 'appcheck_screen.dart';
+import 'avatar_setup_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -100,6 +101,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 24), children: [
       Text('Profile', style: display(28)),
       const SizedBox(height: 14),
+      ListenableBuilder(
+        listenable: app,
+        builder: (context, _) => Glass(
+          child: Column(children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.face_retouching_natural_rounded, color: C.accent),
+              title: Text('Mera Hoola: ${app.aName}', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Naam, ${app.aFemale ? 'mahila' : 'purush'}, awaaz'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AvatarSetupScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.rule_rounded, color: C.teal),
+              title: const Text('Mere Niyam', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Doosre Hoola ${app.aName} ke zariye aapse kaise jud sakte hain'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AvatarSetupScreen(app: app, rulesOnly: true))),
+            ),
+          ]),
+        ),
+      ),
+      const SizedBox(height: 18),
       ListenableBuilder(listenable: app, builder: (context, _) => _BackgroundCard(app: app)),
       const SizedBox(height: 18),
       const _WakeCard(),
@@ -119,7 +144,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.menu_book_rounded, color: C.teal),
-          title: const Text('Santosh Notebook', style: TextStyle(fontWeight: FontWeight.w700)),
+          title: const Text('Hoola Notebook', style: TextStyle(fontWeight: FontWeight.w700)),
           subtitle: const Text('NotebookLM jaisa: files / links se jawab, study guide, Hindi audio overview'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => NotebooksScreen(app: app))),
@@ -230,7 +255,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.auto_awesome_mosaic_rounded, color: C.accent),
           title: const Text('Mere Artifacts', style: TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: const Text('Santosh ke banaye apps, tracker, chart aur documents'),
+          subtitle: const Text('Hoola ke banaye apps, tracker, chart aur documents'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ArtifactsScreen(app: app))),
         ),
@@ -296,20 +321,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
           ]),
-          if (app.realtimeVoice && app.voices.isNotEmpty) ...[
+          if (app.realtimeVoice && ((app.avatar['voices'] as Map?)?[app.aFemale ? 'f' : 'm'] as List? ?? const []).isNotEmpty) ...[
             const SizedBox(height: 12),
-            const Text('Santosh ki awaaz (Baat tab)', style: TextStyle(fontWeight: FontWeight.w700)),
+            Text('${app.aName} ki awaaz (Baat tab)', style: const TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final v in app.voices)
+              for (final v in ((app.avatar['voices'] as Map?)?[app.aFemale ? 'f' : 'm'] as List? ?? const []))
                 ChoiceChip(
-                  label: Text('${v['id']} · ${v['style']}'),
+                  label: Text('${(v as Map)['id']} · ${v['label']}'),
                   selected: app.voiceName == v['id'],
                   showCheckmark: false,
                   selectedColor: C.accent,
                   labelStyle: TextStyle(color: app.voiceName == v['id'] ? C.onAccent : C.chip, fontWeight: FontWeight.w600, fontSize: 12.5),
                   onSelected: (_) async {
-                    await app.setVoice(v['id'] as String);
+                    await app.saveAvatar(voice: v['id'] as String);
                     setState(() {});
                   },
                 ),
@@ -317,7 +342,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Bolkar poochhun to Santosh bolkar jawab de'),
+            title: const Text('Bolkar poochhun to Hoola bolkar jawab de'),
             value: app.speakReplies,
             onChanged: (v) async {
               await app.saveSettings(speak: v);
@@ -329,7 +354,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       const SizedBox(height: 18),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Santosh ko yaad hai', style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text('Hoola ko yaad hai', style: TextStyle(fontWeight: FontWeight.w700)),
           if (_facts.isEmpty) const Padding(padding: EdgeInsets.only(top: 6), child: Text('Abhi kuch nahi. Boliye: "Yaad rakhna, mummy ka birthday 5 June hai".', style: TextStyle(color: C.muted))),
           for (final f in _facts)
             ListTile(
@@ -399,7 +424,7 @@ class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObs
         : !app.backgroundRunning
             ? 'Shuru ho raha hai…'
             : st == 'connected'
-                ? 'Chalu · Santosh duty par hai'
+                ? 'Chalu · Hoola duty par hai'
                 : st.isEmpty
                     ? 'Chalu'
                     : 'Chalu · $st';
@@ -426,11 +451,11 @@ class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObs
           value: on,
           onChanged: (v) => app.setBackground(v),
         ),
-        const Text('App band ho tab bhi: Santosh ke jawab notification mein, alarm aur timer bajenge, calendar mein entry, aur Santosh ke roz ke kaam chalte rahenge.',
+        const Text('App band ho tab bhi: Hoola ke jawab notification mein, alarm aur timer bajenge, calendar mein entry, aur Hoola ke roz ke kaam chalte rahenge.',
             style: TextStyle(fontSize: 12.5, color: C.muted)),
         if (on && app.batteryOptimized)
-          fix('Battery saver Santosh ko rok sakta hai', 'Santosh ko "Unrestricted / Don\'t optimize" par rakhiye', 'Theek karo', Native.askBattery),
-        fix('Phone lock par bhi Santosh', 'Vivo/Oppo/Realme/Xiaomi par ek baar settings theek kijiye', 'Dekho', () => LockSafe.showFix(context)),
+          fix('Battery saver Hoola ko rok sakta hai', 'Hoola ko "Unrestricted / Don\'t optimize" par rakhiye', 'Theek karo', Native.askBattery),
+        fix('Phone lock par bhi Hoola', 'Vivo/Oppo/Realme/Xiaomi par ek baar settings theek kijiye', 'Dekho', () => LockSafe.showFix(context)),
         if (!app.exactAlarms)
           fix('Alarm time par bajne ke liye', '"Alarms & reminders" ki permission dijiye', 'Allow', () async {
             await Native.askExactAlarms();
@@ -438,7 +463,7 @@ class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObs
             await app.refreshBackgroundInfo();
           }),
         if (on && !app.hasCalendar)
-          fix('Calendar permission', 'Taaki Santosh meetings seedha calendar mein save kare', 'Allow', () async {
+          fix('Calendar permission', 'Taaki Hoola meetings seedha calendar mein save kare', 'Allow', () async {
             await Native.askCalendar();
             await Future.delayed(const Duration(seconds: 2));
             await app.refreshBackgroundInfo();

@@ -1,4 +1,4 @@
-"""Santosh Desktop window: pair, choose shared folders, see everything Santosh did on this PC."""
+"""Hoola Desktop window: pair, choose shared folders, see everything Hoola did on this PC."""
 from __future__ import annotations
 
 import platform
@@ -32,7 +32,7 @@ class App:
         self._banner_at = 0.0
 
         self.root = tk.Tk()
-        self.root.title("Santosh Desktop")
+        self.root.title("Hoola Desktop")
         self.root.geometry("560x640")
         self.root.minsize(480, 520)
         self.root.configure(bg=BG)
@@ -57,7 +57,7 @@ class App:
         tk = self.tk
         head = tk.Frame(self.root, bg=BG)
         head.pack(fill="x", padx=18, pady=(16, 6))
-        tk.Label(head, text="Santosh Desktop", font=("Segoe UI", 18, "bold"), bg=BG, fg=INK).pack(anchor="w")
+        tk.Label(head, text="Hoola Desktop", font=("Segoe UI", 18, "bold"), bg=BG, fg=INK).pack(anchor="w")
         tk.Label(head, textvariable=self.status, font=("Segoe UI", 10), bg=BG, fg=MUTED, wraplength=500, justify="left").pack(anchor="w")
         self.body = tk.Frame(self.root, bg=BG)
         self.body.pack(fill="both", expand=True, padx=18, pady=6)
@@ -84,12 +84,12 @@ class App:
     def _pair_view(self) -> None:
         tk, ttk = self.tk, self.ttk
         f = self._card("Phone se jodiye")
-        tk.Label(f, text="1. Phone par Santosh app kholiye > Main > Mera PC > 'PC jodiye'.\n"
+        tk.Label(f, text="1. Phone par Hoola app kholiye > Main > Mera PC > 'PC jodiye'.\n"
                          "2. Wahan dikha 6 ank ka code yahan daaliye.", bg=PANEL, fg=MUTED, justify="left").pack(anchor="w", padx=12)
         server = tk.StringVar(value=self.cfg.server or "https://")
         code = tk.StringVar()
         name = tk.StringVar(value=self.cfg.name)
-        for label, var in (("Santosh server ka pata", server), ("6 ank ka code", code), ("Is PC ka naam", name)):
+        for label, var in (("Hoola server ka pata", server), ("6 ank ka code", code), ("Is PC ka naam", name)):
             tk.Label(f, text=label, bg=PANEL, fg=INK).pack(anchor="w", padx=12, pady=(8, 0))
             ttk.Entry(f, textvariable=var, width=48).pack(anchor="w", padx=12)
         msg = tk.StringVar()
@@ -116,8 +116,8 @@ class App:
     def _main(self) -> None:
         tk, ttk = self.tk, self.ttk
         from tkinter import filedialog
-        f = self._card("Santosh kaun se folder dekh sakta hai")
-        tk.Label(f, text="Sirf yahi folder. Baaki PC Santosh ko nahi dikhta. Phone se aayi files 'Santosh Inbox' mein aati hain.",
+        f = self._card("Hoola kaun se folder dekh sakta hai")
+        tk.Label(f, text="Sirf yahi folder. Baaki PC Hoola ko nahi dikhta. Phone se aayi files 'Santosh Inbox' mein aati hain.",
                  bg=PANEL, fg=MUTED, wraplength=490, justify="left").pack(anchor="w", padx=12)
         lb = tk.Listbox(f, height=5, activestyle="none", relief="flat", bg="#FBFAFF")
         lb.pack(fill="x", padx=12, pady=6)
@@ -156,15 +156,15 @@ class App:
             self.cfg.paused = paused.get()
             save(self.cfg)
             self.bridge.push_info()
-        ttk.Checkbutton(s, text="Rokiye (Santosh is PC par kuch nahi karega)", variable=paused, command=toggle_pause).pack(anchor="w", padx=12)
+        ttk.Checkbutton(s, text="Rokiye (Hoola is PC par kuch nahi karega)", variable=paused, command=toggle_pause).pack(anchor="w", padx=12)
         control = tk.BooleanVar(value=self.cfg.control_enabled)
 
         def toggle_control() -> None:
             self.cfg.control_enabled = control.get()
             save(self.cfg)
             self.bridge.push_info()
-            self._log("PC chalana: " + ("ON (Santosh screen dekh kar apps chala sakta hai)" if control.get() else "OFF"))
-        ttk.Checkbutton(s, text="Santosh ko PC chalane dein (screen, mouse, keyboard, apps)", variable=control,
+            self._log("PC chalana: " + ("ON (Hoola screen dekh kar apps chala sakta hai)" if control.get() else "OFF"))
+        ttk.Checkbutton(s, text="Hoola ko PC chalane dein (screen, mouse, keyboard, apps)", variable=control,
                         command=toggle_control).pack(anchor="w", padx=12)
         tk.Label(s, text="Chalate waqt upar orange patti dikhegi; 'Rokiye' dabaiye ya mouse ko screen ke upar-baayen kone mein le jaiye.",
                  bg=PANEL, fg=MUTED, wraplength=490, justify="left", font=("Segoe UI", 8)).pack(anchor="w", padx=12)
@@ -189,7 +189,7 @@ class App:
         ttk.Button(b, text="Is PC ko alag karein", command=unpair).pack(side="left")
         ttk.Button(b, text="Band karein (Quit)", command=self.quit).pack(side="left", padx=6)
 
-        a = self._card("Santosh ne is PC par kya kiya")
+        a = self._card("Hoola ne is PC par kya kiya")
         self.logbox = tk.Text(a, height=10, relief="flat", bg="#FBFAFF", fg=INK, state="disabled", wrap="word")
         self.logbox.pack(fill="both", expand=True, padx=12, pady=(0, 12))
 
@@ -226,7 +226,7 @@ class App:
         self.root.after(250, self._pump)
 
     def _show_banner(self, what: str) -> None:
-        """Always-on-top strip while Santosh uses the PC, with a stop button."""
+        """Always-on-top strip while Hoola uses the PC, with a stop button."""
         import time as _t
         tk = self.tk
         self._banner_at = _t.time()
@@ -248,13 +248,13 @@ class App:
                 self.cfg.paused = True
                 save(self.cfg)
                 self.bridge.push_info()
-                self._log("Aapne Santosh ko rok diya (Resume ke liye Settings mein 'Rokiye' hataiye).")
+                self._log("Aapne Hoola ko rok diya (Resume ke liye Settings mein 'Rokiye' hataiye).")
                 b.destroy()
                 self._banner = None
                 self._render()
             tk.Button(b, text="Rokiye", command=stop, bg=INK, fg="white", relief="flat").pack(side="right", padx=8, pady=6)
             self._banner = b
-        self._banner_lbl.configure(text=f"🤖 Santosh is PC ko chala raha hai · {what[:40]}")
+        self._banner_lbl.configure(text=f"🤖 Hoola is PC ko chala raha hai · {what[:40]}")
 
     def quit(self) -> None:
         self.bridge.stop()

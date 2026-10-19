@@ -158,7 +158,7 @@ class _AppCheckScreenState extends State<AppCheckScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Kisi ne WhatsApp, SMS ya email par APK / EXE bheji hai? Install karne se pehle yahan jaanchiye. Santosh '
+            const Text('Kisi ne WhatsApp, SMS ya email par APK / EXE bheji hai? Install karne se pehle yahan jaanchiye. Hoola '
                 'file ko chalata nahi, sirf padhta hai: kaunsi permissions (SMS / OTP, screen control), icon chhupta hai kya, kisne '
                 'sign kiya, aur naam bank / KYC / challan wala fraud to nahi.',
                 style: TextStyle(color: C.muted, fontSize: 13)),

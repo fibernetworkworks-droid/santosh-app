@@ -47,7 +47,7 @@ class _ArtifactsScreenState extends State<ArtifactsScreen> {
   Future<void> _load() async {
     final api = app.api;
     if (api == null) {
-      if (mounted) setState(() => _err = 'Santosh se connect nahi hai.');
+      if (mounted) setState(() => _err = 'Hoola se connect nahi hai.');
       return;
     }
     try {
@@ -136,7 +136,7 @@ class _ArtifactsScreenState extends State<ArtifactsScreen> {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('Abhi koi artifact nahi', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                       SizedBox(height: 6),
-                      Text('Santosh se boliye: "Mere kharche ka tracker banao", "EMI calculator bana do", '
+                      Text('Hoola se boliye: "Mere kharche ka tracker banao", "EMI calculator bana do", '
                           '"Kal ki meeting ka plan banao". Woh ek chhota app bana dega jo yahan dikhega.',
                           style: TextStyle(color: C.muted, fontSize: 13, height: 1.4)),
                     ]),

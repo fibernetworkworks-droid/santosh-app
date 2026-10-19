@@ -206,12 +206,12 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
   }
 
   String get _status => switch (_act) {
-        _Act.idle => _note ?? 'Call button dabaiye aur Santosh se seedhe baat kijiye',
-        _Act.connecting => 'Santosh ko call lag raha hai…',
-        _Act.listening => _muted ? 'Mic band hai' : 'Boliye, Santosh sun raha hai',
-        _Act.userTalking => 'Sun raha hoon…',
-        _Act.working => '${_tool ?? 'Kaam kar raha hoon'}…',
-        _Act.speaking => 'Santosh bol raha hai · beech mein bol sakte hain',
+        _Act.idle => _note ?? 'Call button dabaiye aur ${app.aName} se seedhe baat kijiye',
+        _Act.connecting => '${app.aName} ko call lag raha hai…',
+        _Act.listening => _muted ? 'Mic band hai' : app.g('Boliye, ${app.aName} sun raha hai'),
+        _Act.userTalking => app.g('Sun raha hoon…'),
+        _Act.working => '${_tool ?? app.g('Kaam kar raha hoon')}…',
+        _Act.speaking => app.g('${app.aName} bol raha hai · beech mein bol sakte hain'),
       };
 
   @override
@@ -270,7 +270,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
           const SizedBox(width: 26),
           _orb(),
           const SizedBox(width: 26),
-          _small(Icons.front_hand_rounded, 'Santosh ko roko', _act == _Act.speaking ? () => _call?.cutSpeech() : null),
+          _small(Icons.front_hand_rounded, '${app.aName} ko roko', _act == _Act.speaking ? () => _call?.cutSpeech() : null),
         ]),
       ),
     ]);
@@ -315,7 +315,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
 
   Widget _orb() => Semantics(
         button: true,
-        label: _inCall ? 'Call khatam karo' : 'Santosh ko call karo',
+        label: _inCall ? 'Call khatam karo' : '${app.aName} ko call karo',
         child: GestureDetector(
           onTap: _act == _Act.connecting ? null : (_inCall ? _end : _start),
           child: AnimatedBuilder(

@@ -6,12 +6,12 @@ import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 
-/** Quick-settings tile: swipe down, tap "Santosh", talk. Works from the lock screen's shade too. */
+/** Quick-settings tile: swipe down, tap "Hoola", talk. Works from the lock screen's shade too. */
 class SantoshTile : TileService() {
     override fun onStartListening() {
         qsTile?.apply {
             state = Tile.STATE_ACTIVE
-            label = "Santosh"
+            label = "Hoola"
             if (Build.VERSION.SDK_INT >= 29) subtitle = "Baat karein"
             updateTile()
         }

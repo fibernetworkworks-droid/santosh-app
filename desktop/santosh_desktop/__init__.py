@@ -1,2 +1,2 @@
-"""Santosh Desktop: connects this computer to Santosh on your phone (files, printing, TallyPrime)."""
+"""Hoola Desktop: connects this computer to Hoola on your phone (files, printing, TallyPrime)."""
 __version__ = "1.1.0"

@@ -28,24 +28,24 @@ object Notify {
     fun channels(ctx: Context) {
         if (Build.VERSION.SDK_INT < 26) return
         val m = nm(ctx)
-        m.createNotificationChannel(NotificationChannel(CH_SERVICE, "Santosh background", NotificationManager.IMPORTANCE_LOW).apply {
-            description = "Shows that Santosh is working while the app is closed"
+        m.createNotificationChannel(NotificationChannel(CH_SERVICE, "Hoola background", NotificationManager.IMPORTANCE_LOW).apply {
+            description = "Shows that Hoola is working while the app is closed"
             setShowBadge(false)
         })
-        m.createNotificationChannel(NotificationChannel(CH_MESSAGES, "Santosh messages", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "Replies, reminders and reports from Santosh"
+        m.createNotificationChannel(NotificationChannel(CH_MESSAGES, "Hoola messages", NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "Replies, reminders and reports from Hoola"
             enableVibration(true)
         })
         m.deleteNotificationChannel("santosh_call")
-        m.createNotificationChannel(NotificationChannel(CH_CALL, "Santosh call", NotificationManager.IMPORTANCE_DEFAULT).apply {
-            description = "Shows while you are on a voice call with Santosh (also on the lock screen)"
+        m.createNotificationChannel(NotificationChannel(CH_CALL, "Hoola call", NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = "Shows while you are on a voice call with Hoola (also on the lock screen)"
             setShowBadge(false)
             setSound(null, null)
             enableVibration(false)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         })
-        m.createNotificationChannel(NotificationChannel(CH_ALARM, "Santosh alarms", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "Alarms and timers set by Santosh"
+        m.createNotificationChannel(NotificationChannel(CH_ALARM, "Hoola alarms", NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "Alarms and timers set by Hoola"
             setSound(
                 RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
                 AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
@@ -84,7 +84,7 @@ object Notify {
                      else PendingIntent.getService(ctx, 7, hang, piFlags())
         val b = builder(ctx, CH_CALL)
             .setSmallIcon(R.drawable.ic_stat_santosh)
-            .setContentTitle("Santosh se baat chal rahi hai")
+            .setContentTitle("Hoola se baat chal rahi hai")
             .setContentText("Phone lock ho tab bhi sun raha hoon")
             .setOngoing(true)
             .setUsesChronometer(true)
@@ -105,7 +105,7 @@ object Notify {
         val clean = text.replace(Regex("[*_#`]"), "")
         val b = builder(ctx, CH_MESSAGES)
             .setSmallIcon(R.drawable.ic_stat_santosh)
-            .setContentTitle("Santosh")
+            .setContentTitle("Hoola")
             .setContentText(clean)
             .setStyle(Notification.BigTextStyle().bigText(clean))
             .setAutoCancel(true)
@@ -132,7 +132,7 @@ object Notify {
         val b = builder(ctx, CH_ALARM)
             .setSmallIcon(R.drawable.ic_stat_santosh)
             .setContentTitle("⏰ $label")
-            .setContentText("Santosh: $timeText")
+            .setContentText("Hoola: $timeText")
             .setCategory(Notification.CATEGORY_ALARM)
             .setFullScreenIntent(fullPi, true)
             .setContentIntent(fullPi)

@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'api.dart';
 import 'device.dart';
 import 'emotion.dart';
+import 'hoola.dart';
 import 'native.dart';
 
 class FeedItem {
@@ -47,6 +48,56 @@ class Santosh extends ChangeNotifier {
   Future<void> setVoice(String v) async {
     await _prefs.setString('voice', v);
     notifyListeners();
+  }
+
+  // ---------------- Hoola avatar (the name, gender and voice the owner gave their AI coworker) ----------------
+  Map<String, dynamic> avatar = {};
+  bool avatarLoaded = false;
+  String get aName => (avatar['name'] as String?)?.trim().isNotEmpty == true ? avatar['name'] as String : (_prefs.getString('a_name') ?? 'Santosh');
+  bool get aFemale => (avatar['gender'] ?? _prefs.getString('a_gender')) == 'f';
+  bool get needsAvatarSetup => connected && avatarLoaded && avatar['setup_done'] != true;
+  Map<String, dynamic> get avatarRules => Map<String, dynamic>.from(avatar['rules'] as Map? ?? const {});
+
+  /// Hindi verb forms for the avatar: "kar raha hoon" -> "kar rahi hoon" when she is female.
+  String g(String text) => aFemale ? genderedHi(text) : text;
+
+  Future<void> loadAvatar() async {
+    try {
+      avatar = await api!.avatarGet();
+      avatarLoaded = true;
+      await _prefs.setString('a_name', aName);
+      await _prefs.setString('a_gender', aFemale ? 'f' : 'm');
+      final v = avatar['voice'] as String?;
+      if (v != null && v.isNotEmpty && v != voiceName) await _prefs.setString('voice', v);
+      notifyListeners();
+    } catch (_) {
+      // older server without /api/avatar: keep "Santosh", never block the app on setup
+      avatarLoaded = false;
+    }
+  }
+
+  /// Returns an error message, or null when saved.
+  Future<String?> saveAvatar({String? name, String? gender, String? voice, bool? setupDone, Map<String, dynamic>? rules}) async {
+    try {
+      avatar = await api!.avatarPut({
+        if (name != null) 'name': name,
+        if (gender != null) 'gender': gender,
+        if (voice != null) 'voice': voice,
+        if (setupDone != null) 'setup_done': setupDone,
+        if (rules != null) 'rules': rules,
+      });
+      avatarLoaded = true;
+      await _prefs.setString('a_name', aName);
+      await _prefs.setString('a_gender', aFemale ? 'f' : 'm');
+      final v = avatar['voice'] as String?;
+      if (v != null && v.isNotEmpty) await _prefs.setString('voice', v);
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    }
   }
 
   Api? api;
@@ -211,6 +262,7 @@ class Santosh extends ChangeNotifier {
       await refreshLists();
       await refreshRoutines();
       await refreshAccount();
+      await loadAvatar();
       for (final a in await api!.pendingActions()) {
         await _runAction(a);
       }
@@ -403,14 +455,14 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _picks = {};
   void onCalendarLinked(bool ok) {
     calendarLinkedTick++;
-    feed.add(FeedItem('note', {'text': ok ? 'Google Calendar jud gaya ✓ Ab Santosh aapka schedule dekh aur bana sakta hai.' : 'Calendar nahi jud paya, dobara koshish kijiye.'}));
+    feed.add(FeedItem('note', {'text': ok ? g('Google Calendar jud gaya ✓ Ab $aName aapka schedule dekh aur bana sakta hai.') : 'Calendar nahi jud paya, dobara koshish kijiye.'}));
     notifyListeners();
   }
 
   int mailLinkedTick = 0;                      // bumps when a mailbox got connected (Email screen refreshes)
   void onMailLinked(bool ok) {
     mailLinkedTick++;
-    feed.add(FeedItem('note', {'text': ok ? 'Email jud gaya ✓ Ab Santosh aapki mail padh aur likh sakta hai.' : 'Email nahi jud paya, dobara koshish kijiye.'}));
+    feed.add(FeedItem('note', {'text': ok ? g('Email jud gaya ✓ Ab $aName aapki mail padh aur likh sakta hai.') : 'Email nahi jud paya, dobara koshish kijiye.'}));
     notifyListeners();
   }
 
@@ -535,7 +587,7 @@ class Santosh extends ChangeNotifier {
 
   void onBazarLinked(bool ok) {
     bazarLinkedTick++;
-    feed.add(FeedItem('note', {'text': ok ? 'App jud gaya ✓ Ab Santosh order kar sakta hai.' : 'App link nahi ho paya, dobara koshish kijiye.'}));
+    feed.add(FeedItem('note', {'text': ok ? g('App jud gaya ✓ Ab $aName order kar sakta hai.') : 'App link nahi ho paya, dobara koshish kijiye.'}));
     notifyListeners();
   }
 
@@ -573,7 +625,7 @@ class Santosh extends ChangeNotifier {
           _syncBazar();
           feelReply(p['text'] as String? ?? '');
           _replies.add(p);
-          if (inBackground && !backgroundRunning && !pushOn) Device.instance.showNow('Santosh', p['text'] as String? ?? '');
+          if (inBackground && !backgroundRunning && !pushOn) Device.instance.showNow(aName, p['text'] as String? ?? '');
           if (!voiceMode && _lastInputWasVoice && speakReplies && p['source'] == 'agent') _speak(p['text'] as String? ?? '');
         }
         break;
@@ -663,7 +715,7 @@ class Santosh extends ChangeNotifier {
         } else {
           _bazar[id] = FeedItem('bazar', Map<String, dynamic>.from(p));
           feed.add(_bazar[id]!);
-          if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Santosh: approve karein', '${p['title'] ?? ''} ${p['amount'] ?? ''}');
+          if (inBackground && !_replaying && !pushOn) Device.instance.showNow('$aName: approve karein', '${p['title'] ?? ''} ${p['amount'] ?? ''}');
           if (!_replaying) setMood(Mood.think, hold: const Duration(seconds: 10));
         }
         break;
@@ -676,7 +728,7 @@ class Santosh extends ChangeNotifier {
       case 'pc_file':
         feed.add(FeedItem('pc_file', Map<String, dynamic>.from(p)));
         if (inBackground && !_replaying && !pushOn) {
-          Device.instance.showNow(p['source'] == 'bazar' ? 'Santosh ne PDF banaya' : 'PC se file aayi', p['name'] as String? ?? '');
+          Device.instance.showNow(p['source'] == 'bazar' ? '$aName ne PDF banaya' : 'PC se file aayi', p['name'] as String? ?? '');
         }
         break;
       case 'artifact':
@@ -694,7 +746,7 @@ class Santosh extends ChangeNotifier {
         if (!_replaying) {
           latestArtifact = Map<String, dynamic>.from(_artifacts[aid]!.data);
           artifactTick++;
-          if (nowReady && inBackground && !pushOn) Device.instance.showNow('Santosh ne banaya', p['title'] as String? ?? '');
+          if (nowReady && inBackground && !pushOn) Device.instance.showNow('$aName ne banaya', p['title'] as String? ?? '');
         }
         break;
       case 'browser':

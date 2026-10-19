@@ -107,7 +107,7 @@ class _DriveScreenState extends State<DriveScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Santosh aapke Google Drive mein files dhoondhta, padhta, phone / PC / email par bhejta, upload karta, '
+            const Text('Hoola aapke Google Drive mein files dhoondhta, padhta, phone / PC / email par bhejta, upload karta, '
                 'folder sambhalta aur Google Doc banata hai. Share karna, public link aur Trash hamesha aapke tap ke baad hi.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 14),

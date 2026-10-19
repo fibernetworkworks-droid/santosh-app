@@ -121,13 +121,13 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Santosh Notebook'), backgroundColor: Colors.transparent),
+      appBar: AppBar(title: const Text('Hoola Notebook'), backgroundColor: Colors.transparent),
       floatingActionButton: FloatingActionButton.extended(onPressed: _new, icon: const Icon(Icons.add_rounded), label: const Text('Nayi notebook')),
       body: Aurora(
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 96), children: [
-            const Text('NotebookLM jaisa: PDF, Word, PowerPoint, Drive files, emails, website links aur notes jodiye. Santosh '
+            const Text('NotebookLM jaisa: PDF, Word, PowerPoint, Drive files, emails, website links aur notes jodiye. Hoola '
                 'sirf unhi se jawab deta hai (source ke saath), study guide / FAQ / briefing banata hai, aur do logon ki baatcheet '
                 'wala audio overview Hindi / Hinglish mein sunata hai.',
                 style: TextStyle(color: C.muted, fontSize: 13)),

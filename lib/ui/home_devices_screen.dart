@@ -141,7 +141,7 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
               if (kind == 'speaker')
                 const Padding(
                   padding: EdgeInsets.only(top: 10),
-                  child: Text('Speaker ko pehle phone ki Bluetooth settings se jodiye. Santosh awaaz 90% se upar nahi le jaata.',
+                  child: Text('Speaker ko pehle phone ki Bluetooth settings se jodiye. Hoola awaaz 90% se upar nahi le jaata.',
                       style: TextStyle(color: C.muted, fontSize: 12.5)),
                 ),
               if (kind == 'tv') ...[
@@ -201,7 +201,7 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
                 backgroundColor: C.bgBottom,
                 title: Text('${d['name']}: remote test ${i + 1}/${list.length}'),
                 content: Text('Phone ka upar wala hissa AC ki taraf rakhiye (2-3 metre ke andar), phir "Bhejiye" dabaiye.\n'
-                    'Santosh "Cool 24°C" bhejega. (${p['label']})'),
+                    'Hoola "Cool 24°C" bhejega. (${p['label']})'),
                 actions: [
                   TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Baad mein')),
                   TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Bhejiye')),
@@ -238,7 +238,7 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
         return;
       }
     }
-    _snack('Is AC ka remote abhi Santosh nahi samajhta. Samsung/LG ho to brand account jodiye.');
+    _snack('Is AC ka remote abhi Hoola nahi samajhta. Samsung/LG ho to brand account jodiye.');
   }
 
   List<Map> _protocols() => const [

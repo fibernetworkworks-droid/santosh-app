@@ -141,7 +141,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
           },
         );
     if (!_sttReady) {
-      _set(_V.idle, hint: 'Microphone permission chahiye. Phone settings mein Santosh ko mic allow kijiye.');
+      _set(_V.idle, hint: 'Microphone permission chahiye. Phone settings mein Hoola ko mic allow kijiye.');
       return;
     }
     _gotFinal = false;
@@ -191,7 +191,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
     }
     _waitTimer?.cancel();
     _waitTimer = Timer(const Duration(seconds: 90), () {
-      if (_state == _V.thinking && !_turnHadReply) _set(_V.idle, hint: 'Santosh ko time lag raha hai. Jawab aate hi yahan dikhega.');
+      if (_state == _V.thinking && !_turnHadReply) _set(_V.idle, hint: '${app.aName} ko time lag raha hai. Jawab aate hi yahan dikhega.');
     });
   }
 
@@ -269,7 +269,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
       case _V.listening:
         await _stt.stop(); // final result follows
       case _V.thinking:
-        _set(_V.idle, hint: 'Ruk gaya. Santosh ka jawab aayega to yahan dikhega.');
+        _set(_V.idle, hint: 'Ruk gaya. ${app.aName} ka jawab aayega to yahan dikhega.');
       case _V.speaking:
         _queue.clear();
         await _tts.stop();
@@ -306,7 +306,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Baat karein', style: display(28)),
-              Text('Santosh se seedhe bolkar · $lang', style: const TextStyle(color: C.muted, fontSize: 12.5, fontWeight: FontWeight.w600)),
+              Text('${app.aName} se seedhe bolkar · $lang', style: const TextStyle(color: C.muted, fontSize: 12.5, fontWeight: FontWeight.w600)),
             ]),
           ),
           FilterChip(

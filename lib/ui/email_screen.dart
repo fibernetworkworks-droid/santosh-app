@@ -165,7 +165,7 @@ class _EmailScreenState extends State<EmailScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
         title: const Text('Email hataiye?'),
-        content: Text('${a['address']} Santosh se hat jayega. Aapki mail par koi asar nahi.'),
+        content: Text('${a['address']} Hoola se hat jayega. Aapki mail par koi asar nahi.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hataiye')),
@@ -222,7 +222,7 @@ class _EmailScreenState extends State<EmailScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Santosh aapki mail padhta, chhaant-ta, jawab likhta, attachment kholta, follow-up yaad dilata aur '
+            const Text('Hoola aapki mail padhta, chhaant-ta, jawab likhta, attachment kholta, follow-up yaad dilata aur '
                 'bulk mail bhejta hai. Bhejna, delete aur bulk mail hamesha aapke tap ke baad hi.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 14),

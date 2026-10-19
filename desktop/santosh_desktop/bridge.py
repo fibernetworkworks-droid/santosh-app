@@ -1,4 +1,4 @@
-"""Keeps this PC connected to the Santosh server (outbound WebSocket, reconnects by itself)."""
+"""Keeps this PC connected to the Hoola server (outbound WebSocket, reconnects by itself)."""
 from __future__ import annotations
 
 import asyncio
@@ -90,7 +90,7 @@ class Bridge:
                 self.ws = await _connect(_ws_url(self.cfg.server), self.cfg.token)
                 self.connected = True
                 delay = 1.0
-                self.on_status("Juda hua: phone se Santosh ko boliye")
+                self.on_status("Juda hua: phone se Hoola ko boliye")
                 await self._session()
             except Exception as e:  # network down, server restarting, sleep/wake
                 code = getattr(getattr(e, "rcvd", None), "code", None) or getattr(e, "code", None)

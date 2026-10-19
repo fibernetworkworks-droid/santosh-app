@@ -73,13 +73,13 @@ class WakeService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val n = note("“Hey Santosh” sun raha hai", "Mic sirf wake word ke liye, phone par hi. Band karne ke liye Santosh app kholiye.")
+        val n = note("“Hey Santosh” sun raha hai", "Mic sirf wake word ke liye, phone par hi. Band karne ke liye Hoola app kholiye.")
         try {
             if (Build.VERSION.SDK_INT >= 30) startForeground(NOTE_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
             else startForeground(NOTE_ID, n)
         } catch (e: Exception) {
             // Android 14+: a microphone service can only start while the app is on screen
-            status = "Santosh app ek baar kholiye, phir 'Hey Santosh' chalu hoga"
+            status = "Hoola app ek baar kholiye, phir 'Hey Santosh' chalu hoga"
             running = false
             stopSelf()
             return START_NOT_STICKY
@@ -191,7 +191,7 @@ class WakeService : Service() {
         val b = builder(CH_HEARD)
             .setSmallIcon(R.drawable.ic_stat_santosh)
             .setContentTitle("Haan ji, boliye…")
-            .setContentText("Santosh sun raha hai")
+            .setContentText("Hoola sun raha hai")
             .setCategory(Notification.CATEGORY_CALL)
             .setFullScreenIntent(pi, true)
             .setContentIntent(pi)
@@ -223,11 +223,11 @@ class WakeService : Service() {
         if (Build.VERSION.SDK_INT < 26) return
         val m = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         m.createNotificationChannel(NotificationChannel(CH_WAKE, "Hey Santosh (wake word)", NotificationManager.IMPORTANCE_MIN).apply {
-            description = "Shows that Santosh is listening for “Hey Santosh” on this phone"
+            description = "Shows that Hoola is listening for “Hey Santosh” on this phone"
             setShowBadge(false)
         })
-        m.createNotificationChannel(NotificationChannel(CH_HEARD, "Santosh ne suna", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "Opens Santosh when you say “Hey Santosh”"
+        m.createNotificationChannel(NotificationChannel(CH_HEARD, "Hoola ne suna", NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "Opens Hoola when you say “Hey Santosh”"
             setSound(null, null)
         })
     }

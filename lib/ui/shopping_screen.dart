@@ -159,7 +159,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
     final active = _tokens.where((t) => t['revoked'] != true).toList();
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(title: const Text('Santosh Shopping')),
+      appBar: AppBar(title: const Text('Hoola Shopping')),
       body: Aurora(
         child: SafeArea(
           child: RefreshIndicator(
@@ -180,7 +180,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Text('Claude / ChatGPT se shopping', style: display(16)),
                   const SizedBox(height: 4),
-                  const Text('Apne AI assistant ko Santosh Shopping (MCP server) se jodiye. Har order par pehle poori keemat dikhegi, '
+                  const Text('Apne AI assistant ko Hoola Shopping (MCP server) se jodiye. Har order par pehle poori keemat dikhegi, '
                       'aapki haan ke bina order nahi hoga, aur paise sirf aapke UPI PIN se jayenge.',
                       style: TextStyle(color: C.muted, fontSize: 12.5, height: 1.4)),
                   const SizedBox(height: 10),

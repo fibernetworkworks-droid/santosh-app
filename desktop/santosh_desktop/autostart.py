@@ -1,4 +1,4 @@
-"""Start Santosh Desktop when the user signs in to Windows (current user only, no admin)."""
+"""Start Hoola Desktop when the user signs in to Windows (current user only, no admin)."""
 from __future__ import annotations
 
 import sys

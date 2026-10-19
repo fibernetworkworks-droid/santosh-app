@@ -1,4 +1,4 @@
-"""Santosh only ever touches the folders the user shared, and writes only into the Santosh Inbox folder."""
+"""Hoola only ever touches the folders the user shared, and writes only into the Santosh Inbox folder."""
 from __future__ import annotations
 
 import os
@@ -42,7 +42,7 @@ def allowed(path: str, folders: list[str], inbox: str = "") -> Path:
             cand = _real(r / path)
             if inside(cand, r) and cand.exists():
                 return cand
-        raise Denied("Yeh file un folders mein nahi hai jo aapne Santosh ke saath share kiye hain.")
+        raise Denied("Yeh file un folders mein nahi hai jo aapne Hoola ke saath share kiye hain.")
     return p
 
 

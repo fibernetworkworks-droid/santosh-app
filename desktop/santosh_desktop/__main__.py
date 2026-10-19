@@ -35,7 +35,7 @@ def headless(args) -> int:
         cfg.device_id, cfg.token = dev, tok
     save(cfg)
     if not cfg.paired:
-        print("Not paired. Run with --server URL --code 123456 (code from the Santosh app > Mera PC).")
+        print("Not paired. Run with --server URL --code 123456 (code from the Hoola app > Mera PC).")
         return 2
     idx = Index(app_dir() / "index.db")
     acts = Actions(cfg, idx, log=lambda m: print("[santosh]", m, flush=True))
@@ -65,7 +65,7 @@ def _single_instance():
 
 
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(prog="santosh-desktop", description="Connect this PC to Santosh")
+    p = argparse.ArgumentParser(prog="santosh-desktop", description="Connect this PC to Hoola")
     p.add_argument("--version", action="version", version=__version__)
     p.add_argument("--background", action="store_true")
     p.add_argument("--headless", action="store_true")

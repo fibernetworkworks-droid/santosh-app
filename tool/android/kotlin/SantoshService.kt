@@ -47,7 +47,7 @@ class SantoshService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val n = Notify.service(this, "Santosh duty par hai", "App band ho tab bhi aapke kaam chal rahe hain")
+        val n = Notify.service(this, "Hoola duty par hai", "App band ho tab bhi aapke kaam chal rahe hain")
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(Notify.SERVICE_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING)
         } else {

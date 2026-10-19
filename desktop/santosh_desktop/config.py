@@ -14,9 +14,9 @@ def app_dir() -> Path:
     if os.environ.get("SANTOSH_DESKTOP_HOME"):
         d = Path(os.environ["SANTOSH_DESKTOP_HOME"])
     elif sys.platform == "win32":
-        d = Path(os.environ.get("APPDATA", Path.home())) / "Santosh"
+        d = Path(os.environ.get("APPDATA", Path.home())) / "Santosh"   # folder name kept from before the Hoola rename (keeps pairing)
     elif sys.platform == "darwin":
-        d = Path.home() / "Library" / "Application Support" / "Santosh"
+        d = Path.home() / "Library" / "Application Support" / "Santosh"   # folder name kept from before the Hoola rename (keeps pairing)
     else:
         d = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "santosh"
     d.mkdir(parents=True, exist_ok=True)
@@ -73,7 +73,7 @@ class Config:
     folders: list[str] = field(default_factory=list)
     inbox: str = field(default_factory=default_inbox)
     paused: bool = False
-    control_enabled: bool = False   # "Santosh ko PC chalane dein": screen, mouse, keyboard, apps
+    control_enabled: bool = False   # "Hoola ko PC chalane dein": screen, mouse, keyboard, apps
     tally_host: str = "localhost"
     tally_port: int = 9000
     name: str = field(default_factory=lambda: platform.node() or "PC")

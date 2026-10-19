@@ -256,6 +256,8 @@ async def _run(op: Op) -> None:
     st = get_settings()
     from ..agent.santosh import get_client
     client = get_client()
+    from ..avatar.service import personalise, persona
+    system = personalise(SYSTEM, *persona(op.tenant))
     messages: list[dict] = []
     try:
         first = await _shot(op)
@@ -263,7 +265,7 @@ async def _run(op: Op) -> None:
         deadline = time.time() + TASK_MINUTES * 60
         while op.step < MAX_STEPS and time.time() < deadline and op.status == "running":
             _trim_images(messages)
-            resp = await client.messages.create(model=st.anthropic_model, max_tokens=1500, system=SYSTEM,
+            resp = await client.messages.create(model=st.anthropic_model, max_tokens=1500, system=system,
                                                 tools=TOOLS, messages=messages)
             content = [b.model_dump(exclude_none=True) if hasattr(b, "model_dump") else b for b in resp.content]
             messages.append({"role": "assistant", "content": content})

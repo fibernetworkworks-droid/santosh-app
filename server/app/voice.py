@@ -152,11 +152,31 @@ DROPPABLE = {"proactivity", "proactive_audio", "enable_affective_dialog", "conte
              "automatic_activity_detection", "realtime_input_config", "sliding_window"}
 
 
-def live_config(voice: str, lang: str, context: str, handle: str | None):
+FEMALE_LINES = [
+    ("a warm, sharp Indian man in his late twenties", "a warm, sharp Indian woman in her late twenties"),
+    ("like an educated young guy from Pune or Mumbai", "like an educated young woman from Pune or Mumbai"),
+    ('- You are male. In Hindi always use masculine forms for yourself: "main kar raha hoon", "maine dekh liya", "main samajh gaya". Never "rahi" or "gayi" for yourself.',
+     '- You are female. In Hindi always use feminine forms for yourself: "main kar rahi hoon", "maine dekh liya", "main samajh gayi". Never "raha" or "gaya" for yourself.'),
+]
+
+
+def persona_prompt(name: str = "Santosh", gender: str = "m") -> str:
+    from .avatar.service import personalise
+    p = PERSONA
+    if gender == "f":
+        for a, b in FEMALE_LINES:
+            p = p.replace(a, b)
+    # the avatar note goes before "About the user" so {context} stays last
+    head, sep, tail = p.rpartition("\n\nAbout the user")
+    body = personalise(head, name, gender)
+    return body.replace("{", "{{").replace("}", "}}").replace("{{lang}}", "{lang}").replace("{{now}}", "{now}") + sep + tail
+
+
+def live_config(voice: str, lang: str, context: str, handle: str | None, name: str = "Santosh", gender: str = "m"):
     from google.genai import types
     st = get_settings()
     tz = life.tz_of(st.tenant_id)
-    prompt = PERSONA.format(lang=lang, now=datetime.now(tz).strftime("%A %d %B %Y, %I:%M %p"), context=context or "(nothing saved yet)")
+    prompt = persona_prompt(name, gender).format(lang=lang, now=datetime.now(tz).strftime("%A %d %B %Y, %I:%M %p"), context=context or "(nothing saved yet)")
     decls = [types.FunctionDeclaration(name=t["name"], description=t["description"], parameters_json_schema=t["input_schema"])
              for t in _tool_specs()]
     cfg = types.LiveConnectConfig(
@@ -235,9 +255,14 @@ class Call:
     def __init__(self, ws: WebSocket, conv: str, voice: str, lang: str, tenant: str | None = None):
         st = get_settings()
         self.ws, self.conv, self.lang = ws, conv, lang
-        self.voice = voice if voice in MALE_VOICES else st.voice_default
         self.ctx = Ctx(tenant or st.tenant_id, conv)
         self.tenant = tenant or st.tenant_id
+        from .avatar import service as av
+        a = av.get(self.tenant)
+        self.name, self.gender = a["name"], a["gender"]
+        pool = av.FEMALE_VOICES if self.gender == "f" else av.MALE_VOICES
+        # the phone may still send an old saved voice; the avatar's gender decides which voices fit
+        self.voice = voice if voice in pool else (a["voice"] or (st.voice_default if self.gender == "m" else av.DEFAULT_VOICE["f"]))
         self.audio: asyncio.Queue = asyncio.Queue(maxsize=400)
         self.closed = asyncio.Event()
         self.muted = False
@@ -352,7 +377,8 @@ class Call:
     async def run_tool(self, session, fc) -> None:
         from google.genai import types
         name, args = fc.name, dict(fc.args or {})
-        label = "Santosh kaam kar raha hai" if name == "santosh_kaam" else TOOL_LABELS.get(name, name)
+        from .avatar.service import gendered
+        label = gendered(f"{self.name} kaam kar raha hai" if name == "santosh_kaam" else TOOL_LABELS.get(name, name), self.gender)
         await self.send_json({"type": "tool", "label": label, "state": "running"})
         try:
             if name == "santosh_kaam":
@@ -393,7 +419,7 @@ class Call:
                 context = life.context_block(self.ctx.tenant_id)
                 try:
                     started = asyncio.get_running_loop().time()
-                    async with connector(live_config(self.voice, self.lang, context, self.handle)) as session:
+                    async with connector(live_config(self.voice, self.lang, context, self.handle, self.name, self.gender)) as session:
                         if first:
                             await self.send_json({"type": "ready", "voice": self.voice})
                             from google.genai import types

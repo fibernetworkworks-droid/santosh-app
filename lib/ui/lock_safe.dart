@@ -16,7 +16,7 @@ class LockSafe {
       return 'Lock-safe mode shuru nahi hua${p.isEmpty ? '' : ' ($p)'}';
     }
     if (s['batteryOptimized'] == true && _strict(s['brand'] as String? ?? '')) {
-      return 'Phone ka battery saver Santosh ko lock par rok sakta hai';
+      return 'Phone ka battery saver Hoola ko lock par rok sakta hai';
     }
     return null;
   }
@@ -28,36 +28,36 @@ class LockSafe {
   static List<String> steps(String brand) {
     if (brand.contains('vivo') || brand.contains('iqoo')) {
       return [
-        'Settings → Battery → Background power consumption management → Santosh → "Allow" (High background power)',
-        'Settings → Apps → Santosh → Autostart: ON',
-        'Recent apps mein Santosh ko neeche kheench kar 🔒 lock kar dijiye',
-        'Settings → Apps → Santosh → Notifications: ON (sab allow)',
+        'Settings → Battery → Background power consumption management → Hoola → "Allow" (High background power)',
+        'Settings → Apps → Hoola → Autostart: ON',
+        'Recent apps mein Hoola ko neeche kheench kar 🔒 lock kar dijiye',
+        'Settings → Apps → Hoola → Notifications: ON (sab allow)',
       ];
     }
     if (brand.contains('oppo') || brand.contains('realme') || brand.contains('oneplus')) {
       return [
-        'Settings → Battery → Santosh → "Allow background activity" / Unrestricted',
-        'Settings → Apps → Santosh → Auto launch / Autostart: ON',
-        'Recent apps mein Santosh ke upar ⋮ → Lock',
+        'Settings → Battery → Hoola → "Allow background activity" / Unrestricted',
+        'Settings → Apps → Hoola → Auto launch / Autostart: ON',
+        'Recent apps mein Hoola ke upar ⋮ → Lock',
         'Notifications: ON',
       ];
     }
     if (brand.contains('xiaomi') || brand.contains('redmi') || brand.contains('poco')) {
       return [
-        'Settings → Apps → Santosh → Battery saver → "No restrictions"',
-        'Settings → Apps → Santosh → Autostart: ON',
-        'Recent apps mein Santosh ko lock kar dijiye',
+        'Settings → Apps → Hoola → Battery saver → "No restrictions"',
+        'Settings → Apps → Hoola → Autostart: ON',
+        'Recent apps mein Hoola ko lock kar dijiye',
         'Notifications: ON',
       ];
     }
     if (brand.contains('samsung')) {
       return [
-        'Settings → Apps → Santosh → Battery → Unrestricted',
-        'Settings → Battery → Background usage limits → Santosh ko "Never sleeping apps" mein daaliye',
+        'Settings → Apps → Hoola → Battery → Unrestricted',
+        'Settings → Battery → Background usage limits → Hoola ko "Never sleeping apps" mein daaliye',
         'Notifications: ON',
       ];
     }
-    return ['Settings → Apps → Santosh → Battery → Unrestricted', 'Notifications: ON'];
+    return ['Settings → Apps → Hoola → Battery → Unrestricted', 'Notifications: ON'];
   }
 
   static Future<void> showFix(BuildContext context) async {
@@ -73,7 +73,7 @@ class LockSafe {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Phone lock par bhi Santosh', style: display(22)),
+            Text('Phone lock par bhi Hoola', style: display(22)),
             const SizedBox(height: 4),
             Text(brand.isEmpty ? 'Yeh settings ek baar kar dijiye:' : '${brand[0].toUpperCase()}${brand.substring(1)} phone par yeh ek baar kar dijiye:',
                 style: const TextStyle(color: C.muted, fontSize: 13)),

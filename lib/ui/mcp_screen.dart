@@ -97,7 +97,7 @@ class _McpScreenState extends State<McpScreen> {
       return;
     }
     if (c['native'] != null) {
-      _snack('${c['name']} Santosh mein pehle se hai: ${c['native']}');
+      _snack('${c['name']} Hoola mein pehle se hai: ${c['native']}');
       return;
     }
     if (auth == 'api_key' || auth == 'per_user_url') {
@@ -141,7 +141,7 @@ class _McpScreenState extends State<McpScreen> {
         final err = await app.linkApp(r['pack_id'] as String);
         if (err != null) _snack(err);
       } else {
-        _snack(r['status'] == 'ready' ? '${c['name']} jud gaya. Ab Santosh se kahiye.' : 'Key sahi nahi lagi');
+        _snack(r['status'] == 'ready' ? '${c['name']} jud gaya. Ab Hoola se kahiye.' : 'Key sahi nahi lagi');
       }
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
@@ -195,7 +195,7 @@ class _McpScreenState extends State<McpScreen> {
                       if (err != null) _snack(err);
                     }),
                   _ => GlassButton(
-                      label: c['auth'] == 'oauth_partner' ? 'Jald aa raha' : (c['native'] != null ? 'Santosh mein hai' : 'Jodiye'),
+                      label: c['auth'] == 'oauth_partner' ? 'Jald aa raha' : (c['native'] != null ? 'Hoola mein hai' : 'Jodiye'),
                       color: c['auth'] == 'oauth_partner' ? C.faint : C.accentSoft,
                       height: 34,
                       onTap: _busy ? null : () => _connectFeatured(c)),
@@ -237,7 +237,7 @@ class _McpScreenState extends State<McpScreen> {
           TextField(controller: url, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'MCP address (https://…)')),
           TextField(controller: name, decoration: const InputDecoration(labelText: 'Naam (optional)')),
           const SizedBox(height: 6),
-          const Text('API key sirf tab, jab server maange. Santosh ise encrypt karke rakhta hai; chat mein kabhi na bhejein.',
+          const Text('API key sirf tab, jab server maange. Hoola ise encrypt karke rakhta hai; chat mein kabhi na bhejein.',
               style: TextStyle(color: C.faint, fontSize: 12)),
           TextField(controller: key, obscureText: true, decoration: const InputDecoration(labelText: 'API key (optional)')),
           TextField(controller: header, decoration: const InputDecoration(labelText: 'Key header (Authorization / X-API-Key)')),
@@ -262,7 +262,7 @@ class _McpScreenState extends State<McpScreen> {
         final err = await app.linkApp(r['pack_id'] as String);
         if (err != null) _snack(err);
       } else {
-        _snack(r['status'] == 'ready' ? '${r['name']} jud gaya. Ab Santosh se kahiye.' : 'Key sahi nahi lagi, dobara daaliye');
+        _snack(r['status'] == 'ready' ? '${r['name']} jud gaya. Ab Hoola se kahiye.' : 'Key sahi nahi lagi, dobara daaliye');
       }
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
@@ -389,7 +389,7 @@ class _McpScreenState extends State<McpScreen> {
       appBar: AppBar(title: const Text('MCP servers'), backgroundColor: Colors.transparent),
       body: Aurora(
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-          Text('${_stats?['total'] ?? 50762} servers ki directory · jo chahiye jodiye, Santosh unse kaam karega',
+          Text('${_stats?['total'] ?? 50762} servers ki directory · jo chahiye jodiye, Hoola unse kaam karega',
               style: const TextStyle(color: C.muted, fontSize: 13)),
           const SizedBox(height: 12),
           GradientButton(label: _busy ? 'Jod raha hoon…' : 'Pata daal kar jodiye', icon: Icons.add_rounded, height: 48,

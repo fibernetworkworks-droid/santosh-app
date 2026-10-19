@@ -1,4 +1,4 @@
-"""Pull plain text out of common office files so Santosh can search and read them."""
+"""Pull plain text out of common office files so Hoola can search and read them."""
 from __future__ import annotations
 
 import csv

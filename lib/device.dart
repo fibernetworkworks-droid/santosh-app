@@ -18,8 +18,8 @@ class Device {
 
   static const _channel = AndroidNotificationDetails(
     'santosh_reminders',
-    'Santosh reminders',
-    channelDescription: 'Reminders and updates from Santosh',
+    'Hoola reminders',
+    channelDescription: 'Reminders and updates from Hoola',
     importance: Importance.high,
     priority: Priority.high,
   );
@@ -64,7 +64,7 @@ class Device {
       keep.add(id);
       await _notes.zonedSchedule(
         id,
-        'Santosh',
+        'Hoola',
         'Yaad dila raha hoon: ${r['text']}',
         tz.TZDateTime.from(due, tz.local),
         const NotificationDetails(android: _channel),
@@ -88,7 +88,7 @@ class Device {
             action: 'android.intent.action.SET_TIMER',
             arguments: <String, dynamic>{
               'android.intent.extra.alarm.LENGTH': (a['seconds'] as num).toInt(),
-              'android.intent.extra.alarm.MESSAGE': a['label'] ?? 'Santosh timer',
+              'android.intent.extra.alarm.MESSAGE': a['label'] ?? 'Hoola timer',
               'android.intent.extra.alarm.SKIP_UI': true,
             },
             flags: const <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
@@ -100,7 +100,7 @@ class Device {
             data: 'content://com.android.calendar/events',
             flags: const <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
             arguments: <String, dynamic>{
-              'title': a['title'] ?? 'Santosh',
+              'title': a['title'] ?? 'Hoola',
               // timestamps are > 2^31, so the platform channel sends them as Java longs as Android expects
               'beginTime': (a['start_ms'] as num).toInt(),
               'endTime': (a['end_ms'] as num).toInt(),
@@ -130,7 +130,7 @@ class Device {
     final base = <String, dynamic>{
       'android.intent.extra.alarm.HOUR': (a['hour'] as num).toInt(),
       'android.intent.extra.alarm.MINUTES': (a['minute'] as num).toInt(),
-      'android.intent.extra.alarm.MESSAGE': a['label'] ?? 'Santosh alarm',
+      'android.intent.extra.alarm.MESSAGE': a['label'] ?? 'Hoola alarm',
       'android.intent.extra.alarm.SKIP_UI': true,
     };
     if (days.isNotEmpty) {

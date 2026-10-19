@@ -8,6 +8,7 @@ import 'emotion.dart';
 import 'native.dart';
 import 'nav.dart';
 import 'state.dart';
+import 'ui/avatar_setup_screen.dart';
 import 'ui/bazar_screen.dart';
 import 'ui/catchup_screen.dart';
 import 'ui/chat_screen.dart';
@@ -109,7 +110,7 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) => MaterialApp(
         navigatorKey: navKey,
-        title: 'Santosh',
+        title: 'Hoola',
         debugShowCheckedModeBanner: false,
         theme: santoshTheme(),
         home: _setup
@@ -144,8 +145,14 @@ class _HomeState extends State<Home> {
   }
 
   bool _wasLocked = false;
+  bool _wasSetup = false;
 
   void _onApp() {
+    if (widget.app.needsAvatarSetup != _wasSetup) {
+      _wasSetup = widget.app.needsAvatarSetup;
+      if (mounted) setState(() {});
+      return;
+    }
     if (widget.app.baatTick != _seenBaat) {
       _seenBaat = widget.app.baatTick;
       if (mounted) setState(() => _tab = 2);
@@ -173,6 +180,10 @@ class _HomeState extends State<Home> {
       BazarScreen(app: widget.app, embedded: true),
       ProfileScreen(app: widget.app, onReset: widget.onReset),
     ];
+    if (widget.app.needsAvatarSetup && !widget.app.lockedMode) {
+      // first run of Hoola: the owner names their avatar and sets Mere Niyam before anything else
+      return AvatarSetupScreen(app: widget.app, firstRun: true);
+    }
     if (widget.app.lockedMode) {
       // over the lock screen: just the call. Nothing else of the app is visible until the phone is unlocked.
       return Scaffold(

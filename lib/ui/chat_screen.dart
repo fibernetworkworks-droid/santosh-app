@@ -72,7 +72,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if ((s == 'done' || s == 'notListening') && mounted) setState(() => _listening = false);
     });
     if (!_sttReady) {
-      _snack('Microphone permission chahiye. Phone settings mein Santosh ko mic ki permission dijiye.');
+      _snack('Microphone permission chahiye. Phone settings mein Hoola ko mic ki permission dijiye.');
       return;
     }
     setState(() => _listening = true);
@@ -113,7 +113,7 @@ class _ChatScreenState extends State<ChatScreen> {
         builder: (context, _) => Column(children: [
           _header(),
           if (app.error != null) _banner(app.error!, onTap: () => app.connect()),
-          if (app.connected && !app.brainReady) _banner('Santosh ka dimaag server par connect nahi hai (ANTHROPIC_API_KEY).'),
+          if (app.connected && !app.brainReady) _banner('Hoola ka dimaag server par connect nahi hai (ANTHROPIC_API_KEY).'),
           Expanded(
             child: ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 8, 16, 12), children: [
               if (app.feed.length <= 1) _hero(),
@@ -134,8 +134,8 @@ class _ChatScreenState extends State<ChatScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Santosh', style: display(20, w: FontWeight.w700)),
-              Text(!app.connected ? 'Connect ho raha hai…' : app.typing ? (app.currentStep ?? 'Kaam kar raha hoon…') : 'Online · ${languages[app.language] ?? ''}',
+              Text(app.aName, style: display(20, w: FontWeight.w700)),
+              Text(!app.connected ? 'Connect ho raha hai…' : app.typing ? (app.currentStep ?? app.g('Kaam kar raha hoon…')) : 'Online · ${languages[app.language] ?? ''}',
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: app.connected ? C.ok : C.muted)),
             ]),
@@ -288,7 +288,7 @@ class _ChatScreenState extends State<ChatScreen> {
               maxLines: 4,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _send(),
-              decoration: InputDecoration(border: InputBorder.none, hintText: _listening ? 'Sun raha hoon…' : 'Santosh se boliye…'),
+              decoration: InputDecoration(border: InputBorder.none, hintText: _listening ? app.g('Sun raha hoon…') : '${app.aName} se boliye…'),
             ),
           ),
           ValueListenableBuilder(
@@ -297,7 +297,7 @@ class _ChatScreenState extends State<ChatScreen> {
               final typing = v.text.trim().isNotEmpty;
               return Semantics(
                 button: true,
-                label: typing ? 'Send' : (_listening ? 'Stop listening' : 'Speak to Santosh'),
+                label: typing ? 'Send' : (_listening ? 'Stop listening' : 'Speak to ${app.aName}'),
                 child: Press(
                   onTap: typing ? _send : _mic,
                   child: AnimatedContainer(
@@ -644,7 +644,7 @@ class _BazarCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(v['pay_method'] as String? ?? '', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           if (v['needs_pin'] == true && status == 'pending')
-            const Text('UPI PIN sirf aapke UPI app mein daaliye. Santosh kabhi PIN nahi maangega.', style: TextStyle(color: C.muted, fontSize: 12)),
+            const Text('UPI PIN sirf aapke UPI app mein daaliye. Hoola kabhi PIN nahi maangega.', style: TextStyle(color: C.muted, fontSize: 12)),
           if (status == 'pending') ...[
             const SizedBox(height: 10),
             Row(children: [
@@ -721,7 +721,7 @@ class _LinkCard extends StatelessWidget {
             Text('${v['name']} jodiye', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             const Padding(
                 padding: EdgeInsets.only(top: 4),
-                child: Text('Ek baar apne account se login kijiye (OTP unke page par aayega). Phir Santosh aapke liye order kar sakta hai.',
+                child: Text('Ek baar apne account se login kijiye (OTP unke page par aayega). Phir Hoola aapke liye order kar sakta hai.',
                     style: TextStyle(fontSize: 13))),
             const SizedBox(height: 8),
             OutlinedButton.icon(

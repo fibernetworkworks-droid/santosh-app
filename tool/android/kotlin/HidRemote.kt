@@ -59,7 +59,7 @@ class HidRemote private constructor(private val context: Context) {
                 val h = proxy as BluetoothHidDevice
                 hid = h
                 val sdp = BluetoothHidDeviceAppSdpSettings(
-                    "Santosh Remote", "Santosh TV remote", "Newtika",
+                    "Santosh Remote", "Hoola TV remote", "Newtika",
                     BluetoothHidDevice.SUBCLASS1_COMBO, DESCRIPTOR,
                 )
                 h.registerApp(sdp, null, null, callbackExec, callback)

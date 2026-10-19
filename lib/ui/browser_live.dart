@@ -149,7 +149,7 @@ class BrowserLiveCard extends StatelessWidget {
                 const Icon(Icons.travel_explore_rounded, color: C.accent, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(l['source'] == 'pc' ? 'Santosh · Mera PC' : (site.isEmpty ? 'Santosh Browser' : 'Santosh Browser · $site'),
+                  child: Text(l['source'] == 'pc' ? 'Hoola · Mera PC' : (site.isEmpty ? 'Hoola Browser' : 'Hoola Browser · $site'),
                       maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 ),
                 Pill(run ? '● ${BrowserLive.label(l)}' : BrowserLive.label(l), fg: Colors.white, bg: BrowserLive.color(l).withOpacity(.85)),
@@ -276,7 +276,7 @@ class BrowserLiveScreen extends StatelessWidget {
           backgroundColor: const Color(0xFF070912),
           appBar: AppBar(
             backgroundColor: const Color(0xFF0E1220),
-            title: Text(sid.startsWith('pcop_') ? 'Mera PC · live' : 'Santosh Browser · live'),
+            title: Text(sid.startsWith('pcop_') ? 'Mera PC · live' : 'Hoola Browser · live'),
           ),
           body: _LiveFeed(
             app: app,
@@ -327,7 +327,7 @@ class BrowserLiveScreen extends StatelessWidget {
                         const SizedBox(height: 10),
                         Row(children: [
                           const Expanded(
-                            child: Text('Password, OTP aur payment Santosh kabhi nahi bharta. Submit se pehle aapse poochega.',
+                            child: Text('Password, OTP aur payment Hoola kabhi nahi bharta. Submit se pehle aapse poochega.',
                                 style: TextStyle(color: C.muted, fontSize: 11.5)),
                           ),
                           FilledButton.tonalIcon(

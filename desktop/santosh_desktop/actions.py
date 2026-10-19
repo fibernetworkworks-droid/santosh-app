@@ -1,4 +1,4 @@
-"""What Santosh can ask this PC to do. Every action is checked against the shared folders and logged on screen."""
+"""What Hoola can ask this PC to do. Every action is checked against the shared folders and logged on screen."""
 from __future__ import annotations
 
 import os
@@ -52,7 +52,7 @@ class Actions:
     # ---------------- dispatcher ----------------
     def handle(self, action: str, args: dict[str, Any]) -> dict[str, Any]:
         if self.cfg.paused:
-            raise ActionError("Santosh Desktop is paused on this PC.")
+            raise ActionError("Hoola Desktop is paused on this PC.")
         fn = getattr(self, "do_" + action, None)
         if fn is None:
             raise ActionError(f"Unknown action {action}")
@@ -77,8 +77,8 @@ class Actions:
     # ---------------- using the PC (screen, mouse, keyboard, apps) ----------------
     def _control_on(self) -> None:
         if not self.cfg.control_enabled:
-            raise ActionError("PC chalane ki permission band hai. PC par Santosh Desktop > Settings > "
-                              "'Santosh ko PC chalane dein' on kijiye.")
+            raise ActionError("PC chalane ki permission band hai. PC par Hoola Desktop > Settings > "
+                              "'Hoola ko PC chalane dein' on kijiye.")
 
     def do_screen(self, max_width: int = 1280, **_) -> dict[str, Any]:
         self._control_on()

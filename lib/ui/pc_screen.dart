@@ -142,11 +142,11 @@ class _PcScreenState extends State<PcScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('PC jodiye', style: display(20)),
         const SizedBox(height: 6),
-        const Text('Office ya ghar ka computer Santosh se jodiye. Phir phone se boliye: "Sharma ka bill bhejo", '
+        const Text('Office ya ghar ka computer Hoola se jodiye. Phir phone se boliye: "Sharma ka bill bhejo", '
             '"Tally mein kiska paisa baaki hai", "kal ka quotation print karo".',
             style: TextStyle(color: C.muted, fontSize: 13, height: 1.4)),
         const SizedBox(height: 14),
-        const Text('1. PC par Santosh Desktop download kijiye (Windows)', style: TextStyle(fontWeight: FontWeight.w700)),
+        const Text('1. PC par Hoola Desktop download kijiye (Windows)', style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         Row(children: [
           Expanded(child: GlassButton(label: 'Link copy', height: 40, onTap: () {
@@ -158,7 +158,7 @@ class _PcScreenState extends State<PcScreen> {
               Native.openExternal(url: 'https://wa.me/?text=${Uri.encodeComponent('Santosh Desktop (PC ke liye): $desktopDownload')}'))),
         ]),
         const SizedBox(height: 14),
-        const Text('2. PC par Santosh Desktop mein yeh daaliye', style: TextStyle(fontWeight: FontWeight.w700)),
+        const Text('2. PC par Hoola Desktop mein yeh daaliye', style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         Text('Server: ${app.serverUrl}', style: const TextStyle(color: C.chip, fontSize: 12.5)),
         const SizedBox(height: 10),
@@ -197,7 +197,7 @@ class _PcScreenState extends State<PcScreen> {
         Text(
             online
                 ? (d['paused'] == true ? 'Juda hai, par PC par "Rokiye" on hai' : 'Online · ${d['os'] ?? ''}')
-                : 'Offline · aakhri baar ${_ago(d['last_seen'] as String?)}. PC on karke Santosh Desktop kholiye.',
+                : 'Offline · aakhri baar ${_ago(d['last_seen'] as String?)}. PC on karke Hoola Desktop kholiye.',
             style: TextStyle(color: online ? C.ok : C.muted, fontSize: 12.5)),
         const SizedBox(height: 10),
         Text('Share kiye folder: ${folders.isEmpty ? 'koi nahi (PC par folder jodiye)' : folders.map((f) => f['label']).join(', ')}',
@@ -238,7 +238,7 @@ class _PcScreenState extends State<PcScreen> {
                   showDialog(context: context, builder: (_) => AlertDialog(
                       backgroundColor: C.bgBottom,
                       content: Column(mainAxisSize: MainAxisSize.min, children: [
-                        const Text('Naye PC par Santosh Desktop mein yeh code daaliye (10 min)'),
+                        const Text('Naye PC par Hoola Desktop mein yeh code daaliye (10 min)'),
                         const SizedBox(height: 10),
                         SelectableText(_code!, style: display(36, color: C.accent)),
                         const SizedBox(height: 6),
@@ -343,7 +343,7 @@ class PcFileCard extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(v['name'] as String? ?? 'File', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
-              Text(_made ? 'Santosh ne banaya · ${_size(v['size'] as num?)} · PDF' : 'PC se · ${_size(v['size'] as num?)} · poori quality',
+              Text(_made ? 'Hoola ne banaya · ${_size(v['size'] as num?)} · PDF' : 'PC se · ${_size(v['size'] as num?)} · poori quality',
                   style: const TextStyle(color: C.faint, fontSize: 12)),
             ])),
           ]),

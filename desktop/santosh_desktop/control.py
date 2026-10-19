@@ -1,6 +1,6 @@
 """Santosh can use this PC like a person: see the screen, open apps, click, type, press keys, scroll.
 
-Off by default. The PC owner turns on "Santosh ko PC chalane dein" in Santosh Desktop; while Santosh is working a
+Off by default. The PC owner turns on "Hoola ko PC chalane dein" in Santosh Desktop; while Santosh is working a
 banner shows on the PC and the owner can stop it any time (Rokiye button, or throw the mouse into the top-left
 corner: pyautogui's fail-safe). Santosh never types passwords, OTPs, PINs or card/Aadhaar numbers (refused here,
 not only by the model), and asks on the phone before anything that sends, submits, deletes, pays or installs.
@@ -57,7 +57,7 @@ def _gui():
 class Control:
     def __init__(self) -> None:
         self.scale = 1.0           # screen pixels per screenshot pixel
-        self.on_activity = None    # set by the window app: shows the "Santosh is using this PC" banner
+        self.on_activity = None    # set by the window app: shows the "Hoola is using this PC" banner
 
     def _touch(self, what: str) -> None:
         if self.on_activity:
@@ -107,7 +107,7 @@ class Control:
             to_x: Any = None, to_y: Any = None) -> dict[str, Any]:
         op = (op or "").lower()
         if op == "type" and SECRET_TEXT.match(text or ""):
-            raise ControlError("Santosh never types card or Aadhaar numbers. The user must type this themselves.")
+            raise ControlError("Hoola never types card or Aadhaar numbers. The user must type this themselves.")
         if op in ("key", "hotkey") and tuple(p.strip().lower() for p in re.split(r"[+ ]+", keys or "") if p.strip()) in BLOCKED_KEYS:
             raise ControlError("That key combination is not allowed")
         g = _gui()
@@ -129,7 +129,7 @@ class Control:
             g.dragTo(qx, qy, duration=0.4, button="left")
         elif op == "type":
             if SECRET_TEXT.match(text or ""):
-                raise ControlError("Santosh never types card or Aadhaar numbers. The user must type this themselves.")
+                raise ControlError("Hoola never types card or Aadhaar numbers. The user must type this themselves.")
             if not text:
                 raise ControlError("Nothing to type")
             if text.isascii():

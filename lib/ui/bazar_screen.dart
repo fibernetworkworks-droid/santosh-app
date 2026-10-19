@@ -21,7 +21,7 @@ const _statusText = {
   'no_shop_yet': 'Dukaan jud rahi hai',
   'needs_link': 'Link karein',
   'not_configured': 'Jald aa raha',
-  'core': 'Santosh mein',
+  'core': 'Hoola mein',
   'unavailable': 'Abhi band',
 };
 
@@ -265,7 +265,7 @@ class _BazarScreenState extends State<BazarScreen> {
           if (widget.embedded) ...[
             Text('Connectors', style: display(28)),
             const SizedBox(height: 4),
-            Text('${_cat?['total'] ?? 159} plugins · jodiye, Santosh inse kaam poora karega', style: const TextStyle(color: C.muted, fontSize: 13.5)),
+            Text('${_cat?['total'] ?? 159} plugins · jodiye, Hoola inse kaam poora karega', style: const TextStyle(color: C.muted, fontSize: 13.5)),
             const SizedBox(height: 16),
           ],
           if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
@@ -306,7 +306,7 @@ class _BazarScreenState extends State<BazarScreen> {
               title: Text('MCP servers · 50,000+', style: display(15.5)),
               subtitle: Text(_apps.any((a) => a['custom'] == true)
                   ? '${_apps.where((a) => a['custom'] == true).length} jude hue · GitHub, Notion, Jira, Zerodha, Tally aur bahut kuch'
-                  : 'GitHub, Notion, Jira, Zerodha, Tally, database… koi bhi MCP server Santosh se jodiye'),
+                  : 'GitHub, Notion, Jira, Zerodha, Tally, database… koi bhi MCP server Hoola se jodiye'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () async {
                 await Navigator.of(context).push(MaterialPageRoute(builder: (_) => McpScreen(app: app)));
@@ -330,7 +330,7 @@ class _BazarScreenState extends State<BazarScreen> {
             child: ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.shopping_bag_rounded, color: C.accent),
-              title: Text('Santosh Shopping · orders', style: display(15.5)),
+              title: Text('Hoola Shopping · orders', style: display(15.5)),
               subtitle: const Text('ONDC, brand stores, paas ki dukaan · Claude / ChatGPT se bhi jodiye'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShoppingScreen(app: app))),
@@ -361,7 +361,7 @@ class _BazarScreenState extends State<BazarScreen> {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.add_business_rounded, color: C.accent),
               title: Text('Dukaan jodiye', style: display(15.5)),
-              subtitle: const Text('Kirana, dairy, medical, tiffin… apni ya paas ki dukaan Santosh par laaiye'),
+              subtitle: const Text('Kirana, dairy, medical, tiffin… apni ya paas ki dukaan Hoola par laaiye'),
               onTap: () => _addShop(context),
             ),
           ),

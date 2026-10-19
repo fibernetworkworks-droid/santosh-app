@@ -11,6 +11,7 @@ from sqlalchemy import select
 from ..config import get_settings
 from ..db import Message, session
 from ..events import bus
+from ..avatar.service import gendered, persona
 from ..life import context_block
 from . import llm
 from .prompts import system_prompt
@@ -145,6 +146,7 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
     settings = get_settings()
     tenant_id = tenant_id or settings.tenant_id
     ctx = Ctx(tenant_id=tenant_id, conversation_id=conversation_id)
+    _gender = persona(tenant_id)[1]
     async with _locks[conversation_id]:
         notes = _pending_worker_notes(conversation_id)
         agent_text = f"{VOICE_NOTE}\n{user_text}" if voice else user_text
@@ -157,7 +159,7 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         final_text = ""
         try:
             brain = llm.choose(history)
-            system = system_prompt(settings.wa_dry_run, context_block(tenant_id))
+            system = system_prompt(settings.wa_dry_run, context_block(tenant_id), tenant_id)
             for _ in range(settings.agent_max_steps):
                 blocks, stop = await _think(brain, system, history, settings)
                 if blocks is None:          # GLM failed: Claude takes over for the rest of this turn
@@ -175,7 +177,7 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
                 for b in blocks:
                     if b.get("type") != "tool_use":
                         continue
-                    label = TOOL_LABELS.get(b["name"], b["name"])
+                    label = gendered(TOOL_LABELS.get(b["name"], b["name"]), _gender)
                     bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "running", "id": b["id"]})
                     try:
                         out = await dispatch(b["name"], b.get("input") or {}, ctx)

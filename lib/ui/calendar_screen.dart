@@ -149,7 +149,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Santosh aapka Google Calendar dekhta hai, meeting banata hai (Google Meet link ke saath), samay badalta hai, '
+            const Text('Hoola aapka Google Calendar dekhta hai, meeting banata hai (Google Meet link ke saath), samay badalta hai, '
                 'khaali samay dhoondhta hai aur meeting se pehle yaad dilata hai. Doosre logon ko invite / badlav / cancel '
                 'hamesha aapke tap ke baad hi.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
@@ -186,7 +186,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               Padding(padding: const EdgeInsets.only(bottom: 14),
                   child: GlassButton(label: 'Doosra Google account jodiye', icon: Icons.add_rounded, height: 44, onTap: canLink ? _link : null)),
             if (cals.isNotEmpty) ...[
-              const Text('Santosh kaunse calendar dekhe', style: TextStyle(fontWeight: FontWeight.w700)),
+              const Text('Hoola kaunse calendar dekhe', style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 4),
               Glass(child: Column(children: [
                 for (final c in cals)

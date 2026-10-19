@@ -29,7 +29,7 @@ class _SetupScreenState extends State<SetupScreen> {
   Future<void> _google() async {
     final url = _server.text.trim();
     if (url.isEmpty || url == 'https://') {
-      setState(() => _err = 'Pehle Santosh server address daaliye, phir Google se sign in.');
+      setState(() => _err = 'Pehle Hoola server address daaliye, phir Google se sign in.');
       return;
     }
     try {
@@ -54,7 +54,7 @@ class _SetupScreenState extends State<SetupScreen> {
     final url = _server.text.trim();
     try {
       final h = await Api(url, _key.text.trim()).health();
-      if (h['ok'] != true) throw 'Not a Santosh server';
+      if (h['ok'] != true) throw 'Not a Hoola server';
       await widget.app.saveSettings(server: url, key: _key.text, lang: _lang);
       await widget.app.connect(fresh: true);
       if (widget.app.connected && _name.text.trim().isNotEmpty) {
@@ -80,7 +80,7 @@ class _SetupScreenState extends State<SetupScreen> {
                 radius: 30,
                 padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Text('Namaste, main Santosh', style: display(30)),
+                  Text('Namaste, main Hoola', style: display(30)),
                   const SizedBox(height: 8),
                   const Text('Aapka AI saathi. Bill bharna, dukaan se saamaan, cab, email, reminders — bas boliye, main kar dunga.',
                       style: TextStyle(color: C.muted, fontSize: 14, height: 1.5)),
@@ -103,7 +103,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   TextField(
                     controller: _server,
                     keyboardType: TextInputType.url,
-                    decoration: const InputDecoration(labelText: 'Santosh server address', hintText: 'https://santosh.yourdomain.com'),
+                    decoration: const InputDecoration(labelText: 'Hoola server address', hintText: 'https://santosh.yourdomain.com'),
                   ),
                   const SizedBox(height: 14),
                   Press(
@@ -132,7 +132,7 @@ class _SetupScreenState extends State<SetupScreen> {
                     Text(_err!, style: const TextStyle(color: C.bad, fontSize: 13)),
                   ],
                   const SizedBox(height: 14),
-                  const Text('Aapka data sirf aapka. Santosh kabhi PIN, OTP ya password nahi maangega.',
+                  const Text('Aapka data sirf aapka. Hoola kabhi PIN, OTP ya password nahi maangega.',
                       textAlign: TextAlign.center, style: TextStyle(color: C.faint, fontSize: 11.5)),
                   const SizedBox(height: 14),
                   GradientButton(label: _busy ? 'Connect ho raha hai…' : 'Server address se jodiye', icon: Icons.arrow_forward_rounded, onTap: _busy ? null : _go),

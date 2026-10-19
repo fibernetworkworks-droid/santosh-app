@@ -52,7 +52,7 @@ object Actions {
         if (!url.startsWith("http://") && !url.startsWith("https://")) return Pair(false, "Link sahi nahi hai")
         val title = a.optString("title").ifBlank { android.net.Uri.parse(url).host ?: url }
         val view = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
-        Notify.tapToOpen(ctx, (url.hashCode() and 0x7fffffff) % 100000 + 300_000, "Santosh: $title", "Tap karke kholiye", view)
+        Notify.tapToOpen(ctx, (url.hashCode() and 0x7fffffff) % 100000 + 300_000, "Hoola: $title", "Tap karke kholiye", view)
         return Pair(true, "Notification bheja hai; tap karte hi khul jayega")
     }
 
@@ -61,20 +61,20 @@ object Actions {
     private fun alarm(ctx: Context, a: JSONObject): Pair<Boolean, String> {
         val h = a.optInt("hour")
         val m = a.optInt("minute")
-        val label = a.optString("label", "Santosh alarm").ifBlank { "Santosh alarm" }
+        val label = a.optString("label", "Hoola alarm").ifBlank { "Hoola alarm" }
         val days = a.optJSONArray("days") ?: JSONArray()
         val at = nextTime(h, m, days, System.currentTimeMillis())
         val id = (System.currentTimeMillis() % 1_000_000).toInt() + 10_000
         val spec = JSONObject().put("id", id).put("at", at).put("label", label).put("hour", h).put("minute", m).put("days", days)
         val exact = schedule(ctx, spec)
         val note = if (exact) "" else " (thoda aage-peeche baj sakta hai)"
-        return Pair(true, "App band tha, isliye Santosh ka apna alarm ${hhmm(h, m)} par set kiya$note")
+        return Pair(true, "App band tha, isliye Hoola ka apna alarm ${hhmm(h, m)} par set kiya$note")
     }
 
     private fun timer(ctx: Context, a: JSONObject): Pair<Boolean, String> {
         val secs = a.optLong("seconds")
         if (secs <= 0) return Pair(false, "Timer ka samay sahi nahi hai")
-        val label = a.optString("label", "Santosh timer").ifBlank { "Santosh timer" }
+        val label = a.optString("label", "Hoola timer").ifBlank { "Hoola timer" }
         val at = System.currentTimeMillis() + secs * 1000
         val c = Calendar.getInstance().apply { timeInMillis = at }
         val id = (System.currentTimeMillis() % 1_000_000).toInt() + 10_000
@@ -119,7 +119,7 @@ object Actions {
     }
 
     private fun calendar(ctx: Context, a: JSONObject): Pair<Boolean, String> {
-        val title = a.optString("title", "Santosh").ifBlank { "Santosh" }
+        val title = a.optString("title", "Hoola").ifBlank { "Hoola" }
         val start = a.optLong("start_ms")
         val end = a.optLong("end_ms").let { if (it > start) it else start + 3600_000L }
         val granted = Build.VERSION.SDK_INT < 23 ||

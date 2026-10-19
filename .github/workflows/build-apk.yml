@@ -56,6 +56,6 @@ jobs:
         run: |
           V=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
           gh release create "v$V-b${{ github.run_number }}" build/app/outputs/flutter-apk/app-release.apk \
-            --title "Santosh v$V (build ${{ github.run_number }})" \
+            --title "Hoola v$V (build ${{ github.run_number }})" \
             --notes "Android app. On the phone open: https://github.com/${{ github.repository }}/releases/latest/download/app-release.apk" \
             --latest

@@ -34,7 +34,7 @@ class HomeDeviceException(message: String) : Exception(message)
  * Flutter reports the result to the server; this side only carries the command out.
  */
 object HomeDevices {
-    const val TAG = "SantoshHome"
+    const val TAG = "HoolaHome"
     private val worker = Executors.newSingleThreadExecutor()
 
     /** Runs [actionJson] off the main thread; [done] gets null when it worked, else a short reason. */

@@ -40,10 +40,10 @@ class PhotosPickCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             status == 'ready'
-                ? 'Photos mil gayi. Santosh aage ka kaam kar raha hai.'
+                ? 'Photos mil gayi. Hoola aage ka kaam kar raha hai.'
                 : status == 'expired'
-                    ? 'Yeh link expire ho gaya. Santosh se dobara boliye.'
-                    : 'Neeche dabaiye, Google Photos mein photos chuniye aur "Done" dabaiye. Santosh sirf wahi photos dekhega.',
+                    ? 'Yeh link expire ho gaya. Hoola se dobara boliye.'
+                    : 'Neeche dabaiye, Google Photos mein photos chuniye aur "Done" dabaiye. Hoola sirf wahi photos dekhega.',
             style: const TextStyle(color: C.muted, fontSize: 12.5),
           ),
           if (status == 'waiting' && uri.isNotEmpty) ...[
@@ -131,8 +131,8 @@ class _PhotosScreenState extends State<PhotosScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Aap Google Photos mein photos chunte hain, Santosh unhe phone, PC, Drive ya email par bhejta hai. '
-                'Santosh photos upload karke albums bhi bana sakta hai. Google ki policy se Santosh aapki poori library '
+            const Text('Aap Google Photos mein photos chunte hain, Hoola unhe phone, PC, Drive ya email par bhejta hai. '
+                'Hoola photos upload karke albums bhi bana sakta hai. Google ki policy se Hoola aapki poori library '
                 'nahi dekh sakta, na share ya delete kar sakta hai.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 14),

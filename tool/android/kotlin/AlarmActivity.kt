@@ -39,7 +39,7 @@ class AlarmActivity : Activity() {
             text = t; textSize = sp; setTextColor(Color.WHITE); this.alpha = alpha; gravity = Gravity.CENTER
             if (bold) setTypeface(typeface, Typeface.BOLD)
         }
-        root.addView(text("Santosh", 18f, true, .8f))
+        root.addView(text("Hoola", 18f, true, .8f))
         root.addView(text(intent.getStringExtra("time") ?: "", 72f, true))
         root.addView(text(intent.getStringExtra("label") ?: "Alarm", 22f, false, .95f))
         val stop = Button(this).apply {

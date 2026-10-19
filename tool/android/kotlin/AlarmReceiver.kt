@@ -19,7 +19,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 val spec = Store.alarms(ctx).firstOrNull { it.optInt("id") == id } ?: return
                 val h = spec.optInt("hour")
                 val m = spec.optInt("minute")
-                Notify.alarm(ctx, id, spec.optString("label", "Santosh alarm"), String.format("%02d:%02d", h, m))
+                Notify.alarm(ctx, id, spec.optString("label", "Hoola alarm"), String.format("%02d:%02d", h, m))
                 val days = spec.optJSONArray("days")
                 if (days != null && days.length() > 0) {
                     spec.put("at", Actions.nextTime(h, m, days, System.currentTimeMillis() + 60_000L))

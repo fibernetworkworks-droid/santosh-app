@@ -240,6 +240,13 @@ class Api {
     return Map<String, dynamic>.from(body as Map);
   }
 
+  // ---------------- Hoola avatar ----------------
+  Future<Map<String, dynamic>> avatarGet() async => Map<String, dynamic>.from(await _send('GET', '/api/avatar'));
+  Future<Map<String, dynamic>> avatarPut(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/avatar', body: body));
+  Future<Map<String, dynamic>> avatarParseRules(String text) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/avatar/rules/parse', body: {'text': text}, timeout: const Duration(seconds: 60)));
+
   // ---------------- App Jaanch (REA static checks) ----------------
   Future<Map<String, dynamic>> appcheckState() async => Map<String, dynamic>.from(await _send('GET', '/api/appcheck'));
   Future<Map<String, dynamic>> appcheckGet(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/appcheck/$id'));

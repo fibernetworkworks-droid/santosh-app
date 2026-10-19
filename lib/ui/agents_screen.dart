@@ -172,7 +172,7 @@ class _AgentsScreenState extends State<AgentsScreen> {
             if (a['caution'] != null || a['licence_note'] != null || a['blocked'] == true) ...[
               const SizedBox(height: 6),
               Wrap(spacing: 6, runSpacing: 4, children: [
-                if (a['blocked'] == true) const Pill('Santosh use nahi karega', fg: C.bad),
+                if (a['blocked'] == true) const Pill('Hoola use nahi karega', fg: C.bad),
                 if (a['caution'] != null) const Pill('⚠ Sandbox mein chalaiye', fg: C.warn),
                 if (a['licence_note'] != null && !(a['licence_note'] as String).startsWith('Licence not listed')) const Pill('Licence dhyan', fg: C.warn),
               ]),
@@ -216,7 +216,7 @@ class _AgentsScreenState extends State<AgentsScreen> {
           if (a['found_in'] != null) _row('Found in', '${a['found_in']}'),
           if (a['packages'] != null) _row('Packages', '${a['packages']}'),
           const SizedBox(height: 10),
-          _box('Santosh ke saath kaise', a['how_to_use'] as String? ?? '', C.teal),
+          _box('Hoola ke saath kaise', a['how_to_use'] as String? ?? '', C.teal),
           if (a['licence_note'] != null) _box('Licence', a['licence_note'] as String, C.warn),
           if (a['caution'] != null) _box('Savdhaan', a['caution'] as String, C.bad),
           const SizedBox(height: 12),

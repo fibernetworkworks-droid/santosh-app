@@ -91,30 +91,30 @@ def _tenant(conversation_id: str) -> str:
     return t
 
 
-def render(kind: str, p: dict[str, Any]) -> tuple[str, str] | None:
+def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, str] | None:
     """(title, body) the phone shows for this event, or None when it doesn't need a push."""
     if kind == "message":
         if p.get("role") != "assistant":
             return None
         text = str(p.get("text") or "").strip()
-        return ("Santosh", text[:400]) if text else None
+        return (name, text[:400]) if text else None
     if kind == "bazar_approval":
         if p.get("status") not in (None, "", "pending") or p.get("result"):
             return None
         return ("Approve karein", f"{p.get('title', '')} {p.get('amount', '')}".strip())
     if kind == "artifact":
-        return ("Santosh ne banaya", str(p.get("title") or "Page taiyaar hai")) if p.get("status") == "ready" else None
+        return (f"{name} ne banaya", str(p.get("title") or "Page taiyaar hai")) if p.get("status") == "ready" else None
     if kind == "pc_file":
-        return ("Santosh ne PDF banaya" if p.get("source") == "bazar" else "PC se file aayi", str(p.get("name") or ""))
+        return (f"{name} ne PDF banaya" if p.get("source") == "bazar" else "PC se file aayi", str(p.get("name") or ""))
     if kind == "email_draft":
         return ("Email draft taiyaar", str(p.get("subject") or "Dekh kar bhejiye"))
     if kind == "bazar_open":
         msg = str(p.get("message") or "").strip()
-        return ("Santosh", msg[:300]) if msg else None
+        return (name, msg[:300]) if msg else None
     return None
 
 
-def build(token: str, ev: dict[str, Any]) -> dict[str, Any] | None:
+def build(token: str, ev: dict[str, Any], name: str = "Santosh") -> dict[str, Any] | None:
     kind, p = ev["kind"], ev.get("payload") or {}
     data: dict[str, str] = {"kind": kind, "event_id": str(ev.get("id", "")), "at": str(ev.get("at", ""))}
     ttl = "3600s"
@@ -122,11 +122,16 @@ def build(token: str, ev: dict[str, Any]) -> dict[str, Any] | None:
         data["payload"] = json.dumps(p, ensure_ascii=False)[:3000]
         ttl = "600s"
     else:
-        shown = render(kind, p)
+        shown = render(kind, p, name)
         if shown is None:
             return None
         data["title"], data["body"] = shown[0][:80], shown[1][:900]
     return {"message": {"token": token, "data": data, "android": {"priority": "HIGH", "ttl": ttl}}}
+
+
+def _avatar_name(tenant: str) -> str:
+    from .avatar.service import persona
+    return persona(tenant)[0]
 
 
 def _send(tenant: str, ev: dict[str, Any]) -> int:
@@ -142,7 +147,7 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
     sent = 0
     with httpx.Client(timeout=15) as c:
         for tok in tokens:
-            body = build(tok, ev)
+            body = build(tok, ev, _avatar_name(tenant))
             if body is None:
                 return 0
             try:

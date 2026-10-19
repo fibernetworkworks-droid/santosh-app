@@ -159,7 +159,7 @@ class TodayScreen extends StatelessWidget {
             const SizedBox(height: 20),
             const _Label('SANTOSH KE APNE KAAM'),
             if (app.routines.isEmpty)
-              const Glass(child: Text('Santosh khud se koi kaam nahi kar raha. Boliye: "Har subah 7 baje Pune ka mausam aur aaj ke reminders bata dena".', style: TextStyle(color: C.muted)))
+              const Glass(child: Text('Hoola khud se koi kaam nahi kar raha. Boliye: "Har subah 7 baje Pune ka mausam aur aaj ke reminders bata dena".', style: TextStyle(color: C.muted)))
             else
               Glass(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),

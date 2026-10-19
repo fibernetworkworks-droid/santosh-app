@@ -627,6 +627,7 @@ def init_db(url: str | None = None):
     from .notebook import models as _notebook_models  # noqa: F401
     from .youtube import models as _youtube_models  # noqa: F401
     from .appcheck import models as _appcheck_models  # noqa: F401
+    from .avatar import models as _avatar_models  # noqa: F401
     Base.metadata.create_all(_engine)
     _add_missing_columns(_engine)
     from .bazar.db import init_tables as _bazar_tables

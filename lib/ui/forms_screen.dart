@@ -139,7 +139,7 @@ class _FormsScreenState extends State<FormsScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Santosh ek line se Google Form ya quiz banata hai, sawaal badalta hai, jawab padhta aur samjhata hai, '
+            const Text('Hoola ek line se Google Form ya quiz banata hai, sawaal badalta hai, jawab padhta aur samjhata hai, '
                 'Sheet / Excel mein nikaalta hai aur naye jawab aane par batata hai. Doosron ko edit access dena aur '
                 'jawab wale sawaal hatana hamesha aapke tap ke baad hi.',
                 style: TextStyle(color: C.muted, fontSize: 13)),

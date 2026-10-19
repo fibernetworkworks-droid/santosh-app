@@ -58,9 +58,11 @@ Rules
 """
 
 
-def system_prompt(dry_run: bool, context: str = "") -> str:
+def system_prompt(dry_run: bool, context: str = "", tenant: str | None = None) -> str:
     when = datetime.now(IST).strftime("%A %d %B %Y, %I:%M %p IST")
     mode = ("\nMode: TEST MODE for WhatsApp. Campaign messages are simulated; nothing reaches real phones. Mention this once if the user expects real delivery."
             if dry_run else "\nMode: LIVE. WhatsApp messages go to real customers.")
     ctx = f"\n\nAbout this user\n{context}" if context else ""
-    return SYSTEM + f"\nCurrent time: {when}." + mode + ctx
+    from ..avatar.service import personalise, persona
+    name, gender = persona(tenant) if tenant else ("Santosh", "m")
+    return personalise(SYSTEM, name, gender) + f"\nCurrent time: {when}." + mode + ctx

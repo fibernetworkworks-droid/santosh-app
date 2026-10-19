@@ -125,7 +125,7 @@ class _SlidesScreenState extends State<SlidesScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Santosh kisi bhi topic par poori presentation banata hai (title, points, table, closing aur speaker notes ke '
+            const Text('Hoola kisi bhi topic par poori presentation banata hai (title, points, table, closing aur speaker notes ke '
                 'saath), aapki decks padhkar summary deta hai, slides jodta / badalta / aage-peeche karta hai aur PDF ya PowerPoint '
                 'banakar bhejta hai. Slides hatana aur share karna aapke tap ke baad hi.',
                 style: TextStyle(color: C.muted, fontSize: 13)),

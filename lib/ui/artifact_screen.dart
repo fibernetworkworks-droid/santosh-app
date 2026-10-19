@@ -183,7 +183,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
     if (api == null) {
       setState(() {
         _loading = false;
-        _loadError = 'Santosh se connect nahi hai.';
+        _loadError = 'Hoola se connect nahi hai.';
       });
       return;
     }
@@ -234,7 +234,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
       final rawArgs = msg['args'];
       final args = rawArgs is Map ? Map<String, dynamic>.from(rawArgs) : <String, dynamic>{};
       final api = app.api;
-      if (api == null) throw Exception('Santosh se connect nahi hai');
+      if (api == null) throw Exception('Hoola se connect nahi hai');
       Object? result;
       switch (op) {
         case 'storage.get':
@@ -454,7 +454,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Text(_title.isEmpty ? 'Artifact' : _title,
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
-              Text(_shared ? 'Santosh Artifact · link se share' : 'Santosh Artifact',
+              Text(_shared ? 'Hoola Artifact · link se share' : 'Hoola Artifact',
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 12)),
             ]),
           ),
@@ -488,7 +488,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
 
   Widget _strip() => _note(
         const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: C.accent)),
-        'Santosh bana raha hai… naya version taiyaar hote hi yahin khul jayega',
+        'Hoola bana raha hai… naya version taiyaar hote hi yahin khul jayega',
         const Color(0x2EFFB15C),
         const Color(0xFFFFD9A8),
       );
@@ -551,7 +551,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
               onSubmitted: (_) => _revise(),
               style: const TextStyle(fontSize: 14.5, color: C.ink),
               decoration: InputDecoration(
-                hintText: building ? 'Santosh bana raha hai…' : 'Badlaav batayiye… (e.g. dark mode, Hindi mein)',
+                hintText: building ? 'Hoola bana raha hai…' : 'Badlaav batayiye… (e.g. dark mode, Hindi mein)',
                 isDense: true,
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
@@ -611,7 +611,7 @@ class ArtifactCard extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                const Text('Santosh Artifact', style: TextStyle(color: C.faint, fontSize: 12)),
+                const Text('Hoola Artifact', style: TextStyle(color: C.faint, fontSize: 12)),
               ]),
             ),
             if (status == 'building')
@@ -631,7 +631,7 @@ class ArtifactCard extends StatelessWidget {
           if (status == 'failed')
             Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text(error.isEmpty ? 'Nahi ban paya. Santosh se dobara boliye.' : error, style: const TextStyle(color: C.bad, fontSize: 12.5)),
+              child: Text(error.isEmpty ? 'Nahi ban paya. Hoola se dobara boliye.' : error, style: const TextStyle(color: C.bad, fontSize: 12.5)),
             ),
           if (status != 'deleted' && id.isNotEmpty) ...[
             const SizedBox(height: 10),

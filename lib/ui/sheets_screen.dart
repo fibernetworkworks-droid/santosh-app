@@ -125,7 +125,7 @@ class _SheetsScreenState extends State<SheetsScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Santosh aapki Google Sheets naam se dhoondhta, padhta, sahi hisaab lagata (total, filter, group), rows '
+            const Text('Hoola aapki Google Sheets naam se dhoondhta, padhta, sahi hisaab lagata (total, filter, group), rows '
                 'jodta aur badalta, nayi sheet banata, Excel import karta aur file banakar bhejta hai. Rows hatana, 20 se '
                 'zyada rows badalna aur share karna aapke tap ke baad hi.',
                 style: TextStyle(color: C.muted, fontSize: 13)),

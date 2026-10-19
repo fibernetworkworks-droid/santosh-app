@@ -41,7 +41,7 @@ class _ApproveSheet extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('$title?', style: display(19)),
               const SizedBox(height: 2),
-              const Text('Santosh ne aapke liye taiyaar kiya', style: TextStyle(color: C.muted, fontSize: 13)),
+              const Text('Hoola ne aapke liye taiyaar kiya', style: TextStyle(color: C.muted, fontSize: 13)),
             ]),
           ),
         ]),
@@ -103,7 +103,7 @@ class _ApproveSheet extends StatelessWidget {
           Icon(Icons.verified_user_outlined, color: C.ok, size: 18),
           SizedBox(width: 8),
           Expanded(
-            child: Text('Rakam aur payee server ke record se hain. Santosh kabhi PIN, OTP ya card number nahi maangega.',
+            child: Text('Rakam aur payee server ke record se hain. Hoola kabhi PIN, OTP ya card number nahi maangega.',
                 style: TextStyle(fontSize: 12.5, color: C.muted, height: 1.4)),
           ),
         ]),
