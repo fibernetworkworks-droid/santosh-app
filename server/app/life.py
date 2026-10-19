@@ -1,6 +1,7 @@
 """Daily-life helpers: user profile, time handling, reminders, weather and the morning briefing."""
 from __future__ import annotations
 
+import asyncio
 import calendar
 import logging
 from datetime import date, datetime, timedelta, timezone
@@ -227,6 +228,13 @@ async def compose_briefing(tenant_id: str) -> str:
                          .order_by(Reminder.due_at)).all()
         rem_lines = [f"{as_utc(r.due_at).astimezone(tz).strftime('%I:%M %p').lstrip('0')} {r.text}" for r in rems]
         open_items = s.scalars(select(ListItem).where(ListItem.tenant_id == tenant_id, ListItem.done.is_(False))).all()
+    try:
+        from .cal import service as cal_service
+        cal_lines = await asyncio.to_thread(cal_service.today_lines, tenant_id)
+        if cal_lines:
+            parts.append("Aaj calendar mein: " + "; ".join(cal_lines) + ".")
+    except Exception as e:
+        log.info("briefing calendar skipped: %s", e)
     if rem_lines:
         parts.append("Aaj ke reminders: " + "; ".join(rem_lines) + ".")
     else:

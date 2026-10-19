@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.20.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.21.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -97,7 +97,8 @@ def healthz():
     from . import mail
     features = ["routines", "voice", "web", "bazar"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
-                         or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if __import__("app.gcal", fromlist=["x"]).configured() else []) \
+                         or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
+                            or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
         + (["drive"] if __import__("app.gdrive", fromlist=["x"]).configured() else []) \
         + (["maps"] if __import__("app.maps", fromlist=["x"]).configured() else []) \
         + (["browser"] if __import__("app.browser", fromlist=["x"]).configured() else []) \
@@ -325,6 +326,9 @@ async def google_callback(request: Request):
     from .mailbox.accounts import is_link_state
     if is_link_state(request.query_params.get("state", "")):   # "connect my Gmail" from the app, not a sign-in
         return await _finish_mail_link(request)
+    from .cal.accounts import is_link_state as is_cal_state
+    if is_cal_state(request.query_params.get("state", "")):    # "connect my Google Calendar"
+        return await _finish_cal_link(request)
     code = request.query_params.get("code")
     state = request.query_params.get("state", "")
     err = request.query_params.get("error")
@@ -772,6 +776,95 @@ async def _finish_mail_link(request: Request) -> HTMLResponse:
     except MailError as e:
         return _mail_linked_page(None, str(e))
     return _mail_linked_page(view)
+
+
+# ---------------- Google Calendar ----------------
+def _cal_page(address: str | None, error: str = "") -> HTMLResponse:
+    import html as _h
+    scheme = get_settings().app_redirect_scheme
+    deep = f"{scheme}://calendar?ok={0 if error else 1}"
+    msg = (f"<h2>Google Calendar Santosh se juda! ✅</h2><p>{_h.escape(address or '')}</p>" if not error else
+           f"<h3>Calendar nahi juda</h3><p>{_h.escape(error)}</p>")
+    return HTMLResponse(f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
+<body style="font-family:system-ui;text-align:center;padding:40px;background:#f3eefb">{msg}
+<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">App kholiye</a></p>
+<script>setTimeout(function(){{location.href={deep!r}}},600);</script></body>""", status_code=400 if error else 200)
+
+
+async def _finish_cal_link(request: Request) -> HTMLResponse:
+    from .cal import accounts as ca
+    from .cal.google import CalError
+    if request.query_params.get("error"):
+        return _cal_page(None, request.query_params["error"])
+    try:
+        view = await asyncio.to_thread(ca.finish_link, request.query_params.get("code", ""), request.query_params.get("state", ""))
+    except CalError as e:
+        return _cal_page(None, str(e))
+    return _cal_page(view["address"])
+
+
+def _cal_state(tenant: str) -> dict:
+    from .cal import accounts as ca
+    from .cal import service as cs
+    out = {"accounts": ca.views(tenant), "can_link": ca.oauth_ready(), "prefs": cs.prefs(tenant), "calendars": []}
+    try:
+        out["calendars"] = [{k: c[k] for k in ("ref", "name", "account", "primary", "reading", "default", "role", "color")}
+                            for c in cs.all_calendars(tenant)]
+    except Exception as e:
+        out["error"] = str(e)
+    return out
+
+
+@app.get("/api/calendar/accounts", dependencies=[Depends(require_key)])
+def calendar_accounts(tenant: str = Depends(current_tenant)):
+    return _cal_state(tenant)
+
+
+@app.get("/api/calendar/link", dependencies=[Depends(require_key)])
+def calendar_link(login_hint: str = "", tenant: str = Depends(current_tenant)):
+    from .cal import accounts as ca
+    from .cal.google import CalError
+    try:
+        return {"url": ca.start_link(tenant, login_hint)}
+    except CalError as e:
+        raise HTTPException(503, str(e))
+
+
+class CalPrefsIn(BaseModel):
+    read_calendars: list[str] | None = None
+    default_calendar: str | None = None
+    alert_minutes: int | None = None
+    default_account: str | None = None
+
+
+@app.patch("/api/calendar/prefs", dependencies=[Depends(require_key)])
+def calendar_prefs(body: CalPrefsIn, tenant: str = Depends(current_tenant)):
+    from .cal import accounts as ca
+    from .cal import service as cs
+    from .cal.google import CalError
+    try:
+        if body.default_account:
+            ca.set_default(tenant, body.default_account)
+        kw = {}
+        if body.read_calendars is not None:
+            kw["read_calendars"] = body.read_calendars or None
+        if body.default_calendar is not None:
+            kw["default_calendar"] = body.default_calendar
+        if body.alert_minutes is not None:
+            kw["alert_minutes"] = max(0, min(body.alert_minutes, 120))
+        if kw:
+            cs.set_prefs(tenant, **kw)
+    except CalError as e:
+        raise HTTPException(400, str(e))
+    return _cal_state(tenant)
+
+
+@app.delete("/api/calendar/accounts/{key}", dependencies=[Depends(require_key)])
+def calendar_remove(key: str, tenant: str = Depends(current_tenant)):
+    from .cal import accounts as ca
+    if not ca.remove(tenant, key):
+        raise HTTPException(404, "Calendar not found")
+    return _cal_state(tenant)
 
 
 @app.get("/auth/microsoft/callback")

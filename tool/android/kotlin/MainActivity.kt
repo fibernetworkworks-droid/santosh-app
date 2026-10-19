@@ -225,6 +225,7 @@ class MainActivity : FlutterActivity() {
             data.scheme == "santosh" && data.host == "auth" -> data.getQueryParameter("session") ?: return
             data.scheme == "santosh" && data.host == "bazar" -> "bazar:linked=" + (data.getQueryParameter("linked") ?: "0")
             data.scheme == "santosh" && data.host == "mail" -> "mail:ok=" + (data.getQueryParameter("ok") ?: "0")
+            data.scheme == "santosh" && data.host == "calendar" -> "calendar:ok=" + (data.getQueryParameter("ok") ?: "0")
             else -> return
         }
         val sink = linkSink

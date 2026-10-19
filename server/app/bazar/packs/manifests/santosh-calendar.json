@@ -1,0 +1,18 @@
+{
+  "id": "santosh-calendar",
+  "name": "Santosh Calendar",
+  "category": "Office & PC",
+  "sub_category": "Calendar",
+  "pack_type": "Native",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Your Google Calendar: agenda, events with Meet links and reminders, repeats, rescheduling, RSVP, free slots and meeting alerts. Asks before anything that emails other people",
+  "notes": "Driven by the calendar_* tools; this pack holds the invite / reschedule / cancel / decline confirm cards",
+  "master_list_row": 0,
+  "executor": "cal",
+  "config": {},
+  "tools": [{"name": "confirm_change", "tier": 2}],
+  "keywords": ["calendar", "google calendar", "meeting", "invite", "schedule"],
+  "wave": "MVP"
+}

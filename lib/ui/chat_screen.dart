@@ -8,6 +8,7 @@ import '../state.dart';
 import 'approve_sheet.dart';
 import 'artifact_screen.dart';
 import 'browser_live.dart';
+import 'calendar_screen.dart';
 import 'glass.dart';
 import 'pc_screen.dart';
 import 'live_santosh.dart';
@@ -203,6 +204,8 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       case 'email':
         return _EmailCard(v: it.data, app: app);
+      case 'calendar_event':
+        return CalendarEventCard(v: it.data);
       case 'bazar':
         return _BazarCard(v: it.data, app: app);
       case 'open':

@@ -66,6 +66,10 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
         widget.app.onMailLinked(t.endsWith('=1'));
         return;
       }
+      if (t.startsWith('calendar:')) {
+        widget.app.onCalendarLinked(t.endsWith('=1'));
+        return;
+      }
       await widget.app.applySession(t);
       if (widget.app.connected && mounted) setState(() => _setup = false);
     }, onError: (_) {});

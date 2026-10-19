@@ -158,6 +158,7 @@ class Santosh extends ChangeNotifier {
     lastEventId = 0;
     _campaigns.clear();
     _emails.clear();
+    _calEvents.clear();
     _artifacts.clear();
     _browsers.clear();
     _steps = null;
@@ -377,6 +378,14 @@ class Santosh extends ChangeNotifier {
     notifyListeners();
   }
 
+  int calendarLinkedTick = 0;                  // bumps when Google Calendar got connected
+  final Map<String, FeedItem> _calEvents = {};
+  void onCalendarLinked(bool ok) {
+    calendarLinkedTick++;
+    feed.add(FeedItem('note', {'text': ok ? 'Google Calendar jud gaya ✓ Ab Santosh aapka schedule dekh aur bana sakta hai.' : 'Calendar nahi jud paya, dobara koshish kijiye.'}));
+    notifyListeners();
+  }
+
   int mailLinkedTick = 0;                      // bumps when a mailbox got connected (Email screen refreshes)
   void onMailLinked(bool ok) {
     mailLinkedTick++;
@@ -588,6 +597,16 @@ class Santosh extends ChangeNotifier {
         } else {
           _emails[p['id'] as String] = FeedItem('email', Map<String, dynamic>.from(p));
           feed.add(_emails[p['id']]!);
+        }
+        break;
+      case 'calendar_event':
+        final cid = '${p['id']}';
+        final had = _calEvents[cid];
+        if (had != null && p['status'] != 'soon') {
+          had.data = {...had.data, ...p};
+        } else {
+          _calEvents[cid] = FeedItem('calendar_event', Map<String, dynamic>.from(p));
+          feed.add(_calEvents[cid]!);
         }
         break;
       case 'email_sent':

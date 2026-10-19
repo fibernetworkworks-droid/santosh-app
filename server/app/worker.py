@@ -366,7 +366,7 @@ async def bazar_reminders() -> None:
         log.exception("bazar reminders failed")
 
 
-_mail_last = {"bulk": 0.0, "scheduled": 0.0, "watch": 0.0}
+_mail_last = {"bulk": 0.0, "scheduled": 0.0, "watch": 0.0, "cal": 0.0}
 
 
 async def mail_jobs() -> None:
@@ -383,11 +383,15 @@ async def mail_jobs() -> None:
     if t - _mail_last["watch"] >= 600:
         _mail_last["watch"] = t
         jobs.append(ms.check_watches)
+    if t - _mail_last["cal"] >= 120:            # Google Calendar: "10 minute mein meeting" nudges
+        _mail_last["cal"] = t
+        from .cal import service as cs
+        jobs.append(cs.alerts_tick)
     for job in jobs:
         try:
             await asyncio.to_thread(job)
         except Exception:
-            log.exception("mail job %s failed", job.__name__)
+            log.exception("mail/calendar job %s failed", job.__name__)
 
 
 async def run_forever(stop: asyncio.Event) -> None:

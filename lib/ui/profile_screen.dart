@@ -5,6 +5,7 @@ import '../native.dart';
 import '../state.dart';
 import 'artifacts_screen.dart';
 import 'bazar_screen.dart';
+import 'calendar_screen.dart';
 import 'email_screen.dart';
 import 'glass.dart';
 import 'lock_safe.dart';
@@ -103,6 +104,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           subtitle: const Text('Office ka computer jodiye: files, print aur Tally phone se'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PcScreen(app: app))),
+        ),
+      ),
+      const SizedBox(height: 18),
+      Glass(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.event_rounded, color: C.teal),
+          title: const Text('Calendar', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('Google Calendar jodiye · meetings, Meet link, free time, meeting se pehle yaad'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CalendarScreen(app: app))),
         ),
       ),
       const SizedBox(height: 18),

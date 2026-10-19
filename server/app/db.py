@@ -268,6 +268,57 @@ class MailAccount(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class CalendarAccount(Base):
+    """A Google Calendar the user connected by Google sign-in (scope: calendar). Tokens stored encrypted."""
+    __tablename__ = "calendar_accounts"
+    __table_args__ = (UniqueConstraint("tenant_id", "address", name="uq_calendar_account"),)
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cal"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    kind: Mapped[str] = mapped_column(String(12), default="google")
+    address: Mapped[str] = mapped_column(String(320))
+    display_name: Mapped[str] = mapped_column(String(120), default="")
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    access_token_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    refresh_token_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expiry: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(12), default="ok")
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CalendarPrefs(Base):
+    """Per person: which calendars Santosh reads, where new events go, meeting alerts."""
+    __tablename__ = "calendar_prefs"
+    tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    read_calendars: Mapped[list | None] = mapped_column(JSON, nullable=True)     # ["<acct>~<calendarId>"]; None = primary
+    default_calendar: Mapped[str | None] = mapped_column(String(400), nullable=True)
+    alert_minutes: Mapped[int] = mapped_column(Integer, default=10)              # 0 = no meeting alerts
+    alert_conversation_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
+
+class CalendarPending(Base):
+    """A calendar change that informs other people (invite, reschedule, cancel). Runs only after the user's tap."""
+    __tablename__ = "calendar_pending"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("calp"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    conversation_id: Mapped[str] = mapped_column(String(40), default="")
+    action: Mapped[str] = mapped_column(String(12))            # create | update | cancel
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    summary: Mapped[dict] = mapped_column(JSON, default=dict)  # what the card shows
+    status: Mapped[str] = mapped_column(String(12), default="pending")   # pending | done | failed
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CalendarAlert(Base):
+    """Meeting alerts already sent (so each meeting is announced once)."""
+    __tablename__ = "calendar_alerts"
+    __table_args__ = (UniqueConstraint("tenant_id", "event_key", name="uq_calendar_alert"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    event_key: Mapped[str] = mapped_column(String(600))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class MailLinkState(Base):
     """Anti-CSRF state while the user connects a mailbox by OAuth (remembers whose mailbox it is)."""
     __tablename__ = "mail_link_states"

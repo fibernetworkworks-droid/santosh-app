@@ -109,6 +109,17 @@ class Api {
   Future<Map<String, dynamic>> removeEmailAttachment(String id, int index) async =>
       Map<String, dynamic>.from(await _send('DELETE', '/api/emails/$id/attachments/$index') as Map);
 
+  // ---- Google Calendar ----
+  Future<Map<String, dynamic>> calendarState() async => Map<String, dynamic>.from(await _send('GET', '/api/calendar/accounts') as Map);
+  Future<String> calendarLinkUrl() async => (await _send('GET', '/api/calendar/link'))['url'] as String;
+  Future<Map<String, dynamic>> calendarPrefs({List<String>? read, String? defaultCalendar, int? alertMinutes}) async =>
+      Map<String, dynamic>.from(await _send('PATCH', '/api/calendar/prefs', body: {
+        if (read != null) 'read_calendars': read, if (defaultCalendar != null) 'default_calendar': defaultCalendar,
+        if (alertMinutes != null) 'alert_minutes': alertMinutes,
+      }) as Map);
+  Future<Map<String, dynamic>> calendarRemove(String key) async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/calendar/accounts/$key') as Map);
+
   // ---- mailboxes: Gmail / Outlook by sign-in, any email by app password ----
   Future<Map<String, dynamic>> mailAccounts() async => Map<String, dynamic>.from(await _send('GET', '/api/mail/accounts') as Map);
   Future<String> mailLinkUrl(String provider, {String hint = ''}) async =>
