@@ -194,3 +194,85 @@ HOOLA_HANDLERS = {"hoola_me": hoola_me, "hoola_find": hoola_find, "hoola_connect
                   "hoola_inbox": hoola_inbox, "hoola_decide": hoola_decide, "hoola_threads": hoola_threads,
                   "hoola_handle": hoola_handle,
                   "hoola_thread": hoola_thread}
+
+
+# ---------------------------------------------------------------- v0.31 Mandali (groups)
+from ..net import groups as grp  # noqa: E402
+
+GROUP_TOOLS = [
+    {"name": "hoola_group_create", "description": (
+        "Make a Mandali (group of Hoola avatars): a team, family or partners. members = names / @Hoola IDs of people "
+        "already connected; each gets an invite their avatar shows them. The owner is the admin."),
+     "input_schema": {"type": "object", "properties": {"name": {"type": "string"}, "emoji": {"type": "string"},
+                                                       "members": {"type": "array", "items": {"type": "string"}}},
+                      "required": ["name"]}},
+    {"name": "hoola_groups", "description": "The owner's groups, or one group (group = name or id) with members and recent posts.",
+     "input_schema": {"type": "object", "properties": {"group": {"type": "string"}}}},
+    {"name": "hoola_group_post", "description": (
+        "Post in a group through the owner's avatar: kind message (default), ask (a question to everyone), task (give a "
+        "job to one member: assign_to + title + due), file (file_id). Every member's avatar shows it by its own rules."),
+     "input_schema": {"type": "object", "properties": {
+         "group": {"type": "string"}, "kind": {"type": "string", "enum": ["message", "ask", "task", "file"]},
+         "text": {"type": "string"}, "title": {"type": "string"}, "assign_to": {"type": "string"}, "due": {"type": "string"},
+         "file_id": {"type": "string"}}, "required": ["group"]}},
+    {"name": "hoola_group_manage", "description": (
+        "Group actions: invite (who), remove (who, admin only), leave, mute (all / mentions / digest), answer_invite "
+        "(accept / decline), task (post_id + status accepted / done / declined, for a task given to the owner), "
+        "take_file (post_id)."),
+     "input_schema": {"type": "object", "properties": {
+         "group": {"type": "string"}, "action": {"type": "string", "enum": ["invite", "remove", "leave", "mute", "answer_invite", "task", "take_file"]},
+         "who": {"type": "string"}, "mute": {"type": "string", "enum": ["all", "mentions", "digest"]},
+         "answer": {"type": "string", "enum": ["accept", "decline"]}, "post_id": {"type": "string"},
+         "status": {"type": "string", "enum": ["accepted", "done", "declined"]}}, "required": ["action"]}},
+    {"name": "hoola_group_digest", "description": "What happened in a group in the last N hours (summary of posts, tasks, decisions).",
+     "input_schema": {"type": "object", "properties": {"group": {"type": "string"}, "hours": {"type": "integer"}},
+                      "required": ["group"]}},
+]
+GROUP_LABELS = {"hoola_group_create": "Group bana raha hoon", "hoola_groups": "Groups dekh raha hoon",
+                "hoola_group_post": "Group mein bhej raha hoon", "hoola_group_manage": "Group sambhal raha hoon",
+                "hoola_group_digest": "Group ki baatein padh raha hoon"}
+
+
+async def hoola_group_create(ctx: Ctx, name, emoji="", members=None, **_):
+    return await _t(grp.create, ctx.tenant_id, str(name), str(emoji or ""), [str(m) for m in members or []])
+
+
+async def hoola_groups(ctx: Ctx, group="", **_):
+    if group:
+        return await _t(grp.detail, ctx.tenant_id, str(group), 30)
+    return {"groups": await _t(grp.groups, ctx.tenant_id)}
+
+
+async def hoola_group_post(ctx: Ctx, group, kind="message", text="", title="", assign_to="", due="", file_id="", **_):
+    return await _t(grp.post, ctx.tenant_id, str(group), kind or "message", str(text or ""), str(title or ""),
+                    str(assign_to or ""), str(file_id or ""), str(due or ""))
+
+
+async def hoola_group_manage(ctx: Ctx, action, group="", who="", mute="", answer="", post_id="", status="", **_):
+    t = ctx.tenant_id
+    if action == "invite":
+        return await _t(grp.invite, t, str(group), str(who))
+    if action == "remove":
+        return await _t(grp.remove, t, str(group), str(who))
+    if action == "leave":
+        return await _t(grp.leave, t, str(group))
+    if action == "mute":
+        return await _t(grp.set_mute, t, str(group), mute or "mentions")
+    if action == "answer_invite":
+        return await _t(grp.answer_invite, t, str(group), answer or "accept")
+    if action == "task":
+        return await _t(grp.task_answer, t, str(post_id), status or "accepted")
+    if action == "take_file":
+        return await _t(grp.take_file, t, str(post_id))
+    raise ToolError("action?")
+
+
+async def hoola_group_digest(ctx: Ctx, group, hours=24, **_):
+    return await _t(grp.digest, ctx.tenant_id, str(group), int(hours or 24))
+
+
+HOOLA_TOOLS.extend(GROUP_TOOLS)
+HOOLA_LABELS.update(GROUP_LABELS)
+HOOLA_HANDLERS.update({"hoola_group_create": hoola_group_create, "hoola_groups": hoola_groups,
+                       "hoola_group_post": hoola_group_post, "hoola_group_manage": hoola_group_manage,
+                       "hoola_group_digest": hoola_group_digest})

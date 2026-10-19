@@ -363,3 +363,141 @@ class HoolaMsgCard extends StatelessWidget {
     );
   }
 }
+
+
+/// Invited to a Mandali (group), or a group event.
+class HoolaGroupCard extends StatefulWidget {
+  const HoolaGroupCard({super.key, required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+  @override
+  State<HoolaGroupCard> createState() => _HoolaGroupCardState();
+}
+
+class _HoolaGroupCardState extends State<HoolaGroupCard> {
+  String? _done;
+
+  Future<void> _answer(String a) async {
+    try {
+      await widget.app.api!.netGroupAct(widget.v['gid'] as String, 'answer_invite', answer: a);
+      if (mounted) setState(() => _done = a == 'accept' ? 'Group mein aa gaye ✓' : 'Mana kiya');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = widget.v;
+    final invite = v['event'] == 'invite' && v['status'] == 'invited';
+    final text = switch (v['event']) {
+      'invite' => '${v['from'] ?? ''} ne aapko group mein bulaya hai',
+      'group_join' => '${v['from'] ?? ''} group mein aa gaye',
+      'group_leave' => '${v['from'] ?? ''} ne group chhoda',
+      'removed' => 'Aapko group se hata diya gaya',
+      _ => '',
+    };
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            Text(v['emoji'] as String? ?? '👥', style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(v['name'] as String? ?? 'Mandali', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                Text(text, style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              ]),
+            ),
+          ]),
+          if (invite && _done == null) ...[
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(child: GradientButton(label: 'Judiye', icon: Icons.group_add_rounded, height: 42, onTap: () => _answer('accept'))),
+              const SizedBox(width: 8),
+              TextButton(onPressed: () => _answer('decline'), child: const Text('Mana')),
+            ]),
+          ],
+          if (_done != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_done!, style: const TextStyle(color: C.ok))),
+        ]),
+      ),
+    );
+  }
+}
+
+/// A post in a Mandali that the owner's avatar decided to show (mention, task for the owner, or 'all').
+class HoolaGroupPostCard extends StatefulWidget {
+  const HoolaGroupPostCard({super.key, required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+  @override
+  State<HoolaGroupPostCard> createState() => _HoolaGroupPostCardState();
+}
+
+class _HoolaGroupPostCardState extends State<HoolaGroupPostCard> {
+  String? _status;
+
+  Future<void> _task(String a) async {
+    try {
+      final r = await widget.app.api!.netGroupTask(widget.v['id'] as String, a);
+      if (mounted) setState(() => _status = r['status'] as String?);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _file() async {
+    try {
+      await widget.app.api!.netGroupFile(widget.v['id'] as String);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File phone par aa gayi')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = widget.v;
+    final body = Map<String, dynamic>.from(v['body'] as Map? ?? const {});
+    final task = v['kind'] == 'task';
+    final status = _status ?? v['task_status'] as String? ?? '';
+    final text = (body['text'] ?? v['text'] ?? '') as String;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Icon(Icons.groups_rounded, color: C.violet, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('${v['group'] ?? ''} · ${v['author'] ?? ''}',
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+            ),
+            if (v['mention'] == true) const Text('@aap', style: TextStyle(color: C.accent, fontSize: 11.5, fontWeight: FontWeight.w700)),
+          ]),
+          if (task) Padding(padding: const EdgeInsets.only(top: 6), child: Text('🧰 ${body['title'] ?? 'Kaam'}${(body['due'] ?? '') != '' ? ' · ${body['due']}' : ''}',
+              style: const TextStyle(fontWeight: FontWeight.w700))),
+          if (text.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(text, style: const TextStyle(fontSize: 13.5))),
+          if ((body['name'] ?? '') != '') _checked({...body}),
+          if ((body['name'] ?? '') != '' && body['qid'] != null)
+            Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: _file, icon: const Icon(Icons.download_rounded, size: 18), label: const Text('File lijiye'))),
+          if (task && v['for_me'] == true)
+            status == 'open' || status.isEmpty
+                ? Row(children: [
+                    TextButton(onPressed: () => _task('accepted'), child: const Text('Le liya')),
+                    TextButton(onPressed: () => _task('done'), child: const Text('Ho gaya')),
+                    TextButton(onPressed: () => _task('declined'), child: const Text('Mana', style: TextStyle(color: C.bad))),
+                  ])
+                : status == 'accepted'
+                    ? Row(children: [
+                        const Text('Aapne liya', style: TextStyle(color: C.ok)),
+                        const Spacer(),
+                        TextButton(onPressed: () => _task('done'), child: const Text('Ho gaya')),
+                      ])
+                    : Text(status == 'done' ? 'Poora ✓' : status, style: const TextStyle(color: C.ok)),
+        ]),
+      ),
+    );
+  }
+}

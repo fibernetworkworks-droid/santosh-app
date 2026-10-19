@@ -739,7 +739,12 @@ class Santosh extends ChangeNotifier {
         hoolaTick++;
         break;
       case 'hoola_msg':
+      case 'hoola_group':
         feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
+        hoolaTick++;
+        break;
+      case 'hoola_group_post':
+        if (p['quiet'] != true) feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
         hoolaTick++;
         break;
       case 'photos_pick':

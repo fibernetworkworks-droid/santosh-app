@@ -879,3 +879,4 @@ def counts(tenant: str) -> dict[str, int]:
 
 _ = or_
 from . import share as _share  # noqa: E402,F401  (registers file / email / link / presentation handlers)
+from . import groups as _groups  # noqa: E402,F401  (registers the group envelope kinds)

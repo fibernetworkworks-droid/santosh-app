@@ -266,6 +266,19 @@ class Api {
   Future<Map<String, dynamic>> netReply(String threadId, String text) async =>
       _hm(await _send('POST', '/api/net/threads/$threadId/reply', body: {'text': text}, timeout: const Duration(seconds: 60)));
 
+  Future<List<Map<String, dynamic>>> netGroups() async => _hl((await _send('GET', '/api/net/groups'))['groups']);
+  Future<Map<String, dynamic>> netGroupCreate(String name, List<String> members, {String emoji = ''}) async =>
+      _hm(await _send('POST', '/api/net/groups', body: {'name': name, 'emoji': emoji, 'members': members}, timeout: const Duration(seconds: 60)));
+  Future<Map<String, dynamic>> netGroup(String gid) async => _hm(await _send('GET', '/api/net/groups/$gid'));
+  Future<Map<String, dynamic>> netGroupPost(String gid, Map<String, dynamic> body) async =>
+      _hm(await _send('POST', '/api/net/groups/$gid/post', body: body, timeout: const Duration(seconds: 60)));
+  Future<Map<String, dynamic>> netGroupAct(String gid, String action, {String who = '', String mute = '', String answer = ''}) async =>
+      _hm(await _send('POST', '/api/net/groups/$gid/act', body: {'action': action, 'who': who, 'mute': mute, 'answer': answer},
+          timeout: const Duration(seconds: 90)));
+  Future<Map<String, dynamic>> netGroupTask(String postId, String action) async =>
+      _hm(await _send('POST', '/api/net/group-posts/$postId/task', body: {'action': action}));
+  Future<Map<String, dynamic>> netGroupFile(String postId) async => _hm(await _send('POST', '/api/net/group-posts/$postId/file'));
+
   // ---------------- Hoola avatar ----------------
   Future<Map<String, dynamic>> avatarGet() async => Map<String, dynamic>.from(await _send('GET', '/api/avatar'));
   Future<Map<String, dynamic>> avatarPut(Map<String, dynamic> body) async =>

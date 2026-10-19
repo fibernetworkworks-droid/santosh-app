@@ -24,6 +24,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
   List<Map<String, dynamic>> _links = [];
   List<Map<String, dynamic>> _inbox = [];
   List<Map<String, dynamic>> _threads = [];
+  List<Map<String, dynamic>> _groups = [];
   bool _loading = true;
   String? _err;
   int _seen = 0;
@@ -53,13 +54,15 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
 
   Future<void> _load() async {
     try {
-      final r = await Future.wait([app.api!.netMe(), app.api!.netConnections(), app.api!.netInbox(), app.api!.netThreads()]);
+      final r = await Future.wait([app.api!.netMe(), app.api!.netConnections(), app.api!.netInbox(), app.api!.netThreads(),
+        app.api!.netGroups().catchError((_) => <Map<String, dynamic>>[])]);
       if (!mounted) return;
       setState(() {
         _me = r[0] as Map<String, dynamic>;
         _links = r[1] as List<Map<String, dynamic>>;
         _inbox = List<Map<String, dynamic>>.from(((r[2] as Map)['waiting'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
         _threads = r[3] as List<Map<String, dynamic>>;
+        _groups = r[4] as List<Map<String, dynamic>>;
         _loading = false;
         _err = null;
       });
@@ -387,9 +390,70 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
           ),
       ]);
 
+  Future<void> _newGroup() async {
+    final name = TextEditingController();
+    final active = _links.where((l) => l['status'] == 'active').toList();
+    final picked = <String>{};
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, set) => AlertDialog(
+          title: const Text('Nayi Mandali'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Naam (jaise FNW Field, Ghar)')),
+              const SizedBox(height: 10),
+              const Text('Kise bulana hai (jude hue log)', style: TextStyle(color: C.muted, fontSize: 12.5)),
+              for (final l in active)
+                CheckboxListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  value: picked.contains(l['peer']),
+                  title: Text(l['label'] as String? ?? ''),
+                  onChanged: (v) => set(() => v == true ? picked.add(l['peer'] as String) : picked.remove(l['peer'])),
+                ),
+              if (active.isEmpty) const Text('Pehle logon ko jodiye.', style: TextStyle(color: C.faint)),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Banaiye')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || name.text.trim().isEmpty) return;
+    try {
+      final r = await app.api!.netGroupCreate(name.text.trim(), picked.toList());
+      _snack('Mandali ban gayi; ${(r['invited'] as List? ?? const []).length} logon ko invite gaya');
+      _load();
+    } catch (e) {
+      _snack(e.toString());
+    }
+  }
+
+  Widget _groupsTab() => ListView(padding: const EdgeInsets.all(16), children: [
+        GradientButton(label: 'Nayi Mandali', icon: Icons.group_add_rounded, height: 46, onTap: _newGroup),
+        const SizedBox(height: 12),
+        for (final g in _groups)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Text(g['emoji'] as String? ?? '👥', style: const TextStyle(fontSize: 26)),
+            title: Text(g['name'] as String? ?? ''),
+            subtitle: Text(g['status'] == 'invited' ? 'Invite aaya hai' : '${g['count']} log · ${g['role'] == 'admin' ? 'aap admin' : g['hub']}'),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaGroupScreen(app: app, gid: g['gid'] as String))),
+          ),
+        if (_groups.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(20),
+            child: Text('Team, parivar ya partners ke Hoola ek group mein: sab ke avatar baat karte, kaam baant-te aur seekhte hain.',
+                style: TextStyle(color: C.muted)),
+          ),
+      ]);
+
   @override
   Widget build(BuildContext context) => DefaultTabController(
-        length: 4,
+        length: 5,
         initialIndex: widget.initialTab,
         child: Scaffold(
           appBar: AppBar(
@@ -400,6 +464,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
               Tab(text: 'Jude log${(_me['requests'] ?? 0) > 0 ? ' (${_me['requests']})' : ''}'),
               Tab(text: 'Inbox${_inbox.isNotEmpty ? ' (${_inbox.length})' : ''}'),
               const Tab(text: 'Baatein'),
+              const Tab(text: 'Mandali'),
             ]),
           ),
           body: Aurora(
@@ -409,7 +474,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
                     ? Center(child: Padding(padding: const EdgeInsets.all(20), child: Text(_err!, style: const TextStyle(color: C.bad))))
                     : RefreshIndicator(
                         onRefresh: _load,
-                        child: TabBarView(children: [_meTab(), _linksTab(), _inboxTab(), _threadsTab()]),
+                        child: TabBarView(children: [_meTab(), _linksTab(), _inboxTab(), _threadsTab(), _groupsTab()]),
                       ),
           ),
         ),
@@ -538,5 +603,178 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
       if (b['amount'] != null) '₹${b['amount']}',
     ];
     return parts.isEmpty ? '(${m['kind']})' : parts.join('\n');
+  }
+}
+
+
+/// One Mandali: members, posts (what every avatar shared), and a box to post / give a task.
+class HoolaGroupScreen extends StatefulWidget {
+  const HoolaGroupScreen({super.key, required this.app, required this.gid});
+  final Santosh app;
+  final String gid;
+  @override
+  State<HoolaGroupScreen> createState() => _HoolaGroupScreenState();
+}
+
+class _HoolaGroupScreenState extends State<HoolaGroupScreen> {
+  Map<String, dynamic> _g = {};
+  final _text = TextEditingController();
+  String _kind = 'message';
+  String? _assign;
+  bool _busy = false;
+
+  Santosh get app => widget.app;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+
+  Future<void> _load() async {
+    try {
+      final r = await app.api!.netGroup(widget.gid);
+      if (mounted) setState(() => _g = r);
+    } catch (e) {
+      _snack(e.toString());
+    }
+  }
+
+  Future<void> _post() async {
+    final t = _text.text.trim();
+    if (t.isEmpty) return;
+    if (_kind == 'task' && _assign == null) {
+      _snack('Kaam kise dena hai? Member chuniye.');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await app.api!.netGroupPost(widget.gid, {'kind': _kind, 'text': t, if (_kind == 'task') 'title': t.length > 60 ? t.substring(0, 60) : t,
+        if (_kind == 'task') 'assign_to': _assign});
+      _text.clear();
+      await _load();
+    } catch (e) {
+      _snack(e.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _digest() async {
+    try {
+      final r = await app.api!.netGroupAct(widget.gid, 'digest');
+      if (!mounted) return;
+      showDialog(context: context, builder: (ctx) => AlertDialog(
+          title: Text('${r['group']} · ${r['posts']} posts'), content: SingleChildScrollView(child: Text(r['summary'] as String? ?? ''))));
+    } catch (e) {
+      _snack(e.toString());
+    }
+  }
+
+  Future<void> _act(String action, {String mute = ''}) async {
+    try {
+      await app.api!.netGroupAct(widget.gid, action, mute: mute);
+      if (action == 'leave' && mounted) {
+        Navigator.of(context).pop();
+        return;
+      }
+      await _load();
+    } catch (e) {
+      _snack(e.toString());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final posts = List<Map<String, dynamic>>.from((_g['posts'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+    final members = List<Map<String, dynamic>>.from((_g['members'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${_g['emoji'] ?? '👥'} ${_g['name'] ?? 'Mandali'}'),
+        backgroundColor: Colors.transparent,
+        actions: [
+          IconButton(icon: const Icon(Icons.summarize_rounded), tooltip: 'Kya hua', onPressed: _digest),
+          PopupMenuButton<String>(
+            onSelected: (v) => v.startsWith('mute:') ? _act('mute', mute: v.substring(5)) : _act(v),
+            itemBuilder: (_) => [
+              PopupMenuItem(value: 'mute:all', child: Text('Sab dikhao${_g['mute'] == 'all' ? ' ✓' : ''}')),
+              PopupMenuItem(value: 'mute:mentions', child: Text('Sirf mera zikr / kaam${_g['mute'] == 'mentions' ? ' ✓' : ''}')),
+              PopupMenuItem(value: 'mute:digest', child: Text('Sirf digest${_g['mute'] == 'digest' ? ' ✓' : ''}')),
+              if (_g['role'] != 'admin') const PopupMenuItem(value: 'leave', child: Text('Group chhodiye')),
+            ],
+          ),
+        ],
+      ),
+      body: Aurora(
+        child: Column(children: [
+          SizedBox(
+            height: 40,
+            child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
+              for (final m in members)
+                Padding(padding: const EdgeInsets.only(right: 6), child: Chip(label: Text(m['label'] as String? ?? '', style: const TextStyle(fontSize: 12)))),
+            ]),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(padding: const EdgeInsets.all(12), children: [
+                for (final p in posts) HoolaGroupPostCard(key: ValueKey(p['id']), v: {...p, 'group': ''}, app: app),
+                if (posts.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Text('Abhi koi post nahi.', style: TextStyle(color: C.muted))),
+              ]),
+            ),
+          ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: Column(children: [
+                Row(children: [
+                  for (final k in const {'message': 'Baat', 'ask': 'Sawaal', 'task': 'Kaam do'}.entries)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: ChoiceChip(
+                        label: Text(k.value),
+                        selected: _kind == k.key,
+                        showCheckmark: false,
+                        selectedColor: C.accent,
+                        labelStyle: TextStyle(color: _kind == k.key ? C.onAccent : C.chip, fontSize: 12.5),
+                        onSelected: (_) => setState(() => _kind = k.key),
+                      ),
+                    ),
+                  if (_kind == 'task')
+                    Expanded(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: _assign,
+                        hint: const Text('Kise?'),
+                        items: [
+                          for (final m in members)
+                            DropdownMenuItem(value: m['address'] as String, child: Text(m['label'] as String? ?? '', overflow: TextOverflow.ellipsis)),
+                        ],
+                        onChanged: (v) => setState(() => _assign = v),
+                      ),
+                    ),
+                ]),
+                Row(children: [
+                  Expanded(
+                    child: TextField(controller: _text, minLines: 1, maxLines: 4,
+                        decoration: InputDecoration(hintText: '${app.aName} group mein bhejega…')),
+                  ),
+                  IconButton(onPressed: _busy ? null : _post, icon: const Icon(Icons.send_rounded, color: C.accent)),
+                ]),
+              ]),
+            ),
+          ),
+        ]),
+      ),
+    );
   }
 }

@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.30.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.31.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -1214,6 +1214,83 @@ def net_thread(tid: str, tenant: str = Depends(current_tenant)):
 def net_reply(tid: str, body: NetReplyIn, tenant: str = Depends(current_tenant)):
     from .net import service as net
     return _net(net.reply, tenant, tid, body.text)
+
+
+class GroupIn(BaseModel):
+    name: str
+    emoji: str = ""
+    members: list[str] = Field(default_factory=list)
+
+
+class GroupPostIn(BaseModel):
+    kind: str = "message"
+    text: str = ""
+    title: str = ""
+    assign_to: str = ""
+    due: str = ""
+    file_id: str = ""
+
+
+class GroupActIn(BaseModel):
+    action: str
+    who: str = ""
+    mute: str = ""
+    answer: str = ""
+
+
+@app.get("/api/net/groups", dependencies=[Depends(require_key)])
+def net_groups(tenant: str = Depends(current_tenant)):
+    from .net import groups as grp
+    return {"groups": _net(grp.groups, tenant)}
+
+
+@app.post("/api/net/groups", dependencies=[Depends(require_key)])
+def net_group_create(body: GroupIn, tenant: str = Depends(current_tenant)):
+    from .net import groups as grp
+    return _net(grp.create, tenant, body.name, body.emoji, body.members)
+
+
+@app.get("/api/net/groups/{gid}", dependencies=[Depends(require_key)])
+def net_group(gid: str, tenant: str = Depends(current_tenant)):
+    from .net import groups as grp
+    return _net(grp.detail, tenant, gid)
+
+
+@app.post("/api/net/groups/{gid}/post", dependencies=[Depends(require_key)])
+def net_group_post(gid: str, body: GroupPostIn, tenant: str = Depends(current_tenant)):
+    from .net import groups as grp
+    return _net(grp.post, tenant, gid, body.kind, body.text, body.title, body.assign_to, body.file_id, body.due)
+
+
+@app.post("/api/net/groups/{gid}/act", dependencies=[Depends(require_key)])
+def net_group_act(gid: str, body: GroupActIn, tenant: str = Depends(current_tenant)):
+    from .net import groups as grp
+    a = body.action
+    if a == "invite":
+        return _net(grp.invite, tenant, gid, body.who)
+    if a == "remove":
+        return _net(grp.remove, tenant, gid, body.who)
+    if a == "leave":
+        return _net(grp.leave, tenant, gid)
+    if a == "mute":
+        return _net(grp.set_mute, tenant, gid, body.mute)
+    if a == "answer_invite":
+        return _net(grp.answer_invite, tenant, gid, body.answer or "accept")
+    if a == "digest":
+        return _net(grp.digest, tenant, gid, 24)
+    raise HTTPException(400, "action?")
+
+
+@app.post("/api/net/group-posts/{pid}/task", dependencies=[Depends(require_key)])
+def net_group_task(pid: str, body: NetAnswerIn, tenant: str = Depends(current_tenant)):
+    from .net import groups as grp
+    return _net(grp.task_answer, tenant, pid, body.action)
+
+
+@app.post("/api/net/group-posts/{pid}/file", dependencies=[Depends(require_key)])
+def net_group_file(pid: str, tenant: str = Depends(current_tenant)):
+    from .net import groups as grp
+    return _net(grp.take_file, tenant, pid)
 
 
 @app.get("/c/{code}", response_class=HTMLResponse)

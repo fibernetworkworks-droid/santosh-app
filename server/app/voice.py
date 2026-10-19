@@ -56,7 +56,7 @@ VOICE_TOOL_NAMES = {
     "youtube_search", "youtube_video", "youtube_watch", "youtube_channel", "youtube_comments", "youtube_my_channel",
     "youtube_analytics", "app_check",
     "hoola_me", "hoola_connect", "hoola_connections", "hoola_answer_connect", "hoola_send", "hoola_reply", "hoola_inbox",
-    "hoola_decide", "hoola_threads",
+    "hoola_decide", "hoola_threads", "hoola_handle", "hoola_groups", "hoola_group_post", "hoola_group_digest",
     "sheets_find", "sheet_info", "sheet_query", "sheet_update", "sheet_create", "sheet_export",
     "maps_search", "maps_directions", "maps_navigate",
     "pc_status", "pc_search", "pc_read", "pc_send_to_phone", "tally_report",

@@ -232,6 +232,10 @@ class _ChatScreenState extends State<ChatScreen> {
         return HoolaConnectCard(key: ValueKey('hc${it.data['id']}'), v: it.data, app: app);
       case 'hoola_msg':
         return HoolaMsgCard(v: it.data, app: app);
+      case 'hoola_group':
+        return HoolaGroupCard(v: it.data, app: app);
+      case 'hoola_group_post':
+        return HoolaGroupPostCard(v: it.data, app: app);
       case 'photos_pick':
         return PhotosPickCard(v: it.data);
       case 'bazar':
