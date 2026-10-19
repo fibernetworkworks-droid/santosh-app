@@ -5,23 +5,29 @@ import os
 from pathlib import Path
 from typing import Any
 
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import mm
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    HAVE_PDF = True
+except ImportError:  # server still boots; PDF skills say what's missing
+    HAVE_PDF = False
+
 
 _FONT = "Helvetica"
 _BOLD = "Helvetica-Bold"
 _RS = "Rs. "
-for base in ("/usr/share/fonts/truetype/dejavu", "/usr/share/fonts/dejavu"):
-    if os.path.exists(f"{base}/DejaVuSans.ttf") and os.path.exists(f"{base}/DejaVuSans-Bold.ttf"):
-        pdfmetrics.registerFont(TTFont("DejaVu", f"{base}/DejaVuSans.ttf"))
-        pdfmetrics.registerFont(TTFont("DejaVu-Bold", f"{base}/DejaVuSans-Bold.ttf"))
-        _FONT, _BOLD, _RS = "DejaVu", "DejaVu-Bold", "₹"
-        break
+if HAVE_PDF:
+    for base in ("/usr/share/fonts/truetype/dejavu", "/usr/share/fonts/dejavu"):
+        if os.path.exists(f"{base}/DejaVuSans.ttf") and os.path.exists(f"{base}/DejaVuSans-Bold.ttf"):
+            pdfmetrics.registerFont(TTFont("DejaVu", f"{base}/DejaVuSans.ttf"))
+            pdfmetrics.registerFont(TTFont("DejaVu-Bold", f"{base}/DejaVuSans-Bold.ttf"))
+            _FONT, _BOLD, _RS = "DejaVu", "DejaVu-Bold", "₹"
+            break
 
 
 def money(paise: int) -> str:
@@ -88,6 +94,9 @@ def _styles():
 
 def write_pdf(path: Path, title: str, top_left: list[str], top_right: list[str], header: list[str], rows: list[list[Any]],
               totals: list[tuple[str, str]], footer: list[str], col_widths: list[float] | None = None) -> Path:
+    if not HAVE_PDF:
+        from .base import ToolError
+        raise ToolError("PDF maker is not installed on the server yet (pip install reportlab).")
     path.parent.mkdir(parents=True, exist_ok=True)
     st = _styles()
     doc = SimpleDocTemplate(str(path), pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=14 * mm, bottomMargin=14 * mm,
