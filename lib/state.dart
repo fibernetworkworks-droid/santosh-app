@@ -122,6 +122,12 @@ class Santosh extends ChangeNotifier {
   List<Map<String, dynamic>> get pendingApprovals =>
       [for (final it in _bazar.values) if ((it.data['status'] ?? 'pending') == 'pending') it.data];
   int bazarLinkedTick = 0;                    // bumps when an app account got linked (Apps screen refreshes)
+  final Map<String, FeedItem> _artifacts = {}; // one card per artifact id, updated in place
+  /// The chat card for an artifact (null when it was made in another chat).
+  FeedItem? artifactItem(String id) => _artifacts[id];
+  /// Newest live artifact event (not history replays); the voice screens show it.
+  Map<String, dynamic>? latestArtifact;
+  int artifactTick = 0;                       // bumps with every live artifact event
   FeedItem? _steps;
   List<Map<String, dynamic>> reminders = [];
   Map<String, dynamic> lists = {};
@@ -147,6 +153,7 @@ class Santosh extends ChangeNotifier {
     lastEventId = 0;
     _campaigns.clear();
     _emails.clear();
+    _artifacts.clear();
     _steps = null;
     api = Api(serverUrl, apiKey);
     try {
@@ -559,6 +566,24 @@ class Santosh extends ChangeNotifier {
         feed.add(FeedItem('pc_file', Map<String, dynamic>.from(p)));
         if (inBackground && !_replaying) {
           Device.instance.showNow(p['source'] == 'bazar' ? 'Santosh ne PDF banaya' : 'PC se file aayi', p['name'] as String? ?? '');
+        }
+        break;
+      case 'artifact':
+        final aid = p['id'] as String? ?? '';
+        if (aid.isEmpty) break;
+        final prev = _artifacts[aid];
+        final nowReady = p['status'] == 'ready' &&
+            (prev == null || prev.data['status'] != 'ready' || prev.data['version'] != p['version']);
+        if (prev != null) {
+          prev.data = {...prev.data, ...p};
+        } else {
+          _artifacts[aid] = FeedItem('artifact', Map<String, dynamic>.from(p));
+          feed.add(_artifacts[aid]!);
+        }
+        if (!_replaying) {
+          latestArtifact = Map<String, dynamic>.from(_artifacts[aid]!.data);
+          artifactTick++;
+          if (nowReady && inBackground) Device.instance.showNow('Santosh ne banaya', p['title'] as String? ?? '');
         }
         break;
       case 'device_action':

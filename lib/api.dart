@@ -166,6 +166,35 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/bazar/mcp/featured/$id', body: {'url': url, 'key': key, 'key_header': header},
           timeout: const Duration(seconds: 40)));
 
+  // ---------------- Santosh Artifacts ----------------
+  String _art(String id) => '/api/artifacts/${Uri.encodeComponent(id)}';
+  /// The user's artifacts. Older servers have none: returns an empty list.
+  Future<List<Map<String, dynamic>>> artifacts() async {
+    try {
+      return List<Map<String, dynamic>>.from(((await _send('GET', '/api/artifacts'))['artifacts'] as List? ?? const [])
+          .map((e) => Map<String, dynamic>.from(e as Map)));
+    } on ApiException catch (e) {
+      if (e.status == 404) return [];
+      rethrow;
+    }
+  }
+  Future<Map<String, dynamic>> artifact(String id) async => Map<String, dynamic>.from(await _send('GET', _art(id)));
+  /// Signed link (24h) to the page itself, always absolute.
+  Future<String> artifactViewUrl(String id, {int? version}) async => absolute(
+      (await _send('GET', '${_art(id)}/view', query: version == null ? null : {'version': '$version'}))['url'] as String? ?? '');
+  Future<Map<String, dynamic>> artifactShare(String id, bool on) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_art(id)}/share', body: {'on': on}));
+  Future<void> artifactDelete(String id) async => _send('DELETE', _art(id));
+  Future<Map<String, dynamic>> artifactState(String id) async =>
+      Map<String, dynamic>.from(((await _send('GET', '${_art(id)}/state'))['state'] as Map?) ?? const {});
+  /// value null deletes the key.
+  Future<void> artifactSetState(String id, String key, Object? value) async =>
+      _send('PUT', '${_art(id)}/state', body: {'key': key, 'value': value});
+  Future<String> artifactAsk(String id, String question) async =>
+      ((await _send('POST', '${_art(id)}/ask', body: {'question': question}, timeout: const Duration(seconds: 90)))['answer'] as String?) ?? '';
+  Future<Map<String, dynamic>> artifactRevise(String id, String request) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_art(id)}/revise', body: {'request': request}, timeout: const Duration(seconds: 40)));
+
   // ---------------- Santosh Bazar ----------------
   Future<Map<String, dynamic>> bazarDecide(String id, String decision) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/bazar/approvals/$id', body: {'decision': decision}));
