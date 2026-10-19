@@ -1,0 +1,18 @@
+{
+  "id": "santosh-browser",
+  "name": "Santosh Browser",
+  "category": "Office & PC",
+  "sub_category": "Web browser",
+  "pack_type": "Native",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Santosh's own web browser (browser-use + Chromium on the server): looks things up and fills forms on websites; asks before submitting, never logs in or pays",
+  "notes": "Driven by the browse_web tool; this pack only holds its confirm cards",
+  "master_list_row": 0,
+  "executor": "browser",
+  "config": {},
+  "tools": [{"name": "confirm_step", "tier": 2}],
+  "keywords": ["browser", "website", "web", "form", "portal", "online form", "site"],
+  "wave": "Devices"
+}

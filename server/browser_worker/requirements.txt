@@ -1,0 +1,5 @@
+# Santosh Browser worker: its own venv (browser-use pins packages that differ from Santosh core)
+browser-use==0.13.11
+fastapi>=0.115
+uvicorn>=0.30
+playwright>=1.48   # only to download Chromium: python -m playwright install chromium

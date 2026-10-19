@@ -98,7 +98,8 @@ def healthz():
     features = ["routines", "voice", "web", "bazar"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if mail.configured() else []) + (["calendar"] if __import__("app.gcal", fromlist=["x"]).configured() else []) \
         + (["drive"] if __import__("app.gdrive", fromlist=["x"]).configured() else []) \
-        + (["maps"] if __import__("app.maps", fromlist=["x"]).configured() else [])
+        + (["maps"] if __import__("app.maps", fromlist=["x"]).configured() else []) \
+        + (["browser"] if __import__("app.browser", fromlist=["x"]).configured() else [])
     from . import accounts
     return {"ok": True, "version": app.version, "google_login": accounts.oauth_configured(),
             "dry_run": st.wa_dry_run, "model": st.anthropic_model,
