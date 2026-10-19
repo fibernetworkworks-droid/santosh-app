@@ -129,6 +129,9 @@ class Api {
   Future<Map<String, dynamic>> photosState() => _gState('photos');
   Future<String> photosLinkUrl() => _gLink('photos');
   Future<Map<String, dynamic>> photosRemove(String key) => _gRemove('photos', key);
+  Future<Map<String, dynamic>> youtubeState() => _gState('youtube');
+  Future<String> youtubeLinkUrl() => _gLink('youtube');
+  Future<Map<String, dynamic>> youtubeRemove(String key) => _gRemove('youtube', key);
 
   // ---- Santosh Notebook (NotebookLM-style) ----
   Map<String, dynamic> _m(Object? o) => Map<String, dynamic>.from(o as Map);

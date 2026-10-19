@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.24.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.25.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -105,6 +105,7 @@ def healthz():
         + (["forms"] if __import__("app.forms.accounts", fromlist=["x"]).oauth_ready() else []) \
         + (["slides"] if __import__("app.slides.accounts", fromlist=["x"]).oauth_ready() else []) \
         + (["photos"] if __import__("app.photos.accounts", fromlist=["x"]).oauth_ready() else []) \
+        + (["youtube"] if (st.youtube_api_key or __import__("app.youtube.accounts", fromlist=["x"]).oauth_ready()) else []) \
         + (["maps"] if __import__("app.maps", fromlist=["x"]).configured() else []) \
         + (["browser"] if __import__("app.browser", fromlist=["x"]).configured() else []) \
         + (["push"] if __import__("app.push", fromlist=["x"]).configured() else [])
@@ -337,6 +338,9 @@ async def google_callback(request: Request):
     from .sheets.accounts import is_link_state as is_sheets_state
     if is_sheets_state(request.query_params.get("state", "")):  # "connect my Google Sheets"
         return await _finish_sheets_link(request)
+    from .youtube.accounts import is_link_state as is_youtube_state
+    if is_youtube_state(request.query_params.get("state", "")):  # "connect my YouTube channel"
+        return await _finish_youtube_link(request)
     from .slides.accounts import is_link_state as is_slides_state
     if is_slides_state(request.query_params.get("state", "")):  # "connect my Google Slides"
         return await _finish_slides_link(request)
@@ -941,6 +945,49 @@ def sheets_remove(key: str, tenant: str = Depends(current_tenant)):
     if not sa.remove(tenant, key):
         raise HTTPException(404, "Account not found")
     return _sheets_state(tenant)
+
+
+# ---------------- YouTube ----------------
+async def _finish_youtube_link(request: Request) -> HTMLResponse:
+    from .youtube import accounts as ya
+    from .youtube.client import YTError
+    if request.query_params.get("error"):
+        return _linked_page("YouTube", "youtube", None, request.query_params["error"])
+    try:
+        view = await asyncio.to_thread(ya.finish_link, request.query_params.get("code", ""), request.query_params.get("state", ""))
+    except YTError as e:
+        return _linked_page("YouTube", "youtube", None, str(e))
+    return _linked_page("YouTube", "youtube", (view.get("channel") or "") + " · " + view["address"])
+
+
+def _youtube_state(tenant: str) -> dict:
+    from .youtube import accounts as ya
+    st = get_settings()
+    return {"accounts": ya.views(tenant), "can_link": ya.oauth_ready(), "public_search": bool(st.youtube_api_key),
+            "can_watch": bool(st.gemini_api_key)}
+
+
+@app.get("/api/youtube/accounts", dependencies=[Depends(require_key)])
+def youtube_accounts(tenant: str = Depends(current_tenant)):
+    return _youtube_state(tenant)
+
+
+@app.get("/api/youtube/link", dependencies=[Depends(require_key)])
+def youtube_link(login_hint: str = "", tenant: str = Depends(current_tenant)):
+    from .youtube import accounts as ya
+    from .youtube.client import YTError
+    try:
+        return {"url": ya.start_link(tenant, login_hint)}
+    except YTError as e:
+        raise HTTPException(503, str(e))
+
+
+@app.delete("/api/youtube/accounts/{key}", dependencies=[Depends(require_key)])
+def youtube_remove(key: str, tenant: str = Depends(current_tenant)):
+    from .youtube import accounts as ya
+    if not ya.remove(tenant, key):
+        raise HTTPException(404, "Account not found")
+    return _youtube_state(tenant)
 
 
 # ---------------- Google Slides ----------------

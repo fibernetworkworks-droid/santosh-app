@@ -12,17 +12,17 @@ from app.bazar.packs.registry import registry
 
 def test_159_mvp_packs_load():
     reg = registry()
-    assert len(reg.packs) == 692   # 159 MVP + 515 P1 + 6 devices + shopping + Mera PC + Santosh Browser + PC operator + Santosh Email + Santosh Calendar + Santosh Sheets + Drive + Forms + Slides + Photos + Notebook
-    assert len(reg.all(wave="MVP")) == 168   # + Santosh Email + Calendar + Sheets + Drive + Forms + Slides + Photos + Notebook + Santosh Sheets + Drive + Forms + Slides + Photos + Notebook
+    assert len(reg.packs) == 693   # 159 MVP + 515 P1 + 6 devices + shopping + Mera PC + Santosh Browser + PC operator + Santosh Email + Santosh Calendar + Santosh Sheets + Drive + Forms + Slides + Photos + Notebook + YouTube
+    assert len(reg.all(wave="MVP")) == 169   # + Santosh Email + Calendar + Sheets + Drive + Forms + Slides + Photos + Notebook + YouTube + Santosh Sheets + Drive + Forms + Slides + Photos + Notebook + YouTube
     by = {}
     for p in reg.all(wave="MVP"):
         by[p.executor] = by.get(p.executor, 0) + 1
-    assert by == {"bbps": 98, "shop": 20, "upi": 15, "native": 13, "ride": 7, "mcp": 6, "pc": 1, "mail": 1, "cal": 1, "sheets": 1, "drive": 1, "forms": 1, "slides": 1, "photos": 1, "notebook": 1}
+    assert by == {"bbps": 98, "shop": 20, "upi": 15, "native": 13, "ride": 7, "mcp": 6, "pc": 1, "mail": 1, "cal": 1, "sheets": 1, "drive": 1, "forms": 1, "slides": 1, "photos": 1, "notebook": 1, "youtube": 1}
     by = {}
     for p in reg.packs.values():
         by[p.executor] = by.get(p.executor, 0) + 1
     assert by == {"bbps": 142, "shop": 142, "upi": 16, "native": 40, "ride": 7, "mcp": 6, "pc": 1,
-                  "handoff": 227, "reader": 94, "device": 6, "commerce": 1, "browser": 1, "pcop": 1, "mail": 1, "cal": 1, "sheets": 1, "drive": 1, "forms": 1, "slides": 1, "photos": 1, "notebook": 1}
+                  "handoff": 227, "reader": 94, "device": 6, "commerce": 1, "browser": 1, "pcop": 1, "mail": 1, "cal": 1, "sheets": 1, "drive": 1, "forms": 1, "slides": 1, "photos": 1, "notebook": 1, "youtube": 1}
 
 
 def test_rupees_and_paise():

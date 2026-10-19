@@ -94,7 +94,7 @@ def test_web_and_youtube_sources(ai):
                                                                     {"url": "https://youtu.be/abcdefghijk"}]}, ctx)
         kinds = {a["kind"]: a for a in out["added"]}
         assert kinds["web"]["title"] == "Fiber guide" and kinds["youtube"]["title"] == "OLT basics"
-        assert "transcript" in kinds["youtube"]["note"]
+        assert "transcript" in kinds["youtube"]["note"].lower()       # no Gemini key in tests: title only, says so
     finally:
         ingest.set_http(None)
     with pytest.raises(ingest.SourceError, match="andar ke network"):

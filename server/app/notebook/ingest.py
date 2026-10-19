@@ -1,6 +1,6 @@
 """Turning a source into text for a notebook: pasted text, web pages, PDFs / Word / PowerPoint / Excel files (phone,
-PC or email attachments), Google Drive files, Google Sheets, emails, and YouTube (title and description only:
-there is no official transcript API for other people's videos)."""
+PC or email attachments), Google Drive files, Google Sheets, emails, and public YouTube videos (Google's Gemini API
+watches the video and writes timestamped notes; there is no official transcript API for other people's videos)."""
 from __future__ import annotations
 
 import ipaddress
@@ -80,13 +80,29 @@ def from_web(url: str) -> dict[str, Any]:
         url = "https://" + url
     vid = youtube_id(url)
     if vid:
-        r = _get(f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={vid}&format=json")
-        meta = r.json() if r.status_code == 200 else {}
+        meta = {}
+        try:
+            r = _get(f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={vid}&format=json")
+            meta = r.json() if r.status_code == 200 else {}
+        except SourceError:
+            pass
         title = meta.get("title") or "YouTube video"
-        text = f"YouTube video: {title}\nChannel: {meta.get('author_name', '')}\nLink: {url}"
-        return {"kind": "youtube", "title": title, "origin": url, "text": text,
-                "note": "YouTube ka transcript Google official tareeke se nahi deta; sirf title / channel juda. "
-                        "Video ka transcript ya notes text ke roop mein jodiye to poora fayda milega."}
+        head = f"YouTube video: {title}\nChannel: {meta.get('author_name', '')}\nLink: {url}"
+        from ..config import get_settings
+        if get_settings().gemini_api_key:      # Google's Gemini API watches the video (official) and writes notes
+            try:
+                from ..youtube.service import notes_for_notebook
+                notes = notes_for_notebook(f"https://www.youtube.com/watch?v={vid}")
+                text, _ = _clip(head + "\n\n" + notes)
+                return {"kind": "youtube", "title": title, "origin": url, "text": text,
+                        "note": "Video ke notes Google Gemini ne video dekh kar banaye (timestamps ke saath)."}
+            except Exception as e:
+                why = str(e)[:120]
+        else:
+            why = "server par GEMINI_API_KEY nahi hai"
+        return {"kind": "youtube", "title": title, "origin": url, "text": head,
+                "note": f"Video ka content nahi mila ({why}); sirf title / channel juda. Transcript ya notes text ke roop "
+                        "mein jodiye to poora fayda milega."}
     r = _get(url)
     if r.status_code >= 400:
         raise SourceError(f"Website ne mana kiya ({r.status_code}).")

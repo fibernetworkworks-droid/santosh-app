@@ -625,6 +625,7 @@ def init_db(url: str | None = None):
     from .slides import models as _slides_models  # noqa: F401
     from .photos import models as _photos_models  # noqa: F401
     from .notebook import models as _notebook_models  # noqa: F401
+    from .youtube import models as _youtube_models  # noqa: F401
     Base.metadata.create_all(_engine)
     _add_missing_columns(_engine)
     from .bazar.db import init_tables as _bazar_tables

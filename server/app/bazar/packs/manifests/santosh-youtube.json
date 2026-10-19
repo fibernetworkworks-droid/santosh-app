@@ -1,0 +1,18 @@
+{
+  "id": "santosh-youtube",
+  "name": "Santosh YouTube",
+  "category": "Office & PC",
+  "sub_category": "YouTube",
+  "pack_type": "Native",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "YouTube on the official APIs: search, video and channel stats, comments, Gemini watches a video to summarise or answer, your channel's videos, analytics and playlists. Asks before replying to comments, editing a video or uploading",
+  "notes": "Driven by the youtube_* tools; YouTube Data API v3 + YouTube Analytics API + Gemini video understanding. No transcript scraping. This pack holds the reply / edit / upload confirm cards",
+  "master_list_row": 0,
+  "executor": "youtube",
+  "config": {},
+  "tools": [{"name": "confirm_change", "tier": 2}],
+  "keywords": ["youtube", "video", "channel", "subscribers", "comments", "youtube analytics"],
+  "wave": "MVP"
+}

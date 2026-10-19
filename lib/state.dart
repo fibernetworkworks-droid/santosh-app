@@ -384,14 +384,16 @@ class Santosh extends ChangeNotifier {
   int formsLinkedTick = 0;
   int slidesLinkedTick = 0;
   int photosLinkedTick = 0;
+  int youtubeLinkedTick = 0;
   void onGoogleLinked(String what, bool ok) {
+    if (what == 'youtube') youtubeLinkedTick++;
     if (what == 'slides') slidesLinkedTick++;
     if (what == 'photos') photosLinkedTick++;
     if (what == 'sheets') sheetsLinkedTick++;
     if (what == 'drive') driveLinkedTick++;
     if (what == 'forms') formsLinkedTick++;
     final name = {'sheets': 'Google Sheets', 'drive': 'Google Drive', 'forms': 'Google Forms', 'slides': 'Google Slides',
-      'photos': 'Google Photos'}[what] ?? what;
+      'photos': 'Google Photos', 'youtube': 'YouTube'}[what] ?? what;
     feed.add(FeedItem('note', {'text': ok ? '$name jud gaya ✓' : '$name nahi jud paya, dobara koshish kijiye.'}));
     notifyListeners();
   }
@@ -622,6 +624,7 @@ class Santosh extends ChangeNotifier {
       case 'form':
       case 'slides':
       case 'notebook':
+      case 'youtube':
         feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
         break;
       case 'photos_pick':

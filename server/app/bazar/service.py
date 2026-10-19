@@ -122,6 +122,9 @@ def pack_status(s, user: User, pack: Pack) -> str:
     if pack.executor == "shop":
         n = s.scalars(select(Shop.id).where(Shop.template_id == pack.config["template"], Shop.active.is_(True))).first()
         return "ready" if n else "no_shop_yet"
+    if pack.executor == "youtube":
+        from ..youtube.accounts import has_youtube
+        return "ready" if (core_settings().youtube_api_key or has_youtube(user.id)) else "not_connected"
     if pack.executor == "notebook":
         return "ready"
     if pack.executor == "photos":

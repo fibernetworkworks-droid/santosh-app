@@ -17,6 +17,7 @@ import 'pc_screen.dart';
 import 'photos_screen.dart';
 import 'sheets_screen.dart';
 import 'slides_screen.dart';
+import 'youtube_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -121,6 +122,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           subtitle: const Text('NotebookLM jaisa: files / links se jawab, study guide, Hindi audio overview'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => NotebooksScreen(app: app))),
+        ),
+      ),
+      const SizedBox(height: 18),
+      Glass(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.smart_display_rounded, color: Color(0xFFFF4D4D)),
+          title: const Text('YouTube', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('Video dhoondhna, video ka summary, mere channel ke views / analytics / comments'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => YouTubeScreen(app: app))),
         ),
       ),
       const SizedBox(height: 18),
