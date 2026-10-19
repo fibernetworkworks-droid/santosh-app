@@ -576,6 +576,8 @@ def receive(env: dict[str, Any]) -> dict[str, Any]:
         return _on_connect_request(tenant, env, card, rules)
     if kind in ("connect_accept", "connect_decline", "disconnect"):
         return _on_connect_answer(tenant, env, card)
+    if kind in NOLINK_KINDS:                    # communities: no personal connection needed (membership is checked there)
+        return EXTRA_KINDS[kind](tenant, env, card, None, rules)
     link = _link(tenant, env["from"])
     if link is None or link.status != "active":
         return {"ok": False, "status": "refused", "reason": "not connected"}
@@ -589,7 +591,8 @@ def receive(env: dict[str, Any]) -> dict[str, Any]:
 
 SHARE_KINDS = {"file", "presentation", "voice_note", "email", "link"}
 GROUP_KINDS: set[str] = set()                  # filled by groups (v0.31)
-EXTRA_KINDS: dict[str, Callable] = {}          # filled by later modules (learning, chains, ...)
+EXTRA_KINDS: dict[str, Callable] = {}          # filled by later modules (communities, chains, ...)
+NOLINK_KINDS: set[str] = set()
 
 
 def _on_connect_request(tenant: str, env: dict, card: dict, rules: dict) -> dict[str, Any]:
@@ -880,3 +883,5 @@ def counts(tenant: str) -> dict[str, int]:
 _ = or_
 from . import share as _share  # noqa: E402,F401  (registers file / email / link / presentation handlers)
 from . import groups as _groups  # noqa: E402,F401  (registers the group envelope kinds)
+from . import learning as _learning  # noqa: E402,F401
+from . import community as _community  # noqa: E402,F401  (registers the Samaj envelope kinds)

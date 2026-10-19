@@ -237,9 +237,18 @@ def check(tenant: str, conversation_id: str, src: dict[str, Any]) -> dict[str, A
         try:
             flags = _run(name, path, kind, out)
             v = an.verdict(flags) if (flags or out["facts"]) else "unknown"
+
         except ReaError as e:
             flags, v = [], "unknown"
             out["limits"].append(str(e)[:300])
+        try:                                    # a Hoola Samaj this owner is in has already flagged this exact file
+            from ..net.community import alert_match
+            hit = alert_match(tenant, "fraud_apk", sha)
+        except Exception:
+            hit = None
+        if hit:
+            flags.insert(0, an._flag("high", f"Hoola Samaj '{hit['community']}' ne is file ko fraud bataya hai", "community_alert"))
+            v = "danger"
         flags.sort(key=lambda f: ORDER.get(f["level"], 3))
         if kind == "zip" and v == "clear":
             v = "caution" if out["facts"].get("programs_inside") else "clear"

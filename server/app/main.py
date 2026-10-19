@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.31.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.32.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -1291,6 +1291,117 @@ def net_group_task(pid: str, body: NetAnswerIn, tenant: str = Depends(current_te
 def net_group_file(pid: str, tenant: str = Depends(current_tenant)):
     from .net import groups as grp
     return _net(grp.take_file, tenant, pid)
+
+
+class SamajIn(BaseModel):
+    name: str
+    topic: str = ""
+    description: str = ""
+    visibility: str = "open"
+    emoji: str = ""
+
+
+class SamajPostIn(BaseModel):
+    kind: str
+    data: dict = Field(default_factory=dict)
+
+
+class SamajActIn(BaseModel):
+    action: str
+    helpful: bool = True
+    mod_action: str = ""
+    who: str = ""
+    reason: str = ""
+    mute: str = ""
+
+
+class LessonActIn(BaseModel):
+    action: str
+    communities: list[str] = Field(default_factory=list)
+    text: str = ""
+
+
+@app.get("/api/net/learned", dependencies=[Depends(require_key)])
+def net_learned(tenant: str = Depends(current_tenant)):
+    from .net import learning as lrn
+    return {"lessons": lrn.lessons(tenant), "skills": lrn.skills(tenant)}
+
+
+@app.post("/api/net/learned/{lid}", dependencies=[Depends(require_key)])
+def net_lesson_act(lid: str, body: LessonActIn, tenant: str = Depends(current_tenant)):
+    from .net import community as sam
+    from .net import learning as lrn
+    if body.action == "forget":
+        return _net(lrn.forget, tenant, lid)
+    if body.action == "share":
+        cids = body.communities or [c["cid"] for c in sam.my_communities(tenant) if c["status"] == "active"]
+        return _net(lrn.share, tenant, lid, cids, body.text)
+    if body.action == "dont_share":
+        return _net(lrn.decline_share, tenant, lid)
+    raise HTTPException(400, "action?")
+
+
+@app.post("/api/net/skills/{sid}", dependencies=[Depends(require_key)])
+def net_skill_act(sid: str, body: NetAnswerIn, tenant: str = Depends(current_tenant)):
+    from .net import learning as lrn
+    return _net(lrn.set_skill, tenant, sid, body.action)
+
+
+@app.get("/api/net/samaj", dependencies=[Depends(require_key)])
+def net_samaj(q: str = "", tenant: str = Depends(current_tenant)):
+    from .net import community as sam
+    return {"mine": sam.my_communities(tenant), "directory": sam.directory(tenant, q)}
+
+
+@app.post("/api/net/samaj", dependencies=[Depends(require_key)])
+def net_samaj_create(body: SamajIn, tenant: str = Depends(current_tenant)):
+    from .net import community as sam
+    return _net(sam.create, tenant, body.name, body.topic, body.description, body.visibility, body.emoji)
+
+
+@app.get("/api/net/samaj/{cid}", dependencies=[Depends(require_key)])
+def net_samaj_detail(cid: str, kind: str = "", tenant: str = Depends(current_tenant)):
+    from .net import community as sam
+    return _net(sam.detail, tenant, cid, kind)
+
+
+@app.post("/api/net/samaj/{cid}/join", dependencies=[Depends(require_key)])
+def net_samaj_join(cid: str, tenant: str = Depends(current_tenant)):
+    from .net import community as sam
+    return _net(sam.join, tenant, cid)
+
+
+@app.post("/api/net/samaj/{cid}/post", dependencies=[Depends(require_key)])
+def net_samaj_post(cid: str, body: SamajPostIn, tenant: str = Depends(current_tenant)):
+    from .net import community as sam
+    return _net(sam.post, tenant, cid, body.kind, body.data)
+
+
+@app.post("/api/net/samaj/{cid}/act", dependencies=[Depends(require_key)])
+def net_samaj_act(cid: str, body: SamajActIn, tenant: str = Depends(current_tenant)):
+    from .net import community as sam
+    if body.action == "leave":
+        return _net(sam.leave, tenant, cid)
+    if body.action == "mute":
+        return _net(sam.set_mute, tenant, cid, body.mute)
+    if body.action == "moderate_member":
+        return _net(sam.moderate, tenant, cid, body.mod_action, "", body.who)
+    raise HTTPException(400, "action?")
+
+
+@app.post("/api/net/samaj-items/{iid}", dependencies=[Depends(require_key)])
+def net_samaj_item(iid: str, body: SamajActIn, tenant: str = Depends(current_tenant)):
+    from .net import community as sam
+    if body.action == "rate":
+        return _net(sam.rate, tenant, iid, body.helpful)
+    if body.action == "report":
+        return _net(sam.report, tenant, iid, body.reason)
+    if body.action == "install":
+        return _net(sam.install_skill, tenant, iid)
+    if body.action == "moderate":
+        it, c = _net(sam._my_item, tenant, iid)
+        return _net(sam.moderate, tenant, c.cid, body.mod_action, iid, "")
+    raise HTTPException(400, "action?")
 
 
 @app.get("/c/{code}", response_class=HTMLResponse)

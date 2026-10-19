@@ -501,3 +501,170 @@ class _HoolaGroupPostCardState extends State<HoolaGroupPostCard> {
     );
   }
 }
+
+
+/// The avatar learned something and asks before sharing a privacy-filtered version with the owner's Samaj.
+class HoolaLessonCard extends StatefulWidget {
+  const HoolaLessonCard({super.key, required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+  @override
+  State<HoolaLessonCard> createState() => _HoolaLessonCardState();
+}
+
+class _HoolaLessonCardState extends State<HoolaLessonCard> {
+  String? _done;
+
+  Future<void> _act(String a) async {
+    try {
+      await widget.app.api!.netLessonAct(widget.v['id'] as String, a);
+      if (mounted) setState(() => _done = a == 'share' ? 'Samaj ke saath share kiya ✓' : 'Share nahi kiya');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = widget.v;
+    final removed = List<String>.from((v['share_removed'] as List? ?? const []).map((e) => '$e'));
+    final comms = List<Map<String, dynamic>>.from((v['communities'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Icon(Icons.lightbulb_rounded, color: C.accent),
+            const SizedBox(width: 8),
+            Expanded(child: Text('${widget.app.aName} ne seekha', style: const TextStyle(fontWeight: FontWeight.w700))),
+          ]),
+          const SizedBox(height: 6),
+          Text(v['text'] as String? ?? '', style: const TextStyle(fontSize: 13.5)),
+          if ((v['share_text'] ?? '') != '') ...[
+            const SizedBox(height: 8),
+            const Text('Samaj ko yeh jayega (bina personal jaankari):', style: TextStyle(color: C.muted, fontSize: 12.5)),
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
+              child: Text(v['share_text'] as String, style: const TextStyle(fontSize: 13)),
+            ),
+            if (removed.isNotEmpty)
+              Padding(padding: const EdgeInsets.only(top: 4), child: Text('Hataya: ${removed.join(', ')}', style: const TextStyle(color: C.teal, fontSize: 12))),
+            if (comms.isNotEmpty)
+              Padding(padding: const EdgeInsets.only(top: 4), child: Text('Kahan: ${comms.map((c) => c['name']).join(', ')}', style: const TextStyle(color: C.faint, fontSize: 12))),
+          ],
+          if (_done == null && v['share_status'] == 'proposed')
+            Row(children: [
+              TextButton(onPressed: () => _act('share'), child: const Text('Share karo')),
+              TextButton(onPressed: () => _act('dont_share'), child: const Text('Nahi')),
+            ]),
+          if (_done != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_done!, style: const TextStyle(color: C.ok))),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Something from a Samaj the owner's avatar decided to show (alert, an answer to their question, a review / join
+/// request for moderators, or a question it can answer from what it learned).
+class HoolaSamajCard extends StatefulWidget {
+  const HoolaSamajCard({super.key, required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+  @override
+  State<HoolaSamajCard> createState() => _HoolaSamajCardState();
+}
+
+class _HoolaSamajCardState extends State<HoolaSamajCard> {
+  String? _done;
+
+  Future<void> _run(Future<dynamic> Function() f, String ok) async {
+    try {
+      await f();
+      if (mounted) setState(() => _done = ok);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = widget.v;
+    final api = widget.app.api!;
+    final item = v['item'] is Map ? Map<String, dynamic>.from(v['item'] as Map) : <String, dynamic>{};
+    final data = item['data'] is Map ? Map<String, dynamic>.from(item['data'] as Map) : <String, dynamic>{};
+    final ev = v['event'] as String? ?? 'item';
+    final kind = item['kind'] as String? ?? '';
+    final icon = switch (kind) {
+      'alert' => Icons.warning_amber_rounded,
+      'answer' => Icons.question_answer_rounded,
+      'question' => Icons.help_rounded,
+      'skill' => Icons.extension_rounded,
+      _ => Icons.public_rounded,
+    };
+    final head = switch (ev) {
+      'review' => 'Skill manzoori ka intezaar',
+      'report' => 'Report aayi',
+      'join_request' => '${v['from'] ?? ''} judna chahte hain',
+      'joined' => 'Samaj mein aa gaye',
+      'can_answer' => 'Is sawaal ka jawab aapki seekh mein hai',
+      'answered' => 'Maine jawab diya',
+      _ => kind == 'alert' ? 'Chetavni' : kind == 'answer' && v['for_me'] == true ? 'Aapke sawaal ka jawab' : (item['author'] as String? ?? ''),
+    };
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            Icon(icon, color: kind == 'alert' ? C.bad : C.teal, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('${v['community'] ?? 'Samaj'} · $head',
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+            ),
+          ]),
+          if ((item['title'] ?? '') != '') Padding(padding: const EdgeInsets.only(top: 6), child: Text(item['title'] as String, style: const TextStyle(fontWeight: FontWeight.w700))),
+          if ((item['text'] ?? v['text'] ?? '') != '')
+            Padding(padding: const EdgeInsets.only(top: 4), child: Text((item['text'] ?? v['text']) as String, style: const TextStyle(fontSize: 13.5))),
+          if (kind == 'alert' && (data['value'] ?? '') != '')
+            Padding(padding: const EdgeInsets.only(top: 4), child: SelectableText('${data['type']}: ${data['value']}', style: const TextStyle(color: C.bad, fontSize: 12))),
+          if (ev == 'can_answer') ...[
+            Container(
+              margin: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
+              child: Text('Draft: ${v['draft'] ?? ''}', style: const TextStyle(fontSize: 13)),
+            ),
+            if (_done == null)
+              TextButton(
+                onPressed: () => _run(() => api.netSamajPost(v['cid'] as String, 'answer', {'parent': item['item_id'], 'text': v['draft']}), 'Jawab bhej diya ✓'),
+                child: const Text('Haan, jawab bhejo'),
+              ),
+          ],
+          if (ev == 'review' && _done == null)
+            TextButton(
+              onPressed: () => _run(() => api.netSamajItem(item['item_id'] as String, {'action': 'moderate', 'mod_action': 'approve'}), 'Manzoor ✓'),
+              child: const Text('Manzoor karo'),
+            ),
+          if (ev == 'join_request' && _done == null)
+            TextButton(
+              onPressed: () => _run(() => api.netSamajAct(v['cid'] as String, {'action': 'moderate_member', 'mod_action': 'approve_member', 'who': v['address']}), 'Jod liya ✓'),
+              child: const Text('Aane do'),
+            ),
+          if (ev == 'item' && kind == 'skill' && _done == null)
+            TextButton(onPressed: () => _run(() => api.netSamajItem(item['item_id'] as String, {'action': 'install'}), 'Skill lag gayi ✓'),
+                child: const Text('Skill install karo')),
+          if (ev == 'item' && (kind == 'answer' || kind == 'card') && _done == null)
+            Row(children: [
+              TextButton(onPressed: () => _run(() => api.netSamajItem(item['item_id'] as String, {'action': 'rate', 'helpful': true}), 'Dhanyavaad ✓'),
+                  child: const Text('👍 Kaam ka')),
+              TextButton(onPressed: () => _run(() => api.netSamajItem(item['item_id'] as String, {'action': 'report'}), 'Report kiya'),
+                  child: const Text('Report', style: TextStyle(color: C.bad))),
+            ]),
+          if (_done != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_done!, style: const TextStyle(color: C.ok))),
+        ]),
+      ),
+    );
+  }
+}

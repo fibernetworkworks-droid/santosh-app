@@ -271,7 +271,7 @@ def an_double(name: str) -> bool:
     return double_extension(name)
 
 
-def _link_check(url: str) -> dict[str, Any]:
+def _link_check(url: str, tenant: str = "") -> dict[str, Any]:
     """Fraud signals for a link, plus a preview. Pages are fetched with the notebook's SSRF guard, nothing is run."""
     from ..appcheck.analyze import BRAND, LURE
     notes: list[str] = []
@@ -304,6 +304,15 @@ def _link_check(url: str) -> dict[str, Any]:
     if re.search(r"\.(apk|exe|scr|bat|msi)(\?|$)", u.path.lower()):
         notes.append("link seedha app / program download karta hai")
         v = "danger"
+    if tenant:
+        try:
+            from .community import alert_match
+            hit = alert_match(tenant, "fraud_link", host)
+        except Exception:
+            hit = None
+        if hit:
+            notes.insert(0, f"Hoola Samaj '{hit['community']}' ne is website ko fraud bataya hai")
+            v = "danger"
     preview = {"title": "", "text": ""}
     if v != "danger":
         try:
@@ -342,7 +351,7 @@ def receive_hook(tenant: str, sender: str, kind: str, body: dict[str, Any]) -> d
     if kind == "email" and body.get("email_text"):
         body["summary"] = _summary(tenant, "email", f"Subject: {body.get('subject')}\n\n{body['email_text']}")
     if kind == "link" and body.get("url"):
-        lc = _link_check(body["url"])
+        lc = _link_check(body["url"], tenant)
         body["scan"] = {"verdict": lc["verdict"], "notes": lc["notes"], "host": lc["host"]}
         body["title"] = lc.get("title") or body.get("title", "")
         if lc.get("text"):

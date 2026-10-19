@@ -631,6 +631,8 @@ def init_db(url: str | None = None):
     from .net import models as _net_models  # noqa: F401
     from .net import share as _net_share  # noqa: F401
     from .net import groups as _net_groups  # noqa: F401
+    from .net import learning as _net_learning  # noqa: F401
+    from .net import community as _net_community  # noqa: F401
     Base.metadata.create_all(_engine)
     _add_missing_columns(_engine)
     from .bazar.db import init_tables as _bazar_tables

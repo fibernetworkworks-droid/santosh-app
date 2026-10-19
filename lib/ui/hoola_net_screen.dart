@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../state.dart';
 import 'glass.dart';
 import 'hoola_cards.dart';
+import 'hoola_samaj_screen.dart';
 
 const _relations = {'family': 'Parivar', 'team': 'Team', 'business': 'Business', 'friend': 'Dost'};
 
@@ -453,7 +454,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
-        length: 5,
+        length: 6,
         initialIndex: widget.initialTab,
         child: Scaffold(
           appBar: AppBar(
@@ -465,6 +466,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
               Tab(text: 'Inbox${_inbox.isNotEmpty ? ' (${_inbox.length})' : ''}'),
               const Tab(text: 'Baatein'),
               const Tab(text: 'Mandali'),
+              const Tab(text: 'Samaj'),
             ]),
           ),
           body: Aurora(
@@ -474,7 +476,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
                     ? Center(child: Padding(padding: const EdgeInsets.all(20), child: Text(_err!, style: const TextStyle(color: C.bad))))
                     : RefreshIndicator(
                         onRefresh: _load,
-                        child: TabBarView(children: [_meTab(), _linksTab(), _inboxTab(), _threadsTab(), _groupsTab()]),
+                        child: TabBarView(children: [_meTab(), _linksTab(), _inboxTab(), _threadsTab(), _groupsTab(), SamajListView(app: app)]),
                       ),
           ),
         ),

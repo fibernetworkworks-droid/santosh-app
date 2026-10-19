@@ -279,6 +279,22 @@ class Api {
       _hm(await _send('POST', '/api/net/group-posts/$postId/task', body: {'action': action}));
   Future<Map<String, dynamic>> netGroupFile(String postId) async => _hm(await _send('POST', '/api/net/group-posts/$postId/file'));
 
+  Future<Map<String, dynamic>> netLearned() async => _hm(await _send('GET', '/api/net/learned'));
+  Future<Map<String, dynamic>> netLessonAct(String id, String action, {List<String> communities = const [], String text = ''}) async =>
+      _hm(await _send('POST', '/api/net/learned/$id', body: {'action': action, 'communities': communities, 'text': text}, timeout: const Duration(seconds: 60)));
+  Future<Map<String, dynamic>> netSkillAct(String id, String action) async => _hm(await _send('POST', '/api/net/skills/$id', body: {'action': action}));
+  Future<Map<String, dynamic>> netSamaj({String q = ''}) async => _hm(await _send('GET', '/api/net/samaj', query: {'q': q}));
+  Future<Map<String, dynamic>> netSamajCreate(Map<String, dynamic> body) async => _hm(await _send('POST', '/api/net/samaj', body: body));
+  Future<Map<String, dynamic>> netSamajDetail(String cid, {String kind = ''}) async =>
+      _hm(await _send('GET', '/api/net/samaj/$cid', query: {'kind': kind}));
+  Future<Map<String, dynamic>> netSamajJoin(String cid) async => _hm(await _send('POST', '/api/net/samaj/$cid/join', timeout: const Duration(seconds: 60)));
+  Future<Map<String, dynamic>> netSamajPost(String cid, String kind, Map<String, dynamic> data) async =>
+      _hm(await _send('POST', '/api/net/samaj/$cid/post', body: {'kind': kind, 'data': data}, timeout: const Duration(seconds: 90)));
+  Future<Map<String, dynamic>> netSamajAct(String cid, Map<String, dynamic> body) async =>
+      _hm(await _send('POST', '/api/net/samaj/$cid/act', body: body, timeout: const Duration(seconds: 60)));
+  Future<Map<String, dynamic>> netSamajItem(String iid, Map<String, dynamic> body) async =>
+      _hm(await _send('POST', '/api/net/samaj-items/$iid', body: body, timeout: const Duration(seconds: 60)));
+
   // ---------------- Hoola avatar ----------------
   Future<Map<String, dynamic>> avatarGet() async => Map<String, dynamic>.from(await _send('GET', '/api/avatar'));
   Future<Map<String, dynamic>> avatarPut(Map<String, dynamic> body) async =>

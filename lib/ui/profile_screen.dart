@@ -21,6 +21,7 @@ import 'youtube_screen.dart';
 import 'appcheck_screen.dart';
 import 'avatar_setup_screen.dart';
 import 'hoola_net_screen.dart';
+import 'hoola_samaj_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -121,6 +122,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Mera Hoola ID, QR, jude log, aur doosre Hoola se baatein'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaNetScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.lightbulb_rounded, color: C.accent),
+              title: Text('${app.aName} ne kya seekha', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Seekhi baatein, share kiya hua, lagi hui skills'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaLearnedScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
