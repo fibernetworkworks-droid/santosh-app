@@ -376,17 +376,22 @@ class HomeConnect(CloudClient):
 CLIENTS: dict[str, type[CloudClient]] = {"smartthings": SmartThings, "lg_thinq": LgThinq, "home_connect": HomeConnect}
 
 
+def redirect_uri(provider: str, settings: Any) -> str:
+    """Santosh's public OAuth callback for appliance clouds (register this exact URL with each provider)."""
+    return f"{settings.public_base_url.rstrip('/')}/bazar/devices/callback/{provider}"
+
+
 def authorize_url(provider: str, settings: Any, state: str) -> str:
-    redirect = f"{settings.public_base_url.rstrip('/')}/v1/oauth/callback/{provider}"
+    redirect = redirect_uri(provider, settings)
     if provider == "smartthings":
         if not settings.smartthings_client_id:
-            raise ToolError("SmartThings linking is not set up yet (SANTOSH_SMARTTHINGS_CLIENT_ID).")
+            raise ToolError("SmartThings linking is not set up yet (BAZAR_SMARTTHINGS_CLIENT_ID).")
         q = {"client_id": settings.smartthings_client_id, "response_type": "code", "redirect_uri": redirect,
              "scope": SmartThings.scopes, "state": state}
         return SmartThings.authorize_url + "?" + urlencode(q)
     if provider == "home_connect":
         if not settings.home_connect_client_id:
-            raise ToolError("Home Connect linking is not set up yet (SANTOSH_HOME_CONNECT_CLIENT_ID).")
+            raise ToolError("Home Connect linking is not set up yet (BAZAR_HOME_CONNECT_CLIENT_ID).")
         q = {"client_id": settings.home_connect_client_id, "response_type": "code", "redirect_uri": redirect,
              "scope": HomeConnect.scopes, "state": state}
         return HomeConnect.authorize_url + "?" + urlencode(q)
@@ -397,7 +402,7 @@ def authorize_url(provider: str, settings: Any, state: str) -> str:
 
 
 def exchange_code(provider: str, settings: Any, code: str, transport: httpx.BaseTransport | None = None) -> Token:
-    redirect = f"{settings.public_base_url.rstrip('/')}/v1/oauth/callback/{provider}"
+    redirect = redirect_uri(provider, settings)
     c = httpx.Client(transport=transport, timeout=TIMEOUT)
     if provider == "smartthings":
         r = c.post(SmartThings.token_url, data={"grant_type": "authorization_code", "code": code, "redirect_uri": redirect,

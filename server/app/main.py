@@ -797,6 +797,12 @@ def _maybe_tenant(request: Request) -> str | None:
         return None
 
 
+# Home devices ("Ghar"): speaker / TV / AC on the phone + SmartThings, LG ThinQ, Home Connect
+from .bazar.api import devices as bz_devices  # noqa: E402
+app.include_router(bz_devices.router, dependencies=[Depends(require_key)])
+app.include_router(bz_devices.public)
+
+
 @app.get("/api/bazar/catalog", dependencies=[Depends(require_key)])
 def bazar_catalog(tenant: str = Depends(current_tenant)):
     return _bz(bazar.catalog, tenant)
@@ -827,6 +833,39 @@ async def bazar_decide(approval_id: str, body: BazarDecision, tenant: str = Depe
 @app.get("/api/bazar/activity", dependencies=[Depends(require_key)])
 def bazar_activity_api(tenant: str = Depends(current_tenant)):
     return bazar.activity(tenant)
+
+
+@app.get("/api/bazar/files", dependencies=[Depends(require_key)])
+def bazar_files(tenant: str = Depends(current_tenant)):
+    """PDFs Santosh made for this user (GST invoices, quotations, salary slips, rent receipts, resumes)."""
+    return {"files": bazar.list_docs(tenant)}
+
+
+@app.get("/api/bazar/files/{doc_id}", dependencies=[Depends(require_key)])
+def bazar_file(doc_id: str, tenant: str = Depends(current_tenant)):
+    hit = bazar.get_doc(tenant, doc_id)
+    if hit is None:
+        raise HTTPException(404, "Not found")
+    return FileResponse(hit[0], media_type="application/pdf", filename=hit[1])
+
+
+@app.get("/api/bazar/files/{doc_id}/link", dependencies=[Depends(require_key)])
+def bazar_file_fresh_link(doc_id: str, tenant: str = Depends(current_tenant)):
+    """A fresh signed link for the chat card (the one in the card expires after a day)."""
+    if bazar.get_doc(tenant, doc_id) is None:
+        raise HTTPException(404, "Not found")
+    return {"url": bazar.file_link(doc_id)}
+
+
+@app.get("/api/bazar/files/{doc_id}/dl")
+def bazar_file_link(doc_id: str, exp: int = 0, sig: str = ""):
+    """Signed, expiring link from the chat card (opened in the phone's PDF viewer, which sends no auth header)."""
+    if not bazar.check_file_sig(doc_id, exp, sig):
+        raise HTTPException(403, "This link expired. Open the file from the Santosh app.")
+    hit = bazar.get_doc(None, doc_id)
+    if hit is None:
+        raise HTTPException(404, "File no longer available")
+    return FileResponse(hit[0], media_type="application/pdf", filename=hit[1])
 
 
 class BazarSettingsIn(BaseModel):
@@ -1066,6 +1105,12 @@ def bazar_shop_order_update(shop_id: str, order_id: str, body: OrderUpdateIn, re
 @app.post("/bazar/shops/{shop_id}/dues")
 def bazar_shop_dues(shop_id: str, dues: list[DueIn], request: Request):
     return _bz(bazar.upload_dues, shop_id, [d.model_dump() for d in dues], _maybe_tenant(request), request.headers.get("x-shop-token"))
+
+
+# ---------------- Santosh Shopping: orders, MCP tokens, ONDC callbacks, Commerce MCP at /mcp/commerce ----------------
+from .bazar.api import commerce as bazar_commerce  # noqa: E402
+
+bazar_commerce.mount(app, require_key, current_tenant)
 
 
 # ---------------- catch-up: what Santosh did while the phone was off ----------------

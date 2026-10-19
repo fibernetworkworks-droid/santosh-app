@@ -129,7 +129,8 @@ class Registry:
                 k = _norm(kw)
                 if k and re.search(r"(?<![a-z0-9])" + re.escape(k) + r"(?![a-z0-9])", t):
                     score += 3 if " " in k else 2
-            if _norm(p.name.split(" (")[0]) in t:
+            nm = _norm(p.name.split(" (")[0])
+            if nm and re.search(r"(?<![a-z0-9])" + re.escape(nm) + r"(?![a-z0-9])", t):  # "akola" is not "Ola"
                 score += 5
             if score:
                 scored.append((p, score))

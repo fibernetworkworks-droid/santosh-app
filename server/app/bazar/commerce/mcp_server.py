@@ -1,11 +1,12 @@
 """Santosh Commerce MCP server.
 
 One MCP endpoint that lets Santosh — or any MCP client the user connects (Claude, ChatGPT, Gemini, their own
-agent) — shop across MVP Bazar shops, the ONDC open network, Shopify brand stores and Flipkart search, then pay by
+agent) — shop across Santosh Bazar shops, the ONDC open network, Shopify brand stores and Flipkart search, then pay by
 UPI and track orders.
 
-Run:  python -m app.commerce.mcp_server            (streamable HTTP on :8100/mcp)
-Auth: per-user bearer tokens from POST /v1/users/{id}/mcp-tokens (stored hashed).
+Mounted inside Santosh at  {PUBLIC_BASE_URL}/mcp/commerce  (streamable HTTP; see app/bazar/api/commerce.py).
+Standalone (optional): python -m app.bazar.commerce.mcp_server  (port 8100, path /mcp).
+Auth: per-user bearer tokens from POST /api/bazar/commerce/mcp-tokens (stored as SHA-256), rate-limited per token.
 
 Money safety: place_order needs an unexpired quote and the user's confirmation (MCP elicitation when the client
 supports it, otherwise user_confirmed=true after showing the quote). It returns a UPI intent: the user pays in their
@@ -20,9 +21,6 @@ from contextlib import contextmanager
 from typing import Any
 
 import anyio.to_thread
-from mcp.server.auth.settings import AuthSettings
-from mcp.server.mcpserver import Context, MCPServer
-from mcp.types import ToolAnnotations
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -31,7 +29,12 @@ from ..connectors.base import ToolError
 from ..db import McpToken, User, session_factory
 from .service import CommerceService
 
-INSTRUCTIONS = """Santosh Commerce: shop for an Indian user across local MVP Bazar shops, the ONDC open network,
+try:  # mcp>=2 (MCPServer). With mcp 1.x the app still runs; only the Commerce MCP endpoint is not mounted.
+    from mcp.server.mcpserver import Context
+except ImportError:  # pragma: no cover
+    Context = Any  # type: ignore[misc,assignment]
+
+INSTRUCTIONS = """Santosh Commerce: shop for an Indian user across local Santosh Bazar shops, the ONDC open network,
 Shopify brand stores and Flipkart (search + link only).
 Flow: search_products -> add_to_cart -> get_quote (shows the all-in price, seller, returns, delivery) -> show the quote
 to the user and get a clear yes -> place_order -> give the user the UPI link to pay with their own PIN ->
@@ -50,6 +53,13 @@ def issue_token(db, user_id: str, label: str = "") -> str:
     return token
 
 
+MOUNT_PATH = "/mcp/commerce"
+
+
+def resource_url() -> str:
+    return get_settings().public_base_url.rstrip("/") + MOUNT_PATH
+
+
 class DbTokenVerifier:
     async def verify_token(self, token: str):
         from mcp.server.auth.provider import AccessToken
@@ -63,7 +73,7 @@ class DbTokenVerifier:
             return None
         uid, scopes, label = found
         return AccessToken(token=token, client_id=label or "mcp-client", scopes=scopes, subject=uid,
-                           resource=get_settings().public_base_url.rstrip("/") + "/mcp")
+                           resource=resource_url())
 
 
 class OrderConfirmation(BaseModel):
@@ -86,6 +96,10 @@ def _client_id() -> str:
 
 def build_server(user_resolver=None, service_factory=None):
     """user_resolver / service_factory are injectable for tests."""
+    from mcp.server.auth.settings import AuthSettings
+    from mcp.server.mcpserver import MCPServer
+    from mcp.types import ToolAnnotations
+
     st = get_settings()
     resolve = user_resolver or _current_user_id
     make = service_factory or (lambda db: CommerceService(db, get_settings()))
@@ -93,7 +107,7 @@ def build_server(user_resolver=None, service_factory=None):
     kwargs: dict[str, Any] = {}
     if user_resolver is None:
         kwargs = {"token_verifier": DbTokenVerifier(),
-                  "auth": AuthSettings(issuer_url=base, resource_server_url=base + "/mcp", validate_token_resource=False)}
+                  "auth": AuthSettings(issuer_url=base, resource_server_url=resource_url(), validate_token_resource=False)}
     srv = MCPServer("santosh-commerce", title="Santosh Commerce", instructions=INSTRUCTIONS, version="0.4.0",
                     website_url="https://www.ainewtika.com", **kwargs)
 
@@ -233,13 +247,48 @@ def build_server(user_resolver=None, service_factory=None):
     return srv
 
 
+class RateLimit:
+    """Per-token sliding window (one process): stops a leaked token or a looping agent from hammering sellers."""
+
+    def __init__(self, app, per_minute: int = 120):
+        import time
+        self.app, self.per_minute, self.clock = app, per_minute, time.monotonic
+        self.hits: dict[str, list[float]] = {}
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or self.per_minute <= 0:
+            return await self.app(scope, receive, send)
+        auth = dict(scope.get("headers") or []).get(b"authorization", b"")
+        key = hashlib.sha256(auth).hexdigest()[:24] if auth else "anon:" + str((scope.get("client") or ("", 0))[0])
+        now = self.clock()
+        recent = [t for t in self.hits.get(key, []) if now - t < 60]
+        if len(recent) >= self.per_minute:
+            body = b'{"error":"rate_limited","message":"Too many requests; try again in a minute."}'
+            await send({"type": "http.response.start", "status": 429,
+                        "headers": [(b"content-type", b"application/json"), (b"retry-after", b"60")]})
+            await send({"type": "http.response.body", "body": body})
+            return
+        recent.append(now)
+        self.hits[key] = recent
+        if len(self.hits) > 5000:  # forget idle keys
+            self.hits = {k: v for k, v in self.hits.items() if v and now - v[-1] < 60}
+        return await self.app(scope, receive, send)
+
+
+def asgi_app(path: str = "/commerce", per_minute: int = 120):
+    """(rate-limited ASGI app, inner Starlette app). The inner app's lifespan runs the MCP session manager.
+    host='0.0.0.0' turns off the SDK's localhost-only Host check: Santosh sits behind nginx on its own domain."""
+    inner = build_server().streamable_http_app(streamable_http_path=path, host="0.0.0.0")
+    return RateLimit(inner, per_minute), inner
+
+
 def main() -> None:  # pragma: no cover - entry point
     import uvicorn
 
     from ..db import init_engine
     init_engine()
-    srv = build_server()
-    uvicorn.run(srv.streamable_http_app(host="0.0.0.0"), host="0.0.0.0", port=8100)
+    app, _ = asgi_app("/mcp")
+    uvicorn.run(app, host="0.0.0.0", port=8100)
 
 
 if __name__ == "__main__":  # pragma: no cover

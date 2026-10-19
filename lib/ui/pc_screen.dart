@@ -313,35 +313,51 @@ class _PcScreenState extends State<PcScreen> {
   }
 }
 
-/// Chat card for a file Santosh brought from the PC.
+/// Chat card for a file Santosh brought from the PC, or a PDF Santosh made (source 'bazar': invoice, slip, receipt).
 class PcFileCard extends StatelessWidget {
   const PcFileCard({super.key, required this.v, required this.app});
   final Map<String, dynamic> v;
   final Santosh app;
 
+  bool get _made => v['source'] == 'bazar';
+
+  /// Santosh-made PDFs get a fresh signed link on every tap, so an old chat card still opens.
+  Future<String> _url() async {
+    final docId = v['doc_id'] as String?;
+    if (_made && docId != null && app.api != null) {
+      try {
+        return await app.api!.bazarFileUrl(docId);
+      } catch (_) {}
+    }
+    return app.api?.absolute(v['url'] as String? ?? '') ?? '';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final url = app.api?.absolute(v['url'] as String? ?? '') ?? '';
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            const Icon(Icons.computer_rounded, color: C.teal),
+            Icon(_made ? Icons.picture_as_pdf_rounded : Icons.computer_rounded, color: C.teal),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(v['name'] as String? ?? 'File', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
-              Text('PC se · ${_size(v['size'] as num?)} · poori quality', style: const TextStyle(color: C.faint, fontSize: 12)),
+              Text(_made ? 'Santosh ne banaya · ${_size(v['size'] as num?)} · PDF' : 'PC se · ${_size(v['size'] as num?)} · poori quality',
+                  style: const TextStyle(color: C.faint, fontSize: 12)),
             ])),
           ]),
           const SizedBox(height: 10),
           Row(children: [
-            Expanded(child: GradientButton(label: 'Kholiye', height: 42, onTap: () => Native.openExternal(url: url))),
+            Expanded(child: GradientButton(label: 'Kholiye', height: 42, onTap: () async => Native.openExternal(url: await _url()))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Link bhejo', height: 42, onTap: () =>
-                Native.openExternal(url: 'https://wa.me/?text=${Uri.encodeComponent('${v['name']}: $url')}'))),
+            Expanded(child: GlassButton(label: 'Link bhejo', height: 42, onTap: () async {
+              final url = await _url();
+              await Native.openExternal(url: 'https://wa.me/?text=${Uri.encodeComponent('${v['name']}: $url')}');
+            })),
           ]),
-          const Padding(padding: EdgeInsets.only(top: 6), child: Text('Link 24 ghante chalega.', style: TextStyle(color: C.faint, fontSize: 11.5))),
+          Padding(padding: const EdgeInsets.only(top: 6), child: Text(_made ? 'Bheja gaya link 24 ghante chalega.' : 'Link 24 ghante chalega.',
+              style: const TextStyle(color: C.faint, fontSize: 11.5))),
         ]),
       ),
     );

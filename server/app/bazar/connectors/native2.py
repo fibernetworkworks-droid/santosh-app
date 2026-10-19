@@ -14,7 +14,8 @@ from urllib.parse import quote
 
 from sqlalchemy import select
 
-from ..db import Attendance, Contact, GeneratedDoc, ListItem, Reminder, Staff, Transaction, UdharEntry
+from ...db import ListItem as CoreListItem
+from ..db import Attendance, Contact, GeneratedDoc, Reminder, Staff, Transaction, UdharEntry
 from .base import Ctx, NeedsApproval, ToolError, ToolSpec, rupees, to_paise
 from .docs import money, words_inr, write_pdf
 from .native import NativeExecutor
@@ -213,13 +214,28 @@ class Native2Executor(NativeExecutor):
         ctx.session.add(Reminder(user_id=ctx.user.id, kind=kind, text=text, due_at=to_utc_naive(when), repeat=repeat, meta=meta or {}))
 
     def _doc(self, ctx: Ctx, kind: str, number: str, data: dict[str, Any], render) -> dict[str, Any]:
-        root = Path(ctx.settings.files_dir) / ctx.user.id
+        root = Path(ctx.settings.files_dir).resolve() / re.sub(r"[^A-Za-z0-9_-]", "_", ctx.user.id)
         safe = re.sub(r"[^A-Za-z0-9_-]", "_", number)
         path = render(root / f"{kind}-{safe}.pdf")
         d = GeneratedDoc(user_id=ctx.user.id, kind=kind, number=number, data=data, file_name=str(path))
         ctx.session.add(d)
         ctx.session.flush()
-        return {"doc_id": d.id, "number": number, "download": f"/v1/files/{d.id}"}
+        # The owner downloads it from the Santosh app (signed-in route); service.run adds a chat download card.
+        return {"doc_id": d.id, "number": number, "download": f"/api/bazar/files/{d.id}"}
+
+    def _core_list_add(self, ctx: Ctx, list_name: str, items: list[str]) -> list[str]:
+        """Shopping items go to Santosh's own lists (list_show / list_done), not a separate Bazar list."""
+        name = (list_name or "shopping").strip().lower()[:80] or "shopping"
+        have = {r.text.lower() for r in ctx.session.scalars(select(CoreListItem).where(
+            CoreListItem.tenant_id == ctx.user.id, CoreListItem.list_name == name, CoreListItem.done.is_(False))).all()}
+        added = []
+        for it in items:
+            it = str(it).strip()[:200]
+            if it and it.lower() not in have:
+                ctx.session.add(CoreListItem(tenant_id=ctx.user.id, list_name=name, text=it))
+                have.add(it.lower())
+                added.append(it)
+        return added
 
     def _needs_brain(self, what: str, payload: dict[str, Any]) -> dict[str, Any]:
         return {"brain_task": what, **payload,
@@ -608,9 +624,7 @@ class Native2Executor(NativeExecutor):
     # ------------------------------------------------------------------ recipe & meals
     def _ingredients_to_list(self, pack, a, ctx):
         name = str(a.get("list") or "shopping").lower()
-        items = [str(i).strip() for i in a["ingredients"] if str(i).strip()]
-        for it in items:
-            ctx.session.add(ListItem(user_id=ctx.user.id, list_name=name, text=it))
+        items = self._core_list_add(ctx, name, [str(i) for i in a["ingredients"]])
         return {"dish": a.get("dish", ""), "added": items, "list": name,
                 "next": "Say 'kirana se mangwa do' and I'll order these from your shop."}
 
@@ -618,10 +632,7 @@ class Native2Executor(NativeExecutor):
         prof = self._prof(ctx)
         prof["meal_plan"] = {"plan": a["plan"], "saved_on": ist_now().date().isoformat()}
         self._save_prof(ctx, prof)
-        added = []
-        for g in a.get("groceries") or []:
-            ctx.session.add(ListItem(user_id=ctx.user.id, list_name="shopping", text=str(g)))
-            added.append(str(g))
+        added = self._core_list_add(ctx, "shopping", [str(g) for g in a.get("groceries") or []])
         return {"saved": True, "days": list(a["plan"].keys()) if isinstance(a["plan"], dict) else [], "groceries_added": added}
 
     def _get_meal_plan(self, pack, a, ctx):
@@ -853,8 +864,14 @@ class Native2Executor(NativeExecutor):
             for c in people:
                 r = wa.send_text(c.phone, text)
                 sent.append({"to": c.name, "ok": r["ok"]})
-        return {"call_now": [{"what": "All emergencies", "number": "112"}, {"what": "Ambulance", "number": "108"},
-                             {"what": "Women helpline", "number": "1091"}, {"what": "Cyber fraud", "number": "1930"}],
-                "alerted": sent, "message": text,
-                "fallback_links": [] if sent else [f"https://wa.me/{c.phone}?text={quote(text)}" for c in people],
+        call_now = [{"what": "All emergencies", "number": "112"}, {"what": "Ambulance", "number": "108"},
+                    {"what": "Women helpline", "number": "1091"}, {"what": "Cyber fraud", "number": "1930"}]
+        # Taps only: the dialer opens with the number; WhatsApp opens from the user's own app with the text filled in.
+        links = [{"name": "Call 112", "url": "tel:112"}, {"name": "Ambulance 108", "url": "tel:108"}]
+        if not any(x["ok"] for x in sent):
+            links += [{"name": f"WhatsApp {c.name}", "url": f"https://wa.me/{re.sub(r'[^0-9]', '', c.phone)}?text={quote(text)}"}
+                      for c in people]
+            links.append({"name": "WhatsApp: choose contact", "url": f"https://wa.me/?text={quote(text)}"})
+        return {"call_now": call_now, "alerted": sent, "message": f"Call 112 (ambulance 108) if you are in danger. {text}",
+                "sos_text": text, "share_links": links,
                 "note": "" if people else "Mark family contacts (relation: family/emergency) so SOS can reach them."}

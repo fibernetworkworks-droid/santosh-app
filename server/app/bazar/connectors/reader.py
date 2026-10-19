@@ -11,7 +11,7 @@ from sqlalchemy import select
 from ..db import InstalledPack, Reminder, SpendEntry
 from ..packs.registry import Pack
 from .base import Ctx, NeedsApproval, ToolError, ToolSpec, rupees, to_paise
-from .sms_parser import parse_sms
+from .sms_parser import OTP, parse_sms
 from .timeparse import IST, ist_now, to_utc_naive
 
 BAL = re.compile(r"(?:avl\.?\s*bal(?:ance)?|available balance|a/c bal(?:ance)?|bal)\s*(?:is|:)?\s*(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)", re.I)
@@ -71,7 +71,7 @@ class ReaderExecutor:
             dues = []
             for m in msgs:
                 m = str(m)
-                if re.search(r"\botp\b|one time password", m, re.I):
+                if OTP.search(m):  # OTP messages are dropped, never stored
                     skipped += 1
                     continue
                 b = BAL.search(m)

@@ -1,4 +1,4 @@
-"""MVP Bazar shops (Newtika's own rails): local shops in the user's PIN code, UPI straight to the shop."""
+"""Santosh Bazar shops (Newtika's own rails): local shops in the user's PIN code, UPI straight to the shop."""
 from __future__ import annotations
 
 from typing import Any
@@ -15,7 +15,7 @@ STATUS = {"placed": "placed", "accepted": "accepted", "ready": "packed", "delive
 
 class BazarProvider:
     source = "bazar"
-    label = "MVP Bazar (local shops)"
+    label = "Santosh Bazar (local shops)"
 
     def available(self) -> bool:
         return True
@@ -40,7 +40,7 @@ class BazarProvider:
                     "name": it.name, "brand": "", "description": "", "image": "",
                     "price_paise": it.price_paise, "mrp_paise": it.price_paise,
                     "pack": f"per {it.unit}", "in_stock": bool(it.in_stock), "max_qty": 50,
-                    "seller": {"name": shop.name, "key": f"bazar::{shop.id}", "city": shop.city, "network": "MVP Bazar"},
+                    "seller": {"name": shop.name, "key": f"bazar::{shop.id}", "city": shop.city, "network": "Santosh Bazar"},
                     "delivery": {"slots": shop.slots[:2], "fee_paise": shop.delivery_fee_paise},
                     "returnable": False, "return_window": "", "cancellable": True, "cod": False,
                     "country_of_origin": "", "customer_care": f"{shop.name}, +{shop.owner_phone}", "url": "",

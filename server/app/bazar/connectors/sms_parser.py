@@ -5,6 +5,9 @@ import datetime as dt
 import re
 from typing import Any
 
+# An OTP/verification code with the code itself (a "never share your OTP" footer on a debit SMS is not one)
+OTP = re.compile(r"\b(?:otp|one[- ]time password|verification code|security code)\b.{0,60}?(?<![\w,.])\d{4,8}(?![\w,.])"
+                 r"|(?<![\w,.])\d{4,8}(?![\w,.]).{0,40}?\b(?:is (?:your|the) )?(?:otp|one[- ]time password|verification code)\b", re.I | re.S)
 AMT = r"(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)"
 DEBIT = re.compile(r"\b(debited|spent|paid|withdrawn|sent|purchase|dr\b|deducted)", re.I)
 CREDIT = re.compile(r"\b(credited|received|deposited|cr\b|refund)", re.I)
@@ -60,7 +63,7 @@ def parse_sms(text: str, today: dt.date | None = None) -> dict[str, Any] | None:
     m = re.search(AMT, text, re.I)
     if not m:
         return None
-    if re.search(r"\b(otp|one time password)\b", text, re.I):
+    if OTP.search(text):
         return None  # never store OTP messages
     amount = int(round(float(m.group(1).replace(",", "")) * 100))
     if DEBIT.search(text) and not re.search(r"\bcredited to\b", text, re.I):

@@ -224,7 +224,8 @@ class MainActivity : FlutterActivity() {
             if (url.isNotBlank()) {
                 val uri = Uri.parse(url)
                 val scheme = uri.scheme ?: ""
-                if (scheme !in setOf("upi", "tez", "phonepe", "paytmmp", "https", "http", "intent")) return "Link sahi nahi hai"
+                // "tel" only opens the dialer with the number filled in (SOS 112/108); the user presses call
+                if (scheme !in setOf("upi", "tez", "phonepe", "paytmmp", "https", "http", "intent", "tel")) return "Link sahi nahi hai"
                 if (scheme in setOf("upi", "tez", "phonepe", "paytmmp")) {
                     // prefer the chosen app; fall back to the standard upi:// chooser (every UPI app handles it)
                     if (pkg.isNotBlank() && installed(pkg)) {

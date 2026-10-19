@@ -46,6 +46,9 @@ class OndcProvider:
         loc = (user.profile or {}).get("home_location") or {}
         gps = f"{loc.get('lat', 20.7002)},{loc.get('lng', 77.0082)}"
         offers = make_buyer(db, self.s).search(query, pincode or user.pincode or "", gps, self._domains(query))
+        if self.s.ondc_mode == "sandbox":
+            for o in offers:
+                o["demo"] = True
         return offers[:limit]
 
     def quote(self, db: Session, user: User, cart: CommerceCart, address: dict[str, Any]) -> QuoteResult:
@@ -79,9 +82,13 @@ class OndcProvider:
                        "customer_care": cart.meta.get("customer_care", ""), "paid_to": "Newtika (ONDC buyer app) — settled to the seller"}
         raw_quote = ((on_init.get("message") or {}).get("order") or {}).get("quote") or {}
         settlement = (q["payment"].get("@ondc/org/settlement_details") or [])
+        demo = self.s.ondc_mode == "sandbox"
+        if demo:
+            disclosures["paid_to"] = "Nobody: sandbox network, no money moves"
         return QuoteResult(q["total_paise"], breakup, lines, disclosures,
-                           payee_name=self.s.collection_name, payee_vpa=self.s.collection_vpa,
-                           meta={"txn": txn, "init_order": init_msg["order"], "quote_raw": raw_quote, "settlement": settlement,
+                           payee_name="Sandbox (no money)" if demo else self.s.collection_name,
+                           payee_vpa="" if demo else self.s.collection_vpa,
+                           meta={"demo": demo, "txn": txn, "init_order": init_msg["order"], "quote_raw": raw_quote, "settlement": settlement,
                                  "domain": ref0["domain"], "bpp_id": ref0["bpp_id"], "bpp_uri": ref0["bpp_uri"]})
 
     def place(self, db: Session, user: User, order: CommerceOrder, payment_ref: str) -> PlaceResult:

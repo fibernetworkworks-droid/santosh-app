@@ -175,6 +175,8 @@ class Api {
   Future<List<Map<String, dynamic>>> bazarApps() async =>
       List<Map<String, dynamic>>.from(((await _send('GET', '/api/bazar/connections'))['apps'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
   Future<String> bazarLink(String packId) async => (await _send('POST', '/api/bazar/connections/$packId/link'))['url'] as String;
+  /// Fresh signed link for a PDF Santosh made (invoice, salary slip, rent receipt, resume).
+  Future<String> bazarFileUrl(String docId) async => absolute((await _send('GET', '/api/bazar/files/$docId/link'))['url'] as String);
   Future<void> bazarUnlink(String packId) async => _send('DELETE', '/api/bazar/connections/$packId');
   Future<Map<String, dynamic>> bazarSettings() async => Map<String, dynamic>.from(await _send('GET', '/api/bazar/settings'));
   Future<Map<String, dynamic>> saveBazarSettings(Map<String, dynamic> s) async =>

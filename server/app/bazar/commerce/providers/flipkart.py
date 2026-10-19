@@ -36,8 +36,10 @@ class FlipkartProvider:
 
     def __init__(self, settings: Any, transport: httpx.BaseTransport | None = None):
         self.s = settings
+        self.sandbox = False
         if transport is None and not settings.flipkart_affiliate_id and settings.commerce_sandbox_feeds:
             transport = httpx.MockTransport(_sandbox)
+            self.sandbox = True
         self.enabled = bool(settings.flipkart_affiliate_id) or transport is not None
         self.http = httpx.Client(timeout=8.0, transport=transport)
 
@@ -62,7 +64,7 @@ class FlipkartProvider:
                 "seller": {"name": "Flipkart", "key": "flipkart", "city": "", "network": "Flipkart"},
                 "delivery": {}, "returnable": None, "return_window": "see Flipkart", "cancellable": None, "cod": None,
                 "country_of_origin": "", "customer_care": "Flipkart app", "url": b.get("productUrl", ""),
-                "buy_mode": "handoff", "sponsored": False, "affiliate": True,
+                "buy_mode": "handoff", "sponsored": False, "affiliate": True, "demo": self.sandbox,
             })
         return out
 

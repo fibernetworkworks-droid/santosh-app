@@ -26,6 +26,8 @@ def spent_today(session: Session, user_id: str) -> int:
 def can_auto_approve(session: Session, user: User, na: NeedsApproval) -> bool:
     if na.tier >= 3 or na.tier < 2:
         return False
+    if (na.action or {}).get("executor") == "commerce":
+        return False  # shopping orders always show the all-in quote card (E-Commerce Rules: explicit consent)
     if na.amount_paise <= 0:
         return False  # messages to other people (greetings, campaigns) always need a look
     if user.cap_per_order_paise <= 0 or na.amount_paise > user.cap_per_order_paise:

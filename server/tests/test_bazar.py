@@ -58,9 +58,10 @@ def test_all_159_packs_have_a_status(bz):
     cat = bz["svc"].catalog("default")
     assert cat["total"] == 682   # 159 MVP + 515 P1 + 6 devices + shopping + Mera PC
     st = cat["by_status"]
-    assert st["demo"] == 98 + 44 and st["core"] == 7 and st["no_shop_yet"] == 20 + 122 and st["needs_link"] == 4
+    assert st["demo"] == 98 + 44 and st["core"] == 7 + 3 and st["no_shop_yet"] == 20 + 122 and st["needs_link"] == 4
     assert st["not_configured"] == 2  # Zepto + District endpoints are blank
-    assert st["ready"] == 384  # UPI, rides, native helpers + P1 skills, readers, handoffs, devices, shopping
+    assert st["ready"] == 376  # (P1 translator, email summary, recipe -> core tools) UPI, rides, native helpers + P1 skills, readers, handoffs, speaker, shopping
+    assert st["no_device"] == 5  # TV, AC, SmartThings, LG ThinQ, Home Connect until added/linked in Santosh app > Ghar
 
 
 def test_find_gives_tools(bz):

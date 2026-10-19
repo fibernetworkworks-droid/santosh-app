@@ -24,7 +24,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..connectors.base import ToolError, rupees
-from ..connectors.upi import build_upi_intent
+from ..config import PLACEHOLDER_VPAS
+from ..connectors.upi import build_upi_intent, valid_vpa
 from ..db import CommerceCart, CommerceOffer, CommerceOrder, CommerceQuote, ConsentRecord, ShopOrder, Transaction, User
 from .providers.base import Provider
 from .providers.bazar import BazarProvider
@@ -106,6 +107,9 @@ class CommerceService:
             v["mrp"] = rupees(o["mrp_paise"])
         if o.get("sponsored"):
             v["label"] = "Sponsored"
+        if o.get("demo"):
+            v["label"] = "Demo listing (sandbox, not a real seller)"
+            v["demo"] = True
         if o["buy_mode"] == "handoff":
             v["how_to_buy"] = "Finish on the store's own app/checkout (link)"
         return v
@@ -225,6 +229,9 @@ class CommerceService:
         if prov is None:
             raise ToolError(f"{cart.source} is not available right now.")
         r = prov.quote(self.db, user, cart, addr)
+        if r.payment_mode != "handoff" and not r.meta.get("demo") and (
+                r.payee_vpa.strip() in PLACEHOLDER_VPAS or not valid_vpa(r.payee_vpa)):
+            raise ToolError(f"Payments for {prov.label} are not set up on this server yet. Nothing was ordered.")
         if r.payment_mode != "handoff" and r.total_paise > self.s.commerce_max_order_paise:
             raise ToolError(f"This order is {rupees(r.total_paise)}, above Santosh's per-order limit of "
                             f"{rupees(self.s.commerce_max_order_paise)}.")
@@ -257,6 +264,10 @@ class CommerceService:
             return {**base, "payment": "On the store's own checkout page", "checkout_url": q.meta.get("handoff_url", ""),
                     "message": f"Your cart at {cart.seller_name} is ready: {items}. Total about {rupees(q.total_paise)}. "
                                f"Open the store checkout to pay; the store confirms the final amount."}
+        if q.meta.get("demo"):
+            return {**base, "payment": "Demo (sandbox): no money moves", "needs_confirmation": True, "demo": True,
+                    "confirm_text": f"[DEMO] Place sandbox order {items} from {cart.seller_name} for {rupees(q.total_paise)} (all-in)? No money moves.",
+                    "message": f"[DEMO] {items} from {cart.seller_name}: {rupees(q.total_paise)} all-in. Sandbox seller, no money moves."}
         return {**base, "payment": f"UPI to {q.meta.get('payee_name')}", "needs_confirmation": True,
                 "confirm_text": f"Order {items} from {cart.seller_name} for {rupees(q.total_paise)} (all-in), pay by UPI to {q.meta.get('payee_name')}?",
                 "message": f"{items} from {cart.seller_name}: {rupees(q.total_paise)} all-in. Confirm to pay by UPI."}
@@ -307,10 +318,17 @@ class CommerceService:
         self.db.add(ConsentRecord(user_id=user.id, quote_id=q.id, order_id=order.id, surface=surface, client_id=client_id,
                                   statement=self.quote_view(q, cart).get("confirm_text", ""), amount_paise=q.total_paise,
                                   payee=f"{q.meta.get('payee_name')} ({q.meta.get('payee_vpa')})", quote_hash=q.quote_hash))
+        if q.meta.get("demo"):  # sandbox network: no money moves, the sandbox seller gets the order right away
+            txn.status, txn.provider_ref = "paid", "DEMO-SANDBOX"
+            note = self.on_paid(txn)
+            self.db.commit()
+            return {**self.order_view(order), "demo": True, "message": f"[DEMO] {note} Sandbox order: no money moved."}
         self.db.commit()
         return self.order_view(order, include_payment=True)
 
     def payment_link(self, order: CommerceOrder) -> str:
+        if order.meta.get("demo"):
+            return ""
         return build_upi_intent(order.meta.get("payee_vpa", ""), order.meta.get("payee_name", ""), order.total_paise,
                                 note=f"Santosh order {order.id[:6]}", tr=order.txn_ref, max_paise=self.s.upi_max_amount_paise)
 
@@ -331,6 +349,8 @@ class CommerceService:
             order.external_id = r.external_id or order.external_id
             self._move(order, r.status if r.status != "handed_off" else "placed", "seller accepted the order")
         txn.status = "completed"
+        if order.meta.get("demo"):
+            return f"{order.seller_name} has your sandbox order (Santosh order {order.id[:6]})."
         return f"Paid {rupees(order.total_paise)}. {order.seller_name} has your order (Santosh order {order.id[:6]})."
 
     def on_failed(self, txn: Transaction) -> None:
@@ -362,7 +382,9 @@ class CommerceService:
              "total": rupees(o.total_paise), "items": [f"{ln['name']} × {ln['qty']}" for ln in o.lines],
              "placed_at": o.created_at.isoformat(timespec="minutes") if o.created_at else "",
              "history": o.history[-4:]}
-        if include_payment and o.payment_status != "paid" and o.status == "payment_pending":
+        if o.meta.get("demo"):
+            v["demo"] = True
+        if include_payment and o.payment_status != "paid" and o.status == "payment_pending" and not o.meta.get("demo"):
             v["pay"] = {"upi_link": self.payment_link(o), "amount": rupees(o.total_paise), "payee": o.meta.get("payee_name"),
                         "txn_ref": o.txn_ref}
             v["message"] = (f"Order saved. Pay {rupees(o.total_paise)} to {o.meta.get('payee_name')} in your UPI app "

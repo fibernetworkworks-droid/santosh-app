@@ -121,7 +121,7 @@ class ShopifyProvider:
                         "seller": {"name": store, "key": f"shopify::{store}", "city": "", "network": "Shopify store"},
                         "delivery": {}, "returnable": None, "return_window": "see store policy", "cancellable": None,
                         "cod": None, "country_of_origin": "", "customer_care": f"https://{store}/policies", "url": p.get("url", ""),
-                        "buy_mode": "handoff", "sponsored": False,
+                        "buy_mode": "handoff", "sponsored": False, "demo": r is _FAKE,
                     })
         return out[:limit]
 

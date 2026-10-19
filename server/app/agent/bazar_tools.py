@@ -1,4 +1,5 @@
-"""Santosh Connectors: 159 Indian app/biller/shop packs behind three tools, so the model's tool list stays small."""
+"""Santosh Connectors: ~680 Indian app/biller/shop/business packs (MVP + P1 wave) behind a few tools, so the model's
+tool list stays small."""
 from __future__ import annotations
 
 import asyncio
@@ -9,11 +10,14 @@ from .tools import Ctx, ToolError
 
 BAZAR_TOOLS = [
     {"name": "bazar_find", "description": (
-        "Find Santosh Connectors (plugins) for a task: bill payments (98 electricity/gas/LPG/mobile/broadband/DTH billers), local shops "
-        "(kirana, dairy, tiffin, medical, clinic, salon, plumber, local ISP...), UPI apps (PhonePe, GPay, Paytm, BHIM...), "
-        "ride apps (Uber, Ola, Rapido...), food/grocery apps (Swiggy, Instamart, Zomato, Zepto, Dineout, District) and "
-        "helpers (bill reminders, birthdays, medicine, spend report from bank SMS, expense split, family, festival greetings). "
-        "Query in any language, e.g. 'bijli bill msedcl', 'kirana atta', 'phonepe', 'uber', 'swiggy biryani'. "
+        "Find Santosh Connectors (plugins) for a task: bill payments (142 billers: electricity/gas/LPG/mobile/broadband/DTH, "
+        "water & property tax, FASTag, EMIs/fees/society), local shops (142 types: kirana, dairy, tiffin, medical, clinic, salon, "
+        "tailor, coaching, PG...), UPI apps and rent, ride apps, food/grocery apps (Swiggy, Instamart, Zomato, Zepto...), "
+        "business tools (GST invoice/quotation PDFs, udhar ledger, staff attendance, salary slips, rent receipts), money helpers "
+        "(EMI, subscriptions, price watch, tax due dates, scam-message check, SOS), bank/card/investment readers (94: read SMS "
+        "the user shares; never move money) and 227 handoffs (government & exam portals, travel, couriers, health, farming: "
+        "Santosh prepares details, the user finishes on the official site/app). "
+        "Query in any language, e.g. 'bijli bill msedcl', 'pani bill', 'fastag', 'gst invoice', 'udhar', 'passport', 'hdfc'. "
         "Also searches the user's own MCP servers and, when few packs match, the MCP directory of ~50,700 MCP servers worldwide "
         "servers (GitHub, Notion, Jira, Zerodha, Tally, databases, maps, research...) returned as mcp_directory. "
         "Returns matching packs with status and their tools (name, description, input_schema). Empty query = catalogue."),
@@ -23,7 +27,7 @@ BAZAR_TOOLS = [
         "Run one tool of a Bazar pack found with bazar_find. Give pack_id, tool and args matching that tool's input_schema. "
         "Read tools return data. Tools that spend money or message people return needs_approval: a confirm card is shown "
         "to the user; tell them the total and to tap Approve. Never claim an order/payment is done until the user approved "
-        "and the result says so. Results with an app/UPI link show an Open button in the chat."),
+        "and the result says so. Results with an app/UPI/website link show an Open button; PDFs a download card in the chat."),
      "input_schema": {"type": "object", "properties": {
          "pack_id": {"type": "string"}, "tool": {"type": "string"},
          "args": {"type": "object", "description": "Arguments for the tool"}}, "required": ["pack_id", "tool"]}},

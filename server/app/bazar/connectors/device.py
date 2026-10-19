@@ -8,7 +8,7 @@ Four routes, all official:
 4. Appliance clouds   — Samsung SmartThings, LG ThinQ Connect, Bosch/Siemens Home Connect. Channel ``cloud``.
 
 Routes 1–3 run on the phone: the server builds the exact command (HID usages, IR pattern) and the phone executes it,
-then reports back to ``POST /v1/device-commands/{id}/result``.
+then reports back to ``POST /api/bazar/devices/commands/{id}/result``.
 
 Safety: AC temperature is kept between 20 and 28 °C (24 °C default). Fridges and washers are read-only. No device
 is ever switched on remotely for heating/washing, and fridge power is never touched.
@@ -33,6 +33,25 @@ MEDIA_KEYS = {"play": "PLAY", "pause": "PAUSE", "resume": "PLAY", "next": "NEXT"
               "play_pause": "PLAY_PAUSE"}
 FRIDGE_WARM_C = 8
 
+# Safety tier 4 (never): Santosh does not switch heaters/heavy loads or start/stop fridges, washers, ovens, locks.
+# Geysers need a 16A smart plug with an auto-off timer (not built yet), so they are refused too.
+UNSAFE = re.compile(r"\b(geyser|gizer|water heater|heater|oven|microwave|induction|cooktop|stove|chulha|iron|"
+                    r"fridge|refrigerator|freezer|washing|washer|dryer|lock|camera)\b", re.I)
+
+
+def refuse_unsafe(tool: str, args: dict[str, Any]) -> None:
+    """Server-side guard for every control tool; the model's wording can't get around it."""
+    if tool in ("device_status", "ac_status", "sync_devices", "media", "volume"):
+        return
+    words = " ".join(str(v) for k, v in (args or {}).items() if k in ("device", "app", "query", "kind") and v is not None)
+    m = UNSAFE.search(words)
+    if tool in ("tv_keys", "tv_open_app", "tv_search"):
+        return  # TV search words ("washing machine review") are just text typed on the TV
+    if m or str((args or {}).get("kind", "")) in ("fridge", "washer"):
+        what = m.group(1).lower() if m else "that appliance"
+        raise ToolError(f"For safety Santosh only reads {what} status; it never switches it on/off or changes it. "
+                        "Use the brand's own app for that.")
+
 
 def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").lower()).strip()
@@ -49,7 +68,7 @@ def cloud_client(ctx: Ctx, provider: str) -> CloudClient:
     conn = ctx.session.scalars(select(Connection).where(Connection.user_id == ctx.user.id, Connection.provider == provider,
                                                         Connection.status == "active")).first()
     if conn is None:
-        raise ToolError(f"Link your {PROVIDERS[provider]} account first (Santosh › Devices › Link {PROVIDERS[provider]}).")
+        raise ToolError(f"Link your {PROVIDERS[provider]} account first (Santosh app › Ghar › Link {PROVIDERS[provider]}).")
 
     def save(tok: Token) -> None:
         conn.token_enc = vault().seal(tok.dump())
@@ -147,6 +166,7 @@ class DeviceExecutor:
     # ------------------------------------------------------------------ dispatch
     def call(self, pack: Pack, tool: str, args: dict[str, Any], ctx: Ctx) -> dict[str, Any]:
         ch = pack.config["channel"]
+        refuse_unsafe(tool, args)
         if ch == "phone_media":
             if tool == "media":
                 return self._media(pack, args, ctx)
@@ -216,10 +236,10 @@ class DeviceExecutor:
         what = {"ac": "AC", "tv": "TV", "fridge": "fridge", "washer": "washing machine"}.get(kind or "", "device")
         if not devs:
             if pack.config["channel"] == "bt_hid":
-                raise ToolError("Pair your TV once: open Santosh › Devices › TV remote, then pick 'Santosh Remote' in the TV's "
+                raise ToolError("Pair your TV once: open Santosh app › Ghar › Add TV, then pick 'Santosh Remote' in the TV's "
                                 "Bluetooth settings.")
             if pack.config["channel"] == "ir":
-                raise ToolError("Add your AC once: Santosh › Devices › Add AC. I'll test the remote signal with you.")
+                raise ToolError("Add your AC once: Santosh app › Ghar › Add AC. I'll test the remote signal with you.")
             raise ToolError(f"I couldn't find a {what} in your {pack.name} account.")
         if name:
             n = _norm(name)
@@ -241,11 +261,11 @@ class DeviceExecutor:
         payload = {"command_id": cmd.id, "channel": cmd.channel,
                    "device": {"id": dev.id, "name": dev.name} if dev else {"id": "phone", "name": "Phone audio"},
                    "target": dict(dev.target) if dev else {}, "ops": ops,
-                   "report_to": f"/v1/device-commands/{cmd.id}/result"}
+                   "report_to": f"/api/bazar/devices/commands/{cmd.id}/result"}
         cmd.payload = payload
         if ctx.task is not None:
             res = dict(ctx.task.result or {})
-            res["device_actions"] = [*res.get("device_actions", []), payload]
+            res["device_actions"] = [*res.get("device_actions", []), payload][-10:]  # one task lives for a whole chat
             ctx.task.result = res
         return {"device_action": payload, "message": message}
 
@@ -273,8 +293,14 @@ class DeviceExecutor:
         dev = self._speaker(ctx, pack)
         where = dev.name if dev else "the speaker"
         cap = int((dev.target if dev else {}).get("max_percent", 90))
+        cap = max(0, min(cap, 90))   # ear safety: never above 90%
         if args.get("percent") is not None:
-            pct = max(0, min(cap, int(args["percent"])))
+            try:
+                want = int(float(args["percent"]))
+            except (TypeError, ValueError) as e:
+                raise ToolError("Give the volume as a percent, e.g. 40.") from e
+            args = {**args, "percent": want}
+            pct = max(0, min(cap, want))
             note = f" (kept at {cap}% to protect your ears)" if int(args["percent"]) > cap else ""
             return self._phone(ctx, dev, [{"op": "volume_set", "percent": pct, "max_percent": cap}],
                                f"Volume set to {pct}% on {where}{note}.", channel="phone_media")
@@ -300,7 +326,10 @@ class DeviceExecutor:
         if args.get("temp_c") is not None:
             want = args["temp_c"]
         elif args.get("delta"):
-            want = st.temp_c + int(args["delta"])
+            try:
+                want = st.temp_c + max(-8, min(8, int(args["delta"])))
+            except (TypeError, ValueError) as e:
+                raise ToolError("Say how many degrees, e.g. +1 or -1.") from e
         if want is not None:
             st.temp_c, clamped = ir.clamp_temp(want)
             if clamped:
@@ -320,7 +349,7 @@ class DeviceExecutor:
     def _ir_ac(self, pack: Pack, args: dict[str, Any], ctx: Ctx) -> dict[str, Any]:
         dev = self.pick(ctx, pack, "ac", args.get("device"))
         if not dev.protocol:
-            raise ToolError(f"{dev.name}'s remote isn't confirmed yet. Open Santosh › Devices › {dev.name} › Test remote.")
+            raise ToolError(f"{dev.name}'s remote isn't confirmed yet. Open Santosh app › Ghar › {dev.name} › Test remote.")
         cur = ir.AcState.from_dict(dev.state.get("ac"))
         st, notes = self._apply(cur, args)
         sig = ir.encode(dev.protocol, st)

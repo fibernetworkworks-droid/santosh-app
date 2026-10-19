@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     # E-commerce (v0.4)
     commerce_max_order_paise: int = 2_000_000       # ₹20,000 per order through Santosh
     commerce_quote_ttl_seconds: int = 600           # a price quote is valid for 10 minutes
+    commerce_mcp_rate_per_minute: int = 120         # Commerce MCP (/mcp/commerce) requests per token per minute
     # ONDC buyer app. "sandbox" = in-process mock seller network + registry; "preprod"/"prod" = real network.
     ondc_mode: str = "sandbox"
     ondc_subscriber_id: str = "santosh.ainewtika.com"

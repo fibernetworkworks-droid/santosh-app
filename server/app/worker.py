@@ -292,6 +292,27 @@ async def tick() -> None:
     await bazar_reminders()
     await offline_digests()
     await pc_cleanup()
+    await home_device_alerts()
+
+
+_home_last = 0.0
+
+
+async def home_device_alerts() -> None:
+    """Linked fridge / washer alerts (door open, fridge warm, washing done), every 5 minutes, each alert once.
+    Skipped with the offline sandbox clouds so demo appliances don't message real chats."""
+    global _home_last
+    if time.time() - _home_last < 300:
+        return
+    _home_last = time.time()
+    from .bazar.config import get_settings as bz_settings
+    if bz_settings().device_cloud_mode == "sandbox":
+        return
+    try:
+        from .bazar import devices as home
+        await asyncio.to_thread(home.alerts_tick)
+    except Exception:
+        log.exception("home device alerts failed")
 
 
 _pc_last = 0.0

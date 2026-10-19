@@ -557,7 +557,9 @@ class Santosh extends ChangeNotifier {
         break;
       case 'pc_file':
         feed.add(FeedItem('pc_file', Map<String, dynamic>.from(p)));
-        if (inBackground && !_replaying) Device.instance.showNow('PC se file aayi', p['name'] as String? ?? '');
+        if (inBackground && !_replaying) {
+          Device.instance.showNow(p['source'] == 'bazar' ? 'Santosh ne PDF banaya' : 'PC se file aayi', p['name'] as String? ?? '');
+        }
         break;
       case 'device_action':
         // in the background the native service does it (screens can't be opened from the background)

@@ -11,6 +11,7 @@ import hmac
 import logging
 import re
 import secrets
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import select
@@ -25,8 +26,8 @@ from .agent.toolbox import default_executors
 from .config import get_settings
 from .connectors.base import Ctx, ToolError, rupees, to_paise
 from .connectors.upi import valid_vpa
-from .db import (Approval, Connection, Contact, InstalledPack, Reminder, Shop, ShopDue, ShopItem, ShopOrder, Task,
-                 Transaction, User)
+from .db import (Approval, Connection, Contact, GeneratedDoc, InstalledPack, Reminder, Shop, ShopDue, ShopItem, ShopOrder,
+                 Task, Transaction, User)
 from . import custom_mcp, directory, featured
 from .db import CustomMcp
 from .packs.registry import Pack, Registry, registry
@@ -42,6 +43,9 @@ CORE_EQUIVALENT = {
     "briefing": "set_profile(briefing_time) for the daily briefing, or create_routine",
     "wa_marketing": "check_template, submit_template, create_campaign (WhatsApp campaigns)",
     "voice_notes": "nothing extra: the user sends the voice note in chat and Santosh hears it directly",
+    "translator": "nothing extra: translate it yourself in the reply",
+    "email_summary": "email_read / email_draft for the inbox; a pasted email: summarise it yourself",
+    "recipe": "list_add (list 'shopping') with the dish's ingredients you work out",
 }
 
 STATUS_TEXT = {
@@ -51,6 +55,7 @@ STATUS_TEXT = {
     "needs_link": "user must link this account once (Connect tab)",
     "not_configured": "provider access not configured on the server yet",
     "core": "built into Santosh",
+    "no_device": "no device of this kind added yet: Santosh app > Ghar (add the speaker/TV/AC or link the brand account there)",
     "pc_offline": "the PC is offline: switch it on and open Santosh Desktop",
     "pc_not_paired": "no PC paired yet: Santosh app > Main > Mera PC",
     "needs_key": "add this server's API key once in the Santosh app (Connect > MCP servers); never in chat",
@@ -138,6 +143,9 @@ def pack_status(s, user: User, pack: Pack) -> str:
         c = s.scalars(select(Connection).where(Connection.user_id == user.id, Connection.provider == pack.config["provider"],
                                                Connection.status == "active")).first()
         return "ready" if c else "needs_link"
+    if pack.executor == "device":
+        from .devices import device_pack_status
+        return device_pack_status(s, user, pack)
     return "ready"
 
 
@@ -187,12 +195,12 @@ def find(tenant_id: str, query: str = "", category: str = "", limit: int = 6) ->
     with session() as s:
         user = ensure_user(s, tenant_id)
         if category and not query:
-            packs = [p for p in reg.all(phase="MVP") if category.lower() in p.category.lower()][:40]
+            packs = [p for p in reg.all() if category.lower() in p.category.lower()][:40]
             return {"packs": [_pack_out(s, user, p, with_tools=False) for p in packs],
                     "hint": "Call bazar_find again with a specific query to get the tools of a pack."}
         if not query:
             cats: dict[str, int] = {}
-            for p in reg.all(phase="MVP"):
+            for p in reg.all():
                 cats[p.category] = cats.get(p.category, 0) + 1
             return {"total_packs": len(reg.packs), "categories": cats,
                     "hint": "Ask with a query like 'bijli bill', 'kirana', 'phonepe', 'uber', 'swiggy'."}
@@ -240,22 +248,107 @@ def _open_action(out: dict[str, Any]) -> dict[str, Any] | None:
     if out.get("deep_link") or out.get("android_package"):
         return {"kind": "app", "url": out.get("deep_link") or "", "package": out.get("android_package") or "",
                 "label": f"{out.get('app', 'App')} kholiye"}
+    if isinstance(out.get("open"), dict):  # handoff / reader packs: official site if verified, else Play Store search
+        o, app = out["open"], out.get("app", "App")
+        web = o.get("web") if o.get("web_verified") and str(o.get("web", "")).startswith("https://") else ""
+        store = o.get("app_store") if str(o.get("app_store", "")).startswith("https://play.google.com/") else ""
+        if web and store:
+            return {"kind": "links", "links": [{"name": f"{app} official site", "url": web},
+                                               {"name": f"{app} app (Play Store)", "url": store}], "label": f"{app} kholiye"}
+        if web or store:
+            return {"kind": "app", "url": web or store, "package": "",
+                    "label": f"{app} official site kholiye" if web else f"{app} app dhoondhiye (Play Store)"}
     if out.get("share_links"):
-        return {"kind": "links", "links": out["share_links"], "label": "WhatsApp par bhejiye"}
+        label = "SOS: call ya WhatsApp" if out.get("sos_text") else "WhatsApp par bhejiye"
+        return {"kind": "links", "links": out["share_links"], "label": label}
     if out.get("payment_link"):
         return {"kind": "share", "text": out.get("share_text") or out["payment_link"], "label": "Link share kijiye"}
     return None
 
 
+# ---------------------------------------------------------------- generated PDFs (invoices, slips, receipts, resumes)
+MAX_DOC_CARDS = 12
+FILE_LINK_HOURS = 24
+
+
+def _doc_ids(out: Any) -> list[str]:
+    """doc_ids in a native skill result: top level, or one level down in lists (salary slips, rent receipts)."""
+    if not isinstance(out, dict):
+        return []
+    ids = [out["doc_id"]] if isinstance(out.get("doc_id"), str) else []
+    for v in out.values():
+        if isinstance(v, list):
+            ids += [x["doc_id"] for x in v if isinstance(x, dict) and isinstance(x.get("doc_id"), str)]
+    return ids
+
+
+def file_link(doc_id: str, hours: int = FILE_LINK_HOURS) -> str:
+    """Short-lived signed link the phone opens in the browser / PDF viewer (no auth header there)."""
+    import time
+    from ..pc import service as pcs
+    exp = int(time.time()) + 3600 * hours
+    return f"/api/bazar/files/{doc_id}/dl?exp={exp}&sig={pcs.sign('bazar:' + doc_id, exp)}"
+
+
+def check_file_sig(doc_id: str, exp: int, sig: str) -> bool:
+    from ..pc import service as pcs
+    return pcs.check_sig("bazar:" + doc_id, exp, sig)
+
+
+def _doc_path(d: GeneratedDoc) -> Path | None:
+    root = Path(get_settings().files_dir).resolve()
+    p = Path(d.file_name).resolve()
+    return p if p.is_relative_to(root) and p.is_file() else None
+
+
+def _doc_name(d: GeneratedDoc) -> str:
+    return f"{d.kind}-{re.sub(r'[^A-Za-z0-9_-]', '-', d.number or d.id)}.pdf"
+
+
+def _doc_cards(s, tenant_id: str, out: Any) -> list[dict[str, Any]]:
+    cards = []
+    for i in _doc_ids(out):
+        d = s.get(GeneratedDoc, i)
+        p = _doc_path(d) if d is not None and d.user_id == tenant_id else None
+        if p is not None:
+            cards.append({"name": _doc_name(d), "url": file_link(d.id), "size": p.stat().st_size, "source": "bazar",
+                          "doc_id": d.id, "kind": d.kind})
+    return cards
+
+
+def get_doc(tenant_id: str, doc_id: str) -> tuple[Path, str] | None:
+    """The PDF only for its owner (None otherwise, also when the file is gone)."""
+    with session() as s:
+        d = s.get(GeneratedDoc, doc_id)
+        if d is None or (tenant_id is not None and d.user_id != tenant_id):
+            return None
+        p = _doc_path(d)
+        return (p, _doc_name(d)) if p else None
+
+
+def list_docs(tenant_id: str, limit: int = 50) -> list[dict[str, Any]]:
+    with session() as s:
+        rows = s.scalars(select(GeneratedDoc).where(GeneratedDoc.user_id == tenant_id)
+                         .order_by(GeneratedDoc.created_at.desc()).limit(limit)).all()
+        return [{"id": d.id, "kind": d.kind, "number": d.number, "name": _doc_name(d), "at": d.created_at.isoformat(),
+                 "url": file_link(d.id)} for d in rows]
+
+
 def card_of(ap: Approval, pack: Pack | None) -> dict[str, Any]:
-    items = []
+    items, disclosures = [], []
     for it in ap.items or []:
+        if it.get("kind") == "disclosure":  # shopping: seller, delivery, returns, origin… shown before paying
+            disclosures.append({"label": it.get("name", ""), "value": it.get("value", "")})
+            continue
         price = it.get("price_paise")
         items.append({"name": it.get("name", ""), "price": rupees(price) if isinstance(price, int) else ""})
-    return {"id": ap.id, "title": ap.title, "payee": ap.payee, "amount": rupees(ap.amount_paise) if ap.amount_paise else "",
+    card = {"id": ap.id, "title": ap.title, "payee": ap.payee, "amount": rupees(ap.amount_paise) if ap.amount_paise else "",
             "amount_paise": ap.amount_paise, "items": items, "pay_method": ap.pay_method, "tier": ap.tier,
             "pack": pack.name if pack else "", "demo": ap.title.startswith("[DEMO]"), "status": ap.decision,
             "needs_pin": ap.tier >= 3 or "UPI" in (ap.pay_method or "")}
+    if disclosures:
+        card["disclosures"] = disclosures
+    return card
 
 
 def run(tenant_id: str, conversation_id: str, pack_id: str, tool: str, args: dict[str, Any] | None) -> dict[str, Any]:
@@ -284,7 +377,7 @@ def _run(tenant_id: str, conversation_id: str, pack_id: str, tool: str, args: di
         status = pack_status(s, user, pack)
         if status == "core":
             raise ToolError(f"Use Santosh's own tools for this: {CORE_EQUIVALENT[pack.config['skill']]}.")
-        if status == "not_configured":
+        if status in ("not_configured", "no_device"):
             raise ToolError(f"{pack.name}: {STATUS_TEXT[status]}.")
         if pack.executor != "mcp" and tool not in {t.name for t in pack.tools}:
             raise ToolError(f"{pack.name} has no tool '{tool}'. Its tools: {', '.join(t.name for t in pack.tools)}")
@@ -309,13 +402,25 @@ def _run(tenant_id: str, conversation_id: str, pack_id: str, tool: str, args: di
                 events.append(("bazar_link", {"pack_id": pack.id, "name": pack.name}))
                 raise ToolError(msg.removeprefix("NOT_LINKED: "))
             raise
+        if isinstance(out, dict) and out.get("device_action"):   # home devices: the phone sends IR / Bluetooth / DIAL
+            act = out["device_action"]
+            events.append(("home_device", act))
+            out = {k: v for k, v in out.items() if k != "device_action"}
+            out["phone"] = f"Sent to the phone (command {act['command_id']}); it runs it now and reports back."
         if isinstance(out, dict) and out.get("pc_file"):
             events.append(("pc_file", out["pc_file"]))
             out = {**out, "phone": "A download card for this file is shown in the chat."}
+        cards = _doc_cards(s, user.id, out)
+        if cards:
+            events.extend(("pc_file", c) for c in cards[:MAX_DOC_CARDS])
+            more = len(cards) - MAX_DOC_CARDS
+            out = {**out, "phone": f"{min(len(cards), MAX_DOC_CARDS)} PDF download card(s) are shown in the chat"
+                                   + (f"; the other {more} are saved in Santosh too." if more > 0 else ".")}
         act = _open_action(out)
         if act:
             events.append(("bazar_open", {**act, "pack": pack.name, "message": out.get("message", "")}))
-            out = {**out, "phone": "An Open button is shown in the chat; the user taps it to continue."}
+            note = "An Open button is shown in the chat; the user taps it to continue."
+            out = {**out, "phone": f"{out['phone']} {note}" if out.get("phone") else note}
         return out
 
 
