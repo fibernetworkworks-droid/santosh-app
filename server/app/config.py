@@ -73,6 +73,13 @@ class Settings(BaseSettings):
     rea_timeout_s: int = 300                # per REA call
     rea_node_heap_mb: int = 2048
     appcheck_max_mb: int = 400              # biggest file App Jaanch accepts
+    # --- Hoola Network: avatars talking to avatars (on this server and, with federation, on others) ---
+    hoola_domain: str = ""                  # this server's Hoola domain (default: host of PUBLIC_BASE_URL)
+    hoola_federation: bool = True           # talk to Hoola avatars on other servers (public https only)
+    hoola_blocked_servers: str = ""         # comma separated domains never to talk to
+    hoola_servers: str = ""                 # optional JSON {domain: base_url} for servers on custom ports
+    hoola_server_key_file: str = ""         # default ./data/hoola_server_ed25519.key (made on first use)
+    hoola_key_file: str = ""                # avatar-key encryption when SECRET_KEY is not set (default ./data/hoola_server.key)
     gcal_caldav_url: str = ""               # override CalDAV base (for Workspace/custom); blank = Gmail legacy endpoint
 
     # --- Google Drive/Sheets/Docs (service account; share a folder with its email) ---

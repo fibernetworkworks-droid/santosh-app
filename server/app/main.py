@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.33.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.34.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -1523,6 +1523,64 @@ async def net_ticket_webhook(handle: str, request: Request):
         return biz.webhook_in(row.tenant_id, raw, request.headers.get("x-hoola-signature", ""))
     except Exception as e:
         raise HTTPException(400, str(e)[:120])
+
+
+# ---------------- Hoola federation (other Hoola servers) and A2A discovery ----------------
+@app.get("/.well-known/hoola.json")
+def hoola_server_card():
+    from .net import federation as fed
+    return fed.server_card()
+
+
+@app.get("/.well-known/agent-card.json")
+@app.get("/.well-known/agent.json")
+def hoola_agent_card():
+    from .net import federation as fed
+    return fed.agent_card()
+
+
+@app.post("/hoola/inbox")
+async def hoola_inbox(request: Request):
+    from .net import federation as fed
+    raw = await request.body()
+    if len(raw) > 512 * 1024:
+        raise HTTPException(413, "too big")
+    try:
+        return await asyncio.to_thread(fed.inbox, dict(request.headers), raw)
+    except fed.FedError as e:
+        raise HTTPException(401, str(e))
+
+
+@app.get("/hoola/lookup")
+def hoola_lookup(handle: str):
+    from .net import federation as fed
+    c = fed.public_lookup(handle)
+    if c is None:
+        raise HTTPException(404, "not found")
+    return c
+
+
+@app.get("/hoola/share/{sid}")
+def hoola_share(sid: str, request: Request):
+    from urllib.parse import quote
+    from .net import federation as fed
+    from .net.service import NetError
+    try:
+        name, mime, data, sha = fed.serve_share(dict(request.headers), sid, request.query_params.get("for", ""))
+    except (fed.FedError, NetError) as e:
+        raise HTTPException(403, str(e))
+    return Response(content=data, media_type=mime or "application/octet-stream",
+                    headers={"X-Hoola-Name": quote(name), "X-Hoola-SHA256": sha})
+
+
+@app.post("/a2a")
+async def hoola_a2a(request: Request):
+    from .net import federation as fed
+    try:
+        body = await request.json()
+    except Exception:
+        return {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}}
+    return await asyncio.to_thread(fed.a2a, body if isinstance(body, dict) else {})
 
 
 @app.get("/c/{code}", response_class=HTMLResponse)
