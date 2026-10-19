@@ -37,7 +37,7 @@ def test_wake_config(env, monkeypatch, tmp_path):
     from app.config import get_settings
     c = TestClient(main.app)
     j = c.get("/api/wake").json()
-    assert j["available"] and j["engine"] == "santosh-wake" and j["custom_model"] is False and j["threshold"] == 0.5
+    assert j["available"] and j["engine"] == "santosh-wake" and j["custom_model"] is False and j["threshold"] == 0.85
     assert c.get("/api/wake/keyword").status_code == 404
     model = tmp_path / "hey_santosh.onnx"
     model.write_bytes(b"ONNX")

@@ -76,7 +76,7 @@ class Settings(BaseSettings):
     google_maps_api_key: str = ""           # Maps Platform key: Places API (New), Routes API, Geocoding API
     picovoice_access_key: str = ""          # no longer used: "Hey Santosh" runs on Santosh Wake (our own model)
     wake_keyword_file: str = ""             # optional newer hey_santosh.onnx to push to phones (wakeword/train.py)
-    wake_sensitivity: float = 0.6           # 0..1; higher = wakes more easily (threshold = 1.1 - sensitivity)
+    wake_sensitivity: float = 0.25          # 0..1; higher = wakes more easily (threshold = 1.1 - sensitivity). 0.25 -> 0.85: ~95% recall, ~2 false wakes/hour on test speech
     offline_email: bool = True              # phone offline > offline_after_min: email Santosh's updates
     offline_after_min: int = 20
     owner_emails: str = ""                  # Google accounts that are the server owner (use the .env email/calendar/drive). Blank = EMAIL_ADDRESS
