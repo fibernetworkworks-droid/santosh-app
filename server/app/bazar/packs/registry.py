@@ -40,6 +40,8 @@ class Pack(BaseModel):
         for t in self.tools:
             if t.name == tool:
                 return t.tier
+        if self.executor == "mcp" and self.config.get("custom"):
+            return 0 if is_read_only(tool) else 2   # servers the user added: anything not plainly a read needs a tap
         if self.executor == "mcp":  # remote tools: classify by name; when in doubt it needs a tap
             low = tool.lower()
             words = set(re.split(r"[^a-z0-9]+", low))
@@ -57,16 +59,49 @@ class Pack(BaseModel):
         return self.model_dump(exclude={"master_list_row"})
 
 
+READ_VERBS = {"get", "list", "search", "find", "fetch", "read", "view", "show", "describe", "query", "lookup", "look",
+              "check", "track", "status", "history", "details", "info", "count", "summarize", "summary", "explain",
+              "validate", "preview", "browse", "download", "export", "calculate", "convert", "compare", "analyze",
+              "analyse", "inspect", "resolve", "geocode", "translate", "retrieve", "scan", "stats", "report", "quote"}
+
+
+def is_read_only(tool: str) -> bool:
+    """First word of a tool name (snake, kebab or camelCase) is a plain read verb."""
+    first = re.split(r"[^a-z0-9]+", re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", tool).lower().strip("_- "))[0]
+    return first in READ_VERBS
+
+
 def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", s.lower()).strip()
+
+
+# extra pack sources (e.g. MCP servers a user added); each returns a Pack or None
+_resolvers: list = []
+
+
+def add_resolver(fn) -> None:
+    if fn not in _resolvers:
+        _resolvers.append(fn)
 
 
 class Registry:
     def __init__(self, packs: list[Pack]):
         self.packs = {p.id: p for p in packs}
 
+    def lookup(self, pack_id: str) -> Pack | None:
+        p = self.packs.get(pack_id)
+        if p is None:
+            for fn in _resolvers:
+                p = fn(pack_id)
+                if p is not None:
+                    break
+        return p
+
     def get(self, pack_id: str) -> Pack:
-        return self.packs[pack_id]
+        p = self.lookup(pack_id)
+        if p is None:
+            raise KeyError(pack_id)
+        return p
 
     def all(self, phase: str | None = None, category: str | None = None) -> list[Pack]:
         out = list(self.packs.values())

@@ -14,6 +14,8 @@ BAZAR_TOOLS = [
         "ride apps (Uber, Ola, Rapido...), food/grocery apps (Swiggy, Instamart, Zomato, Zepto, Dineout, District) and "
         "helpers (bill reminders, birthdays, medicine, spend report from bank SMS, expense split, family, festival greetings). "
         "Query in any language, e.g. 'bijli bill msedcl', 'kirana atta', 'phonepe', 'uber', 'swiggy biryani'. "
+        "Also searches the user's own MCP servers and, when few packs match, the MCP directory of 3,184 community "
+        "servers (GitHub, Notion, Jira, Zerodha, Tally, databases, maps, research...) returned as mcp_directory. "
         "Returns matching packs with status and their tools (name, description, input_schema). Empty query = catalogue."),
      "input_schema": {"type": "object", "properties": {
          "query": {"type": "string"}, "category": {"type": "string", "description": "Optional category filter"}}}},
@@ -31,12 +33,25 @@ BAZAR_TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["save", "list"]}, "name": {"type": "string"}, "upi_id": {"type": "string"},
          "phone": {"type": "string"}, "relation": {"type": "string"}}, "required": ["action"]}},
+    {"name": "bazar_mcp", "description": (
+        "MCP servers the user connects to Santosh. action=directory: search the directory of 3,184 community MCP "
+        "servers (query and/or field like 'Finance & Fintech', 'Databases', 'Communication'); no query = counts by field. "
+        "action=add: connect a remote server by its https MCP address (url; optional ref = owner/repo from the directory, "
+        "name). Only use an address the user gave or that the directory/GitHub page states; never invent one. If it needs "
+        "a sign-in a Link button appears; API keys are entered by the user in the app, never in chat. "
+        "action=list: the user's servers and status. action=remove: disconnect (pack_id). After adding, use "
+        "bazar_run with the returned pack_id; any tool that is not a plain read shows a confirm card first."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["directory", "add", "list", "remove"]},
+         "query": {"type": "string"}, "field": {"type": "string"}, "url": {"type": "string"},
+         "ref": {"type": "string"}, "name": {"type": "string"}, "pack_id": {"type": "string"}}, "required": ["action"]}},
     {"name": "bazar_activity", "description": "The user's recent Bazar orders and payments with their status.",
      "input_schema": {"type": "object", "properties": {}}},
 ]
 
 BAZAR_LABELS = {"bazar_find": "Sahi app/dukaan dhoondh raha hoon", "bazar_run": "Kaam kar raha hoon",
-                "bazar_contact": "Contact dekh raha hoon", "bazar_activity": "Orders aur payments dekh raha hoon"}
+                "bazar_contact": "Contact dekh raha hoon", "bazar_activity": "Orders aur payments dekh raha hoon",
+                "bazar_mcp": "MCP server dekh raha hoon"}
 
 
 async def _call(fn, *a):
@@ -94,9 +109,24 @@ async def bazar_contact(ctx: Ctx, action, name="", upi_id="", phone="", relation
     return await _call(service.add_contact, ctx.tenant_id, str(name or ""), str(upi_id or ""), str(phone or ""), str(relation or ""))
 
 
+async def bazar_mcp(ctx: Ctx, action, query="", field="", url="", ref="", name="", pack_id="", **_):
+    if action == "directory":
+        return await _call(service.mcp_directory, str(query or ""), str(field or ""))
+    if action == "list":
+        return {"servers": await _call(service.mcp_list, ctx.tenant_id)}
+    if action == "remove":
+        return {"removed": await _call(service.mcp_remove, ctx.tenant_id, str(pack_id or ""))}
+    if action == "add":
+        def go():
+            return service.mcp_add(ctx.tenant_id, str(url or ""), str(name or ""), str(ref or ""),
+                                   conversation_id=ctx.conversation_id)
+        return await _call(go)
+    raise ToolError("action must be directory, add, list or remove")
+
+
 async def bazar_activity(ctx: Ctx, **_):
     return await _call(service.activity, ctx.tenant_id)
 
 
 BAZAR_HANDLERS = {"bazar_find": bazar_find, "bazar_run": bazar_run, "bazar_contact": bazar_contact,
-                  "bazar_activity": bazar_activity}
+                  "bazar_activity": bazar_activity, "bazar_mcp": bazar_mcp}

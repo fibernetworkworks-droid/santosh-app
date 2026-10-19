@@ -27,7 +27,9 @@ from .connectors.base import Ctx, ToolError, rupees, to_paise
 from .connectors.upi import valid_vpa
 from .db import (Approval, Connection, Contact, InstalledPack, Reminder, Shop, ShopDue, ShopItem, ShopOrder, Task,
                  Transaction, User)
-from .packs.registry import Pack, registry
+from . import custom_mcp, directory
+from .db import CustomMcp
+from .packs.registry import Pack, Registry, registry
 
 log = logging.getLogger("santosh.bazar")
 
@@ -48,6 +50,7 @@ STATUS_TEXT = {
     "needs_link": "user must link this account once (Connect tab)",
     "not_configured": "provider access not configured on the server yet",
     "core": "built into Santosh",
+    "needs_key": "add this server's API key once in the Santosh app (Connect > MCP servers); never in chat",
 }
 
 _executors = None
@@ -111,6 +114,14 @@ def pack_status(s, user: User, pack: Pack) -> str:
     if pack.executor == "shop":
         n = s.scalars(select(Shop.id).where(Shop.template_id == pack.config["template"], Shop.active.is_(True))).first()
         return "ready" if n else "no_shop_yet"
+    if pack.executor == "mcp" and pack.config.get("custom"):
+        try:
+            h = custom_mcp.headers_for(s, pack, user.id)
+        except Exception:
+            h = None
+        if h is not None:
+            return "ready"
+        return "needs_key" if pack.config.get("auth") == "key" else "needs_link"
     if pack.executor == "mcp":
         if not getattr(st, pack.config["endpoint_setting"], ""):
             return "not_configured"
@@ -175,16 +186,33 @@ def find(tenant_id: str, query: str = "", category: str = "", limit: int = 6) ->
                 cats[p.category] = cats.get(p.category, 0) + 1
             return {"total_packs": len(reg.packs), "categories": cats,
                     "hint": "Ask with a query like 'bijli bill', 'kirana', 'phonepe', 'uber', 'swiggy'."}
-        hits = [p for p, _ in reg.match(query, limit=limit)]
+        mine = [custom_mcp.to_pack(r) for r in custom_mcp.user_rows(s, user.id)]
+        if mine:
+            wants_mine = bool(re.search(r"\b(mcp|my servers?|mere server)\b", query.lower()))
+            mine_hits = [p for p, _ in Registry(mine).match(query, limit=limit)] if not wants_mine else mine[:limit]
+            if not mine_hits:
+                mine_hits = [p for p in mine if any(w in f"{p.name} {p.description}".lower()
+                                                    for w in re.findall(r"[a-z0-9]{4,}", query.lower()))][:3]
+        else:
+            mine_hits = []
+        hits = mine_hits + [p for p, _ in reg.match(query, limit=limit)]
         if len(hits) < 2:
             for p in _fallback_match(query, limit):
                 if p not in hits:
                     hits.append(p)
         hits = hits[:limit]
-        if not hits:
-            return {"packs": [], "message": "No Santosh connector does this yet."}
         out = [_pack_out(s, user, p, with_tools=i < 4) for i, p in enumerate(hits)]
-        return {"packs": out}
+        res: dict[str, Any] = {"packs": out}
+        if len(out) < 3 or re.search(r"\bmcp\b", query.lower()):
+            dir_hits = directory.search(query, limit=5)
+            if dir_hits:
+                res["mcp_directory"] = dir_hits
+                res["directory_hint"] = ("These MCP servers exist but are not connected yet. To use one, the user gives its "
+                                         "https MCP address (or you call bazar_mcp action=add with url and ref); local "
+                                         "servers must run on a computer first. Never guess an address.")
+        if not out and not res.get("mcp_directory"):
+            res["message"] = "No Santosh connector does this yet."
+        return res
 
 
 # ---------------------------------------------------------------- running tools
@@ -230,9 +258,9 @@ def run(tenant_id: str, conversation_id: str, pack_id: str, tool: str, args: dic
 def _run(tenant_id: str, conversation_id: str, pack_id: str, tool: str, args: dict[str, Any] | None,
          events: list) -> dict[str, Any]:
     reg = registry()
-    if pack_id not in reg.packs:
+    pack = reg.lookup(pack_id)
+    if pack is None or (pack.config.get("custom") and pack.config.get("owner") != tenant_id):
         raise ToolError(f"Unknown pack '{pack_id}'. Use bazar_find first.")
-    pack = reg.get(pack_id)
     args = args if isinstance(args, dict) else {}
     with session() as s:
         user = ensure_user(s, tenant_id)
@@ -279,7 +307,7 @@ def decide(tenant_id: str, approval_id: str, decision: str) -> dict[str, Any]:
         if ap is None or ap.user_id != user.id:
             raise ToolError("Approval not found")
         conv = ap.conversation_id
-        pack = reg.packs.get((ap.action or {}).get("pack_id", ""))
+        pack = reg.lookup((ap.action or {}).get("pack_id", ""))
         outcome = Runner(s, get_settings(), reg, executors()).decide(approval_id, user, decision)
         card = card_of(ap, pack)
     act = _open_action(outcome)
@@ -300,7 +328,15 @@ def pending_approvals(tenant_id: str) -> list[dict[str, Any]]:
     with session() as s:
         rows = s.scalars(select(Approval).where(Approval.user_id == tenant_id, Approval.decision == "pending")
                          .order_by(Approval.created_at.desc()).limit(20)).all()
-        return [card_of(a, reg.packs.get((a.action or {}).get("pack_id", ""))) for a in rows]
+        return [card_of(a, reg.lookup((a.action or {}).get("pack_id", ""))) for a in rows]
+
+
+def _what(s, reg, provider: str) -> str:
+    p = reg.lookup(provider)
+    if p:
+        return p.name
+    shop = s.get(Shop, provider)
+    return shop.name if shop else provider
 
 
 def activity(tenant_id: str, limit: int = 20) -> dict[str, Any]:
@@ -312,8 +348,7 @@ def activity(tenant_id: str, limit: int = 20) -> dict[str, Any]:
                            .order_by(ShopOrder.created_at.desc()).limit(limit)).all()
         shops = {o.shop_id: s.get(Shop, o.shop_id) for o in orders}
         return {
-            "payments": [{"ref": t.txn_ref, "kind": t.kind, "what": (reg.packs[t.provider].name if t.provider in reg.packs else
-                                                                      (s.get(Shop, t.provider).name if s.get(Shop, t.provider) else t.provider)),
+            "payments": [{"ref": t.txn_ref, "kind": t.kind, "what": _what(s, reg, t.provider),
                           "amount": rupees(t.amount_paise), "status": t.status, "at": t.created_at.isoformat(),
                           "demo": bool((t.meta or {}).get("bill", {}).get("sandbox"))} for t in txns],
             "orders": [{"id": o.id, "shop": shops[o.shop_id].name if shops.get(o.shop_id) else "", "status": o.status,
@@ -395,23 +430,31 @@ def connections(tenant_id: str) -> list[dict[str, Any]]:
         for p in mcp_packs():
             out.append({"pack_id": p.id, "name": p.name, "provider": p.config["provider"], "status": pack_status(s, user, p),
                         "configured": bool(getattr(st, p.config["endpoint_setting"], ""))})
+        for r in custom_mcp.user_rows(s, user.id):
+            p = custom_mcp.to_pack(r)
+            out.append({"pack_id": p.id, "name": p.name, "provider": p.config["provider"], "status": pack_status(s, user, p),
+                        "configured": True, "custom": True})
         return out
+
+
+def _link_target(s, tenant_id: str, pack_id: str) -> tuple[Pack, str]:
+    p = registry().lookup(pack_id)
+    if not p or p.executor != "mcp" or (p.config.get("custom") and p.config.get("owner") != tenant_id):
+        raise ToolError("Unknown app")
+    url = p.config.get("endpoint") or getattr(get_settings(), p.config["endpoint_setting"], "")
+    if not url:
+        raise ToolError(f"{p.name} is not available on this server yet.")
+    return p, url
 
 
 def link_start(tenant_id: str, pack_id: str) -> str:
     from . import mcp_auth
-    reg = registry()
-    p = reg.packs.get(pack_id)
-    if not p or p.executor != "mcp":
-        raise ToolError("Unknown app")
-    url = getattr(get_settings(), p.config["endpoint_setting"], "")
-    if not url:
-        raise ToolError(f"{p.name} is not available on this server yet.")
     with session() as s:
         ensure_user(s, tenant_id)
+        p, url = _link_target(s, tenant_id, pack_id)
         try:
             return mcp_auth.start(s, tenant_id, p.config["provider"], url)
-        except mcp_auth.LinkError as e:
+        except (mcp_auth.LinkError, custom_mcp.UrlError) as e:
             raise ToolError(str(e))
 
 
@@ -420,11 +463,18 @@ def link_finish(state: str, code: str) -> tuple[str, str]:
     with session() as s:
         try:
             uid, provider = mcp_auth.finish(s, state, code)
-        except mcp_auth.LinkError as e:
+        except (mcp_auth.LinkError, custom_mcp.UrlError) as e:
             raise ToolError(str(e))
-    name = next((p.name for p in mcp_packs() if p.config["provider"] == provider), provider)
+        name = next((p.name for p in mcp_packs() if p.config["provider"] == provider), provider)
+        if provider.startswith("custom:"):
+            row = s.get(CustomMcp, provider.removeprefix("custom:"))
+            if row:
+                name = row.name
+                row.auth = "oauth"
     for p in mcp_packs():  # tool lists are cached per user; drop them
         executors()["mcp"]._cache.pop(p.id + ":" + uid, None)
+    if provider.startswith("custom:"):
+        executors()["mcp"]._cache.pop(provider.removeprefix("custom:") + ":" + uid, None)
     return uid, name
 
 
@@ -442,16 +492,102 @@ def link_token(tenant_id: str, provider: str, token: str, expires_in: int | None
 
 
 def unlink(tenant_id: str, pack_id: str) -> bool:
-    p = registry().packs.get(pack_id)
-    if not p or p.executor != "mcp":
-        raise ToolError("Unknown app")
     with session() as s:
+        p, _ = _link_target(s, tenant_id, pack_id)
         rows = s.scalars(select(Connection).where(Connection.user_id == tenant_id, Connection.provider == p.config["provider"],
                                                   Connection.status == "active")).all()
         for c in rows:
             c.status, c.token_enc = "revoked", ""
     executors()["mcp"]._cache.pop(p.id + ":" + tenant_id, None)
     return bool(rows)
+
+
+# ---------------------------------------------------------------- MCP servers the user adds
+def mcp_directory(query: str = "", field: str = "", limit: int = 8) -> dict[str, Any]:
+    if not query and not field:
+        return directory.stats()
+    return {"servers": directory.search(query or field, limit=limit, field=field)}
+
+
+def mcp_list(tenant_id: str) -> list[dict[str, Any]]:
+    with session() as s:
+        user = ensure_user(s, tenant_id)
+        return [custom_mcp.public(r, pack_status(s, user, custom_mcp.to_pack(r))) for r in custom_mcp.user_rows(s, user.id)]
+
+
+def mcp_add(tenant_id: str, url: str, name: str = "", ref: str = "", key: str = "", key_header: str = "",
+            probe_client=None, conversation_id: str = "") -> dict[str, Any]:
+    """Add a remote MCP server. Tries it right away; works out whether it needs a sign-in or a key."""
+    url = (url or "").strip()
+    if not url:
+        entry = directory.get(ref) if ref else None
+        if entry:
+            raise ToolError(f"{entry['r']} has no address in the directory. Ask the user for its https MCP address "
+                            f"(see {entry['l']}); never guess one.")
+        raise ToolError("Give the server's https MCP address.")
+    try:
+        url = custom_mcp.check_url(url)
+    except custom_mcp.UrlError as e:
+        raise ToolError(str(e))
+    with session() as s:
+        user = ensure_user(s, tenant_id)
+        try:
+            row = custom_mcp.create(s, user.id, url, name, ref)
+            if key:
+                custom_mcp.save_key(s, row, key, key_header)
+        except custom_mcp.UrlError as e:
+            raise ToolError(str(e))
+        pack = custom_mcp.to_pack(row)
+        headers = custom_mcp.headers_for(s, pack, user.id) if row.auth == "key" else {}
+        result, note = custom_mcp.probe(url, headers, probe_client)
+        out: dict[str, Any] = {"pack_id": row.id, "name": row.name, "url": row.url}
+        if result == "ok":
+            out.update(status="ready", say=f"{row.name} is connected. Use bazar_find or bazar_run with pack_id {row.id}.")
+        elif result == "auth" and row.auth != "key":
+            row.auth = "oauth"
+            out.update(status="needs_link", say="This server needs a sign-in. A Link button is shown; after the user signs "
+                                                "in, it works. If it uses an API key instead, they add it in Connect > MCP servers.")
+        elif result == "auth":
+            out.update(status="key_rejected", say="The server refused that key. Ask the user to check it in Connect > MCP servers.")
+        else:
+            row.status = "removed"
+            raise ToolError(note)
+        if row.caution:
+            out["caution"] = "This server can act on money, crypto, code or the computer; every action needs the user's tap."
+        status = out["status"]
+        conv = conversation_id or latest_conversation(s, tenant_id)
+    executors()["mcp"]._cache.pop(out["pack_id"] + ":" + tenant_id, None)
+    if status == "needs_link" and conv:
+        bus.publish(conv, "bazar_link", {"pack_id": out["pack_id"], "name": out["name"]})
+    return out
+
+
+def mcp_set_key(tenant_id: str, pack_id: str, key: str, header: str = "") -> dict[str, Any]:
+    with session() as s:
+        row = s.get(CustomMcp, pack_id)
+        if not row or row.user_id != tenant_id or row.status != "active":
+            raise ToolError("Unknown MCP server")
+        try:
+            custom_mcp.save_key(s, row, key, header)
+        except custom_mcp.UrlError as e:
+            raise ToolError(str(e))
+        user = ensure_user(s, tenant_id)
+        st = pack_status(s, user, custom_mcp.to_pack(row))
+    executors()["mcp"]._cache.pop(pack_id + ":" + tenant_id, None)
+    return {"pack_id": pack_id, "status": st}
+
+
+def mcp_remove(tenant_id: str, pack_id: str) -> bool:
+    with session() as s:
+        row = s.get(CustomMcp, pack_id)
+        if not row or row.user_id != tenant_id or row.status != "active":
+            return False
+        row.status = "removed"
+        for c in s.scalars(select(Connection).where(Connection.user_id == tenant_id,
+                                                    Connection.provider == custom_mcp.provider_of(pack_id))).all():
+            c.status, c.token_enc = "revoked", ""
+    executors()["mcp"]._cache.pop(pack_id + ":" + tenant_id, None)
+    return True
 
 
 # ---------------------------------------------------------------- payments
@@ -654,6 +790,8 @@ def catalog(tenant_id: str) -> dict[str, Any]:
         user = ensure_user(s, tenant_id)
         packs = [{"pack_id": p.id, "name": p.name, "category": p.category, "kind": p.sub_category, "executor": p.executor,
                   "status": pack_status(s, user, p)} for p in reg.all()]
+        packs += [{"pack_id": r.id, "name": r.name, "category": "My MCP servers", "kind": "MCP server", "executor": "mcp",
+                   "status": pack_status(s, user, custom_mcp.to_pack(r))} for r in custom_mcp.user_rows(s, user.id)]
     counts: dict[str, int] = {}
     for p in packs:
         counts[p["status"]] = counts.get(p["status"], 0) + 1

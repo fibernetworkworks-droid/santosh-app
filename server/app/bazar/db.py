@@ -252,6 +252,22 @@ class ShopDue(Base):
     paid: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
+class CustomMcp(Base):
+    """A remote MCP server the user added to Santosh (from the MCP directory or by URL)."""
+    __tablename__ = "bz_custom_mcp"
+    id: Mapped[str] = mapped_column(String(24), primary_key=True)          # "mcp-<hex>", also the pack id
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("bz_users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    url: Mapped[str] = mapped_column(String(500))
+    directory_ref: Mapped[str] = mapped_column(String(160), default="")   # owner/repo from the directory
+    description: Mapped[str] = mapped_column(Text, default="")
+    caution: Mapped[bool] = mapped_column(Boolean, default=False)
+    auth: Mapped[str] = mapped_column(String(10), default="none")         # none | oauth | key
+    key_header: Mapped[str] = mapped_column(String(60), default="Authorization")
+    status: Mapped[str] = mapped_column(String(20), default="active")     # active | removed
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
+
+
 class KVState(Base):
     """Small server-side state: OAuth client registrations, sign-in states."""
     __tablename__ = "bz_kv"

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'mcp_screen.dart';
 
 /// Santosh Bazar: all 159 packs with live status, linked app accounts, spend limits and delivery details.
 class BazarScreen extends StatefulWidget {
@@ -293,7 +294,23 @@ class _BazarScreenState extends State<BazarScreen> {
             mainAxisSpacing: 10,
             crossAxisSpacing: 10,
             childAspectRatio: 1.45,
-            children: [for (final (i, a) in _apps.indexed) Stagger(index: i, child: _appCard(a))],
+            children: [for (final (i, a) in _apps.where((a) => a['custom'] != true).indexed) Stagger(index: i, child: _appCard(a))],
+          ),
+          const SizedBox(height: 14),
+          Glass(
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.hub_rounded, color: C.teal),
+              title: Text('MCP servers · 3,184', style: display(15.5)),
+              subtitle: Text(_apps.any((a) => a['custom'] == true)
+                  ? '${_apps.where((a) => a['custom'] == true).length} jude hue · GitHub, Notion, Jira, Zerodha, Tally aur bahut kuch'
+                  : 'GitHub, Notion, Jira, Zerodha, Tally, database… koi bhi MCP server Santosh se jodiye'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () async {
+                await Navigator.of(context).push(MaterialPageRoute(builder: (_) => McpScreen(app: app)));
+                _load();
+              },
+            ),
           ),
           const SizedBox(height: 14),
           Glass(

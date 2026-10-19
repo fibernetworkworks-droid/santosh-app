@@ -126,6 +126,17 @@ class Api {
   Future<void> putLocation(double lat, double lng, {double? accuracy}) async =>
       _send('PUT', '/api/location', body: {'lat': lat, 'lng': lng, if (accuracy != null) 'accuracy_m': accuracy});
 
+  // ---------------- MCP servers ----------------
+  Future<List<Map<String, dynamic>>> mcpList() async =>
+      List<Map<String, dynamic>>.from(((await _send('GET', '/api/bazar/mcp'))['servers'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<Map<String, dynamic>> mcpDirectory({String q = '', String field = ''}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/bazar/mcp/directory', query: {'q': q, 'field': field, 'limit': '30'}));
+  Future<Map<String, dynamic>> mcpAdd(String url, {String name = '', String ref = '', String key = '', String header = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/mcp', body: {'url': url, 'name': name, 'ref': ref, 'key': key, 'key_header': header}));
+  Future<Map<String, dynamic>> mcpKey(String packId, String key, {String header = ''}) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/bazar/mcp/$packId/key', body: {'key': key, 'header': header}));
+  Future<void> mcpRemove(String packId) async => _send('DELETE', '/api/bazar/mcp/$packId');
+
   // ---------------- Santosh Bazar ----------------
   Future<Map<String, dynamic>> bazarDecide(String id, String decision) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/bazar/approvals/$id', body: {'decision': decision}));

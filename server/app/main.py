@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.11.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.12.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -106,7 +106,8 @@ def healthz():
             "brain_configured": bool(st.anthropic_api_key), "features": features,
             "voices": [{"id": k, "style": v} for k, v in MALE_VOICES.items()], "voice_default": st.voice_default,
             "bazar": {"packs": len(__import__("app.bazar.packs.registry", fromlist=["x"]).registry().packs),
-                      "bills_live": __import__("app.bazar.config", fromlist=["x"]).get_settings().bills_live}}
+                      "bills_live": __import__("app.bazar.config", fromlist=["x"]).get_settings().bills_live,
+                      "mcp_directory": len(__import__("app.bazar.directory", fromlist=["x"]).servers())}}
 
 
 @app.get("/")
@@ -716,6 +717,47 @@ async def bazar_link(pack_id: str, tenant: str = Depends(current_tenant)):
 @app.delete("/api/bazar/connections/{pack_id}", dependencies=[Depends(require_key)])
 def bazar_unlink(pack_id: str, tenant: str = Depends(current_tenant)):
     return {"unlinked": _bz(bazar.unlink, tenant, pack_id)}
+
+
+class McpAddIn(BaseModel):
+    url: str
+    name: str = ""
+    ref: str = ""
+    key: str = ""
+    key_header: str = ""
+
+
+class McpKeyIn(BaseModel):
+    key: str
+    header: str = ""
+
+
+@app.get("/api/bazar/mcp", dependencies=[Depends(require_key)])
+def bazar_mcp_list(tenant: str = Depends(current_tenant)):
+    return {"servers": _bz(bazar.mcp_list, tenant)}
+
+
+@app.get("/api/bazar/mcp/directory", dependencies=[Depends(require_key)])
+def bazar_mcp_directory(q: str = "", field: str = "", limit: int = 20):
+    return _bz(bazar.mcp_directory, q, field, max(1, min(limit, 50)))
+
+
+@app.post("/api/bazar/mcp", dependencies=[Depends(require_key)])
+async def bazar_mcp_add(body: McpAddIn, tenant: str = Depends(current_tenant)):
+    try:
+        return await asyncio.to_thread(bazar.mcp_add, tenant, body.url, body.name, body.ref, body.key, body.key_header)
+    except BazarError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.put("/api/bazar/mcp/{pack_id}/key", dependencies=[Depends(require_key)])
+def bazar_mcp_key(pack_id: str, body: McpKeyIn, tenant: str = Depends(current_tenant)):
+    return _bz(bazar.mcp_set_key, tenant, pack_id, body.key, body.header)
+
+
+@app.delete("/api/bazar/mcp/{pack_id}", dependencies=[Depends(require_key)])
+def bazar_mcp_remove(pack_id: str, tenant: str = Depends(current_tenant)):
+    return {"removed": _bz(bazar.mcp_remove, tenant, pack_id)}
 
 
 @app.get("/bazar/link/callback")

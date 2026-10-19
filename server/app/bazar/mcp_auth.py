@@ -30,6 +30,17 @@ class LinkError(Exception):
     pass
 
 
+def _client(provider: str, **kw) -> httpx.Client:
+    """MCP servers a user added ("custom:") may only reach public https addresses, redirects included."""
+    if provider.startswith("custom:"):
+        from .custom_mcp import check_url
+
+        def guard(req: httpx.Request) -> None:
+            check_url(str(req.url))
+        kw["event_hooks"] = {"request": [guard]}
+    return httpx.Client(timeout=TIMEOUT, **kw)
+
+
 def _origin(url: str) -> str:
     u = urlparse(url)
     return f"{u.scheme}://{u.netloc}"
@@ -96,7 +107,7 @@ def _pkce() -> tuple[str, str]:
 def start(session, user_id: str, provider: str, resource_url: str, client: httpx.Client | None = None) -> str:
     """Returns the provider's sign-in URL. State is stored server-side for 15 minutes."""
     own = client is None
-    client = client or httpx.Client(timeout=TIMEOUT, follow_redirects=True)
+    client = client or _client(provider, follow_redirects=True)
     try:
         meta = discover(resource_url, client)
         cache_key = f"mcp_client:{meta['issuer'] if meta.get('issuer') else meta['authorization_endpoint']}:{redirect_uri()}"
@@ -145,7 +156,7 @@ def finish(session, state: str, code: str, client: httpx.Client | None = None) -
     if time.time() > st["exp"]:
         raise LinkError("This sign-in link expired. Please try again from Santosh.")
     own = client is None
-    client = client or httpx.Client(timeout=TIMEOUT)
+    client = client or _client(st["provider"])
     try:
         data = {"grant_type": "authorization_code", "code": code, "redirect_uri": redirect_uri(),
                 "client_id": st["client_id"], "code_verifier": st["verifier"], "resource": st["resource"]}
@@ -181,7 +192,7 @@ def access_token(session, conn: Connection, client: httpx.Client | None = None) 
     if conn.expires_at is None or conn.expires_at > soon or not b.get("refresh_token"):
         return b["access_token"]
     own = client is None
-    client = client or httpx.Client(timeout=TIMEOUT)
+    client = client or _client(conn.provider)
     try:
         data = {"grant_type": "refresh_token", "refresh_token": b["refresh_token"], "client_id": b["client_id"]}
         if b.get("client_secret"):

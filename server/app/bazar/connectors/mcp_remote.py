@@ -30,12 +30,15 @@ class RemoteTools(Protocol):
 class McpHttpRemote:
     """Sync wrapper over the official MCP Python SDK (streamable HTTP transport)."""
 
-    def __init__(self, url: str, token: str):
+    def __init__(self, url: str, token: str | dict[str, str]):
         self.url, self.token = url, token
 
     async def _with_session(self, fn: Callable[[Any], Any]) -> Any:
         from mcp import ClientSession
-        headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
+        if isinstance(self.token, dict):   # servers the user added: ready-made auth headers
+            headers = dict(self.token)
+        else:
+            headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
         try:  # MCP Python SDK 2.x
             from mcp.client.streamable_http import create_mcp_http_client, streamable_http_client
         except ImportError:  # SDK 1.x
@@ -136,12 +139,33 @@ class McpExecutor:
         self.remote_factory = remote_factory or (lambda url, tok: McpHttpRemote(url, tok))
 
     def _endpoint(self, pack: Pack, ctx: Ctx) -> str:
+        if pack.config.get("endpoint"):
+            from ..custom_mcp import UrlError, check_url
+            try:
+                return check_url(pack.config["endpoint"])   # re-checked every time: DNS may have changed
+            except UrlError as e:
+                raise ToolError(f"{pack.name}: {e}")
         url = getattr(ctx.settings, pack.config["endpoint_setting"], "")
         if not url:
             raise ToolError(f"{pack.name} agent access is not configured yet.")
         return url
 
     def _remote(self, pack: Pack, ctx: Ctx) -> RemoteTools:
+        if pack.config.get("custom"):
+            if pack.config.get("owner") != ctx.user.id:
+                raise ToolError("Unknown pack. Use bazar_find first.")
+            from ..custom_mcp import headers_for
+            from ..mcp_auth import LinkError
+            try:
+                headers = headers_for(ctx.session, pack, ctx.user.id)
+            except LinkError:
+                headers = None
+            if headers is None:
+                if pack.config.get("auth") == "key":
+                    raise ToolError(f"NOT_LINKED: {pack.name} needs its API key. Add it in the Santosh app > Connect > "
+                                    "MCP servers (never send keys in chat).")
+                raise ToolError(f"NOT_LINKED: Sign in to {pack.name} once (Santosh app > Connect > MCP servers > Link).")
+            return self.remote_factory(self._endpoint(pack, ctx), headers)
         conn = ctx.session.scalars(select(Connection).where(Connection.user_id == ctx.user.id,
                                                             Connection.provider == pack.config["provider"],
                                                             Connection.status == "active")).first()
@@ -168,6 +192,15 @@ class McpExecutor:
 
     def call(self, pack: Pack, tool: str, args: dict[str, Any], ctx: Ctx) -> dict[str, Any] | NeedsApproval:
         tier = pack.tier_of(tool)
+        if tier >= 2 and pack.config.get("custom"):
+            # a server the user added: show exactly what will be sent, run only that frozen call after the tap
+            shown = json.dumps(args, ensure_ascii=False, default=str)
+            shown = shown if len(shown) <= 600 else shown[:600] + "…"
+            warn = " (handles money/code — check carefully)" if pack.config.get("caution") else ""
+            return NeedsApproval(tier=2, title=f"{pack.name}: {tool}{warn}"[:200], payee=pack.name, amount_paise=0,
+                                 items=[{"name": f"{tool}({shown})", "price_paise": None}],
+                                 pay_method="No payment by Santosh; the server does this action",
+                                 action={"executor": "mcp", "pack_id": pack.id, "name": tool, "args": args})
         state = dict((ctx.task.result or {}).get("mcp_last") or {}) if ctx.task else {}
         if tier >= 2:
             last = state.get(pack.id, {})
@@ -201,6 +234,12 @@ class McpExecutor:
         res = self._remote(pack, ctx).call_tool(action, args)
         if res.get("is_error"):
             raise ToolError(f"{pack.name} could not place it: {res.get('text', '')[:300]}")
+        if pack.config.get("custom"):
+            ctx.session.add(Transaction(user_id=ctx.user.id, task_id=ctx.task.id if ctx.task else "", kind="action",
+                                        provider=pack.id, amount_paise=0, status="completed",
+                                        meta={"tool": action, "args": args, "response": res.get("data") or res.get("text", "")[:2000]}))
+            return {"status": "done", "provider": pack.name, "message": f"{pack.name}: {action} ho gaya.",
+                    "response": res.get("data") or res.get("text", "")[:2000]}
         last = ((ctx.task.result if ctx.task else {}).get("mcp_last") or {}).get(pack.id, {})
         total = _find_total(last.get("data")) or 0
         ctx.session.add(Transaction(user_id=ctx.user.id, task_id=ctx.task.id if ctx.task else "", kind="order",
