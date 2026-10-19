@@ -621,6 +621,7 @@ class Santosh extends ChangeNotifier {
       case 'sheet':
       case 'form':
       case 'slides':
+      case 'notebook':
         feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
         break;
       case 'photos_pick':

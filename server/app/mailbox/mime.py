@@ -206,8 +206,9 @@ def forward_block(orig: dict[str, Any], limit: int = 8000) -> str:
 TEXT_LIMIT = 15000
 
 
-def attachment_text(name: str, mime: str, data: bytes) -> dict[str, Any]:
-    """Text out of a PDF / Word / Excel / CSV / text attachment, for Santosh to read."""
+def attachment_text(name: str, mime: str, data: bytes, limit: int = 0, max_pages: int = 40) -> dict[str, Any]:
+    """Text out of a PDF / Word / PowerPoint / Excel / CSV / text attachment, for Santosh to read."""
+    TEXT_LIMIT = limit or globals()["TEXT_LIMIT"]
     low = (name or "").lower()
     try:
         if mime == "application/pdf" or low.endswith(".pdf"):
@@ -216,7 +217,7 @@ def attachment_text(name: str, mime: str, data: bytes) -> dict[str, Any]:
             except ImportError:
                 return {"kind": "pdf", "text": "", "note": "PDF reader (pypdf) is not installed on the server"}
             r = PdfReader(io.BytesIO(data))
-            pages = [(pg.extract_text() or "") for pg in r.pages[:40]]
+            pages = [(pg.extract_text() or "") for pg in r.pages[:max_pages]]
             text = "\n\n".join(f"[page {i + 1}]\n{t.strip()}" for i, t in enumerate(pages) if t.strip())
             note = "" if text.strip() else "No text inside this PDF (it is probably a scanned image)."
             return {"kind": "pdf", "pages": len(r.pages), "text": text[:TEXT_LIMIT], "truncated": len(text) > TEXT_LIMIT, "note": note}
@@ -226,6 +227,17 @@ def attachment_text(name: str, mime: str, data: bytes) -> dict[str, Any]:
             xml = re.sub(r"</w:p>", "\n", xml)
             text = _html.unescape(re.sub(r"<[^>]+>", "", xml)).strip()
             return {"kind": "word", "text": text[:TEXT_LIMIT], "truncated": len(text) > TEXT_LIMIT}
+        if low.endswith(".pptx"):
+            with zipfile.ZipFile(io.BytesIO(data)) as z:
+                names = sorted((n for n in z.namelist() if re.fullmatch(r"ppt/slides/slide\d+\.xml", n)),
+                               key=lambda n: int(re.search(r"(\d+)", n.rsplit("/", 1)[1]).group(1)))
+                parts = []
+                for i, n in enumerate(names):
+                    xml = z.read(n).decode("utf-8", "replace")
+                    xml = re.sub(r"</a:p>", "\n", xml)
+                    parts.append(f"[slide {i + 1}]\n" + _html.unescape(re.sub(r"<[^>]+>", "", xml)).strip())
+            text = "\n\n".join(parts)
+            return {"kind": "powerpoint", "slides": len(names), "text": text[:TEXT_LIMIT], "truncated": len(text) > TEXT_LIMIT}
         if low.endswith((".xlsx", ".xlsm")):
             rows = table_rows(name, data)
             lines = [" | ".join(str(c) for c in r) for r in rows[:300]]

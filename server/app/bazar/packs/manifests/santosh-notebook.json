@@ -1,0 +1,18 @@
+{
+  "id": "santosh-notebook",
+  "name": "Santosh Notebook",
+  "category": "Office & PC",
+  "sub_category": "Research notebook",
+  "pack_type": "Native",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "NotebookLM-style notebooks: add PDFs, Docs, Drive files, emails, web links and notes; get cited answers, study guides, briefings, FAQs, timelines and two-voice audio overviews in Hindi, Hinglish or English",
+  "notes": "Driven by the notebook_* tools; built on Santosh's own AI and official APIs only (no consumer NotebookLM scraping). This pack holds the delete confirm card",
+  "master_list_row": 0,
+  "executor": "notebook",
+  "config": {},
+  "tools": [{"name": "confirm_delete", "tier": 2}],
+  "keywords": ["notebooklm", "notebook", "research", "study guide", "podcast", "audio overview"],
+  "wave": "MVP"
+}

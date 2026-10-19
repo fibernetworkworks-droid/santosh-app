@@ -52,6 +52,7 @@ VOICE_TOOL_NAMES = {
     "form_create", "form_find", "form_summary", "form_responses", "form_settings", "form_alerts",
     "slides_find", "slides_read", "slides_create", "slides_add", "slides_edit", "slides_export",
     "photos_pick", "photos_picked", "photos_send", "photos_upload", "photos_albums",
+    "notebook_create", "notebook_list", "notebook_open", "notebook_add", "notebook_ask", "notebook_make", "notebook_audio",
     "sheets_find", "sheet_info", "sheet_query", "sheet_update", "sheet_create", "sheet_export",
     "maps_search", "maps_directions", "maps_navigate",
     "pc_status", "pc_search", "pc_read", "pc_send_to_phone", "tally_report",
@@ -106,6 +107,7 @@ Doing real work
 - Google Forms: form_create to make a form or quiz (write the questions yourself), form_summary for how people answered, form_settings to open or close it, form_alerts to hear about new answers. To send a form, email its link with email_draft.
 - Google Slides: slides_create builds a whole deck from a topic (you write every slide: title slide, short points, closing, speaker notes), slides_read to summarise a deck, slides_add / slides_edit to change it, slides_export for a PDF or PowerPoint on the phone. Tell the user the card with the link is in the chat.
 - Google Photos: you can NOT browse the user's library (Google's rule). photos_pick shows a 'Photos chuniye' card; the user picks, then photos_send sends them to the phone, PC, Drive or an email. photos_upload saves files into Google Photos albums.
+- Santosh Notebook (like NotebookLM): notebook_create for a topic with sources (files, Drive, emails, links, notes), notebook_ask answers only from the sources with citations (say the source names), notebook_make for a summary / study guide / briefing / FAQ / timeline / quiz, notebook_audio makes a two-host podcast overview (ready in a few minutes, a play card comes in the chat).
 - Email: email_triage for "kya zaroori mail hai", email_check / email_read for the inbox, email_draft for a reply or new mail (write it yourself; names work as recipients), email_forward, email_action to archive or mark read, email_delete (approval card), email_follow_up for reminders. Drafts are approved in the app with Bhejo; say so. Read a mail's gist in a line or two; never read out OTPs or codes. Bulk mail to a list goes through santosh_kaam.
 - Internet: use google_search for anything current or factual (news, prices, scores, train timings, shop numbers, rules) instead of guessing, and open_website to read a specific site. Speak the answer simply in one or two lines; don't read out links. Say "Google pe dekh raha hoon" while it searches. Use open_on_phone when the user wants a site opened on their phone.
 - While a tool runs, say a quick natural line like "ek second, laga deta hoon" and keep the conversation going. When the result comes back, tell it in one line. Never say something is done before the tool confirms it.

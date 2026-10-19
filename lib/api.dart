@@ -130,6 +130,35 @@ class Api {
   Future<String> photosLinkUrl() => _gLink('photos');
   Future<Map<String, dynamic>> photosRemove(String key) => _gRemove('photos', key);
 
+  // ---- Santosh Notebook (NotebookLM-style) ----
+  Map<String, dynamic> _m(Object? o) => Map<String, dynamic>.from(o as Map);
+  Future<List<Map<String, dynamic>>> notebooks() async =>
+      List<Map<String, dynamic>>.from(((await _send('GET', '/api/notebooks'))['notebooks'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<Map<String, dynamic>> notebookCreate(String title) async => _m(await _send('POST', '/api/notebooks', body: {'title': title}));
+  Future<Map<String, dynamic>> notebook(String id) async => _m(await _send('GET', '/api/notebooks/$id'));
+  Future<void> notebookDelete(String id) async => _send('DELETE', '/api/notebooks/$id');
+  Future<Map<String, dynamic>> notebookAddSource(String id, Map<String, dynamic> src) async =>
+      _m(await _send('POST', '/api/notebooks/$id/sources', body: src, timeout: const Duration(seconds: 90)));
+  Future<Map<String, dynamic>> notebookRemoveSource(String id, String sid) async => _m(await _send('DELETE', '/api/notebooks/$id/sources/$sid'));
+  Future<Map<String, dynamic>> notebookUpload(String id, String filename, List<int> bytes) async {
+    final req = http.MultipartRequest('POST', _u('/api/notebooks/$id/upload'))
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
+    final res = await http.Response.fromStream(await req.send().timeout(const Duration(seconds: 200)));
+    final body = jsonDecode(utf8.decode(res.bodyBytes));
+    if (res.statusCode >= 400) throw ApiException(res.statusCode, (body as Map)['detail']?.toString() ?? 'Upload failed');
+    return Map<String, dynamic>.from(body as Map);
+  }
+  Future<Map<String, dynamic>> notebookAsk(String id, String q) async =>
+      _m(await _send('POST', '/api/notebooks/$id/ask', body: {'question': q}, timeout: const Duration(seconds: 120)));
+  Future<Map<String, dynamic>> notebookMake(String id, String kind, {String language = ''}) async =>
+      _m(await _send('POST', '/api/notebooks/$id/make', body: {'kind': kind, 'language': language}, timeout: const Duration(seconds: 180)));
+  Future<Map<String, dynamic>> notebookNote(String id, String noteId) async => _m(await _send('GET', '/api/notebooks/$id/notes/$noteId'));
+  Future<Map<String, dynamic>> notebookAudio(String id, {String style = 'deep_dive', String language = 'hinglish', String conv = ''}) async =>
+      _m(await _send('POST', '/api/notebooks/$id/audio', body: {'style': style, 'language': language, 'conversation_id': conv}));
+  Future<String> notebookAudioUrl(String id, String aid) async =>
+      absolute((await _send('GET', '/api/notebooks/$id/audio/$aid/file'))['url'] as String);
+
   // ---- Google Calendar ----
   Future<Map<String, dynamic>> calendarState() async => Map<String, dynamic>.from(await _send('GET', '/api/calendar/accounts') as Map);
   Future<String> calendarLinkUrl() async => (await _send('GET', '/api/calendar/link'))['url'] as String;

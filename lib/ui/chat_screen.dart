@@ -13,6 +13,7 @@ import 'sheets_screen.dart';
 import 'slides_screen.dart';
 import 'forms_screen.dart';
 import 'glass.dart';
+import 'notebook_screen.dart';
 import 'pc_screen.dart';
 import 'photos_screen.dart';
 import 'live_santosh.dart';
@@ -216,6 +217,8 @@ class _ChatScreenState extends State<ChatScreen> {
         return FormCard(v: it.data);
       case 'slides':
         return SlidesCard(v: it.data);
+      case 'notebook':
+        return NotebookCard(v: it.data, app: app);
       case 'photos_pick':
         return PhotosPickCard(v: it.data);
       case 'bazar':

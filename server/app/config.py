@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     mail_bulk_daily_cap: int = 300          # per mailbox per day (Gmail allows ~500 for personal accounts)
     mail_bulk_max: int = 1000               # recipients in one bulk mail
     mail_max_attach_mb: int = 18            # total attachments per mail (Gmail/Outlook limit is ~25 MB encoded)
+    notebook_tts_model: str = "gemini-2.5-flash-preview-tts"   # Santosh Notebook audio overviews (two voices)
     gcal_caldav_url: str = ""               # override CalDAV base (for Workspace/custom); blank = Gmail legacy endpoint
 
     # --- Google Drive/Sheets/Docs (service account; share a folder with its email) ---

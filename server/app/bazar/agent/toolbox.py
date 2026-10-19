@@ -14,6 +14,7 @@ from ..connectors.calendar import CalendarExecutor
 from ..connectors.drive import DriveExecutor
 from ..connectors.forms import FormsExecutor
 from ..connectors.mail import MailExecutor
+from ..connectors.notebook import NotebookExecutor
 from ..connectors.pcop import PcOpExecutor
 from ..connectors.photos import PhotosExecutor
 from ..connectors.sheets import SheetsExecutor
@@ -33,7 +34,7 @@ def default_executors() -> dict[str, Executor]:
     return {"mcp": McpExecutor(), "bbps": BBPSExecutor(), "upi": UpiExecutor(), "ride": RideExecutor(),
             "shop": ShopExecutor(), "native": Native2Executor(), "pc": PcExecutor(),
             "handoff": HandoffExecutor(), "reader": ReaderExecutor(), "device": DeviceExecutor(), "commerce": CommerceExecutor(), "browser": BrowserExecutor(), "pcop": PcOpExecutor(), "mail": MailExecutor(), "cal": CalendarExecutor(), "sheets": SheetsExecutor(), "drive": DriveExecutor(),
-            "forms": FormsExecutor(), "slides": SlidesExecutor(), "photos": PhotosExecutor()}
+            "forms": FormsExecutor(), "slides": SlidesExecutor(), "photos": PhotosExecutor(), "notebook": NotebookExecutor()}
 
 
 @dataclass

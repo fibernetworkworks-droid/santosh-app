@@ -264,6 +264,7 @@ from .drive_tools import DRIVE_HANDLERS, DRIVE_LABELS, DRIVE_TOOLS  # noqa: E402
 from .forms_tools import FORMS_HANDLERS, FORMS_LABELS, FORMS_TOOLS  # noqa: E402
 from .slides_tools import SLIDES_HANDLERS, SLIDES_LABELS, SLIDES_TOOLS  # noqa: E402
 from .photos_tools import PHOTOS_HANDLERS, PHOTOS_LABELS, PHOTOS_TOOLS  # noqa: E402
+from .notebook_tools import NOTEBOOK_HANDLERS, NOTEBOOK_LABELS, NOTEBOOK_TOOLS  # noqa: E402
 
 # Google Sheets and Google Drive have their own full toolsets now (per-user sign-in, service account as fallback);
 # the old service-account tools with the same names step aside
@@ -273,7 +274,7 @@ TOOL_LABELS.update({k: v for k, v in GDRIVE_LABELS.items() if k not in _new})
 HANDLERS.update({k: v for k, v in GDRIVE_HANDLERS.items() if k not in _new})
 for _t, _l, _h in ((SHEETS_TOOLS, SHEETS_LABELS, SHEETS_HANDLERS), (DRIVE_TOOLS, DRIVE_LABELS, DRIVE_HANDLERS),
                    (FORMS_TOOLS, FORMS_LABELS, FORMS_HANDLERS), (SLIDES_TOOLS, SLIDES_LABELS, SLIDES_HANDLERS),
-                   (PHOTOS_TOOLS, PHOTOS_LABELS, PHOTOS_HANDLERS)):
+                   (PHOTOS_TOOLS, PHOTOS_LABELS, PHOTOS_HANDLERS), (NOTEBOOK_TOOLS, NOTEBOOK_LABELS, NOTEBOOK_HANDLERS)):
     TOOLS.extend(_t)
     TOOL_LABELS.update(_l)
     HANDLERS.update(_h)

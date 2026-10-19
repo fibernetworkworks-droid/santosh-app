@@ -12,6 +12,7 @@ import 'forms_screen.dart';
 import 'glass.dart';
 import 'lock_safe.dart';
 import 'home_devices_screen.dart';
+import 'notebook_screen.dart';
 import 'pc_screen.dart';
 import 'photos_screen.dart';
 import 'sheets_screen.dart';
@@ -109,6 +110,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           subtitle: const Text('Office ka computer jodiye: files, print aur Tally phone se'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PcScreen(app: app))),
+        ),
+      ),
+      const SizedBox(height: 18),
+      Glass(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.menu_book_rounded, color: C.teal),
+          title: const Text('Santosh Notebook', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('NotebookLM jaisa: files / links se jawab, study guide, Hindi audio overview'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => NotebooksScreen(app: app))),
         ),
       ),
       const SizedBox(height: 18),
