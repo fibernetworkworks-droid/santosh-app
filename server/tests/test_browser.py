@@ -55,6 +55,7 @@ def test_answer_comes_back(fw):
                         "url": "https://akolamc.gov.in/fees", "title": "Fees", "steps": 3}
     out = run_tool(bz["conv"], task="birth certificate fee in Akola", start_url="akolamc.gov.in")
     assert out["status"] == "done" and "Rs 25" in out["answer"]
+    assert [e["status"] for e in _events(bz["conv"], "browser")] == ["running", "done"]
     sent = w.calls[0][2]
     assert sent["start_url"] == "https://akolamc.gov.in" and sent["llm"]["provider"] == "anthropic"
     assert sent["llm"]["api_key"] == "sk-test"
@@ -101,13 +102,18 @@ def test_payment_and_login_go_to_the_phone(fw):
     assert btn["url"] == "https://mahadiscom.in/pay" and btn["pack"] == "Santosh Browser"
 
 
-def test_running_task_reports_later(fw):
+def test_running_task_reports_later(fw, monkeypatch):
     w, bz = fw
     conv = bz["conv"]
+    monkeypatch.setenv("BROWSER_WAIT_SECONDS", "0")
+    from app.config import get_settings
+    get_settings.cache_clear()
     w.state["start"] = {"session_id": "s9", "status": "running"}
     w.state["get"] = {"status": "done", "summary": "PNR 4512 is CONFIRMED, coach B2."}
     out = run_tool(conv, task="check PNR 4512")
     assert out["status"] == "running" and "message" in out["say"]
+    live = _events(conv, "browser")
+    assert live and live[0]["session_id"] == "s9" and live[0]["status"] == "running"   # live card at once
     for _ in range(50):
         if any("CONFIRMED" in (n or "") for n in _notices(conv)):
             break

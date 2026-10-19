@@ -168,6 +168,19 @@ class Api {
 
   // ---------------- Santosh Artifacts ----------------
   String _art(String id) => '/api/artifacts/${Uri.encodeComponent(id)}';
+
+  // ---- Santosh Browser live view ----
+  String _br(String sid) => '/api/browser/${Uri.encodeComponent(sid)}';
+  Future<Map<String, dynamic>> browserLive(String sid) async =>
+      Map<String, dynamic>.from(await _send('GET', '${_br(sid)}/live', timeout: const Duration(seconds: 12)));
+  Future<void> browserStop(String sid) async => _send('POST', '${_br(sid)}/stop');
+
+  /// The latest frame of the page Santosh's browser is on (JPEG), or null.
+  Future<List<int>?> browserFrame(String sid) async {
+    final req = http.Request('GET', _u('${_br(sid)}/frame'))..headers.addAll(_headers);
+    final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 12)));
+    return res.statusCode == 200 && res.bodyBytes.isNotEmpty ? res.bodyBytes : null;
+  }
   /// The user's artifacts. Older servers have none: returns an empty list.
   Future<List<Map<String, dynamic>>> artifacts() async {
     try {

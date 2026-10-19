@@ -75,7 +75,7 @@ async def browse_web(ctx: Ctx, task, start_url=None, _wait=None, **_):
     if url and not url.lower().startswith(("http://", "https://")):
         url = "https://" + url
     try:
-        res = await asyncio.to_thread(browser.start, ctx.tenant_id, task[:4000], url[:2000], _wait)
+        res = await asyncio.to_thread(browser.start, ctx.tenant_id, task[:4000], url[:2000], _wait, ctx.conversation_id)
     except browser.BrowserError as e:
         raise ToolError(str(e))
     return await asyncio.to_thread(browser.deliver, ctx.tenant_id, ctx.conversation_id, res, False)

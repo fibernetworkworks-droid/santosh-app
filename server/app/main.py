@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.16.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.17.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -1321,3 +1321,33 @@ def push_token_delete(body: PushTokenIn, tenant: str = Depends(current_tenant)):
     from . import push
     push.unregister(tenant, body.token)
     return {"ok": True}
+
+
+# ------------------------------------------------------------------ Santosh Browser live view
+@app.get("/api/browser/{sid}/live", dependencies=[Depends(require_key)])
+def browser_live(sid: str, tenant: str = Depends(current_tenant)):
+    from . import browser
+    try:
+        return browser.live(tenant, sid)
+    except browser.BrowserError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.get("/api/browser/{sid}/frame", dependencies=[Depends(require_key)])
+def browser_frame(sid: str, tenant: str = Depends(current_tenant)):
+    from fastapi.responses import Response
+    from . import browser
+    try:
+        img = browser.frame(tenant, sid)
+    except browser.BrowserError as e:
+        raise HTTPException(404, str(e))
+    return Response(img, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/browser/{sid}/stop", dependencies=[Depends(require_key)])
+def browser_stop(sid: str, tenant: str = Depends(current_tenant)):
+    from . import browser
+    try:
+        return browser.cancel(tenant, sid)
+    except browser.BrowserError as e:
+        raise HTTPException(404, str(e))

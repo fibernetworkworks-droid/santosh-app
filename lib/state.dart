@@ -129,6 +129,9 @@ class Santosh extends ChangeNotifier {
   FeedItem? artifactItem(String id) => _artifacts[id];
   /// Newest live artifact event (not history replays); the voice screens show it.
   Map<String, dynamic>? latestArtifact;
+  final Map<String, FeedItem> _browsers = {};   // one live card per browser task, updated in place
+  Map<String, dynamic>? latestBrowser;           // the task the voice call screen shows
+  FeedItem? browserItem(String sid) => _browsers[sid];
   int artifactTick = 0;                       // bumps with every live artifact event
   FeedItem? _steps;
   List<Map<String, dynamic>> reminders = [];
@@ -156,6 +159,7 @@ class Santosh extends ChangeNotifier {
     _campaigns.clear();
     _emails.clear();
     _artifacts.clear();
+    _browsers.clear();
     _steps = null;
     api = Api(serverUrl, apiKey);
     try {
@@ -590,6 +594,21 @@ class Santosh extends ChangeNotifier {
           latestArtifact = Map<String, dynamic>.from(_artifacts[aid]!.data);
           artifactTick++;
           if (nowReady && inBackground && !pushOn) Device.instance.showNow('Santosh ne banaya', p['title'] as String? ?? '');
+        }
+        break;
+      case 'browser':
+        final bsid = p['session_id'] as String? ?? '';
+        if (bsid.isEmpty) break;
+        final bprev = _browsers[bsid];
+        if (bprev != null) {
+          bprev.data = {...bprev.data, ...p};
+        } else {
+          _browsers[bsid] = FeedItem('browser', Map<String, dynamic>.from(p));
+          feed.add(_browsers[bsid]!);
+        }
+        if (!_replaying) {
+          latestBrowser = Map<String, dynamic>.from(_browsers[bsid]!.data);
+          artifactTick++;
         }
         break;
       case 'device_action':

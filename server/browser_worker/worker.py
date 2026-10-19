@@ -31,7 +31,7 @@ os.environ.setdefault("BROWSER_USE_CLOUD_SYNC", "false")
 os.environ.setdefault("BROWSER_USE_SETUP_LOGGING", "false")
 os.environ.setdefault("BROWSER_USE_VERSION_CHECK", "false")
 
-from fastapi import FastAPI, Header, HTTPException  # noqa: E402
+from fastapi import FastAPI, Header, HTTPException, Response  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
 import guard  # noqa: E402
@@ -90,6 +90,11 @@ class Session:
     last_input: dict | None = None
     steps: int = 0
     screenshot: str = ""
+    # live view: the latest frame of the page (JPEG) + what Santosh is doing right now
+    frame: bytes = b""
+    frame_seq: int = 0
+    action: str = ""
+    live: asyncio.Task | None = None
     created: float = field(default_factory=time.time)
     touched: float = field(default_factory=time.time)
     done_event: asyncio.Event = field(default_factory=asyncio.Event)
@@ -263,7 +268,8 @@ async def open_session(sess: Session, cfg: dict, start_url: str, max_steps: int,
                           args=sess.net.chrome_args(), block_ip_addresses=not ALLOW_PRIVATE,
                           prohibited_domains=["web.whatsapp.com", "*.local", "*.internal", "localhost"] if not ALLOW_PRIVATE else ["web.whatsapp.com"],
                           user_data_dir=None, accept_downloads=False, chromium_sandbox=False, enable_default_extensions=False,
-                          minimum_wait_page_load_time=0.4, wait_between_actions=0.4)
+                          minimum_wait_page_load_time=0.4, wait_between_actions=0.4,
+                          viewport={"width": 1280, "height": 860}, window_size={"width": 1280, "height": 860})
     sess.browser = BrowserSession(browser_profile=prof)
     vision = (cfg.get("provider") or "anthropic") == "anthropic"
     task = sess.task + (f"\nStart at: {start_url}" if start_url else "")
@@ -273,16 +279,59 @@ async def open_session(sess: Session, cfg: dict, start_url: str, max_steps: int,
 
     sess.agent = Agent(task=task, llm=llm or make_llm(cfg), browser_session=sess.browser, tools=make_tools(sess),
                        extend_system_message=SAFETY_PROMPT, use_vision=vision, use_judge=False, calculate_cost=False,
-                       register_should_stop_callback=should_stop, max_failures=3, max_actions_per_step=4,
+                       register_should_stop_callback=should_stop, register_new_step_callback=on_step(sess), max_failures=3, max_actions_per_step=4,
                        generate_gif=False, directly_open_url=bool(start_url), enable_planning=False,
                        step_timeout=90, llm_timeout=60,
                        initial_actions=[{"navigate": {"url": start_url, "new_tab": False}}] if start_url else None)
     sess.max_steps = max_steps  # type: ignore[attr-defined]
 
 
+LIVE_INTERVAL = float(os.environ.get("LIVE_INTERVAL", "0.5"))   # seconds between live frames
+
+
+async def live_loop(sess: Session) -> None:
+    """Grab a frame of the page about twice a second while the task runs, so the phone can watch it live."""
+    last = b""
+    while sess.browser is not None and sess.status in ("running", "starting"):
+        try:
+            img = await asyncio.wait_for(sess.browser.take_screenshot(format="jpeg", quality=45), 5)
+            if isinstance(img, str):
+                img = base64.b64decode(img)
+            if img and img != last:
+                last = img
+                sess.frame, sess.frame_seq = bytes(img), sess.frame_seq + 1
+            try:
+                sess.url = await sess.browser.get_current_page_url()
+            except Exception:
+                pass
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            pass
+        await asyncio.sleep(LIVE_INTERVAL)
+
+
+def on_step(sess: Session):
+    async def cb(state, output, n) -> None:
+        sess.steps = n
+        try:
+            goal = (getattr(output, "next_goal", "") or "").strip()
+            acts = [next(iter(a.model_dump(exclude_unset=True).keys()), "") for a in (getattr(output, "action", None) or [])]
+            sess.action = (goal or ", ".join(a for a in acts if a))[:200]
+            if getattr(state, "url", ""):
+                sess.url = state.url
+            if getattr(state, "title", ""):
+                sess.title = state.title
+        except Exception:
+            pass
+    return cb
+
+
 async def drive(sess: Session) -> None:
     """Run (or continue) the agent until it finishes or the guard stops it."""
     sess.status = "running"
+    if sess.live is None or sess.live.done():
+        sess.live = asyncio.create_task(live_loop(sess))
     try:
         hist = await sess.agent.run(max_steps=getattr(sess, "max_steps", 25))
         sess.steps = len(getattr(hist, "history", []) or [])
@@ -317,6 +366,19 @@ async def drive(sess: Session) -> None:
             sess.screenshot = (png or "")[:400_000]
         except Exception:
             sess.screenshot = ""
+        if sess.live and not sess.live.done():
+            sess.live.cancel()
+        try:   # last frame stays visible after the task
+            img = await sess.browser.take_screenshot(format="jpeg", quality=45)
+            if isinstance(img, str):
+                img = base64.b64decode(img)
+            if img:
+                sess.frame, sess.frame_seq = bytes(img), sess.frame_seq + 1
+        except Exception:
+            pass
+        sess.action = {"done": "Ho gaya", "needs_confirm": "Aapki manzoori ka intezaar",
+                       "needs_payment": "Payment aap phone par karenge", "needs_user": "Yeh step aap karenge",
+                       "blocked": "Rok diya (suraksha)", "failed": "Poora nahi ho paya"}.get(sess.status, sess.action)
         sess.touched = time.time()
         sess.done_event.set()
         if sess.status in ("done", "failed", "blocked", "cancelled"):
@@ -478,13 +540,34 @@ class TenantIn(BaseModel):
     tenant: str
 
 
+@app.get("/tasks/{sid}/live")
+async def live(sid: str, tenant: str, x_worker_key: str | None = Header(None)) -> dict[str, Any]:
+    """What the browser is doing right now (cheap; the phone polls it)."""
+    _auth(x_worker_key)
+    s = _get(sid, tenant)
+    s.touched = time.time()
+    out = {"session_id": s.id, "status": s.status, "step": s.steps, "action": s.action, "url": s.url,
+           "title": s.title, "seq": s.frame_seq, "summary": s.summary if s.status not in ("running", "starting") else ""}
+    if s.pending and s.status == "needs_confirm":
+        out["pending"] = {"id": s.pending.id, "label": s.pending.label}
+    return out
+
+
+@app.get("/tasks/{sid}/frame")
+async def frame(sid: str, tenant: str, x_worker_key: str | None = Header(None)) -> Response:
+    _auth(x_worker_key)
+    s = _get(sid, tenant)
+    if not s.frame:
+        raise HTTPException(404, "no frame yet")
+    return Response(s.frame, media_type="image/jpeg", headers={"X-Frame-Seq": str(s.frame_seq), "Cache-Control": "no-store"})
+
+
 @app.post("/tasks/{sid}/cancel")
 async def cancel(sid: str, body: TenantIn, x_worker_key: str | None = Header(None)) -> dict[str, Any]:
     _auth(x_worker_key)
     sess = _get(sid, body.tenant)
     if sess.run and not sess.run.done():
         sess.run.cancel()
-    sess.status = "cancelled"
-    await close(sess)
-    SESSIONS.pop(sid, None)
+    sess.status, sess.action = "cancelled", "Aapne rok diya"
+    await close(sess)          # the session stays listed (last frame) until the reaper clears it
     return {"session_id": sid, "status": "cancelled"}

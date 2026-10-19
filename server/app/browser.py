@@ -72,12 +72,40 @@ def _call(method: str, path: str, *, json: dict | None = None, params: dict | No
     return r.json()
 
 
-def start(tenant: str, task: str, start_url: str = "", wait: float | None = None) -> dict:
+def start(tenant: str, task: str, start_url: str = "", wait: float | None = None, conv: str = "") -> dict:
+    """Start a task; the chat gets a live-view card at once (the phone watches the page), then this waits up to
+    `wait` seconds for the result."""
     st = get_settings()
     wait = max(0, min(int(st.browser_wait_seconds if wait is None else wait), 270))
-    return _call("POST", "/tasks", json={"tenant": tenant, "task": task, "start_url": start_url or "",
-                                         "llm": llm_config(), "max_steps": max(3, min(st.browser_max_steps, 60)),
-                                         "wait_seconds": wait}, timeout=wait + 40)
+    res = _call("POST", "/tasks", json={"tenant": tenant, "task": task, "start_url": start_url or "",
+                                        "llm": llm_config(), "max_steps": max(3, min(st.browser_max_steps, 60)),
+                                        "wait_seconds": 0}, timeout=60)
+    sid = res.get("session_id", "")
+    if conv and sid:
+        bus.publish(conv, "browser", {"session_id": sid, "status": "running", "task": task[:300],
+                                      "url": start_url or res.get("url", ""), "site": host_of(start_url or res.get("url", ""))})
+    deadline = time.time() + wait
+    while sid and res.get("status") in ("running", "starting") and time.time() < deadline:
+        res = get(tenant, sid, wait=min(30, max(1, deadline - time.time())))
+    return res
+
+
+def live(tenant: str, sid: str) -> dict:
+    return _call("GET", f"/tasks/{sid}/live", params={"tenant": tenant}, timeout=10)
+
+
+def frame(tenant: str, sid: str) -> bytes:
+    st = get_settings()
+    if not configured():
+        raise BrowserError("browser off")
+    try:
+        r = httpx.get(st.browser_worker_url.rstrip("/") + f"/tasks/{sid}/frame", params={"tenant": tenant},
+                      headers={"x-worker-key": st.browser_worker_key}, timeout=10)
+    except httpx.HTTPError as e:
+        raise BrowserError(f"not reachable ({type(e).__name__})")
+    if r.status_code != 200:
+        raise BrowserError(f"no frame ({r.status_code})")
+    return r.content
 
 
 def get(tenant: str, sid: str, wait: float = 0) -> dict:
@@ -111,6 +139,12 @@ def deliver(tenant: str, conv: str, res: dict, background: bool = False) -> dict
     answer = (res.get("summary") or "").strip()
     out: dict[str, Any] = {"status": status, "answer": answer, "url": url, "page_title": res.get("title", ""),
                            "steps": res.get("steps", 0)}
+    if conv and sid and status != "running":   # the live card shows the final state
+        try:
+            bus.publish(conv, "browser", {"session_id": sid, "status": status, "url": url, "site": host_of(url),
+                                          "summary": answer[:600]})
+        except Exception:
+            log.exception("browser event failed")
     if status == "running":
         follow(tenant, conv, sid)
         out["say"] = ("The browser is still working on it. Tell the user you're on it and will message them in the "

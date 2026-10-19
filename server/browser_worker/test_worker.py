@@ -225,11 +225,18 @@ def test_read_page_and_answer(site):
         ])
         r = await call("POST", "/tasks", json=body("birth certificate fee?", base + "/"))
         assert r.status_code == 200, r.text
-        return r.json()
-    out = run(go())
+        out = r.json()
+        live = (await call("GET", f"/tasks/{out['session_id']}/live", params={"tenant": "t1"})).json()
+        img = await call("GET", f"/tasks/{out['session_id']}/frame", params={"tenant": "t1"})
+        other = await call("GET", f"/tasks/{out['session_id']}/live", params={"tenant": "someone-else"})
+        return out, live, img, other
+    out, live, img, other = run(go())
     assert out["status"] == "done", out
     assert "Rs 25" in out["summary"] and out["url"].endswith("/fees")
     assert out.get("screenshot_jpeg_b64")
+    assert live["status"] == "done" and live["seq"] >= 1 and live["action"] == "Ho gaya" and live["step"] >= 1
+    assert img.status_code == 200 and img.headers["content-type"] == "image/jpeg" and img.content[:2] == b"\xff\xd8"
+    assert other.status_code == 404
 
 
 @needs_browser

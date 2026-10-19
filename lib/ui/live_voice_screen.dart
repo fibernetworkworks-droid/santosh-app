@@ -7,6 +7,7 @@ import '../live_voice.dart';
 import '../native.dart';
 import '../state.dart';
 import 'artifact_screen.dart';
+import 'browser_live.dart';
 import 'glass.dart';
 import 'lock_safe.dart';
 import '../emotion.dart';
@@ -249,6 +250,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
             ),
           ),
           Positioned(left: 0, right: 0, bottom: 4, child: ArtifactCallPill(app: app)),
+          Positioned(right: 12, top: 8, child: BrowserCallThumb(app: app)),
         ]),
       ),
       if (_inCall && _lockIssue != null) LockSafeBanner(text: _lockIssue!),
