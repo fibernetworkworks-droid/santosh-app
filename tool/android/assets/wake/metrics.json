@@ -1,0 +1,51 @@
+{
+ "positives_train": 10314,
+ "negatives_train": 22905,
+ "voices": [
+  "en_US-libritts_r-medium",
+  "en_US-arctic-medium",
+  "en_US-lessac-medium",
+  "en_US-amy-medium",
+  "en_US-ryan-medium",
+  "en_US-joe-medium",
+  "en_US-kristin-medium",
+  "en_US-hfc_male-medium",
+  "en_US-hfc_female-medium",
+  "en_GB-alan-medium",
+  "en_GB-northern_english_male-medium",
+  "en_GB-jenny_dioco-medium",
+  "en_GB-semaine-medium",
+  "hi_IN-pratham-medium",
+  "hi_IN-priyamvada-medium",
+  "hi_IN-rohan-medium",
+  "ml_IN-meera-medium",
+  "ml_IN-arjun-medium",
+  "te_IN-maya-medium",
+  "ne_NP-google-medium"
+ ],
+ "held_out_positive_clips": 762,
+ "thr_0.3": {
+  "recall_held_out_voices": 0.979,
+  "confusable_false_rate": 0.0525,
+  "false_accepts_per_hour_librispeech_test": 9.19,
+  "eval_hours": 1.31
+ },
+ "thr_0.5": {
+  "recall_held_out_voices": 0.9751,
+  "confusable_false_rate": 0.0442,
+  "false_accepts_per_hour_librispeech_test": 8.424,
+  "eval_hours": 1.31
+ },
+ "thr_0.7": {
+  "recall_held_out_voices": 0.9672,
+  "confusable_false_rate": 0.0359,
+  "false_accepts_per_hour_librispeech_test": 4.595,
+  "eval_hours": 1.31
+ },
+ "thr_0.85": {
+  "recall_held_out_voices": 0.9554,
+  "confusable_false_rate": 0.0276,
+  "false_accepts_per_hour_librispeech_test": 2.297,
+  "eval_hours": 1.31
+ }
+}
