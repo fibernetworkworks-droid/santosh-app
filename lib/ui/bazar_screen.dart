@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../state.dart';
+import 'agents_screen.dart';
 import 'glass.dart';
 import 'mcp_screen.dart';
 import 'shopping_screen.dart';
@@ -311,6 +312,17 @@ class _BazarScreenState extends State<BazarScreen> {
                 await Navigator.of(context).push(MaterialPageRoute(builder: (_) => McpScreen(app: app)));
                 _load();
               },
+            ),
+          ),
+          const SizedBox(height: 14),
+          Glass(
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.groups_rounded, color: C.accent2),
+              title: Text('Agent Army · 36,336 agents', style: display(15.5)),
+              subtitle: const Text('Duniya ke open-source AI agents, 37 fields: coding, call centre, accounting, legal, sales…'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AgentsScreen(app: app))),
             ),
           ),
           const SizedBox(height: 14),

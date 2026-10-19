@@ -41,7 +41,7 @@ VOICE_TOOL_NAMES = {
     "create_reminder", "list_reminders", "cancel_reminder", "set_phone_alarm", "set_phone_timer",
     "add_calendar_event", "remember", "forget", "list_add", "list_show", "list_done", "set_profile",
     "get_weather", "create_routine", "list_routines", "cancel_routine",
-    "google_search", "open_website", "open_on_phone", "browse_web", "artifact_make", "artifact_list",
+    "google_search", "open_website", "open_on_phone", "browse_web", "artifact_make", "artifact_list", "agent_army",
     "email_check", "email_read", "email_draft",
     "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_cancel_event",
     "drive_find", "drive_read_file", "sheet_read", "sheet_append", "doc_create",

@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.17.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.18.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -109,7 +109,8 @@ def healthz():
             "voices": [{"id": k, "style": v} for k, v in MALE_VOICES.items()], "voice_default": st.voice_default,
             "bazar": {"packs": len(__import__("app.bazar.packs.registry", fromlist=["x"]).registry().packs),
                       "bills_live": __import__("app.bazar.config", fromlist=["x"]).get_settings().bills_live,
-                      "mcp_directory": len(__import__("app.bazar.directory", fromlist=["x"]).servers())}}
+                      "mcp_directory": len(__import__("app.bazar.directory", fromlist=["x"]).servers()),
+                      "agent_army": len(__import__("app.bazar.agents", fromlist=["x"]).agents())}}
 
 
 @app.get("/")
@@ -1351,3 +1352,25 @@ def browser_stop(sid: str, tenant: str = Depends(current_tenant)):
         return browser.cancel(tenant, sid)
     except browser.BrowserError as e:
         raise HTTPException(404, str(e))
+
+
+# ------------------------------------------------------------------ Santosh Agent Army (open-source agents catalogue)
+@app.get("/api/agents/directory", dependencies=[Depends(require_key)])
+def agents_directory(q: str = "", field: str = "", kind: str = "", tier: str = "", limit: int = 30):
+    from .bazar import agents
+    return {"agents": agents.search(q, field, kind, tier, limit), "total": len(agents.agents())}
+
+
+@app.get("/api/agents/fields", dependencies=[Depends(require_key)])
+def agents_fields():
+    from .bazar import agents
+    return agents.stats()
+
+
+@app.get("/api/agents/item/{ref}", dependencies=[Depends(require_key)])
+def agents_item(ref: str):
+    from .bazar import agents
+    a = agents.get(ref)
+    if a is None:
+        raise HTTPException(404, "Not found")
+    return a

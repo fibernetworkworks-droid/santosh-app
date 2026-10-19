@@ -153,6 +153,14 @@ class Api {
   // ---------------- MCP servers ----------------
   Future<List<Map<String, dynamic>>> mcpList() async =>
       List<Map<String, dynamic>>.from(((await _send('GET', '/api/bazar/mcp'))['servers'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  // ---- Santosh Agent Army (open-source agents catalogue) ----
+  Future<Map<String, dynamic>> agentsDirectory({String q = '', String field = '', String kind = '', String tier = ''}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/agents/directory',
+          query: {'q': q, 'field': field, 'kind': kind, 'tier': tier, 'limit': '40'}));
+  Future<Map<String, dynamic>> agentsFields() async => Map<String, dynamic>.from(await _send('GET', '/api/agents/fields'));
+  Future<Map<String, dynamic>> agentItem(String ref) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/agents/item/${Uri.encodeComponent(ref)}'));
+
   Future<Map<String, dynamic>> mcpDirectory({String q = '', String field = ''}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/bazar/mcp/directory', query: {'q': q, 'field': field, 'limit': '30'}));
   Future<Map<String, dynamic>> mcpAdd(String url, {String name = '', String ref = '', String key = '', String header = ''}) async =>
