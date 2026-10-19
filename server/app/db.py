@@ -286,6 +286,48 @@ class CalendarAccount(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class SheetsAccount(Base):
+    """A Google account the user connected for Google Sheets (scopes: spreadsheets + Drive file list). Encrypted tokens."""
+    __tablename__ = "sheets_accounts"
+    __table_args__ = (UniqueConstraint("tenant_id", "address", name="uq_sheets_account"),)
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("gsh"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    address: Mapped[str] = mapped_column(String(320))
+    display_name: Mapped[str] = mapped_column(String(120), default="")
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    access_token_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    refresh_token_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expiry: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(12), default="ok")
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class SheetsPending(Base):
+    """A Sheets change that is hard to undo or reaches other people (delete rows, big update, share). Runs after a tap."""
+    __tablename__ = "sheets_pending"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("shp"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    conversation_id: Mapped[str] = mapped_column(String(40), default="")
+    action: Mapped[str] = mapped_column(String(16))
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    summary: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(12), default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class SheetsRecent(Base):
+    """Sheets the user worked with through Santosh, so "meri sales sheet" is found quickly."""
+    __tablename__ = "sheets_recent"
+    __table_args__ = (UniqueConstraint("tenant_id", "spreadsheet_id", name="uq_sheets_recent"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    account: Mapped[str] = mapped_column(String(40), default="")
+    spreadsheet_id: Mapped[str] = mapped_column(String(200))
+    title: Mapped[str] = mapped_column(String(300), default="")
+    used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class CalendarPrefs(Base):
     """Per person: which calendars Santosh reads, where new events go, meeting alerts."""
     __tablename__ = "calendar_prefs"

@@ -257,10 +257,15 @@ TOOL_LABELS.update(GCAL_LABELS)
 HANDLERS.update(GCAL_HANDLERS)
 
 from .gdrive_tools import GDRIVE_HANDLERS, GDRIVE_LABELS, GDRIVE_TOOLS  # noqa: E402
+from .sheets_tools import SHEETS_HANDLERS, SHEETS_LABELS, SHEETS_TOOLS  # noqa: E402
 
-TOOLS.extend(GDRIVE_TOOLS)
+# Google Sheets has its own full toolset now (per-user sign-in); the old service-account sheet tools step aside
+TOOLS.extend([t for t in GDRIVE_TOOLS if t["name"] not in SHEETS_HANDLERS])
 TOOL_LABELS.update(GDRIVE_LABELS)
 HANDLERS.update(GDRIVE_HANDLERS)
+TOOLS.extend(SHEETS_TOOLS)
+TOOL_LABELS.update(SHEETS_LABELS)
+HANDLERS.update(SHEETS_HANDLERS)
 
 from .bazar_tools import BAZAR_HANDLERS, BAZAR_LABELS, BAZAR_TOOLS  # noqa: E402
 

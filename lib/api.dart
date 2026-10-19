@@ -109,6 +109,21 @@ class Api {
   Future<Map<String, dynamic>> removeEmailAttachment(String id, int index) async =>
       Map<String, dynamic>.from(await _send('DELETE', '/api/emails/$id/attachments/$index') as Map);
 
+  // ---- Google Sheets / Drive / Forms (each: accounts state, sign-in link, remove) ----
+  Future<Map<String, dynamic>> _gState(String what) async => Map<String, dynamic>.from(await _send('GET', '/api/$what/accounts') as Map);
+  Future<String> _gLink(String what) async => (await _send('GET', '/api/$what/link'))['url'] as String;
+  Future<Map<String, dynamic>> _gRemove(String what, String key) async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/$what/accounts/$key') as Map);
+  Future<Map<String, dynamic>> sheetsState() => _gState('sheets');
+  Future<String> sheetsLinkUrl() => _gLink('sheets');
+  Future<Map<String, dynamic>> sheetsRemove(String key) => _gRemove('sheets', key);
+  Future<Map<String, dynamic>> driveState() => _gState('drive');
+  Future<String> driveLinkUrl() => _gLink('drive');
+  Future<Map<String, dynamic>> driveRemove(String key) => _gRemove('drive', key);
+  Future<Map<String, dynamic>> formsState() => _gState('forms');
+  Future<String> formsLinkUrl() => _gLink('forms');
+  Future<Map<String, dynamic>> formsRemove(String key) => _gRemove('forms', key);
+
   // ---- Google Calendar ----
   Future<Map<String, dynamic>> calendarState() async => Map<String, dynamic>.from(await _send('GET', '/api/calendar/accounts') as Map);
   Future<String> calendarLinkUrl() async => (await _send('GET', '/api/calendar/link'))['url'] as String;

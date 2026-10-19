@@ -100,6 +100,7 @@ def healthz():
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
         + (["drive"] if __import__("app.gdrive", fromlist=["x"]).configured() else []) \
+        + (["sheets"] if __import__("app.sheets.accounts", fromlist=["x"]).oauth_ready() else []) \
         + (["maps"] if __import__("app.maps", fromlist=["x"]).configured() else []) \
         + (["browser"] if __import__("app.browser", fromlist=["x"]).configured() else []) \
         + (["push"] if __import__("app.push", fromlist=["x"]).configured() else [])
@@ -329,6 +330,9 @@ async def google_callback(request: Request):
     from .cal.accounts import is_link_state as is_cal_state
     if is_cal_state(request.query_params.get("state", "")):    # "connect my Google Calendar"
         return await _finish_cal_link(request)
+    from .sheets.accounts import is_link_state as is_sheets_state
+    if is_sheets_state(request.query_params.get("state", "")):  # "connect my Google Sheets"
+        return await _finish_sheets_link(request)
     code = request.query_params.get("code")
     state = request.query_params.get("state", "")
     err = request.query_params.get("error")
@@ -865,6 +869,59 @@ def calendar_remove(key: str, tenant: str = Depends(current_tenant)):
     if not ca.remove(tenant, key):
         raise HTTPException(404, "Calendar not found")
     return _cal_state(tenant)
+
+
+# ---------------- Google Sheets ----------------
+def _linked_page(what: str, host: str, address: str | None, error: str = "") -> HTMLResponse:
+    import html as _h
+    deep = f"{get_settings().app_redirect_scheme}://{host}?ok={0 if error else 1}"
+    msg = (f"<h2>{what} Santosh se juda! ✅</h2><p>{_h.escape(address or '')}</p>" if not error else
+           f"<h3>{what} nahi juda</h3><p>{_h.escape(error)}</p>")
+    return HTMLResponse(f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
+<body style="font-family:system-ui;text-align:center;padding:40px;background:#f3eefb">{msg}
+<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">App kholiye</a></p>
+<script>setTimeout(function(){{location.href={deep!r}}},600);</script></body>""", status_code=400 if error else 200)
+
+
+async def _finish_sheets_link(request: Request) -> HTMLResponse:
+    from .sheets import accounts as sa
+    from .sheets.client import SheetError
+    if request.query_params.get("error"):
+        return _linked_page("Google Sheets", "sheets", None, request.query_params["error"])
+    try:
+        view = await asyncio.to_thread(sa.finish_link, request.query_params.get("code", ""), request.query_params.get("state", ""))
+    except SheetError as e:
+        return _linked_page("Google Sheets", "sheets", None, str(e))
+    return _linked_page("Google Sheets", "sheets", view["address"])
+
+
+def _sheets_state(tenant: str) -> dict:
+    from .sheets import accounts as sa
+    from .sheets import service as ss
+    return {"accounts": sa.views(tenant), "can_link": sa.oauth_ready(), "recent": ss.recent(tenant)}
+
+
+@app.get("/api/sheets/accounts", dependencies=[Depends(require_key)])
+def sheets_accounts(tenant: str = Depends(current_tenant)):
+    return _sheets_state(tenant)
+
+
+@app.get("/api/sheets/link", dependencies=[Depends(require_key)])
+def sheets_link(login_hint: str = "", tenant: str = Depends(current_tenant)):
+    from .sheets import accounts as sa
+    from .sheets.client import SheetError
+    try:
+        return {"url": sa.start_link(tenant, login_hint)}
+    except SheetError as e:
+        raise HTTPException(503, str(e))
+
+
+@app.delete("/api/sheets/accounts/{key}", dependencies=[Depends(require_key)])
+def sheets_remove(key: str, tenant: str = Depends(current_tenant)):
+    from .sheets import accounts as sa
+    if not sa.remove(tenant, key):
+        raise HTTPException(404, "Account not found")
+    return _sheets_state(tenant)
 
 
 @app.get("/auth/microsoft/callback")

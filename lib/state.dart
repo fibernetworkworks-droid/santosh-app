@@ -378,6 +378,18 @@ class Santosh extends ChangeNotifier {
     notifyListeners();
   }
 
+  int sheetsLinkedTick = 0;
+  int driveLinkedTick = 0;
+  int formsLinkedTick = 0;
+  void onGoogleLinked(String what, bool ok) {
+    if (what == 'sheets') sheetsLinkedTick++;
+    if (what == 'drive') driveLinkedTick++;
+    if (what == 'forms') formsLinkedTick++;
+    final name = {'sheets': 'Google Sheets', 'drive': 'Google Drive', 'forms': 'Google Forms'}[what] ?? what;
+    feed.add(FeedItem('note', {'text': ok ? '$name jud gaya ✓' : '$name nahi jud paya, dobara koshish kijiye.'}));
+    notifyListeners();
+  }
+
   int calendarLinkedTick = 0;                  // bumps when Google Calendar got connected
   final Map<String, FeedItem> _calEvents = {};
   void onCalendarLinked(bool ok) {
@@ -598,6 +610,10 @@ class Santosh extends ChangeNotifier {
           _emails[p['id'] as String] = FeedItem('email', Map<String, dynamic>.from(p));
           feed.add(_emails[p['id']]!);
         }
+        break;
+      case 'sheet':
+      case 'form':
+        feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
         break;
       case 'calendar_event':
         final cid = '${p['id']}';

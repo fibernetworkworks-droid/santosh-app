@@ -98,12 +98,7 @@ def test_read_google_doc_text(g):
     assert out["type"] == "text" and "Proposal body text" in out["text"]
 
 
-def test_sheet_read_and_append(g):
-    ctx = conv_ctx()
-    r = asyncio.run(dispatch("sheet_read", {"spreadsheet_id": "f1"}, ctx))
-    assert r["header"] == ["Name", "Phone"] and r["row_count"] == 3
-    a = asyncio.run(dispatch("sheet_append", {"spreadsheet_id": "f1", "values": ["Mohan", "98902"]}, ctx))
-    assert a["added_rows"] == 1 and g["appended"]["values"] == [["Mohan", "98902"]]
+# Google Sheets has its own tests now (tests/test_sheets.py)
 
 
 def test_doc_create_moves_to_folder(g):

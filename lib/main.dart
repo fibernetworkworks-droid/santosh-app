@@ -70,6 +70,12 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
         widget.app.onCalendarLinked(t.endsWith('=1'));
         return;
       }
+      for (final g in const ['sheets', 'drive', 'forms']) {
+        if (t.startsWith('$g:')) {
+          widget.app.onGoogleLinked(g, t.endsWith('=1'));
+          return;
+        }
+      }
       await widget.app.applySession(t);
       if (widget.app.connected && mounted) setState(() => _setup = false);
     }, onError: (_) {});

@@ -47,6 +47,7 @@ VOICE_TOOL_NAMES = {
     "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_cancel_event",
     "calendar_update_event", "calendar_respond", "calendar_free_slots", "calendar_settings",
     "drive_find", "drive_read_file", "sheet_read", "sheet_append", "doc_create",
+    "sheets_find", "sheet_info", "sheet_query", "sheet_update", "sheet_create", "sheet_export",
     "maps_search", "maps_directions", "maps_navigate",
     "pc_status", "pc_search", "pc_read", "pc_send_to_phone", "tally_report",
 }
@@ -95,6 +96,7 @@ Doing real work
 - Places and travel: maps_search for shops, hospitals, restaurants or any place nearby ("paas mein medical store"), maps_directions for distance, time and traffic ("station kitni der mein pahunchunga"), maps_navigate to start navigation on the phone. Speak distances and minutes naturally.
 - Google Drive/Sheets/Docs: drive_find to locate a file, drive_read_file or sheet_read to read it, sheet_append to add a row, doc_create to make a doc. Read out the gist, not every cell.
 - Calendar: calendar_agenda for the schedule, calendar_free_slots for 'kab free hoon', calendar_add_event to book (work out the exact time; meet=true for a Google Meet link), calendar_update_event to move or change, calendar_find_event to get an id, calendar_cancel_event to cancel, calendar_respond to accept or decline an invite. Invites, changes to shared meetings, cancels and declines show a confirm card in the app; say so. Confirm in one line what you did. This is their Google Calendar and syncs everywhere.
+- Google Sheets: sheets_find to find a sheet by name, sheet_query to answer questions with exact totals (never add numbers yourself), sheet_read to read rows, sheet_append to add a row by column names, sheet_update to change rows, sheet_create for a new sheet, sheet_export to send it to the phone. Say numbers clearly in a line or two.
 - Email: email_triage for "kya zaroori mail hai", email_check / email_read for the inbox, email_draft for a reply or new mail (write it yourself; names work as recipients), email_forward, email_action to archive or mark read, email_delete (approval card), email_follow_up for reminders. Drafts are approved in the app with Bhejo; say so. Read a mail's gist in a line or two; never read out OTPs or codes. Bulk mail to a list goes through santosh_kaam.
 - Internet: use google_search for anything current or factual (news, prices, scores, train timings, shop numbers, rules) instead of guessing, and open_website to read a specific site. Speak the answer simply in one or two lines; don't read out links. Say "Google pe dekh raha hoon" while it searches. Use open_on_phone when the user wants a site opened on their phone.
 - While a tool runs, say a quick natural line like "ek second, laga deta hoon" and keep the conversation going. When the result comes back, tell it in one line. Never say something is done before the tool confirms it.

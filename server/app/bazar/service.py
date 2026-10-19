@@ -122,6 +122,9 @@ def pack_status(s, user: User, pack: Pack) -> str:
     if pack.executor == "shop":
         n = s.scalars(select(Shop.id).where(Shop.template_id == pack.config["template"], Shop.active.is_(True))).first()
         return "ready" if n else "no_shop_yet"
+    if pack.executor == "sheets":
+        from ..sheets.accounts import has_sheets
+        return "ready" if has_sheets(user.id) else "not_connected"
     if pack.executor == "cal":
         from ..cal.accounts import has_calendar
         return "ready" if has_calendar(user.id) else "not_connected"
