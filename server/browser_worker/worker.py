@@ -240,7 +240,14 @@ def make_llm(cfg: dict):
     provider = (cfg.get("provider") or "anthropic").lower()
     if provider == "anthropic":
         from browser_use.llm.anthropic.chat import ChatAnthropic
-        return ChatAnthropic(model=cfg.get("model") or "claude-sonnet-5-5", api_key=cfg.get("api_key"), max_tokens=4096)
+
+        class SantoshClaude(ChatAnthropic):
+            """Newer Claude models (Sonnet/Opus 5.x...) reject a forced tool_choice; browser-use then has to ask
+            with tool_choice "auto" (it already parses that reply). Auto works on every Claude model."""
+            def _requires_auto_tool_choice(self) -> bool:  # type: ignore[override]
+                return True
+
+        return SantoshClaude(model=cfg.get("model") or "claude-sonnet-5-5", api_key=cfg.get("api_key"), max_tokens=8192)
     from browser_use.llm.openai.chat import ChatOpenAI
     return ChatOpenAI(model=cfg.get("model") or "santosh", api_key=cfg.get("api_key") or "none",
                       base_url=cfg.get("base_url"), default_headers=cfg.get("headers") or None,
