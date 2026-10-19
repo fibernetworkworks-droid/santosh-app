@@ -11,9 +11,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Santosh's own alarms and timers when the app is closed -->
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <!-- saving calendar events directly -->
@@ -127,6 +125,11 @@
         <!-- "Hey Santosh" wake word (on-device) -->
         <service
             android:name=".WakeService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+        <!-- Live voice call with Santosh: keeps mic + audio running when the screen locks -->
+        <service
+            android:name=".CallService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
         <!-- Quick-settings tile -->

@@ -309,6 +309,12 @@ class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObs
             style: TextStyle(fontSize: 12.5, color: C.muted)),
         if (on && app.batteryOptimized)
           fix('Battery saver Santosh ko rok sakta hai', 'Santosh ko "Unrestricted / Don\'t optimize" par rakhiye', 'Theek karo', Native.askBattery),
+        if (!app.exactAlarms)
+          fix('Alarm time par bajne ke liye', '"Alarms & reminders" ki permission dijiye', 'Allow', () async {
+            await Native.askExactAlarms();
+            await Future.delayed(const Duration(seconds: 2));
+            await app.refreshBackgroundInfo();
+          }),
         if (on && !app.hasCalendar)
           fix('Calendar permission', 'Taaki Santosh meetings seedha calendar mein save kare', 'Allow', () async {
             await Native.askCalendar();

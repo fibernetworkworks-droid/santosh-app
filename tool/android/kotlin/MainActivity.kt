@@ -24,6 +24,8 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         micChannel(flutterEngine)
+        val callCh = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "santosh/call")
+        CallService.onHangup = { main.post { try { callCh.invokeMethod("hangup", null) } catch (_: Exception) {} } }
         linkChannel(flutterEngine)
         handleIntent(intent)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "santosh/native").setMethodCallHandler { call, result ->
@@ -74,6 +76,8 @@ class MainActivity : FlutterActivity() {
                     "claim" -> result.success(Store.claim(this, call.argument<String>("id") ?: ""))
                     "batteryOptimized" -> result.success(batteryOptimized())
                     "askBattery" -> { askBattery(); result.success(null) }
+                    "exactAlarms" -> result.success(exactAlarmsAllowed())
+                    "askExactAlarms" -> { askExactAlarms(); result.success(null) }
                     "hasCalendar" -> result.success(hasCalendar())
                     "askCalendar" -> {
                         if (Build.VERSION.SDK_INT >= 23) {
@@ -84,11 +88,12 @@ class MainActivity : FlutterActivity() {
                     "voiceStart" -> {
                         val err = VoiceAudio.start(this)
                         if (err == "permission") requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 42)
+                        if (err == null) CallService.start(this)   // keeps the call alive when the screen locks
                         result.success(err)
                     }
                     "voicePlay" -> { (call.arguments as? ByteArray)?.let { VoiceAudio.play(it) }; result.success(null) }
                     "voiceFlush" -> { VoiceAudio.flush(); result.success(null) }
-                    "voiceStop" -> { VoiceAudio.stop(this); result.success(null) }
+                    "voiceStop" -> { VoiceAudio.stop(this); CallService.stop(this); result.success(null) }
                     // ---- Ghar: home devices (IR AC, Bluetooth TV remote, DIAL, music) ----
                     "homeCaps" -> result.success(HomeDevices.caps(this))
                     "homePaired" -> result.success(HomeDevices.paired(this))
@@ -313,6 +318,8 @@ class MainActivity : FlutterActivity() {
 
     override fun onDestroy() {
         VoiceAudio.stop(this)
+        CallService.stop(this)
+        CallService.onHangup = null
         super.onDestroy()
     }
 
@@ -338,12 +345,30 @@ class MainActivity : FlutterActivity() {
         return !pm.isIgnoringBatteryOptimizations(packageName)
     }
 
+    /** Opens Android's battery settings for Santosh (Play policy: no direct "ignore optimizations" request). */
     private fun askBattery() {
         if (Build.VERSION.SDK_INT < 23) return
+        val tries = listOf(
+            Intent("android.settings.APP_BATTERY_SETTINGS").setData(Uri.parse("package:$packageName")),   // Android 14+
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:$packageName")),
+            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+        for (i in tries) {
+            try { startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return } catch (_: Exception) {}
+        }
+    }
+
+    private fun exactAlarmsAllowed(): Boolean {
+        if (Build.VERSION.SDK_INT < 31) return true
+        val am = getSystemService(ALARM_SERVICE) as android.app.AlarmManager
+        return am.canScheduleExactAlarms()
+    }
+
+    private fun askExactAlarms() {
+        if (Build.VERSION.SDK_INT < 31) return
         try {
-            startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
-        } catch (e: Exception) {
-            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName")))
+        } catch (_: Exception) {
+            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         }
     }
 

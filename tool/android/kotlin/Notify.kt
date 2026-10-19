@@ -13,11 +13,13 @@ import android.os.Build
 /** All notifications the native side shows. */
 object Notify {
     const val SERVICE_ID = 1717
+    const val CALL_ID = 1718
     private const val MSG_BASE = 3000
     private const val MSG_SLOTS = 40
     private const val CH_SERVICE = "santosh_service"
     private const val CH_MESSAGES = "santosh_messages"
     private const val CH_ALARM = "santosh_alarm"
+    private const val CH_CALL = "santosh_call"
 
     private fun nm(ctx: Context) = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -33,6 +35,11 @@ object Notify {
         m.createNotificationChannel(NotificationChannel(CH_MESSAGES, "Santosh messages", NotificationManager.IMPORTANCE_HIGH).apply {
             description = "Replies, reminders and reports from Santosh"
             enableVibration(true)
+        })
+        m.createNotificationChannel(NotificationChannel(CH_CALL, "Santosh call", NotificationManager.IMPORTANCE_LOW).apply {
+            description = "Shows while you are on a voice call with Santosh"
+            setShowBadge(false)
+            setSound(null, null)
         })
         m.createNotificationChannel(NotificationChannel(CH_ALARM, "Santosh alarms", NotificationManager.IMPORTANCE_HIGH).apply {
             description = "Alarms and timers set by Santosh"
@@ -64,6 +71,27 @@ object Notify {
             .setShowWhen(false)
             .setContentIntent(openApp(ctx, 1))
             .build()
+    }
+
+    /** Ongoing notification while a voice call runs (also when the screen is locked). */
+    fun call(ctx: Context): Notification {
+        channels(ctx)
+        val hang = Intent(ctx, CallService::class.java).setAction(CallService.ACTION_HANGUP)
+        val hangPi = if (Build.VERSION.SDK_INT >= 26) PendingIntent.getForegroundService(ctx, 7, hang, piFlags())
+                     else PendingIntent.getService(ctx, 7, hang, piFlags())
+        val b = builder(ctx, CH_CALL)
+            .setSmallIcon(R.drawable.ic_stat_santosh)
+            .setContentTitle("Santosh se baat chal rahi hai")
+            .setContentText("Phone lock ho tab bhi sun raha hoon")
+            .setOngoing(true)
+            .setUsesChronometer(true)
+            .setWhen(System.currentTimeMillis())
+            .setCategory(Notification.CATEGORY_CALL)
+            .setContentIntent(openApp(ctx, 8))
+        @Suppress("DEPRECATION")
+        b.addAction(Notification.Action.Builder(0, "Call band karein", hangPi).build())
+        if (Build.VERSION.SDK_INT >= 31) b.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+        return b.build()
     }
 
     @Suppress("DEPRECATION")

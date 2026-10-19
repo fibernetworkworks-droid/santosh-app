@@ -60,6 +60,7 @@ class Santosh extends ChangeNotifier {
   bool backgroundRunning = false;
   String backgroundStatus = '';
   bool batteryOptimized = false;
+  bool exactAlarms = true;
   bool hasCalendar = false;
   /// While the voice screen is open it speaks replies itself.
   bool voiceMode = false;
@@ -281,6 +282,7 @@ class Santosh extends ChangeNotifier {
     backgroundRunning = await Native.running();
     backgroundStatus = await Native.status();
     batteryOptimized = await Native.batteryOptimized();
+    exactAlarms = await Native.exactAlarms();
     hasCalendar = await Native.hasCalendar();
     notifyListeners();
   }

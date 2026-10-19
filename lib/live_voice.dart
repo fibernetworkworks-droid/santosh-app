@@ -16,6 +16,10 @@ class LiveVoice {
 
   static const _ch = MethodChannel('santosh/native');
   static const _mic = EventChannel('santosh/mic');
+  static const _call = MethodChannel('santosh/call');
+
+  /// The call in progress (the lock-screen notification's "Call band karein" button ends it).
+  static LiveVoice? _current;
 
   WebSocket? _ws;
   StreamSubscription? _micSub;
@@ -68,6 +72,11 @@ class LiveVoice {
       return 'Server se voice connect nahi hua: $e';
     }
     _ws!.pingInterval = const Duration(seconds: 15);
+    _current = this;
+    _call.setMethodCallHandler((c) async {
+      if (c.method == 'hangup') await _current?.stop();
+      return null;
+    });
     _ws!.listen(_onData, onDone: () => _finish(_ws?.closeReason), onError: (e) => _finish('$e'), cancelOnError: true);
     _micSub = _mic.receiveBroadcastStream().listen((b) {
       final bytes = b as Uint8List;
@@ -122,6 +131,7 @@ class LiveVoice {
   void _finish(String? reason) {
     if (_closed) return;
     _closed = true;
+    if (identical(_current, this)) _current = null;
     _micSub?.cancel();
     _ch.invokeMethod('voiceStop');
     onClosed(reason);
