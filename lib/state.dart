@@ -109,7 +109,7 @@ class Santosh extends ChangeNotifier {
     try {
       final r = await api!.netDecide(msgId, action, slot: slot, minutes: minutes, note: note);
       final it = _hoola['hoola_knock:$msgId'];
-      if (it != null) it.data = {...it.data, 'status': r['status'] ?? action};
+      if (it != null) it.data = {...it.data, 'status': r['status'] ?? action, if (r['effect'] != null) 'effect': r['effect']};
       hoolaTick++;
       notifyListeners();
       return null;

@@ -53,6 +53,8 @@ HOOLA_TOOLS = [
          "slots": {"type": "array", "items": {"type": "string"}}, "minutes": {"type": "integer"},
          "file_id": {"type": "string"}, "email_id": {"type": "string"}, "attachment_id": {"type": "string"},
          "drive": {"type": "string"}, "url": {"type": "string"}, "amount": {"type": "number"}, "upi_note": {"type": "string"},
+         "upi_id": {"type": "string", "description": "The owner's own UPI ID for a payment_request"},
+         "email": {"type": "string"},
          "name": {"type": "string"}, "phone": {"type": "string"}, "place": {"type": "string"},
          "thread_id": {"type": "string", "description": "Continue an existing conversation"}},
                       "required": ["to"]}},
@@ -138,7 +140,7 @@ async def hoola_set_connection(ctx: Ctx, link_id="", who="", vip=None, nick=None
 async def hoola_send(ctx: Ctx, to, kind="message", text="", thread_id="", **kw):
     body: dict[str, Any] = {"text": str(text or "")}
     for k in ("title", "slots", "minutes", "file_id", "email_id", "attachment_id", "drive", "url", "amount", "upi_note",
-              "name", "phone", "place"):
+              "upi_id", "email", "name", "phone", "place"):
         if kw.get(k) not in (None, "", []):
             body[k] = kw[k]
     return await _t(net.send, ctx.tenant_id, str(to), kind or "message", body, str(text or "")[:80], thread_id or "")

@@ -431,7 +431,7 @@ def send(tenant: str, to: str, kind: str, body: dict[str, Any], subject: str = "
     if secret:
         raise NetError(f"Isme {secret} jaisi jaankari hai. Hoola kabhi PIN, OTP, password, card ya Aadhaar number "
                        "kisi ko nahi bhejta.")
-    body = prepare_outgoing(tenant, kind, body)
+    body = prepare_outgoing(tenant, kind, dict(body, _peer=peer))
     if thread_id:
         with session() as s:
             t = s.get(Thread, thread_id)
@@ -491,6 +491,7 @@ def prepare_outgoing(tenant: str, kind: str, body: dict[str, Any]) -> dict[str, 
         body["title"] = str(body.get("title") or "Meeting")[:200]
     if h:
         body = h(tenant, body)
+    body.pop("_peer", None)
     return body
 
 
@@ -582,6 +583,7 @@ def receive(env: dict[str, Any]) -> dict[str, Any]:
     return _on_request(tenant, env, card, link, rules)
 
 
+SHARE_KINDS = {"file", "presentation", "voice_note", "email", "link"}
 GROUP_KINDS: set[str] = set()                  # filled by groups (v0.31)
 EXTRA_KINDS: dict[str, Callable] = {}          # filled by later modules (learning, chains, ...)
 
@@ -655,7 +657,14 @@ def _on_request(tenant: str, env: dict, card: dict, link: Link, rules: dict) -> 
     if kind not in RESPONSES and policy.too_many(tenant, peer):
         return {"ok": False, "status": "refused", "reason": "aaj bahut saare message aa chuke hain"}
     tid = _thread(tenant, peer, env["thread"], policy.body_text(body)[:80], kind, mine=bool(t and t.started_by_me))
+    if kind in SHARE_KINDS:
+        from . import share
+        body = share.receive_hook(tenant, peer, kind, dict(body, _env=env["id"]))
+        body.pop("_env", None)
     d = policy.decide(tenant, rules, link, card, kind, body, in_my_thread=mine)
+    scan = body.get("scan") or {}
+    if scan.get("verdict") == "danger" and d["action"] != "block":
+        d = {**d, "action": "decline", "reason": "jaanch mein khatarnak laga: " + "; ".join(scan.get("notes") or [])[:300]}
     status = {"block": "blocked", "decline": "declined", "auto": "auto" if kind not in RESPONSES else "delivered",
               "ask": "pending"}[d["action"]]
     snooze = policy.quiet_ends(rules, tenant) if d["quiet"] and d["action"] == "ask" else None
@@ -671,6 +680,10 @@ def _on_request(tenant: str, env: dict, card: dict, link: Link, rules: dict) -> 
                                                                       "jaankari thi; maine rok diya."})
         return {"ok": False, "status": "refused", "reason": d["reason"]}
     if d["action"] == "decline":
+        if scan.get("verdict") == "danger":
+            tell(tenant, "hoola_msg", msg_view(m) | {"from": who, "fyi": True, "text": _gv(tenant,
+                 f"{who} ne kuch bheja jo jaanch mein khatarnak laga ({'; '.join(scan.get('notes') or [])[:200]}); maine nahi liya.")})
+            return {"ok": True, "status": "declined", "reason": "Jaanch mein yeh surakshit nahi laga, isliye nahi liya gaya."}
         return {"ok": True, "status": "declined", "reason": "Unke niyam ke hisaab se yeh abhi nahi le sakte."}
     if kind in RESPONSES:
         return _on_response(tenant, m, who)
@@ -815,6 +828,12 @@ def decide(tenant: str, msg_id: str, action: str, slot: int | None = None, minut
         row = s.get(NetMsg, msg_id)
         row.status = "accepted"
     r = reply(tenant, m.thread_id, note, kind=eff.get("kind", "accepted"), extra=eff.get("body") or {})
+    saved = eff.get("saved") or {}
+    if saved.get("where") in ("pay", "map", "link", "contact"):
+        words = {"pay": f"₹{m.body.get('amount')} dene ke liye UPI app kholiye; PIN sirf UPI app mein aap daalenge.",
+                 "map": f"Location: {m.body.get('place', '')}", "link": f"Link: {m.body.get('url', '')}",
+                 "contact": f"Contact: {m.body.get('name', '')} {m.body.get('phone', '')}"}[saved["where"]]
+        tell(tenant, "hoola_msg", msg_view(m) | {"from": who, "fyi": True, "status": "accepted", "text": words, "effect": saved})
     if by_rules:
         tell(tenant, "hoola_msg", msg_view(m) | {"from": who, "fyi": True, "status": "accepted",
                                                 "text": _gv(tenant, f"{who} ke saath meeting aapke khaali samay mein maine khud fix kar di."),
@@ -852,3 +871,4 @@ def counts(tenant: str) -> dict[str, int]:
 
 
 _ = or_
+from . import share as _share  # noqa: E402,F401  (registers file / email / link / presentation handlers)

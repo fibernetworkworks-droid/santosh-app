@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
@@ -18,6 +19,64 @@ Widget _badges(Map<String, dynamic> v) => Wrap(spacing: 6, children: [
       if (v['key_warning'] == true)
         const Text('⚠️ pehchaan badli', style: TextStyle(color: C.bad, fontSize: 11.5, fontWeight: FontWeight.w700)),
     ]);
+
+Future<void> _open(String url) async {
+  if (url.isEmpty) return;
+  await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication).catchError((_) => false);
+}
+
+String _size(dynamic n) {
+  final b = (n is num) ? n.toDouble() : 0.0;
+  if (b <= 0) return '';
+  if (b < 1024 * 1024) return '${(b / 1024).toStringAsFixed(0)} KB';
+  return '${(b / 1024 / 1024).toStringAsFixed(1)} MB';
+}
+
+/// What the receiving avatar found out before handing anything over: summary and the safety check.
+Widget _checked(Map<String, dynamic> v) {
+  final scan = v['scan'] is Map ? Map<String, dynamic>.from(v['scan'] as Map) : const <String, dynamic>{};
+  final verdict = scan['verdict'] as String? ?? '';
+  final notes = List<String>.from((scan['notes'] as List? ?? const []).map((e) => '$e'));
+  final col = switch (verdict) { 'danger' => C.bad, 'caution' => C.warn, 'clear' => C.ok, _ => C.faint };
+  final lines = <Widget>[
+    if ((v['name'] ?? '') != '')
+      Text('📎 ${v['name']}  ${_size(v['size'])}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+    if ((v['subject'] ?? '') != '')
+      Text('✉️ ${v['subject']}${(v['from_name'] ?? '') != '' ? ' · ${v['from_name']}' : ''}',
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+    if ((v['url'] ?? '') != '') Text('🔗 ${v['url']}', style: const TextStyle(fontSize: 12.5, color: C.chip)),
+    if ((v['place'] ?? '') != '') Text('📍 ${v['place']}', style: const TextStyle(fontSize: 13)),
+    if ((v['summary'] ?? '') != '') Text(v['summary'] as String, style: const TextStyle(fontSize: 13, color: C.ink)),
+    if (verdict.isNotEmpty)
+      Text(
+          '${verdict == 'clear' ? '✅ Jaanch saaf' : verdict == 'caution' ? '⚠️ Dhyaan se' : verdict == 'danger' ? '⛔ Khatarnak' : 'Jaanch poori nahi hui'}'
+          '${notes.isNotEmpty ? ': ${notes.join('; ')}' : ''}',
+          style: TextStyle(color: col, fontSize: 12.5, fontWeight: FontWeight.w600)),
+  ];
+  if (lines.isEmpty) return const SizedBox.shrink();
+  return Padding(padding: const EdgeInsets.only(top: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: lines));
+}
+
+/// Buttons for what was handed over (pay in the UPI app, open the link / map, call the contact).
+Widget _effectButtons(Map<String, dynamic>? e) {
+  if (e == null) return const SizedBox.shrink();
+  final where = e['where'] as String? ?? '';
+  final (String label, IconData icon, String url) = switch (where) {
+    'pay' => ('UPI app mein pay kijiye', Icons.currency_rupee_rounded, e['pay_link'] as String? ?? ''),
+    'link' => ('Link kholiye', Icons.open_in_new_rounded, e['url'] as String? ?? ''),
+    'map' => ('Map mein dekhiye', Icons.map_rounded, e['url'] as String? ?? ''),
+    'contact' => ('Call kijiye', Icons.call_rounded, 'tel:${e['phone'] ?? ''}'),
+    _ => ('', Icons.circle, ''),
+  };
+  if (label.isEmpty || url.isEmpty) return const SizedBox.shrink();
+  return Padding(
+    padding: const EdgeInsets.only(top: 6),
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(onPressed: () => _open(url), icon: Icon(icon, size: 18), label: Text(label)),
+    ),
+  );
+}
 
 String _statusText(String s) => switch (s) {
       'accepted' => 'Haan kaha ✓',
@@ -104,6 +163,7 @@ class _HoolaKnockCardState extends State<HoolaKnockCard> {
               decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
               child: Text('“$text”', style: const TextStyle(fontSize: 13.5)),
             ),
+          _checked(v),
           if (body['amount'] != null)
             Padding(
               padding: const EdgeInsets.only(top: 6),
@@ -136,11 +196,13 @@ class _HoolaKnockCardState extends State<HoolaKnockCard> {
               TextButton(onPressed: _busy ? null : () => _do('decline'), child: const Text('Mana', style: TextStyle(color: C.bad))),
               TextButton(onPressed: _busy ? null : _later, child: const Text('Baad mein')),
             ]),
-          ] else
+          ] else ...[
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(_statusText(status), style: const TextStyle(color: C.ok, fontWeight: FontWeight.w700)),
             ),
+            _effectButtons(v['effect'] is Map ? Map<String, dynamic>.from(v['effect'] as Map) : null),
+          ],
         ]),
       ),
     );
@@ -275,12 +337,13 @@ class HoolaMsgCard extends StatelessWidget {
           ]),
           const SizedBox(height: 6),
           Text(v['text'] as String? ?? '', style: const TextStyle(fontSize: 13.5)),
-          if (effect != null && (effect['where'] ?? '') != '')
+          if (effect != null && (effect['where'] == 'calendar' || effect['where'] == 'reminder'))
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(effect['where'] == 'calendar' ? '📅 Calendar mein jod diya' : '⏰ Reminder laga diya',
                   style: const TextStyle(color: C.teal, fontSize: 12.5)),
             ),
+          _effectButtons(effect),
           if (canReply)
             Align(
               alignment: Alignment.centerRight,

@@ -241,30 +241,30 @@ class Api {
   }
 
   // ---------------- Hoola Network ----------------
-  Map<String, dynamic> _m(dynamic x) => Map<String, dynamic>.from(x as Map);
-  List<Map<String, dynamic>> _l(dynamic x) => List<Map<String, dynamic>>.from((x as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
-  Future<Map<String, dynamic>> netMe() async => _m(await _send('GET', '/api/net/me'));
-  Future<Map<String, dynamic>> netSetMe({String? handle, bool? discoverable, String? phone}) async => _m(await _send('PUT', '/api/net/me',
+  Map<String, dynamic> _hm(dynamic x) => Map<String, dynamic>.from(x as Map);
+  List<Map<String, dynamic>> _hl(dynamic x) => List<Map<String, dynamic>>.from((x as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<Map<String, dynamic>> netMe() async => _hm(await _send('GET', '/api/net/me'));
+  Future<Map<String, dynamic>> netSetMe({String? handle, bool? discoverable, String? phone}) async => _hm(await _send('PUT', '/api/net/me',
       body: {if (handle != null) 'handle': handle, if (discoverable != null) 'discoverable': discoverable, if (phone != null) 'phone': phone}));
-  Future<Map<String, dynamic>> netInvite() async => _m(await _send('POST', '/api/net/invite'));
-  Future<List<Map<String, dynamic>>> netFind(String q) async => _l((await _send('GET', '/api/net/find', query: {'q': q}))['results']);
+  Future<Map<String, dynamic>> netInvite() async => _hm(await _send('POST', '/api/net/invite'));
+  Future<List<Map<String, dynamic>>> netFind(String q) async => _hl((await _send('GET', '/api/net/find', query: {'q': q}))['results']);
   Future<Map<String, dynamic>> netConnect({String to = '', String invite = '', String relation = 'friend', String note = ''}) async =>
-      _m(await _send('POST', '/api/net/connect', body: {'to': to, 'invite': invite, 'relation': relation, 'note': note}));
-  Future<List<Map<String, dynamic>>> netConnections() async => _l((await _send('GET', '/api/net/connections'))['connections']);
+      _hm(await _send('POST', '/api/net/connect', body: {'to': to, 'invite': invite, 'relation': relation, 'note': note}));
+  Future<List<Map<String, dynamic>>> netConnections() async => _hl((await _send('GET', '/api/net/connections'))['connections']);
   Future<Map<String, dynamic>> netAnswer(String linkId, String action, {String relation = ''}) async =>
-      _m(await _send('POST', '/api/net/connections/$linkId', body: {'action': action, 'relation': relation}));
+      _hm(await _send('POST', '/api/net/connections/$linkId', body: {'action': action, 'relation': relation}));
   Future<Map<String, dynamic>> netUpdateLink(String linkId, Map<String, dynamic> body) async =>
-      _m(await _send('PATCH', '/api/net/connections/$linkId', body: body));
-  Future<Map<String, dynamic>> netInbox() async => _m(await _send('GET', '/api/net/inbox'));
+      _hm(await _send('PATCH', '/api/net/connections/$linkId', body: body));
+  Future<Map<String, dynamic>> netInbox() async => _hm(await _send('GET', '/api/net/inbox'));
   Future<Map<String, dynamic>> netDecide(String msgId, String action, {int? slot, int? minutes, String note = ''}) async =>
-      _m(await _send('POST', '/api/net/inbox/$msgId',
+      _hm(await _send('POST', '/api/net/inbox/$msgId',
           body: {'action': action, if (slot != null) 'slot': slot, if (minutes != null) 'minutes': minutes, 'note': note}, timeout: const Duration(seconds: 60)));
   Future<Map<String, dynamic>> netSend(String to, String kind, Map<String, dynamic> body, {String threadId = ''}) async =>
-      _m(await _send('POST', '/api/net/send', body: {'to': to, 'kind': kind, 'body': body, 'thread_id': threadId}, timeout: const Duration(seconds: 60)));
-  Future<List<Map<String, dynamic>>> netThreads() async => _l((await _send('GET', '/api/net/threads'))['threads']);
-  Future<Map<String, dynamic>> netThread(String id) async => _m(await _send('GET', '/api/net/threads/$id'));
+      _hm(await _send('POST', '/api/net/send', body: {'to': to, 'kind': kind, 'body': body, 'thread_id': threadId}, timeout: const Duration(seconds: 60)));
+  Future<List<Map<String, dynamic>>> netThreads() async => _hl((await _send('GET', '/api/net/threads'))['threads']);
+  Future<Map<String, dynamic>> netThread(String id) async => _hm(await _send('GET', '/api/net/threads/$id'));
   Future<Map<String, dynamic>> netReply(String threadId, String text) async =>
-      _m(await _send('POST', '/api/net/threads/$threadId/reply', body: {'text': text}, timeout: const Duration(seconds: 60)));
+      _hm(await _send('POST', '/api/net/threads/$threadId/reply', body: {'text': text}, timeout: const Duration(seconds: 60)));
 
   // ---------------- Hoola avatar ----------------
   Future<Map<String, dynamic>> avatarGet() async => Map<String, dynamic>.from(await _send('GET', '/api/avatar'));
