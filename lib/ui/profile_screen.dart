@@ -18,6 +18,7 @@ import 'photos_screen.dart';
 import 'sheets_screen.dart';
 import 'slides_screen.dart';
 import 'youtube_screen.dart';
+import 'appcheck_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -133,6 +134,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           subtitle: const Text('Video dhoondhna, video ka summary, mere channel ke views / analytics / comments'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => YouTubeScreen(app: app))),
+        ),
+      ),
+      const SizedBox(height: 18),
+      Glass(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.shield_rounded, color: C.ok),
+          title: const Text('App Jaanch', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('APK / EXE install karne se pehle jaanchiye: fraud app to nahi?'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AppCheckScreen(app: app))),
         ),
       ),
       const SizedBox(height: 18),

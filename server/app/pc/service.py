@@ -242,13 +242,14 @@ def safe_name(name: str) -> str:
     return name[:200]
 
 
-async def store_upload(upload, tenant_id: str, device_id: str, direction: str, pc_path: str = "") -> PcFile:
+async def store_upload(upload, tenant_id: str, device_id: str, direction: str, pc_path: str = "",
+                       limit_mb: int | None = None) -> PcFile:
     """Streams an UploadFile to disk with a size cap. Returns the saved row."""
     fid_dir = files_dir()
     tmp = fid_dir / ("up_" + secrets.token_hex(8))
     h = hashlib.sha256()
     size = 0
-    limit = max_bytes()
+    limit = limit_mb * 1024 * 1024 if limit_mb else max_bytes()
     try:
         with tmp.open("wb") as out:
             while True:
@@ -257,7 +258,7 @@ async def store_upload(upload, tenant_id: str, device_id: str, direction: str, p
                     break
                 size += len(chunk)
                 if size > limit:
-                    raise PairError(f"File is bigger than {get_settings().pc_max_file_mb} MB")
+                    raise PairError(f"File is bigger than {limit_mb or get_settings().pc_max_file_mb} MB")
                 h.update(chunk)
                 out.write(chunk)
         import asyncio

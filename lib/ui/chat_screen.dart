@@ -12,6 +12,7 @@ import 'calendar_screen.dart';
 import 'sheets_screen.dart';
 import 'slides_screen.dart';
 import 'youtube_screen.dart';
+import 'appcheck_screen.dart';
 import 'forms_screen.dart';
 import 'glass.dart';
 import 'notebook_screen.dart';
@@ -222,6 +223,8 @@ class _ChatScreenState extends State<ChatScreen> {
         return NotebookCard(v: it.data, app: app);
       case 'youtube':
         return YouTubeCard(v: it.data);
+      case 'app_check':
+        return AppCheckCard(v: it.data);
       case 'photos_pick':
         return PhotosPickCard(v: it.data);
       case 'bazar':

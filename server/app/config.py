@@ -64,6 +64,15 @@ class Settings(BaseSettings):
     notebook_tts_model: str = "gemini-2.5-flash-preview-tts"   # Santosh Notebook audio overviews (two voices)
     youtube_api_key: str = ""               # YouTube Data API v3 key for search / public video stats (Google Cloud)
     youtube_gemini_model: str = "gemini-2.5-flash"   # watches public YouTube videos to summarise / answer (official Gemini API)
+    # --- App Jaanch: check an APK / EXE before installing, with REA (github.com/morluto/rea), static analysis only ---
+    appcheck_enabled: bool = True           # also needs REA_BIN; off automatically when REA is not installed
+    rea_bin: str = ""                       # absolute path to the pinned `rea` launcher (npm rea-agents@6.7.0)
+    rea_jadx_jar: str = ""                  # jadx-headless-mcp-0.7.1-all.jar (SHA-256 checked at install) for APKs
+    rea_java_home: str = ""                 # optional JDK 17+ for JADX (else java on PATH)
+    rea_home: str = ""                      # REA's private HOME / work folders (default ./data/rea_home)
+    rea_timeout_s: int = 300                # per REA call
+    rea_node_heap_mb: int = 2048
+    appcheck_max_mb: int = 400              # biggest file App Jaanch accepts
     gcal_caldav_url: str = ""               # override CalDAV base (for Workspace/custom); blank = Gmail legacy endpoint
 
     # --- Google Drive/Sheets/Docs (service account; share a folder with its email) ---

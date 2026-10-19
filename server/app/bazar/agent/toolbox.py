@@ -20,6 +20,7 @@ from ..connectors.photos import PhotosExecutor
 from ..connectors.sheets import SheetsExecutor
 from ..connectors.slides import SlidesExecutor
 from ..connectors.youtube import YouTubeExecutor
+from ..connectors.appcheck import AppCheckExecutor
 from ..connectors.commerce import CommerceExecutor
 from ..connectors.device import DeviceExecutor
 from ..connectors.handoff import HandoffExecutor
@@ -35,7 +36,7 @@ def default_executors() -> dict[str, Executor]:
     return {"mcp": McpExecutor(), "bbps": BBPSExecutor(), "upi": UpiExecutor(), "ride": RideExecutor(),
             "shop": ShopExecutor(), "native": Native2Executor(), "pc": PcExecutor(),
             "handoff": HandoffExecutor(), "reader": ReaderExecutor(), "device": DeviceExecutor(), "commerce": CommerceExecutor(), "browser": BrowserExecutor(), "pcop": PcOpExecutor(), "mail": MailExecutor(), "cal": CalendarExecutor(), "sheets": SheetsExecutor(), "drive": DriveExecutor(),
-            "forms": FormsExecutor(), "slides": SlidesExecutor(), "photos": PhotosExecutor(), "notebook": NotebookExecutor(), "youtube": YouTubeExecutor()}
+            "forms": FormsExecutor(), "slides": SlidesExecutor(), "photos": PhotosExecutor(), "notebook": NotebookExecutor(), "youtube": YouTubeExecutor(), "appcheck": AppCheckExecutor()}
 
 
 @dataclass

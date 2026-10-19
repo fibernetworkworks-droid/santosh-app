@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.25.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.26.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -1070,6 +1070,40 @@ class NotebookAudioIn(BaseModel):
     language: str = "hinglish"
     focus: str = ""
     conversation_id: str = ""
+
+
+# ---------------- App Jaanch (REA static checks of APK / EXE files; nothing is run) ----------------
+@app.get("/api/appcheck", dependencies=[Depends(require_key)])
+def appcheck_state(tenant: str = Depends(current_tenant)):
+    from .appcheck import service as acs
+    return acs.status() | {"history": acs.history(tenant)}
+
+
+@app.post("/api/appcheck/upload", dependencies=[Depends(require_key)])
+async def appcheck_upload(file: UploadFile = File(...), conversation_id: str = Form(""), tenant: str = Depends(current_tenant)):
+    import asyncio
+    from .appcheck import service as acs
+    from .appcheck.runner import ReaError
+    from .pc import service as pcs
+    if not acs.status()["enabled"]:
+        raise HTTPException(503, "App Jaanch abhi server par chalu nahi hai.")
+    try:
+        row = await pcs.store_upload(file, tenant, "", "to_phone", limit_mb=get_settings().appcheck_max_mb)
+    except pcs.PairError as e:
+        raise HTTPException(413, str(e))
+    try:
+        return await asyncio.to_thread(acs.check, tenant, conversation_id, {"file_id": row.id})
+    except (acs.CheckError, ReaError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/appcheck/{cid}", dependencies=[Depends(require_key)])
+def appcheck_get(cid: str, tenant: str = Depends(current_tenant)):
+    from .appcheck import service as acs
+    try:
+        return acs.get(tenant, cid)
+    except acs.CheckError as e:
+        raise HTTPException(404, str(e))
 
 
 @app.get("/api/notebooks", dependencies=[Depends(require_key)])

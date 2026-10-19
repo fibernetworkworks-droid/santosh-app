@@ -1,0 +1,18 @@
+{
+  "id": "santosh-appcheck",
+  "name": "App Jaanch",
+  "category": "Safety",
+  "sub_category": "Fraud app check",
+  "pack_type": "Native",
+  "layer": "L0",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Check an APK, EXE or app file someone sent before installing it: dangerous permissions (SMS / OTP, accessibility, device admin), hidden icon, signer, company, and bank / KYC / challan scam names. The file is never run",
+  "notes": "Driven by the app_check tool. Uses REA (github.com/morluto/rea, MIT, pinned rea-agents 6.7.0) on the server in static-analysis-only mode: runtime, debugger, Frida, adb and browser tools are blocked",
+  "master_list_row": 0,
+  "executor": "appcheck",
+  "config": {},
+  "tools": [],
+  "keywords": ["apk", "fraud app", "scam", "safe", "virus", "exe", "kyc apk", "app check", "rea"],
+  "wave": "MVP"
+}

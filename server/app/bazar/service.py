@@ -127,6 +127,9 @@ def pack_status(s, user: User, pack: Pack) -> str:
         return "ready" if (core_settings().youtube_api_key or has_youtube(user.id)) else "not_connected"
     if pack.executor == "notebook":
         return "ready"
+    if pack.executor == "appcheck":
+        from ..appcheck.runner import configured
+        return "ready" if configured() else "not_configured"
     if pack.executor == "photos":
         from ..photos.accounts import has_photos
         return "ready" if has_photos(user.id) else "not_connected"

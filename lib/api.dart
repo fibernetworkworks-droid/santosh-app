@@ -240,6 +240,20 @@ class Api {
     return Map<String, dynamic>.from(body as Map);
   }
 
+  // ---------------- App Jaanch (REA static checks) ----------------
+  Future<Map<String, dynamic>> appcheckState() async => Map<String, dynamic>.from(await _send('GET', '/api/appcheck'));
+  Future<Map<String, dynamic>> appcheckGet(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/appcheck/$id'));
+  Future<Map<String, dynamic>> appcheckUpload(String filename, List<int> bytes, {String conversationId = ''}) async {
+    final req = http.MultipartRequest('POST', _u('/api/appcheck/upload'))
+      ..fields['conversation_id'] = conversationId
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
+    final res = await http.Response.fromStream(await req.send().timeout(const Duration(seconds: 420)));
+    final body = jsonDecode(utf8.decode(res.bodyBytes));
+    if (res.statusCode >= 400) throw ApiException(res.statusCode, (body as Map)['detail']?.toString() ?? 'Jaanch nahi hui');
+    return Map<String, dynamic>.from(body as Map);
+  }
+
   // ---------------- MCP servers ----------------
   Future<List<Map<String, dynamic>>> mcpList() async =>
       List<Map<String, dynamic>>.from(((await _send('GET', '/api/bazar/mcp'))['servers'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
