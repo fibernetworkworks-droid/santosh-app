@@ -403,3 +403,91 @@ HOOLA_LABELS.update(LEARN_LABELS)
 HOOLA_HANDLERS.update({"hoola_learn": hoola_learn, "hoola_learned": hoola_learned, "hoola_samaj": hoola_samaj,
                        "hoola_samaj_post": hoola_samaj_post, "hoola_samaj_act": hoola_samaj_act,
                        "hoola_community_search": hoola_community_search, "hoola_skills": hoola_skills})
+
+
+# ---------------------------------------------------------------- v0.33 chains + business avatars
+from ..net import business as biz  # noqa: E402
+from ..net import chain as chn  # noqa: E402
+
+BIZ_TOOLS = [
+    {"name": "hoola_business", "description": (
+        "Talk to a business's Hoola (any public business; no connection needed): action find (query, category), complain "
+        "(business + text: they get a numbered ticket and send updates), quote (business + text of what is needed), order "
+        "(business + text; the business owner confirms; payment only by a request card), ask (business + question), "
+        "tickets (the owner's complaints and their status)."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["find", "complain", "quote", "order", "ask", "tickets"]},
+         "business": {"type": "string", "description": "@Hoola ID or name from find"}, "text": {"type": "string"},
+         "query": {"type": "string"}, "category": {"type": "string"}}, "required": ["action"]}},
+    {"name": "hoola_my_business", "description": (
+        "The owner's own business Hoola: action show, setup (name, category isp/shop/pharmacy/clinic/services/restaurant/"
+        "education/other, area, about, hours, catalog [{item, price, unit}], public, ticket_prefix, auto_assign), team "
+        "(people who can get tickets), tickets (status filter), update_ticket (number + status open / assigned / "
+        "in_progress / resolved / closed + note: the customer is told), assign (number + to: passes it along a chain to "
+        "a team member's avatar), verify (gstin: asks the server operator for the verified badge)."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["show", "setup", "team", "tickets", "update_ticket", "assign", "verify"]},
+         "name": {"type": "string"}, "category": {"type": "string"}, "area": {"type": "string"}, "about": {"type": "string"},
+         "hours": {"type": "string"}, "catalog": {"type": "array", "items": {"type": "object"}}, "public": {"type": "boolean"},
+         "ticket_prefix": {"type": "string"}, "auto_assign": {"type": "boolean"},
+         "team": {"type": "array", "items": {"type": "string"}}, "status": {"type": "string"}, "number": {"type": "string"},
+         "note": {"type": "string"}, "to": {"type": "string"}, "gstin": {"type": "string"}}, "required": ["action"]}},
+    {"name": "hoola_chain", "description": (
+        "Pass a job from avatar to avatar (max 5 hops, no loops, signed trail, the starter sees every step): action start "
+        "(to + goal + note + hours), act (chain_id + accept / pass with to / done with note / decline), list."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["start", "act", "list"]}, "chain_id": {"type": "string"},
+         "decision": {"type": "string", "enum": ["accept", "pass", "done", "decline"]}, "to": {"type": "string"},
+         "goal": {"type": "string"}, "note": {"type": "string"}, "hours": {"type": "integer"}}, "required": ["action"]}},
+]
+BIZ_LABELS = {"hoola_business": "Business ke Hoola se baat kar raha hoon", "hoola_my_business": "Aapka business sambhal raha hoon",
+              "hoola_chain": "Kaam aage badha raha hoon"}
+
+
+async def hoola_business(ctx: Ctx, action, business="", text="", query="", category="", **_):
+    t = ctx.tenant_id
+    if action == "find":
+        return {"businesses": await _t(biz.directory, t, str(query or business or ""), str(category or ""))}
+    if action == "tickets":
+        return {"tickets": await _t(biz.my_tickets, t)}
+    if not business:
+        raise ToolError("Kaunsa business? (@Hoola ID ya naam)")
+    if action == "complain":
+        return await _t(biz.complain, t, str(business), str(text))
+    addr = await _t(biz.contact, t, str(business))
+    kind = {"quote": "ask", "order": "order", "ask": "ask"}[action]
+    prefix = {"quote": "Quote chahiye: ", "order": "Order: ", "ask": ""}[action]
+    return await _t(net.send, t, addr, kind, {"text": prefix + str(text or "")}, str(text or "")[:80])
+
+
+async def hoola_my_business(ctx: Ctx, action, **kw):
+    t = ctx.tenant_id
+    if action == "show":
+        return {"business": await _t(biz.profile, t)}
+    if action == "setup":
+        return await _t(biz.setup, t, **{k: v for k, v in kw.items() if v is not None})
+    if action == "team":
+        return {"team": await _t(biz.set_team, t, [str(x) for x in kw.get("team") or []])}
+    if action == "tickets":
+        return {"tickets": await _t(biz.tickets, t, str(kw.get("status") or ""))}
+    if action == "update_ticket":
+        return await _t(biz.update_ticket, t, str(kw.get("number") or ""), str(kw.get("status") or ""), str(kw.get("note") or ""))
+    if action == "assign":
+        return await _t(biz.assign, t, str(kw.get("number") or ""), str(kw.get("to") or ""), str(kw.get("note") or ""))
+    if action == "verify":
+        return await _t(biz.request_verification, t, str(kw.get("gstin") or ""))
+    raise ToolError("action?")
+
+
+async def hoola_chain(ctx: Ctx, action, chain_id="", decision="", to="", goal="", note="", hours=72, **_):
+    t = ctx.tenant_id
+    if action == "start":
+        return await _t(chn.start, t, str(to), str(goal), str(note or ""), int(hours or 72))
+    if action == "act":
+        return await _t(chn.act, t, str(chain_id), decision, str(to or ""), str(note or ""))
+    return {"chains": await _t(chn.chains, t)}
+
+
+HOOLA_TOOLS.extend(BIZ_TOOLS)
+HOOLA_LABELS.update(BIZ_LABELS)
+HOOLA_HANDLERS.update({"hoola_business": hoola_business, "hoola_my_business": hoola_my_business, "hoola_chain": hoola_chain})

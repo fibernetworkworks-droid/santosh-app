@@ -295,6 +295,18 @@ class Api {
   Future<Map<String, dynamic>> netSamajItem(String iid, Map<String, dynamic> body) async =>
       _hm(await _send('POST', '/api/net/samaj-items/$iid', body: body, timeout: const Duration(seconds: 60)));
 
+  Future<Map<String, dynamic>> netBusiness() async => _hm(await _send('GET', '/api/net/business'));
+  Future<Map<String, dynamic>> netBusinessPut(Map<String, dynamic> body) async => _hm(await _send('PUT', '/api/net/business', body: body));
+  Future<Map<String, dynamic>> netBusinessVerify(String gstin) async => _hm(await _send('POST', '/api/net/business/verify', body: {'note': gstin}));
+  Future<List<Map<String, dynamic>>> netBusinesses({String q = ''}) async => _hl((await _send('GET', '/api/net/businesses', query: {'q': q}))['businesses']);
+  Future<Map<String, dynamic>> netBusinessContact(String business, String text, String kind) async =>
+      _hm(await _send('POST', '/api/net/businesses/contact', body: {'business': business, 'text': text, 'kind': kind}, timeout: const Duration(seconds: 60)));
+  Future<Map<String, dynamic>> netTicket(String number, {String status = '', String note = '', String to = ''}) async =>
+      _hm(await _send('POST', '/api/net/tickets/$number', body: {'status': status, 'note': note, 'to': to}, timeout: const Duration(seconds: 60)));
+  Future<List<Map<String, dynamic>>> netChains() async => _hl((await _send('GET', '/api/net/chains'))['chains']);
+  Future<Map<String, dynamic>> netChainAct(String id, String action, {String to = '', String note = ''}) async =>
+      _hm(await _send('POST', '/api/net/chains/$id', body: {'action': action, 'to': to, 'note': note}, timeout: const Duration(seconds: 60)));
+
   // ---------------- Hoola avatar ----------------
   Future<Map<String, dynamic>> avatarGet() async => Map<String, dynamic>.from(await _send('GET', '/api/avatar'));
   Future<Map<String, dynamic>> avatarPut(Map<String, dynamic> body) async =>

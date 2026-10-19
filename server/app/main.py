@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.32.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.33.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -1402,6 +1402,127 @@ def net_samaj_item(iid: str, body: SamajActIn, tenant: str = Depends(current_ten
         it, c = _net(sam._my_item, tenant, iid)
         return _net(sam.moderate, tenant, c.cid, body.mod_action, iid, "")
     raise HTTPException(400, "action?")
+
+
+class BizIn(BaseModel):
+    name: str | None = None
+    category: str | None = None
+    area: str | None = None
+    about: str | None = None
+    hours: str | None = None
+    catalog: list | None = None
+    public: bool | None = None
+    ticket_prefix: str | None = None
+    webhook_url: str | None = None
+    webhook_secret: str | None = None
+    auto_assign: bool | None = None
+    team: list[str] | None = None
+
+
+class TicketIn(BaseModel):
+    status: str = ""
+    note: str = ""
+    to: str = ""
+
+
+class ChainActIn(BaseModel):
+    action: str
+    to: str = ""
+    note: str = ""
+
+
+class ComplainIn(BaseModel):
+    business: str
+    text: str
+    kind: str = "complain"
+
+
+@app.get("/api/net/business", dependencies=[Depends(require_key)])
+def net_business(tenant: str = Depends(current_tenant)):
+    from .net import business as biz
+    return {"business": biz.profile(tenant), "tickets": biz.tickets(tenant) if biz.profile(tenant) else [],
+            "my_tickets": biz.my_tickets(tenant)}
+
+
+@app.put("/api/net/business", dependencies=[Depends(require_key)])
+def net_business_put(body: BizIn, tenant: str = Depends(current_tenant)):
+    from .net import business as biz
+    return _net(biz.setup, tenant, **{k: v for k, v in body.model_dump().items() if v is not None})
+
+
+@app.post("/api/net/business/verify", dependencies=[Depends(require_key)])
+def net_business_verify(body: TicketIn, tenant: str = Depends(current_tenant)):
+    from .net import business as biz
+    return _net(biz.request_verification, tenant, body.note)
+
+
+@app.get("/api/net/businesses", dependencies=[Depends(require_key)])
+def net_businesses(q: str = "", category: str = "", tenant: str = Depends(current_tenant)):
+    from .net import business as biz
+    return {"businesses": biz.directory(tenant, q, category)}
+
+
+@app.post("/api/net/businesses/contact", dependencies=[Depends(require_key)])
+def net_business_contact(body: ComplainIn, tenant: str = Depends(current_tenant)):
+    from .net import business as biz
+    from .net import service as net
+    if body.kind == "complain":
+        return _net(biz.complain, tenant, body.business, body.text)
+    addr = _net(biz.contact, tenant, body.business)
+    k = {"quote": "ask", "order": "order"}.get(body.kind, "ask")
+    return _net(net.send, tenant, addr, k, {"text": ({"quote": "Quote chahiye: ", "order": "Order: "}.get(body.kind, "")) + body.text})
+
+
+@app.post("/api/net/tickets/{number}", dependencies=[Depends(require_key)])
+def net_ticket(number: str, body: TicketIn, tenant: str = Depends(current_tenant)):
+    from .net import business as biz
+    if body.to:
+        return _net(biz.assign, tenant, number, body.to, body.note)
+    return _net(biz.update_ticket, tenant, number, body.status, body.note)
+
+
+@app.get("/api/net/chains", dependencies=[Depends(require_key)])
+def net_chains(tenant: str = Depends(current_tenant)):
+    from .net import chain as chn
+    return {"chains": chn.chains(tenant)}
+
+
+@app.post("/api/net/chains/{cid}", dependencies=[Depends(require_key)])
+def net_chain_act(cid: str, body: ChainActIn, tenant: str = Depends(current_tenant)):
+    from .net import chain as chn
+    return _net(chn.act, tenant, cid, body.action, body.to, body.note)
+
+
+@app.get("/api/net/operator/verifications", dependencies=[Depends(require_key)])
+def net_operator_queue(tenant: str = Depends(current_tenant)):
+    from .net import business as biz
+    if tenant != get_settings().tenant_id:
+        raise HTTPException(403, "Sirf server operator")
+    return {"requests": biz.verification_queue()}
+
+
+@app.post("/api/net/operator/verifications/{biz_tenant}", dependencies=[Depends(require_key)])
+def net_operator_verify(biz_tenant: str, body: NetAnswerIn, tenant: str = Depends(current_tenant)):
+    from .net import business as biz
+    if tenant != get_settings().tenant_id:
+        raise HTTPException(403, "Sirf server operator")
+    return _net(biz.operator_verify, biz_tenant, body.action == "approve")
+
+
+@app.post("/hooks/hoola/{handle}/ticket")
+async def net_ticket_webhook(handle: str, request: Request):
+    """The business's own system (FNW Flow, a CRM...) updates a Hoola ticket. Body {ticket, status, note}, signed:
+    X-Hoola-Signature: sha256=<HMAC-SHA256(secret, body)>."""
+    from .net import business as biz
+    from .net import identity as idn
+    row = idn.by_handle(handle)
+    if row is None:
+        raise HTTPException(404, "not found")
+    raw = await request.body()
+    try:
+        return biz.webhook_in(row.tenant_id, raw, request.headers.get("x-hoola-signature", ""))
+    except Exception as e:
+        raise HTTPException(400, str(e)[:120])
 
 
 @app.get("/c/{code}", response_class=HTMLResponse)

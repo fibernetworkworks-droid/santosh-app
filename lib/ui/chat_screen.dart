@@ -236,6 +236,10 @@ class _ChatScreenState extends State<ChatScreen> {
         return HoolaGroupCard(v: it.data, app: app);
       case 'hoola_group_post':
         return HoolaGroupPostCard(v: it.data, app: app);
+      case 'hoola_chain':
+        return HoolaChainCard(v: it.data, app: app);
+      case 'hoola_ticket':
+        return HoolaTicketCard(v: it.data, app: app);
       case 'hoola_lesson':
         return HoolaLessonCard(v: it.data, app: app);
       case 'hoola_samaj':

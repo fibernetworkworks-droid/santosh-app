@@ -14,7 +14,7 @@ from .models import NetMsg
 
 KIND_RULE = {"message": "message", "ask": "message", "task": "message", "reminder": "message", "voice_note": "voice_note",
              "meeting": "meeting", "file": "file", "email": "email", "link": "link", "presentation": "presentation",
-             "payment_request": "payment_request", "contact_card": "contact_card", "location": "location"}
+             "payment_request": "payment_request", "contact_card": "contact_card", "location": "location", "order": "message"}
 APP_EXT = (".apk", ".xapk", ".apks", ".exe", ".msi", ".scr", ".bat", ".cmd", ".vbs", ".js", ".ps1", ".hta", ".jar", ".lnk")
 DAILY_LIMIT = 40          # messages from one peer per day
 BURST_LIMIT = 8           # in 5 minutes

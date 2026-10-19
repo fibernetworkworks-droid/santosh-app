@@ -48,6 +48,19 @@ def _ctx(tenant: str) -> dict[str, Any]:
     r = a["rules"]
     share, about = r.get("share") or {}, r.get("about") or {}
     allowed = {k: about.get(k, "") for k in ("business_info", "office_hours", "price_list") if share.get(k) and about.get(k)}
+    try:
+        from .business import _biz
+        b = _biz(tenant)
+        if b is not None and b.public:                     # a public business counter: its own catalog and hours
+            if b.catalog:
+                allowed["catalog"] = "; ".join(f"{i['item']}: ₹{i['price']}{(' / ' + i['unit']) if i.get('unit') else ''}"
+                                               for i in b.catalog if i.get("price") is not None)[:3000]
+            if b.hours:
+                allowed["hours"] = b.hours
+            if b.about:
+                allowed["about_business"] = b.about[:1500]
+    except Exception:
+        pass
     return {"avatar": a, "rules": r, "allowed": allowed, "lang": r.get("language", "hinglish")}
 
 

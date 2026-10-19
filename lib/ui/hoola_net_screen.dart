@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../state.dart';
 import 'glass.dart';
 import 'hoola_cards.dart';
+import 'hoola_business_screen.dart';
 import 'hoola_samaj_screen.dart';
 
 const _relations = {'family': 'Parivar', 'team': 'Team', 'business': 'Business', 'friend': 'Dost'};
@@ -460,6 +461,13 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
           appBar: AppBar(
             title: const Text('Hoola Network'),
             backgroundColor: Colors.transparent,
+            actions: [
+              IconButton(
+                tooltip: 'Business',
+                icon: const Icon(Icons.storefront_rounded),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaBusinessScreen(app: app))),
+              ),
+            ],
             bottom: TabBar(isScrollable: true, tabs: [
               const Tab(text: 'Mera ID'),
               Tab(text: 'Jude log${(_me['requests'] ?? 0) > 0 ? ' (${_me['requests']})' : ''}'),

@@ -22,7 +22,7 @@ from .models import Invite, Link, NetMsg, Seen, Thread
 RELATIONS = ("family", "team", "business", "friend")
 RESPONSES = {"reply", "accepted", "declined", "refused", "meeting_ok", "meeting_no", "receipt", "handled"}
 REQUEST_KINDS = {"message", "ask", "voice_note", "meeting", "task", "reminder", "file", "email", "link", "presentation",
-                 "payment_request", "contact_card", "location"}
+                 "payment_request", "contact_card", "location", "order"}
 KIND_TEXT = {
     "message": "aapse kuch kehna chahte hain", "ask": "aapse ek sawaal poochh rahe hain", "voice_note": "ne voice note bheja hai",
     "meeting": "aapse milna / meeting karna chahte hain", "task": "aapko ek kaam dena chahte hain",
@@ -30,6 +30,7 @@ KIND_TEXT = {
     "email": "aapko ek email aage bhejna chahte hain", "link": "aapko ek website link bhejna chahte hain",
     "presentation": "aapko ek presentation bhejna chahte hain", "payment_request": "aapse payment maang rahe hain",
     "contact_card": "aapko ek contact bhejna chahte hain", "location": "aapko location bhejna chahte hain",
+    "order": "order dena chahte hain",
 }
 
 
@@ -885,3 +886,5 @@ from . import share as _share  # noqa: E402,F401  (registers file / email / link
 from . import groups as _groups  # noqa: E402,F401  (registers the group envelope kinds)
 from . import learning as _learning  # noqa: E402,F401
 from . import community as _community  # noqa: E402,F401  (registers the Samaj envelope kinds)
+from . import chain as _chain  # noqa: E402,F401
+from . import business as _business  # noqa: E402,F401

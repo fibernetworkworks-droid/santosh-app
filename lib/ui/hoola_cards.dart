@@ -668,3 +668,154 @@ class _HoolaSamajCardState extends State<HoolaSamajCard> {
     );
   }
 }
+
+
+Future<String?> _ask(BuildContext context, String title, String hint) async {
+  final c = TextEditingController();
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(title),
+      content: TextField(controller: c, minLines: 1, maxLines: 4, decoration: InputDecoration(hintText: hint)),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('OK')),
+      ],
+    ),
+  );
+  return ok == true ? c.text.trim() : null;
+}
+
+/// A job that came to the owner along a chain (take / pass on / done / send back), or news about one they started.
+class HoolaChainCard extends StatefulWidget {
+  const HoolaChainCard({super.key, required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+  @override
+  State<HoolaChainCard> createState() => _HoolaChainCardState();
+}
+
+class _HoolaChainCardState extends State<HoolaChainCard> {
+  String? _done;
+
+  Future<void> _act(String a) async {
+    String to = '';
+    String note = '';
+    if (a == 'pass') {
+      final t = await _ask(context, 'Kise dena hai?', '@hoola.id ya naam');
+      if (t == null || t.isEmpty) return;
+      to = t;
+    }
+    if (a == 'done' || a == 'decline') {
+      if (!mounted) return;
+      final n = await _ask(context, a == 'done' ? 'Kya kiya?' : 'Kyon wapas?', 'Chhota note');
+      if (n == null) return;
+      note = n;
+    }
+    try {
+      final r = await widget.app.api!.netChainAct(widget.v['chain_id'] as String, a, to: to, note: note);
+      if (mounted) setState(() => _done = {'accepted': 'Aapne le liya', 'passed': 'Aage diya: ${r['to'] ?? ''}', 'done': 'Ho gaya ✓', 'declined': 'Wapas bheja'}[r['status']] ?? '${r['status']}');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = widget.v;
+    final withMe = v['event'] == 'with_me' || v['event'] == 'back';
+    final steps = List<Map<String, dynamic>>.from((v['steps'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Icon(Icons.link_rounded, color: C.violet),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(withMe ? '${v['from'] ?? ''} ne kaam bheja' : (v['text'] as String? ?? 'Kaam ki khabar'),
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+            ),
+            if ((v['ref'] ?? '') != '') Text(v['ref'] as String, style: const TextStyle(color: C.accent, fontSize: 12)),
+          ]),
+          const SizedBox(height: 4),
+          Text(v['goal'] as String? ?? '', style: const TextStyle(fontSize: 13.5)),
+          for (final st in steps)
+            Text('• ${st['who']}: ${st['action']}${(st['note'] ?? '') != '' ? ' · ${st['note']}' : ''}',
+                style: const TextStyle(color: C.muted, fontSize: 12)),
+          if (withMe && _done == null)
+            Wrap(spacing: 2, children: [
+              TextButton(onPressed: () => _act('accept'), child: const Text('Le liya')),
+              TextButton(onPressed: () => _act('pass'), child: const Text('Aage bhejo')),
+              TextButton(onPressed: () => _act('done'), child: const Text('Ho gaya')),
+              TextButton(onPressed: () => _act('decline'), child: const Text('Wapas', style: TextStyle(color: C.bad))),
+            ]),
+          if (_done != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_done!, style: const TextStyle(color: C.ok))),
+        ]),
+      ),
+    );
+  }
+}
+
+/// A new complaint ticket at the owner's business counter.
+class HoolaTicketCard extends StatefulWidget {
+  const HoolaTicketCard({super.key, required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+  @override
+  State<HoolaTicketCard> createState() => _HoolaTicketCardState();
+}
+
+class _HoolaTicketCardState extends State<HoolaTicketCard> {
+  String? _status;
+
+  Future<void> _set(String status) async {
+    final note = await _ask(context, 'Customer ko kya batayein?', 'Jaise: technician kal 11 baje aayega');
+    if (note == null) return;
+    try {
+      final r = await widget.app.api!.netTicket(widget.v['number'] as String, status: status, note: note);
+      if (mounted) setState(() => _status = r['status'] as String?);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _assign() async {
+    final to = await _ask(context, 'Kise dena hai?', '@technician.id');
+    if (to == null || to.isEmpty) return;
+    try {
+      await widget.app.api!.netTicket(widget.v['number'] as String, to: to);
+      if (mounted) setState(() => _status = 'assigned');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = widget.v;
+    final status = _status ?? v['status'] as String? ?? 'open';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Icon(Icons.confirmation_number_rounded, color: C.accent),
+            const SizedBox(width: 8),
+            Expanded(child: Text('${v['number']} · ${v['customer'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700))),
+            Text(status, style: const TextStyle(color: C.teal, fontSize: 12)),
+          ]),
+          const SizedBox(height: 4),
+          Text(v['text'] as String? ?? '', style: const TextStyle(fontSize: 13.5)),
+          if ((v['webhook'] ?? '') != '') Text('Aapke system ko bheja: ${v['webhook']}', style: const TextStyle(color: C.faint, fontSize: 11.5)),
+          if (status != 'resolved' && status != 'closed')
+            Wrap(spacing: 2, children: [
+              TextButton(onPressed: _assign, child: const Text('Technician ko do')),
+              TextButton(onPressed: () => _set('in_progress'), child: const Text('Kaam chalu')),
+              TextButton(onPressed: () => _set('resolved'), child: const Text('Theek ho gaya')),
+            ]),
+        ]),
+      ),
+    );
+  }
+}
