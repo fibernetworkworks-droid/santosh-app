@@ -443,7 +443,7 @@ class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObs
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.app.refreshBackgroundInfo();
-    KeepAlive.check(widget.app);
+    HoolaKeepAlive.check(widget.app);
   }
 
   @override
@@ -456,7 +456,7 @@ class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObs
   void didChangeAppLifecycleState(AppLifecycleState s) {
     if (s == AppLifecycleState.resumed) {
       widget.app.refreshBackgroundInfo(); // back from a settings screen
-      KeepAlive.check(widget.app);
+      HoolaKeepAlive.check(widget.app);
     }
   }
 
@@ -502,7 +502,7 @@ class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObs
         if (on && app.batteryOptimized)
           fix('Battery saver Hoola ko rok sakta hai', 'Hoola ko "Unrestricted / Don\'t optimize" par rakhiye', 'Theek karo', Native.askBattery),
         ValueListenableBuilder<Map<String, dynamic>?>(
-          valueListenable: KeepAlive.last,
+          valueListenable: HoolaKeepAlive.last,
           builder: (context, r, _) {
             final n = (r?['problems'] as List? ?? const []).length;
             final kills = ((r?['counts'] as Map?)?['oem_kill'] as num? ?? 0).toInt();
@@ -514,7 +514,7 @@ class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObs
                         ? 'Sab theek · checklist dekhiye'
                         : '$n cheez theek karni hai${kills > 0 ? ' · phone ne 7 din mein $kills baar band kiya' : ''}',
                 n == 0 && r != null ? 'Dekho' : 'Theek karo',
-                () => KeepAlive.open(context, app));
+                () => HoolaKeepAlive.open(context, app));
           },
         ),
         if (!app.exactAlarms)

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
-import 'keep_alive.dart' show KeepAlive;
+import 'keep_alive.dart' show HoolaKeepAlive;
 
 /// "Phone lock par bhi Santosh": checks what can stop a call / background work on this phone and opens the right
 /// Android or phone-maker setting. Only opens settings pages (Google Play allows this); never changes them itself.
@@ -66,7 +66,7 @@ class LockSafe {
 
   static Future<void> showFix(BuildContext context) async {
     // v0.56: the full checklist screen (problems from Android itself + "Kholo" per line); the sheet stays as fallback
-    if (app?.api != null) return KeepAlive.open(context, app!);
+    if (app?.api != null) return HoolaKeepAlive.open(context, app!);
     final s = await status();
     if (!context.mounted) return;
     final brand = (s['brand'] as String? ?? '').toLowerCase();

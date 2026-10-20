@@ -216,7 +216,7 @@ class _HomeState extends State<Home> {
     // has stopped Hoola since the last look; never during a call or the first setup
     Future<void>.delayed(const Duration(seconds: 8), () {
       if (mounted && widget.app.configured && !widget.app.needsAvatarSetup && !widget.app.voiceCall.inCall) {
-        KeepAlive.maybePrompt(context, widget.app);
+        HoolaKeepAlive.maybePrompt(context, widget.app);
       }
     });
   }

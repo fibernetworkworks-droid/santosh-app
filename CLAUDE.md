@@ -358,7 +358,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   reminder. `GET /api/device/keepalive` also carries `checklist` + `family`.
 - Native openers (settings pages only, Play-safe): `openMakerBattery` (MIUI powerkeeper, ColorOS/oplus battery, vivo abe,
   Samsung lool), `openMakerPerms` (MIUI "Other permissions": lock screen + background pop-ups).
-- App: `lib/ui/keep_alive.dart` (`KeepAlive.check/maybePrompt/open`, `KeepAliveScreen`: status, problems, checklist with
+- App: `lib/ui/keep_alive.dart` (`HoolaKeepAlive.check/maybePrompt/open` (not `KeepAlive`: Flutter has one), `KeepAliveScreen`: status, problems, checklist with
   "Kholo" + auto-ticks from Android's own state, "Ho gaya" for manual lines, dontkillmyapp `MakerSteps`, re-checks on return).
   Home prompts 8 s after start: once on strict brands, and again when the phone stopped Hoola since the last look (max every
   3 days). `LockSafe.showFix` now opens this screen. Profile card "<name> band na ho" shows the live summary.

@@ -12,7 +12,7 @@ import 'lock_safe.dart' show MakerSteps;
 /// The phone tells our server what Android itself knows (battery saver, "restricted", standby bucket, how the app was
 /// last stopped); the answer is plain-word problems + this phone family's checklist, each line with a "Kholo" button
 /// that opens the right settings page. Only settings pages are opened (Google Play policy); the owner flips the switch.
-class KeepAlive {
+class HoolaKeepAlive {
   static final ValueNotifier<Map<String, dynamic>?> last = ValueNotifier(null);
   static bool _prompting = false;
 
@@ -123,7 +123,7 @@ class KeepAliveScreen extends StatefulWidget {
 }
 
 class _KeepAliveScreenState extends State<KeepAliveScreen> with WidgetsBindingObserver {
-  Map<String, dynamic>? _r = KeepAlive.last.value;
+  Map<String, dynamic>? _r = HoolaKeepAlive.last.value;
   bool _busy = true;
   Set<String> _done = {};
 
@@ -149,7 +149,7 @@ class _KeepAliveScreenState extends State<KeepAliveScreen> with WidgetsBindingOb
     if (mounted) setState(() => _busy = true);
     final p = await SharedPreferences.getInstance();
     _done = (p.getStringList('ka_done') ?? const []).toSet();
-    final r = await KeepAlive.check(widget.app);
+    final r = await HoolaKeepAlive.check(widget.app);
     if (!mounted) return;
     setState(() {
       _r = r ?? _r;
@@ -181,7 +181,7 @@ class _KeepAliveScreenState extends State<KeepAliveScreen> with WidgetsBindingOb
     final items = List<Map<String, dynamic>>.from((r?['checklist'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
     final counts = Map<String, dynamic>.from(r?['counts'] as Map? ?? const {});
     final kills = (counts['oem_kill'] as num? ?? 0) + (counts['recents_clear'] as num? ?? 0);
-    final brand = r == null ? '' : KeepAlive._brandName(r);
+    final brand = r == null ? '' : HoolaKeepAlive._brandName(r);
     return Scaffold(
       backgroundColor: C.bgBottom,
       appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${widget.app.aName} band na ho')),
@@ -226,7 +226,7 @@ class _KeepAliveScreenState extends State<KeepAliveScreen> with WidgetsBindingOb
                   ]),
                 ),
                 if ('${p['action']}' != 'none' && '${p['action']}' != 'recents')
-                  TextButton(onPressed: () => KeepAlive.runAction('${p['action']}'), child: const Text('Kholo')),
+                  TextButton(onPressed: () => HoolaKeepAlive.runAction('${p['action']}'), child: const Text('Kholo')),
               ]),
             ),
           ],
@@ -294,7 +294,7 @@ class _ChecklistRow extends StatelessWidget {
           ]),
         ),
         if (action != 'recents' && action != 'none')
-          TextButton(onPressed: () => KeepAlive.runAction(action), child: const Text('Kholo')),
+          TextButton(onPressed: () => HoolaKeepAlive.runAction(action), child: const Text('Kholo')),
       ]),
     );
   }
