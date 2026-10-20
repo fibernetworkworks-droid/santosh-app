@@ -34,6 +34,15 @@ class Native {
   /// v0.57 reel scroll analysis (Android Usage Access: times only, never screen content).
   static Future<bool> usageAllowed() async => await _call<bool>('usageAllowed') ?? false;
   static Future<void> usageSettings() async => _call('usageSettings');
+  /// v0.58 background reel alerts: daily limit (minutes, 0 = off) and the after-11-pm bedtime nudge.
+  static Future<Map<String, dynamic>> scrollAlerts({int? budget, bool? bedtime, int? ytShortsPct}) async => Map<String, dynamic>.from(
+      await _call<Map>('scrollAlerts', {
+            if (budget != null) 'budget': budget,
+            if (bedtime != null) 'bedtime': bedtime,
+            if (ytShortsPct != null) 'ytShortsPct': ytShortsPct,
+          }) ??
+          {});
+  static Future<Map<String, dynamic>> scrollAlertState() async => Map<String, dynamic>.from(await _call<Map>('scrollAlertState') ?? {});
   static Future<List<Map<String, dynamic>>> usageDays({int days = 7}) async {
     final r = await _call<List>('usageDays', {'days': days});
     return r == null ? [] : r.map((e) => Map<String, dynamic>.from(e as Map)).toList();

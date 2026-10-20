@@ -187,7 +187,8 @@ class Api {
       uploadFile('/api/employee/dues/import', name, bytes, timeout: const Duration(seconds: 60), tries: 2);
 
   // reel scroll analysis
-  Future<void> scrollSync(List<Map<String, dynamic>> days) async => _send('POST', '/api/reels/scroll/sync', body: {'days': days});
+  Future<Map<String, dynamic>> scrollSync(List<Map<String, dynamic>> days) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/reels/scroll/sync', body: {'days': days}) as Map);
   Future<Map<String, dynamic>> scrollReport({int days = 7}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/reels/scroll/report', query: {'days': '$days'}) as Map);
   Future<void> scrollBudget(int minutes) async => _send('POST', '/api/reels/scroll/budget', body: {'minutes': minutes});

@@ -251,6 +251,7 @@
             android:taskAffinity="com.newtika.santosh.alarm"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
         <receiver android:name=".AlarmReceiver" android:exported="false" />
+        <receiver android:name=".ScrollAlarmReceiver" android:exported="false" />
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

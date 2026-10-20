@@ -45,9 +45,9 @@ def test_week_report(env):
 
 
 YT_JSON = json.dumps([
-    {"header": "YouTube", "title": "Watched 5 min paneer recipe", "titleUrl": "https://www.youtube.com/watch?v=a1",
+    {"header": "YouTube", "title": "Watched 5 min paneer recipe", "titleUrl": "https://www.youtube.com/watch?v=AAAAAAAAAA1",
      "subtitles": [{"name": "Kabita's Kitchen"}], "time": "2026-10-19T17:10:00.000Z"},
-    {"header": "YouTube", "title": "Watched Nifty tip: 100% profit tomorrow", "titleUrl": "https://www.youtube.com/watch?v=a2",
+    {"header": "YouTube", "title": "Watched Nifty tip: 100% profit tomorrow", "titleUrl": "https://www.youtube.com/watch?v=BBBBBBBBBB2",
      "subtitles": [{"name": "Stock Guru 007"}], "time": "2026-10-19T18:40:00.000Z"},
     {"header": "YouTube", "title": "Searched for paneer", "time": "2026-10-19T17:00:00.000Z"},
     {"header": "YouTube Music", "title": "Watched song", "time": "2026-10-19T17:00:00.000Z"},
@@ -85,6 +85,8 @@ def taste(env, monkeypatch):
                 "summary": "Aapki feed mein zyada khana aur share tips hain.", "good": ["Recipes se naya seekh rahe ho"],
                 "watch_out": ["Unknown finfluencers ke stock tips"], "suggestions": ["SEBI-registered creators follow kijiye"]}
     monkeypatch.setattr(scroll, "_ask_taste", fake)
+    # official YouTube Data API lengths: the recipe is a 45 s Short, the stock tip a 20 min video
+    monkeypatch.setattr(scroll, "_durations", lambda tenant, ids: {"AAAAAAAAAA1": 45, "BBBBBBBBBB2": 1200})
     return seen
 
 
@@ -115,7 +117,7 @@ def test_api_and_avatar(taste):
     with TestClient(main.app) as c:
         cid = c.post("/api/conversations").json()["id"]
         d = date.today().isoformat()
-        assert c.post("/api/reels/scroll/sync", json={"days": [_day(d, 75, 15)]}).json() == {"days": 1}
+        assert c.post("/api/reels/scroll/sync", json={"days": [_day(d, 75, 15)]}).json() == {"days": 1, "budget_min": 0, "yt_shorts_pct": None}
         assert c.post("/api/reels/scroll/budget", json={"minutes": 60}).json() == {"budget_min": 60}
         r = c.get("/api/reels/scroll/report").json()
         assert r["today_min"] == 90 and r["over_budget"] is True
@@ -127,3 +129,32 @@ def test_api_and_avatar(taste):
         assert out["watching"]["youtube"]["topics"][0]["name"] == "Khana / recipes"
         assert c.delete("/api/reels/scroll").json()["forgotten"] is True
         assert c.get("/api/reels/scroll/report").json()["has_data"] is False
+
+
+def test_youtube_shorts_vs_long_videos(taste):
+    items = [{"url": "https://www.youtube.com/watch?v=AAAAAAAAAA1"}] * 3 + [{"url": "https://www.youtube.com/watch?v=BBBBBBBBBB2"},
+                                                                          {"url": "https://example.com/x"}]
+    sp = scroll.shorts_split("default", items)
+    # 3 Shorts x 45 s = 135 s; the long video counts at most 10 min = 600 s
+    assert sp == {"checked": 4, "shorts": 3, "long": 1, "items_pct": 75, "time_pct": 18}
+    scroll.import_history("default", "watch-history.json", YT_JSON.encode())
+    d = TODAY.isoformat()
+    sync = scroll.sync("default", [_day(d, 30, 100)])
+    assert sync["yt_shorts_pct"] == 7                   # this history: one 45 s Short vs one long video (600 s counted)
+    scroll.set_budget("default", 40)
+    r = scroll.report("default", 7, today=TODAY)
+    yt = next(a for a in r["apps"] if a["app"] == "YouTube")
+    assert yt["shorts_pct"] == 7 and yt["shorts_min"] == 7.0 and r["youtube_split"] is True
+    assert r["short_form_min"] == 37.0 and r["reels_est"] == 74
+    assert r["today_min"] == 37.0 and r["over_budget"] is False    # long YouTube videos don't count against the limit
+    assert any("Shorts the, baaki lambe videos" in t for t in r["insights"])
+    no_hist = scroll.report("other", 7, today=TODAY)
+    assert no_hist["youtube_split"] is False
+
+
+def test_no_youtube_key_keeps_working(env, monkeypatch):
+    def boom(tenant, ids):
+        raise RuntimeError("no key")
+    monkeypatch.setattr(scroll, "_durations", boom)
+    sp = scroll.shorts_split("default", [{"url": "https://youtu.be/AAAAAAAAAA1"}])
+    assert sp["checked"] == 0 and "YOUTUBE_API_KEY" in sp["note"]

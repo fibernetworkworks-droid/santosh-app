@@ -19,9 +19,18 @@ class ScrollSync {
     if (!force && _last != null && DateTime.now().difference(_last!) < const Duration(minutes: 30)) return;
     try {
       if (!await Native.usageAllowed()) return;
+      await Native.scrollAlerts();   // re-arms the background alert (an app update clears Android alarms)
       final days = await Native.usageDays(days: 7);
       _last = DateTime.now();
-      if (days.isNotEmpty) await api.scrollSync(days);
+      if (days.isEmpty) return;
+      final r = await api.scrollSync(days);
+      // the daily limit lives on the server; the phone needs it for the background alert
+      final b = (r['budget_min'] as num?)?.toInt();
+      final yt = (r['yt_shorts_pct'] as num?)?.toInt() ?? -1;
+      final st = await Native.scrollAlertState();
+      if ((b != null && b != (st['budget'] as num? ?? 0).toInt()) || yt != (st['yt_pct'] as num? ?? -1).toInt()) {
+        await Native.scrollAlerts(budget: b, ytShortsPct: yt);
+      }
     } catch (_) {}
   }
 }
@@ -39,6 +48,7 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
   Map<String, dynamic>? _r;
   String? _err;
   bool _importing = false;
+  bool _bedtime = false;
   int _days = 7;
 
   Api? get _api => HoolaTv.api;
@@ -65,7 +75,13 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
     final api = _api;
     if (api == null) return;
     final ok = await Native.usageAllowed();
-    if (mounted) setState(() => _allowed = ok);
+    final alerts = await Native.scrollAlertState();
+    if (mounted) {
+      setState(() {
+        _allowed = ok;
+        _bedtime = alerts['bedtime'] == true;
+      });
+    }
     try {
       if (ok) await ScrollSync.maybe(force: true);
       final r = await api.scrollReport(days: _days);
@@ -83,6 +99,7 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
   Future<void> _budget(int m) async {
     try {
       await _api!.scrollBudget(m);
+      await Native.scrollAlerts(budget: m);
       await _load();
     } catch (e) {
       _snack(e is ApiException ? e.message : '$e');
@@ -178,6 +195,9 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
             Text(hm(r['total_min'] as num), style: display(30, w: FontWeight.w800)),
             Text('${r['period_days']} din mein · roz ~${hm(r['avg_min'] as num)} · ~${r['reels_est']} reels',
                 style: const TextStyle(color: C.muted, fontSize: 12.5)),
+            if (r['youtube_split'] == true)
+              Text('Reels / Shorts: ${r['short_form_text']} (YouTube ke lambe videos alag)',
+                  style: const TextStyle(color: C.faint, fontSize: 11.5)),
           ]),
         ),
         if (trend != null)
@@ -262,10 +282,29 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
             const SizedBox(height: 4),
             Text('${a['sessions']} baar khola · sabse lambi baar ${hm(a['longest'] as num)} · ${a['share']}%',
                 style: const TextStyle(color: C.faint, fontSize: 11.5)),
+            if (a['shorts_min'] != null) ...[
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: Row(children: [
+                  Expanded(
+                      flex: ((a['shorts_pct'] as num?) ?? 0).toInt().clamp(1, 99),
+                      child: Container(height: 5, color: const Color(0xFFFF4B4B))),
+                  Expanded(
+                      flex: (100 - ((a['shorts_pct'] as num?) ?? 0).toInt()).clamp(1, 99),
+                      child: Container(height: 5, color: const Color(0x55FF4B4B))),
+                ]),
+              ),
+              const SizedBox(height: 4),
+              Text('Shorts ~${hm(a['shorts_min'] as num)} · lambe videos ~${hm((a['min'] as num) - (a['shorts_min'] as num))} '
+                  '(${a['shorts_pct']}% Shorts, history se andaaza)',
+                  style: const TextStyle(color: C.muted, fontSize: 11.5)),
+            ],
           ]),
         ),
-      if (apps.any((a) => a['app'] == 'YouTube'))
-        const Text('YouTube mein lambe videos bhi gine jaate hain (Shorts alag nahi dikhte).', style: TextStyle(color: C.faint, fontSize: 11)),
+      if (apps.any((a) => a['app'] == 'YouTube' && a['shorts_min'] == null))
+        const Text('YouTube mein Shorts aur lambe videos saath gine gaye. Neeche YouTube history daalein to alag dikhega.',
+            style: TextStyle(color: C.faint, fontSize: 11)),
     ]));
   }
 
@@ -371,6 +410,20 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
             onSelected: (_) => _budget(m),
           ),
       ]),
+      const SizedBox(height: 8),
+      Text(cur > 0 ? 'Limit ke 80% pe, poori hone par, aur har 30 min upar jaane par Hoola notification bhejega.' : 'Limit lagaiye: paar hone par Hoola notification bhejega.',
+          style: const TextStyle(color: C.faint, fontSize: 11.5)),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        value: _bedtime,
+        activeColor: C.accent,
+        title: const Text('Raat 11 ke baad yaad dilao', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+        subtitle: const Text('15 min se zyada scroll hone par ek baar', style: TextStyle(color: C.faint, fontSize: 12)),
+        onChanged: (v) async {
+          setState(() => _bedtime = v);
+          await Native.scrollAlerts(bedtime: v);
+        },
+      ),
     ]));
   }
 
@@ -391,6 +444,13 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
       Text('${t['items']} videos · ${t['days']} din · roz ~${t['per_day']} · sabse zyada ${t['busiest_day']}'
           '${(t['late_share'] as num? ?? 0) > 0 ? ' · ${t['late_share']}% raat mein' : ''}',
           style: const TextStyle(color: C.faint, fontSize: 11.5)),
+      if (source == 'youtube' && ((t['shorts'] as Map?)?['checked'] as num? ?? 0) > 0)
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text('Shorts: ${(t['shorts'] as Map)['items_pct']}% videos, ~${(t['shorts'] as Map)['time_pct']}% waqt '
+              '(${(t['shorts'] as Map)['checked']} videos ki lambai YouTube se jaanchi)',
+              style: const TextStyle(color: Color(0xFFFF8A8A), fontSize: 12, fontWeight: FontWeight.w700)),
+        ),
       if ('${t['summary']}'.isNotEmpty) ...[
         const SizedBox(height: 10),
         Text('${t['summary']}', style: const TextStyle(fontSize: 13.5, height: 1.4)),

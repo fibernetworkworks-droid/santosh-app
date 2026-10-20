@@ -69,7 +69,12 @@ def sync(tenant: str, days: list[dict]) -> dict:
             row.data = json.dumps({"apps": apps, "hours": hours})
             row.updated_at = now()
             kept += 1
-    return {"days": kept}
+        st = s.get(ScrollSettings, tenant)
+        budget = st.budget_min if st else 0
+        t = s.scalars(select(ScrollTaste).where(ScrollTaste.tenant_id == tenant, ScrollTaste.source == "youtube")).first()
+        sh = (json.loads(t.data or "{}").get("shorts") or {}) if t else {}
+    # the phone uses yt_shorts_pct to count only the Shorts part of YouTube against the daily limit
+    return {"days": kept, "budget_min": budget, "yt_shorts_pct": sh.get("time_pct") if sh.get("checked") else None}
 
 
 def set_budget(tenant: str, minutes: int) -> dict:
@@ -134,7 +139,14 @@ def report(tenant: str, days: int = 7, today: date | None = None) -> dict:
             hours[h] += m
         late_by_day[d] = sum(m for h, m in enumerate(rec.get("hours") or []) if h in LATE)
         daily.append({"date": d, "min": round(tot, 1), "has_data": d in cur})
+    yt_pct = ((tastes.get("youtube") or {}).get("shorts") or {}).get("time_pct") \
+        if ((tastes.get("youtube") or {}).get("shorts") or {}).get("checked") else None
+    if "YouTube" in per_app and yt_pct is not None:
+        per_app["YouTube"]["shorts_pct"] = yt_pct
+        per_app["YouTube"]["shorts_min"] = per_app["YouTube"]["min"] * yt_pct / 100
     total = sum(a["min"] for a in per_app.values())
+    # reel-style minutes: every reel app fully, YouTube only its Shorts part when known
+    short_form = sum(a.get("shorts_min", a["min"]) if a["app"] == "YouTube" else a["min"] for a in per_app.values())
     have = [x for x in daily if x["has_data"]]
     avg = total / len(have) if have else 0.0
     prev_total = sum(v["min"] for rec in prev.values() for v in (rec.get("apps") or {}).values())
@@ -143,8 +155,10 @@ def report(tenant: str, days: int = 7, today: date | None = None) -> dict:
     late = sum(late_by_day.values())
     late_days = sum(1 for m in late_by_day.values() if m >= 10)
     peak = max(range(24), key=lambda h: hours[h]) if any(hours) else None
-    today_min = next((x["min"] for x in daily if x["date"] == today.isoformat()), 0.0)
+    today_min = sum(v["min"] * (yt_pct / 100 if app == "YouTube" and yt_pct is not None else 1)
+                    for app, v in ((cur.get(today.isoformat()) or {}).get("apps") or {}).items())
     apps = sorted(({**a, "min": round(a["min"], 1), "longest": round(a["longest"], 1),
+                    **({"shorts_min": round(a["shorts_min"], 1)} if "shorts_min" in a else {}),
                     "share": round(a["min"] / total * 100) if total else 0} for a in per_app.values()), key=lambda a: -a["min"])
     out = {
         "period_days": days, "from": start.isoformat(), "to": today.isoformat(), "has_data": bool(have),
@@ -153,7 +167,8 @@ def report(tenant: str, days: int = 7, today: date | None = None) -> dict:
         "late_min": round(late, 1), "late_days": late_days, "peak_hour": peak,
         "peak_text": _hour_label(peak) if peak is not None else "",
         "longest": {**longest, "min": round(longest["min"], 1)},
-        "reels_est": int(total * 60 / SECONDS_PER_REEL), "budget_min": budget, "today_min": round(today_min, 1),
+        "reels_est": int(short_form * 60 / SECONDS_PER_REEL), "short_form_min": round(short_form, 1),
+        "short_form_text": _hm(short_form), "youtube_split": yt_pct is not None, "budget_min": budget, "today_min": round(today_min, 1),
         "over_budget": bool(budget and today_min > budget), "tastes": tastes, "ai_label": AI_LABEL,
     }
     out["insights"] = insights(out)
@@ -176,6 +191,13 @@ def insights(r: dict) -> list[str]:
         if a["sessions"]:
             per = a["min"] / a["sessions"]
             out.append(f"{a['app']} {a['sessions']} baar khola, har baar ~{_hm(per)}.")
+    yt = next((a for a in r["apps"] if a["app"] == "YouTube"), None)
+    if yt and yt["min"] >= 5:
+        if "shorts_min" in yt:
+            out.append(f"YouTube ke {_hm(yt['min'])} mein se ~{_hm(yt['shorts_min'])} Shorts the, baaki lambe videos "
+                       f"(aapki YouTube history ke hisaab se andaaza).")
+        else:
+            out.append("YouTube mein Shorts aur lambe videos saath gine gaye hain. YouTube history daalein to alag dikhega.")
     if r["longest"]["min"] >= 30:
         out.append(f"Sabse lambi sitting: {_hm(r['longest']['min'])} {r['longest']['app']} pe ({r['longest']['date']}).")
     if r["late_days"] >= 2 or r["late_min"] >= 60:
@@ -339,6 +361,58 @@ def _ask_taste(prompt: str) -> dict:
     return service._ask_gemini([prompt])
 
 
+SHORT_MAX_S = 180            # YouTube Shorts can be up to 3 minutes (since Oct 2024)
+LONG_CAP_S = 600             # people rarely finish long videos: count at most 10 min of each
+_VID = re.compile(r"[?&]v=([\w-]{11})|/shorts/([\w-]{11})|youtu\.be/([\w-]{11})")
+
+
+def _durations(tenant: str, ids: list[str]) -> dict[str, int]:
+    """Video lengths from the official YouTube Data API (videos.list, 1 quota unit per 50 videos). Tests replace this."""
+    from ..youtube.accounts import public_client
+    from ..youtube.client import iso_duration
+    c = public_client(tenant)
+    out: dict[str, int] = {}
+    for i in range(0, len(ids), 50):
+        got = c.get("/videos", part="contentDetails", id=",".join(ids[i:i + 50]), maxResults=50).get("items", [])
+        for v in got:
+            out[v["id"]] = iso_duration((v.get("contentDetails") or {}).get("duration", ""))
+    return out
+
+
+def shorts_split(tenant: str, items: list[dict]) -> dict:
+    """What share of the YouTube watching was Shorts (<= 3 min) vs long videos, from each video's real length."""
+    ids = []
+    for i in items:
+        m = _VID.search(i.get("url", ""))
+        if m:
+            ids.append(next(g for g in m.groups() if g))
+    uniq = list(dict.fromkeys(ids))[:2500]
+    if not uniq:
+        return {"checked": 0}
+    try:
+        dur = _durations(tenant, uniq)
+    except Exception as e:
+        log.info("youtube durations unavailable: %s", e)
+        return {"checked": 0, "note": "YouTube se video ki lambai nahi mil payi (server par YOUTUBE_API_KEY chahiye)."}
+    short_n = long_n = 0
+    short_s = long_s = 0
+    for vid in ids:
+        d = dur.get(vid)
+        if not d:
+            continue
+        if d <= SHORT_MAX_S:
+            short_n += 1
+            short_s += d
+        else:
+            long_n += 1
+            long_s += min(d, LONG_CAP_S)
+    n = short_n + long_n
+    if not n:
+        return {"checked": 0}
+    return {"checked": n, "shorts": short_n, "long": long_n, "items_pct": round(short_n / n * 100),
+            "time_pct": round(short_s / (short_s + long_s) * 100) if short_s + long_s else 0}
+
+
 def import_history(tenant: str, name: str, data: bytes) -> dict:
     if not data:
         raise ScrollError("File khaali hai.")
@@ -391,6 +465,8 @@ def import_history(tenant: str, name: str, data: bytes) -> dict:
             "suggestions": [str(x)[:160] for x in (taste.get("suggestions") or [])[:3]],
             "imported_at": datetime.now(timezone.utc).isoformat(), "ai_label": AI_LABEL,
         }
+        if source == "youtube":
+            clean["shorts"] = shorts_split(tenant, mine)
         with session() as s:
             row = s.scalars(select(ScrollTaste).where(ScrollTaste.tenant_id == tenant, ScrollTaste.source == source)).first()
             if row is None:

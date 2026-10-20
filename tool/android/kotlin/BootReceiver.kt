@@ -18,6 +18,7 @@ class BootReceiver : BroadcastReceiver() {
             }
         }
         RemoteService.restore(ctx)   // the Bluetooth TV remote, if the owner had it on
+        try { ScrollAlarm.restore(ctx) } catch (_: Exception) {}   // reel limit / bedtime alerts
         if (Store.enabled(ctx) && Store.server(ctx).isNotEmpty()) {
             try { SantoshService.start(ctx) } catch (_: Exception) {}
         }

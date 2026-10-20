@@ -124,6 +124,12 @@ class MainActivity : FlutterActivity() {
                     }
                     "usageAllowed" -> result.success(ScrollStats.allowed(this))
                     "usageSettings" -> { ScrollStats.openSettings(this); result.success(null) }
+                    "scrollAlerts" -> {
+                        ScrollAlarm.configure(this, call.argument<Number>("budget")?.toInt(), call.argument<Boolean>("bedtime"),
+                            call.argument<Number>("ytShortsPct")?.toInt())
+                        result.success(ScrollAlarm.settings(this))
+                    }
+                    "scrollAlertState" -> result.success(ScrollAlarm.settings(this))
                     "usageDays" -> {
                         val days = (call.argument<Number>("days") ?: 7).toInt()
                         Thread {
@@ -407,6 +413,7 @@ class MainActivity : FlutterActivity() {
             (data.scheme == "santosh" || data.scheme == "hoola") && data.host == "connect" -> "connect:" + (data.getQueryParameter("c") ?: return)
             data.scheme == "santosh" && data.host == "bazar" -> "bazar:linked=" + (data.getQueryParameter("linked") ?: "0")
             data.scheme == "santosh" && data.host == "tv" -> "tv:" + (data.getQueryParameter("ch") ?: return)
+            data.scheme == "santosh" && data.host == "scroll" -> "scroll:open"
             data.scheme == "santosh" && data.host == "mail" -> "mail:ok=" + (data.getQueryParameter("ok") ?: "0")
             data.scheme == "santosh" && data.host == "calendar" -> "calendar:ok=" + (data.getQueryParameter("ok") ?: "0")
             data.scheme == "santosh" && data.host in setOf("sheets", "drive", "forms", "slides", "photos", "youtube") -> data.host + ":ok=" + (data.getQueryParameter("ok") ?: "0")

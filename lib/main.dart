@@ -124,6 +124,10 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
         } catch (_) {}
         return;
       }
+      if (t == 'scroll:open') {        // a reel-limit / bedtime notification was tapped
+        navKey.currentState?.push(MaterialPageRoute(builder: (_) => const ScrollScreen()));
+        return;
+      }
       if (t.startsWith('tv:')) {
         openTv(t.substring(3));
         return;
