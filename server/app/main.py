@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.44.2", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.44.3", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:

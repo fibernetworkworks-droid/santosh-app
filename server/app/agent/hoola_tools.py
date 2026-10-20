@@ -48,7 +48,8 @@ HOOLA_TOOLS = [
         "meeting (title + slots: list of times like '2026-10-21 17:00' + minutes), task, reminder, voice_note (text), "
         "file (file_id), email (email_id), link (url), presentation (file_id or drive), payment_request (amount + "
         "note: a request card only, never money), contact_card (name, phone), location (place / lat,lng). Write the "
-        "text the way the owner would say it."),
+        "text the way the owner would say it. To send a FILE the owner attached (photo, PDF, video, Excel...) use "
+        "kind=file with its file_id and put any words in text; never send an empty message."),
      "input_schema": {"type": "object", "properties": {
          "to": {"type": "string", "description": "Name of a connection, @handle or mobile number"},
          "kind": {"type": "string", "enum": KINDS}, "text": {"type": "string"}, "title": {"type": "string"},
@@ -63,8 +64,9 @@ HOOLA_TOOLS = [
          "goal": {"type": "string", "description": "With handle: what the owner wants, e.g. 'kal 4 se 7 ke beech meeting fix karo'"}},
                       "required": ["to"]}},
     {"name": "hoola_reply", "description": "Answer the other avatar in a thread with what the owner said (thread_id from the card / note).",
-     "input_schema": {"type": "object", "properties": {"thread_id": {"type": "string"}, "text": {"type": "string"}},
-                      "required": ["thread_id", "text"]}},
+     "input_schema": {"type": "object", "properties": {"thread_id": {"type": "string"}, "text": {"type": "string"},
+                                                        "file_id": {"type": "string", "description": "Send a file the owner attached as the answer"}},
+                      "required": ["thread_id"]}},
     {"name": "hoola_inbox", "description": "Requests from other avatars waiting for the owner's decision.",
      "input_schema": {"type": "object", "properties": {}}},
     {"name": "hoola_decide", "description": (
@@ -168,16 +170,21 @@ async def hoola_send(ctx: Ctx, to, kind="message", text="", thread_id="", handle
               "upi_id", "email", "name", "phone", "place"):
         if kw.get(k) not in (None, "", []):
             body[k] = kw[k]
-    why = await _t(net.needs_tap, ctx.tenant_id, str(to), kind or "message", body)
+    kind = net.infer_kind(kind or "message", body)
+    await _t(net.check_content, kind, body)
+    why = await _t(net.needs_tap, ctx.tenant_id, str(to), kind, body)
     if why:
-        return await _t(net.queue_for_tap, ctx.tenant_id, str(to), kind or "message", body, why, thread_id or "",
+        return await _t(net.queue_for_tap, ctx.tenant_id, str(to), kind, body, why, thread_id or "",
                         bool(handle), str(goal or ""))
-    return await _t(net.send, ctx.tenant_id, str(to), kind or "message", body, str(text or "")[:80], thread_id or "",
+    return await _t(net.send, ctx.tenant_id, str(to), kind, body, str(text or "")[:80], thread_id or "",
                     bool(handle), str(goal or ""))
 
 
-async def hoola_reply(ctx: Ctx, thread_id, text, **_):
+async def hoola_reply(ctx: Ctx, thread_id, text="", file_id="", **_):
     t = await _t(net.thread, ctx.tenant_id, str(thread_id))
+    if file_id:                      # a file as the answer goes as a real file in the same conversation (owner's tap)
+        body = {"file_id": str(file_id), "text": str(text or "")}
+        return await _t(net.queue_for_tap, ctx.tenant_id, t["peer"], "file", body, "file bhejna", t["id"])
     why = await _t(net.needs_tap, ctx.tenant_id, t["peer"], "reply", {"text": str(text)})
     if why:
         return await _t(net.queue_for_tap, ctx.tenant_id, t["peer"], "reply", {"text": str(text)}, why, t["id"])

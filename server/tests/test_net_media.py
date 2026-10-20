@@ -143,3 +143,36 @@ def test_transcript_describes_attachments(env, ai, monkeypatch):
     enrich.run("kunal", k["id"])
     tr = handle._transcript("kunal", k["thread_id"])
     assert "attached image 'router.png'" in tr and "AX3000" in tr and r["status"] == "pending"
+
+
+def test_a_message_with_a_file_goes_as_the_file_and_empty_ones_never_go(env, ai):
+    net = _connect()
+    fid = _file("default", "logo.png", _png())
+    r = net.send("default", "Kunal", "message", {"text": "", "file_id": fid})       # what the model used to do
+    k = ev("kunal", "hoola_knock")[-1]
+    assert k["kind"] == "file" and k["name"] == "logo.png" and k["media"] == "image" and r["status"] == "pending"
+    with pytest.raises(net.NetError):
+        net.send("default", "Kunal", "message", {"text": "  "})
+    with pytest.raises(net.NetError):
+        net.send("default", "Kunal", "file", {"text": "yeh lo"})
+    assert net.infer_kind("message", {"email_id": "e1"}) == "email"
+    # an older server that still sends an empty message: refused, the owner is not bothered
+    from app.net import service as svc
+    before = len(ev("kunal", "hoola_knock"))
+    monkey = svc.check_content
+    try:
+        svc.check_content = lambda k, b: None
+        r = net.send("default", "Kunal", "message", {"text": ""})
+    finally:
+        svc.check_content = monkey
+    assert r["status"] == "refused" and len(ev("kunal", "hoola_knock")) == before
+
+
+def test_agent_tool_infers_file_and_asks_for_tap(env, ai):
+    import asyncio
+    _connect()
+    from app.agent.hoola_tools import hoola_send
+    from app.agent.tools import Ctx
+    fid = _file("default", "rates.pdf", b"%PDF-1.4 fake")
+    out = asyncio.run(hoola_send(Ctx(tenant_id="default", conversation_id="c"), "Kunal", kind="message", text="", file_id=fid))
+    assert out["status"] == "needs_approval"

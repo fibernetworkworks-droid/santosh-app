@@ -176,6 +176,12 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `Api.uploadFile` = retries (not for net/upload) + plain errors for HTML 404 (server not updated) / 413 (nginx size) / 5xx.
 - nginx must allow `client_max_body_size 30m` (deploy/nginx-santosh.conf); "Not Found" on upload = VPS not updated.
 
+## v0.44.3 Files really reach the other avatar
+- Bug: the agent called hoola_send kind=message with a file_id -> the peer got an EMPTY message (file_id is meaningless there).
+- `service.infer_kind` (message/ask + file_id|attachment_id|drive -> file; + email_id -> email) and `check_content` (no empty
+  text kinds, file kinds need a file) run in `send` and in `hoola_send` (so files still need the owner's tap); non-file kinds
+  drop loose file keys. `hoola_reply` takes file_id. Receiver refuses empty text kinds; `inbox()` auto-declines old empty ones.
+
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
   automation (Baileys/WhatsApp Web).
@@ -198,4 +204,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads. Next: v0.45.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. Next: v0.45.

@@ -427,10 +427,20 @@ def inbox(tenant: str) -> list[dict[str, Any]]:
                          .order_by(NetMsg.created_at.desc()).limit(100)).all()
         for m in rows:
             s.expunge(m)
-    out = []
+    out, empty = [], []
     for m in rows:
+        b = m.body or {}
+        if m.kind in TEXT_KINDS and not (str(b.get("text") or "").strip() or str(b.get("title") or "").strip()):
+            empty.append(m.id)            # left by an older version: an empty message, nothing to decide
+            continue
         c = idn.peer_card(m.peer) or {}
         out.append(knock_payload(tenant, m, idn.label(c), c))
+    if empty:
+        with session() as s:
+            for mid in empty:
+                row = s.get(NetMsg, mid)
+                if row is not None:
+                    row.status, row.reason = "declined", "khaali message"
     return out
 
 
@@ -443,11 +453,40 @@ def _require_active(tenant: str, peer: str) -> Link:
     return l
 
 
+FILE_KEYS = ("file_id", "attachment_id", "drive")
+TEXT_KINDS = {"message", "ask", "task", "reminder"}
+
+
+def infer_kind(kind: str, body: dict[str, Any]) -> str:
+    """A 'message' that carries a file IS a file (else the file id travels as a meaningless word and the other side
+    gets an empty message). Same for an email id."""
+    kind = (kind or "message").strip()
+    if kind in ("message", "ask", "reply") and any(body.get(k) for k in FILE_KEYS):
+        return "file"
+    if kind in ("message", "ask") and body.get("email_id"):
+        return "email"
+    return kind
+
+
+def check_content(kind: str, body: dict[str, Any]) -> None:
+    """Nothing empty ever leaves: the other avatar must get words or a real attachment."""
+    if kind in TEXT_KINDS and not (str(body.get("text") or "").strip() or str(body.get("title") or "").strip()):
+        raise NetError("Message khaali hai: kya kehna hai? (file bhejni ho to kind=file aur file_id dijiye)")
+    if kind in ("file", "presentation") and not any(body.get(k) for k in FILE_KEYS):
+        raise NetError("Kaunsi file? Chat mein paperclip se file attach kijiye (file_id chahiye).")
+
+
 def send(tenant: str, to: str, kind: str, body: dict[str, Any], subject: str = "", thread_id: str = "",
          handle: bool = False, goal: str = "") -> dict[str, Any]:
     """Owner -> own avatar -> peer avatar. Returns what happened on the other side (pending / auto / declined...)."""
+    body = dict(body or {})
+    kind = infer_kind(kind, body)
     if kind not in REQUEST_KINDS:
         raise NetError("kind: " + ", ".join(sorted(REQUEST_KINDS)))
+    check_content(kind, body)
+    if kind not in ("file", "presentation", "voice_note", "email"):
+        for k in FILE_KEYS + ("email_id",):          # never travel as loose words
+            body.pop(k, None)
     peer = resolve(tenant, to)
     _require_active(tenant, peer)
     secret = policy.secret_found(policy.all_text(body))
@@ -554,6 +593,8 @@ def reply(tenant: str, thread_id: str, text: str, kind: str = "reply", extra: di
     if secret:
         raise NetError(f"Isme {secret} jaisi jaankari hai; Hoola yeh kisi ko nahi bhejta.")
     body = {"text": text[:4000]} | (extra or {})
+    if kind == "reply" and not text.strip() and not extra:
+        raise NetError("Jawab khaali hai: kya kehna hai?")
     res = _post(tenant, peer, kind, body, tkey, thread_id)
     return {"status": res.get("status"), "reason": res.get("reason", ""), "thread_id": thread_id}
 
@@ -841,6 +882,8 @@ def _on_request(tenant: str, env: dict, card: dict, link: Link, rules: dict) -> 
         from . import share
         body = share.receive_hook(tenant, peer, kind, dict(body, _env=env["id"]))
         body.pop("_env", None)
+    if kind in TEXT_KINDS and not (str(body.get("text") or "").strip() or str(body.get("title") or "").strip()):
+        return {"ok": False, "status": "refused", "reason": "khaali message (na shabd, na file)"}
     if body.get("text"):
         from .handle import translate_for_owner
         body = translate_for_owner(tenant, card, body)
