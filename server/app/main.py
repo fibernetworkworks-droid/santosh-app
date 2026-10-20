@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.49.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.50.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -1320,6 +1320,13 @@ async def net_think(mid: str, tenant: str = Depends(current_tenant)):
     """'Hoola, isse dekh ke batao': look at the attachment again and suggest replies, right now."""
     from .net import enrich
     return await asyncio.to_thread(enrich.run, tenant, mid)
+
+
+@app.get("/api/device/keepalive", dependencies=[Depends(require_key)])
+async def device_keepalive(brand: str = ""):
+    """v0.49 Steps for this phone maker so Hoola keeps running in the background (dontkillmyapp.com, CC BY 4.0)."""
+    from . import keepalive
+    return await asyncio.to_thread(keepalive.steps, brand)
 
 
 # ---------------- v0.47 Public APIs (github.com/public-apis/public-apis) ----------------

@@ -3,6 +3,7 @@ import 'dart:io' show File;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../native.dart';
 import 'glass.dart';
 
 /// v0.44.2 One picker for every paperclip (chat, voice call, Hoola chats): photo / video, document / PDF / any file,
@@ -40,7 +41,8 @@ Future<List<PickedFile>> pickAttachments(BuildContext context, {int max = 6, boo
   }
   FilePickerResult? res;
   try {
-    res = await FilePicker.platform.pickFiles(type: type, allowMultiple: max > 1, withData: true);
+    // bytes are read from the picked path ourselves: a 200 MB video is never loaded into memory just to be refused
+    res = await FilePicker.platform.pickFiles(type: type, allowMultiple: max > 1, withData: false);
   } catch (e) {
     if (context.mounted) _snack(context, 'File chun nahi paye: $e');
     return const [];
@@ -48,14 +50,33 @@ Future<List<PickedFile>> pickAttachments(BuildContext context, {int max = 6, boo
   if (res == null) return const [];
   final out = <PickedFile>[];
   for (final f in res.files.take(max)) {
+    var path = f.path;
+    var name = f.name;
+    final isVideo = RegExp(r'\.(mp4|mov|m4v|3gp|mkv|webm)$', caseSensitive: false).hasMatch(name);
+    if (isVideo && f.size > maxAttachBytes && path != null) {
+      // v0.49 big phone video: shrink it on the phone (720p / 480p) so it fits, instead of refusing it
+      if (context.mounted) _snack(context, '$name badi hai (${(f.size / 1024 / 1024).toStringAsFixed(0)} MB) — chhota kar raha hoon…');
+      final r = await Native.compressVideo(path, mb: 24);
+      if (r['path'] is String && (r['path'] as String).isNotEmpty) {
+        path = r['path'] as String;
+        name = name.replaceAll(RegExp(r'\.[A-Za-z0-9]+$'), '') + '.mp4';
+        final size = await File(path).length();
+        if (size <= maxAttachBytes) {
+          out.add(PickedFile(name, await File(path).readAsBytes()));
+          continue;
+        }
+      }
+      if (context.mounted) _snack(context, '$name: ${r['error'] ?? 'chhota karke bhi 25 MB se badi hai'}');
+      continue;
+    }
     if (f.size > maxAttachBytes) {
       if (context.mounted) _snack(context, '${f.name}: ${(f.size / 1024 / 1024).toStringAsFixed(0)} MB hai, 25 MB tak bhej sakte hain. Badi file Drive link se bhejiye.');
       continue;
     }
     List<int>? bytes = f.bytes;
-    if (bytes == null && f.path != null) {
+    if (bytes == null && path != null) {
       try {
-        bytes = await File(f.path!).readAsBytes();
+        bytes = await File(path).readAsBytes();
       } catch (_) {}
     }
     if (bytes == null || bytes.isEmpty) {

@@ -18,6 +18,9 @@ class Native {
   static Future<bool> start({required String server, required String key, required String conv, required int after}) async =>
       await _call<bool>('startService', {'server': server, 'key': key, 'conv': conv, 'after': after}) ?? false;
   static Future<void> stop() async => _call('stopService');
+  /// v0.49 shrink a phone video to fit [mb] MB (Android's own encoder). {path} or {error}.
+  static Future<Map<String, dynamic>> compressVideo(String path, {int mb = 24}) async =>
+      Map<String, dynamic>.from(await _call<Map>('compressVideo', {'path': path, 'mb': mb}) ?? {'error': 'is phone par nahi ho sakta'});
   static Future<bool> running() async => await _call<bool>('isRunning') ?? false;
   static Future<String> status() async => await _call<String>('status') ?? '';
 

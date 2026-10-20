@@ -35,6 +35,10 @@ def store(tenant: str, name: str, data: bytes, content_type: str = "") -> dict[s
     if len(data) > MAX_BYTES:
         raise FileError(f"File {MAX_BYTES // 1024 // 1024} MB se badi hai; Drive link bhejiye.")
     name = (name or "file").replace("\\", "/").rsplit("/", 1)[-1][:180] or "file"
+    from . import filecheck
+    rt = filecheck.real_type(name, data)
+    if rt["danger"]:
+        raise FileError(f"Yeh file khatarnak lag rahi hai: {rt['note']}. Hoola ne nahi li (kisi ne bheji ho to mat kholiye).")
     mt = content_type if content_type and content_type != "application/octet-stream" else (mimetypes.guess_type(name)[0] or "")
     row = ms.store_bytes(tenant, name, data, "mail")
     try:
@@ -44,6 +48,10 @@ def store(tenant: str, name: str, data: bytes, content_type: str = "") -> dict[s
     out = public_file(row) | {k: v for k, v in info.items() if v not in (None, "")}
     out.pop("pc_path", None)
     out["mime"] = mt
+    if rt["label"]:
+        out["real_type"] = rt["label"]
+    if rt["mismatch"]:
+        out["type_note"] = rt["note"]
     if name.lower().endswith((".csv", ".xlsx", ".xls")) and len(data) <= LEADS_MAX:
         try:
             res = import_leads(name, data, tenant).as_dict()

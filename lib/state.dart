@@ -583,6 +583,21 @@ class Santosh extends ChangeNotifier {
   late final CallSession voiceCall = CallSession(this);
   bool autoCall = false;     // start the call as soon as Baat opens
   int baatTick = 0;          // bumps when Baat should come to the front
+  /// v0.49 something shared to Hoola from another app (files copied to the app cache + text); Chat picks it up.
+  Map<String, dynamic>? pendingShare;
+  int shareTick = 0;
+
+  void onShared(Map<String, dynamic> s) {
+    pendingShare = s;
+    shareTick++;
+    notifyListeners();
+  }
+
+  Map<String, dynamic>? takeShare() {
+    final s = pendingShare;
+    pendingShare = null;
+    return s;
+  }
 
   void wake({required bool locked}) {
     lockedMode = locked;

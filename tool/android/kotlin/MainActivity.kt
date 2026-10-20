@@ -122,6 +122,11 @@ class MainActivity : FlutterActivity() {
                         askBluetooth()
                         result.success(HomeDevices.hasBluetoothPermission(this) && BtControl.canScan(this))
                     }
+                    "compressVideo" -> {
+                        VideoShrink.run(this, call.argument<String>("path") ?: "", (call.argument<Number>("mb") ?: 24).toInt()) { out, err ->
+                            main.post { result.success(mapOf("path" to out, "error" to err)) }
+                        }
+                    }
                     "btRun" -> {
                         val action = call.argument<String>("action") ?: "status"
                         val args = try { org.json.JSONObject(call.argument<String>("args") ?: "{}") } catch (_: Exception) { org.json.JSONObject() }
@@ -231,8 +236,72 @@ class MainActivity : FlutterActivity() {
         showOverLock(false)   // never stay above the lock screen after the call is gone
     }
 
+    /** v0.49 "Share to Hoola" from any app: files are copied into the app's cache (25 MB each, max 6) and handed to
+     *  Flutter as `share:{"files":[{path,name,size}],"text":...}`; nothing is uploaded until the owner sends. */
+    private fun sharedPayload(intent: Intent): String? {
+        val uris = ArrayList<Uri>()
+        if (intent.action == Intent.ACTION_SEND) {
+            @Suppress("DEPRECATION")
+            (if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+             else intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM))?.let { uris.add(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            (if (Build.VERSION.SDK_INT >= 33) intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
+             else intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM))?.let { uris.addAll(it) }
+        }
+        val text = (intent.getStringExtra(Intent.EXTRA_TEXT) ?: "") .let {
+            val subj = intent.getStringExtra(Intent.EXTRA_SUBJECT) ?: ""
+            if (subj.isNotBlank() && !it.contains(subj)) "$subj\n$it" else it
+        }.trim()
+        val dir = java.io.File(cacheDir, "shared").apply { mkdirs() }
+        dir.listFiles()?.forEach { f -> if (System.currentTimeMillis() - f.lastModified() > 6 * 3600_000L) f.delete() }
+        val files = org.json.JSONArray()
+        var skipped = 0
+        for (u in uris.take(6)) {
+            try {
+                var name = "file"
+                var size = -1L
+                contentResolver.query(u, null, null, null, null)?.use { c ->
+                    if (c.moveToFirst()) {
+                        val ni = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        val si = c.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                        if (ni >= 0) name = c.getString(ni) ?: name
+                        if (si >= 0 && !c.isNull(si)) size = c.getLong(si)
+                    }
+                }
+                if (size > 25L * 1024 * 1024) { skipped++; continue }
+                val safe = name.replace(Regex("[^\\w.\\- ()]"), "_").take(120).ifBlank { "file" }
+                val out = java.io.File(dir, "${System.currentTimeMillis()}_$safe")
+                var n = 0L
+                contentResolver.openInputStream(u)?.use { inp ->
+                    out.outputStream().use { o ->
+                        val buf = ByteArray(64 * 1024)
+                        while (true) {
+                            val r = inp.read(buf)
+                            if (r < 0) break
+                            n += r
+                            if (n > 25L * 1024 * 1024) break
+                            o.write(buf, 0, r)
+                        }
+                    }
+                }
+                if (n > 25L * 1024 * 1024 || n == 0L) { out.delete(); skipped++; continue }
+                files.put(org.json.JSONObject().put("path", out.absolutePath).put("name", name).put("size", n))
+            } catch (_: Exception) { skipped++ }
+        }
+        if (files.length() == 0 && text.isEmpty()) return null
+        return "share:" + org.json.JSONObject().put("files", files).put("text", text).put("skipped", skipped).toString()
+    }
+
     private fun handleIntent(intent: Intent?) {
         val action = intent?.action
+        if (action == Intent.ACTION_SEND || action == Intent.ACTION_SEND_MULTIPLE) {
+            val msg = try { sharedPayload(intent!!) } catch (_: Exception) { null } ?: return
+            intent?.action = null   // don't share the same thing again on a config change
+            val sink = linkSink
+            if (sink != null) main.post { sink.success(msg) } else pendingLink = msg
+            return
+        }
         if (action == WakeService.ACTION_WAKE || action == Intent.ACTION_ASSIST || action == "android.intent.action.VOICE_COMMAND") {
             val locked = keyguardLocked()
             if (locked && action == WakeService.ACTION_WAKE) showOverLock(true)

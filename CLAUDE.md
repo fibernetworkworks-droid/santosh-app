@@ -231,6 +231,24 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - API `GET /api/tv/channels?q&category&country&offset&limit(≤200, default 90)`; `countries` + `categories` only on offset 0. Tool `tv_channel` takes `country` (name or code).
 - App: country card (flag, name, count) → sheet with search and "Saari duniya"; choice remembered (`hoola_tv_country`); server-side search (350 ms debounce), category chips per country, infinite scroll (90 per page), flag on tiles in world mode.
 
+## v0.50 Repo review, part 1: files, share-to-Hoola, safety gates, backup
+- From the review of 5,882 GitHub repos (owner's "repo of the day" sheet): 21 adopted, built in two versions (this + v0.51).
+- `app/filecheck.py` (Google Magika): real type of every owner upload (`chatfiles.store`) and peer file (`share._check_file`);
+  a "document / photo / media" whose bytes are a program or script = refused / declined; harmless mismatch = noted.
+- `app/docread.py` (Microsoft MarkItDown): Word / PowerPoint / Excel / HTML / EPUB / CSV -> Markdown (tables kept) for
+  `file_read` and peer files; falls back to `mailbox.mime.attachment_text`; PDFs keep pypdf.
+- Office previews: `media.office_to_pdf` via Gotenberg when `GOTENBERG_URL` is set (docker gotenberg/gotenberg:8).
+- `app/pii.py` Indian PII (Aadhaar with Verhoeff, PAN, bank account with context, CVV + net.policy.secret_found):
+  the `remember` tool refuses them. Presidio itself was not added (needs a ~500 MB spaCy model).
+- `app/keepalive.py` + `GET /api/device/keepalive?brand=` = dontkillmyapp.com steps per maker (CC BY 4.0, credited,
+  cached 7 days); shown in LockSafe.showFix (`LockSafe.app`).
+- Share to Hoola: manifest SEND / SEND_MULTIPLE */*, `MainActivity.sharedPayload` copies up to 6 files (25 MB) to cache ->
+  link `share:{json}` -> `app.onShared` -> Home opens Chat -> `ChatScreen._maybeShare` uploads them as pending chips.
+- Big videos: `VideoShrink.kt` (Jetpack Media3 Transformer 1.4.1, deps in patch_android) -> 720p/480p H.264 sized by
+  duration to <= 24 MB; `pickAttachments` now reads from the picked path (withData false).
+- `.github/workflows/security.yml`: gitleaks, bandit, osv-scanner (report only: continue-on-error).
+- `deploy/setup_backup.sh`: Litestream live backup of santosh.db to S3-compatible storage (pm2 `hoola-backup`).
+
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
   automation (Baileys/WhatsApp Web).
@@ -253,4 +271,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos · v0.47 Public APIs (2,100+ free APIs the avatar can use). · v0.48 Hoola TV (free official live channels on phone + Chromecast/Android TV). · v0.49 Hoola TV worldwide (~4,300 official channels, 140 countries, country picker). Next: v0.50.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos · v0.47 Public APIs (2,100+ free APIs the avatar can use). · v0.48 Hoola TV (free official live channels on phone + Chromecast/Android TV). · v0.49 Hoola TV worldwide (~4,300 official channels, 140 countries, country picker). · v0.50 repo review part 1 (real file types, MarkItDown, share-to-Hoola, video shrink, PII gate, keep-alive steps, security CI, backup). Next: v0.51.

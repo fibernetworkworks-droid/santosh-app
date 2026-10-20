@@ -22,7 +22,6 @@ FILE_LABELS = {"file_read": "File padh raha hoon"}
 
 
 def _read(tenant: str, file_id: str) -> dict[str, Any]:
-    from ..mailbox import mime as mm
     from ..mailbox import service as ms
     from ..net import media
     try:
@@ -36,7 +35,8 @@ def _read(tenant: str, file_id: str) -> dict[str, Any]:
                            **{k: v for k, v in info.items() if k != "preview" and v not in (None, "")}}
     text = ""
     if info.get("media") not in ("image", "video", "audio"):
-        text = (mm.attachment_text(f.name, mt, data, limit=15000, max_pages=40).get("text") or "").strip()
+        from ..docread import read_text
+        text = (read_text(f.name, mt, data, limit=15000, max_pages=40).get("text") or "").strip()
         out["text"] = text[:15000]
     if not text:
         seen = media.understand(tenant, info, f.name, mt, data, "")

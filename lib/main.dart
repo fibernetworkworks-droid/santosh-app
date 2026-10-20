@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -18,6 +19,7 @@ import 'ui/setup_screen.dart';
 import 'ui/today_screen.dart';
 import 'ui/tv_screen.dart';
 import 'ui/live_voice_screen.dart';
+import 'ui/lock_safe.dart';
 import 'ui/voice_screen.dart';
 
 Future<void> main() async {
@@ -46,7 +48,8 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    HoolaTv.app = widget.app;   // the TV player opens from links and phone actions too
+    HoolaTv.app = widget.app;
+    LockSafe.app = widget.app;   // keep-alive steps per phone maker   // the TV player opens from links and phone actions too
     _setup = !widget.app.configured;
     if (!_setup) widget.app.connect();
     _listenForSignIn();
@@ -59,6 +62,12 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
       if (t.isEmpty) return;
       if (t.startsWith('wake:')) {
         widget.app.wake(locked: t == 'wake:locked');
+        return;
+      }
+      if (t.startsWith('share:')) {
+        try {
+          widget.app.onShared(Map<String, dynamic>.from(jsonDecode(t.substring(6)) as Map));
+        } catch (_) {}
         return;
       }
       if (t.startsWith('tv:')) {
@@ -140,6 +149,7 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   int _tab = 0;
   int _seenBaat = 0;
+  int _seenShare = 0;
 
   @override
   void initState() {
@@ -172,6 +182,11 @@ class _HomeState extends State<Home> {
     if (widget.app.needsAvatarSetup != _wasSetup) {
       _wasSetup = widget.app.needsAvatarSetup;
       if (mounted) setState(() {});
+      return;
+    }
+    if (widget.app.shareTick != _seenShare) {
+      _seenShare = widget.app.shareTick;
+      if (mounted && _tab != 1) setState(() => _tab = 1);     // shared from another app: open Chat with it
       return;
     }
     if (widget.app.baatTick != _seenBaat) {

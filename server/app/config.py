@@ -82,6 +82,7 @@ class Settings(BaseSettings):
     notebook_tts_model: str = "gemini-2.5-flash-preview-tts"   # Santosh Notebook audio overviews (two voices)
     youtube_api_key: str = ""               # YouTube Data API v3 key for search / public video stats (Google Cloud)
     youtube_gemini_model: str = "gemini-2.5-flash"   # watches public YouTube videos to summarise / answer (official Gemini API)
+    gotenberg_url: str = ""                # v0.49 e.g. http://127.0.0.1:3005 (docker gotenberg): Office files get page-1 previews
     hoola_enrich: bool = True              # avatars look at what arrives (vision / video) and suggest replies
     hoola_image_model: str = "gemini-2.5-flash-image"   # avatars making pictures for the Hoola Network (sent only after the owner's tap)
     # --- App Jaanch: check an APK / EXE before installing, with REA (github.com/morluto/rea), static analysis only ---

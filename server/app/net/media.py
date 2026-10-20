@@ -149,6 +149,22 @@ def _pdf_preview(data: bytes) -> dict[str, Any]:
     return out
 
 
+def office_to_pdf(name: str, data: bytes) -> bytes:
+    """Word / Excel / PowerPoint -> PDF through a local Gotenberg service (LibreOffice, MIT). b'' when not set up."""
+    from ..config import get_settings
+    url = (get_settings().gotenberg_url or "").rstrip("/")
+    if not url or len(data) > 25 * 1024 * 1024:
+        return b""
+    import httpx
+    try:
+        r = httpx.post(f"{url}/forms/libreoffice/convert", files={"files": (Path(name).name or "file.docx", data)},
+                       timeout=60)
+        return r.content if r.status_code == 200 and r.content[:4] == b"%PDF" else b""
+    except Exception as e:
+        log.info("gotenberg: %s", e)
+        return b""
+
+
 def analyse(name: str, mime: str, data: bytes) -> dict[str, Any]:
     kind = media_kind(name, mime)
     info: dict[str, Any] = {"media": kind}
@@ -162,6 +178,10 @@ def analyse(name: str, mime: str, data: bytes) -> dict[str, Any]:
             info |= _audio_info(data, suffix)
         elif kind == "pdf":
             info |= _pdf_preview(data)
+        elif kind in ("doc", "sheet", "slides"):
+            pdf = office_to_pdf(name, data)
+            if pdf:
+                info |= _pdf_preview(pdf)
     except Exception as e:
         log.info("preview for %s failed: %s", name, e)
     return info

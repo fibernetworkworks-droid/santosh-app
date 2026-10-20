@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../native.dart';
+import '../state.dart';
 import 'glass.dart';
 
 /// "Phone lock par bhi Santosh": checks what can stop a call / background work on this phone and opens the right
 /// Android or phone-maker setting. Only opens settings pages (Google Play allows this); never changes them itself.
 class LockSafe {
+  /// Set at app start so the sheet can fetch this phone maker's own steps (dontkillmyapp.com) from the server.
+  static Santosh? app;
   static Future<Map<String, dynamic>> status() async => await Native.callStatus();
 
   /// Short reason the call may stop on lock, or null when everything looks fine.
@@ -86,6 +89,7 @@ class LockSafe {
                   Expanded(child: Text(t, style: const TextStyle(fontSize: 13.5, height: 1.35))),
                 ]),
               ),
+            if (brand.isNotEmpty && app?.api != null) _MakerSteps(app: app!, brand: brand),
             const SizedBox(height: 8),
             Wrap(spacing: 8, runSpacing: 8, children: [
               FilledButton.tonal(onPressed: Native.openAutostart, child: const Text('Autostart / Background')),
@@ -98,6 +102,53 @@ class LockSafe {
       ),
     );
   }
+}
+
+/// v0.49 The phone maker's exact steps from dontkillmyapp.com (fetched by our server, cached; credit shown).
+class _MakerSteps extends StatefulWidget {
+  const _MakerSteps({required this.app, required this.brand});
+  final Santosh app;
+  final String brand;
+  @override
+  State<_MakerSteps> createState() => _MakerStepsState();
+}
+
+class _MakerStepsState extends State<_MakerSteps> {
+  late final Future<Map<String, dynamic>> _f = widget.app.api!.keepalive(widget.brand);
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>>(
+        future: _f,
+        builder: (context, snap) {
+          final d = snap.data ?? const {};
+          final steps = List<String>.from((d['steps'] as List? ?? const []).map((e) => '$e'));
+          if (steps.isEmpty) return const SizedBox.shrink();
+          return Container(
+            margin: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: const Color(0x14FFFFFF), borderRadius: BorderRadius.circular(12)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              InkWell(
+                onTap: () => setState(() => _open = !_open),
+                child: Row(children: [
+                  Expanded(
+                    child: Text('${d['name'] ?? widget.brand} ke liye poore steps${d['rank'] != null ? ' (sakhti: ${d['rank']}/5)' : ''}',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  ),
+                  Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded, color: C.muted),
+                ]),
+              ),
+              if (_open) ...[
+                const SizedBox(height: 6),
+                for (final t in steps.take(18))
+                  Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(t, style: const TextStyle(fontSize: 12.5, height: 1.35))),
+              ],
+              Text('Source: ${d['credit'] ?? 'dontkillmyapp.com'}', style: const TextStyle(color: C.faint, fontSize: 10.5)),
+            ]),
+          );
+        },
+      );
 }
 
 /// Small warning strip on the call screen when the call may stop on lock.

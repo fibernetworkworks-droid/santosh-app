@@ -1,3 +1,4 @@
+import 'dart:io' show File;
 import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
@@ -53,12 +54,39 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _lastLen = app.feed.length;
     app.addListener(_autoScroll);
+    app.addListener(_maybeShare);
     _scroll.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShare());
+  }
+
+  /// v0.49 "Share to Hoola" from another app: the files wait in the box (uploaded), the text goes in the box.
+  Future<void> _maybeShare() async {
+    if (app.pendingShare == null || !mounted) return;
+    final s = app.takeShare();
+    if (s == null) return;
+    final text = (s['text'] as String? ?? '').trim();
+    if (text.isNotEmpty && _text.text.trim().isEmpty) _text.text = text;
+    if ((s['skipped'] as num? ?? 0) > 0) _snack('${s['skipped']} file 25 MB se badi thi ya padh nahi paye.');
+    for (final f in List<Map<String, dynamic>>.from((s['files'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)))) {
+      if (_files.length >= 6) break;
+      final name = f['name'] as String? ?? 'file';
+      setState(() => _uploading.add(name));
+      try {
+        final bytes = await File(f['path'] as String).readAsBytes();
+        final r = await app.attachChatFile(name, bytes);
+        if (mounted) setState(() => _files.add(r));
+      } catch (e) {
+        if (mounted) _snack('$name: $e');
+      } finally {
+        if (mounted) setState(() => _uploading.remove(name));
+      }
+    }
   }
 
   @override
   void dispose() {
     app.removeListener(_autoScroll);
+    app.removeListener(_maybeShare);
     _scroll.dispose();
     _stt.stop();
     super.dispose();

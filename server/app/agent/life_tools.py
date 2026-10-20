@@ -186,6 +186,10 @@ async def add_calendar_event(ctx: Ctx, title, start, end=None, location=None, no
 
 async def remember(ctx: Ctx, fact, **_):
     low = f" {fact.lower()} "
+    from ..pii import describe, find
+    found = find(str(fact))
+    if found:
+        raise ToolError(f"Isme {describe(found)} hai. Hoola yeh yaad nahi rakhta; password manager / DigiLocker mein rakhiye.")
     if any(k in low for k in SENSITIVE):
         raise ToolError("This looks like a password, OTP, PIN or account/card number. Do not store it; tell the user to keep it in a password manager.")
     with session() as s:

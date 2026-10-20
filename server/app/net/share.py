@@ -254,11 +254,21 @@ def _check_file(tenant: str, name: str, mime: str, data: bytes) -> dict[str, Any
         except Exception as e:
             scan = {"verdict": "unknown", "notes": [f"App Jaanch nahi ho payi ({str(e)[:80]})"]}
         return scan
+    from .. import filecheck
+    rt = filecheck.real_type(name, data)          # what the bytes really are (Magika), not what the name says
+    if rt["danger"]:
+        return {"verdict": "danger", "notes": [rt["note"]], "real_type": rt["label"]}
+    if rt["mismatch"]:
+        scan["notes"].append(rt["note"])
+        scan["verdict"] = "caution"
+    if rt["label"]:
+        scan["real_type"] = rt["label"]
     if re.search(r"\.(pdf|docx?|xlsx?|pptx?|csv|txt|jpe?g|png|webp|mp3|m4a|ogg|opus|wav|mp4|zip)$", low) is None:
         scan["notes"].append("anjaan tarah ki file")
         scan["verdict"] = "caution"
     try:
-        t = mm.attachment_text(name, mime or "application/octet-stream", data, limit=20000, max_pages=60)
+        from ..docread import read_text
+        t = read_text(name, mime or "application/octet-stream", data, limit=20000, max_pages=60)
         scan["text"] = (t.get("text") or "")[:20000]
         scan["pages"] = t.get("pages")
     except Exception:

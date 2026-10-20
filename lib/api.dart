@@ -361,6 +361,10 @@ class Api {
     return Map<String, dynamic>.from(body as Map);
   }
 
+  /// v0.49 this phone maker's keep-alive steps (dontkillmyapp.com via our server).
+  Future<Map<String, dynamic>> keepalive(String brand) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/device/keepalive', query: {'brand': brand}));
+
   // ---------------- v0.47 Public APIs ----------------
   Future<Map<String, dynamic>> publicApis({String q = '', String cat = '', String auth = 'any'}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/publicapis', query: {'q': q, 'cat': cat, 'auth': auth, 'limit': '40'}));

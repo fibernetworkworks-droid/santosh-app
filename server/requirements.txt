@@ -21,3 +21,5 @@ pillow>=10.0          # v0.43 Hoola Network: photo / video / PDF previews
 pypdfium2>=4.0        # v0.43 first-page picture of a PDF
 sherpa-onnx>=1.12   # Awaaz Pehchaan: speaker recognition on CPU (deploy/setup_voiceid.sh fetches the models)
 numpy>=1.24
+magika>=0.6          # v0.49 real file type of uploads (Google, Apache-2.0)
+markitdown[docx,pptx,xlsx]>=0.1.2   # v0.49 Word / PowerPoint / Excel to Markdown for the avatar (MIT)
