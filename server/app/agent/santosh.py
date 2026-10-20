@@ -122,23 +122,116 @@ VOICE_NOTE = ("[Voice mode: the user is speaking to you and your reply will be r
               "reply in Devanagari script so the voice pronounces it correctly; for other Indian languages use their own script.]")
 
 
-async def _think(brain: str, system: str, history: list[dict], settings) -> tuple[list[dict] | None, str]:
-    """One model call. Returns (blocks, stop_reason); blocks is None when GLM failed and Claude can step in."""
+def _claude_ready() -> bool:
+    return bool(get_settings().anthropic_api_key or _client is not None)
+
+
+async def _call_brain(brain: str, system: str, history: list[dict], settings) -> tuple[list[dict], str]:
+    """One model call on one brain. Raises when that brain fails."""
     if brain in ("glm", "omniroute"):
-        try:
-            blocks, stop, usage = await llm.openai_create(brain, system, TOOLS, history, settings.agent_max_tokens)
-            log.info("%s in=%s out=%s %s", llm.describe(), usage.get("prompt_tokens"), usage.get("completion_tokens"),
-                     usage.get("route", ""))
-            return blocks, stop
-        except llm.LLMError as e:
-            if not (settings.anthropic_api_key or _client is not None):
-                raise
-            log.warning("%s failed, using Claude for this turn: %s", brain, e)
-            return None, ""
+        blocks, stop, usage = await llm.openai_create(brain, system, TOOLS, history, settings.agent_max_tokens)
+        log.info("%s in=%s out=%s %s", llm.describe(), usage.get("prompt_tokens"), usage.get("completion_tokens"),
+                 usage.get("route", ""))
+        return blocks, stop
     resp = await get_client().messages.create(
         model=settings.anthropic_model, max_tokens=settings.agent_max_tokens,
         system=system, tools=TOOLS, messages=history)
     return [_block_to_dict(b) for b in resp.content], resp.stop_reason
+
+
+async def _think(brain: str, system: str, history: list[dict], settings) -> tuple[list[dict], str, str]:
+    """One model call that survives a failing brain: the chosen brain first, then the other one, so an outage of
+    either never leaves the user without an answer. Returns (blocks, stop_reason, the brain that answered)."""
+    order = [brain]
+    if brain == "claude":
+        cheap = llm.cheap_brain()
+        if cheap and not llm._has_media(history[-1:]):   # pictures and PDFs need Claude; plain text can go to the cheap brain
+            order.append(cheap)
+    elif _claude_ready():
+        order.append("claude")
+    last: Exception | None = None
+    for b in order:
+        try:
+            blocks, stop = await _call_brain(b, system, history, settings)
+            return blocks, stop, b
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            last = e
+            log.warning("%s failed%s: %s", b, "; trying the other brain" if b != order[-1] else "", e)
+    assert last is not None
+    raise last
+
+
+def _friendly_error(e: BaseException) -> str:
+    s = str(e)
+    busy = any(x in s.lower() for x in ("not reachable", "error 429", "error 5", "overloaded", "rate limit", "timed out", "broken answer"))
+    head = ("Abhi AI service busy ya unreachable hai, thodi der baad phir bolna." if busy
+            else "Maaf kijiye, abhi kuch gadbad ho gayi.")
+    return f"{head} ({s[:200]})" if s else head
+
+
+async def _run_tool(name: str, args: dict, ctx: Ctx, settings):
+    """A tool call that can never hang the whole turn."""
+    return await asyncio.wait_for(dispatch(name, args or {}, ctx), timeout=max(5, settings.agent_tool_timeout_s))
+
+
+async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str) -> str:
+    """The think -> tools -> think loop of one turn. Returns the final text shown to the user."""
+    final_text = ""
+    ran_tools = False
+    brain = llm.choose(history)
+    system = system_prompt(settings.wa_dry_run, context_block(tenant_id), tenant_id)
+    for _ in range(settings.agent_max_steps):
+        blocks, stop, brain = await _think(brain, system, history, settings)   # stays on the brain that worked
+        history.append({"role": "assistant", "content": blocks})
+        texts = [b["text"] for b in blocks if b.get("type") == "text" and b.get("text", "").strip()]
+        _save(conversation_id, "assistant", blocks, display="\n\n".join(texts) or None)
+        if texts:
+            final_text = "\n\n".join(texts)
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
+        if stop != "tool_use":
+            break
+        results = []
+        for b in blocks:
+            if b.get("type") != "tool_use":
+                continue
+            ran_tools = True
+            label = gendered(TOOL_LABELS.get(b["name"], b["name"]), gender)
+            bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "running", "id": b["id"]})
+            try:
+                out = await _run_tool(b["name"], b.get("input") or {}, ctx, settings)
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": _short(out)})
+                bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "done", "id": b["id"]})
+            except ToolError as e:
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": str(e), "is_error": True})
+                bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error",
+                                                      "id": b["id"], "detail": str(e)[:300]})
+            except asyncio.TimeoutError:
+                msg = f"{b['name']} did not finish in {settings.agent_tool_timeout_s} seconds and was stopped. Tell the user and offer to try again."
+                log.warning("tool %s timed out", b["name"])
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": msg, "is_error": True})
+                bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error",
+                                                      "id": b["id"], "detail": "bahut der lag rahi thi, rok diya"})
+            except Exception as e:  # unexpected bug: tell the model, keep the turn alive
+                log.exception("tool %s crashed", b["name"])
+                results.append({"type": "tool_result", "tool_use_id": b["id"],
+                                "content": f"Internal error in {b['name']}: {e}", "is_error": True})
+                bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error", "id": b["id"]})
+        history.append({"role": "user", "content": results})
+        _save(conversation_id, "user", results)
+    else:
+        if not final_text:
+            final_text = "Yeh kaam lamba ho gaya, main yahin ruk raha hoon. Aage kya karoon?"
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
+        return final_text
+    if not final_text.strip():
+        # the model finished without a word: never leave the user staring at a silent chat
+        final_text = gendered("Kaam ho gaya. Aur kuch karna hai?", gender) if ran_tools else \
+            "Maaf kijiye, main samajh nahi paya. Ek baar phir bata dein?"
+        bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
+        _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
+    return final_text
 
 
 async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None = None, voice: bool = False) -> str:
@@ -158,48 +251,18 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         history = _load_history(conversation_id)
         final_text = ""
         try:
-            brain = llm.choose(history)
-            system = system_prompt(settings.wa_dry_run, context_block(tenant_id), tenant_id)
-            for _ in range(settings.agent_max_steps):
-                blocks, stop = await _think(brain, system, history, settings)
-                if blocks is None:          # GLM failed: Claude takes over for the rest of this turn
-                    brain = "claude"
-                    blocks, stop = await _think(brain, system, history, settings)
-                history.append({"role": "assistant", "content": blocks})
-                texts = [b["text"] for b in blocks if b.get("type") == "text" and b.get("text", "").strip()]
-                _save(conversation_id, "assistant", blocks, display="\n\n".join(texts) or None)
-                if texts:
-                    final_text = "\n\n".join(texts)
-                    bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
-                if stop != "tool_use":
-                    break
-                results = []
-                for b in blocks:
-                    if b.get("type") != "tool_use":
-                        continue
-                    label = gendered(TOOL_LABELS.get(b["name"], b["name"]), _gender)
-                    bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "running", "id": b["id"]})
-                    try:
-                        out = await dispatch(b["name"], b.get("input") or {}, ctx)
-                        results.append({"type": "tool_result", "tool_use_id": b["id"], "content": _short(out)})
-                        bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "done", "id": b["id"]})
-                    except ToolError as e:
-                        results.append({"type": "tool_result", "tool_use_id": b["id"], "content": str(e), "is_error": True})
-                        bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error",
-                                                              "id": b["id"], "detail": str(e)[:300]})
-                    except Exception as e:  # unexpected bug: tell Claude, keep the turn alive
-                        log.exception("tool %s crashed", b["name"])
-                        results.append({"type": "tool_result", "tool_use_id": b["id"],
-                                        "content": f"Internal error in {b['name']}: {e}", "is_error": True})
-                        bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error", "id": b["id"]})
-                history.append({"role": "user", "content": results})
-                _save(conversation_id, "user", results)
-            else:
-                final_text = final_text or "Yeh kaam lamba ho gaya, main yahin ruk raha hoon. Aage kya karoon?"
-                bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
+            # one stuck call must never keep this conversation locked forever
+            final_text = await asyncio.wait_for(
+                _steps(conversation_id, ctx, _gender, history, settings, tenant_id),
+                timeout=max(30, settings.agent_turn_timeout_s))
+        except asyncio.TimeoutError:
+            log.error("agent turn timed out after %ss", settings.agent_turn_timeout_s)
+            final_text = "Yeh kaam bahut der se chal raha tha, isliye maine ise rok diya. Thoda chhota karke phir bolein?"
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error"})
+            _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         except Exception as e:
             log.exception("agent turn failed")
-            final_text = f"Maaf kijiye, abhi kuch gadbad ho gayi: {e}"
+            final_text = _friendly_error(e)
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error"})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         finally:

@@ -26,6 +26,10 @@ class MainActivity : FlutterActivity() {
         micChannel(flutterEngine)
         val callCh = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "santosh/call")
         CallService.onHangup = { main.post { try { callCh.invokeMethod("hangup", null) } catch (_: Exception) {} } }
+        // call audio trouble (another app has the audio, the microphone or speaker was lost) goes to the call screen
+        VoiceAudio.onState = { state, detail ->
+            main.post { try { callCh.invokeMethod("audio", mapOf("state" to state, "detail" to detail)) } catch (_: Exception) {} }
+        }
         linkChannel(flutterEngine)
         handleIntent(intent)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "santosh/native").setMethodCallHandler { call, result ->
@@ -357,6 +361,7 @@ class MainActivity : FlutterActivity() {
         VoiceAudio.stop(this)
         CallService.stop(this)
         CallService.onHangup = null
+        VoiceAudio.onState = null
         super.onDestroy()
     }
 

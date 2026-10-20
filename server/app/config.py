@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-sonnet-5-5"
     agent_max_steps: int = 14
     agent_max_tokens: int = 2000
+    agent_tool_timeout_s: int = 300         # a tool that hangs never blocks a chat turn longer than this (browser waits go up to 270 s)
+    agent_turn_timeout_s: int = 900         # a whole turn never holds the chat lock longer than this
+    llm_retries: int = 2                    # extra tries for a busy / briefly unreachable model before falling back
 
     # --- low-cost chat brain: any OpenAI-compatible API (Z.ai GLM, or GLM self-hosted in India) ---
     chat_llm: str = "auto"                  # auto (OmniRoute, else GLM, else Claude) | omniroute | glm | claude
@@ -44,6 +47,9 @@ class Settings(BaseSettings):
     # Optional Gemini extras; gemini-3.8-live rejects both today, so they are off until Google enables them
     voice_affective_dialog: bool = False
     voice_proactive_audio: bool = False
+    voice_resume_grace_s: int = 25         # a dropped phone connection can re-join the same call within this time
+    voice_tool_wait_s: int = 25            # a call waits this long for a big job, then talks on and gets told when it is done
+    voice_tool_timeout_s: int = 60         # any other call tool is cut off after this
 
     # --- email (Baat/Chat can read your inbox and send approved replies). App password, not your login password. ---
     email_address: str = ""

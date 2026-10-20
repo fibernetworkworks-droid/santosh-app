@@ -53,7 +53,27 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   Kinds registered via EXTRA_KINDS / GROUP_KINDS / NOLINK_KINDS; modules imported at bottom of service.py.
 - Agent tools in `agent/hoola_tools.py`. Risky sends go to an **outbox needing the owner's tap** (`needs_tap`).
 
-## v0.35 Bluetooth / Ghar (latest)
+## v0.36 Conversation & voice robustness (latest)
+- **Voice call survives a network drop** (`voice.py`): `ready` carries `call_id`; if the phone connection drops the call stays
+  alive `VOICE_RESUME_GRACE_S` (25 s) and the phone re-joins with `/api/voice/ws?conv=..&resume=<call_id>` (`lib/live_voice.dart`
+  does this by itself, with a heartbeat `ping`/`pong`). The call runs as its own task (`voice.serve`) so a server that cancels the
+  endpoint on disconnect can't kill it. `voice.CALLS` = live calls by id.
+- Gemini side: a session that ends instantly is a failure (backoff, 3 strikes -> error) instead of a tight reconnect loop; connect
+  has a 20 s timeout; stale mic audio is dropped on reconnect; a fresh (non-resumed) session is re-briefed with the last turns.
+- Interruptions save the cut-off sentence as its own turn (`finish_turn(interrupted=True)`); tool calls never run twice (ids
+  de-duplicated), withdrawn calls (`tool_call_cancellation`) don't get a response but their result is said as a note, undeliverable
+  results become a note; `santosh_kaam` waits `VOICE_TOOL_WAIT_S` (25 s) then answers `working` and the result is spoken in when done;
+  other tools are cut off after `VOICE_TOOL_TIMEOUT_S`.
+- Chat brain (`agent/santosh.py`, `llm.py`): transient model errors (429/5xx/timeouts) are retried (`LLM_RETRIES`), Claude and the cheap
+  brain fall back to each other, a tool hung longer than `AGENT_TOOL_TIMEOUT_S` and a turn longer than `AGENT_TURN_TIMEOUT_S` are
+  stopped so the chat lock is never held forever, an empty model answer gets a fallback line, friendlier error text.
+- `POST /conversations/{id}/messages` takes `client_id` (same id = a retry, run once); the app retries sends 3x and puts the text back
+  in the box if sending failed.
+- Android `VoiceAudio.kt`: a dead mic or speaker is reopened, audio focus (real phone call = pause, then resume), headset / Bluetooth
+  connect or disconnect re-routes the sound; `VoiceAudio.onState` -> `santosh/call` method `audio` -> call screen status line.
+- Not verified on a real phone yet: network switch mid-call, incoming GSM call, plugging in a headset during a call.
+
+## v0.35 Bluetooth / Ghar
 - Tools `agent/bt_tools.py`: `bluetooth` (status, devices, scan, pair, connect, disconnect, tv_pair, turn_on, settings),
   `tv_remote`, `music_control`, `ac_control`. Phone round-trip: `bt_request` event → phone → `POST /api/bt/requests/{id}/result`;
   home commands: `home_device` event → `POST /api/bazar/devices/commands/{id}/result`. Tools wait for the real result.
@@ -83,4 +103,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix. Next: v0.36.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness. Next: v0.37.

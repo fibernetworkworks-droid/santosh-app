@@ -18,6 +18,7 @@ server-side until the user approves them in the app.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -175,6 +176,36 @@ class LLMError(RuntimeError):
     pass
 
 
+# a busy or briefly unreachable model is worth another try before the turn falls back to another brain
+TRANSIENT_STATUS = {408, 409, 425, 429, 500, 502, 503, 504, 529}
+RETRY_DELAY = 0.6   # seconds; doubles each try (tests shorten it)
+
+
+async def _post_with_retry(url: str, body: dict, headers: dict, label: str) -> httpx.Response:
+    tries = 1 + max(0, get_settings().llm_retries)
+    last: LLMError | None = None
+    for i in range(tries):
+        wait = RETRY_DELAY * (2 ** i)
+        try:
+            r = await _client().post(url, json=body, headers=headers)
+        except httpx.HTTPError as e:
+            last = LLMError(f"{label} not reachable: {e}")
+        else:
+            if r.status_code < 400:
+                return r
+            last = LLMError(f"{label} error {r.status_code}: {r.text[:300]}")
+            if r.status_code not in TRANSIENT_STATUS:
+                raise last   # a wrong key or a bad request will not get better by asking again
+            ra = r.headers.get("retry-after", "")
+            if ra.isdigit():
+                wait = min(float(ra), 5.0)
+        if i + 1 < tries:
+            log.warning("%s (try %d of %d); retrying in %.1fs", last, i + 1, tries, min(wait, 5.0))
+            await asyncio.sleep(min(wait, 5.0))
+    assert last is not None
+    raise last
+
+
 def _target(brain: str) -> tuple[str, str, str, dict, dict]:
     """(url, model, label, headers, extra body) for an OpenAI-compatible brain."""
     st = get_settings()
@@ -197,13 +228,11 @@ async def openai_create(brain: str, system: str, tools: list[dict], messages: li
     if fns:
         body["tools"] = fns
         body["tool_choice"] = "auto"
+    r = await _post_with_retry(url, body, headers, label)
     try:
-        r = await _client().post(url, json=body, headers=headers)
-    except httpx.HTTPError as e:
-        raise LLMError(f"{label} not reachable: {e}") from e
-    if r.status_code >= 400:
-        raise LLMError(f"{label} error {r.status_code}: {r.text[:300]}")
-    data = r.json()
+        data = r.json()
+    except ValueError as e:
+        raise LLMError(f"{label} sent a broken answer: {e}") from e
     blocks, stop = from_openai(data)
     if not blocks:
         raise LLMError(f"{label} returned an empty answer")

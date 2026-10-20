@@ -35,6 +35,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
   String? _tool;
   String? _note;
   String? _lockIssue;   // why the call may stop when the phone locks (checked after the call starts)
+  String? _linkNote;    // the connection is wobbling (network gone and re-joining, another app has the audio...)
   DateTime _lastHeard = DateTime.fromMillisecondsSinceEpoch(0);
   bool _turnOpen = false;
 
@@ -82,6 +83,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
       _inCall = true;
       _act = _Act.connecting;
       _note = null;
+      _linkNote = null;
       _heard = _reply = '';
     });
     await Native.wakePause();
@@ -118,6 +120,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
         _inCall = false;
         _act = _Act.idle;
         _tool = null;
+        _linkNote = null;
       });
     }
   }
@@ -132,6 +135,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
       _inCall = false;
       _act = _Act.idle;
       _tool = null;
+      _linkNote = null;
     });
   }
 
@@ -139,7 +143,17 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
     if (!mounted) return;
     switch (e['type']) {
       case 'ready':
-        setState(() => _act = _Act.listening);
+        setState(() {
+          _act = _Act.listening;
+          _linkNote = null;
+        });
+      case 'status':
+        setState(() => _linkNote = switch (e['state']) {
+              'phone_reconnecting' => 'Network chala gaya, dobara jod raha hoon…',
+              'reconnecting' => 'Connection thoda slow hai, sambhal raha hoon…',
+              'audio_paused' => 'Dusri awaaz (phone call?) chal rahi hai, call ruki hui hai',
+              _ => null,
+            });
       case 'user_text':
         if (!_turnOpen) _reply = '';
         _turnOpen = true;
@@ -205,7 +219,12 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
     }
   }
 
-  String get _status => switch (_act) {
+  String get _status {
+    if (_inCall && _linkNote != null) return _linkNote!;
+    return _actStatus;
+  }
+
+  String get _actStatus => switch (_act) {
         _Act.idle => _note ?? 'Call button dabaiye aur ${app.aName} se seedhe baat kijiye',
         _Act.connecting => '${app.aName} ko call lag raha hai…',
         _Act.listening => _muted ? 'Mic band hai' : app.g('Boliye, ${app.aName} sun raha hai'),

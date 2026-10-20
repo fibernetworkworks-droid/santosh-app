@@ -7,10 +7,14 @@ import 'dart:typed_data';
 import 'package:flutter/services.dart';
 
 /// One live voice call with Santosh: mic audio streams up, his voice streams back (Gemini Live on the server).
+///
+/// The call survives a dropped network (Wi-Fi to mobile data, a lift, a tunnel): the server keeps it alive for a
+/// short while and this class re-joins it on a new connection by itself, so the person just hears a short gap.
 class LiveVoice {
   LiveVoice({required this.onEvent, required this.onClosed});
 
-  /// Server events: ready, user_text, santosh_text, interrupted, turn_done, tool, error.
+  /// Server events: ready, user_text, santosh_text, interrupted, turn_done, tool, error, status.
+  /// This class adds `status` events too: phone_reconnecting (network gone, re-joining), live (back), audio_paused.
   final void Function(Map<String, dynamic> e) onEvent;
   final void Function(String? reason) onClosed;
 
@@ -18,13 +22,33 @@ class LiveVoice {
   static const _mic = EventChannel('santosh/mic');
   static const _call = MethodChannel('santosh/call');
 
+  /// How long a dropped connection is retried before the call is given up.
+  static const _resumeWindow = Duration(seconds: 24);
+
   /// The call in progress (the lock-screen notification's "Call band karein" button ends it).
   static LiveVoice? _current;
 
   WebSocket? _ws;
   StreamSubscription? _micSub;
+  Timer? _beat;
   bool muted = false;
   bool _closed = false;
+  bool _userEnded = false;
+  bool _reconnecting = false;
+  bool _noResume = false; // the server said the call is gone
+  bool _audioPaused = false; // another app (a real phone call...) has the audio for a moment
+  String? _callId;
+  DateTime _lastRx = DateTime.now();
+
+  // what is needed to open the connection again
+  String _server = '';
+  String _key = '';
+  String _conv = '';
+  String _voice = '';
+  String _lang = '';
+
+  /// True while the connection is being re-established after a drop.
+  bool get reconnecting => _reconnecting;
 
   /// Mic loudness 0..1 (smoothed).
   double inLevel = 0;
@@ -45,17 +69,27 @@ class LiveVoice {
     return 0;
   }
 
-  static Uri _url(String server, String conv, String voice, String lang) {
+  static Uri _url(String server, String conv, String voice, String lang, {String? resume}) {
     final base = Uri.parse(server.endsWith('/') ? server.substring(0, server.length - 1) : server);
     return base.replace(
       scheme: base.scheme == 'https' ? 'wss' : 'ws',
       path: '${base.path}/api/voice/ws',
-      queryParameters: {'conv': conv, 'voice': voice, 'lang': lang},
+      queryParameters: {'conv': conv, 'voice': voice, 'lang': lang, if (resume != null) 'resume': resume},
     );
   }
 
+  Future<WebSocket> _open({String? resume}) => WebSocket.connect(
+        _url(_server, _conv, _voice, _lang, resume: resume).toString(),
+        headers: {if (_key.isNotEmpty) 'Authorization': 'Bearer $_key'},
+      ).timeout(const Duration(seconds: 10));
+
   /// Returns null when the call is up, or a reason it could not start.
   Future<String?> start({required String server, required String key, required String conv, required String voice, required String lang}) async {
+    _server = server;
+    _key = key;
+    _conv = conv;
+    _voice = voice;
+    _lang = lang;
     // microphone first (asks permission the first time)
     String? err = await _ch.invokeMethod<String>('voiceStart');
     for (var i = 0; err == 'permission' && i < 20; i++) {
@@ -64,31 +98,60 @@ class LiveVoice {
     }
     if (err == 'permission') return 'Microphone ki permission chahiye.';
     if (err != null) return err;
+    final WebSocket ws;
     try {
-      _ws = await WebSocket.connect(_url(server, conv, voice, lang).toString(),
-          headers: {if (key.isNotEmpty) 'Authorization': 'Bearer $key'}).timeout(const Duration(seconds: 15));
+      ws = await _open();
     } catch (e) {
       await _ch.invokeMethod('voiceStop');
       return 'Server se voice connect nahi hua: $e';
     }
-    _ws!.pingInterval = const Duration(seconds: 15);
     _current = this;
     _call.setMethodCallHandler((c) async {
       if (c.method == 'hangup') await _current?.stop();
+      if (c.method == 'audio') _current?._audioState(Map<String, dynamic>.from((c.arguments as Map?) ?? const {}));
       return null;
     });
-    _ws!.listen(_onData, onDone: () => _finish(_ws?.closeReason), onError: (e) => _finish('$e'), cancelOnError: true);
+    _attach(ws);
     _micSub = _mic.receiveBroadcastStream().listen((b) {
       final bytes = b as Uint8List;
       inLevel = inLevel * .7 + _rms(bytes) * .3;
-      if (!muted && !_closed) _ws?.add(bytes);
+      final sock = _ws;
+      if (!muted && !_closed && !_reconnecting && !_audioPaused && sock != null && sock.readyState == WebSocket.open) {
+        try {
+          sock.add(bytes);
+        } catch (_) {}
+      }
+    }, onError: (Object e) {
+      // the phone's microphone failed and could not be restarted
+      onEvent({'type': 'error', 'message': 'Microphone mein dikkat aayi: $e'});
+      stop();
     });
+    _beat = Timer.periodic(const Duration(seconds: 8), (_) => _heartbeat());
     return null;
   }
 
+  void _attach(WebSocket ws) {
+    _ws = ws;
+    _lastRx = DateTime.now();
+    ws.pingInterval = const Duration(seconds: 8);
+    ws.listen(_onData, onDone: () => _lost(ws, ws.closeReason), onError: (e) => _lost(ws, '$e'), cancelOnError: true);
+  }
+
+  /// Every 8 s: tell the server we are alive, and notice a connection that died without telling anyone.
+  void _heartbeat() {
+    final ws = _ws;
+    if (_closed || _reconnecting || ws == null) return;
+    try {
+      ws.add(jsonEncode({'type': 'ping'}));
+    } catch (_) {}
+    if (DateTime.now().difference(_lastRx) > const Duration(seconds: 24)) _lost(ws, 'network chala gaya');
+  }
+
   void _onData(dynamic data) {
+    _lastRx = DateTime.now();
     if (data is List<int>) {
       final bytes = data is Uint8List ? data : Uint8List.fromList(data);
+      if (_audioPaused) return;
       _ch.invokeMethod('voicePlay', bytes);
       final now = DateTime.now();
       final start = _playEnd.isAfter(now) ? _playEnd : now.add(const Duration(milliseconds: 60));
@@ -98,9 +161,72 @@ class LiveVoice {
     } else if (data is String) {
       try {
         final e = Map<String, dynamic>.from(jsonDecode(data) as Map);
+        if (e['type'] == 'pong') return;
+        if (e['type'] == 'ready' && e['call_id'] is String) _callId = e['call_id'] as String;
+        if (e['type'] == 'error' && e['code'] == 'gone') _noResume = true;
         if (e['type'] == 'interrupted') cutSpeech();
         onEvent(e);
       } catch (_) {}
+    }
+  }
+
+  /// The connection to the server ended. If it was not on purpose, re-join the same call.
+  void _lost(WebSocket ws, String? reason) {
+    if (_closed || !identical(ws, _ws)) return;
+    _ws = null;
+    unawaited(() async {
+      try {
+        await ws.close();
+      } catch (_) {}
+    }());
+    if (_userEnded || _noResume || _callId == null) {
+      _finish(reason);
+      return;
+    }
+    unawaited(_reconnect(reason));
+  }
+
+  Future<void> _reconnect(String? reason) async {
+    if (_reconnecting || _closed) return;
+    _reconnecting = true;
+    cutSpeech();
+    onEvent({'type': 'status', 'state': 'phone_reconnecting'});
+    final until = DateTime.now().add(_resumeWindow);
+    var wait = const Duration(milliseconds: 300);
+    while (!_closed && !_noResume && DateTime.now().isBefore(until)) {
+      try {
+        final ws = await _open(resume: _callId);
+        if (_closed) {
+          unawaited(ws.close());
+          break;
+        }
+        _attach(ws);
+        _reconnecting = false;
+        onEvent({'type': 'status', 'state': 'live'});
+        return;
+      } catch (_) {
+        await Future.delayed(wait);
+        wait = Duration(milliseconds: math.min(wait.inMilliseconds * 2, 3000));
+      }
+    }
+    _reconnecting = false;
+    if (!_closed) _finish(reason == null || reason.isEmpty ? 'network wapas nahi aaya' : reason);
+  }
+
+  /// Another app took the audio for a moment (a real phone call...) or the microphone / speaker failed for good.
+  void _audioState(Map<String, dynamic> m) {
+    switch (m['state']) {
+      case 'paused':
+        _audioPaused = true;
+        inLevel = 0;
+        cutSpeech();
+        onEvent({'type': 'status', 'state': 'audio_paused'});
+      case 'resumed':
+        _audioPaused = false;
+        onEvent({'type': 'status', 'state': 'live'});
+      case 'audio_error':
+        onEvent({'type': 'error', 'message': 'Microphone ya speaker band ho gaya, isliye call band ho gayi.'});
+        stop();
     }
   }
 
@@ -113,7 +239,9 @@ class LiveVoice {
 
   void setMuted(bool m) {
     muted = m;
-    _ws?.add(jsonEncode({'type': m ? 'mute' : 'unmute'}));
+    try {
+      _ws?.add(jsonEncode({'type': m ? 'mute' : 'unmute'}));
+    } catch (_) {}
   }
 
   static double _rms(Uint8List b) {
@@ -132,6 +260,7 @@ class LiveVoice {
     if (_closed) return;
     _closed = true;
     if (identical(_current, this)) _current = null;
+    _beat?.cancel();
     _micSub?.cancel();
     _ch.invokeMethod('voiceStop');
     onClosed(reason);
@@ -139,10 +268,24 @@ class LiveVoice {
 
   Future<void> stop() async {
     if (_closed) return;
+    _userEnded = true;
+    final ws = _ws;
+    final wasAway = _reconnecting;
+    _ws = null;
     try {
-      _ws?.add(jsonEncode({'type': 'end'}));
-      await _ws?.close();
+      ws?.add(jsonEncode({'type': 'end'}));
+      await ws?.close();
     } catch (_) {}
     _finish(null);
+    // hanging up while the network was away: still tell the server, so the call does not linger
+    if (ws == null && wasAway && _callId != null) unawaited(_hangUpQuietly());
+  }
+
+  Future<void> _hangUpQuietly() async {
+    try {
+      final ws = await _open(resume: _callId).timeout(const Duration(seconds: 6));
+      ws.add(jsonEncode({'type': 'end'}));
+      await ws.close();
+    } catch (_) {}
   }
 }

@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show SocketException;
+import 'dart:math' as math;
 
 import 'package:http/http.dart' as http;
 
@@ -66,8 +68,29 @@ class Api {
   Uri googleSignInUrl() => _u('/auth/google/start');
   Future<String> newConversation() async => (await _send('POST', '/api/conversations'))['id'] as String;
   Future<void> checkConversation(String id) async => _send('GET', '/api/conversations/$id/messages');
-  Future<void> sendMessage(String conv, String text, {bool voice = false}) async =>
-      _send('POST', '/api/conversations/$conv/messages', body: {'text': text, if (voice) 'voice': true});
+  /// Sends a message. A flaky mobile network is retried (same client_id, so the server runs it only once).
+  Future<void> sendMessage(String conv, String text, {bool voice = false}) async {
+    final id = '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}${math.Random().nextInt(1 << 30).toRadixString(36)}';
+    Object? last;
+    for (var i = 0; i < 3; i++) {
+      try {
+        await _send('POST', '/api/conversations/$conv/messages',
+            body: {'text': text, 'client_id': id, if (voice) 'voice': true}, timeout: const Duration(seconds: 20));
+        return;
+      } on ApiException catch (e) {
+        if (e.status < 500) rethrow; // a refusal (wrong key, too long) will not change by asking again
+        last = e;
+      } on TimeoutException catch (e) {
+        last = e;
+      } on SocketException catch (e) {
+        last = e;
+      } on http.ClientException catch (e) {
+        last = e;
+      }
+      if (i < 2) await Future.delayed(Duration(milliseconds: 800 * (i + 1)));
+    }
+    throw last ?? Exception('Message nahi gaya');
+  }
 
   /// Santosh's automatic jobs. Older servers (before v0.3) have none: returns an empty list.
   Future<List<Map<String, dynamic>>> routines() async {

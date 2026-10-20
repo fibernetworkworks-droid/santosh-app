@@ -6,6 +6,8 @@ import hashlib
 import hmac
 import json
 import logging
+import time
+from collections import OrderedDict
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -39,7 +41,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.35.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.36.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -133,6 +135,24 @@ app.mount("/static", StaticFiles(directory=STATIC), name="static")
 class NewMessage(BaseModel):
     text: str = Field(min_length=1, max_length=4000)
     voice: bool = False   # spoken in voice mode: Santosh answers short and speakable
+    client_id: str | None = Field(default=None, max_length=64)   # same id again = the phone retrying a send; run it once
+
+
+# (tenant, conversation, client_id) of recent sends, so a retry after a timeout never makes Santosh act twice
+_SEEN_SENDS: "OrderedDict[tuple[str, str, str], float]" = OrderedDict()
+
+
+def _already_sent(tenant: str, conversation_id: str, client_id: str | None) -> bool:
+    if not client_id:
+        return False
+    now = time.monotonic()
+    while _SEEN_SENDS and (len(_SEEN_SENDS) > 2000 or now - next(iter(_SEEN_SENDS.values())) > 600):
+        _SEEN_SENDS.popitem(last=False)
+    key = (tenant, conversation_id, client_id)
+    if key in _SEEN_SENDS:
+        return True
+    _SEEN_SENDS[key] = now
+    return False
 
 
 @app.post("/api/conversations", dependencies=[Depends(require_key)])
@@ -162,6 +182,8 @@ def list_messages(conversation_id: str, tenant: str = Depends(current_tenant)):
 @app.post("/api/conversations/{conversation_id}/messages", status_code=202, dependencies=[Depends(require_key)])
 async def post_message(conversation_id: str, body: NewMessage, background: BackgroundTasks, tenant: str = Depends(current_tenant)):
     _conv_or_404(conversation_id, tenant)
+    if _already_sent(tenant, conversation_id, body.client_id):
+        return {"accepted": True, "duplicate": True}
     bus.publish(conversation_id, "message", {"role": "user", "text": body.text, "source": "user"})
     background.add_task(run_turn, conversation_id, body.text, tenant, body.voice)
     return {"accepted": True}
@@ -584,8 +606,9 @@ async def pc_send(file: UploadFile = File(...), tenant: str = Depends(current_te
 
 
 @app.websocket("/api/voice/ws")
-async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "hi-IN"):
-    """Realtime voice call (Baat tab). See app/voice.py for the protocol."""
+async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "hi-IN", resume: str = ""):
+    """Realtime voice call (Baat tab). See app/voice.py for the protocol. `resume` re-joins a call whose phone
+    connection dropped (network change) instead of starting a new one."""
     from . import voice as v
     st = get_settings()
     got = ws.headers.get("authorization", "").removeprefix("Bearer ").strip() or ws.query_params.get("key", "")
@@ -606,11 +629,23 @@ async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "
         await ws.close(code=4404)
         return
     await ws.accept()
+    if resume:
+        call = v.CALLS.get(resume)
+        if call is None or call.tenant != tenant or call.conv != conv or call.closed.is_set():
+            await ws.send_text(json.dumps({"type": "error", "code": "gone", "message": "Pichli call ab chalu nahi hai."}))
+            await ws.close(code=4410)
+            return
+        reader = await call.attach(ws)
+        try:
+            await reader   # until this connection drops again or the user hangs up
+        except Exception:
+            pass
+        return
     if not st.gemini_api_key:
         await ws.send_text(json.dumps({"type": "error", "message": "Server par GEMINI_API_KEY set nahi hai."}))
         await ws.close()
         return
-    await v.Call(ws, conv, voice, lang, tenant).run()
+    await v.serve(v.Call(ws, conv, voice, lang, tenant))
 
 
 @app.get("/api/emails/pending", dependencies=[Depends(require_key)])

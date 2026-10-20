@@ -103,9 +103,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
-  void _send() {
-    app.send(_text.text);
+  /// The text goes back into the box if it could not be sent, so nothing typed is lost on a bad network.
+  Future<void> _send() async {
+    final t = _text.text;
+    if (t.trim().isEmpty) return;
     _text.clear();
+    final ok = await app.send(t);
+    if (!ok && mounted && _text.text.isEmpty) {
+      _text.text = t;
+      _text.selection = TextSelection.collapsed(offset: t.length);
+    }
   }
 
   @override
