@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../api.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'scroll_screen.dart';
 import 'tv_screen.dart' show HoolaTv;
 
 /// Hoola Reels: share any reel to Hoola (Instagram, YouTube Shorts, Facebook, Snapchat, Moj, Josh, ShareChat) and turn
@@ -557,7 +558,13 @@ class _SavedReelsScreenState extends State<SavedReelsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Saved reels'), backgroundColor: Colors.transparent),
+        appBar: AppBar(title: const Text('Saved reels'), backgroundColor: Colors.transparent, actions: [
+          IconButton(
+            tooltip: 'Scroll report',
+            icon: const Icon(Icons.insights_rounded),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ScrollScreen())),
+          ),
+        ]),
         body: Aurora(
           child: RefreshIndicator(
             onRefresh: _load,

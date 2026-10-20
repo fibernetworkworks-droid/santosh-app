@@ -122,6 +122,15 @@ class MainActivity : FlutterActivity() {
                         askBluetooth()
                         result.success(HomeDevices.hasBluetoothPermission(this) && BtControl.canScan(this))
                     }
+                    "usageAllowed" -> result.success(ScrollStats.allowed(this))
+                    "usageSettings" -> { ScrollStats.openSettings(this); result.success(null) }
+                    "usageDays" -> {
+                        val days = (call.argument<Number>("days") ?: 7).toInt()
+                        Thread {
+                            val r = try { ScrollStats.collect(this, days) } catch (_: Exception) { emptyList() }
+                            main.post { result.success(r) }
+                        }.start()
+                    }
                     "compressVideo" -> {
                         VideoShrink.run(this, call.argument<String>("path") ?: "", (call.argument<Number>("mb") ?: 24).toInt(),
                             (call.argument<Number>("clipMs") ?: 0).toLong()) { out, err ->

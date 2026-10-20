@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.56.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.57.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -2434,6 +2434,50 @@ async def reel_look_file(file: UploadFile = File(...), text: str = Form(""), ten
 def reels_saved(q: str = "", tenant: str = Depends(current_tenant)):
     from .reels import service as rs
     return {"reels": rs.saved(tenant, q)}
+
+
+# reel scroll analysis (Usage Access numbers + the owner's own history download)
+class ScrollSyncIn(BaseModel):
+    days: list[dict] = []
+
+
+class ScrollBudgetIn(BaseModel):
+    minutes: int = 0
+
+
+@app.post("/api/reels/scroll/sync", dependencies=[Depends(require_key)])
+def scroll_sync(body: ScrollSyncIn, tenant: str = Depends(current_tenant)):
+    from .reels import scroll
+    return scroll.sync(tenant, body.days)
+
+
+@app.get("/api/reels/scroll/report", dependencies=[Depends(require_key)])
+def scroll_report(days: int = 7, tenant: str = Depends(current_tenant)):
+    from .reels import scroll
+    return scroll.report(tenant, days)
+
+
+@app.post("/api/reels/scroll/budget", dependencies=[Depends(require_key)])
+def scroll_budget(body: ScrollBudgetIn, tenant: str = Depends(current_tenant)):
+    from .reels import scroll
+    return scroll.set_budget(tenant, body.minutes)
+
+
+@app.post("/api/reels/scroll/import", dependencies=[Depends(require_key)])
+async def scroll_import(file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
+    """The owner's own Instagram 'Download your information' / Google Takeout YouTube history (zip, json or html)."""
+    from .reels import scroll
+    data = await file.read(scroll.MAX_IMPORT + 1)
+    try:
+        return await asyncio.to_thread(scroll.import_history, tenant, file.filename or "history", data)
+    except scroll.ScrollError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/reels/scroll", dependencies=[Depends(require_key)])
+def scroll_forget(tenant: str = Depends(current_tenant)):
+    from .reels import scroll
+    return scroll.forget(tenant)
 
 
 @app.get("/api/reels/{reel_id}", dependencies=[Depends(require_key)])

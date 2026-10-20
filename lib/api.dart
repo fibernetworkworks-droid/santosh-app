@@ -122,6 +122,15 @@ class Api {
   Future<Map<String, dynamic>> reelCheck(String id) async => Map<String, dynamic>.from(
       await _send('POST', '/api/reels/$id/check', timeout: const Duration(seconds: 90)) as Map);
 
+  // reel scroll analysis
+  Future<void> scrollSync(List<Map<String, dynamic>> days) async => _send('POST', '/api/reels/scroll/sync', body: {'days': days});
+  Future<Map<String, dynamic>> scrollReport({int days = 7}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/reels/scroll/report', query: {'days': '$days'}) as Map);
+  Future<void> scrollBudget(int minutes) async => _send('POST', '/api/reels/scroll/budget', body: {'minutes': minutes});
+  Future<Map<String, dynamic>> scrollImport(String name, List<int> bytes) =>
+      uploadFile('/api/reels/scroll/import', name, bytes, timeout: const Duration(seconds: 400), tries: 2);
+  Future<void> scrollForget() async => _send('DELETE', '/api/reels/scroll');
+
   Future<Map<String, dynamic>> health() async => Map<String, dynamic>.from(await _send('GET', '/healthz'));
 
   Future<Map<String, dynamic>> me() async => Map<String, dynamic>.from(await _send('GET', '/api/me'));

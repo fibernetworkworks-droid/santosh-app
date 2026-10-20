@@ -19,6 +19,7 @@ import 'ui/profile_screen.dart';
 import 'ui/setup_screen.dart';
 import 'ui/today_screen.dart';
 import 'ui/reels_screen.dart';
+import 'ui/scroll_screen.dart';
 import 'ui/tv_screen.dart';
 import 'ui/live_voice_screen.dart';
 import 'ui/keep_alive.dart';
@@ -171,6 +172,7 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
         if (r != null && nav != null) nav.push(MaterialPageRoute(builder: (_) => CatchUpScreen(app: widget.app, data: r)));
       });
       widget.app.refreshReminders();
+      ScrollSync.maybe();   // reel-app times for the scroll report (only when Usage Access is on)
       widget.app.refreshLists();
       widget.app.refreshRoutines();
       widget.app.refreshBackgroundInfo();

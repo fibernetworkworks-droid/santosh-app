@@ -31,6 +31,13 @@ class Native {
   }
   static Future<void> openMakerBattery() async => _call('openMakerBattery');
   static Future<void> openMakerPerms() async => _call('openMakerPerms');
+  /// v0.57 reel scroll analysis (Android Usage Access: times only, never screen content).
+  static Future<bool> usageAllowed() async => await _call<bool>('usageAllowed') ?? false;
+  static Future<void> usageSettings() async => _call('usageSettings');
+  static Future<List<Map<String, dynamic>>> usageDays({int days = 7}) async {
+    final r = await _call<List>('usageDays', {'days': days});
+    return r == null ? [] : r.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
   static Future<bool> running() async => await _call<bool>('isRunning') ?? false;
   static Future<String> status() async => await _call<String>('status') ?? '';
 
