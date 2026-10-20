@@ -81,6 +81,14 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `PhoneJobs.kt` (runs jobs when app closed). Flutter: `lib/ui/bluetooth_panel.dart`, `home_devices_screen.dart`.
 - Not yet verified on real hardware — if the owner reports a device problem, debug from her description/logcat.
 
+## v0.37 Work Theatre (3D view of the work)
+- Server `app/theatre.py`: every tool call publishes a `work` event {id, tool, scene, phase start|done|waiting|error|stopped,
+  label, data}. `data` = short real facts from the call (masked digits, no secret keys). Published from `agent/santosh.py`
+  (agent loop) and `voice.py` (call tools). `POST /api/conversations/{id}/stop` = Rokiye (stops after current step).
+- App: `assets/theatre/{index.html,theatre.js}` (three.js, reuses `assets/santosh3d/three.min.js`; same clay avatar as
+  santosh3d), scenes email/browser/payment/bluetooth/network/pc/work. `lib/ui/work_theatre.dart` (WebView + panel), shown in
+  chat and the voice call; state in `Santosh.work/workLog`. Never draw real company logos; brand names as text chips.
+
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
   automation (Baileys/WhatsApp Web).
@@ -103,4 +111,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness. Next: v0.37.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D). Next: v0.38.

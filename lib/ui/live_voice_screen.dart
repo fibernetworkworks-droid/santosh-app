@@ -12,6 +12,7 @@ import 'glass.dart';
 import 'lock_safe.dart';
 import '../emotion.dart';
 import 'live_santosh.dart';
+import 'work_theatre.dart';
 
 enum _Act { idle, connecting, listening, userTalking, working, speaking }
 
@@ -251,6 +252,10 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
           if (!_inCall) ListenableBuilder(listenable: app, builder: (context, _) => Pill(moodStyles[app.mood]!.label, fg: moodStyles[app.mood]!.aura, bg: const Color(0x1FFFFFFF))),
         ]),
       ),
+      ListenableBuilder(listenable: app, builder: (context, _) => Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: WorkTheatrePanel(app: app),
+          )),
       Expanded(
         child: Stack(children: [
           Positioned.fill(

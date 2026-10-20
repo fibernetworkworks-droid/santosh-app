@@ -544,6 +544,12 @@ class Call:
         from .avatar.service import gendered
         label = gendered(f"{self.name} kaam kar raha hai" if name == "santosh_kaam" else TOOL_LABELS.get(name, name), self.gender)
         await self.send_json({"type": "tool", "label": label, "state": "running"})
+        from . import theatre
+        from .events import bus
+        call_id = getattr(fc, "id", None) or f"v{id(fc)}"
+        show = name != "santosh_kaam"      # the delegated agent turn publishes its own work events
+        if show:
+            bus.publish(self.conv, "work", theatre.event(call_id, name, label, "start", args))
         try:
             out = await self._execute(name, args)
             state = "error" if "error" in out else "done"
@@ -556,6 +562,10 @@ class Call:
             log.exception("voice tool %s failed", name)
             out, state = {"error": f"Internal error: {e}"}, "error"
         await self.send_json({"type": "tool", "label": label, "state": state})
+        if show:
+            res = out.get("result") if isinstance(out, dict) else None
+            ph = "error" if state == "error" else theatre.phase_of(res)
+            bus.publish(self.conv, "work", theatre.event(call_id, name, label, ph, args, res, out.get("error", "") if state == "error" else ""))
         resp = json.loads(json.dumps(out, default=str))   # make it plain JSON
         if fc.id in self._cancelled:
             # the user spoke over the request, so Gemini no longer waits for an answer; the work still happened

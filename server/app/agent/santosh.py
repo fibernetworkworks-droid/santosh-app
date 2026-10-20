@@ -11,6 +11,7 @@ from sqlalchemy import select
 from ..config import get_settings
 from ..db import Message, session
 from ..events import bus
+from .. import theatre
 from ..avatar.service import gendered, persona
 from ..life import context_block
 from . import llm
@@ -196,30 +197,45 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
         for b in blocks:
             if b.get("type") != "tool_use":
                 continue
+            if conversation_id in _stopped:
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
+                                "content": "The user tapped Stop. Do not continue this task; say in one line what was done."})
+                continue
             ran_tools = True
             label = gendered(TOOL_LABELS.get(b["name"], b["name"]), gender)
+            args_in = b.get("input") or {}
             bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "running", "id": b["id"]})
+            _work(conversation_id, b["id"], b["name"], label, "start", args_in)
             try:
-                out = await _run_tool(b["name"], b.get("input") or {}, ctx, settings)
+                out = await _run_tool(b["name"], args_in, ctx, settings)
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": _short(out)})
                 bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "done", "id": b["id"]})
+                _work(conversation_id, b["id"], b["name"], label, theatre.phase_of(out), args_in, out)
             except ToolError as e:
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": str(e), "is_error": True})
                 bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error",
                                                       "id": b["id"], "detail": str(e)[:300]})
+                _work(conversation_id, b["id"], b["name"], label, "error", args_in, error=str(e))
             except asyncio.TimeoutError:
                 msg = f"{b['name']} did not finish in {settings.agent_tool_timeout_s} seconds and was stopped. Tell the user and offer to try again."
                 log.warning("tool %s timed out", b["name"])
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": msg, "is_error": True})
                 bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error",
                                                       "id": b["id"], "detail": "bahut der lag rahi thi, rok diya"})
+                _work(conversation_id, b["id"], b["name"], label, "error", args_in, error="Bahut der lag rahi thi, rok diya")
             except Exception as e:  # unexpected bug: tell the model, keep the turn alive
                 log.exception("tool %s crashed", b["name"])
                 results.append({"type": "tool_result", "tool_use_id": b["id"],
                                 "content": f"Internal error in {b['name']}: {e}", "is_error": True})
                 bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error", "id": b["id"]})
+                _work(conversation_id, b["id"], b["name"], label, "error", args_in, error="Kuch gadbad ho gayi")
         history.append({"role": "user", "content": results})
         _save(conversation_id, "user", results)
+        if conversation_id in _stopped:
+            final_text = "Theek hai, maine kaam rok diya."
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
+            _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
+            return final_text
     else:
         if not final_text:
             final_text = "Yeh kaam lamba ho gaya, main yahin ruk raha hoon. Aage kya karoon?"
@@ -232,6 +248,23 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
         bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
         _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
     return final_text
+
+
+_stopped: set[str] = set()
+
+
+def stop(conversation_id: str) -> None:
+    """The owner tapped Stop: the running turn finishes the current tool call and does nothing more."""
+    _stopped.add(conversation_id)
+    bus.publish(conversation_id, "work", {"id": "stop", "tool": "", "scene": "work", "phase": "stopped",
+                                          "label": "Roka gaya", "data": {}})
+
+
+def _work(conversation_id: str, call_id: str, tool: str, label: str, phase: str, args=None, out=None, error: str = "") -> None:
+    try:
+        bus.publish(conversation_id, "work", theatre.event(call_id, tool, label, phase, args, out, error))
+    except Exception:
+        log.exception("work event failed")
 
 
 async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None = None, voice: bool = False) -> str:
@@ -250,6 +283,7 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
 
         history = _load_history(conversation_id)
         final_text = ""
+        _stopped.discard(conversation_id)
         try:
             # one stuck call must never keep this conversation locked forever
             final_text = await asyncio.wait_for(

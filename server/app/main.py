@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.36.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.37.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -97,7 +97,7 @@ def healthz():
     st = get_settings()
     from .voice import MALE_VOICES
     from . import mail
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -169,6 +169,15 @@ def create_conversation(tenant: str = Depends(current_tenant)):
     bus.publish(cid, "message", {"role": "assistant", "text": greeting, "source": "greeting"})
     return {"id": cid}
 
+
+
+@app.post("/api/conversations/{conversation_id}/stop", dependencies=[Depends(require_key)])
+def stop_turn(conversation_id: str, tenant: str = Depends(current_tenant)):
+    """Rokiye: Hoola stops the task after the step it is on (nothing new starts)."""
+    _conv_or_404(conversation_id, tenant)
+    from .agent.santosh import stop
+    stop(conversation_id)
+    return {"stopped": True}
 
 @app.get("/api/conversations/{conversation_id}/messages", dependencies=[Depends(require_key)])
 def list_messages(conversation_id: str, tenant: str = Depends(current_tenant)):

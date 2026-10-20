@@ -675,7 +675,11 @@ class Santosh extends ChangeNotifier {
           if (!voiceMode && _lastInputWasVoice && speakReplies && p['source'] == 'agent') _speak(p['text'] as String? ?? '');
         }
         break;
+      case 'work':
+        if (!_replaying) _onWork(Map<String, dynamic>.from(p));
+        break;
       case 'typing':
+        if (p['on'] != true && !_replaying) _scheduleWorkHide(const Duration(seconds: 4));
         typing = p['on'] == true && !_replaying;
         if (p['on'] == true) _steps = null;
         if (!typing) currentStep = null;
@@ -885,6 +889,62 @@ class Santosh extends ChangeNotifier {
       await api?.homeResult(id, ok, ok ? '' : res);
     } catch (_) {}
     notifyListeners();
+  }
+
+  // ---- Hoola Work Theatre: the 3D scene of the tool Hoola is running right now ----
+  Map<String, dynamic>? work;                       // latest `work` event {id, tool, scene, phase, label, data}
+  final List<Map<String, dynamic>> workLog = [];   // this task's tool calls, oldest first
+  bool workMin = false;
+  Timer? _workHide;
+
+  void _onWork(Map<String, dynamic> p) {
+    final phase = p['phase'] as String? ?? 'start';
+    if (phase == 'start') {
+      _workHide?.cancel();
+      if (work == null) workLog.clear();
+    }
+    work = p;
+    if (p['id'] != 'stop') {
+      final i = workLog.indexWhere((w) => w['id'] == p['id']);
+      if (i >= 0) {
+        workLog[i] = p;
+      } else {
+        workLog.add(p);
+        if (workLog.length > 12) workLog.removeAt(0);
+      }
+    }
+    if (phase == 'stopped') _scheduleWorkHide(const Duration(seconds: 2));
+    notifyListeners();
+  }
+
+  void _scheduleWorkHide(Duration d) {
+    if (work == null || work!['phase'] == 'waiting') return;
+    _workHide?.cancel();
+    _workHide = Timer(d, () {
+      if (work != null && work!['phase'] != 'start' && work!['phase'] != 'waiting') {
+        work = null;
+        notifyListeners();
+      }
+    });
+  }
+
+  void toggleWorkMin() {
+    workMin = !workMin;
+    notifyListeners();
+  }
+
+  void closeWork() {
+    work = null;
+    notifyListeners();
+  }
+
+  /// "Rokiye": Hoola finishes the step it is on and starts nothing new.
+  Future<void> stopWork() async {
+    final c = conversationId;
+    if (c == null) return;
+    try {
+      await api?.stopTurn(c);
+    } catch (_) {}
   }
 
   /// A Bluetooth job from Hoola (scan, pair, connect, TV remote pairing): run it once on this phone, answer the server.

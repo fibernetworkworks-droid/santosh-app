@@ -68,6 +68,8 @@ class Api {
   Uri googleSignInUrl() => _u('/auth/google/start');
   Future<String> newConversation() async => (await _send('POST', '/api/conversations'))['id'] as String;
   Future<void> checkConversation(String id) async => _send('GET', '/api/conversations/$id/messages');
+  /// Stop the task Hoola is running in this conversation (after the current step).
+  Future<void> stopTurn(String id) async => _send('POST', '/api/conversations/$id/stop');
   /// Sends a message. A flaky mobile network is retried (same client_id, so the server runs it only once).
   Future<void> sendMessage(String conv, String text, {bool voice = false}) async {
     final id = '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}${math.Random().nextInt(1 << 30).toRadixString(36)}';

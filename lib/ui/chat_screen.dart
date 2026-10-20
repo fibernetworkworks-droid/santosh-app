@@ -20,6 +20,7 @@ import 'notebook_screen.dart';
 import 'pc_screen.dart';
 import 'photos_screen.dart';
 import 'live_santosh.dart';
+import 'work_theatre.dart';
 import '../nav.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -122,6 +123,7 @@ class _ChatScreenState extends State<ChatScreen> {
           _header(),
           if (app.error != null) _banner(app.error!, onTap: () => app.connect()),
           if (app.connected && !app.brainReady) _banner('Hoola ka dimaag server par connect nahi hai (ANTHROPIC_API_KEY).'),
+          WorkTheatrePanel(app: app),
           Expanded(
             child: ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 8, 16, 12), children: [
               if (app.feed.length <= 1) _hero(),
