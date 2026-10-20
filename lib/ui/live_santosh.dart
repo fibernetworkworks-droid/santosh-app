@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../emotion.dart';
+import 'avatar_look.dart';
 import 'glass.dart';
 
 Mood moodFromName(String m) => switch (m) {
@@ -147,7 +148,14 @@ class _LiveSantoshState extends State<LiveSantosh> with TickerProviderStateMixin
                     duration: const Duration(milliseconds: 380),
                     switchInCurve: Curves.easeOutBack,
                     transitionBuilder: (c, a) => FadeTransition(opacity: a, child: ScaleTransition(scale: Tween(begin: .94, end: 1.0).animate(a), child: c)),
-                    child: Image.asset(st.pose, key: ValueKey(st.pose), height: size, fit: BoxFit.contain, filterQuality: FilterQuality.medium),
+                    child: ValueListenableBuilder<String>(
+                      key: ValueKey(st.pose),
+                      valueListenable: currentLook,
+                      builder: (_, look, __) {
+                        final src = isLook(look) ? lookFull(look) : st.pose;      // female look: one figure, same body language
+                        return Image.asset(src, key: ValueKey(src), height: size, fit: BoxFit.contain, filterQuality: FilterQuality.medium);
+                      },
+                    ),
                   ),
                 ),
               ),

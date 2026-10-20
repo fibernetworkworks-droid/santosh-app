@@ -19,6 +19,7 @@ import 'sheets_screen.dart';
 import 'slides_screen.dart';
 import 'youtube_screen.dart';
 import 'appcheck_screen.dart';
+import 'avatar_look.dart';
 import 'avatar_setup_screen.dart';
 import 'hoola_net_screen.dart';
 import 'hoola_samaj_screen.dart';
@@ -110,12 +111,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(children: [
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.face_retouching_natural_rounded, color: C.accent),
+              leading: const AvatarFace(size: 40, ring: true),
               title: Text('Mera Hoola: ${app.aName}', style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text('Naam, ${app.aFemale ? 'mahila' : 'purush'}, awaaz'),
+              subtitle: Text('Naam, ${app.aFemale ? 'mahila, roop' : 'purush'}, awaaz'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AvatarSetupScreen(app: app))),
             ),
+            if (app.aFemale)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.palette_outlined, color: C.accent2),
+                title: Text('${app.aName} ka roop', style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: const Text('100 roop, duniya bhar se'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () async {
+                  final id = await Navigator.of(context).push<String>(
+                      MaterialPageRoute(builder: (_) => LookPickerScreen(initial: app.aLook, avatarName: app.aName)));
+                  if (id == null) return;
+                  final e = await app.saveAvatar(look: id);
+                  if (e != null && context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e)));
+                },
+              ),
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.hub_rounded, color: C.violet),

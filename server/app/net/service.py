@@ -216,7 +216,7 @@ def find(tenant: str, query: str) -> list[dict[str, Any]]:
     if not c or c["address"] == idn.my_card(tenant)["address"]:
         return []
     l = _link(tenant, addr)
-    return [{k: c[k] for k in ("address", "handle", "owner_name", "avatar_name", "avatar_gender", "verified", "business")}
+    return [{k: c.get(k, "") for k in ("address", "handle", "owner_name", "avatar_name", "avatar_gender", "avatar_look", "verified", "business")}
             | {"label": idn.label(c), "status": l.status if l else "none"}]
 
 
@@ -234,7 +234,7 @@ def link_view(l: Link, my_pub: str = "") -> dict[str, Any]:
     out = {"id": l.id, "peer": l.peer, "status": l.status, "relation": l.relation, "via": l.via, "note": l.note,
            "nick": l.nick, "vip": l.vip, "verified": l.verified, "key_warning": l.key_warning,
            "handle": c.get("handle", ""), "owner_name": c.get("owner_name", ""), "avatar_name": c.get("avatar_name", ""),
-           "avatar_gender": c.get("avatar_gender", "m"), "person_verified": c.get("verified", False),
+           "avatar_gender": c.get("avatar_gender", "m"), "avatar_look": c.get("avatar_look", ""), "person_verified": c.get("verified", False),
            "business": c.get("business", False), "label": idn.label(c), "since": l.created_at.isoformat()}
     if my_pub and c.get("public_key"):
         out["safety_code"] = idn.safety_code(my_pub, c["public_key"])
@@ -374,7 +374,8 @@ def _names(tenant: str, card: dict[str, Any]) -> dict[str, Any]:
     except Exception:
         mine = {}
     return {"peer_avatar": clean_name(card.get("avatar_name"), 30) or "Hoola", "peer_owner": clean_name(card.get("owner_name"), 60),
-            "peer_gender": card.get("avatar_gender", "m"), "my_avatar": mine.get("avatar_name", "Hoola")}
+            "peer_gender": card.get("avatar_gender", "m"), "peer_look": card.get("avatar_look", ""),
+            "my_avatar": mine.get("avatar_name", "Hoola"), "my_look": mine.get("avatar_look", ""), "my_gender": mine.get("avatar_gender", "m")}
 
 
 def msg_view(m: NetMsg) -> dict[str, Any]:

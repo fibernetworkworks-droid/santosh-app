@@ -85,7 +85,15 @@
   }
 
   /* ============================================================ the Hoola avatar (same build as santosh3d) */
+  // the owner's chosen look (window.HOOLA_LOOK, set by the app) is built by avatar.js; other avatars keep the clay Santosh build
   function makeAvatar(opt) {
+    if (!opt && window.HoolaAvatar && window.HOOLA_LOOK) {
+      const o = { scale: .42 };
+      const A = HoolaAvatar.build(window.HOOLA_LOOK);
+      const holder = new T.Group(); holder.add(A.root);
+      return finishAvatar({ holder, root: A.root, body: A.body, neck: A.neck, eyes: A.eyes, irises: A.irises, brows: A.brows,
+        smile: A.smile, mouthIn: A.mouthIn, hands: A.hands, screenLight: A.screenLight, M: A.M, phone: A.phone }, o);
+    }
     const o = Object.assign({ hoodie: 0xf29418, seam: 0xdc7f10, rib: 0xee7b2c, strap: 0x27358c, skin: 0xcc8a5e,
       pants: 0x2c3566, lace: 0xf29418, scale: .42 }, opt || {});
     const M = {
@@ -209,6 +217,11 @@
      [[-.64, .72, .44], [.26, .18, .3], [.2, 0, .9]], [[.86, .45, -.06], [.27, .42, .55], [0, 0, -.15]], [[-.86, .45, -.06], [.27, .42, .55], [0, 0, .15]],
      [[0, .35, -.82], [.86, .66, .36], [0, 0, 0]]].forEach(([p, s, r]) => mesh(SPH, M.hair, head, p, s, r));
 
+    return finishAvatar({ holder, root, body, neck, eyes, irises, brows, smile, mouthIn, hands, screenLight, M, phone }, o);
+  }
+
+  function finishAvatar(parts, o) {
+    const { holder, root, body, neck, eyes, irises, brows, smile, mouthIn, hands, screenLight, M, phone } = parts;
     holder.scale.setScalar(o.scale);
     holder.position.y = 1.7 * o.scale;
     const S = { hx: 0, hy: 0, hz: 0, ex: 0, ey: 0, smile: 1, squint: 1, brow: 0, open: 0, screen: .15, bob: 0 };

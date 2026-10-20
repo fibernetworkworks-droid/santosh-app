@@ -301,7 +301,7 @@ def public_lookup(handle: str) -> dict[str, Any] | None:
     if row is None:
         return None
     c = idn.my_card(row.tenant_id)
-    return {k: c[k] for k in ("address", "handle", "owner_name", "avatar_name", "avatar_gender", "public_key", "verified",
+    return {k: c.get(k, "") for k in ("address", "handle", "owner_name", "avatar_name", "avatar_gender", "avatar_look", "public_key", "verified",
                               "business", "language")}
 
 

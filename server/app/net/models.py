@@ -37,6 +37,7 @@ class Peer(Base):
     owner_name: Mapped[str] = mapped_column(String(80), default="")
     avatar_name: Mapped[str] = mapped_column(String(40), default="")
     avatar_gender: Mapped[str] = mapped_column(String(1), default="m")
+    avatar_look: Mapped[str | None] = mapped_column(String(8), nullable=True)        # v0.48 3D look id
     public_key: Mapped[str] = mapped_column(Text, default="")
     server: Mapped[str] = mapped_column(String(200), default="")
     verified: Mapped[bool] = mapped_column(Boolean, default=False)

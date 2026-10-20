@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../state.dart';
+import 'avatar_look.dart';
 import 'glass.dart';
 import 'live_santosh.dart';
 
@@ -32,7 +33,11 @@ class TheatreController {
     _js('theatre.pause($on)');
   }
 
+  /// v0.48: the owner's avatar look ('' = Santosh, f001..f100) inside every scene.
+  void look(String id) => _js('theatre.look(${jsonEncode(isLook(id) ? id : '')})');
+
   void _restore() {
+    look(currentLook.value);
     if (_last != null) _js('theatre.set(${jsonEncode(_last)})');
     _js('theatre.pause($_paused)');
   }
@@ -49,6 +54,7 @@ class _WorkTheatreState extends State<WorkTheatre> {
   late final WebViewController _web;
   bool _ready = false;
   bool _failed = false;
+  void _onLook() => widget.controller.look(currentLook.value);
 
   @override
   void initState() {
@@ -75,7 +81,15 @@ class _WorkTheatreState extends State<WorkTheatre> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    currentLook.removeListener(_onLook);
+    currentLook.addListener(_onLook);
+  }
+
+  @override
   void dispose() {
+    currentLook.removeListener(_onLook);
     widget.controller.ready = false;
     widget.controller._web = null;
     super.dispose();

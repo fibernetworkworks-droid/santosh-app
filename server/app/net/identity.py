@@ -272,7 +272,7 @@ def my_card(tenant: str) -> dict[str, Any]:
     a = avatar_get(tenant)
     name, gender = a["name"], a["gender"]
     return {"address": address(row.uid), "handle": row.handle, "owner_name": row.owner_name or owner_name(tenant),
-            "avatar_name": name, "avatar_gender": gender, "public_key": row.public_key, "server": domain(),
+            "avatar_name": name, "avatar_gender": gender, "avatar_look": a.get("look", ""), "public_key": row.public_key, "server": domain(),
             "verified": row.verified, "business": row.business and row.business_verified,
             "language": a["rules"].get("language", "hinglish")}
 
@@ -298,6 +298,8 @@ def remember_peer(card: dict[str, Any]) -> dict[str, Any]:
         p.owner_name = clean_name(card.get("owner_name") or p.owner_name, 60)
         p.avatar_name = clean_name(card.get("avatar_name") or p.avatar_name, 30)
         p.avatar_gender = "f" if card.get("avatar_gender") == "f" else "m"
+        lk = str(card.get("avatar_look") or "")
+        p.avatar_look = lk if p.avatar_gender == "f" and re.fullmatch(r"f\d{3}", lk) else None     # only a well-formed id
         p.server = clean_name(card.get("server") or p.server, 120).replace(" ", "")
         p.business = bool(card.get("business"))
         p.verified = False                                    # a remote server cannot vouch for its users here
@@ -324,7 +326,7 @@ def peer_card(addr: str) -> dict[str, Any] | None:
         if p is None:
             return None
         return {"address": p.address, "handle": p.handle, "owner_name": p.owner_name, "avatar_name": p.avatar_name,
-                "avatar_gender": p.avatar_gender, "public_key": p.public_key, "server": p.server, "verified": p.verified,
+                "avatar_gender": p.avatar_gender, "avatar_look": p.avatar_look or "", "public_key": p.public_key, "server": p.server, "verified": p.verified,
                 "business": p.business}
 
 

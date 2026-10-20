@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
+import 'avatar_look.dart';
 import 'glass.dart';
 import 'hoola_media.dart';
 import 'hoola_net_screen.dart' show HoolaThreadScreen;
 
-Widget _avatarDot(String label, {Color color = C.violet}) => CircleAvatar(
+Widget _avatarDot(String label, {Color color = C.violet, String? look}) => isLook(look)
+    ? AvatarFace(look: look, size: 36)
+    : CircleAvatar(
       radius: 18,
       backgroundColor: color.withOpacity(.35),
       child: Text(label.isEmpty ? 'H' : label.substring(0, 1).toUpperCase(),
@@ -165,7 +168,7 @@ class _HoolaKnockCardState extends State<HoolaKnockCard> {
       child: Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            _avatarDot(v['peer_avatar'] as String? ?? v['from'] as String? ?? ''),
+            _avatarDot(v['peer_avatar'] as String? ?? v['from'] as String? ?? '', look: v['peer_look'] as String?),
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -289,7 +292,7 @@ class _HoolaConnectCardState extends State<HoolaConnectCard> {
       child: Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            _avatarDot(v['label'] as String? ?? ''),
+            _avatarDot(v['label'] as String? ?? '', look: v['avatar_look'] as String?),
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -379,7 +382,7 @@ class HoolaMsgCard extends StatelessWidget {
       child: Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            _avatarDot(v['peer_avatar'] as String? ?? v['from'] as String? ?? ''),
+            _avatarDot(v['peer_avatar'] as String? ?? v['from'] as String? ?? '', look: v['peer_look'] as String?),
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

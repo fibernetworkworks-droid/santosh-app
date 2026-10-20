@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import 'avatar_look.dart';
 import 'live_santosh.dart';
 
 /// Drives the 3D Santosh (assets/santosh3d) from Dart: mood, talking, mic level, listening pose.
@@ -36,7 +37,11 @@ class Santosh3DController {
   /// 0..1 mouth/lean level (mic volume while listening, speech energy while talking).
   void level(double v) => _js('santosh.level(${v.clamp(0, 1).toStringAsFixed(2)})');
 
+  /// v0.48: '' = Santosh, f001..f100 = one of the female looks.
+  void look(String id) => _js("santosh.setLook('${isLook(id) ? id : ''}')");
+
   void _restore() {
+    look(currentLook.value);
     _js("santosh.mood('$_mood')");
     _js('santosh.talk($_talk)');
     _js('santosh.listen($_listen)');

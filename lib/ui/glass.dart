@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'avatar_look.dart';
+
 /// Santosh "Night Glass": deep indigo night, frosted glass, saffron action colour, violet for you.
 class C {
   static const ink = Color(0xFFF4F2FF);       // main text
@@ -278,7 +280,7 @@ class Avatar extends StatelessWidget {
             gradient: const SweepGradient(colors: [Color(0xFFFFB15C), Color(0xFFC055F5), Color(0xFF7C5CFF), Color(0xFFFFB15C)]),
             boxShadow: [BoxShadow(color: (glow ?? C.accent).withOpacity(.45), blurRadius: 16)],
           ),
-          child: ClipOval(child: Container(color: const Color(0xFF2A1F5E), child: Image.asset('assets/images/santosh_head.png', fit: BoxFit.cover))),
+          child: AvatarFace(size: size - 4),          // the owner's look: Santosh or a female look (v0.48)
         ),
         if (online)
           Positioned(

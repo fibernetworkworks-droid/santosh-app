@@ -1,0 +1,902 @@
+[
+{
+"id": "f001",
+"name": "Priya",
+"city": "Pune",
+"country": "India",
+"region": "sa",
+"hair": "buns",
+"outfit": "kurta"
+},
+{
+"id": "f002",
+"name": "Ananya",
+"city": "Bengaluru",
+"country": "India",
+"region": "sa",
+"hair": "halfup",
+"outfit": "blazer"
+},
+{
+"id": "f003",
+"name": "Meera",
+"city": "Jaipur",
+"country": "India",
+"region": "sa",
+"hair": "braid_back",
+"outfit": "saree"
+},
+{
+"id": "f004",
+"name": "Kavya",
+"city": "Chennai",
+"country": "India",
+"region": "sa",
+"hair": "bun_low",
+"outfit": "saree"
+},
+{
+"id": "f005",
+"name": "Riya",
+"city": "Mumbai",
+"country": "India",
+"region": "sa",
+"hair": "braid",
+"outfit": "puffer"
+},
+{
+"id": "f006",
+"name": "Sneha",
+"city": "Kolkata",
+"country": "India",
+"region": "sa",
+"hair": "pixie",
+"outfit": "saree"
+},
+{
+"id": "f007",
+"name": "Aisha",
+"city": "Hyderabad",
+"country": "India",
+"region": "sa",
+"hair": "hijab",
+"outfit": "hoodie"
+},
+{
+"id": "f008",
+"name": "Gurpreet",
+"city": "Amritsar",
+"country": "India",
+"region": "sa",
+"hair": "braid",
+"outfit": "kurta"
+},
+{
+"id": "f009",
+"name": "Lalita",
+"city": "Akola",
+"country": "India",
+"region": "sa",
+"hair": "bun",
+"outfit": "saree"
+},
+{
+"id": "f010",
+"name": "Nisha",
+"city": "Delhi",
+"country": "India",
+"region": "sa",
+"hair": "braid_back",
+"outfit": "hoodie"
+},
+{
+"id": "f011",
+"name": "Deepa",
+"city": "Kochi",
+"country": "India",
+"region": "sa",
+"hair": "braid_back",
+"outfit": "kurta"
+},
+{
+"id": "f012",
+"name": "Pooja",
+"city": "Ahmedabad",
+"country": "India",
+"region": "sa",
+"hair": "buns",
+"outfit": "hoodie"
+},
+{
+"id": "f013",
+"name": "Tanvi",
+"city": "Nagpur",
+"country": "India",
+"region": "sa",
+"hair": "wavy",
+"outfit": "track"
+},
+{
+"id": "f014",
+"name": "Mitali",
+"city": "Guwahati",
+"country": "India",
+"region": "sa",
+"hair": "bun_low",
+"outfit": "denim"
+},
+{
+"id": "f015",
+"name": "Sana",
+"city": "Lucknow",
+"country": "India",
+"region": "sa",
+"hair": "pony_low",
+"outfit": "kurta"
+},
+{
+"id": "f016",
+"name": "Farah",
+"city": "Lahore",
+"country": "Pakistan",
+"region": "sa",
+"hair": "braid_back",
+"outfit": "kurta"
+},
+{
+"id": "f017",
+"name": "Nusrat",
+"city": "Dhaka",
+"country": "Bangladesh",
+"region": "sa",
+"hair": "hijab",
+"outfit": "puffer"
+},
+{
+"id": "f018",
+"name": "Sajani",
+"city": "Kathmandu",
+"country": "Nepal",
+"region": "sa",
+"hair": "pony_high",
+"outfit": "sweater"
+},
+{
+"id": "f019",
+"name": "Tharushi",
+"city": "Colombo",
+"country": "Sri Lanka",
+"region": "sa",
+"hair": "buns",
+"outfit": "saree"
+},
+{
+"id": "f020",
+"name": "Pema",
+"city": "Thimphu",
+"country": "Bhutan",
+"region": "sa",
+"hair": "halfup",
+"outfit": "kurta"
+},
+{
+"id": "f021",
+"name": "Yuki",
+"city": "Osaka",
+"country": "Japan",
+"region": "ea",
+"hair": "pony_low",
+"outfit": "track"
+},
+{
+"id": "f022",
+"name": "Hana",
+"city": "Tokyo",
+"country": "Japan",
+"region": "ea",
+"hair": "braid",
+"outfit": "hoodie"
+},
+{
+"id": "f023",
+"name": "Mei",
+"city": "Shanghai",
+"country": "China",
+"region": "ea",
+"hair": "braid",
+"outfit": "sweater"
+},
+{
+"id": "f024",
+"name": "Lin",
+"city": "Taipei",
+"country": "Taiwan",
+"region": "ea",
+"hair": "wavy",
+"outfit": "blazer"
+},
+{
+"id": "f025",
+"name": "Ji-woo",
+"city": "Seoul",
+"country": "South Korea",
+"region": "ea",
+"hair": "bob",
+"outfit": "wrap"
+},
+{
+"id": "f026",
+"name": "Seo-yeon",
+"city": "Busan",
+"country": "South Korea",
+"region": "ea",
+"hair": "wavy",
+"outfit": "puffer"
+},
+{
+"id": "f027",
+"name": "Xiaoyu",
+"city": "Chengdu",
+"country": "China",
+"region": "ea",
+"hair": "bangs",
+"outfit": "sweater"
+},
+{
+"id": "f028",
+"name": "Sarnai",
+"city": "Ulaanbaatar",
+"country": "Mongolia",
+"region": "ea",
+"hair": "pony_low",
+"outfit": "blazer"
+},
+{
+"id": "f029",
+"name": "Wing",
+"city": "Hong Kong",
+"country": "China",
+"region": "ea",
+"hair": "pixie",
+"outfit": "track"
+},
+{
+"id": "f030",
+"name": "Aiko",
+"city": "Kyoto",
+"country": "Japan",
+"region": "ea",
+"hair": "long",
+"outfit": "hoodie"
+},
+{
+"id": "f031",
+"name": "Linh",
+"city": "Hanoi",
+"country": "Vietnam",
+"region": "sea",
+"hair": "bob",
+"outfit": "sweater"
+},
+{
+"id": "f032",
+"name": "Mai",
+"city": "Ho Chi Minh City",
+"country": "Vietnam",
+"region": "sea",
+"hair": "braid_back",
+"outfit": "hoodie"
+},
+{
+"id": "f033",
+"name": "Siti",
+"city": "Kuala Lumpur",
+"country": "Malaysia",
+"region": "sea",
+"hair": "hijab",
+"outfit": "track"
+},
+{
+"id": "f034",
+"name": "Putri",
+"city": "Jakarta",
+"country": "Indonesia",
+"region": "sea",
+"hair": "hijab",
+"outfit": "puffer"
+},
+{
+"id": "f035",
+"name": "Maria",
+"city": "Manila",
+"country": "Philippines",
+"region": "sea",
+"hair": "shoulder",
+"outfit": "puffer"
+},
+{
+"id": "f036",
+"name": "Nok",
+"city": "Bangkok",
+"country": "Thailand",
+"region": "sea",
+"hair": "shoulder",
+"outfit": "blazer"
+},
+{
+"id": "f037",
+"name": "Sopheap",
+"city": "Phnom Penh",
+"country": "Cambodia",
+"region": "sea",
+"hair": "pony_high",
+"outfit": "sweater"
+},
+{
+"id": "f038",
+"name": "Thiri",
+"city": "Yangon",
+"country": "Myanmar",
+"region": "sea",
+"hair": "sidepart",
+"outfit": "sweater"
+},
+{
+"id": "f039",
+"name": "Layla",
+"city": "Dubai",
+"country": "UAE",
+"region": "me",
+"hair": "hijab",
+"outfit": "denim"
+},
+{
+"id": "f040",
+"name": "Noor",
+"city": "Amman",
+"country": "Jordan",
+"region": "me",
+"hair": "bun_low",
+"outfit": "puffer"
+},
+{
+"id": "f041",
+"name": "Zeynep",
+"city": "Istanbul",
+"country": "Türkiye",
+"region": "me",
+"hair": "bun_low",
+"outfit": "puffer"
+},
+{
+"id": "f042",
+"name": "Shirin",
+"city": "Tehran",
+"country": "Iran",
+"region": "me",
+"hair": "braid_back",
+"outfit": "blazer"
+},
+{
+"id": "f043",
+"name": "Yasmin",
+"city": "Cairo",
+"country": "Egypt",
+"region": "me",
+"hair": "hijab",
+"outfit": "wrap"
+},
+{
+"id": "f044",
+"name": "Reem",
+"city": "Riyadh",
+"country": "Saudi Arabia",
+"region": "me",
+"hair": "hijab",
+"outfit": "puffer"
+},
+{
+"id": "f045",
+"name": "Aigerim",
+"city": "Almaty",
+"country": "Kazakhstan",
+"region": "me",
+"hair": "pony_high",
+"outfit": "wrap"
+},
+{
+"id": "f046",
+"name": "Dilnoza",
+"city": "Tashkent",
+"country": "Uzbekistan",
+"region": "me",
+"hair": "pony_low",
+"outfit": "blazer"
+},
+{
+"id": "f047",
+"name": "Amara",
+"city": "Lagos",
+"country": "Nigeria",
+"region": "af",
+"hair": "wrap",
+"outfit": "denim"
+},
+{
+"id": "f048",
+"name": "Adaeze",
+"city": "Abuja",
+"country": "Nigeria",
+"region": "af",
+"hair": "buns",
+"outfit": "sweater"
+},
+{
+"id": "f049",
+"name": "Akosua",
+"city": "Accra",
+"country": "Ghana",
+"region": "af",
+"hair": "wrap",
+"outfit": "wrap"
+},
+{
+"id": "f050",
+"name": "Fatou",
+"city": "Dakar",
+"country": "Senegal",
+"region": "af",
+"hair": "turban",
+"outfit": "denim"
+},
+{
+"id": "f051",
+"name": "Wanjiru",
+"city": "Nairobi",
+"country": "Kenya",
+"region": "af",
+"hair": "curly",
+"outfit": "track"
+},
+{
+"id": "f052",
+"name": "Zawadi",
+"city": "Dar es Salaam",
+"country": "Tanzania",
+"region": "af",
+"hair": "pony_low",
+"outfit": "wrap"
+},
+{
+"id": "f053",
+"name": "Thandiwe",
+"city": "Johannesburg",
+"country": "South Africa",
+"region": "af",
+"hair": "sidepart",
+"outfit": "blazer"
+},
+{
+"id": "f054",
+"name": "Naledi",
+"city": "Cape Town",
+"country": "South Africa",
+"region": "af",
+"hair": "pony_low",
+"outfit": "hoodie"
+},
+{
+"id": "f055",
+"name": "Selam",
+"city": "Addis Ababa",
+"country": "Ethiopia",
+"region": "af",
+"hair": "sidepart",
+"outfit": "puffer"
+},
+{
+"id": "f056",
+"name": "Imani",
+"city": "Kampala",
+"country": "Uganda",
+"region": "af",
+"hair": "bun_low",
+"outfit": "sweater"
+},
+{
+"id": "f057",
+"name": "Aminata",
+"city": "Bamako",
+"country": "Mali",
+"region": "af",
+"hair": "turban",
+"outfit": "hoodie"
+},
+{
+"id": "f058",
+"name": "Salma",
+"city": "Casablanca",
+"country": "Morocco",
+"region": "af",
+"hair": "bun_low",
+"outfit": "sweater"
+},
+{
+"id": "f059",
+"name": "Nia",
+"city": "Kigali",
+"country": "Rwanda",
+"region": "af",
+"hair": "sidepart",
+"outfit": "hoodie"
+},
+{
+"id": "f060",
+"name": "Chipo",
+"city": "Harare",
+"country": "Zimbabwe",
+"region": "af",
+"hair": "pony_low",
+"outfit": "hoodie"
+},
+{
+"id": "f061",
+"name": "Sofia",
+"city": "Madrid",
+"country": "Spain",
+"region": "eu",
+"hair": "buns",
+"outfit": "track"
+},
+{
+"id": "f062",
+"name": "Giulia",
+"city": "Rome",
+"country": "Italy",
+"region": "eu",
+"hair": "long",
+"outfit": "sweater"
+},
+{
+"id": "f063",
+"name": "Chloé",
+"city": "Paris",
+"country": "France",
+"region": "eu",
+"hair": "long",
+"outfit": "wrap"
+},
+{
+"id": "f064",
+"name": "Emma",
+"city": "Berlin",
+"country": "Germany",
+"region": "eu",
+"hair": "sidepart",
+"outfit": "wrap"
+},
+{
+"id": "f065",
+"name": "Freya",
+"city": "Oslo",
+"country": "Norway",
+"region": "eu",
+"hair": "bob",
+"outfit": "wrap"
+},
+{
+"id": "f066",
+"name": "Saoirse",
+"city": "Dublin",
+"country": "Ireland",
+"region": "eu",
+"hair": "curly_short",
+"outfit": "track"
+},
+{
+"id": "f067",
+"name": "Olivia",
+"city": "London",
+"country": "UK",
+"region": "eu",
+"hair": "pony_low",
+"outfit": "denim"
+},
+{
+"id": "f068",
+"name": "Inês",
+"city": "Lisbon",
+"country": "Portugal",
+"region": "eu",
+"hair": "pony_high",
+"outfit": "denim"
+},
+{
+"id": "f069",
+"name": "Anna",
+"city": "Warsaw",
+"country": "Poland",
+"region": "eu",
+"hair": "bangs",
+"outfit": "puffer"
+},
+{
+"id": "f070",
+"name": "Elena",
+"city": "Athens",
+"country": "Greece",
+"region": "eu",
+"hair": "bob",
+"outfit": "denim"
+},
+{
+"id": "f071",
+"name": "Lotte",
+"city": "Amsterdam",
+"country": "Netherlands",
+"region": "eu",
+"hair": "braid_back",
+"outfit": "wrap"
+},
+{
+"id": "f072",
+"name": "Maja",
+"city": "Stockholm",
+"country": "Sweden",
+"region": "eu",
+"hair": "braid_back",
+"outfit": "puffer"
+},
+{
+"id": "f073",
+"name": "Aino",
+"city": "Helsinki",
+"country": "Finland",
+"region": "eu",
+"hair": "braid_back",
+"outfit": "track"
+},
+{
+"id": "f074",
+"name": "Katya",
+"city": "Kyiv",
+"country": "Ukraine",
+"region": "eu",
+"hair": "bun_low",
+"outfit": "denim"
+},
+{
+"id": "f075",
+"name": "Zsófia",
+"city": "Budapest",
+"country": "Hungary",
+"region": "eu",
+"hair": "curly_short",
+"outfit": "blazer"
+},
+{
+"id": "f076",
+"name": "Isla",
+"city": "Edinburgh",
+"country": "Scotland",
+"region": "eu",
+"hair": "curly_short",
+"outfit": "hoodie"
+},
+{
+"id": "f077",
+"name": "Emily",
+"city": "New York",
+"country": "USA",
+"region": "am",
+"hair": "bob",
+"outfit": "blazer"
+},
+{
+"id": "f078",
+"name": "Jasmine",
+"city": "Atlanta",
+"country": "USA",
+"region": "am",
+"hair": "bangs",
+"outfit": "puffer"
+},
+{
+"id": "f079",
+"name": "Mia",
+"city": "Los Angeles",
+"country": "USA",
+"region": "am",
+"hair": "curly_short",
+"outfit": "hoodie"
+},
+{
+"id": "f080",
+"name": "Aiyana",
+"city": "Phoenix",
+"country": "USA",
+"region": "am",
+"hair": "wavy",
+"outfit": "denim"
+},
+{
+"id": "f081",
+"name": "Camila",
+"city": "Mexico City",
+"country": "Mexico",
+"region": "am",
+"hair": "halfup",
+"outfit": "puffer"
+},
+{
+"id": "f082",
+"name": "Valentina",
+"city": "Bogotá",
+"country": "Colombia",
+"region": "am",
+"hair": "curly",
+"outfit": "puffer"
+},
+{
+"id": "f083",
+"name": "Lucía",
+"city": "Buenos Aires",
+"country": "Argentina",
+"region": "am",
+"hair": "afro",
+"outfit": "puffer"
+},
+{
+"id": "f084",
+"name": "Gabriela",
+"city": "São Paulo",
+"country": "Brazil",
+"region": "am",
+"hair": "shoulder",
+"outfit": "wrap"
+},
+{
+"id": "f085",
+"name": "Ana",
+"city": "Rio de Janeiro",
+"country": "Brazil",
+"region": "am",
+"hair": "sidepart",
+"outfit": "denim"
+},
+{
+"id": "f086",
+"name": "Isabella",
+"city": "Lima",
+"country": "Peru",
+"region": "am",
+"hair": "bun_low",
+"outfit": "track"
+},
+{
+"id": "f087",
+"name": "Daniela",
+"city": "Santiago",
+"country": "Chile",
+"region": "am",
+"hair": "braid",
+"outfit": "sweater"
+},
+{
+"id": "f088",
+"name": "Keisha",
+"city": "Kingston",
+"country": "Jamaica",
+"region": "am",
+"hair": "halfup",
+"outfit": "blazer"
+},
+{
+"id": "f089",
+"name": "Marisol",
+"city": "Havana",
+"country": "Cuba",
+"region": "am",
+"hair": "bun_low",
+"outfit": "denim"
+},
+{
+"id": "f090",
+"name": "Chloe",
+"city": "Toronto",
+"country": "Canada",
+"region": "am",
+"hair": "wavy",
+"outfit": "hoodie"
+},
+{
+"id": "f091",
+"name": "Sarah",
+"city": "Vancouver",
+"country": "Canada",
+"region": "am",
+"hair": "wavy",
+"outfit": "hoodie"
+},
+{
+"id": "f092",
+"name": "Aaliyah",
+"city": "Chicago",
+"country": "USA",
+"region": "am",
+"hair": "afro",
+"outfit": "sweater"
+},
+{
+"id": "f093",
+"name": "Nayeli",
+"city": "Oaxaca",
+"country": "Mexico",
+"region": "am",
+"hair": "sidepart",
+"outfit": "denim"
+},
+{
+"id": "f094",
+"name": "Inés",
+"city": "Quito",
+"country": "Ecuador",
+"region": "am",
+"hair": "braid_back",
+"outfit": "denim"
+},
+{
+"id": "f095",
+"name": "Ruby",
+"city": "Sydney",
+"country": "Australia",
+"region": "oc",
+"hair": "sidepart",
+"outfit": "wrap"
+},
+{
+"id": "f096",
+"name": "Charlotte",
+"city": "Melbourne",
+"country": "Australia",
+"region": "oc",
+"hair": "pony_high",
+"outfit": "sweater"
+},
+{
+"id": "f097",
+"name": "Aroha",
+"city": "Auckland",
+"country": "New Zealand",
+"region": "oc",
+"hair": "braids",
+"outfit": "blazer"
+},
+{
+"id": "f098",
+"name": "Leilani",
+"city": "Honolulu",
+"country": "USA",
+"region": "oc",
+"hair": "shoulder",
+"outfit": "denim"
+},
+{
+"id": "f099",
+"name": "Losana",
+"city": "Suva",
+"country": "Fiji",
+"region": "oc",
+"hair": "long",
+"outfit": "wrap"
+},
+{
+"id": "f100",
+"name": "Mele",
+"city": "Nuku'alofa",
+"country": "Tonga",
+"region": "oc",
+"hair": "bun",
+"outfit": "blazer"
+}
+]

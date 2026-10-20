@@ -1,0 +1,67 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0;background:transparent}canvas{display:block}</style></head>
+<body><canvas id="c"></canvas>
+<script src="../../assets/santosh3d/three.min.js"></script>
+<script src="../../assets/santosh3d/avatar.js"></script>
+<script>
+(function () {
+  if (THREE.ColorManagement) THREE.ColorManagement.legacyMode = false;
+  const canvas = document.getElementById('c');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(1); renderer.setClearColor(0, 0);
+  renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .95;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(28, 1, .1, 100);
+  (function () {
+    const env = new THREE.Scene();
+    env.add(new THREE.Mesh(new THREE.SphereGeometry(20, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide,
+      vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+      fragmentShader: 'varying vec3 vP; void main(){ float h = normalize(vP).y; vec3 c = mix(vec3(.30,.27,.36), vec3(.62,.6,.66), smoothstep(-.4,.7,h)); gl_FragColor = vec4(c,1.); }' })));
+    const panel = (w, h, x, y, z, k) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(k, k, k), side: THREE.DoubleSide })); m.position.set(x, y, z); m.lookAt(0, 0, 0); env.add(m); };
+    panel(8, 6, 6, 8, 10, 1.1); panel(10, 4, -10, 3, 4, .45); panel(6, 10, -6, 4, -10, .8);
+    scene.environment = new THREE.PMREMGenerator(renderer).fromScene(env, .04).texture;
+  })();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xe9d6c8, .55));
+  const key = new THREE.DirectionalLight(0xfff1e2, 2.1); key.position.set(3.5, 6, 6.5); key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024); Object.assign(key.shadow.camera, { left: -3.5, right: 3.5, top: 4.5, bottom: -3, near: 1, far: 24 });
+  key.shadow.bias = -.0004; key.shadow.normalBias = .025; key.shadow.radius = 4; scene.add(key);
+  const rim = new THREE.DirectionalLight(0xc4b0ff, 1.5); rim.position.set(-4.5, 3.5, -4); scene.add(rim);
+  const fill = new THREE.DirectionalLight(0xffe8d8, .45); fill.position.set(-4, 1, 5); scene.add(fill);
+  const P = (o) => new THREE.MeshPhysicalMaterial(o);
+  const stage = new THREE.Group(); scene.add(stage);
+  const m1 = new THREE.Mesh(new THREE.CylinderGeometry(1.75, 1.8, .22, 96), P({ color: 0xfbf9ff, roughness: .18, clearcoat: 1, clearcoatRoughness: .06, envMapIntensity: .9 })); m1.position.y = -1.86; m1.receiveShadow = true; stage.add(m1);
+  const m2 = new THREE.Mesh(new THREE.CylinderGeometry(1.95, 2.0, .2, 96), P({ color: 0xe9e2fb, roughness: .3, clearcoat: .8, envMapIntensity: .8 })); m2.position.y = -2.06; stage.add(m2);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.78, .03, 12, 160), new THREE.MeshBasicMaterial({ color: 0x9b6dff })); ring.rotation.x = Math.PI / 2; ring.position.y = -1.75; stage.add(ring);
+
+  let cur = null;
+  // pose: 'idle' | 'happy' | 'working' | 'thinking'; view: 'full' | 'head'
+  window.renderLook = function (look, w, h, view, pose, turn) {
+    if (cur) { scene.remove(cur.root); cur.dispose(); }
+    cur = HoolaAvatar.build(look); scene.add(cur.root);
+    stage.visible = view === 'full';
+    const S = { hx: .02, hy: 0, hz: 0, ex: 0, ey: 0, smile: 1, squint: 1, open: 0 };
+    if (pose === 'happy') Object.assign(S, { smile: 1.38, squint: .58, open: .32, hz: .05 });
+    if (pose === 'working') Object.assign(S, { hx: .4, smile: .82, ey: -.06 });
+    if (pose === 'thinking') Object.assign(S, { hx: -.16, hy: .22, hz: .14, ex: .045, ey: .06, smile: .55, open: .1 });
+    cur.neck.rotation.set(S.hx, S.hy, S.hz);
+    cur.eyes.forEach(e => e.scale.y = S.squint);
+    cur.irises.forEach(i => { i.position.x = S.ex; i.position.y = S.ey; });
+    cur.smile.scale.set(.85 + S.smile * .25, .7 + S.smile * .35, 1);
+    cur.mouthIn.visible = S.open > .02; cur.mouthIn.scale.set(.13 + S.open * .02, .012 + S.open * .12, .05);
+    cur.screenLight.intensity = pose === 'working' ? 1.25 : .15;
+    cur.root.rotation.y = turn || 0;
+    renderer.setSize(w, h, false); camera.aspect = w / h;
+    if (view !== 'head') {           // 'full' = on the pedestal, 'figure' = the figure alone
+      const visH = 6.1 / .9, dist = (visH / 2) / Math.tan(THREE.MathUtils.degToRad(14));
+      camera.fov = 28; camera.position.set(0, .7 + 1.6, dist); camera.lookAt(0, .7, 0);
+    } else {
+      camera.fov = 22; camera.position.set(0, 3.25, 9.6); camera.lookAt(0, 2.62, 0);
+    }
+    camera.updateProjectionMatrix();
+    renderer.render(scene, camera);
+    return canvas.toDataURL('image/png');
+  };
+  window.ready = true;
+})();
+</script></body></html>

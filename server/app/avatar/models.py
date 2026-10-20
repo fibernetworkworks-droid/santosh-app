@@ -15,6 +15,7 @@ class Avatar(Base):
     name: Mapped[str] = mapped_column(String(40), default="Santosh")
     gender: Mapped[str] = mapped_column(String(1), default="m")          # m | f (Hindi verb forms + voice)
     voice: Mapped[str] = mapped_column(String(40), default="")
+    look: Mapped[str | None] = mapped_column(String(8), nullable=True)   # v0.48: f001..f100 (female 3D looks); none = Santosh
     setup_done: Mapped[bool] = mapped_column(Boolean, default=False)
     rules: Mapped[dict] = mapped_column(JSON, default=dict)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

@@ -11,6 +11,7 @@ import 'device.dart';
 import 'emotion.dart';
 import 'hoola.dart';
 import 'native.dart';
+import 'ui/avatar_look.dart' show currentLook, isLook;
 
 class FeedItem {
   FeedItem(this.kind, this.data);
@@ -32,7 +33,9 @@ const languages = <String, String>{
 
 /// App-wide state: connection, chat feed, reminders, lists. Screens listen to it.
 class Santosh extends ChangeNotifier {
-  Santosh._(this._prefs);
+  Santosh._(this._prefs) {
+    currentLook.value = aLook;                  // last known look, before the server answers
+  }
   final SharedPreferences _prefs;
 
   static Future<Santosh> load() async => Santosh._(await SharedPreferences.getInstance());
@@ -57,6 +60,16 @@ class Santosh extends ChangeNotifier {
   bool avatarLoaded = false;
   String get aName => (avatar['name'] as String?)?.trim().isNotEmpty == true ? avatar['name'] as String : (_prefs.getString('a_name') ?? 'Santosh');
   bool get aFemale => (avatar['gender'] ?? _prefs.getString('a_gender')) == 'f';
+  /// v0.48: '' = Santosh; f001..f100 = the female 3D look the owner picked.
+  String get aLook {
+    final l = (avatar['look'] as String?) ?? _prefs.getString('a_look') ?? '';
+    return aFemale && isLook(l) ? l : '';
+  }
+
+  Future<void> _keepLook() async {
+    await _prefs.setString('a_look', aLook);
+    currentLook.value = aLook;
+  }
   bool get needsAvatarSetup => connected && avatarLoaded && avatar['setup_done'] != true;
   Map<String, dynamic> get avatarRules => Map<String, dynamic>.from(avatar['rules'] as Map? ?? const {});
 
@@ -69,6 +82,7 @@ class Santosh extends ChangeNotifier {
       avatarLoaded = true;
       await _prefs.setString('a_name', aName);
       await _prefs.setString('a_gender', aFemale ? 'f' : 'm');
+      await _keepLook();
       final v = avatar['voice'] as String?;
       if (v != null && v.isNotEmpty && v != voiceName) await _prefs.setString('voice', v);
       notifyListeners();
@@ -79,7 +93,7 @@ class Santosh extends ChangeNotifier {
   }
 
   /// Returns an error message, or null when saved.
-  Future<String?> saveAvatar({String? name, String? gender, String? voice, bool? setupDone, Map<String, dynamic>? rules}) async {
+  Future<String?> saveAvatar({String? name, String? gender, String? voice, bool? setupDone, Map<String, dynamic>? rules, String? look}) async {
     try {
       avatar = await api!.avatarPut({
         if (name != null) 'name': name,
@@ -87,10 +101,12 @@ class Santosh extends ChangeNotifier {
         if (voice != null) 'voice': voice,
         if (setupDone != null) 'setup_done': setupDone,
         if (rules != null) 'rules': rules,
+        if (look != null) 'look': look,
       });
       avatarLoaded = true;
       await _prefs.setString('a_name', aName);
       await _prefs.setString('a_gender', aFemale ? 'f' : 'm');
+      await _keepLook();
       final v = avatar['voice'] as String?;
       if (v != null && v.isNotEmpty) await _prefs.setString('voice', v);
       notifyListeners();

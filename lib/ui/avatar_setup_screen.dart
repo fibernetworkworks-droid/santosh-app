@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../hoola.dart';
 import '../state.dart';
+import 'avatar_look.dart';
 import 'glass.dart';
 
 const _names = ['Santosh', 'Raju', 'Arjun', 'Veer', 'Priya', 'Meera', 'Sakhi', 'Kavya'];
@@ -72,6 +73,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
   late final TextEditingController _blocked;
   late String _gender;
   String _voice = '';
+  String _look = '';            // v0.48 female look (f001..f100)
   late Map<String, dynamic> _rules;
   bool _busy = false;
   String? _err;
@@ -86,6 +88,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
     _name = TextEditingController(text: app.aName);
     _gender = app.aFemale ? 'f' : 'm';
     _voice = app.avatar['voice'] as String? ?? '';
+    _look = app.aLook;
     _rules = Map<String, dynamic>.from(jsonDecode(jsonEncode(app.avatarRules)) as Map);
     _rules.putIfAbsent('accept', () => <String, dynamic>{});
     _rules.putIfAbsent('share', () => <String, dynamic>{});
@@ -128,10 +131,11 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
     } else if (_page == 1) {
       setState(() => _busy = true);
       final e = await app.saveAvatar(gender: _gender, voice: _voice);
+      final e2 = e == null && _gender == 'f' ? await app.saveAvatar(look: isLook(_look) ? _look : 'f001') : null;
       if (!mounted) return;
       setState(() => _busy = false);
-      if (e != null) {
-        setState(() => _err = e);
+      if (e != null || e2 != null) {
+        setState(() => _err = e ?? e2);
         return;
       }
       setState(() => _page = 2);
@@ -232,6 +236,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
       child: GestureDetector(
         onTap: () => setState(() {
           if (_gender != g) _voice = '';
+          if (g == 'f' && !isLook(_look)) _look = 'f001';
           _gender = g;
         }),
         child: AnimatedContainer(
@@ -253,6 +258,34 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
     );
   }
 
+  /// v0.48: her 3D look — one of 100 from around the world.
+  Widget _lookCard() {
+    final l = isLook(_look) ? _look : 'f001';
+    return Glass(
+      child: Row(children: [
+        SizedBox(width: 74, height: 108, child: Image.asset(lookFull(l), fit: BoxFit.contain)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('$_n ka roop', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            const SizedBox(height: 2),
+            const Text('100 roop, duniya bhar se. Call, chat aur Hoola Network par yahi dikhegi.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.palette_outlined, size: 18),
+              label: const Text('Roop badliye'),
+              onPressed: () async {
+                final id = await Navigator.of(context).push<String>(
+                    MaterialPageRoute(builder: (_) => LookPickerScreen(initial: l, avatarName: _n)));
+                if (id != null && mounted) setState(() => _look = id);
+              },
+            ),
+          ]),
+        ),
+      ]),
+    );
+  }
+
   Widget _voicePage() {
     final voices = List<Map<String, dynamic>>.from(((app.avatar['voices'] as Map?)?[_gender] as List? ?? const [])
         .map((e) => Map<String, dynamic>.from(e as Map)));
@@ -266,6 +299,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
         const SizedBox(width: 12),
         _genderCard('f', 'Mahila', '"$_n kaam kar rahi hai"', Icons.face_3_rounded),
       ]),
+      if (_gender == 'f') ...[const SizedBox(height: 14), _lookCard()],
       const SizedBox(height: 18),
       Text('$_n ki awaaz (call par)', style: const TextStyle(fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),

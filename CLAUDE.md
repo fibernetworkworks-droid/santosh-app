@@ -249,6 +249,25 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - `.github/workflows/security.yml`: gitleaks, bandit, osv-scanner (report only: continue-on-error).
 - `deploy/setup_backup.sh`: Litestream live backup of santosh.db to S3-compatible storage (pm2 `hoola-backup`).
 
+## v0.51 Female avatars: 100 looks from around the world
+- `assets/santosh3d/avatar.js`: ONE three.js builder `HoolaAvatar.build(look)` (null = the original Santosh, same look as before).
+  Female looks: same clay style (head, eyes, phone in both hands) + lashes, finer brows/nose, lip colour, 23 hair styles
+  (long, bangs, halfup, wavy, bob, pixie, pony_high/low, bun, bun_low, buns, braid(s), braid_back, afro, puffs, curly(_short),
+  shoulder, sidepart, hijab, wrap, gele/turban), 9 tops (puffer, hoodie, track, blazer, sweater, denim, wrap, kurta+dupatta,
+  saree+pallu), bottoms (pants, jeans, skirt, long, leggings), glasses (round, cat, square, thin, big), jewellery and extras
+  (bindi, nose stud/ring, studs, hoops, drops, jhumka, necklace/pearls, bangles, watch, headband, clip, flower, gajra, tikka,
+  scarf, sling bag, freckles, mole). Used by `santosh3d/index.html` (`santosh.setLook(id)`) and the Work Theatre
+  (`theatre.look(id)`, owner's avatar only).
+- Catalogue: `tool/avatars/gen_looks.py` (fixed seed) -> `assets/santosh3d/looks.js` (full spec), `server/app/avatar/looks.json`
+  + `assets/avatars/looks.json` (id, name, city, country, region). 100 names/cities, 8 regions, 60+ countries; every pair differs in
+  >= 5 of 12 visible features (tested). Images: `tool/avatars/render.py` -> `assets/avatars/fNNN.webp` (figure) + `_head.webp` (2.9 MB).
+- Server: `Avatar.look` (nullable), `av.save(look=)` (female only, must be a catalogue id; gender change drops it; default f001),
+  `GET /api/avatar/looks`. Hoola Network cards carry `avatar_look` (peer stored only if `f\d{3}` and female) -> `peer_look`,
+  `my_look`, `avatar_look` in views.
+- App: `lib/ui/avatar_look.dart` (`currentLook` ValueNotifier, `AvatarFace`, `LookPickerScreen` with region filter),
+  setup screen "roop" card when Mahila, Profile > "<name> ka roop". Header ring (`Avatar`), `LiveSantosh` (female = her figure
+  with the same body language), Work Theatre, network cards (peer face) all follow the look.
+
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
   automation (Baileys/WhatsApp Web).
@@ -271,4 +290,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos · v0.47 Public APIs (2,100+ free APIs the avatar can use). · v0.48 Hoola TV (free official live channels on phone + Chromecast/Android TV). · v0.49 Hoola TV worldwide (~4,300 official channels, 140 countries, country picker). · v0.50 repo review part 1 (real file types, MarkItDown, share-to-Hoola, video shrink, PII gate, keep-alive steps, security CI, backup). Next: v0.51.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos · v0.47 Public APIs (2,100+ free APIs the avatar can use). · v0.48 Hoola TV (free official live channels on phone + Chromecast/Android TV). · v0.49 Hoola TV worldwide (~4,300 official channels, 140 countries, country picker). · v0.50 repo review part 1 (real file types, MarkItDown, share-to-Hoola, video shrink, PII gate, keep-alive steps, security CI, backup). · v0.51 100 female 3D avatar looks from around the world. Next: v0.52.

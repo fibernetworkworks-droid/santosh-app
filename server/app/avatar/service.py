@@ -6,8 +6,10 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import re
 import unicodedata
+from functools import lru_cache
 from typing import Any
 
 from ..db import now, session
@@ -27,6 +29,34 @@ FEMALE_VOICES = {
     "Laomedeia": "Josh bhari, upbeat", "Vindemiatrix": "Narm, gentle", "Achernar": "Komal, soft", "Gacrux": "Samajhdar, mature",
 }
 DEFAULT_VOICE = {"m": "Puck", "f": "Kore"}
+
+# ---------------------------------------------------------------- 3D looks (v0.48)
+# 100 female looks (assets/santosh3d/looks.js in the app; this file is the list the server checks against).
+# Male avatars keep the original Santosh look ("").
+DEFAULT_LOOK = {"m": "", "f": "f001"}
+LOOK_RE = re.compile(r"^f\d{3}$")
+
+
+@lru_cache(maxsize=1)
+def looks() -> list[dict[str, Any]]:
+    with open(os.path.join(os.path.dirname(__file__), "looks.json"), encoding="utf-8") as f:
+        return json.load(f)
+
+
+def look_ids() -> set[str]:
+    return {x["id"] for x in looks()}
+
+
+def clean_look(look: Any, gender: str) -> str:
+    """A look that fits the gender, else the default for that gender. Never fails."""
+    look = str(look or "")
+    if gender == "f" and look in look_ids():
+        return look
+    return DEFAULT_LOOK.get(gender, "")
+
+
+def look_info(look: str) -> dict[str, Any] | None:
+    return next((dict(x) for x in looks() if x["id"] == look), None)
 
 
 class AvatarError(Exception):
@@ -238,20 +268,22 @@ def _row(s, tenant: str) -> Avatar:
 def get(tenant: str) -> dict[str, Any]:
     with session() as s:
         a = s.get(Avatar, tenant)
-        name, gender, voice, done, rules = (a.name, a.gender, a.voice, a.setup_done, a.rules) if a else \
-            (DEFAULT_NAME, "m", "", False, {})
+        name, gender, voice, done, rules, look = (a.name, a.gender, a.voice, a.setup_done, a.rules, a.look) if a else \
+            (DEFAULT_NAME, "m", "", False, {}, None)
     gender = gender if gender in ("m", "f") else "m"
     voices = FEMALE_VOICES if gender == "f" else MALE_VOICES
     voice = voice if voice in voices else DEFAULT_VOICE[gender]
     r = clean_rules(rules)
+    look = clean_look(look, gender)
     return {"app": APP_NAME, "name": name, "gender": gender, "voice": voice, "setup_done": bool(done), "rules": r,
+            "look": look, "look_info": look_info(look) if look else None, "looks_count": len(looks()),
             "rules_summary": rules_summary(r, name),
             "voices": {"m": [{"id": k, "label": v} for k, v in MALE_VOICES.items()],
                        "f": [{"id": k, "label": v} for k, v in FEMALE_VOICES.items()]}}
 
 
 def save(tenant: str, name: str | None = None, gender: str | None = None, voice: str | None = None,
-         setup_done: bool | None = None, rules: dict[str, Any] | None = None) -> dict[str, Any]:
+         setup_done: bool | None = None, rules: dict[str, Any] | None = None, look: str | None = None) -> dict[str, Any]:
     with session() as s:
         a = _row(s, tenant)
         if name is not None:
@@ -261,12 +293,17 @@ def save(tenant: str, name: str | None = None, gender: str | None = None, voice:
                 raise AvatarError("gender: m ya f")
             if gender != a.gender:
                 a.voice = ""
+                a.look = None                                  # a look belongs to one gender
             a.gender = gender
         if voice is not None:
             pool = FEMALE_VOICES if a.gender == "f" else MALE_VOICES
             if voice and voice not in pool:
                 raise AvatarError("Yeh awaaz is avatar ke liye nahi hai.")
             a.voice = voice
+        if look is not None:
+            if look and (a.gender != "f" or look not in look_ids()):
+                raise AvatarError("Yeh roop is avatar ke liye nahi hai.")
+            a.look = look or None
         if rules is not None:
             a.rules = clean_rules(rules)
         if setup_done is not None:
