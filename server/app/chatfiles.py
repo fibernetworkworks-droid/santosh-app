@@ -52,6 +52,15 @@ def store(tenant: str, name: str, data: bytes, content_type: str = "") -> dict[s
         out["real_type"] = rt["label"]
     if rt["mismatch"]:
         out["type_note"] = rt["note"]
+    if out.get("media") == "image":
+        # v0.59 a QR / barcode in the photo is read straight away (UPI QR -> who gets the money + scam hints)
+        try:
+            from . import qrread
+            codes = qrread.scan(data)
+            if codes:
+                out["codes"] = codes
+        except Exception:
+            pass
     if name.lower().endswith((".csv", ".xlsx", ".xls")) and len(data) <= LEADS_MAX:
         try:
             res = import_leads(name, data, tenant).as_dict()
@@ -59,7 +68,7 @@ def store(tenant: str, name: str, data: bytes, content_type: str = "") -> dict[s
         except Exception:
             pass                       # not a contact list: it is just a file
     meta = {k: out.get(k) for k in ("file_id", "name", "size", "url", "media", "preview", "width", "height", "pages",
-                                    "duration", "leads") if out.get(k) is not None}
+                                    "duration", "leads", "codes") if out.get(k) is not None}
     with _LOCK:
         _META[row.id] = meta
         while len(_META) > 300:
@@ -111,6 +120,10 @@ def context(tenant: str, file_ids: list[str], voice: bool = False) -> str:
             l = m["leads"]
             bits.append(f"also imported as WhatsApp leads list_id={l.get('list_id')} ({l.get('valid')} valid numbers)")
         lines.append(f"- {m['name']} (file_id={m['file_id']}; " + ", ".join(b for b in bits if b) + ")")
+        if m.get("codes"):
+            from .qrread import summary_line
+            lines.append("  " + summary_line(m["codes"]) + " (never pay or open a payment for the owner; tell her the "
+                         "warnings plainly)")
     if not lines:
         return ""
     head = ("[Attached by the owner during this call" if voice else "[Attached by the owner in this message")

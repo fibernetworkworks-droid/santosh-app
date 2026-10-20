@@ -42,12 +42,15 @@ async def lifespan(app: FastAPI):
     if get_settings().tv_refresh:
         from .tv import catalog as tv_catalog
         tv_catalog.refresh_in_background()   # Hoola TV: re-check the free channels every night
+    if get_settings().ifsc_refresh:
+        from .india import ifsc
+        ifsc.refresh_in_background()          # v0.59 IFSC branch details, once a month
     yield
     stop.set()
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.58.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.59.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:

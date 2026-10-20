@@ -313,3 +313,52 @@ class HoolaFromTo extends StatelessWidget {
     );
   }
 }
+
+/// v0.59 A QR / barcode Hoola found in an attached photo: UPI QR = who gets the money + warnings (scan se paise
+/// sirf jaate hain); never a pay button.
+class QrNote extends StatelessWidget {
+  const QrNote({super.key, required this.codes});
+  final List codes;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = codes.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).take(3).toList();
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      for (final c in items)
+        Container(
+          margin: const EdgeInsets.only(top: 6),
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+          constraints: const BoxConstraints(maxWidth: 260),
+          decoration: BoxDecoration(
+            color: c['risky'] == true ? const Color(0x33FF5A5A) : const Color(0x22FFFFFF),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Icon(c['kind'] == 'upi' ? Icons.qr_code_2_rounded : Icons.qr_code_scanner_rounded,
+                  size: 16, color: c['risky'] == true ? const Color(0xFFFF8A8A) : C.muted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                    c['kind'] == 'upi'
+                        ? 'UPI QR → ${c['payee_name'] ?? ''} ${c['payee_vpa'] ?? ''}${c['amount'] != null ? ' · ₹${c['amount']}' : ''}'
+                        : '${c['say'] ?? c['kind'] ?? 'QR'}',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              ),
+            ]),
+            for (final w in (c['warnings'] as List? ?? const []).take(3))
+              Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: Text('⚠ $w', style: const TextStyle(fontSize: 11.5, color: Color(0xFFFFC2C2))),
+              ),
+            if (c['kind'] == 'upi')
+              const Padding(
+                padding: EdgeInsets.only(top: 3),
+                child: Text('QR scan karne se paise sirf jaate hain, kabhi aate nahi.', style: TextStyle(fontSize: 11, color: C.faint)),
+              ),
+          ]),
+        ),
+    ]);
+  }
+}

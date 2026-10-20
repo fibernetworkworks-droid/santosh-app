@@ -365,3 +365,10 @@ from .employee_tools import EMPLOYEE_HANDLERS, EMPLOYEE_LABELS, EMPLOYEE_TOOLS  
 TOOLS.extend(EMPLOYEE_TOOLS)
 TOOL_LABELS.update(EMPLOYEE_LABELS)
 HANDLERS.update(EMPLOYEE_HANDLERS)
+
+# v0.59 PDF kaam + India calendar / bank / money facts
+from .india_tools import INDIA_HANDLERS, INDIA_LABELS, INDIA_TOOLS  # noqa: E402
+
+TOOLS.extend(INDIA_TOOLS)
+TOOL_LABELS.update(INDIA_LABELS)
+HANDLERS.update(INDIA_HANDLERS)

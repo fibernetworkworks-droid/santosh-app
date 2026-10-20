@@ -340,6 +340,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
                   for (final f in (it.data['files'] as List? ?? const []))
                     if (f is Map) HoolaMediaTile(body: {'local': Map<String, dynamic>.from(f)}, app: app, maxWidth: 230),
+                  for (final f in (it.data['files'] as List? ?? const []))
+                    if (f is Map && f['codes'] is List) QrNote(codes: f['codes'] as List),
                   if ((it.data['files'] as List? ?? const []).isNotEmpty) const SizedBox(height: 6),
                   SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45)),
                 ]),

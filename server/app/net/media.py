@@ -17,9 +17,11 @@ import io
 import json
 import logging
 import mimetypes
+import re
 import shutil
 import subprocess
 import tempfile
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -231,6 +233,55 @@ def understand(tenant: str, info: dict[str, Any], name: str, mime: str, data: by
     system = SEE_SYSTEM.format(lang=LANG_NAMES.get(lang_key, lang_key))
     kind = info.get("media")
     prompt = f"File name: {name[:120]}. Describe it for my owner."
+    if kind == "image":
+        # v0.59 the same photo forwarded again (family groups, peers): reuse what was already seen, no new vision call
+        ph = photo_hash(data)
+        hit = seen_cache(tenant, ph) if ph else None
+        if hit:
+            return hit
+        out = _understand(tenant, info, name, mime, data, text, system, prompt, kind)
+        if out and ph:
+            seen_cache(tenant, ph, out)
+        return out
+    return _understand(tenant, info, name, mime, data, text, system, prompt, kind)
+
+
+_SEEN_LOCK = threading.Lock()
+
+
+def photo_hash(data: bytes) -> str:
+    """Perceptual hash (imagehash, BSD-2): the same picture re-sent / re-compressed by WhatsApp gives the same value."""
+    try:
+        import imagehash
+        from PIL import Image
+        im = Image.open(io.BytesIO(data)).convert("RGB")
+        avg = im.resize((1, 1)).getpixel((0, 0))           # plain / near-empty pictures share a phash: add colour
+        return f"{imagehash.phash(im)}{imagehash.dhash(im)}{avg[0] // 16:x}{avg[1] // 16:x}{avg[2] // 16:x}"
+    except Exception:
+        return ""
+
+
+def seen_cache(tenant: str, ph: str, text: str | None = None) -> str | None:
+    """Per owner (never shared between owners): phash -> what the avatar saw. Keeps the last 500."""
+    d = Path("data") / "seen_cache"
+    f = d / (re.sub(r"[^\w-]", "_", tenant)[:64] + ".json")
+    with _SEEN_LOCK:
+        try:
+            m = json.loads(f.read_text()) if f.exists() else {}
+        except Exception:
+            m = {}
+        if text is None:
+            return m.get(ph)
+        m.pop(ph, None)
+        m[ph] = text[:1500]
+        while len(m) > 500:
+            m.pop(next(iter(m)))
+        d.mkdir(parents=True, exist_ok=True)
+        f.write_text(json.dumps(m, ensure_ascii=False))
+    return None
+
+
+def _understand(tenant, info, name, mime, data, text, system, prompt, kind) -> str:
     try:
         if kind == "image":
             mt = mime if (mime or "").startswith("image/") and mime.split("/")[1] in ("jpeg", "png", "gif", "webp") else ""

@@ -21,7 +21,7 @@ DUTIES: dict[str, dict] = {
                     "prefix": ("bazar_", "tally_"), "tools": set()},
     "records": {"label": "Register aur files", "say": "sheet, register, documents, forms",
                 "prefix": ("sheet_", "drive_", "form_", "slides_", "notebook_"),
-                "tools": {"sheets_find", "doc_create", "make_document", "file_read", "photos_pick", "photos_picked", "photos_send",
+                "tools": {"sheets_find", "doc_create", "make_document", "pdf_tools", "file_read", "photos_pick", "photos_picked", "photos_send",
                           "photos_upload", "photos_albums"}},
     "campaigns": {"label": "WhatsApp campaign", "say": "approved template se graahakon ko WhatsApp (sirf official API)",
                   "prefix": (), "tools": {"list_lead_lists", "get_lead_list", "check_template", "submit_template",
@@ -61,7 +61,7 @@ READ = {
     "hoola_group_digest", "hoola_learned", "hoola_samaj", "hoola_community_search", "hoola_skills", "hoola_my_business",
     "bazar_find", "bazar_activity", "maps_search", "maps_directions", "pc_status", "pc_search", "pc_list", "pc_read",
     "pc_task_result", "tally_report", "file_read", "api_find", "api_docs", "api_call", "memory_search", "phone_health",
-    "tv_channel", "employee",
+    "tv_channel", "employee", "india_info",
 }
 BIG = {
     "email_bulk", "email_delete", "email_forward", "drive_trash", "drive_share", "sheet_share", "form_share", "slides_share",

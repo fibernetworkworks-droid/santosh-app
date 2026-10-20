@@ -418,6 +418,41 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   time, rules, job sheet)); chat cards `EmployeeAskCard` (also in calls) / `EmployeeReportCard`.
 - Next (plan): business WhatsApp inbox (customer actor), official business phone number, role packs, pilot gate.
 
+## v0.59 Repo review part 3: Padho aur pehchano (OCR, QR / UPI, bills, PDF kaam, India facts)
+- From "Hoola repo review part 2.xlsx" (133 new repos checked outside the 5,882 sheet; 46 adopt in 4 packs: v0.59 this,
+  then "Majboot Hoola", "Tez dimaag + bhasha", "Phone mein Hoola").
+- `app/ocr.py` (Tesseract CLI, Apache-2.0; TSV via `-c tessedit_create_tsv=1`, so it works with our own tessdata dir):
+  `read(bytes, language)` -> {text, conf, words, langs, good (>=25 chars and conf >= 60)}, `read_pdf` (pypdfium2 pages @200 dpi,
+  max 5). Owner's language -> model (hin / mar / tam / tel / kan / mal / ben / guj / pan / ori / urd / san) + eng.
+  `deploy/setup_ocr.sh` = apt tesseract-ocr + tessdata_best into `data/tessdata` + the pip packages + IFSC download.
+  No binary -> None, everything works as before.
+- `file_read` (agent/file_tools.py): photos = QR scan + OCR first; scanned PDFs = OCR pages; text -> `billparse`; the paid
+  vision call only when our read is weak or `look=true`. Tested: a bill photo gives text + bill + UPI QR with ZERO vision calls.
+- `app/qrread.py` (zxing-cpp): UPI (pay / mandate) -> payee, amount, note, warnings (prefilled amount, refund/KYC/inaam words,
+  autopay mandate, bad VPA, big amount), `risky`, "QR scan karne se paise sirf JAATE hain"; GST e-invoice JWT payload (not
+  verified) with GSTIN checks; links, product barcodes (890 = India), vCard, Wi-Fi (password never repeated). `chatfiles.store`
+  scans every image at upload: `codes` in meta, `context()` adds the QR line for the agent, chat bubble shows `QrNote`
+  (lib/ui/hoola_media.dart). Never a pay button.
+- `app/billparse.py` + `app/billtemplates/*.yml` (invoice2data, MIT; text input; our own `match` regex picks the template,
+  `keywords: [' ']`): MSEDCL, Tata Power, Adani, BEST, BESCOM, TNEB, BSES, Goa, BSNL, Jio, Airtel, Vi, MGL, IGL, MNGL + generic.
+  -> {biller, kind, amount, due_date, bill_date, consumer_no, bill_no, days_left, say, next (offer a reminder; she pays)}.
+- `app/pdftools.py` (pikepdf MPL-2.0 + pyHanko MIT) + tool `pdf_tools` (agent/india_tools.py): merge / pages / rotate / smaller
+  (photos re-saved as JPEG) / info / verify (signer, time, intact, whole file; trust in CCA roots NOT checked, said plainly).
+  Locked PDFs are never opened (no passwords in chat). New files go out as `pc_file` cards.
+- `net/media.understand`: images keyed by phash+dhash+avg colour (imagehash) per owner in `data/seen_cache/<tenant>.json`
+  (500): a forwarded / re-compressed photo is never sent to vision twice; never shared between owners.
+- `app/india/`: `days.py` (holidays per state via vacanza/holidays + own panchang: Meeus Sun/Moon, elongation within 0.01 deg
+  of real moon phases, tithi at sunrise, kshaya tithi handled in `next_tithi`, Lahiri nakshatra, amanta month by the Sun's
+  rashi at the new moon, NOAA sunrise; no muhurat / rahu kaal), `day_info` (bank_closed_likely = Sunday / 2nd-4th Saturday /
+  public holiday), `money.py` (own Hindi / Hinglish / Indian-English number words incl. lakh / crore, ₹ lakh grouping,
+  `short`, GSTIN check digit + state; num2words / babel / stdnum not needed), `ifsc.py` (shipped `ifsc_codes.json.gz` = every
+  valid IFSC + bank names; branch details from the monthly razorpay/ifsc `by-bank.tar.gz` into `data/ifsc/by-bank` (safe
+  extract, `IFSC_REFRESH`, off in tests) else ifsc.razorpay.com), `pincode.py` (India Post regex, MIT).
+  Tool `india_info` (holidays / day / panchang / next / ifsc / pincode / words / format / gstin): chat, calls, family level,
+  employee READ. Prompt + voice persona lines added.
+- Not built from the pack: on-phone QR scanner (needs a CameraX view; photos / screenshots cover it), bundled Noto Devanagari
+  (Android already falls back to its own Noto Indic fonts), pyHanko signing (a self-signed signature would mislead).
+
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
   automation (Baileys/WhatsApp Web).
@@ -440,4 +475,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos · v0.47 Public APIs (2,100+ free APIs the avatar can use). · v0.48 Hoola TV (free official live channels on phone + Chromecast/Android TV). · v0.49 Hoola TV worldwide (~4,300 official channels, 140 countries, country picker). · v0.50 repo review part 1 (real file types, MarkItDown, share-to-Hoola, video shrink, PII gate, keep-alive steps, security CI, backup). · v0.51 100 female 3D avatar looks from around the world. · v0.51.1 Hoola TV list fix (old saved list ignored). · v0.52 repo review part 2 (Office files, clean / ID photos, memory by meaning, Silero VAD on calls). · v0.53 100 male 3D avatar looks from around the world (Santosh stays the default). · v0.54 Hoola Reels (share any reel: save, remind, shop, family, ye sach hai?). · v0.55 Silero VAD properly (voice-only barge-in, idle noise gate, voice-id speech only, gate stats). · v0.56 Share to Hoola for big videos (progress, cancel, first part), shares go into a live call, "Hoola band na ho" checklist + phone health check. · v0.57 Reel scroll analysis (Usage Access times + own history download, Scroll report). · v0.58 Hoola Employee part 1 (role, team, trust per duty enforced on the server, owner's tap, audit, pause, daily report, team tasks). Next: v0.59.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos · v0.47 Public APIs (2,100+ free APIs the avatar can use). · v0.48 Hoola TV (free official live channels on phone + Chromecast/Android TV). · v0.49 Hoola TV worldwide (~4,300 official channels, 140 countries, country picker). · v0.50 repo review part 1 (real file types, MarkItDown, share-to-Hoola, video shrink, PII gate, keep-alive steps, security CI, backup). · v0.51 100 female 3D avatar looks from around the world. · v0.51.1 Hoola TV list fix (old saved list ignored). · v0.52 repo review part 2 (Office files, clean / ID photos, memory by meaning, Silero VAD on calls). · v0.53 100 male 3D avatar looks from around the world (Santosh stays the default). · v0.54 Hoola Reels (share any reel: save, remind, shop, family, ye sach hai?). · v0.55 Silero VAD properly (voice-only barge-in, idle noise gate, voice-id speech only, gate stats). · v0.56 Share to Hoola for big videos (progress, cancel, first part), shares go into a live call, "Hoola band na ho" checklist + phone health check. · v0.57 Reel scroll analysis (Usage Access times + own history download, Scroll report). · v0.58 Hoola Employee part 1 (role, team, trust per duty enforced on the server, owner's tap, audit, pause, daily report, team tasks). · v0.59 Padho aur pehchano (OCR in Indian scripts, UPI / GST QR with scam warnings, bill cards, PDF merge/pages/smaller/signature check, holidays + panchang + IFSC + rupees in words). Next: v0.60.

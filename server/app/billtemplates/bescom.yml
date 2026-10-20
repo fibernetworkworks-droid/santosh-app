@@ -1,0 +1,52 @@
+# v0.59 Hoola bill template (invoice2data format). Labels are the common ones on Indian bills.
+issuer: BESCOM
+match: (?i)bescom|bangalore electricity supply
+keywords:
+- ' '
+fields:
+  amount:
+    parser: regex
+    regex:
+    - (?i)(?:net\s+)?(?:bill\s+amount|amount\s+payable|total\s+amount\s+(?:due|payable)|amount\s+due|payable\s+amount|total\s+payable|total\s+due)\s*(?:\((?:rs\.?|inr|₹)\))?\s*[:\-]?\s*(?:rs\.?|inr|₹)?\s*([0-9][0-9,]*(?:\.\d{1,2})?)
+    - (?:बिलाची रक्कम|देय रक्कम|कुल देय राशि|देय राशि)\s*[:\-]?\s*(?:rs\.?|inr|₹)?\s*([0-9][0-9,]*(?:\.\d{1,2})?)
+    type: float
+  date_due:
+    parser: regex
+    regex:
+    - (?i)(?:payment\s+due\s+date|due\s+date|pay\s+by|last\s+date(?:\s+of\s+payment)?)\s*[:\-]?\s*(\d{1,2}[\-/. ](?:\d{1,2}|[A-Za-z]{3,9})[\-/. ,]*\d{2,4})
+    - (?:देय दिनांक|अंतिम तिथि|अंतिम दिनांक)\s*[:\-]?\s*(\d{1,2}[\-/. ](?:\d{1,2}|[A-Za-z]{3,9})[\-/. ,]*\d{2,4})
+    type: date
+  date:
+    parser: regex
+    regex:
+    - (?i)bill\s+date\s*[:\-]?\s*(\d{1,2}[\-/. ](?:\d{1,2}|[A-Za-z]{3,9})[\-/. ,]*\d{2,4})
+    - (?:बिल दिनांक|बिल तारीख)\s*[:\-]?\s*(\d{1,2}[\-/. ](?:\d{1,2}|[A-Za-z]{3,9})[\-/. ,]*\d{2,4})
+    type: date
+  invoice_number:
+    parser: regex
+    regex: (?i)(?:bill|invoice)\s*(?:no\.?|number|#)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-/]{3,29})
+  consumer_no:
+    parser: regex
+    regex: (?i)(?:consumer|account|customer|service|ca|bp|k)\s*(?:no\.?|number|id)\s*[:\-]?\s*(\d[\d\- ]{4,20}\d)
+  kind:
+    parser: static
+    value: electricity
+  biller_id:
+    parser: static
+    value: bescom
+required_fields:
+- amount
+options:
+  currency: INR
+  date_formats:
+  - '%d-%m-%Y'
+  - '%d/%m/%Y'
+  - '%d.%m.%Y'
+  - '%d-%b-%Y'
+  - '%d %b %Y'
+  - '%d-%m-%y'
+  - '%d/%m/%y'
+  languages:
+  - en
+  decimal_separator: .
+  remove_whitespace: false

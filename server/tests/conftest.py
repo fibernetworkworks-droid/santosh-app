@@ -19,6 +19,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("VOICEID_VAD", "false")      # voice-id tests use synthetic tones, which Silero rightly calls "not a voice"
     monkeypatch.setenv("HOOLA_ENRICH", "false")     # no background vision / suggestion calls; tests call enrich.run
     monkeypatch.setenv("VOICE_TOOL_ACK", "false")
+    monkeypatch.setenv("IFSC_REFRESH", "false")    # no IFSC downloads / online lookups in tests
     monkeypatch.setenv("LOGO_WARM", "false")       # no logo downloads in tests
     monkeypatch.setenv("TV_REFRESH", "false")   # no real TTS calls; tests that need the clips turn it on
     monkeypatch.chdir(tmp_path)   # ignore any local .env
