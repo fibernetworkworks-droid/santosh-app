@@ -25,7 +25,9 @@
     bottom: { style: 'pants', color: '#2c3566' }, shoes: '#f7f5f2', laces: '#f29418', phone: '#26272c', acc: []
   };
 
-  function build(look) {
+  // opts.rig = true: arms and legs get real joints (shoulder, elbow, hip, knee) for dancing / jumping (moves.js)
+  function build(look, opts) {
+    const RIG = !!(opts && opts.rig);
     const L = Object.assign({}, SANTOSH, look || {});
     if (look && !('straps' in look)) L.straps = null;   // backpack straps only when a look asks for them
     const fem = L.gender === 'f';
@@ -212,7 +214,30 @@
 
     /* ---------- arms, cuffs, hands ---------- */
     const hands = [];
-    [-1, 1].forEach(s => {
+    const rig = { shoulder: {}, elbow: {}, hip: {}, knee: {}, hand: {}, foot: {} };
+    if (RIG) [-1, 1].forEach(s => {
+      // rest pose: arm hanging straight down; animation rotates the shoulder and elbow groups
+      const sh = new THREE.Group(); sh.position.set(s * shX, 1.1, 0); body.add(sh);
+      mesh(SPH, M.top, sh, [0, 0, 0], [armR + .06, armR + .06, armR + .06]);
+      const E = new V3(s * .05, -.7, .03);
+      limb(new V3(0, 0, 0), E, armR, M.top, sh);
+      const el = new THREE.Group(); el.position.copy(E); sh.add(el);
+      mesh(SPH, M.top, el, [0, 0, 0], [armR, armR, armR]);
+      const W = new V3(0, -.6, .02);
+      limb(new V3(0, 0, 0), W, armR2, M.top, el);
+      if (T === 'track') limb(new V3(0, .05, armR * .9), E.clone().setX(0).add(new V3(0, .05, armR * .9 - .03)), .035, M.top2, sh);
+      const cuff = new THREE.Mesh(new THREE.TorusGeometry(puffy ? .2 : .17, .07, 14, 40), M.top2);
+      cuff.position.copy(W); cuff.rotation.x = Math.PI / 2; cuff.castShadow = true; el.add(cuff);
+      const hand = new THREE.Group(); hand.position.set(0, -.78, .04); el.add(hand);
+      mesh(SPH, M.skin, hand, [0, 0, 0], fem ? [.155, .195, .175] : [.17, .21, .19]);
+      for (let i = 0; i < 3; i++) mesh(SPH_LO, M.skin, hand, [s * -.03, -.05 - i * .07, .14], fem ? [.058, .05, .055] : [.065, .055, .06]);
+      mesh(SPH_LO, M.skin, hand, [s * -.15, .02, .08], fem ? [.05, .08, .05] : [.055, .09, .055]);      // thumb
+      if (acc.has('bangles') && s < 0) [0, 1, 2].forEach(i => mesh(new THREE.TorusGeometry(.16, .022, 8, 32), i === 1 ? M.accent : M.gold, el, [0, -.5 + .03 * i, .02], null, [Math.PI / 2, 0, 0]));
+      if (acc.has('watch') && s > 0) mesh(new THREE.TorusGeometry(.17, .035, 8, 32), M.accent, el, [0, -.48, .02], null, [Math.PI / 2, 0, 0]);
+      rig.shoulder[s] = sh; rig.elbow[s] = el; rig.hand[s] = hand;
+      hands.push(hand);
+    });
+    else [-1, 1].forEach(s => {
       const sh = new V3(s * shX, 1.1, 0), el = new V3(s * (shX + .2), .36, .28), wr = new V3(s * .44, .5, 1.0);
       mesh(SPH, M.top, body, [sh.x, sh.y, sh.z], [armR + .06, armR + .06, armR + .06]);
       limb(sh, el, armR, M.top, body);
@@ -263,7 +288,29 @@
     } else {
       mesh(SPH, M.bottom, body, [0, -.62, 0], [.74, .32, .58]);
     }
-    [-1, 1].forEach(s => {
+    if (RIG) [-1, 1].forEach(s => {
+      // rest pose: legs straight; hip and knee groups rotate (shoes ride on the knee group)
+      const hp = new THREE.Group(); hp.position.set(s * .32, -.62, 0); body.add(hp);
+      const K = new V3(s * .01, -.4, .01);
+      const kn = new THREE.Group(); kn.position.copy(K); hp.add(kn);
+      const thin = B === 'leggings' || B === 'skirt' ? .2 : .25;
+      const upper = B === 'shorts' ? M.bottom : legMat, lower = B === 'shorts' ? (L.bottom.legs ? cloth(L.bottom.legs) : M.skin) : legMat;
+      if (B !== 'long') {
+        limb(new V3(0, 0, 0), K, B === 'shorts' ? .27 : thin, upper, hp);
+        mesh(SPH, upper, kn, [0, 0, 0], [thin, thin, thin]);
+        limb(new V3(0, 0, 0), new V3(0, -.4, .01), B === 'shorts' ? .19 : thin, lower, kn);
+        if (B === 'pants' || B === 'jeans') mesh(new THREE.TorusGeometry(.24, .05, 12, 36), B === 'jeans' ? M.seam : M.bottom, kn, [0, -.4, .01], null, [Math.PI / 2, 0, 0]);
+        if (B === 'shorts') mesh(new THREE.TorusGeometry(.26, .04, 10, 32), M.bottom, hp, [K.x, K.y, K.z], null, [Math.PI / 2, 0, 0]);
+      } else {
+        limb(new V3(0, 0, 0), K, .2, M.skin, hp); limb(new V3(0, 0, 0), new V3(0, -.4, .01), .18, M.skin, kn);
+      }
+      const shoe = new THREE.Group(); shoe.position.set(s * .03, -.58, .14); shoe.rotation.y = s * -.12; kn.add(shoe);
+      mesh(SPH, M.shoe, shoe, [0, .02, 0], [.27, .17, .42]);
+      mesh(new THREE.CylinderGeometry(1, 1, 1, 40), M.sole, shoe, [0, -.1, .0], [.28, .06, .43]);
+      mesh(SPH_LO, M.lace, shoe, [0, .12, .14], [.1, .04, .14]);
+      rig.hip[s] = hp; rig.knee[s] = kn; rig.foot[s] = shoe;
+    });
+    else [-1, 1].forEach(s => {
       if (B === 'shorts') {
         limb(new V3(s * .32, -.62, 0), new V3(s * .33, -1.0, .01), .27, M.bottom, body);
         mesh(new THREE.TorusGeometry(.26, .04, 10, 32), M.bottom, body, [s * .33, -1.02, .01], null, [Math.PI / 2, 0, 0]);
@@ -684,7 +731,7 @@
       Object.values(M).forEach(m => m.dispose && m.dispose());
       blushTex.dispose();
     }
-    return { root, body, neck, head, eyes, irises, brows, smile, mouthIn, hands, screenLight, phone, M, dispose, look: L };
+    return { root, body, neck, head, eyes, irises, brows, smile, mouthIn, hands, screenLight, phone, M, dispose, look: L, rig: RIG ? rig : null };
   }
 
   window.HoolaAvatar = { build, SANTOSH };
