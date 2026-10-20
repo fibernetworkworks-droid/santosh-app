@@ -387,6 +387,37 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   Instagram / YouTube steps, 7 / 14 / 30 days, "Scroll data mitao".
 - Not yet: a background nudge when the daily limit is crossed (needs a periodic check in the background service).
 
+## v0.58 Hoola Employee, part 1: the frame (role, team, trust, audit, pause, report)
+- Plan doc "Hoola as an Employee" (Claude Docs). First roles: Front desk, Support + vasooli; `custom` = owner picks duties.
+- `server/app/employee/`: `roles.py` (DUTIES = groups of tools by name/prefix: customers, appointments, reminders, email, tickets,
+  collections, records, campaigns, research; ROLES; `kind_of` = read | action | big (bulk / delete / share / money / public / PC);
+  trust LEVELS seekh -> saathi -> bharosa, CAP per day 0/40/150, PROMOTE_AFTER 15/40 "Haan" in a row = suggestion only),
+  `models.py` (EmployeeProfile, TeamMember manager|staff + duties + Hoola ID, DutyTrust, EmployeeAsk, AuditEntry (kind meta for
+  pause/trust/team-task), StaffTask), `service.py`, `network.py`.
+- **The gate is in `agent.tools.dispatch`** (chat, calls, routines alike): `Ctx.actor` = owner | routine | staff:<id> |
+  customer:<x> | approved:<ask>. Owner: never held except Pause (job duties only; her personal tools go on). Routine: job duties
+  follow trust (seekh = always ask, saathi = big asks, over the day cap asks). Staff / customer: only job duties, staff only their
+  own duties, big things always ask; employee mode off = refused. Reads always pass. Held calls become an `EmployeeAsk` +
+  `employee_ask` card (push) and the model gets `waiting_owner` ("don't retry"); Haan (`POST /api/employee/asks/{id}`) runs the
+  exact call as `approved:<id>` and leaves a note in the chat. Same pending call is never asked twice; asks expire after 48 h.
+- Audit (`after()`): every job action, everything by non-owners, owner-approved calls; args masked (theatre._txt, no key-like
+  fields). "Galat tha" (`/audit/{id}/wrong`) = that duty drops one level + the note becomes a job rule (`profile.rules`).
+- `run_turn(actor=)`; worker routines run as `routine`; `worker.employee_jobs` = expire asks, daily report at `report_time`
+  (`employee_report` card + note + push), team tasks.
+- Team tasks over Hoola Network: kind `staff_task` (EXTRA_KINDS) accepted only from an active team member's connected address,
+  not paused, 30/day per member, secrets refused -> `StaffTask` -> worker runs it as an agent turn (actor staff:<id>, the words
+  quoted as a description) -> `staff_done` back to the member (scrubbed of phone/email etc., `reply_to_staff`). Staff side:
+  tool `employee action=send_task`.
+- Job sheet = generated from profile + trust + team + rules (owner can replace it; '' = generated again) and goes into the system
+  prompt (`prompt_block`, says when paused). Tool `employee` (status / pause / resume / report / job_sheet / asks / trust /
+  send_task; anyone may pause, only the owner resumes or changes trust), also in calls.
+- API `/api/employee` (GET all-in-one, PUT setup), `/pause`, `/team` (+PATCH/DELETE), `/trust/{duty}`, `/asks`, `/asks/{id}`,
+  `/audit`, `/audit/{id}/wrong`, `/report?day=`, `/job_sheet` (GET/PUT), `/tasks`.
+- App: `lib/ui/employee_screen.dart` (Profile > "<name> · Employee": tabs Kaam (pause button, asks with Haan/Mana, report),
+  Bharosa (level per duty, suggestion), Team, Hisaab (audit + Galat tha), Naukri (business, role, hours, after-hours, report
+  time, rules, job sheet)); chat cards `EmployeeAskCard` (also in calls) / `EmployeeReportCard`.
+- Next (plan): business WhatsApp inbox (customer actor), official business phone number, role packs, pilot gate.
+
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
   automation (Baileys/WhatsApp Web).
@@ -409,4 +440,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos · v0.47 Public APIs (2,100+ free APIs the avatar can use). · v0.48 Hoola TV (free official live channels on phone + Chromecast/Android TV). · v0.49 Hoola TV worldwide (~4,300 official channels, 140 countries, country picker). · v0.50 repo review part 1 (real file types, MarkItDown, share-to-Hoola, video shrink, PII gate, keep-alive steps, security CI, backup). · v0.51 100 female 3D avatar looks from around the world. · v0.51.1 Hoola TV list fix (old saved list ignored). · v0.52 repo review part 2 (Office files, clean / ID photos, memory by meaning, Silero VAD on calls). · v0.53 100 male 3D avatar looks from around the world (Santosh stays the default). · v0.54 Hoola Reels (share any reel: save, remind, shop, family, ye sach hai?). · v0.55 Silero VAD properly (voice-only barge-in, idle noise gate, voice-id speech only, gate stats). · v0.56 Share to Hoola for big videos (progress, cancel, first part), shares go into a live call, "Hoola band na ho" checklist + phone health check. · v0.57 Reel scroll analysis (Usage Access times + own history download, Scroll report). Next: v0.58.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos · v0.47 Public APIs (2,100+ free APIs the avatar can use). · v0.48 Hoola TV (free official live channels on phone + Chromecast/Android TV). · v0.49 Hoola TV worldwide (~4,300 official channels, 140 countries, country picker). · v0.50 repo review part 1 (real file types, MarkItDown, share-to-Hoola, video shrink, PII gate, keep-alive steps, security CI, backup). · v0.51 100 female 3D avatar looks from around the world. · v0.51.1 Hoola TV list fix (old saved list ignored). · v0.52 repo review part 2 (Office files, clean / ID photos, memory by meaning, Silero VAD on calls). · v0.53 100 male 3D avatar looks from around the world (Santosh stays the default). · v0.54 Hoola Reels (share any reel: save, remind, shop, family, ye sach hai?). · v0.55 Silero VAD properly (voice-only barge-in, idle noise gate, voice-id speech only, gate stats). · v0.56 Share to Hoola for big videos (progress, cancel, first part), shares go into a live call, "Hoola band na ho" checklist + phone health check. · v0.57 Reel scroll analysis (Usage Access times + own history download, Scroll report). · v0.58 Hoola Employee part 1 (role, team, trust per duty enforced on the server, owner's tap, audit, pause, daily report, team tasks). Next: v0.59.

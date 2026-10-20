@@ -251,7 +251,7 @@ async def run_routines() -> None:
 
         async def _go(rid=rid, tenant=tenant, conv=conv, prompt=prompt):
             try:
-                out = await run_turn(conv, prompt, tenant_id=tenant)
+                out = await run_turn(conv, prompt, tenant_id=tenant, actor="routine")
             except Exception as e:   # never let one job kill the worker
                 log.exception("routine %s failed", rid)
                 out = f"failed: {e}"
@@ -294,6 +294,7 @@ async def tick() -> None:
     await pc_cleanup()
     await home_device_alerts()
     await mail_jobs()
+    await employee_jobs()
 
 
 _home_last = 0.0
@@ -407,6 +408,25 @@ async def mail_jobs() -> None:
             await asyncio.to_thread(job)
         except Exception:
             log.exception("mail/calendar job %s failed", job.__name__)
+
+
+_emp_tasks: set = set()
+
+
+async def employee_jobs() -> None:
+    """Hoola Employee: team tasks, old asks expire, the daily report at the owner's time."""
+    from .employee import network as emp_net
+    from .employee import service as emp
+    try:
+        emp.expire_asks()
+        for tenant in emp.due_reports():
+            emp.send_report(tenant)
+    except Exception:
+        log.exception("employee report failed")
+    if not _emp_tasks:                    # one batch at a time; the next tick picks up the rest
+        t = asyncio.create_task(emp_net.run_pending())
+        _emp_tasks.add(t)
+        t.add_done_callback(_emp_tasks.discard)
 
 
 async def run_forever(stop: asyncio.Event) -> None:

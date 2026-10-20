@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.57.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.58.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -104,7 +104,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels"] + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee"] + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -2434,6 +2434,171 @@ async def reel_look_file(file: UploadFile = File(...), text: str = Form(""), ten
 def reels_saved(q: str = "", tenant: str = Depends(current_tenant)):
     from .reels import service as rs
     return {"reels": rs.saved(tenant, q)}
+
+
+# ---------------- Hoola Employee (v0.58): role, team, trust per duty, audit, pause, daily report ----------------
+class EmployeeIn(BaseModel):
+    enabled: bool | None = None
+    role: str | None = None
+    duties: list[str] | None = None
+    business_name: str | None = None
+    business_kind: str | None = None
+    about: str | None = None
+    hours: dict | None = None
+    after_hours: str | None = None
+    report_time: str | None = None
+    rules: str | None = None
+    reply_to_staff: bool | None = None
+
+
+class EmployeePauseIn(BaseModel):
+    paused: bool = True
+
+
+class MemberIn(BaseModel):
+    name: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    role: str | None = None
+    duties: list[str] | None = None
+    active: bool | None = None
+
+
+class TrustIn(BaseModel):
+    level: str | None = None
+    per_day: int | None = None
+
+
+class AskDecisionIn(BaseModel):
+    approve: bool
+
+
+class WrongIn(BaseModel):
+    note: str = ""
+
+
+class JobSheetIn(BaseModel):
+    text: str = ""
+
+
+def _emp(fn, *a, **kw):
+    from .employee import service as emp
+    try:
+        return fn(*a, **kw)
+    except emp.EmployeeError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/employee", dependencies=[Depends(require_key)])
+def employee_get(tenant: str = Depends(current_tenant)):
+    """Everything the Employee screen needs in one call."""
+    from .employee import service as emp
+    from .employee.roles import DUTIES, LEVEL_LABEL, LEVELS, ROLES
+    p = emp.profile(tenant)
+    return {"profile": p, "status": emp.status(tenant), "trust": emp.trust(tenant) if p else [], "team": emp.team(tenant),
+            "asks": emp.asks(tenant) if p else [],
+            "roles": [{"id": k, "label": v["label"], "say": v["say"], "duties": v["duties"]} for k, v in ROLES.items()],
+            "duties": [{"id": k, "label": v["label"], "say": v["say"]} for k, v in DUTIES.items()],
+            "levels": [{"id": x, "label": LEVEL_LABEL[x]} for x in LEVELS]}
+
+
+@app.put("/api/employee", dependencies=[Depends(require_key)])
+def employee_put(body: EmployeeIn, tenant: str = Depends(current_tenant)):
+    from .employee import service as emp
+    return _emp(emp.setup, tenant, **body.model_dump())
+
+
+@app.post("/api/employee/pause", dependencies=[Depends(require_key)])
+def employee_pause(body: EmployeePauseIn, tenant: str = Depends(current_tenant)):
+    from .employee import service as emp
+    return _emp(emp.set_pause, tenant, body.paused, "owner")
+
+
+@app.get("/api/employee/team", dependencies=[Depends(require_key)])
+def employee_team(tenant: str = Depends(current_tenant)):
+    from .employee import service as emp
+    return {"team": emp.team(tenant)}
+
+
+@app.post("/api/employee/team", dependencies=[Depends(require_key)])
+def employee_team_add(body: MemberIn, tenant: str = Depends(current_tenant)):
+    from .employee import service as emp
+    return _emp(emp.add_member, tenant, body.name or "", body.phone or "", body.address or "", body.role or "staff",
+                body.duties or [])
+
+
+@app.patch("/api/employee/team/{member_id}", dependencies=[Depends(require_key)])
+def employee_team_edit(member_id: str, body: MemberIn, tenant: str = Depends(current_tenant)):
+    from .employee import service as emp
+    return _emp(emp.update_member, tenant, member_id, **body.model_dump())
+
+
+@app.delete("/api/employee/team/{member_id}", dependencies=[Depends(require_key)])
+def employee_team_remove(member_id: str, tenant: str = Depends(current_tenant)):
+    from .employee import service as emp
+    _emp(emp.remove_member, tenant, member_id)
+    return {"ok": True}
+
+
+@app.put("/api/employee/trust/{duty}", dependencies=[Depends(require_key)])
+def employee_trust(duty: str, body: TrustIn, tenant: str = Depends(current_tenant)):
+    from .employee import service as emp
+    return _emp(emp.set_trust, tenant, duty, body.level, body.per_day)
+
+
+@app.get("/api/employee/asks", dependencies=[Depends(require_key)])
+def employee_asks(status: str = "pending", tenant: str = Depends(current_tenant)):
+    from .employee import service as emp
+    return {"asks": emp.asks(tenant, status)}
+
+
+@app.post("/api/employee/asks/{ask_id}", dependencies=[Depends(require_key)])
+async def employee_decide(ask_id: str, body: AskDecisionIn, tenant: str = Depends(current_tenant)):
+    """The owner's Haan / Mana on something Hoola wanted to do on its own."""
+    from .employee import service as emp
+    try:
+        return await emp.decide(tenant, ask_id, body.approve)
+    except emp.EmployeeError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/employee/audit", dependencies=[Depends(require_key)])
+def employee_audit(limit: int = 100, duty: str = "", day: str = "", tenant: str = Depends(current_tenant)):
+    from .employee import service as emp
+    return {"entries": _emp(emp.audit, tenant, limit, duty, day)}
+
+
+@app.post("/api/employee/audit/{entry_id}/wrong", dependencies=[Depends(require_key)])
+def employee_wrong(entry_id: str, body: WrongIn, tenant: str = Depends(current_tenant)):
+    from .employee import service as emp
+    return _emp(emp.mark_wrong, tenant, entry_id, body.note)
+
+
+@app.get("/api/employee/report", dependencies=[Depends(require_key)])
+def employee_report(day: str = "", tenant: str = Depends(current_tenant)):
+    from .employee import service as emp
+    try:
+        return emp.report(tenant, day)
+    except ValueError:
+        raise HTTPException(400, "day: YYYY-MM-DD")
+
+
+@app.get("/api/employee/job_sheet", dependencies=[Depends(require_key)])
+def employee_sheet(tenant: str = Depends(current_tenant)):
+    from .employee import service as emp
+    return emp.job_sheet(tenant)
+
+
+@app.put("/api/employee/job_sheet", dependencies=[Depends(require_key)])
+def employee_sheet_put(body: JobSheetIn, tenant: str = Depends(current_tenant)):
+    from .employee import service as emp
+    return _emp(emp.set_job_sheet, tenant, body.text)
+
+
+@app.get("/api/employee/tasks", dependencies=[Depends(require_key)])
+def employee_tasks(tenant: str = Depends(current_tenant)):
+    from .employee import network
+    return {"tasks": network.tasks(tenant)}
 
 
 # reel scroll analysis (Usage Access numbers + the owner's own history download)

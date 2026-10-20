@@ -29,7 +29,7 @@ def test_routine_runs_by_itself_and_reschedules(env, monkeypatch):
 
     calls = []
 
-    async def fake_turn(conv, text, tenant_id=None, voice=False):
+    async def fake_turn(conv, text, tenant_id=None, voice=False, **_):
         calls.append((conv, text))
         return "Aaj Pune mein dhoop hai."
 
@@ -64,14 +64,14 @@ def test_routine_api_and_voice_flag(env, monkeypatch):
     from app import main
     seen = []
 
-    async def fake_turn(conv, text, tenant_id=None, voice=False):
+    async def fake_turn(conv, text, tenant_id=None, voice=False, **_):
         seen.append(voice)
         return "ok"
 
     monkeypatch.setattr(main, "run_turn", fake_turn)
     with TestClient(main.app) as c:
         h = c.get("/healthz").json()
-        assert "routines" in h["features"] and h["version"] == "0.57.0"
+        assert "routines" in h["features"] and h["version"] == "0.58.0"
         conv = c.post("/api/conversations").json()["id"]
         assert c.post(f"/api/conversations/{conv}/messages", json={"text": "namaste", "voice": True}).status_code == 202
         assert c.post(f"/api/conversations/{conv}/messages", json={"text": "hi"}).status_code == 202

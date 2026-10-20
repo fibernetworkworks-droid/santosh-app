@@ -639,6 +639,8 @@ def init_db(url: str | None = None):
     from .net import chain as _net_chain  # noqa: F401
     from .net import business as _net_business  # noqa: F401
     from .bt import models as _bt_models  # noqa: F401
+    from .employee import models as _employee_models  # noqa: F401
+    from .employee import network as _employee_net  # noqa: F401
     Base.metadata.create_all(_engine)
     _add_missing_columns(_engine)
     from .bazar.db import init_tables as _bazar_tables

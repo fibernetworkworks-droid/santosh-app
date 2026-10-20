@@ -235,6 +235,8 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _campaigns = {};
   final Map<String, FeedItem> _emails = {};
   final Map<String, FeedItem> _bazar = {};   // confirm cards by approval id
+  final Map<String, FeedItem> _empAsks = {};  // Hoola Employee: actions waiting for the owner's tap, by ask id
+  int employeeTick = 0;                       // bumps on any employee event (the Employee screen can refresh)
   List<Map<String, dynamic>> get pendingApprovals =>
       [for (final it in _bazar.values) if ((it.data['status'] ?? 'pending') == 'pending') it.data];
   int bazarLinkedTick = 0;                    // bumps when an app account got linked (Apps screen refreshes)
@@ -856,6 +858,25 @@ class Santosh extends ChangeNotifier {
           if (inBackground && !_replaying && !pushOn) Device.instance.showNow('$aName: approve karein', '${p['title'] ?? ''} ${p['amount'] ?? ''}');
           if (!_replaying) setMood(Mood.think, hold: const Duration(seconds: 10));
         }
+        break;
+      case 'employee_ask':
+        final eid = '${p['id']}';
+        final had = _empAsks[eid];
+        if (had != null) {
+          had.data = {...had.data, ...p};
+        } else if (p['status'] == 'pending') {
+          _empAsks[eid] = FeedItem('employee_ask', Map<String, dynamic>.from(p));
+          feed.add(_empAsks[eid]!);
+          if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Aapki haan chahiye', '${p['what'] ?? ''} · ${p['who'] ?? ''}');
+        }
+        employeeTick++;
+        break;
+      case 'employee_report':
+        feed.add(FeedItem('employee_report', Map<String, dynamic>.from(p)));
+        employeeTick++;
+        break;
+      case 'employee':
+        employeeTick++;
         break;
       case 'bazar_open':
         feed.add(FeedItem('open', Map<String, dynamic>.from(p)));

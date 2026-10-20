@@ -79,4 +79,11 @@ def system_prompt(dry_run: bool, context: str = "", tenant: str | None = None) -
             learned = prompt_block(tenant)
         except Exception:
             learned = ""
-    return personalise(SYSTEM, name, gender) + f"\nCurrent time: {when}." + mode + ctx + learned
+    job = ""
+    if tenant:
+        try:
+            from ..employee.service import prompt_block as job_block
+            job = job_block(tenant)
+        except Exception:
+            job = ""
+    return personalise(SYSTEM, name, gender) + f"\nCurrent time: {when}." + mode + ctx + learned + job

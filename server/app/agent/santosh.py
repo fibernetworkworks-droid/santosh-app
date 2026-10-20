@@ -288,11 +288,11 @@ def _work(conversation_id: str, call_id: str, tool: str, label: str, phase: str,
 
 
 async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None = None, voice: bool = False,
-                   context: str = "") -> str:
+                   context: str = "", actor: str = "owner") -> str:
     """Handle one user message end to end. Returns Santosh's final reply text."""
     settings = get_settings()
     tenant_id = tenant_id or settings.tenant_id
-    ctx = Ctx(tenant_id=tenant_id, conversation_id=conversation_id)
+    ctx = Ctx(tenant_id=tenant_id, conversation_id=conversation_id, actor=actor or "owner")
     _gender = persona(tenant_id)[1]
     async with _locks[conversation_id]:
         notes = _pending_worker_notes(conversation_id)

@@ -116,6 +116,10 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return ("Connect request", f"{p.get('label', '')} judna chahte hain")
     if kind == "hoola_msg" and not p.get("quiet") and not p.get("fyi"):
         return (f"{name}: {p.get('from', '')}", str(p.get("text") or "")[:300])
+    if kind == "employee_ask" and p.get("status") == "pending":
+        return ("Aapki haan chahiye", f"{p.get('what', '')} · {p.get('who', '')}: {p.get('detail', '')}"[:300])
+    if kind == "employee_report":
+        return (f"{name} ki aaj ki report", str(p.get("text") or "")[:600])
     if kind == "bazar_open":
         msg = str(p.get("message") or "").strip()
         return (name, msg[:300]) if msg else None
@@ -181,7 +185,7 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
 
 
 PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "email_draft", "bazar_open", "device_action",
-              "home_device", "bt_request"}
+              "home_device", "bt_request", "employee_ask", "employee_report"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 

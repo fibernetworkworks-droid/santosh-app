@@ -19,6 +19,7 @@ class ToolError(Exception):
 class Ctx:
     tenant_id: str
     conversation_id: str
+    actor: str = "owner"        # owner | routine | staff:<id> | customer:<x> | approved:<ask id> (Hoola Employee, v0.58)
 
 
 TEMPLATE_PROPS = {
@@ -216,7 +217,21 @@ async def dispatch(name: str, args: dict, ctx: Ctx):
     h = HANDLERS.get(name)
     if not h:
         raise ToolError(f"Unknown tool {name}")
-    return await h(ctx, **(args or {}))
+    # Hoola Employee: pause, trust per duty and team permissions are enforced here, for chat, calls and jobs alike
+    from ..employee import service as employee
+    try:
+        held = employee.gate(ctx, name, args or {})
+    except employee.Blocked as e:
+        raise ToolError(str(e))
+    if held is not None:
+        return held
+    try:
+        out = await h(ctx, **(args or {}))
+    except Exception as e:
+        employee.after(ctx, name, args or {}, False, str(e)[:200])
+        raise
+    employee.after(ctx, name, args or {}, not (isinstance(out, dict) and out.get("error")))
+    return out
 
 
 # daily-life tools live in their own module; merged here so the agent sees one tool list
@@ -344,3 +359,9 @@ from .device_tools import DEVICE_HANDLERS, DEVICE_LABELS, DEVICE_TOOLS  # noqa: 
 TOOLS.extend(DEVICE_TOOLS)
 TOOL_LABELS.update(DEVICE_LABELS)
 HANDLERS.update(DEVICE_HANDLERS)
+
+from .employee_tools import EMPLOYEE_HANDLERS, EMPLOYEE_LABELS, EMPLOYEE_TOOLS  # noqa: E402
+
+TOOLS.extend(EMPLOYEE_TOOLS)
+TOOL_LABELS.update(EMPLOYEE_LABELS)
+HANDLERS.update(EMPLOYEE_HANDLERS)
