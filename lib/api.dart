@@ -446,6 +446,10 @@ class Api {
   Future<Map<String, dynamic>> homeResult(String commandId, bool ok, [String error = '']) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/bazar/devices/commands/$commandId/result',
           body: {'ok': ok, 'error': error.length > 480 ? error.substring(0, 480) : error}));
+  /// Answer to a Bluetooth job from Hoola (scan, pair, connect...).
+  Future<Map<String, dynamic>> btResult(String requestId, bool ok, Map<String, dynamic> result, [String error = '']) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bt/requests/$requestId/result',
+          body: {'ok': ok, 'result': result, 'error': error.length > 280 ? error.substring(0, 280) : error}));
   Future<Map<String, dynamic>> homeLinkStart(String provider) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/bazar/devices/link/$provider'));
   Future<Map<String, dynamic>> homeLinkLg(String token) async =>

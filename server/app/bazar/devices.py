@@ -35,7 +35,7 @@ STATE_TTL = 15 * 60
 MAC = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 PRIVATE_IP = re.compile(r"^(10|192\.168|172\.(1[6-9]|2\d|3[01]))(\.\d{1,3}){1,3}$")
 HINT = {"ir": "This phone may not have an IR blaster, or it wasn't pointed at the AC.",
-        "bt_hid": "The TV isn't connected to 'Santosh Remote' — check the TV's Bluetooth.",
+        "bt_hid": "The TV isn't connected to Hoola's Bluetooth remote: say 'TV ko Bluetooth se jodo' (bluetooth action=tv_pair).",
         "phone_media": "No music app or speaker responded."}
 
 
@@ -152,8 +152,9 @@ def add_device(tenant: str, kind: str, name: str, room: str = "", brand: str = "
             out["setup"] = {"try_protocols": [{"protocol": p, "label": ir.PROTOCOLS[p]["label"]} for p in ir.try_order(d.brand)],
                             "how": "Point the phone at the AC and tap Test for each remote type until the AC beeps."}
         if kind == "tv":
-            out["setup"] = {"how": "Turn on the TV remote in Santosh, then open the TV's Bluetooth settings and pair "
-                                   "'Santosh Remote'. For YouTube/Netflix keep the phone on the same Wi-Fi as the TV."}
+            out["setup"] = {"how": "Tap 'Remote test / jodiye': Hoola connects to a TV already paired with the phone, or makes "
+                                   "the phone visible so the TV can add it (TV > Bluetooth > Add accessory > this phone's "
+                                   "name). For YouTube/Netflix keep the phone on the same Wi-Fi as the TV."}
         return out
 
 
@@ -186,7 +187,7 @@ def ir_confirm(tenant: str, did: str, protocol: str) -> dict[str, Any]:
 
 
 def tv_test(tenant: str, did: str) -> dict[str, Any]:
-    """Volume up then down once: proves the TV is paired with 'Santosh Remote'."""
+    """Volume up then down once: proves the TV is paired with Hoola's Bluetooth remote."""
     from .connectors import device_hid as hid
     with session() as s:
         d = _own(s, tenant, did)

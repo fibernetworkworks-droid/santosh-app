@@ -114,17 +114,23 @@ class MainActivity : FlutterActivity() {
                     "homeCaps" -> result.success(HomeDevices.caps(this))
                     "homePaired" -> result.success(HomeDevices.paired(this))
                     "homeAskBluetooth" -> {
-                        if (Build.VERSION.SDK_INT >= 31 && !HomeDevices.hasBluetoothPermission(this)) {
-                            requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_ADVERTISE), 45)
+                        askBluetooth()
+                        result.success(HomeDevices.hasBluetoothPermission(this) && BtControl.canScan(this))
+                    }
+                    "btRun" -> {
+                        val action = call.argument<String>("action") ?: "status"
+                        val args = try { org.json.JSONObject(call.argument<String>("args") ?: "{}") } catch (_: Exception) { org.json.JSONObject() }
+                        BtControl.run(this, action, args) { ok, res, err ->
+                            if (err == "permission") main.post { askBluetooth() }
+                            main.post {
+                                result.success(mapOf("ok" to ok, "result" to BtControl.toMap(res), "error" to err))
+                            }
                         }
-                        result.success(HomeDevices.hasBluetoothPermission(this))
                     }
                     "homeRemote" -> {
                         if (call.argument<Boolean>("on") == true) {
                             val r = RemoteService.start(this)
-                            if (r == "permission" && Build.VERSION.SDK_INT >= 31) {
-                                requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_ADVERTISE), 45)
-                            }
+                            if (r == "permission") askBluetooth()
                             result.success(r)
                         } else {
                             RemoteService.stop(this)
@@ -154,6 +160,17 @@ class MainActivity : FlutterActivity() {
     }
 
     private val main = Handler(Looper.getMainLooper())
+
+    /** "Nearby devices" (Android 12+: connect, scan, advertise); older phones need location to scan. */
+    private fun askBluetooth() {
+        if (Build.VERSION.SDK_INT >= 31) {
+            val need = arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_ADVERTISE)
+                .filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
+            if (need.isNotEmpty()) requestPermissions(need.toTypedArray(), 45)
+        } else if (!hasLocation()) {
+            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 46)
+        }
+    }
 
     @Volatile private var linkSink: EventChannel.EventSink? = null
     @Volatile private var pendingLink: String? = null

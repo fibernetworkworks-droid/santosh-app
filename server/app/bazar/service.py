@@ -441,7 +441,8 @@ def _run(tenant_id: str, conversation_id: str, pack_id: str, tool: str, args: di
             act = out["device_action"]
             events.append(("home_device", act))
             out = {k: v for k, v in out.items() if k != "device_action"}
-            out["phone"] = f"Sent to the phone (command {act['command_id']}); it runs it now and reports back."
+            out["command_id"] = act["command_id"]
+            out["phone"] =f"Sent to the phone (command {act['command_id']}); it runs it now and reports back."
         if isinstance(out, dict) and out.get("pc_file"):
             events.append(("pc_file", out["pc_file"]))
             out = {**out, "phone": "A download card for this file is shown in the chat."}

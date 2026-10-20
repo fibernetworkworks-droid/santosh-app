@@ -124,7 +124,7 @@ def build(token: str, ev: dict[str, Any], name: str = "Santosh") -> dict[str, An
     kind, p = ev["kind"], ev.get("payload") or {}
     data: dict[str, str] = {"kind": kind, "event_id": str(ev.get("id", "")), "at": str(ev.get("at", ""))}
     ttl = "3600s"
-    if kind == "device_action":
+    if kind in RAW_KINDS:
         data["payload"] = json.dumps(p, ensure_ascii=False)[:3000]
         ttl = "600s"
     else:
@@ -178,14 +178,16 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
     return sent
 
 
-PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "email_draft", "bazar_open", "device_action"}
+PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "email_draft", "bazar_open", "device_action",
+              "home_device", "bt_request"}
+RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 
 def on_event(conversation_id: str, ev: dict[str, Any]) -> None:
     """Called for every published event; sends the push in the background (never slows the caller)."""
     if ev.get("kind") not in PUSH_KINDS or not configured():
         return
-    if ev["kind"] != "device_action" and build("x", ev) is None:
+    if ev["kind"] not in RAW_KINDS and build("x", ev) is None:
         return
     tenant = _tenant(conversation_id)
     if not tenant:

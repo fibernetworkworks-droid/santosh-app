@@ -39,6 +39,10 @@ class SantoshPush : FirebaseMessagingService() {
                     postResult(actionId, ok, detail)
                     if (!ok) Notify.message(this, "Phone par yeh nahi ho paya: $detail", eventId)
                 }
+                "home_device", "bt_request" -> {
+                    val payload = try { JSONObject(d["payload"] ?: "{}") } catch (_: Exception) { JSONObject() }
+                    PhoneJobs.handle(this, d["kind"] ?: "", payload, d["at"] ?: "")
+                }
                 else -> {
                     if (MainActivity.visible) return          // the open app shows it in the chat
                     val body = d["body"] ?: ""

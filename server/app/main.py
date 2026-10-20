@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.34.1", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.35.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -95,7 +95,7 @@ def healthz():
     st = get_settings()
     from .voice import MALE_VOICES
     from . import mail
-    features = ["routines", "voice", "web", "bazar", "avatar"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -1927,6 +1927,30 @@ def pending_actions(tenant: str = Depends(current_tenant)):
         rows = s.scalars(select(DeviceAction).where(DeviceAction.tenant_id == tenant,
                                                     DeviceAction.status == "pending").order_by(DeviceAction.created_at)).all()
         return {"actions": [{"id": a.id, "type": a.type, **a.payload} for a in rows]}
+
+
+class BtResultIn(BaseModel):
+    ok: bool
+    result: dict = Field(default_factory=dict)
+    error: str = ""
+
+
+@app.post("/api/bt/requests/{rid}/result", dependencies=[Depends(require_key)])
+def bt_result(rid: str, body: BtResultIn, tenant: str = Depends(current_tenant)):
+    from .bt import service as bt
+    try:
+        return bt.report(tenant, rid, body.ok, body.result, body.error)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.get("/api/bt/requests/{rid}", dependencies=[Depends(require_key)])
+def bt_get(rid: str, tenant: str = Depends(current_tenant)):
+    from .bt import service as bt
+    try:
+        return bt.get(tenant, rid)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
 
 
 @app.post("/api/device-actions/{action_id}/result", dependencies=[Depends(require_key)])

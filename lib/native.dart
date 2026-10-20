@@ -75,6 +75,21 @@ class Native {
   /// Turns the "Santosh Remote" Bluetooth TV remote on/off. "ok", "permission" or a reason.
   static Future<String> homeRemote(bool on) async => await _call<String>('homeRemote', {'on': on}) ?? 'Is phone par nahi chalta';
   static Future<String> homeDiscoverable() async => await _call<String>('homeDiscoverable') ?? 'Is phone par nahi chalta';
+  /// A Bluetooth job (status, devices, scan, pair, connect, disconnect, tv_pair, turn_on, settings).
+  /// Returns {ok, result, error}; error "permission" = Nearby devices not allowed (the prompt is shown).
+  static Future<Map<String, dynamic>> btRun(String action, [Map<String, dynamic> args = const {}]) async {
+    final r = await _call<Map>('btRun', {'action': action, 'args': jsonEncode(args)});
+    if (r == null) return {'ok': false, 'result': <String, dynamic>{}, 'error': 'Is phone par Bluetooth nahi chalta'};
+    return {
+      'ok': r['ok'] == true,
+      'result': _deep(r['result']),
+      'error': r['error'] as String? ?? '',
+    };
+  }
+
+  static Map<String, dynamic> _deep(dynamic m) => m is Map
+      ? m.map((k, v) => MapEntry(k.toString(), v is Map ? _deep(v) : v is List ? v.map((e) => e is Map ? _deep(e) : e).toList() : v))
+      : <String, dynamic>{};
   /// Runs one server-built device command. Returns "ok" or a short reason ("permission" = Nearby devices not allowed).
   static Future<String> homeRun(Map<String, dynamic> action) async =>
       await _call<String>('homeRun', {'action': jsonEncode(action)}) ?? 'Is phone par home devices nahi chalte';

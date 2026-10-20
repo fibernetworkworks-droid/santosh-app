@@ -8,7 +8,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 
-/** Foreground service that keeps "Santosh Remote" (Bluetooth TV remote) registered while the app is in the background.
+/** Foreground service that keeps "Hoola Remote" (Bluetooth TV remote) registered while the app is in the background.
  *  Started only from the Ghar screen after the user allowed "Nearby devices". */
 class RemoteService : Service() {
     companion object {
@@ -33,7 +33,7 @@ class RemoteService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val n = Notify.service(this, "Hoola TV remote on", "TV ko 'Santosh Remote' se jodiye ya chalaiye")
+        val n = Notify.service(this, "Hoola TV remote on", "Hoola aapka TV remote hai")
         try {
             if (Build.VERSION.SDK_INT >= 29) {
                 startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)

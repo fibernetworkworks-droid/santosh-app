@@ -146,6 +146,7 @@ class SantoshService : Service() {
                     !Actions.tooOld(ev.optString("at"), 10)) {
                     Notify.message(this, payload.optString("text"), id)
                 }
+                "home_device", "bt_request" -> PhoneJobs.handle(this, ev.optString("kind"), payload, ev.optString("at"))
                 "device_action" -> {
                     if (MainActivity.visible) return          // the app on screen does it itself
                     if (Actions.tooOld(ev.optString("at"))) return

@@ -236,8 +236,8 @@ class DeviceExecutor:
         what = {"ac": "AC", "tv": "TV", "fridge": "fridge", "washer": "washing machine"}.get(kind or "", "device")
         if not devs:
             if pack.config["channel"] == "bt_hid":
-                raise ToolError("Pair your TV once: open Santosh app › Ghar › Add TV, then pick 'Santosh Remote' in the TV's "
-                                "Bluetooth settings.")
+                raise ToolError("Pair the TV with Hoola once: say 'TV ko Bluetooth se jodo' (bluetooth action=tv_pair) or "
+                                "open Hoola › Ghar › TV.")
             if pack.config["channel"] == "ir":
                 raise ToolError("Add your AC once: Santosh app › Ghar › Add AC. I'll test the remote signal with you.")
             raise ToolError(f"I couldn't find a {what} in your {pack.name} account.")

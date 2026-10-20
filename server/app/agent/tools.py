@@ -301,3 +301,9 @@ from .pc_tools import PC_HANDLERS, PC_LABELS, PC_TOOLS  # noqa: E402
 TOOLS.extend(PC_TOOLS)
 TOOL_LABELS.update(PC_LABELS)
 HANDLERS.update(PC_HANDLERS)
+
+from .bt_tools import BT_HANDLERS, BT_LABELS, BT_TOOLS  # noqa: E402
+
+TOOLS.extend(BT_TOOLS)
+TOOL_LABELS.update(BT_LABELS)
+HANDLERS.update(BT_HANDLERS)

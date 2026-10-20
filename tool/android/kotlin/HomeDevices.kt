@@ -29,7 +29,7 @@ class HomeDeviceException(message: String) : Exception(message)
 /**
  * Santosh "Ghar": runs the home-device commands that the server builds (IR pattern, HID usages, DIAL app, media keys).
  *  - channel "phone_media": music on the phone / connected Bluetooth speaker
- *  - channel "bt_hid":     the phone as a Bluetooth keyboard + remote for the TV ("Santosh Remote"), plus DIAL on Wi-Fi
+ *  - channel "bt_hid":     the phone as a Bluetooth keyboard + remote for the TV ("Hoola Remote"), plus DIAL on Wi-Fi
  *  - channel "ir":         the phone's IR blaster for the AC
  * Flutter reports the result to the server; this side only carries the command out.
  */
@@ -72,6 +72,9 @@ object HomeDevices {
             "bluetooth_on" to (try { bt?.isEnabled == true } catch (_: SecurityException) { false }),
             "tv_remote" to (Build.VERSION.SDK_INT >= 28 && bt != null),
             "bt_permission" to hasBluetoothPermission(ctx),
+            "bt_scan" to BtControl.canScan(ctx),
+            "phone_name" to (if (hasBluetoothPermission(ctx)) (try { bt?.name } catch (_: SecurityException) { null } ?: "") else ""),
+            "tv_saved" to (Build.VERSION.SDK_INT >= 28 && HidRemote.get(ctx).savedAddress() != null),
             "remote_on" to RemoteService.running,
         )
     }

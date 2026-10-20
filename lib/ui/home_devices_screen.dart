@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'bluetooth_panel.dart';
 import 'glass.dart';
 
 /// Ghar: the user's home devices. Speaker / TV / AC run from this phone (Bluetooth, IR blaster, Wi-Fi);
@@ -248,27 +249,40 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
       ];
 
   // ---------------------------------------------------------------- TV remote
+  /// Pairs the TV with Hoola's Bluetooth remote: the phone connects to an already-paired TV itself; otherwise it
+  /// becomes visible and the TV adds it (the TV shows the phone's own Bluetooth name, which we display).
   Future<void> _tvSetup(Map<String, dynamic> d) async {
     final r = await Native.homeRemote(true);
     if (r != 'ok') {
       _snack(r == 'permission' ? '"Nearby devices" ki permission dijiye.' : r);
       return;
     }
+    final t = Map<String, dynamic>.from(d['target'] as Map? ?? const {});
+    final res = await Native.btRun('tv_pair', {if (t['bt_address'] != null) 'address': t['bt_address']});
     if (!mounted) return;
-    final paired = await showDialog<bool>(
+    final out = Map<String, dynamic>.from(res['result'] as Map? ?? const {});
+    if (res['ok'] != true) {
+      final e = res['error'] as String? ?? '';
+      _snack(e == 'permission' ? '"Nearby devices" ki permission dijiye.' : e == 'bluetooth_off' ? 'Pehle Bluetooth chalu kijiye.' : e);
+      return;
+    }
+    if (out['connected'] == true) {
+      await _tvTest(d);
+      return;
+    }
+    await showTvPairHelp(context, out['phone_name'] as String? ?? '');
+    if (!mounted) return;
+    final test = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
               backgroundColor: C.bgBottom,
-              title: const Text('TV se jodiye'),
-              content: const Text('1. "Phone dikhaiye" dabaiye (2 minute ke liye phone dikhega).\n'
-                  '2. TV par Settings > Bluetooth / Remotes & accessories > Add device kholiye.\n'
-                  '3. "Santosh Remote" chuniye.\n4. Ho jaye to "Test" dabaiye.'),
+              title: const Text('TV par jod diya?'),
               actions: [
-                TextButton(onPressed: () => Native.homeDiscoverable(), child: const Text('Phone dikhaiye')),
+                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Baad mein')),
                 TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Test')),
               ],
             ));
-    if (paired == true) await _tvTest(d);
+    if (test == true) await _tvTest(d);
   }
 
   Future<void> _tvTest(Map<String, dynamic> d) async {
@@ -359,7 +373,8 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
     }
     if (d['kind'] == 'tv') {
       final t = Map<String, dynamic>.from(d['target'] as Map? ?? const {});
-      return t['bt_address'] != null ? 'Bluetooth: ${t['bt_address']}' : 'Bluetooth se "Santosh Remote" jodiye';
+      if (t['bt_address'] != null) return 'Bluetooth: ${t['bt_address']}';
+      return _caps['tv_saved'] == true ? 'Hoola remote se juda' : 'Menu > "Remote test / jodiye" dabaiye';
     }
     return 'Phone ki awaaz / Bluetooth speaker';
   }
@@ -450,6 +465,15 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
               ]),
             ),
             const SizedBox(height: 14),
+            BluetoothPanel(onTvConnected: () async {
+              if (!_devices.any((d) => d['kind'] == 'tv')) {
+                try {
+                  await app.api!.homeAdd('tv', 'TV');
+                } catch (_) {}
+              }
+              await _load(quiet: true);
+            }),
+            const SizedBox(height: 14),
             Row(children: [
               Expanded(child: GlassButton(label: 'AC', icon: Icons.ac_unit_rounded, height: 44, onTap: _busy ? null : () => _add('ac'))),
               const SizedBox(width: 8),
@@ -467,7 +491,7 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('TV remote background mein chalu rakhein'),
-                subtitle: const Text('App band ho tab bhi TV "Santosh Remote" se juda rahe', style: TextStyle(fontSize: 12, color: C.faint)),
+                subtitle: const Text('App band ho tab bhi TV Hoola remote se juda rahe', style: TextStyle(fontSize: 12, color: C.faint)),
                 value: remoteOn,
                 onChanged: (v) async {
                   final r = await Native.homeRemote(v);

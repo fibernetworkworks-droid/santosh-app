@@ -855,6 +855,9 @@ class Santosh extends ChangeNotifier {
       case 'home_device':
         unawaited(_runHomeDevice(Map<String, dynamic>.from(p), at: ev.at));
         break;
+      case 'bt_request':
+        unawaited(_runBt(Map<String, dynamic>.from(p), at: ev.at));
+        break;
     }
     notifyListeners();
   }
@@ -868,6 +871,7 @@ class Santosh extends ChangeNotifier {
     if (done.contains(id)) return;
     // never fire an old AC/TV command when the chat history replays on start
     if (at != null && DateTime.now().toUtc().difference(at) > const Duration(minutes: 2)) return;
+    if (!await Native.claim(id)) return; // the background service already did it
     final kept = done.length > 200 ? done.sublist(done.length - 200) : done;
     await _prefs.setStringList('done_home', [...kept, id]);
     var res = await Native.homeRun(a);
@@ -879,6 +883,28 @@ class Santosh extends ChangeNotifier {
     if (!ok) feed.add(FeedItem('note', {'text': 'Ghar: $res'}));
     try {
       await api?.homeResult(id, ok, ok ? '' : res);
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  /// A Bluetooth job from Hoola (scan, pair, connect, TV remote pairing): run it once on this phone, answer the server.
+  Future<void> _runBt(Map<String, dynamic> a, {DateTime? at}) async {
+    final id = a['request_id'] as String?;
+    if (id == null) return;
+    if (at != null && DateTime.now().toUtc().difference(at) > const Duration(minutes: 2)) return;
+    if (!await Native.claim(id)) return;
+    final args = Map<String, dynamic>.from(a['args'] as Map? ?? const {});
+    final action = a['action'] as String? ?? 'status';
+    if (action == 'scan' || action == 'pair' || action == 'tv_pair') {
+      feed.add(FeedItem('note', {'text': {'scan': 'Bluetooth: aas-paas ke device dhoondh raha hoon…',
+          'pair': 'Bluetooth: jod raha hoon, Android ka "Pair" dabaiye', 'tv_pair': 'Bluetooth: TV se jod raha hoon…'}[action]}));
+      notifyListeners();
+    }
+    final r = await Native.btRun(action, args);
+    final err = r['error'] as String? ?? '';
+    if (err == 'permission') feed.add(FeedItem('note', {'text': 'Bluetooth ke liye "Nearby devices" ki permission dijiye.'}));
+    try {
+      await api?.btResult(id, r['ok'] == true, Map<String, dynamic>.from(r['result'] as Map? ?? const {}), err);
     } catch (_) {}
     notifyListeners();
   }
