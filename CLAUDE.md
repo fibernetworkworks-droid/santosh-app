@@ -143,7 +143,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   (names per bubble, media, inline Haan/Mana, reply ideas, attach photo/video/audio/file, "banwaiye", tum sambhalo toggle via
   `POST /api/net/threads/{id}/handle`, live refresh on hoolaTick). Knock / msg / outbox cards show previews and open the thread.
 - VPS needs `pip install pillow pypdfium2` (ffmpeg optional, for video frames).
-## v0.44 Awaaz Pehchaan: who is talking + voice lock (latest)
+## v0.44 Awaaz Pehchaan: who is talking + voice lock
 - `server/app/voiceid/`: `engine.py` (sherpa-onnx on CPU, two free models: CAM++ Apache-2.0 + TitaNet-small CC-BY-4.0,
   score = mean cosine; `deploy/setup_voiceid.sh` installs sherpa-onnx + numpy into core's venv and downloads the models to
   `data/voiceid_models`), `service.py` (enrol: one-time script with a code read by the person themselves, Gemini checks
@@ -182,6 +182,17 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   text kinds, file kinds need a file) run in `send` and in `hoola_send` (so files still need the owner's tap); non-file kinds
   drop loose file keys. `hoola_reply` takes file_id. Receiver refuses empty text kinds; `inbox()` auto-declines old empty ones.
 
+## v0.45 The avatar knows its MCP connections (latest)
+- `server/app/agent/mcp_live.py`: `snapshot(tenant)` = the owner's MCP servers (custom + linked built-in app MCPs) with status
+  and tool lists (fetched in parallel, 4 s cap, cached 2 min; per-server tool lists cached 10 min by McpExecutor);
+  `tool_defs(snap, limit)` turns ready servers' tools into real tools `mcp_<server>__<tool>` (schemas cleaned; `$ref`
+  schemas become a generic object + hint), `prompt_block` = "Jude hue MCP servers" list for the prompt, `run` -> bazar_run.
+- Chat (`agent/santosh.py`): system prompt + `TOOLS + mcp_defs` per turn (`MCP_NATIVE_TOOLS`=40); a refused schema ->
+  retry without direct MCP tools (`schema_trouble`). Voice (`voice.py`): `Call._load_mcp` per (re)connect, up to 25 direct
+  tools + `bazar_run`/`bazar_mcp` in VOICE_TOOL_NAMES; Gemini refusing a schema -> `_mcp_off` and reconnect.
+- Safety unchanged: calls go through `bazar.service.run` (public https only, keys never in chat, non-read = confirm card);
+  MCP tools are owner-only under the voice lock. `GET /api/bazar/mcp/avatar` + MCP screen line "Hoola jaanta hai · N tools".
+
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
   automation (Baileys/WhatsApp Web).
@@ -204,4 +215,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. Next: v0.45.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). Next: v0.46.

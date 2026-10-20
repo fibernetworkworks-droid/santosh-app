@@ -16,6 +16,7 @@ from ..avatar.service import gendered, persona
 from ..life import context_block
 from . import llm
 from .prompts import system_prompt
+from . import mcp_live
 from .tools import TOOL_LABELS, TOOLS, Ctx, ToolError, dispatch
 
 log = logging.getLogger("santosh.agent")
@@ -127,20 +128,21 @@ def _claude_ready() -> bool:
     return bool(get_settings().anthropic_api_key or _client is not None)
 
 
-async def _call_brain(brain: str, system: str, history: list[dict], settings) -> tuple[list[dict], str]:
+async def _call_brain(brain: str, system: str, history: list[dict], settings, tools: list[dict] | None = None) -> tuple[list[dict], str]:
     """One model call on one brain. Raises when that brain fails."""
+    tools = tools if tools is not None else TOOLS
     if brain in ("glm", "omniroute"):
-        blocks, stop, usage = await llm.openai_create(brain, system, TOOLS, history, settings.agent_max_tokens)
+        blocks, stop, usage = await llm.openai_create(brain, system, tools, history, settings.agent_max_tokens)
         log.info("%s in=%s out=%s %s", llm.describe(), usage.get("prompt_tokens"), usage.get("completion_tokens"),
                  usage.get("route", ""))
         return blocks, stop
     resp = await get_client().messages.create(
         model=settings.anthropic_model, max_tokens=settings.agent_max_tokens,
-        system=system, tools=TOOLS, messages=history)
+        system=system, tools=tools, messages=history)
     return [_block_to_dict(b) for b in resp.content], resp.stop_reason
 
 
-async def _think(brain: str, system: str, history: list[dict], settings) -> tuple[list[dict], str, str]:
+async def _think(brain: str, system: str, history: list[dict], settings, tools: list[dict] | None = None) -> tuple[list[dict], str, str]:
     """One model call that survives a failing brain: the chosen brain first, then the other one, so an outage of
     either never leaves the user without an answer. Returns (blocks, stop_reason, the brain that answered)."""
     order = [brain]
@@ -153,7 +155,7 @@ async def _think(brain: str, system: str, history: list[dict], settings) -> tupl
     last: Exception | None = None
     for b in order:
         try:
-            blocks, stop = await _call_brain(b, system, history, settings)
+            blocks, stop = await _call_brain(b, system, history, settings, tools)
             return blocks, stop, b
         except asyncio.CancelledError:
             raise
@@ -172,9 +174,13 @@ def _friendly_error(e: BaseException) -> str:
     return f"{head} ({s[:200]})" if s else head
 
 
-async def _run_tool(name: str, args: dict, ctx: Ctx, settings):
+async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict | None = None):
     """A tool call that can never hang the whole turn."""
-    return await asyncio.wait_for(dispatch(name, args or {}, ctx), timeout=max(5, settings.agent_tool_timeout_s))
+    if mcp_route and name in mcp_route:   # a tool of one of the owner's MCP servers
+        work = mcp_live.run(ctx, mcp_route, name, args or {})
+    else:
+        work = dispatch(name, args or {}, ctx)
+    return await asyncio.wait_for(work, timeout=max(5, settings.agent_tool_timeout_s))
 
 
 async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str) -> str:
@@ -183,8 +189,21 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     ran_tools = False
     brain = llm.choose(history)
     system = system_prompt(settings.wa_dry_run, context_block(tenant_id), tenant_id)
+    # the owner's MCP connections: known to the avatar, and their tools callable directly
+    mcp_snap = await asyncio.to_thread(mcp_live.snapshot, tenant_id)
+    mcp_defs, mcp_route = mcp_live.tool_defs(mcp_snap, settings.mcp_native_tools)
+    system += "\n\n" + mcp_live.prompt_block(mcp_snap, mcp_route)
+    tools = TOOLS + mcp_defs
     for _ in range(settings.agent_max_steps):
-        blocks, stop, brain = await _think(brain, system, history, settings)   # stays on the brain that worked
+        try:
+            blocks, stop, brain = await _think(brain, system, history, settings, tools)   # stays on the brain that worked
+        except Exception as e:
+            if not mcp_defs or not mcp_live.schema_trouble(e):
+                raise
+            # a server's tool description the model refuses: go on without the direct MCP tools (bazar_run still works)
+            log.warning("MCP tool schemas refused (%s); continuing without them", str(e)[:200])
+            mcp_defs, mcp_route, tools = [], {}, TOOLS
+            blocks, stop, brain = await _think(brain, system, history, settings, tools)
         history.append({"role": "assistant", "content": blocks})
         texts = [b["text"] for b in blocks if b.get("type") == "text" and b.get("text", "").strip()]
         _save(conversation_id, "assistant", blocks, display="\n\n".join(texts) or None)
@@ -202,12 +221,13 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
                                 "content": "The user tapped Stop. Do not continue this task; say in one line what was done."})
                 continue
             ran_tools = True
-            label = gendered(TOOL_LABELS.get(b["name"], b["name"]), gender)
+            label = gendered(mcp_live.label(b["name"], mcp_route, mcp_snap) if b["name"] in mcp_route
+                             else TOOL_LABELS.get(b["name"], b["name"]), gender)
             args_in = b.get("input") or {}
             bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "running", "id": b["id"]})
             _work(conversation_id, b["id"], b["name"], label, "start", args_in)
             try:
-                out = await _run_tool(b["name"], args_in, ctx, settings)
+                out = await _run_tool(b["name"], args_in, ctx, settings, mcp_route)
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": _short(out)})
                 bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "done", "id": b["id"]})
                 _work(conversation_id, b["id"], b["name"], label, theatre.phase_of(out), args_in, out)

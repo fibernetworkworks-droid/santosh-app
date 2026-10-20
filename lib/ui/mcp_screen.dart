@@ -54,6 +54,7 @@ class _McpScreenState extends State<McpScreen> {
   }
 
   List<Map<String, dynamic>> _featured = [];
+  Map<String, Map<String, dynamic>> _known = {}; // pack_id -> what the avatar knows (status, tools)
   String _fcat = '';
 
   Future<void> _loadMine() async {
@@ -66,9 +67,44 @@ class _McpScreenState extends State<McpScreen> {
           _featured = r[1];
         });
       }
+      _loadKnown();
     } catch (e) {
       if (mounted) setState(() => _err = e.toString());
     }
+  }
+
+  /// Asks the server what the avatar can do with each server (this talks to the servers, so it comes a bit later).
+  Future<void> _loadKnown() async {
+    try {
+      final k = await app.api!.mcpAvatar();
+      if (mounted) setState(() => _known = {for (final x in k) x['pack_id'] as String: x});
+    } catch (_) {}
+  }
+
+  Widget _knows(Map<String, dynamic> m) {
+    final k = _known[m['pack_id']];
+    if (k == null) return const SizedBox.shrink();
+    final tools = List<String>.from((k['tools'] as List? ?? const []).map((e) => '$e'));
+    final st = k['status'] as String? ?? '';
+    final String line;
+    final Color col;
+    if (st == 'ready' && tools.isNotEmpty) {
+      line = '${app.aName} jaanta hai · ${tools.length} tools: ${tools.take(4).join(', ')}${tools.length > 4 ? '…' : ''}';
+      col = C.ok;
+    } else if (st == 'ready') {
+      line = '${app.aName} jaanta hai, par server ne koi tool nahi bataya';
+      col = C.warn;
+    } else if (st == 'slow' || st == 'error') {
+      line = 'Server abhi jawab nahi de raha${(k['error'] as String? ?? '').isNotEmpty ? ': ${k['error']}' : ''}';
+      col = C.warn;
+    } else {
+      line = 'Jodna poora kijiye, phir ${app.aName} iske tools use karega';
+      col = C.faint;
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text(app.g(line), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: col, fontSize: 11.5)),
+    );
   }
 
   Future<void> _search() async {
@@ -314,6 +350,7 @@ class _McpScreenState extends State<McpScreen> {
               Text(m['name'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
               Text(m['url'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.faint, fontSize: 11.5)),
               if (m['caution'] == true) const Text('Paise/code wala server: har kaam par aapka tap', style: TextStyle(color: C.warn, fontSize: 11.5)),
+              _knows(m),
             ]),
           ),
           switch (st) {

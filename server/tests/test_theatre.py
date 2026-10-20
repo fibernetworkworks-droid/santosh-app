@@ -43,7 +43,7 @@ def test_agent_turn_publishes_work_events_and_stop(env, monkeypatch):
         c = Conversation(tenant_id="default"); s.add(c); s.flush(); conv = c.id
     calls = {"n": 0}
 
-    async def fake_think(brain, system, history, settings):
+    async def fake_think(brain, system, history, settings, tools=None):
         calls["n"] += 1
         if calls["n"] == 1:
             return [{"type": "tool_use", "id": "tu1", "name": "list_reminders", "input": {}}], "tool_use", brain

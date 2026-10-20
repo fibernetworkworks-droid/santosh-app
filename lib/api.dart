@@ -453,6 +453,10 @@ class Api {
   // ---------------- MCP servers ----------------
   Future<List<Map<String, dynamic>>> mcpList() async =>
       List<Map<String, dynamic>>.from(((await _send('GET', '/api/bazar/mcp'))['servers'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  /// What the avatar knows about each MCP server right now (status + tool names it can call).
+  Future<List<Map<String, dynamic>>> mcpAvatar() async => List<Map<String, dynamic>>.from(
+      ((await _send('GET', '/api/bazar/mcp/avatar', timeout: const Duration(seconds: 20)))['servers'] as List)
+          .map((e) => Map<String, dynamic>.from(e as Map)));
   // ---- Santosh Agent Army (open-source agents catalogue) ----
   Future<Map<String, dynamic>> agentsDirectory({String q = '', String field = '', String kind = '', String tier = ''}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/agents/directory',

@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.44.3", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.45.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -2337,6 +2337,15 @@ class McpKeyIn(BaseModel):
 @app.get("/api/bazar/mcp", dependencies=[Depends(require_key)])
 def bazar_mcp_list(tenant: str = Depends(current_tenant)):
     return {"servers": _bz(bazar.mcp_list, tenant)}
+
+
+@app.get("/api/bazar/mcp/avatar", dependencies=[Depends(require_key)])
+async def bazar_mcp_avatar(tenant: str = Depends(current_tenant)):
+    """What the avatar knows about the owner's MCP servers right now: status and the tools it can call."""
+    from .agent import mcp_live
+    snap = await asyncio.to_thread(mcp_live.snapshot, tenant)
+    return {"servers": [{"pack_id": x["pack_id"], "name": x["name"], "status": x["status"], "error": x["error"],
+                         "tools": [t["name"] for t in x["tools"]]} for x in snap]}
 
 
 class FeaturedIn(BaseModel):
