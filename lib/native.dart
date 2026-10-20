@@ -19,8 +19,18 @@ class Native {
       await _call<bool>('startService', {'server': server, 'key': key, 'conv': conv, 'after': after}) ?? false;
   static Future<void> stop() async => _call('stopService');
   /// v0.49 shrink a phone video to fit [mb] MB (Android's own encoder). {path} or {error}.
-  static Future<Map<String, dynamic>> compressVideo(String path, {int mb = 24}) async =>
-      Map<String, dynamic>.from(await _call<Map>('compressVideo', {'path': path, 'mb': mb}) ?? {'error': 'is phone par nahi ho sakta'});
+  static Future<Map<String, dynamic>> compressVideo(String path, {int mb = 24, int clipMs = 0}) async =>
+      Map<String, dynamic>.from(await _call<Map>('compressVideo', {'path': path, 'mb': mb, 'clipMs': clipMs}) ?? {'error': 'is phone par nahi ho sakta'});
+  /// 0..100 while a video is being made smaller, -1 when none is.
+  static Future<int> compressProgress() async => await _call<int>('compressProgress') ?? -1;
+  static Future<void> compressCancel() async => _call('compressCancel');
+  /// v0.56 What Android knows about Hoola in the background (battery saver, restricted, standby bucket, last exits).
+  static Future<Map<String, dynamic>> bgHealth() async {
+    final m = await _call<Map>('bgHealth');
+    return m == null ? <String, dynamic>{} : Map<String, dynamic>.from(m);
+  }
+  static Future<void> openMakerBattery() async => _call('openMakerBattery');
+  static Future<void> openMakerPerms() async => _call('openMakerPerms');
   static Future<bool> running() async => await _call<bool>('isRunning') ?? false;
   static Future<String> status() async => await _call<String>('status') ?? '';
 

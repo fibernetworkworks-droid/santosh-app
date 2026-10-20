@@ -340,6 +340,31 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - `app/vad.py` (onnxruntime + `app/vadmodel/silero_vad.onnx`): Awaaz Pehchaan's Listener now skips loud non-voice chunks
   (`VOICEID_VAD`, off in tests because they use synthetic tones).
 
+## v0.56 Share to Hoola, big videos, "Hoola band na ho"
+- Share: `MainActivity.sharedPayload` now runs off the main thread (a big copy never freezes the app). Videos up to 2 GB are
+  copied and marked `big` (other files still 25 MB, max 6; free cache space checked); payload has `mime`, `video`, `big`,
+  `skipped_names`. Flutter `_onShare` (main.dart): big video -> `shrinkVideo` dialog -> then Reels card (reel link / one
+  video) | **during a voice call the files go into the call** (`voiceCall.attachFiles`, text to the chat box) | Chat box.
+- `VideoShrink.kt`: one job, `compressProgress` (0..100, -1 idle) + `compressCancel`; HDR tone-mapped to SDR (API 29+);
+  60 fps -> 30 at low bitrates (FrameDropEffect); output still > 25 MB -> second smaller pass; encoder error -> one safe retry
+  (480p, no HDR mode); longer than `maxMs` (~8.8 min at the 250 kbps floor) -> `too_long:<ms>` and the app offers "pehle N min
+  bhejo" (`clipMs`). `lib/ui/video_shrink.dart shrinkVideo()` (progress %, ETA, Rok do), used by the paperclip picker too.
+- Keep-alive: `Native.bgHealth` = battery_optimized, background_restricted, standby_bucket, notifications + last 30
+  `getHistoricalProcessExitReasons` (Android 11+). `POST /api/device/bg_health` -> `keepalive.health`: exits classified
+  (oem_kill / recents_clear / low_memory / crash / user / update; last 7 days) -> plain-word problems + `checklist(brand)` per
+  family (xiaomi, oppo(+realme), oneplus, vivo(+iqoo), samsung, huawei, tecno, generic), each line with an action
+  (autostart | battery | maker_battery | maker_perms | notifications | recents). Latest report kept in
+  `data/keepalive/health/<tenant>.json`; `GET /api/device/bg_health`; agent tool `phone_health` (chat + calls) explains a missed
+  reminder. `GET /api/device/keepalive` also carries `checklist` + `family`.
+- Native openers (settings pages only, Play-safe): `openMakerBattery` (MIUI powerkeeper, ColorOS/oplus battery, vivo abe,
+  Samsung lool), `openMakerPerms` (MIUI "Other permissions": lock screen + background pop-ups).
+- App: `lib/ui/keep_alive.dart` (`KeepAlive.check/maybePrompt/open`, `KeepAliveScreen`: status, problems, checklist with
+  "Kholo" + auto-ticks from Android's own state, "Ho gaya" for manual lines, dontkillmyapp `MakerSteps`, re-checks on return).
+  Home prompts 8 s after start: once on strict brands, and again when the phone stopped Hoola since the last look (max every
+  3 days). `LockSafe.showFix` now opens this screen. Profile card "<name> band na ho" shows the live summary.
+- Not verified on real phones yet: maker settings page class names change between MIUI / HyperOS / ColorOS versions (each
+  opener falls back to Android's own battery / app-info page).
+
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
   automation (Baileys/WhatsApp Web).
@@ -362,4 +387,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos · v0.47 Public APIs (2,100+ free APIs the avatar can use). · v0.48 Hoola TV (free official live channels on phone + Chromecast/Android TV). · v0.49 Hoola TV worldwide (~4,300 official channels, 140 countries, country picker). · v0.50 repo review part 1 (real file types, MarkItDown, share-to-Hoola, video shrink, PII gate, keep-alive steps, security CI, backup). · v0.51 100 female 3D avatar looks from around the world. · v0.51.1 Hoola TV list fix (old saved list ignored). · v0.52 repo review part 2 (Office files, clean / ID photos, memory by meaning, Silero VAD on calls). · v0.53 100 male 3D avatar looks from around the world (Santosh stays the default). · v0.54 Hoola Reels (share any reel: save, remind, shop, family, ye sach hai?). · v0.55 Silero VAD properly (voice-only barge-in, idle noise gate, voice-id speech only, gate stats). Next: v0.56.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos · v0.47 Public APIs (2,100+ free APIs the avatar can use). · v0.48 Hoola TV (free official live channels on phone + Chromecast/Android TV). · v0.49 Hoola TV worldwide (~4,300 official channels, 140 countries, country picker). · v0.50 repo review part 1 (real file types, MarkItDown, share-to-Hoola, video shrink, PII gate, keep-alive steps, security CI, backup). · v0.51 100 female 3D avatar looks from around the world. · v0.51.1 Hoola TV list fix (old saved list ignored). · v0.52 repo review part 2 (Office files, clean / ID photos, memory by meaning, Silero VAD on calls). · v0.53 100 male 3D avatar looks from around the world (Santosh stays the default). · v0.54 Hoola Reels (share any reel: save, remind, shop, family, ye sach hai?). · v0.55 Silero VAD properly (voice-only barge-in, idle noise gate, voice-id speech only, gate stats). · v0.56 Share to Hoola for big videos (progress, cancel, first part), shares go into a live call, "Hoola band na ho" checklist + phone health check. Next: v0.57.

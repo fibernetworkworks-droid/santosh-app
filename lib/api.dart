@@ -386,6 +386,9 @@ class Api {
   /// v0.49 this phone maker's keep-alive steps (dontkillmyapp.com via our server).
   Future<Map<String, dynamic>> keepalive(String brand) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/device/keepalive', query: {'brand': brand}));
+  /// v0.56 Sends Android's own background facts; answer = plain-word problems + this phone's checklist.
+  Future<Map<String, dynamic>> bgHealth(Map<String, dynamic> report) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/device/bg_health', body: report));
 
   // ---------------- v0.47 Public APIs ----------------
   Future<Map<String, dynamic>> publicApis({String q = '', String cat = '', String auth = 'any'}) async =>

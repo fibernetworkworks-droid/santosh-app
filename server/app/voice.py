@@ -70,7 +70,7 @@ VOICE_TOOL_NAMES = {
     "youtube_search", "youtube_video", "youtube_watch", "youtube_channel", "youtube_comments", "youtube_my_channel",
     "youtube_analytics", "app_check",
     "hoola_me", "hoola_connect", "hoola_connections", "hoola_answer_connect", "hoola_send", "hoola_reply", "hoola_inbox",
-    "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "api_find", "api_docs", "api_call", "make_document", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
+    "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "api_find", "api_docs", "api_call", "make_document", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
     "hoola_learn", "hoola_learned", "hoola_samaj", "hoola_community_search", "hoola_business", "hoola_chain",
     "sheets_find", "sheet_info", "sheet_query", "sheet_update", "sheet_create", "sheet_export",
     "maps_search", "maps_directions", "maps_navigate",

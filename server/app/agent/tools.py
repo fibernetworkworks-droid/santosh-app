@@ -337,3 +337,10 @@ from .reel_tools import REEL_HANDLERS, REEL_LABELS, REEL_TOOLS  # noqa: E402
 TOOLS.extend(REEL_TOOLS)
 TOOL_LABELS.update(REEL_LABELS)
 HANDLERS.update(REEL_HANDLERS)
+
+# v0.56 phone background health (why a reminder did not come)
+from .device_tools import DEVICE_HANDLERS, DEVICE_LABELS, DEVICE_TOOLS  # noqa: E402
+
+TOOLS.extend(DEVICE_TOOLS)
+TOOL_LABELS.update(DEVICE_LABELS)
+HANDLERS.update(DEVICE_HANDLERS)

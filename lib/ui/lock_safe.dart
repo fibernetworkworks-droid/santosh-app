@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'keep_alive.dart' show KeepAlive;
 
 /// "Phone lock par bhi Santosh": checks what can stop a call / background work on this phone and opens the right
 /// Android or phone-maker setting. Only opens settings pages (Google Play allows this); never changes them itself.
@@ -64,6 +65,8 @@ class LockSafe {
   }
 
   static Future<void> showFix(BuildContext context) async {
+    // v0.56: the full checklist screen (problems from Android itself + "Kholo" per line); the sheet stays as fallback
+    if (app?.api != null) return KeepAlive.open(context, app!);
     final s = await status();
     if (!context.mounted) return;
     final brand = (s['brand'] as String? ?? '').toLowerCase();
@@ -89,7 +92,7 @@ class LockSafe {
                   Expanded(child: Text(t, style: const TextStyle(fontSize: 13.5, height: 1.35))),
                 ]),
               ),
-            if (brand.isNotEmpty && app?.api != null) _MakerSteps(app: app!, brand: brand),
+            if (brand.isNotEmpty && app?.api != null) MakerSteps(app: app!, brand: brand),
             const SizedBox(height: 8),
             Wrap(spacing: 8, runSpacing: 8, children: [
               FilledButton.tonal(onPressed: Native.openAutostart, child: const Text('Autostart / Background')),
@@ -105,15 +108,15 @@ class LockSafe {
 }
 
 /// v0.49 The phone maker's exact steps from dontkillmyapp.com (fetched by our server, cached; credit shown).
-class _MakerSteps extends StatefulWidget {
-  const _MakerSteps({required this.app, required this.brand});
+class MakerSteps extends StatefulWidget {
+  const MakerSteps({super.key, required this.app, required this.brand});
   final Santosh app;
   final String brand;
   @override
-  State<_MakerSteps> createState() => _MakerStepsState();
+  State<MakerSteps> createState() => MakerStepsState();
 }
 
-class _MakerStepsState extends State<_MakerSteps> {
+class MakerStepsState extends State<MakerSteps> {
   late final Future<Map<String, dynamic>> _f = widget.app.api!.keepalive(widget.brand);
   bool _open = false;
 

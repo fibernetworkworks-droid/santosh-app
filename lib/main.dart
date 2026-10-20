@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show File;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -20,7 +21,9 @@ import 'ui/today_screen.dart';
 import 'ui/reels_screen.dart';
 import 'ui/tv_screen.dart';
 import 'ui/live_voice_screen.dart';
+import 'ui/keep_alive.dart';
 import 'ui/lock_safe.dart';
+import 'ui/video_shrink.dart';
 import 'ui/voice_screen.dart';
 
 Future<void> main() async {
@@ -56,6 +59,55 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
     _listenForSignIn();
   }
 
+  /// v0.56 "Share to Hoola" from any app: big videos are made smaller first (progress, Rok do), then
+  /// a reel -> Hoola Reels card; during a voice call the files go into the call; otherwise into the Chat box.
+  Future<void> _onShare(Map<String, dynamic> share) async {
+    for (var i = 0; i < 25 && navKey.currentContext == null; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    final files = <Map<String, dynamic>>[];
+    final skipped = (share['skipped'] as num? ?? 0).toInt();
+    for (final raw in (share['files'] as List? ?? const [])) {
+      final f = Map<String, dynamic>.from(raw as Map);
+      if (f['big'] == true) {
+        final ctx = navKey.currentContext;
+        final path = f['path'] as String? ?? '';
+        final name = f['name'] as String? ?? 'video.mp4';
+        final small = (ctx == null || f['video'] != true) ? null : await shrinkVideo(ctx, path, name, sizeBytes: (f['size'] as num? ?? 0).toInt());
+        try {
+          await File(path).delete();          // the big copy is not needed any more
+        } catch (_) {}
+        if (small == null) continue;           // the reason (or "Rok do") was already shown
+        f['path'] = small;
+        f['name'] = name.replaceAll(RegExp(r'\.[A-Za-z0-9]+$'), '') + '.mp4';
+        f['size'] = await File(small).length();
+        f['big'] = false;
+      }
+      files.add(f);
+    }
+    share = {...share, 'files': files};
+    final text = (share['text'] as String? ?? '').trim();
+    if (files.isEmpty && text.isEmpty) return;
+    // a reel (link from Instagram / YouTube / Facebook / Snapchat / Moj..., or one screen recording): the Reels card
+    if (HoolaReels.isReelShare(share)) {
+      if (!await openReel(share)) widget.app.onShared(share);
+      return;
+    }
+    final call = widget.app.voiceCall;
+    if (call.inCall && files.isNotEmpty) {
+      final list = <({String name, List<int> bytes})>[];
+      for (final f in files) {
+        try {
+          list.add((name: f['name'] as String? ?? 'file', bytes: await File(f['path'] as String).readAsBytes()));
+        } catch (_) {}
+      }
+      await call.attachFiles(list);         // Hoola sees them right in the call
+      if (text.isNotEmpty) widget.app.onShared({'text': text, 'files': const [], 'skipped': skipped});
+      return;
+    }
+    widget.app.onShared(share);
+  }
+
   void _listenForSignIn() {
     // the native side sends the session token from santosh://auth?session=<token>
     _linkSub = _linkCh.receiveBroadcastStream().listen((token) async {
@@ -67,13 +119,7 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
       }
       if (t.startsWith('share:')) {
         try {
-          final share = Map<String, dynamic>.from(jsonDecode(t.substring(6)) as Map);
-          // a reel (link from Instagram / YouTube / Facebook / Snapchat / Moj..., or one screen recording): the Reels card
-          if (HoolaReels.isReelShare(share)) {
-            if (!await openReel(share)) widget.app.onShared(share);
-          } else {
-            widget.app.onShared(share);
-          }
+          await _onShare(Map<String, dynamic>.from(jsonDecode(t.substring(6)) as Map));
         } catch (_) {}
         return;
       }
@@ -166,6 +212,13 @@ class _HomeState extends State<Home> {
     _inCall = widget.app.voiceCall.inCall;
     widget.app.voiceCall.addListener(_onCall);
     widget.app.addListener(_onApp);
+    // v0.56 strict phones (Xiaomi / Oppo / Realme / Vivo...): the keep-alive checklist once, and again if the phone
+    // has stopped Hoola since the last look; never during a call or the first setup
+    Future<void>.delayed(const Duration(seconds: 8), () {
+      if (mounted && widget.app.configured && !widget.app.needsAvatarSetup && !widget.app.voiceCall.inCall) {
+        KeepAlive.maybePrompt(context, widget.app);
+      }
+    });
   }
 
   bool _inCall = false;

@@ -3,8 +3,8 @@ import 'dart:io' show File;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
-import '../native.dart';
 import 'glass.dart';
+import 'video_shrink.dart';
 
 /// v0.44.2 One picker for every paperclip (chat, voice call, Hoola chats): photo / video, document / PDF / any file,
 /// audio. Reads the bytes even when the picker only hands back a path (cloud / big files), checks the size.
@@ -54,19 +54,11 @@ Future<List<PickedFile>> pickAttachments(BuildContext context, {int max = 6, boo
     var name = f.name;
     final isVideo = RegExp(r'\.(mp4|mov|m4v|3gp|mkv|webm)$', caseSensitive: false).hasMatch(name);
     if (isVideo && f.size > maxAttachBytes && path != null) {
-      // v0.49 big phone video: shrink it on the phone (720p / 480p) so it fits, instead of refusing it
-      if (context.mounted) _snack(context, '$name badi hai (${(f.size / 1024 / 1024).toStringAsFixed(0)} MB) — chhota kar raha hoon…');
-      final r = await Native.compressVideo(path, mb: 24);
-      if (r['path'] is String && (r['path'] as String).isNotEmpty) {
-        path = r['path'] as String;
-        name = name.replaceAll(RegExp(r'\.[A-Za-z0-9]+$'), '') + '.mp4';
-        final size = await File(path).length();
-        if (size <= maxAttachBytes) {
-          out.add(PickedFile(name, await File(path).readAsBytes()));
-          continue;
-        }
-      }
-      if (context.mounted) _snack(context, '$name: ${r['error'] ?? 'chhota karke bhi 25 MB se badi hai'}');
+      // big phone video: made smaller on the phone (progress + Rok do; long video -> first part) instead of refused
+      if (!context.mounted) break;
+      final small = await shrinkVideo(context, path, name, sizeBytes: f.size);
+      if (small == null) continue;
+      out.add(PickedFile(name.replaceAll(RegExp(r'\.[A-Za-z0-9]+$'), '') + '.mp4', await File(small).readAsBytes()));
       continue;
     }
     if (f.size > maxAttachBytes) {

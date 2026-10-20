@@ -123,10 +123,16 @@ class MainActivity : FlutterActivity() {
                         result.success(HomeDevices.hasBluetoothPermission(this) && BtControl.canScan(this))
                     }
                     "compressVideo" -> {
-                        VideoShrink.run(this, call.argument<String>("path") ?: "", (call.argument<Number>("mb") ?: 24).toInt()) { out, err ->
+                        VideoShrink.run(this, call.argument<String>("path") ?: "", (call.argument<Number>("mb") ?: 24).toInt(),
+                            (call.argument<Number>("clipMs") ?: 0).toLong()) { out, err ->
                             main.post { result.success(mapOf("path" to out, "error" to err)) }
                         }
                     }
+                    "compressProgress" -> result.success(VideoShrink.progress())
+                    "compressCancel" -> { VideoShrink.cancel(); result.success(null) }
+                    "bgHealth" -> result.success(bgHealth())
+                    "openMakerBattery" -> { openMakerBattery(); result.success(null) }
+                    "openMakerPerms" -> { openMakerPerms(); result.success(null) }
                     "btRun" -> {
                         val action = call.argument<String>("action") ?: "status"
                         val args = try { org.json.JSONObject(call.argument<String>("args") ?: "{}") } catch (_: Exception) { org.json.JSONObject() }
@@ -238,6 +244,8 @@ class MainActivity : FlutterActivity() {
 
     /** v0.49 "Share to Hoola" from any app: files are copied into the app's cache (25 MB each, max 6) and handed to
      *  Flutter as `share:{"files":[{path,name,size}],"text":...}`; nothing is uploaded until the owner sends. */
+    private val BIG_VIDEO = 2L * 1024 * 1024 * 1024
+
     private fun sharedPayload(intent: Intent): String? {
         val uris = ArrayList<Uri>()
         if (intent.action == Intent.ACTION_SEND) {
@@ -257,6 +265,7 @@ class MainActivity : FlutterActivity() {
         dir.listFiles()?.forEach { f -> if (System.currentTimeMillis() - f.lastModified() > 6 * 3600_000L) f.delete() }
         val files = org.json.JSONArray()
         var skipped = 0
+        val skippedNames = ArrayList<String>()
         for (u in uris.take(6)) {
             try {
                 var name = "file"
@@ -269,7 +278,11 @@ class MainActivity : FlutterActivity() {
                         if (si >= 0 && !c.isNull(si)) size = c.getLong(si)
                     }
                 }
-                if (size > 25L * 1024 * 1024) { skipped++; continue }
+                val mime = (contentResolver.getType(u) ?: "").lowercase()
+                val isVideo = mime.startsWith("video/") || Regex("(?i)\\.(mp4|mov|m4v|3gp|mkv|webm)$").containsMatchIn(name)
+                // v0.56 a big video is kept (Hoola makes it smaller before it goes); other big files can't go
+                val limit = if (isVideo) BIG_VIDEO else 25L * 1024 * 1024
+                if (size > limit || (size > 0 && size + 64L * 1024 * 1024 > cacheDir.usableSpace)) { skipped++; skippedNames.add(name); continue }
                 val safe = name.replace(Regex("[^\\w.\\- ()]"), "_").take(120).ifBlank { "file" }
                 val out = java.io.File(dir, "${System.currentTimeMillis()}_$safe")
                 var n = 0L
@@ -280,26 +293,94 @@ class MainActivity : FlutterActivity() {
                             val r = inp.read(buf)
                             if (r < 0) break
                             n += r
-                            if (n > 25L * 1024 * 1024) break
+                            if (n > limit) break
                             o.write(buf, 0, r)
                         }
                     }
                 }
-                if (n > 25L * 1024 * 1024 || n == 0L) { out.delete(); skipped++; continue }
-                files.put(org.json.JSONObject().put("path", out.absolutePath).put("name", name).put("size", n))
+                if (n > limit || n == 0L) { out.delete(); skipped++; skippedNames.add(name); continue }
+                val big = n > 25L * 1024 * 1024
+                files.put(org.json.JSONObject().put("path", out.absolutePath).put("name", name).put("size", n)
+                    .put("mime", mime).put("video", isVideo).put("big", big))
             } catch (_: Exception) { skipped++ }
         }
+        if (uris.size > 6) skipped += uris.size - 6
         if (files.length() == 0 && text.isEmpty()) return null
-        return "share:" + org.json.JSONObject().put("files", files).put("text", text).put("skipped", skipped).toString()
+        return "share:" + org.json.JSONObject().put("files", files).put("text", text).put("skipped", skipped)
+            .put("skipped_names", org.json.JSONArray(skippedNames.take(6))).toString()
+    }
+
+    /** v0.56 What Android itself knows about Hoola running in the background: battery optimisation, "restricted",
+     *  the standby bucket, and how the app's process ended lately (Android 11+), so the app can say "your phone stopped
+     *  Hoola 3 times this week" and open the right page. Read-only. */
+    private fun bgHealth(): Map<String, Any?> {
+        val am = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
+        val exits = ArrayList<Map<String, Any?>>()
+        if (Build.VERSION.SDK_INT >= 30) {
+            try {
+                for (e in am.getHistoricalProcessExitReasons(packageName, 0, 30)) {
+                    exits.add(mapOf("ts" to e.timestamp, "reason" to e.reason, "importance" to e.importance,
+                        "desc" to (e.description ?: "").take(160), "process" to e.processName))
+                }
+            } catch (_: Exception) {}
+        }
+        val restricted = if (Build.VERSION.SDK_INT >= 28) try { am.isBackgroundRestricted } catch (_: Exception) { false } else false
+        val bucket = if (Build.VERSION.SDK_INT >= 28) try {
+            (getSystemService(USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager).appStandbyBucket
+        } catch (_: Exception) { 0 } else 0
+        return mapOf("brand" to Build.MANUFACTURER.lowercase(), "model" to Build.MODEL, "sdk" to Build.VERSION.SDK_INT,
+            "battery_optimized" to batteryOptimized(), "background_restricted" to restricted, "standby_bucket" to bucket,
+            "notifications" to notificationsAllowed(), "exits" to exits)
+    }
+
+    private fun tryOpen(tries: List<Intent>): Boolean {
+        for (i in tries) {
+            try { startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return true } catch (_: Exception) {}
+        }
+        return false
+    }
+
+    /** The phone maker's own battery-saver page for Hoola (MIUI / HyperOS, ColorOS, Funtouch / OriginOS, One UI). */
+    private fun openMakerBattery() {
+        val pkg = packageName
+        val label = try { packageManager.getApplicationLabel(applicationInfo).toString() } catch (_: Exception) { "Hoola" }
+        val ok = tryOpen(listOf(
+            Intent().setClassName("com.miui.powerkeeper", "com.miui.powerkeeper.ui.HiddenAppsConfigActivity")
+                .putExtra("package_name", pkg).putExtra("package_label", label),
+            Intent().setClassName("com.coloros.oppoguardelf", "com.coloros.powermanager.fuelgaue.PowerUsageModelActivity"),
+            Intent().setClassName("com.coloros.oppoguardelf", "com.coloros.powermanager.fuelgaue.PowerSaverModeActivity"),
+            Intent().setClassName("com.oplus.battery", "com.oplus.powermanager.fuelgaue.PowerUsageModelActivity"),
+            Intent().setClassName("com.vivo.abe", "com.vivo.applicationbehaviorengine.ui.ExcessivePowerManagerActivity"),
+            Intent().setClassName("com.iqoo.powersaving", "com.iqoo.powersaving.PowerSavingManagerActivity"),
+            Intent().setClassName("com.samsung.android.lool", "com.samsung.android.sm.battery.ui.BatteryActivity"),
+            Intent().setClassName("com.samsung.android.sm_cn", "com.samsung.android.sm.battery.ui.BatteryActivity")))
+        if (!ok) askBattery()
+    }
+
+    /** MIUI "Other permissions" (show on lock screen, pop-up windows from the background), else app info. */
+    private fun openMakerPerms() {
+        val pkg = packageName
+        tryOpen(listOf(
+            Intent("miui.intent.action.APP_PERM_EDITOR").setClassName("com.miui.securitycenter",
+                "com.miui.permcenter.permissions.PermissionsEditorActivity").putExtra("extra_pkgname", pkg),
+            Intent("miui.intent.action.APP_PERM_EDITOR").setClassName("com.miui.securitycenter",
+                "com.miui.permcenter.permissions.AppPermissionsEditorActivity").putExtra("extra_pkgname", pkg),
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:$pkg"))))
     }
 
     private fun handleIntent(intent: Intent?) {
         val action = intent?.action
         if (action == Intent.ACTION_SEND || action == Intent.ACTION_SEND_MULTIPLE) {
-            val msg = try { sharedPayload(intent!!) } catch (_: Exception) { null } ?: return
+            val copy = Intent(intent!!)
             intent?.action = null   // don't share the same thing again on a config change
-            val sink = linkSink
-            if (sink != null) main.post { sink.success(msg) } else pendingLink = msg
+            // v0.56 copying a big video takes seconds: off the main thread, so the app never freezes ("not responding")
+            Thread {
+                val msg = try { sharedPayload(copy) } catch (_: Exception) { null } ?: return@Thread
+                main.post {
+                    val sink = linkSink
+                    if (sink != null) sink.success(msg) else pendingLink = msg
+                }
+            }.start()
             return
         }
         if (action == WakeService.ACTION_WAKE || action == Intent.ACTION_ASSIST || action == "android.intent.action.VOICE_COMMAND") {

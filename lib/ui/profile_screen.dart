@@ -10,7 +10,7 @@ import 'drive_screen.dart';
 import 'email_screen.dart';
 import 'forms_screen.dart';
 import 'glass.dart';
-import 'lock_safe.dart';
+import 'keep_alive.dart';
 import 'home_devices_screen.dart';
 import 'notebook_screen.dart';
 import 'pc_screen.dart';
@@ -443,6 +443,7 @@ class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObs
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.app.refreshBackgroundInfo();
+    KeepAlive.check(widget.app);
   }
 
   @override
@@ -453,7 +454,10 @@ class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObs
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
-    if (s == AppLifecycleState.resumed) widget.app.refreshBackgroundInfo(); // back from a settings screen
+    if (s == AppLifecycleState.resumed) {
+      widget.app.refreshBackgroundInfo(); // back from a settings screen
+      KeepAlive.check(widget.app);
+    }
   }
 
   @override
@@ -497,7 +501,22 @@ class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObs
             style: TextStyle(fontSize: 12.5, color: C.muted)),
         if (on && app.batteryOptimized)
           fix('Battery saver Hoola ko rok sakta hai', 'Hoola ko "Unrestricted / Don\'t optimize" par rakhiye', 'Theek karo', Native.askBattery),
-        fix('Phone lock par bhi Hoola', 'Vivo/Oppo/Realme/Xiaomi par ek baar settings theek kijiye', 'Dekho', () => LockSafe.showFix(context)),
+        ValueListenableBuilder<Map<String, dynamic>?>(
+          valueListenable: KeepAlive.last,
+          builder: (context, r, _) {
+            final n = (r?['problems'] as List? ?? const []).length;
+            final kills = ((r?['counts'] as Map?)?['oem_kill'] as num? ?? 0).toInt();
+            return fix(
+                '${app.aName} band na ho',
+                r == null
+                    ? 'Xiaomi / Oppo / Realme / Vivo / Samsung: ek baar settings theek kijiye'
+                    : n == 0
+                        ? 'Sab theek · checklist dekhiye'
+                        : '$n cheez theek karni hai${kills > 0 ? ' · phone ne 7 din mein $kills baar band kiya' : ''}',
+                n == 0 && r != null ? 'Dekho' : 'Theek karo',
+                () => KeepAlive.open(context, app));
+          },
+        ),
         if (!app.exactAlarms)
           fix('Alarm time par bajne ke liye', '"Alarms & reminders" ki permission dijiye', 'Allow', () async {
             await Native.askExactAlarms();

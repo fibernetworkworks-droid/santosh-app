@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.55.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.56.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -1326,7 +1326,33 @@ async def net_think(mid: str, tenant: str = Depends(current_tenant)):
 async def device_keepalive(brand: str = ""):
     """v0.49 Steps for this phone maker so Hoola keeps running in the background (dontkillmyapp.com, CC BY 4.0)."""
     from . import keepalive
-    return await asyncio.to_thread(keepalive.steps, brand)
+    out = await asyncio.to_thread(keepalive.steps, brand)
+    return out | {"checklist": keepalive.checklist(brand), "family": keepalive.family(brand)}
+
+
+class BgHealth(BaseModel):
+    brand: str = ""
+    model: str = ""
+    sdk: int = 0
+    battery_optimized: bool = False
+    background_restricted: bool = False
+    standby_bucket: int = 0
+    notifications: bool = True
+    exits: list[dict] = []
+
+
+@app.post("/api/device/bg_health", dependencies=[Depends(require_key)])
+def device_bg_health(body: BgHealth, tenant: str = Depends(current_tenant)):
+    """v0.56 The phone says what Android knows (battery saver, restricted, standby bucket, how the app was last stopped);
+    the answer is plain-word problems + this phone family's checklist."""
+    from . import keepalive
+    return keepalive.save_health(tenant, body.model_dump())
+
+
+@app.get("/api/device/bg_health", dependencies=[Depends(require_key)])
+def device_bg_health_last(tenant: str = Depends(current_tenant)):
+    from . import keepalive
+    return keepalive.last_health(tenant)
 
 
 # ---------------- v0.47 Public APIs (github.com/public-apis/public-apis) ----------------

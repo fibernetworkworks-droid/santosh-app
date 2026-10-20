@@ -66,7 +66,11 @@ class _ChatScreenState extends State<ChatScreen> {
     if (s == null) return;
     final text = (s['text'] as String? ?? '').trim();
     if (text.isNotEmpty && _text.text.trim().isEmpty) _text.text = text;
-    if ((s['skipped'] as num? ?? 0) > 0) _snack('${s['skipped']} file 25 MB se badi thi ya padh nahi paye.');
+    if ((s['skipped'] as num? ?? 0) > 0) {
+      final names = List<String>.from((s['skipped_names'] as List? ?? const []).map((e) => '$e'));
+      _snack('${names.isEmpty ? '${s['skipped']} file' : names.join(', ')}: nahi le paye (25 MB se badi, 6 se zyada, ya padh nahi paye). '
+          'Badi file Google Drive link se bhejiye.');
+    }
     for (final f in List<Map<String, dynamic>>.from((s['files'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)))) {
       if (_files.length >= 6) break;
       final name = f['name'] as String? ?? 'file';
