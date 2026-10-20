@@ -219,59 +219,9 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
         );
-      case 'email':
-        return _EmailCard(v: it.data, app: app);
-      case 'calendar_event':
-        return CalendarEventCard(v: it.data);
-      case 'sheet':
-        return SheetCard(v: it.data);
-      case 'form':
-        return FormCard(v: it.data);
-      case 'slides':
-        return SlidesCard(v: it.data);
-      case 'notebook':
-        return NotebookCard(v: it.data, app: app);
-      case 'youtube':
-        return YouTubeCard(v: it.data);
-      case 'app_check':
-        return AppCheckCard(v: it.data);
-      case 'hoola_knock':
-        return HoolaKnockCard(key: ValueKey('hk${it.data['id']}'), v: it.data, app: app);
-      case 'hoola_connect':
-        return HoolaConnectCard(key: ValueKey('hc${it.data['id']}'), v: it.data, app: app);
-      case 'hoola_msg':
-        return HoolaMsgCard(v: it.data, app: app);
-      case 'hoola_group':
-        return HoolaGroupCard(v: it.data, app: app);
-      case 'hoola_group_post':
-        return HoolaGroupPostCard(v: it.data, app: app);
-      case 'hoola_outbox':
-        return HoolaOutboxCard(v: it.data, app: app);
-      case 'hoola_chain':
-        return HoolaChainCard(v: it.data, app: app);
-      case 'hoola_ticket':
-        return HoolaTicketCard(v: it.data, app: app);
-      case 'hoola_lesson':
-        return HoolaLessonCard(v: it.data, app: app);
-      case 'hoola_samaj':
-        return HoolaSamajCard(v: it.data, app: app);
-      case 'photos_pick':
-        return PhotosPickCard(v: it.data);
-      case 'bazar':
-        return _BazarCard(v: it.data, app: app);
-      case 'open':
-        return _OpenCard(v: it.data, app: app);
-      case 'link':
-        return _LinkCard(v: it.data, app: app);
-      case 'pc_file':
-        return PcFileCard(v: it.data, app: app);
-      case 'artifact':
-        return ArtifactCard(v: it.data, app: app);
-      case 'browser':
-        return BrowserLiveCard(v: it.data, app: app);
-      case 'campaign':
-        return _CampaignCard(v: it.data, app: app);
       default:
+        final card = feedCard(context, app, it);
+        if (card != null) return card;
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Align(alignment: Alignment.centerRight, child: Pill(it.data['text'] as String? ?? '', bg: const Color(0x1FFFFFFF))),
@@ -350,6 +300,68 @@ class _ChatScreenState extends State<ChatScreen> {
 }
 
 /// Santosh at work: his working pose, bouncing dots and what he is doing right now.
+
+/// The card for one feed item (approvals, downloads, drafts, Hoola Network...). Shared by Chat and the live call, so
+/// nothing that needs a tap is ever only in Chat. Returns null for plain messages and notes.
+Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
+  switch (it.kind) {
+    case 'email':
+      return _EmailCard(v: it.data, app: app);
+    case 'calendar_event':
+      return CalendarEventCard(v: it.data);
+    case 'sheet':
+      return SheetCard(v: it.data);
+    case 'form':
+      return FormCard(v: it.data);
+    case 'slides':
+      return SlidesCard(v: it.data);
+    case 'notebook':
+      return NotebookCard(v: it.data, app: app);
+    case 'youtube':
+      return YouTubeCard(v: it.data);
+    case 'app_check':
+      return AppCheckCard(v: it.data);
+    case 'hoola_knock':
+      return HoolaKnockCard(key: ValueKey('hk${it.data['id']}'), v: it.data, app: app);
+    case 'hoola_connect':
+      return HoolaConnectCard(key: ValueKey('hc${it.data['id']}'), v: it.data, app: app);
+    case 'hoola_msg':
+      return HoolaMsgCard(v: it.data, app: app);
+    case 'hoola_group':
+      return HoolaGroupCard(v: it.data, app: app);
+    case 'hoola_group_post':
+      return HoolaGroupPostCard(v: it.data, app: app);
+    case 'hoola_outbox':
+      return HoolaOutboxCard(v: it.data, app: app);
+    case 'hoola_chain':
+      return HoolaChainCard(v: it.data, app: app);
+    case 'hoola_ticket':
+      return HoolaTicketCard(v: it.data, app: app);
+    case 'hoola_lesson':
+      return HoolaLessonCard(v: it.data, app: app);
+    case 'hoola_samaj':
+      return HoolaSamajCard(v: it.data, app: app);
+    case 'photos_pick':
+      return PhotosPickCard(v: it.data);
+    case 'bazar':
+      return _BazarCard(v: it.data, app: app);
+    case 'open':
+      return _OpenCard(v: it.data, app: app);
+    case 'link':
+      return _LinkCard(v: it.data, app: app);
+    case 'pc_file':
+      return PcFileCard(v: it.data, app: app);
+    case 'artifact':
+      return ArtifactCard(v: it.data, app: app);
+    case 'browser':
+      return BrowserLiveCard(v: it.data, app: app);
+    case 'campaign':
+      return _CampaignCard(v: it.data, app: app);
+    default:
+      return null;
+  }
+}
+
 class _Typing extends StatefulWidget {
   const _Typing({this.step});
   final String? step;

@@ -139,11 +139,22 @@ class _HomeState extends State<Home> {
   void initState() {
     super.initState();
     _seenBaat = widget.app.baatTick;
+    // create the call session now, so "Hey Santosh" can start a call from any screen
+    _inCall = widget.app.voiceCall.inCall;
+    widget.app.voiceCall.addListener(_onCall);
     widget.app.addListener(_onApp);
+  }
+
+  bool _inCall = false;
+
+  void _onCall() {
+    final now = widget.app.voiceCall.inCall;
+    if (now != _inCall && mounted) setState(() => _inCall = now);
   }
 
   @override
   void dispose() {
+    widget.app.voiceCall.removeListener(_onCall);
     widget.app.removeListener(_onApp);
     super.dispose();
   }
@@ -177,7 +188,7 @@ class _HomeState extends State<Home> {
     final pages = [
       TodayScreen(app: widget.app, onTab: _go),
       ChatScreen(app: widget.app, onVoice: () => _go(2)),
-      // built only while open: the microphone stops when you leave the tab
+      // the screen is built only while open; the call itself lives in app.voiceCall and keeps going
       _tab == 2
           ? LiveVoiceGate(app: widget.app)
           : const SizedBox.shrink(),
@@ -229,11 +240,17 @@ class _HomeState extends State<Home> {
             duration: const Duration(milliseconds: 280),
             switchInCurve: Curves.easeOutCubic,
             transitionBuilder: (c, a) => FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: const Offset(0, .015), end: Offset.zero).animate(a), child: c)),
-            child: KeyedSubtree(key: ValueKey(_tab), child: Padding(padding: const EdgeInsets.only(bottom: 92), child: pages[_tab])),
+            child: KeyedSubtree(key: ValueKey(_tab), child: Padding(padding: EdgeInsets.only(bottom: _inCall && _tab != 2 ? 152 : 92), child: pages[_tab])),
           ),
         ),
       ),
-      bottomNavigationBar: SafeArea(child: _NavBar(tab: _tab, onTap: _go)),
+      bottomNavigationBar: SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // the call keeps going on every screen; this bar brings you back to it
+          if (_tab != 2) CallBar(app: widget.app, onOpen: () => _go(2)),
+          _NavBar(tab: _tab, onTap: _go),
+        ]),
+      ),
     );
   }
 }

@@ -81,6 +81,12 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `PhoneJobs.kt` (runs jobs when app closed). Flutter: `lib/ui/bluetooth_panel.dart`, `home_devices_screen.dart`.
 - Not yet verified on real hardware — if the owner reports a device problem, debug from her description/logcat.
 
+## v0.38 Voice call owned by the app
+- `lib/call_session.dart` (`app.voiceCall`) owns the live call; `LiveVoiceScreen` only views it, so switching tabs never
+  ends a call. `CallBar` (green bar above the nav) shows on other tabs: time, mute, hang up, tap to return.
+- Cards that arrive during a call (approvals, downloads, drafts, Hoola Network...) show inside the call screen via the
+  shared `feedCard()` from chat_screen.dart (`callCardKinds` in call_session.dart).
+
 ## v0.37 Work Theatre (3D view of the work)
 - Server `app/theatre.py`: every tool call publishes a `work` event {id, tool, scene, phase start|done|waiting|error|stopped,
   label, data}. `data` = short real facts from the call (masked digits, no secret keys). Published from `agent/santosh.py`
@@ -111,4 +117,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D). Next: v0.38.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call. Next: v0.39.

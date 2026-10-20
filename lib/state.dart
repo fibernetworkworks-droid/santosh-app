@@ -5,6 +5,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api.dart';
+import 'call_session.dart';
 import 'device.dart';
 import 'emotion.dart';
 import 'hoola.dart';
@@ -569,6 +570,8 @@ class Santosh extends ChangeNotifier {
 
   // ---- "Hey Santosh" ----
   bool lockedMode = false;   // opened over the lock screen: only the voice call is shown
+  /// The live voice call. Owned here so it keeps running while the owner moves between screens.
+  late final CallSession voiceCall = CallSession(this);
   bool autoCall = false;     // start the call as soon as Baat opens
   int baatTick = 0;          // bumps when Baat should come to the front
 
