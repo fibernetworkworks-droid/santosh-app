@@ -99,13 +99,25 @@ class Api {
   /// Stop the task Hoola is running in this conversation (after the current step).
   Future<void> stopTurn(String id) async => _send('POST', '/api/conversations/$id/stop');
   /// Sends a message. A flaky mobile network is retried (same client_id, so the server runs it only once).
-  Future<void> sendMessage(String conv, String text, {bool voice = false}) async {
+  /// v0.44.1 chat paperclip: any file; returns {file_id, name, url, media, preview, pages, leads?...}.
+  Future<Map<String, dynamic>> chatFile(String conv, String filename, List<int> bytes) async {
+    final req = http.MultipartRequest('POST', _u('/api/conversations/$conv/files'))
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
+    final res = await http.Response.fromStream(await req.send().timeout(const Duration(seconds: 240)));
+    final body = jsonDecode(utf8.decode(res.bodyBytes));
+    if (res.statusCode >= 400) throw ApiException(res.statusCode, (body as Map)['detail']?.toString() ?? 'Upload failed');
+    return Map<String, dynamic>.from(body as Map);
+  }
+
+  Future<void> sendMessage(String conv, String text, {bool voice = false, List<String> files = const []}) async {
     final id = '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}${math.Random().nextInt(1 << 30).toRadixString(36)}';
     Object? last;
     for (var i = 0; i < 3; i++) {
       try {
         await _send('POST', '/api/conversations/$conv/messages',
-            body: {'text': text, 'client_id': id, if (voice) 'voice': true}, timeout: const Duration(seconds: 20));
+            body: {'text': text, 'client_id': id, if (voice) 'voice': true, if (files.isNotEmpty) 'files': files},
+            timeout: const Duration(seconds: 20));
         return;
       } on ApiException catch (e) {
         if (e.status < 500) rethrow; // a refusal (wrong key, too long) will not change by asking again

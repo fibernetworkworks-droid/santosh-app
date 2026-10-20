@@ -159,6 +159,14 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - A voice is not a password: payments keep needing the owner's tap. Similar family voices (siblings) untested.
 - Hoola Awaaz (own / designed voice cloning) is parked on branch `awaaz-wip` (needs a GPU worker; Chatterbox MIT picked).
 
+## v0.44.1 Chat paperclip takes any file
+- Before: the chat paperclip only took CSV/XLSX and imported them as WhatsApp leads ("No phone column found" on anything else).
+- Now `POST /api/conversations/{id}/files` stores ANY file (25 MB) as the owner's file (file_id, preview via net/media);
+  CSV/Excel with a phone column is also imported as a leads list (silently skipped otherwise). The message carries
+  `files: [file_id]`; `run_turn(..., context=)` tells the agent "[Attached by the owner ...] file_id=..." (only the words show
+  in chat). Tool `agent/file_tools.py file_read` reads text / sees photos. App: pending file chips above the composer,
+  attachments shown in the user's bubble (HoolaMediaTile).
+
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
   automation (Baileys/WhatsApp Web).
@@ -181,4 +189,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock. Next: v0.45.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file. Next: v0.45.

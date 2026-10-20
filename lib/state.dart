@@ -413,20 +413,26 @@ class Santosh extends ChangeNotifier {
 
   /// [voice]: typed by speaking in chat (reply is read aloud). [spoken]: from the voice screen
   /// (the server keeps the reply short and speakable).
-  Future<bool> send(String text, {bool voice = false, bool spoken = false}) async {
+  Future<bool> send(String text, {bool voice = false, bool spoken = false, List<String> files = const []}) async {
     text = text.trim();
     if (text.isEmpty || api == null || conversationId == null) return false;
     _lastInputWasVoice = voice;
     pushLocation(); // "near me", directions and cab pickup use where the phone is
     feelUser(text);
     try {
-      await api!.sendMessage(conversationId!, text, voice: spoken);
+      await api!.sendMessage(conversationId!, text, voice: spoken, files: files);
       return true;
     } catch (e) {
       error = 'Message nahi gaya: $e';
       notifyListeners();
       return false;
     }
+  }
+
+  /// The chat paperclip (v0.44.1): any file goes up and waits in the box until the message is sent.
+  Future<Map<String, dynamic>> attachChatFile(String name, List<int> bytes) async {
+    if (api == null || conversationId == null) throw Exception('Abhi server se nahi jude');
+    return api!.chatFile(conversationId!, name, bytes);
   }
 
   Future<String?> uploadLeads(String name, List<int> bytes) async {

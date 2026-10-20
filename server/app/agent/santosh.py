@@ -267,7 +267,8 @@ def _work(conversation_id: str, call_id: str, tool: str, label: str, phase: str,
         log.exception("work event failed")
 
 
-async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None = None, voice: bool = False) -> str:
+async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None = None, voice: bool = False,
+                   context: str = "") -> str:
     """Handle one user message end to end. Returns Santosh's final reply text."""
     settings = get_settings()
     tenant_id = tenant_id or settings.tenant_id
@@ -276,6 +277,8 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
     async with _locks[conversation_id]:
         notes = _pending_worker_notes(conversation_id)
         agent_text = f"{VOICE_NOTE}\n{user_text}" if voice else user_text
+        if context:                         # e.g. files the owner attached (only the words show in the chat)
+            agent_text += "\n\n" + context
         if notes:
             agent_text = "\n".join(f"[Santosh worker update] {n}" for n in notes) + "\n\n" + agent_text
         _save(conversation_id, "user", agent_text, display=user_text)

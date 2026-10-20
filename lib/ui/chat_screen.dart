@@ -14,6 +14,7 @@ import 'slides_screen.dart';
 import 'youtube_screen.dart';
 import 'appcheck_screen.dart';
 import 'hoola_cards.dart';
+import 'hoola_media.dart';
 import 'forms_screen.dart';
 import 'glass.dart';
 import 'notebook_screen.dart';
@@ -127,25 +128,74 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  /// Files waiting in the box (uploaded, sent with the next message). Any type: photo, PDF, video, Excel...
+  final List<Map<String, dynamic>> _files = [];
+  final Set<String> _uploading = {};
+
   Future<void> _attach() async {
-    final res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['csv', 'xlsx'], withData: true);
-    final f = res?.files.single;
-    if (f == null || f.bytes == null) return;
-    final err = await app.uploadLeads(f.name, f.bytes!);
-    if (err != null) _snack('File upload nahi hui: $err');
+    final res = await FilePicker.platform.pickFiles(type: FileType.any, allowMultiple: true, withData: true);
+    if (res == null) return;
+    for (final f in res.files.take(6 - _files.length)) {
+      if (f.bytes == null) continue;
+      if (f.size > 25 * 1024 * 1024) {
+        _snack('${f.name}: 25 MB se badi hai; Drive link bhejiye.');
+        continue;
+      }
+      setState(() => _uploading.add(f.name));
+      try {
+        final r = await app.attachChatFile(f.name, f.bytes!);
+        if (mounted) setState(() => _files.add(r));
+      } catch (e) {
+        _snack('${f.name} upload nahi hui: $e');
+      } finally {
+        if (mounted) setState(() => _uploading.remove(f.name));
+      }
+    }
   }
+
+  Widget _pendingFiles() => (_files.isEmpty && _uploading.isEmpty)
+      ? const SizedBox.shrink()
+      : SizedBox(
+          height: 40,
+          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 18), children: [
+            for (final n in _uploading)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Chip(
+                  avatar: const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                  label: Text(n, style: const TextStyle(fontSize: 12)),
+                ),
+              ),
+            for (final f in List<Map<String, dynamic>>.from(_files))
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: InputChip(
+                  avatar: Icon(hoolaFileIcon(f['media'] as String? ?? ''), size: 16, color: C.accentSoft),
+                  label: Text('${f['name']}${f['leads'] != null ? ' · ${(f['leads'] as Map)['valid']} number' : ''}',
+                      style: const TextStyle(fontSize: 12)),
+                  onDeleted: () => setState(() => _files.remove(f)),
+                ),
+              ),
+          ]),
+        );
 
   void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   /// The text goes back into the box if it could not be sent, so nothing typed is lost on a bad network.
   Future<void> _send() async {
-    final t = _text.text;
-    if (t.trim().isEmpty) return;
+    var t = _text.text;
+    final files = List<Map<String, dynamic>>.from(_files);
+    if (t.trim().isEmpty && files.isEmpty) return;
+    if (t.trim().isEmpty) t = files.map((f) => '📎 ${f['name']}').join('\n');
     _text.clear();
-    final ok = await app.send(t);
-    if (!ok && mounted && _text.text.isEmpty) {
-      _text.text = t;
-      _text.selection = TextSelection.collapsed(offset: t.length);
+    setState(() => _files.clear());
+    final ok = await app.send(t, files: [for (final f in files) '${f['file_id']}']);
+    if (!ok && mounted) {
+      setState(() => _files.addAll(files));
+      if (_text.text.isEmpty) {
+        _text.text = t;
+        _text.selection = TextSelection.collapsed(offset: t.length);
+      }
     }
   }
 
@@ -178,6 +228,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ])),
           _quick(),
+          _pendingFiles(),
           _composer(),
         ]),
       );
@@ -258,7 +309,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
                 decoration: BoxDecoration(gradient: C.youGradient, boxShadow: const [BoxShadow(color: Color(0x597C5CFF), blurRadius: 18, offset: Offset(0, 6))], borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(22), topRight: Radius.circular(22), bottomLeft: Radius.circular(22), bottomRight: Radius.circular(8))),
-                child: SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
+                  for (final f in (it.data['files'] as List? ?? const []))
+                    if (f is Map) HoolaMediaTile(body: {'local': Map<String, dynamic>.from(f)}, app: app, maxWidth: 230),
+                  if ((it.data['files'] as List? ?? const []).isNotEmpty) const SizedBox(height: 6),
+                  SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45)),
+                ]),
               )
             : Glass(
                 radius: 22,
@@ -336,7 +392,7 @@ class _ChatScreenState extends State<ChatScreen> {
         margin: const EdgeInsets.fromLTRB(14, 6, 14, 12),
         padding: const EdgeInsets.all(8),
         child: Row(children: [
-          IconButton(tooltip: 'Leads file attach karein', onPressed: _attach, icon: const Icon(Icons.attach_file_rounded, color: C.chip)),
+          IconButton(tooltip: 'Photo, PDF, video ya koi bhi file', onPressed: _attach, icon: const Icon(Icons.attach_file_rounded, color: C.chip)),
           Expanded(
             child: TextField(
               controller: _text,
@@ -350,7 +406,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ValueListenableBuilder(
             valueListenable: _text,
             builder: (context, v, _) {
-              final typing = v.text.trim().isNotEmpty;
+              final typing = v.text.trim().isNotEmpty || _files.isNotEmpty;
               return Semantics(
                 button: true,
                 label: typing ? 'Send' : (_listening ? 'Stop listening' : 'Speak to ${app.aName}'),
