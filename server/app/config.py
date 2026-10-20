@@ -146,6 +146,7 @@ class Settings(BaseSettings):
     wa_graph_version: str = "v21.0"
     wa_verify_token: str = "change-me"      # must match the webhook "Verify token" in Meta
     wa_app_secret: str = ""                 # Meta app secret, used to check webhook signatures
+    wa_inbox_tenant: str = ""               # Hoola Employee inbox: the owner whose business answers on WA_PHONE_NUMBER_ID
 
     # --- sending limits ---
     max_daily_sends: int = 250              # match your number's Meta messaging tier

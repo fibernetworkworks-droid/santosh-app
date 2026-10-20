@@ -118,6 +118,12 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: {p.get('from', '')}", str(p.get("text") or "")[:300])
     if kind == "employee_ask" and p.get("status") == "pending":
         return ("Aapki haan chahiye", f"{p.get('what', '')} · {p.get('who', '')}: {p.get('detail', '')}"[:300])
+    if kind == "biz_inbox" and p.get("handover"):
+        c = p.get("contact") or {}
+        return ("WhatsApp: aapki zaroorat hai", f"{c.get('name', '')}: {p.get('reason', '')}"[:300])
+    if kind == "biz_inbox" and (p.get("message") or {}).get("direction") == "in" and (p.get("contact") or {}).get("human"):
+        c = p.get("contact") or {}
+        return (f"WhatsApp: {c.get('name', '')}", str((p.get('message') or {}).get('text') or "")[:300])
     if kind == "employee_report":
         return (f"{name} ki aaj ki report", str(p.get("text") or "")[:600])
     if kind == "bazar_open":
@@ -185,7 +191,7 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
 
 
 PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "email_draft", "bazar_open", "device_action",
-              "home_device", "bt_request", "employee_ask", "employee_report"}
+              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 

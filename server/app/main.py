@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.59.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.60.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -342,6 +342,12 @@ async def receive_webhook(request: Request):
         for ch in entry.get("changes", []):
             field, value = ch.get("field"), ch.get("value") or {}
             if field == "messages":
+                from .employee import inbox as biz_inbox
+                try:   # Hoola Employee: customers writing to a business number (never breaks campaign tracking)
+                    biz_inbox.receive(value)
+                    biz_inbox.statuses(value.get("statuses") or [])
+                except Exception:
+                    logging.getLogger("santosh.webhook").exception("employee inbox webhook")
                 updates.extend(value.get("statuses") or [])
                 for m in value.get("messages") or []:
                     updates.append({"reply_from": m.get("from"), "text": (m.get("text") or {}).get("body")})
@@ -2442,6 +2448,11 @@ def reels_saved(q: str = "", tenant: str = Depends(current_tenant)):
 # ---------------- Hoola Employee (v0.58): role, team, trust per duty, audit, pause, daily report ----------------
 class EmployeeIn(BaseModel):
     enabled: bool | None = None
+    preset: str | None = None
+    upi_id: str | None = None
+    upi_name: str | None = None
+    slot_minutes: int | None = None
+    inbox_on: bool | None = None
     role: str | None = None
     duties: list[str] | None = None
     business_name: str | None = None
@@ -2496,13 +2507,16 @@ def _emp(fn, *a, **kw):
 def employee_get(tenant: str = Depends(current_tenant)):
     """Everything the Employee screen needs in one call."""
     from .employee import service as emp
-    from .employee.roles import DUTIES, LEVEL_LABEL, LEVELS, ROLES
+    from .employee import inbox as biz_inbox
+    from .employee.roles import DUTIES, LEVEL_LABEL, LEVELS, PRESETS, ROLES
     p = emp.profile(tenant)
     return {"profile": p, "status": emp.status(tenant), "trust": emp.trust(tenant) if p else [], "team": emp.team(tenant),
             "asks": emp.asks(tenant) if p else [],
             "roles": [{"id": k, "label": v["label"], "say": v["say"], "duties": v["duties"]} for k, v in ROLES.items()],
             "duties": [{"id": k, "label": v["label"], "say": v["say"]} for k, v in DUTIES.items()],
-            "levels": [{"id": x, "label": LEVEL_LABEL[x]} for x in LEVELS]}
+            "levels": [{"id": x, "label": LEVEL_LABEL[x]} for x in LEVELS],
+            "presets": [{"id": k, "label": v["label"], "role": v["role"], "about_hint": v["about_hint"]} for k, v in PRESETS.items()],
+            "inbox": biz_inbox.summary(tenant) if p else None}
 
 
 @app.put("/api/employee", dependencies=[Depends(require_key)])
@@ -2602,6 +2616,175 @@ def employee_sheet_put(body: JobSheetIn, tenant: str = Depends(current_tenant)):
 def employee_tasks(tenant: str = Depends(current_tenant)):
     from .employee import network
     return {"tasks": network.tasks(tenant)}
+
+
+# ---------------- Hoola Employee v0.59: business WhatsApp inbox, appointments, dues, presets ----------------
+class EmployeeSendIn(BaseModel):
+    text: str = ""
+
+
+class EmployeeHumanIn(BaseModel):
+    human: bool = True
+    note: str | None = None
+
+
+class ChannelIn(BaseModel):
+    phone_number_id: str
+    display_number: str = ""
+    token: str = ""
+
+
+class ApptIn(BaseModel):
+    start: str
+    name: str = ""
+    phone: str = ""
+    note: str = ""
+
+
+class ApptStatusIn(BaseModel):
+    status: str
+
+
+class DueIn(BaseModel):
+    name: str = ""
+    phone: str
+    amount: float
+    due_date: str = ""
+    note: str = ""
+
+
+class DueEditIn(BaseModel):
+    status: str | None = None
+    promised_on: str | None = None
+
+
+def _inb(fn, *a, **kw):
+    from .employee import inbox
+    try:
+        return fn(*a, **kw)
+    except inbox.InboxError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/employee/presets", dependencies=[Depends(require_key)])
+def employee_presets():
+    from .employee.roles import PRESETS
+    return {"presets": [{"id": k, "label": v["label"], "role": v["role"], "about_hint": v["about_hint"], "rules": v["rules"]}
+                        for k, v in PRESETS.items()]}
+
+
+@app.get("/api/employee/inbox", dependencies=[Depends(require_key)])
+def employee_inbox(q: str = "", tenant: str = Depends(current_tenant)):
+    from .employee import inbox
+    return {"contacts": inbox.contacts(tenant, q), "summary": inbox.summary(tenant)}
+
+
+@app.get("/api/employee/inbox/{contact_id}", dependencies=[Depends(require_key)])
+def employee_inbox_thread(contact_id: str, tenant: str = Depends(current_tenant)):
+    from .employee import inbox
+    return _inb(inbox.thread, tenant, contact_id)
+
+
+@app.post("/api/employee/inbox/{contact_id}/send", dependencies=[Depends(require_key)])
+async def employee_inbox_send(contact_id: str, body: EmployeeSendIn, tenant: str = Depends(current_tenant)):
+    """The owner's own reply to a customer (she typed and tapped send: that is the confirmation)."""
+    from .employee import inbox
+    try:
+        return await inbox.send(tenant, contact_id, body.text, by="owner")
+    except inbox.InboxError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/employee/inbox/{contact_id}/human", dependencies=[Depends(require_key)])
+def employee_inbox_human(contact_id: str, body: EmployeeHumanIn, tenant: str = Depends(current_tenant)):
+    from .employee import inbox
+    return _inb(inbox.set_human, tenant, contact_id, body.human, body.note)
+
+
+@app.post("/api/employee/inbox/{contact_id}/answer", dependencies=[Depends(require_key)])
+async def employee_inbox_answer(contact_id: str, tenant: str = Depends(current_tenant)):
+    """Ask Hoola to answer this customer now (after the owner gave the chat back)."""
+    from .employee import inbox
+    _inb(inbox.thread, tenant, contact_id, 1, mark_read=False)      # 400 when it is not this owner's customer
+    sent = await inbox.answer(tenant, contact_id)
+    return {"sent": sent}
+
+
+@app.get("/api/employee/channels", dependencies=[Depends(require_key)])
+def employee_channels(tenant: str = Depends(current_tenant)):
+    from .employee import inbox
+    st = get_settings()
+    return {"channels": inbox.channels(tenant), "webhook": "/webhooks/whatsapp", "server_number_owner": st.wa_inbox_tenant == tenant}
+
+
+@app.put("/api/employee/channels", dependencies=[Depends(require_key)])
+def employee_channel_set(body: ChannelIn, tenant: str = Depends(current_tenant)):
+    from .employee import inbox
+    return _inb(inbox.set_channel, tenant, body.phone_number_id, body.display_number, body.token)
+
+
+@app.delete("/api/employee/channels/{phone_number_id}", dependencies=[Depends(require_key)])
+def employee_channel_remove(phone_number_id: str, tenant: str = Depends(current_tenant)):
+    from .employee import inbox
+    _inb(inbox.remove_channel, tenant, phone_number_id)
+    return {"ok": True}
+
+
+@app.get("/api/employee/slots", dependencies=[Depends(require_key)])
+def employee_slots(date: str = "", days: int = 3, tenant: str = Depends(current_tenant)):
+    from .employee import inbox
+    try:
+        return {"free": inbox.free_slots(tenant, date, days)}
+    except ValueError:
+        raise HTTPException(400, "date: YYYY-MM-DD")
+
+
+@app.get("/api/employee/appointments", dependencies=[Depends(require_key)])
+def employee_appts(day: str = "", tenant: str = Depends(current_tenant)):
+    from .employee import inbox
+    try:
+        return {"appointments": inbox.appointments(tenant, day)}
+    except ValueError:
+        raise HTTPException(400, "day: YYYY-MM-DD")
+
+
+@app.post("/api/employee/appointments", dependencies=[Depends(require_key)])
+def employee_appt_add(body: ApptIn, tenant: str = Depends(current_tenant)):
+    from .employee import inbox
+    return _inb(inbox.book, tenant, body.start, body.name, body.phone, "", body.note, "owner")
+
+
+@app.patch("/api/employee/appointments/{appt_id}", dependencies=[Depends(require_key)])
+def employee_appt_edit(appt_id: str, body: ApptStatusIn, tenant: str = Depends(current_tenant)):
+    from .employee import inbox
+    return _inb(inbox.set_appointment, tenant, appt_id, body.status)
+
+
+@app.get("/api/employee/dues", dependencies=[Depends(require_key)])
+def employee_dues(status: str = "", tenant: str = Depends(current_tenant)):
+    from .employee import inbox
+    return {"dues": inbox.dues(tenant, status), "summary": inbox.dues_summary(tenant)}
+
+
+@app.post("/api/employee/dues", dependencies=[Depends(require_key)])
+def employee_due_add(body: DueIn, tenant: str = Depends(current_tenant)):
+    from .employee import inbox
+    return _inb(inbox.add_due, tenant, body.name, body.phone, body.amount, body.due_date, body.note)
+
+
+@app.patch("/api/employee/dues/{due_id}", dependencies=[Depends(require_key)])
+def employee_due_edit(due_id: str, body: DueEditIn, tenant: str = Depends(current_tenant)):
+    from .employee import inbox
+    return _inb(inbox.set_due, tenant, due_id, body.status, body.promised_on)
+
+
+@app.post("/api/employee/dues/import", dependencies=[Depends(require_key)])
+async def employee_dues_import(file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
+    from .employee import inbox
+    data = await file.read(2_000_001)
+    if len(data) > 2_000_000:
+        raise HTTPException(413, "CSV 2 MB tak.")
+    return _inb(inbox.import_dues, tenant, data)
 
 
 # reel scroll analysis (Usage Access numbers + the owner's own history download)

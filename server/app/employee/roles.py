@@ -7,18 +7,19 @@ Any tool not listed below is an action of duty "" (not part of any job)."""
 from __future__ import annotations
 
 DUTIES: dict[str, dict] = {
-    "customers": {"label": "Graahakon se baat", "say": "graahakon ke sawaal ka jawab, unke message, Hoola Network par baat",
-                  "prefix": ("hoola_",), "tools": set()},
+    "customers": {"label": "Graahakon se baat", "say": "graahakon ke sawaal ka jawab, WhatsApp aur Hoola Network par baat",
+                  "prefix": ("hoola_",), "tools": {"biz_handover", "biz_note"}},
     "appointments": {"label": "Appointment aur calendar", "say": "appointment lena, badalna, yaad dilana",
-                     "prefix": ("calendar_",), "tools": {"add_calendar_event"}},
+                     "prefix": ("calendar_",), "tools": {"add_calendar_event", "biz_free_slots", "biz_book", "biz_my_appointments",
+                                                        "biz_cancel"}},
     "reminders": {"label": "Follow-up aur yaad", "say": "follow-up, reminder, roz ke kaam",
                   "prefix": (), "tools": {"create_reminder", "list_reminders", "cancel_reminder", "create_routine", "list_routines",
                                           "cancel_routine", "set_phone_alarm", "set_phone_timer", "list_add", "list_show", "list_done"}},
     "email": {"label": "Email", "say": "email padhna, jawab ka draft, follow-up", "prefix": ("email_",), "tools": set()},
     "tickets": {"label": "Shikayat / ticket", "say": "shikayat darj karna, ticket aage badhana, graahak ko update",
-                "prefix": (), "tools": {"hoola_business", "hoola_my_business", "hoola_chain"}},
+                "prefix": (), "tools": {"hoola_business", "hoola_my_business", "hoola_chain", "biz_complaint", "biz_ticket_status"}},
     "collections": {"label": "Paise ki vasooli", "say": "baaki paison ki yaad dilana, bill aur payment card banana (paise kabhi khud nahi)",
-                    "prefix": ("bazar_", "tally_"), "tools": set()},
+                    "prefix": ("bazar_", "tally_"), "tools": {"biz_my_dues", "biz_pay_link", "biz_promise"}},
     "records": {"label": "Register aur files", "say": "sheet, register, documents, forms",
                 "prefix": ("sheet_", "drive_", "form_", "slides_", "notebook_"),
                 "tools": {"sheets_find", "doc_create", "make_document", "pdf_tools", "file_read", "photos_pick", "photos_picked", "photos_send",
@@ -33,14 +34,60 @@ DUTIES: dict[str, dict] = {
 }
 # hoola_* tools that belong to tickets, not customers
 _TICKET_FIRST = {"hoola_business", "hoola_my_business", "hoola_chain"}
+# what a customer on WhatsApp can make Hoola do: only these, always about that customer (employee/inbox.py)
+CUSTOMER_TOOLS = {"biz_free_slots", "biz_book", "biz_my_appointments", "biz_cancel", "biz_complaint", "biz_ticket_status",
+                  "biz_my_dues", "biz_pay_link", "biz_promise", "biz_handover", "biz_note"}
 
 ROLES: dict[str, dict] = {
     "front_desk": {"label": "Front desk", "say": "Dukaan / clinic / office ka pehla chehra: sawaal, appointment, follow-up",
                    "duties": ["customers", "appointments", "reminders", "email", "research"]},
     "support_collect": {"label": "Support + vasooli", "say": "Shikayat sambhalna, graahak ko update dena, baaki paison ki yaad dilana",
                         "duties": ["customers", "tickets", "collections", "email", "records", "reminders", "research"]},
+    "office": {"label": "Office sahayak", "say": "Inbox, calendar, documents, follow-up aur roz ki briefing",
+               "duties": ["email", "appointments", "reminders", "records", "research"]},
+    "accounts": {"label": "Hisaab-kitaab sahayak", "say": "Bills padhna, Tally entry ka draft, baaki paise, CA ke liye kaagaz",
+                 "duties": ["collections", "records", "email", "reminders"]},
+    "field_service": {"label": "Field service", "say": "Technician ki list, shikayat, visit, roz ki ops report",
+                      "duties": ["customers", "tickets", "appointments", "reminders", "records"]},
+    "sales": {"label": "Sales aur follow-up", "say": "Naye enquiry ka jawab, lead follow-up, quotation draft, offer campaign",
+              "duties": ["customers", "campaigns", "email", "records", "reminders", "research"]},
+    "hr_admin": {"label": "HR aur admin", "say": "Job post, interview, attendance register, roster, renewals",
+                 "duties": ["records", "email", "appointments", "reminders"]},
+    "marketing": {"label": "Marketing", "say": "Tyohaar ke post ideas, poster, offer campaign, competitor ki khabar",
+                  "duties": ["campaigns", "records", "research"]},
     "custom": {"label": "Apna kaam", "say": "Aap khud chuniye Hoola kaun se kaam karega", "duties": []},
 }
+
+# Industry packs: one tap fills role + starting rules + a hint for "about". The owner can change everything afterwards.
+PRESETS: dict[str, dict] = {
+    "clinic": {"label": "Clinic / dentist", "role": "front_desk", "kind": "clinic", "slot_minutes": 20, "after_hours": "note",
+               "about_hint": "Doctor ka naam, timing, fees, services (checkup, cleaning, RCT...), pata, parking",
+               "rules": ["Dawai, dose ya bimari par koi salah nahi: 'Doctor sahab hi batayenge' kahna.",
+                         "Dard / sujan / khoon jaise urgent shabd aaye to turant owner ko handover.",
+                         "Patient ki report ya bimari kisi aur ko nahi batani."]},
+    "shop": {"label": "Dukaan / kirana / retail", "role": "front_desk", "kind": "shop", "slot_minutes": 30, "after_hours": "note",
+             "about_hint": "Kya bechte hain, khaas items aur daam, home delivery area, timing, UPI",
+             "rules": ["Udhaar (credit) sirf owner ki haan se.", "Jo daam list mein nahi, woh owner se poochkar batana."]},
+    "isp": {"label": "Broadband / cable / LCO", "role": "support_collect", "kind": "isp", "slot_minutes": 60, "after_hours": "answer",
+            "about_hint": "Plans aur daam, area, naya connection kaise, router restart steps, support number",
+            "rules": ["Net band ho to pehle router restart aur cable check karwana, phir shikayat darj karna.",
+                      "Plan badalna ya chhoot sirf owner ki haan se.", "Technician ka number customer ko nahi dena."]},
+    "ca": {"label": "CA / tax office", "role": "office", "kind": "ca", "slot_minutes": 30, "after_hours": "note",
+           "about_hint": "Services (GST, ITR, audit), fees, documents list, timing",
+           "rules": ["Tax ki salah nahi: CA sahab se milne ka time dena.", "PAN / Aadhaar number chat mein mat maangna; documents office mein."]},
+    "coaching": {"label": "Coaching / school", "role": "support_collect", "kind": "coaching", "slot_minutes": 30, "after_hours": "note",
+                 "about_hint": "Courses, batch timing, fees, admission steps, pata",
+                 "rules": ["Bachche ke marks ya jaankari sirf unke maa-baap ko.", "Fees mein chhoot sirf owner ki haan se."]},
+    "salon": {"label": "Salon / parlour", "role": "front_desk", "kind": "salon", "slot_minutes": 30, "after_hours": "note",
+              "about_hint": "Services aur daam, timing, kaun kaun stylist",
+              "rules": ["Booking ke 10 minute late hone par slot aage badh sakta hai, yeh customer ko batana."]},
+    "restaurant": {"label": "Restaurant / tiffin", "role": "front_desk", "kind": "restaurant", "slot_minutes": 60, "after_hours": "note",
+                   "about_hint": "Menu aur daam, delivery area, table booking, timing",
+                   "rules": ["Bade order (20+ plate) owner ki haan se."]},
+    "office": {"label": "Office / company", "role": "office", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
+               "about_hint": "Company kya karti hai, kaun kis kaam ka", "rules": []},
+}
+
 LEVELS = ("seekh", "saathi", "bharosa")
 LEVEL_LABEL = {"seekh": "Seekh raha hai: har kaam se pehle poochega",
                "saathi": "Saathi: roz ke kaam khud, bade kaam poochke",
@@ -62,6 +109,7 @@ READ = {
     "bazar_find", "bazar_activity", "maps_search", "maps_directions", "pc_status", "pc_search", "pc_list", "pc_read",
     "pc_task_result", "tally_report", "file_read", "api_find", "api_docs", "api_call", "memory_search", "phone_health",
     "tv_channel", "employee", "india_info",
+    "biz_free_slots", "biz_my_appointments", "biz_ticket_status", "biz_my_dues", "biz_handover", "biz_note",
 }
 BIG = {
     "email_bulk", "email_delete", "email_forward", "drive_trash", "drive_share", "sheet_share", "form_share", "slides_share",

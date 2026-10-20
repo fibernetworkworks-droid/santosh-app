@@ -28,6 +28,12 @@ class EmployeeProfile(Base):
     rules: Mapped[str] = mapped_column(Text, default="")              # extra do / don't lines from the owner
     duties: Mapped[str] = mapped_column(Text, default="[]")           # role "custom": the duties she picked
     reply_to_staff: Mapped[bool] = mapped_column(Boolean, default=True)
+    # v0.59 (nullable so _add_missing_columns can add them to a v0.58 database)
+    preset: Mapped[str | None] = mapped_column(String(32), nullable=True, default="")       # clinic | shop | isp | ca | coaching | ...
+    upi_id: Mapped[str | None] = mapped_column(String(120), nullable=True, default="")      # where customers pay (their own UPI app)
+    upi_name: Mapped[str | None] = mapped_column(String(80), nullable=True, default="")
+    slot_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True, default=30)
+    inbox_on: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=False)     # Hoola answers the business WhatsApp
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
@@ -111,3 +117,81 @@ class StaffTask(Base):
     result: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
     done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ---------------------------------------------------------------- v0.59 business WhatsApp inbox
+class BizChannel(Base):
+    """The business's own WhatsApp number on the official Cloud API (phone_number_id -> tenant)."""
+    __tablename__ = "employee_channels"
+    phone_number_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    display_number: Mapped[str] = mapped_column(String(24), default="")
+    token: Mapped[str] = mapped_column(Text, default="")              # sealed; "" = the server's WA_TOKEN (same Meta app)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class BizContact(Base):
+    """One customer who wrote to the business on WhatsApp."""
+    __tablename__ = "employee_contacts"
+    __table_args__ = (UniqueConstraint("tenant_id", "wa_id", name="uq_employee_contact"),)
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("bc"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    wa_id: Mapped[str] = mapped_column(String(20))                    # their number, digits with country code
+    name: Mapped[str] = mapped_column(String(80), default="")
+    note: Mapped[str] = mapped_column(Text, default="")
+    human: Mapped[bool] = mapped_column(Boolean, default=False)       # the owner / staff took over: Hoola stays quiet
+    opted_out: Mapped[bool] = mapped_column(Boolean, default=False)
+    needs_reply: Mapped[bool] = mapped_column(Boolean, default=False)
+    unread: Mapped[int] = mapped_column(Integer, default=0)
+    last_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
+    last_text: Mapped[str] = mapped_column(Text, default="")
+    channel: Mapped[str] = mapped_column(String(40), default="")      # phone_number_id it came in on
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class BizMessage(Base):
+    __tablename__ = "employee_messages"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("bm"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    contact_id: Mapped[str] = mapped_column(String(40), index=True)
+    direction: Mapped[str] = mapped_column(String(4))                 # in | out
+    by: Mapped[str] = mapped_column(String(80), default="")           # customer | hoola | owner | staff:<id> | system
+    kind: Mapped[str] = mapped_column(String(16), default="text")     # text | image | document | audio | video | location | other
+    text: Mapped[str] = mapped_column(Text, default="")
+    wa_msg_id: Mapped[str] = mapped_column(String(120), default="", index=True)
+    status: Mapped[str] = mapped_column(String(12), default="")       # sent | delivered | read | failed | held
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
+
+
+class BizAppointment(Base):
+    """Hoola's own appointment book (works without Google Calendar)."""
+    __tablename__ = "employee_appointments"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("ap"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    contact_id: Mapped[str] = mapped_column(String(40), default="")
+    name: Mapped[str] = mapped_column(String(80), default="")
+    phone: Mapped[str] = mapped_column(String(20), default="")
+    start: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    minutes: Mapped[int] = mapped_column(Integer, default=30)
+    note: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(12), default="booked")  # booked | done | cancelled | no_show
+    by: Mapped[str] = mapped_column(String(80), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class BizDue(Base):
+    """Money a customer owes the business (from the owner, a sheet or Tally). Hoola only reminds; nobody's money moves."""
+    __tablename__ = "employee_dues"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("du"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    name: Mapped[str] = mapped_column(String(80), default="")
+    phone: Mapped[str] = mapped_column(String(20), default="", index=True)
+    amount_paise: Mapped[int] = mapped_column(Integer, default=0)
+    due_date: Mapped[str] = mapped_column(String(10), default="")      # YYYY-MM-DD
+    note: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(12), default="open")    # open | promised | paid | disputed | written_off
+    promised_on: Mapped[str] = mapped_column(String(10), default="")
+    reminders: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

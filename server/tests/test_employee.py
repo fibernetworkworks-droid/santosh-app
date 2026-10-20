@@ -240,7 +240,7 @@ def test_api(env):
     from app import main
     with TestClient(main.app) as c:
         r = c.get("/api/employee").json()
-        assert r["profile"] is None and len(r["roles"]) == 3 and len(r["levels"]) == 3
+        assert r["profile"] is None and len(r["roles"]) == 9 and len(r["levels"]) == 3
         assert c.put("/api/employee", json={"enabled": True}).status_code == 400
         p = c.put("/api/employee", json={"enabled": True, "role": "support_collect", "business_name": "FNW Broadband"}).json()
         assert p["enabled"] and "tickets" in p["duties"]

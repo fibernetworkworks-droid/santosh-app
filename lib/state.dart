@@ -876,7 +876,17 @@ class Santosh extends ChangeNotifier {
         employeeTick++;
         break;
       case 'employee':
+      case 'biz_appointment':
         employeeTick++;
+        break;
+      case 'biz_inbox':
+        employeeTick++;
+        if (p['handover'] == true) {
+          feed.add(FeedItem('biz_handover', Map<String, dynamic>.from(p)));
+          if (inBackground && !_replaying && !pushOn) {
+            Device.instance.showNow('WhatsApp: aapki zaroorat hai', '${(p['contact'] as Map?)?['name'] ?? ''}: ${p['reason'] ?? ''}');
+          }
+        }
         break;
       case 'bazar_open':
         feed.add(FeedItem('open', Map<String, dynamic>.from(p)));

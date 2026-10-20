@@ -153,6 +153,39 @@ class Api {
     return List<Map<String, dynamic>>.from((r['tasks'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
   }
 
+  // ---- Hoola Employee v0.59: business WhatsApp inbox ----
+  List<Map<String, dynamic>> _eml(Object? o) =>
+      List<Map<String, dynamic>>.from(((o as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<Map<String, dynamic>> employeeInbox({String q = ''}) async => _em(await _send('GET', '/api/employee/inbox', query: {'q': q}));
+  Future<Map<String, dynamic>> employeeThread(String id) async => _em(await _send('GET', '/api/employee/inbox/$id'));
+  Future<Map<String, dynamic>> employeeSendTo(String id, String text) async =>
+      _em(await _send('POST', '/api/employee/inbox/$id/send', body: {'text': text}, timeout: const Duration(seconds: 45)));
+  Future<Map<String, dynamic>> employeeHuman(String id, bool human) async =>
+      _em(await _send('POST', '/api/employee/inbox/$id/human', body: {'human': human}));
+  Future<void> employeeAnswerNow(String id) async =>
+      _send('POST', '/api/employee/inbox/$id/answer', timeout: const Duration(seconds: 90));
+  Future<Map<String, dynamic>> employeeChannels() async => _em(await _send('GET', '/api/employee/channels'));
+  Future<Map<String, dynamic>> employeeSetChannel(String pnid, String display, String token) async => _em(await _send(
+      'PUT', '/api/employee/channels', body: {'phone_number_id': pnid, 'display_number': display, 'token': token}));
+  Future<void> employeeRemoveChannel(String pnid) async => _send('DELETE', '/api/employee/channels/$pnid');
+  Future<List<String>> employeeSlots({String date = '', int days = 3}) async {
+    final r = await _send('GET', '/api/employee/slots', query: {'date': date, 'days': '$days'}) as Map;
+    return List<String>.from((r['free'] as List).map((e) => '$e'));
+  }
+  Future<List<Map<String, dynamic>>> employeeAppointments({String day = ''}) async =>
+      _eml((await _send('GET', '/api/employee/appointments', query: {'day': day}) as Map)['appointments']);
+  Future<Map<String, dynamic>> employeeBook(String start, String name, String phone, String note) async => _em(await _send(
+      'POST', '/api/employee/appointments', body: {'start': start, 'name': name, 'phone': phone, 'note': note}));
+  Future<Map<String, dynamic>> employeeApptStatus(String id, String status) async =>
+      _em(await _send('PATCH', '/api/employee/appointments/$id', body: {'status': status}));
+  Future<Map<String, dynamic>> employeeDues({String status = ''}) async =>
+      _em(await _send('GET', '/api/employee/dues', query: {'status': status}));
+  Future<Map<String, dynamic>> employeeAddDue(Map<String, dynamic> body) async => _em(await _send('POST', '/api/employee/dues', body: body));
+  Future<Map<String, dynamic>> employeeDueStatus(String id, String status) async =>
+      _em(await _send('PATCH', '/api/employee/dues/$id', body: {'status': status}));
+  Future<Map<String, dynamic>> employeeImportDues(String name, List<int> bytes) =>
+      uploadFile('/api/employee/dues/import', name, bytes, timeout: const Duration(seconds: 60), tries: 2);
+
   // reel scroll analysis
   Future<void> scrollSync(List<Map<String, dynamic>> days) async => _send('POST', '/api/reels/scroll/sync', body: {'days': days});
   Future<Map<String, dynamic>> scrollReport({int days = 7}) async =>

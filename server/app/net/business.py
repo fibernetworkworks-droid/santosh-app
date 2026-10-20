@@ -337,6 +337,12 @@ def update_ticket(tenant: str, number: str, status: str, note: str = "") -> dict
     b = _biz(tenant)
     if b is not None:
         _webhook(b, {"event": "ticket.updated", "ticket": t.number, "status": status, "note": note[:1000]})
+    if t.customer.startswith("wa:"):           # a WhatsApp customer (Hoola Employee inbox): tell them there
+        from ..employee import inbox as biz_inbox
+        words = {"assigned": "kisi ko di gayi", "in_progress": "par kaam chal raha hai", "resolved": "theek ho gayi",
+                 "closed": "band ki gayi", "open": "khuli hai"}.get(status, status)
+        biz_inbox.notice_by_phone(tenant, t.customer[3:], f"Aapki shikayat {t.number} {words}." + (f" {note[:300]}" if note else ""))
+        return ticket_view(t)
     _post(tenant, t.customer, "biz_update", {"ticket": t.number, "status": status, "note": note[:1000]}, t.thread or new_id("tk"))
     return ticket_view(t)
 

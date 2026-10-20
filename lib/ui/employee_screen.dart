@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../state.dart';
+import 'employee_inbox.dart';
 import 'glass.dart';
 
 const _levelColor = {'seekh': C.warn, 'saathi': C.teal, 'bharosa': C.ok};
@@ -77,13 +78,14 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
     final p = _p;
     final ready = p != null && p['enabled'] == true;
     return DefaultTabController(
-      length: 5,
+      length: 6,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           title: Text('${widget.app.aName} · Employee'),
           bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
             Tab(text: 'Kaam'),
+            Tab(text: 'Inbox'),
             Tab(text: 'Bharosa'),
             Tab(text: 'Team'),
             Tab(text: 'Hisaab'),
@@ -98,6 +100,7 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
                       : const CircularProgressIndicator())
               : TabBarView(children: [
                   ready ? _work() : _notReady(),
+                  ready ? EmployeeInboxTab(app: widget.app) : _notReady(),
                   ready ? _trust() : _notReady(),
                   _team(),
                   _AuditTab(api: _api, onChanged: _load),
@@ -564,6 +567,12 @@ class _SetupTabState extends State<_SetupTab> {
   late String _after = _p['after_hours'] as String? ?? 'note';
   late String _report = _p['report_time'] as String? ?? '20:30';
   late bool _replyStaff = _p['reply_to_staff'] as bool? ?? true;
+  late String _preset = _p['preset'] as String? ?? '';
+  late String _presetWas = _p['preset'] as String? ?? '';
+  late final _upi = TextEditingController(text: _p['upi_id'] as String? ?? '');
+  late final _upiName = TextEditingController(text: _p['upi_name'] as String? ?? '');
+  late int _slot = (_p['slot_minutes'] as num? ?? 30).toInt();
+  late bool _inboxOn = _p['inbox_on'] as bool? ?? false;
   bool _busy = false;
   String? _sheet;
   bool _sheetEdited = false;
@@ -595,20 +604,33 @@ class _SetupTabState extends State<_SetupTab> {
   Future<void> _save({bool? enable}) async {
     setState(() => _busy = true);
     try {
-      await widget.api.employeeSave({
+      final presetNew = _preset.isNotEmpty && _preset != _presetWas;
+      final saved = await widget.api.employeeSave({
         'role': _role,
         if (_role == 'custom') 'duties': _custom.toList(),
         'business_name': _name.text.trim(),
-        'business_kind': _kind.text.trim(),
+        if (!presetNew || _kind.text.trim().isNotEmpty) 'business_kind': _kind.text.trim(),
         'about': _about.text.trim(),
-        'rules': _rules.text.trim(),
+        if (!presetNew) 'rules': _rules.text.trim(),
         'hours': {'open': _open, 'close': _close, 'days': (_dayset.toList()..sort())},
-        'after_hours': _after,
+        if (!presetNew) 'after_hours': _after,
         'report_time': _report,
         'reply_to_staff': _replyStaff,
+        if (presetNew) 'preset': _preset,
+        'upi_id': _upi.text.trim(),
+        'upi_name': _upiName.text.trim(),
+        if (!presetNew) 'slot_minutes': _slot,
+        'inbox_on': _inboxOn,
         if (enable != null) 'enabled': enable,
       });
       if (enable != null) _p['enabled'] = enable;
+      _p.addAll(saved);
+      _presetWas = _preset;
+      _rules.text = saved['rules'] as String? ?? _rules.text;
+      _role = saved['role'] as String? ?? _role;
+      _after = saved['after_hours'] as String? ?? _after;
+      _slot = (saved['slot_minutes'] as num? ?? _slot).toInt();
+      if (_kind.text.isEmpty) _kind.text = saved['business_kind'] as String? ?? '';
       await widget.onSaved();
       await _loadSheet();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Save ho gaya')));
@@ -649,7 +671,31 @@ class _SetupTabState extends State<_SetupTab> {
     final roles = _list(widget.o['roles']);
     final duties = _list(widget.o['duties']);
     final enabled = _p['enabled'] == true;
+    final presets = _list(widget.o['presets']);
+    final hint = presets.firstWhere((x) => x['id'] == _preset, orElse: () => const <String, dynamic>{})['about_hint'] as String?;
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+      Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Business ka prakaar', style: display(17)),
+          const Text('Ek tap mein kaam, samay aur shuruaati niyam bhar jayenge. Baad mein sab badal sakti hain.',
+              style: TextStyle(color: C.muted, fontSize: 12.5)),
+          Wrap(spacing: 6, runSpacing: 4, children: [
+            for (final pr in presets)
+              ChoiceChip(
+                label: Text('${pr['label']}'),
+                selected: _preset == pr['id'],
+                showCheckmark: false,
+                selectedColor: C.accent,
+                labelStyle: TextStyle(color: _preset == pr['id'] ? C.onAccent : C.chip, fontWeight: FontWeight.w600, fontSize: 12.5),
+                onSelected: (_) => setState(() {
+                  _preset = pr['id'] as String;
+                  _role = pr['role'] as String;
+                }),
+              ),
+          ]),
+        ]),
+      ),
+      const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Business', style: display(17)),
@@ -659,7 +705,7 @@ class _SetupTabState extends State<_SetupTab> {
               controller: _about,
               maxLines: 4,
               minLines: 2,
-              decoration: const InputDecoration(labelText: 'Graahakon ko kya batana hai (daam, services, pata…)')),
+              decoration: InputDecoration(labelText: 'Graahakon ko kya batana hai (daam, services, pata…)', helperText: hint, helperMaxLines: 2)),
         ]),
       ),
       const SizedBox(height: 12),
@@ -758,6 +804,36 @@ class _SetupTabState extends State<_SetupTab> {
           ),
         ]),
       ),
+      const SizedBox(height: 12),
+      Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('WhatsApp par graahak', style: display(17)),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text('${widget.app.aName} graahakon ko jawab de'),
+            subtitle: const Text('Business number par aaye message: sawaal, appointment, shikayat, baaki paisa. Bharosa ke hisaab se.',
+                style: TextStyle(fontSize: 12)),
+            value: _inboxOn,
+            onChanged: (v) => setState(() => _inboxOn = v),
+          ),
+          Row(children: [
+            const Text('Ek appointment: ', style: TextStyle(color: C.muted)),
+            DropdownButton<int>(
+              value: const [10, 15, 20, 30, 45, 60, 90, 120].contains(_slot) ? _slot : 30,
+              dropdownColor: C.bgBottom,
+              items: [for (final m in const [10, 15, 20, 30, 45, 60, 90, 120]) DropdownMenuItem(value: m, child: Text('$m min'))],
+              onChanged: (v) => setState(() => _slot = v ?? 30),
+            ),
+          ]),
+          TextField(controller: _upi, decoration: const InputDecoration(labelText: 'Paisa lene ka UPI ID (naam@bank)')),
+          TextField(controller: _upiName, decoration: const InputDecoration(labelText: 'UPI par naam')),
+          const SizedBox(height: 4),
+          const Text('Graahak apne UPI app se khud bharta hai. Hoola kabhi paisa nahi bhejta ya leta.',
+              style: TextStyle(color: C.faint, fontSize: 11.5)),
+        ]),
+      ),
+      const SizedBox(height: 12),
+      BizChannelCard(api: widget.api),
       const SizedBox(height: 12),
       Glass(
         child: TextField(

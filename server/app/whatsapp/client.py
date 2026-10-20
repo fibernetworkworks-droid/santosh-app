@@ -99,6 +99,28 @@ class MetaWhatsApp:
             raise WhatsAppError("Meta accepted the request but returned no message id")
         return msgs[0]["id"]
 
+    async def send_text(self, to: str, text: str, phone_number_id: str = "", token: str = "") -> str:
+        """Free-form reply. Meta only allows it within 24 h of the customer's last message (customer service window)."""
+        headers = {"Authorization": f"Bearer {token}"} if token else None
+        pnid = phone_number_id or self.phone_number_id
+        body = {"messaging_product": "whatsapp", "recipient_type": "individual", "to": to, "type": "text",
+                "text": {"preview_url": False, "body": text[:4096]}}
+        if headers:
+            r = await self.http.post(f"{self.base}/{pnid}/messages", json=body, headers=headers)
+            if r.status_code >= 400:
+                try:
+                    err = r.json().get("error", {})
+                except ValueError:
+                    err = {}
+                raise WhatsAppError(err.get("message") or r.text[:300], code=err.get("code"), status=r.status_code)
+            data = r.json()
+        else:
+            data = await self._call("POST", f"{pnid}/messages", json=body, attempts=3)
+        msgs = data.get("messages") or []
+        if not msgs:
+            raise WhatsAppError("Meta accepted the request but returned no message id")
+        return msgs[0]["id"]
+
     async def poll_simulated_events(self) -> list[dict]:
         return []   # real statuses arrive through the webhook
 
@@ -145,6 +167,11 @@ class DryRunWhatsApp:
             if self.rng.random() < self.reply_ratio / max(self.read_ratio, 0.01):
                 self._pending.append((t + self.rng.uniform(8, 18), {"reply_from": to, "text": "Interested hoon, details bhejiye"}))
         return wamid
+
+    async def send_text(self, to: str, text: str, phone_number_id: str = "", token: str = "") -> str:
+        self.sent_texts = getattr(self, "sent_texts", [])
+        self.sent_texts.append({"to": to, "text": text})
+        return f"wamid.DRYT{uuid.uuid4().hex[:16]}"
 
     async def poll_simulated_events(self) -> list[dict]:
         t = time.monotonic()

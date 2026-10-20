@@ -12,14 +12,14 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import func, select
 
 from ..db import now, session
 from .models import AuditEntry, DutyTrust, EmployeeAsk, EmployeeProfile, StaffTask, TeamMember
-from .roles import CAP, DUTIES, LEVEL_LABEL, LEVELS, PROMOTE_AFTER, ROLES, duty_of, kind_of, role_duties
+from .roles import CAP, CUSTOMER_TOOLS, DUTIES, LEVEL_LABEL, LEVELS, PRESETS, PROMOTE_AFTER, ROLES, duty_of, kind_of, role_duties
 
 ASK_HOURS = 48
 _TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -69,7 +69,8 @@ def _day_start(tenant: str) -> datetime:
     from ..life import tz_of
     tz = tz_of(tenant)
     local = datetime.now(tz)
-    return local.replace(hour=0, minute=0, second=0, microsecond=0)
+    # the database keeps UTC wall-clock time (SQLite drops the offset), so compare in UTC
+    return local.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 
 
 def actor_label(tenant: str, actor: str) -> str:
@@ -95,7 +96,9 @@ def _view(p: EmployeeProfile) -> dict[str, Any]:
             "business_name": p.business_name, "business_kind": p.business_kind, "about": p.about,
             "hours": _j(p.hours, {}), "after_hours": p.after_hours, "report_time": p.report_time, "rules": p.rules,
             "duties": role_duties(p.role, _j(p.duties, [])), "custom_duties": _j(p.duties, []),
-            "reply_to_staff": p.reply_to_staff, "job_sheet_edited": bool(p.job_sheet)}
+            "reply_to_staff": p.reply_to_staff, "job_sheet_edited": bool(p.job_sheet),
+            "preset": p.preset or "", "upi_id": p.upi_id or "", "upi_name": p.upi_name or "",
+            "slot_minutes": p.slot_minutes or 30, "inbox_on": bool(p.inbox_on)}
 
 
 def profile(tenant: str) -> dict[str, Any] | None:
@@ -140,6 +143,39 @@ def setup(tenant: str, **kw) -> dict[str, Any]:
             p.report_time = kw["report_time"]
         if kw.get("reply_to_staff") is not None:
             p.reply_to_staff = bool(kw["reply_to_staff"])
+        if kw.get("preset"):
+            pr = PRESETS.get(kw["preset"])
+            if pr is None:
+                raise EmployeeError("preset: " + ", ".join(PRESETS))
+            p.preset = kw["preset"]
+            if kw.get("role") is None:
+                p.role = pr["role"]
+            if kw.get("business_kind") is None and not p.business_kind:
+                p.business_kind = pr["label"]
+            if kw.get("after_hours") is None:
+                p.after_hours = pr["after_hours"]
+            if kw.get("slot_minutes") is None:
+                p.slot_minutes = pr["slot_minutes"]
+            if kw.get("rules") is None:
+                have = [x for x in (p.rules or "").splitlines() if x.strip()]
+                for r in pr["rules"]:
+                    if "- " + r not in have:
+                        have.append("- " + r)
+                p.rules = "\n".join(have[-30:])
+        if kw.get("upi_id") is not None:
+            from ..bazar.connectors.upi import valid_vpa
+            u = str(kw["upi_id"]).strip()
+            if u and not valid_vpa(u):
+                raise EmployeeError("UPI ID aisa hota hai: naam@bank")
+            p.upi_id = u
+        if kw.get("upi_name") is not None:
+            p.upi_name = _clean(kw["upi_name"], 80)
+        if kw.get("slot_minutes") is not None:
+            if not 5 <= int(kw["slot_minutes"]) <= 240:
+                raise EmployeeError("Appointment 5 se 240 minute ka.")
+            p.slot_minutes = int(kw["slot_minutes"])
+        if kw.get("inbox_on") is not None:
+            p.inbox_on = bool(kw["inbox_on"])
         if kw.get("enabled") is not None:
             if kw["enabled"] and not (p.business_name or kw.get("business_name")):
                 raise EmployeeError("Pehle business ka naam bataiye.")
@@ -322,7 +358,7 @@ def audit(tenant: str, limit: int = 100, duty: str = "", day: str = "") -> list[
         q = q.where(AuditEntry.duty == duty)
     if day:
         from ..life import tz_of
-        start = datetime.fromisoformat(day).replace(tzinfo=tz_of(tenant))
+        start = datetime.fromisoformat(day).replace(tzinfo=tz_of(tenant)).astimezone(timezone.utc)
         q = q.where(AuditEntry.at >= start, AuditEntry.at < start + timedelta(days=1))
     with session() as s:
         rows = s.scalars(q.order_by(AuditEntry.at.desc()).limit(max(1, min(int(limit), 500)))).all()
@@ -391,6 +427,9 @@ def gate(ctx, tool: str, args: dict[str, Any]) -> dict[str, Any] | None:
     duty, kind = duty_of(tool), kind_of(tool)
     in_job = duty in duties
     outsider = actor.startswith(("staff:", "customer:"))
+    if actor.startswith("customer:") and tool not in CUSTOMER_TOOLS:
+        _audit(tenant, actor, duty, tool, kind, "refused", "graahak ke liye yeh kaam nahi")
+        raise Blocked("Graahak ke kehne par yeh kaam nahi hota.")
     if outsider:
         if not in_job:
             _audit(tenant, actor, duty, tool, kind, "refused", "naukri ke bahar ka kaam")
@@ -530,6 +569,7 @@ async def decide(tenant: str, ask_id: str, approve: bool) -> dict[str, Any]:
     if not approve:
         _audit(tenant, "owner", duty, tool, kind_of(tool), "refused", "Owner ne mana kiya · " + _mask(tool, args))
         _note(tenant, conv, f"Owner ne mana kar diya: {label}. Yeh kaam nahi hoga; jisne kaha tha unhe aaraam se bata dena.")
+        await _tell_customer(tenant, ask_id, label, "declined", "")
         out = ask_view_by_id(tenant, ask_id)
         _publish(tenant, "employee_ask", out, conv=conv)
         return out
@@ -549,9 +589,23 @@ async def decide(tenant: str, ask_id: str, approve: bool) -> dict[str, Any]:
         a.status, a.result = status, result
     _note(tenant, conv, (f"Owner ne haan kaha, ho gaya: {label}. Nateeja: {result[:600]}" if status == "done"
                          else f"Owner ne haan kaha par {label} nahi ho paya: {result[:400]}"))
+    await _tell_customer(tenant, ask_id, label, status, result)
     out = ask_view_by_id(tenant, ask_id)
     _publish(tenant, "employee_ask", out, conv=conv)
     return out
+
+
+async def _tell_customer(tenant: str, ask_id: str, label: str, status: str, result: str) -> None:
+    """An ask that came from a WhatsApp customer: Hoola tells that customer how it went."""
+    actor = _ask_actor(ask_id)
+    if not actor.startswith("customer:"):
+        return
+    try:
+        from . import inbox
+        await inbox.after_owner(tenant, actor[9:], label, status, result)
+    except Exception:
+        import logging
+        logging.getLogger("santosh.employee").exception("telling the customer failed")
 
 
 def expire_asks() -> int:
@@ -682,7 +736,7 @@ def report(tenant: str, day: str = "") -> dict[str, Any]:
     from ..life import tz_of
     tz = tz_of(tenant)
     d = datetime.fromisoformat(day).date() if day else datetime.now(tz).date()
-    start = datetime(d.year, d.month, d.day, tzinfo=tz)
+    start = datetime(d.year, d.month, d.day, tzinfo=tz).astimezone(timezone.utc)
     with session() as s:
         rows = s.scalars(select(AuditEntry).where(AuditEntry.tenant_id == tenant, AuditEntry.at >= start,
                                                   AuditEntry.at < start + timedelta(days=1))).all()
@@ -713,6 +767,27 @@ def report(tenant: str, day: str = "") -> dict[str, Any]:
         lines.append(f"• {lbl}: " + ", ".join(bits))
     if tasks:
         lines.append(f"• Team ne {len(tasks)} kaam diye ({sum(1 for _, st in tasks if st == 'done')} poore).")
+    try:
+        from . import inbox
+        with session() as s:
+            from .models import BizMessage
+            chats_in = s.scalar(select(func.count(func.distinct(BizMessage.contact_id))).where(
+                BizMessage.tenant_id == tenant, BizMessage.direction == "in", BizMessage.at >= start,
+                BizMessage.at < start + timedelta(days=1))) or 0
+            hoola_out = s.scalar(select(func.count()).select_from(BizMessage).where(
+                BizMessage.tenant_id == tenant, BizMessage.by == "hoola", BizMessage.at >= start,
+                BizMessage.at < start + timedelta(days=1))) or 0
+        if chats_in:
+            lines.append(f"• WhatsApp: {chats_in} graahakon ne likha, {name} ne {hoola_out} jawab diye.")
+        tomorrow = (d + timedelta(days=1)).isoformat()
+        nxt = [a for a in inbox.appointments(tenant, tomorrow) if a["status"] == "booked"]
+        if nxt:
+            lines.append(f"• Kal {len(nxt)} appointment.")
+        ds = inbox.dues_summary(tenant)
+        if ds["open"]:
+            lines.append(f"• Baaki: {ds['open']} logon ka {ds['total']}" + (f", {ds['late']} der se ({ds['late_total']})" if ds["late"] else "") + ".")
+    except Exception:
+        pass
     if pending:
         lines.append(f"{pending} kaam aapki haan ka intezaar kar rahe hain.")
     sugg = [t for t in trust(tenant) if t["suggest"]]

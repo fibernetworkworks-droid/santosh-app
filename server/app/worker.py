@@ -411,6 +411,7 @@ async def mail_jobs() -> None:
 
 
 _emp_tasks: set = set()
+_inbox_tasks: set = set()
 
 
 async def employee_jobs() -> None:
@@ -427,6 +428,15 @@ async def employee_jobs() -> None:
         t = asyncio.create_task(emp_net.run_pending())
         _emp_tasks.add(t)
         t.add_done_callback(_emp_tasks.discard)
+    if not _inbox_tasks:                  # WhatsApp customers: queued notices, then replies
+        from .employee import inbox as biz_inbox
+
+        async def _inbox():
+            await biz_inbox.flush_queued()
+            await biz_inbox.answer_pending()
+        t2 = asyncio.create_task(_inbox())
+        _inbox_tasks.add(t2)
+        t2.add_done_callback(_inbox_tasks.discard)
 
 
 async def run_forever(stop: asyncio.Event) -> None:

@@ -515,6 +515,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return EmployeeAskCard(key: ValueKey('ea${it.data['id']}'), v: it.data, app: app);
     case 'employee_report':
       return EmployeeReportCard(v: it.data, app: app);
+    case 'biz_handover':
+      return BizHandoverCard(v: it.data, app: app);
     case 'pc_file':
       return PcFileCard(v: it.data, app: app);
     case 'artifact':

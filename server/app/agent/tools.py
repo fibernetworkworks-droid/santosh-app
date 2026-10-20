@@ -372,3 +372,9 @@ from .india_tools import INDIA_HANDLERS, INDIA_LABELS, INDIA_TOOLS  # noqa: E402
 TOOLS.extend(INDIA_TOOLS)
 TOOL_LABELS.update(INDIA_LABELS)
 HANDLERS.update(INDIA_HANDLERS)
+
+# v0.59 the WhatsApp customer's tools: callable (customer turns, owner-approved asks) but never offered to the owner's model
+from ..employee.inbox import BIZ_HANDLERS, BIZ_LABELS  # noqa: E402
+
+TOOL_LABELS.update(BIZ_LABELS)
+HANDLERS.update(BIZ_HANDLERS)
