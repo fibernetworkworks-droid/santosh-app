@@ -350,6 +350,14 @@ class Api {
     return Map<String, dynamic>.from(body as Map);
   }
 
+  // ---------------- v0.47 Public APIs ----------------
+  Future<Map<String, dynamic>> publicApis({String q = '', String cat = '', String auth = 'any'}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/publicapis', query: {'q': q, 'cat': cat, 'auth': auth, 'limit': '40'}));
+  Future<Map<String, dynamic>> publicApiKey(String id, String key, {String place = 'query', String field = ''}) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/publicapis/${Uri.encodeComponent(id)}/key',
+          body: {'key': key, 'place': place, 'field': field}));
+  Future<void> publicApiKeyDelete(String id) async => _send('DELETE', '/api/publicapis/${Uri.encodeComponent(id)}/key');
+
   // ---------------- Hoola Network ----------------
   Map<String, dynamic> _hm(dynamic x) => Map<String, dynamic>.from(x as Map);
   List<Map<String, dynamic>> _hl(dynamic x) => List<Map<String, dynamic>>.from((x as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));

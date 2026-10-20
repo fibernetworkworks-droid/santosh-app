@@ -5,6 +5,7 @@ import 'agents_screen.dart';
 import 'glass.dart';
 import 'mcp_screen.dart';
 import 'plugin_widgets.dart';
+import 'publicapis_screen.dart';
 import 'shopping_screen.dart';
 
 /// Santosh Bazar: every pack with live status, linked app accounts, spend limits and delivery details.
@@ -340,6 +341,17 @@ class _BazarScreenState extends State<BazarScreen> {
                   await Navigator.of(context).push(MaterialPageRoute(builder: (_) => McpScreen(app: app)));
                   _load();
                 },
+              ),
+            ),
+            const SizedBox(height: 14),
+            Glass(
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.api_rounded, color: C.ok),
+                title: Text('Public APIs · 2,100+', style: display(15.5)),
+                subtitle: const Text('Free APIs: mausam, IFSC, pincode, holidays, cricket, currency, news… Hoola khud use karta hai'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PublicApisScreen(app: app))),
               ),
             ),
             const SizedBox(height: 14),

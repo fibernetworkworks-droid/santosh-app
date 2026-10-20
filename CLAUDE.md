@@ -193,7 +193,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - Safety unchanged: calls go through `bazar.service.run` (public https only, keys never in chat, non-read = confirm card);
   MCP tools are owner-only under the voice lock. `GET /api/bazar/mcp/avatar` + MCP screen line "Hoola jaanta hai · N tools".
 
-## v0.46 Premium plugin & MCP cards with real logos (latest)
+## v0.46 Premium plugin & MCP cards with real logos
 - `server/app/bazar/logos.py` + `logo_domains.json` (539 researched official domains: pack id / `feat:<id>` -> domain).
   `GET /api/logo/{pack|feat|gh|mcp}/{key}` (public) -> 128 px PNG from the brand's OWN site (apple-touch-icon, homepage
   `<link rel=icon>`, favicon.ico; Pillow-normalised), GitHub avatar of the publisher for directory MCPs, the server host's
@@ -204,6 +204,16 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - App: `lib/ui/plugin_widgets.dart` (BrandLogo, PluginCard fixed 190 px, PluginGrid with mainAxisExtent, PluginAction:
   add / linked / attention / soon / builtin, PluginRow with honest level chip, showPluginSheet with examples that send to
   chat). Connect tab + MCP servers screen rebuilt on them; filter chips: Hoola karega / App kholega / SMS padhega / ...
+
+## v0.47 Public APIs (2,100+ free web APIs)
+- `server/app/publicapis/`: `catalog.json.gz` built from github.com/public-apis/public-apis README (MIT) by
+  `python -m app.publicapis.build [README.md]` (no arg = fetch from GitHub; re-run to refresh). `service.py`: `find` (Hinglish
+  synonyms, India boost, free first, worked-before first), `docs` (reads the API's docs via web.open_website), `call` (GET only,
+  https only, public internet re-checked every redirect, 20 s / 2 MB, JSON trimmed), keys (`PublicApiKey`, sealed with the bazar
+  vault, added server-side as query param or header; never shown to the model; model can't put key params without api_id),
+  recipes (`PublicApiRecipe`: working call pattern with values/keys blanked + success count, shared across owners).
+- Tools `agent/publicapi_tools.py`: api_find / api_docs / api_call (chat + voice). API: GET /api/publicapis, PUT/DELETE
+  /api/publicapis/{id}/key, GET /api/publicapis/keys. App: Connect > "Public APIs · 2,100+" (`lib/ui/publicapis_screen.dart`).
 
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
@@ -227,4 +237,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos. Next: v0.47.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos · v0.47 Public APIs (2,100+ free APIs the avatar can use). Next: v0.48.

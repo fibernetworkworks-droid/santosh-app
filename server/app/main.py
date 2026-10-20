@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.46.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.47.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -101,7 +101,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files"] + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis"] + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -1317,6 +1317,42 @@ async def net_think(mid: str, tenant: str = Depends(current_tenant)):
     """'Hoola, isse dekh ke batao': look at the attachment again and suggest replies, right now."""
     from .net import enrich
     return await asyncio.to_thread(enrich.run, tenant, mid)
+
+
+# ---------------- v0.47 Public APIs (github.com/public-apis/public-apis) ----------------
+@app.get("/api/publicapis", dependencies=[Depends(require_key)])
+def publicapis_find(q: str = "", cat: str = "", auth: str = "any", limit: int = 30, tenant: str = Depends(current_tenant)):
+    from .publicapis import service as pa
+    out = pa.find(q, cat, auth if auth in ("any", "none", "key") else "any", max(1, min(limit, 60)), tenant)
+    return out | {"total": len(pa.catalog()), "categories": pa.categories() if not q and not cat else []}
+
+
+class PublicApiKeyIn(BaseModel):
+    key: str = Field(min_length=4, max_length=500)
+    place: str = "query"
+    field: str = ""
+
+
+@app.put("/api/publicapis/{api_id}/key", dependencies=[Depends(require_key)])
+def publicapis_key(api_id: str, body: PublicApiKeyIn, tenant: str = Depends(current_tenant)):
+    """The owner types an API's key in the app (sealed on the server; the avatar never sees it)."""
+    from .publicapis import service as pa
+    try:
+        return pa.save_key(tenant, api_id, body.key, body.place, body.field)
+    except pa.ApiError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/publicapis/{api_id}/key", dependencies=[Depends(require_key)])
+def publicapis_key_delete(api_id: str, tenant: str = Depends(current_tenant)):
+    from .publicapis import service as pa
+    return pa.delete_key(tenant, api_id)
+
+
+@app.get("/api/publicapis/keys", dependencies=[Depends(require_key)])
+def publicapis_keys(tenant: str = Depends(current_tenant)):
+    from .publicapis import service as pa
+    return {"keys": pa.list_keys(tenant)}
 
 
 @app.post("/api/net/outbox/{oid}", dependencies=[Depends(require_key)])
