@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../state.dart';
+import 'employee_inbox.dart';
 import 'employee_screen.dart';
 import 'approve_sheet.dart';
 import 'artifact_screen.dart';
