@@ -373,6 +373,13 @@ TOOLS.extend(INDIA_TOOLS)
 TOOL_LABELS.update(INDIA_LABELS)
 HANDLERS.update(INDIA_HANDLERS)
 
+# v0.63 seekhe hue kaam (procedures Hoola learned)
+from .procedure_tools import PROCEDURE_HANDLERS, PROCEDURE_LABELS, PROCEDURE_TOOLS  # noqa: E402
+
+TOOLS.extend(PROCEDURE_TOOLS)
+TOOL_LABELS.update(PROCEDURE_LABELS)
+HANDLERS.update(PROCEDURE_HANDLERS)
+
 # v0.59 the WhatsApp customer's tools: callable (customer turns, owner-approved asks) but never offered to the owner's model
 from ..employee.inbox import BIZ_HANDLERS, BIZ_LABELS  # noqa: E402
 

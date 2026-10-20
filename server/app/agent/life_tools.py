@@ -42,8 +42,10 @@ LIFE_TOOLS = [
          "location": {"type": "string"}, "notes": {"type": "string"},
          "remind_minutes_before": {"type": "integer", "description": "Also create a Santosh reminder this many minutes before (optional)"}},
          "required": ["title", "start"]}},
-    {"name": "remember", "description": "Save a fact the user wants you to remember (dates, preferences, people, numbers like policy expiry). Do NOT save passwords, OTPs, card or bank numbers.",
-     "input_schema": {"type": "object", "properties": {"fact": {"type": "string"}}, "required": ["fact"]}},
+    {"name": "remember", "description": ("Save a fact the user wants you to remember (dates, preferences, people, numbers like policy "
+                                         "expiry). Do NOT save passwords, OTPs, card or bank numbers. pin=true only when they say "
+                                         "it must ALWAYS be kept in mind ('hamesha yaad rakhna'); pinned facts are few and short."),
+     "input_schema": {"type": "object", "properties": {"fact": {"type": "string"}, "pin": {"type": "boolean"}}, "required": ["fact"]}},
     {"name": "forget", "description": "Delete a remembered fact by its id (ids are shown in your context).",
      "input_schema": {"type": "object", "properties": {"fact_id": {"type": "integer"}}, "required": ["fact_id"]}},
     {"name": "list_add", "description": "Add items to a named list (shopping, todo, packing...). Creates the list if needed.",
@@ -184,7 +186,7 @@ async def add_calendar_event(ctx: Ctx, title, start, end=None, location=None, no
     return out
 
 
-async def remember(ctx: Ctx, fact, **_):
+async def remember(ctx: Ctx, fact, pin=False, **_):
     low = f" {fact.lower()} "
     from ..pii import describe, find
     found = find(str(fact))
@@ -196,7 +198,13 @@ async def remember(ctx: Ctx, fact, **_):
         m = MemoryFact(tenant_id=ctx.tenant_id, text=fact[:500])
         s.add(m)
         s.flush()
-        return {"saved": True, "fact_id": m.id}
+        fid = m.id
+    if pin:
+        try:
+            life.pin_fact(ctx.tenant_id, fid, True)
+        except ValueError as e:
+            return {"saved": True, "fact_id": fid, "pinned": False, "note": str(e)}
+    return {"saved": True, "fact_id": fid, "pinned": bool(pin)}
 
 
 async def forget(ctx: Ctx, fact_id, **_):

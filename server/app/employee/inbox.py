@@ -898,6 +898,8 @@ async def answer(tenant: str, contact_id: str, extra: str = "") -> str:
     system = _system(tenant, c)
     ctx = Ctx(tenant_id=tenant, conversation_id=emp._home(tenant), actor=f"customer:{contact_id}")
     final = ""
+    from ..agent.breaker import Breaker
+    br = Breaker(max_calls=12)
     for _ in range(MAX_STEPS):
         blocks, stop = await _brain(system, history, BIZ_TOOLS)
         history.append({"role": "assistant", "content": blocks})
@@ -910,13 +912,20 @@ async def answer(tenant: str, contact_id: str, extra: str = "") -> str:
         for b in blocks:
             if b.get("type") != "tool_use":
                 continue
+            held = br.before(b["name"], b.get("input") or {})
+            if held:
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": held, "is_error": True})
+                continue
             try:
                 out = await asyncio.wait_for(dispatch(b["name"], b.get("input") or {}, ctx), timeout=30)
+                br.after(b["name"], True)
                 results.append({"type": "tool_result", "tool_use_id": b["id"],
                                 "content": json.dumps(out, ensure_ascii=False, default=str)[:3000]})
             except ToolError as e:
+                br.after(b["name"], False)
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": str(e), "is_error": True})
             except Exception as e:
+                br.after(b["name"], False)
                 log.exception("customer tool %s", b.get("name"))
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": f"error: {e}", "is_error": True})
         history.append({"role": "user", "content": results})

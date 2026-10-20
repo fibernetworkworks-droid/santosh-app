@@ -95,13 +95,43 @@ def upcoming_reminders(tenant_id: str, limit: int = 50, include_done: bool = Fal
         return [reminder_view(r, tz) for r in rows]
 
 
+PINNED_CHARS = 1500     # "hamesha yaad": always in the prompt, kept short (idea from Hermes Agent)
+RECENT_FACTS = 40       # newest other facts in the prompt; older ones are found with memory_search
+
+
 def memory_facts(tenant_id: str, limit: int = 60) -> list[MemoryFact]:
+    """Pinned facts first (all of them), then the newest others, oldest of those first."""
     with session() as s:
-        rows = s.scalars(select(MemoryFact).where(MemoryFact.tenant_id == tenant_id)
-                         .order_by(MemoryFact.id.desc()).limit(limit)).all()
-        for r in rows:
+        pinned = s.scalars(select(MemoryFact).where(MemoryFact.tenant_id == tenant_id, MemoryFact.pinned.is_(True))
+                           .order_by(MemoryFact.id)).all()
+        rest = s.scalars(select(MemoryFact).where(MemoryFact.tenant_id == tenant_id,
+                                                  (MemoryFact.pinned.is_(None)) | (MemoryFact.pinned.is_(False)))
+                         .order_by(MemoryFact.id.desc()).limit(max(0, limit))).all()
+        for r in list(pinned) + list(rest):
             s.expunge(r)
-        return list(reversed(rows))
+        return list(pinned) + list(reversed(rest))
+
+
+def memory_count(tenant_id: str) -> int:
+    from sqlalchemy import func
+    with session() as s:
+        return s.scalar(select(func.count()).select_from(MemoryFact).where(MemoryFact.tenant_id == tenant_id)) or 0
+
+
+def pin_fact(tenant_id: str, fact_id: int, pinned: bool) -> MemoryFact:
+    with session() as s:
+        f = s.get(MemoryFact, int(fact_id))
+        if f is None or f.tenant_id != tenant_id:
+            raise ValueError("Yeh yaad nahi mili.")
+        if pinned and not f.pinned:
+            used = sum(len(x.text) for x in s.scalars(select(MemoryFact).where(
+                MemoryFact.tenant_id == tenant_id, MemoryFact.pinned.is_(True))).all())
+            if used + len(f.text) > PINNED_CHARS:
+                raise ValueError(f"'Hamesha yaad' mein {PINNED_CHARS} akshar tak hi aate hain. Pehle koi purani pin hataiye.")
+        f.pinned = bool(pinned)
+        s.flush()
+        s.expunge(f)
+        return f
 
 
 def context_block(tenant_id: str) -> str:
@@ -122,10 +152,17 @@ def context_block(tenant_id: str) -> str:
     if jobs:
         lines.append("Your automatic jobs for this user (id: title, repeat, next run):")
         lines += [f"- {j['id']}: {j['title']}, {j['repeat']}, {j['next_run_local']}" for j in jobs]
-    facts = memory_facts(tenant_id)
-    if facts:
+    facts = memory_facts(tenant_id, RECENT_FACTS)
+    pins = [f for f in facts if f.pinned]
+    if pins:
+        lines.append("ALWAYS keep in mind (the user pinned these; id: fact):")
+        lines += [f"- {f.id}: {f.text}" for f in pins]
+    others = [f for f in facts if not f.pinned]
+    if others:
         lines.append("Things the user asked you to remember (id: fact):")
-        lines += [f"- {f.id}: {f.text}" for f in facts]
+        lines += [f"- {f.id}: {f.text}" for f in others]
+    if memory_count(tenant_id) > len(facts):
+        lines.append("Older things the user told you are not listed here: use memory_search to find them when needed.")
     return "\n".join(lines)
 
 

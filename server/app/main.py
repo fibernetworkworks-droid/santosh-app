@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.63.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.64.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -107,7 +107,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee"] + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures"] + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -2166,7 +2166,63 @@ def tick_item(item_id: int, tenant: str = Depends(current_tenant)):
 
 @app.get("/api/memory", dependencies=[Depends(require_key)])
 def get_memory(tenant: str = Depends(current_tenant)):
-    return {"facts": [{"id": f.id, "text": f.text} for f in life.memory_facts(tenant)]}
+    facts = life.memory_facts(tenant, 500)
+    used = sum(len(f.text) for f in facts if f.pinned)
+    return {"facts": [{"id": f.id, "text": f.text, "pinned": bool(f.pinned)} for f in facts],
+            "pinned_chars": used, "pinned_max": life.PINNED_CHARS, "in_prompt": life.RECENT_FACTS}
+
+
+class PinIn(BaseModel):
+    pinned: bool
+
+
+@app.patch("/api/memory/{fact_id}", dependencies=[Depends(require_key)])
+def pin_memory(fact_id: int, body: PinIn, tenant: str = Depends(current_tenant)):
+    """'Hamesha yaad': a pinned fact is always in Hoola's mind (short; the rest is searched when needed)."""
+    try:
+        life.pin_fact(tenant, fact_id, body.pinned)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return get_memory(tenant)
+
+
+# ---------------- v0.63 seekhe hue kaam + circuit breaker numbers ----------------
+class ProcedureIn(BaseModel):
+    active: bool | None = None
+    title: str | None = None
+    steps: list[str] | None = None
+
+
+@app.get("/api/procedures", dependencies=[Depends(require_key)])
+def procedures_list(tenant: str = Depends(current_tenant)):
+    from . import procedures
+    return {"procedures": procedures.listing(tenant)}
+
+
+@app.patch("/api/procedures/{pid}", dependencies=[Depends(require_key)])
+def procedures_edit(pid: str, body: ProcedureIn, tenant: str = Depends(current_tenant)):
+    from . import procedures
+    try:
+        return procedures.update(tenant, pid, body.active, body.title, body.steps)
+    except procedures.ProcedureError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/procedures/{pid}", dependencies=[Depends(require_key)])
+def procedures_delete(pid: str, tenant: str = Depends(current_tenant)):
+    from . import procedures
+    try:
+        procedures.delete(tenant, pid)
+    except procedures.ProcedureError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True}
+
+
+@app.get("/api/agent/stats", dependencies=[Depends(require_key)])
+def agent_stats():
+    from . import procedures
+    from .agent.breaker import STATS
+    return {"breaker": {k: STATS.get(k, 0) for k in ("steer", "constrain", "stop")}, "procedures": dict(procedures.STATS)}
 
 
 @app.delete("/api/memory/{fact_id}", dependencies=[Depends(require_key)])

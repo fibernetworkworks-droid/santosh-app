@@ -25,6 +25,7 @@ import 'avatar_setup_screen.dart';
 import 'hoola_net_screen.dart';
 import 'hoola_samaj_screen.dart';
 import 'voice_id_screen.dart';
+import 'procedures_screen.dart';
 import 'employee_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -164,6 +165,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('${app.aName} aapke business mein kaam kare: team, bharosa, hisaab, roz ki report'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EmployeeScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.auto_awesome_rounded, color: C.accentSoft),
+              title: const Text('Seekhe hue kaam', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Lambe kaam ${app.aName} ne kaise kiye: dekhiye, badliye, band kijiye'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProceduresScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -418,10 +427,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Hoola ko yaad hai', style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text('Pin = hamesha dhyan mein (chhoti baatein). Baaki yaadein zaroorat par dhoondh leta hai.',
+              style: TextStyle(color: C.faint, fontSize: 12)),
           if (_facts.isEmpty) const Padding(padding: EdgeInsets.only(top: 6), child: Text('Abhi kuch nahi. Boliye: "Yaad rakhna, mummy ka birthday 5 June hai".', style: TextStyle(color: C.muted))),
           for (final f in _facts)
             ListTile(
               contentPadding: EdgeInsets.zero,
+              leading: IconButton(
+                tooltip: f['pinned'] == true ? 'Pin hatao' : 'Hamesha yaad (pin)',
+                icon: Icon(f['pinned'] == true ? Icons.push_pin_rounded : Icons.push_pin_outlined,
+                    color: f['pinned'] == true ? C.accent : C.faint, size: 20),
+                onPressed: () async {
+                  try {
+                    await app.api!.pinMemory((f['id'] as num).toInt(), f['pinned'] != true);
+                    _facts = await app.api!.memory();
+                    setState(() {});
+                  } catch (e) {
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                  }
+                },
+              ),
               title: Text(f['text'] as String? ?? ''),
               trailing: IconButton(
                 tooltip: 'Bhool jao',

@@ -191,6 +191,7 @@ class MemoryFact(Base):
     tenant_id: Mapped[str] = mapped_column(String(64), index=True)
     text: Mapped[str] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    pinned: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=False)   # v0.63 "hamesha yaad"
 
 
 class ListItem(Base):
@@ -639,6 +640,7 @@ def init_db(url: str | None = None):
     from .net import chain as _net_chain  # noqa: F401
     from .net import business as _net_business  # noqa: F401
     from .bt import models as _bt_models  # noqa: F401
+    from . import procedures as _procedures  # noqa: F401
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401
     Base.metadata.create_all(_engine)

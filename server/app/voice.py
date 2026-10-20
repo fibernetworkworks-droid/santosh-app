@@ -70,7 +70,7 @@ VOICE_TOOL_NAMES = {
     "youtube_search", "youtube_video", "youtube_watch", "youtube_channel", "youtube_comments", "youtube_my_channel",
     "youtube_analytics", "app_check",
     "hoola_me", "hoola_connect", "hoola_connections", "hoola_answer_connect", "hoola_send", "hoola_reply", "hoola_inbox",
-    "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "india_info", "pdf_tools", "employee", "api_find", "api_docs", "api_call", "make_document", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
+    "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
     "hoola_learn", "hoola_learned", "hoola_samaj", "hoola_community_search", "hoola_business", "hoola_chain",
     "sheets_find", "sheet_info", "sheet_query", "sheet_update", "sheet_create", "sheet_export",
     "maps_search", "maps_directions", "maps_navigate",
@@ -843,6 +843,18 @@ class Call:
             await self.send_json({"type": "tool", "label": label, "state": "error"})
             await self._answer_tool(session, fc, name, {"error": blocked}, "error")
             return
+        if not hasattr(self, "_breaker"):          # v0.63 circuit breaker for the whole call (a call can run long)
+            from .agent.breaker import Breaker
+            self._breaker = Breaker(max_calls=120)
+        held = self._breaker.before(name, args)
+        if held and name != "santosh_kaam":
+            self.stats["breaker"] = self.stats.get("breaker", 0) + 1
+            await self.send_json({"type": "tool", "label": label, "state": "error"})
+            await self._answer_tool(session, fc, name, {"error": held}, "error")
+            if self._breaker.stopped:              # told the model to stop once; the call itself goes on fresh
+                from .agent.breaker import Breaker
+                self._breaker = Breaker(max_calls=120)
+            return
         if show:
             bus.publish(self.conv, "work", theatre.event(call_id, name, label, "start", args))
         watch = asyncio.create_task(self._ack_watch(time.monotonic()))
@@ -860,6 +872,7 @@ class Call:
             log.exception("voice tool %s failed", name)
             out, state = {"error": f"Internal error: {e}"}, "error"
         watch.cancel()
+        self._breaker.after(name, state != "error")
         await self.send_json({"type": "tool", "label": label, "state": state})
         if show:
             res = out.get("result") if isinstance(out, dict) else None

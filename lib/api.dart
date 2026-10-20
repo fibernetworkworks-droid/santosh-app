@@ -414,6 +414,15 @@ class Api {
   Future<List<Map<String, dynamic>>> memory() async =>
       List<Map<String, dynamic>>.from((await _send('GET', '/api/memory'))['facts'] as List);
   Future<void> forget(int id) async => _send('DELETE', '/api/memory/$id');
+  /// "Hamesha yaad": pin / unpin a remembered fact (server refuses past its character limit).
+  Future<void> pinMemory(int id, bool pinned) async => _send('PATCH', '/api/memory/$id', body: {'pinned': pinned});
+  // ---- v0.63 seekhe hue kaam ----
+  Future<List<Map<String, dynamic>>> procedures() async => List<Map<String, dynamic>>.from(
+      ((await _send('GET', '/api/procedures') as Map)['procedures'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<Map<String, dynamic>> procedureEdit(String id, {bool? active, String? title, List<String>? steps}) async =>
+      Map<String, dynamic>.from(await _send('PATCH', '/api/procedures/$id',
+          body: {if (active != null) 'active': active, if (title != null) 'title': title, if (steps != null) 'steps': steps}) as Map);
+  Future<void> procedureDelete(String id) async => _send('DELETE', '/api/procedures/$id');
 
   Future<Map<String, dynamic>> profile() async => Map<String, dynamic>.from(await _send('GET', '/api/profile'));
   Future<Map<String, dynamic>> saveProfile(Map<String, dynamic> p) async =>

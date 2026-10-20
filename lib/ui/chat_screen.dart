@@ -8,6 +8,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import '../state.dart';
 import 'employee_inbox.dart';
 import 'employee_screen.dart';
+import 'procedures_screen.dart';
 import 'approve_sheet.dart';
 import 'artifact_screen.dart';
 import 'browser_live.dart';
@@ -518,6 +519,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return EmployeeReportCard(v: it.data, app: app);
     case 'biz_handover':
       return BizHandoverCard(v: it.data, app: app);
+    case 'procedure':
+      return ProcedureLearnedCard(v: it.data, app: app);
     case 'pc_file':
       return PcFileCard(v: it.data, app: app);
     case 'artifact':

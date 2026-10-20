@@ -183,8 +183,32 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
     return await asyncio.wait_for(work, timeout=max(5, settings.agent_tool_timeout_s))
 
 
-async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str) -> str:
+async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str,
+                 user_text: str = "") -> str:
+    """One turn with the v0.63 extras around it: seekhe hue kaam as hints, a circuit breaker, learning afterwards."""
+    from .. import procedures
+    from .breaker import Breaker
+    state: dict = {"calls": [], "breaker": Breaker(), "used": [], "hint": ""}
+    actor = getattr(ctx, "actor", "owner") or "owner"
+    if user_text and actor in ("owner", "routine"):
+        try:
+            state["hint"], state["used"] = await asyncio.to_thread(procedures.hint, tenant_id, user_text)
+        except Exception:
+            log.exception("procedure hint failed")
+    text = await _steps_inner(conversation_id, ctx, gender, history, settings, tenant_id, state)
+    ok = (bool(text.strip()) and not state["breaker"].stopped and conversation_id not in _stopped
+          and not text.startswith(("Yeh kaam lamba", "Maaf kijiye")))
+    if user_text:
+        learned = await asyncio.to_thread(procedures.after_turn, tenant_id, user_text, state["calls"], state["used"], ok, actor)
+        if learned and learned.get("learned"):
+            bus.publish(conversation_id, "procedure", {"event": "learned", "id": learned["learned"], "title": learned["title"]})
+    return text
+
+
+async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str,
+                       state: dict) -> str:
     """The think -> tools -> think loop of one turn. Returns the final text shown to the user."""
+    breaker = state["breaker"]
     final_text = ""
     ran_tools = False
     brain = llm.choose(history)
@@ -193,6 +217,7 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     mcp_snap = await asyncio.to_thread(mcp_live.snapshot, tenant_id)
     mcp_defs, mcp_route = mcp_live.tool_defs(mcp_snap, settings.mcp_native_tools)
     system += "\n\n" + mcp_live.prompt_block(mcp_snap, mcp_route)
+    system += state.get("hint") or ""
     tools = TOOLS + mcp_defs
     for _ in range(settings.agent_max_steps):
         try:
@@ -220,6 +245,10 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
                                 "content": "The user tapped Stop. Do not continue this task; say in one line what was done."})
                 continue
+            held = breaker.before(b["name"], b.get("input") or {})
+            if held:                       # circuit breaker: steered / constrained / stopped, the call does not run
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "is_error": True, "content": held})
+                continue
             ran_tools = True
             label = gendered(mcp_live.label(b["name"], mcp_route, mcp_snap) if b["name"] in mcp_route
                              else TOOL_LABELS.get(b["name"], b["name"]), gender)
@@ -228,15 +257,22 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
             _work(conversation_id, b["id"], b["name"], label, "start", args_in)
             try:
                 out = await _run_tool(b["name"], args_in, ctx, settings, mcp_route)
+                fine = not (isinstance(out, dict) and out.get("error"))
+                breaker.after(b["name"], fine)
+                state["calls"].append({"tool": b["name"], "ok": fine, "error": "" if fine else str(out.get("error"))[:200]})
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": _short(out)})
                 bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "done", "id": b["id"]})
                 _work(conversation_id, b["id"], b["name"], label, theatre.phase_of(out), args_in, out)
             except ToolError as e:
+                breaker.after(b["name"], False)
+                state["calls"].append({"tool": b["name"], "ok": False, "error": str(e)[:200]})
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": str(e), "is_error": True})
                 bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error",
                                                       "id": b["id"], "detail": str(e)[:300]})
                 _work(conversation_id, b["id"], b["name"], label, "error", args_in, error=str(e))
             except asyncio.TimeoutError:
+                breaker.after(b["name"], False)
+                state["calls"].append({"tool": b["name"], "ok": False, "error": "timeout"})
                 msg = f"{b['name']} did not finish in {settings.agent_tool_timeout_s} seconds and was stopped. Tell the user and offer to try again."
                 log.warning("tool %s timed out", b["name"])
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": msg, "is_error": True})
@@ -244,6 +280,8 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
                                                       "id": b["id"], "detail": "bahut der lag rahi thi, rok diya"})
                 _work(conversation_id, b["id"], b["name"], label, "error", args_in, error="Bahut der lag rahi thi, rok diya")
             except Exception as e:  # unexpected bug: tell the model, keep the turn alive
+                breaker.after(b["name"], False)
+                state["calls"].append({"tool": b["name"], "ok": False, "error": "crash"})
                 log.exception("tool %s crashed", b["name"])
                 results.append({"type": "tool_result", "tool_use_id": b["id"],
                                 "content": f"Internal error in {b['name']}: {e}", "is_error": True})
@@ -251,6 +289,14 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
                 _work(conversation_id, b["id"], b["name"], label, "error", args_in, error="Kuch gadbad ho gayi")
         history.append({"role": "user", "content": results})
         _save(conversation_id, "user", results)
+        if breaker.stopped:                # stuck: stop here and say so plainly
+            log.warning("circuit breaker stopped a turn: %s", breaker.stopped)
+            final_text = gendered(breaker.final_text(), gender)
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
+            bus.publish(conversation_id, "work", {"id": "breaker", "tool": "", "scene": "work", "phase": "stopped",
+                                                  "label": "Atak gaya, roka gaya", "data": {}})
+            _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
+            return final_text
         if conversation_id in _stopped:
             final_text = "Theek hai, maine kaam rok diya."
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
@@ -310,7 +356,7 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         try:
             # one stuck call must never keep this conversation locked forever
             final_text = await asyncio.wait_for(
-                _steps(conversation_id, ctx, _gender, history, settings, tenant_id),
+                _steps(conversation_id, ctx, _gender, history, settings, tenant_id, user_text),
                 timeout=max(30, settings.agent_turn_timeout_s))
         except asyncio.TimeoutError:
             log.error("agent turn timed out after %ss", settings.agent_turn_timeout_s)
