@@ -22,6 +22,10 @@ class LiveVoice {
 
   static const _ch = MethodChannel('santosh/native');
   static const _mic = EventChannel('santosh/mic');
+  static const _vad = EventChannel('santosh/vad');   // v0.51 Silero VAD speech probability per mic chunk
+  StreamSubscription? _vadSub;
+  double? _speech;
+  DateTime _speechAt = DateTime.fromMillisecondsSinceEpoch(0);
   static const _call = MethodChannel('santosh/call');
 
   /// How long a dropped connection is retried before the call is given up.
@@ -115,6 +119,10 @@ class LiveVoice {
       return null;
     });
     _attach(ws);
+    _vadSub = _vad.receiveBroadcastStream().listen((p) {
+      _speech = (p as num).toDouble();
+      _speechAt = DateTime.now();
+    }, onError: (Object _) {});
     _micSub = _mic.receiveBroadcastStream().listen((b) {
       final bytes = b as Uint8List;
       inLevel = inLevel * .7 + _rms(bytes) * .3;
@@ -123,7 +131,8 @@ class LiveVoice {
         // while he talks (and for a moment after), only clear speech over the room's noise gets through
         final speaking = DateTime.now().isBefore(_playEnd.add(const Duration(milliseconds: 300)));
         try {
-          for (final out in _gate.process(bytes, hoolaSpeaking: speaking)) {
+          final fresh = DateTime.now().difference(_speechAt).inMilliseconds < 200;
+          for (final out in _gate.process(bytes, hoolaSpeaking: speaking, speech: fresh ? _speech : null)) {
             sock.add(out);
           }
         } catch (_) {}
@@ -281,6 +290,7 @@ class LiveVoice {
     if (identical(_current, this)) _current = null;
     _beat?.cancel();
     _micSub?.cancel();
+    _vadSub?.cancel();
     _ch.invokeMethod('voiceStop');
     onClosed(reason);
   }

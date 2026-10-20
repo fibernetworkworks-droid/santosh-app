@@ -417,6 +417,16 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun micChannel(flutterEngine: FlutterEngine) {
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "santosh/vad").setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                Thread { SileroVad.init(applicationContext); SileroVad.reset() }.start()
+                VoiceAudio.vadSink = { p -> main.post { events.success(p.toDouble()) } }
+            }
+
+            override fun onCancel(arguments: Any?) {
+                VoiceAudio.vadSink = null
+            }
+        })
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, "santosh/mic").setStreamHandler(object : EventChannel.StreamHandler {
             override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
                 VoiceAudio.sink = { bytes -> main.post { events.success(bytes) } }

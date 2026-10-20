@@ -62,6 +62,8 @@ object VoiceAudio {
 
     /** Receives mic chunks; set by the activity's EventChannel. */
     @Volatile var sink: ((ByteArray) -> Unit)? = null
+    /** v0.51 speech probability (Silero VAD) of each mic chunk, sent just before the chunk itself. */
+    @Volatile var vadSink: ((Float) -> Unit)? = null
 
     /** Audio trouble for the app to show: "paused" / "resumed" (another app has the audio), "audio_error" (mic or speaker lost for good). */
     @Volatile var onState: ((String, String) -> Unit)? = null
@@ -265,7 +267,11 @@ object VoiceAudio {
             val n = try { cur.read(buf, 0, buf.size) } catch (e: Exception) { -1 }
             if (n > 0) {
                 failures = 0
-                if (!paused) sink?.invoke(buf.copyOf(n))
+                if (!paused) {
+                    val chunk = buf.copyOf(n)
+                    vadSink?.let { vs -> SileroVad.feed(chunk)?.let { p -> vs(p) } }
+                    sink?.invoke(chunk)
+                }
             } else if (n < 0 && running) {
                 // the microphone died (Bluetooth connected, another app took it...): open it again
                 failures++

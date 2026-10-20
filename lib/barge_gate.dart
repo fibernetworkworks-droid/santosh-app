@@ -36,7 +36,11 @@ class BargeGate {
   int heldBack = 0;
 
   /// What to send to the server for this mic chunk (possibly several chunks, possibly silence).
-  List<Uint8List> process(Uint8List chunk, {required bool hoolaSpeaking}) {
+  /// v0.51 a human voice per the phone's Silero VAD (0..1). Below this, loud sound is not treated as talking.
+  static const double speechNeed = 0.5;
+
+  /// [speech] = Silero VAD probability for this chunk (null on phones / builds without it: loudness only).
+  List<Uint8List> process(Uint8List chunk, {required bool hoolaSpeaking, double? speech}) {
     if (!hoolaSpeaking) {
       _wasSpeaking = false;
       _recent.clear();
@@ -53,7 +57,8 @@ class BargeGate {
       _gap = 0;
     }
     final level = rms(chunk);
-    final loud = level > _threshold;
+    // loud AND (when the phone can tell) a human voice: clatter, music, fans and traffic no longer open it
+    final loud = level > _threshold && (speech == null || speech >= speechNeed);
     _learn(level);
     if (open) {
       // Real talking over him makes Gemini stop within a moment, and then he is no longer speaking.

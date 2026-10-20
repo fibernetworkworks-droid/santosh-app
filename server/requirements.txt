@@ -23,3 +23,7 @@ sherpa-onnx>=1.12   # Awaaz Pehchaan: speaker recognition on CPU (deploy/setup_v
 numpy>=1.24
 magika>=0.6          # v0.49 real file type of uploads (Google, Apache-2.0)
 markitdown[docx,pptx,xlsx]>=0.1.2   # v0.49 Word / PowerPoint / Excel to Markdown for the avatar (MIT)
+python-docx>=1.1          # v0.51 make_document (Word)
+python-pptx>=1.0          # v0.51 make_document (PowerPoint)
+fastembed>=0.4            # v0.51 memory_search by meaning (Apache-2.0, CPU)
+rembg>=2.0.60             # v0.51 photo_clean (MIT; model downloads on first use)
