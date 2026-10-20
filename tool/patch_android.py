@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run once after `flutter create`: installs Santosh's AndroidManifest and turns on the
 Gradle settings the plugins need (Java 8+ library desugaring for notifications, minSdk 23)."""
+import os
 import re
 import shutil
 import sys
@@ -12,6 +13,13 @@ if not app.exists():
     sys.exit("android/app not found. Run: flutter create --org com.newtika --project-name santosh --platforms android .")
 
 shutil.copy(root / "tool" / "AndroidManifest.xml", app / "src" / "main" / "AndroidManifest.xml")
+# v0.62 Play Store build (HOOLA_CHANNEL=play): no self-update permission, the in-app updater turns itself off
+if os.environ.get("HOOLA_CHANNEL", "github").strip().lower() == "play":
+    mf = app / "src" / "main" / "AndroidManifest.xml"
+    t = re.sub(r"\s*<uses-permission android:name=\"android\.permission\.REQUEST_INSTALL_PACKAGES\" />", "", mf.read_text())
+    t = t.replace('android:name="hoola.channel" android:value="github"', 'android:name="hoola.channel" android:value="play"')
+    mf.write_text(t)
+    print("Channel: play (no REQUEST_INSTALL_PACKAGES, updater off)")
 
 kts = app / "build.gradle.kts"
 groovy = app / "build.gradle"

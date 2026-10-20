@@ -1,6 +1,6 @@
 """v0.59 Hoola Employee inbox: customers on the business's WhatsApp, Hoola answers under the Employee rules."""
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -182,7 +182,7 @@ def test_stop_window_and_takeover(env, monkeypatch):
     from app.db import session
     from app.employee.models import BizContact
     with session() as s:
-        s.get(BizContact, c["id"]).last_in_at = datetime.now().astimezone() - timedelta(hours=25)
+        s.get(BizContact, c["id"]).last_in_at = datetime.now(timezone.utc) - timedelta(hours=25)   # SQLite keeps the wall clock: write UTC like the app
     with pytest.raises(inbox.InboxError) as e:
         run(inbox.send("default", c["id"], "Hello"))
     assert "24 ghante" in str(e.value)

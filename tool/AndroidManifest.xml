@@ -34,6 +34,8 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <!-- v0.62 in-app update of the GitHub APK (removed by patch_android.py for a Play Store build: HOOLA_CHANNEL=play) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-feature android:name="android.hardware.consumerir" android:required="false" />
     <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
 
@@ -201,6 +203,53 @@
             </intent-filter>
         </activity>
         <meta-data android:name="flutterEmbedding" android:value="2" />
+        <!-- v0.62 which build this is: github (updates itself, owner taps Install) | play (Play Store updates it) -->
+        <meta-data android:name="hoola.channel" android:value="github" />
+
+        <!-- v0.62 Hoola as the phone's digital assistant (owner picks it in Settings > Default apps). Screen text /
+             screenshot only arrive when she long-presses home and has allowed it for the assistant. -->
+        <service
+            android:name=".HoolaAssistService"
+            android:exported="true"
+            android:label="Hoola"
+            android:permission="android.permission.BIND_VOICE_INTERACTION">
+            <meta-data android:name="android.voice_interaction" android:resource="@xml/hoola_interaction_service" />
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".HoolaAssistSessionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_VOICE_INTERACTION" />
+        <!-- passes voice typing on to the phone's own recogniser (Android makes the assistant the voice-input app too) -->
+        <service
+            android:name=".HoolaRecognition"
+            android:exported="true"
+            android:label="Hoola (phone ki awaaz pehchaan)">
+            <intent-filter>
+                <action android:name="android.speech.RecognitionService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data android:name="android.speech" android:resource="@xml/hoola_recognition" />
+        </service>
+        <!-- v0.62 the small chat inside the floating bubble (Android Bubbles API) and the widget's "Likho" -->
+        <activity
+            android:name=".BubbleActivity"
+            android:exported="false"
+            android:allowEmbedded="true"
+            android:documentLaunchMode="always"
+            android:resizeableActivity="true"
+            android:label="Hoola"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+        <!-- v0.62 home-screen widget -->
+        <receiver android:name=".HoolaWidget" android:exported="false" android:label="Hoola">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/hoola_widget_info" />
+        </receiver>
 
         <!-- "Hey Santosh" wake word (on-device) -->
         <service

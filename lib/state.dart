@@ -305,6 +305,8 @@ class Santosh extends ChangeNotifier {
       // push notifications when the app is closed / phone locked (the native side shows them; avoid doubles here)
       final serverPush = (h['features'] as List?)?.contains('push') ?? false;
       unawaited(Native.pushInit(serverUrl, apiKey).then((t) => pushOn = serverPush && (t ?? '').isNotEmpty));
+      // v0.62 the bubble chat + home-screen widget talk to this same chat
+      unawaited(Native.chatLink(serverUrl, apiKey, conversationId!));
       connected = true;
       _replaying = true;
       _connectedAt = DateTime.now().toUtc();
@@ -372,6 +374,7 @@ class Santosh extends ChangeNotifier {
     try {
       reminders = await api!.reminders();
       await _syncLocalReminders();
+      widgetSync();
       notifyListeners();
     } catch (_) {}
   }
@@ -605,6 +608,14 @@ class Santosh extends ChangeNotifier {
   Map<String, dynamic>? pendingShare;
   int shareTick = 0;
 
+  /// v0.62 The home-screen widget: avatar name, Hoola's last line, the next reminder.
+  Future<void> widgetSync({String? last}) async {
+    try {
+      final r = reminders.isEmpty ? '' : [reminders.first['text'], reminders.first['when']].whereType<String>().join(' · ');
+      await Native.widgetUpdate(name: aName, last: last, next: r);
+    } catch (_) {}
+  }
+
   void onShared(Map<String, dynamic> s) {
     pendingShare = s;
     shareTick++;
@@ -716,6 +727,7 @@ class Santosh extends ChangeNotifier {
           _syncBazar();
           feelReply(p['text'] as String? ?? '');
           _replies.add(p);
+          widgetSync(last: p['text'] as String? ?? '');
           if (inBackground && !backgroundRunning && !pushOn) Device.instance.showNow(aName, p['text'] as String? ?? '');
           if (!voiceMode && _lastInputWasVoice && speakReplies && p['source'] == 'agent') _speak(p['text'] as String? ?? '');
         }

@@ -30,6 +30,30 @@ class Native {
     return m == null ? <String, dynamic>{} : Map<String, dynamic>.from(m);
   }
   static Future<void> openMakerBattery() async => _call('openMakerBattery');
+  // ---- v0.62 Phone mein Hoola ----
+  static Future<Map<String, dynamic>> _map(String m, [Map<String, dynamic>? a]) async {
+    final r = await _call<Map>(m, a);
+    return r == null ? <String, dynamic>{} : Map<String, dynamic>.from(r);
+  }
+  static Future<Map<String, dynamic>> assistInfo() => _map('assistInfo');
+  static Future<void> assistSettings() async => _call('assistSettings');
+  static Future<void> chatLink(String server, String key, String conv) async =>
+      _call('chatLink', {'server': server, 'key': key, 'conv': conv});
+  static Future<Map<String, dynamic>> bubble(bool on, String name) => _map('bubble', {'on': on, 'name': name});
+  static Future<Map<String, dynamic>> bubbleInfo() => _map('bubbleInfo');
+  static Future<void> bubbleSettings() async => _call('bubbleSettings');
+  static Future<int> widgetUpdate({String? name, String? last, String? next}) async =>
+      await _call<int>('widgetUpdate', {'name': name, 'last': last, 'next': next}) ?? 0;
+  static Future<bool> widgetPin() async => await _call<bool>('widgetPin') ?? false;
+  static Future<int> widgetCount() async => await _call<int>('widgetCount') ?? 0;
+  static Future<Map<String, dynamic>> updateInfo() => _map('updateInfo');
+  static Future<Map<String, dynamic>> updateDownload(String url, String sha256, int size) =>
+      _map('updateDownload', {'url': url, 'sha256': sha256, 'size': size});
+  static Future<int> updateProgress() async => await _call<int>('updateProgress') ?? -1;
+  static Future<void> updateCancel() async => _call('updateCancel');
+  /// null = Android's installer is asking the owner; 'permission' = she must allow "install unknown apps" first.
+  static Future<String?> updateInstall(String path) async => _call<String>('updateInstall', {'path': path});
+  static Future<void> updatePermission() async => _call('updatePermission');
   static Future<void> openMakerPerms() async => _call('openMakerPerms');
   /// v0.57 reel scroll analysis (Android Usage Access: times only, never screen content).
   static Future<bool> usageAllowed() async => await _call<bool>('usageAllowed') ?? false;

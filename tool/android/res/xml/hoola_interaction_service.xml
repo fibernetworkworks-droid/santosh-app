@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v0.63 Hoola as the phone's digital assistant (the owner picks it in Settings > Default apps) -->
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="com.newtika.santosh.HoolaAssistSessionService"
+    android:recognitionService="com.newtika.santosh.HoolaRecognition"
+    android:settingsActivity="com.newtika.santosh.MainActivity"
+    android:supportsAssist="true"
+    android:supportsLaunchVoiceAssistFromKeyguard="false"
+    android:supportsLocalInteraction="false" />

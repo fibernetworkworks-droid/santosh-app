@@ -24,6 +24,13 @@ object Store {
         p(ctx).edit().putString("server", server).putString("key", key).apply()
     }
 
+    /** v0.62 Server / key / the chat for the bubble + widget (does not touch background mode or its event cursor). */
+    fun saveChat(ctx: Context, server: String, key: String, conv: String) {
+        p(ctx).edit().putString("server", server).putString("key", key).putString("chat_conv", conv).apply()
+    }
+
+    fun chatConv(ctx: Context) = (p(ctx).getString("chat_conv", "") ?: "").ifBlank { conv(ctx) }
+
     fun pushToken(ctx: Context) = p(ctx).getString("push_token", "") ?: ""
     fun setPushToken(ctx: Context, t: String) = p(ctx).edit().putString("push_token", t).apply()
 

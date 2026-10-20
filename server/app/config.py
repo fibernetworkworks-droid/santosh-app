@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     agent_tool_timeout_s: int = 300         # a tool that hangs never blocks a chat turn longer than this (browser waits go up to 270 s)
     agent_turn_timeout_s: int = 900         # a whole turn never holds the chat lock longer than this
     tv_refresh: bool = True                # Hoola TV: download + check the free channel list nightly
+    app_release_repo: str = "fibernetworkworks-droid/santosh-app"   # v0.62 where the phone app's releases live
     ifsc_refresh: bool = True              # v0.59 monthly IFSC branch details (razorpay/ifsc release) + online lookup
     logo_warm: bool = True                 # fetch all plugin logos once after start (cached in data/logos)
     mcp_native_tools: int = 40             # tools of the owner's MCP servers given to the avatar directly (rest via bazar_run)

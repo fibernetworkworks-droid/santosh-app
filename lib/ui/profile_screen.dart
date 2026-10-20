@@ -11,6 +11,7 @@ import 'email_screen.dart';
 import 'forms_screen.dart';
 import 'glass.dart';
 import 'keep_alive.dart';
+import 'phone_hoola.dart';
 import 'home_devices_screen.dart';
 import 'notebook_screen.dart';
 import 'pc_screen.dart';
@@ -179,6 +180,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ListenableBuilder(listenable: app, builder: (context, _) => _BackgroundCard(app: app)),
       const SizedBox(height: 18),
       const _WakeCard(),
+      const SizedBox(height: 18),
+      Glass(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.phone_android_rounded, color: C.accent),
+          title: Text('Phone mein ${app.aName}', style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('Assistant (home button), floating bubble, home-screen widget, app update'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PhoneHoolaScreen(app: app))),
+        ),
+      ),
       const SizedBox(height: 18),
       Glass(
         child: ListTile(

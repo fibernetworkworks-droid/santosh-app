@@ -19,6 +19,7 @@ class MainActivity : FlutterActivity() {
     companion object {
         /** True while the app is on screen; the service then leaves notifications and phone actions to Flutter. */
         @Volatile var visible = false
+        const val ACTION_ASSIST_SCREEN = "com.newtika.santosh.ASSIST_SCREEN"
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -143,6 +144,40 @@ class MainActivity : FlutterActivity() {
                             main.post { result.success(mapOf("path" to out, "error" to err)) }
                         }
                     }
+                    // ---- v0.62 Phone mein Hoola: assistant, bubble, widget, updates ----
+                    "assistInfo" -> result.success(mapOf("default" to HoolaAssistService.isDefault(this), "sdk" to Build.VERSION.SDK_INT))
+                    "assistSettings" -> { HoolaAssistService.openSettings(this); result.success(null) }
+                    "chatLink" -> {
+                        Store.saveChat(this, call.argument<String>("server") ?: "", call.argument<String>("key") ?: "",
+                            call.argument<String>("conv") ?: "")
+                        result.success(null)
+                    }
+                    "bubble" -> {
+                        val on = call.argument<Boolean>("on") ?: false
+                        if (on && !HoolaBubble.supported()) result.success(mapOf("ok" to false, "error" to "android"))
+                        else {
+                            HoolaBubble.setOn(this, on, call.argument<String>("name") ?: "Hoola")
+                            result.success(mapOf("ok" to true, "allowed" to HoolaBubble.allowed(this)))
+                        }
+                    }
+                    "bubbleInfo" -> result.success(mapOf("supported" to HoolaBubble.supported(), "on" to HoolaBubble.on(this),
+                        "allowed" to HoolaBubble.allowed(this)))
+                    "bubbleSettings" -> { HoolaBubble.openSettings(this); result.success(null) }
+                    "widgetUpdate" -> {
+                        HoolaWidget.save(this, call.argument<String>("name"), call.argument<String>("last"), call.argument<String>("next"))
+                        result.success(HoolaWidget.count(this))
+                    }
+                    "widgetPin" -> result.success(HoolaWidget.pin(this))
+                    "widgetCount" -> result.success(HoolaWidget.count(this))
+                    "updateInfo" -> result.success(AppUpdate.info(this))
+                    "updateDownload" -> AppUpdate.download(this, call.argument<String>("url") ?: "", call.argument<String>("sha256") ?: "",
+                        (call.argument<Number>("size") ?: 0).toLong()) { path, err ->
+                        main.post { result.success(mapOf("path" to path, "error" to err)) }
+                    }
+                    "updateProgress" -> result.success(AppUpdate.progress())
+                    "updateCancel" -> { AppUpdate.cancel(); result.success(null) }
+                    "updateInstall" -> result.success(AppUpdate.install(this, call.argument<String>("path") ?: ""))
+                    "updatePermission" -> { AppUpdate.openInstallPermission(this); result.success(null) }
                     "compressProgress" -> result.success(VideoShrink.progress())
                     "compressCancel" -> { VideoShrink.cancel(); result.success(null) }
                     "bgHealth" -> result.success(bgHealth())
@@ -385,6 +420,18 @@ class MainActivity : FlutterActivity() {
 
     private fun handleIntent(intent: Intent?) {
         val action = intent?.action
+        if (action == ACTION_ASSIST_SCREEN || action == AppUpdate.ACTION_STATUS) {
+            // v0.62 the assistant session's screen (screenshot + text as pending files) / the installer's answer
+            val it0 = intent!!
+            val msg = if (action == ACTION_ASSIST_SCREEN) it0.getStringExtra("payload")?.let { "share:$it" }
+                      else AppUpdate.onStatus(this, it0)
+            it0.action = null
+            if (msg != null) {
+                val sink = linkSink
+                if (sink != null) main.post { sink.success(msg) } else pendingLink = msg
+            }
+            return
+        }
         if (action == Intent.ACTION_SEND || action == Intent.ACTION_SEND_MULTIPLE) {
             val copy = Intent(intent!!)
             intent?.action = null   // don't share the same thing again on a config change

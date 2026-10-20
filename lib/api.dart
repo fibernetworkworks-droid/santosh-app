@@ -460,6 +460,9 @@ class Api {
   /// v0.49 this phone maker's keep-alive steps (dontkillmyapp.com via our server).
   Future<Map<String, dynamic>> keepalive(String brand) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/device/keepalive', query: {'brand': brand}));
+  /// v0.62 Newest GitHub APK release vs this app's version.
+  Future<Map<String, dynamic>> appLatest(String current, {bool force = false}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/app/latest', query: {'current': current, if (force) 'force': 'true'}));
   /// v0.56 Sends Android's own background facts; answer = plain-word problems + this phone's checklist.
   Future<Map<String, dynamic>> bgHealth(Map<String, dynamic> report) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/device/bg_health', body: report));

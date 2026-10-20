@@ -113,6 +113,9 @@ object Notify {
             .setCategory(Notification.CATEGORY_MESSAGE)
         if (Build.VERSION.SDK_INT < 26) b.setPriority(Notification.PRIORITY_HIGH).setDefaults(Notification.DEFAULT_ALL)
         nm(ctx).notify(MSG_BASE + (eventId % MSG_SLOTS).toInt(), b.build())
+        // v0.62 the home-screen widget and the floating head show the newest line too
+        try { HoolaWidget.save(ctx, null, clean, null) } catch (_: Exception) {}
+        HoolaBubble.onReply(ctx, clean)
     }
 
     fun clearMessages(ctx: Context) {

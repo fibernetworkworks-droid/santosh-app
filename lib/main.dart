@@ -24,6 +24,7 @@ import 'ui/tv_screen.dart';
 import 'ui/live_voice_screen.dart';
 import 'ui/keep_alive.dart';
 import 'ui/lock_safe.dart';
+import 'ui/phone_hoola.dart';
 import 'ui/video_shrink.dart';
 import 'ui/voice_screen.dart';
 
@@ -87,10 +88,14 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
       files.add(f);
     }
     share = {...share, 'files': files};
+    if (share['assist'] is Map && (share['text'] as String? ?? '').trim().isEmpty) {
+      // v0.62 long-press home: the screen the owner was on arrives as pending files; she adds what she wants
+      share['text'] = files.isEmpty ? '' : 'Is screen ke baare mein madad karo: ';
+    }
     final text = (share['text'] as String? ?? '').trim();
     if (files.isEmpty && text.isEmpty) return;
     // a reel (link from Instagram / YouTube / Facebook / Snapchat / Moj..., or one screen recording): the Reels card
-    if (HoolaReels.isReelShare(share)) {
+    if (share['assist'] is! Map && HoolaReels.isReelShare(share)) {
       if (!await openReel(share)) widget.app.onShared(share);
       return;
     }
@@ -116,6 +121,18 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
       if (t.isEmpty) return;
       if (t.startsWith('wake:')) {
         widget.app.wake(locked: t == 'wake:locked');
+        return;
+      }
+      if (t.startsWith('update:')) {
+        // v0.62 Android's installer answered (success restarts the app, so this is mostly a failure or a cancel)
+        try {
+          final u = Map<String, dynamic>.from(jsonDecode(t.substring(7)) as Map);
+          final ctx = navKey.currentContext;
+          if (ctx != null && u['ok'] != true) {
+            ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(SnackBar(content: Text(
+                u['status'] == 3 ? 'Update roka gaya.' : 'Update install nahi hua${'${u['message'] ?? ''}'.isEmpty ? '' : ': ${u['message']}'}')));
+          }
+        } catch (_) {}
         return;
       }
       if (t.startsWith('share:')) {
@@ -224,6 +241,10 @@ class _HomeState extends State<Home> {
       if (mounted && widget.app.configured && !widget.app.needsAvatarSetup && !widget.app.voiceCall.inCall) {
         HoolaKeepAlive.maybePrompt(context, widget.app);
       }
+    });
+    // v0.62 a newer GitHub APK: one gentle sheet per version (checked at most once a day)
+    Future<void>.delayed(const Duration(seconds: 20), () {
+      if (mounted && widget.app.configured && !widget.app.voiceCall.inCall) AppUpdater.maybeOffer(context, widget.app);
     });
   }
 

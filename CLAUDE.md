@@ -497,7 +497,6 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   device pixels (`cacheWidth`), FilterQuality.high, fade-in + spinner, a failed logo redraws the whole tile as the clean
   category / initials tile (`BrandLogo.failed`, cleared on pull-to-refresh) instead of a white box with a letter.
 - Why the letters showed before: the server fetch of brand sites failed (bot blocking), cached as a miss for 3 days.
-
 ## v0.62 Scroll alerts in the background + YouTube Shorts vs long videos
 - `ScrollAlarm.kt` + `ScrollAlarmReceiver` (manifest, exported=false; BootReceiver restores; `ScrollSync.maybe` re-arms
   on every app resume because an app update clears alarms). Plain inexact `AlarmManager.set(RTC)` (no exact-alarm
@@ -512,6 +511,41 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   splits YouTube minutes (`shorts_min`, `shorts_pct`, `short_form_min`, `youtube_split`); reels estimate, today's
   minutes and the limit use only the Shorts part; the sync response carries `yt_shorts_pct` so the phone alert
   counts YouTube the same way. No YOUTUBE_API_KEY / sign-in = no split, with a note (everything else still works).
+
+## v0.63 Phone mein Hoola: default assistant, floating bubble, home-screen widget, in-app update (GitHub APK)
+- Default assistant (`tool/android/kotlin/HoolaAssist.kt`): `HoolaAssistService` (VoiceInteractionService, `res/xml/
+  hoola_interaction_service.xml`, supportsAssist, not from keyguard) + `HoolaAssistSessionService` + `HoolaAssistSession`:
+  long-press home -> ONLY what Android hands over when the owner allowed it ("Use text from screen" / "Use screenshot"):
+  the screen text (AssistStructure walk, password / OTP / card / PIN fields skipped by inputType + autofill hints, 6,000 chars)
+  and the screenshot -> `cacheDir/shared/<ts>_screen.jpg` + `_screen-text.txt` -> MainActivity `ACTION_ASSIST_SCREEN` ->
+  `share:{files, assist:{app, screenshot, screen_text}}` -> `_onShare` (never the Reels card; box prefilled "Is screen ke
+  baare mein madad karo: "; during a call the files go into the call). Nothing is sent until she taps send.
+  `HoolaRecognition` = RecognitionService that forwards to the phone's real recogniser (Android makes the assistant the
+  voice-input app too, so voice typing keeps working). Settings: `isDefault` (Settings.Secure assistant /
+  voice_interaction_service), `openSettings` (MANAGE_DEFAULT_APPS_SETTINGS -> VOICE_INPUT -> SETTINGS). No accessibility service.
+- Bubble (`HoolaBubble.kt`, Android 11+): conversation notification (MessagingStyle + long-lived shortcut `hoola_chat` with a
+  Person + BubbleMetadata, channel `hoola_bubble` allowBubbles, silent); `setOn` (prefs bubble_on / bubble_name), `onReply` from
+  `Notify.message` refreshes the head with the newest line. No SYSTEM_ALERT_WINDOW. `BubbleActivity` = native mini chat
+  (allowEmbedded, documentLaunchMode always, resizeable): GET `/api/conversations/{id}/messages?limit=14` (new `limit`
+  param = last N in order), POST messages with `client_id` (3 tries), polls 2.5 s while open (20 s, 120 s after a send),
+  🎙 = MainActivity `santosh.WAKE` (straight into a call). Uses `Store.saveChat` / `chatConv` (Flutter `Native.chatLink` on
+  every connect; does not touch background mode's cursor).
+- Widget (`HoolaWidget.kt`, `res/layout/hoola_widget.xml`, `res/xml/hoola_widget_info.xml`, drawables `hoola_widget_*`):
+  name, Hoola's last line, next reminder; 🎙 Bolo (WAKE) / ✍ Likho (BubbleActivity) / tap = app. Fed by `Notify.message`
+  (app closed) and `Santosh.widgetSync` (assistant replies + reminders refresh). `pin()` = requestPinAppWidget.
+- In-app update (`AppUpdate.kt`), GitHub build only: manifest meta-data `hoola.channel` (github); `HOOLA_CHANNEL=play` in
+  patch_android removes REQUEST_INSTALL_PACKAGES + sets play -> updater off. Server `app/appupdate.py` + `GET /api/app/latest
+  ?current=&force=` (GitHub releases of `APP_RELEASE_REPO`, tags `vX.Y.Z-bN` with app-release.apk on github.com only,
+  desktop-latest / drafts skipped, asset `digest` -> sha256, notes without attribution lines, cached 10 min, last good kept).
+  Phone: https-only redirects, <= 400 MB, SHA-256 must match, package name ours, SAME signing key as installed, then
+  PackageInstaller session (USER_ACTION_REQUIRED) -> Android's own "Install?" (`ACTION_STATUS` -> `onStatus`; pending user
+  action -> start its intent; failure -> `update:` link -> snack). "Install unknown apps" permission page when needed.
+- App: `lib/ui/phone_hoola.dart` (`PhoneHoolaScreen`, Profile > "Phone mein <name>": assistant status + Set karo, bubble switch
+  + allow-bubbles link, widget status + Widget lagao, update card (check / notes / Update karo with progress + Rok do);
+  `AppUpdater.run / maybeOffer` (20 s after start, at most once a day, one sheet per version)).
+- Not verified on real phones yet: assistant on MIUI / ColorOS (some skins hide "Digital assistant app"), bubbles on skins
+  that turn them off, the installer flow on Android 14 / 15.
+
 
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
@@ -535,4 +569,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos · v0.47 Public APIs (2,100+ free APIs the avatar can use). · v0.48 Hoola TV (free official live channels on phone + Chromecast/Android TV). · v0.49 Hoola TV worldwide (~4,300 official channels, 140 countries, country picker). · v0.50 repo review part 1 (real file types, MarkItDown, share-to-Hoola, video shrink, PII gate, keep-alive steps, security CI, backup). · v0.51 100 female 3D avatar looks from around the world. · v0.51.1 Hoola TV list fix (old saved list ignored). · v0.52 repo review part 2 (Office files, clean / ID photos, memory by meaning, Silero VAD on calls). · v0.53 100 male 3D avatar looks from around the world (Santosh stays the default). · v0.54 Hoola Reels (share any reel: save, remind, shop, family, ye sach hai?). · v0.55 Silero VAD properly (voice-only barge-in, idle noise gate, voice-id speech only, gate stats). · v0.56 Share to Hoola for big videos (progress, cancel, first part), shares go into a live call, "Hoola band na ho" checklist + phone health check. · v0.57 Reel scroll analysis (Usage Access times + own history download, Scroll report). · v0.58 Hoola Employee part 1 (role, team, trust per duty enforced on the server, owner's tap, audit, pause, daily report, team tasks). · v0.59 Padho aur pehchano (OCR in Indian scripts, UPI / GST QR with scam warnings, bill cards, PDF merge/pages/smaller/signature check, holidays + panchang + IFSC + rupees in words). · v0.60 Hoola Employee part 2 (business WhatsApp inbox on the official API, appointments, dues + UPI link, 9 roles + 8 business types). · v0.61 Connect: "Roz ke kaam" top daily plugins + 256 px HD logos (manifest icons, favicon-index fallback). · v0.62 scroll alerts in the background + YouTube Shorts vs long videos. Next: v0.63.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos · v0.47 Public APIs (2,100+ free APIs the avatar can use). · v0.48 Hoola TV (free official live channels on phone + Chromecast/Android TV). · v0.49 Hoola TV worldwide (~4,300 official channels, 140 countries, country picker). · v0.50 repo review part 1 (real file types, MarkItDown, share-to-Hoola, video shrink, PII gate, keep-alive steps, security CI, backup). · v0.51 100 female 3D avatar looks from around the world. · v0.51.1 Hoola TV list fix (old saved list ignored). · v0.52 repo review part 2 (Office files, clean / ID photos, memory by meaning, Silero VAD on calls). · v0.53 100 male 3D avatar looks from around the world (Santosh stays the default). · v0.54 Hoola Reels (share any reel: save, remind, shop, family, ye sach hai?). · v0.55 Silero VAD properly (voice-only barge-in, idle noise gate, voice-id speech only, gate stats). · v0.56 Share to Hoola for big videos (progress, cancel, first part), shares go into a live call, "Hoola band na ho" checklist + phone health check. · v0.57 Reel scroll analysis (Usage Access times + own history download, Scroll report). · v0.58 Hoola Employee part 1 (role, team, trust per duty enforced on the server, owner's tap, audit, pause, daily report, team tasks). · v0.59 Padho aur pehchano (OCR in Indian scripts, UPI / GST QR with scam warnings, bill cards, PDF merge/pages/smaller/signature check, holidays + panchang + IFSC + rupees in words). · v0.60 Hoola Employee part 2 (business WhatsApp inbox on the official API, appointments, dues + UPI link, 9 roles + 8 business types). · v0.61 Connect: "Roz ke kaam" top daily plugins + 256 px HD logos (manifest icons, favicon-index fallback). · v0.62 scroll alerts in the background + YouTube Shorts vs long videos. · v0.63 Phone mein Hoola (default assistant with the screen she chose to share, floating bubble chat, home-screen widget, in-app update of the GitHub APK with checksum + signature check). Next: v0.64.

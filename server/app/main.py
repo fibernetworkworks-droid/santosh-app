@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.62.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.63.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -191,11 +191,14 @@ def stop_turn(conversation_id: str, tenant: str = Depends(current_tenant)):
     return {"stopped": True}
 
 @app.get("/api/conversations/{conversation_id}/messages", dependencies=[Depends(require_key)])
-def list_messages(conversation_id: str, tenant: str = Depends(current_tenant)):
+def list_messages(conversation_id: str, limit: int = 0, tenant: str = Depends(current_tenant)):
     _conv_or_404(conversation_id, tenant)
     with session() as s:
-        rows = s.scalars(select(Message).where(Message.conversation_id == conversation_id, Message.display.is_not(None))
-                         .order_by(Message.id)).all()
+        q = select(Message).where(Message.conversation_id == conversation_id, Message.display.is_not(None))
+        if limit > 0:   # v0.62 the bubble / widget only need the last few
+            rows = list(reversed(s.scalars(q.order_by(Message.id.desc()).limit(min(limit, 200))).all()))
+        else:
+            rows = s.scalars(q.order_by(Message.id)).all()
         return {"messages": [{"id": r.id, "role": r.role, "text": r.display, "at": r.created_at.isoformat()} for r in rows]}
 
 
@@ -1329,6 +1332,15 @@ async def net_think(mid: str, tenant: str = Depends(current_tenant)):
     """'Hoola, isse dekh ke batao': look at the attachment again and suggest replies, right now."""
     from .net import enrich
     return await asyncio.to_thread(enrich.run, tenant, mid)
+
+
+@app.get("/api/app/latest", dependencies=[Depends(require_key)])
+async def app_latest(current: str = "", force: bool = False):
+    """v0.62 Newest phone-app release (GitHub APK build): version, apk_url, size, sha256, notes, available."""
+    from . import appupdate
+    if force:
+        await asyncio.to_thread(appupdate.latest, True)
+    return await asyncio.to_thread(appupdate.check, current)
 
 
 @app.get("/api/device/keepalive", dependencies=[Depends(require_key)])
