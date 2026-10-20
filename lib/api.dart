@@ -123,31 +123,31 @@ class Api {
       await _send('POST', '/api/reels/$id/check', timeout: const Duration(seconds: 90)) as Map);
 
   // ---- Hoola Employee (v0.58) ----
-  Map<String, dynamic> _m(Object? o) => Map<String, dynamic>.from(o as Map);
-  Future<Map<String, dynamic>> employee() async => _m(await _send('GET', '/api/employee'));
-  Future<Map<String, dynamic>> employeeSave(Map<String, dynamic> body) async => _m(await _send('PUT', '/api/employee', body: body));
+  Map<String, dynamic> _em(Object? o) => Map<String, dynamic>.from(o as Map);
+  Future<Map<String, dynamic>> employee() async => _em(await _send('GET', '/api/employee'));
+  Future<Map<String, dynamic>> employeeSave(Map<String, dynamic> body) async => _em(await _send('PUT', '/api/employee', body: body));
   Future<Map<String, dynamic>> employeePause(bool paused) async =>
-      _m(await _send('POST', '/api/employee/pause', body: {'paused': paused}));
+      _em(await _send('POST', '/api/employee/pause', body: {'paused': paused}));
   Future<Map<String, dynamic>> employeeAddMember(Map<String, dynamic> body) async =>
-      _m(await _send('POST', '/api/employee/team', body: body));
+      _em(await _send('POST', '/api/employee/team', body: body));
   Future<Map<String, dynamic>> employeeEditMember(String id, Map<String, dynamic> body) async =>
-      _m(await _send('PATCH', '/api/employee/team/$id', body: body));
+      _em(await _send('PATCH', '/api/employee/team/$id', body: body));
   Future<void> employeeRemoveMember(String id) async => _send('DELETE', '/api/employee/team/$id');
-  Future<Map<String, dynamic>> employeeTrust(String duty, {String? level, int? perDay}) async => _m(await _send(
+  Future<Map<String, dynamic>> employeeTrust(String duty, {String? level, int? perDay}) async => _em(await _send(
       'PUT', '/api/employee/trust/$duty', body: {if (level != null) 'level': level, if (perDay != null) 'per_day': perDay}));
-  Future<Map<String, dynamic>> employeeDecide(String askId, bool approve) async => _m(await _send(
+  Future<Map<String, dynamic>> employeeDecide(String askId, bool approve) async => _em(await _send(
       'POST', '/api/employee/asks/$askId', body: {'approve': approve}, timeout: const Duration(seconds: 90)));
   Future<List<Map<String, dynamic>>> employeeAudit({int limit = 100, String duty = ''}) async {
     final r = await _send('GET', '/api/employee/audit', query: {'limit': '$limit', 'duty': duty}) as Map;
     return List<Map<String, dynamic>>.from((r['entries'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
   }
   Future<Map<String, dynamic>> employeeWrong(String entryId, String note) async =>
-      _m(await _send('POST', '/api/employee/audit/$entryId/wrong', body: {'note': note}));
+      _em(await _send('POST', '/api/employee/audit/$entryId/wrong', body: {'note': note}));
   Future<Map<String, dynamic>> employeeReport({String day = ''}) async =>
-      _m(await _send('GET', '/api/employee/report', query: {'day': day}));
-  Future<Map<String, dynamic>> employeeJobSheet() async => _m(await _send('GET', '/api/employee/job_sheet'));
+      _em(await _send('GET', '/api/employee/report', query: {'day': day}));
+  Future<Map<String, dynamic>> employeeJobSheet() async => _em(await _send('GET', '/api/employee/job_sheet'));
   Future<Map<String, dynamic>> employeeSetJobSheet(String text) async =>
-      _m(await _send('PUT', '/api/employee/job_sheet', body: {'text': text}));
+      _em(await _send('PUT', '/api/employee/job_sheet', body: {'text': text}));
   Future<List<Map<String, dynamic>>> employeeTasks() async {
     final r = await _send('GET', '/api/employee/tasks') as Map;
     return List<Map<String, dynamic>>.from((r['tasks'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
