@@ -112,11 +112,11 @@ async def main():
     print(f"Model: {MODEL}\n")
     await run("minimal + live text", minimal, say_text)
     for f in ("system_instruction", "tools", "input_audio_transcription", "output_audio_transcription",
-              "realtime_input_config", "enable_affective_dialog", "context_window_compression", "session_resumption"):
+              "realtime_input_config", "context_window_compression", "session_resumption"):
         await run(f"minimal + {f}", plus(f), say_text)
     every = ("system_instruction", "tools", "input_audio_transcription", "output_audio_transcription",
-             "realtime_input_config", "enable_affective_dialog", "context_window_compression", "session_resumption")
-    await run("minimal + everything except proactivity", plus(*every), say_text)
+             "realtime_input_config", "context_window_compression", "session_resumption")
+    await run("minimal + everything", plus(*every), say_text)
     from app import web
     try:
         r = await web.google_search("aaj ka cricket score India")

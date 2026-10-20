@@ -154,7 +154,7 @@ class LiveVoice {
       if (_audioPaused) return;
       _ch.invokeMethod('voicePlay', bytes);
       final now = DateTime.now();
-      final start = _playEnd.isAfter(now) ? _playEnd : now.add(const Duration(milliseconds: 60));
+      final start = _playEnd.isAfter(now) ? _playEnd : now.add(const Duration(milliseconds: 100)); // the phone keeps a small cushion before a reply starts
       final end = start.add(Duration(microseconds: (bytes.length / 48000 * 1e6).round())); // 24 kHz * 2 bytes
       _timeline.add((start, end, (_rms(bytes) * 2.2).clamp(0.0, 1.0)));
       _playEnd = end;

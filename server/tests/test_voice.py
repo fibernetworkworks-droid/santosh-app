@@ -98,14 +98,17 @@ def test_voice_call_end_to_end(env, monkeypatch):
     assert {"type": "tool", "label": "Phone par alarm laga raha hoon", "state": "done"} in events
     assert len(got_audio) == 2 and fake.audio_in and fake.audio_in[0] == b"\x00\x01" * 320
     assert any("call just connected" in x for x in fake.texts), "greeting sent as live text"
+    assert sum("call just connected" in x for x in fake.texts) == 1
     r = fake.tool_responses[0]
     assert r.id == "fc1" and r.response["result"]["sent_to_phone"] is True
     # config: male voice, patient turn-taking, tone-aware
     cfg = seen_cfg[0]
     assert cfg.speech_config.voice_config.prebuilt_voice_config.voice_name == "Achird"
-    assert cfg.enable_affective_dialog is None and cfg.proactivity is None   # 3.8-live rejects these
+    assert cfg.enable_affective_dialog is None and cfg.proactivity is None   # 3.8-live removed / always on
     aad = cfg.realtime_input_config.automatic_activity_detection
-    assert aad.end_of_speech_sensitivity == types.EndSensitivity.END_SENSITIVITY_LOW and aad.silence_duration_ms >= 900
+    # answers at human speed: Gemini's own end-of-speech default and a 500-800 ms pause, not 1100
+    assert aad.end_of_speech_sensitivity is None and 500 <= aad.silence_duration_ms <= 800
+    assert aad.prefix_padding_ms == 300
     names = {d.name for d in cfg.tools[0].function_declarations}
     assert {"set_phone_alarm", "create_reminder", "santosh_kaam"} <= names and "submit_template" not in names
     assert "raha hoon" in cfg.system_instruction.parts[0].text
@@ -134,7 +137,8 @@ def test_voice_rejects_bad_key_and_missing_gemini(env, monkeypatch):
 
 
 def test_voice_drops_settings_the_model_refuses(env, monkeypatch):
-    """Real error from the phone: 1007 'Unknown name "proactivity" at 'setup''. The call must still connect."""
+    """Real error from the phone: 1007 'Unknown name "proactivity" at 'setup''. The call must still connect
+    without the optional setting the model does not know."""
     from app import main
     from app.config import get_settings
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
@@ -143,14 +147,11 @@ def test_voice_drops_settings_the_model_refuses(env, monkeypatch):
     fake = FakeSession(make_turns())
     configs = []
 
-    monkeypatch.setenv("VOICE_PROACTIVE_AUDIO", "true")
-    get_settings.cache_clear()
-
     @contextlib.asynccontextmanager
     async def picky_connect(config):
         configs.append(config)
-        if config.proactivity is not None:
-            raise Exception("1007 None. Invalid JSON payload received. Unknown name \"proactivity\" at 'setup': Cannot find field.")
+        if config.context_window_compression is not None:
+            raise Exception("1007 None. Invalid JSON payload received. Unknown name \"contextWindowCompression\" at 'setup': Cannot find field.")
         yield fake
 
     monkeypatch.setattr(voice, "connector", picky_connect)
@@ -160,13 +161,12 @@ def test_voice_drops_settings_the_model_refuses(env, monkeypatch):
             first = json.loads(ws.receive_text())
             assert first["type"] == "ready"
             ws.send_text(json.dumps({"type": "end"}))
-    assert len(configs) == 2 and configs[1].proactivity is None
+    assert len(configs) == 2 and configs[1].context_window_compression is None
     assert configs[1].realtime_input_config is not None        # everything else kept
-    assert "proactivity" in voice.UNSUPPORTED
+    assert "context_window_compression" in voice.UNSUPPORTED
     # later calls skip it from the start
-    assert voice.live_config("Puck", "hi-IN", "", None).proactivity is None
+    assert voice.live_config("Puck", "hi-IN", "", None).context_window_compression is None
     voice.UNSUPPORTED.clear()
-
 
 
 def test_voice_starts_fresh_when_resume_expired(env, monkeypatch):

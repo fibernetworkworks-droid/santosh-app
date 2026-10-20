@@ -43,10 +43,12 @@ class Settings(BaseSettings):
     gemini_live_model: str = "gemini-3.8-live"
     voice_default: str = "Puck"            # a male Gemini voice; the app can pick another
     gemini_search_model: str = ""          # model used for Google Search answers (empty = newest Flash)
-    voice_silence_ms: int = 1100           # pause that ends your turn (higher = never cut off mid-thought)
-    # Optional Gemini extras; gemini-3.8-live rejects both today, so they are off until Google enables them
-    voice_affective_dialog: bool = False
-    voice_proactive_audio: bool = False
+    voice_silence_ms: int = 700            # pause that ends your turn: Google recommends 500-800 (people reply in ~0.2 s)
+    voice_end_sensitivity: str = ""        # "" = Gemini's default | low (waits longer) | high (answers sooner)
+    voice_prefix_padding_ms: int = 300     # speech kept from just before the voice was detected (100-300)
+    voice_tool_ack: bool = True            # a tool runs and he is silent: say a quick "ek second" in his own voice
+    voice_ack_tts_model: str = "gemini-2.5-flash-preview-tts"   # makes those short clips once per voice
+    # (affective dialog and proactive audio are gone: gemini-3.8-live removed the first and always has the second on)
     voice_resume_grace_s: int = 25         # a dropped phone connection can re-join the same call within this time
     voice_tool_wait_s: int = 25            # a call waits this long for a big job, then talks on and gets told when it is done
     voice_tool_timeout_s: int = 60         # any other call tool is cut off after this

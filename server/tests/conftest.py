@@ -16,6 +16,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("DRY_RUN_APPROVAL_SECONDS", "0")
     monkeypatch.setenv("SEND_RATE_PER_SEC", "1000")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
+    monkeypatch.setenv("VOICE_TOOL_ACK", "false")   # no real TTS calls; tests that need the clips turn it on
     monkeypatch.chdir(tmp_path)   # ignore any local .env
     from app.config import get_settings
     get_settings.cache_clear()

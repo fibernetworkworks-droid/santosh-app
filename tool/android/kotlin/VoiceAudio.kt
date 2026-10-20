@@ -18,6 +18,8 @@ import android.media.audiofx.NoiseSuppressor
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
@@ -47,6 +49,11 @@ object VoiceAudio {
     @Volatile private var running = false
     @Volatile private var generation = 0      // bumps on flush so a write in progress is dropped
     @Volatile private var paused = false      // another app (a real phone call...) has the audio for a moment
+    // Smooth start: a reply after a silence waits for a small cushion of audio first, so bursty mobile data
+    // does not make his first words stutter. The cushion grows by itself if a reply still runs dry mid-sentence.
+    @Volatile private var playingUntil = 0L   // when the audio written so far finishes playing (uptime ms)
+    @Volatile private var cushionMs = 80
+    private const val CUSHION_MAX_MS = 240
 
     private var manager: AudioManager? = null
     private var focusRequest: AudioFocusRequest? = null
@@ -184,6 +191,7 @@ object VoiceAudio {
                 .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).setEncoding(AudioFormat.ENCODING_PCM_16BIT).build())
             .setBufferSizeInBytes(maxOf(minOut * 2, 9600))
             .setTransferMode(AudioTrack.MODE_STREAM)
+            .apply { if (Build.VERSION.SDK_INT >= 26) setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY) }
             .build()
     }
 
@@ -212,6 +220,8 @@ object VoiceAudio {
         val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         manager = am
         paused = false
+        cushionMs = 80
+        playingUntil = 0L
         am.mode = AudioManager.MODE_IN_COMMUNICATION
         route(am)
         takeFocus(am)
@@ -290,9 +300,19 @@ object VoiceAudio {
         while (running) {
             val chunk = try { queue.poll(200, TimeUnit.MILLISECONDS) } catch (_: InterruptedException) { null } ?: continue
             val gen = generation
+            val now = SystemClock.uptimeMillis()
+            var data = chunk
+            if (now > playingUntil + 150) {
+                // a new reply after a silence: gather a small cushion first, then fade in so it never clicks
+                data = gather(chunk, gen, now)
+                fadeIn(data)
+            } else if (now > playingUntil + 20) {
+                // ran dry in the middle of a sentence: keep a bigger cushion for the rest of the call
+                cushionMs = minOf(cushionMs + 40, CUSHION_MAX_MS)
+            }
             var off = 0
-            while (running && off < chunk.size && gen == generation && !paused) {
-                val w = try { t.write(chunk, off, minOf(chunk.size - off, 4800)) } catch (e: Exception) { AudioTrack.ERROR_DEAD_OBJECT }
+            while (running && off < data.size && gen == generation && !paused) {
+                val w = try { t.write(data, off, minOf(data.size - off, 4800)) } catch (e: Exception) { AudioTrack.ERROR_DEAD_OBJECT }
                 if (w < 0) {
                     // the speaker path died (headset unplugged, audio server restarted): build a new one
                     val fresh = try { openTrack().also { it.play() } } catch (e: Exception) { null }
@@ -308,6 +328,37 @@ object VoiceAudio {
                 if (w == 0) break
                 off += w
             }
+            if (gen == generation) {
+                val ms = off * 1000L / (OUT_RATE * 2)
+                playingUntil = maxOf(SystemClock.uptimeMillis(), playingUntil) + ms
+            }
+        }
+    }
+
+    /** Collect up to cushionMs of audio (or wait a little longer at most) before the first write of a reply. */
+    private fun gather(first: ByteArray, gen: Int, start: Long): ByteArray {
+        val want = cushionMs * OUT_RATE * 2 / 1000
+        if (first.size >= want) return first
+        val buf = ByteArrayOutputStream(want * 2)
+        buf.write(first)
+        val deadline = start + cushionMs + 60
+        while (buf.size() < want && running && gen == generation) {
+            val left = deadline - SystemClock.uptimeMillis()
+            if (left <= 0) break
+            val more = try { queue.poll(left, TimeUnit.MILLISECONDS) } catch (_: InterruptedException) { null } ?: break
+            buf.write(more)
+        }
+        return buf.toByteArray()
+    }
+
+    /** 5 ms fade-in on 24 kHz PCM16 (little endian). */
+    private fun fadeIn(d: ByteArray) {
+        val n = minOf(120, d.size / 2)
+        for (i in 0 until n) {
+            val s = ((d[2 * i].toInt() and 0xff) or (d[2 * i + 1].toInt() shl 8)).toShort().toInt()
+            val v = s * i / n
+            d[2 * i] = (v and 0xff).toByte()
+            d[2 * i + 1] = ((v shr 8) and 0xff).toByte()
         }
     }
 
@@ -337,6 +388,7 @@ object VoiceAudio {
     fun flush() {
         generation++
         queue.clear()
+        playingUntil = 0L
         track?.let {
             try { it.pause(); it.flush(); it.play() } catch (_: Exception) {}
         }

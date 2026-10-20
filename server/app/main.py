@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.38.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.39.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -612,6 +612,14 @@ async def pc_send(file: UploadFile = File(...), tenant: str = Depends(current_te
         return await hub.call(tenant, "save_file", {"file_id": row.id, "name": row.name, "url": f"/api/pc/fetch/{row.id}"})
     except Exception as e:
         _pc_err(e)
+
+
+@app.get("/api/voice/stats", dependencies=[Depends(require_key)])
+def voice_stats(tenant: str = Depends(current_tenant)):
+    """How human the calls sound, in numbers: how fast he starts answering, reply length, questions, interruptions,
+    silent tool runs. Recent calls since the server started."""
+    from . import voice as v
+    return v.stats_summary(tenant)
 
 
 @app.websocket("/api/voice/ws")

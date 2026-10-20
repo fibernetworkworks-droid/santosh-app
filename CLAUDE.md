@@ -53,7 +53,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   Kinds registered via EXTRA_KINDS / GROUP_KINDS / NOLINK_KINDS; modules imported at bottom of service.py.
 - Agent tools in `agent/hoola_tools.py`. Risky sends go to an **outbox needing the owner's tap** (`needs_tap`).
 
-## v0.36 Conversation & voice robustness (latest)
+## v0.36 Conversation & voice robustness
 - **Voice call survives a network drop** (`voice.py`): `ready` carries `call_id`; if the phone connection drops the call stays
   alive `VOICE_RESUME_GRACE_S` (25 s) and the phone re-joins with `/api/voice/ws?conv=..&resume=<call_id>` (`lib/live_voice.dart`
   does this by itself, with a heartbeat `ping`/`pong`). The call runs as its own task (`voice.serve`) so a server that cancels the
@@ -95,6 +95,23 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   santosh3d), scenes email/browser/payment/bluetooth/network/pc/work. `lib/ui/work_theatre.dart` (WebView + panel), shown in
   chat and the voice call; state in `Santosh.work/workLog`. Never draw real company logos; brand names as text chips.
 
+## v0.39 Human-like conversation (latest)
+- Turn-taking: `VOICE_SILENCE_MS=700` (was 1100; Google recommends 500-800), end-of-speech sensitivity = Gemini default
+  (`VOICE_END_SENSITIVITY` low|high to override), `VOICE_PREFIX_PADDING_MS=300`. Affective dialog / proactivity are no
+  longer sent at all (gemini-3.8-live removed the first, always has the second on); `UNSUPPORTED/DROPPABLE` stays for others.
+- `PERSONA` rewritten persona-first: who you are → how you talk (spoken Hinglish, aap, 1-2 sentences, react first, no
+  assistant-isms, don't end every turn with a question, no repeating back) → when to speak → example turns → honesty
+  (says it is an AI when sincerely asked) → work rules → compact tool map. Female: `FEMALE_LINES` + `gendered()` on every line
+  except `User:` lines. `greeting(tenant, gender)`: first line of a NEW call only, time-of-day aware, varied.
+- No dead air during tools: `Call._ack_watch` — a tool runs, nobody spoke for 0.7 s → plays a short "ek second" clip in the
+  call's own voice (Gemini TTS, `ACK_LINES`, made once per voice in a daemon thread, cached in `data/voice_acks/`).
+  `VOICE_TOOL_ACK=false` turns it off (tests run with it off). Late big-job notes say what the job was about.
+- Quality numbers: `turn_done.latency_ms` (user's last loud mic chunk → first audio of the reply), per-call `stats`
+  → `voice.STATS` → `GET /api/voice/stats` (reply start p50/p90, words per reply, question endings, assistant-isms,
+  interruptions, silent tools, acks). Use it before/after any voice change.
+- Android `VoiceAudio`: AudioTrack LOW_LATENCY mode; a reply after silence waits for an 80 ms cushion (grows +40 up to
+  240 ms if a reply runs dry mid-sentence) and fades in 5 ms. Research report behind all this: "Human like Hinglish voice AI".
+
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
   automation (Baileys/WhatsApp Web).
@@ -117,4 +134,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call. Next: v0.39.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation. Next: v0.40.
