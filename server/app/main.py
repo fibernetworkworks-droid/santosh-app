@@ -98,6 +98,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+        + (["awaaz"] if st.awaaz_worker_url and st.awaaz_worker_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -1666,6 +1667,127 @@ def net_invite_page(code: str):
                         "max-width:520px;margin:auto;padding:32px 20px}a{color:#FFB15C}.b{display:inline-block;padding:14px 22px;"
                         "background:#FFB15C;color:#1B1030;border-radius:14px;text-decoration:none;font-weight:700}.s{color:#B9B3DA}"
                         f"</style><h1>Hoola</h1>{body}")
+
+
+# ---------------- Hoola Awaaz: the owner's own (consented) voice and designed voices ----------------
+_AWAAZ_PREVIEWS: dict[str, dict] = {}
+
+
+class AwaazConsentIn(BaseModel):
+    gender: str | None = None
+
+
+class AwaazDesignIn(BaseModel):
+    description: str
+    gender: str = "m"
+
+
+class AwaazSaveIn(BaseModel):
+    preview_id: str
+    name: str = ""
+
+
+class AwaazTryIn(BaseModel):
+    text: str = ""
+
+
+def _awaaz_call(fn, *a):
+    from .awaaz import service as aw
+    try:
+        return fn(*a)
+    except aw.AwaazError as e:
+        raise HTTPException(400, str(e))
+
+
+def _pcm_of_wav(data: bytes) -> bytes:
+    import io as _io
+    import wave as _wave
+    with _wave.open(_io.BytesIO(data), "rb") as w:
+        return w.readframes(w.getnframes())
+
+
+@app.get("/api/awaaz", dependencies=[Depends(require_key)])
+async def awaaz_list(tenant: str = Depends(current_tenant)):
+    from .awaaz import service as aw
+    return await asyncio.to_thread(aw.list_voices, tenant)
+
+
+@app.post("/api/awaaz/consent", dependencies=[Depends(require_key)])
+def awaaz_consent(body: AwaazConsentIn, tenant: str = Depends(current_tenant)):
+    """A one-time script with a code; the owner reads it aloud in the app (that recording makes the voice)."""
+    from .avatar import service as av
+    from .awaaz import service as aw
+    if not aw.enabled():
+        raise HTTPException(400, "Hoola Awaaz abhi is server par chalu nahi hai.")
+    g = body.gender if body.gender in ("m", "f") else av.get(tenant)["gender"]
+    return aw.consent_script(tenant, g)
+
+
+@app.post("/api/awaaz/own", dependencies=[Depends(require_key)])
+async def awaaz_own(consent_id: str = Form(...), file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
+    from .awaaz import service as aw
+    data = await file.read(15 * 1024 * 1024 + 1)
+    if len(data) > 15 * 1024 * 1024:
+        raise HTTPException(413, "Recording bahut badi hai.")
+    return await asyncio.to_thread(_awaaz_call, aw.make_own, tenant, consent_id, data)
+
+
+@app.post("/api/awaaz/design/preview", dependencies=[Depends(require_key)])
+async def awaaz_design_preview(body: AwaazDesignIn, tenant: str = Depends(current_tenant)):
+    """A new voice from a description. Returns a preview id; GET .../audio plays it (24 kHz PCM16)."""
+    import secrets as _secrets
+    from .awaaz import service as aw
+    g = body.gender if body.gender in ("m", "f") else "m"
+    wav = await asyncio.to_thread(_awaaz_call, aw.design_preview, tenant, body.description, g)
+    now_t = time.time()
+    for k in [k for k, v in _AWAAZ_PREVIEWS.items() if now_t - v["at"] > 1800]:
+        _AWAAZ_PREVIEWS.pop(k, None)
+    mine = sorted((v["at"], k) for k, v in _AWAAZ_PREVIEWS.items() if v["tenant"] == tenant)
+    for _, k in mine[:-4]:
+        _AWAAZ_PREVIEWS.pop(k, None)
+    pid = _secrets.token_urlsafe(9)
+    _AWAAZ_PREVIEWS[pid] = {"tenant": tenant, "wav": wav, "description": body.description.strip()[:400], "gender": g, "at": now_t}
+    return {"preview_id": pid}
+
+
+@app.get("/api/awaaz/design/preview/{preview_id}/audio", dependencies=[Depends(require_key)])
+def awaaz_design_audio(preview_id: str, tenant: str = Depends(current_tenant)):
+    p = _AWAAZ_PREVIEWS.get(preview_id)
+    if not p or p["tenant"] != tenant:
+        raise HTTPException(404, "Preview purana ho gaya, dobara banaiye.")
+    return Response(_pcm_of_wav(p["wav"]), media_type="audio/L16;rate=24000")
+
+
+@app.post("/api/awaaz/design/save", dependencies=[Depends(require_key)])
+async def awaaz_design_save(body: AwaazSaveIn, tenant: str = Depends(current_tenant)):
+    from .awaaz import service as aw
+    p = _AWAAZ_PREVIEWS.get(body.preview_id)
+    if not p or p["tenant"] != tenant:
+        raise HTTPException(404, "Preview purana ho gaya, dobara banaiye.")
+    out = await asyncio.to_thread(_awaaz_call, aw.save_design, tenant, body.name.strip() or "Nayi awaaz",
+                                  p["description"], p["gender"], p["wav"])
+    _AWAAZ_PREVIEWS.pop(body.preview_id, None)
+    return out
+
+
+@app.post("/api/awaaz/{voice_id}/try", dependencies=[Depends(require_key)])
+async def awaaz_try(voice_id: str, body: AwaazTryIn, tenant: str = Depends(current_tenant)):
+    """Hear a saved voice say a line (24 kHz PCM16)."""
+    from .avatar import service as av
+    from .awaaz import service as aw
+    p = aw.ready_profile(tenant, f"awaaz:{voice_id}")
+    if p is None:
+        raise HTTPException(404, "Yeh awaaz nahi mili.")
+    text = body.text.strip()[:300] or av.gendered(aw.PREVIEW_TEXT["f" if p.gender == "f" else "m"], p.gender)
+    return Response(await asyncio.to_thread(_awaaz_call, aw.tts, p, text), media_type="audio/L16;rate=24000")
+
+
+@app.delete("/api/awaaz/{voice_id}", dependencies=[Depends(require_key)])
+async def awaaz_delete(voice_id: str, tenant: str = Depends(current_tenant)):
+    from .awaaz import service as aw
+    if not await asyncio.to_thread(aw.delete, tenant, voice_id):
+        raise HTTPException(404, "Yeh awaaz nahi mili.")
+    return {"deleted": True}
 
 
 # ---------------- Hoola avatar: name, gender, voice, Mere Niyam ----------------

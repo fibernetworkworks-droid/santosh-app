@@ -242,12 +242,26 @@ def get(tenant: str) -> dict[str, Any]:
             (DEFAULT_NAME, "m", "", False, {})
     gender = gender if gender in ("m", "f") else "m"
     voices = FEMALE_VOICES if gender == "f" else MALE_VOICES
-    voice = voice if voice in voices else DEFAULT_VOICE[gender]
+    own = _own_voices(tenant)
+    voice = voice if voice in voices or voice in {o["id"] for o in own} else DEFAULT_VOICE[gender]
     r = clean_rules(rules)
     return {"app": APP_NAME, "name": name, "gender": gender, "voice": voice, "setup_done": bool(done), "rules": r,
             "rules_summary": rules_summary(r, name),
             "voices": {"m": [{"id": k, "label": v} for k, v in MALE_VOICES.items()],
-                       "f": [{"id": k, "label": v} for k, v in FEMALE_VOICES.items()]}}
+                       "f": [{"id": k, "label": v} for k, v in FEMALE_VOICES.items()]},
+            # Hoola Awaaz: the owner's own voice and designed voices (spoken by our own speech model)
+            "own_voices": own}
+
+
+def _own_voices(tenant: str) -> list[dict]:
+    try:
+        from ..awaaz import service as aw
+        if not aw.enabled():
+            return []
+        return [{"id": v["voice"], "label": v["name"], "kind": v["kind"], "gender": v["gender"]}
+                for v in aw.ready_voices(tenant)]
+    except Exception:
+        return []
 
 
 def save(tenant: str, name: str | None = None, gender: str | None = None, voice: str | None = None,
@@ -264,7 +278,11 @@ def save(tenant: str, name: str | None = None, gender: str | None = None, voice:
             a.gender = gender
         if voice is not None:
             pool = FEMALE_VOICES if a.gender == "f" else MALE_VOICES
-            if voice and voice not in pool:
+            if voice.startswith("awaaz:"):
+                from ..awaaz import service as aw
+                if aw.ready_profile(tenant, voice) is None:
+                    raise AvatarError("Yeh awaaz abhi taiyaar nahi hai.")
+            elif voice and voice not in pool:
                 raise AvatarError("Yeh awaaz is avatar ke liye nahi hai.")
             a.voice = voice
         if rules is not None:

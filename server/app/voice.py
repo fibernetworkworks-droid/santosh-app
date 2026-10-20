@@ -402,15 +402,34 @@ def _trim(pcm: bytes, rate: int = 24000) -> bytes:
     return a.tobytes()
 
 
-def _build_acks(key: str, voice: str, gender: str) -> None:
+def _ack_file(voice: str, gender: str, i: int) -> Path:
+    return ACK_DIR / f"{voice.replace(':', '_')}_{gender}_{i}.pcm"
+
+
+def forget_acks(voice: str) -> None:
+    """A voice was deleted: its clips go too."""
+    with _ACK_LOCK:
+        for k in [k for k in _ACKS if k.startswith(voice + ":")]:
+            _ACKS.pop(k, None)
+    for f in ACK_DIR.glob(f"{voice.replace(':', '_')}_*.pcm") if ACK_DIR.exists() else []:
+        f.unlink(missing_ok=True)
+
+
+def _build_acks(key: str, voice: str, gender: str, profile=None) -> None:
     from .avatar.service import gendered
     clips: list[bytes] = []
     try:
         ACK_DIR.mkdir(parents=True, exist_ok=True)
         for i, line in enumerate(ACK_LINES):
-            f = ACK_DIR / f"{voice}_{gender}_{i}.pcm"
+            f = _ack_file(voice, gender, i)
             try:
-                clip = f.read_bytes() if f.exists() else _trim(_ack_tts(gendered(line, gender), voice, gender))
+                if f.exists():
+                    clip = f.read_bytes()
+                elif profile is not None:   # Hoola Awaaz: the owner's / designed voice, from our worker
+                    from .awaaz import service as aw
+                    clip = _trim(aw.tts(profile, gendered(line, gender)))
+                else:
+                    clip = _trim(_ack_tts(gendered(line, gender), voice, gender))
             except Exception as e:
                 log.info("ack clip %s/%s not made: %r", voice, i, e)
                 continue
@@ -425,7 +444,7 @@ def _build_acks(key: str, voice: str, gender: str) -> None:
             _ACK_BUSY.discard(key)
 
 
-def ack_clips(voice: str, gender: str) -> list[bytes]:
+def ack_clips(voice: str, gender: str, profile=None) -> list[bytes]:
     """The clips for this voice; the first call for a voice starts making them in the background and gets none yet."""
     key = f"{voice}:{gender}"
     with _ACK_LOCK:
@@ -435,7 +454,7 @@ def ack_clips(voice: str, gender: str) -> list[bytes]:
             return []
         _ACK_BUSY.add(key)
     # a daemon thread: never holds up a call, a test or a server shutdown
-    threading.Thread(target=_build_acks, args=(key, voice, gender), daemon=True, name="santosh-acks").start()
+    threading.Thread(target=_build_acks, args=(key, voice, gender, profile), daemon=True, name="santosh-acks").start()
     return []
 
 
@@ -451,6 +470,121 @@ def inject(conversation_id: str, text: str) -> int:
     return n
 
 
+class Speaker:
+    """Hoola Awaaz in a call: Gemini still listens and thinks, but the words it writes (its live transcript) are
+    spoken by our own speech model in the owner's / designed voice, piece by piece so the first words come fast.
+    If the worker fails, the call carries on in Gemini's own voice."""
+
+    FIRST_WORDS = 4      # the first piece of a reply is short: that is what the user waits for
+    MAX_WORDS = 14
+
+    def __init__(self, call: "Call", profile):
+        self.call, self.profile = call, profile
+        self.ws = None
+        self.ok = False
+        self.gen = 1              # reply number (the worker tags its audio with it)
+        self.cancelled = 0        # replies the user talked over: their audio is dropped
+        self.buf = ""
+        self.first = True
+        self._out: asyncio.Queue = asyncio.Queue()
+        self._tasks: list[asyncio.Task] = []
+
+    async def start(self) -> bool:
+        from websockets.asyncio.client import connect
+        from .awaaz import service as aw
+        url, headers = aw.stream_url(self.profile)
+        try:
+            self.ws = await asyncio.wait_for(connect(url, additional_headers=headers, max_size=None, open_timeout=5), 6)
+        except Exception as e:
+            log.warning("call %s: Hoola Awaaz worker not reachable (%r); using Gemini's voice", self.call.call_id, e)
+            return False
+        self.ok = True
+        self._tasks = [asyncio.create_task(self._send_loop()), asyncio.create_task(self._read_loop())]
+        return True
+
+    # ---- words in ----
+    def feed(self, text: str) -> None:
+        self.buf += text
+        self._cut(final=False)
+
+    def end_turn(self) -> None:
+        self._cut(final=True)
+        self.gen += 1
+        self.first = True
+
+    def interrupt(self) -> None:
+        """The user talked over him: drop the rest of this reply, here and on the worker."""
+        self.buf = ""
+        self.cancelled = self.gen
+        self._out.put_nowait({"type": "cancel", "gen": self.gen})
+        self.gen += 1
+        self.first = True
+
+    def _cut(self, final: bool) -> None:
+        while True:
+            seg = self._next(final)
+            if not seg:
+                return
+            self._out.put_nowait({"type": "say", "gen": self.gen, "text": seg})
+
+    def _next(self, final: bool) -> str | None:
+        text = self.buf
+        if not text.strip():
+            self.buf = ""
+            return None
+        need = 2 if self.first else 3
+        for m in re.finditer(r"[.!?।,;:…]+(?=\s)", text):
+            if len(text[:m.end()].split()) >= need:
+                return self._take(m.end())
+        words = list(re.finditer(r"\S+\s", text))       # whole words only (the last one may still be growing)
+        limit = self.FIRST_WORDS if self.first else self.MAX_WORDS
+        if len(words) >= limit:
+            return self._take(words[limit - 1].end())
+        if final:
+            return self._take(len(text))
+        return None
+
+    def _take(self, end: int) -> str | None:
+        seg, self.buf = self.buf[:end].strip(), self.buf[end:]
+        self.first = False
+        return seg or None
+
+    # ---- worker ----
+    async def _send_loop(self) -> None:
+        while True:
+            m = await self._out.get()
+            await self.ws.send(json.dumps(m, ensure_ascii=False))
+
+    async def _read_loop(self) -> None:
+        try:
+            async for msg in self.ws:
+                if isinstance(msg, (bytes, bytearray)):
+                    g = int.from_bytes(msg[:4], "big")
+                    if g <= self.cancelled or len(msg) <= 4:
+                        continue
+                    self.call._mark_audio()
+                    await self.call.send_audio(bytes(msg[4:]))
+                else:
+                    with contextlib.suppress(ValueError):
+                        m = json.loads(msg)
+                        if m.get("type") == "error":
+                            log.warning("call %s: awaaz worker error: %s", self.call.call_id, m.get("message"))
+        except Exception as e:
+            log.warning("call %s: awaaz stream ended: %r", self.call.call_id, e)
+        finally:
+            if self.ok:
+                self.ok = False
+                await self.call.awaaz_lost()
+
+    async def close(self) -> None:
+        self.ok = False
+        for t in self._tasks:
+            t.cancel()
+        if self.ws is not None:
+            with contextlib.suppress(Exception):
+                await self.ws.close()
+
+
 class Call:
     def __init__(self, ws: WebSocket, conv: str, voice: str, lang: str, tenant: str | None = None):
         st = get_settings()
@@ -464,7 +598,15 @@ class Call:
         self.name, self.gender = a["name"], a["gender"]
         pool = av.FEMALE_VOICES if self.gender == "f" else av.MALE_VOICES
         # the phone may still send an old saved voice; the avatar's gender decides which voices fit
-        self.voice = voice if voice in pool else (a["voice"] or (st.voice_default if self.gender == "m" else av.DEFAULT_VOICE["f"]))
+        wanted = voice if (voice in pool or voice.startswith("awaaz:")) else a["voice"]
+        # Hoola Awaaz: the owner's own / designed voice, spoken by our worker; Gemini's voice stays as the fallback
+        self.awaaz = None
+        if wanted.startswith("awaaz:"):
+            from .awaaz import service as aw
+            self.awaaz = aw.ready_profile(self.tenant, wanted) if aw.enabled() else None
+        self.speaker: Speaker | None = None
+        self._speaker_task: asyncio.Task | None = None
+        self.voice = wanted if wanted in pool else (st.voice_default if self.gender == "m" else av.DEFAULT_VOICE["f"])
         self.audio: asyncio.Queue = asyncio.Queue(maxsize=400)
         self.closed = asyncio.Event()
         self.muted = False
@@ -492,7 +634,7 @@ class Call:
                       "latency_ms": [], "words": [], "question_endings": 0, "assistantisms": 0, "interruptions": 0,
                       "tools": 0, "silent_tools": 0, "acks": 0, "false_stops": 0}
         if st.voice_tool_ack and st.gemini_api_key:
-            ack_clips(self.voice, self.gender)   # get his "ek second" clips ready
+            ack_clips(*self._ack_voice())   # get his "ek second" clips ready
 
     # ---- sending to the phone (silently dropped while the phone is away) ----
     async def send_json(self, obj: dict) -> None:
@@ -653,6 +795,8 @@ class Call:
                     continue
                 if sc.interrupted:
                     self.stats["interruptions"] += 1
+                    if self.speaker is not None:
+                        self.speaker.interrupt()
                     await self.send_json({"type": "interrupted"})
                     if self.reply_buf.strip():
                         self._watch_false_stop(self.reply_buf.strip())
@@ -668,15 +812,43 @@ class Call:
                     for part in sc.model_turn.parts or []:
                         blob = getattr(part, "inline_data", None)
                         if blob is not None and blob.data:
-                            self._mark_audio()
-                            await self.send_audio(blob.data)
+                            if self.speaker is not None and self.speaker.ok:
+                                self._last_model_audio = time.monotonic()   # he is talking (in our voice)
+                            else:
+                                self._mark_audio()
+                                await self.send_audio(blob.data)
                 if sc.output_transcription is not None and sc.output_transcription.text:
+                    if self.speaker is not None and self.speaker.ok:
+                        self.speaker.feed(sc.output_transcription.text)
                     self.reply_buf += sc.output_transcription.text
                     await self.send_json({"type": "santosh_text", "text": self.reply_buf.strip()})
                 if sc.turn_complete:
+                    if self.speaker is not None and self.speaker.ok:
+                        self.speaker.end_turn()
                     await self.finish_turn()
             if not got_any:
                 return "reconnect"   # the stream ended without messages: connection is gone
+
+    def _ack_voice(self) -> tuple:
+        if self.awaaz is not None:
+            return f"awaaz:{self.awaaz.id}", self.gender, self.awaaz
+        return self.voice, self.gender
+
+    async def awaaz_lost(self) -> None:
+        """Our speech worker dropped out: carry on in Gemini's own voice instead of going silent."""
+        if self.speaker is None or self.closed.is_set():
+            return
+        self.speaker = None
+        await self.send_json({"type": "status", "state": "awaaz_off",
+                              "message": "Apni awaaz wala server abhi nahi mil raha, Hoola ki awaaz mein baat jaari hai."})
+
+    async def _start_speaker(self) -> None:
+        sp = Speaker(self, self.awaaz)
+        if await sp.start():
+            self.speaker = sp
+        else:
+            await self.send_json({"type": "status", "state": "awaaz_off",
+                                  "message": "Apni awaaz wala server abhi nahi mila, Hoola ki awaaz mein baat ho rahi hai."})
 
     def _mark_audio(self) -> None:
         """Gemini's voice is coming. The first audio of a turn after the user spoke = how long he took to answer."""
@@ -853,7 +1025,7 @@ class Call:
         st = get_settings()
         if not st.voice_tool_ack or now - self._last_ack < 8:
             return
-        clips = ack_clips(self.voice, self.gender)
+        clips = ack_clips(*self._ack_voice())
         if not clips:
             return
         self._last_ack = now
@@ -870,6 +1042,8 @@ class Call:
         me = (loop, self)
         ACTIVE.setdefault(self.ctx.conversation_id, []).append(me)
         CALLS[self.call_id] = self
+        if self.awaaz is not None:
+            self._speaker_task = asyncio.create_task(self._start_speaker())   # alongside Gemini's connect
         try:
             while not self.closed.is_set():
                 context = life.context_block(self.ctx.tenant_id)
@@ -882,7 +1056,13 @@ class Call:
                         # a Gemini that does not answer must not freeze the call
                         session = await asyncio.wait_for(stack.enter_async_context(connector(cfg)), timeout=20)
                         if first:
-                            await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id})
+                            if self._speaker_task is not None:
+                                with contextlib.suppress(Exception):
+                                    await asyncio.wait_for(asyncio.shield(self._speaker_task), 8)
+                            ready = {"type": "ready", "voice": self.voice, "call_id": self.call_id}
+                            if self.speaker is not None:
+                                ready["awaaz"] = self.awaaz.name
+                            await self.send_json(ready)
                             # live text input (3.x Live models accept client_content only for seeding history)
                             await session.send_realtime_input(text=greeting(self.tenant, self.gender))
                             first = False
@@ -961,6 +1141,11 @@ class Call:
             log.info("call %s done: %s turns, reply start p50 %s ms, %s interruptions (%s noise), %s/%s silent tools, %s acks",
                      self.call_id, self.stats["turns"], _pct(lat, .5), self.stats["interruptions"], self.stats["false_stops"],
                      self.stats["silent_tools"], self.stats["tools"], self.stats["acks"])
+            sp, self.speaker = self.speaker, None
+            if sp is not None:
+                await sp.close()
+            if self._speaker_task is not None:
+                self._speaker_task.cancel()
             ws, self.ws = self.ws, None
             if ws is not None:
                 with contextlib.suppress(Exception):

@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     voice_tool_ack: bool = True            # a tool runs and he is silent: say a quick "ek second" in his own voice
     voice_ack_tts_model: str = "gemini-2.5-flash-preview-tts"   # makes those short clips once per voice
     # (affective dialog and proactive audio are gone: gemini-3.8-live removed the first and always has the second on)
+    # --- Hoola Awaaz: our own speech model on a GPU worker (server/voice_worker); avatars speak in the owner's
+    #     consented voice or a designed voice. Empty URL = off (Gemini's voices only).
+    awaaz_worker_url: str = ""             # e.g. https://awaaz.example.in (or http://10.x.x.x:8090 on a private network)
+    awaaz_worker_key: str = ""             # same as WORKER_KEY in the worker's .env
+    awaaz_max_designs: int = 5             # designed voices per user
     voice_resume_grace_s: int = 25         # a dropped phone connection can re-join the same call within this time
     voice_tool_wait_s: int = 25            # a call waits this long for a big job, then talks on and gets told when it is done
     voice_tool_timeout_s: int = 60         # any other call tool is cut off after this
