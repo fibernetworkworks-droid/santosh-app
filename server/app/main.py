@@ -36,12 +36,15 @@ async def lifespan(app: FastAPI):
     init_db()
     stop = asyncio.Event()
     task = asyncio.create_task(worker.run_forever(stop))
+    if get_settings().logo_warm:
+        from .bazar import logos
+        logos.warm_in_background()   # fetch every plugin logo once, gently, so the Connect tab is quick
     yield
     stop.set()
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.45.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.46.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -2301,6 +2304,19 @@ def bazar_contacts(tenant: str = Depends(current_tenant)):
 @app.post("/api/bazar/contacts", dependencies=[Depends(require_key)])
 def bazar_contact_add(body: BazarContactIn, tenant: str = Depends(current_tenant)):
     return _bz(bazar.add_contact, tenant, body.name, body.upi_id, body.phone, body.relation)
+
+
+@app.get("/api/logo/{kind}/{key}")
+async def plugin_logo(kind: str, key: str):
+    """A plugin's / MCP server's real logo (from the brand's own site, cached as a 128 px PNG). Public: logos are
+    public and phones load them as plain images; only things in Hoola's own lists are ever looked up."""
+    from .bazar import logos
+    if kind not in ("pack", "feat", "gh", "mcp") or len(key) > 120:
+        raise HTTPException(404, "no logo")
+    png = await asyncio.to_thread(logos.logo, kind, key)
+    if not png:
+        raise HTTPException(404, "no logo")
+    return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=2592000"})
 
 
 @app.get("/api/bazar/connections", dependencies=[Depends(require_key)])

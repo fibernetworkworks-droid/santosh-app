@@ -64,4 +64,6 @@ def public(c: dict[str, Any], status: str = "") -> dict[str, Any]:
         out["native"] = c["native"]
     if status:
         out["status"] = status
+    from .logos import featured_logo
+    out["logo"] = featured_logo(c["id"])
     return out

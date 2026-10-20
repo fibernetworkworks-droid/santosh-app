@@ -93,6 +93,8 @@ def public(s: list) -> dict[str, Any]:
                            "source": SOURCE_LABEL.get(s[SRC], s[SRC]), "official": s[OFFICIAL], "language": s[LANG],
                            "pricing": "Hosted service (account / API key likely)" if s[PRICE] == "cloud" else "Free / open source",
                            "connect": mode, "how_to_connect": how}
+    from .logos import directory_logo
+    out["logo"] = directory_logo(s[REPO] or s[LINK])
     for k, i in (("version", VER), ("released", REL), ("licence", LIC)):
         if s[i]:
             out[k] = s[i]

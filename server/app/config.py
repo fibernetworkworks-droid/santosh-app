@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     agent_max_tokens: int = 2000
     agent_tool_timeout_s: int = 300         # a tool that hangs never blocks a chat turn longer than this (browser waits go up to 270 s)
     agent_turn_timeout_s: int = 900         # a whole turn never holds the chat lock longer than this
+    logo_warm: bool = True                 # fetch all plugin logos once after start (cached in data/logos)
     mcp_native_tools: int = 40             # tools of the owner's MCP servers given to the avatar directly (rest via bazar_run)
     llm_retries: int = 2                    # extra tries for a busy / briefly unreachable model before falling back
 

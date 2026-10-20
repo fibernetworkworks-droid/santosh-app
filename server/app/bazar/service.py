@@ -28,7 +28,7 @@ from .connectors.base import Ctx, ToolError, rupees, to_paise
 from .connectors.upi import valid_vpa
 from .db import (Approval, Connection, Contact, GeneratedDoc, InstalledPack, Reminder, Shop, ShopDue, ShopItem, ShopOrder,
                  Task, Transaction, User)
-from . import custom_mcp, directory, featured
+from . import custom_mcp, directory, featured, logos
 from .db import CustomMcp
 from .packs.registry import Pack, Registry, registry
 
@@ -606,11 +606,12 @@ def connections(tenant_id: str) -> list[dict[str, Any]]:
         out = []
         for p in mcp_packs():
             out.append({"pack_id": p.id, "name": p.name, "provider": p.config["provider"], "status": pack_status(s, user, p),
-                        "configured": bool(getattr(st, p.config["endpoint_setting"], ""))})
+                        "configured": bool(getattr(st, p.config["endpoint_setting"], "")), "logo": logos.pack_logo(p.id),
+                        "does": (p.description or "")[:160]})
         for r in custom_mcp.user_rows(s, user.id):
             p = custom_mcp.to_pack(r)
             out.append({"pack_id": p.id, "name": p.name, "provider": p.config["provider"], "status": pack_status(s, user, p),
-                        "configured": True, "custom": True})
+                        "configured": True, "custom": True, "logo": logos.custom_logo(r)})
         return out
 
 
@@ -1005,9 +1006,11 @@ def catalog(tenant_id: str) -> dict[str, Any]:
     with session() as s:
         user = ensure_user(s, tenant_id)
         packs = [{"pack_id": p.id, "name": p.name, "category": p.category, "kind": p.sub_category, "executor": p.executor,
-                  "status": pack_status(s, user, p)} for p in reg.all()]
+                  "status": pack_status(s, user, p), "does": (p.description or "")[:220], "logo": logos.pack_logo(p.id)}
+                 for p in reg.all()]
         packs += [{"pack_id": r.id, "name": r.name, "category": "My MCP servers", "kind": "MCP server", "executor": "mcp",
-                   "status": pack_status(s, user, custom_mcp.to_pack(r))} for r in custom_mcp.user_rows(s, user.id)]
+                   "status": pack_status(s, user, custom_mcp.to_pack(r)), "does": (r.description or "")[:220],
+                   "logo": logos.custom_logo(r)} for r in custom_mcp.user_rows(s, user.id)]
     counts: dict[str, int] = {}
     for p in packs:
         counts[p["status"]] = counts.get(p["status"], 0) + 1

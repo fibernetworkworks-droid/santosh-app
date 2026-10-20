@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'plugin_widgets.dart';
 
 /// MCP servers: the user's connected servers plus the built-in directory of ~50,700 MCP servers worldwide.
 class McpScreen extends StatefulWidget {
@@ -201,47 +202,37 @@ class _McpScreenState extends State<McpScreen> {
             ),
         ]),
       ),
-      const SizedBox(height: 10),
-      GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: 1.35,
-        children: [
-          for (final c in shown)
-            Glass(
-              radius: 18,
-              padding: const EdgeInsets.all(12),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Row(children: [
-                  Expanded(child: Text(c['name'] as String, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
-                  if (c['india'] == true) const Pill('India', fg: C.accentSoft),
-                ]),
-                const SizedBox(height: 2),
-                Text(c['does'] as String? ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: C.faint, fontSize: 11.5, height: 1.3)),
-                const Spacer(),
-                switch (c['status'] as String? ?? '') {
-                  'ready' => const GlassButton(label: 'Juda hai', color: C.ok, height: 34, onTap: null),
-                  'needs_link' => GlassButton(label: 'Sign in', color: C.accentSoft, height: 34, onTap: () async {
-                      final err = await app.linkApp(c['pack_id'] as String);
-                      if (err != null) _snack(err);
-                    }),
-                  _ => GlassButton(
-                      label: c['auth'] == 'oauth_partner' ? 'Jald aa raha' : (c['native'] != null ? 'Hoola mein hai' : 'Jodiye'),
-                      color: c['auth'] == 'oauth_partner' ? C.faint : C.accentSoft,
-                      height: 34,
-                      onTap: _busy ? null : () => _connectFeatured(c)),
-                },
-              ]),
-            ),
-        ],
-      ),
+      const SizedBox(height: 12),
+      PluginGrid(children: [for (final (i, c) in shown.indexed) Stagger(index: i % 8, child: _featuredCard(c))]),
     ]);
   }
+
+  Widget _featuredAction(Map<String, dynamic> c) {
+    final st = c['status'] as String? ?? '';
+    if (st == 'ready') return const PluginAction(kind: ActionKind.linked, label: 'Juda hai');
+    if (st == 'needs_link') {
+      return PluginAction(kind: ActionKind.attention, label: 'Sign in', onTap: () async {
+        final err = await app.linkApp(c['pack_id'] as String);
+        if (err != null) _snack(err);
+      });
+    }
+    if (st == 'needs_key') return PluginAction(kind: ActionKind.attention, label: 'Key daaliye', onTap: () => _connectFeatured(c));
+    if (c['auth'] == 'oauth_partner') return const PluginAction(kind: ActionKind.soon, label: 'Jald aa raha');
+    if (c['native'] != null) {
+      return PluginAction(kind: ActionKind.builtin, label: 'Hoola mein hai', onTap: () => _snack('${c['name']} Hoola mein pehle se hai: ${c['native']}'));
+    }
+    return PluginAction(kind: ActionKind.add, label: _busy ? 'Jod raha hoon…' : 'Jodiye', onTap: _busy ? null : () => _connectFeatured(c));
+  }
+
+  Widget _featuredCard(Map<String, dynamic> c) => PluginCard(
+        name: c['name'] as String? ?? '',
+        does: c['does'] as String? ?? '',
+        logo: c['logo'] as String?,
+        category: 'MCP ${c['category'] ?? ''}',
+        badge: c['india'] == true ? 'INDIA' : null,
+        badgeColor: C.accentSoft,
+        action: _featuredAction(c),
+      );
 
   void _snack(String t) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t)));
 
@@ -343,8 +334,8 @@ class _McpScreenState extends State<McpScreen> {
         radius: 20,
         padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
         child: Row(children: [
-          Icon(Icons.hub_rounded, color: st == 'ready' ? C.ok : C.accentSoft),
-          const SizedBox(width: 10),
+          BrandLogo(name: m['name'] as String? ?? '', path: m['logo'] as String?, category: 'MCP', size: 42),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(m['name'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -353,14 +344,18 @@ class _McpScreenState extends State<McpScreen> {
               _knows(m),
             ]),
           ),
-          switch (st) {
-            'needs_link' => TextButton(onPressed: () async {
-                final err = await app.linkApp(m['pack_id'] as String);
-                if (err != null) _snack(err);
-              }, child: const Text('Link')),
-            'needs_key' => TextButton(onPressed: () => _keyDialog(m), child: const Text('Key daaliye')),
-            _ => const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Pill('Juda hai', fg: C.ok)),
-          },
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 104,
+            child: switch (st) {
+              'needs_link' => PluginAction(kind: ActionKind.attention, label: 'Link', height: 34, onTap: () async {
+                  final err = await app.linkApp(m['pack_id'] as String);
+                  if (err != null) _snack(err);
+                }),
+              'needs_key' => PluginAction(kind: ActionKind.attention, label: 'Key', height: 34, onTap: () => _keyDialog(m)),
+              _ => const PluginAction(kind: ActionKind.linked, label: 'Juda hai', height: 34),
+            },
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded, color: C.muted),
             onSelected: (v) async {
@@ -389,7 +384,16 @@ class _McpScreenState extends State<McpScreen> {
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Expanded(child: Text(e['ref'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5))),
+            BrandLogo(name: e['name'] as String? ?? '', path: e['logo'] as String?, category: e['field'] as String? ?? 'MCP', size: 40),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(e['name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
+                Text(e['ref'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: C.faint, fontSize: 11.5)),
+              ]),
+            ),
             if (e['official'] == true) const Pill('Official', fg: C.ok),
           ]),
           const SizedBox(height: 4),
@@ -408,11 +412,12 @@ class _McpScreenState extends State<McpScreen> {
           ],
           const SizedBox(height: 10),
           Row(children: [
-            Expanded(child: GlassButton(label: 'GitHub', height: 38, onTap: () => Native.openExternal(url: (e['github'] ?? e['link']) as String? ?? ''))),
+            Expanded(child: GlassButton(label: 'GitHub', icon: Icons.open_in_new_rounded, height: 38,
+                onTap: () => Native.openExternal(url: (e['github'] ?? e['link']) as String? ?? ''))),
             const SizedBox(width: 8),
             Expanded(child: e['connect'] == 'not_allowed'
-                ? GlassButton(label: 'Allowed nahi', color: C.faint, height: 38, onTap: () => _snack(e['how_to_connect'] as String? ?? ''))
-                : GlassButton(label: 'Jodiye', color: C.accentSoft, height: 38, onTap: () => _addDialog(entry: e))),
+                ? PluginAction(kind: ActionKind.soon, label: 'Allowed nahi', onTap: () => _snack(e['how_to_connect'] as String? ?? ''))
+                : PluginAction(kind: ActionKind.add, label: 'Jodiye', onTap: () => _addDialog(entry: e))),
           ]),
         ]),
       ),
@@ -421,6 +426,7 @@ class _McpScreenState extends State<McpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    BrandLogo.base = app.api?.baseUrl ?? app.serverUrl;
     final fields = (_stats?['fields'] as Map?)?.cast<String, dynamic>();
     return Scaffold(
       appBar: AppBar(title: const Text('MCP servers'), backgroundColor: Colors.transparent),

@@ -182,7 +182,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   text kinds, file kinds need a file) run in `send` and in `hoola_send` (so files still need the owner's tap); non-file kinds
   drop loose file keys. `hoola_reply` takes file_id. Receiver refuses empty text kinds; `inbox()` auto-declines old empty ones.
 
-## v0.45 The avatar knows its MCP connections (latest)
+## v0.45 The avatar knows its MCP connections
 - `server/app/agent/mcp_live.py`: `snapshot(tenant)` = the owner's MCP servers (custom + linked built-in app MCPs) with status
   and tool lists (fetched in parallel, 4 s cap, cached 2 min; per-server tool lists cached 10 min by McpExecutor);
   `tool_defs(snap, limit)` turns ready servers' tools into real tools `mcp_<server>__<tool>` (schemas cleaned; `$ref`
@@ -192,6 +192,18 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   tools + `bazar_run`/`bazar_mcp` in VOICE_TOOL_NAMES; Gemini refusing a schema -> `_mcp_off` and reconnect.
 - Safety unchanged: calls go through `bazar.service.run` (public https only, keys never in chat, non-read = confirm card);
   MCP tools are owner-only under the voice lock. `GET /api/bazar/mcp/avatar` + MCP screen line "Hoola jaanta hai · N tools".
+
+## v0.46 Premium plugin & MCP cards with real logos (latest)
+- `server/app/bazar/logos.py` + `logo_domains.json` (539 researched official domains: pack id / `feat:<id>` -> domain).
+  `GET /api/logo/{pack|feat|gh|mcp}/{key}` (public) -> 128 px PNG from the brand's OWN site (apple-touch-icon, homepage
+  `<link rel=icon>`, favicon.ico; Pillow-normalised), GitHub avatar of the publisher for directory MCPs, the server host's
+  site for custom MCPs. Cached in `data/logos` (misses retried after 3 days); public https only at every hop; only
+  listed things are ever looked up. `logos.warm_in_background()` at start (`LOGO_WARM`, off in tests).
+- Lists carry `logo` (path or null): catalog (+ `does`), connections, featured, directory, mcp_list. Generic plugins
+  (shop templates, Hoola skills, generic billers, Santosh Email) have no brand -> category icon in the app.
+- App: `lib/ui/plugin_widgets.dart` (BrandLogo, PluginCard fixed 190 px, PluginGrid with mainAxisExtent, PluginAction:
+  add / linked / attention / soon / builtin, PluginRow with honest level chip, showPluginSheet with examples that send to
+  chat). Connect tab + MCP servers screen rebuilt on them; filter chips: Hoola karega / App kholega / SMS padhega / ...
 
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
@@ -215,4 +227,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). Next: v0.46.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos. Next: v0.47.

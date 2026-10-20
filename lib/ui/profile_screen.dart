@@ -305,7 +305,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.power_rounded, color: C.accent),
-          title: const Text('Connectors · 159 plugins', style: TextStyle(fontWeight: FontWeight.w700)),
+          title: const Text('Connectors · 700+ plugins', style: TextStyle(fontWeight: FontWeight.w700)),
           subtitle: const Text('Bill, kirana, UPI, cab, Swiggy/Zomato · kharch ki seema'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BazarScreen(app: app))),

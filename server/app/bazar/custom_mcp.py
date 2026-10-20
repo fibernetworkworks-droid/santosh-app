@@ -147,8 +147,9 @@ def save_key(s, row: CustomMcp, key: str, header: str = "") -> None:
 
 
 def public(row: CustomMcp, status: str) -> dict[str, Any]:
+    from .logos import custom_logo
     out = {"pack_id": row.id, "name": row.name, "url": row.url, "auth": row.auth, "status": status,
-           "directory_ref": row.directory_ref, "does": row.description[:300]}
+           "directory_ref": row.directory_ref, "does": row.description[:300], "logo": custom_logo(row)}
     if row.caution:
         out["caution"] = True
     return out
