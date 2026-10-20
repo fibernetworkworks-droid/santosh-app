@@ -9,6 +9,7 @@ import 'publicapis_screen.dart';
 import 'shopping_screen.dart';
 import 'reels_screen.dart';
 import 'scroll_screen.dart';
+import 'top_plugins.dart';
 import 'tv_screen.dart';
 
 /// Santosh Bazar: every pack with live status, linked app accounts, spend limits and delivery details.
@@ -57,6 +58,7 @@ class _BazarScreenState extends State<BazarScreen> {
 
   Future<void> _load() async {
     _seenTick = app.bazarLinkedTick;
+    BrandLogo.failed.clear();          // pull-to-refresh retries logos that failed earlier
     try {
       final r = await Future.wait([app.api!.bazarCatalog(), app.api!.bazarApps(), app.api!.bazarSettings()]);
       if (!mounted) return;
@@ -326,6 +328,13 @@ class _BazarScreenState extends State<BazarScreen> {
           ),
           const SizedBox(height: 18),
           if (_filter.isEmpty && _grp.isEmpty) ...[
+            if (_cat != null && ((_cat!['top'] as List?) ?? const []).isNotEmpty) ...[
+              TopPlugins(
+                sections: List<Map<String, dynamic>>.from((_cat!['top'] as List).map((e) => Map<String, dynamic>.from(e as Map))),
+                onOpen: _openSheet,
+              ),
+              const SizedBox(height: 20),
+            ],
             const Caption('APNE ACCOUNTS CONNECT KAREIN'),
             PluginGrid(children: [
               for (final (i, a) in _apps.where((a) => a['custom'] != true).indexed) Stagger(index: i, child: _appCard(a)),

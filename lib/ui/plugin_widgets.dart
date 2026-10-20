@@ -84,6 +84,9 @@ class BrandLogo extends StatelessWidget {
   /// Hoola server base address (set once by the Connect screens).
   static String base = '';
 
+  /// Logo addresses that failed this session: drawn as the clean fallback tile straight away (no white box flash).
+  static final Set<String> failed = <String>{};
+
   Widget _fallback() {
     final generic = executor == 'shop' || executor == 'native' || path == null;
     final words = name.replaceAll(RegExp(r'[^A-Za-z0-9 ]'), ' ').split(' ').where((w) => w.isNotEmpty).toList();
@@ -109,24 +112,52 @@ class BrandLogo extends StatelessWidget {
     final p = path;
     if (p == null || base.isEmpty) return _fallback();
     final b = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+    final url = '$b$p';
+    if (failed.contains(url)) return _fallback();
+    final px = (size * MediaQuery.devicePixelRatioOf(context)).round().clamp(48, 256);
+    final radius = BorderRadius.circular(size * .28);
     return Container(
       width: size,
       height: size,
-      padding: EdgeInsets.all(size * .14),
+      padding: EdgeInsets.all(size * .12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(size * .28),
-        boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 10, offset: Offset(0, 4))],
+        borderRadius: radius,
+        border: Border.all(color: const Color(0x14000000)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x40000000), blurRadius: 14, offset: Offset(0, 6)),
+          BoxShadow(color: Color(0x14FFFFFF), blurRadius: 1, spreadRadius: .5),
+        ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(size * .16),
+        borderRadius: BorderRadius.circular(size * .18),
         child: Image.network(
-          '$b$p',
+          url,
           fit: BoxFit.contain,
-          filterQuality: FilterQuality.medium,
+          cacheWidth: px,
+          filterQuality: FilterQuality.high,
           gaplessPlayback: true,
-          errorBuilder: (_, __, ___) => Center(
-              child: Text(name.isEmpty ? '?' : name[0].toUpperCase(), style: display(size * .38, color: const Color(0xFF3A2470)))),
+          // fade in when it arrives; a soft placeholder while it loads
+          frameBuilder: (_, child, frame, sync) => sync
+              ? child
+              : AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: const Duration(milliseconds: 220), child: child),
+          loadingBuilder: (_, child, progress) => progress == null
+              ? child
+              : Center(
+                  child: SizedBox(
+                      width: size * .3,
+                      height: size * .3,
+                      child: const CircularProgressIndicator(strokeWidth: 2, color: Color(0x553A2470)))),
+          // the server has no logo for it (or the phone is offline): the same clean tile as plugins without a brand
+          errorBuilder: (_, __, ___) {
+            if (failed.add(url)) {
+              // redraw this whole tile (not just the image) as the fallback once the frame is done
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (context.mounted) (context as Element).markNeedsBuild();
+              });
+            }
+            return const SizedBox.shrink();
+          },
         ),
       ),
     );

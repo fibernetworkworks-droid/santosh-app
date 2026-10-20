@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.60.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.61.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -2950,7 +2950,7 @@ async def tv_stop(tenant: str = Depends(current_tenant)):
 
 @app.get("/api/logo/{kind}/{key}")
 async def plugin_logo(kind: str, key: str):
-    """A plugin's / MCP server's real logo (from the brand's own site, cached as a 128 px PNG). Public: logos are
+    """A plugin's / MCP server's real logo (from the brand's own site, cached as a 256 px PNG). Public: logos are
     public and phones load them as plain images; only things in Hoola's own lists are ever looked up."""
     from .bazar import logos
     if kind not in ("pack", "feat", "gh", "mcp", "tv") or len(key) > 120:

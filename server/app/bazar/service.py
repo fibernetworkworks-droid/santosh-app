@@ -14,7 +14,7 @@ import secrets
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from ..config import get_settings as core_settings
 from ..db import Conversation as CoreConversation
@@ -1011,7 +1011,12 @@ def catalog(tenant_id: str) -> dict[str, Any]:
         packs += [{"pack_id": r.id, "name": r.name, "category": "My MCP servers", "kind": "MCP server", "executor": "mcp",
                    "status": pack_status(s, user, custom_mcp.to_pack(r)), "does": (r.description or "")[:220],
                    "logo": logos.custom_logo(r)} for r in custom_mcp.user_rows(s, user.id)]
+        pincode = user.pincode or ""
+        since = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) - dt.timedelta(days=60)
+        used = {pid: n for pid, n in s.execute(select(Task.pack_id, func.count()).where(
+            Task.user_id == user.id, Task.pack_id != "", Task.created_at >= since).group_by(Task.pack_id)).all()}
     counts: dict[str, int] = {}
     for p in packs:
         counts[p["status"]] = counts.get(p["status"], 0) + 1
-    return {"total": len(packs), "by_status": counts, "packs": packs}
+    from . import top
+    return {"total": len(packs), "by_status": counts, "packs": packs, "top": top.sections(packs, pincode, used)}
