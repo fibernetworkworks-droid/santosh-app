@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.42.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.43.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -1250,6 +1250,50 @@ def net_send(body: NetSendIn, tenant: str = Depends(current_tenant)):
     return _net(net.send, tenant, body.to, body.kind, body.body, "", body.thread_id, body.handle, body.goal)
 
 
+@app.post("/api/net/upload", dependencies=[Depends(require_key)])
+async def net_upload(file: UploadFile = File(...), to: str = Form(""), thread_id: str = Form(""), text: str = Form(""),
+                     tenant: str = Depends(current_tenant)):
+    """v0.43 The owner attaches a real photo / video / PDF / any file in a Hoola chat. Their own tap = consent."""
+    from .mailbox import service as ms
+    from .net import service as net
+    from .net.share import MAX_MB
+    data = await file.read(MAX_MB * 1024 * 1024 + 1)
+    if len(data) > MAX_MB * 1024 * 1024:
+        raise HTTPException(413, f"File {MAX_MB} MB se badi hai; Drive link bhejiye.")
+    if not data:
+        raise HTTPException(400, "File khaali hai.")
+    if thread_id and not to:
+        to = _net(net.thread, tenant, thread_id)["peer"]
+    if not to:
+        raise HTTPException(400, "Kise bhejna hai (to / thread_id)?")
+    row = await asyncio.to_thread(ms.store_bytes, tenant, file.filename or "file", data)
+    return await asyncio.to_thread(_net, net.send, tenant, to, "file", {"file_id": row.id, "text": text[:2000]},
+                                   (text or row.name)[:80], thread_id, False, "")
+
+
+class NetMakeIn(BaseModel):
+    kind: str = "pdf"           # pdf | image
+    title: str = ""
+    content: str = ""
+
+
+@app.post("/api/net/make", dependencies=[Depends(require_key)])
+async def net_make(body: NetMakeIn, tenant: str = Depends(current_tenant)):
+    """The avatar makes a document / picture; the app shows it and the owner decides to send it (nothing goes out)."""
+    from .net import handle
+    from .net.share import local_view
+    f = await asyncio.to_thread(_net, handle.make_file, tenant, "image" if body.kind == "image" else "pdf", body.title,
+                                body.content)
+    return f | (await asyncio.to_thread(local_view, tenant, f["file_id"]))
+
+
+@app.post("/api/net/messages/{mid}/think", dependencies=[Depends(require_key)])
+async def net_think(mid: str, tenant: str = Depends(current_tenant)):
+    """'Hoola, isse dekh ke batao': look at the attachment again and suggest replies, right now."""
+    from .net import enrich
+    return await asyncio.to_thread(enrich.run, tenant, mid)
+
+
 @app.post("/api/net/outbox/{oid}", dependencies=[Depends(require_key)])
 def net_outbox(oid: str, body: NetAnswerIn, tenant: str = Depends(current_tenant)):
     from .net import service as net
@@ -1265,6 +1309,24 @@ def net_threads(tenant: str = Depends(current_tenant)):
 @app.get("/api/net/threads/{tid}", dependencies=[Depends(require_key)])
 def net_thread(tid: str, tenant: str = Depends(current_tenant)):
     from .net import service as net
+    return _net(net.thread, tenant, tid)
+
+
+class NetHandleIn(BaseModel):
+    action: str = "start"       # start | stop
+    goal: str = ""
+
+
+@app.post("/api/net/threads/{tid}/handle", dependencies=[Depends(require_key)])
+def net_handle(tid: str, body: NetHandleIn, tenant: str = Depends(current_tenant)):
+    """'Tum sambhalo' on a whole conversation from the thread screen (or take it back)."""
+    from .net import handle
+    from .net import service as net
+    t = _net(net.thread, tenant, tid)
+    if body.action == "start":
+        handle.start(tenant, t["id"], body.goal.strip()[:500] or t.get("goal") or "Baat ko aage badhao, mere niyam ke andar.")
+    else:
+        handle._set_mode(tenant, t["id"], "relay")
     return _net(net.thread, tenant, tid)
 
 

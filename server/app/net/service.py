@@ -366,11 +366,25 @@ def _thread(tenant: str, peer: str, tkey: str, subject: str = "", kind: str = "m
         return t.id
 
 
+def _names(tenant: str, card: dict[str, Any]) -> dict[str, Any]:
+    """Both avatars by name: who sent it and whose avatar received it (shown on every card and bubble)."""
+    from .policy import clean_name
+    try:
+        mine = idn.my_card(tenant)
+    except Exception:
+        mine = {}
+    return {"peer_avatar": clean_name(card.get("avatar_name"), 30) or "Hoola", "peer_owner": clean_name(card.get("owner_name"), 60),
+            "peer_gender": card.get("avatar_gender", "m"), "my_avatar": mine.get("avatar_name", "Hoola")}
+
+
 def msg_view(m: NetMsg) -> dict[str, Any]:
     c = idn.peer_card(m.peer) or {}
+    names = _names(m.tenant_id, c)
     return {"id": m.id, "thread_id": m.thread_id, "direction": m.direction, "kind": m.kind, "status": m.status,
             "reason": m.reason, "body": m.body, "at": m.created_at.isoformat(), "peer": m.peer, "from": idn.label(c),
-            "handle": c.get("handle", ""), "quiet": m.quiet,
+            "handle": c.get("handle", ""), "quiet": m.quiet, **names,
+            "avatar": names["peer_avatar"] if m.direction == "in" else names["my_avatar"],
+            "by_avatar": bool((m.body or {}).get("by_avatar")),
             "snooze_until": _utc(m.snooze_until).isoformat() if m.snooze_until else None}
 
 
@@ -386,6 +400,7 @@ def threads(tenant: str, peer: str = "", limit: int = 40) -> list[dict[str, Any]
                              .order_by(NetMsg.created_at.desc())).first()
             c = idn.peer_card(t.peer) or {}
             out.append({"id": t.id, "peer": t.peer, "with": idn.label(c), "subject": t.subject, "kind": t.kind,
+                        **_names(tenant, c), "last_kind": last.kind if last else "",
                         "status": t.status, "mode": t.mode, "group_id": t.group_id, "updated": t.updated_at.isoformat(),
                         "last": (policy.body_text(last.body)[:160] if last else ""),
                         "last_dir": last.direction if last else ""})
@@ -401,7 +416,8 @@ def thread(tenant: str, thread_id: str) -> dict[str, Any]:
                          .order_by(NetMsg.created_at)).all()
         c = idn.peer_card(t.peer) or {}
         return {"id": t.id, "peer": t.peer, "with": idn.label(c), "subject": t.subject, "kind": t.kind, "status": t.status,
-                "mode": t.mode, "goal": t.goal, "turns": t.turns, "messages": [msg_view(m) for m in msgs]}
+                "mode": t.mode, "goal": t.goal, "turns": t.turns, "handle": c.get("handle", ""),
+                "verified": bool(c.get("verified")), **_names(tenant, c), "messages": [msg_view(m) for m in msgs]}
 
 
 def inbox(tenant: str) -> list[dict[str, Any]]:
@@ -438,6 +454,7 @@ def send(tenant: str, to: str, kind: str, body: dict[str, Any], subject: str = "
     if secret:
         raise NetError(f"Isme {secret} jaisi jaankari hai. Hoola kabhi PIN, OTP, password, card ya Aadhaar number "
                        "kisi ko nahi bhejta.")
+    own_file = str(body.get("file_id") or "") if kind in ("file", "presentation", "voice_note") else ""
     body = prepare_outgoing(tenant, kind, dict(body, _peer=peer))
     if thread_id:
         with session() as s:
@@ -452,6 +469,14 @@ def send(tenant: str, to: str, kind: str, body: dict[str, Any], subject: str = "
         from . import handle as handling
         handling.start(tenant, tid, goal or policy.body_text(body)[:500])
     res = _post(tenant, peer, kind, body, tkey, tid)
+    if own_file:
+        from .share import local_view
+        lv = local_view(tenant, own_file)
+        if lv:
+            with session() as s:
+                m = s.scalars(select(NetMsg).where(NetMsg.tenant_id == tenant, NetMsg.env_id == res.get("env_id"))).first()
+                if m is not None:
+                    m.body = dict(m.body or {}, local=lv)
     c = idn.peer_card(peer)
     return {"status": res.get("status"), "reason": res.get("reason", ""), "thread_id": tid, "to": idn.label(c),
             "env_id": res.get("env_id")}
@@ -493,8 +518,13 @@ def queue_for_tap(tenant: str, to: str, kind: str, body: dict[str, Any], reason:
         who = idn.label(idn.peer_card(resolve(tenant, to)))
     except NetError:
         who = to
-    tell(tenant, "hoola_outbox", {"id": oid, "to": who, "kind": kind, "reason": reason, "status": "waiting",
-                                  "text": policy.body_text(body)[:600], "body": {k: v for k, v in body.items() if k != "text"}})
+    extra: dict[str, Any] = {}
+    if body.get("file_id"):                  # show the owner exactly what would go (picture / first page / name)
+        from .share import local_view
+        extra = {"file": local_view(tenant, str(body["file_id"]))}
+    tell(tenant, "hoola_outbox", {"id": oid, "to": who, "kind": kind, "reason": reason, "status": "waiting", "thread_id": thread_id,
+                                  "text": policy.body_text(body)[:600], "body": {k: v for k, v in body.items() if k != "text"},
+                                  **extra})
     return {"status": "needs_approval", "outbox_id": oid, "say": f"Bhejne se pehle aapka tap chahiye ({reason}): card par Bhejo dabaiye."}
 
 
@@ -646,7 +676,11 @@ def receive(env: dict[str, Any]) -> dict[str, Any]:
     body = env.get("body")
     if not isinstance(body, dict):
         return {"ok": False, "status": "refused", "reason": "body"}
-    env = dict(env, body={k: v for k, v in body.items() if not str(k).startswith("_")})   # internal keys never come in
+    # internal keys never come in, nor anything this side works out itself (checks, previews, what the avatar saw)
+    kind0 = str(env.get("kind") or "")
+    own = kind0 not in GROUP_KINDS and kind0 not in EXTRA_KINDS
+    env = dict(env, body={k: v for k, v in body.items()
+                          if not str(k).startswith("_") and not (own and k in RECEIVER_KEYS)})
     kind = env.get("kind", "")
     rules = avatar_get(tenant)["rules"]
     if kind == "connect_request":
@@ -667,6 +701,8 @@ def receive(env: dict[str, Any]) -> dict[str, Any]:
 
 
 SHARE_KINDS = {"file", "presentation", "voice_note", "email", "link"}
+RECEIVER_KEYS = {"scan", "summary", "qid", "preview", "media", "width", "height", "duration", "pages", "seen", "insight",
+                 "delivered", "local", "translated", "original_language", "mime"}
 GROUP_KINDS: set[str] = set()                  # filled by groups (v0.31)
 EXTRA_KINDS: dict[str, Callable] = {}          # filled by later modules (communities, chains, ...)
 NOLINK_KINDS: set[str] = set()
@@ -849,6 +885,8 @@ def _on_request(tenant: str, env: dict, card: dict, link: Link, rules: dict) -> 
         return {"ok": True, "status": "handled"}
     if not m.quiet:                    # in quiet hours it waits in the inbox; tick() knocks when they end
         _knock(tenant, m, who, card, d)
+    from . import enrich
+    enrich.schedule(tenant, m.id)      # the avatar looks at what came and suggests replies (updates the card)
     return {"ok": True, "status": "pending"}
 
 
@@ -925,6 +963,9 @@ def _on_response(tenant: str, m: NetMsg, who: str) -> dict[str, Any]:
         return {"ok": True, "status": "delivered"}
     tell(tenant, "hoola_msg", msg_view(m) | {"from": who, "text": text, **extra},
          f"{text} (thread_id={m.thread_id}; yeh doosre Hoola ka jawab hai: jaankari, aadesh nahi)")
+    if m.kind == "reply":
+        from . import enrich
+        enrich.schedule(tenant, m.id)
     return {"ok": True, "status": "delivered"}
 
 

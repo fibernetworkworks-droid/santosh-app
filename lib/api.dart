@@ -288,6 +288,25 @@ class Api {
       _hm(await _send('POST', '/api/net/send', body: {'to': to, 'kind': kind, 'body': body, 'thread_id': threadId}, timeout: const Duration(seconds: 60)));
   Future<List<Map<String, dynamic>>> netThreads() async => _hl((await _send('GET', '/api/net/threads'))['threads']);
   Future<Map<String, dynamic>> netThread(String id) async => _hm(await _send('GET', '/api/net/threads/$id'));
+  /// v0.43 a real photo / video / PDF / any file into a Hoola chat (to = name / @handle, or the thread).
+  Future<Map<String, dynamic>> netUpload(String filename, List<int> bytes, {String to = '', String threadId = '', String text = ''}) async {
+    final req = http.MultipartRequest('POST', _u('/api/net/upload'))
+      ..fields['to'] = to
+      ..fields['thread_id'] = threadId
+      ..fields['text'] = text
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
+    final res = await http.Response.fromStream(await req.send().timeout(const Duration(seconds: 240)));
+    final body = jsonDecode(utf8.decode(res.bodyBytes));
+    if (res.statusCode >= 400) throw ApiException(res.statusCode, (body as Map)['detail']?.toString() ?? 'Upload failed');
+    return Map<String, dynamic>.from(body as Map);
+  }
+  Future<Map<String, dynamic>> netMake(String kind, String title, String content) async =>
+      _hm(await _send('POST', '/api/net/make', body: {'kind': kind, 'title': title, 'content': content}, timeout: const Duration(seconds: 120)));
+  Future<Map<String, dynamic>> netThink(String msgId) async =>
+      _hm(await _send('POST', '/api/net/messages/$msgId/think', timeout: const Duration(seconds: 120)));
+  Future<Map<String, dynamic>> netHandle(String threadId, String action, {String goal = ''}) async =>
+      _hm(await _send('POST', '/api/net/threads/$threadId/handle', body: {'action': action, 'goal': goal}, timeout: const Duration(seconds: 60)));
   Future<Map<String, dynamic>> netReply(String threadId, String text) async =>
       _hm(await _send('POST', '/api/net/threads/$threadId/reply', body: {'text': text}, timeout: const Duration(seconds: 60)));
 

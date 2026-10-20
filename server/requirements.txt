@@ -17,3 +17,5 @@ cryptography>=42
 reportlab>=4.0
 pypdf>=4.0           # reading PDF attachments in email
 segno>=1.6
+pillow>=10.0          # v0.43 Hoola Network: photo / video / PDF previews
+pypdfium2>=4.0        # v0.43 first-page picture of a PDF

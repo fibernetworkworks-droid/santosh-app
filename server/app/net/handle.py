@@ -39,11 +39,18 @@ RULES = (
     "- Never agree to pay, buy, order, sign or promise anything. Never ask for or send PIN, OTP, passwords, card or "
     "Aadhaar numbers.\n"
     "- For meetings, only accept a time that is inside FREE_SLOTS (owner's free time); otherwise offer one of FREE_SLOTS.\n"
-    "- Be short, warm and polite, in {lang}. Say you are {owner}'s AI avatar if asked.\n"
+    "- Talk like a real person, in {lang}: warm, natural, short (1-3 sentences). React to what they actually said and "
+    "to what is in anything they attached (you can see ATTACHMENTS described in the conversation). Use their avatar's "
+    "name now and then. No robotic phrases ('As an AI', 'I hope this message finds you well'), no repeating their words "
+    "back, don't end every message with a question. Think before answering: what do they want, what does your owner "
+    "want (GOAL), what is the next useful step. Say you are {owner}'s AI avatar if sincerely asked.\n"
+    "- You may MAKE something to send if it clearly helps the goal: a short document (note, quotation from ALLOWED_INFO, "
+    "agenda, summary) or a simple picture (greeting, poster). It is NOT sent until your owner taps 'Bhejo'.\n"
     "- If the goal is reached, finish. If you cannot do it within these rules, hand back to the owner.\n"
     "Output JSON: {{\"action\": \"reply\" | \"done\" | \"ask_owner\", \"text\": what to say to the other avatar (for reply / "
     "done, may be empty for ask_owner), \"meeting_slot\": ISO time if a meeting was agreed (only from FREE_SLOTS), "
-    "\"summary\": one line for your owner in {lang}}}."
+    "\"make\": optional {{\"type\": \"pdf\" | \"image\", \"title\": short title, \"content\": full text of the document or "
+    "a description of the picture}}, \"summary\": one line for your owner in {lang}}}."
 )
 
 
@@ -88,7 +95,13 @@ def _transcript(tenant: str, thread_id: str, limit: int = 14) -> str:
     lines = []
     for m in reversed(rows):
         who = "YOU" if m.direction == "out" else "THEM"
-        lines.append(f"{who} ({m.kind}): {policy.quote(policy.body_text(m.body), 600)}")
+        b = m.body or {}
+        line = f"{who} ({m.kind}): {policy.quote(policy.body_text(b), 600)}"
+        if b.get("name") and m.kind in ("file", "presentation", "voice_note"):     # what the attachment is, not just its name
+            what = b.get("seen") or b.get("summary") or ""
+            line += f" [attached {b.get('media') or 'file'} '{policy.quote(str(b['name']), 80)}'" + (
+                f": {policy.quote(str(what), 400)}]" if what else "]")
+        lines.append(line)
     return "\n".join(lines)
 
 
@@ -171,6 +184,8 @@ def _act(tenant: str, thread: Thread, out: dict[str, Any], meeting: dict[str, An
     text = str(out.get("text") or "").strip()
     if text:
         reply(tenant, thread.id, text, extra={"by_avatar": True})
+    if isinstance(out.get("make"), dict):
+        _make_and_queue(tenant, thread, out["make"])
     if out["action"] == "done":
         _bump(thread.id, "done")
         tell(tenant, "hoola_msg", {"thread_id": thread.id, "from": who, "kind": "handled", "fyi": True,
@@ -179,6 +194,40 @@ def _act(tenant: str, thread: Thread, out: dict[str, Any], meeting: dict[str, An
         return "done"
     _bump(thread.id)
     return "replying"
+
+
+def make_file(tenant: str, kind: str, title: str, content: str) -> dict[str, Any]:
+    """The avatar makes a document / picture (stored like any file of the owner). Returns public_file or raises."""
+    from ..mailbox import service as ms
+    from ..pc.service import public_file
+    from . import media
+    from .service import NetError
+    title = (title or ("Hoola picture" if kind == "image" else "Hoola note")).strip()[:120]
+    if policy.secret_found(title + "\n" + (content or "")):
+        raise NetError("Isme mana ki gayi jaankari (OTP / PIN / card / Aadhaar) thi, isliye nahi banaya.")
+    if kind == "image":
+        data = media.make_image(content or title)
+        if not data:
+            raise NetError("Abhi tasveer nahi ban payi (image model / Gemini key nahi mila).")
+        ext = ".png" if data[:4] == b"\x89PNG" else ".jpg"
+    else:
+        data, ext = media.make_pdf(title, content or title), ".pdf"
+    safe = "".join(ch if ch.isalnum() or ch in " -_" else "_" for ch in title).strip()[:60] or "hoola"
+    return public_file(ms.store_bytes(tenant, safe + ext, data))
+
+
+def _make_and_queue(tenant: str, thread: Thread, spec: dict[str, Any]) -> None:
+    from .service import NetError, queue_for_tap, tell
+    kind = "image" if str(spec.get("type")) == "image" else "pdf"
+    try:
+        f = make_file(tenant, kind, str(spec.get("title") or ""), str(spec.get("content") or ""))
+    except (NetError, Exception) as e:
+        tell(tenant, "hoola_msg", {"thread_id": thread.id, "kind": "handled", "fyi": True,
+                                   "text": f"Main {('tasveer' if kind == 'image' else 'document')} bhejna chahta tha par: {e}"})
+        return
+    queue_for_tap(tenant, thread.peer, "file", {"file_id": f["file_id"], "text": str(spec.get("title") or "")[:200],
+                                                "made_by_avatar": True}, "maine banaya hai, bhejne se pehle dekh lijiye",
+                  thread.id)
 
 
 def maybe_handle(tenant: str, m, rules: dict[str, Any], link, card: dict[str, Any]) -> bool:

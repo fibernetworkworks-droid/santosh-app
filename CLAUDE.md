@@ -115,7 +115,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - Android `VoiceAudio`: AudioTrack LOW_LATENCY mode; a reply after silence waits for an 80 ms cushion (grows +40 up to
   240 ms if a reply runs dry mid-sentence) and fades in 5 ms. Research report behind all this: "Human like Hinglish voice AI".
 
-## v0.42 Noise does not cut him off (latest)
+## v0.42 Noise does not cut him off
 - Phone `lib/barge_gate.dart` (`BargeGate`, used in `LiveVoice` mic listener): while Hoola is speaking (playback timeline
   + 300 ms) the mic goes to Gemini only when someone is clearly above the background (threshold = max(0.02 RMS,
   p20*3.2, p60*2) of levels heard while he talks, last 6 s, kept across the call) for 240 ms; until then zeros are sent.
@@ -125,6 +125,24 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - Server: `VOICE_START_SENSITIVITY=low` (START_SENSITIVITY_LOW). `Call._watch_false_stop`: interrupted mid-reply and no user
   words within `VOICE_RESUME_AFTER_NOISE_S` (1.5) → note so he finishes his point ("haan, toh..."), max once per 10 s.
   `stats.false_stops` → `/api/voice/stats` `false_stops_per_call`.
+
+## v0.43 Hoola Network: real media, avatars that see and think (latest)
+- Files of any kind travel for real: `POST /api/net/upload` (multipart: file + to | thread_id + text; the owner's tap = consent)
+  -> `send(kind=file)`. Receiver `share.receive_hook` makes its OWN preview from the fetched bytes (`net/media.py analyse`:
+  JPEG thumb <=45 KB via Pillow, video frame + duration via ffmpeg, PDF pages + page-1 picture via pypdf/pypdfium2).
+  Peers can never plant receiver-side keys (`service.RECEIVER_KEYS` stripped on receive: scan, summary, preview, seen, insight...).
+  Sender keeps `body.local` (own preview + signed url); receiver gets `body.delivered` (url) after Haan.
+- `net/enrich.py` (background thread, off in tests via `HOOLA_ENRICH=false`): `seen` = what the avatar saw (Claude vision for
+  photos / scanned PDFs, Gemini for video / audio) + `insight` {gist, 2-3 reply suggestions, tone}; publishes `hoola_update`.
+  `POST /api/net/messages/{id}/think` and tool `hoola_look` run it on demand. Suggestions never send by themselves.
+- Generation: `media.make_pdf` (reportlab) / `make_image` (Gemini `hoola_image_model`); `handle.make_file`; `POST /api/net/make`;
+  tool `hoola_make`; "tum sambhalo" may output `make` -> always queued in the outbox for the owner's tap (`made_by_avatar`).
+  `handle.RULES` is persona-first (talk like a real person) and the transcript describes attachments.
+- Names on both sides: `msg_view`/`thread`/`threads` carry `peer_avatar`, `peer_owner`, `my_avatar`, `avatar` (who spoke).
+- App: `lib/ui/hoola_media.dart` (HoolaMediaTile, HoolaSeen, HoolaInsight, HoolaFromTo); `HoolaThreadScreen` is a real chat
+  (names per bubble, media, inline Haan/Mana, reply ideas, attach photo/video/audio/file, "banwaiye", tum sambhalo toggle via
+  `POST /api/net/threads/{id}/handle`, live refresh on hoolaTick). Knock / msg / outbox cards show previews and open the thread.
+- VPS needs `pip install pillow pypdfium2` (ffmpeg optional, for video frames).
 
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
@@ -148,4 +166,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions. Next: v0.43.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. Next: v0.44.

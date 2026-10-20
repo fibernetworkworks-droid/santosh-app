@@ -3,6 +3,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'hoola_media.dart';
+import 'hoola_net_screen.dart' show HoolaThreadScreen;
 
 Widget _avatarDot(String label, {Color color = C.violet}) => CircleAvatar(
       radius: 18,
@@ -19,6 +21,11 @@ Widget _badges(Map<String, dynamic> v) => Wrap(spacing: 6, children: [
       if (v['key_warning'] == true)
         const Text('⚠️ pehchaan badli', style: TextStyle(color: C.bad, fontSize: 11.5, fontWeight: FontWeight.w700)),
     ]);
+
+void openHoolaThread(BuildContext context, Santosh app, String? threadId) {
+  if (threadId == null || threadId.isEmpty) return;
+  Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaThreadScreen(app: app, threadId: threadId)));
+}
 
 Future<void> _open(String url) async {
   if (url.isEmpty) return;
@@ -117,6 +124,19 @@ class _HoolaKnockCardState extends State<HoolaKnockCard> {
     if (err != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
   }
 
+  bool _thinking = false;
+
+  Future<void> _think() async {
+    setState(() => _thinking = true);
+    try {
+      final r = await widget.app.api!.netThink(widget.v['id'] as String);
+      widget.v.addAll(r);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+    if (mounted) setState(() => _thinking = false);
+  }
+
   Future<void> _later() async {
     final m = await showModalBottomSheet<int>(
       context: context,
@@ -139,21 +159,27 @@ class _HoolaKnockCardState extends State<HoolaKnockCard> {
     final slots = List<String>.from((v['slot_labels'] as List? ?? const []).map((e) => '$e'));
     final text = ((body['translated'] as String?) ?? (body['text'] as String? ?? '')).trim();
     final title = (body['title'] as String? ?? '').trim();
+    final hasMedia = v['preview'] != null || (v['media'] != null && (v['name'] ?? '') != '');
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            _avatarDot(v['from'] as String? ?? ''),
+            _avatarDot(v['peer_avatar'] as String? ?? v['from'] as String? ?? ''),
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(v['from'] as String? ?? 'Hoola', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                HoolaFromTo(v: v, app: widget.app),
                 Text(v['what'] as String? ?? '', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                 _badges(v),
               ]),
             ),
-            const Icon(Icons.door_front_door_rounded, color: C.accent),
+            IconButton(
+              tooltip: 'Baat-cheet kholiye',
+              onPressed: () => openHoolaThread(context, widget.app, v['thread_id'] as String?),
+              icon: const Icon(Icons.forum_rounded, color: C.accent),
+            ),
           ]),
           if (title.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700))),
           if (text.isNotEmpty)
@@ -163,7 +189,21 @@ class _HoolaKnockCardState extends State<HoolaKnockCard> {
               decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
               child: Text('“$text”', style: const TextStyle(fontSize: 13.5)),
             ),
-          _checked(v),
+          if (hasMedia) HoolaMediaTile(body: {...v, ...body, 'name': v['name'] ?? body['name']}, app: widget.app, locked: open),
+          _checked(hasMedia ? ({...v}..remove('name')..remove('summary')) : ({...v}..remove('summary'))),
+          HoolaSeen(app: widget.app, v: v),
+          if (open) HoolaInsight(v: v, onPick: (t) => setState(() => _note.text = t)),
+          if (open && hasMedia && v['seen'] == null && v['insight'] == null)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _thinking ? null : _think,
+                icon: _thinking
+                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.visibility_rounded, size: 18, color: C.teal),
+                label: Text(_thinking ? '${widget.app.aName} dekh raha hai…' : '${widget.app.aName}, dekh ke batao', style: const TextStyle(color: C.teal)),
+              ),
+            ),
           if (body['amount'] != null)
             Padding(
               padding: const EdgeInsets.only(top: 6),
@@ -308,8 +348,8 @@ class HoolaMsgCard extends StatelessWidget {
   final Map<String, dynamic> v;
   final Santosh app;
 
-  Future<void> _reply(BuildContext context) async {
-    final c = TextEditingController();
+  Future<void> _reply(BuildContext context, [String start = '']) async {
+    final c = TextEditingController(text: start);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -339,13 +379,28 @@ class HoolaMsgCard extends StatelessWidget {
       child: Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            _avatarDot(v['from'] as String? ?? ''),
+            _avatarDot(v['peer_avatar'] as String? ?? v['from'] as String? ?? ''),
             const SizedBox(width: 10),
-            Expanded(child: Text(v['from'] as String? ?? 'Hoola', style: const TextStyle(fontWeight: FontWeight.w700))),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(v['from'] as String? ?? 'Hoola', style: const TextStyle(fontWeight: FontWeight.w700)),
+                HoolaFromTo(v: v, app: app),
+              ]),
+            ),
             if (v['fyi'] == true) const Text('jaankari', style: TextStyle(color: C.faint, fontSize: 11.5)),
+            if (canReply)
+              IconButton(
+                tooltip: 'Baat-cheet kholiye',
+                onPressed: () => openHoolaThread(context, app, v['thread_id'] as String?),
+                icon: const Icon(Icons.forum_rounded, color: C.accent, size: 20),
+              ),
           ]),
           const SizedBox(height: 6),
           Text(v['text'] as String? ?? '', style: const TextStyle(fontSize: 13.5)),
+          if (v['body'] is Map && ((v['body'] as Map)['name'] ?? (v['body'] as Map)['preview']) != null)
+            HoolaMediaTile(body: Map<String, dynamic>.from(v['body'] as Map), app: app),
+          HoolaSeen(app: app, v: v),
+          if (canReply) HoolaInsight(v: v, onPick: (t) => _reply(context, t)),
           if (effect != null && (effect['where'] == 'calendar' || effect['where'] == 'reminder'))
             Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -864,6 +919,10 @@ class _HoolaOutboxCardState extends State<HoolaOutboxCard> {
               decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
               child: Text(v['text'] as String, style: const TextStyle(fontSize: 13)),
             ),
+          if (v['file'] is Map && (v['file'] as Map).isNotEmpty)
+            HoolaMediaTile(body: {'local': v['file']}, app: widget.app),
+          if (body['made_by_avatar'] == true)
+            Text('${widget.app.aName} ne banaya hai — dekh lijiye, phir bhejiye.', style: const TextStyle(color: C.teal, fontSize: 12)),
           if ((body['name'] ?? body['place'] ?? body['email_id'] ?? '') != '')
             Text('${body['name'] ?? body['place'] ?? 'email'}', style: const TextStyle(color: C.chip, fontSize: 12.5)),
           if (_done == null)

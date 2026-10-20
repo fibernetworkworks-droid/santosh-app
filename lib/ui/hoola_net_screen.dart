@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 
 import '../state.dart';
 import 'glass.dart';
 import 'hoola_cards.dart';
+import 'hoola_media.dart';
 import 'hoola_business_screen.dart';
 import 'hoola_samaj_screen.dart';
 
@@ -342,7 +344,14 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
           ),
           title: Text(l['label'] as String? ?? ''),
           subtitle: Text(sub, style: const TextStyle(fontSize: 12)),
-          trailing: Wrap(spacing: 4, children: [
+          trailing: Wrap(spacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            if (l['status'] == 'active')
+              IconButton(
+                tooltip: 'Baat kijiye',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => _startChat(l),
+                icon: const Icon(Icons.chat_bubble_rounded, color: C.accent, size: 20),
+              ),
             if (l['vip'] == true) const Icon(Icons.star_rounded, color: C.accent, size: 18),
             if (l['verified'] == true) const Icon(Icons.verified_rounded, color: C.ok, size: 18),
             if (l['key_warning'] == true) const Icon(Icons.warning_rounded, color: C.bad, size: 18),
@@ -367,6 +376,38 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
     ]);
   }
 
+  /// Open the chat with a connected person (their latest conversation, or a new one with a first message).
+  Future<void> _startChat(Map<String, dynamic> l) async {
+    final had = _threads.where((t) => t['peer'] == l['peer']).toList();
+    if (had.isNotEmpty) {
+      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaThreadScreen(app: app, threadId: had.first['id'] as String)));
+      await _load();
+      return;
+    }
+    final c = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('${l['label'] ?? ''} se baat'),
+        content: TextField(controller: c, minLines: 2, maxLines: 5, decoration: InputDecoration(hintText: '${app.aName} unke Hoola se kya kahe?')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Bhejo')),
+        ],
+      ),
+    );
+    if (ok != true || c.text.trim().isEmpty) return;
+    try {
+      final r = await app.api!.netSend('@${l['handle']}', 'message', {'text': c.text.trim()});
+      if (!mounted) return;
+      final tid = r['thread_id'] as String? ?? '';
+      if (tid.isNotEmpty) await Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaThreadScreen(app: app, threadId: tid)));
+      await _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
   // ---------------------------------------------------------------- Inbox + Baatein
   Widget _inboxTab() => ListView(padding: const EdgeInsets.all(16), children: [
         if (_inbox.isEmpty)
@@ -386,9 +427,27 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
         for (final t in _threads)
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: Icon(t['mode'] == 'handle' ? Icons.smart_toy_rounded : Icons.forum_rounded, color: C.teal),
-            title: Text(t['with'] as String? ?? ''),
-            subtitle: Text('${t['last_dir'] == 'out' ? 'Aap: ' : ''}${t['last'] ?? t['subject'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis),
+            leading: Stack(clipBehavior: Clip.none, children: [
+              CircleAvatar(
+                backgroundColor: C.violet.withOpacity(.35),
+                child: Text(((t['peer_avatar'] as String?) ?? 'H').isEmpty ? 'H' : (t['peer_avatar'] as String).substring(0, 1).toUpperCase(),
+                    style: const TextStyle(fontWeight: FontWeight.w800, color: C.ink)),
+              ),
+              if (t['mode'] == 'handle')
+                const Positioned(right: -4, bottom: -4, child: Icon(Icons.smart_toy_rounded, size: 16, color: C.teal)),
+            ]),
+            title: Text(
+                (t['peer_avatar'] as String? ?? '').isNotEmpty
+                    ? '${t['peer_avatar']}${(t['peer_owner'] as String? ?? '').isNotEmpty ? '  ·  ${t['peer_owner']}' : ''}'
+                    : t['with'] as String? ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: Text(
+                '${t['last_dir'] == 'out' ? 'Aapka ${t['my_avatar'] ?? app.aName}: ' : ''}'
+                '${t['last_kind'] == 'file' ? '📎 ' : ''}${(t['last'] as String? ?? '').isNotEmpty ? t['last'] : (t['subject'] ?? '')}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis),
             trailing: Text(t['status'] == 'open' ? '' : '${t['status']}', style: const TextStyle(color: C.faint, fontSize: 11.5)),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaThreadScreen(app: app, threadId: t['id'] as String))),
           ),
@@ -493,7 +552,8 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
       );
 }
 
-/// One avatar-to-avatar conversation, and a box to send what the owner wants to say.
+/// One avatar-to-avatar conversation as a real chat: both avatars by name, photos / videos / PDFs, what the avatar
+/// saw, reply ideas, attach, "banwao" (the avatar makes a PDF / picture) and "tum sambhalo" for the whole talk.
 class HoolaThreadScreen extends StatefulWidget {
   const HoolaThreadScreen({super.key, required this.app, required this.threadId});
   final Santosh app;
@@ -506,25 +566,45 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
   Map<String, dynamic> _t = {};
   final _text = TextEditingController();
   bool _busy = false;
+  bool _loading = true;
+  String? _sending;            // name of a file going out right now
+  int _tick = -1;
+
+  Santosh get app => widget.app;
 
   @override
   void initState() {
     super.initState();
+    _tick = app.hoolaTick;
+    app.addListener(_onApp);
     _load();
   }
 
   @override
   void dispose() {
+    app.removeListener(_onApp);
     _text.dispose();
     super.dispose();
   }
 
+  /// Something happened on the Hoola Network (reply, knock, what the avatar saw): refresh this chat.
+  void _onApp() {
+    if (app.hoolaTick == _tick) return;
+    _tick = app.hoolaTick;
+    Future<void>.delayed(const Duration(milliseconds: 250), _load);
+  }
+
+  void _snack(String t) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t)));
+  }
+
   Future<void> _load() async {
     try {
-      final r = await widget.app.api!.netThread(widget.threadId);
-      if (mounted) setState(() => _t = r);
+      final r = await app.api!.netThread(widget.threadId);
+      if (mounted) setState(() { _t = r; _loading = false; });
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) setState(() => _loading = false);
+      _snack(e.toString());
     }
   }
 
@@ -533,66 +613,304 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
     if (t.isEmpty) return;
     setState(() => _busy = true);
     try {
-      await widget.app.api!.netReply(widget.threadId, t);
+      await app.api!.netReply(widget.threadId, t);
       _text.clear();
       await _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      _snack(e.toString());
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
+  Future<void> _attach(FileType type) async {
+    final res = await FilePicker.platform.pickFiles(type: type, withData: true);
+    final f = res?.files.single;
+    if (f == null || f.bytes == null) return;
+    if (f.size > 25 * 1024 * 1024) {
+      _snack('File 25 MB se badi hai; Drive link bhejiye.');
+      return;
+    }
+    final caption = _text.text.trim();
+    setState(() => _sending = f.name);
+    try {
+      final r = await app.api!.netUpload(f.name, f.bytes!, threadId: widget.threadId, text: caption);
+      _text.clear();
+      if (r['status'] == 'declined' || r['status'] == 'refused') _snack('Unke Hoola ne nahi liya: ${r['reason'] ?? ''}');
+      await _load();
+    } catch (e) {
+      _snack(e.toString());
+    } finally {
+      if (mounted) setState(() => _sending = null);
+    }
+  }
+
+  Future<void> _attachMenu() async {
+    final pick = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: C.bgBottom,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(leading: const Icon(Icons.photo_rounded, color: C.accent), title: const Text('Photo'), onTap: () => Navigator.pop(ctx, 'image')),
+          ListTile(leading: const Icon(Icons.videocam_rounded, color: C.accent), title: const Text('Video'), onTap: () => Navigator.pop(ctx, 'video')),
+          ListTile(leading: const Icon(Icons.audiotrack_rounded, color: C.accent), title: const Text('Audio'), onTap: () => Navigator.pop(ctx, 'audio')),
+          ListTile(leading: const Icon(Icons.attach_file_rounded, color: C.accent), title: const Text('PDF / document / koi bhi file'), onTap: () => Navigator.pop(ctx, 'any')),
+          const Divider(height: 1),
+          ListTile(
+              leading: const Icon(Icons.auto_awesome_rounded, color: C.teal),
+              title: Text('${app.aName} se banwaiye'),
+              subtitle: const Text('PDF (quotation, note, agenda) ya tasveer'),
+              onTap: () => Navigator.pop(ctx, 'make')),
+        ]),
+      ),
+    );
+    switch (pick) {
+      case 'image':
+        await _attach(FileType.image);
+      case 'video':
+        await _attach(FileType.video);
+      case 'audio':
+        await _attach(FileType.audio);
+      case 'any':
+        await _attach(FileType.any);
+      case 'make':
+        await _make();
+    }
+  }
+
+  Future<void> _make() async {
+    String kind = 'pdf';
+    final title = TextEditingController();
+    final content = TextEditingController(text: _text.text.trim());
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, set) => AlertDialog(
+          backgroundColor: C.bgBottom,
+          title: Text('${app.aName} banayega'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Wrap(spacing: 8, children: [
+                for (final e in const {'pdf': '📄 Document (PDF)', 'image': '🖼️ Tasveer'}.entries)
+                  ChoiceChip(
+                    label: Text(e.value),
+                    selected: kind == e.key,
+                    showCheckmark: false,
+                    selectedColor: C.accent,
+                    labelStyle: TextStyle(color: kind == e.key ? C.onAccent : C.chip, fontWeight: FontWeight.w600),
+                    onSelected: (_) => set(() => kind = e.key),
+                  ),
+              ]),
+              TextField(controller: title, decoration: const InputDecoration(hintText: 'Title (jaise: FNW Quotation)')),
+              TextField(
+                controller: content,
+                minLines: 3,
+                maxLines: 8,
+                decoration: InputDecoration(
+                    hintText: kind == 'pdf' ? 'Kya likhna hai? (rates, points, note…)' : 'Tasveer mein kya ho? (jaise: Diwali greeting, FNW ka naam)'),
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Banao')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || content.text.trim().isEmpty) return;
+    setState(() => _sending = kind == 'pdf' ? 'Document ban raha hai…' : 'Tasveer ban rahi hai…');
+    Map<String, dynamic>? f;
+    try {
+      f = await app.api!.netMake(kind, title.text.trim(), content.text.trim());
+    } catch (e) {
+      _snack(e.toString());
+    }
+    if (mounted) setState(() => _sending = null);
+    if (f == null || !mounted) return;
+    final made = f;
+    final send = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: C.bgBottom,
+        title: const Text('Yeh bhejein?'),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          HoolaMediaTile(body: {'local': made}, app: app, maxWidth: 280),
+          const SizedBox(height: 6),
+          Text('${_t['peer_avatar'] ?? _t['with'] ?? ''} ko jayega.', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Mat bhejo')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Bhejo')),
+        ],
+      ),
+    );
+    if (send != true) return;
+    try {
+      await app.api!.netSend(_t['peer'] as String, 'file', {'file_id': made['file_id'], 'text': title.text.trim()}, threadId: widget.threadId);
+      await _load();
+    } catch (e) {
+      _snack(e.toString());
+    }
+  }
+
+  Future<void> _toggleHandle() async {
+    final on = _t['mode'] == 'handle';
+    String goal = '';
+    if (!on) {
+      final c = TextEditingController(text: _text.text.trim());
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: C.bgBottom,
+          title: Text('${app.aName}, tum sambhalo'),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('${app.aName} aapke niyam ke andar khud baat karega (max 6 baar), aur atakne par aapko bulayega. '
+                'Paise, files aur private jaankari kabhi khud nahi deta.', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+            TextField(controller: c, minLines: 2, maxLines: 4, decoration: const InputDecoration(hintText: 'Lakshya: jaise "kal 5 baje meeting fix karo"')),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Shuru karo')),
+          ],
+        ),
+      );
+      if (ok != true) return;
+      goal = c.text.trim();
+    }
+    try {
+      final r = await app.api!.netHandle(widget.threadId, on ? 'stop' : 'start', goal: goal);
+      if (mounted) setState(() => _t = r);
+    } catch (e) {
+      _snack(e.toString());
+    }
+  }
+
+  Future<void> _decide(Map<String, dynamic> m, String action) async {
+    final err = await app.hoolaDecide(m['id'] as String, action, slot: m['kind'] == 'meeting' ? 0 : null);
+    if (err != null) _snack(err);
+    await _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final msgs = List<Map<String, dynamic>>.from((_t['messages'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+    final peer = (_t['peer_avatar'] as String? ?? '').trim();
+    final owner = (_t['peer_owner'] as String? ?? '').trim();
+    final title = peer.isNotEmpty ? peer : (_t['with'] as String? ?? 'Baat-cheet');
+    final handling = _t['mode'] == 'handle';
+    final lastIn = msgs.lastWhere((m) => m['direction'] == 'in', orElse: () => const <String, dynamic>{});
+    final showIdeas = msgs.isNotEmpty && msgs.last['direction'] == 'in' && !handling;
     return Scaffold(
-      appBar: AppBar(title: Text(_t['with'] as String? ?? 'Baat-cheet'), backgroundColor: Colors.transparent),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        titleSpacing: 0,
+        title: Row(children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: C.violet.withOpacity(.35),
+            child: Text(title.isEmpty ? 'H' : title.substring(0, 1).toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, color: C.ink)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: display(17))),
+                if (_t['verified'] == true) const Padding(padding: EdgeInsets.only(left: 4), child: Icon(Icons.verified_rounded, size: 16, color: C.ok)),
+              ]),
+              Text(
+                [if (owner.isNotEmpty) '$owner ka avatar', if ((_t['handle'] ?? '') != '') '@${_t['handle']}'].join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: C.muted, fontSize: 11.5),
+              ),
+            ]),
+          ),
+        ]),
+        actions: [
+          IconButton(
+            tooltip: handling ? 'Khud sambhalna band karo' : '${app.aName}, tum sambhalo',
+            onPressed: _toggleHandle,
+            icon: Icon(Icons.smart_toy_rounded, color: handling ? C.teal : C.muted),
+          ),
+        ],
+      ),
       body: Aurora(
         child: Column(children: [
-          if (_t['mode'] == 'handle')
+          if (handling)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
               color: const Color(0x222DD4BF),
-              child: Text('${widget.app.aName} yeh baat aapke niyam ke andar khud sambhal raha hai. Lakshya: ${_t['goal'] ?? ''}',
-                  style: const TextStyle(color: C.teal, fontSize: 12.5)),
-            ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(padding: const EdgeInsets.all(16), children: [
-                for (final m in msgs)
-                  Align(
-                    alignment: m['direction'] == 'out' ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Container(
-                      constraints: const BoxConstraints(maxWidth: 300),
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: m['direction'] == 'out' ? const Color(0x33FFB15C) : C.panel,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('${m['kind']} · ${m['status']}', style: const TextStyle(color: C.faint, fontSize: 10.5)),
-                        Text(_msgText(m), style: const TextStyle(fontSize: 13.5)),
-                      ]),
-                    ),
-                  ),
+              child: Row(children: [
+                const Icon(Icons.smart_toy_rounded, size: 18, color: C.teal),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('${app.aName} khud baat kar raha hai · Lakshya: ${_t['goal'] ?? ''}',
+                      style: const TextStyle(color: C.teal, fontSize: 12.5)),
+                ),
+                TextButton(onPressed: _toggleHandle, child: const Text('Rokiye')),
               ]),
             ),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : msgs.isEmpty
+                    ? Center(child: Text('Abhi koi baat nahi. ${app.aName} se kahiye kya bolna hai.', style: const TextStyle(color: C.muted)))
+                    : RefreshIndicator(
+                        onRefresh: _load,
+                        child: ListView.builder(
+                          reverse: true,
+                          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                          itemCount: msgs.length,
+                          itemBuilder: (_, i) {
+                            final m = msgs[msgs.length - 1 - i];
+                            final prev = msgs.length - 2 - i >= 0 ? msgs[msgs.length - 2 - i] : null;
+                            return _Bubble(
+                              key: ValueKey(m['id']),
+                              m: m,
+                              app: app,
+                              showName: prev == null || prev['direction'] != m['direction'],
+                              onDecide: (a) => _decide(m, a),
+                            );
+                          },
+                        ),
+                      ),
           ),
+          if (_sending != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              child: Row(children: [
+                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                const SizedBox(width: 8),
+                Expanded(child: Text(_sending!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 12.5))),
+              ]),
+            ),
+          if (showIdeas)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 2),
+              child: HoolaInsight(v: lastIn, showGist: false, onPick: (t) => setState(() {
+                _text.text = t;
+                _text.selection = TextSelection.collapsed(offset: t.length);
+              })),
+            ),
           SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
-              child: Row(children: [
+              padding: const EdgeInsets.fromLTRB(6, 4, 10, 10),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                IconButton(
+                  tooltip: 'Photo, video, PDF bhejiye',
+                  onPressed: _sending != null ? null : _attachMenu,
+                  icon: const Icon(Icons.add_circle_rounded, color: C.accent, size: 28),
+                ),
                 Expanded(
                   child: TextField(
                     controller: _text,
                     minLines: 1,
-                    maxLines: 4,
-                    decoration: InputDecoration(hintText: '${widget.app.aName} se kahiye kya bolna hai…'),
+                    maxLines: 5,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(hintText: '${title.isEmpty ? 'Unke Hoola' : title} se ${app.aName} kya kahe…'),
                   ),
                 ),
                 IconButton(onPressed: _busy ? null : _send, icon: const Icon(Icons.send_rounded, color: C.accent)),
@@ -603,18 +921,103 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
       ),
     );
   }
+}
 
-  String _msgText(Map<String, dynamic> m) {
+/// One message: the avatar's name on top, words, photo / video / PDF, what was seen, and Haan / Mana if it waits.
+class _Bubble extends StatelessWidget {
+  const _Bubble({super.key, required this.m, required this.app, required this.showName, required this.onDecide});
+  final Map<String, dynamic> m;
+  final Santosh app;
+  final bool showName;
+  final ValueChanged<String> onDecide;
+
+  static const _kindText = {
+    'ask': '❓ sawaal', 'meeting': '📅 meeting', 'task': '✅ kaam', 'reminder': '⏰ reminder', 'voice_note': '🎙️ voice note',
+    'email': '✉️ email', 'link': '🔗 link', 'presentation': '📊 presentation', 'payment_request': '₹ payment request',
+    'contact_card': '👤 contact', 'location': '📍 jagah', 'meeting_ok': '📅 meeting pakki', 'meeting_no': '📅 meeting nahi',
+  };
+
+  String _status(String s) => switch (s) {
+        'pending' => 'aapke faisle ka intezaar',
+        'snoozed' => 'baad mein',
+        'declined' => 'mana kiya',
+        'blocked' => 'roka gaya',
+        'refused' => 'unke Hoola ne nahi liya',
+        'accepted' => 'haan kaha ✓',
+        'handled' => 'Hoola ne sambhala',
+        _ => '',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final out = m['direction'] == 'out';
     final b = Map<String, dynamic>.from(m['body'] as Map? ?? const {});
-    final parts = <String>[
-      if ((b['title'] ?? '') != '') '${b['title']}',
-      if ((b['text'] ?? '') != '') '${b['text']}',
-      if ((b['note'] ?? '') != '') '${b['note']}',
-      if ((b['name'] ?? '') != '') '📎 ${b['name']}',
+    final name = (m['avatar'] as String? ?? '').trim().isNotEmpty ? m['avatar'] as String : (out ? app.aName : (m['from'] as String? ?? ''));
+    final byAvatar = m['by_avatar'] == true || b['by_avatar'] == true || b['made_by_avatar'] == true;
+    final text = ((b['translated'] as String?) ?? (b['text'] as String? ?? '')).trim();
+    final status = m['status'] as String? ?? '';
+    final pending = !out && (status == 'pending' || status == 'snoozed');
+    final hasMedia = (b['name'] ?? b['preview'] ?? b['local']) != null && const {'file', 'presentation', 'voice_note'}.contains(m['kind']);
+    final at = DateTime.tryParse(m['at'] as String? ?? '')?.toLocal();
+    final time = at == null ? '' : '${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}';
+    final lines = <String>[
+      if ((b['title'] ?? '') != '' && m['kind'] != 'file') '${b['title']}',
+      if (text.isNotEmpty) text,
+      if ((b['note'] ?? '') != '' && b['note'] != text) '${b['note']}',
       if ((b['url'] ?? '') != '') '🔗 ${b['url']}',
-      if (b['amount'] != null) '₹${b['amount']}',
+      if ((b['place'] ?? '') != '') '📍 ${b['place']}',
+      if (b['amount'] != null) '₹${b['amount']} ${b['upi_note'] ?? ''}',
     ];
-    return parts.isEmpty ? '(${m['kind']})' : parts.join('\n');
+    final st = _status(status);
+    return Padding(
+      padding: EdgeInsets.only(top: showName ? 10 : 3),
+      child: Column(crossAxisAlignment: out ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
+        if (showName)
+          Padding(
+            padding: const EdgeInsets.only(left: 6, right: 6, bottom: 3),
+            child: Text(out ? 'Aapka $name' : name,
+                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: out ? C.accentSoft : C.teal)),
+          ),
+        Container(
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * .8),
+          padding: const EdgeInsets.fromLTRB(11, 8, 11, 6),
+          decoration: BoxDecoration(
+            color: out ? const Color(0x33FFB15C) : C.panel,
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(16),
+              topRight: const Radius.circular(16),
+              bottomLeft: Radius.circular(out ? 16 : 4),
+              bottomRight: Radius.circular(out ? 4 : 16),
+            ),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            if (_kindText[m['kind']] != null)
+              Text(_kindText[m['kind']]!, style: const TextStyle(color: C.faint, fontSize: 10.5, fontWeight: FontWeight.w600)),
+            if (hasMedia) HoolaMediaTile(body: b, app: app, locked: pending, maxWidth: 250),
+            if (lines.isNotEmpty) Padding(padding: EdgeInsets.only(top: hasMedia ? 6 : 0), child: Text(lines.join('\n'), style: const TextStyle(fontSize: 14, height: 1.3))),
+            if (!out) HoolaSeen(app: app, v: {'seen': b['seen'], 'summary': b['summary']}),
+            if (!out && b['scan'] is Map && (b['scan'] as Map)['verdict'] == 'danger')
+              const Padding(padding: EdgeInsets.only(top: 4), child: Text('⛔ Jaanch mein khatarnak laga', style: TextStyle(color: C.bad, fontSize: 12))),
+            if (pending)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Wrap(spacing: 6, children: [
+                  FilledButton.tonal(onPressed: () => onDecide('accept'), child: const Text('Haan')),
+                  TextButton(onPressed: () => onDecide('decline'), child: const Text('Mana', style: TextStyle(color: C.bad))),
+                  if (const {'message', 'ask', 'meeting', 'task', 'reminder', 'voice_note'}.contains(m['kind']))
+                    TextButton(onPressed: () => onDecide('handle'), child: Text('${app.aName}, sambhalo', style: const TextStyle(color: C.teal))),
+                ]),
+              ),
+            const SizedBox(height: 2),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              if (byAvatar) const Padding(padding: EdgeInsets.only(right: 4), child: Icon(Icons.smart_toy_rounded, size: 12, color: C.teal)),
+              if (st.isNotEmpty && !pending) Text('$st · ', style: const TextStyle(color: C.faint, fontSize: 10.5)),
+              Text(time, style: const TextStyle(color: C.faint, fontSize: 10.5)),
+            ]),
+          ]),
+        ),
+      ]),
+    );
   }
 }
 

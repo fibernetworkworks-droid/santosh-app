@@ -338,6 +338,13 @@ def receive_hook(tenant: str, sender: str, kind: str, body: dict[str, Any]) -> d
         path.write_bytes(data)
         scan = _check_file(tenant, name, mime, data)
         text = scan.pop("text", "")
+        if scan.get("verdict") != "danger":
+            from . import media
+            info = media.analyse(name, mime, data)        # thumbnail made here from the real bytes (never the sender's)
+            for k in ("media", "preview", "width", "height", "duration", "pages"):
+                if info.get(k) not in (None, ""):
+                    body[k] = info[k]
+        body["name"], body["size"], body["mime"] = name, len(data), mime
         qid = new_id("hf")
         with session() as s:
             s.add(NetFile(id=qid, tenant_id=tenant, env_id=body.get("_env", ""), name=name, mime=mime, size=len(data),
@@ -363,7 +370,8 @@ def receive_hook(tenant: str, sender: str, kind: str, body: dict[str, Any]) -> d
 
 def card_extra(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
-    for k in ("summary", "scan", "name", "size", "subject", "from_name", "url", "amount", "upi_note", "place", "phone"):
+    for k in ("summary", "scan", "name", "size", "subject", "from_name", "url", "amount", "upi_note", "place", "phone",
+              "media", "preview", "width", "height", "duration", "pages", "seen", "insight", "delivered", "mime"):
         if body.get(k) not in (None, ""):
             out[k] = body[k]
     return out
@@ -389,6 +397,12 @@ def accept_file(tenant: str, m, decision: dict[str, Any]) -> dict[str, Any]:
     pf = _release(tenant, m.body.get("qid", "")) if m.body.get("qid") else None
     saved: dict[str, Any] = {}
     if pf:
+        from .models import NetMsg
+        with session() as s:                      # the thread now shows the real file (open / play / view)
+            row = s.get(NetMsg, m.id)
+            if row is not None:
+                row.body = dict(row.body or {}, delivered={"file_id": pf["file_id"], "url": pf["url"], "name": pf["name"],
+                                                          "size": pf.get("size")})
         tell(tenant, "pc_file", pf | {"source": "hoola", "from": idn.label(idn.peer_card(m.peer))})
         saved = {"where": "file", "file_id": pf["file_id"], "name": pf["name"]}
         if m.kind == "presentation" or (decision.get("notebook") and m.body.get("_has_text")):
@@ -410,6 +424,29 @@ def accept_file(tenant: str, m, decision: dict[str, Any]) -> dict[str, Any]:
     if m.kind == "contact_card":
         saved = {"where": "contact", "name": m.body.get("name"), "phone": m.body.get("phone")}
     return {"kind": "accepted", "body": {"ref": m.env_id, "note": decision.get("note", "")[:500]}, "saved": saved}
+
+
+def local_view(tenant: str, file_id: str) -> dict[str, Any]:
+    """Sender side: how the owner's own sent file looks in the thread (preview + a link to open it)."""
+    from ..mailbox import service as ms
+    from ..pc.service import download_path
+    from . import media
+    try:
+        f = ms._file_row(tenant, str(file_id))
+        data = Path(f.stored_path).read_bytes()
+    except Exception:
+        return {}
+    info = media.analyse(f.name, mimetypes.guess_type(f.name)[0] or "", data)
+    return {k: v for k, v in info.items() if v not in (None, "")} | {"url": download_path(f.id), "file_id": f.id,
+                                                                     "name": f.name, "size": len(data)}
+
+
+def quarantined_bytes(tenant: str, qid: str) -> tuple[str, str, bytes] | None:
+    with session() as s:
+        f = s.get(NetFile, qid)
+        if f is None or f.tenant_id != tenant or not f.path or not Path(f.path).exists():
+            return None
+        return f.name, f.mime, Path(f.path).read_bytes()
 
 
 def cleanup() -> int:

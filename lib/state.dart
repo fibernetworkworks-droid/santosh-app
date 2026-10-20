@@ -749,8 +749,21 @@ class Santosh extends ChangeNotifier {
         hoolaTick++;
         break;
       case 'hoola_msg':
+        final mi = FeedItem(ev.kind, Map<String, dynamic>.from(p));
+        if (p['id'] != null) _hoola['hoola_msg:${p['id']}'] = mi;
+        feed.add(mi);
+        hoolaTick++;
+        break;
       case 'hoola_group':
         feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
+        hoolaTick++;
+        break;
+      case 'hoola_update':                 // v0.43 the avatar looked at it: what it saw + reply ideas fill the card
+        final up = {if (p['seen'] != null) 'seen': p['seen'], if (p['insight'] != null) 'insight': p['insight']};
+        for (final k in ['hoola_knock:${p['msg_id']}', 'hoola_msg:${p['msg_id']}']) {
+          final it = _hoola[k];
+          if (it != null) it.data = {...it.data, ...up};
+        }
         hoolaTick++;
         break;
       case 'hoola_group_post':
