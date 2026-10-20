@@ -3,3 +3,4 @@ __pycache__/
 desktop/build/
 desktop/dist/
 *.spec
+tool/moves/demo.html

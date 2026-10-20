@@ -1,0 +1,219 @@
+<title>Hoola Moves</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@700;800&family=Manrope:wght@600;700;800&display=swap">
+<style>
+/* Layout: one stage. The avatar on its pedestal fills the top; the move pad sits under it like a remote.
+   Hoola's night-glass palette; saffron marks the move that is playing. */
+:root {
+  --bg: #0b0a1a; --bg2: #15102e; --panel: rgba(255,255,255,.07); --line: rgba(255,255,255,.12);
+  --ink: #f4f2ff; --muted: #b9b3da; --faint: #9c96c2; --accent: #ffb15c; --on-accent: #1b1030;
+  --display: "Sora", "Manrope", system-ui, sans-serif; --text: "Manrope", system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box }
+body { margin: 0; background: radial-gradient(120% 80% at 50% 18%, #2a1d5c 0%, var(--bg2) 45%, var(--bg) 100%) fixed; background-color: var(--bg);
+  color: var(--ink); font-family: var(--text); }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 18px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 10px 20px; margin-bottom: 8px }
+.eyebrow { font-weight: 800; font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--faint) }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(26px, 4.4vw, 38px); margin: 2px 0 0; line-height: 1.05 }
+.pick { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted) }
+select { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; font: 700 14px var(--text); padding: 8px 10px; max-width: 62vw }
+select option, select optgroup { background: #1b1535; color: var(--ink) }
+.stage { position: relative; height: min(62vh, 560px); min-height: 360px; border-radius: 24px; overflow: hidden; touch-action: pan-y }
+canvas { display: block; width: 100%; height: 100%; cursor: grab }
+canvas:active { cursor: grabbing }
+.now { position: absolute; left: 16px; top: 14px; display: flex; gap: 8px; align-items: center; pointer-events: none }
+.now b { font-family: var(--display); font-size: 22px }
+.now span { font-size: 12.5px; color: var(--muted) }
+.hint { position: absolute; right: 14px; bottom: 12px; font-size: 12px; color: var(--faint); pointer-events: none }
+.pad { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; margin-top: 14px }
+.mv { all: unset; box-sizing: border-box; cursor: pointer; padding: 11px 10px 10px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line);
+  display: grid; gap: 1px; text-align: center; transition: transform .16s cubic-bezier(.23,1,.32,1), background .16s, border-color .16s }
+.mv b { font-size: 15px; font-weight: 800 }
+.mv small { font-size: 11.5px; color: var(--faint); font-weight: 600 }
+.mv:active { transform: scale(.96) }
+.mv[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent) }
+.mv[aria-pressed="true"] small { color: var(--on-accent); opacity: .75 }
+.mv:focus-visible, .tool:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+@media (hover: hover) { .mv:hover { border-color: rgba(255,177,92,.6) } }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px }
+.tool { all: unset; cursor: pointer; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); font-weight: 800; font-size: 13.5px }
+.tool[aria-pressed="true"] { background: var(--ink); color: var(--bg) }
+.note { margin-top: 18px; font-size: 13px; color: var(--faint); max-width: 70ch; line-height: 1.5 }
+.fail { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted) }
+@media (max-width: 520px) { .stage { height: 54vh } .pad { grid-template-columns: repeat(3, minmax(0, 1fr)) } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Hoola · avatar ab hilta hai</div>
+      <h1 id="title">Santosh, naacho!</h1>
+    </div>
+    <label class="pick" for="look">Avatar <select id="look"></select></label>
+  </header>
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="3D avatar"></canvas>
+    <div class="now" aria-live="polite"><b id="nowB">Aaram</b><span id="nowS">Relax</span></div>
+    <div class="hint">Drag to turn him around</div>
+  </div>
+  <div class="pad" id="pad" role="group" aria-label="Moves"></div>
+  <div class="tools">
+    <button class="tool" id="auto" type="button" aria-pressed="false">Auto: sab moves</button>
+    <button class="tool" id="dhol" type="button" aria-pressed="false">Dhol beat</button>
+  </div>
+  <p class="note">Every one of the 200 Hoola looks can do these moves: the same joints (shoulders, elbows, hips, knees) are built into each avatar, and the moves blend smoothly from one to the next. In the app the avatar would pick the move by itself: a namaste when you open Hoola, a jump when a task finishes, bhangra on your birthday.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script>/*AVATAR*/</script>
+<script>/*MOVES*/</script>
+<script>/*LOOKS*/</script>
+<script>
+(function () {
+  const stageEl = document.getElementById('stage');
+  const fail = (m) => { stageEl.insertAdjacentHTML('beforeend', `<div class="fail">${m}</div>`); };
+  if (!window.THREE) { fail('3D could not load here. Try opening the page again.'); return; }
+  THREE.ColorManagement && (THREE.ColorManagement.legacyMode = false);
+  const canvas = document.getElementById('c');
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); } catch (e) { fail('This browser has no 3D (WebGL) turned on.'); return; }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setClearColor(0, 0);
+  renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .95;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(30, 1, .1, 100);
+  (function () {
+    const env = new THREE.Scene();
+    env.add(new THREE.Mesh(new THREE.SphereGeometry(20, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide,
+      vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+      fragmentShader: 'varying vec3 vP; void main(){ float h = normalize(vP).y; vec3 c = mix(vec3(.30,.27,.36), vec3(.62,.6,.66), smoothstep(-.4,.7,h)); gl_FragColor = vec4(c,1.); }' })));
+    const panel = (w, h, x, y, z, k) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(k, k, k), side: THREE.DoubleSide })); m.position.set(x, y, z); m.lookAt(0, 0, 0); env.add(m); };
+    panel(8, 6, 6, 8, 10, 1.1); panel(10, 4, -10, 3, 4, .45); panel(6, 10, -6, 4, -10, .8);
+    scene.environment = new THREE.PMREMGenerator(renderer).fromScene(env, .04).texture;
+  })();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xe9d6c8, .55));
+  const key = new THREE.DirectionalLight(0xfff1e2, 2.1); key.position.set(3.5, 7, 6.5); key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024); Object.assign(key.shadow.camera, { left: -4, right: 4, top: 6, bottom: -3, near: 1, far: 26 });
+  key.shadow.bias = -.0004; key.shadow.normalBias = .025; key.shadow.radius = 4; scene.add(key);
+  const rim = new THREE.DirectionalLight(0xc4b0ff, 1.5); rim.position.set(-4.5, 3.5, -4); scene.add(rim);
+  const fill = new THREE.DirectionalLight(0xffe8d8, .45); fill.position.set(-4, 1, 5); scene.add(fill);
+  const P = (o) => new THREE.MeshPhysicalMaterial(o);
+  const m1 = new THREE.Mesh(new THREE.CylinderGeometry(1.75, 1.8, .22, 96), P({ color: 0xfbf9ff, roughness: .18, clearcoat: 1, clearcoatRoughness: .06, envMapIntensity: .9 }));
+  m1.position.y = -1.86; m1.receiveShadow = true; scene.add(m1);
+  const m2 = new THREE.Mesh(new THREE.CylinderGeometry(1.95, 2.0, .2, 96), P({ color: 0xe9e2fb, roughness: .3, clearcoat: .8, envMapIntensity: .8 })); m2.position.y = -2.06; scene.add(m2);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.78, .03, 12, 160), new THREE.MeshBasicMaterial({ color: 0x9b6dff })); ring.rotation.x = Math.PI / 2; ring.position.y = -1.75; scene.add(ring);
+
+  // look picker: Santosh + all 200
+  const LOOKS = window.HOOLA_LOOKS || [];
+  const sel = document.getElementById('look');
+  sel.innerHTML = '<option value="">Santosh (asli)</option>' +
+    ['f', 'm'].map(g => `<optgroup label="${g === 'f' ? 'Mahila · 100' : 'Purush · 100'}">` +
+      LOOKS.filter(l => l.gender === g).map(l => `<option value="${l.id}">${l.name} · ${l.city}</option>`).join('') + '</optgroup>').join('');
+  let A = null, mover = null, spinUser = 0, playing = 'namaste';
+  function setLook(id) {
+    if (A) { scene.remove(A.root); A.dispose(); }
+    const look = LOOKS.find(l => l.id === id) || null;
+    A = HoolaAvatar.build(look, { rig: true }); scene.add(A.root);
+    A.root.userData.baseY = A.root.position.y;
+    mover = HoolaMoves.attach(A); mover.play(playing);
+    const nm = look ? look.name : 'Santosh', f = look && look.gender === 'f';
+    document.getElementById('title').textContent = nm + (f ? ', naacho!' : ', naacho!');
+    document.querySelector('.hint').textContent = `Drag to turn ${f ? 'her' : 'him'} around`;
+  }
+  sel.onchange = () => setLook(sel.value);
+
+  // move pad
+  const pad = document.getElementById('pad');
+  const MOVES = HoolaMoves.MOVES;
+  MOVES.forEach(m => {
+    const b = document.createElement('button'); b.className = 'mv'; b.type = 'button'; b.dataset.id = m.id;
+    b.innerHTML = `<b>${m.label}</b><small>${m.en}</small>`;
+    b.onclick = () => { stopAuto(); play(m.id); };
+    pad.appendChild(b);
+  });
+  function play(id) {
+    playing = id; mover && mover.play(id);
+    pad.querySelectorAll('.mv').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === id)));
+    const m = MOVES.find(x => x.id === id); document.getElementById('nowB').textContent = m.label; document.getElementById('nowS').textContent = m.en;
+  }
+  // auto tour
+  const TOUR = ['namaste', 'wave', 'bhangra', 'jump', 'spin', 'groove', 'clap', 'cheer', 'walk', 'think', 'yoga', 'phone'];
+  let autoT = null, ti = 0;
+  const autoBtn = document.getElementById('auto');
+  function stopAuto() { if (autoT) { clearInterval(autoT); autoT = null; autoBtn.setAttribute('aria-pressed', 'false'); } }
+  autoBtn.onclick = () => {
+    if (autoT) { stopAuto(); return; }
+    autoBtn.setAttribute('aria-pressed', 'true'); ti = 0; play(TOUR[ti]);
+    autoT = setInterval(() => { ti = (ti + 1) % TOUR.length; play(TOUR[ti]); }, 3600);
+  };
+  // dhol: a simple two-drum loop, starts only when tapped
+  let ac = null, dholOn = false, nextBeat = 0, beatN = 0;
+  const dholBtn = document.getElementById('dhol');
+  function drum(t, f0, f1, len, gain, noise) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + len);
+    g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(.001, t + len);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + len + .02);
+    if (noise) {
+      const b = ac.createBuffer(1, ac.sampleRate * .08, ac.sampleRate), d = b.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      const s = ac.createBufferSource(), hp = ac.createBiquadFilter(), ng = ac.createGain();
+      hp.type = 'highpass'; hp.frequency.value = 2500; ng.gain.value = noise; s.buffer = b; s.connect(hp).connect(ng).connect(ac.destination); s.start(t);
+    }
+  }
+  dholBtn.onclick = () => {
+    try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+    dholOn = !dholOn; dholBtn.setAttribute('aria-pressed', String(dholOn));
+    if (dholOn) { ac.resume(); nextBeat = ac.currentTime + .05; beatN = 0; if (playing === 'idle' || playing === 'phone') play('bhangra'); }
+  };
+  function scheduleDhol() {
+    if (!dholOn || !ac) return;
+    const beat = .42 / 2;                                  // eighth notes at the bhangra tempo
+    while (nextBeat < ac.currentTime + .2) {
+      const k = beatN % 8;
+      if (k === 0 || k === 3 || k === 6) drum(nextBeat, 110, 48, .35, .9, 0);           // dhol bass (dagga)
+      if (k === 2 || k === 4 || k === 7) drum(nextBeat, 420, 300, .09, .35, .25);      // high side (tilli)
+      nextBeat += beat; beatN++;
+    }
+  }
+
+  // drag to turn
+  let dragX = null;
+  canvas.addEventListener('pointerdown', e => { dragX = e.clientX; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener('pointermove', e => { if (dragX !== null) { spinUser += (e.clientX - dragX) * .012; dragX = e.clientX; } });
+  canvas.addEventListener('pointerup', () => { dragX = null; });
+  canvas.addEventListener('pointercancel', () => { dragX = null; });
+
+  function layout() {
+    const w = stageEl.clientWidth, h = stageEl.clientHeight;
+    renderer.setSize(w, h, false); camera.aspect = w / h;
+    const visH = Math.max(7.7, 6.9 / camera.aspect);
+    const dist = (visH / 2) / Math.tan(THREE.MathUtils.degToRad(15));
+    camera.position.set(0, 1.35 + 1.7, dist); camera.lookAt(0, 1.35, 0); camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', layout); layout();
+
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let t = 0, last = performance.now(), blinkAt = 2, blinkT = -1;
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min((now - last) / 1000, .05) * (reduce ? .6 : 1); last = now; t += dt;
+    if (!A) return;
+    mover.update(dt, t);
+    A.root.rotation.y += spinUser;
+    if (blinkT < 0 && t > blinkAt) blinkT = 0;
+    let lid = 1;
+    if (blinkT >= 0) { blinkT += dt; lid = blinkT < .07 ? 1 - blinkT / .07 : Math.min(1, (blinkT - .07) / .09); lid = .06 + .94 * lid;
+      if (blinkT > .16) { blinkT = -1; blinkAt = t + 2 + Math.random() * 3; } }
+    A.eyes.forEach(e => e.scale.y = lid);
+    ring.material.color.setHSL(.73, .9, .58 + Math.sin(t * 1.6) * .07);
+    scheduleDhol();
+    renderer.render(scene, camera);
+  }
+  setLook('');
+  play('namaste');
+  requestAnimationFrame(frame);
+})();
+</script>
