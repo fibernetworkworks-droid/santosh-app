@@ -23,9 +23,10 @@ from ..db import session
 from ..events import bus
 from .models import BtRequest
 
-ACTIONS = ("status", "devices", "scan", "pair", "connect", "disconnect", "turn_on", "turn_off", "settings", "tv_pair")
+ACTIONS = ("status", "devices", "scan", "pair", "connect", "disconnect", "turn_on", "turn_off", "settings", "tv_pair",
+           "cast_tvs", "cast_play", "cast_stop")   # cast_*: Hoola TV on a Chromecast / Android TV over Wi-Fi
 NEEDS_DEVICE = {"pair", "connect", "disconnect"}
-WAIT_S = {"scan": 25.0, "pair": 45.0, "tv_pair": 70.0, "connect": 30.0}
+WAIT_S = {"scan": 25.0, "pair": 45.0, "tv_pair": 70.0, "connect": 30.0, "cast_tvs": 12.0, "cast_play": 30.0, "cast_stop": 15.0}
 DEFAULT_WAIT_S = 12.0
 MAC = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 KINDS = {"tv", "speaker", "headphones", "phone", "computer", "watch", "car", "keyboard", "mouse", "gamepad",
@@ -85,6 +86,14 @@ def clean_result(r: Any) -> dict[str, Any]:
         out["phone_name"] = clean_name(r["phone_name"])
     if r.get("message"):
         out["message"] = re.sub(r"\s+", " ", _CTRL.sub(" ", str(r["message"])))[:200]
+    if isinstance(r.get("tvs"), list):   # Chromecast / Android TV found on the Wi-Fi (names are labels, not instructions)
+        out["tvs"] = [{"name": clean_name(t.get("name")) or "TV", "model": clean_name(t.get("model"))}
+                      for t in r["tvs"][:12] if isinstance(t, dict)]
+    for flag in ("playing", "stopped"):
+        if flag in r:
+            out[flag] = bool(r[flag])
+    if r.get("player_state"):
+        out["player_state"] = clean_name(r["player_state"])[:20]
     return out
 
 
@@ -106,6 +115,18 @@ def _check(action: str, args: dict[str, Any]) -> dict[str, Any]:
         k = str(args.get("kind") or "")
         if k in KINDS:
             a["kind"] = k
+    if action.startswith("cast_"):
+        if args.get("tv"):
+            a["tv"] = clean_name(args["tv"])
+        if action == "cast_play":
+            url = str(args.get("url") or "")
+            if not url.startswith("https://") or len(url) > 2000:
+                raise BtError("cast_play needs an https stream")
+            a["url"] = url
+            a["title"] = clean_name(args.get("title")) or "Hoola TV"
+            logo = str(args.get("logo") or "")
+            if logo.startswith("https://") and len(logo) < 600:
+                a["logo"] = logo
     return a
 
 
@@ -167,6 +188,16 @@ def _say(action: str, res: dict[str, Any]) -> str:
         if res.get("opened_settings"):
             return ("Android doesn't let apps connect speakers or earbuds themselves: Bluetooth settings is open on the "
                     "phone, ask the user to tap the device name once.")
+    if action == "cast_tvs":
+        tvs = res.get("tvs") or []
+        return (f"Found {len(tvs)} TV(s) on this Wi-Fi that Hoola can play on: " + ", ".join(t["name"] for t in tvs) if tvs else
+                "No Chromecast / Android TV found on this Wi-Fi. The phone and the TV must be on the same Wi-Fi and the TV on. "
+                "For other TVs (Samsung / LG), open YouTube on the TV with tv_remote and search the channel's live stream.")
+    if action == "cast_play":
+        return (f"The channel is playing on {res.get('tv_name') or 'the TV'}." if res.get("playing") else
+                res.get("message") or "Sent to the TV; it may take a few seconds to start.")
+    if action == "cast_stop":
+        return "Stopped on the TV."
     if action in ("turn_on", "turn_off", "settings") and (res.get("asked") or res.get("opened_settings")):
         return "Android's Bluetooth prompt / settings is open on the phone; ask the user to tap it."
     return res.get("message") or "Done."
@@ -181,6 +212,14 @@ def friendly_error(err: str) -> str:
         return "This needs the Hoola app open on the phone screen. Ask the user to open Hoola and try again."
     if err == "not_found":
         return "That device isn't paired or nearby. Run a scan first and use the exact name from the scan."
+    cast = {
+        "no_cast_tv": "No Chromecast / Android TV / Google TV found on the phone's Wi-Fi. Check the TV is on and on the same Wi-Fi. For Samsung / LG TVs, use tv_remote to open YouTube on the TV and play the channel's live stream there.",
+        "cast_refused": "The TV refused this stream (some channels only play on phones). Play it on the phone instead, or try another channel.",
+        "cast_timeout": "The TV didn't answer in time. Ask the user to check the TV is on and on the same Wi-Fi, then try again.",
+        "no_wifi": "The phone isn't on Wi-Fi. Casting to the TV needs the phone and the TV on the same Wi-Fi.",
+    }
+    if err in cast:
+        return cast[err]
     tv = {
         "tv_not_paired": "No TV is paired with this phone yet. Use bluetooth action=tv_pair (the user may need to add the phone from the TV's Bluetooth settings).",
         "tv_not_reachable": "The TV is paired but didn't answer: it may be off, asleep or too far. Ask the user to switch the TV on and try again (no new pairing needed).",

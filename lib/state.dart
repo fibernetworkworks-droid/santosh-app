@@ -877,7 +877,7 @@ class Santosh extends ChangeNotifier {
         break;
       case 'device_action_result':
         if (p['status'] == 'done') {
-          final what = {'set_alarm': 'Alarm laga diya', 'set_timer': 'Timer shuru', 'add_calendar_event': 'Calendar khul gaya', 'open_url': 'Phone par khul gaya'};
+          final what = {'set_alarm': 'Alarm laga diya', 'set_timer': 'Timer shuru', 'add_calendar_event': 'Calendar khul gaya', 'open_url': 'Phone par khul gaya', 'tv_play': 'Channel chal raha hai'};
           feed.add(FeedItem('note', {'text': '${what[p['type']] ?? 'Ho gaya'} ✓'}));
         }
         break;

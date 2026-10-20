@@ -16,6 +16,7 @@ import 'ui/glass.dart';
 import 'ui/profile_screen.dart';
 import 'ui/setup_screen.dart';
 import 'ui/today_screen.dart';
+import 'ui/tv_screen.dart';
 import 'ui/live_voice_screen.dart';
 import 'ui/voice_screen.dart';
 
@@ -45,6 +46,7 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    HoolaTv.app = widget.app;   // the TV player opens from links and phone actions too
     _setup = !widget.app.configured;
     if (!_setup) widget.app.connect();
     _listenForSignIn();
@@ -57,6 +59,10 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
       if (t.isEmpty) return;
       if (t.startsWith('wake:')) {
         widget.app.wake(locked: t == 'wake:locked');
+        return;
+      }
+      if (t.startsWith('tv:')) {
+        openTv(t.substring(3));
         return;
       }
       if (t.startsWith('bazar:')) {

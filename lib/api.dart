@@ -89,6 +89,16 @@ class Api {
       }) as Map);
   Future<void> voiceIdDelete(String id) async => _send('DELETE', '/api/voiceid/members/$id');
 
+  // ---- Hoola TV: free official live channels, on the phone or the TV ----
+  Future<Map<String, dynamic>> tvChannels({String q = '', String category = ''}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/tv/channels', query: {'q': q, 'category': category}) as Map);
+  Future<Map<String, dynamic>> tvChannel(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/tv/channels/${Uri.encodeComponent(id)}') as Map);
+  Future<Map<String, dynamic>> tvCast(String id, {String tv = ''}) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/tv/cast', body: {'channel': id, 'tv': tv}, timeout: const Duration(seconds: 45)) as Map);
+  Future<Map<String, dynamic>> tvStop() async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/tv/stop', timeout: const Duration(seconds: 30)) as Map);
+
   Future<Map<String, dynamic>> health() async => Map<String, dynamic>.from(await _send('GET', '/healthz'));
 
   Future<Map<String, dynamic>> me() async => Map<String, dynamic>.from(await _send('GET', '/api/me'));

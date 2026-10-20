@@ -97,6 +97,11 @@ def resolve(kind: str, key: str) -> tuple[str, str] | None:
     if kind == "feat":
         d = domains().get("feat:" + key)
         return ("domain", d) if d else None
+    if kind == "tv":
+        from ..tv import catalog
+        c = catalog.get(key)
+        src = (c or {}).get("logo_src") or ""
+        return ("url", src) if src.startswith("https://") else None
     if kind == "gh":
         return ("url", f"https://github.com/{key}.png?size=128") if _OWNER.match(key) else None
     if kind == "mcp":

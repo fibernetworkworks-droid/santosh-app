@@ -18,7 +18,8 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
     monkeypatch.setenv("HOOLA_ENRICH", "false")     # no background vision / suggestion calls; tests call enrich.run
     monkeypatch.setenv("VOICE_TOOL_ACK", "false")
-    monkeypatch.setenv("LOGO_WARM", "false")       # no logo downloads in tests   # no real TTS calls; tests that need the clips turn it on
+    monkeypatch.setenv("LOGO_WARM", "false")       # no logo downloads in tests
+    monkeypatch.setenv("TV_REFRESH", "false")   # no real TTS calls; tests that need the clips turn it on
     monkeypatch.chdir(tmp_path)   # ignore any local .env
     from app.config import get_settings
     get_settings.cache_clear()

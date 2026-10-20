@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'ui/tv_screen.dart';
 import 'ui/web_screen.dart';
 
 /// Lets non-UI code (phone actions) open screens.
@@ -16,6 +17,14 @@ Future<bool> openInApp(String url, {String? title}) async {
     return launchUrl(uri, mode: LaunchMode.externalApplication);
   }
   nav.push(MaterialPageRoute(builder: (_) => WebScreen(url: url, title: title)));
+  return true;
+}
+
+/// Open a Hoola TV channel in the player. Returns false if the app isn't on screen.
+Future<bool> openTv(String channelId) async {
+  final nav = navKey.currentState;
+  if (nav == null || channelId.isEmpty) return false;
+  nav.push(MaterialPageRoute(builder: (_) => TvPlayerScreen(channelId: channelId)));
   return true;
 }
 

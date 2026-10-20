@@ -1,0 +1,188 @@
+"""Hoola TV: only official free streams make the list; channels play on the phone or are cast to the TV."""
+import asyncio
+import json
+
+import httpx
+import pytest
+from fastapi.testclient import TestClient
+
+from app.tv import catalog
+
+CHANNELS = """id,name,alt_names,network,owners,country,categories,is_nsfw,launched,closed,replaced_by,website
+DDSahyadri.in,DD Sahyadri,,Doordarshan,Prasar Bharati,IN,general,FALSE,,,,https://ddsahyadri.gov.in
+NDTVProfit.in,NDTV Profit,,NDTV,NDTV,IN,business,FALSE,,,,https://www.ndtvprofit.com
+StarPlus.in,StarPlus,,Star,Disney Star,IN,entertainment,FALSE,,,,https://www.hotstar.com
+SonyMax.in,Sony Max,,Sony,Culver Max,IN,movies,FALSE,,,,https://www.sonyliv.com
+ZeeDilSe.in,Zee Dil Se,,Zee,Zee,IN,entertainment,FALSE,,,,
+Copied.in,Copied TV,,,,IN,news,FALSE,,,,
+Adult.in,Adult X,,,,IN,general,TRUE,,,,
+Abroad.us,Abroad TV,,,,US,news,FALSE,,,,
+Unknown.in,Unknown News,,,,IN,news,FALSE,,,,
+"""
+BLOCK = "channel,reason,ref\nCopied.in,dmca,https://x\n"
+LOGOS = "channel,feed,in_use,tags,width,height,format,url\nDDSahyadri.in,,TRUE,,512,512,PNG,https://i.imgur.com/dd.png\n"
+M3U = {
+    "in.m3u": """#EXTM3U
+#EXTINF:-1 tvg-id="NDTVProfit.in@SD",NDTV Profit (1080p)
+https://ndtvprofit.akamaized.net/hls/live/index.m3u8
+#EXTINF:-1 tvg-id="StarPlus.in@SD",StarPlus HD (1080p)
+https://103.151.60.162/star/index.m3u8
+#EXTINF:-1 tvg-id="SonyMax.in@SD",Sony Max (576p)
+https://mumt03.tangotv.in/sonymax/index.m3u8
+#EXTINF:-1 tvg-id="ZeeDilSe.in@SD",Zee Dil Se (1080p)
+https://amg00862-amg00862c6-amgplt0173.playout.now3.amagi.tv/playlist.m3u8
+#EXTINF:-1 tvg-id="Copied.in@SD",Copied TV (720p)
+https://copiedtv.akamaized.net/index.m3u8
+#EXTINF:-1 tvg-id="Adult.in@SD",Adult X
+https://adultx.example.com/a.m3u8
+#EXTINF:-1 tvg-id="Abroad.us@SD",Abroad TV
+https://abroadtv.example.com/a.m3u8
+#EXTINF:-1 tvg-id="Unknown.in@SD",Unknown News (720p)
+https://d1xyz.cloudfront.net/live.m3u8
+#EXTINF:-1 tvg-id="NDTVProfit.in@SD",NDTV Profit (480p) [Not 24/7]
+http://ndtvprofit.example.com/plain.m3u8
+""",
+    "in_doordarshan.m3u": """#EXTM3U
+#EXTINF:-1 tvg-id="DDSahyadri.in@SD",DD Sahyadri (504p)
+https://d3qs3d2rkhfqrt.cloudfront.net/out/v1/sahyadri/index.m3u8
+""",
+    "in_samsung.m3u": "#EXTM3U\n", "in_distro.m3u": "#EXTM3U\n",
+}
+
+
+def test_only_official_free_streams_are_kept():
+    chans = catalog.build(M3U, CHANNELS, BLOCK, LOGOS)
+    names = {c["name"] for c in chans}
+    assert names == {"DD Sahyadri", "NDTV Profit", "Zee Dil Se"}
+    # dropped: bare IP pay channel, re-streamer, copyright blocklist, NSFW, abroad, unknown CDN, plain http
+    by = {c["name"]: c for c in chans}
+    assert by["DD Sahyadri"]["logo_src"] == "https://i.imgur.com/dd.png"
+    assert [s["source"] for s in by["NDTV Profit"]["streams"]] == ["broadcaster's own cdn"]
+    assert by["Zee Dil Se"]["streams"][0]["source"] == "official free platform"
+    assert by["DD Sahyadri"]["streams"][0]["source"] == "prasar bharati / nic"
+    ok, why = catalog.official({"url": "https://jtbs.dpdns.org/x.m3u8", "title": "JTBS", "file": "in.m3u"}, {})
+    assert not ok and why == "re-streamer / app feed"
+
+
+def test_shipped_list_and_finding_channels(env):
+    data = catalog.load()
+    assert len(data["channels"]) >= 140
+    assert catalog.find("marathi")[0]["name"] == "DD Sahyadri"
+    assert catalog.find("aaj tak")[0]["name"] == "Aaj Tak"
+    news = catalog.find("news")
+    by_id = {c["id"]: c for c in data["channels"]}
+    assert news and all("news" in by_id[n["id"]]["categories"] for n in news)
+    assert catalog.find("star plus") == []                       # pay channels are not in Hoola TV
+    names = {c["name"] for c in data["channels"]}
+    assert not any(n.startswith(("Star ", "StarPlus", "Sony ", "Colors")) for n in names)
+    cats = catalog.categories()
+    assert cats[0]["id"] == "news" and cats[0]["label"] == "News"
+
+
+def _transport(routes):
+    def handle(req):
+        r = routes.get(str(req.url))
+        if r is None:
+            return httpx.Response(404)
+        body, headers = r
+        return httpx.Response(200, text=body, headers=headers)
+    return httpx.Client(transport=httpx.MockTransport(handle))
+
+
+def test_health_marks_working_and_tv_playable():
+    chans = catalog.build(M3U, CHANNELS, BLOCK, LOGOS)
+    c = _transport({
+        "https://d3qs3d2rkhfqrt.cloudfront.net/out/v1/sahyadri/index.m3u8": ("#EXTM3U\n#EXT-X-VERSION:3\n", {"access-control-allow-origin": "*"}),
+        "https://ndtvprofit.akamaized.net/hls/live/index.m3u8": ("#EXTM3U\n", {}),
+    })
+    out = {x["name"]: x for x in catalog.health(chans, client=c, workers=2)}
+    assert out["DD Sahyadri"]["streams"][0] == {**out["DD Sahyadri"]["streams"][0], "ok": True, "castable": True}
+    assert out["NDTV Profit"]["streams"][0]["ok"] is True and out["NDTV Profit"]["streams"][0]["castable"] is False
+    assert out["Zee Dil Se"]["streams"][0]["ok"] is False
+
+
+def test_refresh_downloads_checks_and_saves(env, monkeypatch, tmp_path):
+    monkeypatch.setattr(catalog, "DATA_DIR", tmp_path / "tv")
+    routes = {f"{catalog.RAW}/iptv/master/streams/{f}": (t, {}) for f, t in M3U.items()}
+    routes.update({f"{catalog.RAW}/database/master/data/channels.csv": (CHANNELS, {}),
+                   f"{catalog.RAW}/database/master/data/blocklist.csv": (BLOCK, {}),
+                   f"{catalog.RAW}/database/master/data/logos.csv": (LOGOS, {})})
+    r = catalog.refresh(client=_transport(routes), check=False)
+    assert r == {"channels": 3, "working": 3}
+    saved = json.loads((tmp_path / "tv" / "channels.json").read_text())
+    assert {c["name"] for c in saved["channels"]} == {"DD Sahyadri", "NDTV Profit", "Zee Dil Se"}
+    catalog._cache.update(at=0.0, data=None)
+
+
+@pytest.fixture()
+def tv_app(env, monkeypatch):
+    from app.bt import service as bt
+    sent = []
+
+    async def fake_run(tenant, conv, action, args=None, wait_s=None):
+        sent.append((action, dict(args or {})))
+        if action == "cast_play":
+            return {"status": "ok", "action": action, "playing": True, "tv_name": "Living Room TV",
+                    "say": "The channel is playing on Living Room TV."}
+        return {"status": "ok", "action": action, "stopped": True}
+    monkeypatch.setattr(bt, "run", fake_run)
+    catalog._cache.update(at=0.0, data=None)
+    return sent
+
+
+def test_api_lists_plays_and_casts(tv_app):
+    from app import main
+    with TestClient(main.app) as c:
+        c.post("/api/conversations")
+        r = c.get("/api/tv/channels").json()
+        assert len(r["channels"]) >= 140 and r["categories"]
+        dd = next(x for x in r["channels"] if x["name"] == "DD Sahyadri")
+        assert dd["logo"] == f"/api/logo/tv/{dd['id']}"
+        d = c.get(f"/api/tv/channels/{dd['id']}").json()
+        assert d["url"].startswith("https://") and d["name"] == "DD Sahyadri"
+        assert c.get("/api/tv/channels/nope").status_code == 404
+        cast = c.post("/api/tv/cast", json={"channel": dd["id"]}).json()
+        assert cast["playing"] is True and cast["channel"] == "DD Sahyadri"
+        assert tv_app[-1][0] == "cast_play" and tv_app[-1][1]["url"] == d["url"] and tv_app[-1][1]["title"] == "DD Sahyadri"
+        assert c.post("/api/tv/stop").json()["stopped"] is True
+
+
+def test_avatar_plays_on_phone_and_tv(tv_app):
+    from app.agent.tools import Ctx, ToolError, dispatch
+    from app.db import Conversation, DeviceAction, session
+    with session() as s:
+        conv = Conversation(tenant_id="default")
+        s.add(conv)
+        s.flush()
+        cid = conv.id
+    ctx = Ctx("default", cid)
+    found = asyncio.run(dispatch("tv_channel", {"action": "find", "query": "bhajan"}, ctx))
+    assert found["channels"] and all(ch["category_label"] == "Bhakti" for ch in found["channels"])
+    phone = asyncio.run(dispatch("tv_channel", {"action": "play", "query": "DD Sahyadri", "on": "phone"}, ctx))
+    assert phone["channel"] == "DD Sahyadri" and phone["sent_to_phone"] is True
+    with session() as s:
+        a = s.query(DeviceAction).filter_by(conversation_id=cid, type="tv_play").one()
+        assert a.payload["name"] == "DD Sahyadri"
+    tv = asyncio.run(dispatch("tv_channel", {"action": "play", "query": "aaj tak", "on": "tv"}, ctx))
+    assert tv["playing"] is True and tv["channel"] == "Aaj Tak"
+    with pytest.raises(ToolError, match="free channel nahi mila"):
+        asyncio.run(dispatch("tv_channel", {"action": "play", "query": "star plus", "on": "tv"}, ctx))
+
+
+def test_cast_requests_are_checked(env):
+    from app.bt import service as bt
+    with pytest.raises(bt.BtError):
+        bt.create("default", "", "cast_play", {"url": "http://plain.example.com/a.m3u8"})
+    p = bt.create("default", "", "cast_play", {"url": "https://x.example.com/a.m3u8", "title": "DD <b>News</b>",
+                                                "logo": "javascript:alert(1)"})
+    assert p["args"] == {"url": "https://x.example.com/a.m3u8", "title": "DD bNews/b"}
+    res = bt.clean_result({"tvs": [{"name": "Hall TV‮", "model": "Chromecast"}, "junk"], "playing": 1})
+    assert res == {"tvs": [{"name": "Hall TV", "model": "Chromecast"}], "playing": True}
+
+
+def test_tv_logo_resolves(env):
+    from app.bazar import logos
+    dd = catalog.find("DD Sahyadri")[0]
+    kind, url = logos.resolve("tv", dd["id"])
+    assert kind == "url" and url.startswith("https://")
+    assert logos.resolve("tv", "nope") is None

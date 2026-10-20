@@ -109,6 +109,11 @@ class Device {
             },
           ));
           return null;
+        case 'tv_play':
+          // Hoola TV: the channel opens in Hoola's own player
+          final ch = a['channel'] as String? ?? '';
+          if (ch.isEmpty) return 'Channel nahi mila';
+          return await openTv(ch) ? null : 'Hoola app kholiye, channel wahan chalega';
         case 'open_url':
           final uri = Uri.tryParse(a['url'] as String? ?? '');
           if (uri == null || !uri.hasScheme) return 'Link sahi nahi hai';

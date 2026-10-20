@@ -39,12 +39,15 @@ async def lifespan(app: FastAPI):
     if get_settings().logo_warm:
         from .bazar import logos
         logos.warm_in_background()   # fetch every plugin logo once, gently, so the Connect tab is quick
+    if get_settings().tv_refresh:
+        from .tv import catalog as tv_catalog
+        tv_catalog.refresh_in_background()   # Hoola TV: re-check the free channels every night
     yield
     stop.set()
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.47.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.48.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -2342,12 +2345,57 @@ def bazar_contact_add(body: BazarContactIn, tenant: str = Depends(current_tenant
     return _bz(bazar.add_contact, tenant, body.name, body.upi_id, body.phone, body.relation)
 
 
+# ---------------- Hoola TV: free official live channels, on the phone or the TV ----------------
+class TvCastIn(BaseModel):
+    channel: str
+    tv: str = ""
+
+
+def _tv_conv(tenant: str) -> str:
+    from .bazar.service import latest_conversation
+    with session() as s:
+        return latest_conversation(s, tenant) or ""
+
+
+@app.get("/api/tv/channels", dependencies=[Depends(require_key)])
+def tv_channels(q: str = "", category: str = "", tenant: str = Depends(current_tenant)):
+    from .tv import catalog
+    data = catalog.load()
+    return {"channels": catalog.find(q, category, limit=400), "categories": catalog.categories(),
+            "updated": data.get("updated", 0)}
+
+
+@app.get("/api/tv/channels/{cid}", dependencies=[Depends(require_key)])
+def tv_channel_detail(cid: str, tenant: str = Depends(current_tenant)):
+    from .tv import service as tvs
+    try:
+        return tvs.detail(cid)
+    except tvs.TvError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.post("/api/tv/cast", dependencies=[Depends(require_key)])
+async def tv_cast(body: TvCastIn, tenant: str = Depends(current_tenant)):
+    """Play a channel on the Chromecast / Android TV on the phone's Wi-Fi (the phone does it and reports back)."""
+    from .tv import service as tvs
+    try:
+        return await tvs.play_on_tv(tenant, await asyncio.to_thread(_tv_conv, tenant), body.channel, body.tv)
+    except tvs.TvError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.post("/api/tv/stop", dependencies=[Depends(require_key)])
+async def tv_stop(tenant: str = Depends(current_tenant)):
+    from .tv import service as tvs
+    return await tvs.stop_on_tv(tenant, await asyncio.to_thread(_tv_conv, tenant))
+
+
 @app.get("/api/logo/{kind}/{key}")
 async def plugin_logo(kind: str, key: str):
     """A plugin's / MCP server's real logo (from the brand's own site, cached as a 128 px PNG). Public: logos are
     public and phones load them as plain images; only things in Hoola's own lists are ever looked up."""
     from .bazar import logos
-    if kind not in ("pack", "feat", "gh", "mcp") or len(key) > 120:
+    if kind not in ("pack", "feat", "gh", "mcp", "tv") or len(key) > 120:
         raise HTTPException(404, "no logo")
     png = await asyncio.to_thread(logos.logo, kind, key)
     if not png:

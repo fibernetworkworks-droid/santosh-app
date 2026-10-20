@@ -40,6 +40,7 @@ object Actions {
             "set_timer" -> timer(ctx, a)
             "add_calendar_event" -> calendar(ctx, a)
             "open_url" -> openUrl(ctx, a)
+            "tv_play" -> tvPlay(ctx, a)
             else -> Pair(false, "Is app version ko '${a.optString("type")}' nahi aata; app update kijiye.")
         }
     } catch (e: Exception) {
@@ -54,6 +55,16 @@ object Actions {
         val view = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
         Notify.tapToOpen(ctx, (url.hashCode() and 0x7fffffff) % 100000 + 300_000, "Hoola: $title", "Tap karke kholiye", view)
         return Pair(true, "Notification bheja hai; tap karte hi khul jayega")
+    }
+
+    /** Hoola TV while the app is closed: a tap on the notification opens the channel in Hoola's player. */
+    private fun tvPlay(ctx: Context, a: JSONObject): Pair<Boolean, String> {
+        val ch = a.optString("channel")
+        if (ch.isBlank()) return Pair(false, "Channel nahi mila")
+        val open = Intent(ctx, MainActivity::class.java).setData(android.net.Uri.parse("santosh://tv?ch=" + android.net.Uri.encode(ch)))
+        Notify.tapToOpen(ctx, (ch.hashCode() and 0x7fffffff) % 100000 + 400_000, "Hoola TV: ${a.optString("name", "channel")}",
+            "Tap karke dekhiye", open)
+        return Pair(true, "Notification bheja hai; tap karte hi channel chalega")
     }
 
     private fun hhmm(h: Int, m: Int) = String.format("%02d:%02d", h, m)

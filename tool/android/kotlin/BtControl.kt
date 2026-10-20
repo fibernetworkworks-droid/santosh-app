@@ -74,6 +74,14 @@ object BtControl {
     }
 
     private fun execute(ctx: Context, action: String, args: JSONObject): JSONObject {
+        // Hoola TV on a Chromecast / Android TV goes over Wi-Fi, not Bluetooth
+        if (action.startsWith("cast_")) {
+            try {
+                return CastClient.run(ctx, action, args)
+            } catch (e: CastClient.CastException) {
+                throw BtException(e.code)
+            }
+        }
         val a = adapter(ctx) ?: throw BtException("This phone has no Bluetooth.")
         if (action == "status") return status(ctx, a)
         if (action == "settings" || action == "turn_off") return openSettings(ctx)

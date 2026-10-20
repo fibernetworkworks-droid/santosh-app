@@ -7,6 +7,7 @@ import 'mcp_screen.dart';
 import 'plugin_widgets.dart';
 import 'publicapis_screen.dart';
 import 'shopping_screen.dart';
+import 'tv_screen.dart';
 
 /// Santosh Bazar: every pack with live status, linked app accounts, spend limits and delivery details.
 class BazarScreen extends StatefulWidget {
@@ -327,6 +328,17 @@ class _BazarScreenState extends State<BazarScreen> {
             PluginGrid(children: [
               for (final (i, a) in _apps.where((a) => a['custom'] != true).indexed) Stagger(index: i, child: _appCard(a)),
             ]),
+            const SizedBox(height: 14),
+            Glass(
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.live_tv_rounded, color: C.accent),
+                title: Text('Hoola TV · free live channels', style: display(15.5)),
+                subtitle: const Text('Doordarshan, Sansad TV, news, bhakti, music · phone pe ya TV pe'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TvScreen())),
+              ),
+            ),
             const SizedBox(height: 14),
             Glass(
               child: ListTile(
