@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../call_session.dart';
 import '../state.dart';
 import 'artifact_screen.dart';
+import 'attach.dart';
 import 'browser_live.dart';
 import 'glass.dart';
 import 'lock_safe.dart';
@@ -143,6 +144,11 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
               ]),
             ),
           _captions(),
+          if (call.fileNote != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
+              child: Text(call.fileNote!, textAlign: TextAlign.center, style: const TextStyle(color: C.teal, fontSize: 12.5, fontWeight: FontWeight.w600)),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
             child: Text(_status, textAlign: TextAlign.center,
@@ -158,6 +164,17 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
               const SizedBox(width: 26),
               _small(Icons.front_hand_rounded, '${app.aName} ko roko', call.act == CallAct.speaking ? call.cutSpeech : null),
             ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: TextButton.icon(
+              onPressed: !call.inCall || call.uploading ? null : _attach,
+              icon: call.uploading
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.attach_file_rounded, color: C.chip),
+              label: Text(call.uploading ? 'File ja rahi hai…' : 'Photo / PDF / file dikhaiye',
+                  style: const TextStyle(color: C.chip, fontWeight: FontWeight.w600)),
+            ),
           ),
         ]);
       },
@@ -246,6 +263,12 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
         ),
       ),
     );
+  }
+
+  Future<void> _attach() async {
+    final picked = await pickAttachments(context);
+    if (picked.isEmpty) return;
+    await call.attachFiles([for (final f in picked) (name: f.name, bytes: f.bytes)]);
   }
 
   Widget _small(IconData icon, String label, VoidCallback? onTap) => Semantics(

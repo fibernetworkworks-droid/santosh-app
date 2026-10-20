@@ -244,6 +244,18 @@ class LiveVoice {
     _playEnd = DateTime.now();
   }
 
+  /// Files the owner attached during the call (already uploaded): Hoola is told their file_ids.
+  bool sendFiles(List<String> ids, {String text = ''}) {
+    final ws = _ws;
+    if (ws == null || ids.isEmpty) return false;
+    try {
+      ws.add(jsonEncode({'type': 'files', 'file_ids': ids, if (text.isNotEmpty) 'text': text}));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   void setMuted(bool m) {
     muted = m;
     try {

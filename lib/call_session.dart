@@ -130,6 +130,45 @@ class CallSession extends ChangeNotifier {
 
   void cutSpeech() => _call?.cutSpeech();
 
+  /// v0.44.2 a photo / PDF / any file during the call: uploaded, then handed to the live call.
+  String? fileNote;
+  bool uploading = false;
+  Timer? _fileNoteTimer;
+
+  void _setFileNote(String? t, {int seconds = 8}) {
+    fileNote = t;
+    _fileNoteTimer?.cancel();
+    if (t != null) {
+      _fileNoteTimer = Timer(Duration(seconds: seconds), () {
+        fileNote = null;
+        notifyListeners();
+      });
+    }
+    notifyListeners();
+  }
+
+  Future<void> attachFiles(List<({String name, List<int> bytes})> files) async {
+    if (!inCall || files.isEmpty) return;
+    uploading = true;
+    _setFileNote('${files.map((f) => f.name).join(', ')} bhej raha hoon…', seconds: 600);
+    final ids = <String>[];
+    final failed = <String>[];
+    for (final f in files) {
+      try {
+        final r = await app.attachChatFile(f.name, f.bytes);
+        ids.add('${r['file_id']}');
+      } catch (e) {
+        failed.add('${f.name}: $e');
+      }
+    }
+    uploading = false;
+    if (ids.isNotEmpty && !(_call?.sendFiles(ids) ?? false)) {
+      failed.add('Call ka connection nahi mila, file chat mein bhej di');
+      await app.send(files.map((f) => '📎 ${f.name}').join('\n'), files: ids);
+    }
+    _setFileNote(failed.isEmpty ? '📎 File ${app.aName} tak pahunch gayi' : failed.join('\n'), seconds: failed.isEmpty ? 6 : 12);
+  }
+
   void _onClosed(String? reason) {
     _tick?.cancel();
     if (inCall && reason != null && reason.isNotEmpty) note = 'Call band ho gayi: $reason';
@@ -161,6 +200,8 @@ class CallSession extends ChangeNotifier {
         linkNote = null;
         speaker = null;
         speakerIsOwner = true;
+      case 'files':
+        _setFileNote(e['ok'] == true ? '📎 ${e['names'] ?? 'File'} ${app.aName} ko mil gayi' : '${e['message'] ?? 'File nahi pahunchi'}');
       case 'speaker':
         final owner = e['owner'] == true;
         speakerIsOwner = owner;

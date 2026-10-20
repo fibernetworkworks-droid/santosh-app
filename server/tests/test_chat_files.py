@@ -56,3 +56,35 @@ def test_file_read_tool_reads_text_and_sees_pictures(env, monkeypatch):
     g = ms.store_bytes("default", "a.png", _png(), "mail")
     out = asyncio.run(file_read(Ctx(tenant_id="default", conversation_id="c"), g.id))
     assert out["seen"] == "Neeli tasveer" and out["media"] == "image" and "preview" not in out
+
+
+def test_voice_call_gets_files(env):
+    import asyncio
+    from app import chatfiles, voice
+    out = chatfiles.store("default", "board.png", _png(), "image/png")
+
+    class Fake:
+        tenant, conv = "default", "conv1"
+        sent, pushed = [], []
+
+        async def send_json(self, m):
+            self.sent.append(m)
+
+        def push(self, kind, data):
+            self.pushed.append((kind, data))
+    f = Fake()
+    asyncio.run(voice.Call._got_files(f, [out["file_id"]], "isko Kunal ko bhejo"))
+    assert f.sent[-1]["ok"] and "board.png" in f.sent[-1]["names"]
+    kind, note = f.pushed[-1]
+    assert kind == "text" and out["file_id"] in note and "during this call" in note and "Kunal" in note
+    asyncio.run(voice.Call._got_files(f, ["file_nope"]))
+    assert f.sent[-1]["ok"] is False
+
+
+def test_big_and_empty_files_are_refused_cleanly(env):
+    import pytest
+    from app import chatfiles
+    with pytest.raises(chatfiles.FileError):
+        chatfiles.store("default", "x.bin", b"")
+    with pytest.raises(chatfiles.FileError):
+        chatfiles.store("default", "x.bin", b"0" * (chatfiles.MAX_BYTES + 1))

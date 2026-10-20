@@ -8,6 +8,7 @@ import '../state.dart';
 import 'glass.dart';
 import 'hoola_cards.dart';
 import 'hoola_media.dart';
+import 'attach.dart';
 import 'hoola_business_screen.dart';
 import 'hoola_samaj_screen.dart';
 
@@ -624,17 +625,13 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
   }
 
   Future<void> _attach(FileType type) async {
-    final res = await FilePicker.platform.pickFiles(type: type, withData: true);
-    final f = res?.files.single;
-    if (f == null || f.bytes == null) return;
-    if (f.size > 25 * 1024 * 1024) {
-      _snack('File 25 MB se badi hai; Drive link bhejiye.');
-      return;
-    }
+    final picked = await pickAttachmentsOfType(context, type);
+    if (picked.isEmpty) return;
+    final f = picked.first;
     final caption = _text.text.trim();
     setState(() => _sending = f.name);
     try {
-      final r = await app.api!.netUpload(f.name, f.bytes!, threadId: widget.threadId, text: caption);
+      final r = await app.api!.netUpload(f.name, f.bytes, threadId: widget.threadId, text: caption);
       _text.clear();
       if (r['status'] == 'declined' || r['status'] == 'refused') _snack('Unke Hoola ne nahi liya: ${r['reason'] ?? ''}');
       await _load();

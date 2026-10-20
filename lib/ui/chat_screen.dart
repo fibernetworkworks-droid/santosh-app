@@ -15,6 +15,7 @@ import 'youtube_screen.dart';
 import 'appcheck_screen.dart';
 import 'hoola_cards.dart';
 import 'hoola_media.dart';
+import 'attach.dart';
 import 'forms_screen.dart';
 import 'glass.dart';
 import 'notebook_screen.dart';
@@ -133,20 +134,14 @@ class _ChatScreenState extends State<ChatScreen> {
   final Set<String> _uploading = {};
 
   Future<void> _attach() async {
-    final res = await FilePicker.platform.pickFiles(type: FileType.any, allowMultiple: true, withData: true);
-    if (res == null) return;
-    for (final f in res.files.take(6 - _files.length)) {
-      if (f.bytes == null) continue;
-      if (f.size > 25 * 1024 * 1024) {
-        _snack('${f.name}: 25 MB se badi hai; Drive link bhejiye.');
-        continue;
-      }
+    final picked = await pickAttachments(context, max: 6 - _files.length);
+    for (final f in picked) {
       setState(() => _uploading.add(f.name));
       try {
-        final r = await app.attachChatFile(f.name, f.bytes!);
+        final r = await app.attachChatFile(f.name, f.bytes);
         if (mounted) setState(() => _files.add(r));
       } catch (e) {
-        _snack('${f.name} upload nahi hui: $e');
+        if (mounted) _snack('${f.name}: $e');
       } finally {
         if (mounted) setState(() => _uploading.remove(f.name));
       }

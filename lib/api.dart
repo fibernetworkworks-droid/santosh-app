@@ -99,16 +99,61 @@ class Api {
   /// Stop the task Hoola is running in this conversation (after the current step).
   Future<void> stopTurn(String id) async => _send('POST', '/api/conversations/$id/stop');
   /// Sends a message. A flaky mobile network is retried (same client_id, so the server runs it only once).
-  /// v0.44.1 chat paperclip: any file; returns {file_id, name, url, media, preview, pages, leads?...}.
-  Future<Map<String, dynamic>> chatFile(String conv, String filename, List<int> bytes) async {
-    final req = http.MultipartRequest('POST', _u('/api/conversations/$conv/files'))
-      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
-    if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
-    final res = await http.Response.fromStream(await req.send().timeout(const Duration(seconds: 240)));
-    final body = jsonDecode(utf8.decode(res.bodyBytes));
-    if (res.statusCode >= 400) throw ApiException(res.statusCode, (body as Map)['detail']?.toString() ?? 'Upload failed');
-    return Map<String, dynamic>.from(body as Map);
+  /// Uploads one file (multipart) with retries on a bad network and plain-words errors, whatever the server or
+  /// nginx answers (an HTML 404/413 page never shows up as "Not Found" / a JSON crash).
+  Future<Map<String, dynamic>> uploadFile(String path, String filename, List<int> bytes,
+      {Map<String, String> fields = const {}, Duration timeout = const Duration(seconds: 300), int tries = 3}) async {
+    Object? last;
+    for (var attempt = 0; attempt < tries; attempt++) {
+      try {
+        final req = http.MultipartRequest('POST', _u(path))
+          ..fields.addAll(fields)
+          ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+        if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
+        final res = await http.Response.fromStream(await req.send().timeout(timeout));
+        dynamic body;
+        try {
+          body = jsonDecode(utf8.decode(res.bodyBytes));
+        } catch (_) {
+          body = null;
+        }
+        if (res.statusCode < 400 && body is Map) return Map<String, dynamic>.from(body);
+        final detail = body is Map ? (body['detail']?.toString() ?? '') : '';
+        final mb = (bytes.length / 1024 / 1024).toStringAsFixed(1);
+        final msg = switch (res.statusCode) {
+          404 when detail.isEmpty || detail == 'Not Found' =>
+            'Server par file lene ka naya hissa abhi nahi hai — VPS ko latest version par update kijiye (git pull + pm2 restart).',
+          413 => detail.isNotEmpty && detail != 'Request Entity Too Large'
+              ? detail
+              : 'File ($mb MB) server ne badi bataayi — VPS nginx mein client_max_body_size 30m kijiye.',
+          401 || 403 => 'Server ne mana kiya (login / API key). App dobara kholiye.',
+          502 || 503 || 504 => 'Server abhi jawab nahi de raha (restart ho raha hoga). Thodi der baad dobara.',
+          _ => detail.isNotEmpty ? detail : 'Upload nahi hua (server ${res.statusCode}).',
+        };
+        if (res.statusCode >= 500 && attempt < tries - 1) {
+          last = ApiException(res.statusCode, msg);
+          await Future<void>.delayed(Duration(seconds: 2 + attempt * 2));
+          continue;
+        }
+        throw ApiException(res.statusCode, msg);
+      } on ApiException {
+        rethrow;
+      } on SocketException catch (e) {
+        last = e;
+      } on TimeoutException catch (e) {
+        last = e;
+      } on http.ClientException catch (e) {
+        last = e;
+      }
+      if (attempt < tries - 1) await Future<void>.delayed(Duration(seconds: 2 + attempt * 2));
+    }
+    if (last is ApiException) throw last;
+    throw ApiException(0, 'Network kamzor hai, file nahi gayi. Net check karke dobara bhejiye.');
   }
+
+  /// v0.44.1 chat / call paperclip: any file; returns {file_id, name, url, media, preview, pages, leads?...}.
+  Future<Map<String, dynamic>> chatFile(String conv, String filename, List<int> bytes) =>
+      uploadFile('/api/conversations/$conv/files', filename, bytes);
 
   Future<void> sendMessage(String conv, String text, {bool voice = false, List<String> files = const []}) async {
     final id = '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}${math.Random().nextInt(1 << 30).toRadixString(36)}';
@@ -329,18 +374,8 @@ class Api {
   Future<List<Map<String, dynamic>>> netThreads() async => _hl((await _send('GET', '/api/net/threads'))['threads']);
   Future<Map<String, dynamic>> netThread(String id) async => _hm(await _send('GET', '/api/net/threads/$id'));
   /// v0.43 a real photo / video / PDF / any file into a Hoola chat (to = name / @handle, or the thread).
-  Future<Map<String, dynamic>> netUpload(String filename, List<int> bytes, {String to = '', String threadId = '', String text = ''}) async {
-    final req = http.MultipartRequest('POST', _u('/api/net/upload'))
-      ..fields['to'] = to
-      ..fields['thread_id'] = threadId
-      ..fields['text'] = text
-      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
-    if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
-    final res = await http.Response.fromStream(await req.send().timeout(const Duration(seconds: 240)));
-    final body = jsonDecode(utf8.decode(res.bodyBytes));
-    if (res.statusCode >= 400) throw ApiException(res.statusCode, (body as Map)['detail']?.toString() ?? 'Upload failed');
-    return Map<String, dynamic>.from(body as Map);
-  }
+  Future<Map<String, dynamic>> netUpload(String filename, List<int> bytes, {String to = '', String threadId = '', String text = ''}) =>
+      uploadFile('/api/net/upload', filename, bytes, fields: {'to': to, 'thread_id': threadId, 'text': text}, tries: 1);  // a retry could send it twice
   Future<Map<String, dynamic>> netMake(String kind, String title, String content) async =>
       _hm(await _send('POST', '/api/net/make', body: {'kind': kind, 'title': title, 'content': content}, timeout: const Duration(seconds: 120)));
   Future<Map<String, dynamic>> netThink(String msgId) async =>
