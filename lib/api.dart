@@ -90,8 +90,9 @@ class Api {
   Future<void> voiceIdDelete(String id) async => _send('DELETE', '/api/voiceid/members/$id');
 
   // ---- Hoola TV: free official live channels, on the phone or the TV ----
-  Future<Map<String, dynamic>> tvChannels({String q = '', String category = ''}) async =>
-      Map<String, dynamic>.from(await _send('GET', '/api/tv/channels', query: {'q': q, 'category': category}) as Map);
+  Future<Map<String, dynamic>> tvChannels({String q = '', String category = '', String country = '', int offset = 0}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/tv/channels',
+          query: {'q': q, 'category': category, 'country': country, 'offset': '$offset', 'limit': '90'}) as Map);
   Future<Map<String, dynamic>> tvChannel(String id) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/tv/channels/${Uri.encodeComponent(id)}') as Map);
   Future<Map<String, dynamic>> tvCast(String id, {String tv = ''}) async => Map<String, dynamic>.from(

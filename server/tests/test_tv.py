@@ -53,9 +53,11 @@ https://d3qs3d2rkhfqrt.cloudfront.net/out/v1/sahyadri/index.m3u8
 def test_only_official_free_streams_are_kept():
     chans = catalog.build(M3U, CHANNELS, BLOCK, LOGOS)
     names = {c["name"] for c in chans}
-    assert names == {"DD Sahyadri", "NDTV Profit", "Zee Dil Se"}
-    # dropped: bare IP pay channel, re-streamer, copyright blocklist, NSFW, abroad, unknown CDN, plain http
+    assert names == {"DD Sahyadri", "NDTV Profit", "Zee Dil Se", "Abroad TV"}
+    # dropped: bare IP pay channel, re-streamer, copyright blocklist, NSFW, unknown CDN, plain http
     by = {c["name"]: c for c in chans}
+    assert by["Abroad TV"]["country"] == "US" and by["DD Sahyadri"]["country"] == "IN"
+    assert catalog.trusted("us_pluto.m3u") and catalog.trusted("in_doordarshan.m3u") and not catalog.trusted("in.m3u")
     assert by["DD Sahyadri"]["logo_src"] == "https://i.imgur.com/dd.png"
     assert [s["source"] for s in by["NDTV Profit"]["streams"]] == ["broadcaster's own cdn"]
     assert by["Zee Dil Se"]["streams"][0]["source"] == "official free platform"
@@ -66,14 +68,22 @@ def test_only_official_free_streams_are_kept():
 
 def test_shipped_list_and_finding_channels(env):
     data = catalog.load()
-    assert len(data["channels"]) >= 140
+    assert len(data["channels"]) >= 4000
     assert catalog.find("marathi")[0]["name"] == "DD Sahyadri"
-    assert catalog.find("aaj tak")[0]["name"] == "Aaj Tak"
+    assert [c["name"] for c in catalog.find("aaj tak")] == ["Aaj Tak"]       # not "Takeshi's Castle"
+    assert catalog.find("dw")[0]["name"] == "DW" and catalog.find("al jazeera")[0]["name"] == "Al Jazeera"
+    assert catalog.find("bbc news")[0]["name"] == "BBC News"
+    assert catalog.find("news")[0]["country"] == "IN"                          # India first
+    countries = catalog.countries()
+    assert countries[0]["code"] == "IN" and countries[0]["flag"] and len(countries) >= 100
+    de = catalog.search(country="Germany", limit=5)
+    assert de["total"] >= 100 and all(c["country"] == "DE" for c in de["channels"])
+    assert catalog.search(country="DE", offset=5, limit=5)["channels"][0]["id"] != de["channels"][0]["id"]
     news = catalog.find("news")
     by_id = {c["id"]: c for c in data["channels"]}
     assert news and all("news" in by_id[n["id"]]["categories"] for n in news)
     assert catalog.find("star plus") == []                       # pay channels are not in Hoola TV
-    names = {c["name"] for c in data["channels"]}
+    names = {c["name"] for c in data["channels"] if c["country"] == "IN"}
     assert not any(n.startswith(("Star ", "StarPlus", "Sony ", "Colors")) for n in names)
     cats = catalog.categories()
     assert cats[0]["id"] == "news" and cats[0]["label"] == "News"
@@ -103,14 +113,23 @@ def test_health_marks_working_and_tv_playable():
 
 def test_refresh_downloads_checks_and_saves(env, monkeypatch, tmp_path):
     monkeypatch.setattr(catalog, "DATA_DIR", tmp_path / "tv")
+    monkeypatch.setattr(catalog, "MIN_CHANNELS", 3)
     routes = {f"{catalog.RAW}/iptv/master/streams/{f}": (t, {}) for f, t in M3U.items()}
+    routes[catalog.LIST_URL] = (json.dumps([{"name": f} for f in M3U] + [{"name": "README.md"}]), {})
     routes.update({f"{catalog.RAW}/database/master/data/channels.csv": (CHANNELS, {}),
                    f"{catalog.RAW}/database/master/data/blocklist.csv": (BLOCK, {}),
-                   f"{catalog.RAW}/database/master/data/logos.csv": (LOGOS, {})})
+                   f"{catalog.RAW}/database/master/data/logos.csv": (LOGOS, {}),
+                   f"{catalog.RAW}/database/master/data/countries.csv": ("name,code,languages,flag\nIndia,IN,hin,F\n", {}),
+                   f"{catalog.RAW}/database/master/data/categories.csv": ("id,name,description\nnews,News,x\n", {})})
     r = catalog.refresh(client=_transport(routes), check=False)
-    assert r == {"channels": 3, "working": 3}
+    assert r == {"channels": 4, "working": 4}
     saved = json.loads((tmp_path / "tv" / "channels.json").read_text())
-    assert {c["name"] for c in saved["channels"]} == {"DD Sahyadri", "NDTV Profit", "Zee Dil Se"}
+    assert {c["name"] for c in saved["channels"]} == {"DD Sahyadri", "NDTV Profit", "Zee Dil Se", "Abroad TV"}
+    assert saved["countries"]["IN"]["name"] == "India" and "in_samsung.m3u" in saved["files"]
+    # a broken download never replaces a good list
+    monkeypatch.setattr(catalog, "MIN_CHANNELS", 100)
+    with pytest.raises(RuntimeError):
+        catalog.refresh(client=_transport(routes), check=False)
     catalog._cache.update(at=0.0, data=None)
 
 
@@ -135,7 +154,12 @@ def test_api_lists_plays_and_casts(tv_app):
     with TestClient(main.app) as c:
         c.post("/api/conversations")
         r = c.get("/api/tv/channels").json()
-        assert len(r["channels"]) >= 140 and r["categories"]
+        assert r["total"] >= 4000 and len(r["channels"]) == 90 and r["categories"] and r["countries"][0]["code"] == "IN"
+        more = c.get("/api/tv/channels", params={"offset": 90}).json()
+        assert "countries" not in more and more["channels"][0]["id"] != r["channels"][0]["id"]
+        us = c.get("/api/tv/channels", params={"country": "US", "category": "news"}).json()
+        assert us["channels"] and all(x["country"] == "US" for x in us["channels"])
+        r = c.get("/api/tv/channels", params={"country": "IN"}).json()
         dd = next(x for x in r["channels"] if x["name"] == "DD Sahyadri")
         assert dd["logo"] == f"/api/logo/tv/{dd['id']}"
         d = c.get(f"/api/tv/channels/{dd['id']}").json()
@@ -158,6 +182,8 @@ def test_avatar_plays_on_phone_and_tv(tv_app):
     ctx = Ctx("default", cid)
     found = asyncio.run(dispatch("tv_channel", {"action": "find", "query": "bhajan"}, ctx))
     assert found["channels"] and all(ch["category_label"] == "Bhakti" for ch in found["channels"])
+    us = asyncio.run(dispatch("tv_channel", {"action": "find", "query": "news", "country": "United States"}, ctx))
+    assert us["channels"] and all(ch["country"] == "US" for ch in us["channels"])
     phone = asyncio.run(dispatch("tv_channel", {"action": "play", "query": "DD Sahyadri", "on": "phone"}, ctx))
     assert phone["channel"] == "DD Sahyadri" and phone["sent_to_phone"] is True
     with session() as s:

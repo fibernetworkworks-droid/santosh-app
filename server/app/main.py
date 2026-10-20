@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.48.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.49.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -2358,11 +2358,17 @@ def _tv_conv(tenant: str) -> str:
 
 
 @app.get("/api/tv/channels", dependencies=[Depends(require_key)])
-def tv_channels(q: str = "", category: str = "", tenant: str = Depends(current_tenant)):
+def tv_channels(q: str = "", category: str = "", country: str = "", offset: int = 0, limit: int = 90,
+                tenant: str = Depends(current_tenant)):
+    """Channels worldwide. country = 'IN' / 'US'... ('' = whole world, India first); paged with offset/limit."""
     from .tv import catalog
     data = catalog.load()
-    return {"channels": catalog.find(q, category, limit=400), "categories": catalog.categories(),
-            "updated": data.get("updated", 0)}
+    page = catalog.search(q, category, country, limit=max(1, min(limit, 200)), offset=max(0, offset))
+    out = {**page, "offset": offset, "updated": data.get("updated", 0)}
+    if offset == 0:
+        out["categories"] = catalog.categories(country)
+        out["countries"] = catalog.countries()
+    return out
 
 
 @app.get("/api/tv/channels/{cid}", dependencies=[Depends(require_key)])

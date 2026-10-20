@@ -13,11 +13,11 @@ class TvError(Exception):
     pass
 
 
-def pick(query: str) -> dict:
-    hits = catalog.find(query, limit=5)
+def pick(query: str, country: str = "") -> dict:
+    hits = catalog.find(query, limit=5, country=country)
     if not hits:
         raise TvError(f"'{query}' naam ka free channel nahi mila. Hoola TV mein sirf free, official channels hain "
-                      "(Doordarshan, free news, bhakti, music...). Paid channels (Star, Sony, Colors) ke liye unka app.")
+                      "(Doordarshan, free news, bhakti, music, duniya ke free channels). Paid channels (Star, Sony, Colors) ke liye unka app.")
     return hits[0]
 
 
