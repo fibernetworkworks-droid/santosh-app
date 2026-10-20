@@ -112,6 +112,7 @@ How you talk
 When to speak
 - Let the user finish. People pause to think mid-sentence; if it sounds unfinished, wait for the rest.
 - If they only say "haan", "hmm" or "achha" while you are talking, keep going. If they start a real sentence, stop at once.
+- If you got cut off but nobody actually said anything (just noise), pick up with a quick "haan, toh..." and finish your point.
 - Ignore TV, background noise and people talking to someone else.
 - If you did not catch something: "sorry, ek baar phir boliye?" If the line seems bad ("hello? hello?"): "haan haan, aa rahi hai awaaz."
 
@@ -214,6 +215,13 @@ def persona_prompt(name: str = "Santosh", gender: str = "m") -> str:
     return body.replace("{", "{{").replace("}", "}}").replace("{{lang}}", "{lang}").replace("{{now}}", "{now}") + sep + tail
 
 
+def _start_sensitivity(value: str):
+    """VOICE_START_SENSITIVITY: low = noise and far voices are not taken as the user starting to talk (default)."""
+    from google.genai import types
+    return {"low": types.StartSensitivity.START_SENSITIVITY_LOW,
+            "high": types.StartSensitivity.START_SENSITIVITY_HIGH}.get((value or "").strip().lower())
+
+
 def _end_sensitivity(value: str):
     """VOICE_END_SENSITIVITY: low = waits longer before answering, high = answers sooner, blank = Gemini's default."""
     from google.genai import types
@@ -240,6 +248,8 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
             automatic_activity_detection=types.AutomaticActivityDetection(
                 # people answer within ~0.2 s; Google recommends a 500-800 ms pause to end a turn (1100 felt slow)
                 end_of_speech_sensitivity=_end_sensitivity(st.voice_end_sensitivity),
+                # noise must not count as the user talking (it cuts him off mid-sentence); the phone gates it too
+                start_of_speech_sensitivity=_start_sensitivity(st.voice_start_sensitivity),
                 prefix_padding_ms=min(max(st.voice_prefix_padding_ms, 0), 1000),
                 silence_duration_ms=min(max(st.voice_silence_ms, 300), 3000),
             )),
@@ -343,6 +353,7 @@ def stats_summary(tenant: str) -> dict:
         "tool_calls": tools,
         "silent_tools_pct": round(100 * sum(c["silent_tools"] for c in calls) / tools, 1) if tools else None,
         "acks_played": sum(c["acks"] for c in calls),
+        "false_stops_per_call": round(sum(c.get("false_stops", 0) for c in calls) / len(calls), 2) if calls else None,
         "recent": [{k: c[k] for k in ("call_id", "ended", "turns", "latency_ms", "interruptions", "tools", "silent_tools")}
                    for c in calls[-10:]],
     }
@@ -475,9 +486,11 @@ class Call:
         self._turn_audio = False               # audio of the current turn has started
         self._last_ack = 0.0
         self._latency: int | None = None
+        self._last_user_text_at = 0.0          # last time Gemini heard words from the user
+        self._last_resume = 0.0
         self.stats = {"tenant": self.tenant, "call_id": self.call_id, "started": time.time(), "ended": None, "turns": 0,
                       "latency_ms": [], "words": [], "question_endings": 0, "assistantisms": 0, "interruptions": 0,
-                      "tools": 0, "silent_tools": 0, "acks": 0}
+                      "tools": 0, "silent_tools": 0, "acks": 0, "false_stops": 0}
         if st.voice_tool_ack and st.gemini_api_key:
             ack_clips(self.voice, self.gender)   # get his "ek second" clips ready
 
@@ -641,10 +654,14 @@ class Call:
                 if sc.interrupted:
                     self.stats["interruptions"] += 1
                     await self.send_json({"type": "interrupted"})
+                    if self.reply_buf.strip():
+                        self._watch_false_stop(self.reply_buf.strip())
                     if self.user_buf or self.reply_buf:
                         # keep what was really said so far as its own turn; the next words are a new turn
                         await self.finish_turn(interrupted=True)
                 if sc.input_transcription is not None and sc.input_transcription.text:
+                    if sc.input_transcription.text.strip():
+                        self._last_user_text_at = time.monotonic()
                     self.user_buf += sc.input_transcription.text
                     await self.send_json({"type": "user_text", "text": self.user_buf.strip()})
                 if sc.model_turn is not None:
@@ -801,6 +818,28 @@ class Call:
             log.warning("tool result for %s could not be delivered (session moved on)", name)
             self._note_result(name, out)
 
+    def _watch_false_stop(self, cut_reply: str) -> None:
+        """He was cut off mid-sentence. If nobody actually says anything, it was noise (a TV, traffic, people nearby):
+        let him finish his point instead of leaving the user in silence."""
+        wait = get_settings().voice_resume_after_noise_s
+        if wait <= 0:
+            return
+        t = asyncio.create_task(self._after_false_stop(time.monotonic(), cut_reply, wait))
+        self._tools.add(t)
+        t.add_done_callback(self._tools.discard)
+
+    async def _after_false_stop(self, at: float, cut_reply: str, wait: float) -> None:
+        await asyncio.sleep(wait)
+        if self.closed.is_set() or self._last_user_text_at >= at or self._last_model_audio >= at + 0.05:
+            return   # the user really spoke, or he is already talking again
+        self.stats["false_stops"] += 1
+        if time.monotonic() - self._last_resume < 10:
+            return   # never loop on a noisy room
+        self._last_resume = time.monotonic()
+        self.push("text", f"(Tumhari baat beech mein kat gayi thi, par user ne kuch nahi kaha; shayad bas aas-paas ka shor tha. "
+                          f"Tum keh rahe the: '{cut_reply[-300:]}'. Ek chhote 'haan, toh...' ke saath wahin se baat poori karo; "
+                          "shuru se mat dohrao.)")
+
     ACK_AFTER_S = 0.7   # a tool runs and nobody has said anything for this long: dead air starts here
 
     async def _ack_watch(self, t0: float) -> None:
@@ -919,8 +958,8 @@ class Call:
             self.stats["ended"] = time.time()
             STATS.append(self.stats)
             lat = self.stats["latency_ms"]
-            log.info("call %s done: %s turns, reply start p50 %s ms, %s interruptions, %s/%s silent tools, %s acks",
-                     self.call_id, self.stats["turns"], _pct(lat, .5), self.stats["interruptions"],
+            log.info("call %s done: %s turns, reply start p50 %s ms, %s interruptions (%s noise), %s/%s silent tools, %s acks",
+                     self.call_id, self.stats["turns"], _pct(lat, .5), self.stats["interruptions"], self.stats["false_stops"],
                      self.stats["silent_tools"], self.stats["tools"], self.stats["acks"])
             ws, self.ws = self.ws, None
             if ws is not None:

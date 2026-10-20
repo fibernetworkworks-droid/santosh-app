@@ -98,7 +98,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   santosh3d), scenes email/browser/payment/bluetooth/network/pc/work. `lib/ui/work_theatre.dart` (WebView + panel), shown in
   chat and the voice call; state in `Santosh.work/workLog`. Never draw real company logos; brand names as text chips.
 
-## v0.39 Human-like conversation (latest)
+## v0.39 Human-like conversation
 - Turn-taking: `VOICE_SILENCE_MS=700` (was 1100; Google recommends 500-800), end-of-speech sensitivity = Gemini default
   (`VOICE_END_SENSITIVITY` low|high to override), `VOICE_PREFIX_PADDING_MS=300`. Affective dialog / proactivity are no
   longer sent at all (gemini-3.8-live removed the first, always has the second on); `UNSUPPORTED/DROPPABLE` stays for others.
@@ -114,6 +114,17 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   interruptions, silent tools, acks). Use it before/after any voice change.
 - Android `VoiceAudio`: AudioTrack LOW_LATENCY mode; a reply after silence waits for an 80 ms cushion (grows +40 up to
   240 ms if a reply runs dry mid-sentence) and fades in 5 ms. Research report behind all this: "Human like Hinglish voice AI".
+
+## v0.42 Noise does not cut him off (latest)
+- Phone `lib/barge_gate.dart` (`BargeGate`, used in `LiveVoice` mic listener): while Hoola is speaking (playback timeline
+  + 300 ms) the mic goes to Gemini only when someone is clearly above the background (threshold = max(0.02 RMS,
+  p20*3.2, p60*2) of levels heard while he talks, last 6 s, kept across the call) for 240 ms; until then zeros are sent.
+  Opening replays the last 320 ms. Starts closed on every reply; closes again after 600 ms quiet or 1.2 s if he is
+  still talking (it was noise). When he is quiet everything passes. Logic was simulated in Python (TV, shop, far voices,
+  echo) since Flutter can't run in the sandbox.
+- Server: `VOICE_START_SENSITIVITY=low` (START_SENSITIVITY_LOW). `Call._watch_false_stop`: interrupted mid-reply and no user
+  words within `VOICE_RESUME_AFTER_NOISE_S` (1.5) → note so he finishes his point ("haan, toh..."), max once per 10 s.
+  `stats.false_stops` → `/api/voice/stats` `false_stops_per_call`.
 
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
@@ -137,4 +148,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). Next: v0.42.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions. Next: v0.43.

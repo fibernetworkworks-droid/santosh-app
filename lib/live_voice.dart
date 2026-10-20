@@ -6,6 +6,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 
+import 'barge_gate.dart';
+
 /// One live voice call with Santosh: mic audio streams up, his voice streams back (Gemini Live on the server).
 ///
 /// The call survives a dropped network (Wi-Fi to mobile data, a lift, a tunnel): the server keeps it alive for a
@@ -30,6 +32,7 @@ class LiveVoice {
 
   WebSocket? _ws;
   StreamSubscription? _micSub;
+  final BargeGate _gate = BargeGate(); // room noise must not cut Hoola off mid-sentence
   Timer? _beat;
   bool muted = false;
   bool _closed = false;
@@ -117,8 +120,12 @@ class LiveVoice {
       inLevel = inLevel * .7 + _rms(bytes) * .3;
       final sock = _ws;
       if (!muted && !_closed && !_reconnecting && !_audioPaused && sock != null && sock.readyState == WebSocket.open) {
+        // while he talks (and for a moment after), only clear speech over the room's noise gets through
+        final speaking = DateTime.now().isBefore(_playEnd.add(const Duration(milliseconds: 300)));
         try {
-          sock.add(bytes);
+          for (final out in _gate.process(bytes, hoolaSpeaking: speaking)) {
+            sock.add(out);
+          }
         } catch (_) {}
       }
     }, onError: (Object e) {

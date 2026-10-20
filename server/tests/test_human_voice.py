@@ -40,9 +40,13 @@ def test_turn_taking_is_fast_and_tunable(env, monkeypatch):
     cfg = voice.live_config("Puck", "hi-IN", "", None)
     aad = cfg.realtime_input_config.automatic_activity_detection
     assert aad.silence_duration_ms == 700 and aad.end_of_speech_sensitivity is None and aad.prefix_padding_ms == 300
+    # noise and far voices must not count as the user starting to talk
+    assert aad.start_of_speech_sensitivity == types.StartSensitivity.START_SENSITIVITY_LOW
     assert cfg.enable_affective_dialog is None and cfg.proactivity is None
-    _gemini_env(monkeypatch, VOICE_SILENCE_MS=600, VOICE_END_SENSITIVITY="High", VOICE_PREFIX_PADDING_MS=200)
+    _gemini_env(monkeypatch, VOICE_SILENCE_MS=600, VOICE_END_SENSITIVITY="High", VOICE_PREFIX_PADDING_MS=200,
+                VOICE_START_SENSITIVITY="")
     aad = voice.live_config("Puck", "hi-IN", "", None).realtime_input_config.automatic_activity_detection
+    assert aad.start_of_speech_sensitivity is None
     assert aad.silence_duration_ms == 600 and aad.prefix_padding_ms == 200
     assert aad.end_of_speech_sensitivity == types.EndSensitivity.END_SENSITIVITY_HIGH
     _gemini_env(monkeypatch, VOICE_SILENCE_MS=20, VOICE_END_SENSITIVITY="low")
@@ -205,3 +209,48 @@ def test_stats_are_per_tenant(env):
                         "tools": 0, "silent_tools": 0, "acks": 0})
     s = voice.stats_summary("nobody")
     assert s["calls"] == 0 and s["reply_start_ms_p50"] is None and s["silent_tools_pct"] is None
+
+
+def _cut_off(*after):
+    """He starts a sentence, something cuts him off, then `after` happens."""
+    return [[
+        _msg(model_turn=_audio(), output_transcription=types.Transcription(text="Kal ki meeting chaar baje hai, aur uske baad")),
+        _msg(interrupted=True),
+        *after,
+    ]]
+
+
+def test_noise_cut_him_off_so_he_finishes_his_point(env, monkeypatch):
+    from app import main
+    _gemini_env(monkeypatch, VOICE_RESUME_AFTER_NOISE_S=0.5)
+    voice.STATS.clear()
+    fake = FakeSession(_cut_off())
+    _connector(monkeypatch, fake)
+    with TestClient(main.app) as c:
+        conv = c.post("/api/conversations").json()["id"]
+        with c.websocket_connect(f"/api/voice/ws?conv={conv}") as ws:
+            assert wait_until(lambda: any("kat gayi" in t for t in fake.texts), timeout=4)
+            ws.send_text(json.dumps({"type": "end"}))
+        assert wait_until(lambda: voice.STATS)
+        s = c.get("/api/voice/stats").json()
+    note = next(t for t in fake.texts if "kat gayi" in t)
+    assert "Kal ki meeting chaar baje hai, aur uske baad" in note and "haan, toh" in note
+    assert voice.STATS[-1]["interruptions"] == 1 and voice.STATS[-1]["false_stops"] == 1
+    assert s["false_stops_per_call"] == 1.0
+
+
+def test_real_interruption_is_not_treated_as_noise(env, monkeypatch):
+    from app import main
+    _gemini_env(monkeypatch, VOICE_RESUME_AFTER_NOISE_S=0.5)
+    voice.STATS.clear()
+    fake = FakeSession(_cut_off(_msg(input_transcription=types.Transcription(text="Nahi ruko, paanch baje karo"))))
+    _connector(monkeypatch, fake)
+    with TestClient(main.app) as c:
+        conv = c.post("/api/conversations").json()["id"]
+        with c.websocket_connect(f"/api/voice/ws?conv={conv}") as ws:
+            read_events(ws, lambda e: e["type"] == "user_text")
+            time.sleep(1.0)
+            ws.send_text(json.dumps({"type": "end"}))
+        assert wait_until(lambda: voice.STATS)
+    assert not any("kat gayi" in t for t in fake.texts)
+    assert voice.STATS[-1]["interruptions"] == 1 and voice.STATS[-1]["false_stops"] == 0
