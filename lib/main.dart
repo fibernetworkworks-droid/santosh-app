@@ -229,6 +229,7 @@ class _HomeState extends State<Home> {
         ),
       );
     }
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       extendBody: true,
       body: ListenableBuilder(
@@ -240,11 +241,12 @@ class _HomeState extends State<Home> {
             duration: const Duration(milliseconds: 280),
             switchInCurve: Curves.easeOutCubic,
             transitionBuilder: (c, a) => FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: const Offset(0, .015), end: Offset.zero).animate(a), child: c)),
-            child: KeyedSubtree(key: ValueKey(_tab), child: Padding(padding: EdgeInsets.only(bottom: _inCall && _tab != 2 ? 152 : 92), child: pages[_tab])),
+            child: KeyedSubtree(key: ValueKey(_tab), child: Padding(padding: EdgeInsets.only(bottom: keyboard ? 0 : (_inCall && _tab != 2 ? 152 : 92)), child: pages[_tab])),
           ),
         ),
       ),
-      bottomNavigationBar: SafeArea(
+      // while typing, the tab bar steps aside so the message box sits right on the keyboard (no gap)
+      bottomNavigationBar: keyboard ? null : SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           // the call keeps going on every screen; this bar brings you back to it
           if (_tab != 2) CallBar(app: widget.app, onOpen: () => _go(2)),

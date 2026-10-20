@@ -38,29 +38,62 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _sttReady = false;
   bool _listening = false;
   int _lastLen = 0;
+  bool _away = false;            // scrolled up, away from the newest message
+  int _unseen = 0;               // new items that arrived while scrolled up
+  /// Items already on screen when Chat opened (history): they show at once, only new ones animate in.
+  late final Set<FeedItem> _old = app.feed.toSet();
+  final Set<FeedItem> _animated = {};
 
   Santosh get app => widget.app;
 
   @override
   void initState() {
     super.initState();
+    _lastLen = app.feed.length;
     app.addListener(_autoScroll);
+    _scroll.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     app.removeListener(_autoScroll);
+    _scroll.dispose();
     _stt.stop();
     super.dispose();
   }
 
+  // The list is reversed: offset 0 is the newest message, so Chat always opens at the latest conversation.
+  void _onScroll() {
+    final away = _scroll.hasClients && _scroll.offset > 240;
+    if (away != _away) setState(() {
+      _away = away;
+      if (!away) _unseen = 0;
+    });
+  }
+
   void _autoScroll() {
-    if (app.feed.length != _lastLen) {
-      _lastLen = app.feed.length;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scroll.hasClients) _scroll.animateTo(_scroll.position.maxScrollExtent + 80, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
-      });
+    if (app.feed.length == _lastLen) return;
+    final added = app.feed.length - _lastLen;
+    _lastLen = app.feed.length;
+    if (added <= 0) return;
+    if (app.replaying || added > 2) _old.addAll(app.feed.sublist(app.feed.length - added));   // history: no animation
+    if (_away) {
+      if (mounted) setState(() => _unseen += added);
+      return;
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scroll.hasClients && _scroll.offset > 0) {
+        _scroll.animateTo(0, duration: const Duration(milliseconds: 380), curve: Curves.easeOutCubic);
+      }
+    });
+  }
+
+  void _toBottom() {
+    if (!_scroll.hasClients) return;
+    final far = _scroll.offset > 4000;
+    if (far) _scroll.jumpTo(800);   // a long way up: jump most of it, then glide the rest
+    _scroll.animateTo(0, duration: const Duration(milliseconds: 420), curve: Curves.easeOutCubic);
+    setState(() => _unseen = 0);
   }
 
   Future<void> _mic() async {
@@ -124,17 +157,56 @@ class _ChatScreenState extends State<ChatScreen> {
           if (app.error != null) _banner(app.error!, onTap: () => app.connect()),
           if (app.connected && !app.brainReady) _banner('Hoola ka dimaag server par connect nahi hai (ANTHROPIC_API_KEY).'),
           WorkTheatrePanel(app: app),
-          Expanded(
-            child: ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 8, 16, 12), children: [
-              if (app.feed.length <= 1) _hero(),
-              for (final it in app.feed) Stagger(key: ObjectKey(it), index: 0, child: _item(it)),
-              if (app.typing) Align(alignment: Alignment.centerLeft, child: _Typing(step: app.currentStep)),
-            ]),
-          ),
+          Expanded(child: Stack(children: [
+            Positioned.fill(child: _list()),
+            Positioned(
+              right: 16,
+              bottom: 10,
+              child: IgnorePointer(
+                ignoring: !_away,
+                child: AnimatedScale(
+                  scale: _away ? 1 : .6,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutBack,
+                  child: AnimatedOpacity(
+                    opacity: _away ? 1 : 0,
+                    duration: const Duration(milliseconds: 180),
+                    child: _DownButton(count: _unseen, onTap: _toBottom),
+                  ),
+                ),
+              ),
+            ),
+          ])),
           _quick(),
           _composer(),
         ]),
       );
+
+  /// Newest at the bottom; the list is reversed so it always opens on the latest conversation and stays there.
+  Widget _list() {
+    final feed = app.feed;
+    final extra = (app.typing ? 1 : 0);
+    final hero = feed.length <= 1 ? 1 : 0;
+    return ListView.builder(
+      controller: _scroll,
+      reverse: true,
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      itemCount: extra + feed.length + hero,
+      itemBuilder: (context, i) {
+        if (app.typing && i == 0) {
+          return Align(alignment: Alignment.centerLeft, child: _Arrive(key: const ValueKey('typing'), child: _Typing(step: app.currentStep)));
+        }
+        final k = i - extra;
+        if (k >= feed.length) return _hero();
+        final it = feed[feed.length - 1 - k];
+        final fresh = !_old.contains(it) && !_animated.contains(it);
+        if (fresh) _animated.add(it);
+        final child = _item(it, fresh: fresh);
+        return KeyedSubtree(key: ObjectKey(it), child: fresh ? _Arrive(card: it.kind != 'message', child: child) : child);
+      },
+    );
+  }
 
   Widget _header() => Glass(
         margin: const EdgeInsets.fromLTRB(14, 8, 14, 6),
@@ -144,13 +216,12 @@ class _ChatScreenState extends State<ChatScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(app.aName, style: display(20, w: FontWeight.w700)),
+              Text(app.aName, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: display(20, w: FontWeight.w700)),
               Text(!app.connected ? 'Connect ho raha hai…' : app.typing ? (app.currentStep ?? app.g('Kaam kar raha hoon…')) : 'Online · ${languages[app.language] ?? ''}',
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: app.connected ? C.ok : C.muted)),
             ]),
           ),
-          if (app.dryRun) const Pill('WHATSAPP TEST', fg: C.warn, bg: Color(0x2EFFB15C)),
           if (widget.onVoice != null)
             IconButton(tooltip: 'Bolkar baat karein', onPressed: widget.onVoice, icon: const Icon(Icons.graphic_eq_rounded, color: C.accent)),
           IconButton(tooltip: 'Naya chat', onPressed: () => app.connect(fresh: true), icon: const Icon(Icons.add_comment_outlined, color: C.chip)),
@@ -177,7 +248,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ]),
       );
 
-  Widget _item(FeedItem it) {
+  Widget _item(FeedItem it, {bool fresh = false}) {
     switch (it.kind) {
       case 'message':
         final me = it.data['role'] == 'user';
@@ -189,7 +260,12 @@ class _ChatScreenState extends State<ChatScreen> {
                     topLeft: Radius.circular(22), topRight: Radius.circular(22), bottomLeft: Radius.circular(22), bottomRight: Radius.circular(8))),
                 child: SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45)),
               )
-            : Glass(radius: 22, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13), child: linkText(text, const TextStyle(fontSize: 15, height: 1.45, color: C.ink)));
+            : Glass(
+                radius: 22,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                child: fresh
+                    ? _Reveal(text: text, builder: (t) => linkText(t, const TextStyle(fontSize: 15, height: 1.45, color: C.ink)))
+                    : linkText(text, const TextStyle(fontSize: 15, height: 1.45, color: C.ink)));
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Align(
@@ -360,6 +436,102 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
     default:
       return null;
   }
+}
+
+/// A new message or card arriving: fades in, slides up a little and settles (cards also grow in), like Claude's chat.
+class _Arrive extends StatelessWidget {
+  const _Arrive({super.key, required this.child, this.card = false});
+  final Widget child;
+  final bool card;
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: Duration(milliseconds: card ? 460 : 340),
+        curve: Curves.easeOutCubic,
+        builder: (context, v, c) => Opacity(
+          opacity: v.clamp(0, 1),
+          child: Transform.translate(
+            offset: Offset(0, (1 - v) * 14),
+            child: card ? Transform.scale(scale: .965 + .035 * v, alignment: Alignment.bottomCenter, child: c) : c,
+          ),
+        ),
+        child: child,
+      );
+}
+
+/// Hoola's new reply appears word by word (fast, like streaming), then stays as normal text.
+class _Reveal extends StatefulWidget {
+  const _Reveal({required this.text, required this.builder});
+  final String text;
+  final Widget Function(String) builder;
+  @override
+  State<_Reveal> createState() => _RevealState();
+}
+
+class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
+  late final List<String> _words = widget.text.split(RegExp(r'(?<=\s)'));
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: Duration(milliseconds: (_words.length * 28).clamp(250, 1600)),
+  )..forward();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: _c,
+        builder: (context, _) {
+          if (_c.isCompleted) return widget.builder(widget.text);
+          final n = (_words.length * Curves.easeOut.transform(_c.value)).ceil().clamp(1, _words.length);
+          // the full text is laid out invisibly underneath, so the bubble does not jump in size while revealing
+          return Stack(children: [
+            Opacity(opacity: 0, child: widget.builder(widget.text)),
+            widget.builder(_words.take(n).join()),
+          ]);
+        },
+      );
+}
+
+/// Back to the newest message; shows how many arrived while you were reading above.
+class _DownButton extends StatelessWidget {
+  const _DownButton({required this.count, required this.onTap});
+  final int count;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: count > 0 ? '$count naye message, neeche jaiye' : 'Sabse neeche jaiye',
+        child: GestureDetector(
+          onTap: onTap,
+          child: Stack(clipBehavior: Clip.none, children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xEE231B45),
+                border: Border.all(color: const Color(0x33FFFFFF)),
+                boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 14, offset: Offset(0, 6))],
+              ),
+              child: const Icon(Icons.keyboard_arrow_down_rounded, color: C.ink, size: 28),
+            ),
+            if (count > 0)
+              Positioned(
+                right: -4,
+                top: -6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: C.accent, borderRadius: BorderRadius.circular(10)),
+                  child: Text(count > 99 ? '99+' : '$count', style: const TextStyle(color: C.onAccent, fontSize: 11, fontWeight: FontWeight.w800)),
+                ),
+              ),
+          ]),
+        ),
+      );
 }
 
 class _Typing extends StatefulWidget {

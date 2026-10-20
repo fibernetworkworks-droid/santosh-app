@@ -239,6 +239,8 @@ class Santosh extends ChangeNotifier {
   final FlutterTts _tts = FlutterTts();
   bool _lastInputWasVoice = false;
   bool _replaying = true;
+  /// True while the chat history is replaying after a (re)connect: those items show at once, without animation.
+  bool get replaying => _replaying;
   DateTime _connectedAt = DateTime.now().toUtc();
 
   Future<void> saveSettings({String? server, String? key, String? lang, bool? speak}) async {
