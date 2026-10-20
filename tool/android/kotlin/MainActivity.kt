@@ -23,6 +23,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        RemoteService.restore(this)   // the Bluetooth TV remote comes back on if the owner had it on
         micChannel(flutterEngine)
         val callCh = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "santosh/call")
         CallService.onHangup = { main.post { try { callCh.invokeMethod("hangup", null) } catch (_: Exception) {} } }

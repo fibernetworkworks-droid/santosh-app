@@ -27,6 +27,10 @@
     {
       "name": "tv_search",
       "tier": 1
+    },
+    {
+      "name": "tv_channel",
+      "tier": 1
     }
   ],
   "keywords": [

@@ -116,7 +116,10 @@ object HomeDevices {
             "wait" -> Thread.sleep(op.optLong("ms", 500).coerceIn(0, 5000))
             else -> {
                 if (!hasBluetoothPermission(ctx)) throw HomeDeviceException("permission")
-                if (Build.VERSION.SDK_INT >= 28) HidRemote.get(ctx).run(op, target.optString("bt_address").ifBlank { null })
+                if (Build.VERSION.SDK_INT >= 28) {
+                    RemoteService.start(ctx)   // keeps the remote registered so the TV stays with the phone
+                    HidRemote.get(ctx).run(op, target.optString("bt_address").ifBlank { null })
+                }
                 else throw HomeDeviceException("TV remote needs Android 9 or newer.")
             }
         }

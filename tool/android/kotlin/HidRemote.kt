@@ -5,6 +5,7 @@ import android.annotation.TargetApi
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothHidDevice
+import android.bluetooth.BluetoothHidDeviceAppQosSettings
 import android.bluetooth.BluetoothHidDeviceAppSdpSettings
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
@@ -16,15 +17,17 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
- * "Hoola Remote": the phone registers as a Bluetooth keyboard + consumer-control remote (Android 9+
- * BluetoothHidDevice). After the TV is paired once, Hoola can press volume, home, back, arrows, OK and type.
+ * "Hoola Remote": the phone is a Bluetooth keyboard + TV remote (Android 9+ BluetoothHidDevice).
  *
- * v0.35 fixes (it "didn't work"):
- *  - registration is retried when Android refuses it or the profile proxy drops (before: stuck forever after one miss)
- *  - the phone can connect to the TV itself ([connectTo]); before, only the TV could start the pairing, and TVs
- *    list the phone under its own Bluetooth name, not "Santosh Remote", so people never found it
- *  - the TV's address is remembered on the phone, so commands work after the app restarts
- *  - connection waits for the real callback (up to 12 s) instead of 3 s, and every report is checked
+ * v0.40 — built to keep working in every situation:
+ *  - Already paired = never pair again: an existing bond (or a live connection) is used as is. Connecting tries the
+ *    remembered TV, the connected one, then each paired TV-like device, with a reconnect + retry before giving up.
+ *  - Answers the TV's GET_REPORT / SET_PROTOCOL questions (some TVs drop a remote that does not answer) and follows
+ *    BOOT protocol (Samsung / LG / older TVs): keyboard reports are then sent without a report id, the way those TVs read them.
+ *  - Keyboard report with an LED output report, the standard layout TVs expect.
+ *  - Every press is checked; a dropped link is re-joined once and the press is sent again.
+ *  - Waits a moment after a fresh connection before the first key (TVs ignore keys sent while they set the link up).
+ *  - Longer press / gap timings that every TV registers; key repeat and long press are supported.
  */
 @TargetApi(28)
 @SuppressLint("MissingPermission") // BLUETOOTH_CONNECT is checked by the caller before any call
@@ -37,6 +40,8 @@ class HidRemote private constructor(private val context: Context) {
     @Volatile private var proxyPending = false
     @Volatile private var registered = false
     @Volatile private var host: BluetoothDevice? = null
+    @Volatile private var bootProtocol = false
+    @Volatile private var connectedAt = 0L
     @Volatile private var ready = CountDownLatch(1)
     @Volatile private var connectedLatch = CountDownLatch(1)
 
@@ -51,23 +56,53 @@ class HidRemote private constructor(private val context: Context) {
             if (device == null) return
             if (state == BluetoothProfile.STATE_CONNECTED) {
                 host = device
+                connectedAt = System.currentTimeMillis()
+                bootProtocol = false
                 remember(device)
                 connectedLatch.countDown()
             } else if (state == BluetoothProfile.STATE_DISCONNECTED && host?.address == device.address) {
                 host = null
             }
         }
+
+        override fun onGetReport(device: BluetoothDevice?, type: Byte, id: Byte, bufferSize: Int) {
+            val h = hid ?: return
+            val d = device ?: return
+            try {
+                val size = when (id.toInt()) { ID_CONSUMER -> 2; else -> 8 }
+                h.replyReport(d, type, id, ByteArray(size))
+            } catch (e: Exception) { Log.i(HomeDevices.TAG, "replyReport", e) }
+        }
+
+        override fun onSetProtocol(device: BluetoothDevice?, protocol: Byte) {
+            bootProtocol = protocol.toInt() == BluetoothHidDevice.PROTOCOL_BOOT_MODE.toInt()
+        }
+
+        override fun onSetReport(device: BluetoothDevice?, type: Byte, id: Byte, data: ByteArray?) {
+            val d = device ?: return
+            try { hid?.reportError(d, BluetoothHidDevice.ERROR_RSP_SUCCESS) } catch (_: Exception) {}
+        }
     }
 
     val isRegistered: Boolean get() = registered
     fun savedAddress(): String? = prefs.getString("tv", null)
-    private fun remember(d: BluetoothDevice) { prefs.edit().putString("tv", d.address).apply() }
+    private fun remember(d: BluetoothDevice) { prefs.edit().putString("tv", d.address).putString("tv_name", safeName(d)).apply() }
+    fun savedName(): String? = prefs.getString("tv_name", null)
+    private fun safeName(d: BluetoothDevice): String = try { d.name ?: d.address } catch (_: SecurityException) { d.address }
 
     fun connectedHost(): BluetoothDevice? {
         val h = hid ?: return null
         return try {
             h.getConnectedDevices().firstOrNull() ?: host?.takeIf { h.getConnectionState(it) == BluetoothProfile.STATE_CONNECTED }
         } catch (_: Exception) { null }
+    }
+
+    /** What the server / the avatar should know before deciding anything. */
+    fun state(): JSONObject {
+        val c = connectedHost()
+        return JSONObject().put("registered", registered).put("connected", c != null)
+            .put("tv", c?.let { safeName(it) } ?: savedName() ?: "").put("address", c?.address ?: savedAddress() ?: "")
+            .put("boot_protocol", bootProtocol)
     }
 
     /** Register the HID app. Safe to call repeatedly; retries when a previous registration failed. */
@@ -77,10 +112,7 @@ class HidRemote private constructor(private val context: Context) {
         if (!a.isEnabled) throw HomeDeviceException("bluetooth_off")
         if (registered) return
         val h = hid
-        if (h != null) {           // proxy is there but the app isn't registered (refused, or dropped): try again
-            register(h)
-            return
-        }
+        if (h != null) { register(h); return }
         if (proxyPending) return
         proxyPending = true
         ready = CountDownLatch(1)
@@ -105,13 +137,14 @@ class HidRemote private constructor(private val context: Context) {
     }
 
     private fun register(h: BluetoothHidDevice) {
-        val sdp = BluetoothHidDeviceAppSdpSettings(
-            "Hoola Remote", "Hoola TV remote", "Newtika",
-            BluetoothHidDevice.SUBCLASS1_COMBO, DESCRIPTOR,
-        )
-        val ok = try { h.registerApp(sdp, null, null, callbackExec, callback) } catch (e: Exception) {
+        val sdp = BluetoothHidDeviceAppSdpSettings("Hoola Remote", "Hoola TV remote", "Newtika",
+            BluetoothHidDevice.SUBCLASS1_COMBO, DESCRIPTOR)
+        // low-latency, best-effort link: keys arrive at once and the TV does not drop an idle remote
+        val qos = BluetoothHidDeviceAppQosSettings(BluetoothHidDeviceAppQosSettings.SERVICE_BEST_EFFORT,
+            800, 9, 0, 11250, BluetoothHidDeviceAppQosSettings.MAX)
+        val ok = try { h.registerApp(sdp, null, qos, callbackExec, callback) } catch (e: Exception) {
             Log.w(HomeDevices.TAG, "HID registerApp", e)
-            false
+            try { h.registerApp(sdp, null, null, callbackExec, callback) } catch (_: Exception) { false }
         }
         if (!ok) {   // another app holds the HID slot, or a stale registration: drop ours and let the next call retry
             try { h.unregisterApp() } catch (_: Exception) {}
@@ -132,36 +165,43 @@ class HidRemote private constructor(private val context: Context) {
     }
 
     private fun awaitRegistered(): BluetoothHidDevice {
-        start()
-        if (!registered) {
-            ready.await(5, TimeUnit.SECONDS)
-            if (!registered) {
-                start()           // one retry (registerApp is refused right after Bluetooth turns on on some phones)
-                ready.await(4, TimeUnit.SECONDS)
+        for (attempt in 0 until 3) {
+            start()
+            if (registered) break
+            ready.await(if (attempt == 0) 5L else 3L, TimeUnit.SECONDS)
+            if (!registered && attempt == 1) {           // a stuck registration: drop it completely and start over
+                stop()
+                Thread.sleep(400)
             }
         }
-        if (!registered) throw HomeDeviceException("The Bluetooth remote couldn't start. Turn Bluetooth off and on, then try again.")
-        return hid ?: throw HomeDeviceException("Bluetooth remote not available.")
+        if (!registered) throw HomeDeviceException("remote_not_ready")
+        return hid ?: throw HomeDeviceException("remote_not_ready")
     }
 
-    /** Connect to this TV now (pairing first if needed is done by the caller). True when connected. */
-    fun connectTo(device: BluetoothDevice, waitMs: Long = 12000): Boolean {
+    /** Connect to this TV (it must already be paired — or pairing is started by the caller). True when connected. */
+    fun connectTo(device: BluetoothDevice, waitMs: Long = 8000): Boolean {
         val h = awaitRegistered()
         if (h.getConnectionState(device) == BluetoothProfile.STATE_CONNECTED) {
             host = device
             remember(device)
             return true
         }
-        connectedHost()?.let { if (it.address != device.address) h.disconnect(it) }   // one host at a time
-        connectedLatch = CountDownLatch(1)
-        if (!h.connect(device)) return false
-        connectedLatch.await(waitMs, TimeUnit.MILLISECONDS)
-        val ok = h.getConnectionState(device) == BluetoothProfile.STATE_CONNECTED
-        if (ok) {
-            host = device
-            remember(device)
+        connectedHost()?.let { if (it.address != device.address) h.disconnect(it) }   // one TV at a time
+        for (attempt in 0 until 2) {
+            connectedLatch = CountDownLatch(1)
+            if (h.connect(device)) {
+                connectedLatch.await(waitMs, TimeUnit.MILLISECONDS)
+                if (h.getConnectionState(device) == BluetoothProfile.STATE_CONNECTED) {
+                    host = device
+                    remember(device)
+                    return true
+                }
+            }
+            // half-open link left from before: drop it and try once more
+            try { h.disconnect(device) } catch (_: Exception) {}
+            Thread.sleep(700)
         }
-        return ok
+        return false
     }
 
     fun disconnect(): Boolean {
@@ -170,32 +210,57 @@ class HidRemote private constructor(private val context: Context) {
         return h.disconnect(d)
     }
 
-    /** The TV to use: the given address, else the connected one, the remembered one, or the only paired TV. */
-    private fun ensureConnected(address: String?): BluetoothDevice {
-        val h = awaitRegistered()
-        connectedHost()?.let { if (address == null || it.address.equals(address, ignoreCase = true)) return it }
-        val bonded = adapter?.bondedDevices.orEmpty()
-        val want = address ?: savedAddress()
-        val target = (if (want != null) bonded.firstOrNull { it.address.equals(want, ignoreCase = true) } else null)
-            ?: bonded.filter { BtControl.kindOf(it) == "tv" }.singleOrNull()
-            ?: throw HomeDeviceException("Pair the TV with Hoola first: say \"TV ko Bluetooth se jodo\" or open Ghar > TV.")
-        if (connectTo(target) || h.getConnectionState(target) == BluetoothProfile.STATE_CONNECTED) return target
-        throw HomeDeviceException("The TV didn't accept the Bluetooth remote. Is it on and nearby? (If it was reset, pair it again.)")
+    /** Paired devices worth trying as the TV, best first. */
+    fun candidates(preferred: String?): List<BluetoothDevice> {
+        val bonded = adapter?.bondedDevices.orEmpty().toList()
+        val order = mutableListOf<BluetoothDevice>()
+        fun add(d: BluetoothDevice?) { if (d != null && order.none { it.address == d.address }) order.add(d) }
+        // the device saved for this TV in Ghar is tried only if it really looks like a TV (not earbuds picked by mistake)
+        preferred?.let { p -> add(bonded.firstOrNull { it.address.equals(p, ignoreCase = true) &&
+            (BtControl.kindOf(it) == "tv" || it.address.equals(savedAddress(), ignoreCase = true)) }) }
+        savedAddress()?.let { s -> add(bonded.firstOrNull { it.address.equals(s, ignoreCase = true) }) }
+        bonded.filter { BtControl.kindOf(it) == "tv" }.forEach { add(it) }
+        return order
+    }
+
+    /** The TV to use: already connected, else the given / remembered / paired TVs in turn. Never starts a new pairing. */
+    fun ensureConnected(address: String?): BluetoothDevice {
+        awaitRegistered()
+        connectedHost()?.let { c -> if (address == null || c.address.equals(address, ignoreCase = true) || savedAddress() == c.address) return c }
+        val list = candidates(address)
+        if (list.isEmpty()) throw HomeDeviceException("tv_not_paired")
+        for (d in list) if (connectTo(d)) return d
+        throw HomeDeviceException("tv_not_reachable")
     }
 
     private fun send(h: BluetoothHidDevice, dev: BluetoothDevice, id: Int, data: ByteArray) {
-        if (!h.sendReport(dev, id, data)) throw HomeDeviceException("The TV disconnected the Bluetooth remote. Try again.")
+        if (!h.sendReport(dev, id, data)) throw HomeDeviceException("link_dropped")
     }
 
-    fun run(op: JSONObject, address: String?) {
-        val dev = ensureConnected(address)
-        val h = hid ?: throw HomeDeviceException("Bluetooth remote not available.")
+    private fun keyboard(h: BluetoothHidDevice, dev: BluetoothDevice, mod: Byte, key: Byte) {
+        val r = byteArrayOf(mod, 0, key, 0, 0, 0, 0, 0)
+        if (bootProtocol) send(h, dev, 0, r) else send(h, dev, ID_KEYBOARD, r)
+    }
+
+    private fun keyboardUp(h: BluetoothHidDevice, dev: BluetoothDevice) {
+        if (bootProtocol) send(h, dev, 0, ByteArray(8)) else send(h, dev, ID_KEYBOARD, ByteArray(8))
+    }
+
+    private fun runOnce(op: JSONObject, dev: BluetoothDevice) {
+        val h = hid ?: throw HomeDeviceException("remote_not_ready")
+        // a TV ignores keys while it is still setting up a fresh link
+        val since = System.currentTimeMillis() - connectedAt
+        if (since in 0..900) Thread.sleep(900 - since)
+        val hold = op.optLong("hold_ms", 0).coerceIn(0, 3000)
         when (op.getString("op")) {
             "consumer" -> {
                 val usage = op.getInt("usage")
-                repeat(op.optInt("repeat", 1).coerceIn(1, 20)) {
-                    send(h, dev, ID_CONSUMER, byteArrayOf((usage and 0xFF).toByte(), ((usage shr 8) and 0xFF).toByte()))
-                    Thread.sleep(PRESS_MS)
+                repeat(op.optInt("repeat", 1).coerceIn(1, 30)) {
+                    // BOOT-protocol TVs only read the keyboard; media keys may be ignored there (said in the result)
+                    if (!h.sendReport(dev, ID_CONSUMER, byteArrayOf((usage and 0xFF).toByte(), ((usage shr 8) and 0xFF).toByte()))) {
+                        throw HomeDeviceException(if (bootProtocol) "boot_protocol" else "link_dropped")
+                    }
+                    Thread.sleep(if (hold > 0) hold else PRESS_MS)
                     send(h, dev, ID_CONSUMER, byteArrayOf(0, 0))
                     Thread.sleep(GAP_MS)
                 }
@@ -204,29 +269,45 @@ class HidRemote private constructor(private val context: Context) {
                 val reports = op.getJSONArray("reports")
                 for (i in 0 until reports.length()) {
                     val r = reports.getJSONArray(i)
-                    val mod = r.getInt(0).toByte()
-                    val key = r.getInt(1).toByte()
-                    send(h, dev, ID_KEYBOARD, byteArrayOf(mod, 0, key, 0, 0, 0, 0, 0))
-                    Thread.sleep(PRESS_MS)
-                    send(h, dev, ID_KEYBOARD, ByteArray(8))
-                    Thread.sleep(GAP_MS)
+                    keyboard(h, dev, r.getInt(0).toByte(), r.getInt(1).toByte())
+                    Thread.sleep(if (hold > 0) hold else PRESS_MS)
+                    keyboardUp(h, dev)
+                    Thread.sleep(if (op.optBoolean("typing")) TYPE_GAP_MS else GAP_MS)
                 }
             }
             else -> throw HomeDeviceException("Unknown TV op ${op.optString("op")}")
         }
     }
 
+    /** One remote command: connect if needed, send, and on a dropped link re-join once and send again. */
+    fun run(op: JSONObject, address: String?) {
+        var dev = ensureConnected(address)
+        try {
+            runOnce(op, dev)
+        } catch (e: HomeDeviceException) {
+            if (e.message != "link_dropped") throw e
+            Log.i(HomeDevices.TAG, "link dropped, re-joining the TV")
+            try { hid?.disconnect(dev) } catch (_: Exception) {}
+            Thread.sleep(500)
+            dev = ensureConnected(dev.address)
+            runOnce(op, dev)
+        }
+    }
+
     companion object {
         private const val ID_KEYBOARD = 1
         private const val ID_CONSUMER = 2
-        private const val PRESS_MS = 40L
-        private const val GAP_MS = 70L
+        private const val PRESS_MS = 70L
+        private const val GAP_MS = 110L
+        private const val TYPE_GAP_MS = 60L
 
-        /** Report map: ID 1 = boot-style keyboard (modifier, reserved, 6 keys); ID 2 = 16-bit consumer control. */
+        /** Report map: ID 1 = keyboard (modifier, reserved, 6 keys, LED output); ID 2 = 16-bit consumer control. */
         val DESCRIPTOR: ByteArray = intArrayOf(
             0x05, 0x01, 0x09, 0x06, 0xA1, 0x01, 0x85, ID_KEYBOARD,
             0x05, 0x07, 0x19, 0xE0, 0x29, 0xE7, 0x15, 0x00, 0x25, 0x01, 0x75, 0x01, 0x95, 0x08, 0x81, 0x02,
             0x95, 0x01, 0x75, 0x08, 0x81, 0x01,
+            0x95, 0x05, 0x75, 0x01, 0x05, 0x08, 0x19, 0x01, 0x29, 0x05, 0x91, 0x02,
+            0x95, 0x01, 0x75, 0x03, 0x91, 0x01,
             0x95, 0x06, 0x75, 0x08, 0x15, 0x00, 0x25, 0x65, 0x05, 0x07, 0x19, 0x00, 0x29, 0x65, 0x81, 0x00,
             0xC0,
             0x05, 0x0C, 0x09, 0x01, 0xA1, 0x01, 0x85, ID_CONSUMER,

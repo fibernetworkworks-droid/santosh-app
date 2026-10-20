@@ -10,13 +10,20 @@ from typing import Any
 
 # Consumer page (16-bit usages)
 CONSUMER = {
-    "POWER": 0x30, "MENU": 0x40, "VOL_UP": 0xE9, "VOL_DOWN": 0xEA, "MUTE": 0xE2, "PLAY_PAUSE": 0xCD,
-    "NEXT": 0xB5, "PREVIOUS": 0xB6, "STOP": 0xB7, "FAST_FORWARD": 0xB3, "REWIND": 0xB4, "CHANNEL_UP": 0x9C,
-    "CHANNEL_DOWN": 0x9D, "SEARCH": 0x221, "HOME": 0x223, "BACK": 0x224,
+    "POWER": 0x30, "SLEEP": 0x32, "MENU": 0x40, "INFO": 0x60, "CAPTIONS": 0x61, "TV": 0x89, "GUIDE": 0x8D,
+    "EXIT": 0x94, "VOL_UP": 0xE9, "VOL_DOWN": 0xEA, "MUTE": 0xE2, "PLAY_PAUSE": 0xCD, "PLAY": 0xB0, "PAUSE": 0xB1,
+    "RECORD": 0xB2, "NEXT": 0xB5, "PREVIOUS": 0xB6, "STOP": 0xB7, "FAST_FORWARD": 0xB3, "REWIND": 0xB4,
+    "CHANNEL_UP": 0x9C, "CHANNEL_DOWN": 0x9D, "SEARCH": 0x221, "HOME": 0x223, "BACK": 0x224,
 }
+ALIASES = {"VOLUME_UP": "VOL_UP", "VOLUP": "VOL_UP", "VOLUME_DOWN": "VOL_DOWN", "VOLDOWN": "VOL_DOWN", "SELECT": "OK",
+           "CENTER": "OK", "ENTER": "OK", "DPAD_UP": "UP", "DPAD_DOWN": "DOWN", "DPAD_LEFT": "LEFT", "DPAD_RIGHT": "RIGHT",
+           "PLAYPAUSE": "PLAY_PAUSE", "FF": "FAST_FORWARD", "REW": "REWIND", "PREV": "PREVIOUS", "CH_UP": "CHANNEL_UP",
+           "CH_DOWN": "CHANNEL_DOWN", "DELETE": "BACKSPACE", "DEL": "BACKSPACE", "OFF": "POWER", "ON": "POWER"}
 # Keyboard page
-KEYBOARD = {"ENTER": 0x28, "ESC": 0x29, "BACKSPACE": 0x2A, "TAB": 0x2B, "SPACE": 0x2C,
-            "RIGHT": 0x4F, "LEFT": 0x50, "DOWN": 0x51, "UP": 0x52, "OK": 0x28}
+KEYBOARD = {"OK": 0x28, "ESC": 0x29, "BACKSPACE": 0x2A, "TAB": 0x2B, "SPACE": 0x2C,
+            "RIGHT": 0x4F, "LEFT": 0x50, "DOWN": 0x51, "UP": 0x52, "PAGE_UP": 0x4B, "PAGE_DOWN": 0x4E,
+            **{str(d): (0x27 if d == 0 else 0x1D + d) for d in range(10)}}
+TV_KEYS = sorted(set(CONSUMER) | set(KEYBOARD))
 SHIFT = 0x02
 _PUNCT = {"-": (0x2D, 0), "_": (0x2D, SHIFT), "=": (0x2E, 0), "+": (0x2E, SHIFT), ".": (0x37, 0), ",": (0x36, 0),
           "/": (0x38, 0), "?": (0x38, SHIFT), "'": (0x34, 0), "!": (0x1E, SHIFT), "&": (0x24, SHIFT), ":": (0x33, SHIFT)}
@@ -37,14 +44,38 @@ def char_usage(ch: str) -> tuple[int, int] | None:
     return _PUNCT.get(ch)
 
 
-def key_op(key: str, repeat: int = 1) -> dict[str, Any]:
-    k = key.upper()
-    repeat = max(1, min(int(repeat), 20))
+def norm_key(key: str) -> str:
+    k = str(key).strip().upper().replace(" ", "_").replace("-", "_")
+    return ALIASES.get(k, k)
+
+
+def key_op(key: str, repeat: int = 1, hold_ms: int = 0) -> dict[str, Any]:
+    k = norm_key(key)
+    try:
+        repeat = max(1, min(int(repeat or 1), 30))
+    except (TypeError, ValueError):
+        repeat = 1
+    hold = max(0, min(int(hold_ms or 0), 3000))
     if k in CONSUMER:
-        return {"op": "consumer", "usage": CONSUMER[k], "repeat": repeat, "label": k}
-    if k in KEYBOARD:
-        return {"op": "keys", "reports": [[0, KEYBOARD[k]]] * repeat, "label": k}
-    raise ValueError(f"Unknown TV key {key}")
+        op = {"op": "consumer", "usage": CONSUMER[k], "repeat": repeat, "label": k}
+    elif k in KEYBOARD:
+        op = {"op": "keys", "reports": [[0, KEYBOARD[k]]] * repeat, "label": k}
+    else:
+        raise ValueError(f"Unknown TV key {key}. Keys: {', '.join(TV_KEYS)}")
+    if hold:
+        op["hold_ms"] = hold
+    return op
+
+
+def number_ops(number: str, enter: bool = True) -> list[dict[str, Any]]:
+    """A channel number typed on the remote's digits (e.g. 101), then OK."""
+    digits = "".join(ch for ch in str(number) if ch.isdigit())[:6]
+    if not digits:
+        raise ValueError("Channel number should be digits, e.g. 101")
+    ops = [{"op": "keys", "reports": [[0, KEYBOARD[d]] for d in digits], "label": f"channel {digits}"}]
+    if enter:
+        ops += [{"op": "wait", "ms": 600}, key_op("OK")]
+    return ops
 
 
 def text_op(text: str) -> tuple[dict[str, Any], list[str]]:
@@ -56,7 +87,7 @@ def text_op(text: str) -> tuple[dict[str, Any], list[str]]:
             skipped.append(ch)
             continue
         reports.append([u[1], u[0]])
-    return {"op": "keys", "reports": reports, "label": f"type '{text[:MAX_TEXT]}'"}, skipped
+    return {"op": "keys", "reports": reports, "typing": True, "label": f"type '{text[:MAX_TEXT]}'"}, skipped
 
 
 # DIAL (Discovery And Launch) app names registered for smart TVs. YouTube and Netflix are in the public DIAL registry.
@@ -76,7 +107,7 @@ def open_app_ops(app: str) -> list[dict[str, Any]]:
 
 def search_ops(query: str) -> list[dict[str, Any]]:
     t, _ = text_op(query)
-    return [key_op("SEARCH"), {"op": "wait", "ms": 900}, t, key_op("ENTER")]
+    return [key_op("SEARCH"), {"op": "wait", "ms": 1500}, t, {"op": "wait", "ms": 300}, key_op("OK")]
 
 
 APP_LABELS = {"youtube": "YouTube", "netflix": "Netflix", "hotstar": "JioHotstar", "jiohotstar": "JioHotstar",

@@ -75,10 +75,10 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
     final id = action['command_id'] as String?;
     if (id != null) {
       try {
-        await app.api!.homeResult(id, ok, ok ? '' : res);
+        await app.api!.homeResult(id, ok, ok ? '' : res);   // the code goes to the server; the words to the owner
       } catch (_) {}
     }
-    return ok ? null : res;
+    return ok ? null : btWhy(res);
   }
 
   Future<void> _guard(Future<void> Function() fn) async {

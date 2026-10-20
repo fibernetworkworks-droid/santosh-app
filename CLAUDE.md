@@ -79,6 +79,9 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   home commands: `home_device` event → `POST /api/bazar/devices/commands/{id}/result`. Tools wait for the real result.
 - Native: `BtControl.kt` (scan classic+BLE, pair, connect, tv_pair), `HidRemote.kt` (phone as BT keyboard/remote),
   `PhoneJobs.kt` (runs jobs when app closed). Flutter: `lib/ui/bluetooth_panel.dart`, `home_devices_screen.dart`.
+- v0.40: HidRemote never re-pairs a bonded TV (connected > saved > paired TV-like), answers GET_REPORT/SET_PROTOCOL,
+  BOOT-protocol keyboards, retry on dropped link, RemoteService remembered (remote_on) + restored on app start/boot,
+  re-registers when Bluetooth comes back. Error codes: tv_not_paired, tv_not_reachable, remote_not_ready, link_dropped, boot_protocol.
 - Not yet verified on real hardware — if the owner reports a device problem, debug from her description/logcat.
 
 ## v0.38 Voice call owned by the app
@@ -134,4 +137,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation. Next: v0.40.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). Next: v0.41.

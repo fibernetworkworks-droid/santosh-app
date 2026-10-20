@@ -127,11 +127,14 @@ class DeviceExecutor:
             ]
         if ch == "bt_hid":
             return [
-                ToolSpec("tv_keys", "Press TV remote keys: POWER, HOME, BACK, MENU, UP, DOWN, LEFT, RIGHT, OK, VOL_UP, VOL_DOWN, "
-                         "MUTE, PLAY_PAUSE, NEXT, PREVIOUS, CHANNEL_UP, CHANNEL_DOWN, SEARCH.",
+                ToolSpec("tv_keys", "Press TV remote keys: " + ", ".join(hid.TV_KEYS) + ". repeat for many presses, "
+                         "hold_ms for a long press.",
                          {"type": "object", "properties": {"keys": {"type": "array", "items": {"type": "string"}},
-                                                           "repeat": {"type": "integer"}, "device": dev},
+                                                           "repeat": {"type": "integer"}, "hold_ms": {"type": "integer"},
+                                                           "device": dev},
                           "required": ["keys"]}, 1),
+                ToolSpec("tv_channel", "Go to a channel number on the TV (types the digits, then OK).",
+                         {"type": "object", "properties": {"number": {"type": "string"}, "device": dev}, "required": ["number"]}, 1),
                 ToolSpec("tv_open_app", "Open an app on the TV: youtube, netflix, hotstar, prime video, zee5, sonyliv, spotify.",
                          {"type": "object", "properties": {"app": {"type": "string"}, "device": dev}, "required": ["app"]}, 1),
                 ToolSpec("tv_search", "Search on the TV (opens search and types the words).",
@@ -179,10 +182,16 @@ class DeviceExecutor:
                 if isinstance(keys, str):
                     keys = [keys]
                 try:
-                    ops = [hid.key_op(k, args.get("repeat", 1)) for k in keys]
+                    ops = [hid.key_op(k, args.get("repeat", 1), args.get("hold_ms", 0)) for k in keys]
                 except ValueError as e:
                     raise ToolError(str(e)) from e
-                return self._phone(ctx, dev, ops, hid.keys_message(keys, dev.name))
+                return self._phone(ctx, dev, ops, hid.keys_message([hid.norm_key(k) for k in keys], dev.name))
+            if tool == "tv_channel":
+                try:
+                    ops = hid.number_ops(str(args.get("number", "")))
+                except ValueError as e:
+                    raise ToolError(str(e)) from e
+                return self._phone(ctx, dev, ops, f"Channel {args.get('number')} on {dev.name}.")
             if tool == "tv_open_app":
                 app = str(args.get("app", "")).strip()
                 if not app:

@@ -17,6 +17,7 @@ class BootReceiver : BroadcastReceiver() {
                 else -> Store.removeAlarm(ctx, spec.optInt("id"))
             }
         }
+        RemoteService.restore(ctx)   // the Bluetooth TV remote, if the owner had it on
         if (Store.enabled(ctx) && Store.server(ctx).isNotEmpty()) {
             try { SantoshService.start(ctx) } catch (_: Exception) {}
         }

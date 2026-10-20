@@ -95,6 +95,10 @@ object BtControl {
     private fun status(ctx: Context, a: BluetoothAdapter): JSONObject {
         val out = JSONObject().put("supported", true).put("permission", canConnect(ctx)).put("scan_permission", canScan(ctx))
             .put("tv_remote", Build.VERSION.SDK_INT >= 28).put("remote_on", RemoteService.running)
+        if (Build.VERSION.SDK_INT >= 28 && canConnect(ctx)) {
+            val r = HidRemote.get(ctx).state()
+            out.put("tv_connected", r.optBoolean("connected")).put("tv_name", r.optString("tv"))
+        }
         out.put("on", try { a.isEnabled } catch (_: SecurityException) { false })
         if (canConnect(ctx)) {
             try { out.put("phone_name", a.name ?: "") } catch (_: SecurityException) {}
@@ -311,32 +315,35 @@ object BtControl {
         if (started != "ok") throw BtException(started)
         val hid = HidRemote.get(ctx)
         val phoneName = try { a.name ?: "" } catch (_: SecurityException) { "" }
-        val target = try {
-            if (args.optString("device").isBlank() && args.optString("address").isBlank()) {
-                a.bondedDevices.orEmpty().filter { kindOf(it) == "tv" }.singleOrNull()
-                    ?: hid.savedAddress()?.let { a.getRemoteDevice(it) }
-            } else resolve(ctx, a, args)
-        } catch (_: BtException) { null }
-        if (target != null) {
-            if (target.bondState != BluetoothDevice.BOND_BONDED) {
-                if (a.isDiscovering) a.cancelDiscovery()
-                target.createBond()
-                waitBond(target, 40000)
-            }
-            if (hid.connectTo(target, 15000)) {
-                return JSONObject().put("connected", true).put("paired", true).put("phone_name", phoneName)
-                    .put("device", describe(target, setOf(target.address), target.address))
-            }
+        fun ok(d: BluetoothDevice, how: String) = JSONObject().put("connected", true).put("paired", true).put("phone_name", phoneName)
+            .put("already", how == "already").put("message", if (how == "already") "The TV is already connected to Hoola Remote." else "Connected to the TV.")
+            .put("device", describe(d, setOf(d.address), d.address))
+        // 1) already connected: nothing to do (never pair again)
+        val asked = args.optString("device").isNotBlank() || args.optString("address").isNotBlank()
+        val wanted = if (asked) try { resolve(ctx, a, args) } catch (_: BtException) { null } else null
+        hid.connectedHost()?.let { c -> if (wanted == null || wanted.address == c.address) return ok(c, "already") }
+        // 2) paired already (the asked TV, the remembered one, any paired TV): connect, no new pairing
+        val tries = hid.candidates(wanted?.takeIf { it.bondState == BluetoothDevice.BOND_BONDED }?.address)
+        for (d in tries) if (hid.connectTo(d, 12000)) return ok(d, "connected")
+        // 3) a TV that is not paired yet and was picked by name: pair it, then connect
+        if (wanted != null && wanted.bondState != BluetoothDevice.BOND_BONDED) {
+            if (a.isDiscovering) a.cancelDiscovery()
+            wanted.createBond()
+            if (waitBond(wanted, 40000) && hid.connectTo(wanted, 15000)) return ok(wanted, "paired")
         }
-        // the TV has to add the phone itself: make the phone visible for 2 minutes (needs the screen)
+        // 4) paired but it refuses the phone as a remote, or nothing paired: the TV adds the phone itself
         if (MainActivity.visible) {
             try {
                 ctx.startActivity(Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE)
                     .putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 120).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             } catch (_: Exception) {}
         }
+        val pairedButRefused = tries.isNotEmpty()
         return JSONObject().put("connected", false).put("phone_name", phoneName).put("asked", MainActivity.visible)
-            .put("message", "On the TV open Settings > Bluetooth / Remotes & accessories > Add, and pick \"$phoneName\".")
+            .put("paired", pairedButRefused)
+            .put("message", if (pairedButRefused)
+                "The TV is paired but did not take the phone as a remote. Make sure the TV is on. If it still fails: on the TV forget \"$phoneName\" in Bluetooth, then add it again from Settings > Remotes & accessories."
+            else "On the TV open Settings > Bluetooth / Remotes & accessories > Add, and pick \"$phoneName\".")
     }
 
     // ------------------------------------------------------------------ on / settings

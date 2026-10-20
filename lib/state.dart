@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api.dart';
 import 'call_session.dart';
+import 'ui/bluetooth_panel.dart' show btWhy;
 import 'device.dart';
 import 'emotion.dart';
 import 'hoola.dart';
@@ -887,7 +888,7 @@ class Santosh extends ChangeNotifier {
       res = 'TV ke liye "Nearby devices" ki permission dijiye, phir dobara boliye.';
     }
     final ok = res == 'ok';
-    if (!ok) feed.add(FeedItem('note', {'text': 'Ghar: $res'}));
+    if (!ok) feed.add(FeedItem('note', {'text': 'Ghar: ${btWhy(res)}'}));
     try {
       await api?.homeResult(id, ok, ok ? '' : res);
     } catch (_) {}

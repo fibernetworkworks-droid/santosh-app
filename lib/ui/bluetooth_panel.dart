@@ -30,13 +30,7 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
   List<Map<String, dynamic>> _list(dynamic x) =>
       (x as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
 
-  String _why(String err) => switch (err) {
-        'permission' => '"Nearby devices" ki permission dijiye, phir dobara dabaiye.',
-        'bluetooth_off' => 'Bluetooth band hai. Upar "Chalu kijiye" dabaiye.',
-        'not_found' => 'Device nahi mila. Use pairing mode mein rakhkar dobara dhoondhiye.',
-        'needs_screen' => 'Hoola app khula rakhiye.',
-        _ => err,
-      };
+  String _why(String err) => btWhy(err);
 
   Future<void> refresh() async {
     final s = await Native.btRun('status');
@@ -216,3 +210,17 @@ Future<void> showTvPairHelp(BuildContext context, String phoneName) => showDialo
         actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Theek hai'))],
       ),
     );
+
+/// Plain words for the phone's Bluetooth / TV-remote error codes.
+String btWhy(String err) => switch (err) {
+      'permission' => '"Nearby devices" ki permission dijiye, phir dobara dabaiye.',
+      'bluetooth_off' => 'Bluetooth band hai. Pehle Bluetooth chalu kijiye.',
+      'not_found' => 'Device nahi mila. Use pairing mode mein rakhkar dobara dhoondhiye.',
+      'needs_screen' => 'Hoola app khula rakhiye.',
+      'tv_not_paired' => 'Abhi koi TV phone se paired nahi hai. Ghar > Bluetooth mein "TV remote banaiye" dabaiye.',
+      'tv_not_reachable' => 'TV paired hai par jawab nahi diya. TV chalu kijiye aur phone paas rakhiye, phir dobara.',
+      'remote_not_ready' => 'Bluetooth remote shuru nahi hua. Bluetooth ek baar band-chalu kijiye.',
+      'link_dropped' => 'TV ne Bluetooth link chhod diya. Phone TV ke paas rakhkar dobara try kijiye.',
+      'boot_protocol' => 'Yeh TV Bluetooth se sirf arrows, OK aur number leta hai; awaaz aur Home TV ke remote se.',
+      _ => err,
+    };

@@ -127,3 +127,22 @@ def test_bluetooth_tool_and_push_payload(conv):
     assert any(t["name"] == "bluetooth" for t in TOOLS)
     from app.voice import VOICE_TOOL_NAMES
     assert "bluetooth" in VOICE_TOOL_NAMES and "tv_remote" in VOICE_TOOL_NAMES
+
+
+def test_tv_keys_cover_full_remote_and_channel():
+    from app.bazar.connectors import device_hid as hid
+    for k in ("POWER", "HOME", "BACK", "MENU", "OK", "UP", "DOWN", "LEFT", "RIGHT", "VOL_UP", "MUTE", "INFO", "GUIDE",
+              "EXIT", "PLAY", "PAUSE", "CHANNEL_UP", "0", "9", "PAGE_DOWN", "BACKSPACE"):
+        assert k in hid.TV_KEYS
+    assert hid.key_op("volume up")["usage"] == 0xE9 and hid.key_op("enter")["reports"] == [[0, 0x28]]
+    assert hid.key_op("OK", 1, 1500)["hold_ms"] == 1500
+    ops = hid.number_ops("1 0 1")
+    assert ops[0]["reports"] == [[0, 0x1E], [0, 0x27], [0, 0x1E]] and ops[-1]["label"] == "OK"
+    assert hid.text_op("ab")[0]["typing"] is True
+
+
+def test_tv_errors_are_explained_without_repairing(conv):
+    from app.bt.service import friendly_error, _say
+    assert "no new pairing" in friendly_error("tv_not_reachable")
+    assert "tv_pair" in friendly_error("tv_not_paired")
+    assert "already connected" in _say("tv_pair", {"already": True, "connected": True})

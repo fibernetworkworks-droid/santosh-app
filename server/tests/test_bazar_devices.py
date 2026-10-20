@@ -74,7 +74,7 @@ def test_ir_codes_and_limits():
 def test_hid_mapping():
     assert hid.key_op("vol_up", 3) == {"op": "consumer", "usage": 0xE9, "repeat": 3, "label": "VOL_UP"}
     assert hid.key_op("HOME")["usage"] == 0x223
-    assert hid.key_op("vol_down", 99)["repeat"] == 20
+    assert hid.key_op("vol_down", 99)["repeat"] == 30
     assert hid.open_app_ops("youtube")[0]["op"] == "dial_launch"
     with pytest.raises(ValueError):
         hid.key_op("SELF_DESTRUCT")

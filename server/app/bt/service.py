@@ -25,7 +25,7 @@ from .models import BtRequest
 
 ACTIONS = ("status", "devices", "scan", "pair", "connect", "disconnect", "turn_on", "turn_off", "settings", "tv_pair")
 NEEDS_DEVICE = {"pair", "connect", "disconnect"}
-WAIT_S = {"scan": 25.0, "pair": 45.0, "tv_pair": 45.0, "connect": 20.0}
+WAIT_S = {"scan": 25.0, "pair": 45.0, "tv_pair": 70.0, "connect": 30.0}
 DEFAULT_WAIT_S = 12.0
 MAC = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 KINDS = {"tv", "speaker", "headphones", "phone", "computer", "watch", "car", "keyboard", "mouse", "gamepad",
@@ -69,7 +69,7 @@ def clean_result(r: Any) -> dict[str, Any]:
         return {}
     out: dict[str, Any] = {}
     for flag in ("supported", "on", "permission", "scan_permission", "remote_on", "tv_remote", "paired", "connected",
-                 "opened_settings", "asked"):
+                 "opened_settings", "asked", "already", "tv_connected"):
         if flag in r:
             out[flag] = bool(r[flag])
     if "devices" in r and isinstance(r["devices"], list):
@@ -79,6 +79,8 @@ def clean_result(r: Any) -> dict[str, Any]:
         d = _clean_device(r["device"])
         if d:
             out["device"] = d
+    if r.get("tv_name"):
+        out["tv_name"] = clean_name(r["tv_name"])
     if r.get("phone_name"):
         out["phone_name"] = clean_name(r["phone_name"])
     if r.get("message"):
@@ -152,6 +154,10 @@ def _say(action: str, res: dict[str, Any]) -> str:
         return ("Paired. Speakers and earbuds usually connect by themselves now." if res.get("paired") else
                 "Android's pairing dialog is on the phone: ask the user to tap Pair (and check the code matches).")
     if action == "tv_pair":
+        if res.get("already"):
+            return "The TV was already connected; nothing to pair. Go ahead with tv_remote."
+        if not res.get("connected") and res.get("paired"):
+            return res.get("message") or "The TV is paired but did not accept the remote; ask the user to make sure the TV is on."
         return ("The TV is connected as Hoola's remote. Now TV commands work (tv_remote)." if res.get("connected") else
                 "Ask the user to open the TV's Bluetooth settings > Add accessory and pick this phone"
                 + (f" ('{res['phone_name']}')" if res.get("phone_name") else "") + "; the phone is visible for 2 minutes.")
@@ -175,7 +181,14 @@ def friendly_error(err: str) -> str:
         return "This needs the Hoola app open on the phone screen. Ask the user to open Hoola and try again."
     if err == "not_found":
         return "That device isn't paired or nearby. Run a scan first and use the exact name from the scan."
-    return err or "The phone couldn't do it."
+    tv = {
+        "tv_not_paired": "No TV is paired with this phone yet. Use bluetooth action=tv_pair (the user may need to add the phone from the TV's Bluetooth settings).",
+        "tv_not_reachable": "The TV is paired but didn't answer: it may be off, asleep or too far. Ask the user to switch the TV on and try again (no new pairing needed).",
+        "remote_not_ready": "The phone's Bluetooth remote didn't start. Ask the user to turn Bluetooth off and on once, then try again.",
+        "link_dropped": "The TV dropped the Bluetooth link twice. Ask the user to keep the phone near the TV and try again.",
+        "boot_protocol": "This TV only accepts keyboard keys over Bluetooth (arrows, OK, numbers, typing); volume and home keys don't work on it. Use the TV's own remote for those.",
+    }
+    return tv.get(err, err or "The phone couldn't do it.")
 
 
 async def run(tenant: str, conversation_id: str, action: str, args: dict[str, Any] | None = None,
