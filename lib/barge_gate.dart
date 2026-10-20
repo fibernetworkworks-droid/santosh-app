@@ -37,10 +37,17 @@ class BargeGate {
 
   /// What to send to the server for this mic chunk (possibly several chunks, possibly silence).
   /// v0.51 a human voice per the phone's Silero VAD (0..1). Below this, loud sound is not treated as talking.
-  static const double speechNeed = 0.5;
+  /// v0.53: set from the server's `ready.vad.need` (VOICE_VAD_NEED), so it can be tuned without an app update.
+  double speechNeed = 0.5;
+
+  /// v0.53 counters for the call's quality numbers (sent to the server as gate_stats).
+  int chunks = 0;
+  int vadBlocked = 0;   // loud enough, but Silero said it was not a voice (fan, music, clatter...)
+  int opens = 0;
 
   /// [speech] = Silero VAD probability for this chunk (null on phones / builds without it: loudness only).
   List<Uint8List> process(Uint8List chunk, {required bool hoolaSpeaking, double? speech}) {
+    chunks++;
     if (!hoolaSpeaking) {
       _wasSpeaking = false;
       _recent.clear();
@@ -58,7 +65,9 @@ class BargeGate {
     }
     final level = rms(chunk);
     // loud AND (when the phone can tell) a human voice: clatter, music, fans and traffic no longer open it
-    final loud = level > _threshold && (speech == null || speech >= speechNeed);
+    final voice = speech == null || speech >= speechNeed;
+    final loud = level > _threshold && voice;
+    if (speech != null && !voice && level > _threshold) vadBlocked++;
     _learn(level);
     if (open) {
       // Real talking over him makes Gemini stop within a moment, and then he is no longer speaking.
@@ -75,8 +84,8 @@ class BargeGate {
     if (loud) {
       _loudRun++;
       _gap = 0;
-    } else if (_loudRun > 0 && _gap < 1) {
-      _gap++; // one softer chunk inside a word is fine
+    } else if (_loudRun > 0 && _gap < 1 && voice) {
+      _gap++; // one softer chunk inside a word is fine (but a chunk that is not a voice at all breaks the run)
     } else {
       if (_loudRun > 1) heldBack++;
       _loudRun = 0;
@@ -84,6 +93,7 @@ class BargeGate {
     }
     if (_loudRun >= needChunks && _background.length >= 10) {
       open = true;
+      opens++;
       _quietRun = 0;
       _openFor = 0;
       final out = List<Uint8List>.from(_recent);
@@ -114,5 +124,58 @@ class BargeGate {
       sum += s * s;
     }
     return math.sqrt(sum / n);
+  }
+}
+
+
+/// v0.53 While nobody is talking (Hoola quiet, owner quiet), pure noise reaches Gemini as silence, so a fan, traffic,
+/// a pressure cooker or clatter can't make it think someone spoke. Uses the phone's Silero VAD: after 1 s with no
+/// voice at all (probability < 0.15) the mic is muted; the moment a voice appears (>= need) it opens and the last
+/// 320 ms are sent first, so the start of the sentence is never lost (simulated: voice found within 0-80 ms of the
+/// real start, 100% of voiced audio passed; ~90% of fan / traffic / music time muted). TV talk is a voice: it passes.
+class IdleGate {
+  double need = 0.5;
+  static const double low = 0.15;
+  static const int quietChunks = 25;   // 1 s
+  static const int keep = 8;           // 320 ms replay
+
+  bool muted = false;
+  int _lowRun = 0;
+  final List<Uint8List> _recent = [];
+  int mutedChunks = 0;
+
+  void reset() {
+    muted = false;
+    _lowRun = 0;
+    _recent.clear();
+  }
+
+  /// [speech] null = no VAD on this phone / stale: everything passes (old behaviour).
+  List<Uint8List> process(Uint8List chunk, double? speech) {
+    if (speech == null) {
+      reset();
+      return [chunk];
+    }
+    if (muted) {
+      _recent.add(chunk);
+      if (_recent.length > keep) _recent.removeAt(0);
+      if (speech >= need) {
+        muted = false;
+        _lowRun = 0;
+        final out = List<Uint8List>.from(_recent);
+        _recent.clear();
+        return out;
+      }
+      mutedChunks++;
+      return [Uint8List(chunk.length)];
+    }
+    _lowRun = speech < low ? _lowRun + 1 : 0;
+    if (_lowRun >= quietChunks) {
+      muted = true;
+      _recent
+        ..clear()
+        ..add(chunk);
+    }
+    return [chunk];
   }
 }

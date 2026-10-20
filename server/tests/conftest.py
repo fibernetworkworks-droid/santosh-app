@@ -16,6 +16,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("DRY_RUN_APPROVAL_SECONDS", "0")
     monkeypatch.setenv("SEND_RATE_PER_SEC", "1000")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
+    monkeypatch.setenv("VOICEID_VAD", "false")      # voice-id tests use synthetic tones, which Silero rightly calls "not a voice"
     monkeypatch.setenv("HOOLA_ENRICH", "false")     # no background vision / suggestion calls; tests call enrich.run
     monkeypatch.setenv("VOICE_TOOL_ACK", "false")
     monkeypatch.setenv("LOGO_WARM", "false")       # no logo downloads in tests

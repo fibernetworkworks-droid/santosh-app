@@ -10,6 +10,7 @@ from ..config import get_settings
 from .permissions import allowed
 
 SPEECH_RMS = 450          # 16-bit RMS of a 40 ms chunk that counts as someone talking (noise is ~100-300)
+SPEECH_PROB = 0.5        # v0.53 Silero VAD: below this a loud chunk is not a voice
 NEW_UTTERANCE_S = 1.2
 KEEP_S = 6.0
 
@@ -37,6 +38,9 @@ class Listener:
         self.latest_sure = False           # was the guess for the latest utterance sure?
         self.guesses = 0
         self.sure_guesses = 0
+        self.vad = None                    # v0.53 Silero VAD: only real speech goes into the fingerprint
+        self._vad_tried = False
+        self.not_speech = 0
 
     @property
     def owner_name(self) -> str:
@@ -46,6 +50,15 @@ class Listener:
         """One mic chunk. True when it is time to guess who is talking."""
         if _rms(chunk) < SPEECH_RMS:
             return False
+        if self.vad is None and not self._vad_tried:
+            self._vad_tried = True
+            from .. import vad
+            self.vad = vad.Stream() if get_settings().voiceid_vad and vad.available() else None
+        if self.vad is not None:
+            p = self.vad.prob(chunk)
+            if p is not None and p < SPEECH_PROB:
+                self.not_speech += 1        # loud but not a human voice (TV hum, fan, clatter, music)
+                return False
         now = time.monotonic()
         if now - self.last_speech > NEW_UTTERANCE_S:
             self.buf.clear()

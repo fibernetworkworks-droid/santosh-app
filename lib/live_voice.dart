@@ -37,6 +37,10 @@ class LiveVoice {
   WebSocket? _ws;
   StreamSubscription? _micSub;
   final BargeGate _gate = BargeGate(); // room noise must not cut Hoola off mid-sentence
+  final IdleGate _idle = IdleGate();    // v0.53 pure noise reaches Gemini as silence while nobody talks
+  bool _idleOn = true;
+  bool _vadSeen = false;
+  Timer? _statsTimer;
   Timer? _beat;
   bool muted = false;
   bool _closed = false;
@@ -132,8 +136,17 @@ class LiveVoice {
         final speaking = DateTime.now().isBefore(_playEnd.add(const Duration(milliseconds: 300)));
         try {
           final fresh = DateTime.now().difference(_speechAt).inMilliseconds < 200;
-          for (final out in _gate.process(bytes, hoolaSpeaking: speaking, speech: fresh ? _speech : null)) {
-            sock.add(out);
+          final p = fresh ? _speech : null;
+          if (p != null) _vadSeen = true;
+          for (final out in _gate.process(bytes, hoolaSpeaking: speaking, speech: p)) {
+            if (speaking || !_idleOn) {
+              _idle.reset();
+              sock.add(out);
+            } else {
+              for (final o in _idle.process(out, p)) {
+                sock.add(o);
+              }
+            }
           }
         } catch (_) {}
       }
@@ -143,7 +156,20 @@ class LiveVoice {
       stop();
     });
     _beat = Timer.periodic(const Duration(seconds: 8), (_) => _heartbeat());
+    _statsTimer = Timer.periodic(const Duration(seconds: 20), (_) => _sendGateStats());
     return null;
+  }
+
+  /// v0.53 the gates' counters for /api/voice/stats (cumulative for the call).
+  void _sendGateStats() {
+    final sock = _ws;
+    if (sock == null || sock.readyState != WebSocket.open) return;
+    try {
+      sock.add(jsonEncode({
+        'type': 'gate_stats', 'chunks': _gate.chunks, 'held_back': _gate.heldBack, 'vad_blocked': _gate.vadBlocked,
+        'idle_muted': _idle.mutedChunks, 'opens': _gate.opens, 'vad': _vadSeen ? 1 : 0,
+      }));
+    } catch (_) {}
   }
 
   void _attach(WebSocket ws) {
@@ -179,6 +205,15 @@ class LiveVoice {
         final e = Map<String, dynamic>.from(jsonDecode(data) as Map);
         if (e['type'] == 'pong') return;
         if (e['type'] == 'ready' && e['call_id'] is String) _callId = e['call_id'] as String;
+        if (e['type'] == 'ready' && e['vad'] is Map) {
+          final v = Map<String, dynamic>.from(e['vad'] as Map);
+          final need = (v['need'] as num?)?.toDouble();
+          if (need != null && need > 0.05 && need < 0.95) {
+            _gate.speechNeed = need;
+            _idle.need = need;
+          }
+          _idleOn = v['idle_gate'] != false;
+        }
         if (e['type'] == 'error' && e['code'] == 'gone') _noResume = true;
         if (e['type'] == 'interrupted') cutSpeech();
         onEvent(e);
@@ -289,6 +324,8 @@ class LiveVoice {
     _closed = true;
     if (identical(_current, this)) _current = null;
     _beat?.cancel();
+    _sendGateStats();
+    _statsTimer?.cancel();
     _micSub?.cancel();
     _vadSub?.cancel();
     _ch.invokeMethod('voiceStop');
@@ -298,6 +335,7 @@ class LiveVoice {
   Future<void> stop() async {
     if (_closed) return;
     _userEnded = true;
+    _sendGateStats();          // last counters before the call ends
     final ws = _ws;
     final wasAway = _reconnecting;
     _ws = null;

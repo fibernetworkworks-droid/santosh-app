@@ -8,6 +8,7 @@ Phone protocol (WebSocket /api/voice/ws?conv=<id>&voice=<name>&lang=<hi-IN>):
   phone -> server  binary: 16 kHz mono PCM16 microphone audio (20-60 ms chunks)
                    text:   {"type": "mute"} | {"type": "unmute"} | {"type": "text", "text": "..."} | {"type": "end"}
                            | {"type": "files", "file_ids": [...], "text"?}  (files attached during the call, v0.44.2)
+                           | {"type": "gate_stats", chunks, held_back, vad_blocked, idle_muted, opens, fast_opens, vad} (v0.53)
   server -> phone  binary: 24 kHz mono PCM16 Santosh's voice
                    text:   {"type": "ready"} | {"type": "user_text", "text"} | {"type": "santosh_text", "text"}
                            | {"type": "interrupted"} | {"type": "turn_done", "latency_ms"?, "interrupted"?}
@@ -339,6 +340,12 @@ def _loud(pcm: bytes, threshold: int = 1200) -> bool:
     return max(abs(x) for x in a[::4]) > threshold
 
 
+def vad_config() -> dict:
+    """v0.53 How the phone's Silero VAD gate should behave (changeable from the VPS .env without an app update)."""
+    st = get_settings()
+    return {"need": st.voice_vad_need, "fast": st.voice_vad_fast, "idle_gate": st.voice_vad_idle_gate}
+
+
 def _pct(xs: list[float], q: float) -> float | None:
     if not xs:
         return None
@@ -366,6 +373,12 @@ def stats_summary(tenant: str) -> dict:
         "silent_tools_pct": round(100 * sum(c["silent_tools"] for c in calls) / tools, 1) if tools else None,
         "acks_played": sum(c["acks"] for c in calls),
         "false_stops_per_call": round(sum(c.get("false_stops", 0) for c in calls) / len(calls), 2) if calls else None,
+        # v0.53 phone gate: loud sounds that were not a voice (kept away from Gemini), noise muted while nobody spoke
+        "vad_calls": sum(1 for c in calls if (c.get("gate") or {}).get("vad")),
+        "vad_blocked_per_call": round(sum((c.get("gate") or {}).get("vad_blocked", 0) for c in calls) / len(calls), 1) if calls else None,
+        "barge_opens_per_call": round(sum((c.get("gate") or {}).get("opens", 0) for c in calls) / len(calls), 1) if calls else None,
+        "noise_muted_pct": (round(100 * sum((c.get("gate") or {}).get("idle_muted", 0) for c in calls)
+                                  / max(1, sum((c.get("gate") or {}).get("chunks", 0) for c in calls)), 1) if calls else None),
         "recent": [{k: c[k] for k in ("call_id", "ended", "turns", "latency_ms", "interruptions", "tools", "silent_tools")}
                    for c in calls[-10:]],
     }
@@ -509,6 +522,7 @@ class Call:
         self.stats = {"tenant": self.tenant, "call_id": self.call_id, "started": time.time(), "ended": None, "turns": 0,
                       "latency_ms": [], "words": [], "question_endings": 0, "assistantisms": 0, "interruptions": 0,
                       "tools": 0, "silent_tools": 0, "acks": 0, "false_stops": 0,
+                      "gate": {},
                       "speaker_guesses": 0, "speaker_sure": 0, "speaker_changes": 0, "blocked_tools": 0}
         if st.voice_tool_ack and st.gemini_api_key:
             ack_clips(self.voice, self.gender)   # get his "ek second" clips ready
@@ -594,6 +608,11 @@ class Call:
                         await self.send_json({"type": "pong"})
                     elif t == "text" and m.get("text"):
                         self.push("text", str(m["text"])[:2000])
+                    elif t == "gate_stats":
+                        # v0.53 the phone's barge-in / noise gate counters (cumulative for the call)
+                        self.stats["gate"] = {k: int(m[k]) for k in ("chunks", "held_back", "vad_blocked", "idle_muted",
+                                                                      "opens", "fast_opens", "vad")
+                                              if isinstance(m.get(k), (int, float))}
                     elif t == "files" and isinstance(m.get("file_ids"), list):
                         await self._got_files([str(x) for x in m["file_ids"]][:6], str(m.get("text") or "")[:1000])
         except (WebSocketDisconnect, RuntimeError):
@@ -630,7 +649,7 @@ class Call:
             with contextlib.suppress(Exception):
                 await old.close()
         reader = self._start_reader(ws)
-        await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id, "resumed": True})
+        await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id, "resumed": True, "vad": vad_config()})
         if self.user_buf.strip():   # show what is being said right now
             await self.send_json({"type": "user_text", "text": self.user_buf.strip()})
         if self.reply_buf.strip():
@@ -1026,7 +1045,7 @@ class Call:
                         session = await asyncio.wait_for(stack.enter_async_context(connector(cfg)), timeout=20)
                         self._session = session
                         if first:
-                            await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id})
+                            await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id, "vad": vad_config()})
                             # live text input (3.x Live models accept client_content only for seeding history)
                             await session.send_realtime_input(text=greeting(self.tenant, self.gender))
                             first = False
