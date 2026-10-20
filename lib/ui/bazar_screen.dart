@@ -7,6 +7,7 @@ import 'mcp_screen.dart';
 import 'plugin_widgets.dart';
 import 'publicapis_screen.dart';
 import 'shopping_screen.dart';
+import 'reels_screen.dart';
 import 'tv_screen.dart';
 
 /// Santosh Bazar: every pack with live status, linked app accounts, spend limits and delivery details.
@@ -337,6 +338,17 @@ class _BazarScreenState extends State<BazarScreen> {
                 subtitle: const Text('Doordarshan, Sansad TV, news, bhakti, music · phone pe ya TV pe'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TvScreen())),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Glass(
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.slow_motion_video_rounded, color: C.accentSoft),
+                title: Text('Hoola Reels · saved reels', style: display(15.5)),
+                subtitle: const Text('Kisi bhi reel ko Share → Hoola: save, yaad, shopping, family, ye sach hai?'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SavedReelsScreen())),
               ),
             ),
             const SizedBox(height: 14),

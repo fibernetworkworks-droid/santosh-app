@@ -81,6 +81,7 @@ class Settings(BaseSettings):
     mail_max_attach_mb: int = 18            # total attachments per mail (Gmail/Outlook limit is ~25 MB encoded)
     notebook_tts_model: str = "gemini-2.5-flash-preview-tts"   # Santosh Notebook audio overviews (two voices)
     youtube_api_key: str = ""               # YouTube Data API v3 key for search / public video stats (Google Cloud)
+    reels_gemini_model: str = ""          # Hoola Reels: understands shared reels ("" = youtube_gemini_model)
     youtube_gemini_model: str = "gemini-2.5-flash"   # watches public YouTube videos to summarise / answer (official Gemini API)
     hivision_url: str = ""                 # v0.51 e.g. http://127.0.0.1:8085 (docker linzeyi/hivision_idphotos): ID photos
     gotenberg_url: str = ""                # v0.49 e.g. http://127.0.0.1:3005 (docker gotenberg): Office files get page-1 previews

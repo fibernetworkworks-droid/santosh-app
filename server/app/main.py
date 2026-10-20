@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.53.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.54.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -104,7 +104,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis"] + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels"] + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -2360,6 +2360,120 @@ def bazar_contacts(tenant: str = Depends(current_tenant)):
 @app.post("/api/bazar/contacts", dependencies=[Depends(require_key)])
 def bazar_contact_add(body: BazarContactIn, tenant: str = Depends(current_tenant)):
     return _bz(bazar.add_contact, tenant, body.name, body.upi_id, body.phone, body.relation)
+
+
+# ---------------- Hoola Reels: share a reel to Hoola, turn it into something useful ----------------
+class ReelLookIn(BaseModel):
+    text: str
+
+
+class ReelNoteIn(BaseModel):
+    note: str = ""
+
+
+class ReelRemindIn(BaseModel):
+    when: str                      # local time, e.g. 2026-10-21T19:00
+    text: str = ""
+
+
+class ReelShopIn(BaseModel):
+    items: list[str] = []
+
+
+def _reel(fn, *a):
+    from .reels import service as rs
+    try:
+        return fn(*a)
+    except rs.ReelError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/reels/look", dependencies=[Depends(require_key)])
+async def reel_look(body: ReelLookIn, tenant: str = Depends(current_tenant)):
+    """A reel link shared from Instagram / YouTube / Facebook / Snapchat / Moj / Josh / ShareChat."""
+    from .reels import service as rs
+    return await asyncio.to_thread(_reel, rs.look_link, tenant, body.text[:4000])
+
+
+@app.post("/api/reels/look_file", dependencies=[Depends(require_key)])
+async def reel_look_file(file: UploadFile = File(...), text: str = Form(""), tenant: str = Depends(current_tenant)):
+    """The owner's own screen recording / screenshot of a reel (for apps that don't share the video)."""
+    from .reels import service as rs
+    data = await file.read(rs.MAX_FILE + 1)
+    return await asyncio.to_thread(_reel, rs.look_file, tenant, file.filename or "reel.mp4", file.content_type or "",
+                                   data, text[:4000])
+
+
+@app.get("/api/reels", dependencies=[Depends(require_key)])
+def reels_saved(q: str = "", tenant: str = Depends(current_tenant)):
+    from .reels import service as rs
+    return {"reels": rs.saved(tenant, q)}
+
+
+@app.get("/api/reels/{reel_id}", dependencies=[Depends(require_key)])
+def reel_get(reel_id: str, tenant: str = Depends(current_tenant)):
+    from .reels import service as rs
+    try:
+        return rs.get(tenant, reel_id)
+    except rs.ReelError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.post("/api/reels/{reel_id}/save", dependencies=[Depends(require_key)])
+def reel_save(reel_id: str, body: ReelNoteIn, tenant: str = Depends(current_tenant)):
+    from .reels import service as rs
+    return _reel(rs.save, tenant, reel_id, body.note)
+
+
+@app.delete("/api/reels/{reel_id}/save", dependencies=[Depends(require_key)])
+def reel_unsave(reel_id: str, tenant: str = Depends(current_tenant)):
+    from .reels import service as rs
+    return rs.unsave(tenant, reel_id)
+
+
+@app.post("/api/reels/{reel_id}/remind", dependencies=[Depends(require_key)])
+async def reel_remind(reel_id: str, body: ReelRemindIn, tenant: str = Depends(current_tenant)):
+    from .agent.life_tools import create_reminder
+    from .agent.tools import Ctx, ToolError
+    from .reels import service as rs
+    v = await asyncio.to_thread(_reel, rs.get, tenant, reel_id)
+    text = (body.text.strip() or f"Reel: {v['title'] or 'jo save ki thi'}")[:400]
+    if v["url"] and v["url"] not in text:
+        text = f"{text} ({v['url']})"
+    try:
+        r = await create_reminder(Ctx(tenant, await asyncio.to_thread(_tv_conv, tenant)), text, body.when)
+    except ToolError as e:
+        raise HTTPException(400, str(e))
+    return {"reminder": r, "say": f"Theek hai, {r.get('when') or body.when} ko yaad dila dunga."}
+
+
+@app.post("/api/reels/{reel_id}/shop", dependencies=[Depends(require_key)])
+async def reel_shop(reel_id: str, body: ReelShopIn, tenant: str = Depends(current_tenant)):
+    """Products / ingredients of the reel -> the shopping list (+ plain search links to compare and buy)."""
+    from .agent.life_tools import list_add
+    from .agent.tools import Ctx
+    from .reels import service as rs
+    items = await asyncio.to_thread(_reel, rs.shop_items, tenant, reel_id, body.items or None)
+    if not items:
+        raise HTTPException(400, "Is reel mein khareedne layak cheez nahi mili.")
+    r = await list_add(Ctx(tenant, await asyncio.to_thread(_tv_conv, tenant)), "shopping", items)
+    return {"list": r["list"], "added": r["added"], "items": r["items"],
+            "say": f"{len(r['added'])} cheezein shopping list mein daal di." if r["added"] else "Yeh sab pehle se list mein hai."}
+
+
+@app.get("/api/reels/{reel_id}/share", dependencies=[Depends(require_key)])
+def reel_share(reel_id: str, tenant: str = Depends(current_tenant)):
+    from .reels import service as rs
+    return _reel(rs.share_text, tenant, reel_id)
+
+
+@app.post("/api/reels/{reel_id}/check", dependencies=[Depends(require_key)])
+async def reel_check(reel_id: str, tenant: str = Depends(current_tenant)):
+    from .reels import service as rs
+    try:
+        return await rs.fact_check(tenant, reel_id)
+    except rs.ReelError as e:
+        raise HTTPException(400, str(e))
 
 
 # ---------------- Hoola TV: free official live channels, on the phone or the TV ----------------

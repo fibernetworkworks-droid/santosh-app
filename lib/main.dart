@@ -17,6 +17,7 @@ import 'ui/glass.dart';
 import 'ui/profile_screen.dart';
 import 'ui/setup_screen.dart';
 import 'ui/today_screen.dart';
+import 'ui/reels_screen.dart';
 import 'ui/tv_screen.dart';
 import 'ui/live_voice_screen.dart';
 import 'ui/lock_safe.dart';
@@ -66,7 +67,13 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
       }
       if (t.startsWith('share:')) {
         try {
-          widget.app.onShared(Map<String, dynamic>.from(jsonDecode(t.substring(6)) as Map));
+          final share = Map<String, dynamic>.from(jsonDecode(t.substring(6)) as Map);
+          // a reel (link from Instagram / YouTube / Facebook / Snapchat / Moj..., or one screen recording): the Reels card
+          if (HoolaReels.isReelShare(share)) {
+            if (!await openReel(share)) widget.app.onShared(share);
+          } else {
+            widget.app.onShared(share);
+          }
         } catch (_) {}
         return;
       }

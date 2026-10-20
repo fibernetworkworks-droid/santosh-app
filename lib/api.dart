@@ -100,6 +100,28 @@ class Api {
   Future<Map<String, dynamic>> tvStop() async =>
       Map<String, dynamic>.from(await _send('POST', '/api/tv/stop', timeout: const Duration(seconds: 30)) as Map);
 
+  // ---- Hoola Reels ----
+  Future<Map<String, dynamic>> reelLook(String text) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/reels/look', body: {'text': text}, timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> reelLookFile(String name, List<int> bytes, {String text = ''}) =>
+      uploadFile('/api/reels/look_file', name, bytes, fields: {'text': text}, timeout: const Duration(seconds: 180), tries: 2);
+  Future<Map<String, dynamic>> reelGet(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/reels/${Uri.encodeComponent(id)}') as Map);
+  Future<List<Map<String, dynamic>>> reelsSaved({String q = ''}) async {
+    final r = await _send('GET', '/api/reels', query: {'q': q}) as Map;
+    return List<Map<String, dynamic>>.from((r['reels'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  }
+  Future<Map<String, dynamic>> reelSave(String id, {String note = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/reels/$id/save', body: {'note': note}) as Map);
+  Future<void> reelUnsave(String id) async => _send('DELETE', '/api/reels/$id/save');
+  Future<Map<String, dynamic>> reelRemind(String id, String when, {String text = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/reels/$id/remind', body: {'when': when, 'text': text}) as Map);
+  Future<Map<String, dynamic>> reelShop(String id, {List<String> items = const []}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/reels/$id/shop', body: {'items': items}) as Map);
+  Future<String> reelShareText(String id) async => ((await _send('GET', '/api/reels/$id/share')) as Map)['text'] as String;
+  Future<Map<String, dynamic>> reelCheck(String id) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/reels/$id/check', timeout: const Duration(seconds: 90)) as Map);
+
   Future<Map<String, dynamic>> health() async => Map<String, dynamic>.from(await _send('GET', '/healthz'));
 
   Future<Map<String, dynamic>> me() async => Map<String, dynamic>.from(await _send('GET', '/api/me'));

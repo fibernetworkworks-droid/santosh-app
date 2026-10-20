@@ -300,6 +300,31 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - App: `lookFits(id, gender)`, `LookPickerScreen(gender:)` (men get Santosh as the first tile), look card for both genders
   in setup, Profile > "<name> ka roop" for everyone.
 
+## v0.54 Hoola Reels (share any reel -> save / remind / shop / family / "ye sach hai?")
+- Research report: "Hoola AI for reels" (Oct 2026). Official routes only: the owner SHARES the reel; no scraping, no
+  downloading other people's reels, no accessibility-service agent (Play bans assistants there), no auto WhatsApp send.
+- Server `app/reels/`: `links.find` (YouTube Shorts / youtu.be, Instagram reel/p/tv, Facebook reel / fb.watch, Snapchat
+  Spotlight, Moj, Josh, ShareChat; tracking params dropped). `service.look_link`: YouTube = watched via the official Gemini
+  YouTube-URL input, cached ONCE for everyone (`ReelLook.key` = youtube:<id>, tenant ""); other apps share only the
+  link -> caption text only (no AI call for a bare link) + `needs_video` / `how_to_show` (screen-record and share the
+  recording). `look_file`: the owner's own recording / screenshot (<= 25 MB, inline <= 18 MB else Files API), keyed per
+  owner by sha256, never shared. Gemini JSON (`_ask_gemini`, model `REELS_GEMINI_MODEL` or youtube_gemini_model) cleaned
+  by `_clean`: title, Hinglish summary, kind, tags, products (+ Amazon / Flipkart / Google Shopping search links), places
+  (+ Maps link), recipe, events, claims, song, warnings (finance_tip, health_claim, scam_signs, ai_generated_maybe,
+  sponsored, kids_unsafe) + regex scam words. Every result carries `ai_label` (IT Rules 2026).
+- Actions: `save` / `unsave` / `saved(q)` (SavedReel, word search over title/summary/tags/products/places/dish/note),
+  remind (`life_tools.create_reminder`, text + link), shop (`list_add` "shopping"), `share_text` (family message; the app
+  opens Android's share sheet, owner taps send), `fact_check` (<= 3 claims, `web.google_search` each; SACH / GALAT /
+  ADHOORA / PATA_NAHI, stored on the look, shown as a signal not a verdict).
+- API: POST /api/reels/look {text}, POST /api/reels/look_file (multipart file + text), GET /api/reels?q=, GET
+  /api/reels/{id}, POST|DELETE /api/reels/{id}/save, POST /api/reels/{id}/remind {when}, POST /api/reels/{id}/shop
+  {items}, GET /api/reels/{id}/share, POST /api/reels/{id}/check. Tool `reel` (look / saved / save / check) in chat, calls
+  and the family level. Health feature "reels".
+- App: share with a reel link (or one video alone) -> `openReel` -> `ReelScreen` (5 big actions, warnings, recipe,
+  products, places, dates, song, fact-check card, "Hoola se poochho" -> chat); `SavedReelsScreen` (Connect tile + app bar).
+- Next ideas from the report: Hoola as default assistant (assist screenshot + link), Bubbles floating head, family
+  delivery over the Hoola Network, elder scam shield, paid live "watch with Hoola".
+
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
   automation (Baileys/WhatsApp Web).
@@ -322,4 +347,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos · v0.47 Public APIs (2,100+ free APIs the avatar can use). · v0.48 Hoola TV (free official live channels on phone + Chromecast/Android TV). · v0.49 Hoola TV worldwide (~4,300 official channels, 140 countries, country picker). · v0.50 repo review part 1 (real file types, MarkItDown, share-to-Hoola, video shrink, PII gate, keep-alive steps, security CI, backup). · v0.51 100 female 3D avatar looks from around the world. · v0.51.1 Hoola TV list fix (old saved list ignored). · v0.52 repo review part 2 (Office files, clean / ID photos, memory by meaning, Silero VAD on calls). · v0.53 100 male 3D avatar looks from around the world (Santosh stays the default). Next: v0.54.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock · v0.44.1 chat paperclip takes any file · v0.44.2 files in voice call + reliable uploads · v0.44.3 files never arrive as empty messages. · v0.45 avatar knows and uses its MCP connections (chat + calls). · v0.46 premium plugin/MCP cards + real logos · v0.47 Public APIs (2,100+ free APIs the avatar can use). · v0.48 Hoola TV (free official live channels on phone + Chromecast/Android TV). · v0.49 Hoola TV worldwide (~4,300 official channels, 140 countries, country picker). · v0.50 repo review part 1 (real file types, MarkItDown, share-to-Hoola, video shrink, PII gate, keep-alive steps, security CI, backup). · v0.51 100 female 3D avatar looks from around the world. · v0.51.1 Hoola TV list fix (old saved list ignored). · v0.52 repo review part 2 (Office files, clean / ID photos, memory by meaning, Silero VAD on calls). · v0.53 100 male 3D avatar looks from around the world (Santosh stays the default). · v0.54 Hoola Reels (share any reel: save, remind, shop, family, ye sach hai?). Next: v0.55.

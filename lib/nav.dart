@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'ui/reels_screen.dart';
 import 'ui/tv_screen.dart';
 import 'ui/web_screen.dart';
 
@@ -25,6 +26,20 @@ Future<bool> openTv(String channelId) async {
   final nav = navKey.currentState;
   if (nav == null || channelId.isEmpty) return false;
   nav.push(MaterialPageRoute(builder: (_) => TvPlayerScreen(channelId: channelId)));
+  return true;
+}
+
+/// A reel shared from another app opens the Hoola Reels card (waits a moment when the app is still starting).
+Future<bool> openReel(Map<String, dynamic> share) async {
+  for (var i = 0; i < 25 && navKey.currentState == null; i++) {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+  }
+  final nav = navKey.currentState;
+  if (nav == null) return false;
+  final files = (share['files'] as List? ?? const []);
+  final f = files.isEmpty ? null : Map<String, dynamic>.from(files.first as Map);
+  nav.push(MaterialPageRoute(
+      builder: (_) => ReelScreen(text: share['text'] as String? ?? '', filePath: f?['path'] as String?, fileName: f?['name'] as String?)));
   return true;
 }
 
