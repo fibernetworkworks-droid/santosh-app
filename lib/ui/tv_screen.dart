@@ -132,8 +132,9 @@ class _TvScreenState extends State<TvScreen> {
 
   Map<String, dynamic>? get _here => _countries.where((c) => c['code'] == _country).firstOrNull;
 
-  String get _placeName => _country.isEmpty ? 'Saari duniya' : (_here?['name'] as String? ?? _country);
-  String get _placeFlag => _country.isEmpty ? '🌍' : (_here?['flag'] as String? ?? '📺');
+  String get _placeName =>
+      _country.isEmpty ? 'Saari duniya' : (_here?['name'] as String? ?? (_country == 'IN' ? 'India' : _country));
+  String get _placeFlag => _country.isEmpty ? '🌍' : (_here?['flag'] as String? ?? (_country == 'IN' ? '🇮🇳' : '📺'));
 
   Future<void> _pickCountry() async {
     final picked = await showModalBottomSheet<String>(

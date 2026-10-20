@@ -212,3 +212,30 @@ def test_tv_logo_resolves(env):
     kind, url = logos.resolve("tv", dd["id"])
     assert kind == "url" and url.startswith("https://")
     assert logos.resolve("tv", "nope") is None
+
+
+def test_old_saved_list_never_hides_the_world(env, monkeypatch, tmp_path):
+    """v0.48 saved an India-only list without countries; v0.49+ must use the shipped world list instead."""
+    monkeypatch.setattr(catalog, "DATA_DIR", tmp_path / "tv")
+    (tmp_path / "tv").mkdir()
+    old = {"updated": 1, "channels": [{"id": "DDNews.in", "name": "DD News", "categories": ["news"], "logo_src": "",
+                                       "streams": [{"url": "https://x.example.com/a.m3u8", "quality": 0, "geo": False,
+                                                    "not247": False, "user_agent": "", "referrer": "", "ok": True}]}]}
+    (tmp_path / "tv" / "channels.json").write_text(json.dumps(old))
+    catalog._cache.update(at=0.0, data=None)
+    assert len(catalog.load()["channels"]) >= 4000
+    assert catalog.search(country="IN")["total"] >= 100 and catalog.countries()[0]["name"] == "India"
+    catalog._cache.update(at=0.0, data=None)
+
+
+def test_failed_health_check_hides_nothing(env, monkeypatch, tmp_path):
+    monkeypatch.setattr(catalog, "DATA_DIR", tmp_path / "tv")
+    monkeypatch.setattr(catalog, "MIN_CHANNELS", 3)
+    monkeypatch.setattr(catalog, "fetch_sources", lambda client=None: (M3U, {
+        "channels.csv": CHANNELS, "blocklist.csv": BLOCK, "logos.csv": LOGOS,
+        "countries.csv": "name,code,languages,flag\nIndia,IN,hin,F\n", "categories.csv": "id,name,description\n"}))
+    monkeypatch.setattr(catalog, "health", lambda chans: [
+        {**c, "streams": [{**st, "ok": False, "castable": False} for st in c["streams"]]} for c in chans])
+    r = catalog.refresh(check=True)
+    assert r["working"] == r["channels"] == 4
+    catalog._cache.update(at=0.0, data=None)

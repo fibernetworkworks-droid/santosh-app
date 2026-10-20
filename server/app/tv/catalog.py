@@ -37,6 +37,7 @@ DB_FILES = ["channels.csv", "blocklist.csv", "logos.csv", "countries.csv", "cate
 TRUSTED_FILE = re.compile(r"_(doordarshan|samsung|pluto|rakuten|distro|amagi|xumo|tubi|roku|plex|stirr|stingray|vizio|tcl)"
                           r"\.m3u$")
 HOME = "IN"
+SCHEMA = 2               # saved lists older than this (v0.48, India only, no countries) are ignored
 MIN_CHANNELS = 1000      # a refresh that builds fewer is a broken download: keep the last good list
 
 # Prasar Bharati (DD / WAVES) and Sansad TV (NIC) delivery hosts
@@ -244,7 +245,7 @@ def lookups(db: dict[str, str]) -> dict:
 
 def assemble(m3u: dict[str, str], db: dict[str, str]) -> dict:
     channels = build(m3u, db["channels.csv"], db["blocklist.csv"], db["logos.csv"])
-    return {"updated": time.time(), "files": sorted(m3u), "channels": channels, **lookups(db)}
+    return {"schema": SCHEMA, "updated": time.time(), "files": sorted(m3u), "channels": channels, **lookups(db)}
 
 
 # ----------------------------------------------------------------------------- health
@@ -302,6 +303,10 @@ def _read(f: Path) -> dict:
 
 
 def _index(data: dict) -> dict:
+    for c in data.get("channels", []):
+        if not c.get("country"):   # e.g. 'DDNews.in' -> IN
+            tail = c["id"].rsplit(".", 1)[-1] if "." in c["id"] else ""
+            c["country"] = tail.upper() if len(tail) == 2 else ""
     data["_by_id"] = {c["id"]: c for c in data.get("channels", [])}
     data.setdefault("countries", {})
     data.setdefault("category_names", {})
@@ -317,8 +322,10 @@ def load() -> dict:
         for f in (_file(), SEED):
             try:
                 data = _read(f)
-                if data.get("channels"):
+                if data.get("channels") and (f == SEED or (data.get("schema", 1) >= SCHEMA and data.get("countries"))):
                     break
+                log.warning("tv list %s is an old format; using the next one", f)
+                data = None
             except (OSError, ValueError):
                 continue
         data = _index(data or {"updated": 0, "channels": []})
@@ -335,6 +342,14 @@ def refresh(client=None, check=True) -> dict:
         raise RuntimeError(f"only {len(channels)} channels built; keeping the last good list")
     if check:
         channels = health(channels)
+        good = sum(1 for c in channels if any(s.get("ok") for s in c["streams"]))
+        if good < len(channels) * 0.2:
+            # the check itself failed (network trouble on the server), not 80% of the world's TV: don't hide anything
+            log.warning("tv health check: only %s of %s answered; ignoring the check", good, len(channels))
+            for c in channels:
+                for st in c["streams"]:
+                    st.pop("ok", None)
+                    st.pop("castable", None)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     tmp = _file().with_suffix(".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False))
