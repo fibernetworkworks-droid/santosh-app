@@ -1,4 +1,4 @@
-/// v0.48 — Hoola avatar looks: the original Santosh, or one of 100 female 3D looks from around the world.
+/// Hoola avatar looks: the original Santosh, or one of 100 female (v0.51) / 100 male (v0.52) 3D looks from around the world.
 ///
 /// Images are pre-rendered from the same three.js builder the live 3D view uses (assets/santosh3d/avatar.js),
 /// so the picture in a list, the face in a header and the 3D avatar in a call are the same person.
@@ -14,19 +14,23 @@ import 'glass.dart';
 
 final ValueNotifier<String> currentLook = ValueNotifier<String>('');
 
-final RegExp _lookRe = RegExp(r'^f\d{3}$');
+final RegExp _lookRe = RegExp(r'^[fm]\d{3}$');
 bool isLook(String? id) => id != null && _lookRe.hasMatch(id);
-String lookFull(String id) => 'assets/avatars/$id.webp';
+/// A look that belongs to this gender ('f' / 'm').
+bool lookFits(String? id, String gender) => isLook(id) && id![0] == gender;
+/// Full figure; '' = Santosh.
+String lookFull(String id) => isLook(id) ? 'assets/avatars/$id.webp' : 'assets/images/santosh_happy.png';
 String lookHead(String id) => 'assets/avatars/${id}_head.webp';
 
 /// Head image for any avatar: a female look id, else Santosh.
 String headAsset(String? look) => isLook(look) ? lookHead(look!) : 'assets/images/santosh_head.png';
 
 class LookInfo {
-  const LookInfo(this.id, this.name, this.city, this.country, this.region, this.hair, this.outfit);
-  final String id, name, city, country, region, hair, outfit;
+  const LookInfo(this.id, this.name, this.city, this.country, this.region, this.hair, this.outfit, this.gender);
+  final String id, name, city, country, region, hair, outfit, gender;
   factory LookInfo.from(Map<String, dynamic> m) => LookInfo('${m['id']}', '${m['name']}', '${m['city']}', '${m['country']}',
-      '${m['region']}', '${m['hair'] ?? ''}', '${m['outfit'] ?? ''}');
+      '${m['region']}', '${m['hair'] ?? ''}', '${m['outfit'] ?? ''}', '${m['gender'] ?? (('${m['id']}').startsWith('m') ? 'm' : 'f')}');
+  static const santosh = LookInfo('', 'Santosh', 'Hoola ka asli', 'roop', '', '', '', 'm');
 }
 
 List<LookInfo>? _looks;
@@ -37,7 +41,7 @@ Future<List<LookInfo>> loadLooks() async {
 }
 
 const lookRegions = <String, String>{
-  '': 'Sab 100',
+  '': 'Sab',
   'sa': 'Bharat aur Dakshin Asia',
   'ea': 'Purvi Asia',
   'sea': 'Dakshin-Purv Asia',
@@ -76,17 +80,19 @@ class AvatarFace extends StatelessWidget {
   }
 }
 
-/// Full screen chooser: 100 looks, filter by region, big preview of the one in hand. Pops with the chosen id.
+/// Full screen chooser: 100 looks of the avatar's gender (men also get the original Santosh), filter by region,
+/// big preview of the one in hand. Pops with the chosen id ('' = Santosh).
 class LookPickerScreen extends StatefulWidget {
-  const LookPickerScreen({super.key, required this.initial, required this.avatarName});
+  const LookPickerScreen({super.key, required this.initial, required this.avatarName, this.gender = 'f'});
   final String initial;
   final String avatarName;
+  final String gender;
   @override
   State<LookPickerScreen> createState() => _LookPickerScreenState();
 }
 
 class _LookPickerScreenState extends State<LookPickerScreen> {
-  late String _sel = isLook(widget.initial) ? widget.initial : 'f001';
+  late String _sel = lookFits(widget.initial, widget.gender) ? widget.initial : (widget.gender == 'm' ? '' : 'f001');
   String _region = '';
   List<LookInfo> _all = const [];
 
@@ -94,7 +100,8 @@ class _LookPickerScreenState extends State<LookPickerScreen> {
   void initState() {
     super.initState();
     loadLooks().then((l) {
-      if (mounted) setState(() => _all = l);
+      final mine = l.where((x) => x.gender == widget.gender).toList();
+      if (mounted) setState(() => _all = widget.gender == 'm' ? [LookInfo.santosh, ...mine] : mine);
     });
   }
 
@@ -108,6 +115,7 @@ class _LookPickerScreenState extends State<LookPickerScreen> {
   @override
   Widget build(BuildContext context) {
     final shown = _region.isEmpty ? _all : _all.where((l) => l.region == _region).toList();
+    final mine = _all.where((l) => l.id.isNotEmpty).length;
     final cur = _cur;
     return Scaffold(
       appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${widget.avatarName} ka roop')),
@@ -135,7 +143,7 @@ class _LookPickerScreenState extends State<LookPickerScreen> {
                       Text(widget.avatarName, style: display(22)),
                       const SizedBox(height: 2),
                       if (cur != null)
-                        Text('Roop: ${cur.name} · ${cur.city}, ${cur.country}', style: const TextStyle(color: C.muted, fontSize: 13)),
+                        Text(cur.id.isEmpty ? 'Roop: asli Santosh' : 'Roop: ${cur.name} · ${cur.city}, ${cur.country}', style: const TextStyle(color: C.muted, fontSize: 13)),
                       const SizedBox(height: 8),
                       const Text('Naam aapka diya hua hi rahega. Roop sirf dikhne ke liye hai: call mein, chat mein aur doosron ke Hoola par.',
                           style: TextStyle(color: C.faint, fontSize: 12)),
@@ -151,7 +159,7 @@ class _LookPickerScreenState extends State<LookPickerScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: ChoiceChip(
-                      label: Text(e.key.isEmpty ? e.value : '${e.value} · ${_all.where((l) => l.region == e.key).length}'),
+                      label: Text(e.key.isEmpty ? '${e.value} $mine' : '${e.value} · ${_all.where((l) => l.region == e.key).length}'),
                       selected: _region == e.key,
                       showCheckmark: false,
                       selectedColor: C.accent,
@@ -175,7 +183,7 @@ class _LookPickerScreenState extends State<LookPickerScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: GradientButton(
-                label: cur == null ? 'Yeh roop chuniye' : 'Yeh roop chuniye · ${cur.name}',
+                label: cur == null ? 'Yeh roop chuniye' : 'Yeh roop chuniye · ${cur.id.isEmpty ? 'Santosh' : cur.name}',
                 icon: Icons.check_rounded,
                 onTap: () => Navigator.of(context).pop(_sel),
               ),

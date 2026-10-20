@@ -31,10 +31,10 @@ FEMALE_VOICES = {
 DEFAULT_VOICE = {"m": "Puck", "f": "Kore"}
 
 # ---------------------------------------------------------------- 3D looks (v0.48)
-# 100 female looks (assets/santosh3d/looks.js in the app; this file is the list the server checks against).
-# Male avatars keep the original Santosh look ("").
+# 100 female looks f001..f100 (v0.51) + 100 male looks m001..m100 (v0.52); assets/santosh3d/looks.js in the app,
+# this file is the list the server checks against. "" = the original Santosh (the default for a male avatar).
 DEFAULT_LOOK = {"m": "", "f": "f001"}
-LOOK_RE = re.compile(r"^f\d{3}$")
+LOOK_RE = re.compile(r"^[fm]\d{3}$")
 
 
 @lru_cache(maxsize=1)
@@ -43,14 +43,14 @@ def looks() -> list[dict[str, Any]]:
         return json.load(f)
 
 
-def look_ids() -> set[str]:
-    return {x["id"] for x in looks()}
+def look_ids(gender: str | None = None) -> set[str]:
+    return {x["id"] for x in looks() if gender is None or x["id"][0] == gender}
 
 
 def clean_look(look: Any, gender: str) -> str:
     """A look that fits the gender, else the default for that gender. Never fails."""
     look = str(look or "")
-    if gender == "f" and look in look_ids():
+    if look in look_ids(gender):
         return look
     return DEFAULT_LOOK.get(gender, "")
 
@@ -301,7 +301,7 @@ def save(tenant: str, name: str | None = None, gender: str | None = None, voice:
                 raise AvatarError("Yeh awaaz is avatar ke liye nahi hai.")
             a.voice = voice
         if look is not None:
-            if look and (a.gender != "f" or look not in look_ids()):
+            if look and look not in look_ids(a.gender):
                 raise AvatarError("Yeh roop is avatar ke liye nahi hai.")
             a.look = look or None
         if rules is not None:

@@ -1,11 +1,11 @@
 """Render the 100 female looks to app images (assets/avatars/fNNN.webp + fNNN_head.webp).
 
     python3 tool/avatars/gen_looks.py      # only when the catalogue changes
-    python3 tool/avatars/render.py         # needs: pip install playwright pillow  (Chromium with SwiftShader is enough)
+    python3 tool/avatars/render.py [m|f]   # all, or only men / women; needs: pip install playwright pillow
 
 Uses the same builder as the live 3D avatar (assets/santosh3d/avatar.js), so pictures and 3D always match.
 """
-import asyncio, base64, io, json, os
+import asyncio, base64, io, json, os, sys
 from playwright.async_api import async_playwright
 from PIL import Image
 
@@ -16,6 +16,8 @@ OUT = os.path.join(ROOT, 'assets', 'avatars')
 
 async def main():
     looks = json.load(open(os.path.join(HERE, 'looks_full.json'), encoding='utf-8'))
+    only = sys.argv[1] if len(sys.argv) > 1 else ''
+    looks = [l for l in looks if l['id'].startswith(only)]
     os.makedirs(OUT, exist_ok=True)
     async with async_playwright() as p:
         b = await p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--allow-file-access-from-files'])

@@ -113,20 +113,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
               contentPadding: EdgeInsets.zero,
               leading: const AvatarFace(size: 40, ring: true),
               title: Text('Mera Hoola: ${app.aName}', style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text('Naam, ${app.aFemale ? 'mahila, roop' : 'purush'}, awaaz'),
+              subtitle: Text('Naam, ${app.aFemale ? 'mahila' : 'purush'}, roop, awaaz'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AvatarSetupScreen(app: app))),
             ),
-            if (app.aFemale)
-              ListTile(
+            ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.palette_outlined, color: C.accent2),
                 title: Text('${app.aName} ka roop', style: const TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: const Text('100 roop, duniya bhar se'),
+                subtitle: Text(app.aFemale ? '100 roop, duniya bhar se' : '100 roop, duniya bhar se, ya asli Santosh'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () async {
                   final id = await Navigator.of(context).push<String>(
-                      MaterialPageRoute(builder: (_) => LookPickerScreen(initial: app.aLook, avatarName: app.aName)));
+                      MaterialPageRoute(builder: (_) => LookPickerScreen(initial: app.aLook, avatarName: app.aName, gender: app.aFemale ? 'f' : 'm')));
                   if (id == null) return;
                   final e = await app.saveAvatar(look: id);
                   if (e != null && context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e)));

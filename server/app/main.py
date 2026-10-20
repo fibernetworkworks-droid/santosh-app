@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.52.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.53.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -1899,9 +1899,11 @@ def avatar_put(body: AvatarIn, tenant: str = Depends(current_tenant)):
 
 @app.get("/api/avatar/looks", dependencies=[Depends(require_key)])
 def avatar_looks(gender: str = "f"):
-    """The 3D looks an avatar can wear (v0.48: 100 female looks from around the world; male = Santosh)."""
+    """The 3D looks an avatar can wear: 100 female (f001..) or 100 male (m001..) looks from around the world.
+    For a male avatar "" (the original Santosh) is the default and always allowed."""
     from .avatar import service as av
-    return {"gender": gender, "default": av.DEFAULT_LOOK.get(gender, ""), "looks": av.looks() if gender == "f" else []}
+    g = gender if gender in ("m", "f") else "f"
+    return {"gender": g, "default": av.DEFAULT_LOOK[g], "looks": [x for x in av.looks() if x["id"][0] == g]}
 
 
 @app.post("/api/avatar/rules/parse", dependencies=[Depends(require_key)])

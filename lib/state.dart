@@ -11,7 +11,7 @@ import 'device.dart';
 import 'emotion.dart';
 import 'hoola.dart';
 import 'native.dart';
-import 'ui/avatar_look.dart' show currentLook, isLook;
+import 'ui/avatar_look.dart' show currentLook, lookFits;
 
 class FeedItem {
   FeedItem(this.kind, this.data);
@@ -60,10 +60,10 @@ class Santosh extends ChangeNotifier {
   bool avatarLoaded = false;
   String get aName => (avatar['name'] as String?)?.trim().isNotEmpty == true ? avatar['name'] as String : (_prefs.getString('a_name') ?? 'Santosh');
   bool get aFemale => (avatar['gender'] ?? _prefs.getString('a_gender')) == 'f';
-  /// v0.48: '' = Santosh; f001..f100 = the female 3D look the owner picked.
+  /// '' = Santosh; f001..f100 / m001..m100 = the 3D look the owner picked (must match the avatar's gender).
   String get aLook {
     final l = (avatar['look'] as String?) ?? _prefs.getString('a_look') ?? '';
-    return aFemale && isLook(l) ? l : '';
+    return lookFits(l, aFemale ? 'f' : 'm') ? l : '';
   }
 
   Future<void> _keepLook() async {

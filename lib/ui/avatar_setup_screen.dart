@@ -73,7 +73,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
   late final TextEditingController _blocked;
   late String _gender;
   String _voice = '';
-  String _look = '';            // v0.48 female look (f001..f100)
+  String _look = '';            // '' = Santosh; f001..f100 / m001..m100
   late Map<String, dynamic> _rules;
   bool _busy = false;
   String? _err;
@@ -131,7 +131,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
     } else if (_page == 1) {
       setState(() => _busy = true);
       final e = await app.saveAvatar(gender: _gender, voice: _voice);
-      final e2 = e == null && _gender == 'f' ? await app.saveAvatar(look: isLook(_look) ? _look : 'f001') : null;
+      final e2 = e == null ? await app.saveAvatar(look: lookFits(_look, _gender) ? _look : (_gender == 'f' ? 'f001' : '')) : null;
       if (!mounted) return;
       setState(() => _busy = false);
       if (e != null || e2 != null) {
@@ -236,7 +236,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
       child: GestureDetector(
         onTap: () => setState(() {
           if (_gender != g) _voice = '';
-          if (g == 'f' && !isLook(_look)) _look = 'f001';
+          if (!lookFits(_look, g)) _look = g == 'f' ? 'f001' : '';
           _gender = g;
         }),
         child: AnimatedContainer(
@@ -258,9 +258,9 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
     );
   }
 
-  /// v0.48: her 3D look — one of 100 from around the world.
+  /// The 3D look: one of 100 from around the world for her / for him (men can keep the original Santosh).
   Widget _lookCard() {
-    final l = isLook(_look) ? _look : 'f001';
+    final l = lookFits(_look, _gender) ? _look : (_gender == 'f' ? 'f001' : '');
     return Glass(
       child: Row(children: [
         SizedBox(width: 74, height: 108, child: Image.asset(lookFull(l), fit: BoxFit.contain)),
@@ -269,14 +269,15 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('$_n ka roop', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             const SizedBox(height: 2),
-            const Text('100 roop, duniya bhar se. Call, chat aur Hoola Network par yahi dikhegi.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+            Text(_gender == 'f' ? '100 roop, duniya bhar se. Call, chat aur Hoola Network par yahi dikhegi.'
+                : '100 roop, duniya bhar se, ya asli Santosh. Call, chat aur Hoola Network par yahi dikhega.', style: const TextStyle(color: C.muted, fontSize: 12.5)),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               icon: const Icon(Icons.palette_outlined, size: 18),
               label: const Text('Roop badliye'),
               onPressed: () async {
                 final id = await Navigator.of(context).push<String>(
-                    MaterialPageRoute(builder: (_) => LookPickerScreen(initial: l, avatarName: _n)));
+                    MaterialPageRoute(builder: (_) => LookPickerScreen(initial: l, avatarName: _n, gender: _gender)));
                 if (id != null && mounted) setState(() => _look = id);
               },
             ),
@@ -299,7 +300,8 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
         const SizedBox(width: 12),
         _genderCard('f', 'Mahila', '"$_n kaam kar rahi hai"', Icons.face_3_rounded),
       ]),
-      if (_gender == 'f') ...[const SizedBox(height: 14), _lookCard()],
+      const SizedBox(height: 14),
+      _lookCard(),
       const SizedBox(height: 18),
       Text('$_n ki awaaz (call par)', style: const TextStyle(fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),

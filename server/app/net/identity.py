@@ -299,7 +299,7 @@ def remember_peer(card: dict[str, Any]) -> dict[str, Any]:
         p.avatar_name = clean_name(card.get("avatar_name") or p.avatar_name, 30)
         p.avatar_gender = "f" if card.get("avatar_gender") == "f" else "m"
         lk = str(card.get("avatar_look") or "")
-        p.avatar_look = lk if p.avatar_gender == "f" and re.fullmatch(r"f\d{3}", lk) else None     # only a well-formed id
+        p.avatar_look = lk if re.fullmatch(r"[fm]\d{3}", lk) and lk[0] == p.avatar_gender else None   # only a well-formed id of their gender
         p.server = clean_name(card.get("server") or p.server, 120).replace(" ", "")
         p.business = bool(card.get("business"))
         p.verified = False                                    # a remote server cannot vouch for its users here

@@ -145,8 +145,29 @@
       mesh(new THREE.TorusGeometry(1.07, .045, 10, 72), M.top2, body, [0, -.92, 0], [1, 1, .78], [Math.PI / 2, 0, 0]);
       mesh(new THREE.CylinderGeometry(.33, .36, .12, 40), M.top2, body, [0, 1.4, .02]);
       mesh(new THREE.BoxGeometry(.06, .5, .03), M.top2, body, [0, 1.12, .67], null, [-.2, 0, 0]);               // placket
-      // dupatta around the neck, both ends falling in front
-      tube([[-.95, -.2, .45], [-.82, .7, .62], [-.55, 1.32, .36], [0, 1.5, -.25], [.55, 1.32, .36], [.82, .7, .62], [.95, -.2, .45]], .13, M.top2, body, [1, 1, 1]);
+      // dupatta around the neck, both ends falling in front (women); men may wear a Nehru jacket instead
+      if (L.top.vest) {
+        const V = cloth(L.top.vest, { roughness: .55 });
+        [-1, 1].forEach(s => {
+          mesh(SPH, V, body, [s * .42, .72, .08], [.5, .78, .62], [0, 0, s * .05]);
+          [.95, .7, .45].forEach(y => mesh(SPH_LO, M.gold, body, [s * .05, y, .7], [.035, .035, .02]));
+        });
+        mesh(new THREE.CylinderGeometry(.36, .38, .16, 40), V, body, [0, 1.38, .02]);
+      }
+      if (fem || L.top.dupatta) tube([[-.95, -.2, .45], [-.82, .7, .62], [-.55, 1.32, .36], [0, 1.5, -.25], [.55, 1.32, .36], [.82, .7, .62], [.95, -.2, .45]], .13, M.top2, body, [1, 1, 1]);
+    } else if (T === 'shirt' || T === 'polo') {
+      smoothTorso(T === 'shirt' ? -.36 : -.34, 0);
+      mesh(new THREE.CylinderGeometry(.33, .36, .1, 40), M.skin, body, [0, 1.43, .02]);
+      [-1, 1].forEach(s => mesh(new THREE.BoxGeometry(.3, .13, .05), M.top2, body, [s * .19, 1.36, .44], null, [-.75, 0, s * .5]));   // collar
+      const nb = T === 'shirt' ? [1.1, .85, .6, .35, .1] : [1.12, .98];
+      nb.forEach(y => mesh(SPH_LO, M.white, body, [0, y, .69], [.035, .035, .02]));
+      mesh(new THREE.BoxGeometry(.05, T === 'shirt' ? 1.25 : .35, .02), M.seam, body, [0, T === 'shirt' ? .5 : 1.05, .68]);
+      if (T === 'shirt') mesh(new THREE.BoxGeometry(.24, .2, .03), M.seam, body, [-.36, .85, .63], null, [-.15, -.3, 0]);
+    } else if (T === 'thobe') {
+      smoothTorso(null, .08);
+      mesh(new THREE.CylinderGeometry(.33, .36, .14, 40), M.top, body, [0, 1.4, .02]);
+      mesh(new THREE.BoxGeometry(.05, .55, .02), M.seam, body, [0, 1.1, .69]);
+      [1.25, 1.05].forEach(y => mesh(SPH_LO, M.top2, body, [0, y, .7], [.035, .035, .02]));
     } else if (T === 'saree') {
       // blouse (short, colour2) + saree body + pallu across the chest over the left shoulder
       mesh(SPH, M.top2, body, [0, 1.0, 0], [.88, .55, .66]);
@@ -243,7 +264,11 @@
       mesh(SPH, M.bottom, body, [0, -.62, 0], [.74, .32, .58]);
     }
     [-1, 1].forEach(s => {
-      if (B !== 'long') {
+      if (B === 'shorts') {
+        limb(new V3(s * .32, -.62, 0), new V3(s * .33, -1.0, .01), .27, M.bottom, body);
+        mesh(new THREE.TorusGeometry(.26, .04, 10, 32), M.bottom, body, [s * .33, -1.02, .01], null, [Math.PI / 2, 0, 0]);
+        limb(new V3(s * .33, -1.0, .01), new V3(s * .34, -1.42, .02), .19, L.bottom.legs ? cloth(L.bottom.legs) : M.skin, body);
+      } else if (B !== 'long') {
         limb(new V3(s * .32, -.62, 0), new V3(s * .34, -1.42, .02), B === 'leggings' || B === 'skirt' ? .2 : .25, legMat, body);
         if (B === 'pants' || B === 'jeans') mesh(new THREE.TorusGeometry(.24, .05, 12, 36), B === 'jeans' ? M.seam : M.bottom, body, [s * .34, -1.42, .02], null, [Math.PI / 2, 0, 0]);
       }
@@ -366,6 +391,40 @@
       place(mesh(SPH_LO, P({ color: skinC.clone().multiplyScalar(.62), roughness: .7 }), new THREE.Group(), null, [.016, .016, .006]), x, y, .004));
     if (acc.has('mole')) place(mesh(SPH_LO, M.pupil, new THREE.Group(), null, [.018, .018, .008]), .3, -.42, .004);
     if (acc.has('lipstick')) M.lip.clearcoat = .9;
+
+    /* ---------- facial hair (men): a shell lifted off the real head surface, so it follows the cheeks ---------- */
+    const beardC = L.beardColor || L.hair.color;
+    const BD = L.beard || 'none';
+    if (BD !== 'none') {
+      // smooth pieces: a chin cup below the mouth, side burns along the jaw, cheek pads for a full beard
+      const stub = BD === 'stubble';
+      const bm = stub
+        ? new THREE.MeshPhysicalMaterial({ color: C(beardC).multiplyScalar(.75).lerp(skinC, .25), roughness: .9, transparent: true, opacity: .32, depthWrite: false })
+        : P({ color: C(beardC), roughness: .62, sheen: .5, sheenColor: shade(beardC, 2), clearcoat: .1, envMapIntensity: .35 });
+      const big = BD === 'full' ? 1 : BD === 'stubble' ? .55 : .7;
+      if (BD !== 'chinstrap') {
+        const t0 = BD === 'goatee' ? 2.28 : 2.12;
+        const phi = BD === 'goatee' ? [Math.PI / 2 - .55, 1.1] : [-.25, Math.PI + .5];
+        mesh(new THREE.SphereGeometry(1, 64, 24, phi[0], phi[1], t0, Math.PI - t0), bm, head, [0, -.02 - .03 * big, .02 + .03 * big],
+          [1.06 + .05 * big, .96 + .08 * big, 1.0 + .07 * big]);
+      }
+      if (BD !== 'goatee') [-1, 1].forEach(s => {
+        limb(new V3(s * .95, .1, .02), new V3(s * .78, -.58, .38), stub ? .06 : .07 + .05 * big, bm, head);           // side burn down the jaw
+        if (BD === 'full' || BD === 'stubble') mesh(SPH, bm, head, [s * .62, -.48, .58], [.3, .24, .22], [0, s * .5, 0]); // cheek
+      });
+      if (BD === 'chinstrap') mesh(new THREE.TorusGeometry(.7, .065, 10, 48, Math.PI), bm, head, [0, -.38, .38], [1.05, .8, 1], [Math.PI * .42, 0, Math.PI]);
+    }
+    const MU = L.mustache || 'none';
+    if (MU !== 'none') {
+      const mm = P({ color: C(beardC), roughness: .6, sheen: .4, sheenColor: shade(beardC, 2) });
+      [-1, 1].forEach(s => {
+        const g = new THREE.Group(); place(g, s * .12, -.31, .02);
+        const w = MU === 'thick' ? [.15, .065, .06] : [.13, .045, .05];
+        mesh(SPH_LO, mm, g, [0, 0, 0], w, [0, 0, s * .28]);
+        if (MU === 'handlebar') { const t = mesh(SPH_LO, mm, g, [s * .16, .04, 0], [.07, .035, .04], [0, 0, -s * .9]); t.position.y += .02; }
+      });
+    }
+    if (acc.has('tilak')) place(mesh(new THREE.CapsuleGeometry(.025, .14, 4, 8), M.accent, new THREE.Group(), null, [1, 1, .4]), 0, .36, .01);
 
     // ear jewellery (hangs below the earlobe, in front of hair curtains)
     [-1, 1].forEach(s => {
@@ -517,6 +576,98 @@
       cap(-1.05); fringe(H === 'sidepart' ? -1 : 1);
       curtains(.95, .3);
       [-1, 1].forEach(s => mesh(SPH_LO, hm, head, [s * .95, -.85, .25], [.26, .18, .28], [.3, 0, 0]));
+    }
+
+    /* ---------- men's hair and headwear ---------- */
+    const W = cloth(L.hair.wear || L.hair.color, { roughness: .72 });
+    const seeded = (() => { let x = 0; for (const ch of String(L.id || 'x')) x = (x * 31 + ch.charCodeAt(0)) % 2147483647; return () => (x = (x * 48271) % 2147483647) / 2147483647; })();
+    if (H === 'crop') {
+      tight(); mesh(SPH, hm, head, [0, .84, .34], [.84, .2, .42], [.62, 0, 0]);
+    } else if (H === 'buzz') {
+      mesh(new THREE.SphereGeometry(1.012, 64, 48, 0, Math.PI * 2, 0, 1.72), P({ color: C(L.hair.color).multiplyScalar(.82).lerp(skinC, .12), roughness: .85 }), head, [0, .02, 0], [1, .97, .96], [-.98, 0, 0]);
+    } else if (H === 'sidepart_m') {
+      tight();
+      const k = L.hair.part === 'r' ? -1 : 1;
+      mesh(SPH, hm, head, [k * .1, .98, .22], [.86, .3, .64], [.32, 0, -k * .12]);
+      mesh(SPH, hm, head, [k * .32, .84, .45], [.56, .2, .34], [.62, 0, -k * .3]);
+      [-1, 1].forEach(s => mesh(SPH_LO, hm, head, [s * .9, .32, -.05], [.18, .32, .42]));
+    } else if (H === 'quiff') {
+      tight();
+      mesh(SPH, hm, head, [0, 1.12, .02], [.78, .3, .62]);
+      mesh(SPH, hm, head, [0, 1.08, .38], [.6, .36, .38], [.95, 0, 0]);
+      [-1, 1].forEach(s => mesh(SPH_LO, hm, head, [s * .9, .32, -.05], [.16, .3, .42]));
+    } else if (H === 'slick') {
+      mesh(new THREE.SphereGeometry(1.05, 64, 48, 0, Math.PI * 2, 0, 1.95), hm, head, [0, .02, -.02], [1, .98, .96], [-1.12, 0, 0]);
+      mesh(SPH, hm, head, [0, .32, -.72], [.92, .62, .42]);
+    } else if (H === 'curly_top') {
+      tight(); mesh(SPH, curlM, head, [0, .86, -.05], [.86, .42, .82]); curls(0, .88, -.05, .7, 34, .18, 3.1);
+    } else if (H === 'afro_m') {
+      mesh(SPH, curlM, head, [0, .55, -.28], [1.18, 1.0, 1.0]);
+      [-1, 1].forEach(s => mesh(SPH, curlM, head, [s * .92, .15, -.18], [.3, .5, .5]));
+      curls(0, .55, -.28, 1.08, 50, .24, 4.2);
+    } else if (H === 'hightop') {
+      tight();
+      mesh(SPH, curlM, head, [0, 1.08, -.12], [.96, .58, .9]);
+      curls(0, 1.12, -.12, .72, 26, .2, 5.5);
+    } else if (H === 'locs') {
+      tight();
+      for (let i = 0; i < 22; i++) {
+        const a = -Math.PI * .92 + i / 21 * Math.PI * 1.84;                 // around the back and sides, never over the face
+        const x = Math.sin(a) * .98, z = -Math.cos(a) * .98;
+        if (z > .45) continue;
+        limb(new V3(x * .95, .55, z * .95), new V3(x * 1.08, -.55 - (i % 3) * .2, z * 1.05 + .05), .075, hm, head);
+      }
+    } else if (H === 'manbun') {
+      tight(); mesh(SPH, hm, head, [0, .78, -.92], [.32, .3, .3]); tie([0, .78, -.78], M.zip);
+    } else if (H === 'long_m') {
+      // swept back off the face, length to the shoulders behind the ears
+      mesh(new THREE.SphereGeometry(1.05, 64, 48, 0, Math.PI * 2, 0, 1.95), hm, head, [0, .02, -.02], [1, .98, .96], [-1.1, 0, 0]);
+      [-1, 1].forEach(s => mesh(SPH, hm, head, [s * .9, -.15, -.32], [.24, .62, .42], [0, 0, -s * .06]));
+      mesh(SPH, hm, head, [0, -.2, -.66], [.96, .78, .44]);
+    } else if (H === 'bald') {
+      if (L.old) [-1, 1].forEach(s => mesh(SPH, hm, head, [s * .82, .12, -.38], [.24, .3, .5]));
+    } else if (H === 'cornrows') {
+      tight();
+      for (let i = -3; i <= 3; i++) {
+        const pts = []; for (let k = 0; k <= 8; k++) { const t = -1.15 + k / 8 * 2.4; const x = i * .12; const r = Math.sqrt(Math.max(0, 1.06 - x * x));
+          pts.push([x, Math.cos(t) * r * .97 + .02, Math.sin(t) * r * .96]); }
+        tube(pts.map(p => [p[0], p[1], -p[2]]), .045, hm, head);
+      }
+    } else if (H === 'dastar') {
+      // Sikh dastar: smooth layered wrap, the folds meeting in a point above the forehead
+      mesh(SPH, W, head, [0, .55, -.12], [1.13, .86, 1.08]);
+      [-1, 1].forEach(s => [0, 1, 2].forEach(i => mesh(new THREE.TorusGeometry(1.0 - i * .05, .11, 14, 64, Math.PI * .9), W, head,
+        [0, .5 + i * .16, -.1], [1.08, 1, 1.02], [Math.PI / 2 - .22 - i * .08, s * .15, s > 0 ? .1 : Math.PI - .1])));
+      mesh(new THREE.ConeGeometry(.24, .34, 24), W, head, [0, 1.12, .66], [1, 1, .6], [.45, 0, 0]);
+    } else if (H === 'kufi') {
+      tight();
+      mesh(new THREE.CylinderGeometry(.93, .99, .44, 48), W, head, [0, .86, -.06], [1, 1, .97], [-.16, 0, 0]);
+      mesh(new THREE.SphereGeometry(.93, 48, 12, 0, Math.PI * 2, 0, .35), W, head, [0, 1.05, -.09], [1, .3, .97], [-.16, 0, 0]);
+    } else if (H === 'ghutra') {
+      const G = cloth(L.hair.wear || '#f7f5f0', { roughness: .75 });
+      mesh(new THREE.SphereGeometry(1.1, 64, 48, Math.PI / 2 + 1.0, Math.PI * 2 - 2.0, 0, Math.PI * .82), G, head, [0, .04, -.04]);
+      mesh(new THREE.SphereGeometry(1.1, 64, 32, 0, Math.PI * 2, 0, .92), G, head, [0, .04, -.04]);
+      mesh(new THREE.CylinderGeometry(.75, 1.25, .8, 64, 1, true), G, body, [0, 1.3, -.15], [1, 1, .8]);
+      [0, 1].forEach(i => mesh(new THREE.TorusGeometry(1.0, .055, 10, 64), P({ color: 0x15151a, roughness: .5 }), head, [0, .82 + i * .09, -.1], [1.02, 1, 1], [Math.PI / 2 - .3, 0, 0]));
+    } else if (H === 'beanie') {
+      tight();
+      const Bn = cloth(L.hair.wear, { roughness: .85 });
+      mesh(new THREE.SphereGeometry(1.1, 48, 32, 0, Math.PI * 2, 0, 1.55), Bn, head, [0, .12, -.04], [1, 1, 1], [-.28, 0, 0]);
+      mesh(new THREE.TorusGeometry(1.0, .12, 12, 64), Bn, head, [0, .4, .05], [1.04, 1, 1], [Math.PI / 2 - .28, 0, 0]);
+      if (acc.has('pom')) mesh(SPH_LO, M.accent, head, [0, 1.3, -.3], [.2, .2, .2]);
+    } else if (H === 'cap') {
+      tight();
+      const Cp = cloth(L.hair.wear, { roughness: .6 });
+      mesh(new THREE.SphereGeometry(1.08, 48, 32, 0, Math.PI * 2, 0, 1.35), Cp, head, [0, .2, -.04], [1, .96, 1], [-.12, 0, 0]);
+      mesh(SPH, Cp, head, [0, .62, .98], [.62, .05, .48], [.12, 0, 0]);
+      mesh(SPH_LO, Cp, head, [0, 1.25, .02], [.07, .04, .07]);
+    } else if (H === 'messy') {
+      cap(-1.05);
+      for (let i = 0; i < 12; i++) {
+        const a = seeded() * Math.PI * 2, r = .3 + seeded() * .55;
+        mesh(SPH, hm, head, [Math.cos(a) * r, .88 + seeded() * .2, Math.sin(a) * r * .8 + .05], [.26, .2, .32], [seeded(), seeded(), seeded()]);
+      }
+      mesh(SPH, hm, head, [.1, .82, .48], [.62, .2, .34], [.6, 0, -.25]);
     }
 
     if (acc.has('headband')) band(-.42);
