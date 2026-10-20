@@ -61,6 +61,34 @@ class Api {
     return text.isEmpty ? null : jsonDecode(text);
   }
 
+  // ---- Awaaz Pehchaan: who is talking (owner / family), voice lock ----
+  Future<Map<String, dynamic>> voiceId() async => Map<String, dynamic>.from(await _send('GET', '/api/voiceid') as Map);
+  Future<void> voiceIdMode(String mode) async => _send('PUT', '/api/voiceid/mode', body: {'mode': mode});
+  Future<Map<String, dynamic>> voiceIdEnrol(String name, String relation, {String? gender, String? level}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/voiceid/enrol', body: {
+        'name': name, 'relation': relation, if (gender != null) 'gender': gender, if (level != null) 'level': level,
+      }) as Map);
+  Future<Map<String, dynamic>> voiceIdUpload(String enrolId, List<int> wav) async {
+    final req = http.MultipartRequest('POST', _u('/api/voiceid/enrol/$enrolId'))
+      ..files.add(http.MultipartFile.fromBytes('file', wav, filename: 'voice.wav'));
+    if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
+    final res = await http.Response.fromStream(await req.send().timeout(const Duration(seconds: 90)));
+    final text = utf8.decode(res.bodyBytes);
+    if (res.statusCode >= 400) {
+      var msg = 'Server error ${res.statusCode}';
+      try {
+        msg = (jsonDecode(text) as Map)['detail']?.toString() ?? msg;
+      } catch (_) {}
+      throw ApiException(res.statusCode, msg);
+    }
+    return Map<String, dynamic>.from(jsonDecode(text) as Map);
+  }
+  Future<Map<String, dynamic>> voiceIdUpdate(String id, {String? level, String? name}) async =>
+      Map<String, dynamic>.from(await _send('PATCH', '/api/voiceid/members/$id', body: {
+        if (level != null) 'level': level, if (name != null) 'name': name,
+      }) as Map);
+  Future<void> voiceIdDelete(String id) async => _send('DELETE', '/api/voiceid/members/$id');
+
   Future<Map<String, dynamic>> health() async => Map<String, dynamic>.from(await _send('GET', '/healthz'));
 
   Future<Map<String, dynamic>> me() async => Map<String, dynamic>.from(await _send('GET', '/api/me'));

@@ -22,6 +22,7 @@ import 'appcheck_screen.dart';
 import 'avatar_setup_screen.dart';
 import 'hoola_net_screen.dart';
 import 'hoola_samaj_screen.dart';
+import 'voice_id_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -138,6 +139,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Doosre Hoola ${app.aName} ke zariye aapse kaise jud sakte hain'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AvatarSetupScreen(app: app, rulesOnly: true))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.record_voice_over_rounded, color: C.ok),
+              title: const Text('Awaaz Pehchaan', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('${app.aName} awaaz se jaane kaun bol raha hai: aap, Maa, Papa…'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VoiceIdScreen(app: app))),
             ),
           ]),
         ),

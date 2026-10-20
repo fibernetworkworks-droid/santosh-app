@@ -131,6 +131,17 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
             ]),
           ),
           if (call.inCall && call.lockIssue != null) LockSafeBanner(text: call.lockIssue!),
+          if (call.inCall && call.speaker != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(call.speakerIsOwner ? Icons.verified_user_rounded : Icons.record_voice_over_rounded,
+                    size: 16, color: call.speakerIsOwner ? C.ok : C.accentSoft),
+                const SizedBox(width: 6),
+                Text('Awaaz se pehchana: ${call.speaker}',
+                    style: TextStyle(color: call.speakerIsOwner ? C.ok : C.accentSoft, fontSize: 12.5, fontWeight: FontWeight.w700)),
+              ]),
+            ),
           _captions(),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),

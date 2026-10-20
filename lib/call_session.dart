@@ -37,6 +37,8 @@ class CallSession extends ChangeNotifier {
   String? note;
   String? lockIssue;  // why the call may stop when the phone locks
   String? linkNote;   // the connection is wobbling
+  String? speaker;    // Awaaz Pehchaan: who Hoola recognised from the voice ("Asha (Maa)")
+  bool speakerIsOwner = true;
   DateTime? startedAt;
   DateTime _lastHeard = DateTime.fromMillisecondsSinceEpoch(0);
   bool _turnOpen = false;
@@ -141,6 +143,7 @@ class CallSession extends ChangeNotifier {
     act = CallAct.idle;
     tool = null;
     linkNote = null;
+    speaker = null;
     muted = false;
     startedAt = null;
     app.voiceMode = false;
@@ -156,6 +159,12 @@ class CallSession extends ChangeNotifier {
       case 'ready':
         act = CallAct.listening;
         linkNote = null;
+        speaker = null;
+        speakerIsOwner = true;
+      case 'speaker':
+        final owner = e['owner'] == true;
+        speakerIsOwner = owner;
+        speaker = owner ? '${e['name']}' : '${e['name']} (${e['relation']})';
       case 'status':
         linkNote = switch (e['state']) {
           'phone_reconnecting' => 'Network chala gaya, dobara jod raha hoon…',

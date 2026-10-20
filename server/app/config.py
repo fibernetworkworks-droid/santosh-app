@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     voice_tool_ack: bool = True            # a tool runs and he is silent: say a quick "ek second" in his own voice
     voice_ack_tts_model: str = "gemini-2.5-flash-preview-tts"   # makes those short clips once per voice
     # (affective dialog and proactive audio are gone: gemini-3.8-live removed the first and always has the second on)
+    # --- Awaaz Pehchaan: who is talking (owner / family) from the voice; free models, CPU (sherpa-onnx) ---
+    voiceid_models_dir: str = "./data/voiceid_models"   # tools/setup_voiceid.sh downloads the two models here
+    voiceid_match: float = 0.30            # similarity needed to say "this is X" (0..1)
+    voiceid_margin: float = 0.06           # and this much ahead of the next closest person
+    voiceid_min_speech_s: float = 1.6      # speech needed before the first guess in a call
     voice_resume_grace_s: int = 25         # a dropped phone connection can re-join the same call within this time
     voice_tool_wait_s: int = 25            # a call waits this long for a big job, then talks on and gets told when it is done
     voice_tool_timeout_s: int = 60         # any other call tool is cut off after this

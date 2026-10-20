@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.43.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.44.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -97,7 +97,8 @@ def healthz():
     st = get_settings()
     from .voice import MALE_VOICES
     from . import mail
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre"] + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    from .voiceid import engine as _vid_engine
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre"] + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -1728,6 +1729,73 @@ def net_invite_page(code: str):
                         "max-width:520px;margin:auto;padding:32px 20px}a{color:#FFB15C}.b{display:inline-block;padding:14px 22px;"
                         "background:#FFB15C;color:#1B1030;border-radius:14px;text-decoration:none;font-weight:700}.s{color:#B9B3DA}"
                         f"</style><h1>Hoola</h1>{body}")
+
+
+# ---------------- Awaaz Pehchaan: who is talking (owner / family), voice lock ----------------
+class VoiceIdModeIn(BaseModel):
+    mode: str
+
+
+class VoiceIdEnrolIn(BaseModel):
+    name: str
+    relation: str
+    gender: str | None = None
+    level: str | None = None
+
+
+class VoiceIdMemberIn(BaseModel):
+    level: str | None = None
+    name: str | None = None
+
+
+def _vid(fn, *a, **kw):
+    from .voiceid import service as vs
+    try:
+        return fn(*a, **kw)
+    except vs.VoiceIdError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/voiceid", dependencies=[Depends(require_key)])
+def voiceid_get(tenant: str = Depends(current_tenant)):
+    from .voiceid import service as vs
+    return vs.overview(tenant)
+
+
+@app.put("/api/voiceid/mode", dependencies=[Depends(require_key)])
+def voiceid_mode(body: VoiceIdModeIn, tenant: str = Depends(current_tenant)):
+    from .voiceid import service as vs
+    return {"mode": _vid(vs.set_mode, tenant, body.mode)}
+
+
+@app.post("/api/voiceid/enrol", dependencies=[Depends(require_key)])
+def voiceid_enrol_start(body: VoiceIdEnrolIn, tenant: str = Depends(current_tenant)):
+    """A one-time script with a code; the person reads it aloud themselves in the app."""
+    from .voiceid import service as vs
+    return _vid(vs.start_enrol, tenant, body.name, body.relation, body.gender, body.level)
+
+
+@app.post("/api/voiceid/enrol/{enrol_id}", dependencies=[Depends(require_key)])
+async def voiceid_enrol_finish(enrol_id: str, file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
+    from .voiceid import service as vs
+    data = await file.read(12 * 1024 * 1024 + 1)
+    if len(data) > 12 * 1024 * 1024:
+        raise HTTPException(413, "Recording bahut badi hai.")
+    return await asyncio.to_thread(_vid, vs.finish_enrol, tenant, enrol_id, data)
+
+
+@app.patch("/api/voiceid/members/{member_id}", dependencies=[Depends(require_key)])
+def voiceid_member_update(member_id: str, body: VoiceIdMemberIn, tenant: str = Depends(current_tenant)):
+    from .voiceid import service as vs
+    return _vid(vs.update, tenant, member_id, body.level, body.name)
+
+
+@app.delete("/api/voiceid/members/{member_id}", dependencies=[Depends(require_key)])
+def voiceid_member_delete(member_id: str, tenant: str = Depends(current_tenant)):
+    from .voiceid import service as vs
+    if not vs.delete(tenant, member_id):
+        raise HTTPException(404, "Yeh vyakti nahi mila.")
+    return {"deleted": True}
 
 
 # ---------------- Hoola avatar: name, gender, voice, Mere Niyam ----------------

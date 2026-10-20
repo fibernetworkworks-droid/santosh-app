@@ -126,7 +126,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   words within `VOICE_RESUME_AFTER_NOISE_S` (1.5) → note so he finishes his point ("haan, toh..."), max once per 10 s.
   `stats.false_stops` → `/api/voice/stats` `false_stops_per_call`.
 
-## v0.43 Hoola Network: real media, avatars that see and think (latest)
+## v0.43 Hoola Network: real media, avatars that see and think
 - Files of any kind travel for real: `POST /api/net/upload` (multipart: file + to | thread_id + text; the owner's tap = consent)
   -> `send(kind=file)`. Receiver `share.receive_hook` makes its OWN preview from the fetched bytes (`net/media.py analyse`:
   JPEG thumb <=45 KB via Pillow, video frame + duration via ffmpeg, PDF pages + page-1 picture via pypdf/pypdfium2).
@@ -143,6 +143,21 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   (names per bubble, media, inline Haan/Mana, reply ideas, attach photo/video/audio/file, "banwaiye", tum sambhalo toggle via
   `POST /api/net/threads/{id}/handle`, live refresh on hoolaTick). Knock / msg / outbox cards show previews and open the thread.
 - VPS needs `pip install pillow pypdfium2` (ffmpeg optional, for video frames).
+## v0.44 Awaaz Pehchaan: who is talking + voice lock (latest)
+- `server/app/voiceid/`: `engine.py` (sherpa-onnx on CPU, two free models: CAM++ Apache-2.0 + TitaNet-small CC-BY-4.0,
+  score = mean cosine; `deploy/setup_voiceid.sh` installs sherpa-onnx + numpy into core's venv and downloads the models to
+  `data/voiceid_models`), `service.py` (enrol: one-time script with a code read by the person themselves, Gemini checks
+  code + permission + one live speaker; only an encrypted fingerprint is stored, no audio; identify = best >= VOICEID_MATCH
+  0.30 and margin >= 0.06), `live.py` (`Listener` per call: speech chunks per utterance, first guess after 1.6 s, refines),
+  `permissions.py` (owner / trusted / family tool sets; unlisted tools = owner only), modes off | on | strict.
+- Call (`voice.py`): `Call.vid`; speaker change → phone `{"type":"speaker",...}` + quiet context note to Gemini
+  (`send_client_content(turn_complete=False)`, falls back to live text); `run_tool` → `_voice_lock` (recognises a short
+  request first) → refused tools answer with an error, never run. Stats: speaker_guesses/sure/changes, blocked_tools.
+- API `/api/voiceid` (GET, PUT mode, POST enrol, POST enrol/{id} multipart wav, PATCH/DELETE members/{id}).
+- App: `lib/voice_recorder.dart` (call mic path → 16 kHz WAV), `lib/ui/voice_id_screen.dart` (Profile > Awaaz Pehchaan),
+  call screen shows "Awaaz se pehchana: Asha (Maa)". Checked on real speech: right person from 1.6 s, strangers <= 0.13.
+- A voice is not a password: payments keep needing the owner's tap. Similar family voices (siblings) untested.
+- Hoola Awaaz (own / designed voice cloning) is parked on branch `awaaz-wip` (needs a GPU worker; Chatterbox MIT picked).
 
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
@@ -166,4 +181,4 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Version history (short)
 v0.26 App Jaanch (REA) · v0.27 Hoola rename + avatar setup + Mere Niyam · v0.28 Hoola ID/QR connect · v0.29 knock &
 share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 learning + Samaj · v0.33 chains + business
-· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. Next: v0.44.
+· v0.34 federation + A2A · v0.34.1 security hardening · v0.35 Bluetooth & Ghar fix · v0.36 conversation & voice robustness · v0.37 Work Theatre (3D) · v0.38 call survives screen changes + cards inside the call · v0.39 human-like conversation · v0.40 TV remote rebuilt (never re-pairs, full key set, boot protocol, auto-reconnect). · v0.41 chat polish (opens at latest, jump-down, Claude-style arrivals, no keyboard gap). · v0.42 noise-proof interruptions · v0.43 Hoola Network real media + seeing/thinking avatars + names. · v0.44 Awaaz Pehchaan (who is talking) + voice lock. Next: v0.45.

@@ -114,6 +114,7 @@ When to speak
 - If they only say "haan", "hmm" or "achha" while you are talking, keep going. If they start a real sentence, stop at once.
 - If you got cut off but nobody actually said anything (just noise), pick up with a quick "haan, toh..." and finish your point.
 - Ignore TV, background noise and people talking to someone else.
+- A note may tell you who is speaking, recognised from their voice (the owner, Maa, Papa...). Talk to that person by name. Never share the owner's private things (mail, money, files, Hoola Network, memories) with anyone else.
 - If you did not catch something: "sorry, ek baar phir boliye?" If the line seems bad ("hello? hello?"): "haan haan, aa rahi hai awaaz."
 
 Example turns (flavour only)
@@ -486,11 +487,14 @@ class Call:
         self._turn_audio = False               # audio of the current turn has started
         self._last_ack = 0.0
         self._latency: int | None = None
+        self.vid = None                        # Awaaz Pehchaan: who is talking (set up when the call starts)
+        self._session = None
         self._last_user_text_at = 0.0          # last time Gemini heard words from the user
         self._last_resume = 0.0
         self.stats = {"tenant": self.tenant, "call_id": self.call_id, "started": time.time(), "ended": None, "turns": 0,
                       "latency_ms": [], "words": [], "question_endings": 0, "assistantisms": 0, "interruptions": 0,
-                      "tools": 0, "silent_tools": 0, "acks": 0, "false_stops": 0}
+                      "tools": 0, "silent_tools": 0, "acks": 0, "false_stops": 0,
+                      "speaker_guesses": 0, "speaker_sure": 0, "speaker_changes": 0, "blocked_tools": 0}
         if st.voice_tool_ack and st.gemini_api_key:
             ack_clips(self.voice, self.gender)   # get his "ek second" clips ready
 
@@ -554,6 +558,8 @@ class Call:
                         self.push("audio", msg["bytes"])
                         if _loud(msg["bytes"]):
                             self._last_voice_at = time.monotonic()
+                        if self.vid is not None and self.vid.add(msg["bytes"]):
+                            self._guess_speaker()
                 elif msg.get("text"):
                     try:
                         m = json.loads(msg["text"])
@@ -781,9 +787,17 @@ class Call:
         from .events import bus
         call_id = getattr(fc, "id", None) or f"v{id(fc)}"
         show = name != "santosh_kaam"      # the delegated agent turn publishes its own work events
+        self.stats["tools"] += 1
+        blocked = await self._voice_lock(name) if self.vid is not None else None
+        if blocked:
+            # voice lock: the server refuses, whatever the model thinks
+            self.stats["blocked_tools"] += 1
+            log.info("call %s: %s refused for this voice", self.call_id, name)
+            await self.send_json({"type": "tool", "label": label, "state": "error"})
+            await self._answer_tool(session, fc, name, {"error": blocked}, "error")
+            return
         if show:
             bus.publish(self.conv, "work", theatre.event(call_id, name, label, "start", args))
-        self.stats["tools"] += 1
         watch = asyncio.create_task(self._ack_watch(time.monotonic()))
         self._tools.add(watch)
         watch.add_done_callback(self._tools.discard)
@@ -804,6 +818,10 @@ class Call:
             res = out.get("result") if isinstance(out, dict) else None
             ph = "error" if state == "error" else theatre.phase_of(res)
             bus.publish(self.conv, "work", theatre.event(call_id, name, label, ph, args, res, out.get("error", "") if state == "error" else ""))
+        await self._answer_tool(session, fc, name, out, state)
+
+    async def _answer_tool(self, session, fc, name: str, out: dict, state: str) -> None:
+        from google.genai import types
         resp = json.loads(json.dumps(out, default=str))   # make it plain JSON
         if fc.id in self._cancelled:
             # the user spoke over the request, so Gemini no longer waits for an answer; the work still happened
@@ -840,6 +858,72 @@ class Call:
                           f"Tum keh rahe the: '{cut_reply[-300:]}'. Ek chhote 'haan, toh...' ke saath wahin se baat poori karo; "
                           "shuru se mat dohrao.)")
 
+    # ---- Awaaz Pehchaan ----
+    async def _setup_voiceid(self) -> None:
+        try:
+            from .voiceid import service as vs
+            from .voiceid.live import Listener
+            people = await asyncio.to_thread(vs.call_people, self.tenant)
+            if people:
+                self.vid = Listener(people, vs.get_mode(self.tenant))
+        except Exception:
+            log.exception("voice id setup failed; carrying on without it")
+
+    async def _voice_lock(self, tool: str) -> str | None:
+        """Before a tool runs: may this voice ask for it? A short request ("mail padho") may not have been
+        recognised yet, so recognise it now rather than refuse the owner."""
+        vid = self.vid
+        if vid.check(tool) is None:
+            return None
+        for _ in range(20):            # a guess already running: wait for it (at most ~1 s)
+            if not vid.busy:
+                break
+            await asyncio.sleep(0.05)
+        if vid.pending():
+            await self._guess(vid.snapshot())
+        return vid.check(tool)
+
+    def _guess_speaker(self) -> None:
+        pcm = self.vid.snapshot()
+        t = asyncio.create_task(self._guess(pcm))
+        self._tools.add(t)
+        t.add_done_callback(self._tools.discard)
+
+    async def _guess(self, pcm: bytes) -> None:
+        from .voiceid import service as vs
+        vid = self.vid
+        try:
+            res = await asyncio.to_thread(vs.identify, vid.people, pcm)
+        except Exception:
+            log.exception("voice id failed")
+            vid.busy = False
+            return
+        self.stats["speaker_guesses"] += 1
+        self.stats["speaker_sure"] += int(bool(res.get("sure")))
+        who = vid.record(res)
+        if who is None or self.closed.is_set():
+            return
+        first = self.stats["speaker_changes"] == 0
+        self.stats["speaker_changes"] += 1
+        await self.send_json({"type": "speaker", "name": who["name"], "relation": who["relation_label"],
+                              "owner": bool(who.get("owner")), "level": who["level"]})
+        if first and who.get("owner"):
+            return   # the owner on their own phone: nothing to tell Gemini
+        await self._tell_quietly(vid.note_for(who))
+
+    async def _tell_quietly(self, note: str) -> None:
+        """Context for Gemini that must not start a reply by itself (who is speaking now)."""
+        from google.genai import types
+        s = self._session
+        if s is not None:
+            try:
+                await s.send_client_content(turns=types.Content(role="user", parts=[types.Part(text=note)]),
+                                            turn_complete=False)
+                return
+            except Exception as e:
+                log.info("client_content note not accepted (%r); sending as live text", e)
+        self.push("text", note)
+
     ACK_AFTER_S = 0.7   # a tool runs and nobody has said anything for this long: dead air starts here
 
     async def _ack_watch(self, t0: float) -> None:
@@ -870,6 +954,7 @@ class Call:
         me = (loop, self)
         ACTIVE.setdefault(self.ctx.conversation_id, []).append(me)
         CALLS[self.call_id] = self
+        await self._setup_voiceid()
         try:
             while not self.closed.is_set():
                 context = life.context_block(self.ctx.tenant_id)
@@ -881,6 +966,7 @@ class Call:
                         cfg = live_config(self.voice, self.lang, context, self.handle, self.name, self.gender)
                         # a Gemini that does not answer must not freeze the call
                         session = await asyncio.wait_for(stack.enter_async_context(connector(cfg)), timeout=20)
+                        self._session = session
                         if first:
                             await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id})
                             # live text input (3.x Live models accept client_content only for seeding history)
