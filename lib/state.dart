@@ -268,7 +268,9 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _chaiPlans = {}; // v0.84 Chai: one plan card per day, its order cards updated in place
   int chaiTick = 0;                           // bumps on galla / chai events (the Chai screen refreshes)
   final Map<String, FeedItem> _mshopCards = {}; // v0.88 Mobile shop: bill cards and 'ready' drafts by job, updated in place
-  int mshopTick = 0;                          // bumps on mobile shop events (the Mobile shop screen refreshes)
+  int mshopTick = 0;
+  final Map<String, FeedItem> _phonedocCards = {}; // v0.90 Phone Doctor: one live card per case
+  int phonedocTick = 0;                       // bumps on Phone Doctor events                          // bumps on mobile shop events (the Mobile shop screen refreshes)
   final Map<String, FeedItem> _officeCards = {}; // v0.85 Daftar: spend cards by id, nudge drafts by id, updated in place
   int officeTick = 0;                          // bumps on any office event (the Office screen refreshes)
   final Map<String, FeedItem> _lekhakCards = {}; // v0.87 Lekhak: one doc card + one sign card per document, updated in place
@@ -303,6 +305,28 @@ class Santosh extends ChangeNotifier {
     if (lang != null) await _prefs.setString('lang', lang);
     if (speak != null) await _prefs.setBool('speak', speak);
     notifyListeners();
+  }
+
+  /// v0.90 Phone Doctor: the phone checks itself (settings, battery, storage, network; nothing personal) and tells the server.
+  Future<Map<String, dynamic>> sendPhoneCheck() async {
+    try {
+      final snap = await Native.phoneCheck();
+      if (snap.isEmpty || api == null) return const {};
+      return await api!.phonedocCheck(snap);
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  /// Opens the exact settings screen (or official page) a Phone Doctor step needs.
+  Future<void> openPhoneScreen(String key, {String package = '', String url = ''}) async {
+    try {
+      if (key.isNotEmpty) {
+        await Native.openSetting(key, package: package);
+      } else if (url.isNotEmpty) {
+        await Native.openExternal(url: url);
+      }
+    } catch (_) {}
   }
 
   Future<void> connect({bool fresh = false}) async {
@@ -1044,6 +1068,23 @@ class Santosh extends ChangeNotifier {
         break;
       case 'mshop':
         mshopTick++;
+        break;
+      case 'phonedoc_case':
+        final pk = '${p['case']}';
+        final pc = _phonedocCards[pk];
+        if (pc != null) {
+          pc.data = {...pc.data, ...p};
+        } else {
+          _phonedocCards[pk] = FeedItem('phonedoc_case', Map<String, dynamic>.from(p));
+          feed.add(_phonedocCards[pk]!);
+        }
+        phonedocTick++;
+        break;
+      case 'phonedoc_check':
+        unawaited(sendPhoneCheck());
+        break;
+      case 'phonedoc_open':
+        unawaited(openPhoneScreen('${p['key'] ?? ''}', package: '${p['package'] ?? ''}', url: '${p['url'] ?? ''}'));
         break;
       case 'darzi_day':
         feed.add(FeedItem('darzi_day', Map<String, dynamic>.from(p)));

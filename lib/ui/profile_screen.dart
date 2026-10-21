@@ -37,6 +37,7 @@ import 'lekhak_screen.dart';
 import 'office_screen.dart';
 import 'employee_screen.dart';
 import 'mshop_screen.dart';
+import 'phonedoc_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -183,6 +184,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Aadhaar, PAN, Voter ID… taala band. ${app.aName} forms mein khud bharega'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => IdLockerScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.healing_rounded, color: C.accent),
+              title: const Text('Phone Doctor', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Phone slow, garam, network, battery, chori: ${app.aName} jaanch karke step-by-step theek karayega'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PhoneDocScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

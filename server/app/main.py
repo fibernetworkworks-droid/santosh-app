@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.89.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.90.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -131,7 +131,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -3426,6 +3426,67 @@ def mshop_settings_put(body: dict, tenant: str = Depends(current_tenant)):
     keys = ("enabled", "shop_name", "gstin", "gst_on", "prices", "warranty", "fix_days", "jobs_per_day", "unclaimed_days",
             "commission", "remind_days", "terms", "ready_template", "rules", "morning_time")
     return _mshop(mshop.save_settings, tenant, **{k: body[k] for k in keys if k in body})
+
+
+# ---------------------------------------------------------------- v0.90 Phone Doctor
+def _pdoc(fn, *a, **k):
+    from .phonedoc import service as pdoc
+    try:
+        return fn(*a, **k)
+    except pdoc.PhoneDocError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/phonedoc/issues", dependencies=[Depends(require_key)])
+def phonedoc_issues():
+    from .phonedoc import service as pdoc
+    return {"issues": pdoc.issues()}
+
+
+@app.post("/api/phonedoc/check", dependencies=[Depends(require_key)])
+def phonedoc_check(body: dict, tenant: str = Depends(current_tenant)):
+    """The Hoola app posts the phone's own state (settings, battery, storage, network; no personal content)."""
+    from .phonedoc import service as pdoc
+    return _pdoc(pdoc.save_snapshot, tenant, body.get("snapshot") if isinstance(body.get("snapshot"), dict) else body)
+
+
+@app.get("/api/phonedoc/cases", dependencies=[Depends(require_key)])
+def phonedoc_cases(status: str = "", tenant: str = Depends(current_tenant)):
+    from .phonedoc import service as pdoc
+    return {"cases": pdoc.cases(tenant, status, 40)}
+
+
+@app.post("/api/phonedoc/cases", dependencies=[Depends(require_key)])
+def phonedoc_start(body: dict, tenant: str = Depends(current_tenant)):
+    from .phonedoc import service as pdoc
+    snap = body.get("snapshot") if isinstance(body.get("snapshot"), dict) else None
+    if snap and not str(body.get("for_whom") or "").strip():
+        _pdoc(pdoc.save_snapshot, tenant, snap)
+    return _pdoc(pdoc.start, tenant, str(body.get("text") or ""), str(body.get("issue") or ""), str(body.get("for_whom") or ""),
+                 str(body.get("device") or ""), str(body.get("app_package") or ""), snap)
+
+
+@app.get("/api/phonedoc/cases/{case_id}", dependencies=[Depends(require_key)])
+def phonedoc_case(case_id: str, tenant: str = Depends(current_tenant)):
+    from .phonedoc import service as pdoc
+    return _pdoc(pdoc.get_case, tenant, case_id)
+
+
+@app.post("/api/phonedoc/cases/{case_id}/{action}", dependencies=[Depends(require_key)])
+def phonedoc_case_action(case_id: str, action: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .phonedoc import service as pdoc
+    if action == "step":
+        return _pdoc(pdoc.step, tenant, case_id, str(body.get("step_id") or ""), str(body.get("result") or ""), str(body.get("note") or ""))
+    if action == "recheck":
+        snap = body.get("snapshot") if isinstance(body.get("snapshot"), dict) else None
+        if snap:
+            _pdoc(pdoc.save_snapshot, tenant, snap)
+        return _pdoc(pdoc.recheck, tenant, case_id, snap)
+    if action == "escalate":
+        return _pdoc(pdoc.escalate, tenant, case_id, str(body.get("kind") or ""), bool(body.get("make_job")), str(body.get("phone") or ""))
+    if action == "close":
+        return _pdoc(pdoc.close, tenant, case_id)
+    raise HTTPException(404, "step | recheck | escalate | close")
 
 
 @app.get("/api/agent/tasks", dependencies=[Depends(require_key)])

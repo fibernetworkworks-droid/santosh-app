@@ -160,6 +160,10 @@ class MainActivity : FlutterActivity() {
                         PayAlerts.set(this, call.argument<Boolean>("on") ?: false, call.argument<List<String>>("apps"))
                         result.success(PayAlerts.info(this))
                     }
+                    // ---- v0.90 Phone Doctor: the phone's own state + opening the right settings screen ----
+                    "phoneCheck" -> result.success(PhoneCheck.collect(this))
+                    "openSetting" -> result.success(PhoneCheck.openSetting(this, call.argument<String>("key") ?: "",
+                        call.argument<String>("package") ?: ""))
                     "usageAllowed" -> result.success(ScrollStats.allowed(this))
                     "usageSettings" -> { ScrollStats.openSettings(this); result.success(null) }
                     "scrollAlerts" -> {

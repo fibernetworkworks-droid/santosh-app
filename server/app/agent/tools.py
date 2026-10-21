@@ -500,3 +500,10 @@ from .mshop_tools import MSHOP_HANDLERS, MSHOP_LABELS, MSHOP_TOOLS  # noqa: E402
 TOOLS.extend(MSHOP_TOOLS)
 TOOL_LABELS.update(MSHOP_LABELS)
 HANDLERS.update(MSHOP_HANDLERS)
+
+# v0.90 Phone Doctor (her phone's problem, end to end: phone self-check, one fix at a time, then shop / operator / CEIR / 1930)
+from .phonedoc_tools import PHONEDOC_HANDLERS, PHONEDOC_LABELS, PHONEDOC_TOOLS  # noqa: E402
+
+TOOLS.extend(PHONEDOC_TOOLS)
+TOOL_LABELS.update(PHONEDOC_LABELS)
+HANDLERS.update(PHONEDOC_HANDLERS)

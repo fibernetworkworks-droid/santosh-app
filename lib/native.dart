@@ -75,6 +75,15 @@ class Native {
     return r == null ? <String, dynamic>{} : Map<String, dynamic>.from(r);
   }
 
+  // v0.90 Phone Doctor: what the phone says about itself, and opening the right Android settings screen
+  static Future<Map<String, dynamic>> phoneCheck() async {
+    final r = await _call<Map>('phoneCheck');
+    return r == null ? <String, dynamic>{} : Map<String, dynamic>.from(r);
+  }
+
+  static Future<bool> openSetting(String key, {String package = ''}) async =>
+      await _call<bool>('openSetting', {'key': key, 'package': package}) ?? false;
+
   static Future<bool> usageAllowed() async => await _call<bool>('usageAllowed') ?? false;
   static Future<void> usageSettings() async => _call('usageSettings');
   /// v0.69 why Hoola closed last time (null if it didn't crash). Marks it as reported.

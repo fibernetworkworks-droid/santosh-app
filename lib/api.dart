@@ -682,6 +682,17 @@ class Api {
   Future<Map<String, dynamic>> mshopAddRecharge(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/mshop/recharges', body: body) as Map);
   Future<void> mshopRechargeAct(String id, String action) async => _send('POST', '/api/mshop/recharges/$id/$action');
+  // v0.90 Phone Doctor
+  Future<List<Map<String, dynamic>>> phonedocIssues() async => _maps((await _send('GET', '/api/phonedoc/issues') as Map)['issues']);
+  Future<Map<String, dynamic>> phonedocCheck(Map<String, dynamic> snapshot) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/phonedoc/check', body: {'snapshot': snapshot}) as Map);
+  Future<Map<String, dynamic>> phonedocStart(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/phonedoc/cases', body: body) as Map);
+  Future<List<Map<String, dynamic>>> phonedocCases({String status = ''}) async =>
+      _maps((await _send('GET', '/api/phonedoc/cases', query: {if (status.isNotEmpty) 'status': status}) as Map)['cases']);
+  Future<Map<String, dynamic>> phonedocCase(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/phonedoc/cases/$id') as Map);
+  Future<Map<String, dynamic>> phonedocAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/phonedoc/cases/$id/$action', body: body) as Map);
   Future<Map<String, dynamic>> mshopSettings() async => Map<String, dynamic>.from(await _send('GET', '/api/mshop/settings') as Map);
   Future<Map<String, dynamic>> mshopSaveSettings(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/mshop/settings', body: body) as Map);
