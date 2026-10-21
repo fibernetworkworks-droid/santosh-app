@@ -13,6 +13,12 @@ if not app.exists():
     sys.exit("android/app not found. Run: flutter create --org com.newtika --project-name santosh --platforms android .")
 
 shutil.copy(root / "tool" / "AndroidManifest.xml", app / "src" / "main" / "AndroidManifest.xml")
+# v0.72 keep rules for the release shrinker (ONNX Runtime JNI, flutter_local_notifications' Gson). Flutter's Gradle
+# plugin adds app/proguard-rules.pro to the release build automatically.
+_pg = app / "proguard-rules.pro"
+_rules = (root / "tool" / "android" / "proguard-rules.pro").read_text()
+if not _pg.exists() or "ai.onnxruntime" not in _pg.read_text():
+    _pg.write_text((_pg.read_text() + "\n" if _pg.exists() else "") + _rules)
 # v0.62 Play Store build (HOOLA_CHANNEL=play): no self-update permission, the in-app updater turns itself off
 if os.environ.get("HOOLA_CHANNEL", "github").strip().lower() == "play":
     mf = app / "src" / "main" / "AndroidManifest.xml"
