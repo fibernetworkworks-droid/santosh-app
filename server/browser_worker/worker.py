@@ -34,6 +34,8 @@ os.environ.setdefault("BROWSER_USE_VERSION_CHECK", "false")
 from fastapi import FastAPI, Header, HTTPException, Response  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
+from pathlib import Path  # noqa: E402
+
 import guard  # noqa: E402
 from netguard import NetGuard  # noqa: E402
 
@@ -43,6 +45,9 @@ WORKER_KEY = os.environ.get("WORKER_KEY", "")
 MAX_SESSIONS = int(os.environ.get("MAX_SESSIONS", "2"))
 IDLE_SECONDS = int(os.environ.get("IDLE_SECONDS", "600"))
 CHROMIUM_PATH = os.environ.get("CHROMIUM_PATH", "")
+# v0.76: a real Google Chrome window on a virtual screen (Xvfb), like the Computer Operator. Headless browsers are refused
+# by many government sites (UIDAI, Income Tax ...). HEADLESS=true brings back the old way.
+HEADLESS = os.environ.get("HEADLESS", "false").lower() in ("1", "true", "yes")
 ALLOW_PRIVATE = os.environ.get("ALLOW_PRIVATE_NETWORK", "") == "1"   # tests only
 # A normal desktop Chrome identity: many sites (Cloudflare/Akamai bot checks) block "HeadlessChrome" outright.
 USER_AGENT = os.environ.get("BROWSER_USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -282,11 +287,28 @@ async def open_session(sess: Session, cfg: dict, start_url: str, max_steps: int,
     await _agent(sess, cfg, start_url, max_steps, llm, vision)
 
 
+def browser_choice() -> tuple[str | None, bool, str | None]:
+    """(executable, headless, user_agent): Google Chrome in a real window when possible, else the old headless Chromium."""
+    import display
+    exe = CHROMIUM_PATH or next((p for p in display.CHROME_PATHS if Path(p).exists()), "") or None
+    headless = HEADLESS
+    if not headless:
+        d = display.virtual_display()
+        if d:
+            os.environ["DISPLAY"] = d      # browser-use starts Chrome as a child process: it inherits this
+        else:
+            headless = True
+    # a real Chrome window already says what it is; only headless needs the plain desktop identity
+    ua = USER_AGENT if (headless or not exe) else None
+    return exe, headless, ua
+
+
 def make_profile(net: NetGuard):
     from browser_use import BrowserProfile
-    return BrowserProfile(headless=True, keep_alive=True, executable_path=CHROMIUM_PATH or None,
+    exe, headless, ua = browser_choice()
+    return BrowserProfile(headless=headless, keep_alive=True, executable_path=exe,
                           args=net.chrome_args() + ["--lang=en-IN", "--disable-blink-features=AutomationControlled"],
-                          user_agent=USER_AGENT, block_ip_addresses=not ALLOW_PRIVATE,
+                          user_agent=ua, block_ip_addresses=not ALLOW_PRIVATE,
                           prohibited_domains=["web.whatsapp.com", "*.local", "*.internal", "localhost"] if not ALLOW_PRIVATE else ["web.whatsapp.com"],
                           user_data_dir=None, accept_downloads=False, chromium_sandbox=False, enable_default_extensions=False,
                           minimum_wait_page_load_time=0.4, wait_between_actions=0.4,

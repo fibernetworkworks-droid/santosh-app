@@ -4,7 +4,7 @@ set -euo pipefail
 SRC="$(cd "$(dirname "$0")" && pwd)"
 DEST="$HOME/apps/santosh-browser"
 mkdir -p "$DEST"
-cp "$SRC"/worker.py "$SRC"/guard.py "$SRC"/netguard.py "$SRC"/requirements.txt "$SRC"/run.sh "$DEST"/
+cp "$SRC"/worker.py "$SRC"/guard.py "$SRC"/netguard.py "$SRC"/display.py "$SRC"/requirements.txt "$SRC"/run.sh "$DEST"/
 cd "$DEST"
 [ -d .venv ] || python3 -m venv .venv
 .venv/bin/pip install -q --upgrade pip
