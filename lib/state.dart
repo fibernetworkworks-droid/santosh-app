@@ -265,6 +265,8 @@ class Santosh extends ChangeNotifier {
   int employeeTick = 0;                       // bumps on any employee event (the Employee screen can refresh)
   final Map<String, FeedItem> _darziCards = {}; // v0.82 Darzi: price cards by id, 'ready' drafts by order, updated in place
   int darziTick = 0;                          // bumps on any darzi event (the Darzi screen refreshes)
+  final Map<String, FeedItem> _chaiPlans = {}; // v0.84 Chai: one plan card per day, its order cards updated in place
+  int chaiTick = 0;                           // bumps on galla / chai events (the Chai screen refreshes)
   List<Map<String, dynamic>> get pendingApprovals =>
       [for (final it in _bazar.values) if ((it.data['status'] ?? 'pending') == 'pending') it.data];
   int bazarLinkedTick = 0;                    // bumps when an app account got linked (Apps screen refreshes)
@@ -992,6 +994,31 @@ class Santosh extends ChangeNotifier {
           Device.instance.showNow('$aName: naya daam, aapki haan?', '${p['customer'] ?? ''} · ${p['label'] ?? ''}: ${p['price'] ?? ''}');
         }
         darziTick++;
+        break;
+      case 'chai_plan':
+        final cpid = '${p['for_date']}';
+        final cp = _chaiPlans[cpid];
+        if (cp != null) {
+          cp.data = {...cp.data, ...p};
+        } else {
+          _chaiPlans[cpid] = FeedItem('chai_plan', Map<String, dynamic>.from(p));
+          feed.add(_chaiPlans[cpid]!);
+        }
+        chaiTick++;
+        break;
+      case 'chai_order':
+        for (final it in _chaiPlans.values) {
+          final orders = List<Map<String, dynamic>>.from(((it.data['orders'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+          final i = orders.indexWhere((o) => o['id'] == p['id']);
+          if (i >= 0) {
+            orders[i] = {...orders[i], ...p};
+            it.data = {...it.data, 'orders': orders};
+          }
+        }
+        chaiTick++;
+        break;
+      case 'galla':
+        chaiTick++;
         break;
       case 'darzi_day':
         feed.add(FeedItem('darzi_day', Map<String, dynamic>.from(p)));

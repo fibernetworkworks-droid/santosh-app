@@ -63,6 +63,18 @@ class Native {
   static Future<void> updatePermission() async => _call('updatePermission');
   static Future<void> openMakerPerms() async => _call('openMakerPerms');
   /// v0.57 reel scroll analysis (Android Usage Access: times only, never screen content).
+  // v0.84 Galla: UPI payment alerts (only after she gives notification access in Android settings)
+  static Future<Map<String, dynamic>> payAlertsInfo() async {
+    final r = await _call<Map>('payAlertsInfo');
+    return r == null ? <String, dynamic>{} : Map<String, dynamic>.from(r);
+  }
+
+  static Future<void> payAlertsSettings() async => _call('payAlertsSettings');
+  static Future<Map<String, dynamic>> payAlertsSet(bool on, List<String> apps) async {
+    final r = await _call<Map>('payAlertsSet', {'on': on, 'apps': apps});
+    return r == null ? <String, dynamic>{} : Map<String, dynamic>.from(r);
+  }
+
   static Future<bool> usageAllowed() async => await _call<bool>('usageAllowed') ?? false;
   static Future<void> usageSettings() async => _call('usageSettings');
   /// v0.69 why Hoola closed last time (null if it didn't crash). Marks it as reported.

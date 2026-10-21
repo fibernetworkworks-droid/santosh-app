@@ -568,6 +568,40 @@ class Api {
   Future<List<Map<String, dynamic>>> darziGarments() async => _maps((await _send('GET', '/api/darzi/garments') as Map)['garments']);
   Future<Map<String, dynamic>> darziCheck(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/darzi/check', body: body) as Map);
+  // ---- v0.84 Galla + Chai Sahayak (chai stall coworker) ----
+  Future<Map<String, dynamic>> gallaToday({String date = ''}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/galla/today', query: {if (date.isNotEmpty) 'date': date}) as Map);
+  Future<Map<String, dynamic>> gallaHours({int days = 28}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/galla/hours', query: {'days': '$days'}) as Map);
+  Future<List<Map<String, dynamic>>> gallaRecent() async => _maps((await _send('GET', '/api/galla/recent') as Map)['payments']);
+  Future<Map<String, dynamic>> gallaCash(double amount, {String date = '', int? hour, String note = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/galla/cash',
+          body: {'amount': amount, 'date': date, if (hour != null) 'hour': hour, 'note': note}) as Map);
+  Future<void> gallaVoid(String id) async => _send('POST', '/api/galla/entries/$id/void');
+  Future<Map<String, dynamic>> gallaStatement(String filename, List<int> bytes) async =>
+      uploadFile('/api/galla/statement', filename, bytes, timeout: const Duration(seconds: 90));
+  Future<Map<String, dynamic>> gallaSettings() async => Map<String, dynamic>.from(await _send('GET', '/api/galla/settings') as Map);
+  Future<Map<String, dynamic>> gallaSaveSettings(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/galla/settings', body: body) as Map);
+  Future<Map<String, dynamic>> chaiSettings() async => Map<String, dynamic>.from(await _send('GET', '/api/chai/settings') as Map);
+  Future<Map<String, dynamic>> chaiSaveSettings(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/chai/settings', body: body) as Map);
+  Future<Map<String, dynamic>> chaiStock({double? milkL, double? sugarKg, double? teaKg}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/chai/stock',
+          body: {if (milkL != null) 'milk_l': milkL, if (sugarKg != null) 'sugar_kg': sugarKg, if (teaKg != null) 'tea_kg': teaKg}) as Map);
+  Future<Map<String, dynamic>> chaiMakePlan({String forDate = '', String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/chai/plan', body: {'for_date': forDate, 'conversation_id': conversationId},
+          timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>?> chaiPlan({String date = ''}) async {
+    final r = (await _send('GET', '/api/chai/plan', query: {if (date.isNotEmpty) 'date': date}) as Map)['plan'];
+    return r == null ? null : Map<String, dynamic>.from(r as Map);
+  }
+
+  Future<Map<String, dynamic>> chaiDecide(String orderId, bool approve, {String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/chai/orders/$orderId',
+          body: {'approve': approve, 'conversation_id': conversationId}, timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> chaiFeedback(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/chai/feedback', body: body) as Map);
   // v0.78 Pakka kaam: task log + lessons (failure -> what worked)
   Future<Map<String, dynamic>> agentTasks({int limit = 30}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/agent/tasks?limit=$limit') as Map);

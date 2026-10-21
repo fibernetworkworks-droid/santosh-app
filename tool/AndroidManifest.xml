@@ -271,6 +271,17 @@
         </service>
         <meta-data android:name="firebase_analytics_collection_deactivated" android:value="true" />
         <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false" />
+        <!-- v0.84 Galla: reads ONLY 'money received' alerts of the payment apps the owner picked, after she gives
+             notification access herself in Android settings (off by default; Chai screen > Galla). -->
+        <service
+            android:name=".HoolaPayListener"
+            android:exported="true"
+            android:label="Hoola Galla (UPI payment alerts)"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
         <!-- Quick-settings tile -->
         <service
             android:name=".SantoshTile"

@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.83.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.84.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -131,7 +131,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -160,6 +160,12 @@ def healthz():
 @app.get("/")
 def index():
     return FileResponse(STATIC / "index.html")
+
+
+@app.get("/privacy")
+def privacy():
+    """Privacy policy (Play listing link): what each permission is used for, incl. v0.84 payment-alert reading."""
+    return FileResponse(STATIC / "privacy.html")
 
 
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
@@ -2790,6 +2796,164 @@ def darzi_garments():
 def darzi_check(body: DarziCheckIn, tenant: str = Depends(current_tenant)):
     from .darzi import service as darzi
     return _darzi(darzi.check, tenant, body.items, body.deliver_on, body.trial_on, body.customer)
+
+
+# ---------------------------------------------------------------- v0.84 Galla + Chai Sahayak (chai stall coworker)
+class GallaAlertsIn(BaseModel):
+    items: list[dict] = []
+
+
+class GallaCashIn(BaseModel):
+    amount: float
+    date: str = ""
+    hour: int | None = None
+    note: str = ""
+
+
+class ChaiPlanIn(BaseModel):
+    for_date: str = ""
+    conversation_id: str = ""
+
+
+class ChaiDecideIn(BaseModel):
+    approve: bool
+    conversation_id: str = ""
+
+
+class ChaiStockIn(BaseModel):
+    milk_l: float | None = None
+    sugar_kg: float | None = None
+    tea_kg: float | None = None
+
+
+class ChaiFeedbackIn(BaseModel):
+    for_date: str = ""
+    milk_left_l: float | None = None
+    ran_out_at: str = ""
+    sugar_left_kg: float | None = None
+    tea_left_kg: float | None = None
+    cash: float | None = None
+    bought_milk_l: float | None = None
+
+
+def _galla(fn, *a, **k):
+    from .chai import service as chai
+    from .galla import service as galla
+    try:
+        return fn(*a, **k)
+    except (galla.GallaError, chai.ChaiError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/galla/alerts", dependencies=[Depends(require_key)])
+def galla_alerts(body: GallaAlertsIn, tenant: str = Depends(current_tenant)):
+    """From her phone: 'money received' alerts of the payment apps she picked, already reduced to amount / time / app /
+    payer's first name / last 4 of the reference (the full notification never leaves the phone)."""
+    from .galla import service as galla
+    return galla.ingest_alerts(tenant, body.items)
+
+
+@app.get("/api/galla/today", dependencies=[Depends(require_key)])
+def galla_today(date: str = "", tenant: str = Depends(current_tenant)):
+    from .galla import service as galla
+    return _galla(galla.day_summary, tenant, date)
+
+
+@app.get("/api/galla/hours", dependencies=[Depends(require_key)])
+def galla_hours(days: int = 28, tenant: str = Depends(current_tenant)):
+    from .galla import service as galla
+    return galla.best_hours(tenant, max(1, min(120, days)))
+
+
+@app.get("/api/galla/recent", dependencies=[Depends(require_key)])
+def galla_recent(tenant: str = Depends(current_tenant)):
+    from .galla import service as galla
+    return {"payments": galla.recent(tenant, 80)}
+
+
+@app.post("/api/galla/cash", dependencies=[Depends(require_key)])
+def galla_cash(body: GallaCashIn, tenant: str = Depends(current_tenant)):
+    from .galla import service as galla
+    return _galla(galla.add_cash, tenant, body.amount, body.date, body.hour, body.note)
+
+
+@app.post("/api/galla/entries/{entry_id}/void", dependencies=[Depends(require_key)])
+def galla_void(entry_id: str, tenant: str = Depends(current_tenant)):
+    from .galla import service as galla
+    return _galla(galla.void, tenant, entry_id)
+
+
+@app.post("/api/galla/statement", dependencies=[Depends(require_key)])
+async def galla_statement(file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
+    from .galla import service as galla
+    data = await file.read()
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(400, "Statement 10 MB se bada hai.")
+    return _galla(galla.import_statement, tenant, file.filename or "statement.csv", data)
+
+
+@app.get("/api/galla/settings", dependencies=[Depends(require_key)])
+def galla_settings_get(tenant: str = Depends(current_tenant)):
+    from .galla import service as galla
+    return galla.settings(tenant)
+
+
+@app.put("/api/galla/settings", dependencies=[Depends(require_key)])
+def galla_settings_put(body: dict, tenant: str = Depends(current_tenant)):
+    from .galla import service as galla
+    return _galla(galla.save_settings, tenant, body.get("apps"), body.get("open_hour"), body.get("close_hour"))
+
+
+@app.get("/api/chai/settings", dependencies=[Depends(require_key)])
+def chai_settings_get(tenant: str = Depends(current_tenant)):
+    from .chai import service as chai
+    return chai.settings(tenant)
+
+
+@app.put("/api/chai/settings", dependencies=[Depends(require_key)])
+def chai_settings_put(body: dict, tenant: str = Depends(current_tenant)):
+    from .chai import service as chai
+    keys = ("enabled", "stall_name", "menu", "other_pct", "cash_pct", "safety_pct", "milk_packet_ml", "typical_cups",
+            "suppliers", "rules", "plan_time", "milk_factor")
+    return _galla(chai.save_settings, tenant, **{k: body[k] for k in keys if k in body})
+
+
+@app.post("/api/chai/stock", dependencies=[Depends(require_key)])
+def chai_stock(body: ChaiStockIn, tenant: str = Depends(current_tenant)):
+    from .chai import service as chai
+    return _galla(chai.set_stock, tenant, body.milk_l, body.sugar_kg, body.tea_kg)
+
+
+@app.post("/api/chai/plan", dependencies=[Depends(require_key)])
+async def chai_plan_make(body: ChaiPlanIn, tenant: str = Depends(current_tenant)):
+    from .chai import service as chai
+    weather = None
+    try:
+        from .life import weather_for
+        weather = await weather_for(tenant)
+    except Exception:
+        weather = None
+    return await asyncio.to_thread(_galla, chai.plan_tomorrow, tenant, body.for_date, weather, body.conversation_id)
+
+
+@app.get("/api/chai/plan", dependencies=[Depends(require_key)])
+def chai_plan_get(date: str = "", tenant: str = Depends(current_tenant)):
+    from .chai import service as chai
+    return {"plan": _galla(chai.get_plan, tenant, date)}
+
+
+@app.post("/api/chai/orders/{order_id}", dependencies=[Depends(require_key)])
+def chai_order_decide(order_id: str, body: ChaiDecideIn, tenant: str = Depends(current_tenant)):
+    """Her Haan / Mana on a stock order Hoola prepared (only from her tap)."""
+    from .chai import service as chai
+    return _galla(chai.decide_order, tenant, order_id, body.approve, body.conversation_id)
+
+
+@app.post("/api/chai/feedback", dependencies=[Depends(require_key)])
+def chai_feedback(body: ChaiFeedbackIn, tenant: str = Depends(current_tenant)):
+    from .chai import service as chai
+    return _galla(chai.feedback, tenant, body.for_date, body.milk_left_l, body.ran_out_at, body.sugar_left_kg,
+                  body.tea_left_kg, body.cash, body.bought_milk_l)
 
 
 @app.get("/api/agent/tasks", dependencies=[Depends(require_key)])

@@ -7,6 +7,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 
 import '../state.dart';
 import 'employee_inbox.dart';
+import 'chai_screen.dart';
 import 'darzi_screen.dart';
 import 'employee_screen.dart';
 import 'video_editor.dart';
@@ -535,6 +536,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return OperatorAskCard(key: ValueKey('oq${it.data['id']}'), v: it.data, app: app);
     case 'video_job':
       return VideoJobCard(key: ValueKey('vj${it.data['id']}'), v: it.data, app: app);
+    case 'chai_plan':
+      return ChaiPlanCard(key: ValueKey('cp${it.data['for_date']}'), v: it.data, app: app);
     case 'darzi_quote':
       return DarziQuoteCard(key: ValueKey('dq${it.data['id']}'), v: it.data, app: app);
     case 'darzi_ready':

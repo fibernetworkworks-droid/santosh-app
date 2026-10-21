@@ -473,3 +473,10 @@ from .darzi_tools import DARZI_HANDLERS, DARZI_LABELS, DARZI_TOOLS  # noqa: E402
 TOOLS.extend(DARZI_TOOLS)
 TOOL_LABELS.update(DARZI_LABELS)
 HANDLERS.update(DARZI_HANDLERS)
+
+# v0.84 Chai Sahayak (chai stall coworker: galla from UPI alerts, best hours, tomorrow's milk / sugar)
+from .chai_tools import CHAI_HANDLERS, CHAI_LABELS, CHAI_TOOLS  # noqa: E402
+
+TOOLS.extend(CHAI_TOOLS)
+TOOL_LABELS.update(CHAI_LABELS)
+HANDLERS.update(CHAI_HANDLERS)

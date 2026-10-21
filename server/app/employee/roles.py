@@ -34,6 +34,8 @@ DUTIES: dict[str, dict] = {
                  "prefix": (), "tools": {"computer_operator"}},
     "tailoring": {"label": "Silai ka kaam", "say": "order, naap, trial, delivery, daam taiyaar karna (naya daam aapki haan se)",
                   "prefix": (), "tools": {"darzi", "darzi_dekho", "biz_order_status"}},
+    "stall": {"label": "Galla aur stock", "say": "UPI se roz ki bikri, sabse achha ghanta, kal ka doodh-chini, stock order (aapki haan se)",
+              "prefix": (), "tools": {"chai", "chai_dekho"}},
     "research": {"label": "Jaankari dhoondhna", "say": "web, maps, mausam, public APIs",
                  "prefix": ("maps_", "api_"), "tools": {"google_search", "open_website", "browse_web", "browse_result", "get_weather",
                                                        "memory_search"}},
@@ -67,6 +69,8 @@ ROLES: dict[str, dict] = {
                           "duties": ["operator", "records", "research", "reminders"]},
     "tailor": {"label": "Darzi sahayak", "say": "Silai ke order, har graahak ka naap, trial / delivery ki tareekh, 'taiyaar hai' message, daam",
                "duties": ["tailoring", "customers", "appointments", "reminders", "collections", "records"]},
+    "chai_stall": {"label": "Chai stall sahayak", "say": "UPI alerts se roz ki bikri, sabse achha ghanta, kal ka doodh / chini, stock order",
+                   "duties": ["stall", "reminders", "collections", "records", "research"]},
     "custom": {"label": "Apna kaam", "say": "Aap khud chuniye Hoola kaun se kaam karega", "duties": []},
 }
 
@@ -100,6 +104,9 @@ PRESETS: dict[str, dict] = {
                "about_hint": "Kya silte hain (blouse, suit, lehenga, shirt...), daam, kitne din lagte hain, trial ka samay, pata",
                "rules": ["Naya daam ya chhoot sirf owner ki haan se.", "Delivery ki tareekh niyam dekhkar hi pakki karna.",
                          "Graahak ka naap kisi aur ko nahi batana."]},
+    "chai": {"label": "Chai stall / tapri / nashta", "role": "chai_stall", "kind": "chai", "slot_minutes": 30, "after_hours": "quiet",
+             "about_hint": "Menu aur daam (chai, special, coffee, nashta), timing, doodhwala, kitne cup roz",
+             "rules": ["Stock ka order sirf owner ki haan se.", "Udhaar sirf owner ki haan se."]},
     "office": {"label": "Office / company", "role": "office", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
                "about_hint": "Company kya karti hai, kaun kis kaam ka", "rules": []},
 }
@@ -126,7 +133,7 @@ READ = {
     "pc_task_result", "tally_report", "file_read", "api_find", "api_docs", "api_call", "memory_search", "phone_health",
     "tv_channel", "employee", "india_info",
     "biz_free_slots", "biz_my_appointments", "biz_ticket_status", "biz_my_dues", "biz_handover", "biz_note",
-    "darzi_dekho", "biz_order_status",
+    "darzi_dekho", "biz_order_status", "chai_dekho",
 }
 BIG = {
     "email_bulk", "email_delete", "email_forward", "drive_trash", "drive_share", "sheet_share", "form_share", "slides_share",
