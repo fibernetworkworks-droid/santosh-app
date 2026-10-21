@@ -85,6 +85,8 @@ async def computer_operator(ctx: Ctx, action, **a):
     if str(action) == "answer":
         from ..operator import service as ops
         got = await ops.answer_from_chat(ctx.tenant_id, str(a.get("text") or ""))
+        if not got and ops.recently_filled(ctx.tenant_id):
+            return {"ok": True, "say": "OTP pehle hi box mein bhar diya hai, aage badh raha hoon. Digits mat dohraiye."}
         if not got:
             raise ToolError("Abhi koi OTP / CAPTCHA ka intezaar nahi hai, ya yeh OTP jaisa nahi laga. Dobara poochhiye.")
         return {"ok": got["ok"], "say": got["say"]}

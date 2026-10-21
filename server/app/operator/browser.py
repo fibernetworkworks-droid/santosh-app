@@ -99,6 +99,7 @@ class Approval:
     status: str = "pending"          # pending | approved | rejected | done | expired
     answer: str = ""                 # only for question / choice (never for otp / captcha / secret)
     suggested_answer: str = ""       # v0.78 CAPTCHA: Hoola's OCR result shown to the owner for confirmation
+    digits: int = 0                  # v0.83 OTP: how many digits the page's box takes (0 = not known)
     created: float = field(default_factory=time.time)
     event: asyncio.Event = field(default_factory=asyncio.Event)
 
@@ -821,6 +822,8 @@ class Operator:
         a = Approval(id="h" + secrets.token_hex(5), session=s.name, kind=kind, reason=(reason or "")[:500], ref=ref,
                      target_name=(it or {}).get("name", "") if kind in ("approve", "payment") else "",
                      options=[str(o)[:80] for o in (options or [])][:8], url=s.page.url)
+        if kind == "otp" and ref:
+            a.digits = await self._otp_digits(s, ref)
         # v0.78 auto-solve CAPTCHA: Hoola reads it, shows the answer to the owner for confirmation
         if kind == "captcha":
             try:
@@ -868,7 +871,10 @@ class Operator:
             if not s or not a.ref:
                 raise OperatorError("The browser for this request is closed.")
             loc, it = await self._locator(s, a.ref)
-            await loc.fill(answer, timeout=10000)
+            if a.kind == "otp":
+                await self._fill_otp(s, loc, re.sub(r"\s", "", answer))
+            else:
+                await loc.fill(answer, timeout=10000)
             try:
                 await loc.evaluate("e => { e.setAttribute('data-hoola-masked', '1'); e.style.setProperty('-webkit-text-security', 'disc'); }")
             except Exception:
@@ -879,6 +885,55 @@ class Operator:
         a.status, a.answer = status, (answer[:500] if a.kind in ("question", "choice") else "")
         a.event.set()
         return a
+
+    # v0.83 OTP boxes: one box (maxlength 6) or one box per digit (maxlength 1 each, the page jumps to the next box)
+    _OTP_GROUP_JS = """(e) => {
+        const ml = parseInt(e.getAttribute('maxlength') || '0', 10) || 0;
+        let group = [];
+        if (ml === 1) {
+            let p = e.parentElement;
+            for (let i = 0; i < 4 && p; i++, p = p.parentElement) {
+                group = Array.from(p.querySelectorAll('input')).filter(x => (x.maxLength === 1) && x.type !== 'hidden'
+                    && !x.disabled && x.offsetParent !== null);
+                if (group.length >= 4) break;
+            }
+        }
+        return {ml, n: group.length >= 4 ? group.length : 0};
+    }"""
+
+    async def _otp_digits(self, s: Session, ref: str) -> int:
+        try:
+            loc, _ = await self._locator(s, ref)
+            g = await loc.evaluate(self._OTP_GROUP_JS)
+        except Exception:
+            return 0
+        n = int(g.get("n") or 0) or int(g.get("ml") or 0)
+        return n if 4 <= n <= 8 else 0
+
+    async def _fill_otp(self, s: Session, loc, value: str) -> None:
+        g = await loc.evaluate(self._OTP_GROUP_JS)
+        if not g.get("n"):
+            await loc.fill(value, timeout=10000)
+            return
+        # one box per digit: type like a person (the page moves to the next box), then make sure every box got its digit
+        await loc.click(timeout=5000)
+        await s.page.keyboard.type(value, delay=70)
+        refs = await loc.evaluate("""(e, v) => {
+            let p = e.parentElement, group = [];
+            for (let i = 0; i < 4 && p; i++, p = p.parentElement) {
+                group = Array.from(p.querySelectorAll('input')).filter(x => x.maxLength === 1 && x.type !== 'hidden'
+                    && !x.disabled && x.offsetParent !== null);
+                if (group.length >= 4) break;
+            }
+            if (group.map(x => x.value).join('') !== v) {
+                const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+                group.forEach((x, i) => { set.call(x, v[i] || ''); x.dispatchEvent(new Event('input', {bubbles: true}));
+                                          x.dispatchEvent(new Event('change', {bubbles: true})); });
+            }
+            group.forEach(x => { x.setAttribute('data-hoola-masked', '1'); x.style.setProperty('-webkit-text-security', 'disc'); });
+            return group.map(x => x.getAttribute('data-hoola-ref')).filter(Boolean);
+        }""", value)
+        s.masked.update(r for r in (refs or []) if isinstance(r, str))
 
     async def captcha_image(self, approval_id: str) -> bytes:
         """v0.76 the CAPTCHA picture next to the box, big enough to read on her phone (she may be far away).

@@ -315,7 +315,7 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
                 kind == 'otp'
-                    ? 'SMS mein aaya OTP likhiye ya chat / call mein bol dijiye. Seedha website ke box mein jayega, kahin save nahi hota.'
+                    ? 'SMS aate hi Android "Allow" poochhega: dabaiye, OTP apne aap bhar jayega. Ya yahan likhiye / chat mein likhiye / call mein bol dijiye. Seedha website ke box mein jayega, kahin save nahi hota.'
                     : 'Yeh seedha website ke box mein jayega. Hoola ise kabhi dekhta ya rakhta nahi.',
                 style: const TextStyle(color: C.faint, fontSize: 11.5)),
           ),

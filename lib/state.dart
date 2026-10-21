@@ -171,6 +171,24 @@ class Santosh extends ChangeNotifier {
   bool typing = false;
   String? error;
   bool inBackground = false;
+
+  /// v0.83 a website job waits for an OTP: the next OTP SMS gets Android's one-tap "Allow" sheet and only the code
+  /// goes into the waiting box (no SMS permission; a bank / payment SMS is never filled).
+  final Set<String> _otpSmsWait = {};
+  Future<void> _otpFromSms(String id, int digits) async {
+    if (api == null || _otpSmsWait.contains(id)) return;
+    _otpSmsWait.add(id);
+    final r = await Native.otpConsent(digits: digits);
+    if (!_otpSmsWait.remove(id)) return;          // answered another way meanwhile
+    final code = r['code'];
+    if (code is String && code.isNotEmpty) {
+      try {
+        await api!.operatorAnswer(id, true, answer: code);
+      } catch (_) {}
+    } else if (r['error'] == 'bank') {
+      Device.instance.showNow('$aName', 'Yeh bank / payment ka OTP lagta hai: main nahi bharunga, aap khud live screen mein bhariye.');
+    }
+  }
   bool backgroundRunning = false;
   String backgroundStatus = '';
   bool batteryOptimized = false;
@@ -937,10 +955,12 @@ class Santosh extends ChangeNotifier {
         final oq = _opAsks[qid];
         if (oq != null) {
           oq.data = {...oq.data, ...p};
+          if (p['status'] != null && p['status'] != 'pending' && _otpSmsWait.remove(qid)) Native.otpConsentCancel();
         } else if (p['status'] == 'pending') {
           _opAsks[qid] = FeedItem('operator_ask', Map<String, dynamic>.from(p));
           feed.add(_opAsks[qid]!);
           if (inBackground && !_replaying && !pushOn) Device.instance.showNow('$aName: aapki zaroorat hai', '${p['reason'] ?? ''}');
+          if (p['kind'] == 'otp' && !_replaying) _otpFromSms(qid, (p['digits'] as num?)?.toInt() ?? 0);
         }
         operatorTick++;
         break;

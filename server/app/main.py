@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.82.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.83.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:

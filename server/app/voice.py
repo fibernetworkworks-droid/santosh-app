@@ -174,7 +174,7 @@ Which tool (details are in each tool's description)
 - Making things: make_document (real Word / Excel / PowerPoint file), photo_clean (product photo on white), id_photo (passport / visa / exam-form photo + print sheet) from a photo the user attached, memory_search to recall anything they asked you to remember. Write the real content; say the file is in chat.
 - Free public APIs (2,100+: weather, currency, holidays, IFSC, pincode, cricket, news, dictionary...): when no other tool fits, api_find, then api_call with the api_id (use worked_before if given; api_docs only if needed). Keys only from the app, never asked in the call.
 - New AI-made videos (ad, greeting, product reel without footage): video_studio (create -> storyboard -> generate preview free; paid shots need her tap on a price card; say prices in rupees).
-- Website work (forms, downloads, status, applications): computer_operator action=start with the whole job in her words -> say it started; you fill the whole form yourself and ask her only for the OTP, the CAPTCHA (picture on her phone), a password, the final submit and payment. When she says the OTP / CAPTCHA on the call: computer_operator action=answer text=<exactly what she said>, then say 'bhar diya'. Never say the OTP or any secret aloud.
+- Website work (forms, downloads, status, applications): computer_operator action=start with the whole job in her words -> say it started; you fill the whole form yourself and ask her only for the OTP, the CAPTCHA (picture on her phone), a password, the final submit and payment. When a note says a website sent an OTP, ask her for it right away in one short line. When she says the OTP, the system types it into the box by itself (a note confirms it) - just say 'mil gaya, bhar diya'; if no note comes, use computer_operator action=answer text=<exactly what she said>. CAPTCHA she reads out: computer_operator action=answer. Never say the OTP or any secret aloud.
 - Video editing: video_edit action=start with the attached video file_ids + her brief ("isko reel bana do", "status ke liye 30 sec") -> say it has started and the card will show it; changes = action=revise. It never posts anything.
 - India facts: india_info ("kal chhutti hai?", "agli ekadashi kab?", tithi, IFSC, rupees in words). Bills / QR in a photo: file_read gives the amount + due date or who a UPI QR pays; offer a reminder, never pay.
 - Files: the user can attach photos, PDFs, videos or any file during the call; you then get an "[Attached by the owner during this call]" note with file_ids. Say you got it (by name), file_read to see / read it, hoola_send kind=file file_id=... to send it to someone. Never say you sent or made something unless the tool says so.
@@ -532,7 +532,10 @@ class Call:
                       "latency_ms": [], "words": [], "question_endings": 0, "assistantisms": 0, "interruptions": 0,
                       "tools": 0, "silent_tools": 0, "acks": 0, "false_stops": 0,
                       "gate": {},
-                      "speaker_guesses": 0, "speaker_sure": 0, "speaker_changes": 0, "blocked_tools": 0}
+                      "speaker_guesses": 0, "speaker_sure": 0, "speaker_changes": 0, "blocked_tools": 0, "otp_filled": 0}
+        self._otp_req = ""                     # v0.83 the website OTP box we are listening for
+        self._otp_heard = ""                   # what she said since that box asked (only while it waits)
+        self._otp_said: set[str] = set()       # OTPs filled in this call: hidden from the saved transcript
         if st.voice_tool_ack and st.gemini_api_key:
             ack_clips(self.voice, self.gender)   # get his "ek second" clips ready
 
@@ -715,6 +718,7 @@ class Call:
                         self._last_user_text_at = time.monotonic()
                     self.user_buf += sc.input_transcription.text
                     await self.send_json({"type": "user_text", "text": self.user_buf.strip()})
+                    await self._otp_listen(sc.input_transcription.text)
                 if sc.model_turn is not None:
                     for part in sc.model_turn.parts or []:
                         blob = getattr(part, "inline_data", None)
@@ -742,8 +746,56 @@ class Call:
                 self._latency = int(gap * 1000)
                 self.stats["latency_ms"].append(self._latency)
 
+    async def _otp_listen(self, piece: str = "", final: bool = False) -> None:
+        """v0.83 a website job is waiting for an OTP and she SAYS it on the call: the system catches the digits from
+        her own words and types them into that page box itself (Gemini doesn't have to call a tool, and never needs
+        to repeat them). Bank / payment OTPs never come here (they are a payment step she does herself)."""
+        try:
+            from .operator import service as ops
+            from .operator.otpwords import find_otp
+            a = ops.pending_otp(self.tenant)
+        except Exception:
+            return
+        if a is None:
+            self._otp_req, self._otp_heard = "", ""
+            return
+        if a.id != self._otp_req:
+            self._otp_req, self._otp_heard = a.id, ""
+        if piece:
+            self._otp_heard = (self._otp_heard + " " + piece)[-400:]
+        v = find_otp(self._otp_heard, a.digits)
+        if not v:
+            return
+        if a.digits and len(v) != a.digits:
+            if final and len(v) > a.digits:
+                self._otp_heard = ""
+                self.push("text", "(OTP ke digits theek se sunai nahi diye. Ask her once more to say them slowly, one by "
+                                  "one. Don't say any digits yourself.)")
+            return            # shorter: she may still be saying it
+        if not a.digits and not final:
+            return            # length not known: wait till she has finished speaking
+        try:
+            await ops.fill_otp(self.tenant, a.id, v)
+        except Exception as e:   # the box went away / page changed: Gemini can still use computer_operator answer
+            log.info("call %s: OTP from speech not filled: %s", self.call_id, e)
+            return
+        self._otp_said.add(v)
+        self._otp_heard = ""
+        self.stats["otp_filled"] += 1
+        self.push("text", "(System: usne jo OTP bola woh website ke box mein bhar diya gaya hai; kaam aage chal raha hai. "
+                          "Say only a short 'mil gaya, bhar diya'. Never repeat the digits, and don't call computer_operator "
+                          "answer for it.)")
+        from .operator.otpwords import mask
+        await self.send_json({"type": "user_text", "text": mask(self.user_buf.strip(), v)})
+        await self.send_json({"type": "otp_filled"})
+
     async def finish_turn(self, interrupted: bool = False) -> None:
+        await self._otp_listen(final=True)
         user, reply = self.user_buf.strip(), self.reply_buf.strip()
+        if self._otp_said:                     # the OTP she said never lands in the chat history
+            from .operator.otpwords import mask
+            for v in self._otp_said:
+                user, reply = mask(user, v), mask(reply, v)
         self.user_buf = self.reply_buf = ""
         done = {"type": "turn_done"}
         if interrupted:

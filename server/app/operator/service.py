@@ -296,7 +296,56 @@ async def _asked(tenant: str, a: Approval) -> None:
         return
     pend = a.public()
     row = _set(t["id"], status="waiting", stage=f"Aapka intezaar: {a.reason[:120]}", pending=pend)
-    _publish(row, "operator_ask", {**pend, "task_id": row.id, "task": row.task[:200], "site": site_of(row.url or pend.get("url", ""))})
+    site = site_of(row.url or pend.get("url", ""))
+    _publish(row, "operator_ask", {**pend, "task_id": row.id, "task": row.task[:200], "site": site})
+    if a.kind == "otp":
+        _ask_otp(row, a, site)
+    elif a.kind == "payment" and "OTP" in (a.reason or ""):
+        _say(row, f"(Computer Operator: {site or 'website'} par bank / payment ka OTP aaya hai. Tell her in one short line: "
+                  "yeh paise wala OTP hai, isliye woh khud live screen par bhariye; Hoola isse nahi bharega. Don't ask her "
+                  "to say it.)")
+
+
+def _say(row: OperatorTask, text: str) -> int:
+    try:
+        from ..voice import inject
+        return inject(row.conversation_id or _home_conv(row.tenant_id), text)
+    except Exception:
+        return 0
+
+
+def _ask_otp(row: OperatorTask, a: Approval, site: str) -> None:
+    """v0.83 the moment a website sends an OTP, Hoola asks for it: out loud in a live call, and in the chat (+ push).
+    Whatever she says or types next goes straight into that page's OTP box (answer_from_chat / voice capture)."""
+    where = site or "website"
+    n = f"{a.digits} ankon ka " if a.digits else ""
+    in_call = _say(row, f"(Computer Operator: {where} ne abhi aapke phone par {n}OTP bheja hai. Ask her out loud right now, "
+                        f"one short line, e.g. '{where} ka OTP aaya hoga, bata dijiye'. When she says the digits the system "
+                        "types them into the box by itself: you only say 'mil gaya, bhar diya'. Never say the digits "
+                        "yourself, never write them anywhere. If she can't find it, tell her to check SMS / email.)")
+    _note(row, f"{where} ne aapke phone par {n}OTP bheja hai. Jo OTP aaya hai bas yahan likh dijiye"
+               + (" ya call par bol dijiye" if in_call else " (ya call karke bol dijiye)")
+               + ", main khud sahi box mein bhar dunga. SMS aaye to 'Allow' dabaiye, woh bhi apne aap bhar jayega.")
+
+
+# v0.83 the OTP she just gave (chat, call, SMS) - so a second route for the same OTP says "done" instead of failing
+_FILLED: dict[str, float] = {}
+
+
+def pending_otp(tenant: str):
+    """The OTP box waiting for her right now (Approval) or None."""
+    a = _pending_otp_or_captcha(tenant)
+    return a if a is not None and a.kind == "otp" else None
+
+
+def recently_filled(tenant: str, within: float = 120) -> bool:
+    return time.time() - _FILLED.get(tenant, 0) < within
+
+
+async def fill_otp(tenant: str, request_id: str, value: str) -> dict[str, Any]:
+    """Type her OTP into the waiting box (the value is never kept, logged or returned)."""
+    await resolve(tenant, request_id, "approved", value)
+    return {"ok": True, "kind": "otp", "masked": "•" * len(value), "say": "OTP page mein bhar diya. Aage badh raha hoon."}
 
 
 async def resolve(tenant: str, request_id: str, status: str, answer: str = "") -> dict[str, Any]:
@@ -308,6 +357,8 @@ async def resolve(tenant: str, request_id: str, status: str, answer: str = "") -
         a = await op.resolve_human(request_id, "approved" if status == "approved" else "rejected", answer)
     except OperatorError as e:
         raise OperatorJobError(str(e)) from None
+    if a.kind == "otp" and a.status == "approved":
+        _FILLED[tenant] = time.time()
     t = active(tenant)
     if t:
         _publish(_set(t["id"], publish=False, status="running", stage="Aage badh raha hoon", pending=None),
@@ -379,11 +430,16 @@ def chat_answer_target(tenant: str, text: str) -> tuple[Any, str] | None:
     -> (request, the value) or None. The value then goes only into the page box, never into chat history or memory."""
     a = _pending_otp_or_captcha(tenant)
     t = (text or "").strip()
-    if not a or not t or len(t) > 60:
+    if not a or not t or len(t) > 80:
         return None
     if a.kind == "otp":
         m = _OTP_SAID.match(t)
-        return (a, re.sub(r"\D", "", m.group(1))) if m else None
+        if m:
+            return a, re.sub(r"\D", "", m.group(1))
+        # v0.83 said / typed as words: "chaar paanch chhe saat aath nau", "चार पांच छह...", "four five double six"
+        from .otpwords import find_otp
+        v = find_otp(t, getattr(a, "digits", 0))
+        return (a, v) if v and (not getattr(a, "digits", 0) or len(v) == a.digits) else None
     m = _CAPTCHA_SAID.match(t)
     return (a, m.group(1)) if m and len(t.split()) <= 4 else None
 
@@ -398,7 +454,7 @@ async def answer_from_chat(tenant: str, text: str) -> dict[str, Any] | None:
             # v0.78 captcha goes through captcha_fill (not resolve_human)
             await captcha_fill(tenant, a.id, value)
         else:
-            await resolve(tenant, a.id, "approved", value)
+            await fill_otp(tenant, a.id, value)
     except OperatorJobError as e:
         return {"ok": False, "kind": a.kind, "say": f"Page mein nahi bhar paya: {e}"}
     return {"ok": True, "kind": a.kind, "masked": "•" * len(value),

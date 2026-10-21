@@ -73,6 +73,9 @@ class MainActivity : FlutterActivity() {
                     "wakeStatus" -> result.success(mapOf("on" to WakeService.running, "wanted" to WakeService.wanted(this), "status" to WakeService.status))
                     "wakeResume" -> { WakeService.resume(this); result.success(null) }
                     "wakePause" -> { WakeService.pauseFor(this); result.success(null) }
+                    // v0.83 the next OTP SMS -> Android's one-tap "Allow" sheet -> only the code comes back
+                    "otpConsent" -> OtpConsent.start(this, (call.argument<Number>("digits") ?: 0).toInt(), result)
+                    "otpConsentCancel" -> { OtpConsent.cancel(); result.success(null) }
                     "isLocked" -> result.success(keyguardLocked())
                     "requestUnlock" -> requestUnlock { ok -> result.success(ok) }
                     "leaveLockScreen" -> { leaveLockScreen(); result.success(null) }
@@ -628,6 +631,13 @@ class MainActivity : FlutterActivity() {
             try { WakeService.start(this) } catch (_: Exception) {}
         }
         Notify.clearMessages(this)
+        OtpConsent.onResume(this)
+    }
+
+    @Deprecated("Activity result API is not used by FlutterActivity hosts")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == OtpConsent.REQ) OtpConsent.onResult(resultCode, data)
     }
 
     override fun onPause() {

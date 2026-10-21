@@ -30,6 +30,13 @@ class Native {
     return m == null ? <String, dynamic>{} : Map<String, dynamic>.from(m);
   }
   static Future<void> openMakerBattery() async => _call('openMakerBattery');
+  /// v0.83 wait for the next OTP SMS: Android shows its own one-tap "Allow" sheet; only the code comes back
+  /// ({code} or {error: denied | timeout | bank | no_code | unavailable | cancelled}).
+  static Future<Map<String, dynamic>> otpConsent({int digits = 0}) async {
+    final m = await _call<Map>('otpConsent', {'digits': digits});
+    return m == null ? <String, dynamic>{'error': 'unavailable'} : Map<String, dynamic>.from(m);
+  }
+  static Future<void> otpConsentCancel() async => _call('otpConsentCancel');
   // ---- v0.62 Phone mein Hoola ----
   static Future<Map<String, dynamic>> _map(String m, [Map<String, dynamic>? a]) async {
     final r = await _call<Map>(m, a);

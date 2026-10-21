@@ -43,6 +43,8 @@ if kts.exists():
               '    implementation("androidx.media3:media3-effect:1.4.1")\n    implementation("androidx.media3:media3-common:1.4.1")\n}\n')
     if "androidx.core:core" not in g:   # v0.63 FileProvider for sharing Hoola Motion videos
         g += '\ndependencies {\n    implementation("androidx.core:core:1.13.1")\n}\n'
+    if "play-services-auth-api-phone" not in g:   # v0.83 OtpConsent.kt (SMS User Consent: one-tap Allow, no SMS permission)
+        g += '\ndependencies {\n    implementation("com.google.android.gms:play-services-auth-api-phone:18.1.0")\n}\n'
     kts.write_text(g)
 elif groovy.exists():
     g = groovy.read_text()
@@ -58,6 +60,8 @@ elif groovy.exists():
               "    implementation 'androidx.media3:media3-effect:1.4.1'\n    implementation 'androidx.media3:media3-common:1.4.1'\n}\n")
     if "androidx.core:core" not in g:
         g += "\ndependencies {\n    implementation 'androidx.core:core:1.13.1'\n}\n"
+    if "play-services-auth-api-phone" not in g:
+        g += "\ndependencies {\n    implementation 'com.google.android.gms:play-services-auth-api-phone:18.1.0'\n}\n"
     groovy.write_text(g)
 else:
     sys.exit("No app build.gradle(.kts) found")
