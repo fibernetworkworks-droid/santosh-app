@@ -54,6 +54,9 @@ async def lifespan(app: FastAPI):
     operator_service.MAIN_LOOP = asyncio.get_running_loop()   # v0.67 Computer Operator jobs run on this loop
     if get_settings().operator_worker:
         operator_service.resume_pending()     # a restart closes the browser: those jobs stop honestly
+    if get_settings().studio_on and get_settings().operator_worker:
+        from .studio import service as studio_service
+        asyncio.ensure_future(studio_service.resume_all())   # v0.68 AI video shots already submitted keep being followed
     yield
     stop.set()
     await task
@@ -63,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.67.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.68.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -128,7 +131,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -1420,6 +1423,73 @@ def video_file(job_id: str, name: str, exp: int = 0, sig: str = ""):
         raise HTTPException(404, "Yeh video link purana ho gaya ya galat hai.")
     media = "video/mp4" if p.suffix == ".mp4" else "image/png" if p.suffix == ".png" else None
     return FileResponse(str(p), media_type=media, filename=p.name)
+
+
+# ---------------- v0.68 Hoola Video Studio ----------------
+class StudioDecide(BaseModel):
+    yes: bool
+
+
+@app.get("/api/studio", dependencies=[Depends(require_key)])
+def studio_home(tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    projects = []
+    for x in ss.listing(tenant)[:30]:
+        try:
+            projects.append(ss.view(tenant, ss._load(tenant, x["project"])))
+        except Exception:
+            pass
+    st = get_settings()
+    return {"available": ss.available(), "ready": ss.ready_providers(tenant), "projects": projects,
+            "month_spent_usd": ss.month_spent(tenant), "month_limit_usd": st.studio_month_usd, "usd_inr": st.studio_usd_inr}
+
+
+@app.get("/api/studio/projects/{name}", dependencies=[Depends(require_key)])
+def studio_project(name: str, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    try:
+        return ss.view(tenant, ss._load(tenant, name))
+    except ss.StudioJobError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.post("/api/studio/approvals/{approval_id}", dependencies=[Depends(require_key)])
+async def studio_decide(approval_id: str, body: StudioDecide, tenant: str = Depends(current_tenant)):
+    """Her tap on a price card: only now does a paid generation start (capped at the shown price)."""
+    from .studio import service as ss
+    try:
+        return await ss.decide(tenant, approval_id, body.yes)
+    except ss.StudioJobError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/studio/projects/{name}/assemble", dependencies=[Depends(require_key)])
+async def studio_assemble(name: str, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    try:
+        return await ss.assemble(tenant, name)
+    except ss.StudioJobError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/studio/files/{tenant_key}/{exp}/{sig}/{name}")
+def studio_file(tenant_key: str, exp: str, sig: str, name: str):
+    """Signed links to her finished videos / sheets (the app's player and download need no header)."""
+    from .studio import service as ss
+    f = ss.file_for(tenant_key, exp, sig, name)
+    if f is None:
+        raise HTTPException(404, "link expired or wrong")
+    return FileResponse(f)
+
+
+@app.get("/api/studio/media/{tenant_key}/media/{sig}/{exp}/{name}")
+def studio_media(tenant_key: str, sig: str, exp: str, name: str):
+    """Short-lived signed links to character photos, only for a video provider that needs a URL (STUDIO_IMAGE_MODE=public)."""
+    from .studio import service as ss
+    f = ss.studio_sync(tenant_key).verify_media(sig, exp, name)
+    if f is None:
+        raise HTTPException(404, "no")
+    return FileResponse(f)
 
 
 # ---------------- v0.67 Hoola Computer Operator ----------------

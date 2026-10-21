@@ -118,6 +118,8 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: {p.get('from', '')}", str(p.get("text") or "")[:300])
     if kind == "employee_ask" and p.get("status") == "pending":
         return ("Aapki haan chahiye", f"{p.get('what', '')} · {p.get('who', '')}: {p.get('detail', '')}"[:300])
+    if kind == "studio_approval" and p.get("status") == "pending":
+        return (f"{name}: video ka kharcha ₹{p.get('inr', '')}", f"{p.get('project', '')}: {p.get('shots', 0)} shot, Haan dabaiye tabhi banega"[:300])
     if kind == "operator_ask" and p.get("status") == "pending":
         title = {"otp": "OTP chahiye", "captcha": "CAPTCHA bhariye", "secret": "Aap khud bhariye", "payment": "Payment aap kijiye",
                  "approve": "Aapki haan chahiye"}.get(p.get("kind", ""), "Aapse sawaal")
@@ -195,7 +197,7 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
 
 
 PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "email_draft", "bazar_open", "device_action",
-              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask"}
+              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 

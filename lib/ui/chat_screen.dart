@@ -10,6 +10,7 @@ import 'employee_inbox.dart';
 import 'employee_screen.dart';
 import 'video_editor.dart';
 import 'operator_screen.dart';
+import 'studio_screen.dart';
 import 'procedures_screen.dart';
 import 'approve_sheet.dart';
 import 'artifact_screen.dart';
@@ -520,6 +521,10 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return _LinkCard(v: it.data, app: app);
     case 'employee_ask':
       return EmployeeAskCard(key: ValueKey('ea${it.data['id']}'), v: it.data, app: app);
+    case 'studio':
+      return StudioCard(key: ValueKey('sp${it.data['project']}'), v: it.data, app: app);
+    case 'studio_approval':
+      return StudioApprovalCard(key: ValueKey('sa${it.data['id']}'), v: it.data, app: app);
     case 'operator_task':
       return OperatorTaskCard(key: ValueKey('ot${it.data['id']}'), v: it.data, app: app);
     case 'operator_ask':

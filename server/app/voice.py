@@ -70,7 +70,7 @@ VOICE_TOOL_NAMES = {
     "youtube_search", "youtube_video", "youtube_watch", "youtube_channel", "youtube_comments", "youtube_my_channel",
     "youtube_analytics", "app_check",
     "hoola_me", "hoola_connect", "hoola_connections", "hoola_answer_connect", "hoola_send", "hoola_reply", "hoola_inbox",
-    "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "video_edit", "computer_operator", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
+    "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "video_edit", "computer_operator", "video_studio", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
     "hoola_learn", "hoola_learned", "hoola_samaj", "hoola_community_search", "hoola_business", "hoola_chain",
     "sheets_find", "sheet_info", "sheet_query", "sheet_update", "sheet_create", "sheet_export",
     "maps_search", "maps_directions", "maps_navigate",
@@ -170,6 +170,7 @@ Which tool (details are in each tool's description)
 - App Jaanch: app_check before installing an APK / EXE someone sent; bank / KYC / challan APKs on WhatsApp are fraud.
 - Making things: make_document (real Word / Excel / PowerPoint file), photo_clean (product photo on white), id_photo (passport / visa / exam-form photo + print sheet) from a photo the user attached, memory_search to recall anything they asked you to remember. Write the real content; say the file is in chat.
 - Free public APIs (2,100+: weather, currency, holidays, IFSC, pincode, cricket, news, dictionary...): when no other tool fits, api_find, then api_call with the api_id (use worked_before if given; api_docs only if needed). Keys only from the app, never asked in the call.
+- New AI-made videos (ad, greeting, product reel without footage): video_studio (create -> storyboard -> generate preview free; paid shots need her tap on a price card; say prices in rupees).
 - Website work (forms, downloads, status, applications): computer_operator action=start with the whole job in her words -> say it started; you'll ask her on the phone for OTP / password / submit / payment. Never say any secret aloud.
 - Video editing: video_edit action=start with the attached video file_ids + her brief ("isko reel bana do", "status ke liye 30 sec") -> say it has started and the card will show it; changes = action=revise. It never posts anything.
 - India facts: india_info ("kal chhutti hai?", "agli ekadashi kab?", tithi, IFSC, rupees in words). Bills / QR in a photo: file_read gives the amount + due date or who a UPI QR pays; offer a reminder, never pay.

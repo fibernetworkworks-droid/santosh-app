@@ -19,6 +19,21 @@ class Settings(BaseSettings):
     app_release_repo: str = "fibernetworkworks-droid/santosh-app"   # v0.62 where the phone app's releases live
     video_edit_worker: bool = True         # v0.65 Hoola Video Editor: run edits in the background (tests run them inline)
     video_max_output_s: int = 300          # longest finished video the CPU VPS makes
+    studio_on: bool = True                 # v0.68 Hoola Video Studio (AI-generated shots: Seedance / Veo / Kling / Wan / Omni)
+    openrouter_api_key: str = ""           # one key for Seedance 2.0 / 2.5, Veo 3.1, Kling 3.0, Wan 3.0 (recommended)
+    fal_key: str = ""                      # backup: Seedance via fal
+    ark_api_key: str = ""                  # backup: Seedance direct from BytePlus ModelArk
+    studio_month_usd: float = 10.0         # most one owner may spend on AI video in a calendar month (every spend is her tap too)
+    studio_project_usd: float = 5.0        # starting budget of a new project
+    studio_usd_inr: float = 85.0           # shown next to dollar prices on her cards
+    studio_image_mode: str = "data"        # data = character photos inline; public = short-lived signed links from this server
+    studio_concurrency: int = 3
+    studio_poll_s: float = 5.0
+    studio_openrouter_url: str = ""        # base URL overrides (tests / proxies)
+    studio_fal_url: str = ""
+    studio_ark_url: str = ""
+    studio_gemini_url: str = ""
+    studio_allow_private: bool = False     # tests only: provider downloads from local fake servers
     operator_on: bool = True               # v0.67 Computer Operator (Playwright Chromium inside core, own browser per owner)
     operator_worker: bool = True           # run operator jobs in the background (tests run them inline)
     operator_max_jobs: int = 2             # browsers at the same time on this server (~300 MB each)

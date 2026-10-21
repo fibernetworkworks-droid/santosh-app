@@ -122,6 +122,16 @@ class Api {
   Future<Map<String, dynamic>> reelCheck(String id) async => Map<String, dynamic>.from(
       await _send('POST', '/api/reels/$id/check', timeout: const Duration(seconds: 90)) as Map);
 
+  // ---- Hoola Video Studio (v0.68) ----
+  Future<Map<String, dynamic>> studioHome() async => Map<String, dynamic>.from(await _send('GET', '/api/studio') as Map);
+  Future<Map<String, dynamic>> studioProject(String name) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/studio/projects/${Uri.encodeComponent(name)}') as Map);
+  /// Her tap on a price card: only then does a paid AI generation start.
+  Future<Map<String, dynamic>> studioDecide(String approvalId, bool yes) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/studio/approvals/$approvalId', body: {'yes': yes}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> studioAssemble(String name) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/studio/projects/${Uri.encodeComponent(name)}/assemble') as Map);
+
   // ---- Hoola Computer Operator (v0.67) ----
   Future<Map<String, dynamic>> operatorHome() async => Map<String, dynamic>.from(await _send('GET', '/api/operator') as Map);
   Future<Map<String, dynamic>> operatorTask(String id) async =>

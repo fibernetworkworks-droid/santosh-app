@@ -235,6 +235,9 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _campaigns = {};
   final Map<String, FeedItem> _emails = {};
   final Map<String, FeedItem> _bazar = {};   // confirm cards by approval id
+  final Map<String, FeedItem> _studio = {};       // v0.68 video studio: one live card per project
+  final Map<String, FeedItem> _studioAsks = {};   // its price cards
+  int studioTick = 0;
   final Map<String, FeedItem> _opTasks = {};   // v0.67 Computer Operator: one live card per job
   final Map<String, FeedItem> _opAsks = {};    // its questions for the owner, updated in place
   int operatorTick = 0;
@@ -888,6 +891,29 @@ class Santosh extends ChangeNotifier {
           if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Aapki haan chahiye', '${p['what'] ?? ''} · ${p['who'] ?? ''}');
         }
         employeeTick++;
+        break;
+      case 'studio':
+        final sp = '${p['project']}';
+        final sv = _studio[sp];
+        if (sv != null) {
+          sv.data = Map<String, dynamic>.from(p);
+        } else {
+          _studio[sp] = FeedItem('studio', Map<String, dynamic>.from(p));
+          feed.add(_studio[sp]!);
+        }
+        studioTick++;
+        break;
+      case 'studio_approval':
+        final sa = '${p['id']}';
+        final sq = _studioAsks[sa];
+        if (sq != null) {
+          sq.data = {...sq.data, ...p};
+        } else if (p['status'] == 'pending') {
+          _studioAsks[sa] = FeedItem('studio_approval', Map<String, dynamic>.from(p));
+          feed.add(_studioAsks[sa]!);
+          if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Video ka kharcha ₹${p['inr'] ?? ''}', 'Haan dabaiye tabhi banega');
+        }
+        studioTick++;
         break;
       case 'operator_task':
         final oid = '${p['id']}';

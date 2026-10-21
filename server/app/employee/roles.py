@@ -29,7 +29,7 @@ DUTIES: dict[str, dict] = {
                                           "check_template_status", "create_campaign", "confirm_send", "get_campaign_status",
                                           "control_campaign"}},
     "video": {"label": "Video editing", "say": "reels, shorts, status aur YouTube ke liye video edit (captions, logo, music)",
-              "prefix": (), "tools": {"video_edit"}},
+              "prefix": (), "tools": {"video_edit", "video_studio"}},
     "operator": {"label": "Computer operator", "say": "websites par form, application, download, status check (OTP / submit / payment aap karti hain)",
                  "prefix": (), "tools": {"computer_operator"}},
     "research": {"label": "Jaankari dhoondhna", "say": "web, maps, mausam, public APIs",
