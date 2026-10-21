@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.84.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.85.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -131,7 +131,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -2954,6 +2954,169 @@ def chai_feedback(body: ChaiFeedbackIn, tenant: str = Depends(current_tenant)):
     from .chai import service as chai
     return _galla(chai.feedback, tenant, body.for_date, body.milk_left_l, body.ran_out_at, body.sugar_left_kg,
                   body.tea_left_kg, body.cash, body.bought_milk_l)
+# ---------------------------------------------------------------- v0.85 Daftar Sahayak (office manager)
+def _office(fn, *a, **k):
+    from .office import service as office
+    try:
+        return fn(*a, **k)
+    except office.OfficeError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/office", dependencies=[Depends(require_key)])
+def office_all(tenant: str = Depends(current_tenant)):
+    """Everything for the Daftar screen in one call."""
+    from .office import service as office
+    return {"today": office.day(tenant), "settings": office.settings(tenant), "items": office.items(tenant),
+            "tickets": office.tickets(tenant, "all")[:60], "renewals": office.renewals(tenant, status="all"),
+            "deadlines": office.deadlines(tenant, "all")[:80], "petty": office.petty(tenant), "bills": office.bills(tenant, False)[:60],
+            "spends": office.spends(tenant, "all")[:40], "vendors": office.vendors(tenant), "starters": office.starters(tenant)}
+
+
+@app.get("/api/office/today", dependencies=[Depends(require_key)])
+def office_today(tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return office.day(tenant)
+
+
+@app.put("/api/office/settings", dependencies=[Depends(require_key)])
+def office_settings_put(body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    keys = ("enabled", "office_name", "morning_time", "note_day", "note_time", "windows", "lead_days", "safety_days",
+            "month_budget", "team", "rules")
+    return _office(office.save_settings, tenant, **{k: body[k] for k in keys if k in body})
+
+
+@app.post("/api/office/items", dependencies=[Depends(require_key)])
+def office_item(body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.item_upsert, tenant, str(body.get("name") or ""), body.get("qty"), str(body.get("unit") or ""),
+                   body.get("min_qty"), body.get("lead_days"), str(body.get("vendor") or ""), body.get("price"),
+                   str(body.get("location") or ""), "owner")
+
+
+@app.post("/api/office/items/{item_id}/use", dependencies=[Depends(require_key)])
+def office_item_use(item_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.use, tenant, item_id, body.get("qty"), str(body.get("note") or ""), "owner")
+
+
+@app.post("/api/office/items/{item_id}/restock", dependencies=[Depends(require_key)])
+def office_item_restock(item_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.restock, tenant, item_id, body.get("qty"), body.get("price"), str(body.get("vendor") or ""), "owner")
+
+
+@app.post("/api/office/reorder", dependencies=[Depends(require_key)])
+def office_reorder(body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.reorder, tenant, body.get("names") or None, str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/office/tickets", dependencies=[Depends(require_key)])
+def office_ticket_new(body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.ticket_new, tenant, str(body.get("title") or ""), str(body.get("asset") or ""),
+                   str(body.get("category") or ""), str(body.get("priority") or ""), str(body.get("vendor") or ""),
+                   str(body.get("assigned_to") or ""), body.get("photos") or [], "owner", str(body.get("conversation_id") or ""))
+
+
+@app.patch("/api/office/tickets/{ticket_id}", dependencies=[Depends(require_key)])
+def office_ticket_patch(ticket_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.ticket_update, tenant, ticket_id, str(body.get("status") or ""), str(body.get("note") or ""),
+                   str(body.get("vendor") or ""), str(body.get("assigned_to") or ""), body.get("cost"), "owner",
+                   str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/office/renewals", dependencies=[Depends(require_key)])
+def office_renewal_new(body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.renewal_add, tenant, str(body.get("name") or ""), str(body.get("due_on") or ""),
+                   str(body.get("kind") or ""), body.get("every_months"), body.get("amount"), str(body.get("vendor") or ""),
+                   str(body.get("notes") or ""), body.get("files") or [], str(body.get("notice_by") or ""))
+
+
+@app.post("/api/office/renewals/{renewal_id}/done", dependencies=[Depends(require_key)])
+def office_renewal_done(renewal_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.renewal_done, tenant, renewal_id, body.get("paid"), str(body.get("next_due") or ""),
+                   str(body.get("note") or ""))
+
+
+@app.post("/api/office/renewals/{renewal_id}/pay", dependencies=[Depends(require_key)])
+def office_renewal_pay(renewal_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.renewal_pay, tenant, renewal_id, body.get("amount"), str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/office/deadlines", dependencies=[Depends(require_key)])
+def office_deadline_new(body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.deadline_add, tenant, str(body.get("title") or ""), str(body.get("due_on") or ""),
+                   str(body.get("owner") or ""), str(body.get("note") or ""))
+
+
+@app.post("/api/office/deadlines/{deadline_id}/done", dependencies=[Depends(require_key)])
+def office_deadline_done(deadline_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.deadline_done, tenant, deadline_id, bool(body.get("dropped")))
+
+
+@app.post("/api/office/nudge", dependencies=[Depends(require_key)])
+def office_nudge(body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.nudge, tenant, str(body.get("deadline") or ""), str(body.get("owner") or ""),
+                   str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/office/petty", dependencies=[Depends(require_key)])
+def office_petty(body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.petty_add, tenant, body.get("amount"), str(body.get("what") or ""), str(body.get("kind") or "out"),
+                   str(body.get("by") or ""), str(body.get("on") or ""), str(body.get("bill") or ""))
+
+
+@app.post("/api/office/bills", dependencies=[Depends(require_key)])
+def office_bill(body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.bill_add, tenant, str(body.get("vendor") or ""), body.get("amount"), str(body.get("number") or ""),
+                   str(body.get("bill_date") or ""), str(body.get("due_on") or ""), body.get("gst"), str(body.get("what") or ""),
+                   str(body.get("file_id") or ""))
+
+
+@app.post("/api/office/bills/{bill_id}/paid", dependencies=[Depends(require_key)])
+def office_bill_paid(bill_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.bill_paid, tenant, bill_id, str(body.get("on") or ""))
+
+
+@app.post("/api/office/vendors", dependencies=[Depends(require_key)])
+def office_vendor(body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.vendor_upsert, tenant, str(body.get("name") or ""), str(body.get("phone") or ""),
+                   str(body.get("email") or ""), str(body.get("category") or ""), str(body.get("gstin") or ""),
+                   str(body.get("notes") or ""), str(body.get("id") or ""), body.get("udyam"))
+
+
+@app.post("/api/office/spends", dependencies=[Depends(require_key)])
+def office_spend_new(body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.spend_request, tenant, str(body.get("title") or ""), body.get("amount"), str(body.get("kind") or "other"),
+                   str(body.get("vendor") or ""), str(body.get("why") or ""), str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/office/spends/{spend_id}", dependencies=[Depends(require_key)])
+def office_spend_decide(spend_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her Haan / Mana on a spend card (only from her tap). Approve never pays: she pays in her own app."""
+    from .office import service as office
+    return _office(office.decide_spend, tenant, spend_id, bool(body.get("approve")), body.get("amount"), str(body.get("note") or ""))
+
+
+@app.post("/api/office/note", dependencies=[Depends(require_key)])
+def office_note(body: dict, tenant: str = Depends(current_tenant)):
+    from .office import service as office
+    return _office(office.weekly_note, tenant, bool(body.get("file", True)), str(body.get("conversation_id") or ""))
 
 
 @app.get("/api/agent/tasks", dependencies=[Depends(require_key)])

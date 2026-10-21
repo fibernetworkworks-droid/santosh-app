@@ -9,6 +9,7 @@ import '../state.dart';
 import 'employee_inbox.dart';
 import 'chai_screen.dart';
 import 'darzi_screen.dart';
+import 'office_screen.dart';
 import 'employee_screen.dart';
 import 'video_editor.dart';
 import 'operator_screen.dart';
@@ -544,6 +545,14 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return DarziReadyCard(key: ValueKey('dr${it.data['order_id']}'), v: it.data, app: app);
     case 'darzi_day':
       return DarziDayCard(v: it.data, app: app);
+    case 'office_spend':
+      return OfficeSpendCard(key: ValueKey('os${it.data['id']}'), v: it.data, app: app);
+    case 'office_nudge':
+      return OfficeNudgeCard(key: ValueKey('on${it.data['id']}'), v: it.data);
+    case 'office_day':
+      return OfficeDayCard(v: it.data, app: app);
+    case 'office_note':
+      return OfficeNoteCard(v: it.data, app: app);
     case 'employee_report':
       return EmployeeReportCard(v: it.data, app: app);
     case 'biz_handover':

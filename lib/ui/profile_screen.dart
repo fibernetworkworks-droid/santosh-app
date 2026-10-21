@@ -33,6 +33,7 @@ import 'shop_screen.dart';
 import 'id_locker_screen.dart';
 import 'chai_screen.dart';
 import 'darzi_screen.dart';
+import 'office_screen.dart';
 import 'employee_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -196,6 +197,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Silai ke order, har graahak ka naap, trial / delivery, daam: ${app.aName} sambhalega'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DarziScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.business_center_rounded, color: C.accent),
+              title: Text('${app.aName} · Office manager', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Saamaan, repair, renewal, team ki deadline, petty cash, hafte ka note; kharcha aapki Haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OfficeScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

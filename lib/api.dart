@@ -602,6 +602,35 @@ class Api {
           body: {'approve': approve, 'conversation_id': conversationId}, timeout: const Duration(seconds: 40)) as Map);
   Future<Map<String, dynamic>> chaiFeedback(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/chai/feedback', body: body) as Map);
+  // ---- v0.85 Daftar Sahayak (office manager) ----
+  Future<Map<String, dynamic>> officeAll() async => Map<String, dynamic>.from(await _send('GET', '/api/office') as Map);
+  Future<Map<String, dynamic>> officeSettings(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('PUT', '/api/office/settings', body: body) as Map);
+  Future<Map<String, dynamic>> officeItem(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('POST', '/api/office/items', body: body) as Map);
+  Future<Map<String, dynamic>> officeUse(String id, double qty) async => Map<String, dynamic>.from(await _send('POST', '/api/office/items/$id/use', body: {'qty': qty}) as Map);
+  Future<Map<String, dynamic>> officeRestock(String id, double qty, {double? price}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/office/items/$id/restock', body: {'qty': qty, if (price != null) 'price': price}) as Map);
+  Future<Map<String, dynamic>> officeReorder({String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/office/reorder', body: {'conversation_id': conversationId}) as Map);
+  Future<Map<String, dynamic>> officeTicketNew(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('POST', '/api/office/tickets', body: body) as Map);
+  Future<Map<String, dynamic>> officeTicket(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PATCH', '/api/office/tickets/$id', body: body) as Map);
+  Future<Map<String, dynamic>> officeRenewal(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('POST', '/api/office/renewals', body: body) as Map);
+  Future<Map<String, dynamic>> officeRenewalDone(String id, {double? paid}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/office/renewals/$id/done', body: {if (paid != null) 'paid': paid}) as Map);
+  Future<Map<String, dynamic>> officeRenewalPay(String id, {String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/office/renewals/$id/pay', body: {'conversation_id': conversationId}) as Map);
+  Future<Map<String, dynamic>> officeDeadline(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('POST', '/api/office/deadlines', body: body) as Map);
+  Future<Map<String, dynamic>> officeDeadlineDone(String id, {bool dropped = false}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/office/deadlines/$id/done', body: {'dropped': dropped}) as Map);
+  Future<Map<String, dynamic>> officeNudge({String deadline = '', String owner = '', String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/office/nudge', body: {'deadline': deadline, 'owner': owner, 'conversation_id': conversationId}) as Map);
+  Future<Map<String, dynamic>> officePetty(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('POST', '/api/office/petty', body: body) as Map);
+  Future<Map<String, dynamic>> officeBill(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('POST', '/api/office/bills', body: body) as Map);
+  Future<Map<String, dynamic>> officeBillPaid(String id) async => Map<String, dynamic>.from(await _send('POST', '/api/office/bills/$id/paid', body: {}) as Map);
+  Future<Map<String, dynamic>> officeDecideSpend(String id, bool approve, {double? amount}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/office/spends/$id', body: {'approve': approve, if (amount != null) 'amount': amount}) as Map);
+  Future<Map<String, dynamic>> officeNote({bool file = false, String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/office/note', body: {'file': file, 'conversation_id': conversationId}) as Map);
   // v0.78 Pakka kaam: task log + lessons (failure -> what worked)
   Future<Map<String, dynamic>> agentTasks({int limit = 30}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/agent/tasks?limit=$limit') as Map);

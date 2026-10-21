@@ -267,6 +267,8 @@ class Santosh extends ChangeNotifier {
   int darziTick = 0;                          // bumps on any darzi event (the Darzi screen refreshes)
   final Map<String, FeedItem> _chaiPlans = {}; // v0.84 Chai: one plan card per day, its order cards updated in place
   int chaiTick = 0;                           // bumps on galla / chai events (the Chai screen refreshes)
+  final Map<String, FeedItem> _officeCards = {}; // v0.85 Daftar: spend cards by id, nudge drafts by id, updated in place
+  int officeTick = 0;                          // bumps on any office event (the Office screen refreshes)
   List<Map<String, dynamic>> get pendingApprovals =>
       [for (final it in _bazar.values) if ((it.data['status'] ?? 'pending') == 'pending') it.data];
   int bazarLinkedTick = 0;                    // bumps when an app account got linked (Apps screen refreshes)
@@ -1026,6 +1028,29 @@ class Santosh extends ChangeNotifier {
         break;
       case 'darzi_order':
         darziTick++;
+        break;
+      case 'office_spend':
+      case 'office_nudge':
+        final officeKey = '${ev.kind}${p['id']}';
+        final oc = _officeCards[officeKey];
+        if (oc != null) {
+          oc.data = {...oc.data, ...p};
+        } else {
+          _officeCards[officeKey] = FeedItem(ev.kind, Map<String, dynamic>.from(p));
+          feed.add(_officeCards[officeKey]!);
+        }
+        if (ev.kind == 'office_spend' && p['status'] == 'pending' && inBackground && !_replaying && !pushOn) {
+          Device.instance.showNow('$aName: kharcha, aapki haan?', '${p['number'] ?? ''} ${p['title'] ?? ''}: ${p['amount'] ?? ''}');
+        }
+        officeTick++;
+        break;
+      case 'office_day':
+      case 'office_note':
+        feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
+        officeTick++;
+        break;
+      case 'office':
+        officeTick++;
         break;
       case 'employee_report':
         feed.add(FeedItem('employee_report', Map<String, dynamic>.from(p)));

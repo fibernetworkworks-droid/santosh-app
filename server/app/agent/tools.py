@@ -480,3 +480,9 @@ from .chai_tools import CHAI_HANDLERS, CHAI_LABELS, CHAI_TOOLS  # noqa: E402
 TOOLS.extend(CHAI_TOOLS)
 TOOL_LABELS.update(CHAI_LABELS)
 HANDLERS.update(CHAI_HANDLERS)
+# v0.85 Daftar Sahayak (office manager coworker)
+from .office_tools import OFFICE_HANDLERS, OFFICE_LABELS, OFFICE_TOOLS  # noqa: E402
+
+TOOLS.extend(OFFICE_TOOLS)
+TOOL_LABELS.update(OFFICE_LABELS)
+HANDLERS.update(OFFICE_HANDLERS)

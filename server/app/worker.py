@@ -436,6 +436,14 @@ async def employee_jobs() -> None:
             await chai.evening(tenant)
     except Exception:
         log.exception("chai evening failed")
+    try:                                   # v0.85 Daftar: morning office list + the weekly office note
+        from .office import service as office
+        for tenant in office.due_mornings():
+            office.send_morning(tenant)
+        for tenant in office.due_notes():
+            office.send_note(tenant)
+    except Exception:
+        log.exception("office morning / note failed")
     if not _emp_tasks:                    # one batch at a time; the next tick picks up the rest
         t = asyncio.create_task(emp_net.run_pending())
         _emp_tasks.add(t)

@@ -36,6 +36,8 @@ DUTIES: dict[str, dict] = {
                   "prefix": (), "tools": {"darzi", "darzi_dekho", "biz_order_status"}},
     "stall": {"label": "Galla aur stock", "say": "UPI se roz ki bikri, sabse achha ghanta, kal ka doodh-chini, stock order (aapki haan se)",
               "prefix": (), "tools": {"chai", "chai_dekho"}},
+    "office_admin": {"label": "Office sambhalna", "say": "saamaan, repair, AMC / renewal, team ki deadline, petty cash, hafte ka note (kharcha aapki haan se)",
+                     "prefix": (), "tools": {"office", "office_dekho"}},
     "research": {"label": "Jaankari dhoondhna", "say": "web, maps, mausam, public APIs",
                  "prefix": ("maps_", "api_"), "tools": {"google_search", "open_website", "browse_web", "browse_result", "get_weather",
                                                        "memory_search"}},
@@ -71,6 +73,9 @@ ROLES: dict[str, dict] = {
                "duties": ["tailoring", "customers", "appointments", "reminders", "collections", "records"]},
     "chai_stall": {"label": "Chai stall sahayak", "say": "UPI alerts se roz ki bikri, sabse achha ghanta, kal ka doodh / chini, stock order",
                    "duties": ["stall", "reminders", "collections", "records", "research"]},
+    "office_manager": {"label": "Office manager (Daftar sahayak)",
+                       "say": "Saamaan aur reorder, repair ticket, AMC / licence / rent renewal, team ki deadline, petty cash, hafte ka office note",
+                       "duties": ["office_admin", "reminders", "email", "records", "appointments", "research"]},
     "custom": {"label": "Apna kaam", "say": "Aap khud chuniye Hoola kaun se kaam karega", "duties": []},
 }
 
@@ -109,6 +114,11 @@ PRESETS: dict[str, dict] = {
              "rules": ["Stock ka order sirf owner ki haan se.", "Udhaar sirf owner ki haan se."]},
     "office": {"label": "Office / company", "role": "office", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
                "about_hint": "Company kya karti hai, kaun kis kaam ka", "rules": []},
+    "office_manager": {"label": "Office manager", "role": "office_manager", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
+                       "about_hint": "Office ka pata, kitne log, kaun kis kaam ka, vendors (AC, printer, net, safai)",
+                       "rules": ["Koi bhi kharcha (order, repair, renewal) sirf owner ki haan se.",
+                                 "Team ko yaad-dihani ka message draft banana; owner khud bhejengi.",
+                                 "Licence / NOC ki tareekh kagaz se lena, andaza nahi."]},
 }
 
 LEVELS = ("seekh", "saathi", "bharosa")
@@ -134,6 +144,7 @@ READ = {
     "tv_channel", "employee", "india_info",
     "biz_free_slots", "biz_my_appointments", "biz_ticket_status", "biz_my_dues", "biz_handover", "biz_note",
     "darzi_dekho", "biz_order_status", "chai_dekho",
+    "darzi_dekho", "biz_order_status", "office_dekho",
 }
 BIG = {
     "email_bulk", "email_delete", "email_forward", "drive_trash", "drive_share", "sheet_share", "form_share", "slides_share",
