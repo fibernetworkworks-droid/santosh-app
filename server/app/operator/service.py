@@ -336,17 +336,48 @@ async def captcha_refresh(tenant: str, request_id: str) -> dict[str, Any]:
         raise OperatorJobError(str(e)) from None
 
 
+async def captcha_solve(tenant: str, request_id: str) -> dict[str, Any]:
+    """v0.78 Hoola reads the CAPTCHA (OCR) and returns the solved text."""
+    have = _ops.get(tenant)
+    if not have:
+        raise OperatorJobError("Browser band hai.")
+    try:
+        solved = await have[1].captcha_solve(request_id)
+        return {"ok": True, "solved": solved}
+    except OperatorError as e:
+        raise OperatorJobError(str(e)) from None
+
+
+async def captcha_fill(tenant: str, request_id: str, value: str) -> dict[str, Any]:
+    """v0.78 After the owner confirms / corrects the solved CAPTCHA, type it into the box."""
+    have = _ops.get(tenant)
+    if not have:
+        raise OperatorJobError("Browser band hai.")
+    try:
+        return await have[1].captcha_fill(request_id, value)
+    except OperatorError as e:
+        raise OperatorJobError(str(e)) from None
+
+
 _OTP_SAID = re.compile(r"^\D{0,40}?(\d(?:[\s-]?\d){3,7})\D{0,25}$")
 _CAPTCHA_SAID = re.compile(r"^(?:captcha|कैप्चा|code|akshar)?\s*(?:hai|is|:|-)?\s*([A-Za-z0-9@#$%&*+=]{3,10})\s*(?:hai)?\s*$", re.I)
+
+
+def _pending_otp_or_captcha(tenant: str):
+    """The newest OTP or CAPTCHA request still waiting."""
+    have = _ops.get(tenant)
+    if not have:
+        return None
+    # check OTP (TYPED_KINDS) first, then captcha (no longer in TYPED_KINDS but still answerable from chat)
+    op = have[1]
+    waiting = [a for a in op.approvals.values() if a.status == "pending" and a.kind in ("otp", "captcha")]
+    return max(waiting, key=lambda a: a.created) if waiting else None
 
 
 def chat_answer_target(tenant: str, text: str) -> tuple[Any, str] | None:
     """v0.76 like at a Seva Kendra, she may just SAY the OTP / CAPTCHA (chat or call) while a job waits for it.
     -> (request, the value) or None. The value then goes only into the page box, never into chat history or memory."""
-    have = _ops.get(tenant)
-    if not have:
-        return None
-    a = have[1].pending_typed()
+    a = _pending_otp_or_captcha(tenant)
     t = (text or "").strip()
     if not a or not t or len(t) > 60:
         return None
@@ -363,7 +394,11 @@ async def answer_from_chat(tenant: str, text: str) -> dict[str, Any] | None:
         return None
     a, value = hit
     try:
-        await resolve(tenant, a.id, "approved", value)
+        if a.kind == "captcha":
+            # v0.78 captcha goes through captcha_fill (not resolve_human)
+            await captcha_fill(tenant, a.id, value)
+        else:
+            await resolve(tenant, a.id, "approved", value)
     except OperatorJobError as e:
         return {"ok": False, "kind": a.kind, "say": f"Page mein nahi bhar paya: {e}"}
     return {"ok": True, "kind": a.kind, "masked": "•" * len(value),
@@ -777,10 +812,13 @@ async def _wait_owner(job: Job, s, req: Approval) -> dict[str, Any]:
         d["next"] = f"Approved: click(ref='{got.ref}', approval_id='{got.id}') now - only that button."
     elif got.kind in ("payment", "takeover"):
         d["next"] = "She says she did it herself. Read the page to see the result."
-    elif got.kind in ("otp", "captcha", "secret"):
+    elif got.kind in ("otp", "secret"):
         d["next"] = ("Done: the system typed her answer into the box (you can't see it). Now press the page's next / "
                      "verify / login / submit-OTP button yourself. If the site says it was wrong or expired, use the "
                      "page's resend / refresh and ask_owner again.")
+    elif got.kind == "captcha":
+        d["next"] = ("Done: CAPTCHA answer is now in the box. Now press the page's next / verify / submit button "
+                     "yourself. If the site says it was wrong, refresh the CAPTCHA and ask_owner(kind='captcha') again.")
     if got.status != "pending" and "main" in op.sessions:
         try:
             d["page"] = fmt_snapshot(await op.snapshot(op.sessions["main"]))

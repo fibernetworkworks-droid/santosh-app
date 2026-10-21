@@ -36,3 +36,4 @@ holidays>=0.60            # v0.59 India state-wise holidays (MIT)
 invoice2data>=0.4         # v0.59 bill templates (MIT); text input only
 playwright>=1.47        # v0.63 Hoola Motion: renders animated reels (also run deploy/setup_motion.sh)
 playwright>=1.48   # v0.67 Computer Operator: python -m playwright install --with-deps chromium (deploy/setup_operator.sh)
+pytesseract>=0.3   # v0.78 CAPTCHA OCR (needs tesseract-ocr system package: apt install tesseract-ocr)

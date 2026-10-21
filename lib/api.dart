@@ -157,6 +157,13 @@ class Api {
   }
   Future<bool> operatorCaptchaRefresh(String requestId) async =>
       ((await _send('POST', '/api/operator/requests/$requestId/captcha/refresh') as Map)['ok'] as bool?) ?? false;
+  /// v0.78: ask Hoola to OCR-solve the CAPTCHA (returns the solved text).
+  Future<String> operatorCaptchaSolve(String requestId) async =>
+      (await _send('GET', '/api/operator/requests/$requestId/captcha/solve') as Map)['solved'] as String? ?? '';
+  /// v0.78: fill the solved/corrected CAPTCHA into the page box.
+  Future<Map<String, dynamic>> operatorCaptchaFill(String requestId, String value) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/operator/requests/$requestId/captcha/fill',
+          body: {'value': value}) as Map);
   Future<List<int>?> operatorFrame() async {
     final req = http.Request('GET', _u('/api/operator/frame'))..headers.addAll(_headers);
     final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 12)));

@@ -8,15 +8,16 @@ import 'attach.dart';
 import 'glass.dart';
 
 /// v0.67 Hoola Computer Operator: Hoola works on websites in its own browser (forms, downloads, status checks,
-/// applications) and asks the owner on her phone for the steps only she may do. Passwords, OTP, CAPTCHA, Aadhaar /
-/// PAN / card / bank numbers: she types them here and they go straight into the page (Hoola never sees them, nothing
-/// is stored). Submit / send / delete: her tap. Payments: she presses the button herself in the live view.
+/// applications) and asks the owner on her phone for the steps only she may do. Passwords, OTP, Aadhaar / PAN / card /
+/// bank numbers: she types them here and they go straight into the page (Hoola never sees them, nothing is stored).
+/// v0.78: CAPTCHA is read by Hoola (OCR) and shown for confirmation (she taps "Haan" or corrects it).
+/// Submit / send / delete: her tap. Payments: she presses the button herself in the live view.
 
 const _kindTitle = {
   'approve': 'Aapki haan chahiye',
   'payment': 'Payment aap khud kijiye',
   'otp': 'OTP bhariye',
-  'captcha': 'CAPTCHA bhariye',
+  'captcha': 'CAPTCHA check kijiye',
   'secret': 'Yeh aap khud bhariye',
   'question': 'Ek sawaal',
   'choice': 'Aap chuniye',
@@ -192,13 +193,28 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
     if (mounted) setState(() => _busy = false);
   }
 
+  /// v0.78: fill the solved CAPTCHA into the page box via the dedicated endpoint.
+  Future<void> _captchaFill(String value) async {
+    if (widget.app.api == null || value.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      await widget.app.api!.operatorCaptchaFill('${widget.v['id']}', value);
+      widget.v['status'] = 'approved';
+      _box.clear();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final v = widget.v;
     final kind = '${v['kind'] ?? 'question'}';
     final status = '${v['status'] ?? 'pending'}';
     final pending = status == 'pending';
-    final typed = const {'otp', 'captcha', 'secret'}.contains(kind);
+    final typed = const {'otp', 'secret'}.contains(kind);  // v0.78: captcha no longer typed by owner
+    final suggestedAnswer = '${v['suggested_answer'] ?? ''}';
     final options = List<String>.from(((v['options'] as List?) ?? const []).map((e) => '$e'));
     return Glass(
       margin: widget.inLive ? EdgeInsets.zero : const EdgeInsets.symmetric(vertical: 6),
@@ -225,10 +241,54 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
         if (pending && kind == 'captcha') ...[
           const SizedBox(height: 8),
           _captchaPic(),
-          Row(children: [
-            const Expanded(
-                child: Text('Jo akshar dikh rahe hain woh neeche likhiye (ya chat / call mein bol dijiye). Hoola page mein bharke aage badhega.',
-                    style: TextStyle(color: C.faint, fontSize: 11.5))),
+          if (suggestedAnswer.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
+              child: Row(children: [
+                const Icon(Icons.spellcheck_rounded, size: 20, color: C.accent),
+                const SizedBox(width: 10),
+                Expanded(child: Text(suggestedAnswer, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 2))),
+              ]),
+            ),
+            const SizedBox(height: 6),
+            Text('Hoola ne padha: "$suggestedAnswer". Sahi hai toh "Haan" dabaiye, galat ho toh neeche sahi jawab likhiye.',
+                style: const TextStyle(color: C.faint, fontSize: 11.5)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _box,
+              enableSuggestions: false,
+              autocorrect: false,
+              keyboardType: TextInputType.visiblePassword,
+              decoration: InputDecoration(
+                hintText: 'Sahi CAPTCHA (agar galat padha ho)',
+                isDense: true,
+                filled: true,
+                fillColor: C.panel,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 6),
+            const Text('Hoola padh nahi paaya. Neeche CAPTCHA likhiye ya chat / call mein bol dijiye.',
+                style: TextStyle(color: C.faint, fontSize: 11.5)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _box,
+              enableSuggestions: false,
+              autocorrect: false,
+              keyboardType: TextInputType.visiblePassword,
+              decoration: InputDecoration(
+                hintText: 'CAPTCHA likhiye',
+                isDense: true,
+                filled: true,
+                fillColor: C.panel,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
             TextButton.icon(
                 onPressed: _busy ? null : _newCaptcha, icon: const Icon(Icons.refresh_rounded, size: 18), label: const Text('Naya')),
           ]),
@@ -237,19 +297,17 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
           const SizedBox(height: 8),
           TextField(
             controller: _box,
-            obscureText: kind != 'captcha' && !_show,
+            obscureText: !_show,
             enableSuggestions: false,
             autocorrect: false,
             keyboardType: kind == 'otp' ? TextInputType.number : TextInputType.visiblePassword,
             decoration: InputDecoration(
-              hintText: kind == 'otp' ? 'OTP' : kind == 'captcha' ? 'Akshar' : 'Yahan likhiye',
+              hintText: kind == 'otp' ? 'OTP' : 'Yahan likhiye',
               isDense: true,
               filled: true,
               fillColor: C.panel,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              suffixIcon: kind == 'captcha'
-                  ? null
-                  : IconButton(icon: Icon(_show ? Icons.visibility_off : Icons.visibility, size: 18),
+              suffixIcon: IconButton(icon: Icon(_show ? Icons.visibility_off : Icons.visibility, size: 18),
                       onPressed: () => setState(() => _show = !_show)),
             ),
           ),
@@ -304,11 +362,23 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
                     'approve' => 'Haan, karo',
                     'payment' || 'takeover' => 'Maine kar diya',
                     'question' => 'Bhejo',
+                    'captcha' => suggestedAnswer.isNotEmpty ? 'Haan, sahi hai' : 'Page mein bharo',
                     _ => 'Page mein bharo',
                   },
                   onTap: _busy
                       ? null
                       : () {
+                          if (kind == 'captcha') {
+                            // v0.78: confirm suggested or use corrected value
+                            final corrected = _box.text.trim();
+                            final value = corrected.isNotEmpty ? corrected : suggestedAnswer;
+                            if (value.isEmpty) {
+                              _snack(context, 'CAPTCHA likhiye');
+                              return;
+                            }
+                            _captchaFill(value);
+                            return;
+                          }
                           final t = _box.text.trim();
                           if ((typed || kind == 'question') && t.isEmpty) {
                             _snack(context, 'Pehle box mein likhiye');
@@ -652,8 +722,8 @@ class _OperatorScreenState extends State<OperatorScreen> {
             child: Text(
               'Cyber cafe wale bhaiya ki tarah: online form, sarkari portal, bill / certificate / statement download, '
               'status check, application. ${app.aName} apne browser mein kaam karta hai (aapke login wahin save rehte hain), '
-              'official help padhta hai aur har poora kaam seekh leta hai. Password, OTP, CAPTCHA, Aadhaar / PAN / card '
-              'aap khud bharti hain; submit se pehle aapki haan; payment aap khud dabati hain.',
+              'official help padhta hai aur har poora kaam seekh leta hai. CAPTCHA Hoola khud padhta hai aur aapko dikhaata hai — '
+              'aap sirf "Haan" kaho. Password aur OTP aap deti hain; submit se pehle aapki haan; payment aap khud dabati hain.',
               style: const TextStyle(fontSize: 13, height: 1.4, color: C.muted),
             ),
           ),

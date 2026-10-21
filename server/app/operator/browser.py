@@ -13,9 +13,10 @@ Changed for Hoola (enforced here, in code; the model cannot talk its way past it
   * Hoola never presses pay / checkout / place order. The owner presses it herself in the live view.
   * Submit / send / apply / confirm / delete / sign ... need the owner's tap first (one approval = that one click).
   * Enter only in a search box (Enter submits forms; click the button instead, which is checked).
+  * CAPTCHAs: Hoola reads the CAPTCHA itself (OCR) and shows its answer to the owner for confirmation before typing
+    it in. She taps "Haan" or corrects it. Hoola never gets around a bot check, queue, waiting room or booking limit.
   * Only public internet: every request goes through NetGuard (no localhost, VPS services, cloud metadata, WhatsApp
-    Web), no file:// links, uploads only of the owner's own Hoola files, no automation-hiding flags, never solves or
-    gets around a CAPTCHA, bot check, queue or booking limit.
+    Web), no file:// links, uploads only of the owner's own Hoola files, no automation-hiding flags.
 """
 from __future__ import annotations
 
@@ -39,7 +40,8 @@ OTP_STEP = re.compile(r"\b(send|get|resend|request|generate)\s+(the\s+)?otp\b|^\
 STEP_ON = re.compile(r"^\s*(log ?in|sign ?in|login to continue|next|next step|continue|proceed|save (and|&) (next|continue)|"
                      r"search|go|back|previous|check status|view status|show|get details|आगे|लॉगिन)\s*[>»→]*\s*$", re.I)
 HUMAN_KINDS = ("approve", "payment", "otp", "captcha", "secret", "question", "choice", "takeover")
-TYPED_KINDS = ("otp", "captcha", "secret")        # the owner's answer goes straight into the page
+TYPED_KINDS = ("otp", "secret")                    # the owner's answer goes straight into the page
+# v0.78 captcha is no longer a TYPED_KIND: Hoola solves it (OCR) and the owner confirms
 # v0.76 an OTP on a payment gateway / bank page moves money: that one stays with her (live view), like the pay button
 PAY_PAGE = re.compile(r"razorpay|payu|billdesk|ccavenue|cashfree|juspay|instamojo|easebuzz|paytm|phonepe|"
                       r"sbiepay|paymentgateway|payment.?gateway|netbank|net.?banking|/acs|3ds|3-d.?secure|securepay|"
@@ -94,13 +96,16 @@ class Approval:
     url: str = ""
     status: str = "pending"          # pending | approved | rejected | done | expired
     answer: str = ""                 # only for question / choice (never for otp / captcha / secret)
+    suggested_answer: str = ""       # v0.78 CAPTCHA: Hoola's OCR result shown to the owner for confirmation
     created: float = field(default_factory=time.time)
     event: asyncio.Event = field(default_factory=asyncio.Event)
 
     def public(self) -> dict:
-        d = {k: v for k, v in self.__dict__.items() if k not in ("event", "answer")}
+        d = {k: v for k, v in self.__dict__.items() if k not in ("event", "answer", "suggested_answer")}
         if self.kind in ("question", "choice") and self.answer:
             d["answer"] = self.answer
+        if self.kind == "captcha" and self.suggested_answer:
+            d["suggested_answer"] = self.suggested_answer
         d["typed"] = self.kind in TYPED_KINDS
         return d
 
@@ -597,9 +602,7 @@ class Operator:
             s.accept_next_dialog = approved
             await loc.click(timeout=10000)
         elif action in ("fill", "type"):
-            if it.get("captcha"):
-                return {"ok": False, "blocked": "captcha",
-                        "message": "CAPTCHA answers come only from the owner: ask_owner(kind='captcha', ref=...)."}
+            # v0.78 captcha boxes are now filled by Hoola (OCR solve + owner confirmation)
             if value is None:
                 raise OperatorError("fill needs a value")
             from .. import idvault
@@ -795,7 +798,7 @@ class Operator:
         if kind not in HUMAN_KINDS:
             raise OperatorError(f"kind must be one of {HUMAN_KINDS}")
         it = self._item(s, ref) if ref else None
-        if kind in TYPED_KINDS and not it:
+        if (kind in TYPED_KINDS or kind == "captcha") and not it:
             raise OperatorError(f"kind='{kind}' needs the ref of the box she should type into.")
         if kind == "otp":
             try:
@@ -809,6 +812,14 @@ class Operator:
         a = Approval(id="h" + secrets.token_hex(5), session=s.name, kind=kind, reason=(reason or "")[:500], ref=ref,
                      target_name=(it or {}).get("name", "") if kind in ("approve", "payment") else "",
                      options=[str(o)[:80] for o in (options or [])][:8], url=s.page.url)
+        # v0.78 auto-solve CAPTCHA: Hoola reads it, shows the answer to the owner for confirmation
+        if kind == "captcha":
+            try:
+                solved = await self.captcha_solve(a.id)
+                a.suggested_answer = solved
+                a.reason = f"CAPTCHA padha: \"{solved}\" — sahi hai? (ya sahi jawab likhiye)"
+            except OperatorError:
+                a.suggested_answer = ""      # OCR failed: owner reads it herself (old flow)
         self.approvals[a.id] = a
         s.trace.append({"action": "human", "kind": kind, "reason": a.reason,
                         "target": self.descriptor(it) if it else None, "url": s.page.url})
@@ -822,8 +833,9 @@ class Operator:
         return a
 
     async def resolve_human(self, approval_id: str, status: str, answer: str = "") -> Approval:
-        """Called from the owner's desk / card. For otp / captcha / secret her answer is typed straight into the box and
-        then forgotten: it is never returned, logged or stored."""
+        """Called from the owner's desk / card. For otp / secret her answer is typed straight into the box and
+        then forgotten: it is never returned, logged or stored. For captcha (v0.78): the confirmed/corrected
+        answer is typed by captcha_fill, not here."""
         a = self.approvals.get(approval_id)
         if not a or a.status != "pending":
             raise OperatorError("Nothing waiting with that id (it may have expired).")
@@ -847,8 +859,8 @@ class Operator:
         return a
 
     async def captcha_image(self, approval_id: str) -> bytes:
-        """v0.76 the CAPTCHA picture next to the box she was asked to fill, big enough to read on her phone (she may be
-        far away). Hoola never reads or solves it; she types what she sees and the system puts it in the box."""
+        """v0.76 the CAPTCHA picture next to the box, big enough to read on her phone (she may be far away).
+        v0.78 also used as input for OCR: Hoola reads it, shows her the answer, she confirms."""
         a = self.approvals.get(approval_id)
         if not a or a.kind != "captcha" or a.status != "pending":
             raise OperatorError("No CAPTCHA waiting with that id.")
@@ -872,6 +884,41 @@ class Operator:
             raise OperatorError("CAPTCHA picture nahi mili; live view mein dekhiye.")
         x, y = max(0, box["x"] - 340), max(0, box["y"] - 110)
         return await s.page.screenshot(clip={"x": x, "y": y, "width": box["width"] + 680, "height": box["height"] + 220})
+
+    async def captcha_solve(self, approval_id: str) -> str:
+        """v0.78 Hoola reads the CAPTCHA itself (OCR) and returns the solved text. The owner then confirms or corrects
+        before it goes into the page. Uses pytesseract on the CAPTCHA image (the same one captcha_image returns)."""
+        import io
+        try:
+            from PIL import Image
+            import pytesseract
+        except ImportError as e:
+            raise OperatorError(f"CAPTCHA OCR not available: {e}") from None
+        img_bytes = await self.captcha_image(approval_id)
+        img = Image.open(io.BytesIO(img_bytes))
+        # convert to grayscale for better OCR
+        img = img.convert("L")
+        # threshold to make text sharper
+        img = img.point(lambda p: 255 if p > 140 else 0)
+        solved = pytesseract.image_to_string(img, config="--psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789").strip()
+        if not solved:
+            raise OperatorError("CAPTCHA padh nahi paya; owner se poochein.")
+        return solved
+
+    async def captcha_fill(self, approval_id: str, value: str) -> dict:
+        """v0.78 After the owner confirms (or corrects) the solved CAPTCHA, type it into the box."""
+        a = self.approvals.get(approval_id)
+        if not a or a.kind != "captcha":
+            raise OperatorError("No CAPTCHA waiting with that id.")
+        s = self.sessions.get(a.session)
+        if not s or not a.ref:
+            raise OperatorError("The browser for this request is closed.")
+        loc, it = await self._locator(s, a.ref)
+        await loc.fill(value, timeout=10000)
+        await self._audit(s, "captcha_filled", it, value, {"url": s.page.url})
+        a.status, a.answer = "approved", ""
+        a.event.set()
+        return {"ok": True, "filled": len(value)}
 
     async def captcha_refresh(self, approval_id: str) -> bool:
         a = self.approvals.get(approval_id)

@@ -2,8 +2,8 @@
 
 From the owner's hoola-browser MCP server (38 tools), regrouped for Hoola: the human desk is the owner's phone (cards +
 live view), research uses Hoola's own official routes (Google Search grounding, page reader, Gemini watching a YouTube
-link), ID numbers come from her Pehchaan Locker, OTP / CAPTCHA / passwords are asked on her phone and typed into the
-box by the system, and waiting for her happens inside ask_owner / recipe_run.
+link), ID numbers come from her Pehchaan Locker, OTP / passwords are asked on her phone and typed into the box by the
+system, CAPTCHAs are solved by Hoola (OCR) and confirmed by the owner, and waiting happens inside ask_owner / recipe_run.
 """
 from __future__ import annotations
 
@@ -39,9 +39,9 @@ owner helps on her phone (cards + live view of your browser). Speak to her in si
      <mobile / email> par OTP bheja hai, bataiye'). She tells it on her phone (card, chat or call) and the system
      types it into the box; then YOU press verify / next. A bank / payment OTP is hers to enter (the system turns it
      into a payment step).
-   - CAPTCHA: ask_owner(kind='captcha', ref=<the CAPTCHA box>). Her phone shows the CAPTCHA picture big (she may be
-     far away); she reads it and the system types it in; then YOU continue. Never solve it yourself or get around a
-     CAPTCHA, bot check, queue, waiting room or booking limit. Wrong CAPTCHA: refresh it on the page and ask again.
+   - CAPTCHA: ask_owner(kind='captcha', ref=<the CAPTCHA box>). Hoola reads the CAPTCHA (OCR) and shows its answer
+     to the owner on her phone. She taps "Haan" if correct, or types the right answer. Then YOU press verify / next.
+     Never get around a bot check, queue, waiting room or booking limit. Wrong CAPTCHA: refresh it and ask again.
    - login password / PIN / CVV / card numbers: ask_owner(kind='secret', ref=<the box>): she types it on her phone
      and it goes straight into the box; you never see it.
    - pay / checkout / place order: you never press it. ask_owner(kind='payment', ref=<the button>, reason=<amount and
@@ -76,8 +76,8 @@ TOOLS: list[dict] = [
                 "ask_owner(kind='approve'). Payment buttons: only the owner presses them.",
        {"ref": _REF, "approval_id": {"type": "string"}}, ["ref"]),
     _t("fill", "Type into a text box (replaces what is there). var names the value for recipes (e.g. 'father_name'). "
-               "slowly=true types key by key for picky fields. ID numbers: value='{id:...}' from ID LOCKER. OTP / CAPTCHA / "
-               "password / PIN / card: ask_owner (she tells it, the system types it).",
+               "slowly=true types key by key for picky fields. ID numbers: value='{id:...}' from ID LOCKER. OTP / "
+               "password / PIN / card: ask_owner (she tells it, the system types it). CAPTCHA: ask_owner(kind='captcha').",
        {"ref": _REF, "value": {"type": "string"}, "var": {"type": "string"}, "slowly": {"type": "boolean"}}, ["ref", "value"]),
     _t("select", "Choose a dropdown option by its visible text (exact or partial).",
        {"ref": _REF, "option": {"type": "string"}}, ["ref", "option"]),
