@@ -40,6 +40,41 @@ STEP_ON = re.compile(r"^\s*(log ?in|sign ?in|login to continue|next|next step|co
                      r"search|go|back|previous|check status|view status|show|get details|आगे|लॉगिन)\s*[>»→]*\s*$", re.I)
 HUMAN_KINDS = ("approve", "payment", "otp", "captcha", "secret", "question", "choice", "takeover")
 TYPED_KINDS = ("otp", "captcha", "secret")        # the owner's answer goes straight into the page
+# v0.76 an OTP on a payment gateway / bank page moves money: that one stays with her (live view), like the pay button
+PAY_PAGE = re.compile(r"razorpay|payu|billdesk|ccavenue|cashfree|juspay|instamojo|easebuzz|paytm|phonepe|"
+                      r"sbiepay|paymentgateway|payment.?gateway|netbank|net.?banking|/acs|3ds|3-d.?secure|securepay|"
+                      r"pgui|checkout|upi.?pin|debit card|credit card|card payment", re.I)
+CAPTCHA_FIND = r"""(el) => {
+  const CAP = /(captcha|security.?image|verification.?image|code.?image|imgcode|captchaimg)/i;
+  const look = (e) => (e.src || '') + ' ' + (e.id || '') + ' ' + (e.getAttribute('alt') || '') + ' ' +
+                     (e.getAttribute('title') || '') + ' ' + (typeof e.className === 'string' ? e.className : '');
+  document.querySelectorAll('[data-hoola-captcha]').forEach((e) => e.removeAttribute('data-hoola-captcha'));
+  let box = el.closest('form') || el.parentElement;
+  for (let i = 0; i < 4 && box && box.querySelectorAll('img,canvas,svg').length === 0; i++) box = box.parentElement;
+  const root = box || document;
+  const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 30 && r.height > 12; };
+  const pics = Array.from(root.querySelectorAll('img,canvas,svg')).filter(vis);
+  const at = el.getBoundingClientRect();
+  const dist = (e) => { const r = e.getBoundingClientRect(); return Math.hypot((r.x + r.width / 2) - (at.x + at.width / 2), (r.y + r.height / 2) - (at.y + at.height / 2)); };
+  let pick = pics.filter((e) => CAP.test(look(e))).sort((a, b) => dist(a) - dist(b))[0];
+  if (!pick) pick = pics.filter((e) => dist(e) < 320).sort((a, b) => dist(a) - dist(b))[0];
+  if (!pick) return false;
+  pick.setAttribute('data-hoola-captcha', '1');
+  return true;
+}"""
+CAPTCHA_REFRESH = r"""() => {
+  const pic = document.querySelector('[data-hoola-captcha]');
+  if (!pic) return false;
+  const RE = /(refresh|reload|another|new.?(code|captcha|image)|change|regenerate|naya|badl|⟳|↻|🔄)/i;
+  let box = pic.parentElement;
+  for (let i = 0; i < 4 && box; i++, box = box.parentElement) {
+    const c = Array.from(box.querySelectorAll('a,button,img,i,span,input[type=button],input[type=image]')).find((e) => e !== pic &&
+      RE.test([e.innerText, e.id, e.getAttribute('title'), e.getAttribute('alt'), e.getAttribute('aria-label'), e.getAttribute('src'),
+               typeof e.className === 'string' ? e.className : '', e.getAttribute('onclick')].join(' ')));
+    if (c) { c.click(); return true; }
+  }
+  return false;
+}"""
 MAX_DOWNLOAD = 60 * 1024 * 1024
 
 
@@ -176,7 +211,7 @@ PINCODE = re.compile(r"pin\s*-?\s*code|pincode|postal|zip|पिन\s*कोड"
 
 def field_kind(it: dict, value: str = "") -> str:
     """secret | id | '' for typing into this box (see guard.classify_input)."""
-    if (it.get("type") or "").lower() == "password" or it.get("captcha"):
+    if it.get("captcha"):
         return "secret"
     shown = f"{it.get('name', '')} {it.get('label', '')} {it.get('placeholder', '')}"
     if PINCODE.search(shown):      # a postal PIN code box (often name="pin"), not a PIN: only card / ID digits matter
@@ -204,8 +239,10 @@ def mask_ids(text: str) -> str:
 
 
 def is_secret_field(it: dict, value: str = "") -> bool:
-    if (it.get("type") or "").lower() == "password" or it.get("captcha"):
+    if it.get("captcha"):
         return True
+    if (it.get("type") or "").lower() == "password":
+        return guard.classify_input(node_of(it), value) != "id"
     shown = f"{it.get('name', '')} {it.get('label', '')} {it.get('placeholder', '')}"
     if PINCODE.search(shown):      # a postal PIN code box (often name="pin"), not a PIN: only refuse card / Aadhaar digits
         return guard.classify_input({"attributes": {}}, value) == "secret"
@@ -760,6 +797,15 @@ class Operator:
         it = self._item(s, ref) if ref else None
         if kind in TYPED_KINDS and not it:
             raise OperatorError(f"kind='{kind}' needs the ref of the box she should type into.")
+        if kind == "otp":
+            try:
+                title = await s.page.title()
+            except Exception:
+                title = ""
+            if PAY_PAGE.search(f"{s.page.url} {title} {(it or {}).get('name', '')} {reason}"):
+                kind = "payment"      # a bank / payment OTP moves money: she enters it herself in the live view
+                reason = ("Bank / payment ka OTP: yeh aap khud live screen par bhariye (paise isi se katenge). "
+                          + (reason or ""))
         a = Approval(id="h" + secrets.token_hex(5), session=s.name, kind=kind, reason=(reason or "")[:500], ref=ref,
                      target_name=(it or {}).get("name", "") if kind in ("approve", "payment") else "",
                      options=[str(o)[:80] for o in (options or [])][:8], url=s.page.url)
@@ -799,6 +845,56 @@ class Operator:
         a.status, a.answer = status, (answer[:500] if a.kind in ("question", "choice") else "")
         a.event.set()
         return a
+
+    async def captcha_image(self, approval_id: str) -> bytes:
+        """v0.76 the CAPTCHA picture next to the box she was asked to fill, big enough to read on her phone (she may be
+        far away). Hoola never reads or solves it; she types what she sees and the system puts it in the box."""
+        a = self.approvals.get(approval_id)
+        if not a or a.kind != "captcha" or a.status != "pending":
+            raise OperatorError("No CAPTCHA waiting with that id.")
+        s = self.sessions.get(a.session)
+        if not s or not a.ref:
+            raise OperatorError("The browser for this request is closed.")
+        loc, it = await self._locator(s, a.ref)
+        fr = s.frames.get(it["_frame"]) or s.page.main_frame
+        try:
+            found = await loc.evaluate(CAPTCHA_FIND)
+        except Exception:
+            found = False
+        if found:
+            pic = fr.locator('[data-hoola-captcha="1"]').first
+            try:
+                return await pic.screenshot(timeout=8000)
+            except Exception:
+                pass
+        box = await loc.bounding_box()      # no picture found: the area around the box
+        if not box:
+            raise OperatorError("CAPTCHA picture nahi mili; live view mein dekhiye.")
+        x, y = max(0, box["x"] - 340), max(0, box["y"] - 110)
+        return await s.page.screenshot(clip={"x": x, "y": y, "width": box["width"] + 680, "height": box["height"] + 220})
+
+    async def captcha_refresh(self, approval_id: str) -> bool:
+        a = self.approvals.get(approval_id)
+        if not a or a.kind != "captcha" or a.status != "pending":
+            raise OperatorError("No CAPTCHA waiting with that id.")
+        s = self.sessions.get(a.session)
+        if not s or not a.ref:
+            raise OperatorError("The browser for this request is closed.")
+        loc, it = await self._locator(s, a.ref)
+        fr = s.frames.get(it["_frame"]) or s.page.main_frame
+        try:
+            await loc.evaluate(CAPTCHA_FIND)
+            ok = bool(await fr.evaluate(CAPTCHA_REFRESH))
+        except Exception:
+            ok = False
+        if ok:
+            await asyncio.sleep(1.2)
+        return ok
+
+    def pending_typed(self) -> Approval | None:
+        """The newest OTP / CAPTCHA request still waiting (she may answer it in chat or on a call instead of the card)."""
+        waiting = [a for a in self.approvals.values() if a.status == "pending" and a.kind in ("otp", "captcha")]
+        return max(waiting, key=lambda a: a.created) if waiting else None
 
     async def wait_human(self, approval_id: str, timeout_s: float = 900) -> Approval:
         a = self.approvals.get(approval_id)

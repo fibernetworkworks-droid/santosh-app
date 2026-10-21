@@ -22,7 +22,8 @@ WEB_TOOLS = [
     {"name": "browse_web", "description": (
         "Santosh's own web browser (a real Chrome on the server, browser-use): do a task on a website step by step "
         "when google_search/open_website aren't enough: JavaScript sites, clicking through menus, comparing on a site, "
-        "checking a status, filling an online form. Describe the goal fully in one sentence with every detail the user "
+        "checking a status. Forms / applications / anything with login, Aadhaar, PAN, OTP: use computer_operator "
+        "instead (it fills them). Describe the goal fully in one sentence with every detail the user "
         "gave (names, dates, numbers, city). It never logs in, never types passwords/OTPs/PINs/card/Aadhaar and never "
         "pays: it stops and shows the user an Open button for that step. Before anything that submits, sends, books "
         "or deletes, the user gets a confirm card. Slow (30 s to a few minutes); for long tasks it replies later in "

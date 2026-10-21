@@ -343,6 +343,20 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
     # v0.75 ID numbers the OWNER writes go into her Pehchaan Locker; the model and the saved chat get references.
     # Customers' / other avatars' messages are never captured into her locker.
     if (actor or "owner") == "owner" and not user_text.lstrip().startswith("[Hoola Network]"):
+        # v0.76 a website job is waiting for an OTP / CAPTCHA and she just said it: straight into the page box, never
+        # into chat history, memory or the model (like telling the Setu operator the OTP)
+        try:
+            from ..operator import service as _ops
+            got = await _ops.answer_from_chat(tenant_id, user_text)
+        except Exception:
+            log.exception("operator chat answer failed")
+            got = None
+        if got:
+            shown = ("OTP " if got["kind"] == "otp" else "CAPTCHA ") + got.get("masked", "••••")
+            _save(conversation_id, "user", shown, display=shown)
+            _save(conversation_id, "assistant", [{"type": "text", "text": got["say"]}], display=got["say"])
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": got["say"], "source": "operator"})
+            return got["say"]
         try:
             from ..idvault import capture
             user_text, _ids = capture(tenant_id, user_text)

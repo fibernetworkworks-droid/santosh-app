@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.75.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.76.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -1580,6 +1580,26 @@ async def operator_answer(request_id: str, body: OperatorAnswer, tenant: str = D
     from .operator import service as ops
     try:
         return await ops.resolve(tenant, request_id, body.status, body.answer)
+    except ops.OperatorJobError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/operator/requests/{request_id}/captcha", dependencies=[Depends(require_key)])
+async def operator_captcha(request_id: str, tenant: str = Depends(current_tenant)):
+    """v0.76 the CAPTCHA picture for her phone (she may be far from the computer)."""
+    from .operator import service as ops
+    try:
+        b = await ops.captcha_image(tenant, request_id)
+    except ops.OperatorJobError as e:
+        raise HTTPException(404, str(e))
+    return Response(b, media_type="image/png", headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/operator/requests/{request_id}/captcha/refresh", dependencies=[Depends(require_key)])
+async def operator_captcha_refresh(request_id: str, tenant: str = Depends(current_tenant)):
+    from .operator import service as ops
+    try:
+        return await ops.captcha_refresh(tenant, request_id)
     except ops.OperatorJobError as e:
         raise HTTPException(400, str(e))
 

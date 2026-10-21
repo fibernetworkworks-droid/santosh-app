@@ -139,6 +139,46 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
     super.dispose();
   }
 
+  Uint8List? _cap;
+  bool _capTried = false;
+
+  Future<void> _loadCaptcha() async {
+    _capTried = true;
+    try {
+      final b = await widget.app.api!.operatorCaptcha('${widget.v['id']}');
+      if (mounted && b != null) setState(() => _cap = Uint8List.fromList(b));
+    } catch (_) {}
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _newCaptcha() async {
+    setState(() => _busy = true);
+    try {
+      final ok = await widget.app.api!.operatorCaptchaRefresh('${widget.v['id']}');
+      if (!ok && mounted) _snack(context, 'Naya CAPTCHA ka button nahi mila; live view mein dekhiye');
+      await _loadCaptcha();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  Widget _captchaPic() {
+    if (!_capTried && widget.app.api != null) Future.microtask(_loadCaptcha);
+    final img = _cap;
+    if (img == null) {
+      return _capTried && !widget.inLive
+          ? OperatorFrame(app: widget.app, every: 1500)
+          : const SizedBox(height: 70, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+    }
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+      child: InteractiveViewer(maxScale: 4, child: Image.memory(img, height: 90, fit: BoxFit.contain, gaplessPlayback: true)),
+    );
+  }
+
   Future<void> _answer(bool yes, {String answer = ''}) async {
     if (widget.app.api == null) return;
     setState(() => _busy = true);
@@ -182,10 +222,16 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
           ),
         const SizedBox(height: 6),
         Text('${v['reason'] ?? ''}', style: const TextStyle(fontSize: 14, height: 1.35)),
-        if (pending && kind == 'captcha' && !widget.inLive) ...[
+        if (pending && kind == 'captcha') ...[
           const SizedBox(height: 8),
-          OperatorFrame(app: widget.app, every: 1500),
-          const Text('Page par jo akshar dikh rahe hain, woh neeche likhiye', style: TextStyle(color: C.faint, fontSize: 11.5)),
+          _captchaPic(),
+          Row(children: [
+            const Expanded(
+                child: Text('Jo akshar dikh rahe hain woh neeche likhiye (ya chat / call mein bol dijiye). Hoola page mein bharke aage badhega.',
+                    style: TextStyle(color: C.faint, fontSize: 11.5))),
+            TextButton.icon(
+                onPressed: _busy ? null : _newCaptcha, icon: const Icon(Icons.refresh_rounded, size: 18), label: const Text('Naya')),
+          ]),
         ],
         if (pending && typed) ...[
           const SizedBox(height: 8),
@@ -207,10 +253,13 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
                       onPressed: () => setState(() => _show = !_show)),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.only(top: 4),
-            child: Text('Yeh seedha website ke box mein jayega. Hoola ise kabhi dekhta ya rakhta nahi.',
-                style: TextStyle(color: C.faint, fontSize: 11.5)),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+                kind == 'otp'
+                    ? 'SMS mein aaya OTP likhiye ya chat / call mein bol dijiye. Seedha website ke box mein jayega, kahin save nahi hota.'
+                    : 'Yeh seedha website ke box mein jayega. Hoola ise kabhi dekhta ya rakhta nahi.',
+                style: const TextStyle(color: C.faint, fontSize: 11.5)),
           ),
         ],
         if (pending && kind == 'question') ...[

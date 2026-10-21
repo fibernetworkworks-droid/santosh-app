@@ -149,6 +149,14 @@ class Api {
   Future<void> operatorInput(String kind, {double x = 0, double y = 0, String text = '', String key = ''}) async =>
       _send('POST', '/api/operator/input', body: {'kind': kind, 'x': x, 'y': y, 'text': text, 'key': key});
   Future<void> operatorForget(String name) async => _send('DELETE', '/api/operator/recipes/${Uri.encodeComponent(name)}');
+  /// v0.76 the CAPTCHA picture of a waiting request (big, for her phone) and "naya CAPTCHA".
+  Future<List<int>?> operatorCaptcha(String requestId) async {
+    final req = http.Request('GET', _u('/api/operator/requests/$requestId/captcha'))..headers.addAll(_headers);
+    final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 15)));
+    return res.statusCode == 200 && res.bodyBytes.isNotEmpty ? res.bodyBytes : null;
+  }
+  Future<bool> operatorCaptchaRefresh(String requestId) async =>
+      ((await _send('POST', '/api/operator/requests/$requestId/captcha/refresh') as Map)['ok'] as bool?) ?? false;
   Future<List<int>?> operatorFrame() async {
     final req = http.Request('GET', _u('/api/operator/frame'))..headers.addAll(_headers);
     final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 12)));

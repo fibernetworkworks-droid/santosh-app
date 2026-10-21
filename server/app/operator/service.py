@@ -316,6 +316,60 @@ async def resolve(tenant: str, request_id: str, status: str, answer: str = "") -
     return a.public()
 
 
+async def captcha_image(tenant: str, request_id: str) -> bytes:
+    have = _ops.get(tenant)
+    if not have:
+        raise OperatorJobError("Browser band hai.")
+    try:
+        return await have[1].captcha_image(request_id)
+    except OperatorError as e:
+        raise OperatorJobError(str(e)) from None
+
+
+async def captcha_refresh(tenant: str, request_id: str) -> dict[str, Any]:
+    have = _ops.get(tenant)
+    if not have:
+        raise OperatorJobError("Browser band hai.")
+    try:
+        return {"ok": await have[1].captcha_refresh(request_id)}
+    except OperatorError as e:
+        raise OperatorJobError(str(e)) from None
+
+
+_OTP_SAID = re.compile(r"^\D{0,40}?(\d(?:[\s-]?\d){3,7})\D{0,25}$")
+_CAPTCHA_SAID = re.compile(r"^(?:captcha|कैप्चा|code|akshar)?\s*(?:hai|is|:|-)?\s*([A-Za-z0-9@#$%&*+=]{3,10})\s*(?:hai)?\s*$", re.I)
+
+
+def chat_answer_target(tenant: str, text: str) -> tuple[Any, str] | None:
+    """v0.76 like at a Seva Kendra, she may just SAY the OTP / CAPTCHA (chat or call) while a job waits for it.
+    -> (request, the value) or None. The value then goes only into the page box, never into chat history or memory."""
+    have = _ops.get(tenant)
+    if not have:
+        return None
+    a = have[1].pending_typed()
+    t = (text or "").strip()
+    if not a or not t or len(t) > 60:
+        return None
+    if a.kind == "otp":
+        m = _OTP_SAID.match(t)
+        return (a, re.sub(r"\D", "", m.group(1))) if m else None
+    m = _CAPTCHA_SAID.match(t)
+    return (a, m.group(1)) if m and len(t.split()) <= 4 else None
+
+
+async def answer_from_chat(tenant: str, text: str) -> dict[str, Any] | None:
+    hit = chat_answer_target(tenant, text)
+    if not hit:
+        return None
+    a, value = hit
+    try:
+        await resolve(tenant, a.id, "approved", value)
+    except OperatorJobError as e:
+        return {"ok": False, "kind": a.kind, "say": f"Page mein nahi bhar paya: {e}"}
+    return {"ok": True, "kind": a.kind, "masked": "•" * len(value),
+            "say": ("OTP" if a.kind == "otp" else "CAPTCHA") + " page mein bhar diya. Aage badh raha hoon."}
+
+
 def _row(task_id: str) -> OperatorTask:
     with session() as s:
         row = s.get(OperatorTask, task_id)
@@ -724,7 +778,9 @@ async def _wait_owner(job: Job, s, req: Approval) -> dict[str, Any]:
     elif got.kind in ("payment", "takeover"):
         d["next"] = "She says she did it herself. Read the page to see the result."
     elif got.kind in ("otp", "captcha", "secret"):
-        d["next"] = "She typed it into the box (you can't see it). Now press the page's next / verify / login button."
+        d["next"] = ("Done: the system typed her answer into the box (you can't see it). Now press the page's next / "
+                     "verify / login / submit-OTP button yourself. If the site says it was wrong or expired, use the "
+                     "page's resend / refresh and ask_owner again.")
     if got.status != "pending" and "main" in op.sessions:
         try:
             d["page"] = fmt_snapshot(await op.snapshot(op.sessions["main"]))

@@ -87,18 +87,43 @@ def classify_click(node: dict | None) -> str:
     return "ok"
 
 
+ID_PHRASE = re.compile(r"(?:" + ID_WORDS.pattern + r")[\s_.-]*(?:card)?[\s_.-]*(?:number|num|no\.?)?", re.I)
+
+
+def _no_id(text: str) -> str:
+    """'PAN card number' / 'aadhaar_card_no' -> IDNUM, so 'card number' inside an ID name is not a bank card."""
+    return ID_PHRASE.sub(" IDNUM ", text or "")
+
+
+def _id_first(label: str) -> bool:
+    """The label names an ID number first ("Aadhaar Number (OTP will be sent)"), not an OTP ("Enter Aadhaar OTP")."""
+    label = _no_id(label)
+    i, k = re.search(r"IDNUM", label), SECRET_WORDS.search(label)
+    if not i:
+        return False
+    if not k:
+        return True
+    return i.start() < k.start() and bool(re.search(r"\w{2,}|[(\[:,-]", label[i.end():k.start()]))
+
+
 def classify_input(node: dict | None, text: str = "") -> str:
     """secret | id | ok for typing into this element. secret = password / OTP / PIN / CVV / card: only the owner types
     it. id = an identity number box (Aadhaar, PAN...): filled from her locker, never from the model's own words."""
     if not node:
         return "ok"
     a = node.get("attributes") or {}
-    if a.get("type", "").lower() == "password":
-        return "secret"
     if a.get("autocomplete", "").lower() in SECRET_AUTOCOMPLETE:
         return "secret"
-    hay = " ".join(a.get(k, "") for k in ("name", "id", "placeholder", "aria-label", "title", "autocomplete", "class"))
-    hay += " " + (node.get("text") or "") + " " + (node.get("label") or "")
+    own = " ".join(a.get(k, "") for k in ("name", "id", "placeholder"))
+    said = " ".join(x for x in (a.get("aria-label", ""), a.get("title", ""), node.get("text") or "", node.get("label") or "") if x)
+    hay = own + " " + a.get("autocomplete", "") + " " + a.get("class", "") + " " + said
+    # v0.76 an identity box wins over words around it ("Aadhaar Number (OTP will be sent to your mobile)") and over
+    # type=password (many portals hide the Aadhaar they ask for). A box whose own name says OTP / password, or whose
+    # label is "Aadhaar OTP" / "Enter OTP ... Aadhaar", stays secret.
+    if ID_WORDS.search(hay) and not SECRET_WORDS.search(_no_id(own)) and _id_first(said or own):
+        return "id"
+    if a.get("type", "").lower() == "password":
+        return "secret"
     if SECRET_WORDS.search(hay):
         return "secret"
     digits = re.sub(r"[\s-]", "", text or "")
