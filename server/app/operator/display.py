@@ -40,20 +40,58 @@ def channel(choice: str) -> str:
     return "chrome" if chrome_installed() else ""
 
 
+def _lock_pid(lock: Path) -> int:
+    try:
+        return int(lock.read_text().strip() or 0)
+    except (OSError, ValueError):
+        return 0
+
+
+def _alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def _is_xvfb(pid: int) -> bool:
+    try:
+        return "Xvfb" in Path(f"/proc/{pid}/cmdline").read_bytes().decode(errors="ignore")
+    except OSError:
+        return False
+
+
 def virtual_display() -> str:
     """A DISPLAY for a real (headed) browser window: the server's own, or an Xvfb we start once. '' = none possible."""
     global _xvfb, _display
     if os.environ.get("DISPLAY"):
         return os.environ["DISPLAY"]
     with _lock:
-        if _display and _xvfb is not None and _xvfb.poll() is None:
+        if _display and ((_xvfb is not None and _xvfb.poll() is None) or Path(f"/tmp/.X11-unix/X{_display[1:]}").exists()):
             return _display
         exe = shutil.which("Xvfb")
         if not exe:
             return ""
         for n in range(99, 120):
-            if Path(f"/tmp/.X11-unix/X{n}").exists() or Path(f"/tmp/.X{n}-lock").exists():
-                continue
+            lock, sock = Path(f"/tmp/.X{n}-lock"), Path(f"/tmp/.X11-unix/X{n}")
+            if lock.exists() or sock.exists():
+                pid = _lock_pid(lock)
+                if pid and _is_xvfb(pid) and sock.exists():
+                    _display = f":{n}"               # v0.88.1 a virtual screen already running (an earlier start): share it
+                    log.info("using the running virtual screen %s for the browser", _display)
+                    return _display
+                if pid and _alive(pid):
+                    continue                          # someone else's real X server
+                for f in (lock, sock):                # stale: its process is gone (server restarted)
+                    try:
+                        f.unlink()
+                    except OSError:
+                        pass
+                if lock.exists() or sock.exists():
+                    continue
             p = subprocess.Popen([exe, f":{n}", "-screen", "0", "1366x900x24", "-nolisten", "tcp", "-ac"],
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
             for _ in range(40):

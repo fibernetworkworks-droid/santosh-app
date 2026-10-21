@@ -36,3 +36,16 @@ def test_real_window_is_not_headless_and_not_hidden():
         return ua, wd
     ua, wd = asyncio.run(go())
     assert "HeadlessChrome" not in ua and wd is True
+
+
+def test_v0881_stale_virtual_screens_do_not_block(tmp_path):
+    """v0.88.1: after many server restarts every :99-:119 lock was taken by dead / orphaned Xvfb and the operator fell
+    back to headless (sites block it). A dead lock is cleared, a running Xvfb is shared."""
+    import os
+    from app.operator import display as D
+    lock = tmp_path / "lock"
+    lock.write_text("      999999\n")
+    assert D._lock_pid(lock) == 999999 and not D._alive(999999)
+    assert D._alive(os.getpid()) and not D._is_xvfb(os.getpid())
+    (tmp_path / "bad").write_text("x")
+    assert D._lock_pid(tmp_path / "bad") == 0
