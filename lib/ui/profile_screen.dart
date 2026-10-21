@@ -31,6 +31,7 @@ import 'voice_id_screen.dart';
 import 'procedures_screen.dart';
 import 'shop_screen.dart';
 import 'id_locker_screen.dart';
+import 'darzi_screen.dart';
 import 'employee_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -178,6 +179,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Aadhaar, PAN, Voter ID… taala band. ${app.aName} forms mein khud bharega'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => IdLockerScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.content_cut_rounded, color: C.accent),
+              title: const Text('Darzi sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Silai ke order, har graahak ka naap, trial / delivery, daam: ${app.aName} sambhalega'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DarziScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

@@ -32,6 +32,8 @@ DUTIES: dict[str, dict] = {
               "prefix": (), "tools": {"video_edit", "video_studio"}},
     "operator": {"label": "Computer operator", "say": "websites par form, application, download, status check (OTP / submit / payment aap karti hain)",
                  "prefix": (), "tools": {"computer_operator"}},
+    "tailoring": {"label": "Silai ka kaam", "say": "order, naap, trial, delivery, daam taiyaar karna (naya daam aapki haan se)",
+                  "prefix": (), "tools": {"darzi", "darzi_dekho", "biz_order_status"}},
     "research": {"label": "Jaankari dhoondhna", "say": "web, maps, mausam, public APIs",
                  "prefix": ("maps_", "api_"), "tools": {"google_search", "open_website", "browse_web", "browse_result", "get_weather",
                                                        "memory_search"}},
@@ -39,7 +41,7 @@ DUTIES: dict[str, dict] = {
 # hoola_* tools that belong to tickets, not customers
 _TICKET_FIRST = {"hoola_business", "hoola_my_business", "hoola_chain"}
 # what a customer on WhatsApp can make Hoola do: only these, always about that customer (employee/inbox.py)
-CUSTOMER_TOOLS = {"biz_free_slots", "biz_book", "biz_my_appointments", "biz_cancel", "biz_complaint", "biz_ticket_status",
+CUSTOMER_TOOLS = {"biz_order_status", "biz_free_slots", "biz_book", "biz_my_appointments", "biz_cancel", "biz_complaint", "biz_ticket_status",
                   "biz_my_dues", "biz_pay_link", "biz_promise", "biz_handover", "biz_note"}
 
 ROLES: dict[str, dict] = {
@@ -63,6 +65,8 @@ ROLES: dict[str, dict] = {
                      "duties": ["video", "records", "research"]},
     "computer_operator": {"label": "Computer operator", "say": "Online form, sarkari portal, bill / certificate download, status check, application",
                           "duties": ["operator", "records", "research", "reminders"]},
+    "tailor": {"label": "Darzi sahayak", "say": "Silai ke order, har graahak ka naap, trial / delivery ki tareekh, 'taiyaar hai' message, daam",
+               "duties": ["tailoring", "customers", "appointments", "reminders", "collections", "records"]},
     "custom": {"label": "Apna kaam", "say": "Aap khud chuniye Hoola kaun se kaam karega", "duties": []},
 }
 
@@ -92,6 +96,10 @@ PRESETS: dict[str, dict] = {
     "restaurant": {"label": "Restaurant / tiffin", "role": "front_desk", "kind": "restaurant", "slot_minutes": 60, "after_hours": "note",
                    "about_hint": "Menu aur daam, delivery area, table booking, timing",
                    "rules": ["Bade order (20+ plate) owner ki haan se."]},
+    "tailor": {"label": "Darzi / boutique", "role": "tailor", "kind": "tailor", "slot_minutes": 20, "after_hours": "note",
+               "about_hint": "Kya silte hain (blouse, suit, lehenga, shirt...), daam, kitne din lagte hain, trial ka samay, pata",
+               "rules": ["Naya daam ya chhoot sirf owner ki haan se.", "Delivery ki tareekh niyam dekhkar hi pakki karna.",
+                         "Graahak ka naap kisi aur ko nahi batana."]},
     "office": {"label": "Office / company", "role": "office", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
                "about_hint": "Company kya karti hai, kaun kis kaam ka", "rules": []},
 }
@@ -118,6 +126,7 @@ READ = {
     "pc_task_result", "tally_report", "file_read", "api_find", "api_docs", "api_call", "memory_search", "phone_health",
     "tv_channel", "employee", "india_info",
     "biz_free_slots", "biz_my_appointments", "biz_ticket_status", "biz_my_dues", "biz_handover", "biz_note",
+    "darzi_dekho", "biz_order_status",
 }
 BIG = {
     "email_bulk", "email_delete", "email_forward", "drive_trash", "drive_share", "sheet_share", "form_share", "slides_share",

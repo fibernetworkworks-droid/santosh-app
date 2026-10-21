@@ -645,6 +645,7 @@ def init_db(url: str | None = None):
     from .bt import models as _bt_models  # noqa: F401
     from . import procedures as _procedures  # noqa: F401
     from .shop import service as _shop  # noqa: F401
+    from .darzi import service as _darzi  # noqa: F401
     from .agent import pakka as _pakka  # noqa: F401
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401

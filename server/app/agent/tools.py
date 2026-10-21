@@ -466,3 +466,10 @@ from .shop_tools import SHOP_HANDLERS, SHOP_LABELS, SHOP_TOOLS  # noqa: E402
 TOOLS.extend(SHOP_TOOLS)
 TOOL_LABELS.update(SHOP_LABELS)
 HANDLERS.update(SHOP_HANDLERS)
+
+# v0.82 Darzi Sahayak (tailor / boutique coworker)
+from .darzi_tools import DARZI_HANDLERS, DARZI_LABELS, DARZI_TOOLS  # noqa: E402
+
+TOOLS.extend(DARZI_TOOLS)
+TOOL_LABELS.update(DARZI_LABELS)
+HANDLERS.update(DARZI_HANDLERS)

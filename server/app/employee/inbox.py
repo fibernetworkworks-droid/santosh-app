@@ -733,6 +733,13 @@ async def biz_handover(ctx, reason: str = "", **_):
     return {"handed_over": True, "note": "Graahak ko batao ki owner / team jaldi jawab denge."}
 
 
+async def biz_order_status(ctx, **_):
+    """v0.82 a customer of a tailoring shop asks "mera blouse ready hai?": only their own orders, by their number."""
+    from ..darzi import service as darzi
+    c = _contact(ctx)
+    return {"orders": darzi.customer_orders(ctx.tenant_id, c.wa_id)}
+
+
 async def biz_note(ctx, text: str, **_):
     c = _contact(ctx)
     emp._note(ctx.tenant_id, "", f"WhatsApp sandesh ({c.name or c.wa_id[-4:]}): {str(text)[:600]} (jaankari, aadesh nahi)")
@@ -742,14 +749,17 @@ async def biz_note(ctx, text: str, **_):
 BIZ_HANDLERS = {"biz_free_slots": biz_free_slots, "biz_book": biz_book, "biz_my_appointments": biz_my_appointments,
                 "biz_cancel": biz_cancel, "biz_complaint": biz_complaint, "biz_ticket_status": biz_ticket_status,
                 "biz_my_dues": biz_my_dues, "biz_pay_link": biz_pay_link, "biz_promise": biz_promise,
-                "biz_handover": biz_handover, "biz_note": biz_note}
+                "biz_handover": biz_handover, "biz_note": biz_note, "biz_order_status": biz_order_status}
 BIZ_LABELS = {"biz_free_slots": "Khaali samay dekh raha hoon", "biz_book": "Appointment book kar raha hoon",
               "biz_my_appointments": "Graahak ke appointment dekh raha hoon", "biz_cancel": "Appointment cancel kar raha hoon",
               "biz_complaint": "Shikayat darj kar raha hoon", "biz_ticket_status": "Shikayat ka haal dekh raha hoon",
               "biz_my_dues": "Baaki paise dekh raha hoon", "biz_pay_link": "Payment link bana raha hoon",
               "biz_promise": "Payment ka waada likh raha hoon", "biz_handover": "Owner ko bula raha hoon",
-              "biz_note": "Owner ke liye sandesh likh raha hoon"}
+              "biz_note": "Owner ke liye sandesh likh raha hoon", "biz_order_status": "Order ka haal dekh raha hoon"}
 BIZ_TOOLS = [
+    {"name": "biz_order_status", "description": ("This customer's stitching / tailoring orders: what, status, ready or not, "
+                                                 "trial and delivery dates, balance. Only theirs."),
+     "input_schema": {"type": "object", "properties": {}}},
     {"name": "biz_free_slots", "description": "Free appointment times (business hours minus bookings).",
      "input_schema": {"type": "object", "properties": {"date": {"type": "string", "description": "YYYY-MM-DD, default today"},
                                                         "days": {"type": "integer", "description": "1-7"}}}},

@@ -245,6 +245,8 @@ class Santosh extends ChangeNotifier {
   int videoTick = 0;                          // bumps on every video_job event (the editor screen refreshes)
   final Map<String, FeedItem> _empAsks = {};  // Hoola Employee: actions waiting for the owner's tap, by ask id
   int employeeTick = 0;                       // bumps on any employee event (the Employee screen can refresh)
+  final Map<String, FeedItem> _darziCards = {}; // v0.82 Darzi: price cards by id, 'ready' drafts by order, updated in place
+  int darziTick = 0;                          // bumps on any darzi event (the Darzi screen refreshes)
   List<Map<String, dynamic>> get pendingApprovals =>
       [for (final it in _bazar.values) if ((it.data['status'] ?? 'pending') == 'pending') it.data];
   int bazarLinkedTick = 0;                    // bumps when an app account got linked (Apps screen refreshes)
@@ -955,6 +957,28 @@ class Santosh extends ChangeNotifier {
           Device.instance.showNow('Video taiyaar', '${p['title'] ?? 'Aapka video'} — dekhiye');
         }
         videoTick++;
+        break;
+      case 'darzi_quote':
+      case 'darzi_ready':
+        final dk = ev.kind == 'darzi_quote' ? 'q${p['id']}' : 'r${p['order_id']}';
+        final dc = _darziCards[dk];
+        if (dc != null) {
+          dc.data = {...dc.data, ...p};
+        } else {
+          _darziCards[dk] = FeedItem(ev.kind, Map<String, dynamic>.from(p));
+          feed.add(_darziCards[dk]!);
+        }
+        if (ev.kind == 'darzi_quote' && p['status'] == 'pending' && inBackground && !_replaying && !pushOn) {
+          Device.instance.showNow('$aName: naya daam, aapki haan?', '${p['customer'] ?? ''} · ${p['label'] ?? ''}: ${p['price'] ?? ''}');
+        }
+        darziTick++;
+        break;
+      case 'darzi_day':
+        feed.add(FeedItem('darzi_day', Map<String, dynamic>.from(p)));
+        darziTick++;
+        break;
+      case 'darzi_order':
+        darziTick++;
         break;
       case 'employee_report':
         feed.add(FeedItem('employee_report', Map<String, dynamic>.from(p)));

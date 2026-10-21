@@ -118,6 +118,10 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: {p.get('from', '')}", str(p.get("text") or "")[:300])
     if kind == "employee_ask" and p.get("status") == "pending":
         return ("Aapki haan chahiye", f"{p.get('what', '')} · {p.get('who', '')}: {p.get('detail', '')}"[:300])
+    if kind == "darzi_quote" and p.get("status") == "pending":
+        return (f"{name}: naya daam, aapki haan?", f"{p.get('customer', '')} · {p.get('label', '')}: {p.get('price') or 'daam bataiye'}"[:300])
+    if kind == "darzi_day":
+        return (f"{name}: aaj ki silai", str(p.get("text") or "")[:300])
     if kind == "google_reconnect":
         return (f"{name}: Google dobara jodiye", str(p.get("text") or "")[:300])
     if kind == "studio_approval" and p.get("status") == "pending":
@@ -199,7 +203,7 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
 
 
 PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "email_draft", "bazar_open", "device_action",
-              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect"}
+              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 

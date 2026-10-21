@@ -521,6 +521,53 @@ class Api {
   Future<Map<String, dynamic>> orderKaroStart(String what, {String site = '', String budget = '', String conversationId = ''}) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/shop/orders',
           body: {'what': what, 'site': site, 'budget': budget, 'conversation_id': conversationId}) as Map);
+  // ---- v0.82 Darzi Sahayak (tailor / boutique coworker) ----
+  List<Map<String, dynamic>> _maps(dynamic l) => List<Map<String, dynamic>>.from(((l as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<Map<String, dynamic>> darziToday({String date = ''}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/darzi/today', query: {if (date.isNotEmpty) 'date': date}) as Map);
+  Future<List<Map<String, dynamic>>> darziOrders({String status = 'open', String customer = ''}) async =>
+      _maps((await _send('GET', '/api/darzi/orders', query: {'status': status, if (customer.isNotEmpty) 'customer': customer}) as Map)['orders']);
+  Future<Map<String, dynamic>> darziOrder(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/darzi/orders/$id') as Map);
+  Future<Map<String, dynamic>> darziNewOrder(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/darzi/orders', body: body) as Map);
+  Future<Map<String, dynamic>> darziUpdateOrder(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PATCH', '/api/darzi/orders/$id', body: body) as Map);
+  Future<Map<String, dynamic>> darziStatus(String id, String status, {String note = '', String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/darzi/orders/$id/status',
+          body: {'status': status, 'note': note, 'conversation_id': conversationId}) as Map);
+  Future<Map<String, dynamic>> darziPay(String id, double amount, {String how = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/darzi/orders/$id/pay', body: {'amount': amount, 'how': how}) as Map);
+  Future<Map<String, dynamic>> darziDeliver(String id, {double? paidNow, String note = '', String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/darzi/orders/$id/deliver',
+          body: {'amount': paidNow, 'note': note, 'conversation_id': conversationId}) as Map);
+  Future<Map<String, dynamic>> darziCancel(String id, {String reason = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/darzi/orders/$id/cancel', body: {'reason': reason}) as Map);
+  Future<Map<String, dynamic>> darziSlip(String id, {String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/darzi/orders/$id/slip', body: {'conversation_id': conversationId}) as Map);
+  Future<Map<String, dynamic>> darziReady(String id, {String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/darzi/orders/$id/ready', body: {'conversation_id': conversationId}) as Map);
+  Future<Map<String, dynamic>> darziSendBusiness(String id, String text) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/darzi/orders/$id/send_business', body: {'text': text}) as Map);
+  Future<void> darziTold(String id, String how) async => _send('POST', '/api/darzi/orders/$id/told', body: {'how': how});
+  Future<List<Map<String, dynamic>>> darziCustomers({String q = ''}) async =>
+      _maps((await _send('GET', '/api/darzi/customers', query: {if (q.isNotEmpty) 'q': q}) as Map)['customers']);
+  Future<Map<String, dynamic>> darziCustomer(String id, {bool history = false}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/darzi/customers/$id', query: {if (history) 'history': 'true'}) as Map);
+  Future<Map<String, dynamic>> darziAddCustomer(String name, String phone) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/darzi/customers', body: {'name': name, 'phone': phone}) as Map);
+  Future<Map<String, dynamic>> darziMeasure(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/darzi/measures', body: body) as Map);
+  Future<List<Map<String, dynamic>>> darziQuotes({String status = 'pending'}) async =>
+      _maps((await _send('GET', '/api/darzi/quotes', query: {'status': status}) as Map)['quotes']);
+  Future<Map<String, dynamic>> darziDecideQuote(String id, bool approve, {double? price, bool? toList}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/darzi/quotes/$id',
+          body: {'approve': approve, if (price != null) 'price': price, if (toList != null) 'to_list': toList}) as Map);
+  Future<Map<String, dynamic>> darziSettings() async => Map<String, dynamic>.from(await _send('GET', '/api/darzi/settings') as Map);
+  Future<Map<String, dynamic>> darziSaveSettings(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/darzi/settings', body: body) as Map);
+  Future<List<Map<String, dynamic>>> darziGarments() async => _maps((await _send('GET', '/api/darzi/garments') as Map)['garments']);
+  Future<Map<String, dynamic>> darziCheck(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/darzi/check', body: body) as Map);
   // v0.78 Pakka kaam: task log + lessons (failure -> what worked)
   Future<Map<String, dynamic>> agentTasks({int limit = 30}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/agent/tasks?limit=$limit') as Map);

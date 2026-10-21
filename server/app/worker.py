@@ -424,6 +424,12 @@ async def employee_jobs() -> None:
             emp.send_report(tenant)
     except Exception:
         log.exception("employee report failed")
+    try:                                   # v0.82 Darzi: the morning list of trials / deliveries / late orders
+        from .darzi import service as darzi
+        for tenant in darzi.due_mornings():
+            darzi.send_morning(tenant)
+    except Exception:
+        log.exception("darzi morning failed")
     if not _emp_tasks:                    # one batch at a time; the next tick picks up the rest
         t = asyncio.create_task(emp_net.run_pending())
         _emp_tasks.add(t)

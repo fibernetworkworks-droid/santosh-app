@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.81.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.82.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -131,7 +131,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -2557,6 +2557,239 @@ def shop_order_new(body: ShopOrderIn, tenant: str = Depends(current_tenant)):
                           body.notes, [c.lower() for c in body.compare])
     except shop.ShopError as e:
         raise HTTPException(400, str(e))
+
+
+# ---------------------------------------------------------------- v0.82 Darzi Sahayak (tailor / boutique coworker)
+class DarziOrderIn(BaseModel):
+    customer: str = ""
+    name: str = ""
+    phone: str = ""
+    items: list[dict] = []
+    deliver_on: str = ""
+    trial_on: str = ""
+    advance: float | None = None
+    notes: str = ""
+    photos: list[str] = []
+    force: bool = False
+    conversation_id: str = ""
+
+
+class DarziOrderPatch(BaseModel):
+    deliver_on: str = ""
+    trial_on: str = ""
+    notes: str = ""
+    items: list[dict] | None = None
+    force: bool = False
+
+
+class DarziStatusIn(BaseModel):
+    status: str
+    note: str = ""
+    conversation_id: str = ""
+
+
+class DarziMoneyIn(BaseModel):
+    amount: float | None = None
+    how: str = ""
+    note: str = ""
+    reason: str = ""
+    text: str = ""
+    conversation_id: str = ""
+
+
+class DarziMeasureIn(BaseModel):
+    customer: str = ""
+    name: str = ""
+    phone: str = ""
+    garment: str
+    values: dict | str = {}
+    person: str = ""
+    note: str = ""
+    unit: str = ""
+
+
+class DarziCustomerIn(BaseModel):
+    name: str
+    phone: str = ""
+    notes: str = ""
+
+
+class DarziQuoteIn(BaseModel):
+    approve: bool
+    price: float | None = None
+    to_list: bool | None = None
+
+
+class DarziCheckIn(BaseModel):
+    items: list[dict] = []
+    deliver_on: str = ""
+    trial_on: str = ""
+    customer: str = ""
+
+
+def _darzi(fn, *a, **k):
+    from .darzi import service as darzi
+    try:
+        return fn(*a, **k)
+    except darzi.DarziError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/darzi/today", dependencies=[Depends(require_key)])
+def darzi_today(date: str = "", tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return _darzi(darzi.day, tenant, date)
+
+
+@app.get("/api/darzi/orders", dependencies=[Depends(require_key)])
+def darzi_orders(status: str = "open", customer: str = "", tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return {"orders": _darzi(darzi.orders, tenant, status, customer, 150)}
+
+
+@app.post("/api/darzi/orders", dependencies=[Depends(require_key)])
+def darzi_order_new(body: DarziOrderIn, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return _darzi(darzi.new_order, tenant, body.items, body.customer, body.name, body.phone, body.deliver_on, body.trial_on,
+                  body.advance, body.notes, body.photos, body.force, by="owner", conv=body.conversation_id)
+
+
+@app.get("/api/darzi/orders/{order_id}", dependencies=[Depends(require_key)])
+def darzi_order_get(order_id: str, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return _darzi(darzi.get_order, tenant, order_id)
+
+
+@app.patch("/api/darzi/orders/{order_id}", dependencies=[Depends(require_key)])
+def darzi_order_patch(order_id: str, body: DarziOrderPatch, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return _darzi(darzi.update_order, tenant, order_id, body.deliver_on, body.trial_on, body.notes, body.items, body.force)
+
+
+@app.post("/api/darzi/orders/{order_id}/status", dependencies=[Depends(require_key)])
+def darzi_order_status(order_id: str, body: DarziStatusIn, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return _darzi(darzi.set_status, tenant, order_id, body.status, body.note, conv=body.conversation_id)
+
+
+@app.post("/api/darzi/orders/{order_id}/pay", dependencies=[Depends(require_key)])
+def darzi_order_pay(order_id: str, body: DarziMoneyIn, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return _darzi(darzi.pay, tenant, order_id, body.amount, body.how)
+
+
+@app.post("/api/darzi/orders/{order_id}/deliver", dependencies=[Depends(require_key)])
+def darzi_order_deliver(order_id: str, body: DarziMoneyIn, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return _darzi(darzi.deliver, tenant, order_id, body.amount, body.note, conv=body.conversation_id)
+
+
+@app.post("/api/darzi/orders/{order_id}/cancel", dependencies=[Depends(require_key)])
+def darzi_order_cancel(order_id: str, body: DarziMoneyIn, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return _darzi(darzi.cancel, tenant, order_id, body.reason)
+
+
+@app.get("/api/darzi/orders/{order_id}/slip", dependencies=[Depends(require_key)])
+def darzi_order_slip(order_id: str, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    data = _darzi(darzi.slip_pdf, tenant, order_id)
+    return Response(data, media_type="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="order-{order_id}.pdf"'})
+
+
+@app.post("/api/darzi/orders/{order_id}/slip", dependencies=[Depends(require_key)])
+def darzi_order_slip_file(order_id: str, body: DarziMoneyIn, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return _darzi(darzi.slip_file, tenant, order_id, body.conversation_id)
+
+
+@app.post("/api/darzi/orders/{order_id}/ready", dependencies=[Depends(require_key)])
+def darzi_order_ready(order_id: str, body: DarziMoneyIn, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return _darzi(darzi.ready_card, tenant, order_id, body.conversation_id)
+
+
+@app.post("/api/darzi/orders/{order_id}/send_business", dependencies=[Depends(require_key)])
+async def darzi_order_send_business(order_id: str, body: DarziMoneyIn, tenant: str = Depends(current_tenant)):
+    """Her tap: the 'ready' message through the official business WhatsApp (24 h window)."""
+    from .darzi import service as darzi
+    try:
+        return await darzi.send_ready_business(tenant, order_id, body.text)
+    except darzi.DarziError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/darzi/orders/{order_id}/told", dependencies=[Depends(require_key)])
+def darzi_order_told(order_id: str, body: DarziMoneyIn, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return _darzi(darzi.mark_told, tenant, order_id, body.how or "whatsapp")
+
+
+@app.get("/api/darzi/customers", dependencies=[Depends(require_key)])
+def darzi_customers(q: str = "", tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return {"customers": darzi.customers(tenant, q, 300)}
+
+
+@app.post("/api/darzi/customers", dependencies=[Depends(require_key)])
+def darzi_customer_new(body: DarziCustomerIn, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return _darzi(darzi.customer_upsert, tenant, body.name, body.phone, body.notes)
+
+
+@app.get("/api/darzi/customers/{customer_id}", dependencies=[Depends(require_key)])
+def darzi_customer_get(customer_id: str, history: bool = False, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    out = _darzi(darzi.measures, tenant, customer_id, "", "", "", history)
+    out["orders"] = darzi.orders(tenant, "all", customer_id, 30)
+    return out
+
+
+@app.post("/api/darzi/measures", dependencies=[Depends(require_key)])
+def darzi_measure_new(body: DarziMeasureIn, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return _darzi(darzi.save_measure, tenant, body.customer, body.garment, body.values, body.person, body.note, body.unit,
+                  "app", body.name, body.phone)
+
+
+@app.get("/api/darzi/quotes", dependencies=[Depends(require_key)])
+def darzi_quotes(status: str = "pending", tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return {"quotes": darzi.quotes(tenant, status)}
+
+
+@app.post("/api/darzi/quotes/{quote_id}", dependencies=[Depends(require_key)])
+def darzi_quote_decide(quote_id: str, body: DarziQuoteIn, tenant: str = Depends(current_tenant)):
+    """Her Haan / Mana on a price Hoola prepared (only from her tap)."""
+    from .darzi import service as darzi
+    return _darzi(darzi.decide_quote, tenant, quote_id, body.approve, body.price, body.to_list)
+
+
+@app.get("/api/darzi/settings", dependencies=[Depends(require_key)])
+def darzi_settings_get(tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return darzi.settings(tenant)
+
+
+@app.put("/api/darzi/settings", dependencies=[Depends(require_key)])
+def darzi_settings_put(body: dict, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    keys = ("enabled", "shop_name", "unit", "pieces_per_day", "closed_days", "rush_percent", "min_days", "prices", "rules",
+            "remeasure_months", "ready_template", "morning_time")
+    return _darzi(darzi.save_settings, tenant, **{k: body[k] for k in keys if k in body})
+
+
+@app.get("/api/darzi/garments", dependencies=[Depends(require_key)])
+def darzi_garments():
+    from .darzi import garments
+    return {"garments": garments.listing()}
+
+
+@app.post("/api/darzi/check", dependencies=[Depends(require_key)])
+def darzi_check(body: DarziCheckIn, tenant: str = Depends(current_tenant)):
+    from .darzi import service as darzi
+    return _darzi(darzi.check, tenant, body.items, body.deliver_on, body.trial_on, body.customer)
 
 
 @app.get("/api/agent/tasks", dependencies=[Depends(require_key)])
