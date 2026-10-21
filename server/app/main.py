@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.79.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.80.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -2523,6 +2523,40 @@ def agent_stats():
     from .agent import pakka
     return {"breaker": {k: STATS.get(k, 0) for k in ("steer", "constrain", "stop")}, "procedures": dict(procedures.STATS),
             "pakka": dict(pakka.STATS)}
+
+
+class ShopOrderIn(BaseModel):
+    what: str
+    site: str = ""
+    budget: str = ""
+    when: str = ""
+    address: str = ""
+    notes: str = ""
+    compare: list[str] = []
+    conversation_id: str = ""
+
+
+@app.get("/api/shop/sites", dependencies=[Depends(require_key)])
+def shop_sites():
+    """v0.80 Order karo: sites Hoola can order / book from."""
+    from .shop import sites
+    return {"sites": sites.listing()}
+
+
+@app.get("/api/shop/orders", dependencies=[Depends(require_key)])
+def shop_orders(tenant: str = Depends(current_tenant)):
+    from .shop import service as shop
+    return {"orders": shop.orders(tenant)}
+
+
+@app.post("/api/shop/orders", dependencies=[Depends(require_key)])
+def shop_order_new(body: ShopOrderIn, tenant: str = Depends(current_tenant)):
+    from .shop import service as shop
+    try:
+        return shop.order(tenant, body.what, body.conversation_id, body.site, body.budget, body.when, body.address,
+                          body.notes, [c.lower() for c in body.compare])
+    except shop.ShopError as e:
+        raise HTTPException(400, str(e))
 
 
 @app.get("/api/agent/tasks", dependencies=[Depends(require_key)])

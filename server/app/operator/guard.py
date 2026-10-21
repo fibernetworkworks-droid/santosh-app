@@ -33,7 +33,10 @@ DANGER_LINK = re.compile(r"\b(delete|remove|cancel|unsubscribe|confirm|verify|ap
 SAFE_BUTTON = re.compile(
     r"^\s*(search|go|next|previous|prev|back|more|show more|load more|view|view details|details|show|filter|"
     r"apply filters?|sort|close|ok|got it|accept cookies|accept all|reject all|allow|continue reading|read more|"
-    r"expand|collapse|menu|open|home|english|hindi|हिंदी|खोजें|आगे)\s*$",
+    r"expand|collapse|menu|open|home|english|hindi|हिंदी|खोजें|आगे|"
+    # v0.80 Order karo: putting things in the cart moves no money and can be undone (pay / place order stay hers)
+    r"add|add to cart|add to bag|add to basket|add item|add to trolley|\+|update cart|"
+    r"increase quantity|decrease quantity|deliver here|deliver to this address|use this address|select address)\s*$",
     re.I)
 SECRET_WORDS = re.compile(   # letters-only boundaries, so otp_code / user_pin / aadhaar_no all match
     r"pass(?:word|wd|code)?(?![a-z])|(?<![a-z])otp(?![a-z])|one.?time|(?<![a-z])(?:m|t)?pin(?![a-z])(?![\s_-]*code)|"

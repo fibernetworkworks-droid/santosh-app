@@ -459,3 +459,10 @@ from .id_tools import ID_HANDLERS, ID_LABELS, ID_TOOLS  # noqa: E402
 TOOLS.extend(ID_TOOLS)
 TOOL_LABELS.update(ID_LABELS)
 HANDLERS.update(ID_HANDLERS)
+
+# v0.80 Order karo (shopping / food / travel up to payment; she pays)
+from .shop_tools import SHOP_HANDLERS, SHOP_LABELS, SHOP_TOOLS  # noqa: E402
+
+TOOLS.extend(SHOP_TOOLS)
+TOOL_LABELS.update(SHOP_LABELS)
+HANDLERS.update(SHOP_HANDLERS)

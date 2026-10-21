@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
     # Official agent endpoints (MCP). Empty = pack shows as "not configured".
     mcp_swiggy_food_url: str = "https://mcp.swiggy.com/food"
-    mcp_swiggy_instamart_url: str = "https://mcp.swiggy.com/instamart"
+    mcp_swiggy_instamart_url: str = "https://mcp.swiggy.com/im"   # v0.80: Swiggy's documented Instamart server path
     mcp_swiggy_dineout_url: str = "https://mcp.swiggy.com/dineout"
     mcp_zomato_url: str = "https://mcp-server.zomato.com/mcp"
     mcp_zepto_url: str = ""

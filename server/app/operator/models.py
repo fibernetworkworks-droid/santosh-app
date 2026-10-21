@@ -30,6 +30,7 @@ class OperatorTask(Base):
     recipe: Mapped[str] = mapped_column(String(120), default="")
     log: Mapped[str] = mapped_column(Text, default="[]")            # the last steps (plain words, no values)
     error: Mapped[str] = mapped_column(Text, default="")
+    guide: Mapped[str | None] = mapped_column(Text, nullable=True)  # v0.80 extra job guidance (e.g. Order karo rules)
     created_by: Mapped[str] = mapped_column(String(64), default="owner")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)

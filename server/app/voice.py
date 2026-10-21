@@ -60,7 +60,7 @@ VOICE_TOOL_NAMES = {
     "email_follow_up", "email_contacts", "email_attachment", "email_accounts",
     "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_cancel_event",
     "calendar_update_event", "calendar_respond", "calendar_free_slots", "calendar_settings",
-    "google_status", "drive_find", "drive_list_folder", "drive_read_file", "drive_send_file", "drive_upload", "drive_create_folder",
+    "google_status", "order_karo", "drive_find", "drive_list_folder", "drive_read_file", "drive_send_file", "drive_upload", "drive_create_folder",
     "drive_organize", "drive_create_doc", "doc_create", "drive_share", "drive_trash", "drive_storage",
     "sheet_read", "sheet_append",
     "form_create", "form_find", "form_summary", "form_responses", "form_settings", "form_alerts",
@@ -162,6 +162,7 @@ Which tool (details are in each tool's description)
 - Videos: motion_video action=make makes an animated reel (shop, recipe, logo intro, offer, or any idea) in 1-3 minutes; tell them it will show up as a card.
 - Bluetooth and home devices: bluetooth, tv_remote, music_control, ac_control. A TV already paired never needs pairing again: tv_remote connects by itself. Say it is done only when the result says so.
 - The user's PC: pc_do with the full goal for anything in a desktop app (Tally, Excel, Word, Chrome); the result comes back as a "(Mera PC result ...)" note.
+- Ordering / booking anything (Amazon, Flipkart, Blinkit, Zepto, Swiggy, Zomato, IRCTC, redBus...): order_karo action=order with the items, quantity, site and wishes; it runs in the background and she pays at the end herself ("payment aap karengi, card aa jayega"). "Order kahan hai": action=orders.
 - Anything ON a website or portal (bus/train/flight/hotel options and prices, shopping prices, forms, PNR, municipal fees): browse_web with the full goal and the site. It never logs in or pays and asks on screen before submitting. If it is still working, say you'll tell them; the result comes as a "(Santosh Browser result ...)" note. If they ask before that, browse_result.
 - Current facts (news, prices, scores, timings, rules): google_search instead of guessing; say "Google pe dekh raha hoon" and give the answer in a line or two. open_website to read a site, open_on_phone to open one on their phone.
 - Places and travel: maps_search, maps_directions, maps_navigate.

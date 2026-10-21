@@ -51,7 +51,7 @@ class Pack(BaseModel):
             pats = self.config.get("money_tool_patterns", [])
             read_only = words & {"get", "list", "search", "fetch", "view", "show", "track", "status", "history", "details"}
             if (words & money_words or any(p in low for p in pats)) and not (read_only and low.split("_")[0] in
-                                                                              {"get", "list", "search", "fetch", "view", "show", "track"}):
+                                                                              {"get", "list", "search", "fetch", "view", "show", "track", "check"}):
                 return 2
             return 0
         raise KeyError(f"{self.id} has no tool {tool}")

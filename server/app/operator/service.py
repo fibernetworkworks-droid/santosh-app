@@ -189,7 +189,7 @@ def active(tenant: str) -> dict[str, Any] | None:
 
 # ---------------------------------------------------------------- start / cancel
 def start(tenant: str, task: str, start_url: str = "", file_ids: list[str] | None = None, conversation_id: str = "",
-          created_by: str = "owner") -> dict[str, Any]:
+          created_by: str = "owner", guide: str = "") -> dict[str, Any]:
     task = re.sub(r"\s+", " ", task or "").strip()
     if len(task) < 6:
         raise OperatorJobError("Kya karna hai, thoda saaf bataiye (website + kaam).")
@@ -221,7 +221,7 @@ def start(tenant: str, task: str, start_url: str = "", file_ids: list[str] | Non
     with session() as s:
         row = OperatorTask(tenant_id=tenant, conversation_id=conversation_id or _home_conv(tenant), task=task[:3000],
                            start_url=start_url or "", files=json.dumps(files), created_by=created_by[:64],
-                           stage="Line mein")
+                           stage="Line mein", guide=(guide or None) and guide[:6000])
         s.add(row)
         s.flush()
         s.expunge(row)
@@ -551,6 +551,8 @@ async def _loop(job: Job) -> dict[str, Any]:
     st = _st()
     system = _system(row, job.mem)
     intro = f"Task from the owner: {row.task}"
+    if getattr(row, "guide", None):
+        intro += "\n\n" + row.guide
     if row.start_url:
         intro += f"\nStart at: {row.start_url}"
     history: list[dict] = [{"role": "user", "content": intro}]

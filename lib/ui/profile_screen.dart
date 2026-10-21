@@ -29,6 +29,7 @@ import 'hoola_net_screen.dart';
 import 'hoola_samaj_screen.dart';
 import 'voice_id_screen.dart';
 import 'procedures_screen.dart';
+import 'shop_screen.dart';
 import 'id_locker_screen.dart';
 import 'employee_screen.dart';
 
@@ -177,6 +178,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Aadhaar, PAN, Voter ID… taala band. ${app.aName} forms mein khud bharega'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => IdLockerScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.shopping_bag_rounded, color: C.accent),
+              title: const Text('Order karo', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Amazon, Flipkart, Blinkit, Zepto, Swiggy, Zomato, IRCTC...: ${app.aName} sab karega, payment aap'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShopScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
