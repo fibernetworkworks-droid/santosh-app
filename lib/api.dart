@@ -514,11 +514,11 @@ class Api {
           body: {if (active != null) 'active': active, if (title != null) 'title': title, if (steps != null) 'steps': steps}) as Map);
   Future<void> procedureDelete(String id) async => _send('DELETE', '/api/procedures/$id');
   // v0.80 Order karo
-  Future<List<Map<String, dynamic>>> shopOrders() async => List<Map<String, dynamic>>.from(
+  Future<List<Map<String, dynamic>>> orderKaroList() async => List<Map<String, dynamic>>.from(
       ((await _send('GET', '/api/shop/orders') as Map)['orders'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
-  Future<List<Map<String, dynamic>>> shopSites() async => List<Map<String, dynamic>>.from(
+  Future<List<Map<String, dynamic>>> orderKaroSites() async => List<Map<String, dynamic>>.from(
       ((await _send('GET', '/api/shop/sites') as Map)['sites'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
-  Future<Map<String, dynamic>> shopOrder(String what, {String site = '', String budget = '', String conversationId = ''}) async =>
+  Future<Map<String, dynamic>> orderKaroStart(String what, {String site = '', String budget = '', String conversationId = ''}) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/shop/orders',
           body: {'what': what, 'site': site, 'budget': budget, 'conversation_id': conversationId}) as Map);
   // v0.78 Pakka kaam: task log + lessons (failure -> what worked)

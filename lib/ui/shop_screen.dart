@@ -40,8 +40,8 @@ class _ShopScreenState extends State<ShopScreen> {
 
   Future<void> _load() async {
     try {
-      final o = await _api.shopOrders();
-      final s = _sites.isEmpty ? await _api.shopSites() : _sites;
+      final o = await _api.orderKaroList();
+      final s = _sites.isEmpty ? await _api.orderKaroSites() : _sites;
       if (mounted) setState(() {
         _orders = o;
         _sites = s;
@@ -57,7 +57,7 @@ class _ShopScreenState extends State<ShopScreen> {
     if (what.length < 3) return;
     setState(() => _busy = true);
     try {
-      final r = await _api.shopOrder(what, site: _site, budget: _budget.text.trim(), conversationId: widget.app.conversationId ?? '');
+      final r = await _api.orderKaroStart(what, site: _site, budget: _budget.text.trim(), conversationId: widget.app.conversationId ?? '');
       _what.clear();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${r['say'] ?? 'Order shuru'}')));
