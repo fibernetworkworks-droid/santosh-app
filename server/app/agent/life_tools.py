@@ -94,7 +94,7 @@ LIFE_LABELS = {
     "cancel_routine": "Kaam band kar raha hoon", "get_weather": "Mausam dekh raha hoon",
 }
 
-SENSITIVE = ("password", "passcode", "otp", "pin ", "cvv", "card number", "account number", "aadhaar", "pan number")
+SENSITIVE = ("password", "passcode", "otp", "pin ", "cvv", "card number")   # ID numbers go to the Pehchaan Locker (v0.75)
 
 
 def _publish_reminders(ctx: Ctx) -> None:
@@ -187,11 +187,13 @@ async def add_calendar_event(ctx: Ctx, title, start, end=None, location=None, no
 
 
 async def remember(ctx: Ctx, fact, pin=False, **_):
-    low = f" {fact.lower()} "
+    from ..idvault import capture
     from ..pii import describe, find
-    found = find(str(fact))
+    fact, _ids = capture(ctx.tenant_id, str(fact))     # v0.75 ID numbers -> Pehchaan Locker, the fact keeps the reference
+    low = f" {fact.lower()} "
+    found = [k for k in find(str(fact)) if k in ("otp_pin", "password", "card", "cvv")]
     if found:
-        raise ToolError(f"Isme {describe(found)} hai. Hoola yeh yaad nahi rakhta; password manager / DigiLocker mein rakhiye.")
+        raise ToolError(f"Isme {describe(found)} hai. Hoola yeh yaad nahi rakhta; password manager mein rakhiye.")
     if any(k in low for k in SENSITIVE):
         raise ToolError("This looks like a password, OTP, PIN or account/card number. Do not store it; tell the user to keep it in a password manager.")
     with session() as s:

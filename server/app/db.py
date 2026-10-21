@@ -634,6 +634,7 @@ def init_db(url: str | None = None):
     from .publicapis import models as _publicapi_models  # noqa: F401
     from .reels import models as _reels_models  # noqa: F401
     from .motion import models as _motion_models  # noqa: F401
+    from . import idvault as _idvault  # noqa: F401
     from .net import models as _net_models  # noqa: F401
     from .net import share as _net_share  # noqa: F401
     from .net import groups as _net_groups  # noqa: F401

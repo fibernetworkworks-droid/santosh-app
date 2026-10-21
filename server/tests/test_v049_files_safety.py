@@ -69,8 +69,13 @@ def test_pii_gate_in_memory(env):
     assert "bank_account" in pii.find("SBI account no 123456789012")
     assert pii.find("Mobile 9876543210, pincode 444101") == []
     ctx = Ctx(tenant_id="default", conversation_id="c")
+    r = asyncio.run(remember(ctx, "Mera aadhaar 2341 2341 2346 yaad rakho"))   # v0.75: goes to the Pehchaan Locker
+    from app.db import MemoryFact, session
+    with session() as s:
+        txt = s.get(MemoryFact, r["fact_id"]).text
+    assert "2341 2341 2346" not in txt and "{id:" in txt
     with pytest.raises(ToolError):
-        asyncio.run(remember(ctx, "2341 2341 2346 yaad rakho"))
+        asyncio.run(remember(ctx, "OTP 482913 yaad rakho"))
     assert asyncio.run(remember(ctx, "Beti ka birthday 12 March"))["saved"]
 
 

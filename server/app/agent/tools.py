@@ -452,3 +452,10 @@ from .google_tools import GOOGLE_HANDLERS, GOOGLE_LABELS, GOOGLE_TOOLS  # noqa: 
 TOOLS.extend(GOOGLE_TOOLS)
 TOOL_LABELS.update(GOOGLE_LABELS)
 HANDLERS.update(GOOGLE_HANDLERS)
+
+# v0.75 Pehchaan Locker
+from .id_tools import ID_HANDLERS, ID_LABELS, ID_TOOLS  # noqa: E402
+
+TOOLS.extend(ID_TOOLS)
+TOOL_LABELS.update(ID_LABELS)
+HANDLERS.update(ID_HANDLERS)

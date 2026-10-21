@@ -485,6 +485,12 @@ class Api {
   Future<void> forget(int id) async => _send('DELETE', '/api/memory/$id');
   /// "Hamesha yaad": pin / unpin a remembered fact (server refuses past its character limit).
   Future<void> pinMemory(int id, bool pinned) async => _send('PATCH', '/api/memory/$id', body: {'pinned': pinned});
+  // ---- v0.75 Pehchaan Locker (Aadhaar / PAN / ID numbers, encrypted on the server) ----
+  Future<Map<String, dynamic>> idList() async => Map<String, dynamic>.from(await _send('GET', '/api/ids') as Map);
+  Future<Map<String, dynamic>> idSave({required String kind, required String number, String person = 'self', String note = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/ids', body: {'kind': kind, 'number': number, 'person': person, 'note': note}) as Map);
+  Future<Map<String, dynamic>> idReveal(String id) async => Map<String, dynamic>.from(await _send('POST', '/api/ids/$id/reveal') as Map);
+  Future<void> idDelete(String id) async => _send('DELETE', '/api/ids/$id');
   // ---- v0.63 seekhe hue kaam ----
   Future<List<Map<String, dynamic>>> procedures() async => List<Map<String, dynamic>>.from(
       ((await _send('GET', '/api/procedures') as Map)['procedures'] as List).map((e) => Map<String, dynamic>.from(e as Map)));

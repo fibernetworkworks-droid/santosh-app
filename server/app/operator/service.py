@@ -195,9 +195,12 @@ def start(tenant: str, task: str, start_url: str = "", file_ids: list[str] | Non
         raise OperatorJobError("Kya karna hai, thoda saaf bataiye (website + kaam).")
     if not available():
         raise OperatorJobError("Computer Operator is server par abhi chalu nahi hai (Playwright / Chromium nahi mila).")
-    from .. import pii
-    if pii.find(task):
-        raise OperatorJobError("Kaam ke text mein Aadhaar / PAN / bank number mat likhiye; woh aap khud page par bharengi.")
+    from .. import idvault, pii
+    # v0.75 Aadhaar / PAN / other ID numbers go into her Pehchaan Locker; the job text keeps only {id:...} references
+    task, _saved = idvault.capture(tenant, task)
+    secrets = [k for k in pii.find(task) if k in ("otp_pin", "password", "card", "cvv")]
+    if secrets:
+        raise OperatorJobError(f"Kaam ke text mein {pii.describe(secrets)} mat likhiye; woh aap khud page par bharengi.")
     if start_url:
         from .guard import url_problem
         why = url_problem(start_url, bool(_st().operator_allow_private))
@@ -406,6 +409,12 @@ def _system(row: OperatorTask, mem: Memory) -> str:
     if files:
         lines.append("Files the owner gave for this job (upload by file_id): " +
                      "; ".join(f"{f['name']} (file_id={f['file_id']})" for f in files))
+    from .. import idvault
+    ids = idvault.summary_for_model(row.tenant_id)
+    lines.append("ID LOCKER (her Pehchaan Locker; numbers are masked for you): " + (ids or "empty") +
+                 ". To fill an ID box use fill(ref, value='{id:...}') with the reference: the real number goes only "
+                 "into the box (official .gov.in / .nic.in sites directly; any other site asks her once). Missing ID: "
+                 "ask_owner(kind='question') - her answer comes back as a reference.")
     found = mem.find(row.task, limit=3)
     if found["recipes"]:
         lines.append("Recipes that may fit: " + "; ".join(f"{r['name']} (variables: {', '.join(r['variables'])})"
@@ -432,6 +441,7 @@ async def run_job(task_id: str) -> dict[str, Any]:
         if task_id in _cancel:
             return view(_set(task_id, status="cancelled", stage="Rok diya"))
         op = await operator(row.tenant_id)
+        op.id_tenant = row.tenant_id
         job = Job(row, op, memory(row.tenant_id))
         _set(task_id, status="running", stage="Shuru kar raha hoon")
         try:
@@ -482,7 +492,7 @@ async def _loop(job: Job) -> dict[str, Any]:
                 out = await asyncio.wait_for(_tool(job, name, args), timeout=int(st.operator_wait_owner_s or 900) + 180)
                 ok = not (isinstance(out, dict) and (out.get("ok") is False or out.get("error")))
                 br.after(name, ok)
-                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": T.as_result(out)})
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": _mask_result(T.as_result(out))})
             except OperatorError as e:
                 br.after(name, False)
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": str(e), "is_error": True})
@@ -508,6 +518,16 @@ async def _loop(job: Job) -> dict[str, Any]:
     if br.stopped:
         return await _wrap(job, "failed", f"Atak gaya ({br.stopped}). {final}".strip(), {})
     return await _wrap(job, "failed" if not final else "done", final or "Kaam poora nahi ho paya.", {})
+
+
+def _mask_result(content):
+    """v0.75 identity numbers on pages / in answers never reach the model in full."""
+    from .browser import mask_ids
+    if isinstance(content, str):
+        return mask_ids(content)
+    if isinstance(content, list):
+        return [{**c, "text": mask_ids(c["text"])} if isinstance(c, dict) and c.get("type") == "text" else c for c in content]
+    return content
 
 
 def _where(job: Job) -> dict[str, str]:
@@ -690,10 +710,15 @@ async def _wait_owner(job: Job, s, req: Approval) -> dict[str, Any]:
     got = await op.wait_human(req.id, float(_st().operator_wait_owner_s or 900))
     _set(job.row.id, status="running", stage="Aage badh raha hoon", pending=None)
     d = got.public()
+    if d.get("answer"):          # v0.75 an ID number in her answer goes to the locker; the model gets the reference
+        from .. import idvault
+        d["answer"], _ = idvault.capture(job.row.tenant_id, str(d["answer"]))
     if got.status == "expired":
         d["next"] = "She did not answer in time. Finish with what is done and what is left (finish ok=false)."
     elif got.status == "rejected":
         d["next"] = "She said NO. Do not do it. Ask what she wants instead, or finish."
+    elif got.kind == "approve" and got.ref and ((op.sessions.get(got.session) and op.sessions[got.session].refs.get(got.ref)) or {}).get("id_field"):
+        d["next"] = f"Approved: fill(ref='{got.ref}', value=<the {{id:...}} reference>, approval_id='{got.id}') now."
     elif got.kind == "approve":
         d["next"] = f"Approved: click(ref='{got.ref}', approval_id='{got.id}') now - only that button."
     elif got.kind in ("payment", "takeover"):
@@ -704,7 +729,7 @@ async def _wait_owner(job: Job, s, req: Approval) -> dict[str, Any]:
         try:
             d["page"] = fmt_snapshot(await op.snapshot(op.sessions["main"]))
         except Exception:
-            pass
+            log.exception("operator: page after the owner's answer")
     return d
 
 

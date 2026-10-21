@@ -79,6 +79,7 @@ VOICE_TOOL_NAMES = {
     "tv_channel",                  # Hoola TV: free channels on the phone or the TV
     "reel",                        # Hoola Reels: shared reels, saved reels, "ye sach hai?"
     "motion_video",                # Hoola Motion: animated reels made as code
+    "id_locker",                   # v0.73 Pehchaan Locker (ID numbers she says)
     "bazar_run", "bazar_mcp",       # the owner's MCP servers (their own tools are added per call, see agent/mcp_live)
 }
 

@@ -37,7 +37,12 @@ SAFE_BUTTON = re.compile(
     re.I)
 SECRET_WORDS = re.compile(   # letters-only boundaries, so otp_code / user_pin / aadhaar_no all match
     r"pass(?:word|wd|code)?(?![a-z])|(?<![a-z])otp(?![a-z])|one.?time|(?<![a-z])(?:m|t)?pin(?![a-z])(?![\s_-]*code)|"
-    r"(?<![a-z])cv[vc](?![a-z])|card.?(?:number|no)|cc-?num|(?<![a-z])aadh?aa?r|security.?code|secret|captcha", re.I)
+    r"(?<![a-z])cv[vc](?![a-z])|card.?(?:number|no)|cc-?num|security.?code|secret|captcha", re.I)
+# v0.75 identity numbers (filled from the owner's Pehchaan Locker, never typed from the model's own words)
+ID_WORDS = re.compile(
+    r"(?<![a-z])aadh?aa?r|(?<![a-z])pan(?![a-z])|pan.?(?:no|number|card)|permanent.?account|"
+    r"voter|(?<![a-z])epic(?![a-z])|passport.?(?:no|number)|driving.?licen|(?<![a-z])dl.?(?:no|number)|ration.?card|"
+    r"(?<![a-z])abha|(?<![a-z])uan(?![a-z])|gstin|आधार|पैन", re.I)
 SECRET_AUTOCOMPLETE = {"current-password", "new-password", "one-time-code", "cc-number", "cc-csc", "cc-exp",
                        "cc-exp-month", "cc-exp-year", "cc-name", "cc-type"}
 SEARCH_FIELD = re.compile(r"search|query|\bq\b|find|khoj|keyword|lookup", re.I)
@@ -83,7 +88,8 @@ def classify_click(node: dict | None) -> str:
 
 
 def classify_input(node: dict | None, text: str = "") -> str:
-    """secret | ok for typing into this element."""
+    """secret | id | ok for typing into this element. secret = password / OTP / PIN / CVV / card: only the owner types
+    it. id = an identity number box (Aadhaar, PAN...): filled from her locker, never from the model's own words."""
     if not node:
         return "ok"
     a = node.get("attributes") or {}
@@ -96,8 +102,10 @@ def classify_input(node: dict | None, text: str = "") -> str:
     if SECRET_WORDS.search(hay):
         return "secret"
     digits = re.sub(r"[\s-]", "", text or "")
-    if re.fullmatch(r"\d{12}|\d{13,19}", digits):   # looks like an Aadhaar or card number
+    if re.fullmatch(r"\d{13,19}", digits):          # looks like a card number
         return "secret"
+    if ID_WORDS.search(hay) or re.fullmatch(r"\d{12}", digits) or re.fullmatch(r"[A-Za-z]{5}\d{4}[A-Za-z]", (text or "").strip()):
+        return "id"
     return "ok"
 
 

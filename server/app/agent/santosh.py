@@ -340,6 +340,14 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
     tenant_id = tenant_id or settings.tenant_id
     ctx = Ctx(tenant_id=tenant_id, conversation_id=conversation_id, actor=actor or "owner")
     _gender = persona(tenant_id)[1]
+    # v0.75 ID numbers the OWNER writes go into her Pehchaan Locker; the model and the saved chat get references.
+    # Customers' / other avatars' messages are never captured into her locker.
+    if (actor or "owner") == "owner" and not user_text.lstrip().startswith("[Hoola Network]"):
+        try:
+            from ..idvault import capture
+            user_text, _ids = capture(tenant_id, user_text)
+        except Exception:
+            log.exception("id capture failed")
     async with _locks[conversation_id]:
         notes = _pending_worker_notes(conversation_id)
         agent_text = f"{VOICE_NOTE}\n{user_text}" if voice else user_text

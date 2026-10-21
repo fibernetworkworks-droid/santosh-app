@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.74.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.75.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -3221,6 +3221,46 @@ async def reel_check(reel_id: str, tenant: str = Depends(current_tenant)):
         return await rs.fact_check(tenant, reel_id)
     except rs.ReelError as e:
         raise HTTPException(400, str(e))
+
+
+# ---------------- v0.75 Pehchaan Locker: ID numbers (encrypted; masked unless she taps "dikhao") ----------------
+class IdIn(BaseModel):
+    kind: str
+    number: str
+    person: str = "self"
+    note: str = ""
+
+
+def _idv(fn, *a):
+    from . import idvault
+    try:
+        return fn(*a)
+    except idvault.VaultError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/ids", dependencies=[Depends(require_key)])
+def ids_list(tenant: str = Depends(current_tenant)):
+    from . import idvault
+    return {"ids": idvault.list_(tenant), "kinds": idvault.KINDS, "people": idvault.PERSON_LABEL}
+
+
+@app.post("/api/ids", dependencies=[Depends(require_key)])
+def ids_save(body: IdIn, tenant: str = Depends(current_tenant)):
+    from . import idvault
+    return _idv(idvault.save, tenant, body.kind, body.number, body.person, body.note)
+
+
+@app.post("/api/ids/{rid}/reveal", dependencies=[Depends(require_key)])
+def ids_reveal(rid: str, tenant: str = Depends(current_tenant)):
+    from . import idvault
+    return _idv(idvault.reveal, tenant, rid)
+
+
+@app.delete("/api/ids/{rid}", dependencies=[Depends(require_key)])
+def ids_delete(rid: str, tenant: str = Depends(current_tenant)):
+    from . import idvault
+    return _idv(idvault.delete, tenant, rid)
 
 
 # ---------------- v0.69 crash reports from the phone ----------------

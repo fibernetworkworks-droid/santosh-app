@@ -129,7 +129,7 @@ async def _first_run(site: str, photo_id: str):
         await call(job, "fill", ref=ref(p, "Date of birth"), value="15/08/1990", var="dob")
         await call(job, "check", ref=ref(p, "Female", "radio"))
         await call(job, "fill", ref=ref(p, "Father"), value="Anil Ingle", var="father_name")
-        assert (await call(job, "fill", ref=ref(p, "Aadhaar"), value=AADHAAR))["blocked"] == "secret"
+        assert (await call(job, "fill", ref=ref(p, "Aadhaar"), value=AADHAAR))["blocked"] == "id"   # v0.75: by locker reference only
         await call(job, "ask_owner", kind="secret", reason="Apna Aadhaar number bhariye", ref=ref(p, "Aadhaar"))
         await call(job, "fill", ref=ref(p, "Email"), value="meghana@example.com", var="email")
         await call(job, "fill", ref=ref(p, "Mobile"), value="98900", var="mobile")
@@ -378,8 +378,8 @@ def test_job_rules_api_tool_and_employee(site):
     from app.voice import VOICE_TOOL_NAMES
     with pytest.raises(ops.OperatorJobError):
         ops.start(T, "x")
-    with pytest.raises(ops.OperatorJobError):          # never Aadhaar in the task text
-        ops.start(T, "Form bharo, mera aadhaar 2345 6789 0123 hai", site)
+    with pytest.raises(ops.OperatorJobError):          # v0.75: never an OTP / PIN / card in the task text
+        ops.start(T, "Form bharo, OTP 482913 hai", site)
     ctx = Ctx(tenant_id=T, conversation_id="c1")
     out = asyncio.run(HANDLERS["computer_operator"](ctx, action="start", task="Portal se bijli ka bill download karo",
                                                      start_url=site + "/"))
@@ -416,7 +416,9 @@ def test_gate_words():
     assert gate_of(btn("Next")) == "" and gate_of(btn("Continue")) == "" and gate_of(btn("Search")) == ""
     assert gate_of({"role": "link", "name": "Download receipt", "tag": "a", "href": "/r.pdf"}) == ""
     box = lambda n, **k: {"role": "textbox", "name": n, "tag": "input", "type": "text", **k}  # noqa: E731
-    assert is_secret_field(box("Enter OTP")) and is_secret_field(box("Aadhaar number")) and is_secret_field(box("x", type="password"))
+    from app.operator.browser import field_kind
+    assert is_secret_field(box("Enter OTP")) and is_secret_field(box("x", type="password"))
+    assert not is_secret_field(box("Aadhaar number")) and field_kind(box("Aadhaar number")) == "id"   # v0.75 from the locker
     assert is_secret_field(box("Card number")) and is_secret_field(box("Account number", sensitive=True))
     assert not is_secret_field(box("PIN code", nameAttr="pin", id="pin", sensitive=True)) and not is_secret_field(box("Mobile number"), "9890012345")
     assert is_secret_field(box("Reference"), "4111 1111 1111 1111")       # a card number typed into any box
