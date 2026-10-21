@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.78.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.79.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -2520,7 +2520,31 @@ def procedures_delete(pid: str, tenant: str = Depends(current_tenant)):
 def agent_stats():
     from . import procedures
     from .agent.breaker import STATS
-    return {"breaker": {k: STATS.get(k, 0) for k in ("steer", "constrain", "stop")}, "procedures": dict(procedures.STATS)}
+    from .agent import pakka
+    return {"breaker": {k: STATS.get(k, 0) for k in ("steer", "constrain", "stop")}, "procedures": dict(procedures.STATS),
+            "pakka": dict(pakka.STATS)}
+
+
+@app.get("/api/agent/tasks", dependencies=[Depends(require_key)])
+def agent_tasks(limit: int = 50, tenant: str = Depends(current_tenant)):
+    """v0.78 Kaam ka hisaab: every task with its outcome, steps, failures, fixes used, and what was left."""
+    from .agent import pakka
+    return pakka.runs(tenant, limit)
+
+
+@app.get("/api/agent/lessons", dependencies=[Depends(require_key)])
+def agent_lessons(tenant: str = Depends(current_tenant)):
+    """v0.78 Seekhe hue hal: failure -> what worked, learned from her own tasks."""
+    from .agent import pakka
+    return {"lessons": pakka.listing(tenant)}
+
+
+@app.delete("/api/agent/lessons/{lid}", dependencies=[Depends(require_key)])
+def agent_lesson_delete(lid: str, tenant: str = Depends(current_tenant)):
+    from .agent import pakka
+    if not pakka.forget(tenant, lid):
+        raise HTTPException(404, "Not found")
+    return {"ok": True}
 
 
 @app.delete("/api/memory/{fact_id}", dependencies=[Depends(require_key)])

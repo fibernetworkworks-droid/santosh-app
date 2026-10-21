@@ -513,6 +513,12 @@ class Api {
       Map<String, dynamic>.from(await _send('PATCH', '/api/procedures/$id',
           body: {if (active != null) 'active': active, if (title != null) 'title': title, if (steps != null) 'steps': steps}) as Map);
   Future<void> procedureDelete(String id) async => _send('DELETE', '/api/procedures/$id');
+  // v0.78 Pakka kaam: task log + lessons (failure -> what worked)
+  Future<Map<String, dynamic>> agentTasks({int limit = 30}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/agent/tasks?limit=$limit') as Map);
+  Future<List<Map<String, dynamic>>> agentLessons() async => List<Map<String, dynamic>>.from(
+      ((await _send('GET', '/api/agent/lessons') as Map)['lessons'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<void> agentLessonDelete(String id) async => _send('DELETE', '/api/agent/lessons/$id');
 
   Future<Map<String, dynamic>> profile() async => Map<String, dynamic>.from(await _send('GET', '/api/profile'));
   Future<Map<String, dynamic>> saveProfile(Map<String, dynamic> p) async =>

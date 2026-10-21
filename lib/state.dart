@@ -961,7 +961,7 @@ class Santosh extends ChangeNotifier {
         employeeTick++;
         break;
       case 'procedure':
-        if (p['event'] == 'learned') feed.add(FeedItem('procedure', Map<String, dynamic>.from(p)));
+        if (p['event'] == 'learned' || p['event'] == 'lesson') feed.add(FeedItem('procedure', Map<String, dynamic>.from(p)));
         break;
       case 'employee':
       case 'biz_appointment':

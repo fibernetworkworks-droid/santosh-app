@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 import json
 import logging
 from collections import defaultdict
@@ -188,7 +189,8 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     """One turn with the v0.63 extras around it: seekhe hue kaam as hints, a circuit breaker, learning afterwards."""
     from .. import procedures
     from .breaker import Breaker
-    state: dict = {"calls": [], "breaker": Breaker(), "used": [], "hint": ""}
+    from . import pakka
+    state: dict = {"calls": [], "breaker": Breaker(), "used": [], "hint": "", "request": user_text, "t0": time.time()}
     actor = getattr(ctx, "actor", "owner") or "owner"
     if user_text and actor in ("owner", "routine"):
         try:
@@ -199,6 +201,13 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     ok = (bool(text.strip()) and not state["breaker"].stopped and conversation_id not in _stopped
           and not text.startswith(("Yeh kaam lamba", "Maaf kijiye")))
     if user_text:
+        lessons = await asyncio.to_thread(pakka.learn, tenant_id, state["calls"], ok, state.get("lessons_used", []))
+        if lessons:
+            bus.publish(conversation_id, "procedure", {"event": "lesson", "title": lessons[0][:120], "count": len(lessons)})
+        outcome = ("stopped" if conversation_id in _stopped else "stuck" if state["breaker"].stopped else
+                   "talk" if not state["calls"] else "partial" if state.get("left") else "done" if ok else "partial")
+        await asyncio.to_thread(pakka.record, tenant_id, user_text, outcome, state["calls"], state,
+                                time.time() - state["t0"], state.get("left", ""))
         learned = await asyncio.to_thread(procedures.after_turn, tenant_id, user_text, state["calls"], state["used"], ok, actor)
         if learned and learned.get("learned"):
             bus.publish(conversation_id, "procedure", {"event": "learned", "id": learned["learned"], "title": learned["title"]})
@@ -208,6 +217,7 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
 async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str,
                        state: dict) -> str:
     """The think -> tools -> think loop of one turn. Returns the final text shown to the user."""
+    from . import pakka
     breaker = state["breaker"]
     final_text = ""
     ran_tools = False
@@ -236,6 +246,15 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             final_text = "\n\n".join(texts)
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
         if stop != "tool_use":
+            nudge = await _pakka_check(state, final_text, settings, ran_tools, conversation_id)
+            if nudge:
+                history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
+                _save(conversation_id, "user", [{"type": "text", "text": nudge}])
+                continue
+            if state.get("correct"):
+                final_text = (final_text + "\n\n" + state.pop("correct")).strip()
+                bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
+                _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
             break
         results = []
         for b in blocks:
@@ -259,20 +278,30 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 out = await _run_tool(b["name"], args_in, ctx, settings, mcp_route)
                 fine = not (isinstance(out, dict) and out.get("error"))
                 breaker.after(b["name"], fine)
-                state["calls"].append({"tool": b["name"], "ok": fine, "error": "" if fine else str(out.get("error"))[:200]})
-                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": _short(out)})
+                content = _short(out)
+                call = {"tool": b["name"], "ok": fine, "error": "" if fine else str(out.get("error"))[:300],
+                        "args": args_in, "key": _key(b["name"], args_in), "result": "" if not fine else content[:300]}
+                if not fine:
+                    content += await pakka.on_failure(tenant_id, b["name"], call["error"], state.get("request", ""), state)
+                    call["internet_fix"] = (state.get("web_fix") or {}).get(b["name"], "")
+                state["calls"].append(call)
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": content})
                 bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "done", "id": b["id"]})
                 _work(conversation_id, b["id"], b["name"], label, theatre.phase_of(out), args_in, out)
             except ToolError as e:
                 breaker.after(b["name"], False)
-                state["calls"].append({"tool": b["name"], "ok": False, "error": str(e)[:200]})
-                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": str(e), "is_error": True})
+                help_ = await pakka.on_failure(tenant_id, b["name"], str(e), state.get("request", ""), state)
+                state["calls"].append({"tool": b["name"], "ok": False, "error": str(e)[:300], "args": args_in,
+                                       "key": _key(b["name"], args_in),
+                                       "internet_fix": (state.get("web_fix") or {}).get(b["name"], "")})
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": str(e) + help_, "is_error": True})
                 bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error",
                                                       "id": b["id"], "detail": str(e)[:300]})
                 _work(conversation_id, b["id"], b["name"], label, "error", args_in, error=str(e))
             except asyncio.TimeoutError:
                 breaker.after(b["name"], False)
-                state["calls"].append({"tool": b["name"], "ok": False, "error": "timeout"})
+                state["calls"].append({"tool": b["name"], "ok": False, "error": "timeout", "args": args_in,
+                                       "key": _key(b["name"], args_in)})
                 msg = f"{b['name']} did not finish in {settings.agent_tool_timeout_s} seconds and was stopped. Tell the user and offer to try again."
                 log.warning("tool %s timed out", b["name"])
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": msg, "is_error": True})
@@ -281,10 +310,12 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 _work(conversation_id, b["id"], b["name"], label, "error", args_in, error="Bahut der lag rahi thi, rok diya")
             except Exception as e:  # unexpected bug: tell the model, keep the turn alive
                 breaker.after(b["name"], False)
-                state["calls"].append({"tool": b["name"], "ok": False, "error": "crash"})
+                state["calls"].append({"tool": b["name"], "ok": False, "error": f"crash: {e}"[:300], "args": args_in,
+                                       "key": _key(b["name"], args_in)})
                 log.exception("tool %s crashed", b["name"])
+                help_ = await pakka.on_failure(tenant_id, b["name"], f"internal error: {e}", state.get("request", ""), state)
                 results.append({"type": "tool_result", "tool_use_id": b["id"],
-                                "content": f"Internal error in {b['name']}: {e}", "is_error": True})
+                                "content": f"Internal error in {b['name']}: {e}" + help_, "is_error": True})
                 bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error", "id": b["id"]})
                 _work(conversation_id, b["id"], b["name"], label, "error", args_in, error="Kuch gadbad ho gayi")
         history.append({"role": "user", "content": results})
@@ -317,6 +348,45 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
 
 
 _stopped: set[str] = set()
+
+
+def _key(name: str, args) -> str:
+    from .breaker import _key as k
+    return k(name, args)
+
+
+async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, conversation_id: str) -> str:
+    """v0.78 self-check before the turn ends: real results vs. her request. Returns a nudge to keep working, or ''.
+    Sets state['correct'] when the answer claims more than was done, state['left'] when something stays open."""
+    from . import pakka
+    calls = state.get("calls") or []
+    if (not ran_tools or not calls or conversation_id in _stopped or state["breaker"].stopped
+            or state.get("checks", 0) >= pakka.SELF_CHECKS_PER_TURN):
+        return ""
+    real = [c for c in calls if c.get("tool") not in pakka.SKIP]
+    if not real:
+        return ""
+    failed = any(not c.get("ok") for c in real)
+    if not failed and len(real) < 3:          # a simple job that went fine: no extra model call
+        return ""
+    state["checks"] = state.get("checks", 0) + 1
+    v = await pakka.self_check(state.get("request", ""), calls, final_text, settings)
+    if not v:
+        return ""
+    if v["done"]:
+        state.pop("left", None)
+        return ""
+    state["left"] = v["missing"] or "kuch hissa baaki"
+    if v["next"]:
+        state["kept_going"] = state.get("kept_going", 0) + 1
+        pakka.STATS["kept_going"] += 1
+        return ("[System self-check, not the user] The task is NOT finished yet: " + (v["missing"] or "something is left")
+                + ". Next step: " + v["next"] + ". Do it now with the tools (follow every card / approval rule as usual). "
+                "If it truly cannot be done, say plainly what is done, what is left and what she can do.")
+    if not v["claim_ok"]:
+        pakka.STATS["corrected_claims"] += 1
+        state["correct"] = "(Saaf baat: abhi yeh baaki hai — " + (v["missing"] or "kuch hissa") + ".)"
+    return ""
 
 
 def stop(conversation_id: str) -> None:

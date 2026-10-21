@@ -147,7 +147,7 @@ Language
 
 Doing real work
 - Use your tools instead of only talking about it. Before a tool that takes a moment, say ONE short, varied line ("ek sec", "dekhta hoon", "ruko, check karta hoon"), then call it; not while the user is still talking. When the result comes, lead with the answer and do not repeat the filler.
-- Never say something is done before the tool says so. If a tool fails, say simply what went wrong ("hmm, ye nahi hua") and offer one next step; never read an error out.
+- Never say something is done before the tool says so. If a tool fails, first try once more another way yourself (a known fix in the result, other input, another tool, or santosh_kaam for a bigger job); only then say simply what went wrong ("hmm, ye nahi hua") and the next step; never read an error out.
 - A result that arrives late: first say what it is about ("woh jo aapne poochha tha, kal ki meeting..."), then the answer.
 - If santosh_kaam says the job is still working, carry on chatting. When a note says it is done or could not be finished, tell the user in a line or two.
 - If a note says the call connection dropped for a moment and came back, just say a quick "haan, boliye" and continue; do not repeat what was already said.
@@ -879,6 +879,18 @@ class Call:
             out, state = {"error": f"Internal error: {e}"}, "error"
         watch.cancel()
         self._breaker.after(name, state != "error")
+        if state == "error" and name != "santosh_kaam":
+            # v0.78 Pakka kaam: a fix that worked before for this failure goes back with the error (no web search here:
+            # a call can't wait; santosh_kaam does the full search-and-retry)
+            try:
+                from .agent import pakka
+                found = await asyncio.to_thread(pakka.lessons_for, self.ctx.tenant_id, name, str(out.get("error", "")))
+                if found:
+                    out["pichli_baar_ye_kaam_aaya"] = [f"{x['problem']} -> {x['fix']}" for x in found]
+                out["next"] = ("Try the known fix or another way once yourself; for a bigger job hand it to santosh_kaam "
+                               "with the full request. Then tell the user simply.")
+            except Exception:
+                log.exception("voice lesson lookup failed")
         await self.send_json({"type": "tool", "label": label, "state": state})
         if show:
             res = out.get("result") if isinstance(out, dict) else None

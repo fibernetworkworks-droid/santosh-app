@@ -17,6 +17,8 @@ class ProceduresScreen extends StatefulWidget {
 
 class _ProceduresScreenState extends State<ProceduresScreen> {
   List<Map<String, dynamic>>? _rows;
+  Map<String, dynamic>? _tasks;
+  List<Map<String, dynamic>> _lessons = const [];
   String? _err;
   Api get _api => widget.app.api!;
 
@@ -29,8 +31,16 @@ class _ProceduresScreenState extends State<ProceduresScreen> {
   Future<void> _load() async {
     try {
       final r = await _api.procedures();
+      Map<String, dynamic>? t;
+      List<Map<String, dynamic>> l = const [];
+      try {
+        t = await _api.agentTasks();
+        l = await _api.agentLessons();
+      } catch (_) {}
       if (mounted) setState(() {
         _rows = r;
+        _tasks = t;
+        _lessons = l;
         _err = null;
       });
     } catch (e) {
@@ -126,6 +136,16 @@ class _ProceduresScreenState extends State<ProceduresScreen> {
                   style: const TextStyle(color: C.chip, height: 1.35, fontSize: 13)),
             ),
             const SizedBox(height: 12),
+            if (_tasks != null) _hisaab(_tasks!),
+            if (_lessons.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              const Text('Seekhe hue hal', style: TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              for (final l in _lessons.take(20)) _lesson(l),
+              const SizedBox(height: 12),
+              const Text('Seekhe hue tarike', style: TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+            ],
             if (_err != null) Text(_err!, style: const TextStyle(color: C.bad)),
             if (rows == null && _err == null) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
             if (rows != null && rows.isEmpty)
@@ -141,6 +161,80 @@ class _ProceduresScreenState extends State<ProceduresScreen> {
       ),
     );
   }
+
+  Widget _hisaab(Map<String, dynamic> t) {
+    final sum = Map<String, dynamic>.from((t['summary'] as Map?) ?? const {});
+    final tasks = List<Map<String, dynamic>>.from(((t['tasks'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)))
+        .where((x) => x['outcome'] != 'talk')
+        .toList();
+    if (tasks.isEmpty) return const SizedBox.shrink();
+    Color col(String o) => o == 'done' ? C.teal : (o == 'partial' ? C.warn : C.bad);
+    String word(String o) => const {'done': 'Poora', 'partial': 'Adhoora', 'stuck': 'Atka', 'stopped': 'Roka'}[o] ?? o;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Kaam ka hisaab', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          const SizedBox(height: 4),
+          Text(
+              '${sum['tasks'] ?? 0} kaam · ${sum['done_pct'] ?? '-'}% poore · ${sum['fixed_on_the_way'] ?? 0} mein atakne par khud hal dhoondha',
+              style: const TextStyle(color: C.muted, fontSize: 12.5)),
+          const SizedBox(height: 8),
+          for (final x in tasks.take(6))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(color: col('${x['outcome']}').withOpacity(.18), borderRadius: BorderRadius.circular(8)),
+                  child: Text(word('${x['outcome']}'), style: TextStyle(color: col('${x['outcome']}'), fontSize: 11, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${x['request']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5)),
+                    if ('${x['left'] ?? ''}'.isNotEmpty)
+                      Text('Baaki: ${x['left']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.warn, fontSize: 11.5)),
+                    Text('${x['steps']} kadam · ${x['seconds']} sec${(x['fixes'] as num? ?? 0) > 0 ? ' · ${x['fixes']} hal' : ''}',
+                        style: const TextStyle(color: C.faint, fontSize: 11)),
+                  ]),
+                ),
+              ]),
+            ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _lesson(Map<String, dynamic> l) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Glass(
+          padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
+          child: Row(children: [
+            const Icon(Icons.lightbulb_outline_rounded, color: C.accent, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${l['label']}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                Text('Atka: ${l['problem']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 12)),
+                Text('Hal: ${l['fix']}', maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.teal, fontSize: 12)),
+                Text('${l['helped']} baar kaam aaya', style: const TextStyle(color: C.faint, fontSize: 11)),
+              ]),
+            ),
+            IconButton(
+                tooltip: 'Bhool jao',
+                icon: const Icon(Icons.delete_outline_rounded, size: 19, color: C.muted),
+                onPressed: () async {
+                  try {
+                    await _api.agentLessonDelete('${l['id']}');
+                    await _load();
+                  } catch (e) {
+                    _say('$e');
+                  }
+                }),
+          ]),
+        ),
+      );
 
   Widget _card(Map<String, dynamic> p) {
     final steps = List<Map<String, dynamic>>.from(((p['steps'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
@@ -209,7 +303,7 @@ class ProcedureLearnedCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${app.aName} ne yeh kaam karna seekh liya', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+              Text(v['event'] == 'lesson' ? '${app.aName} ne atakne ka hal seekh liya' : '${app.aName} ne yeh kaam karna seekh liya', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
               Text('${v['title'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 12.5)),
             ]),
           ),
