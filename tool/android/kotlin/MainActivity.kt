@@ -23,6 +23,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        CrashGuard.install(applicationContext)   // v0.69 remember why the app closed, if it ever does
         super.configureFlutterEngine(flutterEngine)
         RemoteService.restore(this)   // the Bluetooth TV remote comes back on if the owner had it on
         micChannel(flutterEngine)
@@ -108,14 +109,32 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "voiceStart" -> {
-                        val err = VoiceAudio.start(this)
+                        // v0.69 a call never takes the app down: any failure comes back as a reason
+                        val err = try { VoiceAudio.start(this) } catch (t: Throwable) {
+                            try { VoiceAudio.stop(this) } catch (_: Throwable) {}
+                            "Call shuru nahi ho payi (${t.javaClass.simpleName})"
+                        }
                         if (err == "permission") requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 42)
-                        if (err == null) CallService.start(this)   // keeps the call alive when the screen locks
+                        if (err == null) {
+                            CrashGuard.markCall(this, true)
+                            // keeps the call alive when the screen locks; skipped in safe voice mode
+                            if (!CrashGuard.safeVoice(this)) try { CallService.start(this) } catch (_: Throwable) {}
+                        }
                         result.success(err)
                     }
                     "voicePlay" -> { (call.arguments as? ByteArray)?.let { VoiceAudio.play(it) }; result.success(null) }
                     "voiceFlush" -> { VoiceAudio.flush(); result.success(null) }
-                    "voiceStop" -> { VoiceAudio.stop(this); CallService.stop(this); result.success(null) }
+                    "voiceStop" -> {
+                        try { VoiceAudio.stop(this) } catch (_: Throwable) {}
+                        try { CallService.stop(this) } catch (_: Throwable) {}
+                        CrashGuard.markCall(this, false)
+                        result.success(null)
+                    }
+                    "lastCrash" -> result.success(try { CrashGuard.pending(this) } catch (_: Throwable) { null })
+                    "safeVoice" -> {
+                        call.argument<Boolean>("on")?.let { CrashGuard.setSafeVoice(this, it) }
+                        result.success(CrashGuard.safeVoice(this))
+                    }
                     // ---- Ghar: home devices (IR AC, Bluetooth TV remote, DIAL, music) ----
                     "homeCaps" -> result.success(HomeDevices.caps(this))
                     "homePaired" -> result.success(HomeDevices.paired(this))
@@ -571,8 +590,10 @@ class MainActivity : FlutterActivity() {
     private fun micChannel(flutterEngine: FlutterEngine) {
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, "santosh/vad").setStreamHandler(object : EventChannel.StreamHandler {
             override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
-                Thread { SileroVad.init(applicationContext); SileroVad.reset() }.start()
-                VoiceAudio.vadSink = { p -> main.post { events.success(p.toDouble()) } }
+                // safe voice mode (a call crashed before): no on-device VAD model; the app's loudness gate takes over
+                if (CrashGuard.safeVoice(applicationContext)) return
+                Thread { try { SileroVad.init(applicationContext); SileroVad.reset() } catch (_: Throwable) {} }.start()
+                VoiceAudio.vadSink = { p -> main.post { try { events.success(p.toDouble()) } catch (_: Throwable) {} } }
             }
 
             override fun onCancel(arguments: Any?) {

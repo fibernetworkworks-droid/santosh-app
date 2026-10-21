@@ -197,3 +197,12 @@ def test_real_templates_open_cleanly(env, tmp_path):
         for aspect in ("9:16", "16:9"):
             r = render.frames(kind, data, aspect, times=[1.0, 5.0], out_dir=tmp_path)
             assert r["errors"] == [] and r["duration"] > 5, (kind, aspect, r)
+
+
+def test_crash_reports_are_kept(env, tmp_path, monkeypatch):
+    from app import main
+    monkeypatch.chdir(tmp_path)
+    with TestClient(main.app) as c:
+        assert c.post("/api/app/crash", json={"kind": "native", "text": "libonnxruntime.so SIGSEGV", "during_call": True}).json()["ok"]
+        got = c.get("/api/app/crashes").json()["crashes"]
+        assert got[0]["kind"] == "native" and got[0]["during_call"] is True and "onnx" in got[0]["text"]

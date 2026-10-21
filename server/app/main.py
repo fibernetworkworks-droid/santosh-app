@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.68.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.69.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -3214,6 +3214,40 @@ async def reel_check(reel_id: str, tenant: str = Depends(current_tenant)):
         return await rs.fact_check(tenant, reel_id)
     except rs.ReelError as e:
         raise HTTPException(400, str(e))
+
+
+# ---------------- v0.69 crash reports from the phone ----------------
+class CrashIn(BaseModel):
+    kind: str = ""
+    text: str = ""
+    during_call: bool = False
+
+
+def _crash_file(tenant: str):
+    from pathlib import Path
+    p = Path("data") / "crashes"
+    p.mkdir(parents=True, exist_ok=True)
+    return p / (re.sub(r"[^A-Za-z0-9_-]", "_", tenant)[:60] + ".jsonl")
+
+
+@app.post("/api/app/crash", dependencies=[Depends(require_key)])
+def app_crash(body: CrashIn, tenant: str = Depends(current_tenant)):
+    """Why the app closed by itself (stack trace or Android's exit record). Kept: the newest 50 per owner."""
+    rec = {"at": time.time(), "kind": body.kind[:20], "during_call": body.during_call, "text": body.text[:20000]}
+    f = _crash_file(tenant)
+    lines = f.read_text(encoding="utf-8").splitlines()[-49:] if f.exists() else []
+    lines.append(json.dumps(rec, ensure_ascii=False))
+    f.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    logging.getLogger("santosh.crash").warning("app crash (%s, call=%s): %s", rec["kind"], body.during_call,
+                                               body.text[:400].replace("\n", " | "))
+    return {"ok": True}
+
+
+@app.get("/api/app/crashes", dependencies=[Depends(require_key)])
+def app_crashes(tenant: str = Depends(current_tenant)):
+    f = _crash_file(tenant)
+    rows = [json.loads(x) for x in f.read_text(encoding="utf-8").splitlines() if x.strip()] if f.exists() else []
+    return {"crashes": rows[::-1]}
 
 
 # ---------------- Hoola Motion: animated reels written as code, rendered to MP4 ----------------

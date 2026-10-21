@@ -45,6 +45,7 @@ object SileroVad {
     /** Feed one chunk of 16-bit little-endian PCM; returns the highest speech probability in it, or null. */
     @Synchronized
     fun feed(pcm: ByteArray): Float? {
+        if (failed) return null
         val s = session ?: return null
         val e = env ?: return null
         val n = pcm.size / 2

@@ -259,7 +259,20 @@ object VoiceAudio {
         return null
     }
 
+    /** v0.69 nothing that goes wrong on the mic / speaker threads may close the app: it ends the audio instead. */
     private fun micLoop(first: AudioRecord) {
+        try { micLoopInner(first) } catch (t: Throwable) {
+            if (running) try { onState?.invoke("audio_error", "mic ${t.javaClass.simpleName}") } catch (_: Throwable) {}
+        }
+    }
+
+    private fun playLoop(first: AudioTrack) {
+        try { playLoopInner(first) } catch (t: Throwable) {
+            if (running) try { onState?.invoke("audio_error", "speaker ${t.javaClass.simpleName}") } catch (_: Throwable) {}
+        }
+    }
+
+    private fun micLoopInner(first: AudioRecord) {
         val buf = ByteArray(CHUNK)
         var cur = first
         var failures = 0
@@ -269,7 +282,7 @@ object VoiceAudio {
                 failures = 0
                 if (!paused) {
                     val chunk = buf.copyOf(n)
-                    vadSink?.let { vs -> SileroVad.feed(chunk)?.let { p -> vs(p) } }
+                    vadSink?.let { vs -> try { SileroVad.feed(chunk)?.let { p -> vs(p) } } catch (_: Throwable) {} }
                     sink?.invoke(chunk)
                 }
             } else if (n < 0 && running) {
@@ -301,7 +314,7 @@ object VoiceAudio {
         }
     }
 
-    private fun playLoop(first: AudioTrack) {
+    private fun playLoopInner(first: AudioTrack) {
         var t = first
         while (running) {
             val chunk = try { queue.poll(200, TimeUnit.MILLISECONDS) } catch (_: InterruptedException) { null } ?: continue

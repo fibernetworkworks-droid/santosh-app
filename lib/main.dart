@@ -235,6 +235,8 @@ class _HomeState extends State<Home> {
     _inCall = widget.app.voiceCall.inCall;
     widget.app.voiceCall.addListener(_onCall);
     widget.app.addListener(_onApp);
+    // v0.69 Hoola closed by itself last time: send the reason to the server and say so (once)
+    Future<void>.delayed(const Duration(seconds: 2), _crashReport);
     // v0.56 strict phones (Xiaomi / Oppo / Realme / Vivo...): the keep-alive checklist once, and again if the phone
     // has stopped Hoola since the last look; never during a call or the first setup
     Future<void>.delayed(const Duration(seconds: 8), () {
@@ -246,6 +248,36 @@ class _HomeState extends State<Home> {
     Future<void>.delayed(const Duration(seconds: 20), () {
       if (mounted && widget.app.configured && !widget.app.voiceCall.inCall) AppUpdater.maybeOffer(context, widget.app);
     });
+  }
+
+  Future<void> _crashReport() async {
+    final r = await Native.lastCrash();
+    if (r == null || !mounted) return;
+    try {
+      await widget.app.api?.reportCrash(r);
+    } catch (_) {}
+    if (!mounted) return;
+    final inCall = r['during_call'] == true;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hoola pichhli baar band ho gaya tha'),
+        content: Text(inCall
+            ? 'Call ke dauraan app band ho gaya. Wajah server ko bhej di hai. Agli calls ab "surakshit mode" mein chalengi '
+                '(thodi kam samajhdaar shor-pehchaan, par app band nahi hoga) jab tak naya update na aaye.'
+            : 'Wajah server ko bhej di hai, taaki theek ho sake.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: '${r['kind']}\n${r['text']}'));
+              Navigator.pop(ctx);
+            },
+            child: const Text('Report copy karo'),
+          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Theek hai')),
+        ],
+      ),
+    );
   }
 
   bool _inCall = false;

@@ -58,6 +58,13 @@ class Native {
   /// v0.57 reel scroll analysis (Android Usage Access: times only, never screen content).
   static Future<bool> usageAllowed() async => await _call<bool>('usageAllowed') ?? false;
   static Future<void> usageSettings() async => _call('usageSettings');
+  /// v0.69 why Hoola closed last time (null if it didn't crash). Marks it as reported.
+  static Future<Map<String, dynamic>?> lastCrash() async {
+    final m = await _call<Map>('lastCrash');
+    return m == null ? null : Map<String, dynamic>.from(m);
+  }
+  /// v0.69 safe voice mode (after a crash in a call): no on-device VAD, no call service. [on] null = just read it.
+  static Future<bool> safeVoice({bool? on}) async => await _call<bool>('safeVoice', {if (on != null) 'on': on}) ?? false;
   /// v0.63 Hoola Motion: share a file from the app cache (Android share sheet) / save a video to the gallery.
   /// Both return null when fine, else the reason.
   static Future<String?> shareFile(String path, {String mime = 'video/mp4', String title = 'Share'}) async =>

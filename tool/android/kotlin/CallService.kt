@@ -28,6 +28,13 @@ class CallService : Service() {
 
         fun start(ctx: Context) {
             if (running) return
+            // Android 14+ only allows a microphone foreground service while the app is on screen with the mic
+            // permission; asking at any other moment ends in a crash a few seconds later, so don't.
+            if (!MainActivity.visible || ctx.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                problem = "skipped: app not on screen / no mic permission"
+                return
+            }
             val i = Intent(ctx, CallService::class.java)
             try {
                 if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i) else ctx.startService(i)
@@ -52,14 +59,17 @@ class CallService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val n = Notify.call(this)
+        val n = try { Notify.call(this) } catch (e: Throwable) {
+            problem = "notification: ${e.javaClass.simpleName}"
+            Notify.callFallback(this)
+        }
         try {
             if (Build.VERSION.SDK_INT >= 30) {
                 startForeground(Notify.CALL_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
             } else {
                 startForeground(Notify.CALL_ID, n)
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             problem = "foreground: ${e.javaClass.simpleName}: ${e.message ?: ""}".take(200)
             running = false
             stopSelf()

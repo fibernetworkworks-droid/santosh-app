@@ -244,6 +244,9 @@ class Api {
       uploadFile('/api/reels/scroll/import', name, bytes, timeout: const Duration(seconds: 400), tries: 2);
   Future<void> scrollForget() async => _send('DELETE', '/api/reels/scroll');
 
+  /// v0.69 a crash report from the phone (stack trace / Android's exit record), so it can be fixed.
+  Future<void> reportCrash(Map<String, dynamic> r) async => _send('POST', '/api/app/crash', body: {
+        'kind': '${r['kind'] ?? ''}', 'text': '${r['text'] ?? ''}', 'during_call': r['during_call'] == true});
   // ---- Hoola Motion ----
   Future<Map<String, dynamic>> motionKinds() async => Map<String, dynamic>.from(await _send('GET', '/api/motion/kinds') as Map);
   Future<Map<String, dynamic>> motionPlan(String kind, String brief) async => Map<String, dynamic>.from(

@@ -98,6 +98,14 @@ object Notify {
         return b.build()
     }
 
+    /** v0.69 the plainest possible call notification (if the normal one could not be built). */
+    fun callFallback(ctx: Context): Notification {
+        try { channels(ctx) } catch (_: Throwable) {}
+        @Suppress("DEPRECATION")
+        val b = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(ctx, CH_CALL) else Notification.Builder(ctx)
+        return b.setSmallIcon(R.drawable.ic_stat_santosh).setContentTitle("Hoola call").setOngoing(true).build()
+    }
+
     @Suppress("DEPRECATION")
     fun message(ctx: Context, text: String, eventId: Long) {
         if (text.isBlank()) return
