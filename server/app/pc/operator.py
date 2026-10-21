@@ -39,8 +39,9 @@ BLOCKED_KEYS = {("win", "r"), ("win", "x"), ("ctrl", "shift", "esc"), ("win", "l
 
 SYSTEM = """You are Santosh, operating the user's own Windows PC for them, like a careful assistant sitting at the
 keyboard. Each turn you see a screenshot (coordinates are pixels on that screenshot) plus the active window title.
-Work fast: when the next few actions don't depend on what the screen will show (click a field, type, press tab,
-type, press enter), send them together in ONE turn (up to 4 tool calls); otherwise do one action and look again.
+Work fast but look before you point: you may send a click followed by keyboard actions in ONE turn (click a field,
+type, press tab, type, press enter). After a click / scroll / drag / open_app / focus_window, any further click,
+scroll, drag or done in the same turn is NOT run (the screen may have moved): look at the new screenshot first.
 After your actions you get a new screenshot.
 
 How to work:
@@ -170,6 +171,13 @@ async def _pc(op: Op, action: str, args: dict[str, Any] | None = None, timeout: 
 
 
 LIVE_EVERY_S = 0.9      # v0.86 while the model decides the next step, the phone's live view keeps moving
+# v0.91.1 ONE screenshot size for everything. Santosh Desktop turns click positions into screen pixels with the size of
+# the LAST screenshot it took; v0.86 took the live frames at 960 px while the model looked at 1280 px, so every click
+# after a live frame landed ~1/3 too far right and down ("clicking randomly"). Never use two sizes.
+SHOT_WIDTH = 1280
+MOVES_SCREEN = {"click", "scroll", "drag", "open_app", "focus_window"}
+POINTING = {"click", "scroll", "drag", "done"}
+STATS = {"held_blind": 0}
 SETTLE_S = {"click": 0.35, "key": 0.35, "type": 0.2, "scroll": 0.25, "drag": 0.3, "focus_window": 0.3, "open_app": 0.8}
 
 
@@ -181,7 +189,7 @@ async def _think_live(op: Op, coro):
         while not stop.is_set():
             t0 = time.monotonic()
             try:
-                s = await _pc(op, "screen", {"max_width": 960}, timeout=10, log=False)
+                s = await _pc(op, "screen", {"max_width": SHOT_WIDTH}, timeout=10, log=False)
                 img = s.get("image_b64", "")
                 if img and not stop.is_set():
                     op.frame, op.frame_seq = base64.b64decode(img), op.frame_seq + 1
@@ -224,7 +232,7 @@ def _trim_images(messages: list[dict]) -> None:
 
 async def _shot(op: Op) -> list[dict]:
     """Screenshot as Claude content blocks (+ updates the live view)."""
-    s = await _pc(op, "screen", {"max_width": 1280}, timeout=25)
+    s = await _pc(op, "screen", {"max_width": SHOT_WIDTH}, timeout=25)
     img = s.get("image_b64", "")
     if img:
         op.frame, op.frame_seq = base64.b64decode(img), op.frame_seq + 1
@@ -349,8 +357,16 @@ async def _run(op: Op) -> None:
                 break
             results = []
             finished = False
+            moved = ""                      # a screen-changing action already ran in this turn
             for u in uses:
                 name, a = u["name"], u.get("input") or {}
+                if moved and (name in POINTING or moved in ("open_app", "focus_window")):
+                    # v0.91.1 never point at a screen the model has not seen yet
+                    STATS["held_blind"] += 1
+                    results.append({"type": "tool_result", "tool_use_id": u["id"], "is_error": True,
+                                    "content": f"NOT RUN: the screen may have changed after '{moved}'. Look at the new "
+                                               "screenshot and send this again only if it is still needed."})
+                    continue
                 op.step += 1
                 op.action = (text or f"{name} {a.get('keys') or a.get('name') or a.get('text', '')[:40] or ''}").strip()[:200]
                 op.timeline.append({"step": op.step, "action": op.action, "do": name, "url": op.window, "t": int(time.time())})
@@ -376,10 +392,12 @@ async def _run(op: Op) -> None:
                     is_err = msg.startswith("REFUSED")
                 except Exception as e:
                     msg, is_err = f"ERROR: {e}", True
+                if name in MOVES_SCREEN:
+                    moved = name
                 results.append({"type": "tool_result", "tool_use_id": u["id"], "content": msg, **({"is_error": True} if is_err else {})})
             if finished or op.status != "running":
                 break
-            last = uses[-1]["name"] if uses else ""
+            last = moved or (uses[-1]["name"] if uses else "")
             if SETTLE_S.get(last):          # let the PC react (menus open, pages paint) before looking again
                 await asyncio.sleep(SETTLE_S[last])
             shot = await _shot(op)
