@@ -622,6 +622,9 @@ async def probe(body: ProbeIn, x_worker_key: str | None = Header(None)) -> dict[
             item["seconds"] = round(time.time() - t0, 1)
             if len(net.blocked) > before:
                 item["guard_refused"] = net.blocked[before:][:10]
+            if net.failed:
+                item["not_reached"] = net.failed[-5:]   # DNS / timeout / connection refused from this server
+                net.failed.clear()
             out.append(item)
     finally:
         try:

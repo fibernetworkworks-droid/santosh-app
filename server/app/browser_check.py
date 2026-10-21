@@ -69,6 +69,8 @@ def main() -> int:
                 print(f"OK   {it['url']}  ->  {it.get('title')!r} ({it.get('seconds')} s)")
             if it.get("guard_refused"):
                 print(f"     Santosh filter refused: {it['guard_refused']}")
+            if it.get("not_reached"):
+                print(f"     Server could not reach: {it['not_reached']}")
         print("browser identity:", (r.get("results") or [{}])[0].get("browser_seen_as"))
     except Exception as e:
         print(f"FAIL site probe  ->  {type(e).__name__}: {e}")

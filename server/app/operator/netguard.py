@@ -14,6 +14,10 @@ import socket
 log = logging.getLogger("santosh.browser.net")
 
 ALLOWED_PORTS = {80, 443, 8080, 8443}
+
+
+def port_ok(port: int) -> bool:
+    return port in ALLOWED_PORTS
 _BLOCKED_HOSTS = {"localhost", "metadata.google.internal", "web.whatsapp.com"}
 
 
@@ -23,6 +27,7 @@ class NetGuard:
         self.server: asyncio.base_events.Server | None = None
         self.port = 0
         self.blocked: list[str] = []
+        self.failed: list[str] = []      # sites that could not be reached from this server (DNS / timeout / refused)
 
     async def start(self) -> int:
         self.server = await asyncio.start_server(self._handle, "127.0.0.1", 0)
@@ -44,17 +49,21 @@ class NetGuard:
     async def resolve_all(self, host: str, port: int) -> list[str]:
         """Every checked IP for this host, IPv4 first (many servers have no working IPv6), or PermissionError."""
         h = host.strip("[]").lower().rstrip(".")
-        if port not in ALLOWED_PORTS and not self.allow_private:
+        if not port_ok(port) and not self.allow_private:
             raise PermissionError(f"port {port}")
         if h in _BLOCKED_HOSTS and not (self.allow_private and h == "localhost"):
             raise PermissionError(h)
         try:
             ips = [ipaddress.ip_address(h)]
         except ValueError:
-            infos = await asyncio.get_running_loop().getaddrinfo(h, port, type=socket.SOCK_STREAM)
-            ips = list(dict.fromkeys(ipaddress.ip_address(i[4][0]) for i in infos))
+            try:
+                infos = await asyncio.wait_for(
+                    asyncio.get_running_loop().getaddrinfo(h, port, type=socket.SOCK_STREAM), 15)
+            except Exception as e:
+                raise LookupError(f"{h}: name not found (DNS: {type(e).__name__})") from None
+            ips = list(dict.fromkeys(ipaddress.ip_address(i[4][0].split("%")[0]) for i in infos))
         if not ips:
-            raise PermissionError("no address")
+            raise LookupError(f"{h}: no address")
         if not self.allow_private and not all(ip.is_global for ip in ips):
             raise PermissionError(f"{h} is a local address")
         ips.sort(key=lambda ip: ip.version)   # IPv4 first
@@ -63,30 +72,17 @@ class NetGuard:
     async def open(self, host: str, port: int):
         """Connect to the first reachable checked address (short timeout per address)."""
         last: Exception | None = None
-        for ip in (await self.resolve_all(host, port))[:4]:
+        for ip in (await self.resolve_all(host, port))[:6]:
             try:
-                return await asyncio.wait_for(asyncio.open_connection(ip, port), 8)
+                return await asyncio.wait_for(asyncio.open_connection(ip, port), 12)
             except Exception as e:   # timeout / unreachable (e.g. IPv6 on a v4-only VPS): try the next one
                 last = e
-        raise last or OSError("unreachable")
+        why = "timed out" if isinstance(last, asyncio.TimeoutError) else (type(last).__name__ if last else "unreachable")
+        raise ConnectionError(f"{host}:{port} did not answer this server ({why})")
 
     async def resolve(self, host: str, port: int) -> str:
         """The one IP to connect to, or raise PermissionError."""
-        h = host.strip("[]").lower().rstrip(".")
-        if port not in ALLOWED_PORTS and not self.allow_private:
-            raise PermissionError(f"port {port}")
-        if h in _BLOCKED_HOSTS and not (self.allow_private and h == "localhost"):
-            raise PermissionError(h)
-        try:
-            ips = [ipaddress.ip_address(h)]
-        except ValueError:
-            infos = await asyncio.get_running_loop().getaddrinfo(h, port, type=socket.SOCK_STREAM)
-            ips = [ipaddress.ip_address(i[4][0]) for i in infos]
-        if not ips:
-            raise PermissionError("no address")
-        if not self.allow_private and not all(ip.is_global for ip in ips):
-            raise PermissionError(f"{h} is a local address")
-        return str(ips[0])
+        return (await self.resolve_all(host, port))[0]
 
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
@@ -121,6 +117,7 @@ class NetGuard:
                 await w2.drain()
         except PermissionError as e:
             self.blocked.append(str(e))
+            del self.blocked[:-50]
             log.info("blocked %s %s (%s)", method, target, e)
             try:
                 writer.write(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
@@ -129,7 +126,9 @@ class NetGuard:
                 writer.close()
             return
         except Exception as e:
-            log.debug("proxy connect failed %s: %s", target, e)
+            self.failed.append(str(e)[:200])
+            del self.failed[:-50]
+            log.info("proxy could not reach %s: %s", target, e)
             try:
                 writer.write(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
                 await writer.drain()

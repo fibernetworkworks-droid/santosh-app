@@ -138,3 +138,21 @@ def url_problem(url: str, allow_private: bool = False) -> str:
     except ValueError:
         return ""
     return "" if ip.is_global or allow_private else "local or internal addresses are blocked"
+
+
+INTERNAL_PAGES = ("about:", "chrome-error:", "data:", "blob:", "chrome://newtab", "chrome://new-tab-page",
+                  "chrome-search://", "edge://newtab")
+
+
+def page_problem(url: str, allow_private: bool = False) -> str:
+    """For the page the browser is ON (not a link it is about to open): Chrome's own error page (a site that did not
+    load), a new tab, data:/blob: pages are not a way out of the internet, so they are fine here. ('' = fine)"""
+    u = (url or "").strip().lower()
+    if not u or u.startswith(INTERNAL_PAGES):
+        return ""
+    return url_problem(url, allow_private)
+
+
+def load_error(url: str) -> bool:
+    """True when the browser shows Chrome's own 'site can't be reached' page."""
+    return (url or "").lower().startswith("chrome-error:")
