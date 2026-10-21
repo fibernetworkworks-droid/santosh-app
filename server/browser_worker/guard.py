@@ -4,7 +4,8 @@ Pure functions (no browser-use import) so they are easy to test. The worker asks
 `classify_input` and `classify_keys` before every action; anything that is not plainly safe stops the run:
 
   payment   pay / checkout / place order / UPI / card ...  -> never done by Santosh; the user finishes on their phone
-  secret    password, OTP, PIN, CVV, card number, Aadhaar   -> never typed by Santosh; the user does it themselves
+  secret    password, OTP, PIN, CVV, card number (by the BOX) -> never typed by Santosh; the user does it themselves
+            (v0.81: Aadhaar / PAN / any plain number is typed with no restriction)
   commit    submit / send / book / apply / delete / confirm -> needs the user's tap on a confirm card first
   ok        everything else (reading, searching, scrolling, filling ordinary fields, choosing options)
 """
@@ -35,7 +36,11 @@ SAFE_BUTTON = re.compile(
     re.I)
 SECRET_WORDS = re.compile(   # letters-only boundaries, so otp_code / user_pin / aadhaar_no all match
     r"pass(?:word|wd|code)?(?![a-z])|(?<![a-z])otp(?![a-z])|one.?time|(?<![a-z])(?:m|t)?pin(?![a-z])(?![\s_-]*code)|"
-    r"(?<![a-z])cv[vc](?![a-z])|card.?(?:number|no)|cc-?num|(?<![a-z])aadh?aa?r|security.?code|secret|captcha", re.I)
+    r"(?<![a-z])cv[vc](?![a-z])|card.?(?:number|no)|cc-?num|security.?code|secret|captcha", re.I)
+# v0.81 identity-number phrases ("Aadhaar card number", "PAN card no") are taken out before the card-number check
+ID_PHRASE = re.compile(
+    r"(?:(?<![a-z])aadh?aa?r|(?<![a-z])pan(?![a-z])|voter|ration|driving.?licen[cs]e|passport|abha|uan|gstin|आधार|पैन)"
+    r"[\s_.-]*(?:card)?[\s_.-]*(?:number|num|no\.?)?", re.I)
 SECRET_AUTOCOMPLETE = {"current-password", "new-password", "one-time-code", "cc-number", "cc-csc", "cc-exp",
                        "cc-exp-month", "cc-exp-year", "cc-name", "cc-type"}
 SEARCH_FIELD = re.compile(r"search|query|\bq\b|find|khoj|keyword|lookup", re.I)
@@ -91,12 +96,9 @@ def classify_input(node: dict | None, text: str = "") -> str:
         return "secret"
     hay = " ".join(a.get(k, "") for k in ("name", "id", "placeholder", "aria-label", "title", "autocomplete", "class"))
     hay += " " + (node.get("text") or "") + " " + (node.get("label") or "")
-    if SECRET_WORDS.search(hay):
+    if SECRET_WORDS.search(ID_PHRASE.sub(" IDNUM ", hay)):   # "Aadhaar card number" is not a bank card
         return "secret"
-    digits = re.sub(r"[\s-]", "", text or "")
-    if re.fullmatch(r"\d{12}|\d{13,19}", digits):   # looks like an Aadhaar or card number
-        return "secret"
-    return "ok"
+    return "ok"   # v0.81 the typed value never blocks (Aadhaar / account / consumer numbers go in)
 
 
 def is_search_field(node: dict | None) -> bool:

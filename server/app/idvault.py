@@ -7,7 +7,7 @@ How it stays safe:
     number only when the owner taps "dikhao";
   * the AI model never sees a full number: whatever she says or types is captured here first and replaced by a short
     reference like {id:ab12cd34} with the masked number next to it; the Computer Operator turns the reference back into
-    the real number only inside the form box (official government sites directly, any other site after her tap);
+    the real number only inside the form box (v0.81: any site, any PC app, no extra tap - owner's decision);
   * OTP, PIN, CVV, card numbers and passwords are NOT identity numbers: Hoola still never takes those (she types them).
 """
 from __future__ import annotations

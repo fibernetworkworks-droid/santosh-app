@@ -129,8 +129,8 @@ async def _first_run(site: str, photo_id: str):
         await call(job, "fill", ref=ref(p, "Date of birth"), value="15/08/1990", var="dob")
         await call(job, "check", ref=ref(p, "Female", "radio"))
         await call(job, "fill", ref=ref(p, "Father"), value="Anil Ingle", var="father_name")
-        assert (await call(job, "fill", ref=ref(p, "Aadhaar"), value=AADHAAR))["blocked"] == "id"   # v0.75: by locker reference only
-        await call(job, "ask_owner", kind="secret", reason="Apna Aadhaar number bhariye", ref=ref(p, "Aadhaar"))
+        r = await call(job, "fill", ref=ref(p, "Aadhaar"), value=AADHAAR)          # v0.81: Hoola types it, no tap
+        assert r["ok"] and AADHAAR not in json.dumps(r)
         await call(job, "fill", ref=ref(p, "Email"), value="meghana@example.com", var="email")
         await call(job, "fill", ref=ref(p, "Mobile"), value="98900", var="mobile")
         r = await call(job, "click", ref=ref(p, "Next", "button"))
@@ -179,7 +179,7 @@ async def _first_run(site: str, photo_id: str):
         var = [t["step"] for t in trace if (t.get("action") == "select" and "Title" in str(t.get("target"))) or t.get("radio")]
         saved = await call(job, "recipe_save", name="Demo portal Form D-49 application",
                            task="Apply for a new Form D-49 card on Demo Seva Portal", literal_steps=lit, variable_steps=var)
-        assert saved["version"] == 1 and saved["owner_steps"] >= 5, saved
+        assert saved["version"] == 1 and saved["owner_steps"] >= 4, saved   # v0.81 Aadhaar is no longer an owner step
         await call(job, "site_note_add", site="127.0.0.1", note="Mobile must be 10 digits")
         await call(job, "finish", summary="Form D-49 jama ho gaya", proof=[f"Acknowledgement {ack.group(0)}"])
         out = await ops._wrap(job, "done", job.finished["summary"], job.finished)
@@ -205,13 +205,13 @@ def test_first_run_with_owner_then_learned(site):
     assert {"secret", "captcha", "otp", "payment"} <= set(answered)
     sub = portal.STATE["submissions"][-1]
     assert sub["first_name"] == "Meghana" and sub["mobile"] == "9890012345" and sub["dob"] == "1990-08-15"
-    assert sub["state"] == "Maharashtra" and sub["aadhaar"] == AADHAAR and sub["photo"] == "meghana.jpg"   # she typed it
+    assert sub["state"] == "Maharashtra" and sub["aadhaar"] == AADHAAR and sub["photo"] == "meghana.jpg"   # Hoola typed it (v0.81)
     assert out["status"] == "done" and ack in " ".join(out["proof"])
     assert out["outputs"] and out["outputs"][0]["file_id"] and out["outputs"][0]["name"].endswith(".pdf")
     assert out["recipe"] == "Demo portal Form D-49 application"
     # nothing secret ever reached the model, the recipe, the audit log or the job row
     seen = "\n".join(SEEN)
-    for secret in (AADHAAR, PASSWORD, portal.STATE["last_otp"], portal.STATE["last_captcha"]):
+    for secret in (AADHAAR, PASSWORD, portal.STATE["last_otp"]):   # v0.78 a CAPTCHA is not a secret (Hoola reads it)
         assert secret not in seen
     blob = ""
     for p in Path("data/operator").rglob("*"):
@@ -285,7 +285,7 @@ def _replay(site, monkeypatch, person: dict, layout: str):
 
 
 PEOPLE = {
-    "b": {"aadhaar": "999988887777", "vars": {"last_name": "Gawai", "first_name": "Sandesh", "dob": "02/01/1995",
+    "b": {"aadhaar": "999988887779", "vars": {"last_name": "Gawai", "first_name": "Sandesh", "dob": "02/01/1995",
           "father_name": "Ramesh Gawai", "email": "sandesh@example.com", "mobile": "9123456780", "address_line": "Shivaji Nagar",
           "area": "Old City", "city": "Akola", "pin_code": "444001", "title": "Shri", "gender": "Male"}},
     "c": {"aadhaar": "444455556666", "vars": {"last_name": "Nikhade", "first_name": "Ankita", "dob": "05/05/1998",
@@ -307,10 +307,12 @@ def test_replay_jobs_survive_redesign_and_renamed_button(site, monkeypatch):
     asyncio.run(learn())
     ops._ops.clear()
     for layout in ("b", "c"):
-        person = {**PEOPLE[layout], "vars": {**PEOPLE[layout]["vars"], "photo": photo}}
+        from app import idvault       # v0.81 Aadhaar is a recipe variable: the model passes that person's locker reference
+        aref = idvault.save(T, "aadhaar", PEOPLE[layout]["aadhaar"], "bhai" if layout == "b" else "behen")["ref"]
+        person = {**PEOPLE[layout], "vars": {**PEOPLE[layout]["vars"], "photo": photo, "aadhaar_number": aref}}
         out, answered, log = _replay(site, monkeypatch, person, layout)
         assert out["status"] == "done", (layout, out, log[-1])
-        assert set(answered) <= {"secret", "captcha", "otp", "payment"} and "payment" in answered
+        assert set(answered) <= {"secret", "captcha", "otp", "payment"} and "payment" in answered, (layout, out, log[-3:])
         sub = portal.STATE["submissions"][-1]
         assert sub["first_name"] == person["vars"]["first_name"] and sub["aadhaar"] == person["aadhaar"]
         assert sub["mobile"] == person["vars"]["mobile"] and sub["title"] == person["vars"]["title"]
@@ -421,4 +423,4 @@ def test_gate_words():
     assert not is_secret_field(box("Aadhaar number")) and field_kind(box("Aadhaar number")) == "id"   # v0.75 from the locker
     assert is_secret_field(box("Card number")) and is_secret_field(box("Account number", sensitive=True))
     assert not is_secret_field(box("PIN code", nameAttr="pin", id="pin", sensitive=True)) and not is_secret_field(box("Mobile number"), "9890012345")
-    assert is_secret_field(box("Reference"), "4111 1111 1111 1111")       # a card number typed into any box
+    assert not is_secret_field(box("Reference"), "4111 1111 1111 1111")   # v0.81 the value never blocks; card boxes do

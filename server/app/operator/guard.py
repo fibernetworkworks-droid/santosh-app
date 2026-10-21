@@ -6,7 +6,8 @@ Pure functions (no browser-use import) so they are easy to test. The worker asks
 `classify_input` and `classify_keys` before every action; anything that is not plainly safe stops the run:
 
   payment   pay / checkout / place order / UPI / card ...  -> never done by Santosh; the user finishes on their phone
-  secret    password, OTP, PIN, CVV, card number, Aadhaar   -> never typed by Santosh; the user does it themselves
+  secret    password, OTP, PIN, CVV, card number (by the BOX) -> never typed by Santosh; the user does it themselves
+            (v0.81: plain numbers - Aadhaar, PAN, account / consumer / mobile numbers - are typed with no restriction)
   commit    submit / send / book / apply / delete / confirm -> needs the user's tap on a confirm card first
   ok        everything else (reading, searching, scrolling, filling ordinary fields, choosing options)
 """
@@ -110,8 +111,8 @@ def _id_first(label: str) -> bool:
 
 
 def classify_input(node: dict | None, text: str = "") -> str:
-    """secret | id | ok for typing into this element. secret = password / OTP / PIN / CVV / card: only the owner types
-    it. id = an identity number box (Aadhaar, PAN...): filled from her locker, never from the model's own words."""
+    """secret | id | ok for typing into this element. secret = password / OTP / PIN / CVV / card box: only the owner
+    types it. id = an identity number (Aadhaar, PAN...): v0.81 Hoola types it directly (kept in her locker, box masked)."""
     if not node:
         return "ok"
     a = node.get("attributes") or {}
@@ -129,9 +130,9 @@ def classify_input(node: dict | None, text: str = "") -> str:
         return "secret"
     if SECRET_WORDS.search(hay):
         return "secret"
+    # v0.81 (owner's decision): the VALUE never blocks. A 12-19 digit consumer / account / Aadhaar number goes in like
+    # any other text; only the box decides (OTP / password / PIN / CVV / card boxes above stay hers).
     digits = re.sub(r"[\s-]", "", text or "")
-    if re.fullmatch(r"\d{13,19}", digits):          # looks like a card number
-        return "secret"
     if ID_WORDS.search(hay) or re.fullmatch(r"\d{12}", digits) or re.fullmatch(r"[A-Za-z]{5}\d{4}[A-Za-z]", (text or "").strip()):
         return "id"
     return "ok"

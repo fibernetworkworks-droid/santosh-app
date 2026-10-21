@@ -2,8 +2,8 @@
 
 Off by default. The PC owner turns on "Hoola ko PC chalane dein" in Santosh Desktop; while Santosh is working a
 banner shows on the PC and the owner can stop it any time (Rokiye button, or throw the mouse into the top-left
-corner: pyautogui's fail-safe). Santosh never types passwords, OTPs, PINs or card/Aadhaar numbers (refused here,
-not only by the model), and asks on the phone before anything that sends, submits, deletes, pays or installs.
+corner: pyautogui's fail-safe). Santosh types Aadhaar / PAN / any number the owner gave (v0.81, her decision); passwords, OTPs, PINs and card
+numbers stay hers, and it asks on the phone before anything that sends, submits, deletes, pays or installs.
 """
 from __future__ import annotations
 
@@ -19,7 +19,6 @@ from typing import Any
 MAX_WIDTH = 1280
 _dpi_done = False
 
-SECRET_TEXT = re.compile(r"^\s*(?:\d[\s-]?){12,19}\s*$")      # card / Aadhaar-like number
 BLOCKED_KEYS = {("win", "l")}                                  # locking the PC would end the session for the owner
 
 
@@ -106,8 +105,6 @@ class Control:
     def act(self, op: str, x: Any = None, y: Any = None, text: str = "", keys: str = "", amount: int = 0,
             to_x: Any = None, to_y: Any = None) -> dict[str, Any]:
         op = (op or "").lower()
-        if op == "type" and SECRET_TEXT.match(text or ""):
-            raise ControlError("Hoola never types card or Aadhaar numbers. The user must type this themselves.")
         if op in ("key", "hotkey") and tuple(p.strip().lower() for p in re.split(r"[+ ]+", keys or "") if p.strip()) in BLOCKED_KEYS:
             raise ControlError("That key combination is not allowed")
         g = _gui()
@@ -128,8 +125,6 @@ class Control:
             g.moveTo(px, py)
             g.dragTo(qx, qy, duration=0.4, button="left")
         elif op == "type":
-            if SECRET_TEXT.match(text or ""):
-                raise ControlError("Hoola never types card or Aadhaar numbers. The user must type this themselves.")
             if not text:
                 raise ControlError("Nothing to type")
             if text.isascii():

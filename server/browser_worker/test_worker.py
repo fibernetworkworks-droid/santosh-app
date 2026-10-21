@@ -60,9 +60,9 @@ def test_guard_rules():
     assert guard.classify_click({"tag": "button", "text": "Go ahead", "attributes": {"type": "submit"}, "in_form": True}) == "commit"
     assert guard.classify_input({"tag": "input", "attributes": {"type": "password"}}) == "secret"
     assert guard.classify_input({"tag": "input", "attributes": {"name": "otp"}}) == "secret"
-    assert guard.classify_input({"tag": "input", "attributes": {"name": "aadhaar_no"}}) == "secret"
+    assert guard.classify_input({"tag": "input", "attributes": {"name": "aadhaar_no"}}) == "ok"   # v0.81
     assert guard.classify_input({"tag": "input", "attributes": {"name": "full_name"}}, "Meghana") == "ok"
-    assert guard.classify_input({"tag": "input", "attributes": {"name": "ref"}}, "4111 1111 1111 1111") == "secret"
+    assert guard.classify_input({"tag": "input", "attributes": {"name": "cardnumber"}}, "4111 1111 1111 1111") == "secret"
     assert guard.classify_keys("Enter", {"attributes": {"name": "q"}}) == "ok"
     assert guard.classify_keys("Enter", {"attributes": {"name": "name"}}) == "commit"
     assert guard.url_problem("https://web.whatsapp.com/")

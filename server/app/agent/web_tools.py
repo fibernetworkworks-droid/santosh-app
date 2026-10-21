@@ -24,7 +24,8 @@ WEB_TOOLS = [
         "when google_search/open_website aren't enough: JavaScript sites, clicking through menus, comparing on a site, "
         "checking a status. Forms / applications / anything with login, Aadhaar, PAN, OTP: use computer_operator "
         "instead (it fills them). Describe the goal fully in one sentence with every detail the user "
-        "gave (names, dates, numbers, city). It never logs in, never types passwords/OTPs/PINs/card/Aadhaar and never "
+        "gave (names, dates, numbers, city; ID numbers as their {id:...} reference - it types Aadhaar / PAN / any number). "
+        "It never logs in, never types passwords/OTPs/PINs/card numbers and never "
         "pays: it stops and shows the user an Open button for that step. Before anything that submits, sends, books "
         "or deletes, the user gets a confirm card. Slow (30 s to a few minutes); for long tasks it replies later in "
         "the chat by itself."),
@@ -80,11 +81,29 @@ async def browse_web(ctx: Ctx, task, start_url=None, _wait=None, **_):
     url = str(start_url or "").strip()
     if url and not url.lower().startswith(("http://", "https://")):
         url = "https://" + url
+    from .. import idvault
+    try:   # v0.81 {id:...} references become the real number for the browser (it types Aadhaar / PAN / any number)
+        task, _kinds = idvault.fill_value(task, ctx.tenant_id)
+    except idvault.VaultError as e:
+        raise ToolError(str(e))
     try:
         res = await asyncio.to_thread(browser.start, ctx.tenant_id, task[:4000], url[:2000], _wait, ctx.conversation_id)
     except browser.BrowserError as e:
         raise ToolError(str(e))
-    return await asyncio.to_thread(browser.deliver, ctx.tenant_id, ctx.conversation_id, res, False)
+    out = await asyncio.to_thread(browser.deliver, ctx.tenant_id, ctx.conversation_id, res, False)
+    return _masked(out)
+
+
+def _masked(v):
+    """Full ID numbers in what comes back are masked before the chat model reads it."""
+    from ..operator.browser import mask_ids
+    if isinstance(v, str):
+        return mask_ids(v)
+    if isinstance(v, dict):
+        return {k: _masked(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [_masked(x) for x in v]
+    return v
 
 
 async def browse_result(ctx: Ctx, session_id, **_):

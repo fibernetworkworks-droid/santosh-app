@@ -10,8 +10,9 @@ Safety, enforced in code and not only by the model:
     while Santosh works, with a Stop button; mouse to the top-left corner also stops it
   * before anything that sends, submits, saves over, deletes, pays, installs or changes settings, the model must
     call ask_approval -> a confirm card on the phone; nothing continues until the user taps Approve
-  * no command prompt / PowerShell / Registry / Run dialog; the PC itself refuses typing card or Aadhaar numbers
-  * passwords, OTPs, PINs: never typed; the user does that step on the PC
+  * no command prompt / PowerShell / Registry / Run dialog
+  * v0.81 (owner's decision): Aadhaar / PAN / any number is typed (Pehchaan Locker {id:...} references are turned into
+    the real number only at the moment of typing); passwords, OTPs, PINs, card / CVV: never typed, the user does it
 """
 from __future__ import annotations
 
@@ -51,7 +52,10 @@ Safety rules (always):
 - Before anything that SENDS (email, WhatsApp, message), SUBMITS a form, SAVES OVER / DELETES files or data, PAYS,
   PLACES an order, INSTALLS/UNINSTALLS software, CHANGES system settings, or POSTS publicly: call ask_approval first
   with exactly what you will do. Only continue after it says approved.
-- Never type passwords, OTPs, PINs, CVV, card or Aadhaar numbers. If a login/OTP is needed, call done(success=false)
+- Aadhaar / PAN / voter ID / any ID number and every other number (mobile, account, consumer, GSTIN, amounts): type
+  them yourself. ID numbers appear as references like {id:ab12cd34ef}: type the reference exactly, the PC gets the real
+  number (ID LOCKER below lists what she has saved).
+- Never type passwords, OTPs, PINs, CVV or card numbers. If a login/OTP is needed, call done(success=false)
   and ask the user to type it on the PC themselves.
 - Never open Command Prompt, PowerShell, Terminal, Registry Editor or the Run dialog. Don't change security settings.
 - Don't close windows with unsaved work of the user's unless the task needs it (ask first).
@@ -184,7 +188,14 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         await _pc(op, "control", {"op": op_name, "x": a.get("x"), "y": a.get("y")})
         return f"{op_name} done"
     if name == "type":
-        await _pc(op, "control", {"op": "type", "text": str(a.get("text", ""))[:4000]}, timeout=90)
+        text = str(a.get("text", ""))[:4000]
+        from .. import idvault
+        if idvault.REF.search(text):      # v0.81 the real ID number only goes to the PC keyboard, never back to the model
+            try:
+                text, _kinds = idvault.fill_value(text, op.tenant)
+            except idvault.VaultError as e:
+                return f"REFUSED: {e}"
+        await _pc(op, "control", {"op": "type", "text": text}, timeout=90)
         return "typed"
     if name == "key":
         keys = str(a.get("keys", ""))
@@ -258,6 +269,13 @@ async def _run(op: Op) -> None:
     client = get_client()
     from ..avatar.service import personalise, persona
     system = personalise(SYSTEM, *persona(op.tenant))
+    try:
+        from .. import idvault
+        ids = idvault.summary_for_model(op.tenant)
+        if ids:
+            system += "\nID LOCKER (type the reference, the PC gets the real number): " + ids
+    except Exception:
+        pass
     messages: list[dict] = []
     try:
         first = await _shot(op)

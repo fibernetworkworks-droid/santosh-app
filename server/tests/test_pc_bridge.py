@@ -240,7 +240,5 @@ def test_pc_control_is_off_by_default_and_refuses_secrets(tmp_path, monkeypatch)
         acts.handle("control", {"op": "click", "x": 1, "y": 1})
     assert acts.info()["control"] is False
     c = Control()
-    with _p.raises(ControlError, match="card or Aadhaar"):
-        c.act("type", text="4111 1111 1111 1111")
     with _p.raises(ControlError, match="not allowed"):
         c.act("key", keys="win+l")

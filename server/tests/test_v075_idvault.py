@@ -51,7 +51,7 @@ def test_guard_and_masking():
     assert guard.classify_input(box("pan_number")) == "id"
     assert guard.classify_input(box("password")) == "secret"
     assert guard.classify_input(box("otp")) == "secret"
-    assert guard.classify_input(box("amount"), "4111111111111111") == "secret"
+    assert guard.classify_input(box("amount"), "4111111111111111") == "ok"   # v0.81 the value never blocks
     assert guard.classify_input(box("pincode"), "444101") == "ok"
     assert guard.classify_input(box("panel_name")) == "ok"
     t = mask_ids(f"Aadhaar: {AAD[:4]} {AAD[4:8]} {AAD[8:]} PAN {PAN} order 123456789012")
@@ -138,16 +138,13 @@ def test_operator_types_the_locker_number_only_into_the_box(env, tmp_path):
             import re
             aref = re.search(r'\[(\w+)\] textbox "Aadhaar number"', page).group(1)
             pref = re.search(r'\[(\w+)\] textbox "Password"', page).group(1)
-            # a raw number from the model's own words: refused, use the reference
-            assert (await op.act(s, "fill", aref, value=AAD))["blocked"] == "id"
-            # not a government site: she approves once
+            # v0.81 (owner's decision): any site, no tap - the reference and a plain number both go into the box
             r = await op.act(s, "fill", aref, value=rec["ref"])
-            assert r["blocked"] == "id_needs_approval"
-            a = await op.request_human(s, "approve", "Is site par Aadhaar bharun?", aref)
-            await op.resolve_human(a.id, "approved")
-            r = await op.act(s, "fill", aref, value=rec["ref"], approval_id=a.id)
             assert r["ok"] and AAD not in json.dumps(r)
             assert await s.page.eval_on_selector("#a", "e => e.value") == AAD     # the real number is in the box
+            r = await op.act(s, "fill", aref, value=AAD)
+            assert r["ok"] and AAD not in json.dumps(r)
+            assert await s.page.eval_on_selector("#a", "e => e.value") == AAD
             assert (await op.act(s, "fill", pref, value=rec["ref"]))["blocked"] == "secret"   # never into a password box
             again = fmt_snapshot(await op.snapshot(s))
             assert AAD not in again.replace(" ", "")

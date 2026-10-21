@@ -5,7 +5,7 @@ packages never clash with Santosh, and a crashing browser never takes Santosh do
     santosh core  --HTTP (127.0.0.1, shared key)-->  this worker  -->  Chromium  -->  NetGuard proxy  -->  internet
 
 Safety (enforced here, not by the model):
-  * never types passwords, OTPs, PINs, CVV, card or Aadhaar numbers  -> status needs_user (user does it on the phone)
+  * never types passwords, OTPs, PINs, CVV or card numbers  -> status needs_user (v0.81: Aadhaar / any number is typed)
   * never clicks pay / checkout / place order                         -> status needs_payment (user pays on the phone)
   * submit / send / book / apply / delete ...                          -> status needs_confirm: Santosh shows a confirm
     card; only after the user's tap does the worker do exactly that one click (POST /tasks/{id}/approve)
@@ -55,7 +55,8 @@ USER_AGENT = os.environ.get("BROWSER_USER_AGENT", "Mozilla/5.0 (Windows NT 10.0;
 
 SAFETY_PROMPT = """
 You are Santosh's web browser, working for one person in India. Rules that always apply:
-- Never type passwords, OTPs, PINs, MPINs, CVV, card numbers or Aadhaar numbers, and never ask for them. If a login,
+- Never type passwords, OTPs, PINs, MPINs, CVV or card numbers, and never ask for them. Aadhaar / PAN / any other
+  number given in the task: type it. If a login,
   OTP or captcha is needed, stop and say so with done (success=false): the user will do that part on their phone.
 - Never pay, never press checkout / pay / place order. Fill the details, then stop with done and say what is ready.
 - Buttons that submit, send, book, apply or delete are checked by the system and may pause for the user's approval;
@@ -225,8 +226,8 @@ async def check(sess: Session, name: str, params: dict, browser) -> tuple[str, d
         node = await node_info(browser, params.get("index"))
         if name.startswith("input") and guard.classify_input(node, str(params.get("text", ""))) == "secret":
             label = guard.describe(node or {})
-            stop(sess, "needs_user", f"'{label}' asks for a password/OTP/PIN/card/Aadhaar")
-            return ("STOPPED: that field needs a password, OTP, PIN, card or Aadhaar number. Santosh never types these. "
+            stop(sess, "needs_user", f"'{label}' asks for a password/OTP/PIN/card")
+            return ("STOPPED: that field needs a password, OTP, PIN or card number. Santosh never types these. "
                     "Stop with done and tell the user to finish that step on their phone."), node
         return "", node
     if name == "send_keys":

@@ -32,9 +32,9 @@ owner helps on her phone (cards + live view of your browser). Speak to her in si
    Never tell her "main box mein nahi bhar sakta" or ask her to fill a form herself: you fill every field.
    - Aadhaar / PAN / voter ID / DL / passport / ration / ABHA / UAN / GSTIN and other identity numbers: fill them
      yourself from her Pehchaan Locker: fill(ref, value='{id:...}') with the reference from ID LOCKER (you only ever
-     see masked numbers; this works even in a hidden / password-style Aadhaar box). Official .gov.in / .nic.in
-     sites: directly. Other sites: the fill tells you to ask_owner(kind='approve', ref) once. Not in the locker:
-     ask_owner(kind='question', reason='<whose> <which> number bataiye') - her answer comes back as a reference.
+     see masked numbers; this works even in a hidden / password-style Aadhaar box), on ANY site, no extra asking.
+     Not in the locker: ask_owner(kind='question', reason='<whose> <which> number bataiye') - her answer comes back
+     as a reference. Every other number (mobile, account, consumer, IFSC, pincode, DOB, amounts...): just fill it.
    - OTP: when the site sends one, ask her for it: ask_owner(kind='otp', ref=<the OTP box>, reason='<site> ne aapke
      <mobile / email> par OTP bheja hai, bataiye'). She tells it on her phone (card, chat or call) and the system
      types it into the box; then YOU press verify / next. A bank / payment OTP is hers to enter (the system turns it
@@ -42,7 +42,7 @@ owner helps on her phone (cards + live view of your browser). Speak to her in si
    - CAPTCHA: ask_owner(kind='captcha', ref=<the CAPTCHA box>). Hoola reads the CAPTCHA (OCR) and shows its answer
      to the owner on her phone. She taps "Haan" if correct, or types the right answer. Then YOU press verify / next.
      Never get around a bot check, queue, waiting room or booking limit. Wrong CAPTCHA: refresh it and ask again.
-   - login password / PIN / CVV / card numbers: ask_owner(kind='secret', ref=<the box>): she types it on her phone
+   - login password / PIN / CVV / card numbers (the only other things that stay hers): ask_owner(kind='secret', ref=<the box>): she types it on her phone
      and it goes straight into the box; you never see it.
    - pay / checkout / place order: you never press it. ask_owner(kind='payment', ref=<the button>, reason=<amount and
      what for>): she presses it herself in the live view and pays in her own way.
@@ -76,8 +76,8 @@ TOOLS: list[dict] = [
                 "ask_owner(kind='approve'). Payment buttons: only the owner presses them.",
        {"ref": _REF, "approval_id": {"type": "string"}}, ["ref"]),
     _t("fill", "Type into a text box (replaces what is there). var names the value for recipes (e.g. 'father_name'). "
-               "slowly=true types key by key for picky fields. ID numbers: value='{id:...}' from ID LOCKER. OTP / "
-               "password / PIN / card: ask_owner (she tells it, the system types it). CAPTCHA: ask_owner(kind='captcha').",
+               "slowly=true types key by key for picky fields. ID numbers: value='{id:...}' from ID LOCKER (any site). "
+               "Any other number: type it. OTP / password / PIN / card: ask_owner (she tells it, the system types it). CAPTCHA: ask_owner(kind='captcha').",
        {"ref": _REF, "value": {"type": "string"}, "var": {"type": "string"}, "slowly": {"type": "boolean"}}, ["ref", "value"]),
     _t("select", "Choose a dropdown option by its visible text (exact or partial).",
        {"ref": _REF, "option": {"type": "string"}}, ["ref", "option"]),

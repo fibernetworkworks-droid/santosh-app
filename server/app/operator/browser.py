@@ -7,9 +7,11 @@ downloads, dialogs), Indian DD/MM/YYYY dates, CAPTCHA detection, a step trace fo
 a screenshot of every step.
 
 Changed for Hoola (enforced here, in code; the model cannot talk its way past it):
-  * Hoola never types a password, OTP, PIN, CVV, card, Aadhaar, PAN or bank number. The owner types it herself on
-    the desk (card or live view): it goes straight into the page, never to the model, never stored or logged, and the
-    field is masked in every later snapshot. There is no vault.
+  * v0.81 (owner's decision): Hoola types Aadhaar / PAN / every ID number and any other number itself, on every site,
+    with no extra tap (from her Pehchaan Locker by {id:...} reference, or a number she just gave, which is kept in the
+    locker first). The box is masked in later snapshots and traces / audit keep only the reference.
+    Still hers: the OTP the site sends, login passwords / PIN, and card number / CVV (money rule). She gives those on
+    the desk (card, chat or call): they go straight into the page, never to the model, never stored or logged.
   * Hoola never presses pay / checkout / place order. The owner presses it herself in the live view.
   * Submit / send / apply / confirm / delete / sign ... need the owner's tap first (one approval = that one click).
   * Enter only in a search box (Enter submits forms; click the button instead, which is checked).
@@ -606,6 +608,11 @@ class Operator:
             if value is None:
                 raise OperatorError("fill needs a value")
             from .. import idvault
+            if not idvault.REF.search(value) and self.id_tenant and field_kind(it, value) == "id":
+                # v0.81 a number she gave in plain words: keep it in her locker and type it from there (no tap needed)
+                _txt, saved = idvault.capture(self.id_tenant, value)
+                if len(saved) == 1:
+                    value = saved[0]["ref"]
             if idvault.REF.search(value):
                 # v0.75 an identity number from her Pehchaan Locker: the real number goes only into this box
                 if not self.id_tenant:
@@ -614,12 +621,7 @@ class Operator:
                     return {"ok": False, "blocked": "secret",
                             "message": f"\"{it['name']}\" is a password / OTP / PIN / card box: only the owner types it "
                                        f"(ask_owner(kind='secret' or 'otp', ref='{ref}'))."}
-                if not idvault.official_site(page.url) and not self._consume_approval(s, approval_id, it):
-                    return {"ok": False, "blocked": "id_needs_approval",
-                            "message": f"This is not an official government site, so ask her once before putting her "
-                                       f"ID number here: ask_owner(kind='approve', ref='{ref}', reason='Is site "
-                                       f"({page.url.split('/')[2] if '//' in page.url else page.url}) par <whose> <which ID> "
-                                       f"bharun?'), then fill again with approval_id."}
+                # v0.81 (owner's decision): every site, no extra tap. Submit / pay buttons are still checked.
                 token = value
                 try:
                     value, _kinds = idvault.fill_value(value, self.id_tenant)
@@ -646,18 +648,18 @@ class Operator:
                                     "var_hint": var or _var_name(it)})
                 await self._audit(s, action, it, shown_value, res)
                 return res
-            if field_kind(it, value) == "id":
-                return {"ok": False, "blocked": "id",
-                        "message": f"\"{it['name']}\" is an identity number (Aadhaar / PAN / ...). Fill it with the "
-                                   "reference from her Pehchaan Locker, e.g. value='{id:ab12cd34ef}' (see ID LOCKER in "
-                                   "your brief). Not in the locker: ask_owner(kind='question', reason='<whose> <which> "
-                                   "number chahiye') - her answer comes back as a reference - or ask_owner(kind='secret', "
-                                   f"ref='{ref}') so she types it herself."}
-            if is_secret_field(it, value):
+            if it.get("captcha"):
+                return {"ok": False, "blocked": "captcha",
+                        "message": f"\"{it['name']}\" is a CAPTCHA box: ask_owner(kind='captcha', ref='{ref}'). Hoola reads "
+                                   "the picture itself and she confirms (or corrects) it; then it goes into the box."}
+            id_box = field_kind(it, value) == "id"      # v0.81 an ID number (VID, ration...) not kept in the locker: typed too
+            if not id_box and is_secret_field(it, value):
                 return {"ok": False, "blocked": "secret",
-                        "message": f"\"{it['name']}\" needs a password / OTP / PIN / card / Aadhaar / PAN / bank detail. "
-                                   f"Hoola never types these: ask_owner(kind='secret' or 'otp', ref='{ref}', reason=...). "
-                                   "She types it herself; it goes straight into the page and you never see it."}
+                        "message": f"\"{it['name']}\" is an OTP / password / PIN / card / CVV box. Those stay with her: "
+                                   f"ask_owner(kind='otp' or 'secret', ref='{ref}', reason=...). Her answer goes straight "
+                                   "into the page and you never see it. (Aadhaar / PAN / any other number: just fill it.)"}
+            if id_box:
+                shown_value = mask_ids(value) if mask_ids(value) != value else "<ID>"
             if it.get("role") in ("date",) and re.fullmatch(r"\d{2}[/-]\d{2}[/-]\d{4}", value):
                 d, m, y = re.split(r"[/-]", value)
                 value = f"{y}-{m}-{d}"  # Indian DD/MM/YYYY -> HTML date input
@@ -666,6 +668,13 @@ class Operator:
             else:
                 await loc.click(timeout=10000)
                 await loc.press_sequentially(value, delay=40)
+            if id_box:                             # masked on screen-reads; trace / recipe keep a placeholder
+                s.masked.add(ref)
+                try:
+                    await loc.evaluate("e => e.setAttribute('data-hoola-masked', '1')")
+                except Exception:
+                    pass
+                value = shown_value
         elif action == "select":
             opts = it.get("options") or []
             want = (value or "").strip().lower()
@@ -834,12 +843,25 @@ class Operator:
 
     async def resolve_human(self, approval_id: str, status: str, answer: str = "") -> Approval:
         """Called from the owner's desk / card. For otp / secret her answer is typed straight into the box and
-        then forgotten: it is never returned, logged or stored. For captcha (v0.78): the confirmed/corrected
-        answer is typed by captcha_fill, not here."""
+        then forgotten: it is never returned, logged or stored. Captcha: her answer, or Hoola's OCR answer when she
+        just approves, goes into the box (captcha_fill does the same from the card)."""
         a = self.approvals.get(approval_id)
         if not a or a.status != "pending":
             raise OperatorError("Nothing waiting with that id (it may have expired).")
         s = self.sessions.get(a.session)
+        if status == "approved" and a.kind == "captcha":
+            # v0.81 the plain answer route works too: her typed answer, or Hoola's OCR answer when she just says yes
+            value = (answer or a.suggested_answer or "").strip()
+            if not value:
+                raise OperatorError("CAPTCHA likhiye.")
+            if not s or not a.ref:
+                raise OperatorError("The browser for this request is closed.")
+            loc, it = await self._locator(s, a.ref)
+            await loc.fill(value, timeout=10000)
+            await self._audit(s, "captcha_filled", it, value, {"url": s.page.url}, shot=False)
+            a.status, a.answer = "approved", ""
+            a.event.set()
+            return a
         if status == "approved" and a.kind in TYPED_KINDS:
             if not answer:
                 raise OperatorError("Type it in the box first.")
