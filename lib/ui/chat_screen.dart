@@ -12,6 +12,7 @@ import 'darzi_screen.dart';
 import 'lekhak_screen.dart';
 import 'office_screen.dart';
 import 'employee_screen.dart';
+import 'mshop_screen.dart';
 import 'video_editor.dart';
 import 'operator_screen.dart';
 import 'studio_screen.dart';
@@ -538,6 +539,12 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return OperatorAskCard(key: ValueKey('oq${it.data['id']}'), v: it.data, app: app);
     case 'video_job':
       return VideoJobCard(key: ValueKey('vj${it.data['id']}'), v: it.data, app: app);
+    case 'mshop_bill':
+      return MShopBillCard(key: ValueKey('mb${it.data['job_id']}${it.data['status']}'), v: it.data, app: app);
+    case 'mshop_ready':
+      return MShopReadyCard(key: ValueKey('mr${it.data['job_id']}'), v: it.data, app: app);
+    case 'mshop_day':
+      return MShopDayCard(v: it.data, app: app);
     case 'chai_plan':
       return ChaiPlanCard(key: ValueKey('cp${it.data['for_date']}'), v: it.data, app: app);
     case 'darzi_quote':

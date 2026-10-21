@@ -733,6 +733,13 @@ async def biz_handover(ctx, reason: str = "", **_):
     return {"handed_over": True, "note": "Graahak ko batao ki owner / team jaldi jawab denge."}
 
 
+async def biz_repair_status(ctx, **_):
+    """v0.88 a mobile repair shop's customer asks "mera phone ready hai?": only their own jobs, by their number."""
+    from ..mshop import service as mshop
+    c = _contact(ctx)
+    return {"jobs": mshop.customer_jobs(ctx.tenant_id, c.wa_id)}
+
+
 async def biz_order_status(ctx, **_):
     """v0.82 a customer of a tailoring shop asks "mera blouse ready hai?": only their own orders, by their number."""
     from ..darzi import service as darzi
@@ -749,14 +756,19 @@ async def biz_note(ctx, text: str, **_):
 BIZ_HANDLERS = {"biz_free_slots": biz_free_slots, "biz_book": biz_book, "biz_my_appointments": biz_my_appointments,
                 "biz_cancel": biz_cancel, "biz_complaint": biz_complaint, "biz_ticket_status": biz_ticket_status,
                 "biz_my_dues": biz_my_dues, "biz_pay_link": biz_pay_link, "biz_promise": biz_promise,
-                "biz_handover": biz_handover, "biz_note": biz_note, "biz_order_status": biz_order_status}
+                "biz_handover": biz_handover, "biz_note": biz_note, "biz_order_status": biz_order_status,
+                "biz_repair_status": biz_repair_status}
 BIZ_LABELS = {"biz_free_slots": "Khaali samay dekh raha hoon", "biz_book": "Appointment book kar raha hoon",
               "biz_my_appointments": "Graahak ke appointment dekh raha hoon", "biz_cancel": "Appointment cancel kar raha hoon",
               "biz_complaint": "Shikayat darj kar raha hoon", "biz_ticket_status": "Shikayat ka haal dekh raha hoon",
               "biz_my_dues": "Baaki paise dekh raha hoon", "biz_pay_link": "Payment link bana raha hoon",
               "biz_promise": "Payment ka waada likh raha hoon", "biz_handover": "Owner ko bula raha hoon",
-              "biz_note": "Owner ke liye sandesh likh raha hoon", "biz_order_status": "Order ka haal dekh raha hoon"}
+              "biz_note": "Owner ke liye sandesh likh raha hoon", "biz_order_status": "Order ka haal dekh raha hoon",
+              "biz_repair_status": "Phone repair ka haal dekh raha hoon"}
 BIZ_TOOLS = [
+    {"name": "biz_repair_status", "description": ("This customer's phone repair jobs at a mobile shop: device, status, ready or not, "
+                                                  "promised date, approved amount, warranty date. Only theirs."),
+     "input_schema": {"type": "object", "properties": {}}},
     {"name": "biz_order_status", "description": ("This customer's stitching / tailoring orders: what, status, ready or not, "
                                                  "trial and delivery dates, balance. Only theirs."),
      "input_schema": {"type": "object", "properties": {}}},

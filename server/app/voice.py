@@ -60,7 +60,7 @@ VOICE_TOOL_NAMES = {
     "email_follow_up", "email_contacts", "email_attachment", "email_accounts",
     "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_cancel_event",
     "calendar_update_event", "calendar_respond", "calendar_free_slots", "calendar_settings",
-    "google_status", "order_karo", "darzi", "darzi_dekho", "chai", "chai_dekho", "office", "office_dekho", "lekhak", "lekhak_dekho", "drive_find", "drive_list_folder", "drive_read_file", "drive_send_file", "drive_upload", "drive_create_folder",
+    "google_status", "order_karo", "darzi", "darzi_dekho", "chai", "chai_dekho", "office", "office_dekho", "lekhak", "lekhak_dekho", "mobile_shop", "mobile_shop_dekho", "drive_find", "drive_list_folder", "drive_read_file", "drive_send_file", "drive_upload", "drive_create_folder",
     "drive_organize", "drive_create_doc", "doc_create", "drive_share", "drive_trash", "drive_storage",
     "sheet_read", "sheet_append",
     "form_create", "form_find", "form_summary", "form_responses", "form_settings", "form_alerts",
@@ -164,6 +164,7 @@ Which tool (details are in each tool's description)
 - The user's PC: pc_do with the full goal for anything in a desktop app (Tally, Excel, Word, Chrome); the result comes back as a "(Mera PC result ...)" note.
 - Chai stall: chai_dekho what=today / hours / plan, chai action=cash / stock / feedback / plan ("aaj 1500 cash aaya", "doodh 2 litre bacha").
 - Tailoring jobs (her stitching shop): darzi action=new_order / measure / status / deliver, darzi_dekho what=today / check / customer. Read numbers back once ("chest 34, kamar 30 - sahi?") before saving measurements said on a call.
+- Mobile shop: mobile_shop action=new_job / status / recharge / pay / deliver, mobile_shop_dekho what=today / warranty / job. Read an IMEI or phone number back once before saving. Never take a customer's phone password.
 - Office work (supplies, repairs, renewals, team deadlines, petty cash): office action=use / ticket_new / renewal_add / deadline_add / petty, office_dekho what=today. Spending money only becomes a card for her tap; team reminders are drafts she sends.
 - Letters / applications / translation / grammar (typist work): lekhak action=write with dictation = HER EXACT WORDS (all of them, as she said them; never a summary), action=translate / grammar / revise; tell her the blanks it found. Signing only happens when she taps the sign card on her phone; never say a letter is signed or sent.
 - Ordering / booking anything (Amazon, Flipkart, Blinkit, Zepto, Swiggy, Zomato, IRCTC, redBus...): order_karo action=order with the items, quantity, site and wishes; it runs in the background and she pays at the end herself ("payment aap karengi, card aa jayega"). "Order kahan hai": action=orders.

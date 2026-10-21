@@ -436,6 +436,12 @@ async def employee_jobs() -> None:
             await chai.evening(tenant)
     except Exception:
         log.exception("chai evening failed")
+    try:                                   # v0.88 Mobile dukaan: the morning list (jobs, bills, recharges ending)
+        from .mshop import service as mshop
+        for tenant in mshop.due_mornings():
+            mshop.send_morning(tenant)
+    except Exception:
+        log.exception("mshop morning failed")
     try:                                   # v0.85 Daftar: morning office list + the weekly office note
         from .office import service as office
         for tenant in office.due_mornings():

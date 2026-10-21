@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.87.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.88.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -131,7 +131,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -3236,6 +3236,196 @@ def lekhak_settings(body: dict, tenant: str = Depends(current_tenant)):
     from .lekhak import service as lekhak
     keys = ("my_name", "my_lines", "my_phone", "place", "gender", "lang", "letterhead", "keep", "rules", "glossary", "digits", "sign_file")
     return _lekhak(lekhak.save_settings, tenant, **{k: body[k] for k in keys if k in body})
+
+
+# ---------------------------------------------------------------- v0.88 Mobile Dukaan Sahayak (recharge + repair shop)
+class MShopJobIn(BaseModel):
+    name: str = ""
+    phone: str = ""
+    brand: str = ""
+    model: str = ""
+    imei: str = ""
+    problem: str = ""
+    faults: list[str] = []
+    accessories: list[str] = []
+    condition: str = ""
+    promised_on: str = ""
+    estimate: float | None = None
+    advance: float | None = None
+    proof: str = ""
+    technician: str = ""
+    force: bool = False
+    conversation_id: str = ""
+
+
+class MShopActIn(BaseModel):
+    status: str = ""
+    note: str = ""
+    name: str = ""
+    price: float | None = None
+    cost: float | None = None
+    warranty_days: int | None = None
+    labour: float | None = None
+    approve: bool = False
+    total: float | None = None
+    amount: float | None = None
+    how: str = ""
+    promised_on: str = ""
+    technician: str = ""
+    imei: str = ""
+    proof: str = ""
+    estimate: float | None = None
+    force: bool = False
+    conversation_id: str = ""
+
+
+class MShopRechargeIn(BaseModel):
+    number: str
+    amount: float
+    operator: str = ""
+    validity_days: int | None = None
+    name: str = ""
+    plan: str = ""
+    via: str = ""
+    date: str = ""
+
+
+def _mshop(fn, *a, **k):
+    from .mshop import service as mshop
+    try:
+        return fn(*a, **k)
+    except mshop.MShopError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/mshop/today", dependencies=[Depends(require_key)])
+def mshop_today(tenant: str = Depends(current_tenant)):
+    from .mshop import service as mshop
+    return mshop.day(tenant)
+
+
+@app.get("/api/mshop/jobs", dependencies=[Depends(require_key)])
+def mshop_jobs(status: str = "open", q: str = "", tenant: str = Depends(current_tenant)):
+    from .mshop import service as mshop
+    return {"jobs": mshop.jobs(tenant, status, q, 200)}
+
+
+@app.post("/api/mshop/jobs", dependencies=[Depends(require_key)])
+def mshop_job_new(body: MShopJobIn, tenant: str = Depends(current_tenant)):
+    from .mshop import service as mshop
+    return _mshop(mshop.new_job, tenant, body.name, body.phone, body.brand, body.model, body.imei, body.problem, body.faults,
+                  body.accessories, body.condition, body.promised_on, body.estimate, body.advance, body.proof, [],
+                  body.technician, body.force, "owner", body.conversation_id)
+
+
+@app.post("/api/mshop/check", dependencies=[Depends(require_key)])
+def mshop_check(body: MShopJobIn, tenant: str = Depends(current_tenant)):
+    from .mshop import service as mshop
+    return _mshop(mshop.check_job, tenant, body.problem, body.faults, body.brand, body.model, body.imei, body.phone,
+                  body.promised_on, body.proof)
+
+
+@app.get("/api/mshop/jobs/{job_id}", dependencies=[Depends(require_key)])
+def mshop_job_get(job_id: str, tenant: str = Depends(current_tenant)):
+    from .mshop import service as mshop
+    return _mshop(mshop.get_job, tenant, job_id)
+
+
+@app.post("/api/mshop/jobs/{job_id}/photos", dependencies=[Depends(require_key)])
+async def mshop_photo_add(job_id: str, file: UploadFile = File(...), kind: str = Form("in"), note: str = Form(""),
+                          tenant: str = Depends(current_tenant)):
+    """A photo of the phone (camera in the app): kept in the shop's own store as warranty proof."""
+    from .mshop import service as mshop
+    data = await file.read()
+    return _mshop(mshop.add_photo, tenant, job_id, data, file.filename or "photo.jpg", kind, note)
+
+
+@app.post("/api/mshop/jobs/{job_id}/{action}", dependencies=[Depends(require_key)])
+def mshop_job_act(job_id: str, action: str, body: MShopActIn, tenant: str = Depends(current_tenant)):
+    """status | part | bill | decide (her Haan on the bill, only from her tap) | customer_ok | pay | deliver | update | ready | slip"""
+    from .mshop import service as mshop
+    conv = body.conversation_id
+    if action == "status":
+        return _mshop(mshop.set_status, tenant, job_id, body.status, body.note, conv=conv)
+    if action == "part":
+        return _mshop(mshop.add_part, tenant, job_id, body.name, body.price, body.cost, body.warranty_days, body.labour)
+    if action == "bill":
+        return _mshop(mshop.prepare_bill, tenant, job_id, conv)
+    if action == "decide":
+        return _mshop(mshop.decide_bill, tenant, job_id, body.approve, body.total, conv)
+    if action == "customer_ok":
+        return _mshop(mshop.customer_agreed, tenant, job_id, body.estimate)
+    if action == "pay":
+        return _mshop(mshop.pay, tenant, job_id, body.amount, body.how)
+    if action == "deliver":
+        return _mshop(mshop.deliver, tenant, job_id, body.amount, body.note, conv=conv)
+    if action == "update":
+        return _mshop(mshop.update_job, tenant, job_id, body.promised_on, body.note, body.technician, body.imei, body.proof,
+                      body.estimate, body.force)
+    if action == "ready":
+        return _mshop(mshop.ready_card, tenant, job_id, conv)
+    if action == "estimate_message":
+        return _mshop(mshop.estimate_message, tenant, job_id)
+    if action == "slip":
+        return _mshop(mshop.slip_file, tenant, job_id, conv)
+    raise HTTPException(404, "Unknown action")
+
+
+@app.get("/api/mshop/jobs/{job_id}/slip.pdf", dependencies=[Depends(require_key)])
+def mshop_job_slip(job_id: str, tenant: str = Depends(current_tenant)):
+    from .mshop import service as mshop
+    return Response(_mshop(mshop.slip_pdf, tenant, job_id), media_type="application/pdf")
+
+
+@app.get("/api/mshop/photos/{photo_id}", dependencies=[Depends(require_key)])
+def mshop_photo_get(photo_id: str, tenant: str = Depends(current_tenant)):
+    from .mshop import service as mshop
+    path, mime = _mshop(mshop.photo_file, tenant, photo_id)
+    return FileResponse(path, media_type=mime)
+
+
+@app.get("/api/mshop/warranty", dependencies=[Depends(require_key)])
+def mshop_warranty(q: str, tenant: str = Depends(current_tenant)):
+    from .mshop import service as mshop
+    return mshop.warranty(tenant, q)
+
+
+@app.post("/api/mshop/recharges", dependencies=[Depends(require_key)])
+def mshop_recharge_new(body: MShopRechargeIn, tenant: str = Depends(current_tenant)):
+    from .mshop import service as mshop
+    return _mshop(mshop.add_recharge, tenant, body.number, body.amount, body.operator, body.validity_days, body.name,
+                  body.plan, body.via, body.date)
+
+
+@app.get("/api/mshop/recharges", dependencies=[Depends(require_key)])
+def mshop_recharges(date: str = "", tenant: str = Depends(current_tenant)):
+    from .mshop import service as mshop
+    return {"day": _mshop(mshop.recharges_day, tenant, date), "recent": mshop.recent_recharges(tenant, 80),
+            "due": mshop.due_recharges(tenant)}
+
+
+@app.post("/api/mshop/recharges/{recharge_id}/{action}", dependencies=[Depends(require_key)])
+def mshop_recharge_act(recharge_id: str, action: str, tenant: str = Depends(current_tenant)):
+    from .mshop import service as mshop
+    if action == "reminded":
+        return _mshop(mshop.mark_reminded, tenant, recharge_id)
+    if action == "void":
+        return _mshop(mshop.void_recharge, tenant, recharge_id)
+    raise HTTPException(404, "Unknown action")
+
+
+@app.get("/api/mshop/settings", dependencies=[Depends(require_key)])
+def mshop_settings_get(tenant: str = Depends(current_tenant)):
+    from .mshop import service as mshop
+    return mshop.settings(tenant)
+
+
+@app.put("/api/mshop/settings", dependencies=[Depends(require_key)])
+def mshop_settings_put(body: dict, tenant: str = Depends(current_tenant)):
+    from .mshop import service as mshop
+    keys = ("enabled", "shop_name", "gstin", "gst_on", "prices", "warranty", "fix_days", "jobs_per_day", "unclaimed_days",
+            "commission", "remind_days", "terms", "ready_template", "rules", "morning_time")
+    return _mshop(mshop.save_settings, tenant, **{k: body[k] for k in keys if k in body})
 
 
 @app.get("/api/agent/tasks", dependencies=[Depends(require_key)])

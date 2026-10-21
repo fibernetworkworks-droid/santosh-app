@@ -661,6 +661,30 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/lekhak/docs/$id/share', body: {'phone': phone, 'email': email}) as Map);
   Future<Map<String, dynamic>> lekhakContact(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('POST', '/api/lekhak/contacts', body: body) as Map);
   Future<Map<String, dynamic>> lekhakSettings(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('PUT', '/api/lekhak/settings', body: body) as Map);
+  // ---- v0.88 Mobile Dukaan Sahayak (recharge + repair shop) ----
+  /// For Image.network on server photos (repair photos need the key).
+  Map<String, String> get authHeaders => {if (apiKey.isNotEmpty) 'Authorization': 'Bearer $apiKey'};
+  Future<Map<String, dynamic>> mshopToday() async => Map<String, dynamic>.from(await _send('GET', '/api/mshop/today') as Map);
+  Future<List<Map<String, dynamic>>> mshopJobs({String status = 'open', String q = ''}) async =>
+      _maps((await _send('GET', '/api/mshop/jobs', query: {'status': status, if (q.isNotEmpty) 'q': q}) as Map)['jobs']);
+  Future<Map<String, dynamic>> mshopJob(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/mshop/jobs/$id') as Map);
+  Future<Map<String, dynamic>> mshopNewJob(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/mshop/jobs', body: body) as Map);
+  Future<Map<String, dynamic>> mshopCheck(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/mshop/check', body: body) as Map);
+  Future<Map<String, dynamic>> mshopAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/mshop/jobs/$id/$action', body: body) as Map);
+  Future<Map<String, dynamic>> mshopPhoto(String id, String filename, List<int> bytes, {String kind = 'in'}) async =>
+      uploadFile('/api/mshop/jobs/$id/photos', filename, bytes, fields: {'kind': kind}, timeout: const Duration(seconds: 120));
+  Future<Map<String, dynamic>> mshopWarranty(String q) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/mshop/warranty', query: {'q': q}) as Map);
+  Future<Map<String, dynamic>> mshopRecharges() async => Map<String, dynamic>.from(await _send('GET', '/api/mshop/recharges') as Map);
+  Future<Map<String, dynamic>> mshopAddRecharge(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/mshop/recharges', body: body) as Map);
+  Future<void> mshopRechargeAct(String id, String action) async => _send('POST', '/api/mshop/recharges/$id/$action');
+  Future<Map<String, dynamic>> mshopSettings() async => Map<String, dynamic>.from(await _send('GET', '/api/mshop/settings') as Map);
+  Future<Map<String, dynamic>> mshopSaveSettings(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/mshop/settings', body: body) as Map);
   // v0.78 Pakka kaam: task log + lessons (failure -> what worked)
   Future<Map<String, dynamic>> agentTasks({int limit = 30}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/agent/tasks?limit=$limit') as Map);

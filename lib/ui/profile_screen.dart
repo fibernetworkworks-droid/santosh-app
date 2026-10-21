@@ -36,6 +36,7 @@ import 'darzi_screen.dart';
 import 'lekhak_screen.dart';
 import 'office_screen.dart';
 import 'employee_screen.dart';
+import 'mshop_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -182,6 +183,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Aadhaar, PAN, Voter ID… taala band. ${app.aName} forms mein khud bharega'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => IdLockerScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.phone_iphone_rounded, color: C.accent),
+              title: const Text('Mobile dukaan sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Repair job + photo, warranty, taiyaar hai message, recharge register: ${app.aName} sambhalega'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MShopScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

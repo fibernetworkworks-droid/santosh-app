@@ -493,3 +493,10 @@ from .lekhak_tools import LEKHAK_HANDLERS, LEKHAK_LABELS, LEKHAK_TOOLS  # noqa: 
 TOOLS.extend(LEKHAK_TOOLS)
 TOOL_LABELS.update(LEKHAK_LABELS)
 HANDLERS.update(LEKHAK_HANDLERS)
+
+# v0.88 Mobile Dukaan Sahayak (mobile recharge + repair shop coworker)
+from .mshop_tools import MSHOP_HANDLERS, MSHOP_LABELS, MSHOP_TOOLS  # noqa: E402
+
+TOOLS.extend(MSHOP_TOOLS)
+TOOL_LABELS.update(MSHOP_LABELS)
+HANDLERS.update(MSHOP_HANDLERS)

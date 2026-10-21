@@ -267,6 +267,8 @@ class Santosh extends ChangeNotifier {
   int darziTick = 0;                          // bumps on any darzi event (the Darzi screen refreshes)
   final Map<String, FeedItem> _chaiPlans = {}; // v0.84 Chai: one plan card per day, its order cards updated in place
   int chaiTick = 0;                           // bumps on galla / chai events (the Chai screen refreshes)
+  final Map<String, FeedItem> _mshopCards = {}; // v0.88 Mobile shop: bill cards and 'ready' drafts by job, updated in place
+  int mshopTick = 0;                          // bumps on mobile shop events (the Mobile shop screen refreshes)
   final Map<String, FeedItem> _officeCards = {}; // v0.85 Daftar: spend cards by id, nudge drafts by id, updated in place
   int officeTick = 0;                          // bumps on any office event (the Office screen refreshes)
   final Map<String, FeedItem> _lekhakCards = {}; // v0.87 Lekhak: one doc card + one sign card per document, updated in place
@@ -1023,6 +1025,25 @@ class Santosh extends ChangeNotifier {
         break;
       case 'galla':
         chaiTick++;
+        break;
+      case 'mshop_bill':
+      case 'mshop_ready':
+        final mk = '${ev.kind}${p['job_id']}';
+        final mc = _mshopCards[mk];
+        if (mc != null) {
+          mc.data = {...mc.data, ...p};
+        } else {
+          _mshopCards[mk] = FeedItem(ev.kind, Map<String, dynamic>.from(p));
+          feed.add(_mshopCards[mk]!);
+        }
+        mshopTick++;
+        break;
+      case 'mshop_day':
+        feed.add(FeedItem('mshop_day', Map<String, dynamic>.from(p)));
+        mshopTick++;
+        break;
+      case 'mshop':
+        mshopTick++;
         break;
       case 'darzi_day':
         feed.add(FeedItem('darzi_day', Map<String, dynamic>.from(p)));

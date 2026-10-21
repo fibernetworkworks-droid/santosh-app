@@ -40,6 +40,8 @@ DUTIES: dict[str, dict] = {
                      "prefix": (), "tools": {"office", "office_dekho"}},
     "typing": {"label": "Typing aur anuvaad", "say": "letter / application likhna, voice se type, translation, grammar (sign aapki haan se)",
                "prefix": (), "tools": {"lekhak", "lekhak_dekho", "make_document", "pdf_tools", "file_read"}},
+    "mobile_repair": {"label": "Repair aur recharge", "say": "repair job + photo, warranty, 'taiyaar hai' draft, recharge register + yaad (bill aapki haan se)",
+                      "prefix": (), "tools": {"mobile_shop", "mobile_shop_dekho", "biz_repair_status"}},
     "research": {"label": "Jaankari dhoondhna", "say": "web, maps, mausam, public APIs",
                  "prefix": ("maps_", "api_"), "tools": {"google_search", "open_website", "browse_web", "browse_result", "get_weather",
                                                        "memory_search"}},
@@ -47,7 +49,7 @@ DUTIES: dict[str, dict] = {
 # hoola_* tools that belong to tickets, not customers
 _TICKET_FIRST = {"hoola_business", "hoola_my_business", "hoola_chain"}
 # what a customer on WhatsApp can make Hoola do: only these, always about that customer (employee/inbox.py)
-CUSTOMER_TOOLS = {"biz_order_status", "biz_free_slots", "biz_book", "biz_my_appointments", "biz_cancel", "biz_complaint", "biz_ticket_status",
+CUSTOMER_TOOLS = {"biz_repair_status", "biz_order_status", "biz_free_slots", "biz_book", "biz_my_appointments", "biz_cancel", "biz_complaint", "biz_ticket_status",
                   "biz_my_dues", "biz_pay_link", "biz_promise", "biz_handover", "biz_note"}
 
 ROLES: dict[str, dict] = {
@@ -81,6 +83,8 @@ ROLES: dict[str, dict] = {
     "typist": {"label": "Typist aur translator (Lekhak sahayak)",
                "say": "Aapki awaaz se letter / application, Hindi-Marathi-English anuvaad, grammar, photo / Kruti Dev se Unicode typing",
                "duties": ["typing", "records", "email", "research"]},
+    "mobile_shop": {"label": "Mobile dukaan sahayak", "say": "Repair job aur photo, warranty, 'taiyaar hai' message, recharge register aur yaad, bill aapki haan se",
+                    "duties": ["mobile_repair", "customers", "reminders", "collections", "records", "research"]},
     "custom": {"label": "Apna kaam", "say": "Aap khud chuniye Hoola kaun se kaam karega", "duties": []},
 }
 
@@ -117,6 +121,11 @@ PRESETS: dict[str, dict] = {
     "chai": {"label": "Chai stall / tapri / nashta", "role": "chai_stall", "kind": "chai", "slot_minutes": 30, "after_hours": "quiet",
              "about_hint": "Menu aur daam (chai, special, coffee, nashta), timing, doodhwala, kitne cup roz",
              "rules": ["Stock ka order sirf owner ki haan se.", "Udhaar sirf owner ki haan se."]},
+    "mobile_shop": {"label": "Mobile recharge + repair", "role": "mobile_shop", "kind": "mobile_shop", "slot_minutes": 20,
+                    "after_hours": "note",
+                    "about_hint": "Kaun se phone theek karte hain, display / battery ke daam, kitne din, warranty, recharge (Jio / Airtel / Vi / BSNL), timing",
+                    "rules": ["Bill aur daam sirf owner ki haan se.", "Graahak ke phone ka password kabhi mat maangna.",
+                              "IMEI badalne ka kaam kabhi nahi.", "Lock / FRP hatane ke liye phone ka bill / dabba dekhna zaroori."]},
     "office": {"label": "Office / company", "role": "office", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
                "about_hint": "Company kya karti hai, kaun kis kaam ka", "rules": []},
     "office_manager": {"label": "Office manager", "role": "office_manager", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
@@ -152,7 +161,7 @@ READ = {
     "pc_task_result", "tally_report", "file_read", "api_find", "api_docs", "api_call", "memory_search", "phone_health",
     "tv_channel", "employee", "india_info",
     "biz_free_slots", "biz_my_appointments", "biz_ticket_status", "biz_my_dues", "biz_handover", "biz_note",
-    "darzi_dekho", "biz_order_status", "chai_dekho",
+    "darzi_dekho", "biz_order_status", "chai_dekho", "mobile_shop_dekho", "biz_repair_status",
     "darzi_dekho", "biz_order_status", "office_dekho", "lekhak_dekho",
 }
 BIG = {
