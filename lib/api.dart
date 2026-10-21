@@ -122,6 +122,29 @@ class Api {
   Future<Map<String, dynamic>> reelCheck(String id) async => Map<String, dynamic>.from(
       await _send('POST', '/api/reels/$id/check', timeout: const Duration(seconds: 90)) as Map);
 
+  // ---- Hoola Computer Operator (v0.67) ----
+  Future<Map<String, dynamic>> operatorHome() async => Map<String, dynamic>.from(await _send('GET', '/api/operator') as Map);
+  Future<Map<String, dynamic>> operatorTask(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/operator/tasks/$id') as Map);
+  Future<Map<String, dynamic>> operatorStart(String task, {String startUrl = '', List<String> fileIds = const [], String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/operator/tasks',
+          body: {'task': task, 'start_url': startUrl, 'file_ids': fileIds, 'conversation_id': conversationId}) as Map);
+  Future<Map<String, dynamic>> operatorCancel(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/operator/tasks/$id/cancel') as Map);
+  /// Her answer to a request. For OTP / CAPTCHA / her secret, [answer] is typed straight into the page and never stored.
+  Future<Map<String, dynamic>> operatorAnswer(String requestId, bool yes, {String answer = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/operator/requests/$requestId',
+          body: {'status': yes ? 'approved' : 'rejected', 'answer': answer}, timeout: const Duration(seconds: 40)) as Map);
+  /// Her own hands in the live view: tap at (x, y) in page pixels (1280 x 900), type text, or a key.
+  Future<void> operatorInput(String kind, {double x = 0, double y = 0, String text = '', String key = ''}) async =>
+      _send('POST', '/api/operator/input', body: {'kind': kind, 'x': x, 'y': y, 'text': text, 'key': key});
+  Future<void> operatorForget(String name) async => _send('DELETE', '/api/operator/recipes/${Uri.encodeComponent(name)}');
+  Future<List<int>?> operatorFrame() async {
+    final req = http.Request('GET', _u('/api/operator/frame'))..headers.addAll(_headers);
+    final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 12)));
+    return res.statusCode == 200 && res.bodyBytes.isNotEmpty ? res.bodyBytes : null;
+  }
+
   // ---- Hoola Video Editor (v0.65) ----
   Future<Map<String, dynamic>> videoJobs() async => Map<String, dynamic>.from(await _send('GET', '/api/video/jobs') as Map);
   Future<Map<String, dynamic>> videoJob(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/video/jobs/$id') as Map);

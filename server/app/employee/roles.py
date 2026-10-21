@@ -30,6 +30,8 @@ DUTIES: dict[str, dict] = {
                                           "control_campaign"}},
     "video": {"label": "Video editing", "say": "reels, shorts, status aur YouTube ke liye video edit (captions, logo, music)",
               "prefix": (), "tools": {"video_edit"}},
+    "operator": {"label": "Computer operator", "say": "websites par form, application, download, status check (OTP / submit / payment aap karti hain)",
+                 "prefix": (), "tools": {"computer_operator"}},
     "research": {"label": "Jaankari dhoondhna", "say": "web, maps, mausam, public APIs",
                  "prefix": ("maps_", "api_"), "tools": {"google_search", "open_website", "browse_web", "browse_result", "get_weather",
                                                        "memory_search"}},
@@ -59,6 +61,8 @@ ROLES: dict[str, dict] = {
                   "duties": ["campaigns", "records", "research", "video"]},
     "video_editor": {"label": "Video editor", "say": "Dukaan / business ki reels, shorts, status aur YouTube video edit karna",
                      "duties": ["video", "records", "research"]},
+    "computer_operator": {"label": "Computer operator", "say": "Online form, sarkari portal, bill / certificate download, status check, application",
+                          "duties": ["operator", "records", "research", "reminders"]},
     "custom": {"label": "Apna kaam", "say": "Aap khud chuniye Hoola kaun se kaam karega", "duties": []},
 }
 

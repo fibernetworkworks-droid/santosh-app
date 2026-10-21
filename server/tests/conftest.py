@@ -20,6 +20,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("HOOLA_ENRICH", "false")     # no background vision / suggestion calls; tests call enrich.run
     monkeypatch.setenv("VOICE_TOOL_ACK", "false")
     monkeypatch.setenv("VIDEO_EDIT_WORKER", "false")   # tests call videoedit.run_job themselves
+    monkeypatch.setenv("OPERATOR_WORKER", "false")     # tests call operator.run_job themselves
     monkeypatch.setenv("IFSC_REFRESH", "false")    # no IFSC downloads / online lookups in tests
     monkeypatch.setenv("LOGO_WARM", "false")       # no logo downloads in tests
     monkeypatch.setenv("TV_REFRESH", "false")   # no real TTS calls; tests that need the clips turn it on

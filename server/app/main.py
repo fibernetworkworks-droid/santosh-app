@@ -50,12 +50,28 @@ async def lifespan(app: FastAPI):
     if get_settings().ifsc_refresh:
         from .india import ifsc
         ifsc.refresh_in_background()          # v0.59 IFSC branch details, once a month
+    from .operator import service as operator_service
+    operator_service.MAIN_LOOP = asyncio.get_running_loop()   # v0.67 Computer Operator jobs run on this loop
+    if get_settings().operator_worker:
+        operator_service.resume_pending()     # a restart closes the browser: those jobs stop honestly
     yield
     stop.set()
     await task
+    try:
+        await operator_service.shutdown()
+    except Exception:
+        pass
 
 
-app = FastAPI(title="Santosh Core", version="0.66.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.67.0", lifespan=lifespan)
+
+
+def _operator_ok() -> bool:
+    try:
+        from .operator.service import available
+        return available()
+    except Exception:
+        return False
 
 
 def _bearer(request: Request) -> str:
@@ -112,7 +128,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -1404,6 +1420,99 @@ def video_file(job_id: str, name: str, exp: int = 0, sig: str = ""):
         raise HTTPException(404, "Yeh video link purana ho gaya ya galat hai.")
     media = "video/mp4" if p.suffix == ".mp4" else "image/png" if p.suffix == ".png" else None
     return FileResponse(str(p), media_type=media, filename=p.name)
+
+
+# ---------------- v0.67 Hoola Computer Operator ----------------
+class OperatorStart(BaseModel):
+    task: str = Field(min_length=6, max_length=3000)
+    start_url: str = Field(default="", max_length=1000)
+    file_ids: list[str] = Field(default_factory=list, max_length=8)
+    conversation_id: str = ""
+
+
+class OperatorAnswer(BaseModel):
+    status: str = Field(pattern="^(approved|rejected)$")
+    answer: str = Field(default="", max_length=500)   # OTP / CAPTCHA / her secret: typed into the page, never stored
+
+
+class OperatorInput(BaseModel):
+    kind: str = Field(pattern="^(click|type|key)$")
+    x: float = 0
+    y: float = 0
+    text: str = Field(default="", max_length=500)
+    key: str = Field(default="", max_length=20)
+
+
+def _op_call(fn, *a, **k):
+    from .operator.service import OperatorJobError
+    try:
+        return fn(*a, **k)
+    except OperatorJobError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/operator", dependencies=[Depends(require_key)])
+def operator_home(tenant: str = Depends(current_tenant)):
+    from .operator import service as ops
+    return {"available": ops.available(), "active": ops.active(tenant), "tasks": ops.listing(tenant, 20),
+            "recipes": [{k: r.get(k) for k in ("name", "task", "site", "variables", "runs", "updated", "version")}
+                        for r in ops.recipes(tenant)]}
+
+
+@app.post("/api/operator/tasks", dependencies=[Depends(require_key)])
+def operator_start(body: OperatorStart, tenant: str = Depends(current_tenant)):
+    from .operator import service as ops
+    return _op_call(ops.start, tenant, body.task, body.start_url, body.file_ids, body.conversation_id)
+
+
+@app.get("/api/operator/tasks/{task_id}", dependencies=[Depends(require_key)])
+def operator_task(task_id: str, tenant: str = Depends(current_tenant)):
+    from .operator import service as ops
+    return _op_call(ops.get, tenant, task_id)
+
+
+@app.post("/api/operator/tasks/{task_id}/cancel", dependencies=[Depends(require_key)])
+def operator_cancel(task_id: str, tenant: str = Depends(current_tenant)):
+    from .operator import service as ops
+    return _op_call(ops.cancel, tenant, task_id)
+
+
+@app.get("/api/operator/frame", dependencies=[Depends(require_key)])
+async def operator_frame(tenant: str = Depends(current_tenant)):
+    """The live view: a picture of the job's browser right now (the phone polls it while the job runs)."""
+    from .operator import service as ops
+    try:
+        b = await ops.frame(tenant)
+    except ops.OperatorJobError as e:
+        raise HTTPException(404, str(e))
+    return Response(b, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/operator/input", dependencies=[Depends(require_key)])
+async def operator_input(body: OperatorInput, tenant: str = Depends(current_tenant)):
+    """Her own hands in the live view (tap / type / key): never logged as text, never shown to the model."""
+    from .operator import service as ops
+    try:
+        return await ops.owner_input(tenant, body.kind, body.x, body.y, body.text, body.key)
+    except ops.OperatorJobError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/operator/requests/{request_id}", dependencies=[Depends(require_key)])
+async def operator_answer(request_id: str, body: OperatorAnswer, tenant: str = Depends(current_tenant)):
+    from .operator import service as ops
+    try:
+        return await ops.resolve(tenant, request_id, body.status, body.answer)
+    except ops.OperatorJobError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/operator/recipes/{name}", dependencies=[Depends(require_key)])
+def operator_forget(name: str, tenant: str = Depends(current_tenant)):
+    from .operator import service as ops
+    if not ops.forget_recipe(tenant, name):
+        raise HTTPException(404, "no such recipe")
+    return {"ok": True}
 
 
 @app.get("/api/app/latest", dependencies=[Depends(require_key)])

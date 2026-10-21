@@ -235,6 +235,9 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _campaigns = {};
   final Map<String, FeedItem> _emails = {};
   final Map<String, FeedItem> _bazar = {};   // confirm cards by approval id
+  final Map<String, FeedItem> _opTasks = {};   // v0.67 Computer Operator: one live card per job
+  final Map<String, FeedItem> _opAsks = {};    // its questions for the owner, updated in place
+  int operatorTick = 0;
   final Map<String, FeedItem> _videoJobs = {}; // v0.65 video editor: one live card per job, updated in place
   int videoTick = 0;                          // bumps on every video_job event (the editor screen refreshes)
   final Map<String, FeedItem> _empAsks = {};  // Hoola Employee: actions waiting for the owner's tap, by ask id
@@ -885,6 +888,29 @@ class Santosh extends ChangeNotifier {
           if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Aapki haan chahiye', '${p['what'] ?? ''} · ${p['who'] ?? ''}');
         }
         employeeTick++;
+        break;
+      case 'operator_task':
+        final oid = '${p['id']}';
+        final ot = _opTasks[oid];
+        if (ot != null) {
+          ot.data = {...ot.data, ...p};
+        } else {
+          _opTasks[oid] = FeedItem('operator_task', Map<String, dynamic>.from(p));
+          feed.add(_opTasks[oid]!);
+        }
+        operatorTick++;
+        break;
+      case 'operator_ask':
+        final qid = '${p['id']}';
+        final oq = _opAsks[qid];
+        if (oq != null) {
+          oq.data = {...oq.data, ...p};
+        } else if (p['status'] == 'pending') {
+          _opAsks[qid] = FeedItem('operator_ask', Map<String, dynamic>.from(p));
+          feed.add(_opAsks[qid]!);
+          if (inBackground && !_replaying && !pushOn) Device.instance.showNow('$aName: aapki zaroorat hai', '${p['reason'] ?? ''}');
+        }
+        operatorTick++;
         break;
       case 'video_job':
         final vid = '${p['id']}';

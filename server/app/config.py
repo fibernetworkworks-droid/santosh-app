@@ -19,6 +19,15 @@ class Settings(BaseSettings):
     app_release_repo: str = "fibernetworkworks-droid/santosh-app"   # v0.62 where the phone app's releases live
     video_edit_worker: bool = True         # v0.65 Hoola Video Editor: run edits in the background (tests run them inline)
     video_max_output_s: int = 300          # longest finished video the CPU VPS makes
+    operator_on: bool = True               # v0.67 Computer Operator (Playwright Chromium inside core, own browser per owner)
+    operator_worker: bool = True           # run operator jobs in the background (tests run them inline)
+    operator_max_jobs: int = 2             # browsers at the same time on this server (~300 MB each)
+    operator_max_steps: int = 120          # model steps in one job
+    operator_wait_owner_s: int = 900       # how long a job waits for the owner's answer (OTP, approval...)
+    operator_allow_private: bool = False   # tests only: lets the browser open local test sites
+    operator_headless: bool = True
+    operator_chromium: str = ""            # path to a Chromium binary (empty = Playwright's own)
+    operator_audit_days: int = 14          # step screenshots + log kept this long
     video_whisper: bool = False            # word-exact captions with faster-whisper (pip install faster-whisper)
     video_whisper_model: str = "small"
     video_gemini_model: str = ""           # model that watches the footage (default: the reels / YouTube Gemini model)
