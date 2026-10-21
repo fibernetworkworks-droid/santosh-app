@@ -82,7 +82,8 @@ async def operator(tenant: str) -> Operator:
         return have[1]
     st = _st()
     op = Operator(home(tenant), allow_private=bool(st.operator_allow_private), headless=bool(st.operator_headless),
-                  executable=st.operator_chromium or "", keep_days=int(st.operator_audit_days or 14))
+                  executable=st.operator_chromium or "", keep_days=int(st.operator_audit_days or 14),
+                  browser=str(getattr(st, "operator_browser", "auto") or "auto"))
     op.on_human_request = lambda a, t=tenant: _asked(t, a)
     op.fetch_upload = lambda fid, t=tenant, o=op: _fetch_upload(t, o, fid)
     _ops[tenant] = (loop, op)

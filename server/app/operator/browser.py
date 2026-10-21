@@ -187,7 +187,7 @@ class Operator:
     """One owner's browser (her own profile, logins, downloads, audit runs) under data/operator/<tenant>."""
 
     def __init__(self, home: str | os.PathLike, *, allow_private: bool = False, headless: bool = True,
-                 executable: str = "", keep_days: int = 14, screenshots: bool = True):
+                 executable: str = "", keep_days: int = 14, screenshots: bool = True, browser: str = "auto"):
         self.home = Path(home).resolve()
         for d in ("profiles", "downloads", "uploads", "memory", "runs"):
             (self.home / d).mkdir(parents=True, exist_ok=True)
@@ -198,6 +198,8 @@ class Operator:
         self.allow_private = allow_private
         self.headless = headless
         self.executable = executable
+        self.browser = browser
+        self.launched_as = ""
         self.audit_shots = screenshots
         self._prune_runs(keep_days)
         self.sessions: dict[str, Session] = {}
@@ -228,10 +230,9 @@ class Operator:
             await self._net.start()
 
     def _launch_args(self) -> dict:
-        a: dict[str, Any] = {"headless": self.headless, "args": self._net.chrome_args() + ["--lang=en-IN"]}
-        exe = self.executable or os.environ.get("OPERATOR_CHROMIUM", "")
-        if exe:
-            a["executable_path"] = exe
+        from .display import launch_options
+        a, self.launched_as = launch_options(self.headless, self.browser, self.executable)
+        a["args"] = self._net.chrome_args() + ["--lang=en-IN"]
         return a
 
     async def session(self, name: str = "main", profile: str | None = None, create: bool = True) -> Session:
@@ -246,9 +247,19 @@ class Operator:
             raise OperatorError("Profile names may use letters, digits, - _ . (max 40)")
         async with self._lock:
             await self._ensure()
-            ctx = await self._pw.chromium.launch_persistent_context(
-                str(self.home / "profiles" / profile), accept_downloads=True, viewport={"width": 1280, "height": 900},
-                locale="en-IN", timezone_id="Asia/Kolkata", **self._launch_args())
+            kw = dict(accept_downloads=True, viewport={"width": 1280, "height": 900}, locale="en-IN",
+                      timezone_id="Asia/Kolkata")
+            a = self._launch_args()
+            try:
+                ctx = await self._pw.chromium.launch_persistent_context(str(self.home / "profiles" / profile), **kw, **a)
+            except Exception:
+                if not (a.get("channel") or not a.get("headless", True)):
+                    raise
+                # Google Chrome / the virtual screen did not start: fall back to Playwright's headless Chromium
+                a = {k: v for k, v in a.items() if k not in ("channel", "env")}
+                a["headless"] = True
+                self.launched_as = "Chromium, headless (fallback)"
+                ctx = await self._pw.chromium.launch_persistent_context(str(self.home / "profiles" / profile), **kw, **a)
         s = Session(name=name, profile=profile, context=ctx)
         stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
         s.run_dir = self.home / "runs" / name / stamp

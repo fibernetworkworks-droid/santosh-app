@@ -59,22 +59,28 @@ async def _one(net, ctx, url: str) -> None:
 
 
 async def main(urls: list[str]) -> int:
-    import os
     from playwright.async_api import async_playwright
     from .netguard import NetGuard
     net = NetGuard()
     await net.start()
     print(f"NetGuard filter on 127.0.0.1:{net.port}")
+    from ..config import get_settings
+    from .display import launch_options
+    st = get_settings()
+    args, what = launch_options(bool(st.operator_headless), st.operator_browser, st.operator_chromium or "")
+    args["args"] = net.chrome_args() + ["--lang=en-IN"]
+    print(f"Browser: {what}")
     async with async_playwright() as pw:
-        args = {"headless": True, "args": net.chrome_args() + ["--lang=en-IN"]}
-        if os.environ.get("OPERATOR_CHROMIUM"):
-            args["executable_path"] = os.environ["OPERATOR_CHROMIUM"]
         try:
             browser = await pw.chromium.launch(**args)
         except Exception as e:
             print(f"FAIL Chromium start -> {str(e).splitlines()[0][:300]}\n(run: bash ~/santosh_app/server/deploy/setup_operator.sh)")
             return 1
         ctx = await browser.new_context(locale="en-IN")
+        pg = await ctx.new_page()
+        ua = await pg.evaluate("navigator.userAgent")
+        await pg.close()
+        print(f"Sites see it as: {ua}" + ("   <- 'HeadlessChrome': many sites refuse this" if "Headless" in ua else ""))
         for u in urls:
             await _one(net, ctx, u)
         await browser.close()
