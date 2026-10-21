@@ -82,6 +82,53 @@ CAPTCHA_REFRESH = r"""() => {
 MAX_DOWNLOAD = 60 * 1024 * 1024
 
 
+
+# v0.89 a VPS has a tiny /dev/shm (tabs crash without the first flag); no "restore pages?" bubble after a crash
+STABLE_ARGS = ["--disable-dev-shm-usage", "--no-first-run", "--no-default-browser-check", "--disable-session-crashed-bubble",
+               "--hide-crash-restore-bubble", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows"]
+NET_RETRY = re.compile(r"ERR_(?:TIMED_OUT|CONNECTION_(?:RESET|CLOSED|REFUSED|TIMED_OUT|FAILED|ABORTED)|TUNNEL_CONNECTION_FAILED|"
+                       r"NAME_NOT_RESOLVED|EMPTY_RESPONSE|PROXY_CONNECTION_FAILED|NETWORK_CHANGED|SOCKET_NOT_CONNECTED|"
+                       r"HTTP2_PROTOCOL_ERROR|QUIC_PROTOCOL_ERROR|ADDRESS_UNREACHABLE)|Timeout \d+ms exceeded", re.I)
+
+
+def _upstream_env() -> None:
+    """v0.89 the owner's own upstream proxy from settings (.env) -> the environment NetGuard reads."""
+    try:
+        from ..config import get_settings
+        st = get_settings()
+        if st.browser_upstream_proxy and not os.environ.get("BROWSER_UPSTREAM_PROXY"):
+            os.environ["BROWSER_UPSTREAM_PROXY"] = st.browser_upstream_proxy
+        if st.browser_upstream_hosts and not os.environ.get("BROWSER_UPSTREAM_HOSTS"):
+            os.environ["BROWSER_UPSTREAM_HOSTS"] = st.browser_upstream_hosts
+    except Exception:
+        pass
+
+
+def _clear_stale_lock(profile_dir: Path) -> None:
+    """A Chrome that died (server restart, crash) leaves SingletonLock in her saved profile and the next start fails with
+    'profile in use'. Remove it only when the Chrome that held it is gone."""
+    lock = profile_dir / "SingletonLock"
+    try:
+        target = os.readlink(lock)
+    except OSError:
+        return
+    pid = target.rsplit("-", 1)[-1]
+    alive = False
+    if pid.isdigit():
+        try:
+            os.kill(int(pid), 0)
+            alive = True
+        except ProcessLookupError:
+            alive = False
+        except PermissionError:
+            alive = True
+    if not alive:
+        for n in ("SingletonLock", "SingletonSocket", "SingletonCookie"):
+            try:
+                (profile_dir / n).unlink()
+            except OSError:
+                pass
+
 class OperatorError(Exception):
     """Message is written for the AI driving the browser: what went wrong and what to do next."""
 
@@ -302,6 +349,7 @@ class Operator:
             from playwright.async_api import async_playwright
             self._pw = await async_playwright().start()
         if self._net is None:
+            _upstream_env()
             from .netguard import NetGuard
             self._net = NetGuard(allow_private=self.allow_private)
             await self._net.start()
@@ -309,7 +357,7 @@ class Operator:
     def _launch_args(self) -> dict:
         from .display import launch_options
         a, self.launched_as = launch_options(self.headless, self.browser, self.executable)
-        a["args"] = self._net.chrome_args() + ["--lang=en-IN"]
+        a["args"] = self._net.chrome_args() + ["--lang=en-IN"] + STABLE_ARGS
         return a
 
     async def session(self, name: str = "main", profile: str | None = None, create: bool = True) -> Session:
@@ -327,6 +375,7 @@ class Operator:
             kw = dict(accept_downloads=True, viewport={"width": 1280, "height": 900}, locale="en-IN",
                       timezone_id="Asia/Kolkata")
             a = self._launch_args()
+            _clear_stale_lock(self.home / "profiles" / profile)
             try:
                 ctx = await self._pw.chromium.launch_persistent_context(str(self.home / "profiles" / profile), **kw, **a)
             except Exception:
@@ -507,7 +556,7 @@ class Operator:
         a.status = "done"
         return True
 
-    async def _settle(self, s: Session, before_url: str, before_tabs: int, timeout_ms: int = 6000) -> dict:
+    async def _settle(self, s: Session, before_url: str, before_tabs: int, timeout_ms: int = 6000, target: str = "") -> dict:
         page = s.page
         for state, t in (("domcontentloaded", timeout_ms), ("networkidle", 1500)):
             try:
@@ -519,7 +568,26 @@ class Operator:
             done, _ = await asyncio.wait(s.pending_downloads, timeout=60)
             s.pending_downloads = [t for t in s.pending_downloads if t not in done]
         page = s.page
-        why = guard.url_problem(page.url, self.allow_private)
+        if guard.load_error(page.url):
+            # v0.89 Chrome's own "can't be reached" page: the site did not load (not a safety stop). Try again by itself.
+            for i in range(2):
+                await asyncio.sleep(1.5 * (i + 1))
+                try:
+                    if target and not guard.url_problem(target, self.allow_private):
+                        await page.goto(target, wait_until="domcontentloaded", timeout=45000)
+                    else:
+                        await page.reload(wait_until="domcontentloaded", timeout=45000)
+                except Exception:
+                    pass
+                page = s.page
+                if not guard.load_error(page.url):
+                    break
+            if guard.load_error(page.url):
+                why = (self._net.last_failure() if self._net else "") or "the site did not answer"
+                raise OperatorError(f"SITE DID NOT LOAD ({why}). This is not a safety block: try open(url) again in a "
+                                    "little while, or use another official page; if it keeps failing, finish and say "
+                                    "the site does not open from this server (it can be done on her own PC).")
+        why = guard.page_problem(page.url, self.allow_private)
         if why:
             await page.goto("about:blank")
             raise OperatorError(f"The site sent the browser somewhere it may not go ({why}); stopped there.")
@@ -534,6 +602,10 @@ class Operator:
         info["alerts"] = snap["alerts"]
         if snap["captcha"]:
             info["captcha"] = "CAPTCHA on page: the owner types it -> ask_owner(kind='captcha', ref=<input>)"
+        blocked = guard.site_block(snap.get("title", ""), snap.get("text", ""))
+        if blocked:   # v0.89 the site's own firewall refused this server: say so, don't keep trying
+            info["site_block"] = (f"The site itself refused this server ('{blocked}'). Don't retry the same page; use "
+                                  "another official source, or finish and say it can be done on her own PC / phone.")
         if info["url_changed"] or info["new_tab"] or not before:
             info["page"] = fmt_snapshot(snap, with_text=True)
         else:
@@ -744,12 +816,18 @@ class Operator:
             raise OperatorError(f"Can't open {url}: {why}.")
         page = s.page
         bu, bt, n_dl, n_dlg = page.url, len(s.pages), len(s.downloads), len(s.dialogs)
-        try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=45000)
-        except Exception as e:
-            msg = str(e).splitlines()[0]
-            raise OperatorError(f"Could not open {url}: {msg}") from None
-        info = await self._settle(s, bu, bt)
+        for i in range(3):
+            try:
+                await page.goto(url, wait_until="domcontentloaded", timeout=45000)
+                break
+            except Exception as e:
+                msg = str(e).splitlines()[0]
+                if i == 2 or not NET_RETRY.search(msg):   # v0.89 a network hiccup is tried again; other errors are real
+                    why = (self._net.last_failure(urlparse(url).hostname or "") if self._net else "")
+                    raise OperatorError(f"Could not open {url}: {msg}" + (f" ({why})" if why else "")) from None
+                await asyncio.sleep(1.5 * (i + 1))
+                page = s.page
+        info = await self._settle(s, bu, bt, target=url)
         info.update(ok=True, action="open", url_changed=True)
         res = await self._after(s, set(), info, n_dl, n_dlg)
         if record:

@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     operator_wait_owner_s: int = 900       # how long a job waits for the owner's answer (OTP, approval...)
     operator_allow_private: bool = False   # tests only: lets the browser open local test sites
     operator_headless: bool = False        # v0.74: a real browser window on a virtual screen (Xvfb); headless gets refused by many sites
+    browser_upstream_proxy: str = ""       # v0.89 http://user:pass@host:port of HER OWN network (office proxy) for sites that refuse servers
+    browser_upstream_hosts: str = ""       # v0.89 comma list: only these sites use the upstream ('' = all traffic)
     operator_browser: str = "auto"         # auto (Google Chrome if installed, else Playwright's Chromium) | chrome | chromium
     operator_chromium: str = ""            # path to a Chromium binary (empty = Playwright's own)
     operator_audit_days: int = 14          # step screenshots + log kept this long

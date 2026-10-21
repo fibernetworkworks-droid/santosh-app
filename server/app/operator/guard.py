@@ -193,3 +193,17 @@ def page_problem(url: str, allow_private: bool = False) -> str:
 def load_error(url: str) -> bool:
     """True when the browser shows Chrome's own 'site can't be reached' page."""
     return (url or "").lower().startswith("chrome-error:")
+
+
+BLOCK_PAGE = __import__("re").compile(
+    r"access denied|you have been blocked|you don't have permission to access|request (?:was )?blocked|"
+    r"attention required|sorry, you have been blocked|error 1020|error 1005|reference #\d|"
+    r"forbidden|not authori[sz]ed to access|unusual traffic|are you a robot|bot detected|pardon our interruption",
+    __import__("re").I)
+
+
+def site_block(title: str, text: str = "") -> str:
+    """The site itself refused this server (bot / firewall page): '' when the page looks normal."""
+    head = f"{title or ''} {(text or '')[:600]}"
+    m = BLOCK_PAGE.search(head)
+    return m.group(0) if m else ""

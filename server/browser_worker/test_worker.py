@@ -30,12 +30,17 @@ PAGES = {
         <input type="password" name="pw" placeholder="Password"><button>Sign in</button></form></body></html>""",
     "/pay": """<html><head><title>Pay</title></head><body><p>Due Rs 540</p><button onclick="location='/paid'">Pay now</button></body></html>""",
     "/paid": "<html><body>PAID</body></html>",
+    "/flaky": "<html><head><title>Status</title></head><body><p>Application status: Approved</p></body></html>",
 }
 
 
 class H(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
         path = self.path.split("?")[0]
+        if path == "/flaky" and not any(h == "/flaky" for h in self.server.hits):   # type: ignore[attr-defined]
+            self.server.hits.append(self.path)  # type: ignore[attr-defined]
+            self.connection.close()            # v0.89 the first try dies, like a site that hiccups
+            return
         body = PAGES.get(path, "<html><body>not found</body></html>").encode()
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -332,3 +337,21 @@ def test_probe_reports_page_and_bot_blocks(site):
     assert "Headless" not in r[0]["browser_seen_as"]["user_agent"]
     assert r[1]["site_blocks_bots"] is True
     assert "refused by Santosh" in r[2]["error"]
+
+
+@needs_browser
+def test_a_page_that_fails_to_load_is_retried_not_blocked(site):
+    """v0.89 Chrome's 'site can't be reached' page used to stop the whole task as 'Page left the allowed internet'."""
+    base, srv = site
+    import worker
+
+    async def go():
+        worker.app.state.test_llm = FakeLLM([
+            lambda t: [{"navigate": {"url": base + "/flaky"}}],
+            lambda t: [{"done": {"text": "Status: Approved" if "Approved" in t else "not seen", "success": True}}],
+        ])
+        return (await call("POST", "/tasks", json=body("status dekho", base + "/"))).json()
+    out = run(go())
+    assert out["status"] == "done", out
+    assert "Approved" in out["summary"] and "allowed internet" not in (out.get("reason") or "")
+    assert sum(1 for h in srv.hits if h == "/flaky") >= 2

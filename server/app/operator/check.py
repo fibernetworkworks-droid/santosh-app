@@ -56,19 +56,28 @@ async def _one(net, ctx, url: str) -> None:
     if net.failed:
         print(f"     not reached from this server: {net.failed[-5:]}")
         net.failed.clear()
+    print(f"     proxy: {net.stats}")
 
 
 async def main(urls: list[str]) -> int:
     from playwright.async_api import async_playwright
-    from .netguard import NetGuard
+    from .browser import STABLE_ARGS, _upstream_env
+    from .netguard import NetGuard, _doh, _upstream
+    _upstream_env()
     net = NetGuard()
     await net.start()
     print(f"NetGuard filter on 127.0.0.1:{net.port}")
+    up = _upstream()
+    print(f"Upstream (her own network): {up[0]}:{up[1]}" if up else "Upstream: none (traffic leaves from this server's IP)")
+    t0 = time.time()
+    doh = await asyncio.to_thread(_doh, "www.india.gov.in")
+    print(("OK   DNS-over-HTTPS fallback -> " + ", ".join(doh[:2]) + f" ({int((time.time() - t0) * 1000)} ms)") if doh
+          else "WARN DNS-over-HTTPS fallback not reachable (only the server's own DNS will be used)")
     from ..config import get_settings
     from .display import launch_options
     st = get_settings()
     args, what = launch_options(bool(st.operator_headless), st.operator_browser, st.operator_chromium or "")
-    args["args"] = net.chrome_args() + ["--lang=en-IN"]
+    args["args"] = net.chrome_args() + ["--lang=en-IN"] + STABLE_ARGS
     print(f"Browser: {what}")
     async with async_playwright() as pw:
         try:

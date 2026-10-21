@@ -71,6 +71,9 @@ You are Santosh's web browser, working for one person in India. Rules that alway
 - Some sites (IRCTC, some banks/portals) refuse servers and show "Access Denied" / "You have been blocked". Don't
   retry them: get the same facts from another reliable source if possible; if only that site has it, finish with
   done (success=false) saying that site blocks automated access, and give its exact URL so the user can open it.
+- "SITE DID NOT LOAD" from the system means the site did not answer this server for a moment (not a safety rule):
+  try the same page once more; if it still does not load, use another official source or finish with done
+  (success=false) giving the exact URL, so Hoola can open it on the user's own PC or phone.
 - As soon as you have the answer, finish with done. Finish with done: a short answer in plain words with the key
   facts (prices, dates, numbers, status) and the page (URL) where you found them. If you could not finish, still call
   done (success=false) with everything you DID find, and what is left.
@@ -113,6 +116,9 @@ class Session:
     frame_seq: int = 0
     action: str = ""
     live: asyncio.Task | None = None
+    last_good: str = ""        # v0.89 the last page that really loaded (to retry a failed load)
+    reloads: int = 0
+    load_fails: int = 0
     created: float = field(default_factory=time.time)
     touched: float = field(default_factory=time.time)
     done_event: asyncio.Event = field(default_factory=asyncio.Event)
@@ -124,6 +130,8 @@ class Session:
             out["pending"] = {"id": self.pending.id, "label": self.pending.label, "url": self.pending.url}
         if self.screenshot:
             out["screenshot_jpeg_b64"] = self.screenshot
+        if self.net and self.net.failed and (self.load_fails or self.status in ("failed", "blocked")):
+            out["not_reached"] = self.net.failed[-3:]   # v0.89 which site did not answer this server, and why
         return out
 
 
@@ -175,14 +183,52 @@ def make_tools(sess: Session):
                 sess.last_input = node
             try:
                 url = await browser_session.get_current_page_url()
-                if guard.url_problem(url, ALLOW_PRIVATE):
+                if guard.load_error(url):
+                    # v0.89 Chrome's own "site can't be reached" page is NOT a safety stop: the site did not load (DNS
+                    # hiccup, slow server, dropped connection). Try it again by itself, then tell the agent plainly.
+                    target = str(params.get("url") or "") if name in ("navigate", "go_to_url", "open_tab") else sess.last_good
+                    url = await _reload(sess, browser_session, target)
+                    if guard.load_error(url):
+                        why = (sess.net.last_failure() if sess.net else "") or "the site did not answer"
+                        sess.load_fails += 1
+                        from browser_use.agent.views import ActionResult as _AR
+                        return _AR(error=(f"SITE DID NOT LOAD ({why}). This is not a safety block. Try that page once "
+                                          "more in a little while, or get the same facts from another official source."))
+                why = guard.page_problem(url, ALLOW_PRIVATE)
+                if why:   # the page really is somewhere a web page may not take the browser (local / internal address)
                     await browser_session.navigate_to("about:blank")
-                    stop(sess, "blocked", f"Page left the allowed internet ({guard.url_problem(url, ALLOW_PRIVATE)})")
+                    stop(sess, "blocked", f"Page left the allowed internet ({why})")
+                elif url.startswith(("http://", "https://")):
+                    sess.last_good = url
             except Exception:
                 pass
             return res
 
     return GuardedTools(exclude_actions=["evaluate", "upload_file"])
+
+
+async def _reload(sess: Session, browser_session, target: str, tries: int = 2) -> str:
+    """Open a page that failed to load again (short pauses); returns the URL the browser shows now."""
+    url = ""
+    for i in range(tries):
+        await asyncio.sleep(1.5 * (i + 1))
+        if not target or guard.url_problem(target, ALLOW_PRIVATE):
+            break
+        try:
+            await asyncio.wait_for(browser_session.navigate_to(target), 45)
+        except Exception:
+            pass
+        sess.reloads += 1
+        try:
+            url = await browser_session.get_current_page_url()
+        except Exception:
+            url = ""
+        if not guard.load_error(url):
+            return url
+    try:
+        return url or await browser_session.get_current_page_url()
+    except Exception:
+        return url
 
 
 def stop(sess: Session, status: str, reason: str) -> None:
@@ -304,11 +350,16 @@ def browser_choice() -> tuple[str | None, bool, str | None]:
     return exe, headless, ua
 
 
+# v0.89 a VPS has a tiny /dev/shm: without this Chrome's tabs crash ("Aw, Snap!" / page goes blank) on heavy pages
+STABLE_ARGS = ["--disable-dev-shm-usage", "--no-first-run", "--no-default-browser-check", "--disable-background-networking",
+               "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows"]
+
+
 def make_profile(net: NetGuard):
     from browser_use import BrowserProfile
     exe, headless, ua = browser_choice()
     return BrowserProfile(headless=headless, keep_alive=True, executable_path=exe,
-                          args=net.chrome_args() + ["--lang=en-IN", "--disable-blink-features=AutomationControlled"],
+                          args=net.chrome_args() + ["--lang=en-IN", "--disable-blink-features=AutomationControlled"] + STABLE_ARGS,
                           user_agent=ua, block_ip_addresses=not ALLOW_PRIVATE,
                           prohibited_domains=["web.whatsapp.com", "*.local", "*.internal", "localhost"] if not ALLOW_PRIVATE else ["web.whatsapp.com"],
                           user_data_dir=None, accept_downloads=False, chromium_sandbox=False, enable_default_extensions=False,
