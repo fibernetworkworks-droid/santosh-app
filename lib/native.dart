@@ -58,6 +58,17 @@ class Native {
   /// v0.57 reel scroll analysis (Android Usage Access: times only, never screen content).
   static Future<bool> usageAllowed() async => await _call<bool>('usageAllowed') ?? false;
   static Future<void> usageSettings() async => _call('usageSettings');
+  /// v0.63 Hoola Motion: share a file from the app cache (Android share sheet) / save a video to the gallery.
+  /// Both return null when fine, else the reason.
+  static Future<String?> shareFile(String path, {String mime = 'video/mp4', String title = 'Share'}) async =>
+      _call<String>('shareFile', {'path': path, 'mime': mime, 'title': title});
+  static Future<String?> saveVideo(String path, String name) async {
+    try {
+      return await _ch.invokeMethod<String>('saveVideo', {'path': path, 'name': name});
+    } catch (_) {
+      return 'Is phone par save nahi ho saka';
+    }
+  }
   /// v0.58 background reel alerts: daily limit (minutes, 0 = off) and the after-11-pm bedtime nudge.
   static Future<Map<String, dynamic>> scrollAlerts({int? budget, bool? bedtime, int? ytShortsPct}) async => Map<String, dynamic>.from(
       await _call<Map>('scrollAlerts', {

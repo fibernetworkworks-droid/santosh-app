@@ -8,6 +8,7 @@ import 'plugin_widgets.dart';
 import 'publicapis_screen.dart';
 import 'shopping_screen.dart';
 import 'reels_screen.dart';
+import 'motion_screen.dart';
 import 'scroll_screen.dart';
 import 'top_plugins.dart';
 import 'tv_screen.dart';
@@ -370,6 +371,17 @@ class _BazarScreenState extends State<BazarScreen> {
                 subtitle: const Text('Kitni der reels, kab, kaunsi app, raat mein kitna · aap kya dekhte ho'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ScrollScreen())),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Glass(
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.movie_creation_rounded, color: C.accent2),
+                title: Text('Hoola Motion · reel banao', style: display(15.5)),
+                subtitle: const Text('Dukaan ki reel, recipe, logo intro, Diwali offer: animated video, WhatsApp / Insta / YouTube ke liye'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MotionScreen())),
               ),
             ),
             const SizedBox(height: 14),

@@ -372,7 +372,7 @@ def plan_update(tenant: str, conv: str, ref: str, title: str | None = None, desc
 
 
 def plan_upload(tenant: str, conv: str, file_id: str, title: str, description: str = "", privacy: str = "private",
-                tags: list[str] | None = None) -> str:
+                tags: list[str] | None = None, synthetic: bool = False) -> str:
     from ..mailbox import service as ms
     c = get_client(tenant)
     f = ms._file_row(tenant, file_id)
@@ -381,8 +381,10 @@ def plan_upload(tenant: str, conv: str, file_id: str, title: str, description: s
     privacy = privacy if privacy in ("public", "unlisted", "private") else "private"
     return pend(tenant, conv, "upload", {"account": c.key, "file_id": file_id, "snippet": {"title": title[:100],
                 "description": (description or "")[:5000], "tags": [t[:30] for t in (tags or [])][:30], "categoryId": "22"},
-                "status": {"privacyStatus": privacy, "selfDeclaredMadeForKids": False}},
-                {"title": title[:90], "lines": [f"File: {f.name} ({f.size // (1024 * 1024)} MB)", f"Privacy: {privacy}"]})
+                "status": {"privacyStatus": privacy, "selfDeclaredMadeForKids": False,
+                           **({"containsSyntheticMedia": True} if synthetic else {})}},
+                {"title": title[:90], "lines": [f"File: {f.name} ({f.size // (1024 * 1024)} MB)", f"Privacy: {privacy}"]
+                 + (["AI se bani video: YouTube par 'altered / synthetic' bataya jayega"] if synthetic else [])})
 
 
 def run_pending(tenant: str, pid: str) -> dict[str, Any]:

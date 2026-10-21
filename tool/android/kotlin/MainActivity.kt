@@ -123,6 +123,14 @@ class MainActivity : FlutterActivity() {
                         askBluetooth()
                         result.success(HomeDevices.hasBluetoothPermission(this) && BtControl.canScan(this))
                     }
+                    "shareFile" -> result.success(MediaShare.share(this, call.argument<String>("path") ?: "",
+                        call.argument<String>("mime") ?: "video/mp4", call.argument<String>("title") ?: ""))
+                    "saveVideo" -> {
+                        val p = call.argument<String>("path") ?: ""
+                        val n = call.argument<String>("name") ?: "hoola.mp4"
+                        Thread { val err = try { MediaShare.saveVideo(this, p, n) } catch (e: Exception) { "Save nahi ho paya" }
+                            main.post { result.success(err) } }.start()
+                    }
                     "usageAllowed" -> result.success(ScrollStats.allowed(this))
                     "usageSettings" -> { ScrollStats.openSettings(this); result.success(null) }
                     "scrollAlerts" -> {

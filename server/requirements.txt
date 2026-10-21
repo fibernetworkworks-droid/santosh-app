@@ -34,3 +34,4 @@ pyhanko>=0.25             # v0.59 PDF digital-signature check (MIT)
 imagehash>=4.3            # v0.59 same photo again -> no new vision call (BSD-2)
 holidays>=0.60            # v0.59 India state-wise holidays (MIT)
 invoice2data>=0.4         # v0.59 bill templates (MIT); text input only
+playwright>=1.47        # v0.63 Hoola Motion: renders animated reels (also run deploy/setup_motion.sh)

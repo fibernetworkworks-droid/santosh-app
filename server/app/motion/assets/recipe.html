@@ -1,0 +1,126 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="hm.css">
+<style>
+  .title { font-weight: 800; font-size: 10vmin; line-height: 1.05; max-width: 88vw; }
+  .meta { display: flex; gap: 2vmin; margin-top: 3vmin; flex-wrap: wrap; justify-content: center; }
+  .hero { font-size: 26vmin; margin-bottom: 2vmin; }
+  .head { position: absolute; top: 7vh; left: 0; right: 0; text-align: center; font-weight: 800; font-size: 6vmin; }
+  .head small { display: block; font-weight: 600; font-size: 3.2vmin; opacity: .8; margin-top: .6vmin; letter-spacing: .2em; }
+  .list { position: absolute; top: 19vh; left: 7vw; right: 7vw; display: flex; flex-direction: column; gap: 1.6vmin; align-items: center; }
+  .item { display: flex; align-items: center; gap: 2vmin; padding: 1.4vmin 3vmin; border-radius: 99px; background: rgba(255,255,255,.18);
+    font-weight: 600; font-size: 4vmin; box-shadow: 0 1vmin 3vmin rgba(0,0,0,.12); }
+  .item b { color: var(--accent); font-weight: 800; }
+  .kadhai { position: absolute; left: 50%; bottom: 9vh; width: 64vmin; height: 26vmin; margin-left: -32vmin; }
+  .rim { position: absolute; left: 0; right: 0; top: 0; height: 9vmin; border-radius: 50%; background: #2b2b2b; border: 1.2vmin solid #4a4a4a; box-sizing: border-box; }
+  .bowl { position: absolute; left: 1.4vmin; right: 1.4vmin; top: 4vmin; bottom: 0; border-radius: 0 0 32vmin 32vmin / 0 0 22vmin 22vmin;
+    background: linear-gradient(#3a3a3a, #1d1d1d); overflow: hidden; }
+  .fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 50% 50% 0 0 / 3vmin 3vmin 0 0; }
+  .handle { position: absolute; top: 3vmin; width: 7vmin; height: 3vmin; border-radius: 2vmin; background: #3d3d3d; }
+  .drop { position: absolute; left: 50%; top: 0; font-size: 12vmin; margin-left: -6vmin; }
+  .ring { position: absolute; left: 50%; bottom: calc(9vh + 18vmin); width: 20vmin; height: 6vmin; margin-left: -10vmin; border-radius: 50%;
+    border: .8vmin solid var(--accent); }
+  .step { position: absolute; left: 8vw; right: 8vw; top: 50%; text-align: left; }
+  .step .n { font-weight: 800; font-size: 34vmin; line-height: .9; color: transparent; -webkit-text-stroke: .6vmin var(--accent); }
+  .step .s { font-weight: 600; font-size: 6vmin; line-height: 1.25; margin-top: 2vmin; }
+  .bar { position: absolute; top: 5vh; left: 8vw; right: 8vw; height: 1vmin; border-radius: 1vmin; background: rgba(255,255,255,.2); }
+  .bar i { display: block; height: 100%; border-radius: 1vmin; background: var(--accent); }
+  .steam { position: absolute; width: 3vmin; height: 16vmin; border-radius: 3vmin; background: linear-gradient(rgba(255,255,255,0), rgba(255,255,255,.55)); filter: blur(1vmin); }
+  .end { font-weight: 800; font-size: 9vmin; margin-top: 3vmin; }
+  .credit { font-weight: 600; font-size: 3.6vmin; margin-top: 2vmin; opacity: .85; }
+</style></head>
+<body><div id="stage"></div>
+<script src="hm.js"></script>
+<script>
+(function () {
+  const D = window.DATA || {}, C = D.colors || {};
+  const bg1 = HM.hex(C.bg1, "#7c2d12"), bg2 = HM.hex(C.bg2, "#f59e0b"), accent = HM.hex(C.accent, "#fde047"), ink = HM.hex(C.ink, "#fffbeb");
+  const st = HM.stage();
+  st.style.setProperty("--bg1", bg1); st.style.setProperty("--accent", accent); st.style.setProperty("--ink", ink);
+  const blob = HM.blobs([bg2, accent, HM.mix(bg1, "#000000", .25)], 21);
+  const ing = (D.ingredients || []).slice(0, 8), steps = (D.steps || []).slice(0, 5);
+  const T0 = 3.2, PER = 1.5, T1 = T0 + ing.length * PER + .4, SP = 2.6, T2 = T1 + steps.length * SP, DUR = T2 + 3.6;
+
+  // title
+  const A = HM.el("div", "layer");
+  const aHero = HM.el("div", "emoji hero", A, D.emoji || "🍛");
+  const aTitle = HM.el("div", "title", A, D.dish || "Aaj ki recipe");
+  const meta = HM.el("div", "meta", A);
+  const pills = [D.time && "⏱ " + D.time, D.serves && "👥 " + D.serves, D.level && "👩‍🍳 " + D.level].filter(Boolean).map(t => HM.el("div", "pill", meta, t));
+  // ingredients into the kadhai
+  const B = HM.el("div", "layer");
+  const head = HM.el("div", "head", B, D.dish || ""); HM.el("small", "", head, (D.ingredients_title || "SAAMAAN").toUpperCase());
+  const list = HM.el("div", "list", B);
+  const items = ing.map(x => { const it = HM.el("div", "item", list); HM.el("span", "emoji", it, x.emoji || "🥄");
+    const tx = HM.el("span", "", it); if (x.qty) { HM.el("b", "", tx, x.qty); tx.appendChild(document.createTextNode(" ")); }
+    tx.appendChild(document.createTextNode(x.name || "")); return it; });
+  const kad = HM.el("div", "kadhai", B);
+  const bowl = HM.el("div", "bowl", kad); const fill = HM.el("div", "fill", bowl);
+  HM.el("div", "rim", kad);
+  const h1 = HM.el("div", "handle", kad), h2 = HM.el("div", "handle", kad); h1.style.left = "-5vmin"; h2.style.right = "-5vmin";
+  const drops = ing.map(x => HM.el("div", "emoji drop", B, x.emoji || "🥄"));
+  const ring = HM.el("div", "ring", B);
+  // steps
+  const Cs = HM.el("div", "layer");
+  const bar = HM.el("div", "bar", Cs); const barIn = HM.el("i", "", bar);
+  const stepEls = steps.map((s, i) => { const e = HM.el("div", "step", Cs); HM.el("div", "n", e, String(i + 1)); HM.el("div", "s", e, s); return e; });
+  // end
+  const E = HM.el("div", "layer");
+  const eHero = HM.el("div", "emoji hero", E, D.emoji || "🍛");
+  const steam = [0, 1, 2].map(i => { const s = HM.el("div", "steam", E); s.style.left = `calc(50% + ${(i - 1) * 7}vmin)`; s.style.top = "calc(50% - 30vmin)"; return s; });
+  const eTitle = HM.el("div", "end", E, D.end || "Swad lijiye! 😋");
+  const eCredit = (D.credit || D.brand) ? HM.el("div", "credit", E, D.credit || D.brand) : null;
+  HM.badge();
+
+  window.HOOLA = {
+    duration: DUR,
+    seek(t) {
+      blob(t);
+      st.style.background = `linear-gradient(${165 + t * 3}deg, ${bg1}, ${HM.mix(bg1, bg2, .6)})`;
+      A.style.opacity = HM.vis(t, 0, T0 + .2, .05, .45);
+      HM.put(aHero, 1, 0, Math.sin(t * 3) * 1.2, HM.e.elastic(HM.p(t, .1, 1.1)));
+      aTitle.style.filter = `blur(${(1 - HM.e.out(HM.p(t, .4, .7))) * 2}vmin)`;
+      HM.put(aTitle, HM.p(t, .4, .4), 0, 0, 1.3 - .3 * HM.e.out(HM.p(t, .4, .7)));
+      pills.forEach((p, i) => HM.put(p, HM.p(t, 1.3 + i * .2, .4), 0, (1 - HM.e.back(HM.p(t, 1.3 + i * .2, .5))) * 4));
+
+      B.style.opacity = HM.vis(t, T0 - .2, T1 + .3, .45, .45);
+      HM.put(head, 1, 0, (1 - HM.e.out(HM.p(t, T0, .5))) * -6);
+      const shown = Math.max(0, Math.min(ing.length, Math.floor((t - T0) / PER) + 1));
+      items.forEach((it, i) => {
+        const ti = T0 + i * PER + .55, older = shown - 1 - i;
+        it.style.display = older > 3 ? "none" : "";
+        HM.put(it, HM.p(t, ti, .3) * (older >= 3 ? .45 : 1), (1 - HM.e.back(HM.p(t, ti, .5))) * -40, 0, 1);
+      });
+      drops.forEach((d, i) => {
+        const ti = T0 + i * PER, k = HM.p(t, ti, .7);
+        const yTop = 4, yBowl = 55;   // vh
+        d.style.opacity = (t < ti || t > ti + .9) ? 0 : 1;
+        // arc in from the right side, so the drop never crosses the ingredient list
+        d.style.transform = `translate(${30 * (1 - Math.pow(k, 2.2))}vmin, ${HM.lerp(yTop, yBowl, HM.e.in(k))}vh) rotate(${(1 - k) * 160}deg) scale(${t > ti + .7 ? 1 - HM.p(t, ti + .7, .2) : 1})`;
+      });
+      const lastHit = Math.max(...ing.map((_, i) => (t >= T0 + i * PER + .7 ? T0 + i * PER + .7 : -9)), -9);
+      const rk = HM.p(t, lastHit, .55);
+      ring.style.opacity = lastHit > 0 && rk < 1 ? 1 - rk : 0;
+      ring.style.transform = `scale(${.4 + rk * 1.6})`;
+      const level = HM.clamp((t - T0 - .7) / Math.max(1, ing.length * PER));
+      fill.style.height = (12 + level * 70) + "%";
+      fill.style.background = HM.mix("#fff3c4", accent, level * .8);
+      HM.put(kad, 1, 0, (1 - HM.e.out(HM.p(t, T0 - .2, .6))) * 30 + Math.sin(t * 9) * .15 * (rk < 1 && lastHit > 0 ? 1 : 0));
+
+      Cs.style.opacity = HM.vis(t, T1, T2 + .2, .4, .4);
+      barIn.style.width = (HM.clamp((t - T1) / Math.max(1, steps.length * SP)) * 100) + "%";
+      stepEls.forEach((e, i) => { const a = T1 + i * SP;
+        const v = HM.vis(t, a, a + SP, .35, .35);
+        e.style.opacity = v;
+        e.style.transform = `translateY(-50%) translateX(${(1 - HM.e.out(HM.p(t, a, .5))) * 30 - HM.e.in(HM.p(t, a + SP - .35, .35)) * 30}vmin)`; });
+
+      E.style.opacity = HM.vis(t, T2, DUR + 1, .5, .01);
+      HM.put(eHero, 1, 0, 0, HM.e.back(HM.p(t, T2 + .1, .7)));
+      steam.forEach((s, i) => { const k = (t * .7 + i * .33) % 1;
+        s.style.opacity = t > T2 + .5 ? Math.sin(k * Math.PI) * .9 : 0;
+        s.style.transform = `translate(${Math.sin(t * 2 + i) * 2}vmin, ${-k * 10}vmin) scaleY(${.6 + k * .6})`; });
+      HM.put(eTitle, HM.p(t, T2 + .6, .4), 0, (1 - HM.e.back(HM.p(t, T2 + .6, .6))) * 5);
+      if (eCredit) eCredit.style.opacity = HM.p(t, T2 + 1.2, .5) * .85;
+    },
+  };
+})();
+</script></body></html>

@@ -787,6 +787,7 @@ class Santosh extends ChangeNotifier {
       case 'notebook':
       case 'youtube':
       case 'app_check':
+      case 'motion':
         feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
         break;
       case 'hoola_knock':

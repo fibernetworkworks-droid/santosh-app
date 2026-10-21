@@ -22,7 +22,7 @@ TRUSTED = FAMILY | {
     "email_check", "email_read", "email_triage",
     "drive_find", "drive_list_folder", "drive_read_file", "sheet_read", "sheets_find", "sheet_info", "sheet_query",
     "slides_find", "slides_read", "notebook_list", "notebook_open", "notebook_ask",
-    "list_routines", "create_routine", "cancel_routine", "photos_pick",
+    "list_routines", "create_routine", "cancel_routine", "photos_pick", "motion_video",
 }
 LEVELS = ("owner", "trusted", "family")
 LEVEL_LABEL = {"owner": "Sab kuch", "trusted": "Bharosemand (paise, mail bhejna, PC nahi)",

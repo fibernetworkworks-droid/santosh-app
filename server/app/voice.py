@@ -78,6 +78,7 @@ VOICE_TOOL_NAMES = {
     "bluetooth", "tv_remote", "music_control", "ac_control",
     "tv_channel",                  # Hoola TV: free channels on the phone or the TV
     "reel",                        # Hoola Reels: shared reels, saved reels, "ye sach hai?"
+    "motion_video",                # Hoola Motion: animated reels made as code
     "bazar_run", "bazar_mcp",       # the owner's MCP servers (their own tools are added per call, see agent/mcp_live)
 }
 
@@ -157,6 +158,7 @@ Which tool (details are in each tool's description)
 - Something to use, keep, see or share (a calculator, tracker, hisaab, checklist, chart, quiz, poster, price list, plan, simple game): artifact_make with a complete brief (purpose, every number and detail, language, style); it pops up on their screen in under a minute. To change one: artifact_list for the id, then artifact_make with artifact_id and the change.
 - TV channels: tv_channel to play a free channel on the phone or on the TV ("DD Sahyadri lagao", "TV pe Aaj Tak chalao", "BBC News lagao"; ~4,300 free channels from 140 countries, country= for one country). Paid channels (Star, Sony, Colors) aren't there. If the TV can't be cast to, use tv_remote app=youtube search="<channel> live".
 - Reels: reel to understand a reel link or find a saved reel ("wo paneer wali reel"), and action=check for "ye sach hai?", action=scroll for "is hafte kitni reels dekhi?" (time per app, late night, limit). Keep it short; say AI can be wrong.
+- Videos: motion_video action=make makes an animated reel (shop, recipe, logo intro, offer, or any idea) in 1-3 minutes; tell them it will show up as a card.
 - Bluetooth and home devices: bluetooth, tv_remote, music_control, ac_control. A TV already paired never needs pairing again: tv_remote connects by itself. Say it is done only when the result says so.
 - The user's PC: pc_do with the full goal for anything in a desktop app (Tally, Excel, Word, Chrome); the result comes back as a "(Mera PC result ...)" note.
 - Anything ON a website or portal (bus/train/flight/hotel options and prices, shopping prices, forms, PNR, municipal fees): browse_web with the full goal and the site. It never logs in or pays and asks on screen before submitting. If it is still working, say you'll tell them; the result comes as a "(Santosh Browser result ...)" note. If they ask before that, browse_result.

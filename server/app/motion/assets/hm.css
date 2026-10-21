@@ -1,0 +1,24 @@
+/* Hoola Motion: shared look. Fonts are bundled (SIL OFL): the renderer has no network. */
+@font-face { font-family: "Poppins"; font-weight: 400; src: url(fonts/poppins-latin-400-normal.woff2) format("woff2"); }
+@font-face { font-family: "Poppins"; font-weight: 600; src: url(fonts/poppins-latin-600-normal.woff2) format("woff2"); }
+@font-face { font-family: "Poppins"; font-weight: 800; src: url(fonts/poppins-latin-800-normal.woff2) format("woff2"); }
+@font-face { font-family: "Mukta"; font-weight: 400; src: url(fonts/mukta-devanagari-400-normal.woff2) format("woff2"); unicode-range: U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+20A8, U+20B9, U+25CC, U+A830-A839, U+A8E0-A8FF; }
+@font-face { font-family: "Mukta"; font-weight: 700; src: url(fonts/mukta-devanagari-700-normal.woff2) format("woff2"); unicode-range: U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+20A8, U+20B9, U+25CC, U+A830-A839, U+A8E0-A8FF; }
+@font-face { font-family: "Mukta"; font-weight: 800; src: url(fonts/mukta-devanagari-800-normal.woff2) format("woff2"); unicode-range: U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+20A8, U+20B9, U+25CC, U+A830-A839, U+A8E0-A8FF; }
+@font-face { font-family: "Mukta"; font-weight: 400; src: url(fonts/mukta-latin-400-normal.woff2) format("woff2"); }
+@font-face { font-family: "Mukta"; font-weight: 700; src: url(fonts/mukta-latin-700-normal.woff2) format("woff2"); }
+@font-face { font-family: "Mukta"; font-weight: 800; src: url(fonts/mukta-latin-800-normal.woff2) format("woff2"); }
+
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+#stage { position: fixed; inset: 0; overflow: hidden; color: var(--ink); background: var(--bg1);
+  font-family: "Poppins", "Mukta", "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif; }
+.layer { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; will-change: opacity, transform; }
+.abs { position: absolute; }
+.emoji { font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif; line-height: 1; }
+.ai-badge { position: absolute; top: 2.4vmin; right: 2.4vmin; z-index: 99; font: 600 2.2vmin "Poppins", sans-serif;
+  padding: .7vmin 1.6vmin; border-radius: 99px; background: rgba(0, 0, 0, .38); color: #fff; letter-spacing: .06em; }
+.pill { display: inline-flex; align-items: center; gap: 1vmin; padding: 1.4vmin 3vmin; border-radius: 99px;
+  font-weight: 600; font-size: 3.6vmin; background: rgba(255, 255, 255, .16); backdrop-filter: blur(6px); }
+.word { display: inline-block; white-space: pre; }
+.blob { position: absolute; border-radius: 50%; filter: blur(7vmin); opacity: .55; }

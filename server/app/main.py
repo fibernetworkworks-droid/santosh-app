@@ -5,6 +5,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import re
 import logging
 import time
 import shutil
@@ -54,7 +55,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.65.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.66.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -3034,6 +3035,94 @@ async def reel_check(reel_id: str, tenant: str = Depends(current_tenant)):
         return await rs.fact_check(tenant, reel_id)
     except rs.ReelError as e:
         raise HTTPException(400, str(e))
+
+
+# ---------------- Hoola Motion: animated reels written as code, rendered to MP4 ----------------
+class MotionPlanIn(BaseModel):
+    kind: str
+    brief: str
+
+
+class MotionMakeIn(BaseModel):
+    kind: str
+    data: dict = {}
+    brief: str = ""
+    aspect: str = "9:16"
+    music: str = "upbeat"
+
+
+class MotionYoutubeIn(BaseModel):
+    title: str = ""
+    privacy: str = "private"
+
+
+def _mo(fn, *a):
+    from .motion import service as mo
+    try:
+        return fn(*a)
+    except mo.MotionError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/motion/kinds", dependencies=[Depends(require_key)])
+def motion_kinds(tenant: str = Depends(current_tenant)):
+    from .motion import service as mo
+    return mo.kinds()
+
+
+@app.post("/api/motion/plan", dependencies=[Depends(require_key)])
+async def motion_plan(body: MotionPlanIn, tenant: str = Depends(current_tenant)):
+    from .motion import service as mo
+    return await asyncio.to_thread(_mo, mo.plan, body.kind, body.brief)
+
+
+@app.post("/api/motion/videos", dependencies=[Depends(require_key)])
+async def motion_make(body: MotionMakeIn, tenant: str = Depends(current_tenant)):
+    from .motion import service as mo
+    return await asyncio.to_thread(_mo, mo.create, tenant, body.kind, body.data, body.aspect, body.music, body.brief)
+
+
+@app.get("/api/motion/videos", dependencies=[Depends(require_key)])
+def motion_list(tenant: str = Depends(current_tenant)):
+    from .motion import service as mo
+    return {"videos": mo.list_(tenant)}
+
+
+@app.get("/api/motion/videos/{vid}", dependencies=[Depends(require_key)])
+def motion_get(vid: str, tenant: str = Depends(current_tenant)):
+    from .motion import service as mo
+    try:
+        return mo.get(tenant, vid)
+    except mo.MotionError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.delete("/api/motion/videos/{vid}", dependencies=[Depends(require_key)])
+def motion_delete(vid: str, tenant: str = Depends(current_tenant)):
+    from .motion import service as mo
+    return _mo(mo.delete, tenant, vid)
+
+
+@app.post("/api/motion/videos/{vid}/youtube", dependencies=[Depends(require_key)])
+async def motion_youtube(vid: str, body: MotionYoutubeIn, tenant: str = Depends(current_tenant)):
+    from .motion import service as mo
+    conv = await asyncio.to_thread(_tv_conv, tenant)
+    return await asyncio.to_thread(_mo, mo.to_youtube, tenant, conv, vid, body.title, body.privacy)
+
+
+@app.get("/api/motion/files/{name}")
+def motion_file(name: str, exp: int = 0, sig: str = ""):
+    """Signed link (no login header needed, so the phone's video player and share can use it)."""
+    from fastapi.responses import FileResponse
+    from .motion import service as mo
+    m = re.fullmatch(r"(mv_[A-Za-z0-9]+)\.(mp4|jpg)", name)
+    if not m or not mo.check_sig(m.group(1), m.group(2), exp, sig):
+        raise HTTPException(403, "Link purana ho gaya.")
+    p = mo.file_path(m.group(1), m.group(2))
+    if p is None:
+        raise HTTPException(404, "Video nahi mili.")
+    return FileResponse(p, media_type="video/mp4" if m.group(2) == "mp4" else "image/jpeg",
+                        filename=f"hoola-{m.group(1)}.{m.group(2)}" if m.group(2) == "mp4" else None)
 
 
 # ---------------- Hoola TV: free official live channels, on the phone or the TV ----------------

@@ -35,6 +35,8 @@ if kts.exists():
     if "media3-transformer" not in g:   # v0.49 VideoShrink.kt (Jetpack Media3, Apache-2.0)
         g += ('\ndependencies {\n    implementation("androidx.media3:media3-transformer:1.4.1")\n'
               '    implementation("androidx.media3:media3-effect:1.4.1")\n    implementation("androidx.media3:media3-common:1.4.1")\n}\n')
+    if "androidx.core:core" not in g:   # v0.63 FileProvider for sharing Hoola Motion videos
+        g += '\ndependencies {\n    implementation("androidx.core:core:1.13.1")\n}\n'
     kts.write_text(g)
 elif groovy.exists():
     g = groovy.read_text()
@@ -48,6 +50,8 @@ elif groovy.exists():
     if "media3-transformer" not in g:
         g += ("\ndependencies {\n    implementation 'androidx.media3:media3-transformer:1.4.1'\n"
               "    implementation 'androidx.media3:media3-effect:1.4.1'\n    implementation 'androidx.media3:media3-common:1.4.1'\n}\n")
+    if "androidx.core:core" not in g:
+        g += "\ndependencies {\n    implementation 'androidx.core:core:1.13.1'\n}\n"
     groovy.write_text(g)
 else:
     sys.exit("No app build.gradle(.kts) found")

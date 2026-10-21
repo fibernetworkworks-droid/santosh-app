@@ -1,0 +1,81 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="hm.css">
+<style>
+  .center { position: absolute; left: 50%; top: 44%; width: 0; height: 0; }
+  .shard { position: absolute; left: -26vmin; top: -26vmin; width: 52vmin; height: 52vmin; }
+  svg.wire { position: absolute; left: -32vmin; top: -32vmin; width: 64vmin; height: 64vmin; overflow: visible; }
+  .logo { position: absolute; left: -17vmin; top: -17vmin; width: 34vmin; height: 34vmin; display: flex; align-items: center; justify-content: center; }
+  .logo img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 1vmin 3vmin rgba(0,0,0,.35)); }
+  .mono { font-weight: 800; font-size: 17vmin; letter-spacing: -.02em; color: var(--onaccent); }
+  .name { position: absolute; left: 0; right: 0; top: calc(44% + 32vmin); text-align: center; font-weight: 800; font-size: 9vmin; padding: 0 5vw; }
+  .tagl { position: absolute; left: 0; right: 0; top: calc(44% + 44vmin); text-align: center; font-weight: 600; font-size: 4.4vmin; letter-spacing: .12em; padding: 0 6vw; }
+  .cursor { display: inline-block; width: .6vmin; height: 8vmin; vertical-align: middle; background: var(--accent); margin-left: 1vmin; }
+  .sweep { position: absolute; left: -40vmin; top: -40vmin; width: 22vmin; height: 80vmin; background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.55), rgba(255,255,255,0)); mix-blend-mode: overlay; }
+  .clip { position: absolute; left: -26vmin; top: -26vmin; width: 52vmin; height: 52vmin; border-radius: 50%; overflow: hidden; }
+  .glow { position: absolute; left: -40vmin; top: -40vmin; width: 80vmin; height: 80vmin; border-radius: 50%; background: radial-gradient(var(--accent), rgba(0,0,0,0) 62%); }
+</style></head>
+<body><div id="stage"></div>
+<script src="hm.js"></script>
+<script>
+(function () {
+  const D = window.DATA || {}, C = D.colors || {};
+  const bg1 = HM.hex(C.bg1, "#0b1026"), bg2 = HM.hex(C.bg2, "#1d4ed8"), accent = HM.hex(C.accent, "#38bdf8"), ink = HM.hex(C.ink, "#f8fafc");
+  const st = HM.stage();
+  st.style.setProperty("--bg1", bg1); st.style.setProperty("--accent", accent); st.style.setProperty("--ink", ink);
+  st.style.setProperty("--onaccent", HM.hex(C.onaccent, "#ffffff"));
+  const blob = HM.blobs([bg2, HM.mix(accent, bg1, .5)], 31);
+  const c = HM.el("div", "center");
+  const glow = HM.el("div", "glow", c);
+  // wireframe: a circle and guide spokes drawn first
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg"); svg.setAttribute("viewBox", "-32 -32 64 64"); svg.setAttribute("class", "wire"); c.appendChild(svg);
+  const circ = document.createElementNS(NS, "circle"); circ.setAttribute("r", "26"); circ.setAttribute("fill", "none");
+  circ.setAttribute("stroke", accent); circ.setAttribute("stroke-width", ".5"); svg.appendChild(circ);
+  const L = 2 * Math.PI * 26; circ.style.strokeDasharray = L;
+  const N = 18, spokes = [];
+  for (let i = 0; i < N; i++) { const a = i / N * 2 * Math.PI, l = document.createElementNS(NS, "line");
+    l.setAttribute("x1", 0); l.setAttribute("y1", 0); l.setAttribute("x2", Math.cos(a) * 26); l.setAttribute("y2", Math.sin(a) * 26);
+    l.setAttribute("stroke", accent); l.setAttribute("stroke-width", ".25"); l.style.strokeDasharray = 26; svg.appendChild(l); spokes.push(l); }
+  // low-poly shards: N wedges of the disc that fly in and lock together
+  const R = HM.rnd(97), shards = [];
+  for (let i = 0; i < N; i++) {
+    const a0 = i / N * 2 * Math.PI, a1 = (i + 1) / N * 2 * Math.PI, pt = a => `${50 + Math.cos(a) * 50}% ${50 + Math.sin(a) * 50}%`;
+    const s = HM.el("div", "shard", c);
+    s.style.clipPath = `polygon(50% 50%, ${pt(a0)}, ${pt((a0 + a1) / 2)}, ${pt(a1)})`;
+    s.style.background = HM.mix(accent, bg2, (i % 3) * .22 + R() * .15);
+    const ang = R() * 2 * Math.PI, dist = 60 + R() * 50;
+    shards.push({ s, x: Math.cos(ang) * dist, y: Math.sin(ang) * dist, r: (R() - .5) * 540, d: R() * .9 });
+  }
+  const clip = HM.el("div", "clip", c); const sweep = HM.el("div", "sweep", clip);
+  const logo = HM.el("div", "logo", c);
+  if (typeof D.logo === "string" && /^data:image\/(png|jpeg|webp);base64,/.test(D.logo)) { const im = HM.el("img", "", logo); im.src = D.logo; }
+  else { HM.el("div", "mono", logo, (D.monogram || String(D.brand || "H").split(/\s+/).map(w => w[0]).join("").slice(0, 2)).toUpperCase()); }
+  const name = HM.el("div", "name"); const nameText = HM.el("span", "", name); const cur = HM.el("span", "cursor", name);
+  const tag = HM.el("div", "tagl", null, (D.tagline || "").toUpperCase());
+  const full = String(D.brand || "Aapka Brand");
+  HM.badge();
+  window.HOOLA = {
+    duration: 10,
+    seek(t) {
+      blob(t);
+      st.style.background = `radial-gradient(circle at 50% 44%, ${HM.mix(bg1, bg2, .45)}, ${bg1} 70%)`;
+      const zoom = 1 + HM.e.out(HM.p(t, 8, 2)) * .04;
+      c.style.transform = `scale(${zoom})`;
+      circ.style.strokeDashoffset = L * (1 - HM.e.io(HM.p(t, .1, 1.5)));
+      circ.style.opacity = 1 - HM.p(t, 3.8, .6) * .7;
+      spokes.forEach((l, i) => { l.style.strokeDashoffset = 26 * (1 - HM.e.out(HM.p(t, .5 + i * .04, .6))); l.style.opacity = .6 * (1 - HM.p(t, 3, .8)); });
+      shards.forEach(o => { const k = HM.e.out(HM.p(t, 1.7 + o.d, 1.3));
+        o.s.style.opacity = HM.p(t, 1.7 + o.d, .25);
+        o.s.style.transform = `translate(${o.x * (1 - k)}vmin, ${o.y * (1 - k)}vmin) rotate(${o.r * (1 - k)}deg) scale(${.6 + .4 * k})`; });
+      glow.style.opacity = HM.e.out(HM.p(t, 4, 1)) * (.55 + Math.sin(t * 2) * .08);
+      HM.put(logo, HM.p(t, 4.2, .3), 0, 0, HM.e.back(HM.p(t, 4.2, .8)));
+      const sp = HM.e.io(HM.p(t, 8, 1.2));
+      sweep.style.transform = `translateX(${sp * 100}vmin) rotate(20deg)`;
+      nameText.textContent = full.slice(0, Math.round(full.length * HM.p(t, 5.6, Math.max(.8, full.length * .07))));
+      name.style.opacity = HM.p(t, 5.5, .2);
+      cur.style.opacity = t > 5.5 && t < 8.6 && Math.floor(t * 2.6) % 2 === 0 ? 1 : 0;
+      HM.put(tag, HM.p(t, 7.2, .6), 0, (1 - HM.e.out(HM.p(t, 7.2, .7))) * 3);
+    },
+  };
+})();
+</script></body></html>

@@ -18,6 +18,7 @@ import 'sheets_screen.dart';
 import 'slides_screen.dart';
 import 'youtube_screen.dart';
 import 'appcheck_screen.dart';
+import 'motion_screen.dart';
 import 'hoola_cards.dart';
 import 'hoola_media.dart';
 import 'attach.dart';
@@ -486,6 +487,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return YouTubeCard(v: it.data);
     case 'app_check':
       return AppCheckCard(v: it.data);
+    case 'motion':
+      return MotionCard(v: it.data);
     case 'hoola_knock':
       return HoolaKnockCard(key: ValueKey('hk${it.data['id']}'), v: it.data, app: app);
     case 'hoola_connect':

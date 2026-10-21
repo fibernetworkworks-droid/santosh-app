@@ -1,0 +1,109 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="hm.css">
+<style>
+  .rays { position: absolute; left: 50%; top: 40%; width: 220vmax; height: 220vmax; margin: -110vmax 0 0 -110vmax;
+    background: repeating-conic-gradient(rgba(255,255,255,.08) 0 6deg, rgba(255,255,255,0) 6deg 18deg); }
+  .head { font-weight: 800; font-size: 13vmin; line-height: 1; max-width: 92vw; letter-spacing: -.01em; }
+  .head .ch { display: inline-block; }
+  .nw { display: inline-block; white-space: nowrap; }
+  .sub { font-weight: 600; font-size: 4.6vmin; margin-top: 3vmin; max-width: 86vw; }
+  .star { position: absolute; left: 50%; top: 50%; width: 78vmin; height: 78vmin; margin: -39vmin 0 0 -39vmin; background: var(--accent);
+    clip-path: polygon(50% 0%, 57% 14%, 71% 5%, 72% 21%, 88% 18%, 83% 33%, 98% 37%, 87% 49%, 98% 61%, 83% 66%, 88% 81%, 72% 79%, 71% 95%, 57% 86%, 50% 100%, 43% 86%, 29% 95%, 28% 79%, 12% 81%, 17% 66%, 2% 61%, 13% 49%, 2% 37%, 17% 33%, 12% 18%, 28% 21%, 29% 5%, 43% 14%); }
+  .bigwrap { position: relative; width: 80vmin; height: 80vmin; display: flex; align-items: center; justify-content: center; }
+  .big { position: relative; font-weight: 800; font-size: 17vmin; line-height: .95; color: var(--onaccent); max-width: 64vmin; }
+  .big small { display: block; font-size: 6vmin; letter-spacing: .1em; margin-top: 1vmin; }
+  .items { display: flex; flex-direction: column; gap: 2.2vmin; width: min(84vw, 90vmin); }
+  .it { display: flex; align-items: center; gap: 2.6vmin; padding: 2.4vmin 3.4vmin; border-radius: 3vmin; background: rgba(255,255,255,.16);
+    font-weight: 600; font-size: 4.8vmin; text-align: left; }
+  .tick { flex: none; width: 7vmin; height: 7vmin; border-radius: 50%; background: var(--accent); color: var(--onaccent); display: flex;
+    align-items: center; justify-content: center; font-weight: 800; font-size: 4.4vmin; }
+  .ititle { font-weight: 800; font-size: 6vmin; margin-bottom: 3.4vmin; }
+  .dates { font-weight: 800; font-size: 5vmin; padding: 1.8vmin 4vmin; border-radius: 99px; background: var(--accent); color: var(--onaccent); }
+  .go { font-weight: 800; font-size: 10vmin; margin: 4vmin 0 1vmin; max-width: 90vw; line-height: 1.05; }
+  .row { display: flex; flex-wrap: wrap; gap: 2vmin; justify-content: center; margin-top: 3vmin; max-width: 92vw; }
+  .spark { position: absolute; left: 0; top: 0; }
+  .foot { position: absolute; bottom: 4vmin; left: 0; right: 0; text-align: center; font-size: 2.6vmin; opacity: .75; }
+</style></head>
+<body><div id="stage"></div>
+<script src="hm.js"></script>
+<script>
+(function () {
+  const D = window.DATA || {}, C = D.colors || {};
+  const bg1 = HM.hex(C.bg1, "#4a044e"), bg2 = HM.hex(C.bg2, "#be123c"), accent = HM.hex(C.accent, "#facc15"), ink = HM.hex(C.ink, "#ffffff");
+  const st = HM.stage();
+  st.style.setProperty("--bg1", bg1); st.style.setProperty("--accent", accent); st.style.setProperty("--ink", ink);
+  st.style.setProperty("--onaccent", HM.hex(C.onaccent, "#3b0764"));
+  const rays = HM.el("div", "rays");
+  const blob = HM.blobs([bg2, HM.mix(accent, bg2, .5)], 41);
+  // falling sparkles (diyas / stars / confetti by festival)
+  const fest = String(D.festival || "").toLowerCase();
+  const icons = D.icons && D.icons.length ? D.icons.slice(0, 4) : fest.includes("diwali") ? ["🪔", "✨", "🎆"] : fest.includes("holi") ? ["🎨", "💧", "🌈"]
+    : fest.includes("eid") ? ["🌙", "✨", "⭐"] : fest.includes("christmas") ? ["🎄", "⭐", "❄️"] : ["✨", "🎉", "⭐"];
+  const R = HM.rnd(17), sparks = Array.from({ length: 26 }, (_, i) => {
+    const s = HM.el("div", "spark emoji"); s.textContent = icons[i % icons.length];
+    s.style.fontSize = (3 + R() * 4) + "vmin";
+    return { s, x: R() * 100, sp: 6 + R() * 10, ph: R() * 100, sw: 1 + R() * 3 };
+  });
+  const items = (D.items || []).slice(0, 5);
+  const t1 = 3.4, t2 = 7.4, t3 = t2 + .8 + items.length * .9 + 1.6, DUR = t3 + 5;
+  // A headline
+  const A = HM.el("div", "layer");
+  const head = HM.el("div", "head", A);
+  const chars = [];
+  String(D.headline || "MEGA SALE").toUpperCase().split(/\s+/).forEach((w, wi) => {
+    if (wi) head.appendChild(document.createTextNode(" "));
+    const wrap = HM.el("span", "nw", head);
+    [...w].forEach(ch => chars.push(HM.el("span", "ch", wrap, ch)));
+  });
+  const aSub = HM.el("div", "sub", A, D.sub || "");
+  // B the offer
+  const B = HM.el("div", "layer");
+  const bw = HM.el("div", "bigwrap", B); const star = HM.el("div", "star", bw);
+  const big = HM.el("div", "big", bw); const bigNum = HM.el("span", "", big, D.big || "20% OFF");
+  const bigSmall = D.big_note ? HM.el("small", "", big, D.big_note) : null;
+  const NUM = HM.num(D.big);
+  // C items
+  const Cl = HM.el("div", "layer");
+  const ct = HM.el("div", "ititle", Cl, D.items_title || "Kya kya milega");
+  const box = HM.el("div", "items", Cl);
+  const its = items.map(x => { const r = HM.el("div", "it", box); HM.el("div", "tick", r, "✓"); HM.el("div", "", r, x); return r; });
+  // D call to action
+  const E = HM.el("div", "layer");
+  const dates = D.dates ? HM.el("div", "dates", E, D.dates) : null;
+  const go = HM.el("div", "go", E, D.cta || "Jaldi aaiye!");
+  const brand = D.brand ? HM.el("div", "sub", E, D.brand) : null;
+  const row = HM.el("div", "row", E);
+  const pills = [D.phone && "📞 " + D.phone, D.place && "📍 " + D.place, D.upi && "UPI: " + D.upi].filter(Boolean).map(x => HM.el("div", "pill", row, x));
+  const foot = HM.el("div", "foot", E, "Video: Hoola AI se bana");
+  HM.badge();
+  window.HOOLA = {
+    duration: DUR,
+    seek(t) {
+      blob(t);
+      st.style.background = `linear-gradient(${160 + t * 5}deg, ${bg1}, ${HM.mix(bg1, bg2, .7)})`;
+      rays.style.transform = `rotate(${t * 12}deg)`;
+      sparks.forEach(o => { const y = ((t * o.sp + o.ph) % 120) - 10;
+        o.s.style.transform = `translate(${o.x + Math.sin(t * o.sw + o.ph) * 3}vw, ${y}vh)`; o.s.style.opacity = .85; });
+      A.style.opacity = HM.vis(t, 0, t1 + .3, .05, .4);
+      chars.forEach((ch, i) => { const s = .15 + i * .05;
+        HM.put(ch, HM.p(t, s, .1), 0, (1 - HM.e.elastic(HM.p(t, s, 1.1))) * -40, 1, (1 - HM.e.out(HM.p(t, s, .8))) * (i % 2 ? 20 : -20)); });
+      HM.put(aSub, HM.p(t, 1.6, .5), 0, (1 - HM.e.out(HM.p(t, 1.6, .6))) * 4);
+      B.style.opacity = HM.vis(t, t1, t2 + .3, .2, .4);
+      const stamp = HM.p(t, t1, .45);
+      HM.put(bw, 1, Math.sin(t * 60) * (stamp < 1 ? 1 - stamp : 0) * .8, 0, 2.2 - 1.2 * HM.e.out(stamp), -8 + 8 * HM.e.out(stamp));
+      star.style.transform = `rotate(${t * 20}deg) scale(${1 + Math.sin(t * 4) * .03})`;
+      if (NUM) bigNum.textContent = NUM.pre + HM.fmt(NUM.n * HM.e.out(HM.p(t, t1 + .2, 1.4)), NUM.dec, NUM.comma) + NUM.suf;
+      if (bigSmall) bigSmall.style.opacity = HM.p(t, t1 + 1.4, .4);
+      Cl.style.opacity = items.length ? HM.vis(t, t2, t3 + .3, .4, .4) : 0;
+      HM.put(ct, 1, 0, (1 - HM.e.out(HM.p(t, t2, .5))) * -4);
+      its.forEach((r, i) => { const s = t2 + .6 + i * .9; HM.put(r, HM.p(t, s, .25), (1 - HM.e.back(HM.p(t, s, .6))) * 50, 0, 1); });
+      E.style.opacity = HM.vis(t, t3, DUR + 1, .4, .01);
+      if (dates) HM.put(dates, HM.p(t, t3 + .1, .3), 0, 0, HM.e.back(HM.p(t, t3 + .1, .5)), -3);
+      HM.put(go, HM.p(t, t3 + .4, .3), 0, 0, HM.e.back(HM.p(t, t3 + .4, .6)) * (1 + Math.sin(t * 5) * .03));
+      if (brand) brand.style.opacity = HM.p(t, t3 + .9, .4);
+      pills.forEach((p, i) => HM.put(p, HM.p(t, t3 + 1.2 + i * .3, .4), 0, (1 - HM.e.out(HM.p(t, t3 + 1.2 + i * .3, .5))) * 5));
+      foot.style.opacity = HM.p(t, t3 + 2, .6) * .75;
+    },
+  };
+})();
+</script></body></html>

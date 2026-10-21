@@ -211,6 +211,22 @@ class Api {
       uploadFile('/api/reels/scroll/import', name, bytes, timeout: const Duration(seconds: 400), tries: 2);
   Future<void> scrollForget() async => _send('DELETE', '/api/reels/scroll');
 
+  // ---- Hoola Motion ----
+  Future<Map<String, dynamic>> motionKinds() async => Map<String, dynamic>.from(await _send('GET', '/api/motion/kinds') as Map);
+  Future<Map<String, dynamic>> motionPlan(String kind, String brief) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/motion/plan', body: {'kind': kind, 'brief': brief}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> motionMake(String kind, {Map<String, dynamic> data = const {}, String brief = '', String aspect = '9:16', String music = 'upbeat'}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/motion/videos',
+          body: {'kind': kind, 'data': data, 'brief': brief, 'aspect': aspect, 'music': music}, timeout: const Duration(seconds: 40)) as Map);
+  Future<List<Map<String, dynamic>>> motionList() async {
+    final r = await _send('GET', '/api/motion/videos') as Map;
+    return List<Map<String, dynamic>>.from((r['videos'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  }
+  Future<Map<String, dynamic>> motionGet(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/motion/videos/$id') as Map);
+  Future<void> motionDelete(String id) async => _send('DELETE', '/api/motion/videos/$id');
+  Future<Map<String, dynamic>> motionYoutube(String id, {String title = '', String privacy = 'private'}) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/motion/videos/$id/youtube', body: {'title': title, 'privacy': privacy}, timeout: const Duration(seconds: 90)) as Map);
+
   Future<Map<String, dynamic>> health() async => Map<String, dynamic>.from(await _send('GET', '/healthz'));
 
   Future<Map<String, dynamic>> me() async => Map<String, dynamic>.from(await _send('GET', '/api/me'));

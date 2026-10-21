@@ -1,0 +1,137 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="hm.css">
+<style>
+  .tag { font-weight: 800; font-size: 3.2vmin; letter-spacing: .3em; padding: 1.2vmin 3vmin; border-radius: 99px; background: var(--accent); color: var(--onaccent); }
+  .big { font-weight: 800; font-size: 8.6vmin; line-height: 1.12; max-width: 86vw; margin: 3vmin 0; }
+  .sub { font-weight: 400; font-size: 4.2vmin; line-height: 1.35; max-width: 80vw; opacity: .9; }
+  .brand { font-weight: 800; font-size: 11vmin; line-height: 1.05; max-width: 90vw; }
+  .brand span { display: inline-block; }
+  .tagline { font-weight: 600; font-size: 4.6vmin; margin-top: 2.6vmin; min-height: 6vmin; max-width: 84vw; }
+  .cursor { display: inline-block; width: .5vmin; height: 5vmin; background: currentColor; vertical-align: middle; margin-left: .6vmin; }
+  .wipe { position: absolute; left: 50%; top: 50%; width: 10vmin; height: 10vmin; margin: -5vmin 0 0 -5vmin; border-radius: 50%; background: var(--accent); }
+  .steps { display: flex; flex-direction: column; gap: 3.4vmin; width: min(88vw, 92vmin); position: relative; }
+  .card { display: flex; align-items: center; gap: 3vmin; padding: 3vmin 3.4vmin; border-radius: 4vmin; background: rgba(255,255,255,.14);
+    box-shadow: 0 2vmin 5vmin rgba(0,0,0,.18); text-align: left; position: relative; z-index: 1; }
+  .num { flex: none; width: 9vmin; height: 9vmin; border-radius: 50%; background: var(--accent); color: var(--onaccent); font-weight: 800;
+    font-size: 5vmin; display: flex; align-items: center; justify-content: center; }
+  .card .emoji { font-size: 7vmin; flex: none; }
+  .card .t { font-weight: 600; font-size: 4.4vmin; line-height: 1.25; }
+  .line { position: absolute; left: calc(3.4vmin + 4.5vmin - .4vmin); top: 6vmin; width: .8vmin; background: var(--accent); border-radius: 1vmin; z-index: 0; opacity: .7; }
+  .count { font-weight: 800; font-size: 22vmin; line-height: 1; color: var(--accent); text-shadow: 0 1.5vmin 5vmin rgba(0,0,0,.25); }
+  .conf { position: absolute; left: 0; top: 0; width: 1.6vmin; height: 2.6vmin; border-radius: .4vmin; }
+  .offer { font-weight: 800; font-size: 4.4vmin; padding: 2vmin 4vmin; border-radius: 3vmin; background: var(--accent); color: var(--onaccent); margin-top: 4vmin; }
+  .row { display: flex; flex-wrap: wrap; gap: 2vmin; justify-content: center; margin-top: 4vmin; max-width: 90vw; }
+  .foot { position: absolute; bottom: 4vmin; left: 0; right: 0; text-align: center; font-size: 2.6vmin; opacity: .75; }
+  .hero-emoji { font-size: 20vmin; margin-bottom: 3vmin; }
+  .nw { white-space: nowrap; display: inline-block; }
+</style></head>
+<body><div id="stage"></div>
+<script src="hm.js"></script>
+<script>
+(function () {
+  const D = window.DATA || {}, C = D.colors || {};
+  const bg1 = HM.hex(C.bg1, "#2b1055"), bg2 = HM.hex(C.bg2, "#d53a9d"), accent = HM.hex(C.accent, "#ffd166"), ink = HM.hex(C.ink, "#ffffff");
+  const st = HM.stage();
+  st.style.setProperty("--bg1", bg1); st.style.setProperty("--accent", accent); st.style.setProperty("--ink", ink);
+  st.style.setProperty("--onaccent", HM.hex(C.onaccent, "#1b1030"));
+  const blob = HM.blobs([bg2, accent, HM.mix(bg1, "#000000", .2)], 11);
+
+  const P = D.problem || {}, S = D.solution || {}, steps = (D.steps || []).slice(0, 3), pr = D.proof || {}, cta = D.cta || {};
+  // ---- scene A: the problem
+  const A = HM.el("div", "layer");
+  const aEmo = HM.el("div", "emoji hero-emoji", A, P.emoji || "😩");
+  const aTag = HM.el("div", "tag", A, P.tag || "PROBLEM?");
+  const aBig = HM.el("div", "big", A); const aWords = HM.words(aBig, P.title || "Har din wahi pareshani?");
+  const aSub = HM.el("div", "sub", A, P.sub || "");
+  // ---- scene B: what we do
+  const wipe = HM.el("div", "wipe");
+  const B = HM.el("div", "layer");
+  const bEmo = HM.el("div", "emoji hero-emoji", B, S.emoji || D.emoji || "✨");
+  const bBrand = HM.el("div", "brand", B);
+  const letters = [];
+  String(D.brand || "Aapka Business").split(/\s+/).forEach((w, wi) => {
+    if (wi) bBrand.appendChild(document.createTextNode(" "));
+    const wrap = HM.el("span", "nw", bBrand);
+    [...w].forEach(ch => letters.push(HM.el("span", "", wrap, ch)));
+  });
+  const bTag = HM.el("div", "tagline", B); const bTagText = HM.el("span", "", bTag); const cur = HM.el("span", "cursor", bTag);
+  const tagFull = S.title || D.tagline || "";
+  // ---- scene C: how it works
+  const Cl = HM.el("div", "layer");
+  const cHead = HM.el("div", "tag", Cl, D.steps_title || "KAISE?");
+  Cl.appendChild(document.createElement("div")).style.height = "4vmin";
+  const box = HM.el("div", "steps", Cl);
+  const line = HM.el("div", "line", box);
+  const cards = steps.map((s, i) => {
+    const c = HM.el("div", "card", box);
+    HM.el("div", "num", c, String(i + 1));
+    HM.el("div", "emoji", c, s.emoji || ["📲", "⚡", "✅"][i]);
+    HM.el("div", "t", c, s.title || "");
+    return c;
+  });
+  // ---- scene D: proof
+  const Dl = HM.el("div", "layer");
+  const dCount = HM.el("div", "count", Dl, pr.big || "");
+  const dSub = HM.el("div", "sub", Dl, pr.sub || "");
+  const N = HM.num(pr.big);
+  const R = HM.rnd(5), conf = Array.from({ length: 70 }, () => {
+    const c = HM.el("div", "conf", Dl);
+    c.style.background = [accent, ink, bg2, "#5eead4"][Math.floor(R() * 4)];
+    return { c, x: R() * 100, sp: 28 + R() * 30, sw: R() * 6, rot: R() * 720, d: R() * .8 };
+  });
+  // ---- scene E: call to action
+  const E = HM.el("div", "layer");
+  const eBrand = HM.el("div", "brand", E, D.brand || "");
+  const eTag = HM.el("div", "tagline", E, cta.title || D.tagline || "");
+  const eOffer = cta.offer ? HM.el("div", "offer", E, cta.offer) : null;
+  const eRow = HM.el("div", "row", E);
+  const pills = [cta.phone && "📞 " + cta.phone, cta.place && "📍 " + cta.place, cta.extra].filter(Boolean).map(t => HM.el("div", "pill", eRow, t));
+  const foot = HM.el("div", "foot", E, "Video: Hoola AI se bana");
+  HM.badge();
+
+  const T = { a: [0, 4.8], b: [4.6, 9.6], c: [9.4, 16.6], d: [16.4, 20.8], e: [20.6, 25] };
+  window.HOOLA = {
+    duration: 25,
+    seek(t) {
+      blob(t);
+      st.style.background = `linear-gradient(${150 + t * 4}deg, ${bg1}, ${HM.mix(bg1, bg2, .55)})`;
+      // A
+      A.style.opacity = HM.vis(t, ...T.a, .05, .45);
+      HM.put(aEmo, 1, 0, 0, HM.e.back(HM.p(t, .1, .7)), Math.sin(t * 7) * 7);
+      HM.put(aTag, HM.p(t, .3, .4), 0, (1 - HM.e.out(HM.p(t, .3, .5))) * 4);
+      aWords.forEach((w, i) => HM.put(w, HM.p(t, .6 + i * .14, .35), 0, (1 - HM.e.out(HM.p(t, .6 + i * .14, .5))) * 5));
+      HM.put(aSub, HM.p(t, 2 + aWords.length * .05, .6), 0, (1 - HM.e.out(HM.p(t, 2, .8))) * 3);
+      // wipe into B
+      const wp = HM.e.io(HM.p(t, 4.4, .8));
+      wipe.style.opacity = t < 4.4 || t > 9.7 ? 0 : (t > 9.2 ? 1 - HM.p(t, 9.2, .5) : 1);
+      wipe.style.transform = `scale(${wp * 36})`;
+      wipe.style.background = HM.mix(accent, bg1, .55);
+      B.style.opacity = HM.vis(t, ...T.b, .3, .45);
+      HM.put(bEmo, 1, 0, 0, HM.e.back(HM.p(t, 5, .6)), Math.sin(t * 2) * 4);
+      letters.forEach((l, i) => HM.put(l, HM.p(t, 5.2 + i * .04, .2), 0, 0, HM.e.back(HM.p(t, 5.2 + i * .04, .45))));
+      const tp = HM.p(t, 6.3, Math.max(.8, tagFull.length * .045));
+      bTagText.textContent = tagFull.slice(0, Math.round(tagFull.length * tp));
+      cur.style.opacity = (t > 6.2 && Math.floor(t * 2.4) % 2 === 0) ? 1 : 0;
+      // C
+      Cl.style.opacity = HM.vis(t, ...T.c, .4, .45);
+      HM.put(cHead, 1, 0, (1 - HM.e.out(HM.p(t, 9.6, .5))) * -4, HM.e.back(HM.p(t, 9.6, .5)));
+      cards.forEach((c, i) => { const s = 10.3 + i * 1.7; HM.put(c, HM.p(t, s, .3), (1 - HM.e.back(HM.p(t, s, .6))) * 60, 0, 1 + Math.max(0, .06 - Math.abs(t - s - .6) * .2)); });
+      if (cards.length) { const last = cards[cards.length - 1]; line.style.height = (HM.e.out(HM.p(t, 10.4, cards.length * 1.7)) * Math.max(0, last.offsetTop)) + "px"; }
+      // D
+      Dl.style.opacity = HM.vis(t, ...T.d, .4, .45);
+      if (N) dCount.textContent = N.pre + HM.fmt(N.n * HM.e.out(HM.p(t, 16.7, 1.6)), N.dec, N.comma) + N.suf;
+      HM.put(dCount, 1, 0, 0, HM.e.back(HM.p(t, 16.5, .6)));
+      HM.put(dSub, HM.p(t, 17.6, .5), 0, (1 - HM.e.out(HM.p(t, 17.6, .6))) * 3);
+      conf.forEach(o => { const k = t - 16.8 - o.d; o.c.style.opacity = k > 0 ? 1 : 0;
+        o.c.style.transform = `translate(${o.x}vw, ${-10 + k * o.sp}vh) translateX(${Math.sin(k * 3 + o.sw) * 3}vmin) rotate(${o.rot * k}deg)`; });
+      // E
+      E.style.opacity = HM.vis(t, ...T.e, .45, .01);
+      HM.put(eBrand, 1, 0, 0, HM.e.back(HM.p(t, 20.8, .6)));
+      HM.put(eTag, HM.p(t, 21.3, .5), 0, (1 - HM.e.out(HM.p(t, 21.3, .6))) * 3);
+      if (eOffer) HM.put(eOffer, HM.p(t, 21.8, .3), 0, 0, HM.e.back(HM.p(t, 21.8, .5)) * (1 + Math.sin(t * 6) * .035), -4);
+      pills.forEach((p, i) => HM.put(p, HM.p(t, 22.3 + i * .3, .4), 0, (1 - HM.e.out(HM.p(t, 22.3 + i * .3, .5))) * 5));
+      foot.style.opacity = HM.p(t, 23, .6) * .75;
+    },
+  };
+})();
+</script></body></html>
