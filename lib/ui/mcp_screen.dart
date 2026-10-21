@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'mcp_tools.dart';
 import 'plugin_widgets.dart';
 
 /// MCP servers: the user's connected servers plus the built-in directory of ~50,700 MCP servers worldwide.
@@ -360,12 +361,17 @@ class _McpScreenState extends State<McpScreen> {
             icon: const Icon(Icons.more_vert_rounded, color: C.muted),
             onSelected: (v) async {
               if (v == 'key') _keyDialog(m);
+              if (v == 'tools') {
+                await showMcpTools(context, app, m);
+                _loadMine();
+              }
               if (v == 'remove') {
                 await app.api!.mcpRemove(m['pack_id'] as String);
                 _loadMine();
               }
             },
             itemBuilder: (_) => const [
+              PopupMenuItem(value: 'tools', child: Text('Tools: chalu / band, pehle poochho')),
               PopupMenuItem(value: 'key', child: Text('API key badlein')),
               PopupMenuItem(value: 'remove', child: Text('Hata dein')),
             ],

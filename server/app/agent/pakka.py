@@ -223,7 +223,7 @@ def forget(tenant: str, lid: str) -> bool:
 async def internet_fix(tool: str, error: str, request: str) -> str:
     """Ask the web how to solve this failure (once per signature per 6 h). '' when search isn't available."""
     st = get_settings()
-    if not st.agent_fix_search or not st.gemini_api_key:
+    if not st.agent_fix_search or not (st.gemini_api_key or st.parallel_search):
         return ""
     key = sig(tool, error)
     hit = _fix_cache.get(key)
@@ -234,11 +234,13 @@ async def internet_fix(tool: str, error: str, request: str) -> str:
          f"with: \"{mask(error, 220)}\". What is the usual reason and the practical way to get it done (official way, "
          "steps, the right website or setting)?")
     try:
-        r = await asyncio.wait_for(web.google_search(q), 25)
+        r = await asyncio.wait_for(web.search_any(q), 40)     # v0.91 Parallel when Google is unreachable
     except Exception as e:
         log.info("internet fix search failed: %s", e)
         return ""
     ans = str((r or {}).get("answer") or (r or {}).get("text") or "")[:700]
+    if not ans and (r or {}).get("excerpts"):
+        ans = " | ".join(f"{x['title']}: {x['excerpt'][:220]}" for x in r["excerpts"][:2])[:700]
     src = [x.get("url") or x.get("link") for x in ((r or {}).get("sources") or [])[:3] if isinstance(x, dict)]
     out = ans + (("\nSources: " + ", ".join(u for u in src if u)) if any(src) else "")
     _fix_cache[key] = (time.time(), out)

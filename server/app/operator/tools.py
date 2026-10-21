@@ -28,6 +28,8 @@ owner helps on her phone (cards + live view of your browser). Speak to her in si
 4. ACT, ONE STEP AT A TIME. open(url) -> read the page -> one action -> read what changed (every action returns the
    changes, site errors (ALERTS) and new pages). Use refs exactly as shown ([e12]). Fill all fields on a page, re-read,
    then press the next button. After 2-3 failed tries ask_owner(kind='question') instead of guessing.
+   blocked 'element_changed' (the button / box now says something else) or 'owner_used_live_view' (she tapped in the
+   live view): call page() and decide again from what it shows now; never repeat what she already did.
 5. YOU DO THE WHOLE JOB, LIKE A SETU / CSC OPERATOR; SHE ONLY GIVES WHAT COMES TO HER (enforced by the system).
    Never tell her "main box mein nahi bhar sakta" or ask her to fill a form herself: you fill every field.
    - Aadhaar / PAN / voter ID / DL / passport / ration / ABHA / UAN / GSTIN and other identity numbers: fill them
@@ -145,14 +147,16 @@ LABELS = {"open": "Website khol raha hoon", "page": "Page padh raha hoon", "look
 
 
 def as_result(out: Any) -> str | list:
-    """Tool output -> tool_result content (an image result becomes an image block)."""
+    """Tool output -> tool_result content (an image result becomes an image block). v0.91: keys a page shows are hidden."""
+    from ..scrub import scrub
     if isinstance(out, dict) and out.get("_image"):
+        out = {**out, "note": scrub(out.get("note", ""))}
         return [{"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
                                              "data": base64.b64encode(out["_image"]).decode()}},
                 {"type": "text", "text": out.get("note", "Screenshot of the page.")}]
     if isinstance(out, str):
-        return out[:14000]
-    return json.dumps(out, ensure_ascii=False, default=str)[:14000]
+        return scrub(out)[:14000]
+    return scrub(json.dumps(out, ensure_ascii=False, default=str))[:14000]
 
 
 def trim_history(history: list[dict], keep: int = 4) -> None:

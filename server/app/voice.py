@@ -541,6 +541,8 @@ class Call:
         self._otp_req = ""                     # v0.83 the website OTP box we are listening for
         self._otp_heard = ""                   # what she said since that box asked (only while it waits)
         self._otp_said: set[str] = set()       # OTPs filled in this call: hidden from the saved transcript
+        self.turns_log: list[tuple[str, str]] = []   # v0.91 the whole call (masked), for the call receipt
+        self.did: list[dict] = []              # v0.91 tools that really ran in this call, with their real outcome
         if st.voice_tool_ack and st.gemini_api_key:
             ack_clips(self.voice, self.gender)   # get his "ek second" clips ready
 
@@ -820,6 +822,8 @@ class Call:
             self.stats["assistantisms"] += len(ASSISTANTISMS.findall(reply))
         if user or reply:
             self.recent.append((user, reply))
+            self.turns_log.append((user, reply))
+            del self.turns_log[:-120]
             if interrupted and reply:
                 reply += " …"   # he was cut off: the chat history shows it
             try:
@@ -927,6 +931,8 @@ class Call:
         watch.add_done_callback(self._tools.discard)
         try:
             out = await self._execute(name, args)
+            from .scrub import scrub   # v0.91 no key a service echoes back ever reaches the call model
+            out = scrub(out)
             state = "error" if "error" in out else "done"
         except ToolError as e:
             out, state = {"error": str(e)}, "error"
@@ -938,6 +944,10 @@ class Call:
             out, state = {"error": f"Internal error: {e}"}, "error"
         watch.cancel()
         self._breaker.after(name, state != "error")
+        running = name == "santosh_kaam" and isinstance(out, dict) and out.get("status") == "working"
+        self.did.append({"tool": name, "label": raw if name != "santosh_kaam" else
+                         (str(args.get("request", ""))[:80] or raw), "ok": None if running else state != "error"})
+        del self.did[:-60]
         if state == "error" and name != "santosh_kaam":
             # v0.78 Pakka kaam: a fix that worked before for this failure goes back with the error (no web search here:
             # a call can't wait; santosh_kaam does the full search-and-retry)
@@ -1217,6 +1227,12 @@ class Call:
                 await self.finish_turn()
             self.stats["ended"] = time.time()
             STATS.append(self.stats)
+            if get_settings().call_receipt and (self.turns_log or self.did):
+                from . import callreceipt   # v0.91 the chat gets a short card of what came out of this call
+                rt = asyncio.create_task(callreceipt.make(self.conv, self.call_id, list(self.turns_log), list(self.did),
+                                                          self.stats["ended"] - self.stats["started"], self.name))
+                _JOBS.add(rt)
+                rt.add_done_callback(_JOBS.discard)
             lat = self.stats["latency_ms"]
             log.info("call %s done: %s turns, reply start p50 %s ms, %s interruptions (%s noise), %s/%s silent tools, %s acks",
                      self.call_id, self.stats["turns"], _pct(lat, .5), self.stats["interruptions"], self.stats["false_stops"],

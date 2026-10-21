@@ -186,7 +186,24 @@ def setup(tenant: str, **kw) -> dict[str, Any]:
         s.flush()
         out = _view(p)
     _ensure_trust(tenant, out["duties"])
+    _PAUSE_SEEN.pop(tenant, None)
     return out
+
+
+_PAUSE_SEEN: dict[str, tuple[float, bool]] = {}
+
+
+def paused_now(tenant: str) -> bool:
+    """v0.91 Is the job paused right now? Cheap enough to ask 10 times a second (cached 1 s; set_pause updates it)."""
+    import time as _t
+    hit = _PAUSE_SEEN.get(tenant)
+    if hit and _t.monotonic() - hit[0] < 1.0:
+        return hit[1]
+    with session() as s:
+        p = _row(s, tenant)
+        val = bool(p is not None and p.enabled and p.paused)
+    _PAUSE_SEEN[tenant] = (_t.monotonic(), val)
+    return val
 
 
 def set_pause(tenant: str, paused: bool, by: str = "owner") -> dict[str, Any]:
@@ -198,6 +215,8 @@ def set_pause(tenant: str, paused: bool, by: str = "owner") -> dict[str, Any]:
         p.paused_at = now() if paused else None
         p.paused_by = _clean(by, 80) if paused else ""
         out = _view(p)
+        import time as _t
+        _PAUSE_SEEN[tenant] = (_t.monotonic(), bool(p.enabled and p.paused))
     _audit(tenant, by or "owner", "", "pause" if paused else "resume", "meta", "done",
            "Kaam roka gaya" if paused else "Kaam phir shuru")
     _publish(tenant, "employee", {"paused": out["paused"], "enabled": out["enabled"]})

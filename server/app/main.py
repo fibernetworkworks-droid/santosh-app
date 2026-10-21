@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.90.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.91.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -2527,8 +2527,11 @@ def agent_stats():
     from . import procedures
     from .agent.breaker import STATS
     from .agent import pakka
+    from . import callreceipt, scrub, web
+    from .agent import santosh as _s
     return {"breaker": {k: STATS.get(k, 0) for k in ("steer", "constrain", "stop")}, "procedures": dict(procedures.STATS),
-            "pakka": dict(pakka.STATS)}
+            "pakka": dict(pakka.STATS), "halts": dict(_s.HALTS), "scrubbed": scrub.STATS["scrubbed"],
+            "parallel": dict(web.PARALLEL_STATS), "call_receipts": dict(callreceipt.STATS)}
 
 
 class ShopOrderIn(BaseModel):
@@ -4557,6 +4560,22 @@ async def bazar_mcp_add(body: McpAddIn, tenant: str = Depends(current_tenant)):
 @app.put("/api/bazar/mcp/{pack_id}/key", dependencies=[Depends(require_key)])
 def bazar_mcp_key(pack_id: str, body: McpKeyIn, tenant: str = Depends(current_tenant)):
     return _bz(bazar.mcp_set_key, tenant, pack_id, body.key, body.header)
+
+
+class McpToolIn(BaseModel):
+    enabled: bool | None = None
+    ask: bool | None = None
+
+
+@app.get("/api/bazar/mcp/{pack_id}/tools", dependencies=[Depends(require_key)])
+async def bazar_mcp_tools(pack_id: str, tenant: str = Depends(current_tenant)):
+    """v0.91 Every tool of a server she added, with her on / off and "pehle poochho" switches."""
+    return await asyncio.to_thread(_bz, bazar.mcp_tools, tenant, pack_id)
+
+
+@app.patch("/api/bazar/mcp/{pack_id}/tools/{tool}", dependencies=[Depends(require_key)])
+async def bazar_mcp_tool_set(pack_id: str, tool: str, body: McpToolIn, tenant: str = Depends(current_tenant)):
+    return await asyncio.to_thread(_bz, bazar.mcp_tool_set, tenant, pack_id, tool, body.enabled, body.ask)
 
 
 @app.delete("/api/bazar/mcp/{pack_id}", dependencies=[Depends(require_key)])

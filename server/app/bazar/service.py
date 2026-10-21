@@ -796,6 +796,48 @@ def mcp_set_key(tenant_id: str, pack_id: str, key: str, header: str = "") -> dic
     return {"pack_id": pack_id, "status": st}
 
 
+def _my_custom(s, tenant_id: str, pack_id: str):
+    row = s.get(CustomMcp, pack_id)
+    if not row or row.user_id != tenant_id or row.status != "active":
+        raise ToolError("Yeh MCP server aapki list mein nahi hai.")
+    return row
+
+
+def mcp_tools(tenant_id: str, pack_id: str) -> dict[str, Any]:
+    """v0.91 Every tool of a server she added, with her on/off and ask-first switches (fetched live from the server)."""
+    from .. import mcp_prefs
+    with session() as s:
+        user = ensure_user(s, tenant_id)
+        row = _my_custom(s, tenant_id, pack_id)
+        pack = custom_mcp.to_pack(row)
+        try:
+            specs = executors()["mcp"].tool_specs(pack, _ctx(s, user, None), include_off=True)
+        except ToolError as e:
+            raise ToolError(str(e).replace("NOT_LINKED: ", ""))
+        tools = [{"name": sp.name, "description": sp.description.split("] ", 1)[-1]} for sp in specs]
+        caution = bool(row.caution)
+    return {"pack_id": pack_id, "name": row.name, "caution": caution,
+            "tools": mcp_prefs.view(tenant_id, pack_id, tools, caution)}
+
+
+def mcp_tool_set(tenant_id: str, pack_id: str, tool: str, enabled: bool | None = None,
+                 ask: bool | None = None) -> dict[str, Any]:
+    from .. import mcp_prefs
+    with session() as s:
+        user = ensure_user(s, tenant_id)
+        row = _my_custom(s, tenant_id, pack_id)
+        pack = custom_mcp.to_pack(row)
+        try:
+            known = [sp.name for sp in executors()["mcp"].tool_specs(pack, _ctx(s, user, None), include_off=True)]
+        except ToolError as e:
+            raise ToolError(str(e).replace("NOT_LINKED: ", ""))
+        caution = bool(row.caution)
+    try:
+        return mcp_prefs.set_pref(tenant_id, pack_id, tool, known, enabled, ask, caution)
+    except mcp_prefs.PrefError as e:
+        raise ToolError(str(e))
+
+
 def mcp_remove(tenant_id: str, pack_id: str) -> bool:
     with session() as s:
         row = s.get(CustomMcp, pack_id)

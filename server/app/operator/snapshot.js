@@ -66,6 +66,8 @@
     if (!t) t = norm(el.getAttribute('title') || el.getAttribute('value') || '');
     return cut(t, 100);
   }
+  // v0.91 the element's name as it is NOW, so an action can refuse a button that changed since the page was read
+  window.__hoolaName = (el) => cut(nameOf(el), 120);
   function roleOf(el) {
     const r = el.getAttribute('role'); if (r) return r;
     const tag = el.tagName.toLowerCase();

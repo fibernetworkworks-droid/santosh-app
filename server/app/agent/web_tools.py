@@ -12,6 +12,16 @@ WEB_TOOLS = [
         "Returns a short answer plus source pages. Use it whenever the answer could have changed since your training "
         "or you are not sure. Write the query the way a person types into Google."),
      "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+    {"name": "web_sources", "description": (
+        "Read what the web actually says: searches and returns short QUOTED excerpts from the best pages with their "
+        "links (Parallel). Use it when the answer must stand on the sources' own words (checking a claim, comparing "
+        "what sites say, a rule or price you will quote) or when google_search is not answering. Give urls to read "
+        "specific pages instead of searching. Only the question / links are sent. Quote and cite the links you use."),
+     "input_schema": {"type": "object", "properties": {
+         "question": {"type": "string", "description": "What to find out, in one clear sentence"},
+         "search_queries": {"type": "array", "items": {"type": "string"}, "description": "1-3 short keyword searches"},
+         "urls": {"type": "array", "items": {"type": "string"}, "description": "Read these pages instead of searching"}},
+         "required": ["question"]}},
     {"name": "open_website", "description": (
         "Open a web page and read its text, like a person reading the site: a link the user gives you, an official "
         "page from google_search sources, a price or timing on a specific site. Returns the page title, text and links "
@@ -44,14 +54,23 @@ WEB_TOOLS = [
                       "required": ["url"]}},
 ]
 
-WEB_LABELS = {"google_search": "Google par dhoondh raha hoon", "open_website": "Website padh raha hoon",
+WEB_LABELS = {"google_search": "Google par dhoondh raha hoon", "web_sources": "Web ke pages padh raha hoon", "open_website": "Website padh raha hoon",
               "open_on_phone": "Phone par khol raha hoon", "browse_web": "Browser mein website par kaam kar raha hoon",
               "browse_result": "Browser ka nateeja dekh raha hoon"}
 
 
 async def google_search(ctx: Ctx, query, **_):
+    try:   # v0.91 when Google Search is unreachable, Parallel answers with quotes from real pages instead
+        return await web.search_any(str(query)[:400])
+    except web.WebError as e:
+        raise ToolError(str(e))
+
+
+async def web_sources(ctx: Ctx, question, search_queries=None, urls=None, **_):
+    qs = [str(q) for q in (search_queries or []) if str(q).strip()] if isinstance(search_queries, list) else None
+    us = [str(u) for u in (urls or []) if str(u).strip()] if isinstance(urls, list) else None
     try:
-        return await web.google_search(str(query)[:400])
+        return await web.parallel_search(str(question)[:2000], qs, us)
     except web.WebError as e:
         raise ToolError(str(e))
 
@@ -122,4 +141,4 @@ async def browse_result(ctx: Ctx, session_id, **_):
             "reason": res.get("reason", "")}
 
 
-WEB_HANDLERS = {"browse_result": browse_result, "browse_web": browse_web, "google_search": google_search, "open_website": open_website, "open_on_phone": open_on_phone}
+WEB_HANDLERS = {"browse_result": browse_result, "browse_web": browse_web, "google_search": google_search, "web_sources": web_sources, "open_website": open_website, "open_on_phone": open_on_phone}

@@ -23,6 +23,8 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("OPERATOR_WORKER", "false")     # tests call operator.run_job themselves
     monkeypatch.setenv("AGENT_SELF_CHECK", "false")    # v0.78: scripted model tests don't expect the extra check call
     monkeypatch.setenv("AGENT_FIX_SEARCH", "false")
+    monkeypatch.setenv("CALL_RECEIPT", "false")      # v0.91: scripted calls don't expect the extra receipt message
+    monkeypatch.setenv("PARALLEL_SEARCH", "false")   # v0.91: no real Parallel searches in tests
     monkeypatch.setenv("IFSC_REFRESH", "false")    # no IFSC downloads / online lookups in tests
     monkeypatch.setenv("LOGO_WARM", "false")       # no logo downloads in tests
     monkeypatch.setenv("TV_REFRESH", "false")   # no real TTS calls; tests that need the clips turn it on

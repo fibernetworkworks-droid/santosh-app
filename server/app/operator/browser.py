@@ -180,6 +180,8 @@ class Session:
     step: int = 0
     last_shot: bytes = b""
     action: str = ""                                         # what is happening now (for the live view)
+    snap_id: int = 0                                         # v0.91 counts page reads; every read gets a new number
+    owner_touched: bool = False                              # v0.91 she used the live view since the last read
 
     @property
     def page(self):
@@ -223,6 +225,8 @@ def fmt_item(it: dict) -> str:
 
 def fmt_snapshot(snap: dict, with_text: bool = True) -> str:
     lines = [f"URL: {snap['url']}", f"Title: {snap['title']}"]
+    if snap.get("snapshot"):
+        lines.append(f"Page read #{snap['snapshot']} (act only on refs from the newest read)")
     if snap.get("headings"):
         lines.append("Headings: " + " | ".join(snap["headings"]))
     if snap.get("alerts"):
@@ -473,6 +477,8 @@ class Operator:
         merged = {"items": [], "headings": [], "alerts": [], "captcha": [], "text": "", "truncated": False,
                   "url": page.url, "title": ""}
         s.refs, s.frames, s.docs = {}, {}, {}
+        s.snap_id += 1
+        s.owner_touched = False          # a fresh read sees whatever she did in the live view
         for i, fr in enumerate(page.frames):
             prefix = "" if fr == page.main_frame else f"f{i}"
             try:
@@ -507,6 +513,7 @@ class Operator:
         merged["items"] = [{k: v for k, v in it.items() if not k.startswith("_")} for it in merged["items"]]
         merged["dialogs"] = s.dialogs[-3:]
         merged["tabs"] = len(s.pages)
+        merged["snapshot"] = s.snap_id
         return merged
 
     async def screenshot(self, s: Session, full_page: bool = False, quality: int = 60) -> bytes:
@@ -542,6 +549,20 @@ class Operator:
         if await loc.count() == 0:
             raise OperatorError(f"Element '{ref}' is no longer on the page. Read the page again.")
         return loc.first, it
+
+    async def _changed(self, loc, it: dict) -> str | None:
+        """v0.91 (from OpenDots' snapshot-bound refs): the element's name NOW, when it no longer matches what the page
+        read showed (a React page re-used the node: 'Next' became 'Submit'). None = still the same element."""
+        if it.get("role") == "textbox" and it.get("tag") not in ("input", "textarea"):
+            return None                      # a rich-text box is named by its own text, which typing changes
+        try:
+            cur = await loc.evaluate("e => window.__hoolaName ? window.__hoolaName(e) : null")
+        except Exception:
+            return None
+        if cur is None:
+            return None
+        norm = lambda x: re.sub(r"\s+", " ", str(x or "")).strip().lower()
+        return None if norm(cur) == norm(it.get("name")) else str(cur)
 
     def _consume_approval(self, s: Session, approval_id: str | None, it: dict) -> bool:
         if not approval_id:
@@ -655,10 +676,21 @@ class Operator:
         it = None
         shown_value = value
         loc = None
+        if ref and s.owner_touched:
+            # v0.91 she tapped / typed in the live view: what the model last read may be out of date
+            return {"ok": False, "blocked": "owner_used_live_view",
+                    "message": "The owner used the live view since you last read the page. Read the page again (page()) "
+                               "and act on what it shows now; don't redo what she already did."}
         if ref:
             loc, it = await self._locator(s, ref)
         if action in ("click", "hover", "fill", "type", "select", "check", "upload") and loc is None:
             raise OperatorError(f"{action} needs a ref from the page.")
+        if loc is not None and action in ("click", "fill", "type", "select", "check", "upload"):
+            now_name = await self._changed(loc, it)
+            if now_name is not None:
+                return {"ok": False, "blocked": "element_changed",
+                        "message": f"[{ref}] now says \"{now_name}\" (when you read the page it said \"{it.get('name')}\"). "
+                                   "Read the page again (page()) and decide from what it says now."}
         if action == "click":
             approved = False
             g = gate_of(it)
@@ -1111,11 +1143,13 @@ class Operator:
 
     # ------------------------------------------------------------------ the owner's own hands (live view)
     async def owner_click(self, s: Session, x: float, y: float) -> None:
+        s.owner_touched = True
         await s.page.mouse.click(float(x), float(y))
         await self._audit(s, "owner_click", None, None, {"url": s.page.url}, shot=False)
 
     async def owner_type(self, s: Session, text: str) -> None:
         """Her keyboard into the page (e.g. her card details on a payment page). Never logged, never shown to the model."""
+        s.owner_touched = True
         try:   # whatever she types into is masked from now on
             ref = await s.page.evaluate("() => { const e = document.activeElement; if (!e) return null; "
                                         "e.setAttribute('data-hoola-masked','1'); return e.getAttribute('data-hoola-ref'); }")
@@ -1128,6 +1162,7 @@ class Operator:
 
     async def owner_key(self, s: Session, key: str) -> None:
         if key in ("Enter", "Tab", "Backspace", "Escape", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"):
+            s.owner_touched = True
             await s.page.keyboard.press(key)
 
 

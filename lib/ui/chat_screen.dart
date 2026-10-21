@@ -18,6 +18,7 @@ import 'video_editor.dart';
 import 'operator_screen.dart';
 import 'studio_screen.dart';
 import 'procedures_screen.dart';
+import 'call_receipt.dart';
 import 'approve_sheet.dart';
 import 'artifact_screen.dart';
 import 'browser_live.dart';
@@ -574,6 +575,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return BizHandoverCard(v: it.data, app: app);
     case 'procedure':
       return ProcedureLearnedCard(v: it.data, app: app);
+    case 'call_receipt':
+      return CallReceiptCard(key: ValueKey('cr${it.data['call_id']}'), v: it.data, app: app);
     case 'pc_file':
       return PcFileCard(v: it.data, app: app);
     case 'artifact':

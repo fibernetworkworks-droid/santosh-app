@@ -42,7 +42,12 @@ class Pack(BaseModel):
             if t.name == tool:
                 return t.tier
         if self.executor == "mcp" and self.config.get("custom"):
-            return 0 if is_read_only(tool) else 2   # servers the user added: anything not plainly a read needs a tap
+            # servers the user added: anything not plainly a read needs a tap; v0.91 her per-tool "ask first" switch
+            try:
+                from ...mcp_prefs import needs_tap
+                return 2 if needs_tap(self.config.get("owner", ""), self.id, tool, bool(self.config.get("caution"))) else 0
+            except Exception:
+                return 0 if is_read_only(tool) else 2
         if self.executor == "mcp":  # remote tools: classify by name; when in doubt it needs a tap
             low = tool.lower()
             words = set(re.split(r"[^a-z0-9]+", low))

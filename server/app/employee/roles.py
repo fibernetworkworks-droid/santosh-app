@@ -43,7 +43,7 @@ DUTIES: dict[str, dict] = {
     "mobile_repair": {"label": "Repair aur recharge", "say": "repair job + photo, warranty, 'taiyaar hai' draft, recharge register + yaad (bill aapki haan se), phone ki dikkat ka step-by-step ilaaj",
                       "prefix": (), "tools": {"mobile_shop", "mobile_shop_dekho", "biz_repair_status", "phone_doctor"}},
     "research": {"label": "Jaankari dhoondhna", "say": "web, maps, mausam, public APIs",
-                 "prefix": ("maps_", "api_"), "tools": {"google_search", "open_website", "browse_web", "browse_result", "get_weather",
+                 "prefix": ("maps_", "api_"), "tools": {"google_search", "web_sources", "open_website", "browse_web", "browse_result", "get_weather",
                                                        "memory_search"}},
 }
 # hoola_* tools that belong to tickets, not customers
@@ -148,7 +148,7 @@ PROMOTE_AFTER = {"seekh": 15, "saathi": 40}            # "Haan" taps in a row be
 
 READ = {
     "list_lead_lists", "get_lead_list", "check_template", "check_template_status", "get_campaign_status", "list_reminders",
-    "list_show", "list_routines", "get_weather", "google_search", "open_website", "browse_web", "browse_result",
+    "list_show", "list_routines", "get_weather", "google_search", "web_sources", "open_website", "browse_web", "browse_result",
     "artifact_list", "email_check", "email_read", "email_triage", "email_attachment", "email_bulk_status", "email_contacts",
     "email_accounts", "calendar_agenda", "calendar_find_event", "calendar_free_slots", "sheets_find", "sheet_info",
     "sheet_read", "sheet_query", "drive_find", "drive_list_folder", "drive_read_file", "drive_storage", "form_find",

@@ -176,13 +176,69 @@ def _friendly_error(e: BaseException) -> str:
     return f"{head} ({s[:200]})" if s else head
 
 
+class _Halted(Exception):
+    """v0.91 The owner stopped the turn (Rokiye), or paused the job mid-turn: the running step was cancelled."""
+
+    def __init__(self, why: str):
+        super().__init__(why)
+        self.why = why
+
+
+HALT_EVERY_S = 0.1           # how often a running step checks for Rokiye / Pause (OpenDots checks 10x a second too)
+HALTS = {"stop": 0, "pause": 0}
+
+
+def _halt_reason(conversation_id: str, ctx: Ctx, state: dict | None = None) -> str:
+    if conversation_id in _stopped:
+        return "stop"
+    actor = getattr(ctx, "actor", "owner") or "owner"
+    if actor == "owner" or actor.startswith("approved:") or state is None or state.get("paused0") is None:
+        return ""                      # her own turns: Pause holds job tools at the gate, her personal work goes on
+    try:
+        from ..employee import service as emp
+        if emp.paused_now(ctx.tenant_id) and not state["paused0"]:
+            return "pause"             # turned on while this routine / staff / customer turn was running
+    except Exception:
+        log.exception("pause check failed")
+    return ""
+
+
+async def _watched(work, conversation_id: str, ctx: Ctx, state: dict | None = None):
+    """Run one model call or tool call, but cancel it the moment she taps Rokiye (or pauses the job), instead of
+    waiting for the step to finish by itself. Exceptions of the work itself pass through unchanged."""
+    task = asyncio.ensure_future(work)
+    try:
+        while True:
+            done, _ = await asyncio.wait({task}, timeout=HALT_EVERY_S)
+            if done:
+                return task.result()
+            why = _halt_reason(conversation_id, ctx, state)
+            if why:
+                task.cancel()
+                try:
+                    await task
+                except BaseException:
+                    pass
+                HALTS[why] += 1
+                raise _Halted(why)
+    except asyncio.CancelledError:
+        task.cancel()
+        raise
+
+
+HALTED_TEXT = {"stop": "Theek hai, maine kaam rok diya.",
+               "pause": "Owner ne kaam rok diya (Pause), isliye main yahin ruk gaya. 'Kaam shuru' hone par aage karunga."}
+
+
 async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict | None = None):
     """A tool call that can never hang the whole turn."""
     if mcp_route and name in mcp_route:   # a tool of one of the owner's MCP servers
         work = mcp_live.run(ctx, mcp_route, name, args or {})
     else:
         work = dispatch(name, args or {}, ctx)
-    return await asyncio.wait_for(work, timeout=max(5, settings.agent_tool_timeout_s))
+    out = await asyncio.wait_for(work, timeout=max(5, settings.agent_tool_timeout_s))
+    from ..scrub import scrub          # v0.91 a service that echoes one of our keys back never shows it to the model
+    return scrub(out)
 
 
 async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str,
@@ -193,19 +249,25 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     from . import pakka
     state: dict = {"calls": [], "breaker": Breaker(), "used": [], "hint": "", "request": user_text, "t0": time.time()}
     actor = getattr(ctx, "actor", "owner") or "owner"
+    if actor != "owner" and not actor.startswith("approved:"):
+        try:   # v0.91 remember whether the job was paused when this turn began: turning Pause on mid-turn stops it
+            from ..employee import service as _emp
+            state["paused0"] = _emp.paused_now(tenant_id)
+        except Exception:
+            state["paused0"] = None
     if user_text and actor in ("owner", "routine"):
         try:
             state["hint"], state["used"] = await asyncio.to_thread(procedures.hint, tenant_id, user_text)
         except Exception:
             log.exception("procedure hint failed")
     text = await _steps_inner(conversation_id, ctx, gender, history, settings, tenant_id, state)
-    ok = (bool(text.strip()) and not state["breaker"].stopped and conversation_id not in _stopped
+    ok = (bool(text.strip()) and not state["breaker"].stopped and conversation_id not in _stopped and not state.get("halted")
           and not text.startswith(("Yeh kaam lamba", "Maaf kijiye")))
     if user_text:
         lessons = await asyncio.to_thread(pakka.learn, tenant_id, state["calls"], ok, state.get("lessons_used", []))
         if lessons:
             bus.publish(conversation_id, "procedure", {"event": "lesson", "title": lessons[0][:120], "count": len(lessons)})
-        outcome = ("stopped" if conversation_id in _stopped else "stuck" if state["breaker"].stopped else
+        outcome = ("stopped" if conversation_id in _stopped or state.get("halted") else "stuck" if state["breaker"].stopped else
                    "talk" if not state["calls"] else "partial" if state.get("left") else "done" if ok else "partial")
         await asyncio.to_thread(pakka.record, tenant_id, user_text, outcome, state["calls"], state,
                                 time.time() - state["t0"], state.get("left", ""))
@@ -232,14 +294,23 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     tools = TOOLS + mcp_defs
     for _ in range(settings.agent_max_steps):
         try:
-            blocks, stop, brain = await _think(brain, system, history, settings, tools)   # stays on the brain that worked
-        except Exception as e:
-            if not mcp_defs or not mcp_live.schema_trouble(e):
+            try:   # stays on the brain that worked; Rokiye cancels the model call itself, not just the next step
+                blocks, stop, brain = await _watched(_think(brain, system, history, settings, tools), conversation_id, ctx, state)
+            except _Halted:
                 raise
-            # a server's tool description the model refuses: go on without the direct MCP tools (bazar_run still works)
-            log.warning("MCP tool schemas refused (%s); continuing without them", str(e)[:200])
-            mcp_defs, mcp_route, tools = [], {}, TOOLS
-            blocks, stop, brain = await _think(brain, system, history, settings, tools)
+            except Exception as e:
+                if not mcp_defs or not mcp_live.schema_trouble(e):
+                    raise
+                # a server's tool description the model refuses: go on without the direct MCP tools (bazar_run still works)
+                log.warning("MCP tool schemas refused (%s); continuing without them", str(e)[:200])
+                mcp_defs, mcp_route, tools = [], {}, TOOLS
+                blocks, stop, brain = await _watched(_think(brain, system, history, settings, tools), conversation_id, ctx, state)
+        except _Halted as h:
+            state["halted"] = h.why
+            final_text = HALTED_TEXT[h.why]
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
+            _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
+            return final_text
         history.append({"role": "assistant", "content": blocks})
         texts = [b["text"] for b in blocks if b.get("type") == "text" and b.get("text", "").strip()]
         _save(conversation_id, "assistant", blocks, display="\n\n".join(texts) or None)
@@ -261,7 +332,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         for b in blocks:
             if b.get("type") != "tool_use":
                 continue
-            if conversation_id in _stopped:
+            if conversation_id in _stopped or state.get("halted"):
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
                                 "content": "The user tapped Stop. Do not continue this task; say in one line what was done."})
                 continue
@@ -276,7 +347,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "running", "id": b["id"]})
             _work(conversation_id, b["id"], b["name"], label, "start", args_in)
             try:
-                out = await _run_tool(b["name"], args_in, ctx, settings, mcp_route)
+                out = await _watched(_run_tool(b["name"], args_in, ctx, settings, mcp_route), conversation_id, ctx, state)
                 fine = not (isinstance(out, dict) and out.get("error"))
                 breaker.after(b["name"], fine)
                 content = _short(out)
@@ -289,6 +360,15 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": content})
                 bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "done", "id": b["id"]})
                 _work(conversation_id, b["id"], b["name"], label, theatre.phase_of(out), args_in, out)
+            except _Halted as h:
+                state["halted"] = h.why
+                state["calls"].append({"tool": b["name"], "ok": False, "error": "stopped by the owner", "args": args_in,
+                                       "key": _key(b["name"], args_in)})
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
+                                "content": "Stopped by the owner while this step was running; it may have partly happened."})
+                bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error", "id": b["id"],
+                                                      "detail": "roka gaya"})
+                _work(conversation_id, b["id"], b["name"], label, "stopped", args_in, error="Roka gaya")
             except ToolError as e:
                 breaker.after(b["name"], False)
                 help_ = await pakka.on_failure(tenant_id, b["name"], str(e), state.get("request", ""), state)
@@ -329,8 +409,10 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                                                   "label": "Atak gaya, roka gaya", "data": {}})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
             return final_text
-        if conversation_id in _stopped:
-            final_text = "Theek hai, maine kaam rok diya."
+        if conversation_id in _stopped or state.get("halted"):
+            final_text = HALTED_TEXT.get(state.get("halted") or "stop", HALTED_TEXT["stop"])
+            if state.get("halted"):
+                final_text += " Jo kadam chal raha tha woh beech mein roka gaya; dobara karne se pehle dekh lijiye kitna hua."
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
             return final_text
@@ -361,7 +443,7 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
     Sets state['correct'] when the answer claims more than was done, state['left'] when something stays open."""
     from . import pakka
     calls = state.get("calls") or []
-    if (not ran_tools or not calls or conversation_id in _stopped or state["breaker"].stopped
+    if (not ran_tools or not calls or conversation_id in _stopped or state["breaker"].stopped or state.get("halted")
             or state.get("checks", 0) >= pakka.SELF_CHECKS_PER_TURN):
         return ""
     real = [c for c in calls if c.get("tool") not in pakka.SKIP]
@@ -391,7 +473,7 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
 
 
 def stop(conversation_id: str) -> None:
-    """The owner tapped Stop: the running turn finishes the current tool call and does nothing more."""
+    """The owner tapped Stop: the running model call / tool call is cancelled at once (v0.91) and nothing more runs."""
     _stopped.add(conversation_id)
     bus.publish(conversation_id, "work", {"id": "stop", "tool": "", "scene": "work", "phase": "stopped",
                                           "label": "Roka gaya", "data": {}})

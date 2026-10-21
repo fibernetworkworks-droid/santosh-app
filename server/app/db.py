@@ -657,6 +657,7 @@ def init_db(url: str | None = None):
     from .employee import network as _employee_net  # noqa: F401
     from .videoedit import models as _videoedit_models  # noqa: F401
     from .operator import models as _operator_models  # noqa: F401
+    from . import mcp_prefs as _mcp_prefs  # noqa: F401
     Base.metadata.create_all(_engine)
     _add_missing_columns(_engine)
     from .bazar.db import init_tables as _bazar_tables

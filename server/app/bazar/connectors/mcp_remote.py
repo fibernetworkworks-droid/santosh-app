@@ -64,9 +64,14 @@ class McpHttpRemote:
     def list_tools(self) -> list[dict[str, Any]]:
         async def go(s):
             res = await s.list_tools()
-            return [{"name": t.name, "description": t.description or "",
-                     "input_schema": self._attr(t, "input_schema", "inputSchema") or {"type": "object"}}
-                    for t in res.tools]
+            out = []
+            for t in res.tools:
+                ann = self._attr(t, "annotations")
+                ro = self._attr(ann, "read_only_hint", "readOnlyHint") if ann is not None else None
+                out.append({"name": t.name, "description": t.description or "",
+                            "input_schema": self._attr(t, "input_schema", "inputSchema") or {"type": "object"},
+                            "read_only": ro if isinstance(ro, bool) else None})   # v0.91 the server's hint (only a hint)
+            return out
         return asyncio.run(self._with_session(go))
 
     def call_tool(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
@@ -179,7 +184,7 @@ class McpExecutor:
             raise ToolError(f"NOT_LINKED: Your {pack.name} sign-in expired. Please link it again in the Santosh app.")
         return self.remote_factory(self._endpoint(pack, ctx), token)
 
-    def tool_specs(self, pack: Pack, ctx: Ctx) -> list[ToolSpec]:
+    def tool_specs(self, pack: Pack, ctx: Ctx, include_off: bool = False) -> list[ToolSpec]:
         key = pack.id + ":" + ctx.user.id
         hit = self._cache.get(key)
         if hit and time.time() - hit[0] < 600:
@@ -187,10 +192,22 @@ class McpExecutor:
         else:
             tools = self._remote(pack, ctx).list_tools()
             self._cache[key] = (time.time(), tools)
+        if pack.config.get("custom"):
+            # v0.91 her switches: tools she turned off are never offered; the server's read-only hint is remembered
+            from ...mcp_prefs import note_hints, prefs
+            note_hints(pack.id, tools)
+            if not include_off:
+                mine = prefs(ctx.user.id, pack.id)
+                tools = [t for t in tools if mine.get(t["name"], (True, None))[0]]
         return [ToolSpec(t["name"], f"[{pack.name}] {t['description']}"[:1000], t["input_schema"] or {"type": "object"},
                          pack.tier_of(t["name"])) for t in tools]
 
     def call(self, pack: Pack, tool: str, args: dict[str, Any], ctx: Ctx) -> dict[str, Any] | NeedsApproval:
+        if pack.config.get("custom"):
+            from ...mcp_prefs import enabled
+            if not enabled(ctx.user.id, pack.id, tool):
+                raise ToolError(f"Owner ne {pack.name} ka '{tool}' tool band kar rakha hai (Connect > MCP servers > Tools). "
+                                "Yeh nahi chalega; koi aur tarika batao ya owner se chalu karne ko kaho.")
         tier = pack.tier_of(tool)
         if tier >= 2 and pack.config.get("custom"):
             # a server the user added: show exactly what will be sent, run only that frozen call after the tap
