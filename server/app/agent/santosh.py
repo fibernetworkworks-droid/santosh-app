@@ -137,9 +137,10 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
         log.info("%s in=%s out=%s %s", llm.describe(), usage.get("prompt_tokens"), usage.get("completion_tokens"),
                  usage.get("route", ""))
         return blocks, stop
-    resp = await get_client().messages.create(
+    from . import cache
+    resp = await get_client().messages.create(**cache.shape(dict(
         model=settings.anthropic_model, max_tokens=settings.agent_max_tokens,
-        system=system, tools=tools, messages=history)
+        system=system, tools=tools, messages=history), getattr(settings, "prompt_cache", True)))
     return [_block_to_dict(b) for b in resp.content], resp.stop_reason
 
 
@@ -397,6 +398,9 @@ def stop(conversation_id: str) -> None:
 
 
 def _work(conversation_id: str, call_id: str, tool: str, label: str, phase: str, args=None, out=None, error: str = "") -> None:
+    if phase == "start":
+        from . import quick
+        quick.note_step(conversation_id, label)
     try:
         bus.publish(conversation_id, "work", theatre.event(call_id, tool, label, phase, args, out, error))
     except Exception:
@@ -432,8 +436,17 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
             user_text, _ids = capture(tenant_id, user_text)
         except Exception:
             log.exception("id capture failed")
-    async with _locks[conversation_id]:
+    lock = _locks[conversation_id]
+    if lock.locked() and (actor or "owner") == "owner" and not voice:
+        # v0.86 a long job holds the chat: answer this message NOW from the quick lane; only real work waits
+        from . import quick
+        got = await quick.answer(conversation_id, tenant_id, user_text)
+        if got and not got["queued"]:
+            return got["text"]
+    async with lock:
         notes = _pending_worker_notes(conversation_id)
+        from . import quick as _quick
+        notes += _quick.take_notes(conversation_id)
         agent_text = f"{VOICE_NOTE}\n{user_text}" if voice else user_text
         if context:                         # e.g. files the owner attached (only the words show in the chat)
             agent_text += "\n\n" + context

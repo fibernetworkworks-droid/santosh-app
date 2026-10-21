@@ -39,7 +39,9 @@ BLOCKED_KEYS = {("win", "r"), ("win", "x"), ("ctrl", "shift", "esc"), ("win", "l
 
 SYSTEM = """You are Santosh, operating the user's own Windows PC for them, like a careful assistant sitting at the
 keyboard. Each turn you see a screenshot (coordinates are pixels on that screenshot) plus the active window title.
-Do ONE action per turn with a tool; after it you get a new screenshot.
+Work fast: when the next few actions don't depend on what the screen will show (click a field, type, press tab,
+type, press enter), send them together in ONE turn (up to 4 tool calls); otherwise do one action and look again.
+After your actions you get a new screenshot.
 
 How to work:
 - Prefer the fastest reliable way: open_app by name, keyboard shortcuts (ctrl+s, alt+tab, ctrl+f, win to search...),
@@ -136,6 +138,24 @@ def get(tenant: str, sid: str) -> Op | None:
     return op if op and op.tenant == tenant else None
 
 
+def _work(op: Op, name: str) -> None:
+    """v0.86 each PC step shows at once in the Work Theatre / chat (not only after the job)."""
+    try:
+        prev = getattr(op, "_last_work", None)
+        if prev:
+            bus.publish(op.conv, "work", {**prev, "phase": "done"})
+        if name == "_end":
+            op._last_work = None
+            return
+        from ..agent import quick
+        quick.note_step(op.conv, f"PC: {op.action[:100]}")
+        op._last_work = {"id": f"{op.id}:{op.step}", "tool": "pc_do", "scene": "pc", "phase": "start",
+                         "label": f"PC: {op.action[:120]}", "data": {"step": op.step, "do": name}}
+        bus.publish(op.conv, "work", op._last_work)
+    except Exception:
+        pass
+
+
 def _event(op: Op) -> None:
     try:
         bus.publish(op.conv, "browser", {"session_id": op.id, "status": op.status, "source": "pc", "site": "Mera PC",
@@ -144,9 +164,43 @@ def _event(op: Op) -> None:
         log.exception("pc op event failed")
 
 
-async def _pc(op: Op, action: str, args: dict[str, Any] | None = None, timeout: float = 40) -> dict[str, Any]:
+async def _pc(op: Op, action: str, args: dict[str, Any] | None = None, timeout: float = 40, log: bool = True) -> dict[str, Any]:
     from .hub import hub
-    return await hub.call(op.tenant, action, args or {}, timeout=timeout)
+    return await hub.call(op.tenant, action, args or {}, timeout=timeout, log=log)
+
+
+LIVE_EVERY_S = 0.9      # v0.86 while the model decides the next step, the phone's live view keeps moving
+SETTLE_S = {"click": 0.35, "key": 0.35, "type": 0.2, "scroll": 0.25, "drag": 0.3, "focus_window": 0.3, "open_app": 0.8}
+
+
+async def _think_live(op: Op, coro):
+    """Run the model call; meanwhile refresh the live frame about once a second so she sees the PC in real time."""
+    stop = asyncio.Event()
+
+    async def stream() -> None:
+        while not stop.is_set():
+            t0 = time.monotonic()
+            try:
+                s = await _pc(op, "screen", {"max_width": 960}, timeout=10, log=False)
+                img = s.get("image_b64", "")
+                if img and not stop.is_set():
+                    op.frame, op.frame_seq = base64.b64decode(img), op.frame_seq + 1
+                    op.window = s.get("active_window", "") or op.window
+            except Exception:
+                await asyncio.sleep(1.5)
+            try:
+                await asyncio.wait_for(stop.wait(), max(0.05, LIVE_EVERY_S - (time.monotonic() - t0)))
+            except asyncio.TimeoutError:
+                pass
+    streamer = asyncio.create_task(stream())
+    try:
+        return await coro
+    finally:
+        stop.set()
+        try:   # let a capture in flight finish (never two screen jobs racing the next real one)
+            await asyncio.wait_for(streamer, 3)
+        except (asyncio.TimeoutError, asyncio.CancelledError, Exception):
+            streamer.cancel()
 
 
 def _trim_images(messages: list[dict]) -> None:
@@ -265,6 +319,7 @@ def decide(tenant: str, sid: str, pending_id: str, approve: bool) -> bool:
 
 async def _run(op: Op) -> None:
     st = get_settings()
+    from ..agent import cache
     from ..agent.santosh import get_client
     client = get_client()
     from ..avatar.service import personalise, persona
@@ -283,8 +338,8 @@ async def _run(op: Op) -> None:
         deadline = time.time() + TASK_MINUTES * 60
         while op.step < MAX_STEPS and time.time() < deadline and op.status == "running":
             _trim_images(messages)
-            resp = await client.messages.create(model=st.anthropic_model, max_tokens=1500, system=system,
-                                                tools=TOOLS, messages=messages)
+            resp = await _think_live(op, client.messages.create(**cache.shape(dict(
+                model=st.anthropic_model, max_tokens=1500, system=system, tools=TOOLS, messages=messages), st.prompt_cache)))
             content = [b.model_dump(exclude_none=True) if hasattr(b, "model_dump") else b for b in resp.content]
             messages.append({"role": "assistant", "content": content})
             uses = [b for b in content if b.get("type") == "tool_use"]
@@ -300,6 +355,7 @@ async def _run(op: Op) -> None:
                 op.action = (text or f"{name} {a.get('keys') or a.get('name') or a.get('text', '')[:40] or ''}").strip()[:200]
                 op.timeline.append({"step": op.step, "action": op.action, "do": name, "url": op.window, "t": int(time.time())})
                 del op.timeline[:-60]
+                _work(op, name)
                 if name == "done":
                     op.summary = str(a.get("answer") or text or "Ho gaya.")[:4000]
                     op.status = "done" if a.get("success", True) else "partial"
@@ -323,6 +379,9 @@ async def _run(op: Op) -> None:
                 results.append({"type": "tool_result", "tool_use_id": u["id"], "content": msg, **({"is_error": True} if is_err else {})})
             if finished or op.status != "running":
                 break
+            last = uses[-1]["name"] if uses else ""
+            if SETTLE_S.get(last):          # let the PC react (menus open, pages paint) before looking again
+                await asyncio.sleep(SETTLE_S[last])
             shot = await _shot(op)
             results[-1] = {**results[-1], "content": [{"type": "text", "text": str(results[-1]["content"])}, *shot]}
             messages.append({"role": "user", "content": results})
@@ -343,6 +402,7 @@ async def _run(op: Op) -> None:
         except Exception:
             pass
         op.action = {"done": "Ho gaya", "partial": "Poora nahi hua", "failed": "Ruk gaya", "cancelled": "Aapne rok diya"}.get(op.status, op.action)
+        _work(op, "_end")
         op.done_event.set()
         _event(op)
         if op.reported:

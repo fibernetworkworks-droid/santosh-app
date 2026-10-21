@@ -25,105 +25,139 @@ class _ApproveSheet extends StatelessWidget {
     final items = (v['items'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
     final disclosures = (v['disclosures'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
     final demo = v['demo'] == true;
+    final amount = v['amount'] as String? ?? '';
+    // v0.86 a step that moves no money (PC / website step, send, booking) gets plain words, not payment words
+    final money = (v['money'] as bool?) ?? amount.isNotEmpty;
+    final payMethod = v['pay_method'] as String? ?? '';
     final title = (v['title'] as String? ?? '').replaceFirst('[DEMO] ', '');
-    return Glass(
-      radius: 34,
-      opacity: .1,
-      tint: const Color(0xFF1A143A),
-      padding: EdgeInsets.fromLTRB(22, 12, 22, 22 + MediaQuery.paddingOf(context).bottom),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Center(child: Container(width: 44, height: 5, decoration: BoxDecoration(color: const Color(0x47FFFFFF), borderRadius: BorderRadius.circular(3)))),
-        const SizedBox(height: 14),
-        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Image.asset('assets/images/santosh_thinking.png', height: 74),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('$title?', style: display(19)),
-              const SizedBox(height: 2),
-              const Text('Hoola ne aapke liye taiyaar kiya', style: TextStyle(color: C.muted, fontSize: 13)),
-            ]),
-          ),
-        ]),
-        const SizedBox(height: 16),
-        if ((v['amount'] as String? ?? '').isNotEmpty)
-          Center(
-            child: Column(children: [
-              const Text('KUL RAKAM', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: C.muted, letterSpacing: .8)),
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: .85, end: 1),
-                duration: const Duration(milliseconds: 500),
-                curve: Curves.easeOutBack,
-                builder: (context, s, c) => Transform.scale(scale: s, child: c),
-                child: Text(v['amount'] as String, style: display(44)),
-              ),
-            ]),
-          ),
-        if (demo)
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.only(top: 6),
-              child: Pill('DEMO · ASLI PAISE NAHI KATENGE', fg: C.accentSoft, bg: Color(0x24FFB15C)),
+    final mq = MediaQuery.of(context);
+    // the whole sheet always fits the screen: details scroll, the slide + "Abhi nahi" stay visible at the bottom
+    final maxH = mq.size.height - mq.padding.top - 24;
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxH),
+      child: Glass(
+        radius: 34,
+        opacity: .1,
+        tint: const Color(0xFF1A143A),
+        padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + mq.padding.bottom),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Center(child: Container(width: 44, height: 5, decoration: BoxDecoration(color: const Color(0x47FFFFFF), borderRadius: BorderRadius.circular(3)))),
+          const SizedBox(height: 12),
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Image.asset('assets/images/santosh_thinking.png', height: 54),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(money ? 'Aapki approval chahiye' : 'Aapki haan chahiye',
+                    style: const TextStyle(color: C.muted, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text('$title?', maxLines: 3, overflow: TextOverflow.ellipsis, style: display(17)),
+              ]),
             ),
-          ),
-        const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-          decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0x1FFFFFFF))),
-          child: Column(children: [
-            if ((v['payee'] as String? ?? '').isNotEmpty) _row('Kisko', v['payee'] as String),
-            for (final i in items.take(12)) _row(i['name'] as String? ?? '', i['price'] as String? ?? ''),
-            if ((v['pay_method'] as String? ?? '').isNotEmpty) _row('Payment', v['pay_method'] as String, last: true),
           ]),
-        ),
-        if (disclosures.isNotEmpty) ...[
-          // shopping: seller, delivery, returns, origin, customer care — plain facts, shown before paying
-          const SizedBox(height: 10),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 190),
+          const SizedBox(height: 12),
+          Flexible(
             child: SingleChildScrollView(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                for (final d in disclosures)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      SizedBox(
-                        width: 112,
-                        child: Text(d['label'] as String? ?? '', style: const TextStyle(color: C.muted, fontSize: 12, height: 1.35)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+                if (amount.isNotEmpty)
+                  Center(
+                    child: Column(children: [
+                      const Text('KUL RAKAM', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: C.muted, letterSpacing: .8)),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: .85, end: 1),
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.easeOutBack,
+                        builder: (context, s, c) => Transform.scale(scale: s, child: c),
+                        child: FittedBox(fit: BoxFit.scaleDown, child: Text(amount, style: display(40))),
                       ),
-                      Expanded(child: Text(d['value'] as String? ?? '', style: const TextStyle(fontSize: 12, height: 1.35))),
                     ]),
                   ),
+                if (demo)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 6),
+                      child: Pill('DEMO · ASLI PAISE NAHI KATENGE', fg: C.accentSoft, bg: Color(0x24FFB15C)),
+                    ),
+                  ),
+                if (amount.isNotEmpty || demo) const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0x1FFFFFFF))),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    if ((v['payee'] as String? ?? '').isNotEmpty) _row(money ? 'Kisko' : 'Kahan', v['payee'] as String),
+                    for (final i in items.take(12))
+                      (i['price'] as String? ?? '').isEmpty ? _line(i['name'] as String? ?? '') : _row(i['name'] as String? ?? '', i['price'] as String),
+                    if (payMethod.isNotEmpty) _row(money ? 'Payment' : 'Kaise', payMethod, last: true),
+                  ]),
+                ),
+                if (disclosures.isNotEmpty) ...[
+                  // shopping: seller, delivery, returns, origin, customer care — plain facts, shown before paying
+                  const SizedBox(height: 10),
+                  for (final d in disclosures)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        SizedBox(
+                          width: 112,
+                          child: Text(d['label'] as String? ?? '', style: const TextStyle(color: C.muted, fontSize: 12, height: 1.35)),
+                        ),
+                        Expanded(child: Text(d['value'] as String? ?? '', style: const TextStyle(fontSize: 12, height: 1.35))),
+                      ]),
+                    ),
+                ],
+                const SizedBox(height: 10),
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Icon(Icons.verified_user_outlined, color: C.ok, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                        money
+                            ? 'Rakam aur payee server ke record se hain. Hoola kabhi PIN, OTP ya card number nahi maangega.'
+                            : 'Yeh kadam aapki haan ke bina nahi hoga. Password, PIN aur payment Hoola kabhi khud nahi bharta.',
+                        style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.4)),
+                  ),
+                ]),
               ]),
             ),
           ),
-        ],
-        const SizedBox(height: 12),
-        const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(Icons.verified_user_outlined, color: C.ok, size: 18),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text('Rakam aur payee server ke record se hain. Hoola kabhi PIN, OTP ya card number nahi maangega.',
-                style: TextStyle(fontSize: 12.5, color: C.muted, height: 1.4)),
+          const SizedBox(height: 12),
+          SlideToApprove(
+            label: money ? 'Slide karke approve karein' : 'Slide karke haan karein',
+            onDone: () async {
+              Navigator.of(context).pop();
+              // money never moves from the lock screen: the phone's own PIN/fingerprint first
+              if (money && await Native.isLocked() && !await Native.requestUnlock()) return;
+              await app.decideBazar(v['id'] as String, 'approve');
+            },
           ),
+          Row(children: [
+            Expanded(
+              child: TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  app.decideBazar(v['id'] as String, 'reject');
+                },
+                child: const Text('Mana karein', style: TextStyle(color: C.muted, fontWeight: FontWeight.w700)),
+              ),
+            ),
+            Expanded(
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Abhi nahi', style: TextStyle(color: C.chip, fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ]),
         ]),
-        const SizedBox(height: 16),
-        SlideToApprove(
-          label: 'Slide karke approve karein',
-          onDone: () async {
-            Navigator.of(context).pop();
-            // money never moves from the lock screen: the phone's own PIN/fingerprint first
-            if (await Native.isLocked() && !await Native.requestUnlock()) return;
-            await app.decideBazar(v['id'] as String, 'approve');
-          },
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Abhi nahi', style: TextStyle(color: C.chip, fontWeight: FontWeight.w700)),
-        ),
-      ]),
+      ),
     );
   }
+
+  Widget _line(String text) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0x14FFFFFF)))),
+        child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5, height: 1.4)),
+      );
 
   Widget _row(String k, String val, {bool last = false}) => Container(
         padding: const EdgeInsets.symmetric(vertical: 11),
@@ -131,7 +165,7 @@ class _ApproveSheet extends StatelessWidget {
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(child: Text(k, style: const TextStyle(color: C.muted, fontSize: 13.5))),
           const SizedBox(width: 12),
-          Flexible(child: Text(val, textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5))),
+          Flexible(flex: 2, child: Text(val, textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5))),
         ]),
       );
 }

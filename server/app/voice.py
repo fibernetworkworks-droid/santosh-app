@@ -870,7 +870,7 @@ class Call:
         if name not in VOICE_TOOL_NAMES:
             return {"error": f"Unknown tool {name}"}
         # a call can't wait minutes: these three answer after a short wait and the rest arrives later
-        extra = {"pc_do": {"_wait": 20}, "artifact_make": {"_wait": 0}, "browse_web": {"_wait": 25}}.get(name, {})
+        extra = {"pc_do": {"_wait": 8}, "artifact_make": {"_wait": 0}, "browse_web": {"_wait": 10}}.get(name, {})
         result = await asyncio.wait_for(dispatch(name, {**args, **extra}, self.ctx), timeout=max(5, get_settings().voice_tool_timeout_s))
         return {"result": result}
 

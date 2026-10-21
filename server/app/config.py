@@ -68,7 +68,12 @@ class Settings(BaseSettings):
     browser_worker_key: str = ""            # same value as WORKER_KEY in the worker's env
     browser_llm: str = "auto"               # auto (Claude when its key is set, else OmniRoute/GLM) | claude | omniroute | glm
     browser_max_steps: int = 40
-    browser_wait_seconds: int = 150         # how long a chat turn waits before "I'll message you when done"
+    browser_wait_seconds: int = 20          # v0.86 how long a chat turn waits before "I'll message you when done" (was 150)
+    pc_wait_seconds: int = 12               # v0.86 same for the PC operator (the chat stays free for new questions)
+    artifact_wait_seconds: int = 20         # v0.86 same for pages (the card opens when ready)
+    quick_lane: bool = True                 # v0.86 answer new chat messages at once while a long job runs
+    quick_model: str = ""                   # v0.86 model for the quick lane ('' = anthropic_model; a cheap brain is used first)
+    prompt_cache: bool = True               # v0.86 Anthropic prompt caching on tools + conversation (faster replies)
     glm_api_key: str = ""
     glm_base_url: str = "https://api.z.ai/api/paas/v4"
     glm_model: str = "glm-4.7"
@@ -98,7 +103,7 @@ class Settings(BaseSettings):
     voiceid_margin: float = 0.06           # and this much ahead of the next closest person
     voiceid_min_speech_s: float = 1.6      # speech needed before the first guess in a call
     voice_resume_grace_s: int = 25         # a dropped phone connection can re-join the same call within this time
-    voice_tool_wait_s: int = 25            # a call waits this long for a big job, then talks on and gets told when it is done
+    voice_tool_wait_s: int = 12            # v0.86 (was 25) a call waits this long for a big job, then talks on and gets told when it is done
     voice_tool_timeout_s: int = 60         # any other call tool is cut off after this
 
     # --- email (Baat/Chat can read your inbox and send approved replies). App password, not your login password. ---

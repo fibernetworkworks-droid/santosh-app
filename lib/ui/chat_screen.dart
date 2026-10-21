@@ -952,7 +952,8 @@ class _BazarCard extends StatelessWidget {
     final demo = v['demo'] == true;
     final result = v['result'] as Map?;
     final open = result?['open'] as Map?;
-    String chip = 'APPROVE KAREIN';
+    final money = (v['money'] as bool?) ?? (v['amount'] as String? ?? '').isNotEmpty;
+    String chip = money ? 'APPROVE KAREIN' : 'HAAN CHAHIYE';
     Color chipFg = C.warn;
     if (status == 'approved' || status == 'auto') { chip = 'APPROVED'; chipFg = C.ok; }
     if (status == 'rejected') { chip = 'CANCEL'; chipFg = C.muted; }
@@ -961,7 +962,8 @@ class _BazarCard extends StatelessWidget {
       child: Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            Icon(v['tier'] == 3 ? Icons.currency_rupee_rounded : Icons.shopping_bag_outlined, color: C.accent, size: 20),
+            Icon(v['tier'] == 3 ? Icons.currency_rupee_rounded : (money ? Icons.shopping_bag_outlined : Icons.touch_app_rounded),
+                color: C.accent, size: 20),
             const SizedBox(width: 8),
             Expanded(child: Text((v['title'] as String? ?? '').replaceFirst('[DEMO] ', ''),
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5))),
@@ -972,7 +974,7 @@ class _BazarCard extends StatelessWidget {
               child: Text('DEMO: test bill hai, asli paise nahi katenge.', style: TextStyle(color: C.warn, fontSize: 12.5, fontWeight: FontWeight.w600))),
           const SizedBox(height: 8),
           if ((v['payee'] as String? ?? '').isNotEmpty)
-            Text('Kisko: ${v['payee']}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+            Text('${money ? 'Kisko' : 'Kahan'}: ${v['payee']}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           for (final i in items.take(12))
             Padding(
@@ -989,14 +991,16 @@ class _BazarCard extends StatelessWidget {
               Text(v['amount'] as String, style: display(20, w: FontWeight.w700)),
             ]),
           ],
-          const SizedBox(height: 4),
-          Text(v['pay_method'] as String? ?? '', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+          if ((v['pay_method'] as String? ?? '').isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(v['pay_method'] as String, style: const TextStyle(color: C.muted, fontSize: 12.5)),
+          ],
           if (v['needs_pin'] == true && status == 'pending')
             const Text('UPI PIN sirf aapke UPI app mein daaliye. Hoola kabhi PIN nahi maangega.', style: TextStyle(color: C.muted, fontSize: 12)),
           if (status == 'pending') ...[
             const SizedBox(height: 10),
             Row(children: [
-              Expanded(child: GradientButton(label: busy ? 'Ho raha hai…' : 'Approve karein', height: 46, icon: Icons.check_rounded,
+              Expanded(child: GradientButton(label: busy ? 'Ho raha hai…' : (money ? 'Approve karein' : 'Haan, karo'), height: 46, icon: Icons.check_rounded,
                   onTap: busy ? null : () => showApproveSheet(context, app, v))),
               const SizedBox(width: 8),
               TextButton(onPressed: busy ? null : () => app.decideBazar(v['id'] as String, 'reject'), child: const Text('Cancel')),

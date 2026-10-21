@@ -169,7 +169,7 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
     final img = _cap;
     if (img == null) {
       return _capTried && !widget.inLive
-          ? OperatorFrame(app: widget.app, every: 1500)
+          ? OperatorFrame(app: widget.app, every: 900)
           : const SizedBox(height: 70, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
     }
     return Container(
@@ -462,7 +462,7 @@ class _OperatorTaskCardState extends State<OperatorTaskCard> {
         ].join(' · '), style: const TextStyle(color: C.faint, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
         if (live && status != 'queued') ...[
           const SizedBox(height: 8),
-          GestureDetector(onTap: () => openOperatorLive(context, widget.app), child: OperatorFrame(app: widget.app, every: 1500)),
+          GestureDetector(onTap: () => openOperatorLive(context, widget.app), child: OperatorFrame(app: widget.app, every: 900)),
           Row(children: [
             TextButton.icon(onPressed: () => openOperatorLive(context, widget.app), icon: const Icon(Icons.open_in_full_rounded, size: 16),
                 label: const Text('Live')),
@@ -564,7 +564,7 @@ class _OperatorLiveScreenState extends State<OperatorLiveScreen> {
             child: Text('${job['stage'] ?? ''}${'${job['site'] ?? ''}'.isNotEmpty ? ' · ${job['site']}' : ''}',
                 style: const TextStyle(color: C.muted, fontSize: 13)),
           ),
-        OperatorFrame(app: app, every: 800, onTapPage: (x, y) => _input('click', x: x, y: y)),
+        OperatorFrame(app: app, every: 500, onTapPage: (x, y) => _input('click', x: x, y: y)),
         const SizedBox(height: 6),
         const Text('Page par tap = aapka click. Hoola tab tak ruka rehta hai jab tak aap "Maine kar diya" na dabayein.',
             style: TextStyle(color: C.faint, fontSize: 11.5)),

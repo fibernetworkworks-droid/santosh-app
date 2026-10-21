@@ -17,6 +17,8 @@ const callCardKinds = {
   'hoola_knock', 'hoola_connect', 'hoola_msg', 'hoola_group', 'hoola_group_post', 'hoola_outbox', 'hoola_chain',
   'hoola_ticket', 'hoola_lesson', 'hoola_samaj', 'employee_ask', 'biz_handover', 'operator_ask', 'operator_task', 'studio', 'studio_approval', 'google_reconnect',
   'office_spend', 'office_nudge',
+  // v0.86 every card that waits for her answer shows inside the call too
+  'darzi_quote', 'darzi_ready', 'chai_plan', 'video_job', 'motion',
 };
 
 /// The live voice call, owned by the app (not by a screen): it keeps going while the owner opens Chat, Connect,

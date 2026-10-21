@@ -380,7 +380,9 @@ def card_of(ap: Approval, pack: Pack | None) -> dict[str, Any]:
     card = {"id": ap.id, "title": ap.title, "payee": ap.payee, "amount": rupees(ap.amount_paise) if ap.amount_paise else "",
             "amount_paise": ap.amount_paise, "items": items, "pay_method": ap.pay_method, "tier": ap.tier,
             "pack": pack.name if pack else "", "demo": ap.title.startswith("[DEMO]"), "status": ap.decision,
-            "needs_pin": ap.tier >= 3 or "UPI" in (ap.pay_method or "")}
+            "needs_pin": ap.tier >= 3 or "UPI" in (ap.pay_method or ""),
+            # v0.86 a step that moves no money (PC / website step, a send, a booking without price) gets the plain card
+            "money": bool(ap.amount_paise) or ap.tier >= 3 or bool(re.search(r"upi|card|wallet|pay|bank|cash", ap.pay_method or "", re.I))}
     if disclosures:
         card["disclosures"] = disclosures
     return card

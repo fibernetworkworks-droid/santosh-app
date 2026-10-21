@@ -135,7 +135,7 @@ class Hub:
 
     # ---------------- jobs ----------------
     async def call(self, tenant_id: str, action: str, args: dict[str, Any] | None = None,
-                   device_id: str | None = None, timeout: float | None = None) -> dict[str, Any]:
+                   device_id: str | None = None, timeout: float | None = None, log: bool = True) -> dict[str, Any]:
         args = args or {}
         conns = [c for c in self.online(tenant_id) if device_id in (None, c.device_id)]
         if not conns:
@@ -144,7 +144,12 @@ class Hub:
         if (conn.info or {}).get("paused"):
             raise PcError("Santosh Desktop is paused on the PC. Ask the user to press Resume there.")
         from . import service
-        job_id = service.log_job(tenant_id, conn.device_id, action, _summary(action, args))
+        if log:
+            job_id = service.log_job(tenant_id, conn.device_id, action, _summary(action, args))
+        else:   # v0.86 live-view frames: not written to the PC job log (one every second while Hoola thinks)
+            import secrets as _s
+            job_id = "live_" + _s.token_hex(6)
+            service = _NoLog()
         fut = asyncio.get_running_loop().create_future()
         self.pending[job_id] = (fut, conn.device_id)
         try:
@@ -187,6 +192,12 @@ class Hub:
 
 
 hub = Hub()
+
+
+class _NoLog:
+    @staticmethod
+    def finish_job(*_a, **_k) -> None:
+        return None
 
 
 def new_token() -> str:

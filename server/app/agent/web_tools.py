@@ -111,7 +111,7 @@ async def browse_result(ctx: Ctx, session_id, **_):
 
     from .. import browser
     try:
-        res = await asyncio.to_thread(browser.get, ctx.tenant_id, str(session_id), 20)
+        res = await asyncio.to_thread(browser.get, ctx.tenant_id, str(session_id), 4)
     except browser.BrowserError as e:
         raise ToolError(f"That browser task isn't available any more ({e}). Run browse_web again if needed.")
     res.pop("screenshot_jpeg_b64", None)

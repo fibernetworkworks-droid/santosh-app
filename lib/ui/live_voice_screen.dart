@@ -90,6 +90,8 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
         final cards = call.cards;
         if (cards.length > _seenCards) _cardsOpen = true;   // a new card: show it
         _seenCards = cards.length;
+        // v0.86 an open card tray takes the room of the work view and captions, so a card is never squeezed
+        final tray = cards.isNotEmpty && _cardsOpen;
         return Column(children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 14, 0),
@@ -111,7 +113,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
               child: Text('Doosre section mein jaane par bhi call chalti rahegi.',
                   style: TextStyle(color: C.faint, fontSize: 11.5, fontWeight: FontWeight.w600)),
             ),
-          Padding(padding: const EdgeInsets.only(top: 8), child: WorkTheatrePanel(app: app)),
+          if (!tray) Padding(padding: const EdgeInsets.only(top: 8), child: WorkTheatrePanel(app: app)),
           Expanded(
             child: Stack(children: [
               Positioned.fill(
@@ -143,7 +145,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
                     style: TextStyle(color: call.speakerIsOwner ? C.ok : C.accentSoft, fontSize: 12.5, fontWeight: FontWeight.w700)),
               ]),
             ),
-          _captions(),
+          if (!tray) _captions(),
           if (call.fileNote != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
@@ -199,7 +201,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
       );
     }
     return Container(
-      margin: const EdgeInsets.fromLTRB(10, 4, 10, 40),
+      margin: const EdgeInsets.fromLTRB(8, 4, 8, 6),
       decoration: BoxDecoration(
         color: const Color(0xF0151030),
         borderRadius: BorderRadius.circular(22),

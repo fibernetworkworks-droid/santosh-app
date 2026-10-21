@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from .. import artifacts
+from ..config import get_settings
 from .tools import Ctx, ToolError
 
 ARTIFACT_TOOLS = [
@@ -32,7 +33,7 @@ ARTIFACT_LABELS = {"artifact_make": "Page bana raha hoon", "artifact_list": "Aap
 async def artifact_make(ctx: Ctx, request, artifact_id=None, data=None, _wait=None, **_):
     try:
         r = await artifacts.make(ctx.tenant_id, ctx.conversation_id, str(request or ""), artifact_id=str(artifact_id or ""),
-                                 data=str(data or "")[:60000], wait=150 if _wait is None else float(_wait))
+                                 data=str(data or "")[:60000], wait=get_settings().artifact_wait_seconds if _wait is None else float(_wait))
     except (ValueError, RuntimeError) as e:
         raise ToolError(str(e))
     if r["status"] == "building":

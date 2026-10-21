@@ -6,6 +6,7 @@ import asyncio
 from ..bazar import service
 from ..bazar.connectors.base import ToolError as BazarError
 from ..bazar.connectors.pc import SCHEMAS
+from ..config import get_settings
 from .tools import Ctx, ToolError
 
 PACK = "pc-bridge"
@@ -56,7 +57,7 @@ async def pc_do(ctx: Ctx, task, _wait=None, **_):
     if len(task) < 3:
         raise ToolError("Batayiye PC par kya karna hai")
     try:
-        r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, wait=150 if _wait is None else float(_wait))
+        r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, wait=get_settings().pc_wait_seconds if _wait is None else float(_wait))
     except PermissionError as e:
         raise ToolError(str(e))
     except RuntimeError as e:
@@ -78,7 +79,7 @@ async def pc_task_result(ctx: Ctx, session_id, **_):
         raise ToolError("That PC task isn't available any more.")
     if not op.done_event.is_set():
         try:
-            await asyncio.wait_for(asyncio.shield(op.done_event.wait()), 20)
+            await asyncio.wait_for(asyncio.shield(op.done_event.wait()), 4)
         except asyncio.TimeoutError:
             pass
     r = op.live()

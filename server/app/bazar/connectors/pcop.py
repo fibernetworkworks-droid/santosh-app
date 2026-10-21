@@ -25,9 +25,8 @@ class PcOpExecutor:
         what = op.pending["what"]
         return NeedsApproval(
             tier=2, title=f"Mera PC: {what[:70]}", payee="Mera PC", amount_paise=0,
-            items=[{"name": what}, {"name": f"Abhi PC par: {op.window or '-'}"},
-                   {"name": "Santosh password, OTP aur payment kabhi nahi bharta."}],
-            pay_method="Santosh on your PC", preview={"message": f"Approve to let Santosh do this on your PC: {what}"},
+            items=[{"name": what}, {"name": f"Abhi PC par: {op.window or '-'}"}],
+            pay_method="", preview={"message": f"Approve to let Santosh do this on your PC: {what}"},
             action={"executor": "pcop", "pack_id": pack.id, "name": "approve_step",
                     "args": {"session_id": op.id, "pending_id": op.pending["id"]}})
 
