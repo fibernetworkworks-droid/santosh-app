@@ -38,6 +38,8 @@ DUTIES: dict[str, dict] = {
               "prefix": (), "tools": {"chai", "chai_dekho"}},
     "office_admin": {"label": "Office sambhalna", "say": "saamaan, repair, AMC / renewal, team ki deadline, petty cash, hafte ka note (kharcha aapki haan se)",
                      "prefix": (), "tools": {"office", "office_dekho"}},
+    "typing": {"label": "Typing aur anuvaad", "say": "letter / application likhna, voice se type, translation, grammar (sign aapki haan se)",
+               "prefix": (), "tools": {"lekhak", "lekhak_dekho", "make_document", "pdf_tools", "file_read"}},
     "research": {"label": "Jaankari dhoondhna", "say": "web, maps, mausam, public APIs",
                  "prefix": ("maps_", "api_"), "tools": {"google_search", "open_website", "browse_web", "browse_result", "get_weather",
                                                        "memory_search"}},
@@ -76,6 +78,9 @@ ROLES: dict[str, dict] = {
     "office_manager": {"label": "Office manager (Daftar sahayak)",
                        "say": "Saamaan aur reorder, repair ticket, AMC / licence / rent renewal, team ki deadline, petty cash, hafte ka office note",
                        "duties": ["office_admin", "reminders", "email", "records", "appointments", "research"]},
+    "typist": {"label": "Typist aur translator (Lekhak sahayak)",
+               "say": "Aapki awaaz se letter / application, Hindi-Marathi-English anuvaad, grammar, photo / Kruti Dev se Unicode typing",
+               "duties": ["typing", "records", "email", "research"]},
     "custom": {"label": "Apna kaam", "say": "Aap khud chuniye Hoola kaun se kaam karega", "duties": []},
 }
 
@@ -119,6 +124,10 @@ PRESETS: dict[str, dict] = {
                        "rules": ["Koi bhi kharcha (order, repair, renewal) sirf owner ki haan se.",
                                  "Team ko yaad-dihani ka message draft banana; owner khud bhejengi.",
                                  "Licence / NOC ki tareekh kagaz se lena, andaza nahi."]},
+    "typist": {"label": "Typing / DTP / anuvaad centre", "role": "typist", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
+               "about_hint": "Kaunse kaam (application, affidavit draft, translation, Kruti Dev), bhashayein, daam",
+               "rules": ["Letter mein sirf wahi baat jo graahak / owner ne kahi; kuch bhi apne se nahi jodna.",
+                         "Sign aur stamp sirf owner ki haan se.", "Court / passport ke liye notary / certified translator ki zaroorat batana."]},
 }
 
 LEVELS = ("seekh", "saathi", "bharosa")
@@ -144,7 +153,7 @@ READ = {
     "tv_channel", "employee", "india_info",
     "biz_free_slots", "biz_my_appointments", "biz_ticket_status", "biz_my_dues", "biz_handover", "biz_note",
     "darzi_dekho", "biz_order_status", "chai_dekho",
-    "darzi_dekho", "biz_order_status", "office_dekho",
+    "darzi_dekho", "biz_order_status", "office_dekho", "lekhak_dekho",
 }
 BIG = {
     "email_bulk", "email_delete", "email_forward", "drive_trash", "drive_share", "sheet_share", "form_share", "slides_share",

@@ -33,6 +33,7 @@ import 'shop_screen.dart';
 import 'id_locker_screen.dart';
 import 'chai_screen.dart';
 import 'darzi_screen.dart';
+import 'lekhak_screen.dart';
 import 'office_screen.dart';
 import 'employee_screen.dart';
 
@@ -205,6 +206,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Saamaan, repair, renewal, team ki deadline, petty cash, hafte ka note; kharcha aapki Haan se'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OfficeScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.edit_document, color: C.accent),
+              title: Text('${app.aName} · Typist aur translator', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Boliye, letter taiyaar; Hindi / Marathi / English anuvaad, grammar, Kruti Dev; sign aapki Haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LekhakScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

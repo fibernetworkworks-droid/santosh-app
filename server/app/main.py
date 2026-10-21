@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.86.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.87.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -131,7 +131,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -3117,6 +3117,125 @@ def office_spend_decide(spend_id: str, body: dict, tenant: str = Depends(current
 def office_note(body: dict, tenant: str = Depends(current_tenant)):
     from .office import service as office
     return _office(office.weekly_note, tenant, bool(body.get("file", True)), str(body.get("conversation_id") or ""))
+
+
+# ---------------------------------------------------------------- v0.87 Lekhak Sahayak (typist + translator)
+def _lekhak(fn, *a, **k):
+    from .lekhak import service as lekhak
+    try:
+        return fn(*a, **k)
+    except lekhak.LekhakError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/lekhak", dependencies=[Depends(require_key)])
+def lekhak_all(q: str = "", tenant: str = Depends(current_tenant)):
+    from .lekhak import service as lekhak
+    return {"docs": lekhak.docs(tenant, q, 80), "contacts": lekhak.contacts(tenant), "settings": lekhak.settings(tenant),
+            "kinds": lekhak.KINDS, "langs": lekhak.LANGS}
+
+
+@app.get("/api/lekhak/docs/{doc_id}", dependencies=[Depends(require_key)])
+def lekhak_doc(doc_id: str, tenant: str = Depends(current_tenant)):
+    from .lekhak import service as lekhak
+    return _lekhak(lekhak.get_doc, tenant, doc_id)
+
+
+@app.post("/api/lekhak/write", dependencies=[Depends(require_key)])
+async def lekhak_write(body: dict, tenant: str = Depends(current_tenant)):
+    from .lekhak import service as lekhak
+    return await asyncio.to_thread(_lekhak, lekhak.write_letter, tenant, str(body.get("dictation") or ""), str(body.get("kind") or ""),
+                                   str(body.get("lang") or ""), str(body.get("to") or ""), body.get("to_lines"),
+                                   str(body.get("subject") or ""), str(body.get("reference") or ""), body.get("enclosures"),
+                                   str(body.get("file_id") or ""), "app", str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/lekhak/translate", dependencies=[Depends(require_key)])
+async def lekhak_translate(body: dict, tenant: str = Depends(current_tenant)):
+    from .lekhak import service as lekhak
+    return await asyncio.to_thread(_lekhak, lekhak.translate, tenant, str(body.get("text") or ""), str(body.get("to") or ""),
+                                   str(body.get("src") or ""), str(body.get("file_id") or ""), str(body.get("doc") or ""),
+                                   str(body.get("register") or "formal"), True, str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/lekhak/grammar", dependencies=[Depends(require_key)])
+async def lekhak_grammar(body: dict, tenant: str = Depends(current_tenant)):
+    from .lekhak import service as lekhak
+    return await asyncio.to_thread(_lekhak, lekhak.fix_grammar, tenant, str(body.get("text") or ""), str(body.get("lang") or ""),
+                                   str(body.get("doc") or ""), str(body.get("file_id") or ""), str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/lekhak/type", dependencies=[Depends(require_key)])
+async def lekhak_type(body: dict, tenant: str = Depends(current_tenant)):
+    from .lekhak import service as lekhak
+    return await asyncio.to_thread(_lekhak, lekhak.type_text, tenant, str(body.get("text") or ""), str(body.get("file_id") or ""),
+                                   str(body.get("lang") or ""), str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/lekhak/krutidev", dependencies=[Depends(require_key)])
+def lekhak_krutidev(body: dict):
+    from .lekhak import service as lekhak
+    return lekhak.krutidev(str(body.get("text") or ""), str(body.get("to") or "unicode"))
+
+
+@app.post("/api/lekhak/docs/{doc_id}/revise", dependencies=[Depends(require_key)])
+async def lekhak_revise(doc_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .lekhak import service as lekhak
+    return await asyncio.to_thread(_lekhak, lekhak.revise, tenant, doc_id, str(body.get("instruction") or ""),
+                                   str(body.get("conversation_id") or ""))
+
+
+@app.put("/api/lekhak/docs/{doc_id}", dependencies=[Depends(require_key)])
+def lekhak_edit(doc_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    """She edited the text herself in the app."""
+    from .lekhak import service as lekhak
+    return _lekhak(lekhak.edit, tenant, doc_id, str(body.get("text") or ""), body.get("parts"), str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/lekhak/docs/{doc_id}/files", dependencies=[Depends(require_key)])
+async def lekhak_files(doc_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .lekhak import service as lekhak
+    return await asyncio.to_thread(_lekhak, lekhak.make_files, tenant, doc_id, str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/lekhak/docs/{doc_id}/sign_request", dependencies=[Depends(require_key)])
+def lekhak_sign_request(doc_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .lekhak import service as lekhak
+    return _lekhak(lekhak.sign_request, tenant, doc_id, str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/lekhak/docs/{doc_id}/sign", dependencies=[Depends(require_key)])
+async def lekhak_sign(doc_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap on the sign card (only from the app): approve + mode paper | image, the card's hash."""
+    from .lekhak import service as lekhak
+    return await asyncio.to_thread(_lekhak, lekhak.decide_sign, tenant, doc_id, bool(body.get("approve")),
+                                   str(body.get("mode") or "paper"), str(body.get("conversation_id") or ""), str(body.get("hash") or ""))
+
+
+@app.post("/api/lekhak/docs/{doc_id}/copy", dependencies=[Depends(require_key)])
+def lekhak_copy(doc_id: str, tenant: str = Depends(current_tenant)):
+    from .lekhak import service as lekhak
+    return _lekhak(lekhak.copy_doc, tenant, doc_id)
+
+
+@app.post("/api/lekhak/docs/{doc_id}/share", dependencies=[Depends(require_key)])
+def lekhak_share(doc_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .lekhak import service as lekhak
+    return _lekhak(lekhak.share_draft, tenant, doc_id, str(body.get("phone") or ""), str(body.get("email") or ""))
+
+
+@app.post("/api/lekhak/contacts", dependencies=[Depends(require_key)])
+def lekhak_contact(body: dict, tenant: str = Depends(current_tenant)):
+    from .lekhak import service as lekhak
+    return _lekhak(lekhak.contact_save, tenant, str(body.get("name") or ""), body.get("lines"), str(body.get("lang") or ""),
+                   str(body.get("email") or ""), str(body.get("phone") or ""))
+
+
+@app.put("/api/lekhak/settings", dependencies=[Depends(require_key)])
+def lekhak_settings(body: dict, tenant: str = Depends(current_tenant)):
+    from .lekhak import service as lekhak
+    keys = ("my_name", "my_lines", "my_phone", "place", "gender", "lang", "letterhead", "keep", "rules", "glossary", "digits", "sign_file")
+    return _lekhak(lekhak.save_settings, tenant, **{k: body[k] for k in keys if k in body})
 
 
 @app.get("/api/agent/tasks", dependencies=[Depends(require_key)])

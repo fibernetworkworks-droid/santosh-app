@@ -649,6 +649,7 @@ def init_db(url: str | None = None):
     from .galla import service as _galla  # noqa: F401
     from .chai import service as _chai  # noqa: F401
     from .office import service as _office  # noqa: F401
+    from .lekhak import service as _lekhak  # noqa: F401
     from .agent import pakka as _pakka  # noqa: F401
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401

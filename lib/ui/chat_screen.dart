@@ -9,6 +9,7 @@ import '../state.dart';
 import 'employee_inbox.dart';
 import 'chai_screen.dart';
 import 'darzi_screen.dart';
+import 'lekhak_screen.dart';
 import 'office_screen.dart';
 import 'employee_screen.dart';
 import 'video_editor.dart';
@@ -553,6 +554,10 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return OfficeDayCard(v: it.data, app: app);
     case 'office_note':
       return OfficeNoteCard(v: it.data, app: app);
+    case 'lekhak_doc':
+      return LekhakDocCard(key: ValueKey('ld${it.data['id']}'), v: it.data, app: app);
+    case 'lekhak_sign':
+      return LekhakSignCard(key: ValueKey('ls${it.data['id']}'), v: it.data, app: app);
     case 'employee_report':
       return EmployeeReportCard(v: it.data, app: app);
     case 'biz_handover':

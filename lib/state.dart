@@ -269,6 +269,8 @@ class Santosh extends ChangeNotifier {
   int chaiTick = 0;                           // bumps on galla / chai events (the Chai screen refreshes)
   final Map<String, FeedItem> _officeCards = {}; // v0.85 Daftar: spend cards by id, nudge drafts by id, updated in place
   int officeTick = 0;                          // bumps on any office event (the Office screen refreshes)
+  final Map<String, FeedItem> _lekhakCards = {}; // v0.87 Lekhak: one doc card + one sign card per document, updated in place
+  int lekhakTick = 0;                          // bumps on any lekhak event (the Lekhak screen refreshes)
   List<Map<String, dynamic>> get pendingApprovals =>
       [for (final it in _bazar.values) if ((it.data['status'] ?? 'pending') == 'pending') it.data];
   int bazarLinkedTick = 0;                    // bumps when an app account got linked (Apps screen refreshes)
@@ -1051,6 +1053,21 @@ class Santosh extends ChangeNotifier {
         break;
       case 'office':
         officeTick++;
+        break;
+      case 'lekhak_doc':
+      case 'lekhak_sign':
+        final lekhakKey = '${ev.kind}${p['id']}';
+        final lc = _lekhakCards[lekhakKey];
+        if (lc != null) {
+          lc.data = {...lc.data, ...p};
+        } else {
+          _lekhakCards[lekhakKey] = FeedItem(ev.kind, Map<String, dynamic>.from(p));
+          feed.add(_lekhakCards[lekhakKey]!);
+        }
+        if (ev.kind == 'lekhak_sign' && p['status'] == 'waiting_sign' && inBackground && !_replaying && !pushOn) {
+          Device.instance.showNow('$aName: letter sign karna hai?', '${p['number'] ?? ''} ${p['title'] ?? ''}');
+        }
+        lekhakTick++;
         break;
       case 'employee_report':
         feed.add(FeedItem('employee_report', Map<String, dynamic>.from(p)));

@@ -486,3 +486,10 @@ from .office_tools import OFFICE_HANDLERS, OFFICE_LABELS, OFFICE_TOOLS  # noqa: 
 TOOLS.extend(OFFICE_TOOLS)
 TOOL_LABELS.update(OFFICE_LABELS)
 HANDLERS.update(OFFICE_HANDLERS)
+
+# v0.87 Lekhak Sahayak (typist + translator coworker)
+from .lekhak_tools import LEKHAK_HANDLERS, LEKHAK_LABELS, LEKHAK_TOOLS  # noqa: E402
+
+TOOLS.extend(LEKHAK_TOOLS)
+TOOL_LABELS.update(LEKHAK_LABELS)
+HANDLERS.update(LEKHAK_HANDLERS)

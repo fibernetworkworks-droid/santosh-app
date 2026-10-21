@@ -631,6 +631,36 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/office/spends/$id', body: {'approve': approve, if (amount != null) 'amount': amount}) as Map);
   Future<Map<String, dynamic>> officeNote({bool file = false, String conversationId = ''}) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/office/note', body: {'file': file, 'conversation_id': conversationId}) as Map);
+  // ---- v0.87 Lekhak Sahayak (typist + translator) ----
+  Future<Map<String, dynamic>> lekhakAll() async => Map<String, dynamic>.from(await _send('GET', '/api/lekhak') as Map);
+  Future<Map<String, dynamic>> lekhakDoc(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/lekhak/docs/$id') as Map);
+  Future<Map<String, dynamic>> lekhakWrite(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/lekhak/write', body: body, timeout: const Duration(seconds: 150)) as Map);
+  Future<Map<String, dynamic>> lekhakTranslate(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/lekhak/translate', body: body, timeout: const Duration(seconds: 200)) as Map);
+  Future<Map<String, dynamic>> lekhakGrammar(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/lekhak/grammar', body: body, timeout: const Duration(seconds: 120)) as Map);
+  Future<Map<String, dynamic>> lekhakType(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/lekhak/type', body: body, timeout: const Duration(seconds: 120)) as Map);
+  Future<Map<String, dynamic>> lekhakKrutidev(String text, {bool toKrutidev = false}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/lekhak/krutidev', body: {'text': text, 'to': toKrutidev ? 'krutidev' : 'unicode'}) as Map);
+  Future<Map<String, dynamic>> lekhakRevise(String id, String instruction, {String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/lekhak/docs/$id/revise', body: {'instruction': instruction, 'conversation_id': conversationId},
+          timeout: const Duration(seconds: 120)) as Map);
+  Future<Map<String, dynamic>> lekhakEdit(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/lekhak/docs/$id', body: body) as Map);
+  Future<Map<String, dynamic>> lekhakFiles(String id, {String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/lekhak/docs/$id/files', body: {'conversation_id': conversationId}, timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> lekhakSignRequest(String id, {String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/lekhak/docs/$id/sign_request', body: {'conversation_id': conversationId}) as Map);
+  Future<Map<String, dynamic>> lekhakSign(String id, bool approve, {String mode = 'paper', String hash = '', String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/lekhak/docs/$id/sign',
+          body: {'approve': approve, 'mode': mode, 'hash': hash, 'conversation_id': conversationId}, timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> lekhakCopy(String id) async => Map<String, dynamic>.from(await _send('POST', '/api/lekhak/docs/$id/copy', body: {}) as Map);
+  Future<Map<String, dynamic>> lekhakShare(String id, {String phone = '', String email = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/lekhak/docs/$id/share', body: {'phone': phone, 'email': email}) as Map);
+  Future<Map<String, dynamic>> lekhakContact(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('POST', '/api/lekhak/contacts', body: body) as Map);
+  Future<Map<String, dynamic>> lekhakSettings(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('PUT', '/api/lekhak/settings', body: body) as Map);
   // v0.78 Pakka kaam: task log + lessons (failure -> what worked)
   Future<Map<String, dynamic>> agentTasks({int limit = 30}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/agent/tasks?limit=$limit') as Map);
