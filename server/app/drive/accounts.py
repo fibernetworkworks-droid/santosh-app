@@ -40,11 +40,15 @@ def _token(account_id: str, force: bool) -> str:
                                                      "client_secret": st.google_oauth_client_secret,
                                                      "refresh_token": refresh, "grant_type": "refresh_token"})
     except Exception as e:
+        addr = ""
         with session() as s:
             a = s.get(DriveAccount, account_id)
             if a:
                 a.status, a.last_error = "error", str(e)[:500]
-        raise DriveError(f"Google login refresh nahi hua: {e}")
+                addr = a.address
+        from ..google_auth import reconnect_message
+        raise DriveError(reconnect_message(addr, str(e)) if "invalid_grant" in str(e)
+                         else f"Google login refresh nahi hua: {e}")
     with session() as s:
         a = s.get(DriveAccount, account_id)
         a.access_token_enc = acc.encrypt(tok["access_token"])
@@ -103,6 +107,26 @@ def clients(tenant: str) -> list[DriveClient]:
     return out
 
 
+def why_not(tenant: str) -> str:
+    """Why there is no Drive for her, in her words (v0.70)."""
+    from ..google_auth import _google_conn, reconnect_message
+    with session() as s:
+        c = _google_conn(s, tenant)
+        if c is not None and c.last_error:
+            return reconnect_message(c.account_email, c.last_error)
+        if c is not None and DRIVE_SCOPE not in (c.scopes or "").split():
+            return (f"Aapne Google ({c.account_email}) se sign in kiya hai, par us waqt Google Drive ki permission (checkbox) "
+                    "tick nahi hui thi, isliye Hoola Drive nahi dekh sakta. App mein Profile > Google Drive > 'Google Drive "
+                    "jodiye' dabaiye aur Google ke page par 'See, edit, create and delete all of your Google Drive files' "
+                    "wala box tick kijiye.")
+        if c is not None and not c.refresh_token_enc:
+            return reconnect_message(c.account_email, "no refresh token")
+    if not oauth_ready():
+        return ("Is server par Google sign-in set nahi hai (GOOGLE_OAUTH_CLIENT_ID / SECRET, PUBLIC_BASE_URL, SECRET_KEY), "
+                "isliye Drive nahi jud sakta. Server set hone ke baad app mein Profile > Google Drive > 'Google Drive jodiye'.")
+    return ("Aapka Google Drive abhi Hoola se juda nahi hai. App mein Profile > Google Drive > 'Google Drive jodiye' dabaiye.")
+
+
 def has_drive(tenant: str) -> bool:
     try:
         return bool(clients(tenant))
@@ -113,8 +137,7 @@ def has_drive(tenant: str) -> bool:
 def get_client(tenant: str, which: str | None = None) -> DriveClient:
     cs = clients(tenant)
     if not cs:
-        raise NotConnected("Aapka Google Drive abhi Santosh se juda nahi hai. App mein Profile > Google Drive > "
-                           "'Google Drive jodiye' dabaiye.")
+        raise NotConnected(why_not(tenant))
     if not which:
         return cs[0]
     w = which.strip().lower()
@@ -127,6 +150,11 @@ def get_client(tenant: str, which: str | None = None) -> DriveClient:
 def views(tenant: str) -> list[dict[str, Any]]:
     with session() as s:
         status = {a.id: (a.status, a.last_error) for a in s.scalars(select(DriveAccount).where(DriveAccount.tenant_id == tenant))}
+    from ..google_auth import _google_conn
+    with session() as s:
+        gc = _google_conn(s, tenant)
+        if gc is not None and gc.last_error:
+            status["google"] = ("error", gc.last_error)
     out = []
     for i, c in enumerate(clients(tenant)):
         st, err = status.get(c.key, ("ok", ""))

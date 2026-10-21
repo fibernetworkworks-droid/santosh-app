@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.69.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.70.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -1423,6 +1423,13 @@ def video_file(job_id: str, name: str, exp: int = 0, sig: str = ""):
         raise HTTPException(404, "Yeh video link purana ho gaya ya galat hai.")
     media = "video/mp4" if p.suffix == ".mp4" else "image/png" if p.suffix == ".png" else None
     return FileResponse(str(p), media_type=media, filename=p.name)
+
+
+@app.get("/api/google/status", dependencies=[Depends(require_key)])
+def google_status(live: bool = True, tenant: str = Depends(current_tenant)):
+    """v0.70 Why her Google Drive / Gmail / Calendar do (not) work, with the fix (no tokens shown)."""
+    from . import google_check
+    return google_check.diagnose(tenant, live)
 
 
 # ---------------- v0.68 Hoola Video Studio ----------------

@@ -63,6 +63,52 @@ class _DriveScreenState extends State<DriveScreen> {
     }
   }
 
+  Map<String, dynamic>? _check;
+  bool _checking = false;
+
+  Future<void> _diagnose() async {
+    setState(() => _checking = true);
+    try {
+      final r = await app.api!.googleStatus();
+      if (mounted) setState(() => _check = r);
+      _load();
+    } catch (e) {
+      _snack(e.toString());
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
+  Widget _checkView(Map<String, dynamic> c) {
+    final ok = c['ok'] == true;
+    final signin = c['signin'] is Map ? Map<String, dynamic>.from(c['signin'] as Map) : null;
+    final allowed = signin?['allowed'] is Map ? Map<String, dynamic>.from(signin!['allowed'] as Map) : const <String, dynamic>{};
+    final problems = List<String>.from((c['problems'] as List? ?? const []).map((e) => '$e'));
+    return Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Icon(ok ? Icons.check_circle_rounded : Icons.error_outline_rounded, color: ok ? C.teal : C.bad),
+        const SizedBox(width: 8),
+        Expanded(child: Text(ok ? 'Google Drive theek chal raha hai' : 'Drive nahi chal raha',
+            style: const TextStyle(fontWeight: FontWeight.w700))),
+      ]),
+      if (signin != null) ...[
+        const SizedBox(height: 8),
+        Text('Sign-in: ${signin['email'] ?? ''}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+        const SizedBox(height: 4),
+        Wrap(spacing: 6, runSpacing: 4, children: [
+          for (final e in allowed.entries)
+            Chip(
+              visualDensity: VisualDensity.compact,
+              avatar: Icon(e.value == true ? Icons.check_rounded : Icons.close_rounded, size: 15, color: e.value == true ? C.teal : C.bad),
+              label: Text(e.key, style: const TextStyle(fontSize: 12)),
+            ),
+        ]),
+      ],
+      for (final p in problems)
+        Padding(padding: const EdgeInsets.only(top: 8), child: Text(p, style: const TextStyle(color: C.chip, fontSize: 13))),
+    ]));
+  }
+
   Future<void> _remove(String key) async {
     try {
       final r = await app.api!.driveRemove(key);
@@ -145,6 +191,12 @@ class _DriveScreenState extends State<DriveScreen> {
                       style: TextStyle(color: C.faint, fontSize: 12)),
                 ),
             ],
+            if (_loaded) ...[
+              const SizedBox(height: 10),
+              GlassButton(label: _checking ? 'Jaanch ho rahi hai...' : 'Jaanch karo: Drive kyun nahi chal raha?',
+                  icon: Icons.health_and_safety_outlined, height: 44, onTap: _checking ? null : _diagnose),
+              if (_check != null) Padding(padding: const EdgeInsets.only(top: 10), child: _checkView(_check!)),
+            ],
             if (recent.isNotEmpty) ...[
               const SizedBox(height: 18),
               const Text('Haal ki files', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -176,6 +228,44 @@ class _DriveScreenState extends State<DriveScreen> {
           ]),
         ),
       ),
+    );
+  }
+}
+
+
+/// v0.70 Google refused her sign-in (expired / revoked): one card in the chat (and call) with the fix.
+class GoogleReconnectCard extends StatelessWidget {
+  const GoogleReconnectCard({super.key, required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Row(children: [
+          Icon(Icons.link_off_rounded, color: C.warn),
+          SizedBox(width: 8),
+          Expanded(child: Text('Google dobara jodiye', style: TextStyle(fontWeight: FontWeight.w700))),
+        ]),
+        const SizedBox(height: 6),
+        Text('${v['text'] ?? ''}', style: const TextStyle(color: C.chip, fontSize: 13)),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: GradientButton(label: 'Google jodiye', icon: Icons.add_to_drive_rounded, height: 44, onTap: () async {
+            try {
+              final url = await app.api!.driveLinkUrl();
+              await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+            } catch (e) {
+              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+            }
+          })),
+          const SizedBox(width: 8),
+          GlassButton(label: 'Jaanch', icon: Icons.health_and_safety_outlined, height: 44,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DriveScreen(app: app)))),
+        ]),
+      ])),
     );
   }
 }

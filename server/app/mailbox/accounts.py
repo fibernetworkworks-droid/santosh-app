@@ -104,8 +104,8 @@ def _signin_token(tenant: str):
         if creds is None:
             raise NotConnected("Google sign-in nahi mila.")
         if force:
-            from google.auth.transport.requests import Request
-            creds.refresh(Request())
+            google_auth.refresh(creds, tenant)
+            google_auth.save_token(tenant, creds)
         return creds.token
     return token
 

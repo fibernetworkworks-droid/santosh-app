@@ -153,6 +153,7 @@ async def finish_google(code: str, state: str) -> dict:
         if tok.get("refresh_token"):                 # Google omits it on re-consent sometimes; keep the old one
             conn.refresh_token_enc = encrypt(tok["refresh_token"])
         conn.scopes = tok.get("scope", " ".join(GOOGLE_SCOPES))
+        conn.last_error = None                       # a fresh sign-in clears an old "login expired"
         conn.expiry = expiry
     sess_token = issue_session(uid)
     return {"session_token": sess_token, "user_id": uid, "email": email, "name": info.get("name", "")}

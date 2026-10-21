@@ -15,7 +15,7 @@ const callCardKinds = {
   'bazar', 'email', 'pc_file', 'artifact', 'open', 'link', 'browser', 'calendar_event', 'sheet', 'form', 'slides',
   'notebook', 'youtube', 'app_check', 'photos_pick', 'campaign',
   'hoola_knock', 'hoola_connect', 'hoola_msg', 'hoola_group', 'hoola_group_post', 'hoola_outbox', 'hoola_chain',
-  'hoola_ticket', 'hoola_lesson', 'hoola_samaj', 'employee_ask', 'biz_handover', 'operator_ask', 'operator_task', 'studio', 'studio_approval',
+  'hoola_ticket', 'hoola_lesson', 'hoola_samaj', 'employee_ask', 'biz_handover', 'operator_ask', 'operator_task', 'studio', 'studio_approval', 'google_reconnect',
 };
 
 /// The live voice call, owned by the app (not by a screen): it keeps going while the owner opens Chat, Connect,

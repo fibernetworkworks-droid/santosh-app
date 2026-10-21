@@ -184,6 +184,11 @@ def _doc_create(title: str, content: str, tenant_id=None):
 
 def _explain(e) -> str:
     msg = str(e)
+    from .google_auth import GoogleReconnect, reconnect_message
+    if isinstance(e, GoogleReconnect):
+        return msg
+    if "invalid_grant" in msg or type(e).__name__ == "RefreshError":
+        return reconnect_message("", msg)
     if "403" in msg or "permission" in msg.lower() or "insufficient" in msg.lower():
         return ("Santosh ke paas is file/folder ki permission nahi hai. Drive mein woh folder ya file service account ki "
                 "email ko 'Editor' banakar share kijiye.")

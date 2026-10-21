@@ -402,6 +402,8 @@ class Api {
   Future<String> sheetsLinkUrl() => _gLink('sheets');
   Future<Map<String, dynamic>> sheetsRemove(String key) => _gRemove('sheets', key);
   Future<Map<String, dynamic>> driveState() => _gState('drive');
+  // v0.70 why Google Drive / Gmail / Calendar do (not) work, with the fix
+  Future<Map<String, dynamic>> googleStatus() async => Map<String, dynamic>.from(await _send('GET', '/api/google/status') as Map);
   Future<String> driveLinkUrl() => _gLink('drive');
   Future<Map<String, dynamic>> driveRemove(String key) => _gRemove('drive', key);
   Future<Map<String, dynamic>> formsState() => _gState('forms');

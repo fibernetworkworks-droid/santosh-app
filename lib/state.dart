@@ -903,6 +903,10 @@ class Santosh extends ChangeNotifier {
         }
         studioTick++;
         break;
+      case 'google_reconnect':
+        feed.add(FeedItem('google_reconnect', Map<String, dynamic>.from(p)));
+        if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Google dobara jodiye', '${p['text'] ?? ''}');
+        break;
       case 'studio_approval':
         final sa = '${p['id']}';
         final sq = _studioAsks[sa];

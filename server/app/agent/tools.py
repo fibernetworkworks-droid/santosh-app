@@ -213,6 +213,35 @@ HANDLERS = {
 }
 
 
+_reconnect_told: dict[str, float] = {}
+
+
+def _google_refused(ctx: Ctx, e: BaseException) -> str:
+    """Her Google sign-in was refused (expired / revoked): one clear line for the model + a card to connect again."""
+    from ..google_auth import GoogleReconnect, reconnect_message
+    try:
+        from google.auth.exceptions import RefreshError
+    except Exception:          # pragma: no cover
+        RefreshError = ()      # type: ignore
+    if isinstance(e, GoogleReconnect):
+        msg = str(e)
+    elif RefreshError and isinstance(e, RefreshError):
+        from ..google_auth import mark_error
+        mark_error(ctx.tenant_id, str(e))
+        msg = reconnect_message("", str(e))
+    else:
+        return ""
+    import time as _t
+    if _t.time() - _reconnect_told.get(ctx.tenant_id, 0) > 1800 and ctx.conversation_id:
+        _reconnect_told[ctx.tenant_id] = _t.time()
+        try:
+            from ..events import bus
+            bus.publish(ctx.conversation_id, "google_reconnect", {"text": msg})
+        except Exception:
+            pass
+    return msg
+
+
 async def dispatch(name: str, args: dict, ctx: Ctx):
     h = HANDLERS.get(name)
     if not h:
@@ -229,6 +258,9 @@ async def dispatch(name: str, args: dict, ctx: Ctx):
         out = await h(ctx, **(args or {}))
     except Exception as e:
         employee.after(ctx, name, args or {}, False, str(e)[:200])
+        msg = _google_refused(ctx, e)
+        if msg:        # v0.70: an expired Google sign-in used to surface as a raw "invalid_grant" crash
+            raise ToolError(msg + " (Tell her this plainly in one or two lines and don't retry this tool now.)") from None
         raise
     employee.after(ctx, name, args or {}, not (isinstance(out, dict) and out.get("error")))
     return out
@@ -413,3 +445,10 @@ from .studio_tools import STUDIO_HANDLERS, STUDIO_LABELS, STUDIO_TOOLS  # noqa: 
 TOOLS.extend(STUDIO_TOOLS)
 TOOL_LABELS.update(STUDIO_LABELS)
 HANDLERS.update(STUDIO_HANDLERS)
+
+# v0.70 Google connection check
+from .google_tools import GOOGLE_HANDLERS, GOOGLE_LABELS, GOOGLE_TOOLS  # noqa: E402
+
+TOOLS.extend(GOOGLE_TOOLS)
+TOOL_LABELS.update(GOOGLE_LABELS)
+HANDLERS.update(GOOGLE_HANDLERS)

@@ -16,6 +16,7 @@ import 'approve_sheet.dart';
 import 'artifact_screen.dart';
 import 'browser_live.dart';
 import 'calendar_screen.dart';
+import 'drive_screen.dart';
 import 'sheets_screen.dart';
 import 'slides_screen.dart';
 import 'youtube_screen.dart';
@@ -523,6 +524,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return EmployeeAskCard(key: ValueKey('ea${it.data['id']}'), v: it.data, app: app);
     case 'studio':
       return StudioCard(key: ValueKey('sp${it.data['project']}'), v: it.data, app: app);
+    case 'google_reconnect':
+      return GoogleReconnectCard(v: it.data, app: app);
     case 'studio_approval':
       return StudioApprovalCard(key: ValueKey('sa${it.data['id']}'), v: it.data, app: app);
     case 'operator_task':
