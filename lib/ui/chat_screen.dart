@@ -8,6 +8,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import '../state.dart';
 import 'employee_inbox.dart';
 import 'employee_screen.dart';
+import 'video_editor.dart';
 import 'procedures_screen.dart';
 import 'approve_sheet.dart';
 import 'artifact_screen.dart';
@@ -515,6 +516,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return _LinkCard(v: it.data, app: app);
     case 'employee_ask':
       return EmployeeAskCard(key: ValueKey('ea${it.data['id']}'), v: it.data, app: app);
+    case 'video_job':
+      return VideoJobCard(key: ValueKey('vj${it.data['id']}'), v: it.data, app: app);
     case 'employee_report':
       return EmployeeReportCard(v: it.data, app: app);
     case 'biz_handover':

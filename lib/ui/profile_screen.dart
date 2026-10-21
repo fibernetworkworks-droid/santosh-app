@@ -12,6 +12,7 @@ import 'forms_screen.dart';
 import 'glass.dart';
 import 'keep_alive.dart';
 import 'phone_hoola.dart';
+import 'video_editor.dart';
 import 'home_devices_screen.dart';
 import 'notebook_screen.dart';
 import 'pc_screen.dart';
@@ -189,6 +190,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ListenableBuilder(listenable: app, builder: (context, _) => _BackgroundCard(app: app)),
       const SizedBox(height: 18),
       const _WakeCard(),
+      const SizedBox(height: 18),
+      Glass(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.movie_creation_rounded, color: C.accent),
+          title: Text('${app.aName} · Video Editor', style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('Kachcha video do: reel / Short / Status / YouTube banake, khud check karke deta hai'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VideoEditorScreen(app: app))),
+        ),
+      ),
       const SizedBox(height: 18),
       Glass(
         child: ListTile(

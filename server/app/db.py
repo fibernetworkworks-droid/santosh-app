@@ -643,6 +643,7 @@ def init_db(url: str | None = None):
     from . import procedures as _procedures  # noqa: F401
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401
+    from .videoedit import models as _videoedit_models  # noqa: F401
     Base.metadata.create_all(_engine)
     _add_missing_columns(_engine)
     from .bazar.db import init_tables as _bazar_tables

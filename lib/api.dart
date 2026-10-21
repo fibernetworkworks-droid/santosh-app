@@ -122,6 +122,21 @@ class Api {
   Future<Map<String, dynamic>> reelCheck(String id) async => Map<String, dynamic>.from(
       await _send('POST', '/api/reels/$id/check', timeout: const Duration(seconds: 90)) as Map);
 
+  // ---- Hoola Video Editor (v0.65) ----
+  Future<Map<String, dynamic>> videoJobs() async => Map<String, dynamic>.from(await _send('GET', '/api/video/jobs') as Map);
+  Future<Map<String, dynamic>> videoJob(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/video/jobs/$id') as Map);
+  Future<Map<String, dynamic>> videoStart(List<String> fileIds, String brief,
+          {String platform = 'reel', int? lengthS, bool captions = true, String logoFileId = '', String musicFileId = '',
+          String title = '', String conversationId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/video/jobs', body: {
+        'file_ids': fileIds, 'brief': brief, 'platform': platform, 'length_s': lengthS, 'captions': captions,
+        'logo_file_id': logoFileId, 'music_file_id': musicFileId, 'title': title, 'conversation_id': conversationId,
+      }, timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> videoRevise(String id, String instruction) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/video/jobs/$id/revise', body: {'instruction': instruction}) as Map);
+  Future<Map<String, dynamic>> videoCancel(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/video/jobs/$id/cancel') as Map);
+
   // ---- Hoola Employee (v0.58) ----
   Map<String, dynamic> _em(Object? o) => Map<String, dynamic>.from(o as Map);
   Future<Map<String, dynamic>> employee() async => _em(await _send('GET', '/api/employee'));

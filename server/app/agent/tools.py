@@ -385,3 +385,10 @@ from ..employee.inbox import BIZ_HANDLERS, BIZ_LABELS  # noqa: E402
 
 TOOL_LABELS.update(BIZ_LABELS)
 HANDLERS.update(BIZ_HANDLERS)
+
+# v0.65 Hoola Video Editor
+from .video_tools import VIDEO_HANDLERS, VIDEO_LABELS, VIDEO_TOOLS  # noqa: E402
+
+TOOLS.extend(VIDEO_TOOLS)
+TOOL_LABELS.update(VIDEO_LABELS)
+HANDLERS.update(VIDEO_HANDLERS)

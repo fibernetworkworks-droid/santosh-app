@@ -7,6 +7,7 @@ import hmac
 import json
 import logging
 import time
+import shutil
 from collections import OrderedDict
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -42,6 +43,9 @@ async def lifespan(app: FastAPI):
     if get_settings().tv_refresh:
         from .tv import catalog as tv_catalog
         tv_catalog.refresh_in_background()   # Hoola TV: re-check the free channels every night
+    if get_settings().video_edit_worker:
+        from .videoedit import service as video_service
+        video_service.resume_pending()        # v0.65 edits that were running when the server restarted
     if get_settings().ifsc_refresh:
         from .india import ifsc
         ifsc.refresh_in_background()          # v0.59 IFSC branch details, once a month
@@ -50,7 +54,7 @@ async def lifespan(app: FastAPI):
     await task
 
 
-app = FastAPI(title="Santosh Core", version="0.64.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.65.0", lifespan=lifespan)
 
 
 def _bearer(request: Request) -> str:
@@ -107,7 +111,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures"] + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -1332,6 +1336,73 @@ async def net_think(mid: str, tenant: str = Depends(current_tenant)):
     """'Hoola, isse dekh ke batao': look at the attachment again and suggest replies, right now."""
     from .net import enrich
     return await asyncio.to_thread(enrich.run, tenant, mid)
+
+
+# ---------------- v0.65 Hoola Video Editor ----------------
+class VideoStart(BaseModel):
+    file_ids: list[str] = Field(default_factory=list, max_length=8)
+    brief: str = Field(default="", max_length=3000)
+    platform: str = "reel"
+    length_s: int | None = None
+    captions: bool = True
+    logo_file_id: str = ""
+    music_file_id: str = ""
+    title: str = ""
+    conversation_id: str = ""
+
+
+class VideoChange(BaseModel):
+    instruction: str = Field(min_length=1, max_length=1500)
+
+
+def _video_call(fn, *a, **k):
+    from .videoedit.service import VideoError
+    try:
+        return fn(*a, **k)
+    except VideoError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/video/jobs", dependencies=[Depends(require_key)])
+def video_jobs(tenant: str = Depends(current_tenant)):
+    from .videoedit import service as vs
+    return {"jobs": vs.listing(tenant), "platforms": [{"id": k, **v} for k, v in vs.PLATFORMS.items()]}
+
+
+@app.post("/api/video/jobs", dependencies=[Depends(require_key)])
+def video_start(body: VideoStart, tenant: str = Depends(current_tenant)):
+    from .videoedit import service as vs
+    return _video_call(vs.start, tenant, body.file_ids, body.brief, body.platform, body.length_s, body.captions,
+                       body.logo_file_id, body.music_file_id, body.title, body.conversation_id)
+
+
+@app.get("/api/video/jobs/{job_id}", dependencies=[Depends(require_key)])
+def video_job(job_id: str, tenant: str = Depends(current_tenant)):
+    from .videoedit import service as vs
+    return _video_call(vs.get, tenant, job_id)
+
+
+@app.post("/api/video/jobs/{job_id}/revise", dependencies=[Depends(require_key)])
+def video_revise(job_id: str, body: VideoChange, tenant: str = Depends(current_tenant)):
+    from .videoedit import service as vs
+    return _video_call(vs.revise, tenant, job_id, body.instruction)
+
+
+@app.post("/api/video/jobs/{job_id}/cancel", dependencies=[Depends(require_key)])
+def video_cancel(job_id: str, tenant: str = Depends(current_tenant)):
+    from .videoedit import service as vs
+    return _video_call(vs.cancel, tenant, job_id)
+
+
+@app.get("/api/video/files/{job_id}/{name}")
+def video_file(job_id: str, name: str, exp: int = 0, sig: str = ""):
+    """Signed, expiring link to a finished video / its frames (opened by the phone's player or browser)."""
+    from .videoedit import service as vs
+    p = vs.file_for(job_id, name, exp, sig)
+    if p is None:
+        raise HTTPException(404, "Yeh video link purana ho gaya ya galat hai.")
+    media = "video/mp4" if p.suffix == ".mp4" else "image/png" if p.suffix == ".png" else None
+    return FileResponse(str(p), media_type=media, filename=p.name)
 
 
 @app.get("/api/app/latest", dependencies=[Depends(require_key)])

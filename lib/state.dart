@@ -235,6 +235,8 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _campaigns = {};
   final Map<String, FeedItem> _emails = {};
   final Map<String, FeedItem> _bazar = {};   // confirm cards by approval id
+  final Map<String, FeedItem> _videoJobs = {}; // v0.65 video editor: one live card per job, updated in place
+  int videoTick = 0;                          // bumps on every video_job event (the editor screen refreshes)
   final Map<String, FeedItem> _empAsks = {};  // Hoola Employee: actions waiting for the owner's tap, by ask id
   int employeeTick = 0;                       // bumps on any employee event (the Employee screen can refresh)
   List<Map<String, dynamic>> get pendingApprovals =>
@@ -882,6 +884,20 @@ class Santosh extends ChangeNotifier {
           if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Aapki haan chahiye', '${p['what'] ?? ''} · ${p['who'] ?? ''}');
         }
         employeeTick++;
+        break;
+      case 'video_job':
+        final vid = '${p['id']}';
+        final vj = _videoJobs[vid];
+        if (vj != null) {
+          vj.data = {...vj.data, ...p};
+        } else {
+          _videoJobs[vid] = FeedItem('video_job', Map<String, dynamic>.from(p));
+          feed.add(_videoJobs[vid]!);
+        }
+        if (p['status'] == 'done' && inBackground && !_replaying && !pushOn) {
+          Device.instance.showNow('Video taiyaar', '${p['title'] ?? 'Aapka video'} — dekhiye');
+        }
+        videoTick++;
         break;
       case 'employee_report':
         feed.add(FeedItem('employee_report', Map<String, dynamic>.from(p)));

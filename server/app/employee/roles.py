@@ -28,6 +28,8 @@ DUTIES: dict[str, dict] = {
                   "prefix": (), "tools": {"list_lead_lists", "get_lead_list", "check_template", "submit_template",
                                           "check_template_status", "create_campaign", "confirm_send", "get_campaign_status",
                                           "control_campaign"}},
+    "video": {"label": "Video editing", "say": "reels, shorts, status aur YouTube ke liye video edit (captions, logo, music)",
+              "prefix": (), "tools": {"video_edit"}},
     "research": {"label": "Jaankari dhoondhna", "say": "web, maps, mausam, public APIs",
                  "prefix": ("maps_", "api_"), "tools": {"google_search", "open_website", "browse_web", "browse_result", "get_weather",
                                                        "memory_search"}},
@@ -53,8 +55,10 @@ ROLES: dict[str, dict] = {
               "duties": ["customers", "campaigns", "email", "records", "reminders", "research"]},
     "hr_admin": {"label": "HR aur admin", "say": "Job post, interview, attendance register, roster, renewals",
                  "duties": ["records", "email", "appointments", "reminders"]},
-    "marketing": {"label": "Marketing", "say": "Tyohaar ke post ideas, poster, offer campaign, competitor ki khabar",
-                  "duties": ["campaigns", "records", "research"]},
+    "marketing": {"label": "Marketing", "say": "Tyohaar ke post ideas, poster, offer campaign, reels, competitor ki khabar",
+                  "duties": ["campaigns", "records", "research", "video"]},
+    "video_editor": {"label": "Video editor", "say": "Dukaan / business ki reels, shorts, status aur YouTube video edit karna",
+                     "duties": ["video", "records", "research"]},
     "custom": {"label": "Apna kaam", "say": "Aap khud chuniye Hoola kaun se kaam karega", "duties": []},
 }
 
