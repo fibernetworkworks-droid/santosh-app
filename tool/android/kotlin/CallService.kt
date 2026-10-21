@@ -37,7 +37,7 @@ class CallService : Service() {
             }
             val i = Intent(ctx, CallService::class.java)
             try {
-                if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i) else ctx.startService(i)
+                if (!FgStart.launch(ctx, i, microphone = true)) { problem = "skipped: not allowed now"; return }
                 running = true
                 problem = ""
             } catch (e: Exception) {
@@ -59,6 +59,13 @@ class CallService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_HANGUP) {      // old notifications: hang up without going foreground again
+            try { onHangup?.invoke() } catch (_: Throwable) {}
+            try { VoiceAudio.stop(this) } catch (_: Throwable) {}
+            running = false
+            stopSelf()
+            return START_NOT_STICKY
+        }
         val n = try { Notify.call(this) } catch (e: Throwable) {
             problem = "notification: ${e.javaClass.simpleName}"
             Notify.callFallback(this)

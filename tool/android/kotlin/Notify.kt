@@ -79,9 +79,9 @@ object Notify {
     /** Ongoing notification while a voice call runs (also when the screen is locked). */
     fun call(ctx: Context): Notification {
         channels(ctx)
-        val hang = Intent(ctx, CallService::class.java).setAction(CallService.ACTION_HANGUP)
-        val hangPi = if (Build.VERSION.SDK_INT >= 26) PendingIntent.getForegroundService(ctx, 7, hang, piFlags())
-                     else PendingIntent.getService(ctx, 7, hang, piFlags())
+        // v0.70 a broadcast: tapping it with the app off screen can't trip the foreground-service rules
+        val hang = Intent(ctx, CallHangupReceiver::class.java).setAction(CallService.ACTION_HANGUP)
+        val hangPi = PendingIntent.getBroadcast(ctx, 7, hang, piFlags())
         val b = builder(ctx, CH_CALL)
             .setSmallIcon(R.drawable.ic_stat_santosh)
             .setContentTitle("Hoola se baat chal rahi hai")

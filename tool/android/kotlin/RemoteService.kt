@@ -33,7 +33,7 @@ class RemoteService : Service() {
             if (running) return "ok"
             return try {
                 val i = Intent(ctx, RemoteService::class.java)
-                if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i) else ctx.startService(i)
+                if (!FgStart.launch(ctx, i)) return "ok"   // not allowed right now: the remote works while the app runs
                 running = true
                 "ok"
             } catch (e: Exception) {   // background start not allowed right now: the remote still works while the app runs

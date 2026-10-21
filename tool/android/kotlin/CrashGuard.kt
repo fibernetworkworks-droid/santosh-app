@@ -28,6 +28,11 @@ object CrashGuard {
         if (installed) return
         installed = true
         val app = ctx.applicationContext
+        // the first time the recorder runs, Android's older exit records (from before it existed) are not news
+        try {
+            val p = prefs(app)
+            if (!p.contains("seen_exit")) p.edit().putLong("seen_exit", System.currentTimeMillis()).apply()
+        } catch (_: Exception) {}
         val prev = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
             try {

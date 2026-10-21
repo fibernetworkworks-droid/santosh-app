@@ -39,7 +39,7 @@ class WakeService : Service() {
         fun start(ctx: Context) {
             ctx.getSharedPreferences("santosh_native", Context.MODE_PRIVATE).edit().putBoolean("wake_on", true).apply()
             val i = Intent(ctx, WakeService::class.java)
-            if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i) else ctx.startService(i)
+            if (!FgStart.launch(ctx, i, microphone = true)) status = "Hoola app ek baar kholiye, phir 'Hey Santosh' chalu hoga"
         }
 
         fun stop(ctx: Context) {
@@ -73,11 +73,13 @@ class WakeService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val n = note("“Hey Santosh” sun raha hai", "Mic sirf wake word ke liye, phone par hi. Band karne ke liye Hoola app kholiye.")
-        try {
+        val pauseOrResume = intent?.action == ACTION_PAUSE || intent?.action == ACTION_RESUME
+        if (pauseOrResume && !running) { stopSelf(); return START_NOT_STICKY }
+        if (!running) try {        // already foreground: a pause / resume must not ask Android again (it may refuse)
+            val n = note("“Hey Santosh” sun raha hai", "Mic sirf wake word ke liye, phone par hi. Band karne ke liye Hoola app kholiye.")
             if (Build.VERSION.SDK_INT >= 30) startForeground(NOTE_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
             else startForeground(NOTE_ID, n)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             // Android 14+: a microphone service can only start while the app is on screen
             status = "Hoola app ek baar kholiye, phir 'Hey Santosh' chalu hoga"
             running = false

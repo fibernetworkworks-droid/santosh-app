@@ -86,7 +86,7 @@
     <!-- usesCleartextTraffic lets you test against http://your-ip:8077; use https in production -->
     <application
         android:label="Hoola"
-        android:name="${applicationName}"
+        android:name=".HoolaApplication"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
         <activity
@@ -301,6 +301,7 @@
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
         <receiver android:name=".AlarmReceiver" android:exported="false" />
         <receiver android:name=".ScrollAlarmReceiver" android:exported="false" />
+        <receiver android:name=".CallHangupReceiver" android:exported="false" />
         <!-- v0.63 share Hoola Motion videos with other apps (content:// from the app cache only) -->
         <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.hoolafiles"
             android:exported="false" android:grantUriPermissions="true">

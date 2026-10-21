@@ -25,8 +25,7 @@ class SantoshService : Service() {
         fun start(ctx: Context) {
             Store.setEnabled(ctx, true)
             val i = Intent(ctx, SantoshService::class.java)
-            if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i) else ctx.startService(i)
-            running = true   // Android starts it a moment later; report it as on right away
+            running = FgStart.launch(ctx, i)   // Android starts it a moment later; report it as on right away
         }
 
         fun stop(ctx: Context) {
