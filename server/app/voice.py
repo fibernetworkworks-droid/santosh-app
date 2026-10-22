@@ -870,8 +870,8 @@ class Call:
         if len(lines) > 5000:          # v0.108 a much bigger re-brief: keep the newest part whole
             lines = "…" + lines[-5000:]
         RESUME["fresh_rebriefs"] += 1
-        return ("(Call ka connection ek pal ke liye toota aur wapas juda. Is call mein ab tak ki baat yeh thi (aur upar "
-                "'HOOLA KI YAAD' mein pehle ka sab):\n" + lines +
+        return ("(Call ka connection ek pal ke liye toota aur wapas juda. Pichli baat (is call mein ab tak; pehle ka sab upar "
+                "'HOOLA KI YAAD' mein):\n" + lines +
                 "\nUser ko bas ek chhota 'haan, boliye' kehkar wahin se aage badho; pichli baat dohrao mat.)")
 
     # ---- tools ----

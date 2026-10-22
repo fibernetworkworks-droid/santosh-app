@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.109.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.109.1", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -2750,7 +2750,8 @@ def tick_item(item_id: int, tenant: str = Depends(current_tenant)):
 def get_memory(tenant: str = Depends(current_tenant)):
     facts = life.memory_facts(tenant, 500)
     used = sum(len(f.text) for f in facts if f.pinned)
-    return {"facts": [{"id": f.id, "text": f.text, "pinned": bool(f.pinned)} for f in facts],
+    return {"facts": [{"id": f.id, "text": f.text, "pinned": bool(f.pinned), "auto": getattr(f, "source", None) == "auto"}
+                      for f in facts],
             "pinned_chars": used, "pinned_max": life.PINNED_CHARS, "in_prompt": life.RECENT_FACTS}
 
 
@@ -2766,6 +2767,46 @@ def pin_memory(fact_id: int, body: PinIn, tenant: str = Depends(current_tenant))
     except ValueError as e:
         raise HTTPException(400, str(e))
     return get_memory(tenant)
+
+
+# ---------------- v0.108 Hoola ki yaad (search everything) + Document desk / Sheet Milaan ----------------
+@app.get("/api/yaad", dependencies=[Depends(require_key)])
+def yaad_search(q: str = "", days: int = 0, kind: str = "", tenant: str = Depends(current_tenant)):
+    from . import yaad
+    if not q.strip():
+        return {"health": yaad.health(tenant), "hits": []}
+    return {"hits": yaad.search(tenant, q, 20, days or None, [kind] if kind else None)}
+
+
+@app.get("/api/docdesk", dependencies=[Depends(require_key)])
+def docdesk_all(conv: str = "", tenant: str = Depends(current_tenant)):
+    from . import docdesk as dd
+    files = dd.job_files(tenant, conv) if conv else dd.job_files(tenant)
+    return {"files": [dd._view(f, i) for i, f in enumerate(files, start=1)], "edits": dd.edits(tenant)}
+
+
+@app.get("/api/docdesk/edits/{edit_id}", dependencies=[Depends(require_key)])
+def docdesk_edit(edit_id: str, tenant: str = Depends(current_tenant)):
+    from . import docdesk as dd
+    try:
+        return dd.full_result(tenant, edit_id)
+    except dd.DeskError as e:
+        raise HTTPException(404, str(e))
+
+
+class DeskDecideIn(BaseModel):
+    yes: bool
+    options: dict | None = None
+
+
+@app.post("/api/docdesk/edits/{edit_id}/decide", dependencies=[Depends(require_key)])
+async def docdesk_decide(edit_id: str, body: DeskDecideIn, tenant: str = Depends(current_tenant)):
+    """Her tap on a Sheet Milaan / document-edit card: Haan = the new copy goes to her PC's Santosh Inbox (and opens)."""
+    from . import docdesk as dd
+    try:
+        return await dd.decide(tenant, edit_id, body.yes, body.options)
+    except dd.DeskError as e:
+        raise HTTPException(400, str(e))
 
 
 # ---------------- v0.63 seekhe hue kaam + circuit breaker numbers ----------------
@@ -4895,7 +4936,7 @@ def delete_memory(fact_id: int, tenant: str = Depends(current_tenant)):
         if not f or f.tenant_id != tenant:
             raise HTTPException(404, "Not found")
         s.delete(f)
-    return get_memory()
+    return get_memory(tenant)
 
 
 class ProfileIn(BaseModel):
