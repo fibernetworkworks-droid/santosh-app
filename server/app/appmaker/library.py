@@ -17,6 +17,9 @@ from typing import Any
 
 from ..site import library as SL
 from ..site import taxonomy as ST
+from . import colors as CL
+from . import designsys as DS
+from . import fonts as FN
 from . import taxonomy as T
 
 log = logging.getLogger("santosh.app")
@@ -35,7 +38,8 @@ def counts() -> dict[str, int]:
     return {"fields": len(f), "industries": len(ST.INDUSTRIES), "goals": len(T.GOALS), "styles": len(T.STYLES),
             "briefs": len(f) * len(T.GOALS) * len(T.STYLES), "screen_types": len(T.SCREENS) + len(T.CODE_SCREENS),
             "screen_designs": sum(len(s["variants"]) for s in T.SCREENS.values()), "motion_presets": len(T.MOTION),
-            "palettes": len(ST.PALETTES), "font_pairs": len(ST.FONTS)}
+            "palettes": len(CL.palettes()), "font_pairs": len(FN.pairs()), "font_families": len(FN.catalog()),
+            **{f"ds_{k}": v for k, v in DS.counts().items()}}
 
 
 def _clean_text(text: str) -> str:
@@ -144,7 +148,8 @@ def _pick(seed: str, items: list[Any]) -> Any:
 def palettes_for(style_moods: list[str], trade_moods: list[str], n: int = 3, seed: str = "") -> list[str]:
     """The style's moods count double (a luxury look stays dark even for a sweet shop), the trade's moods break ties."""
     a, b = set(style_moods), set(trade_moods)
-    ranked = sorted(ST.PALETTES, key=lambda p: (-(2 * len(a & set(ST.PALETTES[p]["moods"])) + len(b & set(ST.PALETTES[p]["moods"]))),
+    P = CL.palettes()
+    ranked = sorted(P, key=lambda p: (-(2 * len(a & set(P[p]["moods"])) + len(b & set(P[p]["moods"]))),
                                                 hashlib.sha1((seed + p).encode()).hexdigest()))
     return ranked[:n]
 
@@ -178,7 +183,7 @@ def brief(field: str, goal: str = "", style: str = "") -> dict[str, Any]:
                                           and s not in g["tabs"] and s not in g["flow"])]
     designs = {s: _pick(seed + s, T.SCREENS[s]["variants"]) for s in screens}
     pal = palettes_for(st["moods"], ind["moods"], 3, seed)
-    fonts = ST.FONTS[st["fonts"]]
+    fonts = FN.pairs()[st["fonts"]]
     legal = list(f["legal"])
     rules = [T.STORE_RULES[x] for x in legal if x in T.STORE_RULES] + list(T.GENERAL_RULES)
     questions = list(ind["questions"])
@@ -191,7 +196,9 @@ def brief(field: str, goal: str = "", style: str = "") -> dict[str, Any]:
         f"Business type: {f['en']} ({f['hi']}); industry: {ind['label']}. People also call it: {', '.join(f['aliases'][:6])}.",
         f"App goal: {g['label']} - {g['brief']}",
         f"Design style: {st['label']} - do: {st['do']}; don't: {st['dont']}; corner radius {st['radius']}px; cards: "
-        f"{st['card']}; buttons: {st['button']}; header: {st['header']}; navigation: {T.NAV[st['nav']]}.",
+        f"{st['card']} ({DS.CARDS[st['card']]}); buttons: {st['button']}; header: {st['header']} ({DS.HEADERS[st['header']]}); "
+        f"navigation: {DS.NAV[st['nav']]['label']} ({DS.NAV[st['nav']]['desc']}); FAB: {DS.FAB[st['fab']]['label']}; "
+        f"screen transition: {st['transition']}; texture: {st['texture'] or 'none'}.",
         f"Fonts: headings {fonts['head']}, body {fonts['body']}, Devanagari {fonts['deva']}.",
         f"Palette candidates: {', '.join(pal)}.",
         "Motion: " + "; ".join(f"{m} ({T.MOTION[m]})" for m in st["motion"]),
@@ -205,7 +212,8 @@ def brief(field: str, goal: str = "", style: str = "") -> dict[str, Any]:
     return {"id": seed, "field": field, "field_label": f["en"], "field_hi": f["hi"], "industry": f["industry"],
             "industry_label": ind["label"], "goal": goal, "goal_label": g["label"], "style": style, "style_label": st["label"],
             "screens": screens, "designs": designs, "tabs": list(g["tabs"]), "flow": list(g["flow"]), "code_screens": code,
-            "palettes": pal, "fonts": st["fonts"], "font_names": fonts, "motion": list(st["motion"]), "radius": st["radius"],
+            "palettes": pal, "fonts": st["fonts"], "font_names": fonts,
+            "structure": {k: st[k] for k in ("nav", "fab", "card", "button", "header", "transition", "texture")}, "motion": list(st["motion"]), "radius": st["radius"],
             "nav": st["nav"], "trust": ind["trust"], "questions": questions[:5], "legal": legal, "rules": rules,
             "accounts": g["accounts"], "money": g["money"], "text": text}
 

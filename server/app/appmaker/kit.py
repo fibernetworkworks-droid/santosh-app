@@ -47,7 +47,11 @@ def esc(s: Any) -> str:
     return _html.escape(str(s or ""), quote=True)
 
 
-# ---------------------------------------------------------------- tokens
+# ---------------------------------------------------------------- tokens (v0.128.1: any colour, any font, full structure, light + dark)
+STRUCT_KEYS = ("nav", "fab", "card", "button", "header", "transition", "texture")
+VAR_KEYS = ("bg", "surface", "ink", "muted", "line", "primary", "on_primary", "accent", "on_accent", "primary_text", "accent_text")
+
+
 def _lum(hexc: str) -> float:
     h = hexc.lstrip("#")
     try:
@@ -58,31 +62,108 @@ def _lum(hexc: str) -> float:
     return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]
 
 
+def _colors(palette: str, brand: dict[str, str] | None, ov: dict[str, Any]) -> dict[str, str]:
+    from . import colors as CL
+    pal = CL.palettes().get(palette) or CL.palettes()["paper_ink"]
+    out = {k: pal[k] for k in ("bg", "surface", "ink", "primary", "accent")}
+    for k in ("primary", "accent"):
+        if brand and SB._hex_ok(brand.get(k, "")):
+            out[k] = brand[k]
+    for k in ("bg", "surface", "ink", "primary", "accent"):
+        if SB._hex_ok(str(ov.get(k, ""))):
+            out[k] = ov[k]
+    return out
+
+
 def tokens(style: str, palette: str, brand: dict[str, str] | None = None, overrides: dict[str, Any] | None = None) -> dict[str, Any]:
-    st = T.STYLES.get(style) or T.STYLES["clean_commerce"]
+    """Colours (palette < her brand < what she asked), font pair or named fonts, the style's structure (any part
+    replaceable), light / dark mode + the other mode's colours, all contrast-fixed."""
+    from . import colors as CL
+    from . import designsys as DS
+    from . import fonts as FN
+    style = style if style in T.STYLES else "clean_commerce"
+    st = T.STYLES[style]
     ov = dict(overrides or {})
-    ov["radius"] = ov.get("radius", st["radius"])
-    tk = SB.tokens("editorial_calm", palette if palette in ST.PALETTES else "paper_ink", brand, ov)
-    f = ST.FONTS[st["fonts"]]
-    tk.update({"style": style if style in T.STYLES else "clean_commerce", "head": f["head"], "body": f["body"], "deva": f["deva"],
-               "card": st["card"], "button": st["button"], "nav": st["nav"], "header": st["header"],
-               "dark": _lum(tk["bg"]) < 0.2})
+    cols = _colors(palette, brand, ov)
+    tk = SB.tokens("editorial_calm", "paper_ink", None, {**cols, "radius": ov.get("radius", st["radius"])})
+    pair = FN.pairs().get(ov.get("fonts") or st["fonts"]) or FN.pairs()[st["fonts"]]
+    head, body, deva = pair["head"], pair["body"], pair["deva"]
+    for k, slot in (("font_head", "head"), ("font_body", "body")):
+        if ov.get(k):
+            rec = FN.find(str(ov[k]))
+            if rec:
+                head, body = (rec["family"], body) if slot == "head" else (head, rec["family"])
+    tables = {"nav": DS.NAV, "fab": DS.FAB, "card": DS.CARDS, "button": DS.BUTTONS, "header": DS.HEADERS}
+    struct = {}
+    for k in STRUCT_KEYS:
+        v = ov.get(k, st[k])
+        if k == "transition":
+            v = v if v in {m["web"] for m in DS.MOTION.values() if m["kind"] == "transition"} else st[k]
+        elif k == "texture":
+            v = v if (v in DS.TEXTURES or v == "") else st[k]
+        else:
+            v = v if v in tables[k] else st[k]
+        struct[k] = v
+    dark = _lum(tk["bg"]) < 0.2
+    mode = ov.get("mode") if ov.get("mode") in ("light", "dark", "both") else "both"
+    if dark:
+        other = CL.harmony(tk["primary"], "complementary", False, tk["accent"])
+    else:
+        other = CL.dark_of(tk)
+    alt = SB.tokens("editorial_calm", "paper_ink", None, {**{k: other[k] for k in ("bg", "surface", "ink", "primary", "accent")},
+                                                         "radius": ov.get("radius", st["radius"])})
+    if (mode == "dark" and not dark) or (mode == "light" and dark):     # she wants the other mode as the app's own
+        tk, alt, dark = alt, tk, not dark
+    tk.update({"style": style, "palette": palette, "fonts": ov.get("fonts") or st["fonts"], "head": head, "body": body,
+               "deva": deva, **struct, "dark": dark, "mode": mode, "alt": {k: alt[k] for k in VAR_KEYS},
+               "colors_from": ov.get("colors_from", "")})
     return tk
 
 
-def tokens_css(tk: dict[str, Any]) -> str:
-    base = SB.tokens_css(tk, "../")      # tokens.css lives in assets/
-    extra = (":root{" + f"--c-tint:color-mix(in srgb,{tk['primary']} 12%,{tk['surface']});"
-             f"--c-tint-2:color-mix(in srgb,{tk['accent']} 14%,{tk['surface']});"
-             f"--c-scrim:{'rgba(0,0,0,.6)' if tk.get('dark') else 'rgba(15,15,20,.42)'};"
-             f"--btn-radius:{_btn_radius(tk)};--card-radius:{max(4, int(tk['radius']))}px;"
-             "}")
-    return base + "\n" + extra
+def font_files(tk: dict[str, Any], language: str = "") -> list[tuple[str, str, int, Path]]:
+    """[(family, subset, weight, file)] the prototype needs: head + body (latin), the Devanagari face, and the face of
+    her language's script (Bengali, Tamil, Telugu ... ) when the app is in that language."""
+    from . import fonts as FN
+    want: list[tuple[str, tuple[str, ...]]] = [(tk["head"], ("latin",)), (tk["body"], ("latin",)), (tk["deva"], ("devanagari", "latin"))]
+    script = FN.SCRIPT_OF_LANG.get(language or "")
+    if script and script != "devanagari":
+        want.append((FN.SCRIPT_DEFAULT[script], (script, "latin")))
+    out, seen = [], set()
+    for fam, subs in want:
+        for sub, w, f in FN.ensure(fam, subs):
+            if (fam, sub, w) not in seen:
+                seen.add((fam, sub, w))
+                out.append((fam, sub, w, f))
+    return out
+
+
+def _vars(t: dict[str, Any]) -> str:
+    return (f"--c-bg:{t['bg']};--c-surface:{t['surface']};--c-ink:{t['ink']};--c-muted:{t['muted']};--c-line:{t['line']};"
+            f"--c-primary:{t['primary']};--c-on-primary:{t['on_primary']};--c-accent:{t['accent']};--c-on-accent:{t['on_accent']};"
+            f"--c-primary-text:{t['primary_text']};--c-accent-text:{t['accent_text']};"
+            f"--c-tint:color-mix(in srgb,{t['primary']} 12%,{t['surface']});--c-tint-2:color-mix(in srgb,{t['accent']} 14%,{t['surface']});"
+            f"--c-scrim:{'rgba(0,0,0,.6)' if _lum(t['bg']) < 0.2 else 'rgba(15,15,20,.42)'};"
+            f"--neu-hi:{'rgba(255,255,255,.07)' if _lum(t['bg']) < 0.2 else 'rgba(255,255,255,.9)'};"
+            f"--neu-lo:{'rgba(0,0,0,.55)' if _lum(t['bg']) < 0.2 else 'color-mix(in srgb,' + t['ink'] + ' 16%,transparent)'};")
+
+
+def tokens_css(tk: dict[str, Any], fonts: list[tuple[str, str, int, str]] | None = None) -> str:
+    """tokens.css (in assets/): @font-face per script, the base colours, the other mode under body.mode-alt, textures."""
+    from . import designsys as DS
+    from . import fonts as FN
+    faces = FN.face_css(fonts or [])
+    script_fams = "".join(f",'{f}'" for f in dict.fromkeys(x[0] for x in (fonts or []) if x[1] not in ("latin", "devanagari")))
+    head = f"'{tk['head']}','{tk['deva']}'{script_fams},system-ui,sans-serif"
+    body = f"'{tk['body']}','{tk['deva']}'{script_fams},system-ui,sans-serif"
+    root = (":root{" + _vars(tk) + f"--font-head:{head};--font-body:{body};--radius:{tk['radius']}px;--gutter:20px;"
+            f"--btn-radius:{_btn_radius(tk)};--card-radius:{max(4, int(tk['radius']))}px" + "}")
+    alt = "body.mode-alt{" + _vars({**tk, **tk["alt"]}) + "}"
+    return "\n".join([faces, root, alt, DS.textures_css(tk), DS.textures_css({**tk, **tk["alt"]}, True)])
 
 
 def _btn_radius(tk: dict[str, Any]) -> str:
-    return {"pill": "999px", "square": "4px", "chunky": f"{max(10, int(tk['radius']))}px"}.get(tk.get("button", ""),
-                                                                                                f"{max(8, int(tk['radius']) - 2)}px")
+    return {"pill": "999px", "square": "4px", "chunky": f"{max(10, int(tk['radius']))}px", "soft": "18px",
+            "gradient": "999px"}.get(tk.get("button", ""), f"{max(8, int(tk['radius']) - 2)}px")
 
 
 # ---------------------------------------------------------------- 80 line icons (original, 24 px grid, stroke = currentColor)
@@ -329,11 +410,72 @@ def expand(html: str) -> str:
     return html
 
 
-def tabbar(plan: dict[str, Any], labels: dict[str, str]) -> str:
-    items = "".join(f'<button class="tab" data-go="{esc(t)}" data-tabbtn="{esc(t)}"><span class="tab-pill">'
-                    f'{icon_svg(TAB_ICON.get(t, "dot"))}</span><span class="tab-l">{esc(labels.get(t) or t)}</span></button>'
-                    for t in plan.get("tabs", []))
-    return f'<nav class="tabbar" aria-label="Main">{items}</nav>'
+PRIMARY = {"shop": ("cart", "cart"), "food_order": ("cart", "cart"), "booking": ("slot_picker", "calendar"),
+           "learning": ("courses", "book"), "membership": ("checkin", "qr"), "service_request": ("request_service", "plus"),
+           "khata": ("payment", "pay"), "catalogue": ("enquiry", "chat"), "events": ("events", "ticket"), "community": ("donate", "heart")}
+GO_ICON = {"cart": "cart", "checkout": "bag", "payment": "pay", "slot_picker": "calendar", "services": "list", "courses": "book",
+           "timetable": "calendar", "checkin": "qr", "member_card": "qr", "request_service": "plus", "job_status": "wrench",
+           "khata": "wallet", "enquiry": "chat", "events": "ticket", "donate": "heart", "search": "search", "offers": "tag",
+           "orders": "receipt", "store_info": "store", "support": "help", "notifications": "bell", "profile": "user",
+           "privacy": "shield", "seller_info": "info", "delete_account": "trash", "menu": "food", "updates": "bell",
+           "gallery": "image", "rewards": "gift", "wishlist": "heart", "my_bookings": "calendar", "plans": "award"}
+
+
+def tabbar(plan: dict[str, Any], labels: dict[str, str], tk: dict[str, Any] | None = None) -> str:
+    tk = tk or {}
+    tabs = plan.get("tabs", [])
+    items = [f'<button class="tab" data-go="{esc(t)}" data-tabbtn="{esc(t)}"><span class="tab-pill">'
+             f'{icon_svg(TAB_ICON.get(t, GO_ICON.get(t, "dot")))}</span><span class="tab-l">{esc(labels.get(t) or t)}</span></button>'
+             for t in tabs]
+    if tk.get("nav") == "bottom_app_bar" and tk.get("fab") == "docked":       # leave the middle for the docked button
+        items.insert(len(items) // 2 + len(items) % 2, '<span class="tab-gap" aria-hidden="true"></span>')
+    return f'<nav class="tabbar" aria-label="Main">{"".join(items)}</nav>'
+
+
+def drawer(plan: dict[str, Any], labels: dict[str, str], name: str, tk: dict[str, Any]) -> str:
+    """Side bar for drawer / drawer_bar / side_sheet navigation: tabs, the other screens, then the legal ones."""
+    if tk.get("nav") not in ("drawer", "drawer_bar", "side_sheet", "rail"):
+        return ""
+    tabs = plan.get("tabs", [])
+    flow = set(plan.get("flow", [])) - set(tabs)
+    rest = [s for s in plan.get("screens", []) if s not in tabs and s not in flow and s not in ("login", "onboarding")]
+    legal = [s for s in ("seller_info", "privacy", "delete_account") if s in plan.get("code_screens", [])]
+
+    def row(sid: str) -> str:
+        lab = labels.get(sid) or T.CODE_SCREENS.get(sid, {}).get("label") or sid
+        return (f'<button class="dr-item" data-go="{esc(sid)}" data-close data-tabbtn-d="{esc(sid)}">'
+                f'{icon_svg(TAB_ICON.get(sid, GO_ICON.get(sid, "dot")))}<span>{esc(lab)}</span></button>')
+    side = "end" if tk.get("nav") == "side_sheet" else "start"
+    return (f'<aside class="drawer drawer-{side}" id="hk-drawer" aria-label="Menu"><div class="dr-head"><img class="logo" '
+            f'src="assets/logo.png" alt=""><div><p class="t-title">{esc(name) or "App"}</p><p class="t-small muted">Menu</p></div></div>'
+            f'<div class="dr-list">{"".join(row(t) for t in tabs)}<div class="sep"></div>{"".join(row(s) for s in rest)}'
+            f'<div class="sep"></div>{"".join(row(s) for s in legal)}</div></aside>')
+
+
+def fab_html(ctx: dict[str, Any], labels: dict[str, str]) -> str:
+    tk, plan = ctx["tokens"], ctx["plan"]
+    kind = tk.get("fab") or "none"
+    target, ic = PRIMARY.get(ctx.get("goal") or "", ("", "plus"))
+    known = set(plan.get("screens", []))
+    if kind == "none" or target not in known:
+        return ""
+    lab = esc(labels.get(target) or target)
+    if kind in ("speed_dial", "menu"):
+        acts = [s for s in plan.get("flow", []) + plan.get("screens", []) if s in known and s != target and s not in plan.get("tabs", [])]
+        acts = list(dict.fromkeys([target] + acts))[:3]
+        minis = "".join(f'<button class="fab-mini" data-go="{esc(a)}" data-fab-close>{icon_svg(GO_ICON.get(a, "dot"))}'
+                        f'<span>{esc(labels.get(a) or a)}</span></button>' for a in acts)
+        return (f'<div class="fabx fab-{kind}" data-fab><div class="fab-actions">{minis}</div><button class="fab-main" data-fab-toggle '
+                f'aria-label="Actions">{icon_svg("plus")}</button></div>')
+    words = f'<span class="fab-l">{lab}</span>' if kind == "extended" else ""
+    return (f'<div class="fabx fab-{kind}" data-fab><button class="fab-main" data-go="{esc(target)}" aria-label="{lab}">'
+            f'{icon_svg(ic)}{words}</button></div>')
+
+
+def _menu_button(h: str) -> str:
+    """Hamburger into a tab screen's app bar (drawer navigation)."""
+    btn = f'<button class="ab-menu" data-drawer aria-label="Menu">{icon_svg("menu")}</button>'
+    return re.sub(r'(<header\b[^>]*class="[^"]*\bab\b[^"]*"[^>]*>)', lambda m: m.group(1) + btn, h, count=1)
 
 
 def assemble(ctx: dict[str, Any], screens: dict[str, dict[str, Any]], out: Path, only_ready: bool = False) -> dict[str, Any]:
@@ -347,9 +489,12 @@ def assemble(ctx: dict[str, Any], screens: dict[str, dict[str, Any]], out: Path,
     (tmp / "assets" / "fonts").mkdir(parents=True)
     shutil.copy(ASSETS / "app-kit.css", tmp / "assets" / "app-kit.css")
     shutil.copy(ASSETS / "proto.js", tmp / "assets" / "proto.js")
-    for _fam, _sub, _w, fn in SB.font_files(tk):
-        shutil.copy(SB.ASSETS / "fonts" / fn, tmp / "assets" / "fonts" / fn)
-    (tmp / "assets" / "tokens.css").write_text(tokens_css(tk))
+    faces = []
+    for fam, sub, w, f in font_files(tk, ctx.get("language") or ""):
+        name = f"{re.sub(r'[^a-z0-9]+', '-', fam.lower()).strip('-')}-{sub}-{w}.woff2"
+        shutil.copy(f, tmp / "assets" / "fonts" / name)
+        faces.append((fam, sub, w, f"fonts/{name}"))
+    (tmp / "assets" / "tokens.css").write_text(tokens_css(tk, faces))
     (tmp / "assets" / "icon.svg").write_text(app_icon_svg(tk, ctx.get("name") or ""))
     logo = ctx.get("logo_path") or ""
     if logo and Path(logo).is_file():
@@ -388,23 +533,32 @@ def assemble(ctx: dict[str, Any], screens: dict[str, dict[str, Any]], out: Path,
         h = expand(h)
         if sid in tabs:
             h = re.sub(r"<section\b", '<section data-tabbed="1"', h, count=1)
+            if tk.get("nav") in ("drawer", "drawer_bar", "side_sheet"):
+                h = _menu_button(h)
         parts.append(h)
     (tmp / "assets" / "screens.css").write_text("\n".join(css))
-    st = T.STYLES.get(tk.get("style")) or T.STYLES["clean_commerce"]
-    body_cls = (f'p-{ctx.get("platform") or "android"} st-{tk.get("style")} card-{st["card"]} btn-{st["button"]} '
-                f'nav-{st["nav"]} hd-{st["header"]}' + (" dark" if tk.get("dark") else ""))
-    lang = {"hi": "hi", "mr": "mr"}.get(ctx.get("language") or "", "en")
+    body_cls = (f'p-{ctx.get("platform") or "android"} st-{tk.get("style")} card-{tk.get("card")} btn-{tk.get("button")} '
+                f'nav-{tk.get("nav")} fabk-{tk.get("fab")} hd-{tk.get("header")} tr-{tk.get("transition")}'
+                + (f' tex-{tk["texture"]}' if tk.get("texture") else "") + (" dark" if tk.get("dark") else ""))
+    all_html = "".join(parts)
+    three = '<script src="assets/three.min.js"></script>' if 'class="obj3d' in all_html or "class='obj3d" in all_html else ""
+    if three:
+        shutil.copy(ASSETS / "three.min.js", tmp / "assets" / "three.min.js")
+    lang = (ctx.get("language") or "en") if (ctx.get("language") or "en") != "hinglish" else "en"
     name = esc(ctx.get("name") or "App")
     head = (f'<!doctype html><html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" '
             f'content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex">'
             f'<title>{name} · app design</title><link rel="icon" href="assets/icon.svg"><link rel="stylesheet" href="assets/tokens.css">'
             f'<link rel="stylesheet" href="assets/app-kit.css"><link rel="stylesheet" href="assets/screens.css"></head>')
     tools = ('<div class="proto-tools" aria-label="Preview controls"><button data-plat="android">Android</button>'
-             '<button data-plat="ios">iPhone</button><a href="all.html">Sab screens</a></div>')
+             '<button data-plat="ios">iPhone</button><button data-mode>' + ("Light" if tk.get("dark") else "Dark") +
+             '</button><a href="all.html">Sab screens</a></div>')
     page = (head + f'<body class="{body_cls}" data-start="{esc("splash" if "splash" in plan.get("code_screens", []) else first)}" '
-            f'data-home="{esc(first)}">{tools}<div class="device"><div class="frame">{STATUS["android"]}{STATUS["ios"]}'
-            f'<main class="screens">{"".join(parts)}</main>{tabbar(plan, labels)}<div class="toast" role="status"></div>'
-            f'<i class="homebar" aria-hidden="true"></i></div></div><script src="assets/proto.js"></script></body></html>')
+            f'data-home="{esc(first)}" data-base="{"dark" if tk.get("dark") else "light"}" data-mode-kind="{esc(tk.get("mode") or "both")}">'
+            f'{tools}<div class="device"><div class="frame">{STATUS["android"]}{STATUS["ios"]}'
+            f'<main class="screens">{all_html}</main>{tabbar(plan, labels, tk)}{fab_html(ctx, labels)}'
+            f'{drawer(plan, labels, ctx.get("name") or "", tk)}<div class="scrim-d" data-close></div><div class="toast" role="status"></div>'
+            f'<i class="homebar" aria-hidden="true"></i></div></div>{three}<script src="assets/proto.js"></script></body></html>')
     (tmp / "index.html").write_text(page)
     tiles = "".join(f'<a class="tile" href="index.html?s={esc(s)}"><img loading="lazy" src="__shots/thumb/{esc(s)}-android.jpg" '
                     f'alt="{esc(labels.get(s) or s)}"><span>{esc(labels.get(s) or T.CODE_SCREENS.get(s, {}).get("label") or s)}</span></a>'
@@ -449,9 +603,29 @@ def spec_of(screens: dict[str, dict[str, Any]], ctx: dict[str, Any]) -> dict[str
     tk = ctx["tokens"]
     return {"app": ctx.get("name") or "", "goal": ctx.get("goal"), "language": ctx.get("language"),
             "tokens": {k: tk.get(k) for k in ("bg", "surface", "ink", "muted", "line", "primary", "on_primary", "accent",
-                                               "on_accent", "radius", "head", "body", "deva", "style", "card", "button", "nav")},
+                                               "on_accent", "radius", "head", "body", "deva", "style", "mode")},
+            "dark_tokens" if not tk.get("dark") else "light_tokens": tk.get("alt") or {},
+            "structure": _structure_spec(tk),
+            "motion": _motion_spec(tk),
             "tabs": plan.get("tabs", []), "flow": plan.get("flow", []), "screens": out_screens,
             "rules": plan.get("rules", []), "legal": plan.get("legal", [])}
+
+
+def _structure_spec(tk: dict[str, Any]) -> dict[str, Any]:
+    from . import designsys as DS
+    return {"nav": {"id": tk.get("nav"), **DS.NAV.get(tk.get("nav") or "", {})},
+            "fab": {"id": tk.get("fab"), **DS.FAB.get(tk.get("fab") or "", {})},
+            "card": {"id": tk.get("card"), "desc": DS.CARDS.get(tk.get("card") or "", "")},
+            "button": {"id": tk.get("button"), "desc": DS.BUTTONS.get(tk.get("button") or "", "")},
+            "header": {"id": tk.get("header"), "desc": DS.HEADERS.get(tk.get("header") or "", "")},
+            "texture": tk.get("texture") or "", "transition": tk.get("transition")}
+
+
+def _motion_spec(tk: dict[str, Any]) -> list[dict[str, str]]:
+    from . import designsys as DS
+    st = T.STYLES.get(tk.get("style") or "") or {}
+    keys = [f"t_{tk.get('transition')}"] + list(st.get("motion", []))
+    return [{"id": k, **DS.MOTION[k]} for k in keys if k in DS.MOTION]
 
 
 def design_hash(screens: dict[str, dict[str, Any]], ctx: dict[str, Any]) -> str:

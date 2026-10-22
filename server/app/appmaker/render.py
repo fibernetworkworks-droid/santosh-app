@@ -131,9 +131,10 @@ def sheet(paths: list[tuple[str, Path]], dest: Path, cols: int = 4, width: int =
 
 
 def run(out: Path, order: list[str], shots: Path, labels: dict[str, str], platforms: tuple[str, ...] = ("android", "ios"),
-        only: list[str] | None = None, check: bool = True) -> dict[str, Any]:
-    """Screenshots (+ checks) for the screens in `order` (or just `only`). Returns {screens: {sid: {issues, warn, gos,
-    blanks, shots}}, console, reachable_from}."""
+        only: list[str] | None = None, check: bool = True, alt: bool = True, extras: bool = True) -> dict[str, Any]:
+    """Screenshots (+ checks) for the screens in `order` (or just `only`): Android + iPhone in the app's own colour mode,
+    plus Android in the other mode (light <-> dark) with its own contrast check; the open side bar and the open speed dial
+    as extra pictures. Returns {screens: {sid: {issues, warn, gos, blanks, shots}}, console, extras}."""
     if available():
         raise RenderError("Playwright / Chromium nahi hai (VPS: bash ~/santosh_app/server/deploy/setup_sites.sh)")
     from playwright.sync_api import sync_playwright
@@ -141,12 +142,13 @@ def run(out: Path, order: list[str], shots: Path, labels: dict[str, str], platfo
     (shots / "thumb").mkdir(exist_ok=True)
     want = [s for s in order if not only or s in only]
     res: dict[str, Any] = {"screens": {s: {"issues": [], "warn": [], "gos": [], "blanks": 0, "shots": {}} for s in want},
-                           "console": []}
+                           "console": [], "extras": {}}
+    passes = [(p, False) for p in platforms] + ([("android", True)] if alt and "android" in platforms else [])
     counter: dict[str, int] = {}
     with sync_playwright() as p:
         b = SC._launch(p)
         try:
-            for plat in platforms:
+            for plat, is_alt in passes:
                 ctx = b.new_context(viewport={"width": W, "height": H}, device_scale_factor=SCALE, is_mobile=True, has_touch=True,
                                     reduced_motion="reduce")
                 ctx.route("**/*", SC._serve(out, counter))
@@ -154,24 +156,49 @@ def run(out: Path, order: list[str], shots: Path, labels: dict[str, str], platfo
                 errs: list[str] = []
                 page.on("console", lambda m, errs=errs: errs.append(m.text) if m.type == "error" else None)
                 page.on("pageerror", lambda e, errs=errs: errs.append(str(e)))
-                page.goto(f"{ORIGIN}/index.html?p={plat}&shot=1&s={want[0] if want else ''}", wait_until="load")
+                page.goto(f"{ORIGIN}/index.html?p={plat}&shot=1&m={'alt' if is_alt else 'base'}&s={want[0] if want else ''}",
+                          wait_until="load")
                 page.evaluate("document.fonts.ready")
+                suffix = f"{plat}-alt" if is_alt else plat
                 for sid in want:
                     if not page.evaluate("(id) => window.HoolaProto && window.HoolaProto.show(id)", sid):
                         res["screens"][sid]["issues"].append({"kind": "missing", "text": "Screen did not open"})
                         continue
                     page.wait_for_timeout(60)
                     img = page.screenshot(type="jpeg", quality=84)
-                    name = f"{sid}-{plat}.jpg"
+                    name = f"{sid}-{suffix}.jpg"
                     (shots / name).write_bytes(img)
                     (shots / "thumb" / name).write_bytes(_thumb(img))
-                    res["screens"][sid]["shots"][plat] = name
+                    res["screens"][sid]["shots"][suffix] = name
                     if check and plat == "android":
                         r = page.evaluate(CHECK_JS, False)
-                        for k in ("issues", "warn"):
-                            res["screens"][sid][k] += r.get(k) or []
-                        res["screens"][sid]["gos"] = sorted(set(r.get("gos") or []))
-                        res["screens"][sid]["blanks"] = r.get("blanks") or 0
+                        if is_alt:          # the other colour mode: only colour problems matter here
+                            for it in r.get("issues") or []:
+                                if it["kind"] == "contrast":
+                                    res["screens"][sid]["issues"].append({**it, "text": it["text"] + " (doosre mode mein)"})
+                        else:
+                            for k in ("issues", "warn"):
+                                res["screens"][sid][k] += r.get(k) or []
+                            res["screens"][sid]["gos"] = sorted(set(r.get("gos") or []))
+                            res["screens"][sid]["blanks"] = r.get("blanks") or 0
+                if extras and not is_alt and want:
+                    tab = page.evaluate("() => (document.querySelector('[data-tabbtn]') || {}).getAttribute ? "
+                                        "document.querySelector('[data-tabbtn]').getAttribute('data-tabbtn') : ''")
+                    if tab and tab in want:
+                        page.evaluate("(id) => window.HoolaProto.show(id)", tab)
+                        if page.evaluate("() => window.HoolaProto.drawer(true)"):
+                            page.wait_for_timeout(60)
+                            n = f"_drawer-{plat}.jpg"
+                            (shots / n).write_bytes(page.screenshot(type="jpeg", quality=84))
+                            res["extras"][f"drawer-{plat}"] = n
+                            page.evaluate("() => window.HoolaProto.drawer(false)")
+                        if page.evaluate("() => !!document.querySelector('.fabx .fab-actions') && "
+                                         "!document.querySelector('.frame.has-bar') && window.HoolaProto.fab(true)"):
+                            page.wait_for_timeout(60)
+                            n = f"_fab-{plat}.jpg"
+                            (shots / n).write_bytes(page.screenshot(type="jpeg", quality=84))
+                            res["extras"][f"fab-{plat}"] = n
+                            page.evaluate("() => window.HoolaProto.fab(false)")
                 if errs:
                     res["console"] += [e[:200] for e in errs[:5]]
                 ctx.close()

@@ -230,7 +230,7 @@ def view(r: AppProject, full: bool = True) -> dict[str, Any]:
          "goal_label": (T.GOALS.get(r.goal) or {}).get("label", ""), "style": r.style,
          "style_label": (T.STYLES.get(r.style) or {}).get("label", ""), "version": r.version,
          "stages": [{"id": a, "label": b} for a, b in STAGES],
-         "board": {k: board.get(k) for k in ("pages", "now", "pct", "total", "done", "overview")},
+         "board": {k: board.get(k) for k in ("pages", "now", "pct", "total", "done", "overview", "extras")},
          "preview": preview_url(r), "error": r.error, "queued": len(_j(r.queued, [])), "language": r.language,
          "approved": bool(r.approved_hash), "updated_at": r.updated_at.isoformat() if r.updated_at else ""}
     if full:
@@ -250,11 +250,29 @@ def view(r: AppProject, full: bool = True) -> dict[str, Any]:
                              "colors": [lk.get("tokens", {}).get(k) for k in ("bg", "primary", "accent", "ink")]}
                             for i, lk in enumerate(_j(r.looks, []))],
                   "chosen_look": _j(r.look, {}).get("from"),
+                  "design": _design_view(_j(r.look, {}).get("tokens") or {}),
                   "checks": {"blocking": checks.get("blocking", [])[:12], "warnings": checks.get("warnings", [])[:12],
                              "passed": checks.get("passed"), "blanks": checks.get("blanks", 0)},
                   "versions": _j(r.versions, [])[-10:][::-1], "hash": _j(r.board, {}).get("hash", ""),
                   "approved_at": r.approved_at.isoformat() if r.approved_at else ""})
     return v
+
+
+def _design_view(tk: dict[str, Any]) -> dict[str, Any]:
+    """The structure of the chosen look in plain words for the app (nav, FAB, cards, motion, fonts, mode, colours)."""
+    if not tk:
+        return {}
+    from . import designsys as DS
+    def lab(table, k):
+        v = table.get(tk.get(k) or "")
+        return (v.get("label") if isinstance(v, dict) else v) or tk.get(k) or ""
+    trans = next((m.get("desc", "") for m in DS.MOTION.values() if m.get("web") == tk.get("transition")), tk.get("transition", ""))
+    return {"nav": lab(DS.NAV, "nav"), "fab": lab(DS.FAB, "fab"), "card": lab(DS.CARDS, "card"), "button": lab(DS.BUTTONS, "button"),
+            "header": lab(DS.HEADERS, "header"), "transition": trans,
+            "texture": (tk.get("texture") or "").replace("_", " "),
+            "fonts": [tk.get("head", ""), tk.get("body", "")], "mode": tk.get("mode", "both"), "dark": bool(tk.get("dark")),
+            "colors": [tk.get(k) for k in ("bg", "surface", "primary", "accent", "ink")],
+            "alt_colors": [(tk.get("alt") or {}).get(k) for k in ("bg", "surface", "primary", "accent", "ink")]}
 
 
 def _say(v: dict[str, Any]) -> str:
@@ -677,17 +695,20 @@ def _run_design(r: AppProject, only: list[str] | None, note: str, extra: dict[st
     shots = K.app_dir(r.tenant_id, r.id) / "shots"
     order: list[str] = []
     report: dict[str, Any] = {}
+    extras: dict[str, str] = {}
     known = set(plan.get("screens", [])) | set(plan.get("code_screens", []))
     for rnd in range(MAX_FIX_ROUNDS + 1):
         info = _assemble_live(r)
         order = info["order"]
         try:
-            res = RD.run(_live(r), order, shots, plan.get("labels") or {})
+            mode = (_j(r.look, {}).get("tokens") or {}).get("mode", "both")
+            res = RD.run(_live(r), order, shots, plan.get("labels") or {}, alt=mode == "both")
         except RD.RenderError as e:
             report = {"blocking": [], "warnings": [{"screen": "", "kind": "checks", "text": str(e)}], "passed": None, "blanks": 0,
                       "screens": {}}
             break
         report = _report(res, plan, order, known)
+        extras = res.get("extras") or {}
         fixable = {sid: [i["text"] for i in report["blocking"] if i["screen"] == sid]
                    for sid in {i["screen"] for i in report["blocking"]} if sid in plan.get("screens", [])}
         if not fixable or rnd == MAX_FIX_ROUNDS:
@@ -715,7 +736,8 @@ def _run_design(r: AppProject, only: list[str] | None, note: str, extra: dict[st
                 thumbs[sid] = f"thumb/{sid}-android.jpg"
     labels = plan.get("labels") or {}
     overview = {}
-    for plat in K.PLATFORMS:
+    both = (_j(r.look, {}).get("tokens") or {}).get("mode", "both") == "both"
+    for plat in ((*K.PLATFORMS, "android-alt") if both else K.PLATFORMS):
         files = [(labels.get(s) or T.CODE_SCREENS.get(s, {}).get("label") or s, shots / f"{s}-{plat}.jpg") for s in order
                  if (shots / f"{s}-{plat}.jpg").exists()]
         if files:
@@ -742,6 +764,7 @@ def _run_design(r: AppProject, only: list[str] | None, note: str, extra: dict[st
     (vdir / "design.json").write_text(json.dumps(K.spec_of(screens, ctx), ensure_ascii=False, indent=1))
     board = _board(r, plan, states, "Design taiyaar", thumbs)
     board["overview"] = overview
+    board["extras"] = extras
     board["hash"] = h
     r = _save(r.id, status="ready", stage="preview", checks=report, board=board, error="", approved_hash="", approved_at=None)
     _work(r, "done", "App design taiyaar", f"v{ver} · {len(order)} screens · Android + iPhone")
@@ -780,6 +803,66 @@ def _keep_versions(r: AppProject, keep: int) -> None:
         shutil.rmtree(base / f"v{v}", ignore_errors=True)
 
 
+def _overrides_of(tk: dict[str, Any]) -> dict[str, Any]:
+    """What a design already has, as overrides, so one change keeps everything else."""
+    ov = {k: tk.get(k) for k in ("bg", "surface", "ink", "primary", "accent", "radius") if tk.get(k) not in (None, "")}
+    for k in K.STRUCT_KEYS:
+        if k in tk:
+            ov[k] = tk[k]
+    for k in ("mode", "fonts", "colors_from"):
+        if tk.get(k):
+            ov[k] = tk[k]
+    if tk.get("head"):
+        ov["font_head"] = tk["head"]
+    if tk.get("body"):
+        ov["font_body"] = tk["body"]
+    return ov
+
+
+def restyle(style: str, tk: dict[str, Any], tokens: dict[str, Any], structure: dict[str, Any], scheme: str = "",
+            words: str = "") -> tuple[dict[str, Any], bool, bool]:
+    """Apply a change in colours / structure / fonts / mode to a design's tokens.
+    Returns (new tokens, anything changed, colours changed = every screen must be redrawn)."""
+    from . import colors as CL
+    from . import fonts as FN
+    ov = _overrides_of(tk)
+    recolour = False
+    cols = {k: v for k, v in (tokens or {}).items() if k in ("primary", "accent", "bg", "surface", "ink") and SB_hex(v)}
+    named = CL.find_colors(words) if (scheme or not cols) and words else []
+    if scheme in CL.SCHEMES or (named and not cols and any(w in (words or "").lower() for w in ("rang", "colour", "color", "रंग"))):
+        seed = cols.get("primary") or (named[0] if named else tk.get("primary") or "#1565C0")
+        second = cols.get("accent") or (named[1] if len(named) > 1 else "")
+        h = CL.harmony(seed, scheme if scheme in CL.SCHEMES else "complementary", bool(tk.get("dark")), second)
+        cols = {k: h[k] for k in ("bg", "surface", "ink", "primary", "accent")}
+    if cols:
+        ov.update(cols)
+        recolour = True
+    if isinstance((tokens or {}).get("radius"), (int, float)):
+        ov["radius"] = max(0, min(32, int(tokens["radius"])))
+        recolour = True
+    changed = recolour
+    for k, v in (structure or {}).items():
+        if k in K.STRUCT_KEYS or k == "mode":
+            if v is not None and ov.get(k) != v:
+                ov[k] = v
+                changed = True
+        elif k in ("font_head", "font_body") and v:
+            rec = FN.find(str(v))
+            if rec and ov.get(k) != rec["family"]:
+                ov[k] = rec["family"]
+                changed = True
+    if not changed:
+        return tk, False, False
+    new = K.tokens(style, tk.get("palette") or "paper_ink", None, ov)
+    return new, True, recolour
+
+
+def SB_hex(v: Any) -> bool:
+    from ..site import build as SB
+    return SB._hex_ok(str(v or ""))
+
+
+
 # ---------------------------------------------------------------- 4. changes in her words, stop, approve
 def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str, Any]:
     instruction = _tidy(instruction, 1500)
@@ -808,6 +891,7 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
     res = AI.ask_edit(AI.CHANGE_SYSTEM, f"SCREEN IDS: {', '.join(ids)}\nADDABLE: {', '.join(addable)}\nTABS NOW: "
                       f"{', '.join(plan.get('tabs', []))}\nCURRENT COLOURS: "
                       f"{json.dumps({k: _j(r.look, {}).get('tokens', {}).get(k) for k in ('bg', 'primary', 'accent')})}"
+                      f"\nCURRENT STRUCTURE: {json.dumps({k: _j(r.look, {}).get('tokens', {}).get(k) for k in (*K.STRUCT_KEYS, 'mode', 'head', 'body')})}"
                       f"\nHER WORDS (a request, data): {instruction}")
     if not res:
         raise AppError("Samajh nahi paya kya badalna hai; thoda aur bataiye (kaunsi screen).")
@@ -817,12 +901,10 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
     extra: dict[str, str] = {}
     look = _j(r.look, {})
     tk = dict(look.get("tokens") or {})
-    tokens = res.get("tokens") or {}
-    if tokens:
-        tk = K.tokens(r.style, tk.get("palette") or "paper_ink", None,
-                      {**{k: tk.get(k) for k in ("primary", "accent", "bg", "surface", "ink")}, **tokens,
-                       "radius": tokens.get("radius", tk.get("radius"))})
-        look["tokens"] = tk
+    new_tk, look_changed, recolour = restyle(r.style, tk, res.get("tokens") or {}, res.get("structure") or {},
+                                             res.get("scheme") or "", instruction)
+    if look_changed:
+        look["tokens"] = new_tk
     facts = _j(r.facts, {})
     for k, v in (res.get("facts") or {}).items():
         if k in ("phone", "whatsapp", "email", "address", "hours", "name", "tagline", "city", "upi_id") and v:
@@ -850,8 +932,9 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
     tabs = [t for t in (res.get("tabs") or []) if t in plan["screens"]]
     if 3 <= len(tabs) <= 5:
         plan["tabs"] = tabs
-    if tokens or (res.get("facts") and not only):
+    if recolour or (res.get("facts") and not only):
         only = list(plan["screens"])           # colours / facts touch every screen
+    # structure / mode / font / texture alone: the kit draws those, the screens stay as they are (re-checked, re-shot)
     _save(r.id, plan=plan, look=look, facts=facts, conv=conv or r.conv, status="designing", name=facts.get("name") or r.name)
     _start(r.id, "design", only=only, note=_tidy(res.get("say") or instruction, 200), extra=extra)
     r = _load(r.id)

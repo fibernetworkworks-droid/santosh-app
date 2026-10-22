@@ -638,16 +638,22 @@ class _AppDesignPageState extends State<AppDesignPage> {
                 Text('Sab screens', style: display(15)),
                 const Spacer(),
                 SegmentedButton<String>(
-                  segments: const [ButtonSegment(value: 'android', label: Text('Android')), ButtonSegment(value: 'ios', label: Text('iPhone'))],
-                  selected: {_plat},
+                  segments: [
+                    const ButtonSegment(value: 'android', label: Text('Android')),
+                    const ButtonSegment(value: 'ios', label: Text('iPhone')),
+                    if (overview['android-alt'] != null)
+                      ButtonSegment(value: 'android-alt', label: Text(_map(v['design'])['dark'] == true ? 'Light' : 'Dark')),
+                  ],
+                  selected: {overview[_plat] == null ? 'android' : _plat},
                   onSelectionChanged: (s) => setState(() => _plat = s.first),
                 ),
               ]),
               const SizedBox(height: 8),
               GestureDetector(
-                onTap: () => _openShot(context, app, widget.id, _s(overview[_plat]), 'Sab screens'),
+                onTap: () => _openShot(context, app, widget.id, _s(overview[_plat] ?? overview['android']), 'Sab screens'),
                 child: ClipRRect(borderRadius: BorderRadius.circular(12),
-                    child: Image.network(app.api!.absolute('/api/apps/${widget.id}/shots/${overview[_plat]}'), headers: app.api!.authHeaders,
+                    child: Image.network(app.api!.absolute('/api/apps/${widget.id}/shots/${overview[_plat] ?? overview['android']}'),
+                        headers: app.api!.authHeaders,
                         height: 320, fit: BoxFit.cover, alignment: Alignment.topCenter, width: double.infinity,
                         errorBuilder: (_, __, ___) => const SizedBox(height: 60, child: Icon(Icons.broken_image_outlined)))),
               ),
@@ -665,6 +671,11 @@ class _AppDesignPageState extends State<AppDesignPage> {
               if (st == 'approved') const Padding(padding: EdgeInsets.only(top: 8),
                   child: Text('✓ Design pakka. Asli Android / iPhone app isi naksha se banegi (agla version).', style: TextStyle(color: C.ok, fontSize: 12.5))),
             ])),
+            const SizedBox(height: 10),
+          ],
+          if (_map(v['design']).isNotEmpty) ...[
+            Glass(child: AppDesignSystemCard(app: app, v: v, busy: _busy,
+                onAsk: (t) => _act('change', {'instruction': t}))),
             const SizedBox(height: 10),
           ],
           if (_list(checks['blocking']).isNotEmpty || _list(checks['warnings']).isNotEmpty || checks['passed'] == true)
@@ -708,6 +719,89 @@ class _AppDesignPageState extends State<AppDesignPage> {
         ]),
       ),
     );
+  }
+}
+
+/// The design system of the chosen look in plain words: navigation, FAB, cards, header, motion, fonts, light / dark
+/// colours, the open side bar / FAB menu pictures, and one-tap structure changes (sent as her words, like 'Badlav bolo').
+class AppDesignSystemCard extends StatelessWidget {
+  const AppDesignSystemCard({super.key, required this.app, required this.v, required this.onAsk, this.busy = false});
+  final Santosh app;
+  final Map<String, dynamic> v;
+  final void Function(String) onAsk;
+  final bool busy;
+
+  static const _quick = [
+    ('Side bar', 'side bar (drawer) wala navigation do, neeche tabs bhi rahein'),
+    ('Floating bar', 'neeche floating pill navigation bar do'),
+    ('Bottom bar', 'normal bottom navigation bar do'),
+    ('Speed-dial FAB', 'plus button dabane par 3 kaam khulein (speed dial FAB)'),
+    ('Glass cards', 'cards glass jaise (frosted) karo'),
+    ('Dark mode', 'app dark mode mein ho'),
+    ('Light + dark', 'app light aur dark dono mode mein chale'),
+  ];
+
+  Widget _swatches(List cols) => Row(children: [
+        for (final c in cols)
+          Container(width: 22, height: 22, margin: const EdgeInsets.only(right: 4),
+              decoration: BoxDecoration(color: _hex(_s(c)), borderRadius: BorderRadius.circular(6), border: Border.all(color: C.line))),
+      ]);
+
+  @override
+  Widget build(BuildContext context) {
+    final d = _map(v['design']);
+    final ex = _map(_map(v['board'])['extras']);
+    final id = _s(v['id']);
+    final mode = switch (_s(d['mode'])) { 'dark' => 'Sirf dark', 'light' => 'Sirf light', _ => 'Light + dark' };
+    Widget row(String k, String val) => val.isEmpty
+        ? const SizedBox.shrink()
+        : Padding(padding: const EdgeInsets.only(bottom: 3), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SizedBox(width: 92, child: Text(k, style: const TextStyle(color: C.faint, fontSize: 12))),
+            Expanded(child: Text(val, style: const TextStyle(fontSize: 12.5))),
+          ]));
+    final fonts = (d['fonts'] as List? ?? const []).map((e) => '$e').where((e) => e.isNotEmpty).toSet().join(' + ');
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Design ka dhaancha', style: display(15)),
+      const SizedBox(height: 8),
+      row('Navigation', _s(d['nav'])),
+      row('Button (FAB)', _s(d['fab'])),
+      row('Cards', _s(d['card'])),
+      row('Upar ka hissa', _s(d['header'])),
+      row('Button', _s(d['button'])),
+      row('Screen badalna', _s(d['transition'])),
+      row('Texture', _s(d['texture'])),
+      row('Font', fonts),
+      row('Mode', mode),
+      const SizedBox(height: 4),
+      Row(children: [
+        _swatches(d['colors'] as List? ?? const []),
+        if ((d['alt_colors'] as List? ?? const []).isNotEmpty && _s(d['mode']) == 'both') ...[
+          const SizedBox(width: 8),
+          Text(d['dark'] == true ? 'Light:' : 'Dark:', style: const TextStyle(color: C.faint, fontSize: 11.5)),
+          const SizedBox(width: 4),
+          _swatches(d['alt_colors'] as List),
+        ],
+      ]),
+      if (ex.isNotEmpty) ...[
+        const SizedBox(height: 10),
+        SizedBox(height: 170, child: ListView(scrollDirection: Axis.horizontal, children: [
+          for (final e in ex.entries)
+            Padding(padding: const EdgeInsets.only(right: 8), child: Column(children: [
+              GestureDetector(
+                onTap: () => _openShot(context, app, id, _s(e.value), e.key.startsWith('drawer') ? 'Side bar' : 'FAB menu'),
+                child: AppShot(app: app, appId: id, name: _s(e.value), width: 70)),
+              const SizedBox(height: 2),
+              Text(e.key.startsWith('drawer') ? 'Side bar' : 'FAB menu', style: const TextStyle(color: C.faint, fontSize: 11)),
+            ])),
+        ])),
+      ],
+      const SizedBox(height: 8),
+      const Text('Ek tap mein badlo (screens wahi rahengi):', style: TextStyle(color: C.faint, fontSize: 12)),
+      const SizedBox(height: 4),
+      Wrap(spacing: 6, runSpacing: 4, children: [
+        for (final q in _quick) ActionChip(label: Text(q.$1), onPressed: busy ? null : () => onAsk(q.$2)),
+      ]),
+    ]);
   }
 }
 
@@ -755,6 +849,8 @@ class _AppPreviewState extends State<AppPreview> {
         appBar: AppBar(title: Text(widget.title.isEmpty ? 'Prototype' : widget.title), actions: [
           TextButton(onPressed: () => _switch(_plat == 'android' ? 'ios' : 'android'),
               child: Text(_plat == 'android' ? 'iPhone look' : 'Android look')),
+          IconButton(tooltip: 'Light / dark', icon: const Icon(Icons.dark_mode_outlined),
+              onPressed: () => _web.runJavaScript("window.HoolaProto && window.HoolaProto.mode('toggle')")),
           IconButton(tooltip: 'Sab screens', icon: const Icon(Icons.grid_view_rounded),
               onPressed: () => _web.loadRequest(Uri.parse('${_base}all.html'))),
           IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: () => _web.loadRequest(Uri.parse('$_base?p=$_plat'))),

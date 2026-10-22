@@ -107,57 +107,78 @@ GOALS: dict[str, dict[str, Any]] = {
 }
 
 # ---------------------------------------------------------------- 10 premium app design styles
+def _st(label, fonts, moods, radius, nav, card, button, header, fab, trans, texture, motion, do, dont):
+    return {"label": label, "fonts": fonts, "moods": moods, "radius": radius, "nav": nav, "card": card, "button": button,
+            "header": header, "fab": fab, "transition": trans, "texture": texture, "motion": motion, "do": do, "dont": dont}
+
+
+# 16 premium styles; each fixes a STRUCTURE (navigation, FAB, card, button, header, screen transition, texture) so the
+# three looks she compares differ in structure, not only in colour. Any part can be changed later in her words.
 STYLES: dict[str, dict[str, Any]] = {
-    "clean_commerce": {"label": "Clean commerce", "fonts": "jakarta_inter", "moods": ["bright"], "radius": 14,
-                       "nav": "bar", "card": "elevated", "button": "rounded", "header": "search_bar",
-                       "motion": ["fade-through", "stagger-list", "press-scale", "badge-pop", "shimmer"],
-                       "do": "product-first: crisp white surfaces, big product art, price in bold, sticky add-to-cart bar, delivery time chip",
-                       "dont": "no decoration that slows shopping, no tiny prices, no more than one accent colour"},
-    "aurora_glass": {"label": "Aurora glass", "fonts": "outfit_inter", "moods": ["tech", "gradient", "dark"], "radius": 22,
-                     "nav": "floating_pill", "card": "glass", "button": "pill", "header": "large_title",
-                     "motion": ["shared-axis", "glow-pulse", "stagger-list", "parallax-header", "spring-sheet"],
-                     "do": "soft aurora gradient background, frosted glass cards, floating pill tab bar, glowing primary buttons",
-                     "dont": "no glass on glass on glass (keep text on solid enough surfaces), no low-contrast labels"},
-    "soft_pastel": {"label": "Soft pastel", "fonts": "sora_nunito", "moods": ["calm", "candy", "warm"], "radius": 26,
-                    "nav": "bar_labels", "card": "filled", "button": "pill", "header": "greeting",
-                    "motion": ["spring-sheet", "pop-in", "stagger-grid", "float-gentle", "press-scale"],
-                    "do": "friendly and soft: pastel tinted cards, rounded everything, greeting header with her name, cute line icons",
-                    "dont": "no harsh black blocks, no dense tables"},
-    "bold_blocks": {"label": "Bold blocks", "fonts": "space_dm", "moods": ["bold", "contrast"], "radius": 12,
-                    "nav": "bar", "card": "block", "button": "chunky", "header": "big_type",
-                    "motion": ["slide-push", "pop-in", "count-up", "marquee-chip", "press-down"],
-                    "do": "confident colour blocks, 2 px ink borders with offset shadows, huge numbers, chunky buttons",
-                    "dont": "no thin grey text, no pastel washes"},
-    "luxury_noir": {"label": "Luxury noir", "fonts": "cormorant_manrope", "moods": ["dark", "gold", "luxury"], "radius": 4,
-                    "nav": "bar_minimal", "card": "outlined", "button": "square", "header": "center_title",
-                    "motion": ["fade-slow", "reveal-blur", "parallax-header", "line-draw", "zoom-image"],
-                    "do": "dark canvas, gold hairlines, serif display titles, big imagery, letter-spaced small caps labels",
-                    "dont": "no bright colours, no crowded screens, no bouncy motion"},
-    "desi_festive": {"label": "Desi festive", "fonts": "yatra_hind", "moods": ["festive", "warm"], "radius": 16,
-                     "nav": "bar_labels", "card": "filled", "button": "rounded", "header": "brand_bar",
-                     "motion": ["toran-swing", "sparkle", "stagger-list", "pop-in", "slide-push"],
-                     "do": "Indian celebration: maroon / marigold / gold, motif dividers Hoola draws, Devanagari display lines",
-                     "dont": "no religious symbols unless she asks, no copied artwork or logos"},
-    "minimal_mono": {"label": "Minimal mono", "fonts": "inter_inter", "moods": ["mono", "neutral"], "radius": 8,
-                     "nav": "bar_minimal", "card": "outlined", "button": "square", "header": "large_title",
-                     "motion": ["fade-through", "line-draw", "slide-push", "press-scale"],
-                     "do": "precision: black / white + one accent, thin dividers, numbered lists, lots of air",
-                     "dont": "no shadows, no gradients, no decoration"},
-    "fresh_organic": {"label": "Fresh organic", "fonts": "lora_dm", "moods": ["green", "earthy", "calm"], "radius": 24,
-                      "nav": "bar_labels", "card": "filled", "button": "pill", "header": "greeting",
-                      "motion": ["blob-morph", "stagger-grid", "float-gentle", "spring-sheet"],
-                      "do": "calm natural feel: greens, sand, clay; soft blob shapes drawn in SVG; leaf / grain details",
-                      "dont": "no neon, no hard black boxes"},
-    "trust_clinical": {"label": "Trust clinical", "fonts": "manrope_inter", "moods": ["trust", "blue", "calm"], "radius": 12,
-                       "nav": "bar", "card": "outlined", "button": "rounded", "header": "brand_bar",
-                       "motion": ["fade-through", "stagger-list", "check-draw", "press-scale"],
-                       "do": "clear, calm, credible: blue / teal, big readable lists, registration numbers and timings visible",
-                       "dont": "no playful stickers, no hype words, no medical claims"},
-    "playful_pop": {"label": "Playful pop", "fonts": "baloo_mukta", "moods": ["bright", "candy"], "radius": 22,
-                    "nav": "floating_pill", "card": "filled", "button": "chunky", "header": "greeting",
-                    "motion": ["pop-in", "wiggle-tap", "confetti-success", "stagger-grid", "float-gentle"],
-                    "do": "fun and bright: colour blocks, stickers drawn in SVG, bouncy buttons, celebration on success",
-                    "dont": "no dark heavy palettes, no long paragraphs"},
+    "clean_commerce": _st("Clean commerce", "jakarta_inter", ["bright"], 14, "bar", "elevated", "rounded", "search_bar", "extended",
+                          "fade_through", "", ["m_stagger", "m_press", "m_badge", "m_shimmer", "m_pop"],
+                          "product-first: crisp white surfaces, big product art, price in bold, sticky add-to-cart bar, delivery time chip",
+                          "no decoration that slows shopping, no tiny prices, no more than one accent colour"),
+    "aurora_glass": _st("Aurora glass", "outfit_inter", ["tech", "gradient", "dark"], 22, "floating_pill", "glass", "gradient", "large_title",
+                        "regular", "container", "", ["m_glow", "m_tilt", "m_stagger", "m_glass_shine", "m_parallax"],
+                        "soft aurora gradient background, frosted glass cards, floating pill tab bar, glowing primary buttons",
+                        "no glass on glass on glass (keep text on solid enough surfaces), no low-contrast labels"),
+    "soft_pastel": _st("Soft pastel", "sora_nunito", ["calm", "candy", "warm"], 26, "bar_labels", "filled", "pill", "greeting", "large",
+                       "axis_y", "dots", ["m_pop", "m_float", "m_bounce", "m_stagger"],
+                       "friendly and soft: pastel tinted cards, rounded everything, greeting header with her name, cute line icons",
+                       "no harsh black blocks, no dense tables"),
+    "bold_blocks": _st("Bold blocks", "space_dm", ["bold", "contrast"], 12, "bottom_app_bar", "block", "chunky", "big_type", "docked",
+                       "push", "grid", ["m_pop", "m_count", "m_marquee", "m_press", "m_shake"],
+                       "confident colour blocks, 2 px ink borders with offset shadows, huge numbers, chunky buttons, docked main button",
+                       "no thin grey text, no pastel washes"),
+    "luxury_noir": _st("Luxury noir", "cormorant_manrope", ["dark", "gold", "luxury"], 4, "drawer", "image_overlay", "square", "transparent",
+                       "none", "zoom", "marble", ["m_blur_in", "m_ken_burns", "m_parallax", "m_draw"],
+                       "dark canvas, gold hairlines, serif display titles, big imagery under scrims, side-bar menu, letter-spaced labels",
+                       "no bright colours, no crowded screens, no bouncy motion"),
+    "desi_festive": _st("Desi festive", "yatra_hind", ["festive", "warm"], 16, "drawer_bar", "filled", "rounded", "brand_bar", "extended",
+                        "axis_x", "bandhani", ["m_swing", "m_sparkle", "m_stagger", "m_pop"],
+                        "Indian celebration: maroon / marigold / gold, motif dividers Hoola draws, Devanagari display lines, bandhani texture",
+                        "no religious symbols unless she asks, no copied artwork or logos"),
+    "minimal_mono": _st("Minimal mono", "inter_inter", ["mono", "neutral"], 8, "top_tabs", "outlined", "square", "large_title", "small",
+                        "axis_x", "", ["m_draw", "m_reveal", "m_press"],
+                        "precision: black / white + one accent, thin dividers, numbered lists, top tabs, lots of air",
+                        "no shadows, no gradients, no decoration"),
+    "fresh_organic": _st("Fresh organic", "lora_dm", ["green", "earthy", "calm"], 24, "bar_labels", "filled", "pill", "greeting",
+                         "extended", "axis_z", "leaf", ["m_morph", "m_float", "m_stagger", "m_breathe"],
+                         "calm natural feel: greens, sand, clay; soft blob shapes drawn in SVG; leaf / grain details",
+                         "no neon, no hard black boxes"),
+    "trust_clinical": _st("Trust clinical", "manrope_inter", ["trust", "blue", "calm"], 12, "bar", "outlined", "rounded", "brand_bar",
+                          "extended", "fade_through", "", ["m_stagger", "m_check", "m_progress", "m_press"],
+                          "clear, calm, credible: blue / teal, big readable lists, registration numbers and timings visible",
+                          "no playful stickers, no hype words, no medical claims"),
+    "playful_pop": _st("Playful pop", "baloo_mukta", ["bright", "candy"], 22, "floating_pill", "filled", "chunky", "greeting", "speed_dial",
+                       "zoom", "confetti", ["m_pop", "m_wiggle", "m_confetti", "m_jelly", "m_bounce"],
+                       "fun and bright: colour blocks, stickers drawn in SVG, bouncy buttons, celebration on success",
+                       "no dark heavy palettes, no long paragraphs"),
+    "neo_soft": _st("Neo soft (neumorphic)", "quicksand_nunito", ["calm", "neutral"], 22, "bar_minimal", "neumorphic", "soft",
+                    "center_title", "regular", "axis_z", "", ["m_press", "m_breathe", "m_pop", "m_progress"],
+                    "soft 3D: surfaces pressed out of the background with light + dark shadows, round controls, calm colours",
+                    "no thin text on soft shadows (contrast first), no busy pictures"),
+    "mesh_gradient": _st("Mesh gradient", "unbounded_inter", ["tech", "gradient", "bright"], 24, "floating_pill", "mesh", "gradient",
+                         "big_type", "large", "container", "grain", ["m_gradient", "m_tilt", "m_glow", "m_stagger"],
+                         "vivid gradient-mesh cards with film grain, huge display type, tilting 3D cards, floating bar",
+                         "no flat grey screens, never text straight on a busy gradient without a scrim"),
+    "editorial_image": _st("Editorial image", "playfair_lato", ["luxury", "warm"], 6, "top_tabs", "image_overlay", "pill", "parallax_hero",
+                           "none", "container", "paper", ["m_ken_burns", "m_parallax", "m_blur_in", "m_reveal"],
+                           "magazine app: full-bleed art with parallax, serif headlines over scrims, top tabs, paper texture",
+                           "no cluttered toolbars, no tiny art"),
+    "enterprise_pro": _st("Enterprise pro", "plexsans_plexdeva", ["trust", "neutral", "blue"], 10, "drawer_bar", "outlined", "rounded",
+                          "collapsing", "menu", "axis_x", "", ["m_chart_grow", "m_number_roll", "m_stagger", "m_progress"],
+                          "dense but clear dashboards: KPI tiles, tables that become cards on phones, filters, side bar for every module",
+                          "no decoration over data, no hidden actions"),
+    "dark_neon": _st("Dark neon", "syne_inter", ["dark", "tech", "contrast"], 16, "floating_pill", "glass", "gradient", "large_title",
+                     "regular", "zoom", "grid", ["m_glow", "m_pulse", "m_marquee", "m_tilt"],
+                     "near-black canvas, neon accent glows, glass cards, grid texture, energetic motion (gyms, gaming, nightlife)",
+                     "no long reading text, keep neon for accents only"),
+    "paper_craft": _st("Paper craft", "kalam_mukta", ["warm", "earthy", "festive"], 18, "bar_labels", "stacked", "rounded", "greeting",
+                       "extended", "curl", "paper", ["m_swing", "m_pop", "m_stagger"],
+                       "hand-made Indian feel: stacked paper cards, handwritten headings, block-print accents, page-turn transitions",
+                       "no glossy gradients, no corporate stock look"),
 }
 
 # ---------------------------------------------------------------- 51 screens x 6 designs (written by Opus) + 6 by code
@@ -428,70 +449,24 @@ CODE_SCREENS: dict[str, dict[str, str]] = {
     "delete_account": {"label": "Delete account", "hi": "account hatao", "why": "required in-app by both stores (made by code)"},
 }
 
-# ---------------------------------------------------------------- navigation patterns (the shell, drawn by code)
-NAV: dict[str, str] = {
-    "bar": "Material 3 navigation bar on Android (pill indicator) / iOS tab bar with labels",
-    "bar_labels": "tab bar with icon + label, active tab tinted",
-    "bar_minimal": "thin tab bar, icons with a dot under the active one",
-    "floating_pill": "floating rounded pill bar above the content with the active tab filled",
-}
+# ---------------------------------------------------------------- structures, motion (v0.128.1: the full design system)
+from . import designsys as DS  # noqa: E402
 
-# ---------------------------------------------------------------- 40 motion presets (the prototype runtime plays them)
-MOTION: dict[str, str] = {
-    "fade-through": "Material fade-through between tabs (old fades out, new fades and scales in from 92%)",
-    "shared-axis": "shared X-axis slide for forward / back navigation",
-    "slide-push": "iOS push: new screen slides in from the right, old one shifts left and dims",
-    "spring-sheet": "bottom sheets spring up with a slight overshoot",
-    "stagger-list": "list items rise in one by one (40 ms apart)",
-    "stagger-grid": "grid tiles pop in diagonally",
-    "press-scale": "cards and buttons shrink to 97% while pressed",
-    "press-down": "chunky buttons move down 2 px into their shadow while pressed",
-    "badge-pop": "cart badge pops when an item is added",
-    "shimmer": "skeleton shimmer while content loads",
-    "pop-in": "elements pop in with a soft spring",
-    "glow-pulse": "primary button glows softly",
-    "parallax-header": "header art moves slower than the list",
-    "float-gentle": "decorative shapes float slowly",
-    "count-up": "numbers count up to her value",
-    "marquee-chip": "a chip strip scrolls slowly",
-    "fade-slow": "slow 500 ms fades",
-    "reveal-blur": "content sharpens from a light blur",
-    "line-draw": "hairlines draw themselves",
-    "zoom-image": "big images zoom 4% slowly",
-    "toran-swing": "toran motif swings once",
-    "sparkle": "small sparkles near the title on success",
-    "blob-morph": "background blobs morph slowly",
-    "check-draw": "success check mark draws itself",
-    "wiggle-tap": "icons wiggle once when tapped",
-    "confetti-success": "confetti burst on order / booking success",
-    "ripple": "Android ink ripple on taps",
-    "tab-indicator": "tab indicator slides to the chosen tab",
-    "fab-morph": "floating button morphs into a sheet",
-    "hero-image": "list art grows into the detail screen header",
-    "progress-fill": "progress bars fill on open",
-    "ring-fill": "progress rings fill on open",
-    "toast-slide": "snackbar slides up and away",
-    "stepper-bump": "quantity number bumps on +/-",
-    "chip-select": "chips fill with a quick scale",
-    "pull-refresh": "pull to refresh spinner (prototype: on tap)",
-    "skeleton-to-content": "skeleton blocks cross-fade into content",
-    "qr-reveal": "QR pass fades in with a light sweep",
-    "date-slide": "date strip slides to today",
-    "success-scale": "success icon scales from 0 with a bounce",
-}
+NAV: dict[str, str] = {k: v["desc"] for k, v in DS.NAV.items()}
+MOTION: dict[str, str] = {k: v["desc"] for k, v in DS.MOTION.items()}
 
 # ---------------------------------------------------------------- industry defaults (40 industries of the field cards)
 INDUSTRY: dict[str, dict[str, Any]] = {
     "food_shop": {"goal": "shop", "styles": ["desi_festive", "clean_commerce", "fresh_organic"]},
     "restaurant": {"goal": "food_order", "styles": ["clean_commerce", "luxury_noir", "bold_blocks"]},
-    "food_maker": {"goal": "food_order", "styles": ["desi_festive", "fresh_organic", "soft_pastel"]},
-    "fashion": {"goal": "shop", "styles": ["luxury_noir", "minimal_mono", "desi_festive"]},
+    "food_maker": {"goal": "food_order", "styles": ["paper_craft", "desi_festive", "fresh_organic"]},
+    "fashion": {"goal": "shop", "styles": ["luxury_noir", "editorial_image", "desi_festive"]},
     "electronics": {"goal": "shop", "styles": ["clean_commerce", "aurora_glass", "bold_blocks"]},
     "retail": {"goal": "shop", "styles": ["clean_commerce", "playful_pop", "bold_blocks"]},
     "clinic": {"goal": "booking", "styles": ["trust_clinical", "minimal_mono", "fresh_organic"]},
     "health_allied": {"goal": "booking", "styles": ["trust_clinical", "minimal_mono", "fresh_organic"]},
-    "wellness": {"goal": "membership", "styles": ["bold_blocks", "aurora_glass", "fresh_organic"]},
-    "beauty": {"goal": "booking", "styles": ["luxury_noir", "soft_pastel", "aurora_glass"]},
+    "wellness": {"goal": "membership", "styles": ["dark_neon", "neo_soft", "fresh_organic"]},
+    "beauty": {"goal": "booking", "styles": ["luxury_noir", "neo_soft", "soft_pastel"]},
     "school": {"goal": "learning", "styles": ["playful_pop", "trust_clinical", "soft_pastel"]},
     "coaching": {"goal": "learning", "styles": ["bold_blocks", "trust_clinical", "aurora_glass"]},
     "skills": {"goal": "learning", "styles": ["playful_pop", "soft_pastel", "minimal_mono"]},
@@ -499,28 +474,28 @@ INDUSTRY: dict[str, dict[str, Any]] = {
     "repair": {"goal": "service_request", "styles": ["aurora_glass", "bold_blocks", "minimal_mono"]},
     "auto": {"goal": "booking", "styles": ["bold_blocks", "luxury_noir", "aurora_glass"]},
     "construction": {"goal": "catalogue", "styles": ["minimal_mono", "luxury_noir", "trust_clinical"]},
-    "real_estate": {"goal": "catalogue", "styles": ["luxury_noir", "trust_clinical", "minimal_mono"]},
+    "real_estate": {"goal": "catalogue", "styles": ["editorial_image", "luxury_noir", "trust_clinical"]},
     "finance": {"goal": "booking", "styles": ["trust_clinical", "minimal_mono", "luxury_noir"]},
     "legal": {"goal": "booking", "styles": ["minimal_mono", "trust_clinical", "luxury_noir"]},
     "travel": {"goal": "booking", "styles": ["bold_blocks", "fresh_organic", "playful_pop"]},
-    "hospitality": {"goal": "booking", "styles": ["luxury_noir", "fresh_organic", "minimal_mono"]},
+    "hospitality": {"goal": "booking", "styles": ["editorial_image", "luxury_noir", "fresh_organic"]},
     "events": {"goal": "catalogue", "styles": ["desi_festive", "luxury_noir", "soft_pastel"]},
-    "creative": {"goal": "catalogue", "styles": ["minimal_mono", "bold_blocks", "luxury_noir"]},
-    "it": {"goal": "service_request", "styles": ["aurora_glass", "minimal_mono", "trust_clinical"]},
-    "telecom": {"goal": "service_request", "styles": ["aurora_glass", "bold_blocks", "trust_clinical"]},
-    "manufacturing": {"goal": "catalogue", "styles": ["trust_clinical", "minimal_mono", "bold_blocks"]},
+    "creative": {"goal": "catalogue", "styles": ["mesh_gradient", "minimal_mono", "editorial_image"]},
+    "it": {"goal": "service_request", "styles": ["enterprise_pro", "aurora_glass", "mesh_gradient"]},
+    "telecom": {"goal": "service_request", "styles": ["enterprise_pro", "aurora_glass", "bold_blocks"]},
+    "manufacturing": {"goal": "catalogue", "styles": ["enterprise_pro", "trust_clinical", "minimal_mono"]},
     "agriculture": {"goal": "shop", "styles": ["fresh_organic", "desi_festive", "clean_commerce"]},
-    "logistics": {"goal": "service_request", "styles": ["bold_blocks", "trust_clinical", "aurora_glass"]},
+    "logistics": {"goal": "service_request", "styles": ["enterprise_pro", "bold_blocks", "trust_clinical"]},
     "trade": {"goal": "khata", "styles": ["trust_clinical", "bold_blocks", "minimal_mono"]},
     "ngo": {"goal": "community", "styles": ["fresh_organic", "soft_pastel", "minimal_mono"]},
     "spiritual": {"goal": "community", "styles": ["desi_festive", "minimal_mono", "soft_pastel"]},
     "personal": {"goal": "catalogue", "styles": ["minimal_mono", "luxury_noir", "bold_blocks"]},
     "pets": {"goal": "booking", "styles": ["playful_pop", "soft_pastel", "fresh_organic"]},
     "kids": {"goal": "learning", "styles": ["playful_pop", "soft_pastel", "fresh_organic"]},
-    "staffing": {"goal": "service_request", "styles": ["trust_clinical", "bold_blocks", "minimal_mono"]},
+    "staffing": {"goal": "service_request", "styles": ["enterprise_pro", "trust_clinical", "bold_blocks"]},
     "citizen_services": {"goal": "service_request", "styles": ["trust_clinical", "minimal_mono", "clean_commerce"]},
-    "crafts": {"goal": "shop", "styles": ["minimal_mono", "fresh_organic", "desi_festive"]},
-    "sports": {"goal": "membership", "styles": ["bold_blocks", "playful_pop", "aurora_glass"]},
+    "crafts": {"goal": "shop", "styles": ["paper_craft", "editorial_image", "desi_festive"]},
+    "sports": {"goal": "membership", "styles": ["dark_neon", "bold_blocks", "playful_pop"]},
     "local_services": {"goal": "khata", "styles": ["soft_pastel", "playful_pop", "clean_commerce"]},
 }
 # a field card's website goal -> the app goal that fits it (used when the field has its own goal)
@@ -600,15 +575,23 @@ def check() -> list[str]:
     for sid, s in SCREENS.items():
         if len(s["variants"]) != 6:
             problems.append(f"screen {sid}: {len(s['variants'])} designs")
+    from . import colors as CL
+    from . import fonts as FN
+    pairs = FN.pairs()
     for k, st in STYLES.items():
-        if st["fonts"] not in ST.FONTS:
+        if st["fonts"] not in pairs:
             problems.append(f"style {k}: font pair {st['fonts']}")
-        if st["nav"] not in NAV:
-            problems.append(f"style {k}: nav {st['nav']}")
+        for key, table in (("nav", DS.NAV), ("card", DS.CARDS), ("button", DS.BUTTONS), ("header", DS.HEADERS), ("fab", DS.FAB)):
+            if st[key] not in table:
+                problems.append(f"style {k}: {key} {st[key]}")
+        if st["transition"] not in {v["web"] for v in DS.MOTION.values() if v["kind"] == "transition"}:
+            problems.append(f"style {k}: transition {st['transition']}")
+        if st["texture"] and st["texture"] not in DS.TEXTURES:
+            problems.append(f"style {k}: texture {st['texture']}")
         for m in st["motion"]:
             if m not in MOTION:
                 problems.append(f"style {k}: motion {m}")
-        if not any(set(st["moods"]) & set(p["moods"]) for p in ST.PALETTES.values()):
+        if not any(set(st["moods"]) & set(p["moods"]) for p in CL.palettes().values()):
             problems.append(f"style {k}: no palette for moods")
     for ind, v in INDUSTRY.items():
         if ind not in ST.INDUSTRIES:
@@ -618,6 +601,7 @@ def check() -> list[str]:
     for ind in ST.INDUSTRIES:
         if ind not in INDUSTRY:
             problems.append(f"industry {ind} has no app defaults")
-    if len(MOTION) != 40:
+    if len(MOTION) != 100:
         problems.append(f"{len(MOTION)} motion presets")
+    problems += DS.check()
     return problems

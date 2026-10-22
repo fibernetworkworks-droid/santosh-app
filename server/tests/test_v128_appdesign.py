@@ -71,6 +71,8 @@ class FakeAI:
 def app_env(env, monkeypatch, tmp_path):
     monkeypatch.setenv("APP_DIR", str(tmp_path / "apps"))
     monkeypatch.setenv("APP_WORKER", "false")
+    monkeypatch.setenv("APP_FONTS_FETCH", "false")
+    monkeypatch.setenv("APP_FONTS_DIR", str(tmp_path / "fonts"))
     from app.appmaker import ai as AI
     fake = FakeAI(bad={"cart"})
     monkeypatch.setattr(AI, "ask_json", fake)
@@ -85,8 +87,8 @@ def test_app_library_counts_understanding_and_rules(monkeypatch):
     from app.appmaker import taxonomy as TX
     assert TX.check() == []
     c = L.counts()
-    assert c["fields"] == 1000 and c["briefs"] == 100000 and c["goals"] == 10 and c["styles"] == 10
-    assert c["screen_designs"] == 306 and c["screen_types"] == 57 and c["motion_presets"] == 40
+    assert c["fields"] == 1000 and c["briefs"] == 160000 and c["goals"] == 10 and c["styles"] == 16
+    assert c["screen_designs"] == 306 and c["screen_types"] == 57 and c["motion_presets"] == 100
     for q, field, goal in [("kirana ki app ghar pe delivery", "kirana", "shop"), ("मिठाई की दुकान का ऐप", "sweet_shop", "shop"),
                            ("gym app membership wala", "gym", "membership"), ("coaching classes ke liye app", None, "learning"),
                            ("restaurant app menu order", "restaurant", "food_order"), ("dant doctor app appointment", "dentist", "booking")]:
@@ -208,10 +210,10 @@ def test_sanitizer_tools_and_api(app_env):
     u = asyncio.run(dispatch("app_dekho", {"what": "understand", "q": "kirana ki app"}, owner))
     assert u["field"] == "kirana" and u["goal"] == "shop"
     b = asyncio.run(dispatch("app_dekho", {"what": "brief", "field": "gym", "goal": "membership"}, owner))
-    assert "member_card" in b["screens"] and b["id"] == "gym.membership.bold_blocks"
+    assert "member_card" in b["screens"] and b["id"].startswith("gym.membership.")
     c = TestClient(app)
     allv = c.get("/api/apps").json()
-    assert allv["library"]["briefs"] == 100000 and allv["apps"][0]["number"] == out["number"]
+    assert allv["library"]["briefs"] == 160000 and allv["apps"][0]["number"] == out["number"]
     assert c.get("/api/apps-library?q=salon").json()["fields"][0]["goal"] == "booking"
     assert c.post(f"/api/apps/{out['id']}/look", json={"index": 0}).status_code == 400          # no looks yet
     assert c.post("/api/apps", json={"brief": "SBI jaisi app jismein OTP daalein"}).status_code == 400

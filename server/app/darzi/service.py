@@ -23,7 +23,7 @@ import logging
 import re
 import statistics
 import threading
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import Boolean, DateTime, Integer, String, Text, select
@@ -458,7 +458,10 @@ def _taken_days(s, tenant: str) -> dict[str, list[int]]:
     out: dict[str, list[int]] = {}
     for o in rows:
         try:
-            done = o.ready_at.astimezone(_tz(tenant)).date() if o.ready_at else date.fromisoformat(o.delivered_on)
+            ra = o.ready_at
+            if ra is not None and ra.tzinfo is None:          # SQLite gives the UTC wall clock back without its zone
+                ra = ra.replace(tzinfo=timezone.utc)
+            done = ra.astimezone(_tz(tenant)).date() if ra else date.fromisoformat(o.delivered_on)
             days = (done - date.fromisoformat(o.received_on)).days
         except (TypeError, ValueError):
             continue

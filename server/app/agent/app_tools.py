@@ -35,10 +35,13 @@ APP_TOOLS = [
         "Read her app designs (nothing changes). what=apps | app (app: board, screens, checks, preview link, versions) | "
         "checks (app) | spec (app: the frozen design contract: tokens, tabs, every screen's purpose / data / actions) | "
         "library (q or industry: business types with their app goal) | brief (field, goal, style: the full ready app brief) | "
-        "understand (q: what a short ask means: business type, app goal, 3 looks)."),
+        "understand (q: what a short ask means: business type, app goal, 3 looks) | design_system (the menu she can pick from: "
+        "navigation types incl. side bar / floating bar / rail / top tabs, FAB types incl. speed dial, cards incl. glass, headers, "
+        "buttons, textures, motion, 3D, colour schemes, fonts (q = font search, script = devanagari / tamil / ...)). To change an "
+        "app's structure use app_banao action=change with her words (screens are not redrawn for structure / mode / font)."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand"]},
-         "app": {"type": "string"}, "q": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
+         "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system"]},
+         "app": {"type": "string"}, "q": {"type": "string"}, "script": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}},
          "required": ["what"]}},
 ]
@@ -118,6 +121,18 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
                                   "questions", "text")}
     if what == "understand":
         return L.understand(str(a.get("q") or ""))
+    if what == "design_system":
+        from ..appmaker import colors as CL
+        from ..appmaker import designsys as DS
+        from ..appmaker import fonts as FN
+        from ..appmaker import taxonomy as TX
+        lab = lambda d: {k: (x.get("label") if isinstance(x, dict) else x) for k, x in d.items()}     # noqa: E731
+        q, script = str(a.get("q") or ""), str(a.get("script") or "")
+        return {"counts": L.counts(), "styles": {k: x["label"] for k, x in TX.STYLES.items()}, "nav": lab(DS.NAV), "fab": lab(DS.FAB),
+                "cards": lab(DS.CARDS), "headers": lab(DS.HEADERS), "buttons": lab(DS.BUTTONS), "textures": DS.TEXTURES,
+                "transitions": sorted({m["web"] for m in DS.MOTION.values() if m["kind"] == "transition"}),
+                "three_d": list(DS.THREE_D), "colour_schemes": list(CL.SCHEMES),
+                "fonts": [f["family"] for f in FN.families(script=script, q=q)][:40]}
     raise ToolError(f"Unknown what {what}")
 
 
