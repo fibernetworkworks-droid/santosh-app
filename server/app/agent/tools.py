@@ -661,3 +661,9 @@ from .brand_tools import BRAND_HANDLERS, BRAND_LABELS, BRAND_TOOLS  # noqa: E402
 TOOLS.extend(BRAND_TOOLS)
 TOOL_LABELS.update(BRAND_LABELS)
 HANDLERS.update(BRAND_HANDLERS)
+# v0.119 what Hoola learned about how she speaks (pace, pauses, tone, her words, mis-hearings)
+from .voicestyle_tools import SEEKHA_HANDLERS, SEEKHA_LABELS, SEEKHA_TOOLS  # noqa: E402
+
+TOOLS.extend(SEEKHA_TOOLS)
+TOOL_LABELS.update(SEEKHA_LABELS)
+HANDLERS.update(SEEKHA_HANDLERS)

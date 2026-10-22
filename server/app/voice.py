@@ -71,7 +71,7 @@ VOICE_TOOL_NAMES = {
     "youtube_analytics", "app_check",
     "hoola_me", "hoola_connect", "hoola_connections", "hoola_answer_connect", "hoola_send", "hoola_reply", "hoola_inbox",
     "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "hoola_jaanch", "ask_form", "ai_kharcha", "video_edit", "computer_operator", "video_studio", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
-    "hoola_learn", "hoola_learned", "hoola_samaj", "hoola_community_search", "hoola_business", "hoola_chain", "hoola_deal", "hoola_pick", "hoola_market", "hoola_booking", "a2a_bahar", "consent_jaanch", "digilocker", "ondc_listing",
+    "hoola_learn", "hoola_learned", "hoola_samaj", "hoola_community_search", "hoola_business", "hoola_chain", "hoola_deal", "hoola_pick", "hoola_market", "hoola_booking", "a2a_bahar", "consent_jaanch", "digilocker", "ondc_listing", "hoola_seekha",
     "sheets_find", "sheet_info", "sheet_query", "sheet_update", "sheet_create", "sheet_export",
     "maps_search", "maps_directions", "maps_navigate",
     "pc_status", "pc_search", "pc_read", "pc_send_to_phone", "tally_report",
@@ -128,6 +128,7 @@ When to speak
   after that "ek kaam kijiye, chat mein likh dijiye" (or send an ask_form card for several details). Never a 3rd voice try on the same thing.
 - A request that could mean two things (which file, which person, which day): ask one short question that names the choices; don't pick one silently. A clear request: just do it, don't ask needlessly. Short "haan", "nahi", "ho gaya" after your question are full answers.
 - If the line seems bad ("hello? hello?"): "haan haan, aa rahi hai awaaz."
+- When she corrects a word you got wrong ("Rames nahi, Rameshwar"), use her word from then on; a name / word she wants you to always hear right: hoola_seekha add_word. Notes below may say how she speaks and which words you misheard before: keep to them, quietly.
 
 Example turns (flavour only)
 User: Hello?
@@ -229,6 +230,11 @@ def _snake(name: str) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
 
 
+REPAIR_NOTE = ("(Listening note: you have not understood her twice in a row now. Do NOT ask by voice a third time. Say "
+               "what you DID understand in a few words, then: 'Mujhe theek se sunai nahi de raha, chat mein likh dijiye' - "
+               "or, when you need several details, use ask_form. Never guess the missing part.)")
+
+
 def unsupported_field(err: Exception) -> str | None:
     """'Unknown name "proactivity" at 'setup'' -> 'proactivity' (only for fields we can safely drop)."""
     m = re.search(r'Unknown name \\?"(\w+)\\?"', str(err)) or \
@@ -284,7 +290,7 @@ def _end_sensitivity(value: str):
 
 
 def live_config(voice: str, lang: str, context: str, handle: str | None, name: str = "Santosh", gender: str = "m",
-                extra_tools: list[dict] | None = None, langst=None):
+                extra_tools: list[dict] | None = None, langst=None, style: dict | None = None):
     from google.genai import types
     from . import voicelang
     st = get_settings()
@@ -292,8 +298,12 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
     langst = langst or voicelang.LangState(lang)
     prompt = persona_prompt(name, gender).format(lang=langst.name, now=datetime.now(tz).strftime("%A %d %B %Y, %I:%M %p"), context=context or "(nothing saved yet)")
     # v0.114 the language is the server's decision: Google's lock line + examples at the top AND the end
-    prompt = voicelang.lock_block(langst, "top") + prompt + voicelang.lock_block(langst, "end")
-    tr = types.AudioTranscriptionConfig(language_codes=voicelang.transcription_codes(langst))
+    # v0.119 how SHE speaks (style hint, words misheard before, her names) sits just before the closing lock
+    style = style or {}
+    prompt = voicelang.lock_block(langst, "top") + prompt + (style.get("block") or "") + voicelang.lock_block(langst, "end")
+    tr = types.AudioTranscriptionConfig(language_codes=voicelang.transcription_codes(langst),
+                                        custom_vocabulary=(style.get("vocab") or [])[:100] or None)
+    silence = style.get("silence_ms") or st.voice_silence_ms
     decls = [types.FunctionDeclaration(name=t["name"], description=t["description"], parameters_json_schema=t["input_schema"])
              for t in _tool_specs() + list(extra_tools or [])]
     cfg = types.LiveConnectConfig(
@@ -311,7 +321,7 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
                 # noise must not count as the user talking (it cuts him off mid-sentence); the phone gates it too
                 start_of_speech_sensitivity=_start_sensitivity(st.voice_start_sensitivity),
                 prefix_padding_ms=min(max(st.voice_prefix_padding_ms, 0), 1000),
-                silence_duration_ms=min(max(st.voice_silence_ms, 300), 3000),
+                silence_duration_ms=min(max(int(silence), 300), 3000),
             )),
         # no affective dialog / proactivity: gemini-3.8-live removed the first and always has the second on
         session_resumption=types.SessionResumptionConfig(handle=handle),
@@ -438,6 +448,11 @@ def stats_summary(tenant: str) -> dict:
         "lang_switches": sum(c.get("lang_switches", 0) for c in calls),
         "unclear_transcripts": sum(c.get("lang_unclear", 0) for c in calls),
         "languages": dict(__import__("collections").Counter(c.get("lang") or "?" for c in calls)),
+        # v0.119 learning her: calls shaped by her own style / pauses, the ladder moving her to chat, corrections heard
+        "styled_calls": sum(1 for c in calls if c.get("styled")),
+        "silence_ms_used": dict(__import__("collections").Counter(c.get("silence_ms") for c in calls if c.get("silence_ms"))),
+        "repair_escalations_per_call": round(sum(c.get("repair_escalations", 0) for c in calls) / len(calls), 2) if calls else None,
+        "fixes_heard": sum(c.get("fixes_heard", 0) for c in calls),
         "recent": [{k: c[k] for k in ("call_id", "ended", "turns", "latency_ms", "interruptions", "tools", "silent_tools")}
                    for c in calls[-10:]],
     }
@@ -544,6 +559,16 @@ class Call:
         self.tenant = tenant or st.tenant_id
         from . import voicelang
         self.langst = voicelang.start_state(self.tenant, lang)   # v0.114 the call's language, kept by the server
+        from . import voicestyle   # v0.119 her pauses / style / words / mis-hearings: read once, learned at hang-up
+        try:
+            self.style = voicestyle.for_call(self.tenant)
+        except Exception:
+            log.exception("voice style failed")
+            self.style = {}
+        self.meter = voicestyle.TurnMeter()
+        self.callstyle = voicestyle.CallStyle()
+        self._prev_reply = ""                  # what Hoola said last (her correction refers to it)
+        self._repairs = 0                      # asks-again / her corrections in a row
         self.call_id = secrets.token_urlsafe(12)
         from .avatar import service as av
         a = av.get(self.tenant)
@@ -586,7 +611,9 @@ class Call:
                       "gate": {},
                       "speaker_guesses": 0, "speaker_sure": 0, "speaker_changes": 0, "blocked_tools": 0, "otp_filled": 0,
                       "lang_switches": 0, "lang_drifts": 0, "lang_unclear": 0, "asked_again": 0, "her_corrections": 0,
-                      "lang": ""}
+                      "lang": "", "silence_ms": (self.style or {}).get("silence_ms") or st.voice_silence_ms,
+                      "styled": bool((self.style or {}).get("styled")), "fixes_used": (self.style or {}).get("fixes", 0),
+                      "vocab": len((self.style or {}).get("vocab") or []), "fixes_heard": 0, "repair_escalations": 0}
         self._otp_req = ""                     # v0.83 the website OTP box we are listening for
         self._otp_heard = ""                   # what she said since that box asked (only while it waits)
         self._otp_said: set[str] = set()       # OTPs filled in this call: hidden from the saved transcript
@@ -653,6 +680,7 @@ class Call:
                 if msg.get("bytes"):
                     if not self.muted:
                         self.push("audio", msg["bytes"])
+                        self.meter.add(msg["bytes"])
                         if _loud(msg["bytes"]):
                             self._last_voice_at = time.monotonic()
                         if self.vid is not None and self.vid.add(msg["bytes"]):
@@ -887,11 +915,36 @@ class Call:
                 if fix:
                     self.stats["lang_drifts"] += 1
                     await self._tell_quietly(fix)
-            for k, v in voicelang.repair_signals(user, reply).items():
+            sig = voicelang.repair_signals(user, reply)
+            for k, v in sig.items():
                 self.stats[k] += v
             self.stats["lang"] = self.langst.base
+            # v0.119 the asking-again ladder, enforced: two misunderstandings in a row -> no third voice try
+            if sig["asked_again"] or sig["her_corrections"]:
+                self._repairs += 1
+            elif reply:
+                self._repairs = 0
+            if self._repairs >= 2:
+                self._repairs = 0
+                self.stats["repair_escalations"] += 1
+                await self._tell_quietly(REPAIR_NOTE)
+                await self.send_json({"type": "write_hint", "text": "Theek se sunai nahi de raha? Chat mein likh dijiye."})
         except Exception:
             log.exception("voice language check failed")
+        measured = self.meter.take()
+        try:   # v0.119 learn how SHE speaks (only her own voice, never a mis-heard transcript)
+            cur = (self.vid.current or {}) if self.vid is not None else {}
+            if user and not unclear and (not cur or cur.get("relation") == "self"):
+                from . import voicestyle
+                self.callstyle.turn(measured, user)
+                fix = voicestyle.find_fix(user, self._prev_reply)
+                if fix:
+                    self.callstyle.fixes.append(fix)
+                    self.stats["fixes_heard"] += 1
+            if reply:
+                self._prev_reply = reply
+        except Exception:
+            log.exception("voice style learning failed")
         if reply:
             self.stats["turns"] += 1
             self.stats["words"].append(len(reply.split()))
@@ -1253,7 +1306,7 @@ class Call:
                     async with contextlib.AsyncExitStack() as stack:
                         resumed = self.handle is not None
                         cfg = live_config(self.voice, self.lang, context, self.handle, self.name, self.gender, mcp_defs,
-                                          langst=self.langst)
+                                          langst=self.langst, style=self.style)
                         # a Gemini that does not answer must not freeze the call
                         session = await asyncio.wait_for(stack.enter_async_context(connector(cfg)), timeout=20)
                         self._session = session
@@ -1348,6 +1401,13 @@ class Call:
                     voicelang.remember(self.tenant, self.langst)
             except Exception:
                 log.exception("voice language memory failed")
+            try:   # v0.119 how she speaks + her corrections, saved once (numbers and words only, never audio)
+                from . import voicestyle
+                cur = (self.vid.current or {}) if self.vid is not None else {}
+                if get_settings().voice_adapt and (not cur or cur.get("relation") == "self"):
+                    self.stats["style_saved"] = voicestyle.save_call(self.tenant, self.callstyle)   # no await: a cancel here would lose the stats
+            except Exception:
+                log.exception("voice style save failed")
             STATS.append(self.stats)
             try:   # v0.98 Gemini Live is billed per minute of audio each way: 16 kHz in, 24 kHz out (16-bit mono)
                 from . import usage

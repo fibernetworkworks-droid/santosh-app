@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.118.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.119.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -725,6 +725,82 @@ def voice_rate(call_id: str, body: CallRate, tenant: str = Depends(current_tenan
     """v0.98 her one tap after a call: good / not good + what went wrong."""
     from . import callrating
     return callrating.rate(tenant, call_id, body.good, body.reasons, body.seconds)
+
+
+# ---- v0.119 "<name> ne kya seekha": how she speaks, words misheard before, her words (numbers and words only) ----
+class VoiceLearnBody(BaseModel):
+    learn: bool
+
+
+class VoiceWordBody(BaseModel):
+    term: str = Field(min_length=2, max_length=60)
+
+
+class VoiceFixBody(BaseModel):
+    heard: str = Field(min_length=1, max_length=80)
+    meant: str = Field(min_length=1, max_length=80)
+
+
+def _vs_call(fn, *a):
+    from . import voicestyle
+    try:
+        return fn(*a)
+    except voicestyle.StyleError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/voice/learned", dependencies=[Depends(require_key)])
+def voice_learned(tenant: str = Depends(current_tenant)):
+    from . import voicestyle
+    v = voicestyle.view(tenant)
+    v["say"] = voicestyle.say(tenant)
+    return v
+
+
+@app.put("/api/voice/learned", dependencies=[Depends(require_key)])
+def voice_learned_set(body: VoiceLearnBody, tenant: str = Depends(current_tenant)):
+    from . import voicestyle
+    return voicestyle.set_learn(tenant, body.learn)
+
+
+@app.delete("/api/voice/learned", dependencies=[Depends(require_key)])
+def voice_learned_forget(part: str = "all", tenant: str = Depends(current_tenant)):
+    from . import voicestyle
+    return _vs_call(voicestyle.forget, tenant, part)
+
+
+@app.post("/api/voice/learned/words", dependencies=[Depends(require_key)])
+def voice_word_add(body: VoiceWordBody, tenant: str = Depends(current_tenant)):
+    from . import voicestyle
+    return _vs_call(voicestyle.add_word, tenant, body.term, "her")
+
+
+@app.delete("/api/voice/learned/words/{word_id}", dependencies=[Depends(require_key)])
+def voice_word_remove(word_id: int, tenant: str = Depends(current_tenant)):
+    from . import voicestyle
+    if not voicestyle.remove_word(tenant, word_id):
+        raise HTTPException(404, "Shabd nahi mila")
+    return {"ok": True}
+
+
+@app.post("/api/voice/learned/fixes", dependencies=[Depends(require_key)])
+def voice_fix_add(body: VoiceFixBody, tenant: str = Depends(current_tenant)):
+    from . import voicestyle
+    return _vs_call(voicestyle.note_fix, tenant, body.heard, body.meant, True)
+
+
+@app.post("/api/voice/learned/fixes/{fix_id}/confirm", dependencies=[Depends(require_key)])
+def voice_fix_confirm(fix_id: int, tenant: str = Depends(current_tenant)):
+    from . import voicestyle
+    return _vs_call(voicestyle.confirm_fix, tenant, fix_id)
+
+
+@app.delete("/api/voice/learned/fixes/{fix_id}", dependencies=[Depends(require_key)])
+def voice_fix_remove(fix_id: int, tenant: str = Depends(current_tenant)):
+    from . import voicestyle
+    if not voicestyle.remove_fix(tenant, fix_id):
+        raise HTTPException(404, "Sudhaar nahi mila")
+    return {"ok": True}
 
 
 class UsageLimit(BaseModel):

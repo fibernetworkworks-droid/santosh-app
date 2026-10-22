@@ -57,6 +57,7 @@ import 'niryat_screen.dart';
 import 'franchise_screen.dart';
 import 'theka_screen.dart';
 import 'kharcha_screen.dart';
+import 'voice_learned_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -430,6 +431,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('${app.aName} awaaz se jaane kaun bol raha hai: aap, Maa, Papa…'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VoiceIdScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.hearing_rounded, color: C.ok),
+              title: Text('${app.aName} ne kya seekha', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Aapki bhasha, raftaar, kitna rukti hain, aapke shabd, jo galat suna tha'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VoiceLearnedScreen(app: app))),
             ),
           ]),
         ),

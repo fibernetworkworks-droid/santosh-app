@@ -374,6 +374,17 @@ def remember(tenant: str, state: LangState) -> None:
         _file().write_text(json.dumps(data))
 
 
+def forget(tenant: str) -> None:
+    """v0.119 she asked Hoola to forget the language it learned: the next call starts from the app's setting."""
+    with _LOCK:
+        try:
+            data = json.loads(_file().read_text()) if _file().exists() else {}
+        except Exception:
+            data = {}
+        if data.pop(tenant, None) is not None:
+            _file().write_text(json.dumps(data))
+
+
 def start_state(tenant: str, app_lang: str) -> LangState:
     """The app's language setting, unless her last calls showed she really speaks another one."""
     got = learned(tenant)

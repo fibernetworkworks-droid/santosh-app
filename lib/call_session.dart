@@ -23,7 +23,7 @@ const callCardKinds = {
   'tele_logged', 'tele_day', // v0.99
   'kalam_publish', 'kalam_piece', // v0.101
   'ads_change', 'ads_report', // v0.111
-  'brand_design', 'brand_idea', // v0.118
+  'brand_design', 'brand_idea', // v0.119
   'hoola_deal', // v0.102
   'hoola_pick', // v0.105
   'hoola_khata', // v0.106
@@ -228,6 +228,8 @@ class CallSession extends ChangeNotifier {
         speakerIsOwner = true;
       case 'files':
         _setFileNote(e['ok'] == true ? '📎 ${e['names'] ?? 'File'} ${app.aName} ko mil gayi' : '${e['message'] ?? 'File nahi pahunchi'}');
+      case 'write_hint':   // v0.119 two misunderstandings in a row: typing is faster than a third try
+        _setFileNote('✍️ ${e['text'] ?? 'Chat mein likh dijiye'}');
       case 'speaker':
         final owner = e['owner'] == true;
         speakerIsOwner = owner;

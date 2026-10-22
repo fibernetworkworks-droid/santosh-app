@@ -636,6 +636,7 @@ def init_db(url: str | None = None):
     from .reels import models as _reels_models  # noqa: F401
     from .motion import models as _motion_models  # noqa: F401
     from . import idvault as _idvault  # noqa: F401
+    from . import voicestyle as _voicestyle  # noqa: F401  (v0.119 how she speaks, mis-hearings, her words)
     from .net import models as _net_models  # noqa: F401
     from .net import share as _net_share  # noqa: F401
     from .net import groups as _net_groups  # noqa: F401

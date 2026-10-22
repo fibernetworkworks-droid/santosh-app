@@ -93,6 +93,7 @@ class Settings(BaseSettings):
     parallel_search: bool = True           # v0.91 Parallel web search (free MCP endpoint): quotes from real pages + links
     parallel_api_key: str = ""             # optional: higher limits (https://platform.parallel.ai); only the query is sent
     parallel_mcp_url: str = "https://search.parallel.ai/mcp"
+    voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     voice_silence_ms: int = 700            # pause that ends your turn: Google recommends 500-800 (people reply in ~0.2 s)
     voice_end_sensitivity: str = ""        # "" = Gemini's default | low (waits longer) | high (answers sooner)
     voice_prefix_padding_ms: int = 300     # speech kept from just before the voice was detected (100-300)

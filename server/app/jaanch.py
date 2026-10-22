@@ -230,6 +230,9 @@ async def _voice_settings() -> dict[str, Any]:
     if "language_codes" in dropped:   # v0.114 the transcript language hint was refused: back to auto-detect
         return _c("voice_memory", "Call ki yaad (Gemini)", None, detail + "; transcript ki bhasha ka hint Gemini ne nahi liya",
                   "GEMINI_LIVE_MODEL badal kar dekhiye; tab tak bhasha sirf prompt ke lock se pakki hai")
+    if "custom_vocabulary" in dropped:   # v0.119 her words as transcript vocabulary were refused (prompt list still works)
+        return _c("voice_memory", "Call ki yaad (Gemini)", None, detail + "; aapke shabdon ki list transcript ne nahi li",
+                  "Koi baat nahi: naam / shabd prompt mein jaate hain; GEMINI_LIVE_MODEL badal kar dekh sakte hain")
     bad = r["resume_failed"] > max(3, r["resumed"])
     return _c("voice_memory", "Call ki yaad (Gemini)", None if bad else True, detail,
               "pm2 logs santosh | grep -i 'resume failed' dekhiye" if bad else "")

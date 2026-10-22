@@ -290,6 +290,26 @@ class Api {
       Map<String, dynamic>.from(await _send('GET', '/api/usage', query: {'days': '$days'}) as Map);
   Future<Map<String, dynamic>> usageLimit(double inr) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/usage/limit', body: {'month_inr': inr}) as Map);
+  // ---- v0.119 "<name> ne kya seekha": how she speaks, words misheard before, her words ----
+  Future<Map<String, dynamic>> voiceLearned() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/voice/learned') as Map);
+  Future<Map<String, dynamic>> voiceLearnSet(bool on) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/voice/learned', body: {'learn': on}) as Map);
+  Future<Map<String, dynamic>> voiceForget(String part) async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/voice/learned', query: {'part': part}) as Map);
+  Future<Map<String, dynamic>> voiceWordAdd(String term) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/voice/learned/words', body: {'term': term}) as Map);
+  Future<void> voiceWordRemove(int id) async {
+    await _send('DELETE', '/api/voice/learned/words/$id');
+  }
+  Future<Map<String, dynamic>> voiceFixAdd(String heard, String meant) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/voice/learned/fixes', body: {'heard': heard, 'meant': meant}) as Map);
+  Future<void> voiceFixConfirm(int id) async {
+    await _send('POST', '/api/voice/learned/fixes/$id/confirm');
+  }
+  Future<void> voiceFixRemove(int id) async {
+    await _send('DELETE', '/api/voice/learned/fixes/$id');
+  }
   Future<Map<String, dynamic>> rateCall(String callId, bool good, {List<String> reasons = const [], int seconds = 0}) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/voice/calls/${Uri.encodeComponent(callId)}/rating',
           body: {'good': good, 'reasons': reasons, 'seconds': seconds}) as Map);

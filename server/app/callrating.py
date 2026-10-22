@@ -43,7 +43,14 @@ def rate(tenant: str, call_id: str, good: bool, reasons: list[str] | None = None
         if row is None:
             row = CallRating(tenant_id=tenant, call_id=str(call_id)[:64], good=bool(good))
             s.add(row)
+        had_cut = "cut_off" in (row.reasons or "").split(",")
         row.good, row.reasons, row.seconds = bool(good), ",".join(rs), int(seconds or 0)
+    if "cut_off" in rs and not had_cut:   # v0.119 next call waits a little longer at the end of her turn
+        try:
+            from . import voicestyle
+            voicestyle.note_cut_off(tenant)
+        except Exception:
+            pass
     try:      # the in-memory call stats get it too, for /api/voice/stats right away
         from . import voice
         for st in reversed(voice.STATS):
