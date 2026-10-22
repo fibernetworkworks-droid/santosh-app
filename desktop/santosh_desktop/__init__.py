@@ -1,2 +1,2 @@
 """Hoola Desktop: connects this computer to Hoola on your phone (files, printing, TallyPrime)."""
-__version__ = "1.1.0"
+__version__ = "1.2.0"

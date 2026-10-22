@@ -60,7 +60,7 @@ VOICE_TOOL_NAMES = {
     "email_follow_up", "email_contacts", "email_attachment", "email_accounts",
     "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_cancel_event",
     "calendar_update_event", "calendar_respond", "calendar_free_slots", "calendar_settings",
-    "google_status", "order_karo", "darzi", "darzi_dekho", "chai", "chai_dekho", "office", "office_dekho", "lekhak", "lekhak_dekho", "mobile_shop", "mobile_shop_dekho", "phone_doctor", "gst", "gst_dekho", "payroll", "payroll_dekho", "paisa", "paisa_dekho", "audit", "audit_dekho", "bima", "bima_dekho", "telecall", "telecall_dekho", "seo", "seo_dekho", "thok", "thok_dekho", "kalam", "kalam_dekho", "drive_find", "drive_list_folder", "drive_read_file", "drive_send_file", "drive_upload", "drive_create_folder", "seo_dekho",
+    "google_status", "order_karo", "darzi", "darzi_dekho", "chai", "chai_dekho", "office", "office_dekho", "lekhak", "lekhak_dekho", "mobile_shop", "mobile_shop_dekho", "phone_doctor", "gst", "gst_dekho", "payroll", "payroll_dekho", "paisa", "paisa_dekho", "audit", "audit_dekho", "bima", "bima_dekho", "telecall", "telecall_dekho", "seo", "seo_dekho", "thok", "thok_dekho", "kalam", "kalam_dekho", "drive_find", "drive_list_folder", "drive_read_file", "drive_send_file", "drive_upload", "drive_create_folder", "seo_dekho", "doc_desk", "sheet_milaan", "yaad_khojo",
     "drive_organize", "drive_create_doc", "doc_create", "drive_share", "drive_trash", "drive_storage",
     "sheet_read", "sheet_append",
     "form_create", "form_find", "form_summary", "form_responses", "form_settings", "form_alerts",
@@ -190,6 +190,8 @@ Which tool (details are in each tool's description)
 - Making things: make_document (real Word / Excel / PowerPoint file), photo_clean (product photo on white), id_photo (passport / visa / exam-form photo + print sheet) from a photo the user attached, memory_search to recall anything they asked you to remember. Write the real content; say the file is in chat.
 - Free public APIs (2,100+: weather, currency, holidays, IFSC, pincode, cricket, news, dictionary...): when no other tool fits, api_find, then api_call with the api_id (use worked_before if given; api_docs only if needed). Keys only from the app, never asked in the call.
 - New AI-made videos (ad, greeting, product reel without footage): video_studio (create -> storyboard -> generate preview free; paid shots need her tap on a price card; say prices in rupees).
+- Memory: 'HOOLA KI YAAD' below is what you and she did recently (chat and calls, the work diary, files, facts). Talk like someone who was there: 'wahi MAC wali sheet?', never 'kaunsi file?' when it is listed. Older things: yaad_khojo first, ask her only if it finds nothing.
+- Her documents on her PC: doc_desk (open / read / search / edit) and sheet_milaan (compare two sheets by MAC / serial / ID, update the old one). Both only prepare: a card shows every change and her Haan saves a NEW copy in her PC's Santosh Inbox and opens it (the original stays). Say the counts in one line; never say saved before her tap. You can't read her personal WhatsApp: she downloads the file on her PC (then doc_desk action=recent) or tells you the link.
 - Website work (forms, downloads, status, applications): computer_operator action=start with the whole job in her words -> say it started; you fill the whole form yourself and ask her only for the OTP, the CAPTCHA (picture on her phone), a password, the final submit and payment. When a note says a website sent an OTP, ask her for it right away in one short line. When she says the OTP, the system types it into the box by itself (a note confirms it) - just say 'mil gaya, bhar diya'; if no note comes, use computer_operator action=answer text=<exactly what she said>. CAPTCHA she reads out: computer_operator action=answer. Never say the OTP or any secret aloud.
 - Video editing: video_edit action=start with the attached video file_ids + her brief ("isko reel bana do", "status ke liye 30 sec") -> say it has started and the card will show it; changes = action=revise. It never posts anything.
 - India facts: india_info ("kal chhutti hai?", "agli ekadashi kab?", tithi, IFSC, rupees in words). Bills / QR in a photo: file_read gives the amount + due date or who a UPI QR pays; offer a reminder, never pay.
@@ -208,6 +210,8 @@ def _tool_specs() -> list[dict]:
 
 # Settings this Gemini model refused ("Unknown name ..."); learned at runtime and skipped from then on.
 UNSUPPORTED: set[str] = set()
+# v0.108 how often a dropped connection came back as the SAME Gemini session vs a fresh one (Hoola Jaanch reads it)
+RESUME = {"resumed": 0, "fresh_after_drop": 0, "fresh_rebriefs": 0, "resume_failed": 0}
 
 
 def _snake(name: str) -> str:
@@ -522,7 +526,7 @@ class Call:
         self.handle: str | None = None
         self.user_buf = ""
         self.reply_buf = ""
-        self.recent: deque[tuple[str, str]] = deque(maxlen=6)   # last finished turns, to re-brief a fresh Gemini session
+        self.recent: deque[tuple[str, str]] = deque(maxlen=20)   # last finished turns, to re-brief a fresh Gemini session
         self.first_error: str | None = None
         self._send_lock = asyncio.Lock()
         self._tools: set[asyncio.Task] = set()
@@ -850,13 +854,24 @@ class Call:
                 _save_turn(self.conv, user, reply)
             except Exception:
                 log.exception("could not save voice turn")
+            try:   # v0.108 the call turn is indexed + lasting facts picked (only when the owner herself is talking)
+                from . import yaad
+                cur = (self.vid.current or {}) if self.vid is not None else {}
+                yaad.after_turn(self.tenant, self.conv, user, reply,
+                                "owner" if (not cur or cur.get("relation") == "self") else "call")
+            except Exception:
+                log.exception("voice memory failed")
 
     def _reseed(self, resumed: bool) -> str | None:
         """A brand-new Gemini session (the old one could not be resumed) knows nothing: re-brief it briefly."""
         if resumed or not self.recent:
             return None
-        lines = "\n".join(f"User: {u or '(...)'}\nTum: {r or '(...)'}" for u, r in self.recent)[:1800]
-        return ("(Call ka connection ek pal ke liye toota aur wapas juda. Pichli baat yeh thi:\n" + lines +
+        lines = "\n".join(f"User: {u or '(...)'}\nTum: {r or '(...)'}" for u, r in self.recent)
+        if len(lines) > 5000:          # v0.108 a much bigger re-brief: keep the newest part whole
+            lines = "…" + lines[-5000:]
+        RESUME["fresh_rebriefs"] += 1
+        return ("(Call ka connection ek pal ke liye toota aur wapas juda. Is call mein ab tak ki baat yeh thi (aur upar "
+                "'HOOLA KI YAAD' mein pehle ka sab):\n" + lines +
                 "\nUser ko bas ek chhota 'haan, boliye' kehkar wahin se aage badho; pichli baat dohrao mat.)")
 
     # ---- tools ----
@@ -1168,6 +1183,13 @@ class Call:
         try:
             while not self.closed.is_set():
                 context = life.context_block(self.ctx.tenant_id)
+                try:   # v0.108 the call knows what the chat knows: recent exchanges, work diary, summary, facts
+                    from . import yaad
+                    ymem = await asyncio.to_thread(yaad.voice_block, self.ctx.tenant_id, self.ctx.conversation_id)
+                    if ymem:
+                        context += "\n\n" + ymem
+                except Exception:
+                    log.exception("voice memory block failed")
                 mcp_defs = await self._load_mcp()
                 context += "\n\n" + self._mcp_block
                 started = loop.time()
@@ -1189,6 +1211,7 @@ class Call:
                             if degraded:
                                 degraded = False
                                 await self.send_json({"type": "status", "state": "live"})
+                            RESUME["resumed" if resumed else "fresh_after_drop"] += 1
                             seed = self._reseed(resumed)
                             if seed:
                                 await session.send_realtime_input(text=seed)
@@ -1230,6 +1253,7 @@ class Call:
                 if self.handle and re.search(r"not found or expired|session.*expired|resum", str(err), re.I):
                     # the old session is gone on Google's side: start a fresh one instead of resuming
                     log.warning("resume failed (%s); starting a fresh voice session", err)
+                    RESUME["resume_failed"] += 1
                     self.handle = None
                     failures += 1
                     if failures < 4:

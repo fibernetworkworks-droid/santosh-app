@@ -4,6 +4,7 @@ once (~220 MB). Without it: plain word overlap."""
 from __future__ import annotations
 
 import logging
+import os
 import re
 import threading
 from typing import Any
@@ -17,6 +18,8 @@ _CACHE: dict[str, list[float]] = {}
 
 def _model():
     global _EMB
+    if _EMB is None and os.environ.get("SEMANTIC_OFF", "").lower() in ("1", "true", "yes"):
+        _EMB = False          # tests: no 40 s download attempt
     if _EMB is None:
         with _LOCK:
             if _EMB is None:

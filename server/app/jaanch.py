@@ -201,6 +201,37 @@ async def _disk() -> dict[str, Any]:
               "" if ok else "purani files / logs hataiye (pm2 flush)")
 
 
+async def _memory(tenant: str) -> dict[str, Any]:
+    """v0.108 Hoola ki yaad: auto memory on, meaning search, index filling up."""
+    from . import yaad
+    h = await asyncio.to_thread(yaad.health, tenant)
+    probs = []
+    if not h["auto_memory"]:
+        probs.append("apne aap yaad rakhna band hai (MEMORY_AUTO=false)")
+    if not h["meaning_search"]:
+        probs.append("matlab se dhoondhna band (fastembed / model nahi); sirf shabd se milta hai")
+    detail = f"{h['items']} yaadein, {h['facts']} facts ({h['auto_facts']} apne aap), window {h['window']} baatein"
+    return _c("memory", "Hoola ki yaad", None if probs else True, detail + ("; " + "; ".join(probs) if probs else ""),
+              "VPS: .venv/bin/pip install fastembed (ek baar ~220 MB model)" if not h["meaning_search"] else "")
+
+
+async def _voice_settings() -> dict[str, Any]:
+    """v0.108 a Gemini that refused session resumption / context compression makes every network blip a fresh call."""
+    from . import voice
+    dropped = sorted(voice.UNSUPPORTED)
+    key = [f for f in dropped if f in ("session_resumption", "context_window_compression", "sliding_window")]
+    r = dict(voice.RESUME)
+    detail = (f"resume {r['resumed']}, naya session {r['fresh_after_drop']} (resume fail {r['resume_failed']})"
+              + (f"; Gemini ne mana kiya: {', '.join(dropped)}" if dropped else ""))
+    if key:
+        return _c("voice_memory", "Call ki yaad (Gemini)", False, detail,
+                  "Gemini Live model badaliye (GEMINI_LIVE_MODEL) jo session resumption + compression maanta ho; "
+                  "tab tak har reconnect par Hoola pichhli baat se dobara samjhata hai")
+    bad = r["resume_failed"] > max(3, r["resumed"])
+    return _c("voice_memory", "Call ki yaad (Gemini)", None if bad else True, detail,
+              "pm2 logs santosh | grep -i 'resume failed' dekhiye" if bad else "")
+
+
 async def _portals() -> list[dict[str, Any]]:
     from .operator import reach
 
@@ -270,7 +301,8 @@ async def run(tenant: str) -> dict[str, Any]:
                (_parallel(), "parallel", "Backup search (Parallel)"), (_email(tenant), "email", "Email bhejna"),
                (_operator(), "operator", "Website kaam (Computer Operator)"), (_worker(), "browser", "Jaldi website dekhna"),
                (_pc(tenant), "pc", "Mera PC"), (_push(), "push", "Phone par notification"),
-               (_google(tenant), "google", "Google"), (_disk(), "disk", "Server ki jagah")]
+               (_google(tenant), "google", "Google"), (_disk(), "disk", "Server ki jagah"),
+               (_memory(tenant), "memory", "Hoola ki yaad"), (_voice_settings(), "voice_memory", "Call ki yaad (Gemini)")]
     parts = await asyncio.gather(*[_guard(c, i, n) for c, i, n in singles],
                                  _guard(_portals(), "portals", "Sarkari / roz ki websites"))
     checks: list[dict[str, Any]] = []

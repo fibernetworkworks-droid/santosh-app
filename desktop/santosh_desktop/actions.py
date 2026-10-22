@@ -173,6 +173,49 @@ class Actions:
         self.log(f"Phone se aayi file: {dest.name} (Santosh Inbox)")
         return {"saved_path": str(dest), "name": dest.name, "message": f"{dest.name} PC ke 'Santosh Inbox' folder mein save ho gayi."}
 
+    OPEN_EXT = {".xlsx", ".xlsm", ".xls", ".csv", ".docx", ".doc", ".pdf", ".txt", ".pptx", ".odt", ".ods", ".jpg",
+                ".jpeg", ".png", ".md"}
+
+    def do_open_file(self, path: str = "", **_) -> dict[str, Any]:
+        """v1.2 Opens a document (shared folders / Santosh Inbox only) in its own app, e.g. the updated copy in Excel.
+        Programs, scripts and shortcuts are never opened."""
+        p = self._file(path)
+        if p.suffix.lower() not in self.OPEN_EXT:
+            raise ActionError(f"{p.name}: sirf documents khule jaate hain (Excel, Word, PDF, CSV, photo)")
+        if sys.platform == "win32":
+            os.startfile(str(p))  # type: ignore[attr-defined]
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", str(p)])
+        else:
+            subprocess.Popen(["xdg-open", str(p)])
+        self.log(f"Khola: {p.name}")
+        return {"opened": str(p), "name": p.name}
+
+    def do_recent(self, limit: int = 30, days: int = 3, **_) -> dict[str, Any]:
+        """v1.2 Newest files in the shared folders + Inbox (two levels deep), e.g. what she just downloaded."""
+        cutoff = time.time() - max(1, min(int(days or 3), 60)) * 86400
+        found = []
+        rs = roots(self.cfg.folders) + ([Path(self.cfg.inbox)] if self.cfg.inbox and Path(self.cfg.inbox).is_dir() else [])
+        seen = 0
+        for r in rs:
+            for depth_dir in [r] + [c for c in r.iterdir() if c.is_dir() and not c.name.startswith(".")][:200]:
+                try:
+                    for c in depth_dir.iterdir():
+                        seen += 1
+                        if seen > 20000:
+                            break
+                        if c.is_file() and not c.name.startswith((".", "~$")) and not c.name.endswith((".part", ".crdownload", ".tmp")):
+                            st = c.stat()
+                            if st.st_mtime >= cutoff:
+                                found.append((st.st_mtime, c, st.st_size))
+                except OSError:
+                    continue
+        found.sort(key=lambda x: -x[0])
+        out = [{"name": c.name, "path": str(c), "size": size, "modified": time.strftime("%Y-%m-%d %H:%M", time.localtime(m))}
+               for m, c, size in found[:max(1, min(int(limit or 30), 100))]]
+        self.log(f"Nayi files dekhi ({len(out)})")
+        return {"files": out, "count": len(out)}
+
     def do_print(self, path: str = "", copies: int = 1, **_) -> dict[str, Any]:
         p = self._file(path)
         copies = max(1, min(int(copies or 1), 20))

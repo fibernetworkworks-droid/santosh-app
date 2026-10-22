@@ -1194,6 +1194,14 @@ class Api {
   }
 
   // ---- v0.97 form card ----
+  // v0.108 Document desk / Sheet Milaan: her tap on the card (Haan = new copy into the PC's Santosh Inbox)
+  Future<Map<String, dynamic>> deskDecide(String id, bool yes, {Map<String, dynamic>? options}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/docdesk/edits/$id/decide',
+          body: {'yes': yes, if (options != null) 'options': options}, timeout: const Duration(seconds: 240)) as Map);
+  Future<Map<String, dynamic>> deskEdit(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/docdesk/edits/$id') as Map);
+  Future<Map<String, dynamic>> yaadSearch(String q) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/yaad', query: {'q': q}) as Map);
   Future<Map<String, dynamic>> formAnswer(String id, Map<String, dynamic> values) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/forms/$id/answer', body: {'values': values}) as Map);
   Future<Map<String, dynamic>> formCancel(String id) async =>

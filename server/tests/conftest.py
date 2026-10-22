@@ -23,6 +23,8 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("OPERATOR_WORKER", "false")     # tests call operator.run_job themselves
     monkeypatch.setenv("AGENT_SELF_CHECK", "false")    # v0.78: scripted model tests don't expect the extra check call
     monkeypatch.setenv("AGENT_FIX_SEARCH", "false")
+    monkeypatch.setenv("MEMORY_AUTO", "false")       # v0.108: no background fact-picking model calls in scripted tests
+    monkeypatch.setenv("SEMANTIC_OFF", "1")          # no 40 s embedding-model download attempt (the sandbox has no HF)
     monkeypatch.setenv("CALL_RECEIPT", "false")      # v0.91: scripted calls don't expect the extra receipt message
     monkeypatch.setenv("PARALLEL_SEARCH", "false")   # v0.91: no real Parallel searches in tests
     monkeypatch.setenv("OPERATOR_PREFLIGHT", "false")  # v0.92: no live site checks (the sandbox has no DNS)

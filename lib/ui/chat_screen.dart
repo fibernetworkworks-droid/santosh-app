@@ -28,6 +28,7 @@ import 'operator_screen.dart';
 import 'studio_screen.dart';
 import 'procedures_screen.dart';
 import 'call_receipt.dart';
+import 'desk_cards.dart';
 import 'ask_form_card.dart';
 import 'call_rate_card.dart';
 import 'approve_sheet.dart';
@@ -633,6 +634,12 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return AskFormCard(key: ValueKey('af${it.data['id']}'), v: it.data, app: app);
     case 'call_receipt':
       return CallReceiptCard(key: ValueKey('cr${it.data['call_id']}'), v: it.data, app: app);
+    case 'sheet_milaan':
+      return SheetMilaanCard(key: ValueKey('sm${it.data['id']}'), v: it.data, app: app);
+    case 'doc_edit':
+      return DocEditCard(key: ValueKey('de${it.data['id']}'), v: it.data, app: app);
+    case 'memory_saved':
+      return MemorySavedChip(v: it.data, app: app);
     case 'pc_file':
       return PcFileCard(v: it.data, app: app);
     case 'artifact':

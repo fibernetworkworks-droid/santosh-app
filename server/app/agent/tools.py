@@ -612,3 +612,10 @@ from .thok_tools import THOK_HANDLERS, THOK_LABELS, THOK_TOOLS  # noqa: E402
 TOOLS.extend(THOK_TOOLS)
 TOOL_LABELS.update(THOK_LABELS)
 HANDLERS.update(THOK_HANDLERS)
+
+# v0.108 Document desk + Sheet Milaan (her PC files, edits on her tap) + yaad_khojo (search all memory)
+from .desk_tools import DESK_HANDLERS, DESK_LABELS, DESK_TOOLS  # noqa: E402
+
+TOOLS.extend(DESK_TOOLS)
+TOOL_LABELS.update(DESK_LABELS)
+HANDLERS.update(DESK_HANDLERS)

@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     agent_max_steps: int = 24              # v0.78: more room to finish (the circuit breaker still stops loops)
     agent_max_tokens: int = 2000
     agent_self_check: bool = True          # v0.78 Pakka kaam: check the real results before saying done
+    memory_auto: bool = True               # v0.108 lasting facts picked after her turns ("yaad rakha" chip)
     agent_fix_search: bool = True          # v0.78: a failed step with no known fix -> search the web for the solution
     agent_tool_timeout_s: int = 300         # a tool that hangs never blocks a chat turn longer than this (browser waits go up to 270 s)
     agent_turn_timeout_s: int = 900         # a whole turn never holds the chat lock longer than this

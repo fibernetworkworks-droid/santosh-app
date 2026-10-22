@@ -297,6 +297,7 @@ class Santosh extends ChangeNotifier {
   int lekhakTick = 0;                          // bumps on any lekhak event (the Lekhak screen refreshes)
   int kalamTick = 0;                           // v0.101 bumps on content-writer events (the Kalam screen refreshes)
   final Map<String, FeedItem> _kalamCards = {}; // v0.101 one card per piece / publish request, updated in place
+  final Map<String, FeedItem> _deskCards = {}; // v0.108 Sheet Milaan / document edit cards, updated in place
   int teleTick = 0;                            // v0.99 bumps on telecaller events (the Telecaller screen refreshes)
   List<Map<String, dynamic>> get pendingApprovals =>
       [for (final it in _bazar.values) if ((it.data['status'] ?? 'pending') == 'pending') it.data];
@@ -1280,6 +1281,24 @@ class Santosh extends ChangeNotifier {
         break;
       case 'call_receipt':
         feed.add(FeedItem('call_receipt', Map<String, dynamic>.from(p)));
+        break;
+      case 'sheet_milaan':
+      case 'doc_edit':
+        final dKey = '${p['id']}';
+        final dc = _deskCards[dKey];
+        if (dc != null) {
+          dc.data = {...dc.data, ...p};
+        } else {
+          _deskCards[dKey] = FeedItem(ev.kind, Map<String, dynamic>.from(p));
+          feed.add(_deskCards[dKey]!);
+        }
+        if (p['status'] == 'ready' && inBackground && !_replaying && !pushOn) {
+          Device.instance.showNow(ev.kind == 'sheet_milaan' ? '$aName: Sheet Milaan taiyaar' : '$aName: file mein badlav taiyaar',
+              '${p['name'] ?? ''}: ${p['say'] ?? ''}');
+        }
+        break;
+      case 'memory_saved':
+        feed.add(FeedItem('memory_saved', Map<String, dynamic>.from(p)));
         break;
       case 'ask_form':
         final fid = '${p['id']}';

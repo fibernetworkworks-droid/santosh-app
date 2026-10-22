@@ -655,7 +655,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Hoola ko yaad hai', style: TextStyle(fontWeight: FontWeight.w700)),
-          const Text('Pin = hamesha dhyan mein (chhoti baatein). Baaki yaadein zaroorat par dhoondh leta hai.',
+          const Text('Pin = hamesha dhyan mein (chhoti baatein). Baaki yaadein matlab se dhoondh leta hai; pakki baatein '
+              'baaton se khud bhi yaad rakhta hai (galat ho to hata dijiye).',
               style: TextStyle(color: C.faint, fontSize: 12)),
           if (_facts.isEmpty) const Padding(padding: EdgeInsets.only(top: 6), child: Text('Abhi kuch nahi. Boliye: "Yaad rakhna, mummy ka birthday 5 June hai".', style: TextStyle(color: C.muted))),
           for (final f in _facts)
@@ -676,6 +677,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
               title: Text(f['text'] as String? ?? ''),
+              subtitle: f['auto'] == true
+                  ? const Text('Hoola ne baaton se khud yaad rakha', style: TextStyle(color: C.faint, fontSize: 11))
+                  : null,
               trailing: IconButton(
                 tooltip: 'Bhool jao',
                 icon: const Icon(Icons.delete_outline, color: C.muted),

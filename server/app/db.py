@@ -192,6 +192,7 @@ class MemoryFact(Base):
     text: Mapped[str] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     pinned: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=False)   # v0.63 "hamesha yaad"
+    source: Mapped[str | None] = mapped_column(String(20), nullable=True)   # v0.108 None = she asked | auto = picked by Hoola
 
 
 class ListItem(Base):
@@ -675,6 +676,8 @@ def init_db(url: str | None = None):
     from . import askform as _askform  # noqa: F401
     from . import usage as _usage  # noqa: F401
     from . import callrating as _callrating  # noqa: F401
+    from . import yaad as _yaad  # noqa: F401  (v0.108 summaries + memory index)
+    from . import docdesk as _docdesk  # noqa: F401  (v0.108 document desk + Sheet Milaan)
     Base.metadata.create_all(_engine)
     _add_missing_columns(_engine)
     from .bazar.db import init_tables as _bazar_tables
