@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.124.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.124.1", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -6076,7 +6076,8 @@ async def sites_domain_check(body: dict, tenant: str = Depends(current_tenant)):
 async def sites_domain_request(body: dict, tenant: str = Depends(current_tenant)):
     from .site import domains as DM
     return await asyncio.to_thread(_host, DM.buy_request, tenant, str(body.get("site") or ""), str(body.get("domain") or ""),
-                                   bool(body.get("auto_renew")))
+                                   bool(body.get("auto_renew")), "",
+                                   body.get("registrant") if isinstance(body.get("registrant"), dict) else None)
 
 
 @app.post("/api/sites-domains/{oid}/buy", dependencies=[Depends(require_key)])

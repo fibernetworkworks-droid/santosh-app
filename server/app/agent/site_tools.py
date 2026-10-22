@@ -48,7 +48,8 @@ SITE_TOOLS = [
          "free": {"type": "boolean"}, "domain": {"type": "string"}, "plan": {"type": "string"},
          "provider": {"type": "string"}, "report_to": {"type": "string"}, "version": {"type": "integer"},
          "city": {"type": "string"}, "domains": {"type": "array", "items": {"type": "string"}},
-         "auto_renew": {"type": "boolean"}, "days": {"type": "integer"}, "repo": {"type": "string"},
+         "auto_renew": {"type": "boolean"}, "days": {"type": "integer"},
+         "registrant": {"type": "object", "description": "domain owner on the registry record: owner (person), business, email, phone, address, city, pin, state"}, "repo": {"type": "string"},
          "private": {"type": "boolean"}, "staff": {"type": "string"}},
          "required": ["action"]}},
     {"name": "website_dekho", "description": (
@@ -144,7 +145,8 @@ def _domains(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         doms = a.get("domains") if isinstance(a.get("domains"), list) else [a.get("domain") or ""]
         return {"results": DM.check(t, [str(d) for d in doms][:20])}
     if action == "domain_buy":
-        c = DM.buy_request(t, site, str(a.get("domain") or ""), bool(a.get("auto_renew")), conv)
+        c = DM.buy_request(t, site, str(a.get("domain") or ""), bool(a.get("auto_renew")), conv,
+                           a.get("registrant") if isinstance(a.get("registrant"), dict) else None)
         return {"card": c["id"], "amount": c["amount"], "renew_inr": c["renew_inr"], "lines": c["lines"],
                 "say": c["say"] + " (Card par fingerprint se haan unhe hi deni hai; aap khud nahi khareed sakte.)"}
     return DM.kyc_done(t, str(a.get("domain") or ""))

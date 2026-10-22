@@ -2455,10 +2455,14 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   /registrar/registrations {domain_name, auto_renew} -> 201 / 202, GET .../registrations/{d}/registration-status; no .in) and
   Porkbun API v3 (checkDomain price + renewal, domain/create with cost in pennies + agreeToTerms "yes", dns retrieve / create /
   edit / delete; 1 check / ~1 s). .in / .co.in go to Porkbun, "extension_not_supported_via_api" falls back to Porkbun.
-- Accounts: HER own registrar account by default (keys typed only in the app: `PUT /api/sites-keys/cf_registrar` {token,
-  secret = 32-char Account ID} / `porkbun` {token = API key, secret = secret key}; verified (token verify / ping), sealed with the
-  bazar vault, never shown). Newtika's own accounts only when the server sets SITES_RESELL + SITES_REG_CF_* / SITES_PORKBUN_*;
-  the card then says "Hoola / Newtika ka account; bill Newtika se". Registrant = her / her business always.
+- Accounts (owner's decision): Newtika's accounts by default (server: SITES_RESELL=true + SITES_REG_CF_TOKEN /
+  SITES_REG_CF_ACCOUNT + SITES_PORKBUN_KEY / SITES_PORKBUN_SECRET; card says "bill Newtika se"); an agency / customer who
+  joins her OWN account in the app (`PUT /api/sites-keys/cf_registrar` {token, secret = 32-char Account ID} / `porkbun`
+  {token = API key, secret = secret key}; verified, sealed with the bazar vault, never shown) uses that instead. On Newtika's
+  Cloudflare account the CUSTOMER is the registrant: `registrant_of` builds Cloudflare's `contacts.registrant` (email, phone
+  +91.NNNNNNNNNN, postal_info name / organization / street / city / state (from the PIN prefix) / postal_code / IN) from her
+  site facts + tool / API `registrant`; missing fields = no card. Porkbun's API takes no contact, so a Porkbun domain on
+  Newtika's account names Newtika (said on the card); the team changes it in the Porkbun dashboard.
 - `ideas(name, city, trade)` (plain labels, guard.name_problem: a name starting with a bank / govt / big brand gets none) ->
   `check` (rupees at USAGE_USD_INR; `renew_jump` when renewal > 1.5x the first year; `kyc` for the .in family) -> `suggest`
   (free, not premium; .in first, then .com, .co.in; shortest). `buy_request` = `site_domain` card {kind domain, amount, renew,

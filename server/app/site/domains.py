@@ -1,8 +1,9 @@
 """v0.123 Domains: name ideas from her business, live availability + first-year and renewal price in rupees from the
 registry, and buying ONLY on her fingerprint-signed tap. Official APIs only: Cloudflare Registrar API (beta, at-cost;
 .com / .shop / .store / .online / .co / .app / .dev ...) and Porkbun API v3 (.in family and anything Cloudflare can't
-sell). The domain is always registered in HER name (registrant = her / her business), on her own registrar account by
-default; the Hoola (Newtika) account is used only when the server is set to resell (SITES_RESELL) and the card says so.
+sell). Whose account: her own registrar account when she joined one (agencies), else Newtika's (SITES_RESELL). On
+Newtika's Cloudflare account the customer is named as the registrant (contacts.registrant, details required); Porkbun's
+API can't name another person, so a Porkbun domain on Newtika's account shows Newtika as the owner and the card says so.
 
 .in / .co.in: NIXI e-KYC is done by HER on the registrar's page (Aadhaar / DigiLocker); Hoola reminds and checks, never
 does the identity step. Renewals: reminders at 60 / 30 / 7 / 1 days; auto-renew only if she said yes on the buy card."""
@@ -114,8 +115,11 @@ class CfRegistrar:
                             "premium": x.get("tier") not in (None, "standard"), "registrar": "cloudflare"})
         return out
 
-    def register(self, domain: str, auto_renew: bool) -> dict[str, Any]:
-        res, code = self._req("POST", "/registrations", {"domain_name": domain, "auto_renew": bool(auto_renew)})
+    def register(self, domain: str, auto_renew: bool, registrant: dict[str, Any] | None = None) -> dict[str, Any]:
+        body: dict[str, Any] = {"domain_name": domain, "auto_renew": bool(auto_renew)}
+        if registrant:                      # the customer named as the owner (else the account's default contact)
+            body["contacts"] = {"registrant": registrant}
+        res, code = self._req("POST", "/registrations", body)
         return {"state": (res or {}).get("state") or ("succeeded" if code == 201 else "in_progress"), "raw": res}
 
     def status(self, domain: str) -> str:
@@ -313,7 +317,50 @@ def _card_hash(o: SiteDomain) -> str:
                           .encode()).hexdigest()[:24]
 
 
-def buy_request(tenant: str, ref: str, domain: str, auto_renew: bool = False, conv: str = "") -> dict[str, Any]:
+PIN_STATE = [("403", "Goa"), ("11", "Delhi"), ("12", "Haryana"), ("13", "Haryana"), ("14", "Punjab"), ("15", "Punjab"),
+             ("16", "Chandigarh"), ("17", "Himachal Pradesh"), ("18", "Jammu and Kashmir"), ("19", "Jammu and Kashmir"),
+             ("20", "Uttar Pradesh"), ("21", "Uttar Pradesh"), ("22", "Uttar Pradesh"), ("23", "Uttar Pradesh"),
+             ("24", "Uttarakhand"), ("25", "Uttar Pradesh"), ("26", "Uttarakhand"), ("27", "Uttar Pradesh"),
+             ("28", "Uttar Pradesh"), ("30", "Rajasthan"), ("31", "Rajasthan"), ("32", "Rajasthan"), ("33", "Rajasthan"),
+             ("34", "Rajasthan"), ("36", "Gujarat"), ("37", "Gujarat"), ("38", "Gujarat"), ("39", "Gujarat"),
+             ("40", "Maharashtra"), ("41", "Maharashtra"), ("42", "Maharashtra"), ("43", "Maharashtra"),
+             ("44", "Maharashtra"), ("45", "Madhya Pradesh"), ("46", "Madhya Pradesh"), ("47", "Madhya Pradesh"),
+             ("48", "Madhya Pradesh"), ("49", "Chhattisgarh"), ("50", "Telangana"), ("51", "Andhra Pradesh"),
+             ("52", "Andhra Pradesh"), ("53", "Andhra Pradesh"), ("56", "Karnataka"), ("57", "Karnataka"),
+             ("58", "Karnataka"), ("59", "Karnataka"), ("60", "Tamil Nadu"), ("61", "Tamil Nadu"), ("62", "Tamil Nadu"),
+             ("63", "Tamil Nadu"), ("64", "Tamil Nadu"), ("67", "Kerala"), ("68", "Kerala"), ("69", "Kerala"),
+             ("70", "West Bengal"), ("71", "West Bengal"), ("72", "West Bengal"), ("73", "West Bengal"),
+             ("74", "West Bengal"), ("75", "Odisha"), ("76", "Odisha"), ("77", "Odisha"), ("78", "Assam"),
+             ("79", "Meghalaya"), ("80", "Bihar"), ("81", "Jharkhand"), ("82", "Jharkhand"), ("83", "Jharkhand"),
+             ("84", "Bihar"), ("85", "Bihar")]
+
+
+def _state(pin: str) -> str:
+    return next((st for pre, st in PIN_STATE if pin.startswith(pre)), "")
+
+
+def registrant_of(facts: dict[str, Any], given: dict[str, Any] | None = None) -> tuple[dict[str, Any], list[str]]:
+    """The customer's details for the registry record (Cloudflare's contacts.registrant shape) + what is missing."""
+    g = {**(facts or {}), **{k: v for k, v in (given or {}).items() if v}}
+    addr = str(g.get("address") or "")
+    pin = str(g.get("pin") or g.get("pincode") or (re.findall(r"\b[1-9]\d{5}\b", addr) or [""])[-1])
+    street = re.sub(r"[,\s-]*\b[1-9]\d{5}\b", "", addr).strip(" ,")
+    city = str(g.get("city") or (street.split(",")[-1].strip() if "," in street else ""))
+    phone = re.sub(r"\D", "", str(g.get("phone") or ""))[-10:]
+    reg = {"email": str(g.get("email") or "").strip(),
+           "phone": f"+91.{phone}" if len(phone) == 10 else "",
+           "postal_info": {"name": str(g.get("owner") or g.get("owner_name") or g.get("name") or "").strip(),
+                           "organization": str(g.get("business") or g.get("name") or "").strip(),
+                           "address": {"street": street[:120], "city": city[:60], "state": str(g.get("state") or _state(pin)),
+                                       "postal_code": pin, "country_code": "IN"}}}
+    need = [w for w, v in (("email", reg["email"]), ("phone", reg["phone"]), ("naam", reg["postal_info"]["name"]),
+                           ("pura pata", street), ("shahar", city), ("PIN code", pin),
+                           ("rajya", reg["postal_info"]["address"]["state"])) if not v]
+    return reg, need
+
+
+def buy_request(tenant: str, ref: str, domain: str, auto_renew: bool = False, conv: str = "",
+                registrant: dict[str, Any] | None = None) -> dict[str, Any]:
     from . import service as S
     d = D.norm_domain(domain)
     bad = name_problem(d.split(".")[0])
@@ -333,8 +380,17 @@ def buy_request(tenant: str, ref: str, domain: str, auto_renew: bool = False, co
     inr = _inr(g["usd"])
     if _month_spent(tenant) + inr > _ceiling():
         raise DomainError(f"Is mahine domain par ₹{_ceiling():,.0f} ki seema hai; yeh lene se paar ho jayegi.")
-    registrant = {"name": facts.get("owner") or facts.get("name") or "", "business": facts.get("name") or "",
-                  "email": facts.get("email") or "", "phone": facts.get("phone") or ""}
+    reg, need = registrant_of(facts, registrant)
+    owner_rec = "account"                       # her own account: the registry shows that account's own contact
+    if g.get("account") == "hoola":
+        if g["registrar"] == "cloudflare":
+            if need:
+                raise DomainError("Domain customer ke naam par lene ke liye yeh chahiye: " + ", ".join(need)
+                                  + ". (website action=domain_buy + registrant {email, phone, owner, address, city, pin})")
+            owner_rec = "customer"
+        else:
+            owner_rec = "newtika"               # Porkbun's API can't name another person: Newtika's account contact
+    registrant = {**reg, "record": owner_rec}
     with session() as s:
         o = SiteDomain(tenant_id=tenant, site_id=sid, domain=d, registrar=g["registrar"], account=g.get("account", "own"),
                        usd=g["usd"], renew_usd=g.get("renew_usd") or g["usd"], inr=inr, auto_renew=bool(auto_renew),
@@ -359,7 +415,7 @@ def approval_card(tenant: str, oid: str) -> dict[str, Any] | None:
         lines = [f"Pehla saal: ₹{o.inr:,.0f} (${o.usd:.2f})", f"Agle saal se: ₹{_inr(o.renew_usd):,.0f}/saal",
                  f"Registrar: {'Cloudflare' if o.registrar == 'cloudflare' else 'Porkbun'} "
                  f"({'aapka account' if o.account == 'own' else 'Hoola / Newtika ka account; bill Newtika se'})",
-                 f"Malik (registrant): {reg.get('business') or reg.get('name') or 'aap'}",
+                 _owner_line(o, reg),
                  f"Auto-renew: {'haan' if o.auto_renew else 'nahi (Hoola yaad dilayega)'}",
                  "Domain lene ke baad paisa wapas nahi hota."]
         if tld_of(o.domain) in IN_FAMILY:
@@ -368,6 +424,18 @@ def approval_card(tenant: str, oid: str) -> dict[str, Any] | None:
                 "payee": "Cloudflare Registrar" if o.registrar == "cloudflare" else "Porkbun", "inr": o.inr,
                 "usd": round(o.usd, 2), "renew_inr": _inr(o.renew_usd), "lines": lines, "hash": o.hash, "site": o.site_id,
                 "say": f"{o.domain} ₹{o.inr:,.0f} mein (agle saal ₹{_inr(o.renew_usd):,.0f}). Lena ho to fingerprint se haan."}
+
+
+def _owner_line(o: SiteDomain, reg: dict[str, Any]) -> str:
+    pi = reg.get("postal_info") or {}
+    who = pi.get("organization") or pi.get("name") or "aap"
+    rec = reg.get("record", "account")
+    if rec == "customer":
+        return f"Registry mein malik: {who} ({reg.get('email', '')}); Newtika sirf account sambhalega"
+    if rec == "newtika":
+        return ("Registry mein malik: Newtika (Porkbun ka API doosre ka naam nahi daal sakta); "
+                f"Newtika team baad mein Porkbun dashboard se {who} ka naam karegi")
+    return "Registry mein malik: jis account se liya, uska contact (aapka apna account)"
 
 
 def buy(tenant: str, oid: str, hash_: str) -> dict[str, Any]:
@@ -400,7 +468,9 @@ def buy(tenant: str, oid: str, hash_: str) -> dict[str, Any]:
     cli = acc[o.registrar][0]
     _set(oid, status="registering", registered_at=now())
     try:
-        res = cli.register(o.domain, o.auto_renew) if o.registrar == "cloudflare" else cli.create(o.domain, o.usd)
+        reg = json.loads(o.registrant or "{}")
+        contact = {k: reg[k] for k in ("email", "phone", "postal_info")} if reg.get("record") == "customer" else None
+        res = cli.register(o.domain, o.auto_renew, contact) if o.registrar == "cloudflare" else cli.create(o.domain, o.usd)
     except DomainError as e:
         _set(oid, status="failed", error=str(e))
         raise

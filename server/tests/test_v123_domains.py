@@ -255,3 +255,28 @@ def test_porkbun_dns_plan_applied_only_on_tap_and_tools(dom_env):
     assert got["card"] and "fingerprint" in got["say"] and not dom_env.created            # the tool never buys
     ideas = asyncio.run(dispatch("website", {"action": "domain_ideas", "site": v["id"]}, owner))
     assert ideas["ideas"]
+
+
+def test_newtika_account_names_the_customer_or_says_newtika(dom_env, monkeypatch):
+    from app.config import get_settings
+    from app.site import domains as DM
+    monkeypatch.setenv("SITES_RESELL", "true")
+    monkeypatch.setenv("SITES_REG_CF_TOKEN", CF_TOKEN)
+    monkeypatch.setenv("SITES_REG_CF_ACCOUNT", CF_ACCOUNT)
+    monkeypatch.setenv("SITES_PORKBUN_KEY", PB_KEY)
+    monkeypatch.setenv("SITES_PORKBUN_SECRET", PB_SECRET)
+    get_settings.cache_clear()
+    v, _ = _site()
+    with pytest.raises(DM.DomainError, match="email"):          # customer named as owner needs her details
+        DM.buy_request(T, v["id"], "sharmasweetsakot.com")
+    card = DM.buy_request(T, v["id"], "sharmasweetsakot.com",
+                          registrant={"email": "ramesh@sharmasweets.in", "owner": "Ramesh Sharma", "pin": "444101"})
+    line = " ".join(card["lines"])
+    assert "Registry mein malik: Sharma Sweets" in line
+    DM.buy(T, card["id"], card["hash"])
+    reg = dom_env.registered[0]["contacts"]["registrant"]
+    assert reg["email"] == "ramesh@sharmasweets.in" and reg["phone"] == "+91.9876543210"
+    assert reg["postal_info"]["address"]["state"] == "Maharashtra" and reg["postal_info"]["address"]["country_code"] == "IN"
+    pb = DM.buy_request(T, v["id"], "sharmasweets.in")           # Porkbun: API can't name her -> said plainly
+    assert "malik: Newtika" in " ".join(pb["lines"])
+    assert DM.domains(T)[0]["account"] == "hoola"
