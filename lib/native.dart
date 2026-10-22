@@ -123,6 +123,14 @@ class Native {
       return 'Is phone par save nahi ho saka';
     }
   }
+  /// v0.118 Brand Sahayak: a final poster into the gallery (Pictures/Hoola). null = saved, else the reason.
+  static Future<String?> saveImage(String path, String name) async {
+    try {
+      return await _ch.invokeMethod<String>('saveImage', {'path': path, 'name': name});
+    } catch (_) {
+      return 'Is phone par save nahi ho saka';
+    }
+  }
   /// v0.58 background reel alerts: daily limit (minutes, 0 = off) and the after-11-pm bedtime nudge.
   static Future<Map<String, dynamic>> scrollAlerts({int? budget, bool? bedtime, int? ytShortsPct}) async => Map<String, dynamic>.from(
       await _call<Map>('scrollAlerts', {

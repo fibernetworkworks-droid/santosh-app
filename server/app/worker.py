@@ -505,6 +505,12 @@ async def employee_jobs() -> None:
             ads.send_check(tenant, kind)
     except Exception:
         log.exception("ads check failed")
+    try:                                   # v0.118 Brand: offer a festival poster set a week before (once per festival)
+        from .brand import service as brand
+        for tenant, fest in brand.due_nudges():
+            brand.send_nudge(tenant, fest)
+    except Exception:
+        log.exception("brand nudge failed")
     try:
         from .seo import service as seo
         for tenant in seo.due_mornings():

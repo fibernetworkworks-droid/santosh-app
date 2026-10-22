@@ -904,6 +904,27 @@ class Api {
   Future<Map<String, dynamic>> adsMetaOff() async => Map<String, dynamic>.from(await _send('DELETE', '/api/ads/meta') as Map);
   Future<Map<String, dynamic>> adsMetaFetch(int days) async => Map<String, dynamic>.from(
       await _send('POST', '/api/ads/meta/fetch', body: {'days': days}, timeout: const Duration(seconds: 120)) as Map);
+  // ---- v0.118 Brand Sahayak (brand designer; final artwork only on her tap) ----
+  Future<Map<String, dynamic>> brandAll() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/brand', timeout: const Duration(seconds: 45)) as Map);
+  Future<Map<String, dynamic>> brandMake(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/brand/designs', body: body, timeout: const Duration(seconds: 180)) as Map);
+  Future<Map<String, dynamic>> brandDesign(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/brand/designs/$id') as Map);
+  Future<Map<String, dynamic>> brandAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/brand/designs/$id/$action', body: body, timeout: const Duration(seconds: 240)) as Map);
+  Future<Map<String, dynamic>> brandDelete(String id) async => Map<String, dynamic>.from(await _send('DELETE', '/api/brand/designs/$id') as Map);
+  Future<Map<String, dynamic>> brandPhoto(String id, String filename, List<int> bytes) async =>
+      uploadFile('/api/brand/designs/$id/photo', filename, bytes, tries: 1, timeout: const Duration(seconds: 180));
+  Future<Map<String, dynamic>> brandKitSave(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/brand/kit', body: body) as Map);
+  Future<Map<String, dynamic>> brandLogo(String filename, List<int> bytes, {bool cleanBg = false}) async =>
+      uploadFile('/api/brand/logo', filename, bytes, fields: {'clean_bg': cleanBg ? 'true' : 'false'}, tries: 1);
+  /// Proof / final picture bytes (they need the key, so Image.network gets authHeaders; downloads come through here).
+  Future<List<int>> brandBytes(String path) async {
+    final res = await http.get(Uri.parse(absolute(path)), headers: authHeaders).timeout(const Duration(seconds: 120));
+    if (res.statusCode != 200) throw 'File nahi mili (${res.statusCode})';
+    return res.bodyBytes;
+  }
   // ---- v0.101 Kalam Sahayak (content writer; publishing only on her tap) ----
   Future<Map<String, dynamic>> kalamAll() async => Map<String, dynamic>.from(await _send('GET', '/api/kalam') as Map);
   Future<Map<String, dynamic>> kalamWrite(Map<String, dynamic> body) async =>

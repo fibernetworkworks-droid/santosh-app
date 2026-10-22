@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.117.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.118.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -149,7 +149,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -5654,6 +5654,128 @@ def ads_meta_off(tenant: str = Depends(current_tenant)):
 async def ads_meta_fetch(body: dict, tenant: str = Depends(current_tenant)):
     from .ads import service as ads
     return await asyncio.to_thread(_ads, ads.fetch_meta, tenant, int(body.get("days") or 14), str(body.get("conversation_id") or ""))
+
+
+# ---------------------------------------------------------------- v0.118 Brand Sahayak (brand designer; final artwork on her tap)
+def _brand(fn, *a, **k):
+    from .brand import service as brand
+    try:
+        return fn(*a, **k)
+    except brand.BrandError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/brand", dependencies=[Depends(require_key)])
+async def brand_all(tenant: str = Depends(current_tenant)):
+    from .brand import service as brand
+    return await asyncio.to_thread(brand.everything, tenant)
+
+
+@app.get("/api/brand/designs", dependencies=[Depends(require_key)])
+async def brand_designs(status: str = "", q: str = "", tenant: str = Depends(current_tenant)):
+    from .brand import service as brand
+    return {"designs": await asyncio.to_thread(brand.designs, tenant, status, q)}
+
+
+@app.post("/api/brand/designs", dependencies=[Depends(require_key)])
+async def brand_make(body: dict, tenant: str = Depends(current_tenant)):
+    """{brief, kind, sizes, festival, photo (file_id), layout, words {headline, sub, offer, cta, date, body}, ai_background, template}"""
+    from .brand import service as brand
+    words = body.get("words") if isinstance(body.get("words"), dict) else None
+    return await asyncio.to_thread(_brand, brand.make, tenant, str(body.get("brief") or ""), str(body.get("kind") or ""),
+                                   body.get("sizes"), str(body.get("festival") or ""), str(body.get("photo") or ""),
+                                   str(body.get("layout") or ""), words, bool(body.get("ai_background")),
+                                   str(body.get("template") or ""), str(body.get("conversation_id") or ""))
+
+
+@app.get("/api/brand/designs/{ref}", dependencies=[Depends(require_key)])
+async def brand_design(ref: str, tenant: str = Depends(current_tenant)):
+    from .brand import service as brand
+    return await asyncio.to_thread(_brand, brand.get, tenant, ref)
+
+
+@app.delete("/api/brand/designs/{ref}", dependencies=[Depends(require_key)])
+async def brand_delete(ref: str, tenant: str = Depends(current_tenant)):
+    from .brand import service as brand
+    return await asyncio.to_thread(_brand, brand.delete, tenant, ref)
+
+
+@app.post("/api/brand/designs/{ref}/photo", dependencies=[Depends(require_key)])
+async def brand_photo(ref: str, file: UploadFile = File(...), conversation_id: str = Form(""),
+                      tenant: str = Depends(current_tenant)):
+    from .brand import service as brand
+    data = await file.read()
+    if len(data) > 25 * 1024 * 1024:
+        raise HTTPException(413, "Photo 25 MB se badi hai.")
+    return await asyncio.to_thread(_brand, brand.set_photo, tenant, ref, "", data, conversation_id)
+
+
+@app.post("/api/brand/designs/{ref}/{action}", dependencies=[Depends(require_key)])
+async def brand_act(ref: str, action: str, body: dict, tenant: str = Depends(current_tenant)):
+    """revise {instruction} | edit {fields, layout} | resize {sizes, add} | approve {force} (sends the card) |
+    decide {yes, hash, reason} (ONLY her tap on the card) | copy | template {on}"""
+    from .brand import service as brand
+    conv = str(body.get("conversation_id") or "")
+    if action == "revise":
+        return await asyncio.to_thread(_brand, brand.revise, tenant, ref, str(body.get("instruction") or ""), conv)
+    if action == "edit":
+        fields = body.get("fields") if isinstance(body.get("fields"), dict) else {}
+        return await asyncio.to_thread(_brand, brand.edit, tenant, ref, fields, str(body.get("layout") or ""), conv)
+    if action == "resize":
+        return await asyncio.to_thread(_brand, brand.resize, tenant, ref, body.get("sizes"), body.get("add", True) is not False, conv)
+    if action == "approve":
+        return await asyncio.to_thread(_brand, brand.request_approval, tenant, ref, bool(body.get("force")), conv)
+    if action == "decide":
+        return await asyncio.to_thread(_brand, brand.decide, tenant, ref, bool(body.get("yes")), str(body.get("hash") or ""),
+                                       str(body.get("reason") or ""), conv)
+    if action == "copy":
+        return await asyncio.to_thread(_brand, brand.copy_design, tenant, ref)
+    if action == "template":
+        return await asyncio.to_thread(_brand, brand.copy_design, tenant, ref, body.get("on", True) is not False)
+    raise HTTPException(400, "action = revise | edit | resize | approve | decide | copy | template")
+
+
+@app.get("/api/brand/files/{design_id}/{name}", dependencies=[Depends(require_key)])
+def brand_file(design_id: str, name: str, download: bool = False, tenant: str = Depends(current_tenant)):
+    from .brand import service as brand
+    path, mime = _brand(brand.file_path, tenant, design_id, name)
+    return FileResponse(path, media_type=mime, filename=name if download else None)
+
+
+@app.get("/api/brand/kit", dependencies=[Depends(require_key)])
+async def brand_kit(tenant: str = Depends(current_tenant)):
+    from .brand import service as brand
+    return await asyncio.to_thread(brand.kit, tenant)
+
+
+@app.put("/api/brand/kit", dependencies=[Depends(require_key)])
+async def brand_kit_save(body: dict, tenant: str = Depends(current_tenant)):
+    from .brand import service as brand
+    keys = ("name", "tagline", "colors", "contact", "font", "tone", "rule", "rules", "state", "language", "nudge", "nudge_days")
+    return await asyncio.to_thread(_brand, brand.save_kit, tenant, **{k: body[k] for k in keys if k in body})
+
+
+@app.post("/api/brand/logo", dependencies=[Depends(require_key)])
+async def brand_logo(file: UploadFile | None = File(None), file_id: str = Form(""), clean_bg: bool = Form(False),
+                     tenant: str = Depends(current_tenant)):
+    from .brand import service as brand
+    data = await file.read() if file is not None else None
+    if data is not None and len(data) > 15 * 1024 * 1024:
+        raise HTTPException(413, "Logo 15 MB se bada hai.")
+    return await asyncio.to_thread(_brand, brand.set_logo, tenant, data, file_id, (file.filename if file else "logo.png"), clean_bg)
+
+
+@app.get("/api/brand/logo", dependencies=[Depends(require_key)])
+def brand_logo_get(tenant: str = Depends(current_tenant)):
+    from .brand import service as brand
+    path, mime = _brand(brand.logo_file, tenant)
+    return FileResponse(path, media_type=mime)
+
+
+@app.get("/api/brand/festivals", dependencies=[Depends(require_key)])
+async def brand_festivals(days: int = 60, tenant: str = Depends(current_tenant)):
+    from .brand import service as brand
+    return {"festivals": await asyncio.to_thread(brand.upcoming, tenant, max(1, min(370, days)))}
 
 
 # ---------------------------------------------------------------- v0.101 Kalam Sahayak (content writer; publishing on her tap)

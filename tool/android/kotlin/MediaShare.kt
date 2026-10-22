@@ -21,6 +21,31 @@ object MediaShare {
         return null
     }
 
+    /** v0.118 Brand Sahayak: a final poster into Pictures/Hoola (Android 10+ needs no permission for this). */
+    fun saveImage(ctx: Context, path: String, name: String): String? {
+        val f = File(path)
+        if (!f.exists()) return "File nahi mili"
+        if (Build.VERSION.SDK_INT < 29) return "Is phone par 'Share' se save kijiye"
+        val mime = if (name.lowercase().endsWith(".png")) "image/png" else "image/jpeg"
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, name.ifBlank { "hoola.png" })
+            put(MediaStore.Images.Media.MIME_TYPE, mime)
+            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Hoola")
+            put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+        val r = ctx.contentResolver
+        val uri = r.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return "Gallery mein jagah nahi mili"
+        return try {
+            r.openOutputStream(uri)?.use { out -> f.inputStream().use { it.copyTo(out) } }
+            values.clear(); values.put(MediaStore.Images.Media.IS_PENDING, 0)
+            r.update(uri, values, null, null)
+            null
+        } catch (e: Exception) {
+            r.delete(uri, null, null)
+            "Save nahi ho paya"
+        }
+    }
+
     /** Movies/Hoola in the gallery (Android 10+ needs no permission for this). */
     fun saveVideo(ctx: Context, path: String, name: String): String? {
         val f = File(path)

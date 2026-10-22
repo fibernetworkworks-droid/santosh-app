@@ -13,6 +13,7 @@ import 'glass.dart';
 import 'keep_alive.dart';
 import 'phone_hoola.dart';
 import 'ads_screen.dart';
+import 'brand_screen.dart';
 import 'kalam_screen.dart';
 import 'telecall_screen.dart';
 import 'deal_screen.dart';
@@ -298,6 +299,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Ad report se paise ka rissav, budget badlav wajah ke saath (aapki haan se), naye ad copy test'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AdsScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.palette_rounded, color: C.accent),
+              title: Text('${app.aName} · Brand designer', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Aapke logo aur rang mein poster, har platform ki size, tyohar ke post; final aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BrandScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

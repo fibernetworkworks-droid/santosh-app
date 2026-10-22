@@ -155,6 +155,12 @@ class MainActivity : FlutterActivity() {
                         Thread { val err = try { MediaShare.saveVideo(this, p, n) } catch (e: Exception) { "Save nahi ho paya" }
                             main.post { result.success(err) } }.start()
                     }
+                    "saveImage" -> {
+                        val p = call.argument<String>("path") ?: ""
+                        val n = call.argument<String>("name") ?: "hoola.png"
+                        Thread { val err = try { MediaShare.saveImage(this, p, n) } catch (e: Exception) { "Save nahi ho paya" }
+                            main.post { result.success(err) } }.start()
+                    }
                     // ---- v0.84 Galla: UPI payment alerts (notification access the owner gives herself) ----
                     "payAlertsInfo" -> result.success(PayAlerts.info(this))
                     "payAlertsSettings" -> { PayAlerts.openSettings(this); result.success(null) }

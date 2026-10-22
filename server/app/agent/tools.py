@@ -654,3 +654,10 @@ from .theka_tools import THEKA_HANDLERS, THEKA_LABELS, THEKA_TOOLS  # noqa: E402
 TOOLS.extend(THEKA_TOOLS)
 TOOL_LABELS.update(THEKA_LABELS)
 HANDLERS.update(THEKA_HANDLERS)
+
+# v0.118 Brand Sahayak (brand designer: kit from her logo, posters in every size, final artwork only on her tap)
+from .brand_tools import BRAND_HANDLERS, BRAND_LABELS, BRAND_TOOLS  # noqa: E402
+
+TOOLS.extend(BRAND_TOOLS)
+TOOL_LABELS.update(BRAND_LABELS)
+HANDLERS.update(BRAND_HANDLERS)

@@ -23,6 +23,7 @@ const callCardKinds = {
   'tele_logged', 'tele_day', // v0.99
   'kalam_publish', 'kalam_piece', // v0.101
   'ads_change', 'ads_report', // v0.111
+  'brand_design', 'brand_idea', // v0.118
   'hoola_deal', // v0.102
   'hoola_pick', // v0.105
   'hoola_khata', // v0.106

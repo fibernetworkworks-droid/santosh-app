@@ -296,6 +296,8 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _lekhakCards = {}; // v0.87 Lekhak: one doc card + one sign card per document, updated in place
   final Map<String, FeedItem> _askForms = {}; // v0.97 form cards, updated in place when answered / closed
   int lekhakTick = 0;                          // bumps on any lekhak event (the Lekhak screen refreshes)
+  int brandTick = 0;                           // v0.118 bumps on brand events (Brand screen refreshes)
+  final Map<String, FeedItem> _brandCards = {}; // v0.118 one card per design, updated in place
   int adsTick = 0;                             // v0.108 bumps on ads events (the Ads screen refreshes)
   final Map<String, FeedItem> _adsPlans = {};   // v0.108 one card per budget plan, changes updated in place
   int kalamTick = 0;                           // v0.101 bumps on content-writer events (the Kalam screen refreshes)
@@ -1212,6 +1214,32 @@ class Santosh extends ChangeNotifier {
           Device.instance.showNow('$aName: ads mein badlav ki haan?', '${p['say'] ?? ''}');
         }
         adsTick++;
+        break;
+      case 'brand_design':
+      case 'brand_approval':
+        final bd = Map<String, dynamic>.from((p['design'] as Map?) ?? const {});
+        final bid = '${bd['id'] ?? ''}';
+        final bdata = {...Map<String, dynamic>.from(p), 'approval': ev.kind == 'brand_approval'};
+        final bc = _brandCards[bid];
+        if (bc != null) {
+          bc.data = bdata;
+          if (ev.kind == 'brand_approval') {
+            feed.remove(bc);
+            feed.add(bc);
+          }
+        } else if (bid.isNotEmpty) {
+          final it = FeedItem('brand_design', bdata);
+          _brandCards[bid] = it;
+          feed.add(it);
+        }
+        if (ev.kind == 'brand_approval' && inBackground && !_replaying && !pushOn) {
+          Device.instance.showNow('$aName: poster final karein?', '${bd['number'] ?? ''} ${bd['title'] ?? ''}');
+        }
+        brandTick++;
+        break;
+      case 'brand_idea':
+        feed.add(FeedItem('brand_idea', Map<String, dynamic>.from(p)));
+        brandTick++;
         break;
       case 'ads_report':
       case 'ads_copy':
