@@ -54,6 +54,7 @@ import 'seo_screen.dart';
 import 'thok_screen.dart';
 import 'niryat_screen.dart';
 import 'franchise_screen.dart';
+import 'theka_screen.dart';
 import 'kharcha_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -201,6 +202,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Aadhaar, PAN, Voter ID… taala band. ${app.aName} forms mein khud bharega'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => IdLockerScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.engineering_rounded, color: C.accent),
+              title: const Text('Theka sahayak (contractor)', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Tender ki tareekh, BOQ, naap, RA bill aur kataayi, petty contractor, site diary, EOT: ${app.aName} karega, bill aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ThekaScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

@@ -707,6 +707,16 @@ class Api {
   Future<Map<String, dynamic>> phonedocCase(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/phonedoc/cases/$id') as Map);
   Future<Map<String, dynamic>> phonedocAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/phonedoc/cases/$id/$action', body: body) as Map);
+  // v0.117 Theka Sahayak (contractor)
+  Future<Map<String, dynamic>> thekaDay() async => Map<String, dynamic>.from(await _send('GET', '/api/theka/day') as Map);
+  Future<Map<String, dynamic>> _tkPost(String path, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/theka/$path', body: body, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> thekaTender(Map<String, dynamic> body) => _tkPost('tenders', body);
+  Future<Map<String, dynamic>> thekaProject(Map<String, dynamic> body) => _tkPost('projects', body);
+  Future<Map<String, dynamic>> thekaProjectGet(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/theka/projects/$id') as Map);
+  Future<Map<String, dynamic>> thekaProjectAct(String id, String action, Map<String, dynamic> body) => _tkPost('projects/$id/$action', body);
+  Future<Map<String, dynamic>> thekaBill(String id, Map<String, dynamic> body) => _tkPost('bills/$id', body);
+  Future<Map<String, dynamic>> thekaRegister() => _tkPost('register', const {});
   // v0.115 Franchise Sahayak
   Future<Map<String, dynamic>> frDay() async => Map<String, dynamic>.from(await _send('GET', '/api/franchise/day') as Map);
   Future<Map<String, dynamic>> frRead(String what, {String outlet = '', String month = ''}) async => Map<String, dynamic>.from(

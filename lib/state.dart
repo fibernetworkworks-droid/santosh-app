@@ -1254,6 +1254,9 @@ class Santosh extends ChangeNotifier {
       case 'niryat_day':
       case 'fr_statement':
       case 'fr_day':
+      case 'theka_bill':
+      case 'theka_letter':
+      case 'theka_day':
         feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
         break;
       case 'payroll_run':

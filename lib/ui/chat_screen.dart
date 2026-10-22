@@ -25,6 +25,7 @@ import 'seo_screen.dart';
 import 'thok_screen.dart';
 import 'niryat_screen.dart';
 import 'franchise_screen.dart';
+import 'theka_screen.dart';
 import 'telecall_screen.dart';
 import 'video_editor.dart';
 import 'operator_screen.dart';
@@ -586,6 +587,10 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return MShopReadyCard(key: ValueKey('mr${it.data['job_id']}'), v: it.data, app: app);
     case 'mshop_day':
       return MShopDayCard(v: it.data, app: app);
+    case 'theka_bill':
+    case 'theka_letter':
+    case 'theka_day':
+      return ThekaCard(key: ValueKey('tk${it.data['bill_id'] ?? it.data['text'] ?? it.data['title']}'), v: it.data, app: app);
     case 'fr_statement':
     case 'fr_day':
       return FrStatementCard(key: ValueKey('fr${it.data['statement_id'] ?? it.data['text']}'), v: it.data, app: app);

@@ -647,3 +647,10 @@ from .handoff_tools import HANDOFF_HANDLERS, HANDOFF_LABELS, HANDOFF_TOOLS  # no
 TOOLS.extend(HANDOFF_TOOLS)
 TOOL_LABELS.update(HANDOFF_LABELS)
 HANDLERS.update(HANDOFF_HANDLERS)
+
+# v0.117 Theka Sahayak (contractor: tenders, BOQ, measurement book, RA bills + deductions, subcontractors, site diary, EOT)
+from .theka_tools import THEKA_HANDLERS, THEKA_LABELS, THEKA_TOOLS  # noqa: E402
+
+TOOLS.extend(THEKA_TOOLS)
+TOOL_LABELS.update(THEKA_LABELS)
+HANDLERS.update(THEKA_HANDLERS)

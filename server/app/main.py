@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.116.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.117.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -149,7 +149,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -4288,6 +4288,105 @@ def phonedoc_case_action(case_id: str, action: str, body: dict, tenant: str = De
     if action == "close":
         return _pdoc(pdoc.close, tenant, case_id)
     raise HTTPException(404, "step | recheck | escalate | close")
+
+
+# ---------------------------------------------------------------- v0.117 Theka Sahayak (contractor)
+def _tk(fn, *a, **k):
+    from .theka import service as tk
+    try:
+        return fn(*a, **k)
+    except (tk.ThekaError, ValueError) as e:
+        raise HTTPException(400, str(e))
+
+
+_TK_TENDER = ("dept", "portal", "ref", "value", "emd", "emd_mode", "prebid", "last_date", "opening", "status", "have", "our_quote", "l1", "emd_back", "notes")
+_TK_PROJECT = ("client", "govt", "agreement_no", "value", "start", "end", "dlp_months", "gst_rate", "retention_pct", "sd_pct", "it_tds_pct", "gst_tds",
+               "cess_pct", "mob_advance", "mob_pct", "deviation_pct", "bg_no", "bg_amount", "bg_valid_to", "insurance_valid_to", "completed_on", "status")
+
+
+@app.get("/api/theka/day", dependencies=[Depends(require_key)])
+def theka_day(tenant: str = Depends(current_tenant)):
+    from .theka import service as tk
+    return {**_tk(tk.day, tenant), "settings": tk.settings(tenant), "tenders": tk.tenders(tenant), "projects": tk.projects(tenant),
+            "receivables": tk.receivables(tenant)}
+
+
+@app.post("/api/theka/settings", dependencies=[Depends(require_key)])
+def theka_settings(body: dict, tenant: str = Depends(current_tenant)):
+    from .theka import service as tk
+    keys = ("firm", "gstin", "individual", "udyam", "registration", "registration_valid_to", "address", "morning_time")
+    return _tk(tk.save_settings, tenant, **{k: body[k] for k in keys if k in body})
+
+
+@app.post("/api/theka/tenders", dependencies=[Depends(require_key)])
+def theka_tender(body: dict, tenant: str = Depends(current_tenant)):
+    from .theka import service as tk
+    return _tk(tk.save_tender, tenant, str(body.get("name") or ""), str(body.get("tender") or ""), **{k: body[k] for k in _TK_TENDER if k in body})
+
+
+@app.post("/api/theka/projects", dependencies=[Depends(require_key)])
+def theka_project(body: dict, tenant: str = Depends(current_tenant)):
+    from .theka import service as tk
+    return _tk(tk.save_project, tenant, str(body.get("name") or ""), str(body.get("project") or ""), **{k: body[k] for k in _TK_PROJECT if k in body})
+
+
+@app.get("/api/theka/projects/{pid}", dependencies=[Depends(require_key)])
+def theka_project_get(pid: str, tenant: str = Depends(current_tenant)):
+    from .theka import service as tk
+    return {**_tk(tk.project_view, tenant, pid), "boq": _tk(tk.boq_items, tenant, pid), "stock": _tk(tk.stock, tenant, pid)}
+
+
+@app.post("/api/theka/projects/{pid}/boq", dependencies=[Depends(require_key)])
+async def theka_boq_upload(pid: str, file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
+    from .theka import service as tk
+    data = await file.read()
+    return _tk(tk.boq, tenant, pid, None, data, file.filename or "boq.csv")
+
+
+@app.post("/api/theka/projects/{pid}/{action}", dependencies=[Depends(require_key)])
+def theka_project_act(pid: str, action: str, body: dict, tenant: str = Depends(current_tenant)):
+    """measure | ra_bill | material | diary | eot"""
+    from .theka import service as tk
+    g = lambda k: str(body.get(k) or "")  # noqa: E731
+    conv = g("conversation_id")
+    if action == "measure":
+        return _tk(tk.measure, tenant, pid, g("item"), body.get("qty"), g("detail"), g("day"), g("by"))
+    if action == "ra_bill":
+        return _tk(tk.ra_bill, tenant, pid, g("upto"), bool(body.get("final")), conv)
+    if action == "material":
+        return _tk(tk.material, tenant, pid, g("item"), body.get("qty"), body.get("rate"), bool(body.get("used")), g("day"), g("note"))
+    if action == "diary":
+        return _tk(tk.diary, tenant, pid, body.get("labour") or 0, g("work"), g("hindrance"), body.get("lost_hours"), bool(body.get("by_client")), g("day"))
+    if action == "eot":
+        return _tk(tk.eot_letter, tenant, pid, conv)
+    raise HTTPException(404, "measure | ra_bill | material | diary | eot")
+
+
+@app.post("/api/theka/bills/{bid}", dependencies=[Depends(require_key)])
+def theka_bill_status(bid: str, body: dict, tenant: str = Depends(current_tenant)):
+    """status submitted (her Haan, only from her tap) | passed | paid"""
+    from .theka import service as tk
+    return _tk(tk.bill_status, tenant, bid, str(body.get("status") or ""), body.get("amount"), str(body.get("on") or ""))
+
+
+@app.post("/api/theka/subs", dependencies=[Depends(require_key)])
+def theka_sub(body: dict, tenant: str = Depends(current_tenant)):
+    from .theka import service as tk
+    return _tk(tk.save_sub, tenant, str(body.get("name") or ""), str(body.get("phone") or ""), body.get("individual"), body.get("pan_ok"),
+               str(body.get("work") or ""), body.get("retention_pct"))
+
+
+@app.post("/api/theka/sub_bills", dependencies=[Depends(require_key)])
+def theka_sub_bill(body: dict, tenant: str = Depends(current_tenant)):
+    from .theka import service as tk
+    return _tk(tk.sub_bill, tenant, str(body.get("sub") or ""), body.get("amount"), str(body.get("project") or ""), str(body.get("day") or ""),
+               str(body.get("note") or ""))
+
+
+@app.post("/api/theka/register", dependencies=[Depends(require_key)])
+def theka_register(body: dict, tenant: str = Depends(current_tenant)):
+    from .theka import service as tk
+    return _tk(tk.register_file, tenant, str(body.get("conversation_id") or ""))
 
 
 # ---------------------------------------------------------------- v0.115 Franchise Sahayak (franchise owner)

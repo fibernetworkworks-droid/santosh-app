@@ -476,6 +476,12 @@ async def employee_jobs() -> None:
     except Exception:
         log.exception("gst morning failed")
     try:                                   # v0.99 Telecaller: today's call list, each with a reason
+        from .theka import service as theka
+        for tenant in theka.due_mornings():
+            theka.send_morning(tenant)
+    except Exception:
+        log.exception("theka morning failed")
+    try:
         from .franchise import service as franchise
         for tenant in franchise.due_mornings():
             franchise.send_morning(tenant)
