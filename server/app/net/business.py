@@ -42,6 +42,9 @@ class Business(Base):
     auto_assign: Mapped[bool] = mapped_column(Boolean, default=False)
     gstin: Mapped[str] = mapped_column(String(20), default="")
     verification: Mapped[str] = mapped_column(String(12), default="none")  # none | requested | verified | rejected
+    udyam: Mapped[str] = mapped_column(String(24), default="")             # v0.107 optional Udyam registration
+    verified_upi: Mapped[str] = mapped_column(String(80), default="")      # v0.107 UPI ID the operator matched to the bank name
+    credential: Mapped[dict] = mapped_column(JSON, default=dict)           # v0.107 server-signed verified-business credential
     created_at: Mapped[Any] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -184,28 +187,47 @@ def set_team(tenant: str, who: list[str]) -> list[str]:
     return addrs
 
 
-def request_verification(tenant: str, gstin: str) -> dict[str, Any]:
+def request_verification(tenant: str, gstin: str, udyam: str = "") -> dict[str, Any]:
     g = (gstin or "").strip().upper()
     if not GSTIN_RE.match(g):
         raise NetError("GSTIN sahi nahi lagta (15 akshar, jaise 27ABCDE1234F1Z5).")
+    u = (udyam or "").strip().upper()
+    from .trust import UDYAM_RE
+    if u and not UDYAM_RE.match(u):
+        raise NetError("Udyam number aisa hota hai: UDYAM-MH-01-0000000")
     with session() as s:
         b = s.get(Business, tenant)
         if b is None:
             raise NetError("Pehle business profile banaiye.")
-        b.gstin, b.verification = g, "requested"
-    return {"status": "requested", "note": "Server chalane wale documents dekh kar verified badge denge."}
+        b.gstin, b.verification, b.udyam = g, "requested", u
+    return {"status": "requested", "note": "Server chalane wale documents (GSTIN, Udyam, bank mein naam) dekh kar verified "
+            "badge denge."}
 
 
-def operator_verify(tenant: str, approve: bool) -> dict[str, Any]:
-    """Only the server owner (operator) calls this, after checking the documents."""
+def operator_verify(tenant: str, approve: bool, bank_name_ok: bool = False) -> dict[str, Any]:
+    """Only the server owner (operator) calls this, after checking the documents. `bank_name_ok` = she checked that the
+    business's UPI ID (Khareed aur bikri > Niyam) belongs to a bank account in the business's name: only then the
+    credential names that UPI ID, and buyers' Hoolas show the payee as verified (v0.107)."""
+    upi = ""
+    if approve and bank_name_ok:
+        from .deal import rules as deal_rules
+        upi = deal_rules(tenant).upi_id or ""
+        if not upi:
+            raise NetError("Is business ka UPI ID abhi nahi hai; bank naam milane ke liye pehle UPI ID chahiye.")
     with session() as s:
         b = s.get(Business, tenant)
         if b is None:
             raise NetError("Business nahi mila.")
         b.verification = "verified" if approve else "rejected"
+        b.verified_upi = upi if approve else ""
+        if not approve:
+            b.credential = {}
         h = s.get(HoolaId, tenant)
         if h is not None:
             h.business, h.business_verified = True, bool(approve)
+    if approve:
+        from . import trust
+        trust.issue(tenant)
     if approve:
         tell(tenant, "hoola_msg", {"kind": "biz_verified", "fyi": True, "from": "Hoola", "text": "Aapka business verified ho gaya 🏢✓"})
     return {"status": "verified" if approve else "rejected"}
@@ -213,8 +235,14 @@ def operator_verify(tenant: str, approve: bool) -> dict[str, Any]:
 
 def verification_queue() -> list[dict[str, Any]]:
     with session() as s:
-        return [{"tenant": b.tenant_id, "name": b.name, "gstin": b.gstin, "area": b.area, "category": b.category}
-                for b in s.scalars(select(Business).where(Business.verification == "requested")).all()]
+        rows = s.scalars(select(Business).where(Business.verification == "requested")).all()
+        out = [{"tenant": b.tenant_id, "name": b.name, "gstin": b.gstin, "area": b.area, "category": b.category,
+                "udyam": b.udyam or ""} for b in rows]
+    from .deal import rules as deal_rules
+    for x in out:                                # v0.107 the UPI ID to match against the bank account name
+        x["upi_id"] = deal_rules(x["tenant"]).upi_id or ""
+        x["payee_name"] = deal_rules(x["tenant"]).payee_name or ""
+    return out
 
 
 def directory(tenant: str, q: str = "", category: str = "") -> list[dict[str, Any]]:

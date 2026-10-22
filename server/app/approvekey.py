@@ -238,6 +238,17 @@ def card_digest(kind: str, target: str, tenant: str) -> tuple[str, dict[str, Any
         show = {"title": card.get("title", ""), "amount": card.get("amount", ""), "payee": card.get("payee", "")}
     else:
         raise ApproveError("kind = bazar | studio | deal | ads")
+    elif kind == "mandate":                       # v0.107 a standing order she signs once
+        from .net import mandate as md
+        try:
+            card = md.sign_card(tenant, target)
+        except Exception:
+            raise ApproveError("Yeh card ab baaki nahi hai.")
+        show = {"title": card.get("title", ""), "payee": card.get("payee", ""), "amount": card.get("amount", ""),
+                "items": [i.get("name", "") for i in card.get("items") or []], "when": card.get("when", ""),
+                "until": card.get("until", ""), "tolerance": card.get("tolerance", "")}
+    else:
+        raise ApproveError("kind = bazar | studio | deal | mandate")
     return hashlib.sha256(json.dumps(show, sort_keys=True, ensure_ascii=False).encode()).hexdigest(), show
 
 
@@ -245,7 +256,7 @@ def needed(tenant: str, kind: str, target: str) -> bool:
     """A fingerprint is needed for this approval: an active phone exists and the card moves / spends money."""
     if not active_on(tenant):
         return False
-    if kind in ("studio", "deal"):
+    if kind in ("studio", "deal", "mandate"):
         return True
     if kind == "ads":                             # v0.108 only a change that spends more ad money
         from .ads import service as ads
@@ -259,6 +270,7 @@ def needed(tenant: str, kind: str, target: str) -> bool:
 
 def challenge(tenant: str, kind: str, target: str) -> dict[str, Any]:
     if kind in ("bazar", "studio", "deal", "ads"):
+    if kind in ("bazar", "studio", "deal", "mandate"):
         digest, show = card_digest(kind, target, tenant)
     elif kind == "remove":
         digest, show = hashlib.sha256(f"remove|{target}".encode()).hexdigest(), {"title": "Phone hatana"}

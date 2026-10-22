@@ -28,6 +28,7 @@ const callCardKinds = {
   'hoola_khata', // v0.106
   'sheet_milaan', 'doc_edit', 'memory_saved', // v0.108
   'upi_result', // v0.109
+  'hoola_rfq', 'hoola_mandate', 'hoola_promo', // v0.107
 };
 
 /// The live voice call, owned by the app (not by a screen): it keeps going while the owner opens Chat, Connect,

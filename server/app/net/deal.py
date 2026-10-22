@@ -133,6 +133,7 @@ class Deal(Base):
     dispute: Mapped[dict] = mapped_column(JSON, default=dict)                   # v0.106 {reason, lines, note, at, answer, escalated}
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     handed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    tag: Mapped[dict] = mapped_column(JSON, default=dict)                       # v0.107 {rfq|mandate: id} (this side only)
     timers: Mapped[dict] = mapped_column(JSON, default=dict)                    # v0.106 reminders already given (once each)
     step: Mapped[int] = mapped_column(Integer, default=0)
     last_hash: Mapped[str] = mapped_column(String(64), default="")
@@ -271,7 +272,8 @@ def selling(tenant: str) -> dict[str, Any]:
 
 
 SELL_KEYS = ("auto_quote", "auto_quote_max", "auto_accept", "auto_accept_max", "trusted", "valid_minutes", "catalog",
-             "show_stock", "auto_ready", "packers", "pay_before", "counter_ok", "khata", "cancel_minutes", "dispute_hours")
+             "show_stock", "auto_ready", "packers", "pay_before", "counter_ok", "khata", "cancel_minutes", "dispute_hours",
+             "auto_accept_who")
 COUNTER_KEYS = ("place", "pickup_minutes", "prefix", "upi_id", "payee_name")
 
 
@@ -305,6 +307,8 @@ def set_rules(tenant: str, **kw) -> dict[str, Any]:
     for k in ("auto_quote_max", "auto_accept_max"):
         if k in sell and _num(sell[k], 0, MAX_TOTAL) is None:
             raise DealError(f"{k}: 0 se 1 crore ke beech")
+    if "auto_accept_who" in sell and sell["auto_accept_who"] not in ("trusted", "connected"):
+        raise DealError("auto_accept_who: trusted, connected")
     if "pay_before" in sell and sell["pay_before"] not in ("handover", "none"):
         raise DealError("pay_before: handover, none")
     if "cancel_minutes" in sell and _num(sell["cancel_minutes"], 0, 1440) is None:
@@ -733,6 +737,10 @@ def view(d: Deal) -> dict[str, Any]:
     from . import dealpay
     out |= {"pay": dealpay.pay_view(d), "dispute": d.dispute or {}, "cancel_req": d.cancel_req or {},
             "terms": q.get("terms") or {}, "handed_at": d.handed_at.isoformat() if d.handed_at else ""}
+    from . import trust                                 # v0.107 who they are to her, and the checked credential
+    t = trust.tier(d.tenant_id, d.peer)
+    out |= {"tier": t["tier"], "tier_say": t["word"], "vbc": q.get("vbc") or {} if d.role == "buyer" else {},
+            "rfq_id": str((d.tag or {}).get("rfq") or ""), "mandate_id": str((d.tag or {}).get("mandate") or "")}
     return out
 
 
@@ -802,7 +810,7 @@ def _send(tenant: str, d: Deal, kind: str, body: dict[str, Any], say: str) -> di
 
 # ---------------------------------------------------------------- buyer side
 def ask(tenant: str, to: str, items: Any, mode: str = "pickup", need_by: str = "", note: str = "", title: str = "",
-        area: str = "") -> dict[str, Any]:
+        area: str = "", tag: dict | None = None) -> dict[str, Any]:
     """The buyer's list goes to the seller's avatar (a connected person, or a public business counter)."""
     body = check_ask({"items": items, "mode": mode, "need_by": need_by, "note": note, "title": title, "area": area})
     if policy.secret_found(policy.all_text(body)):
@@ -823,7 +831,8 @@ def ask(tenant: str, to: str, items: Any, mode: str = "pickup", need_by: str = "
     tid = _thread(tenant, peer, dkey, "Deal: " + title, "deal", True)
     d = Deal(id=new_id("dl"), tenant_id=tenant, dkey=dkey, role="buyer", peer=peer, thread_id=tid, title=title[:200],
              state="", ask=body, step=0, last_hash="", history=[], quote={}, draft={}, accept={}, ready={}, reserved=[],
-             smap=[], reason="", waiting="", number="", created_at=now(), updated_at=now())
+             smap=[], reason="", waiting="", number="", created_at=now(), updated_at=now(),
+             tag=dict(tag or {}))                 # v0.107 {rfq: id} / {mandate: id}: this side only, never sent
     with session() as s:
         s.add(d)
         s.flush()
@@ -838,7 +847,7 @@ def ask(tenant: str, to: str, items: Any, mode: str = "pickup", need_by: str = "
                 s.delete(row)
         raise
     d = _get(tenant, d.id)
-    if d.state == "asked":                 # (a quote may already have come back while sending: its card says it all)
+    if d.state == "asked" and not tag:     # (a quote may already have come back while sending: its card says it all)
         _publish(tenant, d, "info", f"List {_say_who(peer)} ko bheji ({len(body['items'])} item).")
     return {"status": res.get("status"), "deal": view(d), "say": f"List bhej di. {_say_who(peer)} ka Hoola stock dekh kar quote bhejega."}
 
@@ -858,11 +867,14 @@ def confirm_card(tenant: str, deal_id: str) -> dict[str, Any] | None:
 
 
 def confirm(tenant: str, deal_id: str, v: int | None = None, mode: str = "", by_tap: bool = False,
-            pay: str = "") -> dict[str, Any]:
-    """The buyer commits. ONLY from her tap on the card (the API route); the model can never call this with by_tap."""
-    if not by_tap:
-        raise DealError("Order pakka karna sirf aapke tap se hota hai: card par 'Haan, confirm' dabaiye.")
+            pay: str = "", by_mandate: str = "") -> dict[str, Any]:
+    """The buyer commits. ONLY from her tap on the card (the API route), or (v0.107) under a standing order she signed
+    once, re-checked here in code (`mandate.allows`); the model can never pass either."""
     d = _get(tenant, deal_id)
+    if not by_tap:
+        from . import mandate
+        if not (by_mandate and mandate.allows(tenant, by_mandate, d)):
+            raise DealError("Order pakka karna sirf aapke tap se hota hai: card par 'Haan, confirm' dabaiye.")
     if d.role != "buyer":
         raise DealError("Yeh aapki khareed nahi hai.")
     if _expired(d):
@@ -882,6 +894,9 @@ def confirm(tenant: str, deal_id: str, v: int | None = None, mode: str = "", by_
     pay = pay or ("upi" if "upi" in opts else opts[0])
     body = {"v": q.get("v"), "quote_hash": quote_hash(q), "mode": mode if mode in ("pickup", "delivery") else
             (d.ask or {}).get("mode", "pickup"), "pay": pay}
+    if by_mandate and not by_tap:
+        from . import mandate
+        body["mandate"] = mandate.number(tenant, by_mandate)          # the seller's record: placed under rule no. X
     d.waiting = ""
     d.pay = dict(d.pay or {}, choice=pay)
     _send(tenant, d, "deal_confirm", body, f"Quote v{q.get('v')} confirm, {inr(q.get('total'))}")
@@ -889,6 +904,9 @@ def confirm(tenant: str, deal_id: str, v: int | None = None, mode: str = "", by_
     d = _get(tenant, deal_id)
     if d.state == "confirmed":
         _publish(tenant, d, "info", f"Order confirm bheja ({inr(q.get('total'))}). Unka Hoola stock dekh kar pakka karega.")
+    from . import mandate, rfq
+    rfq.after_confirm(tenant, d)                        # v0.107 a compare: thank the others ("is baar nahi")
+    mandate.after_confirm(tenant, d, by_tap)            # v0.107 her first tapped standing order sets the base prices
     return {"status": d.state, "deal": view(d)}
 
 
@@ -904,9 +922,11 @@ def _may_auto_quote(tenant: str, peer: str, q: dict[str, Any]) -> bool:
     l = _link(tenant, peer)
     if l is None or l.status != "active" or l.key_warning:
         return False
+    from . import trust                                 # v0.107 trust tiers decide
+    t = trust.tier(tenant, peer)["tier"]
     if so["auto_quote"] == "connected":
-        return True
-    return bool(l.vip or l.relation in ("family", "team") or _named(so.get("trusted") or [], l, idn.peer_card(peer), peer))
+        return t in ("known", "trusted")
+    return t == "trusted"
 
 
 def send_quote(tenant: str, deal_id: str, lines: Any = None, note: str = "", valid_minutes: Any = None,
@@ -940,7 +960,10 @@ def send_quote(tenant: str, deal_id: str, lines: Any = None, note: str = "", val
     q = check_quote(q)                  # exactly what the buyer's side will compute, so both hash the same quote
     d.quote, d.draft, d.waiting = q, {}, ""
     d.smap = [str(l.get("stock_id") or "") for l in base["lines"]]
-    _send(tenant, d, "deal_quote", q, f"Quote v{v}: {inr(q['total'])}, {mins} min ke liye" + (" (khud)" if by == "rules" else ""))
+    from . import trust
+    cred = trust.credential(tenant)                     # v0.107 the server-signed verified-business credential rides along
+    _send(tenant, d, "deal_quote", q | ({"vbc": cred} if cred else {}),
+          f"Quote v{v}: {inr(q['total'])}, {mins} min ke liye" + (" (khud)" if by == "rules" else ""))
     STATS["quotes"] += 1
     d = _get(tenant, deal_id)
     _publish(tenant, d, "info", ("Aapke niyam se quote khud bheja: " if by == "rules" else "Quote bheja: ") + f"{inr(q['total'])}.")
@@ -1196,7 +1219,11 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
                 Deal.tenant_id == tenant, Deal.peer == peer, Deal.created_at >= now() - timedelta(days=1))) or 0
             open_n = s.scalar(select(func.count()).select_from(Deal).where(
                 Deal.tenant_id == tenant, Deal.peer == peer, Deal.state.in_(("asked", "quoted")))) or 0
-        if n >= ASKS_PER_DAY or open_n >= OPEN_PER_PEER:
+        from . import trust                             # v0.107 a blocked / much-reported sender gets far less
+        tr = trust.tier(tenant, peer)
+        if tr["tier"] == "blocked" and not tr["limited"]:
+            raise DealError("is Hoola se list nahi li jaati")
+        if n >= (trust.LIMITED_ASKS_PER_DAY if tr["limited"] else ASKS_PER_DAY) or open_n >= OPEN_PER_PEER:
             raise DealError("aaj is graahak se bahut saari list aa chuki hain")
         body = check_ask(raw)
         title = body["title"] or ", ".join(f"{i['item']} {i['qty']:g}" for i in body["items"][:3])
@@ -1233,6 +1260,8 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
         if q["v"] <= int((d.quote or {}).get("v") or 0):
             raise DealError("purana quote")
         _record(d, kind, raw, "seller", f"Quote v{q['v']}: {inr(q['total'])}")
+        from . import trust
+        q["vbc"] = trust.check(raw.get("vbc"), d.peer)     # v0.107 checked here; not part of the quote hash
         d.quote, d.state, d.waiting = q, "quoted", "confirm"
         _save(d)
         parts = []
@@ -1243,6 +1272,10 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
         subs = [l["item"] for l in q["lines"] if l["status"] == "substitute"]
         if subs:
             parts.append("badle mein: " + ", ".join(subs))
+        from . import mandate, rfq
+        held = rfq.on_quote(tenant, d) or mandate.on_quote(tenant, d)      # v0.107 a compare / standing order holds it
+        if held:
+            return {"ok": True, "status": "quoted"}
         say = f"{who} ka quote: {inr(q['total'])} (GST {inr(q['gst'])} milakar)" + (f"; {'; '.join(parts)}" if parts else "") + \
               f". Haan dabaane par hi order jaayega."
         _publish(tenant, d, "confirm", say, f"Deal quote aaya {who} se: {inr(q['total'])}. " + "; ".join(parts) +
@@ -1258,8 +1291,10 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
             raise DealError("yeh quote ab lagoo nahi (badal gaya)")
         opts = list(((q.get("terms") or {}).get("pay_options")) or ["upi", "counter"])
         choice = raw.get("pay") if raw.get("pay") in opts else ("upi" if "upi" in opts else opts[0])
+        rule_no = policy.clean_name(raw.get("mandate"), 20)        # v0.107 placed under the buyer's standing order
         _record(d, kind, raw, "buyer", f"Quote v{v} confirm, {inr(q.get('total'))}, " +
-                {"upi": "UPI se", "counter": "counter par", "khata": "khata par"}.get(choice, choice))
+                {"upi": "UPI se", "counter": "counter par", "khata": "khata par"}.get(choice, choice) +
+                (f" (standing order {rule_no})" if rule_no else ""))
         d.state, d.waiting = "confirmed", "accept"
         d.pay = dict(d.pay or {}, choice=choice)
         d.ask = dict(d.ask or {}, mode=raw.get("mode") if raw.get("mode") in ("pickup", "delivery") else (d.ask or {}).get("mode"))
@@ -1290,6 +1325,9 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
         _record(d, kind, raw, "seller", "Mana: " + reason)
         d.state, d.reason, d.waiting = "rejected", reason, ""
         _save(d)
+        from . import mandate, rfq
+        if rfq.on_reject(tenant, d) or mandate.on_reject(tenant, d):    # v0.107 a compare / standing order says it
+            return {"ok": True, "status": "rejected"}
         _publish(tenant, d, "info", f"{who} ne mana kiya: {reason}")
         return {"ok": True, "status": "rejected"}
     if kind == "deal_status":
@@ -1374,7 +1412,11 @@ def _after_ask(tenant: str, d: Deal, card: dict[str, Any]) -> dict[str, Any]:
 def _after_confirm(tenant: str, d: Deal, who: str) -> dict[str, Any]:
     so = selling(tenant)
     q = d.quote or {}
-    if so["auto_accept"] and 0 < float(q.get("total") or 0) <= so["auto_accept_max"] and not _stock_holds(tenant, q, d.smap or []):
+    from . import trust                                 # v0.107 auto accept only for the tier her rule names
+    t = trust.tier(tenant, d.peer)["tier"]
+    who_ok = t == "trusted" or (so.get("auto_accept_who", "trusted") == "connected" and t == "known")
+    if so["auto_accept"] and who_ok and 0 < float(q.get("total") or 0) <= so["auto_accept_max"] and \
+            not _stock_holds(tenant, q, d.smap or []):
         try:
             accept(tenant, d.id, by="rules")
             STATS["auto_accepts"] += 1

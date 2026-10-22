@@ -961,6 +961,19 @@ class Santosh extends ChangeNotifier {
         _upiCards[uk] = FeedItem('upi_result', Map<String, dynamic>.from(p));
         feed.add(_upiCards[uk]!);
         break;
+      case 'hoola_rfq':                    // v0.107 one live compare card per comparison
+        final rk = 'rfq${p['id']}';
+        final rOld = _deals[rk];
+        if (rOld != null) feed.remove(rOld);
+        _deals[rk] = FeedItem('hoola_rfq', Map<String, dynamic>.from(p));
+        feed.add(_deals[rk]!);
+        hoolaTick++;
+        break;
+      case 'hoola_mandate':                // v0.107 standing order notices
+      case 'hoola_promo':                  // v0.107 an offer from a shop she opted in to
+        feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
+        hoolaTick++;
+        break;
       case 'hoola_khata':                  // v0.106 khata payment card / claim / receipt / due date
         feed.add(FeedItem('hoola_khata', Map<String, dynamic>.from(p)));
         hoolaTick++;

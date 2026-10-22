@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.111.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.112.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -2060,9 +2060,9 @@ def net_business_put(body: BizIn, tenant: str = Depends(current_tenant)):
 
 
 @app.post("/api/net/business/verify", dependencies=[Depends(require_key)])
-def net_business_verify(body: TicketIn, tenant: str = Depends(current_tenant)):
+def net_business_verify(body: TicketIn, udyam: str = "", tenant: str = Depends(current_tenant)):
     from .net import business as biz
-    return _net(biz.request_verification, tenant, body.note)
+    return _net(biz.request_verification, tenant, body.note, udyam)
 
 
 @app.get("/api/net/businesses", dependencies=[Depends(require_key)])
@@ -2111,11 +2111,12 @@ def net_operator_queue(tenant: str = Depends(current_tenant)):
 
 
 @app.post("/api/net/operator/verifications/{biz_tenant}", dependencies=[Depends(require_key)])
-def net_operator_verify(biz_tenant: str, body: NetAnswerIn, tenant: str = Depends(current_tenant)):
+def net_operator_verify(biz_tenant: str, body: NetAnswerIn, bank_name_ok: bool = False,
+                        tenant: str = Depends(current_tenant)):
     from .net import business as biz
     if tenant != get_settings().tenant_id:
         raise HTTPException(403, "Sirf server operator")
-    return _net(biz.operator_verify, biz_tenant, body.action == "approve")
+    return _net(biz.operator_verify, biz_tenant, body.action == "approve", bank_name_ok)
 
 
 # ---------------------------------------------------------------- v0.102 Hoola Deals (buy / sell between avatars)
@@ -2203,6 +2204,7 @@ def net_deal_act(deal_id: str, action: str, body: DealActIn, tenant: str = Depen
     if action == "cancel":
         return _net(dl.cancel, tenant, deal_id, body.reason or body.note)
     from .net import dealpay as dp                       # v0.106 money, cancel requests, the check, disputes
+    from .net import mandate as md                       # v0.107 "is baar rok do" on a standing-order run
     acts = {
         "pay_link": lambda: dp.pay_link(tenant, deal_id),
         "trust_payee": lambda: dp.trust_payee(tenant, deal_id),
@@ -2215,6 +2217,7 @@ def net_deal_act(deal_id: str, action: str, body: DealActIn, tenant: str = Depen
         "resolve": lambda: dp.resolve(tenant, deal_id, body.resolution, body.amount, body.note),
         "dispute_close": lambda: dp.dispute_close(tenant, deal_id, body.accept, body.note),
         "cancel_answer": lambda: dp.cancel_answer(tenant, deal_id, body.yes, body.note),
+        "standing_hold": lambda: md.hold_once(tenant, deal_id),
     }
     if action in acts:
         return _net(acts[action])
@@ -2239,6 +2242,160 @@ class KhataIn(BaseModel):
     amount: float | None = None
     mode: str = "upi"
     utr: str = ""
+
+
+# ---------------------------------------------------------------- v0.107 compare, trust, standing orders, offers
+class RfqIn(BaseModel):
+    to: list = Field(default_factory=list)
+    items: list = Field(default_factory=list)
+    mode: str = "pickup"
+    need_by: str = ""
+    note: str = ""
+    title: str = ""
+    window_minutes: int | None = None
+    on: bool = True
+
+
+@app.post("/api/net/rfqs", dependencies=[Depends(require_key)])
+def net_rfq_start(body: RfqIn, tenant: str = Depends(current_tenant)):
+    from .net import rfq as rq
+    return _net(rq.start, tenant, body.to, body.items, body.mode, body.need_by, body.note, body.title, body.window_minutes)
+
+
+@app.get("/api/net/rfqs", dependencies=[Depends(require_key)])
+def net_rfqs(all: bool = False, tenant: str = Depends(current_tenant)):
+    from .net import rfq as rq
+    return {"compares": rq.rfqs(tenant, not all)}
+
+
+@app.get("/api/net/rfqs/{rfq_id}", dependencies=[Depends(require_key)])
+def net_rfq(rfq_id: str, tenant: str = Depends(current_tenant)):
+    from .net import rfq as rq
+    return _net(rq.show, tenant, rfq_id)
+
+
+@app.post("/api/net/rfqs/{rfq_id}/{action}", dependencies=[Depends(require_key)])
+def net_rfq_act(rfq_id: str, action: str, body: RfqIn, tenant: str = Depends(current_tenant)):
+    from .net import rfq as rq
+    if action == "split":
+        return _net(rq.set_split, tenant, rfq_id, body.on)
+    if action == "close":
+        return _net(rq.close, tenant, rfq_id)
+    raise HTTPException(400, "action: split, close")
+
+
+class TrustIn(BaseModel):
+    to: str
+    level: str = "trusted"
+    reason: str = "spam"
+    kind: str = ""
+
+
+@app.get("/api/net/trust", dependencies=[Depends(require_key)])
+def net_trust(to: str, tenant: str = Depends(current_tenant)):
+    from .net import service as net
+    from .net import trust as tr
+    peer = _net(net.resolve, tenant, to) if not to.startswith("hl_") else to
+    return tr.tier(tenant, peer)
+
+
+@app.put("/api/net/trust", dependencies=[Depends(require_key)])
+def net_trust_put(body: TrustIn, tenant: str = Depends(current_tenant)):
+    from .net import trust as tr
+    return _net(tr.set_trust, tenant, body.to, body.level)
+
+
+@app.post("/api/net/trust/report", dependencies=[Depends(require_key)])
+def net_trust_report(body: TrustIn, tenant: str = Depends(current_tenant)):
+    from .net import trust as tr
+    return _net(tr.report, tenant, body.to, body.reason, body.kind)
+
+
+class MandateIn(BaseModel):
+    to: str = ""
+    items: list = Field(default_factory=list)
+    days: list | str = Field(default_factory=list)
+    at: str = "09:00"
+    max_total: float | None = None
+    until: str = ""
+    tolerance_pct: float | None = None
+    pay: str = ""
+    hold_minutes: int | None = None
+    title: str = ""
+    mode: str = "pickup"
+    proof: dict | None = None
+
+
+@app.get("/api/net/mandates", dependencies=[Depends(require_key)])
+def net_mandates(tenant: str = Depends(current_tenant)):
+    from .net import mandate as md
+    return {"standing_orders": md.mandates(tenant)}
+
+
+@app.post("/api/net/mandates", dependencies=[Depends(require_key)])
+def net_mandate_create(body: MandateIn, tenant: str = Depends(current_tenant)):
+    from .net import mandate as md
+    return _net(md.create, tenant, body.to, body.items, body.days, body.at, body.max_total, body.until, body.tolerance_pct,
+                body.pay, body.hold_minutes, body.title, body.mode)
+
+
+@app.post("/api/net/mandates/{mid}/{action}", dependencies=[Depends(require_key)])
+def net_mandate_act(mid: str, action: str, body: MandateIn, tenant: str = Depends(current_tenant)):
+    """`sign` / `resume` = HER tap that turns the rule on (fingerprint-signed once a phone is set up)."""
+    from .net import mandate as md
+    if action in ("sign", "resume"):
+        _fingerprint(tenant, "mandate", mid, body.proof)
+        return _net(md.sign, tenant, mid, by_tap=True)
+    if action in ("pause", "stop"):
+        return _net(md.set_state, tenant, mid, action)
+    if action == "run":
+        return _net(md.run_now, tenant, mid)
+    raise HTTPException(400, "action: sign, pause, resume, stop, run")
+
+
+class PromoIn(BaseModel):
+    to: str = ""
+    title: str = ""
+    text: str = ""
+    items: list | None = None
+    valid_days: int = 7
+
+
+@app.get("/api/net/promos", dependencies=[Depends(require_key)])
+def net_promos(tenant: str = Depends(current_tenant)):
+    from .net import promo as pr
+    return {"offers": pr.inbox(tenant), "opted_in": pr.my_optins(tenant)}
+
+
+@app.get("/api/net/promos/audience", dependencies=[Depends(require_key)])
+def net_promo_audience(tenant: str = Depends(current_tenant)):
+    from .net import promo as pr
+    return pr.audience(tenant)
+
+
+@app.post("/api/net/promos/{action}", dependencies=[Depends(require_key)])
+def net_promo_act(action: str, body: PromoIn, tenant: str = Depends(current_tenant)):
+    """optin / optout (the buyer), preview / send (the seller; send = her tap)."""
+    from .net import promo as pr
+    if action == "optin":
+        return _net(pr.opt_in, tenant, body.to)
+    if action == "optout":
+        return _net(pr.opt_out, tenant, body.to)
+    if action == "preview":
+        return _net(pr.preview, tenant, body.title, body.text, body.items, body.valid_days)
+    if action == "send":
+        return _net(pr.send_offer, tenant, body.title, body.text, body.items, body.valid_days, by_tap=True)
+    raise HTTPException(400, "action: optin, optout, preview, send")
+
+
+@app.post("/api/net/promos/{promo_id}/{action}", dependencies=[Depends(require_key)])
+def net_promo_item(promo_id: str, action: str, body: PromoIn, tenant: str = Depends(current_tenant)):
+    from .net import promo as pr
+    if action == "order":
+        return _net(pr.order_from, tenant, promo_id, body.items)
+    if action == "dismiss":
+        return _net(pr.dismiss, tenant, promo_id)
+    raise HTTPException(400, "action: order, dismiss")
 
 
 @app.get("/api/net/khata", dependencies=[Depends(require_key)])
@@ -2325,7 +2482,7 @@ def net_deal_rules_put(body: dict, tenant: str = Depends(current_tenant)):
     from .net import deal as dl
     allowed = ("auto_quote", "auto_quote_max", "auto_accept", "auto_accept_max", "valid_minutes", "place", "pickup_minutes",
                "prefix", "trusted", "catalog", "show_stock", "auto_ready", "packers", "pay_before", "counter_ok", "khata",
-               "cancel_minutes", "dispute_hours", "upi_id", "payee_name")
+               "cancel_minutes", "dispute_hours", "upi_id", "payee_name", "auto_accept_who")
     return _net(dl.set_rules, tenant, **{k: body[k] for k in allowed if k in body})
 
 

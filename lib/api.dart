@@ -1078,6 +1078,36 @@ class Api {
       _hm(await _send('PUT', '/api/net/stock', body: {'items': items}));
   Future<void> netStockDelete(String id) async => _send('DELETE', '/api/net/stock/$id');
   Future<Map<String, dynamic>> netDealRulesPut(Map<String, dynamic> body) async => _hm(await _send('PUT', '/api/net/deal_rules', body: body));
+  // ---- v0.107 compare quotes, trust tiers, standing orders, offers ----
+  Future<Map<String, dynamic>> netRfqStart(Map<String, dynamic> body) async =>
+      _hm(await _send('POST', '/api/net/rfqs', body: body, timeout: const Duration(seconds: 90)));
+  Future<List<Map<String, dynamic>>> netRfqs({bool all = false}) async =>
+      _hl((await _send('GET', '/api/net/rfqs', query: {'all': '$all'}))['compares']);
+  Future<Map<String, dynamic>> netRfq(String id) async => _hm(await _send('GET', '/api/net/rfqs/$id'));
+  Future<Map<String, dynamic>> netRfqAct(String id, String action, {bool on = true}) async =>
+      _hm(await _send('POST', '/api/net/rfqs/$id/$action', body: {'on': on}, timeout: const Duration(seconds: 60)));
+  Future<Map<String, dynamic>> netTrust(String to) async => _hm(await _send('GET', '/api/net/trust', query: {'to': to}));
+  Future<Map<String, dynamic>> netTrustSet(String to, String level) async =>
+      _hm(await _send('PUT', '/api/net/trust', body: {'to': to, 'level': level}));
+  Future<Map<String, dynamic>> netTrustReport(String to, String reason, {String kind = ''}) async =>
+      _hm(await _send('POST', '/api/net/trust/report', body: {'to': to, 'reason': reason, 'kind': kind}));
+  Future<List<Map<String, dynamic>>> netMandates() async => _hl((await _send('GET', '/api/net/mandates'))['standing_orders']);
+  Future<Map<String, dynamic>> netMandateCreate(Map<String, dynamic> body) async =>
+      _hm(await _send('POST', '/api/net/mandates', body: body));
+  /// sign / resume = her tap that turns the rule on (fingerprint once a phone is set up); pause / stop / run.
+  Future<Map<String, dynamic>> netMandateAct(String id, String action) async {
+    if (action == 'sign' || action == 'resume') {
+      return Map<String, dynamic>.from(await _withFingerprint('mandate', id, true, (proof) => _send('POST', '/api/net/mandates/$id/$action',
+          body: {if (proof != null) 'proof': proof}, timeout: const Duration(seconds: 60))) as Map);
+    }
+    return _hm(await _send('POST', '/api/net/mandates/$id/$action', body: const {}, timeout: const Duration(seconds: 60)));
+  }
+  Future<Map<String, dynamic>> netPromos() async => _hm(await _send('GET', '/api/net/promos'));
+  Future<Map<String, dynamic>> netPromoAudience() async => _hm(await _send('GET', '/api/net/promos/audience'));
+  Future<Map<String, dynamic>> netPromoAct(String action, Map<String, dynamic> body) async =>
+      _hm(await _send('POST', '/api/net/promos/$action', body: body, timeout: const Duration(seconds: 90)));
+  Future<Map<String, dynamic>> netPromoItem(String id, String action, [Map<String, dynamic> body = const {}]) async =>
+      _hm(await _send('POST', '/api/net/promos/$id/$action', body: body, timeout: const Duration(seconds: 60)));
   // ---- v0.106 khata (udhaar) between Hoolas ----
   Future<Map<String, dynamic>> netKhata() async => _hm(await _send('GET', '/api/net/khata'));
   Future<Map<String, dynamic>> netKhataAct(String action, Map<String, dynamic> body) async =>

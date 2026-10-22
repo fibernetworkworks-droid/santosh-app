@@ -405,6 +405,9 @@ async def mail_jobs() -> None:
         from .net import dealpay as hdealpay, khata as hkhata
         jobs.append(hdealpay.tick)              # v0.106 unaccepted orders, unpaid cards, cancel requests, disputes, auto-close
         jobs.append(hkhata.tick)                # v0.106 khata due-date reminders
+        from .net import mandate as hmandate, rfq as hrfq
+        jobs.append(hrfq.tick)                  # v0.107 compare windows that ended -> the table
+        jobs.append(hmandate.tick)              # v0.107 standing orders: runs, holds that are over
         if int(t) // 60 % 60 == 0:              # hourly: old quarantined files and shares
             from .net import share as hsh
             jobs.append(hsh.cleanup)

@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'market_screen.dart';
 
 /// v0.102 Hoola Deals: buying a list of items from another avatar, and selling to one.
 /// The quote, its sums, the stock and the expiry are worked out by the server's code; the order is placed only by
@@ -457,6 +458,10 @@ class _DealCardState extends State<DealCard> {
       out.add(w);
     }
 
+    if (buyer && _s(v['waiting']) == 'mandate') {
+      add(GlassButton(
+          label: 'Is baar rok do', icon: Icons.pan_tool_rounded, onTap: _busy ? null : () => _act('standing_hold')));
+    }
     if (buyer && acts.contains('confirm')) {
       final terms = _m(q['terms']);
       final opts = List<String>.from((terms['pay_options'] as List?) ?? const ['upi', 'counter']);
@@ -680,6 +685,19 @@ class _DealCardState extends State<DealCard> {
           ),
           Pill(_s(v['state_say']).isEmpty ? st : _s(v['state_say']), fg: _stateColor[st] ?? C.chip),
         ]),
+        if (_m(v['vbc'])['ok'] == true || _s(v['tier']).isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Wrap(spacing: 6, runSpacing: 4, children: [
+              if (_m(v['vbc'])['ok'] == true) Pill('verified: ${_s(_m(v['vbc'])['name'])}', fg: C.ok),
+              if (_s(v['tier']).isNotEmpty)
+                widget.full
+                    ? TrustChip(app: widget.app, peer: _s(v['peer']), tier: _s(v['tier']), say: _s(v['tier_say']), onChanged: widget.onChanged)
+                    : Pill(_s(v['tier_say']), fg: tierColor[_s(v['tier'])] ?? C.chip),
+              if (_s(v['mandate_id']).isNotEmpty) const Pill('standing order', fg: C.violet),
+              if (_s(v['rfq_id']).isNotEmpty) const Pill('tulna', fg: C.accent),
+            ]),
+          ),
         if (_s(v['say']).isNotEmpty && !widget.full) ...[
           const SizedBox(height: 8),
           Text(_s(v['say']), style: const TextStyle(fontSize: 13, height: 1.35)),
@@ -1322,6 +1340,13 @@ class _DealsScreenState extends State<DealsScreen> {
             onChanged: (x) => _setRule({'auto_accept': x}),
           ),
           Wrap(spacing: 6, children: [
+            for (final e in const {'trusted': 'Sirf bharosemand', 'connected': 'Sab jude log'}.entries)
+              ChoiceChip(
+                  label: Text(e.value),
+                  selected: (_s(_rules['auto_accept_who']).isEmpty ? 'trusted' : _s(_rules['auto_accept_who'])) == e.key,
+                  onSelected: (_) => _setRule({'auto_accept_who': e.key})),
+          ]),
+          Wrap(spacing: 6, children: [
             for (final x in const [5000, 25000, 100000])
               ActionChip(label: Text(_inr(x)), onPressed: () => _setRule({'auto_accept_max': x})),
           ]),
@@ -1402,7 +1427,7 @@ class _DealsScreenState extends State<DealsScreen> {
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
-        length: 6,
+        length: 9,
         child: Scaffold(
           appBar: AppBar(
             title: const Text('Khareed aur bikri'),
@@ -1411,6 +1436,9 @@ class _DealsScreenState extends State<DealsScreen> {
               Tab(text: 'Khareed${_buy.isEmpty ? '' : ' (${_buy.length})'}'),
               Tab(text: 'Bikri${_sell.isEmpty ? '' : ' (${_sell.length})'}'),
               Tab(text: 'Packing${_picks.isEmpty ? '' : ' (${_picks.length})'}'),
+              const Tab(text: 'Tulna'),
+              const Tab(text: 'Standing'),
+              const Tab(text: 'Offers'),
               const Tab(text: 'Stock'),
               const Tab(text: 'Khata'),
               const Tab(text: 'Niyam'),
@@ -1444,6 +1472,9 @@ class _DealsScreenState extends State<DealsScreen> {
                             child: PickCard(key: ValueKey('pk${p['id']}${p['status']}'), v: p, app: app, onChanged: _load),
                           ),
                       ]),
+                      CompareTab(app: app),
+                      StandingTab(app: app),
+                      OffersTab(app: app),
                       _stockTab(),
                       _khataTab(),
                       _rulesTab(),

@@ -46,6 +46,7 @@ import 'appcheck_screen.dart';
 import 'motion_screen.dart';
 import 'hoola_cards.dart';
 import 'deal_screen.dart';
+import 'market_screen.dart';
 import 'hoola_media.dart';
 import 'attach.dart';
 import 'forms_screen.dart';
@@ -531,6 +532,12 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return PickCard(key: ValueKey('hp${it.data['id']}${it.data['status']}'), v: it.data, app: app);
     case 'hoola_khata':
       return KhataCard(v: it.data, app: app);
+    case 'hoola_rfq':
+      return CompareCard(key: ValueKey('rq${it.data['id']}${it.data['state']}'), v: it.data, app: app);
+    case 'hoola_mandate':
+      return MandateCard(key: ValueKey('md${it.data['id']}${it.data['state']}'), v: it.data, app: app);
+    case 'hoola_promo':
+      return PromoCard(key: ValueKey('pr${it.data['id']}'), v: it.data, app: app);
     case 'hoola_deal':
       return DealCard(key: ValueKey('hd${it.data['id']}${it.data['state']}${it.data['updated']}'), v: it.data, app: app);
     case 'hoola_chain':

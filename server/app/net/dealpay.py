@@ -443,8 +443,11 @@ def pay_link(tenant: str, deal_id: str) -> dict[str, Any]:
     from urllib.parse import quote as q
     url = (f"upi://pay?pa={q(pe.get('upi_id', ''))}&pn={q(pe.get('name', ''))}&am={rq['amount']:.2f}&cu=INR"
            f"&tn={q('Order ' + d.number)}&tr={q(rq['ref'])}")
+    from . import trust
+    vbc = (d.quote or {}).get("vbc") or {}
     out = {"status": status, "amount": rq["amount"], "upi_id": pe.get("upi_id"), "name": pe.get("name"),
-           "business_verified": bool(pe.get("business_verified")), "number": d.number}
+           "business_verified": trust.payee_ok(vbc, str(pe.get("upi_id") or "")), "number": d.number,
+           "verified_name": vbc.get("name", "") if vbc.get("ok") else ""}
     if status == "ok":
         out["url"] = url
     elif status == "payee_changed":
@@ -590,17 +593,23 @@ def receive_step(tenant: str, d, kind: str, raw: dict[str, Any], who: str, key) 
             raise E("ref chahiye")
         dl._record(d, kind, raw, "seller", f"Payment card: {dl.inr(amt)}")
         pin = _pin(tenant, d.peer)
-        p["payee"] = {"upi_id": vpa, "name": name, "business_verified": bool(raw.get("business_verified"))}
+        from . import trust                      # v0.107 only the checked credential can call this payee verified
+        vbc = (d.quote or {}).get("vbc") or {}
+        p["payee"] = {"upi_id": vpa, "name": name, "business_verified": trust.payee_ok(vbc, vpa)}
         p["requests"] = (p.get("requests") or []) + [{"ref": ref, "amount": _r2(amt), "at": now().isoformat(), "part": part}]
         p["status"] = "requested"
         d.pay, d.waiting = p, "pay"
         dl._save(d)
         warn = ""
+        if vbc.get("ok") and vbc.get("upi") and str(vbc["upi"]).lower() != vpa.lower():
+            warn = f" Dhyan dein: verified UPI {vbc['upi']} hai, yeh card {vpa} ka hai; pakka kiye bina pay mat kijiye."
+        elif p["payee"]["business_verified"]:
+            warn = " ✓ Verified business ka UPI (bank mein naam mila hua)."
         if pin is not None and pin.upi_id.lower() != vpa.lower():
             STATS["payee_changed"] += 1
-            warn = f" Dhyan dein: UPI badla hai ({pin.upi_id} -> {vpa}); pakka kiye bina pay mat kijiye."
+            warn += f" Dhyan dein: UPI badla hai ({pin.upi_id} -> {vpa}); pakka kiye bina pay mat kijiye."
         elif pin is None:
-            warn = " Pehli baar is UPI ko payment: naam milakar hi PIN daaliye."
+            warn += " Pehli baar is UPI ko payment: naam milakar hi PIN daaliye."
         dl._publish(tenant, d, "pay", f"{who}: order {d.number} ka {dl.inr(amt)}" + (" (aadha / hissa)" if part else "") +
                     f" UPI {vpa} ({name}) par. 'Pay' dabane se aapka UPI app khulega; PIN aap hi daalenge.{warn}",
                     f"{who} ne order {d.number} ka payment card bheja: {dl.inr(amt)}. Paisa sirf owner apne UPI app se bhejegi; "

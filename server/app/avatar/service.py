@@ -142,7 +142,9 @@ DEFAULT_RULES: dict[str, Any] = {
                 "packers": [],
                 # v0.106 money: settle before handover, cash / UPI at the counter, udhaar (khata) for chosen customers,
                 # free-cancel minutes after she accepts, hours the buyer has to complain after handover
-                "pay_before": "handover", "counter_ok": True, "khata": False, "cancel_minutes": 30, "dispute_hours": 48},
+                "pay_before": "handover", "counter_ok": True, "khata": False, "cancel_minutes": 30, "dispute_hours": 48,
+                # v0.107 who her Hoola may accept orders from by itself (trust tiers), and whether offers may go out
+                "auto_accept_who": "trusted"},
 }
 SELL_AUTO_QUOTE = ("off", "trusted", "connected")
 SELL_CATALOG = ("off", "connected", "public")
@@ -218,6 +220,8 @@ def clean_rules(r: dict[str, Any] | None) -> dict[str, Any]:
     for k in ("auto_accept", "show_stock", "auto_ready", "counter_ok", "khata"):
         if isinstance(sl.get(k), bool):
             so[k] = sl[k]
+    if sl.get("auto_accept_who") in ("trusted", "connected"):
+        so["auto_accept_who"] = sl["auto_accept_who"]
     if sl.get("pay_before") in ("handover", "none"):
         so["pay_before"] = sl["pay_before"]
     for k, lo, hi in (("cancel_minutes", 0, 1440), ("dispute_hours", 1, 720)):
@@ -270,7 +274,9 @@ def rules_summary(r: dict[str, Any], name: str = DEFAULT_NAME) -> list[str]:
     so = r.get("selling") or DEFAULT_RULES["selling"]
     q = {"off": "har quote mujhse poochh kar", "trusted": f"bharose walon ko poore stock wala quote ₹{so['auto_quote_max']:,} tak khud",
          "connected": f"sab jude logon ko poore stock wala quote ₹{so['auto_quote_max']:,} tak khud"}[so["auto_quote"]]
-    a = f"stock ho to ₹{so['auto_accept_max']:,} tak ka order khud pakka" if so["auto_accept"] else "har order mere tap se pakka"
+    a = (f"stock ho to ₹{so['auto_accept_max']:,} tak ka order khud pakka (" +
+         ("sirf bharosemand graahak" if so.get("auto_accept_who", "trusted") == "trusted" else "sab jude graahak") + ")"
+         if so["auto_accept"] else "har order mere tap se pakka")
     cat = {"off": "kisi ko nahi", "connected": "jude logon ko", "public": "sab ko"}[so["catalog"]]
     lines.append(f"Bechna: {q}; {a}; daam ki list {cat}" + (" (stock ke saath)" if so["show_stock"] else "") +
                  (f"; bharose wale: {', '.join(so['trusted'])}" if so["trusted"] else "") + ".")
@@ -297,7 +303,7 @@ async def parse_rules(text: str, current: dict[str, Any] | None = None) -> dict[
               "booleans; quiet.from/to as HH:MM 24h; language one of " + ", ".join(sorted(_LANGS)) + "; "
               "learning.share_lessons in [never,ask,groups]; vip and blocked_topics are lists of short strings; "
               "selling.auto_quote in [off,trusted,connected] (sending a quote by itself when every item is in stock), "
-              "selling.auto_quote_max / auto_accept_max in rupees, selling.auto_accept boolean (confirm orders alone), "
+              "selling.auto_quote_max / auto_accept_max in rupees, selling.auto_accept boolean (confirm orders alone), selling.auto_accept_who in [trusted,connected], "
               "selling.catalog in [off,connected,public], selling.show_stock / auto_ready booleans, selling.trusted and "
               "selling.packers lists of names / Hoola IDs, selling.pay_before in [handover,none], selling.counter_ok and "
               "selling.khata booleans (khata = udhaar for chosen customers), selling.cancel_minutes 0-1440, "
