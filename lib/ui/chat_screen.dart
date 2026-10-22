@@ -48,6 +48,7 @@ import 'motion_screen.dart';
 import 'hoola_cards.dart';
 import 'deal_screen.dart';
 import 'market_screen.dart';
+import 'handoff_screen.dart';
 import 'hoola_media.dart';
 import 'attach.dart';
 import 'forms_screen.dart';
@@ -535,6 +536,14 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return KhataCard(v: it.data, app: app);
     case 'hoola_rfq':
       return CompareCard(key: ValueKey('rq${it.data['id']}${it.data['state']}'), v: it.data, app: app);
+    case 'a2a_task':
+      return A2ATaskCard(key: ValueKey('a2a${(it.data['task'] as Map?)?['id']}${(it.data['task'] as Map?)?['updated_at']}'), v: it.data, app: app);
+    case 'a2a_out':
+      return A2AOutCard(key: ValueKey('ao${(it.data['out'] as Map?)?['id']}${(it.data['out'] as Map?)?['updated_at']}'), v: it.data, app: app);
+    case 'handoff_reminder':
+      return ConsentReminderCard(v: it.data, app: app);
+    case 'digilocker':
+      return DigiLockerCard(v: it.data, app: app);
     case 'hoola_mandate':
       return MandateCard(key: ValueKey('md${it.data['id']}${it.data['state']}'), v: it.data, app: app);
     case 'hoola_promo':

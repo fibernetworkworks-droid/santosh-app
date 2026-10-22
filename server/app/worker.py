@@ -410,6 +410,11 @@ async def mail_jobs() -> None:
         jobs.append(hmandate.tick)              # v0.112 standing orders: runs, holds that are over
         from .net import booking as hbooking
         jobs.append(hbooking.tick)              # v0.113 booking reminders (1 day / 2 h before, her morning)
+        from .net import a2a as ha2a
+        jobs.append(ha2a.tick)                  # v0.116 outside agents: poll her sent tasks, close idle ones
+        from .handoff import aa as hoaa, abdm as hoabdm
+        jobs.append(hoaa.tick)                  # v0.116 AA consent revoke reminders / expiry
+        jobs.append(hoabdm.tick)                # v0.116 ABDM consent revoke reminders / expiry
         if int(t) // 60 % 60 == 0:              # hourly: old quarantined files and shares
             from .net import share as hsh
             jobs.append(hsh.cleanup)

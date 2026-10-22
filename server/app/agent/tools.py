@@ -640,3 +640,10 @@ from .franchise_tools import FRANCHISE_HANDLERS, FRANCHISE_LABELS, FRANCHISE_TOO
 TOOLS.extend(FRANCHISE_TOOLS)
 TOOL_LABELS.update(FRANCHISE_LABELS)
 HANDLERS.update(FRANCHISE_HANDLERS)
+
+# v0.116 outside A2A agents, AA / ABDM consent hand-offs, DigiLocker requester, optional ONDC listing
+from .handoff_tools import HANDOFF_HANDLERS, HANDOFF_LABELS, HANDOFF_TOOLS  # noqa: E402
+
+TOOLS.extend(HANDOFF_TOOLS)
+TOOL_LABELS.update(HANDOFF_LABELS)
+HANDLERS.update(HANDOFF_HANDLERS)

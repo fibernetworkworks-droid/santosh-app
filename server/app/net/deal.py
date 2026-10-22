@@ -211,6 +211,7 @@ class DealRules(Base):
     upi_id: Mapped[str] = mapped_column(String(80), default="")               # v0.106 her UPI ID for deal payments (set by her)
     payee_name: Mapped[str] = mapped_column(String(80), default="")
     next_receipt: Mapped[int] = mapped_column(Integer, default=1)
+    a2a: Mapped[str | None] = mapped_column(String(10), nullable=True)        # v0.116 outside A2A agents: off|questions|orders
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

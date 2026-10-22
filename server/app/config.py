@@ -160,6 +160,12 @@ class Settings(BaseSettings):
     hoola_trusted_issuers: str = ""         # v0.112 other Hoola servers whose verified-business credentials we believe
     hoola_server_key_file: str = ""         # default ./data/hoola_server_ed25519.key (made on first use)
     hoola_key_file: str = ""                # avatar-key encryption when SECRET_KEY is not set (default ./data/hoola_server.key)
+    # --- v0.116 hand-offs: A2A 1.0, DigiLocker requester (Meri Pehchaan OAuth), ONDC listing export ---
+    a2a_inbound: bool = True                # outside A2A agents may reach PUBLIC business counters (her a2a rule decides)
+    digilocker_client_id: str = ""          # requester credentials from DigiLocker / API Setu partner portal (VPS .env only)
+    digilocker_client_secret: str = ""
+    digilocker_redirect_uri: str = ""       # default <PUBLIC_BASE_URL>/api/digilocker/callback
+    digilocker_base: str = "https://digilocker.meripehchaan.gov.in"
     gcal_caldav_url: str = ""               # override CalDAV base (for Workspace/custom); blank = Gmail legacy endpoint
 
     # --- Google Drive/Sheets/Docs (service account; share a folder with its email) ---

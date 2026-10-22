@@ -164,9 +164,10 @@ def test_a2a_only_reaches_public_businesses(remote):
         ok = cl.post("/a2a", json={"jsonrpc": "2.0", "id": 1, "method": "message/send",
                                    "params": {"message": {"role": "user", "parts": [{"kind": "text", "text": "Akola mein plans?"}],
                                                           "metadata": {"to": "kunal.raj"}}}}).json()
-        assert ok["result"]["status"]["state"] == "submitted"
-        assert "bahar ke" in ev("kunal", "hoola_msg")[-1]["text"].lower()
+        assert ok["result"]["status"]["state"] == "working"          # v0.116 waits for the owner's answer
+        assert "bahar ke" in ev("kunal", "a2a_task")[-1]["say"].lower()
         no = cl.post("/a2a", json={"jsonrpc": "2.0", "id": 2, "method": "message/send",
                                    "params": {"message": {"parts": [{"kind": "text", "text": "hi"}], "metadata": {"to": "meghana.fnw"}}}}).json()
         assert no["error"]["code"] == -32602
-        assert cl.post("/a2a", json={"jsonrpc": "2.0", "id": 3, "method": "tasks/get"}).json()["error"]["code"] == -32601
+        assert cl.post("/a2a", json={"jsonrpc": "2.0", "id": 3, "method": "tasks/get"}).json()["error"]["code"] == -32001
+        assert cl.post("/a2a", json={"jsonrpc": "2.0", "id": 4, "method": "tasks/nope"}).json()["error"]["code"] == -32601

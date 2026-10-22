@@ -969,6 +969,20 @@ class Santosh extends ChangeNotifier {
         feed.add(_deals[rk]!);
         hoolaTick++;
         break;
+      case 'a2a_task':                     // v0.116 an outside A2A agent at her counter: one live card per request
+      case 'a2a_out':                      // v0.116 her message to an outside agent: one live card per message
+        final inner = Map<String, dynamic>.from((p[ev.kind == 'a2a_task' ? 'task' : 'out'] ?? const {}) as Map);
+        final ak = '${ev.kind}${inner['id']}';
+        final aOld = _deals[ak];
+        if (aOld != null) feed.remove(aOld);
+        _deals[ak] = FeedItem(ev.kind, Map<String, dynamic>.from(p));
+        feed.add(_deals[ak]!);
+        hoolaTick++;
+        break;
+      case 'handoff_reminder':             // v0.116 AA / ABDM consent still on: revoke?
+      case 'digilocker':                   // v0.116 DigiLocker sign-in link / documents
+        feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
+        break;
       case 'hoola_mandate':                // v0.112 standing order notices
       case 'hoola_promo':                  // v0.112 an offer from a shop she opted in to
         feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));

@@ -1133,6 +1133,38 @@ class Api {
       _hm(await _send('POST', '/api/net/promos/$action', body: body, timeout: const Duration(seconds: 90)));
   Future<Map<String, dynamic>> netPromoItem(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       _hm(await _send('POST', '/api/net/promos/$id/$action', body: body, timeout: const Duration(seconds: 60)));
+  // ---- v0.116 A2A 1.0 (outside AI agents), AA / ABDM consent hand-offs, DigiLocker requester, ONDC listing ----
+  Future<Map<String, dynamic>> a2aHome() async => _hm(await _send('GET', '/api/a2a'));
+  Future<Map<String, dynamic>> a2aMode(String mode) async => _hm(await _send('PUT', '/api/a2a/mode', body: {'mode': mode}));
+  /// her taps on an outside agent's request: reply / quote / accept / reject / ready / handed_over / cancel
+  Future<Map<String, dynamic>> a2aTaskAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
+      _hm(await _send('POST', '/api/a2a/tasks/$id/$action', body: body, timeout: const Duration(seconds: 60)));
+  Future<Map<String, dynamic>> a2aDiscover(String url) async =>
+      _hm(await _send('POST', '/api/a2a/discover', body: {'url': url}, timeout: const Duration(seconds: 40)));
+  Future<Map<String, dynamic>> a2aOutNew(Map<String, dynamic> body) async =>
+      _hm(await _send('POST', '/api/a2a/out', body: body, timeout: const Duration(seconds: 40)));
+  /// send (her tap) / drop / poll a message to an outside agent
+  Future<Map<String, dynamic>> a2aOutAct(String id, String action) async =>
+      _hm(await _send('POST', '/api/a2a/out/$id/$action', body: const {}, timeout: const Duration(seconds: 40)));
+  Future<Map<String, dynamic>> handoff() async => _hm(await _send('GET', '/api/handoff'));
+  Future<Map<String, dynamic>> handoffReview(String rail, Map<String, dynamic> body) async =>
+      _hm(await _send('POST', '/api/handoff/$rail/review', body: body));
+  Future<Map<String, dynamic>> handoffMark(String rail, String id, String status) async =>
+      _hm(await _send('POST', '/api/handoff/$rail/$id/mark', body: {'status': status}));
+  Future<Map<String, dynamic>> handoffForget(String rail, String id) async => _hm(await _send('DELETE', '/api/handoff/$rail/$id'));
+  Future<Map<String, dynamic>> abdmHelp(String topic) async =>
+      _hm(await _send('GET', '/api/handoff/abdm/help', query: {'topic': topic}));
+  Future<Map<String, dynamic>> digilocker() async => _hm(await _send('GET', '/api/digilocker'));
+  Future<Map<String, dynamic>> digilockerStart([String doctype = '']) async =>
+      _hm(await _send('POST', '/api/digilocker/start', body: {'doctype': doctype}));
+  Future<Map<String, dynamic>> digilockerFetch(String uri) async =>
+      _hm(await _send('POST', '/api/digilocker/fetch', body: {'uri': uri}, timeout: const Duration(seconds: 60)));
+  Future<Map<String, dynamic>> digilockerOff() async => _hm(await _send('DELETE', '/api/digilocker'));
+  Future<Map<String, dynamic>> ondc() async => _hm(await _send('GET', '/api/ondc'));
+  Future<Map<String, dynamic>> ondcSetup(Map<String, dynamic> body) async => _hm(await _send('PUT', '/api/ondc', body: body));
+  Future<Map<String, dynamic>> ondcItem(Map<String, dynamic> body) async => _hm(await _send('PUT', '/api/ondc/items', body: body));
+  Future<Map<String, dynamic>> ondcExport() async =>
+      _hm(await _send('POST', '/api/ondc/export', body: const {}, timeout: const Duration(seconds: 60)));
   // ---- v0.106 khata (udhaar) between Hoolas ----
   Future<Map<String, dynamic>> netKhata() async => _hm(await _send('GET', '/api/net/khata'));
   Future<Map<String, dynamic>> netKhataAct(String action, Map<String, dynamic> body) async =>

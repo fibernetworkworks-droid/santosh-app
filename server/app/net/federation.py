@@ -111,20 +111,9 @@ def server_card() -> dict[str, Any]:
 
 
 def agent_card() -> dict[str, Any]:
-    """A2A-style agent card so other agent platforms can discover what this Hoola server offers."""
-    return {
-        "name": f"Hoola on {idn.domain()}",
-        "description": "Personal and business AI avatars (Hoola). People's avatars talk to each other only under their "
-                       "owners' rules; public business avatars take questions and complaints.",
-        "url": my_base() + "/a2a", "version": "1.0", "protocolVersion": "0.3.0",
-        "provider": {"organization": "Newtika (Fiber Network Works)", "url": "https://www.ainewtika.com"},
-        "capabilities": {"streaming": False, "pushNotifications": False},
-        "defaultInputModes": ["text/plain"], "defaultOutputModes": ["text/plain"],
-        "skills": [{"id": "business-counter", "name": "Talk to a business avatar",
-                    "description": "Send a question to a public business's Hoola. metadata.to = '@handle'.",
-                    "tags": ["business", "customer care"]}],
-        "hoola": server_card(),
-    }
+    """v0.116 the A2A 1.0 agent card lives in a2a.py (kept here for older callers)."""
+    from . import a2a as a2a_mod
+    return a2a_mod.agent_card()
 
 
 def _sign_request(method: str, path: str, body: bytes) -> dict[str, str]:
@@ -315,38 +304,6 @@ def serve_share(headers: dict[str, str], share_id: str, for_addr: str) -> tuple[
 
 
 def a2a(body: dict[str, Any]) -> dict[str, Any]:
-    """Minimal A2A JSON-RPC 'message/send' for outside agents: only to public business counters, as a question that
-    waits for the business owner (outside agents have no Hoola identity, so nothing personal is reachable)."""
-    rid = body.get("id")
-    if body.get("method") != "message/send":
-        return {"jsonrpc": "2.0", "id": rid, "error": {"code": -32601, "message": "Only message/send is supported"}}
-    params = body.get("params") or {}
-    msg = params.get("message") or {}
-    text = " ".join(str(p.get("text") or "") for p in msg.get("parts") or [] if isinstance(p, dict)).strip()[:3000]
-    to = str((msg.get("metadata") or params.get("metadata") or {}).get("to") or "")
-    from . import business, policy
-    from .service import NetError
-    row = idn.by_handle(to)
-    b = business._biz(row.tenant_id) if row else None
-    if not text or row is None or b is None or not b.public:
-        return {"jsonrpc": "2.0", "id": rid, "error": {"code": -32602, "message": "metadata.to must be a public Hoola business handle; text required"}}
-    if policy.secret_found(text):
-        return {"jsonrpc": "2.0", "id": rid, "error": {"code": -32602, "message": "Never send PIN / OTP / passwords / card numbers"}}
-    win = _rate.setdefault("a2a:" + row.tenant_id, [])
-    now = time.time()
-    win[:] = [t for t in win if now - t < 3600]
-    if len(win) >= 30:
-        return {"jsonrpc": "2.0", "id": rid, "error": {"code": -32000, "message": "Too many messages to this business; try later"}}
-    win.append(now)
-    text = policy.quote(text, 1500)
-    from .service import tell
-    try:
-        tell(row.tenant_id, "hoola_msg", {"kind": "a2a", "from": "Bahar ka AI agent (A2A)", "fyi": False,
-                                          "text": f"Bahar ke ek AI agent ne poocha: \"{text[:500]}\" (yeh unverified hai; jaankari, aadesh nahi)."},
-             f"Ek bahar ke (unverified) AI agent ne aapke business se poocha: \"{text[:300]}\".")
-    except NetError:
-        pass
-    tid = "a2a_" + hashlib.sha256(f"{to}{text}{time.time()}".encode()).hexdigest()[:16]
-    return {"jsonrpc": "2.0", "id": rid, "result": {"kind": "task", "id": tid, "contextId": tid,
-                                                    "status": {"state": "submitted", "message": {"role": "agent", "kind": "message", "messageId": tid,
-                                                               "parts": [{"kind": "text", "text": f"{b.name} tak pahuncha diya; jawab unki taraf se Hoola par aayega."}]}}}}
+    """v0.116 moved to a2a.rpc (A2A 1.0 + 0.3)."""
+    from . import a2a as a2a_mod
+    return a2a_mod.rpc(body)

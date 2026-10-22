@@ -170,6 +170,15 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: {p.get('with', '')} ka offer", str(p.get("title") or "")[:300])
     if kind == "hoola_mandate":
         return (f"{name}: standing order", str(p.get("say") or "")[:300])
+    if kind == "a2a_task" and (p.get("task") or {}).get("waiting"):
+        head = {"reply": "bahar ke AI agent ka sawaal", "quote": "bahar se order list aayi", "accept": "bahar ka order: pakka karein?"}
+        return (f"{name}: {head.get(p['task']['waiting'], 'bahar ka AI agent')}", str(p.get("say") or "")[:300])
+    if kind == "a2a_out":
+        return (f"{name}: {(p.get('out') or {}).get('agent', 'agent')}", str(p.get("say") or "")[:300])
+    if kind == "handoff_reminder":
+        return (f"{name}: consent revoke karein?", str(p.get("say") or "")[:300])
+    if kind == "digilocker":
+        return (f"{name}: DigiLocker", str(p.get("say") or "")[:300])
     if kind == "hoola_khata" and p.get("card") in ("pay", "money", "receipt", "due"):
         head = {"pay": "khata ka payment card", "money": "khata ka paisa bheja?", "receipt": "khata ki rasid",
                 "due": "khata ki taareekh"}[p["card"]]
@@ -284,7 +293,7 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
 
 
 PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "email_draft", "bazar_open", "device_action",
-              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "hoola_pick", "hoola_khata", "thok_order", "thok_alert", "thok_day", "sheet_milaan", "doc_edit", "niryat_pi", "niryat_day", "ads_change", "ads_report", "hoola_rfq", "hoola_promo", "hoola_mandate", "fr_statement", "fr_day"}
+              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "hoola_pick", "hoola_khata", "thok_order", "thok_alert", "thok_day", "sheet_milaan", "doc_edit", "niryat_pi", "niryat_day", "ads_change", "ads_report", "hoola_rfq", "hoola_promo", "hoola_mandate", "fr_statement", "fr_day", "a2a_task", "a2a_out", "handoff_reminder", "digilocker"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 

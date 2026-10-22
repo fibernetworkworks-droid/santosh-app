@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.115.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.116.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -2593,8 +2593,8 @@ def hoola_server_card():
 @app.get("/.well-known/agent-card.json")
 @app.get("/.well-known/agent.json")
 def hoola_agent_card():
-    from .net import federation as fed
-    return fed.agent_card()
+    from .net import a2a
+    return a2a.agent_card()
 
 
 @app.post("/hoola/inbox")
@@ -2631,14 +2631,242 @@ def hoola_share(sid: str, request: Request):
                     headers={"X-Hoola-Name": quote(name), "X-Hoola-SHA256": sha})
 
 
+async def _a2a_call(request: Request, v1: bool):
+    from .net import a2a
+    if not get_settings().a2a_inbound:
+        return JSONResponse({"jsonrpc": "2.0", "id": None, "error": {"code": -32004, "message": "A2A is off on this server"}})
+    raw = await request.body()
+    if len(raw) > 256 * 1024:
+        return JSONResponse({"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "Request too large"}})
+    try:
+        body = json.loads(raw.decode() or "null")
+    except Exception:
+        return JSONResponse({"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}})
+    ip = request.headers.get("x-real-ip") or (request.client.host if request.client else "")
+    out = await asyncio.to_thread(a2a.rpc, body, dict(request.headers), ip, v1,
+                                  request.query_params.get("A2A-Version", ""))
+    return JSONResponse(out, headers={"A2A-Version": "1.0" if v1 else "0.3"})
+
+
 @app.post("/a2a")
 async def hoola_a2a(request: Request):
-    from .net import federation as fed
+    """A2A 0.3 names (message/send, tasks/get, tasks/cancel) and 1.0 names both work here (v0.116)."""
+    return await _a2a_call(request, False)
+
+
+@app.post("/a2a/v1")
+async def hoola_a2a_v1(request: Request):
+    """v0.116 A2A 1.0 JSON-RPC (SendMessage, GetTask, ListTasks, CancelTask)."""
+    return await _a2a_call(request, True)
+
+
+@app.get("/a2a/help", response_class=PlainTextResponse)
+def hoola_a2a_help():
+    from .net import a2a
+    return a2a.help_text()
+
+
+# ---------------- v0.116 A2A 1.0 (her side), hand-offs (AA, ABDM, DigiLocker), ONDC listing ----------------
+def _ho(fn, *a, **kw):
+    from .handoff.aa import HandoffError
+    from .net import service as net
     try:
-        body = await request.json()
-    except Exception:
-        return {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}}
-    return await asyncio.to_thread(fed.a2a, body if isinstance(body, dict) else {})
+        return fn(*a, **kw)
+    except (net.NetError, HandoffError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/a2a", dependencies=[Depends(require_key)])
+def a2a_home(tenant: str = Depends(current_tenant)):
+    from .net import a2a
+    from .net import federation as fed
+    return {"mode": a2a.mode(tenant), "tasks": a2a.tasks(tenant), "outs": a2a.outs(tenant),
+            "card": fed.my_base() + "/.well-known/agent-card.json", "endpoint": fed.my_base() + "/a2a/v1"}
+
+
+@app.put("/api/a2a/mode", dependencies=[Depends(require_key)])
+def a2a_mode(body: dict, tenant: str = Depends(current_tenant)):
+    from .net import a2a
+    return _ho(a2a.set_mode, tenant, str(body.get("mode") or ""))
+
+
+@app.get("/api/a2a/tasks/{tid}", dependencies=[Depends(require_key)])
+def a2a_task(tid: str, tenant: str = Depends(current_tenant)):
+    from .net import a2a
+    return _ho(a2a.show, tenant, tid)
+
+
+@app.post("/api/a2a/tasks/{tid}/{action}", dependencies=[Depends(require_key)])
+def a2a_task_act(tid: str, action: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """Her taps on an outside agent's request: reply / quote / accept / reject / ready / handed_over / cancel."""
+    from .net import a2a
+    b = body or {}
+    acts = {"reply": lambda: a2a.reply(tenant, tid, str(b.get("text") or ""), by_tap=True),
+            "draft_reply": lambda: a2a.prepare_reply(tenant, tid, str(b.get("text") or "")),
+            "quote": lambda: a2a.send_quote(tenant, tid, b.get("lines"), str(b.get("note") or ""), b.get("valid_minutes")),
+            "accept": lambda: a2a.accept(tenant, tid, str(b.get("note") or "")),
+            "reject": lambda: a2a.reject(tenant, tid, str(b.get("reason") or "")),
+            "ready": lambda: a2a.mark_ready(tenant, tid, str(b.get("place") or "")),
+            "handed_over": lambda: a2a.handed_over(tenant, tid, str(b.get("code") or "")),
+            "cancel": lambda: a2a.cancel_order(tenant, tid, str(b.get("reason") or ""))}
+    if action not in acts:
+        raise HTTPException(404, "action")
+    return _ho(acts[action])
+
+
+@app.post("/api/a2a/discover", dependencies=[Depends(require_key)])
+def a2a_discover(body: dict, tenant: str = Depends(current_tenant)):
+    from .net import a2a
+    return _ho(a2a.discover, str(body.get("url") or ""))
+
+
+@app.post("/api/a2a/out", dependencies=[Depends(require_key)])
+def a2a_out_new(body: dict, tenant: str = Depends(current_tenant)):
+    from .net import a2a
+    return _ho(a2a.draft, tenant, str(body.get("url") or ""), str(body.get("text") or ""), body.get("data"),
+               str(body.get("task_of") or ""))
+
+
+@app.post("/api/a2a/out/{oid}/{action}", dependencies=[Depends(require_key)])
+def a2a_out_act(oid: str, action: str, tenant: str = Depends(current_tenant)):
+    """'Bhejo' (her tap) / drop / poll a message to an outside agent."""
+    from .net import a2a
+    if action == "send":
+        return _ho(a2a.send, tenant, oid, by_tap=True)
+    if action == "drop":
+        return _ho(a2a.drop, tenant, oid)
+    if action == "poll":
+        return _ho(a2a.poll, tenant, oid)
+    raise HTTPException(404, "action")
+
+
+@app.get("/api/handoff", dependencies=[Depends(require_key)])
+def handoff_home(tenant: str = Depends(current_tenant)):
+    from .handoff import aa, abdm, digilocker, ondc
+    return {"aa": aa.consents(tenant), "aa_apps": aa.apps(), "abdm": abdm.consents(tenant), "abdm_topics": list(abdm.HELP),
+            "digilocker": digilocker.status(tenant), "ondc": ondc.readiness(tenant)}
+
+
+@app.post("/api/handoff/aa/review", dependencies=[Depends(require_key)])
+def handoff_aa_review(body: dict, tenant: str = Depends(current_tenant)):
+    from .handoff import aa
+    keys = ("requester", "for_what", "purpose_code", "fi_types", "data_from", "data_to", "months", "fetch_type", "frequency",
+            "consent_mode", "data_life", "expiry", "aa_app", "text")
+    return _ho(aa.review, tenant, **{k: body[k] for k in keys if k in body})
+
+
+@app.post("/api/handoff/aa/{cid}/mark", dependencies=[Depends(require_key)])
+def handoff_aa_mark(cid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .handoff import aa
+    return _ho(aa.mark, tenant, cid, str(body.get("status") or ""), body.get("revoke_after_days"))
+
+
+@app.delete("/api/handoff/aa/{cid}", dependencies=[Depends(require_key)])
+def handoff_aa_forget(cid: str, tenant: str = Depends(current_tenant)):
+    from .handoff import aa
+    return _ho(aa.forget, tenant, cid)
+
+
+@app.post("/api/handoff/abdm/review", dependencies=[Depends(require_key)])
+def handoff_abdm_review(body: dict, tenant: str = Depends(current_tenant)):
+    from .handoff import abdm
+    keys = ("requester", "purpose", "hi_types", "data_from", "data_to", "expiry", "for_whom", "visit")
+    return _ho(abdm.review, tenant, **{k: body[k] for k in keys if k in body})
+
+
+@app.post("/api/handoff/abdm/{cid}/mark", dependencies=[Depends(require_key)])
+def handoff_abdm_mark(cid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .handoff import abdm
+    return _ho(abdm.mark, tenant, cid, str(body.get("status") or ""), body.get("revoke_after_days"))
+
+
+@app.delete("/api/handoff/abdm/{cid}", dependencies=[Depends(require_key)])
+def handoff_abdm_forget(cid: str, tenant: str = Depends(current_tenant)):
+    from .handoff import abdm
+    return _ho(abdm.forget, tenant, cid)
+
+
+@app.get("/api/handoff/abdm/help", dependencies=[Depends(require_key)])
+def handoff_abdm_help(topic: str = "", tenant: str = Depends(current_tenant)):
+    from .handoff import abdm
+    return abdm.explain(topic)
+
+
+@app.get("/api/digilocker", dependencies=[Depends(require_key)])
+def digilocker_status(tenant: str = Depends(current_tenant)):
+    from .handoff import digilocker
+    return digilocker.status(tenant)
+
+
+@app.post("/api/digilocker/start", dependencies=[Depends(require_key)])
+def digilocker_start(body: dict | None = None, tenant: str = Depends(current_tenant)):
+    from .handoff import digilocker
+    return _ho(digilocker.start, tenant, str((body or {}).get("doctype") or ""))
+
+
+@app.get("/api/digilocker/callback", response_class=HTMLResponse)
+def digilocker_callback(code: str = "", state: str = "", error: str = ""):
+    """DigiLocker sends her back here after she signed in on its own page (public: the random state is the key)."""
+    import html as _h
+    from .handoff import digilocker
+    from .handoff.aa import HandoffError
+    try:
+        res = digilocker.callback(code, state, error)
+        msg = res["say"]
+    except HandoffError as e:
+        msg = str(e)
+    return HTMLResponse("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'>"
+                        "<title>Hoola · DigiLocker</title><body style='font-family:sans-serif;padding:24px'>"
+                        f"<h3>Hoola</h3><p>{_h.escape(msg)}</p><p><a href='santosh://home'>Hoola kholiye</a></p>",
+                        headers={"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'"})
+
+
+@app.get("/api/digilocker/issued", dependencies=[Depends(require_key)])
+def digilocker_issued(tenant: str = Depends(current_tenant)):
+    from .handoff import digilocker
+    return {"issued": _ho(digilocker.issued, tenant)}
+
+
+@app.post("/api/digilocker/fetch", dependencies=[Depends(require_key)])
+def digilocker_fetch(body: dict, tenant: str = Depends(current_tenant)):
+    from .handoff import digilocker
+    return _ho(digilocker.fetch, tenant, str(body.get("uri") or ""))
+
+
+@app.delete("/api/digilocker", dependencies=[Depends(require_key)])
+def digilocker_disconnect(tenant: str = Depends(current_tenant)):
+    from .handoff import digilocker
+    return _ho(digilocker.disconnect, tenant)
+
+
+@app.get("/api/ondc", dependencies=[Depends(require_key)])
+def ondc_home(tenant: str = Depends(current_tenant)):
+    from .handoff import ondc
+    return ondc.readiness(tenant) | {"domains": ondc.DOMAINS}
+
+
+@app.put("/api/ondc", dependencies=[Depends(require_key)])
+def ondc_setup(body: dict, tenant: str = Depends(current_tenant)):
+    from .handoff import ondc
+    keys = ("on", "domain", "seller_app", "store_name", "gstin", "fssai", "care", "pincodes", "radius_km", "ship_minutes",
+            "returnable", "return_days", "cancellable", "cod", "fulfilment")
+    return _ho(ondc.setup, tenant, **{k: body[k] for k in keys if k in body})
+
+
+@app.put("/api/ondc/items", dependencies=[Depends(require_key)])
+def ondc_item(body: dict, tenant: str = Depends(current_tenant)):
+    from .handoff import ondc
+    return _ho(ondc.set_item, tenant, str(body.get("item") or ""), **{k: body[k] for k in ondc.ITEM_KEYS if k in body})
+
+
+@app.post("/api/ondc/export", dependencies=[Depends(require_key)])
+def ondc_export(tenant: str = Depends(current_tenant)):
+    from .events import bus
+    from .handoff import ondc
+    from .net.service import home_conv
+    res = _ho(ondc.export, tenant)
+    bus.publish(home_conv(tenant), "pc_file", {**res["file"], "source": "ondc"})
+    return res
 
 
 @app.get("/c/{code}", response_class=HTMLResponse)

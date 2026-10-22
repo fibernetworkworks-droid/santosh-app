@@ -495,6 +495,9 @@ def send(tenant: str, to: str, kind: str, body: dict[str, Any], subject: str = "
         raise NetError(f"Isme {secret} jaisi jaankari hai. Hoola kabhi PIN, OTP, password, card ya Aadhaar number "
                        "kisi ko nahi bhejta.")
     own_file = str(body.get("file_id") or "") if kind in ("file", "presentation", "voice_note") else ""
+    if own_file:                                     # v0.116 ID documents pulled from DigiLocker stay hers
+        from ..handoff import digilocker
+        digilocker.guard_share(tenant, own_file)
     body = prepare_outgoing(tenant, kind, dict(body, _peer=peer))
     if thread_id:
         with session() as s:

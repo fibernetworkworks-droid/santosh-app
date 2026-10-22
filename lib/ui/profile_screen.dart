@@ -16,6 +16,7 @@ import 'ads_screen.dart';
 import 'kalam_screen.dart';
 import 'telecall_screen.dart';
 import 'deal_screen.dart';
+import 'handoff_screen.dart';
 import 'video_editor.dart';
 import 'operator_screen.dart';
 import 'studio_screen.dart';
@@ -248,6 +249,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Dukaan / wholesaler ko list, unke Hoola ka quote, aapki haan; apna stock aur bechne ke niyam'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DealsScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.verified_user_rounded, color: C.accent),
+              title: const Text('Consent, kaagaz, bahar ke agents', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Bank data (AA) aur health (ABHA) consent jaancho, DigiLocker, ONDC sheet, A2A agents: faisla aapka, ${app.aName} samjhaega'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HandoffScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
