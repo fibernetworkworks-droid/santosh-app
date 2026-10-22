@@ -17,6 +17,7 @@ import 'phonedoc_screen.dart';
 import 'gst_screen.dart';
 import 'payroll_screen.dart';
 import 'finance_screen.dart';
+import 'audit_screen.dart';
 import 'video_editor.dart';
 import 'operator_screen.dart';
 import 'studio_screen.dart';
@@ -550,6 +551,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return MShopReadyCard(key: ValueKey('mr${it.data['job_id']}'), v: it.data, app: app);
     case 'mshop_day':
       return MShopDayCard(v: it.data, app: app);
+    case 'audit_update':
+      return AuditCard(v: it.data, app: app);
     case 'fin_report':
     case 'fin_alert':
       return FinCard(v: it.data, app: app);

@@ -693,6 +693,18 @@ class Api {
   Future<Map<String, dynamic>> phonedocCase(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/phonedoc/cases/$id') as Map);
   Future<Map<String, dynamic>> phonedocAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/phonedoc/cases/$id/$action', body: body) as Map);
+  // v0.96 Auditor's Assistant
+  Future<List<Map<String, dynamic>>> audEngagements() async => _maps((await _send('GET', '/api/audit/engagements') as Map)['engagements']);
+  Future<Map<String, dynamic>> audNew(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/audit/engagements', body: body) as Map);
+  Future<Map<String, dynamic>> audGet(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/audit/engagements/$id') as Map);
+  Future<Map<String, dynamic>> audUpload(String id, String what, String filename, List<int> bytes) async =>
+      uploadFile('/api/audit/engagements/$id/upload/$what', filename, bytes);
+  Future<List<Map<String, dynamic>>> audFindings(String id) async => _maps((await _send('GET', '/api/audit/engagements/$id/findings') as Map)['findings']);
+  Future<Map<String, dynamic>> audAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/audit/engagements/$id/$action', body: body) as Map);
+  Future<Map<String, dynamic>> audClose(String fid, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/audit/findings/$fid', body: body) as Map);
   // v0.95 Financial Analyst
   Future<Map<String, dynamic>> finAnalysis({String snapshot = ''}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/finance/analysis', query: {if (snapshot.isNotEmpty) 'snapshot': snapshot}) as Map);

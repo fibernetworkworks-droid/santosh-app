@@ -540,3 +540,10 @@ from .analyst_tools import ANALYST_HANDLERS, ANALYST_LABELS, ANALYST_TOOLS  # no
 TOOLS.extend(ANALYST_TOOLS)
 TOOL_LABELS.update(ANALYST_LABELS)
 HANDLERS.update(ANALYST_HANDLERS)
+
+# v0.96 Auditor's Assistant (materiality, analytics, JE tests, cash / TDS rules, Benford, sampling, confirmations, WPs)
+from .audit_tools import AUDIT_HANDLERS, AUDIT_LABELS, AUDIT_TOOLS  # noqa: E402
+
+TOOLS.extend(AUDIT_TOOLS)
+TOOL_LABELS.update(AUDIT_LABELS)
+HANDLERS.update(AUDIT_HANDLERS)

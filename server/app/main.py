@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.95.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.96.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -131,7 +131,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -3503,6 +3503,105 @@ def phonedoc_case_action(case_id: str, action: str, body: dict, tenant: str = De
     if action == "close":
         return _pdoc(pdoc.close, tenant, case_id)
     raise HTTPException(404, "step | recheck | escalate | close")
+
+
+# ---------------------------------------------------------------- v0.96 Auditor's Assistant
+def _aud(fn, *a, **k):
+    from .audit import service as aud
+    try:
+        return fn(*a, **k)
+    except (aud.AuditError, ValueError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/audit/engagements", dependencies=[Depends(require_key)])
+def audit_engagements(tenant: str = Depends(current_tenant)):
+    from .audit import service as aud
+    return {"engagements": aud.engagements(tenant)}
+
+
+@app.post("/api/audit/engagements", dependencies=[Depends(require_key)])
+def audit_engagement_new(body: dict, tenant: str = Depends(current_tenant)):
+    from .audit import service as aud
+    return _aud(aud.new_engagement, tenant, str(body.get("client") or ""), str(body.get("kind") or "statutory"), str(body.get("fy") or ""),
+                str(body.get("entity") or "firm"), body.get("approval_limit"))
+
+
+@app.get("/api/audit/engagements/{eid}", dependencies=[Depends(require_key)])
+def audit_engagement_get(eid: str, tenant: str = Depends(current_tenant)):
+    from .audit import service as aud
+    return _aud(aud.get, tenant, eid)
+
+
+@app.post("/api/audit/engagements/{eid}/upload/{what}", dependencies=[Depends(require_key)])
+async def audit_upload(eid: str, what: str, file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
+    """what = tb | tb_prev | daybook"""
+    from .audit import service as aud
+    data = await file.read()
+    if what in ("tb", "tb_prev"):
+        return _aud(aud.import_tb, tenant, eid, "", data, file.filename or "tb.xlsx", what == "tb_prev")
+    if what == "daybook":
+        return _aud(aud.import_daybook, tenant, eid, "", data, file.filename or "daybook.xlsx")
+    raise HTTPException(404, "tb | tb_prev | daybook")
+
+
+@app.get("/api/audit/engagements/{eid}/findings", dependencies=[Depends(require_key)])
+def audit_findings(eid: str, status: str = "", tenant: str = Depends(current_tenant)):
+    from .audit import service as aud
+    return {"findings": _aud(aud.findings, tenant, eid, status)}
+
+
+@app.post("/api/audit/engagements/{eid}/{action}", dependencies=[Depends(require_key)])
+def audit_act(eid: str, action: str, body: dict, tenant: str = Depends(current_tenant)):
+    """run | materiality | facts | sample | confirmations | approve_confirmations (her Haan, only from her tap) | queries |
+    asked | rep_letter | workpapers | letters | samples"""
+    from .audit import service as aud
+    conv = str(body.get("conversation_id") or "")
+    if action == "run":
+        return _aud(aud.run_tests, tenant, eid, conv)
+    if action == "materiality":
+        return _aud(aud.plan_materiality, tenant, eid, str(body.get("benchmark") or ""), body.get("pct"), str(body.get("risk") or "normal"))
+    if action == "facts":
+        keys = ("turnover", "cash_receipts_pct", "cash_payments_pct", "profession", "paid_up", "holding_or_sub", "status", "approval_limit")
+        return _aud(aud.set_facts, tenant, eid, **{k: body[k] for k in keys if k in body})
+    if action == "sample":
+        return _aud(aud.make_sample, tenant, eid, str(body.get("population") or ""), str(body.get("method") or "mus"),
+                    int(body.get("size") or 25), int(body.get("confidence") or 95))
+    if action == "samples":
+        return {"samples": _aud(aud.samples, tenant, eid)}
+    if action == "confirmations":
+        return _aud(aud.make_confirmations, tenant, eid, int(body.get("top") or 10), body.get("min_amount"))
+    if action == "letters":
+        return _aud(aud.confirmation_letters, tenant, eid)
+    if action == "approve_confirmations":
+        return _aud(aud.approve_confirmations, tenant, eid, bool(body.get("approve", True)))
+    if action == "queries":
+        return _aud(aud.query_list, tenant, eid)
+    if action == "asked":
+        return _aud(aud.mark_asked, tenant, eid)
+    if action == "rep_letter":
+        return _aud(aud.rep_letter, tenant, eid)
+    if action == "workpapers":
+        return _aud(aud.workpapers, tenant, eid, conv)
+    raise HTTPException(404, "unknown action")
+
+
+@app.post("/api/audit/findings/{fid}", dependencies=[Depends(require_key)])
+def audit_finding_close(fid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .audit import service as aud
+    return _aud(aud.close_finding, tenant, fid, str(body.get("status") or ""), str(body.get("note") or ""), bool(body.get("remember")))
+
+
+@app.post("/api/audit/samples/{sid}", dependencies=[Depends(require_key)])
+def audit_sample_result(sid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .audit import service as aud
+    return _aud(aud.sample_result, tenant, sid, str(body.get("status") or ""), str(body.get("note") or ""))
+
+
+@app.post("/api/audit/confirms/{cid}", dependencies=[Depends(require_key)])
+def audit_confirm_reply(cid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .audit import service as aud
+    return _aud(aud.confirmation_reply, tenant, cid, body.get("amount"), str(body.get("note") or ""))
 
 
 # ---------------------------------------------------------------- v0.95 Financial Analyst

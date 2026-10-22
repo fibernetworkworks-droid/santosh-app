@@ -42,6 +42,7 @@ import 'jaanch_screen.dart';
 import 'gst_screen.dart';
 import 'payroll_screen.dart';
 import 'finance_screen.dart';
+import 'audit_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -196,6 +197,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Har hissa abhi jaancho: kya kharab hai, kaise theek hoga, kaun si website server se nahi khulti'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => JaanchScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.fact_check_rounded, color: C.accent),
+              title: const Text("Auditor's assistant", style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('TB + day book ki jaanch, materiality, sample, confirmation, working papers: ${app.aName} karega, raay aur sign aapke'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AuditScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
