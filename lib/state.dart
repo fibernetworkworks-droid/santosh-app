@@ -296,6 +296,8 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _lekhakCards = {}; // v0.87 Lekhak: one doc card + one sign card per document, updated in place
   final Map<String, FeedItem> _askForms = {}; // v0.97 form cards, updated in place when answered / closed
   int lekhakTick = 0;                          // bumps on any lekhak event (the Lekhak screen refreshes)
+  int adsTick = 0;                             // v0.108 bumps on ads events (the Ads screen refreshes)
+  final Map<String, FeedItem> _adsPlans = {};   // v0.108 one card per budget plan, changes updated in place
   int kalamTick = 0;                           // v0.101 bumps on content-writer events (the Kalam screen refreshes)
   final Map<String, FeedItem> _kalamCards = {}; // v0.101 one card per piece / publish request, updated in place
   final Map<String, FeedItem> _deskCards = {}; // v0.108 Sheet Milaan / document edit cards, updated in place
@@ -1160,6 +1162,34 @@ class Santosh extends ChangeNotifier {
         break;
       case 'mshop':
         mshopTick++;
+        break;
+      case 'ads_change':
+        final pid = '${p['plan_id'] ?? ''}';
+        if (pid.isNotEmpty && p['decided'] == null) {
+          final it = FeedItem('ads_change', Map<String, dynamic>.from(p));
+          _adsPlans[pid] = it;
+          feed.add(it);
+        } else {
+          for (final c in (p['changes'] as List? ?? const [])) {
+            final cm = Map<String, dynamic>.from(c as Map);
+            final card = _adsPlans['${cm['plan_id']}'];
+            if (card != null) {
+              final list = [for (final x in (card.data['changes'] as List? ?? const [])) Map<String, dynamic>.from(x as Map)];
+              final i = list.indexWhere((x) => x['id'] == cm['id']);
+              if (i >= 0) list[i] = cm;
+              card.data = {...card.data, 'changes': list, 'say': p['say']};
+            }
+          }
+        }
+        if (p['decided'] == null && inBackground && !_replaying && !pushOn) {
+          Device.instance.showNow('$aName: ads mein badlav ki haan?', '${p['say'] ?? ''}');
+        }
+        adsTick++;
+        break;
+      case 'ads_report':
+      case 'ads_copy':
+        feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
+        adsTick++;
         break;
       case 'kalam_piece':
       case 'kalam_publish':

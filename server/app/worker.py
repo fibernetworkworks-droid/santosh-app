@@ -477,6 +477,12 @@ async def employee_jobs() -> None:
             thok.send_morning(tenant)
     except Exception:
         log.exception("thok morning failed")
+    try:                                   # v0.111 Ads: daily leak check (Meta joined) + weekly report at her time
+        from .ads import service as ads
+        for tenant, kind in ads.due_checks():
+            ads.send_check(tenant, kind)
+    except Exception:
+        log.exception("ads check failed")
     try:
         from .seo import service as seo
         for tenant in seo.due_mornings():

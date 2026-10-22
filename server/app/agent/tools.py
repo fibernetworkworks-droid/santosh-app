@@ -626,3 +626,10 @@ from .niryat_tools import NIRYAT_HANDLERS, NIRYAT_LABELS, NIRYAT_TOOLS  # noqa: 
 TOOLS.extend(NIRYAT_TOOLS)
 TOOL_LABELS.update(NIRYAT_LABELS)
 HANDLERS.update(NIRYAT_HANDLERS)
+
+# v0.111 Ads Sahayak (performance marketer: reports -> leaks -> budget changes on her tap -> copies to test)
+from .ads_tools import ADS_HANDLERS, ADS_LABELS, ADS_TOOLS  # noqa: E402
+
+TOOLS.extend(ADS_TOOLS)
+TOOL_LABELS.update(ADS_LABELS)
+HANDLERS.update(ADS_HANDLERS)

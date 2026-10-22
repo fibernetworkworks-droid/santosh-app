@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.110.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.111.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -149,7 +149,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -4860,6 +4860,128 @@ def tele_settings(body: dict, tenant: str = Depends(current_tenant)):
     keys = ("enabled", "business", "caller_name", "pitch", "segment", "start_hour", "end_hour", "daily_goal", "max_attempts",
             "record_calls", "registered", "language", "rules", "dont_say", "team", "morning_time")
     return _tele(tele.save_settings, tenant, **{k: body[k] for k in keys if k in body})
+
+
+# ---------------------------------------------------------------- v0.111 Ads Sahayak (performance marketer; ad money on her tap)
+def _ads(fn, *a, **k):
+    from .ads import service as ads
+    try:
+        return fn(*a, **k)
+    except ads.AdsError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/ads", dependencies=[Depends(require_key)])
+async def ads_all(tenant: str = Depends(current_tenant)):
+    from .ads import service as ads
+    return await asyncio.to_thread(ads.everything, tenant)
+
+
+@app.get("/api/ads/report", dependencies=[Depends(require_key)])
+async def ads_report(days: int = 30, platform: str = "", tenant: str = Depends(current_tenant)):
+    from .ads import service as ads
+    return await asyncio.to_thread(ads.analyse, tenant, max(1, min(365, days)), platform)
+
+
+@app.post("/api/ads/import", dependencies=[Depends(require_key)])
+async def ads_import(file: UploadFile | None = File(None), file_id: str = Form(""), platform: str = Form(""),
+                     start: str = Form(""), end: str = Form(""), conversation_id: str = Form(""),
+                     tenant: str = Depends(current_tenant)):
+    from .ads import service as ads
+    data = await file.read() if file is not None else None
+    if data is not None and len(data) > 30 * 1024 * 1024:
+        raise HTTPException(413, "Report 30 MB se badi hai.")
+    return await asyncio.to_thread(_ads, ads.import_report, tenant, file_id, data, (file.filename if file else "report.csv"),
+                                   platform, start, end, conversation_id)
+
+
+@app.post("/api/ads/plan", dependencies=[Depends(require_key)])
+async def ads_plan(body: dict, tenant: str = Depends(current_tenant)):
+    from .ads import service as ads
+    return await asyncio.to_thread(_ads, ads.make_plan, tenant, int(body.get("days") or 14), str(body.get("conversation_id") or ""),
+                                   float(body.get("extra") or 0))
+
+
+@app.get("/api/ads/changes", dependencies=[Depends(require_key)])
+def ads_changes(status: str = "", tenant: str = Depends(current_tenant)):
+    from .ads import service as ads
+    return {"changes": ads.changes(tenant, status, 100)}
+
+
+@app.post("/api/ads/changes/{cid}/decide", dependencies=[Depends(require_key)])
+async def ads_decide(cid: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap on a change card. A change that spends more needs her phone's fingerprint once one is set up."""
+    from .ads import service as ads
+    yes = bool(body.get("yes"))
+    if yes:
+        _fingerprint(tenant, "ads", cid, body.get("proof"))
+    after = body.get("after")
+    return await asyncio.to_thread(_ads, ads.decide_change, tenant, cid, yes, float(after) if after not in (None, "") else None,
+                                   str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/ads/changes/{cid}/done", dependencies=[Depends(require_key)])
+def ads_done(cid: str, tenant: str = Depends(current_tenant)):
+    from .ads import service as ads
+    return _ads(ads.mark_done, tenant, cid)
+
+
+@app.post("/api/ads/copies", dependencies=[Depends(require_key)])
+async def ads_copies(body: dict, tenant: str = Depends(current_tenant)):
+    from .ads import service as ads
+    return await asyncio.to_thread(_ads, ads.write_copies, tenant, str(body.get("brief") or ""), str(body.get("platform") or "meta"),
+                                   str(body.get("campaign") or ""), int(body.get("n") or 4), str(body.get("lang") or ""),
+                                   str(body.get("landing") or ""), str(body.get("conversation_id") or ""))
+
+
+@app.get("/api/ads/tests", dependencies=[Depends(require_key)])
+def ads_tests(tenant: str = Depends(current_tenant)):
+    from .ads import service as ads
+    return {"tests": ads.tests(tenant, 60)}
+
+
+@app.post("/api/ads/tests/{tid}/{action}", dependencies=[Depends(require_key)])
+def ads_test_act(tid: str, action: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .ads import service as ads
+    if action == "live":
+        return _ads(ads.test_live, tenant, tid, body.get("labels"))
+    if action == "result":
+        return _ads(ads.test_result, tenant, tid, body.get("results") if isinstance(body.get("results"), dict) else None)
+    raise HTTPException(404, "unknown action")
+
+
+@app.post("/api/ads/sales", dependencies=[Depends(require_key)])
+def ads_sale(body: dict, tenant: str = Depends(current_tenant)):
+    from .ads import service as ads
+    return _ads(ads.add_sale, tenant, str(body.get("campaign") or ""), int(body.get("count") or 0), float(body.get("value") or 0),
+                str(body.get("day") or ""), str(body.get("platform") or ""), str(body.get("note") or ""))
+
+
+@app.put("/api/ads/settings", dependencies=[Depends(require_key)])
+def ads_settings(body: dict, tenant: str = Depends(current_tenant)):
+    from .ads import service as ads
+    keys = ("enabled", "business", "segment", "offer", "target_cpl", "target_roas", "avg_order", "margin_pct", "close_pct",
+            "month_budget", "max_step_pct", "report_day", "report_time", "rules")
+    return _ads(ads.save_settings, tenant, **{k: body[k] for k in keys if k in body})
+
+
+@app.put("/api/ads/meta", dependencies=[Depends(require_key)])
+async def ads_meta(body: dict, tenant: str = Depends(current_tenant)):
+    """Her own Meta ad account: account id + a system-user token (typed in the app only; sealed, never shown again)."""
+    from .ads import service as ads
+    return await asyncio.to_thread(_ads, ads.set_meta, tenant, str(body.get("account") or ""), str(body.get("token") or ""))
+
+
+@app.delete("/api/ads/meta", dependencies=[Depends(require_key)])
+def ads_meta_off(tenant: str = Depends(current_tenant)):
+    from .ads import service as ads
+    return ads.forget_meta(tenant)
+
+
+@app.post("/api/ads/meta/fetch", dependencies=[Depends(require_key)])
+async def ads_meta_fetch(body: dict, tenant: str = Depends(current_tenant)):
+    from .ads import service as ads
+    return await asyncio.to_thread(_ads, ads.fetch_meta, tenant, int(body.get("days") or 14), str(body.get("conversation_id") or ""))
 
 
 # ---------------------------------------------------------------- v0.101 Kalam Sahayak (content writer; publishing on her tap)

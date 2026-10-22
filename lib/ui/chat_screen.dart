@@ -19,6 +19,7 @@ import 'payroll_screen.dart';
 import 'finance_screen.dart';
 import 'audit_screen.dart';
 import 'insurance_screen.dart';
+import 'ads_screen.dart';
 import 'kalam_screen.dart';
 import 'seo_screen.dart';
 import 'thok_screen.dart';
@@ -588,6 +589,12 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return AuditCard(v: it.data, app: app);
     case 'tele_day':
       return TeleDayCard(v: it.data, app: app);
+    case 'ads_change':
+      return AdsPlanCard(v: it.data, app: app);
+    case 'ads_report':
+      return AdsReportCard(v: it.data, app: app);
+    case 'ads_copy':
+      return AdsCopyCard(v: it.data, app: app);
     case 'kalam_piece':
       return KalamPieceCard(v: it.data, app: app);
     case 'kalam_publish':

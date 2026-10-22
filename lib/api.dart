@@ -855,6 +855,30 @@ class Api {
   Future<Map<String, dynamic>> mshopSettings() async => Map<String, dynamic>.from(await _send('GET', '/api/mshop/settings') as Map);
   Future<Map<String, dynamic>> mshopSaveSettings(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/mshop/settings', body: body) as Map);
+  // ---- v0.111 Ads Sahayak (performance marketer; ad money only on her tap) ----
+  Future<Map<String, dynamic>> adsAll() async => Map<String, dynamic>.from(await _send('GET', '/api/ads', timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> adsReport(int days) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/ads/report', query: {'days': '$days'}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> adsImport(String filename, List<int> bytes, {String platform = ''}) async =>
+      uploadFile('/api/ads/import', filename, bytes, fields: {if (platform.isNotEmpty) 'platform': platform}, tries: 1);
+  Future<Map<String, dynamic>> adsPlan({int days = 14, double extra = 0}) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/ads/plan', body: {'days': days, 'extra': extra}, timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> adsChanges() async => Map<String, dynamic>.from(await _send('GET', '/api/ads/changes') as Map);
+  Future<Map<String, dynamic>> adsDecide(String id, bool yes, {double? after}) async => Map<String, dynamic>.from(await _withFingerprint(
+      'ads', id, yes, (proof) => _send('POST', '/api/ads/changes/$id/decide',
+          body: {'yes': yes, if (after != null) 'after': after, if (proof != null) 'proof': proof}, timeout: const Duration(seconds: 60))) as Map);
+  Future<Map<String, dynamic>> adsDone(String id) async => Map<String, dynamic>.from(await _send('POST', '/api/ads/changes/$id/done') as Map);
+  Future<Map<String, dynamic>> adsCopies(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/ads/copies', body: body, timeout: const Duration(seconds: 120)) as Map);
+  Future<Map<String, dynamic>> adsTestAct(String id, String action, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/ads/tests/$id/$action', body: body) as Map);
+  Future<Map<String, dynamic>> adsSale(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('POST', '/api/ads/sales', body: body) as Map);
+  Future<Map<String, dynamic>> adsSettings(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('PUT', '/api/ads/settings', body: body) as Map);
+  Future<Map<String, dynamic>> adsMeta(String account, String token) async => Map<String, dynamic>.from(
+      await _send('PUT', '/api/ads/meta', body: {'account': account, 'token': token}, timeout: const Duration(seconds: 45)) as Map);
+  Future<Map<String, dynamic>> adsMetaOff() async => Map<String, dynamic>.from(await _send('DELETE', '/api/ads/meta') as Map);
+  Future<Map<String, dynamic>> adsMetaFetch(int days) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/ads/meta/fetch', body: {'days': days}, timeout: const Duration(seconds: 120)) as Map);
   // ---- v0.101 Kalam Sahayak (content writer; publishing only on her tap) ----
   Future<Map<String, dynamic>> kalamAll() async => Map<String, dynamic>.from(await _send('GET', '/api/kalam') as Map);
   Future<Map<String, dynamic>> kalamWrite(Map<String, dynamic> body) async =>
