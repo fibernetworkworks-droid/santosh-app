@@ -27,7 +27,7 @@ def bz(env, monkeypatch):
     service.set_executors(None)
 
 
-def _send(bz, pack="phonepe", amount=500):
+def _send(bz, pack="bhim", amount=500):
     svc, conv = bz["svc"], bz["conv"]
     svc.add_contact("default", "Priya", upi_id="priya.demo@okaxis")
     r = svc.run("default", conv, pack, "send_money", {"to": "Priya", "amount_rupees": amount, "note": "dinner"})
@@ -64,7 +64,7 @@ def test_open_carries_ref_payee_amount_and_success_closes_it(bz):
     assert op["kind"] == "upi" and op["txn_ref"] and op["vpa"] == "priya.demo@okaxis" and op["amount"] == "₹500"
     assert "tr=" + op["txn_ref"] in op["url"] and "am=500.00" in op["url"]
     st, meta, _ = _txn(op["txn_ref"])
-    assert st == "awaiting_payment" and meta["package"] == "com.phonepe.app"
+    assert st == "awaiting_payment" and meta["package"] == "in.org.npci.upiapp"
     from app.bazar import upiresult
     out = upiresult.record("default", op["txn_ref"],
                            f"txnId=YBL1&responseCode=00&Status=SUCCESS&txnRef={op['txn_ref']}&ApprovalRefNo=612345678901", "ok")
@@ -129,3 +129,29 @@ def test_api_and_catalog_package(bz):
     pay = next(s for s in cat["top"] if s["id"] == "pay")
     pk = {p["pack_id"]: p.get("android_package") for p in pay["items"]}
     assert pk.get("phonepe") == "com.phonepe.app" and pk.get("google-pay") == "com.google.android.apps.nbu.paisa.user"
+
+
+def test_v120_phonepe_goes_copy_and_pay_and_apps_learn(bz):
+    """v0.120 PhonePe refuses payment links to a person ('security reasons'): it opens without a link, UPI ID copied."""
+    op = _send(bz, pack="phonepe")
+    assert op["kind"] == "upi_copy" and op["url"] == "" and op["vpa"] == "priya.demo@okaxis" and op["package"] == "com.phonepe.app"
+    st, meta, _ = _txn(op["txn_ref"])
+    assert st == "awaiting_payment" and meta["mode"] == "copy"
+    cards = _events(bz["conv"], "upi_result")
+    assert cards[-1]["ask"] and cards[-1]["mode"] == "copy"
+    from app.bazar import upiresult
+    assert upiresult.record("default", op["txn_ref"], answer="done")["status"] == "completed"
+    # BHIM still gets the link; when she says it refused, BHIM learns copy-and-pay too
+    op2 = _send(bz, pack="bhim", amount=200)
+    assert op2["kind"] == "upi" and op2["url"].startswith("upi://pay")
+    upiresult.record("default", op2["txn_ref"], answer="blocked")
+    op3 = _send(bz, pack="bhim", amount=100)
+    assert op3["kind"] == "upi_copy"
+    # a link that worked in an app marks it ok again (beats the built-in list)
+    from app.bazar.db import User
+    from app.db import session
+    with session() as s:
+        u = s.get(User, "default")
+        u.profile = {**(u.profile or {}), "upi_link_blocked": {"com.phonepe.app": "ok"}}
+    op4 = _send(bz, pack="phonepe", amount=50)
+    assert op4["kind"] == "upi"

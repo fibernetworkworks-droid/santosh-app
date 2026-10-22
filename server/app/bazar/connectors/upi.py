@@ -98,6 +98,18 @@ class UpiExecutor:
                                 "package": pack.config.get("android_package") or ""})
         ctx.session.add(txn)
         ctx.session.flush()
+        pkg = pack.config.get("android_package") or ""
+        from ..upiresult import link_blocked
+        if link_blocked(ctx.user, pkg):
+            # v0.120 this app refuses payment links to a person ("security reasons"): open the app itself, the phone
+            # copies the UPI ID, she pastes it and types the amount there. Same record, same Ho gaya / Nahi hua card.
+            txn.meta = {**(txn.meta or {}), "mode": "copy"}
+            amt = rupees(args["amount_paise"])
+            return {"status": "copy_pay", "android_package": pkg, "txn_ref": txn.txn_ref, "vpa": args["vpa"],
+                    "payee_name": args["name"], "amount": amt, "app": pack.name,
+                    "message": (f"{pack.name} kisi vyakti ko link se payment rok deta hai, isliye {pack.name} seedha khul "
+                                f"raha hai. {args['name']} ka UPI ID ({args['vpa']}) copy ho gaya hai: 'To UPI ID' mein paste "
+                                f"karke {amt} bhejiye, PIN wahin daaliye. Ho jaane par yahan 'Ho gaya' dabaiye.")}
         link = build_upi_intent(args["vpa"], args["name"], args["amount_paise"], args.get("note", ""), tr=txn.txn_ref,
                                 scheme=pack.config.get("scheme", "upi"), max_paise=ctx.settings.upi_max_amount_paise)
         return {"status": "open_app", "intent_url": link, "android_package": pack.config.get("android_package"),

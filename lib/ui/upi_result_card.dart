@@ -34,6 +34,10 @@ class _UpiResultCardState extends State<UpiResultCard> {
 
   Future<void> _copyAndOpen() async {
     final vpa = _s('vpa');
+    // v0.120 tell the server this app refuses the link, so next time it opens straight in copy-and-pay mode
+    if (widget.v['mode'] != 'copy') {
+      try { await widget.app.api!.upiResult(_s('txn_ref'), answer: 'blocked'); } catch (_) {}
+    }
     await Clipboard.setData(ClipboardData(text: vpa));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -85,7 +89,15 @@ class _UpiResultCardState extends State<UpiResultCard> {
               Expanded(child: GlassButton(label: 'Nahi hua', icon: Icons.close_rounded, height: 42, onTap: _busy ? null : () => _answer('not'))),
             ]),
           ],
-          if (widget.v['blocked'] == true && st != 'completed' && _s('vpa').isNotEmpty) ...[
+          if (widget.v['mode'] == 'copy' && st != 'completed' && st != 'failed')
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                  '${_s('app').isEmpty ? 'Ye app' : _s('app')} link se kisi vyakti ko payment nahi karne deta. UPI ID copy ho gaya hai: '
+                  'app mein "To UPI ID" par paste karke ${_s('amount')} bhejiye, phir yahan "Ho gaya" dabaiye.',
+                  style: const TextStyle(color: C.chip, fontSize: 12.5)),
+            ),
+          if ((widget.v['blocked'] == true || widget.v['mode'] == 'copy') && st != 'completed' && _s('vpa').isNotEmpty) ...[
             const SizedBox(height: 8),
             GlassButton(
                 label: 'UPI ID copy karke ${_s('app').isEmpty ? 'app' : _s('app')} kholo',

@@ -277,6 +277,10 @@ def find(tenant_id: str, query: str = "", category: str = "", limit: int = 6) ->
 def _open_action(out: dict[str, Any]) -> dict[str, Any] | None:
     if not isinstance(out, dict):
         return None
+    if out.get("status") == "copy_pay":   # v0.120 app refuses links to a person: copy the UPI ID + open the app
+        return {"kind": "upi_copy", "url": "", "package": out.get("android_package") or "", "label": "UPI app kholiye",
+                "txn_ref": out.get("txn_ref") or "", "vpa": out.get("vpa") or "", "name": out.get("payee_name") or "",
+                "amount": out.get("amount") or "", "app": out.get("app") or ""}
     if out.get("intent_url"):
         return {"kind": "upi", "url": out["intent_url"], "package": out.get("android_package") or "",
                 "label": "UPI app kholiye", "txn_ref": out.get("txn_ref") or "", "vpa": out.get("vpa") or "",
@@ -492,6 +496,9 @@ def decide(tenant_id: str, approval_id: str, decision: str) -> dict[str, Any]:
         card = card_of(ap, pack)
     act = _open_action(outcome)
     card["result"] = {"message": outcome.get("message") or outcome.get("error") or "", "open": act}
+    if act and act.get("kind") == "upi_copy" and act.get("txn_ref"):
+        from . import upiresult
+        upiresult.copy_card(tenant_id, act["txn_ref"])
     if conv:
         bus.publish(conv, "bazar_approval", card)
         if outcome.get("error"):

@@ -49,6 +49,44 @@ BLOCK_WORDS = re.compile(r"security|risk|not allowed|not permitted|declined by|l
                          r"payment link|merchant", re.I)
 DONE = ("completed", "paid")
 
+# v0.120 Apps known to refuse a payment link to a PERSON's UPI ID started by another app ("security reasons").
+# PhonePe: seen on the owner's OnePlus 22 Oct 2026. Others are learned per owner when they refuse.
+P2P_LINK_BLOCKED = {"com.phonepe.app"}
+BLOCK_KEEP_DAYS = 60   # apps change their rules; after this the link is tried again
+
+
+def _blocked_map(user) -> dict[str, str]:
+    return dict(((user.profile or {}).get("upi_link_blocked") or {}))
+
+
+def link_blocked(user, package: str) -> bool:
+    """True when this app refuses Hoola's payment link for a person (built-in list or learned for this owner)."""
+    if not package:
+        return False
+    seen = _blocked_map(user).get(package)
+    if seen == "ok":
+        return False   # she saw the link work in this app: trust that over the built-in list
+    if seen:
+        try:
+            import datetime as _dt
+            if (_dt.datetime.now(_dt.timezone.utc).replace(tzinfo=None) - _dt.datetime.fromisoformat(seen)).days > BLOCK_KEEP_DAYS:
+                return package in P2P_LINK_BLOCKED
+        except ValueError:
+            pass
+        return True
+    return package in P2P_LINK_BLOCKED
+
+
+def _mark(s, user_id: str, package: str, value: str) -> None:
+    from .db import User
+    import datetime as _dt
+    u = s.get(User, user_id)
+    if u is None or not package:
+        return
+    mp = _blocked_map(u)
+    mp[package[:120]] = value if value == "ok" else _dt.datetime.now(_dt.timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds")
+    u.profile = {**(u.profile or {}), "upi_link_blocked": mp}
+
 
 def parse(raw: str) -> dict[str, str]:
     """NPCI response string -> {status SUCCESS|FAILURE|SUBMITTED|UNKNOWN, txn_id, approval_ref, code, txn_ref, text}.
@@ -88,7 +126,7 @@ def card(txn: Transaction, ask: bool = False, reason: str = "", blocked: bool = 
             "amount_paise": txn.amount_paise, "name": m.get("name", ""), "vpa": m.get("vpa", ""),
             "app": m.get("app", ""), "package": m.get("package", ""), "said_by": up.get("said_by", ""),
             "ref_tail": _tail(up.get("txn_id") or up.get("approval_ref") or ""),
-            "ask": ask, "reason": reason, "blocked": blocked}
+            "ask": ask, "reason": reason, "blocked": blocked, "mode": m.get("mode", "")}
 
 
 def _conv(s, txn: Transaction) -> str:
@@ -101,8 +139,8 @@ def record(tenant_id: str, txn_ref: str, response: str = "", result: str = "", p
     """The phone's report (response = the UPI app's string, result ok|cancelled|none) or her answer (done|not).
     Idempotent: a payment already completed by her word or the app is never undone by a late empty result."""
     answer = (answer or "").lower()
-    if answer and answer not in ("done", "not"):
-        raise ToolError("answer must be done or not")
+    if answer and answer not in ("done", "not", "blocked"):
+        raise ToolError("answer must be done, not or blocked")
     with session() as s:
         txn = s.scalars(select(Transaction).where(Transaction.txn_ref == str(txn_ref)[:40])).first()
         if txn is None or txn.user_id != tenant_id:
@@ -115,6 +153,18 @@ def record(tenant_id: str, txn_ref: str, response: str = "", result: str = "", p
         name, amt = m.get("name") or "unhe", rupees(txn.amount_paise)
         up = dict(m.get("upi") or {})
         reason, blocked, ask = "", False, False
+        if answer == "blocked":
+            # she saw the app refuse the link (or chose copy-and-pay): next time this app gets copy-and-pay at once
+            _mark(s, txn.user_id, m.get("package", ""), "blocked")
+            up["link_blocked"] = True
+            m["upi"] = up
+            txn.meta = m
+            c = card(txn, ask=True, blocked=True)
+            conv = _conv(s, txn)
+            s.commit()
+            if conv:
+                bus.publish(conv, "upi_result", c)
+            return {"txn_ref": c["txn_ref"], "status": c["status"], "say": "", "card": c}
         if answer:
             if txn.status in DONE and up.get("said_by") == "app" and answer == "not":
                 # the app said success; her "nahi hua" is kept, but the record stays and she is told to check
@@ -141,6 +191,8 @@ def record(tenant_id: str, txn_ref: str, response: str = "", result: str = "", p
             if r["status"] == "SUCCESS":
                 txn.status = "completed"
                 txn.provider_ref = (r["approval_ref"] or r["txn_id"])[:80]
+                if m.get("mode") != "copy":
+                    _mark(s, txn.user_id, m.get("package", ""), "ok")   # the link worked in this app
                 tail = _tail(r["approval_ref"] or r["txn_id"])
                 line = f"{amt} {name} ko chale gaye ✅" + (f" (UPI ref ...{tail})" if tail else "") + "."
             elif r["status"] == "FAILURE":
@@ -152,7 +204,8 @@ def record(tenant_id: str, txn_ref: str, response: str = "", result: str = "", p
                     reason = "UPI app ne payment poori nahi ki"
                 line = f"{amt} {name} ko nahi gaye: {reason}. Aapke account se kuch nahi kata."
                 if blocked:
-                    line += " Chahein to UPI ID copy karke app mein khud bhej sakti hain."
+                    _mark(s, txn.user_id, m.get("package", ""), "blocked")
+                    line += " Chahein to UPI ID copy karke app mein khud bhej sakti hain; agli baar ye app seedha aise hi khulega."
             elif r["status"] == "SUBMITTED":
                 txn.status = "pending"
                 ask = True
@@ -177,3 +230,15 @@ def record(tenant_id: str, txn_ref: str, response: str = "", result: str = "", p
         bus.publish(conv, "upi_result", c)
         notify(conv, line)
     return {"txn_ref": c["txn_ref"], "status": c["status"], "say": line, "card": c}
+
+
+def copy_card(tenant_id: str, txn_ref: str) -> None:
+    """Copy-and-pay mode: the app opens without a link; the card waits for her Ho gaya / Nahi hua."""
+    with session() as s:
+        txn = s.scalars(select(Transaction).where(Transaction.txn_ref == str(txn_ref)[:40])).first()
+        if txn is None or txn.user_id != tenant_id:
+            return
+        c = card(txn, ask=True, blocked=False)
+        conv = _conv(s, txn)
+    if conv:
+        bus.publish(conv, "upi_result", c)

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -677,7 +678,12 @@ class Santosh extends ChangeNotifier {
       final r = await api!.bazarDecide(id, decision);
       if (it != null) it.data = {...it.data, 'status': r['status'], 'busy': false, 'result': {'open': r['open'], 'message': (r['outcome'] as Map?)?['message'] ?? (r['outcome'] as Map?)?['error'] ?? ''}};
       final open = r['open'] as Map?;
-      if (decision == 'approve' && open != null && (open['kind'] == 'upi' || open['kind'] == 'app')) {
+      if (decision == 'approve' && open != null && open['kind'] == 'upi_copy') {
+        // v0.120 this UPI app refuses payment links to a person: copy the UPI ID, open the app itself
+        await Clipboard.setData(ClipboardData(text: open['vpa'] as String? ?? ''));
+        final res = await Native.openExternal(package: open['package'] as String? ?? '');
+        if (res != 'ok') feed.add(FeedItem('note', {'text': res}));
+      } else if (decision == 'approve' && open != null && (open['kind'] == 'upi' || open['kind'] == 'app')) {
         final res = await Native.openExternal(url: open['url'] as String? ?? '', package: open['package'] as String? ?? '');
         if (res != 'ok') {
           feed.add(FeedItem('note', {'text': res}));

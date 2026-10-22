@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.119.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.120.0", lifespan=lifespan)
 
 
 @app.middleware("http")

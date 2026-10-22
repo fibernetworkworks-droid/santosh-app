@@ -142,7 +142,11 @@ def test_upi_to_person_always_needs_tap_even_with_caps(bz):
     r = svc.run("default", conv, "phonepe", "send_money", {"to": "Priya", "amount_rupees": 500, "note": "dinner"})
     assert r["needs_approval"]
     res = svc.decide("default", r["approval_id"], "approve")
-    assert res["open"]["url"].startswith("phonepe://pay?pa=priya.demo%40okaxis") and res["open"]["package"] == "com.phonepe.app"
+    # v0.120 PhonePe refuses payment links to a person: the app opens without a link, the phone copies the UPI ID
+    assert res["open"]["kind"] == "upi_copy" and res["open"]["vpa"] == "priya.demo@okaxis" and res["open"]["package"] == "com.phonepe.app"
+    r2 = svc.run("default", conv, "paytm", "send_money", {"to": "Priya", "amount_rupees": 500, "note": "dinner"})
+    res2 = svc.decide("default", r2["approval_id"], "approve")
+    assert res2["open"]["url"].startswith("paytmmp://pay?pa=priya.demo%40okaxis") and res2["open"]["package"] == "net.one97.paytm"
     with pytest.raises(Exception):
         svc.add_contact("default", "Bad", upi_id="not-a-vpa")
 
