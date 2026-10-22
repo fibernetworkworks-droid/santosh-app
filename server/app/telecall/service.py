@@ -439,7 +439,7 @@ def add_lead(tenant: str, name: str = "", phone: str = "", source: str = "enquir
         if need:
             l.need = _tidy(need, 600)
         if notes:
-            l.notes = (l.notes + ("\n" if l.notes else "") + _tidy(notes, 600)).strip()
+            l.notes = ((l.notes or "") + ("\n" if l.notes else "") + _tidy(notes, 600)).strip()
         if city:
             l.city = _tidy(city, 60)
         if language:

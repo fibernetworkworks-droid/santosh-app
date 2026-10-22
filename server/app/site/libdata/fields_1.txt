@@ -1,0 +1,262 @@
+# Field cards, part 1. Line: id|English|aliases (Hinglish, spellings)|Hindi|Marathi (when different)|options
+# Industry header: "## <industry id>". Options: goal=<goal>, legal=<flag>+<flag>, cta=<cta>, style=<style>.
+## food_shop
+sweet_shop|Sweet shop|mithai dukaan,mithai shop,halwai,sweets,mithaiwala,mithai wala,sweet mart,mithai bhandar|मिठाई की दुकान|मिठाईचे दुकान|style=festive_traditional
+bakery|Bakery|bakery shop,bekri,cake shop,bread shop,cakes,pastry shop|बेकरी||
+cake_studio|Home cake studio|home baker,cake order,custom cakes,birthday cake,homemade cakes,cake wali|केक स्टूडियो||goal=enquiry
+dry_fruits|Dry fruits shop|dry fruit,mewa,meva,kaju badam,dryfruits store|मेवा की दुकान|सुकामेवा दुकान|
+kirana|Kirana / grocery store|kirana store,grocery,general store,provision store,ration shop,kirana dukaan,किराना|किराना दुकान|किराणा दुकान|
+supermarket|Supermarket|mart,super market,mini mart,departmental store,hypermarket|सुपरमार्केट||
+dairy_shop|Dairy & milk shop|dairy,doodh dairy,milk shop,paneer shop,dudh dairy,doodh wala|डेयरी|दूध डेअरी|
+vegetable_shop|Fruit & vegetable shop|sabzi wala,sabji shop,fruits shop,phal sabzi,vegetable vendor|फल सब्ज़ी की दुकान|भाजीपाला दुकान|
+spice_shop|Masala & spices shop|masala shop,spices,garam masala,masale,masala udyog|मसाला दुकान|मसाले दुकान|legal=fssai+legal_metrology
+namkeen|Namkeen & farsan shop|farsan,namkeen shop,chivda,snacks shop,farsan mart|नमकीन की दुकान|फरसाण दुकान|
+tea_shop|Tea & coffee powder shop|chai patti,tea leaves,tea stall supplies,coffee powder|चाय पत्ती दुकान|चहा पावडर दुकान|
+ice_cream_parlour|Ice cream parlour|icecream,ice cream shop,kulfi,gelato,softy|आइसक्रीम पार्लर||
+juice_centre|Juice centre|juice shop,juice bar,sugarcane juice,ganna juice,shake shop|जूस सेंटर|रसवंती|
+chocolate_maker|Chocolate maker|handmade chocolates,chocolate shop,homemade chocolate|चॉकलेट मेकर||goal=enquiry
+pickle_maker|Pickle & papad maker|achar,achaar,pickles,papad,lonche,homemade pickle|अचार पापड़|लोणचे पापड|
+organic_store|Organic food store|organic shop,natural food,millets store,organic grocery|ऑर्गेनिक स्टोर||legal=fssai+dmr
+meat_shop|Meat & chicken shop|chicken shop,mutton shop,meat shop,fish market,machhi,halal meat|मीट की दुकान|मटण चिकन दुकान|
+egg_shop|Egg wholesale & retail|anda,eggs,egg centre,ande wala|अंडा केंद्र|अंडी केंद्र|
+honey_seller|Honey seller|shahad,madh,pure honey,honey brand|शहद विक्रेता|मध विक्रेता|legal=fssai+dmr
+ghee_maker|Ghee & dairy products maker|desi ghee,bilona ghee,ghee shop,tup|घी निर्माता|तूप|legal=fssai+dmr
+millet_brand|Millet products brand|millets,jowar bajra,ragi,shree anna,millet snacks|मिलेट उत्पाद||
+bread_supplier|Bread & pav supplier|pav,bread supply,laadi pav,bakery supply|पाव सप्लायर||goal=enquiry
+mithai_gift|Festive gift hampers|gift hamper,diwali hamper,sweets box,corporate gifts sweets|मिठाई गिफ्ट हैम्पर||goal=enquiry style=festive_traditional
+water_supplier|Drinking water supplier|water jar,20 litre jar,mineral water,pani supply,bisleri supply|पानी सप्लायर||goal=enquiry
+paan_shop|Paan shop|paan,pan shop,meetha paan,paan corner|पान की दुकान|पान टपरी|
+## restaurant
+restaurant|Restaurant|hotel,family restaurant,dhaba,khana,restro,restaurent,resturant|रेस्टोरेंट|हॉटेल|
+cafe|Cafe|coffee shop,caffe,cafe shop,coffee house,kafe|कैफ़े||style=editorial_calm
+dhaba|Dhaba|highway dhaba,punjabi dhaba,dhaaba|ढाबा||style=warm_local
+fine_dining|Fine dining restaurant|fine dine,premium restaurant,lounge restaurant|फाइन डाइनिंग||style=luxury_dark
+south_indian|South Indian restaurant|dosa centre,idli,udupi,dosa corner,south indian hotel|साउथ इंडियन रेस्टोरेंट||
+thali_restaurant|Thali restaurant|thali,gujarati thali,rajasthani thali,maharashtrian thali,bhojanalay|थाली रेस्टोरेंट|भोजनालय|
+fast_food|Fast food corner|fast food,burger shop,pizza corner,momos,chinese corner|फ़ास्ट फ़ूड||style=bold_modern
+street_food|Street food stall|chaat,pani puri,vada pav,bhel,street food,thela|स्ट्रीट फ़ूड|वडापाव गाडी|style=playful_bright
+pizza_place|Pizza place|pizza shop,pizzeria,pizza outlet|पिज़्ज़ा||
+biryani_house|Biryani house|biryani,biryani centre,dum biryani|बिरयानी हाउस||
+chinese_restaurant|Chinese restaurant|chinese,indo chinese,noodles,manchurian|चाइनीज़ रेस्टोरेंट||
+bar_restaurant|Family restaurant & lounge|lounge,rooftop restaurant,family lounge|लाउंज रेस्टोरेंट||style=luxury_dark
+tea_stall|Tea stall / chai point|chai tapri,tea stall,chai wala,amrutulya,tapri|चाय की दुकान|चहा टपरी|style=warm_local
+food_truck|Food truck|food van,truck food,mobile kitchen|फ़ूड ट्रक||style=bold_modern
+breakfast_point|Breakfast point|nashta centre,poha,misal pav,nashta,breakfast corner|नाश्ता केंद्र|नाश्ता सेंटर|
+misal_house|Misal house|misal,misal pav,kolhapuri misal|मिसळ हाउस|मिसळ घर|style=warm_local
+seafood_restaurant|Seafood restaurant|fish restaurant,malvani,konkani food,seafood|सीफ़ूड रेस्टोरेंट||
+veg_restaurant|Pure veg restaurant|pure veg,shudh shakahari,jain food,veg hotel|शुद्ध शाकाहारी रेस्टोरेंट||
+bakery_cafe|Bakery cafe|bake house,bakery cafe,patisserie|बेकरी कैफ़े||style=editorial_calm
+dessert_parlour|Dessert parlour|desserts,waffles,falooda,dessert cafe|डेज़र्ट पार्लर||style=playful_bright
+mess|Mess / bhojanalaya|mess,khanaval,monthly mess,student mess,bhojanalaya|मेस|खानावळ|goal=menu_order
+cloud_kitchen|Cloud kitchen|delivery kitchen,online kitchen,ghost kitchen|क्लाउड किचन||
+canteen|Canteen|office canteen,college canteen,canteen service|कैंटीन||goal=enquiry
+rooftop_cafe|Rooftop cafe|rooftop,terrace cafe|रूफ़टॉप कैफ़े||style=luxury_dark
+juice_cafe|Healthy bowls & juice cafe|salad bar,smoothie bowl,healthy cafe|हेल्दी कैफ़े||style=organic_natural
+## food_maker
+caterer|Caterer|catering,caterers,wedding catering,party catering,catering service,kettering|कैटरर|केटरिंग|
+tiffin_service|Tiffin service|dabba,tiffin,dabbawala,lunch box,home food delivery,ghar ka khana|टिफ़िन सेवा|डबा सेवा|goal=menu_order
+home_chef|Home chef|home food,homemade food,ghar ka khana,home kitchen|होम शेफ़||goal=menu_order style=warm_local
+party_orders|Party food orders|party order,bulk food,snacks for party|पार्टी ऑर्डर||
+sweets_maker|Sweets manufacturer|mithai factory,sweets wholesale,peda maker|मिठाई निर्माता||goal=catalogue
+snacks_brand|Packaged snacks brand|chips brand,snacks manufacturer,packaged namkeen|स्नैक्स ब्रांड||goal=catalogue legal=fssai+legal_metrology
+spice_brand|Spice brand|masala brand,spice manufacturer,masala udyog|मसाला ब्रांड||goal=catalogue legal=fssai+legal_metrology
+dairy_farm_products|Dairy products maker|paneer maker,khoa,curd supply,dahi|डेयरी उत्पाद||goal=catalogue
+bakery_supplier|Bakery wholesale supplier|bakery wholesale,biscuits supplier,toast supplier|बेकरी सप्लायर||goal=catalogue
+jam_maker|Jams & preserves maker|jam,murabba,preserves,squash|जैम मुरब्बा||goal=catalogue legal=fssai+legal_metrology
+ready_to_cook|Ready-to-cook foods|ready mix,instant mix,rtc,premix|रेडी टू कुक||goal=catalogue legal=fssai+legal_metrology
+cake_wholesale|Cake wholesale|cake supplier,bakery cakes wholesale|केक होलसेल||
+modak_maker|Festival sweets maker|modak,ukadiche modak,ganesh prasad,karanji|मोदक निर्माता|मोदक|style=festive_traditional
+puran_poli|Puran poli & traditional foods|puran poli,ladoo maker,chakli,traditional food|पूरन पोली|पुरणपोळी|style=warm_local
+diet_meals|Diet meal plans|diet food,healthy tiffin,calorie meals,keto meals|डाइट मील्स||legal=fssai+dmr
+corporate_meals|Corporate meals supplier|office lunch,corporate catering,bulk lunch|कॉर्पोरेट भोजन||
+event_food_stalls|Live counters for events|live counter,chaat counter,dosa counter,live food|लाइव काउंटर||
+prasad_maker|Prasad & bhog maker|prasad,bhog,mandir prasad|प्रसाद निर्माता||style=festive_traditional
+ice_supplier|Ice factory|ice factory,ice supply,barf|बर्फ़ फ़ैक्टरी||
+flour_mill|Flour mill (chakki)|atta chakki,flour mill,pithachi girni,chakki|आटा चक्की|पिठाची गिरणी|goal=enquiry
+oil_mill|Cold-pressed oil mill|ghani oil,kachi ghani,cold pressed oil,lakdi ghana|कोल्ड प्रेस्ड तेल|घाणा तेल|goal=catalogue legal=fssai+dmr
+rice_mill|Rice mill|rice mill,chawal,rice traders|चावल मिल||goal=catalogue
+sugarcane_jaggery|Jaggery maker|gud,jaggery,gul,organic jaggery|गुड़ निर्माता|गूळ|goal=catalogue
+beverage_brand|Beverage brand|soda,sharbat,drinks brand,syrup|पेय ब्रांड||goal=catalogue legal=fssai+legal_metrology
+pet_food_maker|Pet food maker|dog food,pet treats|पेट फ़ूड||goal=catalogue
+## fashion
+saree_shop|Saree shop|saree,sari,saree centre,paithani,banarasi,saree emporium|साड़ी की दुकान|साडी दुकान|style=festive_traditional
+boutique|Boutique|designer boutique,ladies boutique,butik,boutique shop|बुटीक||style=editorial_calm
+mens_wear|Men's wear|gents wear,mens clothing,shirts pants,mens shop|पुरुष परिधान||
+kids_wear|Kids wear|baby clothes,kids clothing,children wear|बच्चों के कपड़े||style=playful_bright
+ethnic_wear|Ethnic wear|kurti,salwar suit,lehenga,ethnic store,dress material|एथनिक वियर||style=festive_traditional
+bridal_wear|Bridal wear|bridal lehenga,wedding dress,dulhan,bridal collection|ब्राइडल वियर||style=luxury_dark
+sherwani|Sherwani & groom wear|sherwani,groom wear,dulha,wedding suit|शेरवानी||style=luxury_dark
+footwear|Footwear shop|shoes,chappal,footwear,sandals,juta|जूते-चप्पल की दुकान|चप्पल दुकान|
+jewellery|Jewellery shop|jewellers,sonar,gold shop,jewelry,jewellary,sarafa|ज्वेलरी शॉप|सोनार|style=luxury_dark
+artificial_jewellery|Artificial jewellery|imitation jewellery,fashion jewellery,oxidised,one gram gold|आर्टिफ़िशियल ज्वेलरी||
+bags|Bags & luggage|bag shop,luggage,purses,handbags|बैग शॉप||
+handloom|Handloom store|khadi,handloom,cotton saree,weaver products|हथकरघा|हातमाग|style=organic_natural
+uniform_maker|Uniform maker|school uniform,uniforms,corporate uniform|यूनिफ़ॉर्म निर्माता||goal=enquiry
+tailor_fashion|Designer tailor|ladies tailor,designer stitching,blouse designer|डिज़ाइनर टेलर||goal=portfolio
+denim_brand|Clothing brand (D2C)|clothing brand,tshirt brand,apparel brand,streetwear|क्लोदिंग ब्रांड||style=bold_modern
+innerwear|Innerwear & lingerie store|innerwear,undergarments,hosiery|इनरवियर||
+sportswear|Sportswear|sports clothing,track suits,gym wear|स्पोर्ट्सवियर||style=bold_modern
+fabric_shop|Fabric / cloth shop|kapda dukaan,cloth store,fabrics,suiting shirting|कपड़े की दुकान|कापड दुकान|
+hosiery|Hosiery wholesale|hosiery,socks,vests wholesale|होज़री||goal=catalogue
+watch_shop|Watch shop|watches,ghadi,watch store|घड़ी की दुकान|घड्याळ दुकान|
+optical_fashion|Eyewear store|specs,chashma,sunglasses,eyewear|चश्मे की दुकान|चष्मा दुकान|
+rental_costumes|Costume & dress rental|costume rental,dress on rent,fancy dress|ड्रेस किराया||goal=enquiry
+thrift_store|Pre-owned fashion store|thrift,second hand clothes,preloved|थ्रिफ़्ट स्टोर||style=playful_bright
+custom_tshirts|Custom t-shirt printing|tshirt printing,custom print,printed tees|कस्टम टी-शर्ट||goal=enquiry style=bold_modern
+silver_jewellery|Silver jewellery|chandi,silver ornaments,silver shop|चांदी के आभूषण|चांदी|style=luxury_dark
+## electronics
+mobile_shop|Mobile phone shop|mobile shop,phone shop,mobile store,smartphones,mobile gallery|मोबाइल शॉप||
+electronics_store|Electronics store|electronics,tv fridge,home appliances,electronic shop|इलेक्ट्रॉनिक्स स्टोर||
+computer_shop|Computer & laptop shop|laptop shop,computer store,pc shop,computers|कंप्यूटर शॉप||style=tech_gradient
+furniture|Furniture store|furniture,sofa,bed,furniture showroom,furniture shop|फ़र्नीचर शोरूम|फर्निचर|style=editorial_calm
+home_decor|Home decor store|decor,home decor,showpieces,curtains|होम डेकोर||style=editorial_calm
+lighting|Lighting & fans store|lights,led lights,jhoomar,fans shop|लाइटिंग शॉप||
+kitchenware|Kitchenware & utensils|bartan,utensils,steel shop,kitchen items|बर्तन की दुकान|भांडी दुकान|
+hardware|Hardware store|hardware,tools shop,paint hardware,sanitary|हार्डवेयर स्टोर||
+paint_shop|Paint shop|paints,colour shop,paint dealer|पेंट की दुकान||
+sanitaryware|Sanitaryware & tiles|tiles,bathroom fittings,sanitary,marble|सैनिटरीवेयर टाइल्स||
+mattress|Mattress store|gadda,mattress,bedding|गद्दा स्टोर|गादी|
+cctv_dealer|CCTV dealer|cctv,security cameras,camera installation|सीसीटीवी डीलर||goal=enquiry style=tech_gradient
+solar_dealer|Solar dealer|solar panels,solar installation,rooftop solar,solar water heater|सोलर डीलर||goal=enquiry style=tech_gradient
+inverter_battery|Inverter & battery shop|inverter,battery,ups,battery shop|इन्वर्टर बैटरी||
+ac_dealer|AC & cooling dealer|ac dealer,air conditioner,cooler shop|एसी डीलर||
+appliance_showroom|Appliance showroom|washing machine,refrigerator,microwave,appliances|अप्लायंस शोरूम||
+gaming_store|Gaming & accessories|gaming,consoles,mobile accessories,gadgets|गेमिंग स्टोर||style=bold_modern
+camera_store|Camera store|camera shop,dslr,photo equipment|कैमरा स्टोर||
+music_instruments|Musical instruments shop|harmonium,guitar shop,tabla,instruments|वाद्य यंत्र||
+modular_kitchen|Modular kitchen showroom|modular kitchen,kitchen trolley,wardrobe|मॉड्यूलर किचन||goal=portfolio
+glass_aluminium|Glass & aluminium works|glass work,aluminium windows,glass shop|ग्लास एल्युमिनियम||goal=portfolio
+water_purifier|Water purifier dealer|ro,water purifier,ro service|वॉटर प्यूरीफ़ायर||goal=enquiry
+electrical_shop|Electrical goods shop|electricals,wires,switches,electric shop|इलेक्ट्रिकल शॉप||
+refurbished_phones|Refurbished phones|second hand mobile,used phones,refurbished|रीफ़र्बिश्ड फ़ोन||
+ev_showroom|Electric scooter showroom|ev,electric scooter,e bike,electric vehicle|इलेक्ट्रिक स्कूटर||style=tech_gradient
+## retail
+stationery|Stationery shop|stationary,books stationery,pen shop,school supplies|स्टेशनरी||style=playful_bright
+book_shop|Book shop|books,bookstore,pustak bhandar,book depot|किताबों की दुकान|पुस्तक दुकान|style=editorial_calm
+gift_shop|Gift shop|gifts,gift gallery,gift centre,return gifts|गिफ़्ट शॉप||style=playful_bright
+toy_shop|Toy shop|toys,khilone,toy store|खिलौनों की दुकान|खेळणी दुकान|style=playful_bright
+florist|Florist|flower shop,phool,bouquet,flowers,phoolwala|फूलों की दुकान|फुलांचे दुकान|style=organic_natural
+cosmetics|Cosmetics shop|cosmetic,beauty products,makeup shop|कॉस्मेटिक्स||
+puja_samagri|Puja samagri store|pooja items,puja samagri,agarbatti,diya|पूजा सामग्री|पूजा साहित्य|style=festive_traditional
+general_store|General store|general store,variety store,fancy store|जनरल स्टोर||
+pharmacy_store|Medical store|chemist,medical shop,pharmacy,medicals,dawai dukaan|मेडिकल स्टोर|औषध दुकान|legal=pharmacy goal=enquiry
+optician|Optician|optical,optics,eye glasses,chashma ghar|ऑप्टिशियन||
+sports_shop|Sports goods shop|sports shop,cricket bat,sports goods|स्पोर्ट्स शॉप||style=bold_modern
+plastics_store|Plastic & household store|plastic items,household,storage boxes|प्लास्टिक स्टोर||
+pet_store|Pet store|pet shop,dog food shop,aquarium shop|पेट स्टोर||style=playful_bright
+nursery_plants|Plant nursery|plants,nursery,garden centre,podhe|पौधों की नर्सरी|रोपवाटिका|style=organic_natural
+art_supplies|Art supplies store|art material,craft store,painting supplies|आर्ट सप्लाई||style=playful_bright
+second_hand_books|Second-hand books|old books,used books,raddi books|पुरानी किताबें||
+perfume_shop|Perfume & attar shop|attar,itra,perfume,fragrance|इत्र की दुकान||style=luxury_dark
+religious_books|Religious books & items|dharmik pustak,religious items|धार्मिक पुस्तकें||style=festive_traditional
+party_supplies|Party supplies shop|balloons,party decoration items,birthday items|पार्टी सप्लाई||style=playful_bright
+crockery|Crockery & gift items|crockery,dinner set,glassware|क्रॉकरी||
+mobile_accessories|Mobile accessories|covers,chargers,earphones,accessories|मोबाइल एक्सेसरीज़||
+xerox_stationery|Xerox & print shop|xerox,photocopy,print,lamination|ज़ेरॉक्स||goal=enquiry
+e_store|Online store (D2C)|online shop,d2c brand,instagram store|ऑनलाइन स्टोर||style=bold_modern
+fireworks|Fireworks shop (licensed)|fatake,crackers,fireworks|पटाखों की दुकान|फटाके|style=festive_traditional
+rangoli_colours|Rangoli & festival items|rangoli,colours,festival items,akash kandil|रंगोली सामग्री|रांगोळी|style=festive_traditional
+## clinic
+general_physician|General physician|doctor,family doctor,gp,dawakhana,clinic,doctor saheb|सामान्य चिकित्सक|दवाखाना|
+dentist|Dental clinic|dentist,dental,dant doctor,teeth clinic,dental care|डेंटल क्लिनिक|दंतवैद्य|legal=dci
+pediatrician|Child specialist|pediatrician,bachon ka doctor,kids doctor|बाल रोग विशेषज्ञ|बालरोगतज्ज्ञ|
+gynecologist|Gynaecologist|gynac,gynecologist,maternity,lady doctor|स्त्री रोग विशेषज्ञ|स्त्रीरोगतज्ज्ञ|legal=nmc+pcpndt
+eye_hospital|Eye clinic|eye doctor,netralaya,ophthalmologist,eye hospital|नेत्र चिकित्सालय|नेत्रालय|
+skin_clinic|Skin clinic|dermatologist,skin doctor,hair clinic,skin care|त्वचा क्लिनिक||legal=nmc+dmr
+ortho_clinic|Orthopaedic clinic|ortho,bone doctor,haddi doctor,joint pain clinic|हड्डी रोग क्लिनिक||
+ent_clinic|ENT clinic|ent,nose throat ear,naak kaan gala|ईएनटी क्लिनिक||
+ayurveda|Ayurvedic clinic|ayurveda,vaidya,ayurvedic doctor,panchakarma|आयुर्वेदिक क्लिनिक|आयुर्वेद|legal=nmc+dmr style=organic_natural
+homeopathy|Homeopathy clinic|homeopath,homeopathic,homoeopathy|होम्योपैथी क्लिनिक||legal=nmc+dmr style=organic_natural
+hospital|Hospital|multispeciality,nursing home,hospital,aspatal|अस्पताल|रुग्णालय|style=corporate_trust
+maternity_home|Maternity home|maternity,delivery hospital,prasuti griha|प्रसूति गृह||legal=nmc+pcpndt
+cardiologist|Heart clinic|cardiologist,heart doctor,cardiac|हृदय रोग क्लिनिक||
+diabetes_clinic|Diabetes clinic|diabetologist,sugar doctor,diabetes care|मधुमेह क्लिनिक||legal=nmc+dmr
+psychiatrist|Mental health clinic|psychiatrist,psychologist,counsellor,therapy|मानसिक स्वास्थ्य क्लिनिक||style=organic_natural
+ivf_centre|Fertility centre|ivf,fertility,test tube baby|फ़र्टिलिटी सेंटर||legal=nmc+pcpndt style=organic_natural
+child_hospital|Children's hospital|kids hospital,nicu,child care hospital|बाल चिकित्सालय||
+vet_clinic|Veterinary clinic|vet,pet doctor,animal hospital,janwar doctor|पशु चिकित्सालय|पशुवैद्य|legal=vet
+siddha_unani|Unani / Siddha clinic|unani,hakim,siddha|यूनानी क्लिनिक||legal=nmc+dmr
+neuro_clinic|Neurology clinic|neurologist,nerve doctor,brain doctor|न्यूरोलॉजी क्लिनिक||
+urology_clinic|Urology clinic|urologist,kidney stone,urology|यूरोलॉजी क्लिनिक||
+gastro_clinic|Gastro clinic|gastroenterologist,stomach doctor,pet ka doctor|गैस्ट्रो क्लिनिक||
+cancer_clinic|Oncology clinic|oncologist,cancer doctor,chemo|कैंसर क्लिनिक||legal=nmc+dmr
+day_care_surgery|Day-care surgery centre|surgery centre,daycare surgery,laparoscopy|डे-केयर सर्जरी||
+polyclinic|Polyclinic|poly clinic,multi doctor clinic|पॉलीक्लिनिक||style=corporate_trust
+## health_allied
+pathology_lab|Pathology lab|lab,blood test,pathology,diagnostic lab,test centre|पैथोलॉजी लैब|प्रयोगशाळा|
+diagnostic_centre|Diagnostic & imaging centre|sonography,x ray,mri,ct scan,diagnostic centre|डायग्नोस्टिक सेंटर||legal=nmc+pcpndt
+physiotherapy|Physiotherapy clinic|physio,physiotherapist,back pain therapy|फ़िज़ियोथेरेपी||goal=booking
+pharmacy_chain|Pharmacy|medical store,chemist shop,generic medicine,jan aushadhi style|फ़ार्मेसी||legal=pharmacy goal=enquiry
+optometrist|Optometrist / eye test|eye test,optometry,specs centre|ऑप्टोमेट्रिस्ट||
+hearing_aid|Hearing aid centre|hearing aid,audiologist,kaan ki machine|श्रवण यंत्र केंद्र||
+dental_lab|Dental lab|dental lab,crown bridge,denture lab|डेंटल लैब||goal=enquiry legal=dci
+nursing_care|Home nursing service|home nurse,patient care,attendant,elder care|होम नर्सिंग||goal=enquiry
+ambulance|Ambulance service|ambulance,emergency vehicle,108 private|एम्बुलेंस सेवा||goal=enquiry cta=call
+blood_bank|Blood bank|blood bank,blood donation|ब्लड बैंक||goal=info
+rehab_centre|Rehabilitation centre|rehab,de addiction,rehabilitation|पुनर्वास केंद्र||goal=enquiry style=organic_natural
+dietician|Dietician / nutritionist|dietitian,nutritionist,diet plan|डाइटीशियन||legal=dmr+gym style=organic_natural
+speech_therapy|Speech therapy|speech therapist,stammering,autism therapy|स्पीच थेरेपी||
+occupational_therapy|Occupational therapy|ot,child therapy,sensory therapy|ऑक्यूपेशनल थेरेपी||
+medical_equipment|Medical equipment supplier|surgical items,hospital equipment,wheelchair|मेडिकल उपकरण||goal=catalogue
+yoga_therapy|Yoga therapy|therapeutic yoga,yoga therapist|योग थेरेपी||legal=dmr style=organic_natural
+acupressure|Acupressure & alternative therapy|acupressure,acupuncture,cupping|एक्यूप्रेशर||legal=dmr style=organic_natural
+sleep_clinic|Sleep clinic|sleep study,snoring clinic|स्लीप क्लिनिक||
+health_checkup|Health check-up packages|full body checkup,health package,preventive check|हेल्थ चेकअप||
+blood_collection|Home blood collection|home sample,home collection,lab at home|होम ब्लड कलेक्शन||
+pharma_distributor|Pharma distributor|medicine wholesale,pharma agency,dawai distributor|दवा वितरक||goal=catalogue legal=pharmacy
+ayurvedic_products|Ayurvedic products brand|ayurvedic products,herbal products,churan|आयुर्वेदिक उत्पाद||goal=catalogue legal=dmr+legal_metrology
+surgical_store|Surgical store|surgical shop,bandage,medical supplies|सर्जिकल स्टोर||goal=catalogue
+elder_care|Elder care centre|old age home,senior care,vridh ashram,assisted living|वृद्ध देखभाल केंद्र||goal=enquiry style=organic_natural
+mental_wellness|Counselling centre|counselling,counsellor,therapy centre|परामर्श केंद्र||style=organic_natural
+## wellness
+gym|Gym|gym,fitness centre,jim,health club,workout|जिम||style=bold_modern
+yoga_studio|Yoga studio|yoga classes,yoga centre,yog|योग स्टूडियो|योग वर्ग|style=organic_natural
+zumba|Zumba & dance fitness|zumba,aerobics,dance workout|ज़ुम्बा||style=playful_bright
+spa|Spa|spa,massage,body spa,wellness spa|स्पा||style=luxury_dark
+crossfit|Functional training studio|crossfit,functional training,hiit|फ़ंक्शनल ट्रेनिंग||style=bold_modern
+personal_trainer|Personal trainer|pt,fitness trainer,home trainer|पर्सनल ट्रेनर||goal=personal
+pilates|Pilates studio|pilates,reformer|पिलेट्स स्टूडियो||style=minimal_swiss
+meditation|Meditation centre|meditation,dhyan,mindfulness|ध्यान केंद्र||style=organic_natural
+martial_arts|Martial arts academy|karate,taekwondo,kung fu,self defence|मार्शल आर्ट्स||goal=admissions
+swimming|Swimming classes|swimming pool,swimming classes,taran talav|स्विमिंग क्लास|पोहण्याचे वर्ग|
+naturopathy|Naturopathy centre|nature cure,naturopathy,prakritik chikitsa|प्राकृतिक चिकित्सा||legal=dmr style=organic_natural
+wellness_retreat|Wellness retreat|retreat,detox retreat,wellness resort|वेलनेस रिट्रीट||style=luxury_dark
+womens_gym|Ladies gym|ladies gym,women fitness|महिला जिम||
+kids_fitness|Kids fitness & gymnastics|gymnastics,kids fitness|बच्चों का फ़िटनेस||style=playful_bright
+sports_nutrition|Supplements store|supplements,protein,whey|सप्लीमेंट स्टोर||goal=catalogue legal=dmr+gym
+physio_sports|Sports injury clinic|sports physio,injury rehab|स्पोर्ट्स इंजरी||legal=nmc
+steam_sauna|Steam & sauna|sauna,steam bath|स्टीम सौना||
+boxing|Boxing club|boxing,kickboxing,mma|बॉक्सिंग क्लब||style=bold_modern
+online_coach|Online fitness coach|online coaching,fitness coach,transformation coach|ऑनलाइन फ़िटनेस कोच||goal=personal
+cycling_club|Cycling club|cycling group,cycle club|साइक्लिंग क्लब||goal=info
+laughter_club|Laughter yoga club|laughter club,hasya yog|हास्य योग||goal=info
+weight_loss|Weight management centre|weight loss,slimming,fat loss|वज़न प्रबंधन||legal=gym+dmr
+reiki|Reiki & energy healing|reiki,healing,pranic healing|रेकी||legal=astro+dmr style=organic_natural
+massage_therapy|Massage therapy|massage,ayurvedic massage,abhyanga|मसाज थेरेपी||
+senior_fitness|Senior citizens fitness|senior yoga,elder fitness|वरिष्ठ फ़िटनेस||style=organic_natural
+## beauty
+salon|Salon|hair salon,unisex salon,saloon,salon shop|सैलून||
+beauty_parlour|Beauty parlour|parlour,ladies parlour,beauty parlor,parlar|ब्यूटी पार्लर||style=editorial_calm
+mens_salon|Men's salon|barber,nai,hair cutting,gents parlour|पुरुष सैलून|न्हावी|style=bold_modern
+makeup_artist|Makeup artist|mua,bridal makeup,makeup artist|मेकअप आर्टिस्ट||goal=portfolio style=luxury_dark
+mehendi_artist|Mehendi artist|mehndi,henna,bridal mehendi|मेहंदी आर्टिस्ट||goal=portfolio style=festive_traditional
+nail_studio|Nail studio|nail art,nail extensions,nails|नेल स्टूडियो||style=playful_bright
+tattoo_studio|Tattoo studio|tattoo,tatoo,body art|टैटू स्टूडियो||goal=portfolio style=bold_modern
+skin_care_studio|Skin care studio|facial,cleanup,skin studio|स्किन केयर स्टूडियो||legal=dmr
+hair_studio|Hair studio|hair colour,hair spa,keratin,smoothening|हेयर स्टूडियो||
+bridal_studio|Bridal studio|bridal makeup studio,bride package|ब्राइडल स्टूडियो||goal=portfolio style=luxury_dark
+threading|Threading & waxing parlour|threading,waxing,eyebrow|थ्रेडिंग वैक्सिंग||
+beauty_academy|Beauty academy|beautician course,makeup course,parlour course|ब्यूटी अकादमी||goal=admissions
+hair_wigs|Hair patches & wigs|hair patch,wig,hair replacement|हेयर पैच||legal=dmr
+saree_draping|Saree draping artist|saree draping,nauvari draping|साड़ी ड्रेपिंग|नऊवारी|goal=portfolio style=festive_traditional
+eyelash|Lash & brow studio|eyelash extensions,microblading,brows|लैश स्टूडियो||
+home_salon|Salon at home|home beauty service,parlour at home|घर पर सैलून||goal=enquiry
+grooming_kids|Kids haircut studio|kids salon,baby haircut|बच्चों का सैलून||style=playful_bright
+spa_salon|Spa & salon|spa salon,family salon|स्पा सैलून||style=luxury_dark
+cosmetology|Cosmetology clinic|cosmetologist,laser hair removal,aesthetic clinic|कॉस्मेटोलॉजी क्लिनिक||legal=nmc+dmr
+perfumery|Perfume maker|perfume brand,attar maker|परफ़्यूम निर्माता||goal=catalogue style=luxury_dark
+beauty_products_brand|Beauty products brand|skincare brand,herbal cosmetics,soap maker|ब्यूटी प्रोडक्ट ब्रांड||goal=catalogue legal=dmr+legal_metrology
+barber_academy|Barber academy|hair cutting course,barber training|बार्बर अकादमी||goal=admissions
+nail_academy|Nail art academy|nail course,nail art training|नेल आर्ट अकादमी||goal=admissions
+hairstylist|Freelance hairstylist|hair stylist,hairdresser|हेयर स्टाइलिस्ट||goal=personal
+image_consultant|Image consultant|styling,personal stylist,grooming coach|इमेज कंसल्टेंट||goal=personal

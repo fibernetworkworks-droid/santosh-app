@@ -298,6 +298,8 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _askForms = {}; // v0.97 form cards, updated in place when answered / closed
   int lekhakTick = 0;                          // bumps on any lekhak event (the Lekhak screen refreshes)
   int brandTick = 0;                           // v0.118 bumps on brand events (Brand screen refreshes)
+  int siteTick = 0;                            // v0.121 bumps on website events (Website screens refresh)
+  final Map<String, FeedItem> _siteCards = {}; // v0.121 one card per website, updated in place
   final Map<String, FeedItem> _brandCards = {}; // v0.118 one card per design, updated in place
   int adsTick = 0;                             // v0.108 bumps on ads events (the Ads screen refreshes)
   final Map<String, FeedItem> _adsPlans = {};   // v0.108 one card per budget plan, changes updated in place
@@ -1242,6 +1244,46 @@ class Santosh extends ChangeNotifier {
           Device.instance.showNow('$aName: poster final karein?', '${bd['number'] ?? ''} ${bd['title'] ?? ''}');
         }
         brandTick++;
+        break;
+      case 'site_board':
+        final sid = '${p['id'] ?? ''}';
+        final sdata = Map<String, dynamic>.from(p);
+        final sc = _siteCards[sid];
+        if (sc != null) {
+          sc.data = sdata;
+          if (p['push'] == true) {   // a step that needs her (plan, looks) or the finished site comes back down
+            feed.remove(sc);
+            feed.add(sc);
+          }
+        } else if (sid.isNotEmpty) {
+          final it = FeedItem('site_board', sdata);
+          _siteCards[sid] = it;
+          feed.add(it);
+        }
+        if (p['push'] == true && inBackground && !_replaying && !pushOn) {
+          Device.instance.showNow('$aName: website ${p['number'] ?? ''}', '${p['say'] ?? ''}');
+        }
+        siteTick++;
+        break;
+      case 'site_launch':
+      case 'site_dns':
+      case 'site_live':
+      case 'site_down':
+      case 'site_domain':
+      case 'site_care':
+      case 'site_github':
+        feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
+        if (p['push'] == true && inBackground && !_replaying && !pushOn) {
+          Device.instance.showNow('$aName: website', '${p['say'] ?? ''}');
+        }
+        siteTick++;
+        break;
+      case 'site_lead':
+        feed.add(FeedItem('site_lead', Map<String, dynamic>.from(p)));
+        if (inBackground && !_replaying && !pushOn) {
+          Device.instance.showNow('$aName: website par enquiry', '${p['say'] ?? ''}');
+        }
+        siteTick++;
         break;
       case 'brand_idea':
         feed.add(FeedItem('brand_idea', Map<String, dynamic>.from(p)));

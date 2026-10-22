@@ -1,0 +1,209 @@
+# Field cards, part 2 (same format as part 1).
+## school
+preschool|Preschool / play school|play school,playgroup,nursery school,kindergarten,kg school|प्ले स्कूल|बालवाडी|style=playful_bright
+primary_school|Primary school|school,primary school,english medium school,shala|प्राथमिक विद्यालय|प्राथमिक शाळा|
+cbse_school|CBSE school|cbse,cbse school,central board|सीबीएसई स्कूल||
+state_board_school|State board school|ssc school,state board,marathi medium,hindi medium|राज्य बोर्ड स्कूल|मराठी शाळा|
+icse_school|ICSE school|icse,cisce|आईसीएसई स्कूल||
+international_school|International school|ib school,igcse,international|अंतरराष्ट्रीय स्कूल||style=corporate_trust
+junior_college|Junior college|11th 12th,junior college,higher secondary|जूनियर कॉलेज|कनिष्ठ महाविद्यालय|
+degree_college|Degree college|college,arts commerce science,bcom bsc|डिग्री कॉलेज|महाविद्यालय|style=corporate_trust
+engineering_college|Engineering college|engineering,btech,polytechnic|इंजीनियरिंग कॉलेज||style=corporate_trust
+nursing_college|Nursing college|nursing,gnm,anm,bsc nursing|नर्सिंग कॉलेज||
+pharmacy_college|Pharmacy college|d pharm,b pharm,pharmacy college|फ़ार्मेसी कॉलेज||
+iti|ITI / vocational institute|iti,vocational,trade course,skill institute|आईटीआई||
+residential_school|Residential school|boarding school,hostel school,ashram shala|आवासीय विद्यालय|निवासी शाळा|
+montessori|Montessori school|montessori,child centred school|मॉन्टेसरी स्कूल||style=organic_natural
+special_school|Special needs school|special school,autism school,inclusive school|विशेष विद्यालय||style=organic_natural
+sanskrit_school|Sanskrit pathshala / gurukul|gurukul,pathshala,vedic school|गुरुकुल||style=festive_traditional
+madrasa_school|Madrasa / community school|madrasa,urdu school|मदरसा||
+law_college|Law college|llb,law college|विधि महाविद्यालय||
+management_institute|Management institute|mba,pgdm,management college|प्रबंधन संस्थान||style=corporate_trust
+teacher_training|Teacher training college|bed,ded,teacher training|शिक्षक प्रशिक्षण||
+hotel_management|Hotel management institute|hotel management,ihm,culinary college|होटल मैनेजमेंट||
+fashion_institute|Fashion design institute|fashion designing course,fashion institute|फ़ैशन संस्थान||style=editorial_calm
+open_school|Study centre (open university)|distance education,open university centre,ycmou|अध्ययन केंद्र||goal=info
+school_trust|Education trust|education society,shikshan sanstha|शिक्षण संस्था|शिक्षण संस्था|goal=info
+hostel|Student hostel / PG|hostel,pg,paying guest,girls hostel,boys hostel|छात्रावास|वसतिगृह|goal=enquiry
+## coaching
+tuition_classes|Tuition classes|tuition,tution,coaching classes,home tuition,classes|ट्यूशन क्लासेस|शिकवणी|
+jee_neet|JEE / NEET coaching|iit coaching,neet coaching,medical entrance|जेईई नीट कोचिंग||
+upsc_mpsc|UPSC / MPSC coaching|ias coaching,upsc,mpsc,civil services|यूपीएससी कोचिंग||
+banking_exams|Banking & SSC coaching|bank po,ssc,railway exam,competitive exams|बैंकिंग कोचिंग||
+cat_mba|CAT / MBA coaching|cat coaching,mba entrance|कैट कोचिंग||
+spoken_english|Spoken English classes|english speaking,spoken english,communication skills|स्पोकन इंग्लिश||
+ielts|IELTS / PTE coaching|ielts,pte,toefl,study abroad english|आईईएलटीएस||
+ca_coaching|CA / CS coaching|ca foundation,cs coaching,cma|सीए कोचिंग||
+mpsc_police|Police bharti academy|police bharti,army bharti,defence academy|पुलिस भर्ती अकादमी|पोलीस भरती|style=bold_modern
+foundation_classes|Foundation classes (8-10)|ssc classes,foundation course,olympiad|फ़ाउंडेशन क्लास||
+abacus|Abacus & vedic maths|abacus,vedic maths,mental maths|अबेकस||style=playful_bright
+online_tutor|Online tutor|online classes,online tuition,live classes|ऑनलाइन ट्यूटर||goal=personal
+study_abroad|Study abroad consultant|overseas education,study visa,abroad admission|विदेश अध्ययन सलाहकार||goal=enquiry
+coding_school|Coding classes|coding for kids,programming classes,python classes|कोडिंग क्लास||style=tech_gradient
+gate_coaching|GATE coaching|gate exam,engineering services|गेट कोचिंग||
+law_entrance|Law entrance coaching|clat,law entrance|क्लैट कोचिंग||
+nda_coaching|NDA / defence coaching|nda,cds,afcat,ssb|एनडीए कोचिंग||style=bold_modern
+handwriting|Handwriting classes|handwriting improvement,calligraphy|हस्तलेखन क्लास||
+phonics|Phonics & reading classes|phonics,reading classes|फ़ोनिक्स||style=playful_bright
+german_french|Foreign language classes|german classes,french,japanese language|विदेशी भाषा क्लास||
+library_study|Study room / library|study room,reading room,self study library,abhyasika|अध्ययन कक्ष|अभ्यासिका|goal=enquiry
+career_counselling|Career counselling|career guidance,aptitude test,counselling|करियर परामर्श||goal=booking
+govt_exam_online|Online exam prep platform|test series,mock tests,online course|ऑनलाइन टेस्ट सीरीज़||style=tech_gradient
+commerce_classes|Commerce classes|accounts classes,commerce tuition,11 12 commerce|कॉमर्स क्लास||
+science_classes|Science classes|physics chemistry maths,pcm,pcb classes|साइंस क्लास||
+## skills
+music_classes|Music classes|music school,singing classes,sangeet vidyalaya|संगीत कक्षा|संगीत वर्ग|
+dance_academy|Dance academy|dance classes,kathak,bharatanatyam,hip hop,dance school|डांस अकादमी|नृत्य वर्ग|
+driving_school|Driving school|driving classes,car driving,motor training|ड्राइविंग स्कूल||goal=booking
+computer_classes|Computer classes|computer course,mscit,tally course,ms office|कंप्यूटर क्लास||
+art_classes|Drawing & painting classes|drawing classes,painting class,art school|चित्रकला कक्षा||style=playful_bright
+tailoring_classes|Tailoring classes|silai class,sewing classes,fashion stitching course|सिलाई क्लास|शिवणकाम वर्ग|
+cooking_classes|Cooking classes|cooking course,baking classes|कुकिंग क्लास||
+guitar_classes|Guitar & keyboard classes|guitar,keyboard,piano classes|गिटार क्लास||
+tabla_classes|Tabla & harmonium classes|tabla,harmonium,classical music|तबला क्लास||style=festive_traditional
+chess_academy|Chess academy|chess classes,chess coaching|शतरंज अकादमी|बुद्धिबळ|
+photography_course|Photography course|photography classes,camera course|फ़ोटोग्राफ़ी कोर्स||
+acting_school|Acting school|acting classes,theatre workshop,drama|अभिनय स्कूल||style=bold_modern
+public_speaking|Public speaking coach|public speaking,anchoring course|पब्लिक स्पीकिंग||goal=personal
+digital_marketing_course|Digital marketing course|digital marketing training,seo course|डिजिटल मार्केटिंग कोर्स||style=tech_gradient
+animation_institute|Animation & VFX institute|animation course,vfx,graphic design course|एनीमेशन संस्थान||style=tech_gradient
+beautician_course|Beautician course|beauty course,parlour training|ब्यूटीशियन कोर्स||
+mehendi_classes|Mehendi classes|mehndi course,henna classes|मेहंदी क्लास||style=festive_traditional
+craft_workshops|Craft workshops|diy workshop,craft classes,resin art|क्राफ़्ट वर्कशॉप||style=playful_bright
+calligraphy|Calligraphy studio|calligraphy,lettering|कैलीग्राफ़ी||style=editorial_calm
+robotics_lab|Robotics & STEM lab|robotics,stem,tinkering lab|रोबोटिक्स लैब||style=tech_gradient
+pottery_studio|Pottery studio|pottery classes,clay workshop|पॉटरी स्टूडियो||style=organic_natural
+skating|Skating classes|skating,roller skating|स्केटिंग||style=playful_bright
+singing_coach|Vocal coach|singing teacher,vocal training|गायन प्रशिक्षक||goal=personal
+yoga_teacher_training|Yoga teacher training|ttc,yoga course,yoga certification|योग शिक्षक प्रशिक्षण||style=organic_natural
+nursing_assistant_course|Healthcare skill course|patient care course,gda,nursing assistant|हेल्थकेयर कोर्स||
+## home_services
+plumber|Plumber|plumbing,nal fitting,plumber service,leakage|प्लंबर||
+electrician|Electrician|electric work,wiring,bijli mistri,electrician service|इलेक्ट्रीशियन|वायरमन|
+carpenter|Carpenter|furniture repair,suthar,carpentry,woodwork|बढ़ई|सुतार|
+painter_home|House painter|painting work,ghar painting,wall painting,colour kaam|पेंटर|रंगारी|
+pest_control|Pest control|pest control,termite,cockroach control,dimak|पेस्ट कंट्रोल||
+ac_repair|AC service & repair|ac service,ac repair,ac gas filling|एसी सर्विस||
+cleaning|Home & office cleaning|deep cleaning,house cleaning,sofa cleaning|सफ़ाई सेवा||
+packers_home|Home shifting|home shifting,local shifting,ghar shifting|घर शिफ़्टिंग||
+interior_handyman|Handyman services|handyman,odd jobs,home repairs|हैंडीमैन||
+waterproofing|Waterproofing|leakage solution,waterproofing,seepage|वॉटरप्रूफ़िंग||
+ro_service|RO service|ro repair,water purifier service|आरओ सर्विस||
+cctv_installation|CCTV installation|cctv fitting,camera installation|सीसीटीवी इंस्टॉलेशन||style=tech_gradient
+solar_installation|Solar installation|solar fitting,rooftop solar installer|सोलर इंस्टॉलेशन||style=tech_gradient
+modular_furniture|Modular furniture maker|modular wardrobe,furniture making|मॉड्यूलर फ़र्नीचर||goal=portfolio
+false_ceiling|False ceiling & POP|pop work,gypsum ceiling,false ceiling|फ़ॉल्स सीलिंग||goal=portfolio
+tank_cleaning|Water tank cleaning|tank cleaning,water tank wash|टैंक सफ़ाई||
+gardener|Gardening & landscaping|mali,gardener,landscaping,garden maintenance|माली||style=organic_natural
+laundry_home|Laundry pickup|laundry,dry clean pickup,ironing|लॉन्ड्री||
+sofa_repair|Sofa & upholstery|sofa repair,upholstery,cushion|सोफ़ा रिपेयर||
+locksmith|Locksmith|key maker,lock repair,chabi wala|तालेवाला|चावीवाला|
+borewell|Borewell services|borewell,tube well,boring|बोरवेल||
+gas_stove_repair|Gas stove & chimney service|chimney cleaning,gas stove repair|गैस स्टोव रिपेयर||
+home_nurse_service|Domestic help agency|maid service,cook service,nanny,bai|घरेलू सहायक एजेंसी||legal=hiring
+geyser_repair|Geyser & appliance installation|geyser fitting,appliance installation|गीज़र इंस्टॉलेशन||
+mosquito_net|Mosquito nets & window mesh|mosquito net,window mesh,invisible grill|मच्छरदानी जाली||
+## repair
+mobile_repair|Mobile repair|mobile repairing,phone repair,screen change,mobile service centre|मोबाइल रिपेयर||
+laptop_repair|Laptop & computer repair|laptop repair,computer repair,pc service|लैपटॉप रिपेयर||
+tv_repair|TV & electronics repair|tv repair,led repair,electronics repair|टीवी रिपेयर||
+appliance_repair|Appliance repair|washing machine repair,fridge repair,microwave repair|अप्लायंस रिपेयर||
+watch_repair|Watch repair|ghadi repair,watch service|घड़ी रिपेयर||
+shoe_repair|Shoe repair (cobbler)|mochi,cobbler,shoe repair|मोची|चांभार|style=warm_local
+bike_repair|Two-wheeler repair|bike repair,scooter repair,two wheeler garage|बाइक रिपेयर||
+cycle_repair|Cycle repair|cycle shop,bicycle repair|साइकिल रिपेयर||style=warm_local
+printer_repair|Printer & copier service|printer repair,toner refill,cartridge refill|प्रिंटर रिपेयर||
+inverter_repair|Inverter & UPS repair|ups repair,inverter service|इन्वर्टर रिपेयर||
+camera_repair|Camera repair|dslr repair,lens repair|कैमरा रिपेयर||
+sewing_machine_repair|Sewing machine repair|silai machine repair|सिलाई मशीन रिपेयर||
+furniture_polish|Furniture polish & repair|polish work,wood polish|फ़र्नीचर पॉलिश||
+umbrella_bag_repair|Bag & umbrella repair|bag repair,zip repair|बैग रिपेयर||style=warm_local
+jewellery_repair|Jewellery repair & polish|jewellery polish,gold repair|ज्वेलरी रिपेयर||
+data_recovery|Data recovery|hard disk recovery,data recovery,pen drive recovery|डेटा रिकवरी||style=tech_gradient
+gaming_console_repair|Console & gadget repair|ps5 repair,gadget repair|गैजेट रिपेयर||style=bold_modern
+musical_repair|Instrument repair|harmonium repair,guitar repair|वाद्य रिपेयर||
+motor_rewinding|Motor rewinding|motor repair,pump repair,rewinding|मोटर रिवाइंडिंग||
+generator_service|Generator service|dg set,generator repair|जनरेटर सर्विस||
+medical_equipment_repair|Medical equipment service|biomedical service,equipment repair|मेडिकल उपकरण सर्विस||
+lift_service|Lift & elevator service|lift amc,elevator repair|लिफ़्ट सर्विस||
+ac_workshop|AC & fridge workshop|fridge gas,compressor repair|एसी वर्कशॉप||
+key_duplication|Key duplication & remotes|duplicate key,car remote key|डुप्लिकेट चाबी||
+battery_repair|Battery repair & recycling|battery recon,battery service|बैटरी रिपेयर||
+## auto
+car_garage|Car garage|car service,car repair,garage,mechanic,four wheeler garage|कार गैराज||
+bike_service_centre|Bike service centre|bike service,two wheeler service|बाइक सर्विस सेंटर||
+car_wash|Car wash & detailing|car wash,detailing,ceramic coating,car spa|कार वॉश||style=bold_modern
+tyre_shop|Tyre shop|tyres,wheel alignment,puncture,tyre dealer|टायर शॉप||
+car_accessories|Car accessories|car seat covers,car audio,accessories|कार एक्सेसरीज़||
+used_cars|Used car dealer|second hand car,pre owned cars,used car|पुरानी कार डीलर||goal=catalogue
+car_rental|Car rental|self drive,car on rent,rent a car|कार किराया||goal=booking
+driving_test|Driving licence help|rto agent,licence help,rto work|आरटीओ सहायता||legal=govt_lookalike goal=info
+auto_parts|Auto parts shop|spare parts,auto parts,gaadi parts|ऑटो पार्ट्स||goal=catalogue
+denting_painting|Denting & painting|body shop,dent repair,car painting|डेंटिंग पेंटिंग||goal=portfolio
+car_dealer|Car / bike dealership|showroom,dealer,automobile dealer|ऑटोमोबाइल डीलर||goal=catalogue style=luxury_dark
+ev_charging|EV charging station|ev charging,charging point|ईवी चार्जिंग||goal=info style=tech_gradient
+truck_repair|Truck & heavy vehicle repair|truck garage,heavy vehicle|ट्रक रिपेयर||
+tractor_dealer|Tractor dealer & service|tractor,farm equipment dealer|ट्रैक्टर डीलर||goal=catalogue
+auto_electrician|Auto electrician|car electrical,car ac repair|ऑटो इलेक्ट्रीशियन||
+car_modification|Car modification|car wrap,modification,custom car|कार मॉडिफ़िकेशन||goal=portfolio style=bold_modern
+bike_rental|Bike rental|bike on rent,scooty rent|बाइक किराया||goal=booking
+fastag_insurance|Vehicle insurance & FASTag point|motor insurance,fastag|वाहन बीमा||legal=irdai goal=enquiry
+car_glass|Car glass replacement|windshield,car glass|कार ग्लास||
+battery_dealer|Vehicle battery dealer|car battery,bike battery|वाहन बैटरी||
+seat_cover|Seat cover maker|seat covers,custom seat cover|सीट कवर||goal=portfolio
+pollution_check|PUC centre|puc,pollution check|पीयूसी सेंटर||goal=info legal=govt_lookalike
+towing|Towing & roadside help|towing,crane service,breakdown|टोइंग सेवा||cta=call
+car_ac|Car AC service|car ac repair,car ac gas|कार एसी सर्विस||
+bike_customs|Bike modification & parts|bike modification,custom bikes|बाइक मॉडिफ़िकेशन||style=bold_modern
+## construction
+civil_contractor|Civil contractor|contractor,thekedar,construction company,builder contractor|सिविल ठेकेदार|कंत्राटदार|
+architect|Architect|architecture firm,house design,naksha,plan making|आर्किटेक्ट|वास्तुविशारद|style=minimal_swiss
+interior_designer|Interior designer|interior design,home interiors,office interiors|इंटीरियर डिज़ाइनर||style=editorial_calm
+structural_engineer|Structural engineer|structural design,rcc design|स्ट्रक्चरल इंजीनियर||
+vastu|Vastu consultant|vastu shastra,vastu expert|वास्तु सलाहकार||legal=astro
+fabrication|Fabrication works|steel fabrication,grill work,shed work|फ़ैब्रिकेशन||
+road_contractor|Road & infra contractor|road work,infra contractor|सड़क ठेकेदार||
+electrical_contractor|Electrical contractor|electrical contracting,industrial wiring|इलेक्ट्रिकल ठेकेदार||
+plumbing_contractor|Plumbing contractor|plumbing projects,sanitation contractor|प्लंबिंग ठेकेदार||
+landscape_architect|Landscape architect|landscape design,garden design|लैंडस्केप आर्किटेक्ट||style=organic_natural
+building_materials|Building materials supplier|cement,sand,steel,bricks,construction material|भवन सामग्री||goal=catalogue
+tiles_contractor|Tiles & flooring contractor|flooring,tiles fitting,marble work|टाइल्स ठेकेदार||
+surveyor|Land surveyor|survey,land measurement,mojani|सर्वेयर|मोजणी|
+valuer|Property valuer|valuation,government valuer|मूल्यांकनकर्ता||
+rcc_contractor|RCC & slab contractor|rcc work,slab work,shuttering|आरसीसी ठेकेदार||
+roofing|Roofing & sheds|roofing sheets,shed work|रूफ़िंग||
+glass_facade|Glass facade|acp cladding,facade work|ग्लास फ़साड||
+demolition|Demolition services|demolition,building breaking|तोड़फोड़ सेवा||
+prefab|Prefab structures|prefab homes,container office|प्रीफ़ैब||
+bore_well_drilling|Drilling & piling|piling,drilling|पाइलिंग||
+paver_blocks|Paver blocks maker|paver block,interlocking tiles|पेवर ब्लॉक||goal=catalogue
+home_builder|Home builder (turnkey)|turnkey house,ghar banana,bungalow construction|घर निर्माण||
+renovation|Renovation contractor|home renovation,remodelling|नवीनीकरण||
+safety_consultant|Fire & safety consultant|fire safety,fire noc consultant|फ़ायर सेफ़्टी||
+govt_contractor|Government works contractor|tender contractor,pwd contractor|सरकारी ठेकेदार||
+## real_estate
+property_dealer|Property dealer|property agent,real estate agent,broker,dalal|प्रॉपर्टी डीलर||
+builder_developer|Builder & developer|builder,developer,housing project|बिल्डर||style=luxury_dark
+rental_agent|Rental agent|flat on rent,rental broker,room rent|किराया एजेंट||
+plot_seller|Plots & land|plot,land for sale,na plot|प्लॉट||
+commercial_property|Commercial property|shop for sale,office space,commercial|वाणिज्यिक संपत्ति||
+coworking|Coworking space|coworking,shared office,office space|को-वर्किंग||style=tech_gradient
+pg_rental|PG & room rentals|pg,room on rent,flatmates|पीजी||goal=enquiry
+farmhouse|Farmhouse & weekend homes|farm house,weekend home,second home|फ़ार्महाउस||style=organic_natural
+property_management|Property management|property manager,nri property care|संपत्ति प्रबंधन||
+legal_property|Property documentation help|registration help,property papers|प्रॉपर्टी डॉक्यूमेंट||legal=govt_lookalike
+home_loans_agent|Home loan agent|home loan,housing loan|होम लोन एजेंट||legal=loans
+nri_property|NRI property services|nri,property for nri|एनआरआई प्रॉपर्टी||
+redevelopment|Society redevelopment|redevelopment,society builder|पुनर्विकास||
+warehouse_rent|Warehouse & godown rental|godown,warehouse rent|गोदाम किराया||
+holiday_homes|Holiday home rentals|villa rent,holiday home,homestay|हॉलिडे होम||goal=booking
+township|Township project|township,gated community|टाउनशिप||style=luxury_dark
+affordable_housing|Affordable housing|1bhk,budget flats,pmay|किफ़ायती आवास||
+luxury_villas|Luxury villas|villas,premium homes|लक्ज़री विला||style=luxury_dark
+interior_real_estate|Furnished flats|furnished,ready to move|फ़र्निश्ड फ़्लैट||
+land_consultant|Land consultant|agricultural land,land deals|भूमि सलाहकार||
+shop_rental|Shops on rent|shop rent,dukaan kiraya|दुकान किराया||
+real_estate_photography|Property photography|real estate photos,property shoot|प्रॉपर्टी फ़ोटोग्राफ़ी||goal=portfolio
+home_inspection|Home inspection|property inspection,snag list|होम इंस्पेक्शन||
+society_management|Housing society office|society,chs,apartment association|हाउसिंग सोसायटी||goal=info
+estate_auction|Property auction help|bank auction property|नीलामी संपत्ति||goal=info

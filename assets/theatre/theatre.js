@@ -767,7 +767,62 @@
     };
   };
 
-  const ACCENT = { email: 0x8b6dff, browser: 0x2dd4bf, payment: 0xffb15c, bluetooth: 0x60a5fa, network: 0xa78bfa, pc: 0xe879f9, work: 0xffb15c };
+  /* v0.121 website: Hoola at a drafting table; the page being built fills in section by section on a big browser window */
+  SCENES.website = function (st) {
+    st.frame([2.4, 4.0, 9.8], [0, 1.45, 0]);
+    const av = makeAvatar(); av.holder.position.set(-1.8, av.holder.position.y, 1.0); av.yaw = .5; st.scene.add(av.holder);
+    const panel = new T.Group(); panel.position.set(.7, 2.25, -1.0); panel.rotation.y = -.25; st.scene.add(panel);
+    mesh(rbox(3.0, 1.9, .08, .12), P({ color: 0x101827, roughness: .2, clearcoat: 1, transparent: true, opacity: .6 }), panel);
+    const scr = screenMesh(2.86, 1.76, 720, true); scr.position.z = .05; panel.add(scr);
+    { const wl = new T.PointLight(0x2dd4bf, 1.1, 5, 2); wl.position.set(0, 0, .8); panel.add(wl); }
+    const desk = new T.Group(); desk.position.set(-.6, 0, .6); st.scene.add(desk);
+    mesh(new T.BoxGeometry(1.5, .06, .9), P({ color: 0x1e3a5f, roughness: .4, clearcoat: .6 }), desk, [0, .78, 0], null, [-.25, 0, 0]);
+    const blocks = [0, 1, 2, 3].map(i => mesh(rbox(.5, .14, .32, .04), P({ color: [0x2dd4bf, 0xffb15c, 0x7c5cff, 0x60a5fa][i], roughness: .3, clearcoat: 1 }), st.scene));
+    let D = fresh(), last = -1;
+    function draw(t) {
+      const { x, c, tex } = scr.userData.ctx; const W = c.width, H = c.height; const d = D.data || {};
+      x.clearRect(0, 0, W, H);
+      rr(x, 0, 0, W, H, 26); x.fillStyle = 'rgba(248,250,252,.95)'; x.fill();
+      rr(x, 0, 0, W, 44, 26); x.fillStyle = '#E2E8F0'; x.fill(); x.fillRect(0, 22, W, 22);
+      ['#F87171', '#FBBF24', '#34D399'].forEach((col, i) => { x.fillStyle = col; x.beginPath(); x.arc(26 + i * 22, 22, 7, 0, 6.3); x.fill(); });
+      rr(x, 100, 10, W - 130, 24, 12); x.fillStyle = '#FFFFFF'; x.fill();
+      x.fillStyle = '#334155'; x.font = `700 15px ${FONT}`; x.fillText(clip(x, d.url || d.site || 'preview', W - 160), 114, 27);
+      const secs = d.sections || []; const n = Math.max(secs.length, 5);
+      const top = 58, bh = Math.min(48, (H - top - 50) / n - 6);
+      for (let i = 0; i < n; i++) {
+        const s = secs[i] || {}; const y = top + i * (bh + 6);
+        const state = s.s || 'todo';
+        rr(x, 24, y, W - 48, bh, 10);
+        x.fillStyle = state === 'done' ? 'rgba(45,212,191,.22)' : state === 'building' || state === 'fixing' ? 'rgba(255,177,92,.32)' : 'rgba(148,163,184,.16)';
+        x.fill();
+        if (state === 'building' || state === 'fixing') {
+          const k = (t * .7) % 1; rr(x, 24, y, (W - 48) * k, bh, 10); x.fillStyle = 'rgba(255,177,92,.35)'; x.fill();
+        }
+        x.fillStyle = state === 'done' ? '#0F766E' : '#334155'; x.font = `800 ${Math.round(bh * .38)}px ${FONT}`;
+        x.fillText(clip(x, (state === 'done' ? '✓ ' : '') + (s.n || ''), W - 120), 40, y + bh * .64);
+      }
+      x.fillStyle = '#0F172A'; x.font = `800 19px ${FONT}`;
+      x.fillText(clip(x, d.note || D.label || '', W - 48), 24, H - 16);
+      tex.needsUpdate = true;
+    }
+    return {
+      set(d) { D = d; av.mood = MOOD[d.phase] || 'idle'; av.say(sayOf(d)); },
+      update(t, dt) {
+        av.update(t, dt);
+        if (Math.floor(t * 12) !== last) { last = Math.floor(t * 12); draw(t); }
+        const on = D.phase === 'start';
+        blocks.forEach((b, i) => {
+          const ph = ((t * (on ? .45 : .12)) + i * .25) % 1;
+          b.position.set(-.6 + Math.sin(i * 1.7) * .4, .9 + ph * 1.6, .6 - ph * 1.4);
+          b.rotation.set(ph * 1.2, i, 0); b.visible = on || ph < .2;
+          b.scale.setScalar(1 - ph * .5);
+        });
+      },
+      redraw() { av.redraw(); }
+    };
+  };
+
+  const ACCENT = { email: 0x8b6dff, browser: 0x2dd4bf, payment: 0xffb15c, bluetooth: 0x60a5fa, network: 0xa78bfa, pc: 0xe879f9, work: 0xffb15c, website: 0x2dd4bf };
 
   window.HoolaTheatre = {
     scenes: Object.keys(SCENES),

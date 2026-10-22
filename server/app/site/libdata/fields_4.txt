@@ -1,0 +1,339 @@
+# Field cards, part 4 (same format as part 1).
+## agriculture
+farm_produce|Farm produce seller|farmer,farm fresh,shetkari,kisan,direct from farm|किसान उत्पाद|शेतकरी|
+plant_nursery_wholesale|Wholesale nursery|saplings,fruit plants,nursery wholesale|थोक नर्सरी||
+seeds_fertiliser|Seeds & fertiliser shop|krishi kendra,agro shop,fertilizer,beej,khad|कृषि केंद्र|कृषी सेवा केंद्र|
+dairy_farm|Dairy farm|gaushala milk,cow milk,a2 milk,dairy farm|डेयरी फ़ार्म|गोठा|legal=fssai+dmr
+poultry_farm|Poultry farm|poultry,chicken farm,eggs farm|पोल्ट्री फ़ार्म||
+goat_farm|Goat farm|goat farming,bakri palan|बकरी पालन|शेळीपालन|
+fishery|Fish farm|fish farming,matsya palan|मत्स्य पालन||
+organic_farm|Organic farm|organic farming,natural farming,zero budget|जैविक खेती|सेंद्रिय शेती|legal=fssai+dmr
+fpo|Farmer producer organisation|fpo,fpc,farmer company|किसान उत्पादक संगठन||goal=info
+drip_irrigation|Drip & irrigation dealer|drip irrigation,sprinkler,pipes|ड्रिप सिंचाई||goal=enquiry
+farm_machinery|Farm machinery rental|tractor on rent,harvester rent|कृषि यंत्र किराया||goal=booking
+agri_consultant|Agriculture consultant|krishi salah,crop advisor,soil testing|कृषि सलाहकार||goal=enquiry
+cold_storage|Cold storage|cold storage,warehouse cold|कोल्ड स्टोरेज||goal=enquiry
+mushroom_farm|Mushroom farm|mushroom,mushroom farming|मशरूम फ़ार्म||
+beekeeping|Beekeeping|bee farm,madhumakhi palan,honey farm|मधुमक्खी पालन||legal=fssai+dmr
+flower_farm|Flower farm|flower cultivation,rose farm,phool sheti|फूलों की खेती|फुलशेती|
+vermicompost|Vermicompost & organic manure|vermicompost,gobar khad,organic manure|वर्मीकम्पोस्ट|गांडूळ खत|
+hydroponics|Hydroponics farm|hydroponic,microgreens|हाइड्रोपोनिक्स||style=tech_gradient
+agri_drone|Agri drone spraying|drone spraying,kisan drone|कृषि ड्रोन||style=tech_gradient
+spice_farm|Spice plantation|spice farm,cardamom,pepper estate|मसाला बागान||
+tea_coffee_estate|Tea / coffee estate|coffee estate,tea garden|चाय-कॉफ़ी बागान||style=editorial_calm
+fruit_orchard|Fruit orchard|mango farm,alphonso,orchard,grapes farm|फलों का बाग़|फळबाग|
+gaushala|Gaushala|gaushala,cow shelter|गौशाला||goal=cause legal=ngo
+animal_feed|Animal feed supplier|cattle feed,pashu ahar|पशु आहार||goal=catalogue
+agri_trader|Agri commodity trader|adat,commission agent,mandi trader|कृषि व्यापारी|आडत|goal=catalogue
+## logistics
+transporter|Transporter|transport company,truck transport,goods carrier,transport|ट्रांसपोर्टर||
+courier|Courier service|courier,parcel service,courier agency|कूरियर सेवा||
+packers_movers|Packers & movers|packers and movers,shifting,relocation|पैकर्स एंड मूवर्स||goal=enquiry
+tempo_service|Tempo / mini truck service|tempo,pickup van,chhota hathi|टेम्पो सेवा||cta=call
+warehousing|Warehousing|warehouse,storage,3pl|वेयरहाउसिंग||
+cold_chain|Cold chain logistics|reefer truck,cold chain|कोल्ड चेन||
+freight_forwarder|Freight forwarder|freight forwarding,shipping agent|फ़्रेट फ़ॉरवर्डर||style=corporate_trust
+customs_broker|Customs broker (CHA)|cha,customs clearing|कस्टम ब्रोकर||style=corporate_trust
+bike_delivery|Last-mile delivery|delivery boys,parcel delivery,hyperlocal delivery|लास्ट-माइल डिलीवरी||
+car_carrier|Car carrier|car transport,vehicle shifting|कार कैरियर||
+crane_rental|Crane & JCB rental|jcb rent,crane hire,hydra|क्रेन किराया||goal=booking
+school_bus|School van & bus service|school van,student transport|स्कूल वैन||goal=enquiry
+water_tanker|Water tanker supply|tanker,water tanker|पानी टैंकर||cta=call
+fleet_owner|Fleet owner|truck owner,fleet services|बेड़ा मालिक||
+logistics_startup|Logistics platform|logistics app,load booking|लॉजिस्टिक्स प्लेटफ़ॉर्म||style=tech_gradient
+container_services|Container services|container,container yard|कंटेनर सेवाएँ||
+bulk_carrier|Bulk material transport|sand transport,aggregate transport|थोक माल परिवहन||
+ambulance_transport|Patient transport|patient transport,dead body van|मरीज़ परिवहन||cta=call
+pet_relocation|Pet relocation|pet transport,pet shifting|पेट रिलोकेशन||
+office_shifting|Office shifting|office relocation,commercial shifting|ऑफ़िस शिफ़्टिंग||
+parcel_franchise|Courier franchise counter|courier counter,dtdc franchise|कूरियर काउंटर||
+two_wheeler_transport|Bike transport|bike shifting,two wheeler transport|बाइक ट्रांसपोर्ट||
+rail_parcel|Rail parcel agent|railway parcel,booking agent|रेल पार्सल||
+logistics_consultant|Logistics consultant|supply chain consultant|लॉजिस्टिक्स सलाहकार||
+diesel_delivery|Fuel delivery (licensed)|diesel delivery,fuel at doorstep|ईंधन डिलीवरी||
+## trade
+wholesaler|Wholesaler|wholesale,thok vyapari,wholesale dealer,godown|थोक व्यापारी|घाऊक व्यापारी|
+distributor|Distributor|distributor,stockist,super stockist,agency|वितरक||
+exporter|Exporter|export house,exporter,export company|निर्यातक||style=corporate_trust
+importer|Importer|import,importer|आयातक||style=corporate_trust
+fmcg_distributor|FMCG distributor|fmcg,grocery distributor|एफ़एमसीजी वितरक||
+grain_merchant|Grain merchant|anaj vyapari,grain dealer,dal mill|अनाज व्यापारी|धान्य व्यापारी|
+steel_trader|Steel & cement trader|steel dealer,cement dealer,tmt bars|स्टील व्यापारी||
+textile_trader|Textile trader|kapda wholesale,textile market|कपड़ा व्यापारी||
+electrical_wholesale|Electrical wholesaler|electrical wholesale,wires wholesale|इलेक्ट्रिकल थोक||
+pharma_wholesale|Medicine wholesaler|dawa wholesale,medicine agency|दवा थोक||legal=pharmacy
+scrap_dealer|Scrap dealer|kabadi,raddi,scrap buyer|कबाड़ी|भंगार|
+paper_trader|Paper trader|paper mart,paper wholesale|काग़ज़ व्यापारी||
+timber_merchant|Timber merchant|lakdi,timber,plywood dealer|लकड़ी व्यापारी||
+oil_trader|Edible oil trader|oil wholesale,tel vyapari|तेल व्यापारी||
+spices_wholesale|Spices wholesaler|masala wholesale|मसाला थोक||
+dry_fruit_wholesale|Dry fruit wholesaler|dry fruit wholesale|ड्राई फ़्रूट थोक||
+stationery_wholesale|Stationery wholesaler|stationery wholesale|स्टेशनरी थोक||
+toys_wholesale|Toys & gifts wholesaler|toys wholesale|खिलौने थोक||
+cosmetics_wholesale|Cosmetics wholesaler|cosmetics wholesale|कॉस्मेटिक थोक||
+mobile_wholesale|Mobile accessories wholesaler|mobile accessories wholesale|मोबाइल थोक||
+b2b_supplier|B2B industrial supplier|industrial supplies,mro supplies|बी2बी सप्लायर||
+commodity_broker|Commodity broker|dalal,commodity broker|कमोडिटी ब्रोकर||
+indent_agent|Indent / commission agent|commission agent,indenting|कमीशन एजेंट||
+cash_and_carry|Cash & carry store|cash and carry,b2b store|कैश एंड कैरी||
+ecommerce_seller|Marketplace seller|amazon seller,flipkart seller,meesho seller|मार्केटप्लेस विक्रेता||
+## ngo
+ngo|NGO|ngo,non profit,samajik sanstha,social organisation|एनजीओ|सामाजिक संस्था|
+trust|Charitable trust|trust,charitable trust,foundation|धर्मार्थ ट्रस्ट||
+education_ngo|Education NGO|education for poor,school support ngo|शिक्षा एनजीओ||
+health_ngo|Health NGO|health camps,medical ngo|स्वास्थ्य एनजीओ||
+animal_welfare|Animal welfare|animal rescue,stray dogs,pashu seva|पशु कल्याण||
+women_empowerment|Women empowerment group|mahila mandal,self help group,shg|महिला मंडल|महिला बचत गट|
+environment_ngo|Environment NGO|tree plantation,environment group|पर्यावरण संस्था||style=organic_natural
+old_age_home|Old age home|vridhashram,old age home|वृद्धाश्रम||
+orphanage|Children's home|orphanage,bal ashram,children home|बाल आश्रम||
+youth_club|Youth club / mandal|ganesh mandal,yuva mandal,sports club|युवा मंडल|मित्र मंडळ|style=festive_traditional
+residents_association|Residents' association|rwa,colony association|निवासी संघ||goal=info
+alumni_association|Alumni association|alumni,old students|पूर्व छात्र संघ||goal=info
+blood_donation_group|Blood donors group|blood donors,raktdaan|रक्तदान समूह||goal=info
+disability_ngo|Disability support organisation|divyang,disability support|दिव्यांग सहायता||
+rural_development|Rural development NGO|gram vikas,rural development|ग्राम विकास||
+water_conservation|Water conservation group|jal sanvardhan,water conservation|जल संरक्षण||style=organic_natural
+food_bank|Food bank|annadan,food donation|अन्न बैंक||
+skill_ngo|Skill training NGO|livelihood,skill training ngo|कौशल प्रशिक्षण संस्था||
+csr_foundation|CSR foundation|csr,corporate foundation|सीएसआर फ़ाउंडेशन||style=corporate_trust
+cooperative_society|Co-operative society|cooperative,sahakari sanstha|सहकारी संस्था|सहकारी संस्था|goal=info
+community_kitchen|Community kitchen|langar,community kitchen|सामुदायिक रसोई||
+library_ngo|Public library|vachanalay,library|सार्वजनिक पुस्तकालय|वाचनालय|goal=info
+sports_ngo|Sports development NGO|sports foundation|खेल विकास संस्था||
+cultural_society|Cultural society|kala mandal,cultural group|सांस्कृतिक संस्था||style=festive_traditional
+caste_neutral_community|Community association|samaj,community group|समाज संगठन||goal=info
+## spiritual
+temple|Temple|mandir,temple trust,devasthan|मंदिर|देवस्थान|
+gurudwara|Gurudwara|gurudwara sahib|गुरुद्वारा||
+church|Church|church,parish|चर्च||
+mosque_trust|Masjid trust|masjid,mosque committee|मस्जिद ट्रस्ट||
+jain_temple|Jain temple|jain mandir,derasar|जैन मंदिर||
+buddhist_vihar|Buddhist vihar|vihar,buddha vihar|बौद्ध विहार||
+astrologer|Astrologer|jyotish,astrology,kundli,horoscope|ज्योतिषी|ज्योतिषी|legal=astro
+numerologist|Numerologist|numerology,name correction|अंकशास्त्री||legal=astro
+vastu_expert|Vastu expert|vastu shastri|वास्तु विशेषज्ञ||legal=astro
+tarot_reader|Tarot reader|tarot,card reading|टैरो रीडर||legal=astro
+spiritual_guru|Spiritual teacher|satsang,spiritual guru,adhyatm|आध्यात्मिक गुरु||legal=astro style=organic_natural
+kirtan_group|Kirtan & bhajan group|bhajan mandal,kirtan,harinaam|भजन मंडल||
+pooja_booking|Pooja & havan services|havan,pooja booking,griha pravesh pooja|पूजा सेवा||legal=astro
+math_ashram|Math / ashram|math,ashram|मठ|मठ|
+spiritual_store|Rudraksha & spiritual items|rudraksha,gemstones,yantra|रुद्राक्ष||legal=astro+dmr goal=catalogue
+palmist|Palmist|palm reading,hast rekha|हस्तरेखा विशेषज्ञ||legal=astro
+pilgrimage_trust|Pilgrimage trust|yatra trust,pilgrim services|तीर्थ ट्रस्ट||
+festival_committee|Festival committee|utsav samiti,festival committee|उत्सव समिति||goal=event
+meditation_centre_spiritual|Satsang hall|satsang bhawan|सत्संग भवन||
+gemologist|Gemologist|gemstone,ratna|रत्न विशेषज्ञ||legal=astro+dmr
+dharmic_school|Dharmic study circle|gita class,scripture class|धार्मिक अध्ययन||goal=admissions
+marriage_bureau|Marriage bureau|vivah sanstha,matrimony,rishta|विवाह संस्था|वधू वर सूचक|goal=enquiry
+funeral_services|Funeral services|antim sanskar,funeral|अंतिम संस्कार सेवा||cta=call
+priest_freelance|Freelance priest|guruji,pandit freelance|पुरोहित||goal=personal legal=astro
+religious_trust_hall|Trust hall booking|trust hall,community hall booking|ट्रस्ट हॉल||goal=booking
+## personal
+doctor_profile|Doctor's personal profile|doctor profile,doctor website|डॉक्टर प्रोफ़ाइल||legal=nmc
+consultant_profile|Consultant|consultant,advisor,business consultant|सलाहकार||
+coach|Life / business coach|life coach,business coach,mentor|कोच||
+speaker|Motivational speaker|speaker,trainer,motivational|वक्ता||style=bold_modern
+artist_profile|Artist portfolio|artist,painter portfolio|कलाकार||style=editorial_calm
+musician|Musician|singer,musician,band member|संगीतकार||style=bold_modern
+resume_site|Online resume|resume,cv,job profile|रिज़्यूमे||style=minimal_swiss
+author_site|Author site|author,book launch,poet|लेखक साइट||style=editorial_calm
+photographer_profile|Photographer portfolio|photographer portfolio|फ़ोटोग्राफ़र पोर्टफ़ोलियो||style=minimal_swiss
+freelancer|Freelancer|freelance,freelancer|फ़्रीलांसर||
+tutor_profile|Private tutor|home tutor,private teacher|निजी शिक्षक||
+chef_profile|Chef|private chef,chef portfolio|शेफ़||
+sportsperson|Athlete profile|athlete,cricketer,player profile|खिलाड़ी||style=bold_modern
+academic_profile|Academic / researcher|professor,researcher,phd|शोधकर्ता||style=editorial_calm
+designer_profile|Designer portfolio|designer portfolio|डिज़ाइनर पोर्टफ़ोलियो||style=minimal_swiss
+architect_profile|Architect portfolio|architect portfolio|आर्किटेक्ट पोर्टफ़ोलियो||style=minimal_swiss
+counsellor_profile|Counsellor|counsellor,therapist profile|परामर्शदाता||style=organic_natural
+nutrition_coach|Nutrition coach|nutrition coach,diet coach|पोषण कोच||legal=dmr+gym
+yoga_teacher|Yoga teacher|yoga teacher,yoga instructor|योग शिक्षक||style=organic_natural
+dance_teacher|Dance teacher|dance teacher,choreographer|नृत्य शिक्षक||style=playful_bright
+makeup_profile|Makeup artist portfolio|makeup portfolio|मेकअप पोर्टफ़ोलियो||style=luxury_dark
+influencer|Influencer media kit|media kit,influencer profile|इन्फ़्लुएंसर||style=bold_modern
+wedding_profile|Wedding website (couple)|wedding website,shaadi site,our wedding|शादी वेबसाइट||goal=event style=festive_traditional
+memorial|Memorial / tribute page|tribute,shraddhanjali,memorial|श्रद्धांजलि||goal=info style=editorial_calm
+family_site|Family / event site|family website,reunion|परिवार वेबसाइट||goal=event
+## pets
+pet_shop|Pet shop|pet store,dog shop,cat food|पेट शॉप||
+pet_grooming|Pet grooming|dog grooming,pet spa|पेट ग्रूमिंग||
+pet_boarding|Pet boarding|dog hostel,pet boarding,pet hotel|पेट बोर्डिंग||
+dog_trainer|Dog trainer|dog training,obedience training|डॉग ट्रेनर||
+veterinary_hospital|Veterinary hospital|vet hospital,pet hospital|पशु अस्पताल||legal=vet
+aquarium_shop|Aquarium shop|fish tank,aquarium|एक्वेरियम||
+pet_breeder|Registered breeder|dog breeder,kennel|ब्रीडर||
+pet_food_store|Pet food store|pet food,dog food|पेट फ़ूड स्टोर||goal=catalogue
+bird_shop|Birds & pets shop|birds shop,parrots|पक्षी दुकान||
+pet_taxi|Pet taxi|pet transport|पेट टैक्सी||cta=call
+pet_photographer|Pet photographer|pet photography|पेट फ़ोटोग्राफ़र||goal=portfolio
+pet_daycare|Pet daycare|dog daycare|पेट डेकेयर||
+cattle_vet|Cattle vet service|pashu vaidya,cattle doctor|पशु वैद्य||legal=vet
+horse_riding|Horse riding school|horse riding,equestrian|घुड़सवारी||goal=admissions
+pet_accessories|Pet accessories brand|pet accessories,collars|पेट एक्सेसरीज़||goal=catalogue
+pet_bakery|Pet bakery|dog cakes,pet treats bakery|पेट बेकरी||
+pet_adoption|Pet adoption group|adopt a dog,pet adoption|पेट एडॉप्शन||goal=cause legal=ngo
+pet_insurance|Pet insurance agent|pet insurance|पेट बीमा||legal=irdai
+pet_pharmacy|Veterinary pharmacy|vet medicines|पशु दवा||legal=pharmacy
+pet_walker|Dog walker|dog walking|डॉग वॉकर||
+cat_cafe|Pet cafe|cat cafe,dog cafe|पेट कैफ़े||goal=booking
+pet_cremation|Pet cremation|pet funeral|पेट अंतिम संस्कार||cta=call
+reptile_rescue|Wildlife / snake rescue|snake rescue,sarpmitra|सर्पमित्र||goal=info
+pet_clothing|Pet clothing|dog clothes|पेट कपड़े||goal=catalogue
+fish_farm_supplies|Fish seed & supplies|fish seed,aquaculture supplies|मछली बीज||goal=catalogue
+## kids
+daycare|Daycare / creche|creche,daycare,baby care|डेकेयर|पाळणाघर|
+activity_centre|Kids activity centre|activity classes,hobby centre|गतिविधि केंद्र||
+play_area|Kids play zone|play zone,trampoline park,soft play|प्ले ज़ोन||goal=booking
+summer_camp|Summer camp|summer camp,vacation classes|समर कैंप||goal=event
+kids_party_venue|Kids party venue|kids birthday venue|बच्चों का पार्टी वेन्यू||goal=booking
+toy_library|Toy library|toy rental,toy library|टॉय लाइब्रेरी||
+baby_store|Baby store|baby products,baby shop|बेबी स्टोर||goal=catalogue
+tuition_kids|Kids tuition centre|kids tuition,homework help|बच्चों की ट्यूशन||
+story_club|Story & reading club|storytelling,reading club|कहानी क्लब||
+kids_photography|Newborn & kids photography|newborn shoot,baby photoshoot|नवजात फ़ोटोग्राफ़ी||goal=portfolio
+child_counsellor|Child psychologist|child counselling,child psychologist|बाल मनोवैज्ञानिक||legal=nmc
+kids_yoga|Kids yoga|kids yoga|बच्चों का योग||
+baby_massage|Baby massage & mother care|baby massage,japa maid,maalish|बेबी मसाज||
+kids_cooking|Kids cooking class|kids cooking|बच्चों की कुकिंग||
+school_supplies|School supplies store|school bags,uniform shop|स्कूल सामग्री||goal=catalogue
+kids_salon|Kids salon|kids haircut|बच्चों का सैलून||
+lego_robotics|Kids robotics club|lego robotics,kids stem|रोबोटिक्स क्लब||style=tech_gradient
+kids_theatre|Kids theatre group|drama for kids|बाल रंगमंच||
+nanny_agency|Nanny agency|nanny,babysitter|नैनी एजेंसी||legal=hiring
+kids_sports|Kids sports academy|kids football,kids cricket|बच्चों की खेल अकादमी||
+parenting_coach|Parenting coach|parenting,parent coach|पेरेंटिंग कोच||goal=personal
+baby_rental|Baby gear rental|stroller rent,baby gear|बेबी गियर किराया||
+kids_magazine|Kids magazine / club|kids club,kids newsletter|बच्चों की पत्रिका||goal=info
+birthday_return_gifts|Return gifts shop|return gifts|रिटर्न गिफ़्ट||goal=catalogue
+kids_fashion_brand|Kids fashion brand|kids brand,kids clothes brand|किड्स फ़ैशन||goal=catalogue
+## staffing
+security_agency|Security agency|security guards,watchman,security services|सुरक्षा एजेंसी||
+housekeeping_agency|Housekeeping agency|housekeeping,facility management|हाउसकीपिंग||
+placement_agency|Placement agency|job placement,recruitment,naukri agency|प्लेसमेंट एजेंसी||
+manpower_supplier|Manpower supplier|labour supply,manpower,contract labour|मैनपावर सप्लायर||
+hr_consultant|HR consultant|hr services,recruitment consultant|एचआर सलाहकार||
+driver_agency|Driver agency|driver on call,chauffeur|ड्राइवर एजेंसी||
+cook_agency|Cook & maid agency|cook service,maid agency|रसोइया एजेंसी||
+nurse_bureau|Nurse bureau|nurse supply,patient attendant|नर्स ब्यूरो||
+event_staffing|Event staffing|promoters,event staff|इवेंट स्टाफ़||
+it_staffing|IT staffing|it recruitment,contract developers|आईटी स्टाफ़िंग||style=corporate_trust
+bouncer_services|Bouncers & event security|bouncers,event security|बाउंसर सेवा||
+facility_management|Facility management|fm services,building maintenance|सुविधा प्रबंधन||
+gig_workers|Gig workers platform|gig work,part time jobs|गिग वर्क||style=tech_gradient
+overseas_jobs|Overseas jobs agency (registered)|gulf jobs,overseas recruitment|विदेश नौकरी एजेंसी||legal=hiring+govt_lookalike
+apprenticeship|Apprenticeship partner|apprentice,on job training|प्रशिक्षुता||
+garden_staff|Garden maintenance staff|garden staff,maali supply|बागवानी कर्मचारी||
+payroll_staffing|Payroll staffing|contract staffing,third party payroll|पेरोल स्टाफ़िंग||
+warehouse_staff|Warehouse staffing|loaders,warehouse labour|गोदाम कर्मचारी||
+sales_staffing|Sales staffing|field sales staff,promoters|सेल्स स्टाफ़||
+cleaning_staff|Cleaning staff supply|cleaners,sweepers|सफ़ाई कर्मचारी||
+lift_operators|Lift operators & technicians|lift man,technician supply|लिफ़्ट ऑपरेटर||
+teacher_placement|Teacher placement|teacher jobs,school staff|शिक्षक प्लेसमेंट||
+healthcare_staffing|Healthcare staffing|hospital staff,doctors placement|स्वास्थ्य स्टाफ़िंग||
+retail_staffing|Retail staffing|shop staff,store staff|रिटेल स्टाफ़||
+career_portal|Local jobs board|job board,local jobs|स्थानीय नौकरी बोर्ड||goal=info
+## citizen_services
+csc_centre|Common service centre|csc,e seva kendra,online form centre|सेवा केंद्र|सेवा केंद्र|
+pan_service|PAN & document help|pan card help,documents help|पैन सहायता||
+passport_help|Passport application help|passport help,passport agent|पासपोर्ट सहायता||
+form_filling|Online form filling|form bharna,online application,exam forms|फ़ॉर्म भरना||
+bill_payment_centre|Bill payment centre|bijli bill,bill payment,recharge centre|बिल भुगतान केंद्र||
+insurance_csc|Insurance & scheme help|scheme help,yojana help|योजना सहायता||
+photo_studio_documents|Passport photo studio|passport photo,id photo|पासपोर्ट फ़ोटो||
+typing_centre|Typing & translation centre|typing,translation,court typing|टाइपिंग केंद्र||
+notary_stamp|Stamp paper & affidavit help|stamp paper,affidavit|स्टाम्प पेपर||
+property_tax_help|Property tax & certificates help|tax receipt,certificates|प्रमाणपत्र सहायता||
+gas_agency_help|Gas connection help|gas connection,cylinder booking help|गैस कनेक्शन सहायता||
+voter_help|Voter & ration card help|ration card help,voter id help|राशन कार्ड सहायता||
+cyber_cafe|Cyber cafe|internet cafe,cyber|साइबर कैफ़े||
+money_transfer|Money transfer point|domestic money transfer,dmt|मनी ट्रांसफ़र||legal=loans+govt_lookalike
+legal_documents_help|Agreements & registration help|rent agreement help,leave and license|अनुबंध सहायता||
+exam_coaching_forms|Exam forms & results help|results,exam forms|परीक्षा फ़ॉर्म सहायता||
+digital_literacy|Digital literacy centre|computer saksharta,digital training|डिजिटल साक्षरता||goal=admissions
+gst_registration_help|GST registration help|gst registration,shop act|जीएसटी पंजीकरण सहायता||
+fssai_registration_help|Licence registration help|food licence help,shop act licence|लाइसेंस सहायता||
+pension_help|Pension & life certificate help|jeevan pramaan,pension help|पेंशन सहायता||
+aadhaar_update_help|ID update guidance (private)|address update help,id help|पहचान अपडेट मार्गदर्शन||
+farmer_scheme_help|Farmer scheme help|kisan yojana help|किसान योजना सहायता||
+student_scholarship_help|Scholarship form help|scholarship forms|छात्रवृत्ति सहायता||
+travel_document_help|Travel documents help|visa forms,travel documents|यात्रा दस्तावेज़ सहायता||
+printing_scanning|Print, scan & lamination|scan,print,lamination|प्रिंट स्कैन||
+## crafts
+handicrafts|Handicrafts|handicraft,handmade,artisan products|हस्तशिल्प|हस्तकला|
+pottery|Pottery|pottery,terracotta,matka,clay pots|मिट्टी के बर्तन|मातीची भांडी|style=organic_natural
+handloom_weaver|Handloom weaver|weaver,paithani weaver,handloom saree|बुनकर|विणकर|style=festive_traditional
+jewellery_artisan|Handmade jewellery|handmade jewellery,beaded jewellery|हस्तनिर्मित आभूषण||
+woodcraft|Wood craft|wooden toys,wood carving|लकड़ी शिल्प||
+bamboo_craft|Bamboo craft|bamboo products,cane furniture|बांस शिल्प||style=organic_natural
+paintings|Folk paintings|warli,madhubani,pithora,folk art|लोक चित्रकला|वारली|style=editorial_calm
+embroidery|Embroidery work|embroidery,zari work,kantha|कढ़ाई|भरतकाम|
+block_print|Block printing|block print,hand block|ब्लॉक प्रिंट||
+macrame|Macrame & home crafts|macrame,crochet,knitting|मैक्रेमे||style=playful_bright
+resin_art|Resin art|resin art,epoxy art|रेज़िन आर्ट||
+candle_crafts|Candles & soaps (handmade)|handmade candles,handmade soap|हस्तनिर्मित मोमबत्ती||
+leather_craft|Leather craft|kolhapuri chappal,leather craft|चमड़ा शिल्प||
+metal_craft|Metal craft|brass items,dhokra,copper ware|धातु शिल्प||
+stone_carving|Stone carving|stone idols,marble carving|पत्थर नक्काशी||
+paper_craft|Paper craft & quilling|quilling,paper craft|काग़ज़ शिल्प||style=playful_bright
+textile_art|Textile art|tie dye,bandhani,batik|वस्त्र कला||
+gift_crafts|Customised gifts|personalised gifts,custom gifts|कस्टमाइज़्ड गिफ़्ट||
+idol_maker|Idol maker|ganesh murti,idol making,murtikar|मूर्तिकार|मूर्तिकार|style=festive_traditional
+rangoli_artist|Rangoli artist|rangoli designs,rangoli artist|रंगोली कलाकार|रांगोळी कलाकार|style=festive_traditional
+craft_cooperative|Artisan cooperative|artisan group,craft society|कारीगर सहकारी||
+toy_crafts|Traditional toys|channapatna,wooden toys|पारंपरिक खिलौने||style=playful_bright
+calligraphy_art|Calligraphy art|calligraphy frames|सुलेख कला||style=editorial_calm
+home_bakery_crafts|Craft & bake stall|craft stall,flea market stall|क्राफ़्ट स्टॉल||
+lamp_maker|Lamp & lantern maker|akash kandil,lanterns,lamps|लालटेन निर्माता|आकाशकंदील|style=festive_traditional
+## sports
+cricket_academy|Cricket academy|cricket coaching,cricket club|क्रिकेट अकादमी||goal=admissions
+football_academy|Football academy|football coaching|फ़ुटबॉल अकादमी||goal=admissions
+turf_booking|Turf / box cricket|turf,box cricket,football turf|टर्फ़||
+badminton|Badminton court & academy|badminton,shuttle court|बैडमिंटन||
+tennis|Tennis academy|tennis coaching|टेनिस अकादमी||goal=admissions
+swimming_academy|Swimming academy|swimming coaching|तैराकी अकादमी||goal=admissions
+shooting_range|Shooting & archery range|archery,shooting sport|निशानेबाज़ी||
+kabaddi_club|Kabaddi / kho-kho club|kabaddi,kho kho,akhada|कबड्डी क्लब|आखाडा|
+wrestling_akhada|Wrestling akhada|kusti,wrestling,akhada|कुश्ती अखाड़ा|कुस्ती आखाडा|
+sports_complex|Sports complex|sports club,indoor games|खेल परिसर||
+table_tennis|Table tennis academy|tt,table tennis|टेबल टेनिस||
+basketball|Basketball academy|basketball coaching|बास्केटबॉल||
+athletics|Athletics coaching|running coach,track and field|एथलेटिक्स||
+cycling_shop|Cycle shop|bicycles,cycle store|साइकिल दुकान||goal=catalogue
+fitness_equipment|Fitness equipment store|gym equipment,treadmill|फ़िटनेस उपकरण||goal=catalogue
+sports_events|Sports event organiser|marathon,tournament organiser|खेल आयोजक||goal=event
+esports|Esports & gaming cafe|gaming cafe,esports|ईस्पोर्ट्स||style=tech_gradient
+skating_rink|Skating rink|skating rink|स्केटिंग रिंक||
+golf|Golf coaching|golf lessons|गोल्फ़||style=luxury_dark
+climbing_wall|Climbing & adventure park|wall climbing,adventure park|एडवेंचर पार्क||
+snooker|Snooker & pool parlour|snooker,pool table|स्नूकर||style=luxury_dark
+sports_physio_centre|Sports performance centre|sports science,performance lab|स्पोर्ट्स परफ़ॉर्मेंस||
+yoga_competition|Yoga sports club|yogasana sport|योगासन खेल||
+chess_club|Chess club|chess club|शतरंज क्लब||
+horse_academy|Equestrian club|riding club|घुड़सवारी क्लब||style=luxury_dark
+## local_services
+laundry|Laundry & dry cleaning|laundry,dry cleaner,dhobi,press wala|लॉन्ड्री|धोबी|
+tailor|Tailor|darzi,silai,tailoring,blouse stitching|दर्ज़ी|शिंपी|
+key_maker|Key maker|chabi,key duplicate|चाबी बनाने वाला|चावी|
+photocopy|Photocopy shop|xerox shop,photocopy|फ़ोटोकॉपी||
+flower_decorator|Flower decorator|phool decoration,garlands,haar|फूल सजावट|हार|style=festive_traditional
+cobbler|Cobbler|mochi,shoe repair|मोची|चांभार|
+barber_shop|Barber shop|nai,hair cut|नाई की दुकान|न्हावी|
+ironing|Ironing / press service|istri,press,ironing|इस्त्री|इस्त्री|
+water_cans|Water can delivery|water can,jar delivery|पानी जार||
+gas_cylinder|Gas cylinder delivery agency|gas agency,cylinder|गैस एजेंसी||
+milk_delivery|Milk delivery|doodh delivery,milk subscription|दूध डिलीवरी||goal=enquiry
+newspaper_vendor|Newspaper vendor|paper wala,newspaper delivery|अख़बार विक्रेता||
+raddi|Raddi & recycling pickup|raddi wala,recycling pickup|रद्दी वाला|रद्दी|
+car_driver|Driver on call|driver on call,acting driver|ड्राइवर ऑन कॉल||cta=call
+tiffin_local|Local tiffin centre|tiffin centre|टिफ़िन सेंटर||goal=menu_order legal=fssai
+mobile_recharge_local|Recharge & bill point|recharge,bill pay|रिचार्ज पॉइंट||
+saloon_local|Neighbourhood salon|local salon|मोहल्ला सैलून||
+cycle_rental|Cycle rental|cycle on rent|साइकिल किराया||goal=booking
+photo_studio_local|Local photo studio|photo studio|फ़ोटो स्टूडियो||
+stamp_maker|Rubber stamp maker|rubber stamp,seal maker|रबर स्टाम्प||
+frame_maker|Photo frame maker|frame shop,framing|फ़्रेम निर्माता||
+mattress_repair|Mattress & pillow maker|gadda repair,pinjara,kapus|गद्दा मरम्मत|पिंजारी|
+knife_sharpening|Knife sharpening|dhar,knife sharpener|धार लगाने वाला||
+tank_repair|Water tank & pipe repair|tank repair|टैंक मरम्मत||
+umbrella_repair|Umbrella & bag repair|chhatri repair|छाता मरम्मत||

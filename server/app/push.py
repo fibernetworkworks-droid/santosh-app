@@ -159,6 +159,28 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: poster final karein?", f"{dd.get('number', '')} {dd.get('title', '')}: proof dekh kar haan dijiye"[:300])
     if kind == "brand_idea":
         return (f"{name}: tyohar ka poster?", str(p.get("say") or "")[:300])
+    if kind == "site_board":
+        if not p.get("push"):
+            return None
+        return (f"{name}: website {p.get('number', '')}", str(p.get("say") or "")[:300])
+    if kind == "site_lead":
+        return (f"{name}: website par enquiry", str(p.get("say") or "")[:300])
+    if kind in ("site_launch", "site_dns", "site_down"):
+        if not p.get("push"):
+            return None
+        title = {"site_launch": "website live karein?", "site_dns": "domain ke DNS badlav", "site_down": "website nahi khul rahi"}[kind]
+        return (f"{name}: {title}", str(p.get("say") or "")[:300])
+    if kind == "site_live":
+        return (f"{name}: website live!", str(p.get("say") or "")[:300])
+    if kind in ("site_care", "site_github"):       # v0.124 monthly care note / GitHub export card
+        if not p.get("push"):
+            return None
+        return (f"{name}: {'website ka mahina' if kind == 'site_care' else 'GitHub mein daalein?'}", str(p.get("say") or "")[:300])
+    if kind == "site_domain":                     # v0.123 domain card / bought / KYC / renewal reminders
+        if not p.get("push"):
+            return None
+        title = {"domain": "domain lena hai?", "domain_done": "domain", "domain_reminder": "domain yaad dilana"}.get(p.get("kind"), "domain")
+        return (f"{name}: {title}", str(p.get("say") or "")[:300])
     if kind == "ads_change" and not p.get("decided"):
         return (f"{name}: ads mein badlav ki haan?", str(p.get("say") or "")[:300])
     if kind == "ads_report" and p.get("kind") in ("daily", "weekly"):
@@ -304,7 +326,7 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
 
 
 PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "email_draft", "bazar_open", "device_action",
-              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "hoola_pick", "hoola_khata", "thok_order", "thok_alert", "thok_day", "sheet_milaan", "doc_edit", "niryat_pi", "niryat_day", "ads_change", "ads_report", "hoola_rfq", "hoola_promo", "hoola_mandate", "fr_statement", "fr_day", "a2a_task", "a2a_out", "handoff_reminder", "digilocker", "theka_bill", "theka_letter", "theka_day", "brand_approval", "brand_idea"}
+              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "hoola_pick", "hoola_khata", "thok_order", "thok_alert", "thok_day", "sheet_milaan", "doc_edit", "niryat_pi", "niryat_day", "ads_change", "ads_report", "hoola_rfq", "hoola_promo", "hoola_mandate", "fr_statement", "fr_day", "a2a_task", "a2a_out", "handoff_reminder", "digilocker", "theka_bill", "theka_letter", "theka_day", "brand_approval", "brand_idea", "site_board", "site_lead", "site_launch", "site_live", "site_dns", "site_down", "site_domain", "site_care", "site_github"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 

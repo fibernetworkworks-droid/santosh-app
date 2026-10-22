@@ -924,6 +924,59 @@ class Api {
   Future<Map<String, dynamic>> adsMetaOff() async => Map<String, dynamic>.from(await _send('DELETE', '/api/ads/meta') as Map);
   Future<Map<String, dynamic>> adsMetaFetch(int days) async => Map<String, dynamic>.from(
       await _send('POST', '/api/ads/meta/fetch', body: {'days': days}, timeout: const Duration(seconds: 120)) as Map);
+  // ---- v0.121 Website Sahayak (plan, 3 looks, live build board, checks, preview) ----
+  Future<Map<String, dynamic>> siteAll() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/sites', timeout: const Duration(seconds: 45)) as Map);
+  Future<Map<String, dynamic>> siteNew(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/sites', body: body, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> siteGet(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/sites/$id') as Map);
+  Future<Map<String, dynamic>> siteAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/sites/$id/$action', body: body, timeout: const Duration(seconds: 120)) as Map);
+  Future<Map<String, dynamic>> siteDelete(String id) async => Map<String, dynamic>.from(await _send('DELETE', '/api/sites/$id') as Map);
+  Future<Map<String, dynamic>> sitePhoto(String id, String filename, List<int> bytes, String about) async =>
+      uploadFile('/api/sites/$id/photo', filename, bytes, fields: {'about': about}, tries: 1, timeout: const Duration(seconds: 180));
+  Future<Map<String, dynamic>> siteLibrary({String industry = '', String q = '', int offset = 0}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/sites-library', query: {'industry': industry, 'q': q, 'offset': '$offset'}) as Map);
+  Future<List<Map<String, dynamic>>> siteLeads(String id) async => List<Map<String, dynamic>>.from(
+      (((await _send('GET', '/api/sites/$id/leads')) as Map)['leads'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  // ---- v0.122 Website hosting: launch / rollback / domain / DNS / her keys ----
+  Future<Map<String, dynamic>> siteHosting(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/sites/$id/hosting') as Map);
+  Future<Map<String, dynamic>> siteDns(String planId, String action, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/sites-dns/$planId/$action', body: body, timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> siteDnsCheck(String planId) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/sites-dns/$planId/check', timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> siteKeySet(String provider, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/sites-keys/$provider', body: body, timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> siteKeyForget(String provider) async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/sites-keys/$provider') as Map);
+  // ---- v0.123 Domains: ideas + rupee prices, buy only on her fingerprint tap ----
+  Future<Map<String, dynamic>> siteDomains() async => Map<String, dynamic>.from(await _send('GET', '/api/sites-domains') as Map);
+  Future<Map<String, dynamic>> siteDomainIdeas(String site, {String name = '', String city = ''}) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/sites-domains/ideas', body: {'site': site, 'name': name, 'city': city}, timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> siteDomainCheck(List<String> domains) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/sites-domains/check', body: {'domains': domains}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> siteDomainRequest(String site, String domain, {bool autoRenew = false}) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/sites-domains/request', body: {'site': site, 'domain': domain, 'auto_renew': autoRenew},
+          timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> siteDomainBuy(String id, String hash) async => Map<String, dynamic>.from(await _withFingerprint(
+      'domain', id, true, (proof) => _send('POST', '/api/sites-domains/$id/buy',
+          body: {'hash': hash, if (proof != null) 'proof': proof}, timeout: const Duration(seconds: 90))) as Map);
+  Future<Map<String, dynamic>> siteDomainCancel(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/sites-domains/$id/cancel') as Map);
+  Future<Map<String, dynamic>> siteDomainKyc(String domain) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/sites-domains/kyc', body: {'domain': domain}) as Map);
+  // ---- v0.124 Website care, agency, GitHub export ----
+  Future<Map<String, dynamic>> siteCare(String id, {int days = 30}) async => Map<String, dynamic>.from(
+      await _send('GET', '/api/sites/$id/care', query: {'days': '$days'}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> siteClients() async => Map<String, dynamic>.from(await _send('GET', '/api/sites-clients') as Map);
+  Future<Map<String, dynamic>> siteAssign(String id, {String? client, String? staff}) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/sites/$id/assign', body: {if (client != null) 'client': client, if (staff != null) 'staff': staff}) as Map);
+  Future<Map<String, dynamic>> siteGithubRequest(String id, {String repo = '', bool private = true}) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/sites/$id/github-request', body: {'repo': repo, 'private': private}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> siteGithubPush(String id, String hash) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/sites-github/$id/push', body: {'hash': hash}, timeout: const Duration(seconds: 180)) as Map);
+  Future<Map<String, dynamic>> siteGithubCancel(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/sites-github/$id/cancel') as Map);
   // ---- v0.118 Brand Sahayak (brand designer; final artwork only on her tap) ----
   Future<Map<String, dynamic>> brandAll() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/brand', timeout: const Duration(seconds: 45)) as Map);

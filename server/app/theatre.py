@@ -17,7 +17,7 @@ import re
 from typing import Any
 from urllib.parse import urlparse
 
-SCENES = ("email", "browser", "payment", "bluetooth", "network", "pc", "work")
+SCENES = ("email", "browser", "payment", "bluetooth", "network", "pc", "work", "website")
 _CTRL = re.compile(r"[\x00-\x1f\x7f​-‏‪-‮⁦-⁩]")
 _DIGITS = re.compile(r"\d[\d\s-]{5,}\d")
 _SECRET_KEYS = re.compile(r"(^|_)(pin|upi_pin|otp|pass|password|passwd|cvv|token|secret|key|api_key|aadhaar|card|card_number)(_|$)", re.I)
@@ -28,6 +28,8 @@ def scene_for(tool: str, args: dict[str, Any] | None = None) -> str:
     t = tool or ""
     if t.startswith("email_") or t in ("gmail_check",):
         return "email"
+    if t in ("website", "website_dekho"):
+        return "website"
     if t in ("browse_web", "browse_result", "open_website", "computer_operator"):
         return "browser"
     if t in ("bluetooth", "tv_remote", "music_control", "ac_control"):

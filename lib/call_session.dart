@@ -24,6 +24,8 @@ const callCardKinds = {
   'kalam_publish', 'kalam_piece', // v0.101
   'ads_change', 'ads_report', // v0.111
   'brand_design', 'brand_idea', // v0.119
+  'site_board', 'site_lead', // v0.121
+  'site_launch', 'site_dns', 'site_live', 'site_down', 'site_domain', 'site_github', // v0.122 - v0.124
   'hoola_deal', // v0.102
   'hoola_pick', // v0.105
   'hoola_khata', // v0.106

@@ -1,0 +1,235 @@
+# Field cards, part 3 (same format as part 1).
+## finance
+chartered_accountant|Chartered accountant|ca,ca firm,chartered accountant,ca office,auditor|चार्टर्ड अकाउंटेंट|सीए|legal=icai
+tax_consultant|Tax consultant|itr filing,income tax consultant,tax return|कर सलाहकार||legal=icai
+gst_consultant|GST consultant|gst,gst return,gst registration|जीएसटी सलाहकार||
+accountant|Accounting & bookkeeping|bookkeeping,accounts writing,tally accountant|लेखाकार||
+insurance_agent|Insurance agent|lic agent,insurance advisor,policy agent,bima agent|बीमा एजेंट|विमा प्रतिनिधी|legal=irdai
+mutual_fund|Mutual fund distributor|mf distributor,sip,investment advisor|म्यूचुअल फ़ंड वितरक||legal=sebi
+loan_agent|Loan agent / DSA|loan dsa,personal loan agent,business loan|लोन एजेंट||legal=loans
+company_secretary|Company secretary|cs,company registration,roc filing|कंपनी सचिव||legal=icai
+cost_accountant|Cost accountant|cma,cost audit|कॉस्ट अकाउंटेंट||legal=icai
+financial_planner|Financial planner (SEBI RIA)|financial planning,ria,wealth advisor|वित्तीय योजनाकार||legal=sebi
+stock_broker|Stock broker / sub-broker|demat,trading account,share broker|स्टॉक ब्रोकर||legal=sebi
+cooperative_bank|Co-operative credit society|patsanstha,credit society,co op bank|पतसंस्था|पतसंस्था|goal=info legal=loans
+gold_loan|Gold loan centre|gold loan,gold finance|गोल्ड लोन||legal=loans
+microfinance|Microfinance|mfi,small loans,self help group finance|माइक्रोफ़ाइनेंस||legal=loans
+payroll_services|Payroll services|payroll outsourcing,salary processing|पेरोल सेवाएँ||
+startup_consultant|Startup & registration consultant|business registration,msme registration,startup india|स्टार्टअप सलाहकार||
+forex|Forex & money exchange|currency exchange,forex card|फ़ॉरेक्स||legal=loans
+pf_consultant|PF / ESIC consultant|pf consultant,esic,labour compliance|पीएफ़ सलाहकार||
+audit_firm|Audit firm|statutory audit,internal audit|ऑडिट फ़र्म||legal=icai
+valuation_firm|Business valuation|valuation,ibbi valuer|मूल्यांकन फ़र्म||
+insurance_broker|Insurance broking firm|insurance broker,general insurance|बीमा ब्रोकर||legal=irdai
+csc_banking|Banking correspondent point|bank mitra,csp,aeps point|बैंक मित्र||legal=govt_lookalike goal=info
+crypto_free_finance|Personal finance educator|finance educator,money coach|वित्त शिक्षक||legal=sebi goal=personal
+nri_tax|NRI tax services|nri tax,dtaa,nri itr|एनआरआई टैक्स||legal=icai
+trademark_agent|Trademark & IP agent|trademark registration,patent agent,copyright|ट्रेडमार्क एजेंट||
+## legal
+advocate|Advocate|lawyer,vakil,advocate office,legal advisor|अधिवक्ता|वकील|
+law_firm|Law firm|law firm,legal firm,attorneys|लॉ फ़र्म||
+notary|Notary|notary public,affidavit,notary services|नोटरी||
+family_lawyer|Family law practice|divorce lawyer,family court|पारिवारिक वकील||
+criminal_lawyer|Criminal law practice|criminal lawyer,bail|आपराधिक वकील||
+property_lawyer|Property lawyer|property disputes,title search|संपत्ति वकील||
+corporate_lawyer|Corporate lawyer|company law,contracts|कॉर्पोरेट वकील||
+labour_lawyer|Labour law practice|labour court,industrial disputes|श्रम वकील||
+consumer_lawyer|Consumer court practice|consumer complaint,consumer court|उपभोक्ता वकील||
+tax_lawyer|Tax lawyer|tax litigation,gst litigation|कर वकील||
+cyber_lawyer|Cyber law practice|cyber crime lawyer,it act|साइबर वकील||
+ip_lawyer|IP & trademark law|ip lawyer,trademark lawyer|बौद्धिक संपदा वकील||
+mediator|Mediation & arbitration|arbitrator,mediator,adr|मध्यस्थ||
+legal_drafting|Legal drafting services|agreement drafting,rent agreement,deed writing|कानूनी ड्राफ़्टिंग||
+document_writer|Document writer / deed writer|stamp vendor,deed writer,bond writer|दस्तावेज़ लेखक||legal=govt_lookalike
+immigration_lawyer|Immigration & visa law|visa lawyer,immigration|आप्रवासन वकील||
+legal_aid_ngo|Legal aid organisation|free legal aid,legal help ngo|विधिक सहायता||goal=cause legal=ngo
+motor_accident_lawyer|Motor accident claims|mact,accident claim lawyer|मोटर दुर्घटना वकील||
+banking_lawyer|Banking & recovery law|drt,debt recovery|बैंकिंग वकील||
+service_lawyer|Service matters practice|government service matters,cat|सेवा मामले वकील||
+women_rights_lawyer|Women's rights lawyer|domestic violence lawyer,women rights|महिला अधिकार वकील||
+legal_consultant|Legal consultant|legal advice,legal consultant|कानूनी सलाहकार||
+patent_attorney|Patent attorney|patent filing,patent agent|पेटेंट अटॉर्नी||
+senior_advocate|Senior advocate chambers|senior counsel,chambers|वरिष्ठ अधिवक्ता||
+company_law_firm|Compliance & company law|compliance,roc,secretarial|कंपनी कानून||
+## travel
+travel_agent|Travel agent|travels,tours and travels,tour agent,yatra company|ट्रैवल एजेंट||
+tour_operator|Tour operator|tour packages,holiday packages,group tours|टूर ऑपरेटर||
+taxi_service|Taxi service|cab,taxi,outstation cab,car hire|टैक्सी सेवा||goal=booking cta=call
+bus_operator|Bus operator|bus booking,travels bus,sleeper bus|बस ऑपरेटर||goal=booking
+pilgrimage_tours|Pilgrimage tours|yatra,char dham,teerth yatra,pandharpur|तीर्थ यात्रा|यात्रा|style=festive_traditional
+visa_consultant|Visa consultant|visa agent,passport visa|वीज़ा सलाहकार||legal=govt_lookalike
+ticketing|Air & rail ticketing|ticket booking,flight tickets,irctc agent|टिकट बुकिंग||
+adventure_tours|Adventure & trekking|trekking,camping,adventure trips|ट्रेकिंग||style=bold_modern
+school_tours|School & college tours|educational tours,study tours|शैक्षिक टूर||
+honeymoon_packages|Honeymoon packages|honeymoon,couple tours|हनीमून पैकेज||style=luxury_dark
+tempo_traveller|Tempo traveller rental|tempo traveller,mini bus,urbania|टेम्पो ट्रैवलर||goal=booking
+self_drive_tours|Road trips & self-drive tours|road trip,self drive|रोड ट्रिप||
+corporate_travel|Corporate travel|business travel,mice|कॉर्पोरेट ट्रैवल||style=corporate_trust
+international_tours|International tours|foreign tour,dubai package,europe tour|अंतरराष्ट्रीय टूर||
+homestay_host|Homestay host|homestay,village stay,farm stay|होमस्टे||goal=booking style=organic_natural
+tour_guide|Tour guide|guide,heritage walk,city tour|टूर गाइड||goal=personal
+houseboat|Houseboat & boat rides|houseboat,boating|हाउसबोट||goal=booking
+camping_site|Campsite|camping,glamping,tents|कैंपसाइट||goal=booking style=organic_natural
+travel_insurance|Travel insurance agent|travel insurance|यात्रा बीमा||legal=irdai
+bike_tours|Motorcycle tours|bike trip,ladakh bike tour|बाइक टूर||style=bold_modern
+wildlife_safari|Wildlife safari|safari,jungle safari,tadoba|वन्यजीव सफ़ारी||style=organic_natural
+cruise_agent|Cruise agent|cruise booking|क्रूज़ एजेंट||style=luxury_dark
+student_travel|Student exchange & travel|student trips,exchange programs|छात्र यात्रा||
+airport_transfer|Airport transfer|airport cab,airport drop|एयरपोर्ट ट्रांसफ़र||goal=booking cta=call
+travel_blogger|Travel creator|travel blog,travel vlogger|ट्रैवल क्रिएटर||goal=personal
+## hospitality
+hotel|Hotel|hotel,lodge,lodging,rooms,hotel booking|होटल|लॉज|
+resort|Resort|resort,weekend resort,water park resort|रिज़ॉर्ट||style=luxury_dark
+banquet_hall|Banquet hall|banquet,marriage hall,party hall,mangal karyalay|बैंक्वेट हॉल|मंगल कार्यालय|goal=enquiry
+lodge|Budget lodge|lodge,guest house,budget hotel|लॉज||
+boutique_hotel|Boutique hotel|boutique stay,heritage hotel|बुटीक होटल||style=editorial_calm
+lawn_venue|Wedding lawn|lawn,marriage lawn,open venue|विवाह लॉन||goal=enquiry style=festive_traditional
+service_apartment|Service apartments|serviced apartment,long stay|सर्विस अपार्टमेंट||
+dharamshala|Dharamshala / bhakt niwas|dharamshala,bhakta niwas,yatri niwas|धर्मशाला|भक्त निवास|style=festive_traditional
+hostel_backpackers|Backpacker hostel|backpackers,dorm,zostel style|बैकपैकर हॉस्टल||style=playful_bright
+agro_tourism|Agro tourism|agro tourism,farm tourism|कृषि पर्यटन||style=organic_natural
+conference_venue|Conference venue|conference hall,seminar hall|कॉन्फ़्रेंस वेन्यू||style=corporate_trust
+party_venue|Party venue|birthday venue,party place|पार्टी वेन्यू||goal=enquiry
+heritage_stay|Heritage stay|haveli,palace stay,wada stay|हेरिटेज स्टे||style=luxury_dark
+eco_resort|Eco resort|eco stay,nature resort|इको रिज़ॉर्ट||style=organic_natural
+club_house|Club house|club,members club|क्लब हाउस||
+convention_centre|Convention centre|convention hall,expo venue|कन्वेंशन सेंटर||
+hotel_restaurant|Hotel with restaurant|hotel restaurant,stay and dine|होटल रेस्टोरेंट||
+pg_ladies|Ladies PG|girls pg,women hostel|लेडीज़ पीजी||goal=enquiry
+villa_stay|Private villa stay|private villa,pool villa|विला स्टे||style=luxury_dark
+beach_resort|Beach resort|beach stay,konkan resort|बीच रिज़ॉर्ट||
+motel|Highway motel|motel,highway stay|मोटल||
+glamping|Glamping|luxury tents,glamping|ग्लैम्पिंग||style=organic_natural
+party_lawn_small|Small party hall|small hall,community hall|छोटा हॉल||goal=enquiry
+religious_stay|Ashram stay|ashram,spiritual stay|आश्रम||style=organic_natural
+hotel_chain|Hotel group|hotel group,chain of hotels|होटल समूह||style=corporate_trust
+## events
+wedding_planner|Wedding planner|wedding planning,shaadi planner,wedding organiser|वेडिंग प्लानर||style=luxury_dark
+decorator|Event decorator|decoration,flower decoration,mandap decor,stage decor|डेकोरेटर||style=festive_traditional
+dj|DJ & sound|dj,sound system,dj service,dhol|डीजे||style=bold_modern
+wedding_photographer|Wedding photographer|wedding photography,pre wedding,candid photographer|वेडिंग फ़ोटोग्राफ़र||style=luxury_dark
+event_management|Event management company|event company,event organiser,corporate events|इवेंट मैनेजमेंट||
+tent_house|Tent house & mandap|tent house,mandap,pandal,tent|टेंट हाउस|मंडप डेकोरेटर|style=festive_traditional
+balloon_decor|Balloon decoration|balloon decor,birthday decoration|बैलून डेकोरेशन||style=playful_bright
+anchor_emcee|Anchor / emcee|anchor,host,emcee,compere|एंकर||goal=personal
+choreographer|Wedding choreographer|sangeet choreographer,dance for wedding|कोरियोग्राफ़र||goal=personal
+band_baja|Band & baja|band baja,brass band,shehnai,dhol tasha|बैंड बाजा|ढोल ताशा|style=festive_traditional
+lighting_events|Event lighting|lighting decor,stage lights|इवेंट लाइटिंग||
+invitation_cards|Invitation card designer|wedding cards,invitations,patrika|निमंत्रण कार्ड|लग्नपत्रिका|style=festive_traditional
+magician|Magician & kids entertainer|magic show,kids party entertainer|जादूगर||style=playful_bright
+live_band|Live band|live music band,orchestra|लाइव बैंड||style=bold_modern
+pandit|Pandit / purohit services|pandit ji,purohit,guruji,pooja vidhi|पंडित|गुरुजी|legal=astro style=festive_traditional
+bridal_entry|Bridal entry & special effects|cold pyro,bridal entry|ब्राइडल एंट्री||
+photo_booth|Photo booth|photo booth,360 booth|फ़ोटो बूथ||style=playful_bright
+caterer_events|Event catering|wedding food,event caterer|इवेंट कैटरिंग||legal=fssai
+horse_baggi|Ghodi & baggi|ghodi,baggi,wedding horse|घोड़ी बग्गी||style=festive_traditional
+event_rentals|Event rentals|chairs rent,crockery rent|इवेंट किराया||
+corporate_gifting|Corporate gifting|corporate gifts,return gifts bulk|कॉर्पोरेट गिफ़्टिंग||goal=catalogue
+birthday_planner|Birthday party planner|birthday planner,kids party|बर्थडे प्लानर||style=playful_bright
+exhibition_stalls|Exhibition stall designer|stall fabrication,expo stalls|प्रदर्शनी स्टॉल||
+sound_rental|Sound & PA rental|pa system,speaker rent|साउंड किराया||
+haldi_mehendi_decor|Haldi & mehendi decor|haldi decor,mehendi setup|हल्दी डेकोर||style=festive_traditional
+## creative
+photographer|Photographer|photo studio,photography,photographer studio|फ़ोटोग्राफ़र||style=minimal_swiss
+videographer|Videographer|video shoot,cinematographer,video production|वीडियोग्राफ़र||style=luxury_dark
+graphic_designer|Graphic designer|logo design,graphic design,branding designer|ग्राफ़िक डिज़ाइनर||goal=personal
+printing_press|Printing press|printing,offset printing,flex printing,visiting cards|प्रिंटिंग प्रेस||goal=catalogue
+ad_agency|Advertising agency|ad agency,marketing agency,branding agency|विज्ञापन एजेंसी||style=bold_modern
+social_media_agency|Social media agency|smm,instagram marketing,social media manager|सोशल मीडिया एजेंसी||style=bold_modern
+content_creator|Content creator|youtuber,influencer,creator|कंटेंट क्रिएटर||goal=personal style=bold_modern
+writer|Writer & author|author,writer,poet,lekhak|लेखक||goal=personal style=editorial_calm
+film_production|Film production house|production house,short films,ad films|फ़िल्म प्रोडक्शन||style=luxury_dark
+music_producer|Music producer & studio|recording studio,music production|म्यूज़िक स्टूडियो||style=bold_modern
+signage|Signboard & signage maker|sign board,glow sign,acp letters|साइनबोर्ड||goal=portfolio
+flex_printing|Flex & banner printing|flex,banner,hoarding printing|फ़्लेक्स प्रिंटिंग||
+web_designer|Web designer|website design,web developer freelancer|वेब डिज़ाइनर||style=tech_gradient
+animator|Animator|animation,2d animation,motion graphics|एनिमेटर||goal=personal style=bold_modern
+illustrator|Illustrator|illustration,comic artist,children's book art|इलस्ट्रेटर||goal=personal style=playful_bright
+voice_artist|Voice-over artist|voice over,dubbing artist|वॉइस आर्टिस्ट||goal=personal
+packaging_design|Packaging designer|packaging design,label design|पैकेजिंग डिज़ाइन||
+model_portfolio|Model & actor portfolio|model,actor,portfolio shoot|मॉडल पोर्टफ़ोलियो||goal=personal style=luxury_dark
+pr_agency|PR agency|public relations,media relations|पीआर एजेंसी||
+drone_services|Drone shoot services|drone photography,aerial shoot|ड्रोन शूट||style=tech_gradient
+photo_lab|Photo lab & framing|photo print,photo frame,album|फ़ोटो लैब||
+newspaper_magazine|Local news / magazine|local news,magazine,newsletter|स्थानीय समाचार||goal=info style=editorial_calm
+podcast|Podcast|podcast,talk show|पॉडकास्ट||goal=personal
+art_gallery|Art gallery & artist|painter,artist,gallery,paintings for sale|आर्ट गैलरी||style=editorial_calm
+interior_stylist|Interior & product stylist|stylist,product styling|स्टाइलिस्ट||goal=personal
+## it
+software_company|Software company|software development,it company,app development|सॉफ़्टवेयर कंपनी||
+web_agency|Website development agency|website development,web agency,web company|वेब एजेंसी||
+app_developer|App developer|mobile app development,android app,app banana|ऐप डेवलपर||
+it_services|IT services & AMC|computer amc,it support,networking|आईटी सेवाएँ||style=corporate_trust
+saas_product|SaaS product|software product,saas,cloud software|सास प्रोडक्ट||
+cyber_security|Cyber security firm|security audit,vapt,cyber security|साइबर सुरक्षा||style=corporate_trust
+digital_marketing|Digital marketing agency|seo agency,google ads,digital marketing|डिजिटल मार्केटिंग||style=bold_modern
+data_entry|Data entry & BPO|bpo,data entry,back office|डेटा एंट्री||style=corporate_trust
+erp_dealer|Tally / ERP dealer|tally partner,erp,billing software|ईआरपी डीलर||
+cloud_hosting|Hosting & domains reseller|hosting,domain,web hosting|होस्टिंग||
+ai_startup|AI startup|ai company,artificial intelligence,ai solutions|एआई स्टार्टअप||
+networking_firm|Networking & structured cabling|networking,lan,cabling|नेटवर्किंग||
+pos_dealer|POS & billing machine dealer|billing machine,pos,barcode printer|पीओएस डीलर||goal=catalogue
+call_centre|Call centre|call centre,telecalling company|कॉल सेंटर||style=corporate_trust
+edtech|EdTech platform|online learning platform,lms|एडटेक||
+game_studio|Game studio|game development,mobile games|गेम स्टूडियो||style=bold_modern
+iot_company|IoT & automation company|iot,home automation,smart devices|आईओटी कंपनी||
+freelance_developer|Freelance developer|freelancer,developer,programmer|फ़्रीलांस डेवलपर||goal=personal
+ui_ux|UI / UX studio|ui ux,product design|यूआई यूएक्स||style=minimal_swiss
+computer_training|Corporate IT training|it training,corporate training|आईटी प्रशिक्षण||goal=admissions
+gis_survey|GIS & mapping firm|gis,drone mapping,survey|जीआईएस||
+fintech|Fintech startup|fintech,payment app|फ़िनटेक||legal=loans
+healthtech|Healthtech startup|healthtech,clinic software|हेल्थटेक||
+agritech|Agritech startup|agritech,farmer app|एग्रीटेक||style=organic_natural
+tech_blog|Tech blog / reviewer|tech reviews,gadget reviews|टेक ब्लॉग||goal=info
+## telecom
+isp|Internet service provider|isp,broadband,wifi connection,fiber internet,net connection|इंटरनेट सेवा प्रदाता|इंटरनेट|
+fiber_franchise|Fibre franchise (TIP)|bsnl fiber franchise,ftth,tip,fibre partner|फ़ाइबर फ़्रैंचाइज़ी||
+cable_operator|Cable TV operator|cable tv,lco,dth,set top box|केबल ऑपरेटर||
+dth_dealer|DTH dealer|dth,dish tv,set top box recharge|डीटीएच डीलर||
+mobile_retailer|Mobile recharge & SIM shop|recharge shop,sim card,mobile recharge|रिचार्ज दुकान||
+wifi_hotspot|Wi-Fi hotspot provider|public wifi,hotspot|वाई-फ़ाई हॉटस्पॉट||
+tower_services|Telecom tower services|tower maintenance,telecom infra|टावर सेवाएँ||style=corporate_trust
+ofc_contractor|Fibre laying contractor|ofc laying,fibre splicing,optical fibre contractor|ओएफ़सी ठेकेदार||
+iptv|IPTV & OTT platform|iptv,ott,streaming|आईपीटीवी||
+intercom|EPABX & intercom dealer|intercom,epabx,telephone system|इंटरकॉम||
+leased_line|Leased line & enterprise internet|leased line,ill,enterprise broadband|लीज़्ड लाइन||style=corporate_trust
+satellite_internet|Satellite / rural internet|rural internet,satellite broadband|ग्रामीण इंटरनेट||
+network_equipment|Network equipment dealer|routers,olt,onu,switches dealer|नेटवर्क उपकरण||goal=catalogue
+telecom_training|Telecom training institute|fiber splicing course,telecom course|टेलीकॉम प्रशिक्षण||goal=admissions
+cctv_network|CCTV & surveillance networks|surveillance,video monitoring|निगरानी नेटवर्क||
+smart_home_isp|Smart home installer|smart home,home wifi mesh|स्मार्ट होम||
+community_wifi|Society Wi-Fi|society wifi,apartment internet|सोसायटी वाई-फ़ाई||
+voip|VoIP & cloud telephony|cloud telephony,ivr,virtual number|क्लाउड टेलीफ़ोनी||
+radio_station|Community radio|community radio,fm station|सामुदायिक रेडियो||goal=info
+call_recording|Business phone systems|business phone,pbx|बिज़नेस फ़ोन||
+broadband_reseller|Broadband reseller|broadband agent,airtel fiber agent,jio fiber agent|ब्रॉडबैंड पुनर्विक्रेता||
+fiber_maintenance|Network maintenance contractor|fiber maintenance,network amc|नेटवर्क रखरखाव||
+noc_services|NOC & network monitoring|noc,network monitoring|एनओसी सेवाएँ||style=tech_gradient
+ott_aggregator|OTT bundle provider|ott bundle,streaming bundle|ओटीटी बंडल||
+telecom_consultant|Telecom consultant|telecom licensing,isp licence consultant|टेलीकॉम सलाहकार||
+## manufacturing
+factory|Factory / manufacturer|manufacturer,factory,udyog,industries,manufacturing unit|कारख़ाना|कारखाना|
+plastic_manufacturer|Plastic products manufacturer|plastic moulding,plastic factory|प्लास्टिक निर्माता||
+garment_manufacturer|Garment manufacturer|garment factory,stitching unit,apparel manufacturing|परिधान निर्माता||
+furniture_manufacturer|Furniture manufacturer|furniture factory,wooden furniture maker|फ़र्नीचर निर्माता||
+packaging_manufacturer|Packaging manufacturer|corrugated boxes,packaging,carton maker|पैकेजिंग निर्माता||
+chemical_manufacturer|Chemical manufacturer|chemicals,chemical company|रसायन निर्माता||
+engineering_works|Engineering works|machine shop,cnc,lathe work,engineering workshop|इंजीनियरिंग वर्क्स||
+food_processing|Food processing unit|food processing,food factory|खाद्य प्रसंस्करण||legal=fssai+legal_metrology
+agarbatti|Agarbatti manufacturer|agarbatti,incense sticks,dhoop|अगरबत्ती निर्माता||style=festive_traditional
+paper_plates|Paper plates & disposables|paper plate,pattal,dona,disposable|पेपर प्लेट||
+soap_detergent|Soap & detergent maker|soap,detergent,phenyl,cleaning products|साबुन निर्माता||legal=legal_metrology
+textile_mill|Textile & powerloom|powerloom,textile,yarn|वस्त्र उद्योग||
+brick_kiln|Brick manufacturer|bricks,fly ash bricks,vit bhatti|ईंट निर्माता|वीट भट्टी|
+steel_fabricator|Steel products|steel furniture,racks,almirah|स्टील उत्पाद||
+electrical_panels|Electrical panels maker|panel board,control panel|इलेक्ट्रिकल पैनल||
+pharma_manufacturer|Pharma manufacturer|pharma company,medicine manufacturing|दवा निर्माता||legal=pharmacy+dmr
+cosmetics_manufacturer|Cosmetics manufacturer|cosmetics factory,third party manufacturing|कॉस्मेटिक निर्माता||legal=dmr+legal_metrology
+auto_components|Auto components maker|auto parts manufacturer,components|ऑटो कंपोनेंट्स||
+printing_packaging|Label & printing unit|labels,stickers printing|लेबल प्रिंटिंग||
+water_bottling|Packaged water plant|bottling plant,packaged drinking water|पानी बॉटलिंग||legal=fssai+legal_metrology
+pickle_factory|Pickle & masala factory|pickle manufacturer,masala factory|अचार फ़ैक्टरी||legal=fssai+legal_metrology
+leather_goods|Leather goods maker|leather bags,leather products|चमड़े के उत्पाद||
+toys_manufacturer|Toys manufacturer|toy factory|खिलौना निर्माता||
+candle_maker|Candles & diyas maker|candles,diya,decorative candles|मोमबत्ती निर्माता||style=festive_traditional
+solar_manufacturer|Solar products manufacturer|solar lights,solar products|सोलर उत्पाद निर्माता||

@@ -21,6 +21,8 @@ import 'audit_screen.dart';
 import 'insurance_screen.dart';
 import 'ads_screen.dart';
 import 'brand_screen.dart';
+import 'site_hosting.dart';
+import 'site_screen.dart';
 import 'kalam_screen.dart';
 import 'seo_screen.dart';
 import 'thok_screen.dart';
@@ -617,6 +619,24 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return TeleDayCard(v: it.data, app: app);
     case 'brand_design':
       return BrandDesignCard(v: it.data, app: app);
+    case 'site_board':
+      return SiteBoardCard(v: it.data, app: app);
+    case 'site_lead':
+      return SiteLeadCard(v: it.data, app: app);
+    case 'site_launch':
+      return SiteLaunchCard(v: it.data, app: app);
+    case 'site_dns':
+      return SiteDnsCard(v: it.data, app: app);
+    case 'site_live':
+      return SiteLiveCard(v: it.data, app: app);
+    case 'site_down':
+      return SiteLiveCard(v: it.data, app: app, down: true);
+    case 'site_domain':
+      return SiteDomainCard(v: it.data, app: app);
+    case 'site_care':
+      return SiteCareCard(v: it.data, app: app);
+    case 'site_github':
+      return SiteGithubCard(v: it.data, app: app);
     case 'brand_idea':
       return BrandIdeaCard(v: it.data, app: app);
     case 'ads_change':

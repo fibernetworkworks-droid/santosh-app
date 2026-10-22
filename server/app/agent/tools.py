@@ -667,3 +667,10 @@ from .voicestyle_tools import SEEKHA_HANDLERS, SEEKHA_LABELS, SEEKHA_TOOLS  # no
 TOOLS.extend(SEEKHA_TOOLS)
 TOOL_LABELS.update(SEEKHA_LABELS)
 HANDLERS.update(SEEKHA_HANDLERS)
+
+# v0.121 Website Sahayak (website developer / designer: 1 lakh brief library, live build board, checks, preview)
+from .site_tools import SITE_HANDLERS, SITE_LABELS, SITE_TOOLS  # noqa: E402
+
+TOOLS.extend(SITE_TOOLS)
+TOOL_LABELS.update(SITE_LABELS)
+HANDLERS.update(SITE_HANDLERS)

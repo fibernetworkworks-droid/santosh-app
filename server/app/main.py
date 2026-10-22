@@ -69,7 +69,23 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.120.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.124.0", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def _hosted_sites(request: Request, call_next):
+    """v0.122 Websites Hoola launched are served from this server by their hostname (free Hoola address or her domain)."""
+    host = (request.headers.get("host") or "").split(":")[0].lower()
+    if host and "." in host and not host.startswith(("127.", "localhost")) and request.method in ("GET", "HEAD"):
+        from .site import hosting as _hosting
+        hm = _hosting.host_map()
+        if host in hm:
+            res = await asyncio.to_thread(_hosting.serve, host, request.url.path)
+            if res is not None:
+                code, body, ctype, headers = res
+                return Response(content=b"" if request.method == "HEAD" else body, status_code=code, media_type=ctype,
+                                headers=headers)
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -149,7 +165,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -5730,6 +5746,416 @@ def ads_meta_off(tenant: str = Depends(current_tenant)):
 async def ads_meta_fetch(body: dict, tenant: str = Depends(current_tenant)):
     from .ads import service as ads
     return await asyncio.to_thread(_ads, ads.fetch_meta, tenant, int(body.get("days") or 14), str(body.get("conversation_id") or ""))
+
+
+# ---------------------------------------------------------------- v0.121 Website Sahayak (plan, looks, live build, checks, preview)
+def _site(fn, *a, **k):
+    from .site import service as S
+    try:
+        return fn(*a, **k)
+    except S.SiteError as e:
+        raise HTTPException(400, str(e))
+    except KeyError as e:
+        raise HTTPException(404, f"not found: {e}")
+
+
+@app.get("/api/sites", dependencies=[Depends(require_key)])
+async def sites_all(tenant: str = Depends(current_tenant)):
+    from .site import service as S
+    return await asyncio.to_thread(S.everything, tenant)
+
+
+@app.post("/api/sites", dependencies=[Depends(require_key)])
+async def sites_new(body: dict, tenant: str = Depends(current_tenant)):
+    """{brief, name, goal, style, answers {name, phone, ...}, client, conversation_id}"""
+    from .site import service as S
+    ans = body.get("answers") if isinstance(body.get("answers"), dict) else None
+    return await asyncio.to_thread(_site, S.new, tenant, str(body.get("brief") or ""), str(body.get("conversation_id") or ""),
+                                   str(body.get("name") or ""), str(body.get("field") or ""), str(body.get("goal") or ""),
+                                   str(body.get("style") or ""), ans, str(body.get("client") or ""))
+
+
+@app.get("/api/sites-library", dependencies=[Depends(require_key)])
+async def sites_library(industry: str = "", q: str = "", offset: int = 0, limit: int = 60):
+    from .site import library as L
+    return await asyncio.to_thread(L.browse, industry, q, max(1, min(limit, 200)), max(0, offset))
+
+
+@app.get("/api/sites-library/brief", dependencies=[Depends(require_key)])
+async def sites_library_brief(field: str, goal: str = "", style: str = ""):
+    from .site import library as L
+    try:
+        return await asyncio.to_thread(L.brief, field, goal, style)
+    except KeyError:
+        raise HTTPException(404, "field not found")
+
+
+@app.get("/api/sites-library/understand", dependencies=[Depends(require_key)])
+async def sites_library_understand(q: str):
+    from .site import library as L
+    return await asyncio.to_thread(L.understand, q)
+
+
+@app.get("/api/sites/{ref}", dependencies=[Depends(require_key)])
+async def sites_get(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import service as S
+    return await asyncio.to_thread(_site, S.get, tenant, ref)
+
+
+@app.delete("/api/sites/{ref}", dependencies=[Depends(require_key)])
+async def sites_delete(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import service as S
+    return await asyncio.to_thread(_site, S.delete, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/answers", dependencies=[Depends(require_key)])
+async def sites_answers(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import service as S
+    ans = body.get("answers") if isinstance(body.get("answers"), dict) else {}
+    return await asyncio.to_thread(_site, S.answer, tenant, ref, ans)
+
+
+@app.post("/api/sites/{ref}/plan", dependencies=[Depends(require_key)])
+async def sites_plan_ok(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """Her tap: 'Haan, aage badho' on the plan card -> 3 looks."""
+    from .site import service as S
+    body = body or {}
+    pages = body.get("pages") if isinstance(body.get("pages"), list) else None
+    return await asyncio.to_thread(_site, S.approve_plan, tenant, ref, str(body.get("conversation_id") or ""), pages)
+
+
+@app.post("/api/sites/{ref}/look", dependencies=[Depends(require_key)])
+async def sites_look(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap on one of the 3 looks {index, colors_from?} -> the build starts."""
+    from .site import service as S
+    cf = body.get("colors_from")
+    return await asyncio.to_thread(_site, S.choose_look, tenant, ref, int(body.get("index") or 0),
+                                   int(cf) if cf is not None and str(cf).lstrip("-").isdigit() else None,
+                                   str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/sites/{ref}/change", dependencies=[Depends(require_key)])
+async def sites_change(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import service as S
+    return await asyncio.to_thread(_site, S.change, tenant, ref, str(body.get("instruction") or ""),
+                                   str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/sites/{ref}/stop", dependencies=[Depends(require_key)])
+async def sites_stop(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import service as S
+    return await asyncio.to_thread(_site, S.stop, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/resume", dependencies=[Depends(require_key)])
+async def sites_resume(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import service as S
+    return await asyncio.to_thread(_site, S.resume, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/photo", dependencies=[Depends(require_key)])
+async def sites_photo(ref: str, file: UploadFile = File(...), about: str = Form(""), tenant: str = Depends(current_tenant)):
+    from .site import service as S
+    data = await file.read()
+    if len(data) > 25 * 1024 * 1024:
+        raise HTTPException(413, "Photo 25 MB se badi hai")
+    return await asyncio.to_thread(_site, S.add_photo, tenant, ref, data, "", about, "")
+
+
+@app.post("/api/sites/{ref}/export", dependencies=[Depends(require_key)])
+async def sites_export(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import service as S
+    return await asyncio.to_thread(_site, S.export, tenant, ref)
+
+
+@app.get("/api/sites/{ref}/leads", dependencies=[Depends(require_key)])
+async def sites_leads(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import service as S
+    return {"leads": await asyncio.to_thread(_site, S.leads, tenant, ref)}
+
+
+@app.get("/api/sites/{ref}/shots/{name:path}", dependencies=[Depends(require_key)])
+async def sites_shot(ref: str, name: str, tenant: str = Depends(current_tenant)):
+    from .site import service as S
+    try:
+        f = await asyncio.to_thread(S.shot_file, tenant, ref, name)
+    except (S.SiteError, ValueError):
+        raise HTTPException(404, "not found")
+    return FileResponse(f, headers={"Cache-Control": "private, max-age=300"})
+
+
+@app.get("/api/site-preview/{token}")
+async def site_preview_root(token: str):
+    return RedirectResponse(f"/api/site-preview/{token}/", status_code=307)
+
+
+@app.get("/api/site-preview/{token}/{path:path}")
+async def site_preview(token: str, path: str = ""):
+    """Public, by its random token: the live preview of a site being built (noindex, strict CSP)."""
+    from .site import service as S
+    try:
+        data, ctype, headers = await asyncio.to_thread(S.preview_file, token, path)
+    except S.SiteError:
+        raise HTTPException(404, "not found")
+    return Response(content=data, media_type=ctype, headers=headers)
+
+
+_SITE_FORM_CORS = {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "POST, OPTIONS",
+                   "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "86400"}
+
+
+@app.options("/api/site-forms/{site_id}")
+async def site_form_cors(site_id: str):
+    return Response(status_code=204, headers=_SITE_FORM_CORS)
+
+
+@app.post("/api/site-forms/{site_id}")
+async def site_form(site_id: str, request: Request):
+    """Public: a visitor's enquiry from a Hoola-built site -> her lead (honeypot, rate limits, no cookies)."""
+    from .site import service as S
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "bad form")
+    ip = (request.headers.get("cf-connecting-ip") or request.headers.get("x-real-ip") or
+          (request.client.host if request.client else ""))
+    try:
+        out = await asyncio.to_thread(S.form_post, site_id, body, ip)
+    except S.SiteError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400, headers=_SITE_FORM_CORS)
+    return JSONResponse(out, headers=_SITE_FORM_CORS)
+
+
+# ---------------------------------------------------------------- v0.122 Website hosting: launch, rollback, her domain, DNS
+def _host(fn, *a, **k):
+    from .site import dns as D
+    from .site import hosting as H
+    from .site import service as S
+    try:
+        return fn(*a, **k)
+    except (H.HostError, D.DnsError, S.SiteError) as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:                       # v0.123 domain errors carry plain words too
+        from .site import domains as DM
+        if isinstance(e, DM.DomainError):
+            raise HTTPException(400, str(e))
+        raise
+
+
+@app.get("/api/sites/{ref}/hosting", dependencies=[Depends(require_key)])
+async def sites_hosting(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import hosting as H
+    return await asyncio.to_thread(_host, H.status, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/launch-request", dependencies=[Depends(require_key)])
+async def sites_launch_request(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    from .site import hosting as H
+    body = body or {}
+    return await asyncio.to_thread(_host, H.launch_request, tenant, ref, body.get("free", True) is not False,
+                                   str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/sites/{ref}/launch", dependencies=[Depends(require_key)])
+async def sites_launch(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap on 'Haan, live karo' (the card's hash must match the checked version and addresses)."""
+    from .site import hosting as H
+    return await asyncio.to_thread(_host, H.launch, tenant, ref, str(body.get("hash") or ""), body.get("free", True) is not False)
+
+
+@app.post("/api/sites/{ref}/rollback-request", dependencies=[Depends(require_key)])
+async def sites_rollback_request(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import hosting as H
+    return await asyncio.to_thread(_host, H.rollback_request, tenant, ref, int(body.get("version") or 0))
+
+
+@app.post("/api/sites/{ref}/rollback", dependencies=[Depends(require_key)])
+async def sites_rollback(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import hosting as H
+    return await asyncio.to_thread(_host, H.rollback, tenant, ref, int(body.get("version") or 0), str(body.get("hash") or ""))
+
+
+@app.post("/api/sites/{ref}/takedown", dependencies=[Depends(require_key)])
+async def sites_takedown(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import hosting as H
+    return await asyncio.to_thread(_host, H.take_down, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/domain", dependencies=[Depends(require_key)])
+async def sites_domain(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import hosting as H
+    return await asyncio.to_thread(_host, H.connect_domain, tenant, ref, str(body.get("domain") or ""),
+                                   str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/sites-dns/{plan_id}/apply", dependencies=[Depends(require_key)])
+async def sites_dns_apply(plan_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap on the DNS card."""
+    from .site import hosting as H
+    return await asyncio.to_thread(_host, H.dns_apply, tenant, plan_id, str(body.get("hash") or ""))
+
+
+@app.post("/api/sites-dns/{plan_id}/undo", dependencies=[Depends(require_key)])
+async def sites_dns_undo(plan_id: str, tenant: str = Depends(current_tenant)):
+    from .site import dns as D
+    return await asyncio.to_thread(_host, D.undo, tenant, plan_id)
+
+
+@app.get("/api/sites-dns/{plan_id}/check", dependencies=[Depends(require_key)])
+async def sites_dns_check(plan_id: str, tenant: str = Depends(current_tenant)):
+    from .site import dns as D
+    return await asyncio.to_thread(_host, D.check, tenant, plan_id)
+
+
+@app.post("/api/sites/{ref}/email-dns", dependencies=[Depends(require_key)])
+async def sites_email_dns(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{domain, provider google|zoho, report_to} -> a DNS plan card for email at her domain (applied on her tap)."""
+    from .site import dns as D
+    from .site import service as S
+
+    def go():
+        with __import__("app.db", fromlist=["session"]).session() as s:
+            r = S._find(s, tenant, ref)
+            sid = r.id
+        d = D.norm_domain(str(body.get("domain") or ""))
+        return D.make_plan(tenant, sid, d, D.email_records(d, str(body.get("provider") or ""), str(body.get("report_to") or "")),
+                           "email")
+    return await asyncio.to_thread(_host, go)
+
+
+@app.get("/api/sites-keys", dependencies=[Depends(require_key)])
+async def sites_keys(tenant: str = Depends(current_tenant)):
+    from .site import dns as D
+    return {"keys": await asyncio.to_thread(D.keys, tenant)}
+
+
+@app.put("/api/sites-keys/{provider}", dependencies=[Depends(require_key)])
+async def sites_key_set(provider: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her own Cloudflare / Porkbun key, typed in the app only (never in chat); verified, then sealed."""
+    from .site import dns as D
+    return await asyncio.to_thread(_host, D.set_key, tenant, provider, str(body.get("token") or ""), str(body.get("secret") or ""))
+
+
+@app.delete("/api/sites-keys/{provider}", dependencies=[Depends(require_key)])
+async def sites_key_forget(provider: str, tenant: str = Depends(current_tenant)):
+    from .site import dns as D
+    return await asyncio.to_thread(_host, D.forget_key, tenant, provider)
+
+
+@app.get("/api/hosting/ask")
+async def hosting_ask(domain: str = ""):
+    """For an optional Caddy in front (on-demand TLS): 200 only for hostnames of launched Hoola sites."""
+    from .site import hosting as H
+    return Response(status_code=200 if domain.lower() in await asyncio.to_thread(H.host_map, True) else 404)
+
+
+# ---------------------------------------------------------------- v0.123 Domains (ideas, live price, buy on her fingerprint tap)
+@app.get("/api/sites-domains", dependencies=[Depends(require_key)])
+async def sites_domains(tenant: str = Depends(current_tenant)):
+    from .site import domains as DM
+    from .site import dns as D
+    return {"domains": await asyncio.to_thread(DM.domains, tenant), "keys": await asyncio.to_thread(D.keys, tenant),
+            "month_spent_inr": await asyncio.to_thread(DM._month_spent, tenant), "month_limit_inr": DM._ceiling()}
+
+
+@app.post("/api/sites-domains/ideas", dependencies=[Depends(require_key)])
+async def sites_domain_ideas(body: dict, tenant: str = Depends(current_tenant)):
+    from .site import domains as DM
+    return await asyncio.to_thread(_host, DM.suggest, tenant, str(body.get("site") or ""), str(body.get("name") or ""),
+                                   str(body.get("city") or ""))
+
+
+@app.post("/api/sites-domains/check", dependencies=[Depends(require_key)])
+async def sites_domain_check(body: dict, tenant: str = Depends(current_tenant)):
+    from .site import domains as DM
+    doms = [str(d) for d in (body.get("domains") or [])][:20]
+    return {"results": await asyncio.to_thread(_host, DM.check, tenant, doms)}
+
+
+@app.post("/api/sites-domains/request", dependencies=[Depends(require_key)])
+async def sites_domain_request(body: dict, tenant: str = Depends(current_tenant)):
+    from .site import domains as DM
+    return await asyncio.to_thread(_host, DM.buy_request, tenant, str(body.get("site") or ""), str(body.get("domain") or ""),
+                                   bool(body.get("auto_renew")))
+
+
+@app.post("/api/sites-domains/{oid}/buy", dependencies=[Depends(require_key)])
+async def sites_domain_buy(oid: str, body: dict, tenant: str = Depends(current_tenant)):
+    """ONLY her tap on the domain card; fingerprint-signed once a phone key is set up (money, no refunds)."""
+    from .site import domains as DM
+    _fingerprint(tenant, "domain", oid, body.get("proof"))
+    return await asyncio.to_thread(_host, DM.buy, tenant, oid, str(body.get("hash") or ""))
+
+
+@app.post("/api/sites-domains/{oid}/cancel", dependencies=[Depends(require_key)])
+async def sites_domain_cancel(oid: str, tenant: str = Depends(current_tenant)):
+    from .site import domains as DM
+    return await asyncio.to_thread(_host, DM.cancel, tenant, oid)
+
+
+@app.post("/api/sites-domains/kyc", dependencies=[Depends(require_key)])
+async def sites_domain_kyc(body: dict, tenant: str = Depends(current_tenant)):
+    from .site import domains as DM
+    return await asyncio.to_thread(_host, DM.kyc_done, tenant, str(body.get("domain") or ""))
+
+
+# ---------------------------------------------------------------- v0.124 Website care + agency + GitHub export
+def _care(fn, *a, **k):
+    from .site import github as GH
+    try:
+        return _host(fn, *a, **k)
+    except GH.GithubError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/sites/{ref}/care", dependencies=[Depends(require_key)])
+async def sites_care(ref: str, days: int = 30, tenant: str = Depends(current_tenant)):
+    from .site import care as SC
+    return await asyncio.to_thread(_care, SC.report, tenant, ref, max(1, min(days, 365)))
+
+
+@app.get("/api/sites-clients", dependencies=[Depends(require_key)])
+async def sites_clients(tenant: str = Depends(current_tenant)):
+    from .site import care as SC
+    return {"clients": await asyncio.to_thread(SC.clients, tenant)}
+
+
+@app.post("/api/sites/{ref}/assign", dependencies=[Depends(require_key)])
+async def sites_assign(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import care as SC
+    return await asyncio.to_thread(_care, SC.assign, tenant, ref,
+                                   body.get("client") if "client" in body else None, body.get("staff") if "staff" in body else None)
+
+
+@app.get("/api/sites/{ref}/github", dependencies=[Depends(require_key)])
+async def sites_github_list(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import github as GH
+    from .site import service as S
+
+    def run():
+        with session() as s:
+            sid = S._find(s, tenant, ref).id
+        return {"exports": GH.exports(tenant, sid)}
+    return await asyncio.to_thread(_care, run)
+
+
+@app.post("/api/sites/{ref}/github-request", dependencies=[Depends(require_key)])
+async def sites_github_request(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import github as GH
+    return await asyncio.to_thread(_care, GH.request, tenant, ref, str(body.get("repo") or ""), body.get("private", True) is not False)
+
+
+@app.post("/api/sites-github/{eid}/push", dependencies=[Depends(require_key)])
+async def sites_github_push(eid: str, body: dict, tenant: str = Depends(current_tenant)):
+    """ONLY her tap on the GitHub card."""
+    from .site import github as GH
+    return await asyncio.to_thread(_care, GH.push, tenant, eid, str(body.get("hash") or ""))
+
+
+@app.post("/api/sites-github/{eid}/cancel", dependencies=[Depends(require_key)])
+async def sites_github_cancel(eid: str, tenant: str = Depends(current_tenant)):
+    from .site import github as GH
+    return await asyncio.to_thread(_care, GH.cancel, tenant, eid)
 
 
 # ---------------------------------------------------------------- v0.118 Brand Sahayak (brand designer; final artwork on her tap)

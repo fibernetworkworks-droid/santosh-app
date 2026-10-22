@@ -637,6 +637,11 @@ def init_db(url: str | None = None):
     from .motion import models as _motion_models  # noqa: F401
     from . import idvault as _idvault  # noqa: F401
     from . import voicestyle as _voicestyle  # noqa: F401  (v0.119 how she speaks, mis-hearings, her words)
+    from .site import models as _site_models  # noqa: F401  (v0.121 Website Sahayak)
+    from .site import hosting_models as _site_hosting  # noqa: F401  (v0.122 hosts, DNS plans, her keys)
+    from .site import domains as _site_domains  # noqa: F401  (v0.123 domains she bought through Hoola)
+    from .site import care as _site_care  # noqa: F401  (v0.124 visits / uptime per day, monthly care notes)
+    from .site import github as _site_github  # noqa: F401  (v0.124 GitHub export of her site)
     from .net import models as _net_models  # noqa: F401
     from .net import share as _net_share  # noqa: F401
     from .net import groups as _net_groups  # noqa: F401

@@ -94,6 +94,19 @@ class Settings(BaseSettings):
     parallel_api_key: str = ""             # optional: higher limits (https://platform.parallel.ai); only the query is sent
     parallel_mcp_url: str = "https://search.parallel.ai/mcp"
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
+    site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
+    site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)
+    sites_base_domain: str = ""            # v0.122 free addresses <name>.<this> (wildcard DNS proxied to this server)
+    sites_origin: str = ""                 # v0.122 Cloudflare for SaaS fallback origin hostname (points at this server)
+    sites_origin_ip: str = ""              # v0.122 this server's public IP (her own Cloudflare zone proxies to it)
+    sites_cf_token: str = ""               # v0.122 Newtika's Cloudflare token: custom hostnames on the Hoola sites zone
+    sites_cf_zone_id: str = ""             # v0.122 the Hoola sites zone id (Cloudflare for SaaS)
+    sites_resell: bool = False             # v0.123 Hoola (Newtika) registers domains on its own registrar account
+    sites_reg_cf_token: str = ""           # v0.123 Newtika's Cloudflare Registrar token (only with sites_resell)
+    sites_reg_cf_account: str = ""
+    sites_porkbun_key: str = ""            # v0.123 Newtika's Porkbun API key / secret (only with sites_resell)
+    sites_porkbun_secret: str = ""
+    sites_domain_month_inr: float = 5000   # v0.123 ceiling per owner per month for domain purchases
     voice_silence_ms: int = 700            # pause that ends your turn: Google recommends 500-800 (people reply in ~0.2 s)
     voice_end_sensitivity: str = ""        # "" = Gemini's default | low (waits longer) | high (answers sooner)
     voice_prefix_padding_ms: int = 300     # speech kept from just before the voice was detected (100-300)

@@ -511,6 +511,22 @@ async def employee_jobs() -> None:
             brand.send_nudge(tenant, fest)
     except Exception:
         log.exception("brand nudge failed")
+    try:                                   # v0.122 Website: her domain's DNS / SSL coming up, uptime of live sites
+        from .site import hosting as site_hosting
+        await asyncio.to_thread(site_hosting.watch)
+    except Exception:
+        log.exception("site hosting watch failed")
+    try:                                   # v0.123 domains: registry result, .in KYC + renewal reminders
+        from .site import domains as site_domains
+        await asyncio.to_thread(site_domains.tick)
+    except Exception:
+        log.exception("site domains tick failed")
+    try:                                   # v0.124 care: visit counters to the DB, monthly care note on the 1st
+        from .site import care as site_care
+        await asyncio.to_thread(site_care.flush)
+        await asyncio.to_thread(site_care.monthly)
+    except Exception:
+        log.exception("site care failed")
     try:
         from .seo import service as seo
         for tenant in seo.due_mornings():
