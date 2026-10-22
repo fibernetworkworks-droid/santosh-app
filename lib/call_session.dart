@@ -20,6 +20,7 @@ const callCardKinds = {
   // v0.86 every card that waits for her answer shows inside the call too
   'darzi_quote', 'darzi_ready', 'chai_plan', 'video_job', 'motion',
   'ask_form', // v0.97
+  'tele_logged', 'tele_day', // v0.99
 };
 
 /// The live voice call, owned by the app (not by a screen): it keeps going while the owner opens Chat, Connect,

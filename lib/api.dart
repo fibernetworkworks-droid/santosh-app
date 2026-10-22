@@ -796,6 +796,26 @@ class Api {
   Future<Map<String, dynamic>> mshopSettings() async => Map<String, dynamic>.from(await _send('GET', '/api/mshop/settings') as Map);
   Future<Map<String, dynamic>> mshopSaveSettings(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/mshop/settings', body: body) as Map);
+  // ---- v0.99 Telecaller Sahayak (a person makes every call) ----
+  Future<Map<String, dynamic>> teleAll() async => Map<String, dynamic>.from(await _send('GET', '/api/telecall') as Map);
+  Future<List<Map<String, dynamic>>> teleLeads({String q = '', String stage = ''}) async =>
+      _maps((await _send('GET', '/api/telecall/leads', query: {if (q.isNotEmpty) 'q': q, if (stage.isNotEmpty) 'stage': stage}) as Map)['leads']);
+  Future<Map<String, dynamic>> teleLead(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/telecall/leads/$id') as Map);
+  Future<Map<String, dynamic>> teleAdd(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('POST', '/api/telecall/leads', body: body) as Map);
+  Future<Map<String, dynamic>> teleImport(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/telecall/import', body: body, timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> teleUpdate(String id, Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('PATCH', '/api/telecall/leads/$id', body: body) as Map);
+  Future<Map<String, dynamic>> teleScript(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/telecall/leads/$id/script', timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> teleStart(String id) async => Map<String, dynamic>.from(await _send('POST', '/api/telecall/leads/$id/call', body: {}) as Map);
+  Future<Map<String, dynamic>> teleLogCall(String callId, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/telecall/calls/$callId/log', body: body, timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> teleLogLead(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/telecall/leads/$id/log', body: body, timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> teleDnd(String id, {bool wrong = false}) async => Map<String, dynamic>.from(await _send('POST', '/api/telecall/leads/$id/dnd', body: {'wrong': wrong}) as Map);
+  Future<Map<String, dynamic>> teleForget(String id) async => Map<String, dynamic>.from(await _send('DELETE', '/api/telecall/leads/$id') as Map);
+  Future<Map<String, dynamic>> teleReport(int days) async => Map<String, dynamic>.from(await _send('GET', '/api/telecall/report', query: {'days': '$days'}) as Map);
+  Future<Map<String, dynamic>> teleSettings(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('PUT', '/api/telecall/settings', body: body) as Map);
   // v0.78 Pakka kaam: task log + lessons (failure -> what worked)
   Future<Map<String, dynamic>> agentTasks({int limit = 30}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/agent/tasks?limit=$limit') as Map);

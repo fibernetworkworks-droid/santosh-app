@@ -280,6 +280,7 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _lekhakCards = {}; // v0.87 Lekhak: one doc card + one sign card per document, updated in place
   final Map<String, FeedItem> _askForms = {}; // v0.97 form cards, updated in place when answered / closed
   int lekhakTick = 0;                          // bumps on any lekhak event (the Lekhak screen refreshes)
+  int teleTick = 0;                            // v0.99 bumps on telecaller events (the Telecaller screen refreshes)
   List<Map<String, dynamic>> get pendingApprovals =>
       [for (final it in _bazar.values) if ((it.data['status'] ?? 'pending') == 'pending') it.data];
   int bazarLinkedTick = 0;                    // bumps when an app account got linked (Apps screen refreshes)
@@ -1073,6 +1074,11 @@ class Santosh extends ChangeNotifier {
         break;
       case 'mshop':
         mshopTick++;
+        break;
+      case 'tele_day':
+      case 'tele_logged':
+        feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
+        teleTick++;
         break;
       case 'fin_report':
       case 'fin_alert':

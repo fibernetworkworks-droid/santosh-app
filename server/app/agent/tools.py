@@ -560,3 +560,9 @@ from .insure_tools import INSURE_HANDLERS, INSURE_LABELS, INSURE_TOOLS  # noqa: 
 TOOLS.extend(INSURE_TOOLS)
 TOOL_LABELS.update(INSURE_LABELS)
 HANDLERS.update(INSURE_HANDLERS)
+# v0.99 Telecaller Sahayak (Hoola prepares calls, a person makes them)
+from .telecall_tools import TELECALL_HANDLERS, TELECALL_LABELS, TELECALL_TOOLS  # noqa: E402
+
+TOOLS.extend(TELECALL_TOOLS)
+TOOL_LABELS.update(TELECALL_LABELS)
+HANDLERS.update(TELECALL_HANDLERS)

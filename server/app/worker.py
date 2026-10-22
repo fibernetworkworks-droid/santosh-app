@@ -460,6 +460,12 @@ async def employee_jobs() -> None:
             gstp.send_morning(tenant)
     except Exception:
         log.exception("gst morning failed")
+    try:                                   # v0.99 Telecaller: today's call list, each with a reason
+        from .telecall import service as telecall
+        for tenant in telecall.due_mornings():
+            telecall.send_morning(tenant)
+    except Exception:
+        log.exception("telecall morning failed")
     try:                                   # v0.88 Mobile dukaan: the morning list (jobs, bills, recharges ending)
         from .mshop import service as mshop
         for tenant in mshop.due_mornings():

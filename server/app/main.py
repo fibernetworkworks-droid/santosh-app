@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.98.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.99.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -131,7 +131,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "insurance"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -4099,6 +4099,115 @@ def gst_settings_put(body: dict, tenant: str = Depends(current_tenant)):
     from .gstp import service as gstp
     keys = ("enabled", "practitioner", "enrolment", "morning_time", "remind_days")
     return _gst(gstp.save_settings, tenant, **{k: body[k] for k in keys if k in body})
+
+
+# ---------------------------------------------------------------- v0.99 Telecaller Sahayak (a person makes every call)
+def _tele(fn, *a, **k):
+    from .telecall import service as tele
+    try:
+        return fn(*a, **k)
+    except tele.TeleError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/telecall", dependencies=[Depends(require_key)])
+def tele_all(assigned: str = "", tenant: str = Depends(current_tenant)):
+    from .telecall import service as tele
+    return {"list": tele.call_list(tenant, 0, assigned), "report": tele.report(tenant, 1), "settings": tele.settings(tenant),
+            "outcomes": {k: v[0] for k, v in tele.OUTCOMES.items()}, "purposes": tele.PURPOSES}
+
+
+@app.get("/api/telecall/leads", dependencies=[Depends(require_key)])
+def tele_leads(q: str = "", stage: str = "", tenant: str = Depends(current_tenant)):
+    from .telecall import service as tele
+    return {"leads": tele.leads(tenant, q, stage, 300)}
+
+
+@app.post("/api/telecall/leads", dependencies=[Depends(require_key)])
+def tele_add(body: dict, tenant: str = Depends(current_tenant)):
+    from .telecall import service as tele
+    return _tele(tele.add_lead, tenant, str(body.get("name") or ""), str(body.get("phone") or ""),
+                 str(body.get("source") or "enquiry"), str(body.get("purpose") or "sales"), str(body.get("need") or ""),
+                 str(body.get("notes") or ""), str(body.get("city") or ""), str(body.get("language") or ""), body.get("amount"),
+                 body.get("consent"), str(body.get("assigned") or ""), str(body.get("next_when") or ""))
+
+
+@app.post("/api/telecall/import", dependencies=[Depends(require_key)])
+def tele_import(body: dict, tenant: str = Depends(current_tenant)):
+    from .telecall import service as tele
+    return _tele(tele.import_list, tenant, str(body.get("list_id") or ""), str(body.get("file_id") or ""),
+                 str(body.get("source") or ""), str(body.get("purpose") or "sales"), str(body.get("assigned") or ""))
+
+
+@app.get("/api/telecall/leads/{lead_id}", dependencies=[Depends(require_key)])
+def tele_lead(lead_id: str, tenant: str = Depends(current_tenant)):
+    from .telecall import service as tele
+    return _tele(tele.get_lead, tenant, lead_id)
+
+
+@app.patch("/api/telecall/leads/{lead_id}", dependencies=[Depends(require_key)])
+def tele_update(lead_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .telecall import service as tele
+    keys = ("name", "need", "city", "language", "assigned", "notes", "purpose", "interest", "stage", "amount", "consent",
+            "next_when", "reason")
+    return _tele(tele.update_lead, tenant, lead_id, **{k: body[k] for k in keys if k in body})
+
+
+@app.post("/api/telecall/leads/{lead_id}/script", dependencies=[Depends(require_key)])
+async def tele_script(lead_id: str, tenant: str = Depends(current_tenant)):
+    from .telecall import service as tele
+    return await asyncio.to_thread(_tele, tele.make_script, tenant, lead_id)
+
+
+@app.post("/api/telecall/leads/{lead_id}/call", dependencies=[Depends(require_key)])
+def tele_start(lead_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    """She tapped Call: note the time; the APP opens the phone's own dialer. The server never dials."""
+    from .telecall import service as tele
+    return _tele(tele.start_call, tenant, lead_id, str(body.get("by") or "owner"))
+
+
+@app.post("/api/telecall/calls/{call_id}/log", dependencies=[Depends(require_key)])
+async def tele_log_call(call_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .telecall import service as tele
+    return await asyncio.to_thread(_tele, tele.log_call, tenant, "", call_id, str(body.get("outcome") or ""),
+                                   str(body.get("notes") or ""), str(body.get("next_when") or ""), body.get("seconds"),
+                                   str(body.get("interest") or ""), body.get("amount"), str(body.get("file_id") or ""),
+                                   str(body.get("by") or "owner"), "app", str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/telecall/leads/{lead_id}/log", dependencies=[Depends(require_key)])
+async def tele_log_lead(lead_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .telecall import service as tele
+    return await asyncio.to_thread(_tele, tele.log_call, tenant, lead_id, "", str(body.get("outcome") or ""),
+                                   str(body.get("notes") or ""), str(body.get("next_when") or ""), body.get("seconds"),
+                                   str(body.get("interest") or ""), body.get("amount"), str(body.get("file_id") or ""),
+                                   str(body.get("by") or "owner"), "app", str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/telecall/leads/{lead_id}/dnd", dependencies=[Depends(require_key)])
+def tele_dnd(lead_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .telecall import service as tele
+    return _tele(tele.mark_dnd, tenant, lead_id, bool(body.get("wrong")))
+
+
+@app.delete("/api/telecall/leads/{lead_id}", dependencies=[Depends(require_key)])
+def tele_forget(lead_id: str, tenant: str = Depends(current_tenant)):
+    from .telecall import service as tele
+    return _tele(tele.forget, tenant, lead_id)
+
+
+@app.get("/api/telecall/report", dependencies=[Depends(require_key)])
+def tele_report(days: int = 1, tenant: str = Depends(current_tenant)):
+    from .telecall import service as tele
+    return tele.report(tenant, max(1, min(90, days)))
+
+
+@app.put("/api/telecall/settings", dependencies=[Depends(require_key)])
+def tele_settings(body: dict, tenant: str = Depends(current_tenant)):
+    from .telecall import service as tele
+    keys = ("enabled", "business", "caller_name", "pitch", "segment", "start_hour", "end_hour", "daily_goal", "max_attempts",
+            "record_calls", "registered", "language", "rules", "dont_say", "team", "morning_time")
+    return _tele(tele.save_settings, tenant, **{k: body[k] for k in keys if k in body})
 
 
 @app.get("/api/agent/tasks", dependencies=[Depends(require_key)])
