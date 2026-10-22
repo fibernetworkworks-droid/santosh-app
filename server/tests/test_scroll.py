@@ -116,7 +116,8 @@ def test_api_and_avatar(taste):
     from app.agent.tools import Ctx, dispatch
     with TestClient(main.app) as c:
         cid = c.post("/api/conversations").json()["id"]
-        d = date.today().isoformat()
+        from datetime import datetime, timedelta, timezone
+        d = datetime.now(timezone(timedelta(hours=5, minutes=30))).date().isoformat()   # the report counts in IST
         assert c.post("/api/reels/scroll/sync", json={"days": [_day(d, 75, 15)]}).json() == {"days": 1, "budget_min": 0, "yt_shorts_pct": None}
         assert c.post("/api/reels/scroll/budget", json={"minutes": 60}).json() == {"budget_min": 60}
         r = c.get("/api/reels/scroll/report").json()
