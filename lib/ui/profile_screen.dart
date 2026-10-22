@@ -209,6 +209,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Policy book, premium yaad, cover ka gap, quote tulna, claim: ${app.aName} karega, paisa graahak seedha insurer ko'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InsuranceScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.headset_mic_rounded, color: C.accent),
               title: Text('${app.aName} · Telecaller', style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: const Text('Kisko kab call karna hai aur kyun, har graahak ki script, call ke baad log; call aap karti hain'),

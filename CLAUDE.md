@@ -1592,6 +1592,9 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `ndk.abiFilters` armeabi-v7a / arm64-v8a in patch_android (x86 / x86_64 were 62 MB); CI checks the APK opens (`unzip -t`),
   has arm64 libs and no x86 before publishing. Check a release: download it with the REST asset API and `apksigtool verify`.
 
+## v0.100.1 Build fix
+- v0.99 merge joined the Bima and Telecaller tiles in `profile_screen.dart` into one ListTile (duplicated named arguments -> release compile failed). Split again.
+
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
   automation (Baileys/WhatsApp Web).
