@@ -210,6 +210,9 @@ def friendly_error(err: str) -> str:
         return "Bluetooth is off on the phone. Ask the user to switch it on (I can show the prompt: action turn_on)."
     if err == "needs_screen":
         return "This needs the Hoola app open on the phone screen. Ask the user to open Hoola and try again."
+    if err == "app_missing":
+        return ("That music app isn't on this phone. Ask if she wants another app (Spotify, YouTube Music, JioSaavn...) "
+                "or to install it from the Play Store.")
     if err == "not_found":
         return "That device isn't paired or nearby. Run a scan first and use the exact name from the scan."
     cast = {

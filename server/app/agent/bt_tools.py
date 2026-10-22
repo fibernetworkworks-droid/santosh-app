@@ -52,10 +52,16 @@ BT_TOOLS = [
     {"name": "music_control", "description": (
         "Music on the phone and the Bluetooth speaker / earbuds connected to it. action: play, pause, next, previous, "
         "stop (query = songs/artist to play, e.g. 'Arijit Singh'); or volume: direction up/down with steps, or percent "
-        "(never above 90%)."),
+        "(never above 90%). app = the music app she named ('Spotify pe ...' -> spotify; also youtube_music, jiosaavn, "
+        "wynk, gaana, amazon_music, apple_music); no app named = her phone's default music app. kind = song / artist / "
+        "album / playlist when clear. It starts in that app on HER phone (works with free accounts too; a free Spotify "
+        "account may shuffle). For music on the TV use tv_remote app='spotify' search='...'."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["play", "pause", "next", "previous", "stop", "volume"]},
          "query": {"type": "string"}, "direction": {"type": "string", "enum": ["up", "down"]},
+         "app": {"type": "string", "enum": ["spotify", "youtube_music", "jiosaavn", "wynk", "gaana", "amazon_music",
+                                            "apple_music"]},
+         "kind": {"type": "string", "enum": ["song", "artist", "album", "playlist"]},
          "steps": {"type": "integer"}, "percent": {"type": "integer"}}, "required": ["action"]}},
     {"name": "ac_control", "description": (
         "Control an AC through the phone's IR blaster (set up once in Ghar). power on/off, temp_c 20-28, delta +1/-1, "
@@ -147,7 +153,7 @@ async def tv_remote(ctx: Ctx, keys=None, repeat=1, app="", search="", tv="", cha
     return await _device(ctx, "smart-tv-remote", "tv_keys", {"keys": list(keys), "repeat": repeat, "hold_ms": hold_ms, **dev})
 
 
-async def music_control(ctx: Ctx, action, query="", direction="", steps=None, percent=None, **_):
+async def music_control(ctx: Ctx, action, query="", direction="", steps=None, percent=None, app="", kind="", **_):
     if action == "volume":
         args: dict[str, Any] = {}
         if percent is not None:
@@ -156,7 +162,16 @@ async def music_control(ctx: Ctx, action, query="", direction="", steps=None, pe
             args["direction"] = direction or "up"
             args["steps"] = steps or 2
         return await _device(ctx, "bluetooth-speaker", "volume", args)
-    return await _device(ctx, "bluetooth-speaker", "media", {"action": str(action), "query": str(query or "")})
+    args = {"action": str(action), "query": str(query or "")}
+    if app:
+        args["app"] = str(app)
+    if kind:
+        args["kind"] = str(kind)
+    out = await _device(ctx, "bluetooth-speaker", "media", args)
+    if str(action) == "play" and query and out.get("status") == "done":
+        out["note"] = ("Started on her phone. Say what is playing in one line. If she says it only opened the app, ask her to "
+                       "tap play once (some apps show results first).")
+    return out
 
 
 async def ac_control(ctx: Ctx, status=False, **args):

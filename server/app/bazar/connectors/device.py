@@ -31,6 +31,33 @@ from .device_cloud import CLIENTS, PROVIDERS, CloudClient, Token
 
 MEDIA_KEYS = {"play": "PLAY", "pause": "PAUSE", "resume": "PLAY", "next": "NEXT", "previous": "PREVIOUS", "stop": "STOP",
               "play_pause": "PLAY_PAUSE"}
+# v0.126 music apps she can name; play happens on her phone through Android's "play from search" (no app API, no limits)
+MUSIC_APPS = {
+    "spotify": ("com.spotify.music", "Spotify", "spotify:search:{q}"),
+    "youtube_music": ("com.google.android.apps.youtube.music", "YouTube Music", "https://music.youtube.com/search?q={q}"),
+    "jiosaavn": ("com.jio.media.jiobeats", "JioSaavn", ""),
+    "wynk": ("com.bsbportal.music", "Wynk Music", ""),
+    "gaana": ("com.gaana", "Gaana", ""),
+    "amazon_music": ("com.amazon.mp3", "Amazon Music", ""),
+    "apple_music": ("com.apple.android.music", "Apple Music", ""),
+}
+MUSIC_ALIASES = {"spotify": "spotify", "spotyfy": "spotify", "spotifi": "spotify", "youtube music": "youtube_music",
+                 "yt music": "youtube_music", "youtube_music": "youtube_music", "jiosaavn": "jiosaavn", "saavn": "jiosaavn",
+                 "jio saavn": "jiosaavn", "wynk": "wynk", "gaana": "gaana", "gana": "gaana", "amazon music": "amazon_music",
+                 "amazon_music": "amazon_music", "apple music": "apple_music", "apple_music": "apple_music"}
+MUSIC_KINDS = ("song", "artist", "album", "playlist")
+
+
+def music_app(name: str) -> str:
+    """'' = her phone's default music app; else a MUSIC_APPS key (unknown names raise)."""
+    n = re.sub(r"\s+", " ", str(name or "").lower().replace("-", " ")).strip()
+    if n in ("", "any", "default", "phone"):
+        return ""
+    if n in MUSIC_ALIASES:
+        return MUSIC_ALIASES[n]
+    raise ToolError("Yeh music app main nahi jaanta. Chal sakte hain: " + ", ".join(v[1] for v in MUSIC_APPS.values()) + ".")
+
+
 FRIDGE_WARM_C = 8
 
 # Safety tier 4 (never): Santosh does not switch heaters/heavy loads or start/stop fridges, washers, ovens, locks.
@@ -118,9 +145,14 @@ class DeviceExecutor:
         if ch == "phone_media":
             return [
                 ToolSpec("media", "Control music on the phone and the Bluetooth speaker connected to it. action: play, pause, "
-                         "next, previous, stop. Give query to start specific songs (e.g. 'Arijit Singh').",
+                         "next, previous, stop. Give query to start specific songs (e.g. 'Arijit Singh'); app = which music app "
+                         "(spotify, youtube_music, jiosaavn, wynk, gaana, amazon_music, apple_music), kind = song / artist / "
+                         "album / playlist.",
                          {"type": "object", "properties": {"action": {"type": "string", "enum": list(MEDIA_KEYS)},
-                                                           "query": {"type": "string"}}, "required": ["action"]}, 1),
+                                                           "query": {"type": "string"},
+                                                           "app": {"type": "string", "enum": list(MUSIC_APPS)},
+                                                           "kind": {"type": "string", "enum": list(MUSIC_KINDS)}},
+                          "required": ["action"]}, 1),
                 ToolSpec("volume", "Change speaker volume: direction up/down with steps, or an exact percent.",
                          {"type": "object", "properties": {"direction": {"type": "string", "enum": ["up", "down"]},
                                                            "steps": {"type": "integer"}, "percent": {"type": "integer"}}}, 1),
@@ -300,9 +332,20 @@ class DeviceExecutor:
         dev = self._speaker(ctx, pack)
         where = dev.name if dev else "your speaker"
         q = str(args.get("query", "")).strip()
+        app = music_app(str(args.get("app", "")))
         if action == "play" and q:
-            return self._phone(ctx, dev, [{"op": "play_from_search", "query": q[:80]}], f"Playing {q} on {where}.",
-                               channel="phone_media")
+            op: dict[str, Any] = {"op": "play_from_search", "query": q[:80]}
+            kind = str(args.get("kind", "")).lower()
+            if kind in MUSIC_KINDS:
+                op["kind"] = kind
+            label = "your music app"
+            if app:
+                pkg, label, link = MUSIC_APPS[app]
+                op["package"] = pkg
+                if link:
+                    from urllib.parse import quote
+                    op["fallback"] = link.format(q=quote(q[:80]))
+            return self._phone(ctx, dev, [op], f"Playing {q} in {label} on {where}.", channel="phone_media")
         word = {"play": "Playing", "resume": "Playing", "pause": "Paused", "next": "Next song", "previous": "Previous song",
                 "stop": "Stopped", "play_pause": "Done"}[action]
         return self._phone(ctx, dev, [{"op": "media_key", "key": MEDIA_KEYS[action]}], f"{word} on {where}.",

@@ -165,7 +165,7 @@ internal class MediaChannel(private val context: Context) {
             "media_key" -> key(op.getString("key"))
             "volume" -> volume(op.getString("direction"), op.optInt("steps", 2), op.optInt("max_percent", 90))
             "volume_set" -> setVolume(op.getInt("percent"), op.optInt("max_percent", 90))
-            "play_from_search" -> playFromSearch(op.getString("query"))
+            "play_from_search" -> playFromSearch(op.getString("query"), op.optString("package", ""), op.optString("kind", ""), op.optString("fallback", ""))
             else -> throw HomeDeviceException("Unknown media op ${op.optString("op")}")
         }
     }
@@ -208,16 +208,48 @@ internal class MediaChannel(private val context: Context) {
         audio.setStreamVolume(AudioManager.STREAM_MUSIC, (max * pct / 100.0).roundToInt(), AudioManager.FLAG_SHOW_UI)
     }
 
-    /** Android's standard "play from search" intent; the user's default music app plays the songs. */
-    private fun playFromSearch(query: String) {
+    /**
+     * Android's standard "play from search" intent (what assistants and car screens use).
+     * v0.126: [pkg] = the app she named (Spotify, YouTube Music, JioSaavn...), [kind] = song / artist / album / playlist.
+     * Named app missing -> "app_missing". It doesn't take the intent -> its own search link ([fallback]) or just opens it.
+     */
+    private fun playFromSearch(query: String, pkg: String = "", kind: String = "", fallback: String = "") {
+        val pm = context.packageManager
+        if (pkg.isNotEmpty() && pm.getLaunchIntentForPackage(pkg) == null) throw HomeDeviceException("app_missing")
+        val focus = when (kind) {
+            "artist" -> "vnd.android.cursor.item/artist"
+            "album" -> "vnd.android.cursor.item/album"
+            "playlist" -> "vnd.android.cursor.item/playlist"
+            "song" -> "vnd.android.cursor.item/audio"
+            else -> "vnd.android.cursor.item/*"
+        }
         val intent = Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH)
             .putExtra(SearchManager.QUERY, query)
-            .putExtra(MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/*")
+            .putExtra(MediaStore.EXTRA_MEDIA_FOCUS, focus)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (intent.resolveActivity(context.packageManager) == null) {
-            throw HomeDeviceException("No music app on this phone supports 'play from search'.")
+        when (kind) {
+            "artist" -> intent.putExtra(MediaStore.EXTRA_MEDIA_ARTIST, query)
+            "album" -> intent.putExtra(MediaStore.EXTRA_MEDIA_ALBUM, query)
+            "playlist" -> intent.putExtra("android.intent.extra.playlist", query)
+            "song" -> intent.putExtra(MediaStore.EXTRA_MEDIA_TITLE, query)
         }
-        context.startActivity(intent)
+        if (pkg.isNotEmpty()) intent.setPackage(pkg)
+        if (intent.resolveActivity(pm) != null) {
+            context.startActivity(intent)
+            return
+        }
+        if (pkg.isEmpty()) throw HomeDeviceException("No music app on this phone supports 'play from search'.")
+        // the app is there but doesn't take "play from search": open its own search page, else just open it
+        if (fallback.isNotEmpty()) {
+            val view = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(fallback)).setPackage(pkg)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (view.resolveActivity(pm) != null) {
+                context.startActivity(view)
+                return
+            }
+        }
+        val launch = pm.getLaunchIntentForPackage(pkg) ?: throw HomeDeviceException("app_missing")
+        context.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 }
 

@@ -46,6 +46,18 @@
     <!-- Android 11+ only lets the app see these apps if it declares what it wants to do -->
     <queries>
         <intent><action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" /></intent>
+        <!-- v0.126 music apps Hoola can start by name (Spotify first) -->
+        <package android:name="com.spotify.music" />
+        <package android:name="com.google.android.apps.youtube.music" />
+        <package android:name="com.jio.media.jiobeats" />
+        <package android:name="com.bsbportal.music" />
+        <package android:name="com.gaana" />
+        <package android:name="com.amazon.mp3" />
+        <package android:name="com.apple.android.music" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="spotify" />
+        </intent>
         <intent><action android:name="android.speech.RecognitionService" /></intent>
         <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
         <intent><action android:name="android.intent.action.SET_ALARM" /></intent>
