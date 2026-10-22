@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.93.1", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.94.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -131,7 +131,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -3503,6 +3503,111 @@ def phonedoc_case_action(case_id: str, action: str, body: dict, tenant: str = De
     if action == "close":
         return _pdoc(pdoc.close, tenant, case_id)
     raise HTTPException(404, "step | recheck | escalate | close")
+
+
+# ---------------------------------------------------------------- v0.94 Payroll Officer
+def _pay(fn, *a, **k):
+    from .payroll import service as pay
+    try:
+        return fn(*a, **k)
+    except (pay.PayError, ValueError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/payroll/today", dependencies=[Depends(require_key)])
+def payroll_today(tenant: str = Depends(current_tenant)):
+    from .payroll import service as pay
+    return pay.calendar(tenant)
+
+
+@app.get("/api/payroll/employees", dependencies=[Depends(require_key)])
+def payroll_employees(all: bool = False, tenant: str = Depends(current_tenant)):
+    from .payroll import service as pay
+    return {"employees": pay.employees(tenant, not all)}
+
+
+@app.post("/api/payroll/employees", dependencies=[Depends(require_key)])
+def payroll_employee_save(body: dict, tenant: str = Depends(current_tenant)):
+    from .payroll import service as pay
+    keys = ("phone", "gender", "dob", "doj", "designation", "pay", "gross", "uan", "esic_ip", "pan", "account", "ifsc", "regime",
+            "declared", "prev_income", "prev_tds", "pf_member", "eps_member", "pf_on_full", "fixed_term", "alias")
+    return _pay(pay.save_employee, tenant, str(body.get("name") or ""), str(body.get("employee") or ""), **{k: body[k] for k in keys if k in body})
+
+
+@app.post("/api/payroll/attendance", dependencies=[Depends(require_key)])
+def payroll_attendance(body: dict, tenant: str = Depends(current_tenant)):
+    from .payroll import service as pay
+    return _pay(pay.set_attendance, tenant, str(body.get("period") or ""), body.get("entries") or [])
+
+
+@app.post("/api/payroll/attendance/import", dependencies=[Depends(require_key)])
+async def payroll_attendance_import(file: UploadFile = File(...), period: str = Form(...), tenant: str = Depends(current_tenant)):
+    from .payroll import service as pay
+    data = await file.read()
+    return _pay(pay.import_attendance, tenant, period, data, file.filename or "attendance.csv")
+
+
+@app.post("/api/payroll/advances", dependencies=[Depends(require_key)])
+def payroll_advance(body: dict, tenant: str = Depends(current_tenant)):
+    from .payroll import service as pay
+    return _pay(pay.add_advance, tenant, str(body.get("employee") or ""), body.get("amount"), body.get("emi"), str(body.get("given_on") or ""),
+                str(body.get("note") or ""))
+
+
+@app.get("/api/payroll/runs", dependencies=[Depends(require_key)])
+def payroll_runs(tenant: str = Depends(current_tenant)):
+    from .payroll import service as pay
+    return {"runs": pay.runs(tenant)}
+
+
+@app.post("/api/payroll/runs", dependencies=[Depends(require_key)])
+def payroll_run_make(body: dict, tenant: str = Depends(current_tenant)):
+    from .payroll import service as pay
+    return _pay(pay.prepare_run, tenant, str(body.get("period") or ""), str(body.get("conversation_id") or ""))
+
+
+@app.get("/api/payroll/runs/{run_id}", dependencies=[Depends(require_key)])
+def payroll_run_get(run_id: str, tenant: str = Depends(current_tenant)):
+    from .payroll import service as pay
+    return _pay(pay.get_run, tenant, run_id)
+
+
+@app.post("/api/payroll/runs/{run_id}/{action}", dependencies=[Depends(require_key)])
+def payroll_run_act(run_id: str, action: str, body: dict, tenant: str = Depends(current_tenant)):
+    """decide (her Haan, only from her tap) | files | paid (after she paid) | drafts"""
+    from .payroll import service as pay
+    conv = str(body.get("conversation_id") or "")
+    if action == "decide":
+        return _pay(pay.decide, tenant, run_id, bool(body.get("approve")), str(body.get("note") or ""), conv)
+    if action == "files":
+        return _pay(pay.files, tenant, run_id, conv)
+    if action == "paid":
+        return _pay(pay.mark_paid, tenant, run_id, str(body.get("paid_on") or ""), "owner", conv)
+    if action == "drafts":
+        return _pay(pay.payslip_drafts, tenant, run_id)
+    raise HTTPException(404, "decide | files | paid | drafts")
+
+
+@app.post("/api/payroll/leaving", dependencies=[Depends(require_key)])
+def payroll_leaving(body: dict, tenant: str = Depends(current_tenant)):
+    from .payroll import service as pay
+    return _pay(pay.full_and_final, tenant, str(body.get("employee") or ""), str(body.get("last_day") or ""), body.get("leave_days") or 0,
+                body.get("notice_recovery") or 0, body.get("other") or 0, bool(body.get("death_or_disability")),
+                str(body.get("conversation_id") or ""))
+
+
+@app.get("/api/payroll/settings", dependencies=[Depends(require_key)])
+def payroll_settings_get(tenant: str = Depends(current_tenant)):
+    from .payroll import service as pay
+    return pay.settings(tenant)
+
+
+@app.put("/api/payroll/settings", dependencies=[Depends(require_key)])
+def payroll_settings_put(body: dict, tenant: str = Depends(current_tenant)):
+    from .payroll import service as pay
+    keys = ("enabled", "company", "state", "pf_on", "pf_code", "esi_on", "esi_code", "tan", "min_wage", "days_basis", "pay_account",
+            "pay_ifsc", "morning_time")
+    return _pay(pay.save_settings, tenant, **{k: body[k] for k in keys if k in body})
 
 
 # ---------------------------------------------------------------- v0.93 GST Sahayak

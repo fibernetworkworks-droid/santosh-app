@@ -60,7 +60,7 @@ VOICE_TOOL_NAMES = {
     "email_follow_up", "email_contacts", "email_attachment", "email_accounts",
     "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_cancel_event",
     "calendar_update_event", "calendar_respond", "calendar_free_slots", "calendar_settings",
-    "google_status", "order_karo", "darzi", "darzi_dekho", "chai", "chai_dekho", "office", "office_dekho", "lekhak", "lekhak_dekho", "mobile_shop", "mobile_shop_dekho", "phone_doctor", "gst", "gst_dekho", "drive_find", "drive_list_folder", "drive_read_file", "drive_send_file", "drive_upload", "drive_create_folder",
+    "google_status", "order_karo", "darzi", "darzi_dekho", "chai", "chai_dekho", "office", "office_dekho", "lekhak", "lekhak_dekho", "mobile_shop", "mobile_shop_dekho", "phone_doctor", "gst", "gst_dekho", "payroll", "payroll_dekho", "drive_find", "drive_list_folder", "drive_read_file", "drive_send_file", "drive_upload", "drive_create_folder",
     "drive_organize", "drive_create_doc", "doc_create", "drive_share", "drive_trash", "drive_storage",
     "sheet_read", "sheet_append",
     "form_create", "form_find", "form_summary", "form_responses", "form_settings", "form_alerts",
@@ -168,6 +168,7 @@ Which tool (details are in each tool's description)
 - Mobile shop: mobile_shop action=new_job / status / recharge / pay / deliver, mobile_shop_dekho what=today / warranty / job. Read an IMEI or phone number back once before saving. Never take a customer's phone password.
 - Phone problem (slow, battery, heating, no network, no ring, OTP not coming, lost / stolen, fraud...): phone_doctor action=start, then ONE step at a time and ask 'theek hua?' (action=step). The settings screen opens on her phone by itself. Lost phone or money gone: say the urgent steps first (SIM block; 1930).
 - GST work: gst_dekho what=today (what is due / late), gst action=bill / gstr1 / gstr3b / decide / file. Read a GSTIN or amount back once. Never ask for the portal password or OTP; filing only on her clear haan; tax is paid by the client.
+- Payroll: payroll action=attendance (who was absent / OT) then action=run; payroll_dekho what=today. Never say a full PAN or bank account number aloud; salary is paid only after her haan and by her.
 - Office work (supplies, repairs, renewals, team deadlines, petty cash): office action=use / ticket_new / renewal_add / deadline_add / petty, office_dekho what=today. Spending money only becomes a card for her tap; team reminders are drafts she sends.
 - Letters / applications / translation / grammar (typist work): lekhak action=write with dictation = HER EXACT WORDS (all of them, as she said them; never a summary), action=translate / grammar / revise; tell her the blanks it found. Signing only happens when she taps the sign card on her phone; never say a letter is signed or sent.
 - Ordering / booking anything (Amazon, Flipkart, Blinkit, Zepto, Swiggy, Zomato, IRCTC, redBus...): order_karo action=order with the items, quantity, site and wishes; it runs in the background and she pays at the end herself ("payment aap karengi, card aa jayega"). "Order kahan hai": action=orders.

@@ -526,3 +526,10 @@ from .gst_tools import GST_HANDLERS, GST_LABELS, GST_TOOLS  # noqa: E402
 TOOLS.extend(GST_TOOLS)
 TOOL_LABELS.update(GST_LABELS)
 HANDLERS.update(GST_HANDLERS)
+
+# v0.94 Payroll Officer (salary run: attendance, PF / ESIC / PT / TDS, payslips, bank file, ECR; she approves and pays)
+from .payroll_tools import PAYROLL_HANDLERS, PAYROLL_LABELS, PAYROLL_TOOLS  # noqa: E402
+
+TOOLS.extend(PAYROLL_TOOLS)
+TOOL_LABELS.update(PAYROLL_LABELS)
+HANDLERS.update(PAYROLL_HANDLERS)

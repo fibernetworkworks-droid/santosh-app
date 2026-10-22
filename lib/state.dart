@@ -273,6 +273,8 @@ class Santosh extends ChangeNotifier {
   int phonedocTick = 0;                       // bumps on Phone Doctor events
   final Map<String, FeedItem> _gstCards = {};    // v0.93 GST: one live card per return
   int gstTick = 0;                            // bumps on GST events (the GST screen refreshes)
+  final Map<String, FeedItem> _payCards = {};    // v0.94 Payroll: one live card per salary run
+  int payTick = 0;                            // bumps on payroll events
   final Map<String, FeedItem> _officeCards = {}; // v0.85 Daftar: spend cards by id, nudge drafts by id, updated in place
   int officeTick = 0;                          // bumps on any office event (the Office screen refreshes)
   final Map<String, FeedItem> _lekhakCards = {}; // v0.87 Lekhak: one doc card + one sign card per document, updated in place
@@ -1070,6 +1072,21 @@ class Santosh extends ChangeNotifier {
         break;
       case 'mshop':
         mshopTick++;
+        break;
+      case 'payroll_run':
+        final pk2 = '${p['run_id']}';
+        final pc2 = _payCards[pk2];
+        if (pc2 != null) {
+          pc2.data = {...pc2.data, ...p};
+        } else if (p['status'] == 'ready') {
+          _payCards[pk2] = FeedItem('payroll_run', Map<String, dynamic>.from(p));
+          feed.add(_payCards[pk2]!);
+        }
+        payTick++;
+        break;
+      case 'payroll_day':
+        feed.add(FeedItem('payroll_day', Map<String, dynamic>.from(p)));
+        payTick++;
         break;
       case 'gst_return':
         final gk = '${p['return_id']}';

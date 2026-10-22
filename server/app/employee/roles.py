@@ -44,6 +44,8 @@ DUTIES: dict[str, dict] = {
                       "prefix": (), "tools": {"mobile_shop", "mobile_shop_dekho", "biz_repair_status", "phone_doctor"}},
     "gst_work": {"label": "GST ka kaam", "say": "client ke bill, GSTR-1 JSON, 2B milaan + IMS, 3B hisaab, notice ka jawab (filing aapki haan se)",
                  "prefix": (), "tools": {"gst", "gst_dekho", "file_read", "pdf_tools"}},
+    "payroll_work": {"label": "Salary / payroll", "say": "hazri, salary, PF / ESIC / PT / TDS, payslip, bank file, full & final (payment aapki haan se, aap karengi)",
+                     "prefix": (), "tools": {"payroll", "payroll_dekho", "file_read"}},
     "research": {"label": "Jaankari dhoondhna", "say": "web, maps, mausam, public APIs",
                  "prefix": ("maps_", "api_"), "tools": {"google_search", "web_sources", "open_website", "browse_web", "browse_result", "get_weather",
                                                        "memory_search"}},
@@ -90,6 +92,9 @@ ROLES: dict[str, dict] = {
     "gst_practitioner": {"label": "GST sahayak (practitioner)",
                          "say": "Har client ke bill check, GSTR-1 / 3B taiyaar, 2B milaan, due date aur late fee, notice ka jawab; filing aapki haan se",
                          "duties": ["gst_work", "reminders", "email", "records", "customers", "research"]},
+    "payroll_officer": {"label": "Payroll officer",
+                        "say": "Har mahine ki salary, PF / ESIC / PT / TDS, payslip, bank file, ECR, joining / leaving, bonus aur gratuity; payment aapki haan se",
+                        "duties": ["payroll_work", "reminders", "email", "records", "research"]},
     "custom": {"label": "Apna kaam", "say": "Aap khud chuniye Hoola kaun se kaam karega", "duties": []},
 }
 
@@ -133,6 +138,11 @@ PRESETS: dict[str, dict] = {
                               "IMEI badalne ka kaam kabhi nahi.", "Lock / FRP hatane ke liye phone ka bill / dabba dekhna zaroori."]},
     "office": {"label": "Office / company", "role": "office", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
                "about_hint": "Company kya karti hai, kaun kis kaam ka", "rules": []},
+    "payroll": {"label": "Payroll / HR (salary wala office)", "role": "payroll_officer", "kind": "office", "slot_minutes": 30,
+                "after_hours": "quiet",
+                "about_hint": "Kitne log, salary kab dete hain, PF / ESIC registered hai kya, kaun sa state (PT), advance ka niyam",
+                "rules": ["Salary sirf owner ki haan se.", "Bank login / OTP kabhi nahi.", "Kisi ki salary doosre ko nahi batana.",
+                          "PAN / bank account poora kabhi chat mein nahi likhna."]},
     "gst_practitioner": {"label": "GST practitioner / tax consultant", "role": "gst_practitioner", "kind": "ca", "slot_minutes": 30,
                          "after_hours": "note",
                          "about_hint": "Kitne client, monthly / QRMP / composition, fees, bill bhejne ki last date, kaun portal par file karta hai",
@@ -172,7 +182,7 @@ READ = {
     "tv_channel", "employee", "india_info",
     "biz_free_slots", "biz_my_appointments", "biz_ticket_status", "biz_my_dues", "biz_handover", "biz_note",
     "darzi_dekho", "biz_order_status", "chai_dekho", "mobile_shop_dekho", "biz_repair_status",
-    "darzi_dekho", "biz_order_status", "office_dekho", "lekhak_dekho", "gst_dekho",
+    "darzi_dekho", "biz_order_status", "office_dekho", "lekhak_dekho", "gst_dekho", "payroll_dekho",
 }
 BIG = {
     "email_bulk", "email_delete", "email_forward", "drive_trash", "drive_share", "sheet_share", "form_share", "slides_share",

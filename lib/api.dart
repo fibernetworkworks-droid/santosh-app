@@ -693,6 +693,24 @@ class Api {
   Future<Map<String, dynamic>> phonedocCase(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/phonedoc/cases/$id') as Map);
   Future<Map<String, dynamic>> phonedocAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/phonedoc/cases/$id/$action', body: body) as Map);
+  // v0.94 Payroll Officer
+  Future<Map<String, dynamic>> payToday() async => Map<String, dynamic>.from(await _send('GET', '/api/payroll/today') as Map);
+  Future<List<Map<String, dynamic>>> payEmployees() async => _maps((await _send('GET', '/api/payroll/employees') as Map)['employees']);
+  Future<Map<String, dynamic>> paySaveEmployee(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/payroll/employees', body: body) as Map);
+  Future<Map<String, dynamic>> payAttendance(String period, List<Map<String, dynamic>> entries) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/payroll/attendance', body: {'period': period, 'entries': entries}) as Map);
+  Future<Map<String, dynamic>> payImportAttendance(String period, String filename, List<int> bytes) async =>
+      uploadFile('/api/payroll/attendance/import', filename, bytes, fields: {'period': period});
+  Future<List<Map<String, dynamic>>> payRuns() async => _maps((await _send('GET', '/api/payroll/runs') as Map)['runs']);
+  Future<Map<String, dynamic>> payMakeRun(String period) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/payroll/runs', body: {'period': period}) as Map);
+  Future<Map<String, dynamic>> payRun(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/payroll/runs/$id') as Map);
+  Future<Map<String, dynamic>> payRunAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/payroll/runs/$id/$action', body: body) as Map);
+  Future<Map<String, dynamic>> paySettings() async => Map<String, dynamic>.from(await _send('GET', '/api/payroll/settings') as Map);
+  Future<Map<String, dynamic>> paySaveSettings(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/payroll/settings', body: body) as Map);
   // v0.93 GST Sahayak
   Future<Map<String, dynamic>> gstToday() async => Map<String, dynamic>.from(await _send('GET', '/api/gst/today') as Map);
   Future<List<Map<String, dynamic>>> gstClients() async => _maps((await _send('GET', '/api/gst/clients') as Map)['clients']);

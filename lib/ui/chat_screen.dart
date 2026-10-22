@@ -15,6 +15,7 @@ import 'employee_screen.dart';
 import 'mshop_screen.dart';
 import 'phonedoc_screen.dart';
 import 'gst_screen.dart';
+import 'payroll_screen.dart';
 import 'video_editor.dart';
 import 'operator_screen.dart';
 import 'studio_screen.dart';
@@ -548,6 +549,10 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return MShopReadyCard(key: ValueKey('mr${it.data['job_id']}'), v: it.data, app: app);
     case 'mshop_day':
       return MShopDayCard(v: it.data, app: app);
+    case 'payroll_run':
+      return PayRunCard(key: ValueKey('pr${it.data['run_id']}'), v: it.data, app: app);
+    case 'payroll_day':
+      return PayDayCard(v: it.data, app: app);
     case 'gst_return':
       return GstReturnCard(key: ValueKey('gr${it.data['return_id']}'), v: it.data, app: app);
     case 'gst_day':
