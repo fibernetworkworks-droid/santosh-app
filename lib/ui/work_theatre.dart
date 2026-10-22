@@ -104,8 +104,8 @@ class _WorkTheatreState extends State<WorkTheatre> {
 }
 
 const _sceneName = {
-  'email': 'Email', 'browser': 'Website', 'payment': 'Bill / Payment', 'bluetooth': 'Bluetooth',
-  'network': 'Hoola Network', 'pc': 'Mera PC', 'work': 'Kaam',
+  'email': 'Email', 'browser': 'Hoola ka browser', 'payment': 'Bill / Payment', 'bluetooth': 'Bluetooth',
+  'network': 'Hoola Network', 'pc': 'Aapka PC', 'work': 'Kaam',
 };
 const _sceneColor = {
   'email': Color(0xFF8B6DFF), 'browser': Color(0xFF14B8A6), 'payment': Color(0xFFFF9A3C), 'bluetooth': Color(0xFF3B82F6),

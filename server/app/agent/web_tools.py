@@ -30,7 +30,8 @@ WEB_TOOLS = [
      "input_schema": {"type": "object", "properties": {"url": {"type": "string", "description": "Full link or a domain like irctc.co.in"}},
                       "required": ["url"]}},
     {"name": "browse_web", "description": (
-        "Santosh's own web browser (a real Chrome on the server, browser-use): do a task on a website step by step "
+        "YOUR OWN web browser ('Hoola ka browser': a real Chrome on Hoola's server - NOT her PC, NOT her phone; for her "
+        "PC use pc_do, for her phone open_on_phone): do a task on a website step by step "
         "when google_search/open_website aren't enough: JavaScript sites, clicking through menus, comparing on a site, "
         "checking a status. Forms / applications / anything with login, Aadhaar, PAN, OTP: use computer_operator "
         "instead (it fills them). Describe the goal fully in one sentence with every detail the user "
@@ -48,15 +49,15 @@ WEB_TOOLS = [
         "happened with a website task, or to get the result of one that was still running."),
      "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}}, "required": ["session_id"]}},
     {"name": "open_on_phone", "description": (
-        "Open a website or link on the user's phone (in their browser or the matching app), when they want to see "
+        "Open a website or link on the user's PHONE (in their browser or the matching app; for her PC use pc_do), when they want to see "
         "or use it themselves: 'IRCTC ki site khol do', 'YouTube pe yeh gaana kholo', a map link, a payment page."),
      "input_schema": {"type": "object", "properties": {"url": {"type": "string"}, "title": {"type": "string"}},
                       "required": ["url"]}},
 ]
 
 WEB_LABELS = {"google_search": "Google par dhoondh raha hoon", "web_sources": "Web ke pages padh raha hoon", "open_website": "Website padh raha hoon",
-              "open_on_phone": "Phone par khol raha hoon", "browse_web": "Browser mein website par kaam kar raha hoon",
-              "browse_result": "Browser ka nateeja dekh raha hoon"}
+              "open_on_phone": "Phone par khol raha hoon", "browse_web": "Apne browser mein website dekh raha hoon",
+              "browse_result": "Apne browser ka nateeja dekh raha hoon"}
 
 
 async def google_search(ctx: Ctx, query, **_):
@@ -118,7 +119,10 @@ async def browse_web(ctx: Ctx, task, start_url=None, _wait=None, **_):
     except browser.BrowserError as e:
         raise ToolError(str(e))
     out = await asyncio.to_thread(browser.deliver, ctx.tenant_id, ctx.conversation_id, res, False)
-    return _masked(out)
+    out = _masked(out)
+    if isinstance(out, dict):
+        out.setdefault("where", "Hoola ka apna browser (server par) - not her PC, not her phone")
+    return out
 
 
 def _masked(v):

@@ -33,9 +33,9 @@ class BrowserExecutor:
         label = str(p.get("label") or "next step")[:80]
         return NeedsApproval(
             tier=2, title=f"{site}: '{label}'", payee=site, amount_paise=0,
-            items=[{"name": f"Santosh Browser will click '{label}' on {site}"},
+            items=[{"name": f"Hoola ka apna browser (server par, aapka PC nahi) '{label}' dabayega: {site}"},
                    {"name": "No payment. Passwords, OTPs and payments are never done by Santosh."}],
-            pay_method="Santosh Browser", preview={"message": f"Approve to let Santosh click '{label}' on {site}."},
+            pay_method="Hoola ka browser", preview={"message": f"Approve to let Santosh click '{label}' on {site}."},
             action={"executor": "browser", "pack_id": pack.id, "name": "approve_step",
                     "args": {"session_id": sid, "pending_id": p["id"], "label": label, "site": site}})
 

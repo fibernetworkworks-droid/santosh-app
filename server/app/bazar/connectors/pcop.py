@@ -24,8 +24,8 @@ class PcOpExecutor:
             raise ToolError("Santosh isn't waiting for an approval on the PC any more.")
         what = op.pending["what"]
         return NeedsApproval(
-            tier=2, title=f"Mera PC: {what[:70]}", payee="Mera PC", amount_paise=0,
-            items=[{"name": what}, {"name": f"Abhi PC par: {op.window or '-'}"}],
+            tier=2, title=f"Aapka PC: {what[:70]}", payee="Aapka PC", amount_paise=0,
+            items=[{"name": what}, {"name": f"Jagah: aapka PC · {op.window or '-'}"}],
             pay_method="", preview={"message": f"Approve to let Santosh do this on your PC: {what}"},
             action={"executor": "pcop", "pack_id": pack.id, "name": "approve_step",
                     "args": {"session_id": op.id, "pending_id": op.pending["id"]}})

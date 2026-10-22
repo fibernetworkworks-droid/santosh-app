@@ -28,7 +28,7 @@ def scene_for(tool: str, args: dict[str, Any] | None = None) -> str:
     t = tool or ""
     if t.startswith("email_") or t in ("gmail_check",):
         return "email"
-    if t in ("browse_web", "browse_result", "open_website"):
+    if t in ("browse_web", "browse_result", "open_website", "computer_operator"):
         return "browser"
     if t in ("bluetooth", "tv_remote", "music_control", "ac_control"):
         return "bluetooth"

@@ -14,7 +14,7 @@ PACK = "pc-bridge"
 _NAMES = {"pc_status": "status", "pc_search": "search", "pc_list": "list", "pc_read": "read",
           "pc_send_to_phone": "send_file", "pc_print": "print", "tally_report": "tally_report", "tally_entry": "tally_voucher"}
 
-PC_TOOLS = [{"name": api, "description": "[Mera PC] " + SCHEMAS[tool][0], "input_schema": SCHEMAS[tool][1]}
+PC_TOOLS = [{"name": api, "description": "[HER PC - say 'aapka PC'] " + SCHEMAS[tool][0], "input_schema": SCHEMAS[tool][1]}
             for api, tool in _NAMES.items()]
 
 PC_LABELS = {"pc_status": "PC dekh raha hoon", "pc_search": "PC par file dhoondh raha hoon", "pc_list": "PC ka folder dekh raha hoon",
@@ -38,17 +38,19 @@ PC_HANDLERS = {api: _handler(api) for api in _NAMES}
 
 # ---- Santosh uses the PC like a person (Santosh PC Operator) ----
 PC_TOOLS.append({"name": "pc_do", "description": (
-    "[Mera PC] Santosh uses the user's PC like a person: sees the screen, opens apps, clicks, types, presses keys, "
-    "to finish a task end to end in ANY desktop app (Tally, Excel, Word, Chrome, Busy, Marg, email apps, any "
-    "software). Use when the user wants something DONE on the PC that the file/Tally tools can't do: 'Excel mein "
-    "sales sheet banao', 'Tally kholo aur ledger dikhao', 'PC pe Chrome mein IRCTC kholo', 'Word mein letter likho'. "
+    "[HER PC - say 'aapka PC', never 'mera PC'] Santosh uses the user's OWN computer like a person: sees the screen, "
+    "opens apps, clicks, types, presses keys, to finish a task end to end in ANY desktop app (Tally, Excel, Word, "
+    "Chrome ON HER PC, Busy, Marg, email apps, any software). Use when the user wants something DONE on HER PC that the "
+    "file/Tally tools can't do: 'Excel mein sales sheet banao', 'Tally kholo aur ledger dikhao', 'mere PC pe Chrome mein "
+    "IRCTC kholo', 'laptop pe yeh site kholo', 'Word mein letter likho'. A website job she did NOT put on her PC goes to "
+    "your own browser (browse_web / computer_operator), not here. "
     "Describe the full goal with every detail. The user watches it live; it asks on the phone before sending, "
     "submitting, deleting, paying, installing or changing settings, and never types passwords/OTPs. Needs 'Santosh "
     "ko PC chalane dein' switched on in Santosh Desktop. Slow (a few seconds per step)."),
     "input_schema": {"type": "object", "properties": {"task": {"type": "string"}}, "required": ["task"]}})
-PC_TOOLS.append({"name": "pc_task_result", "description": "[Mera PC] Status or result of a pc_do task (session_id).",
+PC_TOOLS.append({"name": "pc_task_result", "description": "[HER PC] Status or result of a pc_do task (session_id).",
                  "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}}, "required": ["session_id"]}})
-PC_LABELS.update({"pc_do": "PC par kaam kar raha hoon", "pc_task_result": "PC ka kaam dekh raha hoon"})
+PC_LABELS.update({"pc_do": "Aapke PC par kaam kar raha hoon", "pc_task_result": "Aapke PC ka kaam dekh raha hoon"})
 
 
 async def pc_do(ctx: Ctx, task, _wait=None, **_):
@@ -62,9 +64,10 @@ async def pc_do(ctx: Ctx, task, _wait=None, **_):
         raise ToolError(str(e))
     except RuntimeError as e:
         if "PC_OFFLINE" in str(e):
-            raise ToolError("PC offline hai. PC on karke Santosh Desktop kholiye (ya Santosh app > Mera PC se jodiye).")
+            raise ToolError("Aapka PC offline hai. PC on karke Santosh Desktop kholiye (ya Santosh app > Mera PC se jodiye).")
         raise ToolError(str(e))
     r.pop("timeline", None)
+    r.setdefault("where", "Aapka PC (HER computer, Santosh Desktop) - not your own browser")
     if r["status"] in ("running", "needs_confirm"):
         r["say"] = ("Still working on the PC (live card in chat; a confirm card appears if a step needs approval). The "
                     "result is posted automatically; if asked before that, call pc_task_result with session_id "

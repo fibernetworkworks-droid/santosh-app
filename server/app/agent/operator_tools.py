@@ -9,8 +9,8 @@ from .tools import Ctx, ToolError
 
 OPERATOR_TOOLS = [
     {"name": "computer_operator", "description": (
-        "Do a job ON A WEBSITE for the owner like a cyber-cafe / CSC computer operator, in your own browser where her "
-        "logins stay saved: fill online forms and applications (government portals, banks, utilities, exams, insurance, "
+        "Do a job ON A WEBSITE for the owner like a cyber-cafe / CSC computer operator, in YOUR OWN browser (Hoola's "
+        "browser on the server, where her logins stay saved - NOT her PC; where=pc runs it in Chrome on HER PC): fill online forms and applications (government portals, banks, utilities, exams, insurance, "
         "her own business panels), download certificates / statements / bills / acknowledgements, check application "
         "or order status, book slots, update details, read results into a table. It researches the official help pages, "
         "works step by step, and LEARNS each finished job as a recipe so the next time is fast. "
@@ -35,13 +35,14 @@ OPERATOR_TOOLS = [
          "start_url": {"type": "string"},
          "file_ids": {"type": "array", "items": {"type": "string"}},
          "where": {"type": "string", "enum": ["auto", "server", "pc"], "description":
-                   "auto (default): Hoola's server browser, or her own PC when the site refuses the server; server = "
-                   "try the server anyway (only when she asks); pc = her PC (Santosh Desktop)"},
+                   "auto (default): your own browser on Hoola's server, or HER PC when the site refuses the server "
+                   "(say so); server = your own browser even then (only when she asks); pc = Chrome on HER PC (she "
+                   "said 'mere PC / laptop pe')"},
          "task_id": {"type": "string"},
          "name": {"type": "string", "description": "recipe name for forget_recipe"}},
          "required": ["action"]}},
 ]
-OPERATOR_LABELS = {"computer_operator": "Website par kaam kar raha hoon"}
+OPERATOR_LABELS = {"computer_operator": "Apne browser mein website par kaam kar raha hoon"}
 
 
 def _short(v: dict[str, Any]) -> dict[str, Any]:
@@ -58,9 +59,10 @@ def _run(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "start":
             v = ops.start(ctx.tenant_id, a.get("task") or "", a.get("start_url") or "", a.get("file_ids") or [],
                           ctx.conversation_id, created_by=getattr(ctx, "actor", "owner") or "owner")
-            return {"task_id": v["id"], "status": v["status"],
-                    "say": "Kaam shuru: chat mein live card hai (browser bhi dikhega). Poora form main bharunga; "
-                           "OTP aaye to bata dijiye, submit / payment se pehle poochhunga.",
+            return {"task_id": v["id"], "status": v["status"], "place": "hoola",
+                    "where": "Hoola ka apna browser (server par) - not her PC, not her phone",
+                    "say": "Kaam mere apne browser mein shuru (aapke PC par nahi): chat mein live card hai. Poora form main "
+                           "bharunga; OTP aaye to bata dijiye, submit / payment se pehle poochhunga.",
                     "note_for_you": "Do not poll; questions and the result arrive as cards + a message by themselves."}
         if action == "list":
             return {"jobs": [_short(v) for v in ops.listing(ctx.tenant_id, 10)]}
@@ -96,6 +98,21 @@ async def computer_operator(ctx: Ctx, action, **a):
     if str(action) == "start":
         where = str(a.get("where") or "auto")
         from ..config import get_settings
+        if where == "hoola":
+            # v0.93 she said "apne / Hoola ke browser mein": it stays in Hoola's own browser; a site that refuses the
+            # server is told to her with a question - never a quiet move to her PC
+            if get_settings().operator_preflight:
+                from ..operator import reach
+                chk = await asyncio.to_thread(reach.check, str(a.get("task") or ""), str(a.get("start_url") or ""), True)
+                if not chk["ok"]:
+                    site = chk.get("site") or ""
+                    return {"status": "site_blocks_server", "site": site, "why": chk.get("why", ""), "place": "hoola",
+                            "say": (f"{site or 'Yeh website'} mere apne browser (Hoola ke server) se nahi khulti - unki "
+                                    "suraksha data-centre ka address rok deti hai. Aapke PC par Chrome mein kar doon?"),
+                            "next": ("She asked for YOUR browser. Tell her this in one or two lines and ASK. Only when she "
+                                     "says yes: computer_operator action=start where=pc. If she says 'server pe hi try "
+                                     "karo': where=server.")}
+            where = "server"
         if where == "auto" and not get_settings().operator_preflight:
             where = "server"
         if where != "server":
@@ -118,9 +135,16 @@ async def _to_pc(ctx: Ctx, a: dict[str, Any], chk: dict[str, Any]) -> dict[str, 
     pc_task = (task + (f" Website: {url}" if url else "") + " Use Google Chrome on this PC. When the site sends an OTP, "
                "click the OTP box and use ask_otp. Download files to the normal Downloads folder and say the file name.")
     why = chk.get("why") or ""
+    asked = chk.get("ok", True)    # v0.93 True = she asked for her PC; False = the site refuses Hoola's server
     try:
         r = await pc_do(ctx, pc_task)
     except ToolError as e:
+        if asked:
+            return {"status": "pc_not_ready", "place": "pc", "pc": str(e)[:200],
+                    "say": ("Aapka PC abhi juda nahi hai, isliye wahan shuru nahi ho paya. PC par Santosh Desktop kholiye "
+                            "aur 'Santosh ko PC chalane dein' on kijiye, phir bata dijiye."),
+                    "next": ("Tell her this in one line. Do NOT start it in your own browser instead unless she says so "
+                             "(then computer_operator where=server).")}
         reach.STATS["told"] += 1
         link = url or (f"https://{site}" if site else "")
         return {"status": "site_blocks_server", "site": site, "why": why, "pc": str(e)[:200],
@@ -130,11 +154,18 @@ async def _to_pc(ctx: Ctx, a: dict[str, Any], chk: dict[str, Any]) -> dict[str, 
                          "'PC par karo' and it runs there by itself; (2) open_on_phone with " + (link or "the site link") +
                          " so she does it on her phone; (3) the office proxy (one-time setup) so the server can open it. "
                          "Don't start computer_operator again for this site unless she asks to try the server (where=server).")}
+    r["place"] = "pc"
+    r["where"] = "Aapka PC (Chrome on HER computer, via Santosh Desktop) - not your own browser"
+    if asked:
+        r["say"] = ("Aapke PC par Chrome mein shuru kar diya hai. Live card chat mein hai; OTP aaye to bas yahan bata "
+                    "dijiye, main PC ke box mein bhar dunga.")
+        return r
     reach.STATS["routed_pc"] += 1
     r["moved_to"] = "pc"
     r["why"] = f"{site} Hoola ke server se nahi khulta ({why})" if site else why
-    r["say"] = (f"{site or 'Yeh site'} Hoola ke server se nahi khulti, isliye yeh kaam aapke PC par (Chrome mein) shuru kar "
-                "diya hai. Live card chat mein hai; OTP aaye to bas yahan bata dijiye, main PC ke box mein bhar dunga.")
+    r["say"] = (f"{site or 'Yeh site'} mere apne browser (Hoola ke server) se nahi khulti, isliye yeh kaam AAPKE PC par "
+                "Chrome mein shuru kar diya hai. Live card chat mein hai; OTP aaye to bas yahan bata dijiye, main PC ke box "
+                "mein bhar dunga.")
     return r
 
 

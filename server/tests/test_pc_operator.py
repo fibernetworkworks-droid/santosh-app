@@ -87,7 +87,7 @@ def test_task_with_approval_runs_to_the_end(op, monkeypatch):
         assert o.status == "needs_confirm"
         assert ("control", {"op": "key", "keys": "ctrl+s"}) not in pc.calls      # nothing saved before the tap
         card = [e for e in _events(conv, "bazar_approval")][-1]
-        assert card["title"].startswith("Mera PC: File ko") and card["amount_paise"] == 0
+        assert card["title"].startswith("Aapka PC: File ko") and card["amount_paise"] == 0
         await asyncio.to_thread(svc.decide, "default", card["id"], "approve")
         await asyncio.wait_for(o.done_event.wait(), 5)
         return o

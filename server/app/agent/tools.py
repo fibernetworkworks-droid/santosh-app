@@ -20,6 +20,7 @@ class Ctx:
     tenant_id: str
     conversation_id: str
     actor: str = "owner"        # owner | routine | staff:<id> | customer:<x> | approved:<ask id> (Hoola Employee, v0.58)
+    place: str = ""             # v0.93 where she said a website job runs: pc | hoola | phone | "" (agent/where.py)
 
 
 TEMPLATE_PROPS = {
@@ -246,6 +247,11 @@ async def dispatch(name: str, args: dict, ctx: Ctx):
     h = HANDLERS.get(name)
     if not h:
         raise ToolError(f"Unknown tool {name}")
+    moved = ""
+    if getattr(ctx, "place", ""):   # v0.93 her words decide: her PC vs Hoola's own browser (never mixed up)
+        from . import where
+        name, args, moved = where.steer(name, args or {}, ctx.place)
+        h = HANDLERS[name]
     # Hoola Employee: pause, trust per duty and team permissions are enforced here, for chat, calls and jobs alike
     from ..employee import service as employee
     try:
@@ -263,6 +269,8 @@ async def dispatch(name: str, args: dict, ctx: Ctx):
             raise ToolError(msg + " (Tell her this plainly in one or two lines and don't retry this tool now.)") from None
         raise
     employee.after(ctx, name, args or {}, not (isinstance(out, dict) and out.get("error")))
+    if moved and isinstance(out, dict):
+        out = {**out, "ran_as": name, "place_note": moved}
     return out
 
 

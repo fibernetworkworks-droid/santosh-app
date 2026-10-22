@@ -161,7 +161,8 @@ Which tool (details are in each tool's description)
 - Reels: reel to understand a reel link or find a saved reel ("wo paneer wali reel"), and action=check for "ye sach hai?", action=scroll for "is hafte kitni reels dekhi?" (time per app, late night, limit). Keep it short; say AI can be wrong.
 - Videos: motion_video action=make makes an animated reel (shop, recipe, logo intro, offer, or any idea) in 1-3 minutes; tell them it will show up as a card.
 - Bluetooth and home devices: bluetooth, tv_remote, music_control, ac_control. A TV already paired never needs pairing again: tv_remote connects by itself. Say it is done only when the result says so.
-- The user's PC: pc_do with the full goal for anything in a desktop app (Tally, Excel, Word, Chrome); the result comes back as a "(Mera PC result ...)" note.
+- WHERE a website opens (never mix up): YOUR OWN browser (Hoola's browser on the server; "apne / tumhare / Hoola ke browser mein", or no place named) = browse_web / computer_operator. HER PC ("mere PC / laptop / computer pe", "PC ke Chrome mein", "mere browser mein") = pc_do or computer_operator where=pc. HER PHONE ("phone pe kholo") = open_on_phone. Her "mera PC" is HER computer: you say "aapka PC", never "mera PC". Say the place out loud when you start ("apne browser mein dekh raha hoon" / "aapke PC par Chrome mein khol raha hoon").
+- Her PC: pc_do with the full goal for anything in a desktop app on HER computer (Tally, Excel, Word, Chrome there); the result comes back as a "(Result from HER PC ...)" note.
 - Chai stall: chai_dekho what=today / hours / plan, chai action=cash / stock / feedback / plan ("aaj 1500 cash aaya", "doodh 2 litre bacha").
 - Tailoring jobs (her stitching shop): darzi action=new_order / measure / status / deliver, darzi_dekho what=today / check / customer. Read numbers back once ("chest 34, kamar 30 - sahi?") before saving measurements said on a call.
 - Mobile shop: mobile_shop action=new_job / status / recharge / pay / deliver, mobile_shop_dekho what=today / warranty / job. Read an IMEI or phone number back once before saving. Never take a customer's phone password.
@@ -170,7 +171,7 @@ Which tool (details are in each tool's description)
 - Office work (supplies, repairs, renewals, team deadlines, petty cash): office action=use / ticket_new / renewal_add / deadline_add / petty, office_dekho what=today. Spending money only becomes a card for her tap; team reminders are drafts she sends.
 - Letters / applications / translation / grammar (typist work): lekhak action=write with dictation = HER EXACT WORDS (all of them, as she said them; never a summary), action=translate / grammar / revise; tell her the blanks it found. Signing only happens when she taps the sign card on her phone; never say a letter is signed or sent.
 - Ordering / booking anything (Amazon, Flipkart, Blinkit, Zepto, Swiggy, Zomato, IRCTC, redBus...): order_karo action=order with the items, quantity, site and wishes; it runs in the background and she pays at the end herself ("payment aap karengi, card aa jayega"). "Order kahan hai": action=orders.
-- Anything ON a website or portal (bus/train/flight/hotel options and prices, shopping prices, forms, PNR, municipal fees): browse_web with the full goal and the site. It never logs in or pays and asks on screen before submitting. If it is still working, say you'll tell them; the result comes as a "(Santosh Browser result ...)" note. If they ask before that, browse_result.
+- Anything ON a website or portal (bus/train/flight/hotel options and prices, shopping prices, forms, PNR, municipal fees): browse_web (YOUR OWN browser) with the full goal and the site; pc_do instead when she said her PC. It never logs in or pays and asks on screen before submitting. If it is still working, say you'll tell them; the result comes as a "(Result from YOUR OWN browser ...)" note. If they ask before that, browse_result.
 - Current facts (news, prices, scores, timings, rules): google_search instead of guessing; say "Google pe dekh raha hoon" and give the answer in a line or two. open_website to read a site, open_on_phone to open one on their phone.
 - Places and travel: maps_search, maps_directions, maps_navigate.
 - Calendar: calendar_agenda, calendar_free_slots, calendar_add_event (meet=true for a Google Meet link), calendar_update_event, calendar_find_event, calendar_cancel_event, calendar_respond. Invites, changes to shared meetings, cancels and declines show a confirm card; say so.
@@ -805,6 +806,12 @@ class Call:
             for v in self._otp_said:
                 user, reply = mask(user, v), mask(reply, v)
         self.user_buf = self.reply_buf = ""
+        if user:   # v0.93 a place she named ("mere PC pe") holds for her short answers in the next turns
+            try:
+                from .agent import where
+                where.remember(self.conv, user)
+            except Exception:
+                log.exception("place check failed")
         done = {"type": "turn_done"}
         if interrupted:
             done["interrupted"] = True
@@ -845,7 +852,8 @@ class Call:
         """Hand a big job to the full agent. A call never sits in silence for it: after a short wait the job
         carries on by itself and its result is spoken into the call when it is done."""
         from .agent import run_turn
-        job = asyncio.create_task(run_turn(self.conv, request, tenant_id=self.ctx.tenant_id))
+        place = self._place(request)     # v0.93 her PC vs Hoola's own browser travels with the job
+        job = asyncio.create_task(run_turn(self.conv, request, tenant_id=self.ctx.tenant_id, **({"place": place} if place else {})))
         _JOBS.add(job)
         job.add_done_callback(_JOBS.discard)
         done, _ = await asyncio.wait({job}, timeout=max(1, get_settings().voice_tool_wait_s))
@@ -867,7 +875,15 @@ class Call:
             self.push("text", f"(Woh bada kaam{about} ho gaya: {str(job.result())[:1500]}. Pehle ek chhote se batao kis baare "
                               "mein hai ('woh jo aapne kaha tha...'), phir result ek-do chhoti lines mein.)")
 
+    def _place(self, request: str = "") -> str:
+        """v0.93 where she said the job runs (her PC / Hoola's own browser / phone): her words in this turn, else what
+        she named a moment ago (short follow-ups), else Gemini's own words in the request."""
+        from .agent import where
+        p = where.remember(self.conv, self.user_buf) if self.user_buf.strip() else where.current(self.conv)
+        return p or (where.place(request) if request else "")
+
     async def _execute(self, name: str, args: dict) -> dict:
+        self.ctx.place = self._place(str(args.get("request") or args.get("task") or ""))
         if name == "santosh_kaam":
             return await self._delegate(str(args.get("request", "")))
         if name in self._mcp_route:   # a tool of one of the owner's MCP servers
@@ -893,11 +909,14 @@ class Call:
         from google.genai import types
         name, args = fc.name, dict(fc.args or {})
         from .avatar.service import gendered
+        shown = name
         if name in self._mcp_route:
             from .agent import mcp_live
             raw = mcp_live.label(name, self._mcp_route, self._mcp_snap)
         else:
-            raw = f"{self.name} kaam kar raha hai" if name == "santosh_kaam" else TOOL_LABELS.get(name, name)
+            from .agent import where   # v0.93 name the place where it REALLY runs (her PC vs own browser)
+            shown = where.shown(name, args, self._place(str(args.get("task") or ""))) if name != "santosh_kaam" else name
+            raw = f"{self.name} kaam kar raha hai" if name == "santosh_kaam" else TOOL_LABELS.get(shown, shown)
         label = gendered(raw, self.gender)
         await self.send_json({"type": "tool", "label": label, "state": "running"})
         from . import theatre
@@ -926,7 +945,7 @@ class Call:
                 self._breaker = Breaker(max_calls=120)
             return
         if show:
-            bus.publish(self.conv, "work", theatre.event(call_id, name, label, "start", args))
+            bus.publish(self.conv, "work", theatre.event(call_id, shown, label, "start", args))
         watch = asyncio.create_task(self._ack_watch(time.monotonic()))
         self._tools.add(watch)
         watch.add_done_callback(self._tools.discard)
@@ -965,7 +984,7 @@ class Call:
         if show:
             res = out.get("result") if isinstance(out, dict) else None
             ph = "error" if state == "error" else theatre.phase_of(res)
-            bus.publish(self.conv, "work", theatre.event(call_id, name, label, ph, args, res, out.get("error", "") if state == "error" else ""))
+            bus.publish(self.conv, "work", theatre.event(call_id, shown, label, ph, args, res, out.get("error", "") if state == "error" else ""))
         await self._answer_tool(session, fc, name, out, state)
 
     async def _answer_tool(self, session, fc, name: str, out: dict, state: str) -> None:

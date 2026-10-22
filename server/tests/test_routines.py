@@ -71,7 +71,7 @@ def test_routine_api_and_voice_flag(env, monkeypatch):
     monkeypatch.setattr(main, "run_turn", fake_turn)
     with TestClient(main.app) as c:
         h = c.get("/healthz").json()
-        assert "routines" in h["features"] and h["version"] == "0.93.0"
+        assert "routines" in h["features"] and h["version"] == "0.93.1"
         conv = c.post("/api/conversations").json()["id"]
         assert c.post(f"/api/conversations/{conv}/messages", json={"text": "namaste", "voice": True}).status_code == 202
         assert c.post(f"/api/conversations/{conv}/messages", json={"text": "hi"}).status_code == 202

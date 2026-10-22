@@ -438,11 +438,16 @@ class _OperatorTaskCardState extends State<OperatorTaskCard> {
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(Icons.computer_rounded, color: status == 'failed' ? C.bad : C.accent),
+          Icon(Icons.travel_explore_rounded, color: status == 'failed' ? C.bad : C.accent),
           const SizedBox(width: 8),
           Expanded(
-            child: Text('${v['task'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${v['task'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
+              // v0.93 this job runs in Hoola's own browser on the server, never on her PC
+              Text('${widget.app.aName} ka browser · server par (aapka PC nahi)',
+                  style: const TextStyle(color: C.muted, fontSize: 11.5)),
+            ]),
           ),
           Pill(switch (status) {
             'queued' => 'Line mein',

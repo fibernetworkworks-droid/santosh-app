@@ -179,8 +179,8 @@ def deliver(tenant: str, conv: str, res: dict, background: bool = False) -> dict
         try:
             from .voice import inject
             note = {"done": "finished", "partial": "could not fully finish"}.get(status, status)
-            inject(conv, f"(Santosh Browser result, task {note}: {answer[:1500] or res.get('reason', '')}. "
-                         "Tell the user this now in one or two short lines.)")
+            inject(conv, f"(Result from YOUR OWN browser (Hoola's browser on the server, not her PC), task {note}: "
+                         f"{answer[:1500] or res.get('reason', '')}. Tell the user this now in one or two short lines.)")
         except Exception:
             log.exception("voice inject failed")
     if background:

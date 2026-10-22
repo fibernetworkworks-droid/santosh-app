@@ -341,11 +341,13 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "is_error": True, "content": held})
                 continue
             ran_tools = True
-            label = gendered(mcp_live.label(b["name"], mcp_route, mcp_snap) if b["name"] in mcp_route
-                             else TOOL_LABELS.get(b["name"], b["name"]), gender)
             args_in = b.get("input") or {}
-            bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "running", "id": b["id"]})
-            _work(conversation_id, b["id"], b["name"], label, "start", args_in)
+            from . import where as _where   # v0.93 the card / theatre name the place where it REALLY runs
+            shown = _where.shown(b["name"], args_in, getattr(ctx, "place", ""))
+            label = gendered(mcp_live.label(b["name"], mcp_route, mcp_snap) if b["name"] in mcp_route
+                             else TOOL_LABELS.get(shown, shown), gender)
+            bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "running", "id": b["id"]})
+            _work(conversation_id, b["id"], shown, label, "start", args_in)
             try:
                 out = await _watched(_run_tool(b["name"], args_in, ctx, settings, mcp_route), conversation_id, ctx, state)
                 fine = not (isinstance(out, dict) and out.get("error"))
@@ -358,17 +360,17 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                     call["internet_fix"] = (state.get("web_fix") or {}).get(b["name"], "")
                 state["calls"].append(call)
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": content})
-                bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "done", "id": b["id"]})
-                _work(conversation_id, b["id"], b["name"], label, theatre.phase_of(out), args_in, out)
+                bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "done", "id": b["id"]})
+                _work(conversation_id, b["id"], shown, label, theatre.phase_of(out), args_in, out)
             except _Halted as h:
                 state["halted"] = h.why
                 state["calls"].append({"tool": b["name"], "ok": False, "error": "stopped by the owner", "args": args_in,
                                        "key": _key(b["name"], args_in)})
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
                                 "content": "Stopped by the owner while this step was running; it may have partly happened."})
-                bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error", "id": b["id"],
+                bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error", "id": b["id"],
                                                       "detail": "roka gaya"})
-                _work(conversation_id, b["id"], b["name"], label, "stopped", args_in, error="Roka gaya")
+                _work(conversation_id, b["id"], shown, label, "stopped", args_in, error="Roka gaya")
             except ToolError as e:
                 breaker.after(b["name"], False)
                 help_ = await pakka.on_failure(tenant_id, b["name"], str(e), state.get("request", ""), state)
@@ -376,9 +378,9 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                                        "key": _key(b["name"], args_in),
                                        "internet_fix": (state.get("web_fix") or {}).get(b["name"], "")})
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": str(e) + help_, "is_error": True})
-                bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error",
+                bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error",
                                                       "id": b["id"], "detail": str(e)[:300]})
-                _work(conversation_id, b["id"], b["name"], label, "error", args_in, error=str(e))
+                _work(conversation_id, b["id"], shown, label, "error", args_in, error=str(e))
             except asyncio.TimeoutError:
                 breaker.after(b["name"], False)
                 state["calls"].append({"tool": b["name"], "ok": False, "error": "timeout", "args": args_in,
@@ -386,9 +388,9 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 msg = f"{b['name']} did not finish in {settings.agent_tool_timeout_s} seconds and was stopped. Tell the user and offer to try again."
                 log.warning("tool %s timed out", b["name"])
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": msg, "is_error": True})
-                bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error",
+                bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error",
                                                       "id": b["id"], "detail": "bahut der lag rahi thi, rok diya"})
-                _work(conversation_id, b["id"], b["name"], label, "error", args_in, error="Bahut der lag rahi thi, rok diya")
+                _work(conversation_id, b["id"], shown, label, "error", args_in, error="Bahut der lag rahi thi, rok diya")
             except Exception as e:  # unexpected bug: tell the model, keep the turn alive
                 breaker.after(b["name"], False)
                 state["calls"].append({"tool": b["name"], "ok": False, "error": f"crash: {e}"[:300], "args": args_in,
@@ -397,8 +399,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 help_ = await pakka.on_failure(tenant_id, b["name"], f"internal error: {e}", state.get("request", ""), state)
                 results.append({"type": "tool_result", "tool_use_id": b["id"],
                                 "content": f"Internal error in {b['name']}: {e}" + help_, "is_error": True})
-                bus.publish(conversation_id, "step", {"tool": b["name"], "label": label, "state": "error", "id": b["id"]})
-                _work(conversation_id, b["id"], b["name"], label, "error", args_in, error="Kuch gadbad ho gayi")
+                bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error", "id": b["id"]})
+                _work(conversation_id, b["id"], shown, label, "error", args_in, error="Kuch gadbad ho gayi")
         history.append({"role": "user", "content": results})
         _save(conversation_id, "user", results)
         if breaker.stopped:                # stuck: stop here and say so plainly
@@ -490,7 +492,7 @@ def _work(conversation_id: str, call_id: str, tool: str, label: str, phase: str,
 
 
 async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None = None, voice: bool = False,
-                   context: str = "", actor: str = "owner") -> str:
+                   context: str = "", actor: str = "owner", place: str = "") -> str:
     """Handle one user message end to end. Returns Santosh's final reply text."""
     settings = get_settings()
     tenant_id = tenant_id or settings.tenant_id
@@ -518,6 +520,11 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
             user_text, _ids = capture(tenant_id, user_text)
         except Exception:
             log.exception("id capture failed")
+        try:   # v0.93 "mere PC pe" vs "apne browser mein": the place she named holds for this turn's tools
+            from . import where
+            ctx.place = place or where.remember(conversation_id, user_text)
+        except Exception:
+            log.exception("place check failed")
     lock = _locks[conversation_id]
     if lock.locked() and (actor or "owner") == "owner" and not voice:
         # v0.86 a long job holds the chat: answer this message NOW from the quick lane; only real work waits
@@ -532,6 +539,9 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         agent_text = f"{VOICE_NOTE}\n{user_text}" if voice else user_text
         if context:                         # e.g. files the owner attached (only the words show in the chat)
             agent_text += "\n\n" + context
+        if ctx.place:                       # v0.93 the place she named, said plainly to the model
+            from . import where
+            agent_text += "\n\n" + where.note(ctx.place)
         if notes:
             agent_text = "\n".join(f"[Santosh worker update] {n}" for n in notes) + "\n\n" + agent_text
         _save(conversation_id, "user", agent_text, display=user_text)

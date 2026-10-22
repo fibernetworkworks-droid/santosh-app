@@ -192,7 +192,7 @@ def _work(op: Op, name: str) -> None:
 
 def _event(op: Op) -> None:
     try:
-        bus.publish(op.conv, "browser", {"session_id": op.id, "status": op.status, "source": "pc", "site": "Mera PC",
+        bus.publish(op.conv, "browser", {"session_id": op.id, "status": op.status, "source": "pc", "site": "Aapka PC", "place": "pc",
                                          "task": op.task[:300], "url": op.window, "summary": op.summary[:600]})
     except Exception:
         log.exception("pc op event failed")
@@ -360,20 +360,20 @@ async def _ask_otp(op: Op, a: dict[str, Any]) -> str:
     op.action = "OTP ka intezaar"
     _event(op)
     try:
-        bus.publish(op.conv, "operator_ask", {**req.public(), "task_id": op.id, "task": op.task[:200], "site": "Mera PC"})
+        bus.publish(op.conv, "operator_ask", {**req.public(), "task_id": op.id, "task": op.task[:200], "site": "Aapka PC", "place": "pc"})
     except Exception:
         log.exception("pc otp card")
     n = f"{req.digits} ankon ka " if req.digits else ""
     try:
         from ..voice import inject
-        inject(op.conv, f"(PC par {site} ne abhi aapke phone par {n}OTP bheja hai. Ask her out loud right now, one short "
+        inject(op.conv, f"(Aapke PC par {site} ne abhi aapke phone par {n}OTP bheja hai. Ask her out loud right now, one short "
                         "line. When she says the digits the system types them into the box by itself: you only say "
                         "'mil gaya, bhar diya'. Never say the digits yourself.)")
     except Exception:
         pass
     try:
         from ..agent.santosh import _save
-        note = (f"PC par {site} ne aapke phone par {n}OTP bheja hai. Bas yahan likh dijiye ya call par bol dijiye, main "
+        note = (f"Aapke PC par {site} ne aapke phone par {n}OTP bheja hai. Bas yahan likh dijiye ya call par bol dijiye, main "
                 "khud PC ke box mein bhar dunga. SMS aaye to 'Allow' dabaiye.")
         _save(op.conv, "assistant", [{"type": "text", "text": note}], display=note)
         bus.publish(op.conv, "message", {"role": "assistant", "text": note, "source": "pc"})
@@ -577,16 +577,17 @@ async def _run(op: Op) -> None:
 
 
 def _report(op: Op) -> None:
-    text = {"done": op.summary or "PC par kaam ho gaya.",
-            "partial": f"PC par poora nahi ho paya. {op.summary}",
-            "cancelled": "PC ka kaam rok diya gaya."}.get(op.status, f"PC par kaam ruk gaya. {op.summary or op.reason}")
+    text = {"done": op.summary or "Aapke PC par kaam ho gaya.",
+            "partial": f"Aapke PC par poora nahi ho paya. {op.summary}",
+            "cancelled": "Aapke PC ka kaam rok diya gaya."}.get(op.status, f"Aapke PC par kaam ruk gaya. {op.summary or op.reason}")
     try:
         notify(op.conv, text.strip())
     except Exception:
         log.exception("pc op notify failed")
     try:
         from ..voice import inject
-        inject(op.conv, f"(Mera PC result: {text[:1500]}. Tell the user this now in one or two short lines.)")
+        inject(op.conv, f"(Result from HER PC (aapka PC, not your own browser): {text[:1500]}. Tell the user this now in one or two "
+                         "short lines and say it happened on her PC.)")
     except Exception:
         pass
 
