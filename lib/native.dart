@@ -158,6 +158,11 @@ class Native {
   /// Open a UPI payment / app link / app (from a user tap). Returns "ok" or a short reason.
   static Future<String> openExternal({String url = '', String package = ''}) async =>
       await _call<String>('openExternal', {'url': url, 'package': package}) ?? 'Is phone par nahi khul sakta';
+  /// v0.109 Which of these app packages are installed on this phone (Roz ke kaam ticks).
+  static Future<Set<String>?> installedApps(List<String> packages) async {
+    final r = await _call<List>('installedApps', {'packages': packages});
+    return r == null ? null : r.map((e) => '$e').toSet();
+  }
   // ---- "Hey Santosh" wake word + lock screen ----
   /// Returns "ok", or "permission" when the mic permission prompt was shown.
   static Future<String> wakeStart() async => await _call<String>('wakeStart') ?? 'unsupported';

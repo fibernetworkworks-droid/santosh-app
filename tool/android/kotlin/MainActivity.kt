@@ -35,6 +35,7 @@ class MainActivity : FlutterActivity() {
         }
         linkChannel(flutterEngine)
         handleIntent(intent)
+        try { UpiPay.onStart(this) } catch (_: Exception) {}
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "santosh/native").setMethodCallHandler { call, result ->
             try {
                 when (call.method) {
@@ -85,6 +86,7 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "location" -> currentLocation { loc -> result.success(loc) }
+                    "installedApps" -> result.success(UpiPay.installedOf(this, (call.argument<List<String>>("packages") ?: emptyList()).take(60)))
                     "openExternal" -> result.success(openExternal(call.argument<String>("url") ?: "", call.argument<String>("package") ?: ""))
                     "status" -> result.success(Store.status(this))
                     "claim" -> result.success(Store.claim(this, call.argument<String>("id") ?: ""))
@@ -572,16 +574,8 @@ class MainActivity : FlutterActivity() {
                 // "tel" only opens the dialer with the number filled in (SOS 112/108); the user presses call
                 if (scheme !in setOf("upi", "tez", "phonepe", "paytmmp", "https", "http", "intent", "tel")) return "Link sahi nahi hai"
                 if (scheme in setOf("upi", "tez", "phonepe", "paytmmp")) {
-                    // prefer the chosen app; fall back to the standard upi:// chooser (every UPI app handles it)
-                    if (pkg.isNotBlank() && installed(pkg)) {
-                        val generic = Uri.parse("upi://pay?" + (uri.encodedQuery ?: ""))
-                        val i = Intent(Intent.ACTION_VIEW, generic).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        try { startActivity(i); return "ok" } catch (_: Exception) {}
-                        try { startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return "ok" } catch (_: Exception) {}
-                    }
-                    val generic = Intent(Intent.ACTION_VIEW, Uri.parse("upi://pay?" + (uri.encodedQuery ?: "")))
-                    startActivity(Intent.createChooser(generic, "Kis UPI app se pay karein?").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                    return "ok"
+                    // v0.109 opened FOR A RESULT so the UPI app's answer (success / failed / ref) comes back to Hoola
+                    return UpiPay.open(this, uri, pkg) { installed(it) }
                 }
                 val i = Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 if (pkg.isNotBlank() && installed(pkg)) i.setPackage(pkg)
@@ -657,6 +651,7 @@ class MainActivity : FlutterActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == OtpConsent.REQ) OtpConsent.onResult(resultCode, data)
+        if (requestCode == UpiPay.REQ) UpiPay.onResult(this, resultCode, data)
     }
 
     override fun onPause() {

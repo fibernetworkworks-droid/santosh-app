@@ -5,6 +5,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../native.dart';
 import 'glass.dart';
 import 'plugin_widgets.dart';
 
@@ -28,6 +29,39 @@ class TopPlugins extends StatefulWidget {
 
 class _TopPluginsState extends State<TopPlugins> {
   String _sel = '';
+  Set<String>? _installed;   // v0.109 UPI apps really on this phone (null = not checked / not Android)
+  String _checked = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkApps();
+  }
+
+  @override
+  void didUpdateWidget(TopPlugins old) {
+    super.didUpdateWidget(old);
+    _checkApps();
+  }
+
+  Future<void> _checkApps() async {
+    final pkgs = <String>{
+      for (final sec in widget.sections)
+        for (final p in (sec['items'] as List? ?? const []))
+          if ('${(p as Map)['android_package'] ?? ''}'.isNotEmpty) '${p['android_package']}'
+    }.toList()..sort();
+    final key = pkgs.join(',');
+    if (key.isEmpty || key == _checked) return;
+    _checked = key;
+    final got = await Native.installedApps(pkgs);
+    if (mounted && got != null) setState(() => _installed = got);
+  }
+
+  _Mark _state(Map<String, dynamic> p) {
+    final pkg = '${p['android_package'] ?? ''}';
+    if (pkg.isNotEmpty && _installed != null && !_installed!.contains(pkg)) return _Mark.install;
+    return _baseState(p);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,14 +111,27 @@ class _TopPluginsState extends State<TopPlugins> {
             mainAxisSpacing: 10,
             crossAxisSpacing: 6,
             childAspectRatio: .72,
-            children: [for (final p in items) _AppTile(p: p, mark: _state(p), onTap: () => widget.onOpen(p))],
+            children: [
+              for (final p in items)
+                _AppTile(
+                    p: p,
+                    mark: _state(p),
+                    // not on this phone: open its Play Store page (Native.openExternal falls back to the store)
+                    onTap: () => _state(p) == _Mark.install
+                        ? Native.openExternal(package: '${p['android_package']}')
+                        : widget.onOpen(p)),
+            ],
           ),
         ),
         if (items.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 2),
             child: Text(
-                ready == items.length ? 'Sab taiyaar · Hoola se bas kahiye' : '$ready / ${items.length} taiyaar · baaki ek tap mein jodiye',
+                ready == items.length
+                    ? 'Sab taiyaar · Hoola se bas kahiye'
+                    : items.any((p) => _state(p) == _Mark.install)
+                        ? '$ready / ${items.length} taiyaar · baaki apps is phone par install karein'
+                        : '$ready / ${items.length} taiyaar · baaki ek tap mein jodiye',
                 style: const TextStyle(color: C.faint, fontSize: 11.5)),
           ),
       ]),
@@ -113,9 +160,9 @@ class _TopPluginsState extends State<TopPlugins> {
       );
 }
 
-enum _Mark { ready, add, soon, none }
+enum _Mark { ready, add, soon, install, none }
 
-_Mark _state(Map<String, dynamic> p) {
+_Mark _baseState(Map<String, dynamic> p) {
   final st = p['status'] as String? ?? '';
   if (st == 'ready' || st == 'core') return _Mark.ready;
   if (st == 'needs_link' || st == 'no_shop_yet' || st == 'not_connected' || st == 'needs_key') return _Mark.add;
@@ -136,6 +183,7 @@ class _AppTile extends StatelessWidget {
       _Mark.ready => (Icons.check_rounded, C.ok),
       _Mark.add => (Icons.add_rounded, C.accent),
       _Mark.soon => (Icons.schedule_rounded, C.faint),
+      _Mark.install => (Icons.download_rounded, C.warn),   // v0.109 not installed on this phone
       _Mark.none => (null, C.faint),
     };
     return Semantics(

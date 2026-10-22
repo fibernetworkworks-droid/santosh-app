@@ -134,6 +134,7 @@ class Santosh extends ChangeNotifier {
   // ---------------- Hoola Network ----------------
   final Map<String, FeedItem> _hoola = {};
   final Map<String, FeedItem> _deals = {};     // v0.102 one live card per Hoola deal
+  final Map<String, FeedItem> _upiCards = {};  // v0.109 one card per UPI transfer, updated in place
   final Map<String, FeedItem> _pickCards = {}; // v0.105 one live card per pick list (packer side)
   int hoolaTick = 0;
 
@@ -674,7 +675,14 @@ class Santosh extends ChangeNotifier {
       final open = r['open'] as Map?;
       if (decision == 'approve' && open != null && (open['kind'] == 'upi' || open['kind'] == 'app')) {
         final res = await Native.openExternal(url: open['url'] as String? ?? '', package: open['package'] as String? ?? '');
-        if (res != 'ok') feed.add(FeedItem('note', {'text': res}));
+        if (res != 'ok') {
+          feed.add(FeedItem('note', {'text': res}));
+          // v0.109 the app didn't open: the server asks her (and offers copy-and-pay) instead of waiting forever
+          final ref = open['txn_ref'] as String? ?? '';
+          if (open['kind'] == 'upi' && ref.isNotEmpty) {
+            try { await api!.upiResult(ref, result: 'none', package: open['package'] as String? ?? ''); } catch (_) {}
+          }
+        }
       }
     } catch (e) {
       if (it != null) it.data = {...it.data, 'busy': false};
@@ -943,6 +951,13 @@ class Santosh extends ChangeNotifier {
           feed.add(_deals[dk]!);
         }
         hoolaTick++;
+        break;
+      case 'upi_result':                   // v0.109 what the UPI app said after 'Paisa bhejo' (or her answer)
+        final uk = '${p['txn_ref']}';
+        final uOld = _upiCards[uk];
+        if (uOld != null) feed.remove(uOld);
+        _upiCards[uk] = FeedItem('upi_result', Map<String, dynamic>.from(p));
+        feed.add(_upiCards[uk]!);
         break;
       case 'hoola_khata':                  // v0.106 khata payment card / claim / receipt / due date
         feed.add(FeedItem('hoola_khata', Map<String, dynamic>.from(p)));

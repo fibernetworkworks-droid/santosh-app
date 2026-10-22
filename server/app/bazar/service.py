@@ -279,7 +279,8 @@ def _open_action(out: dict[str, Any]) -> dict[str, Any] | None:
         return None
     if out.get("intent_url"):
         return {"kind": "upi", "url": out["intent_url"], "package": out.get("android_package") or "",
-                "label": "UPI app kholiye"}
+                "label": "UPI app kholiye", "txn_ref": out.get("txn_ref") or "", "vpa": out.get("vpa") or "",
+                "name": out.get("payee_name") or "", "amount": out.get("amount") or ""}
     if out.get("deep_link") or out.get("android_package"):
         return {"kind": "app", "url": out.get("deep_link") or "", "package": out.get("android_package") or "",
                 "label": f"{out.get('app', 'App')} kholiye"}
@@ -1061,7 +1062,10 @@ def catalog(tenant_id: str) -> dict[str, Any]:
     with session() as s:
         user = ensure_user(s, tenant_id)
         packs = [{"pack_id": p.id, "name": p.name, "category": p.category, "kind": p.sub_category, "executor": p.executor,
-                  "status": pack_status(s, user, p), "does": (p.description or "")[:220], "logo": logos.pack_logo(p.id)}
+                  "status": pack_status(s, user, p), "does": (p.description or "")[:220], "logo": logos.pack_logo(p.id),
+                  # v0.109 the phone checks which of these apps are really installed (green tick only then)
+                  **({"android_package": p.config["android_package"]} if p.executor == "upi"
+                     and p.config.get("android_package") else {})}
                  for p in reg.all()]
         packs += [{"pack_id": r.id, "name": r.name, "category": "My MCP servers", "kind": "MCP server", "executor": "mcp",
                    "status": pack_status(s, user, custom_mcp.to_pack(r)), "does": (r.description or "")[:220],

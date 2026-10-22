@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.108.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.109.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -3783,7 +3783,7 @@ def phonedoc_case_action(case_id: str, action: str, body: dict, tenant: str = De
     raise HTTPException(404, "step | recheck | escalate | close")
 
 
-# ---------------------------------------------------------------- v0.107 Thok Sahayak (wholesale trader)
+# ---------------------------------------------------------------- v0.109 Thok Sahayak (wholesale trader)
 def _thok(fn, *a, **k):
     from .thok import service as th
     try:
@@ -5184,6 +5184,22 @@ async def bazar_decide(approval_id: str, body: BazarDecision, tenant: str = Depe
         return await asyncio.to_thread(bazar.decide, tenant, approval_id, body.decision)
     except BazarError as e:
         raise HTTPException(400, str(e))
+
+
+class UpiResultBody(BaseModel):
+    txn_ref: str = Field(max_length=40)
+    response: str = Field(default="", max_length=2000)   # the UPI app's own answer (NPCI response string)
+    result: str = Field(default="", max_length=20)       # ok | cancelled | none (what Android reported)
+    package: str = Field(default="", max_length=120)
+    answer: str = Field(default="", max_length=8)        # her word on the card: done | not
+
+
+@app.post("/api/bazar/upi/result", dependencies=[Depends(require_key)])
+async def bazar_upi_result(body: UpiResultBody, tenant: str = Depends(current_tenant)):
+    """v0.109 After 'Paisa bhejo': the phone reports what the UPI app said, or she taps Ho gaya / Nahi hua."""
+    from .bazar import upiresult
+    return await asyncio.to_thread(_bz, upiresult.record, tenant, body.txn_ref, body.response, body.result,
+                                   body.package, body.answer)
 
 
 @app.get("/api/bazar/activity", dependencies=[Depends(require_key)])

@@ -94,10 +94,13 @@ class UpiExecutor:
             raise ToolError(f"Unknown action {action}")
         txn = Transaction(user_id=ctx.user.id, task_id=ctx.task.id if ctx.task else "", kind="upi", provider=pack.id,
                           amount_paise=args["amount_paise"], status="awaiting_payment",
-                          meta={"vpa": args["vpa"], "name": args["name"]})
+                          meta={"vpa": args["vpa"], "name": args["name"], "app": pack.name,
+                                "package": pack.config.get("android_package") or ""})
         ctx.session.add(txn)
         ctx.session.flush()
         link = build_upi_intent(args["vpa"], args["name"], args["amount_paise"], args.get("note", ""), tr=txn.txn_ref,
                                 scheme=pack.config.get("scheme", "upi"), max_paise=ctx.settings.upi_max_amount_paise)
         return {"status": "open_app", "intent_url": link, "android_package": pack.config.get("android_package"),
-                "txn_ref": txn.txn_ref, "message": f"Opening {pack.name}. Enter your UPI PIN there to send {rupees(args['amount_paise'])} to {args['name']}."}
+                "txn_ref": txn.txn_ref, "vpa": args["vpa"], "payee_name": args["name"], "amount": rupees(args["amount_paise"]),
+                "message": f"{pack.name} khul raha hai: {args['name']} aur {rupees(args['amount_paise'])} bhare hue honge. "
+                           f"UPI PIN wahin daaliye; ho jaane par Hoola yahan bata dega."}

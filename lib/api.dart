@@ -707,7 +707,7 @@ class Api {
   Future<Map<String, dynamic>> phonedocCase(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/phonedoc/cases/$id') as Map);
   Future<Map<String, dynamic>> phonedocAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/phonedoc/cases/$id/$action', body: body) as Map);
-  // v0.107 Thok Sahayak (wholesale)
+  // v0.109 Thok Sahayak (wholesale)
   Future<Map<String, dynamic>> thokDay() async => Map<String, dynamic>.from(await _send('GET', '/api/thok/day') as Map);
   Future<Map<String, dynamic>> thokRead(String what, {String route = ''}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/thok/$what', query: {if (route.isNotEmpty) 'route': route}) as Map);
@@ -1160,6 +1160,11 @@ class Api {
   Future<Map<String, dynamic>> bazarDecide(String id, String decision) async => Map<String, dynamic>.from(await _withFingerprint(
       'bazar', id, decision == 'approve', (proof) => _send('POST', '/api/bazar/approvals/$id',
           body: {'decision': decision, if (proof != null) 'proof': proof})) as Map);
+
+  /// v0.109 After 'Paisa bhejo': her answer on the card (done | not) or the phone's own report (result none).
+  Future<Map<String, dynamic>> upiResult(String txnRef, {String answer = '', String result = '', String package = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/upi/result',
+          body: {'txn_ref': txnRef, 'answer': answer, 'result': result, 'package': package}) as Map);
 
   // ---- v0.97 fingerprint-signed approvals ----
   /// Sends an approval; when the server answers 428 (a money card, and a phone is set up for fingerprint approvals)
