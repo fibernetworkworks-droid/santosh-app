@@ -1539,6 +1539,12 @@ class Santosh extends ChangeNotifier {
       case 'bazar_link':
         feed.add(FeedItem('link', Map<String, dynamic>.from(p)));
         break;
+      case 'photo_made':
+        feed.add(FeedItem('photo_made', Map<String, dynamic>.from(p)));
+        if (inBackground && !_replaying && !pushOn) {
+          Device.instance.showNow('$aName ne photo ${p['edit'] == true ? 'badli' : 'banayi'}', p['prompt'] as String? ?? '');
+        }
+        break;
       case 'pc_file':
         feed.add(FeedItem('pc_file', Map<String, dynamic>.from(p)));
         if (inBackground && !_replaying && !pushOn) {

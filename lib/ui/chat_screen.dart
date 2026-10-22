@@ -37,6 +37,7 @@ import 'studio_screen.dart';
 import 'procedures_screen.dart';
 import 'call_receipt.dart';
 import 'desk_cards.dart';
+import 'photo_card.dart';
 import 'upi_result_card.dart';
 import 'ask_form_card.dart';
 import 'call_rate_card.dart';
@@ -707,6 +708,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return DocEditCard(key: ValueKey('de${it.data['id']}'), v: it.data, app: app);
     case 'memory_saved':
       return MemorySavedChip(v: it.data, app: app);
+    case 'photo_made':
+      return PhotoMadeCard(key: ValueKey('ph${it.data['file_id']}'), v: it.data, app: app);
     case 'pc_file':
       return PcFileCard(v: it.data, app: app);
     case 'artifact':

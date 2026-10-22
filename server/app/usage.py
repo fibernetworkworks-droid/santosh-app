@@ -61,6 +61,10 @@ PRICES: dict[str, dict[str, float]] = {
     "gemini-2.5-flash-preview-tts": {"in": 0.50, "out": 10.0, "audio_out": 10.0},
     "gemini-3.1-flash-tts": {"in": 1.0, "out": 20.0, "audio_out": 20.0},
     "gemini-2.5-flash-image": {"in": 0.30, "out": 30.0},
+    "gemini-3.1-flash-lite-image": {"in": 0.25, "out": 30.0},       # ~$0.034 per 1K picture
+    "gemini-nano-banana-2.1": {"in": 1.50, "out": 30.0},
+    "gemini-3.1-flash-image": {"in": 0.50, "out": 60.0},            # ~$0.067 per 1K picture
+    "gemini-3-pro-image": {"in": 2.0, "out": 120.0},                # ~$0.134 per 1K / 2K picture
     "gemini-2.5-flash-lite": {"in": 0.10, "out": 0.40, "audio_in": 0.30},
     "gemini-2.5-flash": {"in": 0.30, "out": 2.50, "audio_in": 1.0},
     "gemini-2.5-pro": {"in": 1.25, "out": 10.0},

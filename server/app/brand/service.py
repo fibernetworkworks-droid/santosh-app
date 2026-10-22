@@ -496,7 +496,7 @@ def _ai_background(tenant: str, did: str) -> None:
               "Plenty of empty space in the middle.")
     try:
         from ..net.media import make_image
-        data = make_image(prompt)
+        data = make_image(prompt, labelled=False)     # the poster itself carries its AI note
     except Exception as e:
         log.info("ai background failed: %s", e)
         data = b""

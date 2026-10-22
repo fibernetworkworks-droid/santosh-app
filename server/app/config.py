@@ -156,7 +156,9 @@ class Settings(BaseSettings):
     hivision_url: str = ""                 # v0.51 e.g. http://127.0.0.1:8085 (docker linzeyi/hivision_idphotos): ID photos
     gotenberg_url: str = ""                # v0.49 e.g. http://127.0.0.1:3005 (docker gotenberg): Office files get page-1 previews
     hoola_enrich: bool = True              # avatars look at what arrives (vision / video) and suggest replies
-    hoola_image_model: str = "gemini-2.5-flash-image"   # avatars making pictures for the Hoola Network (sent only after the owner's tap)
+    hoola_image_model: str = ""   # "" = app/photogen fast chain; avatars making pictures for the Hoola Network (sent only after her tap)
+    photo_fast_models: str = ""   # comma list overriding photogen.FAST
+    photo_best_models: str = ""   # comma list overriding photogen.BEST
     # --- App Jaanch: check an APK / EXE before installing, with REA (github.com/morluto/rea), static analysis only ---
     appcheck_enabled: bool = True           # also needs REA_BIN; off automatically when REA is not installed
     rea_bin: str = ""                       # absolute path to the pinned `rea` launcher (npm rea-agents@6.7.0)

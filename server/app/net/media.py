@@ -327,12 +327,24 @@ def make_pdf(title: str, text: str) -> bytes:
     return buf.getvalue()
 
 
-def make_image(prompt: str) -> bytes:
-    """A picture made by Gemini's image model (greetings, posters, simple illustrations). b'' if not available."""
+def make_image(prompt: str, labelled: bool = True) -> bytes:
+    """A picture made by Gemini's image model (greetings, posters, simple illustrations), with the AI label. b'' if not
+    available. v0.129: goes through app/photogen (live model chain; gemini-2.5-flash-image was shut down 2 Oct 2026)."""
+    from .. import photogen
     from ..config import get_settings
     st = get_settings()
     if not st.gemini_api_key:
         return b""
+    if photogen.problem(prompt):
+        return b""
+    own = (getattr(st, "hoola_image_model", "") or "").strip()
+    if own and own not in photogen.FAST:
+        photogen.FAST.insert(0, own)
+    try:
+        raw, _ = photogen.generate(prompt[:1500], None, photogen.aspect_of(prompt), "fast")
+    except photogen.PhotoError:
+        return b""
+    return photogen.label(raw) if labelled else raw
     from google import genai
     from google.genai import types
     client = genai.Client(api_key=st.gemini_api_key)

@@ -106,6 +106,8 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name} ne banaya", str(p.get("title") or "Page taiyaar hai")) if p.get("status") == "ready" else None
     if kind == "pc_file":
         return (f"{name} ne PDF banaya" if p.get("source") == "bazar" else "PC se file aayi", str(p.get("name") or ""))
+    if kind == "photo_made":
+        return (f"{name} ne photo {'badli' if p.get('edit') else 'banayi'}", str(p.get("prompt") or "")[:120])
     if kind == "email_draft":
         return ("Email draft taiyaar", str(p.get("subject") or "Dekh kar bhejiye"))
     if kind == "hoola_knock" and not p.get("quiet") and p.get("status") in (None, "pending"):
@@ -329,7 +331,7 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
     return sent
 
 
-PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "email_draft", "bazar_open", "device_action",
+PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "photo_made", "email_draft", "bazar_open", "device_action",
               "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "hoola_pick", "hoola_khata", "thok_order", "thok_alert", "thok_day", "sheet_milaan", "doc_edit", "niryat_pi", "niryat_day", "ads_change", "ads_report", "hoola_rfq", "hoola_promo", "hoola_mandate", "fr_statement", "fr_day", "a2a_task", "a2a_out", "handoff_reminder", "digilocker", "theka_bill", "theka_letter", "theka_day", "brand_approval", "brand_idea", "site_board", "site_lead", "site_launch", "site_live", "site_dns", "site_down", "site_domain", "site_care", "site_github", "app_board"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 

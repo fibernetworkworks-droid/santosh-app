@@ -15,7 +15,7 @@ FAMILY = {
     "browse_web", "browse_result", "maps_search", "maps_directions", "maps_navigate",
     "music_control", "tv_remote", "ac_control", "bluetooth",
     "youtube_search", "youtube_play", "youtube_video", "youtube_watch", "youtube_channel",
-    "artifact_make", "artifact_list", "app_check", "tv_channel", "reel", "india_info",
+    "artifact_make", "artifact_list", "app_check", "tv_channel", "reel", "india_info", "photo_banao",
 }
 TRUSTED = FAMILY | {
     "calendar_agenda", "calendar_free_slots", "calendar_find_event", "calendar_add_event", "add_calendar_event",
