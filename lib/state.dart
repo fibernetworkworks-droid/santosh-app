@@ -1174,6 +1174,9 @@ class Santosh extends ChangeNotifier {
       case 'seo_week':
       case 'seo_alert':
       case 'seo_draft':
+      case 'thok_order':
+      case 'thok_alert':
+      case 'thok_day':
         feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
         break;
       case 'payroll_run':

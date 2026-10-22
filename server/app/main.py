@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.106.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.107.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -149,7 +149,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -3781,6 +3781,148 @@ def phonedoc_case_action(case_id: str, action: str, body: dict, tenant: str = De
     if action == "close":
         return _pdoc(pdoc.close, tenant, case_id)
     raise HTTPException(404, "step | recheck | escalate | close")
+
+
+# ---------------------------------------------------------------- v0.107 Thok Sahayak (wholesale trader)
+def _thok(fn, *a, **k):
+    from .thok import service as th
+    try:
+        return fn(*a, **k)
+    except (th.ThokError, ValueError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/thok/day", dependencies=[Depends(require_key)])
+def thok_day(tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    return {**_thok(th.day, tenant), "settings": th.settings(tenant), "route": _thok(th.route_plan, tenant)}
+
+
+@app.post("/api/thok/settings", dependencies=[Depends(require_key)])
+def thok_settings(body: dict, tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    keys = ("firm", "gstin", "address", "phone", "bank", "terms", "aato", "last_fy_turnover", "prefix", "credit_days", "morning_time")
+    return _thok(th.save_settings, tenant, **{k: body[k] for k in keys if k in body})
+
+
+@app.get("/api/thok/parties", dependencies=[Depends(require_key)])
+def thok_parties(kind: str = "", route: str = "", tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    return {"parties": _thok(th.parties, tenant, kind, route)}
+
+
+@app.post("/api/thok/parties", dependencies=[Depends(require_key)])
+def thok_party_save(body: dict, tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    g = lambda k: str(body.get(k) or "")  # noqa: E731
+    return _thok(th.save_party, tenant, g("name"), g("party"), g("kind"), g("phone"), g("gstin"), g("address"), body.get("credit_limit"),
+                 body.get("credit_days"), g("route"), body.get("msme"), body.get("pan_ok"), body.get("opening"), body.get("whatsapp_ok"),
+                 g("notes"), g("state"))
+
+
+@app.get("/api/thok/parties/{pid}", dependencies=[Depends(require_key)])
+def thok_party(pid: str, tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    return _thok(th.party_view, tenant, pid)
+
+
+@app.post("/api/thok/parties/{pid}/statement", dependencies=[Depends(require_key)])
+def thok_statement(pid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    return _thok(th.statement_file, tenant, pid, str(body.get("conversation_id") or ""))
+
+
+@app.get("/api/thok/items", dependencies=[Depends(require_key)])
+def thok_items(q: str = "", tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    return {"items": _thok(th.items, tenant, q)}
+
+
+@app.post("/api/thok/items", dependencies=[Depends(require_key)])
+def thok_item_save(body: dict, tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    return _thok(th.save_item, tenant, str(body.get("name") or ""), body.get("price"), body.get("gst_pct"), str(body.get("unit") or ""),
+                 body.get("qty"), str(body.get("hsn") or ""), body.get("cost"), str(body.get("supplier") or ""), body.get("lead_days"),
+                 body.get("low_at"), body.get("tiers"))
+
+
+@app.get("/api/thok/orders", dependencies=[Depends(require_key)])
+def thok_orders(status: str = "", party: str = "", tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    return {"orders": _thok(th.orders, tenant, status, party)}
+
+
+@app.post("/api/thok/orders", dependencies=[Depends(require_key)])
+def thok_order_new(body: dict, tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    return _thok(th.take_order, tenant, str(body.get("party") or ""), str(body.get("text") or ""), body.get("lines"),
+                 str(body.get("note") or ""), str(body.get("conversation_id") or ""))
+
+
+@app.get("/api/thok/orders/{oid}", dependencies=[Depends(require_key)])
+def thok_order_get(oid: str, tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    return _thok(th.get_order, tenant, oid)
+
+
+@app.post("/api/thok/orders/{oid}/{action}", dependencies=[Depends(require_key)])
+def thok_order_act(oid: str, action: str, body: dict, tenant: str = Depends(current_tenant)):
+    """bill (her Haan, only from her tap) | cancel | invoice"""
+    from .thok import service as th
+    conv = str(body.get("conversation_id") or "")
+    if action == "bill":
+        return _thok(th.bill, tenant, oid, str(body.get("bill_date") or ""), body.get("lines"), conv)
+    if action == "cancel":
+        return _thok(th.cancel_order, tenant, oid, str(body.get("reason") or ""))
+    if action == "invoice":
+        return _thok(th.invoice_file, tenant, oid, conv)
+    raise HTTPException(404, "bill | cancel | invoice")
+
+
+@app.post("/api/thok/receive", dependencies=[Depends(require_key)])
+def thok_receive(body: dict, tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    g = lambda k: str(body.get(k) or "")  # noqa: E731
+    return _thok(th.receive, tenant, g("party"), body.get("amount"), g("mode") or "cash", g("on"), g("cheque_no"), g("cheque_date"),
+                 g("bank"), g("note"))
+
+
+@app.post("/api/thok/cheques/{pid}", dependencies=[Depends(require_key)])
+def thok_cheque(pid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    return _thok(th.cheque, tenant, pid, str(body.get("status") or ""), str(body.get("memo_date") or ""), str(body.get("reason") or ""))
+
+
+@app.get("/api/thok/payments", dependencies=[Depends(require_key)])
+def thok_payments(party: str = "", status: str = "", tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    return {"payments": _thok(th.payments, tenant, party, status)}
+
+
+@app.post("/api/thok/purchases", dependencies=[Depends(require_key)])
+def thok_purchase(body: dict, tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    return _thok(th.purchase, tenant, str(body.get("supplier") or ""), str(body.get("text") or ""), body.get("lines"),
+                 str(body.get("bill_no") or ""), str(body.get("bill_date") or ""), body.get("agreed_days"), body.get("paid"))
+
+
+@app.post("/api/thok/pay_supplier", dependencies=[Depends(require_key)])
+def thok_pay_supplier(body: dict, tenant: str = Depends(current_tenant)):
+    from .thok import service as th
+    return _thok(th.pay_supplier, tenant, str(body.get("supplier") or ""), body.get("amount"), str(body.get("mode") or "neft"),
+                 str(body.get("on") or ""), str(body.get("note") or ""))
+
+
+@app.get("/api/thok/{what}", dependencies=[Depends(require_key)])
+def thok_read(what: str, route: str = "", days: int = 30, tenant: str = Depends(current_tenant)):
+    """outstanding | reminders | payables | reorder | margins | route"""
+    from .thok import service as th
+    fns = {"outstanding": lambda: th.outstanding(tenant, route), "reminders": lambda: th.reminder_drafts(tenant, route),
+           "payables": lambda: th.payables(tenant), "reorder": lambda: th.reorder(tenant), "margins": lambda: th.margins(tenant, days),
+           "route": lambda: th.route_plan(tenant, route)}
+    if what not in fns:
+        raise HTTPException(404, "outstanding | reminders | payables | reorder | margins | route")
+    return _thok(fns[what])
 
 
 # ---------------------------------------------------------------- v0.103 SEO Sahayak

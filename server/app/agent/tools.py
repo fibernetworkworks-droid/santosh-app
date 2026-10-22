@@ -605,3 +605,10 @@ from .seo_tools import SEO_HANDLERS, SEO_LABELS, SEO_TOOLS  # noqa: E402
 TOOLS.extend(SEO_TOOLS)
 TOOL_LABELS.update(SEO_LABELS)
 HANDLERS.update(SEO_HANDLERS)
+
+# v0.107 Thok Sahayak (wholesale: orders -> GST bills, credit, collections, cheques, purchases, reorder, margins)
+from .thok_tools import THOK_HANDLERS, THOK_LABELS, THOK_TOOLS  # noqa: E402
+
+TOOLS.extend(THOK_TOOLS)
+TOOL_LABELS.update(THOK_LABELS)
+HANDLERS.update(THOK_HANDLERS)

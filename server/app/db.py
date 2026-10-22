@@ -662,6 +662,7 @@ def init_db(url: str | None = None):
     from .telecall import service as _telecall  # noqa: F401
     from .kalam import service as _kalam  # noqa: F401
     from .seo import service as _seo  # noqa: F401
+    from .thok import service as _thok  # noqa: F401
     from .office import service as _office  # noqa: F401
     from .lekhak import service as _lekhak  # noqa: F401
     from .agent import pakka as _pakka  # noqa: F401

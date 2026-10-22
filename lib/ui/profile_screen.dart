@@ -49,6 +49,7 @@ import 'audit_screen.dart';
 import 'approve_key_screen.dart';
 import 'insurance_screen.dart';
 import 'seo_screen.dart';
+import 'thok_screen.dart';
 import 'kharcha_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -196,6 +197,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Aadhaar, PAN, Voter ID… taala band. ${app.aName} forms mein khud bharega'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => IdLockerScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.warehouse_rounded, color: C.accent),
+              title: const Text('Thok sahayak (wholesale)', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Order se GST bill, udhaar aur vasooli, cheque, supplier ke bill, kya mangwana hai: ${app.aName} karega, bill aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ThokScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
