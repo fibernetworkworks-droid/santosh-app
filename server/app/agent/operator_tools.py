@@ -34,6 +34,9 @@ OPERATOR_TOOLS = [
          "text": {"type": "string", "description": "action=answer: the OTP / CAPTCHA she just told you"},
          "start_url": {"type": "string"},
          "file_ids": {"type": "array", "items": {"type": "string"}},
+         "where": {"type": "string", "enum": ["auto", "server", "pc"], "description":
+                   "auto (default): Hoola's server browser, or her own PC when the site refuses the server; server = "
+                   "try the server anyway (only when she asks); pc = her PC (Santosh Desktop)"},
          "task_id": {"type": "string"},
          "name": {"type": "string", "description": "recipe name for forget_recipe"}},
          "required": ["action"]}},
@@ -90,7 +93,49 @@ async def computer_operator(ctx: Ctx, action, **a):
         if not got:
             raise ToolError("Abhi koi OTP / CAPTCHA ka intezaar nahi hai, ya yeh OTP jaisa nahi laga. Dobara poochhiye.")
         return {"ok": got["ok"], "say": got["say"]}
+    if str(action) == "start":
+        where = str(a.get("where") or "auto")
+        from ..config import get_settings
+        if where == "auto" and not get_settings().operator_preflight:
+            where = "server"
+        if where != "server":
+            from ..operator import reach
+            chk = {"ok": True, "site": ""} if where == "pc" else \
+                await asyncio.to_thread(reach.check, str(a.get("task") or ""), str(a.get("start_url") or ""), True)
+            if where == "pc" or not chk["ok"]:
+                return await _to_pc(ctx, a, chk)
     return await asyncio.to_thread(_run, ctx, str(action), a)
+
+
+async def _to_pc(ctx: Ctx, a: dict[str, Any], chk: dict[str, Any]) -> dict[str, Any]:
+    """v0.92 The site refuses Hoola's server (UIDAI does): do the same job on her own PC (her home / office internet),
+    or tell her at once and plainly - never minutes of retrying the same wall."""
+    from ..operator import reach
+    from .pc_tools import pc_do
+    site = chk.get("site") or ""
+    task = str(a.get("task") or "").strip()
+    url = str(a.get("start_url") or "").strip()
+    pc_task = (task + (f" Website: {url}" if url else "") + " Use Google Chrome on this PC. When the site sends an OTP, "
+               "click the OTP box and use ask_otp. Download files to the normal Downloads folder and say the file name.")
+    why = chk.get("why") or ""
+    try:
+        r = await pc_do(ctx, pc_task)
+    except ToolError as e:
+        reach.STATS["told"] += 1
+        link = url or (f"https://{site}" if site else "")
+        return {"status": "site_blocks_server", "site": site, "why": why, "pc": str(e)[:200],
+                "say": (f"{site or 'Yeh website'} Hoola ke server se nahi khulti (unki suraksha data-centre ke address "
+                        "rok deti hai), isliye yeh kaam abhi aapke PC se ya phone se hoga."),
+                "next": ("Tell her this plainly in one or two lines and offer: (1) open Santosh Desktop on her PC, then say "
+                         "'PC par karo' and it runs there by itself; (2) open_on_phone with " + (link or "the site link") +
+                         " so she does it on her phone; (3) the office proxy (one-time setup) so the server can open it. "
+                         "Don't start computer_operator again for this site unless she asks to try the server (where=server).")}
+    reach.STATS["routed_pc"] += 1
+    r["moved_to"] = "pc"
+    r["why"] = f"{site} Hoola ke server se nahi khulta ({why})" if site else why
+    r["say"] = (f"{site or 'Yeh site'} Hoola ke server se nahi khulti, isliye yeh kaam aapke PC par (Chrome mein) shuru kar "
+                "diya hai. Live card chat mein hai; OTP aaye to bas yahan bata dijiye, main PC ke box mein bhar dunga.")
+    return r
 
 
 OPERATOR_HANDLERS = {"computer_operator": computer_operator}

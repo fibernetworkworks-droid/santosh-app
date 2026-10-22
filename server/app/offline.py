@@ -94,28 +94,96 @@ def compose(d: dict) -> tuple[str, str]:
     return subject, "\n".join(lines)
 
 
+# v0.92 a digest that cannot go out is not retried every 2 minutes forever (the VPS log showed exactly that):
+# after a failure the next try waits 30 min, then 1 h, 2 h ... up to 12 h; one log line per wait, with the fix.
+_FAIL: dict[str, tuple[int, float]] = {}
+STATS = {"sent": 0, "via_api": 0, "via_smtp": 0, "failed": 0}
+
+
+class _NoRoute(Exception):
+    pass
+
+
+def _may_try(tenant: str) -> bool:
+    n, next_at = _FAIL.get(tenant, (0, 0.0))
+    return time.time() >= next_at
+
+
+def _failed(tenant: str, to: str, e: Exception) -> None:
+    n = _FAIL.get(tenant, (0, 0.0))[0] + 1
+    wait_min = min(30 * 2 ** (n - 1), 720)
+    _FAIL[tenant] = (n, time.time() + wait_min * 60)
+    STATS["failed"] += 1
+    text = str(e)
+    hint = ""
+    if any(w in text for w in ("Errno 101", "unreachable", "timed out", "Errno 110", "Connection refused")):
+        hint = (" (this server cannot reach the mail server by SMTP - most cloud servers block SMTP ports; sign in with "
+                "Google / Outlook in the app so the digest goes through their API over HTTPS)")
+    log.warning("offline digest to %s failed (%s)%s; next try in %s min", to, text[:160], hint, wait_min)
+
+
+async def _deliver(tenant: str, to: str, subject: str, body: str) -> str:
+    """Her own Gmail / Outlook sign-in first (HTTPS API: works where SMTP ports are blocked), then the server's SMTP."""
+    import asyncio
+    from email.message import EmailMessage
+
+    from . import mail
+    api_err: Exception | None = None
+    try:
+        from .mailbox.accounts import boxes
+        api = [b for b in await asyncio.to_thread(boxes, tenant) if getattr(b, "kind", "") in ("gmail", "outlook")]
+    except Exception:
+        api = []
+    for b in api:
+        msg = EmailMessage()
+        msg["From"] = b.address
+        msg["To"] = to
+        msg["Subject"] = subject
+        import email.utils as eu
+        msg["Date"] = eu.formatdate(localtime=True)
+        msg["Message-ID"] = eu.make_msgid(domain=(b.address.split("@")[-1] or "hoola"))
+        msg.set_content(body)
+        try:
+            await asyncio.to_thread(b.send, msg)
+            STATS["via_api"] += 1
+            return b.kind
+        except Exception as e:      # an expired sign-in etc.: try the next route
+            api_err = e
+    if tenant == get_settings().tenant_id and mail.configured():
+        await mail.send_email(to, subject, body)
+        STATS["via_smtp"] += 1
+        return "smtp"
+    if api_err is not None:
+        raise api_err
+    raise _NoRoute()
+
+
 async def send_due() -> int:
     st = get_settings()
     if not st.offline_email:
         return 0
-    from . import mail
-    if not mail.configured():
-        return 0
     sent = 0
     for d in due_digests():
-        to = recipient(d["tenant_id"])
+        tenant = d["tenant_id"]
+        if not _may_try(tenant):
+            continue
+        to = recipient(tenant)
         if "@" not in (to or ""):
             continue
         subject, body = compose(d)
         try:
-            await mail.send_email(to, subject, body)
-        except Exception as e:
-            log.warning("offline digest to %s failed: %s", to, e)
+            await _deliver(tenant, to, subject, body)
+        except _NoRoute:
             continue
+        except Exception as e:
+            _failed(tenant, to, e)
+            continue
+        _FAIL.pop(tenant, None)
         with session() as s:
-            row = s.get(PhoneSeen, d["tenant_id"])
+            row = s.get(PhoneSeen, tenant)
             if row:
                 row.digest_upto_id = d["items"][-1][0]
                 row.digest_sent_at = datetime.now(timezone.utc)
         sent += 1
+        STATS["sent"] += 1
     return sent

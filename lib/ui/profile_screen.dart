@@ -38,6 +38,7 @@ import 'office_screen.dart';
 import 'employee_screen.dart';
 import 'mshop_screen.dart';
 import 'phonedoc_screen.dart';
+import 'jaanch_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -184,6 +185,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Aadhaar, PAN, Voter ID… taala band. ${app.aName} forms mein khud bharega'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => IdLockerScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.health_and_safety_rounded, color: C.accent),
+              title: Text('${app.aName} Jaanch', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Har hissa abhi jaancho: kya kharab hai, kaise theek hoga, kaun si website server se nahi khulti'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => JaanchScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

@@ -25,6 +25,8 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENT_FIX_SEARCH", "false")
     monkeypatch.setenv("CALL_RECEIPT", "false")      # v0.91: scripted calls don't expect the extra receipt message
     monkeypatch.setenv("PARALLEL_SEARCH", "false")   # v0.91: no real Parallel searches in tests
+    monkeypatch.setenv("OPERATOR_PREFLIGHT", "false")  # v0.92: no live site checks (the sandbox has no DNS)
+    monkeypatch.setenv("OPERATOR_REACH_FILE", str(tmp_path / "reach.json"))
     monkeypatch.setenv("IFSC_REFRESH", "false")    # no IFSC downloads / online lookups in tests
     monkeypatch.setenv("LOGO_WARM", "false")       # no logo downloads in tests
     monkeypatch.setenv("TV_REFRESH", "false")   # no real TTS calls; tests that need the clips turn it on

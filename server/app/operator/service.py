@@ -333,9 +333,17 @@ _FILLED: dict[str, float] = {}
 
 
 def pending_otp(tenant: str):
-    """The OTP box waiting for her right now (Approval) or None."""
+    """The OTP box waiting for her right now (Approval, or v0.92 an OTP box on her PC) or None."""
     a = _pending_otp_or_captcha(tenant)
     return a if a is not None and a.kind == "otp" else None
+
+
+def _pc_otp(tenant: str):
+    try:
+        from ..pc import operator as pcop
+        return pcop.pending_otp(tenant)
+    except Exception:
+        return None
 
 
 def recently_filled(tenant: str, within: float = 120) -> bool:
@@ -344,11 +352,28 @@ def recently_filled(tenant: str, within: float = 120) -> bool:
 
 async def fill_otp(tenant: str, request_id: str, value: str) -> dict[str, Any]:
     """Type her OTP into the waiting box (the value is never kept, logged or returned)."""
+    if str(request_id).startswith("pcotp_"):
+        from ..pc import operator as pcop
+        if not pcop.give_otp(tenant, request_id, value):
+            raise OperatorJobError("PC par ab koi OTP box intezaar nahi kar raha.")
+        _FILLED[tenant] = time.time()
+        return {"ok": True, "kind": "otp", "masked": "•" * len(value), "say": "OTP PC ke box mein bhar diya. Aage badh raha hoon."}
     await resolve(tenant, request_id, "approved", value)
     return {"ok": True, "kind": "otp", "masked": "•" * len(value), "say": "OTP page mein bhar diya. Aage badh raha hoon."}
 
 
 async def resolve(tenant: str, request_id: str, status: str, answer: str = "") -> dict[str, Any]:
+    if str(request_id).startswith("pcotp_"):          # v0.92 an OTP box on her PC (card / SMS Allow / chat)
+        from ..pc import operator as pcop
+        req = pcop.pending_otp(tenant)
+        if status == "approved":
+            if not pcop.give_otp(tenant, request_id, answer):
+                raise OperatorJobError("PC par ab koi OTP box intezaar nahi kar raha, ya OTP 4-8 ank ka nahi hai.")
+            _FILLED[tenant] = time.time()
+        else:
+            pcop.refuse_otp(tenant, request_id)
+        out = req.public() if req is not None and req.id == request_id else {"id": request_id, "kind": "otp"}
+        return {**out, "status": "approved" if status == "approved" else "rejected"}
     have = _ops.get(tenant)
     if not have:
         raise OperatorJobError("Browser band hai; yeh sawaal ab purana ho gaya.")
@@ -417,11 +442,14 @@ _CAPTCHA_SAID = re.compile(r"^(?:captcha|कैप्चा|code|akshar)?\s*(?:h
 def _pending_otp_or_captcha(tenant: str):
     """The newest OTP or CAPTCHA request still waiting."""
     have = _ops.get(tenant)
-    if not have:
-        return None
-    # check OTP (TYPED_KINDS) first, then captcha (no longer in TYPED_KINDS but still answerable from chat)
-    op = have[1]
-    waiting = [a for a in op.approvals.values() if a.status == "pending" and a.kind in ("otp", "captcha")]
+    waiting = []
+    if have:
+        # check OTP (TYPED_KINDS) first, then captcha (no longer in TYPED_KINDS but still answerable from chat)
+        op = have[1]
+        waiting = [a for a in op.approvals.values() if a.status == "pending" and a.kind in ("otp", "captcha")]
+    pc = _pc_otp(tenant)                              # v0.92 an OTP box on her PC answers the same way
+    if pc is not None:
+        waiting.append(pc)
     return max(waiting, key=lambda a: a.created) if waiting else None
 
 
@@ -722,6 +750,16 @@ async def _wrap(job: Job, status: str, summary: str, fin: dict) -> dict[str, Any
                 log.exception("auto recipe")
     proof = [str(p)[:200] for p in (fin.get("proof") or [])][:10]
     text = summary.strip()[:3000]
+    try:   # v0.92 remember the sites that refuse this server, so the next job goes to her PC straight away
+        from . import reach
+        last = (_where(job) or {}).get("url") or row.url or ""
+        net = getattr(job.op, "_net", None)
+        blocked = reach.learn_from_job(row.start_url, row.task, status == "done", list(getattr(net, "failed", []) or []), last)
+        if blocked and status != "done":
+            text += (f"\n({', '.join(blocked)} Hoola ke server se nahi khulta; agli baar yeh kaam seedha aapke PC par "
+                     "chalega, ya office proxy lagne ke baad server se.)")
+    except Exception:
+        log.exception("reach learning")
     row2 = _set(row.id, status=status, stage={"done": "Ho gaya", "failed": "Poora nahi hua"}.get(status, status),
                 summary=text, proof=proof, outputs=outputs, recipe=job.saved_recipe, pending=None, log=job.log,
                 error="" if status == "done" else (fin.get("pending") or "")[:300])

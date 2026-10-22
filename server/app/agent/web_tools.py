@@ -100,6 +100,14 @@ async def browse_web(ctx: Ctx, task, start_url=None, _wait=None, **_):
     url = str(start_url or "").strip()
     if url and not url.lower().startswith(("http://", "https://")):
         url = "https://" + url
+    from ..config import get_settings
+    if get_settings().operator_preflight:
+        from ..operator import reach   # v0.92 a site known to refuse this server: don't spend minutes on it
+        chk = await asyncio.to_thread(reach.check, task, url, False)
+        if not chk["ok"]:
+            return {"status": "site_blocks_server", "site": chk["site"], "why": chk.get("why", ""),
+                    "next": ("This site refuses Hoola's server. For real work on it use computer_operator (it moves the "
+                             "job to her PC when the PC is online), or open_on_phone so she does it herself.")}
     from .. import idvault
     try:   # v0.81 {id:...} references become the real number for the browser (it types Aadhaar / PAN / any number)
         task, _kinds = idvault.fill_value(task, ctx.tenant_id)

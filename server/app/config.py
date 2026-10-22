@@ -99,6 +99,7 @@ class Settings(BaseSettings):
     voice_vad_fast: float = 0.85           # very sure it's a voice: barge-in opens after 160 ms instead of 240 ms
     voice_vad_idle_gate: bool = True       # while nobody talks, pure noise (fan, traffic, clatter) reaches Gemini as silence
     voice_resume_after_noise_s: float = 1.5  # he was cut off but nobody spoke: carry on after this long (0 = off)
+    operator_preflight: bool = True        # v0.92 check a website job's site from this server first; refused -> her PC
     call_receipt: bool = True              # v0.91 after a call: a short card of what was decided and what really ran
     voice_tool_ack: bool = True            # a tool runs and he is silent: say a quick "ek second" in his own voice
     voice_ack_tts_model: str = "gemini-2.5-flash-preview-tts"   # makes those short clips once per voice

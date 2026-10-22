@@ -1,0 +1,287 @@
+"""v0.92 Hoola Jaanch: one button that checks every part of Hoola live and says the fix in plain words.
+
+Roadmap day 1 ("measure"). Every check runs at the same time with its own short time limit, so the whole check takes
+about 10 seconds. Nothing is sent anywhere except harmless reads (model list, a TCP handshake to a site, the browser
+worker's /healthz). Keys are never shown: a check only says "set" / "not set" / "refused".
+
+Also the work report of the last 14 days (chat tasks, website jobs, PC jobs, lessons, crashes), which used to need a
+command on the VPS.
+"""
+from __future__ import annotations
+
+import asyncio
+import logging
+import shutil
+import socket
+import time
+from collections import Counter
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+from .config import get_settings
+
+log = logging.getLogger("santosh.jaanch")
+CHECK_TIMEOUT = 9.0
+PORTALS = [("UIDAI (Aadhaar)", "myaadhaar.uidai.gov.in"), ("Income Tax", "www.incometax.gov.in"),
+           ("DigiLocker", "www.digilocker.gov.in"), ("IRCTC", "www.irctc.co.in"),
+           ("EPFO", "unifiedportal-mem.epfindia.gov.in"), ("Passport Seva", "www.passportindia.gov.in"),
+           ("MSEDCL", "wss.mahadiscom.in"), ("GST", "www.gst.gov.in")]
+
+
+def _c(cid: str, name: str, ok: bool | None, detail: str = "", fix: str = "") -> dict[str, Any]:
+    """ok True = fine, False = broken (with a fix), None = works but needs attention / not set up."""
+    return {"id": cid, "name": name, "ok": ok, "detail": detail[:300], "fix": fix[:300]}
+
+
+def _tcp(host: str, port: int, timeout: float = 5.0) -> tuple[bool, str]:
+    try:
+        infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except OSError:
+        return False, "naam nahi mila (DNS)"
+    ips = sorted({i[4][0] for i in infos}, key=lambda x: ":" in x)
+    last = "nahi juda"
+    for ip in ips[:3]:
+        try:
+            with socket.create_connection((ip, port), timeout=timeout):
+                return True, ""
+        except socket.timeout:
+            last = "jawab nahi diya (timeout)"
+        except OSError as e:
+            last = f"{type(e).__name__}: {str(e)[:60]}"
+    return False, last
+
+
+# ---------------------------------------------------------------- the checks (each returns one line)
+async def _claude() -> dict[str, Any]:
+    st = get_settings()
+    if not st.anthropic_api_key:
+        return _c("claude", "Dimaag (Claude)", False, "ANTHROPIC_API_KEY set nahi hai", "VPS .env mein ANTHROPIC_API_KEY daaliye")
+    try:
+        from .agent.santosh import get_client
+        client = get_client()
+        if hasattr(client, "models"):
+            await client.models.list(limit=1)
+        else:
+            ok, why = await asyncio.to_thread(_tcp, "api.anthropic.com", 443)
+            if not ok:
+                raise ConnectionError(why)
+        return _c("claude", "Dimaag (Claude)", True, f"model {st.anthropic_model}")
+    except Exception as e:
+        t = str(e)
+        fix = "key badliye (console.anthropic.com)" if "401" in t or "auth" in t.lower() else "thodi der baad phir jaanchiye"
+        return _c("claude", "Dimaag (Claude)", False, f"Anthropic ne mana kiya: {type(e).__name__}", fix)
+
+
+async def _gemini() -> dict[str, Any]:
+    st = get_settings()
+    if not st.gemini_api_key:
+        return _c("gemini", "Awaaz + Google search (Gemini)", False, "GEMINI_API_KEY set nahi hai",
+                  "VPS .env mein GEMINI_API_KEY daaliye (voice call aur Google search isi se chalte hain)")
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=8) as c:
+            r = await c.get("https://generativelanguage.googleapis.com/v1beta/models",
+                            params={"pageSize": 1}, headers={"x-goog-api-key": st.gemini_api_key})
+        if r.status_code == 200:
+            return _c("gemini", "Awaaz + Google search (Gemini)", True, f"live model {st.gemini_live_model}")
+        return _c("gemini", "Awaaz + Google search (Gemini)", False, f"Google ne HTTP {r.status_code} diya",
+                  "key check kijiye (aistudio.google.com)")
+    except Exception as e:
+        return _c("gemini", "Awaaz + Google search (Gemini)", False, f"pahunch nahi: {type(e).__name__}", "server ka internet dekhiye")
+
+
+async def _parallel() -> dict[str, Any]:
+    st = get_settings()
+    if not st.parallel_search:
+        return _c("parallel", "Backup search (Parallel)", None, "band hai (PARALLEL_SEARCH=false)")
+    ok, why = await asyncio.to_thread(_tcp, "search.parallel.ai", 443)
+    return _c("parallel", "Backup search (Parallel)", ok, "" if ok else why, "" if ok else "server ka internet dekhiye")
+
+
+async def _email(tenant: str) -> dict[str, Any]:
+    st = get_settings()
+    api = []
+    try:
+        from .mailbox.accounts import boxes
+        api = [b.address for b in await asyncio.to_thread(boxes, tenant) if getattr(b, "kind", "") in ("gmail", "outlook")]
+    except Exception:
+        pass
+    smtp_ok, smtp_why = None, ""
+    if st.email_address and st.email_password:
+        from . import mail
+        try:
+            _, _, host, port = mail._hosts()
+            smtp_ok, smtp_why = await asyncio.to_thread(_tcp, host, int(port), 6.0)
+        except Exception as e:
+            smtp_ok, smtp_why = False, str(e)[:80]
+    if api:
+        d = "Gmail / Outlook sign-in se jata hai: " + ", ".join(api[:2])
+        if smtp_ok is False:
+            d += "; server ka SMTP band hai (koi baat nahi, sign-in wala raasta kaam karta hai)"
+        return _c("email", "Email bhejna", True, d)
+    if smtp_ok:
+        return _c("email", "Email bhejna", True, "server ke SMTP se")
+    if smtp_ok is False:
+        return _c("email", "Email bhejna", False, f"server se SMTP nahi pahunchta ({smtp_why}); cloud server SMTP port rokte hain",
+                  "App > Profile > Email mein Google se sign in kijiye: email Gmail ke raaste (HTTPS) jayega")
+    return _c("email", "Email bhejna", None, "koi email nahi juda", "App > Profile > Email mein Gmail / Outlook jodiye")
+
+
+async def _operator() -> dict[str, Any]:
+    from .operator import service as ops
+    from .operator.display import chrome_installed
+    if not ops.available():
+        return _c("operator", "Website kaam (Computer Operator)", False, "Playwright / Chromium nahi mila",
+                  "VPS par: bash ~/santosh_app/server/deploy/setup_operator.sh")
+    chrome, xvfb = chrome_installed(), bool(shutil.which("Xvfb"))
+    if chrome and xvfb:
+        return _c("operator", "Website kaam (Computer Operator)", True, "asli Chrome window (virtual screen) taiyaar")
+    miss = ", ".join(x for x, ok in (("Google Chrome", chrome), ("Xvfb", xvfb)) if not ok)
+    return _c("operator", "Website kaam (Computer Operator)", None,
+              f"{miss} nahi mila: browser 'HeadlessChrome' ban jata hai, kai sites rok deti hain",
+              "VPS par: bash ~/santosh_app/server/deploy/setup_operator.sh")
+
+
+async def _worker() -> dict[str, Any]:
+    st = get_settings()
+    if not st.browser_worker_url:
+        return _c("browser", "Jaldi website dekhna (browse_web)", None, "browser worker set nahi hai (BROWSER_WORKER_URL)")
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=6) as c:
+            r = await c.get(st.browser_worker_url.rstrip("/") + "/healthz")
+        ok = r.status_code == 200
+        return _c("browser", "Jaldi website dekhna (browse_web)", ok, "" if ok else f"HTTP {r.status_code}",
+                  "" if ok else "pm2 restart santosh-browser")
+    except Exception as e:
+        return _c("browser", "Jaldi website dekhna (browse_web)", False, f"worker band hai ({type(e).__name__})",
+                  "pm2 restart santosh-browser")
+
+
+async def _pc(tenant: str) -> dict[str, Any]:
+    try:
+        from .pc.hub import hub
+        conns = hub.online(tenant)
+    except Exception:
+        conns = []
+    if not conns:
+        return _c("pc", "Mera PC (Santosh Desktop)", None, "PC abhi juda nahi hai",
+                  "PC par Santosh Desktop kholiye; jo sites server se nahi khultin (UIDAI) woh PC se hongi")
+    control = bool((conns[-1].info or {}).get("control"))
+    return _c("pc", "Mera PC (Santosh Desktop)", True if control else None,
+              "juda hai" + ("" if control else ", par PC chalane ki permission band hai"),
+              "" if control else "Santosh Desktop > Settings > 'Santosh ko PC chalane dein' on kijiye")
+
+
+async def _push() -> dict[str, Any]:
+    from . import push
+    ok = push.configured()
+    return _c("push", "Phone par notification (FCM)", ok if ok else None, "" if ok else "FCM set nahi hai",
+              "" if ok else "VPS par FCM service-account file ka path FCM_SERVICE_ACCOUNT_FILE mein daaliye")
+
+
+async def _google(tenant: str) -> dict[str, Any]:
+    try:
+        from .google_check import diagnose
+        d = await asyncio.to_thread(diagnose, tenant, False)
+    except Exception as e:
+        return _c("google", "Google (Drive / Gmail / Calendar)", None, f"jaanch nahi ho payi ({type(e).__name__})")
+    if not d.get("signin"):
+        return _c("google", "Google (Drive / Gmail / Calendar)", None, "Google se sign in nahi hai", "App > Profile mein Google jodiye")
+    probs = d.get("problems") or []
+    return _c("google", "Google (Drive / Gmail / Calendar)", not probs, "; ".join(probs)[:200] or "juda hai",
+              "App mein 'Google jodiye' dobara dabaiye" if probs else "")
+
+
+async def _disk() -> dict[str, Any]:
+    u = shutil.disk_usage(".")
+    free = u.free / 1e9
+    ok = free >= 2
+    return _c("disk", "Server ki jagah (disk)", ok if free >= 2 else (None if free >= 0.5 else False), f"{free:.1f} GB khaali",
+              "" if ok else "purani files / logs hataiye (pm2 flush)")
+
+
+async def _portals() -> list[dict[str, Any]]:
+    from .operator import reach
+
+    def one(name: str, host: str) -> dict[str, Any]:
+        rec = reach.remembered(host)
+        ok, why = reach.probe(host, timeout=5)
+        if ok and not rec:
+            return _c("site:" + host, name, True, "server se khulta hai")
+        why = why or (rec or {}).get("why") or "pichhle kaam mein nahi khula"
+        if not ok:
+            reach.note_fail(host, f"jaanch: {why}")
+        return _c("site:" + host, name, False, f"server se nahi khulta ({why})",
+                  "PC (Santosh Desktop) se hoga; ya office proxy lagaiye (deploy/office_proxy.md)")
+    return list(await asyncio.gather(*[asyncio.to_thread(one, n, h) for n, h in PORTALS]))
+
+
+async def _guard(coro, cid: str, name: str):
+    try:
+        return await asyncio.wait_for(coro, CHECK_TIMEOUT)
+    except asyncio.TimeoutError:
+        return _c(cid, name, False, "jaanch mein bahut der lagi", "thodi der baad phir jaanchiye")
+    except Exception as e:
+        log.exception("jaanch %s", cid)
+        return _c(cid, name, None, f"jaanch nahi ho payi ({type(e).__name__})")
+
+
+# ---------------------------------------------------------------- the report of real work
+def report(tenant: str, days: int = 14) -> dict[str, Any]:
+    from sqlalchemy import select
+
+    from .agent.pakka import Lesson, TaskRun
+    from .db import session
+    from .operator.models import OperatorTask
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    out: dict[str, Any] = {"days": days}
+    with session() as s:
+        runs = s.scalars(select(TaskRun).where(TaskRun.tenant_id == tenant, TaskRun.created_at >= since)).all()
+        out["chat"] = {"total": len(runs), "outcomes": dict(Counter(r.outcome for r in runs)),
+                       "avg_seconds": round(sum(r.seconds for r in runs) / max(1, len(runs))),
+                       "not_done": [{"request": r.request[:140], "outcome": r.outcome, "left": (r.left or "")[:140]}
+                                    for r in runs if r.outcome in ("partial", "stuck", "stopped")][-10:]}
+        ops = s.scalars(select(OperatorTask).where(OperatorTask.tenant_id == tenant, OperatorTask.created_at >= since)).all()
+        out["website"] = {"total": len(ops), "status": dict(Counter(o.status for o in ops)),
+                          "not_done": [{"task": o.task[:140], "status": o.status, "site": (o.url or "")[:80],
+                                        "why": (o.error or o.summary or o.stage or "")[:160]}
+                                       for o in ops if o.status not in ("done", "running", "waiting", "queued")][-10:]}
+        out["lessons"] = [{"tool": x.tool, "problem": x.problem[:140], "fix": x.fix[:100]}
+                          for x in s.scalars(select(Lesson).where(Lesson.tenant_id == tenant)
+                                             .order_by(Lesson.created_at.desc()).limit(10)).all()]
+    try:
+        from pathlib import Path
+        p = Path("data") / "crashes" / f"{tenant}.jsonl"
+        out["crashes"] = sum(1 for _ in p.open()) if p.exists() else 0
+    except Exception:
+        out["crashes"] = 0
+    try:
+        from .offline import STATS as off
+        out["email_digest"] = dict(off)
+    except Exception:
+        pass
+    return out
+
+
+async def run(tenant: str) -> dict[str, Any]:
+    t0 = time.time()
+    singles = [(_claude(), "claude", "Dimaag (Claude)"), (_gemini(), "gemini", "Awaaz + Google search (Gemini)"),
+               (_parallel(), "parallel", "Backup search (Parallel)"), (_email(tenant), "email", "Email bhejna"),
+               (_operator(), "operator", "Website kaam (Computer Operator)"), (_worker(), "browser", "Jaldi website dekhna"),
+               (_pc(tenant), "pc", "Mera PC"), (_push(), "push", "Phone par notification"),
+               (_google(tenant), "google", "Google"), (_disk(), "disk", "Server ki jagah")]
+    parts = await asyncio.gather(*[_guard(c, i, n) for c, i, n in singles],
+                                 _guard(_portals(), "portals", "Sarkari / roz ki websites"))
+    checks: list[dict[str, Any]] = []
+    for p in parts:
+        checks.extend(p if isinstance(p, list) else [p])
+    bad = [c for c in checks if c["ok"] is False]
+    warn = [c for c in checks if c["ok"] is None]
+    say = ("Sab theek hai." if not bad and not warn else
+           f"{len(bad)} cheez kharab" + (f", {len(warn)} par dhyan dena hai" if warn else "") + ": " +
+           "; ".join(f"{c['name']} - {c['detail']}" for c in (bad + warn)[:4]))
+    rep = await asyncio.to_thread(report, tenant)
+    return {"at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "seconds": round(time.time() - t0, 1),
+            "ok": len(checks) - len(bad) - len(warn), "bad": len(bad), "warn": len(warn), "total": len(checks),
+            "checks": checks, "say": say, "report": rep}

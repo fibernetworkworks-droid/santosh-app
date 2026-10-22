@@ -1,7 +1,7 @@
 """v0.84 Chai Sahayak + Galla: a chai stall's sales from UPI alerts (only credits, nothing secret), best hours,
 tomorrow's milk / sugar / patti from the menu and earlier days, stock orders waiting for her Haan, learning from the day."""
 import asyncio
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -32,6 +32,15 @@ ALERTS = [   # (title, text, expected rupees or None)
 def _events(kind):
     with session() as s:
         return [e.payload for e in s.scalars(select(Event).where(Event.kind == kind).order_by(Event.id)).all()]
+
+
+@pytest.fixture(autouse=True)
+def _late_evening(env, monkeypatch):
+    """The tests write payments at fixed hours of today (7 am ... 6 pm). The service rightly drops alerts from the
+    future, so before 6 pm these tests failed every morning: pin the galla clock to 11:50 pm local today."""
+    from app.galla import service as G
+    end = datetime.combine(G.today(T), time(23, 50), G._tz(T)).astimezone(timezone.utc)
+    monkeypatch.setattr(G, "now", lambda: end)
 
 
 def _at(days_ago: int, hour: int, minute: int = 0) -> int:

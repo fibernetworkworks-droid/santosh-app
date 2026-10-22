@@ -434,10 +434,14 @@ HANDLERS.update(MOTION_HANDLERS)
 
 # v0.67 Hoola Computer Operator
 from .operator_tools import OPERATOR_HANDLERS, OPERATOR_LABELS, OPERATOR_TOOLS  # noqa: E402
+from .jaanch_tools import JAANCH_HANDLERS, JAANCH_LABELS, JAANCH_TOOLS  # noqa: E402
 
 TOOLS.extend(OPERATOR_TOOLS)
 TOOL_LABELS.update(OPERATOR_LABELS)
 HANDLERS.update(OPERATOR_HANDLERS)
+TOOLS.extend(JAANCH_TOOLS)
+TOOL_LABELS.update(JAANCH_LABELS)
+HANDLERS.update(JAANCH_HANDLERS)
 
 # v0.68 Hoola Video Studio (AI-generated shots)
 from .studio_tools import STUDIO_HANDLERS, STUDIO_LABELS, STUDIO_TOOLS  # noqa: E402

@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.91.1", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.92.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -2520,6 +2520,19 @@ def procedures_delete(pid: str, tenant: str = Depends(current_tenant)):
     except procedures.ProcedureError as e:
         raise HTTPException(400, str(e))
     return {"ok": True}
+
+
+@app.get("/api/jaanch", dependencies=[Depends(require_key)])
+async def hoola_jaanch(tenant: str = Depends(current_tenant)):
+    """v0.92 Hoola Jaanch: every part checked live (about 10 s) + the last 14 days of real work."""
+    from . import jaanch
+    return await jaanch.run(tenant)
+
+
+@app.get("/api/jaanch/report", dependencies=[Depends(require_key)])
+def hoola_jaanch_report(days: int = 14, tenant: str = Depends(current_tenant)):
+    from . import jaanch
+    return jaanch.report(tenant, max(1, min(days, 60)))
 
 
 @app.get("/api/agent/stats", dependencies=[Depends(require_key)])

@@ -885,6 +885,8 @@ class Api {
   Future<Map<String, dynamic>> mcpKey(String packId, String key, {String header = ''}) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/bazar/mcp/$packId/key', body: {'key': key, 'header': header}));
   Future<void> mcpRemove(String packId) async => _send('DELETE', '/api/bazar/mcp/$packId');
+  Future<Map<String, dynamic>> jaanch() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/jaanch', timeout: const Duration(seconds: 60)));
   Future<Map<String, dynamic>> mcpTools(String packId) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/bazar/mcp/$packId/tools', timeout: const Duration(seconds: 30)));
   Future<Map<String, dynamic>> mcpToolSet(String packId, String tool, {bool? enabled, bool? ask}) async =>
