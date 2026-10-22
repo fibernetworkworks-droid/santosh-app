@@ -586,6 +586,12 @@ def _report(op: Op) -> None:
         notify(op.conv, text.strip())
     except Exception:
         log.exception("pc op notify failed")
+    try:   # v0.104 a website job on her PC keeps its place: the next steps stay on her PC, not in Hoola's browser
+        from ..agent import where
+        if where._WEBBY.search(op.task or ""):
+            where.touch(op.conv, "pc")
+    except Exception:
+        pass
     try:
         from ..voice import inject
         inject(op.conv, f"(Result from HER PC (aapka PC, not your own browser): {text[:1500]}. Tell the user this now in one or two "
@@ -628,6 +634,14 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150) -> dict[st
     if not op.done_event.is_set():
         op.reported = True
     return op.live()
+
+
+def running(tenant: str) -> "Op | None":
+    """v0.104 the job running on her PC right now (a new pc_do would cancel it)."""
+    for o in OPS.values():
+        if o.tenant == tenant and o.task_obj and not o.task_obj.done():
+            return o
+    return None
 
 
 def stop(tenant: str, sid: str) -> bool:

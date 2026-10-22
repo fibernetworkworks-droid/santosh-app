@@ -175,6 +175,11 @@ def deliver(tenant: str, conv: str, res: dict, background: bool = False) -> dict
             notify(conv, (answer + "\n\n" if answer else "") + msg)
         return out
     if background and conv:
+        try:   # v0.104 the next steps of this job stay in Hoola's own browser
+            from .agent import where
+            where.touch(conv, "hoola")
+        except Exception:
+            pass
         # a live voice call on this chat hears the result straight away
         try:
             from .voice import inject

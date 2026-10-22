@@ -343,7 +343,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             ran_tools = True
             args_in = b.get("input") or {}
             from . import where as _where   # v0.93 the card / theatre name the place where it REALLY runs
-            shown = _where.shown(b["name"], args_in, getattr(ctx, "place", ""))
+            shown = _where.shown(b["name"], args_in, getattr(ctx, "place", "") or _where.working(conversation_id))
             label = gendered(mcp_live.label(b["name"], mcp_route, mcp_snap) if b["name"] in mcp_route
                              else TOOL_LABELS.get(shown, shown), gender)
             bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "running", "id": b["id"]})
@@ -550,7 +550,7 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
             agent_text += "\n\n" + context
         if ctx.place:                       # v0.93 the place she named, said plainly to the model
             from . import where
-            agent_text += "\n\n" + where.note(ctx.place)
+            agent_text += "\n\n" + where.note(ctx.place, conversation_id)
         if notes:
             agent_text = "\n".join(f"[Santosh worker update] {n}" for n in notes) + "\n\n" + agent_text
         _save(conversation_id, "user", agent_text, display=user_text)

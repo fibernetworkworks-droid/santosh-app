@@ -14,6 +14,13 @@ had a computer icon, and v0.92 moves a website job to her PC by itself. Now:
   * `steer(name, args, place)` in `tools.dispatch` (chat, calls, delegated call jobs): pc -> browse_web becomes pc_do,
     computer_operator runs on her PC, open_on_phone opens in her PC's Chrome; hoola -> a pc_do website task is refused
     with the right tool, and computer_operator never moves to her PC without asking her first.
+
+v0.104 "Browser work in PC is smooth, but suddenly Hoola launches its own browser in between": the place she named was
+kept only 15 min and only for follow-ups of <= 8 words, so a longer next message, the "(Result from HER PC ...)" note
+turn, or a retry after a PC hiccup came with NO place and the model picked its own browser. Now the place also sticks
+by the WORK itself (`worked`): once a website job runs on her PC (or in Hoola's own browser) in this chat, every later
+website step stays there for `WORK_KEEP_S` (refreshed by every step and every result note) until she names another
+place. If that place stops answering, the model is told to tell her and ask - never to switch by itself.
 """
 from __future__ import annotations
 
@@ -25,8 +32,11 @@ from .tools import ToolError
 
 KEEP_S = 15 * 60
 FOLLOW_UP_WORDS = 8              # a message this short with no place = a follow-up of the last request
-STATS = {"named": 0, "kept": 0, "steered": 0, "refused": 0}
+WORK_KEEP_S = 45 * 60            # a running website job keeps its place this long after its last step / result
+STATS = {"named": 0, "kept": 0, "steered": 0, "refused": 0, "stuck": 0}
 _PLACE: dict[str, tuple[str, float]] = {}
+_WORK: dict[str, tuple[str, float]] = {}      # conv -> (place where website work is really running, last touch)
+_WHY: dict[str, str] = {}                    # conv -> named | follow | work (for the line the model gets)
 
 PC_WORDS = "Aapka PC (Santosh Desktop: Chrome / apps on HER own computer)"
 HOOLA_WORDS = "Hoola ka apna browser (on Hoola's server - not her PC, not her phone)"
@@ -77,34 +87,82 @@ def place(text: str) -> str:
 
 
 def remember(conv: str, text: str) -> str:
-    """The place for this message: named now, or kept from her last request when this is a short follow-up."""
+    """The place for this message: named now, kept from her last request for a short follow-up, else the place where
+    website work is already running in this chat (so a job never jumps to another browser half way)."""
     p = place(text)
     now = time.time()
     if p:
         STATS["named"] += 1
         _PLACE[conv] = (p, now)
+        w = _WORK.get(conv)
+        if w and w[0] != p:
+            _WORK.pop(conv, None)           # her word moves the work: the old place no longer holds
+        _WHY[conv] = "named"
         return p
     old = _PLACE.get(conv)
-    if not old or now - old[1] > KEEP_S:
+    if old and now - old[1] <= KEEP_S and len(str(text or "").split()) <= FOLLOW_UP_WORDS:
+        STATS["kept"] += 1
+        _WHY[conv] = "follow"
+        return old[0]
+    if not old or now - old[1] > KEEP_S or len(str(text or "").split()) > FOLLOW_UP_WORDS:
         _PLACE.pop(conv, None)
-        return ""
-    if len(str(text or "").split()) > FOLLOW_UP_WORDS:     # a new request of its own: let it choose freely
-        _PLACE.pop(conv, None)
-        return ""
-    STATS["kept"] += 1
-    return old[0]
+    w = working(conv)
+    if w:
+        STATS["stuck"] += 1
+        _WHY[conv] = "work"
+        return w
+    _WHY.pop(conv, None)
+    return ""
 
 
 def current(conv: str) -> str:
     old = _PLACE.get(conv)
-    return old[0] if old and time.time() - old[1] <= KEEP_S else ""
+    if old and time.time() - old[1] <= KEEP_S:
+        return old[0]
+    return working(conv)
+
+
+def working(conv: str) -> str:
+    """Where website work is running in this chat right now (pc | hoola), '' when none lately."""
+    w = _WORK.get(conv)
+    if not w:
+        return ""
+    if time.time() - w[1] > WORK_KEEP_S:
+        _WORK.pop(conv, None)
+        return ""
+    return w[0]
+
+
+def touch(conv: str, where: str) -> None:
+    """A step or a result of website work just happened in this place (keeps the job where it is)."""
+    if conv and where in ("pc", "hoola"):
+        _WORK[conv] = (where, time.time())
+
+
+def worked(conv: str, name: str, args: dict[str, Any], out: Any = None) -> None:
+    """Called by dispatch with the tool that REALLY ran: remembers where the website work is going on."""
+    args = args or {}
+    w = ""
+    if name == "pc_do" and _WEBBY.search(str(args.get("task") or "")):
+        w = "pc"
+    elif name == "browse_web":
+        w = "hoola"
+    elif name == "computer_operator" and str(args.get("action") or "") == "start":
+        moved = isinstance(out, dict) and (out.get("moved_to") == "pc" or out.get("where") == "pc")
+        w = "pc" if (args.get("where") == "pc" or moved) else "hoola"
+    if w:
+        touch(conv, w)
 
 
 def forget(conv: str = "") -> None:
     if conv:
         _PLACE.pop(conv, None)
+        _WORK.pop(conv, None)
+        _WHY.pop(conv, None)
     else:
         _PLACE.clear()
+        _WORK.clear()
+        _WHY.clear()
 
 
 def _url(u: Any) -> str:
@@ -145,8 +203,15 @@ def steer(name: str, args: dict[str, Any], where: str) -> tuple[str, dict[str, A
     return name, args, ""
 
 
-def note(where: str) -> str:
-    """The line the model gets with her message when she named a place."""
+def note(where: str, conv: str = "") -> str:
+    """The line the model gets with her message when a place holds for it."""
+    if conv and _WHY.get(conv) == "work" and where in ("pc", "hoola"):
+        if where == "pc":
+            return ("[Jagah: the website work in this chat is running in Chrome on HER PC. Keep every website step of it there "
+                    "(pc_do / pc_task_result) - do NOT open your own browser (browse_web / computer_operator) for it. If her PC "
+                    "doesn't answer, tell her plainly and ask; never switch by yourself. Call it 'aapka PC'.]")
+        return ("[Jagah: the website work in this chat is running in YOUR OWN browser (Hoola's browser on the server). Keep it "
+                "there (browse_web / computer_operator); don't move it to her PC unless she says 'PC par'.]")
     return {
         "pc": "[Jagah: she said HER PC. Website work runs in Chrome on her PC (pc_do, or computer_operator where=pc), "
               "not in your own browser. Call it 'aapka PC', never 'mera PC'.]",

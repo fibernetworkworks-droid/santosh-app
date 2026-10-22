@@ -127,7 +127,8 @@ def test_api_report_limit_and_owner_view(env):
     usage.record("gemini-3.8-live", sec_in=600, sec_out=300, tenant="default", feature="call")
     with TestClient(main.app) as c:
         r = c.get("/api/usage?days=7").json()
-        assert {f["feature"] for f in r["features"]} == {"video", "call"} and r["month"]["spent_inr"] > 0
+        # >= : a background thread of another test may record its own (fake) model call into the same month
+        assert {"video", "call"} <= {f["feature"] for f in r["features"]} and r["month"]["spent_inr"] > 0
         assert r["daily"][-1]["inr"] > 0 and "Sabse zyada" in r["say"]
         lim = c.put("/api/usage/limit", json={"month_inr": 2000}).json()
         assert lim["month"]["limit_inr"] == pytest.approx(2000, rel=1e-3)

@@ -248,10 +248,24 @@ async def dispatch(name: str, args: dict, ctx: Ctx):
     if not h:
         raise ToolError(f"Unknown tool {name}")
     moved = ""
-    if getattr(ctx, "place", ""):   # v0.93 her words decide: her PC vs Hoola's own browser (never mixed up)
-        from . import where
-        name, args, moved = where.steer(name, args or {}, ctx.place)
+    from . import where
+    # v0.93 her words decide: her PC vs Hoola's own browser (never mixed up); v0.104 else the place where this chat's
+    # website work is already running, so a job never jumps to another browser half way
+    place_now = getattr(ctx, "place", "") or where.working(getattr(ctx, "conversation_id", "") or "")
+    if place_now:
+        asked = name
+        name, args, moved = where.steer(name, args or {}, place_now)
         h = HANDLERS[name]
+        if name == "pc_do" and asked != "pc_do":
+            # a moved call must never start a NEW PC job over the one still running there (start() cancels it)
+            from ..pc import operator as _pcop
+            live = _pcop.running(ctx.tenant_id)
+            if live is not None:
+                return {"status": "pc_busy", "session_id": live.id, "where": "Aapka PC (HER computer)",
+                        "say": ("This website work is already running on HER PC (session " + live.id + "). Don't start "
+                                "another one and don't open your own browser: its result comes as a note, or check it with "
+                                "pc_task_result. If she wants something else now, ask her first.")}
+    where.worked(getattr(ctx, "conversation_id", "") or "", name, args or {})
     # Hoola Employee: pause, trust per duty and team permissions are enforced here, for chat, calls and jobs alike
     from ..employee import service as employee
     try:
@@ -267,7 +281,12 @@ async def dispatch(name: str, args: dict, ctx: Ctx):
         msg = _google_refused(ctx, e)
         if msg:        # v0.70: an expired Google sign-in used to surface as a raw "invalid_grant" crash
             raise ToolError(msg + " (Tell her this plainly in one or two lines and don't retry this tool now.)") from None
+        if place_now == "pc" and name in ("pc_do", "pc_task_result") and isinstance(e, ToolError):
+            raise ToolError(f"{e} (This website work runs on HER PC. Do NOT switch to your own browser by yourself: tell her "
+                            "plainly and ask whether to wait for the PC or do it in your own browser.)") from None
         raise
+    if isinstance(out, dict) and out.get("moved_to") == "pc":
+        where.worked(getattr(ctx, "conversation_id", "") or "", name, args or {}, out)
     employee.after(ctx, name, args or {}, not (isinstance(out, dict) and out.get("error")))
     if moved and isinstance(out, dict):
         out = {**out, "ran_as": name, "place_note": moved}
