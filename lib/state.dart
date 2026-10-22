@@ -133,6 +133,7 @@ class Santosh extends ChangeNotifier {
 
   // ---------------- Hoola Network ----------------
   final Map<String, FeedItem> _hoola = {};
+  final Map<String, FeedItem> _deals = {};     // v0.102 one live card per Hoola deal
   int hoolaTick = 0;
 
   /// Owner's decision on a knock card. Returns an error message or null.
@@ -927,6 +928,18 @@ class Santosh extends ChangeNotifier {
       case 'hoola_group_post':
       case 'hoola_samaj':
         if (p['quiet'] != true) feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
+        hoolaTick++;
+        break;
+      case 'hoola_deal':                   // v0.102: info steps update the card; a step that needs her brings it down
+        final dk = '${p['id']}';
+        final dOld = _deals[dk];
+        if (dOld != null && p['card'] == 'info') {
+          dOld.data = {...dOld.data, ...p};
+        } else {
+          if (dOld != null) feed.remove(dOld);
+          _deals[dk] = FeedItem('hoola_deal', Map<String, dynamic>.from(p));
+          feed.add(_deals[dk]!);
+        }
         hoolaTick++;
         break;
       case 'hoola_outbox':

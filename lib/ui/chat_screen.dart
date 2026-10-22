@@ -39,6 +39,7 @@ import 'youtube_screen.dart';
 import 'appcheck_screen.dart';
 import 'motion_screen.dart';
 import 'hoola_cards.dart';
+import 'deal_screen.dart';
 import 'hoola_media.dart';
 import 'attach.dart';
 import 'forms_screen.dart';
@@ -520,6 +521,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return HoolaGroupPostCard(v: it.data, app: app);
     case 'hoola_outbox':
       return HoolaOutboxCard(v: it.data, app: app);
+    case 'hoola_deal':
+      return DealCard(key: ValueKey('hd${it.data['id']}${it.data['state']}${it.data['updated']}'), v: it.data, app: app);
     case 'hoola_chain':
       return HoolaChainCard(v: it.data, app: app);
     case 'hoola_ticket':

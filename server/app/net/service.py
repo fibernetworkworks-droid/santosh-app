@@ -1117,3 +1117,4 @@ from . import learning as _learning  # noqa: E402,F401
 from . import community as _community  # noqa: E402,F401  (registers the Samaj envelope kinds)
 from . import chain as _chain  # noqa: E402,F401
 from . import business as _business  # noqa: E402,F401
+from . import deal as _deal  # noqa: E402,F401  (v0.102 deal_ask / deal_quote / ... kinds)

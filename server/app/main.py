@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.101.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.102.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -2113,6 +2113,109 @@ def net_operator_verify(biz_tenant: str, body: NetAnswerIn, tenant: str = Depend
     if tenant != get_settings().tenant_id:
         raise HTTPException(403, "Sirf server operator")
     return _net(biz.operator_verify, biz_tenant, body.action == "approve")
+
+
+# ---------------------------------------------------------------- v0.102 Hoola Deals (buy / sell between avatars)
+class DealAskIn(BaseModel):
+    to: str
+    items: list = Field(default_factory=list)
+    mode: str = "pickup"
+    need_by: str = ""
+    note: str = ""
+    title: str = ""
+    area: str = ""
+
+
+class DealActIn(BaseModel):
+    lines: list | None = None
+    note: str = ""
+    reason: str = ""
+    valid_minutes: int | None = None
+    ready_by: str = ""
+    place: str = ""
+    minutes: int | None = None
+    code: str = ""
+    v: int | None = None
+    mode: str = ""
+    proof: dict | None = None
+
+
+class StockIn(BaseModel):
+    items: list = Field(default_factory=list)
+
+
+@app.get("/api/net/deals", dependencies=[Depends(require_key)])
+def net_deals(state: str = "", role: str = "", tenant: str = Depends(current_tenant)):
+    from .net import deal as dl
+    return {"deals": dl.deals(tenant, state, role)}
+
+
+@app.post("/api/net/deals", dependencies=[Depends(require_key)])
+def net_deal_ask(body: DealAskIn, tenant: str = Depends(current_tenant)):
+    from .net import deal as dl
+    return _net(dl.ask, tenant, body.to, body.items, body.mode, body.need_by, body.note, body.title, body.area)
+
+
+@app.get("/api/net/deals/{deal_id}", dependencies=[Depends(require_key)])
+def net_deal_get(deal_id: str, tenant: str = Depends(current_tenant)):
+    from .net import deal as dl
+    return _net(dl.show, tenant, deal_id)
+
+
+@app.post("/api/net/deals/{deal_id}/{action}", dependencies=[Depends(require_key)])
+def net_deal_act(deal_id: str, action: str, body: DealActIn, tenant: str = Depends(current_tenant)):
+    """Her taps on a deal card. `confirm` is the only way an order is placed (fingerprint-signed once a phone is set up)."""
+    from .net import deal as dl
+    if action == "confirm":
+        _fingerprint(tenant, "deal", deal_id, body.proof)
+        return _net(dl.confirm, tenant, deal_id, body.v, body.mode, by_tap=True)
+    if action == "send_quote":
+        return _net(dl.send_quote, tenant, deal_id, body.lines, body.note, body.valid_minutes)
+    if action == "accept":
+        return _net(dl.accept, tenant, deal_id, body.ready_by, body.note)
+    if action == "reject":
+        return _net(dl.reject, tenant, deal_id, body.reason or body.note)
+    if action == "packing":
+        return _net(dl.packing, tenant, deal_id, body.note)
+    if action == "ready":
+        return _net(dl.mark_ready, tenant, deal_id, body.place, body.minutes, body.note)
+    if action == "handed_over":
+        return _net(dl.handed_over, tenant, deal_id, body.code, body.note)
+    if action == "cancel":
+        return _net(dl.cancel, tenant, deal_id, body.reason or body.note)
+    raise HTTPException(400, "action: confirm, send_quote, accept, reject, packing, ready, handed_over, cancel")
+
+
+@app.get("/api/net/stock", dependencies=[Depends(require_key)])
+def net_stock(q: str = "", tenant: str = Depends(current_tenant)):
+    from .net import deal as dl
+    return {"stock": dl.stock(tenant, q), "rules": dl.rules_view(tenant)}
+
+
+@app.put("/api/net/stock", dependencies=[Depends(require_key)])
+def net_stock_put(body: StockIn, tenant: str = Depends(current_tenant)):
+    from .net import deal as dl
+    return _net(dl.set_stock, tenant, body.items)
+
+
+@app.delete("/api/net/stock/{item}", dependencies=[Depends(require_key)])
+def net_stock_delete(item: str, tenant: str = Depends(current_tenant)):
+    from .net import deal as dl
+    return _net(dl.remove_stock, tenant, item)
+
+
+@app.get("/api/net/deal_rules", dependencies=[Depends(require_key)])
+def net_deal_rules(tenant: str = Depends(current_tenant)):
+    from .net import deal as dl
+    return dl.rules_view(tenant)
+
+
+@app.put("/api/net/deal_rules", dependencies=[Depends(require_key)])
+def net_deal_rules_put(body: dict, tenant: str = Depends(current_tenant)):
+    from .net import deal as dl
+    allowed = ("auto_quote", "auto_quote_max", "auto_accept", "auto_accept_max", "valid_minutes", "place", "pickup_minutes",
+               "prefix", "trusted")
+    return _net(dl.set_rules, tenant, **{k: body[k] for k in allowed if k in body})
 
 
 @app.post("/hooks/hoola/{handle}/ticket")

@@ -400,6 +400,8 @@ async def mail_jobs() -> None:
         _mail_last["hoola"] = t
         from .net import service as hns
         jobs.append(hns.tick)
+        from .net import deal as hdeal
+        jobs.append(hdeal.tick)                 # v0.102 quotes past their time -> expired
         if int(t) // 60 % 60 == 0:              # hourly: old quarantined files and shares
             from .net import share as hsh
             jobs.append(hsh.cleanup)

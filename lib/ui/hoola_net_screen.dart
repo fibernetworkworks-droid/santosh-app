@@ -10,6 +10,7 @@ import 'hoola_cards.dart';
 import 'hoola_media.dart';
 import 'attach.dart';
 import 'hoola_business_screen.dart';
+import 'deal_screen.dart';
 import 'hoola_samaj_screen.dart';
 
 const _relations = {'family': 'Parivar', 'team': 'Team', 'business': 'Business', 'friend': 'Dost'};
@@ -524,6 +525,11 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
             title: const Text('Hoola Network'),
             backgroundColor: Colors.transparent,
             actions: [
+              IconButton(
+                tooltip: 'Khareed aur bikri',
+                icon: const Icon(Icons.shopping_bag_rounded),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DealsScreen(app: app))),
+              ),
               IconButton(
                 tooltip: 'Business',
                 icon: const Icon(Icons.storefront_rounded),

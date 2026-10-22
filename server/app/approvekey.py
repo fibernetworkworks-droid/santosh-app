@@ -222,8 +222,16 @@ def card_digest(kind: str, target: str, tenant: str) -> tuple[str, dict[str, Any
             raise ApproveError("Yeh card ab baaki nahi hai.")
         show = {"title": card.get("title", ""), "amount": card.get("inr") or card.get("amount", ""),
                 "usd": card.get("usd", "")}
+    elif kind == "deal":                          # v0.102 the buyer's order confirm on the Hoola Network
+        from .net import deal as dl
+        card = dl.confirm_card(tenant, target)
+        if card is None:
+            raise ApproveError("Yeh card ab baaki nahi hai.")
+        show = {"title": card.get("title", ""), "payee": card.get("payee", ""), "amount": card.get("amount", ""),
+                "items": [i.get("name", "") + " " + i.get("price", "") for i in card.get("items") or []],
+                "quote": card.get("hash", "")}
     else:
-        raise ApproveError("kind = bazar | studio")
+        raise ApproveError("kind = bazar | studio | deal")
     return hashlib.sha256(json.dumps(show, sort_keys=True, ensure_ascii=False).encode()).hexdigest(), show
 
 
@@ -231,7 +239,7 @@ def needed(tenant: str, kind: str, target: str) -> bool:
     """A fingerprint is needed for this approval: an active phone exists and the card moves / spends money."""
     if not active_on(tenant):
         return False
-    if kind == "studio":
+    if kind in ("studio", "deal"):
         return True
     if kind == "bazar":
         from .bazar import service as bz
@@ -241,7 +249,7 @@ def needed(tenant: str, kind: str, target: str) -> bool:
 
 
 def challenge(tenant: str, kind: str, target: str) -> dict[str, Any]:
-    if kind in ("bazar", "studio"):
+    if kind in ("bazar", "studio", "deal"):
         digest, show = card_digest(kind, target, tenant)
     elif kind == "remove":
         digest, show = hashlib.sha256(f"remove|{target}".encode()).hexdigest(), {"title": "Phone hatana"}
@@ -251,7 +259,7 @@ def challenge(tenant: str, kind: str, target: str) -> dict[str, Any]:
             raise ApproveError("endorse target = <device_id>|<public_key>")
         digest, show, target = _endorse_digest(pub[0], pub[1]), {"title": "Naya phone jodna"}, pub[0]
     else:
-        raise ApproveError("kind = bazar | studio | remove | endorse")
+        raise ApproveError("kind = bazar | studio | deal | remove | endorse")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|{kind}|{target}|{digest}|{nonce}|{int(exp.timestamp())}"

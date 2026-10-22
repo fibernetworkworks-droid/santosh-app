@@ -14,6 +14,7 @@ import 'keep_alive.dart';
 import 'phone_hoola.dart';
 import 'kalam_screen.dart';
 import 'telecall_screen.dart';
+import 'deal_screen.dart';
 import 'video_editor.dart';
 import 'operator_screen.dart';
 import 'studio_screen.dart';
@@ -202,6 +203,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Har hissa abhi jaancho: kya kharab hai, kaise theek hoga, kaun si website server se nahi khulti'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => JaanchScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.shopping_bag_rounded, color: C.accent),
+              title: const Text('Khareed aur bikri', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Dukaan / wholesaler ko list, unke Hoola ka quote, aapki haan; apna stock aur bechne ke niyam'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DealsScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

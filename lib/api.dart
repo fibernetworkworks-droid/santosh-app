@@ -987,6 +987,25 @@ class Api {
   Future<Map<String, dynamic>> netTicket(String number, {String status = '', String note = '', String to = ''}) async =>
       _hm(await _send('POST', '/api/net/tickets/$number', body: {'status': status, 'note': note, 'to': to}, timeout: const Duration(seconds: 60)));
   Future<List<Map<String, dynamic>>> netChains() async => _hl((await _send('GET', '/api/net/chains'))['chains']);
+  // ---- v0.102 Hoola Deals (buy / sell between avatars) ----
+  Future<List<Map<String, dynamic>>> netDeals({String state = '', String role = ''}) async =>
+      _hl((await _send('GET', '/api/net/deals', query: {'state': state, 'role': role}))['deals']);
+  Future<Map<String, dynamic>> netDeal(String id) async => _hm(await _send('GET', '/api/net/deals/$id'));
+  Future<Map<String, dynamic>> netDealAsk(String to, List<Map<String, dynamic>> items, {String mode = 'pickup', String note = ''}) async =>
+      _hm(await _send('POST', '/api/net/deals', body: {'to': to, 'items': items, 'mode': mode, 'note': note}, timeout: const Duration(seconds: 60)));
+  /// Her taps on a deal card. `confirm` places the order: fingerprint-signed once a phone is set up (428 -> sign -> again).
+  Future<Map<String, dynamic>> netDealAct(String id, String action, [Map<String, dynamic> body = const {}]) async {
+    if (action == 'confirm') {
+      return Map<String, dynamic>.from(await _withFingerprint('deal', id, true, (proof) => _send('POST', '/api/net/deals/$id/confirm',
+          body: {...body, if (proof != null) 'proof': proof}, timeout: const Duration(seconds: 60))) as Map);
+    }
+    return _hm(await _send('POST', '/api/net/deals/$id/$action', body: body, timeout: const Duration(seconds: 60)));
+  }
+  Future<Map<String, dynamic>> netStock({String q = ''}) async => _hm(await _send('GET', '/api/net/stock', query: {'q': q}));
+  Future<Map<String, dynamic>> netStockPut(List<Map<String, dynamic>> items) async =>
+      _hm(await _send('PUT', '/api/net/stock', body: {'items': items}));
+  Future<void> netStockDelete(String id) async => _send('DELETE', '/api/net/stock/$id');
+  Future<Map<String, dynamic>> netDealRulesPut(Map<String, dynamic> body) async => _hm(await _send('PUT', '/api/net/deal_rules', body: body));
   Future<Map<String, dynamic>> netChainAct(String id, String action, {String to = '', String note = ''}) async =>
       _hm(await _send('POST', '/api/net/chains/$id', body: {'action': action, 'to': to, 'note': note}, timeout: const Duration(seconds: 60)));
 
