@@ -644,6 +644,8 @@ def init_db(url: str | None = None):
     from .net import business as _net_business  # noqa: F401
     from .net import deal as _net_deal  # noqa: F401  (v0.102 deals: tables + envelope kinds)
     from .net import pick as _net_pick  # noqa: F401  (v0.105 pick tasks to packers)
+    from .net import dealpay as _net_dealpay  # noqa: F401  (v0.106 payee pins)
+    from .net import khata as _net_khata  # noqa: F401  (v0.106 khata accounts / entries / cards)
     from .bt import models as _bt_models  # noqa: F401
     from . import procedures as _procedures  # noqa: F401
     from .shop import service as _shop  # noqa: F401

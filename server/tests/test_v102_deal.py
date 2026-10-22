@@ -77,13 +77,14 @@ def test_wholesaler_flow_end_to_end(env):
     assert len(code) == 4 and "code" not in dl.show("kunal", seller_id)["ready"]          # staff check it, never see it
     with pytest.raises(dl.DealError, match="code"):
         dl.handed_over("kunal", seller_id, code="0000" if code != "0000" else "1111")
-    dl.handed_over("kunal", seller_id, code=code)
+    dl.handed_over("kunal", seller_id, code=code,         # v0.106 money first: cash taken at the counter
+                   collect={"mode": "cash", "amount": dl.show("kunal", seller_id)["pay"]["due_left"]})
     assert dl.show("default", buyer_id)["state"] == "handed_over" and dl.show("kunal", seller_id)["state"] == "handed_over"
     st = {s["name"]: s for s in dl.stock("kunal")}
     assert st["Parle-G"]["qty"] == 30 and st["Parle-G"]["reserved"] == 0
     # both sides hold the same signed history
     hb, hs = dl._get("default", buyer_id), dl._get("kunal", seller_id)
-    assert hb.step == hs.step == 7 and hb.last_hash == hs.last_hash
+    assert hb.step == hs.step == 8 and hb.last_hash == hs.last_hash        # v0.106 +1: the counter receipt
 
 
 def test_rules_auto_quote_auto_accept_and_partial_stock(env):

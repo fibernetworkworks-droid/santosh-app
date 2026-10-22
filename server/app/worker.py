@@ -402,6 +402,9 @@ async def mail_jobs() -> None:
         jobs.append(hns.tick)
         from .net import deal as hdeal
         jobs.append(hdeal.tick)                 # v0.102 quotes past their time -> expired
+        from .net import dealpay as hdealpay, khata as hkhata
+        jobs.append(hdealpay.tick)              # v0.106 unaccepted orders, unpaid cards, cancel requests, disputes, auto-close
+        jobs.append(hkhata.tick)                # v0.106 khata due-date reminders
         if int(t) // 60 % 60 == 0:              # hourly: old quarantined files and shares
             from .net import share as hsh
             jobs.append(hsh.cleanup)

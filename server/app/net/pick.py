@@ -18,7 +18,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, String, Text, UniqueConstraint, select
+from sqlalchemy import JSON, DateTime, Float, String, Text, UniqueConstraint, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db import Base, new_id, now, session
@@ -49,6 +49,7 @@ class PickTask(Base):
     short: Mapped[list] = mapped_column(JSON, default=list)
     place: Mapped[str] = mapped_column(String(200), default="")
     until: Mapped[str] = mapped_column(String(40), default="")
+    collect: Mapped[float | None] = mapped_column(Float, nullable=True)      # v0.106 money to take at the counter (None = settled)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
@@ -95,6 +96,10 @@ def notify(tenant: str, deal_id: str, status: str, by: str = "") -> None:
         return
     rdy = d.ready or {}
     body = {"dkey": d.dkey, "status": status, "place": rdy.get("place", ""), "until": rdy.get("until", ""), "by": by[:80]}
+    if status == "ready":                             # v0.106 what to take at the counter (0 = paid / on khata)
+        from . import dealpay
+        p = d.pay or {}
+        body["collect"] = 0.0 if (not p or p.get("status") == "khata") else dealpay._left(d)
     for addr in to:
         try:
             _post(tenant, addr, "pick_note", body, new_id("tk"))
@@ -170,7 +175,8 @@ def _on_handover(tenant: str, env: dict[str, Any], card: dict[str, Any]) -> dict
     body = env.get("body") or {}
     d, m = _deal_for(tenant, str(body.get("dkey") or ""), env["from"])
     try:
-        dl.handed_over(tenant, d.id, str(body.get("code") or ""), f"{m['name']} ne counter par diya")
+        col = body.get("collect") if isinstance(body.get("collect"), dict) else None     # v0.106 cash / UPI taken at the counter
+        dl.handed_over(tenant, d.id, str(body.get("code") or ""), f"{m['name']} ne counter par diya", collect=col)
     except NetError as e:
         STATS["handover_wrong"] += 1
         return {"ok": False, "status": "refused", "reason": str(e)[:200]}
@@ -185,6 +191,7 @@ def view(p: PickTask) -> dict[str, Any]:
     return {"id": p.id, "pick_id": p.id, "business": idn.label(idn.peer_card(p.business)), "number": p.number,
             "customer": p.customer, "lines": p.lines or [], "mode": p.mode, "need_by": p.need_by, "note": p.note,
             "status": p.status, "short": p.short or [], "place": p.place, "until": p.until, "actions": acts,
+            "collect": p.collect or 0,
             "updated": p.updated_at.isoformat() if p.updated_at else ""}
 
 
@@ -249,15 +256,20 @@ def mark(tenant: str, pick_id: str, status: str, short: Any = None, note: str = 
     return {"status": row.status, "pick": view(row), "say": say}
 
 
-def handover(tenant: str, pick_id: str, code: str) -> dict[str, Any]:
-    """At the counter: the packer types the code the buyer shows. The seller's Hoola checks it."""
+def handover(tenant: str, pick_id: str, code: str, collect: dict | None = None) -> dict[str, Any]:
+    """At the counter: the packer types the code the buyer shows. The seller's Hoola checks it (and, v0.106, that the
+    money is settled: paid already, on khata, or `collect` = {mode cash|upi, amount, utr} taken right now)."""
     p = _mine(tenant, pick_id)
     if p.status != "ready":
         raise PickError("Parcel abhi 'taiyaar' nahi hai.")
     code = "".join(ch for ch in str(code or "") if ch.isdigit())
     if len(code) != 4:
         raise PickError("Graahak ke Hoola mein dikha 4 ank ka code daaliye.")
-    r = _post(tenant, p.business, "pick_handover", {"dkey": p.dkey, "code": code}, new_id("tk"))
+    body = {"dkey": p.dkey, "code": code}
+    if collect:
+        body["collect"] = {"mode": str(collect.get("mode") or "cash")[:8], "amount": collect.get("amount"),
+                           "utr": str(collect.get("utr") or "")[:22]}
+    r = _post(tenant, p.business, "pick_handover", body, new_id("tk"))
     if not r.get("ok"):
         raise PickError(r.get("reason") or "Code nahi mila.")
     with session() as s:
@@ -323,10 +335,16 @@ def _on_note(tenant: str, env: dict[str, Any], card: dict[str, Any]) -> dict[str
         p.status = st
         if st == "ready":
             p.place, p.until = policy.quote(body.get("place"), 200), str(body.get("until") or "")[:40]
+            try:
+                c = float(body.get("collect") or 0)
+                p.collect = round(c, 2) if 0 < c < 1e8 else None
+            except (TypeError, ValueError):
+                p.collect = None
         p.updated_at = now()
         s.flush()
         s.expunge(p)
-    say = {"ready": f"Order {p.number} taiyaar: graahak code dikhayega, use yahan daal kar saamaan dijiye.",
+    say = {"ready": f"Order {p.number} taiyaar: graahak code dikhayega, use yahan daal kar saamaan dijiye." +
+                    (f" Pehle Rs {p.collect:,.2f} lijiye (cash / UPI)." if p.collect else ""),
            "handed_over": f"Order {p.number} graahak ko de diya gaya. ✓",
            "cancelled": f"Order {p.number} cancel ho gaya: pack mat kijiye / maal wapas rakhiye.",
            "taken": f"Order {p.number} {policy.clean_name(body.get('by'), 60) or 'koi aur'} pack kar rahe hain."}[st]

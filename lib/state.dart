@@ -943,6 +943,10 @@ class Santosh extends ChangeNotifier {
         }
         hoolaTick++;
         break;
+      case 'hoola_khata':                  // v0.106 khata payment card / claim / receipt / due date
+        feed.add(FeedItem('hoola_khata', Map<String, dynamic>.from(p)));
+        hoolaTick++;
+        break;
       case 'hoola_pick':                   // v0.105 a pick list on the packer's own Hoola
         final pkk = '${p['id']}';
         final pOld = _pickCards[pkk];

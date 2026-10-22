@@ -1119,3 +1119,5 @@ from . import chain as _chain  # noqa: E402,F401
 from . import business as _business  # noqa: E402,F401
 from . import deal as _deal  # noqa: E402,F401  (v0.102 deal_ask / deal_quote / ... kinds)
 from . import pick as _pick  # noqa: E402,F401  (v0.105 pick_task / pick_update / ...)
+from . import dealpay as _dealpay  # noqa: E402,F401  (v0.106 payments / disputes; steps of the deal kinds)
+from . import khata as _khata  # noqa: E402,F401  (v0.106 khata_pay / khata_paid / khata_receipt)

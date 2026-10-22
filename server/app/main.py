@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.105.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.106.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -2141,6 +2141,15 @@ class DealActIn(BaseModel):
     v: int | None = None
     mode: str = ""
     proof: dict | None = None
+    # v0.106 money / dispute
+    amount: float | None = None
+    utr: str = ""
+    collect: dict | None = None
+    pay: str = ""
+    resolution: str = ""
+    accept: bool = True
+    yes: bool = False
+    items: list | None = None
 
 
 class StockIn(BaseModel):
@@ -2178,7 +2187,7 @@ def net_deal_act(deal_id: str, action: str, body: DealActIn, tenant: str = Depen
     from .net import deal as dl
     if action == "confirm":
         _fingerprint(tenant, "deal", deal_id, body.proof)
-        return _net(dl.confirm, tenant, deal_id, body.v, body.mode, by_tap=True)
+        return _net(dl.confirm, tenant, deal_id, body.v, body.mode, by_tap=True, pay=body.pay)
     if action == "send_quote":
         return _net(dl.send_quote, tenant, deal_id, body.lines, body.note, body.valid_minutes)
     if action == "accept":
@@ -2190,10 +2199,69 @@ def net_deal_act(deal_id: str, action: str, body: DealActIn, tenant: str = Depen
     if action == "ready":
         return _net(dl.mark_ready, tenant, deal_id, body.place, body.minutes, body.note)
     if action == "handed_over":
-        return _net(dl.handed_over, tenant, deal_id, body.code, body.note)
+        return _net(dl.handed_over, tenant, deal_id, body.code, body.note, body.collect)
     if action == "cancel":
         return _net(dl.cancel, tenant, deal_id, body.reason or body.note)
-    raise HTTPException(400, "action: confirm, send_quote, accept, reject, packing, ready, handed_over, cancel")
+    from .net import dealpay as dp                       # v0.106 money, cancel requests, the check, disputes
+    acts = {
+        "pay_link": lambda: dp.pay_link(tenant, deal_id),
+        "trust_payee": lambda: dp.trust_payee(tenant, deal_id),
+        "paid": lambda: dp.claim_paid(tenant, deal_id, body.utr),
+        "pay_request": lambda: dp.request_payment(tenant, deal_id, body.amount),
+        "received": lambda: dp.received(tenant, deal_id, body.amount, body.mode or "upi", body.utr),
+        "refund": lambda: dp.refund(tenant, deal_id, body.amount, body.utr),
+        "ok": lambda: dp.all_ok(tenant, deal_id),
+        "dispute": lambda: dp.dispute(tenant, deal_id, body.reason or "other", body.items, body.note),
+        "resolve": lambda: dp.resolve(tenant, deal_id, body.resolution, body.amount, body.note),
+        "dispute_close": lambda: dp.dispute_close(tenant, deal_id, body.accept, body.note),
+        "cancel_answer": lambda: dp.cancel_answer(tenant, deal_id, body.yes, body.note),
+    }
+    if action in acts:
+        return _net(acts[action])
+    raise HTTPException(400, "action: confirm, send_quote, accept, reject, packing, ready, handed_over, cancel, "
+                             + ", ".join(acts))
+
+
+@app.get("/api/net/deals/{deal_id}/receipt.pdf", dependencies=[Depends(require_key)])
+def net_deal_receipt(deal_id: str, tenant: str = Depends(current_tenant)):
+    """v0.106 the bill + receipts of one deal, made from this side's own record."""
+    from .net import dealpay as dp
+    pdf = _net(dp.receipt_pdf, tenant, deal_id)
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="hoola-{deal_id}.pdf"'})
+
+
+class KhataIn(BaseModel):
+    to: str
+    limit: float | None = None
+    days: int | None = None
+    status: str = "active"
+    amount: float | None = None
+    mode: str = "upi"
+    utr: str = ""
+
+
+@app.get("/api/net/khata", dependencies=[Depends(require_key)])
+def net_khata(tenant: str = Depends(current_tenant)):
+    from .net import khata as kh
+    return kh.book(tenant)
+
+
+@app.post("/api/net/khata/{action}", dependencies=[Depends(require_key)])
+def net_khata_act(action: str, body: KhataIn, tenant: str = Depends(current_tenant)):
+    from .net import khata as kh
+    acts = {
+        "open": lambda: kh.open_account(tenant, body.to, body.limit if body.limit is not None else 0, body.days or 15,
+                                        body.status),
+        "request": lambda: kh.request(tenant, body.to, body.amount),
+        "received": lambda: kh.received(tenant, body.to, body.amount, body.mode, body.utr),
+        "pay_link": lambda: kh.pay_link(tenant, body.to),
+        "trust_payee": lambda: kh.trust_payee(tenant, body.to),
+        "paid": lambda: kh.claim_paid(tenant, body.to, body.utr),
+    }
+    if action not in acts:
+        raise HTTPException(400, "action: " + ", ".join(acts))
+    return _net(acts[action])
 
 
 @app.get("/api/net/stock", dependencies=[Depends(require_key)])
@@ -2227,6 +2295,7 @@ class PickActIn(BaseModel):
     short: list | None = None
     code: str = ""
     note: str = ""
+    collect: dict | None = None
 
 
 @app.get("/api/net/picks", dependencies=[Depends(require_key)])
@@ -2241,7 +2310,7 @@ def net_pick_act(pick_id: str, action: str, body: PickActIn, tenant: str = Depen
     if action in ("packing", "packed", "short"):
         return _net(pk.mark, tenant, pick_id, action, body.short, body.note)
     if action == "handover":
-        return _net(pk.handover, tenant, pick_id, body.code)
+        return _net(pk.handover, tenant, pick_id, body.code, body.collect)
     raise HTTPException(400, "action: packing, packed, short, handover")
 
 
@@ -2255,7 +2324,8 @@ def net_deal_rules(tenant: str = Depends(current_tenant)):
 def net_deal_rules_put(body: dict, tenant: str = Depends(current_tenant)):
     from .net import deal as dl
     allowed = ("auto_quote", "auto_quote_max", "auto_accept", "auto_accept_max", "valid_minutes", "place", "pickup_minutes",
-               "prefix", "trusted", "catalog", "show_stock", "auto_ready", "packers")
+               "prefix", "trusted", "catalog", "show_stock", "auto_ready", "packers", "pay_before", "counter_ok", "khata",
+               "cancel_minutes", "dispute_hours", "upi_id", "payee_name")
     return _net(dl.set_rules, tenant, **{k: body[k] for k in allowed if k in body})
 
 

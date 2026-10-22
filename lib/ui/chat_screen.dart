@@ -524,6 +524,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return HoolaOutboxCard(v: it.data, app: app);
     case 'hoola_pick':
       return PickCard(key: ValueKey('hp${it.data['id']}${it.data['status']}'), v: it.data, app: app);
+    case 'hoola_khata':
+      return KhataCard(v: it.data, app: app);
     case 'hoola_deal':
       return DealCard(key: ValueKey('hd${it.data['id']}${it.data['state']}${it.data['updated']}'), v: it.data, app: app);
     case 'hoola_chain':

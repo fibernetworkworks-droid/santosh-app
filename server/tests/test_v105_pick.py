@@ -127,7 +127,8 @@ def test_pick_list_to_packer_packed_ready_and_counter_code(env):
     wrong = "1111" if rdy["ready"]["code"] != "1111" else "2222"
     with pytest.raises(pk.PickError, match="code"):
         pk.handover("swati", task["id"], wrong)
-    pk.handover("swati", task["id"], rdy["ready"]["code"])
+    pk.handover("swati", task["id"], rdy["ready"]["code"],
+                collect={"mode": "cash", "amount": _last("swati", "hoola_pick")["collect"]})
     assert dl.show("default", bid)["state"] == "handed_over" and dl.show("kunal", sid)["state"] == "handed_over"
     assert pk.picks("swati") == []
     # Parle-G fell to 30 free... its 'tell me' level is 25 -> not yet; stock moved out of the count
@@ -166,7 +167,7 @@ def test_short_pick_goes_to_owner_and_no_auto_ready(env):
     if code1 != code2:
         with pytest.raises(dl.DealError):
             dl.handed_over("kunal", sid, code1)
-    dl.handed_over("kunal", sid, code2)
+    dl.handed_over("kunal", sid, code2, collect={"mode": "upi", "amount": dl.show("kunal", sid)["pay"]["due_left"]})
     assert _last("swati", "hoola_pick")["status"] == "handed_over"
 
 
@@ -180,7 +181,7 @@ def test_low_stock_cancel_note_tools_and_api(env):
     dl.accept("kunal", sid)
     dl.mark_ready("kunal", sid)
     code = _last("default")["ready"]["code"]
-    dl.handed_over("kunal", sid, code)
+    dl.handed_over("kunal", sid, code, collect={"mode": "cash", "amount": dl.show("kunal", sid)["pay"]["due_left"]})
     assert "Stock kam: Parle-G" in _last("kunal")["say"]
     assert [x["name"] for x in dl.low_stock("kunal")] == ["Parle-G"]
     # a cancelled order tells the packer to stop

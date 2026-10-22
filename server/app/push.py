@@ -138,9 +138,16 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: salah taiyaar", f"{p.get('client', '')} ke liye options; bhejne se pehle aapki haan")
     if kind == "kalam_publish" and not p.get("decided"):
         return (f"{name}: publish karne ki haan?", f"{p.get('number', '')} {p.get('kind_label', '')}: {p.get('title', '')} · {p.get('where_label', '')}"[:300])
-    if kind == "hoola_deal" and p.get("card") in ("quote", "confirm", "accept", "ready", "pack"):
+    if kind == "hoola_deal" and p.get("card") in ("quote", "confirm", "accept", "ready", "pack", "pay", "money", "receipt",
+                                                   "check", "dispute", "resolve", "cancel_req"):
         head = {"quote": "list aayi, quote bhejun?", "confirm": "quote aaya, aapki haan?", "accept": "order aaya, pakka karein?",
-                "ready": "parcel taiyaar", "pack": "order pakka, pack karna hai"}[p["card"]]
+                "ready": "parcel taiyaar", "pack": "order pakka, pack karna hai", "pay": "payment card aaya",
+                "money": "graahak ne paisa bheja?", "receipt": "rasid aayi", "check": "sab sahi mila?",
+                "dispute": "shikayat aayi", "resolve": "shikayat ka jawab", "cancel_req": "cancel ki request"}[p["card"]]
+        return (f"{name}: {head}", f"{p.get('with', '')} · {p.get('say', '')}"[:300])
+    if kind == "hoola_khata" and p.get("card") in ("pay", "money", "receipt", "due"):
+        head = {"pay": "khata ka payment card", "money": "khata ka paisa bheja?", "receipt": "khata ki rasid",
+                "due": "khata ki taareekh"}[p["card"]]
         return (f"{name}: {head}", f"{p.get('with', '')} · {p.get('say', '')}"[:300])
     if kind == "hoola_pick" and p.get("card") in ("task", "ready"):
         return (f"{name}: {'pick list' if p.get('card') == 'task' else 'parcel taiyaar'}", str(p.get("say") or "")[:300])
@@ -249,7 +256,7 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
 
 
 PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "email_draft", "bazar_open", "device_action",
-              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "hoola_pick"}
+              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "hoola_pick", "hoola_khata"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 

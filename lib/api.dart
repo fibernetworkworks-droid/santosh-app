@@ -1018,6 +1018,10 @@ class Api {
       _hm(await _send('PUT', '/api/net/stock', body: {'items': items}));
   Future<void> netStockDelete(String id) async => _send('DELETE', '/api/net/stock/$id');
   Future<Map<String, dynamic>> netDealRulesPut(Map<String, dynamic> body) async => _hm(await _send('PUT', '/api/net/deal_rules', body: body));
+  // ---- v0.106 khata (udhaar) between Hoolas ----
+  Future<Map<String, dynamic>> netKhata() async => _hm(await _send('GET', '/api/net/khata'));
+  Future<Map<String, dynamic>> netKhataAct(String action, Map<String, dynamic> body) async =>
+      _hm(await _send('POST', '/api/net/khata/$action', body: body, timeout: const Duration(seconds: 60)));
   // ---- v0.105 price lists, stock sheets, pick lists on a packer's own Hoola ----
   Future<Map<String, dynamic>> netDealCatalog(String to) async =>
       _hm(await _send('GET', '/api/net/deals/catalog', query: {'to': to}, timeout: const Duration(seconds: 40)));

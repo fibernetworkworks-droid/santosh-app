@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
@@ -53,8 +54,115 @@ String _when(dynamic iso) {
 
 const _stateColor = {
   'asked': C.chip, 'quoted': C.accent, 'confirmed': C.violet, 'accepted': C.teal, 'packing': C.teal, 'ready': C.ok,
-  'handed_over': C.ok, 'rejected': C.bad, 'cancelled': C.muted, 'expired': C.muted,
+  'handed_over': C.ok, 'rejected': C.bad, 'cancelled': C.muted, 'expired': C.muted, 'disputed': C.warn, 'closed': C.ok,
 };
+
+const _payWord = {
+  'due': 'paisa baaki', 'requested': 'payment card gaya', 'claimed': 'bheja (pakka nahi)', 'part_paid': 'kuch mila',
+  'paid': 'poora mila', 'khata': 'khata par', 'refund_due': 'wapas dena baaki', 'refunded': 'wapas ho gaya',
+};
+const _payChoiceWord = {'upi': 'UPI se', 'counter': 'Counter par', 'khata': 'Khata (udhaar)'};
+const _reasonWord = {
+  'short': 'Kam aaya', 'damaged': 'Toota / kharab', 'wrong': 'Galat cheez', 'expired': 'Expiry nikli', 'price': 'Daam galat',
+  'other': 'Kuch aur',
+};
+const _resolveWord = {'refund': 'Paise wapas', 'credit': 'Khata mein jama', 'replace': 'Badal kar denge', 'reject': 'Nahi maana'};
+
+/// v0.106 Pay from HER UPI app: the server builds the link from the pinned payee; a new / changed UPI ID is shown big
+/// and needs her own "sahi hai" tap first. Hoola never sees the PIN.
+Future<void> payWithUpi(BuildContext context, Future<Map<String, dynamic>> Function() link,
+    Future<Map<String, dynamic>> Function() trust) async {
+  try {
+    var r = await link();
+    final st = _s(r['status']);
+    if (st != 'ok') {
+      if (!context.mounted) return;
+      final changed = st == 'payee_changed';
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(changed ? 'UPI ID badla hai!' : 'Pehli baar is UPI ko'),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(_s(r['name']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            Text(_s(r['upi_id']), style: const TextStyle(fontSize: 15)),
+            if (r['business_verified'] == true) const Padding(padding: EdgeInsets.only(top: 6), child: Pill('Verified business', fg: C.ok)),
+            if (changed) ...[
+              const SizedBox(height: 8),
+              Text('Pehle: ${_s(r['was'])}', style: const TextStyle(color: C.bad)),
+              const SizedBox(height: 6),
+              const Text('Dukaan ko phone karke pakka kijiye. Dhokebaaz aksar UPI ID badal dete hain.',
+                  style: TextStyle(color: C.bad, fontSize: 12.5)),
+            ] else
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text('UPI app mein yahi naam dikhe tabhi PIN daaliye.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+              ),
+            const SizedBox(height: 8),
+            Text('Rakam: ${_inr(r['amount'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(changed ? 'Maine pakka kiya, naya UPI sahi hai' : 'Haan, yahi sahi hai')),
+          ],
+        ),
+      );
+      if (ok != true) return;
+      r = await trust();
+    }
+    final url = _s(r['url']);
+    if (url.isEmpty) throw 'Payment link nahi bana';
+    final launched = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    if (!context.mounted) return;
+    _snack(context, launched
+        ? 'UPI app mein pay karke yahan "Maine pay kiya" dabaiye (UTR ke saath).'
+        : 'Phone mein koi UPI app nahi mila.');
+  } catch (e) {
+    if (context.mounted) _snack(context, '$e');
+  }
+}
+
+/// Amount / mode / UTR, for "paisa mila", refunds and khata money.
+Future<Map<String, dynamic>?> moneyDialog(BuildContext context, String title,
+    {dynamic amount, bool withMode = true, String hint = ''}) async {
+  final a = TextEditingController(text: amount == null || _d(amount) <= 0 ? '' : _qty(amount));
+  final u = TextEditingController();
+  var mode = 'upi';
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, set) => AlertDialog(
+        title: Text(title),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (hint.isNotEmpty) Text(hint, style: const TextStyle(color: C.muted, fontSize: 12.5)),
+            TextField(
+                controller: a,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Rakam (₹)')),
+            if (withMode) ...[
+              const SizedBox(height: 8),
+              Wrap(spacing: 6, children: [
+                for (final e in const {'upi': 'UPI', 'cash': 'Cash', 'bank': 'Bank'}.entries)
+                  ChoiceChip(label: Text(e.value), selected: mode == e.key, onSelected: (_) => set(() => mode = e.key)),
+              ]),
+            ],
+            if (mode != 'cash') TextField(controller: u, decoration: const InputDecoration(labelText: 'UTR / reference (optional)')),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Theek hai')),
+        ],
+      ),
+    ),
+  );
+  final out = <String, dynamic>{'amount': double.tryParse(a.text.trim()), 'mode': mode, 'utr': mode == 'cash' ? '' : u.text.trim()};
+  a.dispose();
+  u.dispose();
+  return ok == true ? out : null;
+}
 
 const _lineWord = {
   'partial': 'kam hai', 'out': 'khatam', 'not_found': 'nahi hai', 'unknown_stock': 'stock pata nahi', 'substitute': 'badle mein',
@@ -75,6 +183,9 @@ class _DealCardState extends State<DealCard> {
   Map<String, dynamic>? _fresh;
   bool _busy = false;
   final _code = TextEditingController();
+  String _pay = '';
+  bool _collect = false;
+  String _collectMode = 'cash';
 
   Map<String, dynamic> get v => _fresh ?? widget.v;
 
@@ -120,6 +231,166 @@ class _DealCardState extends State<DealCard> {
     final t = c.text.trim();
     c.dispose();
     return ok == true ? t : null;
+  }
+
+  Future<void> _disputeDialog() async {
+    final q = _m(v['quote']);
+    final items = _l(q['lines']).where((l) => _d(l['qty']) > 0).toList();
+    final picked = <String, double>{};
+    var reason = 'short';
+    final note = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, set) => AlertDialog(
+          title: const Text('Kya galat hai?'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                for (final e in _reasonWord.entries)
+                  ChoiceChip(label: Text(e.value), selected: reason == e.key, onSelected: (_) => set(() => reason = e.key)),
+              ]),
+              const SizedBox(height: 8),
+              for (final l in items)
+                CheckboxListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  value: picked.containsKey(_s(l['item'])),
+                  title: Text('${_s(l['item'])} (${_qty(l['qty'])})'),
+                  onChanged: (x) => set(() {
+                    if (x == true) {
+                      picked[_s(l['item'])] = _d(l['qty']);
+                    } else {
+                      picked.remove(_s(l['item']));
+                    }
+                  }),
+                ),
+              TextField(controller: note, minLines: 1, maxLines: 3, decoration: const InputDecoration(hintText: 'Do line mein bataiye')),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Shikayat bhejo')),
+          ],
+        ),
+      ),
+    );
+    final n = note.text.trim();
+    note.dispose();
+    if (ok != true) return;
+    _act('dispute', {
+      'reason': reason,
+      'note': n,
+      'items': [for (final e in picked.entries) {'item': e.key, 'qty': e.value}],
+    });
+  }
+
+  Future<void> _resolveDialog() async {
+    var action = 'refund';
+    final a = TextEditingController();
+    final note = TextEditingController();
+    final dp = _m(v['dispute']);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, set) => AlertDialog(
+          title: const Text('Shikayat ka jawab'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${_reasonWord[_s(dp['reason'])] ?? ''}${_s(dp['note']).isEmpty ? '' : ': "${_s(dp['note'])}"'}',
+                  style: const TextStyle(fontSize: 13)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                for (final e in _resolveWord.entries)
+                  ChoiceChip(label: Text(e.value), selected: action == e.key, onSelected: (_) => set(() => action = e.key)),
+              ]),
+              if (action == 'refund' || action == 'credit')
+                TextField(
+                    controller: a,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(labelText: 'Rakam (₹)')),
+              TextField(controller: note, decoration: InputDecoration(labelText: action == 'reject' ? 'Wajah (zaroori)' : 'Note')),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Bhejo')),
+          ],
+        ),
+      ),
+    );
+    final body = <String, dynamic>{'resolution': action, 'amount': double.tryParse(a.text.trim()), 'note': note.text.trim()};
+    a.dispose();
+    note.dispose();
+    if (ok == true) _act('resolve', body);
+  }
+
+  Widget _money() {
+    final p = _m(v['pay']);
+    if (p.isEmpty) return const SizedBox.shrink();
+    final st = _s(p['status']);
+    final pe = _m(p['payee']);
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(16)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.account_balance_wallet_rounded, size: 18, color: C.teal),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text('${_payChoiceWord[_s(p['choice'])] ?? ''} · ${_inr(p['paid'])} mila / ${_inr(p['due'])}',
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          ),
+          Pill(_payWord[st] ?? st, fg: st == 'paid' || st == 'refunded' ? C.ok : (st == 'khata' ? C.violet : C.warn)),
+        ]),
+        if (_s(pe['upi_id']).isNotEmpty && _s(p['choice']) == 'upi')
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('UPI: ${_s(pe['upi_id'])} (${_s(pe['name'])})${pe['business_verified'] == true ? ' · verified' : ''}',
+                style: const TextStyle(color: C.muted, fontSize: 12)),
+          ),
+        if (_s(p['due_on']).isNotEmpty) Text('Khata: ${_s(p['due_on'])} tak dena', style: const TextStyle(color: C.muted, fontSize: 12)),
+        for (final r in _l(p['receipts']))
+          Text(
+              'Rasid ${_s(r['receipt'])}: ${_inr(r['amount'])} ${_s(r['mode'])}'
+              '${_s(r['utr_tail']).isEmpty ? '' : ' · ref ..${_s(r['utr_tail'])}'} · ${_when(r['at'])}',
+              style: const TextStyle(fontSize: 12)),
+        if (_d(p['refund_due']) > 0) Text('Wapas: ${_inr(p['refund_due'])} baaki', style: const TextStyle(color: C.warn, fontSize: 12)),
+      ]),
+    );
+  }
+
+  Widget _disputeBox() {
+    final dp = _m(v['dispute']);
+    final cr = _m(v['cancel_req']);
+    if (dp.isEmpty && _s(cr['status']) != 'waiting') return const SizedBox.shrink();
+    final ans = _m(dp['answer']);
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+          color: C.panel, borderRadius: BorderRadius.circular(16), border: Border.all(color: C.warn.withOpacity(.5))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (_s(cr['status']) == 'waiting')
+          Text('Cancel request: ${_s(cr['reason'])}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+        if (dp.isNotEmpty) ...[
+          Text('Shikayat: ${_reasonWord[_s(dp['reason'])] ?? _s(dp['reason'])}',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          if (_l(dp['lines']).isNotEmpty)
+            Text(_l(dp['lines']).map((l) => '${_s(l['item'])} (${_qty(l['qty'])})').join(', '), style: const TextStyle(fontSize: 12)),
+          if (_s(dp['note']).isNotEmpty) Text('"${_s(dp['note'])}"', style: const TextStyle(fontSize: 12, color: C.muted)),
+          if (ans.isNotEmpty)
+            Text(
+                'Jawab: ${_resolveWord[_s(ans['action'])] ?? ''}${_d(ans['amount']) > 0 ? ' ${_inr(ans['amount'])}' : ''}'
+                '${_s(ans['note']).isEmpty ? '' : ' · ${_s(ans['note'])}'}',
+                style: const TextStyle(fontSize: 12.5)),
+          if (_s(dp['escalated']).isNotEmpty)
+            const Text('Jawab nahi maana gaya. Aage: National Consumer Helpline 1915 / e-Daakhil (edaakhil.nic.in).',
+                style: TextStyle(fontSize: 11.5, color: C.muted)),
+        ],
+      ]),
+    );
   }
 
   Widget _lines(Map<String, dynamic> q) {
@@ -187,11 +458,124 @@ class _DealCardState extends State<DealCard> {
     }
 
     if (buyer && acts.contains('confirm')) {
+      final terms = _m(q['terms']);
+      final opts = List<String>.from((terms['pay_options'] as List?) ?? const ['upi', 'counter']);
+      final pick = opts.contains(_pay) ? _pay : (opts.contains('upi') ? 'upi' : (opts.isEmpty ? '' : opts.first));
+      if (opts.length > 1) {
+        add(Wrap(spacing: 6, runSpacing: 6, children: [
+          const Padding(padding: EdgeInsets.only(top: 8), child: Text('Paisa: ', style: TextStyle(color: C.muted))),
+          for (final o in opts)
+            ChoiceChip(
+                label: Text((_payChoiceWord[o] ?? o) + (o == 'khata' ? ' · ${_s(_m(terms['khata'])['days'])} din' : '')),
+                selected: pick == o,
+                onSelected: (_) => setState(() => _pay = o)),
+        ]));
+      }
       add(GradientButton(
           label: 'Haan, confirm · ${_inr(q['total'])}',
           icon: Icons.check_rounded,
           height: 50,
-          onTap: _busy ? null : () => _act('confirm', {'v': q['v']})));
+          onTap: _busy ? null : () => _act('confirm', {'v': q['v'], 'pay': pick})));
+    }
+    final pay = _m(v['pay']);
+    final left = _d(pay['due_left']);
+    final reqs = _l(pay['requests']);
+    if (buyer && acts.contains('pay')) {
+      add(GradientButton(
+          label: 'Pay ${_inr(reqs.isEmpty ? left : reqs.last['amount'])} (UPI app)',
+          icon: Icons.currency_rupee_rounded,
+          height: 50,
+          onTap: _busy
+              ? null
+              : () => payWithUpi(context, () => widget.app.api!.netDealAct(_s(v['id']), 'pay_link'),
+                  () => widget.app.api!.netDealAct(_s(v['id']), 'trust_payee'))));
+    }
+    if (buyer && acts.contains('paid')) {
+      add(GlassButton(
+          label: 'Maine pay kiya',
+          icon: Icons.task_alt_rounded,
+          onTap: _busy
+              ? null
+              : () async {
+                  final r = await _ask('UPI se bhej diya?', 'UTR / UPI reference (UPI app ke payment details mein)');
+                  if (r != null) _act('paid', {'utr': r.replaceAll(' ', '')});
+                }));
+    }
+    if (buyer && acts.contains('ok')) {
+      add(GradientButton(label: 'Haan, sab sahi mila', icon: Icons.thumb_up_alt_rounded, height: 50, onTap: _busy ? null : () => _act('ok')));
+    }
+    if (buyer && acts.contains('dispute')) {
+      add(GlassButton(label: 'Kuch galat hai (shikayat)', icon: Icons.report_problem_rounded, onTap: _busy ? null : _disputeDialog));
+    }
+    if (buyer && acts.contains('dispute_close')) {
+      add(Row(children: [
+        Expanded(
+            child: GradientButton(
+                label: 'Jawab theek hai', icon: Icons.check_rounded, onTap: _busy ? null : () => _act('dispute_close', {'accept': true}))),
+        const SizedBox(width: 8),
+        Expanded(
+            child: GlassButton(
+                label: 'Nahi maanti',
+                icon: Icons.gavel_rounded,
+                onTap: _busy
+                    ? null
+                    : () async {
+                        final r = await _ask('Jawab nahi maana?', 'Kya chahiye (dukaan ko dikhega)');
+                        if (r != null) _act('dispute_close', {'accept': false, 'note': r});
+                      })),
+      ]));
+    }
+    if (!buyer && acts.contains('received')) {
+      add(GradientButton(
+          label: '${_s(pay['status']) == 'claimed' ? 'Paisa mila?' : 'Paisa mila'} · ${_inr(left)}',
+          icon: Icons.savings_rounded,
+          height: 50,
+          onTap: _busy
+              ? null
+              : () async {
+                  final r = await moneyDialog(context, 'Paisa aa gaya?',
+                      amount: left, hint: 'Apne bank / UPI app mein dekh kar hi. Graahak ka "bhej diya" saboot nahi hai.');
+                  if (r != null) _act('received', r);
+                }));
+    }
+    if (!buyer && acts.contains('pay_request') && _s(pay['status']) != 'claimed') {
+      add(GlassButton(
+          label: reqs.isEmpty ? 'Payment card bhejo' : 'Payment card dobara',
+          icon: Icons.request_quote_rounded,
+          onTap: _busy ? null : () => _act('pay_request')));
+    }
+    if (!buyer && acts.contains('refund')) {
+      add(GlassButton(
+          label: 'Refund diya · ${_inr(pay['refund_due'])}',
+          icon: Icons.undo_rounded,
+          onTap: _busy
+              ? null
+              : () async {
+                  final r = await moneyDialog(context, 'Refund bhej diya?',
+                      amount: pay['refund_due'], withMode: false, hint: 'Apne UPI / bank se bhejne ke baad. Hoola paisa nahi bhejta.');
+                  if (r != null) _act('refund', r);
+                }));
+    }
+    if (!buyer && acts.contains('resolve')) {
+      add(GradientButton(label: 'Shikayat ka jawab', icon: Icons.support_agent_rounded, height: 50, onTap: _busy ? null : _resolveDialog));
+    }
+    if (!buyer && acts.contains('cancel_yes')) {
+      add(Row(children: [
+        Expanded(
+            child: GlassButton(
+                label: 'Cancel maano', icon: Icons.check_rounded, onTap: _busy ? null : () => _act('cancel_answer', {'yes': true}))),
+        const SizedBox(width: 8),
+        Expanded(
+            child: GlassButton(
+                label: 'Mana karo',
+                icon: Icons.block_rounded,
+                onTap: _busy
+                    ? null
+                    : () async {
+                        final r = await _ask('Cancel mana?', 'Wajah (graahak ko dikhegi)');
+                        if (r != null) _act('cancel_answer', {'yes': false, 'note': r});
+                      })),
+      ]));
     }
     if (!buyer && acts.contains('send_quote') && _s(v['waiting']) == 'quote') {
       add(GradientButton(label: 'Quote bhejo', icon: Icons.send_rounded, height: 50, onTap: _busy ? null : () => _act('send_quote')));
@@ -204,6 +588,24 @@ class _DealCardState extends State<DealCard> {
     }
     if (!buyer && acts.contains('ready')) {
       add(GradientButton(label: 'Parcel taiyaar', icon: Icons.local_shipping_rounded, height: 50, onTap: _busy ? null : () => _act('ready')));
+    }
+    final open = pay.isNotEmpty && _s(pay['status']) != 'khata' && left > 0;
+    if (!buyer && acts.contains('handed_over') && open) {
+      add(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        CheckboxListTile(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          value: _collect,
+          onChanged: (x) => setState(() => _collect = x == true),
+          title: Text('Counter par ${_inr(left)} le liya'),
+          subtitle: const Text('Paisa pehle: bina iske saamaan nahi diya jaata', style: TextStyle(fontSize: 11.5)),
+        ),
+        if (_collect)
+          Wrap(spacing: 6, children: [
+            for (final e in const {'cash': 'Cash', 'upi': 'UPI'}.entries)
+              ChoiceChip(label: Text(e.value), selected: _collectMode == e.key, onSelected: (_) => setState(() => _collectMode = e.key)),
+          ]),
+      ]));
     }
     if (!buyer && acts.contains('handed_over')) {
       add(Row(children: [
@@ -219,7 +621,12 @@ class _DealCardState extends State<DealCard> {
         GlassButton(
             label: 'De diya',
             icon: Icons.handshake_rounded,
-            onTap: _busy ? null : () => _act('handed_over', {'code': _code.text.trim()})),
+            onTap: _busy
+                ? null
+                : () => _act('handed_over', {
+                      'code': _code.text.trim(),
+                      if (open && _collect) 'collect': {'mode': _collectMode, 'amount': left},
+                    })),
       ]));
     }
     final no = <Widget>[];
@@ -306,6 +713,8 @@ class _DealCardState extends State<DealCard> {
           Text(_l(ask['items']).map((i) => '${_s(i['item'])} × ${_qty(i['qty'])} ${_s(i['unit'])}'.trim()).join('\n'),
               style: const TextStyle(fontSize: 13, height: 1.4)),
         ],
+        _money(),
+        _disputeBox(),
         if (_s(v['reason']).isNotEmpty && (st == 'rejected' || st == 'cancelled')) ...[
           const SizedBox(height: 6),
           Text(_s(v['reason']), style: const TextStyle(color: C.muted, fontSize: 12.5)),
@@ -403,6 +812,7 @@ class _DealsScreenState extends State<DealsScreen> {
   List<Map<String, dynamic>> _stock = [];
   List<Map<String, dynamic>> _picks = [];
   Map<String, dynamic> _rules = {};
+  Map<String, dynamic> _khata = {};
   bool _loading = true;
 
   Santosh get app => widget.app;
@@ -419,6 +829,10 @@ class _DealsScreenState extends State<DealsScreen> {
       final s = await app.api!.netDeals(role: 'seller');
       final st = await app.api!.netStock();
       final pk = await app.api!.netPicks();
+      Map<String, dynamic> kb = {};
+      try {
+        kb = await app.api!.netKhata();
+      } catch (_) {}                                  // an older server has no khata yet
       if (!mounted) return;
       setState(() {
         _buy = b;
@@ -426,6 +840,7 @@ class _DealsScreenState extends State<DealsScreen> {
         _picks = pk;
         _stock = _l(st['stock']);
         _rules = _m(st['rules']);
+        _khata = kb;
         _loading = false;
       });
     } catch (e) {
@@ -656,6 +1071,216 @@ class _DealsScreenState extends State<DealsScreen> {
           ),
       ]);
 
+  Future<void> _khataDo(String action, Map<String, dynamic> body) async {
+    try {
+      final r = await app.api!.netKhataAct(action, body);
+      if (mounted && _s(r['say']).isNotEmpty) _snack(context, _s(r['say']));
+      _load();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
+  Future<void> _openKhata([Map<String, dynamic>? a]) async {
+    final to = TextEditingController(text: _s(a?['with']));
+    final lim = TextEditingController(text: a == null ? '' : _qty(a['limit']));
+    final days = TextEditingController(text: a == null ? '15' : _qty(a['days']));
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(a == null ? 'Khata kholo' : 'Khata badlo'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (a == null) TextField(controller: to, decoration: const InputDecoration(labelText: 'Graahak (naam / @Hoola ID)')),
+          TextField(controller: lim, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Seema (₹), 0 = band')),
+          TextField(controller: days, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Kitne din mein dena')),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Save')),
+        ],
+      ),
+    );
+    final body = {
+      'to': a == null ? to.text.trim() : _s(a['peer']),
+      'limit': double.tryParse(lim.text.trim()) ?? 0,
+      'days': int.tryParse(days.text.trim()) ?? 15,
+    };
+    for (final c in [to, lim, days]) {
+      c.dispose();
+    }
+    if (ok == true && _s(body['to']).isNotEmpty) _khataDo('open', body);
+  }
+
+  Widget _khataRow(Map<String, dynamic> a, bool mine) {
+    final bal = _d(a['balance']);
+    final peer = _s(a['peer']);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text(_s(a['with']), style: const TextStyle(fontWeight: FontWeight.w800))),
+            Text(_inr(bal), style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: bal > 0 ? (mine ? C.accent : C.warn) : C.ok)),
+          ]),
+          Text(
+              [
+                if (mine && _d(a['limit']) > 0) 'seema ${_inr(a['limit'])} · ${_qty(a['days'])} din · ${_inr(a['limit_left'])} bacha',
+                if (mine && _s(a['status']) == 'paused') 'band',
+                if (_s(a['due_on']).isNotEmpty) '${_s(a['due_on'])} tak${a['overdue'] == true ? ' (nikal gaya)' : ''}',
+              ].join(' · '),
+              style: TextStyle(color: a['overdue'] == true ? C.bad : C.muted, fontSize: 12)),
+          for (final e in _l(a['entries']).take(4))
+            Text('${_s(e['kind']) == 'debit' ? '+' : '−'}${_inr(e['amount'])} · ${_s(e['ref'])} · ${_when(e['at'])}',
+                style: const TextStyle(fontSize: 11.5, color: C.faint)),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            if (mine && bal > 0)
+              GlassButton(label: 'Payment card', icon: Icons.request_quote_rounded, onTap: () => _khataDo('request', {'to': peer})),
+            if (mine && bal > 0)
+              GlassButton(
+                  label: 'Paisa mila',
+                  icon: Icons.savings_rounded,
+                  onTap: () async {
+                    final r = await moneyDialog(context, 'Khata ka paisa aaya?',
+                        amount: bal, hint: 'Apne bank / UPI / haath mein dekh kar hi.');
+                    if (r != null) _khataDo('received', {'to': peer, ...r});
+                  }),
+            if (mine) GlassButton(label: 'Seema', icon: Icons.tune_rounded, onTap: () => _openKhata(a)),
+            if (!mine && bal > 0)
+              GradientButton(
+                  label: 'Pay (UPI app)',
+                  icon: Icons.currency_rupee_rounded,
+                  onTap: () => payWithUpi(context, () => app.api!.netKhataAct('pay_link', {'to': peer}),
+                      () => app.api!.netKhataAct('trust_payee', {'to': peer}))),
+            if (!mine && bal > 0)
+              GlassButton(
+                  label: 'Maine pay kiya',
+                  icon: Icons.task_alt_rounded,
+                  onTap: () async {
+                    final r = await moneyDialog(context, 'UPI se bhej diya?', withMode: false, amount: bal);
+                    if (r != null) _khataDo('paid', {'to': peer, 'utr': r['utr']});
+                  }),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  Widget _khataTab() {
+    final owed = _l(_khata['owed_to_me']);
+    final owe = _l(_khata['i_owe']);
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      Row(children: [
+        Expanded(
+          child: Glass(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Mujhe milna hai', style: TextStyle(color: C.muted, fontSize: 12)),
+              Text(_inr(_khata['owed_total']), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: C.accent)),
+            ]),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Glass(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Mujhe dena hai', style: TextStyle(color: C.muted, fontSize: 12)),
+              Text(_inr(_khata['owe_total']), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: C.warn)),
+            ]),
+          ),
+        ),
+      ]),
+      const SizedBox(height: 12),
+      GlassButton(label: 'Graahak ka khata kholo', icon: Icons.menu_book_rounded, onTap: () => _openKhata()),
+      if (_rules['khata'] != true)
+        const Padding(
+          padding: EdgeInsets.only(top: 6),
+          child: Text('Niyam mein "Khata (udhaar)" chalu karne par hi quote mein khata dikhega.', style: TextStyle(color: C.faint, fontSize: 12)),
+        ),
+      const SizedBox(height: 12),
+      if (owed.isNotEmpty) const Text('Mere graahak', style: TextStyle(fontWeight: FontWeight.w800)),
+      for (final a in owed) _khataRow(a, true),
+      if (owe.isNotEmpty) const Text('Meri dukaanein', style: TextStyle(fontWeight: FontWeight.w800)),
+      for (final a in owe) _khataRow(a, false),
+      if (owed.isEmpty && owe.isEmpty)
+        const Padding(
+          padding: EdgeInsets.all(12),
+          child: Text('Khata par liya / diya order yahan apne aap likha jaata hai, dono taraf ek jaisa.', style: TextStyle(color: C.muted)),
+        ),
+    ]);
+  }
+
+  Future<void> _editText(String title, String key, String hint) async {
+    final c = TextEditingController(text: _s(_rules[key]));
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: TextField(controller: c, decoration: InputDecoration(hintText: hint)),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Save')),
+        ],
+      ),
+    );
+    final t = c.text.trim();
+    c.dispose();
+    if (ok == true) _setRule({key: t});
+  }
+
+  Widget _moneyRules() => Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Paisa', style: TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Row(children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(_s(_rules['upi_id']).isEmpty ? 'UPI ID abhi nahi' : _s(_rules['upi_id']),
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                    '${_s(_rules['payee_name']).isEmpty ? 'Naam nahi' : _s(_rules['payee_name'])}'
+                    '${_rules['business_verified'] == true ? ' · verified business' : ''}',
+                    style: const TextStyle(color: C.muted, fontSize: 12)),
+              ]),
+            ),
+            TextButton(onPressed: () => _editText('Aapka UPI ID', 'upi_id', 'naam@bank'), child: const Text('UPI')),
+            TextButton(onPressed: () => _editText('UPI par naam', 'payee_name', 'Jaise bank mein hai'), child: const Text('Naam')),
+          ]),
+          const Text('Graahak ke Hoola is UPI ko yaad rakhte hain; badalne par unhe chetavni milti hai.',
+              style: TextStyle(color: C.faint, fontSize: 11.5)),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Saamaan se pehle paisa'),
+            subtitle: const Text('Paid, khata, ya counter par usi waqt', style: TextStyle(fontSize: 12)),
+            value: _s(_rules['pay_before']) != 'none',
+            onChanged: (x) => _setRule({'pay_before': x ? 'handover' : 'none'}),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Counter par cash / UPI chalega'),
+            value: _rules['counter_ok'] != false,
+            onChanged: (x) => _setRule({'counter_ok': x}),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Khata (udhaar)'),
+            subtitle: const Text('Sirf un graahakon ko jinka khata aap kholein', style: TextStyle(fontSize: 12)),
+            value: _rules['khata'] == true,
+            onChanged: (x) => _setRule({'khata': x}),
+          ),
+          Text('Pakka hone ke baad free cancel: ${_qty(_rules['cancel_minutes'] ?? 30)} min', style: const TextStyle(fontSize: 12.5)),
+          Wrap(spacing: 6, children: [
+            for (final x in const [0, 30, 120])
+              ChoiceChip(label: Text('$x min'), selected: _d(_rules['cancel_minutes'] ?? 30) == x, onSelected: (_) => _setRule({'cancel_minutes': x})),
+          ]),
+          const SizedBox(height: 6),
+          Text('Shikayat ka samay: ${_qty(_rules['dispute_hours'] ?? 48)} ghante', style: const TextStyle(fontSize: 12.5)),
+          Wrap(spacing: 6, children: [
+            for (final x in const [24, 48, 168])
+              ChoiceChip(label: Text('$x ghante'), selected: _d(_rules['dispute_hours'] ?? 48) == x, onSelected: (_) => _setRule({'dispute_hours': x})),
+          ]),
+        ]),
+      );
+
   Widget _namesField(String label, String key) => TextFormField(
         key: ValueKey('nf$key${(_rules[key] as List?)?.join(',')}'),
         initialValue: ((_rules[key] as List?) ?? const []).join(', '),
@@ -767,6 +1392,8 @@ class _DealsScreenState extends State<DealsScreen> {
         ]),
       ),
       const SizedBox(height: 12),
+      _moneyRules(),
+      const SizedBox(height: 12),
       Text(_s(_rules['say']), style: const TextStyle(color: C.faint, fontSize: 12)),
       const SizedBox(height: 6),
       const Text('Yeh niyam aapke Mere Niyam ka hissa hain. Paisa hamesha aapke tap se.', style: TextStyle(color: C.teal, fontSize: 12)),
@@ -775,7 +1402,7 @@ class _DealsScreenState extends State<DealsScreen> {
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
-        length: 5,
+        length: 6,
         child: Scaffold(
           appBar: AppBar(
             title: const Text('Khareed aur bikri'),
@@ -785,6 +1412,7 @@ class _DealsScreenState extends State<DealsScreen> {
               Tab(text: 'Bikri${_sell.isEmpty ? '' : ' (${_sell.length})'}'),
               Tab(text: 'Packing${_picks.isEmpty ? '' : ' (${_picks.length})'}'),
               const Tab(text: 'Stock'),
+              const Tab(text: 'Khata'),
               const Tab(text: 'Niyam'),
             ]),
           ),
@@ -817,6 +1445,7 @@ class _DealsScreenState extends State<DealsScreen> {
                           ),
                       ]),
                       _stockTab(),
+                      _khataTab(),
                       _rulesTab(),
                     ]),
                   ),
@@ -841,6 +1470,7 @@ class _PickCardState extends State<PickCard> {
   Map<String, dynamic>? _fresh;
   final Set<int> _ticked = {};
   bool _busy = false;
+  String _mode = 'cash';
   final _code = TextEditingController();
 
   Map<String, dynamic> get v => _fresh ?? widget.v;
@@ -975,6 +1605,20 @@ class _PickCardState extends State<PickCard> {
             alignment: Alignment.centerRight,
             child: TextButton(onPressed: _busy ? null : _short, child: const Text('Kuch kam hai', style: TextStyle(color: C.warn))),
           ),
+        if (acts.contains('handover') && _d(v['collect']) > 0)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(14)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Pehle ${_inr(v['collect'])} lijiye. Code daalne par yahi rakam jama hogi.',
+                  style: const TextStyle(fontWeight: FontWeight.w700, color: C.warn)),
+              Wrap(spacing: 6, children: [
+                for (final e in const {'cash': 'Cash liya', 'upi': 'UPI aaya'}.entries)
+                  ChoiceChip(label: Text(e.value), selected: _mode == e.key, onSelected: (_) => setState(() => _mode = e.key)),
+              ]),
+            ]),
+          ),
         if (acts.contains('handover'))
           Row(children: [
             Expanded(
@@ -989,7 +1633,12 @@ class _PickCardState extends State<PickCard> {
             GlassButton(
                 label: 'Saamaan diya',
                 icon: Icons.handshake_rounded,
-                onTap: _busy ? null : () => _act('handover', {'code': _code.text.trim()})),
+                onTap: _busy
+                    ? null
+                    : () => _act('handover', {
+                          'code': _code.text.trim(),
+                          if (_d(v['collect']) > 0) 'collect': {'mode': _mode, 'amount': _d(v['collect'])},
+                        })),
           ]),
       ]),
     );
@@ -1113,6 +1762,48 @@ class _CatalogSheetState extends State<CatalogSheet> {
           ),
         ]),
       ),
+    );
+  }
+}
+
+
+/// v0.106 A khata notice in chat: a payment card for the khata balance, a claim, a receipt, a due date.
+class KhataCard extends StatelessWidget {
+  const KhataCard({super.key, required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+
+  @override
+  Widget build(BuildContext context) {
+    final card = _s(v['card']);
+    final peer = _s(v['peer']);
+    final buyer = _s(v['side']) == 'buyer';
+    return Glass(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.menu_book_rounded, color: C.violet),
+          const SizedBox(width: 10),
+          Expanded(child: Text('Khata · ${_s(v['with'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Text(_inr(v['balance']), style: const TextStyle(fontWeight: FontWeight.w900)),
+        ]),
+        const SizedBox(height: 6),
+        Text(_s(v['say']), style: const TextStyle(fontSize: 13, height: 1.35)),
+        const SizedBox(height: 8),
+        if (buyer && card == 'pay')
+          GradientButton(
+              label: 'Pay ${_inr(v['amount'])} (UPI app)',
+              icon: Icons.currency_rupee_rounded,
+              onTap: () => payWithUpi(context, () => app.api!.netKhataAct('pay_link', {'to': peer}),
+                  () => app.api!.netKhataAct('trust_payee', {'to': peer}))),
+        if (!buyer && (card == 'money' || card == 'due'))
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DealsScreen(app: app))),
+              child: const Text('Khata kholo'),
+            ),
+          ),
+      ]),
     );
   }
 }

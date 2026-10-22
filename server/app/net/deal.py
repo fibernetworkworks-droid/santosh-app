@@ -44,9 +44,10 @@ from . import policy
 from .service import EXTRA_KINDS, NetError, _link, _post, _thread, resolve, tell
 
 DEAL_KINDS = ("deal_ask", "deal_quote", "deal_confirm", "deal_accept", "deal_reject", "deal_status", "deal_ready",
-              "deal_cancel", "deal_catalog")
-OPEN_STATES = ("asked", "quoted", "confirmed", "accepted", "packing", "ready")
-END_STATES = ("handed_over", "rejected", "cancelled", "expired")
+              "deal_cancel", "deal_catalog", "deal_pay", "deal_paid", "deal_receipt", "deal_refund", "deal_cancel_req",
+              "deal_cancel_no", "deal_ok", "deal_dispute", "deal_resolve", "deal_dispute_close", "deal_escalate")
+OPEN_STATES = ("asked", "quoted", "confirmed", "accepted", "packing", "ready", "handed_over", "disputed")
+END_STATES = ("closed", "rejected", "cancelled", "expired")
 STATES = OPEN_STATES + END_STATES
 # (state before, message) -> state after. Anything not listed is refused, on both sides.
 TRANSITIONS: dict[tuple[str, str], str] = {
@@ -68,6 +69,26 @@ TRANSITIONS: dict[tuple[str, str], str] = {
 }
 for _s in ("asked", "quoted", "confirmed", "accepted", "packing", "ready"):
     TRANSITIONS[(_s, "deal_cancel")] = "cancelled"
+# v0.106 money, cancel requests, the buyer's check after handover, disputes (payment steps never change the state)
+for _s in ("accepted", "packing", "ready", "handed_over", "disputed", "closed"):
+    for _k in ("deal_pay", "deal_paid", "deal_receipt"):
+        TRANSITIONS[(_s, _k)] = _s
+for _s in ("cancelled", "disputed", "closed", "handed_over"):
+    TRANSITIONS[(_s, "deal_refund")] = _s
+for _s in ("accepted", "packing"):
+    TRANSITIONS[(_s, "deal_cancel_req")] = _s
+    TRANSITIONS[(_s, "deal_cancel_no")] = _s
+TRANSITIONS.update({
+    ("handed_over", "deal_ok"): "closed",               # the buyer: everything came right
+    ("handed_over", "deal_dispute"): "disputed",        # the buyer: short / damaged / wrong, inside the seller's window
+    ("disputed", "deal_resolve"): "disputed",           # the seller's answer (refund / credit / replace / reject)
+    ("disputed", "deal_dispute_close"): "closed",       # the buyer accepts the answer
+    ("disputed", "deal_escalate"): "disputed",          # the buyer doesn't: official routes are named, the record stays
+})
+FROM_SELLER = {"deal_quote", "deal_accept", "deal_reject", "deal_status", "deal_ready", "deal_pay", "deal_receipt",
+               "deal_refund", "deal_resolve", "deal_cancel_no"}
+FROM_BUYER = {"deal_ask", "deal_confirm", "deal_paid", "deal_ok", "deal_dispute", "deal_dispute_close", "deal_escalate",
+              "deal_cancel_req"}
 GST_RATES = (0.0, 0.1, 0.25, 1.5, 3.0, 5.0, 12.0, 18.0, 28.0, 40.0)
 MAX_LINES = 100
 ASKS_PER_DAY = 30                  # lists one peer may send one seller in a day
@@ -75,6 +96,7 @@ OPEN_PER_PEER = 10                 # unanswered lists from one peer at a time
 MAX_TOTAL = 1_00_00_000.0          # Rs 1 crore per deal (phase 1 ceiling)
 STATE_WORDS = {"asked": "list bheji gayi", "quoted": "quote aaya", "confirmed": "confirm hua", "accepted": "order pakka",
                "packing": "packing chal rahi", "ready": "parcel taiyaar", "handed_over": "saamaan de diya",
+               "disputed": "shikayat khuli hai", "closed": "poora hua",
                "rejected": "mana ho gaya", "cancelled": "cancel hua", "expired": "quote ka samay khatam"}
 STATS = {"asks": 0, "quotes": 0, "auto_quotes": 0, "confirms": 0, "accepts": 0, "auto_accepts": 0, "ready": 0,
          "handed_over": 0, "refused": 0}
@@ -106,6 +128,12 @@ class Deal(Base):
     reserved: Mapped[list] = mapped_column(JSON, default=list)                  # seller: [{stock_id, qty}] held for this order
     smap: Mapped[list] = mapped_column(JSON, default=list)                      # seller: stock id per quote line ("" = typed line)
     pick: Mapped[dict] = mapped_column(JSON, default=dict)                      # v0.105 seller: pick task {to, status, by, short, at}
+    pay: Mapped[dict] = mapped_column(JSON, default=dict)                       # v0.106 {choice, status, due, paid, payee, requests, claims, receipts, refunds}
+    cancel_req: Mapped[dict] = mapped_column(JSON, default=dict)               # v0.106 {by, reason, at, status}
+    dispute: Mapped[dict] = mapped_column(JSON, default=dict)                   # v0.106 {reason, lines, note, at, answer, escalated}
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    handed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    timers: Mapped[dict] = mapped_column(JSON, default=dict)                    # v0.106 reminders already given (once each)
     step: Mapped[int] = mapped_column(Integer, default=0)
     last_hash: Mapped[str] = mapped_column(String(64), default="")
     history: Mapped[list] = mapped_column(JSON, default=list)                   # [{step, kind, by, at, hash, say}]
@@ -145,6 +173,9 @@ class DealRules(Base):
     pickup_minutes: Mapped[int] = mapped_column(Integer, default=180)          # how long a ready parcel waits
     prefix: Mapped[str] = mapped_column(String(8), default="D")
     next_no: Mapped[int] = mapped_column(Integer, default=1001)
+    upi_id: Mapped[str] = mapped_column(String(80), default="")               # v0.106 her UPI ID for deal payments (set by her)
+    payee_name: Mapped[str] = mapped_column(String(80), default="")
+    next_receipt: Mapped[int] = mapped_column(Integer, default=1)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -209,7 +240,7 @@ def step_hash(prev: str, kind: str, step: int, body: dict[str, Any]) -> str:
 
 
 def quote_hash(q: dict[str, Any]) -> str:
-    keep = {k: q.get(k) for k in ("v", "lines", "subtotal", "gst", "total", "valid_until")}
+    keep = {k: q.get(k) for k in ("v", "lines", "subtotal", "gst", "total", "valid_until", "terms")}
     return hashlib.sha256(json.dumps(keep, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
 
 
@@ -240,14 +271,17 @@ def selling(tenant: str) -> dict[str, Any]:
 
 
 SELL_KEYS = ("auto_quote", "auto_quote_max", "auto_accept", "auto_accept_max", "trusted", "valid_minutes", "catalog",
-             "show_stock", "auto_ready", "packers")
-COUNTER_KEYS = ("place", "pickup_minutes", "prefix")
+             "show_stock", "auto_ready", "packers", "pay_before", "counter_ok", "khata", "cancel_minutes", "dispute_hours")
+COUNTER_KEYS = ("place", "pickup_minutes", "prefix", "upi_id", "payee_name")
 
 
 def rules_view(tenant: str) -> dict[str, Any]:
     r, so = rules(tenant), selling(tenant)
+    from . import dealpay
+    pe = dealpay.payee(tenant)
     return so | {"place": r.place, "pickup_minutes": r.pickup_minutes, "prefix": r.prefix, "say": _rules_say(so),
-                 "packers_found": [m["name"] for m in packers(tenant)]}
+                 "packers_found": [m["name"] for m in packers(tenant)], "upi_id": r.upi_id or "",
+                 "payee_name": r.payee_name or "", "business_verified": bool(pe.get("business_verified"))}
 
 
 def _rules_say(so: dict[str, Any]) -> str:
@@ -256,7 +290,9 @@ def _rules_say(so: dict[str, Any]) -> str:
          "khud jaata hai"}.get(so["auto_quote"], "")
     a = (f"stock ho to {inr(so['auto_accept_max'])} tak ka order khud pakka" if so["auto_accept"] else "har order aapke tap se pakka")
     p = "packing hote hi parcel khud 'taiyaar'" if so.get("auto_ready", True) else "packing ke baad 'taiyaar' aapke tap se"
-    return f"{q}; {a}; {p}."
+    m = ("saamaan se pehle paisa (paid / khata / counter)" if so.get("pay_before", "handover") == "handover" else "paisa baad mein bhi")
+    return (f"{q}; {a}; {p}; {m}; {so.get('cancel_minutes', 30)} min tak free cancel; shikayat "
+            f"{so.get('dispute_hours', 48)} ghante tak" + ("; khata chalu" if so.get("khata") else "") + ".")
 
 
 def set_rules(tenant: str, **kw) -> dict[str, Any]:
@@ -269,6 +305,17 @@ def set_rules(tenant: str, **kw) -> dict[str, Any]:
     for k in ("auto_quote_max", "auto_accept_max"):
         if k in sell and _num(sell[k], 0, MAX_TOTAL) is None:
             raise DealError(f"{k}: 0 se 1 crore ke beech")
+    if "pay_before" in sell and sell["pay_before"] not in ("handover", "none"):
+        raise DealError("pay_before: handover, none")
+    if "cancel_minutes" in sell and _num(sell["cancel_minutes"], 0, 1440) is None:
+        raise DealError("cancel_minutes: 0 se 1440")
+    if "dispute_hours" in sell and _num(sell["dispute_hours"], 1, 720) is None:
+        raise DealError("dispute_hours: 1 se 720")
+    if kw.get("upi_id") is not None or kw.get("payee_name") is not None:
+        from . import dealpay
+        cur_r = rules(tenant)
+        dealpay.set_payee(tenant, kw["upi_id"] if kw.get("upi_id") is not None else (cur_r.upi_id or ""),
+                          kw["payee_name"] if kw.get("payee_name") is not None else (cur_r.payee_name or ""))
     if sell:
         from ..avatar import service as av
         cur = av.get(tenant)["rules"]
@@ -611,6 +658,8 @@ def check_quote(body: dict[str, Any]) -> dict[str, Any]:
     q["valid_until"] = vu.isoformat()
     q["note"] = policy.quote(body.get("note"), 600)
     q["place"] = policy.quote(body.get("place"), 200)
+    from . import dealpay
+    q["terms"] = dealpay.check_terms(body.get("terms"), q["total"])
     return q
 
 
@@ -652,14 +701,17 @@ def _expired(d: Deal) -> bool:
 
 def actions(d: Deal) -> list[str]:
     st, buyer = d.state, d.role == "buyer"
+    from . import dealpay
+    extra = dealpay.actions(d)
     if st in END_STATES:
-        return []
+        return extra
     if buyer:
         return {"asked": ["cancel"], "quoted": ["confirm", "cancel"], "confirmed": ["cancel"],
-                "accepted": ["cancel"], "packing": ["cancel"], "ready": []}.get(st, [])
+                "accepted": ["cancel"], "packing": ["cancel"], "ready": [], "handed_over": ["ok", "dispute"],
+                "disputed": []}.get(st, []) + extra
     return {"asked": ["send_quote", "reject"], "quoted": ["send_quote", "reject"], "confirmed": ["accept", "reject"],
             "accepted": ["packing", "ready", "cancel"], "packing": ["ready", "cancel"],
-            "ready": ["handed_over", "cancel"]}.get(st, [])
+            "ready": ["handed_over", "cancel"], "handed_over": [], "disputed": []}.get(st, []) + extra
 
 
 def view(d: Deal) -> dict[str, Any]:
@@ -678,6 +730,9 @@ def view(d: Deal) -> dict[str, Any]:
     if d.role == "seller" and rdy.get("code"):
         out["ready"] = {k: v for k, v in rdy.items() if k != "code"}           # her staff checks the code; it isn't shown here
         out["ready"]["code_set"] = True
+    from . import dealpay
+    out |= {"pay": dealpay.pay_view(d), "dispute": d.dispute or {}, "cancel_req": d.cancel_req or {},
+            "terms": q.get("terms") or {}, "handed_at": d.handed_at.isoformat() if d.handed_at else ""}
     return out
 
 
@@ -802,7 +857,8 @@ def confirm_card(tenant: str, deal_id: str) -> dict[str, Any] | None:
                       for l in q.get("lines") or [] if l.get("qty")], "v": q.get("v"), "hash": quote_hash(q)}
 
 
-def confirm(tenant: str, deal_id: str, v: int | None = None, mode: str = "", by_tap: bool = False) -> dict[str, Any]:
+def confirm(tenant: str, deal_id: str, v: int | None = None, mode: str = "", by_tap: bool = False,
+            pay: str = "") -> dict[str, Any]:
     """The buyer commits. ONLY from her tap on the card (the API route); the model can never call this with by_tap."""
     if not by_tap:
         raise DealError("Order pakka karna sirf aapke tap se hota hai: card par 'Haan, confirm' dabaiye.")
@@ -820,9 +876,14 @@ def confirm(tenant: str, deal_id: str, v: int | None = None, mode: str = "", by_
         raise DealError("Quote badal gaya hai; naya quote dekh kar confirm kijiye.")
     if not any(l.get("qty") for l in q.get("lines") or []):
         raise DealError("Is quote mein koi saamaan nahi hai.")
+    opts = list(((q.get("terms") or {}).get("pay_options")) or ["upi", "counter"])
+    if pay and pay not in opts:
+        raise DealError(f"Is quote mein '{pay}' nahi hai (khata sirf dukaan ke kholne par). Chuniye: " + ", ".join(opts))
+    pay = pay or ("upi" if "upi" in opts else opts[0])
     body = {"v": q.get("v"), "quote_hash": quote_hash(q), "mode": mode if mode in ("pickup", "delivery") else
-            (d.ask or {}).get("mode", "pickup")}
+            (d.ask or {}).get("mode", "pickup"), "pay": pay}
     d.waiting = ""
+    d.pay = dict(d.pay or {}, choice=pay)
     _send(tenant, d, "deal_confirm", body, f"Quote v{q.get('v')} confirm, {inr(q.get('total'))}")
     STATS["confirms"] += 1
     d = _get(tenant, deal_id)
@@ -874,6 +935,8 @@ def send_quote(tenant: str, deal_id: str, lines: Any = None, note: str = "", val
          "note": policy.quote(note, 600), "place": r.place}
     if q["total"] > MAX_TOTAL:
         raise DealError("Rakam bahut badi (1 crore tak).")
+    from . import dealpay
+    q["terms"] = dealpay.terms_for(tenant, d.peer, q["total"])          # v0.106 pay options, payee, windows
     q = check_quote(q)                  # exactly what the buyer's side will compute, so both hash the same quote
     d.quote, d.draft, d.waiting = q, {}, ""
     d.smap = [str(l.get("stock_id") or "") for l in base["lines"]]
@@ -950,6 +1013,8 @@ def accept(tenant: str, deal_id: str, ready_by: str = "", note: str = "", by: st
     short = _stock_holds(tenant, d.quote or {}, d.smap or [])
     if short:
         raise DealError("Stock kam pad gaya: " + ", ".join(short) + ". Mana kijiye ya naya quote bhejiye.")
+    from . import dealpay
+    pay_part = dealpay.at_accept(tenant, d)            # v0.106 khata limit checked again; the pay record starts
     rules(tenant)                                  # makes her rules row if missing
     with session() as s:
         rr = s.get(DealRules, tenant)
@@ -971,13 +1036,15 @@ def accept(tenant: str, deal_id: str, ready_by: str = "", note: str = "", by: st
             rb = parse_local(ready_by, tz_of(tenant)).astimezone(timezone.utc)
         except Exception:
             rb = None
-    body = {"number": number, "ready_by": rb.isoformat() if rb else "", "note": policy.quote(note, 300)}
+    body = {"number": number, "ready_by": rb.isoformat() if rb else "", "note": policy.quote(note, 300)} | pay_part["body"]
     d.number, d.accept, d.reserved, d.waiting = number, body, held, ""
+    d.pay, d.accepted_at = pay_part["pay"], now()
     try:
         _send(tenant, d, "deal_accept", body, f"Order {number} pakka" + (" (niyam se)" if by == "rules" else ""))
     except DealError:
         _release(tenant, held)
         raise
+    dealpay.after_accept(tenant, _get(tenant, deal_id))
     STATS["accepts"] += 1
     pick = [f"{l['item']} x {l['qty']:g} {l.get('unit') or ''}".strip() for l in (d.quote or {}).get("lines") or [] if l.get("qty")]
     from . import pick as pk
@@ -1046,8 +1113,9 @@ def mark_ready(tenant: str, deal_id: str, place: str = "", minutes: Any = None, 
     return {"status": d.state, "deal": view(d)}
 
 
-def handed_over(tenant: str, deal_id: str, code: str = "", note: str = "") -> dict[str, Any]:
-    """At the counter: the buyer's code must match. Stock held for the order is taken out of the count."""
+def handed_over(tenant: str, deal_id: str, code: str = "", note: str = "", collect: dict | None = None) -> dict[str, Any]:
+    """At the counter: the buyer's code must match, and the money must be settled (paid, on khata, or taken now at the
+    counter: `collect` = {mode cash|upi, amount, utr}). Stock held for the order is taken out of the count."""
     d = _get(tenant, deal_id)
     if d.role != "seller" or d.state != "ready":
         raise DealError("Pehle parcel taiyaar (ready) hona chahiye.")
@@ -1055,6 +1123,10 @@ def handed_over(tenant: str, deal_id: str, code: str = "", note: str = "") -> di
     if not want or str(code or "").strip() != want:
         STATS["refused"] += 1
         raise DealError("Pickup code nahi mila. Graahak se unke Hoola mein dikha code poochhiye.")
+    from . import dealpay
+    dealpay.check_handover(tenant, d, collect)           # v0.106 raises when money is open and nothing was collected
+    d = _get(tenant, deal_id)
+    d.handed_at = now()
     _send(tenant, d, "deal_status", {"status": "handed_over", "note": policy.quote(note, 300)}, "Saamaan de diya")
     _release(tenant, d.reserved or [], used=True)
     STATS["handed_over"] += 1
@@ -1073,6 +1145,11 @@ def cancel(tenant: str, deal_id: str, reason: str = "") -> dict[str, Any]:
         raise DealError(f"Yeh deal pehle hi '{STATE_WORDS.get(d.state, d.state)}' hai.")
     if d.role == "buyer" and d.state == "ready":
         raise DealError("Parcel taiyaar ho chuka hai; cancel ke liye dukaan se baat kijiye.")
+    if d.state in ("handed_over", "disputed"):
+        raise DealError("Saamaan de diya gaya hai; ab cancel nahi, kuch galat ho to shikayat (dispute) kijiye.")
+    from . import dealpay
+    if d.role == "buyer" and dealpay.cancel_needs_ok(d):  # v0.106 after the seller's free-cancel window: a request
+        return dealpay.cancel_request(tenant, d.id, reason)
     reason = policy.quote(reason, 300) or "Cancel"
     held = list(d.reserved or [])
     d.reason, d.waiting = reason, ""
@@ -1081,8 +1158,9 @@ def cancel(tenant: str, deal_id: str, reason: str = "") -> dict[str, Any]:
         _release(tenant, held)
         from . import pick as pk
         pk.notify(tenant, deal_id, "cancelled")
+    dealpay.after_cancel(tenant, deal_id)
     d = _get(tenant, deal_id)
-    _publish(tenant, d, "info", "Deal cancel ho gayi.")
+    _publish(tenant, d, "info", "Deal cancel ho gayi." + (f" {d.pay.get('refund_say')}" if (d.pay or {}).get("refund_say") else ""))
     return {"status": d.state, "deal": view(d)}
 
 
@@ -1135,8 +1213,7 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
         return _after_ask(tenant, d, card)
     if d is None:
         raise DealError("yeh deal yahan nahi hai")
-    if d.role == ("seller" if kind in ("deal_quote", "deal_accept", "deal_reject", "deal_ready", "deal_status") else "buyer") \
-            and kind != "deal_cancel":
+    if (kind in FROM_SELLER and d.role == "seller") or (kind in FROM_BUYER and d.role == "buyer"):
         raise DealError("yeh step aapki taraf se nahi aa sakta")
     if step != d.step + 1 or prev != d.last_hash:
         raise DealError("step kram se nahi (purana / dohraya hua / badla hua)")
@@ -1148,6 +1225,9 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
     if key not in TRANSITIONS:
         raise DealError(f"abhi '{d.state}' hai; '{kind}' nahi ho sakta")
     who = idn.label(card)
+    from . import dealpay
+    if kind in dealpay.STEP_KINDS:                       # v0.106 money / cancel request / check / dispute steps
+        return dealpay.receive_step(tenant, d, kind, raw, who, key)
     if kind == "deal_quote":
         q = check_quote(raw)
         if q["v"] <= int((d.quote or {}).get("v") or 0):
@@ -1176,8 +1256,12 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
             raise DealError("version galat")
         if v != int(q.get("v") or 0) or str(raw.get("quote_hash") or "") != quote_hash(q):
             raise DealError("yeh quote ab lagoo nahi (badal gaya)")
-        _record(d, kind, raw, "buyer", f"Quote v{v} confirm, {inr(q.get('total'))}")
+        opts = list(((q.get("terms") or {}).get("pay_options")) or ["upi", "counter"])
+        choice = raw.get("pay") if raw.get("pay") in opts else ("upi" if "upi" in opts else opts[0])
+        _record(d, kind, raw, "buyer", f"Quote v{v} confirm, {inr(q.get('total'))}, " +
+                {"upi": "UPI se", "counter": "counter par", "khata": "khata par"}.get(choice, choice))
         d.state, d.waiting = "confirmed", "accept"
+        d.pay = dict(d.pay or {}, choice=choice)
         d.ask = dict(d.ask or {}, mode=raw.get("mode") if raw.get("mode") in ("pickup", "delivery") else (d.ask or {}).get("mode"))
         _save(d)
         STATS["confirms"] += 1
@@ -1189,6 +1273,8 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
             body["ready_by"] = rb.isoformat()
         _record(d, kind, raw, "seller", f"Order {body['number']} pakka")
         d.state, d.number, d.accept, d.waiting = "accepted", body["number"], body, ""
+        from . import dealpay
+        d.pay, d.accepted_at = dealpay.buyer_at_accept(tenant, d, raw), now()
         _save(d)
         when = ""
         if body["ready_by"]:
@@ -1212,7 +1298,14 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
         _record(d, kind, raw, "seller", {"packing": "Packing shuru", "delayed": "Der hogi", "handed_over": "Saamaan mil gaya"}[st]
                 + (f": {note}" if note else ""))
         d.state = TRANSITIONS[key]
+        if st == "handed_over":
+            d.handed_at, d.waiting = now(), "check"
         _save(d)
+        if st == "handed_over":
+            hrs = int(((d.quote or {}).get("terms") or {}).get("dispute_hours") or 48)
+            _publish(tenant, d, "check", f"{who}: order {d.number} aapko de diya gaya. Sab sahi mila? Kuch kam / kharab ho to "
+                     f"{hrs} ghante ke andar bataiye." + (f" {note}" if note else ""))
+            return {"ok": True, "status": d.state}
         say = {"packing": f"{who}: aapka order pack ho raha hai.", "delayed": f"{who}: order mein thodi der hogi.",
                "handed_over": f"{who}: order {d.number} aapko de diya gaya. ✓"}[st] + (f" {note}" if note else "")
         _publish(tenant, d, "info", say)
@@ -1241,7 +1334,11 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
             _release(tenant, held)
             from . import pick as pk
             pk.notify(tenant, d.id, "cancelled")
-        _publish(tenant, d, "info", f"{who} ne deal cancel ki: {reason}")
+        from . import dealpay
+        dealpay.after_cancel(tenant, d.id)
+        d = _get(tenant, d.id)
+        _publish(tenant, d, "info", f"{who} ne deal cancel ki: {reason}" +
+                 (f" {d.pay.get('refund_say')}" if (d.pay or {}).get("refund_say") else ""))
         return {"ok": True, "status": "cancelled"}
     raise DealError("unknown")
 
