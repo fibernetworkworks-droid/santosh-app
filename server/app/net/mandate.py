@@ -1,4 +1,4 @@
-"""v0.107 Standing order mandate: she signs ONE rule ("every Monday, the usual list, max Rs 20,000, till 31 Dec") and that
+"""v0.112 Standing order mandate: she signs ONE rule ("every Monday, the usual list, max Rs 20,000, till 31 Dec") and that
 signature is the tap for each run that stays inside it (research Diagram 1.7, AP2 "intent mandate": limits + expiry,
 signed once).
 

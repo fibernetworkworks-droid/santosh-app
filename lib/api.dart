@@ -1078,7 +1078,17 @@ class Api {
       _hm(await _send('PUT', '/api/net/stock', body: {'items': items}));
   Future<void> netStockDelete(String id) async => _send('DELETE', '/api/net/stock/$id');
   Future<Map<String, dynamic>> netDealRulesPut(Map<String, dynamic> body) async => _hm(await _send('PUT', '/api/net/deal_rules', body: body));
-  // ---- v0.107 compare quotes, trust tiers, standing orders, offers ----
+  // ---- v0.113 services and bookings ----
+  Future<Map<String, dynamic>> netBook(Map<String, dynamic> body) async =>
+      _hm(await _send('POST', '/api/net/bookings', body: body, timeout: const Duration(seconds: 60)));
+  Future<List<Map<String, dynamic>>> netBookings({String role = ''}) async =>
+      _hl((await _send('GET', '/api/net/bookings', query: {'role': role}))['bookings']);
+  Future<Map<String, dynamic>> netServiceRules() async => _hm(await _send('GET', '/api/net/service_rules'));
+  Future<Map<String, dynamic>> netServiceRulesPut(Map<String, dynamic> body) async =>
+      _hm(await _send('PUT', '/api/net/service_rules', body: body));
+  Future<Map<String, dynamic>> netDealPhoto(String id, String filename, List<int> bytes, {String stage = 'after'}) async =>
+      uploadFile('/api/net/deals/$id/photo', filename, bytes, fields: {'stage': stage}, timeout: const Duration(seconds: 120));
+  // ---- v0.112 compare quotes, trust tiers, standing orders, offers ----
   Future<Map<String, dynamic>> netRfqStart(Map<String, dynamic> body) async =>
       _hm(await _send('POST', '/api/net/rfqs', body: body, timeout: const Duration(seconds: 90)));
   Future<List<Map<String, dynamic>>> netRfqs({bool all = false}) async =>

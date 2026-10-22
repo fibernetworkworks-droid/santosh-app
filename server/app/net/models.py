@@ -62,7 +62,7 @@ class Link(Base):
     vip: Mapped[bool] = mapped_column(Boolean, default=False)
     verified: Mapped[bool] = mapped_column(Boolean, default=False)                 # safety code compared
     key_warning: Mapped[bool] = mapped_column(Boolean, default=False)
-    trust: Mapped[str] = mapped_column(String(10), default="")                      # v0.107 "" auto | trusted | known (her choice)
+    trust: Mapped[str] = mapped_column(String(10), default="")                      # v0.112 "" auto | trusted | known (her choice)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 

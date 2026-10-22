@@ -1,4 +1,4 @@
-"""v0.107 Hoola Deals phase 4: trust tiers, verified-business credential, compare quotes, standing order mandate,
+"""v0.112 Hoola Deals phase 4: trust tiers, verified-business credential, compare quotes, standing order mandate,
 promo opt-in.
 
 Meghana ("default") / Ravi ("ravi") buy; Kunal ("kunal") and Swati ("swati") sell."""

@@ -1121,4 +1121,4 @@ from . import deal as _deal  # noqa: E402,F401  (v0.102 deal_ask / deal_quote / 
 from . import pick as _pick  # noqa: E402,F401  (v0.105 pick_task / pick_update / ...)
 from . import dealpay as _dealpay  # noqa: E402,F401  (v0.106 payments / disputes; steps of the deal kinds)
 from . import khata as _khata  # noqa: E402,F401  (v0.106 khata_pay / khata_paid / khata_receipt)
-from . import promo as _promo  # noqa: E402,F401  (v0.107 promo_optin / promo_optout / promo_offer)
+from . import promo as _promo  # noqa: E402,F401  (v0.112 promo_optin / promo_optout / promo_offer)

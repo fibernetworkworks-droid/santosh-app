@@ -406,8 +406,10 @@ async def mail_jobs() -> None:
         jobs.append(hdealpay.tick)              # v0.106 unaccepted orders, unpaid cards, cancel requests, disputes, auto-close
         jobs.append(hkhata.tick)                # v0.106 khata due-date reminders
         from .net import mandate as hmandate, rfq as hrfq
-        jobs.append(hrfq.tick)                  # v0.107 compare windows that ended -> the table
-        jobs.append(hmandate.tick)              # v0.107 standing orders: runs, holds that are over
+        jobs.append(hrfq.tick)                  # v0.112 compare windows that ended -> the table
+        jobs.append(hmandate.tick)              # v0.112 standing orders: runs, holds that are over
+        from .net import booking as hbooking
+        jobs.append(hbooking.tick)              # v0.113 booking reminders (1 day / 2 h before, her morning)
         if int(t) // 60 % 60 == 0:              # hourly: old quarantined files and shares
             from .net import share as hsh
             jobs.append(hsh.cleanup)

@@ -236,9 +236,7 @@ def card_digest(kind: str, target: str, tenant: str) -> tuple[str, dict[str, Any
         if card is None:
             raise ApproveError("Yeh card ab baaki nahi hai.")
         show = {"title": card.get("title", ""), "amount": card.get("amount", ""), "payee": card.get("payee", "")}
-    else:
-        raise ApproveError("kind = bazar | studio | deal | ads")
-    elif kind == "mandate":                       # v0.107 a standing order she signs once
+    elif kind == "mandate":                       # v0.112 a standing order she signs once
         from .net import mandate as md
         try:
             card = md.sign_card(tenant, target)
@@ -248,7 +246,7 @@ def card_digest(kind: str, target: str, tenant: str) -> tuple[str, dict[str, Any
                 "items": [i.get("name", "") for i in card.get("items") or []], "when": card.get("when", ""),
                 "until": card.get("until", ""), "tolerance": card.get("tolerance", "")}
     else:
-        raise ApproveError("kind = bazar | studio | deal | mandate")
+        raise ApproveError("kind = bazar | studio | deal | ads | mandate")
     return hashlib.sha256(json.dumps(show, sort_keys=True, ensure_ascii=False).encode()).hexdigest(), show
 
 
@@ -269,8 +267,7 @@ def needed(tenant: str, kind: str, target: str) -> bool:
 
 
 def challenge(tenant: str, kind: str, target: str) -> dict[str, Any]:
-    if kind in ("bazar", "studio", "deal", "ads"):
-    if kind in ("bazar", "studio", "deal", "mandate"):
+    if kind in ("bazar", "studio", "deal", "ads", "mandate"):
         digest, show = card_digest(kind, target, tenant)
     elif kind == "remove":
         digest, show = hashlib.sha256(f"remove|{target}".encode()).hexdigest(), {"title": "Phone hatana"}

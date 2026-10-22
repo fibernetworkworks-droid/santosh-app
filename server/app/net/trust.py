@@ -1,4 +1,4 @@
-"""v0.107 Trust tiers and the verified-business credential (Hoola Deals phase 4).
+"""v0.112 Trust tiers and the verified-business credential (Hoola Deals phase 4).
 
 Trust tiers (TRAI TCCCPR 2025 / WhatsApp Business opt-in rules copied as code, research Diagram 0.3):
   blocked   her own block, or a sender reported by 5+ different owners in 10 days ("limited": deal lists cut to 3 a day,

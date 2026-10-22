@@ -1,4 +1,4 @@
-"""v0.107 Compare quotes: the same list to 2-5 sellers, a fixed wait, one table sorted by cost in code (research Diagram 1.3).
+"""v0.112 Compare quotes: the same list to 2-5 sellers, a fixed wait, one table sorted by cost in code (research Diagram 1.3).
 
 AI buyers grab the first reply and do worse with too many options, so her Hoola does NOT show quotes as they arrive:
 each seller gets an ordinary deal_ask (tag {rfq: id} stays on her side only - no seller learns who else was asked or what

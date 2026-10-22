@@ -151,12 +151,14 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
     if kind == "kalam_publish" and not p.get("decided"):
         return (f"{name}: publish karne ki haan?", f"{p.get('number', '')} {p.get('kind_label', '')}: {p.get('title', '')} · {p.get('where_label', '')}"[:300])
     if kind == "hoola_deal" and p.get("card") in ("quote", "confirm", "accept", "ready", "pack", "pay", "money", "receipt",
-                                                   "check", "dispute", "resolve", "cancel_req", "mandate"):
+                                                   "check", "dispute", "resolve", "cancel_req", "mandate",
+                                                   "booked", "estimate", "photo", "slots", "resched", "warranty"):
         head = {"quote": "list aayi, quote bhejun?", "confirm": "quote aaya, aapki haan?", "accept": "order aaya, pakka karein?",
                 "ready": "parcel taiyaar", "pack": "order pakka, pack karna hai", "pay": "payment card aaya",
                 "money": "graahak ne paisa bheja?", "receipt": "rasid aayi", "check": "sab sahi mila?",
                 "dispute": "shikayat aayi", "resolve": "shikayat ka jawab", "cancel_req": "cancel ki request",
-                "mandate": "standing order khud pakka hoga"}[p["card"]]
+                "mandate": "standing order khud pakka hoga", "booked": "booking pakki", "estimate": "extra kaam: haan / na?",
+                "photo": "kaam ki photo", "slots": "naye samay", "resched": "samay badalna hai", "warranty": "warranty shikayat"}[p["card"]]
         return (f"{name}: {head}", f"{p.get('with', '')} · {p.get('say', '')}"[:300])
     if kind == "hoola_rfq" and p.get("card") == "compare":
         return (f"{name}: quotes ki tulna taiyaar", str(p.get("say") or "")[:300])

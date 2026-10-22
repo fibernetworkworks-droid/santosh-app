@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.112.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.113.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -2151,6 +2151,18 @@ class DealActIn(BaseModel):
     accept: bool = True
     yes: bool = False
     items: list | None = None
+    # v0.113 bookings / job card
+    slot: str = ""
+    address: str = ""
+    slots: list | None = None
+    estimate: dict | None = None
+    eta_minutes: int | None = None
+    summary: str = ""
+    warranty_days: int | None = None
+    covers: str = ""
+    purpose: str = "resched"
+    ids_yes: list | None = None
+    ids_no: list | None = None
 
 
 class StockIn(BaseModel):
@@ -2188,9 +2200,11 @@ def net_deal_act(deal_id: str, action: str, body: DealActIn, tenant: str = Depen
     from .net import deal as dl
     if action == "confirm":
         _fingerprint(tenant, "deal", deal_id, body.proof)
-        return _net(dl.confirm, tenant, deal_id, body.v, body.mode, by_tap=True, pay=body.pay)
+        return _net(dl.confirm, tenant, deal_id, body.v, body.mode, by_tap=True, pay=body.pay, slot=body.slot,
+                    address=body.address)
     if action == "send_quote":
-        return _net(dl.send_quote, tenant, deal_id, body.lines, body.note, body.valid_minutes)
+        return _net(dl.send_quote, tenant, deal_id, body.lines, body.note, body.valid_minutes, slots=body.slots,
+                    estimate=body.estimate)
     if action == "accept":
         return _net(dl.accept, tenant, deal_id, body.ready_by, body.note)
     if action == "reject":
@@ -2204,7 +2218,8 @@ def net_deal_act(deal_id: str, action: str, body: DealActIn, tenant: str = Depen
     if action == "cancel":
         return _net(dl.cancel, tenant, deal_id, body.reason or body.note)
     from .net import dealpay as dp                       # v0.106 money, cancel requests, the check, disputes
-    from .net import mandate as md                       # v0.107 "is baar rok do" on a standing-order run
+    from .net import mandate as md                       # v0.112 "is baar rok do" on a standing-order run
+    from .net import job as jb                           # v0.113 the service job card
     acts = {
         "pay_link": lambda: dp.pay_link(tenant, deal_id),
         "trust_payee": lambda: dp.trust_payee(tenant, deal_id),
@@ -2218,11 +2233,77 @@ def net_deal_act(deal_id: str, action: str, body: DealActIn, tenant: str = Depen
         "dispute_close": lambda: dp.dispute_close(tenant, deal_id, body.accept, body.note),
         "cancel_answer": lambda: dp.cancel_answer(tenant, deal_id, body.yes, body.note),
         "standing_hold": lambda: md.hold_once(tenant, deal_id),
+        # v0.113 job card (approve / pick_slot = her tap here)
+        "on_the_way": lambda: jb.on_the_way(tenant, deal_id, body.eta_minutes, body.note),
+        "arrived": lambda: jb.arrived(tenant, deal_id, body.note),
+        "estimate": lambda: jb.estimate(tenant, deal_id, body.lines or body.items),
+        "approve": lambda: jb.approve(tenant, deal_id, body.ids_yes, body.ids_no, by_tap=True),
+        "done": lambda: jb.done(tenant, deal_id, body.summary or body.note, body.warranty_days, body.covers),
+        "offer_slots": lambda: jb.offer_slots(tenant, deal_id, body.purpose, body.slots),
+        "pick_slot": lambda: jb.pick_slot(tenant, deal_id, body.slot, by_tap=True),
+        "resched": lambda: jb.ask_resched(tenant, deal_id, body.note),
+        "warranty": lambda: jb.claim(tenant, deal_id, body.note),
+        "warranty_done": lambda: jb.warranty_done(tenant, deal_id, body.summary or body.note),
     }
     if action in acts:
         return _net(acts[action])
     raise HTTPException(400, "action: confirm, send_quote, accept, reject, packing, ready, handed_over, cancel, "
                              + ", ".join(acts))
+
+
+@app.post("/api/net/deals/{deal_id}/photo", dependencies=[Depends(require_key)])
+async def net_deal_photo(deal_id: str, file: UploadFile = File(...), stage: str = Form("after"),
+                         tenant: str = Depends(current_tenant)):
+    """v0.113 a proof photo of the work (camera / gallery) -> kept for the job + sent to the customer's Hoola."""
+    from .net import job as jb
+    data = await file.read()
+    if len(data) > 12 * 1024 * 1024:
+        raise HTTPException(413, "Photo 12 MB se badi hai.")
+    return _net(jb.add_photo, tenant, deal_id, data, file.filename or "photo.jpg", stage)
+
+
+@app.get("/api/net/deals/{deal_id}/photos/{pid}", dependencies=[Depends(require_key)])
+def net_deal_photo_get(deal_id: str, pid: str, tenant: str = Depends(current_tenant)):
+    from .net import job as jb
+    return FileResponse(_net(jb.photo_file, tenant, deal_id, pid), media_type="image/jpeg")
+
+
+class BookIn(BaseModel):
+    to: str
+    what: str
+    items: list = Field(default_factory=list)
+    when: str = ""
+    area: str = ""
+    note: str = ""
+    at: str = ""
+
+
+@app.post("/api/net/bookings", dependencies=[Depends(require_key)])
+def net_book(body: BookIn, tenant: str = Depends(current_tenant)):
+    """v0.113 ask a service / appointment (only the work, area and preferred time go; the address only at booking)."""
+    from .net import deal as dl
+    return _net(dl.ask, tenant, body.to, body.items, "pickup", "", body.note, "", body.area,
+                service={"what": body.what, "when": body.when, "area": body.area, "at": body.at})
+
+
+@app.get("/api/net/bookings", dependencies=[Depends(require_key)])
+def net_bookings(role: str = "", tenant: str = Depends(current_tenant)):
+    from .net import deal as dl
+    return {"bookings": [d for d in dl.deals(tenant, "", role, 120) if d.get("service")]}
+
+
+@app.get("/api/net/service_rules", dependencies=[Depends(require_key)])
+def net_service_rules(tenant: str = Depends(current_tenant)):
+    from .net import booking as bk
+    return bk.rules_view(tenant) | {"free_slots": bk.free_slots(tenant)}
+
+
+@app.put("/api/net/service_rules", dependencies=[Depends(require_key)])
+def net_service_rules_put(body: dict, tenant: str = Depends(current_tenant)):
+    from .net import booking as bk
+    allowed = ("days", "open_at", "close_at", "slot_minutes", "capacity", "lead_minutes", "horizon_days", "visit_fee",
+               "visit_gst", "visit_adjust", "at", "warranty_days", "prefix", "closed_on")
+    return _net(bk.set_rules, tenant, **{k: body[k] for k in allowed if k in body})
 
 
 @app.get("/api/net/deals/{deal_id}/receipt.pdf", dependencies=[Depends(require_key)])
@@ -2244,7 +2325,7 @@ class KhataIn(BaseModel):
     utr: str = ""
 
 
-# ---------------------------------------------------------------- v0.107 compare, trust, standing orders, offers
+# ---------------------------------------------------------------- v0.112 compare, trust, standing orders, offers
 class RfqIn(BaseModel):
     to: list = Field(default_factory=list)
     items: list = Field(default_factory=list)

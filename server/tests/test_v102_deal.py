@@ -91,7 +91,7 @@ def test_rules_auto_quote_auto_accept_and_partial_stock(env):
     _connect()
     dl = _stock(qty_oil=5)
     dl.set_rules("kunal", auto_quote="connected", auto_accept=True, auto_accept_max=50000, place="Godown gate")
-    from app.net import trust                       # v0.107 auto accept only for her trusted tier (the default rule)
+    from app.net import trust                       # v0.112 auto accept only for her trusted tier (the default rule)
     trust.set_trust("kunal", "@meghana.fnw", "trusted")
     # oil is short (5 of 12): an incomplete quote never goes by itself, it waits for his card
     dl.ask("default", "@kunal.raj", LIST)

@@ -647,10 +647,11 @@ def init_db(url: str | None = None):
     from .net import pick as _net_pick  # noqa: F401  (v0.105 pick tasks to packers)
     from .net import dealpay as _net_dealpay  # noqa: F401  (v0.106 payee pins)
     from .net import khata as _net_khata  # noqa: F401  (v0.106 khata accounts / entries / cards)
-    from .net import trust as _net_trust  # noqa: F401  (v0.107 trust reports)
-    from .net import rfq as _net_rfq  # noqa: F401  (v0.107 compare quotes)
-    from .net import mandate as _net_mandate  # noqa: F401  (v0.107 standing orders)
-    from .net import promo as _net_promo  # noqa: F401  (v0.107 offers, opt-in)
+    from .net import trust as _net_trust  # noqa: F401  (v0.112 trust reports)
+    from .net import rfq as _net_rfq  # noqa: F401  (v0.112 compare quotes)
+    from .net import mandate as _net_mandate  # noqa: F401  (v0.112 standing orders)
+    from .net import promo as _net_promo  # noqa: F401  (v0.112 offers, opt-in)
+    from .net import booking as _net_booking  # noqa: F401  (v0.113 service hours / slots)
     from .bt import models as _bt_models  # noqa: F401
     from . import procedures as _procedures  # noqa: F401
     from .shop import service as _shop  # noqa: F401

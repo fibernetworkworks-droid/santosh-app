@@ -143,7 +143,7 @@ DEFAULT_RULES: dict[str, Any] = {
                 # v0.106 money: settle before handover, cash / UPI at the counter, udhaar (khata) for chosen customers,
                 # free-cancel minutes after she accepts, hours the buyer has to complain after handover
                 "pay_before": "handover", "counter_ok": True, "khata": False, "cancel_minutes": 30, "dispute_hours": 48,
-                # v0.107 who her Hoola may accept orders from by itself (trust tiers), and whether offers may go out
+                # v0.112 who her Hoola may accept orders from by itself (trust tiers), and whether offers may go out
                 "auto_accept_who": "trusted"},
 }
 SELL_AUTO_QUOTE = ("off", "trusted", "connected")

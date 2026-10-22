@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../state.dart';
 import 'glass.dart';
 
-/// v0.107 Hoola Deals phase 4: compare quotes (one code-sorted table), standing orders signed once, offers only from
+/// v0.112 Hoola Deals phase 4: compare quotes (one code-sorted table), standing orders signed once, offers only from
 /// shops she opted in to. Every order still goes only from her tap, or from a standing order she signed herself.
 
 String _s(dynamic v) => v == null ? '' : '$v';

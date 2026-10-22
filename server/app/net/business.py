@@ -42,9 +42,9 @@ class Business(Base):
     auto_assign: Mapped[bool] = mapped_column(Boolean, default=False)
     gstin: Mapped[str] = mapped_column(String(20), default="")
     verification: Mapped[str] = mapped_column(String(12), default="none")  # none | requested | verified | rejected
-    udyam: Mapped[str] = mapped_column(String(24), default="")             # v0.107 optional Udyam registration
-    verified_upi: Mapped[str] = mapped_column(String(80), default="")      # v0.107 UPI ID the operator matched to the bank name
-    credential: Mapped[dict] = mapped_column(JSON, default=dict)           # v0.107 server-signed verified-business credential
+    udyam: Mapped[str] = mapped_column(String(24), default="")             # v0.112 optional Udyam registration
+    verified_upi: Mapped[str] = mapped_column(String(80), default="")      # v0.112 UPI ID the operator matched to the bank name
+    credential: Mapped[dict] = mapped_column(JSON, default=dict)           # v0.112 server-signed verified-business credential
     created_at: Mapped[Any] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -207,7 +207,7 @@ def request_verification(tenant: str, gstin: str, udyam: str = "") -> dict[str, 
 def operator_verify(tenant: str, approve: bool, bank_name_ok: bool = False) -> dict[str, Any]:
     """Only the server owner (operator) calls this, after checking the documents. `bank_name_ok` = she checked that the
     business's UPI ID (Khareed aur bikri > Niyam) belongs to a bank account in the business's name: only then the
-    credential names that UPI ID, and buyers' Hoolas show the payee as verified (v0.107)."""
+    credential names that UPI ID, and buyers' Hoolas show the payee as verified (v0.112)."""
     upi = ""
     if approve and bank_name_ok:
         from .deal import rules as deal_rules
@@ -239,7 +239,7 @@ def verification_queue() -> list[dict[str, Any]]:
         out = [{"tenant": b.tenant_id, "name": b.name, "gstin": b.gstin, "area": b.area, "category": b.category,
                 "udyam": b.udyam or ""} for b in rows]
     from .deal import rules as deal_rules
-    for x in out:                                # v0.107 the UPI ID to match against the bank account name
+    for x in out:                                # v0.112 the UPI ID to match against the bank account name
         x["upi_id"] = deal_rules(x["tenant"]).upi_id or ""
         x["payee_name"] = deal_rules(x["tenant"]).payee_name or ""
     return out

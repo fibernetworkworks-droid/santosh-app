@@ -1,4 +1,4 @@
-"""v0.107 Offers (promotions) between Hoolas: opt-in only, one-tap opt-out, kept apart from deal messages.
+"""v0.112 Offers (promotions) between Hoolas: opt-in only, one-tap opt-out, kept apart from deal messages.
 
 TRAI TCCCPR 2025 and WhatsApp Business rules agree: promotions need the person's opt-in for that sender / category, an
 easy opt-out every time, and a separate channel from transactional messages; 5 complaints in 10 days cut the sender off.

@@ -186,7 +186,10 @@ def at_accept(tenant: str, d) -> dict[str, Any]:
 
 
 def after_accept(tenant: str, d) -> None:
-    """Khata: the order goes into her khata book. UPI: the locked payment request goes by itself (a card, not money)."""
+    """Khata: the order goes into her khata book. UPI: the locked payment request goes by itself (a card, not money).
+    (v0.113 a booking: both wait for the bill when the work is done - job.py.)"""
+    if (d.quote or {}).get("service"):
+        return
     p = d.pay or {}
     if p.get("choice") == "khata":
         from . import khata
@@ -205,7 +208,7 @@ def buyer_at_accept(tenant: str, d, raw: dict[str, Any]) -> dict[str, Any]:
     pay = {"choice": choice, "status": "khata" if choice == "khata" else "due", "due": _r2(q.get("total")), "paid": 0.0,
            "payee": (q.get("terms") or {}).get("payee") or {}, "requests": [], "claims": [], "receipts": [], "refunds": [],
            "refund_due": 0.0, "due_on": due_on}
-    if choice == "khata":
+    if choice == "khata" and not q.get("service"):     # v0.113 a booking goes into the khata with the bill
         from . import khata
         khata.add(tenant, d.peer, "debit", pay["due"], raw.get("number") or "", due_on, side="buyer")
     return pay
@@ -226,7 +229,8 @@ def after_cancel(tenant: str, deal_id: str) -> None:
     p = dict(d.pay or {})
     if not p:
         return
-    if p.get("status") == "khata" and not p.get("khata_reversed"):
+    booked = not (d.quote or {}).get("service") or p.get("khata_booked")      # v0.113 a booking is in the khata only after the bill
+    if p.get("status") == "khata" and not p.get("khata_reversed") and booked:
         from . import khata
         khata.add(tenant, d.peer, "credit", float(p.get("due") or 0), d.number + " cancel", "", side=d.role)
         p["khata_reversed"] = True
@@ -593,7 +597,7 @@ def receive_step(tenant: str, d, kind: str, raw: dict[str, Any], who: str, key) 
             raise E("ref chahiye")
         dl._record(d, kind, raw, "seller", f"Payment card: {dl.inr(amt)}")
         pin = _pin(tenant, d.peer)
-        from . import trust                      # v0.107 only the checked credential can call this payee verified
+        from . import trust                      # v0.112 only the checked credential can call this payee verified
         vbc = (d.quote or {}).get("vbc") or {}
         p["payee"] = {"upi_id": vpa, "name": name, "business_verified": trust.payee_ok(vbc, vpa)}
         p["requests"] = (p.get("requests") or []) + [{"ref": ref, "amount": _r2(amt), "at": now().isoformat(), "part": part}]

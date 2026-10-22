@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'booking_screen.dart';
 import 'market_screen.dart';
 
 /// v0.102 Hoola Deals: buying a list of items from another avatar, and selling to one.
@@ -56,6 +57,7 @@ String _when(dynamic iso) {
 const _stateColor = {
   'asked': C.chip, 'quoted': C.accent, 'confirmed': C.violet, 'accepted': C.teal, 'packing': C.teal, 'ready': C.ok,
   'handed_over': C.ok, 'rejected': C.bad, 'cancelled': C.muted, 'expired': C.muted, 'disputed': C.warn, 'closed': C.ok,
+  'on_way': C.teal, 'working': C.violet,
 };
 
 const _payWord = {
@@ -185,6 +187,8 @@ class _DealCardState extends State<DealCard> {
   bool _busy = false;
   final _code = TextEditingController();
   String _pay = '';
+  String _slot = '';
+  final _addr = TextEditingController();
   bool _collect = false;
   String _collectMode = 'cash';
 
@@ -199,6 +203,7 @@ class _DealCardState extends State<DealCard> {
   @override
   void dispose() {
     _code.dispose();
+    _addr.dispose();
     super.dispose();
   }
 
@@ -476,11 +481,32 @@ class _DealCardState extends State<DealCard> {
                 onSelected: (_) => setState(() => _pay = o)),
         ]));
       }
+      final svc = q['service'] is Map;              // v0.113 a booking: her slot (+ address for work at her place)
+      final slots = List<String>.from((q['slots'] as List?) ?? const []);
+      final atHome = _s(_m(q['service'])['at']) == 'their_place';
+      if (svc) {
+        final est = _m(q['estimate']);
+        if (est.isNotEmpty) add(Text('Andaaza: ${_inr(est['min'])} - ${_inr(est['max'])} (extra kaam aapki haan se hi)',
+            style: const TextStyle(fontSize: 12.5, color: C.muted)));
+        add(Wrap(spacing: 6, runSpacing: 6, children: [
+          for (final sl in slots)
+            ChoiceChip(label: Text(slotSay(sl)), selected: _slot == sl, onSelected: (_) => setState(() => _slot = sl)),
+        ]));
+        if (atHome) {
+          add(TextField(
+              controller: _addr,
+              minLines: 1,
+              maxLines: 3,
+              decoration: const InputDecoration(labelText: 'Pura pata (sirf booking par unhe jaayega)', isDense: true)));
+        }
+      }
       add(GradientButton(
-          label: 'Haan, confirm · ${_inr(q['total'])}',
+          label: svc ? 'Haan, ${_slot.isEmpty ? 'samay chuniye' : slotSay(_slot)} book karo' : 'Haan, confirm · ${_inr(q['total'])}',
           icon: Icons.check_rounded,
           height: 50,
-          onTap: _busy ? null : () => _act('confirm', {'v': q['v'], 'pay': pick})));
+          onTap: _busy || (svc && _slot.isEmpty)
+              ? null
+              : () => _act('confirm', {'v': q['v'], 'pay': pick, if (svc) 'slot': _slot, if (svc && atHome) 'address': _addr.text.trim()})));
     }
     final pay = _m(v['pay']);
     final left = _d(pay['due_left']);
@@ -732,6 +758,7 @@ class _DealCardState extends State<DealCard> {
               style: const TextStyle(fontSize: 13, height: 1.4)),
         ],
         _money(),
+        if (v['service'] == true) JobPanel(v: v, app: widget.app, onFresh: (d) => setState(() => _fresh = d)),
         _disputeBox(),
         if (_s(v['reason']).isNotEmpty && (st == 'rejected' || st == 'cancelled')) ...[
           const SizedBox(height: 6),
@@ -1427,7 +1454,7 @@ class _DealsScreenState extends State<DealsScreen> {
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
-        length: 9,
+        length: 10,
         child: Scaffold(
           appBar: AppBar(
             title: const Text('Khareed aur bikri'),
@@ -1436,6 +1463,7 @@ class _DealsScreenState extends State<DealsScreen> {
               Tab(text: 'Khareed${_buy.isEmpty ? '' : ' (${_buy.length})'}'),
               Tab(text: 'Bikri${_sell.isEmpty ? '' : ' (${_sell.length})'}'),
               Tab(text: 'Packing${_picks.isEmpty ? '' : ' (${_picks.length})'}'),
+              const Tab(text: 'Booking'),
               const Tab(text: 'Tulna'),
               const Tab(text: 'Standing'),
               const Tab(text: 'Offers'),
@@ -1472,6 +1500,10 @@ class _DealsScreenState extends State<DealsScreen> {
                             child: PickCard(key: ValueKey('pk${p['id']}${p['status']}'), v: p, app: app, onChanged: _load),
                           ),
                       ]),
+                      BookingTab(
+                          app: app,
+                          cardBuilder: (d, reload) =>
+                              DealCard(key: ValueKey('bk${d['id']}${d['state']}${d['updated']}'), v: d, app: app, onChanged: reload)),
                       CompareTab(app: app),
                       StandingTab(app: app),
                       OffersTab(app: app),
