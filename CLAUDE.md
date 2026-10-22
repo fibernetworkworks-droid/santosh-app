@@ -14,10 +14,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
-- `stable-2026-10-22` = commit 74f416f = v0.119.0, APK release `v0.119.0-b187`; owner confirmed "working perfectly" on her phone
+- Branch `stable-2026-10-22` (git tags can't be pushed from the sandbox) = commit 74f416f = v0.119.0, APK release `v0.119.0-b187`; owner confirmed "working perfectly" on her phone
   (22 Oct 2026, 6:58 pm IST). Every later version is measured against this one.
 - APK: https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.119.0-b187/app-release.apk
-- VPS rollback (server only, data kept): `cd ~/santosh_app && git fetch --tags && git checkout stable-2026-10-22 &&
+- VPS rollback (server only, data kept): `cd ~/santosh_app && git fetch origin stable-2026-10-22 && git checkout stable-2026-10-22 &&
   cp -r ~/santosh_app/server/app ~/apps/santosh-core/ && pm2 restart santosh --update-env`; back to latest: `git checkout main && git pull`
   then the same copy + restart. New tables added after this point are left in the DB untouched (SQLAlchemy ignores them).
 - Before risky changes on the VPS: `cp ~/apps/santosh-core/santosh.db ~/apps/santosh-core/santosh.db.bak-$(date +%F)`.
