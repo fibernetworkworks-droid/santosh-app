@@ -939,6 +939,17 @@ class Api {
       Map<String, dynamic>.from(await _send('GET', '/api/sites-library', query: {'industry': industry, 'q': q, 'offset': '$offset'}) as Map);
   Future<List<Map<String, dynamic>>> siteLeads(String id) async => List<Map<String, dynamic>>.from(
       (((await _send('GET', '/api/sites/$id/leads')) as Map)['leads'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  // ---- v0.128 App Sahayak (every screen designed + tap-through prototype before the build) ----
+  Future<Map<String, dynamic>> appAll() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/apps', timeout: const Duration(seconds: 45)) as Map);
+  Future<Map<String, dynamic>> appNew(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/apps', body: body, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> appGet(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/apps/$id') as Map);
+  Future<Map<String, dynamic>> appAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/apps/$id/$action', body: body, timeout: const Duration(seconds: 120)) as Map);
+  Future<Map<String, dynamic>> appDelete(String id) async => Map<String, dynamic>.from(await _send('DELETE', '/api/apps/$id') as Map);
+  Future<Map<String, dynamic>> appLibrary({String industry = '', String q = '', int offset = 0}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/apps-library', query: {'industry': industry, 'q': q, 'offset': '$offset'}) as Map);
   // ---- v0.122 Website hosting: launch / rollback / domain / DNS / her keys ----
   Future<Map<String, dynamic>> siteHosting(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/sites/$id/hosting') as Map);
   Future<Map<String, dynamic>> siteDns(String planId, String action, Map<String, dynamic> body) async =>

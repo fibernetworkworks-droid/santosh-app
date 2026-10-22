@@ -674,3 +674,10 @@ from .site_tools import SITE_HANDLERS, SITE_LABELS, SITE_TOOLS  # noqa: E402
 TOOLS.extend(SITE_TOOLS)
 TOOL_LABELS.update(SITE_LABELS)
 HANDLERS.update(SITE_HANDLERS)
+
+# v0.128 App Sahayak (native app designer: 1 lakh app briefs, every screen designed + tap-through prototype before the build)
+from .app_tools import APP_HANDLERS, APP_LABELS, APP_TOOLS  # noqa: E402
+
+TOOLS.extend(APP_TOOLS)
+TOOL_LABELS.update(APP_LABELS)
+HANDLERS.update(APP_HANDLERS)

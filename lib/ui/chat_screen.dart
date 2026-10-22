@@ -23,6 +23,7 @@ import 'ads_screen.dart';
 import 'brand_screen.dart';
 import 'site_hosting.dart';
 import 'site_screen.dart';
+import 'app_design_screen.dart';
 import 'kalam_screen.dart';
 import 'seo_screen.dart';
 import 'thok_screen.dart';
@@ -621,6 +622,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return BrandDesignCard(v: it.data, app: app);
     case 'site_board':
       return SiteBoardCard(v: it.data, app: app);
+    case 'app_board':
+      return AppBoardCard(v: it.data, app: app);
     case 'site_lead':
       return SiteLeadCard(v: it.data, app: app);
     case 'site_launch':

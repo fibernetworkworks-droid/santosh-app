@@ -643,6 +643,7 @@ def init_db(url: str | None = None):
     from .site import care as _site_care  # noqa: F401  (v0.124 visits / uptime per day, monthly care notes)
     from .site import github as _site_github  # noqa: F401  (v0.124 GitHub export of her site)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
+    from .appmaker import models as _app_models  # noqa: F401  (v0.128 App Sahayak designs)
     from .net import models as _net_models  # noqa: F401
     from .net import share as _net_share  # noqa: F401
     from .net import groups as _net_groups  # noqa: F401

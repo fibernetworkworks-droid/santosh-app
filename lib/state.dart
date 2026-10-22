@@ -300,6 +300,8 @@ class Santosh extends ChangeNotifier {
   int brandTick = 0;                           // v0.118 bumps on brand events (Brand screen refreshes)
   int siteTick = 0;                            // v0.121 bumps on website events (Website screens refresh)
   final Map<String, FeedItem> _siteCards = {}; // v0.121 one card per website, updated in place
+  int appTick = 0;                             // v0.128 bumps on app design events (App designer screens refresh)
+  final Map<String, FeedItem> _appCards = {};  // v0.128 one card per app design, updated in place
   final Map<String, FeedItem> _brandCards = {}; // v0.118 one card per design, updated in place
   int adsTick = 0;                             // v0.108 bumps on ads events (the Ads screen refreshes)
   final Map<String, FeedItem> _adsPlans = {};   // v0.108 one card per budget plan, changes updated in place
@@ -1297,6 +1299,26 @@ class Santosh extends ChangeNotifier {
           Device.instance.showNow('$aName: website ${p['number'] ?? ''}', '${p['say'] ?? ''}');
         }
         siteTick++;
+        break;
+      case 'app_board':
+        final aid = '${p['id'] ?? ''}';
+        final adata = Map<String, dynamic>.from(p);
+        final ac = _appCards[aid];
+        if (ac != null) {
+          ac.data = adata;
+          if (p['push'] == true) {
+            feed.remove(ac);
+            feed.add(ac);
+          }
+        } else if (aid.isNotEmpty) {
+          final it = FeedItem('app_board', adata);
+          _appCards[aid] = it;
+          feed.add(it);
+        }
+        if (p['push'] == true && inBackground && !_replaying && !pushOn) {
+          Device.instance.showNow('$aName: app ${p['number'] ?? ''}', '${p['say'] ?? ''}');
+        }
+        appTick++;
         break;
       case 'site_launch':
       case 'site_dns':

@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.127.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.128.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -165,7 +165,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -6202,6 +6202,124 @@ async def sites_github_push(eid: str, body: dict, tenant: str = Depends(current_
 async def sites_github_cancel(eid: str, tenant: str = Depends(current_tenant)):
     from .site import github as GH
     return await asyncio.to_thread(_care, GH.cancel, tenant, eid)
+
+
+# ---------------------------------------------------------------- v0.128 App Sahayak (every screen designed + prototype first)
+def _appd(fn, *a, **k):
+    from .appmaker import service as A
+    try:
+        return fn(*a, **k)
+    except A.AppError as e:
+        raise HTTPException(400, str(e))
+    except KeyError as e:
+        raise HTTPException(404, f"not found: {e}")
+
+
+@app.get("/api/apps", dependencies=[Depends(require_key)])
+async def apps_all(tenant: str = Depends(current_tenant)):
+    from .appmaker import service as A
+    return await asyncio.to_thread(_appd, A.everything, tenant)
+
+
+@app.post("/api/apps", dependencies=[Depends(require_key)])
+async def apps_new(body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import service as A
+    ans = body.get("answers") if isinstance(body.get("answers"), dict) else None
+    return await asyncio.to_thread(_appd, A.new, tenant, str(body.get("brief") or ""), str(body.get("conversation_id") or ""),
+                                   str(body.get("name") or ""), str(body.get("field") or ""), str(body.get("goal") or ""),
+                                   str(body.get("style") or ""), ans)
+
+
+@app.get("/api/apps-library", dependencies=[Depends(require_key)])
+async def apps_library(industry: str = "", q: str = "", offset: int = 0, limit: int = 60):
+    from .appmaker import library as AL
+    return await asyncio.to_thread(AL.browse, industry, q, max(1, min(limit, 200)), max(0, offset))
+
+
+@app.get("/api/apps-library/brief", dependencies=[Depends(require_key)])
+async def apps_library_brief(field: str, goal: str = "", style: str = ""):
+    from .appmaker import library as AL
+    try:
+        return await asyncio.to_thread(AL.brief, field, goal, style)
+    except KeyError:
+        raise HTTPException(404, "field not found")
+
+
+@app.get("/api/apps-library/understand", dependencies=[Depends(require_key)])
+async def apps_library_understand(q: str):
+    from .appmaker import library as AL
+    return await asyncio.to_thread(AL.understand, q)
+
+
+@app.get("/api/apps/{ref}", dependencies=[Depends(require_key)])
+async def apps_get(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import service as A
+    return await asyncio.to_thread(_appd, A.get, tenant, ref)
+
+
+@app.delete("/api/apps/{ref}", dependencies=[Depends(require_key)])
+async def apps_delete(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import service as A
+    return await asyncio.to_thread(_appd, A.delete, tenant, ref)
+
+
+@app.get("/api/apps/{ref}/spec", dependencies=[Depends(require_key)])
+async def apps_spec(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import service as A
+    return await asyncio.to_thread(_appd, A.spec, tenant, ref)
+
+
+@app.post("/api/apps/{ref}/{action}", dependencies=[Depends(require_key)])
+async def apps_act(ref: str, action: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """answers | plan (her Haan) | look (her choice) | change | approve (her 'Design pakka' tap, with the card's hash) | stop | resume."""
+    from .appmaker import service as A
+    body = body or {}
+    conv = str(body.get("conversation_id") or "")
+    if action == "answers":
+        ans = body.get("answers") if isinstance(body.get("answers"), dict) else {}
+        return await asyncio.to_thread(_appd, A.answer, tenant, ref, ans)
+    if action == "plan":
+        drop = body.get("drop") if isinstance(body.get("drop"), list) else None
+        return await asyncio.to_thread(_appd, A.approve_plan, tenant, ref, conv, drop)
+    if action == "look":
+        cf = body.get("colors_from")
+        return await asyncio.to_thread(_appd, A.choose_look, tenant, ref, int(body.get("index") or 0),
+                                       int(cf) if cf is not None else None, conv)
+    if action == "change":
+        return await asyncio.to_thread(_appd, A.change, tenant, ref, str(body.get("instruction") or ""), conv)
+    if action == "approve":
+        return await asyncio.to_thread(_appd, A.approve, tenant, ref, str(body.get("hash") or ""))
+    if action == "stop":
+        return await asyncio.to_thread(_appd, A.stop, tenant, ref)
+    if action == "resume":
+        return await asyncio.to_thread(_appd, A.resume, tenant, ref)
+    raise HTTPException(404, "unknown action")
+
+
+@app.get("/api/apps/{ref}/shots/{name:path}", dependencies=[Depends(require_key)])
+async def apps_shot(ref: str, name: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import service as A
+    try:
+        f = await asyncio.to_thread(A.shot_file, tenant, ref, name)
+    except (A.AppError, ValueError):
+        raise HTTPException(404, "not found")
+    return FileResponse(f, headers={"Cache-Control": "private, max-age=300"})
+
+
+@app.get("/api/app-preview/{token}")
+async def app_preview_root(token: str):
+    return RedirectResponse(f"/api/app-preview/{token}/", status_code=307)
+
+
+@app.get("/api/app-preview/{token}/{path:path}")
+async def app_preview(token: str, path: str = ""):
+    """Public, by its random token: the tap-through prototype of an app design (noindex, strict CSP, no network)."""
+    from .appmaker import service as A
+    try:
+        data, ctype, headers = await asyncio.to_thread(A.preview_file, token, path)
+    except A.AppError:
+        raise HTTPException(404, "not found")
+    return Response(content=data, media_type=ctype, headers=headers)
 
 
 # ---------------------------------------------------------------- v0.118 Brand Sahayak (brand designer; final artwork on her tap)

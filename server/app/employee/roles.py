@@ -50,8 +50,8 @@ DUTIES: dict[str, dict] = {
                          "prefix": (), "tools": {"paisa", "paisa_dekho", "file_read"}},
     "ads_work": {"label": "Ads (Meta / Google)", "say": "ad report padhna, paise ka rissav, budget badlav ke sujhav (aapki haan se), naye ad copy test",
                  "prefix": (), "tools": {"ads", "ads_dekho", "file_read", "web_sources", "google_search", "make_document"}},
-    "web_work": {"label": "Website banana", "say": "website ka plan, design, banana, jaanch, preview; badlav aapke shabdon se (plan / look / live aapki haan se)",
-                 "prefix": (), "tools": {"website", "website_dekho", "file_read", "brand_dekho", "kalam_dekho", "seo_dekho"}},
+    "web_work": {"label": "Website + app design", "say": "website ka plan, design, banana, jaanch, preview; app ki har screen ka design aur prototype; badlav aapke shabdon se (plan / look / live / design pakka aapki haan se)",
+                 "prefix": (), "tools": {"website", "website_dekho", "app_banao", "app_dekho", "file_read", "brand_dekho", "kalam_dekho", "seo_dekho"}},
     "brand_design": {"label": "Brand design (poster)", "say": "aapke rang aur logo mein poster, har platform ki size, brand kit, tyohar ke poster (final aapki haan se)",
                      "prefix": (), "tools": {"brand", "brand_dekho", "file_read"}},
     "content_writing": {"label": "Content likhna", "say": "blog, product page, email, newsletter, social caption; brand voice, facts ki jaanch; publish aapki haan se",
@@ -308,7 +308,7 @@ READ = {
     "tv_channel", "employee", "india_info",
     "biz_free_slots", "biz_my_appointments", "biz_ticket_status", "biz_my_dues", "biz_handover", "biz_note",
     "darzi_dekho", "biz_order_status", "chai_dekho", "mobile_shop_dekho", "biz_repair_status",
-    "darzi_dekho", "biz_order_status", "office_dekho", "lekhak_dekho", "gst_dekho", "payroll_dekho", "paisa_dekho", "audit_dekho", "bima_dekho", "telecall_dekho", "kalam_dekho", "seo_dekho", "thok_dekho", "niryat_dekho", "franchise_dekho", "theka_dekho", "ads_dekho", "brand_dekho", "website_dekho",
+    "darzi_dekho", "biz_order_status", "office_dekho", "lekhak_dekho", "gst_dekho", "payroll_dekho", "paisa_dekho", "audit_dekho", "bima_dekho", "telecall_dekho", "kalam_dekho", "seo_dekho", "thok_dekho", "niryat_dekho", "franchise_dekho", "theka_dekho", "ads_dekho", "brand_dekho", "website_dekho", "app_dekho",
 }
 BIG = {
     "email_bulk", "email_delete", "email_forward", "drive_trash", "drive_share", "sheet_share", "form_share", "slides_share",
