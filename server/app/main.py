@@ -36,6 +36,8 @@ MAX_UPLOAD = 10 * 1024 * 1024
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    from . import usage as _usage
+    _usage.install()          # v0.98 every Claude / Gemini call is counted (owner, feature, cost)
     stop = asyncio.Event()
     task = asyncio.create_task(worker.run_forever(stop))
     if get_settings().logo_warm:
@@ -60,13 +62,29 @@ async def lifespan(app: FastAPI):
     yield
     stop.set()
     await task
+    _usage.flush()               # v0.98 counted calls are not lost on a restart
     try:
         await operator_service.shutdown()
     except Exception:
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.99.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.100.0", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def _usage_scope(request: Request, call_next):
+    """v0.98 Model calls made while serving this request are counted for its owner (resolved only if a model is called)
+    and for a feature named by the path."""
+    from . import usage
+
+    def who() -> str:
+        try:
+            return _resolve_tenant(request)
+        except Exception:
+            return ""
+    usage.bind(feature=usage.feature_for_path(request.url.path), resolver=who)
+    return await call_next(request)
 
 
 def _operator_ok() -> bool:
@@ -688,8 +706,51 @@ async def pc_send(file: UploadFile = File(...), tenant: str = Depends(current_te
 def voice_stats(tenant: str = Depends(current_tenant)):
     """How human the calls sound, in numbers: how fast he starts answering, reply length, questions, interruptions,
     silent tool runs. Recent calls since the server started."""
+    from . import callrating
     from . import voice as v
-    return v.stats_summary(tenant)
+    return {**v.stats_summary(tenant), "ratings": callrating.summary(tenant)}   # v0.98 her own 👍 / 👎 too
+
+
+class CallRate(BaseModel):
+    good: bool
+    reasons: list[str] = Field(default_factory=list)
+    seconds: int = 0
+
+
+@app.post("/api/voice/calls/{call_id}/rating", dependencies=[Depends(require_key)])
+def voice_rate(call_id: str, body: CallRate, tenant: str = Depends(current_tenant)):
+    """v0.98 her one tap after a call: good / not good + what went wrong."""
+    from . import callrating
+    return callrating.rate(tenant, call_id, body.good, body.reasons, body.seconds)
+
+
+class UsageLimit(BaseModel):
+    month_inr: float | None = Field(default=None, ge=0, le=10_000_000)
+    month_usd: float | None = Field(default=None, ge=0, le=100_000)
+
+
+@app.get("/api/usage", dependencies=[Depends(require_key)])
+def usage_get(days: int = 30, tenant: str = Depends(current_tenant)):
+    """v0.98 Kharcha: what Hoola's AI cost this owner (per day, per feature, per model), the month vs her limit."""
+    from . import usage
+    return usage.report(tenant, days)
+
+
+@app.put("/api/usage/limit", dependencies=[Depends(require_key)])
+def usage_limit(body: UsageLimit, tenant: str = Depends(current_tenant)):
+    from . import usage
+    if body.month_inr is None and body.month_usd is None:
+        raise HTTPException(400, "month_inr ya month_usd dijiye (0 = koi seema nahi)")
+    return usage.set_limit(tenant, month_usd=body.month_usd, month_inr=body.month_inr)
+
+
+@app.get("/api/usage/all", dependencies=[Depends(require_key)])
+def usage_all(days: int = 30, tenant: str = Depends(current_tenant)):
+    """The server owner's view: spend per owner (counts only). Only for the main account."""
+    from . import usage
+    if tenant != get_settings().tenant_id:
+        raise HTTPException(403, "Sirf server ke maalik ke liye")
+    return {"tenants": usage.all_tenants(days), "usd_inr": usage.usd_inr()}
 
 
 @app.websocket("/api/voice/ws")
@@ -5839,3 +5900,38 @@ def agents_item(ref: str):
     if a is None:
         raise HTTPException(404, "Not found")
     return a
+
+
+# ------------------------------------------------------------------ v0.98 one call at app open
+@app.get("/api/bootstrap", dependencies=[Depends(require_key)])
+def bootstrap(request: Request, conv: str = "", tenant: str = Depends(current_tenant)):
+    """Everything the app needs to open, in one round trip (it used to wait for 8 calls one after another): server
+    health, the chat to use (hers if still valid, else a new one), account, lists, routines, avatar, actions the phone
+    still has to run, and this month's AI spend vs her limit."""
+    out: dict = {"health": healthz()}
+    cid = ""
+    if conv:
+        with session() as s:
+            c = s.get(Conversation, conv)
+            if c is not None and c.tenant_id == tenant:
+                cid = c.id
+    out["conversation_id"] = cid or create_conversation(tenant)["id"]
+    out["conversation_new"] = not cid
+    for key, fn in (("me", lambda: api_me(request)), ("lists", lambda: get_lists(tenant)["lists"]),
+                    ("routines", lambda: get_routines(tenant)["routines"]), ("avatar", lambda: avatar_get(tenant)),
+                    ("pending_actions", lambda: pending_actions(tenant)["actions"])):
+        try:
+            out[key] = fn()
+        except Exception as e:      # one part failing must not stop the app from opening
+            log.warning("bootstrap %s failed: %s", key, e)
+            out[key] = None
+    try:
+        from . import usage
+        st = usage.state(tenant)
+        inr = usage.usd_inr()
+        out["usage"] = {"spent_inr": round(st["spent_usd"] * inr, 2), "limit_inr": round(st["limit_usd"] * inr, 2),
+                        "pct": st["pct"], "warn": st["warn"], "over": st["over"]}
+    except Exception:
+        out["usage"] = None
+    return out
+

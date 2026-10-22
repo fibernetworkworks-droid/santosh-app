@@ -666,6 +666,8 @@ def init_db(url: str | None = None):
     from . import mcp_prefs as _mcp_prefs  # noqa: F401
     from . import approvekey as _approvekey  # noqa: F401
     from . import askform as _askform  # noqa: F401
+    from . import usage as _usage  # noqa: F401
+    from . import callrating as _callrating  # noqa: F401
     Base.metadata.create_all(_engine)
     _add_missing_columns(_engine)
     from .bazar.db import init_tables as _bazar_tables

@@ -70,7 +70,7 @@ VOICE_TOOL_NAMES = {
     "youtube_search", "youtube_video", "youtube_watch", "youtube_channel", "youtube_comments", "youtube_my_channel",
     "youtube_analytics", "app_check",
     "hoola_me", "hoola_connect", "hoola_connections", "hoola_answer_connect", "hoola_send", "hoola_reply", "hoola_inbox",
-    "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "hoola_jaanch", "ask_form", "video_edit", "computer_operator", "video_studio", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
+    "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "hoola_jaanch", "ask_form", "ai_kharcha", "video_edit", "computer_operator", "video_studio", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
     "hoola_learn", "hoola_learned", "hoola_samaj", "hoola_community_search", "hoola_business", "hoola_chain",
     "sheets_find", "sheet_info", "sheet_query", "sheet_update", "sheet_create", "sheet_export",
     "maps_search", "maps_directions", "maps_navigate",
@@ -689,6 +689,7 @@ class Call:
         while True:
             kind, data = await self.audio.get()
             if kind == "audio":
+                self.audio_in_bytes = getattr(self, "audio_in_bytes", 0) + len(data)
                 await session.send_realtime_input(audio=types.Blob(data=data, mime_type="audio/pcm;rate=16000"))
             else:
                 await session.send_realtime_input(text=data)
@@ -739,6 +740,7 @@ class Call:
                         blob = getattr(part, "inline_data", None)
                         if blob is not None and blob.data:
                             self._mark_audio()
+                            self.audio_out_bytes = getattr(self, "audio_out_bytes", 0) + len(blob.data)   # v0.98 billed
                             await self.send_audio(blob.data)
                 if sc.output_transcription is not None and sc.output_transcription.text:
                     self.reply_buf += sc.output_transcription.text
@@ -1149,6 +1151,8 @@ class Call:
     # ---- the call ----
     async def run(self) -> None:
         loop = asyncio.get_running_loop()
+        from . import usage
+        usage.bind(self.ctx.tenant_id, "call")      # v0.98 the call's model use is counted for her, as "Voice call"
         self._start_reader(self.ws)
         first = True
         failures = 0
@@ -1253,6 +1257,14 @@ class Call:
                 await self.finish_turn()
             self.stats["ended"] = time.time()
             STATS.append(self.stats)
+            try:   # v0.98 Gemini Live is billed per minute of audio each way: 16 kHz in, 24 kHz out (16-bit mono)
+                from . import usage
+                sec_in, sec_out = getattr(self, "audio_in_bytes", 0) / 32000, getattr(self, "audio_out_bytes", 0) / 48000
+                if sec_in or sec_out:
+                    self.stats["cost_usd"] = usage.record(get_settings().gemini_live_model, sec_in=sec_in, sec_out=sec_out,
+                                                          tenant=self.ctx.tenant_id, feature="call")
+            except Exception:
+                log.exception("call usage failed")
             if get_settings().call_receipt and (self.turns_log or self.did):
                 from . import callreceipt   # v0.91 the chat gets a short card of what came out of this call
                 rt = asyncio.create_task(callreceipt.make(self.conv, self.call_id, list(self.turns_log), list(self.did),

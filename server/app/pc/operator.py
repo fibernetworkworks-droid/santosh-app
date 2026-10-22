@@ -469,6 +469,8 @@ def decide(tenant: str, sid: str, pending_id: str, approve: bool) -> bool:
 
 async def _run(op: Op) -> None:
     st = get_settings()
+    from .. import usage
+    usage.bind(op.tenant, "pc")
     from ..agent import cache
     from ..agent.santosh import get_client
     client = get_client()

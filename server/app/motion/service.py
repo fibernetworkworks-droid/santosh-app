@@ -188,6 +188,9 @@ def create(tenant: str, kind: str, data: Any = None, aspect: str = "9:16", mood:
            conv: str = "") -> dict:
     if kind not in KIND_IDS:
         raise MotionError("Yeh video type nahi hai.")
+    from .. import usage
+    if not usage.allowed(tenant, "motion"):             # v0.98 the month's AI limit is used up
+        raise MotionError(usage.blocked_text(tenant))
     if aspect not in ASPECTS:
         aspect = "9:16"
     mood = mood if mood in music.MOODS else "upbeat"
@@ -235,6 +238,8 @@ def _run(vid: str) -> None:
             return
         kind, aspect, mood, data, conv, tenant = v.kind, v.aspect, v.music, json.loads(v.data or "{}"), v.conversation_id, v.tenant_id
         v.status = "rendering"
+    from .. import usage
+    usage.bind(tenant, "motion")
     out = _dir() / f"{vid}.mp4"
     try:
         html = None

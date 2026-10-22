@@ -78,18 +78,31 @@ class Santosh extends ChangeNotifier {
 
   Future<void> loadAvatar() async {
     try {
-      avatar = await api!.avatarGet();
-      avatarLoaded = true;
-      await _prefs.setString('a_name', aName);
-      await _prefs.setString('a_gender', aFemale ? 'f' : 'm');
-      await _keepLook();
-      final v = avatar['voice'] as String?;
-      if (v != null && v.isNotEmpty && v != voiceName) await _prefs.setString('voice', v);
-      notifyListeners();
+      await _applyAvatar(await api!.avatarGet());
     } catch (_) {
       // older server without /api/avatar: keep "Santosh", never block the app on setup
       avatarLoaded = false;
     }
+  }
+
+  /// v0.98 this month's AI spend vs her limit (from /api/bootstrap; the Kharcha screen has the full report).
+  Map<String, dynamic>? usage;
+
+  /// v0.98 a card made on the phone itself (e.g. "call kaisi rahi?") joins the chat feed.
+  void addLocalCard(String kind, Map<String, dynamic> data) {
+    feed.add(FeedItem(kind, data));
+    notifyListeners();
+  }
+
+  Future<void> _applyAvatar(Map<String, dynamic> a) async {
+    avatar = a;
+    avatarLoaded = true;
+    await _prefs.setString('a_name', aName);
+    await _prefs.setString('a_gender', aFemale ? 'f' : 'm');
+    await _keepLook();
+    final v = avatar['voice'] as String?;
+    if (v != null && v.isNotEmpty && v != voiceName) await _prefs.setString('voice', v);
+    notifyListeners();
   }
 
   /// Returns an error message, or null when saved.
@@ -350,15 +363,23 @@ class Santosh extends ChangeNotifier {
     _steps = null;
     api = Api(serverUrl, apiKey);
     try {
-      final h = await api!.health();
+      // v0.98 one call brings everything the app needs to open (it used to wait for 8 calls in a row)
+      Map<String, dynamic>? boot;
+      try {
+        boot = await api!.bootstrap(fresh ? null : _prefs.getString('conv'));
+      } on ApiException catch (e) {
+        if (e.status == 401) rethrow;
+        boot = null; // an older server: the old way below
+      }
+      final h = boot?['health'] is Map ? Map<String, dynamic>.from(boot!['health'] as Map) : await api!.health();
       dryRun = h['dry_run'] == true;
       brainReady = h['brain_configured'] == true;
       realtimeVoice = (h['features'] as List?)?.contains('realtime_voice') ?? false;
       voiceDefault = h['voice_default'] as String? ?? 'Puck';
       voices = List<Map<String, dynamic>>.from((h['voices'] as List?) ?? const []);
       googleLogin = h['google_login'] == true;
-      conversationId = fresh ? null : _prefs.getString('conv');
-      if (conversationId != null) {
+      conversationId = boot?['conversation_id'] as String? ?? (fresh ? null : _prefs.getString('conv'));
+      if (conversationId != null && boot == null) {
         try {
           await api!.checkConversation(conversationId!);
         } on ApiException catch (e) {
@@ -395,12 +416,29 @@ class Santosh extends ChangeNotifier {
         await Native.askLocation();
       }
       pushLocation();
-      await refreshLists();
-      await refreshRoutines();
-      await refreshAccount();
-      await loadAvatar();
-      for (final a in await api!.pendingActions()) {
-        await _runAction(a);
+      if (boot != null) {
+        if (boot['lists'] is Map) lists = Map<String, dynamic>.from(boot['lists'] as Map);
+        if (boot['routines'] is List) routines = List<Map<String, dynamic>>.from((boot['routines'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+        final me = boot['me'] is Map ? Map<String, dynamic>.from(boot['me'] as Map) : null;
+        account = me != null && me['signed_in'] == true ? me : null;
+        if (boot['avatar'] is Map) {
+          await _applyAvatar(Map<String, dynamic>.from(boot['avatar'] as Map));
+        } else {
+          await loadAvatar();
+        }
+        usage = boot['usage'] is Map ? Map<String, dynamic>.from(boot['usage'] as Map) : null;
+        notifyListeners();
+        for (final a in List<Map<String, dynamic>>.from(((boot['pending_actions'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)))) {
+          await _runAction(a);
+        }
+      } else {
+        await refreshLists();
+        await refreshRoutines();
+        await refreshAccount();
+        await loadAvatar();
+        for (final a in await api!.pendingActions()) {
+          await _runAction(a);
+        }
       }
     } catch (e) {
       connected = false;

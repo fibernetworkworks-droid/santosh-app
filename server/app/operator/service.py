@@ -193,6 +193,9 @@ def start(tenant: str, task: str, start_url: str = "", file_ids: list[str] | Non
     task = re.sub(r"\s+", " ", task or "").strip()
     if len(task) < 6:
         raise OperatorJobError("Kya karna hai, thoda saaf bataiye (website + kaam).")
+    from .. import usage
+    if not usage.allowed(tenant, "website"):           # v0.98 the month's AI limit is used up
+        raise OperatorJobError(usage.blocked_text(tenant))
     if not available():
         raise OperatorJobError("Computer Operator is server par abhi chalu nahi hai (Playwright / Chromium nahi mila).")
     from .. import idvault, pii
@@ -613,6 +616,8 @@ async def run_job(task_id: str) -> dict[str, Any]:
     async with sem:
         if task_id in _cancel:
             return view(_set(task_id, status="cancelled", stage="Rok diya"))
+        from .. import usage
+        usage.bind(row.tenant_id, "website")
         op = await operator(row.tenant_id)
         op.id_tenant = row.tenant_id
         job = Job(row, op, memory(row.tenant_id))

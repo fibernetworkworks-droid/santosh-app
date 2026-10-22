@@ -503,6 +503,11 @@ async def run_forever(stop: asyncio.Event) -> None:
             await tick()
         except Exception:
             log.exception("worker tick failed")
+        try:   # v0.98 counted model calls reach the database even when nothing else is happening
+            from . import usage
+            await asyncio.to_thread(usage.flush)
+        except Exception:
+            log.exception("usage flush failed")
         try:
             await asyncio.wait_for(stop.wait(), timeout=st.worker_tick_seconds)
         except asyncio.TimeoutError:

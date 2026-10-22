@@ -241,6 +241,8 @@ async def openai_create(brain: str, system: str, tools: list[dict], messages: li
     if route:
         usage["route"] = route
         usage["model"] = r.headers.get("x-omniroute-model", "")
+    from .. import usage as _usage      # v0.98 the cheap brain is counted too
+    _usage.from_openai(data.get("model") or model, usage)
     return blocks, stop, usage
 
 

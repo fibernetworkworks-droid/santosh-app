@@ -282,6 +282,17 @@ class Api {
       await _send('POST', '/api/motion/videos/$id/youtube', body: {'title': title, 'privacy': privacy}, timeout: const Duration(seconds: 90)) as Map);
 
   Future<Map<String, dynamic>> health() async => Map<String, dynamic>.from(await _send('GET', '/healthz'));
+  /// v0.98 everything the app needs to open, in one call (404 on an older server: the app falls back).
+  Future<Map<String, dynamic>> bootstrap(String? conv) async => Map<String, dynamic>.from(
+      await _send('GET', '/api/bootstrap', query: {if (conv != null && conv.isNotEmpty) 'conv': conv}) as Map);
+  // ---- v0.98 Kharcha (AI cost) + call rating ----
+  Future<Map<String, dynamic>> usageReport({int days = 30}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/usage', query: {'days': '$days'}) as Map);
+  Future<Map<String, dynamic>> usageLimit(double inr) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/usage/limit', body: {'month_inr': inr}) as Map);
+  Future<Map<String, dynamic>> rateCall(String callId, bool good, {List<String> reasons = const [], int seconds = 0}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/voice/calls/${Uri.encodeComponent(callId)}/rating',
+          body: {'good': good, 'reasons': reasons, 'seconds': seconds}) as Map);
 
   Future<Map<String, dynamic>> me() async => Map<String, dynamic>.from(await _send('GET', '/api/me'));
   Future<void> disconnect(String provider) async => _send('DELETE', '/api/connections/$provider');

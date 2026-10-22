@@ -34,6 +34,8 @@ if kts.exists():
     if "isCoreLibraryDesugaringEnabled" not in g:
         g = g.replace("compileOptions {", "compileOptions {\n        isCoreLibraryDesugaringEnabled = true", 1)
     g = re.sub(r"minSdk\s*=\s*flutter\.minSdkVersion", "minSdk = 23", g)
+    if "abiFilters" not in g:   # v0.99.1 phones only (ARM 32 + 64): x86 / x86_64 libs were 62 MB of a 152 MB APK
+        g = re.sub(r"(minSdk = 23)", r'\1\n        ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a") }', g, count=1)
     if "desugar_jdk_libs" not in g:
         g += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
     if "onnxruntime-android" not in g:
@@ -51,6 +53,8 @@ elif groovy.exists():
     if "coreLibraryDesugaringEnabled" not in g:
         g = g.replace("compileOptions {", "compileOptions {\n        coreLibraryDesugaringEnabled true", 1)
     g = re.sub(r"minSdk(Version)?\s*=?\s*flutter\.minSdkVersion", "minSdk = 23", g)
+    if "abiFilters" not in g:   # v0.99.1 phones only (ARM 32 + 64)
+        g = re.sub(r"(minSdk = 23)", r"\1\n        ndk { abiFilters 'armeabi-v7a', 'arm64-v8a' }", g, count=1)
     if "desugar_jdk_libs" not in g:
         g += "\ndependencies {\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'\n}\n"
     if "onnxruntime-android" not in g:

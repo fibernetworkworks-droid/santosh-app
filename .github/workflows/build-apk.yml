@@ -41,10 +41,17 @@ jobs:
       - name: Build APK
         run: |
           set -o pipefail
-          flutter build apk --release 2>&1 | tee /tmp/b.log || {
+          flutter build apk --release --target-platform android-arm,android-arm64 2>&1 | tee /tmp/b.log || {
             grep -iE "error|exception|because|incompatible|requires|not found|unresolved|failed|minSdk|compileSdk|namespace" /tmp/b.log | tail -50 | while IFS= read -r L; do echo "::error::$L"; done
             exit 1
           }
+      - name: Check the APK opens (phones only, not truncated)
+        run: |
+          A=build/app/outputs/flutter-apk/app-release.apk
+          unzip -tq "$A"
+          unzip -l "$A" | grep -q 'lib/arm64-v8a/' || { echo "::error::no arm64 libs"; exit 1; }
+          if unzip -l "$A" | grep -qE 'lib/x86'; then echo "::error::x86 libs still inside (APK too big)"; exit 1; fi
+          echo "::notice::APK size $(du -m "$A" | cut -f1) MB, sha256 $(sha256sum "$A" | cut -c1-16)"
       - uses: actions/upload-artifact@v4
         with:
           name: santosh-apk

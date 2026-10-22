@@ -218,6 +218,9 @@ def _file(tenant: str, file_id: str):
 def start(tenant: str, file_ids: list[str], brief: str, platform: str = "reel", length_s: int | None = None,
           captions: bool = True, logo_file_id: str = "", music_file_id: str = "", title: str = "",
           conversation_id: str = "", created_by: str = "owner") -> dict[str, Any]:
+    from .. import usage
+    if not usage.allowed(tenant, "video"):              # v0.98 the month's AI limit is used up
+        raise VideoError(usage.blocked_text(tenant))
     ids = [str(x) for x in (file_ids or []) if str(x).strip()][:MAX_SOURCES]
     if not ids:
         raise VideoError("Edit ke liye kam se kam ek video (ya photos) chahiye: chat mein attach kijiye.")
@@ -371,6 +374,8 @@ def run_job(job_id: str) -> dict[str, Any]:
         s.expunge(row)
     if row.status == "cancelled":
         return view(row)
+    from .. import usage
+    usage.bind(row.tenant_id, "video")
     try:
         return _run(row)
     except _Cancelled:

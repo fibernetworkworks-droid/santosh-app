@@ -26,6 +26,7 @@ import 'studio_screen.dart';
 import 'procedures_screen.dart';
 import 'call_receipt.dart';
 import 'ask_form_card.dart';
+import 'call_rate_card.dart';
 import 'approve_sheet.dart';
 import 'artifact_screen.dart';
 import 'browser_live.dart';
@@ -602,6 +603,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return BizHandoverCard(v: it.data, app: app);
     case 'procedure':
       return ProcedureLearnedCard(v: it.data, app: app);
+    case 'call_rate':
+      return CallRateCard(key: ValueKey('rate${it.data['call_id']}'), v: it.data, app: app);
     case 'ask_form':
       return AskFormCard(key: ValueKey('af${it.data['id']}'), v: it.data, app: app);
     case 'call_receipt':

@@ -180,9 +180,19 @@ class CallSession extends ChangeNotifier {
     _closedState(reason);
   }
 
+  /// v0.98 the call to rate when it ends (from 'ready').
+  String? _ratedCallId;
+
   void _closedState(String? reason) {
     _call = null;
     final was = inCall;
+    final secs = startedAt == null ? 0 : DateTime.now().difference(startedAt!).inSeconds;
+    final cid = _ratedCallId;
+    _ratedCallId = null;
+    if (was && cid != null && secs >= 20) {
+      // v0.98 one tap after a call: was it good? (feeds the voice-quality numbers)
+      app.addLocalCard('call_rate', {'call_id': cid, 'seconds': secs});
+    }
     inCall = false;
     act = CallAct.idle;
     tool = null;
@@ -201,6 +211,7 @@ class CallSession extends ChangeNotifier {
   void _onEvent(Map<String, dynamic> e) {
     switch (e['type']) {
       case 'ready':
+        if (e['call_id'] is String) _ratedCallId ??= e['call_id'] as String;
         act = CallAct.listening;
         linkNote = null;
         speaker = null;

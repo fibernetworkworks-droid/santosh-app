@@ -497,6 +497,15 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
     settings = get_settings()
     tenant_id = tenant_id or settings.tenant_id
     ctx = Ctx(tenant_id=tenant_id, conversation_id=conversation_id, actor=actor or "owner")
+    from .. import usage
+    who = actor or "owner"
+    feature = ("call" if usage.current()[1] == "call" else "chat") if who.startswith(("owner", "approved:")) else \
+        ("routine" if who == "routine" else "employee")
+    usage.bind(tenant_id, feature)       # v0.98 what this turn's model calls cost, and for whom
+    if not usage.allowed(tenant_id, feature):
+        text = usage.blocked_text(tenant_id)
+        bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "budget"})
+        return text
     _gender = persona(tenant_id)[1]
     # v0.75 ID numbers the OWNER writes go into her Pehchaan Locker; the model and the saved chat get references.
     # Customers' / other avatars' messages are never captured into her locker.

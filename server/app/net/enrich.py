@@ -45,6 +45,9 @@ def _on() -> bool:
 def schedule(tenant: str, msg_id: str) -> None:
     if not _on():
         return
+    from .. import usage
+    if not usage.allowed(tenant, "network"):            # v0.98 the month's AI limit is used up: no auto look-ups
+        return
     threading.Thread(target=_safe_run, args=(tenant, msg_id), daemon=True, name="hoola-enrich").start()
 
 
@@ -98,6 +101,8 @@ def think(tenant: str, peer: str, body: dict[str, Any], kind: str) -> dict[str, 
 
 
 def run(tenant: str, msg_id: str) -> dict[str, Any]:
+    from .. import usage
+    usage.bind(tenant, "network")
     from .models import NetMsg
     from .service import tell
     with session() as s:

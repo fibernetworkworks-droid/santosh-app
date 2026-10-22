@@ -46,6 +46,7 @@ import 'finance_screen.dart';
 import 'audit_screen.dart';
 import 'approve_key_screen.dart';
 import 'insurance_screen.dart';
+import 'kharcha_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -245,6 +246,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Har client ke bill check, GSTR-1 / 3B, 2B milaan, due date, notice: ${app.aName} karega, filing aapki haan se'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GstScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.account_balance_wallet_rounded, color: C.accent),
+              title: const Text('AI ka kharcha', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text(app.usage == null
+                  ? 'Chat, call, website, video: kis cheez par kitna kharcha, aur mahine ki seema'
+                  : 'Is mahine ₹${((app.usage!['spent_inr'] as num?) ?? 0).round()}'
+                      '${((app.usage!['limit_inr'] as num?) ?? 0) > 0 ? ' / ₹${((app.usage!['limit_inr'] as num?) ?? 0).round()} seema' : ''}'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => KharchaScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
