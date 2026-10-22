@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.109.1", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.110.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -149,7 +149,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -3824,7 +3824,94 @@ def phonedoc_case_action(case_id: str, action: str, body: dict, tenant: str = De
     raise HTTPException(404, "step | recheck | escalate | close")
 
 
-# ---------------------------------------------------------------- v0.109 Thok Sahayak (wholesale trader)
+# ---------------------------------------------------------------- v0.110 Niryat Sahayak (exporter)
+def _nir(fn, *a, **k):
+    from .niryat import service as nr
+    try:
+        return fn(*a, **k)
+    except (nr.NiryatError, ValueError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/niryat/day", dependencies=[Depends(require_key)])
+def niryat_day(tenant: str = Depends(current_tenant)):
+    from .niryat import service as nr
+    return {**_nir(nr.day, tenant), "settings": nr.settings(tenant)}
+
+
+@app.post("/api/niryat/settings", dependencies=[Depends(require_key)])
+def niryat_settings(body: dict, tenant: str = Depends(current_tenant)):
+    from .niryat import service as nr
+    keys = ("firm", "address", "iec", "gstin", "phone", "email", "ad_bank", "lut_no", "rcmc", "rcmc_valid_to", "prefix", "morning_time")
+    return _nir(nr.save_settings, tenant, **{k: body[k] for k in keys if k in body})
+
+
+@app.get("/api/niryat/buyers", dependencies=[Depends(require_key)])
+def niryat_buyers(tenant: str = Depends(current_tenant)):
+    from .niryat import service as nr
+    return {"buyers": nr.buyers(tenant)}
+
+
+@app.post("/api/niryat/buyers", dependencies=[Depends(require_key)])
+def niryat_buyer_save(body: dict, tenant: str = Depends(current_tenant)):
+    from .niryat import service as nr
+    g = lambda k: str(body.get(k) or "")  # noqa: E731
+    return _nir(nr.save_buyer, tenant, g("name"), g("buyer"), g("country"), g("address"), g("email"), g("phone"), g("currency"),
+                g("pay_terms"), body.get("credit_days"), g("notes"))
+
+
+@app.get("/api/niryat/shipments", dependencies=[Depends(require_key)])
+def niryat_shipments(status: str = "", buyer: str = "", tenant: str = Depends(current_tenant)):
+    from .niryat import service as nr
+    return {"shipments": _nir(nr.shipments, tenant, status, buyer)}
+
+
+@app.post("/api/niryat/shipments", dependencies=[Depends(require_key)])
+def niryat_pi(body: dict, tenant: str = Depends(current_tenant)):
+    from .niryat import service as nr
+    g = lambda k: str(body.get(k) or "")  # noqa: E731
+    return _nir(nr.proforma, tenant, g("buyer"), body.get("lines"), g("text"), g("incoterm") or "FOB", g("place"), body.get("fx"),
+                body.get("freight"), body.get("insurance"), g("gst_mode") or "lut", g("port_loading"), g("port_discharge"), g("mode") or "sea",
+                g("currency"), g("conversation_id"))
+
+
+@app.get("/api/niryat/shipments/{sid}", dependencies=[Depends(require_key)])
+def niryat_shipment(sid: str, tenant: str = Depends(current_tenant)):
+    from .niryat import service as nr
+    return _nir(nr.get_shipment, tenant, sid)
+
+
+@app.post("/api/niryat/shipments/{sid}/{action}", dependencies=[Depends(require_key)])
+def niryat_act(sid: str, action: str, body: dict, tenant: str = Depends(current_tenant)):
+    """send_pi / confirm (her Haan, only from her tap) | shipped | receive | cancel"""
+    from .niryat import service as nr
+    g = lambda k: str(body.get(k) or "")  # noqa: E731
+    if action == "send_pi":
+        return _nir(nr.pi_draft, tenant, sid)
+    if action == "confirm":
+        return _nir(nr.confirm, tenant, sid, g("inv_date"), body.get("fx"), g("conversation_id"))
+    if action == "shipped":
+        return _nir(nr.shipped, tenant, sid, g("sb_no"), g("sb_date"), g("bl_no"), g("ship_date"), body.get("fx"))
+    if action == "receive":
+        return _nir(nr.receive, tenant, sid, body.get("amount"), body.get("inr"), g("on"), g("ref"))
+    if action == "cancel":
+        return _nir(nr.cancel, tenant, sid, g("reason"))
+    raise HTTPException(404, "send_pi | confirm | shipped | receive | cancel")
+
+
+@app.get("/api/niryat/realisation", dependencies=[Depends(require_key)])
+def niryat_realisation(tenant: str = Depends(current_tenant)):
+    from .niryat import service as nr
+    return nr.realisation(tenant)
+
+
+@app.post("/api/niryat/register", dependencies=[Depends(require_key)])
+def niryat_register(body: dict, tenant: str = Depends(current_tenant)):
+    from .niryat import service as nr
+    return _nir(nr.register_file, tenant, str(body.get("conversation_id") or ""))
+
+
+# ---------------------------------------------------------------- v0.107 Thok Sahayak (wholesale trader)
 def _thok(fn, *a, **k):
     from .thok import service as th
     try:

@@ -619,3 +619,10 @@ from .desk_tools import DESK_HANDLERS, DESK_LABELS, DESK_TOOLS  # noqa: E402
 TOOLS.extend(DESK_TOOLS)
 TOOL_LABELS.update(DESK_LABELS)
 HANDLERS.update(DESK_HANDLERS)
+
+# v0.110 Niryat Sahayak (exporter: buyers, PI -> invoice + packing list, shipping bill, RBI realisation, RoDTEP, FTA / CBAM checks)
+from .niryat_tools import NIRYAT_HANDLERS, NIRYAT_LABELS, NIRYAT_TOOLS  # noqa: E402
+
+TOOLS.extend(NIRYAT_TOOLS)
+TOOL_LABELS.update(NIRYAT_LABELS)
+HANDLERS.update(NIRYAT_HANDLERS)

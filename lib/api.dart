@@ -707,7 +707,22 @@ class Api {
   Future<Map<String, dynamic>> phonedocCase(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/phonedoc/cases/$id') as Map);
   Future<Map<String, dynamic>> phonedocAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/phonedoc/cases/$id/$action', body: body) as Map);
-  // v0.109 Thok Sahayak (wholesale)
+  // v0.110 Niryat Sahayak (exporter)
+  Future<Map<String, dynamic>> niryatDay() async => Map<String, dynamic>.from(await _send('GET', '/api/niryat/day') as Map);
+  Future<List<Map<String, dynamic>>> niryatShipments({String status = ''}) async =>
+      _maps((await _send('GET', '/api/niryat/shipments', query: {if (status.isNotEmpty) 'status': status}) as Map)['shipments']);
+  Future<Map<String, dynamic>> niryatShipment(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/niryat/shipments/$id') as Map);
+  Future<List<Map<String, dynamic>>> niryatBuyers() async => _maps((await _send('GET', '/api/niryat/buyers') as Map)['buyers']);
+  Future<Map<String, dynamic>> niryatBuyer(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/niryat/buyers', body: body) as Map);
+  Future<Map<String, dynamic>> niryatSettings(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/niryat/settings', body: body) as Map);
+  Future<Map<String, dynamic>> niryatPi(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/niryat/shipments', body: body, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> niryatAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/niryat/shipments/$id/$action', body: body, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> niryatRegister() async => Map<String, dynamic>.from(await _send('POST', '/api/niryat/register', body: {}) as Map);
+  // v0.107 Thok Sahayak (wholesale)
   Future<Map<String, dynamic>> thokDay() async => Map<String, dynamic>.from(await _send('GET', '/api/thok/day') as Map);
   Future<Map<String, dynamic>> thokRead(String what, {String route = ''}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/thok/$what', query: {if (route.isNotEmpty) 'route': route}) as Map);

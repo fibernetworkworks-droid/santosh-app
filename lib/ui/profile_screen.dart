@@ -50,6 +50,7 @@ import 'approve_key_screen.dart';
 import 'insurance_screen.dart';
 import 'seo_screen.dart';
 import 'thok_screen.dart';
+import 'niryat_screen.dart';
 import 'kharcha_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -197,6 +198,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Aadhaar, PAN, Voter ID… taala band. ${app.aName} forms mein khud bharega'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => IdLockerScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.public_rounded, color: C.accent),
+              title: const Text('Niryat sahayak (export)', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Buyer, PI, invoice + packing list, kaagaz, shipping bill ke baad paisa kab tak, RoDTEP: ${app.aName} karega, bhejna aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => NiryatScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

@@ -466,6 +466,12 @@ async def employee_jobs() -> None:
     except Exception:
         log.exception("gst morning failed")
     try:                                   # v0.99 Telecaller: today's call list, each with a reason
+        from .niryat import service as niryat
+        for tenant in niryat.due_mornings():
+            niryat.send_morning(tenant)
+    except Exception:
+        log.exception("niryat morning failed")
+    try:
         from .thok import service as thok
         for tenant in thok.due_mornings():
             thok.send_morning(tenant)
