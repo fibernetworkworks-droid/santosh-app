@@ -79,6 +79,7 @@ _CTX: contextvars.ContextVar[dict | None] = contextvars.ContextVar("hoola_usage"
 _BUF: dict[tuple, dict[str, float]] = {}
 _LOCK = threading.Lock()
 _LAST_FLUSH = [time.time()]
+_FLUSH_LOCK = threading.Lock()   # one flush at a time: a report waits for a flush already writing
 _INSTALLED = [False]
 
 
@@ -239,6 +240,11 @@ def record(model: str, tok_in: int = 0, tok_out: int = 0, cache_read: int = 0, c
 
 
 def flush() -> None:
+    with _FLUSH_LOCK:
+        _flush()
+
+
+def _flush() -> None:
     with _LOCK:
         items = list(_BUF.items())
         _BUF.clear()

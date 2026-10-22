@@ -133,6 +133,7 @@ class Settings(BaseSettings):
     mail_max_attach_mb: int = 18            # total attachments per mail (Gmail/Outlook limit is ~25 MB encoded)
     notebook_tts_model: str = "gemini-2.5-flash-preview-tts"   # Santosh Notebook audio overviews (two voices)
     youtube_api_key: str = ""               # YouTube Data API v3 key for search / public video stats (Google Cloud)
+    pagespeed_api_key: str = ""             # optional: PageSpeed Insights API key (higher quota for SEO checks)
     motion_dir: str = "./data/motion"         # Hoola Motion MP4s (kept until the owner deletes them)
     motion_keep: int = 60                      # newest videos kept per owner
     reels_gemini_model: str = ""          # Hoola Reels: understands shared reels ("" = youtube_gemini_model)

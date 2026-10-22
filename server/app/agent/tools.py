@@ -579,3 +579,10 @@ from .usage_tools import USAGE_HANDLERS, USAGE_LABELS, USAGE_TOOLS  # noqa: E402
 TOOLS.extend(USAGE_TOOLS)
 TOOL_LABELS.update(USAGE_LABELS)
 HANDLERS.update(USAGE_HANDLERS)
+
+# v0.103 SEO Sahayak (site audit, Core Web Vitals, Search Console, schema, content briefs, Business Profile drafts)
+from .seo_tools import SEO_HANDLERS, SEO_LABELS, SEO_TOOLS  # noqa: E402
+
+TOOLS.extend(SEO_TOOLS)
+TOOL_LABELS.update(SEO_LABELS)
+HANDLERS.update(SEO_HANDLERS)

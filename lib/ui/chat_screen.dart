@@ -20,6 +20,7 @@ import 'finance_screen.dart';
 import 'audit_screen.dart';
 import 'insurance_screen.dart';
 import 'kalam_screen.dart';
+import 'seo_screen.dart';
 import 'telecall_screen.dart';
 import 'video_editor.dart';
 import 'operator_screen.dart';
@@ -559,6 +560,11 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return MShopReadyCard(key: ValueKey('mr${it.data['job_id']}'), v: it.data, app: app);
     case 'mshop_day':
       return MShopDayCard(v: it.data, app: app);
+    case 'seo_update':
+    case 'seo_week':
+    case 'seo_alert':
+    case 'seo_draft':
+      return SeoCard(kind: it.kind, v: it.data, app: app);
     case 'ins_day':
     case 'ins_advice':
       return InsCard(key: ValueKey('ins${it.data['advice_id'] ?? it.data['text']}'), v: it.data, app: app);

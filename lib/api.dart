@@ -707,6 +707,18 @@ class Api {
   Future<Map<String, dynamic>> phonedocCase(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/phonedoc/cases/$id') as Map);
   Future<Map<String, dynamic>> phonedocAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/phonedoc/cases/$id/$action', body: body) as Map);
+  // v0.103 SEO Sahayak
+  Future<Map<String, dynamic>> seoSummary() async => Map<String, dynamic>.from(await _send('GET', '/api/seo/summary') as Map);
+  Future<Map<String, dynamic>> seoSite(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/seo/site', body: body) as Map);
+  Future<Map<String, dynamic>> seoAct(String action, [Map<String, dynamic> body = const {}]) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/seo/$action', body: body, timeout: const Duration(seconds: 180)) as Map);
+  Future<Map<String, dynamic>> seoTask(String id, String status) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/seo/tasks/$id', body: {'status': status}) as Map);
+  Future<List<Map<String, dynamic>>> seoDrafts() async => _maps((await _send('GET', '/api/seo/drafts') as Map)['drafts']);
+  Future<Map<String, dynamic>> seoDraftOk(String id, String text) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/seo/drafts/$id', body: {'text': text}) as Map);
+  Future<String> seoGscLink() async => (await _send('GET', '/api/seo/gsc/link'))['url'] as String;
   // v0.98 Bima Sahayak
   Future<Map<String, dynamic>> insSummary({int days = 15}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/insurance/summary', query: {'days': '$days'}) as Map);

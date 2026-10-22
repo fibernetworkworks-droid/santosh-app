@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.102.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.103.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -149,7 +149,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "kalam"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -457,6 +457,9 @@ async def google_callback(request: Request):
     from .sheets.accounts import is_link_state as is_sheets_state
     if is_sheets_state(request.query_params.get("state", "")):  # "connect my Google Sheets"
         return await _finish_sheets_link(request)
+    from .seo.service import is_link_state as is_seo_state
+    if is_seo_state(request.query_params.get("state", "")):     # "connect my Search Console" (read-only)
+        return await _finish_seo_link(request)
     from .youtube.accounts import is_link_state as is_youtube_state
     if is_youtube_state(request.query_params.get("state", "")):  # "connect my YouTube channel"
         return await _finish_youtube_link(request)
@@ -3670,6 +3673,113 @@ def phonedoc_case_action(case_id: str, action: str, body: dict, tenant: str = De
     if action == "close":
         return _pdoc(pdoc.close, tenant, case_id)
     raise HTTPException(404, "step | recheck | escalate | close")
+
+
+# ---------------------------------------------------------------- v0.103 SEO Sahayak
+def _seo(fn, *a, **k):
+    from .seo import service as seo
+    try:
+        return fn(*a, **k)
+    except (seo.SeoError, ValueError) as e:
+        raise HTTPException(400, str(e))
+
+
+async def _finish_seo_link(request: Request) -> HTMLResponse:
+    from .seo import service as seo
+    if request.query_params.get("error"):
+        return _linked_page("Search Console", "seo", None, request.query_params["error"])
+    try:
+        v = await asyncio.to_thread(seo.finish_link, request.query_params.get("code", ""), request.query_params.get("state", ""))
+    except seo.SeoError as e:
+        return _linked_page("Search Console", "seo", None, str(e))
+    return _linked_page("Search Console", "seo", v["address"])
+
+
+@app.get("/api/seo/summary", dependencies=[Depends(require_key)])
+def seo_summary(site: str = "", tenant: str = Depends(current_tenant)):
+    from .seo import service as seo
+    if not seo.sites(tenant):
+        return {"site": None, "gsc": seo.gsc_status(tenant)}
+    return _seo(seo.summary, tenant, site)
+
+
+@app.post("/api/seo/site", dependencies=[Depends(require_key)])
+def seo_site(body: dict, tenant: str = Depends(current_tenant)):
+    from .seo import service as seo
+    biz = {k: body.get(k) for k in ("city", "state", "street", "pin", "phone", "schema_type", "hours", "price_range")}
+    return _seo(seo.save_site, tenant, str(body.get("url") or ""), str(body.get("name") or ""), str(body.get("site") or ""),
+                body.get("services"), **biz)
+
+
+@app.get("/api/seo/tasks", dependencies=[Depends(require_key)])
+def seo_tasks(site: str = "", status: str = "open", tenant: str = Depends(current_tenant)):
+    from .seo import service as seo
+    return {"tasks": _seo(seo.tasks, tenant, site, status)}
+
+
+@app.post("/api/seo/tasks/{tid}", dependencies=[Depends(require_key)])
+def seo_task(tid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .seo import service as seo
+    return _seo(seo.close_task, tenant, tid, str(body.get("status") or "done"))
+
+
+@app.get("/api/seo/drafts", dependencies=[Depends(require_key)])
+def seo_drafts(site: str = "", tenant: str = Depends(current_tenant)):
+    from .seo import service as seo
+    return {"drafts": _seo(seo.drafts, tenant, site)}
+
+
+@app.post("/api/seo/drafts/{did}", dependencies=[Depends(require_key)])
+def seo_draft_ok(did: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her Haan (only from her tap): the draft is final; she puts it on her site / profile."""
+    from .seo import service as seo
+    return _seo(seo.approve_draft, tenant, did, str(body.get("text") or ""))
+
+
+@app.post("/api/seo/{action}", dependencies=[Depends(require_key)])
+def seo_act(action: str, body: dict, tenant: str = Depends(current_tenant)):
+    """audit | speed | performance | brief | schema | gbp_post | review_reply | report | keywords"""
+    from .seo import service as seo
+    site, conv = str(body.get("site") or ""), str(body.get("conversation_id") or "")
+    if action == "audit":
+        return _seo(seo.crawl, tenant, site, int(body.get("max_pages") or 25), conv)
+    if action == "speed":
+        return _seo(seo.pagespeed, tenant, site, str(body.get("url") or ""), str(body.get("strategy") or "mobile"))
+    if action == "performance":
+        return _seo(seo.performance, tenant, site, int(body.get("days") or 28), conv)
+    if action == "brief":
+        return _seo(seo.content_brief, tenant, str(body.get("keyword") or ""), site, conv)
+    if action == "schema":
+        return _seo(seo.schema_draft, tenant, site, conv)
+    if action == "gbp_post":
+        return _seo(seo.gbp_post, tenant, str(body.get("topic") or ""), str(body.get("offer") or ""), site, conv)
+    if action == "review_reply":
+        return _seo(seo.review_reply, tenant, str(body.get("review") or ""), int(body.get("stars") or 0), str(body.get("reviewer") or ""), site, conv)
+    if action == "report":
+        return _seo(seo.report_file, tenant, site, conv)
+    if action == "keywords":
+        return _seo(seo.keyword_plan, tenant, site)
+    raise HTTPException(404, "unknown action")
+
+
+@app.get("/api/seo/gsc/link", dependencies=[Depends(require_key)])
+def seo_gsc_link(tenant: str = Depends(current_tenant)):
+    from .seo import service as seo
+    try:
+        return {"url": seo.start_link(tenant)}
+    except seo.SeoError as e:
+        raise HTTPException(503, str(e))
+
+
+@app.delete("/api/seo/gsc", dependencies=[Depends(require_key)])
+def seo_gsc_remove(tenant: str = Depends(current_tenant)):
+    from .seo import service as seo
+    from .db import session as _ses
+    with _ses() as s:
+        g = s.get(seo.SeoGoogle, tenant)
+        if g:
+            s.delete(g)
+    return seo.gsc_status(tenant)
 
 
 # ---------------------------------------------------------------- v0.98 Bima Sahayak (insurance agent)
