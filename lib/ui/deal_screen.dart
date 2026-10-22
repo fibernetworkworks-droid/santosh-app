@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../state.dart';
@@ -400,6 +401,7 @@ class _DealsScreenState extends State<DealsScreen> {
   List<Map<String, dynamic>> _buy = [];
   List<Map<String, dynamic>> _sell = [];
   List<Map<String, dynamic>> _stock = [];
+  List<Map<String, dynamic>> _picks = [];
   Map<String, dynamic> _rules = {};
   bool _loading = true;
 
@@ -416,10 +418,12 @@ class _DealsScreenState extends State<DealsScreen> {
       final b = await app.api!.netDeals(role: 'buyer');
       final s = await app.api!.netDeals(role: 'seller');
       final st = await app.api!.netStock();
+      final pk = await app.api!.netPicks();
       if (!mounted) return;
       setState(() {
         _buy = b;
         _sell = s;
+        _picks = pk;
         _stock = _l(st['stock']);
         _rules = _m(st['rules']);
         _loading = false;
@@ -453,7 +457,7 @@ class _DealsScreenState extends State<DealsScreen> {
     final to = TextEditingController();
     final items = TextEditingController();
     final note = TextEditingController();
-    final ok = await showDialog<bool>(
+    final ok = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Nayi list bhejo'),
@@ -469,8 +473,9 @@ class _DealsScreenState extends State<DealsScreen> {
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Bhejo')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(''), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop('catalog'), child: const Text('Unki price list')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop('send'), child: const Text('Bhejo')),
         ],
       ),
     );
@@ -480,7 +485,17 @@ class _DealsScreenState extends State<DealsScreen> {
     to.dispose();
     items.dispose();
     note.dispose();
-    if (ok != true || t.isEmpty || list.isEmpty) return;
+    if (ok == 'catalog' && t.isNotEmpty) {
+      if (!mounted) return;
+      final sent = await showModalBottomSheet<bool>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: C.bgBottom,
+          builder: (_) => CatalogSheet(app: app, to: t, note: n));
+      if (sent == true) _load();
+      return;
+    }
+    if (ok != 'send' || t.isEmpty || list.isEmpty) return;
     try {
       final r = await app.api!.netDealAsk(t, list, note: n);
       if (mounted) _snack(context, _s(r['say']));
@@ -496,7 +511,10 @@ class _DealsScreenState extends State<DealsScreen> {
     final qty = TextEditingController(text: it == null || it['qty'] == null ? '' : _qty(it['qty']));
     final unit = TextEditingController(text: _s(it?['unit']));
     final aliases = TextEditingController(text: ((it?['aliases'] as List?) ?? const []).join(', '));
+    final low = TextEditingController(text: it == null || it['low_at'] == null ? '' : _qty(it['low_at']));
+    final subs = TextEditingController(text: ((it?['subs'] as List?) ?? const []).join(', '));
     var gst = it == null ? 0.0 : _d(it['gst_pct']);
+    var shown = it == null ? true : it['public'] != false;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -509,6 +527,15 @@ class _DealsScreenState extends State<DealsScreen> {
               TextField(controller: qty, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Stock mein kitna (khaali = gina nahi)')),
               TextField(controller: unit, decoration: const InputDecoration(labelText: 'Unit (carton, packet, kg...)')),
               TextField(controller: aliases, decoration: const InputDecoration(labelText: 'Doosre naam (comma se)')),
+              TextField(controller: low, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Itna bache to batao (khaali = nahi)')),
+              TextField(controller: subs, decoration: const InputDecoration(labelText: 'Khatam ho to badle mein (stock ke item, comma se)')),
+              SwitchListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Price list mein dikhe'),
+                value: shown,
+                onChanged: (x) => set(() => shown = x),
+              ),
               const SizedBox(height: 8),
               Wrap(spacing: 6, children: [
                 for (final g in const [0.0, 5.0, 12.0, 18.0, 28.0, 40.0])
@@ -530,8 +557,11 @@ class _DealsScreenState extends State<DealsScreen> {
       'unit': unit.text.trim(),
       'gst_pct': gst,
       'aliases': aliases.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+      'low_at': low.text.trim().isEmpty ? null : double.tryParse(low.text.trim()),
+      'subs': subs.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+      'public': shown,
     };
-    for (final c in [name, price, qty, unit, aliases]) {
+    for (final c in [name, price, qty, unit, aliases, low, subs]) {
       c.dispose();
     }
     if (ok != true || _s(body['name']).isEmpty) return;
@@ -561,8 +591,24 @@ class _DealsScreenState extends State<DealsScreen> {
           ),
       ]);
 
+  Future<void> _importSheet() async {
+    final res = await FilePicker.platform.pickFiles(withData: true, type: FileType.custom, allowedExtensions: ['csv', 'xlsx']);
+    final f = res?.files.single;
+    if (f == null || f.bytes == null) return;
+    try {
+      final r = await app.api!.netStockImport(f.name, f.bytes!);
+      if (mounted) _snack(context, _s(r['say']));
+      _load();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
   Widget _stockTab() => ListView(padding: const EdgeInsets.all(16), children: [
-        GlassButton(label: 'Item jodo', icon: Icons.add_rounded, onTap: () => _editItem()),
+        Wrap(spacing: 10, runSpacing: 10, children: [
+          GlassButton(label: 'Item jodo', icon: Icons.add_rounded, onTap: () => _editItem()),
+          GlassButton(label: 'Sheet se daalo', icon: Icons.upload_file_rounded, onTap: _importSheet),
+        ]),
         const SizedBox(height: 12),
         if (_stock.isEmpty)
           const Padding(
@@ -587,7 +633,8 @@ class _DealsScreenState extends State<DealsScreen> {
                   ),
                   Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                     Text(it['qty'] == null ? 'gina nahi' : '${_qty(it['free'])} khaali',
-                        style: TextStyle(fontWeight: FontWeight.w800, color: it['qty'] == null ? C.warn : C.ink)),
+                        style: TextStyle(fontWeight: FontWeight.w800, color: it['qty'] == null || it['low'] == true ? C.warn : C.ink)),
+                    if (it['low'] == true) const Pill('kam hai', fg: C.warn),
                     if (_d(it['reserved']) > 0)
                       Text('${_qty(it['reserved'])} order mein', style: const TextStyle(color: C.faint, fontSize: 11)),
                   ]),
@@ -608,6 +655,13 @@ class _DealsScreenState extends State<DealsScreen> {
             ),
           ),
       ]);
+
+  Widget _namesField(String label, String key) => TextFormField(
+        key: ValueKey('nf$key${(_rules[key] as List?)?.join(',')}'),
+        initialValue: ((_rules[key] as List?) ?? const []).join(', '),
+        decoration: InputDecoration(labelText: label, isDense: true),
+        onFieldSubmitted: (t) => _setRule({key: t.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()}),
+      );
 
   Widget _rulesTab() {
     final aq = _s(_rules['auto_quote']).isEmpty ? 'off' : _s(_rules['auto_quote']);
@@ -651,6 +705,41 @@ class _DealsScreenState extends State<DealsScreen> {
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Price list kise dikhe', style: TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          Wrap(spacing: 6, children: [
+            for (final e in const {'off': 'Kisi ko nahi', 'connected': 'Jude logon ko', 'public': 'Sab ko'}.entries)
+              ChoiceChip(label: Text(e.value), selected: (_s(_rules['catalog']).isEmpty ? 'connected' : _s(_rules['catalog'])) == e.key,
+                  onSelected: (_) => _setRule({'catalog': e.key})),
+          ]),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Stock hai ya nahi, yeh bhi dikhe'),
+            value: _rules['show_stock'] == true,
+            onChanged: (x) => _setRule({'show_stock': x}),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Pack hote hi graahak ko code chala jaaye'),
+            subtitle: const Text('Band ho to packing ke baad aapse poochha jaayega', style: TextStyle(fontSize: 12)),
+            value: _rules['auto_ready'] != false,
+            onChanged: (x) => _setRule({'auto_ready': x}),
+          ),
+          const SizedBox(height: 6),
+          _namesField('Bharose wale graahak (naam / Hoola ID)', 'trusted'),
+          const SizedBox(height: 8),
+          _namesField('Packing karne wale (khaali = team ke manager + packing wale)', 'packers'),
+          if (((_rules['packers_found'] as List?) ?? const []).isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text('Pick list jaayegi: ${((_rules['packers_found'] as List?) ?? const []).join(', ')}',
+                  style: const TextStyle(color: C.muted, fontSize: 12)),
+            ),
+        ]),
+      ),
+      const SizedBox(height: 12),
+      Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Pickup ki jagah', style: TextStyle(fontWeight: FontWeight.w800)),
           Text(_s(_rules['place']).isEmpty ? 'Abhi nahi likhi' : _s(_rules['place']), style: const TextStyle(color: C.muted)),
           const SizedBox(height: 6),
@@ -679,12 +768,14 @@ class _DealsScreenState extends State<DealsScreen> {
       ),
       const SizedBox(height: 12),
       Text(_s(_rules['say']), style: const TextStyle(color: C.faint, fontSize: 12)),
+      const SizedBox(height: 6),
+      const Text('Yeh niyam aapke Mere Niyam ka hissa hain. Paisa hamesha aapke tap se.', style: TextStyle(color: C.teal, fontSize: 12)),
     ]);
   }
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
-        length: 4,
+        length: 5,
         child: Scaffold(
           appBar: AppBar(
             title: const Text('Khareed aur bikri'),
@@ -692,6 +783,7 @@ class _DealsScreenState extends State<DealsScreen> {
             bottom: TabBar(isScrollable: true, tabs: [
               Tab(text: 'Khareed${_buy.isEmpty ? '' : ' (${_buy.length})'}'),
               Tab(text: 'Bikri${_sell.isEmpty ? '' : ' (${_sell.length})'}'),
+              Tab(text: 'Packing${_picks.isEmpty ? '' : ' (${_picks.length})'}'),
               const Tab(text: 'Stock'),
               const Tab(text: 'Niyam'),
             ]),
@@ -711,6 +803,19 @@ class _DealsScreenState extends State<DealsScreen> {
                     child: TabBarView(children: [
                       _dealList(_buy, 'Kisi dukaan ya wholesaler ko list bhejiye: "Nayi list". Unka Hoola quote bhejega, aap haan karengi tabhi order jaayega.'),
                       _dealList(_sell, 'Jab koi aapke Hoola ko list bhejega, quote yahan taiyaar milega.'),
+                      ListView(padding: const EdgeInsets.all(16), children: [
+                        if (_picks.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.all(20),
+                            child: Text('Jahan aap kaam karti / karte hain, wahan ke Hoola se pick list aayegi to yahan dikhegi.',
+                                style: TextStyle(color: C.muted)),
+                          ),
+                        for (final p in _picks)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: PickCard(key: ValueKey('pk${p['id']}${p['status']}'), v: p, app: app, onChanged: _load),
+                          ),
+                      ]),
                       _stockTab(),
                       _rulesTab(),
                     ]),
@@ -718,4 +823,296 @@ class _DealsScreenState extends State<DealsScreen> {
           ),
         ),
       );
+}
+
+
+/// v0.105 A pick list on the packer's own Hoola: tick items while packing, "sab pack", "kuch kam hai", and at the
+/// counter the customer's code. The code is checked by the shop's Hoola; it is never shown to the packer.
+class PickCard extends StatefulWidget {
+  const PickCard({super.key, required this.v, required this.app, this.onChanged});
+  final Map<String, dynamic> v;
+  final Santosh app;
+  final VoidCallback? onChanged;
+  @override
+  State<PickCard> createState() => _PickCardState();
+}
+
+class _PickCardState extends State<PickCard> {
+  Map<String, dynamic>? _fresh;
+  final Set<int> _ticked = {};
+  bool _busy = false;
+  final _code = TextEditingController();
+
+  Map<String, dynamic> get v => _fresh ?? widget.v;
+
+  @override
+  void didUpdateWidget(covariant PickCard old) {
+    super.didUpdateWidget(old);
+    if (old.v != widget.v) _fresh = null;
+  }
+
+  @override
+  void dispose() {
+    _code.dispose();
+    super.dispose();
+  }
+
+  Future<void> _act(String action, [Map<String, dynamic> body = const {}]) async {
+    setState(() => _busy = true);
+    try {
+      final r = await widget.app.api!.netPickAct(_s(v['id']), action, body);
+      if (mounted) {
+        if (r['pick'] is Map) setState(() => _fresh = Map<String, dynamic>.from(r['pick'] as Map));
+        _snack(context, _s(r['say']));
+      }
+      widget.onChanged?.call();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _short() async {
+    final lines = _l(v['lines']);
+    final ctrls = [for (final l in lines) TextEditingController(text: _qty(l['qty']))];
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kitna mila?'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            for (var i = 0; i < lines.length; i++)
+              TextField(
+                controller: ctrls[i],
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: '${_s(lines[i]['item'])} (chahiye ${_qty(lines[i]['qty'])})'),
+              ),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Owner ko batao')),
+        ],
+      ),
+    );
+    final short = <Map<String, dynamic>>[];
+    for (var i = 0; i < lines.length; i++) {
+      final got = double.tryParse(ctrls[i].text.trim()) ?? 0;
+      if (got < _d(lines[i]['qty'])) short.add({'item': lines[i]['item'], 'qty': got});
+    }
+    for (final c in ctrls) {
+      c.dispose();
+    }
+    if (ok != true) return;
+    if (short.isEmpty) {
+      if (mounted) _snack(context, 'Sab poora hai; "Sab pack ho gaya" dabaiye.');
+      return;
+    }
+    _act('short', {'short': short});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final st = _s(v['status']);
+    final acts = List<String>.from((v['actions'] as List?) ?? const []);
+    final lines = _l(v['lines']);
+    final word = {
+      'new': 'naya', 'packing': 'packing', 'packed': 'pack ho gaya', 'short': 'kam hai', 'ready': 'counter par',
+      'handed_over': 'de diya', 'cancelled': 'cancel', 'taken': 'koi aur kar raha',
+    }[st] ?? st;
+    return Glass(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.inventory_2_rounded, color: C.accent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Pick list · ${_s(v['number'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
+              Text('${_s(v['business'])} · ${_s(v['customer'])}',
+                  style: const TextStyle(color: C.muted, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+            ]),
+          ),
+          Pill(word, fg: st == 'ready' || st == 'handed_over' ? C.ok : (st == 'short' ? C.warn : C.chip)),
+        ]),
+        if (_s(v['say']).isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(_s(v['say']), style: const TextStyle(fontSize: 13)),
+        ],
+        const SizedBox(height: 8),
+        for (var i = 0; i < lines.length; i++)
+          CheckboxListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            value: _ticked.contains(i) || st == 'packed' || st == 'ready' || st == 'handed_over',
+            onChanged: acts.contains('packed') ? (x) => setState(() => x == true ? _ticked.add(i) : _ticked.remove(i)) : null,
+            title: Text('${_s(lines[i]['item'])} × ${_qty(lines[i]['qty'])} ${_s(lines[i]['unit'])}'.trim(),
+                style: const TextStyle(fontSize: 13.5)),
+          ),
+        if (_s(v['note']).isNotEmpty) Text('Note: ${_s(v['note'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
+        if (st == 'ready' && _s(v['place']).isNotEmpty)
+          Text('${_s(v['place'])}${_when(v['until']).isEmpty ? '' : ' · ${_when(v['until'])} tak'}',
+              style: const TextStyle(color: C.muted, fontSize: 12)),
+        const SizedBox(height: 8),
+        if (acts.contains('packing') && st == 'new')
+          GlassButton(label: 'Packing shuru', icon: Icons.play_arrow_rounded, onTap: _busy ? null : () => _act('packing')),
+        if (acts.contains('packed')) ...[
+          const SizedBox(height: 8),
+          GradientButton(
+              label: 'Sab pack ho gaya',
+              icon: Icons.check_rounded,
+              height: 48,
+              onTap: _busy || (_ticked.length < lines.length && lines.length > 1) ? null : () => _act('packed')),
+          if (_ticked.length < lines.length && lines.length > 1)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text('Har item par tick lagaiye', style: TextStyle(color: C.faint, fontSize: 11.5)),
+            ),
+        ],
+        if (acts.contains('short'))
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(onPressed: _busy ? null : _short, child: const Text('Kuch kam hai', style: TextStyle(color: C.warn))),
+          ),
+        if (acts.contains('handover'))
+          Row(children: [
+            Expanded(
+              child: TextField(
+                controller: _code,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                decoration: const InputDecoration(labelText: 'Graahak ka code', counterText: ''),
+              ),
+            ),
+            const SizedBox(width: 10),
+            GlassButton(
+                label: 'Saamaan diya',
+                icon: Icons.handshake_rounded,
+                onTap: _busy ? null : () => _act('handover', {'code': _code.text.trim()})),
+          ]),
+      ]),
+    );
+  }
+}
+
+/// v0.105 A seller's price list (asked through her avatar): pick quantities and send it as the list.
+class CatalogSheet extends StatefulWidget {
+  const CatalogSheet({super.key, required this.app, required this.to, this.note = ''});
+  final Santosh app;
+  final String to;
+  final String note;
+  @override
+  State<CatalogSheet> createState() => _CatalogSheetState();
+}
+
+class _CatalogSheetState extends State<CatalogSheet> {
+  List<Map<String, dynamic>> _items = [];
+  final Map<int, double> _count = {};
+  String _from = '';
+  String? _err;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final r = await widget.app.api!.netDealCatalog(widget.to);
+      if (mounted) {
+        setState(() {
+          _items = _l(r['items']);
+          _from = _s(r['from']);
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _err = '$e');
+    }
+  }
+
+  Future<void> _send() async {
+    final list = [
+      for (final e in _count.entries)
+        if (e.value > 0) {'item': _items[e.key]['item'], 'qty': e.value, 'unit': _items[e.key]['unit']},
+    ];
+    if (list.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      final r = await widget.app.api!.netDealAsk(widget.to, list, note: widget.note);
+      if (mounted) {
+        _snack(context, _s(r['say']));
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        _snack(context, '$e');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = _count.values.where((x) => x > 0).length;
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * .8,
+        child: Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Row(children: [
+              Expanded(
+                child: Text(_from.isEmpty ? 'Price list' : 'Price list · $_from',
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              ),
+              IconButton(onPressed: () => Navigator.of(context).pop(false), icon: const Icon(Icons.close_rounded)),
+            ]),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text('Daam jaankari ke liye hain; pakka quote unke stock se aayega.', style: TextStyle(color: C.faint, fontSize: 12)),
+          ),
+          Expanded(
+            child: _err != null
+                ? Center(child: Padding(padding: const EdgeInsets.all(20), child: Text(_err!, style: const TextStyle(color: C.bad))))
+                : _items.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: _items.length,
+                        itemBuilder: (_, i) {
+                          final it = _items[i];
+                          final q = _count[i] ?? 0;
+                          return ListTile(
+                            dense: true,
+                            title: Text(_s(it['item']), style: const TextStyle(fontWeight: FontWeight.w700)),
+                            subtitle: Text('${_inr(it['price'])} / ${_s(it['unit']).isEmpty ? 'unit' : _s(it['unit'])}'
+                                '${it['in_stock'] == false ? ' · abhi stock nahi' : ''}'),
+                            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                              IconButton(
+                                  onPressed: q <= 0 ? null : () => setState(() => _count[i] = q - 1),
+                                  icon: const Icon(Icons.remove_circle_outline_rounded)),
+                              SizedBox(width: 32, child: Text(_qty(q), textAlign: TextAlign.center)),
+                              IconButton(
+                                  onPressed: () => setState(() => _count[i] = q + 1),
+                                  icon: const Icon(Icons.add_circle_outline_rounded, color: C.accent)),
+                            ]),
+                          );
+                        },
+                      ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: GradientButton(
+                label: n == 0 ? 'Item chuniye' : '$n item ki list bhejo',
+                icon: Icons.send_rounded,
+                onTap: n == 0 || _busy ? null : _send),
+          ),
+        ]),
+      ),
+    );
+  }
 }

@@ -44,7 +44,7 @@ from . import policy
 from .service import EXTRA_KINDS, NetError, _link, _post, _thread, resolve, tell
 
 DEAL_KINDS = ("deal_ask", "deal_quote", "deal_confirm", "deal_accept", "deal_reject", "deal_status", "deal_ready",
-              "deal_cancel")
+              "deal_cancel", "deal_catalog")
 OPEN_STATES = ("asked", "quoted", "confirmed", "accepted", "packing", "ready")
 END_STATES = ("handed_over", "rejected", "cancelled", "expired")
 STATES = OPEN_STATES + END_STATES
@@ -63,6 +63,7 @@ TRANSITIONS: dict[tuple[str, str], str] = {
     ("packing", "deal_status:delayed"): "packing",
     ("accepted", "deal_ready"): "ready",
     ("packing", "deal_ready"): "ready",
+    ("ready", "deal_ready"): "ready",                 # v0.105 a new pickup code / more time (old code stops working)
     ("ready", "deal_status:handed_over"): "handed_over",
 }
 for _s in ("asked", "quoted", "confirmed", "accepted", "packing", "ready"):
@@ -104,6 +105,7 @@ class Deal(Base):
     ready: Mapped[dict] = mapped_column(JSON, default=dict)                     # code, place, until
     reserved: Mapped[list] = mapped_column(JSON, default=list)                  # seller: [{stock_id, qty}] held for this order
     smap: Mapped[list] = mapped_column(JSON, default=list)                      # seller: stock id per quote line ("" = typed line)
+    pick: Mapped[dict] = mapped_column(JSON, default=dict)                      # v0.105 seller: pick task {to, status, by, short, at}
     step: Mapped[int] = mapped_column(Integer, default=0)
     last_hash: Mapped[str] = mapped_column(String(64), default="")
     history: Mapped[list] = mapped_column(JSON, default=list)                   # [{step, kind, by, at, hash, say}]
@@ -127,19 +129,18 @@ class StockItem(Base):
     gst_pct: Mapped[float] = mapped_column(Float, default=0.0)
     qty: Mapped[float | None] = mapped_column(Float, nullable=True)            # None = not counted (ask the owner)
     reserved: Mapped[float] = mapped_column(Float, default=0.0)                # held by accepted, not yet handed-over orders
+    low_at: Mapped[float | None] = mapped_column(Float, nullable=True)         # v0.105 tell her when free stock falls to this
+    tiers: Mapped[list] = mapped_column(JSON, default=list)                     # v0.105 [{min, price}] bulk prices
+    subs: Mapped[list] = mapped_column(JSON, default=list)                      # v0.105 names that can stand in when this runs out
+    public: Mapped[bool] = mapped_column(Boolean, default=True)                 # v0.105 shown in the price list others see
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
 class DealRules(Base):
-    """The seller's written rules for deals (her Mere Niyam for selling). Off by default: she taps every quote."""
+    """The seller's counter settings. What the avatar may do ALONE (auto quote / accept, catalog, packers) lives in her
+    Mere Niyam (`avatar.rules["selling"]`, v0.105), read back to her with the other rules and set from her own words."""
     __tablename__ = "hoola_deal_rules"
     tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    auto_quote: Mapped[str] = mapped_column(String(12), default="off")         # off | trusted | connected
-    auto_quote_max: Mapped[float] = mapped_column(Float, default=25000.0)
-    auto_accept: Mapped[bool] = mapped_column(Boolean, default=False)
-    auto_accept_max: Mapped[float] = mapped_column(Float, default=25000.0)
-    trusted: Mapped[list] = mapped_column(JSON, default=list)                   # peer addresses she trusts for auto quotes
-    valid_minutes: Mapped[int] = mapped_column(Integer, default=120)
     place: Mapped[str] = mapped_column(String(200), default="")                # pickup counter / address shown on ready
     pickup_minutes: Mapped[int] = mapped_column(Integer, default=180)          # how long a ready parcel waits
     prefix: Mapped[str] = mapped_column(String(8), default="D")
@@ -170,6 +171,14 @@ def _num(x: Any, lo: float = 0.0, hi: float = 1e9) -> float | None:
     if v != v or v < lo or v > hi:                 # NaN / out of range
         return None
     return v
+
+
+def _qty(x: Any) -> str:
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return str(x)
+    return str(int(v)) if v == int(v) else f"{v:.2f}".rstrip("0").rstrip(".")
 
 
 def _r2(x: float) -> float:
@@ -224,44 +233,49 @@ def rules(tenant: str) -> DealRules:
         return r
 
 
+def selling(tenant: str) -> dict[str, Any]:
+    """Her Mere Niyam for selling (avatar rules, cleaned with the fixed limits)."""
+    from ..avatar.service import get as avatar_get
+    return dict(avatar_get(tenant)["rules"]["selling"])
+
+
+SELL_KEYS = ("auto_quote", "auto_quote_max", "auto_accept", "auto_accept_max", "trusted", "valid_minutes", "catalog",
+             "show_stock", "auto_ready", "packers")
+COUNTER_KEYS = ("place", "pickup_minutes", "prefix")
+
+
 def rules_view(tenant: str) -> dict[str, Any]:
-    r = rules(tenant)
-    return {"auto_quote": r.auto_quote, "auto_quote_max": r.auto_quote_max, "auto_accept": r.auto_accept,
-            "auto_accept_max": r.auto_accept_max, "valid_minutes": r.valid_minutes, "place": r.place,
-            "pickup_minutes": r.pickup_minutes, "prefix": r.prefix,
-            "trusted": [{"address": a, "label": _say_who(a)} for a in r.trusted or []],
-            "say": _rules_say(r)}
+    r, so = rules(tenant), selling(tenant)
+    return so | {"place": r.place, "pickup_minutes": r.pickup_minutes, "prefix": r.prefix, "say": _rules_say(so),
+                 "packers_found": [m["name"] for m in packers(tenant)]}
 
 
-def _rules_say(r: DealRules) -> str:
-    q = {"off": "har quote aapke tap se jaata hai", "trusted": f"bharose wale graahakon ko {inr(r.auto_quote_max)} tak ka "
-         "poora quote khud jaata hai", "connected": f"jude hue sabhi graahakon ko {inr(r.auto_quote_max)} tak ka poora quote "
-         "khud jaata hai"}.get(r.auto_quote, "")
-    a = (f"stock ho to {inr(r.auto_accept_max)} tak ka order khud pakka" if r.auto_accept else "har order aapke tap se pakka")
-    return f"{q}; {a}."
+def _rules_say(so: dict[str, Any]) -> str:
+    q = {"off": "har quote aapke tap se jaata hai", "trusted": f"bharose wale graahakon ko {inr(so['auto_quote_max'])} tak ka "
+         "poora quote khud jaata hai", "connected": f"jude hue sabhi graahakon ko {inr(so['auto_quote_max'])} tak ka poora quote "
+         "khud jaata hai"}.get(so["auto_quote"], "")
+    a = (f"stock ho to {inr(so['auto_accept_max'])} tak ka order khud pakka" if so["auto_accept"] else "har order aapke tap se pakka")
+    p = "packing hote hi parcel khud 'taiyaar'" if so.get("auto_ready", True) else "packing ke baad 'taiyaar' aapke tap se"
+    return f"{q}; {a}; {p}."
 
 
 def set_rules(tenant: str, **kw) -> dict[str, Any]:
+    """Selling rules go into her Mere Niyam; the counter (place, pickup time, order prefix) stays here."""
+    sell = {k: kw[k] for k in SELL_KEYS if k in kw and kw[k] is not None}
+    if "auto_quote" in sell and sell["auto_quote"] not in ("off", "trusted", "connected"):
+        raise DealError("auto_quote: off, trusted, connected")
+    if "catalog" in sell and sell["catalog"] not in ("off", "connected", "public"):
+        raise DealError("catalog: off, connected, public")
+    for k in ("auto_quote_max", "auto_accept_max"):
+        if k in sell and _num(sell[k], 0, MAX_TOTAL) is None:
+            raise DealError(f"{k}: 0 se 1 crore ke beech")
+    if sell:
+        from ..avatar import service as av
+        cur = av.get(tenant)["rules"]
+        av.save(tenant, rules=dict(cur, selling=dict(cur.get("selling") or {}, **sell)))
     with session() as s:
         r = s.get(DealRules, tenant) or DealRules(tenant_id=tenant)
         s.add(r)
-        if kw.get("auto_quote") is not None:
-            if kw["auto_quote"] not in ("off", "trusted", "connected"):
-                raise DealError("auto_quote: off, trusted, connected")
-            r.auto_quote = kw["auto_quote"]
-        for k in ("auto_quote_max", "auto_accept_max"):
-            if kw.get(k) is not None:
-                v = _num(kw[k], 0, MAX_TOTAL)
-                if v is None:
-                    raise DealError(f"{k}: 0 se 1 crore ke beech")
-                setattr(r, k, v)
-        if isinstance(kw.get("auto_accept"), bool):
-            r.auto_accept = kw["auto_accept"]
-        if kw.get("valid_minutes") is not None:
-            v = _num(kw["valid_minutes"], 5, 7 * 24 * 60)
-            if v is None:
-                raise DealError("valid_minutes: 5 minute se 7 din")
-            r.valid_minutes = int(v)
         if kw.get("pickup_minutes") is not None:
             v = _num(kw["pickup_minutes"], 15, 7 * 24 * 60)
             if v is None:
@@ -274,23 +288,55 @@ def set_rules(tenant: str, **kw) -> dict[str, Any]:
         if isinstance(kw.get("prefix"), str) and re.fullmatch(r"[A-Za-z]{1,6}", kw["prefix"].strip()):
             r.prefix = kw["prefix"].strip().upper()
         r.updated_at = now()
-    if kw.get("trusted") is not None:
-        addrs = []
-        for w in list(kw["trusted"])[:200]:
-            a = resolve(tenant, str(w))
-            l = _link(tenant, a)
-            if l is None or l.status != "active":
-                raise DealError(f"{w} aapse juda nahi hai.")
-            addrs.append(a)
-        with session() as s:
-            s.get(DealRules, tenant).trusted = addrs
     return rules_view(tenant)
+
+
+def _named(names: list[str], link, card: dict[str, Any] | None, address: str = "") -> bool:
+    """Is this peer one of the names / Hoola IDs she wrote (same matching as VIP)."""
+    want = {str(x).lower().lstrip("@") for x in names or [] if str(x).strip()}
+    if not want:
+        return False
+    cand = {address.lower()}
+    if link is not None:
+        cand |= {(link.nick or "").lower(), (link.relation or "").lower()}
+    if card:
+        cand |= {str(card.get("owner_name", "")).lower(), str(card.get("handle", "")).lower(),
+                 str(card.get("owner_name", "")).lower().split(" ")[0], str(card.get("address", "")).lower()}
+    return bool(want & {c for c in cand if c})
+
+
+def packers(tenant: str) -> list[dict[str, Any]]:
+    """Her team members who pack orders: on the Hoola Network, active, manager or given the 'packing' duty; if she
+    named packers in Mere Niyam, only those."""
+    try:
+        from ..employee import service as emp
+        team = emp.team(tenant)
+    except Exception:
+        return []
+    names = {str(x).lower().lstrip("@") for x in selling(tenant).get("packers") or []}
+    out = []
+    for m in team:
+        addr = str(m.get("address") or "")
+        if not m.get("active", True) or not addr:
+            continue
+        if not (m.get("role") == "manager" or "packing" in (m.get("duties") or [])):
+            continue
+        if names and not ({str(m.get("name", "")).lower(), addr.lower()} & names
+                          or any(n in addr.lower() for n in names)):
+            continue
+        l = _link(tenant, addr)
+        if l is None or l.status != "active":
+            continue
+        out.append({"id": m.get("id"), "name": m.get("name"), "address": addr})
+    return out
 
 
 def stock_view(it: StockItem) -> dict[str, Any]:
     free = None if it.qty is None else _r2(max(0.0, it.qty - (it.reserved or 0.0)))
+    low = it.low_at is not None and free is not None and free <= it.low_at
     return {"id": it.id, "name": it.name, "aliases": it.aliases or [], "unit": it.unit, "price": it.price,
-            "gst_pct": it.gst_pct, "qty": it.qty, "reserved": it.reserved or 0.0, "free": free,
+            "gst_pct": it.gst_pct, "qty": it.qty, "reserved": it.reserved or 0.0, "free": free, "low_at": it.low_at,
+            "low": low, "tiers": it.tiers or [], "subs": it.subs or [], "public": it.public is not False,
             "updated": it.updated_at.isoformat() if it.updated_at else ""}
 
 
@@ -348,6 +394,20 @@ def set_stock(tenant: str, items: list[dict[str, Any]]) -> dict[str, Any]:
                 it.unit = raw["unit"].strip()[:30]
             if isinstance(raw.get("aliases"), list):
                 it.aliases = [str(a).strip()[:80] for a in raw["aliases"][:12] if str(a).strip()]
+            if "low_at" in raw:
+                it.low_at = None if raw["low_at"] in (None, "") else _num(raw["low_at"], 0, 1e7)
+            if isinstance(raw.get("tiers"), list):
+                tiers = []
+                for t in raw["tiers"][:6]:
+                    mn, pr = _num((t or {}).get("min"), 1, 1e7), _num((t or {}).get("price"), 0, MAX_TOTAL)
+                    if mn is None or pr is None:
+                        raise DealError(f"{name}: bulk daam [{{min, price}}] galat")
+                    tiers.append({"min": mn, "price": _r2(pr)})
+                it.tiers = sorted(tiers, key=lambda t: t["min"])
+            if isinstance(raw.get("subs"), list):
+                it.subs = [str(a).strip()[:140] for a in raw["subs"][:5] if str(a).strip()]
+            if isinstance(raw.get("public"), bool):
+                it.public = raw["public"]
             it.name, it.updated_at = name, now()
             s.flush()
             done.append(stock_view(it))
@@ -373,7 +433,8 @@ def _catalog_items(tenant: str) -> list[dict[str, Any]]:
         rows = s.scalars(select(StockItem).where(StockItem.tenant_id == tenant)).all()
         if rows:
             return [{"id": r.id, "name": r.name, "key": r.key, "aliases": [norm(a) for a in r.aliases or []], "unit": r.unit,
-                     "price": r.price, "gst_pct": r.gst_pct,
+                     "price": r.price, "gst_pct": r.gst_pct, "tiers": r.tiers or [], "subs": r.subs or [],
+                     "public": r.public is not False,
                      "free": None if r.qty is None else max(0.0, r.qty - (r.reserved or 0.0))} for r in rows]
     from .business import Business
     with session() as s:
@@ -384,7 +445,8 @@ def _catalog_items(tenant: str) -> list[dict[str, Any]]:
         if c.get("price") is None:
             continue
         out.append({"id": "", "name": str(c.get("item") or ""), "key": norm(c.get("item")), "aliases": [],
-                    "unit": str(c.get("unit") or ""), "price": float(c["price"]), "gst_pct": 0.0, "free": None})
+                    "unit": str(c.get("unit") or ""), "price": float(c["price"]), "gst_pct": 0.0, "free": None,
+                    "tiers": [], "subs": [], "public": True})
     return out
 
 
@@ -429,9 +491,30 @@ def build_quote(tenant: str, asked: list[dict[str, Any]]) -> dict[str, Any]:
             qty, status = float(int(free) if free == int(free) else free), "partial"
         else:
             qty, status = 0.0, "out"
-        lines.append(_line(m["name"], want, qty, m["unit"] or a.get("unit", ""), m["price"], m["gst_pct"], status,
+        lines.append(_line(m["name"], want, qty, m["unit"] or a.get("unit", ""), price_for(m, qty), m["gst_pct"], status,
                            stock_id=m["id"], asked_as=a["item"]))
+        gap = want - qty if status in ("partial", "out") else 0.0
+        for sub_name in m.get("subs") or []:                 # her own "this can stand in" list, only from free stock
+            if gap <= 0:
+                break
+            sm = next((it for it in items if it["key"] == norm(sub_name) and it["id"] != m["id"]), None)
+            if sm is None or sm["free"] is None or sm["free"] <= 0:
+                continue
+            sq = min(gap, sm["free"])
+            sq = float(int(sq)) if sq == int(sq) else sq
+            lines.append(_line(sm["name"], 0.0, sq, sm["unit"], price_for(sm, sq), sm["gst_pct"], "substitute",
+                               stock_id=sm["id"], asked_as=a["item"]))
+            gap -= sq
     return totals({"lines": lines})
+
+
+def price_for(it: dict[str, Any], qty: float) -> float:
+    """Her bulk price: the lowest tier whose minimum this quantity reaches, else the list price."""
+    p = float(it["price"])
+    for t in it.get("tiers") or []:
+        if qty >= float(t["min"]):
+            p = min(p, float(t["price"]))
+    return p
 
 
 def _line(item: str, asked: float, qty: float, unit: str, price: float | None, gst_pct: float, status: str,
@@ -750,15 +833,19 @@ def confirm(tenant: str, deal_id: str, v: int | None = None, mode: str = "", by_
 
 # ---------------------------------------------------------------- seller side
 def _may_auto_quote(tenant: str, peer: str, q: dict[str, Any]) -> bool:
-    r = rules(tenant)
-    if r.auto_quote == "off" or not q.get("complete") or q["total"] <= 0 or q["total"] > r.auto_quote_max:
+    """Her Mere Niyam: a quote goes by itself only when EVERY line is in stock, no line was swapped or guessed, the total
+    is inside her limit and this peer is someone her rule covers."""
+    so = selling(tenant)
+    if so["auto_quote"] == "off" or not q.get("complete") or q["total"] <= 0 or q["total"] > so["auto_quote_max"]:
+        return False
+    if any(l["status"] != "ok" for l in q.get("lines") or []):
         return False
     l = _link(tenant, peer)
     if l is None or l.status != "active" or l.key_warning:
         return False
-    if r.auto_quote == "connected":
+    if so["auto_quote"] == "connected":
         return True
-    return bool(l.vip or l.relation in ("family", "team") or peer in (r.trusted or []))
+    return bool(l.vip or l.relation in ("family", "team") or _named(so.get("trusted") or [], l, idn.peer_card(peer), peer))
 
 
 def send_quote(tenant: str, deal_id: str, lines: Any = None, note: str = "", valid_minutes: Any = None,
@@ -778,7 +865,7 @@ def send_quote(tenant: str, deal_id: str, lines: Any = None, note: str = "", val
         if l["qty"] and l.get("price") is None:
             raise DealError(f"'{l['item']}' ka daam bataiye.")
     r = rules(tenant)
-    mins = int(_num(valid_minutes, 5, 7 * 24 * 60) or r.valid_minutes)
+    mins = int(_num(valid_minutes, 5, 7 * 24 * 60) or selling(tenant)["valid_minutes"])
     v = int((d.quote or {}).get("v") or 0) + 1
     q = {"v": v, "lines": [{k: l[k] for k in ("item", "asked", "qty", "unit", "price", "gst_pct", "amount", "gst", "status")}
                            | ({"asked_as": l["asked_as"]} if l.get("asked_as") else {}) for l in base["lines"]],
@@ -833,7 +920,8 @@ def _edit_lines(base: dict[str, Any], lines: Any) -> dict[str, Any]:
             if gv is None or gv not in GST_RATES:
                 raise DealError(f"{ln['item']}: GST % galat")
             ln["gst_pct"] = gv
-        status = "ok" if ln["qty"] >= ln["asked"] else ("partial" if ln["qty"] > 0 else "out")
+        status = "substitute" if ln["status"] == "substitute" else \
+            ("ok" if ln["qty"] >= ln["asked"] else ("partial" if ln["qty"] > 0 else "out"))
         out[i] = _line(ln["item"], ln["asked"], ln["qty"], ln["unit"], ln["price"], ln["gst_pct"], status,
                        stock_id=ln.get("stock_id", ""), asked_as=ln.get("asked_as", ""))
     return totals({"lines": out})
@@ -891,12 +979,15 @@ def accept(tenant: str, deal_id: str, ready_by: str = "", note: str = "", by: st
         _release(tenant, held)
         raise
     STATS["accepts"] += 1
-    d = _get(tenant, deal_id)
     pick = [f"{l['item']} x {l['qty']:g} {l.get('unit') or ''}".strip() for l in (d.quote or {}).get("lines") or [] if l.get("qty")]
+    from . import pick as pk
+    sent = pk.send_tasks(tenant, deal_id)          # v0.105 the pick list goes to her packers' own Hoolas
+    d = _get(tenant, deal_id)
     _publish(tenant, d, "pack", ("Aapke niyam se order khud pakka hua. " if by == "rules" else "") +
-             f"Order {number}: {len(pick)} item pack karne hain.",
+             f"Order {number}: {len(pick)} item pack karne hain." +
+             (f" Pick list {', '.join(sent)} ko bheji." if sent else ""),
              f"Order {number} pakka ({_say_who(d.peer)}). Pick list: " + "; ".join(pick)[:900] + f". deal_id={d.id}.")
-    return {"status": d.state, "number": number, "pick_list": pick, "deal": view(d)}
+    return {"status": d.state, "number": number, "pick_list": pick, "packers": sent, "deal": view(d)}
 
 
 def _release(tenant: str, held: list[dict[str, Any]], used: bool = False) -> None:
@@ -937,6 +1028,7 @@ def mark_ready(tenant: str, deal_id: str, place: str = "", minutes: Any = None, 
     d = _get(tenant, deal_id)
     if d.role != "seller":
         raise DealError("Parcel bechne wala taiyaar karta hai.")
+    again = d.state == "ready"
     r = rules(tenant)
     mins = int(_num(minutes, 15, 7 * 24 * 60) or r.pickup_minutes)
     place = policy.quote(place, 200) or r.place or "Dukaan ke counter par"
@@ -946,8 +1038,11 @@ def mark_ready(tenant: str, deal_id: str, place: str = "", minutes: Any = None, 
     d.ready = body
     _send(tenant, d, "deal_ready", body, f"Parcel taiyaar: {place}")
     STATS["ready"] += 1
+    from . import pick as pk
+    pk.notify(tenant, deal_id, "ready")
     d = _get(tenant, deal_id)
-    _publish(tenant, d, "info", f"Order {d.number} taiyaar; graahak ko pickup code bheja. Counter par code milaiye.")
+    _publish(tenant, d, "info", (f"Order {d.number}: naya pickup code aur samay graahak ko bheja (purana code band)." if again else
+                                 f"Order {d.number} taiyaar; graahak ko pickup code bheja. Counter par code milaiye."))
     return {"status": d.state, "deal": view(d)}
 
 
@@ -963,8 +1058,12 @@ def handed_over(tenant: str, deal_id: str, code: str = "", note: str = "") -> di
     _send(tenant, d, "deal_status", {"status": "handed_over", "note": policy.quote(note, 300)}, "Saamaan de diya")
     _release(tenant, d.reserved or [], used=True)
     STATS["handed_over"] += 1
+    from . import pick as pk
+    pk.notify(tenant, deal_id, "handed_over")
+    low = low_stock(tenant, [h.get("stock_id") for h in d.reserved or []])
     d = _get(tenant, deal_id)
-    _publish(tenant, d, "info", f"Order {d.number} graahak ko de diya.")
+    _publish(tenant, d, "info", f"Order {d.number} graahak ko de diya." +
+             (" Stock kam: " + ", ".join(f"{x['name']} ({_qty(x['free'])} bacha)" for x in low) + "." if low else ""))
     return {"status": d.state, "deal": view(d)}
 
 
@@ -980,6 +1079,8 @@ def cancel(tenant: str, deal_id: str, reason: str = "") -> dict[str, Any]:
     _send(tenant, d, "deal_cancel", {"reason": reason}, "Cancel: " + reason)
     if d.role == "seller":
         _release(tenant, held)
+        from . import pick as pk
+        pk.notify(tenant, deal_id, "cancelled")
     d = _get(tenant, deal_id)
     _publish(tenant, d, "info", "Deal cancel ho gayi.")
     return {"status": d.state, "deal": view(d)}
@@ -988,6 +1089,8 @@ def cancel(tenant: str, deal_id: str, reason: str = "") -> dict[str, Any]:
 # ---------------------------------------------------------------- receiving
 def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules_: dict[str, Any]) -> dict[str, Any]:
     kind, raw, peer = env["kind"], env.get("body") or {}, env["from"]
+    if kind == "deal_catalog":
+        return _on_catalog(tenant, peer, card, link)
     try:
         return _receive(tenant, kind, raw, peer, env, card, link)
     except DealError as e:
@@ -1136,6 +1239,8 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
         _save(d)
         if d.role == "seller":
             _release(tenant, held)
+            from . import pick as pk
+            pk.notify(tenant, d.id, "cancelled")
         _publish(tenant, d, "info", f"{who} ne deal cancel ki: {reason}")
         return {"ok": True, "status": "cancelled"}
     raise DealError("unknown")
@@ -1170,9 +1275,9 @@ def _after_ask(tenant: str, d: Deal, card: dict[str, Any]) -> dict[str, Any]:
 
 
 def _after_confirm(tenant: str, d: Deal, who: str) -> dict[str, Any]:
-    r = rules(tenant)
+    so = selling(tenant)
     q = d.quote or {}
-    if r.auto_accept and 0 < float(q.get("total") or 0) <= r.auto_accept_max and not _stock_holds(tenant, q, d.smap or []):
+    if so["auto_accept"] and 0 < float(q.get("total") or 0) <= so["auto_accept_max"] and not _stock_holds(tenant, q, d.smap or []):
         try:
             accept(tenant, d.id, by="rules")
             STATS["auto_accepts"] += 1
@@ -1205,7 +1310,167 @@ def tick() -> int:
         except Exception:
             pass
         n += 1
+    # v0.105 a ready parcel nobody collected in time: one reminder each side (the seller can send a new code / time)
+    late = []
+    with session() as s:
+        for d in s.scalars(select(Deal).where(Deal.state == "ready")).all():
+            rdy = dict(d.ready or {})
+            until = _when(rdy.get("until"))
+            if until is not None and until < now() and not rdy.get("late_told"):
+                rdy["late_told"] = True
+                d.ready, d.updated_at = rdy, now()
+                s.flush()
+                s.expunge(d)
+                late.append(d)
+    for d in late:
+        try:
+            if d.role == "seller":
+                _publish(d.tenant_id, d, "pack", f"Order {d.number} ka parcel samay par nahi liya gaya. Naya samay / code bhejun "
+                         "(Parcel taiyaar dobara) ya cancel karein?")
+            else:
+                _publish(d.tenant_id, d, "info", f"{_say_who(d.peer)}: order {d.number} lene ka samay nikal gaya. Dukaan se "
+                         "naya samay maangiye.")
+        except Exception:
+            pass
+        n += 1
     return n
+
+
+# ---------------------------------------------------------------- v0.105 price list for other avatars, stock import, low stock
+_CAT_ASKS: dict[str, list[float]] = {}
+
+
+def catalog(tenant: str, show_stock: bool | None = None) -> list[dict[str, Any]]:
+    """What another avatar may see of her list: name, unit, price (+ bulk prices, GST); stock only if she allows it."""
+    so = selling(tenant)
+    show = so.get("show_stock") if show_stock is None else show_stock
+    out = []
+    for it in _catalog_items(tenant):
+        if not it.get("public", True):
+            continue
+        row = {"item": it["name"], "unit": it["unit"], "price": it["price"], "gst_pct": it["gst_pct"],
+               "tiers": it.get("tiers") or []}
+        if show:
+            row["in_stock"] = None if it["free"] is None else it["free"] > 0
+        out.append(row)
+    return out[:300]
+
+
+def _on_catalog(tenant: str, peer: str, card: dict[str, Any], link) -> dict[str, Any]:
+    import time
+    so = selling(tenant)
+    if so.get("catalog") == "off":
+        return {"ok": False, "status": "refused", "reason": "Yeh dukaan apni price list share nahi karti."}
+    asks = [t for t in _CAT_ASKS.get(f"{tenant}|{peer}", []) if time.time() - t < 3600]
+    if len(asks) >= 20:
+        return {"ok": False, "status": "refused", "reason": "bahut baar maangi gayi"}
+    _CAT_ASKS[f"{tenant}|{peer}"] = asks + [time.time()]
+    return {"ok": True, "status": "catalog", "items": catalog(tenant)}
+
+
+def catalog_of(tenant: str, to: str) -> dict[str, Any]:
+    """The buyer's avatar asks a seller's avatar for its price list (to make a list from it)."""
+    peer = resolve(tenant, to)
+    l = _link(tenant, peer)
+    if l is None or l.status != "active":
+        from . import business
+        try:
+            peer = business.contact(tenant, to)
+        except NetError:
+            raise DealError(f"{_say_who(peer)} se juda nahi hai.")
+    res = _post(tenant, peer, "deal_catalog", {}, new_id("tk"))
+    if not res.get("ok"):
+        raise DealError(res.get("reason") or "Price list nahi mili.")
+    items = []
+    for x in (res.get("items") or [])[:300]:
+        if isinstance(x, dict) and x.get("item"):
+            p = _num(x.get("price"), 0, MAX_TOTAL)
+            items.append({"item": policy.clean_name(x.get("item"), 120), "unit": policy.clean_name(x.get("unit"), 20),
+                          "price": p, "gst_pct": _num(x.get("gst_pct"), 0, 40) or 0.0,
+                          **({"in_stock": bool(x["in_stock"])} if isinstance(x.get("in_stock"), bool) else {})})
+    return {"from": _say_who(peer), "items": items,
+            "say": "Yeh unki price list hai (jaankari); quote list bhejne par unke stock se banta hai."}
+
+
+_COLS = {"name": ("name", "item", "naam", "product", "cheez", "particulars", "description", "item name"),
+         "price": ("price", "rate", "daam", "mrp", "selling price", "sale price", "unit price"),
+         "qty": ("qty", "quantity", "stock", "maatra", "closing", "closing stock", "balance"),
+         "unit": ("unit", "uom", "pack"), "gst_pct": ("gst", "gst %", "gst%", "tax", "tax %", "gst rate")}
+
+
+def import_stock(tenant: str, name: str, data: bytes) -> dict[str, Any]:
+    """Her stock sheet (CSV / Excel: name, price, qty, unit, GST in any common header words) into her stock list."""
+    import csv
+    import io
+    rows: list[list[Any]] = []
+    if name.lower().endswith((".xlsx", ".xlsm")):
+        from openpyxl import load_workbook
+        ws = load_workbook(io.BytesIO(data), read_only=True, data_only=True).active
+        rows = [list(r) for r in ws.iter_rows(values_only=True)][:5001]
+    else:
+        text = data.decode("utf-8-sig", errors="replace")
+        rows = list(csv.reader(io.StringIO(text)))[:5001]
+    head_i, cols = -1, {}
+    for i, r in enumerate(rows[:15]):
+        cells = [norm(c) for c in r]
+        found = {k: cells.index(w) for k, ws_ in _COLS.items() for w in ws_ if w in cells}
+        if "name" in found and ("price" in found or "qty" in found):
+            head_i, cols = i, found
+            break
+    if head_i < 0:
+        raise DealError("Sheet mein 'naam' aur 'daam' ya 'stock' wale column nahi mile (pehli line mein naam likhiye).")
+    items, bad = [], 0
+    for r in rows[head_i + 1:]:
+        def cell(k):
+            j = cols.get(k)
+            return r[j] if j is not None and j < len(r) else None
+        nm = str(cell("name") or "").strip()
+        if not nm:
+            continue
+        it: dict[str, Any] = {"name": nm}
+        for k in ("price", "qty"):
+            v = cell(k)
+            if v not in (None, ""):
+                n = _num(str(v).replace(",", "").replace("₹", "").strip(), 0, MAX_TOTAL)
+                if n is None:
+                    bad += 1
+                    continue
+                it[k] = n
+        g = cell("gst_pct")
+        if g not in (None, ""):
+            gv = _num(str(g).replace("%", "").strip(), 0, 40)
+            if gv is not None and gv in GST_RATES:
+                it["gst_pct"] = gv
+        if cell("unit"):
+            it["unit"] = str(cell("unit"))[:30]
+        items.append(it)
+    if not items:
+        raise DealError("Sheet mein koi item nahi mila.")
+    out = set_stock(tenant, items)
+    return {"saved": out["saved"], "skipped_cells": bad, "say": f"{out['saved']} item stock mein aa gaye."}
+
+
+def low_stock(tenant: str, ids: list[str] | None = None) -> list[dict[str, Any]]:
+    """Items at or below her 'tell me when' level (only the given ones, or all)."""
+    with session() as s:
+        q = select(StockItem).where(StockItem.tenant_id == tenant, StockItem.low_at.is_not(None))
+        rows = s.scalars(q).all()
+        out = []
+        for it in rows:
+            if ids is not None and it.id not in ids:
+                continue
+            v = stock_view(it)
+            if v["low"]:
+                out.append(v)
+    return out
+
+
+def sync_catalog(tenant: str, catalog_rows: list[dict[str, Any]]) -> None:
+    """v0.33 price list -> stock list (price / unit only; counted quantities stay as they are)."""
+    items = [{"name": c["item"], "price": c["price"], **({"unit": c["unit"]} if c.get("unit") else {})}
+             for c in catalog_rows if c.get("item") and c.get("price") is not None]
+    if items:
+        set_stock(tenant, items)
 
 
 for _k in DEAL_KINDS:

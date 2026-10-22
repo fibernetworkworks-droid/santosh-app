@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.104.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.105.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -2159,6 +2159,13 @@ def net_deal_ask(body: DealAskIn, tenant: str = Depends(current_tenant)):
     return _net(dl.ask, tenant, body.to, body.items, body.mode, body.need_by, body.note, body.title, body.area)
 
 
+@app.get("/api/net/deals/catalog", dependencies=[Depends(require_key)])
+def net_deal_catalog(to: str, tenant: str = Depends(current_tenant)):
+    """v0.105 a seller's price list, asked through her avatar (only what that seller shares)."""
+    from .net import deal as dl
+    return _net(dl.catalog_of, tenant, to)
+
+
 @app.get("/api/net/deals/{deal_id}", dependencies=[Depends(require_key)])
 def net_deal_get(deal_id: str, tenant: str = Depends(current_tenant)):
     from .net import deal as dl
@@ -2207,6 +2214,37 @@ def net_stock_delete(item: str, tenant: str = Depends(current_tenant)):
     return _net(dl.remove_stock, tenant, item)
 
 
+@app.post("/api/net/stock/import", dependencies=[Depends(require_key)])
+async def net_stock_import(file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
+    from .net import deal as dl
+    data = await file.read()
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(413, "File 10 MB se badi hai.")
+    return _net(dl.import_stock, tenant, file.filename or "stock.csv", data)
+
+
+class PickActIn(BaseModel):
+    short: list | None = None
+    code: str = ""
+    note: str = ""
+
+
+@app.get("/api/net/picks", dependencies=[Depends(require_key)])
+def net_picks(all: bool = False, tenant: str = Depends(current_tenant)):
+    from .net import pick as pk
+    return {"picks": pk.picks(tenant, not all)}
+
+
+@app.post("/api/net/picks/{pick_id}/{action}", dependencies=[Depends(require_key)])
+def net_pick_act(pick_id: str, action: str, body: PickActIn, tenant: str = Depends(current_tenant)):
+    from .net import pick as pk
+    if action in ("packing", "packed", "short"):
+        return _net(pk.mark, tenant, pick_id, action, body.short, body.note)
+    if action == "handover":
+        return _net(pk.handover, tenant, pick_id, body.code)
+    raise HTTPException(400, "action: packing, packed, short, handover")
+
+
 @app.get("/api/net/deal_rules", dependencies=[Depends(require_key)])
 def net_deal_rules(tenant: str = Depends(current_tenant)):
     from .net import deal as dl
@@ -2217,7 +2255,7 @@ def net_deal_rules(tenant: str = Depends(current_tenant)):
 def net_deal_rules_put(body: dict, tenant: str = Depends(current_tenant)):
     from .net import deal as dl
     allowed = ("auto_quote", "auto_quote_max", "auto_accept", "auto_accept_max", "valid_minutes", "place", "pickup_minutes",
-               "prefix", "trusted")
+               "prefix", "trusted", "catalog", "show_stock", "auto_ready", "packers")
     return _net(dl.set_rules, tenant, **{k: body[k] for k in allowed if k in body})
 
 

@@ -94,7 +94,16 @@ def profile(tenant: str) -> dict[str, Any] | None:
     b = _biz(tenant)
     if b is None:
         return None
-    return {"name": b.name, "category": b.category, "area": b.area, "about": b.about, "hours": b.hours, "catalog": b.catalog,
+    cat = b.catalog
+    try:                                              # v0.105 once she keeps a stock list, that IS the price list
+        from . import deal as dl
+        st = dl.stock(tenant)
+        if st:
+            cat = [{"item": x["name"], "price": x["price"], "unit": x["unit"], "free": x["free"]} for x in st if x["public"]]
+    except Exception:
+        pass
+    return {"name": b.name, "category": b.category, "area": b.area, "about": b.about, "hours": b.hours, "catalog": cat,
+            "catalog_raw": b.catalog,
             "public": b.public, "ticket_prefix": b.ticket_prefix, "webhook": bool(b.webhook_url),
             "team": [{"address": a, "label": idn.label(idn.peer_card(a))} for a in b.team or []], "auto_assign": b.auto_assign,
             "verification": b.verification, "gstin": b.gstin[:2] + "•••" + b.gstin[-3:] if b.gstin else "",
@@ -153,6 +162,9 @@ def setup(tenant: str, **kw) -> dict[str, Any]:
         h = s.get(HoolaId, tenant)
         if h is not None:
             h.business = True
+    if isinstance(kw.get("catalog"), list):          # v0.105 the price list lives in the stock list too (one source)
+        from . import deal as dl
+        dl.sync_catalog(tenant, list((profile(tenant) or {}).get("catalog_raw") or []))
     if kw.get("team") is not None:
         set_team(tenant, list(kw["team"]))
     return profile(tenant) or {}

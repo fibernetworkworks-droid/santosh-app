@@ -23,6 +23,7 @@ const callCardKinds = {
   'tele_logged', 'tele_day', // v0.99
   'kalam_publish', 'kalam_piece', // v0.101
   'hoola_deal', // v0.102
+  'hoola_pick', // v0.105
 };
 
 /// The live voice call, owned by the app (not by a screen): it keeps going while the owner opens Chat, Connect,

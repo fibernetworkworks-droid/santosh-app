@@ -96,6 +96,9 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
     _rules.putIfAbsent('quiet', () => <String, dynamic>{'on': true, 'from': '22:00', 'to': '08:00', 'vip_can_ring': true});
     _rules.putIfAbsent('learning', () => <String, dynamic>{'learn_from_my_work': true, 'share_lessons': 'ask'});
     _rules.putIfAbsent('about', () => <String, dynamic>{'business_info': '', 'office_hours': '', 'price_list': ''});
+    _rules.putIfAbsent('selling', () => <String, dynamic>{'auto_quote': 'off', 'auto_quote_max': 25000, 'auto_accept': false,
+          'auto_accept_max': 25000, 'trusted': <String>[], 'valid_minutes': 120, 'catalog': 'connected', 'show_stock': false,
+          'auto_ready': true, 'packers': <String>[]});
     _vip = TextEditingController(text: List<String>.from(_rules['vip'] as List? ?? const []).join(', '));
     _blocked = TextEditingController(text: List<String>.from(_rules['blocked_topics'] as List? ?? const []).join(', '));
   }
@@ -339,6 +342,65 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
         onSelected: (_) => tap(),
       );
 
+  /// v0.105 Bechna: what the avatar may do alone when another avatar sends a list (order still needs the buyer's tap).
+  List<Widget> _sellingSection() {
+    final sell = _sub('selling');
+    String inr(dynamic v) => '₹${(v is num ? v : num.tryParse('$v') ?? 0).toInt()}';
+    return [
+      _section('Bechna (Hoola Network)', _gv('List aane par $_n quote kab khud bheje. Order hamesha graahak ki haan se.')),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        _chip('Har baar poochho', (sell['auto_quote'] ?? 'off') == 'off', () => setState(() => sell['auto_quote'] = 'off')),
+        _chip('Bharose walon ko khud', sell['auto_quote'] == 'trusted', () => setState(() => sell['auto_quote'] = 'trusted')),
+        _chip('Sab jude logon ko khud', sell['auto_quote'] == 'connected', () => setState(() => sell['auto_quote'] = 'connected')),
+      ]),
+      if ((sell['auto_quote'] ?? 'off') != 'off') ...[
+        const SizedBox(height: 6),
+        Text('Sirf poore stock wala quote, is rakam tak: ${inr(sell['auto_quote_max'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final x in const [5000, 25000, 100000]) _chip(inr(x), sell['auto_quote_max'] == x, () => setState(() => sell['auto_quote_max'] = x)),
+        ]),
+      ],
+      SwitchListTile(
+        dense: true,
+        contentPadding: EdgeInsets.zero,
+        title: Text('Graahak ki haan ke baad order khud pakka (stock ho to, ${inr(sell['auto_accept_max'])} tak)'),
+        value: sell['auto_accept'] == true,
+        onChanged: (v) => setState(() => sell['auto_accept'] = v),
+      ),
+      SwitchListTile(
+        dense: true,
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Pack hote hi graahak ko pickup code'),
+        value: sell['auto_ready'] != false,
+        onChanged: (v) => setState(() => sell['auto_ready'] = v),
+      ),
+      const SizedBox(height: 4),
+      const Text('Price list kise dikhe:', style: TextStyle(color: C.muted, fontSize: 12.5)),
+      const SizedBox(height: 6),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        _chip('Kisi ko nahi', sell['catalog'] == 'off', () => setState(() => sell['catalog'] = 'off')),
+        _chip('Jude logon ko', (sell['catalog'] ?? 'connected') == 'connected', () => setState(() => sell['catalog'] = 'connected')),
+        _chip('Sab ko', sell['catalog'] == 'public', () => setState(() => sell['catalog'] = 'public')),
+      ]),
+      const SizedBox(height: 8),
+      Glass(
+        child: TextFormField(
+          initialValue: List<String>.from(sell['trusted'] as List? ?? const []).join(', '),
+          decoration: const InputDecoration(border: InputBorder.none, labelText: 'Bharose wale graahak (naam / Hoola ID)'),
+          onChanged: (t) => sell['trusted'] = _split(t),
+        ),
+      ),
+      const SizedBox(height: 8),
+      Glass(
+        child: TextFormField(
+          initialValue: List<String>.from(sell['packers'] as List? ?? const []).join(', '),
+          decoration: const InputDecoration(border: InputBorder.none, labelText: 'Packing kaun karega (khaali = team ke manager + packing wale)'),
+          onChanged: (t) => sell['packers'] = _split(t),
+        ),
+      ),
+    ];
+  }
+
   Widget _rulesPage() {
     final accept = _sub('accept');
     final share = _sub('share');
@@ -462,6 +524,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
         _chip('Pehle poochho', (learning['share_lessons'] ?? 'ask') == 'ask', () => setState(() => learning['share_lessons'] = 'ask')),
         _chip('Mere groups mein', learning['share_lessons'] == 'groups', () => setState(() => learning['share_lessons'] = 'groups')),
       ]),
+      ..._sellingSection(),
       const SizedBox(height: 14),
       const Text('Yeh hamesha rahega: paise sirf aapke tap se. PIN, OTP, password kabhi kisi ko nahi.',
           style: TextStyle(color: C.teal, fontSize: 12.5, fontWeight: FontWeight.w600)),

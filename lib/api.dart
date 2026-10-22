@@ -1018,6 +1018,15 @@ class Api {
       _hm(await _send('PUT', '/api/net/stock', body: {'items': items}));
   Future<void> netStockDelete(String id) async => _send('DELETE', '/api/net/stock/$id');
   Future<Map<String, dynamic>> netDealRulesPut(Map<String, dynamic> body) async => _hm(await _send('PUT', '/api/net/deal_rules', body: body));
+  // ---- v0.105 price lists, stock sheets, pick lists on a packer's own Hoola ----
+  Future<Map<String, dynamic>> netDealCatalog(String to) async =>
+      _hm(await _send('GET', '/api/net/deals/catalog', query: {'to': to}, timeout: const Duration(seconds: 40)));
+  Future<Map<String, dynamic>> netStockImport(String filename, List<int> bytes) async =>
+      uploadFile('/api/net/stock/import', filename, bytes, timeout: const Duration(seconds: 90));
+  Future<List<Map<String, dynamic>>> netPicks({bool all = false}) async =>
+      _hl((await _send('GET', '/api/net/picks', query: {'all': all ? 'true' : 'false'}))['picks']);
+  Future<Map<String, dynamic>> netPickAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
+      _hm(await _send('POST', '/api/net/picks/$id/$action', body: body, timeout: const Duration(seconds: 60)));
   Future<Map<String, dynamic>> netChainAct(String id, String action, {String to = '', String note = ''}) async =>
       _hm(await _send('POST', '/api/net/chains/$id', body: {'action': action, 'to': to, 'note': note}, timeout: const Duration(seconds: 60)));
 

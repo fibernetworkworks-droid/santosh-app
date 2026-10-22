@@ -58,6 +58,8 @@ DUTIES: dict[str, dict] = {
                    "prefix": (), "tools": {"audit", "audit_dekho", "file_read", "pdf_tools"}},
     "insurance_work": {"label": "Bima ka kaam", "say": "graahak aur policy book, premium yaad (grace / lapse), zaroorat ka hisaab, quote ki tulna, claim ke kaagaz (premium graahak seedha insurer ko, salah aapki haan se)",
                        "prefix": (), "tools": {"bima", "bima_dekho", "file_read", "pdf_tools"}},
+    "packing": {"label": "Packing / counter", "say": "order ki pick list pack karna, kami batana, counter par graahak ka code milakar saamaan dena",
+                "prefix": (), "tools": {"hoola_pick"}},
     "research": {"label": "Jaankari dhoondhna", "say": "web, maps, mausam, public APIs",
                  "prefix": ("maps_", "api_"), "tools": {"google_search", "web_sources", "open_website", "browse_web", "browse_result", "get_weather",
                                                        "memory_search"}},
