@@ -14,13 +14,22 @@ APP_TOOLS = [
         "prototype BEFORE anything is built. A few words are enough: the 1 lakh app brief library knows 1,000 kinds of "
         "business x 10 app goals x 10 premium styles. action=new: brief (her words, e.g. 'kirana dukaan ki app, ghar pe "
         "delivery'), name, goal (shop|food_order|booking|learning|membership|service_request|khata|catalogue|events|"
-        "community; guessed), style (optional), answers {name, phone, whatsapp, address, hours, upi_id}. Returns the PLAN "
-        "card (screens, tabs, main flow, legal screens made by code) + up to 3 questions: ask them in ONE message (or "
+        "community; or a COMPLEX staff / admin app archetype: crm, field_sales, field_service, helpdesk, hrms, field_force, "
+        "inventory, pos_retail, distribution, manufacturing_erp, procurement, logistics_tms, delivery_driver, fleet, isp_ops, "
+        "telecom_tower, gis_survey, asset_utility, construction_pm, project_mgmt, hospital_his, clinic_emr, lab_lims, school_erp, "
+        "coaching_admin, hotel_pms, restaurant_ops, real_estate_crm, society_mgmt, security_guard, facility_mgmt, iot_monitor, "
+        "agri_fpo, dairy_collection, ngo_field, audit_inspection, collections, accounts_erp, intranet, events_ops, warehouse_wms, "
+        "multi_branch, gym_admin; guessed from her words), style (optional), answers {name, phone, whatsapp, address, hours, upi_id}. Returns the PLAN "
+        "card (screens, tabs, main flow, legal screens made by code; complex apps also get the BLUEPRINT: data tables, org levels, "
+        "roles + permission matrix, approval chain, login plan, phone features with Play / App Store status - features the stores "
+        "don't allow (reading SMS / call log, all files, accessibility, exact alarms) are NEVER promised: say what is used instead) "
+        "+ up to 3 questions: ask them in ONE message (or "
         "ask_form). action=answer: app + answers. action=plan_ok: ONLY when she clearly said haan to the plan (+ drop: "
         "screens she doesn't want) -> Home screen in 3 looks (a few minutes; cards update by themselves, don't poll). "
         "action=look: app + index (0-2) she chose (+ colors_from) -> every screen is designed while she watches the board. "
         "action=change: app + instruction (her words: 'cart mein coupon hatao', 'rang halka', 'booking screen add karo', "
-        "'tabs mein offers') -> only those screens redesign. action=approve: ONLY when she herself says 'design pakka' "
+        "'tabs mein offers', 'store keeper role add karo', 'region ke neeche zone bhi', 'passkey login bhi', 'vendor table mein "
+        "GST number') -> only those screens redesign; roles / levels / login / data / phone-feature changes redraw nothing. action=approve: ONLY when she herself says 'design pakka' "
         "(+ hash from the card) - freezes the design for the real app build. action=stop / resume / delete*. "
         "Never invent prices, phone numbers or reviews ([blank] instead); never card / CVV / UPI PIN / password fields; payments = "
         "UPI to her own UPI ID. The real Android / iPhone app build and store publishing come in later versions. (* owner only)"),
@@ -37,10 +46,14 @@ APP_TOOLS = [
         "library (q or industry: business types with their app goal) | brief (field, goal, style: the full ready app brief) | "
         "understand (q: what a short ask means: business type, app goal, 3 looks) | design_system (the menu she can pick from: "
         "navigation types incl. side bar / floating bar / rail / top tabs, FAB types incl. speed dial, cards incl. glass, headers, "
-        "buttons, textures, motion, 3D, colour schemes, fonts (q = font search, script = devanagari / tamil / ...)). To change an "
+        "buttons, textures, motion, 3D, colour schemes, fonts (q = font search, script = devanagari / tamil / ...)) | archetypes "
+        "(the 43 complex app kinds with modules / roles) | capabilities (every Android / iPhone feature with Play + App Store "
+        "status and the allowed alternative; q filters) | login (sign-in methods + security rules) | blueprint (app: data tables, "
+        "roles matrix, levels, login plan, features, schema files + ER page) | schema (app: the PostgreSQL schema text). To change an "
         "app's structure use app_banao action=change with her words (screens are not redrawn for structure / mode / font)."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system"]},
+         "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system",
+                                             "archetypes", "capabilities", "login", "blueprint", "schema"]},
          "app": {"type": "string"}, "q": {"type": "string"}, "script": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}},
          "required": ["what"]}},
@@ -133,6 +146,24 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
                 "transitions": sorted({m["web"] for m in DS.MOTION.values() if m["kind"] == "transition"}),
                 "three_d": list(DS.THREE_D), "colour_schemes": list(CL.SCHEMES),
                 "fonts": [f["family"] for f in FN.families(script=script, q=q)][:40]}
+    if what == "archetypes":
+        from ..appmaker import taxonomy as TX
+        return {"archetypes": [{"id": k, "label": g["label"], "modules": g["modules"], "roles": g["roles"], "screens": len(g["screens"]),
+                                "brief": g["brief"]} for k, g in TX.GOALS.items() if g.get("complex")], "counts": L.counts()}
+    if what == "capabilities":
+        from ..appmaker import capabilities as CP
+        q = str(a.get("q") or "").lower()
+        rows = [c for c in CP.catalog() if not q or q in (c["label"] + " " + c["hi"] + " " + c["id"]).lower()]
+        return {"capabilities": rows[:70], "legend": {"play": CP.PLAY_LABEL, "ios": CP.IOS_LABEL}}
+    if what == "login":
+        from ..appmaker import auth as AU
+        return {"methods": AU.METHODS, "policy": AU.POLICY}
+    if what == "blueprint":
+        return S.blueprint(t, ref)
+    if what == "schema":
+        data, _ct = S.blueprint_file(t, ref, "schema.sql")
+        txt = data.decode()
+        return {"schema_sql": txt[:12000], "truncated": len(txt) > 12000, "chars": len(txt)}
     raise ToolError(f"Unknown what {what}")
 
 

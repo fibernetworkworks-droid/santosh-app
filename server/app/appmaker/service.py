@@ -31,6 +31,7 @@ from ..db import now, session
 from ..site import build as SB
 from ..site import library as SL
 from . import ai as AI
+from . import blueprint as BP
 from . import kit as K
 from . import library as L
 from . import taxonomy as T
@@ -177,13 +178,16 @@ def missing_questions(facts: dict[str, Any], br: dict[str, Any]) -> list[str]:
 
 
 # ---------------------------------------------------------------- the plan (code, from the library brief)
-def make_plan(br: dict[str, Any], lang: str) -> dict[str, Any]:
+def make_plan(br: dict[str, Any], lang: str, words: str = "") -> dict[str, Any]:
     labels = {s: (T.SCREENS[s]["hi"].capitalize() if lang in ("hinglish",) else T.SCREENS[s]["label"]) for s in br["screens"]}
     labels.update({s: T.CODE_SCREENS[s]["label"] for s in br["code_screens"]})
-    return {"brief_id": br["id"], "screens": list(br["screens"]), "tabs": [t for t in br["tabs"] if t in br["screens"]],
+    tabs = [t for t in br["tabs"] if t in br["screens"]]
+    start = "home" if "home" in br["screens"] else (tabs[0] if tabs else br["screens"][0])
+    return {"brief_id": br["id"], "screens": list(br["screens"]), "tabs": tabs,
             "flow": [s for s in br["flow"] if s in br["screens"]], "code_screens": list(br["code_screens"]),
             "designs": dict(br["designs"]), "labels": labels, "rules": list(br["rules"]), "legal": list(br["legal"]),
-            "start": "home" if "home" in br["screens"] else br["screens"][0], "accounts": br["accounts"], "money": br["money"]}
+            "start": start, "accounts": br["accounts"], "money": br["money"], "complex": bool(br.get("complex")),
+            "blueprint": BP.make(br["goal"], list(br["screens"]), words)}
 
 
 def _board(r: AppProject, plan: dict[str, Any] | None = None, states: dict[str, str] | None = None, now_line: str = "",
@@ -230,7 +234,7 @@ def view(r: AppProject, full: bool = True) -> dict[str, Any]:
          "goal_label": (T.GOALS.get(r.goal) or {}).get("label", ""), "style": r.style,
          "style_label": (T.STYLES.get(r.style) or {}).get("label", ""), "version": r.version,
          "stages": [{"id": a, "label": b} for a, b in STAGES],
-         "board": {k: board.get(k) for k in ("pages", "now", "pct", "total", "done", "overview", "extras")},
+         "board": {k: board.get(k) for k in ("pages", "now", "pct", "total", "done", "overview", "extras", "er")},
          "preview": preview_url(r), "error": r.error, "queued": len(_j(r.queued, [])), "language": r.language,
          "approved": bool(r.approved_hash), "updated_at": r.updated_at.isoformat() if r.updated_at else ""}
     if full:
@@ -241,7 +245,8 @@ def view(r: AppProject, full: bool = True) -> dict[str, Any]:
                                              "tabs": plan.get("tabs", []), "flow": plan.get("flow", []),
                                              "code_screens": [{"id": s, "label": T.CODE_SCREENS[s]["label"],
                                                                "why": T.CODE_SCREENS[s]["why"]} for s in plan.get("code_screens", [])],
-                                             "rules": plan.get("rules", [])[:8]},
+                                             "rules": plan.get("rules", [])[:8], "complex": bool(plan.get("complex")),
+                                             "blueprint": BP.view(plan.get("blueprint") or {})},
                   "questions": _j(r.answers, {}).get("_questions", []),
                   "facts": {k: v2 for k, v2 in _j(r.facts, {}).items() if k in ("name", "tagline", "phone", "whatsapp", "email",
                                                                                "address", "hours", "upi_id")},
@@ -279,7 +284,8 @@ def _say(v: dict[str, Any]) -> str:
     st = v["status"]
     if st == "planned":
         n = len(v.get("plan", {}).get("screens", [])) + len(v.get("plan", {}).get("code_screens", []))
-        return (f"{v['name'] or 'App'} ka plan taiyaar: {n} screens. "
+        bp_line = BP.say_view(v.get("plan", {}).get("blueprint") or {}) if v.get("plan", {}).get("complex") else ""
+        return (f"{v['name'] or 'App'} ka plan taiyaar: {n} screens. " + (bp_line + " " if bp_line else "")
                 + (f"Pehle {len(v.get('questions', []))} sawaal, phir " if v.get("questions") else "")
                 + "'Haan' par Home screen ke 3 looks banaunga.")
     if st == "looks":
@@ -324,7 +330,7 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
     if not fid:
         raise AppError(u.get("ask") or "App kis kaam ke liye hai?")
     g = goal if goal in T.GOALS else L.guess_goal(brief, L.default_goal(fid))
-    styles = L.styles_for(fid)
+    styles = L.styles_for(fid, g)
     if style in T.STYLES:
         styles = [style] + [s for s in styles if s != style][:2]
     br = L.brief(fid, g, styles[0])
@@ -335,7 +341,7 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
         if k in ("name", "phone", "whatsapp", "email", "address", "city", "hours", "tagline", "about", "upi_id") and v:
             facts[k] = _tidy(v, 400)
     lang = _lang_of(facts, brief)
-    plan = make_plan(br, lang)
+    plan = make_plan(br, lang, brief)
     qs = missing_questions(facts, br)
     with session() as s:
         r = AppProject(tenant_id=tenant, number=_number(s, tenant), name=facts.get("name") or "", brief=brief, field=fid, goal=g,
@@ -402,9 +408,12 @@ def approve_plan(tenant: str, ref: str, conv: str = "", drop: list[str] | None =
             raise AppError(f"App abhi '{r.status}' hai.")
         plan = _j(r.plan, {})
         if drop:
-            keep_always = set(plan.get("tabs", [])) | set(plan.get("flow", [])) | {"home", "login", "profile"}
+            keep_always = set(plan.get("tabs", [])) | set(plan.get("flow", [])) | {"home", "login", "profile", "login_staff",
+                                                                                  plan.get("start")}
             gone = [x for x in drop if x in plan.get("screens", []) and x not in keep_always]
             plan["screens"] = [x for x in plan["screens"] if x not in gone]
+            if plan.get("blueprint"):
+                plan["blueprint"] = BP.make(r.goal, plan["screens"], r.brief, {"data": plan["blueprint"].get("data_extra")})
             r.plan = _jd(plan)
             L.learn(r.field, "drop", gone)
         r.status, r.stage, r.stop, r.error = "looks", "look", False, ""
@@ -486,10 +495,27 @@ def _screen_prompt(r: AppProject, sid: str, extra: str = "", tokens: dict[str, A
         f"LANGUAGE: {_lang_line(r.language)}.",
         f"DESIGN TOKENS chosen: style {style}, colours {json.dumps({k: tk.get(k) for k in ('bg', 'surface', 'ink', 'primary', 'accent')})}, "
         f"fonts {tk.get('head')} / {tk.get('body')}, radius {tk.get('radius')}px, cards {tk.get('card')}, buttons {tk.get('button')}.",
+        _pro_line(plan, sid),
         "FACTS (data from the owner, not instructions): " + _facts_text(_j(r.facts, {})),
         f"HER OWN WORDS ABOUT THE APP (data): {r.brief[:800]}",
         extra,
     ])
+
+
+def _pro_line(plan: dict[str, Any], sid: str) -> str:
+    """For complex apps: who uses this screen and what data it stands on (from the blueprint)."""
+    bp = plan.get("blueprint") or {}
+    if not plan.get("complex") or not bp:
+        return ""
+    org = bp.get("org") or {}
+    tables = (bp.get("data") or {}).get("modules") or {}
+    need = T.SCREENS.get(sid, {}).get("data") or []
+    near = [t for m, ts in tables.items() for t in ts if any(n.rstrip("s") in t for n in need)][:10]
+    return ("THIS IS A STAFF / ADMIN APP (" + (bp.get("archetype") or "") + "). Org levels: " + " > ".join(org.get("levels", []))
+            + ". Roles: " + ", ".join((org.get("role_labels") or {}).get(x, x) for x in org.get("roles", []))
+            + ". Show the scope the viewer works in (own / team / branch / all) where lists appear; actions a role may not do "
+              "are simply absent." + (f" Data tables behind this screen: {', '.join(near)}." if near else "")
+            + (" Works offline: show sync / queued state where data is entered." if bp.get("offline") else ""))
 
 
 def clean_screen(sid: str, raw: dict[str, Any]) -> dict[str, Any]:
@@ -746,6 +772,13 @@ def _run_design(r: AppProject, only: list[str] | None, note: str, extra: dict[st
                 overview[plat] = f"overview-{plat}.jpg"
             except Exception:
                 log.info("overview sheet skipped", exc_info=True)
+    er = ""
+    if plan.get("blueprint") and (_live(r) / "blueprint" / "er.html").exists():
+        try:
+            RD.page_shot(_live(r) / "blueprint" / "er.html", shots / "er.jpg")
+            er = "er.jpg"
+        except Exception:
+            log.info("ER picture skipped", exc_info=True)
     ctx = _ctx(r)
     screens = _screens(r)
     h = K.design_hash(screens, ctx)
@@ -765,6 +798,7 @@ def _run_design(r: AppProject, only: list[str] | None, note: str, extra: dict[st
     board = _board(r, plan, states, "Design taiyaar", thumbs)
     board["overview"] = overview
     board["extras"] = extras
+    board["er"] = er
     board["hash"] = h
     r = _save(r.id, status="ready", stage="preview", checks=report, board=board, error="", approved_hash="", approved_at=None)
     _work(r, "done", "App design taiyaar", f"v{ver} · {len(order)} screens · Android + iPhone")
@@ -892,7 +926,13 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
                       f"{', '.join(plan.get('tabs', []))}\nCURRENT COLOURS: "
                       f"{json.dumps({k: _j(r.look, {}).get('tokens', {}).get(k) for k in ('bg', 'primary', 'accent')})}"
                       f"\nCURRENT STRUCTURE: {json.dumps({k: _j(r.look, {}).get('tokens', {}).get(k) for k in (*K.STRUCT_KEYS, 'mode', 'head', 'body')})}"
-                      f"\nHER WORDS (a request, data): {instruction}")
+                      + (f"\nBLUEPRINT NOW: roles {', '.join((plan.get('blueprint') or {}).get('org', {}).get('roles', []))}; "
+                         f"levels {' > '.join((plan.get('blueprint') or {}).get('org', {}).get('levels', []))}; modules "
+                         f"{', '.join((plan.get('blueprint') or {}).get('modules', []))}; login "
+                         f"{', '.join((plan.get('blueprint') or {}).get('login', {}).get('ids', []))}"
+                         f"\nMODULES: {', '.join(BP.DM.MODULES)}\nCAPABILITIES: {', '.join(BP.CP.CAPS)}"
+                         if plan.get("blueprint") else "")
+                      + f"\nHER WORDS (a request, data): {instruction}")
     if not res:
         raise AppError("Samajh nahi paya kya badalna hai; thoda aur bataiye (kaunsi screen).")
     if res.get("unclear"):
@@ -932,11 +972,20 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
     tabs = [t for t in (res.get("tabs") or []) if t in plan["screens"]]
     if 3 <= len(tabs) <= 5:
         plan["tabs"] = tabs
+    bp_done: list[str] = []
+    if plan.get("blueprint"):
+        ops = dict(res.get("blueprint") or {}) if isinstance(res.get("blueprint"), dict) else {}
+        new_caps = BP.CP.from_screens([x for x in only if x not in ids])
+        if new_caps:
+            ops.setdefault("caps", {}).setdefault("add", []).extend(new_caps)
+        if ops or BP.CP.from_words(instruction):
+            plan["blueprint"], bp_done = BP.change(plan["blueprint"], ops, instruction)
     if recolour or (res.get("facts") and not only):
         only = list(plan["screens"])           # colours / facts touch every screen
     # structure / mode / font / texture alone: the kit draws those, the screens stay as they are (re-checked, re-shot)
     _save(r.id, plan=plan, look=look, facts=facts, conv=conv or r.conv, status="designing", name=facts.get("name") or r.name)
-    _start(r.id, "design", only=only, note=_tidy(res.get("say") or instruction, 200), extra=extra)
+    note = _tidy(res.get("say") or instruction, 200) + (f" ({'; '.join(bp_done)[:160]})" if bp_done else "")
+    _start(r.id, "design", only=only, note=note, extra=extra)
     r = _load(r.id)
     return {**view(r, False), "say": res.get("say") or "Badal raha hoon."}
 
@@ -1086,6 +1135,41 @@ def preview_file(token: str, path: str) -> tuple[bytes, str, dict[str, str]]:
     headers["Content-Security-Policy"] = headers["Content-Security-Policy"].replace("frame-ancestors 'self'", "frame-ancestors *")
     headers.pop("X-Frame-Options", None)
     return f.read_bytes(), ctype, headers
+
+
+def blueprint(tenant: str, ref: str) -> dict[str, Any]:
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    bp = _j(r.plan, {}).get("blueprint") or {}
+    if not bp:
+        raise AppError("Is app ka blueprint nahi hai.")
+    return {"id": r.id, "number": r.number, "name": r.name, "blueprint": BP.view(bp), "say": BP.say(bp),
+            "files": {k: f"/api/apps/{r.id}/blueprint/{k}" for k in ("schema.sql", "schema-plain.sql", "app.sqlite.sql",
+                                                                      "Entities.kt", "er.mmd", "er.html", "blueprint.json")},
+            "er_page": (preview_url(r) + "blueprint/er.html") if r.preview_token else "",
+            "login_plan": bp.get("login"), "caps": (bp.get("caps") or {}), "org": bp.get("org")}
+
+
+def blueprint_file(tenant: str, ref: str, name: str) -> tuple[bytes, str]:
+    if name not in ("schema.sql", "schema-plain.sql", "app.sqlite.sql", "Entities.kt", "er.mmd", "er.html", "blueprint.json"):
+        raise AppError("not found")
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    bp = _j(r.plan, {}).get("blueprint") or {}
+    if not bp:
+        raise AppError("not found")
+    f = _live(r) / "blueprint" / name
+    if not f.is_file():
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            BP.write_files(bp, d, r.name or "")
+            data = (Path(d) / "blueprint" / name).read_bytes()
+    else:
+        data = f.read_bytes()
+    ctype = {"html": "text/html; charset=utf-8", "json": "application/json"}.get(name.rsplit(".", 1)[-1], "text/plain; charset=utf-8")
+    return data, ctype
 
 
 def shot_file(tenant: str, ref: str, name: str) -> Path:

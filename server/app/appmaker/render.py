@@ -220,6 +220,29 @@ def run(out: Path, order: list[str], shots: Path, labels: dict[str, str], platfo
     return res
 
 
+def page_shot(html_file: Path, dest: Path, width: int = 1280, max_height: int = 2400) -> None:
+    """A picture of one local page (the ER diagram): network blocked, only that file's folder served."""
+    if available():
+        raise RenderError("Playwright / Chromium nahi hai")
+    from playwright.sync_api import sync_playwright
+    html_file = Path(html_file)
+    counter: dict[str, int] = {}
+    with sync_playwright() as p:
+        b = SC._launch(p)
+        try:
+            ctx = b.new_context(viewport={"width": width, "height": 900}, device_scale_factor=1)
+            ctx.route("**/*", SC._serve(html_file.parent, counter))
+            page = ctx.new_page()
+            page.goto(f"{ORIGIN}/{html_file.name}", wait_until="load")
+            h = min(max_height, page.evaluate("document.documentElement.scrollHeight"))
+            page.set_viewport_size({"width": width, "height": max(400, h)})
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(page.screenshot(type="jpeg", quality=82))
+            ctx.close()
+        finally:
+            b.close()
+
+
 def graph_problems(order: list[str], tabs: list[str], start: str, results: dict[str, Any], known: set[str]) -> dict[str, list[dict]]:
     """Links to screens that don't exist (blocking) and screens nobody can reach (warning)."""
     out: dict[str, list[dict]] = {}

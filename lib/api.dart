@@ -948,6 +948,17 @@ class Api {
   Future<Map<String, dynamic>> appAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/apps/$id/$action', body: body, timeout: const Duration(seconds: 120)) as Map);
   Future<Map<String, dynamic>> appDelete(String id) async => Map<String, dynamic>.from(await _send('DELETE', '/api/apps/$id') as Map);
+  // ---- v0.131 complex apps: blueprint (data model, roles, levels, login, phone features) + schema files ----
+  Future<Map<String, dynamic>> appBlueprint(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/apps/$id/blueprint') as Map);
+  Future<String> appBlueprintText(String id, String name) async {
+    final req = http.Request('GET', _u('/api/apps/$id/blueprint/$name'))..headers.addAll(_headers);
+    final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 30)));
+    if (res.statusCode >= 400) throw ApiException(res.statusCode, 'Server error ${res.statusCode}');
+    return utf8.decode(res.bodyBytes);
+  }
+  Future<Map<String, dynamic>> appCatalog(String kind, {String q = ''}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/apps-catalog/$kind', query: {'q': q}) as Map);
   Future<Map<String, dynamic>> appLibrary({String industry = '', String q = '', int offset = 0}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/apps-library', query: {'industry': industry, 'q': q, 'offset': '$offset'}) as Map);
   // ---- v0.122 Website hosting: launch / rollback / domain / DNS / her keys ----

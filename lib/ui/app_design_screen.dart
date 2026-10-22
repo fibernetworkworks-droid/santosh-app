@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -673,6 +674,12 @@ class _AppDesignPageState extends State<AppDesignPage> {
             ])),
             const SizedBox(height: 10),
           ],
+          if (_map(plan['blueprint']).isNotEmpty) ...[
+            Glass(child: AppBlueprintCard(app: app, v: v, busy: _busy, onAsk: st == 'planned' || st == 'looks'
+                ? null
+                : (t) => _act('change', {'instruction': t}))),
+            const SizedBox(height: 10),
+          ],
           if (_map(v['design']).isNotEmpty) ...[
             Glass(child: AppDesignSystemCard(app: app, v: v, busy: _busy,
                 onAsk: (t) => _act('change', {'instruction': t}))),
@@ -803,6 +810,145 @@ class AppDesignSystemCard extends StatelessWidget {
       ]),
     ]);
   }
+}
+
+/// v0.131 What is under the screens of a complex app: modules + data tables, org levels, roles and what each may do,
+/// approval chain, login plan, phone features with their Google Play / App Store status (the ones the stores don't allow are
+/// shown with what is used instead), the ER picture / page and the database schema to copy.
+class AppBlueprintCard extends StatelessWidget {
+  const AppBlueprintCard({super.key, required this.app, required this.v, this.onAsk, this.busy = false});
+  final Santosh app;
+  final Map<String, dynamic> v;
+  final void Function(String)? onAsk;
+  final bool busy;
+
+  static const _quick = [
+    ('Naya role', 'store keeper naam ka naya role jodo, staff jaisa'),
+    ('Zone level', 'region ke neeche zone level bhi chahiye'),
+    ('Passkey login', 'passkey se login bhi ho'),
+    ('Company SSO', 'company ke Microsoft / Google login (SSO) se bhi login ho'),
+    ('Offline', 'bina internet ke bhi kaam kare, baad mein sync ho'),
+  ];
+  static const _actLabel = {'read': 'Dekhe', 'create': 'Banaye', 'update': 'Badle', 'delete': 'Hataye', 'approve': 'Manzoor', 'export': 'Export'};
+  static const _scopeLabel = {'none': '-', 'own': 'apna', 'unit': 'unit', 'parent': 'upar', 'all': 'sab'};
+
+  Color _playCol(String p) => switch (p) { 'ok' => C.ok, 'disclosure' => C.teal, 'declaration' => C.warn, _ => C.bad };
+
+  Future<void> _copySchema(BuildContext context) async {
+    try {
+      final t = await app.api!.appBlueprintText(_s(v['id']), 'schema.sql');
+      await Clipboard.setData(ClipboardData(text: t));
+      if (context.mounted) _snack(context, 'Database schema copy ho gaya (${(t.length / 1024).toStringAsFixed(0)} KB)');
+    } catch (e) {
+      if (context.mounted) _snack(context, '$e');
+    }
+  }
+
+  void _openEr(BuildContext context) {
+    final u = _s(v['preview']);
+    if (u.isEmpty) return;
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => _ErView(url: app.api!.absolute('${u}blueprint/er.html'))));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final b = _map(_map(v['plan'])['blueprint']);
+    final data = _map(b['data']);
+    final roles = _list(b['roles']);
+    final matrix = _map(b['matrix']);
+    final er = _s(_map(v['board'])['er']);
+    Widget head(String t) => Padding(padding: const EdgeInsets.only(top: 10, bottom: 4),
+        child: Text(t, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)));
+    Widget chips(Iterable<Widget> w) => Wrap(spacing: 6, runSpacing: 4, children: w.toList());
+    Widget chip(String t, [Color? c]) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(color: (c ?? C.chip).withOpacity(.14), borderRadius: BorderRadius.circular(8)),
+        child: Text(t, style: TextStyle(fontSize: 11.5, color: c ?? C.ink)));
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Andar ka dhaancha${_s(b['archetype']).isEmpty ? '' : ' · ${b['archetype']}'}', style: display(15)),
+      const SizedBox(height: 4),
+      Text('${data['tables'] ?? 0} tables · ${data['relations'] ?? 0} rishte · ${roles.length} roles · '
+          '${(b['levels'] as List? ?? const []).length} levels${b['offline'] == true ? ' · offline bhi' : ''}',
+          style: const TextStyle(color: C.muted, fontSize: 12.5)),
+      head('Sanstha ke level'),
+      Text((b['levels'] as List? ?? const []).join('  ›  '), style: const TextStyle(fontSize: 12.5)),
+      head('Kaun kya kar sakta hai'),
+      for (final r in roles)
+        Theme(data: Theme.of(context).copyWith(dividerColor: Colors.transparent), child: ExpansionTile(
+          tilePadding: EdgeInsets.zero, childrenPadding: const EdgeInsets.only(bottom: 6),
+          title: Text(_s(r['label']), style: const TextStyle(fontSize: 13)),
+          children: [
+            for (final m in _map(matrix[r['id']]).entries)
+              Padding(padding: const EdgeInsets.only(bottom: 3), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                SizedBox(width: 92, child: Text(m.key, style: const TextStyle(color: C.faint, fontSize: 11.5))),
+                Expanded(child: Text(_map(m.value).entries.where((e) => e.value != 'none')
+                    .map((e) => '${_actLabel[e.key] ?? e.key}: ${_scopeLabel[e.value] ?? e.value}').join(' · ').replaceAll(RegExp(r'^$'), '—'),
+                    style: const TextStyle(fontSize: 11.5))),
+              ])),
+          ])),
+      if (_list(b['approvals']).isNotEmpty) ...[
+        head('Manzoori (rakam ke hisaab se)'),
+        for (final a in _list(b['approvals']))
+          Text(a['upto'] == null ? '• uske upar: ${a['role']}' : '• ₹${a['upto']} tak: ${a['role']}', style: const TextStyle(fontSize: 12)),
+      ],
+      head('Login'),
+      chips(_list(b['login']).map((m) => chip(_s(m['label']), C.accent))),
+      for (final w in (b['login_warnings'] as List? ?? const []))
+        Padding(padding: const EdgeInsets.only(top: 3), child: Text('ℹ $w', style: const TextStyle(color: C.faint, fontSize: 11.5))),
+      head('Phone ki suvidhayein (Play / App Store)'),
+      chips(_list(b['caps']).map((c) => chip('${c['label']} · ${c['play_label']}', _playCol(_s(c['play']))))),
+      for (final p in _list(b['cap_problems']))
+        Padding(padding: const EdgeInsets.only(top: 4), child: Text('⛔ ${p['text']}', style: const TextStyle(color: C.bad, fontSize: 12))),
+      for (final n in _list(b['cap_notes']))
+        Padding(padding: const EdgeInsets.only(top: 3), child: Text('⚠ ${n['text']}', style: const TextStyle(color: C.warn, fontSize: 11.5))),
+      head('Data (tables)'),
+      for (final m in _map(b['tables']).entries)
+        Padding(padding: const EdgeInsets.only(bottom: 4), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(width: 92, child: Text(m.key,
+              style: const TextStyle(color: C.faint, fontSize: 11.5))),
+          Expanded(child: Text((m.value as List).join(', '), style: const TextStyle(fontSize: 11.5, fontFamily: 'monospace'))),
+        ])),
+      if ((data['sensitive'] as List? ?? const []).isNotEmpty)
+        Text('🔒 Sensitive: ${(data['sensitive'] as List).join(', ')} (screenshot band, har dekhna log)',
+            style: const TextStyle(color: C.faint, fontSize: 11.5)),
+      if (er.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        GestureDetector(onTap: () => _openEr(context),
+            child: ClipRRect(borderRadius: BorderRadius.circular(10), child: AppShot(app: app, appId: _s(v['id']), name: er, width: 320))),
+      ],
+      const SizedBox(height: 8),
+      Wrap(spacing: 8, runSpacing: 6, children: [
+        if (_s(v['preview']).isNotEmpty) OutlinedButton.icon(onPressed: () => _openEr(context),
+            icon: const Icon(Icons.account_tree_rounded, size: 18), label: const Text('ER diagram')),
+        OutlinedButton.icon(onPressed: () => _copySchema(context), icon: const Icon(Icons.copy_rounded, size: 18),
+            label: const Text('Database schema copy')),
+      ]),
+      if (onAsk != null) ...[
+        const SizedBox(height: 8),
+        const Text('Ek tap mein jodo (screens wahi rahengi):', style: TextStyle(color: C.faint, fontSize: 12)),
+        const SizedBox(height: 4),
+        Wrap(spacing: 6, runSpacing: 4, children: [
+          for (final q in _quick) ActionChip(label: Text(q.$1), onPressed: busy ? null : () => onAsk!(q.$2)),
+        ]),
+      ],
+    ]);
+  }
+}
+
+class _ErView extends StatefulWidget {
+  const _ErView({required this.url});
+  final String url;
+  @override
+  State<_ErView> createState() => _ErViewState();
+}
+
+class _ErViewState extends State<_ErView> {
+  late final WebViewController _c = WebViewController()
+    ..setJavaScriptMode(JavaScriptMode.disabled)
+    ..loadRequest(Uri.parse(widget.url));
+  @override
+  Widget build(BuildContext context) =>
+      Scaffold(appBar: AppBar(title: const Text('Data model (ER)')), body: WebViewWidget(controller: _c));
 }
 
 /// The tap-through prototype inside the app (Android / iPhone look switch).

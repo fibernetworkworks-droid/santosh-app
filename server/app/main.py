@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.130.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.131.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -6267,6 +6267,57 @@ async def apps_delete(ref: str, tenant: str = Depends(current_tenant)):
 async def apps_spec(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import service as A
     return await asyncio.to_thread(_appd, A.spec, tenant, ref)
+
+
+@app.get("/api/apps/{ref}/blueprint", dependencies=[Depends(require_key)])
+async def apps_blueprint(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.131: data tables, org levels, roles matrix, approval chain, login plan, phone features with store status, files."""
+    from .appmaker import service as A
+    return await asyncio.to_thread(_appd, A.blueprint, tenant, ref)
+
+
+@app.get("/api/apps/{ref}/blueprint/{name}", dependencies=[Depends(require_key)])
+async def apps_blueprint_file(ref: str, name: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import service as A
+    try:
+        data, ctype = await asyncio.to_thread(A.blueprint_file, tenant, ref, name)
+    except A.AppError:
+        raise HTTPException(404, "not found")
+    headers = {"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"}
+    if name.endswith(".html"):
+        headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors *"
+    return Response(content=data, media_type=ctype, headers=headers)
+
+
+@app.get("/api/apps-catalog/{kind}", dependencies=[Depends(require_key)])
+async def apps_catalog(kind: str, q: str = ""):
+    """archetypes | capabilities | login | screens | roles (v0.131 complex apps)."""
+    def go():
+        from .appmaker import auth as AU
+        from .appmaker import capabilities as CP
+        from .appmaker import datamodel as DM
+        from .appmaker import library as AL
+        from .appmaker import orgmodel as OM
+        from .appmaker import taxonomy as TX
+        if kind == "archetypes":
+            return {"archetypes": [{"id": k, "label": g["label"], "hi": g["hi"], "brief": g["brief"], "modules": g["modules"],
+                                    "roles": [OM.ROLES[r]["label"] for r in g["roles"]], "screens": len(g["screens"]),
+                                    "levels": OM.LEVELS[g["levels"]], "money": g["money"], "fields": len(AL.pro_fields(k))}
+                                   for k, g in TX.GOALS.items() if g.get("complex")], "counts": AL.counts()}
+        if kind == "capabilities":
+            ql = q.lower()
+            return {"capabilities": [c for c in CP.catalog() if not ql or ql in (c["label"] + " " + c["hi"] + " " + c["id"]).lower()],
+                    "legend": {"play": CP.PLAY_LABEL, "ios": CP.IOS_LABEL}, "counts": CP.counts()}
+        if kind == "login":
+            return {"methods": AU.METHODS, "policy": AU.POLICY}
+        if kind == "screens":
+            return {"screens": [{"id": k, "label": v["label"], "hi": v["hi"], "why": v["why"], "pro": bool(v.get("pro")),
+                                 "designs": len(v["variants"])} for k, v in TX.SCREENS.items()], "code": TX.CODE_SCREENS}
+        if kind == "roles":
+            return {"roles": OM.ROLES, "templates": OM.BASE, "levels": OM.LEVELS, "scopes": OM.SCOPE_LABEL, "rules": OM.RULES,
+                    "modules": DM.MODULES}
+        raise HTTPException(404, "unknown catalogue")
+    return await asyncio.to_thread(go)
 
 
 @app.post("/api/apps/{ref}/{action}", dependencies=[Depends(require_key)])

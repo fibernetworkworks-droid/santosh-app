@@ -565,6 +565,12 @@ def assemble(ctx: dict[str, Any], screens: dict[str, dict[str, Any]], out: Path,
                     for s in order if s in screens or s in T.CODE_SCREENS)
     (tmp / "all.html").write_text(head + f'<body class="overview {body_cls}"><h1>{name}: {len(order)} screens</h1>'
                                   f'<p><a href="index.html">Prototype kholo (tap karke chalaiye)</a></p><div class="tiles">{tiles}</div></body></html>')
+    if plan.get("blueprint"):           # v0.131: schema / ER page / Room entities ride with every prototype version
+        from . import blueprint as BPm
+        try:
+            BPm.write_files(plan["blueprint"], tmp, ctx.get("name") or "")
+        except Exception:
+            log.warning("blueprint files skipped", exc_info=True)
     if out.exists():
         old = out.with_name(out.name + ".old")
         if old.exists():
@@ -608,7 +614,19 @@ def spec_of(screens: dict[str, dict[str, Any]], ctx: dict[str, Any]) -> dict[str
             "structure": _structure_spec(tk),
             "motion": _motion_spec(tk),
             "tabs": plan.get("tabs", []), "flow": plan.get("flow", []), "screens": out_screens,
-            "rules": plan.get("rules", []), "legal": plan.get("legal", [])}
+            "rules": plan.get("rules", []), "legal": plan.get("legal", []),
+            "blueprint": _blueprint_spec(plan.get("blueprint") or {})}
+
+
+def _blueprint_spec(bp: dict[str, Any]) -> dict[str, Any]:
+    if not bp:
+        return {}
+    from . import blueprint as BPm
+    v = BPm.view(bp)
+    return {**v, "login_plan": bp.get("login"), "caps_full": (bp.get("caps") or {}).get("caps", []),
+            "plist": (bp.get("caps") or {}).get("plist", []), "files": ["blueprint/schema.sql", "blueprint/schema-plain.sql",
+                                                                        "blueprint/app.sqlite.sql", "blueprint/Entities.kt",
+                                                                        "blueprint/er.mmd", "blueprint/er.html"]}
 
 
 def _structure_spec(tk: dict[str, Any]) -> dict[str, Any]:
@@ -633,6 +651,7 @@ def design_hash(screens: dict[str, dict[str, Any]], ctx: dict[str, Any]) -> str:
     h = hashlib.sha256()
     h.update(json.dumps({k: ctx["tokens"].get(k) for k in sorted(ctx["tokens"])}, sort_keys=True, default=str).encode())
     h.update(json.dumps(ctx["plan"].get("tabs", [])).encode())
+    h.update(str((ctx["plan"].get("blueprint") or {}).get("hash") or "").encode())
     for sid in ctx["plan"].get("screens", []):
         s = screens.get(sid) or {}
         h.update(sid.encode() + (s.get("html") or "").encode() + (s.get("css") or "").encode())

@@ -545,13 +545,25 @@ GENERAL_RULES = [
     "Never invent prices, phone numbers, addresses, timings, team names, degrees, ratings, reviews or counts: [blank] instead.",
 ]
 # screens that are code-made in every app of a goal (order of appearance in the plan)
+# ---------------------------------------------------------------- v0.131 complex apps: 115 pro screens + 43 archetypes
+from .proscreens import PRO_SCREENS  # noqa: E402
+from .archetypes import ARCHETYPES  # noqa: E402
+
+for _k, _v in PRO_SCREENS.items():
+    SCREENS.setdefault(_k, _v)
+for _k, _v in ARCHETYPES.items():
+    GOALS.setdefault(_k, _v)
+SIMPLE_GOALS = [k for k, v in GOALS.items() if not v.get("complex")]
+COMPLEX_GOALS = [k for k, v in GOALS.items() if v.get("complex")]
+
+
 def code_screens_for(goal: str) -> list[str]:
     g = GOALS[goal]
     out = ["splash"]
     if g["accounts"]:
         out.append("consent")
     out.append("notify_permission")
-    if g["money"]:
+    if g["money"] and (not g.get("complex") or g.get("customer_screens")):
         out.append("seller_info")
     out.append("privacy")
     if g["accounts"]:
