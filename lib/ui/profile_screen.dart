@@ -39,6 +39,7 @@ import 'employee_screen.dart';
 import 'mshop_screen.dart';
 import 'phonedoc_screen.dart';
 import 'jaanch_screen.dart';
+import 'gst_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -193,6 +194,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Har hissa abhi jaancho: kya kharab hai, kaise theek hoga, kaun si website server se nahi khulti'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => JaanchScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.receipt_long_rounded, color: C.accent),
+              title: const Text('GST sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Har client ke bill check, GSTR-1 / 3B, 2B milaan, due date, notice: ${app.aName} karega, filing aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GstScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

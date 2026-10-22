@@ -42,6 +42,8 @@ DUTIES: dict[str, dict] = {
                "prefix": (), "tools": {"lekhak", "lekhak_dekho", "make_document", "pdf_tools", "file_read"}},
     "mobile_repair": {"label": "Repair aur recharge", "say": "repair job + photo, warranty, 'taiyaar hai' draft, recharge register + yaad (bill aapki haan se), phone ki dikkat ka step-by-step ilaaj",
                       "prefix": (), "tools": {"mobile_shop", "mobile_shop_dekho", "biz_repair_status", "phone_doctor"}},
+    "gst_work": {"label": "GST ka kaam", "say": "client ke bill, GSTR-1 JSON, 2B milaan + IMS, 3B hisaab, notice ka jawab (filing aapki haan se)",
+                 "prefix": (), "tools": {"gst", "gst_dekho", "file_read", "pdf_tools"}},
     "research": {"label": "Jaankari dhoondhna", "say": "web, maps, mausam, public APIs",
                  "prefix": ("maps_", "api_"), "tools": {"google_search", "web_sources", "open_website", "browse_web", "browse_result", "get_weather",
                                                        "memory_search"}},
@@ -85,6 +87,9 @@ ROLES: dict[str, dict] = {
                "duties": ["typing", "records", "email", "research"]},
     "mobile_shop": {"label": "Mobile dukaan sahayak", "say": "Repair job aur photo, warranty, 'taiyaar hai' message, recharge register aur yaad, bill aapki haan se",
                     "duties": ["mobile_repair", "customers", "reminders", "collections", "records", "research"]},
+    "gst_practitioner": {"label": "GST sahayak (practitioner)",
+                         "say": "Har client ke bill check, GSTR-1 / 3B taiyaar, 2B milaan, due date aur late fee, notice ka jawab; filing aapki haan se",
+                         "duties": ["gst_work", "reminders", "email", "records", "customers", "research"]},
     "custom": {"label": "Apna kaam", "say": "Aap khud chuniye Hoola kaun se kaam karega", "duties": []},
 }
 
@@ -128,6 +133,11 @@ PRESETS: dict[str, dict] = {
                               "IMEI badalne ka kaam kabhi nahi.", "Lock / FRP hatane ke liye phone ka bill / dabba dekhna zaroori."]},
     "office": {"label": "Office / company", "role": "office", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
                "about_hint": "Company kya karti hai, kaun kis kaam ka", "rules": []},
+    "gst_practitioner": {"label": "GST practitioner / tax consultant", "role": "gst_practitioner", "kind": "ca", "slot_minutes": 30,
+                         "after_hours": "note",
+                         "about_hint": "Kitne client, monthly / QRMP / composition, fees, bill bhejne ki last date, kaun portal par file karta hai",
+                         "rules": ["Return file sirf owner ki haan se.", "Portal ka password ya OTP kabhi mat maangna.",
+                                   "Tax ka challan client khud bharega.", "Ek client ki jaankari doosre client ko nahi."]},
     "office_manager": {"label": "Office manager", "role": "office_manager", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
                        "about_hint": "Office ka pata, kitne log, kaun kis kaam ka, vendors (AC, printer, net, safai)",
                        "rules": ["Koi bhi kharcha (order, repair, renewal) sirf owner ki haan se.",
@@ -162,7 +172,7 @@ READ = {
     "tv_channel", "employee", "india_info",
     "biz_free_slots", "biz_my_appointments", "biz_ticket_status", "biz_my_dues", "biz_handover", "biz_note",
     "darzi_dekho", "biz_order_status", "chai_dekho", "mobile_shop_dekho", "biz_repair_status",
-    "darzi_dekho", "biz_order_status", "office_dekho", "lekhak_dekho",
+    "darzi_dekho", "biz_order_status", "office_dekho", "lekhak_dekho", "gst_dekho",
 }
 BIG = {
     "email_bulk", "email_delete", "email_forward", "drive_trash", "drive_share", "sheet_share", "form_share", "slides_share",

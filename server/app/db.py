@@ -650,6 +650,7 @@ def init_db(url: str | None = None):
     from .chai import service as _chai  # noqa: F401
     from .mshop import service as _mshop  # noqa: F401
     from .phonedoc import service as _phonedoc  # noqa: F401
+    from .gstp import service as _gstp  # noqa: F401
     from .office import service as _office  # noqa: F401
     from .lekhak import service as _lekhak  # noqa: F401
     from .agent import pakka as _pakka  # noqa: F401

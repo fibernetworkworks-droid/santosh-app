@@ -436,6 +436,12 @@ async def employee_jobs() -> None:
             await chai.evening(tenant)
     except Exception:
         log.exception("chai evening failed")
+    try:                                   # v0.93 GST: due today / late / notices for every client at her time
+        from .gstp import service as gstp
+        for tenant in gstp.due_mornings():
+            gstp.send_morning(tenant)
+    except Exception:
+        log.exception("gst morning failed")
     try:                                   # v0.88 Mobile dukaan: the morning list (jobs, bills, recharges ending)
         from .mshop import service as mshop
         for tenant in mshop.due_mornings():

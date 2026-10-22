@@ -693,6 +693,37 @@ class Api {
   Future<Map<String, dynamic>> phonedocCase(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/phonedoc/cases/$id') as Map);
   Future<Map<String, dynamic>> phonedocAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/phonedoc/cases/$id/$action', body: body) as Map);
+  // v0.93 GST Sahayak
+  Future<Map<String, dynamic>> gstToday() async => Map<String, dynamic>.from(await _send('GET', '/api/gst/today') as Map);
+  Future<List<Map<String, dynamic>>> gstClients() async => _maps((await _send('GET', '/api/gst/clients') as Map)['clients']);
+  Future<Map<String, dynamic>> gstSaveClient(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gst/clients', body: body) as Map);
+  Future<List<Map<String, dynamic>>> gstBills(String client, {String period = '', String direction = ''}) async =>
+      _maps((await _send('GET', '/api/gst/bills', query: {'client': client, if (period.isNotEmpty) 'period': period,
+          if (direction.isNotEmpty) 'direction': direction}) as Map)['bills']);
+  Future<Map<String, dynamic>> gstImport(String client, String direction, String period, String filename, List<int> bytes) async =>
+      uploadFile('/api/gst/import', filename, bytes, fields: {'client': client, 'direction': direction, 'period': period});
+  Future<Map<String, dynamic>> gstImport2b(String client, String period, String filename, List<int> bytes) async =>
+      uploadFile('/api/gst/2b', filename, bytes, fields: {'client': client, 'period': period});
+  Future<Map<String, dynamic>> gstReconcile(String client, String period) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gst/reconcile', query: {'client': client, 'period': period}) as Map);
+  Future<Map<String, dynamic>> gstIms(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gst/ims', body: body) as Map);
+  Future<List<Map<String, dynamic>>> gstReturns({String client = '', String status = ''}) async =>
+      _maps((await _send('GET', '/api/gst/returns', query: {if (client.isNotEmpty) 'client': client, if (status.isNotEmpty) 'status': status}) as Map)['returns']);
+  Future<Map<String, dynamic>> gstPrepare(String client, String period, String kind) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gst/returns', body: {'client': client, 'period': period, 'kind': kind}) as Map);
+  Future<Map<String, dynamic>> gstReturn(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/gst/returns/$id') as Map);
+  Future<Map<String, dynamic>> gstReturnAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gst/returns/$id/$action', body: body) as Map);
+  Future<Map<String, dynamic>> gstDraft(String client, String period, {String kind = 'ask_bills'}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gst/drafts', body: {'client': client, 'period': period, 'kind': kind}) as Map);
+  Future<List<Map<String, dynamic>>> gstNotices({String status = 'open'}) async =>
+      _maps((await _send('GET', '/api/gst/notices', query: {'status': status}) as Map)['notices']);
+  Future<Map<String, dynamic>> gstAddNotice(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gst/notices', body: body) as Map);
+  Future<Map<String, dynamic>> gstNoticeAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gst/notices/$id/$action', body: body) as Map);
   Future<Map<String, dynamic>> mshopSettings() async => Map<String, dynamic>.from(await _send('GET', '/api/mshop/settings') as Map);
   Future<Map<String, dynamic>> mshopSaveSettings(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/mshop/settings', body: body) as Map);

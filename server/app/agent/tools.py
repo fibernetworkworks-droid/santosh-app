@@ -511,3 +511,10 @@ from .phonedoc_tools import PHONEDOC_HANDLERS, PHONEDOC_LABELS, PHONEDOC_TOOLS  
 TOOLS.extend(PHONEDOC_TOOLS)
 TOOL_LABELS.update(PHONEDOC_LABELS)
 HANDLERS.update(PHONEDOC_HANDLERS)
+
+# v0.93 GST Sahayak (GST practitioner coworker: bills, GSTR-1 JSON, 2B + IMS, 3B, notices; filing on her haan, she pays)
+from .gst_tools import GST_HANDLERS, GST_LABELS, GST_TOOLS  # noqa: E402
+
+TOOLS.extend(GST_TOOLS)
+TOOL_LABELS.update(GST_LABELS)
+HANDLERS.update(GST_HANDLERS)

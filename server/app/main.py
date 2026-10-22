@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.92.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.93.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -131,7 +131,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -3503,6 +3503,192 @@ def phonedoc_case_action(case_id: str, action: str, body: dict, tenant: str = De
     if action == "close":
         return _pdoc(pdoc.close, tenant, case_id)
     raise HTTPException(404, "step | recheck | escalate | close")
+
+
+# ---------------------------------------------------------------- v0.93 GST Sahayak
+def _gst(fn, *a, **k):
+    from .gstp import service as gstp
+    try:
+        return fn(*a, **k)
+    except (gstp.GstError, ValueError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/gst/today", dependencies=[Depends(require_key)])
+def gst_today(tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    return gstp.calendar(tenant)
+
+
+@app.get("/api/gst/clients", dependencies=[Depends(require_key)])
+def gst_clients(tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    return {"clients": gstp.clients(tenant)}
+
+
+@app.post("/api/gst/clients", dependencies=[Depends(require_key)])
+def gst_client_save(body: dict, tenant: str = Depends(current_tenant)):
+    """Add / update a client. A portal password is never accepted or stored."""
+    from .gstp import service as gstp
+    if any(k in body for k in ("password", "portal_password", "otp")):
+        raise HTTPException(400, "Portal ka password / OTP Hoola nahi rakhta.")
+    return _gst(gstp.add_client, tenant, str(body.get("name") or ""), str(body.get("gstin") or ""), str(body.get("scheme") or ""),
+                body.get("aato"), str(body.get("portal_user") or ""), str(body.get("login_as") or ""), str(body.get("contact_name") or ""),
+                str(body.get("contact_phone") or ""), body.get("fee"), str(body.get("notes") or ""), body.get("einvoice"),
+                str(body.get("client") or ""))
+
+
+@app.get("/api/gst/bills", dependencies=[Depends(require_key)])
+def gst_bills(client: str, period: str = "", direction: str = "", tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    return {"bills": _gst(gstp.docs, tenant, client, period, direction)}
+
+
+@app.post("/api/gst/bills", dependencies=[Depends(require_key)])
+def gst_bill_add(body: dict, tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    line = {k: body.get(k) for k in ("txval", "rate", "hsn", "desc", "qty", "uqc", "igst", "cgst", "sgst", "cess")}
+    return _gst(gstp.add_doc, tenant, str(body.get("client") or ""), str(body.get("direction") or "out"), str(body.get("number") or ""),
+                body.get("date"), str(body.get("party_gstin") or ""), str(body.get("party_name") or ""), str(body.get("pos") or ""),
+                body.get("items"), str(body.get("kind") or "inv"), bool(body.get("rcm")), str(body.get("irn") or ""),
+                str(body.get("category") or ""), str(body.get("paid_on") or ""), body.get("value"), "app", bool(body.get("replace")), **line)
+
+
+@app.delete("/api/gst/bills/{bill_id}", dependencies=[Depends(require_key)])
+def gst_bill_delete(bill_id: str, tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    return _gst(gstp.delete_doc, tenant, bill_id)
+
+
+@app.post("/api/gst/import", dependencies=[Depends(require_key)])
+async def gst_import(file: UploadFile = File(...), client: str = Form(...), direction: str = Form("out"), period: str = Form(""),
+                     tenant: str = Depends(current_tenant)):
+    """A sales / purchase register (Tally / Vyapar / Excel / CSV)."""
+    from .gstp import service as gstp
+    data = await file.read()
+    return _gst(gstp.import_register, tenant, client, direction, "", data, file.filename or "register.csv", period)
+
+
+@app.post("/api/gst/2b", dependencies=[Depends(require_key)])
+async def gst_2b(file: UploadFile = File(...), client: str = Form(...), period: str = Form(...), tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    data = await file.read()
+    return _gst(gstp.import_2b, tenant, client, period, "", data, file.filename or "gstr2b.json")
+
+
+@app.get("/api/gst/reconcile", dependencies=[Depends(require_key)])
+def gst_reconcile(client: str, period: str, tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    return _gst(gstp.reconcile, tenant, client, period)
+
+
+@app.post("/api/gst/ims", dependencies=[Depends(require_key)])
+def gst_ims(body: dict, tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    if body.get("apply"):
+        return _gst(gstp.ims_apply, tenant, str(body.get("client") or ""), str(body.get("period") or ""), str(body.get("conversation_id") or ""))
+    return _gst(gstp.ims_decide, tenant, str(body.get("client") or ""), str(body.get("period") or ""), body.get("decisions") or {})
+
+
+@app.get("/api/gst/returns", dependencies=[Depends(require_key)])
+def gst_returns(client: str = "", period: str = "", status: str = "", tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    return {"returns": _gst(gstp.returns, tenant, client, period, status)}
+
+
+@app.post("/api/gst/returns", dependencies=[Depends(require_key)])
+def gst_prepare(body: dict, tenant: str = Depends(current_tenant)):
+    """Prepare gstr1 | gstr3b | cmp08 for a client + period."""
+    from .gstp import service as gstp
+    kind, c, p, conv = str(body.get("kind") or "gstr1"), str(body.get("client") or ""), str(body.get("period") or ""), str(body.get("conversation_id") or "")
+    if kind == "gstr1":
+        return _gst(gstp.prepare_gstr1, tenant, c, p, conv)
+    if kind == "gstr3b":
+        return _gst(gstp.prepare_gstr3b, tenant, c, p, body.get("other_reversal"), conv)
+    if kind == "cmp08":
+        return _gst(gstp.prepare_cmp08, tenant, c, p, body.get("turnover"), conv)
+    raise HTTPException(400, "kind: gstr1 | gstr3b | cmp08")
+
+
+@app.get("/api/gst/returns/{return_id}", dependencies=[Depends(require_key)])
+def gst_return(return_id: str, tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    return _gst(gstp.get_return, tenant, return_id)
+
+
+@app.get("/api/gst/returns/{return_id}/gstr1.json", dependencies=[Depends(require_key)])
+def gst_return_json(return_id: str, tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    from .db import session as _sess
+    with _sess() as s:
+        r = s.get(gstp.GstReturn, return_id)
+        if not r or r.tenant_id != tenant or not r.portal_json:
+            raise HTTPException(404, "JSON nahi hai")
+        return Response(r.portal_json, media_type="application/json",
+                        headers={"Content-Disposition": f'attachment; filename="GSTR1_{r.period}.json"'})
+
+
+@app.post("/api/gst/returns/{return_id}/{action}", dependencies=[Depends(require_key)])
+def gst_return_act(return_id: str, action: str, body: dict, tenant: str = Depends(current_tenant)):
+    """decide (her Haan, only from her tap) | file | filed | json | tax_message"""
+    from .gstp import service as gstp
+    conv = str(body.get("conversation_id") or "")
+    if action == "decide":
+        return _gst(gstp.decide, tenant, return_id, bool(body.get("approve")), str(body.get("note") or ""), conv)
+    if action == "file":
+        return _gst(gstp.file_return, tenant, return_id, conv)
+    if action == "filed":
+        return _gst(gstp.mark_filed, tenant, return_id, str(body.get("arn") or ""), str(body.get("filed_on") or ""), "owner", conv)
+    if action == "json":
+        return _gst(gstp.return_file, tenant, return_id, conv)
+    if action == "tax_message":
+        return _gst(gstp.tax_message_draft, tenant, return_id)
+    raise HTTPException(404, "decide | file | filed | json | tax_message")
+
+
+@app.post("/api/gst/drafts", dependencies=[Depends(require_key)])
+def gst_drafts(body: dict, tenant: str = Depends(current_tenant)):
+    """ask_bills (to the client) | suppliers (missing in 2B)"""
+    from .gstp import service as gstp
+    if str(body.get("kind")) == "suppliers":
+        return _gst(gstp.supplier_drafts, tenant, str(body.get("client") or ""), str(body.get("period") or ""))
+    return _gst(gstp.client_request_draft, tenant, str(body.get("client") or ""), str(body.get("period") or ""))
+
+
+@app.get("/api/gst/notices", dependencies=[Depends(require_key)])
+def gst_notices(status: str = "open", tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    return {"notices": gstp.notices(tenant, status)}
+
+
+@app.post("/api/gst/notices", dependencies=[Depends(require_key)])
+def gst_notice_add(body: dict, tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    return _gst(gstp.add_notice, tenant, str(body.get("client") or ""), str(body.get("form") or ""), str(body.get("issued_on") or ""),
+                str(body.get("ref") or ""), str(body.get("text") or ""), body.get("amount"), str(body.get("due_on") or ""))
+
+
+@app.post("/api/gst/notices/{notice_id}/{action}", dependencies=[Depends(require_key)])
+def gst_notice_act(notice_id: str, action: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    if action == "draft":
+        return _gst(gstp.notice_draft, tenant, notice_id)
+    if action == "status":
+        return _gst(gstp.notice_status, tenant, notice_id, str(body.get("status") or ""))
+    raise HTTPException(404, "draft | status")
+
+
+@app.get("/api/gst/settings", dependencies=[Depends(require_key)])
+def gst_settings_get(tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    return gstp.settings(tenant)
+
+
+@app.put("/api/gst/settings", dependencies=[Depends(require_key)])
+def gst_settings_put(body: dict, tenant: str = Depends(current_tenant)):
+    from .gstp import service as gstp
+    keys = ("enabled", "practitioner", "enrolment", "morning_time", "remind_days")
+    return _gst(gstp.save_settings, tenant, **{k: body[k] for k in keys if k in body})
 
 
 @app.get("/api/agent/tasks", dependencies=[Depends(require_key)])
