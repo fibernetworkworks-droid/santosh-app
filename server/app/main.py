@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.94.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.95.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -131,7 +131,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -3503,6 +3503,98 @@ def phonedoc_case_action(case_id: str, action: str, body: dict, tenant: str = De
     if action == "close":
         return _pdoc(pdoc.close, tenant, case_id)
     raise HTTPException(404, "step | recheck | escalate | close")
+
+
+# ---------------------------------------------------------------- v0.95 Financial Analyst
+def _fin(fn, *a, **k):
+    from .analyst import service as fin
+    try:
+        return fn(*a, **k)
+    except (fin.FinError, ValueError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/finance/books", dependencies=[Depends(require_key)])
+async def finance_books(file: UploadFile = File(...), label: str = Form(""), start: str = Form(...), end: str = Form(...),
+                        tenant: str = Depends(current_tenant)):
+    """Tally trial balance / P&L / balance sheet export -> statements, ratios, insights."""
+    from .analyst import service as fin
+    data = await file.read()
+    return _fin(fin.import_books, tenant, label, start, end, "", data, file.filename or "tb.xlsx")
+
+
+@app.post("/api/finance/bank", dependencies=[Depends(require_key)])
+async def finance_bank(file: UploadFile = File(...), account: str = Form(""), tenant: str = Depends(current_tenant)):
+    from .analyst import service as fin
+    data = await file.read()
+    return _fin(fin.import_bank, tenant, "", data, file.filename or "statement.csv", account)
+
+
+@app.get("/api/finance/analysis", dependencies=[Depends(require_key)])
+def finance_analysis(snapshot: str = "", tenant: str = Depends(current_tenant)):
+    from .analyst import service as fin
+    return _fin(fin.analyse, tenant, snapshot)
+
+
+@app.get("/api/finance/periods", dependencies=[Depends(require_key)])
+def finance_periods(tenant: str = Depends(current_tenant)):
+    from .analyst import service as fin
+    return {"periods": fin.snapshots(tenant)}
+
+
+@app.get("/api/finance/cash", dependencies=[Depends(require_key)])
+def finance_cash(tenant: str = Depends(current_tenant)):
+    from .analyst import service as fin
+    return _fin(fin.cash, tenant)
+
+
+@app.get("/api/finance/aging", dependencies=[Depends(require_key)])
+def finance_aging(kind: str = "receivable", tenant: str = Depends(current_tenant)):
+    from .analyst import service as fin
+    return _fin(fin.aging, tenant, "payable" if kind == "payable" else "receivable")
+
+
+@app.post("/api/finance/items", dependencies=[Depends(require_key)])
+def finance_item_add(body: dict, tenant: str = Depends(current_tenant)):
+    from .analyst import service as fin
+    return _fin(fin.add_item, tenant, str(body.get("kind") or "receivable"), str(body.get("party") or ""), body.get("amount"),
+                str(body.get("bill") or ""), str(body.get("bill_date") or ""), body.get("credit_days"), str(body.get("phone") or ""),
+                bool(body.get("msme")), body.get("agreed_days"))
+
+
+@app.post("/api/finance/loan_check", dependencies=[Depends(require_key)])
+def finance_loan_check(body: dict, tenant: str = Depends(current_tenant)):
+    from .analyst import service as fin
+    return _fin(fin.loan_check, tenant, body.get("amount"), body.get("rate") or 10, float(body.get("years") or 5),
+                body.get("projected_turnover"), str(body.get("snapshot") or ""))
+
+
+@app.post("/api/finance/act/{action}", dependencies=[Depends(require_key)])
+def finance_act(action: str, body: dict, tenant: str = Depends(current_tenant)):
+    """report | share (her Haan, only from her tap) | reminders | advance_tax"""
+    from .analyst import service as fin
+    if action == "report":
+        return _fin(fin.report, tenant, str(body.get("snapshot") or ""), str(body.get("conversation_id") or ""))
+    if action == "share":
+        return _fin(fin.approve_share, tenant, str(body.get("snapshot") or ""), bool(body.get("approve")), str(body.get("to") or ""))
+    if action == "reminders":
+        return _fin(fin.reminder_drafts, tenant)
+    if action == "advance_tax":
+        return _fin(fin.advance_tax, tenant, body.get("profit"), str(body.get("snapshot") or ""))
+    raise HTTPException(404, "report | share | reminders | advance_tax")
+
+
+@app.get("/api/finance/settings", dependencies=[Depends(require_key)])
+def finance_settings_get(tenant: str = Depends(current_tenant)):
+    from .analyst import service as fin
+    return fin.settings(tenant)
+
+
+@app.put("/api/finance/settings", dependencies=[Depends(require_key)])
+def finance_settings_put(body: dict, tenant: str = Depends(current_tenant)):
+    from .analyst import service as fin
+    keys = ("business", "entity", "budget", "tax_paid", "morning_time", "enabled")
+    return _fin(fin.save_settings, tenant, **{k: body[k] for k in keys if k in body})
 
 
 # ---------------------------------------------------------------- v0.94 Payroll Officer

@@ -41,6 +41,7 @@ import 'phonedoc_screen.dart';
 import 'jaanch_screen.dart';
 import 'gst_screen.dart';
 import 'payroll_screen.dart';
+import 'finance_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -195,6 +196,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Har hissa abhi jaancho: kya kharab hai, kaise theek hoga, kaun si website server se nahi khulti'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => JaanchScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.query_stats_rounded, color: C.accent),
+              title: const Text('Financial analyst', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Tally + bank se munafa, ratio, cash kitne din, vasooli, MSME, loan, advance tax: ${app.aName} samjhayega'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FinanceScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

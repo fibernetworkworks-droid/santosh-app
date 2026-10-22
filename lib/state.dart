@@ -1073,6 +1073,10 @@ class Santosh extends ChangeNotifier {
       case 'mshop':
         mshopTick++;
         break;
+      case 'fin_report':
+      case 'fin_alert':
+        feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
+        break;
       case 'payroll_run':
         final pk2 = '${p['run_id']}';
         final pc2 = _payCards[pk2];

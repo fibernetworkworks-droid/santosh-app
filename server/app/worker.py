@@ -436,6 +436,12 @@ async def employee_jobs() -> None:
             await chai.evening(tenant)
     except Exception:
         log.exception("chai evening failed")
+    try:                                   # v0.95 Paisa: MSME payment deadlines, late customers, advance tax
+        from .analyst import service as analyst
+        for tenant in analyst.due_mornings():
+            analyst.send_morning(tenant)
+    except Exception:
+        log.exception("analyst morning failed")
     try:                                   # v0.94 Payroll: salary / PF / ESIC / TDS due and late at her time
         from .payroll import service as payroll
         for tenant in payroll.due_mornings():

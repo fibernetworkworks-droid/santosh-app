@@ -533,3 +533,10 @@ from .payroll_tools import PAYROLL_HANDLERS, PAYROLL_LABELS, PAYROLL_TOOLS  # no
 TOOLS.extend(PAYROLL_TOOLS)
 TOOL_LABELS.update(PAYROLL_LABELS)
 HANDLERS.update(PAYROLL_HANDLERS)
+
+# v0.95 Financial Analyst (books + bank -> P&L, ratios, cash runway, aging, MSME risk, loan check, advance tax, MIS)
+from .analyst_tools import ANALYST_HANDLERS, ANALYST_LABELS, ANALYST_TOOLS  # noqa: E402
+
+TOOLS.extend(ANALYST_TOOLS)
+TOOL_LABELS.update(ANALYST_LABELS)
+HANDLERS.update(ANALYST_HANDLERS)
