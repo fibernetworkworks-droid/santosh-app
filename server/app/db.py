@@ -642,6 +642,7 @@ def init_db(url: str | None = None):
     from .site import domains as _site_domains  # noqa: F401  (v0.123 domains she bought through Hoola)
     from .site import care as _site_care  # noqa: F401  (v0.124 visits / uptime per day, monthly care notes)
     from .site import github as _site_github  # noqa: F401  (v0.124 GitHub export of her site)
+    from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from .net import models as _net_models  # noqa: F401
     from .net import share as _net_share  # noqa: F401
     from .net import groups as _net_groups  # noqa: F401

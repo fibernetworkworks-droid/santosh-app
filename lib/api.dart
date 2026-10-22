@@ -978,6 +978,10 @@ class Api {
   Future<Map<String, dynamic>> siteGithubCancel(String id) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/sites-github/$id/cancel') as Map);
   // ---- v0.118 Brand Sahayak (brand designer; final artwork only on her tap) ----
+  // v0.127 Hoola Screen (view-only live board)
+  Future<Map<String, dynamic>> screenLink() async => Map<String, dynamic>.from(await _send('GET', '/api/screen/link') as Map);
+  Future<Map<String, dynamic>> screenRevoke() async => Map<String, dynamic>.from(await _send('POST', '/api/screen/revoke') as Map);
+  Future<Map<String, dynamic>> screenPreview() async => Map<String, dynamic>.from(await _send('GET', '/api/screen/preview') as Map);
   Future<Map<String, dynamic>> brandAll() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/brand', timeout: const Duration(seconds: 45)) as Map);
   Future<Map<String, dynamic>> brandMake(Map<String, dynamic> body) async =>

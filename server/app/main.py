@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.126.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.127.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -165,7 +165,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -194,6 +194,51 @@ def healthz():
 @app.get("/")
 def index():
     return FileResponse(STATIC / "index.html")
+
+
+# ----------------------------------------------------------------------------- v0.127 Hoola Screen (view-only second screen)
+@app.get("/api/screen/link")
+def screen_link(request: Request, days: int = 30, tenant: str = Depends(current_tenant)):
+    from . import screen
+    base = get_settings().public_base_url or str(request.base_url).rstrip("/")
+    return screen.link(tenant, base, days)
+
+
+@app.post("/api/screen/revoke")
+def screen_revoke(tenant: str = Depends(current_tenant)):
+    from . import screen
+    return screen.revoke(tenant)
+
+
+@app.get("/api/screen/preview")
+def screen_preview(tenant: str = Depends(current_tenant)):
+    from . import screen
+    return screen.board(tenant)
+
+
+@app.get("/api/screen/{token}/board")
+def screen_board(token: str):
+    """Public but read-only: the signed link is the only key; nothing can be changed from here."""
+    from . import screen
+    try:
+        t = screen.tenant_of(token)
+    except screen.ScreenError as e:
+        raise HTTPException(403, str(e))
+    return JSONResponse(screen.board(t), headers={"Cache-Control": "no-store"})
+
+
+@app.get("/screen/{token}")
+def screen_page(token: str):
+    from . import screen
+    try:
+        screen.tenant_of(token)
+    except screen.ScreenError as e:
+        return HTMLResponse(f"<meta name=viewport content='width=device-width'><body style='font:20px system-ui;"
+                            f"background:#0d1017;color:#eee;padding:40px'>{e}</body>", status_code=403)
+    return HTMLResponse(screen.page(), headers={
+        "Cache-Control": "no-store", "X-Frame-Options": "DENY", "Referrer-Policy": "no-referrer",
+        "Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+                                   "connect-src 'self'; img-src data:; base-uri 'none'; form-action 'none'"})
 
 
 @app.get("/privacy")

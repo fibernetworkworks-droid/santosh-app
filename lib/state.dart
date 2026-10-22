@@ -407,6 +407,7 @@ class Santosh extends ChangeNotifier {
       unawaited(Native.pushInit(serverUrl, apiKey).then((t) => pushOn = serverPush && (t ?? '').isNotEmpty));
       // v0.62 the bubble chat + home-screen widget talk to this same chat
       unawaited(Native.chatLink(serverUrl, apiKey, conversationId!));
+      unawaited(screenSync());
       connected = true;
       _replaying = true;
       _connectedAt = DateTime.now().toUtc();
@@ -738,6 +739,38 @@ class Santosh extends ChangeNotifier {
   int shareTick = 0;
 
   /// v0.62 The home-screen widget: avatar name, Hoola's last line, the next reminder.
+  /// v0.127 Hoola Screen: keep a fresh view-only board link on the phone so a connected mini screen / TV
+  /// shows Hoola's live work by itself. The link is renewed every 20 days (it lives 30).
+  Future<Map<String, dynamic>> screenSync({bool force = false, bool? on, bool? awake}) async {
+    try {
+      final saved = _prefs.getString('hoola_screen_url') ?? '';
+      final at = _prefs.getInt('hoola_screen_at') ?? 0;
+      final age = DateTime.now().millisecondsSinceEpoch - at;
+      String? url;
+      if (api != null && (force || saved.isEmpty || age > const Duration(days: 20).inMilliseconds)) {
+        final r = await api!.screenLink();
+        var u = '${r['url'] ?? ''}';
+        if (u.startsWith('/')) u = '${serverUrl.endsWith('/') ? serverUrl.substring(0, serverUrl.length - 1) : serverUrl}$u';
+        if (u.startsWith('http')) {
+          url = u;
+          await _prefs.setString('hoola_screen_url', u);
+          await _prefs.setInt('hoola_screen_at', DateTime.now().millisecondsSinceEpoch);
+        }
+      }
+      return await Native.screenSetup(url: url ?? (saved.isEmpty ? null : saved), on: on, awake: awake);
+    } catch (_) {
+      return await Native.screenInfo();
+    }
+  }
+
+  String get screenUrl => _prefs.getString('hoola_screen_url') ?? '';
+
+  Future<void> screenRevoke() async {
+    await api!.screenRevoke();
+    await _prefs.remove('hoola_screen_url');
+    await screenSync(force: true);
+  }
+
   Future<void> widgetSync({String? last}) async {
     try {
       final r = reminders.isEmpty ? '' : [reminders.first['text'], reminders.first['when']].whereType<String>().join(' · ');

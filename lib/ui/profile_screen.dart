@@ -59,6 +59,7 @@ import 'franchise_screen.dart';
 import 'theka_screen.dart';
 import 'kharcha_screen.dart';
 import 'voice_learned_screen.dart';
+import 'screen_link.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -309,6 +310,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Do shabd boliye: plan, 3 looks, motion graphics, har hissa banta dikhe, jaanch, preview'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SiteScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.connected_tv_rounded, color: C.accent),
+              title: const Text('Hoola Screen', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Mini screen / TV jodiye: ${app.aName} ka kaam aur cards wahan live dikhenge'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ScreenLinkScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

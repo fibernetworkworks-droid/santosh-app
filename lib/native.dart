@@ -123,6 +123,21 @@ class Native {
       return 'Is phone par save nahi ho saka';
     }
   }
+  /// v0.127 Hoola Screen: the board link + switches; returns {connected, name, showing, on, awake, has_link, width, height}.
+  static Future<Map<String, dynamic>> screenSetup({String? url, bool? on, bool? awake}) async {
+    try {
+      return Map<String, dynamic>.from(await _ch.invokeMethod('screenSetup', {'url': url, 'on': on, 'awake': awake}) as Map);
+    } catch (_) {
+      return {'connected': false};
+    }
+  }
+  static Future<Map<String, dynamic>> screenInfo() async {
+    try {
+      return Map<String, dynamic>.from(await _ch.invokeMethod('screenInfo') as Map);
+    } catch (_) {
+      return {'connected': false};
+    }
+  }
   /// v0.118 Brand Sahayak: a final poster into the gallery (Pictures/Hoola). null = saved, else the reason.
   static Future<String?> saveImage(String path, String name) async {
     try {

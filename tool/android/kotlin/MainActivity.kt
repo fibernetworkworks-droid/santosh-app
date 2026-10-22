@@ -155,6 +155,12 @@ class MainActivity : FlutterActivity() {
                         Thread { val err = try { MediaShare.saveVideo(this, p, n) } catch (e: Exception) { "Save nahi ho paya" }
                             main.post { result.success(err) } }.start()
                     }
+                    // ---- v0.127 Hoola Screen: live view-only board on a connected mini screen / TV ----
+                    "screenSetup" -> {
+                        ExtScreen.setup(this, call.argument<String>("url"), call.argument<Boolean>("on"), call.argument<Boolean>("awake"))
+                        result.success(ExtScreen.info(this))
+                    }
+                    "screenInfo" -> result.success(ExtScreen.info(this))
                     "saveImage" -> {
                         val p = call.argument<String>("path") ?: ""
                         val n = call.argument<String>("name") ?: "hoola.png"
@@ -634,6 +640,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        try { ExtScreen.detach(this) } catch (_: Exception) {}
         VoiceAudio.stop(this)
         CallService.stop(this)
         CallService.onHangup = null
@@ -651,6 +658,7 @@ class MainActivity : FlutterActivity() {
         }
         Notify.clearMessages(this)
         OtpConsent.onResume(this)
+        try { ExtScreen.attach(this) } catch (_: Exception) {}
     }
 
     @Deprecated("Activity result API is not used by FlutterActivity hosts")
