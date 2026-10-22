@@ -102,14 +102,14 @@ Who you are
 - Sound like an educated young guy from Pune or Mumbai: a native Indian accent and rhythm, never American or British.
 
 How you talk
-- Spoken Hinglish the way people really talk: Hindi grammar, English for everyday work and tech words (meeting, deadline, update, share, "confirm kar do"). Match the user's own Hindi-English mix. If they switch fully to English, Marathi or another language, follow them.
+- Spoken Hinglish the way people really talk: Hindi grammar, English for everyday work and tech words (meeting, deadline, update, share, "confirm kar do"). Match the user's own Hindi-English mix. Your language is fixed by the LANGUAGE LOCK at the top and the end; it changes only when a 'Language note' says so.
 - Spoken Hindi, never textbook Hindi: say "please", "ek minute", "thanks", "help", "theek hai", never "kripya", "pratiksha", "dhanyavaad", "sahayata".
 - "Aap" by default. Use "tum" only if the user does first or asks you to. Never mix them.
 - One idea per turn: usually one or two short sentences. More only when the user asks for detail.
 - Start with a reaction or with the answer itself, never a preamble: "Achha...", "Haan,", "Hmm,", "Arre,", then the point. Fragments are fine: "Theek hai." "Kal tak ho jayega." Sometimes start with "toh", "matlab", "waise".
 - A small filler or hesitation now and then, mostly when you are actually thinking or unsure. Laugh only when something is really funny. If a reply sounds too polished, loosen it.
 - Do not end every turn with a question. Often just answer and stop.
-- Do not repeat back what the user said. Do not keep thanking or apologising. Never say "Certainly", "Absolutely", "I understand", "Great question", "How can I help you today" or "as an AI language model".
+- Do not repeat back what the user said, EXCEPT the facts you are about to act on: a name, a number, an amount, a date or a time goes back to her once, short ("Sharma ji ko, paanch sau rupaye, kal chaar baje, sahi?"), and anything that sends, pays, books, deletes or changes something waits for her "haan". Digits of phone numbers / codes in small groups. If she corrects it, read the corrected value back again. Do not keep thanking or apologising. Never say "Certainly", "Absolutely", "I understand", "Great question", "How can I help you today" or "as an AI language model".
 - Listen to how they sound and match it: stressed or sad, slow down and be gentle; excited, be happy with them; in a hurry, be quick; joking, joke back. Let your voice carry the feeling, with natural pace and pitch, and a small pause before something important.
 - Numbers and money the Indian way: "dedh sau", "dhai sau rupaye", "saade paanch baje", "do lakh", "pachees tarikh". Phone numbers digit by digit in small groups.
 - Never read out lists, symbols, markdown or links. Say the top one or two things and ask if they want more.
@@ -122,7 +122,12 @@ When to speak
 - If you got cut off but nobody actually said anything (just noise), pick up with a quick "haan, toh..." and finish your point.
 - Ignore TV, background noise and people talking to someone else.
 - A note may tell you who is speaking, recognised from their voice (the owner, Maa, Papa...). Talk to that person by name. Never share the owner's private things (mail, money, files, Hoola Network, memories) with anyone else.
-- If you did not catch something: "sorry, ek baar phir boliye?" If the line seems bad ("hello? hello?"): "haan haan, aa rahi hai awaaz."
+- Listen first, then answer. Never guess. If her words were unclear, cut off, mixed with noise, in a language she doesn't usually speak, or don't make sense for the moment, she was probably misheard: do NOT answer something random. Ask again, in her language:
+  1st time a short generic ask ("sorry, ek baar phir boliye?"),
+  2nd time a precise one about the exact unclear part ("paanch sau ya paanch hazaar?", "Rahul ya Rohan?"),
+  after that "ek kaam kijiye, chat mein likh dijiye" (or send an ask_form card for several details). Never a 3rd voice try on the same thing.
+- A request that could mean two things (which file, which person, which day): ask one short question that names the choices; don't pick one silently. A clear request: just do it, don't ask needlessly. Short "haan", "nahi", "ho gaya" after your question are full answers.
+- If the line seems bad ("hello? hello?"): "haan haan, aa rahi hai awaaz."
 
 Example turns (flavour only)
 User: Hello?
@@ -143,7 +148,7 @@ Honesty
 - Never claim a human body or a real human life as fact. Opinions are fine. Never invent a memory of an earlier conversation: mention a past detail only if it is in "About the user" or this call.
 
 Language
-- Reply in the language the user speaks. Preferred language set in the app: {lang}.
+- Her language for this call: {lang}. The LANGUAGE LOCK (top and end) decides it; only a 'Language note' changes it.
 
 Doing real work
 - Use your tools instead of only talking about it. Before a tool that takes a moment, say ONE short, varied line ("ek sec", "dekhta hoon", "ruko, check karta hoon"), then call it; not while the user is still talking. When the result comes, lead with the answer and do not repeat the filler.
@@ -222,7 +227,8 @@ def _snake(name: str) -> str:
 
 def unsupported_field(err: Exception) -> str | None:
     """'Unknown name "proactivity" at 'setup'' -> 'proactivity' (only for fields we can safely drop)."""
-    m = re.search(r'Unknown name \\?"(\w+)\\?"', str(err))
+    m = re.search(r'Unknown name \\?"(\w+)\\?"', str(err)) or \
+        re.search(r'(?:inputAudioTranscription|input_audio_transcription)\.(\w+)', str(err))
     if not m:
         return None
     f = _snake(m.group(1))
@@ -230,7 +236,7 @@ def unsupported_field(err: Exception) -> str | None:
 
 
 # nice-to-have settings: the call still works without them
-DROPPABLE = {"proactivity", "proactive_audio", "enable_affective_dialog", "context_window_compression",
+DROPPABLE = {"language_codes", "custom_vocabulary", "proactivity", "proactive_audio", "enable_affective_dialog", "context_window_compression",
              "session_resumption", "output_audio_transcription", "input_audio_transcription",
              "end_of_speech_sensitivity", "start_of_speech_sensitivity", "prefix_padding_ms", "silence_duration_ms",
              "automatic_activity_detection", "realtime_input_config", "sliding_window"}
@@ -274,11 +280,16 @@ def _end_sensitivity(value: str):
 
 
 def live_config(voice: str, lang: str, context: str, handle: str | None, name: str = "Santosh", gender: str = "m",
-                extra_tools: list[dict] | None = None):
+                extra_tools: list[dict] | None = None, langst=None):
     from google.genai import types
+    from . import voicelang
     st = get_settings()
     tz = life.tz_of(st.tenant_id)
-    prompt = persona_prompt(name, gender).format(lang=lang, now=datetime.now(tz).strftime("%A %d %B %Y, %I:%M %p"), context=context or "(nothing saved yet)")
+    langst = langst or voicelang.LangState(lang)
+    prompt = persona_prompt(name, gender).format(lang=langst.name, now=datetime.now(tz).strftime("%A %d %B %Y, %I:%M %p"), context=context or "(nothing saved yet)")
+    # v0.114 the language is the server's decision: Google's lock line + examples at the top AND the end
+    prompt = voicelang.lock_block(langst, "top") + prompt + voicelang.lock_block(langst, "end")
+    tr = types.AudioTranscriptionConfig(language_codes=voicelang.transcription_codes(langst))
     decls = [types.FunctionDeclaration(name=t["name"], description=t["description"], parameters_json_schema=t["input_schema"])
              for t in _tool_specs() + list(extra_tools or [])]
     cfg = types.LiveConnectConfig(
@@ -287,7 +298,7 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
             voice_config=types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice))),
         system_instruction=types.Content(parts=[types.Part(text=prompt)]),
         tools=[types.Tool(function_declarations=decls)],
-        input_audio_transcription=types.AudioTranscriptionConfig(),
+        input_audio_transcription=tr,
         output_audio_transcription=types.AudioTranscriptionConfig(),
         realtime_input_config=types.RealtimeInputConfig(
             automatic_activity_detection=types.AutomaticActivityDetection(
@@ -305,6 +316,11 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
     for f in UNSUPPORTED:
         if f == "sliding_window":
             f = "context_window_compression"
+        if f in types.AudioTranscriptionConfig.model_fields and f not in type(cfg).model_fields:
+            # a refused transcription field (language_codes ...) drops only that field, never the whole transcript
+            if cfg.input_audio_transcription is not None:
+                setattr(cfg.input_audio_transcription, f, None)
+            continue
         if f in type(cfg).model_fields:
             setattr(cfg, f, None)
         elif cfg.realtime_input_config and cfg.realtime_input_config.automatic_activity_detection is not None \
@@ -411,6 +427,13 @@ def stats_summary(tenant: str) -> dict:
         "barge_opens_per_call": round(sum((c.get("gate") or {}).get("opens", 0) for c in calls) / len(calls), 1) if calls else None,
         "noise_muted_pct": (round(100 * sum((c.get("gate") or {}).get("idle_muted", 0) for c in calls)
                                   / max(1, sum((c.get("gate") or {}).get("chunks", 0) for c in calls)), 1) if calls else None),
+        # v0.114 listening + language: Hoola asking again, her correcting Hoola, replies that drifted, switches
+        "asked_again_per_100": round(100 * sum(c.get("asked_again", 0) for c in calls) / replies, 1) if replies else None,
+        "her_corrections_per_100": round(100 * sum(c.get("her_corrections", 0) for c in calls) / replies, 1) if replies else None,
+        "lang_drifts_per_100": round(100 * sum(c.get("lang_drifts", 0) for c in calls) / replies, 1) if replies else None,
+        "lang_switches": sum(c.get("lang_switches", 0) for c in calls),
+        "unclear_transcripts": sum(c.get("lang_unclear", 0) for c in calls),
+        "languages": dict(__import__("collections").Counter(c.get("lang") or "?" for c in calls)),
         "recent": [{k: c[k] for k in ("call_id", "ended", "turns", "latency_ms", "interruptions", "tools", "silent_tools")}
                    for c in calls[-10:]],
     }
@@ -515,6 +538,8 @@ class Call:
         self.conv, self.lang = conv, lang
         self.ctx = Ctx(tenant or st.tenant_id, conv)
         self.tenant = tenant or st.tenant_id
+        from . import voicelang
+        self.langst = voicelang.start_state(self.tenant, lang)   # v0.114 the call's language, kept by the server
         self.call_id = secrets.token_urlsafe(12)
         from .avatar import service as av
         a = av.get(self.tenant)
@@ -555,7 +580,9 @@ class Call:
                       "latency_ms": [], "words": [], "question_endings": 0, "assistantisms": 0, "interruptions": 0,
                       "tools": 0, "silent_tools": 0, "acks": 0, "false_stops": 0,
                       "gate": {},
-                      "speaker_guesses": 0, "speaker_sure": 0, "speaker_changes": 0, "blocked_tools": 0, "otp_filled": 0}
+                      "speaker_guesses": 0, "speaker_sure": 0, "speaker_changes": 0, "blocked_tools": 0, "otp_filled": 0,
+                      "lang_switches": 0, "lang_drifts": 0, "lang_unclear": 0, "asked_again": 0, "her_corrections": 0,
+                      "lang": ""}
         self._otp_req = ""                     # v0.83 the website OTP box we are listening for
         self._otp_heard = ""                   # what she said since that box asked (only while it waits)
         self._otp_said: set[str] = set()       # OTPs filled in this call: hidden from the saved transcript
@@ -840,6 +867,27 @@ class Call:
         self._turn_audio = False
         self._turn_end_at = time.monotonic()
         await self.send_json(done)
+        unclear = False
+        try:   # v0.114 her language: sticky on the server; Hoola's own drift gets one quiet correction
+            from . import voicelang
+            if user:
+                heard = self.langst.hear(user)
+                unclear = heard["unclear"]
+                if unclear:
+                    self.stats["lang_unclear"] += 1
+                if heard["switched"]:
+                    self.stats["lang_switches"] += 1
+                    await self._tell_quietly(self.langst.switched_note())
+            if reply:
+                fix = self.langst.check_reply(reply)
+                if fix:
+                    self.stats["lang_drifts"] += 1
+                    await self._tell_quietly(fix)
+            for k, v in voicelang.repair_signals(user, reply).items():
+                self.stats[k] += v
+            self.stats["lang"] = self.langst.base
+        except Exception:
+            log.exception("voice language check failed")
         if reply:
             self.stats["turns"] += 1
             self.stats["words"].append(len(reply.split()))
@@ -847,7 +895,8 @@ class Call:
                 self.stats["question_endings"] += 1
             self.stats["assistantisms"] += len(ASSISTANTISMS.findall(reply))
         if user or reply:
-            self.recent.append((user, reply))
+            # a transcript in a script she never speaks is a mis-hearing: it never re-briefs a session or becomes memory
+            self.recent.append(("(awaaz saaf nahi thi)" if unclear else user, reply))
             self.turns_log.append((user, reply))
             del self.turns_log[:-120]
             if interrupted and reply:
@@ -860,7 +909,7 @@ class Call:
                 from . import yaad
                 cur = (self.vid.current or {}) if self.vid is not None else {}
                 yaad.after_turn(self.tenant, self.conv, user, reply,
-                                "owner" if (not cur or cur.get("relation") == "self") else "call")
+                                "owner" if (not unclear and (not cur or cur.get("relation") == "self")) else "call")
             except Exception:
                 log.exception("voice memory failed")
 
@@ -1199,7 +1248,8 @@ class Call:
                 try:
                     async with contextlib.AsyncExitStack() as stack:
                         resumed = self.handle is not None
-                        cfg = live_config(self.voice, self.lang, context, self.handle, self.name, self.gender, mcp_defs)
+                        cfg = live_config(self.voice, self.lang, context, self.handle, self.name, self.gender, mcp_defs,
+                                          langst=self.langst)
                         # a Gemini that does not answer must not freeze the call
                         session = await asyncio.wait_for(stack.enter_async_context(connector(cfg)), timeout=20)
                         self._session = session
@@ -1286,6 +1336,14 @@ class Call:
             if self.user_buf or self.reply_buf:
                 await self.finish_turn()
             self.stats["ended"] = time.time()
+            self.stats["lang_state"] = self.langst.summary()
+            try:   # v0.114 the language she really spoke carries to her next call (owner / unknown speaker only)
+                from . import voicelang
+                cur = (self.vid.current or {}) if self.vid is not None else {}
+                if not cur or cur.get("relation") == "self":
+                    voicelang.remember(self.tenant, self.langst)
+            except Exception:
+                log.exception("voice language memory failed")
             STATS.append(self.stats)
             try:   # v0.98 Gemini Live is billed per minute of audio each way: 16 kHz in, 24 kHz out (16-bit mono)
                 from . import usage

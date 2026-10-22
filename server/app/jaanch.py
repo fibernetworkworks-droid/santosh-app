@@ -227,6 +227,9 @@ async def _voice_settings() -> dict[str, Any]:
         return _c("voice_memory", "Call ki yaad (Gemini)", False, detail,
                   "Gemini Live model badaliye (GEMINI_LIVE_MODEL) jo session resumption + compression maanta ho; "
                   "tab tak har reconnect par Hoola pichhli baat se dobara samjhata hai")
+    if "language_codes" in dropped:   # v0.114 the transcript language hint was refused: back to auto-detect
+        return _c("voice_memory", "Call ki yaad (Gemini)", None, detail + "; transcript ki bhasha ka hint Gemini ne nahi liya",
+                  "GEMINI_LIVE_MODEL badal kar dekhiye; tab tak bhasha sirf prompt ke lock se pakki hai")
     bad = r["resume_failed"] > max(3, r["resumed"])
     return _c("voice_memory", "Call ki yaad (Gemini)", None if bad else True, detail,
               "pm2 logs santosh | grep -i 'resume failed' dekhiye" if bad else "")
