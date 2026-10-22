@@ -436,6 +436,12 @@ async def employee_jobs() -> None:
             await chai.evening(tenant)
     except Exception:
         log.exception("chai evening failed")
+    try:                                   # v0.98 Bima: premiums due / grace / lapsed, birthdays, stuck claims
+        from .insure import service as insure
+        for tenant in insure.due_mornings():
+            insure.send_morning(tenant)
+    except Exception:
+        log.exception("insure morning failed")
     try:                                   # v0.95 Paisa: MSME payment deadlines, late customers, advance tax
         from .analyst import service as analyst
         for tenant in analyst.due_mornings():

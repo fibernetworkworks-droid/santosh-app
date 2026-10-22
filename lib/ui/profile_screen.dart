@@ -44,6 +44,7 @@ import 'payroll_screen.dart';
 import 'finance_screen.dart';
 import 'audit_screen.dart';
 import 'approve_key_screen.dart';
+import 'insurance_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -198,6 +199,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Har hissa abhi jaancho: kya kharab hai, kaise theek hoga, kaun si website server se nahi khulti'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => JaanchScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.health_and_safety_rounded, color: C.accent),
+              title: const Text('Bima sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Policy book, premium yaad, cover ka gap, quote tulna, claim: ${app.aName} karega, paisa graahak seedha insurer ko'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InsuranceScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

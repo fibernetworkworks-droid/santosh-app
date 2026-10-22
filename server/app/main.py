@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.97.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.98.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -131,7 +131,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "insurance"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -3506,6 +3506,117 @@ def phonedoc_case_action(case_id: str, action: str, body: dict, tenant: str = De
     if action == "close":
         return _pdoc(pdoc.close, tenant, case_id)
     raise HTTPException(404, "step | recheck | escalate | close")
+
+
+# ---------------------------------------------------------------- v0.98 Bima Sahayak (insurance agent)
+def _ins(fn, *a, **k):
+    from .insure import service as ins
+    try:
+        return fn(*a, **k)
+    except (ins.InsError, ValueError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/insurance/summary", dependencies=[Depends(require_key)])
+def insurance_summary(days: int = 15, tenant: str = Depends(current_tenant)):
+    from .insure import service as ins
+    return {"book": ins.book(tenant), "renewals": ins.renewals(tenant, days), "claims": ins.claims(tenant),
+            "birthdays": ins.birthdays(tenant, 7)["birthdays"], "settings": ins.settings(tenant)}
+
+
+@app.get("/api/insurance/clients", dependencies=[Depends(require_key)])
+def insurance_clients(tenant: str = Depends(current_tenant)):
+    from .insure import service as ins
+    return {"clients": ins.clients(tenant)}
+
+
+@app.post("/api/insurance/clients", dependencies=[Depends(require_key)])
+def insurance_client_save(body: dict, tenant: str = Depends(current_tenant)):
+    from .insure import service as ins
+    g = lambda k: str(body.get(k) or "")  # noqa: E731
+    return _ins(ins.save_client, tenant, g("name"), g("client"), g("phone"), g("dob"), g("gender"), g("city"), body.get("metro"),
+                body.get("income"), body.get("family"), body.get("liabilities"), body.get("goals"), body.get("savings"),
+                body.get("whatsapp_ok"), g("notes"))
+
+
+@app.get("/api/insurance/clients/{cid}/needs", dependencies=[Depends(require_key)])
+def insurance_needs(cid: str, tenant: str = Depends(current_tenant)):
+    from .insure import service as ins
+    return _ins(ins.needs, tenant, cid)
+
+
+@app.get("/api/insurance/policies", dependencies=[Depends(require_key)])
+def insurance_policies(client: str = "", state: str = "", tenant: str = Depends(current_tenant)):
+    from .insure import service as ins
+    return {"policies": _ins(ins.policies, tenant, client, state)}
+
+
+@app.post("/api/insurance/policies", dependencies=[Depends(require_key)])
+def insurance_policy_save(body: dict, tenant: str = Depends(current_tenant)):
+    from .insure import service as ins
+    g = lambda k: str(body.get(k) or "")  # noqa: E731
+    return _ins(ins.save_policy, tenant, g("client"), g("insurer"), g("plan"), g("type"), g("number"), g("start"), g("mode"),
+                body.get("premium"), body.get("cover"), g("next_due"), nominee=g("nominee"), commission_pct=body.get("commission_pct"),
+                group=body.get("group"), members=body.get("members"), pay_link=g("pay_link"), policy=g("policy"), status=g("status"))
+
+
+@app.post("/api/insurance/policies/{pid}/paid", dependencies=[Depends(require_key)])
+def insurance_paid(pid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .insure import service as ins
+    return _ins(ins.premium_paid, tenant, pid, str(body.get("paid_on") or ""))
+
+
+@app.post("/api/insurance/policies/{pid}/reminded", dependencies=[Depends(require_key)])
+def insurance_reminded(pid: str, tenant: str = Depends(current_tenant)):
+    from .insure import service as ins
+    return _ins(ins.mark_reminded, tenant, pid)
+
+
+@app.post("/api/insurance/import", dependencies=[Depends(require_key)])
+async def insurance_import(file: UploadFile = File(...), insurer: str = Form(""), tenant: str = Depends(current_tenant)):
+    from .insure import service as ins
+    data = await file.read()
+    return _ins(ins.import_policies, tenant, "", data, file.filename or "renewals.csv", insurer)
+
+
+@app.get("/api/insurance/reminders", dependencies=[Depends(require_key)])
+def insurance_reminders(days: int = 15, tenant: str = Depends(current_tenant)):
+    from .insure import service as ins
+    return _ins(ins.reminder_drafts, tenant, days)
+
+
+@app.post("/api/insurance/advice/{aid}", dependencies=[Depends(require_key)])
+def insurance_advice(aid: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her Haan (only from her tap) turns the recommendation into a client message draft she sends."""
+    from .insure import service as ins
+    return _ins(ins.approve_advice, tenant, aid, bool(body.get("approve", True)))
+
+
+@app.post("/api/insurance/claims", dependencies=[Depends(require_key)])
+def insurance_claim_new(body: dict, tenant: str = Depends(current_tenant)):
+    from .insure import service as ins
+    return _ins(ins.start_claim, tenant, str(body.get("policy") or ""), str(body.get("kind") or "other"), str(body.get("event_on") or ""),
+                body.get("amount"))
+
+
+@app.post("/api/insurance/claims/{cid}", dependencies=[Depends(require_key)])
+def insurance_claim_update(cid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .insure import service as ins
+    return _ins(ins.update_claim, tenant, cid, body.get("have"), str(body.get("status") or ""), str(body.get("insurer_ref") or ""),
+                str(body.get("filed_on") or ""), body.get("settled_amount"), str(body.get("note") or ""))
+
+
+@app.post("/api/insurance/book_file", dependencies=[Depends(require_key)])
+def insurance_book_file(body: dict, tenant: str = Depends(current_tenant)):
+    from .insure import service as ins
+    return _ins(ins.book_file, tenant, str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/insurance/settings", dependencies=[Depends(require_key)])
+def insurance_settings(body: dict, tenant: str = Depends(current_tenant)):
+    from .insure import service as ins
+    keys = ("agent_name", "agent_code", "remind_days", "morning_time", "enabled")
+    return _ins(ins.save_settings, tenant, **{k: body[k] for k in keys if k in body})
 
 
 # ---------------------------------------------------------------- v0.96 Auditor's Assistant

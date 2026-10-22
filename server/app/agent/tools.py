@@ -553,3 +553,10 @@ from .askform_tools import ASKFORM_HANDLERS, ASKFORM_LABELS, ASKFORM_TOOLS  # no
 TOOLS.extend(ASKFORM_TOOLS)
 TOOL_LABELS.update(ASKFORM_LABELS)
 HANDLERS.update(ASKFORM_HANDLERS)
+
+# v0.98 Bima Sahayak (insurance agent: clients, policies, renewals, needs, claims)
+from .insure_tools import INSURE_HANDLERS, INSURE_LABELS, INSURE_TOOLS  # noqa: E402
+
+TOOLS.extend(INSURE_TOOLS)
+TOOL_LABELS.update(INSURE_LABELS)
+HANDLERS.update(INSURE_HANDLERS)

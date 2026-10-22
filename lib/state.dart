@@ -1077,6 +1077,8 @@ class Santosh extends ChangeNotifier {
       case 'fin_report':
       case 'fin_alert':
       case 'audit_update':
+      case 'ins_day':
+      case 'ins_advice':
         feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
         break;
       case 'payroll_run':

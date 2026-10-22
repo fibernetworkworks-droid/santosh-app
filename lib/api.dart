@@ -696,6 +696,26 @@ class Api {
   Future<Map<String, dynamic>> phonedocCase(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/phonedoc/cases/$id') as Map);
   Future<Map<String, dynamic>> phonedocAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/phonedoc/cases/$id/$action', body: body) as Map);
+  // v0.98 Bima Sahayak
+  Future<Map<String, dynamic>> insSummary({int days = 15}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/insurance/summary', query: {'days': '$days'}) as Map);
+  Future<Map<String, dynamic>> insReminders({int days = 15}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/insurance/reminders', query: {'days': '$days'}) as Map);
+  Future<List<Map<String, dynamic>>> insClients() async => _maps((await _send('GET', '/api/insurance/clients') as Map)['clients']);
+  Future<Map<String, dynamic>> insClientSave(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/insurance/clients', body: body) as Map);
+  Future<Map<String, dynamic>> insNeeds(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/insurance/clients/$id/needs') as Map);
+  Future<List<Map<String, dynamic>>> insPolicies({String client = '', String state = ''}) async => _maps((await _send('GET', '/api/insurance/policies',
+      query: {if (client.isNotEmpty) 'client': client, if (state.isNotEmpty) 'state': state}) as Map)['policies']);
+  Future<Map<String, dynamic>> insPolicySave(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/insurance/policies', body: body) as Map);
+  Future<Map<String, dynamic>> insPaid(String id) async => Map<String, dynamic>.from(await _send('POST', '/api/insurance/policies/$id/paid', body: {}) as Map);
+  Future<Map<String, dynamic>> insReminded(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/insurance/policies/$id/reminded', body: {}) as Map);
+  Future<Map<String, dynamic>> insImport(String filename, List<int> bytes) async => uploadFile('/api/insurance/import', filename, bytes);
+  Future<Map<String, dynamic>> insAdvice(String id, bool approve) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/insurance/advice/$id', body: {'approve': approve}) as Map);
+  Future<Map<String, dynamic>> insBookFile() async => Map<String, dynamic>.from(await _send('POST', '/api/insurance/book_file', body: {}) as Map);
   // v0.96 Auditor's Assistant
   Future<List<Map<String, dynamic>>> audEngagements() async => _maps((await _send('GET', '/api/audit/engagements') as Map)['engagements']);
   Future<Map<String, dynamic>> audNew(Map<String, dynamic> body) async =>
