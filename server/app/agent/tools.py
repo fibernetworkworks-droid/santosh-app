@@ -633,3 +633,10 @@ from .ads_tools import ADS_HANDLERS, ADS_LABELS, ADS_TOOLS  # noqa: E402
 TOOLS.extend(ADS_TOOLS)
 TOOL_LABELS.update(ADS_LABELS)
 HANDLERS.update(ADS_HANDLERS)
+
+# v0.115 Franchise Sahayak (outlets, sales, royalty statements with GST / RCM / TDS, P&L, licences, SOP audits)
+from .franchise_tools import FRANCHISE_HANDLERS, FRANCHISE_LABELS, FRANCHISE_TOOLS  # noqa: E402
+
+TOOLS.extend(FRANCHISE_TOOLS)
+TOOL_LABELS.update(FRANCHISE_LABELS)
+HANDLERS.update(FRANCHISE_HANDLERS)

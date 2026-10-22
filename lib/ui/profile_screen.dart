@@ -52,6 +52,7 @@ import 'insurance_screen.dart';
 import 'seo_screen.dart';
 import 'thok_screen.dart';
 import 'niryat_screen.dart';
+import 'franchise_screen.dart';
 import 'kharcha_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -199,6 +200,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Aadhaar, PAN, Voter ID… taala band. ${app.aName} forms mein khud bharega'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => IdLockerScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.storefront_rounded, color: C.accent),
+              title: const Text('Franchise sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Har outlet ki sale aur munafa, royalty statement, licence, agreement ki tareekh, SOP audit: ${app.aName} karega, report aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FranchiseScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

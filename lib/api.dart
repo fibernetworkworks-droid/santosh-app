@@ -707,6 +707,21 @@ class Api {
   Future<Map<String, dynamic>> phonedocCase(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/phonedoc/cases/$id') as Map);
   Future<Map<String, dynamic>> phonedocAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/phonedoc/cases/$id/$action', body: body) as Map);
+  // v0.115 Franchise Sahayak
+  Future<Map<String, dynamic>> frDay() async => Map<String, dynamic>.from(await _send('GET', '/api/franchise/day') as Map);
+  Future<Map<String, dynamic>> frRead(String what, {String outlet = '', String month = ''}) async => Map<String, dynamic>.from(
+      await _send('GET', '/api/franchise/$what', query: {if (outlet.isNotEmpty) 'outlet': outlet, if (month.isNotEmpty) 'month': month}) as Map);
+  Future<Map<String, dynamic>> _frPost(String path, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/franchise/$path', body: body, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> frAgreement(Map<String, dynamic> body) => _frPost('agreements', body);
+  Future<Map<String, dynamic>> frOutlet(Map<String, dynamic> body) => _frPost('outlets', body);
+  Future<Map<String, dynamic>> frSale(Map<String, dynamic> body) => _frPost('sales', body);
+  Future<Map<String, dynamic>> frCost(Map<String, dynamic> body) => _frPost('costs', body);
+  Future<Map<String, dynamic>> frStatement(Map<String, dynamic> body) => _frPost('statements', body);
+  Future<Map<String, dynamic>> frStatementAct(String id, String action) => _frPost('statements/$id/$action', const {});
+  Future<Map<String, dynamic>> frLicence(Map<String, dynamic> body) => _frPost('licences', body);
+  Future<Map<String, dynamic>> frAudit(Map<String, dynamic> body) => _frPost('audits', body);
+  Future<Map<String, dynamic>> frPnlFile() => _frPost('pnl_file', const {});
   // v0.110 Niryat Sahayak (exporter)
   Future<Map<String, dynamic>> niryatDay() async => Map<String, dynamic>.from(await _send('GET', '/api/niryat/day') as Map);
   Future<List<Map<String, dynamic>>> niryatShipments({String status = ''}) async =>

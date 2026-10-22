@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.114.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.115.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -149,7 +149,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -4060,6 +4060,113 @@ def phonedoc_case_action(case_id: str, action: str, body: dict, tenant: str = De
     if action == "close":
         return _pdoc(pdoc.close, tenant, case_id)
     raise HTTPException(404, "step | recheck | escalate | close")
+
+
+# ---------------------------------------------------------------- v0.115 Franchise Sahayak (franchise owner)
+def _fr(fn, *a, **k):
+    from .franchise import service as fr
+    try:
+        return fn(*a, **k)
+    except (fr.FrError, ValueError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/franchise/day", dependencies=[Depends(require_key)])
+def franchise_day(tenant: str = Depends(current_tenant)):
+    from .franchise import service as fr
+    return {**_fr(fr.day, tenant), "outlets": fr.outlets(tenant), "agreements": fr.agreements(tenant), "settings": fr.settings(tenant),
+            "statements": fr.statements(tenant)}
+
+
+@app.post("/api/franchise/settings", dependencies=[Depends(require_key)])
+def franchise_settings(body: dict, tenant: str = Depends(current_tenant)):
+    from .franchise import service as fr
+    return _fr(fr.save_settings, tenant, **{k: body[k] for k in ("company", "state", "tds_applies", "morning_time") if k in body})
+
+
+@app.post("/api/franchise/agreements", dependencies=[Depends(require_key)])
+def franchise_agreement(body: dict, tenant: str = Depends(current_tenant)):
+    from .franchise import service as fr
+    keys = ("franchisor", "contact", "royalty_pct", "marketing_pct", "tech_fee", "min_guarantee", "base", "foreign", "franchisor_state",
+            "due_day", "start", "term_years", "lock_in_years", "notice_months", "checklist", "notes")
+    return _fr(fr.save_agreement, tenant, str(body.get("brand") or ""), **{k: body[k] for k in keys if k in body})
+
+
+@app.post("/api/franchise/outlets", dependencies=[Depends(require_key)])
+def franchise_outlet(body: dict, tenant: str = Depends(current_tenant)):
+    from .franchise import service as fr
+    g = lambda k: str(body.get(k) or "")  # noqa: E731
+    return _fr(fr.save_outlet, tenant, g("name"), g("brand"), g("city"), g("opened_on"), body.get("rent"), g("lease_end"),
+               body.get("escalation_pct"), g("escalation_on"), body.get("targets"), g("manager_phone"))
+
+
+@app.post("/api/franchise/sales", dependencies=[Depends(require_key)])
+def franchise_sale(body: dict, tenant: str = Depends(current_tenant)):
+    from .franchise import service as fr
+    return _fr(fr.add_sale, tenant, str(body.get("outlet") or ""), body.get("net"), str(body.get("day") or ""), body.get("gross"),
+               body.get("discount"), body.get("gst"), body.get("orders"), body.get("channels"))
+
+
+@app.post("/api/franchise/sales/import", dependencies=[Depends(require_key)])
+async def franchise_import(file: UploadFile = File(...), outlet: str = Form(""), tenant: str = Depends(current_tenant)):
+    from .franchise import service as fr
+    data = await file.read()
+    return _fr(fr.import_sales, tenant, outlet, data, file.filename or "sales.csv")
+
+
+@app.post("/api/franchise/costs", dependencies=[Depends(require_key)])
+def franchise_cost(body: dict, tenant: str = Depends(current_tenant)):
+    from .franchise import service as fr
+    return _fr(fr.add_cost, tenant, str(body.get("outlet") or ""), str(body.get("kind") or "other"), body.get("amount"),
+               str(body.get("month") or ""), str(body.get("note") or ""))
+
+
+@app.post("/api/franchise/statements", dependencies=[Depends(require_key)])
+def franchise_statement(body: dict, tenant: str = Depends(current_tenant)):
+    from .franchise import service as fr
+    return _fr(fr.statement, tenant, str(body.get("brand") or ""), str(body.get("month") or ""), str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/franchise/statements/{sid}/{action}", dependencies=[Depends(require_key)])
+def franchise_statement_act(sid: str, action: str, body: dict, tenant: str = Depends(current_tenant)):
+    """approve (her Haan, only from her tap) | paid"""
+    from .franchise import service as fr
+    if action == "approve":
+        return _fr(fr.approve_statement, tenant, sid)
+    if action == "paid":
+        return _fr(fr.mark_paid, tenant, sid, str(body.get("on") or ""))
+    raise HTTPException(404, "approve | paid")
+
+
+@app.post("/api/franchise/licences", dependencies=[Depends(require_key)])
+def franchise_licence(body: dict, tenant: str = Depends(current_tenant)):
+    from .franchise import service as fr
+    return _fr(fr.save_licence, tenant, str(body.get("outlet") or ""), str(body.get("kind") or "other"), str(body.get("valid_to") or ""),
+               str(body.get("number") or ""), str(body.get("note") or ""))
+
+
+@app.post("/api/franchise/audits", dependencies=[Depends(require_key)])
+def franchise_audit(body: dict, tenant: str = Depends(current_tenant)):
+    from .franchise import service as fr
+    return _fr(fr.audit, tenant, str(body.get("outlet") or ""), body.get("failed"), body.get("items"), str(body.get("kind") or "daily"),
+               str(body.get("day") or ""), str(body.get("note") or ""))
+
+
+@app.post("/api/franchise/pnl_file", dependencies=[Depends(require_key)])
+def franchise_pnl_file(body: dict, tenant: str = Depends(current_tenant)):
+    from .franchise import service as fr
+    return _fr(fr.pnl_file, tenant, str(body.get("month") or ""), str(body.get("conversation_id") or ""))
+
+
+@app.get("/api/franchise/{what}", dependencies=[Depends(require_key)])
+def franchise_read(what: str, outlet: str = "", month: str = "", tenant: str = Depends(current_tenant)):
+    """pnl | compare | licences | dates"""
+    from .franchise import service as fr
+    fns = {"pnl": lambda: fr.pnl(tenant, outlet, month), "compare": lambda: fr.compare(tenant, month), "licences": lambda: fr.licences(tenant),
+           "dates": lambda: {"dates": fr.dates_watch(tenant)}}
+    if what not in fns:
+        raise HTTPException(404, "pnl | compare | licences | dates")
+    return _fr(fns[what])
 
 
 # ---------------------------------------------------------------- v0.110 Niryat Sahayak (exporter)

@@ -24,6 +24,7 @@ import 'kalam_screen.dart';
 import 'seo_screen.dart';
 import 'thok_screen.dart';
 import 'niryat_screen.dart';
+import 'franchise_screen.dart';
 import 'telecall_screen.dart';
 import 'video_editor.dart';
 import 'operator_screen.dart';
@@ -576,6 +577,9 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return MShopReadyCard(key: ValueKey('mr${it.data['job_id']}'), v: it.data, app: app);
     case 'mshop_day':
       return MShopDayCard(v: it.data, app: app);
+    case 'fr_statement':
+    case 'fr_day':
+      return FrStatementCard(key: ValueKey('fr${it.data['statement_id'] ?? it.data['text']}'), v: it.data, app: app);
     case 'niryat_pi':
     case 'niryat_day':
       return NiryatCard(key: ValueKey('np${it.data['shipment_id'] ?? it.data['text']}'), v: it.data, app: app);
