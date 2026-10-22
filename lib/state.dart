@@ -278,6 +278,7 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _officeCards = {}; // v0.85 Daftar: spend cards by id, nudge drafts by id, updated in place
   int officeTick = 0;                          // bumps on any office event (the Office screen refreshes)
   final Map<String, FeedItem> _lekhakCards = {}; // v0.87 Lekhak: one doc card + one sign card per document, updated in place
+  final Map<String, FeedItem> _askForms = {}; // v0.97 form cards, updated in place when answered / closed
   int lekhakTick = 0;                          // bumps on any lekhak event (the Lekhak screen refreshes)
   List<Map<String, dynamic>> get pendingApprovals =>
       [for (final it in _bazar.values) if ((it.data['status'] ?? 'pending') == 'pending') it.data];
@@ -1179,6 +1180,16 @@ class Santosh extends ChangeNotifier {
         break;
       case 'call_receipt':
         feed.add(FeedItem('call_receipt', Map<String, dynamic>.from(p)));
+        break;
+      case 'ask_form':
+        final fid = '${p['id']}';
+        final fc = _askForms[fid];
+        if (fc != null) {
+          fc.data = {...fc.data, ...p};
+        } else {
+          _askForms[fid] = FeedItem('ask_form', Map<String, dynamic>.from(p));
+          feed.add(_askForms[fid]!);
+        }
         break;
       case 'employee':
       case 'biz_appointment':

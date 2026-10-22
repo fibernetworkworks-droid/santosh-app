@@ -5,6 +5,8 @@ import 'dart:math' as math;
 
 import 'package:http/http.dart' as http;
 
+import 'native.dart';
+
 class ApiException implements Exception {
   ApiException(this.status, this.message);
   final int status;
@@ -127,8 +129,9 @@ class Api {
   Future<Map<String, dynamic>> studioProject(String name) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/studio/projects/${Uri.encodeComponent(name)}') as Map);
   /// Her tap on a price card: only then does a paid AI generation start.
-  Future<Map<String, dynamic>> studioDecide(String approvalId, bool yes) async => Map<String, dynamic>.from(
-      await _send('POST', '/api/studio/approvals/$approvalId', body: {'yes': yes}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> studioDecide(String approvalId, bool yes) async => Map<String, dynamic>.from(await _withFingerprint(
+      'studio', approvalId, yes, (proof) => _send('POST', '/api/studio/approvals/$approvalId',
+          body: {'yes': yes, if (proof != null) 'proof': proof}, timeout: const Duration(seconds: 60))) as Map);
   Future<Map<String, dynamic>> studioAssemble(String name) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/studio/projects/${Uri.encodeComponent(name)}/assemble') as Map);
 
@@ -1018,8 +1021,58 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '${_art(id)}/revise', body: {'request': request}, timeout: const Duration(seconds: 40)));
 
   // ---------------- Santosh Bazar ----------------
-  Future<Map<String, dynamic>> bazarDecide(String id, String decision) async =>
-      Map<String, dynamic>.from(await _send('POST', '/api/bazar/approvals/$id', body: {'decision': decision}));
+  Future<Map<String, dynamic>> bazarDecide(String id, String decision) async => Map<String, dynamic>.from(await _withFingerprint(
+      'bazar', id, decision == 'approve', (proof) => _send('POST', '/api/bazar/approvals/$id',
+          body: {'decision': decision, if (proof != null) 'proof': proof})) as Map);
+
+  // ---- v0.97 fingerprint-signed approvals ----
+  /// Sends an approval; when the server answers 428 (a money card, and a phone is set up for fingerprint approvals)
+  /// the phone's fingerprint signs the server's challenge for THIS card and the approval is sent again with it.
+  Future<dynamic> _withFingerprint(String kind, String target, bool approving,
+      Future<dynamic> Function(Map<String, dynamic>? proof) send) async {
+    try {
+      return await send(null);
+    } on ApiException catch (e) {
+      if (!approving || e.status != 428) rethrow;
+    }
+    final proof = await fingerprintProof(kind, target);
+    return send(proof);
+  }
+
+  /// Challenge from the server -> fingerprint sheet on this phone -> signature. Throws a plain-words ApiException.
+  Future<Map<String, dynamic>> fingerprintProof(String kind, String target) async {
+    final c = Map<String, dynamic>.from(await _send('POST', '/api/approvekey/challenge', body: {'kind': kind, 'target': target}) as Map);
+    final show = Map<String, dynamic>.from((c['show'] as Map?) ?? const {});
+    final sub = [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · ');
+    final r = await Native.approveKeySign('${c['message']}', '${show['title'] ?? 'Haan dene ke liye fingerprint'}', sub);
+    if (r['signature'] == null) {
+      final err = '${r['error'] ?? ''}';
+      throw ApiException(428, switch (err) {
+        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
+        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein is phone ko phir se jodiye.',
+        'no_key' || 'not_supported' => 'Yeh card fingerprint se hi haan hota hai, par is phone mein chaabi nahi hai. Jude hue phone se haan kijiye.',
+        _ => 'Fingerprint se haan nahi ho payi ($err).',
+      });
+    }
+    return {'challenge_id': c['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
+  }
+
+  // ---- v0.97 form card ----
+  Future<Map<String, dynamic>> formAnswer(String id, Map<String, dynamic> values) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/forms/$id/answer', body: {'values': values}) as Map);
+  Future<Map<String, dynamic>> formCancel(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/forms/$id/cancel') as Map);
+
+  Future<Map<String, dynamic>> approveKeyStatus() async => Map<String, dynamic>.from(await _send('GET', '/api/approvekey') as Map);
+  Future<Map<String, dynamic>> approveKeyAdd(String deviceId, String publicKey, String label, bool strongbox,
+          {Map<String, dynamic>? proof}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/approvekey/devices', body: {
+        'device_id': deviceId, 'public_key': publicKey, 'label': label, 'strongbox': strongbox, if (proof != null) 'proof': proof,
+      }) as Map);
+  Future<Map<String, dynamic>> approveKeyRemove(String deviceId, {Map<String, dynamic>? proof}) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/approvekey/devices/${Uri.encodeComponent(deviceId)}/remove', body: {if (proof != null) 'proof': proof}) as Map);
+  Future<Map<String, dynamic>> approveKeyCancel(String deviceId) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/approvekey/devices/${Uri.encodeComponent(deviceId)}/cancel') as Map);
   Future<List<Map<String, dynamic>>> bazarPending() async =>
       List<Map<String, dynamic>>.from(((await _send('GET', '/api/bazar/approvals/pending'))['approvals'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
   Future<Map<String, dynamic>> bazarCatalog() async => Map<String, dynamic>.from(await _send('GET', '/api/bazar/catalog'));

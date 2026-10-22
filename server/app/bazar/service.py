@@ -502,6 +502,17 @@ def decide(tenant_id: str, approval_id: str, decision: str) -> dict[str, Any]:
     return {"status": ap.decision, "outcome": outcome, "open": act}
 
 
+def approval_card(tenant_id: str, approval_id: str) -> dict[str, Any] | None:
+    """v0.97 One pending card as it is now (fingerprint-signed approvals hash it); None when gone or decided."""
+    reg = registry()
+    with session() as s:
+        user = ensure_user(s, tenant_id)
+        a = s.get(Approval, approval_id)
+        if a is None or a.user_id != user.id or a.decision != "pending":
+            return None
+        return card_of(a, reg.lookup((a.action or {}).get("pack_id", "")))
+
+
 def pending_approvals(tenant_id: str) -> list[dict[str, Any]]:
     reg = registry()
     with session() as s:

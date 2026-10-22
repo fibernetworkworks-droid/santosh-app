@@ -160,6 +160,14 @@ class MainActivity : FlutterActivity() {
                         PayAlerts.set(this, call.argument<Boolean>("on") ?: false, call.argument<List<String>>("apps"))
                         result.success(PayAlerts.info(this))
                     }
+                    // ---- v0.97 fingerprint-signed approvals (key in Android Keystore, signs only after a fingerprint) ----
+                    "approveKeyInfo" -> result.success(ApproveKey.info(this))
+                    "approveKeyCreate" -> result.success(ApproveKey.create(this))
+                    "approveKeyDelete" -> result.success(ApproveKey.delete(this))
+                    "approveKeySign" -> ApproveKey.sign(this, call.argument<String>("message") ?: "",
+                        call.argument<String>("title") ?: "", call.argument<String>("subtitle") ?: "") { r ->
+                        runOnUiThread { try { result.success(r) } catch (_: Throwable) {} }
+                    }
                     // ---- v0.90 Phone Doctor: the phone's own state + opening the right settings screen ----
                     "phoneCheck" -> result.success(PhoneCheck.collect(this))
                     "openSetting" -> result.success(PhoneCheck.openSetting(this, call.argument<String>("key") ?: "",

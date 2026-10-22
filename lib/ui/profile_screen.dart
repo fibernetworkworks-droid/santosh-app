@@ -43,6 +43,7 @@ import 'gst_screen.dart';
 import 'payroll_screen.dart';
 import 'finance_screen.dart';
 import 'audit_screen.dart';
+import 'approve_key_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -229,6 +230,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Har client ke bill check, GSTR-1 / 3B, 2B milaan, due date, notice: ${app.aName} karega, filing aapki haan se'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GstScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.fingerprint_rounded, color: C.accent),
+              title: const Text('Fingerprint se haan', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Paise wale card sirf aapke fingerprint se haan honge (app ki chaabi chori ho to bhi safe)'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ApproveKeyScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

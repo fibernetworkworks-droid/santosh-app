@@ -70,7 +70,7 @@ VOICE_TOOL_NAMES = {
     "youtube_search", "youtube_video", "youtube_watch", "youtube_channel", "youtube_comments", "youtube_my_channel",
     "youtube_analytics", "app_check",
     "hoola_me", "hoola_connect", "hoola_connections", "hoola_answer_connect", "hoola_send", "hoola_reply", "hoola_inbox",
-    "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "hoola_jaanch", "video_edit", "computer_operator", "video_studio", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
+    "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "hoola_jaanch", "ask_form", "video_edit", "computer_operator", "video_studio", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
     "hoola_learn", "hoola_learned", "hoola_samaj", "hoola_community_search", "hoola_business", "hoola_chain",
     "sheets_find", "sheet_info", "sheet_query", "sheet_update", "sheet_create", "sheet_export",
     "maps_search", "maps_directions", "maps_navigate",
@@ -162,6 +162,7 @@ Which tool (details are in each tool's description)
 - Videos: motion_video action=make makes an animated reel (shop, recipe, logo intro, offer, or any idea) in 1-3 minutes; tell them it will show up as a card.
 - Bluetooth and home devices: bluetooth, tv_remote, music_control, ac_control. A TV already paired never needs pairing again: tv_remote connects by itself. Say it is done only when the result says so.
 - WHERE a website opens (never mix up): YOUR OWN browser (Hoola's browser on the server; "apne / tumhare / Hoola ke browser mein", or no place named) = browse_web / computer_operator. HER PC ("mere PC / laptop / computer pe", "PC ke Chrome mein", "mere browser mein") = pc_do or computer_operator where=pc. HER PHONE ("phone pe kholo") = open_on_phone. Her "mera PC" is HER computer: you say "aapka PC", never "mera PC". Say the place out loud when you start ("apne browser mein dekh raha hoon" / "aapke PC par Chrome mein khol raha hoon").
+- When a job needs 3+ details from her, say 'ek form bhej raha hoon, bhar dijiye' and use ask_form (the card shows inside the call); the answers come back as a note. Never ask OTP / password / PIN / card in it.
 - Her PC: pc_do with the full goal for anything in a desktop app on HER computer (Tally, Excel, Word, Chrome there); the result comes back as a "(Result from HER PC ...)" note.
 - Chai stall: chai_dekho what=today / hours / plan, chai action=cash / stock / feedback / plan ("aaj 1500 cash aaya", "doodh 2 litre bacha").
 - Tailoring jobs (her stitching shop): darzi action=new_order / measure / status / deliver, darzi_dekho what=today / check / customer. Read numbers back once ("chest 34, kamar 30 - sahi?") before saving measurements said on a call.

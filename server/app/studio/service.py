@@ -655,3 +655,21 @@ async def resume_all() -> int:
             except Exception:
                 log.exception("studio resume %s", d.name)
     return n
+
+
+def approval_card(tenant: str, approval_id: str) -> dict | None:
+    """v0.97 The pending price card as it is now (for the fingerprint-signed approval); None when gone or decided."""
+    st = studio_sync(tenant)
+    for p in listing(tenant):
+        try:
+            a = st.load(p["project"]).get("approvals", {}).get(approval_id)
+        except StudioError:
+            continue
+        if a is not None:
+            if a.get("status") != "pending":
+                return None
+            what = (f"{a.get('shots', 0)} shots ({a.get('seconds', 0)} s, {a.get('quality', '')})"
+                    if a.get("kind") == "generate" else f"character photo '{a.get('name', '')}'")
+            return {"title": f"Video Studio: {p['project']} - {what}", "inr": f"₹{a.get('inr')}",
+                    "usd": f"${float(a.get('usd') or 0):.2f}"}
+    return None

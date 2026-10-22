@@ -75,6 +75,25 @@ class Native {
     return r == null ? <String, dynamic>{} : Map<String, dynamic>.from(r);
   }
 
+  // v0.97 fingerprint-signed approvals: a key in Android Keystore that signs only after her fingerprint
+  static Future<Map<String, dynamic>> approveKeyInfo() async {
+    final r = await _call<Map>('approveKeyInfo');
+    return r == null ? <String, dynamic>{'supported': false} : Map<String, dynamic>.from(r);
+  }
+
+  static Future<Map<String, dynamic>> approveKeyCreate() async {
+    final r = await _call<Map>('approveKeyCreate');
+    return r == null ? <String, dynamic>{'error': 'not_supported'} : Map<String, dynamic>.from(r);
+  }
+
+  static Future<bool> approveKeyDelete() async => await _call<bool>('approveKeyDelete') ?? false;
+
+  /// Shows the fingerprint sheet with [title] / [subtitle]; {signature, device_id} or {error}.
+  static Future<Map<String, dynamic>> approveKeySign(String message, String title, String subtitle) async {
+    final r = await _call<Map>('approveKeySign', {'message': message, 'title': title, 'subtitle': subtitle});
+    return r == null ? <String, dynamic>{'error': 'not_supported'} : Map<String, dynamic>.from(r);
+  }
+
   // v0.90 Phone Doctor: what the phone says about itself, and opening the right Android settings screen
   static Future<Map<String, dynamic>> phoneCheck() async {
     final r = await _call<Map>('phoneCheck');

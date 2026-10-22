@@ -148,6 +148,8 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: hafte ka office note", "Note taiyaar hai, dekhiye")
     if kind == "lekhak_sign" and p.get("status") == "waiting_sign":
         return (f"{name}: letter sign karna hai?", f"{p.get('number', '')} {p.get('title', '')}: final dekhkar Haan dabaiye"[:300])
+    if kind == "ask_form" and p.get("status") == "pending":
+        return (f"{name}: ek form bhariye", f"{p.get('title', '')}: {len(p.get('fields') or [])} sawaal, ek baar mein"[:300])
     if kind == "google_reconnect":
         return (f"{name}: Google dobara jodiye", str(p.get("text") or "")[:300])
     if kind == "studio_approval" and p.get("status") == "pending":
@@ -229,7 +231,7 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
 
 
 PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "email_draft", "bazar_open", "device_action",
-              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "audit_update"}
+              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "audit_update", "ask_form"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 

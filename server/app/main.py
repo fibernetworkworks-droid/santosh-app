@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.96.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.97.0", lifespan=lifespan)
 
 
 def _operator_ok() -> bool:
@@ -1441,6 +1441,7 @@ def google_status(live: bool = True, tenant: str = Depends(current_tenant)):
 # ---------------- v0.68 Hoola Video Studio ----------------
 class StudioDecide(BaseModel):
     yes: bool
+    proof: dict | None = None      # v0.97 fingerprint signature from her phone (approvekey)
 
 
 @app.get("/api/studio", dependencies=[Depends(require_key)])
@@ -1470,6 +1471,8 @@ def studio_project(name: str, tenant: str = Depends(current_tenant)):
 async def studio_decide(approval_id: str, body: StudioDecide, tenant: str = Depends(current_tenant)):
     """Her tap on a price card: only now does a paid generation start (capped at the shown price)."""
     from .studio import service as ss
+    if body.yes:
+        _fingerprint(tenant, "studio", approval_id, body.proof)
     try:
         return await ss.decide(tenant, approval_id, body.yes)
     except ss.StudioJobError as e:
@@ -4160,6 +4163,136 @@ def bazar_find_api(q: str = "", category: str = "", tenant: str = Depends(curren
 
 class BazarDecision(BaseModel):
     decision: str = Field(pattern="^(approve|reject)$")
+    proof: dict | None = None      # v0.97 fingerprint signature from her phone (approvekey)
+
+
+def _fingerprint(tenant: str, kind: str, target: str, proof: dict | None) -> None:
+    """v0.97 A money card needs HER phone's fingerprint signature once a phone is set up (428 = ask the phone)."""
+    from . import approvekey as ak
+    try:
+        if ak.needed(tenant, kind, target):
+            ak.verify(tenant, kind, target, proof)
+    except ak.ApproveError as e:
+        code = str(e)
+        if code in ("fingerprint_needed", "fingerprint_invalid"):
+            raise HTTPException(428, code)
+        raise HTTPException(400, code)
+
+
+class FormAnswer(BaseModel):
+    values: dict = Field(default_factory=dict)
+
+
+@app.get("/api/forms/{form_id}", dependencies=[Depends(require_key)])
+def form_get(form_id: str, tenant: str = Depends(current_tenant)):
+    from . import askform
+    try:
+        return askform.get(tenant, form_id)
+    except askform.FormError as e:
+        raise HTTPException(404, str(e))
+
+
+def _form_reply(tenant: str, conv: str, agent_text: str, shown: str, background: BackgroundTasks) -> str:
+    """Her answers continue the job: inside a live call they go to the call; otherwise as her next chat message."""
+    if not conv:
+        return "none"
+    try:
+        from .voice import inject
+        if inject(conv, agent_text):
+            bus.publish(conv, "message", {"role": "user", "text": shown, "source": "form"})
+            return "call"
+    except Exception:
+        log.exception("form -> call failed")
+    bus.publish(conv, "message", {"role": "user", "text": shown, "source": "form"})
+    background.add_task(run_turn, conv, shown, tenant, False, context=agent_text)
+    return "chat"
+
+
+@app.post("/api/forms/{form_id}/answer", dependencies=[Depends(require_key)])
+def form_answer(form_id: str, body: FormAnswer, background: BackgroundTasks, tenant: str = Depends(current_tenant)):
+    from . import askform
+    try:
+        v, agent_text, shown = askform.answer(tenant, form_id, body.values)
+    except askform.FormError as e:
+        raise HTTPException(400, str(e))
+    with session() as s:
+        from .askform import AskForm
+        conv = s.get(AskForm, form_id).conversation_id
+    return {**v, "went_to": _form_reply(tenant, conv, agent_text, shown, background)}
+
+
+@app.post("/api/forms/{form_id}/cancel", dependencies=[Depends(require_key)])
+def form_cancel(form_id: str, background: BackgroundTasks, tenant: str = Depends(current_tenant)):
+    from . import askform
+    try:
+        v, agent_text = askform.cancel(tenant, form_id)
+    except askform.FormError as e:
+        raise HTTPException(404, str(e))
+    if agent_text:
+        with session() as s:
+            from .askform import AskForm
+            conv = s.get(AskForm, form_id).conversation_id
+        _form_reply(tenant, conv, agent_text, "Form band kiya", background)
+    return v
+
+
+class ApproveKeyAdd(BaseModel):
+    device_id: str = Field(min_length=4, max_length=80)
+    public_key: str = Field(min_length=40, max_length=2000)
+    label: str = Field(default="", max_length=120)
+    strongbox: bool = False
+    proof: dict | None = None
+
+
+class ApproveProof(BaseModel):
+    proof: dict | None = None
+
+
+class ApproveChallengeReq(BaseModel):
+    kind: str = Field(pattern="^(bazar|studio|remove|endorse)$")
+    target: str = Field(min_length=1, max_length=2200)
+
+
+@app.get("/api/approvekey", dependencies=[Depends(require_key)])
+def approvekey_get(tenant: str = Depends(current_tenant)):
+    from . import approvekey as ak
+    return ak.devices(tenant)
+
+
+@app.post("/api/approvekey/devices", dependencies=[Depends(require_key)])
+def approvekey_add(body: ApproveKeyAdd, tenant: str = Depends(current_tenant)):
+    from . import approvekey as ak
+    try:
+        return ak.register(tenant, body.device_id, body.public_key, body.label, body.strongbox, body.proof)
+    except ak.ApproveError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/approvekey/devices/{device_id}/remove", dependencies=[Depends(require_key)])
+def approvekey_remove(device_id: str, body: ApproveProof, tenant: str = Depends(current_tenant)):
+    from . import approvekey as ak
+    try:
+        return ak.remove(tenant, device_id, body.proof)
+    except ak.ApproveError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/approvekey/devices/{device_id}/cancel", dependencies=[Depends(require_key)])
+def approvekey_cancel(device_id: str, tenant: str = Depends(current_tenant)):
+    from . import approvekey as ak
+    try:
+        return ak.cancel(tenant, device_id)
+    except ak.ApproveError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/approvekey/challenge", dependencies=[Depends(require_key)])
+def approvekey_challenge(body: ApproveChallengeReq, tenant: str = Depends(current_tenant)):
+    from . import approvekey as ak
+    try:
+        return ak.challenge(tenant, body.kind, body.target)
+    except ak.ApproveError as e:
+        raise HTTPException(400, str(e))
 
 
 @app.get("/api/bazar/approvals/pending", dependencies=[Depends(require_key)])
@@ -4169,6 +4302,8 @@ def bazar_pending(tenant: str = Depends(current_tenant)):
 
 @app.post("/api/bazar/approvals/{approval_id}", dependencies=[Depends(require_key)])
 async def bazar_decide(approval_id: str, body: BazarDecision, tenant: str = Depends(current_tenant)):
+    if body.decision == "approve":
+        await asyncio.to_thread(_fingerprint, tenant, "bazar", approval_id, body.proof)
     try:
         return await asyncio.to_thread(bazar.decide, tenant, approval_id, body.decision)
     except BazarError as e:
