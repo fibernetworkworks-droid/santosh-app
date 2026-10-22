@@ -14,7 +14,7 @@ FAMILY = {
     "list_add", "list_show", "list_done", "get_weather", "google_search", "open_website", "open_on_phone",
     "browse_web", "browse_result", "maps_search", "maps_directions", "maps_navigate",
     "music_control", "tv_remote", "ac_control", "bluetooth",
-    "youtube_search", "youtube_video", "youtube_watch", "youtube_channel",
+    "youtube_search", "youtube_play", "youtube_video", "youtube_watch", "youtube_channel",
     "artifact_make", "artifact_list", "app_check", "tv_channel", "reel", "india_info",
 }
 TRUSTED = FAMILY | {

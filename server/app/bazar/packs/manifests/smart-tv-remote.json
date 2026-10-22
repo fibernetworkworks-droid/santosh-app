@@ -31,6 +31,10 @@
     {
       "name": "tv_channel",
       "tier": 1
+    },
+    {
+      "name": "tv_youtube",
+      "tier": 1
     }
   ],
   "keywords": [

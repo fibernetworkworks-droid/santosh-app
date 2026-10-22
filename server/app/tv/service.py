@@ -42,7 +42,7 @@ async def play_on_tv(tenant: str, conversation_id: str, cid: str, tv: str = "") 
     if st is None:
         return {"status": "failed", "channel": c["name"],
                 "error": f"{c['name']} sirf phone pe chalta hai (TV is stream ko nahi le sakta). Phone pe chalayein, ya TV pe "
-                         f"YouTube khol kar '{c['name']} live' chalayein (tv_remote app=youtube)."}
+                         f"YouTube khol kar '{c['name']} live' chalayein (youtube_play on=tv)."}
     base = get_settings().public_base_url.rstrip("/")
     args = {"url": st["url"], "title": c["name"], "tv": tv}
     if base.startswith("https://") and c.get("logo_src"):

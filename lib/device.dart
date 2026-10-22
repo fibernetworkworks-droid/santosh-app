@@ -114,6 +114,20 @@ class Device {
           final ch = a['channel'] as String? ?? '';
           if (ch.isEmpty) return 'Channel nahi mila';
           return await openTv(ch) ? null : 'Hoola app kholiye, channel wahan chalega';
+        case 'youtube_play':
+          // v0.125 straight into the YouTube app (never Hoola's in-app browser), the web page only if YouTube is missing
+          final vid = a['video_id'] as String? ?? '';
+          final web = Uri.tryParse(a['url'] as String? ?? '');
+          if (vid.isNotEmpty) {
+            try {
+              if (await launchUrl(Uri.parse('vnd.youtube:$vid'), mode: LaunchMode.externalNonBrowserApplication)) return null;
+            } catch (_) {}
+          }
+          if (web == null || !web.hasScheme) return 'YouTube link sahi nahi hai';
+          try {
+            if (await launchUrl(web, mode: LaunchMode.externalNonBrowserApplication)) return null;
+          } catch (_) {}
+          return await launchUrl(web, mode: LaunchMode.externalApplication) ? null : 'YouTube phone par nahi khul paya';
         case 'open_url':
           final uri = Uri.tryParse(a['url'] as String? ?? '');
           if (uri == null || !uri.hasScheme) return 'Link sahi nahi hai';

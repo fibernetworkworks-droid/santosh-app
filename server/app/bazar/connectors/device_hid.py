@@ -6,6 +6,8 @@ Usage IDs are from the USB HID Usage Tables (Consumer page 0x0C, Keyboard page 0
 """
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 # Consumer page (16-bit usages)
@@ -108,6 +110,15 @@ def open_app_ops(app: str) -> list[dict[str, Any]]:
 def search_ops(query: str) -> list[dict[str, Any]]:
     t, _ = text_op(query)
     return [key_op("SEARCH"), {"op": "wait", "ms": 1500}, t, {"op": "wait", "ms": 300}, key_op("OK")]
+
+
+def youtube_video_ops(video_id: str, title: str = "") -> list[dict[str, Any]]:
+    """v0.125 Play one YouTube video on the TV: DIAL launch of the YouTube app with v=<id> (Android / Google TV, Samsung,
+    LG, Fire TV all take it); if the TV has no DIAL, open YouTube through the TV's search and look the title up."""
+    if not re.fullmatch(r"[\w-]{11}", video_id or ""):
+        raise ValueError("bad video id")
+    fallback = search_ops("youtube") + [{"op": "wait", "ms": 2500}] + (search_ops(title[:60]) if title else [])
+    return [{"op": "dial_launch", "app": DIAL_APPS["youtube"], "body": f"v={video_id}", "fallback": fallback}]
 
 
 APP_LABELS = {"youtube": "YouTube", "netflix": "Netflix", "hotstar": "JioHotstar", "jiohotstar": "JioHotstar",

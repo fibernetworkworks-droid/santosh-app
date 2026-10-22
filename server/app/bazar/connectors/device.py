@@ -45,7 +45,7 @@ def refuse_unsafe(tool: str, args: dict[str, Any]) -> None:
         return
     words = " ".join(str(v) for k, v in (args or {}).items() if k in ("device", "app", "query", "kind") and v is not None)
     m = UNSAFE.search(words)
-    if tool in ("tv_keys", "tv_open_app", "tv_search"):
+    if tool in ("tv_keys", "tv_open_app", "tv_search", "tv_youtube"):
         return  # TV search words ("washing machine review") are just text typed on the TV
     if m or str((args or {}).get("kind", "")) in ("fridge", "washer"):
         what = m.group(1).lower() if m else "that appliance"
@@ -139,6 +139,9 @@ class DeviceExecutor:
                          {"type": "object", "properties": {"app": {"type": "string"}, "device": dev}, "required": ["app"]}, 1),
                 ToolSpec("tv_search", "Search on the TV (opens search and types the words).",
                          {"type": "object", "properties": {"query": {"type": "string"}, "device": dev}, "required": ["query"]}, 1),
+                ToolSpec("tv_youtube", "Play one YouTube video on the TV (video_id = 11-character id, title for the fallback search).",
+                         {"type": "object", "properties": {"video_id": {"type": "string"}, "title": {"type": "string"},
+                                                           "device": dev}, "required": ["video_id"]}, 1),
             ]
         if ch == "ir":
             return [
@@ -198,6 +201,13 @@ class DeviceExecutor:
                     raise ToolError("Which app should I open on the TV?")
                 label = hid.APP_LABELS.get(app.lower(), app.title())
                 return self._phone(ctx, dev, hid.open_app_ops(app), f"Opening {label} on {dev.name}.")
+            if tool == "tv_youtube":
+                try:
+                    ops = hid.youtube_video_ops(str(args.get("video_id", "")).strip(), str(args.get("title", "") or ""))
+                except ValueError as e:
+                    raise ToolError("Yeh YouTube video id sahi nahi hai.") from e
+                t = str(args.get("title", "") or "video")[:80]
+                return self._phone(ctx, dev, ops, f"Playing '{t}' on YouTube on {dev.name}.")
             if tool == "tv_search":
                 q = str(args.get("query", "")).strip()
                 if not q:

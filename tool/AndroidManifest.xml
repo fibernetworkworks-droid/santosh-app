@@ -58,6 +58,12 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+        <!-- v0.125 YouTube play: the YouTube app opens vnd.youtube: links -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="vnd.youtube" />
+        </intent>
+        <package android:name="com.google.android.youtube" />
         <!-- Santosh Bazar: UPI payments and the UPI / ride apps it can open -->
         <intent>
             <action android:name="android.intent.action.VIEW" />

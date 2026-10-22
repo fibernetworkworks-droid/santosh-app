@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
+from urllib.parse import quote_plus
 
 from ..bazar.connectors.base import ToolError as BazarError
 from ..youtube import service as ys
@@ -21,6 +22,16 @@ YOUTUBE_TOOLS = [
          "order": {"type": "string", "enum": ["relevance", "date", "viewCount", "rating"]},
          "duration": {"type": "string", "enum": ["short", "medium", "long"]}, "recent_days": {"type": "integer"},
          "channel": {"type": "string"}, "limit": {"type": "integer"}}, "required": ["query"]}},
+    {"name": "youtube_play", "description": (
+        "PLAY a YouTube video for her right now (not just search): 'YouTube pe Kishore Kumar ke gaane lagao', 'TV pe "
+        "Masterchef ka naya episode chalao', 'ye video phone pe kholo'. video = a link / id (e.g. from youtube_search), "
+        "else query = what to find (the best match plays; order=date for the newest). on='phone' opens it in the YouTube "
+        "app on her phone; on='tv' plays it on her smart TV (YouTube app on Android / Google TV, Samsung, LG, Fire TV on the "
+        "same Wi-Fi; tv = which TV). Say the title that is playing. For free live TV channels use tv_channel."),
+     "input_schema": {"type": "object", "properties": {
+         "video": VID, "query": {"type": "string"}, "on": {"type": "string", "enum": ["phone", "tv"]},
+         "tv": {"type": "string"}, "order": {"type": "string", "enum": ["relevance", "date", "viewCount"]},
+         "duration": {"type": "string", "enum": ["short", "medium", "long"]}}}},
     {"name": "youtube_video", "description": "Details and stats of videos (views, likes, comments, length, date, description).",
      "input_schema": {"type": "object", "properties": {"videos": {"type": "array", "items": VID}}, "required": ["videos"]}},
     {"name": "youtube_watch", "description": (
@@ -73,7 +84,7 @@ YOUTUBE_TOOLS = [
                       "required": ["file_id", "title"]}},
 ]
 
-YOUTUBE_LABELS = {"youtube_search": "YouTube par dhoondh raha hoon", "youtube_video": "Video dekh raha hoon",
+YOUTUBE_LABELS = {"youtube_search": "YouTube par dhoondh raha hoon", "youtube_play": "YouTube video laga raha hoon", "youtube_video": "Video dekh raha hoon",
                   "youtube_watch": "Video dekh kar samajh raha hoon", "youtube_channel": "Channel dekh raha hoon",
                   "youtube_comments": "Comments padh raha hoon", "youtube_my_channel": "Aapka channel dekh raha hoon",
                   "youtube_my_videos": "Aapke videos dekh raha hoon", "youtube_analytics": "Channel ke numbers dekh raha hoon",
@@ -105,6 +116,57 @@ async def youtube_search(ctx: Ctx, query, kind="video", order="relevance", durat
     if out.get("videos"):
         ys.publish(ctx.conversation_id, out["videos"], f"YouTube: {query}")
     return out
+
+
+async def youtube_play(ctx: Ctx, video="", query="", on="phone", tv="", order="relevance", duration="", **_):
+    """v0.125 Find (or take) one video and play it: phone = the YouTube app, tv = DIAL launch on her smart TV."""
+    from ..youtube.client import video_id, watch_url
+    on = "tv" if str(on or "").lower() == "tv" else "phone"
+    q = str(query or "").strip()
+    vid = video_id(str(video or "")) if video else None
+    if video and not vid:
+        raise ToolError("Yeh YouTube link / video id samajh nahi aaya.")
+    if not vid and not q:
+        raise ToolError("Kaunsa video? video (link) ya query (kya dhoondhna hai) dijiye.")
+    title, channel, picked = "", "", None
+    try:
+        if vid:
+            got = await asyncio.to_thread(ys.video, ctx.tenant_id, [vid])
+            picked = got[0] if got else None
+        else:
+            out = await asyncio.to_thread(ys.search, ctx.tenant_id, q, "video", order or "relevance", 3, duration or "")
+            vids = out.get("videos") or []
+            if not vids:
+                raise ToolError(f"YouTube par '{q}' ka koi video nahi mila. Doosre shabd bataiye.")
+            picked = vids[0]
+    except NotConnected:
+        picked = None            # no API key / sign-in: still open it, by search
+    except YTError as e:
+        if vid:
+            picked = None        # lookup failed but the id is known: play it anyway
+        else:
+            raise ToolError(str(e))
+    if picked:
+        vid, title, channel = picked.get("id") or vid, picked.get("title", ""), picked.get("channel", "")
+        ys.publish(ctx.conversation_id, [picked], "YouTube: chal raha hai")
+    shown = title or q or "video"
+    if on == "tv":
+        from .bt_tools import _device, _ensure_tv
+        await asyncio.to_thread(_ensure_tv, ctx.tenant_id)
+        dev = {"device": tv} if tv else {}
+        if vid:
+            res = await _device(ctx, "smart-tv-remote", "tv_youtube", {"video_id": vid, "title": title or q, **dev})
+        else:
+            await _device(ctx, "smart-tv-remote", "tv_open_app", {"app": "youtube", **dev})
+            res = await _device(ctx, "smart-tv-remote", "tv_search", {"query": q, **dev})
+        return {"on": "tv", "video_id": vid, "title": title, "channel": channel, **res,
+                "say": f"TV par YouTube mein '{shown}' lag gaya." if res.get("status") == "done" else ""}
+    from .life_tools import _device_action
+    payload = {"video_id": vid or "", "title": shown[:120], "query": "" if vid else q[:200],
+               "url": watch_url(vid) if vid else "https://www.youtube.com/results?search_query=" + quote_plus(q)}
+    note = (f"'{shown}' phone par YouTube app mein khul raha hai." if vid else
+            f"YouTube app mein '{q}' dhoondh kar khol diya; jo video chahiye usse tap kar lijiye.")
+    return {"on": "phone", "video_id": vid, "title": title, "channel": channel, **_device_action(ctx, "youtube_play", payload, note)}
 
 
 async def youtube_video(ctx: Ctx, videos, **_):
@@ -165,7 +227,7 @@ async def youtube_upload(ctx: Ctx, file_id, title, description="", tags=None, pr
     return await asyncio.to_thread(_card, ctx, pid)
 
 
-YOUTUBE_HANDLERS = {"youtube_search": youtube_search, "youtube_video": youtube_video, "youtube_watch": youtube_watch,
+YOUTUBE_HANDLERS = {"youtube_search": youtube_search, "youtube_play": youtube_play, "youtube_video": youtube_video, "youtube_watch": youtube_watch,
                     "youtube_channel": youtube_channel, "youtube_comments": youtube_comments,
                     "youtube_my_channel": youtube_my_channel, "youtube_my_videos": youtube_my_videos,
                     "youtube_analytics": youtube_analytics, "youtube_playlist": youtube_playlist,

@@ -14,7 +14,7 @@ TV_TOOLS = [
         "app, on='tv' plays on the Chromecast / Android TV / Google TV on the same Wi-Fi; tv = which TV if several), "
         "action=stop (stop on the TV), action=tvs (which TVs Hoola can play on). Paid channels (Star, Sony, Colors, Zee TV, "
         "HBO, live sports) are NOT here: say they need their own app. If the TV can't be cast to (many Samsung / LG TVs), "
-        "use tv_remote with app='youtube' and search='<channel> live' to play the channel's official YouTube live stream on "
+        "use youtube_play on='tv' with query='<channel> live' to play the channel's official YouTube live stream on "
         "that TV."), "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["find", "play", "stop", "tvs"]},
          "query": {"type": "string"}, "country": {"type": "string"}, "on": {"type": "string", "enum": ["phone", "tv"]},

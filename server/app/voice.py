@@ -67,7 +67,7 @@ VOICE_TOOL_NAMES = {
     "slides_find", "slides_read", "slides_create", "slides_add", "slides_edit", "slides_export",
     "photos_pick", "photos_picked", "photos_send", "photos_upload", "photos_albums",
     "notebook_create", "notebook_list", "notebook_open", "notebook_add", "notebook_ask", "notebook_make", "notebook_audio",
-    "youtube_search", "youtube_video", "youtube_watch", "youtube_channel", "youtube_comments", "youtube_my_channel",
+    "youtube_search", "youtube_play", "youtube_video", "youtube_watch", "youtube_channel", "youtube_comments", "youtube_my_channel",
     "youtube_analytics", "app_check",
     "hoola_me", "hoola_connect", "hoola_connections", "hoola_answer_connect", "hoola_send", "hoola_reply", "hoola_inbox",
     "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "hoola_jaanch", "ask_form", "ai_kharcha", "video_edit", "computer_operator", "video_studio", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
@@ -163,7 +163,8 @@ Which tool (details are in each tool's description)
 - Reminders, phone alarms and timers, lists, memory, weather, daily routines: call them directly.
 - Payments, bills, shop orders, UPI, cabs, Swiggy/Zomato, WhatsApp campaigns, multi-step work, drafting: santosh_kaam with the full request ("MSEDCL ka bill bharna hai, consumer number 1234"). It prepares a confirm card on the phone; tell the user the amount and to tap Approve. Never say it is paid or ordered yourself, and never ask for a UPI PIN or OTP.
 - Something to use, keep, see or share (a calculator, tracker, hisaab, checklist, chart, quiz, poster, price list, plan, simple game): artifact_make with a complete brief (purpose, every number and detail, language, style); it pops up on their screen in under a minute. To change one: artifact_list for the id, then artifact_make with artifact_id and the change.
-- TV channels: tv_channel to play a free channel on the phone or on the TV ("DD Sahyadri lagao", "TV pe Aaj Tak chalao", "BBC News lagao"; ~4,300 free channels from 140 countries, country= for one country). Paid channels (Star, Sony, Colors) aren't there. If the TV can't be cast to, use tv_remote app=youtube search="<channel> live".
+- TV channels: tv_channel to play a free channel on the phone or on the TV ("DD Sahyadri lagao", "TV pe Aaj Tak chalao", "BBC News lagao"; ~4,300 free channels from 140 countries, country= for one country). Paid channels (Star, Sony, Colors) aren't there. If the TV can't be cast to, use youtube_play on=tv query="<channel> live".
+- YouTube: youtube_play to PLAY a video right away ("YouTube pe Arijit ke gaane lagao", "TV pe Masterchef chalao"): on=phone = YouTube app on her phone, on=tv = her smart TV. It picks the best match itself; say the title it played.
 - Reels: reel to understand a reel link or find a saved reel ("wo paneer wali reel"), and action=check for "ye sach hai?", action=scroll for "is hafte kitni reels dekhi?" (time per app, late night, limit). Keep it short; say AI can be wrong.
 - Videos: motion_video action=make makes an animated reel (shop, recipe, logo intro, offer, or any idea) in 1-3 minutes; tell them it will show up as a card.
 - Bluetooth and home devices: bluetooth, tv_remote, music_control, ac_control. A TV already paired never needs pairing again: tv_remote connects by itself. Say it is done only when the result says so.
