@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.100.1", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.101.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -149,7 +149,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "kalam"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -4269,6 +4269,138 @@ def tele_settings(body: dict, tenant: str = Depends(current_tenant)):
     keys = ("enabled", "business", "caller_name", "pitch", "segment", "start_hour", "end_hour", "daily_goal", "max_attempts",
             "record_calls", "registered", "language", "rules", "dont_say", "team", "morning_time")
     return _tele(tele.save_settings, tenant, **{k: body[k] for k in keys if k in body})
+
+
+# ---------------------------------------------------------------- v0.101 Kalam Sahayak (content writer; publishing on her tap)
+def _kalam(fn, *a, **k):
+    from .kalam import service as kalam
+    try:
+        return fn(*a, **k)
+    except kalam.KalamError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/kalam", dependencies=[Depends(require_key)])
+def kalam_all(tenant: str = Depends(current_tenant)):
+    from .kalam import service as kalam
+    return kalam.everything(tenant)
+
+
+@app.get("/api/kalam/pieces", dependencies=[Depends(require_key)])
+def kalam_pieces(kind: str = "", status: str = "", q: str = "", tenant: str = Depends(current_tenant)):
+    from .kalam import service as kalam
+    return {"pieces": kalam.pieces(tenant, kind, status, q, 120)}
+
+
+@app.post("/api/kalam/write", dependencies=[Depends(require_key)])
+async def kalam_write(body: dict, tenant: str = Depends(current_tenant)):
+    from .kalam import service as kalam
+    return await asyncio.to_thread(_kalam, kalam.write, tenant, str(body.get("brief") or ""), str(body.get("kind") or ""),
+                                   str(body.get("title") or ""), str(body.get("keyword") or ""), body.get("words"),
+                                   str(body.get("lang") or ""), str(body.get("audience") or ""), body.get("file_ids"),
+                                   body.get("urls"), body.get("product") if isinstance(body.get("product"), dict) else None,
+                                   str(body.get("experience") or ""), bool(body.get("paid")), str(body.get("conversation_id") or ""))
+
+
+@app.get("/api/kalam/pieces/{pid}", dependencies=[Depends(require_key)])
+def kalam_get(pid: str, tenant: str = Depends(current_tenant)):
+    from .kalam import service as kalam
+    return _kalam(kalam.get, tenant, pid)
+
+
+@app.put("/api/kalam/pieces/{pid}", dependencies=[Depends(require_key)])
+async def kalam_edit(pid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .kalam import service as kalam
+    return await asyncio.to_thread(_kalam, kalam.edit, tenant, pid, body.get("body"), body.get("title"),
+                                   body.get("meta") if isinstance(body.get("meta"), dict) else None)
+
+
+@app.delete("/api/kalam/pieces/{pid}", dependencies=[Depends(require_key)])
+def kalam_delete(pid: str, tenant: str = Depends(current_tenant)):
+    from .kalam import service as kalam
+    return _kalam(kalam.delete, tenant, pid)
+
+
+@app.post("/api/kalam/pieces/{pid}/{action}", dependencies=[Depends(require_key)])
+async def kalam_action(pid: str, action: str, body: dict, tenant: str = Depends(current_tenant)):
+    """revise | check | publish | decide (her tap on the publish card) | repurpose | files | result | copy | unpage"""
+    from .kalam import service as kalam
+    conv = str(body.get("conversation_id") or "")
+    if action == "revise":
+        return await asyncio.to_thread(_kalam, kalam.revise, tenant, pid, str(body.get("instruction") or ""), conv)
+    if action == "check":
+        return await asyncio.to_thread(_kalam, kalam.check, tenant, pid, body.get("web", True) is not False, conv)
+    if action == "publish":
+        return await asyncio.to_thread(_kalam, kalam.publish_request, tenant, pid, str(body.get("dest") or ""),
+                                       str(body.get("where") or ""), body.get("to"), str(body.get("status") or "publish"),
+                                       str(body.get("when") or ""), bool(body.get("force")), conv)
+    if action == "decide":
+        return await asyncio.to_thread(_kalam, kalam.decide_publish, tenant, pid, bool(body.get("yes")),
+                                       str(body.get("note") or ""), str(body.get("url") or ""), conv, str(body.get("hash") or ""))
+    if action == "repurpose":
+        return await asyncio.to_thread(_kalam, kalam.repurpose, tenant, pid, body.get("kinds"), conv)
+    if action == "files":
+        return await asyncio.to_thread(_kalam, kalam.make_files, tenant, pid, conv)
+    if action == "result":
+        return _kalam(kalam.result, tenant, pid, body.get("views"), body.get("clicks"), body.get("orders"),
+                      str(body.get("url") or ""), str(body.get("note") or ""))
+    if action == "copy":
+        return _kalam(kalam.copy_piece, tenant, pid)
+    if action == "unpage":
+        return _kalam(kalam.unpublish_page, tenant, pid)
+    raise HTTPException(404, "unknown action")
+
+
+@app.get("/api/kalam/ideas", dependencies=[Depends(require_key)])
+async def kalam_ideas(days: int = 45, tenant: str = Depends(current_tenant)):
+    from .kalam import service as kalam
+    return await asyncio.to_thread(kalam.ideas, tenant, max(7, min(120, days)))
+
+
+@app.put("/api/kalam/settings", dependencies=[Depends(require_key)])
+def kalam_settings(body: dict, tenant: str = Depends(current_tenant)):
+    from .kalam import service as kalam
+    keys = ("enabled", "business", "about", "audience", "language", "address", "contact", "website", "cta", "tone", "do_words",
+            "dont_words", "rules", "ai_note", "facts")
+    return _kalam(kalam.save_settings, tenant, **{k: body[k] for k in keys if k in body})
+
+
+@app.post("/api/kalam/facts", dependencies=[Depends(require_key)])
+def kalam_fact(body: dict, tenant: str = Depends(current_tenant)):
+    from .kalam import service as kalam
+    return _kalam(kalam.add_fact, tenant, str(body.get("fact") or ""), str(body.get("source") or ""))
+
+
+@app.post("/api/kalam/voice", dependencies=[Depends(require_key)])
+async def kalam_voice(body: dict, tenant: str = Depends(current_tenant)):
+    from .kalam import service as kalam
+    return await asyncio.to_thread(_kalam, kalam.learn_voice, tenant, str(body.get("text") or ""), body.get("file_ids"),
+                                   body.get("urls"))
+
+
+@app.put("/api/kalam/wordpress", dependencies=[Depends(require_key)])
+async def kalam_wordpress(body: dict, tenant: str = Depends(current_tenant)):
+    """Her own site: url + username + an Application Password (typed in the app only; sealed, never shown again)."""
+    from .kalam import service as kalam
+    return await asyncio.to_thread(_kalam, kalam.set_wordpress, tenant, str(body.get("url") or ""), str(body.get("user") or ""),
+                                   str(body.get("app_password") or ""))
+
+
+@app.delete("/api/kalam/wordpress", dependencies=[Depends(require_key)])
+def kalam_wordpress_off(tenant: str = Depends(current_tenant)):
+    from .kalam import service as kalam
+    return kalam.forget_wordpress(tenant)
+
+
+@app.get("/api/kalam/page/{token}")
+def kalam_page(token: str):
+    """A page she published with her Haan (public link)."""
+    from .kalam import service as kalam
+    html_text = kalam.page_by_token(token)
+    if not html_text:
+        raise HTTPException(404, "Page nahi mila")
+    return HTMLResponse(html_text, headers={"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:",
+                                            "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer"})
 
 
 @app.get("/api/agent/tasks", dependencies=[Depends(require_key)])

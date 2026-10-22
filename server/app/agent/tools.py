@@ -566,6 +566,12 @@ from .telecall_tools import TELECALL_HANDLERS, TELECALL_LABELS, TELECALL_TOOLS  
 TOOLS.extend(TELECALL_TOOLS)
 TOOL_LABELS.update(TELECALL_LABELS)
 HANDLERS.update(TELECALL_HANDLERS)
+# v0.101 Kalam Sahayak (content writer: blogs, product pages, emails; publishing on her tap)
+from .kalam_tools import KALAM_HANDLERS, KALAM_LABELS, KALAM_TOOLS  # noqa: E402
+
+TOOLS.extend(KALAM_TOOLS)
+TOOL_LABELS.update(KALAM_LABELS)
+HANDLERS.update(KALAM_HANDLERS)
 
 
 from .usage_tools import USAGE_HANDLERS, USAGE_LABELS, USAGE_TOOLS  # noqa: E402

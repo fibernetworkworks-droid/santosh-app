@@ -12,6 +12,7 @@ import 'forms_screen.dart';
 import 'glass.dart';
 import 'keep_alive.dart';
 import 'phone_hoola.dart';
+import 'kalam_screen.dart';
 import 'telecall_screen.dart';
 import 'video_editor.dart';
 import 'operator_screen.dart';
@@ -217,6 +218,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Kisko kab call karna hai aur kyun, har graahak ki script, call ke baad log; call aap karti hain'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TelecallScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.edit_note_rounded, color: C.accent),
+              title: Text('${app.aName} · Content writer', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Blog, product page, email aapki aawaz mein; har daava jaancha hua; publish aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => KalamScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

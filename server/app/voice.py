@@ -60,7 +60,7 @@ VOICE_TOOL_NAMES = {
     "email_follow_up", "email_contacts", "email_attachment", "email_accounts",
     "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_cancel_event",
     "calendar_update_event", "calendar_respond", "calendar_free_slots", "calendar_settings",
-    "google_status", "order_karo", "darzi", "darzi_dekho", "chai", "chai_dekho", "office", "office_dekho", "lekhak", "lekhak_dekho", "mobile_shop", "mobile_shop_dekho", "phone_doctor", "gst", "gst_dekho", "payroll", "payroll_dekho", "paisa", "paisa_dekho", "audit", "audit_dekho", "bima", "bima_dekho", "telecall", "telecall_dekho", "drive_find", "drive_list_folder", "drive_read_file", "drive_send_file", "drive_upload", "drive_create_folder",
+    "google_status", "order_karo", "darzi", "darzi_dekho", "chai", "chai_dekho", "office", "office_dekho", "lekhak", "lekhak_dekho", "mobile_shop", "mobile_shop_dekho", "phone_doctor", "gst", "gst_dekho", "payroll", "payroll_dekho", "paisa", "paisa_dekho", "audit", "audit_dekho", "bima", "bima_dekho", "telecall", "telecall_dekho", "kalam", "kalam_dekho", "drive_find", "drive_list_folder", "drive_read_file", "drive_send_file", "drive_upload", "drive_create_folder",
     "drive_organize", "drive_create_doc", "doc_create", "drive_share", "drive_trash", "drive_storage",
     "sheet_read", "sheet_append",
     "form_create", "form_find", "form_summary", "form_responses", "form_settings", "form_alerts",
@@ -172,6 +172,7 @@ Which tool (details are in each tool's description)
 - Payroll: payroll action=attendance (who was absent / OT) then action=run; payroll_dekho what=today. Never say a full PAN or bank account number aloud; salary is paid only after her haan and by her.
 - Money picture: paisa_dekho what=analysis / cash / receivables / payables / alerts; paisa action=loan_check / advance_tax. Say figures in lakh; it is analysis, not advice; reports go outside only after her haan.
 - Telecalling (she calls customers herself): telecall_dekho what=list tells who to call now and WHY; after she talks to someone, telecall action=log with HER words (outcome, what they said, when to call again). You never call anyone and never say you did; she taps Call in the app.
+- Content writing (blog / product page / email / caption): kalam action=write with her exact words as the brief; say the title and how many blanks she must fill, not the whole text; publishing only via kalam action=publish (a card she taps).
 - Audit work: audit_dekho what=status / findings; audit action=run / sample. The CA forms the opinion and signs; never say an opinion is final.
 - Insurance (she is a bima agent): bima_dekho what=renewals / needs / claims / book; bima action=client / policy / paid / reminders / claim. Read a policy number back once. Never take a premium, never say a return is guaranteed unless the brochure says so; advice goes to the client only after her haan.
 - Office work (supplies, repairs, renewals, team deadlines, petty cash): office action=use / ticket_new / renewal_add / deadline_add / petty, office_dekho what=today. Spending money only becomes a card for her tap; team reminders are drafts she sends.

@@ -21,6 +21,7 @@ const callCardKinds = {
   'darzi_quote', 'darzi_ready', 'chai_plan', 'video_job', 'motion',
   'ask_form', // v0.97
   'tele_logged', 'tele_day', // v0.99
+  'kalam_publish', 'kalam_piece', // v0.101
 };
 
 /// The live voice call, owned by the app (not by a screen): it keeps going while the owner opens Chat, Connect,

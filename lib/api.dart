@@ -807,6 +807,26 @@ class Api {
   Future<Map<String, dynamic>> mshopSettings() async => Map<String, dynamic>.from(await _send('GET', '/api/mshop/settings') as Map);
   Future<Map<String, dynamic>> mshopSaveSettings(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/mshop/settings', body: body) as Map);
+  // ---- v0.101 Kalam Sahayak (content writer; publishing only on her tap) ----
+  Future<Map<String, dynamic>> kalamAll() async => Map<String, dynamic>.from(await _send('GET', '/api/kalam') as Map);
+  Future<Map<String, dynamic>> kalamWrite(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/kalam/write', body: body, timeout: const Duration(seconds: 180)) as Map);
+  Future<Map<String, dynamic>> kalamPiece(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/kalam/pieces/$id') as Map);
+  Future<Map<String, dynamic>> kalamEdit(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/kalam/pieces/$id', body: body, timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> kalamDelete(String id) async => Map<String, dynamic>.from(await _send('DELETE', '/api/kalam/pieces/$id') as Map);
+  Future<Map<String, dynamic>> kalamDo(String id, String action, [Map<String, dynamic> body = const {}]) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/kalam/pieces/$id/$action', body: body, timeout: const Duration(seconds: 180)) as Map);
+  Future<Map<String, dynamic>> kalamIdeas() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/kalam/ideas', timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> kalamSettings(Map<String, dynamic> body) async => Map<String, dynamic>.from(await _send('PUT', '/api/kalam/settings', body: body) as Map);
+  Future<Map<String, dynamic>> kalamFact(String fact, String source) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/kalam/facts', body: {'fact': fact, 'source': source}) as Map);
+  Future<Map<String, dynamic>> kalamVoice(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/kalam/voice', body: body, timeout: const Duration(seconds: 120)) as Map);
+  Future<Map<String, dynamic>> kalamWordpress(String url, String user, String appPassword) async => Map<String, dynamic>.from(
+      await _send('PUT', '/api/kalam/wordpress', body: {'url': url, 'user': user, 'app_password': appPassword}, timeout: const Duration(seconds: 45)) as Map);
+  Future<Map<String, dynamic>> kalamWordpressOff() async => Map<String, dynamic>.from(await _send('DELETE', '/api/kalam/wordpress') as Map);
   // ---- v0.99 Telecaller Sahayak (a person makes every call) ----
   Future<Map<String, dynamic>> teleAll() async => Map<String, dynamic>.from(await _send('GET', '/api/telecall') as Map);
   Future<List<Map<String, dynamic>>> teleLeads({String q = '', String stage = ''}) async =>
