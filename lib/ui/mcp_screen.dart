@@ -7,6 +7,7 @@ import '../state.dart';
 import 'glass.dart';
 import 'mcp_tools.dart';
 import 'plugin_widgets.dart';
+import 'postgres_screen.dart';
 
 /// MCP servers: the user's connected servers plus the built-in directory of ~50,700 MCP servers worldwide.
 class McpScreen extends StatefulWidget {
@@ -596,6 +597,18 @@ class _McpScreenState extends State<McpScreen> {
           GradientButton(label: _busy ? 'Jod raha hoon…' : 'Pata daal kar jodiye', icon: Icons.add_rounded, height: 48,
               onTap: _busy ? null : () => _addDialog()),
           if (_err != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
+          const SizedBox(height: 12),
+          Glass(
+            padding: const EdgeInsets.all(4),
+            child: ListTile(
+              leading: const Icon(Icons.storage_rounded, color: C.accent),
+              title: const Text('Postgres (apna database)', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Kisi bhi PostgreSQL ko jodiye: tables, read-only query, explain, sehat; badlav aapki haan se',
+                  style: TextStyle(color: C.muted, fontSize: 12)),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PostgresScreen(app: app))),
+            ),
+          ),
           if (_featured.isNotEmpty) ...[
             const SizedBox(height: 18),
             Caption('POPULAR APPS · ${_featured.length}'),

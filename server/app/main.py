@@ -90,7 +90,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.146.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.147.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -129,6 +129,14 @@ def _operator_ok() -> bool:
         from .operator.service import available
         return available()
     except Exception:
+        return False
+
+
+def _pg_ok() -> bool:
+    try:
+        import psycopg  # noqa: F401
+        return True
+    except ImportError:
         return False
 
 
@@ -202,7 +210,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design", "app_android", "seva", "helpdesk", "shikayat", "aftersales", "feedback", "wapsi", "samudaay", "gyaan", "kaam_watch", "app_ideas", "devsahayak", "itadmin", "isp_noc", "cyber", "devops", "docwriter", "app_review", "product", "customs", "travel", "warehouse", "fleet", "courier", "drivers", "logistics", "propagent", "rentdesk", "site_supervisor", "interior", "archassist", "society"] + (["qa"] if _qa_ok() else []) + (["callcentre"] if st.public_base_url and st.gemini_api_key else []) + (["video_editor"] if shutil.which("ffmpeg") else []) + (["blender_3d"] if _blender_ok() else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) + (["side_talk"] if st.gemini_api_key and st.voice_side_talk else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design", "app_android", "seva", "helpdesk", "shikayat", "aftersales", "feedback", "wapsi", "samudaay", "gyaan", "kaam_watch", "app_ideas", "devsahayak", "itadmin", "isp_noc", "cyber", "devops", "docwriter", "app_review", "product", "customs", "travel", "warehouse", "fleet", "courier", "drivers", "logistics", "propagent", "rentdesk", "site_supervisor", "interior", "archassist", "society"] + (["qa"] if _qa_ok() else []) + (["callcentre"] if st.public_base_url and st.gemini_api_key else []) + (["video_editor"] if shutil.which("ffmpeg") else []) + (["blender_3d"] if _blender_ok() else []) + (["postgres"] if _pg_ok() else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) + (["side_talk"] if st.gemini_api_key and st.voice_side_talk else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -3536,6 +3544,11 @@ for _mk in (_propagent_router, _rentdesk_router, _sitesup_router, _interior_rout
 from .blender3d.api import make_router as _blender3d_router  # noqa: E402
 
 app.include_router(_blender3d_router(require_key, current_tenant))
+
+# v0.147 Hoola Postgres (her own database: reads READ ONLY, changes only on her tap): /api/pgdb/*
+from .pgdb.api import make_router as _pgdb_router  # noqa: E402
+
+app.include_router(_pgdb_router(require_key, current_tenant))
 
 # v0.134 Gyaan (knowledge base / agentic RAG): /api/gyaan/*
 from .gyaan.api import make_router as _gyaan_router  # noqa: E402

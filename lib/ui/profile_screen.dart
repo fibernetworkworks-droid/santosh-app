@@ -91,6 +91,7 @@ import 'theka_screen.dart';
 import 'kharcha_screen.dart';
 import 'blender_screen.dart';
 import 'gyaan_screen.dart';
+import 'postgres_screen.dart';
 import 'voice_learned_screen.dart';
 import 'screen_link.dart';
 
@@ -375,6 +376,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Asli Blender: product mockup, layout, gift, 3D print; render, 360° video, GLB / STL'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => Blender3dScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.storage_rounded, color: C.accent),
+              title: const Text('Postgres database', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Apna database jodiye: Hoola padhta hai (read-only), badlav sirf aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PostgresScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

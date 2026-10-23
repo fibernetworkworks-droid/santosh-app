@@ -97,6 +97,7 @@ import 'photos_screen.dart';
 import 'live_santosh.dart';
 import 'work_theatre.dart';
 import 'gyaan_screen.dart';
+import 'postgres_screen.dart' show PgWriteCard;
 import '../nav.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -1035,6 +1036,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return DocEditCard(key: ValueKey('de${it.data['id']}'), v: it.data, app: app);
     case 'memory_saved':
       return MemorySavedChip(v: it.data, app: app);
+    case 'pg_write':
+      return PgWriteCard(key: ValueKey('pgw${it.data['id']}${it.data['status']}'), v: it.data, app: app);
     case 'blender3d':
       return Blender3dCard(key: ValueKey('b3${it.data['id']}${it.data['version']}${it.data['status']}'), v: it.data, app: app);
     case 'photo_made':

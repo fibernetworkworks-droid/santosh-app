@@ -915,13 +915,18 @@
    "url": "https://mcp.neon.tech/mcp",
    "url_hint": "",
    "auth": "oauth_dcr",
-   "does": "Serverless Postgres",
+   "does": "Serverless Postgres: projects, branches, SQL, migrations (writes on her tap)",
    "source": "https://mcpservers.org/remote-mcp-servers/neon",
    "confidence": "medium",
    "keywords": [
     "neon",
+    "postgres",
+    "postgresql",
+    "database",
+    "sql",
     "developer"
-   ]
+   ],
+   "caution": true
   },
   {
    "id": "netlify",

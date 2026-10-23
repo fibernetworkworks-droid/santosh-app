@@ -94,7 +94,7 @@ DUTIES: dict[str, dict] = {
                     "prefix": (), "tools": {"call_centre", "call_centre_dekho"}},
     # v0.137 Tech suite
     "dev_work": {"label": "Software developer", "say": "code likhna / review, bug samjhana aur fix PR, tests aur docs (merge aur deploy sirf aapki haan se)",
-                 "prefix": (), "tools": {"dev", "dev_dekho", "file_read"}},
+                 "prefix": (), "tools": {"dev", "dev_dekho", "file_read", "postgres"}},
     "qa_work": {"label": "App testing (QA)", "say": "spec / PRD se test cases, apni site / app par test chalana, bug likhna, fix ke baad dobara test (GitHub issue aapke tap se)",
                 "prefix": (), "tools": {"qa", "qa_dekho", "file_read"}},
     "it_admin_work": {"label": "IT admin", "say": "licence / renewal, kiske paas kaun sa access, joiner-leaver checklist, staff ke liye guide, staff ke IT sawaal (access / setting badlav aapki haan se)",

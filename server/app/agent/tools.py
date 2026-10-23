@@ -730,10 +730,14 @@ HANDLERS.update(GYAAN_HANDLERS)
 
 # v0.141 3D Studio: Blender in a locked box (blender_3d)
 from .blender_tools import BLENDER_HANDLERS, BLENDER_LABELS, BLENDER_TOOLS  # noqa: E402
+from .pgdb_tools import PGDB_HANDLERS, PGDB_LABELS, PGDB_TOOLS  # noqa: E402
 
 TOOLS.extend(BLENDER_TOOLS)
 TOOL_LABELS.update(BLENDER_LABELS)
 HANDLERS.update(BLENDER_HANDLERS)
+TOOLS.extend(PGDB_TOOLS)
+TOOL_LABELS.update(PGDB_LABELS)
+HANDLERS.update(PGDB_HANDLERS)
 
 # v0.136 live state of her long jobs (kaam_status, read only)
 from .kaam_tools import KAAM_HANDLERS, KAAM_LABELS, KAAM_TOOLS  # noqa: E402

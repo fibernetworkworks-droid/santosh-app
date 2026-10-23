@@ -118,6 +118,9 @@ class Settings(BaseSettings):
     app_critique: str = "key"              # v0.140 Opus looks at its own screenshots: key (home + tabs) | all | off
     app_critique_min: float = 8.0          # v0.140 a screen scoring below this (out of 10) is redrawn with the notes
     app_unique: bool = True                # v0.140 every app's layout DNA must differ from earlier apps on this server
+    pgdb_allow_private: bool = False       # v0.147 Postgres: allow private / local database hosts (tests, her own LAN box via VPN)
+    pgdb_row_limit: int = 200              # v0.147 rows a read may return to the model
+    pgdb_timeout_s: int = 15               # v0.147 statement_timeout for reads (writes get 4x)
     blender_model: str = "claude-opus-5-5"  # v0.141 3D Studio: model that writes the Blender scripts (falls back to anthropic_model)
     sites_base_domain: str = ""            # v0.122 free addresses <name>.<this> (wildcard DNS proxied to this server)
     sites_origin: str = ""                 # v0.122 Cloudflare for SaaS fallback origin hostname (points at this server)
