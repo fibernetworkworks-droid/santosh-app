@@ -204,7 +204,7 @@ def test_console_page_and_assets(con):
     js = (Path(__file__).resolve().parents[1] / "app" / "static" / "console" / "app.js").read_text()
     assert "eval(" not in js and "innerHTML = p." not in js and "hoola-key." in js and "/api/console/exchange" in js
     cfg = c.get("/api/console/config").json()
-    assert cfg["google"] is True and cfg["password"] is True and cfg["version"] == "0.142.0"
+    assert cfg["google"] is True and cfg["password"] is True and cfg["version"] == __import__("app.main", fromlist=["app"]).app.version
     kaam = (Path(__file__).resolve().parents[1] / "app" / "static" / "console" / "kaam.js").read_text()
     assert kaam.count("[\"") > 80
 
