@@ -72,6 +72,29 @@ async def _claude() -> dict[str, Any]:
         return _c("claude", "Dimaag (Claude)", False, f"Anthropic ne mana kiya: {type(e).__name__}", fix)
 
 
+async def _app_model() -> dict[str, Any]:
+    """v0.140 App Sahayak designs and builds only with Claude Opus 5.5: is that model open on this key?"""
+    from .site import ai as SA
+    st = get_settings()
+    label = SA.app_model_label()
+    if not st.anthropic_api_key:
+        return _c("app_model", "App design (" + label + ")", False, "ANTHROPIC_API_KEY set nahi hai",
+                  "VPS .env mein ANTHROPIC_API_KEY daaliye")
+    try:
+        from .agent.santosh import get_client
+        client = get_client()
+        if hasattr(client, "models") and hasattr(client.models, "retrieve"):
+            await client.models.retrieve(SA.app_model())
+        s = SA.STATS
+        return _c("app_model", "App design (" + label + ")", True,
+                  f"{label} khula hai · {s['app_calls']} calls, {s['app_retries']} dobara, {s['app_failed']} fail")
+    except Exception as e:
+        t = str(e)
+        fix = ("console.anthropic.com par is key ke liye Opus 5.5 kholiye" if "404" in t or "not_found" in t.lower()
+               else "thodi der baad phir jaanchiye")
+        return _c("app_model", "App design (" + label + ")", False, f"{label} nahi khula: {type(e).__name__}", fix)
+
+
 async def _gemini() -> dict[str, Any]:
     st = get_settings()
     if not st.gemini_api_key:
@@ -303,7 +326,7 @@ def report(tenant: str, days: int = 14) -> dict[str, Any]:
 
 async def run(tenant: str) -> dict[str, Any]:
     t0 = time.time()
-    singles = [(_claude(), "claude", "Dimaag (Claude)"), (_gemini(), "gemini", "Awaaz + Google search (Gemini)"),
+    singles = [(_claude(), "claude", "Dimaag (Claude)"), (_app_model(), "app_model", "App design (Opus)"), (_gemini(), "gemini", "Awaaz + Google search (Gemini)"),
                (_parallel(), "parallel", "Backup search (Parallel)"), (_email(tenant), "email", "Email bhejna"),
                (_operator(), "operator", "Website kaam (Computer Operator)"), (_worker(), "browser", "Jaldi website dekhna"),
                (_pc(tenant), "pc", "Mera PC"), (_push(), "push", "Phone par notification"),

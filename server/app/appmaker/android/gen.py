@@ -532,6 +532,11 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     (appd / "AppScreens.kt").write_text(screens_kt(spec, set(ids)))
     (main / "assets").mkdir(exist_ok=True)
     (main / "assets/seed.json").write_text(json.dumps(spec.get("seed") or {}, ensure_ascii=False))
+    for name, path in (spec.get("scenes") or {}).items():      # v0.140 stills of the app's 3D scenes for Scene3D(name)
+        p = Path(str(path))
+        if re.fullmatch(r"[a-z]{1,12}", str(name)) and p.is_file() and p.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n":
+            (main / "assets/scenes").mkdir(exist_ok=True)
+            shutil.copy(p, main / f"assets/scenes/{name}.png")
     key = spec.get("preview_key") or {}
     if key.get("p12_b64"):
         (tmp / "keys").mkdir(exist_ok=True)

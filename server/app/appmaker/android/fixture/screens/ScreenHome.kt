@@ -26,6 +26,7 @@ fun ScreenHome() {
     }) {
         block { SearchBox() }
         block { Banner("Fresh today", "Free delivery above ₹499", "Order now") { nav.go("cart") } }
+        block { Scene3D("hero", shape = "wide", description = "A basket of fresh groceries") }
         block { SectionHeader("Categories") }
         block { Chips(AppData.categories("products"), "cat") { cat = it } }
         block { SectionHeader("Best sellers", "See all") { nav.go("categories") } }

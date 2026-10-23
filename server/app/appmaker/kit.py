@@ -573,9 +573,16 @@ def assemble(ctx: dict[str, Any], screens: dict[str, dict[str, Any]], out: Path,
                 f'nav-{tk.get("nav")} fabk-{tk.get("fab")} hd-{tk.get("header")} tr-{tk.get("transition")}'
                 + (f' tex-{tk["texture"]}' if tk.get("texture") else "") + (" dark" if tk.get("dark") else ""))
     all_html = "".join(parts)
-    three = '<script src="assets/three.min.js"></script>' if 'class="obj3d' in all_html or "class='obj3d" in all_html else ""
+    three = ('<script src="assets/three.min.js"></script>'
+             if re.search(r"""class=["'][^"']*\bobj3d\b""", all_html) else "")
     if three:
         shutil.copy(ASSETS / "three.min.js", tmp / "assets" / "three.min.js")
+        scenes = ((plan.get("art") or {}).get("three_d") or {}).get("scenes") or {}
+        if scenes and "data-scene" in all_html:      # v0.140 the app's own 3D scenes (data only) + the scene runtime
+            from .artdirect import scenes_js
+            shutil.copy(ASSETS / "scene3d.js", tmp / "assets" / "scene3d.js")
+            (tmp / "assets" / "scenes.js").write_text(scenes_js(scenes))
+            three += '<script src="assets/scene3d.js"></script><script src="assets/scenes.js"></script>'
     lang = (ctx.get("language") or "en") if (ctx.get("language") or "en") != "hinglish" else "en"
     name = esc(ctx.get("name") or "App")
     head = (f'<!doctype html><html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" '

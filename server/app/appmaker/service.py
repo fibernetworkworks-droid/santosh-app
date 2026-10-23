@@ -31,6 +31,7 @@ from ..db import now, session
 from ..site import build as SB
 from ..site import library as SL
 from . import ai as AI
+from . import artdirect as AD
 from . import blueprint as BP
 from . import kit as K
 from . import library as L
@@ -43,7 +44,8 @@ log = logging.getLogger("santosh.app")
 STAGES = [("brief", "Baat"), ("plan", "Plan"), ("look", "Look"), ("design", "Screens"), ("checks", "Jaanch"),
           ("preview", "Preview"), ("pakka", "Design pakka"), ("android", "Android app"), ("ios", "iPhone app"), ("store", "Store")]
 MAX_FIX_ROUNDS = 2
-STATS = {"off_topic": 0, "asked_first": 0, "not_her_business": 0}
+STATS = {"off_topic": 0, "asked_first": 0, "not_her_business": 0, "art": 0, "art_retry": 0, "art_fallback": 0,
+         "critiques": 0, "refined": 0, "critique_gain": 0.0}
 _RUNNING: dict[str, threading.Thread] = {}
 _LOCK = threading.Lock()
 
@@ -330,7 +332,7 @@ def _board(r: AppProject, plan: dict[str, Any] | None = None, states: dict[str, 
         pages.append({"slug": title.split()[0].lower(), "title": title, "sections": secs})
     return {"states": st, "thumbs": th, "pages": pages, "now": now_line or old.get("now", ""),
             "pct": round(100 * done / total) if total else 0, "total": total, "done": done,
-            "overview": old.get("overview") or {}}
+            "overview": old.get("overview") or {}, "scores": old.get("scores") or {}}
 
 
 def preview_url(r: AppProject, short: bool = False) -> str:
@@ -341,6 +343,23 @@ def preview_url(r: AppProject, short: bool = False) -> str:
     return path if short and not base else f"{base}{path}"
 
 
+def _model_label() -> str:
+    from ..site import ai as SA
+    return SA.app_model_label()
+
+
+def _art_view(dna: dict[str, Any] | None) -> dict[str, Any]:
+    """The design DNA in a few lines for the app (concept, idea, signature, layout, 3D)."""
+    if not dna:
+        return {}
+    lay = dna.get("layout") or {}
+    td = dna.get("three_d") or {}
+    return {"concept": dna.get("concept", ""), "idea": dna.get("idea", ""), "signature": dna.get("signature", ""),
+            "layout": AD.LAYOUTS.get(lay.get("system"), lay.get("system") or ""), "hero": AD.HEROES.get(lay.get("hero"), ""),
+            "motion": (dna.get("motion") or {}).get("language", ""), "three_d": bool(td.get("use")),
+            "scenes": list((td.get("scenes") or {}).keys()), "by": dna.get("by", "")}
+
+
 def view(r: AppProject, full: bool = True) -> dict[str, Any]:
     board = _j(r.board, {})
     plan = _j(r.plan, {})
@@ -349,9 +368,10 @@ def view(r: AppProject, full: bool = True) -> dict[str, Any]:
          "goal_label": (T.GOALS.get(r.goal) or {}).get("label", ""), "style": r.style,
          "style_label": (T.STYLES.get(r.style) or {}).get("label", ""), "version": r.version,
          "stages": [{"id": a, "label": b} for a, b in STAGES],
-         "board": {k: board.get(k) for k in ("pages", "now", "pct", "total", "done", "overview", "extras", "er")},
+         "board": {k: board.get(k) for k in ("pages", "now", "pct", "total", "done", "overview", "extras", "er", "scores")},
          "preview": preview_url(r), "error": r.error, "queued": len(_j(r.queued, [])), "language": r.language,
-         "approved": bool(r.approved_hash), "updated_at": r.updated_at.isoformat() if r.updated_at else ""}
+         "approved": bool(r.approved_hash), "updated_at": r.updated_at.isoformat() if r.updated_at else "",
+         "model": _model_label(), "art": _art_view(plan.get("art"))}
     if full:
         checks = _j(r.checks, {})
         v.update({"brief": r.brief, "plan": {"screens": [{"id": s, "label": (plan.get("labels") or {}).get(s, s),
@@ -368,7 +388,7 @@ def view(r: AppProject, full: bool = True) -> dict[str, Any]:
                   "questions": _j(r.answers, {}).get("_questions", []),
                   "facts": {k: v2 for k, v2 in _j(r.facts, {}).items() if k in ("name", "tagline", "phone", "whatsapp", "email",
                                                                                "address", "hours", "upi_id")},
-                  "looks": [{"i": i, "style": lk.get("style"), "label": lk.get("label"),
+                  "looks": [{"i": i, "style": lk.get("style"), "label": lk.get("label"), "art": _art_view(lk.get("art")),
                              "shots": {k: f"look/{i}/{n}" for k, n in (lk.get("shots") or {}).items()},
                              "colors": [lk.get("tokens", {}).get(k) for k in ("bg", "primary", "accent", "ink")]}
                             for i, lk in enumerate(_j(r.looks, []))],
@@ -671,7 +691,8 @@ def _facts_text(f: dict[str, Any]) -> str:
     return json.dumps(keep, ensure_ascii=False)[:6000]
 
 
-def _screen_prompt(r: AppProject, sid: str, extra: str = "", tokens: dict[str, Any] | None = None, style: str = "") -> str:
+def _screen_prompt(r: AppProject, sid: str, extra: str = "", tokens: dict[str, Any] | None = None, style: str = "",
+                   art: dict[str, Any] | None = None) -> str:
     style = style or r.style
     br = L.brief(r.field, r.goal, style)
     plan = _j(r.plan, {})
@@ -679,9 +700,11 @@ def _screen_prompt(r: AppProject, sid: str, extra: str = "", tokens: dict[str, A
     ids = list(plan.get("screens", [])) + list(plan.get("code_screens", []))
     design = (plan.get("designs") or {}).get(sid) or T.SCREENS[sid]["variants"][0]
     facts = _j(r.facts, {})
+    art = art if art is not None else plan.get("art")
     return "\n".join([
         _request_lines(r, plan),
         br["text"],
+        AD.dna_block(art, sid),
         f"\nTHIS SCREEN: {T.SCREENS[sid]['label']} (id {sid}) - {T.SCREENS[sid]['why']}. Design: {design}. "
         f"SCREEN_ID: scr-{sid}.",
         ("It is a BOTTOM TAB screen (no back button; the tab bar is drawn by code)." if sid in plan.get("tabs", [])
@@ -785,8 +808,8 @@ def clean_screen(sid: str, raw: dict[str, Any]) -> dict[str, Any]:
 
 
 def write_screen(r: AppProject, sid: str, extra: str = "", system: str = "", tokens: dict[str, Any] | None = None,
-                 style: str = "") -> dict[str, Any]:
-    raw = AI.ask_json(system or AI.SCREEN_SYSTEM, _screen_prompt(r, sid, extra, tokens, style), 7000)
+                 style: str = "", art: dict[str, Any] | None = None) -> dict[str, Any]:
+    raw = AI.ask_json(system or AI.SCREEN_SYSTEM, _screen_prompt(r, sid, extra, tokens, style, art), 7000)
     if not raw.get("html"):
         raise AppError(f"{T.SCREENS[sid]['label']} screen nahi ban payi (model ne khaali diya).")
     scr = clean_screen(sid, raw)
@@ -794,7 +817,7 @@ def write_screen(r: AppProject, sid: str, extra: str = "", system: str = "", tok
     if off:       # wrong kind of app: one more try at once, with what was wrong
         STATS["off_topic"] += 1
         raw2 = AI.ask_json(system or AI.SCREEN_SYSTEM, _screen_prompt(r, sid, (extra + "\nYOUR LAST TRY WAS WRONG: " + " ".join(off)).strip(),
-                                                                       tokens, style), 7000)
+                                                                       tokens, style, art), 7000)
         if raw2.get("html"):
             scr2 = clean_screen(sid, raw2)
             off2 = relevance(r, sid, scr2["html"])
@@ -818,6 +841,188 @@ def _screens(r: AppProject) -> dict[str, dict[str, Any]]:
     return out
 
 
+# ---------------------------------------------------------------- v0.140 art direction, uniqueness, self-critique
+def _used_fps(exclude_id: str, limit: int = 300) -> list[dict[str, Any]]:
+    """Layout fingerprints of the looks owners CHOSE in other apps on this server (newest first)."""
+    out: list[dict[str, Any]] = []
+    try:
+        with session() as s:
+            rows = s.execute(select(AppProject.plan).where(AppProject.id != exclude_id)
+                             .order_by(AppProject.updated_at.desc()).limit(limit)).all()
+        for (pl,) in rows:
+            fp = (_j(pl, {}).get("art") or {}).get("fp")
+            if fp:
+                out.append(fp)
+    except Exception:
+        log.info("used fingerprints skipped", exc_info=True)
+    return out
+
+
+def _fallback_dna(r: AppProject, style: str, siblings: list[dict[str, Any]], used: list[dict[str, Any]]) -> dict[str, Any]:
+    """No art direction from the model: still a distinct direction per look, chosen by code (never the same as a sibling)."""
+    import hashlib
+    st = T.STYLES.get(style) or {}
+    taken = {(d.get("layout") or {}).get("system") for d in siblings} | {f.get("system") for f in used[:20]}
+    heroes = {(d.get("layout") or {}).get("hero") for d in siblings}
+    h = int(hashlib.sha256(f"{r.id}:{style}".encode()).hexdigest(), 16)
+    lays = [k for k in AD.LAYOUTS if k not in taken] or list(AD.LAYOUTS)
+    hs = [k for k in AD.HEROES if k not in heroes] or list(AD.HEROES)
+    rh = list(AD.RHYTHMS)
+    plan = _j(r.plan, {})
+    return AD.clean_dna({"concept": st.get("label"), "idea": st.get("do"),
+                         "layout": {"system": lays[h % len(lays)], "hero": hs[(h >> 8) % len(hs)], "rhythm": rh[(h >> 16) % len(rh)]},
+                         "signature": st.get("do", "")[:120], "avoid": [st.get("dont", "")],
+                         "motion": {"entrance": AD.ENTRANCE[(h >> 24) % len(AD.ENTRANCE)], "micro": st.get("motion") or []}},
+                        style, plan.get("screens", []))
+
+
+def art_direction(r: AppProject, style: str, br: dict[str, Any], tk: dict[str, Any], siblings: list[dict[str, Any]],
+                  used: list[dict[str, Any]]) -> dict[str, Any]:
+    """Opus 5.5 (adaptive thinking, effort xhigh) decides this look's design DNA before any screen is drawn; a DNA too
+    close to the other looks or to earlier apps is asked for again once with what to avoid."""
+    from ..site import ai as SA
+    plan = _j(r.plan, {})
+    screens = plan.get("screens", [])
+    st = T.STYLES.get(style) or {}
+    labels = plan.get("labels") or {}
+    base = [_request_lines(r, plan), br["text"],
+            "SCREENS: " + ", ".join(f"{s} ({labels.get(s, s)})" for s in screens),
+            f"TABS: {', '.join(plan.get('tabs', []))}. MAIN FLOW: {' -> '.join(plan.get('flow', []))}.",
+            f"STYLE FAMILY of this look: {st.get('label')} - do: {st.get('do')}; don't: {st.get('dont')}; moods: "
+            f"{', '.join(st.get('moods') or [])}; its defaults: nav {tk.get('nav')}, card {tk.get('card')}, header {tk.get('header')}, "
+            f"button {tk.get('button')}, transition {tk.get('transition')}.",
+            "COLOURS: " + json.dumps({k: tk.get(k) for k in ("bg", "surface", "ink", "primary", "accent")}) +
+            f"; fonts {tk.get('head')} / {tk.get('body')}.",
+            f"LANGUAGE of the app: {_lang_line(r.language)}.",
+            (plan.get("idea") or {}).get("line") or "", AD.vocab_text()]
+    if siblings:
+        base.append("THE OTHER LOOKS OF THIS APP (yours must be clearly different: another layout system AND another hero AND "
+                    "another signature): " + " | ".join(f"{d.get('concept')}: {AD.describe_fp(AD.fingerprint(d))}" for d in siblings))
+    if used:
+        base.append("LAYOUT DNA ALREADY USED BY OTHER HOOLA APPS (don't repeat these combinations): " +
+                    " | ".join(AD.describe_fp(f) for f in used[:12]))
+    prompt = "\n".join(x for x in base if x)
+    raw: dict[str, Any] = {}
+    try:
+        raw = AI.ask_art(AD.ART_SYSTEM, prompt, 6000)
+    except Exception as e:                      # the screens themselves still need Opus; the direction falls back to code
+        log.info("art direction not made: %s", e)
+    dna = AD.clean_dna(raw, style, screens) if raw else _fallback_dna(r, style, siblings, used)
+    if raw:
+        STATS["art"] += 1
+        fp = AD.fingerprint(dna)
+        near = AD.too_close(fp, [AD.fingerprint(d) for d in siblings], AD.SIBLING_CLOSE) + AD.too_close(fp, used, AD.TOO_CLOSE)
+        if near:
+            STATS["art_retry"] += 1
+            try:
+                raw2 = AI.ask_art(AD.ART_SYSTEM, prompt + "\n\nYOUR FIRST DIRECTION WAS TOO CLOSE TO: " +
+                                  " | ".join(AD.describe_fp(n) for n in near[:3]) +
+                                  ". Choose a different layout system, a different hero and a new signature.", 6000)
+                if raw2:
+                    dna = AD.clean_dna(raw2, style, screens)
+            except Exception as e:
+                log.info("art direction retry failed: %s", e)
+    else:
+        STATS["art_fallback"] += 1
+    dna["fp"] = AD.fingerprint(dna)
+    dna["by"] = SA.app_model_label() if raw else "code"
+    return dna
+
+
+def _html_key(scr: dict[str, Any]) -> str:
+    import hashlib
+    return hashlib.sha1((scr.get("html", "") + (scr.get("css") or "")).encode()).hexdigest()[:16]
+
+
+def _critique_prompt(r: AppProject, plan: dict[str, Any], sid: str) -> str:
+    sp = T.SCREENS.get(sid) or {}
+    return "\n".join([_request_lines(r, plan), AD.dna_block(plan.get("art"), sid),
+                      f"SCREEN: {(plan.get('labels') or {}).get(sid, sid)} ({sid}) - {sp.get('why', '')}.",
+                      "The image is the real screenshot of this screen (Android, 390 x 844). Judge what you SEE."])
+
+
+def _critique_pass(r: AppProject, plan: dict[str, Any], states: dict[str, str]) -> AppProject | None:
+    """Home + tab screens: Opus sees the real screenshot, scores it, and a screen below APP_CRITIQUE_MIN is redrawn once
+    with the director's notes (the better of the two is kept). Opus unreachable = the pass is skipped, never a guess."""
+    st = _settings()
+    targets = AD.critique_targets(plan, getattr(st, "app_critique", "key"))
+    if not targets:
+        return r
+    need = float(getattr(st, "app_critique_min", 8.0) or 8.0)
+    shots = K.app_dir(r.tenant_id, r.id) / "shots"
+    scores = dict((_j(r.board, {}).get("scores")) or {})
+    for sid in targets:
+        f = _scr_path(r, sid)
+        if not f.exists():
+            continue
+        cur = _load(r.id)
+        if cur.stop:
+            r = _save(r.id, status="stopped", board=_board(cur, plan, states, "Rok diya"))
+            _emit(r)
+            return None
+        scr = json.loads(f.read_text())
+        key = _html_key(scr)
+        if (scr.get("critique") or {}).get("for") == key:
+            continue                                     # this exact screen was already judged
+        img = shots / f"{sid}-android.jpg"
+        if not img.exists():
+            _thumb_one(r, sid)
+        if not img.exists():
+            continue                                     # no Chromium: nothing to look at
+        line = f"{(plan.get('labels') or {}).get(sid, sid)}: Opus screenshot dekh raha hai"
+        r = _save(r.id, board=_board(r, plan, states, line))
+        _work(r, "start", "Design ki jaanch (Opus)", line)
+        _emit(r)
+        try:
+            c = AD.clean_critique(AI.ask_critique(AD.CRITIQUE_SYSTEM, _critique_prompt(r, plan, sid), img.read_bytes()))
+        except Exception as e:
+            log.info("critique skipped: %s", e)
+            break
+        STATS["critiques"] += 1
+        if not c["score"]:
+            continue
+        first = c["score"]
+        if first < need and c["fixes"]:
+            states[sid] = "fixing"
+            r = _save(r.id, board=_board(r, plan, states, f"{(plan.get('labels') or {}).get(sid, sid)}: {first}/10, behtar bana raha hoon"))
+            _emit(r)
+            note = AD.REFINE_NOTE.format(score=first, good="; ".join(c["good"]) or "-", fixes="\n- ".join(c["fixes"]),
+                                         html=scr.get("html", "")[:14000], css=(scr.get("css") or "")[:3000])
+            try:
+                new = write_screen(r, sid, note)
+            except Exception as e:
+                log.info("refine failed: %s", e)
+                new = None
+            if new and not new.get("off_topic"):
+                f.write_text(json.dumps(new))
+                _assemble_live(r)
+                _thumb_one(r, sid)
+                try:
+                    c2 = AD.clean_critique(AI.ask_critique(AD.CRITIQUE_SYSTEM, _critique_prompt(r, plan, sid), img.read_bytes()))
+                except Exception:
+                    c2 = {"score": 0}
+                if c2.get("score") and c2["score"] + 0.05 < first:      # the redraw came out worse: keep the first one
+                    f.write_text(json.dumps(scr))
+                    _assemble_live(r)
+                    _thumb_one(r, sid)
+                    c = {**c, "kept": "first"}
+                elif c2.get("score"):
+                    STATS["refined"] += 1
+                    STATS["critique_gain"] = round(STATS["critique_gain"] + (c2["score"] - first), 2)
+                    c = {**c2, "before": first}
+                scr = json.loads(f.read_text())
+            states[sid] = "done"
+        scr["critique"] = {"for": _html_key(scr), "score": c.get("score"), "before": c.get("before")}
+        f.write_text(json.dumps(scr))
+        scores[sid] = {"score": c.get("score"), "before": c.get("before"), "good": c.get("good", [])[:2],
+                       "fixes": c.get("fixes", [])[:3], "by": _model_label()}
+        board = _board(r, plan, states, f"{(plan.get('labels') or {}).get(sid, sid)}: {c.get('score')}/10")
+        board["scores"] = scores
+        r = _save(r.id, board=board)
+        _emit(r)
+    return r
+
+
 def make_looks(app_id: str) -> None:
     from ..usage import scope
     r = _load(app_id)
@@ -837,19 +1042,29 @@ def _make_looks(r: AppProject) -> None:
     plan = _j(r.plan, {})
     looks = []
     styles = _j(r.styles, [])[:3] or [r.style]
+    siblings: list[dict[str, Any]] = []
+    used = _used_fps(r.id) if getattr(_settings(), "app_unique", True) else []
     for i, style in enumerate(styles):
         if _load(r.id).stop:
             _save(r.id, status="stopped")
             return
-        _work(r, "start", f"Look {i + 1}: {T.STYLES[style]['label']}", f"Look {i + 1} / {len(styles)} ban raha hai")
+        _work(r, "start", f"Look {i + 1}: {T.STYLES[style]['label']}", f"Look {i + 1} / {len(styles)}: pehle design ki soch (art direction)")
         br = L.brief(r.field, r.goal, style)
         tk = K.tokens(style, br["palettes"][0], facts.get("brand_colors"))
+        dna = art_direction(r, style, br, tk, siblings, used)
+        siblings.append(dna)
+        ov = {k: v for k, v in (dna.get("structure") or {}).items()}
+        if dna.get("texture"):
+            ov["texture"] = dna["texture"]
+        if ov:
+            tk = K.tokens(style, br["palettes"][0], facts.get("brand_colors"), ov)
+        _work(r, "start", f"Look {i + 1}: {dna.get('concept')}", f"Look {i + 1} / {len(styles)}: home screen ban raha hai")
         home = "home" if "home" in plan.get("screens", []) else plan["screens"][0]
-        scr = write_screen(r, home, AI.LOOK_NOTE, tokens=tk, style=style)
+        scr = write_screen(r, home, AI.LOOK_NOTE, tokens=tk, style=style, art=dna)
         d = K.app_dir(r.tenant_id, r.id) / "looks" / str(i)
         d.mkdir(parents=True, exist_ok=True)
         (d / "home.json").write_text(json.dumps(scr))
-        mini = {**plan, "screens": [home], "code_screens": [], "start": home}
+        mini = {**plan, "screens": [home], "code_screens": [], "start": home, "art": dna}
         out = d / "site"
         K.assemble(_ctx(r, tk, mini), {home: scr}, out, only_ready=True)
         shots = {}
@@ -858,7 +1073,8 @@ def _make_looks(r: AppProject) -> None:
             shots = {"android": rep["screens"][home]["shots"].get("android", "")}
         except RD.RenderError as e:
             log.info("look screenshots skipped: %s", e)
-        looks.append({"style": style, "label": T.STYLES[style]["label"], "tokens": tk, "shots": shots, "home": home})
+        looks.append({"style": style, "label": T.STYLES[style]["label"], "tokens": tk, "shots": shots, "home": home,
+                      "art": dna, "art_fp": dna.get("fp")})
     r = _save(r.id, looks=looks, style=styles[0], status="looks", stage="look",
               board=_board(r, now_line="3 looks taiyaar: ek chuniye"))
     _work(r, "waiting", "Look chuniye", "3 looks taiyaar")
@@ -882,6 +1098,10 @@ def choose_look(tenant: str, ref: str, index: int, colors_from: int | None = Non
                       "primary_text", "accent_text", "dark"):
                 tk[k] = src.get(k, tk.get(k))
         r.style, r.look = lk["style"], _jd({"tokens": tk, "from": int(index)})
+        if lk.get("art"):                     # v0.140 the chosen look's design DNA now drives every screen
+            pl = _j(r.plan, {})
+            pl["art"] = lk["art"]
+            r.plan = _jd(pl)
         r.status, r.stage, r.stop, r.error = "designing", "design", False, ""
         r.approved_hash, r.approved_at = "", None
         if conv:
@@ -964,6 +1184,10 @@ def _run_design(r: AppProject, only: list[str] | None, note: str, extra: dict[st
         thumb = _thumb_one(r, sid)
         r = _save(r.id, board=_board(r, plan, states, f"{line} ✓", {sid: f"thumb/{thumb}" if thumb else ""}))
         _emit(r)
+    # v0.140 Opus looks at its own screenshots (home + tabs) and redraws what isn't premium yet
+    r = _critique_pass(_load(r.id), plan, states)
+    if r is None:
+        return
     # checks + fix rounds on both platforms
     r = _save(r.id, status="checking", stage="checks", board=_board(r, plan, states, "Jaanch: Android + iPhone, chhota phone"))
     _work(r, "start", "Jaanch chal rahi hai", "har screen · Android + iPhone · 360 px")
@@ -1001,7 +1225,8 @@ def _run_design(r: AppProject, only: list[str] | None, note: str, extra: dict[st
             _work(r, "start", "Theek kar raha hoon", "; ".join(problems)[:90])
             _emit(r)
             old = json.loads(_scr_path(r, sid).read_text())
-            fixed = AI.ask_json(AI.FIX_SYSTEM, _request_lines(r, plan) + f"\nSCREEN_ID: scr-{sid}\nSCREEN IDS you may link: {', '.join(sorted(known))}\n"
+            fixed = AI.ask_json(AI.FIX_SYSTEM, _request_lines(r, plan) + "\n" + AD.dna_block(plan.get("art"), sid) +
+                                f"\nSCREEN_ID: scr-{sid}\nSCREEN IDS you may link: {', '.join(sorted(known))}\n"
                                 f"PROBLEMS:\n- " + "\n- ".join(problems) + f"\n\nCURRENT HTML:\n{old['html']}\n\nCURRENT CSS:\n"
                                 f"{old['css']}\n\nFACTS (data): " + _facts_text(_j(r.facts, {})), 7000)
             if fixed.get("html"):

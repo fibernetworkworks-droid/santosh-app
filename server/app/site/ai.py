@@ -20,8 +20,138 @@ class AiError(Exception):
     pass
 
 
+APP_KINDS = ("app", "app_edit", "app_code")   # v0.140 App Sahayak calls: Opus 5.5 only
+STATS = {"app_calls": 0, "app_retries": 0, "app_failed": 0, "app_fallback": 0}
+APP_LABEL = {"claude-opus-5-5": "Claude Opus 5.5"}
+
+
+def app_model() -> str:
+    return (getattr(get_settings(), "app_model", "") or "claude-opus-5-5").strip()
+
+
+def app_model_label() -> str:
+    m = app_model()
+    return APP_LABEL.get(m, m)
+
+
+def _permanent(e: Exception) -> bool:
+    """A refusal that another try won't fix (model not on this key, bad key, bad request)."""
+    status = getattr(e, "status_code", None)
+    if status in (400, 401, 403, 404):
+        return True
+    name = type(e).__name__
+    return name in ("NotFoundError", "PermissionDeniedError", "AuthenticationError", "BadRequestError")
+
+
+_EXTRAS_OFF: set[str] = set()      # request fields this API / model refused once (thinking, output_config): not sent again
+EFFORT = {"app_art": "xhigh", "app_critique": "high", "app": "high", "app_code": "high", "app_edit": "medium"}
+APP_KINDS = APP_KINDS + ("app_art", "app_critique")
+
+
+def _app_client():
+    global _APP_CLIENT
+    if _APP_CLIENT is None:
+        from anthropic import Anthropic
+        _APP_CLIENT = Anthropic(api_key=get_settings().anthropic_api_key, timeout=600, max_retries=1)
+    return _APP_CLIENT
+
+
+_APP_CLIENT = None
+
+
+def _refused_field(e: Exception) -> str:
+    """'thinking' / 'output_config' when a 400 says the model doesn't take that field, else ''."""
+    t = str(e).lower()
+    if getattr(e, "status_code", None) != 400 and type(e).__name__ != "BadRequestError":
+        return ""
+    for f in ("output_config", "effort", "thinking"):
+        if f in t:
+            return "output_config" if f == "effort" else f
+    return ""
+
+
+def _content(prompt: str, images: list[bytes] | None) -> Any:
+    if not images:
+        return prompt
+    import base64
+    blocks: list[dict[str, Any]] = []
+    for b in images[:4]:
+        kind = "image/png" if b[:8] == b"\x89PNG\r\n\x1a\n" else "image/webp" if b[8:12] == b"WEBP" else "image/jpeg"
+        blocks.append({"type": "image", "source": {"type": "base64", "media_type": kind,
+                                                   "data": base64.b64encode(b).decode()}})
+    blocks.append({"type": "text", "text": prompt})
+    return blocks
+
+
+def _app_request(model: str, system: str, prompt: str, max_tokens: int, kind: str, images: list[bytes] | None,
+                 effort: str) -> dict[str, Any]:
+    """v0.140 the way Claude itself gets its best work out of Opus 5.5: adaptive thinking (Claude decides how much to
+    think before it designs), an effort level per job (art direction xhigh, screens / code / critique high, small edits
+    medium), and room for the thinking inside max_tokens."""
+    st = get_settings()
+    think = (getattr(st, "app_thinking", "adaptive") or "off").lower()
+    kw: dict[str, Any] = {"model": model, "system": system, "messages": [{"role": "user", "content": _content(prompt, images)}]}
+    room = max_tokens
+    if think == "adaptive" and "thinking" not in _EXTRAS_OFF:
+        kw["thinking"] = {"type": "adaptive"}
+        room = max_tokens + {"app_art": 9000, "app_critique": 5000, "app_edit": 3000}.get(kind, 8000)
+    eff = effort or (getattr(st, "app_art_effort", "") if kind == "app_art" else "") or \
+        (getattr(st, "app_effort", "") if kind in ("app", "app_code") else "") or EFFORT.get(kind, "high")
+    if eff in ("low", "medium", "high", "xhigh", "max") and "output_config" not in _EXTRAS_OFF:
+        kw["output_config"] = {"effort": eff}
+    kw["max_tokens"] = min(20000, room)         # non-streaming requests stay under the SDK's long-request limit
+    return kw
+
+
+def _ask_app(system: str, prompt: str, max_tokens: int, kind: str, images: list[bytes] | None = None,
+             effort: str = "") -> str:
+    """v0.140 Owner's rule: App Sahayak designs and builds with Claude Opus 5.5. Busy / overloaded / timeouts are tried
+    again with growing waits; nothing falls back to another model unless APP_MODEL_FALLBACK is switched on."""
+    st = get_settings()
+    model = app_model()
+    tries = max(1, int(getattr(st, "app_model_tries", 5) or 5))
+    if not st.anthropic_api_key:
+        if getattr(st, "app_model_fallback", False) and not images:
+            STATS["app_fallback"] += 1
+            from ..net.ai import llm
+            return llm(system, prompt, min(max_tokens, 8000), timeout=240)
+        raise AiError(f"App design {app_model_label()} se hota hai, par server par ANTHROPIC_API_KEY nahi hai.")
+    STATS["app_calls"] += 1
+    last: Exception | None = None
+    attempt = 0
+    while attempt < tries:
+        try:
+            msg = _app_client().messages.create(**_app_request(model, system, prompt, max_tokens, kind, images, effort))
+            STATS["app_thinking"] = STATS.get("app_thinking", 0) + sum(1 for b in msg.content if getattr(b, "type", "") == "thinking")
+            return "".join(getattr(b, "text", "") or "" for b in msg.content if getattr(b, "type", "text") == "text")
+        except Exception as e:
+            last = e
+            field = _refused_field(e)
+            if field and field not in _EXTRAS_OFF:          # this model / key doesn't take it: drop it, ask again at once
+                _EXTRAS_OFF.add(field)
+                log.warning("app model %s refused '%s', asking without it: %s", model, field, e)
+                continue
+            log.info("app model %s failed (%s/%s): %s", model, attempt + 1, tries, e)
+            if _permanent(e):
+                break
+            attempt += 1
+            if attempt < tries:
+                STATS["app_retries"] += 1
+                time.sleep(min(30.0, 2.0 * (2 ** (attempt - 1))))
+    if getattr(st, "app_model_fallback", False):
+        STATS["app_fallback"] += 1
+        log.warning("app: %s unavailable, falling back (APP_MODEL_FALLBACK on): %s", model, last)
+        return ask(system, prompt, max_tokens, "edit")
+    STATS["app_failed"] += 1
+    why = "yeh model is API key par nahi khulta" if last is not None and _permanent(last) else "abhi bahut busy hai"
+    raise AiError(f"{app_model_label()} se jawab nahi mila ({why}). Thodi der baad 'Phir se chalao' dabaiye. "
+                  f"[{type(last).__name__ if last else 'error'}]")
+
+
 def model_for(kind: str) -> str:
     st = get_settings()
+    if kind in APP_KINDS:
+        return app_model()
     if kind == "build":
         return getattr(st, "site_model", "") or "claude-opus-5-5"
     return getattr(st, "site_edit_model", "") or st.anthropic_model
@@ -35,7 +165,10 @@ def _client():
     return _CLIENT
 
 
-def ask(system: str, prompt: str, max_tokens: int = 6000, kind: str = "build") -> str:
+def ask(system: str, prompt: str, max_tokens: int = 6000, kind: str = "build", images: list[bytes] | None = None,
+        effort: str = "") -> str:
+    if kind in APP_KINDS:
+        return _ask_app(system, prompt, max_tokens, kind, images, effort)
     st = get_settings()
     if st.anthropic_api_key:
         last: Exception | None = None
@@ -76,10 +209,11 @@ def parse_json(raw: str) -> dict[str, Any]:
             return {}
 
 
-def ask_json(system: str, prompt: str, max_tokens: int = 6000, kind: str = "build") -> dict[str, Any]:
+def ask_json(system: str, prompt: str, max_tokens: int = 6000, kind: str = "build", images: list[bytes] | None = None,
+             effort: str = "") -> dict[str, Any]:
     sys2 = system + "\n\nReply with ONLY one JSON object (no markdown fence, no text before or after)."
     for _ in range(2):
-        out = parse_json(ask(sys2, prompt, max_tokens, kind))
+        out = parse_json(ask(sys2, prompt, max_tokens, kind, images, effort) if images or effort else ask(sys2, prompt, max_tokens, kind))
         if out:
             return out
         prompt += "\n\n(Your last answer was not valid JSON. Send only the JSON object.)"

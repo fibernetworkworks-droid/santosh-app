@@ -79,7 +79,7 @@ def kit_sheet() -> str:
     """Every public kit function / object member, one line each, straight from the Kotlin source."""
     kit = TEMPLATE / "app/src/main/java/hoola/kit"
     lines: list[str] = []
-    for name in ("Kit.kt", "Data.kt", "Actions.kt", "Nav.kt", "Theme.kt"):
+    for name in ("Kit.kt", "Scene3D.kt", "Data.kt", "Actions.kt", "Nav.kt", "Theme.kt"):
         for ln in signatures((kit / name).read_text()):
             if ln not in lines:
                 lines.append(ln)
@@ -123,6 +123,12 @@ NEVER
 
 MATCH THE DESIGN: same sections in the same order, same hierarchy, same words, same actions; it should feel native
 (tap ripples come from the kit). Keep it under ~250 lines.
+- The DESIGN DNA (given with the screen) is the app's direction: keep its layout system, hero, signature element and type
+  moves in Compose (Box layering, offsets, aspectRatio, clip shapes, Brush gradients from H.c colours).
+- 3D: a design block <div class="obj3d" data-scene="NAME"> becomes Scene3D("NAME", shape = "square|tall|wide|short") with
+  ONLY the scene names listed as available; never draw 3D yourself.
+- Motion from the DNA, natively and simply: AnimatedVisibility / animate*AsState / rememberInfiniteTransition (androidx.compose
+  .animation.*) for entrance, press and pulse; nothing that runs forever except a gentle pulse on the main action.
 
 HOOLAKIT (exact signatures, use them as written):
 {KIT}

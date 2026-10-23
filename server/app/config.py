@@ -108,6 +108,15 @@ class Settings(BaseSettings):
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)
+    app_model: str = "claude-opus-5-5"     # v0.140 App Sahayak: EVERY design / screen / fix / change / Kotlin call (owner: Opus 5.5)
+    app_model_fallback: bool = False       # v0.140 true = when Opus can't be reached, use the chat model / cheap brain instead
+    app_model_tries: int = 5               # v0.140 tries per call when Opus is busy (429 / 5xx / overloaded / timeouts)
+    app_thinking: str = "adaptive"         # v0.140 adaptive | off: Opus thinks before it designs (Claude decides how much)
+    app_effort: str = "high"               # v0.140 effort for screens / Kotlin (low | medium | high | xhigh | max)
+    app_art_effort: str = "xhigh"          # v0.140 effort for the art direction of each look
+    app_critique: str = "key"              # v0.140 Opus looks at its own screenshots: key (home + tabs) | all | off
+    app_critique_min: float = 8.0          # v0.140 a screen scoring below this (out of 10) is redrawn with the notes
+    app_unique: bool = True                # v0.140 every app's layout DNA must differ from earlier apps on this server
     sites_base_domain: str = ""            # v0.122 free addresses <name>.<this> (wildcard DNS proxied to this server)
     sites_origin: str = ""                 # v0.122 Cloudflare for SaaS fallback origin hostname (points at this server)
     sites_origin_ip: str = ""              # v0.122 this server's public IP (her own Cloudflare zone proxies to it)

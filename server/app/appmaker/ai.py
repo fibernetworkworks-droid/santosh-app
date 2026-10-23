@@ -43,7 +43,9 @@ APP KIT YOU DESIGN WITH (already loaded; native-looking on Android AND iPhone - 
   wood bandhani ikat block_print kantha mandala rangoli paisley jaali leaf petals sparkle) - use one subtly where it fits.
 - 3D: <div class="card" data-m="tilt"> (tilts under the finger); flip card <div class="flip"><div class="card flip-front">..</div>
   <div class="card flip-back">..</div></div> (tap flips); <div class="carousel3d"><div class="card">..</div> x3-6</div>;
-  3D object viewer <div class="obj3d" data-shape="box|sphere|cylinder|torus|gem|phone|bottle|cake" data-spin></div>.
+  the app's OWN 3D scenes from its DESIGN DNA: <div class="obj3d" data-scene="NAME" aria-label="..."></div> (+ class tall | wide
+  | short | bleed; rendered with lights, materials and motion by the kit, draggable); simple viewer <div class="obj3d"
+  data-shape="box|sphere|cylinder|torus|gem|phone|bottle|cake" data-spin></div> only when the DNA has no scene.
 - Data: KPI <div class="kpi"><b>..</b><span>..</span></div>; bar chart <div class="chart" data-m><i style="--v:60%"></i>..</div>;
   map (drawn, no tiles) <div class="map"><span class="pin" style="left:40%;top:50%" data-m><svg viewBox="0 0 24 24"><path
   d="M12 22s-7-6-7-12a7 7 0 0 1 14 0c0 6-7 12-7 12z"/></svg></span></div>; chat <div class="bubble">..</div> /
@@ -88,6 +90,20 @@ APP KIT YOU DESIGN WITH (already loaded; native-looking on Android AND iPhone - 
   fonts var(--font-head) / var(--font-body).
 """
 
+PREMIUM = """
+HOW PREMIUM APPS ARE MADE (follow it):
+- Start from the DESIGN DNA: its layout system and hero decide the composition; its SIGNATURE element appears on this
+  screen; its type moves make headlines and numbers feel designed (scale contrast, weight contrast, tight tracking on big
+  type); its motion language decides which 2-4 motions you use. Never fall back to a generic centered-card template.
+- Composition: a clear focal point in the top third, one primary action within thumb reach, deliberate negative space,
+  an 8-px rhythm, aligned edges, varied block sizes (not three identical cards in a row), content that layers (overlap,
+  depth, cut-outs) when the DNA asks for it.
+- Depth and light: soft layered shadows, tints made with color-mix of the tokens, gradients and glass only where the DNA
+  says; a 3D scene (<div class="obj3d" data-scene="NAME">) where the DNA places one - give it room (it is a hero, not an icon).
+- Micro-detail: real labels, numbers in the right format (Rs 1,299 / 12 Jun / 4:30 pm), empty / selected / pressed states,
+  icons with one stroke style, nothing clipped at 360 px.
+"""
+
 SCREEN_SYSTEM = """You are a world-class mobile product designer (Material 3 + Apple HIG level) designing ONE screen of a premium
 native app in India, by hand: either a business's own app, or a PRODUCT app of its own (music streaming, OTT, social, chat,
 rides, marketplace ...) - the brief says which. Build EXACTLY the app in "SHE ASKED FOR": every screen must clearly belong to
@@ -118,12 +134,13 @@ Rules:
 - Respect the RULES lines (store policy + profession law). No other company's logos or brand art, no national emblem / flag,
   no religious symbol unless the facts ask.
 - Accessibility: alt on images, aria-label on icon-only buttons, labels on inputs, contrast safe with the tokens.
-""" + KIT_GUIDE
+""" + PREMIUM + KIT_GUIDE
 
 LOOK_NOTE = """This HOME screen is ONE of three alternative looks the owner will choose between, so make it a strong, distinct
-expression of the given design style (layout, type scale, cards, motion, decoration). It must stand alone."""
+expression of its DESIGN DNA (layout system, hero, signature element, type, motion, 3D when the DNA has it). It must stand
+alone and must not look like the other two looks or like a template."""
 
-FIX_SYSTEM = """You fix ONE app screen that failed automatic checks. Keep the design and words; change only what the problems need.
+FIX_SYSTEM = """You fix ONE app screen that failed automatic checks. Keep the design, its DESIGN DNA and words; change only what the problems need.
 Return the same JSON shape: {"html": "...", "css": "...", "spec": {...}, "notes": "what you fixed"}.
 """ + KIT_GUIDE
 
@@ -155,8 +172,20 @@ Only ids from SCREEN IDS may appear in screens / remove; only ADDABLE types in a
 
 
 def ask_json(system: str, prompt: str, max_tokens: int = 7000) -> dict[str, Any]:
-    return SA.ask_json(system, prompt, max_tokens, "build")
+    """v0.140 every screen, look and fix round = Claude Opus 5.5 (settings.app_model)."""
+    return SA.ask_json(system, prompt, max_tokens, "app")
+
+
+def ask_art(system: str, prompt: str, max_tokens: int = 6000) -> dict[str, Any]:
+    """v0.140 the art direction (design DNA) of a look: Opus 5.5, adaptive thinking, effort xhigh."""
+    return SA.ask_json(system, prompt, max_tokens, "app_art")
+
+
+def ask_critique(system: str, prompt: str, image: bytes, max_tokens: int = 1800) -> dict[str, Any]:
+    """v0.140 Opus looks at the REAL screenshot of a screen it designed and scores it."""
+    return SA.ask_json(system, prompt, max_tokens, "app_critique", images=[image])
 
 
 def ask_edit(system: str, prompt: str, max_tokens: int = 1500) -> dict[str, Any]:
-    return SA.ask_json(system, prompt, max_tokens, "edit")
+    """v0.140 reading her change words is Opus 5.5 too (was the chat model)."""
+    return SA.ask_json(system, prompt, max_tokens, "app_edit")

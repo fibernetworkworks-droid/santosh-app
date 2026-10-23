@@ -165,6 +165,14 @@ class _AppLooksState extends State<AppLooks> {
                 Text('${i + 1}. ${lk['label']}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)),
                 Row(children: [for (final c in cols) Container(width: 14, height: 14, margin: const EdgeInsets.only(right: 4, top: 4),
                     decoration: BoxDecoration(color: c, shape: BoxShape.circle, border: Border.all(color: const Color(0x44FFFFFF))))]),
+                // v0.140 the look's own design DNA (Opus's art direction)
+                if (_s(_map(lk['art'])['concept']).isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(_s(_map(lk['art'])['concept']), maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: C.accent, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                  Text(_s(_map(lk['art'])['signature']), maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: C.faint, fontSize: 11)),
+                ],
                 const Spacer(),
                 Row(children: [
                   Expanded(child: GlassButton(label: 'Yeh wala', height: 34, color: C.accent, onTap: _busy ? null : () => _choose(i))),
@@ -738,6 +746,7 @@ class _AppDesignPageState extends State<AppDesignPage> {
             ],
           ])),
           const SizedBox(height: 10),
+          if (_map(v['art']).isNotEmpty) ...[AppArtCard(v: v), const SizedBox(height: 10)],
           if (st == 'planned')
             Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Plan: ${_list(plan['screens']).length + _list(plan['code_screens']).length} screens', style: display(16)),
@@ -1149,4 +1158,59 @@ class _AppPreviewState extends State<AppPreview> {
           if (_progress < 100) LinearProgressIndicator(value: _progress / 100, minHeight: 2, color: C.teal),
         ]),
       );
+}
+
+/// v0.140 the app's own art direction (design DNA by Claude Opus 5.5) and what Opus said after looking at its screenshots.
+class AppArtCard extends StatelessWidget {
+  const AppArtCard({super.key, required this.v});
+  final Map<String, dynamic> v;
+
+  @override
+  Widget build(BuildContext context) {
+    final art = _map(v['art']);
+    final scores = _map(_map(v['board'])['scores']);
+    final labels = _map(_map(_map(v['plan']))['labels']);
+    Widget line(String k, String text) => text.isEmpty
+        ? const SizedBox.shrink()
+        : Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text.rich(TextSpan(children: [
+              TextSpan(text: '$k: ', style: const TextStyle(color: C.faint, fontSize: 12)),
+              TextSpan(text: text, style: const TextStyle(fontSize: 12.5)),
+            ])),
+          );
+    return Glass(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.auto_awesome_rounded, color: C.accent, size: 18),
+          const SizedBox(width: 6),
+          Expanded(child: Text(_s(art['concept']).isEmpty ? 'Design ki soch' : _s(art['concept']), style: display(15))),
+          if (_s(v['model']).isNotEmpty) Pill(_s(v['model']), fg: C.accent),
+        ]),
+        if (_s(art['idea']).isNotEmpty)
+          Padding(padding: const EdgeInsets.only(top: 4), child: Text(_s(art['idea']), style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12.5))),
+        line('Pehchaan', _s(art['signature'])),
+        line('Layout', _s(art['layout'])),
+        line('Shuruaat', _s(art['hero'])),
+        line('Motion', _s(art['motion'])),
+        if (art['three_d'] == true) line('3D', (art['scenes'] as List? ?? const []).join(', ').isEmpty ? 'haan' : (art['scenes'] as List).join(', ')),
+        if (scores.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          const Text('Opus ne apni screens dekh kar number diye', style: TextStyle(color: C.muted, fontSize: 12)),
+          const SizedBox(height: 4),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final e in scores.entries)
+              Builder(builder: (_) {
+                final s = _map(e.value);
+                final sc = double.tryParse(_s(s['score'])) ?? 0;
+                final before = _s(s['before']);
+                return Pill('${_s(labels[e.key]).isEmpty ? e.key : _s(labels[e.key])}: '
+                    '${before.isNotEmpty ? '$before → ' : ''}${sc.toStringAsFixed(1)}/10',
+                    fg: sc >= 8 ? C.ok : (sc >= 6 ? C.accent : C.bad));
+              }),
+          ]),
+        ],
+      ]),
+    );
+  }
 }

@@ -13,6 +13,7 @@ import base64
 import hashlib
 import json
 import logging
+import re
 import secrets
 import threading
 import time
@@ -182,7 +183,38 @@ def _cache(r: AppProject) -> Path:
 
 def _ask(system: str, prompt: str) -> str:
     from ...site import ai as SA
-    return PR.code_of(SA.ask(system, prompt, 9000, "build"))
+    return PR.code_of(SA.ask(system, prompt, 9000, "app_code"))     # v0.140 Kotlin screens + fixes: Opus 5.5
+
+
+def _dna_lines(ctx: dict[str, Any], sid: str, sp: dict[str, Any]) -> str:
+    """v0.140 the app's design DNA + which 3D scene stills exist in this build."""
+    from .. import artdirect as AD
+    art = (ctx.get("plan") or {}).get("art")
+    out = AD.dna_block(art, sid)
+    have = sorted((sp.get("scenes") or {}).keys())
+    if have:
+        out += "\n3D scenes available in this app: " + ", ".join(have) + " (use Scene3D(\"NAME\") where the design shows one)."
+    else:
+        out += "\nNo 3D scenes in this build: a design obj3d block becomes a Ph(...) art tile."
+    return out + "\n"
+
+
+def _scenes(r: AppProject, ctx: dict[str, Any], work: Path) -> dict[str, str]:
+    """v0.140 stills of the app's 3D scenes (same runtime as the prototype), transparent PNG, for assets/scenes/."""
+    from .. import render as RD
+    scenes = (((ctx.get("plan") or {}).get("art") or {}).get("three_d") or {}).get("scenes") or {}
+    tk = ctx.get("tokens") or {}
+    out: dict[str, str] = {}
+    for name, sc in list(scenes.items())[:3]:
+        if not re.fullmatch(r"[a-z]{1,12}", name):
+            continue
+        dest = work / "scenes" / f"{name}.png"
+        try:
+            RD.scene_png(sc, {k: tk.get(k) for k in ("primary", "accent", "ink", "surface", "bg", "muted", "tint")}, dest)
+            out[name] = str(dest)
+        except Exception as e:                      # noqa: BLE001  no Chromium / WebGL: the screen shows an art tile
+            log.info("scene %s not rendered: %s", name, e)
+    return out
 
 
 def _design_html(s: dict[str, Any]) -> str:
@@ -204,7 +236,7 @@ def write_screen(r: AppProject, sid: str, ctx: dict[str, Any], sp: dict[str, Any
               f"ACTIONS (label -> screen): {'; '.join(a['label'] + ' -> ' + a['go'] for a in me['actions'])}\n"
               f"COMPONENTS IN THE DESIGN: {', '.join(me['components'])}\n"
               f"LOOK: card {ctx['tokens'].get('card')}, button {ctx['tokens'].get('button')}, header {ctx['tokens'].get('header')} "
-              f"(the kit draws these by itself).\n{extra}\nAPPROVED WEB DESIGN OF THIS SCREEN (HTML; match it):\n{_design_html(scr)}")
+              f"(the kit draws these by itself).\n{_dna_lines(ctx, sid, sp)}{extra}\nAPPROVED WEB DESIGN OF THIS SCREEN (HTML; match it):\n{_design_html(scr)}")
     src = _ask(system, prompt)
     probs = G.scan_screen(src, sid, ids)
     if probs:
@@ -237,6 +269,7 @@ def _run(r: AppProject) -> None:
     sp = SP.build(r, ctx["plan"], ctx["tokens"], ctx["facts"], screens, work, version_code=r.version * 100 + (n % 100),
                   base_url=base, app_key=_app_key(r))
     sp["preview_key"] = key
+    sp["scenes"] = _scenes(r, ctx, work)
     ids = [s["id"] for s in sp["screens"]]
     cache = _cache(r)
     redo = set(st.get("redo") or [])
@@ -257,6 +290,9 @@ def _run(r: AppProject) -> None:
         try:
             src, probs = write_screen(r, sid, ctx, sp, screens.get(sid) or {})
         except Exception as e:                       # noqa: BLE001
+            from ...site import ai as SA
+            if isinstance(e, SA.AiError):            # v0.140 Opus 5.5 unreachable: stop, never hand her a model-less app
+                raise AndroidError(str(e)) from e
             log.info("screen %s not written: %s", sid, e)
             src, probs = "", ["not written"]
         if probs:
@@ -317,7 +353,10 @@ def _run(r: AppProject) -> None:
             _states(r.id, {sid: "fixing"}, f"Theek kar raha hoon: {sid}")
             try:
                 src = _ask(PR.fix_system(sid, ids), "COMPILE ERRORS:\n" + ER.for_model(el, kt[sid]) + "\n\nFILE:\n```kotlin\n" + kt[sid] + "```")
-            except Exception:                        # noqa: BLE001
+            except Exception as e:                   # noqa: BLE001
+                from ...site import ai as SA
+                if isinstance(e, SA.AiError):        # v0.140 Opus 5.5 unreachable: stop instead of a code-made screen
+                    raise AndroidError(str(e)) from e
                 src = ""
             if src and not G.scan_screen(src, sid, ids):
                 kt[sid] = src
@@ -371,6 +410,11 @@ def _note(r: AppProject, text: str) -> None:
 
 
 # ---------------------------------------------------------------- views / files
+def _model_label() -> str:
+    from ...site import ai as SA
+    return SA.app_model_label()
+
+
 def view(r: AppProject) -> dict[str, Any]:
     st = state(r)
     plan = _j(r.plan, {})
@@ -390,7 +434,7 @@ def view(r: AppProject) -> dict[str, Any]:
             "zip_url": (f"{base}/api/app-zip/{st['zip_token']}/{st['zip']}" if st.get("zip_token") and st.get("zip")
                         and st.get("zip_expires", "") > now().isoformat() else ""),
             "apk": {k: apk.get(k) for k in ("file", "sha256", "size", "package", "version_code", "version_name", "at")} if apk else {},
-            "apk_url": link, "approved": bool(r.approved_hash), "say": _say(r, st, link)}
+            "apk_url": link, "approved": bool(r.approved_hash), "say": _say(r, st, link), "model": _model_label()}
 
 
 def _say(r: AppProject, st: dict[str, Any], link: str) -> str:

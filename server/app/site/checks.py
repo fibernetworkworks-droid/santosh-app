@@ -48,7 +48,8 @@ def _vendor(name: str) -> Path | None:
 
 def _launch(p):
     kw: dict[str, Any] = {"args": ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--font-render-hinting=none",
-                                   "--force-color-profile=srgb"]}
+                                   "--force-color-profile=srgb",
+                                   "--enable-unsafe-swiftshader"]}   # v0.140 software WebGL for 3D scenes (local, network-blocked pages only)
     if os.environ.get("HOOLA_CHROMIUM"):
         kw["executable_path"] = os.environ["HOOLA_CHROMIUM"]
     return p.chromium.launch(**kw)

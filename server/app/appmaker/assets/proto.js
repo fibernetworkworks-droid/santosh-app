@@ -215,6 +215,11 @@
     if (!window.THREE) return;
     each('.obj3d', function (o) {
       if (o._hk3d) { o._hk3d.render(); return; }
+      var sn = o.getAttribute('data-scene'), sc = sn && window.HOOLA_SCENES && window.HOOLA_SCENES[sn];
+      if (sc && window.HoolaScene) {       // v0.140: the app's own 3D scene from its design DNA
+        var built = window.HoolaScene.build(o, sc, { still: reduce, t: 1.2 });
+        if (built) { o._hk3d = built; return; }
+      }
       var T = window.THREE, w = o.clientWidth || 300, h = o.clientHeight || 300;
       var r;
       try { r = new T.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); } catch (e) { return; }

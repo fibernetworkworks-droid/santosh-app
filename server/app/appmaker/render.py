@@ -249,6 +249,47 @@ def page_shot(html_file: Path, dest: Path, width: int = 1280, max_height: int = 
             b.close()
 
 
+def scene_png(scene: dict[str, Any], colours: dict[str, str], dest: Path, size: int = 720) -> None:
+    """v0.140 one still picture of an app's 3D scene (transparent PNG) for the native Android app, drawn by the same
+    scene runtime as the prototype. Network blocked; only the scene runtime + data are served."""
+    if available():
+        raise RenderError("Playwright / Chromium nahi hai")
+    import json as _json
+    import shutil as _sh
+    import tempfile
+    from playwright.sync_api import sync_playwright
+    from . import artdirect as AD
+    assets = Path(__file__).with_name("assets")
+    var = {"primary": "--c-primary", "accent": "--c-accent", "ink": "--c-ink", "surface": "--c-surface", "bg": "--c-bg",
+           "muted": "--c-muted", "tint": "--c-tint"}
+    style = ";".join(f"{var[k]}:{v}" for k, v in colours.items() if k in var and re.fullmatch(r"#[0-9a-fA-F]{6}", str(v or "")))
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td)
+        _sh.copy(assets / "three.min.js", d / "three.min.js")
+        _sh.copy(assets / "scene3d.js", d / "scene3d.js")
+        (d / "scene.js").write_text("window.__s = " + _json.dumps(AD.clean_scene(scene) or {}) + ";\n"
+                                    "window.__ok = !!HoolaScene.build(document.getElementById('s'), window.__s, {still: true, t: 1.2});\n")
+        (d / "index.html").write_text(f'<!doctype html><html><body style="margin:0;background:transparent;{style}">'
+                                      f'<div id="s" style="width:{size // 2}px;height:{size // 2}px"></div><script src="three.min.js">'
+                                      f'</script><script src="scene3d.js"></script><script src="scene.js"></script></body></html>')
+        counter: dict[str, int] = {}
+        with sync_playwright() as p:
+            b = SC._launch(p)
+            try:
+                ctx = b.new_context(viewport={"width": size // 2, "height": size // 2}, device_scale_factor=2)
+                ctx.route("**/*", SC._serve(d, counter))
+                page = ctx.new_page()
+                page.goto(f"{ORIGIN}/index.html", wait_until="load")
+                page.wait_for_timeout(400)
+                if not page.evaluate("window.__ok === true"):
+                    raise RenderError("3D scene nahi bani (WebGL)")
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(page.locator("#s").screenshot(type="png", omit_background=True))
+                ctx.close()
+            finally:
+                b.close()
+
+
 def graph_problems(order: list[str], tabs: list[str], start: str, results: dict[str, Any], known: set[str]) -> dict[str, list[dict]]:
     """Links to screens that don't exist (blocking) and screens nobody can reach (warning)."""
     out: dict[str, list[dict]] = {}

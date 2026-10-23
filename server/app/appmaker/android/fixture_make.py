@@ -34,6 +34,17 @@ def main() -> None:
         s["actions"] = [{"label": "Open cart", "go": "cart"}] if s["id"] != "cart" else [{"label": "Back to shop", "go": "home"}]
         if s["id"] in ("orders", "product"):
             s["lists"] = ["orders" if s["id"] == "orders" else "products"]
+    scene = HERE / "scenes" / "hero.png"           # v0.140 a still of a 3D scene, so CI compiles + opens Scene3D
+    if not scene.exists():
+        from .. import render as RD
+        RD.scene_png({"camera": {"distance": 6.5, "height": 1.2}, "light": "studio",
+                      "objects": [{"shape": "lathe", "size": [1.3, 0.9, 1], "material": "satin", "colour": "accent",
+                                   "args": {"points": [[0.2, -1], [1, -0.8], [1.15, 0.7], [1.2, 0.9]]}},
+                                  {"shape": "sphere", "size": [0.42, 1, 1], "pos": [-0.4, 0.95, 0.2], "material": "glossy", "colour": "primary"},
+                                  {"shape": "sphere", "size": [0.36, 1, 1], "pos": [0.45, 0.9, -0.1], "material": "glossy", "colour": "#e8553d"},
+                                  {"shape": "capsule", "size": [0.16, 0.7, 1], "pos": [0.1, 1.15, 0.4], "rot": [0, 0, 35], "material": "matte",
+                                   "colour": "#f0b429"}]},
+                     {"primary": tk["primary"], "accent": tk["accent"]}, scene, size=480)
     fonts_dir = HERE / "fonts"
     fonts = S.fonts_ttf(S.with_tints(tk), fonts_dir)
     rel = {slot: {w: str(Path(p).relative_to(HERE.parents[4])) for w, p in d.items()} for slot, d in fonts.items()}
@@ -45,7 +56,8 @@ def main() -> None:
             "fab": S.fab_of(tk, "shop", plan, plan["labels"]) or {"label": "Cart", "icon": "cart", "go": "cart",
                                                                    "actions": [{"label": "Cart", "icon": "cart", "go": "cart"},
                                                                                {"label": "Orders", "icon": "receipt", "go": "orders"}]},
-            "icons": S.icon_paths(), "app_icon": "cart", "fonts": rel, "seed": sd, "screens_kt": kt}
+            "icons": S.icon_paths(), "app_icon": "cart", "fonts": rel, "seed": sd, "screens_kt": kt,
+            "scenes": {"hero": str((HERE / "scenes" / "hero.png").relative_to(HERE.parents[4]))}}
     (HERE / "spec.json").write_text(json.dumps(spec, ensure_ascii=False, indent=1))
     print("fixture", len(screens), "screens,", len(kt), "hand-written, fonts", list(rel))
 
