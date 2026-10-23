@@ -359,6 +359,30 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
                "dpo_request": "Nayi data maang"}
     if kind in _kanoon:
         return (f"{name}: {_kanoon[kind]}", _say)
+    # v0.152 Mehmaan suite: cards / drafts push only while they wait for her
+    _mehmaan_wait = {"frontoffice_card": ("card", "waiting", "Hotel: aapki haan chahiye"),
+                     "frontoffice_message": ("message", "draft", "Mehmaan ke liye message draft"),
+                     "eventplan_booking": ("booking", "waiting", "Vendor booking: aapki haan chahiye"),
+                     "eventplan_doc": ("doc", "waiting", "Client ko quotation / invoice: aapki haan chahiye"),
+                     "eventplan_message": ("message", "waiting", "Invite / message: aapki haan chahiye"),
+                     "eventplan_spend": ("spend", "waiting", "Event ka kharcha: aapki haan chahiye"),
+                     "shaadi_card": ("card", "waiting", "Shaadi: aapki haan chahiye"),
+                     "tourguide_card": ("card", "waiting", "Tour: aapki haan chahiye"),
+                     "homestay_card": ("card", "waiting", "Homestay: aapke tap ka card"),
+                     "banquet_card": ("card", "waiting", "Banquet: aapki haan chahiye")}
+    if kind in _mehmaan_wait:
+        key, st, title = _mehmaan_wait[kind]
+        if (p.get(key) or {}).get("status") != st:
+            return None
+        return (f"{name}: {title}", _say)
+    if kind == "frontoffice_alert" and p.get("kind") not in ("overbook", "formc", "no_show", "hold_released"):
+        return None
+    _mehmaan = {"frontoffice_alert": "Front desk", "frontoffice_day": "Aaj ka front desk", "eventplan_alert": "Event",
+                "eventplan_day": "Aaj ka event note", "shaadi_alert": "Shaadi", "shaadi_day": "Aaj ka shaadi note",
+                "tourguide_alert": "Tour", "tourguide_day": "Aaj ke tour", "homestay_alert": "Homestay", "homestay_day": "Aaj ka homestay",
+                "banquet_alert": "Banquet", "banquet_day": "Aaj ka banquet note"}
+    if kind in _mehmaan:
+        return (f"{name}: {_mehmaan[kind]}", _say)
     if kind == "site_board":
         if not p.get("push"):
             return None
@@ -544,7 +568,9 @@ PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "photo_made", 
               # v0.144 Makaan suite
               "propagent_card", "propagent_alert", "propagent_day", "rentdesk_approval", "rentdesk_message", "rentdesk_alert", "rentdesk_day", "sitesup_indent", "sitesup_stop", "sitesup_report", "sitesup_alert", "sitesup_day", "interior_quote", "interior_order", "interior_change", "interior_payment", "interior_alert", "interior_day", "archassist_transmittal", "archassist_submission", "archassist_invoice", "archassist_alert", "archassist_day", "society_card", "society_complaint", "society_alert", "society_day",
               # v0.150 Kanoon suite
-              "vakil_card", "vakil_alert", "vakil_day", "legalres_share", "legalres_memo", "compliance_filing", "compliance_cert", "compliance_alert", "compliance_day", "contracts_card", "contracts_alert", "contracts_day", "cosec_filing", "cosec_notice", "cosec_minutes", "cosec_alert", "cosec_day", "notary_print", "notary_alert", "notary_day", "pidesk_share", "pidesk_alert", "dpo_card", "dpo_breach", "dpo_alert", "dpo_day", "dpo_request"}
+              "vakil_card", "vakil_alert", "vakil_day", "legalres_share", "legalres_memo", "compliance_filing", "compliance_cert", "compliance_alert", "compliance_day", "contracts_card", "contracts_alert", "contracts_day", "cosec_filing", "cosec_notice", "cosec_minutes", "cosec_alert", "cosec_day", "notary_print", "notary_alert", "notary_day", "pidesk_share", "pidesk_alert", "dpo_card", "dpo_breach", "dpo_alert", "dpo_day", "dpo_request",
+              # v0.152 Mehmaan suite
+              "frontoffice_card", "frontoffice_message", "frontoffice_alert", "frontoffice_day", "eventplan_booking", "eventplan_doc", "eventplan_message", "eventplan_spend", "eventplan_alert", "eventplan_day", "shaadi_card", "shaadi_alert", "shaadi_day", "tourguide_card", "tourguide_alert", "tourguide_day", "homestay_card", "homestay_alert", "homestay_day", "banquet_card", "banquet_alert", "banquet_day"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 

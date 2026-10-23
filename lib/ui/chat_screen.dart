@@ -59,6 +59,12 @@ import 'cosec_screen.dart';
 import 'notary_screen.dart';
 import 'pidesk_screen.dart';
 import 'dpo_screen.dart';
+import 'frontoffice_screen.dart';
+import 'eventplan_screen.dart';
+import 'shaadi_screen.dart';
+import 'tourguide_screen.dart';
+import 'homestay_screen.dart';
+import 'banquet_screen.dart';
 import 'site_hosting.dart';
 import 'site_screen.dart';
 import 'app_android.dart';
@@ -1022,6 +1028,58 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return DpoAlertCard(app: app, data: it.data);
     case 'dpo_day':
       return DpoDayCard(app: app, data: it.data);
+    // v0.152 Mehmaan suite
+    case 'frontoffice_card':
+      return FrontofficeCardCard(key: ValueKey('mfc${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'frontoffice_message':
+      return FrontofficeMessageCard(key: ValueKey('mfm${(it.data['message'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'frontoffice_booking':
+      return FrontofficeBookingCard(key: ValueKey('mfb${(it.data['booking'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'frontoffice_alert':
+      return FrontofficeAlertCard(app: app, data: it.data);
+    case 'frontoffice_day':
+      return FrontofficeDayCard(app: app, data: it.data);
+    case 'eventplan_booking':
+      return EventplanBookingCard(key: ValueKey('meb${(it.data['booking'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'eventplan_doc':
+      return EventplanDocCard(key: ValueKey('med${(it.data['doc'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'eventplan_message':
+      return EventplanMessageCard(key: ValueKey('mem${(it.data['message'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'eventplan_spend':
+      return EventplanSpendCard(key: ValueKey('mes${(it.data['spend'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'eventplan_alert':
+    case 'eventplan_day':
+      return EventplanNoteCard(app: app, data: it.data);
+    case 'shaadi_card':
+      return ShaadiCardCard(key: ValueKey('msc${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'shaadi_alert':
+    case 'shaadi_day':
+      return ShaadiNoteCard(app: app, data: it.data);
+    case 'tourguide_card':
+      return TourguideCardCard(key: ValueKey('mtc${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'tourguide_booking':
+      return TourguideBookingCard(key: ValueKey('mtb${(it.data['booking'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'tourguide_plan':
+      return TourguidePlanCard(app: app, data: it.data);
+    case 'tourguide_script':
+      return TourguideScriptCard(app: app, data: it.data);
+    case 'tourguide_alert':
+      return TourguideAlertCard(app: app, data: it.data);
+    case 'tourguide_day':
+      return TourguideDayCard(app: app, data: it.data);
+    case 'homestay_card':
+      return HomestayCardCard(key: ValueKey('mhc${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'homestay_booking':
+      return HomestayBookingCard(key: ValueKey('mhb${(it.data['booking'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'homestay_alert':
+      return HomestayAlertCard(app: app, data: it.data);
+    case 'homestay_day':
+      return HomestayDayCard(app: app, data: it.data);
+    case 'banquet_card':
+      return BanquetCardCard(key: ValueKey('mbc${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'banquet_alert':
+    case 'banquet_day':
+      return BanquetNoteCard(app: app, data: it.data);
     case 'brand_design':
       return BrandDesignCard(v: it.data, app: app);
     case 'site_board':

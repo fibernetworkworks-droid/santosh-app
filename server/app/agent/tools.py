@@ -838,3 +838,18 @@ for _t, _l, _h in ((VAKIL_TOOLS, VAKIL_LABELS, VAKIL_HANDLERS), (LEGALRES_TOOLS,
     TOOLS.extend(t for t in _t if t["name"] not in _seen)
     TOOL_LABELS.update(_l)
     HANDLERS.update(_h)
+
+# v0.152 Mehmaan suite: 6 Hospitality, events & tourism Sahayaks (hotel front office, event planner, wedding planner, tour
+# guide, homestay host, banquet sales). Every card / message is decided or sent only by her app tap.
+from .frontoffice_tools import FRONTOFFICE_HANDLERS, FRONTOFFICE_LABELS, FRONTOFFICE_TOOLS  # noqa: E402
+from .eventplan_tools import EVENTPLAN_HANDLERS, EVENTPLAN_LABELS, EVENTPLAN_TOOLS  # noqa: E402
+from .shaadi_tools import SHAADI_HANDLERS, SHAADI_LABELS, SHAADI_TOOLS  # noqa: E402
+from .tourguide_tools import TOURGUIDE_HANDLERS, TOURGUIDE_LABELS, TOURGUIDE_TOOLS  # noqa: E402
+from .homestay_tools import HOMESTAY_HANDLERS, HOMESTAY_LABELS, HOMESTAY_TOOLS  # noqa: E402
+from .banquet_tools import BANQUET_HANDLERS, BANQUET_LABELS, BANQUET_TOOLS  # noqa: E402
+
+for _t, _l, _h in ((FRONTOFFICE_TOOLS, FRONTOFFICE_LABELS, FRONTOFFICE_HANDLERS), (EVENTPLAN_TOOLS, EVENTPLAN_LABELS, EVENTPLAN_HANDLERS), (SHAADI_TOOLS, SHAADI_LABELS, SHAADI_HANDLERS), (TOURGUIDE_TOOLS, TOURGUIDE_LABELS, TOURGUIDE_HANDLERS), (HOMESTAY_TOOLS, HOMESTAY_LABELS, HOMESTAY_HANDLERS), (BANQUET_TOOLS, BANQUET_LABELS, BANQUET_HANDLERS)):
+    _seen = {t["name"] for t in TOOLS}
+    TOOLS.extend(t for t in _t if t["name"] not in _seen)
+    TOOL_LABELS.update(_l)
+    HANDLERS.update(_h)

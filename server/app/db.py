@@ -728,6 +728,13 @@ def init_db(url: str | None = None):
     from .notary import models as _notary  # noqa: F401
     from .pidesk import models as _pidesk  # noqa: F401
     from .dpo import models as _dpo  # noqa: F401
+    # v0.152 Mehmaan suite
+    from .frontoffice import models as _frontoffice  # noqa: F401
+    from .eventplan import models as _eventplan  # noqa: F401
+    from .shaadi import models as _shaadi  # noqa: F401
+    from .tourguide import models as _tourguide  # noqa: F401
+    from .homestay import models as _homestay  # noqa: F401
+    from .banquet import models as _banquet  # noqa: F401
     from .office import service as _office  # noqa: F401
     from .lekhak import service as _lekhak  # noqa: F401
     from .agent import pakka as _pakka  # noqa: F401

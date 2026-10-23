@@ -316,6 +316,8 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _gharCards = {};  // v0.144 one card per id where the suite updates a card in place
   int kanoonTick = 0;                          // v0.150 Kanoon suite screens refresh on their events
   final Map<String, FeedItem> _kanoonCards = {}; // v0.150 one card per id where the suite updates a card in place
+  int mehmaanTick = 0;                         // v0.152 Mehmaan suite screens refresh on their events
+  final Map<String, FeedItem> _mehmaanCards = {}; // v0.152 one card per id where the suite updates a card in place
   int adsTick = 0;                             // v0.108 bumps on ads events (the Ads screen refreshes)
   final Map<String, FeedItem> _adsPlans = {};   // v0.108 one card per budget plan, changes updated in place
   int kalamTick = 0;                           // v0.101 bumps on content-writer events (the Kalam screen refreshes)
@@ -1515,6 +1517,46 @@ class Santosh extends ChangeNotifier {
         }
         kanoonTick++;
         break;
+      case 'frontoffice_card':
+      case 'frontoffice_message':
+      case 'frontoffice_booking':
+      case 'frontoffice_alert':
+      case 'frontoffice_day':
+      case 'eventplan_booking':
+      case 'eventplan_doc':
+      case 'eventplan_message':
+      case 'eventplan_spend':
+      case 'eventplan_alert':
+      case 'eventplan_day':
+      case 'shaadi_card':
+      case 'shaadi_alert':
+      case 'shaadi_day':
+      case 'tourguide_card':
+      case 'tourguide_booking':
+      case 'tourguide_plan':
+      case 'tourguide_script':
+      case 'tourguide_alert':
+      case 'tourguide_day':
+      case 'homestay_card':
+      case 'homestay_booking':
+      case 'homestay_alert':
+      case 'homestay_day':
+      case 'banquet_card':
+      case 'banquet_alert':
+      case 'banquet_day':
+        // v0.152 Mehmaan suite: cards keyed by their id are updated in place
+        final mp = Map<String, dynamic>.from(p);
+        final mk = mehmaanCardKey(ev.kind, mp);
+        final mOld = mk.isEmpty ? null : _mehmaanCards[mk];
+        if (mOld != null) {
+          mOld.data = {...mOld.data, ...mp};
+        } else {
+          final it = FeedItem(ev.kind, mp);
+          if (mk.isNotEmpty) _mehmaanCards[mk] = it;
+          feed.add(it);
+        }
+        mehmaanTick++;
+        break;
       case 'propagent_listing':
         gharTick++;                              // v0.144 refresh only (no card)
         break;
@@ -2200,4 +2242,19 @@ String kanoonCardKey(String kind, Map<String, dynamic> p) {
     _ => ('', ''),
   };
   return group.isEmpty || id.isEmpty || id == 'null' ? '' : '$group:$id';
+}
+
+
+/// v0.152 Mehmaan suite: which cards are one-per-id (updated in place). '' = always a new card.
+String mehmaanCardKey(String kind, Map<String, dynamic> p) {
+  String sub(String k) => p[k] is Map ? '${(p[k] as Map)['id'] ?? ''}' : '';
+  final id = switch (kind) {
+    'frontoffice_card' || 'shaadi_card' || 'tourguide_card' || 'homestay_card' || 'banquet_card' => sub('card'),
+    'frontoffice_message' || 'eventplan_message' => sub('message'),
+    'frontoffice_booking' || 'eventplan_booking' || 'tourguide_booking' || 'homestay_booking' => sub('booking'),
+    'eventplan_doc' => sub('doc'),
+    'eventplan_spend' => sub('spend'),
+    _ => '',
+  };
+  return id.isEmpty || id == 'null' ? '' : '$kind:$id';
 }

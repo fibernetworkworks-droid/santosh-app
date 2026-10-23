@@ -52,6 +52,12 @@ import 'cosec_screen.dart';
 import 'notary_screen.dart';
 import 'pidesk_screen.dart';
 import 'dpo_screen.dart';
+import 'frontoffice_screen.dart';
+import 'eventplan_screen.dart';
+import 'shaadi_screen.dart';
+import 'tourguide_screen.dart';
+import 'homestay_screen.dart';
+import 'banquet_screen.dart';
 import 'site_screen.dart';
 import 'app_design_screen.dart';
 import 'kalam_screen.dart';
@@ -704,6 +710,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('DPDP: data register, privacy notice, consent, maang 90 din, breach 72 ghante'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DpoScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.hotel_rounded, color: C.accent),
+              title: Text('${app.aName} · Front office', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Hotel booking, check-in / out, kamre, bill, Form C'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FrontofficeScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.celebration_rounded, color: C.accent),
+              title: Text('${app.aName} · Event planner', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Event file, vendor quotes, budget, booking, mehmaan + RSVP, run of show, report'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EventplanScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.favorite_rounded, color: C.accent),
+              title: Text('${app.aName} · Wedding planner', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Functions, muhurat (panditji ka), mehmaan + RSVP, rooms, vendors, budget, shagun'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShaadiScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.tour_rounded, color: C.accent),
+              title: Text('${app.aName} · Tour guide', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Tour, booking, group file, din ka plan, safety, ginti, licence; pakki booking aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TourguideScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.cottage_rounded, color: C.accent),
+              title: Text('${app.aName} · Homestay host', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Kamre, booking calendar, OTA mail, mehmaan, Form C, safai, hisaab'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HomestayScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.celebration_rounded, color: C.accent),
+              title: Text('${app.aName} · Banquet sales', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Enquiry, khaali tareekh, hold, menu, quote, advance, BEO, bill'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BanquetScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
