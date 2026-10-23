@@ -86,6 +86,10 @@ def test_persona_and_tool_know_about_side_talk(env, monkeypatch):
 def test_she_talks_to_someone_else_then_calls_hoola_back(env, monkeypatch):
     """'Ek minute, main kisi se baat kar rahi hoon' -> hold: the side talk is not shown, not saved, no reply is played,
     no tool runs. 'Santosh, ...' -> back, and that request is answered and saved."""
+    # these notes travel as client_content (older Live models); Gemini 3.x queueing: tests/test_v150_voice_heal.py
+    monkeypatch.setenv("VOICE_QUIET_NOTES", "client_content")
+    from app.config import get_settings as _gs
+    _gs.cache_clear()
     from app import main, voice
     _gemini_env(monkeypatch)
     held = [

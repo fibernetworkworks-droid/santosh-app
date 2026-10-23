@@ -133,6 +133,10 @@ def test_live_config_uses_her_wait_vocabulary_and_block(env, monkeypatch):
 
 
 def test_call_moves_her_to_chat_after_two_misses_and_learns_her_correction(env, monkeypatch):
+    # these notes travel as client_content (older Live models); Gemini 3.x queueing: tests/test_v150_voice_heal.py
+    monkeypatch.setenv("VOICE_QUIET_NOTES", "client_content")
+    from app.config import get_settings as _gs
+    _gs.cache_clear()
     from app import main, voice, voicestyle
     _gemini_env(monkeypatch)
     turns = [[

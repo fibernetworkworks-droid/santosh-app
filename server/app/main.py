@@ -90,7 +90,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.149.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.150.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -989,6 +989,13 @@ async def pc_send(file: UploadFile = File(...), tenant: str = Depends(current_te
         return await hub.call(tenant, "save_file", {"file_id": row.id, "name": row.name, "url": f"/api/pc/fetch/{row.id}"})
     except Exception as e:
         _pc_err(e)
+
+
+@app.get("/api/voice/check", dependencies=[Depends(require_key)])
+async def voice_check(tenant: str = Depends(current_tenant)):
+    """v0.150 Connect to Gemini Live the way her calls do and say which part it refuses (and heal it)."""
+    from . import voicecheck
+    return await voicecheck.run(tenant)
 
 
 @app.get("/api/voice/stats", dependencies=[Depends(require_key)])

@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
 import json
 import logging
 import re
@@ -339,6 +340,104 @@ UNSUPPORTED: set[str] = set()
 # v0.108 how often a dropped connection came back as the SAME Gemini session vs a fresh one (Hoola Jaanch reads it)
 RESUME = {"resumed": 0, "fresh_after_drop": 0, "fresh_rebriefs": 0, "resume_failed": 0}
 
+# ---- v0.150 a call Gemini refuses must heal itself (the "Connection thoda slow hai, sambhal raha hoon" loop) ----
+# Gemini 3.x Live takes send_client_content ONLY to seed history before the talk starts; sent mid-call it closes the
+# session with 1007 "Request contains an invalid argument". Hoola sent quiet notes that way (language drift, speaker
+# change, hold), so a call dropped and reconnected again and again. On those models notes now wait for the next tool
+# answer / text (or go as live text while Hoola is on hold, where nothing it says is played).
+QUIET = {"client_content": None, "queued": 0, "live": 0, "sent": 0, "learned_off": 0}
+
+
+def client_content_ok() -> bool:
+    mode = (get_settings().voice_quiet_notes or "auto").strip().lower()
+    if mode in ("client_content", "on"):
+        return True
+    if mode in ("queue", "off"):
+        return False
+    if QUIET["client_content"] is not None:
+        return bool(QUIET["client_content"])
+    return not re.match(r"gemini-([3-9]|\d\d)", (get_settings().gemini_live_model or "").strip().lower())
+
+
+# A setup Gemini refuses without naming a field ("1007 None. Request contains an invalid argument."): connect again
+# with one extra less each time; the step that works is remembered (per model + tool list, 7 days) for later calls.
+SETUP_STEPS = ("mcp", "vocab", "langcodes", "compression", "core_tools", "no_tools")
+SETUP_SAY = {"mcp": "aapke MCP tools", "vocab": "aapke shabdon ki list", "langcodes": "bhasha ka hint",
+             "compression": "lambi call ki yaad", "core_tools": "kai tools", "no_tools": "saare tools"}
+CORE_TOOLS = {"create_reminder", "list_reminders", "set_phone_alarm", "set_phone_timer", "remember", "get_weather",
+              "google_search", "open_on_phone", "music_control", "youtube_play", "calendar_agenda", "kaam_status",
+              "list_add", "list_show"}
+SETUP = {"step": 0, "key": "", "at": 0.0, "refusals": 0, "healed": 0, "loaded": False}
+SETUP_KEEP_S = 7 * 86400
+
+
+def setup_refused(err: BaseException) -> bool:
+    """Gemini closed the session as a bad request, without saying which field (so unsupported_field can't help)."""
+    t = str(err).lower()
+    return ("1007" in t or "invalid argument" in t or "invalid_argument" in t) and unsupported_field(err) is None
+
+
+def _setup_file() -> Path:
+    p = Path("data") / "voice_setup.json"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _setup_key() -> str:
+    names = ",".join(sorted(t["name"] for t in _tool_specs()))
+    return f"{get_settings().gemini_live_model}|{hashlib.sha1(names.encode()).hexdigest()[:12]}"
+
+
+def setup_step() -> int:
+    """How many extras later calls start without (0 = everything), as learned from Gemini's refusals."""
+    if not get_settings().voice_safe_setup:
+        return 0
+    if not SETUP["loaded"]:
+        SETUP["loaded"] = True
+        with contextlib.suppress(Exception):
+            d = json.loads(_setup_file().read_text())
+            SETUP.update(step=int(d.get("step", 0)), key=str(d.get("key", "")), at=float(d.get("at", 0)))
+    if SETUP["step"] and (SETUP["key"] != _setup_key() or time.time() - SETUP["at"] > SETUP_KEEP_S):
+        SETUP.update(step=0, key="", at=0.0)     # new code / new tools / a week later: try the full call again
+    return min(max(SETUP["step"], 0), len(SETUP_STEPS))
+
+
+def remember_setup(step: int) -> None:
+    if step == SETUP["step"]:
+        return
+    SETUP.update(step=step, key=_setup_key(), at=time.time())
+    SETUP["healed"] += 1
+    with contextlib.suppress(Exception):
+        _setup_file().write_text(json.dumps({"step": step, "key": SETUP["key"], "at": SETUP["at"]}))
+    log.warning("voice: calls now start without %s (Gemini refused the full setup)",
+                ", ".join(SETUP_STEPS[:step]) or "nothing")
+
+
+def setup_view() -> dict:
+    st = setup_step()
+    return {"step": st, "without": list(SETUP_STEPS[:st]), "refusals": SETUP["refusals"], "healed": SETUP["healed"],
+            "quiet_notes": "client_content" if client_content_ok() else "queued", **{f"notes_{k}": QUIET[k] for k in ("queued", "live", "sent", "learned_off")}}
+
+
+_VOCAB_OK = re.compile(r"^[\w\u0900-\u0DFF][\w\u0900-\u0DFF .'&-]*$")
+
+
+def clean_vocab(words) -> list[str] | None:
+    """custom_vocabulary Gemini will accept: short plain words / names only (no emails, symbols, emoji, duplicates)."""
+    out, seen, total = [], set(), 0
+    for w in words or []:
+        w = re.sub(r"\s+", " ", str(w or "")).strip(" .-'&")
+        if not (2 <= len(w) <= 40) or not _VOCAB_OK.match(w) or w.lower() in seen:
+            continue
+        if total + len(w) > 1500:
+            break
+        seen.add(w.lower())
+        out.append(w)
+        total += len(w)
+        if len(out) >= 60:
+            break
+    return out or None
+
 
 def _snake(name: str) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
@@ -407,7 +506,7 @@ def _end_sensitivity(value: str):
 
 
 def live_config(voice: str, lang: str, context: str, handle: str | None, name: str = "Santosh", gender: str = "m",
-                extra_tools: list[dict] | None = None, langst=None, style: dict | None = None):
+                extra_tools: list[dict] | None = None, langst=None, style: dict | None = None, safe: int = 0):
     from google.genai import types
     from . import voicelang
     st = get_settings()
@@ -418,11 +517,18 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
     # v0.119 how SHE speaks (style hint, words misheard before, her names) sits just before the closing lock
     style = style or {}
     prompt = voicelang.lock_block(langst, "top") + prompt + (style.get("block") or "") + voicelang.lock_block(langst, "end")
-    tr = types.AudioTranscriptionConfig(language_codes=voicelang.transcription_codes(langst),
-                                        custom_vocabulary=(style.get("vocab") or [])[:100] or None)
+    without = set(SETUP_STEPS[:max(0, min(safe, len(SETUP_STEPS)))])   # v0.150 extras left out after Gemini refused them
+    tr = types.AudioTranscriptionConfig(
+        language_codes=None if "langcodes" in without else voicelang.transcription_codes(langst),
+        custom_vocabulary=None if "vocab" in without else clean_vocab(style.get("vocab")))
     silence = style.get("silence_ms") or st.voice_silence_ms
+    specs = _tool_specs() + ([] if "mcp" in without else list(extra_tools or []))
+    if "no_tools" in without:
+        specs = [t for t in specs if t["name"] == "santosh_kaam"]
+    elif "core_tools" in without:
+        specs = [t for t in specs if t["name"] in CORE_TOOLS or t["name"] in ("santosh_kaam", "side_talk")]
     decls = [types.FunctionDeclaration(name=t["name"], description=t["description"], parameters_json_schema=t["input_schema"])
-             for t in _tool_specs() + list(extra_tools or [])]
+             for t in specs]
     cfg = types.LiveConnectConfig(
         response_modalities=["AUDIO"],
         speech_config=types.SpeechConfig(
@@ -442,7 +548,8 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
             )),
         # no affective dialog / proactivity: gemini-3.8-live removed the first and always has the second on
         session_resumption=types.SessionResumptionConfig(handle=handle),
-        context_window_compression=types.ContextWindowCompressionConfig(sliding_window=types.SlidingWindow()),
+        context_window_compression=None if "compression" in without else
+        types.ContextWindowCompressionConfig(sliding_window=types.SlidingWindow()),
     )
     for f in UNSUPPORTED:
         if f == "sliding_window":
@@ -580,6 +687,8 @@ def stats_summary(tenant: str) -> dict:
         "dropped_replies": sum(c.get("dropped_replies", 0) for c in calls),
         "hold_refused_tools": sum(c.get("hold_refused_tools", 0) for c in calls),
         "hold_minutes": round(sum(c.get("hold_s", 0) for c in calls) / 60, 1),
+        "setup": setup_view(),     # v0.150 extras Gemini refused + how quiet notes travel
+        "setup_refusals": sum(c.get("setup_refusals", 0) for c in calls),
         "recent": [{k: c[k] for k in ("call_id", "ended", "turns", "latency_ms", "interruptions", "tools", "silent_tools")}
                    for c in calls[-10:]],
     }
@@ -729,6 +838,11 @@ class Call:
         self._mcp_snap: list = []
         self._mcp_block = ""
         self._mcp_off = False                  # Gemini refused a server's tool schema: list them, use bazar_run
+        self._safe = setup_step()              # v0.150 extras this call starts without (Gemini refused them before)
+        self._safe_worked = False
+        self._handle_dropped = False
+        self._quiet_pending: list[str] = []    # quiet notes waiting for the next tool answer / text (Gemini 3.x)
+        self._cc_sent_at = 0.0                 # last mid-call client_content note (a 1007 right after = not allowed)
         self._session = None
         self._last_user_text_at = 0.0          # last time Gemini heard words from the user
         self._last_resume = 0.0
@@ -922,6 +1036,9 @@ class Call:
                 self.audio_in_bytes = getattr(self, "audio_in_bytes", 0) + len(data)
                 await session.send_realtime_input(audio=types.Blob(data=data, mime_type="audio/pcm;rate=16000"))
             else:
+                if self._quiet_pending:
+                    data = "\n".join(self._quiet_pending) + "\n" + str(data)
+                    self._quiet_pending.clear()
                 await session.send_realtime_input(text=data)
 
     async def downlink(self, session) -> str:
@@ -1005,6 +1122,10 @@ class Call:
         """Gemini's voice is coming. The first audio of a turn after the user spoke = how long he took to answer."""
         now = time.monotonic()
         self._last_model_audio = now
+        if not self._safe_worked:
+            self._safe_worked = True
+            if self._safe != SETUP["step"]:
+                remember_setup(self._safe)    # this setup really talks: later calls start straight from it
         if self._turn_audio:
             return
         self._turn_audio = True
@@ -1159,6 +1280,12 @@ class Call:
             except Exception:
                 log.exception("voice memory failed")
 
+    def _take_pending(self) -> str:
+        notes = list(getattr(self, "_quiet_pending", None) or [])
+        if notes:
+            self._quiet_pending = []
+        return ("\n" + "\n".join(notes)) if notes else ""
+
     def _reseed(self, resumed: bool) -> str | None:
         """A brand-new Gemini session (the old one could not be resumed) knows nothing: re-brief it briefly."""
         if resumed or not self.recent:
@@ -1169,7 +1296,8 @@ class Call:
         RESUME["fresh_rebriefs"] += 1
         return ("(Call ka connection ek pal ke liye toota aur wapas juda. Pichli baat (is call mein ab tak; pehle ka sab upar "
                 "'HOOLA KI YAAD' mein):\n" + lines +
-                "\nUser ko bas ek chhota 'haan, boliye' kehkar wahin se aage badho; pichli baat dohrao mat.)")
+                "\nUser ko bas ek chhota 'haan, boliye' kehkar wahin se aage badho; pichli baat dohrao mat.)" +
+                Call._take_pending(self))
 
     # ---- tools ----
     async def _delegate(self, request: str) -> dict:
@@ -1332,6 +1460,9 @@ class Call:
     async def _answer_tool(self, session, fc, name: str, out: dict, state: str) -> None:
         from google.genai import types
         resp = json.loads(json.dumps(out, default=str))   # make it plain JSON
+        if self._quiet_pending and isinstance(resp, dict) and fc.id not in self._cancelled:
+            resp["note_for_you"] = " ".join(self._quiet_pending)[:2000]   # v0.150 quiet notes ride on the tool answer
+            self._quiet_pending.clear()
         if fc.id in self._cancelled:
             # the user spoke over the request, so Gemini no longer waits for an answer; the work still happened
             self._cancelled.discard(fc.id)
@@ -1449,18 +1580,29 @@ class Call:
         self.push("text", said + ctx + "\nShort mein bataiye ki file mil gayi (naam lekar) aur poochiye ya karo jo owner "
                                      "chahte hain; andar dekhna ho to file_read.")
 
-    async def _tell_quietly(self, note: str) -> None:
-        """Context for Gemini that must not start a reply by itself (who is speaking now)."""
+    async def _tell_quietly(self, note: str, live: bool = False) -> None:
+        """Context for Gemini that must not start a reply by itself (who is speaking now, her language, hold).
+        v0.150: Gemini 3.x closes the session when client_content arrives mid-call, so there the note waits for the
+        next tool answer / text; `live` notes (hold on / off) go as live text, where a reply does no harm."""
         from google.genai import types
         s = self._session
-        if s is not None:
+        if s is not None and client_content_ok():
             try:
                 await s.send_client_content(turns=types.Content(role="user", parts=[types.Part(text=note)]),
                                             turn_complete=False)
+                self._cc_sent_at = time.monotonic()
+                QUIET["sent"] += 1
                 return
             except Exception as e:
                 log.info("client_content note not accepted (%r); sending as live text", e)
-        self.push("text", note, force=True)
+                live = True
+        if live or self.hold:
+            QUIET["live"] += 1
+            self.push("text", note, force=True)
+            return
+        QUIET["queued"] += 1
+        self._quiet_pending.append(note)
+        del self._quiet_pending[:-6]
 
     # ---- v0.142 doosre se baat: hold while the talk is not for Hoola ----
     async def _enter_hold(self, reason: str) -> None:
@@ -1485,7 +1627,7 @@ class Call:
         hr[reason] = hr.get(reason, 0) + 1
         log.info("call %s: on hold (%s)", self.call_id, reason)
         await self.send_json({"type": "hold", "on": True, "reason": reason, "say": sidetalk.REASONS.get(reason, "")})
-        await self._tell_quietly(sidetalk.hold_note(reason, self.name))
+        await self._tell_quietly(sidetalk.hold_note(reason, self.name), live=True)
         if self._hold_timer is not None:
             self._hold_timer.cancel()
         st = get_settings()
@@ -1507,7 +1649,7 @@ class Call:
             self._hold_timer = None
         log.info("call %s: hold over (%s, by %s)", self.call_id, reason, by)
         await self.send_json({"type": "hold", "on": False, "by": by})
-        await self._tell_quietly(sidetalk.release_note(reason, by, self.name))
+        await self._tell_quietly(sidetalk.release_note(reason, by, self.name), live=by != "name")
         texts, self._held_texts = self._held_texts, []
         if by == "name":
             # she is asking something right now: what this turn already answered plays, notes wait for after it
@@ -1617,6 +1759,8 @@ class Call:
                         context += "\n\n" + kb
                 except Exception:
                     log.exception("voice kaam block failed")
+                if self._safe >= 1:
+                    self._mcp_off = True      # v0.150 her MCP servers are listed, used through bazar_run
                 mcp_defs = await self._load_mcp()
                 context += "\n\n" + self._mcp_block
                 started = loop.time()
@@ -1625,7 +1769,7 @@ class Call:
                     async with contextlib.AsyncExitStack() as stack:
                         resumed = self.handle is not None
                         cfg = live_config(self.voice, self.lang, context, self.handle, self.name, self.gender, mcp_defs,
-                                          langst=self.langst, style=self.style)
+                                          langst=self.langst, style=self.style, safe=self._safe)
                         # a Gemini that does not answer must not freeze the call
                         session = await asyncio.wait_for(stack.enter_async_context(connector(cfg)), timeout=20)
                         self._session = session
@@ -1645,7 +1789,7 @@ class Call:
                                 await session.send_realtime_input(text=seed)
                             if self.hold:   # v0.142 a fresh session must know it is on hold too
                                 from . import sidetalk
-                                await self._tell_quietly(sidetalk.hold_note(self.hold, self.name))
+                                await self._tell_quietly(sidetalk.hold_note(self.hold, self.name), live=True)
                         up = asyncio.create_task(self.uplink(session))
                         down = asyncio.create_task(self.downlink(session))
                         closed = asyncio.create_task(self.closed.wait())
@@ -1669,6 +1813,31 @@ class Call:
                 if err is None:
                     failures = 0   # a long, healthy session: this was Gemini's normal move to a new connection
                     continue
+                if setup_refused(err):
+                    SETUP["refusals"] += 1
+                    self.stats["setup_refusals"] = self.stats.get("setup_refusals", 0) + 1
+                    if self._cc_sent_at and time.monotonic() - self._cc_sent_at < 15:
+                        # a quiet note sent as client_content mid-call: this model doesn't allow it (Gemini 3.x)
+                        log.warning("Gemini closed the call right after a mid-call client_content note (%s); notes "
+                                    "now wait for tool answers / text", str(err)[:160])
+                        QUIET["client_content"] = False
+                        QUIET["learned_off"] += 1
+                        self._cc_sent_at = 0.0
+                        continue
+                    if self.handle and not self._handle_dropped:
+                        log.warning("Gemini refused the resumed session (%s); starting a fresh one", str(err)[:160])
+                        self._handle_dropped = True
+                        self.handle = None
+                        continue
+                    if (get_settings().voice_safe_setup and not self._safe_worked and loop.time() - started < 30
+                            and self._safe < len(SETUP_STEPS)):
+                        if self._safe == 0 and not mcp_defs:
+                            self._safe = 1            # no MCP tools were declared: nothing to drop there
+                        self._safe += 1
+                        log.warning("Gemini refused the call setup (%s); retrying without %s", str(err)[:160],
+                                    ", ".join(SETUP_STEPS[:self._safe]))
+                        self.stats["setup_step"] = self._safe
+                        continue
                 if self._mcp_route and not self._mcp_off:
                     from .agent import mcp_live
                     if mcp_live.schema_trouble(err):

@@ -99,6 +99,10 @@ def test_language_learned_for_the_next_call(env):
 
 def test_call_sends_a_quiet_language_note_and_keeps_unclear_out_of_memory(env, monkeypatch):
     """A Hindi call: the model answers in English -> one quiet 'Language note'; a Georgian transcript is unclear."""
+    # these notes travel as client_content (older Live models); Gemini 3.x queueing: tests/test_v150_voice_heal.py
+    monkeypatch.setenv("VOICE_QUIET_NOTES", "client_content")
+    from app.config import get_settings as _gs
+    _gs.cache_clear()
     from app import main, voice
     _gemini_env(monkeypatch)
     turns = [[
