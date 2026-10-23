@@ -30,17 +30,23 @@ class BuildUnavailable(Exception):
     """No build machine is set up (the owner still gets the project ZIP)."""
 
 
-def zip_project(src: Path) -> bytes:
+def zip_project(src: Path, export: bool = False) -> bytes:
+    """The project as a zip. export=True (her download) leaves out the preview signing key and its password; the build
+    machine gets them (it signs the APK)."""
+    import re
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for p in sorted(src.rglob("*")):
             rel = p.relative_to(src).as_posix()
-            if p.is_dir() or rel.startswith((".gradle/", "build/", "app/build/")):
+            if p.is_dir() or rel.startswith((".gradle/", "build/", "app/build/")) or (export and rel.startswith("keys/")):
                 continue
+            data = p.read_bytes()
+            if export and rel == "app/build.gradle.kts":
+                data = re.sub(rb'\?: "[A-Za-z0-9]*"', b'?: ""', data)
             info = zipfile.ZipInfo(rel, date_time=(2026, 1, 1, 0, 0, 0))
             info.external_attr = (0o755 if rel == "gradlew" else 0o644) << 16
             info.compress_type = zipfile.ZIP_DEFLATED
-            z.writestr(info, p.read_bytes())
+            z.writestr(info, data)
     return buf.getvalue()
 
 

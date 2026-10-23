@@ -269,7 +269,7 @@ def _run(r: AppProject) -> None:
     src_dir = work / "project"
     sp["screens_kt"] = kt
     res = G.write_project(sp, src_dir)
-    zip_bytes = RN.zip_project(src_dir)
+    zip_bytes = RN.zip_project(src_dir, export=True)
     (work / f"project-b{n}.zip").write_bytes(zip_bytes)
     _prune(work, "project-b", 3)
     _put(r.id, zip=f"project-b{n}.zip", zip_size=len(zip_bytes), package=res["app_id"], kinds=res["screens"],
@@ -336,7 +336,7 @@ def _run(r: AppProject) -> None:
     for old in (work / "apk").glob("*.apk"):
         old.unlink()
     (work / "apk" / name).write_bytes(apk)
-    zb = RN.zip_project(src_dir)
+    zb = RN.zip_project(src_dir, export=True)
     (work / f"project-b{n}.zip").write_bytes(zb)
     _put(r.id, zip_size=len(zb))
     sha = hashlib.sha256(apk).hexdigest()

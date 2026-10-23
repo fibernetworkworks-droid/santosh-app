@@ -30,15 +30,21 @@ APP_TOOLS = [
         "action=change: app + instruction (her words: 'cart mein coupon hatao', 'rang halka', 'booking screen add karo', "
         "'tabs mein offers', 'store keeper role add karo', 'region ke neeche zone bhi', 'passkey login bhi', 'vendor table mein "
         "GST number') -> only those screens redesign; roles / levels / login / data / phone-feature changes redraw nothing. action=approve: ONLY when she herself says 'design pakka' "
-        "(+ hash from the card) - freezes the design for the real app build. action=stop / resume / delete*. "
+        "(+ hash from the card) - freezes the design for the real app build. action=android: on an APPROVED design, builds the REAL "
+        "native Android app (Kotlin + Jetpack Compose): every screen written from its approved design, compiled on Hoola's build "
+        "machine (not this server; a few minutes, compile errors fixed by itself, a screen that won't compile gets a simple "
+        "version), signed with the app's own preview key -> an APK card with 'Phone pe install karo' (Android's own Install screen) "
+        "+ the project ZIP (opens in Android Studio). redo (screen ids) rewrites only those screens. No build machine set up -> "
+        "only the ZIP (say so). Nothing goes to Play Store here. action=stop / resume / delete*. "
         "Never invent prices, phone numbers or reviews ([blank] instead); never card / CVV / UPI PIN / password fields; payments = "
-        "UPI to her own UPI ID. The real Android / iPhone app build and store publishing come in later versions. (* owner only)"),
+        "UPI to her own UPI ID. iPhone build and store publishing come in later versions. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "stop", "resume", "delete"]},
+         "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
-         "instruction": {"type": "string"}, "drop": {"type": "array", "items": {"type": "string"}}, "hash": {"type": "string"}},
+         "instruction": {"type": "string"}, "drop": {"type": "array", "items": {"type": "string"}}, "hash": {"type": "string"},
+         "redo": {"type": "array", "items": {"type": "string"}}},
          "required": ["action"]}},
     {"name": "app_dekho", "description": (
         "Read her app designs (nothing changes). what=apps | app (app: board, screens, checks, preview link, versions) | "
@@ -50,10 +56,11 @@ APP_TOOLS = [
         "(the 43 complex app kinds with modules / roles) | capabilities (every Android / iPhone feature with Play + App Store "
         "status and the allowed alternative; q filters) | login (sign-in methods + security rules) | blueprint (app: data tables, "
         "roles matrix, levels, login plan, features, schema files + ER page) | schema (app: the PostgreSQL schema text). To change an "
-        "app's structure use app_banao action=change with her words (screens are not redrawn for structure / mode / font)."),
+        "app's structure use app_banao action=change with her words (screens are not redrawn for structure / mode / font). "
+        "android (app: the native build: status, screens written / compiled / simple, rounds, APK link + size, ZIP)."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system",
-                                             "archetypes", "capabilities", "login", "blueprint", "schema"]},
+                                             "archetypes", "capabilities", "login", "blueprint", "schema", "android"]},
          "app": {"type": "string"}, "q": {"type": "string"}, "script": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}},
          "required": ["what"]}},
@@ -95,6 +102,11 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         h = str(a.get("hash") or "") or S.get(t, ref).get("hash", "")
         v = S.approve(t, ref, h)
         return {"status": v["status"], "version": v["version"], "say": v["say"]}
+    if action == "android":
+        from ..appmaker.android import service as AN
+        redo = [str(x) for x in a.get("redo") or []] if isinstance(a.get("redo"), list) else None
+        v = AN.build(t, ref, conv, redo)
+        return {"status": v["status"], "runner": v["runner"], "say": v["say"] + " Card apne aap badlega (poll mat kariye)."}
     if action == "stop":
         return S.stop(t, ref)
     if action == "resume":
@@ -160,6 +172,9 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         return {"methods": AU.METHODS, "policy": AU.POLICY}
     if what == "blueprint":
         return S.blueprint(t, ref)
+    if what == "android":
+        from ..appmaker.android import service as AN
+        return AN.get(t, ref)
     if what == "schema":
         data, _ct = S.blueprint_file(t, ref, "schema.sql")
         txt = data.decode()

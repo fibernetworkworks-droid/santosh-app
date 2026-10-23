@@ -38,3 +38,5 @@ playwright>=1.47        # v0.63 Hoola Motion: renders animated reels (also run d
 playwright>=1.48   # v0.67 Computer Operator: python -m playwright install --with-deps chromium (deploy/setup_operator.sh)
 pytesseract>=0.3   # v0.78 CAPTCHA OCR (needs tesseract-ocr system package: apt install tesseract-ocr)
 beautifulsoup4>=4.12   # v0.121 Website Sahayak: sanitises the HTML the model writes
+fonttools>=4.50          # v0.132 app fonts woff2 -> ttf for the native Android build
+brotli>=1.1

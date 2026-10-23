@@ -241,6 +241,20 @@ class MainActivity : FlutterActivity() {
                     "updateCancel" -> { AppUpdate.cancel(); result.success(null) }
                     "updateInstall" -> result.success(AppUpdate.install(this, call.argument<String>("path") ?: ""))
                     "updatePermission" -> { AppUpdate.openInstallPermission(this); result.success(null) }
+                    "previewDownload" -> AppUpdate.downloadPreview(this, call.argument<String>("url") ?: "",
+                        call.argument<String>("sha256") ?: "", call.argument<String>("package") ?: "", call.argument<String>("server") ?: "") { path, err ->
+                        main.post { result.success(mapOf("path" to path, "error" to err)) }
+                    }
+                    "previewInstall" -> {
+                        val pkg = call.argument<String>("package") ?: ""
+                        result.success(if (Regex("^in\\.hoola\\.preview\\.[a-z0-9]{4,40}$").matches(pkg))
+                            AppUpdate.install(this, call.argument<String>("path") ?: "", pkg) else "bad package")
+                    }
+                    "previewOpen" -> {
+                        val pkg = call.argument<String>("package") ?: ""
+                        val i = if (pkg.startsWith("in.hoola.preview.")) packageManager.getLaunchIntentForPackage(pkg) else null
+                        if (i != null) { startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); result.success(true) } else result.success(false)
+                    }
                     "compressProgress" -> result.success(VideoShrink.progress())
                     "compressCancel" -> { VideoShrink.cancel(); result.success(null) }
                     "bgHealth" -> result.success(bgHealth())

@@ -11,6 +11,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'app_android.dart';
 import 'site_screen.dart' show SiteStages;
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -670,8 +671,12 @@ class _AppDesignPageState extends State<AppDesignPage> {
                 ],
               ]),
               if (st == 'approved') const Padding(padding: EdgeInsets.only(top: 8),
-                  child: Text('✓ Design pakka. Asli Android / iPhone app isi naksha se banegi (agla version).', style: TextStyle(color: C.ok, fontSize: 12.5))),
+                  child: Text('✓ Design pakka. Asli Android app isi naksha se banegi (neeche).', style: TextStyle(color: C.ok, fontSize: 12.5))),
             ])),
+            const SizedBox(height: 10),
+          ],
+          if (st == 'approved' || st == 'ready') ...[
+            Glass(child: AndroidBuildPanel(app: app, id: widget.id, approved: st == 'approved')),
             const SizedBox(height: 10),
           ],
           if (_map(plan['blueprint']).isNotEmpty) ...[
