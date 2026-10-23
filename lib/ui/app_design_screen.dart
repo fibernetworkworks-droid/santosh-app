@@ -343,11 +343,11 @@ class _AppDesignScreenState extends State<AppDesignScreen> {
     final apps = _list(_d?['apps']);
     final lib = _map(_d?['library']);
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text('${app.aName} · App designer'),
-          bottom: const TabBar(tabs: [Tab(text: 'Meri apps'), Tab(text: 'Ideas (1 lakh)')]),
+          bottom: const TabBar(isScrollable: true, tabs: [Tab(text: 'Meri apps'), Tab(text: '1 crore ideas'), Tab(text: 'Briefs (1 lakh)')]),
         ),
         floatingActionButton: FloatingActionButton.extended(
           backgroundColor: C.accent,
@@ -382,10 +382,22 @@ class _AppDesignScreenState extends State<AppDesignScreen> {
                 ),
             ]),
           ),
+          AppIdeaFinder(app: app, onStart: (id, words) => _startIdea(context, id, words)),
           _AppIdeas(app: app, counts: lib, onPick: (brief) => _newApp(context, brief: brief)),
         ]),
       ),
     );
+  }
+
+  Future<void> _startIdea(BuildContext context, String id, String words) async {
+    try {
+      final v = await app.api!.appNew({'idea': id, 'brief': words});
+      if (!context.mounted) return;
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => AppDesignPage(app: app, id: _s(v['id']))));
+      _load();
+    } catch (e) {
+      if (context.mounted) _snack(context, '$e');
+    }
   }
 
   Future<void> _newApp(BuildContext context, {String brief = ''}) async {
@@ -423,6 +435,120 @@ class _AppDesignScreenState extends State<AppDesignScreen> {
     } catch (e) {
       if (context.mounted) _snack(context, '$e');
     }
+  }
+}
+
+/// v0.136 her few words -> the best precise app idea + near ones, and the whole 1 crore list page by page.
+class AppIdeaFinder extends StatefulWidget {
+  const AppIdeaFinder({super.key, required this.app, required this.onStart});
+  final Santosh app;
+  final void Function(String id, String words) onStart;
+  @override
+  State<AppIdeaFinder> createState() => _AppIdeaFinderState();
+}
+
+class _AppIdeaFinderState extends State<AppIdeaFinder> {
+  final _q = TextEditingController();
+  Map<String, dynamic>? _d;
+  final List<Map<String, dynamic>> _more = [];
+  bool _busy = false;
+  String _asked = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load({bool more = false}) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final q = more ? _asked : _q.text.trim();
+      final d = await widget.app.api!.appIdeas(q: q, offset: more ? _more.length : 0);
+      if (!mounted) return;
+      setState(() {
+        if (!more) {
+          _d = d;
+          _asked = q;
+          _more.clear();
+        }
+        _more.addAll(_list(d['items']));
+      });
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  String _num(dynamic n) {
+    final v = (n is num) ? n.toInt() : int.tryParse('$n') ?? 0;
+    if (v >= 10000000) return '${(v / 10000000).toStringAsFixed(2)} crore';
+    if (v >= 100000) return '${(v / 100000).toStringAsFixed(1)} lakh';
+    return '$v';
+  }
+
+  Widget _card(Map<String, dynamic> it, {bool best = false}) {
+    final chips = [it['aud_label'], it['scale_label'], it['market_label'], it['tier_label'], it['earn_label']]
+        .where((x) => _s(x).isNotEmpty).map((x) => _s(x)).toList();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (best) const Text('SABSE SAHI IDEA', style: TextStyle(color: C.accent, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1)),
+          Text(_s(it['name']), style: display(15)),
+          const SizedBox(height: 4),
+          Text(_s(it['special']).isEmpty ? _s(it['pitch']) : _s(it['special']), style: const TextStyle(color: C.chip, fontSize: 13)),
+          if (chips.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Wrap(spacing: 6, runSpacing: 4, children: [for (final c in chips) Pill(c, fg: C.muted)]),
+          ],
+          if (best && _s(it['pitch']).isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(_s(it['pitch']), style: const TextStyle(color: C.muted, fontSize: 12)),
+          ],
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.tonal(onPressed: () => widget.onStart(_s(it['id']), _asked), child: const Text('Yeh banao')),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final best = _map(_d?['best']);
+    final near = _list(_d?['near']);
+    return ListView(padding: const EdgeInsets.fromLTRB(14, 14, 14, 100), children: [
+      Text('${_num(_d?['all_ideas'] ?? 0)} app ideas: 1,000 kaam × app ka maqsad × kiske liye × ek khaas baat × '
+          'ek dukaan / branches / poora shahar × gaon se videsh tak. Do-teen shabd likhiye, sabse sahi idea upar aayega.',
+          style: const TextStyle(color: C.muted, fontSize: 12.5)),
+      const SizedBox(height: 8),
+      TextField(controller: _q, onSubmitted: (_) => _load(),
+          decoration: InputDecoration(hintText: 'jaise: kirana, roz doodh, WhatsApp se order',
+              prefixIcon: const Icon(Icons.lightbulb_outline_rounded),
+              suffixIcon: IconButton(icon: const Icon(Icons.arrow_forward_rounded), onPressed: _load))),
+      const SizedBox(height: 10),
+      if (_busy && _d == null) const Center(child: Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator())),
+      if (_s(_d?['ask']).isNotEmpty) Glass(child: Text(_s(_d?['ask']), style: const TextStyle(color: C.chip))),
+      if (best.isNotEmpty) _card(best, best: true),
+      for (final n in near) _card(_map(n)),
+      if (_more.isNotEmpty) ...[
+        const SizedBox(height: 6),
+        Text(_asked.isEmpty ? 'Saare ideas' : 'Is kaam ke aur ideas · ${_num(_d?['total'] ?? 0)}', style: display(13)),
+        const SizedBox(height: 6),
+        for (final it in _more)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(_s(it['name']), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+            subtitle: Text(_s(it['special']), style: const TextStyle(color: C.muted, fontSize: 12)),
+            trailing: TextButton(onPressed: () => widget.onStart(_s(it['id']), _asked), child: const Text('Banao')),
+          ),
+        Center(child: TextButton(onPressed: _busy ? null : () => _load(more: true), child: Text(_busy ? '…' : 'Aur dikhao'))),
+      ],
+    ]);
   }
 }
 

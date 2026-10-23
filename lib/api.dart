@@ -948,6 +948,10 @@ class Api {
       Map<String, dynamic>.from(await _send('GET', '/api/apps', timeout: const Duration(seconds: 45)) as Map);
   Future<Map<String, dynamic>> appNew(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/apps', body: body, timeout: const Duration(seconds: 60)) as Map);
+  // ---- v0.136 the 1 crore app idea list ----
+  Future<Map<String, dynamic>> appIdeas({String q = '', String field = '', int offset = 0, int limit = 20}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/apps-ideas',
+          query: {'q': q, 'field': field, 'offset': '$offset', 'limit': '$limit'}, timeout: const Duration(seconds: 45)) as Map);
   Future<Map<String, dynamic>> appGet(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/apps/$id') as Map);
   Future<Map<String, dynamic>> appAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/apps/$id/$action', body: body, timeout: const Duration(seconds: 120)) as Map);

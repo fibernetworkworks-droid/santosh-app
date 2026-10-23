@@ -295,6 +295,23 @@ async def tick() -> None:
     await home_device_alerts()
     await mail_jobs()
     await employee_jobs()
+    kaam_jobs()
+
+
+_kaam_last = 0.0
+
+
+def kaam_jobs() -> None:
+    """v0.136 jobs that say 'working' but stopped moving -> told once; old rows dropped daily."""
+    global _kaam_last
+    try:
+        from . import kaamwatch
+        kaamwatch.tick()
+        if time.time() - _kaam_last > 86400:
+            _kaam_last = time.time()
+            kaamwatch.forget_old(30)
+    except Exception:
+        log.exception("kaam watch tick failed")
 
 
 _home_last = 0.0

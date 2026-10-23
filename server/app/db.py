@@ -696,6 +696,7 @@ def init_db(url: str | None = None):
     from .office import service as _office  # noqa: F401
     from .lekhak import service as _lekhak  # noqa: F401
     from .agent import pakka as _pakka  # noqa: F401
+    from . import kaamwatch as _kaamwatch  # noqa: F401  (v0.136 live job watch)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401
     from .videoedit import models as _videoedit_models  # noqa: F401

@@ -70,7 +70,7 @@ VOICE_TOOL_NAMES = {
     "youtube_search", "youtube_play", "youtube_video", "youtube_watch", "youtube_channel", "youtube_comments", "youtube_my_channel",
     "youtube_analytics", "app_check",
     "hoola_me", "hoola_connect", "hoola_connections", "hoola_answer_connect", "hoola_send", "hoola_reply", "hoola_inbox",
-    "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "hoola_jaanch", "ask_form", "ai_kharcha", "video_edit", "computer_operator", "video_studio", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_banao", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
+    "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "hoola_jaanch", "ask_form", "ai_kharcha", "video_edit", "computer_operator", "video_studio", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_banao", "kaam_status", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
     "hoola_learn", "hoola_learned", "hoola_samaj", "hoola_community_search", "hoola_business", "hoola_chain", "hoola_deal", "hoola_pick", "hoola_market", "hoola_booking", "a2a_bahar", "consent_jaanch", "digilocker", "ondc_listing", "hoola_seekha", "website", "website_dekho", "app_banao", "app_dekho",
     "sheets_find", "sheet_info", "sheet_query", "sheet_update", "sheet_create", "sheet_export",
     "maps_search", "maps_directions", "maps_navigate",
@@ -192,7 +192,7 @@ Which tool (details are in each tool's description)
 - Returns (wapsi): wapsi action=new for a return she describes (read back item, price, reason once), wapsi_dekho what=day; refunds are approved only on the card on her phone, never on the call.
 - Group / community: samudaay_dekho what=day se bataiye kitne alert / sawal hain (sabse gambhir pehle, ek line mein); kisi ko hatana / ban / announcement ka sirf card banta hai, uski haan se hota hai.
 - Her phone line (call centre): call_centre_dekho what=day / messages ("aaj line par kya hua", "kisko call back karna hai"); script changes = call_centre action=script / faq_add in her words, then submit -> she taps Haan in the app; never say the line changed before that.
-- Apps: app_banao action=new with her words; ask the plan's questions together; plan / look / 'design pakka' only when she says so; changes = app_banao action=change in her words. Every screen is designed and previewed before the real app is built. After 'design pakka', app_banao action=android makes the real Android app (APK card on her phone; takes a few minutes).
+- Apps: vague ask -> app_dekho what=ideas q=her words and say the best idea + one more in a line each, then app_banao action=new idea=<the one she picks>; specific ask -> app_banao action=new with her words; ask the plan's questions together; plan / look / 'design pakka' only when she says so; changes = app_banao action=change in her words. Every screen is designed and previewed before the real app is built. After 'design pakka', app_banao action=android makes the real Android app (APK card on her phone; takes a few minutes).
 - SEO (her website / Google listing): seo_dekho what=summary / tasks; seo action=audit / speed / performance. Say the top 3 fixes in plain words; never promise a ranking; nothing goes on her site or Google profile until she says haan and puts it there.
 - Wholesale (thok): thok action=order with party + her exact words for a retailer's order, then read the total and any credit / stock warning; the bill is made only when she says haan (thok action=bill). thok action=receive when a party paid her (read amount + mode back once). thok_dekho what=day / route / outstanding. Never take or send money.
 - Export (niryat): niryat_dekho what=day / realisation; niryat action=pi with buyer + her lines, read back total, Incoterm and every warning (sanctions, FTA, CBAM, US duty); the PI goes out and the invoice is made only after her haan. Never book currency or move money.
@@ -210,6 +210,9 @@ Which tool (details are in each tool's description)
 - Email: email_triage for what is important, email_check / email_read, email_draft (approved in the app with Bhejo; say so), email_forward, email_action, email_delete (approval card), email_follow_up. Give a mail's gist in a line; never read out OTPs or codes. Bulk mail goes through santosh_kaam.
 - Google Drive, Sheets, Docs, Forms, Slides, Photos, Santosh Notebook, YouTube: use the matching tool. Sheet totals come from sheet_query, never your own maths. Photos: you cannot browse the library; photos_pick shows a card for the user to choose. Read out the gist, not every cell.
 - App Jaanch: app_check before installing an APK / EXE someone sent; bank / KYC / challan APKs on WhatsApp are fraud.
+- Running jobs (app, website, video, Studio, motion, website jobs in your browser): KAAM KI HAALAT in your brief and
+  kaam_status give the real live state. Asked "kya hua?", say it straight: ho gaya / abhi yeh chal raha hai (kitna) /
+  aapki haan chahiye / dikkat aayi. Never answer with only "dekh raha hoon". A "[Kaam update ...]" note = tell her in one line.
 - Pictures: photo_banao action=make draws a new picture from her words (greeting, festival wish, poster idea, product scene), action=edit changes a photo SHE sent (file_ids) with words ("background white karo", "rang badlo"); quality fast unless she wants top quality; it comes to chat with an "AI se bana" label. It refuses fake IDs / notes / certificates, nudity, face swaps and famous people: say so plainly, don't retry.
 - Making things: make_document (real Word / Excel / PowerPoint file), photo_clean (product photo on white), id_photo (passport / visa / exam-form photo + print sheet) from a photo the user attached, memory_search to recall anything they asked you to remember. Write the real content; say the file is in chat.
 - Free public APIs (2,100+: weather, currency, holidays, IFSC, pincode, cricket, news, dictionary...): when no other tool fits, api_find, then api_call with the api_id (use worked_before if given; api_docs only if needed). Keys only from the app, never asked in the call.
@@ -1314,6 +1317,13 @@ class Call:
                         context += "\n\n" + ymem
                 except Exception:
                     log.exception("voice memory block failed")
+                try:   # v0.136 live state of her jobs (changes during the call arrive as quiet notes)
+                    from . import kaamwatch
+                    kb = await asyncio.to_thread(kaamwatch.block, self.ctx.tenant_id)
+                    if kb:
+                        context += "\n\n" + kb
+                except Exception:
+                    log.exception("voice kaam block failed")
                 mcp_defs = await self._load_mcp()
                 context += "\n\n" + self._mcp_block
                 started = loop.time()

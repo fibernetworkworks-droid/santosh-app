@@ -363,7 +363,7 @@ CAP = {"seekh": 0, "saathi": 40, "bharosa": 150}      # actions per duty per day
 PROMOTE_AFTER = {"seekh": 15, "saathi": 40}            # "Haan" taps in a row before the app suggests the next level
 
 READ = {
-    "gyaan_khojo",
+    "gyaan_khojo", "kaam_status",
     "list_lead_lists", "get_lead_list", "check_template", "check_template_status", "get_campaign_status", "list_reminders",
     "list_show", "list_routines", "get_weather", "google_search", "web_sources", "open_website", "browse_web", "browse_result",
     "artifact_list", "email_check", "email_read", "email_triage", "email_attachment", "email_bulk_status", "email_contacts",

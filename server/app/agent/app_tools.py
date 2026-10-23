@@ -12,7 +12,13 @@ APP_TOOLS = [
     {"name": "app_banao", "description": (
         "Design HER business a premium NATIVE mobile app (Android + iPhone look) and show her EVERY screen as a tap-through "
         "prototype BEFORE anything is built. A few words are enough: the 1 lakh app brief library knows 1,000 kinds of "
-        "business x 10 app goals x 10 premium styles. action=new: brief (her words, e.g. 'kirana dukaan ki app, ghar pe "
+        "business x 10 app goals x 10 premium styles, and the 1 CRORE APP IDEA library (app_dekho what=ideas) adds WHO the "
+        "app is for (customers / owner / staff / delivery partner / dealers / members / managers), the ONE special thing "
+        "(WhatsApp-first, daily subscription, voice in Hindi, offline, QR pickup, live tracking, udhaar reminders, parents' "
+        "view, route plan, photo proof...), scale (one shop / branches / city network), market (town, metro, all-India, NRI) "
+        "and positioning. When her ask is vague, first show 2-3 precise ideas (app_dekho what=ideas q=her words) and start "
+        "the one she picks with idea=<its id>; when she was specific, start straight away (the best idea is picked from her "
+        "words). action=new: idea (id from the idea list, optional), brief (her words, e.g. 'kirana dukaan ki app, ghar pe "
         "delivery'), name, goal (shop|food_order|booking|learning|membership|service_request|khata|catalogue|events|"
         "community; or a COMPLEX staff / admin app archetype: crm, field_sales, field_service, helpdesk, hrms, field_force, "
         "inventory, pos_retail, distribution, manufacturing_erp, procurement, logistics_tms, delivery_driver, fleet, isp_ops, "
@@ -44,7 +50,7 @@ APP_TOOLS = [
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
          "instruction": {"type": "string"}, "drop": {"type": "array", "items": {"type": "string"}}, "hash": {"type": "string"},
-         "redo": {"type": "array", "items": {"type": "string"}}},
+         "redo": {"type": "array", "items": {"type": "string"}}, "idea": {"type": "string"}},
          "required": ["action"]}},
     {"name": "app_dekho", "description": (
         "Read her app designs (nothing changes). what=apps | app (app: board, screens, checks, preview link, versions) | "
@@ -57,12 +63,16 @@ APP_TOOLS = [
         "status and the allowed alternative; q filters) | login (sign-in methods + security rules) | blueprint (app: data tables, "
         "roles matrix, levels, login plan, features, schema files + ER page) | schema (app: the PostgreSQL schema text). To change an "
         "app's structure use app_banao action=change with her words (screens are not redrawn for structure / mode / font). "
-        "android (app: the native build: status, screens written / compiled / simple, rounds, APK link + size, ZIP)."),
+        "android (app: the native build: status, screens written / compiled / simple, rounds, APK link + size, ZIP) | ideas "
+        "(q = her words -> the best precise app idea + 2 near ones + how many ideas exist for that business; field / goal / "
+        "aud filter; offset pages through them; idea = one idea's full detail). Show ideas to her as 2-3 short lines (name + "
+        "the special thing) and ask which one; then app_banao action=new idea=<id>."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system",
-                                             "archetypes", "capabilities", "login", "blueprint", "schema", "android"]},
+                                             "archetypes", "capabilities", "login", "blueprint", "schema", "android", "ideas"]},
          "app": {"type": "string"}, "q": {"type": "string"}, "script": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
-         "goal": {"type": "string"}, "style": {"type": "string"}},
+         "goal": {"type": "string"}, "style": {"type": "string"}, "aud": {"type": "string"}, "offset": {"type": "integer"},
+         "idea": {"type": "string"}},
          "required": ["what"]}},
 ]
 APP_LABELS = {"app_banao": "App design bana raha hoon", "app_dekho": "App design dekh raha hoon"}
@@ -83,9 +93,10 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         raise ToolError("Plan / look / design pakka sirf maalkin chunti hain (app ke card par).")
     if action == "new":
         v = S.new(t, str(a.get("brief") or ""), conv, str(a.get("name") or ""), "", str(a.get("goal") or ""),
-                  str(a.get("style") or ""), a.get("answers") if isinstance(a.get("answers"), dict) else None)
+                  str(a.get("style") or ""), a.get("answers") if isinstance(a.get("answers"), dict) else None,
+                  idea=str(a.get("idea") or ""))
         return {k: v.get(k) for k in ("id", "number", "name", "status", "field_label", "goal_label", "plan", "questions",
-                                      "understood", "say")}
+                                      "understood", "idea", "other_ideas", "ideas_for_this_business", "say")}
     if action == "answer":
         return S.answer(t, ref, a.get("answers") if isinstance(a.get("answers"), dict) else {})
     if action == "plan_ok":
@@ -146,6 +157,21 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
                                   "questions", "text")}
     if what == "understand":
         return L.understand(str(a.get("q") or ""))
+    if what == "ideas":
+        from ..appmaker import ideas as I
+        if a.get("idea"):
+            return I.idea(str(a["idea"]))
+        q = str(a.get("q") or "")
+        if q and not a.get("offset"):
+            u = I.understand(q, str(a.get("field") or ""), str(a.get("goal") or ""))
+            short = lambda x: {k: x[k] for k in ("id", "name", "special", "aud_label", "scale_label", "market_label",   # noqa: E731
+                                                 "tier_label", "earn_label", "pitch")}
+            return {"best": short(u["idea"]) if u.get("idea") else None, "near": [short(x) for x in u.get("alternatives", [])],
+                    "ideas_for_this_business": u.get("count"), "all_ideas": I.total(), "ask": u.get("ask", ""),
+                    "other_goals": [g for g in u.get("goals", []) if g != u.get("goal")][:8]}
+        b = I.browse(q, str(a.get("field") or ""), str(a.get("goal") or ""), str(a.get("aud") or ""), int(a.get("offset") or 0), 12)
+        b["items"] = [{k: x[k] for k in ("id", "name", "special")} for x in b.get("items", [])]
+        return b
     if what == "design_system":
         from ..appmaker import colors as CL
         from ..appmaker import designsys as DS

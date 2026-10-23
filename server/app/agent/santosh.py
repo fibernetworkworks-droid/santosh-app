@@ -578,6 +578,13 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
             try:   # v0.108 work diary, facts by meaning, recalled old exchanges: for this message only
                 from .. import yaad
                 block = await asyncio.to_thread(yaad.turn_block, tenant_id, conversation_id, user_text)
+                try:   # v0.136 the REAL state of her running / finished jobs, so Hoola never says "dekh raha hoon"
+                    from .. import kaamwatch
+                    kb = await asyncio.to_thread(kaamwatch.block, tenant_id)
+                    if kb:
+                        block = (block + "\n\n" + kb) if block else kb
+                except Exception:
+                    log.exception("kaam block failed")
                 if block:
                     _with_memory(history, block)
             except Exception:

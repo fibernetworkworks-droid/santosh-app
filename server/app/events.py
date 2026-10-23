@@ -41,6 +41,11 @@ class EventBus:
             push.on_event(conversation_id, data)
         except Exception:
             pass
+        try:   # v0.136 Hoola watches every long job as it moves and tells her (chat + live call)
+            from . import kaamwatch
+            kaamwatch.observe(conversation_id, kind, payload)
+        except Exception:
+            pass
         return data
 
     def subscribe(self, conversation_id: str) -> asyncio.Queue:

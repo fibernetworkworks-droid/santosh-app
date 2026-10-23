@@ -727,3 +727,10 @@ from .gyaan_tools import GYAAN_HANDLERS, GYAAN_LABELS, GYAAN_TOOLS  # noqa: E402
 TOOLS.extend(GYAAN_TOOLS)
 TOOL_LABELS.update(GYAAN_LABELS)
 HANDLERS.update(GYAAN_HANDLERS)
+
+# v0.136 live state of her long jobs (kaam_status, read only)
+from .kaam_tools import KAAM_HANDLERS, KAAM_LABELS, KAAM_TOOLS  # noqa: E402
+
+TOOLS.extend(KAAM_TOOLS)
+TOOL_LABELS.update(KAAM_LABELS)
+HANDLERS.update(KAAM_HANDLERS)

@@ -192,13 +192,19 @@ def run(out: Path, order: list[str], shots: Path, labels: dict[str, str], platfo
                             (shots / n).write_bytes(page.screenshot(type="jpeg", quality=84))
                             res["extras"][f"drawer-{plat}"] = n
                             page.evaluate("() => window.HoolaProto.drawer(false)")
-                        if page.evaluate("() => !!document.querySelector('.fabx .fab-actions') && "
-                                         "!document.querySelector('.frame.has-bar') && window.HoolaProto.fab(true)"):
-                            page.wait_for_timeout(60)
-                            n = f"_fab-{plat}.jpg"
-                            (shots / n).write_bytes(page.screenshot(type="jpeg", quality=84))
-                            res["extras"][f"fab-{plat}"] = n
-                            page.evaluate("() => window.HoolaProto.fab(false)")
+                        tabs_all = page.evaluate("() => [...document.querySelectorAll('[data-tabbtn]')]"
+                                                 ".map(b => b.getAttribute('data-tabbtn'))") or [tab]
+                        for t2 in [tab] + [x for x in tabs_all if x != tab and x in want]:
+                            # the FAB menu on the first tab that has no bottom action bar of its own
+                            page.evaluate("(id) => window.HoolaProto.show(id)", t2)
+                            if page.evaluate("() => !!document.querySelector('.fabx .fab-actions') && "
+                                             "!document.querySelector('.frame.has-bar') && window.HoolaProto.fab(true)"):
+                                page.wait_for_timeout(60)
+                                n = f"_fab-{plat}.jpg"
+                                (shots / n).write_bytes(page.screenshot(type="jpeg", quality=84))
+                                res["extras"][f"fab-{plat}"] = n
+                                page.evaluate("() => window.HoolaProto.fab(false)")
+                                break
                 if errs:
                     res["console"] += [e[:200] for e in errs[:5]]
                 ctx.close()

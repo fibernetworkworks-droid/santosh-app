@@ -57,7 +57,12 @@ def counts() -> dict[str, int]:
             **CP.counts(), **AU.counts(), **DM.counts(), **OM.counts(),
             "screen_designs": sum(len(s["variants"]) for s in T.SCREENS.values()), "motion_presets": len(T.MOTION),
             "palettes": len(CL.palettes()), "font_pairs": len(FN.pairs()), "font_families": len(FN.catalog()),
-            **{f"ds_{k}": v for k, v in DS.counts().items()}}
+            **{f"ds_{k}": v for k, v in DS.counts().items()}, "app_ideas": _ideas_total()}
+
+
+def _ideas_total() -> int:
+    from . import ideas as I       # v0.136 the 1 crore idea list sits on top of this library
+    return I.total()
 
 
 def _clean_text(text: str) -> str:
