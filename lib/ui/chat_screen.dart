@@ -73,6 +73,7 @@ import 'pc_screen.dart';
 import 'photos_screen.dart';
 import 'live_santosh.dart';
 import 'work_theatre.dart';
+import 'gyaan_screen.dart';
 import '../nav.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -635,6 +636,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return SevaTicketCard(app: app, data: it.data);
     case 'seva_sla':
       return SevaTicketCard(app: app, data: it.data);
+    case 'gyaan_sources':
+      return GyaanSourcesCard(app: app, data: it.data);
     case 'seva_day':
       return SevaDayCard(app: app, data: it.data);
     case 'helpdesk_ticket':

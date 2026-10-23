@@ -18,6 +18,7 @@ from ..life import context_block
 from . import llm
 from .prompts import system_prompt
 from . import mcp_live
+from ..gyaan import answer as _gyaan
 from .tools import TOOL_LABELS, TOOLS, Ctx, ToolError, dispatch
 
 log = logging.getLogger("santosh.agent")
@@ -287,6 +288,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     """The think -> tools -> think loop of one turn. Returns the final text shown to the user."""
     from . import pakka
     breaker = state["breaker"]
+    _gyaan.begin(conversation_id)        # v0.134 fresh [n] numbering for this turn
     final_text = ""
     ran_tools = False
     brain = llm.choose(history)
@@ -325,6 +327,11 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         _save(conversation_id, "assistant", blocks, display="\n\n".join(texts) or None)
         if texts:
             final_text = "\n\n".join(texts)
+            if stop != "tool_use" and _gyaan.used(conversation_id):
+                # v0.134 Gyaan: links from retrieved text removed, numbers checked against the cited sources, source chips
+                final_text, srcs = _gyaan.finish(conversation_id, final_text, state.get("request", ""))
+                if srcs:
+                    bus.publish(conversation_id, "gyaan_sources", {"sources": srcs})
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
         if stop != "tool_use":
             nudge = await _pakka_check(state, final_text, settings, ran_tools, conversation_id)

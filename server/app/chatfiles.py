@@ -73,6 +73,11 @@ def store(tenant: str, name: str, data: bytes, content_type: str = "") -> dict[s
         _META[row.id] = meta
         while len(_META) > 300:
             _META.popitem(last=False)
+    try:            # v0.134 her files go into her Gyaan (background; she can switch it off on the Gyaan screen)
+        from .gyaan import ingest as _gy
+        _gy.auto_file(tenant, row.id)
+    except Exception:
+        pass
     return out
 
 

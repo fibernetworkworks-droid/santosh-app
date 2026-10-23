@@ -150,7 +150,7 @@ def feature_for_path(path: str) -> str:
     p = path.split("?")[0]
     for prefix, feat in (("/api/voice", "call"), ("/api/lekhak", "lekhak"), ("/api/reels", "reels"), ("/api/net", "network"),
                          ("/api/video", "video"), ("/api/motion", "motion"), ("/api/studio", "studio"),
-                         ("/api/operator", "website"), ("/api/sites", "site"), ("/api/apps", "app"), ("/api/notebook", "notebook"), ("/api/voiceid", "voiceid"),
+                         ("/api/operator", "website"), ("/api/sites", "site"), ("/api/apps", "app"), ("/api/notebook", "notebook"), ("/api/voiceid", "voiceid"), ("/api/gyaan", "gyaan"),
                          ("/api/conversations", "chat"), ("/api/forms", "chat")):
         if p.startswith(prefix):
             return feat

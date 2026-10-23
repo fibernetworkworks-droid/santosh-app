@@ -67,6 +67,7 @@ import 'niryat_screen.dart';
 import 'franchise_screen.dart';
 import 'theka_screen.dart';
 import 'kharcha_screen.dart';
+import 'gyaan_screen.dart';
 import 'voice_learned_screen.dart';
 import 'screen_link.dart';
 
@@ -343,6 +344,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Aapke logo aur rang mein poster, har platform ki size, tyohar ke post; final aapki haan se'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BrandScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.auto_stories_rounded, color: C.accent),
+              title: Text('${app.aName} ka gyaan', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Aapki files, Drive, mail se jawab, source ke saath; jo nahi pata wo nahi banata'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GyaanScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

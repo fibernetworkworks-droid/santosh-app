@@ -246,6 +246,22 @@ class Settings(BaseSettings):
     worker_tick_seconds: float = 2.0
     tenant_id: str = "default"
 
+    # --- v0.134 Gyaan: knowledge base (agentic RAG) over her files, Drive, mail, notes, chats ---
+    gyaan_on: bool = True
+    gyaan_dir: str = "data/gyaan"           # one SQLite file per owner
+    gyaan_embed: str = "auto"               # auto | hash | fastembed[:model] | voyage | gemini
+    gyaan_embed_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    gyaan_gemini_model: str = "gemini-embedding-001"
+    voyage_api_key: str = ""                # optional: Voyage embeddings + rerank (cheap API, better Indic quality)
+    gyaan_voyage_model: str = "voyage-4-lite"
+    gyaan_rerank: bool = True               # API rerank on text chat when VOYAGE_API_KEY is set (never in calls)
+    gyaan_rerank_model: str = "rerank-2.5-lite"
+    gyaan_min_cover: float = 0.5            # share of the question's words a source must contain to count as found
+    gyaan_min_cos: float = 0.55             # or this meaning score (real embedding models only)
+    gyaan_min_rerank: float = 0.3
+    gyaan_mail_days: int = 60
+    gyaan_sync: bool = False                # tests: index + embed inline
+
 
 @lru_cache
 def get_settings() -> Settings:

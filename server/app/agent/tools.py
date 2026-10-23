@@ -720,3 +720,10 @@ _biz_inbox.BIZ_HANDLERS.update(WAPSI_BIZ_HANDLERS)
 _biz_inbox.BIZ_LABELS.update({k: v for k, v in SEVA_LABELS.items() if k.startswith("biz_")})
 _biz_inbox.BIZ_LABELS.update(SHIKAYAT_BIZ_LABELS)
 _biz_inbox.BIZ_LABELS.update(WAPSI_BIZ_LABELS)
+
+# v0.134 Gyaan: knowledge base search (gyaan_khojo, read only) + management (gyaan)
+from .gyaan_tools import GYAAN_HANDLERS, GYAAN_LABELS, GYAAN_TOOLS  # noqa: E402
+
+TOOLS.extend(GYAAN_TOOLS)
+TOOL_LABELS.update(GYAAN_LABELS)
+HANDLERS.update(GYAAN_HANDLERS)

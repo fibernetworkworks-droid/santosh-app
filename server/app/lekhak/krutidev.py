@@ -57,6 +57,13 @@ def looks_krutidev(text: str) -> bool:
         return False
     common = {"the", "and", "is", "to", "of", "in", "for", "on", "with", "a", "this", "that", "dear", "sir", "madam", "date"}
     eng = sum(1 for w in words if w.lower() in common)
+    # v0.134: Roman Hinglish ("dukan subah 10 se raat 9 tak khuli rehti hai") is NOT Kruti Dev - its everyday words veto it
+    hinglish = {"hai", "hain", "tha", "thi", "ka", "ki", "ke", "ko", "se", "me", "mein", "tak", "aur", "nahi", "nahin", "kya",
+                "ye", "yeh", "woh", "vo", "par", "pe", "bhi", "hi", "ho", "kar", "karo", "raha", "rahi", "rehti", "rehta",
+                "subah", "raat", "din", "aaj", "kal", "band", "khuli", "wala", "wali", "liye", "kitna", "kab", "kaise", "ek"}
+    hing = sum(1 for w in words if w.lower() in hinglish)
+    if hing >= max(2, len(words) // 10):
+        return False
     kd = sum(1 for w in words if re.search(r"(?:[a-zA-Z](?:k|h|s|ks|q|w)\b|k[a-z]|gS|esa|ugh|dk|ds)", w))
     return kd >= max(2, len(words) // 3) and eng <= len(words) // 5
 

@@ -429,6 +429,9 @@ _emp_tasks: set = set()
 _inbox_tasks: set = set()
 
 
+_gyaan_at = 0.0
+
+
 async def employee_jobs() -> None:
     """Hoola Employee: team tasks, old asks expire, the daily report at the owner's time."""
     from .employee import network as emp_net
@@ -511,6 +514,15 @@ async def employee_jobs() -> None:
             brand.send_nudge(tenant, fest)
     except Exception:
         log.exception("brand nudge failed")
+    try:                                   # v0.134 Gyaan: Drive folders daily, mail every 30 min (only owners who turned it on)
+        global _gyaan_at
+        if time.time() - _gyaan_at > 600:
+            _gyaan_at = time.time()
+            from .gyaan import ingest as _gy
+            for _t in await asyncio.to_thread(_gy.tenants_with_gyaan):
+                await asyncio.to_thread(_gy.daily, _t)
+    except Exception:
+        log.exception("gyaan sync failed")
     # v0.133 Seva suite: SLA timers, reminders, morning notes, imports (each throttles itself)
     try:
         from .seva import service as _seva_svc

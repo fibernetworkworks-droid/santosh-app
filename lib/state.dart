@@ -1611,6 +1611,9 @@ class Santosh extends ChangeNotifier {
       case 'bazar_link':
         feed.add(FeedItem('link', Map<String, dynamic>.from(p)));
         break;
+      case 'gyaan_sources': // v0.134 sources under an answer from her Gyaan
+        feed.add(FeedItem('gyaan_sources', Map<String, dynamic>.from(p)));
+        break;
       case 'photo_made':
         feed.add(FeedItem('photo_made', Map<String, dynamic>.from(p)));
         if (inBackground && !_replaying && !pushOn) {
