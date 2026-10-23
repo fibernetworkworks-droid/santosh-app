@@ -48,6 +48,10 @@ class Api {
         if (apiKey.isNotEmpty) 'Authorization': 'Bearer $apiKey',
       };
 
+  /// Generic JSON call for feature screens (Seva suite and later): decoded JSON or an error with the server's detail.
+  Future<dynamic> call(String method, String path, {Object? body, Map<String, String>? query, Duration? timeout}) =>
+      _send(method, path, body: body, query: query, timeout: timeout ?? const Duration(seconds: 60));
+
   Future<dynamic> _send(String method, String path, {Object? body, Map<String, String>? query, Duration timeout = const Duration(seconds: 25)}) async {
     final req = http.Request(method, _u(path, query))..headers.addAll(_headers);
     if (body != null) req.body = jsonEncode(body);
