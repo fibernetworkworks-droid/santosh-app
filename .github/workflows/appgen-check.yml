@@ -20,11 +20,13 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Android SDK 37
+      - name: Android SDK
         run: |
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKM" --licenses > /dev/null || true
-          "$SDKM" --install "platforms;android-37" "build-tools;36.0.0" > /dev/null
+          "$SDKM" --list 2>/dev/null | grep -oE "platforms;android-3[6-9][^ ]*" | sort -u | tail -8 || true
+          "$SDKM" --install "build-tools;36.0.0" > /dev/null
+          "$SDKM" --install "platforms;android-37" > /dev/null 2>&1 || "$SDKM" --install "platforms;android-37.0" > /dev/null 2>&1 || echo "android-37 not in sdkmanager (AGP downloads it)"
       - uses: actions/cache@v4
         with:
           path: |
@@ -47,7 +49,8 @@ jobs:
           ./gradlew --no-daemon -q buildEnvironment 2>&1 | grep -iE "kotlin-gradle-plugin|com.android.tools.build:gradle" | head -8 || true
           ./gradlew --no-daemon --console=plain assembleRelease 2>&1 | tee build.log
       - name: Kotlin errors as annotations
-        if: failure()
+        if: failure() && hashFiles('../_temp/proj/build.log') != ''
+        continue-on-error: true
         working-directory: ${{ runner.temp }}/proj
         run: |
           grep -E '^e: ' build.log | head -60 | while IFS= read -r l; do echo "::error::${l}"; done
