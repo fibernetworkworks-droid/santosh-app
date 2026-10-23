@@ -277,6 +277,7 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _opAsks = {};    // its questions for the owner, updated in place
   int operatorTick = 0;
   final Map<String, FeedItem> _videoJobs = {}; // v0.65 video editor: one live card per job, updated in place
+  final Map<String, FeedItem> _b3dCards = {};  // v0.141 3D Studio: one live card per project, updated in place
   int videoTick = 0;                          // bumps on every video_job event (the editor screen refreshes)
   final Map<String, FeedItem> _empAsks = {};  // Hoola Employee: actions waiting for the owner's tap, by ask id
   int employeeTick = 0;                       // bumps on any employee event (the Employee screen can refresh)
@@ -1168,6 +1169,19 @@ class Santosh extends ChangeNotifier {
           if (p['kind'] == 'otp' && !_replaying) _otpFromSms(qid, (p['digits'] as num?)?.toInt() ?? 0);
         }
         operatorTick++;
+        break;
+      case 'blender3d': // v0.141 3D Studio
+        final bid = '${p['id']}';
+        final bc = _b3dCards[bid];
+        if (bc != null) {
+          bc.data = {...bc.data, ...p};
+        } else {
+          _b3dCards[bid] = FeedItem('blender3d', Map<String, dynamic>.from(p));
+          feed.add(_b3dCards[bid]!);
+        }
+        if (p['status'] == 'done' && p['push'] == true && inBackground && !_replaying && !pushOn) {
+          Device.instance.showNow('$aName ne 3D banaya', '${p['say'] ?? p['title'] ?? ''}');
+        }
         break;
       case 'video_job':
         final vid = '${p['id']}';

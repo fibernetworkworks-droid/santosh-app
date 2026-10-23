@@ -83,6 +83,7 @@ import 'niryat_screen.dart';
 import 'franchise_screen.dart';
 import 'theka_screen.dart';
 import 'kharcha_screen.dart';
+import 'blender_screen.dart';
 import 'gyaan_screen.dart';
 import 'voice_learned_screen.dart';
 import 'screen_link.dart';
@@ -360,6 +361,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Aapke logo aur rang mein poster, har platform ki size, tyohar ke post; final aapki haan se'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BrandScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.view_in_ar_rounded, color: C.accent),
+              title: Text('${app.aName} · 3D Studio', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Asli Blender: product mockup, layout, gift, 3D print; render, 360° video, GLB / STL'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => Blender3dScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

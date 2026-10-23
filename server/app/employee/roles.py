@@ -30,7 +30,7 @@ DUTIES: dict[str, dict] = {
                                           "check_template_status", "create_campaign", "confirm_send", "get_campaign_status",
                                           "control_campaign"}},
     "video": {"label": "Video editing", "say": "reels, shorts, status aur YouTube ke liye video edit (captions, logo, music)",
-              "prefix": (), "tools": {"video_edit", "video_studio"}},
+              "prefix": (), "tools": {"video_edit", "video_studio", "blender_3d"}},
     "operator": {"label": "Computer operator", "say": "websites par form, application, download, status check (OTP / submit / payment aap karti hain)",
                  "prefix": (), "tools": {"computer_operator"}},
     "tailoring": {"label": "Silai ka kaam", "say": "order, naap, trial, delivery, daam taiyaar karna (naya daam aapki haan se)",

@@ -117,6 +117,7 @@ class Settings(BaseSettings):
     app_critique: str = "key"              # v0.140 Opus looks at its own screenshots: key (home + tabs) | all | off
     app_critique_min: float = 8.0          # v0.140 a screen scoring below this (out of 10) is redrawn with the notes
     app_unique: bool = True                # v0.140 every app's layout DNA must differ from earlier apps on this server
+    blender_model: str = "claude-opus-5-5"  # v0.141 3D Studio: model that writes the Blender scripts (falls back to anthropic_model)
     sites_base_domain: str = ""            # v0.122 free addresses <name>.<this> (wildcard DNS proxied to this server)
     sites_origin: str = ""                 # v0.122 Cloudflare for SaaS fallback origin hostname (points at this server)
     sites_origin_ip: str = ""              # v0.122 this server's public IP (her own Cloudflare zone proxies to it)

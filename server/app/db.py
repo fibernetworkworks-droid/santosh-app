@@ -715,6 +715,7 @@ def init_db(url: str | None = None):
     from .lekhak import service as _lekhak  # noqa: F401
     from .agent import pakka as _pakka  # noqa: F401
     from . import kaamwatch as _kaamwatch  # noqa: F401  (v0.136 live job watch)
+    from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401
     from .videoedit import models as _videoedit_models  # noqa: F401

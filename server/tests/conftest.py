@@ -28,6 +28,8 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("SEMANTIC_OFF", "1")          # no 40 s embedding-model download attempt (the sandbox has no HF)
     monkeypatch.setenv("KAAM_WATCH", "false")        # v0.136: job-watch notes only in its own tests
     monkeypatch.setenv("CALL_RECEIPT", "false")      # v0.91: scripted calls don't expect the extra receipt message
+    monkeypatch.setenv("BLENDER3D_WORKER", "false")   # v0.141: tests run 3D jobs themselves
+    monkeypatch.setenv("BLENDER_LOOK", "false")
     monkeypatch.setenv("MEDIA_FIND", "false")       # v0.136.1: no web look-ups for the exact song / video in tests
     monkeypatch.setenv("PARALLEL_SEARCH", "false")   # v0.91: no real Parallel searches in tests
     monkeypatch.setenv("OPERATOR_PREFLIGHT", "false")  # v0.92: no live site checks (the sandbox has no DNS)
