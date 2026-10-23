@@ -286,6 +286,7 @@ class Api {
       await _send('POST', '/api/motion/videos/$id/youtube', body: {'title': title, 'privacy': privacy}, timeout: const Duration(seconds: 90)) as Map);
 
   Future<Map<String, dynamic>> health() async => Map<String, dynamic>.from(await _send('GET', '/healthz'));
+  Future<void> logout() async => _send('POST', '/api/logout');
   /// v0.98 everything the app needs to open, in one call (404 on an older server: the app falls back).
   Future<Map<String, dynamic>> bootstrap(String? conv) async => Map<String, dynamic>.from(
       await _send('GET', '/api/bootstrap', query: {if (conv != null && conv.isNotEmpty) 'conv': conv}) as Map);

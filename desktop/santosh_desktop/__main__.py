@@ -35,7 +35,7 @@ def headless(args) -> int:
         cfg.device_id, cfg.token = dev, tok
     save(cfg)
     if not cfg.paired:
-        print("Not paired. Run with --server URL --code 123456 (code from the Hoola app > Mera PC).")
+        print("Not paired. Run with --code 123456 (code from the Hoola app > Mera PC).")
         return 2
     idx = Index(app_dir() / "index.db")
     acts = Actions(cfg, idx, log=lambda m: print("[santosh]", m, flush=True))

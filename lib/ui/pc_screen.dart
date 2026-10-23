@@ -158,9 +158,7 @@ class _PcScreenState extends State<PcScreen> {
               Native.openExternal(url: 'https://wa.me/?text=${Uri.encodeComponent('Santosh Desktop (PC ke liye): $desktopDownload')}'))),
         ]),
         const SizedBox(height: 14),
-        const Text('2. PC par Hoola Desktop mein yeh daaliye', style: TextStyle(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 6),
-        Text('Server: ${app.serverUrl}', style: const TextStyle(color: C.chip, fontSize: 12.5)),
+        const Text('2. PC par Hoola Desktop mein yeh code daaliye', style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 10),
         if (_code != null && left > 0) ...[
           Center(child: SelectableText(_code!.replaceAllMapped(RegExp(r'^(\d{3})(\d{3})$'), (m) => '${m[1]} ${m[2]}'),
@@ -241,8 +239,6 @@ class _PcScreenState extends State<PcScreen> {
                         const Text('Naye PC par Hoola Desktop mein yeh code daaliye (10 min)'),
                         const SizedBox(height: 10),
                         SelectableText(_code!, style: display(36, color: C.accent)),
-                        const SizedBox(height: 6),
-                        Text('Server: ${app.serverUrl}', style: const TextStyle(color: C.faint, fontSize: 12)),
                       ])));
                 })),
               ]),

@@ -1208,11 +1208,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       const SizedBox(height: 18),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Server', style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text('Account', style: TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          Text(app.serverUrl, style: const TextStyle(color: C.muted)),
           Text(app.dryRun ? 'WhatsApp: test mode' : 'WhatsApp: live', style: const TextStyle(color: C.muted)),
-          TextButton(onPressed: widget.onReset, child: const Text('Server badlein')),
+          TextButton(onPressed: () async {
+            await app.signOut();
+            if (!mounted) return;
+            widget.onReset();
+          }, child: const Text('Logout')),
         ]),
       ),
     ]);

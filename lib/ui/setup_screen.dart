@@ -8,7 +8,7 @@ import '../emotion.dart';
 import 'glass.dart';
 import 'live_santosh.dart';
 
-/// First run: say hello, pick a language, point the app at the Santosh server.
+/// First run: say hello, pick a language, sign in (Google, or an API key). The server is fixed in the app.
 class SetupScreen extends StatefulWidget {
   const SetupScreen({super.key, required this.app, this.onDone});
   final Santosh app;
@@ -18,7 +18,6 @@ class SetupScreen extends StatefulWidget {
 }
 
 class _SetupScreenState extends State<SetupScreen> {
-  late final _server = TextEditingController(text: widget.app.serverUrl.isEmpty ? 'https://' : widget.app.serverUrl);
   late final _key = TextEditingController(text: widget.app.apiKey);
   final _name = TextEditingController();
   late String _lang = widget.app.language;
@@ -27,22 +26,18 @@ class _SetupScreenState extends State<SetupScreen> {
   String? _err;
 
   Future<void> _google() async {
-    final url = _server.text.trim();
-    if (url.isEmpty || url == 'https://') {
-      setState(() => _err = 'Pehle Hoola server address daaliye, phir Google se sign in.');
-      return;
-    }
+    final url = widget.app.serverUrl;
     try {
       final h = await Api(url, '').health();
       if (h['google_login'] != true) {
         setState(() => _err = 'Is server par Google sign-in abhi on nahi hai.');
         return;
       }
-      await widget.app.saveSettings(server: url, lang: _lang);
+      await widget.app.saveSettings(lang: _lang);
       // opens Google consent; the app comes back via the santosh:// deep link
       await launchUrl(widget.app.api?.googleSignInUrl() ?? Api(url, '').googleSignInUrl(), mode: LaunchMode.externalApplication);
     } catch (e) {
-      setState(() => _err = 'Google sign-in shuru nahi hua: $e');
+      setState(() => _err = 'Google sign-in shuru nahi hua. Internet check karke dobara dabaiye.');
     }
   }
 
@@ -51,11 +46,12 @@ class _SetupScreenState extends State<SetupScreen> {
       _busy = true;
       _err = null;
     });
-    final url = _server.text.trim();
+    final url = widget.app.serverUrl;
     try {
+      if (_key.text.trim().isEmpty) throw 'API key daaliye';
       final h = await Api(url, _key.text.trim()).health();
-      if (h['ok'] != true) throw 'Not a Hoola server';
-      await widget.app.saveSettings(server: url, key: _key.text, lang: _lang);
+      if (h['ok'] != true) throw 'Hoola abhi jawab nahi de raha';
+      await widget.app.saveSettings(key: _key.text, lang: _lang);
       await widget.app.connect(fresh: true);
       if (widget.app.connected && _name.text.trim().isNotEmpty) {
         await widget.app.api!.saveProfile({'name': _name.text.trim(), 'language': languages[_lang]});
@@ -100,11 +96,6 @@ class _SetupScreenState extends State<SetupScreen> {
                   ]),
                   const SizedBox(height: 18),
                   TextField(controller: _name, decoration: const InputDecoration(labelText: 'Aapka naam')),
-                  TextField(
-                    controller: _server,
-                    keyboardType: TextInputType.url,
-                    decoration: const InputDecoration(labelText: 'Hoola server address', hintText: 'https://santosh.yourdomain.com'),
-                  ),
                   const SizedBox(height: 14),
                   Press(
                     onTap: _busy ? null : _google,
@@ -135,7 +126,8 @@ class _SetupScreenState extends State<SetupScreen> {
                   const Text('Aapka data sirf aapka. Hoola kabhi PIN, OTP ya password nahi maangega.',
                       textAlign: TextAlign.center, style: TextStyle(color: C.faint, fontSize: 11.5)),
                   const SizedBox(height: 14),
-                  GradientButton(label: _busy ? 'Connect ho raha hai…' : 'Server address se jodiye', icon: Icons.arrow_forward_rounded, onTap: _busy ? null : _go),
+                  if (_advanced)
+                    GradientButton(label: _busy ? 'Jod raha hai…' : 'API key se jodiye', icon: Icons.arrow_forward_rounded, onTap: _busy ? null : _go),
                 ]),
               ),
             ]),

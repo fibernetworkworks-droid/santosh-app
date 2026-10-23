@@ -21,4 +21,6 @@ In TallyPrime: Help > Settings > Connectivity > Client/Server configuration: "Ta
 ## Run from source
     pip install -r requirements.txt
     python -m santosh_desktop                     # window
-    python -m santosh_desktop --headless --server https://your-server --code 123456 --folder "D:\Accounts"
+    python -m santosh_desktop --headless --code 123456 --folder "D:\Accounts"
+
+The server is fixed: https://hoola.ainewtika.com (a test machine can set HOOLA_SERVER or pass --server).

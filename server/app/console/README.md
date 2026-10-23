@@ -13,3 +13,16 @@
 - Who can make a NEW Hoola: `HOOLA_SIGNUP=open` (default, anyone) or `invite` with `HOOLA_SIGNUP_ALLOW` = comma list of
   emails and/or `@domain.com`. Existing accounts and `OWNER_EMAILS` always get in. A refused sign-up creates nothing.
 - Tests: `server/tests/test_console_google.py`.
+
+# One address everywhere: https://hoola.ainewtika.com
+
+- Phone app: `Santosh.hoolaServer` (lib/state.dart) is fixed to https://hoola.ainewtika.com (`--dart-define=HOOLA_SERVER=...`
+  only for test builds); the old saved `server` preference is ignored, so phones set up on the sslip address move here by
+  themselves with the same key / session (same server). `configured` = a key is saved. No server box in setup, no server
+  line in Profile / Mera PC / Hoola Network; Profile > Account has Logout (`Santosh.signOut`: POST /api/logout, stops the
+  background service, back to setup).
+- Santosh Desktop: `config.HOOLA_SERVER` (env HOOLA_SERVER or --server for testing); `load()` always uses it, so a PC
+  paired on the old address keeps its device token; the pair screen asks only for the code and the PC name.
+- Server `.env`: PUBLIC_BASE_URL=https://hoola.ainewtika.com (every Google / Microsoft / DigiLocker return link) and
+  HOOLA_DOMAIN=santosh.139-59-10-30.sslip.io kept for Hoola Network avatar addresses until a separate migration.
+  Caddy serves both names (the sslip block stays for old app builds).

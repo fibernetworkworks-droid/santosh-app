@@ -168,8 +168,6 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
           ]),
           Text('${_me['connections'] ?? 0} jude · ${_me['requests'] ?? 0} requests · ${_me['inbox'] ?? 0} intezaar mein',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
-          if ((_me['server'] ?? '') != '' && _me['server'] != 'local')
-            Text('Doosre Hoola server se: ${_me['handle_display']}@${_me['server']}', style: const TextStyle(color: C.faint, fontSize: 12)),
         ]),
       ),
       const SizedBox(height: 14),

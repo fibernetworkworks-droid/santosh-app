@@ -86,10 +86,9 @@ class App:
         f = self._card("Phone se jodiye")
         tk.Label(f, text="1. Phone par Hoola app kholiye > Main > Mera PC > 'PC jodiye'.\n"
                          "2. Wahan dikha 6 ank ka code yahan daaliye.", bg=PANEL, fg=MUTED, justify="left").pack(anchor="w", padx=12)
-        server = tk.StringVar(value=self.cfg.server or "https://")
         code = tk.StringVar()
         name = tk.StringVar(value=self.cfg.name)
-        for label, var in (("Hoola server ka pata", server), ("6 ank ka code", code), ("Is PC ka naam", name)):
+        for label, var in (("6 ank ka code", code), ("Is PC ka naam", name)):
             tk.Label(f, text=label, bg=PANEL, fg=INK).pack(anchor="w", padx=12, pady=(8, 0))
             ttk.Entry(f, textvariable=var, width=48).pack(anchor="w", padx=12)
         msg = tk.StringVar()
@@ -97,11 +96,11 @@ class App:
 
         def go() -> None:
             try:
-                dev, tok = pair(server.get(), code.get(), name.get() or "PC", f"{platform.system()} {platform.release()}")
+                dev, tok = pair(self.cfg.server, code.get(), name.get() or "PC", f"{platform.system()} {platform.release()}")
             except Exception as e:
                 msg.set(str(e))
                 return
-            self.cfg.server, self.cfg.device_id, self.cfg.name = server.get().strip().rstrip("/"), dev, name.get() or "PC"
+            self.cfg.device_id, self.cfg.name = dev, name.get() or "PC"
             self.cfg.token = tok
             if not self.cfg.folders:
                 docs = Path.home() / "Documents"

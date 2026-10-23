@@ -42,11 +42,14 @@ class Santosh extends ChangeNotifier {
   static Future<Santosh> load() async => Santosh._(await SharedPreferences.getInstance());
 
   // settings
-  String get serverUrl => _prefs.getString('server') ?? '';
+  /// Hoola's own server. Fixed in the app (never typed or shown); a test build can override it with
+  /// --dart-define=HOOLA_SERVER=https://... . Phones set up on the old address move here by themselves: same server, same key.
+  static const String hoolaServer = String.fromEnvironment('HOOLA_SERVER', defaultValue: 'https://hoola.ainewtika.com');
+  String get serverUrl => hoolaServer;
   String get apiKey => _prefs.getString('key') ?? '';
   String get language => _prefs.getString('lang') ?? 'hi-IN';
   bool get speakReplies => _prefs.getBool('speak') ?? true;
-  bool get configured => serverUrl.isNotEmpty;
+  bool get configured => apiKey.isNotEmpty;
   /// Background mode: a native service keeps Santosh working while the app is closed.
   bool get background => _prefs.getBool('bg') ?? true;
   /// Santosh's voice for live calls (a male Gemini voice id).
@@ -349,7 +352,6 @@ class Santosh extends ChangeNotifier {
   DateTime _connectedAt = DateTime.now().toUtc();
 
   Future<void> saveSettings({String? server, String? key, String? lang, bool? speak}) async {
-    if (server != null) await _prefs.setString('server', server.trim());
     if (key != null) await _prefs.setString('key', key.trim());
     if (lang != null) await _prefs.setString('lang', lang);
     if (speak != null) await _prefs.setBool('speak', speak);
@@ -490,9 +492,25 @@ class Santosh extends ChangeNotifier {
 
   /// Save the session token that came back from Sign in with Google (used as the bearer).
   Future<void> applySession(String token, {String? server}) async {
-    if (server != null && server.isNotEmpty) await _prefs.setString('server', server);
     await _prefs.setString('key', token);
     await connect(fresh: true);
+  }
+
+  /// Log out of Hoola on this phone: the server forgets this session, the background service stops, setup shows again.
+  Future<void> signOut() async {
+    try {
+      await api?.logout();
+    } catch (_) {}
+    await _sub?.cancel();
+    _sub = null;
+    try {
+      await Native.stop();
+    } catch (_) {}
+    await _prefs.remove('key');
+    await _prefs.remove('conv');
+    connected = false;
+    api = null;
+    notifyListeners();
   }
 
   Future<void> disconnectProvider(String provider) async {

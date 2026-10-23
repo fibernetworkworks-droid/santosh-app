@@ -65,9 +65,13 @@ def unseal(v: str) -> str:
     return v.removeprefix("plain:")
 
 
+# Hoola's own server: fixed (never typed). HOOLA_SERVER (env) or --server only for testing.
+HOOLA_SERVER = (os.environ.get("HOOLA_SERVER") or "https://hoola.ainewtika.com").rstrip("/")
+
+
 @dataclass
 class Config:
-    server: str = ""
+    server: str = HOOLA_SERVER
     device_id: str = ""
     token_sealed: str = ""
     folders: list[str] = field(default_factory=list)
@@ -104,6 +108,7 @@ def load() -> Config:
     except ValueError:
         return Config()
     known = {k: v for k, v in data.items() if k in Config.__dataclass_fields__}
+    known["server"] = HOOLA_SERVER        # a PC paired on the old address moves here: same server, same device token
     return Config(**known)
 
 
