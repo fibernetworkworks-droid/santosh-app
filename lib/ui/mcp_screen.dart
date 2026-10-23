@@ -9,7 +9,8 @@ import 'mcp_tools.dart';
 import 'plugin_widgets.dart';
 import 'postgres_screen.dart';
 
-/// MCP servers: the user's connected servers plus the built-in directory of ~50,700 MCP servers worldwide.
+/// MCP servers: the user's connected servers plus the built-in directory of ~63,700 MCP servers worldwide
+/// (npm, PyPI, GitHub lists, mcp.so, mcpservers.org, Apify Store), each with a name, short description and HD logo.
 class McpScreen extends StatefulWidget {
   const McpScreen({super.key, required this.app});
   final Santosh app;
@@ -17,9 +18,10 @@ class McpScreen extends StatefulWidget {
   State<McpScreen> createState() => _McpScreenState();
 }
 
-const _fields = ['Developer Tools', 'Finance & Fintech', 'Productivity', 'Communication', 'Databases', 'Search & Data Extraction',
-  'Knowledge & Memory', 'Browser Automation', 'Marketing', 'Cloud Platforms', 'Travel & Transportation', 'Location Services',
-  'Social Media', 'Security'];
+const _fields = ['Developer Tools', 'AI & Agents', 'Search & Web', 'Productivity', 'Finance & Payments', 'Databases',
+  'Communication', 'Knowledge & Memory', 'Cloud & DevOps', 'Business & CRM', 'Design & Media', 'Marketing & SEO',
+  'Browser Automation', 'Maps & Travel', 'Health & Science', 'Security', 'Files & Documents', 'Social Media',
+  'Data & Analytics', 'E-commerce', 'Crypto & Web3', 'Gaming', 'Education & Research', 'IoT & Hardware'];
 
 class _McpScreenState extends State<McpScreen> {
   List<Map<String, dynamic>> _mine = [];
@@ -395,7 +397,7 @@ class _McpScreenState extends State<McpScreen> {
   void _snack(String t) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t)));
 
   Future<void> _addDialog({Map<String, dynamic>? entry}) async {
-    final url = TextEditingController();
+    final url = TextEditingController(text: entry?['mcp_url'] as String? ?? '');
     final name = TextEditingController(text: entry?['name'] as String? ?? '');
     final key = TextEditingController();
     final header = TextEditingController(text: 'Authorization');
@@ -411,9 +413,13 @@ class _McpScreenState extends State<McpScreen> {
           Text(entry == null ? 'MCP server jodiye' : 'Jodiye: ${entry['name']}', style: display(19)),
           const SizedBox(height: 6),
           Text(
-              local
-                  ? 'Yeh server computer par chalta hai. Pehle use apne PC/server par HTTP mode mein chalaiye, phir uska https pata yahan daaliye.'
-                  : 'Server ka MCP pata (https://…/mcp) daaliye. GitHub page par milta hai.',
+              entry?['source'] == 'Apify Store'
+                  ? 'Apify actor: apna Apify API token neeche key mein daaliye (Apify Console > Settings > Integrations). Har run aapke Apify credit kharch karta hai.'
+                  : entry?['mcp_url'] != null
+                      ? 'Iska MCP pata pehle se bhara hai. Bas Jodiye dabaiye (key sirf tab, jab server maange).'
+                      : local
+                          ? 'Yeh server computer par chalta hai. Pehle use apne PC/server par HTTP mode mein chalaiye, phir uska https pata yahan daaliye.'
+                          : 'Server ka MCP pata (https://…/mcp) daaliye. GitHub page par milta hai.',
               style: const TextStyle(color: C.muted, fontSize: 12.5, height: 1.4)),
           if (entry?['caution'] != null) ...[
             const SizedBox(height: 8),
@@ -553,11 +559,12 @@ class _McpScreenState extends State<McpScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(e['name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
-                Text(e['ref'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                Text(e['by'] != null ? 'by ${e['by']}' : (e['ref'] as String? ?? ''), maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: C.faint, fontSize: 11.5)),
               ]),
             ),
-            if (e['official'] == true) const Pill('Official', fg: C.ok),
+            if (e['official'] == true) const Pill('Official', fg: C.ok)
+            else if (e['verified'] == true) const Pill('Verified', fg: C.teal),
           ]),
           const SizedBox(height: 4),
           Text(e['does'] as String? ?? '', maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 12.5, height: 1.35)),
@@ -567,6 +574,8 @@ class _McpScreenState extends State<McpScreen> {
             Pill(remote ? 'Online service' : 'Computer par chalta', fg: remote ? C.teal : C.faint),
             if (e['source'] != null) Pill(e['source'] as String),
             if (e['downloads_per_month'] != null) Pill('${e['downloads_per_month']}/mahina downloads'),
+            if (e['users_per_month'] != null) Pill('${e['users_per_month']} log/mahina'),
+            if (e['mcp_url'] != null && e['connect'] != 'not_allowed') const Pill('Pata taiyaar', fg: C.ok),
             if (e['caution'] != null) const Pill('Savdhani', fg: C.warn),
           ]),
           if (e['install'] != null) ...[
@@ -595,7 +604,7 @@ class _McpScreenState extends State<McpScreen> {
       appBar: AppBar(title: const Text('MCP servers'), backgroundColor: Colors.transparent),
       body: Aurora(
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-          Text('${_stats?['total'] ?? 50762} servers ki directory · jo chahiye jodiye, Hoola unse kaam karega',
+          Text('${_stats?['total'] ?? 63655} servers ki directory · jo chahiye jodiye, Hoola unse kaam karega',
               style: const TextStyle(color: C.muted, fontSize: 13)),
           const SizedBox(height: 12),
           GradientButton(label: _busy ? 'Jod raha hoon…' : 'Pata daal kar jodiye', icon: Icons.add_rounded, height: 48,

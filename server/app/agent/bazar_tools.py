@@ -20,7 +20,7 @@ BAZAR_TOOLS = [
         "product search across ONDC sellers, Shopify brand stores and local Bazar shops, cart, all-in price on a confirm card, "
         "UPI pay, track/cancel/return; Flipkart is search + link only). "
         "Query in any language, e.g. 'bijli bill msedcl', 'pani bill', 'fastag', 'gst invoice', 'udhar', 'passport', 'hdfc'. "
-        "Also searches the user's own MCP servers and, when few packs match, the MCP directory of ~50,700 MCP servers worldwide "
+        "Also searches the user's own MCP servers and, when few packs match, the MCP directory of ~63,700 MCP servers worldwide (npm, PyPI, GitHub lists, mcp.so, mcpservers.org, Apify) "
         "servers (GitHub, Notion, Jira, Zerodha, Tally, databases, maps, research...) returned as mcp_directory. "
         "Returns matching packs with status and their tools (name, description, input_schema). Empty query = catalogue."),
      "input_schema": {"type": "object", "properties": {
@@ -43,9 +43,9 @@ BAZAR_TOOLS = [
         "MCP servers the user connects to Santosh. action=featured: popular apps with an official MCP server (Notion, "
         "Linear, Atlassian, Asana, Canva, HubSpot, Stripe, Razorpay...) and whether each is connected. action=connect with "
         "featured=<id>: connect one (one-tap ones show a sign-in Link; API-key ones the user finishes in the app). "
-        "action=directory: search the directory of ~50,700 MCP "
-        "servers (query and/or field like 'Finance & Fintech', 'Databases', 'Communication'); no query = counts by field. "
-        "action=add: connect a remote server by its https MCP address (url; optional ref = owner/repo from the directory, "
+        "action=directory: search the directory of ~63,700 MCP "
+        "servers (query and/or field like 'Finance & Payments', 'Databases', 'Communication', 'AI & Agents', 'Search & Web'); no query = counts by field. "
+        "action=add: connect a remote server by its https MCP address (url; optional ref = the directory ref; a directory hit with mcp_url needs only ref), "
         "name). Only use an address the user gave or that the directory/GitHub page states; never invent one. If it needs "
         "a sign-in a Link button appears; API keys are entered by the user in the app, never in chat. "
         "action=list: the user's servers and status. action=remove: disconnect (pack_id). After adding, use "

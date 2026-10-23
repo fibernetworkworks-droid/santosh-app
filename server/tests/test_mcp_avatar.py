@@ -54,11 +54,11 @@ def test_snapshot_and_what_the_avatar_is_told(mcp):  # noqa: F811
     assert by[locked["pack_id"]]["status"] == "needs_link" and by[locked["pack_id"]]["tools"] == []
     defs, route = mcp_live.tool_defs(snap, 40)
     names = [d["name"] for d in defs]
-    assert names == ["mcp_kite_mcp__get_holdings", "mcp_kite_mcp__createissue"]
-    assert route["mcp_kite_mcp__createissue"] == (ready["pack_id"], "createIssue")
+    assert names == ["mcp_kite__get_holdings", "mcp_kite__createissue"]
+    assert route["mcp_kite__createissue"] == (ready["pack_id"], "createIssue")
     assert "confirm card" in defs[1]["description"] and "confirm" not in defs[0]["description"]
     block = mcp_live.prompt_block(snap, route)
-    assert "kite-mcp" in block and "get_holdings" in block and "Notion" in block and "sign-in baaki" in block
+    assert "Kite" in block and "get_holdings" in block and "Notion" in block and "sign-in baaki" in block
     # over the limit: the rest stay reachable through bazar_run, and the avatar is told so
     defs1, route1 = mcp_live.tool_defs(snap, 1)
     assert len(defs1) == 1 and f"bazar_run pack_id={ready['pack_id']}" in mcp_live.prompt_block(snap, route1)
@@ -95,18 +95,18 @@ def test_chat_avatar_knows_and_uses_its_mcp(mcp):  # noqa: F811
 
     def after_read(msgs):
         got["read"] = json.loads(last_result(msgs)["content"])
-        return tool("mcp_kite_mcp__createissue", {"title": "Bug"}, 2)
+        return tool("mcp_kite__createissue", {"title": "Bug"}, 2)
 
     def after_write(msgs):
         got["write"] = json.loads(last_result(msgs)["content"])
         return text("Holdings dekh liye. Issue banane ke liye Approve dabaiye.")
 
-    claude = SeeingClaude([tool("mcp_kite_mcp__get_holdings", {}, 1), after_read, after_write])
+    claude = SeeingClaude([tool("mcp_kite__get_holdings", {}, 1), after_read, after_write])
     set_client(claude)
     reply = asyncio.run(run_turn(conv, "Mere kite pe holdings dikhao aur ek bug issue bana do", tenant_id="default"))
     first = claude.seen[0]
-    assert "Jude hue MCP servers" in first["system"] and "kite-mcp" in first["system"]
-    assert {"mcp_kite_mcp__get_holdings", "mcp_kite_mcp__createissue", "bazar_run"} <= set(first["tools"])
+    assert "Jude hue MCP servers" in first["system"] and "Kite" in first["system"]
+    assert {"mcp_kite__get_holdings", "mcp_kite__createissue", "bazar_run"} <= set(first["tools"])
     assert got["read"]["data"]["tool"] == "get_holdings"                    # the read ran on the server
     assert got["write"]["needs_approval"] is True                            # the write waits for the owner's tap
     assert [c[2] for c in FakeRemote.calls] == ["get_holdings"]
@@ -127,7 +127,7 @@ def test_chat_survives_a_tool_schema_the_model_refuses(mcp):  # noqa: F811
     claude = Picky([text("Kite server juda hai, bazar_run se kaam karunga.")])
     set_client(claude)
     reply = asyncio.run(run_turn(mcp["conv"], "kaun se MCP jude hain?", tenant_id="default"))
-    assert "Kite" in reply and "kite-mcp" in claude.seen[0]["system"]
+    assert "Kite" in reply and "Kite" in claude.seen[0]["system"]
     assert not any(n.startswith("mcp_") for n in claude.seen[0]["tools"])
 
 
@@ -139,7 +139,7 @@ def test_voice_call_knows_and_uses_its_mcp(mcp, monkeypatch):  # noqa: F811
     _gemini_env(monkeypatch)
     _add(mcp["svc"])
     fake = FakeSession([[types.LiveServerMessage(tool_call=types.LiveServerToolCall(function_calls=[
-        types.FunctionCall(id="k1", name="mcp_kite_mcp__get_holdings", args={})]))]])
+        types.FunctionCall(id="k1", name="mcp_kite__get_holdings", args={})]))]])
 
     async def send_tool_response(function_responses):
         fake.tool_responses.extend(function_responses)
@@ -153,9 +153,9 @@ def test_voice_call_knows_and_uses_its_mcp(mcp, monkeypatch):  # noqa: F811
             ws.send_text(json.dumps({"type": "end"}))
     cfg = configs[0]
     names = {d.name for d in cfg.tools[0].function_declarations}
-    assert {"mcp_kite_mcp__get_holdings", "mcp_kite_mcp__createissue", "bazar_run"} <= names
+    assert {"mcp_kite__get_holdings", "mcp_kite__createissue", "bazar_run"} <= names
     prompt = cfg.system_instruction.parts[0].text
-    assert "Jude hue MCP servers" in prompt and "kite-mcp" in prompt
+    assert "Jude hue MCP servers" in prompt and "Kite" in prompt
     r = fake.tool_responses[0]
     assert r.id == "k1" and r.response["result"]["data"]["tool"] == "get_holdings"
     _ = voice
@@ -185,4 +185,4 @@ def test_voice_call_goes_on_when_gemini_refuses_an_mcp_schema(mcp, monkeypatch):
             ws.send_text(json.dumps({"type": "end"}))
     last = configs[-1]
     assert not any(d.name.startswith("mcp_") for d in last.tools[0].function_declarations)
-    assert "kite-mcp" in last.system_instruction.parts[0].text      # still known; reachable through bazar_run
+    assert "Kite" in last.system_instruction.parts[0].text      # still known; reachable through bazar_run

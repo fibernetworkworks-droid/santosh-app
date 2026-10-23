@@ -52,7 +52,8 @@ def _probe(status, headers=None):
 def test_directory_loaded_and_searchable():
     from app.bazar import directory
     st = directory.stats()
-    assert st["total"] == 50762 and st["sources"]["npm"] > 20000 and st["sources"]["PyPI"] > 20000
+    assert st["total"] > 60000 and st["sources"]["npm"] > 20000 and st["sources"]["PyPI"] > 15000
+    assert st["sources"]["mcp.so"] > 10000 and st["sources"]["Apify Store"] > 4000
     hits = directory.search("tally", limit=5)
     assert any("tally" in h["ref"].lower() or "tally" in h["does"].lower() for h in hits)
     z = directory.search("zerodha kite", limit=10)
@@ -78,8 +79,7 @@ def test_private_or_insecure_addresses_refused(mcp, url):
 def test_add_open_server_read_runs_write_needs_tap(mcp):
     svc, conv = mcp["svc"], mcp["conv"]
     out = svc.mcp_add("default", "https://tools.example.com/mcp", ref="aranjan/kite-mcp", probe_client=_probe(200))
-    assert out["name"] == "kite-mcp"
-    assert out["status"] == "ready" and out["name"] == "kite-mcp"
+    assert out["status"] == "ready" and out["name"] == "Kite"   # v0.153 the directory's clean name
     pid = out["pack_id"]
     found = svc.find("default", "kite")
     mine = [p for p in found["packs"] if p["pack_id"] == pid][0]
@@ -92,7 +92,7 @@ def test_add_open_server_read_runs_write_needs_tap(mcp):
     done = svc.decide("default", w["approval_id"], "approve")
     assert done["outcome"]["status"] == "done"
     assert FakeRemote.calls[-1][2:] == ("createIssue", {"title": "Bug"})
-    assert svc.activity("default")["payments"][0]["what"] == "kite-mcp"
+    assert svc.activity("default")["payments"][0]["what"] == "Kite"
 
 
 def test_needs_sign_in_then_key(mcp):

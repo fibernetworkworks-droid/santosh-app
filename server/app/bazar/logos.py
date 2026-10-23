@@ -1,5 +1,6 @@
 """Real logos for plugins and MCP servers, fetched from each brand's OWN website (its apple-touch-icon / favicon) or,
-for directory MCP servers, the publisher's GitHub avatar. They are fetched once on the server, turned into a
+for directory MCP servers, the brand site / listing picture / GitHub organisation, else a drawn HD tile (so every
+directory server has a logo). They are fetched once on the server, turned into a
 256 px PNG and kept on disk, so phones load them fast from Hoola and never call third parties themselves.
 
 Logos are only ever looked up for things in Hoola's own lists (a pack id, a featured connector, a directory entry,
@@ -80,6 +81,8 @@ def custom_logo(row) -> str | None:
     entry = directory.get(row.directory_ref) if row.directory_ref and not row.directory_ref.startswith("featured:") else None
     if row.directory_ref.startswith("featured:"):
         return featured_logo(row.directory_ref.split(":", 1)[1])
+    if entry and entry.get("id"):
+        return f"/api/logo/dir/{entry['id']}?v={directory.LOGO_VERSION}"
     if entry and github_owner(entry.get("l")):
         return directory_logo(entry.get("l"))
     return f"/api/logo/mcp/{row.id}?v={VERSION}"
@@ -106,6 +109,9 @@ def resolve(kind: str, key: str) -> tuple[str, str] | None:
         return ("url", src) if src.startswith("https://") else None
     if kind == "gh":
         return ("url", f"https://github.com/{key}.png?size=256") if _OWNER.match(key) else None
+    if kind == "dir":
+        from . import directory
+        return ("dir", key) if directory.logo_sources(key) is not None else None
     if kind == "mcp":
         from .db import CustomMcp, session_factory
         s = session_factory()
@@ -231,14 +237,142 @@ def _icon_links(client, domain: str) -> list[str]:
 
 
 def fetch(kind: str, target: str, client=None) -> bytes | None:
-    """The best real logo for a domain (or a direct url), as a 256 px PNG."""
+    """The best real logo for a domain (or a direct url), as a 256 px PNG. A directory server ('dir') always gets one:
+    its brand site, the listing's picture, its GitHub organisation, else a drawn HD tile."""
+    if kind == "dir":
+        return dir_logo(target, client)
+    got = fetch_sized(kind, target, client)
+    return got[0] if got else None
+
+
+DIR_MIN_PX = 96      # smaller than this looks blurry on a 64 dp tile: use the next source
+DIR_BUDGET_S = 12.0  # then the drawn tile now, and the real sources again after MISS_RETRY_S
+
+
+def _flat(png: bytes) -> bool:
+    """GitHub's default avatar (identicon: a 5x5 pattern in one colour on #F0F0F0 grey) is not a logo."""
+    from PIL import Image
+    try:
+        im = Image.open(io.BytesIO(png)).convert("RGB").resize((64, 64), Image.NEAREST)
+    except Exception:
+        return True
+    colors = im.getcolors(64 * 64) or []
+    grey = sum(n for n, c in colors if all(abs(v - 240) <= 4 for v in c))
+    buckets: dict[tuple, int] = {}
+    for n, c in colors:                              # near colours together (resizing leaves soft edges)
+        k = tuple(v // 48 for v in c)
+        buckets[k] = buckets.get(k, 0) + n
+    big = [k for k, n in buckets.items() if n > 80]  # colour groups covering more than 2% of the picture
+    return grey > 64 * 64 * 0.4 and len(big) <= 4
+
+
+def dir_logo(eid: str, client=None) -> bytes:
+    from . import directory
+    own = client is None
+    client = client or _client()
+    try:
+        deadline = time.time() + DIR_BUDGET_S          # a phone is waiting: never hang on a slow site
+        tries: list[str] = []
+        for kind, target in directory.logo_sources(eid) or []:
+            if kind == "gh":
+                if _OWNER.match(target):
+                    tries.append(f"https://github.com/{target}.png?size=256")
+            elif kind == "domain":     # the icon Google indexes for the brand (256 px), then the site's own touch icon
+                tries += [f"https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL"
+                          f"&url=https://{target}&size=256", f"https://{target}/apple-touch-icon.png",
+                          f"https://www.{target}/apple-touch-icon.png"]
+            else:
+                tries.append(target)
+        for url in tries:
+            if time.time() > deadline:
+                break
+            try:
+                got = fetch_sized("url", url, client)
+            except Exception:
+                got = None
+            if got and got[1] >= DIR_MIN_PX and not (url.startswith("https://github.com/") and _flat(got[0])):
+                return got[0]
+    finally:
+        if own:
+            client.close()
+    title, field = directory.monogram_of(eid)
+    return monogram(title, field)
+
+
+CAT_COLORS = {  # two-stop gradients per category (deep -> bright), so a drawn tile still says what kind of server it is
+    "Developer Tools": ((30, 41, 99), (79, 70, 229)), "AI & Agents": ((88, 28, 135), (192, 38, 211)),
+    "Search & Web": ((12, 74, 110), (14, 165, 233)), "Browser Automation": ((15, 76, 92), (6, 182, 212)),
+    "Databases": ((20, 83, 45), (34, 197, 94)), "Data & Analytics": ((30, 58, 138), (59, 130, 246)),
+    "Cloud & DevOps": ((12, 74, 110), (56, 189, 248)), "Security": ((127, 29, 29), (239, 68, 68)),
+    "Communication": ((6, 95, 70), (16, 185, 129)), "Productivity": ((124, 45, 18), (249, 115, 22)),
+    "Knowledge & Memory": ((76, 29, 149), (139, 92, 246)), "Finance & Payments": ((20, 83, 45), (132, 204, 22)),
+    "Crypto & Web3": ((120, 53, 15), (245, 158, 11)), "Marketing & SEO": ((131, 24, 67), (236, 72, 153)),
+    "Social Media": ((30, 64, 175), (96, 165, 250)), "E-commerce": ((154, 52, 18), (251, 146, 60)),
+    "Design & Media": ((112, 26, 117), (217, 70, 239)), "Files & Documents": ((51, 65, 85), (100, 116, 139)),
+    "Maps & Travel": ((19, 78, 74), (20, 184, 166)), "Health & Science": ((22, 101, 52), (74, 222, 128)),
+    "Education & Research": ((30, 27, 75), (99, 102, 241)), "Gaming": ((76, 5, 25), (225, 29, 72)),
+    "IoT & Hardware": ((54, 83, 20), (163, 230, 53)), "Business & CRM": ((23, 37, 84), (37, 99, 235)),
+}
+FONT = HERE.parent / "fonts" / "Poppins-Bold.ttf"   # OFL, Latin subset (app/fonts/OFL-Poppins.txt)
+
+
+def initials(title: str) -> str:
+    words = [w for w in re.findall(r"[A-Za-z0-9]+", title or "") if w.lower() not in ("the", "and", "of", "for", "mcp")]
+    if not words:
+        return "M"
+    if len(words) == 1:
+        w = words[0]
+        caps = [c for c in w[1:] if c.isupper()]      # "GitHub" -> GH, "OpenAI" -> OA
+        return (w[0] + caps[0]).upper() if caps else w[0].upper()
+    return (words[0][0] + words[1][0]).upper()
+
+
+def monogram(title: str, field: str = "") -> bytes:
+    """A clean HD tile (256 px): rounded square, category gradient tuned by the name, 1-2 letters."""
+    from PIL import Image, ImageDraw, ImageFont
+    a, b = CAT_COLORS.get(field, ((31, 41, 55), (75, 85, 99)))
+    h = int(hashlib.sha1((title or "").encode()).hexdigest()[:2], 16) / 255 - 0.5   # small shift so tiles differ
+    a = tuple(max(0, min(255, int(x + h * 30))) for x in a)
+    b = tuple(max(0, min(255, int(x - h * 30))) for x in b)
+    big = SIZE * 2
+    grad = Image.new("RGBA", (big, big))
+    px = grad.load()
+    for y in range(big):
+        for x in range(0, big, 4):
+            t = (x + y) / (2 * big)
+            c = tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3)) + (255,)
+            for k in range(4):
+                px[x + k, y] = c
+    mask = Image.new("L", (big, big), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, big - 1, big - 1), radius=int(big * 0.23), fill=255)
+    tile = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    tile.paste(grad, (0, 0), mask)
+    glow = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    ImageDraw.Draw(glow).ellipse((-big * 0.3, -big * 0.55, big * 1.0, big * 0.45), fill=(255, 255, 255, 34))
+    tile = Image.alpha_composite(tile, Image.composite(glow, Image.new("RGBA", (big, big), (0, 0, 0, 0)), mask))
+    text = initials(title)
+    try:
+        font = ImageFont.truetype(str(FONT), int(big * (0.42 if len(text) > 1 else 0.5)))
+    except OSError:
+        font = ImageFont.load_default()
+    d = ImageDraw.Draw(tile)
+    x0, y0, x1, y1 = d.textbbox((0, 0), text, font=font)
+    pos = ((big - (x1 - x0)) / 2 - x0, (big - (y1 - y0)) / 2 - y0)
+    d.text((pos[0], pos[1] + big * 0.012), text, font=font, fill=(0, 0, 0, 60))
+    d.text(pos, text, font=font, fill=(255, 255, 255, 255))
+    out = io.BytesIO()
+    tile.resize((SIZE, SIZE), Image.LANCZOS).save(out, "PNG", optimize=True)
+    return out.getvalue()
+
+
+def fetch_sized(kind: str, target: str, client=None) -> tuple[bytes, int] | None:
+    """(256 px PNG, the source's own width) of the best logo for a domain or a direct url."""
     own = client is None
     client = client or _client()
     try:
         if kind == "url":
             data = _get(client, target)
-            got = _png(data) if data else None
-            return got[0] if got else None
+            return _png(data) if data else None
         best: tuple[bytes, int] | None = None
         hosts = [target] if target.count(".") >= 2 else [target, "www." + target]
         tried: set[str] = set()
@@ -263,7 +397,7 @@ def fetch(kind: str, target: str, client=None) -> bytes | None:
                 best = got
             if best and best[1] >= GOOD_PX:
                 break
-        return best[0] if best else None
+        return best
     finally:
         if own:
             client.close()
@@ -301,20 +435,28 @@ def logo(kind: str, key: str) -> bytes | None:
         return None
     name = hashlib.sha256(f"v{VERSION}:{kind}:{key}:{target[1]}".encode()).hexdigest()[:24]
     png, miss = CACHE_DIR / f"{name}.png", CACHE_DIR / f"{name}.miss"
-    if png.exists():
+    drawn = CACHE_DIR / f"{name}.drawn"
+    if png.exists() and not (drawn.exists() and time.time() - drawn.stat().st_mtime > MISS_RETRY_S):
         return png.read_bytes()
     if miss.exists() and time.time() - miss.stat().st_mtime < MISS_RETRY_S:
         return None
     with _locks_guard:
         lock = _locks.setdefault(name, threading.Lock())
     with lock:
-        if png.exists():
+        if png.exists() and not drawn.exists():
             return png.read_bytes()
         data = fetch(*target)
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
         if data:
             png.write_bytes(data)
             miss.unlink(missing_ok=True)
+            if kind == "dir":
+                from . import directory
+                is_drawn = data == monogram(*directory.monogram_of(key))
+                if is_drawn:
+                    drawn.touch()
+                else:
+                    drawn.unlink(missing_ok=True)
         else:
             miss.touch()
             log.info("no logo for %s:%s (%s)", kind, key, target[1])

@@ -112,7 +112,7 @@ def test_lists_carry_logos(env):
     assert f["logo"] == "/api/logo/feat/razorpay?v=2"
     from app.bazar import directory
     hit = directory.search("github", limit=5)[0]
-    assert hit["logo"] is None or hit["logo"].startswith("/api/logo/gh/")
+    assert hit["logo"].startswith("/api/logo/dir/")                            # v0.153 every directory server has one
     assert all(":" not in d and " " not in d for d in logos.domains().values())
 
 

@@ -92,7 +92,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.152.1", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.153.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -8189,7 +8189,7 @@ async def plugin_logo(kind: str, key: str):
     """A plugin's / MCP server's real logo (from the brand's own site, cached as a 256 px PNG). Public: logos are
     public and phones load them as plain images; only things in Hoola's own lists are ever looked up."""
     from .bazar import logos
-    if kind not in ("pack", "feat", "gh", "mcp", "tv") or len(key) > 120:
+    if kind not in ("pack", "feat", "gh", "mcp", "tv", "dir") or len(key) > 120:
         raise HTTPException(404, "no logo")
     png = await asyncio.to_thread(logos.logo, kind, key)
     if not png:

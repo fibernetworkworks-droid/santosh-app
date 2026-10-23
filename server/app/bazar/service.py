@@ -865,6 +865,11 @@ def mcp_add(tenant_id: str, url: str, name: str = "", ref: str = "", key: str = 
             caution: bool = False) -> dict[str, Any]:
     """Add a remote MCP server. Tries it right away; works out whether it needs a sign-in or a key."""
     url = (url or "").strip()
+    if not url and ref:
+        known = directory.get(ref)
+        if known and known.get("u"):       # v0.153 the directory knows this server's hosted MCP address
+            url = known["u"]
+            name = name or known.get("t", "")
     if not url:
         entry = directory.get(ref) if ref else None
         if entry:
