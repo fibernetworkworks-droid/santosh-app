@@ -119,6 +119,8 @@ async def run(tenant: str | None = None) -> dict:
     full = make(0)
     out["tools"] = len(full.tools[0].function_declarations) if full.tools else 0
     out["prompt_chars"] = len(full.system_instruction.parts[0].text)
+    out["schema_problems"] = [f"{d.name}: {p}" for d in (full.tools[0].function_declarations if full.tools else [])
+                              for p in voice.schema_problems(d.parameters_json_schema or {})]
     ok, why = await _try(full)
     out["steps"].append({"try": "full", "ok": ok, "error": why})
     works_at = 0 if ok else None

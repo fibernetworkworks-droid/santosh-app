@@ -314,20 +314,59 @@ def _short(text: str, limit: int) -> str:
 
 
 def _compact_schema(node, depth: int = 0):
-    """The same schema with long descriptions cut (Gemini still gets every field, enum and required list)."""
+    """The same schema with long descriptions cut (Gemini still gets every field, enum and required list).
+    v0.150.1: keys INSIDE "properties" are field names, never metadata - v0.149 dropped every field named "title"
+    (calendar events, docs, forms ...) while "required" still listed it, and Gemini refused the whole call with
+    1007 "schema at top-level requires unspecified property 'title'"."""
     if isinstance(node, dict):
         out = {}
         for k, v in node.items():
-            if k == "description" and isinstance(v, str):
+            if k in ("properties", "patternProperties", "$defs", "definitions") and isinstance(v, dict):
+                out[k] = {name: _compact_schema(sub, depth + 1) for name, sub in v.items()}
+            elif k == "description" and isinstance(v, str):
                 out[k] = _short(v, 160 if depth else 400)
             elif k in ("examples", "example", "default", "title"):
                 continue
             else:
                 out[k] = _compact_schema(v, depth + 1)
-        return out
+        return fix_schema(out)
     if isinstance(node, list):
         return [_compact_schema(v, depth + 1) for v in node]
     return node
+
+
+def fix_schema(node: dict) -> dict:
+    """Gemini refuses a whole call for one bad schema: a "required" name with no property is dropped from the list."""
+    req = node.get("required")
+    if isinstance(req, list):
+        props = node.get("properties") if isinstance(node.get("properties"), dict) else {}
+        keep = [r for r in req if isinstance(r, str) and r in props]
+        if keep != req:
+            if keep:
+                node["required"] = keep
+            else:
+                node.pop("required", None)
+    return node
+
+
+def schema_problems(node, path: str = "") -> list[str]:
+    """Every "required" name without a property, anywhere in a schema (used by tests and app.voicecheck)."""
+    out: list[str] = []
+    if isinstance(node, dict):
+        props = node.get("properties") if isinstance(node.get("properties"), dict) else {}
+        for r in node.get("required") or [] if isinstance(node.get("required"), list) else []:
+            if r not in props:
+                out.append(f"{path or 'top'}: required '{r}' has no property")
+        for k, v in node.items():
+            if k == "properties" and isinstance(v, dict):
+                for name, sub in v.items():
+                    out += schema_problems(sub, f"{path}.{name}" if path else name)
+            elif isinstance(v, (dict, list)):
+                out += schema_problems(v, f"{path}.{k}" if path else k)
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            out += schema_problems(v, f"{path}[{i}]")
+    return out
 
 
 def _compact(t: dict) -> dict:
@@ -355,10 +394,9 @@ UNSUPPORTED: set[str] = set()
 RESUME = {"resumed": 0, "fresh_after_drop": 0, "fresh_rebriefs": 0, "resume_failed": 0}
 
 # ---- v0.150 a call Gemini refuses must heal itself (the "Connection thoda slow hai, sambhal raha hoon" loop) ----
-# Gemini 3.x Live takes send_client_content ONLY to seed history before the talk starts; sent mid-call it closes the
-# session with 1007 "Request contains an invalid argument". Hoola sent quiet notes that way (language drift, speaker
-# change, hold), so a call dropped and reconnected again and again. On those models notes now wait for the next tool
-# answer / text (or go as live text while Hoola is on hold, where nothing it says is played).
+# Google's guide says Gemini 3.x Live takes send_client_content only to seed history; if a model closes the session
+# (1007) right after a mid-call note, that is learned and notes then wait for the next tool answer / text (or go as
+# live text while Hoola is on hold, where nothing it says is played). gemini-3.8-live accepts them (voicecheck).
 QUIET = {"client_content": None, "queued": 0, "live": 0, "sent": 0, "learned_off": 0}
 
 
@@ -370,7 +408,9 @@ def client_content_ok() -> bool:
         return False
     if QUIET["client_content"] is not None:
         return bool(QUIET["client_content"])
-    return not re.match(r"gemini-([3-9]|\d\d)", (get_settings().gemini_live_model or "").strip().lower())
+    # v0.150.1 app.voicecheck on her VPS: gemini-3.8-live DOES take a mid-call client_content note. So notes go the
+    # v0.119 way again; a 1007 right after one still switches this model to queued notes (learned at runtime).
+    return True
 
 
 # A setup Gemini refuses without naming a field ("1007 None. Request contains an invalid argument."): connect again
@@ -399,7 +439,7 @@ def _setup_file() -> Path:
 
 def _setup_key() -> str:
     names = ",".join(sorted(t["name"] for t in _tool_specs()))
-    return f"{get_settings().gemini_live_model}|{hashlib.sha1(names.encode()).hexdigest()[:12]}"
+    return f"v2|{get_settings().gemini_live_model}|{hashlib.sha1(names.encode()).hexdigest()[:12]}"
 
 
 def setup_step() -> int:
@@ -536,7 +576,9 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
         language_codes=None if "langcodes" in without else voicelang.transcription_codes(langst),
         custom_vocabulary=None if "vocab" in without else clean_vocab(style.get("vocab")))
     silence = style.get("silence_ms") or st.voice_silence_ms
-    specs = _tool_specs() + ([] if "mcp" in without else list(extra_tools or []))
+    specs = _tool_specs() + ([] if "mcp" in without else
+                             [{**t, "input_schema": _compact_schema(t.get("input_schema") or {"type": "object"})}
+                              for t in (extra_tools or [])])
     if "no_tools" in without:
         specs = [t for t in specs if t["name"] == "santosh_kaam"]
     elif "core_tools" in without:

@@ -38,7 +38,7 @@ def _audio(text="Haan, boliye."):
 def test_gemini3_quiet_notes_ride_on_the_tool_answer(env, monkeypatch):
     """Default model gemini-3.8-live: a language drift note is never sent as client_content mid-call."""
     from app import main
-    _gemini_env(monkeypatch)
+    _gemini_env(monkeypatch, VOICE_QUIET_NOTES="queue")
     assert voice.client_content_ok() is False
     ran = []
 
@@ -205,3 +205,22 @@ def test_voicecheck_finds_the_refused_tool(env, monkeypatch):
     assert res["mid_call_client_content"]["ok"] is False
     assert voice.SETUP["step"] == res["works_at"] == 5
     assert "maps_search" in res["say"]
+
+
+def test_compact_schemas_keep_fields_named_title(env, monkeypatch):
+    """v0.150.1 the real cause on her VPS: compaction dropped every field named "title" while "required" kept it,
+    so Gemini refused the whole call: 1007 "schema at top-level requires unspecified property 'title'"."""
+    _gemini_env(monkeypatch)
+    assert voice.client_content_ok() is True                     # gemini-3.8-live takes mid-call notes (voicecheck)
+    cfg = voice.live_config("Puck", "hi-IN", "", None, extra_tools=[{
+        "name": "mcp_x__make", "description": "d", "input_schema": {
+            "type": "object", "title": "Args", "required": ["title", "ghost"],
+            "properties": {"title": {"type": "string", "title": "Title"}, "default": {"type": "string"}}}}])
+    decls = {d.name: d.parameters_json_schema for d in cfg.tools[0].function_declarations}
+    for name, sch in decls.items():
+        assert voice.schema_problems(sch) == [], name
+    ev = decls["add_calendar_event"]
+    assert "title" in ev["properties"] and "title" in ev["required"]
+    assert decls["form_create"]["properties"]["questions"]["items"]["properties"].get("title")
+    mcp = decls["mcp_x__make"]
+    assert mcp["required"] == ["title"] and set(mcp["properties"]) == {"title", "default"} and "title" not in mcp
