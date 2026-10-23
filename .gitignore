@@ -7,3 +7,5 @@ desktop/dist/
 # v0.130 font cache filled at runtime (downloaded open-licence fonts)
 server/data/app_fonts/
 server/data/hoola_server.key
+server/data/logos/
+server/data/gyaan/
