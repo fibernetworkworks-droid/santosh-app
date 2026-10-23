@@ -165,6 +165,7 @@ Doing real work
 
 Which tool (details are in each tool's description)
 - Reminders, phone alarms and timers, lists, memory, weather, daily routines: call them directly.
+- Business work in a call (her Sahayaks: tailor, chai, office, GST, payroll, accounts, audit, insurance, telecaller, SEO, wholesale, export, franchise, contractor, ads, brand, support / helpdesk / complaints / returns / community / call centre, developer / QA / IT / NOC / cyber / DevOps / docs / product, logistics / fleet / godown / courier / travel / drivers / customs, real estate / society / interior / architect, website, app design, 3D, video studio, Hoola Deals / bookings / compare, Postgres, Document desk / Sheet Milaan): those tools are not in this call. Hand the job to santosh_kaam with her words and the details ("darzi: Riya ka blouse order, 15 tareekh"); say one line that it is being done, and the result comes back as a note / card. Tool names in these notes for such work = santosh_kaam.
 - Payments, bills, shop orders, UPI, cabs, Swiggy/Zomato, WhatsApp campaigns, multi-step work, drafting: santosh_kaam with the full request ("MSEDCL ka bill bharna hai, consumer number 1234"). It prepares a confirm card on the phone; tell the user the amount and to tap Approve. Never say it is paid or ordered yourself, and never ask for a UPI PIN or OTP.
 - Something to use, keep, see or share (a calculator, tracker, hisaab, checklist, chart, quiz, poster, price list, plan, simple game): artifact_make with a complete brief (purpose, every number and detail, language, style); it pops up on their screen in under a minute. To change one: artifact_list for the id, then artifact_make with artifact_id and the change.
 - TV channels: tv_channel to play a free channel on the phone or on the TV ("DD Sahyadri lagao", "TV pe Aaj Tak chalao", "BBC News lagao"; ~4,300 free channels from 140 countries, country= for one country). Paid channels (Star, Sony, Colors) aren't there. If the TV can't be cast to, use youtube_play on=tv query="<channel> live".
@@ -264,12 +265,73 @@ About the user
 {context}"""
 
 
+# v0.149 The big Sahayak / builder tools are NOT declared to Gemini Live any more: 280 tools (~395 KB of JSON, ~110k
+# tokens) filled the live model's context before she said a word, so sessions died and the call sat on "Connection thoda
+# slow hai". In a call these jobs go to santosh_kaam (the full chat brain has all of them); if Gemini still names one of
+# them, run_tool hands it to santosh_kaam with her request. They stay in VOICE_TOOL_NAMES (allowed + their labels).
+VOICE_VIA_KAAM = {
+    "darzi", "chai", "office", "lekhak", "mobile_shop", "gst", "payroll", "paisa", "audit", "bima", "telecall", "seo",
+    "thok", "niryat", "franchise", "theka", "ads", "brand", "seva", "helpdesk", "shikayat", "service_desk", "feedback",
+    "wapsi", "samudaay", "call_centre", "dev", "qa", "it_admin", "noc", "cyber", "devops", "docs_writer", "app_review",
+    "product", "customs", "travel", "warehouse", "fleet", "courier", "drivers", "logistics", "propagent", "rentdesk",
+    "sitesup", "interior", "archassist", "society", "kalam", "website", "app_banao", "app_dekho", "video_studio",
+    "blender_3d", "postgres", "hoola_market", "hoola_booking", "hoola_deal", "hoola_pick", "a2a_bahar", "consent_jaanch",
+    "ondc_listing", "digilocker", "agent_army", "doc_desk", "sheet_milaan", "employee", "notebook_make", "notebook_audio",
+    "form_settings", "form_alerts", "youtube_analytics", "youtube_comments", "app_check", "hoola_chain",
+    "hoola_community_search", "hoola_samaj", "hoola_learn", "hoola_learned", "slides_edit", "slides_export",
+}
+# a name ending in _dekho goes with its base tool (darzi_dekho with darzi ...)
+VOICE_TOOL_BUDGET = 150_000   # characters of tool JSON sent to Gemini Live (v0.119, the last version that worked well: ~213k)
+
+
+def via_kaam(name: str) -> bool:
+    base = name[:-6] if name.endswith("_dekho") else name
+    return name in VOICE_VIA_KAAM or base in VOICE_VIA_KAAM
+
+
+def _short(text: str, limit: int) -> str:
+    text = re.sub(r"\s+", " ", str(text or "")).strip()
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    end = max(cut.rfind(". "), cut.rfind("; "), cut.rfind(") "))
+    return (cut[:end + 1] if end > limit * 0.6 else cut.rstrip() + "...").strip()
+
+
+def _compact_schema(node, depth: int = 0):
+    """The same schema with long descriptions cut (Gemini still gets every field, enum and required list)."""
+    if isinstance(node, dict):
+        out = {}
+        for k, v in node.items():
+            if k == "description" and isinstance(v, str):
+                out[k] = _short(v, 160 if depth else 400)
+            elif k in ("examples", "example", "default", "title"):
+                continue
+            else:
+                out[k] = _compact_schema(v, depth + 1)
+        return out
+    if isinstance(node, list):
+        return [_compact_schema(v, depth + 1) for v in node]
+    return node
+
+
+def _compact(t: dict) -> dict:
+    return {"name": t["name"], "description": _short(t.get("description", ""), 600),
+            "input_schema": _compact_schema(t.get("input_schema") or {"type": "object", "properties": {}})}
+
+
 def _tool_specs() -> list[dict]:
     extra = []
     if get_settings().voice_side_talk:   # v0.142 Gemini itself can put the call on hold when the talk isn't for it
         from .sidetalk import TOOL as SIDE_TALK
         extra.append(SIDE_TALK)
-    return [t for t in TOOLS if t["name"] in VOICE_TOOL_NAMES] + [DELEGATE] + extra
+    specs = [_compact(t) for t in TOOLS if t["name"] in VOICE_TOOL_NAMES and not via_kaam(t["name"])] + [DELEGATE] + extra
+    size = len(json.dumps(specs, ensure_ascii=False))
+    if size > VOICE_TOOL_BUDGET:
+        # never again a call that dies of its own tool list: say it loudly in the log (a test also checks it)
+        log.warning("voice tools are %d chars (> %d): calls get slow / drop; move big tools to VOICE_VIA_KAAM", size,
+                    VOICE_TOOL_BUDGET)
+    return specs
 
 
 # Settings this Gemini model refused ("Unknown name ..."); learned at runtime and skipped from then on.
@@ -1153,6 +1215,11 @@ class Call:
             out = await asyncio.wait_for(mcp_live.run(self.ctx, self._mcp_route, name, args),
                                          timeout=max(5, get_settings().voice_tool_timeout_s))
             return {"result": out}
+        if name in VOICE_TOOL_NAMES and via_kaam(name):
+            # v0.149 not declared in calls: the full brain does it from her words + what Gemini wanted
+            ask = (self.user_buf or "").strip()
+            return await self._delegate(f"{ask}\n(Call ne {name} chahiya tha: "
+                                        f"{json.dumps(args, ensure_ascii=False, default=str)[:600]})".strip())
         if name not in VOICE_TOOL_NAMES:
             return {"error": f"Unknown tool {name}"}
         # a call can't wait minutes: these three answer after a short wait and the rest arrives later
