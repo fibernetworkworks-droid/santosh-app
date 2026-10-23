@@ -174,6 +174,9 @@ async def music_control(ctx: Ctx, action, query="", direction="", steps=None, pe
             args["uri"], args["title"] = found["uri"], found["title"]
     out = await _device(ctx, "bluetooth-speaker", "media", args)
     if str(action) == "play" and query and out.get("status") == "done":
+        out["in_call"] = ("If you are on a voice call with her: the song now plays on her phone and the call stays on. The "
+                          "mic may still catch the music, so ignore lyrics / singing you hear; reply only when she clearly "
+                          "talks to you, keep replies short, and offer music_control pause if she wants to talk.")
         if found:
             out["playing_title"] = found["title"]
             out["note"] = (f"Opened '{found['title']}' in the app and pressed play. Say what is playing in one line.")

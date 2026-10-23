@@ -107,3 +107,12 @@ def test_kotlin_opens_exact_and_presses_play():
     kt = (Path(__file__).resolve().parents[2] / "tool/android/kotlin/HomeDevices.kt").read_text()
     assert "openExact(pkg, uri)" in kt and "autoPlay(" in kt and "getActiveSessions" in kt
     assert "playFromUri" in kt and "transportControls.play()" in kt and 'key("PLAY")' in kt
+
+
+def test_call_keeps_going_while_music_plays():
+    """v0.136.2: a song taking the audio no longer pauses the voice call; only a real phone call does."""
+    kt = (Path(__file__).resolve().parents[2] / "tool/android/kotlin/VoiceAudio.kt").read_text()
+    assert "decideLoss" in kt and "MODE_IN_CALL" in kt and "isMusicActive" in kt
+    assert "musicGate(chunk)" in kt and 'onState?.invoke("music"' in kt
+    loss = kt[kt.index("AudioManager.AUDIOFOCUS_LOSS ->"):kt.index("AudioManager.AUDIOFOCUS_GAIN ->")]
+    assert "paused = true" not in loss                      # no instant pause on focus loss any more

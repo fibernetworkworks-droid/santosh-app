@@ -71,28 +71,69 @@ object VoiceAudio {
     fun hasPermission(ctx: Context) = Build.VERSION.SDK_INT < 23 ||
         ctx.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
+    /** v0.136.2 true while a music / video app has the audio during the call: the call goes on, Hoola does not fight it. */
+    @Volatile var musicPlaying = false
+
+    /** A real phone call (or its ringing) is the only thing that should pause Hoola's call. */
+    private fun phoneCall(am: AudioManager): Boolean {
+        val m = try { am.mode } catch (_: Exception) { AudioManager.MODE_NORMAL }
+        return m == AudioManager.MODE_IN_CALL || m == AudioManager.MODE_RINGTONE
+    }
+
+    private fun musicNow(am: AudioManager): Boolean = try { am.isMusicActive } catch (_: Exception) { false }
+
+    private fun pauseForOther() {
+        if (!paused) {
+            paused = true
+            flush()
+            onState?.invoke("paused", "focus")
+        }
+    }
+
+    /**
+     * v0.136.2 Another app took the audio. Before: the call always paused (mic + Hoola's voice stopped), so playing a
+     * Spotify / YouTube song she asked for silenced the call. Now we look for ~2 s: a real phone call -> pause as before;
+     * music / video playing -> the call keeps going alongside it (no pause, and we never take the audio back, which
+     * would stop her song); neither -> pause as before.
+     */
+    private fun decideLoss(tries: Int, permanent: Boolean) {
+        val am = manager ?: return
+        if (!running) return
+        if (phoneCall(am)) {
+            musicPlaying = false
+            pauseForOther()
+            if (permanent) ui.postDelayed({ val a = manager; if (running && paused && a != null && !phoneCall(a)) takeFocus(a) }, 3000)
+            return
+        }
+        if (musicNow(am)) {
+            if (!musicPlaying) musicFloor = 0.0
+            musicPlaying = true
+            if (paused) {
+                paused = false
+                onState?.invoke("resumed", "")
+            }
+            onState?.invoke("music", "")
+            return
+        }
+        if (tries > 0) {
+            ui.postDelayed({ decideLoss(tries - 1, permanent) }, 500)
+            return
+        }
+        pauseForOther()
+        if (permanent) ui.postDelayed({
+            val a = manager
+            if (running && paused && a != null) {
+                if (musicNow(a) && !phoneCall(a)) decideLoss(0, true) else takeFocus(a)
+            }
+        }, 3000)
+    }
+
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
         when (change) {
-            AudioManager.AUDIOFOCUS_LOSS -> {
-                // another app took the audio for good: wait, then ask for it back (the user is in a call)
-                if (!paused) {
-                    paused = true
-                    flush()
-                    onState?.invoke("paused", "focus")
-                }
-                ui.postDelayed({
-                    val am = manager
-                    if (running && paused && am != null) takeFocus(am)
-                }, 3000)
-            }
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                if (!paused) {
-                    paused = true
-                    flush()
-                    onState?.invoke("paused", "focus")
-                }
-            }
+            AudioManager.AUDIOFOCUS_LOSS -> ui.postDelayed({ decideLoss(4, true) }, 300)
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> ui.postDelayed({ decideLoss(4, false) }, 300)
             AudioManager.AUDIOFOCUS_GAIN -> {
+                musicPlaying = false
                 if (paused) {
                     paused = false
                     onState?.invoke("resumed", "")
@@ -222,6 +263,8 @@ object VoiceAudio {
         val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         manager = am
         paused = false
+        musicPlaying = false
+        musicFloor = 0.0
         cushionMs = 80
         playingUntil = 0L
         am.mode = AudioManager.MODE_IN_COMMUNICATION
@@ -272,6 +315,44 @@ object VoiceAudio {
         }
     }
 
+    // v0.136.2 while her song plays the mic hears it all the time, so Hoola never heard the end of her sentence.
+    // Only her own voice, clearly louder than the music's usual level, goes through; the rest goes as silence.
+    @Volatile private var musicFloor = 0.0
+    private var musicOpenUntil = 0L
+    private var musicCheckAt = 0L
+
+    private fun rms(b: ByteArray): Double {
+        var sum = 0.0
+        var i = 0
+        var count = 0
+        while (i + 1 < b.size) {
+            val v = ((b[i + 1].toInt() shl 8) or (b[i].toInt() and 0xff)).toShort().toDouble() / 32768.0
+            sum += v * v
+            count++
+            i += 2
+        }
+        return if (count == 0) 0.0 else Math.sqrt(sum / count)
+    }
+
+    private fun musicGate(chunk: ByteArray): ByteArray {
+        val now = SystemClock.uptimeMillis()
+        if (now >= musicCheckAt) {
+            musicCheckAt = now + 1000
+            val am = manager
+            if (am != null && !musicNow(am)) {
+                musicPlaying = false
+                musicFloor = 0.0
+                return chunk
+            }
+        }
+        val level = rms(chunk)
+        val floor = if (musicFloor <= 0.0) level else musicFloor
+        val loud = level > Math.max(0.03, floor * 2.5)
+        if (loud) musicOpenUntil = now + 600
+        else musicFloor = floor * 0.95 + level * 0.05       // learn the music's level only from non-voice chunks
+        return if (now < musicOpenUntil) chunk else ByteArray(chunk.size)
+    }
+
     private fun micLoopInner(first: AudioRecord) {
         val buf = ByteArray(CHUNK)
         var cur = first
@@ -281,7 +362,8 @@ object VoiceAudio {
             if (n > 0) {
                 failures = 0
                 if (!paused) {
-                    val chunk = buf.copyOf(n)
+                    var chunk = buf.copyOf(n)
+                    if (musicPlaying) chunk = musicGate(chunk)
                     vadSink?.let { vs -> try { SileroVad.feed(chunk)?.let { p -> vs(p) } } catch (_: Throwable) {} }
                     sink?.invoke(chunk)
                 }
@@ -418,6 +500,7 @@ object VoiceAudio {
         if (!running && record == null) return
         running = false
         paused = false
+        musicPlaying = false
         generation++
         queue.clear()
         try { micThread?.join(300) } catch (_: InterruptedException) {}
