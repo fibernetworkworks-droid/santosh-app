@@ -203,6 +203,18 @@ async def _push() -> dict[str, Any]:
               "" if ok else "VPS par FCM service-account file ka path FCM_SERVICE_ACCOUNT_FILE mein daaliye")
 
 
+async def _mcp_runner() -> dict[str, Any]:
+    from .bazar import runner as mcp_runner
+    h = await asyncio.to_thread(mcp_runner.health)
+    if not h.get("configured"):
+        return _c("mcp_runner", "Ek-tap MCP (runner)", None, "MCP runner set nahi hai: npm / PyPI servers ek tap mein nahi judenge",
+                  "Alag machine par server/deploy/setup_mcp_runner.sh chalaiye, phir MCP_RUNNER_URL / MCP_RUNNER_SECRET .env mein")
+    if h.get("ok"):
+        return _c("mcp_runner", "Ek-tap MCP (runner)", True, f"{h.get('running', 0)} chal rahe, {h.get('instances', 0)} jude", "")
+    return _c("mcp_runner", "Ek-tap MCP (runner)", False, h.get("error", "runner jawab nahi de raha"),
+              "Runner machine par: systemctl status hoola-mcp-runner")
+
+
 async def _google(tenant: str) -> dict[str, Any]:
     try:
         from .google_check import diagnose
@@ -330,6 +342,7 @@ async def run(tenant: str) -> dict[str, Any]:
                (_parallel(), "parallel", "Backup search (Parallel)"), (_email(tenant), "email", "Email bhejna"),
                (_operator(), "operator", "Website kaam (Computer Operator)"), (_worker(), "browser", "Jaldi website dekhna"),
                (_pc(tenant), "pc", "Mera PC"), (_push(), "push", "Phone par notification"),
+               (_mcp_runner(), "mcp_runner", "Ek-tap MCP (runner)"),
                (_google(tenant), "google", "Google"), (_disk(), "disk", "Server ki jagah"),
                (_memory(tenant), "memory", "Hoola ki yaad"), (_voice_settings(), "voice_memory", "Call ki yaad (Gemini)")]
     parts = await asyncio.gather(*[_guard(c, i, n) for c, i, n in singles],

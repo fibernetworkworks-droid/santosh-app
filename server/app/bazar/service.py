@@ -709,6 +709,13 @@ def mcp_directory(query: str = "", field: str = "", limit: int = 8) -> dict[str,
     return {"servers": directory.search(query, limit=limit, field=field)}
 
 
+def mcp_one_tap(tenant_id: str, ref: str, keys: dict[str, str] | None = None, accept_caution: bool = False,
+                probe_client=None) -> dict[str, Any]:
+    """v0.154 'Ek tap mein jodo' from the app: keys typed in the app only."""
+    from . import runner as mcp_runner
+    return mcp_runner.connect(tenant_id, ref, keys or {}, accept_caution, probe_client=probe_client)
+
+
 def mcp_list(tenant_id: str) -> list[dict[str, Any]]:
     with session() as s:
         user = ensure_user(s, tenant_id)
@@ -867,9 +874,12 @@ def mcp_add(tenant_id: str, url: str, name: str = "", ref: str = "", key: str = 
     url = (url or "").strip()
     if not url and ref:
         known = directory.get(ref)
-        if known and known.get("u"):       # v0.153 the directory knows this server's hosted MCP address
+        if known and known.get("u") and known.get("src") != "apify":   # v0.153 the directory knows its address
             url = known["u"]
             name = name or known.get("t", "")
+        elif known and (known.get("pkg") or known.get("src") == "apify"):   # v0.154 one tap: run it on the runner
+            from . import runner as mcp_runner
+            return mcp_runner.connect(tenant_id, ref, probe_client=probe_client)
     if not url:
         entry = directory.get(ref) if ref else None
         if entry:
@@ -978,6 +988,8 @@ def mcp_remove(tenant_id: str, pack_id: str) -> bool:
         if not row or row.user_id != tenant_id or row.status != "active":
             return False
         row.status = "removed"
+        from . import runner as mcp_runner
+        mcp_runner.forget(s, pack_id)          # v0.154 stop its container on the runner box
         for c in s.scalars(select(Connection).where(Connection.user_id == tenant_id,
                                                     Connection.provider == custom_mcp.provider_of(pack_id))).all():
             c.status, c.token_enc = "revoked", ""

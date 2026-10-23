@@ -141,6 +141,9 @@ class Settings(BaseSettings):
     app_build_gh_token: str = ""           # v0.132 github: fine-grained token for that repo only (contents + actions read/write)
     app_build_timeout_s: int = 1500        # v0.132 one Gradle build at most
     app_build_rounds: int = 4              # v0.132 compile-fix rounds before a screen gets its simple code version
+    mcp_runner_url: str = ""               # v0.154 https://mcp-run.example.com (server/mcp_runner on a SEPARATE machine)
+    mcp_runner_secret: str = ""            # v0.154 shared secret (HMAC of every control call)
+    mcp_runner_trust_downloads: int = 1000  # v0.154 packages this popular are trusted for one tap without the full check
     voice_silence_ms: int = 700            # pause that ends your turn: Google recommends 500-800 (people reply in ~0.2 s)
     voice_end_sensitivity: str = ""        # "" = Gemini's default | low (waits longer) | high (answers sooner)
     voice_prefix_padding_ms: int = 300     # speech kept from just before the voice was detected (100-300)

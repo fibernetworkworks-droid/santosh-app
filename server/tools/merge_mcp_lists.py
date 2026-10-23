@@ -29,7 +29,7 @@ BASE = DEST = Path(__file__).resolve().parents[1] / "app" / "bazar" / "mcp_direc
 N, SRC, NAME, LINK, FIELD, DOES, LANG, VER, REL, LIC, PRICE, OFFICIAL, REPO, DL, CAUTION = range(15)
 COLUMNS = ["n", "src", "name", "link", "field", "does", "lang", "version", "released", "licence", "pricing", "official",
            "repo", "downloads", "caution", "title", "short", "by", "logo", "home", "mcp_url", "verified", "featured",
-           "users", "aliases", "id", "blocked", "tags", "sources"]
+           "users", "aliases", "id", "blocked", "tags", "sources", "pkg", "env"]
 
 CATEGORIES = ["Developer Tools", "AI & Agents", "Search & Web", "Browser Automation", "Databases", "Data & Analytics",
               "Cloud & DevOps", "Security", "Communication", "Productivity", "Knowledge & Memory", "Finance & Payments",
@@ -331,11 +331,46 @@ def norm_name(t: str) -> str:
     return re.sub(r"[^a-z0-9㐀-鿿]", "", (t or "").lower().replace("mcp", "").replace("server", ""))
 
 
+_NPM = re.compile(r"^(@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]{0,213}$")
+_PYPI = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,100}$")
+
+
+def pkg_of(cfg: str) -> list[str]:
+    """[kind, name] from a listing's setup config: npx -y <pkg>, uvx <pkg>, docker run ... mcp/<image> (Docker's own MCP
+    catalogue only). Placeholders and paths are refused."""
+    m = re.search(r'"command"\s*:\s*"npx"\s*,\s*"args"\s*:\s*\[([^\]]*)\]', cfg)
+    if m:
+        args = re.findall(r'"([^"]*)"', m.group(1))
+        names = [a for a in args if not a.startswith("-")]
+        if names:
+            name = re.sub(r"@(latest|next|\^?[\d.]+[\w.-]*)$", "", names[0])
+            if _NPM.match(name):
+                return ["npm", name]
+    m = re.search(r'"command"\s*:\s*"uvx"\s*,\s*"args"\s*:\s*\[([^\]]*)\]', cfg)
+    if m:
+        args = [a for a in re.findall(r'"([^"]*)"', m.group(1)) if not a.startswith("-")]
+        if args:
+            name = re.split(r"[=@<>\[]", args[0])[0]
+            if _PYPI.match(name) and name not in ("python", "uv"):
+                return ["pypi", name]
+    m = re.search(r'"command"\s*:\s*"docker".*?"(mcp/[a-z0-9][a-z0-9._-]{0,80})(?::[\w.-]+)?"', cfg, re.S)
+    if m:
+        return ["docker", m.group(1)]
+    return []
+
+
+def env_of(cfg: str) -> list[str]:
+    m = re.search(r'"env"\s*:\s*\{([^}]*)\}', cfg)
+    if not m:
+        return []
+    return [k for k in re.findall(r'"([A-Z][A-Z0-9_]{2,60})"\s*:', m.group(1)) if k not in ("PATH", "HOME", "NODE_ENV")]
+
+
 # ---------------------------------------------------------------------------------------------------------- merge
 class Entry:
     __slots__ = ("key", "src", "ref", "link", "repo", "cats", "descs", "titles", "by", "lang", "ver", "rel", "lic",
                  "cloud", "official", "dl", "caution", "home", "mcp_url", "verified", "featured", "users", "aliases",
-                 "imgs", "tags", "sources", "scraper", "mirror", "apify_endpoint")
+                 "imgs", "tags", "sources", "scraper", "mirror", "apify_endpoint", "pkg", "env")
 
     def __init__(self, key: str):
         self.key = key
@@ -352,6 +387,8 @@ class Entry:
         self.tags: list[str] = []
         self.sources: set[str] = set()
         self.apify_endpoint = ""
+        self.pkg: list[str] = []          # [kind npm | pypi | docker, name] = what the runner box can start
+        self.env: list[str] = []          # key / setting names the server reads (from the listings' own setup configs)
 
 
 def build(so_path: str, org_path: str, ap_path: str) -> dict:
@@ -391,6 +428,8 @@ def build(so_path: str, org_path: str, ap_path: str) -> dict:
             e.descs.append((3 if r[SRC] in ("awesome", "reference", "best-of") else 2, r[DOES]))
         e.titles.append((1 if r[SRC] in ("npm", "pypi") else 3, str(r[NAME]), True))
         e.sources.add(r[SRC])
+        if r[SRC] in ("npm", "pypi") and (not e.pkg or better):
+            e.pkg = [r[SRC], str(r[NAME])]
         if repo:
             e.by = e.by or repo.split("/")[0]
         elif r[SRC] == "npm" and str(r[NAME]).startswith("@"):
@@ -422,6 +461,9 @@ def build(so_path: str, org_path: str, ap_path: str) -> dict:
         if logo.startswith("https://") and "avatars.githubusercontent.com" not in logo:
             e.imgs.append(logo)
         cfg = s.get("config") or ""
+        if not e.pkg:
+            e.pkg = pkg_of(cfg)
+        e.env = sorted(set(e.env) | set(env_of(cfg)))[:8]
         for u in re.findall(r'"(?:url|serverUrl)"\s*:\s*"(https://[^"]+)"', cfg) + \
                 re.findall(r'mcp-remote"\s*,\s*"(https://[^"]+)"', cfg):
             if mcp_url_ok(u):
@@ -582,7 +624,7 @@ def build(so_path: str, org_path: str, ap_path: str) -> dict:
         out.append([0, e.src, ref, e.link or e.repo, cat, "" if long_desc[:len(short) - 1] == short[:-1] else long_desc[:300], e.lang or "", str(e.ver or ""),
                     str(e.rel or "")[:10], (e.lic or "")[:40], "cloud" if (e.cloud or e.mcp_url) else "free", e.official,
                     e.repo[:300], e.dl, caution, title, short, (e.by or owner)[:60], logo, e.home[:200], e.mcp_url,
-                    e.verified, e.featured, e.users, aliases, eid, blocked, sorted(set(t.lower() for t in e.tags))[:4], sorted(e.sources)])
+                    e.verified, e.featured, e.users, aliases, eid, blocked, sorted(set(t.lower() for t in e.tags))[:4], sorted(e.sources), e.pkg, e.env])
     out.sort(key=lambda r: r[15].lower())
     for i, r in enumerate(out, 1):
         r[0] = i

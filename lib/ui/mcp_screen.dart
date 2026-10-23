@@ -396,6 +396,87 @@ class _McpScreenState extends State<McpScreen> {
 
   void _snack(String t) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t)));
 
+  /// v0.154 one tap: the server checks it, starts it on Hoola's runner (or joins a hosted one) and lists its tools.
+  Future<void> _oneTap(Map<String, dynamic> e, {Map<String, String> keys = const {}, bool accept = false}) async {
+    final ref = e['ref'] as String? ?? '';
+    setState(() => _busy = true);
+    Map<String, dynamic> r;
+    try {
+      _snack(e['package'] != null ? '${e['name']} ko jaanch kar shuru kar rahe hain… pehli baar ek minute lag sakta hai' : '${e['name']} jod rahe hain…');
+      r = await app.api!.mcpOneTap(ref, keys: keys, acceptCaution: accept);
+    } catch (err) {
+      if (mounted) setState(() => _busy = false);
+      _snack(err.toString().replaceFirst('Exception: ', ''));
+      return;
+    }
+    if (mounted) setState(() => _busy = false);
+    final st = r['status'] as String? ?? '';
+    if (st == 'ready') {
+      await _loadMine();
+      _snack(r['say'] as String? ?? '${e['name']} jud gaya. Ab Hoola se kahiye.');
+    } else if (st == 'needs_link') {
+      await _loadMine();
+      final err = await app.linkApp(r['pack_id'] as String);
+      if (err != null) _snack(err);
+    } else if (st == 'needs_keys') {
+      final got = await _askKeys(e, (r['keys'] as List? ?? []).cast<Map>(), r['say'] as String? ?? '');
+      if (got != null) await _oneTap(e, keys: {...keys, ...got}, accept: accept);
+    } else if (st == 'caution') {
+      final go = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('${e['name']}: savdhani'),
+          content: Text([...(r['reasons'] as List? ?? []).map((x) => '• $x'), '',
+            'Hoola ise band dibbe (locked container) mein chalayega aur har likhne / bhejne wale kaam se pehle aapki haan lega.'].join('\n')),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Phir bhi jodo')),
+          ],
+        ),
+      );
+      if (go == true) await _oneTap(e, keys: keys, accept: true);
+    } else {
+      _snack(r['say'] as String? ?? 'Nahi jud paya');
+    }
+  }
+
+  Future<Map<String, String>?> _askKeys(Map<String, dynamic> e, List<Map> need, String say) async {
+    final ctrls = {for (final k in need) k['name'] as String: TextEditingController()};
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: C.bgBottom,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(18, 18, 18, MediaQuery.of(ctx).viewInsets.bottom + 18),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('${e['name']} ki keys', style: display(19)),
+          const SizedBox(height: 6),
+          Text(say.isNotEmpty ? say : 'Yeh server chalne ke liye ye maangta hai.', style: const TextStyle(color: C.muted, fontSize: 12.5, height: 1.4)),
+          const SizedBox(height: 4),
+          const Text('Hoola inhe encrypt karke rakhta hai, sirf is server ko deta hai; chat mein kabhi na bhejein.',
+              style: TextStyle(color: C.faint, fontSize: 12)),
+          for (final k in need)
+            TextField(
+              controller: ctrls[k['name']],
+              obscureText: k['kind'] == 'secret',
+              decoration: InputDecoration(labelText: k['name'] as String),
+            ),
+          const SizedBox(height: 14),
+          Row(children: [
+            if ((e['github'] as String? ?? '').isNotEmpty)
+              Expanded(child: GlassButton(label: 'Kahan milegi?', height: 46, onTap: () => Native.openExternal(url: e['github'] as String))),
+            if ((e['github'] as String? ?? '').isNotEmpty) const SizedBox(width: 10),
+            Expanded(child: GradientButton(label: 'Jodiye', height: 46, onTap: () => Navigator.of(ctx).pop(true))),
+          ]),
+        ]),
+      ),
+    );
+    if (ok != true) return null;
+    final out = {for (final x in ctrls.entries) if (x.value.text.trim().isNotEmpty) x.key: x.value.text.trim()};
+    return out.isEmpty ? null : out;
+  }
+
   Future<void> _addDialog({Map<String, dynamic>? entry}) async {
     final url = TextEditingController(text: entry?['mcp_url'] as String? ?? '');
     final name = TextEditingController(text: entry?['name'] as String? ?? '');
@@ -571,11 +652,14 @@ class _McpScreenState extends State<McpScreen> {
           const SizedBox(height: 8),
           Wrap(spacing: 6, runSpacing: 6, children: [
             Pill(e['field'] as String? ?? ''),
-            Pill(remote ? 'Online service' : 'Computer par chalta', fg: remote ? C.teal : C.faint),
+            Pill(remote ? 'Online service' : e['runs_on'] == 'hoola' ? 'Hoola runner par chalega' : e['runs_on'] == 'pc' ? 'Aapke PC par' : 'Computer par chalta',
+                fg: remote || e['runs_on'] == 'hoola' ? C.teal : C.faint),
             if (e['source'] != null) Pill(e['source'] as String),
             if (e['downloads_per_month'] != null) Pill('${e['downloads_per_month']}/mahina downloads'),
             if (e['users_per_month'] != null) Pill('${e['users_per_month']} log/mahina'),
-            if (e['mcp_url'] != null && e['connect'] != 'not_allowed') const Pill('Pata taiyaar', fg: C.ok),
+            if (e['one_tap'] == true) const Pill('Ek tap', fg: C.ok),
+            if (e['trusted'] == true) const Pill('Bharosemand', fg: C.teal),
+            if (e['keys'] != null) Pill('Key: ${(e['keys'] as List).join(', ')}', fg: C.warn),
             if (e['caution'] != null) const Pill('Savdhani', fg: C.warn),
           ]),
           if (e['install'] != null) ...[
@@ -589,7 +673,11 @@ class _McpScreenState extends State<McpScreen> {
             const SizedBox(width: 8),
             Expanded(child: e['connect'] == 'not_allowed'
                 ? PluginAction(kind: ActionKind.soon, label: 'Allowed nahi', onTap: () => _snack(e['how_to_connect'] as String? ?? ''))
-                : PluginAction(kind: ActionKind.add, label: 'Jodiye', onTap: () => _addDialog(entry: e))),
+                : e['runs_on'] == 'pc'
+                    ? PluginAction(kind: ActionKind.soon, label: 'PC par chalega', onTap: () => _snack(e['pc_note'] as String? ?? ''))
+                    : e['one_tap'] == true
+                        ? PluginAction(kind: ActionKind.add, label: 'Ek tap mein jodo', onTap: () => _oneTap(e))
+                        : PluginAction(kind: ActionKind.add, label: 'Jodiye', onTap: () => _addDialog(entry: e))),
           ]),
         ]),
       ),

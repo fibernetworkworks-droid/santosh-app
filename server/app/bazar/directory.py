@@ -22,7 +22,7 @@ STOP = {"the", "and", "for", "with", "from", "mcp", "server", "servers", "tool",
         "karo", "ka", "ki", "ke", "hai", "mujhe", "chahiye", "wala", "wali", "ko", "se", "me", "mein", "aur", "koi", "do"}
 # column positions in the file (v1 = the first 15; v2 adds the rest)
 (N, SRC, NAME, LINK, FIELD, DOES, LANG, VER, REL, LIC, PRICE, OFFICIAL, REPO, DL, CAUTION, TITLE, SHORT, BY, LOGO, HOME,
- MCP_URL, VERIFIED, FEATURED, USERS, ALIASES, ID, BLOCKED, TAGS, SOURCES) = range(29)
+ MCP_URL, VERIFIED, FEATURED, USERS, ALIASES, ID, BLOCKED, TAGS, SOURCES, PKG, ENV) = range(31)
 SOURCE_LABEL = {"npm": "npm", "pypi": "PyPI", "awesome": "awesome-mcp-servers", "best-of": "best-of-mcp-servers",
                 "reference": "Official MCP reference", "mcpso": "mcp.so", "mso": "mcpservers.org", "apify": "Apify Store",
                 "other": "Other"}
@@ -34,10 +34,14 @@ _ID = re.compile(r"^[0-9a-f]{10}$")
 def _data() -> dict[str, Any]:
     with gzip.open(FILE, "rt", encoding="utf-8") as fh:
         data = json.load(fh)
+    for s in data["servers"]:          # v2 files from before v0.154 had no pkg / env columns
+        if len(s) < 31:
+            s += [[], []][len(s) - 29:] if len(s) >= 29 else []
     if data.get("version") != 2:   # an old v1 file: give every row the v2 columns so the rest of the code is one path
         for s in data["servers"]:
-            s += [""] * (29 - len(s))
+            s += [""] * (31 - len(s))
             s[TITLE], s[SHORT], s[LOGO], s[ALIASES], s[TAGS], s[SOURCES] = s[NAME], s[DOES], ["", "", "", 0], [], [], [s[SRC]]
+            s[PKG], s[ENV] = ([s[SRC], s[NAME]] if s[SRC] in ("npm", "pypi") else []), []
             s[ID] = f"{s[N]:010x}"[-10:]
     return data
 
@@ -90,19 +94,64 @@ def blocked(s: list) -> str:
     return "whatsapp" if _WA.search(hay) and not _WA_OK.search(hay) else ""
 
 
+LOCAL_PC = re.compile(
+    r"\b(file ?system|local (files?|folders?|directory|repo(sitory)?|git|database|sqlite|machine|computer)|your (local )?"
+    r"(files|computer|machine|desktop|screen|mac|pc)|desktop apps?|applescript|macos|mac os|windows (registry|apps?|"
+    r"automation)|obsidian vault|ollama|localhost|127\.0\.0\.1|\badb\b|serial port|bluetooth|clipboard|screen ?shots?"
+    r" of (the|your) screen|tally prime|sqlite (file|db)|vs ?code|xcode|android studio|terminal|shell commands?|"
+    r"keyboard and mouse|mouse and keyboard|home assistant|lan devices?)\b", re.I)
+
+
+def runner_on() -> bool:
+    try:
+        from ..config import get_settings
+        st = get_settings()
+        return bool(st.mcp_runner_url and st.mcp_runner_secret)
+    except Exception:
+        return False
+
+
+def local_pc(s: list) -> bool:
+    """Works on things that live on her own computer (files, desktop apps, local databases): no use on the runner box."""
+    return bool(LOCAL_PC.search(f"{s[TITLE]} {s[SHORT]} {s[DOES]} {' '.join(s[TAGS])}"))
+
+
+def trusted(s: list) -> bool:
+    """One tap straight away (only the malware lookup first): official / verified / featured / popular / Docker's own
+    catalogue. Everything else gets the full safety check the first time it is tapped."""
+    try:
+        from ..config import get_settings
+        need = get_settings().mcp_runner_trust_downloads
+    except Exception:
+        need = 1000
+    return bool(s[OFFICIAL] or s[VERIFIED] or s[FEATURED] or s[DL] >= need or (s[USERS] or 0) >= 50
+                or s[SRC] == "reference" or (s[PKG] and s[PKG][0] == "docker"))
+
+
+def one_tap(s: list) -> bool:
+    if blocked(s):
+        return False
+    if s[MCP_URL]:
+        return True                    # hosted (Apify ones ask for her Apify token once)
+    return bool(s[PKG]) and runner_on() and not local_pc(s)
+
+
 def connect_mode(s: list) -> str:
     if s[MCP_URL] or (s[PRICE] == "cloud" and s[SRC] != "apify"):
         return "remote"
-    if s[SRC] in ("npm", "pypi"):
+    if s[SRC] in ("npm", "pypi") or s[PKG]:
         return "local"
     return "check"
 
 
 def install_hint(s: list) -> str:
-    if s[SRC] == "npm":
-        return f"npx -y {s[NAME]}"
-    if s[SRC] == "pypi":
-        return f"uvx {s[NAME]}   (or: pip install {s[NAME]})"
+    kind, name = (s[PKG] + ["", ""])[:2] if s[PKG] else ((s[SRC], s[NAME]) if s[SRC] in ("npm", "pypi") else ("", ""))
+    if kind == "npm":
+        return f"npx -y {name}"
+    if kind == "pypi":
+        return f"uvx {name}   (or: pip install {name})"
+    if kind == "docker":
+        return f"docker run -i --rm {name}"
     return ""
 
 
@@ -186,8 +235,21 @@ def public(s: list) -> dict[str, Any]:
         out["downloads_per_month"] = s[DL]
     if install_hint(s):
         out["install"] = install_hint(s)
+    out["one_tap"] = one_tap(s)
+    if s[PKG]:
+        out["package"] = {"kind": s[PKG][0], "name": s[PKG][1]}
+        out["trusted"] = trusted(s)
+        if local_pc(s):
+            out["runs_on"] = "pc"
+            out["pc_note"] = ("Yeh server aapke apne computer ki cheezon (files, apps, local database) par kaam karta hai, "
+                              "isliye Hoola ke runner par nahi chalega: ise apne PC par chalaiye.")
+        elif runner_on():
+            out["runs_on"] = "hoola"
+    if s[ENV]:
+        out["keys"] = s[ENV]
     b = blocked(s)
     if b:
+        out["one_tap"] = False
         out["connect"] = "not_allowed"
         out["how_to_connect"] = NOT_ALLOWED[b]
     if risky(s):
@@ -253,7 +315,7 @@ def get(ref: str) -> dict[str, Any] | None:
         return None
     return {"n": s[N], "r": s[NAME], "d": s[SHORT] or s[DOES], "f": s[FIELD], "c": risky(s), "l": s[REPO] or s[LINK],
             "o": s[OFFICIAL], "blocked": blocked(s), "id": s[ID], "t": s[TITLE] or s[NAME].split("/")[-1],
-            "u": s[MCP_URL], "src": s[SRC]}
+            "u": s[MCP_URL], "src": s[SRC], "pkg": s[PKG], "env": s[ENV], "trusted": trusted(s), "pc": local_pc(s)}
 
 
 def stats() -> dict[str, Any]:

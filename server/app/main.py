@@ -92,7 +92,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.153.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.154.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -8263,6 +8263,28 @@ async def bazar_mcp_connect(fid: str, body: FeaturedIn, tenant: str = Depends(cu
                                        readonly=body.readonly, toolsets=body.toolsets, project=body.project)
     except BazarError as e:
         raise HTTPException(400, str(e))
+
+
+class OneTapIn(BaseModel):
+    ref: str
+    keys: dict[str, str] = {}
+    accept_caution: bool = False
+
+
+@app.post("/api/bazar/mcp/one_tap", dependencies=[Depends(require_key)])
+async def bazar_mcp_one_tap(body: OneTapIn, tenant: str = Depends(current_tenant)):
+    """v0.154 'Ek tap mein jodo': hosted servers join directly, npm / PyPI ones run on the MCP runner box. Keys only
+    from the app (never chat)."""
+    try:
+        return await asyncio.to_thread(bazar.mcp_one_tap, tenant, body.ref, body.keys, body.accept_caution)
+    except BazarError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/bazar/mcp/runner", dependencies=[Depends(require_key)])
+async def bazar_mcp_runner():
+    from .bazar import runner as mcp_runner
+    return await asyncio.to_thread(mcp_runner.health)
 
 
 @app.get("/api/bazar/mcp/directory", dependencies=[Depends(require_key)])

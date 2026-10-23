@@ -45,7 +45,7 @@ BAZAR_TOOLS = [
         "featured=<id>: connect one (one-tap ones show a sign-in Link; API-key ones the user finishes in the app). "
         "action=directory: search the directory of ~63,700 MCP "
         "servers (query and/or field like 'Finance & Payments', 'Databases', 'Communication', 'AI & Agents', 'Search & Web'); no query = counts by field. "
-        "action=add: connect a remote server by its https MCP address (url; optional ref = the directory ref; a directory hit with mcp_url needs only ref), "
+        "action=add: connect a remote server by its https MCP address (url; optional ref = the directory ref; a directory hit with one_tap=true needs only ref: hosted ones join, npm / PyPI ones start on Hoola's MCP runner after a safety check; keys it needs are added by her in the app), "
         "name). Only use an address the user gave or that the directory/GitHub page states; never invent one. If it needs "
         "a sign-in a Link button appears; API keys are entered by the user in the app, never in chat. "
         "action=list: the user's servers and status. action=remove: disconnect (pack_id). After adding, use "

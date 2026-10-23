@@ -1368,6 +1368,10 @@ class Api {
   Future<Map<String, dynamic>> mcpKey(String packId, String key, {String header = ''}) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/bazar/mcp/$packId/key', body: {'key': key, 'header': header}));
   Future<void> mcpRemove(String packId) async => _send('DELETE', '/api/bazar/mcp/$packId');
+  /// v0.154 'Ek tap mein jodo': hosted servers join directly, packages run on Hoola's MCP runner (first start can take a minute).
+  Future<Map<String, dynamic>> mcpOneTap(String ref, {Map<String, String> keys = const {}, bool acceptCaution = false}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/mcp/one_tap',
+          body: {'ref': ref, 'keys': keys, 'accept_caution': acceptCaution}, timeout: const Duration(seconds: 300)));
   Future<Map<String, dynamic>> jaanch() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/jaanch', timeout: const Duration(seconds: 60)));
   Future<Map<String, dynamic>> mcpTools(String packId) async =>

@@ -170,7 +170,11 @@ class McpExecutor:
                     raise ToolError(f"NOT_LINKED: {pack.name} needs its API key. Add it in the Santosh app > Connect > "
                                     "MCP servers (never send keys in chat).")
                 raise ToolError(f"NOT_LINKED: Sign in to {pack.name} once (Santosh app > Connect > MCP servers > Link).")
-            return self.remote_factory(self._endpoint(pack, ctx), headers)
+            endpoint = self._endpoint(pack, ctx)
+            from .. import runner as mcp_runner
+            if mcp_runner.runner_url(endpoint):   # v0.154 one-tap server on the runner box: make sure it knows it
+                mcp_runner.ensure(ctx.session, pack.id)
+            return self.remote_factory(endpoint, headers)
         conn = ctx.session.scalars(select(Connection).where(Connection.user_id == ctx.user.id,
                                                             Connection.provider == pack.config["provider"],
                                                             Connection.status == "active")).first()

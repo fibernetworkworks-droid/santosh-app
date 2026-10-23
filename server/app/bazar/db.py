@@ -465,6 +465,30 @@ class McpToken(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
 
 
+class RunnerSpec(Base):
+    """v0.154 a directory MCP server Hoola runs on the MCP runner box for this user (one-tap connect)."""
+    __tablename__ = "bz_runner_specs"
+    id: Mapped[str] = mapped_column(String(24), primary_key=True)          # the CustomMcp row id
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    iid: Mapped[str] = mapped_column(String(24), unique=True)               # instance id on the runner
+    kind: Mapped[str] = mapped_column(String(10))                           # npm | pypi | docker
+    package: Mapped[str] = mapped_column(String(220))
+    version: Mapped[str] = mapped_column(String(40), default="")
+    env_enc: Mapped[str] = mapped_column(Text, default="")                  # her keys for it, sealed (vault)
+    token_enc: Mapped[str] = mapped_column(Text, default="")                # the instance bearer token, sealed
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
+
+
+class PackageCheck(Base):
+    """v0.154 safety check of a package before its first run on the runner (shared by every user; 7 days)."""
+    __tablename__ = "bz_package_checks"
+    key: Mapped[str] = mapped_column(String(240), primary_key=True)        # kind:package
+    verdict: Mapped[str] = mapped_column(String(10))                        # ok | caution | block
+    reasons: Mapped[list[Any]] = mapped_column(default=list)
+    facts: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    checked_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
+
+
 # ---------------- engine / session (shared with Santosh core) ----------------
 
 def init_tables(engine) -> None:
