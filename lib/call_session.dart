@@ -53,6 +53,9 @@ const callCardKinds = {
   'sitesup_stop', 'sitesup_report', 'sitesup_alert', 'interior_quote', 'interior_order', 'interior_change', 'interior_payment',
   'archassist_transmittal', 'archassist_submission', 'archassist_invoice', 'archassist_area', 'society_card', 'society_complaint',
   'society_alert',
+  // v0.150 Kanoon suite (cards that wait for her)
+  'vakil_card', 'legalres_memo', 'legalres_share', 'compliance_filing', 'compliance_cert', 'contracts_card', 'cosec_filing',
+  'cosec_notice', 'cosec_minutes', 'notary_print', 'notary_alert', 'pidesk_share', 'dpo_card', 'dpo_request', 'dpo_breach', 'dpo_alert',
 };
 
 /// The live voice call, owned by the app (not by a screen): it keeps going while the owner opens Chat, Connect,

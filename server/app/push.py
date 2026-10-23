@@ -333,6 +333,32 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
                "society_day": "Aaj society mein"}
     if kind in _makaan:
         return (f"{name}: {_makaan[kind]}", _say)
+    # v0.150 Kanoon suite: cards push only while they wait for her (the same card is re-published when decided)
+    _kanoon_wait = {"vakil_card": ("card", "waiting", "Vakil: aapki haan chahiye"),
+                    "legalres_share": ("share", "waiting", "Memo bhejne ki aapki haan chahiye"),
+                    "compliance_filing": ("filing", "waiting", "Compliance: aapki haan chahiye"),
+                    "compliance_cert": ("cert", "waiting", "Compliance certificate: sign-off"),
+                    "contracts_card": ("card", "waiting", "Contract: aapki haan chahiye"),
+                    "cosec_filing": ("filing", "waiting", "MCA filing: aapki haan chahiye"),
+                    "cosec_notice": ("meeting", "notice_waiting", "Meeting notice: aapki haan chahiye"),
+                    "cosec_minutes": ("meeting", "minutes_waiting", "Minutes: aapki haan chahiye"),
+                    "notary_print": ("doc", "waiting", "Notary: final print ke liye aapki haan"),
+                    "pidesk_share": ("share", "waiting", "PI desk: aapki haan chahiye"),
+                    "dpo_card": ("card", "waiting", "Data suraksha: aapki haan chahiye")}
+    if kind in _kanoon_wait:
+        key, st, title = _kanoon_wait[kind]
+        c = p.get(key) or {}
+        if c.get("status") != st:
+            return None
+        return (f"{name}: {title}", (c.get("title") or _say) if kind == "dpo_card" else _say)
+    _kanoon = {"vakil_alert": "Court diary", "vakil_day": "Aaj ki court diary", "legalres_memo": "Research memo taiyaar",
+               "compliance_alert": "Compliance yaad", "compliance_day": "Aaj ka compliance note", "contracts_alert": "Contract ki tareekh",
+               "contracts_day": "Aaj ke contracts", "cosec_alert": "Company filing yaad", "cosec_day": "Aaj ka company secretary note",
+               "notary_alert": "Notary: yaad dilana", "notary_day": "Aaj ka notary desk", "pidesk_alert": "PI desk",
+               "dpo_breach": "Data breach: 72 ghante ka clock", "dpo_alert": "Data suraksha", "dpo_day": "Aaj data suraksha mein",
+               "dpo_request": "Nayi data maang"}
+    if kind in _kanoon:
+        return (f"{name}: {_kanoon[kind]}", _say)
     if kind == "site_board":
         if not p.get("push"):
             return None
@@ -516,7 +542,9 @@ PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "photo_made", 
               # v0.139 Safar suite
               "customs_filing", "customs_alert", "customs_day", "travel_booking", "travel_quote", "travel_reminder", "travel_day", "warehouse_adjust", "warehouse_day", "fleet_spend", "fleet_alert", "fleet_day", "courier_card", "courier_parcel", "courier_day", "drivers_alert", "drivers_plan", "drivers_day", "logistics_ewb", "logistics_alert", "logistics_day",
               # v0.144 Makaan suite
-              "propagent_card", "propagent_alert", "propagent_day", "rentdesk_approval", "rentdesk_message", "rentdesk_alert", "rentdesk_day", "sitesup_indent", "sitesup_stop", "sitesup_report", "sitesup_alert", "sitesup_day", "interior_quote", "interior_order", "interior_change", "interior_payment", "interior_alert", "interior_day", "archassist_transmittal", "archassist_submission", "archassist_invoice", "archassist_alert", "archassist_day", "society_card", "society_complaint", "society_alert", "society_day"}
+              "propagent_card", "propagent_alert", "propagent_day", "rentdesk_approval", "rentdesk_message", "rentdesk_alert", "rentdesk_day", "sitesup_indent", "sitesup_stop", "sitesup_report", "sitesup_alert", "sitesup_day", "interior_quote", "interior_order", "interior_change", "interior_payment", "interior_alert", "interior_day", "archassist_transmittal", "archassist_submission", "archassist_invoice", "archassist_alert", "archassist_day", "society_card", "society_complaint", "society_alert", "society_day",
+              # v0.150 Kanoon suite
+              "vakil_card", "vakil_alert", "vakil_day", "legalres_share", "legalres_memo", "compliance_filing", "compliance_cert", "compliance_alert", "compliance_day", "contracts_card", "contracts_alert", "contracts_day", "cosec_filing", "cosec_notice", "cosec_minutes", "cosec_alert", "cosec_day", "notary_print", "notary_alert", "notary_day", "pidesk_share", "pidesk_alert", "dpo_card", "dpo_breach", "dpo_alert", "dpo_day", "dpo_request"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 

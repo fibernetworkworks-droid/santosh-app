@@ -607,6 +607,15 @@ async def employee_jobs() -> None:
             await asyncio.to_thread(_svc.tick)
         except Exception:
             log.exception("%s tick failed", _mod)
+    # v0.150 Kanoon suite: court diary / limitation, compliance calendar, contract renewals, MCA calendar, notary renewals,
+    # PI desk reminders, DPDP breach / request clocks (each throttles itself; legalres.tick does nothing)
+    for _mod in ("vakil", "legalres", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo"):
+        try:
+            import importlib
+            _svc = importlib.import_module(f".{_mod}.service", __package__)
+            await asyncio.to_thread(_svc.tick)
+        except Exception:
+            log.exception("%s tick failed", _mod)
     try:                                   # v0.122 Website: her domain's DNS / SSL coming up, uptime of live sites
         from .site import hosting as site_hosting
         await asyncio.to_thread(site_hosting.watch)

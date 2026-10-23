@@ -44,6 +44,14 @@ import 'propagent_screen.dart';
 import 'rentdesk_screen.dart';
 import 'sitesup_screen.dart';
 import 'society_screen.dart';
+import 'vakil_screen.dart';
+import 'legalres_screen.dart';
+import 'compliance_screen.dart';
+import 'contracts_screen.dart';
+import 'cosec_screen.dart';
+import 'notary_screen.dart';
+import 'pidesk_screen.dart';
+import 'dpo_screen.dart';
 import 'site_screen.dart';
 import 'app_design_screen.dart';
 import 'kalam_screen.dart';
@@ -632,6 +640,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Flats, maintenance bill, baaki, shikayat, AGM / notice, vendor, gate'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SocietyScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.gavel_rounded, color: C.accent),
+              title: Text('${app.aName} · Lawyer\'s junior', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Court diary, tareekhein, cause list, limitation, drafts, fee hisaab'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VakilScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.menu_book_rounded, color: C.accent),
+              title: Text('${app.aName} · Legal researcher', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Act aur judgments official source se, har baat ka link; IPC se BNS table'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LegalresScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.fact_check_rounded, color: C.accent),
+              title: Text('${app.aName} · Compliance officer', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('GST, TDS, PF, licence, pollution ki tareekhein; saboot; monthly certificate'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ComplianceScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.description_rounded, color: C.accent),
+              title: Text('${app.aName} · Contract manager', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Contract padhna, jokhim, redline, renewal register; bhejna / e-sign / e-stamp aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ContractsScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.business_center_rounded, color: C.accent),
+              title: Text('${app.aName} · Company secretary', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('MCA forms ki tareekhein, Board / AGM notice + minutes, registers'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CosecScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.approval_rounded, color: C.accent),
+              title: Text('${app.aName} · Notary desk', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Affidavit, POA, NOC ke draft, stamp, register, receipt, apostille'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => NotaryScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.manage_search_rounded, color: C.accent),
+              title: Text('${app.aName} · PI desk', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Business jaanch, kaagaz ki jaanch, dhokhe ke saboot (kisi ki nigrani nahi)'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PideskScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.shield_rounded, color: C.accent),
+              title: Text('${app.aName} · Data protection officer', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('DPDP: data register, privacy notice, consent, maang 90 din, breach 72 ghante'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DpoScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

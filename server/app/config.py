@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     cyber_sleep_between_s: float = 1.0     # politeness gap between per-item NVD / HIBP calls (0 in tests)
     devops_llm: bool = True                # v0.137 DevOps: optional model wording for unknown failures / custom scripts
     customs_llm: bool = True               # v0.139 Customs: model HS-code suggestions (false = heading table + her learned codes only)
+    contracts_llm: bool = True             # v0.150 Contracts: optional model summary / extra redline ideas (false = rules only)
     courier_dir: str = ""                  # v0.139 Courier desk label PDFs ('' = data/courier)
     courier_poll_min: int = 0              # minutes between courier tracking polls per owner (0 = module default 30)
     courier_bluedart_base: str = ""        # Blue Dart API base ('' = https://apigateway.bluedart.com/in/transportation)

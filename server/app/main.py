@@ -64,6 +64,8 @@ async def lifespan(app: FastAPI):
             _os.environ.setdefault("DEVOPS_LLM", "false")
         if not _st.customs_llm:                 # v0.139 Safar suite
             _os.environ.setdefault("CUSTOMS_LLM", "false")
+        if not _st.contracts_llm:               # v0.150 Kanoon suite
+            _os.environ.setdefault("CONTRACTS_LLM", "false")
         for _k, _v in (("COURIER_DIR", _st.courier_dir), ("COURIER_BLUEDART_BASE", _st.courier_bluedart_base),
                        ("LOGISTICS_DIR", _st.logistics_dir), ("SITESUP_DIR", _st.sitesup_dir)):
             if _v:
@@ -90,7 +92,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.150.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.151.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -210,7 +212,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design", "app_android", "seva", "helpdesk", "shikayat", "aftersales", "feedback", "wapsi", "samudaay", "gyaan", "kaam_watch", "app_ideas", "devsahayak", "itadmin", "isp_noc", "cyber", "devops", "docwriter", "app_review", "product", "customs", "travel", "warehouse", "fleet", "courier", "drivers", "logistics", "propagent", "rentdesk", "site_supervisor", "interior", "archassist", "society"] + (["qa"] if _qa_ok() else []) + (["callcentre"] if st.public_base_url and st.gemini_api_key else []) + (["video_editor"] if shutil.which("ffmpeg") else []) + (["blender_3d"] if _blender_ok() else []) + (["postgres"] if _pg_ok() else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) + (["side_talk"] if st.gemini_api_key and st.voice_side_talk else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design", "app_android", "seva", "helpdesk", "shikayat", "aftersales", "feedback", "wapsi", "samudaay", "gyaan", "kaam_watch", "app_ideas", "devsahayak", "itadmin", "isp_noc", "cyber", "devops", "docwriter", "app_review", "product", "customs", "travel", "warehouse", "fleet", "courier", "drivers", "logistics", "propagent", "rentdesk", "site_supervisor", "interior", "archassist", "society", "vakil", "legal_research", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo"] + (["qa"] if _qa_ok() else []) + (["callcentre"] if st.public_base_url and st.gemini_api_key else []) + (["video_editor"] if shutil.which("ffmpeg") else []) + (["blender_3d"] if _blender_ok() else []) + (["postgres"] if _pg_ok() else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) + (["side_talk"] if st.gemini_api_key and st.voice_side_talk else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -3596,6 +3598,19 @@ from .archassist.api import make_router as _archassist_router  # noqa: E402
 from .society.api import make_router as _society_router  # noqa: E402
 
 for _mk in (_propagent_router, _rentdesk_router, _sitesup_router, _interior_router, _archassist_router, _society_router):
+    app.include_router(_mk(require_key, current_tenant))
+
+# v0.150 Kanoon suite: 8 Law, compliance & safety Sahayaks (all under /api/<mod>/*, key-protected; no public routes)
+from .vakil.api import make_router as _vakil_router  # noqa: E402
+from .legalres.api import make_router as _legalres_router  # noqa: E402
+from .compliance.api import make_router as _compliance_router  # noqa: E402
+from .contracts.api import make_router as _contracts_router  # noqa: E402
+from .cosec.api import make_router as _cosec_router  # noqa: E402
+from .notary.api import make_router as _notary_router  # noqa: E402
+from .pidesk.api import make_router as _pidesk_router  # noqa: E402
+from .dpo.api import make_router as _dpo_router  # noqa: E402
+
+for _mk in (_vakil_router, _legalres_router, _compliance_router, _contracts_router, _cosec_router, _notary_router, _pidesk_router, _dpo_router):
     app.include_router(_mk(require_key, current_tenant))
 
 # v0.141 3D Studio (Blender in a locked box): /api/blender3d/*; the signed file route checks its own signature

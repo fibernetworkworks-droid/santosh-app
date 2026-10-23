@@ -821,3 +821,20 @@ _have = {t["name"] for t in _biz_inbox.BIZ_TOOLS}
 _biz_inbox.BIZ_TOOLS.extend(t for t in RENTDESK_BIZ_TOOLS if t["name"] not in _have)
 _biz_inbox.BIZ_HANDLERS.update(RENTDESK_BIZ_HANDLERS)
 _biz_inbox.BIZ_LABELS.update(RENTDESK_BIZ_LABELS)
+
+# v0.150 Kanoon suite: 8 Law, compliance & safety Sahayaks (lawyer's junior, legal researcher, compliance officer, contract
+# manager, company secretary, notary desk, PI desk, data protection officer). Every card is decided only by her app tap.
+from .vakil_tools import VAKIL_HANDLERS, VAKIL_LABELS, VAKIL_TOOLS  # noqa: E402
+from .legalres_tools import LEGALRES_HANDLERS, LEGALRES_LABELS, LEGALRES_TOOLS  # noqa: E402
+from .compliance_tools import COMPLIANCE_HANDLERS, COMPLIANCE_LABELS, COMPLIANCE_TOOLS  # noqa: E402
+from .contracts_tools import CONTRACTS_HANDLERS, CONTRACTS_LABELS, CONTRACTS_TOOLS  # noqa: E402
+from .cosec_tools import COSEC_HANDLERS, COSEC_LABELS, COSEC_TOOLS  # noqa: E402
+from .notary_tools import NOTARY_HANDLERS, NOTARY_LABELS, NOTARY_TOOLS  # noqa: E402
+from .pidesk_tools import PIDESK_HANDLERS, PIDESK_LABELS, PIDESK_TOOLS  # noqa: E402
+from .dpo_tools import DPO_HANDLERS, DPO_LABELS, DPO_TOOLS  # noqa: E402
+
+for _t, _l, _h in ((VAKIL_TOOLS, VAKIL_LABELS, VAKIL_HANDLERS), (LEGALRES_TOOLS, LEGALRES_LABELS, LEGALRES_HANDLERS), (COMPLIANCE_TOOLS, COMPLIANCE_LABELS, COMPLIANCE_HANDLERS), (CONTRACTS_TOOLS, CONTRACTS_LABELS, CONTRACTS_HANDLERS), (COSEC_TOOLS, COSEC_LABELS, COSEC_HANDLERS), (NOTARY_TOOLS, NOTARY_LABELS, NOTARY_HANDLERS), (PIDESK_TOOLS, PIDESK_LABELS, PIDESK_HANDLERS), (DPO_TOOLS, DPO_LABELS, DPO_HANDLERS)):
+    _seen = {t["name"] for t in TOOLS}
+    TOOLS.extend(t for t in _t if t["name"] not in _seen)
+    TOOL_LABELS.update(_l)
+    HANDLERS.update(_h)

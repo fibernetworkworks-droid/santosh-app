@@ -719,6 +719,15 @@ def init_db(url: str | None = None):
     from .interior import models as _interior  # noqa: F401
     from .archassist import models as _archassist  # noqa: F401
     from .society import models as _society  # noqa: F401
+    # v0.150 Kanoon suite
+    from .vakil import models as _vakil  # noqa: F401
+    from .legalres import models as _legalres  # noqa: F401
+    from .compliance import models as _compliance  # noqa: F401
+    from .contracts import models as _contracts  # noqa: F401
+    from .cosec import models as _cosec  # noqa: F401
+    from .notary import models as _notary  # noqa: F401
+    from .pidesk import models as _pidesk  # noqa: F401
+    from .dpo import models as _dpo  # noqa: F401
     from .office import service as _office  # noqa: F401
     from .lekhak import service as _lekhak  # noqa: F401
     from .agent import pakka as _pakka  # noqa: F401

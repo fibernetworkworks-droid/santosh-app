@@ -314,6 +314,8 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _safarCards = {}; // v0.139 one card per id where the suite updates a card in place
   int gharTick = 0;                            // v0.144 Makaan suite screens refresh on their events
   final Map<String, FeedItem> _gharCards = {};  // v0.144 one card per id where the suite updates a card in place
+  int kanoonTick = 0;                          // v0.150 Kanoon suite screens refresh on their events
+  final Map<String, FeedItem> _kanoonCards = {}; // v0.150 one card per id where the suite updates a card in place
   int adsTick = 0;                             // v0.108 bumps on ads events (the Ads screen refreshes)
   final Map<String, FeedItem> _adsPlans = {};   // v0.108 one card per budget plan, changes updated in place
   int kalamTick = 0;                           // v0.101 bumps on content-writer events (the Kalam screen refreshes)
@@ -1455,6 +1457,64 @@ class Santosh extends ChangeNotifier {
         }
         safarTick++;
         break;
+      case 'vakil_card':
+      case 'vakil_draft':
+      case 'vakil_alert':
+      case 'vakil_day':
+      case 'legalres_memo':
+      case 'legalres_share':
+      case 'compliance_filing':
+      case 'compliance_cert':
+      case 'compliance_alert':
+      case 'compliance_day':
+      case 'contracts_card':
+      case 'contracts_review':
+      case 'contracts_alert':
+      case 'contracts_day':
+      case 'cosec_filing':
+      case 'cosec_notice':
+      case 'cosec_minutes':
+      case 'cosec_alert':
+      case 'cosec_day':
+      case 'cosec_event':
+      case 'notary_print':
+      case 'notary_doc':
+      case 'notary_entry':
+      case 'notary_alert':
+      case 'notary_day':
+      case 'pidesk_share':
+      case 'pidesk_report':
+      case 'pidesk_doc':
+      case 'pidesk_case':
+      case 'pidesk_alert':
+      case 'dpo_card':
+      case 'dpo_request':
+      case 'dpo_breach':
+      case 'dpo_alert':
+      case 'dpo_day':
+        // v0.150 Kanoon suite: cards keyed by their id are updated in place; a later step of another kind for the same id
+        // (notary doc -> print card, cosec notice -> minutes) takes the card's place with the new kind
+        final kp = Map<String, dynamic>.from(p);
+        final kk = kanoonCardKey(ev.kind, kp);
+        final kOld = kk.isEmpty ? null : _kanoonCards[kk];
+        if (kOld != null && kOld.kind == ev.kind) {
+          kOld.data = {...kOld.data, ...kp};
+        } else if (kOld != null) {
+          final it = FeedItem(ev.kind, {...kOld.data, ...kp});
+          final at = feed.indexOf(kOld);
+          if (at >= 0) {
+            feed[at] = it;
+          } else {
+            feed.add(it);
+          }
+          _kanoonCards[kk] = it;
+        } else {
+          final it = FeedItem(ev.kind, kp);
+          if (kk.isNotEmpty) _kanoonCards[kk] = it;
+          feed.add(it);
+        }
+        kanoonTick++;
+        break;
       case 'propagent_listing':
         gharTick++;                              // v0.144 refresh only (no card)
         break;
@@ -2114,4 +2174,30 @@ String gharCardKey(String kind, Map<String, dynamic> p) {
     _ => '',
   };
   return id.isEmpty || id == 'null' ? '' : '$kind:$id';
+}
+
+
+/// v0.150 Kanoon suite: which cards are one-per-id (updated in place). '' = always a new card.
+String kanoonCardKey(String kind, Map<String, dynamic> p) {
+  String sub(String k) => p[k] is Map ? '${(p[k] as Map)['id'] ?? ''}' : '';
+  final (group, id) = switch (kind) {
+    'vakil_card' => ('vkcard', sub('card')),
+    'vakil_draft' => ('vkdraft', sub('draft')),
+    'legalres_memo' => ('lrmemo', sub('matter').isEmpty ? '' : '${sub('matter')}:${(p['memo'] as Map?)?['v'] ?? ''}'),
+    'legalres_share' => ('lrshare', sub('share')),
+    'compliance_filing' => ('cofiling', sub('filing')),
+    'compliance_cert' => ('cocert', sub('cert')),
+    'contracts_card' => ('ctcard', sub('card')),
+    'contracts_review' => ('ctreview', sub('contract')),
+    'cosec_filing' => ('csfiling', sub('filing')),
+    'cosec_notice' || 'cosec_minutes' => ('csmeeting', sub('meeting')),
+    'notary_doc' || 'notary_print' => ('nydoc', sub('doc')),
+    'pidesk_share' => ('pishare', sub('share')),
+    'pidesk_case' => ('picase', sub('case')),
+    'dpo_card' => ('dpcard', sub('card')),
+    'dpo_request' => ('dprequest', sub('request')),
+    'dpo_breach' => ('dpbreach', sub('breach')),
+    _ => ('', ''),
+  };
+  return group.isEmpty || id.isEmpty || id == 'null' ? '' : '$group:$id';
 }

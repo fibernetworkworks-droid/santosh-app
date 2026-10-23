@@ -51,6 +51,14 @@ import 'propagent_screen.dart';
 import 'rentdesk_screen.dart';
 import 'sitesup_screen.dart';
 import 'society_screen.dart';
+import 'vakil_screen.dart';
+import 'legalres_screen.dart';
+import 'compliance_screen.dart';
+import 'contracts_screen.dart';
+import 'cosec_screen.dart';
+import 'notary_screen.dart';
+import 'pidesk_screen.dart';
+import 'dpo_screen.dart';
 import 'site_hosting.dart';
 import 'site_screen.dart';
 import 'app_android.dart';
@@ -945,6 +953,75 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return SocietyAlertCard(app: app, data: it.data);
     case 'society_day':
       return SocietyDayCard(app: app, data: it.data);
+    // v0.150 Kanoon suite
+    case 'vakil_card':
+      return VakilCardCard(key: ValueKey('kvc${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'vakil_draft':
+      return VakilDraftCard(key: ValueKey('kvd${(it.data['draft'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'vakil_alert':
+      return VakilNoteCard(app: app, data: it.data);
+    case 'vakil_day':
+      return VakilNoteCard(app: app, data: it.data);
+    case 'legalres_memo':
+      return LegalresMemoCard(key: ValueKey('klm${(it.data['matter'] as Map?)?['id']}:${(it.data['memo'] as Map?)?['v']}'), app: app, data: it.data);
+    case 'legalres_share':
+      return LegalresShareCard(key: ValueKey('kls${(it.data['share'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'compliance_filing':
+      return ComplianceFilingCard(key: ValueKey('kcf${(it.data['filing'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'compliance_cert':
+      return ComplianceCertCard(key: ValueKey('kcc${(it.data['cert'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'compliance_alert':
+      return ComplianceNoteCard(app: app, data: it.data);
+    case 'compliance_day':
+      return ComplianceNoteCard(app: app, data: it.data);
+    case 'contracts_card':
+      return ContractsCardCard(key: ValueKey('ktc${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'contracts_review':
+      return ContractsReviewCard(key: ValueKey('ktr${(it.data['contract'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'contracts_alert':
+      return ContractsNoteCard(app: app, data: it.data);
+    case 'contracts_day':
+      return ContractsNoteCard(app: app, data: it.data);
+    case 'cosec_filing':
+      return CosecFilingCard(key: ValueKey('ksf${(it.data['filing'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'cosec_notice':
+    case 'cosec_minutes':
+      return CosecMeetingCard(key: ValueKey('ksm${(it.data['meeting'] as Map?)?['id']}:${it.kind}'), app: app, data: it.data);
+    case 'cosec_alert':
+      return CosecNoteCard(app: app, data: it.data);
+    case 'cosec_day':
+    case 'cosec_event':
+      return CosecNoteCard(app: app, data: it.data);
+    case 'notary_print':
+      return NotaryPrintCard(key: ValueKey('knp${(it.data['doc'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'notary_doc':
+      return NotaryDocCard(key: ValueKey('knd${(it.data['doc'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'notary_entry':
+      return NotaryEntryCard(app: app, data: it.data);
+    case 'notary_alert':
+      return NotaryNoteCard(app: app, data: it.data);
+    case 'notary_day':
+      return NotaryNoteCard(app: app, data: it.data);
+    case 'pidesk_share':
+      return PideskShareCard(key: ValueKey('kps${(it.data['share'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'pidesk_report':
+      return PideskReportCard(app: app, data: it.data);
+    case 'pidesk_doc':
+      return PideskDocCard(app: app, data: it.data);
+    case 'pidesk_case':
+      return PideskNoteCard(key: ValueKey('kpc${(it.data['case'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'pidesk_alert':
+      return PideskNoteCard(app: app, data: it.data);
+    case 'dpo_card':
+      return DpoCardCard(key: ValueKey('kdc${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'dpo_request':
+      return DpoRequestCard(key: ValueKey('kdr${(it.data['request'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'dpo_breach':
+      return DpoBreachCard(key: ValueKey('kdb${(it.data['breach'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'dpo_alert':
+      return DpoAlertCard(app: app, data: it.data);
+    case 'dpo_day':
+      return DpoDayCard(app: app, data: it.data);
     case 'brand_design':
       return BrandDesignCard(v: it.data, app: app);
     case 'site_board':
