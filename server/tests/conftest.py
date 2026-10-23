@@ -33,6 +33,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("OPERATOR_PREFLIGHT", "false")  # v0.92: no live site checks (the sandbox has no DNS)
     monkeypatch.setenv("OPERATOR_REACH_FILE", str(tmp_path / "reach.json"))
     monkeypatch.setenv("IFSC_REFRESH", "false")    # no IFSC downloads / online lookups in tests
+    monkeypatch.setenv("CYBER_SLEEP_BETWEEN_S", "0")  # v0.137: no politeness sleeps between fake API calls
     monkeypatch.setenv("LOGO_WARM", "false")       # no logo downloads in tests
     monkeypatch.setenv("TV_REFRESH", "false")   # no real TTS calls; tests that need the clips turn it on
     monkeypatch.chdir(tmp_path)   # ignore any local .env

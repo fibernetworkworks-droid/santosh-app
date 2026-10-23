@@ -92,6 +92,10 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def push(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return await run(S.push, tenant, tid, str(_b(body).get("hash") or ""), by_tap=True)
 
+    @r.post("/tasks/{tid}/begin")
+    async def begin(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await run(S.begin, tenant, tid, str(_b(body).get("repo") or ""))
+
     @r.post("/tasks/{tid}/revise")
     async def revise(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return await run(S.revise, tenant, tid, str(_b(body).get("text") or ""))

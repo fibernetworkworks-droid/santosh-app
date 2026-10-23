@@ -449,6 +449,90 @@ def start(tenant: str, kind: str, text: str, repo: str = "", issue: int = 0, fil
         raise DevError(str(e))
 
 
+def _repo_or_blank(tenant: str, target: str) -> DevRepo | None:
+    """The repo an App Review target points at (owner/name or a github.com link), else her default / only repo, else None."""
+    t = (target or "").strip()
+    m = re.search(r"(?:github\.com/)?([A-Za-z0-9][\w.-]*/[\w.-]+?)(?:\.git)?/?$", t)
+    for name in ([m.group(1)] if m and "/" in m.group(1) and not t.lower().endswith((".apk", ".aab", ".zip")) else []) + [""]:
+        try:
+            with session() as s:
+                have = {r.full_name.lower() for r in s.scalars(select(DevRepo).where(DevRepo.tenant_id == tenant)).all()}
+            if name and name.lower() not in have:
+                continue        # never adds a repo by itself from a review's text
+            return _repo(tenant, name)
+        except DevError:
+            continue
+    return None
+
+
+def tasks_from_review(tenant: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """v0.137 App Review hand-off (her tap on the App Review card): every fix-list item becomes one DRAFT developer task
+    (status 'new', kind fix, 'done_when' = the acceptance check). Nothing is sent to GitHub here: no model call, no branch,
+    no PR. Work on a task starts only with `begin` (her words or the app), and even then the PR waits for her tap."""
+    payload = payload or {}
+    items = [x for x in (payload.get("tasks") or []) if isinstance(x, dict)][:30]
+    if not items:
+        raise DevError("Fix list khaali hai.")
+    review = str(payload.get("review") or "")[:40]
+    title = str(payload.get("title") or "")[:120]
+    r = _repo_or_blank(tenant, str(payload.get("target") or ""))
+    out = []
+    for it in items:
+        where = it.get("where") or []
+        where = ", ".join(str(w) for w in where) if isinstance(where, list) else str(where)
+        lines = [f"App Review {review} ({title}) se: [{str(it.get('severity') or '').upper()}] {it.get('title') or ''}".strip(),
+                 f"Kyon: {it.get('why') or ''}", f"Kahan: {where}" if where else "", f"Kya karein: {it.get('do') or ''}",
+                 ("Misaal:\n" + str(it.get("snippet"))[:3000]) if it.get("snippet") else "",
+                 f"Ho gaya kab maanein (acceptance): {it.get('done_when') or ''}"]
+        text = "\n".join(x for x in lines if x)
+        try:
+            clean, _ = _clean_text(text)
+        except DevError:            # a token-shaped string in the review text: keep the task, drop the text after scrubbing
+            from .. import scrub
+            clean = scrub.text(text)[:20000]
+        number = _next_number(tenant)
+        with session() as s:
+            t = DevTask(tenant_id=tenant, number=number, kind="fix", repo=r.full_name if r else "", text=clean,
+                        base=r.default_branch if r else "", pr_title=str(it.get("title") or "")[:120])
+            _log(t, f"App Review {review} se aaya (owner ke tap se); shuru karne ke liye 'begin'")
+            if not r:
+                t.error = "Repo chuniye: Developer > Repos mein repo jodiye, phir yeh kaam shuru kijiye."
+            s.add(t)
+            s.flush()
+            v = task_view(t)
+        v["say"] = f"{number}: App Review se naya kaam (draft). Shuru karne ke liye boliye '{number} shuru karo'."
+        _publish(tenant, "devsahayak_task", {"task": v, "say": v["say"]})
+        out.append({"id": v["id"], "number": number, "title": v["title"]})
+    return {"tasks": out, "repo": r.full_name if r else "", "status": "draft",
+            "say": f"{len(out)} draft kaam Developer Sahayak mein bane" + ("" if r else " (repo abhi chunna hai)")
+                   + ". Kuch bhi GitHub par nahi gaya; har PR aapki haan ke card se."}
+
+
+def begin(tenant: str, ref: str, repo: str = "", conv: str = "", actor: str = "owner") -> dict[str, Any]:
+    """Start the work of a draft task (e.g. from App Review). The prepared change always waits for her PR tap."""
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.status != "new":
+            raise DevError(f"Yeh kaam '{STATUS.get(t.status, t.status)}' hai; sirf naye (draft) kaam shuru hote hain.")
+        tid, have = t.id, t.repo
+    if not have or repo:
+        r = _repo(tenant, repo)
+        with session() as s:
+            t = s.get(DevTask, tid)
+            t.repo, t.base, t.error = r.full_name, r.default_branch, ""
+    with session() as s:
+        t = s.get(DevTask, tid)
+        if conv:
+            t.conv = conv
+        _log(t, f"shuru ({actor})")
+    g = gh(tenant)
+    try:
+        return _work(tenant, tid, g, [], "", ask_pr=True)
+    except (DevError, GhError) as e:
+        _set(tid, status="failed", error=str(e))
+        raise DevError(str(e))
+
+
 def _set(tid: str, **kw: Any) -> None:
     with session() as s:
         t = s.get(DevTask, tid)
@@ -633,7 +717,7 @@ def _pr_body(t: DevTask, out: dict[str, Any], warnings: list[dict[str, Any]], is
     return "\n".join(lines)[:60000]
 
 
-def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str) -> dict[str, Any]:
+def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_pr: bool = False) -> dict[str, Any]:
     cfg = _cfg(tenant)
     with session() as s:
         t = s.get(DevTask, tid)
@@ -674,7 +758,7 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str) -> di
             return _card(tenant, row, (explain + " " if explain else "") + "Koi file badli nahi." + warn)
         row.branch = f"hoola/{row.number.lower()}-{R.slug(row.pr_title, 28)}"
         row.hash = R.card_hash(row.id, row.repo, row.branch, base_sha, *[c["path"] + c["new"] for c in prep["changes"]])
-        if public or cfg.ask_before_pr:
+        if public or cfg.ask_before_pr or ask_pr:
             row.status = "ready"
             _log(row, "PR ke liye haan ka intezaar")
             s.flush()

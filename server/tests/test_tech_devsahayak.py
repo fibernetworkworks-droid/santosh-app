@@ -504,3 +504,55 @@ def test_tools_and_api(dev, monkeypatch):
     assert r.status_code == 200 and r.json()["status"] == "done" and S.FAKE.merges
     assert set(DT.DEVSAHAYAK_HANDLERS) == {"dev", "dev_dekho"} == {t["name"] for t in DT.DEV_TOOLS}
     assert c.get("/api/devsahayak/rules").json()["owasp"]["A03"] == "Software Supply Chain Failures"
+
+
+def test_tasks_from_app_review_are_drafts(dev, monkeypatch):
+    """v0.137 App Review hand-off: one draft task per fix-list item, nothing sent to GitHub; begin -> prepared change that
+    still waits for her PR tap even on a private repo."""
+    S = dev
+    _join(S)
+    fake = S.FAKE
+    called = []
+    monkeypatch.setattr(S, "model_json", lambda *a, **k: called.append(1) or FIX_ANSWER)
+    before = list(fake.calls)
+    out = S.tasks_from_review(T, {"review": "R-0003", "title": "Flow app", "target": REPO, "tasks": [
+        {"n": 1, "key": "cleartext", "title": "Cleartext traffic allowed", "severity": "high", "area": "Network",
+         "why": "HTTP allowed", "where": ["res/xml/network.xml:3"], "do": "Set cleartextTrafficPermitted=false",
+         "snippet": "<base-config cleartextTrafficPermitted=\"false\"/>", "done_when": "Agli App Review mein na dikhe."},
+        {"n": 2, "key": "debuggable", "title": "Debuggable build", "severity": "medium", "why": "x", "where": [], "do": "y",
+         "done_when": "z"}]})
+    assert out["status"] == "draft" and len(out["tasks"]) == 2 and out["repo"] == REPO
+    assert fake.calls == before and not called                      # no GitHub write, no model call
+    assert [k for k in kinds(S)][-2:] == ["devsahayak_task", "devsahayak_task"]
+    t1 = S.get_task(T, out["tasks"][0]["number"])
+    assert t1["status"] == "new" and "acceptance" in t1["text"] and "R-0003" in t1["text"] and t1["kind"] == "fix"
+    # an unknown repo in the target is never added by itself
+    out2 = S.tasks_from_review(T, {"review": "R-4", "title": "x", "target": "someone/else", "tasks": [{"title": "t", "do": "d"}]})
+    assert out2["repo"] == REPO                                       # her only repo
+    with pytest.raises(S.DevError):
+        S.tasks_from_review(T, {"tasks": []})
+    # begin: prepared change, PR only on her tap (private repo too)
+    v = S.begin(T, out["tasks"][0]["number"])
+    assert v["status"] == "ready" and v["hash"] and not fake.prs and kinds(S)[-1] == "devsahayak_push"
+    with pytest.raises(S.DevError):
+        S.begin(T, out["tasks"][0]["number"])                         # only draft tasks start
+    with pytest.raises(S.DevError):
+        S.push(T, v["id"], v["hash"])                                  # not from a tool
+    S.push(T, v["id"], v["hash"], by_tap=True)
+    assert fake.prs
+
+
+def test_app_review_handoff_reaches_devsahayak(env):
+    from app.devsahayak import service as S
+    assert callable(getattr(S, "tasks_from_review", None))
+
+
+def test_all_tool_names_unique():
+    import collections
+
+    from app.agent import tools
+    c = collections.Counter(t["name"] for t in tools.TOOLS)
+    assert not [k for k, v in c.items() if v > 1]
+    assert all(t["name"] in tools.HANDLERS for t in tools.TOOLS)
+    for n in ("dev", "qa", "it_admin", "noc", "cyber", "devops", "docs_writer", "app_review", "product"):
+        assert n in c

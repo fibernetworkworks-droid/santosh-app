@@ -52,6 +52,17 @@ async def lifespan(app: FastAPI):
     if get_settings().ifsc_refresh:
         from .india import ifsc
         ifsc.refresh_in_background()          # v0.59 IFSC branch details, once a month
+    try:                                       # v0.137 Tech suite modules read these from the environment
+        import os as _os
+        from .cyber import service as _cyber_svc
+        _st = get_settings()
+        _cyber_svc.SLEEP_BETWEEN_S = float(_st.cyber_sleep_between_s or 0)
+        if _st.cyber_certin_feed:
+            _os.environ.setdefault("CYBER_CERTIN_FEED", _st.cyber_certin_feed)
+        if not _st.devops_llm:
+            _os.environ.setdefault("DEVOPS_LLM", "false")
+    except Exception:
+        log.exception("tech suite settings")
     from .operator import service as operator_service
     operator_service.MAIN_LOOP = asyncio.get_running_loop()   # v0.67 Computer Operator jobs run on this loop
     if get_settings().operator_worker:
@@ -69,7 +80,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.136.2", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.137.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -107,6 +118,14 @@ def _operator_ok() -> bool:
     try:
         from .operator.service import available
         return available()
+    except Exception:
+        return False
+
+
+def _qa_ok() -> bool:
+    try:
+        from .qa.runner import available
+        return available() == ""
     except Exception:
         return False
 
@@ -165,7 +184,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design", "app_android", "seva", "helpdesk", "shikayat", "aftersales", "feedback", "wapsi", "samudaay", "gyaan", "kaam_watch", "app_ideas"] + (["callcentre"] if st.public_base_url and st.gemini_api_key else []) + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design", "app_android", "seva", "helpdesk", "shikayat", "aftersales", "feedback", "wapsi", "samudaay", "gyaan", "kaam_watch", "app_ideas", "devsahayak", "itadmin", "isp_noc", "cyber", "devops", "docwriter", "app_review", "product"] + (["qa"] if _qa_ok() else []) + (["callcentre"] if st.public_base_url and st.gemini_api_key else []) + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -539,6 +558,10 @@ async def google_callback(request: Request):
     if is_fb_state(request.query_params.get("state", "")):      # v0.133 "connect my Business Profile reviews" (Feedback Sahayak)
         from .feedback.api import finish_page as fb_finish
         return await fb_finish(request)
+    from .itadmin.connectors import is_link_state as is_ita_state
+    if is_ita_state(request.query_params.get("state", "")):     # v0.137 "connect my Google Workspace admin" (IT Admin Sahayak)
+        from .itadmin.api import finish_page as ita_finish
+        return await ita_finish(request)
     from .forms.accounts import is_link_state as is_form_state
     if is_form_state(request.query_params.get("state", "")):    # "connect my Google Forms"
         from .forms.api import finish_page as forms_finish
@@ -3318,6 +3341,22 @@ from .callcentre.api import make_router as _callcentre_router  # noqa: E402
 
 for _mk in (_seva_router, _helpdesk_router, _shikayat_router, _aftersales_router, _feedback_router, _wapsi_router,
             _samudaay_router, _callcentre_router):
+    app.include_router(_mk(require_key, current_tenant))
+
+# v0.137 Tech suite: 9 Technology & software Sahayaks (each module owns its /api/<mod>/* routes; the few public ones
+# - ispnoc / devops collectors, docwriter / product published pages - verify their own signature / token in code)
+from .devsahayak.api import make_router as _devsahayak_router  # noqa: E402
+from .qa.api import make_router as _qa_router  # noqa: E402
+from .itadmin.api import make_router as _itadmin_router  # noqa: E402
+from .ispnoc.api import make_router as _ispnoc_router  # noqa: E402
+from .cyber.api import make_router as _cyber_router  # noqa: E402
+from .devops.api import make_router as _devops_router  # noqa: E402
+from .docwriter.api import make_router as _docwriter_router  # noqa: E402
+from .appreview.api import make_router as _appreview_router  # noqa: E402
+from .product.api import make_router as _product_router  # noqa: E402
+
+for _mk in (_devsahayak_router, _qa_router, _itadmin_router, _ispnoc_router, _cyber_router, _devops_router,
+            _docwriter_router, _appreview_router, _product_router):
     app.include_router(_mk(require_key, current_tenant))
 
 # v0.134 Gyaan (knowledge base / agentic RAG): /api/gyaan/*

@@ -147,7 +147,8 @@ def test_patterns_and_tracking_and_reminders(sk, monkeypatch):
     assert sent >= 1 and any("pavti" in n for n in S.notes)
     n0 = len(S.notes)
     S.tick(t0 + timedelta(hours=45))
-    assert all("pavti" not in x for x in S.notes[n0:])                    # same reminder not twice
+    assert all("pavti" not in x for x in S.notes[n0:] if x.startswith("Shikayat yaad dilana"))   # same reminder not twice
+    # (the once-a-day morning note may fall inside this hour on the real clock; it lists pavti counts, not a reminder)
     S.tick(t0 + timedelta(days=31))
     assert any("tareekh nikal gayi" in x for x in S.notes)
     assert S.day(T)["open"] == 4

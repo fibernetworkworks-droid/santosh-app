@@ -734,3 +734,27 @@ from .kaam_tools import KAAM_HANDLERS, KAAM_LABELS, KAAM_TOOLS  # noqa: E402
 TOOLS.extend(KAAM_TOOLS)
 TOOL_LABELS.update(KAAM_LABELS)
 HANDLERS.update(KAAM_HANDLERS)
+
+# v0.137 Tech suite: 9 Technology & software Sahayaks (developer, QA, IT admin, ISP NOC, cyber suraksha, DevOps,
+# technical writer, app reviewer, product manager). Each tool object is registered once (some modules also export
+# alias names for the same objects).
+from .devsahayak_tools import DEV_HANDLERS, DEV_LABELS, DEV_TOOLS  # noqa: E402
+from .qa_tools import QA_HANDLERS, QA_LABELS, QA_TOOLS  # noqa: E402
+from .itadmin_tools import ITADMIN_HANDLERS, ITADMIN_LABELS, ITADMIN_TOOLS  # noqa: E402
+from .ispnoc_tools import NOC_HANDLERS, NOC_LABELS, NOC_TOOLS  # noqa: E402
+from .cyber_tools import CYBER_HANDLERS, CYBER_LABELS, CYBER_TOOLS  # noqa: E402
+from .devops_tools import DEVOPS_HANDLERS, DEVOPS_LABELS, DEVOPS_TOOLS  # noqa: E402
+from .docwriter_tools import DOCWRITER_HANDLERS, DOCWRITER_LABELS, DOCWRITER_TOOLS  # noqa: E402
+from .appreview_tools import APPREVIEW_HANDLERS, APPREVIEW_LABELS, APPREVIEW_TOOLS  # noqa: E402
+from .product_tools import PRODUCT_HANDLERS, PRODUCT_LABELS, PRODUCT_TOOLS  # noqa: E402
+
+for _t, _l, _h in ((DEV_TOOLS, DEV_LABELS, DEV_HANDLERS), (QA_TOOLS, QA_LABELS, QA_HANDLERS),
+                   (ITADMIN_TOOLS, ITADMIN_LABELS, ITADMIN_HANDLERS), (NOC_TOOLS, NOC_LABELS, NOC_HANDLERS),
+                   (CYBER_TOOLS, CYBER_LABELS, CYBER_HANDLERS), (DEVOPS_TOOLS, DEVOPS_LABELS, DEVOPS_HANDLERS),
+                   (DOCWRITER_TOOLS, DOCWRITER_LABELS, DOCWRITER_HANDLERS),
+                   (APPREVIEW_TOOLS, APPREVIEW_LABELS, APPREVIEW_HANDLERS),
+                   (PRODUCT_TOOLS, PRODUCT_LABELS, PRODUCT_HANDLERS)):
+    _seen = {t["name"] for t in TOOLS}
+    TOOLS.extend(t for t in _t if t["name"] not in _seen)
+    TOOL_LABELS.update(_l)
+    HANDLERS.update(_h)

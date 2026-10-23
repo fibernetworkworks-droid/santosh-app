@@ -15,14 +15,14 @@ DEV_TOOLS = [
         "action=write (new code / feature: text = what she wants), fix (bug: text = her words + error / stack trace / log pasted, or "
         "issue = issue number; Hoola finds the files, explains in Hinglish and opens a fix PR WITH a test), tests (write tests for code "
         "she names), docs (README / docstrings / API docs), explain (only explain a bug, no PR). files = paths she names (optional), repo "
-        "= owner/name (default: her default repo). action=revise (task + text: change the PR by her words), fix_ci (task: CI failed -> "
+        "= owner/name (default: her default repo). action=begin (task: start a DRAFT task, e.g. from App Review; the PR still needs her tap), revise (task + text: change the PR by her words), fix_ci (task: CI failed -> "
         "try a fix commit), refresh (task: PR + CI state), cancel (task). action=review (repo + pr: review her / her team's PR -> a DRAFT "
         "review card; it goes to GitHub only on her tap). action=merge (task or repo + pr, method merge|squash|rebase) and action=deploy "
         "(repo, workflow, ref, inputs) ONLY prepare a card for HER tap: say 'card bheja hai', never that it is merged / deployed. "
         "action=repo_add (repo, deploy_workflow = her workflow_dispatch file, deploy_ref) | repo_remove | settings (review_post draft|"
         "direct, ask_before_pr, draft_pr, allow_workflows, merge_method, max_files, max_lines, rules, default_repo; owner only)."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["write", "fix", "tests", "docs", "explain", "revise", "fix_ci", "refresh", "cancel", "review",
+         "action": {"type": "string", "enum": ["write", "fix", "tests", "docs", "explain", "begin", "revise", "fix_ci", "refresh", "cancel", "review",
                                                "merge", "deploy", "repo_add", "repo_remove", "settings"]},
          "text": {"type": "string", "description": "Her exact words / the error, stack trace or log (data, pasted as is)"},
          "repo": {"type": "string"}, "issue": {"type": "integer"}, "files": {"type": "array", "items": {"type": "string"}},
@@ -67,6 +67,8 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action in S.KINDS:
             return S.start(t, action, _s(a.get("text")), _s(a.get("repo")), int(a.get("issue") or 0),
                            [str(x) for x in (a.get("files") or []) if x][:10], conv, actor)
+        if action == "begin":      # a draft task (e.g. from App Review): the PR still waits for her tap
+            return S.begin(t, _s(a.get("task")), _s(a.get("repo")), conv, actor)
         if action == "revise":
             return S.revise(t, _s(a.get("task")), _s(a.get("text")), conv)
         if action == "fix_ci":

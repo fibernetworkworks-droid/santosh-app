@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     callcentre_plivo_auth_token: str = ""
     callcentre_max_calls: int = 10         # AI phone calls at once on this server
     callcentre_noise_gate: bool = True     # while Hoola speaks only clearly voiced caller audio may interrupt
+    cyber_certin_feed: str = ""            # v0.137 Cyber Suraksha: CERT-In advisories RSS / Atom URL ('' = skipped; NVD + CISA KEV still used)
+    cyber_sleep_between_s: float = 1.0     # politeness gap between per-item NVD / HIBP calls (0 in tests)
+    devops_llm: bool = True                # v0.137 DevOps: optional model wording for unknown failures / custom scripts
     studio_on: bool = True                 # v0.68 Hoola Video Studio (AI-generated shots: Seedance / Veo / Kling / Wan / Omni)
     openrouter_api_key: str = ""           # one key for Seedance 2.0 / 2.5, Veo 3.1, Kling 3.0, Wan 3.0 (recommended)
     fal_key: str = ""                      # backup: Seedance via fal

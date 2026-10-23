@@ -13,6 +13,7 @@ import 'state.dart';
 import 'ui/avatar_setup_screen.dart';
 import 'ui/bazar_screen.dart';
 import 'ui/feedback_screen.dart';
+import 'ui/itadmin_screen.dart';
 import 'ui/catchup_screen.dart';
 import 'ui/chat_screen.dart';
 import 'ui/glass.dart';
@@ -144,6 +145,10 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
       }
       if (t == 'scroll:open') {        // a reel-limit / bedtime notification was tapped
         navKey.currentState?.push(MaterialPageRoute(builder: (_) => const ScrollScreen()));
+        return;
+      }
+      if (t.startsWith('itadmin:')) {  // v0.137 back from the Google Workspace admin sign-in (IT Admin Sahayak)
+        navKey.currentState?.push(MaterialPageRoute(builder: (_) => ItadminScreen(app: widget.app)));
         return;
       }
       if (t.startsWith('feedback:')) {  // v0.133 back from the Google Business Profile sign-in (Feedback Sahayak)

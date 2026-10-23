@@ -744,8 +744,8 @@ class _SiteCarePanelState extends State<SiteCarePanel> {
     final ok = await showDialog<bool>(context: context, builder: (c) => StatefulBuilder(builder: (c, set) => AlertDialog(
           title: const Text('GitHub mein daalo'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Pehli baar: GitHub > Settings > Developer settings > Fine-grained token (Contents + Administration: write). '
-                'Token sirf yahan, chat mein kabhi nahi.', style: TextStyle(fontSize: 12)),
+            const Text('Pehli baar: GitHub > Settings > Developer settings > Fine-grained token (Contents + Administration: write; '
+                'QA tester ke bug GitHub issue banane ho to Issues: write bhi). Token sirf yahan, chat mein kabhi nahi.', style: TextStyle(fontSize: 12)),
             TextField(controller: t, obscureText: true, autocorrect: false, enableSuggestions: false,
                 decoration: const InputDecoration(labelText: 'GitHub token (agar pehle se juda hai to khaali chhodiye)')),
             SwitchListTile(contentPadding: EdgeInsets.zero, value: private, onChanged: (b) => set(() => private = b),

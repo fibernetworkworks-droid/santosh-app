@@ -29,6 +29,15 @@ import 'samudaay_screen.dart';
 import 'seva_screen.dart';
 import 'shikayat_screen.dart';
 import 'wapsi_screen.dart';
+import 'appreview_screen.dart';
+import 'cyber_screen.dart';
+import 'devops_screen.dart';
+import 'devsahayak_screen.dart';
+import 'docwriter_screen.dart';
+import 'ispnoc_screen.dart';
+import 'itadmin_screen.dart';
+import 'product_screen.dart';
+import 'qa_screen.dart';
 import 'site_hosting.dart';
 import 'site_screen.dart';
 import 'app_android.dart';
@@ -706,6 +715,97 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return CallCentreCallCard(app: app, data: it.data);
     case 'callcentre_message':
       return CallCentreMessageCard(key: ValueKey('cm${it.data['id']}'), app: app, data: it.data);
+    // v0.137 Tech suite
+    case 'devsahayak_task':
+      return DevTaskCard(key: ValueKey('dt${(it.data['task'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'devsahayak_push':
+      return DevTaskCard(key: ValueKey('dt${(it.data['task'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'devsahayak_review':
+      return DevReviewCard(key: ValueKey('dr${(it.data['review'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'devsahayak_merge':
+      return DevActionCard(key: ValueKey('da${(it.data['action'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'devsahayak_deploy':
+      return DevActionCard(key: ValueKey('da${(it.data['action'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'qa_run':
+      return QaRunCard(key: ValueKey('qr${(it.data['run'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'qa_bug':
+      return QaBugCard(key: ValueKey('qb${(it.data['bug'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'qa_export':
+      return QaExportCard(key: ValueKey('qe${(it.data['export'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'qa_ready':
+      return QaReadyCard(app: app, data: it.data);
+    case 'qa_cases':
+      return QaCasesCard(app: app, data: it.data);
+    case 'itadmin_change':
+      return ItadminChangeCard(key: ValueKey('ic${(it.data['change'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'itadmin_checklist':
+      return ItadminChecklistCard(key: ValueKey('il${(it.data['checklist'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'itadmin_renewal':
+      return ItadminRenewalCard(app: app, data: it.data);
+    case 'itadmin_review':
+      return ItadminReviewCard(app: app, data: it.data);
+    case 'itadmin_guide':
+      return ItadminGuideCard(key: ValueKey('ig${(it.data['guide'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'itadmin_day':
+      return ItadminDayCard(app: app, data: it.data);
+    case 'ispnoc_fault':
+      return IspnocFaultCard(key: ValueKey('nf${(it.data['fault'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'ispnoc_ticket':
+      return IspnocTicketCard(key: ValueKey('nt${(it.data['ticket'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'ispnoc_change':
+      return IspnocChangeCard(key: ValueKey('nc${(it.data['change'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'ispnoc_alert':
+      return IspnocAlertCard(app: app, data: it.data);
+    case 'ispnoc_day':
+      return IspnocDayCard(app: app, data: it.data);
+    case 'cyber_action':
+      return CyberActionCard(key: ValueKey('ca${(it.data['action'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'cyber_alerts':
+      return CyberAlertsCard(app: app, data: it.data);
+    case 'cyber_check':
+      return CyberCheckCard(app: app, data: it.data);
+    case 'cyber_incident':
+      return CyberIncidentCard(app: app, data: it.data);
+    case 'cyber_advisory':
+      return CyberAdvisoryCard(app: app, data: it.data);
+    case 'cyber_posture':
+      return CyberPostureCard(app: app, data: it.data);
+    case 'cyber_day':
+      return CyberDayCard(app: app, data: it.data);
+    case 'devops_build':
+      return DevopsBuildCard(app: app, data: it.data);
+    case 'devops_deploy':
+      return DevopsDeployCard(key: ValueKey('od${(it.data['deploy'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'devops_alert':
+      return DevopsAlertCard(app: app, data: it.data);
+    case 'devops_script':
+      return DevopsScriptCard(app: app, data: it.data);
+    case 'devops_day':
+      return DevopsDayCard(app: app, data: it.data);
+    case 'docwriter_doc':
+      return DocwriterDocCard(key: ValueKey('wd${(it.data['doc'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'docwriter_publish':
+      return DocwriterPublishCard(key: ValueKey('wp${(it.data['doc'] as Map?)?['id']}${it.data['hash']}'), app: app, data: it.data);
+    case 'docwriter_sync':
+      return DocwriterSyncCard(app: app, data: it.data);
+    case 'docwriter_shots':
+      return DocwriterShotsCard(app: app, data: it.data);
+    case 'appreview_report':
+      return AppReviewReportCard(key: ValueKey('ar${it.data['id']}'), app: app, data: it.data);
+    case 'appreview_handoff':
+      return AppReviewHandoffCard(key: ValueKey('ah${it.data['id']}'), app: app, data: it.data);
+    case 'appreview_alert':
+      return AppReviewAlertCard(app: app, data: it.data);
+    case 'product_publish':
+      return ProductPublishCard(key: ValueKey('pp${it.data['id']}'), app: app, data: it.data);
+    case 'product_backlog':
+      return ProductNoteCard(app: app, data: it.data);
+    case 'product_spec':
+      return ProductNoteCard(key: ValueKey('ps${(it.data['spec'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'product_release':
+      return ProductNoteCard(key: ValueKey('pr${(it.data['release'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'product_day':
+      return ProductNoteCard(app: app, data: it.data);
     case 'brand_design':
       return BrandDesignCard(v: it.data, app: app);
     case 'site_board':

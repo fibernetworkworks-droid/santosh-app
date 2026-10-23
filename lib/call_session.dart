@@ -41,6 +41,10 @@ const callCardKinds = {
   'shikayat_message', 'aftersales_charge', 'aftersales_reminders', 'aftersales_visit', 'feedback_reply', 'feedback_alert',
   'wapsi_refund', 'samudaay_alert', 'samudaay_action', 'samudaay_question', 'callcentre_script', 'callcentre_call',
   'callcentre_message',
+  // v0.137 Tech suite
+  'devsahayak_push', 'devsahayak_merge', 'devsahayak_deploy', 'qa_bug', 'qa_export', 'itadmin_change', 'itadmin_checklist',
+  'ispnoc_fault', 'ispnoc_change', 'ispnoc_alert', 'cyber_action', 'cyber_alerts', 'cyber_check', 'cyber_incident',
+  'devops_deploy', 'devops_alert', 'docwriter_publish', 'appreview_report', 'appreview_handoff', 'product_publish',
 };
 
 /// The live voice call, owned by the app (not by a screen): it keeps going while the owner opens Chat, Connect,

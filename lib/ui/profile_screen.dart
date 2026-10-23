@@ -22,6 +22,15 @@ import 'samudaay_screen.dart';
 import 'seva_screen.dart';
 import 'shikayat_screen.dart';
 import 'wapsi_screen.dart';
+import 'appreview_screen.dart';
+import 'cyber_screen.dart';
+import 'devops_screen.dart';
+import 'devsahayak_screen.dart';
+import 'docwriter_screen.dart';
+import 'ispnoc_screen.dart';
+import 'itadmin_screen.dart';
+import 'product_screen.dart';
+import 'qa_screen.dart';
 import 'site_screen.dart';
 import 'app_design_screen.dart';
 import 'kalam_screen.dart';
@@ -416,6 +425,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Business ka phone Hoola uthaye: sirf aapki script se, insaan ko jodna, call-back'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CallCentreScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.terminal_rounded, color: C.accent),
+              title: Text('${app.aName} · Developer', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Code likhna, bug fix PR, tests, review; merge / deploy aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DevsahayakScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.bug_report_rounded, color: C.accent),
+              title: Text('${app.aName} · App tester (QA)', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Test cases, bugs, fix ke baad dobara jaanch, release taiyaar?'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => QaScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.admin_panel_settings_rounded, color: C.accent),
+              title: Text('${app.aName} · IT Admin', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Licence, renewal, access, joiner-leaver, staff guides'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ItadminScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.lan_rounded, color: C.accent),
+              title: Text('${app.aName} · NOC (ISP network)', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('OLT alarm se asli fault, ticket, customer message; badlav aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => IspnocScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.shield_rounded, color: C.accent),
+              title: Text('${app.aName} · Cyber suraksha', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Alerts ka shor chhaanto, shak wale mail / link, apne domain ke khatre, incident note'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CyberScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.rocket_launch_rounded, color: C.accent),
+              title: Text('${app.aName} · DevOps', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Builds aur logs samjhana, scripts, nigrani; deploy aapke tap se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DevopsScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.menu_book_rounded, color: C.accent),
+              title: Text('${app.aName} · Technical writer', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Manual, quick start, API docs, release notes; screenshot ke saath steps'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DocwriterScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.verified_user_outlined, color: C.accent),
+              title: Text('${app.aName} · App reviewer', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Apni app / code / website ki suraksha aur Play policy jaanch, fix list'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AppReviewScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.route_rounded, color: C.accent),
+              title: Text('${app.aName} · Product manager', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Feedback se roadmap, specs, release notes'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

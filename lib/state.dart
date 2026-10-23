@@ -306,6 +306,8 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _brandCards = {}; // v0.118 one card per design, updated in place
   int sevaTick = 0;                            // v0.133 Seva suite screens refresh on their events
   final Map<String, FeedItem> _sevaCards = {};  // v0.133 one card per id where the suite updates a card in place
+  int techTick = 0;                            // v0.137 Tech suite screens refresh on their events
+  final Map<String, FeedItem> _techCards = {};  // v0.137 one card per id where the suite updates a card in place
   int adsTick = 0;                             // v0.108 bumps on ads events (the Ads screen refreshes)
   final Map<String, FeedItem> _adsPlans = {};   // v0.108 one card per budget plan, changes updated in place
   int kalamTick = 0;                           // v0.101 bumps on content-writer events (the Kalam screen refreshes)
@@ -1310,6 +1312,74 @@ class Santosh extends ChangeNotifier {
         }
         sevaTick++;
         break;
+      case 'devsahayak_task':
+      case 'devsahayak_push':
+      case 'devsahayak_review':
+      case 'devsahayak_merge':
+      case 'devsahayak_deploy':
+      case 'qa_run':
+      case 'qa_bug':
+      case 'qa_export':
+      case 'qa_ready':
+      case 'qa_cases':
+      case 'itadmin_change':
+      case 'itadmin_checklist':
+      case 'itadmin_renewal':
+      case 'itadmin_review':
+      case 'itadmin_guide':
+      case 'itadmin_day':
+      case 'ispnoc_fault':
+      case 'ispnoc_ticket':
+      case 'ispnoc_change':
+      case 'ispnoc_alert':
+      case 'ispnoc_day':
+      case 'cyber_action':
+      case 'cyber_alerts':
+      case 'cyber_check':
+      case 'cyber_incident':
+      case 'cyber_advisory':
+      case 'cyber_posture':
+      case 'cyber_day':
+      case 'devops_build':
+      case 'devops_deploy':
+      case 'devops_alert':
+      case 'devops_script':
+      case 'devops_day':
+      case 'docwriter_doc':
+      case 'docwriter_publish':
+      case 'docwriter_sync':
+      case 'docwriter_shots':
+      case 'appreview_report':
+      case 'appreview_handoff':
+      case 'appreview_alert':
+      case 'product_publish':
+      case 'product_backlog':
+      case 'product_spec':
+      case 'product_release':
+      case 'product_day':
+        // v0.137 Tech suite: cards keyed by their id are updated in place; a later step of another kind (e.g. a task that now
+        // waits for her PR tap) takes the card's place with the new kind so it also shows inside a call
+        final tp = Map<String, dynamic>.from(p);
+        final tk = techCardKey(ev.kind, tp);
+        final tOld = tk.isEmpty ? null : _techCards[tk];
+        if (tOld != null && tOld.kind == ev.kind) {
+          tOld.data = {...tOld.data, ...tp};
+        } else if (tOld != null) {
+          final it = FeedItem(ev.kind, {...tOld.data, ...tp});
+          final at = feed.indexOf(tOld);
+          if (at >= 0) {
+            feed[at] = it;
+          } else {
+            feed.add(it);
+          }
+          _techCards[tk] = it;
+        } else {
+          final it = FeedItem(ev.kind, tp);
+          if (tk.isNotEmpty) _techCards[tk] = it;
+          feed.add(it);
+        }
+        techTick++;
+        break;
       case 'brand_design':
       case 'brand_approval':
         final bd = Map<String, dynamic>.from((p['design'] as Map?) ?? const {});
@@ -1837,4 +1907,35 @@ String sevaCardKey(String kind, Map<String, dynamic> p) {
     _ => '',
   };
   return id.isEmpty || id == 'null' ? '' : '$kind:$id';
+}
+
+
+/// v0.137 Tech suite: which cards are one-per-id (updated in place). '' = always a new card.
+String techCardKey(String kind, Map<String, dynamic> p) {
+  String sub(String k) => p[k] is Map ? '${(p[k] as Map)['id'] ?? ''}' : '';
+  final (group, id) = switch (kind) {
+    'devsahayak_task' || 'devsahayak_push' => ('devtask', sub('task')),
+    'devsahayak_review' => ('devreview', sub('review')),
+    'devsahayak_merge' || 'devsahayak_deploy' => ('devaction', sub('action')),
+    'qa_run' => ('qarun', sub('run')),
+    'qa_bug' => ('qabug', sub('bug')),
+    'qa_export' => ('qaexport', sub('export')),
+    'itadmin_change' => ('itachange', sub('change')),
+    'itadmin_checklist' => ('itachecklist', sub('checklist')),
+    'itadmin_guide' => ('itaguide', sub('guide')),
+    'ispnoc_fault' => ('nocfault', sub('fault')),
+    'ispnoc_ticket' => ('nocticket', sub('ticket')),
+    'ispnoc_change' => ('nocchange', sub('change')),
+    'cyber_action' => ('cyberaction', sub('action')),
+    'devops_deploy' => ('devopsdeploy', sub('deploy')),
+    'docwriter_doc' => ('docdoc', sub('doc')),
+    'docwriter_publish' => ('docpub', sub('doc').isEmpty ? '' : '${sub('doc')}:${p['hash'] ?? ''}'),
+    'appreview_report' => ('arreport', '${p['id'] ?? ''}'),
+    'appreview_handoff' => ('arhandoff', '${p['id'] ?? ''}'),
+    'product_publish' => ('prodpub', '${p['id'] ?? ''}'),
+    'product_spec' => ('prodspec', sub('spec')),
+    'product_release' => ('prodrel', sub('release')),
+    _ => ('', ''),
+  };
+  return group.isEmpty || id.isEmpty || id == 'null' ? '' : '$group:$id';
 }

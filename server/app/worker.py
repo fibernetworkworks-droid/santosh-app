@@ -581,6 +581,14 @@ async def employee_jobs() -> None:
         await asyncio.to_thread(_callcentre_svc.tick)
     except Exception:
         log.exception("callcentre tick failed")
+    # v0.137 Tech suite: CI / deploy polling, renewals, alerts, morning notes, scheduled test runs (each throttles itself)
+    for _mod in ("devsahayak", "qa", "itadmin", "ispnoc", "cyber", "devops", "docwriter", "appreview", "product"):
+        try:
+            import importlib
+            _svc = importlib.import_module(f".{_mod}.service", __package__)
+            await asyncio.to_thread(_svc.tick)
+        except Exception:
+            log.exception("%s tick failed", _mod)
     try:                                   # v0.122 Website: her domain's DNS / SSL coming up, uptime of live sites
         from .site import hosting as site_hosting
         await asyncio.to_thread(site_hosting.watch)

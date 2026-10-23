@@ -693,6 +693,16 @@ def init_db(url: str | None = None):
     from .wapsi import models as _wapsi  # noqa: F401
     from .samudaay import models as _samudaay  # noqa: F401
     from .callcentre import models as _callcentre  # noqa: F401
+    # v0.137 Tech suite
+    from .devsahayak import models as _devsahayak  # noqa: F401
+    from .qa import models as _qa  # noqa: F401
+    from .itadmin import models as _itadmin  # noqa: F401
+    from .ispnoc import models as _ispnoc  # noqa: F401
+    from .cyber import models as _cyber  # noqa: F401
+    from .devops import models as _devops  # noqa: F401
+    from .docwriter import models as _docwriter  # noqa: F401
+    from .appreview import models as _appreview  # noqa: F401
+    from .product import models as _product  # noqa: F401
     from .office import service as _office  # noqa: F401
     from .lekhak import service as _lekhak  # noqa: F401
     from .agent import pakka as _pakka  # noqa: F401

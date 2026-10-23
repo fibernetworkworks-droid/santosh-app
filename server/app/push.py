@@ -236,6 +236,38 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: call se message", str(p.get("say") or "")[:300])
     if kind == "callcentre_call" and (p.get("outcome") in ("transferred", "message", "complaint", "failed", "callback") or p.get("flags")):
         return (f"{name}: call: {p.get('caller_masked', '')}", str(p.get("summary") or "")[:300])
+    # v0.137 Tech suite
+    _say = str(p.get("say") or "")[:300]
+    if kind == "devsahayak_task":
+        t = p.get("task") or {}
+        if t.get("status") in ("checks_failed", "refused", "explained") or (t.get("number") and _say.startswith(str(t.get("number"))) and "CI" in _say):
+            return (f"{name}: Developer: {t.get('number', '')}", _say)
+        return None
+    _tech = {"devsahayak_merge": "Merge ke liye aapki haan", "devsahayak_deploy": "Deploy ke liye aapki haan",
+             "devsahayak_push": "PR kholne ki haan chahiye", "devsahayak_review": "Code review taiyaar",
+             "qa_bug": "Naya bug mila", "qa_export": "GitHub issue: aapki haan chahiye",
+             "itadmin_change": "IT: aapki haan chahiye", "itadmin_renewal": "Renewal aa raha hai",
+             "itadmin_checklist": "Joiner / leaver checklist", "itadmin_review": "Access review ka samay",
+             "itadmin_day": "Aaj ka IT admin note", "ispnoc_change": "Network: aapki haan chahiye", "ispnoc_alert": "Network alert",
+             "ispnoc_day": "Aaj ka network", "cyber_action": "Suraksha: aapki haan chahiye", "cyber_alerts": "Zaroori suraksha alert",
+             "cyber_incident": "Cyber incident khula", "cyber_advisory": "Software mein khatra", "cyber_day": "Aaj ki suraksha",
+             "devops_build": "Build fail hua", "devops_day": "Aaj ka DevOps note", "docwriter_publish": "Docs public karein?",
+             "docwriter_sync": "Product badla: docs update", "appreview_handoff": "App review: aapki haan chahiye",
+             "appreview_alert": "App review", "product_publish": "Bahar bhejna hai: aapki haan", "product_day": "Aaj ka product note",
+             "product_backlog": "Nayi dikkatein backlog mein"}
+    if kind in _tech:
+        return (f"{name}: {_tech[kind]}", _say)
+    if kind == "qa_run":
+        r = p.get("run") or {}
+        if (r.get("counts") or {}).get("fail") or r.get("status") == "failed":
+            return (f"{name}: Test ho gaya", _say)
+        return None
+    if kind == "ispnoc_fault":
+        return (f"{name}: Network mein dikkat", _say) if p.get("new") else None
+    if kind == "devops_deploy":
+        return (f"{name}: Deploy: aapki haan chahiye", _say) if p.get("push") else None
+    if kind == "devops_alert":
+        return (f"{name}: DevOps alert", _say) if p.get("push") else None
     if kind == "site_board":
         if not p.get("push"):
             return None
@@ -413,7 +445,9 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
 PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "photo_made", "email_draft", "bazar_open", "device_action",
               "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "hoola_pick", "hoola_khata", "thok_order", "thok_alert", "thok_day", "sheet_milaan", "doc_edit", "niryat_pi", "niryat_day", "ads_change", "ads_report", "hoola_rfq", "hoola_promo", "hoola_mandate", "fr_statement", "fr_day", "a2a_task", "a2a_out", "handoff_reminder", "digilocker", "theka_bill", "theka_letter", "theka_day", "brand_approval", "brand_idea", "site_board", "site_lead", "site_launch", "site_live", "site_dns", "site_down", "site_domain", "site_care", "site_github", "app_board", "app_android",
               # v0.133 Seva suite
-              "seva_exception", "seva_sla", "seva_ticket", "seva_day", "helpdesk_change", "helpdesk_alert", "helpdesk_escalate", "helpdesk_day", "shikayat_comp", "shikayat_case", "shikayat_alert", "shikayat_day", "aftersales_charge", "aftersales_reminders", "aftersales_visit", "aftersales_day", "feedback_reply", "feedback_alert", "feedback_report", "wapsi_return", "wapsi_refund", "wapsi_day", "samudaay_alert", "samudaay_action", "samudaay_question", "samudaay_join", "samudaay_template", "samudaay_week", "callcentre_script", "callcentre_message", "callcentre_call"}
+              "seva_exception", "seva_sla", "seva_ticket", "seva_day", "helpdesk_change", "helpdesk_alert", "helpdesk_escalate", "helpdesk_day", "shikayat_comp", "shikayat_case", "shikayat_alert", "shikayat_day", "aftersales_charge", "aftersales_reminders", "aftersales_visit", "aftersales_day", "feedback_reply", "feedback_alert", "feedback_report", "wapsi_return", "wapsi_refund", "wapsi_day", "samudaay_alert", "samudaay_action", "samudaay_question", "samudaay_join", "samudaay_template", "samudaay_week", "callcentre_script", "callcentre_message", "callcentre_call",
+              # v0.137 Tech suite
+              "devsahayak_merge", "devsahayak_deploy", "devsahayak_push", "devsahayak_review", "devsahayak_task", "qa_bug", "qa_export", "qa_run", "itadmin_change", "itadmin_renewal", "itadmin_checklist", "itadmin_review", "itadmin_day", "ispnoc_change", "ispnoc_fault", "ispnoc_alert", "ispnoc_day", "cyber_action", "cyber_alerts", "cyber_incident", "cyber_advisory", "cyber_day", "devops_build", "devops_deploy", "devops_alert", "devops_day", "docwriter_publish", "docwriter_sync", "appreview_handoff", "appreview_alert", "product_publish", "product_day", "product_backlog"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 
