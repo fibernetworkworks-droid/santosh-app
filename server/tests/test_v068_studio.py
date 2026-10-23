@@ -75,7 +75,7 @@ def test_studio_end_to_end(fake, tmp_path, monkeypatch):
             await ss.character(T, P, "Santosh", "friendly young Indian man, glasses", [photo], consent=False)
         await ss.character(T, P, "Santosh", "friendly young Indian man, glasses, orange hoodie", [photo], consent=True)
         with pytest.raises(ss.StudioJobError) as e:
-            await ss.storyboard(T, P, [{"prompt": "", "duration": 30, "characters": ["Nobody"], "camera": "spin"}])
+            await ss.storyboard(T, P, [{"prompt": "", "duration": 40, "characters": ["Nobody"], "camera": "spin"}])
         assert "unknown character" in str(e.value) and "camera" in str(e.value) and "duration" in str(e.value)
         r = await ss.storyboard(T, P, [
             {"prompt": "Santosh waves at the camera in a diya-lit courtyard at dusk", "duration": 5, "camera": "dolly_in",
@@ -108,7 +108,7 @@ def test_studio_end_to_end(fake, tmp_path, monkeypatch):
         subs = [x for x in fakes.LOG if x.get("path") == "/openrouter/api/v1/videos" and "body" in x]
         b = next(x for x in subs if "waves" in x["body"]["prompt"])
         assert len(subs) == 2 and b["auth"] == "Bearer test-or" and b["body"]["model"] == "bytedance/seedance-2.0-fast"
-        assert b["body"]["aspect_ratio"] == "9:16" and b["body"]["resolution"] == "480p"
+        assert b["body"]["aspect_ratio"] == "9:16" and b["body"]["resolution"] == "720p"
         assert b["fetched"] == ["data"] and "Reference image 1 shows Santosh" in b["body"]["prompt"]
         assert 'says in Hindi' in b["body"]["prompt"] and "Namaste" in b["body"]["prompt"]
         p = ss._load(T, P)
@@ -170,7 +170,7 @@ def test_tool_api_push_and_guards(fake, tmp_path):
         run(action="character", name="X", description="y", file_ids=["file_nothere1"], consent=True)
     run(action="storyboard", shots=[{"prompt": "Masala chai steam rising by a window", "duration": 4, "camera": "dolly_in"}])
     est = run(action="estimate", quality="final")
-    assert est["inr"] > 0 and est["shots"][0]["model"] == "or-seedance-2"
+    assert est["inr"] > 0 and est["shots"][0]["model"] == "or-wan-3"          # v0.157 HD scene = Wan 3.0
     card = run(action="generate", quality="final")
     assert card["waiting_owner"]
     c = TestClient(__import__("app.main", fromlist=["app"]).app)

@@ -34,11 +34,34 @@ log = logging.getLogger("santosh.studio")
 _studios: dict[str, tuple[Any, Studio]] = {}
 _watchers: dict[str, asyncio.Task] = {}
 _assembling: dict[str, asyncio.Task] = {}
+_planning: dict[str, asyncio.Task] = {}
+KEYFRAME_USD = 0.14            # Nano Banana Pro 2K picture (+ thinking), conservative
+MUSIC_USD = 0.08               # Lyria 3.5 song
 
-GUIDE = """HOOLA VIDEO STUDIO - you are the director. Flow:
-1. BRIEF: purpose (ad, reel, explainer, invite...), audience, length, language, shape (9:16 reel/short, 16:9 YouTube,
-   1:1 feed), her assets (logo, product photos, people), how much she wants to spend. Ask only what is missing.
+GUIDE = """HOOLA VIDEO STUDIO (v0.157: best model per shot) - you are the director. Flow:
+1. BRIEF: purpose (ad, reel, explainer, invite, story...), audience, length, language, shape (9:16 reel / short, 16:9
+   YouTube, 1:1 feed), her assets (logo, product photos, people), quality (draft / HD / premium). Ask only what is missing.
 2. create(name, aspect, style, language, brief). Styles: """ + ", ".join(catalog.STYLES) + """.
+3. CHARACTERS (same person / product in every shot): character with her photo file_ids (a real person only with that
+   person's permission: consent=true only when she said yes; voice female|male for their spoken lines) or
+   character_generate for fictional people, mascots, products.
+4. STORYBOARD: plan(brief, seconds) writes it for you (Claude, prompts tuned for the video models) - or storyboard(shots).
+   Each shot has a KIND: scene (people / places / story), product (her product comes alive), talk (a person speaks to
+   camera: painted portrait + her line, lip-synced in any language), dialogue (people talk inside a scene, lips re-synced),
+   link (moves from one picture to the next). Spoken lines in Hindi / Indian languages are spoken by Hoola's own voice and
+   lip-synced (Sync 3); English etc. by the video model.
+5. keyframes() paints each shot's opening picture with Nano Banana Pro (~Rs 12 each, a card): the real look, and the
+   video starts from it (same face everywhere). generate(quality='preview') is FREE: an animatic from those pictures.
+6. Paid shots: generate(quality='draft' 720p | 'final' HD 1080p | 'premium'). The router picks the best model per shot:
+   scene = Wan 3.0 (HD) / Seedance 2.5 (premium); product = MiniMax H3; talk = Sync 3; link = Gemini Omni Flash.
+   Never spends by itself: she gets a card with the price and taps Haan. Missing keyframes for HD / premium are painted
+   in the same card. Tell her the price in rupees. Regenerate only the shots that need it (shot_ids).
+7. review(shot_id) (also runs by itself on paid takes: score + problems); shot_update + generate(shot_ids, variants=2);
+   pick(shot_id, take).
+8. FINISH: voiceover(shot_id, text) in your own voice or her audio file_id, music(mood: a real Lyria track, or her
+   licensed file_id), logo(file_id), then assemble. The AI-generated label always stays on.
+Never make videos of real people without their permission, or that imitate real brands, news, officials or
+politicians; no explicit, violent or hateful content. Nothing is posted anywhere: she shares the video herself.""" + ", ".join(catalog.STYLES) + """.
 3. CHARACTERS (same person / product in every shot): character with her photo file_ids (a real person only with that
    person's permission: ask her and pass consent=true only when she said yes) or character_generate for fictional
    people, mascots, products.
@@ -84,6 +107,11 @@ def _configure(st: Studio, tenant: str) -> Studio:
     pv["fal"].key = s.fal_key or ""
     pv["byteplus"].key = s.ark_api_key or ""
     pv["google"].key = s.gemini_api_key or ""
+    pv["sync"].key = s.sync_api_key or ""
+    if s.studio_sync_url:
+        pv["sync"].base = s.studio_sync_url.rstrip("/")
+    st.speak = _speaker(tenant, st)
+    st.painter = _painter if s.gemini_api_key else None
     if s.studio_openrouter_url:
         pv["openrouter"].base = s.studio_openrouter_url.rstrip("/")
         pv["openrouter"].site = re.match(r"^(https?://[^/]+)", pv["openrouter"].base).group(1)
@@ -126,6 +154,69 @@ def studio_sync(tenant: str) -> Studio:
     """For plain reads and the signed links (no jobs started)."""
     have = _studios.get(tenant)
     return have[1] if have else _configure(Studio(home(tenant)), tenant)
+
+
+# ---------------------------------------------------------------- v0.157 voice, pictures, writer
+SIZES = {"9:16": (1080, 1920), "16:9": (1920, 1080), "1:1": (1440, 1440), "4:3": (1440, 1080), "3:4": (1080, 1440),
+         "21:9": (2520, 1080)}
+FEMALE = re.compile(r"\b(woman|women|girl|lady|female|she|her|aunty|mahila|ladki|didi|maa|mother|wife|bride|dulhan)\b", re.I)
+
+
+def _voice_name(voice: str, description: str = "") -> str:
+    from ..notebook import media
+    v = (voice or "").strip()
+    if v in media.NARRATORS:
+        return media.NARRATORS[v]
+    if v[:1].isupper() and v.isalpha():
+        return v                                        # a Gemini voice name (Kore, Charon, Puck...)
+    return media.NARRATORS["female" if FEMALE.search(description or "") else "male"]
+
+
+def _speaker(tenant: str, st: Studio):
+    """(text, language, voice) -> a WAV of the line in that voice: Gemini 3.8 Flash TTS (older TTS as fallback)."""
+    def speak(text: str, language: str, voice: str = "") -> str:
+        from ..notebook import media
+        name = _voice_name(voice)
+        pcm = b""
+        if media._new_tts_ok():
+            try:
+                pcm = media.tts_turns([{"text": text}], voice=name,
+                                      style=f"natural, expressive, clear speech in {language}, like a real person in a film")
+            except Exception as e:
+                media._new_tts_failed(e)
+        if not pcm:
+            pcm = media.tts_chunk(f"Say this naturally in {language}, like a real person in a film: {media.plain(text)}", voice=name)
+        d = st.home / "uploads" / "audio"
+        d.mkdir(parents=True, exist_ok=True)
+        out = d / f"line_{int(time.time() * 1000)}.wav"
+        out.write_bytes(media.wav_bytes(pcm))
+        return str(out)
+    return speak
+
+
+def _painter(prompt: str, aspect: str, refs: list[str]) -> bytes:
+    """A shot's first frame, painted by Nano Banana Pro (2.1 next) with the character photos as references."""
+    from ..notebook import paint
+    imgs = [Path(r).read_bytes() for r in refs if Path(r).is_file()]
+    raw, _model = paint.paint(prompt, aspect if aspect in SIZES else "16:9", "page", imgs)
+    w, h = SIZES.get(aspect, (1920, 1080))
+    return paint.finish(raw, w, h, label=False, quality=92)
+
+
+async def _write(system: str, prompt: str, max_tokens: int = 12000) -> str:
+    s = _st()
+    if s.anthropic_api_key and s.studio_plan_model:
+        try:
+            from ..agent.santosh import get_client
+            msg = await get_client().messages.create(model=s.studio_plan_model, max_tokens=max_tokens, system=system,
+                                                     messages=[{"role": "user", "content": prompt}])
+            text = "".join(getattr(b, "text", "") for b in msg.content).strip()
+            if text:
+                return text
+        except Exception as e:
+            log.info("studio planner %s failed, chat model instead: %s", s.studio_plan_model, e)
+    from ..artifacts import _llm
+    return (await _llm(system, prompt, max_tokens)).strip()
 
 
 # ---------------------------------------------------------------- links, views, events
@@ -183,10 +274,23 @@ def view(tenant: str, p: dict) -> dict[str, Any]:
         mine = [j for j in jobs.values() if j["shot"] == s["id"]]
         live = [j for j in mine if j["state"] in ("queued", "submitted", "running", "retrying")]
         last = mine[-1] if mine else None
-        shots.append({"id": s["id"], "prompt": s["prompt"][:160], "duration": s["duration"], "caption": s.get("caption") or "",
-                      "takes": len(vs), "picked": p.get("picked", {}).get(s["id"]),
+        kf = s.get("keyframe")
+        takes = []
+        for v in vs[-6:]:
+            f = Path(v["file"])
+            if f.is_file():
+                takes.append({"n": v["n"], "quality": v["quality"], "model": v.get("model"), "url": link(tenant, f, 3),
+                              "seconds": v.get("duration"), "score": (v.get("look") or {}).get("score"),
+                              "problems": (v.get("look") or {}).get("problems") or [], "lipsync": v.get("lipsync"),
+                              "lipsync_error": v.get("lipsync_error")})
+        shots.append({"id": s["id"], "prompt": s["prompt"][:400], "duration": s["duration"], "caption": s.get("caption") or "",
+                      "kind": s.get("kind") or "scene", "dialogue": s.get("dialogue") or "", "voiceover": s.get("voiceover") or "",
+                      "camera": s.get("camera") or "", "characters": s.get("characters") or [],
+                      "keyframe": link(tenant, kf, 3) if kf and Path(kf).is_file() else "",
+                      "takes": len(vs), "take_list": takes, "picked": p.get("picked", {}).get(s["id"]),
                       "quality": next((v["quality"] for v in vs if v["n"] == p.get("picked", {}).get(s["id"])), None),
                       "state": "working" if live else (last["state"] if last else "new"),
+                      "stage": (live[-1].get("stage") if live else None),
                       "error": (last or {}).get("error") if last and last["state"] == "failed" else None})
     outs = []
     for o in p.get("outputs", [])[-3:]:
@@ -197,11 +301,24 @@ def view(tenant: str, p: dict) -> dict[str, Any]:
                          "file_id": o.get("file_id"), "thumb": link(tenant, thumb) if thumb.is_file() else "",
                          "preview": "preview" in str(o.get("takes", ""))})
     pend = [a for a in p.get("approvals", {}).values() if a.get("status") == "pending"]
+    est = {}
+    if p.get("shots"):
+        for q in ("draft", "final", "premium"):
+            try:
+                e = st.estimate(p["name"], q)
+                est[q] = {"usd": e["usd"], "inr": _inr(e["usd"]), "models": sorted({r["model"] for r in e["shots"]})}
+            except Exception:
+                pass
     return {"project": p["name"], "aspect": p["aspect"], "style": p["style"], "language": p["language"], "brief": p.get("brief", ""),
             "budget_usd": p["budget_usd"], "spent_usd": round(p["spent_usd"], 3), "spent_inr": _inr(p["spent_usd"]),
             "characters": list(p.get("characters", {})), "shots": shots, "outputs": outs,
             "working": any(x["state"] == "working" for x in shots) or p["name"] in _assembling,
-            "assembling": p["name"] in _assembling, "approvals": pend, "updated": p.get("updated")}
+            "assembling": p["name"] in _assembling, "approvals": pend, "updated": p.get("updated"),
+            "estimates": est, "planning": p["name"] in _planning, "seconds": sum(int(x["duration"]) for x in p.get("shots", [])),
+            "keyframes": sum(1 for x in p.get("shots", []) if x.get("keyframe")),
+            "music": bool(p.get("music")), "logo": bool(p.get("logo")),
+            "character_list": [{"name": k, "description": v.get("description", ""), "voice": v.get("voice", "")}
+                               for k, v in p.get("characters", {}).items()]}
 
 
 def _conv(tenant: str, p: dict) -> str:
@@ -298,7 +415,8 @@ async def create(tenant: str, name: str, aspect: str = "9:16", style: str = "ree
     return view(tenant, p)
 
 
-async def character(tenant: str, project: str, name: str, description: str, file_ids: list[str], consent: bool) -> dict:
+async def character(tenant: str, project: str, name: str, description: str, file_ids: list[str], consent: bool,
+                    voice: str = "") -> dict:
     if not file_ids:
         raise StudioJobError("Photo ka file_id chahiye (chat mein photo bhejiye), ya character_generate.")
     if not consent:
@@ -310,7 +428,8 @@ async def character(tenant: str, project: str, name: str, description: str, file
         r = st.character_add(project, name[:40], description[:400], paths)
     except StudioError as e:
         raise StudioJobError(str(e)) from None
-    await st.update(project, lambda q: q["characters"][name[:40]].update(consent=True, consent_at=dt.datetime.now().isoformat()))
+    await st.update(project, lambda q: q["characters"][name[:40]].update(
+        consent=True, consent_at=dt.datetime.now().isoformat(), voice=_voice_name(voice, description)))
     _changed(tenant, project)
     return r
 
@@ -345,13 +464,35 @@ async def generate(tenant: str, project: str, quality: str = "preview", shot_ids
         est = st.estimate(project, quality, shot_ids, max(1, min(int(variants or 1), 4)), model)
     except StudioError as e:
         raise StudioJobError(str(e)) from None
-    if est["usd"] <= 0:
+    p = st.load(project)
+    rows = {r["shot"]: r for r in est["shots"]}
+    paint_ids = []
+    if st.painter and quality != "preview":
+        paint_ids = [x["id"] for x in p["shots"] if x["id"] in rows and not x.get("keyframe") and not x.get("start_image")
+                     and (quality in ("final", "premium") or (x.get("kind") or "scene") == "talk")]
+    usd = round(est["usd"] + KEYFRAME_USD * len(paint_ids), 4)
+    if usd <= 0:
         return await _run_generate(tenant, st, project, quality, shot_ids, variants, model, None)
     return await _ask(tenant, st, project, {"kind": "generate", "quality": quality, "shot_ids": shot_ids or [],
                                             "variants": max(1, min(int(variants or 1), 4)), "model": model,
-                                            "usd": est["usd"], "shots": len(est["shots"]),
+                                            "usd": usd, "shots": len(est["shots"]), "keyframes": len(paint_ids),
+                                            "paint_ids": paint_ids,
+                                            "lipsync": sum(1 for r in est["shots"] if r.get("lipsync")),
                                             "seconds": sum(r["seconds"] for r in est["shots"]),
                                             "models": sorted({r["model"] for r in est["shots"]})})
+
+
+async def keyframes(tenant: str, project: str, shot_ids: list[str] | None = None) -> dict:
+    """v0.157 Paint each shot's opening picture (Nano Banana Pro): a card first (about Rs 12 a picture)."""
+    st = await studio(tenant)
+    if not st.painter:
+        raise StudioJobError("Tasveer ke liye server par GEMINI_API_KEY chahiye.")
+    p = _load(tenant, project)
+    ids = [x["id"] for x in p["shots"] if not shot_ids or x["id"] in shot_ids]
+    if not ids:
+        raise StudioJobError("Pehle storyboard banaiye (plan).")
+    return await _ask(tenant, st, project, {"kind": "keyframes", "shot_ids": ids, "usd": round(KEYFRAME_USD * len(ids), 4),
+                                            "shots": len(ids), "seconds": 0, "models": ["nano-banana-pro"]})
 
 
 async def character_generate(tenant: str, project: str, name: str, description: str) -> dict:
@@ -378,8 +519,7 @@ async def _ask(tenant: str, st: Studio, project: str, req: dict) -> dict:
     p = await st.update(project, lambda q: q.setdefault("approvals", {}).__setitem__(aid, req))
     _publish(tenant, p, "studio_approval", req)
     _publish(tenant, p)
-    what = (f"{req['shots']} shot{'s' if req['shots'] != 1 else ''} ({req['seconds']} s, {req.get('quality', '')})"
-            if req["kind"] == "generate" else f"character photo '{req.get('name')}'")
+    what = _what(req)
     return {"waiting_owner": aid, "usd": req["usd"], "inr": req["inr"],
             "say": f"{what} banane mein lagbhag ₹{req['inr']} (${req['usd']:.2f}) lagenge. Card par Haan dabayengi tabhi banega.",
             "note_for_you": "Nothing is spent until she taps Haan on the card. Don't call generate again for this."}
@@ -416,6 +556,16 @@ async def decide(tenant: str, approval_id: str, yes: bool) -> dict:
             _changed(tenant, project)
             _note(tenant, p, f"Character '{a['name']}' ki photo ban gayi.")
             return {**p["approvals"][approval_id], "result": r}
+        if a["kind"] == "keyframes":
+            _bg(tenant, project, _do_keyframes(tenant, st, project, a["shot_ids"]))
+            return st.load(project)["approvals"][approval_id]
+        if a["kind"] == "music":
+            _bg(tenant, project, _do_music(tenant, st, project, a.get("mood") or "upbeat", float(a.get("seconds") or 60),
+                                           float(a.get("volume") or 0.25)))
+            return st.load(project)["approvals"][approval_id]
+        if a.get("paint_ids"):
+            _bg(tenant, project, _paint_then_generate(tenant, st, project, a))
+            return st.load(project)["approvals"][approval_id]
         await _run_generate(tenant, st, project, a["quality"], a["shot_ids"] or None, a["variants"], a.get("model"),
                             a["usd"] + 1e-6)
     except (StudioError, StudioJobError) as e:
@@ -425,11 +575,57 @@ async def decide(tenant: str, approval_id: str, yes: bool) -> dict:
     return st.load(project)["approvals"][approval_id]
 
 
+def _what(a: dict) -> str:
+    k = a.get("kind")
+    if k == "generate":
+        extra = (f" + {a['keyframes']} tasveerein" if a.get("keyframes") else "") + (f", {a['lipsync']} lip sync" if a.get("lipsync") else "")
+        return f"{a.get('shots', 0)} shot{'s' if a.get('shots') != 1 else ''} ({a.get('seconds', 0)} s, {a.get('quality', '')}{extra})"
+    if k == "keyframes":
+        return f"{a.get('shots', 0)} shots ki pehli tasveer (Nano Banana Pro)"
+    if k == "music":
+        return f"music ({a.get('mood', '')}, Lyria)"
+    return f"character photo '{a.get('name')}'"
+
+
 def aid_in(st: Studio, project: str, aid: str) -> bool:
     try:
         return aid in st.load(project).get("approvals", {})
     except StudioError:
         return False
+
+
+_bg_tasks: set[asyncio.Task] = set()
+
+
+def _bg(tenant: str, project: str, coro) -> None:
+    t = asyncio.ensure_future(coro)
+    _bg_tasks.add(t)
+    t.add_done_callback(_bg_tasks.discard)
+
+
+async def _do_keyframes(tenant: str, st: Studio, project: str, ids: list[str]) -> dict:
+    try:
+        r = await st.keyframes(project, ids, KEYFRAME_USD)
+    except Exception as e:
+        log.exception("studio keyframes")
+        _note(tenant, st.load(project), f"Video studio '{project}': tasveerein nahi ban payin: {str(e)[:160]}")
+        return {}
+    p = st.load(project)
+    _publish(tenant, p)
+    _note(tenant, p, f"Video studio '{project}': {len(r['painted'])} shots ki pehli tasveer taiyaar"
+          + (f" ({len(r['failed'])} nahi bani)" if r["failed"] else "") + ". Free preview ('generate preview') ab inhi se banega.")
+    return r
+
+
+async def _paint_then_generate(tenant: str, st: Studio, project: str, a: dict) -> None:
+    await _do_keyframes(tenant, st, project, a["paint_ids"])
+    p = st.load(project)
+    spent_on_pictures = KEYFRAME_USD * len(a["paint_ids"])
+    try:
+        await _run_generate(tenant, st, project, a["quality"], a["shot_ids"] or None, a["variants"], a.get("model"),
+                            max(0.0, a["usd"] - spent_on_pictures) + 1e-6)
+    except Exception as e:
+        _note(tenant, p, f"Video studio '{project}': shots shuru nahi hue: {str(e)[:200]}")
 
 
 async def _run_generate(tenant: str, st: Studio, project: str, quality: str, shot_ids, variants, model, max_cost) -> dict:
@@ -456,10 +652,17 @@ async def _watch(tenant: str, st: Studio, project: str, quality: str, jobs: list
         js = [p["jobs"][j] for j in jobs if j in p["jobs"]]
         if js and all(j["state"] in ("done", "failed") for j in js):
             done = sum(1 for j in js if j["state"] == "done")
+            if quality != "preview":
+                await _auto_review(tenant, st, project, [j for j in js if j["state"] == "done"])
+                p = st.load(project)
             bad = [f"{j['shot']}: {str(j.get('error'))[:120]}" for j in js if j["state"] == "failed"]
             _publish(tenant, p)
             msg = (f"Video studio '{project}': {done} {quality} shot taiyaar"
                    + (f", {len(bad)} nahi bane ({'; '.join(bad[:3])})" if bad else "") + ". ")
+            weak = [f"{sid} ({v.get('look', {}).get('score')}/10)" for sid, vs in p.get("variants", {}).items() for v in vs
+                    if v.get("job") in jobs and (v.get("look") or {}).get("score") is not None and v["look"]["score"] < 6]
+            if weak:
+                msg += f"In shots ko dobara banana theek rahega: {', '.join(weak[:6])}. "
             msg += ("Preview jodkar dekhna ho to 'assemble' bolo." if quality == "preview"
                     else f"Ab tak kharch ${p['spent_usd']:.2f} (~₹{_inr(p['spent_usd'])}). Dekh ke batao, phir final video jod dunga.")
             _note(tenant, p, msg)
@@ -470,6 +673,24 @@ async def _watch(tenant: str, st: Studio, project: str, quality: str, jobs: list
                 pass
             return
         await asyncio.sleep(1.0)
+
+
+async def _auto_review(tenant: str, st: Studio, project: str, jobs: list[dict]) -> None:
+    """v0.157 Every paid take is looked at (6 frames, a vision model): score + problems saved on the take; low scores
+    are named in the note so she can redo just those shots (nothing is regenerated by itself)."""
+    for j in jobs[:20]:
+        try:
+            p = st.load(project)
+            v = next((x for x in p["variants"].get(j["shot"], []) if x.get("job") and x["file"] == j.get("file")), None)
+            if not v or v.get("look"):
+                continue
+            r = await review(tenant, project, j["shot"], v["n"])
+            look = r.get("look") or {}
+            if look.get("score") is not None:
+                await st.update(project, lambda q, sid=j["shot"], n=v["n"], lk=look: next(
+                    x for x in q["variants"][sid] if x["n"] == n).update(look={k: lk.get(k) for k in ("score", "problems", "fix", "matches")}))
+        except Exception as e:
+            log.info("studio auto review %s: %s", j.get("shot"), e)
 
 
 async def review(tenant: str, project: str, shot_id: str, take: int | None = None) -> dict:
@@ -501,7 +722,15 @@ async def voiceover(tenant: str, project: str, shot_id: str, text: str = "", fil
     if file_id:
         src = _her_file(tenant, st, file_id, "audio", ("audio",))
     elif text.strip():
-        src = await asyncio.to_thread(_tts, tenant, st, text.strip()[:600], st.load(project)["language"])
+        if not _st().gemini_api_key:
+            raise StudioJobError("Awaaz ke liye GEMINI_API_KEY chahiye; ya apni recording ka file_id dijiye.")
+        from ..avatar import service as av
+        a = av.get(tenant)
+        voice = "female" if (a.get("gender") or "m") == "f" else "male"
+        try:
+            src = Path(await asyncio.to_thread(st.speak, text.strip()[:600], st.load(project)["language"], voice))
+        except Exception as e:
+            raise StudioJobError(f"Awaaz nahi ban payi: {str(e)[:150]}") from None
     else:
         raise StudioJobError("text (meri awaaz mein bolunga) ya audio file_id chahiye")
     try:
@@ -541,15 +770,35 @@ def _tts(tenant: str, st: Studio, text: str, language: str) -> Path:
     return out
 
 
+MOODS = {"upbeat": "bright, energetic modern Indian pop instrumental with tabla, dhol and synths, confident and happy",
+         "calm": "calm warm instrumental with soft piano, sitar and strings, gentle and hopeful",
+         "festive": "festive Indian celebration instrumental with shehnai, dhol and claps, joyful wedding / Diwali mood",
+         "cinematic": "cinematic orchestral instrumental with a slow build, emotional strings and big drums",
+         "corporate": "clean modern corporate instrumental, light percussion, optimistic and professional",
+         "lofi": "lo-fi chill instrumental, mellow beats, soft keys"}
+
+
+def lyria_ready() -> bool:
+    s = _st()
+    return bool(s.gemini_api_key and s.studio_music_model)
+
+
 async def music(tenant: str, project: str, mood: str = "", file_id: str = "", volume: float = 0.25) -> dict:
+    """Her own licensed music file, or (v0.157) a real track made by Google Lyria for this video (a card first),
+    or Hoola's own free synthesised bed when Lyria isn't available."""
     st = await studio(tenant)
     p = st.load(project)
+    secs = sum(s["duration"] for s in p["shots"]) + 3 or 30
+    if not file_id and lyria_ready():
+        mood = mood if mood in MOODS else (mood.strip()[:200] or "upbeat")
+        return await _ask(tenant, st, project, {"kind": "music", "mood": mood, "usd": MUSIC_USD, "shots": 0,
+                                                "seconds": int(secs), "volume": max(0.05, min(float(volume or 0.25), 1.0)),
+                                                "models": [_st().studio_music_model]})
     if file_id:
         src = _her_file(tenant, st, file_id, "audio", ("audio",))
     else:
         from ..motion import music as mm
         mood = mood if mood in ("upbeat", "calm", "festive") else "upbeat"
-        secs = sum(s["duration"] for s in p["shots"]) + 3 or 30
         d = st.home / "uploads" / "audio"
         d.mkdir(parents=True, exist_ok=True)
         src = await asyncio.to_thread(mm.write, mood, float(secs), d / f"bed_{mood}.wav")
@@ -561,6 +810,125 @@ async def music(tenant: str, project: str, mood: str = "", file_id: str = "", vo
         raise StudioJobError(str(e)) from None
     _changed(tenant, project)
     return r
+
+
+def _lyria(prompt: str) -> bytes:
+    import base64 as b64
+    from google import genai
+    s = _st()
+    client = genai.Client(api_key=s.gemini_api_key)
+    it = client.interactions.create(model=s.studio_music_model, input=prompt)
+    audio = getattr(it, "output_audio", None)
+    if not audio or not getattr(audio, "data", None):
+        raise StudioJobError("Lyria ne music nahi diya")
+    data = audio.data
+    return b64.b64decode(data) if isinstance(data, str) else bytes(data)
+
+
+async def _do_music(tenant: str, st: Studio, project: str, mood: str, seconds: float, volume: float = 0.25) -> None:
+    p = st.load(project)
+    desc = MOODS.get(mood, mood)
+    prompt = (f"Instrumental only, no vocals. {desc}. Background music for a {p['aspect']} video: {p.get('brief') or project}. "
+              f"About {int(seconds)} seconds long, with a clear ending; steady energy under narration.")
+    try:
+        data = await asyncio.to_thread(_lyria, prompt)
+        d = st.home / "uploads" / "audio"
+        d.mkdir(parents=True, exist_ok=True)
+        f = d / f"lyria_{int(time.time())}.mp3"
+        f.write_bytes(data)
+        st.music_set(project, str(f), volume)
+        await st.update(project, lambda q: st._charge(q, MUSIC_USD, f"music ({mood})", _st().studio_music_model))
+        p = st.load(project)
+        _publish(tenant, p)
+        _note(tenant, p, f"Video studio '{project}': music taiyaar ({mood}, Google Lyria). Final video jodte waqt lagega.")
+    except Exception as e:
+        log.exception("studio lyria")
+        _note(tenant, p, f"Video studio '{project}': music nahi bana ({str(e)[:150]}). 'music' bina mood ke free bed laga dega.")
+
+
+# ---------------------------------------------------------------- v0.157 planner
+PLAN_SYSTEM = """You are an award-winning Indian ad film director and storyboard artist writing for AI video models
+(Wan 3.0, Seedance 2.5, MiniMax H3, Gemini Omni Flash). Output ONLY JSON.
+Rules for every shot prompt (English, one paragraph, 35-70 words): SUBJECT (who / what, with concrete look) + ACTION
+(one clear action, physically plausible) + SETTING (specific Indian place / home / shop / street when it fits) +
+LIGHTING (time of day, light quality) + CAMERA (shot size, lens feel, movement) + MOOD. Describe what is VISIBLE; no
+on-screen text, no logos, no brand names, no real famous people, no politicians. Keep characters' looks identical across
+shots (repeat their key traits). One idea per shot; vary shot sizes (wide, medium, close-up) for rhythm; start with a
+hook in the first 2 seconds; end on a clear payoff / call to action shot.
+Shot kinds: scene (people / places / story), product (a product photo comes alive: turntable, hero light, in use),
+talk (a person speaks to camera: the prompt describes the setting behind them), dialogue (people speak inside a scene),
+link (smooth move from one picture to the next). Durations: scene / product / link 4-8 s (up to 10), talk = length of
+the line (Hindi ~2.2 words per second, + 1 s). Spoken lines (dialogue field) are in the project language, natural,
+short (max 2 sentences). Captions (caption field) are 2-6 words in the project language, optional.
+camera must be one of: CAMERAS. characters only from: CHARACTERS (or none)."""
+
+
+async def plan(tenant: str, project: str, brief: str = "", seconds: int = 30, conversation_id: str = "") -> dict:
+    """v0.157 Claude (Opus) writes the storyboard: shots with kind, prompts tuned for the video models, camera, lines,
+    captions; checked by the studio (problems fed back once)."""
+    st = await studio(tenant)
+    p = _load(tenant, project)
+    brief = (brief or p.get("brief") or "").strip()
+    if not brief:
+        raise StudioJobError("Video kis baare mein hai? (brief)")
+    seconds = max(6, min(int(seconds or 30), 600))
+    if project in _planning and not _planning[project].done():
+        return {"status": "already planning"}
+    if brief != p.get("brief"):
+        await st.update(project, lambda q: q.update(brief=brief[:2000]))
+    _planning[project] = asyncio.ensure_future(_plan(tenant, st, project, brief, seconds))
+    _changed(tenant, project)
+    return {"status": "planning", "say": "Storyboard likh raha hoon (1-2 minute); card par aa jayega.",
+            "note_for_you": "Do not poll; the storyboard arrives as a card + note."}
+
+
+async def _plan(tenant: str, st: Studio, project: str, brief: str, seconds: int) -> dict | None:
+    from ..notebook.service import parse_json
+    p = st.load(project)
+    chars = {k: v.get("description", "") for k, v in p["characters"].items()}
+    system = PLAN_SYSTEM.replace("CAMERAS", ", ".join(catalog.CAMERA)).replace("CHARACTERS", json.dumps(chars, ensure_ascii=False) or "none")
+    ask = (f"Project: {project}\nBrief: {brief}\nShape: {p['aspect']}\nLook: {catalog.STYLES.get(p['style'], p['style'])}\n"
+           f"Language for spoken lines and captions: {p['language']}\nTarget length: about {seconds} seconds "
+           f"(about {max(1, round(seconds / 6))} shots).\nJSON: {{\"title\": \"\", \"shots\": [{{\"id\": \"s1\", \"kind\": "
+           f"\"scene\", \"prompt\": \"\", \"duration\": 6, \"camera\": \"dolly_in\", \"characters\": [], "
+           f"\"dialogue\": \"\", \"speaker\": \"\", \"caption\": \"\", \"transition\": \"fade\"}}]}}")
+    last = ""
+    try:
+        for attempt in range(2):
+            raw = await _write(system, ask + (f"\n\nYour last storyboard had these problems, fix them:\n{last}" if last else ""), 16000)
+            js = parse_json(raw)
+            shots = []
+            for i, x in enumerate(js.get("shots") or [], 1):
+                if not isinstance(x, dict):
+                    continue
+                x = {k: v for k, v in x.items() if v not in (None, "", [])}
+                x["id"] = str(x.get("id") or f"s{i}")
+                x["characters"] = [c for c in (x.get("characters") or []) if c in p["characters"]]
+                if x.get("camera") not in catalog.CAMERA:
+                    x.pop("camera", None)
+                if x.get("transition") not in ("fade", "dissolve", "wipeleft", "wiperight", "slideleft", "slideright", None):
+                    x.pop("transition", None)
+                x["duration"] = max(2, min(int(x.get("duration") or 6), 15))
+                shots.append(x)
+            try:
+                r = await storyboard(tenant, project, shots[:80])
+                break
+            except StudioJobError as e:
+                last = str(e)[:1500]
+                if attempt:
+                    raise
+        p = st.load(project)
+        _publish(tenant, p)
+        _note(tenant, p, f"Video studio '{project}': storyboard taiyaar ({len(p['shots'])} shots, {r['total_seconds']} s). "
+              f"HD ka andaaza ~Rs {r['estimate']['inr']}. Pehle tasveerein (keyframes) ya free preview dekh lijiye.")
+        return r
+    except Exception as e:
+        log.exception("studio plan")
+        _note(tenant, st.load(project), f"Video studio '{project}': storyboard nahi ban paya: {str(e)[:200]}")
+        return None
+    finally:
+        _planning.pop(project, None)
+        _changed(tenant, project)
 
 
 async def logo(tenant: str, project: str, file_id: str, position: str = "top-right") -> dict:
@@ -668,8 +1036,7 @@ def approval_card(tenant: str, approval_id: str) -> dict | None:
         if a is not None:
             if a.get("status") != "pending":
                 return None
-            what = (f"{a.get('shots', 0)} shots ({a.get('seconds', 0)} s, {a.get('quality', '')})"
-                    if a.get("kind") == "generate" else f"character photo '{a.get('name', '')}'")
+            what = _what(a)
             return {"title": f"Video Studio: {p['project']} - {what}", "inr": f"₹{a.get('inr')}",
                     "usd": f"${float(a.get('usd') or 0):.2f}"}
     return None

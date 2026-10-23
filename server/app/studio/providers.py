@@ -50,6 +50,8 @@ class GenRequest:
     seed: int | None = None
     label: str = ""                       # shot id, for offline clips
     summary: str = ""                     # the shot as the user wrote it, for offline clips
+    speech: str | None = None             # v0.157 the spoken line (our own voice file) for lip sync
+    video_in: str | None = None           # v0.157 an existing take whose lips are re-synced to `speech`
 
 
 def image_b64(path: str, max_side: int = 1280) -> tuple[str, str]:
@@ -482,6 +484,88 @@ class Google:
             t.cancel()
 
 
+# ------------------------------------------------------------------------------------------ Sync (lip sync)
+class Sync:
+    """v0.157 Sync Labs `sync-3` (95+ languages, up to 4K): our own voice line (Hindi or any language, Gemini TTS) +
+    a painted portrait (talking shot) or a generated scene (its lips re-synced). Files go up through Sync's own
+    presigned asset upload, so this server needs no public address. REST: x-api-key, POST /v2/assets/upload ->
+    PUT bytes -> POST /v2/assets -> POST /v2/generate {model, input:[{type, assetId}], options} -> GET /v2/generate/{id}."""
+    name = "sync"
+
+    def __init__(self):
+        self.key = os.environ.get("SYNC_API_KEY", "")
+        self.base = os.environ.get("SYNC_BASE_URL", "https://api.sync.so").rstrip("/")
+
+    def ready(self) -> bool:
+        return bool(self.key)
+
+    def _h(self) -> dict:
+        return {"x-api-key": self.key, "Content-Type": "application/json"}
+
+    async def _asset(self, c: httpx.AsyncClient, path: str, kind: str) -> str:
+        f = Path(path)
+        mime = {"image": "image/jpeg" if f.suffix.lower() in (".jpg", ".jpeg") else "image/png",
+                "audio": "audio/wav" if f.suffix.lower() == ".wav" else "audio/mpeg", "video": "video/mp4"}[kind]
+        data = f.read_bytes()
+        r = await c.post(f"{self.base}/v2/assets/upload", headers=self._h(),
+                         json={"fileName": f.name, "contentType": mime, "size": len(data)})
+        if r.status_code >= 400:
+            raise _http_error(r, "Sync upload")
+        up = r.json()
+        r = await c.put(up["uploadUrl"], content=data, headers={"Content-Type": mime})
+        if r.status_code >= 400:
+            raise _http_error(r, "Sync upload PUT")
+        r = await c.post(f"{self.base}/v2/assets", headers=self._h(), json={"url": up["url"], "type": kind.upper(), "name": f.name})
+        if r.status_code >= 400:
+            raise _http_error(r, "Sync asset")
+        return r.json()["id"]
+
+    async def submit(self, q: GenRequest) -> dict:
+        if not self.ready():
+            raise ProviderError("SYNC_API_KEY is not set")
+        if not q.speech or not Path(q.speech).is_file():
+            raise ProviderError("no voice line for lip sync")
+        face = q.video_in or q.start_image
+        if not face or not Path(face).is_file():
+            raise ProviderError("lip sync needs a picture or a video of the speaker (paint the keyframe first)")
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(300, connect=30)) as c:
+                vid = await self._asset(c, face, "video" if q.video_in else "image")
+                aud = await self._asset(c, q.speech, "audio")
+                r = await c.post(f"{self.base}/v2/generate", headers=self._h(), json={
+                    "model": q.cfg.get("model", "sync-3"),
+                    "input": [{"type": "video" if q.video_in else "image", "assetId": vid}, {"type": "audio", "assetId": aud}],
+                    "options": {"sync_mode": "bounce"}, "outputFileName": q.label or "hoola"})
+        except httpx.HTTPError as e:
+            raise ProviderError(f"Sync submit failed: {e}", transient=True) from None
+        if r.status_code >= 400:
+            raise _http_error(r, "Sync")
+        return {"provider": "sync", "id": r.json()["id"]}
+
+    async def poll(self, h: dict) -> dict:
+        try:
+            async with httpx.AsyncClient(timeout=60) as c:
+                r = await c.get(f"{self.base}/v2/generate/{h['id']}", headers=self._h())
+        except httpx.HTTPError as e:
+            raise ProviderError(f"Sync poll failed: {e}", transient=True) from None
+        if r.status_code >= 400:
+            raise _http_error(r, "Sync status")
+        j = r.json()
+        s = str(j.get("status") or "").upper()
+        if s == "COMPLETED":
+            url = j.get("outputUrl") or j.get("output_url")
+            return {"state": "done", "url": url} if url else {"state": "failed", "error": "Sync returned no video"}
+        if s in ("FAILED", "REJECTED"):
+            return {"state": "failed", "error": f"lip sync {s.lower()}: {j.get('error') or j.get('errorCode') or ''}".strip()}
+        return {"state": "queued" if s in ("PENDING", "QUEUED") else "running"}
+
+    async def fetch(self, res: dict, dest: Path) -> Path:
+        return await download(res["url"], dest)
+
+    async def cancel(self, h: dict) -> None:
+        return None
+
+
 # ------------------------------------------------------------------------------------------ offline
 SIZES = {"360p": 360, "480p": 480, "720p": 720, "1080p": 1080, "4k": 2160}
 
@@ -605,4 +689,5 @@ async def fal_image(endpoint: str, prompt: str, dest: Path, aspect: str = "1:1")
 
 
 def all_providers() -> dict[str, Any]:
-    return {"openrouter": OpenRouter(), "fal": Fal(), "byteplus": BytePlus(), "google": Google(), "offline": Offline()}
+    return {"openrouter": OpenRouter(), "fal": Fal(), "byteplus": BytePlus(), "google": Google(), "sync": Sync(),
+            "offline": Offline()}

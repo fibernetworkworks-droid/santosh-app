@@ -138,6 +138,25 @@ class Api {
           body: {'yes': yes, if (proof != null) 'proof': proof}, timeout: const Duration(seconds: 60))) as Map);
   Future<Map<String, dynamic>> studioAssemble(String name) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/studio/projects/${Uri.encodeComponent(name)}/assemble') as Map);
+  // v0.157 best model per shot: the app drives the whole studio too
+  String _sp(String name) => '/api/studio/projects/${Uri.encodeComponent(name)}';
+  Future<Map<String, dynamic>> studioNew(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/studio/projects', body: body, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> studioPlan(String name, String brief, int seconds) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/plan', body: {'brief': brief, 'seconds': seconds}) as Map);
+  Future<Map<String, dynamic>> studioKeyframes(String name, {List<String>? shots}) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/keyframes', body: {'quality': 'final', 'shot_ids': shots}) as Map);
+  Future<Map<String, dynamic>> studioGenerate(String name, String quality, {List<String>? shots, int variants = 1}) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/generate',
+          body: {'quality': quality, 'shot_ids': shots, 'variants': variants}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> studioPick(String name, String shot, int take) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/pick', body: {'shot_id': shot, 'take': take}) as Map);
+  Future<Map<String, dynamic>> studioShot(String name, String shot, Map<String, dynamic> changes) async =>
+      Map<String, dynamic>.from(await _send('PATCH', '${_sp(name)}/shots/${Uri.encodeComponent(shot)}', body: changes) as Map);
+  Future<Map<String, dynamic>> studioMusic(String name, String mood) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/music', body: {'mood': mood}) as Map);
+  Future<Map<String, dynamic>> studioCharacter(String name, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/characters', body: body, timeout: const Duration(seconds: 60)) as Map);
 
   // ---- Hoola Computer Operator (v0.67) ----
   Future<Map<String, dynamic>> operatorHome() async => Map<String, dynamic>.from(await _send('GET', '/api/operator') as Map);

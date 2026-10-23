@@ -13,26 +13,33 @@ STUDIO_TOOLS = [
         "greetings, explainers, invites, story shorts) with AI video models, the same person / product in every shot, "
         "Hindi dialogue with lip sync, narration in your voice, music, her logo, captions, an 'AI-generated' label. "
         "(Her OWN footage -> video_edit; animated text / graphics reels -> motion_video.) "
-        "You are the director. Actions: guide (read once) | models | create (name, aspect 9:16|16:9|1:1|4:3|3:4, style, "
+        "You are the director; the studio picks the BEST model per shot (Wan 3.0 / Seedance 2.5 / MiniMax H3 / Gemini Omni "
+        "Flash / Sync 3 lip sync). Actions: guide (read once) | models | create (name, aspect 9:16|16:9|1:1|4:3|3:4, style, "
         "language, brief) | list | show | character (name, description, file_ids of her photos, consent=true only if she "
-        "said the person agreed) | character_generate (name, description: fictional person / mascot / product) | "
-        "storyboard (shots: [{prompt, duration 4-10, camera, characters, dialogue | voiceover, caption, transition, "
-        "start_image_file_id}]) | shot_update (shot_id, changes) | estimate (quality) | generate (quality preview = FREE "
-        "animatic; draft = cheap 480p; final = 1080p; shot_ids, variants, model) -> paid ones become a price card she "
-        "taps (nothing spent before) | review (shot_id, take) | pick (shot_id, take) | voiceover (shot_id, text = you speak "
-        "it free, or file_id) | music (mood upbeat|calm|festive free, or file_id) | logo (file_id) | assemble (captions, "
-        "transition) -> final video arrives as a card | spend. project defaults to the latest one. Tell her prices in "
-        "rupees. Never real people without permission, never imitate real brands, news, officials or politicians."),
+        "said the person agreed, voice female|male) | character_generate (name, description: fictional person / mascot / "
+        "product) | plan (brief, seconds: Claude writes the whole storyboard, preferred) | storyboard (shots: [{kind "
+        "scene|product|talk|dialogue|link, prompt, duration, camera, characters, dialogue (spoken line) | voiceover, speaker, "
+        "caption, transition, start_image_file_id}]) | shot_update (shot_id, changes) | keyframes (shot_ids: paint each "
+        "shot's opening picture, Nano Banana Pro, a card) | estimate (quality) | generate (quality preview = FREE animatic "
+        "from the pictures; draft = 720p; final = HD 1080p; premium = best models; shot_ids, variants, model) -> paid ones "
+        "become a price card she taps (nothing spent before) | review (shot_id, take) | pick (shot_id, take) | voiceover "
+        "(shot_id, text = you speak it, or file_id) | music (mood upbeat|calm|festive|cinematic|corporate|lofi or a short "
+        "description: a real Google Lyria track, a card; or her licensed file_id) | logo (file_id) | assemble (captions, "
+        "transition) -> final video arrives as a card | spend. project defaults to the latest one. Hindi / Indian-language "
+        "lines are spoken by your own voice and lip-synced. Tell her prices in rupees. Never real people without "
+        "permission, never imitate real brands, news, officials or politicians."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["guide", "models", "create", "list", "show", "character", "character_generate",
-                                               "storyboard", "shot_update", "estimate", "generate", "review", "pick",
+                                               "plan", "storyboard", "shot_update", "keyframes", "estimate", "generate",
+                                               "review", "pick",
                                                "voiceover", "music", "logo", "assemble", "spend"]},
          "project": {"type": "string"}, "name": {"type": "string"}, "aspect": {"type": "string"},
          "style": {"type": "string"}, "language": {"type": "string"}, "brief": {"type": "string"},
          "description": {"type": "string"}, "file_ids": {"type": "array", "items": {"type": "string"}},
          "consent": {"type": "boolean"}, "shots": {"type": "array", "items": {"type": "object"}},
          "shot_id": {"type": "string"}, "changes": {"type": "object"},
-         "quality": {"type": "string", "enum": ["preview", "draft", "final"]},
+         "quality": {"type": "string", "enum": ["preview", "draft", "final", "premium"]},
+         "seconds": {"type": "integer"}, "voice": {"type": "string"},
          "shot_ids": {"type": "array", "items": {"type": "string"}}, "variants": {"type": "integer"},
          "model": {"type": "string"}, "take": {"type": "integer"}, "text": {"type": "string"},
          "file_id": {"type": "string"}, "mood": {"type": "string"}, "volume": {"type": "number"},
@@ -67,11 +74,15 @@ async def video_studio(ctx: Ctx, action, **a: Any):
             return v
         if action == "character":
             return await ss.character(t, project, a.get("name") or "", a.get("description") or "", a.get("file_ids") or [],
-                                      bool(a.get("consent")))
+                                      bool(a.get("consent")), a.get("voice") or "")
         if action == "character_generate":
             return await ss.character_generate(t, project, a.get("name") or "", a.get("description") or "")
+        if action == "plan":
+            return await ss.plan(t, project, a.get("brief") or "", int(a.get("seconds") or 30), ctx.conversation_id)
         if action == "storyboard":
             return await ss.storyboard(t, project, a.get("shots") or [])
+        if action == "keyframes":
+            return await ss.keyframes(t, project, a.get("shot_ids"))
         if action == "shot_update":
             st = await ss.studio(t)
             r = st.shot_update(project, str(a.get("shot_id", "")), a.get("changes") or {})

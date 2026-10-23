@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.156.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.157.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -1892,6 +1892,128 @@ async def studio_assemble(name: str, tenant: str = Depends(current_tenant)):
         return await ss.assemble(tenant, name)
     except ss.StudioJobError as e:
         raise HTTPException(400, str(e))
+
+
+class StudioNew(BaseModel):          # v0.157 the app's "Naya video" form
+    name: str = Field(min_length=2, max_length=60)
+    brief: str = Field(default="", max_length=2000)
+    aspect: str = "9:16"
+    style: str = "reel"
+    language: str = "Hindi"
+    seconds: int = Field(default=30, ge=6, le=600)
+
+
+class StudioPlan(BaseModel):
+    brief: str = Field(default="", max_length=2000)
+    seconds: int = Field(default=30, ge=6, le=600)
+
+
+class StudioRun(BaseModel):
+    quality: str = "preview"
+    shot_ids: list[str] | None = None
+    variants: int = Field(default=1, ge=1, le=4)
+
+
+class StudioPick(BaseModel):
+    shot_id: str
+    take: int
+
+
+class StudioShot(BaseModel):
+    prompt: str | None = Field(default=None, max_length=1500)
+    dialogue: str | None = Field(default=None, max_length=600)
+    caption: str | None = Field(default=None, max_length=120)
+    duration: int | None = Field(default=None, ge=2, le=30)
+    kind: str | None = None
+    camera: str | None = None
+
+
+class StudioMusic(BaseModel):
+    mood: str = "upbeat"
+    volume: float = 0.25
+
+
+class StudioCharacter(BaseModel):
+    name: str = Field(min_length=1, max_length=40)
+    description: str = Field(default="", max_length=400)
+    file_ids: list[str] = Field(default_factory=list, max_length=4)
+    consent: bool = False
+    voice: str = ""
+
+
+def _studio_call(fn):
+    async def run(*a, **k):
+        from .studio import service as ss
+        try:
+            return await fn(*a, **k)
+        except (ss.StudioJobError, ss.StudioError) as e:
+            raise HTTPException(400, str(e))
+    return run
+
+
+@app.post("/api/studio/projects", dependencies=[Depends(require_key)])
+async def studio_new(body: StudioNew, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    v = await _studio_call(ss.create)(tenant, body.name, body.aspect, body.style, body.language, body.brief, "")
+    if body.brief.strip():
+        await _studio_call(ss.plan)(tenant, v["project"], body.brief, body.seconds, "")
+    return ss.view(tenant, ss._load(tenant, v["project"]))
+
+
+@app.post("/api/studio/projects/{name}/plan", dependencies=[Depends(require_key)])
+async def studio_plan(name: str, body: StudioPlan, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    return await _studio_call(ss.plan)(tenant, name, body.brief, body.seconds, "")
+
+
+@app.post("/api/studio/projects/{name}/keyframes", dependencies=[Depends(require_key)])
+async def studio_keyframes(name: str, body: StudioRun, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    return await _studio_call(ss.keyframes)(tenant, name, body.shot_ids)
+
+
+@app.post("/api/studio/projects/{name}/generate", dependencies=[Depends(require_key)])
+async def studio_generate(name: str, body: StudioRun, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    return await _studio_call(ss.generate)(tenant, name, body.quality, body.shot_ids, body.variants, None, "")
+
+
+@app.post("/api/studio/projects/{name}/pick", dependencies=[Depends(require_key)])
+async def studio_pick(name: str, body: StudioPick, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+
+    async def go():
+        st = await ss.studio(tenant)
+        r = st.pick(name, body.shot_id, body.take)
+        ss._changed(tenant, name)
+        return r
+    return await _studio_call(go)()
+
+
+@app.patch("/api/studio/projects/{name}/shots/{shot_id}", dependencies=[Depends(require_key)])
+async def studio_shot(name: str, shot_id: str, body: StudioShot, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+
+    async def go():
+        st = await ss.studio(tenant)
+        st.shot_update(name, shot_id, body.model_dump(exclude_none=True))
+        ss._changed(tenant, name)
+        return ss.view(tenant, ss._load(tenant, name))
+    return await _studio_call(go)()
+
+
+@app.post("/api/studio/projects/{name}/music", dependencies=[Depends(require_key)])
+async def studio_music(name: str, body: StudioMusic, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    return await _studio_call(ss.music)(tenant, name, body.mood, "", body.volume)
+
+
+@app.post("/api/studio/projects/{name}/characters", dependencies=[Depends(require_key)])
+async def studio_character(name: str, body: StudioCharacter, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    if body.file_ids:
+        return await _studio_call(ss.character)(tenant, name, body.name, body.description, body.file_ids, body.consent, body.voice)
+    return await _studio_call(ss.character_generate)(tenant, name, body.name, body.description)
 
 
 @app.get("/api/studio/files/{tenant_key}/{exp}/{sig}/{name}")

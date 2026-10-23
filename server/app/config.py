@@ -45,7 +45,11 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""           # one key for Seedance 2.0 / 2.5, Veo 3.1, Kling 3.0, Wan 3.0 (recommended)
     fal_key: str = ""                      # backup: Seedance via fal
     ark_api_key: str = ""                  # backup: Seedance direct from BytePlus ModelArk
-    studio_month_usd: float = 10.0         # most one owner may spend on AI video in a calendar month (every spend is her tap too)
+    studio_month_usd: float = 60.0         # most one owner may spend on AI video in a calendar month (every spend is her tap too; v0.157 10 -> 60)
+    sync_api_key: str = ""                 # v0.157 Sync Labs sync-3 lip sync (Hindi / any language dialogue)
+    studio_sync_url: str = ""              # base URL override (tests)
+    studio_music_model: str = "lyria-3.5"  # v0.157 Google Lyria music for the final video ('' = Hoola's own free beds)
+    studio_plan_model: str = "claude-opus-5-5"   # v0.157 writes storyboards (shot prompts tuned per video model)
     studio_project_usd: float = 5.0        # starting budget of a new project
     studio_usd_inr: float = 85.0           # shown next to dollar prices on her cards
     studio_image_mode: str = "data"        # data = character photos inline; public = short-lived signed links from this server

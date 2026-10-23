@@ -55,6 +55,8 @@ class Studio:
         self.label_ai = label or "AI-generated"            # never empty in Hoola (IT Rules: AI content is labelled)
         self.public_url = (public_url or "").rstrip("/")
         self.on_change = None                              # Hoola: called with the project name after a job / output
+        self.speak = None                                  # v0.157 Hoola: (text, language, voice) -> wav path (Gemini TTS)
+        self.painter = None                                # v0.157 Hoola: (prompt, aspect, refs) -> image bytes (Nano Banana)
         sf = self.home / "media.secret"
         if not sf.exists():
             sf.write_bytes(os.urandom(32))
@@ -145,7 +147,7 @@ class Studio:
             vs = p["variants"].get(s["id"], [])
             shots.append({"id": s["id"], "duration": s["duration"], "prompt": s["prompt"][:90],
                           "variants": len(vs), "picked": p["picked"].get(s["id"]),
-                          "best_quality": max((v["quality"] for v in vs), key=["preview", "draft", "final"].index, default=None)})
+                          "best_quality": max((v["quality"] for v in vs), key=catalog.RANK.index, default=None)})
         active = [j for j in p["jobs"].values() if j["state"] in ("queued", "submitted", "running")]
         return {"project": p["name"], "aspect": p["aspect"], "style": p["style"], "language": p["language"],
                 "budget_usd": p["budget_usd"], "spent_usd": round(p["spent_usd"], 3), "characters": list(p["characters"]),
@@ -221,23 +223,29 @@ class Studio:
             if sid in ids:
                 problems.append(f"shot {i + 1}: duplicate id {sid}")
             ids.add(sid)
-            if not str(s.get("prompt", "")).strip():
+            if not str(s.get("prompt", "")).strip() and not s.get("dialogue"):
                 problems.append(f"shot {sid}: needs a prompt (what we see and what happens)")
             dur = int(s.get("duration", 5))
-            if not 2 <= dur <= 15:
-                problems.append(f"shot {sid}: duration {dur}s must be 4-15 (2-15 for previews)")
+            if not 2 <= dur <= 30:
+                problems.append(f"shot {sid}: duration {dur}s must be 2-30 (most models 4-10; Wan 3.0 / Seedance 2.5 up to 30)")
+            kind = str(s.get("kind") or ("talk" if s.get("dialogue") and not s.get("prompt") else "scene"))
+            if kind not in catalog.KINDS:
+                problems.append(f"shot {sid}: kind '{kind}' unknown; use one of {catalog.KINDS}")
+            if kind == "talk" and not s.get("dialogue"):
+                problems.append(f"shot {sid}: a talk shot needs the dialogue line (what is said)")
             for c in s.get("characters", []) or []:
                 if c not in p["characters"]:
                     problems.append(f"shot {sid}: unknown character '{c}' (add it first)")
             cam = s.get("camera")
             if cam and cam not in catalog.CAMERA:
                 problems.append(f"shot {sid}: camera '{cam}' unknown; use one of {sorted(catalog.CAMERA)}")
-            for k in ("start_image", "end_image"):
+            for k in ("start_image", "end_image", "keyframe"):
                 if s.get(k) and not self.inside(s[k]):
                     problems.append(f"shot {sid}: {k} not found: {s[k]}")
             if s.get("model") and s["model"] not in self.models:
                 problems.append(f"shot {sid}: model '{s['model']}' unknown; use one of {list(self.models)}")
-            clean.append({"id": sid, "prompt": str(s.get("prompt", "")).strip(), "duration": dur,
+            clean.append({"id": sid, "prompt": str(s.get("prompt", "")).strip(), "duration": dur, "kind": kind,
+                          "keyframe": s.get("keyframe"), "voice": s.get("voice"),
                           "camera": cam, "characters": list(s.get("characters", []) or []),
                           "dialogue": s.get("dialogue"), "speaker": s.get("speaker"), "voiceover": s.get("voiceover"),
                           "caption": s.get("caption"), "transition": s.get("transition"), "audio": bool(s.get("audio", True)),
@@ -255,6 +263,9 @@ class Studio:
         s = next((x for x in p["shots"] if x["id"] == shot_id), None)
         if not s:
             raise StudioError(f"No shot {shot_id}")
+        changes = dict(changes)
+        if any(k in changes and changes[k] != s.get(k) for k in ("prompt", "kind", "characters", "camera")) and "keyframe" not in changes:
+            changes["keyframe"] = None                    # the painted first frame no longer matches the shot
         merged = [dict(x, **changes) if x["id"] == shot_id else x for x in p["shots"]]
         self.storyboard_set(project, merged)
         return {"updated": shot_id}
@@ -265,7 +276,10 @@ class Studio:
         chars = [c for c in s["characters"] if p["characters"].get(c, {}).get("images")]
         mode = "t2v"
         images: list[str] = []
-        if s.get("start_image"):
+        first = s.get("start_image") or s.get("keyframe")
+        if cfg["provider"] == "sync":
+            mode = "talk"
+        elif first:
             mode = "i2v"
         elif chars:
             mode = "ref"
@@ -285,15 +299,23 @@ class Studio:
             for c in s["characters"]:
                 if c in p["characters"]:
                     parts.append(f"{c}: {p['characters'][c]['description']}.")
-        parts.append(s["prompt"].rstrip(".") + ".")
+        if s["prompt"]:
+            parts.append(s["prompt"].rstrip(".") + ".")
         if s.get("camera"):
             parts.append(catalog.CAMERA[s["camera"]].capitalize() + ".")
         parts.append(f"Style: {catalog.STYLES.get(p['style'], p['style'])}.")
         if s.get("dialogue"):
             who = s.get("speaker") or (s["characters"][0] if s["characters"] else "The person")
-            parts.append(f'{who} says in {p["language"]}, clearly with natural lip sync: "{s["dialogue"]}"')
+            if self.needs_lipsync(p, s, quality):
+                parts.append(f"{who} talks naturally with clear mouth movement, face well lit and visible; "
+                             "no audible words in the soundtrack, only ambient sound.")
+            else:
+                parts.append(f'{who} says in {p["language"]}, clearly with natural lip sync: "{s["dialogue"]}"')
         elif s.get("voiceover"):
             parts.append("No one speaks on camera; ambient sound only.")
+        if quality in ("final", "premium"):
+            parts.append("High detail, natural motion, coherent hands and faces, stable identity, no on-screen text, "
+                         "no subtitles, no watermark, no logos.")
         q = catalog.QUALITY[quality]
         res = q["resolution"] if q["resolution"] in cfg["resolutions"] else cfg["resolutions"][0]
         lo, hi = cfg["durations"]
@@ -301,19 +323,37 @@ class Studio:
         if cfg.get("allowed_durations"):
             dur = min(cfg["allowed_durations"], key=lambda x: (abs(x - int(s["duration"])), -x))
         aspect = p["aspect"] if p["aspect"] in cfg["aspects"] else ("9:16" if p["aspect"] in ("9:16", "3:4") else "16:9")
+        if mode == "talk":
+            res = "1080p" if quality in ("final", "premium") else "720p"
         return GenRequest(model=model, cfg=cfg, prompt=" ".join(parts), duration=dur, resolution=res, aspect=aspect,
-                          audio=s.get("audio", True), mode=mode, images=images, start_image=s.get("start_image"),
-                          end_image=s.get("end_image"), label=s["id"], summary=s["prompt"])
+                          audio=s.get("audio", True), mode=mode, images=images, start_image=first,
+                          end_image=s.get("end_image"), label=s["id"], summary=s["prompt"] or s.get("dialogue") or "")
+
+    def needs_lipsync(self, p: dict, s: dict, quality: str) -> bool:
+        """v0.157 Spoken lines in Hindi / Indian languages (or any talk shot) = our own voice line + Sync 3 lip sync;
+        English / Chinese / Japanese... are spoken by the video model itself."""
+        if quality == "preview" or not s.get("dialogue"):
+            return False
+        kind = s.get("kind") or "scene"
+        if kind == "talk":
+            return True
+        if not self.providers["sync"].ready():
+            return False
+        return kind == "dialogue" or str(p.get("language", "")).lower() not in catalog.NATIVE_SPEECH
 
     def model_for(self, s: dict, quality: str, override: str | None) -> str:
         if quality == "preview":
             return "offline-preview"
         if override or s.get("model"):
             return override or s.get("model")
+        route = catalog.ROUTES.get(s.get("kind") or "scene", catalog.ROUTES["scene"]).get(quality) or []
+        for m in route:                                  # v0.157 best model for this kind of shot whose key is set
+            if m in self.models and self.providers[self.models[m]["provider"]].ready():
+                return m
         for prov in ("openrouter", "fal", "byteplus"):  # first provider with a key decides draft/final models
             if self.providers[prov].ready():
                 return catalog.QUALITY_BY_PROVIDER[prov][quality]
-        return catalog.QUALITY[quality]["model"]
+        return route[0] if route else catalog.QUALITY[quality]["model"]
 
     def estimate(self, project: str, quality: str = "final", shot_ids: list[str] | None = None, variants: int = 1,
                  model: str | None = None) -> dict:
@@ -327,8 +367,12 @@ class Studio:
             m = self.model_for(s, quality, model)
             q = self.build(p, s, m, quality)
             c = q.duration * self.models[m]["usd_per_s"] * variants
+            sync = self.models[m]["provider"] != "sync" and self.needs_lipsync(p, s, quality)
+            if sync:
+                c += q.duration * self.models["sync-3"]["usd_per_s"] * variants
             total += c
-            rows.append({"shot": s["id"], "model": m, "seconds": q.duration, "resolution": q.resolution, "usd": round(c, 3)})
+            rows.append({"shot": s["id"], "model": m, "seconds": q.duration, "resolution": q.resolution, "usd": round(c, 3),
+                         "kind": s.get("kind") or "scene", "lipsync": sync or self.models[m]["provider"] == "sync"})
         left = p["budget_usd"] - p["spent_usd"] - self._reserved(p)
         return {"quality": quality, "usd": round(total, 3), "budget_left_usd": round(left, 3), "fits_budget": total <= left + 1e-9,
                 "shots": rows, "note": "Prices are estimates; set real prices with HOOLA_STUDIO_MODELS."}
@@ -366,7 +410,8 @@ class Studio:
             need = {self.models[self.model_for(s, quality, model)]["provider"] for s in targets}
             missing = [n for n in need if not self.providers[n].ready()]
             if missing:
-                keys = {"fal": "FAL_KEY", "byteplus": "ARK_API_KEY", "google": "GEMINI_API_KEY"}
+                keys = {"fal": "FAL_KEY", "byteplus": "ARK_API_KEY", "google": "GEMINI_API_KEY", "sync": "SYNC_API_KEY",
+                        "openrouter": "OPENROUTER_API_KEY"}
                 raise StudioError(f"Missing API key for {missing}: set {[keys[m] for m in missing]} on the server, "
                                   "or use quality='preview' for a free animatic.")
             est = self.estimate(project, quality, [s["id"] for s in targets], variants, model)
@@ -374,11 +419,16 @@ class Studio:
             started = []
             for s in targets:
                 m = self.model_for(s, quality, model)
+                if self.models[m]["provider"] == "sync" and not (s.get("keyframe") or s.get("start_image")):
+                    raise StudioError(f"shot {s['id']} (talk) needs its picture first: paint the keyframe (keyframes) "
+                                      "or give a start image.")
                 for _ in range(variants):
                     req = self.build(p, s, m, quality)
                     jid = f"j{int(time.time() * 1000) % 10**9}{len(p['jobs'])}"
+                    sync = self.models[m]["provider"] != "sync" and self.needs_lipsync(p, s, quality)
+                    cost = req.duration * (self.models[m]["usd_per_s"] + (self.models["sync-3"]["usd_per_s"] if sync else 0))
                     p["jobs"][jid] = {"shot": s["id"], "model": m, "quality": quality, "state": "queued", "attempts": 0,
-                                      "cost_est": round(req.duration * self.models[m]["usd_per_s"], 4), "prompt": req.prompt,
+                                      "cost_est": round(cost, 4), "lipsync": sync, "prompt": req.prompt,
                                       "mode": req.mode, "duration": req.duration, "resolution": req.resolution,
                                       "aspect": req.aspect, "created": now(), "handle": None, "error": None}
                     started.append(jid)
@@ -407,6 +457,8 @@ class Studio:
                     handle = j.get("handle") if j.get("state") in ("submitted", "running") and j.get("handle") else None
                     if not handle:
                         req = self.build(p, shot, j["model"], j["quality"])
+                        if prov.name == "sync":
+                            req.speech = await self._speech(project, shot)
                         handle = await prov.submit(req)
                         j = await self._set_job(project, jid, handle=handle, state="submitted", attempts=attempt, submitted=now())
                     t0 = time.time()
@@ -436,20 +488,40 @@ class Studio:
                     info = vedit.probe(str(dest)) if vedit else None
                     if info is not None and (not info.has_video or info.duration < 1):
                         raise ProviderError("downloaded file is not a valid video", transient=True)
+                    sync_err = None
+                    if j.get("lipsync"):                 # v0.157 her line in her language, lips re-synced by Sync 3
+                        await self._set_job(project, jid, state="running", stage="lip sync")
+                        raw = dest.with_name(dest.stem + "_raw.mp4")
+                        os.replace(dest, raw)
+                        for k in range(2):               # never pay for the scene twice: only the lip sync is retried
+                            try:
+                                await self._lipsync(project, shot, raw, dest)
+                                sync_err = None
+                                break
+                            except ProviderError as e:
+                                sync_err = str(e)
+                                if not e.transient:
+                                    break
+                        if sync_err:
+                            shutil.copyfile(raw, dest)   # keep the paid scene; the line can still go on as narration
+                        info = vedit.probe(str(dest)) if vedit else None
                     def fn(q):
                         q["jobs"][jid].update(state="done", finished=now(), file=str(dest), handle=None, error=None)
                         v = {"n": n, "file": str(dest), "model": j["model"], "quality": j["quality"], "job": jid,
                              "duration": round(info.duration, 2) if info else j["duration"], "seed": r.get("seed"),
                              "width": info.width if info else None, "height": info.height if info else None,
-                             "has_audio": info.has_audio if info else None, "created": now(), "prompt": j["prompt"]}
+                             "has_audio": info.has_audio if info else None, "created": now(), "prompt": j["prompt"],
+                             "lipsync": bool(j.get("lipsync")) and not sync_err, "lipsync_error": sync_err}
                         q["variants"].setdefault(j["shot"], []).append(v)
                         real = r.get("cost")
+                        if real is not None and j.get("lipsync") and not sync_err:      # the lip sync is billed on top
+                            real = round(real + float(j["duration"]) * self.models["sync-3"]["usd_per_s"], 4)
                         self._charge(q, real if real is not None else j["cost_est"],
                                      f"shot {j['shot']} v{n} ({j['quality']})" + (" [actual]" if real is not None else " [estimate]"),
                                      j["model"])
                         v["cost_usd"] = real if real is not None else j["cost_est"]
                         cur = q["picked"].get(j["shot"])
-                        rank = ["preview", "draft", "final"]
+                        rank = catalog.RANK
                         cur_q = next((x["quality"] for x in q["variants"][j["shot"]] if x["n"] == cur), None)
                         if cur is None or rank.index(j["quality"]) > rank.index(cur_q or "preview"):
                             q["picked"][j["shot"]] = n  # newest better-quality take becomes the pick
@@ -470,6 +542,108 @@ class Studio:
                     await self._set_job(project, jid, state="failed", error=f"{type(e).__name__}: {e}", finished=now())
                     self._changed(project)
                     return
+
+    async def _speech(self, project: str, shot: dict) -> str:
+        """The shot's spoken line as our own voice file (made once per text + voice, kept in the project)."""
+        import hashlib
+        p = self.load(project)
+        text = str(shot.get("dialogue") or "").strip()
+        if not text:
+            raise ProviderError("this shot has no line to speak")
+        voice = shot.get("voice") or ""
+        who = shot.get("speaker") or (shot["characters"][0] if shot.get("characters") else "")
+        if not voice and who:
+            voice = p["characters"].get(who, {}).get("voice") or ""
+        d = self.pdir(project) / "audio"
+        d.mkdir(parents=True, exist_ok=True)
+        lang = p.get("language", "Hindi")
+        key = hashlib.sha1(f"{text}|{voice}|{lang}".encode()).hexdigest()[:12]
+        out = d / f"line_{key}.wav"
+        if out.is_file():
+            return str(out)
+        if not self.speak:
+            raise ProviderError("no voice engine for the spoken line")
+        try:
+            got = await asyncio.to_thread(self.speak, text, lang, voice)
+        except Exception as e:
+            raise ProviderError(f"voice line failed: {e}", transient=True) from None
+        shutil.copyfile(got, out)
+        return str(out)
+
+    async def _lipsync(self, project: str, shot: dict, video: Path, dest: Path) -> None:
+        sp = self.providers["sync"]
+        req = GenRequest(model="sync-3", cfg=self.models["sync-3"], prompt="", duration=int(shot["duration"]), resolution="1080p",
+                         aspect=self.load(project)["aspect"], mode="talk", video_in=str(video), label=shot["id"])
+        req.speech = await self._speech(project, shot)
+        h = await sp.submit(req)
+        t0 = time.time()
+        while True:
+            r = await sp.poll(h)
+            if r["state"] == "done":
+                break
+            if r["state"] == "failed":
+                raise ProviderError(r["error"])
+            if time.time() - t0 > float(os.environ.get("HOOLA_STUDIO_JOB_TIMEOUT_S", "1800")):
+                raise ProviderError("lip sync timed out", transient=True)
+            await asyncio.sleep(self.poll_s)
+        await sp.fetch(r, dest)
+
+    def keyframe_prompt(self, p: dict, s: dict) -> tuple[str, list[str]]:
+        """v0.157 The first frame of a shot, painted (Nano Banana Pro) with the characters' photos as references:
+        the same face / product in every shot, and the video model starts from a designed picture."""
+        refs, who = [], []
+        for c in s.get("characters") or []:
+            ch = p["characters"].get(c)
+            if ch and ch.get("images"):
+                refs.append(ch["images"][0])
+                who.append(f"{c} ({ch.get('description', '')}) looks exactly like the reference photo {len(refs)}: same face, "
+                           "hair, skin tone, clothes / same product shape, colours and label")
+        style = catalog.STYLES.get(p["style"], p["style"])
+        if (s.get("kind") or "scene") == "talk":
+            body = (f"A medium close-up of {s.get('speaker') or (s['characters'][0] if s.get('characters') else 'the speaker')} "
+                    f"looking into the camera, about to speak, face evenly lit, mouth closed and relaxed, shoulders visible. "
+                    f"Setting: {s.get('prompt') or 'a simple pleasant background that suits the topic'}.")
+        else:
+            cam = catalog.CAMERA.get(s.get("camera") or "", "")
+            body = f"{s['prompt']}" + (f" Framing: {cam}." if cam else "")
+        prompt = (f"The opening frame of one shot of a {p['aspect']} video ({p.get('brief') or 'short film'}), as a single still "
+                  f"image. {body} " + (" ".join(who) + ". " if who else "") +
+                  f"Look: {style}. Composition made for {p['aspect']}, subject clearly readable, natural anatomy. "
+                  "No text, no captions, no subtitles, no watermark, no logos, no borders.")
+        return prompt, refs[:3]
+
+    async def keyframes(self, project: str, shot_ids: list[str] | None = None, cost_each: float = 0.0) -> dict:
+        if not self.painter:
+            raise StudioError("No picture model (needs GEMINI_API_KEY)")
+        p = self.load(project)
+        targets = [s for s in p["shots"] if not shot_ids or s["id"] in shot_ids]
+        d = self.pdir(project) / "keyframes"
+        d.mkdir(parents=True, exist_ok=True)
+        sem = asyncio.Semaphore(3)
+        done, failed = [], []
+
+        async def one(s: dict) -> None:
+            prompt, refs = self.keyframe_prompt(p, s)
+            async with sem:
+                try:
+                    img = await asyncio.to_thread(self.painter, prompt, p["aspect"], refs)
+                except Exception as e:
+                    failed.append(f"{s['id']}: {str(e)[:120]}")
+                    return
+            out = d / f"{s['id']}_{int(time.time() * 1000) % 10**8}.jpg"
+            out.write_bytes(img)
+            done.append((s["id"], str(out)))
+        await asyncio.gather(*(one(s) for s in targets))
+
+        def fn(q):
+            for sid, path in done:
+                for x in q["shots"]:
+                    if x["id"] == sid:
+                        x["keyframe"] = path
+            self._charge(q, cost_each * len(done), f"{len(done)} keyframes", "nano-banana-pro")
+        await self.update(project, fn)
+        self._changed(project)
+        return {"painted": [sid for sid, _ in done], "failed": failed, "usd": round(cost_each * len(done), 3)}
 
     def _changed(self, project: str) -> None:
         if self.on_change:

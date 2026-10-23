@@ -18,6 +18,8 @@ LOG: list[dict] = []
 JOBS: dict[str, dict] = {}
 FLAKY_SEEN: set[str] = set()
 FILES = Path(tempfile.mkdtemp(prefix="fake_api_"))
+UPLOADS: dict[str, bytes] = {}          # v0.157 Sync asset uploads (presigned PUT)
+ASSETS: dict[str, dict] = {}
 
 
 def make_mp4(jid: str, duration: int, aspect: str) -> Path:
@@ -60,7 +62,8 @@ class H(BaseHTTPRequestHandler):
     def do_POST(self):
         u = urlparse(self.path)
         body = self._body()
-        rec = {"path": u.path, "query": parse_qs(u.query), "auth": self.headers.get("Authorization"), "body": body}
+        rec = {"path": u.path, "query": parse_qs(u.query), "auth": self.headers.get("Authorization"), "body": body,
+               "xkey": self.headers.get("x-api-key")}
         LOG.append(rec)
         prompt = json.dumps(body)
         if "BLOCKED" in prompt:
@@ -104,6 +107,24 @@ class H(BaseHTTPRequestHandler):
             JOBS[jid] = {"t0": time.time(), "slow": "SLOW" in prompt, "dur": int(body.get("duration", 5)),
                          "aspect": body.get("aspect_ratio"), "fail": "ORFAIL" in prompt, "nourl": int(body.get("duration", 5)) % 2 == 1}
             return self._json({"id": jid, "polling_url": f"/openrouter/api/v1/videos/{jid}", "status": "pending"}, 202)
+        if u.path.startswith("/sync/v2/"):              # v0.157 Sync Labs (lip sync)
+            if rec["xkey"] != "test-sync":
+                return self._json({"message": "Unauthorized"}, 401)
+            if u.path == "/sync/v2/assets/upload":
+                return self._json({"uploadUrl": f"{self.base()}/sync/put/{jid}", "url": f"{self.base()}/sync/blob/{jid}",
+                                   "expiresIn": 600}, 201)
+            if u.path == "/sync/v2/assets":
+                bid = body["url"].rsplit("/", 1)[-1]
+                if bid not in UPLOADS:
+                    return self._json({"message": "upload not found"}, 400)
+                ASSETS["asset_" + bid] = {"type": body["type"], "size": len(UPLOADS[bid]), "name": body.get("name")}
+                return self._json({"id": "asset_" + bid, "type": body["type"]}, 201)
+            if u.path == "/sync/v2/generate":
+                for it in body.get("input", []):
+                    if it.get("assetId") not in ASSETS:
+                        return self._json({"message": "unknown asset"}, 400)
+                JOBS[jid] = {"t0": time.time(), "slow": False, "dur": 3, "aspect": "9:16", "sync": True}
+                return self._json({"id": jid, "status": "PENDING"}, 201)
         if u.path == "/google/v1beta/interactions":
             if rec["query"].get("key") != ["test-gemini"]:
                 return self._json({"error": {"message": "API key not valid"}}, 400)
@@ -114,6 +135,12 @@ class H(BaseHTTPRequestHandler):
         self._json({"detail": "not found"}, 404)
 
     def do_PUT(self):
+        u = urlparse(self.path)
+        if u.path.startswith("/sync/put/"):
+            n = int(self.headers.get("Content-Length", 0))
+            UPLOADS[u.path.rsplit("/", 1)[-1]] = self.rfile.read(n)
+            LOG.append({"path": u.path, "method": "PUT", "ctype": self.headers.get("Content-Type"), "xkey": self.headers.get("x-api-key")})
+            return self._json({}, 200)
         self._json({"status": "CANCELLATION_REQUESTED"}, 202)
 
     def do_DELETE(self):
@@ -184,6 +211,17 @@ class H(BaseHTTPRequestHandler):
             if fid.endswith(":download"):
                 return self._file(FILES / f"{fid.split(':')[0]}.mp4")
             return self._json({"name": f"files/{fid}", "state": "ACTIVE"})
+        if u.path.startswith("/sync/v2/generate/"):
+            jid = parts[-1]
+            j = JOBS.get(jid)
+            if not j or self.headers.get("x-api-key") != "test-sync":
+                return self._json({"message": "not found"}, 404)
+            st = self._state(j)
+            if st != "done":
+                return self._json({"id": jid, "status": "PENDING" if st == "queued" else "PROCESSING"})
+            if not (FILES / f"{jid}.mp4").exists():
+                make_mp4(jid, j["dur"], j["aspect"])
+            return self._json({"id": jid, "status": "COMPLETED", "outputUrl": f"{self.base()}/files/{jid}.mp4"})
         if u.path.startswith("/files/"):
             return self._file(FILES / parts[-1])
         self._json({"detail": "not found"}, 404)
