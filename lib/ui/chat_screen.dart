@@ -65,6 +65,16 @@ import 'shaadi_screen.dart';
 import 'tourguide_screen.dart';
 import 'homestay_screen.dart';
 import 'banquet_screen.dart';
+import 'editdesk_screen.dart';
+import 'motiondesk_screen.dart';
+import 'filmdesk_screen.dart';
+import 'patrakar_screen.dart';
+import 'photoassist_screen.dart';
+import 'graphic_screen.dart';
+import 'artistmgr_screen.dart';
+import 'kitab_screen.dart';
+import 'podcast_screen.dart';
+import 'influencer_screen.dart';
 import 'site_hosting.dart';
 import 'site_screen.dart';
 import 'app_android.dart';
@@ -1082,6 +1092,63 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
     case 'banquet_alert':
     case 'banquet_day':
       return BanquetNoteCard(app: app, data: it.data);
+    // v0.156 Kala suite
+    case 'editdesk_card':
+      return EditdeskCardCard(key: ValueKey('keditdesk${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'editdesk_alert':
+    case 'editdesk_day':
+    case 'editdesk_note':
+      return EditdeskNoteCard(app: app, data: it.data);
+    case 'motiondesk_card':
+      return MotiondeskCardCard(key: ValueKey('kmotiondesk${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'motiondesk_alert':
+    case 'motiondesk_day':
+    case 'motiondesk_update':
+      return MotiondeskNoteCard(app: app, data: it.data);
+    case 'filmdesk_card':
+      return FilmdeskCardCard(key: ValueKey('kfilmdesk${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'filmdesk_alert':
+    case 'filmdesk_day':
+      return FilmdeskNoteCard(app: app, data: it.data);
+    case 'patrakar_card':
+      return PatrakarCardCard(key: ValueKey('kpatrakar${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'patrakar_alert':
+    case 'patrakar_day':
+    case 'patrakar_story':
+      return PatrakarNoteCard(app: app, data: it.data);
+    case 'photoassist_card':
+      return PhotoassistCardCard(key: ValueKey('kphotoassist${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'photoassist_alert':
+    case 'photoassist_day':
+      return PhotoassistNoteCard(app: app, data: it.data);
+    case 'graphic_card':
+      return GraphicCardCard(key: ValueKey('kgraphic${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'graphic_alert':
+    case 'graphic_day':
+    case 'graphic_job':
+      return GraphicNoteCard(app: app, data: it.data);
+    case 'artistmgr_card':
+      return ArtistmgrCardCard(key: ValueKey('kartistmgr${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'artistmgr_alert':
+    case 'artistmgr_day':
+    case 'artistmgr_gig':
+      return ArtistmgrNoteCard(app: app, data: it.data);
+    case 'kitab_card':
+      return KitabCardCard(key: ValueKey('kkitab${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'kitab_alert':
+    case 'kitab_day':
+    case 'kitab_update':
+      return KitabNoteCard(app: app, data: it.data);
+    case 'podcast_card':
+      return PodcastCardCard(key: ValueKey('kpodcast${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'podcast_alert':
+    case 'podcast_day':
+      return PodcastNoteCard(app: app, data: it.data);
+    case 'influencer_card':
+      return InfluencerCardCard(key: ValueKey('kinfluencer${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'influencer_alert':
+    case 'influencer_day':
+      return InfluencerNoteCard(app: app, data: it.data);
     case 'brand_design':
       return BrandDesignCard(v: it.data, app: app);
     case 'site_board':

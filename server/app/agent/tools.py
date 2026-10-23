@@ -853,3 +853,23 @@ for _t, _l, _h in ((FRONTOFFICE_TOOLS, FRONTOFFICE_LABELS, FRONTOFFICE_HANDLERS)
     TOOLS.extend(t for t in _t if t["name"] not in _seen)
     TOOL_LABELS.update(_l)
     HANDLERS.update(_h)
+
+# v0.156 Kala suite: 10 Media, design & creative Sahayaks (video editor desk, motion designer, AI film producer, journalist,
+# photographer's assistant, graphic designer, artist manager, author & editor, podcast producer, influencer manager).
+# Every card / message is decided or sent only by her app tap.
+from .editdesk_tools import EDITDESK_HANDLERS, EDITDESK_LABELS, EDITDESK_TOOLS  # noqa: E402
+from .motiondesk_tools import MOTIONDESK_HANDLERS, MOTIONDESK_LABELS, MOTIONDESK_TOOLS  # noqa: E402
+from .filmdesk_tools import FILMDESK_HANDLERS, FILMDESK_LABELS, FILMDESK_TOOLS  # noqa: E402
+from .patrakar_tools import PATRAKAR_HANDLERS, PATRAKAR_LABELS, PATRAKAR_TOOLS  # noqa: E402
+from .photoassist_tools import PHOTOASSIST_HANDLERS, PHOTOASSIST_LABELS, PHOTOASSIST_TOOLS  # noqa: E402
+from .graphic_tools import GRAPHIC_HANDLERS, GRAPHIC_LABELS, GRAPHIC_TOOLS  # noqa: E402
+from .artistmgr_tools import ARTISTMGR_HANDLERS, ARTISTMGR_LABELS, ARTISTMGR_TOOLS  # noqa: E402
+from .kitab_tools import KITAB_HANDLERS, KITAB_LABELS, KITAB_TOOLS  # noqa: E402
+from .podcast_tools import PODCAST_HANDLERS, PODCAST_LABELS, PODCAST_TOOLS  # noqa: E402
+from .influencer_tools import INFLUENCER_HANDLERS, INFLUENCER_LABELS, INFLUENCER_TOOLS  # noqa: E402
+
+for _t, _l, _h in ((EDITDESK_TOOLS, EDITDESK_LABELS, EDITDESK_HANDLERS), (MOTIONDESK_TOOLS, MOTIONDESK_LABELS, MOTIONDESK_HANDLERS), (FILMDESK_TOOLS, FILMDESK_LABELS, FILMDESK_HANDLERS), (PATRAKAR_TOOLS, PATRAKAR_LABELS, PATRAKAR_HANDLERS), (PHOTOASSIST_TOOLS, PHOTOASSIST_LABELS, PHOTOASSIST_HANDLERS), (GRAPHIC_TOOLS, GRAPHIC_LABELS, GRAPHIC_HANDLERS), (ARTISTMGR_TOOLS, ARTISTMGR_LABELS, ARTISTMGR_HANDLERS), (KITAB_TOOLS, KITAB_LABELS, KITAB_HANDLERS), (PODCAST_TOOLS, PODCAST_LABELS, PODCAST_HANDLERS), (INFLUENCER_TOOLS, INFLUENCER_LABELS, INFLUENCER_HANDLERS)):
+    _seen = {t["name"] for t in TOOLS}
+    TOOLS.extend(t for t in _t if t["name"] not in _seen)
+    TOOL_LABELS.update(_l)
+    HANDLERS.update(_h)

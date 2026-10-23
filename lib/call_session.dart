@@ -60,6 +60,8 @@ const callCardKinds = {
   'frontoffice_card', 'frontoffice_message', 'frontoffice_alert', 'eventplan_booking', 'eventplan_doc', 'eventplan_message',
   'eventplan_spend', 'shaadi_card', 'tourguide_card', 'tourguide_plan', 'tourguide_script', 'tourguide_alert', 'homestay_card',
   'homestay_alert', 'banquet_card',
+  // v0.156 Kala suite (cards that wait for her)
+  'editdesk_card', 'motiondesk_card', 'filmdesk_card', 'patrakar_card', 'photoassist_card', 'graphic_card', 'artistmgr_card', 'kitab_card', 'podcast_card', 'influencer_card', 'patrakar_alert',
 };
 
 /// The live voice call, owned by the app (not by a screen): it keeps going while the owner opens Chat, Connect,

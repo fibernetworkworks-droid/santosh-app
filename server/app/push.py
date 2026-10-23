@@ -388,6 +388,28 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
                 "banquet_alert": "Banquet", "banquet_day": "Aaj ka banquet note"}
     if kind in _mehmaan:
         return (f"{name}: {_mehmaan[kind]}", _say)
+    # v0.156 Kala suite: cards push only while they wait for her
+    _kala_wait = {"editdesk_card": "Edit desk: aapki haan chahiye", "motiondesk_card": "Motion studio: aapki haan chahiye",
+                  "filmdesk_card": "Film desk: aapki haan chahiye", "patrakar_card": "Khabar: aapki haan chahiye",
+                  "photoassist_card": "Photo: aapki haan chahiye", "graphic_card": "Design: aapki haan chahiye",
+                  "artistmgr_card": "Artist: aapki haan chahiye", "kitab_card": "Kitaab: aapki haan chahiye",
+                  "podcast_card": "Podcast: aapki haan chahiye", "influencer_card": "Influencer: aapki haan chahiye"}
+    if kind in _kala_wait:
+        if (p.get("card") or {}).get("status") != "waiting":
+            return None
+        return (f"{name}: {_kala_wait[kind]}", _say)
+    if kind == "motiondesk_update" and p.get("kind") not in (None, "", "rendered"):
+        return None
+    _kala = {"editdesk_alert": "Edit desk", "editdesk_day": "Aaj ka edit desk", "editdesk_note": "Naya edit version taiyaar",
+             "motiondesk_alert": "Motion studio", "motiondesk_day": "Aaj ka studio note", "motiondesk_update": "Render taiyaar",
+             "filmdesk_alert": "Film desk", "filmdesk_day": "Aaj ka film desk note", "patrakar_alert": "Khabar desk",
+             "patrakar_day": "Aaj ka khabar note", "photoassist_alert": "Photo studio", "photoassist_day": "Aaj ka photo note",
+             "graphic_alert": "Design desk", "graphic_day": "Aaj ka design note", "artistmgr_alert": "Artist manager",
+             "artistmgr_day": "Aaj ka artist note", "kitab_alert": "Kitaab", "kitab_day": "Aaj ka kitaab note",
+             "podcast_alert": "Podcast", "podcast_day": "Aaj ka podcast note", "influencer_alert": "Influencer",
+             "influencer_day": "Aaj ka influencer note"}
+    if kind in _kala:
+        return (f"{name}: {_kala[kind]}", _say)
     if kind == "site_board":
         if not p.get("push"):
             return None
@@ -575,7 +597,9 @@ PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "photo_made", 
               # v0.150 Kanoon suite
               "vakil_card", "vakil_alert", "vakil_day", "legalres_share", "legalres_memo", "compliance_filing", "compliance_cert", "compliance_alert", "compliance_day", "contracts_card", "contracts_alert", "contracts_day", "cosec_filing", "cosec_notice", "cosec_minutes", "cosec_alert", "cosec_day", "notary_print", "notary_alert", "notary_day", "pidesk_share", "pidesk_alert", "dpo_card", "dpo_breach", "dpo_alert", "dpo_day", "dpo_request",
               # v0.152 Mehmaan suite
-              "frontoffice_card", "frontoffice_message", "frontoffice_alert", "frontoffice_day", "eventplan_booking", "eventplan_doc", "eventplan_message", "eventplan_spend", "eventplan_alert", "eventplan_day", "shaadi_card", "shaadi_alert", "shaadi_day", "tourguide_card", "tourguide_alert", "tourguide_day", "homestay_card", "homestay_alert", "homestay_day", "banquet_card", "banquet_alert", "banquet_day"}
+              "frontoffice_card", "frontoffice_message", "frontoffice_alert", "frontoffice_day", "eventplan_booking", "eventplan_doc", "eventplan_message", "eventplan_spend", "eventplan_alert", "eventplan_day", "shaadi_card", "shaadi_alert", "shaadi_day", "tourguide_card", "tourguide_alert", "tourguide_day", "homestay_card", "homestay_alert", "homestay_day", "banquet_card", "banquet_alert", "banquet_day",
+              # v0.156 Kala suite
+              "editdesk_card", "editdesk_alert", "editdesk_day", "motiondesk_card", "motiondesk_alert", "motiondesk_day", "filmdesk_card", "filmdesk_alert", "filmdesk_day", "patrakar_card", "patrakar_alert", "patrakar_day", "photoassist_card", "photoassist_alert", "photoassist_day", "graphic_card", "graphic_alert", "graphic_day", "artistmgr_card", "artistmgr_alert", "artistmgr_day", "kitab_card", "kitab_alert", "kitab_day", "podcast_card", "podcast_alert", "podcast_day", "influencer_card", "influencer_alert", "influencer_day", "editdesk_note", "motiondesk_update"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 

@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     courier_bluedart_base: str = ""        # Blue Dart API base ('' = https://apigateway.bluedart.com/in/transportation)
     logistics_dir: str = ""                # v0.139 Logistics POD / loading / damage photos ('' = data/logistics)
     sitesup_dir: str = ""                  # v0.144 Site Sahayak photos (EXIF-stripped JPEG; '' = data/sitesup)
+    motiondesk_dir: str = ""               # v0.156 Motion designer desk: client logos ('' = data/motiondesk)
+    photoassist_dir: str = ""              # v0.156 Photo Sahayak: culling copies + release proofs ('' = data/photoassist)
+    graphic_dir: str = ""                  # v0.156 Graphic desk: job folders, proofs, handover ZIPs ('' = data/graphic)
     studio_on: bool = True                 # v0.68 Hoola Video Studio (AI-generated shots: Seedance / Veo / Kling / Wan / Omni)
     openrouter_api_key: str = ""           # one key for Seedance 2.0 / 2.5, Veo 3.1, Kling 3.0, Wan 3.0 (recommended)
     fal_key: str = ""                      # backup: Seedance via fal

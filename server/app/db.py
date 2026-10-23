@@ -735,6 +735,17 @@ def init_db(url: str | None = None):
     from .tourguide import models as _tourguide  # noqa: F401
     from .homestay import models as _homestay  # noqa: F401
     from .banquet import models as _banquet  # noqa: F401
+    # v0.156 Kala suite
+    from .editdesk import models as _editdesk  # noqa: F401
+    from .motiondesk import models as _motiondesk  # noqa: F401
+    from .filmdesk import models as _filmdesk  # noqa: F401
+    from .patrakar import models as _patrakar  # noqa: F401
+    from .photoassist import models as _photoassist  # noqa: F401
+    from .graphic import models as _graphic  # noqa: F401
+    from .artistmgr import models as _artistmgr  # noqa: F401
+    from .kitab import models as _kitab  # noqa: F401
+    from .podcast import models as _podcast  # noqa: F401
+    from .influencer import models as _influencer  # noqa: F401
     from .office import service as _office  # noqa: F401
     from .lekhak import service as _lekhak  # noqa: F401
     from .agent import pakka as _pakka  # noqa: F401

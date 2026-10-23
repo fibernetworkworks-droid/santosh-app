@@ -58,6 +58,16 @@ import 'shaadi_screen.dart';
 import 'tourguide_screen.dart';
 import 'homestay_screen.dart';
 import 'banquet_screen.dart';
+import 'editdesk_screen.dart';
+import 'motiondesk_screen.dart';
+import 'filmdesk_screen.dart';
+import 'patrakar_screen.dart';
+import 'photoassist_screen.dart';
+import 'graphic_screen.dart';
+import 'artistmgr_screen.dart';
+import 'kitab_screen.dart';
+import 'podcast_screen.dart';
+import 'influencer_screen.dart';
 import 'site_screen.dart';
 import 'app_design_screen.dart';
 import 'kalam_screen.dart';
@@ -758,6 +768,86 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Enquiry, khaali tareekh, hold, menu, quote, advance, BEO, bill'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BanquetScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.movie_creation_rounded, color: C.accent),
+              title: Text('${app.aName} · Video editor desk', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Client, brief, versions, timecode notes, rounds, licence, quote, invoice, delivery'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EditdeskScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.movie_filter_rounded, color: C.accent),
+              title: Text('${app.aName} · Motion designer', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Client brand kit, storyboard, render, badlav round, licence, handover, bill'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MotiondeskScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.theaters_rounded, color: C.accent),
+              title: Text('${app.aName} · AI film producer', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Script, shots, ijazat, studio budget, haq, release checklist'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FilmdeskScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.newspaper_rounded, color: C.accent),
+              title: Text('${app.aName} · Journalist', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Story, source (pehchaan band), fact check, jawab ka mauka, sudhaar, shikayat'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PatrakarScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.photo_camera_rounded, color: C.accent),
+              title: Text('${app.aName} · Photographer\'s assistant', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Shoot booking, shot list, gear, release, culling, edits, quote, gallery'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PhotoassistScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.brush_rounded, color: C.accent),
+              title: Text('${app.aName} · Graphic designer', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Client brief, proof, revision round, print jaanch, files, invoice'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GraphicScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.mic_external_on_rounded, color: C.accent),
+              title: Text('${app.aName} · Artist manager', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Roster, gig, hold, contract, invoice, royalty, release, payout'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ArtistmgrScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.menu_book_rounded, color: C.accent),
+              title: Text('${app.aName} · Author & editor', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Chapter, edit sujhav, style sheet, anumati, ISBN, pitch, royalty'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => KitabScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.podcasts_rounded, color: C.accent),
+              title: Text('${app.aName} · Podcast producer', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Episode, guest release, transcript, show notes, sponsor #Ad, feed'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PodcastScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.campaign_rounded, color: C.accent),
+              title: Text('${app.aName} · Influencer manager', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Creators, rate card, brand deals, #ad jaanch, invoice, report'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InfluencerScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

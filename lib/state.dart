@@ -323,6 +323,8 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _kanoonCards = {}; // v0.150 one card per id where the suite updates a card in place
   int mehmaanTick = 0;                         // v0.152 Mehmaan suite screens refresh on their events
   final Map<String, FeedItem> _mehmaanCards = {}; // v0.152 one card per id where the suite updates a card in place
+  int kalaTick = 0;                            // v0.156 Kala suite screens refresh on their events
+  final Map<String, FeedItem> _kalaCards = {};  // v0.156 one card per id where the suite updates a card in place
   int adsTick = 0;                             // v0.108 bumps on ads events (the Ads screen refreshes)
   final Map<String, FeedItem> _adsPlans = {};   // v0.108 one card per budget plan, changes updated in place
   int kalamTick = 0;                           // v0.101 bumps on content-writer events (the Kalam screen refreshes)
@@ -1592,6 +1594,55 @@ class Santosh extends ChangeNotifier {
         }
         mehmaanTick++;
         break;
+      case 'editdesk_card':
+      case 'editdesk_alert':
+      case 'editdesk_day':
+      case 'editdesk_note':
+      case 'motiondesk_card':
+      case 'motiondesk_alert':
+      case 'motiondesk_day':
+      case 'motiondesk_update':
+      case 'filmdesk_card':
+      case 'filmdesk_alert':
+      case 'filmdesk_day':
+      case 'patrakar_card':
+      case 'patrakar_alert':
+      case 'patrakar_day':
+      case 'patrakar_story':
+      case 'photoassist_card':
+      case 'photoassist_alert':
+      case 'photoassist_day':
+      case 'graphic_card':
+      case 'graphic_alert':
+      case 'graphic_day':
+      case 'graphic_job':
+      case 'artistmgr_card':
+      case 'artistmgr_alert':
+      case 'artistmgr_day':
+      case 'artistmgr_gig':
+      case 'kitab_card':
+      case 'kitab_alert':
+      case 'kitab_day':
+      case 'kitab_update':
+      case 'podcast_card':
+      case 'podcast_alert':
+      case 'podcast_day':
+      case 'influencer_card':
+      case 'influencer_alert':
+      case 'influencer_day':
+        // v0.156 Kala suite: cards keyed by their id are updated in place
+        final kp = Map<String, dynamic>.from(p);
+        final kk = kalaCardKey(ev.kind, kp);
+        final kOld = kk.isEmpty ? null : _kalaCards[kk];
+        if (kOld != null) {
+          kOld.data = {...kOld.data, ...kp};
+        } else {
+          final it = FeedItem(ev.kind, kp);
+          if (kk.isNotEmpty) _kalaCards[kk] = it;
+          feed.add(it);
+        }
+        kalaTick++;
+        break;
       case 'propagent_listing':
         gharTick++;                              // v0.144 refresh only (no card)
         break;
@@ -2291,5 +2342,14 @@ String mehmaanCardKey(String kind, Map<String, dynamic> p) {
     'eventplan_spend' => sub('spend'),
     _ => '',
   };
+  return id.isEmpty || id == 'null' ? '' : '$kind:$id';
+}
+
+
+/// v0.156 Kala suite: which cards are one-per-id (updated in place). '' = always a new card.
+String kalaCardKey(String kind, Map<String, dynamic> p) {
+  if (!kind.endsWith('_card')) return '';
+  final c = p['card'];
+  final id = c is Map ? '${c['id'] ?? ''}' : '';
   return id.isEmpty || id == 'null' ? '' : '$kind:$id';
 }

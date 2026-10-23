@@ -67,7 +67,8 @@ async def lifespan(app: FastAPI):
         if not _st.contracts_llm:               # v0.150 Kanoon suite
             _os.environ.setdefault("CONTRACTS_LLM", "false")
         for _k, _v in (("COURIER_DIR", _st.courier_dir), ("COURIER_BLUEDART_BASE", _st.courier_bluedart_base),
-                       ("LOGISTICS_DIR", _st.logistics_dir), ("SITESUP_DIR", _st.sitesup_dir)):
+                       ("LOGISTICS_DIR", _st.logistics_dir), ("SITESUP_DIR", _st.sitesup_dir),
+                       ("MOTIONDESK_DIR", _st.motiondesk_dir), ("PHOTOASSIST_DIR", _st.photoassist_dir), ("GRAPHIC_DIR", _st.graphic_dir)):
             if _v:
                 _os.environ.setdefault(_k, _v)
         if _st.courier_poll_min:
@@ -92,7 +93,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.155.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.156.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -212,7 +213,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design", "app_android", "seva", "helpdesk", "shikayat", "aftersales", "feedback", "wapsi", "samudaay", "gyaan", "kaam_watch", "app_ideas", "devsahayak", "itadmin", "isp_noc", "cyber", "devops", "docwriter", "app_review", "product", "customs", "travel", "warehouse", "fleet", "courier", "drivers", "logistics", "propagent", "rentdesk", "site_supervisor", "interior", "archassist", "society", "vakil", "legal_research", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo", "front_office", "eventplan", "shaadi", "tourguide", "homestay", "banquet"] + (["qa"] if _qa_ok() else []) + (["callcentre"] if st.public_base_url and st.gemini_api_key else []) + (["video_editor"] if shutil.which("ffmpeg") else []) + (["blender_3d"] if _blender_ok() else []) + (["postgres"] if _pg_ok() else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) + (["side_talk"] if st.gemini_api_key and st.voice_side_talk else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design", "app_android", "seva", "helpdesk", "shikayat", "aftersales", "feedback", "wapsi", "samudaay", "gyaan", "kaam_watch", "app_ideas", "devsahayak", "itadmin", "isp_noc", "cyber", "devops", "docwriter", "app_review", "product", "customs", "travel", "warehouse", "fleet", "courier", "drivers", "logistics", "propagent", "rentdesk", "site_supervisor", "interior", "archassist", "society", "vakil", "legal_research", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo", "front_office", "eventplan", "shaadi", "tourguide", "homestay", "banquet", "edit_desk", "motiondesk", "patrakar", "photoassist", "artistmgr", "kitab", "podcast", "influencer", "graphic"] + (["film_desk"] if shutil.which("ffmpeg") else []) + (["qa"] if _qa_ok() else []) + (["callcentre"] if st.public_base_url and st.gemini_api_key else []) + (["video_editor"] if shutil.which("ffmpeg") else []) + (["blender_3d"] if _blender_ok() else []) + (["postgres"] if _pg_ok() else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) + (["side_talk"] if st.gemini_api_key and st.voice_side_talk else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -3480,6 +3481,23 @@ from .homestay.api import make_router as _homestay_router  # noqa: E402
 from .banquet.api import make_router as _banquet_router  # noqa: E402
 
 for _mk in (_frontoffice_router, _eventplan_router, _shaadi_router, _tourguide_router, _homestay_router, _banquet_router):
+    app.include_router(_mk(require_key, current_tenant))
+
+# v0.156 Kala suite: 10 Media, design & creative Sahayaks (under /api/<mod>/*, key-protected; podcast's router also holds two
+# PUBLIC routes that check their own random feed token: GET /api/podcast/feed/{token}.xml and /api/podcast/pub/{token}/{ep}/{name})
+from .editdesk.api import make_router as _editdesk_router  # noqa: E402
+from .motiondesk.api import make_router as _motiondesk_router  # noqa: E402
+from .filmdesk.api import make_router as _filmdesk_router  # noqa: E402
+from .patrakar.api import make_router as _patrakar_router  # noqa: E402
+from .photoassist.api import make_router as _photoassist_router  # noqa: E402
+from .graphic.api import make_router as _graphic_router  # noqa: E402
+from .artistmgr.api import make_router as _artistmgr_router  # noqa: E402
+from .kitab.api import make_router as _kitab_router  # noqa: E402
+from .podcast.api import make_router as _podcast_router  # noqa: E402
+from .influencer.api import make_router as _influencer_router  # noqa: E402
+
+for _mk in (_editdesk_router, _motiondesk_router, _filmdesk_router, _patrakar_router, _photoassist_router, _graphic_router,
+            _artistmgr_router, _kitab_router, _podcast_router, _influencer_router):
     app.include_router(_mk(require_key, current_tenant))
 
 # v0.141 3D Studio (Blender in a locked box): /api/blender3d/*; the signed file route checks its own signature
