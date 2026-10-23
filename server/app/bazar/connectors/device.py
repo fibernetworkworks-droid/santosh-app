@@ -345,7 +345,14 @@ class DeviceExecutor:
                 if link:
                     from urllib.parse import quote
                     op["fallback"] = link.format(q=quote(q[:80]))
-            return self._phone(ctx, dev, [op], f"Playing {q} in {label} on {where}.", channel="phone_media")
+            uri = str(args.get("uri", "")).strip()
+            # v0.136.1 the exact item (spotify:track:..., music.youtube.com/watch?v=...) found and checked by the server;
+            # the phone opens it straight in the app and presses play, instead of only searching
+            if uri and app and re.fullmatch(r"(spotify:(track|album|artist|playlist):[A-Za-z0-9]{22}|"
+                                            r"https://music\.youtube\.com/watch\?v=[\w-]{11})", uri):
+                op["uri"] = uri
+            shown = str(args.get("title", "")).strip()[:120] or q
+            return self._phone(ctx, dev, [op], f"Playing {shown} in {label} on {where}.", channel="phone_media")
         word = {"play": "Playing", "resume": "Playing", "pause": "Paused", "next": "Next song", "previous": "Previous song",
                 "stop": "Stopped", "play_pause": "Done"}[action]
         return self._phone(ctx, dev, [{"op": "media_key", "key": MEDIA_KEYS[action]}], f"{word} on {where}.",

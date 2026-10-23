@@ -146,6 +146,17 @@ async def youtube_play(ctx: Ctx, video="", query="", on="phone", tv="", order="r
             picked = None        # lookup failed but the id is known: play it anyway
         else:
             raise ToolError(str(e))
+    if not picked and not vid and q:
+        # v0.136.1 no YouTube API key / sign-in: find the exact video on the open web (checked with YouTube's own
+        # oEmbed) so the app PLAYS it instead of opening a search list
+        from .. import mediafind
+        try:
+            got = await asyncio.wait_for(mediafind.youtube(q), 40)
+        except Exception:
+            got = None
+        if got:
+            picked = {"id": got["id"], "title": got["title"], "channel": got["channel"], "url": got["url"],
+                      "thumbnail": f"https://i.ytimg.com/vi/{got['id']}/hqdefault.jpg"}
     if picked:
         vid, title, channel = picked.get("id") or vid, picked.get("title", ""), picked.get("channel", "")
         ys.publish(ctx.conversation_id, [picked], "YouTube: chal raha hai")
@@ -164,8 +175,9 @@ async def youtube_play(ctx: Ctx, video="", query="", on="phone", tv="", order="r
     from .life_tools import _device_action
     payload = {"video_id": vid or "", "title": shown[:120], "query": "" if vid else q[:200],
                "url": watch_url(vid) if vid else "https://www.youtube.com/results?search_query=" + quote_plus(q)}
-    note = (f"'{shown}' phone par YouTube app mein khul raha hai." if vid else
-            f"YouTube app mein '{q}' dhoondh kar khol diya; jo video chahiye usse tap kar lijiye.")
+    note = (f"'{shown}' phone par YouTube app mein chal raha hai." if vid else
+            f"Theek video nahi mil paya, isliye YouTube app mein '{q}' ki search khol di; jo video chahiye usse tap kar "
+            "lijiye.")
     return {"on": "phone", "video_id": vid, "title": title, "channel": channel, **_device_action(ctx, "youtube_play", payload, note)}
 
 

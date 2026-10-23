@@ -167,11 +167,41 @@ async def music_control(ctx: Ctx, action, query="", direction="", steps=None, pe
         args["app"] = str(app)
     if kind:
         args["kind"] = str(kind)
+    found = None
+    if str(action) == "play" and query and app:
+        found = await _exact_item(str(app), str(query), str(kind or ""))
+        if found:
+            args["uri"], args["title"] = found["uri"], found["title"]
     out = await _device(ctx, "bluetooth-speaker", "media", args)
     if str(action) == "play" and query and out.get("status") == "done":
-        out["note"] = ("Started on her phone. Say what is playing in one line. If she says it only opened the app, ask her to "
-                       "tap play once (some apps show results first).")
+        if found:
+            out["playing_title"] = found["title"]
+            out["note"] = (f"Opened '{found['title']}' in the app and pressed play. Say what is playing in one line.")
+        else:
+            out["note"] = ("Started on her phone (the app searched it and the phone pressed play). Say what is playing in "
+                           "one line. If she says it only opened the app, ask her to tap play once; Hoola presses play "
+                           "itself more reliably when she allows Hoola's notification access (say this only once).")
     return out
+
+
+async def _exact_item(app: str, query: str, kind: str) -> dict | None:
+    """v0.136.1 The exact song / album / video to open (checked by the service's own oEmbed), or None = search as before."""
+    from .. import mediafind
+    from ..bazar.connectors.device import music_app
+    try:
+        a = music_app(app)
+    except Exception:
+        return None
+    try:
+        if a == "spotify":
+            got = await asyncio.wait_for(mediafind.spotify(query, "track" if kind == "song" else kind), 30)
+            return {"uri": got["uri"], "title": got["title"]} if got else None
+        if a == "youtube_music" and kind in ("", "song"):
+            got = await asyncio.wait_for(mediafind.youtube(query + " song"), 30)
+            return {"uri": f"https://music.youtube.com/watch?v={got['id']}", "title": got["title"]} if got else None
+    except Exception:
+        return None
+    return None
 
 
 async def ac_control(ctx: Ctx, status=False, **args):

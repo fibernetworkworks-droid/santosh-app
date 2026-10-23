@@ -165,7 +165,15 @@ internal class MediaChannel(private val context: Context) {
             "media_key" -> key(op.getString("key"))
             "volume" -> volume(op.getString("direction"), op.optInt("steps", 2), op.optInt("max_percent", 90))
             "volume_set" -> setVolume(op.getInt("percent"), op.optInt("max_percent", 90))
-            "play_from_search" -> playFromSearch(op.getString("query"), op.optString("package", ""), op.optString("kind", ""), op.optString("fallback", ""))
+            "play_from_search" -> {
+                val pkg = op.optString("package", "")
+                val uri = op.optString("uri", "")
+                // v0.136.1 the exact item first (spotify:track:..., music.youtube.com/watch?v=...), then "play from search";
+                // either way the phone then presses play itself, so the song starts instead of a list
+                val usedUri = uri.isNotEmpty() && openExact(pkg, uri)
+                if (!usedUri) playFromSearch(op.getString("query"), pkg, op.optString("kind", ""), op.optString("fallback", ""))
+                autoPlay(pkg, if (usedUri) uri else "")
+            }
             else -> throw HomeDeviceException("Unknown media op ${op.optString("op")}")
         }
     }
@@ -206,6 +214,61 @@ internal class MediaChannel(private val context: Context) {
         val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
         val pct = percent.coerceIn(0, maxPercent.coerceIn(0, 90))
         audio.setStreamVolume(AudioManager.STREAM_MUSIC, (max * pct / 100.0).roundToInt(), AudioManager.FLAG_SHOW_UI)
+    }
+
+
+    /** v0.136.1 Open the exact song / album in the named app. False = the app can't take it (then search as before). */
+    private fun openExact(pkg: String, uri: String): Boolean {
+        val pm = context.packageManager
+        if (pkg.isNotEmpty() && pm.getLaunchIntentForPackage(pkg) == null) throw HomeDeviceException("app_missing")
+        val view = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(uri)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (pkg.isNotEmpty()) view.setPackage(pkg)
+        if (view.resolveActivity(pm) == null) return false
+        return try { context.startActivity(view); true } catch (e: Exception) { false }
+    }
+
+    /**
+     * v0.136.1 After the app opens, make it PLAY. With Hoola's notification access (the Galla listener) Android lets us
+     * see the app's media session: playFromUri for a Spotify item, else play(); without it, a PLAY media key once the app
+     * had time to open and nothing is playing. Runs in the background so the reply is not held up; never throws.
+     */
+    private fun autoPlay(pkg: String, uri: String) {
+        Thread {
+            try {
+                val msm = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as android.media.session.MediaSessionManager
+                val comp = android.content.ComponentName(context, HoolaPayListener::class.java)
+                var ctl: android.media.session.MediaController? = null
+                var allowed = true
+                val end = android.os.SystemClock.elapsedRealtime() + 8000
+                while (android.os.SystemClock.elapsedRealtime() < end) {
+                    Thread.sleep(700)
+                    try {
+                        ctl = msm.getActiveSessions(comp).firstOrNull { pkg.isEmpty() || it.packageName == pkg }
+                    } catch (e: SecurityException) {
+                        allowed = false
+                        break
+                    }
+                    if (ctl != null) break
+                }
+                val playing = android.media.session.PlaybackState.STATE_PLAYING
+                val c = ctl
+                if (c != null) {
+                    Thread.sleep(1500)
+                    if (c.playbackState?.state == playing) return@Thread
+                    if (uri.startsWith("spotify:")) {
+                        try { c.transportControls.playFromUri(android.net.Uri.parse(uri), android.os.Bundle()) } catch (_: Throwable) {}
+                        Thread.sleep(1500)
+                        if (c.playbackState?.state == playing) return@Thread
+                    }
+                    c.transportControls.play()
+                    return@Thread
+                }
+                if (!allowed) Thread.sleep(2500)
+                if (!audio.isMusicActive) key("PLAY")
+            } catch (e: Throwable) {
+                Log.w("HoolaMedia", "autoplay: $e")
+            }
+        }.apply { isDaemon = true }.start()
     }
 
     /**
