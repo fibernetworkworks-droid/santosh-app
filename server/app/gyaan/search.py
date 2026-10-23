@@ -6,6 +6,7 @@
   3. Trigram     FTS5 trigram over a spelling-forgiving Roman key (kya / kyaa, bijli / बिजली)
   4. Meaning     cosine over the owner's int8 vectors (same model as the chunks)
   5. Yaad        her chats and calls (Hoola ki yaad), not copied, searched in place
+  6. Names       v0.135 people / firms the question names (any spelling / script) -> every chunk that names them
   -> reciprocal rank fusion (k = 60, no training) -> max 3 chunks per document -> optional API rerank (text chat only,
   never in a voice call) -> confidence gate (word coverage / meaning / exact ID / rerank score)."""
 from __future__ import annotations
@@ -18,13 +19,14 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from . import norm, store
+from . import ents, norm, store
 
 log = logging.getLogger("santosh.gyaan")
 K = 60
 POOL = 50
 _VC: dict[str, tuple] = {}
 _VLOCK = threading.Lock()
+_BACKFILLED: set[str] = set()
 STATS = {"searches": 0, "found": 0, "nahi_mila": 0, "id_hits": 0, "reranked": 0, "ms_total": 0}
 
 
@@ -116,6 +118,14 @@ def search(tenant: str, query: str, queries: list[str] | None = None, sources: l
     lists: dict[str, list] = {}
     from . import embed
     e = embed.embedder()
+    if tenant not in _BACKFILLED:                 # files added before v0.135 get their names once
+        _BACKFILLED.add(tenant)
+        try:
+            from .ingest import ents_backfill
+            ents_backfill(tenant)
+        except Exception as ex:
+            log.info("gyaan: name backfill skipped: %s", ex)
+    names: list[str] = []
     with store.db(tenant) as c:
         # 1. exact identifiers
         idv = []
@@ -128,6 +138,13 @@ def search(tenant: str, query: str, queries: list[str] | None = None, sources: l
             lists["id"] = [r[0] for r in c.execute(f"SELECT DISTINCT chunk_id FROM ids WHERE value IN ({qs}) LIMIT 30", idv)]
             if lists["id"]:
                 STATS["id_hits"] += 1
+        # 1b. names (people / firms) the question mentions
+        try:
+            eids, names = ents.match(c, vs)
+            if eids:
+                lists["name"] = eids
+        except Exception as ex:
+            log.info("gyaan name match failed: %s", ex)
         # 2. BM25 over whole words, all variants
         terms = [w for v in vs for w in norm.words(v)] + [n for v in vs for n in norm.numbers(v)]
         fq = _fts_query(terms)
@@ -164,7 +181,7 @@ def search(tenant: str, query: str, queries: list[str] | None = None, sources: l
         score: dict[int, float] = {}
         why: dict[int, list[str]] = {}
         for name, lst in lists.items():
-            w = 2.0 if name == "id" else 1.0
+            w = 2.0 if name == "id" else (1.5 if name == "name" else 1.0)
             for rank, cid in enumerate(lst):
                 score[cid] = score.get(cid, 0.0) + w / (K + rank + 1)
                 why.setdefault(cid, []).append(name)
@@ -196,7 +213,8 @@ def search(tenant: str, query: str, queries: list[str] | None = None, sources: l
         hits.append({"chunk_id": cid, "doc_id": r["doc_id"], "title": r["title"], "source": r["source"], "kind": r["kind"],
                      "page": r["page"], "at": r["at"], "text": r["text"], "link": meta.get("link", ""),
                      "file_id": meta.get("file_id", ""), "fused": round(score[cid], 5), "cover": round(cover, 2),
-                     "cos": round(cos_of.get(cid, 0.0), 3), "exact": "id" in why.get(cid, []), "why": why.get(cid, [])})
+                     "cos": round(cos_of.get(cid, 0.0), 3), "exact": "id" in why.get(cid, []), "why": why.get(cid, []),
+                     "named": "name" in why.get(cid, [])})
     # 5. her chats and calls (Hoola ki yaad), searched in place
     if memory and (not sources or "chat" in sources):
         try:
@@ -238,5 +256,5 @@ def search(tenant: str, query: str, queries: list[str] | None = None, sources: l
         return {"status": "nahi_mila", "hits": [], "near": near, "searched": list(lists), "reranked": reranked,
                 "say": "Aapke Gyaan (files, Drive, mail, purani baatein) mein iska pakka jawab nahi mila."}
     STATS["found"] += 1
-    return {"status": "found", "hits": good, "searched": list(lists), "reranked": reranked,
+    return {"status": "found", "hits": good, "searched": list(lists), "reranked": reranked, "names": names[:8],
             "ms": int((time.time() - t0) * 1000)}

@@ -8,8 +8,12 @@ POST   /api/gyaan/upload          multipart file                       add a fil
 POST   /api/gyaan/notes           {title, text}
 POST   /api/gyaan/drive           {folder}                             keep a Google Drive folder in Gyaan (daily sync)
 DELETE /api/gyaan/drive/{id}      stop + forget its files
-POST   /api/gyaan/sync            Drive + mail now
-PUT    /api/gyaan/settings        {auto_files, mail_on}                mail_on false = mail forgotten too
+POST   /api/gyaan/web             {url, follow}                        v0.135 a public web page (+ same-site links), weekly
+DELETE /api/gyaan/watch/{id}      stop a Drive folder / web page + forget its pages
+GET    /api/gyaan/names?q=        v0.135 people / firms in her Gyaan (documents per name)
+GET    /api/gyaan/names/who?name= which documents name them + who appears with them
+POST   /api/gyaan/sync            Drive + web pages + mail + her records now
+PUT    /api/gyaan/settings        {auto_files, mail_on, records_on}    off = that part forgotten too
 DELETE /api/gyaan/docs/{id}       forget one item (chunks, vectors, IDs: all of it)
 DELETE /api/gyaan                 forget everything (the owner's file is deleted)
 GET    /api/gyaan/eval            run the built-in test set (recall / abstention)"""
@@ -87,14 +91,37 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def gyaan_drive_off(watch_id: str, tenant: str = Depends(current_tenant)):
         return await run(ingest.remove_watch, tenant, watch_id)
 
+    @r.post("/web")
+    async def gyaan_web(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        url = str(b.get("url") or "").strip()
+        if not url:
+            raise HTTPException(400, "url chahiye")
+        return await run(ingest.add_web, tenant, url, int(b.get("follow") or 0))
+
+    @r.delete("/watch/{watch_id}")
+    async def gyaan_watch_off(watch_id: str, tenant: str = Depends(current_tenant)):
+        return await run(ingest.remove_watch, tenant, watch_id)
+
+    @r.get("/names")
+    async def gyaan_names(q: str = "", limit: int = 40, tenant: str = Depends(current_tenant)):
+        return {"names": await run(ingest.names, tenant, q, max(1, min(limit, 200)))}
+
+    @r.get("/names/who")
+    async def gyaan_who(name: str = "", tenant: str = Depends(current_tenant)):
+        if not name.strip():
+            raise HTTPException(400, "name chahiye")
+        return await run(ingest.who, tenant, name.strip())
+
     @r.post("/sync")
     async def gyaan_sync(tenant: str = Depends(current_tenant)):
-        return {"drive": await run(ingest.sync_drive, tenant), "mail": await run(ingest.sync_mail, tenant)}
+        return {"drive": await run(ingest.sync_drive, tenant), "web": await run(ingest.sync_web, tenant),
+                "mail": await run(ingest.sync_mail, tenant), "records": await run(ingest.sync_records, tenant)}
 
     @r.put("/settings")
     async def gyaan_settings(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
-        return await run(ingest.save_settings, tenant, **{k: b[k] for k in ("auto_files", "mail_on") if k in b})
+        return await run(ingest.save_settings, tenant, **{k: b[k] for k in ("auto_files", "mail_on", "records_on") if k in b})
 
     @r.delete("/docs/{doc_id}")
     async def gyaan_forget(doc_id: str, tenant: str = Depends(current_tenant)):

@@ -12,16 +12,18 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import threading
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from . import chunk, norm, store
+from . import chunk, ents, norm, store
 
 log = logging.getLogger("santosh.gyaan")
 SOURCES = ("file", "drive", "mail", "note", "web", "record")
 MAX_DOC_CHARS = 600_000
+ENTS_V = 1                     # bump when entity rules change: old files are re-read by ents_backfill
 _EMBEDDING: set[str] = set()
 _ELOCK = threading.Lock()
 
@@ -76,6 +78,7 @@ def add_text(tenant: str, source: str, ref: str, title: str, text: str, kind: st
                 c.execute("INSERT INTO tri(rowid, body) VALUES(?, ?)", (cid, _tri_body(pre, p["text"])))
             for kind_, v in norm.ids(p["text"] + " " + title):
                 c.execute("INSERT INTO ids(value, kind, chunk_id) VALUES(?,?,?)", (v, kind_, cid))
+            ents.index(c, cid, did, (title + "\n" if i == 0 else "") + p["text"])
         c.execute("INSERT INTO docs(id, source, ref, title, kind, sha, scope, at, added, updated, chunks, chars, masked, meta)"
                   " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                   (did, source, ref, title, kind, sha, scope, at or "", store.now(), store.now(), len(pieces), len(masked),
@@ -243,7 +246,7 @@ def remove_watch(tenant: str, watch_id: str, forget_files: bool = True) -> dict[
     with store.db(tenant, write=True) as db:
         n = 0
         if forget_files:
-            for r in db.execute("SELECT id, meta FROM docs WHERE source='drive'").fetchall():
+            for r in db.execute("SELECT id, meta FROM docs WHERE source IN ('drive', 'web')").fetchall():
                 if json.loads(r["meta"] or "{}").get("watch") == watch_id:
                     store.delete_doc(db, r["id"])
                     n += 1
@@ -293,6 +296,151 @@ def _mail_date(d: Any) -> str:
         return parsedate_to_datetime(str(d)).date().isoformat()
     except Exception:
         return ""
+
+
+# ---------------------------------------------------------------- web pages (v0.135)
+WEB_MAX_PAGES = 12
+WEB_EVERY_S = 7 * 24 * 3600
+
+
+def _web_text(url: str) -> dict[str, Any]:
+    import asyncio
+    from .. import web
+    try:
+        return asyncio.run(web.open_website(url))
+    except web.WebError as e:
+        raise GyaanError(str(e))
+
+
+def add_web(tenant: str, url: str, follow: int = 0) -> dict[str, Any]:
+    """A public web page she points at (her own site, a supplier's price page, a scheme's rules) -> Gyaan, kept fresh weekly.
+    `follow` = also read up to that many links on the same site (max 12). Public addresses only (web._check_url on every
+    hop); page text is data, never instructions."""
+    from .. import web
+    try:
+        url = web._check_url((url or "").strip())
+    except web.WebError as e:
+        raise GyaanError(str(e))
+    wid = "u" + hashlib.sha1(url.encode()).hexdigest()[:10]
+    follow = max(0, min(int(follow or 0), WEB_MAX_PAGES - 1))
+    with store.db(tenant, write=True) as db:
+        db.execute("INSERT OR REPLACE INTO watch(id, kind, ref, name, added, synced, files, error) VALUES(?,?,?,?,?,?,?,?)",
+                   (wid, "web", json.dumps({"url": url, "follow": follow}), url[:200], store.now(), 0, 0, ""))
+    return {"watch_id": wid, **sync_web(tenant, wid)}
+
+
+def sync_web(tenant: str, watch_id: str = "") -> dict[str, Any]:
+    from urllib.parse import urlparse
+    with store.db(tenant) as db:
+        rows = [dict(r) for r in db.execute("SELECT * FROM watch WHERE kind='web'" + (" AND id=?" if watch_id else ""),
+                                            (watch_id,) if watch_id else ())]
+    total: dict[str, Any] = {"added": 0, "updated": 0, "same": 0, "removed": 0, "skipped": 0, "errors": []}
+    for w in rows:
+        cfg = json.loads(w["ref"] or "{}")
+        start, follow = cfg.get("url", ""), int(cfg.get("follow") or 0)
+        host = urlparse(start).netloc.lower()
+        queue, seen, keep, name = [start], set(), set(), w["name"]
+        try:
+            while queue and len(seen) < 1 + follow:
+                u = queue.pop(0).split("#")[0]
+                if u in seen:
+                    continue
+                seen.add(u)
+                try:
+                    page = _web_text(u)
+                except GyaanError as e:
+                    if u == start:
+                        raise
+                    total["skipped"] += 1
+                    total["errors"].append(f"{u[:80]}: {str(e)[:80]}")
+                    continue
+                if u == start and page.get("title"):
+                    name = page["title"][:200]
+                ref = "web:" + page.get("url", u)
+                keep.add(doc_id("web", ref))
+                text = page.get("text") or ""
+                if len(text.strip()) < 40:
+                    total["skipped"] += 1
+                    continue
+                r = add_text(tenant, "web", ref, page.get("title") or u, text, "doc",
+                             datetime.now(timezone.utc).date().isoformat(),
+                             {"link": page.get("url", u), "watch": w["id"]})
+                total[r["status"] if r["status"] in total else "skipped"] += 1
+                for ln in page.get("links") or []:
+                    href = ln.get("url") if isinstance(ln, dict) else str(ln)
+                    if href and urlparse(href).netloc.lower() == host and href.split("#")[0] not in seen \
+                            and not re.search(r"\.(pdf|jpe?g|png|gif|zip|mp4|mp3|webp|svg)(\?|$)", href, re.I):
+                        queue.append(href)
+            with store.db(tenant, write=True) as db:
+                gone = [r["id"] for r in db.execute("SELECT id, meta FROM docs WHERE source='web'")
+                        if json.loads(r["meta"] or "{}").get("watch") == w["id"] and r["id"] not in keep]
+                for g in gone:
+                    store.delete_doc(db, g)
+                total["removed"] += len(gone)
+                db.execute("UPDATE watch SET synced=?, files=?, error=?, name=? WHERE id=?",
+                           (store.now(), len(keep), "", name, w["id"]))
+                store.bump(db)
+        except Exception as e:
+            total["errors"].append(f"{w.get('name')}: {str(e)[:120]}")
+            with store.db(tenant, write=True) as db:
+                db.execute("UPDATE watch SET synced=?, error=? WHERE id=?", (store.now(), str(e)[:300], w["id"]))
+    total["errors"] = total["errors"][:10]
+    if total["errors"] and not (total["added"] or total["updated"] or total["same"]):
+        total["say"] = "Page nahi khula: " + total["errors"][0]
+    return total
+
+
+# ---------------------------------------------------------------- her Sahayak records (v0.135)
+def sync_records(tenant: str) -> dict[str, Any]:
+    """What she already told Hoola elsewhere becomes searchable too: business profile, Seva FAQ / policy, Kalam fact
+    sheet, her price list. Rebuilt from those tables (same text = no-op); a record that is gone is forgotten."""
+    from . import records
+    if not settings(tenant).get("records_on", True):
+        return {"status": "off"}
+    out: dict[str, Any] = {"added": 0, "updated": 0, "same": 0, "removed": 0}
+    keep: set[str] = set()
+    for item in records.collect(tenant):
+        r = add_text(tenant, "record", item["ref"], item["title"], item["text"], item.get("kind", "doc"),
+                     item.get("at", ""), {"record": item["what"]})
+        keep.add(doc_id("record", item["ref"]))
+        if r["status"] in out:
+            out[r["status"]] += 1
+    with store.db(tenant, write=True) as db:
+        gone = [r["id"] for r in db.execute("SELECT id FROM docs WHERE source='record'") if r["id"] not in keep]
+        for g in gone:
+            store.delete_doc(db, g)
+        out["removed"] = len(gone)
+        store.set_meta(db, "records_synced", store.now())
+        if gone:
+            store.bump(db)
+    return out
+
+
+def names(tenant: str, q: str = "", limit: int = 40) -> list[dict[str, Any]]:
+    ents_backfill(tenant)
+    with store.db(tenant) as db:
+        return [{k: v for k, v in r.items() if k != "key"} for r in ents.top(db, q, limit)]
+
+
+def who(tenant: str, name: str) -> dict[str, Any]:
+    ents_backfill(tenant)
+    with store.db(tenant) as db:
+        return ents.related(db, name)
+
+
+# ---------------------------------------------------------------- entities for files added before v0.135
+def ents_backfill(tenant: str) -> int:
+    with store.db(tenant) as db:
+        if (store.get_meta(db, "ents_v", 0) or 0) >= ENTS_V:
+            return 0
+    n = 0
+    with store.db(tenant, write=True) as db:
+        db.execute("DELETE FROM ents")
+        titles = {r["id"]: r["title"] for r in db.execute("SELECT id, title FROM docs")}
+        for r in db.execute("SELECT id, doc_id, ord, text FROM chunks").fetchall():
+            n += ents.index(db, r["id"], r["doc_id"], (titles.get(r["doc_id"], "") + "\n" if r["ord"] == 0 else "") + r["text"])
+        store.set_meta(db, "ents_v", ENTS_V)
+    return n
 
 
 # ---------------------------------------------------------------- vectors (background)
@@ -384,7 +532,7 @@ def forget_all(tenant: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------- settings + views
-DEFAULTS = {"auto_files": True, "mail_on": False}
+DEFAULTS = {"auto_files": True, "mail_on": False, "records_on": True}
 
 
 def settings(tenant: str) -> dict[str, Any]:
@@ -402,6 +550,11 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
         store.set_meta(db, "settings", cur)
     if not cur["mail_on"] and "mail_on" in kw:
         forget_where(tenant, "mail")          # mail switched off = mail forgotten too
+    if "records_on" in kw and kw["records_on"] is not None:
+        if cur["records_on"]:
+            sync_records(tenant)
+        else:
+            forget_where(tenant, "record")
     return cur
 
 
@@ -453,8 +606,22 @@ def daily(tenant: str) -> dict[str, Any]:
     with store.db(tenant) as db:
         stale = [r["id"] for r in db.execute("SELECT id, synced FROM watch") if store.now() - (r["synced"] or 0) > 20 * 3600]
         mail_synced = store.get_meta(db, "mail_synced", 0) or 0
+    with store.db(tenant) as db:
+        kinds = {r["id"]: r["kind"] for r in db.execute("SELECT id, kind FROM watch")}
+        web_due = [r["id"] for r in db.execute("SELECT id, synced FROM watch WHERE kind='web'")
+                   if store.now() - (r["synced"] or 0) > WEB_EVERY_S]
+        rec_synced = store.get_meta(db, "records_synced", 0) or 0
     for w in stale:
-        out[w] = sync_drive(tenant, w)
+        if kinds.get(w) == "drive":
+            out[w] = sync_drive(tenant, w)
+    for w in web_due:
+        out[w] = sync_web(tenant, w)
+    if time.time() - rec_synced > 6 * 3600:
+        try:
+            out["records"] = sync_records(tenant)
+        except Exception as e:
+            log.info("gyaan records sync skipped: %s", e)
+    out["ents"] = ents_backfill(tenant)
     if settings(tenant).get("mail_on") and time.time() - mail_synced > 1800:
         out["mail"] = sync_mail(tenant)
     return out

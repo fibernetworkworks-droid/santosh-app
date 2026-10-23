@@ -23,7 +23,7 @@ const _srcLabel = {
   'mail': 'Mail',
   'note': 'Note',
   'web': 'Web',
-  'record': 'Record',
+  'record': 'Business record',
   'chat': 'Pichhli baat',
 };
 const _srcIcon = {
@@ -50,6 +50,7 @@ class _GyaanScreenState extends State<GyaanScreen> {
   final _q = TextEditingController();
   Map<String, dynamic>? _found;
   Map<String, dynamic>? _eval;
+  List<Map<String, dynamic>> _names = const [];
 
   @override
   void initState() {
@@ -66,9 +67,14 @@ class _GyaanScreenState extends State<GyaanScreen> {
   Future<void> _load() async {
     try {
       final r = await widget.app.api!.call('GET', '/api/gyaan');
+      List<Map<String, dynamic>> names = const [];
+      try {
+        names = _list(_map(await widget.app.api!.call('GET', '/api/gyaan/names', query: {'limit': '24'}))['names']);
+      } catch (_) {}
       if (mounted) {
         setState(() {
           _st = _map(r);
+          _names = names;
           _err = null;
         });
       }
@@ -128,6 +134,86 @@ class _GyaanScreenState extends State<GyaanScreen> {
     if (f == null) return;
     await _do(() => widget.app.api!.call('POST', '/api/gyaan/drive', body: {'folder': f}, timeout: const Duration(seconds: 240)),
         ok: 'Drive folder jud gaya; roz naya padhega');
+  }
+
+  Future<void> _addWeb() async {
+    final url = await _ask('Web page', 'jaise: meri website, supplier ki rate list ka page');
+    if (url == null || !mounted) return;
+    final follow = await showDialog<int>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('Kitna padhun?'),
+        content: const Text('Sirf public page padhe jaate hain (login wale nahi). Har hafte dobara padhunga; '
+            'page badla to Gyaan bhi badlega.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, 0), child: const Text('Sirf yeh page')),
+          FilledButton(onPressed: () => Navigator.pop(d, 10), child: const Text('Poori site (10 page tak)')),
+        ],
+      ),
+    );
+    if (follow == null) return;
+    await _do(() => widget.app.api!.call('POST', '/api/gyaan/web', body: {'url': url, 'follow': follow},
+        timeout: const Duration(seconds: 240)), ok: 'Page Gyaan mein jud gaya');
+  }
+
+  Future<void> _who(String name) async {
+    Map<String, dynamic> r;
+    try {
+      r = _map(await widget.app.api!.call('GET', '/api/gyaan/names/who', query: {'name': name}));
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+      return;
+    }
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: C.bgBottom,
+      isScrollControlled: true,
+      builder: (c) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+            const SizedBox(height: 8),
+            const Text('Kahan aaya hai', style: TextStyle(color: C.faint, fontSize: 12)),
+            for (final d in _list(r['docs']).take(10))
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(children: [
+                  Icon(_srcIcon[_s(d['source'])] ?? Icons.description_rounded, size: 15, color: C.accent),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text(_s(d['title']), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                ]),
+              ),
+            if (_list(r['related']).isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text('Saath mein aate hain', style: TextStyle(color: C.faint, fontSize: 12)),
+              const SizedBox(height: 6),
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                for (final x in _list(r['related']))
+                  ActionChip(
+                    label: Text('${_s(x['name'])} · ${x['together'] ?? 1}'),
+                    onPressed: () {
+                      Navigator.pop(c);
+                      _who(_s(x['name']));
+                    },
+                  ),
+              ]),
+            ],
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pop(c);
+                _q.text = name;
+                _search();
+              },
+              icon: const Icon(Icons.search_rounded, size: 18),
+              label: const Text('Inke baare mein dhoondo'),
+            ),
+          ]),
+        ),
+      ),
+    );
   }
 
   Future<void> _setting(String key, bool v) async {
@@ -238,7 +324,7 @@ class _GyaanScreenState extends State<GyaanScreen> {
                 Glass(
                   padding: const EdgeInsets.all(16),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('${widget.app.aName} aapki files, Drive, mail aur pichhli baaton se jawab deta hai, source ke saath. '
+                    Text('${widget.app.aName} aapki files, Drive, mail, web pages, business records aur pichhli baaton se jawab deta hai, source ke saath. '
                         'Jo usme nahi, uska andaza nahi lagata.', style: const TextStyle(color: C.muted, height: 1.35)),
                     const SizedBox(height: 12),
                     Row(children: [
@@ -311,21 +397,38 @@ class _GyaanScreenState extends State<GyaanScreen> {
                       title: const Text('Meri mail bhi (pichhle 60 din)'),
                       subtitle: Text(_s(st['mail_synced']).isEmpty ? 'Band' : 'Aakhri baar padhi: ${_s(st['mail_synced']).replaceFirst('T', ' ').split('.').first}'),
                     ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: settings['records_on'] != false,
+                      onChanged: _busy ? null : (v) => _setting('records_on', v),
+                      title: const Text('Mere business ki jaankari bhi'),
+                      subtitle: const Text('Profile, Seva FAQ / policy, Kalam facts, rate list'),
+                    ),
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.add_to_drive_rounded, color: C.accent),
                       title: const Text('Google Drive folder jodo'),
                       onTap: _busy ? null : _addDrive,
                     ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.public_rounded, color: C.accent),
+                      title: const Text('Web page jodo'),
+                      subtitle: const Text('Apni website, supplier ki rate list, scheme ke niyam'),
+                      onTap: _busy ? null : _addWeb,
+                    ),
                     for (final w in watches)
                       ListTile(
                         contentPadding: const EdgeInsets.only(left: 12),
                         dense: true,
-                        title: Text(_s(w['name'])),
-                        subtitle: Text(_s(w['error']).isNotEmpty ? 'Dikkat: ${_s(w['error'])}' : '${w['files'] ?? 0} files'),
+                        leading: Icon(_s(w['kind']) == 'web' ? Icons.public_rounded : Icons.add_to_drive_rounded, size: 18),
+                        title: Text(_s(w['name']), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Text(_s(w['error']).isNotEmpty
+                            ? 'Dikkat: ${_s(w['error'])}'
+                            : '${w['files'] ?? 0} ${_s(w['kind']) == 'web' ? 'page' : 'files'}'),
                         trailing: IconButton(
                           icon: const Icon(Icons.link_off_rounded),
-                          onPressed: _busy ? null : () => _do(() => widget.app.api!.call('DELETE', '/api/gyaan/drive/${w['id']}'), ok: 'Folder hata diya'),
+                          onPressed: _busy ? null : () => _do(() => widget.app.api!.call('DELETE', '/api/gyaan/watch/${w['id']}'), ok: 'Hata diya'),
                         ),
                       ),
                     ListTile(
@@ -336,6 +439,26 @@ class _GyaanScreenState extends State<GyaanScreen> {
                     ),
                   ]),
                 ),
+                if (_names.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Glass(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text('Log aur firms', style: TextStyle(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 4),
+                      const Text('Kisi naam pe tap: woh kahan aaya hai, aur kaun saath mein aata hai.',
+                          style: TextStyle(color: C.muted, fontSize: 12)),
+                      const SizedBox(height: 8),
+                      Wrap(spacing: 6, runSpacing: 6, children: [
+                        for (final n in _names)
+                          ActionChip(
+                            avatar: Icon(_s(n['kind']) == 'firm' ? Icons.storefront_rounded : Icons.person_rounded, size: 16),
+                            label: Text('${_s(n['name'])} · ${n['docs'] ?? 1}'),
+                            onPressed: () => _who(_s(n['name'])),
+                          ),
+                      ]),
+                    ]),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 const Padding(
                   padding: EdgeInsets.only(left: 4, bottom: 6),

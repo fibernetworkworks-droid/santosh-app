@@ -23,6 +23,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("OPERATOR_WORKER", "false")     # tests call operator.run_job themselves
     monkeypatch.setenv("AGENT_SELF_CHECK", "false")    # v0.78: scripted model tests don't expect the extra check call
     monkeypatch.setenv("AGENT_FIX_SEARCH", "false")
+    monkeypatch.setenv("GYAAN_GROUND", "false")      # v0.135: no extra grounding call in scripted model tests
     monkeypatch.setenv("MEMORY_AUTO", "false")       # v0.108: no background fact-picking model calls in scripted tests
     monkeypatch.setenv("SEMANTIC_OFF", "1")          # no 40 s embedding-model download attempt (the sandbox has no HF)
     monkeypatch.setenv("CALL_RECEIPT", "false")      # v0.91: scripted calls don't expect the extra receipt message

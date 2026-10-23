@@ -7,7 +7,9 @@ owner's data can never be a search hit for another. Tables:
   tri     FTS5 trigram index over a spelling-forgiving Roman key (Hinglish variants, transliterated Devanagari, partial IDs)
   vecs    int8 vector per chunk + its scale and the model that made it
   ids     exact identifiers (GSTIN, phone, IFSC, invoice / order codes, long numbers) -> chunk, looked up without any model
-  watch   Drive folders she asked to keep in Gyaan
+  ents    v0.135 names of people / firms / places / products found in a chunk (key = spelling-forgiving), so "Gupta ji"
+          or "Shree Ganesh Traders" finds every piece that names them, and which names appear together
+  watch   Drive folders and web pages she asked to keep in Gyaan
   meta    settings + a version counter (the in-memory vector matrix is rebuilt when it moves)"""
 from __future__ import annotations
 
@@ -31,6 +33,9 @@ SCHEMA = [
     "CREATE TABLE IF NOT EXISTS vecs(chunk_id INTEGER PRIMARY KEY, model TEXT, dim INT, q BLOB, scale REAL)",
     "CREATE TABLE IF NOT EXISTS ids(value TEXT, kind TEXT, chunk_id INT)",
     "CREATE INDEX IF NOT EXISTS ids_value ON ids(value)",
+    "CREATE TABLE IF NOT EXISTS ents(key TEXT, name TEXT, kind TEXT, chunk_id INT, doc_id TEXT)",
+    "CREATE INDEX IF NOT EXISTS ents_key ON ents(key)",
+    "CREATE INDEX IF NOT EXISTS ents_doc ON ents(doc_id)",
     "CREATE TABLE IF NOT EXISTS watch(id TEXT PRIMARY KEY, kind TEXT, ref TEXT, name TEXT, added REAL, synced REAL, files INT, error TEXT)",
 ]
 TRI = "CREATE VIRTUAL TABLE IF NOT EXISTS tri USING fts5(body, tokenize='trigram')"
@@ -127,6 +132,7 @@ def delete_doc(c: sqlite3.Connection, doc_id: str) -> int:
             c.execute(f"DELETE FROM tri WHERE rowid IN ({qs})", ids)
         c.execute(f"DELETE FROM vecs WHERE chunk_id IN ({qs})", ids)
         c.execute(f"DELETE FROM ids WHERE chunk_id IN ({qs})", ids)
+        c.execute(f"DELETE FROM ents WHERE chunk_id IN ({qs})", ids)
         c.execute("DELETE FROM chunks WHERE doc_id=?", (doc_id,))
     c.execute("DELETE FROM docs WHERE id=?", (doc_id,))
     return len(ids)

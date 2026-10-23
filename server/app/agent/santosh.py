@@ -330,6 +330,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             if stop != "tool_use" and _gyaan.used(conversation_id):
                 # v0.134 Gyaan: links from retrieved text removed, numbers checked against the cited sources, source chips
                 final_text, srcs = _gyaan.finish(conversation_id, final_text, state.get("request", ""))
+                final_text = await _gyaan.ground(conversation_id, final_text)      # v0.135 model check of cited sentences
                 if srcs:
                     bus.publish(conversation_id, "gyaan_sources", {"sources": srcs})
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})

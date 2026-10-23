@@ -261,6 +261,8 @@ class Settings(BaseSettings):
     gyaan_min_rerank: float = 0.3
     gyaan_mail_days: int = 60
     gyaan_sync: bool = False                # tests: index + embed inline
+    gyaan_ground: bool = True               # v0.135 cheap model checks each cited sentence against its sources
+    gyaan_ground_timeout_s: float = 8.0
 
 
 @lru_cache
