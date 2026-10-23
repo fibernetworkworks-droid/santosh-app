@@ -706,8 +706,34 @@ def init_db(url: str | None = None):
     return _engine
 
 
+def _col_default(col):
+    """A plain value for a new column on old rows (None when the default is made per row, like ids / times)."""
+    import json as _json
+    d = col.default
+    if d is None:
+        return None
+    val = d.arg
+    if getattr(d, "is_callable", False):
+        try:
+            val = val(None)
+        except Exception:
+            return None
+        if not isinstance(val, (dict, list)):
+            return None                          # ids / timestamps: leave old rows empty
+    if isinstance(val, (dict, list)):
+        return _json.dumps(val)
+    if isinstance(val, bool):
+        return 1 if val else 0
+    if isinstance(val, (int, float, str)):
+        return val
+    return None
+
+
 def _add_missing_columns(engine) -> None:
-    """create_all() makes new tables but never new columns: add nullable columns added in later versions."""
+    """create_all() makes new tables but never new columns: add columns added in later versions to old tables.
+    v0.116.1: NOT NULL columns were skipped before (e.g. hoola_links.trust from v0.112) -> every query on that table
+    failed with 500 on databases older than the column. They are now added too (without NOT NULL, which SQLite can't add
+    to existing rows) and old rows get the column's default."""
     from sqlalchemy import inspect, text
     insp = inspect(engine)
     for table in Base.metadata.sorted_tables:
@@ -715,11 +741,14 @@ def _add_missing_columns(engine) -> None:
             continue
         have = {c["name"] for c in insp.get_columns(table.name)}
         for col in table.columns:
-            if col.name in have or not col.nullable or col.primary_key:
+            if col.name in have or col.primary_key:
                 continue
             ddl = f'ALTER TABLE {table.name} ADD COLUMN "{col.name}" {col.type.compile(dialect=engine.dialect)}'
+            fill = None if col.nullable else _col_default(col)
             with engine.begin() as conn:
                 conn.execute(text(ddl))
+                if fill is not None:
+                    conn.execute(text(f'UPDATE {table.name} SET "{col.name}" = :v WHERE "{col.name}" IS NULL'), {"v": fill})
 
 
 @contextmanager
