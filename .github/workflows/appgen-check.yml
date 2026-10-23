@@ -77,6 +77,8 @@ jobs:
   smoke:
     needs: compile
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write   # pictures of every screen go to the branch appgen-shots (easy to look at from anywhere)
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
@@ -98,6 +100,14 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: bash server/app/appmaker/android/ci_smoke.sh "$(find out -name '*debug*.apk' | head -1)" shots home categories product cart orders profile dashboard support seller_info privacy delete_account
+      - name: Pictures to the appgen-shots branch
+        if: always()
+        run: |
+          [ -d shots ] || exit 0
+          cd shots && git init -q && git checkout -q -b appgen-shots
+          git -c user.name=hoola-ci -c user.email=ci@hoola.invalid add -A
+          git -c user.name=hoola-ci -c user.email=ci@hoola.invalid commit -qm "screens ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" appgen-shots
       - uses: actions/upload-artifact@v4
         if: always()
         with:

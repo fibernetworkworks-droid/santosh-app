@@ -100,7 +100,8 @@ class Nav(val start: String, val tabs: List<TabSpec>, val screens: Set<String>) 
     val onTab: Boolean get() = tabs.any { it.id == current }
 }
 
-val LocalNav = staticCompositionLocalOf<Nav> { error("AppShell missing") }
+/** Outside the shell (first-run splash / consent) a quiet Nav that goes nowhere: no crash. */
+val LocalNav = staticCompositionLocalOf<Nav> { Nav("_", emptyList(), emptySet()) }
 
 @Composable
 fun AppShell(nav: Nav, fabMain: FabAction?, fabActions: List<FabAction>, title: String, screen: @Composable (String) -> Unit) {

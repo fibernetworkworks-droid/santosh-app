@@ -1,5 +1,6 @@
 # Made by Hoola App Sahayak. Pinned set, the only libraries a generated app may use.
-# AGP 9 = built-in Kotlin (KGP 2.2.10), Gradle 9.1, JDK 17, API 36 (developer.android.com, AGP 9.0 release notes).
+# AGP 9.4.0 (Sep 2026) = built-in Kotlin (KGP 2.2.10 on the classpath, checked in CI), Gradle 9.6.0, JDK 17, build-tools 36,
+# compileSdk 37 (Compose BOM 2026.09.00 needs it). Changing any version: CI appgen-check must stay green.
 [versions]
 agp = "9.4.0"
 kotlin = "2.2.10"
