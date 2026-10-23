@@ -120,7 +120,7 @@ def test_rules():
 
 def test_licences_renewals_and_tick(ia):
     S = ia
-    S.save_settings(T, org_name="Ingle Traders", windows=[30, 7, 0])
+    S.save_settings(T, org_name="Ingle Traders", windows=[30, 7, 0], morning_time="00:00")   # morning note due at any hour
     on = S.today(T)
     a = S.save_licence(T, name="Microsoft 365 Business Basic", seats_bought=10, seats_used=7, cost=145, cost_per="month",
                        per_seat=True, renews_on=(on + timedelta(days=20)).isoformat(), auto_renew=True)

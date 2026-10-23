@@ -38,7 +38,8 @@ def kinds(S):
 
 
 def _future(days=40) -> str:
-    return (date.today() + timedelta(days=days)).isoformat()
+    from app.eventplan import service as _S
+    return (_S.today(T) + timedelta(days=days)).isoformat()   # her (IST) date, not the server's UTC date
 
 
 def _setup(S, days=40):
@@ -271,7 +272,8 @@ def test_guests_rsvp_invites_show_report_invoice_forget_tick(ep, monkeypatch):
 def test_tick_once_each(ep, monkeypatch):
     S = ep
     e = _setup(S, days=1)
-    when = datetime.now(timezone.utc).replace(hour=4, minute=0)               # 9:30 am IST
+    _d = S.today(T)
+    when = datetime(_d.year, _d.month, _d.day, 4, 0, tzinfo=timezone.utc)     # 9:30 am IST on her day
     monkeypatch.setattr(S, "clock", lambda: when)
     o1 = S.tick(when)
     o2 = S.tick(when)
