@@ -90,7 +90,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.144.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.145.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -8137,7 +8137,8 @@ class FeaturedIn(BaseModel):
     key: str = ""
     key_header: str = ""
     readonly: bool | None = None          # v0.143 GitHub MCP: only read tools
-    toolsets: list[str] | None = None     # v0.143 GitHub MCP toolsets
+    toolsets: list[str] | None = None     # v0.143 GitHub MCP toolsets / v0.145 Supabase feature groups
+    project: str | None = None            # v0.145 Supabase project ref
 
 
 @app.get("/api/bazar/mcp/featured", dependencies=[Depends(require_key)])
@@ -8149,7 +8150,7 @@ def bazar_mcp_featured(tenant: str = Depends(current_tenant)):
 async def bazar_mcp_connect(fid: str, body: FeaturedIn, tenant: str = Depends(current_tenant)):
     try:
         return await asyncio.to_thread(bazar.mcp_connect_featured, tenant, fid, body.url, body.key, body.key_header,
-                                       readonly=body.readonly, toolsets=body.toolsets)
+                                       readonly=body.readonly, toolsets=body.toolsets, project=body.project)
     except BazarError as e:
         raise HTTPException(400, str(e))
 

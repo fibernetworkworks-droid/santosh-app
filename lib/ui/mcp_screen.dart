@@ -142,6 +142,10 @@ class _McpScreenState extends State<McpScreen> {
       await _connectGithub(c);
       return;
     }
+    if ((c['options'] as Map?)?['kind'] == 'supabase') {
+      await _connectSupabase(c);
+      return;
+    }
     if (auth == 'api_key' || auth == 'per_user_url') {
       final t = TextEditingController();
       final ok = await showDialog<bool>(
@@ -255,6 +259,80 @@ class _McpScreenState extends State<McpScreen> {
       await _loadMine();
       final note = (r['note'] as String? ?? '');
       _snack(r['status'] == 'ready' ? 'GitHub jud gaya. ${note.isNotEmpty ? note : 'Ab Hoola se kahiye.'}' : 'Token sahi nahi laga');
+    } catch (e) {
+      _snack(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// v0.145 Supabase's official MCP server: one-tap sign-in (or a sbp_ token), ONE project, read-only on by default, feature
+  /// groups. Writes always wait for her tap (server side).
+  Future<void> _connectSupabase(Map<String, dynamic> c) async {
+    final opts = Map<String, dynamic>.from(c['options'] as Map? ?? {});
+    final all = [for (final t in (opts['features'] as List? ?? [])) t.toString()];
+    final st = Map<String, dynamic>.from(c['settings'] as Map? ?? {});
+    final picked = <String>{
+      for (final t in ((st['features'] ?? opts['default_features']) as List? ?? [])) t.toString()
+    };
+    bool readonly = st.isEmpty ? true : st['readonly'] == true;
+    bool useToken = false;
+    final proj = TextEditingController(text: (st['project'] ?? '').toString());
+    final tok = TextEditingController();
+    const names = {
+      'database': 'Tables + SQL', 'debugging': 'Logs + advisors', 'development': 'Project URL / types', 'docs': 'Docs',
+      'functions': 'Edge Functions', 'account': 'Saare projects', 'branching': 'Branches', 'storage': 'Storage',
+    };
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setD) => AlertDialog(
+        backgroundColor: C.bgBottom,
+        title: const Text('Supabase jodiye'),
+        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(c['how_to_connect'] as String? ?? '', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+          const SizedBox(height: 8),
+          TextField(controller: proj, decoration: const InputDecoration(
+              labelText: 'Project ref (behtar: sirf ek project)', hintText: '20 chhote akshar, Project Settings > General')),
+          SwitchListTile(contentPadding: EdgeInsets.zero, value: readonly, onChanged: (v) => setD(() => readonly = v),
+              title: const Text('Sirf padhna (read-only)', style: TextStyle(fontSize: 13.5)),
+              subtitle: const Text('SQL read-only user se chalega. Production par on rakhiye.', style: TextStyle(color: C.faint, fontSize: 11.5))),
+          SwitchListTile(contentPadding: EdgeInsets.zero, value: useToken, onChanged: (v) => setD(() => useToken = v),
+              title: const Text('Sign-in ki jagah token (sbp_...)', style: TextStyle(fontSize: 13.5))),
+          if (useToken)
+            TextField(controller: tok, obscureText: true, decoration: const InputDecoration(labelText: 'Personal access token')),
+          const SizedBox(height: 6),
+          const Text('Hoola kya dekh sake:', style: TextStyle(color: C.muted, fontSize: 12.5)),
+          const SizedBox(height: 4),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final f in all)
+              FilterChip(label: Text(names[f] ?? f, style: const TextStyle(fontSize: 12)), selected: picked.contains(f),
+                  onSelected: (v) => setD(() => v ? picked.add(f) : picked.remove(f))),
+          ]),
+          const SizedBox(height: 8),
+          const Text('Migration, SQL badlaav, Edge Function deploy, naya project: har baar aapke tap ke baad hi. '
+              'Table ka data Hoola ke liye sirf data hai, hukum nahi.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+          if ((c['docs'] as String? ?? '').isNotEmpty)
+            TextButton(onPressed: () => Native.openExternal(url: c['docs'] as String), child: const Text('Supabase docs')),
+        ])),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne dein')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Jodiye')),
+        ],
+      )),
+    );
+    if (ok != true) return;
+    setState(() => _busy = true);
+    try {
+      final r = await app.api!.mcpConnectFeatured(c['id'] as String, key: useToken ? tok.text.trim() : '',
+          readonly: readonly, toolsets: picked.toList(), project: proj.text.trim());
+      await _loadMine();
+      if (r['status'] == 'needs_link') {
+        final err = await app.linkApp(r['pack_id'] as String);
+        if (err != null) _snack(err);
+      } else {
+        final note = (r['note'] as String? ?? '');
+        _snack(r['status'] == 'ready' ? 'Supabase jud gaya. ${note.isNotEmpty ? note : 'Ab Hoola se kahiye.'}' : 'Token sahi nahi laga');
+      }
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
     } finally {

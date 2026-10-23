@@ -727,7 +727,9 @@ def mcp_featured(tenant_id: str) -> list[dict[str, Any]]:
             item = featured.public(c, st)
             if r:
                 item["pack_id"] = r.id
-                if c.get("options"):
+                if (c.get("options") or {}).get("kind") == "supabase":
+                    item["settings"] = featured.supabase_settings(r.url)
+                elif c.get("options"):
                     item["settings"] = _featured_settings(s, user.id, r)
             if (c.get("options") or {}).get("reuse"):
                 item["can_reuse"] = bool(_reuse_token(tenant_id, c["options"]["reuse"]))
@@ -784,7 +786,7 @@ def _reuse_token(tenant_id: str, kind: str) -> str:
 
 def mcp_connect_featured(tenant_id: str, fid: str, url: str = "", key: str = "", key_header: str = "",
                          probe_client=None, conversation_id: str = "", readonly: bool | None = None,
-                         toolsets: list[str] | None = None) -> dict[str, Any]:
+                         toolsets: list[str] | None = None, project: str | None = None) -> dict[str, Any]:
     c = featured.get(fid)
     if c is None:
         raise ToolError("Unknown connector")
@@ -797,6 +799,24 @@ def mcp_connect_featured(tenant_id: str, fid: str, url: str = "", key: str = "",
             raise ToolError(f"Paste your personal {c['name']} MCP address (from your {c['name']} account).")
     else:
         url = c["url"]
+    kind = (c.get("options") or {}).get("kind")
+    if kind == "supabase":
+        if project is None or readonly is None or toolsets is None:     # keep what she chose before
+            old = _featured_row_url(tenant_id, "featured:" + c["id"])
+            if old:
+                prev = featured.supabase_settings(old)
+                project = prev["project"] if project is None else project
+                readonly = prev["readonly"] if readonly is None else readonly
+                toolsets = prev["features"] if toolsets is None else toolsets
+        try:
+            url = featured.supabase_url(c, readonly, toolsets, project or "")
+        except ValueError as e:
+            raise ToolError(str(e))
+        if key and not key.startswith("sbp_"):
+            raise ToolError("Supabase personal access token 'sbp_' se shuru hota hai (dashboard > Account > Access Tokens). "
+                            "Service role / secret key MCP ke liye nahi.")
+        if not key and _saved_key(tenant_id, "featured:" + c["id"]):
+            key = _saved_key(tenant_id, "featured:" + c["id"])
     reused = False
     kept = False
     if c["auth"] == "api_key" and not key and (readonly is not None or toolsets is not None):
@@ -820,7 +840,24 @@ def mcp_connect_featured(tenant_id: str, fid: str, url: str = "", key: str = "",
         if key.startswith(("ghp_", "gho_")) and not reused and not kept:
             out["note"] = ("Yeh classic token hai (saare repos par). Fine-grained token behtar hai: sirf chune hue repos, kam "
                            "permissions. Settings > Developer settings > Fine-grained tokens.")
+    if kind == "supabase":
+        st = featured.supabase_settings(url)
+        out["settings"] = {**st, "login": "token" if key else "sign_in"}
+        if not st["project"]:
+            out["note"] = ("Saare projects khule hain. Ek project chun lijiye (project ref) taaki Hoola baaki projects na "
+                           "chhue." + ("" if st["readonly"] else " Read-only bhi band hai: production data par dhyaan."))
+        elif not st["readonly"]:
+            out["note"] = "Read-only band hai: SQL / migration sirf aapke tap se chalenge. Production par read-only behtar hai."
     return out
+
+
+def _featured_row_url(tenant_id: str, ref: str) -> str:
+    with session() as s:
+        user = ensure_user(s, tenant_id)
+        for r in custom_mcp.user_rows(s, user.id):
+            if r.directory_ref == ref:
+                return r.url
+    return ""
 
 
 def mcp_add(tenant_id: str, url: str, name: str = "", ref: str = "", key: str = "", key_header: str = "",
@@ -852,6 +889,8 @@ def mcp_add(tenant_id: str, url: str, name: str = "", ref: str = "", key: str = 
         out: dict[str, Any] = {"pack_id": row.id, "name": row.name, "url": row.url}
         if result == "ok":
             out.update(status="ready", say=f"{row.name} is connected. Use bazar_find or bazar_run with pack_id {row.id}.")
+        elif result == "auth" and row.auth == "oauth" and pack_status(s, user, pack) == "ready":
+            out.update(status="ready", say=f"{row.name} settings badle; sign-in wahi hai. pack_id {row.id}.")
         elif result == "auth" and row.auth != "key":
             row.auth = "oauth"
             out.update(status="needs_link", say="This server needs a sign-in. A Link button is shown; after the user signs "

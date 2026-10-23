@@ -22,6 +22,8 @@ _SKIP_NAMES = re.compile(r"(_file|_files|_path|_header|max_tokens|_tokens$|verif
 PATTERNS = [
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.S),
     re.compile(r"\bsk-ant-[A-Za-z0-9_\-]{20,}"),
+    re.compile(r"\bsbp_[A-Za-z0-9]{20,}"),           # v0.145 Supabase personal access token
+    re.compile(r"\bsb_secret_[A-Za-z0-9_\-]{16,}"),   # Supabase secret API key
     re.compile(r"\bsk-(?:proj-|live_|test_)?[A-Za-z0-9_\-]{24,}"),
     re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b"),
     re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}\b"),

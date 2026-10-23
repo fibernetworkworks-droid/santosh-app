@@ -42,6 +42,10 @@ class Pack(BaseModel):
             if t.name == tool:
                 return t.tier
         if self.executor == "mcp" and self.config.get("custom"):
+            # v0.145 Supabase in read_only mode runs SQL as a read-only Postgres user, so execute_sql is a read there
+            if tool == "execute_sql" and "mcp.supabase.com" in str(self.config.get("endpoint", "")) \
+                    and "read_only=true" in str(self.config.get("endpoint", "")):
+                return 0
             # servers the user added: anything not plainly a read needs a tap; v0.91 her per-tool "ask first" switch
             try:
                 from ...mcp_prefs import needs_tap
@@ -74,7 +78,7 @@ READ_VERBS = {"get", "list", "search", "find", "fetch", "read", "view", "show", 
 # v0.143 exact names of reads whose first word isn't a verb (GitHub's official MCP merges reads into one tool each:
 # issue_read / pull_request_read take a method like get / get_comments / get_diff, all reads)
 READ_NAMES = {"issue_read", "pull_request_read", "actions_get", "actions_list", "projects_get", "projects_list",
-              "discussion_read", "gist_read", "label_read"}
+              "discussion_read", "gist_read", "label_read", "generate_typescript_types"}
 
 
 def is_read_only(tool: str) -> bool:

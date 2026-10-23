@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 from functools import lru_cache
 from pathlib import Path
+import re
 from typing import Any
 
 FILE = Path(__file__).parent / "featured_mcp.json"
@@ -53,7 +54,43 @@ def how(c: dict[str, Any]) -> str:
             "oauth_partner": f"{c['name']} only allows approved apps; Santosh's partner access is pending."}.get(c["auth"], "") + (
         " GitHub: a fine-grained personal access token (github.com > Settings > Developer settings > Fine-grained tokens; only "
         "the repos you choose; Contents / Issues / Pull requests / Actions / Metadata). Or one tap with the token you already "
-        "gave Developer Sahayak." if c["id"] == "github" else "")
+        "gave Developer Sahayak." if c["id"] == "github" else "") + (
+        " Supabase: one tap and sign in with your Supabase account (or a personal access token sbp_... from "
+        "supabase.com/dashboard/account/tokens). Best: pick one project (project ref) and keep read-only on; writes "
+        "(migrations, SQL changes, Edge Function deploys) always wait for your tap." if c["id"] == "supabase" else "")
+
+
+SUPA_REF = re.compile(r"^[a-z]{20}$")
+
+
+def supabase_url(c: dict[str, Any], readonly: bool | None = None, features: list[str] | None = None,
+                 project: str = "") -> str:
+    """v0.145 Supabase's documented query parameters on its remote MCP URL: read_only=true (a read-only Postgres user),
+    project_ref=<ref> (one project, account tools off), features=<groups> (only those tool groups). skip_elicitations is
+    never set, so Supabase's own confirmations stay on too."""
+    from urllib.parse import urlencode
+    opt = c.get("options") or {}
+    allowed = opt.get("features") or []
+    pick = [f for f in (features or []) if f in allowed] or list(opt.get("default_features") or [])
+    project = (project or "").strip().lower()
+    if project and not SUPA_REF.match(project):
+        raise ValueError("Supabase project ref = 20 small letters (Project Settings > General > Project ID)")
+    if project:
+        pick = [f for f in pick if f != "account"]   # Supabase turns account tools off in project mode anyway
+    q: dict[str, str] = {}
+    if project:
+        q["project_ref"] = project
+    if readonly is None or readonly:
+        q["read_only"] = "true"
+    q["features"] = ",".join(dict.fromkeys(pick))
+    return c["url"].split("?")[0] + "?" + urlencode(q, safe=",")
+
+
+def supabase_settings(url: str) -> dict[str, Any]:
+    from urllib.parse import parse_qs, urlparse
+    q = parse_qs(urlparse(url or "").query)
+    return {"project": (q.get("project_ref") or [""])[0], "readonly": (q.get("read_only") or [""])[0] == "true",
+            "features": [f for f in (q.get("features") or [""])[0].split(",") if f]}
 
 
 def headers_of(c: dict[str, Any], readonly: bool | None = None, toolsets: list[str] | None = None) -> dict[str, str]:

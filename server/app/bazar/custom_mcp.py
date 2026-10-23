@@ -89,6 +89,15 @@ def user_rows(s, user_id: str) -> list[CustomMcp]:
 def create(s, user_id: str, url: str, name: str = "", ref: str = "", description: str = "", caution: bool = False) -> CustomMcp:
     url = check_url(url)
     rows = user_rows(s, user_id)
+    if ref.startswith("featured:"):
+        # v0.145 a featured server whose address carries her settings (Supabase project / read-only / features): same
+        # row, new address, sign-in kept
+        for r in rows:
+            if r.directory_ref == ref and urlparse(r.url).hostname == urlparse(url).hostname:
+                r.url = url
+                if caution and not r.caution:
+                    r.caution = True
+                return r
     for r in rows:
         if r.url.rstrip("/") == url.rstrip("/"):
             if caution and not r.caution:

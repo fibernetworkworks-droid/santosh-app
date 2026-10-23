@@ -1377,11 +1377,12 @@ class Api {
   Future<List<Map<String, dynamic>>> mcpFeatured() async =>
       List<Map<String, dynamic>>.from(((await _send('GET', '/api/bazar/mcp/featured'))['connectors'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
   Future<Map<String, dynamic>> mcpConnectFeatured(String id,
-          {String url = '', String key = '', String header = '', bool? readonly, List<String>? toolsets}) async =>
+          {String url = '', String key = '', String header = '', bool? readonly, List<String>? toolsets, String? project}) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/bazar/mcp/featured/$id', body: {
         'url': url, 'key': key, 'key_header': header,
         if (readonly != null) 'readonly': readonly,
         if (toolsets != null) 'toolsets': toolsets,
+        if (project != null) 'project': project,
       }, timeout: const Duration(seconds: 40)));
 
   // ---------------- Santosh Artifacts ----------------

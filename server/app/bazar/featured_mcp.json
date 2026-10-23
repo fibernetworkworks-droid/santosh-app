@@ -975,13 +975,40 @@
    "url": "https://mcp.supabase.com/mcp",
    "url_hint": "",
    "auth": "oauth_dcr",
-   "does": "Databases, auth and storage",
-   "source": "https://supabase.com/changelog/39434-supabase-remote-mcp-server.md",
-   "confidence": "medium",
+   "does": "Her Supabase projects: tables, SQL (read-only by default), migrations, logs, advisors, Edge Functions, docs",
+   "source": "https://supabase.com/docs/guides/getting-started/mcp",
+   "confidence": "high",
    "keywords": [
     "supabase",
-    "developer"
-   ]
+    "postgres",
+    "database",
+    "sql",
+    "developer",
+    "backend",
+    "edge functions"
+   ],
+   "key_header": "Authorization",
+   "caution": true,
+   "options": {
+    "kind": "supabase",
+    "pat_ok": true,
+    "features": [
+     "database",
+     "debugging",
+     "development",
+     "docs",
+     "functions",
+     "account",
+     "branching",
+     "storage"
+    ],
+    "default_features": [
+     "database",
+     "debugging",
+     "development",
+     "docs"
+    ]
+   }
   },
   {
    "id": "vercel",
