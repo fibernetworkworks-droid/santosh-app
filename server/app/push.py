@@ -302,6 +302,33 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
               "logistics_ewb": "E-way bill: aapka tap chahiye"}
     if kind in _safar:
         return (f"{name}: {_safar[kind]}", _say)
+    # v0.144 Makaan suite: cards push only while they wait for her (the same card is re-published when decided)
+    _makaan_wait = {"propagent_card": ("card", "Property: aapki haan chahiye"),
+                    "rentdesk_approval": ("approval", "Kiraya: aapki haan chahiye"),
+                    "sitesup_indent": ("indent", "Site: indent aapki haan chahiye"), "sitesup_stop": ("stop", "Site: kaam rokna hai?"),
+                    "sitesup_report": ("report", "Client ke liye report taiyaar"),
+                    "interior_quote": ("quote", "Quotation: aapki haan chahiye"), "interior_order": ("order", "Vendor order: aapki haan chahiye"),
+                    "interior_change": ("change", "Badlav se daam badla: aapki haan chahiye"),
+                    "interior_payment": ("stage", "Client se paise maangne ki haan"),
+                    "archassist_transmittal": ("transmittal", "Drawings issue karne ki haan?"),
+                    "archassist_submission": ("submission", "Submission ki taiyaari"), "archassist_invoice": ("invoice", "Invoice ki haan chahiye"),
+                    "society_card": ("card", "Society: aapki haan chahiye")}
+    if kind in _makaan_wait:
+        key, title = _makaan_wait[kind]
+        return (f"{name}: {title}", _say) if (p.get(key) or {}).get("status") == "waiting" else None
+    if kind == "rentdesk_message":
+        return (f"{name}: Kirayedar ke liye message taiyaar", _say) if (p.get("message") or {}).get("status") == "draft" else None
+    if kind == "rentdesk_alert":
+        ok = p.get("kind") in ("renewal", "checklist", "forget") or bool((p.get("request") or {}).get("urgent"))
+        return (f"{name}: Kiraya / property", _say) if ok else None
+    if kind == "society_complaint":
+        return (f"{name}: Zaroori shikayat", _say) if (p.get("complaint") or {}).get("urgent") else None
+    _makaan = {"propagent_alert": "Property", "propagent_day": "Aaj ka property note", "rentdesk_day": "Aaj ka kiraya note",
+               "sitesup_alert": "Site", "sitesup_day": "Aaj ka site note", "interior_alert": "Interior", "interior_day": "Aaj ka interior note",
+               "archassist_alert": "Architect office", "archassist_day": "Aaj ka office note", "society_alert": "Society",
+               "society_day": "Aaj society mein"}
+    if kind in _makaan:
+        return (f"{name}: {_makaan[kind]}", _say)
     if kind == "site_board":
         if not p.get("push"):
             return None
@@ -483,7 +510,9 @@ PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "photo_made", 
               # v0.137 Tech suite
               "devsahayak_merge", "devsahayak_deploy", "devsahayak_push", "devsahayak_review", "devsahayak_task", "qa_bug", "qa_export", "qa_run", "itadmin_change", "itadmin_renewal", "itadmin_checklist", "itadmin_review", "itadmin_day", "ispnoc_change", "ispnoc_fault", "ispnoc_alert", "ispnoc_day", "cyber_action", "cyber_alerts", "cyber_incident", "cyber_advisory", "cyber_day", "devops_build", "devops_deploy", "devops_alert", "devops_day", "docwriter_publish", "docwriter_sync", "appreview_handoff", "appreview_alert", "product_publish", "product_day", "product_backlog",
               # v0.139 Safar suite
-              "customs_filing", "customs_alert", "customs_day", "travel_booking", "travel_quote", "travel_reminder", "travel_day", "warehouse_adjust", "warehouse_day", "fleet_spend", "fleet_alert", "fleet_day", "courier_card", "courier_parcel", "courier_day", "drivers_alert", "drivers_plan", "drivers_day", "logistics_ewb", "logistics_alert", "logistics_day"}
+              "customs_filing", "customs_alert", "customs_day", "travel_booking", "travel_quote", "travel_reminder", "travel_day", "warehouse_adjust", "warehouse_day", "fleet_spend", "fleet_alert", "fleet_day", "courier_card", "courier_parcel", "courier_day", "drivers_alert", "drivers_plan", "drivers_day", "logistics_ewb", "logistics_alert", "logistics_day",
+              # v0.144 Makaan suite
+              "propagent_card", "propagent_alert", "propagent_day", "rentdesk_approval", "rentdesk_message", "rentdesk_alert", "rentdesk_day", "sitesup_indent", "sitesup_stop", "sitesup_report", "sitesup_alert", "sitesup_day", "interior_quote", "interior_order", "interior_change", "interior_payment", "interior_alert", "interior_day", "archassist_transmittal", "archassist_submission", "archassist_invoice", "archassist_alert", "archassist_day", "society_card", "society_complaint", "society_alert", "society_day"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 

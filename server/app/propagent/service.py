@@ -869,9 +869,13 @@ def page_html(token: str) -> tuple[int, str]:
 def page_photo(token: str, n: int) -> Path | None:
     with session() as s:
         L = s.scalars(select(PropagentListing).where(PropagentListing.page_token == token)).first() if token and len(token) >= 16 else None
-        if L is None or not L.public:
+        if L is None or not L.public or L.status not in ("active", "under_offer"):
             return None
-        ph = _photos(s, L.id)
+        if _public_hash(s, L, _st(s, L.tenant_id)) != L.public_hash:      # changed after her tap = not public until she taps again
+            return None
+        ph = _photos(s, L.id)                     # same numbering as page_html; only what the page shows is served
+        if 0 <= n < len(ph) and ph[n].kind not in ("photo", "qr"):
+            return None
         if not 0 <= n < len(ph):
             return None
         p = Path(ph[n].path)
@@ -1564,6 +1568,8 @@ def deal_status(tenant: str, deal: str, status: str, actor: str = "owner", note:
     say = f"{num}: {DEAL_STATUS[status]}."
     if status in ("registered", "done"):
         say += " Listing band ho gayi. Deal poori hone par graahak / malik ki jaankari 'forget' se mitaiye (DPDP)."
+    if status in ("agreement", "registered", "done") and (deal_view(tenant, did)["deal"]["purpose"] in ("rent", "lease")):
+        say += f" Kirayedari aap khud sambhalengi? 'rentdesk action=from_deal deal={num}' se draft kirayedari ban jayegi (kuch bheja nahi jayega)."
     return {"deal": deal_view(tenant, did)["deal"], "say": say}
 
 
@@ -1682,12 +1688,16 @@ def _pdf(title: str, text: str) -> bytes | None:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet
         from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+        from .. import indicpdf
+        pdf = indicpdf.blocks_pdf(title, [("h1", title)] + [("p", ln) for ln in text.split("\n")])   # v0.144 Hindi / Marathi
+        if pdf:
+            return pdf
         bio = io.BytesIO()
         doc = SimpleDocTemplate(bio, pagesize=A4, title=title)
         ss = getSampleStyleSheet()
-        flow = [Paragraph(html.escape(title), ss["Title"]), Spacer(1, 8)]
+        flow = [Paragraph(indicpdf.rl_markup(html.escape(title)), ss["Title"]), Spacer(1, 8)]
         for line in text.split("\n"):
-            safe = html.escape(line.replace("₹", "Rs ")) or "&nbsp;"
+            safe = indicpdf.rl_markup(html.escape(line.replace("₹", "Rs "))) or "&nbsp;"
             flow.append(Paragraph(safe, ss["Normal"]))
         doc.build(flow)
         return bio.getvalue()

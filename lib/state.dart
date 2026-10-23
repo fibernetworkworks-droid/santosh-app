@@ -311,6 +311,8 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _techCards = {};  // v0.137 one card per id where the suite updates a card in place
   int safarTick = 0;                           // v0.139 Safar suite screens refresh on their events
   final Map<String, FeedItem> _safarCards = {}; // v0.139 one card per id where the suite updates a card in place
+  int gharTick = 0;                            // v0.144 Makaan suite screens refresh on their events
+  final Map<String, FeedItem> _gharCards = {};  // v0.144 one card per id where the suite updates a card in place
   int adsTick = 0;                             // v0.108 bumps on ads events (the Ads screen refreshes)
   final Map<String, FeedItem> _adsPlans = {};   // v0.108 one card per budget plan, changes updated in place
   int kalamTick = 0;                           // v0.101 bumps on content-writer events (the Kalam screen refreshes)
@@ -1439,6 +1441,53 @@ class Santosh extends ChangeNotifier {
         }
         safarTick++;
         break;
+      case 'propagent_listing':
+        gharTick++;                              // v0.144 refresh only (no card)
+        break;
+      case 'propagent_card':
+      case 'propagent_visit':
+      case 'propagent_alert':
+      case 'propagent_day':
+      case 'rentdesk_approval':
+      case 'rentdesk_message':
+      case 'rentdesk_receipt':
+      case 'rentdesk_alert':
+      case 'rentdesk_day':
+      case 'sitesup_indent':
+      case 'sitesup_stop':
+      case 'sitesup_report':
+      case 'sitesup_alert':
+      case 'sitesup_day':
+      case 'interior_quote':
+      case 'interior_order':
+      case 'interior_change':
+      case 'interior_payment':
+      case 'interior_concept':
+      case 'interior_alert':
+      case 'interior_day':
+      case 'archassist_transmittal':
+      case 'archassist_submission':
+      case 'archassist_invoice':
+      case 'archassist_area':
+      case 'archassist_alert':
+      case 'archassist_day':
+      case 'society_card':
+      case 'society_complaint':
+      case 'society_alert':
+      case 'society_day':
+        // v0.144 Makaan suite: cards keyed by their id are updated in place (the newest data wins)
+        final gp = Map<String, dynamic>.from(p);
+        final gk = gharCardKey(ev.kind, gp);
+        final gOld = gk.isEmpty ? null : _gharCards[gk];
+        if (gOld != null) {
+          gOld.data = {...gOld.data, ...gp};
+        } else {
+          final it = FeedItem(ev.kind, gp);
+          if (gk.isNotEmpty) _gharCards[gk] = it;
+          feed.add(it);
+        }
+        gharTick++;
+        break;
       case 'brand_design':
       case 'brand_approval':
         final bd = Map<String, dynamic>.from((p['design'] as Map?) ?? const {});
@@ -2022,6 +2071,32 @@ String safarCardKey(String kind, Map<String, dynamic> p) {
     'logistics_update' => sub('message'),
     'logistics_shipment' => sub('shipment'),
     'logistics_alert' => (p['id'] ?? '') == '' ? '' : '${p['id']}:${p['kind'] ?? ''}',
+    _ => '',
+  };
+  return id.isEmpty || id == 'null' ? '' : '$kind:$id';
+}
+
+
+/// v0.144 Makaan suite: which cards are one-per-id (updated in place). '' = always a new card.
+String gharCardKey(String kind, Map<String, dynamic> p) {
+  String sub(String k) => p[k] is Map ? '${(p[k] as Map)['id'] ?? ''}' : '';
+  final id = switch (kind) {
+    'propagent_card' || 'society_card' => sub('card'),
+    'propagent_visit' => sub('visit'),
+    'rentdesk_approval' => sub('approval'),
+    'rentdesk_message' => sub('message'),
+    'rentdesk_receipt' => sub('payment'),
+    'sitesup_indent' => sub('indent'),
+    'sitesup_stop' => sub('stop'),
+    'sitesup_report' => sub('report'),
+    'interior_quote' => sub('quote'),
+    'interior_order' => sub('order'),
+    'interior_change' => sub('change'),
+    'interior_payment' => sub('stage'),
+    'archassist_transmittal' => sub('transmittal'),
+    'archassist_submission' => sub('submission'),
+    'archassist_invoice' => sub('invoice'),
+    'society_complaint' => sub('complaint'),
     _ => '',
   };
   return id.isEmpty || id == 'null' ? '' : '$kind:$id';

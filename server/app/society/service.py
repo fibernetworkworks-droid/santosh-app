@@ -836,10 +836,11 @@ def _bills_pdf(s, tenant: str, rows: list[SocietyBill], st: SocietySettings) -> 
     try:
         from reportlab.lib.pagesizes import A5
         from reportlab.lib.units import mm
-        from reportlab.pdfgen import canvas
+        from reportlab.pdfgen import canvas  # noqa: F401
+        from .. import indicpdf as _indicpdf
 
         buf = io.BytesIO()
-        c = canvas.Canvas(buf, pagesize=A5)
+        c = _indicpdf.Canvas(buf, pagesize=A5)
         W, H = A5
         for b in rows:
             f = s.get(SocietyFlat, b.flat_id)

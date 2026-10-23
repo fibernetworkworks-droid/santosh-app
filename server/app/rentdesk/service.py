@@ -624,6 +624,43 @@ def new_tenancy(tenant: str, unit: str, person: str, actor: str = "owner", conv:
     return {"tenancy": view, "say": say}
 
 
+def from_propagent_deal(tenant: str, deal: str, start: str = "", actor: str = "owner", conv: str = "") -> dict:
+    """v0.144 Makaan link: a rent / lease deal she closed in the Property Sahayak becomes a DRAFT tenancy here (unit from the
+    listing, tenant from the lead, rent / deposit from the deal she agreed). Nothing is billed, sent or activated: she checks it
+    and says 'activate'. Owner only; a deal that already made a tenancy is not copied twice."""
+    from ..propagent.models import PropagentDeal, PropagentLead, PropagentListing
+    with session() as s:
+        D = s.scalars(select(PropagentDeal).where(PropagentDeal.tenant_id == tenant,
+                                                  (PropagentDeal.id == deal) | (PropagentDeal.number == deal.upper()))).first()
+        if D is None:
+            raise RentError("Woh property deal nahi mili.")
+        if D.purpose not in ("rent", "lease"):
+            raise RentError("Yeh sale deal hai; kirayedari sirf rent / lease deal se banti hai.")
+        if D.status not in ("agreement", "registered", "done"):
+            raise RentError("Deal abhi pakki nahi (agreement / registry ke baad hi kirayedari banaiye).")
+        L = s.get(PropagentListing, D.listing_id)
+        l = s.get(PropagentLead, D.lead_id) if D.lead_id else None
+        if L is None or l is None or l.forgotten:
+            raise RentError("Deal mein listing ya kirayedar ki jaankari nahi bachi.")
+        tag = f"[propagent {D.number}]"
+        old = s.scalars(select(RdTenancy).where(RdTenancy.tenant_id == tenant, RdTenancy.notes.contains(tag))).first()
+        if old is not None:
+            raise RentError(f"Is deal se kirayedari {old.number} pehle hi bani hai.")
+        unit_kw = {"label": (L.title or f"{L.kind} {L.locality}").strip()[:120], "kind": L.kind if L.kind in R.UNIT_KINDS else "other",
+                   "address": L.address, "city": L.city, "pin": L.pin, "area_sqft": L.carpet_sqft or None,
+                   "furnished": L.furnishing, "owner_name": L.owner_name, "owner_phone": L.owner_phone,
+                   "rent_ask": D.price or None, "deposit_ask": D.deposit or None}
+        person = (l.name, l.phone)
+        rent, dep, num, avail = D.price or None, D.deposit or None, D.number, L.available_from
+    u = save_unit(tenant, "", **{k: v for k, v in unit_kw.items() if v not in (None, "")})["unit"]
+    p = save_person(tenant, "", person[0] or "Kirayedar", person[1])["person"]
+    start = start or avail or today(tenant).isoformat()
+    out = new_tenancy(tenant, u["number"], p["number"], actor, conv, start=start, rent=rent, deposit=dep,
+                      notes=f"{tag} property deal se bani")
+    out["say"] = f"Deal {num} se: " + out["say"]
+    return out
+
+
 def update_tenancy(tenant: str, tenancy: str, **kw: Any) -> dict:
     with _LOCK, session() as s:
         t = _tenancy(s, tenant, tenancy)
@@ -941,13 +978,15 @@ def statement(tenant: str, tenancy: str) -> dict:
 
 
 def _latin(t) -> str:
-    return str(t).replace("₹", "Rs ").encode("latin-1", "replace").decode("latin-1")
+    from .. import indicpdf                   # v0.144 Devanagari kept: the PDF is printed with Hindi / Marathi fonts
+    return indicpdf.keep(t)
 
 
 def receipt_pdf(tenant: str, payment: str) -> bytes:
     """Rent receipt with the fields an employer asks for HRA (Form 124): landlord name, address, PAN, period, amount, mode."""
     from reportlab.lib.pagesizes import A5
-    from reportlab.pdfgen import canvas
+    from reportlab.pdfgen import canvas  # noqa: F401
+    from .. import indicpdf as _indicpdf
     with session() as s:
         x = s.get(RdPayment, payment)
         if x is None or x.tenant_id != tenant:
@@ -978,7 +1017,7 @@ def receipt_pdf(tenant: str, payment: str) -> bytes:
     except Exception:
         words = ""
     bio = io.BytesIO()
-    c = canvas.Canvas(bio, pagesize=A5)
+    c = _indicpdf.Canvas(bio, pagesize=A5)
     w, h = A5
     y = h - 40
     c.setFont("Helvetica-Bold", 14)
@@ -1954,7 +1993,8 @@ def refund_paid(tenant: str, settlement: str, amount=None, ref: str = "", actor:
 
 def settlement_pdf(tenant: str, settlement: str) -> bytes:
     from reportlab.lib.pagesizes import A4
-    from reportlab.pdfgen import canvas
+    from reportlab.pdfgen import canvas  # noqa: F401
+    from .. import indicpdf as _indicpdf
     with session() as s:
         se = s.get(RdSettlement, settlement)
         if se is None or se.tenant_id != tenant:
@@ -1966,7 +2006,7 @@ def settlement_pdf(tenant: str, settlement: str) -> bytes:
         head = (st.landlord_name or st.business or "[landlord]", p.name if p else "", f"{u.label} {u.building}" if u else "", t.start,
                 t.vacate_on or t.end)
     bio = io.BytesIO()
-    c = canvas.Canvas(bio, pagesize=A4)
+    c = _indicpdf.Canvas(bio, pagesize=A4)
     w, h = A4
     y = h - 50
     c.setFont("Helvetica-Bold", 14)

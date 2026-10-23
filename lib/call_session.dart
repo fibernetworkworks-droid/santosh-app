@@ -48,6 +48,11 @@ const callCardKinds = {
   // v0.139 Safar suite (cards that wait for her)
   'customs_filing', 'customs_alert', 'travel_booking', 'travel_quote', 'travel_reminder', 'warehouse_adjust', 'fleet_spend',
   'fleet_trip', 'fleet_alert', 'courier_card', 'drivers_plan', 'drivers_message', 'logistics_ewb', 'logistics_update', 'logistics_alert',
+  // v0.144 Makaan suite (cards that wait for her)
+  'propagent_card', 'propagent_visit', 'propagent_alert', 'rentdesk_approval', 'rentdesk_message', 'rentdesk_alert', 'sitesup_indent',
+  'sitesup_stop', 'sitesup_report', 'sitesup_alert', 'interior_quote', 'interior_order', 'interior_change', 'interior_payment',
+  'archassist_transmittal', 'archassist_submission', 'archassist_invoice', 'archassist_area', 'society_card', 'society_complaint',
+  'society_alert',
 };
 
 /// The live voice call, owned by the app (not by a screen): it keeps going while the owner opens Chat, Connect,

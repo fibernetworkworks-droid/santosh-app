@@ -38,6 +38,12 @@ import 'fleet_screen.dart';
 import 'logistics_screen.dart';
 import 'travel_screen.dart';
 import 'warehouse_screen.dart';
+import 'archassist_screen.dart';
+import 'interior_screen.dart';
+import 'propagent_screen.dart';
+import 'rentdesk_screen.dart';
+import 'sitesup_screen.dart';
+import 'society_screen.dart';
 import 'site_screen.dart';
 import 'app_design_screen.dart';
 import 'kalam_screen.dart';
@@ -569,6 +575,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Import ke kaagaz, HS code jaanch, clearance aur demurrage ka hisaab; filing aapki haan se'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CustomsScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.home_work_rounded, color: C.accent),
+              title: Text('${app.aName} · Real estate agent', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Listings, graahak, site visit, deal ke kaagaz, commission'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PropagentScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.house_rounded, color: C.accent),
+              title: Text('${app.aName} · Property manager', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Kirayedar, kiraya, deposit, agreement, repair, move-out'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => RentdeskScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.construction_rounded, color: C.accent),
+              title: Text('${app.aName} · Site supervisor', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Roz ka kaam, hazri, maal, safety, cube test, snag, DPR'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SitesupScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.chair_rounded, color: C.accent),
+              title: Text('${app.aName} · Interior designer', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Brief, naap, moodboard, BOQ-quote, vendor order, snag, handover'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InteriorScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.architecture_rounded, color: C.accent),
+              title: Text('${app.aName} · Architect\'s assistant', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Project file, FSI jaanch, drawing register, approval, RFI, fee invoice'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ArchassistScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.apartment_rounded, color: C.accent),
+              title: Text('${app.aName} · Society manager', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Flats, maintenance bill, baaki, shikayat, AGM / notice, vendor, gate'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SocietyScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

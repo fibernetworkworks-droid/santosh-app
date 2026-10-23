@@ -781,9 +781,10 @@ def transmittal_request(tenant: str, ref: str, to_kind: str, to_name: str, sheet
 def _tr_pdf(st: ArchSettings, p: ArchProject, t: ArchTransmittal, on: str) -> bytes:
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
-    from reportlab.pdfgen import canvas
+    from reportlab.pdfgen import canvas  # noqa: F401
+    from .. import indicpdf as _indicpdf
     bio = io.BytesIO()
-    c = canvas.Canvas(bio, pagesize=A4)
+    c = _indicpdf.Canvas(bio, pagesize=A4)
     w, h = A4
     y = h - 20 * mm
     c.setFont("Helvetica-Bold", 14)
@@ -1183,10 +1184,11 @@ def _verify_fingerprint(tenant: str, inv_id: str, digest: str, proof: dict | Non
 def _inv_pdf(st: ArchSettings, p: ArchProject, i: ArchInvoice) -> bytes:
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
-    from reportlab.pdfgen import canvas
+    from reportlab.pdfgen import canvas  # noqa: F401
+    from .. import indicpdf as _indicpdf
     tax = _j(i.tax, {})
     bio = io.BytesIO()
-    c = canvas.Canvas(bio, pagesize=A4)
+    c = _indicpdf.Canvas(bio, pagesize=A4)
     w, h = A4
     y = h - 20 * mm
     c.setFont("Helvetica-Bold", 14)

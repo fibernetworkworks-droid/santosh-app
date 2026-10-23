@@ -598,6 +598,15 @@ async def employee_jobs() -> None:
             await asyncio.to_thread(_svc.tick)
         except Exception:
             log.exception("%s tick failed", _mod)
+    # v0.144 Makaan suite: visit / RERA reminders, rent billing + reminder drafts, cube tests / Form XI clocks / DPR reminder,
+    # interior tasks + stages, architect RFIs / approvals / invoices, society calendar (each throttles itself)
+    for _mod in ("propagent", "rentdesk", "sitesup", "interior", "archassist", "society"):
+        try:
+            import importlib
+            _svc = importlib.import_module(f".{_mod}.service", __package__)
+            await asyncio.to_thread(_svc.tick)
+        except Exception:
+            log.exception("%s tick failed", _mod)
     try:                                   # v0.122 Website: her domain's DNS / SSL coming up, uptime of live sites
         from .site import hosting as site_hosting
         await asyncio.to_thread(site_hosting.watch)

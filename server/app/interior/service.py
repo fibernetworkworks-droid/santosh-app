@@ -1221,11 +1221,15 @@ def _pdf(title: str, blocks: list[tuple], watermark: str = "") -> bytes:
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
     from xml.sax.saxutils import escape
 
+    from .. import indicpdf
+    pdf = indicpdf.blocks_pdf(title, blocks, watermark)       # v0.144 Hindi / Marathi names: printed by Chromium (shaped)
+    if pdf:
+        return pdf
     ss = getSampleStyleSheet()
     small = ss["BodyText"].clone("small", fontSize=8.5, leading=10.5)
 
     def txt(t: str) -> str:
-        return escape(str(t or "").replace("₹", "Rs. "))
+        return indicpdf.rl_markup(escape(str(t or "").replace("₹", "Rs. ")))
     story: list = []
     for b in blocks:
         if b[0] == "h":

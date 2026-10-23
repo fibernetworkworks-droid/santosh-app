@@ -45,6 +45,12 @@ import 'fleet_screen.dart';
 import 'logistics_screen.dart';
 import 'travel_screen.dart';
 import 'warehouse_screen.dart';
+import 'archassist_screen.dart';
+import 'interior_screen.dart';
+import 'propagent_screen.dart';
+import 'rentdesk_screen.dart';
+import 'sitesup_screen.dart';
+import 'society_screen.dart';
 import 'site_hosting.dart';
 import 'site_screen.dart';
 import 'app_android.dart';
@@ -875,6 +881,69 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return LogisticsAlertCard(app: app, data: it.data);
     case 'logistics_day':
       return LogisticsDayCard(app: app, data: it.data);
+    // v0.144 Makaan suite
+    case 'propagent_card':
+      return PropagentCardCard(key: ValueKey('gpc${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'propagent_visit':
+      return PropagentVisitCard(key: ValueKey('gpv${(it.data['visit'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'propagent_alert':
+      return PropagentAlertCard(app: app, data: it.data);
+    case 'propagent_day':
+      return PropagentDayCard(app: app, data: it.data);
+    case 'rentdesk_approval':
+      return RentdeskApprovalCard(key: ValueKey('gra${(it.data['approval'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'rentdesk_message':
+      return RentdeskMessageCard(key: ValueKey('grm${(it.data['message'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'rentdesk_receipt':
+      return RentdeskReceiptCard(key: ValueKey('grr${(it.data['payment'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'rentdesk_alert':
+      return RentdeskAlertCard(app: app, data: it.data);
+    case 'rentdesk_day':
+      return RentdeskDayCard(app: app, data: it.data);
+    case 'sitesup_indent':
+      return SitesupIndentCard(key: ValueKey('gsi${(it.data['indent'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'sitesup_stop':
+      return SitesupStopCard(key: ValueKey('gss${(it.data['stop'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'sitesup_report':
+      return SitesupReportCard(key: ValueKey('gsr${(it.data['report'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'sitesup_alert':
+      return SitesupAlertCard(app: app, data: it.data);
+    case 'sitesup_day':
+      return SitesupDayCard(app: app, data: it.data);
+    case 'interior_quote':
+      return InteriorQuoteCard(key: ValueKey('giq${(it.data['quote'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'interior_order':
+      return InteriorOrderCard(key: ValueKey('gio${(it.data['order'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'interior_change':
+      return InteriorChangeCard(key: ValueKey('gic${(it.data['change'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'interior_payment':
+      return InteriorPaymentCard(key: ValueKey('gip${(it.data['stage'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'interior_concept':
+      return InteriorConceptCard(app: app, data: it.data);
+    case 'interior_alert':
+      return InteriorNoteCard(app: app, data: it.data);
+    case 'interior_day':
+      return InteriorNoteCard(app: app, data: it.data);
+    case 'archassist_transmittal':
+      return ArchTransmittalCard(key: ValueKey('gat${(it.data['transmittal'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'archassist_submission':
+      return ArchSubmissionCard(key: ValueKey('gas${(it.data['submission'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'archassist_invoice':
+      return ArchInvoiceCard(key: ValueKey('gai${(it.data['invoice'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'archassist_area':
+      return ArchAreaCard(app: app, data: it.data);
+    case 'archassist_alert':
+      return ArchNoteCard(app: app, data: it.data);
+    case 'archassist_day':
+      return ArchNoteCard(app: app, data: it.data);
+    case 'society_card':
+      return SocietyApprovalCard(key: ValueKey('gyc${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'society_complaint':
+      return SocietyComplaintCard(key: ValueKey('gyx${(it.data['complaint'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'society_alert':
+      return SocietyAlertCard(app: app, data: it.data);
+    case 'society_day':
+      return SocietyDayCard(app: app, data: it.data);
     case 'brand_design':
       return BrandDesignCard(v: it.data, app: app);
     case 'site_board':

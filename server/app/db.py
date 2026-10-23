@@ -712,6 +712,13 @@ def init_db(url: str | None = None):
     from .courier import models as _courier  # noqa: F401
     from .drivers import models as _drivers  # noqa: F401
     from .logistics import models as _logistics  # noqa: F401
+    # v0.144 Makaan suite
+    from .propagent import models as _propagent  # noqa: F401
+    from .rentdesk import models as _rentdesk  # noqa: F401
+    from .sitesup import models as _sitesup  # noqa: F401
+    from .interior import models as _interior  # noqa: F401
+    from .archassist import models as _archassist  # noqa: F401
+    from .society import models as _society  # noqa: F401
     from .office import service as _office  # noqa: F401
     from .lekhak import service as _lekhak  # noqa: F401
     from .agent import pakka as _pakka  # noqa: F401

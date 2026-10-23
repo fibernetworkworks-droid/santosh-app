@@ -32,12 +32,15 @@ RENTDESK_TOOLS = [
         "action=inspection: tenancy, kind move_in|move_out. action=inspect: inspection, items [{room, item, condition good|fair|damaged|"
         "missing, note}], meters {electricity: n}, keys, close. action=settlement: tenancy (start). action=deduct: settlement, what, "
         "amount (HER number), reason, remove. action=settle: settlement -> deduction CARD. action=refund_done (owner): settlement, amount, "
-        "ref. action=settlement_file: settlement. action=forget (owner): person (DPDP, after the tenancy ended). action=register (Excel)."),
+        "ref. action=settlement_file: settlement. action=forget (owner): person (DPDP, after the tenancy ended). action=register (Excel). "
+        "action=from_deal (owner): deal (Property Sahayak D-0001 rent deal), start -> a DRAFT tenancy from that deal (nothing billed / sent)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["settings", "unit", "person", "tenancy", "update", "activate", "check", "agreement",
                                                "received", "receipt", "charge", "waive", "pay_link", "message", "rent_change", "notice",
                                                "tenant_notice", "repair", "assign", "repair_done", "vendor", "inspection", "inspect",
-                                               "settlement", "deduct", "settle", "refund_done", "settlement_file", "forget", "register"]},
+                                               "settlement", "deduct", "settle", "refund_done", "settlement_file", "forget", "register",
+                                               "from_deal"]},
+         "deal": {"type": "string"},
          "business": {"type": "string"}, "landlord_name": {"type": "string"}, "landlord_address": {"type": "string"},
          "landlord_phone": {"type": "string"}, "pan": {"type": "string"}, "receipt_full_pan": {"type": "boolean"},
          "state": {"type": "string"}, "city": {"type": "string"}, "upi_id": {"type": "string"}, "upi_name": {"type": "string"},
@@ -77,7 +80,7 @@ RENTDESK_TOOLS = [
 ]
 RENTDESK_LABELS = {"rentdesk": "Kiraye ka kaam kar raha hoon", "rentdesk_dekho": "Kiraye ka hisaab dekh raha hoon"}
 
-OWNER_ONLY = ("settings", "activate", "received", "charge", "waive", "refund_done", "forget", "unit", "person", "tenancy", "update")
+OWNER_ONLY = ("settings", "activate", "received", "charge", "waive", "refund_done", "forget", "unit", "person", "tenancy", "update", "from_deal")
 STAFF_OK = ("check", "agreement", "receipt", "pay_link", "message", "rent_change", "notice", "tenant_notice", "repair", "assign",
             "repair_done", "vendor", "inspection", "inspect", "settlement", "deduct", "settle", "settlement_file", "register")
 
@@ -119,6 +122,8 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                  **{k: a[k] for k in _PERSON if k in a})
         if action == "tenancy":
             return S.new_tenancy(t, _s(a.get("unit")), _s(a.get("person")), actor, conv, **{k: a[k] for k in _TEN if k in a})
+        if action == "from_deal":
+            return S.from_propagent_deal(t, _s(a.get("deal")), _s(a.get("start")), actor, conv)
         if action == "update":
             return S.update_tenancy(t, tn, **{k: a[k] for k in _TEN if k in a})
         if action == "activate":

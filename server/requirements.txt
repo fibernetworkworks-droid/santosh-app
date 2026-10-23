@@ -40,3 +40,4 @@ pytesseract>=0.3   # v0.78 CAPTCHA OCR (needs tesseract-ocr system package: apt 
 beautifulsoup4>=4.12   # v0.121 Website Sahayak: sanitises the HTML the model writes
 fonttools>=4.50          # v0.132 app fonts woff2 -> ttf for the native Android build
 brotli>=1.1
+uharfbuzz>=0.40              # v0.144 shaped Devanagari in ReportLab PDFs when Chromium is not there

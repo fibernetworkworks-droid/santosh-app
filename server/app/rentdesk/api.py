@@ -95,6 +95,11 @@ def make_router(require_key, current_tenant) -> APIRouter:
         unit, person = str(b.pop("unit", "") or ""), str(b.pop("person", "") or "")
         return await run(S.new_tenancy, tenant, unit, person, **{k: b[k] for k in S._TEN_KEYS if k in b})
 
+    @r.post("/tenancies/from_deal")                    # v0.144: a closed Property Sahayak rent deal -> DRAFT tenancy
+    async def tenancy_from_deal(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await run(S.from_propagent_deal, tenant, str(b.get("deal") or ""), str(b.get("start") or ""))
+
     @r.get("/tenancies/{tid}")
     async def get_tenancy(tid: str, tenant: str = Depends(current_tenant)):
         return await run(S.tenancy_view, tenant, tid)

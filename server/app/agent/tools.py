@@ -792,3 +792,28 @@ _have = {t["name"] for t in _biz_inbox.BIZ_TOOLS}
 _biz_inbox.BIZ_TOOLS.extend(t for t in COURIER_BIZ_TOOLS if t["name"] not in _have)
 _biz_inbox.BIZ_HANDLERS.update(COURIER_BIZ_HANDLERS)
 _biz_inbox.BIZ_LABELS.update(COURIER_BIZ_LABELS)
+
+# v0.144 Makaan suite: 6 Real estate & construction Sahayaks (real estate agent, property manager, site supervisor, interior
+# designer, architect's assistant, housing society manager). Rentdesk's customer-safe biz_rent_* tools go into the business
+# WhatsApp inbox only (never offered to her model), like the courier desk's biz_parcel_* tools.
+from .propagent_tools import PROPAGENT_HANDLERS, PROPAGENT_LABELS, PROPAGENT_TOOLS  # noqa: E402
+from .rentdesk_tools import (RENTDESK_BIZ_HANDLERS, RENTDESK_BIZ_LABELS, RENTDESK_BIZ_TOOLS, RENTDESK_HANDLERS,  # noqa: E402
+                             RENTDESK_LABELS, RENTDESK_TOOLS)
+from .sitesup_tools import SITESUP_HANDLERS, SITESUP_LABELS, SITESUP_TOOLS  # noqa: E402
+from .interior_tools import INTERIOR_HANDLERS, INTERIOR_LABELS, INTERIOR_TOOLS  # noqa: E402
+from .archassist_tools import ARCHASSIST_HANDLERS, ARCHASSIST_LABELS, ARCHASSIST_TOOLS  # noqa: E402
+from .society_tools import SOCIETY_HANDLERS, SOCIETY_LABELS, SOCIETY_TOOLS  # noqa: E402
+
+for _t, _l, _h in ((PROPAGENT_TOOLS, PROPAGENT_LABELS, PROPAGENT_HANDLERS), (RENTDESK_TOOLS, RENTDESK_LABELS, RENTDESK_HANDLERS),
+                   (SITESUP_TOOLS, SITESUP_LABELS, SITESUP_HANDLERS), (INTERIOR_TOOLS, INTERIOR_LABELS, INTERIOR_HANDLERS),
+                   (ARCHASSIST_TOOLS, ARCHASSIST_LABELS, ARCHASSIST_HANDLERS), (SOCIETY_TOOLS, SOCIETY_LABELS, SOCIETY_HANDLERS)):
+    _seen = {t["name"] for t in TOOLS}
+    TOOLS.extend(t for t in _t if t["name"] not in _seen)
+    TOOL_LABELS.update(_l)
+    HANDLERS.update(_h)
+TOOL_LABELS.update(RENTDESK_BIZ_LABELS)
+HANDLERS.update(RENTDESK_BIZ_HANDLERS)
+_have = {t["name"] for t in _biz_inbox.BIZ_TOOLS}
+_biz_inbox.BIZ_TOOLS.extend(t for t in RENTDESK_BIZ_TOOLS if t["name"] not in _have)
+_biz_inbox.BIZ_HANDLERS.update(RENTDESK_BIZ_HANDLERS)
+_biz_inbox.BIZ_LABELS.update(RENTDESK_BIZ_LABELS)

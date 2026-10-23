@@ -1463,15 +1463,17 @@ def dpr_text(d: dict) -> str:
 
 
 def _pdf_safe(t: str) -> str:
-    return str(t).replace("₹", "Rs ").replace("*", "").encode("latin-1", "replace").decode("latin-1")
+    from .. import indicpdf                   # v0.144 Devanagari kept: the PDF is printed with Hindi / Marathi fonts
+    return indicpdf.keep(str(t).replace("*", ""))
 
 
 def dpr_pdf(d: dict) -> bytes:
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.utils import ImageReader
-    from reportlab.pdfgen import canvas
+    from reportlab.pdfgen import canvas  # noqa: F401
+    from .. import indicpdf as _indicpdf
     bio = io.BytesIO()
-    c = canvas.Canvas(bio, pagesize=A4)
+    c = _indicpdf.Canvas(bio, pagesize=A4)
     w, h = A4
     y = h - 50
 

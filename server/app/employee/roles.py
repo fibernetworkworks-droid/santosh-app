@@ -126,6 +126,19 @@ DUTIES: dict[str, dict] = {
                      "prefix": (), "tools": {"drivers", "drivers_dekho", "file_read"}},
     "logistics_work": {"label": "Logistics", "say": "shipment, LR / challan / packing list, e-way bill ki taiyaari, tracking, graahak ko update draft (e-way bill portal par aur graahak ko message sirf aapke tap se)",
                        "prefix": (), "tools": {"logistics", "logistics_dekho", "file_read"}},
+    # v0.144 Makaan suite
+    "propagent_work": {"label": "Property / broker", "say": "listings, graahak ki zaroorat se milaan, site visit, deal ke kaagaz aur commission (public listing, har message aur paise wale kaagaz aapki haan se)",
+                       "prefix": (), "tools": {"propagent", "propagent_dekho", "file_read", "telecall", "telecall_dekho"}},
+    "rentdesk_work": {"label": "Property manager", "say": "kirayedar, kiraya / deposit ka hisaab, receipt, reminder draft, agreement draft, renewal, repair, move-in / move-out, deposit hisaab (har message, katauti, kiraya badlav aur repair kharcha aapki haan se)",
+                      "prefix": (), "tools": {"rentdesk", "rentdesk_dekho", "biz_rent_status", "biz_rent_repair", "file_read"}},
+    "site_supervision": {"label": "Site supervision", "say": "roz ka kaam vs plan, hazri, site par maal, safety / toolbox talk, cube test, snag, DPR (indent, client ko report aur kaam rokna aapki haan se)",
+                         "prefix": (), "tools": {"sitesup", "sitesup_dekho", "file_read", "theka_dekho"}},
+    "interior_work": {"label": "Interior design", "say": "client ka brief, site naap, moodboard, BOQ aur quotation (aapke rate), vendor order, installation schedule, snag list, handover warranty (quote client ko / vendor order / daam badalne wala badlav / paise maangna aapki haan se)",
+                      "prefix": (), "tools": {"interior", "interior_dekho", "file_read", "photo_banao"}},
+    "arch_work": {"label": "Architect office", "say": "project file, plot ke kaagaz, area statement / FSI jaanch (andaaza), drawing register, approval checklist, RFI, minutes, fee invoice (issue / submit / invoice aapki haan se)",
+                  "prefix": (), "tools": {"archassist", "archassist_dekho", "file_read", "make_document", "lekhak"}},
+    "society_work": {"label": "Housing society", "say": "flats / members register, maintenance bill, receipt, baaki ki yaad, shikayat, notice / AGM / minutes, vendor / AMC, gate register (bill / notice / message / kharcha / penalty aapki haan se)",
+                     "prefix": (), "tools": {"society", "society_dekho", "file_read"}},
     "research": {"label": "Jaankari dhoondhna", "say": "web, maps, mausam, public APIs",
                  "prefix": ("maps_", "api_"), "tools": {"google_search", "web_sources", "open_website", "browse_web", "browse_result", "get_weather",
                                                        "memory_search"}},
@@ -139,7 +152,9 @@ CUSTOMER_TOOLS = {"biz_repair_status", "biz_order_status", "biz_free_slots", "bi
                   "biz_seva_answer", "biz_seva_ticket", "biz_seva_status", "biz_seva_request", "biz_seva_rate",
                   "biz_shikayat", "biz_shikayat_status", "biz_return_start", "biz_return_status",
                   # v0.139 Safar suite (courier desk)
-                  "biz_parcel_status", "biz_parcel_fix"}
+                  "biz_parcel_status", "biz_parcel_fix",
+                  # v0.144 Makaan suite (rentdesk)
+                  "biz_rent_status", "biz_rent_repair"}
 
 ROLES: dict[str, dict] = {
     "front_desk": {"label": "Front desk", "say": "Dukaan / clinic / office ka pehla chehra: sawaal, appointment, follow-up",
@@ -270,6 +285,19 @@ ROLES: dict[str, dict] = {
                            "duties": ["driver_coord", "reminders", "records"]},
     "logistics_coordinator": {"label": "Logistics coordinator", "say": "Shipment, LR / challan, e-way bill, tracking, graahak ko update; portal aur message aapke tap se",
                               "duties": ["logistics_work", "customers", "records", "reminders"]},
+    # v0.144 Makaan suite
+    "real_estate_agent": {"label": "Real estate agent", "say": "Listings, graahak se milaan, site visit, deal ke kaagaz, commission; public listing / message / paise ke kaagaz aapki haan se",
+                          "duties": ["propagent_work", "telecalling", "appointments", "reminders", "records"]},
+    "property_manager": {"label": "Property manager", "say": "Kirayedar, kiraya / deposit, receipt, agreement draft, repair, move-out; message / katauti / kiraya badlav aapki haan se",
+                         "duties": ["rentdesk_work", "reminders", "records", "collections"]},
+    "site_supervisor": {"label": "Site supervisor", "say": "Roz ka kaam, hazri, maal, safety, cube test, snag, DPR; indent / client report / kaam rokna aapki haan se",
+                        "duties": ["site_supervision", "contract_work", "records", "reminders"]},
+    "interior_designer": {"label": "Interior designer", "say": "Brief, naap, moodboard, BOQ-quote, vendor order, snag, handover; quote / order / paise maangna aapki haan se",
+                          "duties": ["interior_work", "customers", "appointments", "reminders", "records"]},
+    "architect_assistant": {"label": "Architect's assistant", "say": "Project file, FSI jaanch (andaaza), drawing register, approval, RFI, fee invoice; issue / submit / invoice aapki haan se",
+                            "duties": ["arch_work", "records", "reminders", "email"]},
+    "society_manager": {"label": "Housing society manager", "say": "Flats, maintenance bill, baaki, shikayat, AGM / notice, vendor, gate; bill / notice / kharcha aapki haan se",
+                        "duties": ["society_work", "reminders", "records"]},
     "custom": {"label": "Apna kaam", "say": "Aap khud chuniye Hoola kaun se kaam karega", "duties": []},
 }
 
@@ -486,6 +514,33 @@ PRESETS: dict[str, dict] = {
                   "about_hint": "Kya maal bhejte hain, kahan, apni gaadi / transporter / courier, GSTIN, e-way bill kaun banata hai",
                   "rules": ["E-way bill banana / Part B / extension sirf owner ke tap se", "Graahak ko message owner bhejti hai; Hoola sirf draft",
                             "Tracking sirf driver / transporter / courier ki batayi baat se, kabhi andaaza nahi"]},
+    # v0.144 Makaan suite
+    "real_estate": {"label": "Property dealer / broker", "role": "real_estate_agent", "kind": "office", "slot_minutes": 30, "after_hours": "note",
+                    "about_hint": "Kis area mein, sale / rent, kitni listings, RERA agent number, commission kitna",
+                    "rules": ["Listing public / portal / poster sirf owner ki haan ke card se", "Graahak ya malik ko har message pehle owner ki haan",
+                              "Daam, kiraya, area, stamp duty kabhi khud se nahi", "RERA project ke har ad mein project number + QR + agent number"]},
+    "rentdesk": {"label": "Kiraye ki property / PG / dukaan", "role": "property_manager", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
+                 "about_hint": "Kitne flat / dukaan / PG bed, kis shehar mein, leave & licence ya rent agreement, deposit kitna",
+                 "rules": ["Kirayedar ko har message sirf owner ke tap se", "Deposit se katauti, kiraya badhana, notice, repair kharcha: sirf owner ki haan ke card se",
+                           "Paisa mila sirf owner batati hain; Hoola paise nahi leta / deta"]},
+    "site_supervisor": {"label": "Construction site / supervisor", "role": "site_supervisor", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
+                        "about_hint": "Kaun si site, kaun se contractor / trade, roz kitne log, client kaun, Theka project hai?",
+                        "rules": ["Material indent / kharid sirf owner ki haan (card) se", "Client ko DPR / message sirf owner ki haan se",
+                                  "Kaam rokne ka order sirf owner ka; jaan ka khatra ho to pehle log hatao", "Naap / progress jaisa bataya waisa hi likho"]},
+    "interior": {"label": "Interior designer / modular kitchen studio", "role": "interior_designer", "kind": "office", "slot_minutes": 30, "after_hours": "note",
+                 "about_hint": "Kaun se kaam (modular kitchen, wardrobe, false ceiling...), rate card hai?, design fee kaise, GSTIN",
+                 "rules": ["Rate, naap, brand ka daam kabhi mat gadho: khaali chhodo aur poochho",
+                           "Quotation client ko, vendor order, daam badalne wala badlav, paise maangna: sirf owner ki haan ke card se",
+                           "Apne aap ko 'architect' mat likho (Architects Act s.37)"]},
+    "architect": {"label": "Architect / design office", "role": "architect_assistant", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
+                  "about_hint": "Kaun si authority (BPMS / AutoDCR / PMRDA), kaise project, CoA number, fee kaise lete hain",
+                  "rules": ["Drawing, transmittal, submission aur invoice sirf owner ki haan ke card se", "FSI / setback jaanch andaaza hai: rule book se pakka",
+                            "Plot area / fee / % kaam kabhi khud se nahi"]},
+    "society": {"label": "Housing society / RWA / apartment association", "role": "society_manager", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
+                "about_hint": "Kitne flat / wing, maintenance kaise lagta hai, society ka UPI ID, secretary / treasurer kaun",
+                "rules": ["Bill, notice, member ko message, kharcha aur penalty sirf owner / secretary ki haan ke card se",
+                          "Paise kabhi khud nahi: UPI link society ke apne UPI ID par, 'paisa mila' secretary darj karein",
+                          "Maharashtra: non-occupancy 10% aur vyaaj 12% se zyada kabhi nahi", "Members ka phone / data kisi doosre member ko nahi (DPDP)"]},
 }
 
 LEVELS = ("seekh", "saathi", "bharosa")
@@ -520,6 +575,8 @@ READ = {
     "dev_dekho", "qa_dekho", "it_admin_dekho", "noc_dekho", "cyber_dekho", "devops_dekho", "docs_writer_dekho", "app_review_dekho", "product_dekho",
     # v0.139 Safar suite
     "customs_dekho", "travel_dekho", "warehouse_dekho", "fleet_dekho", "courier_dekho", "biz_parcel_status", "drivers_dekho", "logistics_dekho",
+    # v0.144 Makaan suite
+    "propagent_dekho", "rentdesk_dekho", "biz_rent_status", "sitesup_dekho", "interior_dekho", "archassist_dekho", "society_dekho",
     "theka_dekho", "ads_dekho", "brand_dekho", "website_dekho", "app_dekho",
 }
 BIG = {
