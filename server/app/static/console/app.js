@@ -45,7 +45,7 @@ function showLogin(err) {
 }
 async function boot() {
   try { CONFIG = await api('GET', '/api/console/config'); } catch {}
-  const u = new URL(location.href), code = u.searchParams.get('code'), err = u.searchParams.get('error');
+  const u = new URL(location.href), code = u.searchParams.get('code'), err = u.searchParams.get('error'), gApps = u.searchParams.get('google') === 'apps';
   if (code || err) history.replaceState(null, '', '/console/');
   if (code) {
     try { const r = await api('POST', '/api/console/exchange', {code}); setToken(r.session_token); }
@@ -53,7 +53,7 @@ async function boot() {
   }
   if (err) return showLogin(err);
   if (!TOKEN) return showLogin();
-  try { await enter(); } catch (e) { if (e.status !== 401) showLogin(e.message); }
+  try { await enter(); if (gApps) toast('Google apps jud gaye: Gmail, Calendar, Drive, Docs, Sheets.'); } catch (e) { if (e.status !== 401) showLogin(e.message); }
 }
 function setToken(t) { TOKEN = t || ''; if (TOKEN) store.set('hoola.console.token', TOKEN); else store.del('hoola.console.token'); }
 $('#gbtn').addEventListener('click', () => {
@@ -507,6 +507,7 @@ async function drawAaj() {
 }
 
 /* ================= Main (profile + console password) ================= */
+const gOn = m => { const g = m.google_apps || {}; return !!(g.gmail && g.calendar && g.drive); };
 async function drawMain() {
   const m = ME || {}; const box = $('#mainp');
   box.innerHTML = `<div class="prof gl"><span class="av"><img src="${$('#uimg').src}" alt=""></span><div><h2>${esc(AV)}</h2><div class="muted">${esc(m.handle || '')} · ${esc(m.owner || '')}${m.email ? ' · ' + esc(m.email) : ''}</div></div></div>
@@ -517,11 +518,16 @@ async function drawMain() {
           <input type="password" id="pwn" placeholder="Naya password (10+ akshar)" autocomplete="new-password" aria-label="New password" minlength="10">
           <input type="password" id="pwn2" placeholder="Naya password dobara" autocomplete="new-password" aria-label="Repeat new password">
           <button class="btn go" type="submit">${m.has_password ? 'Password badlo' : 'Password banao'}</button></form></div>
+      <div class="tile gl"><h3>Google apps <span class="tag ${gOn(m) ? 'ok' : 'warn'}">${gOn(m) ? 'jude hain' : 'jode nahi'}</span></h3>
+        <p class="muted" style="font-size:13.5px">Login sirf naam aur email leta hai. Gmail, Calendar, Drive, Docs aur Sheets par kaam ke liye Google se alag se ijazat dijiye.</p>
+        <div class="feat">${['gmail', 'calendar', 'drive', 'docs', 'sheets'].map(k => `<span class="chip">${(m.google_apps || {})[k] ? '✓' : '○'} ${k[0].toUpperCase() + k.slice(1)}</span>`).join('')}</div>
+        <div class="acts" style="margin-top:12px"><button class="btn ${gOn(m) ? 'soft' : 'go'}" type="button" id="gAppsBtn">${gOn(m) ? 'Dobara jodiye' : 'Google apps jodiye'}</button></div></div>
       <div class="tile gl"><h3>Yaad <span class="tag v" id="memc">…</span></h3><div class="mfacts" id="mfacts"><div class="empty">Laa raha hoon…</div></div></div>
       <div class="tile gl"><h3>Server</h3><div class="feat" id="feat"><span class="empty">…</span></div></div>
     </div>
     <div class="acts" style="margin-top:22px"><button class="btn soft" type="button" id="logoutBtn">Logout</button></div>`;
   $('#logoutBtn').addEventListener('click', () => logout(false));
+  $('#gAppsBtn').addEventListener('click', () => { if (!CONFIG.google) return toast('Google sign-in server par set nahi hai.', true); location.href = '/auth/google/start?web=1&apps=1'; });
   $('#pwf').addEventListener('submit', async e => { e.preventDefault(); const n = $('#pwn').value, n2 = $('#pwn2').value;
     if (n !== n2) return toast('Dono naye password ek jaise nahi hain.', true);
     try { const r = await api('PUT', '/api/console/password', {password: n, current: $('#pwc')?.value || ''}); ME.has_password = true; toast(`Password set. Ab ${r.handle} + password se login ho sakta hai.`); drawMain(); } catch (er) { toast(er.message, true); } });

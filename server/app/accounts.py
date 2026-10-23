@@ -37,8 +37,32 @@ GOOGLE_SCOPES = [
 ]
 
 
+# The Hoola Console signs people in with these only: name + email are not "sensitive" scopes, so Google lets ANY
+# Google account in without app verification. Gmail / Drive / Calendar are asked for separately ("Google apps jodiye").
+SIGNIN_SCOPES = ["openid", "email", "profile"]
+
+
 class AuthError(Exception):
     pass
+
+
+class SignupClosed(AuthError):
+    pass
+
+
+def signup_allowed(email: str) -> bool:
+    """Can this email make a NEW Hoola? Existing accounts always sign in; the server owner always may."""
+    st = get_settings()
+    if (getattr(st, "hoola_signup", "open") or "open").strip().lower() != "invite":
+        return True
+    e = (email or "").strip().lower()
+    if not e or is_owner_email(e):
+        return bool(e)
+    for item in (getattr(st, "hoola_signup_allow", "") or "").split(","):
+        item = item.strip().lower()
+        if item and (e == item or (item.startswith("@") and e.endswith(item))):
+            return True
+    return False
 
 
 # ---------------- token encryption ----------------
@@ -73,25 +97,31 @@ def _redirect_uri() -> str:
     return get_settings().public_base_url.rstrip("/") + "/auth/google/callback"
 
 
-def start_google(extra_state: str = "", web: bool = False) -> str:
+def start_google(extra_state: str = "", web: bool = False, apps: bool = False) -> str:
     """Return the Google consent URL the app should open. web=True = the Hoola Console (v0.142): the callback then
-    hands the browser a one-time code instead of the app's deep link."""
+    hands the browser a one-time code instead of the app's deep link. The console's sign-in asks only for name + email
+    (no Google review needed for any user); apps=True is its "Google apps jodiye" step (Gmail, Drive, Calendar, Docs,
+    Sheets, added to what she already granted). The phone app keeps its one consent for everything."""
     if not oauth_configured():
         raise AuthError("Google sign-in server par configure nahi hai.")
     st = get_settings()
-    state = ("cw_" if web else "") + secrets.token_urlsafe(24)
+    state = ("cw_" + ("g." if apps else "") if web else "") + secrets.token_urlsafe(24)
     with session() as s:
         s.add(OAuthState(state=state))
+    signin_only = web and not apps
     params = {
         "client_id": st.google_oauth_client_id,
         "redirect_uri": _redirect_uri(),
         "response_type": "code",
-        "scope": " ".join(GOOGLE_SCOPES),
-        "access_type": "offline",        # get a refresh token
-        "prompt": "consent",             # ensure a refresh token every time
+        "scope": " ".join(SIGNIN_SCOPES if signin_only else GOOGLE_SCOPES),
         "include_granted_scopes": "true",
-        "state": state,
     }
+    if signin_only:
+        params["prompt"] = "select_account"   # just pick the account; no consent screen for basic profile
+    else:
+        params["access_type"] = "offline"     # get a refresh token
+        params["prompt"] = "consent"          # ensure a refresh token every time
+    params["state"] = state                   # kept last: callers read it off the end of the link
     return f"{GOOGLE_AUTH}?{urlencode(params)}"
 
 
@@ -136,6 +166,9 @@ async def finish_google(code: str, state: str) -> dict:
     expiry = now() + timedelta(seconds=int(tok.get("expires_in", 3600)))
     with session() as s:
         user = s.scalar(select(User).where(User.email == email))
+        if not user and not signup_allowed(email):
+            raise SignupClosed("Hoola abhi invite se khul raha hai. Is Google account ke liye abhi jagah nahi hai; "
+                               "Hoola team se invite maangiye.")
         if not user:
             user = User(email=email, name=info.get("name", ""), google_sub=info.get("sub"))
             s.add(user)
@@ -153,7 +186,7 @@ async def finish_google(code: str, state: str) -> dict:
         conn.access_token_enc = encrypt(tok["access_token"])
         if tok.get("refresh_token"):                 # Google omits it on re-consent sometimes; keep the old one
             conn.refresh_token_enc = encrypt(tok["refresh_token"])
-        conn.scopes = tok.get("scope", " ".join(GOOGLE_SCOPES))
+        conn.scopes = tok.get("scope") or conn.scopes or " ".join(SIGNIN_SCOPES)
         conn.last_error = None                       # a fresh sign-in clears an old "login expired"
         conn.expiry = expiry
     sess_token = issue_session(uid)

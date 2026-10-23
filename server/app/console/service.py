@@ -258,7 +258,15 @@ def me(tenant: str) -> dict[str, Any]:
         owner = ""
     return {"tenant": tenant, "handle": "@" + handle_of(tenant), "avatar": {"name": a["name"], "gender": a["gender"],
             "voice": a["voice"], "look": a.get("look")}, "owner": (user or {}).get("name") or owner,
-            "email": (user or {}).get("email", ""), "has_password": has_password(tenant)}
+            "email": (user or {}).get("email", ""), "has_password": has_password(tenant),
+            "google_apps": _google_apps(user)}
+
+
+def _google_apps(user: dict | None) -> dict[str, bool]:
+    """Which Google apps her sign-in covers (the console asks for name + email first, apps separately)."""
+    scopes = " ".join(" ".join(c.get("scopes") or []) for c in (user or {}).get("connections", []) if c.get("provider") == "google")
+    return {"gmail": "gmail" in scopes, "calendar": "calendar" in scopes, "drive": "auth/drive" in scopes,
+            "docs": "documents" in scopes, "sheets": "spreadsheets" in scopes}
 
 
 def conversations(tenant: str, limit: int = 40) -> list[dict[str, Any]]:

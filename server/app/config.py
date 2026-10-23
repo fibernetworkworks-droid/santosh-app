@@ -242,6 +242,8 @@ class Settings(BaseSettings):
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""
     app_redirect_scheme: str = "santosh"    # deep link back into the phone app after sign-in
+    hoola_signup: str = "open"              # who can make a NEW Hoola with Google sign-in: open (anyone) | invite
+    hoola_signup_allow: str = ""            # invite mode: comma list of emails and/or @domain.com allowed to sign up
     google_maps_api_key: str = ""           # Maps Platform key: Places API (New), Routes API, Geocoding API
     picovoice_access_key: str = ""          # no longer used: "Hey Santosh" runs on Santosh Wake (our own model)
     wake_keyword_file: str = ""             # optional newer hey_santosh.onnx to push to phones (wakeword/train.py)

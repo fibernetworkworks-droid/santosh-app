@@ -587,11 +587,12 @@ def cancel_reminder_api(reminder_id: str, tenant: str = Depends(current_tenant))
 
 # ---------------- accounts (product: Sign in with Google) ----------------
 @app.get("/auth/google/start")
-def google_start(app_session: bool = True, web: bool = False):
-    """The app opens this; we redirect to Google's consent screen. web=1 = the Hoola Console (v0.142)."""
+def google_start(app_session: bool = True, web: bool = False, apps: bool = False):
+    """The app opens this; we redirect to Google's consent screen. web=1 = the Hoola Console (v0.142): sign-in with
+    name + email only; web=1&apps=1 = the console's "Google apps jodiye" (Gmail, Drive, Calendar, Docs, Sheets)."""
     from . import accounts
     try:
-        return RedirectResponse(accounts.start_google(web=web))
+        return RedirectResponse(accounts.start_google(web=web, apps=apps))
     except accounts.AuthError as e:
         raise HTTPException(503, str(e))
 
@@ -641,12 +642,15 @@ async def google_callback(request: Request):
     code = request.query_params.get("code")
     state = request.query_params.get("state", "")
     err = request.query_params.get("error")
+    from .console import service as console
+    web = console.is_web_state(state)
     if err:
+        if web:   # she pressed Cancel on Google's screen: back to the console, not a bare error page
+            msg = "Google sign-in band kiya gaya." if err == "access_denied" else f"Google sign-in nahi hua ({err[:40]})."
+            return RedirectResponse("/console/?error=" + quote(msg), headers=_CONSOLE_NOREF)
         return HTMLResponse(f"<h3>Sign-in cancelled</h3><p>{err}</p>", status_code=400)
     if not code:
         raise HTTPException(400, "Missing code")
-    from .console import service as console
-    web = console.is_web_state(state)
     try:
         res = await accounts.finish_google(code, state)
     except accounts.AuthError as e:
@@ -654,7 +658,8 @@ async def google_callback(request: Request):
             return RedirectResponse("/console/?error=" + quote(str(e)[:160]), headers=_CONSOLE_NOREF)
         return HTMLResponse(f"<h3>Sign-in nahi hua</h3><p>{e}</p>", status_code=400)
     if web:   # v0.142 Hoola Console: a one-time code, never the session token, goes into the URL
-        return RedirectResponse("/console/?code=" + console.issue_code(res["session_token"]), headers=_CONSOLE_NOREF)
+        apps = "&google=apps" if state.startswith(console.WEB_STATE + "g.") else ""
+        return RedirectResponse("/console/?code=" + console.issue_code(res["session_token"]) + apps, headers=_CONSOLE_NOREF)
     scheme = get_settings().app_redirect_scheme
     deep = f"{scheme}://auth?session={res['session_token']}"
     # the app registers this scheme; the page also shows the token in case the link doesn't auto-open
