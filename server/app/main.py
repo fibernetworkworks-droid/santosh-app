@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.131.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.132.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -165,7 +165,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design", "app_android"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -6344,7 +6344,68 @@ async def apps_act(ref: str, action: str, body: dict | None = None, tenant: str 
         return await asyncio.to_thread(_appd, A.stop, tenant, ref)
     if action == "resume":
         return await asyncio.to_thread(_appd, A.resume, tenant, ref)
+    if action == "android":
+        from .appmaker.android import service as AN
+        only = [str(x) for x in body.get("redo") or [] if isinstance(x, str)][:60] if isinstance(body.get("redo"), list) else None
+        return await asyncio.to_thread(_appd, AN.build, tenant, ref, conv, only)
     raise HTTPException(404, "unknown action")
+
+
+@app.get("/api/apps/{ref}/android", dependencies=[Depends(require_key)])
+async def apps_android(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.132: the native Android build of an approved design (screens in Kotlin, compile rounds, APK / project ZIP)."""
+    from .appmaker.android import service as AN
+    return await asyncio.to_thread(_appd, AN.get, tenant, ref)
+
+
+@app.get("/api/apps/{ref}/android/{what}", dependencies=[Depends(require_key)])
+async def apps_android_file(ref: str, what: str, tenant: str = Depends(current_tenant)):
+    from .appmaker.android import service as AN
+    try:
+        if what == "zip":
+            f, name = await asyncio.to_thread(AN.zip_file, tenant, ref)
+            return FileResponse(f, media_type="application/zip", filename=name, headers={"Cache-Control": "private, no-store"})
+        if what == "apk":
+            f, name = await asyncio.to_thread(AN.apk_file, tenant, ref)
+            return FileResponse(f, media_type="application/vnd.android.package-archive", filename=name,
+                                headers={"Cache-Control": "private, no-store"})
+    except AN.AS.AppError as e:
+        raise HTTPException(404, str(e))
+    raise HTTPException(404, "not found")
+
+
+@app.get("/api/app-apk/{token}/{name}")
+async def app_apk(token: str, name: str):
+    """Public by its random token (7 days): the preview APK her phone's installer downloads (sha256 checked on the phone)."""
+    from .appmaker.android import service as AN
+    try:
+        f = await asyncio.to_thread(AN.apk_by_token, token, name)
+    except AN.AndroidError:
+        raise HTTPException(404, "not found")
+    return FileResponse(f, media_type="application/vnd.android.package-archive", filename=name,
+                        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+
+
+@app.get("/api/app-zip/{token}/{name}")
+async def app_zip(token: str, name: str):
+    """Public by its random token (7 days): the Android Studio project of her app (open on a laptop)."""
+    from .appmaker.android import service as AN
+    try:
+        f = await asyncio.to_thread(AN.file_by_token, token, name, "zip")
+    except AN.AndroidError:
+        raise HTTPException(404, "not found")
+    return FileResponse(f, media_type="application/zip", filename=name, headers={"Cache-Control": "private, no-store"})
+
+
+@app.get("/api/app-content/{app_key}")
+async def app_content(app_key: str):
+    """Public, read only: what an installed Hoola-made app shows (her public facts + public products; samples marked)."""
+    from .appmaker.android import service as AN
+    try:
+        data = await asyncio.to_thread(AN.content, app_key)
+    except AN.AndroidError:
+        raise HTTPException(404, "not found")
+    return JSONResponse(data, headers={"Cache-Control": "public, max-age=60"})
 
 
 @app.get("/api/apps/{ref}/shots/{name:path}", dependencies=[Depends(require_key)])

@@ -952,6 +952,8 @@ class Api {
   Future<Map<String, dynamic>> appAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/apps/$id/$action', body: body, timeout: const Duration(seconds: 120)) as Map);
   Future<Map<String, dynamic>> appDelete(String id) async => Map<String, dynamic>.from(await _send('DELETE', '/api/apps/$id') as Map);
+  // ---- v0.132 the native Android build (Kotlin + Compose, APK on her phone, project ZIP) ----
+  Future<Map<String, dynamic>> appAndroid(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/apps/$id/android') as Map);
   // ---- v0.131 complex apps: blueprint (data model, roles, levels, login, phone features) + schema files ----
   Future<Map<String, dynamic>> appBlueprint(String id) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/apps/$id/blueprint') as Map);

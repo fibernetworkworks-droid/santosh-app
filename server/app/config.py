@@ -107,6 +107,13 @@ class Settings(BaseSettings):
     sites_porkbun_key: str = ""            # v0.123 Newtika's Porkbun API key / secret (only with sites_resell)
     sites_porkbun_secret: str = ""
     sites_domain_month_inr: float = 5000   # v0.123 ceiling per owner per month for domain purchases
+    app_build_mode: str = ""               # v0.132 native Android builds: worker | github | local | "" (project ZIP only)
+    app_build_url: str = ""                # v0.132 worker: https://build.example.com (server/app_builder on a separate machine)
+    app_build_secret: str = ""             # v0.132 worker shared secret (HMAC of every request)
+    app_build_gh_repo: str = ""            # v0.132 github: owner/repo of a PRIVATE builds repo with .github/workflows/hoola-build.yml
+    app_build_gh_token: str = ""           # v0.132 github: fine-grained token for that repo only (contents + actions read/write)
+    app_build_timeout_s: int = 1500        # v0.132 one Gradle build at most
+    app_build_rounds: int = 4              # v0.132 compile-fix rounds before a screen gets its simple code version
     voice_silence_ms: int = 700            # pause that ends your turn: Google recommends 500-800 (people reply in ~0.2 s)
     voice_end_sensitivity: str = ""        # "" = Gemini's default | low (waits longer) | high (answers sooner)
     voice_prefix_padding_ms: int = 300     # speech kept from just before the voice was detected (100-300)

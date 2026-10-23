@@ -40,6 +40,7 @@ class AppProject(Base):
     approved_hash: Mapped[str] = mapped_column(String(40), default="")     # her 'Design pakka' tap (hash of the design)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     conv: Mapped[str] = mapped_column(String(64), default="")
+    android: Mapped[str | None] = mapped_column(Text, nullable=True)   # v0.132 native build state (JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 

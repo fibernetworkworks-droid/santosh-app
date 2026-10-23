@@ -61,6 +61,12 @@ class Native {
   /// null = Android's installer is asking the owner; 'permission' = she must allow "install unknown apps" first.
   static Future<String?> updateInstall(String path) async => _call<String>('updateInstall', {'path': path});
   static Future<void> updatePermission() async => _call('updatePermission');
+  /// v0.132 App Sahayak: the preview APK of an app Hoola built for her business (from her own server, sha256 checked).
+  static Future<Map<String, dynamic>> previewDownload(String url, String sha256, String pkg, String server) =>
+      _map('previewDownload', {'url': url, 'sha256': sha256, 'package': pkg, 'server': server});
+  static Future<String?> previewInstall(String path, String pkg) async =>
+      _call<String>('previewInstall', {'path': path, 'package': pkg});
+  static Future<bool> previewOpen(String pkg) async => await _call<bool>('previewOpen', {'package': pkg}) ?? false;
   static Future<void> openMakerPerms() async => _call('openMakerPerms');
   /// v0.57 reel scroll analysis (Android Usage Access: times only, never screen content).
   // v0.84 Galla: UPI payment alerts (only after she gives notification access in Android settings)

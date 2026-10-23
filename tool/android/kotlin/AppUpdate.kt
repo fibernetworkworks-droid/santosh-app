@@ -56,15 +56,35 @@ object AppUpdate {
     /** Downloads + checks the APK on a background thread; done(path, error) on that thread. */
     fun download(ctx: Context, url: String, sha256: String, size: Long, done: (String?, String?) -> Unit) {
         if (channel(ctx) != "github") { done(null, "Is version mein app khud update nahi hota (Play Store se update kijiye)."); return }
-        if (busy) { done(null, "Update pehle se chal raha hai."); return }
         if (!url.startsWith("https://github.com/") && !url.startsWith("https://objects.githubusercontent.com/")) {
             done(null, "Update ka link GitHub ka nahi hai, isliye nahi liya."); return
         }
+        fetch(ctx, url, sha256, size, "hoola-update.apk", { true }, { f -> check(ctx, f) }, done)
+    }
+
+    /** v0.132 App Sahayak: a preview APK of an app Hoola built for HER business. Only from her own Hoola server (https, same
+     *  host, no redirects elsewhere), SHA-256 must match what the server reported, the package must be the app's own
+     *  in.hoola.preview.* id (never Hoola itself). Android's own Install screen asks her. */
+    fun downloadPreview(ctx: Context, url: String, sha256: String, pkg: String, server: String, done: (String?, String?) -> Unit) {
+        if (channel(ctx) != "github") { done(null, "Is version mein doosri app install nahi hoti."); return }
+        val host = try { URL(server).host } catch (_: Exception) { "" }
+        val ok: (String) -> Boolean = { u -> try { val x = URL(u); x.protocol == "https" && host.isNotEmpty() && x.host == host } catch (_: Exception) { false } }
+        if (!ok(url)) { done(null, "Yeh link aapke Hoola server ka nahi hai, isliye nahi liya."); return }
+        if (!Regex("^in\\.hoola\\.preview\\.[a-z0-9]{4,40}$").matches(pkg) || pkg == ctx.packageName) {
+            done(null, "App ka naam sahi nahi hai."); return
+        }
+        if (sha256.length != 64) { done(null, "Checksum nahi mila."); return }
+        fetch(ctx, url, sha256, 0, "hoola-preview.apk", ok, { f -> checkPreview(ctx, f, pkg) }, done)
+    }
+
+    private fun fetch(ctx: Context, url: String, sha256: String, size: Long, name: String, hostOk: (String) -> Boolean,
+                      verify: (File) -> Unit, done: (String?, String?) -> Unit) {
+        if (busy) { done(null, "Download pehle se chal raha hai."); return }
         busy = true; stop = false; pct = 0
         Thread {
             val dir = File(ctx.cacheDir, "updates").apply { mkdirs() }
             dir.listFiles()?.forEach { it.delete() }
-            val out = File(dir, "hoola-update.apk")
+            val out = File(dir, name)
             try {
                 var link = url
                 var c: HttpURLConnection? = null
@@ -77,7 +97,7 @@ object AppUpdate {
                     if (code in 300..399) {
                         val next = c.getHeaderField("Location") ?: break
                         c.disconnect()
-                        if (!next.startsWith("https://")) throw IllegalStateException("insecure redirect")
+                        if (!next.startsWith("https://") || !hostOk(next)) throw IllegalStateException("insecure redirect")
                         link = next
                         continue
                     }
@@ -105,7 +125,7 @@ object AppUpdate {
                 val hex = md.digest().joinToString("") { "%02x".format(it) }
                 val want = sha256.removePrefix("sha256:").lowercase()
                 if (want.isNotEmpty() && want != hex) throw SecurityException("checksum")
-                check(ctx, out)
+                verify(out)
                 pct = 100
                 busy = false
                 done(out.absolutePath, null)
@@ -120,6 +140,21 @@ object AppUpdate {
                 })
             }
         }.start()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun checkPreview(ctx: Context, apk: File, pkg: String) {
+        val pm = ctx.packageManager
+        val flag = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
+        val arch = pm.getPackageArchiveInfo(apk.absolutePath, flag) ?: throw SecurityException("Yeh file sahi APK nahi hai.")
+        if (arch.packageName != pkg) throw SecurityException("Yeh APK is app ka nahi hai.")
+        val installed = try { pm.getPackageInfo(pkg, flag) } catch (_: Exception) { null }
+        if (installed != null) {
+            val a = signers(installed); val b = signers(arch)
+            if (a.isNotEmpty() && b.isNotEmpty() && a.intersect(b).isEmpty()) {
+                throw SecurityException("Phone par is app ka purana version doosri chaabi se bana hai; pehle use hataiye.")
+            }
+        }
     }
 
     @Suppress("DEPRECATION")
@@ -144,7 +179,7 @@ object AppUpdate {
     }
 
     /** Hands the checked APK to Android's installer; Android asks the owner. Status comes back to MainActivity. */
-    fun install(act: Activity, path: String): String? {
+    fun install(act: Activity, path: String, pkg: String = ""): String? {
         if (channel(act) != "github") return "play"
         if (Build.VERSION.SDK_INT >= 26 && !act.packageManager.canRequestPackageInstalls()) {
             openInstallPermission(act)
@@ -154,7 +189,7 @@ object AppUpdate {
             val f = File(path)
             val pi = act.packageManager.packageInstaller
             val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-            params.setAppPackageName(act.packageName)
+            params.setAppPackageName(if (pkg.isNotEmpty()) pkg else act.packageName)
             if (Build.VERSION.SDK_INT >= 31) params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
             val id = pi.createSession(params)
             pi.openSession(id).use { s ->
