@@ -282,6 +282,8 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _videoJobs = {}; // v0.65 video editor: one live card per job, updated in place
   final Map<String, FeedItem> _pgCards = {};  // v0.147 Postgres change cards, one per card id
   final Map<String, FeedItem> _b3dCards = {};  // v0.141 3D Studio: one live card per project, updated in place
+  final Map<String, FeedItem> _nbCards = {};   // v0.155 Notebook Studio: one live card per output, updated in place
+  int notebookTick = 0;                        // v0.155 bumps on notebook / notebook_output events (Notebook screens refresh)
   int videoTick = 0;                          // bumps on every video_job event (the editor screen refreshes)
   final Map<String, FeedItem> _empAsks = {};  // Hoola Employee: actions waiting for the owner's tap, by ask id
   int employeeTick = 0;                       // bumps on any employee event (the Employee screen can refresh)
@@ -984,6 +986,7 @@ class Santosh extends ChangeNotifier {
       case 'app_check':
       case 'motion':
         feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
+        if (ev.kind == 'notebook') notebookTick++;
         break;
       case 'hoola_knock':
       case 'hoola_connect':
@@ -1207,6 +1210,20 @@ class Santosh extends ChangeNotifier {
             Device.instance.showNow('$aName: database badlav ke liye haan chahiye', '${p['say'] ?? ''}');
           }
         }
+        break;
+      case 'notebook_output': // v0.155 Notebook Studio (audio / video / slides / ...)
+        final noid = '${p['id']}';
+        final nc = _nbCards[noid];
+        if (nc != null) {
+          nc.data = {...nc.data, ...p};
+        } else {
+          _nbCards[noid] = FeedItem('notebook_output', Map<String, dynamic>.from(p));
+          feed.add(_nbCards[noid]!);
+        }
+        if (p['push'] == true && inBackground && !_replaying && !pushOn) {
+          Device.instance.showNow(p['status'] == 'ready' ? '${p['label'] ?? 'Notebook'} taiyaar' : 'Notebook Studio', '${p['say'] ?? p['title'] ?? ''}');
+        }
+        notebookTick++;
         break;
       case 'blender3d': // v0.141 3D Studio
         final bid = '${p['id']}';

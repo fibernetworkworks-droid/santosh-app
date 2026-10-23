@@ -93,7 +93,7 @@ def test_dead_model_falls_back_and_is_remembered(fake):
     assert fake.calls[0]["model"] == "gemini-nano-banana-2.1"
     fake.calls.clear()
     run("photo_banao", {"action": "make", "prompt": "a red bicycle", "quality": "best"}, ctx)
-    assert fake.calls[0]["model"] == "gemini-3-pro-image-preview"
+    assert fake.calls[0]["model"] == "gemini-3-pro-image"          # v0.155: Nano Banana Pro GA id first
 
 
 def test_edit_uses_her_photo_without_exif(fake):

@@ -72,6 +72,7 @@ VOICE_TOOL_NAMES = {
     "slides_find", "slides_read", "slides_create", "slides_add", "slides_edit", "slides_export",
     "photos_pick", "photos_picked", "photos_send", "photos_upload", "photos_albums",
     "notebook_create", "notebook_list", "notebook_open", "notebook_add", "notebook_ask", "notebook_make", "notebook_audio",
+    "notebook_studio", "notebook_output", "notebook_discover", "notebook_sources", "notebook_chat_config", "notebook_note",
     "youtube_search", "youtube_play", "youtube_video", "youtube_watch", "youtube_channel", "youtube_comments", "youtube_my_channel",
     "youtube_analytics", "app_check",
     "hoola_me", "hoola_connect", "hoola_connections", "hoola_answer_connect", "hoola_send", "hoola_reply", "hoola_inbox",
@@ -291,7 +292,8 @@ VOICE_VIA_KAAM = {
     "product", "customs", "travel", "warehouse", "fleet", "courier", "drivers", "logistics", "propagent", "rentdesk",
     "sitesup", "interior", "archassist", "society", "vakil", "legalres", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo", "front_office", "front_office_dekho", "event_plan", "event_plan_dekho", "shaadi", "shaadi_dekho", "tour_guide", "tour_guide_dekho", "homestay", "homestay_dekho", "banquet", "banquet_dekho", "kalam", "website", "app_banao", "app_dekho", "video_studio",
     "blender_3d", "postgres", "hoola_market", "hoola_booking", "hoola_deal", "hoola_pick", "a2a_bahar", "consent_jaanch",
-    "ondc_listing", "digilocker", "agent_army", "doc_desk", "sheet_milaan", "employee", "notebook_make", "notebook_audio",
+    "ondc_listing", "digilocker", "agent_army", "doc_desk", "sheet_milaan", "employee", "notebook_make", "notebook_audio", "notebook_studio", "notebook_output", "notebook_discover",
+    "notebook_sources", "notebook_chat_config", "notebook_note",
     "form_settings", "form_alerts", "youtube_analytics", "youtube_comments", "app_check", "hoola_chain",
     "hoola_community_search", "hoola_samaj", "hoola_learn", "hoola_learned", "slides_edit", "slides_export",
 }

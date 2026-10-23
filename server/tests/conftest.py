@@ -22,6 +22,8 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("VIDEO_EDIT_WORKER", "false")   # tests call videoedit.run_job themselves
     monkeypatch.setenv("OPERATOR_WORKER", "false")     # tests call operator.run_job themselves
     monkeypatch.setenv("AGENT_SELF_CHECK", "false")    # v0.78: scripted model tests don't expect the extra check call
+    monkeypatch.setenv("NOTEBOOK_PAINT", "false")      # v0.155: Notebook pages are painted by Gemini; tests use the HTML renderer
+    monkeypatch.setenv("NOTEBOOK_TTS_MODEL", "gemini-2.5-flash-preview-tts")   # v0.155: tests use the patched older TTS path
     monkeypatch.setenv("AGENT_FIX_SEARCH", "false")
     monkeypatch.setenv("GYAAN_GROUND", "false")      # v0.135: no extra grounding call in scripted model tests
     monkeypatch.setenv("MEMORY_AUTO", "false")       # v0.108: no background fact-picking model calls in scripted tests

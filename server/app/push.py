@@ -116,6 +116,11 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         if not p.get("push") or p.get("status") != "done":
             return None
         return (f"{name} ne 3D banaya", str(p.get("say") or p.get("title") or "")[:200])
+    if kind == "notebook_output":
+        if not p.get("push") or p.get("status") not in ("ready", "failed"):
+            return None
+        head = f"{p.get('icon', '📒')} {p.get('label', 'Notebook')} taiyaar" if p.get("status") == "ready" else f"{p.get('label', 'Notebook')} nahi bana"
+        return (head, str(p.get("title") if p.get("status") == "ready" else p.get("error") or "")[:200])
     if kind == "email_draft":
         return ("Email draft taiyaar", str(p.get("subject") or "Dekh kar bhejiye"))
     if kind == "hoola_knock" and not p.get("quiet") and p.get("status") in (None, "pending"):
@@ -557,7 +562,7 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
     return sent
 
 
-PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "photo_made", "blender3d", "pg_write", "email_draft", "bazar_open", "device_action",
+PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "photo_made", "blender3d", "notebook_output", "pg_write", "email_draft", "bazar_open", "device_action",
               "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "hoola_pick", "hoola_khata", "thok_order", "thok_alert", "thok_day", "sheet_milaan", "doc_edit", "niryat_pi", "niryat_day", "ads_change", "ads_report", "hoola_rfq", "hoola_promo", "hoola_mandate", "fr_statement", "fr_day", "a2a_task", "a2a_out", "handoff_reminder", "digilocker", "theka_bill", "theka_letter", "theka_day", "brand_approval", "brand_idea", "site_board", "site_lead", "site_launch", "site_live", "site_dns", "site_down", "site_domain", "site_care", "site_github", "app_board", "app_android",
               # v0.133 Seva suite
               "seva_exception", "seva_sla", "seva_ticket", "seva_day", "helpdesk_change", "helpdesk_alert", "helpdesk_escalate", "helpdesk_day", "shikayat_comp", "shikayat_case", "shikayat_alert", "shikayat_day", "aftersales_charge", "aftersales_reminders", "aftersales_visit", "aftersales_day", "feedback_reply", "feedback_alert", "feedback_report", "wapsi_return", "wapsi_refund", "wapsi_day", "samudaay_alert", "samudaay_action", "samudaay_question", "samudaay_join", "samudaay_template", "samudaay_week", "callcentre_script", "callcentre_message", "callcentre_call",

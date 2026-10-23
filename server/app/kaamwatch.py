@@ -50,6 +50,7 @@ KINDS: dict[str, dict[str, Any]] = {
     "operator_task": {"label": "Website ka kaam (Hoola ka browser)", "map": {}},
     "studio": {"label": "Video Studio", "map": {}},
     "motion": {"label": "Motion reel", "map": {}, "done_always": True},
+    "notebook_output": {"label": "Notebook Studio", "map": {"ready": "done", "queued": "working"}},
     "blender3d": {"label": "3D model (Blender)", "map": {"writing": "working", "building": "working", "rendering": "working", "checking": "working"}},
 }
 # quick results made inside one tool call (letters, posters, photos, lekh) are told by the turn itself: not watched

@@ -92,7 +92,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.154.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.155.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -1597,46 +1597,6 @@ def slides_remove(key: str, tenant: str = Depends(current_tenant)):
     if not sla.remove(tenant, key):
         raise HTTPException(404, "Account not found")
     return _slides_state(tenant)
-
-
-# ---------------- Santosh Notebook (NotebookLM-style) ----------------
-def _nb_err(fn, *a, **kw):
-    from .notebook import service as ns
-    try:
-        return fn(*a, **kw)
-    except ns.NotebookError as e:
-        raise HTTPException(400, str(e))
-
-
-class NotebookIn(BaseModel):
-    title: str
-    emoji: str = ""
-
-
-class NotebookSourceIn(BaseModel):
-    url: str | None = None
-    text: str | None = None
-    title: str | None = None
-    drive: str | None = None
-    sheet: str | None = None
-
-
-class NotebookAskIn(BaseModel):
-    question: str
-    save: bool = False
-
-
-class NotebookMakeIn(BaseModel):
-    kind: str
-    language: str = ""
-    focus: str = ""
-
-
-class NotebookAudioIn(BaseModel):
-    style: str = "deep_dive"
-    language: str = "hinglish"
-    focus: str = ""
-    conversation_id: str = ""
 
 
 # ---------------- Hoola Network: avatars talk to avatars ----------------
@@ -3430,112 +3390,9 @@ def appcheck_get(cid: str, tenant: str = Depends(current_tenant)):
         raise HTTPException(404, str(e))
 
 
-@app.get("/api/notebooks", dependencies=[Depends(require_key)])
-def notebooks_list(tenant: str = Depends(current_tenant)):
-    from .notebook import service as ns
-    return {"notebooks": ns.list_notebooks(tenant)}
+from .notebook.api import make_router as _notebook_router  # noqa: E402
 
-
-@app.post("/api/notebooks", dependencies=[Depends(require_key)])
-def notebooks_create(body: NotebookIn, tenant: str = Depends(current_tenant)):
-    from .notebook import service as ns
-    nb = ns.create(tenant, "", body.title, body.emoji)
-    return ns.detail(tenant, nb["id"])
-
-
-@app.get("/api/notebooks/{nid}", dependencies=[Depends(require_key)])
-def notebooks_detail(nid: str, tenant: str = Depends(current_tenant)):
-    from .notebook import service as ns
-    return _nb_err(ns.detail, tenant, nid)
-
-
-@app.delete("/api/notebooks/{nid}", dependencies=[Depends(require_key)])
-def notebooks_delete(nid: str, tenant: str = Depends(current_tenant)):
-    """The user deletes from the app (the app asks 'sure?' first)."""
-    from .notebook import service as ns
-    return {"deleted": _nb_err(ns.delete, tenant, nid)}
-
-
-@app.post("/api/notebooks/{nid}/sources", dependencies=[Depends(require_key)])
-async def notebooks_add_source(nid: str, body: NotebookSourceIn, tenant: str = Depends(current_tenant)):
-    from .notebook import service as ns
-    src = {k: v for k, v in body.model_dump().items() if v}
-    await asyncio.to_thread(_nb_err, ns.add_source, tenant, nid, src)
-    return ns.detail(tenant, nid)
-
-
-@app.post("/api/notebooks/{nid}/upload", dependencies=[Depends(require_key)])
-async def notebooks_upload(nid: str, file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
-    from .notebook import service as ns
-    from .pc import service as pcs
-    try:
-        row = await pcs.store_upload(file, tenant, "", "mail")
-    except pcs.PairError as e:
-        raise HTTPException(413, str(e))
-    await asyncio.to_thread(_nb_err, ns.add_source, tenant, nid, {"file_id": row.id})
-    return ns.detail(tenant, nid)
-
-
-@app.delete("/api/notebooks/{nid}/sources/{sid}", dependencies=[Depends(require_key)])
-def notebooks_remove_source(nid: str, sid: str, tenant: str = Depends(current_tenant)):
-    from .notebook import service as ns
-    _nb_err(ns.remove_source, tenant, nid, sid)
-    return ns.detail(tenant, nid)
-
-
-@app.post("/api/notebooks/{nid}/ask", dependencies=[Depends(require_key)])
-async def notebooks_ask(nid: str, body: NotebookAskIn, tenant: str = Depends(current_tenant)):
-    from .notebook import service as ns
-    try:
-        return await ns.ask(tenant, nid, body.question, body.save)
-    except ns.NotebookError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.post("/api/notebooks/{nid}/make", dependencies=[Depends(require_key)])
-async def notebooks_make(nid: str, body: NotebookMakeIn, tenant: str = Depends(current_tenant)):
-    from .notebook import service as ns
-    try:
-        return await ns.make(tenant, nid, body.kind, body.language, body.focus)
-    except ns.NotebookError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.get("/api/notebooks/{nid}/notes/{note_id}", dependencies=[Depends(require_key)])
-def notebooks_note(nid: str, note_id: str, tenant: str = Depends(current_tenant)):
-    from .notebook import service as ns
-    return _nb_err(ns.get_note, tenant, nid, note_id)
-
-
-@app.post("/api/notebooks/{nid}/audio", dependencies=[Depends(require_key)])
-def notebooks_audio(nid: str, body: NotebookAudioIn, tenant: str = Depends(current_tenant)):
-    from .notebook import service as ns
-    conv = body.conversation_id
-    if conv:
-        with session() as s:
-            c = s.get(Conversation, conv)
-            if not c or c.tenant_id != tenant:
-                conv = ""
-    out = _nb_err(ns.start_audio, tenant, conv, nid, body.language, body.style, body.focus)
-    ns.launch_audio(out["audio_id"])
-    return out
-
-
-@app.get("/api/notebooks/{nid}/audio/{aid}/file", dependencies=[Depends(require_key)])
-def notebooks_audio_file(nid: str, aid: str, tenant: str = Depends(current_tenant)):
-    """A fresh download link for a finished audio overview."""
-    from .notebook.models import NotebookAudio
-    from .pc import service as pcs
-    with session() as s:
-        a = s.get(NotebookAudio, aid)
-        if not a or a.tenant_id != tenant or a.notebook_id != nid or not a.file_id:
-            raise HTTPException(404, "Audio not ready")
-        fid = a.file_id
-    f = pcs.get_file(fid)
-    if f is None:
-        raise HTTPException(410, "Audio file expired; make it again")
-    return pcs.public_file(f)
-
+app.include_router(_notebook_router(require_key, current_tenant))
 
 from .drive.api import make_router as _drive_router  # noqa: E402
 from .forms.api import make_router as _forms_router  # noqa: E402

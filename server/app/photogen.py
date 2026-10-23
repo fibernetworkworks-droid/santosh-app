@@ -17,7 +17,7 @@ import threading
 from typing import Any
 
 FAST = ["gemini-3.1-flash-lite-image", "gemini-nano-banana-2.1", "gemini-3.1-flash-image"]
-BEST = ["gemini-3-pro-image-preview", "gemini-3.1-flash-image", "gemini-nano-banana-2.1"]
+BEST = ["gemini-3-pro-image", "gemini-3-pro-image-preview", "gemini-3.1-flash-image", "gemini-nano-banana-2.1"]
 ASPECTS = ["1:1", "4:5", "3:4", "9:16", "16:9", "4:3", "3:2", "2:3"]
 ASPECT_WORDS = {"square": "1:1", "insta": "4:5", "instagram": "4:5", "post": "4:5", "story": "9:16", "status": "9:16",
                 "reel": "9:16", "portrait": "3:4", "landscape": "16:9", "wide": "16:9", "youtube": "16:9",

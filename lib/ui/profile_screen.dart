@@ -958,7 +958,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.menu_book_rounded, color: C.teal),
           title: const Text('Hoola Notebook', style: TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: const Text('NotebookLM jaisa: files / links se jawab, study guide, Hindi audio overview'),
+          subtitle: const Text('NotebookLM jaisa: sources se chat, audio / video overview, slides, mind map, quiz, 39 bhashayein'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => NotebooksScreen(app: app))),
         ),

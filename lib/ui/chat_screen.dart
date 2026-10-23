@@ -566,6 +566,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return SlidesCard(v: it.data);
     case 'notebook':
       return NotebookCard(v: it.data, app: app);
+    case 'notebook_output':
+      return NotebookOutputCard(v: it.data, app: app);
     case 'youtube':
       return YouTubeCard(v: it.data);
     case 'app_check':

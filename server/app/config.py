@@ -188,7 +188,13 @@ class Settings(BaseSettings):
     mail_bulk_daily_cap: int = 300          # per mailbox per day (Gmail allows ~500 for personal accounts)
     mail_bulk_max: int = 1000               # recipients in one bulk mail
     mail_max_attach_mb: int = 18            # total attachments per mail (Gmail/Outlook limit is ~25 MB encoded)
-    notebook_tts_model: str = "gemini-2.5-flash-preview-tts"   # Santosh Notebook audio overviews (two voices)
+    notebook_tts_model: str = "gemini-3.8-flash-tts"            # v0.155 Audio / Video Overview voices (expressive, 2 hosts, 20 Indian langs)
+    notebook_tts_legacy_model: str = "gemini-2.5-flash-preview-tts"   # used when the new TTS refuses (older API path)
+    notebook_model: str = "claude-opus-5-5"   # v0.155 writes Studio items (scripts, decks, reports); '' = anthropic_model
+    notebook_paint: bool = True               # v0.155 slides / infographic / video frames painted by Nano Banana (else HTML)
+    notebook_image_models: str = ""           # comma list; '' = paint.PRO_CHAIN (gemini-3-pro-image first)
+    notebook_frame_models: str = ""           # comma list; '' = paint.FRAME_CHAIN (gemini-nano-banana-2.1 first)
+    notebook_image_size: str = "2K"           # 1K | 2K | 4K (4K costs ~2x)
     youtube_api_key: str = ""               # YouTube Data API v3 key for search / public video stats (Google Cloud)
     pagespeed_api_key: str = ""             # optional: PageSpeed Insights API key (higher quota for SEO checks)
     motion_dir: str = "./data/motion"         # Hoola Motion MP4s (kept until the owner deletes them)
