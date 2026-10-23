@@ -236,9 +236,55 @@ def healthz():
                       "agent_army": len(__import__("app.bazar.agents", fromlist=["x"]).agents())}}
 
 
+# ----------------------------------------------------------------------------- Hoola website on the Hoola server
+_SITE_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+             "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; "
+             "frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'")
+_SITE_HEADERS = {"Content-Security-Policy": _SITE_CSP, "X-Content-Type-Options": "nosniff",
+                 "Referrer-Policy": "strict-origin-when-cross-origin", "X-Frame-Options": "DENY",
+                 "Cache-Control": "public, max-age=300"}
+
+
+def _site_page(slug: str):
+    return FileResponse(STATIC / "site" / f"{slug}.html", media_type="text/html", headers=_SITE_HEADERS)
+
+
 @app.get("/")
 def index():
+    """The Hoola website (home). Every page has a Console button -> /console/. Websites Hoola launched for owners are
+    served before this by their own hostnames (_hosted_sites)."""
+    return _site_page("home")
+
+
+@app.get("/employee")
+def site_employee():
+    return _site_page("employee")
+
+
+@app.get("/network")
+def site_network():
+    return _site_page("network")
+
+
+@app.get("/chat")
+def old_web_chat():
+    """The old one-page web chat (API key in the browser) that used to be at /. The Hoola Console replaces it."""
     return FileResponse(STATIC / "index.html")
+
+
+@app.get("/download")
+async def download_app():
+    """Website download buttons: always the newest Android APK from the GitHub releases (cached 10 min); if GitHub
+    can't be reached, the releases page."""
+    from . import appupdate
+    try:
+        latest = await asyncio.to_thread(appupdate.latest)
+    except Exception:
+        latest = None
+    url = (latest or {}).get("apk_url") or f"https://github.com/{appupdate._repo()}/releases"
+    if not str(url).startswith("https://github.com/"):
+        url = "https://github.com/fibernetworkworks-droid/santosh-app/releases"
+    return RedirectResponse(url, status_code=302, headers={"Cache-Control": "no-store"})
 
 
 # ----------------------------------------------------------------------------- v0.127 Hoola Screen (view-only second screen)
