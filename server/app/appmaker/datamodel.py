@@ -287,6 +287,50 @@ ENTITIES: E = {
     "pass_ticket": ("events", "Pass", "event ref(event)!, ticket_type ref(ticket_type)!, holder text!, phone phone, "
                     "code_hash text!*, status enum(valid,used,cancelled)!", "o"),
     "checkin": ("events", "Check-in", "pass ref(pass_ticket)!, gate text, by_user ref(app_user)!, at datetime!, offline bool", "a"),
+    # ------------------------------------------------------------ v0.138 product apps: media, social, personal, market
+    "media_artist": ("media", "Artist / creator", "name text!, bio long, photo file, verified bool", ""),
+    "media_album": ("media", "Album / show", "title text!, artist ref(media_artist)~, kind enum(album,single,ep,show,season,podcast,"
+                    "audiobook,series)!, cover file, released_on date, language text~", ""),
+    "media_item": ("media", "Song / episode / video", "title text!, kind enum(song,episode,movie,clip,podcast_episode,chapter,lesson)!, "
+                   "artist ref(media_artist)~, album ref(media_album)~, duration_s int, media file!, cover file, language text~, "
+                   "genre text~, age_rating enum(u,ua7,ua13,ua16,a), explicit bool, licence_note text, released_on date", ""),
+    "playlist": ("media", "Playlist", "name text!, owner ref(app_user)~, public bool, cover file", ""),
+    "playlist_item": ("media", "Playlist item", "playlist ref(playlist)!~, item ref(media_item)!, position int!", ""),
+    "play_event": ("media", "Play", "item ref(media_item)!~, by_user ref(app_user)~, seconds int, device ref(device), at datetime!", "a"),
+    "watch_progress": ("media", "Continue watching", "by_user ref(app_user)!~, item ref(media_item)!, position_s int!, finished bool", ""),
+    "media_download": ("media", "Download", "by_user ref(app_user)!~, item ref(media_item)!, device ref(device)!, expires_at datetime", ""),
+    "subscription": ("media", "Subscription", "by_user ref(app_user)!~, plan text!, status enum(trial,active,grace,cancelled,expired)!, "
+                     "store enum(play,app_store,web)!, renews_at datetime, store_token_hash text*", ""),
+    "viewer_profile": ("media", "Viewer profile", "owner ref(app_user)!~, name text!, kids bool, max_rating enum(u,ua7,ua13,ua16,a), "
+                       "pin_set bool", ""),
+    "post": ("social", "Post", "by_user ref(app_user)!~, kind enum(photo,video,text,reel,story)!, caption long, media file, "
+             "visibility enum(public,followers,private)!, ai_label bool, expires_at datetime", ""),
+    "post_reaction": ("social", "Reaction", "post ref(post)!~, by_user ref(app_user)!, kind enum(like,love,laugh,wow)!", "a"),
+    "post_comment": ("social", "Comment", "post ref(post)!~, by_user ref(app_user)!, body long!, reply_to ref(post_comment)", ""),
+    "user_follow": ("social", "Follow", "follower ref(app_user)!~, following ref(app_user)!~, status enum(active,requested,blocked)!", ""),
+    "content_report": ("social", "Report", "entity text!, record_id uuid!~, by_user ref(app_user), reason enum(spam,abuse,nudity,"
+                       "violence,hate,fake,copyright,child_safety,other)!, status enum(open,actioned,dismissed)!, acted_at datetime, "
+                       "note long", ""),
+    "user_block": ("social", "Block", "by_user ref(app_user)!~, blocked ref(app_user)!", ""),
+    "hashtag": ("social", "Hashtag", "tag text!*, uses int", ""),
+    "note": ("personal", "Note", "title text, body long, pinned bool, colour text, reminder_at datetime", ""),
+    "todo_item": ("personal", "To-do", "title text!, done bool, due_on date, priority enum(low,normal,high), list_name text~", ""),
+    "habit": ("personal", "Habit", "name text!, target_per_week int, reminder_at time, colour text", ""),
+    "habit_log": ("personal", "Habit tick", "habit ref(habit)!~, day date!, done bool", "a"),
+    "expense": ("personal", "Expense", "amount money!, category text!~, spent_on date!, note text, paid_by text, group_name text~", ""),
+    "budget": ("personal", "Budget", "category text!, month text!, limit_amount money!", ""),
+    "workout_log": ("personal", "Workout", "kind text!, minutes int, calories int, distance_km decimal, at datetime!", "a"),
+    "store": ("market", "Store / restaurant", "name text!, kind text~, location point, address long, open_now bool, rating decimal, "
+              "fssai text, gstin text", "o"),
+    "ride": ("market", "Ride", "rider ref(app_user)!~, driver ref(app_user)~, pickup point!, dropoff point!, pickup_text text, "
+             "dropoff_text text, status enum(searching,accepted,arriving,on_trip,completed,cancelled)!, fare money, otp_hash text, "
+             "sos bool", ""),
+    "listing": ("market", "Listing / ad", "by_user ref(app_user)!~, title text!, price money, category text~, location point, "
+                "photos json, status enum(active,sold,removed)!", ""),
+    "job_post": ("market", "Job", "title text!, company text!, place text~, salary_min money, salary_max money, "
+                 "kind enum(full_time,part_time,internship,contract,gig)!, status enum(open,closed)!", "o"),
+    "job_application": ("market", "Application", "job ref(job_post)!~, applicant ref(app_user)!, resume file, "
+                        "status enum(applied,shortlisted,interview,offer,rejected)!", ""),
 }
 
 MODULES: dict[str, str] = {
@@ -299,6 +343,8 @@ MODULES: dict[str, str] = {
     "isp": "Plans, subscribers, OLT / PON / ONT, fiber", "hospitality": "Rooms, bookings, housekeeping",
     "society": "Units, residents, bills, visitor passes", "agri": "Farmers, plots, crops, procurement", "dairy": "Milk collection",
     "finance": "Ledgers, journals, expenses, budgets", "events": "Events, passes, check-ins",
+    "media": "Songs, videos, shows, playlists, plays, subscriptions", "social": "Posts, follows, comments, reports, blocks",
+    "personal": "Notes, to-dos, habits, expenses, workouts", "market": "Stores, rides, listings, jobs",
 }
 
 RESERVED = {"user", "order", "group", "select", "table", "check", "column", "default", "grant", "limit", "offset", "primary",

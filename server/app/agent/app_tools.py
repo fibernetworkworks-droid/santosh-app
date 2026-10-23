@@ -10,8 +10,16 @@ from .tools import Ctx, ToolError
 
 APP_TOOLS = [
     {"name": "app_banao", "description": (
-        "Design HER business a premium NATIVE mobile app (Android + iPhone look) and show her EVERY screen as a tap-through "
-        "prototype BEFORE anything is built. A few words are enough: the 1 lakh app brief library knows 1,000 kinds of "
+        "Design a premium NATIVE mobile app (Android + iPhone look) - her business's app, a client's app, or a PRODUCT app of "
+        "its own (music streaming like Spotify, OTT like Netflix, short video, social, chat, news, notes / to-do, habits, "
+        "expenses, fitness, meditation, recipes, free games / quiz, photo editor, weather, rides like Uber, food delivery like "
+        "Zomato, quick commerce, multi-seller shopping, buy & sell, travel / hotel / event tickets, jobs, language learning, "
+        "online courses, property portal, doctor consults, home services, payments: 33 product kinds) - and show her EVERY "
+        "screen as a tap-through prototype BEFORE anything is built. brief = HER EXACT WORDS, never your summary and never her "
+        "own business added in (her business details go in by themselves only when the app is for her business). Don't pass "
+        "goal unless she named the kind of app; a goal that doesn't fit her words is ignored. If it answers 'Pakka karne ke "
+        "liye ek sawaal', ask her exactly that and call again with her answer in brief (or answers {sure: true} if she says "
+        "'pehla wala hi'). A brand she names is only a reference: the app gets its own name and design. A few words are enough: the 1 lakh app brief library knows 1,000 kinds of "
         "business x 10 app goals x 10 premium styles, and the 1 CRORE APP IDEA library (app_dekho what=ideas) adds WHO the "
         "app is for (customers / owner / staff / delivery partner / dealers / members / managers), the ONE special thing "
         "(WhatsApp-first, daily subscription, voice in Hindi, offline, QR pickup, live tracking, udhaar reminders, parents' "

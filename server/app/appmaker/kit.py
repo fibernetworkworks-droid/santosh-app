@@ -166,7 +166,7 @@ def _btn_radius(tk: dict[str, Any]) -> str:
             "gradient": "999px"}.get(tk.get("button", ""), f"{max(8, int(tk['radius']) - 2)}px")
 
 
-# ---------------------------------------------------------------- 80 line icons (original, 24 px grid, stroke = currentColor)
+# ---------------------------------------------------------------- 80 + 24 line icons (original, 24 px grid, stroke = currentColor)
 _C = lambda cx, cy, r: f'<circle cx="{cx}" cy="{cy}" r="{r}"/>'          # noqa: E731
 _R = lambda x, y, w, h, rx=0: f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{rx}"/>'  # noqa: E731
 _P = lambda d: f'<path d="{d}"/>'                                         # noqa: E731
@@ -245,12 +245,41 @@ ICONS: dict[str, str] = {
     "key": _C(8, 15, 4) + _P("M11 12l9-9M17 6l3 3"), "home-repair": _P("M3 11l9-7 9 7M6 9v11h12V9") + _P("M10 20v-5h4v5"),
     "spark": _P("M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"),
     "dot": _C(12, 12, 3), "more": _C(5, 12, 1.4) + _C(12, 12, 1.4) + _C(19, 12, 1.4),
+    # v0.138 product apps (players, feeds, chats, weather, editors)
+    "pause": _R(6, 5, 4, 14, 1) + _R(14, 5, 4, 14, 1), "skip-next": _P("M5 5l10 7-10 7z") + _P("M19 5v14"),
+    "skip-prev": _P("M19 5L9 12l10 7z") + _P("M5 5v14"), "shuffle": _P("M3 7h4l10 10h4M17 13l4 4-4 4M3 17h4l3-3M14 10l3-3h4M17 3l4 4-4 4"),
+    "repeat": _P("M4 11V9a3 3 0 0 1 3-3h12M16 3l3 3-3 3M20 13v2a3 3 0 0 1-3 3H5M8 21l-3-3 3-3"),
+    "volume": _P("M4 9h4l5-4v14l-5-4H4z") + _P("M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"),
+    "video": _R(3, 6, 13, 12, 2) + _P("M16 10l5-3v10l-5-3"), "send": _P("M3 11l18-8-6 18-3-7z") + _P("M12 14l9-11"),
+    "smile": _C(12, 12, 9) + _P("M8 14a5 5 0 0 0 8 0M9 9.5v.5M15 9.5v.5"),
+    "bookmark": _P("M6 3h12v18l-6-4-6 4z"), "compass": _C(12, 12, 9) + _P("M15.5 8.5l-2 5-5 2 2-5z"),
+    "layers": _P("M12 3l9 5-9 5-9-5z") + _P("M3 13l9 5 9-5"), "sliders": _P("M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12") + _C(16, 6, 2) + _C(10, 12, 2) + _C(18, 18, 2),
+    "crop": _P("M6 2v16h16M2 6h16v16"), "cloud": _P("M7 18a5 5 0 1 1 1-9.9A6 6 0 0 1 19 10a4 4 0 0 1 0 8z"),
+    "rain": _P("M7 14a5 5 0 1 1 1-9.9A6 6 0 0 1 19 6a4 4 0 0 1 0 8z") + _P("M8 17l-1 3M12 17l-1 3M16 17l-1 3"),
+    "wind": _P("M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h7"), "drop": _P("M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z"),
+    "timer": _C(12, 13, 8) + _P("M12 9v4l2 2M9 2h6"), "flag": _P("M5 21V4M5 4h11l-2 4 2 4H5"),
+    "thumb": _P("M7 11v9H4v-9zM7 11l4-8a2 2 0 0 1 2 2v4h6a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.8 19H7"),
+    "headphones": _P("M4 15v-3a8 8 0 0 1 16 0v3") + _R(3, 14, 4, 6, 1.5) + _R(17, 14, 4, 6, 1.5),
+    "film": _R(3, 4, 18, 16, 2) + _P("M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"),
+    "gamepad": _P("M7 8h10a4 4 0 0 1 4 4v1a3 3 0 0 1-5.5 1.6L14 13h-4l-1.5 1.6A3 3 0 0 1 3 13v-1a4 4 0 0 1 4-4z") + _P("M8 10v3M6.5 11.5h3") + _C(16, 11, 0.8),
 }
 _BACK = {"android": ICONS["arrow-l"], "ios": ICONS["chev-l"]}
 TAB_ICON = {"home": "home", "categories": "grid", "cart": "cart", "orders": "receipt", "profile": "user", "menu": "food",
             "services": "list", "my_bookings": "calendar", "courses": "book", "timetable": "calendar", "member_card": "qr",
             "request_service": "plus", "job_status": "wrench", "khata": "wallet", "rewards": "gift", "catalogue": "grid",
-            "wishlist": "heart", "events": "ticket", "pass": "qr", "updates": "bell", "plans": "award"}
+            "wishlist": "heart", "events": "ticket", "pass": "qr", "updates": "bell", "plans": "award", **{
+                # v0.138 product apps
+                "search": "search", "library": "music", "downloads": "download", "watchlist": "bookmark", "reel_feed": "play",
+                "explore": "compass", "create_post": "plus", "chat_list": "chat", "user_profile": "user", "feed": "home",
+                "notifications": "bell", "stories": "image", "new_chat": "edit", "topics": "list", "bookmarks": "bookmark",
+                "note_list": "file", "today_tasks": "check-circle", "habit_today": "check-circle", "habit_edit": "plus",
+                "stats_chart": "chart", "expense_home": "wallet", "split_groups": "users", "activity_home": "flame",
+                "workouts": "dumbbell", "browse_genres": "grid", "game_home": "gamepad", "level_map": "pin",
+                "leaderboard": "award", "templates": "layers", "gallery": "image", "forecast": "sun", "radar_map": "rain",
+                "city_list": "pin", "ride_home": "car", "ride_history": "clock", "support": "help", "my_ads": "tag",
+                "post_ad": "plus", "trip_search": "search", "my_trips": "ticket", "offers": "percent", "job_list": "file",
+                "applications": "check-circle", "learn_path": "navigate", "quiz": "help", "map_search": "pin",
+                "wallet_home": "wallet", "scan_pay": "scan", "txn_history": "receipt"}}
 
 
 def icon_svg(name: str, cls: str = "ic") -> str:
@@ -413,6 +442,9 @@ def expand(html: str) -> str:
 PRIMARY = {"shop": ("cart", "cart"), "food_order": ("cart", "cart"), "booking": ("slot_picker", "calendar"),
            "learning": ("courses", "book"), "membership": ("checkin", "qr"), "service_request": ("request_service", "plus"),
            "khata": ("payment", "pay"), "catalogue": ("enquiry", "chat"), "events": ("events", "ticket"), "community": ("donate", "heart")}
+from .products import KEPT as _P_KEPT, PRIMARY as _P_PRIMARY  # noqa: E402  (v0.138 product apps)
+PRIMARY.update(_P_PRIMARY)
+DATA_KEPT.update(_P_KEPT)
 GO_ICON = {"cart": "cart", "checkout": "bag", "payment": "pay", "slot_picker": "calendar", "services": "list", "courses": "book",
            "timetable": "calendar", "checkin": "qr", "member_card": "qr", "request_service": "plus", "job_status": "wrench",
            "khata": "wallet", "enquiry": "chat", "events": "ticket", "donate": "heart", "search": "search", "offers": "tag",

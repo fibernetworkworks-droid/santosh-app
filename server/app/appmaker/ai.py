@@ -54,7 +54,8 @@ APP KIT YOU DESIGN WITH (already loaded; native-looking on Android AND iPhone - 
   chev-u arrow-l arrow-r menu filter sort pin clock calendar phone chat mail share settings gift tag percent truck package receipt
   wallet pay qr scan camera image play book cap file edit trash info help shield lock logout globe lang leaf cake cup food scissors
   tooth health dumbbell wrench wifi bolt refresh download upload ticket mic list grid navigate store award chart trend rupee coin
-  hourglass check-circle alert eye sun moon car paw flame music key home-repair spark dot more.
+  hourglass check-circle alert eye sun moon car paw flame music key home-repair spark dot more pause skip-next skip-prev shuffle
+  repeat volume video send smile bookmark compass layers sliders crop cloud rain wind drop timer flag thumb headphones film gamepad.
 - PRO components (staff / field / admin apps): dense table <div class="tbl-wrap"><table class="tbl"><thead><tr><th>..</th><th class="num">..</th>
   </tr></thead><tbody><tr><td>..</td><td class="num">..</td></tr></tbody></table></div>; status <span class="status ok|warn|bad|info">Open</span>;
   SLA timer <b class="sla warn">1h 20m</b>; kanban <div class="kanban"><div class="kb-col"><h3>To do <span>4</span></h3><div class="kb-card">..</div></div></div>;
@@ -88,7 +89,9 @@ APP KIT YOU DESIGN WITH (already loaded; native-looking on Android AND iPhone - 
 """
 
 SCREEN_SYSTEM = """You are a world-class mobile product designer (Material 3 + Apple HIG level) designing ONE screen of a premium
-native app for a small business in India, by hand. It must feel like the best apps on the store: clear hierarchy, one main
+native app in India, by hand: either a business's own app, or a PRODUCT app of its own (music streaming, OTT, social, chat,
+rides, marketplace ...) - the brief says which. Build EXACTLY the app in "SHE ASKED FOR": every screen must clearly belong to
+that kind of app; never turn it into a different kind of app or anybody's business that her words don't name. It must feel like the best apps on the store: clear hierarchy, one main
 action, thumb-friendly (tap targets >= 48 px), generous spacing, real content from the FACTS, purposeful motion, perfect at
 360 px and 412 px wide, readable in Hindi / Marathi as well as English.
 
@@ -105,6 +108,11 @@ Rules:
 - data-go only to the SCREEN IDS given (tabs are switched by the tab bar; you may still link to them).
 - FACTS are the only truth: products, prices, timings, phone, address, team names come from FACTS. Missing =
   <em class="blank">[what is missing]</em>. Never invent prices, ratings, reviews, counts, degrees or offers.
+- PRODUCT apps have no shop behind them: fill songs / shows / posts / rides / listings with clearly SAMPLE content (invented,
+  obviously fictional titles and names, a small <span class="pill">Demo</span> chip where sample content starts) - never real
+  songs, artists, films, shows, brands, celebrities or people. The app's name / contact from FACTS, else [App ka naam].
+- A brand she names ("jaisa Spotify", "like Netflix") is ONLY a reference for the kind of app: never its name, logo,
+  wordmark, signature colours, icons or a recognisable copy of its layout. Original design from the given style and tokens.
 - Payments: UPI to the business's own UPI ID (or pay at counter / cash on delivery if the facts say so). NEVER a card number,
   CVV, expiry, UPI PIN or password field anywhere. UPI apps only as text chips (no logos).
 - Respect the RULES lines (store policy + profession law). No other company's logos or brand art, no national emblem / flag,

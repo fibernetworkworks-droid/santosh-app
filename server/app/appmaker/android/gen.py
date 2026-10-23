@@ -146,6 +146,18 @@ TAB_ICONS = {"home": "home", "categories": "grid", "cart": "cart", "orders": "re
              "services": "list", "my_bookings": "calendar", "courses": "book", "timetable": "calendar", "member_card": "qr",
              "request_service": "plus", "job_status": "wrench", "khata": "wallet", "rewards": "gift", "catalogue": "grid",
              "wishlist": "heart", "events": "ticket", "pass": "qr", "updates": "bell", "plans": "award"}
+TAB_ICONS.update({   # v0.138 product apps (same as kit.TAB_ICON)
+    "search": "search", "library": "music", "downloads": "download", "watchlist": "bookmark", "reel_feed": "play",
+    "explore": "compass", "create_post": "plus", "chat_list": "chat", "user_profile": "user", "feed": "home",
+    "notifications": "bell", "stories": "image", "new_chat": "edit", "topics": "list", "bookmarks": "bookmark",
+    "note_list": "file", "today_tasks": "check-circle", "habit_today": "check-circle", "habit_edit": "plus",
+    "stats_chart": "chart", "expense_home": "wallet", "split_groups": "users", "activity_home": "flame",
+    "workouts": "dumbbell", "browse_genres": "grid", "game_home": "gamepad", "level_map": "pin",
+    "leaderboard": "award", "templates": "layers", "gallery": "image", "forecast": "sun", "radar_map": "rain",
+    "city_list": "pin", "ride_home": "car", "ride_history": "clock", "support": "help", "my_ads": "tag",
+    "post_ad": "plus", "trip_search": "search", "my_trips": "ticket", "offers": "percent", "job_list": "file",
+    "applications": "check-circle", "learn_path": "navigate", "quiz": "help", "map_search": "pin",
+    "wallet_home": "wallet", "scan_pay": "scan", "txn_history": "receipt"})
 WORD_ICONS = [("dashboard", "chart"), ("report", "chart"), ("kpi", "chart"), ("lead", "users"), ("pipeline", "trend"),
               ("followup", "clock"), ("ticket", "ticket"), ("map", "pin"), ("route", "navigate"), ("task", "list"),
               ("kanban", "grid"), ("gantt", "calendar"), ("calendar", "calendar"), ("attendance", "check-circle"),

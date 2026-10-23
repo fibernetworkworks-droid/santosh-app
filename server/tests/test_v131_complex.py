@@ -26,7 +26,7 @@ def test_catalogue_blueprint_rules():
     from app.appmaker import taxonomy as TX
     assert TX.check() == [] and BP.check() == []
     c = L.counts()
-    assert c["archetypes"] == 43 and c["pro_screen_types"] == 115 and c["screen_types"] == 172 and c["briefs"] == 160000
+    assert c["archetypes"] == 43 and c["pro_screen_types"] == 115 and c["screen_types"] == 266 and c["briefs"] == 160000
     assert c["pro_briefs"] > 50000 and c["all_briefs"] == c["briefs"] + c["pro_briefs"]
     assert c["capabilities"] >= 60 and c["play_restricted"] >= 8 and c["login_methods"] >= 15 and c["entities"] >= 140
     # her words -> the right archetype and a trade that fits it

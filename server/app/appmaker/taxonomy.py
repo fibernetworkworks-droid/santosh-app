@@ -553,8 +553,19 @@ for _k, _v in PRO_SCREENS.items():
     SCREENS.setdefault(_k, _v)
 for _k, _v in ARCHETYPES.items():
     GOALS.setdefault(_k, _v)
-SIMPLE_GOALS = [k for k, v in GOALS.items() if not v.get("complex")]
+# ---------------------------------------------------------------- v0.138 product / consumer apps (music, OTT, social, rides ...)
+from .prodscreens import PRODUCT_SCREENS  # noqa: E402
+from .products import PRODUCT_RULES, PRODUCTS  # noqa: E402
+
+for _k, _v in PRODUCT_SCREENS.items():
+    SCREENS.setdefault(_k, _v)
+for _k, _v in PRODUCTS.items():
+    GOALS.setdefault(_k, _v)
+for _k, _v in PRODUCT_RULES.items():
+    STORE_RULES.setdefault(_k, _v)
+SIMPLE_GOALS = [k for k, v in GOALS.items() if not v.get("complex") and not v.get("product")]
 COMPLEX_GOALS = [k for k, v in GOALS.items() if v.get("complex")]
+PRODUCT_GOALS = [k for k, v in GOALS.items() if v.get("product")]
 
 
 def code_screens_for(goal: str) -> list[str]:

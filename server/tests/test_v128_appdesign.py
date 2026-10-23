@@ -88,7 +88,7 @@ def test_app_library_counts_understanding_and_rules(monkeypatch):
     assert TX.check() == []
     c = L.counts()
     assert c["fields"] == 1000 and c["briefs"] == 160000 and c["goals"] == 10 and c["styles"] == 16
-    assert c["screen_designs"] == 996 and c["screen_types"] == 172 and c["motion_presets"] == 100
+    assert c["screen_designs"] == 1560 and c["screen_types"] == 266 and c["motion_presets"] == 100
     for q, field, goal in [("kirana ki app ghar pe delivery", "kirana", "shop"), ("मिठाई की दुकान का ऐप", "sweet_shop", "shop"),
                            ("gym app membership wala", "gym", "membership"), ("coaching classes ke liye app", None, "learning"),
                            ("restaurant app menu order", "restaurant", "food_order"), ("dant doctor app appointment", "dentist", "booking")]:

@@ -43,7 +43,7 @@ def is_complex(goal: str) -> bool:
 def make(goal: str, screens: list[str], words: str = "", extra: dict[str, Any] | None = None) -> dict[str, Any]:
     g = T.GOALS.get(goal) or T.GOALS["shop"]
     cx = bool(g.get("complex"))
-    base = g if cx else SIMPLE.get(goal, SIMPLE["shop"])
+    base = g if cx or g.get("product") else SIMPLE.get(goal, SIMPLE["shop"])
     modules = list(dict.fromkeys(base["modules"] + (["approvals"] if g.get("money") and cx else [])))
     data_extra = (extra or {}).get("data") or {}
     model = DM.build(modules, data_extra)
@@ -192,6 +192,25 @@ def check() -> list[str]:
     p: list[str] = []
     F = SL.fields()
     for gid, g in T.GOALS.items():
+        if g.get("product"):          # v0.138 product apps: own modules / roles / levels / phone features / login
+            for m in g["modules"]:
+                if m not in DM.MODULES:
+                    p.append(f"{gid}: module {m}")
+            for r in g["roles"]:
+                if r not in OM.ROLES:
+                    p.append(f"{gid}: role {r}")
+            if g["levels"] not in OM.LEVELS:
+                p.append(f"{gid}: levels {g['levels']}")
+            for c in g["caps"]:
+                if c not in CP.CAPS:
+                    p.append(f"{gid}: cap {c}")
+            for a in g["auth"]:
+                if a not in AU.METHODS:
+                    p.append(f"{gid}: auth {a}")
+            bp = make(gid, g["screens"])
+            if bp["problems"]:
+                p.append(f"{gid}: {bp['problems'][:3]}")
+            continue
         if not g.get("complex"):
             if gid not in SIMPLE:
                 p.append(f"goal {gid}: no simple blueprint")

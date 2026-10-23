@@ -715,6 +715,18 @@ class _AppDesignPageState extends State<AppDesignPage> {
               Expanded(child: Text('${v['field_label']} · ${v['goal_label']} · ${v['style_label']}', style: const TextStyle(color: C.muted, fontSize: 12.5))),
               Pill(_statusUi[st] ?? st, fg: _stCol(st)),
             ]),
+            // v0.138 what she asked for, and whose app it is (her own business's details only when it is for her business)
+            if (_s(_map(plan['scope'])['request']).isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text('Aapne kaha: "${_s(_map(plan['scope'])['request'])}"', style: const TextStyle(fontSize: 12.5, fontStyle: FontStyle.italic)),
+            ],
+            if (_s(_map(plan['scope'])['product_label']).isNotEmpty)
+              Text('Banega: ${_s(_map(plan['scope'])['product_label'])}'
+                  '${_s(_map(plan['scope'])['like']).isNotEmpty ? ' (${_s(_map(plan['scope'])['like'])} jaisa kaam, apna naam aur design)' : ''}',
+                  style: const TextStyle(color: C.muted, fontSize: 12.5)),
+            if (_s(_map(plan['scope'])['not_for']).isNotEmpty)
+              Text('${_s(_map(plan['scope'])['not_for'])} ki details is app mein nahi daali (alag app hai).',
+                  style: const TextStyle(color: C.muted, fontSize: 12)),
             const SizedBox(height: 8),
             SiteStages(v: v),
             if (st != 'planned' && st != 'looks') ...[const SizedBox(height: 10), AppScreenGrid(app: app, v: v)],

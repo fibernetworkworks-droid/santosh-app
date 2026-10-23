@@ -608,7 +608,10 @@ def understand(text: str, field: str = "", goal: str = "") -> dict[str, Any]:
     """Her few words -> {idea (the best fit), alternatives (2 more ideas that differ in what is special), said, ask, count}."""
     u = L.understand(text) if (text or "").strip() else {}
     fid = field if field in _field_goals() else (u.get("field") or "")
-    if not fid:
+    if u.get("product") and field not in _field_goals():     # v0.138 a product app (music, OTT ...): no shop ideas
+        return {"idea": None, "alternatives": [], "ask": "", "count": 0, "product": u["product"],
+                "say": f"Yeh ek {u.get('field_label')} hai: iska plan seedha app_banao se banega."}
+    if not fid or fid not in _field_goals():
         return {"idea": None, "alternatives": [], "ask": u.get("ask") or "App kis kaam / dukaan ke liye hai?", "count": 0}
     fg = _field_goals()[fid]
     g = goal if goal in fg else (u.get("goal") if u.get("goal") in fg else fg[0])

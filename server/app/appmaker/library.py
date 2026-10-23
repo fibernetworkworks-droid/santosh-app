@@ -20,11 +20,17 @@ from ..site import taxonomy as ST
 from . import colors as CL
 from . import designsys as DS
 from . import fonts as FN
+from . import products as PR
 from . import taxonomy as T
 
 log = logging.getLogger("santosh.app")
 _LOCK = threading.Lock()
 APP_WORDS = {"app", "apps", "application", "mobile app", "android", "iphone", "ios", "ऐप", "एप", "अ‍ॅप", "एप्लिकेशन"}
+
+
+def fields() -> dict[str, dict[str, Any]]:
+    """The 1,000 business types + the product / consumer app types (v0.138: 'app_music_streaming' ...)."""
+    return {**SL.fields(), **PR.fields()}
 
 
 def _norm(s: str) -> str:
@@ -57,7 +63,9 @@ def counts() -> dict[str, int]:
             **CP.counts(), **AU.counts(), **DM.counts(), **OM.counts(),
             "screen_designs": sum(len(s["variants"]) for s in T.SCREENS.values()), "motion_presets": len(T.MOTION),
             "palettes": len(CL.palettes()), "font_pairs": len(FN.pairs()), "font_families": len(FN.catalog()),
-            **{f"ds_{k}": v for k, v in DS.counts().items()}, "app_ideas": _ideas_total()}
+            **{f"ds_{k}": v for k, v in DS.counts().items()}, "app_ideas": _ideas_total(),
+            "product_apps": len(T.PRODUCT_GOALS), "product_briefs": len(T.PRODUCT_GOALS) * len(T.STYLES),
+            "product_screen_types": sum(1 for s in T.SCREENS.values() if s.get("product"))}
 
 
 def _ideas_total() -> int:
@@ -84,6 +92,8 @@ def guess_goal(text: str, default: str = "") -> str:
 
 
 def default_goal(field: str) -> str:
+    if PR.pid_of(field):
+        return PR.pid_of(field)
     f = SL.fields().get(field)
     if not f:
         return "shop"
@@ -96,10 +106,22 @@ def default_goal(field: str) -> str:
     return ind["goal"]
 
 
+def _product_view(p: dict[str, Any], m: list[dict[str, Any]]) -> dict[str, Any]:
+    fid = PR.field_id(p["id"])
+    return {"field": fid, "field_label": p["label"], "industry": "product_app", "goal": p["id"], "styles": styles_for(fid, p["id"]),
+            "score": min(1.0, 0.5 + p["score"] / 10), "alternatives": [x for x in m[:3]], "ask": "", "product": p["id"],
+            "like": p.get("brand") or "", "why": p.get("why") or []}
+
+
 def understand(text: str) -> dict[str, Any]:
-    """Her short ask -> {field, goal, styles (3 looks), alternatives, ask}."""
+    """Her short ask -> {field, goal, styles (3 looks), alternatives, ask}.
+    v0.138: a product / consumer app she describes ("Spotify jaisa music app", "cab booking app") comes first; a business's
+    app ("kirana ki app") goes to the 1,000 business types; a weak or two-way match carries `ask` (the caller asks first)."""
     words = _clean_text(text)
     m = SL.match(words or text)
+    p = PR.match(text)
+    if p and (p.get("brand") or p["score"] >= 3 or not m or m[0]["score"] < 0.8):
+        return _product_view(p, m)
     g0 = guess_goal(text, "")
     if not m and g0 in T.COMPLEX_GOALS:
         # "CRM app banao", "school ERP chahiye": the kind of app is clear, the trade isn't -> the archetype's own trade
@@ -122,6 +144,8 @@ def understand(text: str) -> dict[str, Any]:
     ask = ""
     if len(m) > 1 and m[1]["score"] >= best["score"] * 0.92 and m[1]["industry"] != best["industry"]:
         ask = f"{best['en']} ya {m[1]['en']}?"
+    if p:
+        ask = f"{best['en']} ki app, ya ek {p['label']}?"
     return {"field": best["id"], "field_label": f["en"], "industry": f["industry"], "goal": goal,
             "styles": styles_for(best["id"], goal), "score": best["score"], "alternatives": m[1:4], "ask": ask}
 
@@ -159,8 +183,10 @@ def learn(field: str, kind: str, keys: list[str], weight: int = 1) -> None:
 
 
 def styles_for(field: str, goal: str = "") -> list[str]:
-    f = SL.fields().get(field)
+    f = fields().get(field)
     base = list((T.INDUSTRY.get(f["industry"]) or {}).get("styles") or []) if f else []
+    if PR.pid_of(field):
+        base = list(PR.PRODUCTS[PR.pid_of(field)]["styles"])
     if goal in T.COMPLEX_GOALS:
         base = list(T.GOALS[goal]["styles"])
     base = base or ["clean_commerce", "soft_pastel", "bold_blocks"]
@@ -203,11 +229,17 @@ def screen_text(sid: str) -> str:
 
 
 def brief(field: str, goal: str = "", style: str = "") -> dict[str, Any]:
-    F = SL.fields()
+    F = fields()
     if field not in F:
         raise KeyError(field)
     f = F[field]
-    ind = ST.INDUSTRIES[f["industry"]]
+    pid = PR.pid_of(field)
+    if pid:      # a product app: its own moods / trust / questions; the goal is the product itself
+        pp = PR.PRODUCTS[pid]
+        ind = {"label": "Product app (not a shop's app)", "moods": pp["moods"], "trust": pp["trust"], "questions": pp["questions"]}
+        goal = pid
+    else:
+        ind = ST.INDUSTRIES[f["industry"]]
     goal = goal if goal in T.GOALS else default_goal(field)
     style = style if style in T.STYLES else styles_for(field, goal)[0]
     g, st = T.GOALS[goal], T.STYLES[style]
@@ -231,7 +263,9 @@ def brief(field: str, goal: str = "", style: str = "") -> dict[str, Any]:
     code = T.code_screens_for(goal)
     text = "\n".join([
         f"APP BRIEF {seed}",
-        f"Business type: {f['en']} ({f['hi']}); industry: {ind['label']}. People also call it: {', '.join(f['aliases'][:6])}.",
+        (f"App type: {f['en']} ({f['hi']}) - a PRODUCT app of its own for the public, NOT the app of a shop / office. "
+         f"People ask for it as: {', '.join(f['aliases'][:6])}." if pid else
+         f"Business type: {f['en']} ({f['hi']}); industry: {ind['label']}. People also call it: {', '.join(f['aliases'][:6])}."),
         f"App goal: {g['label']} - {g['brief']}" + (" This is a STAFF / ADMIN app for the business's own team "
                                                      "(roles, branches, approvals), not a shop for customers." if g.get("complex") else ""),
         f"Design style: {st['label']} - do: {st['do']}; don't: {st['dont']}; corner radius {st['radius']}px; cards: "
@@ -254,7 +288,7 @@ def brief(field: str, goal: str = "", style: str = "") -> dict[str, Any]:
             "palettes": pal, "fonts": st["fonts"], "font_names": fonts,
             "structure": {k: st[k] for k in ("nav", "fab", "card", "button", "header", "transition", "texture")}, "motion": list(st["motion"]), "radius": st["radius"],
             "nav": st["nav"], "trust": ind["trust"], "questions": questions[:5], "legal": legal, "rules": rules,
-            "accounts": g["accounts"], "money": g["money"], "complex": bool(g.get("complex")), "text": text}
+            "accounts": g["accounts"], "money": g["money"], "complex": bool(g.get("complex")), "product": pid, "text": text}
 
 
 def browse(industry: str = "", q: str = "", limit: int = 60, offset: int = 0) -> dict[str, Any]:
