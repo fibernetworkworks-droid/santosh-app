@@ -57,7 +57,10 @@ def how(c: dict[str, Any]) -> str:
         "gave Developer Sahayak." if c["id"] == "github" else "") + (
         " Supabase: one tap and sign in with your Supabase account (or a personal access token sbp_... from "
         "supabase.com/dashboard/account/tokens). Best: pick one project (project ref) and keep read-only on; writes "
-        "(migrations, SQL changes, Edge Function deploys) always wait for your tap." if c["id"] == "supabase" else "")
+        "(migrations, SQL changes, Edge Function deploys) always wait for your tap." if c["id"] == "supabase" else "") + (
+        " 21st.dev Magic: sign in at 21st.dev/mcp, make an API key there (old Magic keys no longer work) and paste it here. "
+        "Hoola can then make premium UI components from a few words, find design inspiration and brand logos (SVG). It only "
+        "returns code; it never changes your site by itself. Uses your 21st.dev credits." if c["id"] == "21st-magic" else "")
 
 
 SUPA_REF = re.compile(r"^[a-z]{20}$")

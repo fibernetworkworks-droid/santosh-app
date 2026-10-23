@@ -909,6 +909,45 @@
    ]
   },
   {
+   "id": "21st-magic",
+   "name": "21st.dev Magic",
+   "category": "Developer",
+   "url": "https://21st.dev/api/mcp",
+   "url_hint": "",
+   "auth": "api_key",
+   "key_header": "x-api-key",
+   "does": "Premium UI components from a few words (React / Tailwind code), design inspiration from 21st.dev's library, brand logos as SVG",
+   "source": "https://21st.dev/mcp",
+   "confidence": "medium",
+   "keywords": [
+    "21st",
+    "21st.dev",
+    "magic",
+    "ui",
+    "component",
+    "components",
+    "react",
+    "tailwind",
+    "shadcn",
+    "landing page",
+    "design",
+    "frontend",
+    "developer"
+   ],
+   "options": {
+    "kind": "magic",
+    "reads": [
+     "generate",
+     "get_inspiration",
+     "search_logo",
+     "21st_magic_component_builder",
+     "21st_magic_component_refiner",
+     "21st_magic_component_inspiration",
+     "logo_search"
+    ]
+   }
+  },
+  {
    "id": "neon",
    "name": "Neon",
    "category": "Developer",

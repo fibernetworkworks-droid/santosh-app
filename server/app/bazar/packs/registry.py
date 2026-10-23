@@ -46,6 +46,17 @@ class Pack(BaseModel):
             if tool == "execute_sql" and "mcp.supabase.com" in str(self.config.get("endpoint", "")) \
                     and "read_only=true" in str(self.config.get("endpoint", "")):
                 return 0
+            # v0.148 tools the featured server documents as output-only (21st.dev Magic) run like reads, unless she
+            # switched "pehle poochho" on for that tool; never on a caution server
+            if tool in (self.config.get("reads") or ()) and not self.config.get("caution"):
+                try:
+                    from ...mcp_prefs import _load, locked
+                    if locked(tool, False):
+                        return 2
+                    p = _load(self.config.get("owner", ""), self.id).get(tool)
+                    return 2 if (p is not None and p[1]) else 0
+                except Exception:
+                    return 0
             # servers the user added: anything not plainly a read needs a tap; v0.91 her per-tool "ask first" switch
             try:
                 from ...mcp_prefs import needs_tap

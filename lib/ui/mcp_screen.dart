@@ -159,6 +159,10 @@ class _McpScreenState extends State<McpScreen> {
             if ((c['url_hint'] as String? ?? '').isNotEmpty)
               Padding(padding: const EdgeInsets.only(top: 6),
                   child: Text('Aisa dikhta hai: ${c['url_hint']}', style: const TextStyle(color: C.faint, fontSize: 11.5))),
+            if (c['id'] == '21st-magic')
+              const Padding(padding: EdgeInsets.only(top: 6),
+                  child: Text('21st.dev/mcp par sign in karke API key banaiye (purani Magic key ab nahi chalti). Hoola sirf code banata hai, aapki site khud nahi badalta.',
+                      style: TextStyle(color: C.faint, fontSize: 11.5))),
             if (c['id'] == 'razorpay')
               const Padding(padding: EdgeInsets.only(top: 6),
                   child: Text('Format: key_id:key_secret (Razorpay Dashboard > API Keys)', style: TextStyle(color: C.faint, fontSize: 11.5))),

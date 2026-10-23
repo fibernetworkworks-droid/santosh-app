@@ -55,6 +55,11 @@ def provider_of(row_id: str) -> str:
 
 
 def to_pack(row: CustomMcp) -> Pack:
+    reads = _featured_reads(row.directory_ref)
+    if reads and not row.caution:
+        from ..mcp_prefs import HINTS
+        for t in reads:                     # so the Tools screen shows them as "seedha chalega" too
+            HINTS.setdefault((row.id, t), True)
     entry = directory.get(row.directory_ref) if row.directory_ref else None
     words = set(re.findall(r"[a-z0-9]{3,}", f"{row.name} {row.directory_ref}".lower()))
     return Pack(id=row.id, name=row.name, category="My MCP servers", sub_category=(entry or {}).get("f", "MCP server"),
@@ -62,8 +67,21 @@ def to_pack(row: CustomMcp) -> Pack:
                 description=(row.description or (entry or {}).get("d", "") or "MCP server you added")[:400],
                 notes="caution" if row.caution else "", master_list_row=0, executor="mcp",
                 config={"provider": provider_of(row.id), "endpoint": row.url, "custom": True, "auth": row.auth,
-                        "key_header": row.key_header, "owner": row.user_id, "caution": row.caution},
+                        "key_header": row.key_header, "owner": row.user_id, "caution": row.caution,
+                        "reads": reads},
                 tools=[], keywords=sorted(words)[:20])
+
+
+def _featured_reads(ref: str | None) -> list[str]:
+    """v0.148 tools a featured server documents as output-only (e.g. 21st.dev Magic: generate returns code, nothing changes)."""
+    if not ref or not ref.startswith("featured:"):
+        return []
+    try:
+        from . import featured
+        c = featured.get(ref.split(":", 1)[1]) or {}
+        return [str(t) for t in ((c.get("options") or {}).get("reads") or [])]
+    except Exception:
+        return []
 
 
 def _resolve(pack_id: str) -> Pack | None:
