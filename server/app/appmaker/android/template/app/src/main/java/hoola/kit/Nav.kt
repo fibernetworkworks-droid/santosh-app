@@ -76,6 +76,8 @@ class Nav(val start: String, val tabs: List<TabSpec>, val screens: Set<String>) 
     val current: String get() = stack.last()
     val canBack: Boolean get() = stack.size > 1
     var hasDrawer: Boolean = false
+    /** Set by Page: true while the screen has its own sticky bottom action. */
+    var fabHidden by mutableStateOf(false)
     internal var drawerOpener: (() -> Unit)? = null
 
     /** Open a screen (a tab switches tabs). Unknown ids are ignored so a stray link can't crash the app. */
@@ -126,7 +128,7 @@ fun AppShell(nav: Nav, fabMain: FabAction?, fabActions: List<FabAction>, title: 
                     }
                 }
                 if (look.nav == "floating_pill" && nav.onTab) FloatingPill(nav, Modifier.align(Alignment.BottomCenter))
-                if (look.fab != "none" && fabMain != null && nav.onTab) Fab(look.fab, fabMain, fabActions, nav,
+                if (look.fab != "none" && fabMain != null && nav.onTab && !nav.fabHidden) Fab(look.fab, fabMain, fabActions, nav,
                     Modifier.align(if (look.fab == "docked") Alignment.BottomCenter else Alignment.BottomEnd)
                         .padding(end = if (look.fab == "docked") 0.dp else 16.dp, bottom = if (look.nav == "none" || look.nav == "rail") 20.dp else 92.dp))
             }

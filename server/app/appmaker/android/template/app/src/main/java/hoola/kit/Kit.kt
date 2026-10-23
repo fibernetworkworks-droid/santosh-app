@@ -41,6 +41,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -85,6 +86,9 @@ fun Page(
     body: LazyListScope.() -> Unit,
 ) {
     val c = H.c
+    val nav = LocalNav.current
+    val hasBar = bottomBar != null
+    SideEffect { nav.fabHidden = hasBar }          // a sticky bottom action (Pay, Book) is never covered by the FAB
     Column(Modifier.fillMaxSize().background(c.bg)) {
         AppBar(title, back, large, subtitle, actions)
         if (AppData.demo) DemoNote()
@@ -471,7 +475,9 @@ fun Pill(text: String, kind: String = "info") {
 @Composable
 fun Kpi(value: String, label: String, modifier: Modifier = Modifier) {
     HCard(modifier, padding = 12.dp) {
-        Text(value, style = H.t.h1.copy(fontSize = 22.sp))
+        // one line always: long figures (₹48,200) get a smaller size instead of breaking
+        val size = when { value.length <= 5 -> 22.sp; value.length <= 7 -> 19.sp; value.length <= 9 -> 16.sp; else -> 14.sp }
+        Text(value, style = H.t.h1.copy(fontSize = size), maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
         Small(label, maxLines = 2)
     }
 }

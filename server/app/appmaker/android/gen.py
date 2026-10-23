@@ -391,7 +391,7 @@ def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str]) -> str:
             block {{
                 HCard(onClick = {click}) {{
                     Title(rec.name)
-                    val sub = listOf(rec.s("category"), rec.s("status"), rec.s("when"), rec.s("desc")).filter {{ x -> x.isNotEmpty() }}.joinToString(" · ")
+                    val sub = listOf(rec.s("category"), rec.s("status"), rec.s("when"), rec.s("desc")).filter {{ x -> x.isNotEmpty() }}.distinct().joinToString(" · ")
                     if (sub.isNotEmpty()) Small(sub)
                     if (rec.price > 0) Price(rec.price)
                 }}
