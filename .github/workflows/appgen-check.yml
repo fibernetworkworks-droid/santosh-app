@@ -1,0 +1,69 @@
+name: App Sahayak native build check
+
+# v0.132: compiles the generated native Android project (the HoolaKit template + the fixture app) with the real toolchain
+# (AGP 9.0.1, Gradle 9.1.0, Kotlin 2.2.10, Compose BOM 2026.09.00) whenever the template or the generator changes.
+
+on:
+  push:
+    paths:
+      - "server/app/appmaker/android/**"
+      - ".github/workflows/appgen-check.yml"
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Android SDK 36
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" --install "platforms;android-36" "build-tools;36.0.0" > /dev/null
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: appgen-${{ hashFiles('server/app/appmaker/android/template/gradle/**', 'server/app/appmaker/android/template/**/*.kts') }}
+      - name: Generate the fixture project
+        run: python3 server/app/appmaker/android/gen.py server/app/appmaker/android/fixture/spec.json "$RUNNER_TEMP/proj"
+      - name: Preview signing key
+        run: |
+          mkdir -p "$RUNNER_TEMP/proj/keys"
+          keytool -genkeypair -keystore "$RUNNER_TEMP/proj/keys/preview.p12" -storetype PKCS12 -alias preview -keyalg RSA \
+            -keysize 2048 -validity 3650 -dname "CN=Hoola Preview" -storepass hoolapreview -keypass hoolapreview
+      - name: Build (release, R8)
+        working-directory: ${{ runner.temp }}/proj
+        env:
+          HOOLA_PREVIEW_KEY_PASS: hoolapreview
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --console=plain assembleRelease 2>&1 | tee build.log
+      - name: Kotlin errors as annotations
+        if: failure()
+        working-directory: ${{ runner.temp }}/proj
+        run: |
+          grep -E '^e: ' build.log | head -60 | while IFS= read -r l; do echo "::error::${l}"; done
+          grep -E 'What went wrong' -A 12 build.log | head -40 | while IFS= read -r l; do echo "::error::${l}"; done
+      - name: APK checks
+        working-directory: ${{ runner.temp }}/proj
+        run: |
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          ls -la "$APK"
+          unzip -t "$APK" > /dev/null
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$APK" | head -5
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" | head -5
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: appgen-fixture
+          path: |
+            ${{ runner.temp }}/proj/build.log
+            ${{ runner.temp }}/proj/app/build/outputs/apk/release/*.apk
+          if-no-files-found: ignore
