@@ -56,6 +56,22 @@ class WakeEngine(
 
     @Volatile private var running = false
     private var thread: Thread? = null
+    // v0.142 while she is on a phone / WhatsApp call, "hey Santosh" said on that call never opens Hoola
+    private val appCtx: Context = ctx.applicationContext
+    private var busyCheckAt = 0L
+    private var busyUntil = 0L
+    @Volatile var skippedForCall = 0
+        private set
+
+    private fun onOtherCall(): Boolean {
+        val now = SystemClock.elapsedRealtime()
+        if (now >= busyCheckAt) {
+            busyCheckAt = now + 1000
+            val busy = try { CallWatch.busy(appCtx) != null } catch (_: Throwable) { false }
+            if (busy) busyUntil = now + 2000          // and a short cool-down after the call ends
+        }
+        return now < busyUntil
+    }
     var lastError: String = ""
         private set
 
@@ -149,7 +165,10 @@ class WakeEngine(
                         if (n <= 0) break
                         got += n
                     }
-                    if (got == CHUNK) {
+                    if (got == CHUNK && onOtherCall()) {
+                        skippedForCall++
+                        reset()                       // nothing of her other call is kept for the next words
+                    } else if (got == CHUNK) {
                         try {
                             process(buf)
                         } catch (e: Exception) {

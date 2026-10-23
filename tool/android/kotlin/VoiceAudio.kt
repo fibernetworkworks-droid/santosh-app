@@ -74,6 +74,61 @@ object VoiceAudio {
     /** v0.136.2 true while a music / video app has the audio during the call: the call goes on, Hoola does not fight it. */
     @Volatile var musicPlaying = false
 
+    // v0.142 she is on ANOTHER call (phone / WhatsApp / any VoIP): Hoola steps back, sends no mic, plays nothing, never
+    // takes the audio back, and comes back by itself a moment after that call ends (CallWatch, checked every second).
+    @Volatile var callHeld: String? = null
+        private set
+    private var appCtx: Context? = null
+    private var callCheckAt = 0L
+    private var busyChecks = 0
+    private var clearChecks = 0
+
+    private fun otherCall(): String? {
+        val c = appCtx ?: return null
+        return try { CallWatch.busy(c, true, record?.audioSessionId ?: 0) } catch (_: Throwable) { null }
+    }
+
+    private fun holdForCall(kind: String) {
+        if (callHeld != null || !running) return
+        callHeld = kind
+        musicPlaying = false
+        busyChecks = 0
+        clearChecks = 0
+        paused = true
+        flush()
+        onState?.invoke("call_hold", kind)
+    }
+
+    private fun resumeAfterCall() {
+        val am = manager ?: return
+        if (!running || callHeld == null) return
+        callHeld = null
+        clearChecks = 0
+        try { am.mode = AudioManager.MODE_IN_COMMUNICATION } catch (_: Exception) {}
+        try { route(am) } catch (_: Exception) {}
+        takeFocus(am)
+        paused = false
+        onState?.invoke("call_resume", "")
+    }
+
+    /** From the mic thread, once a second: start / end the hold for her other call. */
+    private fun watchOtherCall() {
+        val now = SystemClock.uptimeMillis()
+        if (now < callCheckAt) return
+        callCheckAt = now + 1000
+        val other = otherCall()
+        if (callHeld == null) {
+            if (other == null) { busyChecks = 0; return }
+            busyChecks++
+            // a ringing / normal phone call is certain at once; a VoIP signal must hold for 2 checks (no false holds)
+            if (other == "phone" || other == "ringing" || busyChecks >= 2) ui.post { holdForCall(other) }
+        } else {
+            if (other != null) { clearChecks = 0; return }
+            clearChecks++
+            if (clearChecks >= 2) ui.post { resumeAfterCall() }
+        }
+    }
+
     /** A real phone call (or its ringing) is the only thing that should pause Hoola's call. */
     private fun phoneCall(am: AudioManager): Boolean {
         val m = try { am.mode } catch (_: Exception) { AudioManager.MODE_NORMAL }
@@ -99,12 +154,14 @@ object VoiceAudio {
     private fun decideLoss(tries: Int, permanent: Boolean) {
         val am = manager ?: return
         if (!running) return
-        if (phoneCall(am)) {
-            musicPlaying = false
-            pauseForOther()
-            if (permanent) ui.postDelayed({ val a = manager; if (running && paused && a != null && !phoneCall(a)) takeFocus(a) }, 3000)
+        val other = if (phoneCall(am)) "phone" else otherCall()
+        if (other != null) {
+            // v0.142 her phone / WhatsApp call: hold (the mic watch brings Hoola back when that call is over;
+            // taking the audio back after 3 s, as before, made Hoola answer what she said to her friend)
+            holdForCall(other)
             return
         }
+        if (callHeld != null) return
         if (musicNow(am)) {
             if (!musicPlaying) musicFloor = 0.0
             musicPlaying = true
@@ -122,8 +179,9 @@ object VoiceAudio {
         pauseForOther()
         if (permanent) ui.postDelayed({
             val a = manager
-            if (running && paused && a != null) {
-                if (musicNow(a) && !phoneCall(a)) decideLoss(0, true) else takeFocus(a)
+            if (running && paused && a != null && callHeld == null) {
+                if (otherCall() != null || phoneCall(a)) decideLoss(0, true)
+                else if (musicNow(a)) decideLoss(0, true) else takeFocus(a)
             }
         }, 3000)
     }
@@ -134,7 +192,7 @@ object VoiceAudio {
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> ui.postDelayed({ decideLoss(4, false) }, 300)
             AudioManager.AUDIOFOCUS_GAIN -> {
                 musicPlaying = false
-                if (paused) {
+                if (paused && callHeld == null) {
                     paused = false
                     onState?.invoke("resumed", "")
                 }
@@ -262,7 +320,12 @@ object VoiceAudio {
         if (!hasPermission(ctx)) return "permission"
         val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         manager = am
+        appCtx = ctx.applicationContext
         paused = false
+        callHeld = null
+        busyChecks = 0
+        clearChecks = 0
+        callCheckAt = SystemClock.uptimeMillis() + 1500   // our own mic needs a moment to show up in Android's list
         musicPlaying = false
         musicFloor = 0.0
         cushionMs = 80
@@ -361,6 +424,7 @@ object VoiceAudio {
             val n = try { cur.read(buf, 0, buf.size) } catch (e: Exception) { -1 }
             if (n > 0) {
                 failures = 0
+                try { watchOtherCall() } catch (_: Throwable) {}
                 if (!paused) {
                     var chunk = buf.copyOf(n)
                     if (musicPlaying) chunk = musicGate(chunk)
@@ -368,6 +432,12 @@ object VoiceAudio {
                     sink?.invoke(chunk)
                 }
             } else if (n < 0 && running) {
+                // v0.142 her other call took the mic: wait for it to end instead of giving up on the microphone
+                try { watchOtherCall() } catch (_: Throwable) {}
+                if (callHeld != null) {
+                    try { Thread.sleep(500) } catch (_: InterruptedException) { return }
+                    continue
+                }
                 // the microphone died (Bluetooth connected, another app took it...): open it again
                 failures++
                 try { cur.stop() } catch (_: Exception) {}
@@ -500,6 +570,7 @@ object VoiceAudio {
         if (!running && record == null) return
         running = false
         paused = false
+        callHeld = null
         musicPlaying = false
         generation++
         queue.clear()

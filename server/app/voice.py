@@ -9,12 +9,16 @@ Phone protocol (WebSocket /api/voice/ws?conv=<id>&voice=<name>&lang=<hi-IN>):
                    text:   {"type": "mute"} | {"type": "unmute"} | {"type": "text", "text": "..."} | {"type": "end"}
                            | {"type": "files", "file_ids": [...], "text"?}  (files attached during the call, v0.44.2)
                            | {"type": "gate_stats", chunks, held_back, vad_blocked, idle_muted, opens, fast_opens, vad} (v0.53)
+                           | {"type": "hold", "on": bool, "reason"?: "phone_call" | "button"}  (v0.142 she is on another
+                             call / pressed "Chup karao"; during a phone_call hold the phone sends no mic audio)
   server -> phone  binary: 24 kHz mono PCM16 Santosh's voice
                    text:   {"type": "ready"} | {"type": "user_text", "text"} | {"type": "santosh_text", "text"}
                            | {"type": "interrupted"} | {"type": "turn_done", "latency_ms"?, "interrupted"?}
                            | {"type": "tool", "label", "state"}
                            | {"type": "status", "state": "reconnecting" | "live"} | {"type": "pong"}
                            | {"type": "error", "message"}
+                           | {"type": "hold", "on": bool, "reason", "say", "by"?}  (v0.142 Hoola is on hold: talk it hears is
+                             not for it; it comes back when she says its name / taps "Wapas aao" / her phone call ends)
   `ready` carries a `call_id`. If the phone's connection drops (lift, tunnel, Wi-Fi -> mobile data) the call stays alive
   for VOICE_RESUME_GRACE_S seconds; the phone re-joins it with /api/voice/ws?conv=..&resume=<call_id> (`ready` again,
   with "resumed": true). A text {"type": "ping"} is answered with {"type": "pong"}.
@@ -252,7 +256,11 @@ About the user
 
 
 def _tool_specs() -> list[dict]:
-    return [t for t in TOOLS if t["name"] in VOICE_TOOL_NAMES] + [DELEGATE]
+    extra = []
+    if get_settings().voice_side_talk:   # v0.142 Gemini itself can put the call on hold when the talk isn't for it
+        from .sidetalk import TOOL as SIDE_TALK
+        extra.append(SIDE_TALK)
+    return [t for t in TOOLS if t["name"] in VOICE_TOOL_NAMES] + [DELEGATE] + extra
 
 
 # Settings this Gemini model refused ("Unknown name ..."); learned at runtime and skipped from then on.
@@ -299,6 +307,9 @@ def persona_prompt(name: str = "Santosh", gender: str = "m") -> str:
     from .avatar.service import personalise
     from .avatar.service import gendered
     p = PERSONA
+    if get_settings().voice_side_talk:   # v0.142 who is she talking to? (before "About the user", which must stay last)
+        from .sidetalk import PERSONA_BLOCK
+        p = p.replace("\n\nAbout the user", "\n\n" + PERSONA_BLOCK.replace("{name}", "Santosh") + "\n\nAbout the user", 1)
     if gender == "f":
         for a, b in FEMALE_LINES:
             p = p.replace(a, b)
@@ -488,6 +499,16 @@ def stats_summary(tenant: str) -> dict:
         "silence_ms_used": dict(__import__("collections").Counter(c.get("silence_ms") for c in calls if c.get("silence_ms"))),
         "repair_escalations_per_call": round(sum(c.get("repair_escalations", 0) for c in calls) / len(calls), 2) if calls else None,
         "fixes_heard": sum(c.get("fixes_heard", 0) for c in calls),
+        # v0.142 doosre se baat: holds (her phone call, she asked, Gemini noticed, button), talk kept out, replies not played
+        "calls_with_hold": sum(1 for c in calls if c.get("holds")),
+        "hold_reasons": dict(sum((__import__("collections").Counter(c.get("hold_reasons") or {}) for c in calls),
+                                 __import__("collections").Counter())),
+        "released_by": dict(sum((__import__("collections").Counter(c.get("released_by") or {}) for c in calls),
+                                __import__("collections").Counter())),
+        "held_turns": sum(c.get("held_turns", 0) for c in calls),
+        "dropped_replies": sum(c.get("dropped_replies", 0) for c in calls),
+        "hold_refused_tools": sum(c.get("hold_refused_tools", 0) for c in calls),
+        "hold_minutes": round(sum(c.get("hold_s", 0) for c in calls) / 60, 1),
         "recent": [{k: c[k] for k in ("call_id", "ended", "turns", "latency_ms", "interruptions", "tools", "silent_tools")}
                    for c in calls[-10:]],
     }
@@ -654,6 +675,23 @@ class Call:
         self._otp_said: set[str] = set()       # OTPs filled in this call: hidden from the saved transcript
         self.turns_log: list[tuple[str, str]] = []   # v0.91 the whole call (masked), for the call receipt
         self.did: list[dict] = []              # v0.91 tools that really ran in this call, with their real outcome
+        # v0.142 doosre se baat: while on hold the talk Gemini hears is not for Hoola (her phone call, people in the room)
+        self.hold = ""                         # "" | phone_call | asked | model | button
+        self._hold_at = 0.0
+        self._hold_turn_audio: list[bytes] = []   # Hoola's voice in a held turn: played only if she called its name
+        self._hold_turn_reply = False
+        self._held_texts: list[str] = []       # notes that arrived during the hold (a job finished...): told on release
+        self._hold_dropped_note = 0.0
+        self._hold_timer: asyncio.Task | None = None
+        self._after_release: list[str] = []    # those notes, held a little longer when she called Hoola with a question
+        self._name_prompt = False              # she called Hoola by name: make sure it answers her
+        from . import sidetalk
+        try:
+            self._names = sidetalk.names_for(self.tenant, self.name)
+        except Exception:
+            self._names = [self.name, "Hoola"]
+        self.stats.update({"holds": 0, "hold_reasons": {}, "held_turns": 0, "dropped_replies": 0, "released_by": {},
+                           "hold_refused_tools": 0, "hold_s": 0.0})
         if st.voice_tool_ack and st.gemini_api_key:
             ack_clips(self.voice, self.gender)   # get his "ek second" clips ready
 
@@ -675,9 +713,14 @@ class Call:
                 await ws.send_bytes(data)
 
     # ---- the queue towards Gemini ----
-    def push(self, kind: str, data) -> None:
+    def push(self, kind: str, data, force: bool = False) -> None:
         """Queue mic audio or a text note for Gemini. When the queue is full the oldest mic chunk makes room;
-        a text note is never dropped to make room for audio."""
+        a text note is never dropped to make room for audio. v0.142: a note that arrives while Hoola is on hold
+        (a job finished, a reminder) waits and is told the moment she talks to Hoola again."""
+        if kind == "text" and self.hold and not force:
+            self._held_texts.append(str(data))
+            del self._held_texts[:-10]
+            return
         if self.audio.full():
             q = self.audio._queue   # asyncio.Queue keeps its items in a deque
             for i, (k, _) in enumerate(q):
@@ -713,6 +756,8 @@ class Call:
                 if ws is not self.ws:
                     break   # a newer connection took over this call
                 if msg.get("bytes"):
+                    if self.hold == "phone_call":
+                        continue   # her other phone call is private: not one word of it goes to Gemini
                     if not self.muted:
                         self.push("audio", msg["bytes"])
                         self.meter.add(msg["bytes"])
@@ -738,7 +783,17 @@ class Call:
                     elif t == "ping":
                         await self.send_json({"type": "pong"})
                     elif t == "text" and m.get("text"):
+                        if self.hold:   # she typed to Hoola: that is talking to it
+                            await self._leave_hold("typed")
                         self.push("text", str(m["text"])[:2000])
+                    elif t == "hold":
+                        # v0.142 the phone saw her other call start / end, or she pressed Chup karao / Wapas aao
+                        reason = "phone_call" if m.get("reason") == "phone_call" else "button"
+                        if m.get("on"):
+                            await self._enter_hold(reason)
+                        elif self.hold:
+                            await self._leave_hold("phone" if reason == "phone_call" else "button",
+                                                   only=("phone_call",) if reason == "phone_call" else None)
                     elif t == "gate_stats":
                         # v0.53 the phone's barge-in / noise gate counters (cumulative for the call)
                         self.stats["gate"] = {k: int(m[k]) for k in ("chunks", "held_back", "vad_blocked", "idle_muted",
@@ -826,31 +881,52 @@ class Call:
                 if sc is None:
                     continue
                 if sc.interrupted:
-                    self.stats["interruptions"] += 1
-                    await self.send_json({"type": "interrupted"})
-                    if self.reply_buf.strip():
-                        self._watch_false_stop(self.reply_buf.strip())
-                    if self.user_buf or self.reply_buf:
-                        # keep what was really said so far as its own turn; the next words are a new turn
-                        await self.finish_turn(interrupted=True)
+                    if self.hold:
+                        self._hold_turn_audio.clear()   # nothing of a held turn was played: nothing to cut off
+                    else:
+                        self.stats["interruptions"] += 1
+                        await self.send_json({"type": "interrupted"})
+                        if self.reply_buf.strip():
+                            self._watch_false_stop(self.reply_buf.strip())
+                        if self.user_buf or self.reply_buf:
+                            # keep what was really said so far as its own turn; the next words are a new turn
+                            await self.finish_turn(interrupted=True)
                 if sc.input_transcription is not None and sc.input_transcription.text:
                     if sc.input_transcription.text.strip():
                         self._last_user_text_at = time.monotonic()
                     self.user_buf += sc.input_transcription.text
-                    await self.send_json({"type": "user_text", "text": self.user_buf.strip()})
-                    await self._otp_listen(sc.input_transcription.text)
+                    if self.hold and get_settings().voice_side_talk:
+                        await self._hold_heard()            # did she call Hoola by name? (else nothing is shown)
+                    elif not self.hold:
+                        await self.send_json({"type": "user_text", "text": self.user_buf.strip()})
+                        await self._otp_listen(sc.input_transcription.text)
+                        if get_settings().voice_side_talk:
+                            from . import sidetalk
+                            if sidetalk.wants_hold(self.user_buf):   # "ek minute, main kisi se baat kar rahi hoon"
+                                await self._enter_hold("asked")
                 if sc.model_turn is not None:
                     for part in sc.model_turn.parts or []:
                         blob = getattr(part, "inline_data", None)
                         if blob is not None and blob.data:
-                            self._mark_audio()
                             self.audio_out_bytes = getattr(self, "audio_out_bytes", 0) + len(blob.data)   # v0.98 billed
+                            if self.hold:   # an answer to talk that wasn't for Hoola: held back, never played
+                                self._hold_turn_reply = True
+                                if sum(len(b) for b in self._hold_turn_audio) < 24000 * 2 * 20:
+                                    self._hold_turn_audio.append(blob.data)
+                                continue
+                            self._mark_audio()
                             await self.send_audio(blob.data)
                 if sc.output_transcription is not None and sc.output_transcription.text:
                     self.reply_buf += sc.output_transcription.text
-                    await self.send_json({"type": "santosh_text", "text": self.reply_buf.strip()})
+                    if self.hold:
+                        self._hold_turn_reply = True
+                    else:
+                        await self.send_json({"type": "santosh_text", "text": self.reply_buf.strip()})
                 if sc.turn_complete:
-                    await self.finish_turn()
+                    if self.hold:
+                        await self._held_turn_done()
+                    else:
+                        await self.finish_turn()
             if not got_any:
                 return "reconnect"   # the stream ended without messages: connection is gone
 
@@ -913,6 +989,13 @@ class Call:
     async def finish_turn(self, interrupted: bool = False) -> None:
         await self._otp_listen(final=True)
         user, reply = self.user_buf.strip(), self.reply_buf.strip()
+        name_prompt, self._name_prompt = self._name_prompt, False
+        after, self._after_release = self._after_release, []
+        if name_prompt and user and not reply and not interrupted:
+            # v0.142 she called Hoola back with a question while it was told to stay quiet: it answers now
+            self.push("text", f"(She called you by name and said: \"{user[-400:]}\". Answer her now, briefly.)")
+        for t in after:
+            self.push("text", t)
         if self._otp_said:                     # the OTP she said never lands in the chat history
             from .operator.otpwords import mask
             for v in self._otp_said:
@@ -1096,6 +1179,17 @@ class Call:
         self.stats["tools"] += 1
         if name == "gyaan_khojo":
             args["fast"] = True            # v0.134 calls: hybrid search only (no API rerank) so the answer comes back in time
+        if name == "side_talk":            # v0.142 Gemini says the talk it hears is not for it: hold, say nothing
+            if get_settings().voice_side_talk:
+                await self._enter_hold("model")
+            await self._answer_tool(session, fc, name, {"result": {"status": "on_hold", "say": "nothing"}}, "done")
+            return
+        if self.hold:                      # nothing runs on talk that wasn't for Hoola
+            self.stats["hold_refused_tools"] += 1
+            log.info("call %s: %s refused, call is on hold", self.call_id, name)
+            await self._answer_tool(session, fc, name, {"error": "on_hold: she is talking to someone else, not to you. "
+                                                        "Do nothing and say nothing until she calls your name."}, "error")
+            return
         blocked = await self._voice_lock(name) if self.vid is not None else None
         if blocked:
             # voice lock: the server refuses, whatever the model thinks
@@ -1187,8 +1281,8 @@ class Call:
 
     async def _after_false_stop(self, at: float, cut_reply: str, wait: float) -> None:
         await asyncio.sleep(wait)
-        if self.closed.is_set() or self._last_user_text_at >= at or self._last_model_audio >= at + 0.05:
-            return   # the user really spoke, or he is already talking again
+        if self.closed.is_set() or self.hold or self._last_user_text_at >= at or self._last_model_audio >= at + 0.05:
+            return   # the user really spoke, or he is already talking again, or he is on hold
         self.stats["false_stops"] += 1
         if time.monotonic() - self._last_resume < 10:
             return   # never loop on a noisy room
@@ -1290,7 +1384,112 @@ class Call:
                 return
             except Exception as e:
                 log.info("client_content note not accepted (%r); sending as live text", e)
-        self.push("text", note)
+        self.push("text", note, force=True)
+
+    # ---- v0.142 doosre se baat: hold while the talk is not for Hoola ----
+    async def _enter_hold(self, reason: str) -> None:
+        from . import sidetalk
+        if reason in ("asked", "model") and not get_settings().voice_side_talk:
+            return
+        prev = self.hold
+        if prev == reason or (prev == "phone_call" and reason != "phone_call"):
+            return                      # her phone call is the strongest hold; it ends only when the call ends
+        self.hold = reason
+        if not prev:
+            self._hold_at = time.monotonic()
+            self.stats["holds"] += 1
+            if self.reply_buf.strip() or self._turn_audio:
+                await self.send_json({"type": "interrupted"})   # whatever he was saying stops now
+            # the words that started the hold were not a job for Hoola: they are not saved, learned or remembered
+            self.user_buf = self.reply_buf = ""
+            self._turn_audio, self._latency = False, None
+            self._otp_heard = ""
+            self.meter.take()
+        hr = self.stats["hold_reasons"]
+        hr[reason] = hr.get(reason, 0) + 1
+        log.info("call %s: on hold (%s)", self.call_id, reason)
+        await self.send_json({"type": "hold", "on": True, "reason": reason, "say": sidetalk.REASONS.get(reason, "")})
+        await self._tell_quietly(sidetalk.hold_note(reason, self.name))
+        if self._hold_timer is not None:
+            self._hold_timer.cancel()
+        st = get_settings()
+        self._hold_timer = asyncio.create_task(self._hold_watch(
+            self._hold_at, st.voice_call_hold_max_s if reason == "phone_call" else st.voice_hold_max_s))
+        self._tools.add(self._hold_timer)
+        self._hold_timer.add_done_callback(self._tools.discard)
+
+    async def _leave_hold(self, by: str, only: tuple | None = None) -> None:
+        from . import sidetalk
+        if not self.hold or (only and self.hold not in only):
+            return
+        reason, self.hold = self.hold, ""
+        self.stats["hold_s"] = round(self.stats["hold_s"] + time.monotonic() - self._hold_at, 1)
+        rb = self.stats["released_by"]
+        rb[by] = rb.get(by, 0) + 1
+        if self._hold_timer is not None:
+            self._hold_timer.cancel()
+            self._hold_timer = None
+        log.info("call %s: hold over (%s, by %s)", self.call_id, reason, by)
+        await self.send_json({"type": "hold", "on": False, "by": by})
+        await self._tell_quietly(sidetalk.release_note(reason, by, self.name))
+        texts, self._held_texts = self._held_texts, []
+        if by == "name":
+            # she is asking something right now: what this turn already answered plays, notes wait for after it
+            for b in self._hold_turn_audio:
+                self._mark_audio()
+                await self.send_audio(b)
+            if self.reply_buf.strip():
+                await self.send_json({"type": "santosh_text", "text": self.reply_buf.strip()})
+            self._after_release = texts
+            self._name_prompt = True
+        else:
+            self.reply_buf = ""          # Gemini's words to the held talk are not a reply to her
+            for t in texts:
+                self.push("text", t)
+        self._hold_turn_audio.clear()
+        self._hold_turn_reply = False
+
+    async def _hold_heard(self) -> None:
+        """On hold, she said something: only her calling Hoola by name ends it (never shown, never kept otherwise)."""
+        from . import sidetalk
+        if self.hold == "phone_call":
+            return
+        i = sidetalk.call_start(self.user_buf, self._names)
+        if i < 0:
+            return
+        before = self.user_buf[:i].rstrip()
+        if i > 0 and before.endswith((".", "!", "?", ",", "।", "-", "…")):
+            self.user_buf = self.user_buf[i:]   # what she said to the other person before calling Hoola stays out
+        await self._leave_hold("name")
+        await self.send_json({"type": "user_text", "text": self.user_buf.strip()})
+        await self._otp_listen(self.user_buf)
+
+    async def _held_turn_done(self) -> None:
+        """A turn ended while Hoola was on hold: nothing of it is saved, learned, remembered or shown."""
+        from . import sidetalk
+        self.stats["held_turns"] += 1
+        if self._hold_turn_reply:
+            self.stats["dropped_replies"] += 1
+            now = time.monotonic()
+            if now - self._hold_dropped_note > 20:    # Gemini answered talk that wasn't for it: remind it once in a while
+                self._hold_dropped_note = now
+                await self._tell_quietly(sidetalk.DROPPED_NOTE)
+        self.user_buf = self.reply_buf = ""
+        self._hold_turn_audio.clear()
+        self._hold_turn_reply = False
+        self._turn_audio, self._latency = False, None
+        self._turn_end_at = time.monotonic()
+        self.meter.take()
+
+    async def _hold_watch(self, at: float, limit: int) -> None:
+        """A hold that goes on and on: end the Hoola call (an open Gemini session is billed and listens for nothing)."""
+        await asyncio.sleep(max(1, limit))
+        if self.hold and self._hold_at == at and not self.closed.is_set():
+            log.info("call %s: on hold for %s s, ending the call", self.call_id, limit)
+            self.stats["hold_ended_call"] = True
+            await self.send_json({"type": "error", "code": "gone", "message":
+                                  f"{self.name} kaafi der se chup tha, isliye call band kar di. Zarurat ho to phir bulaiye."})
+            self.closed.set()
 
     ACK_AFTER_S = 0.7   # a tool runs and nobody has said anything for this long: dead air starts here
 
@@ -1299,7 +1498,7 @@ class Call:
         'ek second' in his own voice instead of dead air (Gemini Live often calls tools without a word)."""
         await asyncio.sleep(self.ACK_AFTER_S)
         now = time.monotonic()
-        if self._last_model_audio >= t0 - 1.5 or now - self._last_voice_at < 0.6 or self.closed.is_set():
+        if self._last_model_audio >= t0 - 1.5 or now - self._last_voice_at < 0.6 or self.closed.is_set() or self.hold:
             return   # he spoke about it, or the user is talking
         self.stats["silent_tools"] += 1
         st = get_settings()
@@ -1366,8 +1565,11 @@ class Call:
                                 await self.send_json({"type": "status", "state": "live"})
                             RESUME["resumed" if resumed else "fresh_after_drop"] += 1
                             seed = self._reseed(resumed)
-                            if seed:
+                            if seed and not self.hold:
                                 await session.send_realtime_input(text=seed)
+                            if self.hold:   # v0.142 a fresh session must know it is on hold too
+                                from . import sidetalk
+                                await self._tell_quietly(sidetalk.hold_note(self.hold, self.name))
                         up = asyncio.create_task(self.uplink(session))
                         down = asyncio.create_task(self.downlink(session))
                         closed = asyncio.create_task(self.closed.wait())
@@ -1437,6 +1639,8 @@ class Call:
             if self.user_buf or self.reply_buf:
                 await self.finish_turn()
             self.stats["ended"] = time.time()
+            if self.hold:
+                self.stats["hold_s"] = round(self.stats["hold_s"] + time.monotonic() - self._hold_at, 1)
             self.stats["lang_state"] = self.langst.summary()
             try:   # v0.114 the language she really spoke carries to her next call (owner / unknown speaker only)
                 from . import voicelang

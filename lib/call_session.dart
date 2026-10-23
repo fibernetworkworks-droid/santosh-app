@@ -70,6 +70,10 @@ class CallSession extends ChangeNotifier {
   String? lockIssue;  // why the call may stop when the phone locks
   String? linkNote;   // the connection is wobbling
   String? speaker;    // Awaaz Pehchaan: who Hoola recognised from the voice ("Asha (Maa)")
+  // v0.142 doosre se baat: Hoola is on hold (her phone / WhatsApp call, she talks to someone, "Chup karao")
+  String? holdReason; // phone_call | asked | model | button
+  String? holdSay;
+  bool get onHold => holdReason != null;
   bool speakerIsOwner = true;
   DateTime? startedAt;
   DateTime _lastHeard = DateTime.fromMillisecondsSinceEpoch(0);
@@ -96,7 +100,19 @@ class CallSession extends ChangeNotifier {
   void _onApp() {
     if (!app.autoCall || !app.realtimeVoice) return;
     app.autoCall = false;
-    if (!inCall) unawaited(start());
+    if (inCall) return;
+    // v0.142 "Hey Santosh" heard while she is on a phone / WhatsApp call: that was the call, not her calling Hoola
+    unawaited(Native.otherCall().then((busy) {
+      if (busy == null && !inCall) unawaited(start());
+    }));
+  }
+
+  /// v0.142 "Chup karao" / "Wapas aao" on the call screen.
+  void toggleHold() {
+    final c = _call;
+    if (c == null) return;
+    if (holdReason == 'phone_call') return; // ends by itself when her other call ends
+    c.setHold(!onHold);
   }
 
   Duration get elapsed => startedAt == null ? Duration.zero : DateTime.now().difference(startedAt!);
@@ -112,6 +128,7 @@ class CallSession extends ChangeNotifier {
     act = CallAct.connecting;
     note = null;
     linkNote = null;
+    holdReason = holdSay = null;
     heard = reply = '';
     tool = null;
     _before = app.feed.toSet();
@@ -247,6 +264,15 @@ class CallSession extends ChangeNotifier {
         _setFileNote(e['ok'] == true ? '📎 ${e['names'] ?? 'File'} ${app.aName} ko mil gayi' : '${e['message'] ?? 'File nahi pahunchi'}');
       case 'write_hint':   // v0.119 two misunderstandings in a row: typing is faster than a third try
         _setFileNote('✍️ ${e['text'] ?? 'Chat mein likh dijiye'}');
+      case 'hold':
+        if (e['on'] == true) {
+          holdReason = '${e['reason'] ?? 'button'}';
+          holdSay = e['say'] as String?;
+          heard = reply = '';   // the side talk is not shown
+          _turnOpen = false;
+        } else {
+          holdReason = holdSay = null;
+        }
       case 'speaker':
         final owner = e['owner'] == true;
         speakerIsOwner = owner;
@@ -256,6 +282,7 @@ class CallSession extends ChangeNotifier {
           'phone_reconnecting' => 'Network chala gaya, dobara jod raha hoon…',
           'reconnecting' => 'Connection thoda slow hai, sambhal raha hoon…',
           'audio_paused' => 'Dusri awaaz (phone call?) chal rahi hai, call ruki hui hai',
+          'call_hold' => null,   // v0.142 the hold banner says it
           _ => null,
         };
       case 'user_text':

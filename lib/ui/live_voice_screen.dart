@@ -71,6 +71,11 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
 
   String get _status {
     if (call.inCall && call.linkNote != null) return call.linkNote!;
+    if (call.inCall && call.onHold) {   // v0.142 talk she has with someone else is not for Hoola
+      return call.holdReason == 'phone_call'
+          ? app.g('${app.aName} chup hai · aapki call khatam hote hi wapas aa jayega')
+          : app.g('${app.aName} chup hai · "${app.aName}" bolkar bulaiye');
+    }
     return switch (call.act) {
       CallAct.idle => call.note ?? 'Call button dabaiye aur ${app.aName} se seedhe baat kijiye',
       CallAct.connecting => '${app.aName} ko call lag raha hai…',
@@ -145,7 +150,24 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
                     style: TextStyle(color: call.speakerIsOwner ? C.ok : C.accentSoft, fontSize: 12.5, fontWeight: FontWeight.w700)),
               ]),
             ),
-          if (!tray) _captions(),
+          if (call.inCall && call.onHold)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(color: C.accentSoft.withOpacity(.14), borderRadius: BorderRadius.circular(12)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(call.holdReason == 'phone_call' ? Icons.phone_in_talk_rounded : Icons.people_alt_rounded,
+                      size: 18, color: C.accentSoft),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(call.holdSay ?? 'Aap kisi aur se baat kar rahi hain',
+                        style: const TextStyle(color: C.accentSoft, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                  ),
+                ]),
+              ),
+            ),
+          if (!tray && !call.onHold) _captions(),
           if (call.fileNote != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
@@ -167,6 +189,13 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
               _small(Icons.front_hand_rounded, '${app.aName} ko roko', call.act == CallAct.speaking ? call.cutSpeech : null),
             ]),
           ),
+          if (call.inCall && call.holdReason != 'phone_call')
+            TextButton.icon(
+              onPressed: call.toggleHold,
+              icon: Icon(call.onHold ? Icons.record_voice_over_rounded : Icons.voice_over_off_rounded, color: C.chip),
+              label: Text(call.onHold ? 'Wapas aao' : 'Chup karao (kisi aur se baat)',
+                  style: const TextStyle(color: C.chip, fontWeight: FontWeight.w600)),
+            ),
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: TextButton.icon(

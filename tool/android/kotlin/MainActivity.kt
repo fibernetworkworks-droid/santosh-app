@@ -74,6 +74,8 @@ class MainActivity : FlutterActivity() {
                     "wakeStatus" -> result.success(mapOf("on" to WakeService.running, "wanted" to WakeService.wanted(this), "status" to WakeService.status))
                     "wakeResume" -> { WakeService.resume(this); result.success(null) }
                     "wakePause" -> { WakeService.pauseFor(this); result.success(null) }
+                    // v0.142 is she on another phone / WhatsApp call right now? (no permission needed)
+                    "otherCall" -> result.success(try { CallWatch.busy(this) } catch (_: Throwable) { null })
                     // v0.83 the next OTP SMS -> Android's one-tap "Allow" sheet -> only the code comes back
                     "otpConsent" -> OtpConsent.start(this, (call.argument<Number>("digits") ?: 0).toInt(), result)
                     "otpConsentCancel" -> { OtpConsent.cancel(); result.success(null) }

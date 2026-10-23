@@ -198,6 +198,8 @@ class Native {
   static Future<void> wakeStop() async => _call('wakeStop');
   static Future<void> wakePause() async => _call('wakePause');
   static Future<void> wakeResume() async => _call('wakeResume');
+  /// v0.142 null when she is free; "phone" | "ringing" | "voip" while she is on another call (no permission needed).
+  static Future<String?> otherCall() async => _call<String>('otherCall');
   static Future<Map<String, dynamic>> wakeStatus() async =>
       Map<String, dynamic>.from(await _call<Map>('wakeStatus') ?? const {'on': false, 'wanted': false, 'status': ''});
   static Future<bool> isLocked() async => await _call<bool>('isLocked') ?? false;

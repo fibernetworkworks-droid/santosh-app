@@ -48,6 +48,7 @@ class LiveVoice {
   bool _reconnecting = false;
   bool _noResume = false; // the server said the call is gone
   bool _audioPaused = false; // another app (a real phone call...) has the audio for a moment
+  bool _callHold = false; // v0.142 she is on another phone / WhatsApp call: Hoola is on hold until it ends
   String? _callId;
   DateTime _lastRx = DateTime.now();
 
@@ -177,6 +178,22 @@ class LiveVoice {
     _lastRx = DateTime.now();
     ws.pingInterval = const Duration(seconds: 8);
     ws.listen(_onData, onDone: () => _lost(ws, ws.closeReason), onError: (e) => _lost(ws, '$e'), cancelOnError: true);
+    if (_callHold) _sendHold(true, 'phone_call'); // re-joined during her other call: the server must still hold
+  }
+
+  /// v0.142 tell the server Hoola is on hold (her other call / the "Chup karao" button) or back.
+  void _sendHold(bool on, String reason) {
+    final ws = _ws;
+    if (ws == null) return;
+    try {
+      ws.add(jsonEncode({'type': 'hold', 'on': on, 'reason': reason}));
+    } catch (_) {}
+  }
+
+  /// "Chup karao" (on) / "Wapas aao" (off) on the call screen.
+  void setHold(bool on) {
+    if (on) cutSpeech();
+    _sendHold(on, 'button');
   }
 
   /// Every 8 s: tell the server we are alive, and notice a connection that died without telling anyone.
@@ -216,6 +233,7 @@ class LiveVoice {
         }
         if (e['type'] == 'error' && e['code'] == 'gone') _noResume = true;
         if (e['type'] == 'interrupted') cutSpeech();
+        if (e['type'] == 'hold' && e['on'] == true) cutSpeech();
         onEvent(e);
       } catch (_) {}
     }
@@ -273,7 +291,21 @@ class LiveVoice {
         cutSpeech();
         onEvent({'type': 'status', 'state': 'audio_paused'});
       case 'resumed':
+        if (_callHold) return; // her other call is still on: the hold decides
         _audioPaused = false;
+        onEvent({'type': 'status', 'state': 'live'});
+      case 'call_hold':
+        // v0.142 a phone / WhatsApp call started: nothing of it goes to Hoola, Hoola says nothing
+        _callHold = true;
+        _audioPaused = true;
+        inLevel = 0;
+        cutSpeech();
+        _sendHold(true, 'phone_call');
+        onEvent({'type': 'status', 'state': 'call_hold', 'detail': m['detail']});
+      case 'call_resume':
+        _callHold = false;
+        _audioPaused = false;
+        _sendHold(false, 'phone_call');
         onEvent({'type': 'status', 'state': 'live'});
       case 'audio_error':
         onEvent({'type': 'error', 'message': 'Microphone ya speaker band ho gaya, isliye call band ho gayi.'});

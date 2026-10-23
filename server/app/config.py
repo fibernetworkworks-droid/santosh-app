@@ -156,6 +156,9 @@ class Settings(BaseSettings):
     voiceid_margin: float = 0.06           # and this much ahead of the next closest person
     voiceid_min_speech_s: float = 1.6      # speech needed before the first guess in a call
     voice_resume_grace_s: int = 25         # a dropped phone connection can re-join the same call within this time
+    voice_side_talk: bool = True           # v0.142 talk not meant for Hoola (her phone call, people in the room) is never answered
+    voice_hold_max_s: int = 900            # v0.142 side-talk hold longer than this ends the call (Gemini audio is billed)
+    voice_call_hold_max_s: int = 3600      # v0.142 her other phone call longer than this ends the Hoola call
     voice_tool_wait_s: int = 12            # v0.86 (was 25) a call waits this long for a big job, then talks on and gets told when it is done
     voice_tool_timeout_s: int = 60         # any other call tool is cut off after this
 
