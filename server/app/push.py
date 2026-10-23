@@ -161,6 +161,81 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: poster final karein?", f"{dd.get('number', '')} {dd.get('title', '')}: proof dekh kar haan dijiye"[:300])
     if kind == "brand_idea":
         return (f"{name}: tyohar ka poster?", str(p.get("say") or "")[:300])
+    # v0.133 Seva suite
+    if kind == "seva_exception" and p.get("status") in (None, "", "pending", "waiting"):
+        return (f"{name}: aapki haan chahiye: {p.get('kind_label', 'arzi')}", str(p.get("say") or "")[:300])
+    if kind == "seva_sla" and p.get("breach"):
+        return (f"{name}: shikayat ka samay: {p.get('ticket', '')}", str(p.get("text") or "")[:300])
+    if kind == "seva_ticket" and p.get("event") == "new" and p.get("priority") == "urgent":
+        return (f"{name}: nayi shikayat {p.get('number', '')}", f"{p.get('customer', '')}: {p.get('text', '')}"[:300])
+    if kind == "seva_day":
+        return (f"{name}: seva aaj", str(p.get("text") or "")[:300])
+    if kind == "helpdesk_change" and (p.get("change") or {}).get("status") in (None, "", "waiting"):
+        return (f"{name}: IT: aapki haan chahiye", str(p.get("say") or "")[:300])
+    if kind == "helpdesk_alert":
+        return (f"{name}: IT / suraksha", str(p.get("say") or "")[:300])
+    if kind == "helpdesk_escalate":
+        return (f"{name}: technician ke liye message taiyaar", str(p.get("say") or "")[:300])
+    if kind == "helpdesk_day":
+        return (f"{name}: aaj ka IT note", str(p.get("say") or "")[:300])
+    if kind == "shikayat_comp" and not p.get("event"):
+        c = p.get("comp") or {}
+        sh = p.get("show") or {}
+        return (f"{name}: muavze ki haan chahiye", f"{sh.get('case') or c.get('number', '')}: {c.get('kind_label', '')} {c.get('amount_text', '')}".strip()[:300])
+    if kind == "shikayat_case" and p.get("event") == "new":
+        c = p.get("case") or {}
+        causes = c.get("cause_labels") or []
+        causes = ", ".join(causes) if isinstance(causes, list) else str(causes)
+        return (f"{name}: nayi shikayat {c.get('number', '')}", f"{c.get('customer', '')} · {causes}"[:300])
+    if kind in ("shikayat_alert", "shikayat_day"):
+        return (f"{name}: {'shikayat ki samay-seema' if kind == 'shikayat_alert' else 'aaj ki shikayatein'}", str(p.get("text") or "")[:300])
+    if kind == "aftersales_charge" and p.get("status") in ("pending", "needs_price"):
+        tot = p.get("total") or 0
+        body = f"{p.get('number', '')} {p.get('customer', '')}: " + (f"Rs {tot:,.0f} graahak se lena hai?" if p.get("status") == "pending"
+                                                                     else "daam likhiye")
+        return (f"{name}: charge par aapki haan", body[:300])
+    if kind == "aftersales_reminders" and p.get("count"):
+        return (f"{name}: service reminder", f"{p.get('count')} reminder draft bhejne ke liye taiyaar")
+    if kind == "aftersales_visit" and p.get("status") in (None, "booked"):
+        return (f"{name}: visit book", f"{p.get('number', '')} {p.get('customer', '')}: {p.get('when', '')}, {p.get('tech', '')}"[:300])
+    if kind == "aftersales_day":
+        return (f"{name}: after-sales aaj", str(p.get("text") or "")[:300])
+    if kind == "feedback_reply" and p.get("status") in (None, "draft"):
+        it = p.get("item") or {}
+        stars = f" {it.get('stars')}*" if it.get("stars") else ""
+        return (f"{name}: review ka jawab", f"Jawab ka draft taiyaar: {it.get('source_label', '')}{stars} - Haan dabaiye to jaayega"[:300])
+    if kind in ("feedback_alert", "feedback_report"):
+        return (f"{name}: {'graahak ki shikayat' if kind == 'feedback_alert' else 'feedback report'}", str(p.get("text") or "")[:300])
+    if kind == "wapsi_return" and p.get("event") == "new":
+        r = p.get("return") or {}
+        cust = r.get("customer") or {}
+        cust = cust.get("name", "") if isinstance(cust, dict) else str(cust)
+        verdict = {"approve": "return theek lagta hai", "ask_more": "aur saboot chahiye", "reject_suggest": "niyam ke bahar lagta hai"}.get(
+            str((r.get("check") or {}).get("verdict") or ""), "dekhiye")
+        return (f"{name}: return {r.get('number', '')}", f"{cust}: {r.get('reason_label', '')} - {verdict}"[:300])
+    if kind == "wapsi_refund" and (p.get("refund") or {}).get("status") == "waiting" and not p.get("event"):
+        f = p.get("refund") or {}
+        return (f"{name}: refund ki haan chahiye", f"{p.get('return_number', '')} {p.get('customer', '')}: Rs {f.get('amount') or 0:,.0f} - card par haan (fingerprint)"[:300])
+    if kind == "wapsi_day":
+        return (f"{name}: wapsi", str(p.get("text") or "")[:300])
+    if kind == "samudaay_alert" and p.get("status") in (None, "", "open", "new"):
+        return (f"{name}: group mein {p.get('kind', 'alert')}", str(p.get("title") or "")[:300])
+    if kind == "samudaay_action" and p.get("status") in (None, "", "pending", "waiting"):
+        return (f"{name}: aapki haan chahiye", f"{p.get('label', '')}: {p.get('member', '')} ({p.get('community', '')})"[:300])
+    if kind == "samudaay_question":
+        return (f"{name}: group mein sawal", f"{p.get('member', '')}: {p.get('text', '')}"[:300])
+    if kind == "samudaay_join":
+        return (f"{name}: join request", f"{p.get('name', '')} {p.get('community', '')} mein judna chahte hain"[:300])
+    if kind == "samudaay_template" and p.get("status") in (None, "", "draft", "waiting"):
+        return (f"{name}: welcome message", "Dekh kar 'Haan' dabaiye, tabhi naye logon ko jayega")
+    if kind == "samudaay_week":
+        return (f"{name}: group ki hafte ki sehat", str(p.get("say") or "")[:300])
+    if kind == "callcentre_script" and p.get("status") == "waiting":
+        return (f"{name}: call centre script v{p.get('version', '')}", f"Line par chalane ke liye Haan chahiye: {p.get('say', '')}"[:300])
+    if kind == "callcentre_message":
+        return (f"{name}: call se message", str(p.get("say") or "")[:300])
+    if kind == "callcentre_call" and (p.get("outcome") in ("transferred", "message", "complaint", "failed", "callback") or p.get("flags")):
+        return (f"{name}: call: {p.get('caller_masked', '')}", str(p.get("summary") or "")[:300])
     if kind == "site_board":
         if not p.get("push"):
             return None
@@ -336,7 +411,9 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
 
 
 PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "photo_made", "email_draft", "bazar_open", "device_action",
-              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "hoola_pick", "hoola_khata", "thok_order", "thok_alert", "thok_day", "sheet_milaan", "doc_edit", "niryat_pi", "niryat_day", "ads_change", "ads_report", "hoola_rfq", "hoola_promo", "hoola_mandate", "fr_statement", "fr_day", "a2a_task", "a2a_out", "handoff_reminder", "digilocker", "theka_bill", "theka_letter", "theka_day", "brand_approval", "brand_idea", "site_board", "site_lead", "site_launch", "site_live", "site_dns", "site_down", "site_domain", "site_care", "site_github", "app_board", "app_android"}
+              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "hoola_pick", "hoola_khata", "thok_order", "thok_alert", "thok_day", "sheet_milaan", "doc_edit", "niryat_pi", "niryat_day", "ads_change", "ads_report", "hoola_rfq", "hoola_promo", "hoola_mandate", "fr_statement", "fr_day", "a2a_task", "a2a_out", "handoff_reminder", "digilocker", "theka_bill", "theka_letter", "theka_day", "brand_approval", "brand_idea", "site_board", "site_lead", "site_launch", "site_live", "site_dns", "site_down", "site_domain", "site_care", "site_github", "app_board", "app_android",
+              # v0.133 Seva suite
+              "seva_exception", "seva_sla", "seva_ticket", "seva_day", "helpdesk_change", "helpdesk_alert", "helpdesk_escalate", "helpdesk_day", "shikayat_comp", "shikayat_case", "shikayat_alert", "shikayat_day", "aftersales_charge", "aftersales_reminders", "aftersales_visit", "aftersales_day", "feedback_reply", "feedback_alert", "feedback_report", "wapsi_return", "wapsi_refund", "wapsi_day", "samudaay_alert", "samudaay_action", "samudaay_question", "samudaay_join", "samudaay_template", "samudaay_week", "callcentre_script", "callcentre_message", "callcentre_call"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 

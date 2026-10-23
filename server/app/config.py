@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     app_release_repo: str = "fibernetworkworks-droid/santosh-app"   # v0.62 where the phone app's releases live
     video_edit_worker: bool = True         # v0.65 Hoola Video Editor: run edits in the background (tests run them inline)
     video_max_output_s: int = 300          # longest finished video the CPU VPS makes
+    callcentre_plivo_auth_id: str = ""     # v0.133 Call Centre: Newtika's own Plivo account (used when she typed no keys)
+    callcentre_plivo_auth_token: str = ""
+    callcentre_max_calls: int = 10         # AI phone calls at once on this server
+    callcentre_noise_gate: bool = True     # while Hoola speaks only clearly voiced caller audio may interrupt
     studio_on: bool = True                 # v0.68 Hoola Video Studio (AI-generated shots: Seedance / Veo / Kling / Wan / Omni)
     openrouter_api_key: str = ""           # one key for Seedance 2.0 / 2.5, Veo 3.1, Kling 3.0, Wan 3.0 (recommended)
     fal_key: str = ""                      # backup: Seedance via fal

@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.132.1", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.133.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -165,7 +165,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design", "app_android"] + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design", "app_android", "seva", "helpdesk", "shikayat", "aftersales", "feedback", "wapsi", "samudaay"] + (["callcentre"] if st.public_base_url and st.gemini_api_key else []) + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -535,6 +535,10 @@ async def google_callback(request: Request):
     if is_drive_state(request.query_params.get("state", "")):   # "connect my Google Drive"
         from .drive.api import finish_page as drive_finish
         return await drive_finish(request)
+    from .feedback.gbp import is_link_state as is_fb_state
+    if is_fb_state(request.query_params.get("state", "")):      # v0.133 "connect my Business Profile reviews" (Feedback Sahayak)
+        from .feedback.api import finish_page as fb_finish
+        return await fb_finish(request)
     from .forms.accounts import is_link_state as is_form_state
     if is_form_state(request.query_params.get("state", "")):    # "connect my Google Forms"
         from .forms.api import finish_page as forms_finish
@@ -3301,6 +3305,20 @@ app.include_router(_forms_router(require_key, current_tenant))
 from .photos.api import make_router as _photos_router  # noqa: E402
 
 app.include_router(_photos_router(require_key, current_tenant))
+
+# v0.133 Seva suite: 7 customer-support Sahayaks (each module owns its /api/<mod>/* routes)
+from .seva.api import make_router as _seva_router  # noqa: E402
+from .helpdesk.api import make_router as _helpdesk_router  # noqa: E402
+from .shikayat.api import make_router as _shikayat_router  # noqa: E402
+from .aftersales.api import make_router as _aftersales_router  # noqa: E402
+from .feedback.api import make_router as _feedback_router  # noqa: E402
+from .wapsi.api import make_router as _wapsi_router  # noqa: E402
+from .samudaay.api import make_router as _samudaay_router  # noqa: E402
+from .callcentre.api import make_router as _callcentre_router  # noqa: E402
+
+for _mk in (_seva_router, _helpdesk_router, _shikayat_router, _aftersales_router, _feedback_router, _wapsi_router,
+            _samudaay_router, _callcentre_router):
+    app.include_router(_mk(require_key, current_tenant))
 
 
 @app.get("/auth/microsoft/callback")

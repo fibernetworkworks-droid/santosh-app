@@ -8,7 +8,7 @@ from __future__ import annotations
 
 DUTIES: dict[str, dict] = {
     "customers": {"label": "Graahakon se baat", "say": "graahakon ke sawaal ka jawab, WhatsApp aur Hoola Network par baat",
-                  "prefix": ("hoola_",), "tools": {"biz_handover", "biz_note"}},
+                  "prefix": ("hoola_",), "tools": {"biz_handover", "biz_note", "biz_seva_answer", "biz_seva_rate"}},
     "appointments": {"label": "Appointment aur calendar", "say": "appointment lena, badalna, yaad dilana",
                      "prefix": ("calendar_",), "tools": {"add_calendar_event", "biz_free_slots", "biz_book", "biz_my_appointments",
                                                         "biz_cancel"}},
@@ -17,7 +17,8 @@ DUTIES: dict[str, dict] = {
                                           "cancel_routine", "set_phone_alarm", "set_phone_timer", "list_add", "list_show", "list_done"}},
     "email": {"label": "Email", "say": "email padhna, jawab ka draft, follow-up", "prefix": ("email_",), "tools": set()},
     "tickets": {"label": "Shikayat / ticket", "say": "shikayat darj karna, ticket aage badhana, graahak ko update",
-                "prefix": (), "tools": {"hoola_business", "hoola_my_business", "hoola_chain", "biz_complaint", "biz_ticket_status"}},
+                "prefix": (), "tools": {"hoola_business", "hoola_my_business", "hoola_chain", "biz_complaint", "biz_ticket_status",
+                                          "biz_seva_ticket", "biz_seva_status", "biz_seva_request"}},
     "collections": {"label": "Paise ki vasooli", "say": "baaki paison ki yaad dilana, bill aur payment card banana (paise kabhi khud nahi)",
                     "prefix": ("bazar_", "tally_"), "tools": {"biz_my_dues", "biz_pay_link", "biz_promise"}},
     "records": {"label": "Register aur files", "say": "sheet, register, documents, forms",
@@ -74,6 +75,23 @@ DUTIES: dict[str, dict] = {
                        "prefix": (), "tools": {"bima", "bima_dekho", "file_read", "pdf_tools"}},
     "packing": {"label": "Packing / counter", "say": "order ki pick list pack karna, kami batana, counter par graahak ka code milakar saamaan dena",
                 "prefix": (), "tools": {"hoola_pick"}},
+    # v0.133 Seva suite
+    "support_work": {"label": "Customer support (Seva)", "say": "Gyaan se turant jawab, shikayat ka ticket + samay-seema, graahak ko haal; refund / niyam ke bahar aapki haan se",
+                     "prefix": (), "tools": {"seva", "seva_dekho"}},
+    "it_helpdesk": {"label": "IT helpdesk", "say": "computer / printer / net / email / Tally ki dikkat step-by-step theek karna, ticket, technician ko bhejna, phishing jaanch (system setting badlav aapki haan se)",
+                    "prefix": (), "tools": {"helpdesk", "helpdesk_dekho", "file_read"}},
+    "complaint_work": {"label": "Shikayat sambhalna", "say": "shikayat saboot ke saath darj, samay-seema, band karne tak peechha, vinamra jawab (muavza aapki haan se)",
+                       "prefix": (), "tools": {"shikayat", "shikayat_dekho", "biz_shikayat", "biz_shikayat_status"}},
+    "aftersales_work": {"label": "After-sales service", "say": "service due list aur reminder draft, technician visit book, job card, visit report, AMC aur warranty claim (graahak se charge aur business WhatsApp aapke tap se)",
+                        "prefix": (), "tools": {"service_desk", "service_desk_dekho", "file_read", "pdf_tools"}},
+    "feedback_work": {"label": "Feedback / reviews", "say": "reviews aur survey padhna, themes, pehle kya theek karein, jawab ke draft (public jawab aapki haan se)",
+                      "prefix": (), "tools": {"feedback", "feedback_dekho", "file_read"}},
+    "returns_desk": {"label": "Returns aur refund", "say": "return ki wajah aur photo jaanchna, pickup, QC, refund taiyaar (har refund aapki haan / fingerprint se)",
+                     "prefix": (), "tools": {"wapsi", "wapsi_dekho", "biz_return_start", "biz_return_status", "file_read"}},
+    "community_work": {"label": "Community / group", "say": "naye logon ka swagat, FAQ se jawab, group mein scam / gaali / naraazgi pehle pakadna (kisi ko nikalna / ban / mute / post hatana / announcement aapki haan se)",
+                       "prefix": (), "tools": {"samudaay", "samudaay_dekho"}},
+    "call_centre": {"label": "Call centre (voice)", "say": "business ka phone Hoola uthaye: sirf aapki approved script se jawab, insaan ko jodna, call-back message (script badlav aapki haan se)",
+                    "prefix": (), "tools": {"call_centre", "call_centre_dekho"}},
     "research": {"label": "Jaankari dhoondhna", "say": "web, maps, mausam, public APIs",
                  "prefix": ("maps_", "api_"), "tools": {"google_search", "web_sources", "open_website", "browse_web", "browse_result", "get_weather",
                                                        "memory_search"}},
@@ -82,7 +100,10 @@ DUTIES: dict[str, dict] = {
 _TICKET_FIRST = {"hoola_business", "hoola_my_business", "hoola_chain"}
 # what a customer on WhatsApp can make Hoola do: only these, always about that customer (employee/inbox.py)
 CUSTOMER_TOOLS = {"biz_repair_status", "biz_order_status", "biz_free_slots", "biz_book", "biz_my_appointments", "biz_cancel", "biz_complaint", "biz_ticket_status",
-                  "biz_my_dues", "biz_pay_link", "biz_promise", "biz_handover", "biz_note"}
+                  "biz_my_dues", "biz_pay_link", "biz_promise", "biz_handover", "biz_note",
+                  # v0.133 Seva suite
+                  "biz_seva_answer", "biz_seva_ticket", "biz_seva_status", "biz_seva_request", "biz_seva_rate",
+                  "biz_shikayat", "biz_shikayat_status", "biz_return_start", "biz_return_status"}
 
 ROLES: dict[str, dict] = {
     "front_desk": {"label": "Front desk", "say": "Dukaan / clinic / office ka pehla chehra: sawaal, appointment, follow-up",
@@ -162,6 +183,23 @@ ROLES: dict[str, dict] = {
     "payroll_officer": {"label": "Payroll officer",
                         "say": "Har mahine ki salary, PF / ESIC / PT / TDS, payslip, bank file, ECR, joining / leaving, bonus aur gratuity; payment aapki haan se",
                         "duties": ["payroll_work", "reminders", "email", "records", "research"]},
+    # v0.133 Seva suite
+    "support_agent": {"label": "Customer support (Seva)", "say": "Sawaalon ka turant jawab apne Gyaan se, shikayat ka ticket + samay-seema, graahak ko haal batana; refund / niyam ke bahar sirf aapki haan se",
+                      "duties": ["customers", "tickets", "support_work", "reminders", "records", "email"]},
+    "it_helpdesk": {"label": "IT Helpdesk", "say": "Office ke computer / printer / net / email / Tally ki dikkat step-by-step, ticket, technician, phishing jaanch; setting badlav aapki haan se",
+                    "duties": ["it_helpdesk", "records", "reminders"]},
+    "complaint_handler": {"label": "Shikayat sahayak (complaint handler)", "say": "Har shikayat saboot ke saath, kanoon ki samay-seema, band karne tak peechha, vinamra jawab; muavza aapki haan se",
+                          "duties": ["complaint_work", "customers", "tickets", "reminders", "records"]},
+    "aftersales_manager": {"label": "After-sales Sahayak (service)", "say": "Machine register, service due reminders, technician visits, report, AMC, warranty claim; charge aur WhatsApp aapke tap se",
+                           "duties": ["aftersales_work", "customers", "appointments", "reminders", "records", "collections"]},
+    "feedback_analyst": {"label": "Feedback sahayak (reviews / survey)", "say": "Har review aur survey padhna, themes, pehle kya theek karein, jawab ke draft; public jawab aapki haan se",
+                         "duties": ["feedback_work", "customers", "reminders", "records", "research"]},
+    "returns_desk": {"label": "Returns & refunds desk (Wapsi Sahayak)", "say": "Return ki jaanch, pickup, QC, refund ka hisaab; har refund aapki haan (fingerprint) se",
+                     "duties": ["returns_desk", "customers", "records", "reminders"]},
+    "community_manager": {"label": "Community sahayak (group manager)", "say": "Telegram / Hoola group: swagat, FAQ jawab, alert, hafte ki report; kisi ko hatana sirf aapke tap se",
+                          "duties": ["community_work", "customers", "reminders", "records", "research"]},
+    "call_centre_agent": {"label": "Call centre (voice)", "say": "Business ka phone line Hoola uthaye: aapki script se jawab, appointment / shikayat, insaan ko jodna, call-back",
+                          "duties": ["call_centre", "customers", "appointments", "tickets", "reminders", "records"]},
     "custom": {"label": "Apna kaam", "say": "Aap khud chuniye Hoola kaun se kaam karega", "duties": []},
 }
 
@@ -283,6 +321,38 @@ PRESETS: dict[str, dict] = {
                "about_hint": "Kaunse kaam (application, affidavit draft, translation, Kruti Dev), bhashayein, daam",
                "rules": ["Letter mein sirf wahi baat jo graahak / owner ne kahi; kuch bhi apne se nahi jodna.",
                          "Sign aur stamp sirf owner ki haan se.", "Court / passport ke liye notary / certified translator ki zaroorat batana."]},
+    # v0.133 Seva suite
+    "support": {"label": "Customer support desk", "role": "support_agent", "kind": "shop", "slot_minutes": 30, "after_hours": "note",
+                "about_hint": "Timings, daam / plans, delivery, refund / exchange niyam, warranty, contact",
+                "rules": ["Jawab sirf Gyaan se; jo nahi pata woh owner se poochkar.", "Refund / chhoot / niyam ke bahar kuch bhi sirf owner ki haan se."]},
+    "it_helpdesk": {"label": "Office IT helpdesk", "role": "it_helpdesk", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
+                    "about_hint": "Kitne computer / printer, net kaun deta hai, Tally / email kaun sa, AMC vendor kaun",
+                    "rules": ["System ki setting / install / reset sirf owner ki haan ke card se", "Password / OTP kabhi mat maango"]},
+    "complaints": {"label": "Shikayat / customer care desk", "role": "complaint_handler", "kind": "shop", "slot_minutes": 30, "after_hours": "note",
+                   "about_hint": "Kya bechte hain, online bhi bechte hain kya, kaun sa sector (bank / bima / telecom / bijli), shikayat kahan aati hai",
+                   "rules": ["Har shikayat ki pavti 48 ghante mein, number ke saath.", "Refund / replacement / chhoot ka vaada sirf owner ki haan ke baad.",
+                             "Gusse wale graahak se vinamra rahiye, bahas nahi; zaroorat ho to owner ko dijiye."]},
+    "service_dealer": {"label": "Dealer / service centre (RO, AC, inverter, CCTV, solar...)", "role": "aftersales_manager", "kind": "shop",
+                       "slot_minutes": 60, "after_hours": "note",
+                       "about_hint": "Kaun se product (RO / AC / inverter / CCTV / solar / genset / lift), kitne technician, kaun sa area, AMC dete ho?",
+                       "rules": ["Graahak ko message owner bhejegi (ya business WhatsApp owner ke tap se).", "Graahak se charge owner ki haan ke baad.",
+                                 "Ek technician ke do visit ek samay par nahi.", "Warranty install ki tareekh se.", "Paisa Hoola nahi leta / deta."]},
+    "feedback": {"label": "Reviews / feedback (restaurant, shop, clinic, app, D2C)", "role": "feedback_analyst", "kind": "shop", "slot_minutes": 30,
+                 "after_hours": "note",
+                 "about_hint": "Kahan reviews aate hain (Google / Zomato / Swiggy / Amazon / Flipkart / Play Store), survey bhejti hain ya nahi, ausat order value",
+                 "rules": ["Public review ka jawab sirf owner ki haan se.", "Koi review hatana / chhupana / sirf khush logon se review maangna nahi.",
+                           "Review badalne ke badle kuch dena mana.", "Graahak ka phone / order number public jawab mein nahi."]},
+    "returns": {"label": "Online store / returns desk", "role": "returns_desk", "kind": "shop", "slot_minutes": 30, "after_hours": "note",
+                "about_hint": "Kya bechte hain, kahan (website / Amazon / Instagram / dukaan), return ke din, courier (Shiprocket / Delhivery), payment gateway",
+                "rules": ["Har refund owner ki haan (fingerprint) se hi", "Galti hamari ho to return / refund se mana nahi", "Graahak se kabhi UPI PIN / OTP nahi"]},
+    "community": {"label": "Community / group chalati hoon (coaching batch, ISP users, society, NGO, fan club)", "role": "community_manager",
+                  "kind": "office", "slot_minutes": 30, "after_hours": "note",
+                  "about_hint": "Kaunse group (Telegram / Hoola Mandali), kitne member, kis bhasha mein, kaun admin / moderator, group ke niyam",
+                  "rules": ["Kisi ko nikalna / ban / mute / post hatana / sab ko announcement sirf owner ki haan se.", "Sirf FAQ se jawab; baaki owner se poochho.",
+                            "Member ka number / data kisi ko nahi.", "Personal WhatsApp group automate nahi."]},
+    "call_centre": {"label": "Call centre / phone line", "role": "call_centre_agent", "kind": "office", "slot_minutes": 30, "after_hours": "note",
+                    "about_hint": "Business ka number, kis baare mein call aate hain, timing, kisko call transfer karna hai, provider (Plivo / Exotel)",
+                    "rules": ["Phone line sirf meri approved script se bolegi; baaki sab message ya insaan ko.", "Har call ki shuruaat mein batao ki AI sahayak hai."]},
 }
 
 LEVELS = ("seekh", "saathi", "bharosa")
@@ -308,7 +378,10 @@ READ = {
     "tv_channel", "employee", "india_info",
     "biz_free_slots", "biz_my_appointments", "biz_ticket_status", "biz_my_dues", "biz_handover", "biz_note",
     "darzi_dekho", "biz_order_status", "chai_dekho", "mobile_shop_dekho", "biz_repair_status",
-    "darzi_dekho", "biz_order_status", "office_dekho", "lekhak_dekho", "gst_dekho", "payroll_dekho", "paisa_dekho", "audit_dekho", "bima_dekho", "telecall_dekho", "kalam_dekho", "seo_dekho", "thok_dekho", "niryat_dekho", "franchise_dekho", "theka_dekho", "ads_dekho", "brand_dekho", "website_dekho", "app_dekho",
+    "darzi_dekho", "biz_order_status", "office_dekho", "lekhak_dekho", "gst_dekho", "payroll_dekho", "paisa_dekho", "audit_dekho", "bima_dekho", "telecall_dekho", "kalam_dekho", "seo_dekho", "thok_dekho", "niryat_dekho", "franchise_dekho", 
+    # v0.133 Seva suite (biz_seva_request only makes a card; the decision is her separate tap)
+    "seva_dekho", "biz_seva_answer", "biz_seva_status", "biz_seva_request", "helpdesk_dekho", "shikayat_dekho", "biz_shikayat_status",
+    "service_desk_dekho", "feedback_dekho", "wapsi_dekho", "biz_return_status", "samudaay_dekho", "call_centre_dekho", "theka_dekho", "ads_dekho", "brand_dekho", "website_dekho", "app_dekho",
 }
 BIG = {
     "email_bulk", "email_delete", "email_forward", "drive_trash", "drive_share", "sheet_share", "form_share", "slides_share",

@@ -21,6 +21,14 @@ import 'audit_screen.dart';
 import 'insurance_screen.dart';
 import 'ads_screen.dart';
 import 'brand_screen.dart';
+import 'aftersales_screen.dart';
+import 'callcentre_screen.dart';
+import 'feedback_screen.dart';
+import 'helpdesk_screen.dart';
+import 'samudaay_screen.dart';
+import 'seva_screen.dart';
+import 'shikayat_screen.dart';
+import 'wapsi_screen.dart';
 import 'site_hosting.dart';
 import 'site_screen.dart';
 import 'app_android.dart';
@@ -620,6 +628,81 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return AuditCard(v: it.data, app: app);
     case 'tele_day':
       return TeleDayCard(v: it.data, app: app);
+    // v0.133 Seva suite
+    case 'seva_exception':
+      return SevaExceptionCard(key: ValueKey('sx${it.data['id']}'), app: app, data: it.data);
+    case 'seva_ticket':
+      return SevaTicketCard(app: app, data: it.data);
+    case 'seva_sla':
+      return SevaTicketCard(app: app, data: it.data);
+    case 'seva_day':
+      return SevaDayCard(app: app, data: it.data);
+    case 'helpdesk_ticket':
+      return HelpdeskTicketCard(key: ValueKey('ht${it.data['ticket']}'), app: app, data: it.data);
+    case 'helpdesk_change':
+      return HelpdeskChangeCard(key: ValueKey('hc${(it.data['change'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'helpdesk_escalate':
+      return HelpdeskEscalateCard(app: app, data: it.data);
+    case 'helpdesk_alert':
+      return HelpdeskAlertCard(app: app, data: it.data);
+    case 'helpdesk_day':
+      return HelpdeskDayCard(app: app, data: it.data);
+    case 'shikayat_comp':
+      return ShikayatCompCard(key: ValueKey('sc${(it.data['comp'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'shikayat_case':
+      return ShikayatCaseCard(app: app, data: it.data);
+    case 'shikayat_message':
+      return ShikayatMessageCard(app: app, data: it.data);
+    case 'shikayat_day':
+      return ShikayatNoteCard(app: app, data: it.data);
+    case 'shikayat_alert':
+      return ShikayatNoteCard(app: app, data: it.data);
+    case 'aftersales_charge':
+      return AftersalesChargeCard(key: ValueKey('ac${it.data['visit_id']}'), app: app, data: it.data);
+    case 'aftersales_reminders':
+      return AftersalesRemindersCard(app: app, data: it.data);
+    case 'aftersales_visit':
+      return AftersalesVisitCard(app: app, data: it.data);
+    case 'aftersales_report':
+      return AftersalesReportCard(app: app, data: it.data);
+    case 'aftersales_day':
+      return AftersalesDayCard(app: app, data: it.data);
+    case 'feedback_reply':
+      return FeedbackReplyCard(key: ValueKey('fr${it.data['reply_id']}'), app: app, data: it.data);
+    case 'feedback_alert':
+      return FeedbackNoteCard(app: app, data: it.data);
+    case 'feedback_report':
+      return FeedbackNoteCard(app: app, data: it.data);
+    case 'feedback_update':
+      return FeedbackNoteCard(app: app, data: it.data);
+    case 'feedback_survey':
+      return FeedbackSurveyCard(app: app, data: it.data);
+    case 'wapsi_refund':
+      return WapsiRefundCard(key: ValueKey('wr${(it.data['refund'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'wapsi_return':
+      return WapsiReturnCard(app: app, data: it.data);
+    case 'wapsi_day':
+      return WapsiDayCard(app: app, data: it.data);
+    case 'samudaay_alert':
+      return SamudaayAlertCard(key: ValueKey('sa${it.data['id']}'), app: app, data: it.data);
+    case 'samudaay_action':
+      return SamudaayActionCard(key: ValueKey('sq${it.data['id']}'), app: app, data: it.data);
+    case 'samudaay_question':
+      return SamudaayQuestionCard(key: ValueKey('sn${it.data['id']}'), app: app, data: it.data);
+    case 'samudaay_join':
+      return SamudaayJoinCard(key: ValueKey('sj${it.data['id']}'), app: app, data: it.data);
+    case 'samudaay_template':
+      return SamudaayTemplateCard(app: app, data: it.data);
+    case 'samudaay_week':
+      return SamudaayInfoCard(app: app, data: it.data);
+    case 'samudaay_info':
+      return SamudaayInfoCard(app: app, data: it.data);
+    case 'callcentre_script':
+      return CallCentreScriptCard(key: ValueKey('cs${it.data['script_id']}'), app: app, data: it.data);
+    case 'callcentre_call':
+      return CallCentreCallCard(app: app, data: it.data);
+    case 'callcentre_message':
+      return CallCentreMessageCard(key: ValueKey('cm${it.data['id']}'), app: app, data: it.data);
     case 'brand_design':
       return BrandDesignCard(v: it.data, app: app);
     case 'site_board':

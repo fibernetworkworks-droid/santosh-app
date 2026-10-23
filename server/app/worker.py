@@ -511,6 +511,47 @@ async def employee_jobs() -> None:
             brand.send_nudge(tenant, fest)
     except Exception:
         log.exception("brand nudge failed")
+    # v0.133 Seva suite: SLA timers, reminders, morning notes, imports (each throttles itself)
+    try:
+        from .seva import service as _seva_svc
+        await asyncio.to_thread(_seva_svc.tick)
+    except Exception:
+        log.exception("seva tick failed")
+    try:
+        from .helpdesk import service as _helpdesk_svc
+        await asyncio.to_thread(_helpdesk_svc.tick)
+    except Exception:
+        log.exception("helpdesk tick failed")
+    try:
+        from .shikayat import service as _shikayat_svc
+        await asyncio.to_thread(_shikayat_svc.tick)
+    except Exception:
+        log.exception("shikayat tick failed")
+    try:
+        from .aftersales import service as _aftersales_svc
+        await asyncio.to_thread(_aftersales_svc.tick)
+    except Exception:
+        log.exception("aftersales tick failed")
+    try:
+        from .feedback import service as _feedback_svc
+        await asyncio.to_thread(_feedback_svc.tick)
+    except Exception:
+        log.exception("feedback tick failed")
+    try:
+        from .wapsi import service as _wapsi_svc
+        await asyncio.to_thread(_wapsi_svc.tick)
+    except Exception:
+        log.exception("wapsi tick failed")
+    try:
+        from .samudaay import service as _samudaay_svc
+        await asyncio.to_thread(_samudaay_svc.tick)
+    except Exception:
+        log.exception("samudaay tick failed")
+    try:
+        from .callcentre import service as _callcentre_svc
+        await asyncio.to_thread(_callcentre_svc.tick)
+    except Exception:
+        log.exception("callcentre tick failed")
     try:                                   # v0.122 Website: her domain's DNS / SSL coming up, uptime of live sites
         from .site import hosting as site_hosting
         await asyncio.to_thread(site_hosting.watch)

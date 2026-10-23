@@ -35,6 +35,11 @@ const callCardKinds = {
   'upi_result', // v0.109
   'hoola_rfq', 'hoola_mandate', 'hoola_promo', // v0.112
   'a2a_task', 'handoff_reminder', 'digilocker', // v0.116
+  // v0.133 Seva suite
+  'seva_exception', 'helpdesk_ticket', 'helpdesk_change', 'helpdesk_escalate', 'helpdesk_alert', 'shikayat_comp', 'shikayat_case',
+  'shikayat_message', 'aftersales_charge', 'aftersales_reminders', 'aftersales_visit', 'feedback_reply', 'feedback_alert',
+  'wapsi_refund', 'samudaay_alert', 'samudaay_action', 'samudaay_question', 'callcentre_script', 'callcentre_call',
+  'callcentre_message',
 };
 
 /// The live voice call, owned by the app (not by a screen): it keeps going while the owner opens Chat, Connect,

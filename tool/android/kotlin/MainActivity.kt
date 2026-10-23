@@ -541,6 +541,7 @@ class MainActivity : FlutterActivity() {
             data.scheme == "santosh" && data.host == "mail" -> "mail:ok=" + (data.getQueryParameter("ok") ?: "0")
             data.scheme == "santosh" && data.host == "calendar" -> "calendar:ok=" + (data.getQueryParameter("ok") ?: "0")
             data.scheme == "santosh" && data.host in setOf("sheets", "drive", "forms", "slides", "photos", "youtube") -> data.host + ":ok=" + (data.getQueryParameter("ok") ?: "0")
+            data.scheme == "santosh" && data.host == "feedback" -> "feedback:ok=" + (data.getQueryParameter("ok") ?: "0")   // v0.133 Business Profile sign-in
             else -> return
         }
         val sink = linkSink

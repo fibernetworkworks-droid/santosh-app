@@ -14,6 +14,14 @@ import 'keep_alive.dart';
 import 'phone_hoola.dart';
 import 'ads_screen.dart';
 import 'brand_screen.dart';
+import 'aftersales_screen.dart';
+import 'callcentre_screen.dart';
+import 'feedback_screen.dart';
+import 'helpdesk_screen.dart';
+import 'samudaay_screen.dart';
+import 'seva_screen.dart';
+import 'shikayat_screen.dart';
+import 'wapsi_screen.dart';
 import 'site_screen.dart';
 import 'app_design_screen.dart';
 import 'kalam_screen.dart';
@@ -335,6 +343,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Aapke logo aur rang mein poster, har platform ki size, tyohar ke post; final aapki haan se'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BrandScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.support_agent_rounded, color: C.accent),
+              title: Text('${app.aName} · Customer support', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Gyaan se turant jawab, shikayat + samay-seema, refund aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SevaScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.computer_rounded, color: C.accent),
+              title: Text('${app.aName} · IT Helpdesk', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Computer, printer, net ki dikkat step-by-step; technician; phishing jaanch'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HelpdeskScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.report_problem_rounded, color: C.accent),
+              title: Text('${app.aName} · Shikayat sahayak', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Shikayat darj, saboot, samay-seema, muavza aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShikayatScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.home_repair_service_rounded, color: C.accent),
+              title: Text('${app.aName} · After-sales service', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Service due, technician visit, report, AMC, warranty claim'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AftersalesScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.reviews_rounded, color: C.accent),
+              title: const Text('Feedback sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Reviews, survey, pehle kya theek karein'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FeedbackScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.assignment_return_rounded, color: C.accent),
+              title: Text('${app.aName} · Returns desk', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Wapsi sahayak: return, pickup, QC, refund (aapki haan se)'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WapsiScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.groups_2_rounded, color: C.accent),
+              title: const Text('Community sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Group mein swagat, FAQ jawab, scam / gaali alert'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SamudaayScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.phone_in_talk_rounded, color: C.accent),
+              title: Text('${app.aName} · Call centre', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Business ka phone Hoola uthaye: sirf aapki script se, insaan ko jodna, call-back'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CallCentreScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

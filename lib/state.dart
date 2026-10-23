@@ -304,6 +304,8 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _appCards = {};  // v0.128 one card per app design, updated in place
   final Map<String, FeedItem> _androidCards = {};  // v0.132 one native build card per app
   final Map<String, FeedItem> _brandCards = {}; // v0.118 one card per design, updated in place
+  int sevaTick = 0;                            // v0.133 Seva suite screens refresh on their events
+  final Map<String, FeedItem> _sevaCards = {};  // v0.133 one card per id where the suite updates a card in place
   int adsTick = 0;                             // v0.108 bumps on ads events (the Ads screen refreshes)
   final Map<String, FeedItem> _adsPlans = {};   // v0.108 one card per budget plan, changes updated in place
   int kalamTick = 0;                           // v0.101 bumps on content-writer events (the Kalam screen refreshes)
@@ -1259,6 +1261,55 @@ class Santosh extends ChangeNotifier {
         }
         adsTick++;
         break;
+      case 'seva_exception':
+      case 'seva_ticket':
+      case 'seva_sla':
+      case 'seva_day':
+      case 'helpdesk_ticket':
+      case 'helpdesk_change':
+      case 'helpdesk_escalate':
+      case 'helpdesk_alert':
+      case 'helpdesk_day':
+      case 'shikayat_comp':
+      case 'shikayat_case':
+      case 'shikayat_message':
+      case 'shikayat_day':
+      case 'shikayat_alert':
+      case 'aftersales_charge':
+      case 'aftersales_reminders':
+      case 'aftersales_visit':
+      case 'aftersales_report':
+      case 'aftersales_day':
+      case 'feedback_reply':
+      case 'feedback_alert':
+      case 'feedback_report':
+      case 'feedback_update':
+      case 'feedback_survey':
+      case 'wapsi_return':
+      case 'wapsi_refund':
+      case 'wapsi_day':
+      case 'samudaay_alert':
+      case 'samudaay_action':
+      case 'samudaay_question':
+      case 'samudaay_join':
+      case 'samudaay_template':
+      case 'samudaay_week':
+      case 'samudaay_info':
+      case 'callcentre_script':
+      case 'callcentre_call':
+      case 'callcentre_message':
+        // v0.133 Seva suite: cards keyed by their id are updated in place (a later event keeps the earlier fields)
+        final sk = sevaCardKey(ev.kind, Map<String, dynamic>.from(p));
+        final sOld = sk.isEmpty ? null : _sevaCards[sk];
+        if (sOld != null) {
+          sOld.data = {...sOld.data, ...Map<String, dynamic>.from(p)};
+        } else {
+          final it = FeedItem(ev.kind, Map<String, dynamic>.from(p));
+          if (sk.isNotEmpty) _sevaCards[sk] = it;
+          feed.add(it);
+        }
+        sevaTick++;
+        break;
       case 'brand_design':
       case 'brand_approval':
         final bd = Map<String, dynamic>.from((p['design'] as Map?) ?? const {});
@@ -1764,4 +1815,23 @@ class Santosh extends ChangeNotifier {
     _sub?.cancel();
     super.dispose();
   }
+}
+
+
+/// v0.133 Seva suite: which cards are one-per-id (updated in place). '' = always a new card.
+String sevaCardKey(String kind, Map<String, dynamic> p) {
+  String sub(String k) => p[k] is Map ? '${(p[k] as Map)['id'] ?? ''}' : '';
+  final id = switch (kind) {
+    'seva_exception' => '${p['id'] ?? ''}',
+    'helpdesk_ticket' => '${p['ticket'] ?? ''}',
+    'helpdesk_change' => sub('change'),
+    'shikayat_comp' => sub('comp'),
+    'aftersales_charge' || 'aftersales_visit' => '${p['visit_id'] ?? ''}',
+    'wapsi_refund' => sub('refund'),
+    'wapsi_return' => sub('return'),
+    'callcentre_script' => '${p['script_id'] ?? ''}',
+    'callcentre_message' || 'callcentre_call' => '${p['id'] ?? ''}',
+    _ => '',
+  };
+  return id.isEmpty || id == 'null' ? '' : '$kind:$id';
 }

@@ -684,6 +684,15 @@ def init_db(url: str | None = None):
     from .franchise import service as _franchise  # noqa: F401
     from .theka import service as _theka  # noqa: F401
     from .brand import service as _brand  # noqa: F401
+    # v0.133 Seva suite
+    from .seva import service as _seva  # noqa: F401
+    from .helpdesk import models as _helpdesk  # noqa: F401
+    from .shikayat import models as _shikayat  # noqa: F401
+    from .aftersales import service as _aftersales  # noqa: F401
+    from .feedback import models as _feedback  # noqa: F401
+    from .wapsi import models as _wapsi  # noqa: F401
+    from .samudaay import models as _samudaay  # noqa: F401
+    from .callcentre import models as _callcentre  # noqa: F401
     from .office import service as _office  # noqa: F401
     from .lekhak import service as _lekhak  # noqa: F401
     from .agent import pakka as _pakka  # noqa: F401

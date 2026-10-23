@@ -682,3 +682,41 @@ from .app_tools import APP_HANDLERS, APP_LABELS, APP_TOOLS  # noqa: E402
 TOOLS.extend(APP_TOOLS)
 TOOL_LABELS.update(APP_LABELS)
 HANDLERS.update(APP_HANDLERS)
+
+# v0.133 Seva suite: 7 customer-support Sahayaks (support agent, IT helpdesk, complaints, after-sales, feedback, returns,
+# community). Customer-safe biz_* tools go into the business WhatsApp inbox list only (never offered to her model).
+from .seva_tools import BIZ_SEVA_TOOLS, SEVA_HANDLERS, SEVA_LABELS, SEVA_TOOLS  # noqa: E402
+from .helpdesk_tools import HELPDESK_HANDLERS, HELPDESK_LABELS, HELPDESK_TOOLS  # noqa: E402
+from .shikayat_tools import (SHIKAYAT_BIZ_HANDLERS, SHIKAYAT_BIZ_LABELS, SHIKAYAT_BIZ_TOOLS, SHIKAYAT_HANDLERS,  # noqa: E402
+                             SHIKAYAT_LABELS, SHIKAYAT_TOOLS)
+from .aftersales_tools import AFTERSALES_HANDLERS, AFTERSALES_LABELS, AFTERSALES_TOOLS  # noqa: E402
+from .feedback_tools import FEEDBACK_HANDLERS, FEEDBACK_LABELS, FEEDBACK_TOOLS  # noqa: E402
+from .wapsi_tools import (WAPSI_BIZ_HANDLERS, WAPSI_BIZ_LABELS, WAPSI_BIZ_TOOLS, WAPSI_HANDLERS, WAPSI_LABELS,  # noqa: E402
+                          WAPSI_TOOLS)
+from .samudaay_tools import SAMUDAAY_HANDLERS, SAMUDAAY_LABELS, SAMUDAAY_TOOLS  # noqa: E402
+from .callcentre_tools import CALLCENTRE_HANDLERS, CALLCENTRE_LABELS, CALLCENTRE_TOOLS  # noqa: E402
+
+for _t, _l, _h in ((SEVA_TOOLS, SEVA_LABELS, SEVA_HANDLERS), (HELPDESK_TOOLS, HELPDESK_LABELS, HELPDESK_HANDLERS),
+                   (SHIKAYAT_TOOLS, SHIKAYAT_LABELS, SHIKAYAT_HANDLERS), (AFTERSALES_TOOLS, AFTERSALES_LABELS, AFTERSALES_HANDLERS),
+                   (FEEDBACK_TOOLS, FEEDBACK_LABELS, FEEDBACK_HANDLERS), (WAPSI_TOOLS, WAPSI_LABELS, WAPSI_HANDLERS),
+                   (SAMUDAAY_TOOLS, SAMUDAAY_LABELS, SAMUDAAY_HANDLERS),
+                   (CALLCENTRE_TOOLS, CALLCENTRE_LABELS, CALLCENTRE_HANDLERS)):
+    TOOLS.extend(_t)
+    TOOL_LABELS.update(_l)
+    HANDLERS.update(_h)
+TOOL_LABELS.update(SHIKAYAT_BIZ_LABELS)
+TOOL_LABELS.update(WAPSI_BIZ_LABELS)
+HANDLERS.update(SHIKAYAT_BIZ_HANDLERS)
+HANDLERS.update(WAPSI_BIZ_HANDLERS)
+
+from ..employee import inbox as _biz_inbox  # noqa: E402
+
+_have = {t["name"] for t in _biz_inbox.BIZ_TOOLS}
+_biz_inbox.BIZ_TOOLS[:0] = [t for t in BIZ_SEVA_TOOLS if t["name"] not in _have]   # biz_seva_answer first
+_biz_inbox.BIZ_TOOLS.extend(t for t in SHIKAYAT_BIZ_TOOLS + WAPSI_BIZ_TOOLS if t["name"] not in _have)
+_biz_inbox.BIZ_HANDLERS.update({k: v for k, v in SEVA_HANDLERS.items() if k.startswith("biz_")})
+_biz_inbox.BIZ_HANDLERS.update(SHIKAYAT_BIZ_HANDLERS)
+_biz_inbox.BIZ_HANDLERS.update(WAPSI_BIZ_HANDLERS)
+_biz_inbox.BIZ_LABELS.update({k: v for k, v in SEVA_LABELS.items() if k.startswith("biz_")})
+_biz_inbox.BIZ_LABELS.update(SHIKAYAT_BIZ_LABELS)
+_biz_inbox.BIZ_LABELS.update(WAPSI_BIZ_LABELS)
