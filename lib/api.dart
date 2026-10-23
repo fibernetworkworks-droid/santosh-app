@@ -1376,9 +1376,13 @@ class Api {
           body: {if (enabled != null) 'enabled': enabled, if (ask != null) 'ask': ask}, timeout: const Duration(seconds: 30)));
   Future<List<Map<String, dynamic>>> mcpFeatured() async =>
       List<Map<String, dynamic>>.from(((await _send('GET', '/api/bazar/mcp/featured'))['connectors'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
-  Future<Map<String, dynamic>> mcpConnectFeatured(String id, {String url = '', String key = '', String header = ''}) async =>
-      Map<String, dynamic>.from(await _send('POST', '/api/bazar/mcp/featured/$id', body: {'url': url, 'key': key, 'key_header': header},
-          timeout: const Duration(seconds: 40)));
+  Future<Map<String, dynamic>> mcpConnectFeatured(String id,
+          {String url = '', String key = '', String header = '', bool? readonly, List<String>? toolsets}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bazar/mcp/featured/$id', body: {
+        'url': url, 'key': key, 'key_header': header,
+        if (readonly != null) 'readonly': readonly,
+        if (toolsets != null) 'toolsets': toolsets,
+      }, timeout: const Duration(seconds: 40)));
 
   // ---------------- Santosh Artifacts ----------------
   String _art(String id) => '/api/artifacts/${Uri.encodeComponent(id)}';

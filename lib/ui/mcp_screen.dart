@@ -138,6 +138,10 @@ class _McpScreenState extends State<McpScreen> {
       _snack('${c['name']} Hoola mein pehle se hai: ${c['native']}');
       return;
     }
+    if ((c['options'] as Map?)?['kind'] == 'github') {
+      await _connectGithub(c);
+      return;
+    }
     if (auth == 'api_key' || auth == 'per_user_url') {
       final t = TextEditingController();
       final ok = await showDialog<bool>(
@@ -181,6 +185,76 @@ class _McpScreenState extends State<McpScreen> {
       } else {
         _snack(r['status'] == 'ready' ? '${c['name']} jud gaya. Ab Hoola se kahiye.' : 'Key sahi nahi lagi');
       }
+    } catch (e) {
+      _snack(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// v0.142 GitHub's official MCP server: her fine-grained token (or the Developer Sahayak one), read-only switch,
+  /// which toolsets Hoola sees. Lockdown is always on and every write waits for her tap (server side).
+  Future<void> _connectGithub(Map<String, dynamic> c) async {
+    final opts = Map<String, dynamic>.from(c['options'] as Map? ?? {});
+    final all = [for (final t in (opts['toolsets'] as List? ?? [])) t.toString()];
+    final st = Map<String, dynamic>.from(c['settings'] as Map? ?? {});
+    final picked = <String>{
+      for (final t in ((st['toolsets'] ?? opts['default_toolsets']) as List? ?? [])) t.toString()
+    };
+    bool readonly = st['readonly'] == true;
+    final canReuse = c['can_reuse'] == true;
+    bool reuse = canReuse;
+    final t = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setD) => AlertDialog(
+        backgroundColor: C.bgBottom,
+        title: const Text('GitHub jodiye'),
+        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(c['how_to_connect'] as String? ?? '', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+          const SizedBox(height: 8),
+          if (canReuse)
+            SwitchListTile(contentPadding: EdgeInsets.zero, value: reuse, onChanged: (v) => setD(() => reuse = v),
+                title: const Text('Developer Sahayak wala token use karo', style: TextStyle(fontSize: 13.5))),
+          if (!reuse)
+            TextField(controller: t, obscureText: true,
+                decoration: const InputDecoration(labelText: 'Fine-grained token (github_pat_…)')),
+          SwitchListTile(contentPadding: EdgeInsets.zero, value: readonly, onChanged: (v) => setD(() => readonly = v),
+              title: const Text('Sirf padhna (read-only)', style: TextStyle(fontSize: 13.5)),
+              subtitle: const Text('Hoola kuch likh / badal nahi payega', style: TextStyle(color: C.faint, fontSize: 11.5))),
+          const SizedBox(height: 6),
+          const Text('Hoola kya dekh sake:', style: TextStyle(color: C.muted, fontSize: 12.5)),
+          const SizedBox(height: 4),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final ts in all)
+              FilterChip(label: Text(ts, style: const TextStyle(fontSize: 12)), selected: ts == 'context' || picked.contains(ts),
+                  onSelected: ts == 'context' ? null : (v) => setD(() => v ? picked.add(ts) : picked.remove(ts))),
+          ]),
+          const SizedBox(height: 8),
+          const Text('Lockdown hamesha on (public repo mein bahar walon ka likha Hoola nahi padhta). Har likhne wala kaam '
+              '(issue, PR, merge, push) aapke tap ke baad hi.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+          if ((c['docs'] as String? ?? '').isNotEmpty)
+            TextButton(onPressed: () => Native.openExternal(url: c['docs'] as String), child: const Text('Token kaise banaye?')),
+        ])),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne dein')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Jodiye')),
+        ],
+      )),
+    );
+    if (ok != true) return;
+    final key = reuse ? '' : t.text.trim();
+    if (!reuse && key.isEmpty && c['status'] != 'ready') {
+      _snack('Token daaliye');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final r = await app.api!.mcpConnectFeatured(c['id'] as String, key: key, readonly: readonly,
+          toolsets: picked.where((x) => x != 'context').toList());
+      await _loadMine();
+      final note = (r['note'] as String? ?? '');
+      _snack(r['status'] == 'ready' ? 'GitHub jud gaya. ${note.isNotEmpty ? note : 'Ab Hoola se kahiye.'}' : 'Token sahi nahi laga');
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
     } finally {

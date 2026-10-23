@@ -49,12 +49,20 @@ BAZAR_TOOLS = [
         "name). Only use an address the user gave or that the directory/GitHub page states; never invent one. If it needs "
         "a sign-in a Link button appears; API keys are entered by the user in the app, never in chat. "
         "action=list: the user's servers and status. action=remove: disconnect (pack_id). After adding, use "
-        "bazar_run with the returned pack_id; any tool that is not a plain read shows a confirm card first."),
+        "bazar_run with the returned pack_id; any tool that is not a plain read shows a confirm card first. "
+        "GitHub (featured=github, GitHub's official MCP server): connects with the token she already gave Developer Sahayak "
+        "(one call), else she adds a fine-grained token in the app; readonly=true = only read tools; toolsets = which parts "
+        "(context, repos, issues, pull_requests, actions, users default; + code_security, dependabot, secret_protection, "
+        "notifications, discussions, gists, labels, projects, orgs, security_advisories, stargazers, git). Calling connect again "
+        "with other readonly / toolsets changes them. Lockdown is always on (public issue text from people without push "
+        "access stays hidden); every write (create / update / merge / push / comment / run workflow) waits for her tap. "
+        "Code changes as a PR with checks = the dev tool (Developer Sahayak)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["featured", "connect", "directory", "add", "list", "remove"]},
          "featured": {"type": "string", "description": "id from action=featured"},
          "query": {"type": "string"}, "field": {"type": "string"}, "url": {"type": "string"},
-         "ref": {"type": "string"}, "name": {"type": "string"}, "pack_id": {"type": "string"}}, "required": ["action"]}},
+         "ref": {"type": "string"}, "name": {"type": "string"}, "pack_id": {"type": "string"},
+         "readonly": {"type": "boolean"}, "toolsets": {"type": "array", "items": {"type": "string"}}}, "required": ["action"]}},
     {"name": "bazar_activity", "description": "The user's recent Bazar orders and payments with their status.",
      "input_schema": {"type": "object", "properties": {}}},
 ]
@@ -119,13 +127,16 @@ async def bazar_contact(ctx: Ctx, action, name="", upi_id="", phone="", relation
     return await _call(service.add_contact, ctx.tenant_id, str(name or ""), str(upi_id or ""), str(phone or ""), str(relation or ""))
 
 
-async def bazar_mcp(ctx: Ctx, action, query="", field="", url="", ref="", name="", pack_id="", featured="", **_):
+async def bazar_mcp(ctx: Ctx, action, query="", field="", url="", ref="", name="", pack_id="", featured="", readonly=None,
+                    toolsets=None, **_):
     if action == "featured":
         return {"connectors": await _call(service.mcp_featured, ctx.tenant_id)}
     if action == "connect":
         def go_f():
             return service.mcp_connect_featured(ctx.tenant_id, str(featured or name or ""), str(url or ""),
-                                                conversation_id=ctx.conversation_id)
+                                                conversation_id=ctx.conversation_id,
+                                                readonly=None if readonly is None else bool(readonly),
+                                                toolsets=[str(t) for t in toolsets] if isinstance(toolsets, list) else None)
         return await _call(go_f)
     if action == "directory":
         return await _call(service.mcp_directory, str(query or ""), str(field or ""))

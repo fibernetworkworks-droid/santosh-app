@@ -8,6 +8,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import hmac
+import json
 import logging
 import re
 import secrets
@@ -726,12 +727,64 @@ def mcp_featured(tenant_id: str) -> list[dict[str, Any]]:
             item = featured.public(c, st)
             if r:
                 item["pack_id"] = r.id
+                if c.get("options"):
+                    item["settings"] = _featured_settings(s, user.id, r)
+            if (c.get("options") or {}).get("reuse"):
+                item["can_reuse"] = bool(_reuse_token(tenant_id, c["options"]["reuse"]))
             out.append(item)
         return out
 
 
+def _featured_settings(s, user_id: str, row) -> dict[str, Any]:
+    """v0.143 what a featured connection was set up with (GitHub toolsets / read-only), never the key."""
+    from .security import vault
+    conn = s.scalars(select(Connection).where(Connection.user_id == user_id,
+                                              Connection.provider == custom_mcp.provider_of(row.id),
+                                              Connection.status == "active")).first()
+    if not conn:
+        return {}
+    try:
+        ex = (json.loads(vault().open(conn.token_enc)).get("extra") or {})
+    except Exception:
+        return {}
+    return {"toolsets": [t for t in ex.get("X-MCP-Toolsets", "").split(",") if t], "readonly": bool(ex.get("X-MCP-Readonly")),
+            "lockdown": bool(ex.get("X-MCP-Lockdown"))}
+
+
+def _saved_key(tenant_id: str, ref: str) -> str:
+    """v0.143 the key already saved for this featured connection (so changing settings never asks for it again)."""
+    from .security import vault
+    with session() as s:
+        user = ensure_user(s, tenant_id)
+        for r in custom_mcp.user_rows(s, user.id):
+            if r.directory_ref != ref:
+                continue
+            conn = s.scalars(select(Connection).where(Connection.user_id == user.id,
+                                                      Connection.provider == custom_mcp.provider_of(r.id),
+                                                      Connection.status == "active")).first()
+            if conn:
+                try:
+                    return str(json.loads(vault().open(conn.token_enc)).get("key") or "")
+                except Exception:
+                    return ""
+    return ""
+
+
+def _reuse_token(tenant_id: str, kind: str) -> str:
+    """v0.143 the token she already gave another Hoola feature for the same service (GitHub: Developer Sahayak, else the
+    Website Sahayak export token). Never shown, only used for this connection."""
+    if kind != "devsahayak":
+        return ""
+    try:
+        from ..devsahayak.service import _token
+        return _token(tenant_id) or ""
+    except Exception:
+        return ""
+
+
 def mcp_connect_featured(tenant_id: str, fid: str, url: str = "", key: str = "", key_header: str = "",
-                         probe_client=None, conversation_id: str = "") -> dict[str, Any]:
+                         probe_client=None, conversation_id: str = "", readonly: bool | None = None,
+                         toolsets: list[str] | None = None) -> dict[str, Any]:
     c = featured.get(fid)
     if c is None:
         raise ToolError("Unknown connector")
@@ -744,17 +797,35 @@ def mcp_connect_featured(tenant_id: str, fid: str, url: str = "", key: str = "",
             raise ToolError(f"Paste your personal {c['name']} MCP address (from your {c['name']} account).")
     else:
         url = c["url"]
+    reused = False
+    kept = False
+    if c["auth"] == "api_key" and not key and (readonly is not None or toolsets is not None):
+        key = _saved_key(tenant_id, "featured:" + c["id"])
+        kept = bool(key)
+    if c["auth"] == "api_key" and not key and (c.get("options") or {}).get("reuse"):
+        key = _reuse_token(tenant_id, c["options"]["reuse"])
+        reused = bool(key)
     if c["auth"] == "api_key" and not key:
         raise ToolError(f"{c['name']} needs its API key. Add it in the Santosh app (Connect > MCP servers), never in chat.")
     if key and c.get("key_format") == "basic" and ":" in key and not key.lower().startswith("basic "):
         import base64
         key = "Basic " + base64.b64encode(key.strip().encode()).decode()   # e.g. Razorpay key_id:key_secret
-    return mcp_add(tenant_id, url, c["name"], "featured:" + c["id"], key, key_header or c.get("key_header", ""),
-                   probe_client=probe_client, conversation_id=conversation_id, description=c.get("does", ""))
+    extra = featured.headers_of(c, readonly, toolsets)
+    out = mcp_add(tenant_id, url, c["name"], "featured:" + c["id"], key, key_header or c.get("key_header", ""),
+                  probe_client=probe_client, conversation_id=conversation_id, description=c.get("does", ""),
+                  extra=extra, caution=bool(c.get("caution")))
+    if c["id"] == "github":
+        out["settings"] = {"toolsets": extra.get("X-MCP-Toolsets", "").split(","), "readonly": bool(extra.get("X-MCP-Readonly")),
+                           "lockdown": bool(extra.get("X-MCP-Lockdown")), "token": "developer_sahayak" if reused else "own"}
+        if key.startswith(("ghp_", "gho_")) and not reused and not kept:
+            out["note"] = ("Yeh classic token hai (saare repos par). Fine-grained token behtar hai: sirf chune hue repos, kam "
+                           "permissions. Settings > Developer settings > Fine-grained tokens.")
+    return out
 
 
 def mcp_add(tenant_id: str, url: str, name: str = "", ref: str = "", key: str = "", key_header: str = "",
-            probe_client=None, conversation_id: str = "", description: str = "") -> dict[str, Any]:
+            probe_client=None, conversation_id: str = "", description: str = "", extra: dict | None = None,
+            caution: bool = False) -> dict[str, Any]:
     """Add a remote MCP server. Tries it right away; works out whether it needs a sign-in or a key."""
     url = (url or "").strip()
     if not url:
@@ -770,9 +841,9 @@ def mcp_add(tenant_id: str, url: str, name: str = "", ref: str = "", key: str = 
     with session() as s:
         user = ensure_user(s, tenant_id)
         try:
-            row = custom_mcp.create(s, user.id, url, name, ref, description)
+            row = custom_mcp.create(s, user.id, url, name, ref, description, caution=caution)
             if key:
-                custom_mcp.save_key(s, row, key, key_header)
+                custom_mcp.save_key(s, row, key, key_header, extra)
         except custom_mcp.UrlError as e:
             raise ToolError(str(e))
         pack = custom_mcp.to_pack(row)

@@ -71,8 +71,16 @@ READ_VERBS = {"get", "list", "search", "find", "fetch", "read", "view", "show", 
               "analyse", "inspect", "resolve", "geocode", "translate", "retrieve", "scan", "stats", "report", "quote"}
 
 
+# v0.143 exact names of reads whose first word isn't a verb (GitHub's official MCP merges reads into one tool each:
+# issue_read / pull_request_read take a method like get / get_comments / get_diff, all reads)
+READ_NAMES = {"issue_read", "pull_request_read", "actions_get", "actions_list", "projects_get", "projects_list",
+              "discussion_read", "gist_read", "label_read"}
+
+
 def is_read_only(tool: str) -> bool:
-    """First word of a tool name (snake, kebab or camelCase) is a plain read verb."""
+    """First word of a tool name (snake, kebab or camelCase) is a plain read verb, or a known read name."""
+    if tool in READ_NAMES:
+        return True
     first = re.split(r"[^a-z0-9]+", re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", tool).lower().strip("_- "))[0]
     return first in READ_VERBS
 

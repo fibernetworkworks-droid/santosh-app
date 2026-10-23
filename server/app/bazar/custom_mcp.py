@@ -86,11 +86,13 @@ def user_rows(s, user_id: str) -> list[CustomMcp]:
                           .order_by(CustomMcp.created_at)).all())
 
 
-def create(s, user_id: str, url: str, name: str = "", ref: str = "", description: str = "") -> CustomMcp:
+def create(s, user_id: str, url: str, name: str = "", ref: str = "", description: str = "", caution: bool = False) -> CustomMcp:
     url = check_url(url)
     rows = user_rows(s, user_id)
     for r in rows:
         if r.url.rstrip("/") == url.rstrip("/"):
+            if caution and not r.caution:
+                r.caution = True
             return r
     if len(rows) >= MAX_PER_USER:
         raise UrlError(f"You can add up to {MAX_PER_USER} MCP servers. Remove one first.")
@@ -103,7 +105,7 @@ def create(s, user_id: str, url: str, name: str = "", ref: str = "", description
     row = CustomMcp(id="mcp-" + secrets.token_hex(5), user_id=user_id, name=name[:120], url=url,
                     directory_ref=entry["r"] if entry else (ref if ref.startswith("featured:") else ""),
                     description=(description or (entry or {}).get("d", ""))[:1000],
-                    caution=bool(entry and entry["c"]))
+                    caution=bool(entry and entry["c"]) or bool(caution))
     s.add(row)
     s.flush()
     return row
@@ -124,12 +126,23 @@ def headers_for(s, pack: Pack, user_id: str) -> dict[str, str] | None:
         h, v = b.get("header") or "Authorization", b["key"]
         if h.lower() == "authorization" and not re.match(r"(?i)(bearer|basic|token)\s", v):
             v = "Bearer " + v
-        return {h: v}
+        return {**{str(k): str(x) for k, x in (b.get("extra") or {}).items()}, h: v}
     from .mcp_auth import access_token
     return {"Authorization": "Bearer " + access_token(s, conn)}
 
 
-def save_key(s, row: CustomMcp, key: str, header: str = "") -> None:
+def clean_extra(extra: dict | None) -> dict[str, str]:
+    """v0.143 fixed request headers a featured server documents (e.g. GitHub's X-MCP-Toolsets / X-MCP-Readonly)."""
+    out: dict[str, str] = {}
+    for k, v in (extra or {}).items():
+        k, v = str(k).strip(), str(v).strip()
+        if not re.fullmatch(r"X-[A-Za-z0-9-]{1,58}", k) or not re.fullmatch(r"[A-Za-z0-9_,.:-]{1,300}", v):
+            raise UrlError(f"Header {k} allowed nahi.")
+        out[k] = v
+    return out
+
+
+def save_key(s, row: CustomMcp, key: str, header: str = "", extra: dict | None = None) -> None:
     from .security import vault
     key = (key or "").strip()
     if not key or len(key) > 4000:
@@ -141,7 +154,8 @@ def save_key(s, row: CustomMcp, key: str, header: str = "") -> None:
                                                 Connection.provider == provider_of(row.id))).all():
         c.status = "replaced"
     s.add(Connection(user_id=row.user_id, provider=provider_of(row.id),
-                     token_enc=vault().seal(json.dumps({"key": key, "header": header})), status="active"))
+                     token_enc=vault().seal(json.dumps({"key": key, "header": header, "extra": clean_extra(extra)})),
+                     status="active"))
     row.auth, row.key_header = "key", header
     s.flush()
 

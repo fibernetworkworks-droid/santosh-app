@@ -839,14 +839,58 @@
    "category": "Developer",
    "url": "https://api.githubcopilot.com/mcp/",
    "url_hint": "",
-   "auth": "oauth_partner",
-   "does": "Repos, issues and pull requests",
-   "source": "https://docs.github.com/en/copilot/how-tos/provide-context/use-mcp-in-your-ide/set-up-the-github-mcp-server",
+   "auth": "api_key",
+   "does": "Your repos, issues, pull requests, code search, Actions runs (GitHub's official MCP)",
+   "source": "https://github.com/github/github-mcp-server/blob/main/docs/remote-server.md",
    "confidence": "high",
    "keywords": [
     "github",
-    "developer"
-   ]
+    "git",
+    "repo",
+    "pull request",
+    "issue",
+    "code",
+    "developer",
+    "ci",
+    "actions"
+   ],
+   "key_header": "Authorization",
+   "caution": true,
+   "headers": {
+    "X-MCP-Lockdown": "true"
+   },
+   "options": {
+    "kind": "github",
+    "reuse": "devsahayak",
+    "toolsets": [
+     "context",
+     "repos",
+     "issues",
+     "pull_requests",
+     "actions",
+     "users",
+     "code_security",
+     "dependabot",
+     "secret_protection",
+     "notifications",
+     "discussions",
+     "gists",
+     "labels",
+     "projects",
+     "orgs",
+     "security_advisories",
+     "stargazers",
+     "git"
+    ],
+    "default_toolsets": [
+     "context",
+     "repos",
+     "issues",
+     "pull_requests",
+     "actions",
+     "users"
+    ]
+   }
   },
   {
    "id": "hugging-face",
