@@ -271,10 +271,12 @@ class MainActivity : ComponentActivity() {{
         AppData.load(this)
         Api.init(AppConfig.BASE_URL, AppConfig.APP_ID)
         val seen = Store.get(this, "onboarded") == "1"
+        // Debug builds only (Hoola's own checks open every screen and take its picture); release builds ignore it.
+        val jump = if (BuildConfig.DEBUG) intent?.getStringExtra("hoola_screen")?.takeIf {{ it in AppScreens.ids }} else null
         setContent {{
             HoolaTheme(AppTokens.look) {{
-                var stage by remember {{ mutableStateOf(if (seen) "app" else "splash") }}
-                val nav = remember {{ Nav(AppScreens.START, AppScreens.tabs, AppScreens.ids) }}
+                var stage by remember {{ mutableStateOf(if (seen || jump != null) "app" else "splash") }}
+                val nav = remember {{ Nav(jump ?: AppScreens.START, AppScreens.tabs, AppScreens.ids) }}
                 LaunchedEffect(Unit) {{ Api.refresh(this@MainActivity) }}
                 when (stage) {{
                     "splash" -> SplashScreen {{ stage = if (AppScreens.HAS_CONSENT) "consent" else if (AppScreens.HAS_NOTIFY) "notify" else "app" }}

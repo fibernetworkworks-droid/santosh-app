@@ -129,7 +129,7 @@ HOOLAKIT (exact signatures, use them as written):
 
 ICONS: {ICONS}
 
-Answer with JSON only: {"kotlin": "<the whole file>", "notes": "<one line>"}"""
+Answer with the whole file in ONE ```kotlin code block and nothing else."""
 
 FIX_SYSTEM = """You fix ONE Kotlin + Jetpack Compose screen file that did not compile (or broke a house rule). Same contract as
 before (package hoola.app.screens, only the allowed imports, one @Composable fun {FN}() with no parameters, HoolaKit
@@ -139,7 +139,7 @@ its exact signature below. Prefer simple, certain code over clever code.
 HOOLAKIT:
 {KIT}
 
-Answer with JSON only: {"kotlin": "<the whole fixed file>", "notes": "<what you fixed>"}"""
+Answer with the whole fixed file in ONE ```kotlin code block and nothing else."""
 
 
 def fill(tpl: str, **kw: str) -> str:
@@ -158,3 +158,13 @@ def screen_system(sid: str, back: bool, ids: list[str], lists: dict[str, list[st
 
 def fix_system(sid: str, ids: list[str]) -> str:
     return fill(FIX_SYSTEM, FN=kotlin_name(sid), IDS=", ".join(ids), KIT=kit_sheet())
+
+
+def code_of(answer: str) -> str:
+    """The Kotlin file from the model's answer (a ```kotlin block, else the answer itself when it is plain code)."""
+    import re as _re
+    m = _re.search(r"```(?:kotlin|kt)?\s*\n(.*?)```", answer or "", _re.S)
+    src = m.group(1) if m else (answer or "")
+    src = src.strip()
+    i = src.find("package hoola.app.screens")
+    return (src[i:] if i > 0 else src) + "\n"
