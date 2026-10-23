@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     cyber_certin_feed: str = ""            # v0.137 Cyber Suraksha: CERT-In advisories RSS / Atom URL ('' = skipped; NVD + CISA KEV still used)
     cyber_sleep_between_s: float = 1.0     # politeness gap between per-item NVD / HIBP calls (0 in tests)
     devops_llm: bool = True                # v0.137 DevOps: optional model wording for unknown failures / custom scripts
+    customs_llm: bool = True               # v0.139 Customs: model HS-code suggestions (false = heading table + her learned codes only)
+    courier_dir: str = ""                  # v0.139 Courier desk label PDFs ('' = data/courier)
+    courier_poll_min: int = 0              # minutes between courier tracking polls per owner (0 = module default 30)
+    courier_bluedart_base: str = ""        # Blue Dart API base ('' = https://apigateway.bluedart.com/in/transportation)
+    logistics_dir: str = ""                # v0.139 Logistics POD / loading / damage photos ('' = data/logistics)
     studio_on: bool = True                 # v0.68 Hoola Video Studio (AI-generated shots: Seedance / Veo / Kling / Wan / Omni)
     openrouter_api_key: str = ""           # one key for Seedance 2.0 / 2.5, Veo 3.1, Kling 3.0, Wan 3.0 (recommended)
     fal_key: str = ""                      # backup: Seedance via fal

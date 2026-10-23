@@ -758,3 +758,30 @@ for _t, _l, _h in ((DEV_TOOLS, DEV_LABELS, DEV_HANDLERS), (QA_TOOLS, QA_LABELS, 
     TOOLS.extend(t for t in _t if t["name"] not in _seen)
     TOOL_LABELS.update(_l)
     HANDLERS.update(_h)
+
+# v0.139 Safar suite: 7 Logistics, transport & travel Sahayaks (logistics coordinator, fleet manager, warehouse manager, courier
+# desk, travel agent, driver coordinator, import & customs desk). Courier's customer-safe biz_parcel_* tools go into the business
+# WhatsApp inbox only (never offered to her model), like the Seva suite's biz_* tools.
+from .customs_tools import CUSTOMS_HANDLERS, CUSTOMS_LABELS, CUSTOMS_TOOLS  # noqa: E402
+from .travel_tools import TRAVEL_HANDLERS, TRAVEL_LABELS, TRAVEL_TOOLS  # noqa: E402
+from .warehouse_tools import WAREHOUSE_HANDLERS, WAREHOUSE_LABELS, WAREHOUSE_TOOLS  # noqa: E402
+from .fleet_tools import FLEET_HANDLERS, FLEET_LABELS, FLEET_TOOLS  # noqa: E402
+from .courier_tools import (COURIER_BIZ_HANDLERS, COURIER_BIZ_LABELS, COURIER_BIZ_TOOLS, COURIER_HANDLERS,  # noqa: E402
+                            COURIER_LABELS, COURIER_TOOLS)
+from .drivers_tools import DRIVERS_HANDLERS, DRIVERS_LABELS, DRIVERS_TOOLS  # noqa: E402
+from .logistics_tools import LOGISTICS_HANDLERS, LOGISTICS_LABELS, LOGISTICS_TOOLS  # noqa: E402
+
+for _t, _l, _h in ((CUSTOMS_TOOLS, CUSTOMS_LABELS, CUSTOMS_HANDLERS), (TRAVEL_TOOLS, TRAVEL_LABELS, TRAVEL_HANDLERS),
+                   (WAREHOUSE_TOOLS, WAREHOUSE_LABELS, WAREHOUSE_HANDLERS), (FLEET_TOOLS, FLEET_LABELS, FLEET_HANDLERS),
+                   (COURIER_TOOLS, COURIER_LABELS, COURIER_HANDLERS), (DRIVERS_TOOLS, DRIVERS_LABELS, DRIVERS_HANDLERS),
+                   (LOGISTICS_TOOLS, LOGISTICS_LABELS, LOGISTICS_HANDLERS)):
+    _seen = {t["name"] for t in TOOLS}
+    TOOLS.extend(t for t in _t if t["name"] not in _seen)
+    TOOL_LABELS.update(_l)
+    HANDLERS.update(_h)
+TOOL_LABELS.update(COURIER_BIZ_LABELS)
+HANDLERS.update(COURIER_BIZ_HANDLERS)
+_have = {t["name"] for t in _biz_inbox.BIZ_TOOLS}
+_biz_inbox.BIZ_TOOLS.extend(t for t in COURIER_BIZ_TOOLS if t["name"] not in _have)
+_biz_inbox.BIZ_HANDLERS.update(COURIER_BIZ_HANDLERS)
+_biz_inbox.BIZ_LABELS.update(COURIER_BIZ_LABELS)

@@ -877,7 +877,7 @@ def track(tenant: str, ref: str, conv: str = "") -> dict:
         return {"say": f"Courier tracking Courier desk se judti hai (abhi juda nahi). AWB {awb} apne courier app mein dekhiye, phir status bataiye.",
                 "shipment": get(tenant, sid)}
     if r.get("error"):
-        return {"say": f"Courier ne jawab nahi diya: {r['error']}", "shipment": get(tenant, sid)}
+        return {"say": f"Courier desk: {r['error']} Wahan jo likha ho mujhe bataiye (`update`).", "shipment": get(tenant, sid)}
     new = 0
     with _LOCK, session() as s:
         sh = s.get(LogiShipment, sid)

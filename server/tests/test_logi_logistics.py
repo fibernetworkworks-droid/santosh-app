@@ -276,7 +276,7 @@ def test_docs_pod_and_courier(lg, monkeypatch, tmp_path):
     ship(S, consignee="Patil Stores", consignee_gstin=NAG, consignee_place="Nagpur", consignee_pincode="440001", vehicle_no="",
          courier="delhivery", awb="1234567890123", fleet="courier", mode="courier")
     t = S.track(T, "1234567890123")
-    assert "juda nahi" in t["say"] and t["shipment"]["status"] == "booked"
+    assert "Courier desk" in t["say"] and "delhivery" in t["say"] and t["shipment"]["status"] == "booked"   # no key: her courier's page
     monkeypatch.setattr(S, "_courier_track", lambda tenant, courier, awb: {"status": "out_for_delivery", "events": [
         {"at": "2026-10-24T07:00:00", "what": "Out for delivery", "where": "Nagpur hub"}]})
     t = S.track(T, "S-0002")

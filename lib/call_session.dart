@@ -45,6 +45,9 @@ const callCardKinds = {
   'devsahayak_push', 'devsahayak_merge', 'devsahayak_deploy', 'qa_bug', 'qa_export', 'itadmin_change', 'itadmin_checklist',
   'ispnoc_fault', 'ispnoc_change', 'ispnoc_alert', 'cyber_action', 'cyber_alerts', 'cyber_check', 'cyber_incident',
   'devops_deploy', 'devops_alert', 'docwriter_publish', 'appreview_report', 'appreview_handoff', 'product_publish',
+  // v0.139 Safar suite (cards that wait for her)
+  'customs_filing', 'customs_alert', 'travel_booking', 'travel_quote', 'travel_reminder', 'warehouse_adjust', 'fleet_spend',
+  'fleet_trip', 'fleet_alert', 'courier_card', 'drivers_plan', 'drivers_message', 'logistics_ewb', 'logistics_update', 'logistics_alert',
 };
 
 /// The live voice call, owned by the app (not by a screen): it keeps going while the owner opens Chat, Connect,

@@ -31,6 +31,13 @@ import 'ispnoc_screen.dart';
 import 'itadmin_screen.dart';
 import 'product_screen.dart';
 import 'qa_screen.dart';
+import 'courier_screen.dart';
+import 'customs_screen.dart';
+import 'drivers_screen.dart';
+import 'fleet_screen.dart';
+import 'logistics_screen.dart';
+import 'travel_screen.dart';
+import 'warehouse_screen.dart';
 import 'site_screen.dart';
 import 'app_design_screen.dart';
 import 'kalam_screen.dart';
@@ -497,6 +504,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Feedback se roadmap, specs, release notes'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.route_outlined, color: C.accent),
+              title: Text('${app.aName} · Logistics', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Shipment, LR / challan, e-way bill, tracking, graahak ko update'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LogisticsScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.local_shipping_rounded, color: C.accent),
+              title: Text('${app.aName} · Fleet manager', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Gaadiyan, kaagaz, diesel, service, trip aur load'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FleetScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.warehouse_rounded, color: C.accent),
+              title: Text('${app.aName} · Godown', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Bin-wise stock, maal aamad, pick list, ginti; badlav aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WarehouseScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.inventory_2_rounded, color: C.accent),
+              title: Text('${app.aName} · Courier desk', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Pickup book (aapke tap par), parcel kahan hai, NDR, COD milaan, return label'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CourierScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.luggage_rounded, color: C.accent),
+              title: Text('${app.aName} · Travel agent', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Yatra plan, train / flight / hotel tulna, kaagaz, Tatkal yaad; booking aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TravelScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.badge_rounded, color: C.accent),
+              title: Text('${app.aName} · Driver coordinator', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Duty, trip sheet, licence yaad, hazri'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DriversScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.directions_boat_rounded, color: C.accent),
+              title: Text('${app.aName} · Import & customs', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Import ke kaagaz, HS code jaanch, clearance aur demurrage ka hisaab; filing aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CustomsScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

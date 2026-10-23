@@ -703,6 +703,14 @@ def init_db(url: str | None = None):
     from .docwriter import models as _docwriter  # noqa: F401
     from .appreview import models as _appreview  # noqa: F401
     from .product import models as _product  # noqa: F401
+    # v0.139 Safar suite
+    from .customs import models as _customs  # noqa: F401
+    from .travel import models as _travel  # noqa: F401
+    from .warehouse import models as _warehouse  # noqa: F401
+    from .fleet import models as _fleet  # noqa: F401
+    from .courier import models as _courier  # noqa: F401
+    from .drivers import models as _drivers  # noqa: F401
+    from .logistics import models as _logistics  # noqa: F401
     from .office import service as _office  # noqa: F401
     from .lekhak import service as _lekhak  # noqa: F401
     from .agent import pakka as _pakka  # noqa: F401

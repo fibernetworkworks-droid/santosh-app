@@ -61,6 +61,15 @@ async def lifespan(app: FastAPI):
             _os.environ.setdefault("CYBER_CERTIN_FEED", _st.cyber_certin_feed)
         if not _st.devops_llm:
             _os.environ.setdefault("DEVOPS_LLM", "false")
+        if not _st.customs_llm:                 # v0.139 Safar suite
+            _os.environ.setdefault("CUSTOMS_LLM", "false")
+        for _k, _v in (("COURIER_DIR", _st.courier_dir), ("COURIER_BLUEDART_BASE", _st.courier_bluedart_base),
+                       ("LOGISTICS_DIR", _st.logistics_dir)):
+            if _v:
+                _os.environ.setdefault(_k, _v)
+        if _st.courier_poll_min:
+            from .courier import service as _courier_svc
+            _courier_svc.POLL_MIN = int(_st.courier_poll_min)
     except Exception:
         log.exception("tech suite settings")
     from .operator import service as operator_service
@@ -80,7 +89,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.138.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.139.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -184,7 +193,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design", "app_android", "seva", "helpdesk", "shikayat", "aftersales", "feedback", "wapsi", "samudaay", "gyaan", "kaam_watch", "app_ideas", "devsahayak", "itadmin", "isp_noc", "cyber", "devops", "docwriter", "app_review", "product"] + (["qa"] if _qa_ok() else []) + (["callcentre"] if st.public_base_url and st.gemini_api_key else []) + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design", "app_android", "seva", "helpdesk", "shikayat", "aftersales", "feedback", "wapsi", "samudaay", "gyaan", "kaam_watch", "app_ideas", "devsahayak", "itadmin", "isp_noc", "cyber", "devops", "docwriter", "app_review", "product", "customs", "travel", "warehouse", "fleet", "courier", "drivers", "logistics"] + (["qa"] if _qa_ok() else []) + (["callcentre"] if st.public_base_url and st.gemini_api_key else []) + (["video_editor"] if shutil.which("ffmpeg") else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -3357,6 +3366,18 @@ from .product.api import make_router as _product_router  # noqa: E402
 
 for _mk in (_devsahayak_router, _qa_router, _itadmin_router, _ispnoc_router, _cyber_router, _devops_router,
             _docwriter_router, _appreview_router, _product_router):
+    app.include_router(_mk(require_key, current_tenant))
+
+# v0.139 Safar suite: 7 Logistics, transport & travel Sahayaks (all routes key-protected under /api/<mod>/*; no public routes)
+from .customs.api import make_router as _customs_router  # noqa: E402
+from .travel.api import make_router as _travel_router  # noqa: E402
+from .warehouse.api import make_router as _warehouse_router  # noqa: E402
+from .fleet.api import make_router as _fleet_router  # noqa: E402
+from .courier.api import make_router as _courier_router  # noqa: E402
+from .drivers.api import make_router as _drivers_router  # noqa: E402
+from .logistics.api import make_router as _logistics_router  # noqa: E402
+
+for _mk in (_customs_router, _travel_router, _warehouse_router, _fleet_router, _courier_router, _drivers_router, _logistics_router):
     app.include_router(_mk(require_key, current_tenant))
 
 # v0.134 Gyaan (knowledge base / agentic RAG): /api/gyaan/*

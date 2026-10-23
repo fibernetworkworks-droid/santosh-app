@@ -393,6 +393,20 @@ def vehicle_view(tenant: str, ref: str) -> dict:
         return _vehicle_view(s, _veh(s, tenant, ref), today(tenant), full=True)
 
 
+def find_vehicle(tenant: str, ref: str) -> dict | None:
+    """For the Driver Sahayak: {id, number, kind, kmpl, gvw_kg, capacity_t, papers_ok, papers_bad} of one vehicle by id / number,
+    or None. Fleet keeps payload (capacity_t), not gross weight, so gvw_kg is None here (drivers uses her own number for it)."""
+    if not str(ref or "").strip():
+        return None
+    try:
+        with session() as s:
+            v = _vehicle_view(s, _veh(s, tenant, ref), today(tenant))
+    except FleetError:
+        return None
+    return {"id": v["id"], "number": v["reg"], "kind": v["type"], "kmpl": v.get("kmpl"), "gvw_kg": None,
+            "capacity_t": v.get("capacity_t"), "papers_ok": v.get("papers_ok"), "papers_bad": v.get("papers_bad") or []}
+
+
 # ---------------------------------------------------------------- documents
 def save_doc(tenant: str, vehicle: str, kind: str, expires: str = "", issued: str = "", number: str = "", issuer: str = "",
              file_id: str = "", windows: list | None = None, not_needed: bool | None = None, notes: str = "") -> dict:

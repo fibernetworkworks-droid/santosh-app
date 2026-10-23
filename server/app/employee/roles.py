@@ -111,6 +111,21 @@ DUTIES: dict[str, dict] = {
                    "prefix": (), "tools": {"app_review", "app_review_dekho", "app_check", "file_read"}},
     "product_work": {"label": "Product manager", "say": "feedback / support / sales se roadmap, specs aur release notes (bahar bhejna aapke tap se)",
                      "prefix": (), "tools": {"product", "product_dekho", "file_read"}},
+    # v0.139 Safar suite
+    "customs_work": {"label": "Import & customs", "say": "import ke kaagaz ki list, HS code jaanch, clearance ka hisaab (filing aapki haan se, CHA / aap file karte hain)",
+                     "prefix": (), "tools": {"customs", "customs_dekho", "file_read"}},
+    "travel_work": {"label": "Travel agent", "say": "yatra ka plan, train / flight / hotel ki tulna, kaagaz taiyaar, Tatkal / check-in yaad (booking aur payment aapki haan se)",
+                    "prefix": (), "tools": {"travel", "travel_dekho", "order_karo", "file_read"}},
+    "warehouse_work": {"label": "Godown", "say": "bin-wise stock, maal aaya (GRN) aur kahan rakhna, pick list, cycle count (stock badlav / write-off aapki haan se)",
+                       "prefix": (), "tools": {"warehouse", "warehouse_dekho", "file_read"}},
+    "fleet_work": {"label": "Fleet / gaadiyan", "say": "gaadiyon ke kaagaz aur reminder, diesel aur average, service, tyre, trip aur load plan (har kharcha aapki haan se)",
+                   "prefix": (), "tools": {"fleet", "fleet_dekho", "file_read"}},
+    "courier_desk": {"label": "Courier desk", "say": "parcel book karna (aapke tap par), tracking, delivery atki to graahak se baat ka draft, COD milaan, return label",
+                     "prefix": (), "tools": {"courier", "courier_dekho", "biz_parcel_status", "biz_parcel_fix", "file_read"}},
+    "driver_coord": {"label": "Driver coordinator", "say": "driver ki duty lagana (kaanoon ki ghante ki seema ke saath), trip sheet, licence / medical yaad, hazri payroll ke liye (message aapke tap se, paisa kabhi nahi)",
+                     "prefix": (), "tools": {"drivers", "drivers_dekho", "file_read"}},
+    "logistics_work": {"label": "Logistics", "say": "shipment, LR / challan / packing list, e-way bill ki taiyaari, tracking, graahak ko update draft (e-way bill portal par aur graahak ko message sirf aapke tap se)",
+                       "prefix": (), "tools": {"logistics", "logistics_dekho", "file_read"}},
     "research": {"label": "Jaankari dhoondhna", "say": "web, maps, mausam, public APIs",
                  "prefix": ("maps_", "api_"), "tools": {"google_search", "web_sources", "open_website", "browse_web", "browse_result", "get_weather",
                                                        "memory_search"}},
@@ -122,7 +137,9 @@ CUSTOMER_TOOLS = {"biz_repair_status", "biz_order_status", "biz_free_slots", "bi
                   "biz_my_dues", "biz_pay_link", "biz_promise", "biz_handover", "biz_note",
                   # v0.133 Seva suite
                   "biz_seva_answer", "biz_seva_ticket", "biz_seva_status", "biz_seva_request", "biz_seva_rate",
-                  "biz_shikayat", "biz_shikayat_status", "biz_return_start", "biz_return_status"}
+                  "biz_shikayat", "biz_shikayat_status", "biz_return_start", "biz_return_status",
+                  # v0.139 Safar suite (courier desk)
+                  "biz_parcel_status", "biz_parcel_fix"}
 
 ROLES: dict[str, dict] = {
     "front_desk": {"label": "Front desk", "say": "Dukaan / clinic / office ka pehla chehra: sawaal, appointment, follow-up",
@@ -238,6 +255,21 @@ ROLES: dict[str, dict] = {
                      "duties": ["app_review", "records", "research"]},
     "product_manager": {"label": "Product manager", "say": "Feedback se roadmap, specs, release notes; bahar bhejna aapke tap se",
                         "duties": ["product_work", "records", "research", "reminders"]},
+    # v0.139 Safar suite
+    "customs_desk": {"label": "Import & customs desk", "say": "Import ke kaagaz, HS code jaanch, clearance aur demurrage ka hisaab; filing aapki haan se",
+                     "duties": ["customs_work", "records", "reminders"]},
+    "travel_agent": {"label": "Travel agent", "say": "Yatra plan, train / flight / hotel tulna, kaagaz, Tatkal yaad; booking aur payment aapki haan se",
+                     "duties": ["travel_work", "customers", "reminders", "records"]},
+    "warehouse_manager": {"label": "Warehouse manager", "say": "Bin-wise stock, GRN, pick list, cycle count; stock badlav aapki haan se",
+                          "duties": ["warehouse_work", "records", "reminders"]},
+    "fleet_manager": {"label": "Fleet manager", "say": "Gaadiyon ke kaagaz, diesel, service, tyre, trip aur load; har kharcha aapki haan se",
+                      "duties": ["fleet_work", "reminders", "records"]},
+    "courier_desk": {"label": "Courier desk (Courier Sahayak)", "say": "Parcel booking aapke tap par, tracking, NDR, COD milaan, return label",
+                     "duties": ["courier_desk", "customers", "records", "reminders"]},
+    "driver_coordinator": {"label": "Driver coordinator", "say": "Driver duty kaanoon ke ghante ke saath, trip sheet, licence yaad, hazri",
+                           "duties": ["driver_coord", "reminders", "records"]},
+    "logistics_coordinator": {"label": "Logistics coordinator", "say": "Shipment, LR / challan, e-way bill, tracking, graahak ko update; portal aur message aapke tap se",
+                              "duties": ["logistics_work", "customers", "records", "reminders"]},
     "custom": {"label": "Apna kaam", "say": "Aap khud chuniye Hoola kaun se kaam karega", "duties": []},
 }
 
@@ -427,6 +459,33 @@ PRESETS: dict[str, dict] = {
     "product": {"label": "Product / app team", "role": "product_manager", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
                 "about_hint": "Kaun sa product, kaun graahak, kitne log team mein, release kitni baar",
                 "rules": ["Reach / effort / revenue ke number sirf owner se, khud kabhi mat gadho", "Roadmap ya release notes bahar sirf owner ke tap se"]},
+    # v0.139 Safar suite
+    "importer": {"label": "Importer / customs desk", "role": "customs_desk", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
+                 "about_hint": "Kya import karte hain, kis desh se, kaun sa port, CHA kaun hai, IEC / GSTIN",
+                 "rules": ["Bill of Entry ka data CHA ko sirf owner ki haan ke card se", "Duty rate / exchange rate / free days sirf owner ya CHA ke diye hue",
+                           "HS code ka sujhaav andaaza hai, owner / CHA pakka karein"]},
+    "travel_agency": {"label": "Travel agency / tour operator", "role": "travel_agent", "kind": "office", "slot_minutes": 30, "after_hours": "note",
+                      "about_hint": "Apne parivaar ke liye ya graahakon ke liye, kaun si jagah, train / flight / hotel, markup kitna",
+                      "rules": ["Booking sirf owner ke tap ke card se; payment owner khud karti hain", "Kiraya / samay kabhi andaaze se mat likho",
+                                "ID number sirf Pehchaan Locker reference se"]},
+    "warehouse": {"label": "Godown / warehouse", "role": "warehouse_manager", "kind": "shop", "slot_minutes": 30, "after_hours": "quiet",
+                  "about_hint": "Kitne godown / rack / bin, kaun sa maal (expiry wala?), maal kahan se aata hai, order kaise nikalte hain",
+                  "rules": ["Count ke baad stock badlav / write-off sirf owner ke card par tap se", "Expired maal pick mein kabhi nahi", "Paisa kabhi nahi"]},
+    "fleet": {"label": "Transport / fleet owner", "role": "fleet_manager", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
+              "about_hint": "Kitni gaadiyan (truck / tempo / bus / taxi), kis route par, diesel kahan se, service kahan hoti hai",
+              "rules": ["Har kharcha (service, tyre, permit, challan) sirf owner ki haan ke card se", "Capacity se zyada maal kabhi nahi",
+                        "Khatam insurance / fitness / permit wali gaadi trip par nahi"]},
+    "courier": {"label": "Online dukaan / parcel bhejne wale", "role": "courier_desk", "kind": "shop", "slot_minutes": 30, "after_hours": "note",
+                "about_hint": "Roz kitne parcel, kaun sa courier (Shiprocket / Delhivery / apna), COD kitna, pickup kahan se",
+                "rules": ["Courier booking / return label sirf owner ke tap se (wallet kat-ta hai)", "Courier ka status jaisa unhone bataya; apni taraf se tareekh nahi",
+                          "Graahak ko sirf uska parcel"]},
+    "drivers": {"label": "Transport / gaadiyan / driver", "role": "driver_coordinator", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
+                "about_hint": "Kitne driver, kaun si gaadi, shift kaise lagti hai, trip sheet kaise bharte hain",
+                "rules": ["Driver ko message sirf owner ke tap se", "Driver ko paise / advance Hoola nahi deta", "Licence khatam = duty nahi"]},
+    "logistics": {"label": "Dispatch / transport / logistics", "role": "logistics_coordinator", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
+                  "about_hint": "Kya maal bhejte hain, kahan, apni gaadi / transporter / courier, GSTIN, e-way bill kaun banata hai",
+                  "rules": ["E-way bill banana / Part B / extension sirf owner ke tap se", "Graahak ko message owner bhejti hai; Hoola sirf draft",
+                            "Tracking sirf driver / transporter / courier ki batayi baat se, kabhi andaaza nahi"]},
 }
 
 LEVELS = ("seekh", "saathi", "bharosa")
@@ -459,6 +518,8 @@ READ = {
     "service_desk_dekho", "feedback_dekho", "wapsi_dekho", "biz_return_status", "samudaay_dekho", "call_centre_dekho",
     # v0.137 Tech suite
     "dev_dekho", "qa_dekho", "it_admin_dekho", "noc_dekho", "cyber_dekho", "devops_dekho", "docs_writer_dekho", "app_review_dekho", "product_dekho",
+    # v0.139 Safar suite
+    "customs_dekho", "travel_dekho", "warehouse_dekho", "fleet_dekho", "courier_dekho", "biz_parcel_status", "drivers_dekho", "logistics_dekho",
     "theka_dekho", "ads_dekho", "brand_dekho", "website_dekho", "app_dekho",
 }
 BIG = {

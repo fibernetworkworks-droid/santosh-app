@@ -258,8 +258,14 @@ def card_digest(kind: str, target: str, tenant: str) -> tuple[str, dict[str, Any
         if card is None:
             raise ApproveError("Yeh card ab baaki nahi hai.")
         show = {"title": card["title"], "payee": card["payee"], "amount": card["amount"], "hash": card["hash"]}
+    elif kind == "courier":                       # v0.139 a courier booking / return label / RTO that may charge her courier wallet
+        from .courier import service as cs
+        card = cs.approval_card(tenant, target)
+        if card is None:
+            raise ApproveError("Yeh card ab baaki nahi hai.")
+        show = {"title": card["title"], "payee": card["payee"], "amount": card["amount"], "hash": card["hash"]}
     else:
-        raise ApproveError("kind = bazar | studio | deal | ads | mandate | domain | wapsi | wapsi_send")
+        raise ApproveError("kind = bazar | studio | deal | ads | mandate | domain | wapsi | wapsi_send | courier")
     return hashlib.sha256(json.dumps(show, sort_keys=True, ensure_ascii=False).encode()).hexdigest(), show
 
 
@@ -267,7 +273,7 @@ def needed(tenant: str, kind: str, target: str) -> bool:
     """A fingerprint is needed for this approval: an active phone exists and the card moves / spends money."""
     if not active_on(tenant):
         return False
-    if kind in ("studio", "deal", "mandate", "domain", "wapsi", "wapsi_send"):
+    if kind in ("studio", "deal", "mandate", "domain", "wapsi", "wapsi_send", "courier"):
         return True
     if kind == "ads":                             # v0.108 only a change that spends more ad money
         from .ads import service as ads
@@ -280,7 +286,7 @@ def needed(tenant: str, kind: str, target: str) -> bool:
 
 
 def challenge(tenant: str, kind: str, target: str) -> dict[str, Any]:
-    if kind in ("bazar", "studio", "deal", "ads", "mandate", "domain", "wapsi", "wapsi_send"):
+    if kind in ("bazar", "studio", "deal", "ads", "mandate", "domain", "wapsi", "wapsi_send", "courier"):
         digest, show = card_digest(kind, target, tenant)
     elif kind == "remove":
         digest, show = hashlib.sha256(f"remove|{target}".encode()).hexdigest(), {"title": "Phone hatana"}

@@ -308,6 +308,8 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _sevaCards = {};  // v0.133 one card per id where the suite updates a card in place
   int techTick = 0;                            // v0.137 Tech suite screens refresh on their events
   final Map<String, FeedItem> _techCards = {};  // v0.137 one card per id where the suite updates a card in place
+  int safarTick = 0;                           // v0.139 Safar suite screens refresh on their events
+  final Map<String, FeedItem> _safarCards = {}; // v0.139 one card per id where the suite updates a card in place
   int adsTick = 0;                             // v0.108 bumps on ads events (the Ads screen refreshes)
   final Map<String, FeedItem> _adsPlans = {};   // v0.108 one card per budget plan, changes updated in place
   int kalamTick = 0;                           // v0.101 bumps on content-writer events (the Kalam screen refreshes)
@@ -1380,6 +1382,49 @@ class Santosh extends ChangeNotifier {
         }
         techTick++;
         break;
+      case 'customs_filing':
+      case 'customs_shipment':
+      case 'customs_alert':
+      case 'customs_day':
+      case 'travel_booking':
+      case 'travel_quote':
+      case 'travel_trip':
+      case 'travel_reminder':
+      case 'travel_day':
+      case 'warehouse_adjust':
+      case 'warehouse_grn':
+      case 'warehouse_pick':
+      case 'warehouse_count':
+      case 'warehouse_day':
+      case 'fleet_spend':
+      case 'fleet_trip':
+      case 'fleet_alert':
+      case 'fleet_day':
+      case 'courier_card':
+      case 'courier_parcel':
+      case 'courier_day':
+      case 'drivers_plan':
+      case 'drivers_message':
+      case 'drivers_alert':
+      case 'drivers_day':
+      case 'logistics_ewb':
+      case 'logistics_update':
+      case 'logistics_shipment':
+      case 'logistics_alert':
+      case 'logistics_day':
+        // v0.139 Safar suite: cards keyed by their id are updated in place (the newest data wins)
+        final sp = Map<String, dynamic>.from(p);
+        final sk = safarCardKey(ev.kind, sp);
+        final sOld = sk.isEmpty ? null : _safarCards[sk];
+        if (sOld != null) {
+          sOld.data = {...sOld.data, ...sp};
+        } else {
+          final it = FeedItem(ev.kind, sp);
+          if (sk.isNotEmpty) _safarCards[sk] = it;
+          feed.add(it);
+        }
+        safarTick++;
+        break;
       case 'brand_design':
       case 'brand_approval':
         final bd = Map<String, dynamic>.from((p['design'] as Map?) ?? const {});
@@ -1938,4 +1983,32 @@ String techCardKey(String kind, Map<String, dynamic> p) {
     _ => ('', ''),
   };
   return group.isEmpty || id.isEmpty || id == 'null' ? '' : '$group:$id';
+}
+
+
+/// v0.139 Safar suite: which cards are one-per-id (updated in place). '' = always a new card.
+String safarCardKey(String kind, Map<String, dynamic> p) {
+  String sub(String k) => p[k] is Map ? '${(p[k] as Map)['id'] ?? ''}' : '';
+  final id = switch (kind) {
+    'customs_filing' => sub('filing'),
+    'customs_shipment' => sub('shipment'),
+    'travel_booking' || 'travel_quote' => '${p['id'] ?? ''}',
+    'travel_trip' => sub('trip'),
+    'warehouse_adjust' => sub('adjust'),
+    'warehouse_grn' => sub('grn'),
+    'warehouse_pick' => sub('pick'),
+    'warehouse_count' => sub('count'),
+    'fleet_spend' => sub('spend'),
+    'fleet_trip' => sub('trip'),
+    'courier_card' => sub('card'),
+    'courier_parcel' => sub('parcel'),
+    'drivers_plan' => (p['day'] ?? '') == '' ? '' : '${p['day']}:${p['title'] ?? ''}',
+    'drivers_message' => '${p['id'] ?? ''}',
+    'logistics_ewb' => sub('ask'),
+    'logistics_update' => sub('message'),
+    'logistics_shipment' => sub('shipment'),
+    'logistics_alert' => (p['id'] ?? '') == '' ? '' : '${p['id']}:${p['kind'] ?? ''}',
+    _ => '',
+  };
+  return id.isEmpty || id == 'null' ? '' : '$kind:$id';
 }

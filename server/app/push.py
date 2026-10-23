@@ -268,6 +268,36 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: Deploy: aapki haan chahiye", _say) if p.get("push") else None
     if kind == "devops_alert":
         return (f"{name}: DevOps alert", _say) if p.get("push") else None
+    # v0.139 Safar suite
+    if kind == "customs_filing":
+        return (f"{name}: Import filing: aapki haan chahiye", _say) if (p.get("filing") or {}).get("status") == "waiting" else None
+    if kind == "travel_booking":
+        return (f"{name}: Yatra: booking ki haan chahiye", _say) if p.get("status") == "waiting" else None
+    if kind == "warehouse_adjust":
+        return (f"{name}: Godown: stock badlav aapki haan ka", _say) if (p.get("adjust") or {}).get("status") == "waiting" else None
+    if kind == "courier_card":
+        c = p.get("card") or {}
+        if c.get("status") != "waiting":
+            return None
+        b = c.get("body") or {}
+        return (f"{name}: Courier: aapki haan chahiye", f"{b.get('title', '')} - {b.get('say', '')}"[:300])
+    if kind == "courier_parcel":
+        if p.get("event") not in ("exception", "rto", "delivered", "out_for_delivery"):
+            return None
+        pc = p.get("parcel") or {}
+        return (f"{name}: Parcel: {pc.get('number', '')}", f"{pc.get('status_label', '')}: {pc.get('raw', '')}"[:300])
+    if kind == "logistics_alert":
+        return (f"{name}: Logistics · {p.get('number', '')}", str(p.get("text") or "")[:300])
+    _safar_text = {"courier_day": "Aaj ka courier note", "logistics_day": "Aaj ka dispatch"}
+    if kind in _safar_text:
+        return (f"{name}: {_safar_text[kind]}", str(p.get("text") or "")[:300])
+    _safar = {"customs_alert": "Import / customs", "customs_day": "Aaj ka import desk", "travel_quote": "Graahak ka quote taiyaar",
+              "travel_reminder": "Yatra yaad", "travel_day": "Aaj ki yatra", "warehouse_day": "Aaj ka godown note",
+              "fleet_spend": "Fleet: kharche ki haan chahiye", "fleet_alert": "Fleet", "fleet_day": "Aaj ka fleet note",
+              "drivers_alert": "Driver ke kaagaz", "drivers_plan": "Driver duty: bhejne ke liye taiyaar", "drivers_day": "Aaj ke driver",
+              "logistics_ewb": "E-way bill: aapka tap chahiye"}
+    if kind in _safar:
+        return (f"{name}: {_safar[kind]}", _say)
     if kind == "site_board":
         if not p.get("push"):
             return None
@@ -447,7 +477,9 @@ PUSH_KINDS = {"message", "bazar_approval", "artifact", "pc_file", "photo_made", 
               # v0.133 Seva suite
               "seva_exception", "seva_sla", "seva_ticket", "seva_day", "helpdesk_change", "helpdesk_alert", "helpdesk_escalate", "helpdesk_day", "shikayat_comp", "shikayat_case", "shikayat_alert", "shikayat_day", "aftersales_charge", "aftersales_reminders", "aftersales_visit", "aftersales_day", "feedback_reply", "feedback_alert", "feedback_report", "wapsi_return", "wapsi_refund", "wapsi_day", "samudaay_alert", "samudaay_action", "samudaay_question", "samudaay_join", "samudaay_template", "samudaay_week", "callcentre_script", "callcentre_message", "callcentre_call",
               # v0.137 Tech suite
-              "devsahayak_merge", "devsahayak_deploy", "devsahayak_push", "devsahayak_review", "devsahayak_task", "qa_bug", "qa_export", "qa_run", "itadmin_change", "itadmin_renewal", "itadmin_checklist", "itadmin_review", "itadmin_day", "ispnoc_change", "ispnoc_fault", "ispnoc_alert", "ispnoc_day", "cyber_action", "cyber_alerts", "cyber_incident", "cyber_advisory", "cyber_day", "devops_build", "devops_deploy", "devops_alert", "devops_day", "docwriter_publish", "docwriter_sync", "appreview_handoff", "appreview_alert", "product_publish", "product_day", "product_backlog"}
+              "devsahayak_merge", "devsahayak_deploy", "devsahayak_push", "devsahayak_review", "devsahayak_task", "qa_bug", "qa_export", "qa_run", "itadmin_change", "itadmin_renewal", "itadmin_checklist", "itadmin_review", "itadmin_day", "ispnoc_change", "ispnoc_fault", "ispnoc_alert", "ispnoc_day", "cyber_action", "cyber_alerts", "cyber_incident", "cyber_advisory", "cyber_day", "devops_build", "devops_deploy", "devops_alert", "devops_day", "docwriter_publish", "docwriter_sync", "appreview_handoff", "appreview_alert", "product_publish", "product_day", "product_backlog",
+              # v0.139 Safar suite
+              "customs_filing", "customs_alert", "customs_day", "travel_booking", "travel_quote", "travel_reminder", "travel_day", "warehouse_adjust", "warehouse_day", "fleet_spend", "fleet_alert", "fleet_day", "courier_card", "courier_parcel", "courier_day", "drivers_alert", "drivers_plan", "drivers_day", "logistics_ewb", "logistics_alert", "logistics_day"}
 RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
 
 

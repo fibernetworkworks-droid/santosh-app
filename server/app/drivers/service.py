@@ -252,22 +252,28 @@ def _veh_key(v: str) -> str:
 def vehicle_info(tenant: str, vehicle: str, fleet_id: str = "") -> dict | None:
     """Fleet module first (neighbour, by id or number) if present, else her light list here."""
     key = _veh_key(vehicle)
+    got = None
     try:
-        from ..fleet import service as F           # optional neighbour module
-        fn = getattr(F, "find_vehicle", None) or getattr(F, "vehicle_brief", None)
+        from ..fleet import service as F           # neighbour module (Fleet Sahayak)
+        fn = getattr(F, "find_vehicle", None)
         if fn:
             got = fn(tenant, fleet_id or vehicle)
-            if isinstance(got, dict) and got:
-                return {"number": got.get("number") or got.get("reg_no") or key, "fleet_id": got.get("id", ""),
-                        "gvw_kg": got.get("gvw_kg") or got.get("gvw"), "kind": got.get("kind") or got.get("body") or "",
-                        "kmpl": got.get("kmpl"), "from": "fleet"}
     except Exception:
-        pass
+        got = None
+    mine = {}
+    lk = _veh_key(got.get("number")) if isinstance(got, dict) and got else key
+    if lk:
+        with session() as s:
+            mine = _j(_st(s, tenant).vehicles, {}).get(lk) or {}
+    if isinstance(got, dict) and got:
+        # fleet keeps payload, not gross weight: her own GVW / km-per-litre here fill what fleet doesn't know
+        return {"number": got.get("number") or got.get("reg_no") or key, "fleet_id": got.get("id", ""),
+                "gvw_kg": got.get("gvw_kg") or got.get("gvw") or mine.get("gvw_kg"),
+                "kind": got.get("kind") or mine.get("kind") or "", "kmpl": got.get("kmpl") or mine.get("kmpl"),
+                "papers_bad": got.get("papers_bad") or [], "from": "fleet"}
     if not key:
         return None
-    with session() as s:
-        v = _j(_st(s, tenant).vehicles, {}).get(key)
-    return {"number": key, "fleet_id": "", **v, "from": "drivers"} if v else None
+    return {"number": key, "fleet_id": "", **mine, "from": "drivers"} if mine else None
 
 
 # ---------------------------------------------------------------- drivers

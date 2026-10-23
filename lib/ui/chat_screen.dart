@@ -38,6 +38,13 @@ import 'ispnoc_screen.dart';
 import 'itadmin_screen.dart';
 import 'product_screen.dart';
 import 'qa_screen.dart';
+import 'courier_screen.dart';
+import 'customs_screen.dart';
+import 'drivers_screen.dart';
+import 'fleet_screen.dart';
+import 'logistics_screen.dart';
+import 'travel_screen.dart';
+import 'warehouse_screen.dart';
 import 'site_hosting.dart';
 import 'site_screen.dart';
 import 'app_android.dart';
@@ -806,6 +813,67 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return ProductNoteCard(key: ValueKey('pr${(it.data['release'] as Map?)?['id']}'), app: app, data: it.data);
     case 'product_day':
       return ProductNoteCard(app: app, data: it.data);
+    // v0.139 Safar suite
+    case 'customs_filing':
+      return CustomsFilingCard(key: ValueKey('cf${(it.data['filing'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'customs_shipment':
+      return CustomsShipmentCard(key: ValueKey('cs${(it.data['shipment'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'customs_alert':
+      return CustomsAlertCard(app: app, data: it.data);
+    case 'customs_day':
+      return CustomsDayCard(app: app, data: it.data);
+    case 'travel_booking':
+      return TravelBookingCard(key: ValueKey('tb${it.data['id']}'), app: app, data: it.data);
+    case 'travel_quote':
+      return TravelQuoteCard(key: ValueKey('tq${it.data['id']}'), app: app, data: it.data);
+    case 'travel_trip':
+      return TravelNoteCard(key: ValueKey('tt${(it.data['trip'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'travel_reminder':
+      return TravelNoteCard(app: app, data: it.data);
+    case 'travel_day':
+      return TravelNoteCard(app: app, data: it.data);
+    case 'warehouse_adjust':
+      return WarehouseAdjustCard(key: ValueKey('wa${(it.data['adjust'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'warehouse_grn':
+      return WarehouseGrnCard(key: ValueKey('wg${(it.data['grn'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'warehouse_pick':
+      return WarehousePickCard(key: ValueKey('wk${(it.data['pick'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'warehouse_count':
+      return WarehouseCountCard(key: ValueKey('wc${(it.data['count'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'warehouse_day':
+      return WarehouseDayCard(app: app, data: it.data);
+    case 'fleet_spend':
+      return FleetSpendCard(key: ValueKey('fs${(it.data['spend'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'fleet_trip':
+      return FleetTripCard(key: ValueKey('ft${(it.data['trip'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'fleet_alert':
+      return FleetAlertCard(app: app, data: it.data);
+    case 'fleet_day':
+      return FleetDayCard(app: app, data: it.data);
+    case 'courier_card':
+      return CourierActionCard(key: ValueKey('cc${(it.data['card'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'courier_parcel':
+      return CourierParcelCard(key: ValueKey('cp${(it.data['parcel'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'courier_day':
+      return CourierDayCard(app: app, data: it.data);
+    case 'drivers_plan':
+      return DriversPlanCard(key: ValueKey('dp${it.data['day']}${it.data['title']}'), app: app, data: it.data);
+    case 'drivers_message':
+      return DriversMessageCard(key: ValueKey('dm${it.data['id']}'), app: app, data: it.data);
+    case 'drivers_alert':
+      return DriversAlertCard(app: app, data: it.data);
+    case 'drivers_day':
+      return DriversDayCard(app: app, data: it.data);
+    case 'logistics_ewb':
+      return LogisticsEwbCard(key: ValueKey('le${(it.data['ask'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'logistics_update':
+      return LogisticsUpdateCard(key: ValueKey('lu${(it.data['message'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'logistics_shipment':
+      return LogisticsShipmentCard(key: ValueKey('ls${(it.data['shipment'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'logistics_alert':
+      return LogisticsAlertCard(app: app, data: it.data);
+    case 'logistics_day':
+      return LogisticsDayCard(app: app, data: it.data);
     case 'brand_design':
       return BrandDesignCard(v: it.data, app: app);
     case 'site_board':

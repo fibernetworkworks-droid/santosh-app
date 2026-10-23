@@ -1105,6 +1105,41 @@ def where(tenant: str, q: str = "", refresh: bool = True) -> dict[str, Any]:
     return {"parcels": rows, "say": "\n".join(_answer(v) for v in rows[:5])}
 
 
+_TO_LOGI = {"booked": "booked", "manual": "booked", "picked": "picked", "in_transit": "in_transit",
+            "out_for_delivery": "out_for_delivery", "delivered": "delivered", "rto": "rto", "exception": "failed",
+            "cancelled": "cancelled", "failed": "failed"}
+
+
+def track_awb(tenant: str, courier: str = "", awb: str = "") -> dict[str, Any]:
+    """For the Logistics desk: {status, events: [{at, what, where}], raw, track_link} in the courier's own words.
+    Her parcel with that AWB first (tracked through her own carrier key when she has one), else her key for that courier
+    directly. Nothing known and no key -> CourierError naming the courier's own tracking page."""
+    awb = str(awb or "").strip()
+    if not awb:
+        raise CourierError("AWB nahi diya.")
+    with session() as s:
+        p = s.scalars(select(CourierParcel).where(CourierParcel.tenant_id == tenant, CourierParcel.awb == awb)
+                      .order_by(CourierParcel.created_at.desc())).first()
+        pid = p.id if p is not None else ""
+    if pid:
+        v = parcel_view(tenant, pid)
+        if v["provider"] in K.ADAPTERS and v["provider"] != "manual" and v["status"] not in ("delivered", "cancelled"):
+            v = track(tenant, pid)["parcel"]
+        return {"status": _TO_LOGI.get(v["status"], ""), "raw": v.get("raw", ""),
+                "events": [{"at": e.get("at", ""), "what": e.get("what", ""), "where": e.get("where", "")} for e in (v.get("events") or [])],
+                "track_link": v.get("track_link", "")}
+    prov = R.carrier_key(courier) if courier else ""
+    ad = _adapter(tenant, prov) if prov else K.Manual()
+    link = track_link(prov or courier, awb)
+    if isinstance(ad, K.Manual):
+        raise CourierError(f"Is courier ki chaabi Courier desk mein nahi: AWB {awb} " + (f"yahan dekhiye: {link}" if link else "courier ke app / site par dekhiye") + ".")
+    t = ad.track({"awb": awb})
+    raw = _clean_str(t.get("raw"), 200)
+    st = R.state_of(raw) if raw else None
+    return {"status": _TO_LOGI.get(st or "", ""), "raw": raw, "track_link": link,
+            "events": [{"at": e.get("at", ""), "what": e.get("what", ""), "where": e.get("where", "")} for e in (t.get("events") or [])[:15]]}
+
+
 def customer_parcels(tenant: str, wa_id: str, ref: str = "") -> list[dict[str, Any]]:
     """THIS customer's own parcels (by their WhatsApp number): no address, no other customer, no internal notes."""
     ph = R.phone10(wa_id)

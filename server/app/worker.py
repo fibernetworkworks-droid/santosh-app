@@ -589,6 +589,15 @@ async def employee_jobs() -> None:
             await asyncio.to_thread(_svc.tick)
         except Exception:
             log.exception("%s tick failed", _mod)
+    # v0.139 Safar suite: shipments / e-way bills, fleet papers, godown notes, courier tracking, travel reminders, driver duties,
+    # import clocks (each throttles itself)
+    for _mod in ("customs", "travel", "warehouse", "fleet", "courier", "drivers", "logistics"):
+        try:
+            import importlib
+            _svc = importlib.import_module(f".{_mod}.service", __package__)
+            await asyncio.to_thread(_svc.tick)
+        except Exception:
+            log.exception("%s tick failed", _mod)
     try:                                   # v0.122 Website: her domain's DNS / SSL coming up, uptime of live sites
         from .site import hosting as site_hosting
         await asyncio.to_thread(site_hosting.watch)
