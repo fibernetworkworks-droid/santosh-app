@@ -46,15 +46,16 @@ jobs:
           HOOLA_PREVIEW_KEY_PASS: hoolapreview
         run: |
           set -o pipefail
-          ./gradlew --no-daemon -q buildEnvironment 2>&1 | grep -iE "kotlin-gradle-plugin|com.android.tools.build:gradle" | head -8 || true
+          ./gradlew --no-daemon -q buildEnvironment 2>&1 | grep -iE "kotlin-gradle-plugin|com.android.tools.build:gradle" | head -8 | tee env.txt || true
+          while IFS= read -r l; do echo "::notice::${l}"; done < env.txt
           ./gradlew --no-daemon --console=plain assembleRelease 2>&1 | tee build.log
       - name: Kotlin errors as annotations
-        if: failure() && hashFiles('../_temp/proj/build.log') != ''
-        continue-on-error: true
-        working-directory: ${{ runner.temp }}/proj
+        if: failure()
         run: |
+          cd "$RUNNER_TEMP/proj" 2>/dev/null && [ -f build.log ] || exit 0
           grep -E '^e: ' build.log | head -60 | while IFS= read -r l; do echo "::error::${l}"; done
           grep -E 'What went wrong' -A 12 build.log | head -40 | while IFS= read -r l; do echo "::error::${l}"; done
+          grep -iE 'kotlin-gradle-plugin|com.android.tools.build:gradle:' build.log | head -5 | while IFS= read -r l; do echo "::notice::${l}"; done
       - name: APK checks
         working-directory: ${{ runner.temp }}/proj
         run: |
