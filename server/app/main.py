@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+from urllib.parse import quote
 import json
 import re
 import logging
@@ -17,7 +18,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from . import campaigns as camp
 from . import worker
@@ -89,7 +90,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.141.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.142.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -532,11 +533,11 @@ def cancel_reminder_api(reminder_id: str, tenant: str = Depends(current_tenant))
 
 # ---------------- accounts (product: Sign in with Google) ----------------
 @app.get("/auth/google/start")
-def google_start(app_session: bool = True):
-    """The app opens this; we redirect to Google's consent screen."""
+def google_start(app_session: bool = True, web: bool = False):
+    """The app opens this; we redirect to Google's consent screen. web=1 = the Hoola Console (v0.142)."""
     from . import accounts
     try:
-        return RedirectResponse(accounts.start_google())
+        return RedirectResponse(accounts.start_google(web=web))
     except accounts.AuthError as e:
         raise HTTPException(503, str(e))
 
@@ -590,10 +591,16 @@ async def google_callback(request: Request):
         return HTMLResponse(f"<h3>Sign-in cancelled</h3><p>{err}</p>", status_code=400)
     if not code:
         raise HTTPException(400, "Missing code")
+    from .console import service as console
+    web = console.is_web_state(state)
     try:
         res = await accounts.finish_google(code, state)
     except accounts.AuthError as e:
+        if web:
+            return RedirectResponse("/console/?error=" + quote(str(e)[:160]), headers=_CONSOLE_NOREF)
         return HTMLResponse(f"<h3>Sign-in nahi hua</h3><p>{e}</p>", status_code=400)
+    if web:   # v0.142 Hoola Console: a one-time code, never the session token, goes into the URL
+        return RedirectResponse("/console/?code=" + console.issue_code(res["session_token"]), headers=_CONSOLE_NOREF)
     scheme = get_settings().app_redirect_scheme
     deep = f"{scheme}://auth?session={res['session_token']}"
     # the app registers this scheme; the page also shows the token in case the link doesn't auto-open
@@ -644,6 +651,126 @@ def api_disconnect(provider: str, request: Request):
     if not uid:
         raise HTTPException(401, "Sign in first")
     return {"disconnected": accounts.disconnect(uid, provider)}
+
+
+# ---------------------------------------------------------------- v0.142 Hoola Console (web app at /console)
+_CONSOLE_NOREF = {"Referrer-Policy": "no-referrer", "Cache-Control": "no-store"}
+_CONSOLE_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; "
+                "worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+
+
+@app.get("/console")
+@app.get("/console/")
+def console_page():
+    """The Hoola Console: chat-first web app on the same APIs as the phone (login: Google or Hoola ID + password)."""
+    return FileResponse(STATIC / "console" / "index.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/api/console/config")
+def console_config():
+    from . import accounts
+    return {"app": "Hoola", "version": app.version, "google": accounts.oauth_configured(), "password": True}
+
+
+class ConsoleLoginIn(BaseModel):
+    handle: str = Field(min_length=1, max_length=80)
+    password: str = Field(min_length=1, max_length=200)
+
+
+def _client_ip(request: Request) -> str:
+    """nginx's X-Real-IP ($remote_addr) only; a client-sent X-Forwarded-For is not trusted."""
+    return (request.headers.get("x-real-ip", "").strip() or (request.client.host if request.client else "") or "?")[:64]
+
+
+@app.post("/api/console/login")
+def console_login(body: ConsoleLoginIn, request: Request):
+    from .console import service as console
+    try:
+        return console.login(body.handle, body.password, _client_ip(request))
+    except console.ConsoleError as e:
+        raise HTTPException(e.status, str(e))
+
+
+class ConsoleCodeIn(BaseModel):
+    code: str = Field(min_length=1, max_length=100)
+
+
+@app.post("/api/console/exchange")
+def console_exchange(body: ConsoleCodeIn):
+    from .console import service as console
+    try:
+        return {"session_token": console.exchange(body.code)}
+    except console.ConsoleError as e:
+        raise HTTPException(e.status, str(e))
+
+
+class ConsolePasswordIn(BaseModel):
+    password: str = Field(default="", max_length=200)
+    current: str = Field(default="", max_length=200)
+    remove: bool = False
+
+
+@app.put("/api/console/password", dependencies=[Depends(require_key)])
+def console_password(body: ConsolePasswordIn, tenant: str = Depends(current_tenant)):
+    from .console import service as console
+    try:
+        if body.remove:
+            return {"removed": console.remove_password(tenant, body.current)}
+        return console.set_password(tenant, body.password, body.current)
+    except console.ConsoleError as e:
+        raise HTTPException(e.status, str(e))
+
+
+@app.get("/api/console/me", dependencies=[Depends(require_key)])
+def console_me(tenant: str = Depends(current_tenant)):
+    from .console import service as console
+    return console.me(tenant)
+
+
+@app.get("/api/console/conversations", dependencies=[Depends(require_key)])
+def console_conversations(limit: int = 40, tenant: str = Depends(current_tenant)):
+    from .console import service as console
+    return {"conversations": console.conversations(tenant, limit)}
+
+
+@app.get("/api/console/pending", dependencies=[Depends(require_key)])
+def console_pending(tenant: str = Depends(current_tenant)):
+    from .console import service as console
+    return {"pending": console.pending(tenant)}
+
+
+_CARD_SKIP = {"message", "typing", "step", "work"}
+
+
+@app.get("/api/console/conversations/{conversation_id}/recent", dependencies=[Depends(require_key)])
+def console_recent(conversation_id: str, n: int = 60, tenant: str = Depends(current_tenant)):
+    """Opening an old chat: the cursor to stream from, and the latest state of its last cards (newest per card id)."""
+    _conv_or_404(conversation_id, tenant)
+    from .db import Event
+    with session() as s:
+        last = s.scalar(select(func.max(Event.id)).where(Event.conversation_id == conversation_id)) or 0
+        rows = s.scalars(select(Event).where(Event.conversation_id == conversation_id, Event.kind.not_in(_CARD_SKIP))
+                         .order_by(Event.id.desc()).limit(max(1, min(n, 200)) * 3)).all()
+        seen, cards = set(), []
+        for e in rows:
+            p = e.payload if isinstance(e.payload, dict) else {}
+            key = (e.kind, str(p.get("id") or p.get("task_id") or e.id))
+            if key in seen:
+                continue
+            seen.add(key)
+            cards.append({"id": e.id, "kind": e.kind, "payload": p, "at": e.created_at.isoformat()})
+            if len(cards) >= n:
+                break
+    return {"last_event_id": last, "cards": list(reversed(cards))}
+
+
+@app.get("/api/console/today", dependencies=[Depends(require_key)])
+def console_today(tenant: str = Depends(current_tenant)):
+    from .console import service as console
+    return console.today(tenant)
 
 
 # ---------------------------------------------------------------- PC bridge (Santosh Desktop)
@@ -944,6 +1071,11 @@ async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "
     from . import voice as v
     st = get_settings()
     got = ws.headers.get("authorization", "").removeprefix("Bearer ").strip() or ws.query_params.get("key", "")
+    # v0.142 browsers can't set headers on a WebSocket: the console sends "hoola, hoola-key.<token>" as subprotocols
+    protos = [p.strip() for p in ws.headers.get("sec-websocket-protocol", "").split(",") if p.strip()]
+    sub = "hoola" if "hoola" in protos else None
+    if not got:
+        got = next((p[len("hoola-key."):] for p in protos if p.startswith("hoola-key.")), "")
     from . import accounts
     if st.api_key and got and hmac.compare_digest(got, st.api_key):
         tenant = st.tenant_id
@@ -960,7 +1092,7 @@ async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "
     if not ok:
         await ws.close(code=4404)
         return
-    await ws.accept()
+    await ws.accept(subprotocol=sub)
     if resume:
         call = v.CALLS.get(resume)
         if call is None or call.tenant != tenant or call.conv != conv or call.closed.is_set():

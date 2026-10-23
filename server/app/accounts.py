@@ -73,12 +73,13 @@ def _redirect_uri() -> str:
     return get_settings().public_base_url.rstrip("/") + "/auth/google/callback"
 
 
-def start_google(extra_state: str = "") -> str:
-    """Return the Google consent URL the app should open."""
+def start_google(extra_state: str = "", web: bool = False) -> str:
+    """Return the Google consent URL the app should open. web=True = the Hoola Console (v0.142): the callback then
+    hands the browser a one-time code instead of the app's deep link."""
     if not oauth_configured():
         raise AuthError("Google sign-in server par configure nahi hai.")
     st = get_settings()
-    state = secrets.token_urlsafe(24)
+    state = ("cw_" if web else "") + secrets.token_urlsafe(24)
     with session() as s:
         s.add(OAuthState(state=state))
     params = {
