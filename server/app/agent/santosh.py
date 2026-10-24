@@ -135,24 +135,50 @@ def _claude_ready() -> bool:
     return bool(get_settings().anthropic_api_key or _client is not None)
 
 
-async def _call_brain(brain: str, system: str, history: list[dict], settings, tools: list[dict] | None = None) -> tuple[list[dict], str]:
-    """One model call on one brain. Raises when that brain fails."""
+async def _call_brain(brain: str, system: str, history: list[dict], settings, tools: list[dict] | None = None,
+                      live=None) -> tuple[list[dict], str]:
+    """One model call on one brain. Raises when that brain fails. With `live` (v0.161) the words stream as written."""
     tools = tools if tools is not None else TOOLS
+    streaming = live is not None and live.streaming
     if brain in ("glm", "omniroute"):
-        blocks, stop, usage = await llm.openai_create(brain, system, tools, history, settings.agent_max_tokens)
+        if streaming:
+            blocks, stop, usage = await llm.openai_stream(brain, system, tools, history, settings.agent_max_tokens, live.feed)
+        else:
+            blocks, stop, usage = await llm.openai_create(brain, system, tools, history, settings.agent_max_tokens)
         log.info("%s in=%s out=%s %s", llm.describe(), usage.get("prompt_tokens"), usage.get("completion_tokens"),
                  usage.get("route", ""))
         return blocks, stop
     from . import cache
-    resp = await get_client().messages.create(**cache.shape(dict(
-        model=settings.anthropic_model, max_tokens=settings.agent_max_tokens,
-        system=system, tools=tools, messages=history), getattr(settings, "prompt_cache", True)))
+    kw = cache.shape(dict(model=settings.anthropic_model, max_tokens=settings.agent_max_tokens,
+                          system=system, tools=tools, messages=history), getattr(settings, "prompt_cache", True))
+    api = get_client().messages
+    if streaming and hasattr(api, "stream"):
+        return await _claude_stream(api, kw, live)
+    resp = await api.create(**kw)
     return [_block_to_dict(b) for b in resp.content], resp.stop_reason
 
 
-async def _think(brain: str, system: str, history: list[dict], settings, tools: list[dict] | None = None) -> tuple[list[dict], str, str]:
+async def _claude_stream(api, kw: dict, live) -> tuple[list[dict], str]:
+    """v0.161 Claude's answer word by word: text deltas go to the live reply; tool input (input_json_delta) is left to
+    the SDK, which parses it only when the block is complete. Prompt caching is the same request shape."""
+    async with api.stream(**kw) as st:
+        async for ev in st:
+            t = getattr(ev, "type", "")
+            if t == "content_block_start" and getattr(getattr(ev, "content_block", None), "type", "") == "text":
+                live.new_text_block()
+            elif t == "content_block_delta" and getattr(getattr(ev, "delta", None), "type", "") == "text_delta":
+                live.feed(ev.delta.text)
+        msg = await st.get_final_message()
+    from .. import usage   # the SDK wrapper counts messages.create only: a streamed answer is counted here
+    usage.from_anthropic(kw.get("model", ""), msg)
+    return [_block_to_dict(b) for b in msg.content], msg.stop_reason
+
+
+async def _think(brain: str, system: str, history: list[dict], settings, tools: list[dict] | None = None,
+                 live=None) -> tuple[list[dict], str, str]:
     """One model call that survives a failing brain: the chosen brain first, then the other one, so an outage of
-    either never leaves the user without an answer. Returns (blocks, stop_reason, the brain that answered)."""
+    either never leaves the user without an answer. Returns (blocks, stop_reason, the brain that answered).
+    v0.161 a brain that fails after some streamed words: `delta_reset`, and the next brain writes them again."""
     order = [brain]
     if brain == "claude":
         cheap = llm.cheap_brain()
@@ -163,12 +189,16 @@ async def _think(brain: str, system: str, history: list[dict], settings, tools: 
     last: Exception | None = None
     for b in order:
         try:
-            blocks, stop = await _call_brain(b, system, history, settings, tools)
+            blocks, stop = await _call_brain(b, system, history, settings, tools, live)
+            if live is not None:
+                live.flush(final=True)     # the answer is complete: the held-back end can go (nothing can split now)
             return blocks, stop, b
         except asyncio.CancelledError:
             raise
         except Exception as e:
             last = e
+            if live is not None:
+                live.reset()
             log.warning("%s failed%s: %s", b, "; trying the other brain" if b != order[-1] else "", e)
     assert last is not None
     raise last
@@ -303,10 +333,15 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     system += "\n\n" + mcp_live.prompt_block(mcp_snap, mcp_route)
     system += state.get("hint") or ""
     tools = TOOLS + mcp_defs
+    from .. import livereply
+    live = livereply.current(conversation_id)
     for _ in range(settings.agent_max_steps):
+        if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
+            live.block(stream=not _gyaan.used(conversation_id))
         try:
             try:   # stays on the brain that worked; Rokiye cancels the model call itself, not just the next step
-                blocks, stop, brain = await _watched(_think(brain, system, history, settings, tools), conversation_id, ctx, state)
+                blocks, stop, brain = await _watched(_think(brain, system, history, settings, tools, live),
+                                                     conversation_id, ctx, state)
             except _Halted:
                 raise
             except Exception as e:
@@ -315,11 +350,21 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 # a server's tool description the model refuses: go on without the direct MCP tools (bazar_run still works)
                 log.warning("MCP tool schemas refused (%s); continuing without them", str(e)[:200])
                 mcp_defs, mcp_route, tools = [], {}, TOOLS
-                blocks, stop, brain = await _watched(_think(brain, system, history, settings, tools), conversation_id, ctx, state)
+                if live is not None:
+                    live.reset()
+                blocks, stop, brain = await _watched(_think(brain, system, history, settings, tools, live),
+                                                     conversation_id, ctx, state)
         except _Halted as h:
             state["halted"] = h.why
+            part = live.partial() if live is not None else ""
+            if part:               # v0.161 she stopped it mid-sentence: what she saw is kept, marked stopped
+                live.stopped = True
+                bus.publish(conversation_id, "message", {"role": "assistant", "text": part, "source": "agent",
+                                                         "stopped": True, **_tag(live)})
+                _save(conversation_id, "assistant", [{"type": "text", "text": part}], display=part)
             final_text = HALTED_TEXT[h.why]
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
+                                                     **_tag(live, bool(part))})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
             return final_text
         history.append({"role": "assistant", "content": blocks})
@@ -333,16 +378,17 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 final_text = await _gyaan.ground(conversation_id, final_text)      # v0.135 model check of cited sentences
                 if srcs:
                     bus.publish(conversation_id, "gyaan_sources", {"sources": srcs})
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent", **_tag(live)})
         if stop != "tool_use":
             nudge = await _pakka_check(state, final_text, settings, ran_tools, conversation_id)
             if nudge:
                 history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
                 continue
-            if state.get("correct"):
+            if state.get("correct"):   # the correction is added after the words already shown (never rewrites them)
                 final_text = (final_text + "\n\n" + state.pop("correct")).strip()
-                bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
+                bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
+                                                         **_tag(live)})
                 _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
             break
         results = []
@@ -423,7 +469,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         if breaker.stopped:                # stuck: stop here and say so plainly
             log.warning("circuit breaker stopped a turn: %s", breaker.stopped)
             final_text = gendered(breaker.final_text(), gender)
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
+                                                     **_tag(live, True)})
             bus.publish(conversation_id, "work", {"id": "breaker", "tool": "", "scene": "work", "phase": "stopped",
                                                   "label": "Atak gaya, roka gaya", "data": {}})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
@@ -432,24 +479,32 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             final_text = HALTED_TEXT.get(state.get("halted") or "stop", HALTED_TEXT["stop"])
             if state.get("halted"):
                 final_text += " Jo kadam chal raha tha woh beech mein roka gaya; dobara karne se pehle dekh lijiye kitna hua."
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
+                                                     **_tag(live, True)})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
             return final_text
     else:
         if not final_text:
             final_text = "Yeh kaam lamba ho gaya, main yahin ruk raha hoon. Aage kya karoon?"
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
+                                                     **_tag(live, True)})
         return final_text
     if not final_text.strip():
         # the model finished without a word: never leave the user staring at a silent chat
         final_text = gendered("Kaam ho gaya. Aur kuch karna hai?", gender) if ran_tools else \
             "Maaf kijiye, main samajh nahi paya. Ek baar phir bata dein?"
-        bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent"})
+        bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
+                                                 **_tag(live, True)})
         _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
     return final_text
 
 
 _stopped: set[str] = set()
+
+
+def _tag(live, new_block: bool = False) -> dict:
+    """v0.161 `turn` / `seg` of the live reply for a message (nothing when streaming is off: messages as before)."""
+    return live.tag(new_block) if live is not None else {}
 
 
 def _key(name: str, args) -> str:
@@ -591,6 +646,8 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
                 log.exception("memory block failed")
         final_text = ""
         _stopped.discard(conversation_id)
+        from .. import livereply
+        live = livereply.begin(conversation_id, tenant_id)    # v0.161 CONSOLE_STREAM: the reply streams as written
         try:
             # one stuck call must never keep this conversation locked forever
             final_text = await asyncio.wait_for(
@@ -599,14 +656,23 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         except asyncio.TimeoutError:
             log.error("agent turn timed out after %ss", settings.agent_turn_timeout_s)
             final_text = "Yeh kaam bahut der se chal raha tha, isliye maine ise rok diya. Thoda chhota karke phir bolein?"
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error"})
+            if live is not None:
+                live.reset()
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
+                                                     **_tag(live, True)})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         except Exception as e:
             log.exception("agent turn failed")
             final_text = _friendly_error(e)
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error"})
+            if live is not None:
+                live.reset()
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
+                                                     **_tag(live, True)})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         finally:
+            if live is not None:
+                live.stopped = live.stopped or conversation_id in _stopped
+                live.end()
             bus.publish(conversation_id, "typing", {"on": False})
         if who == "owner" or who == "routine" or who.startswith("approved:"):
             try:   # v0.108 index this exchange, fold old ones into the summary, pick lasting facts (background)

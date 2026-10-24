@@ -101,6 +101,7 @@ class Settings(BaseSettings):
     quick_lane: bool = True                 # v0.86 answer new chat messages at once while a long job runs
     quick_model: str = ""                   # v0.86 model for the quick lane ('' = anthropic_model; a cheap brain is used first)
     prompt_cache: bool = True               # v0.86 Anthropic prompt caching on tools + conversation (faster replies)
+    console_stream: bool = False            # v0.161 replies stream word by word (live-only delta events, /live, retry, thumbs)
     glm_api_key: str = ""
     glm_base_url: str = "https://api.z.ai/api/paas/v4"
     glm_model: str = "glm-4.7"

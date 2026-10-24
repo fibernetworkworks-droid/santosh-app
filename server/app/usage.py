@@ -516,10 +516,17 @@ def report(tenant: str, days: int = 30) -> dict[str, Any]:
            + (f" / seema ₹{st['limit_usd'] * inr:,.0f} ({st['pct']:.0f}%)" if st["limit_usd"] else "")
            + f"; isi raftaar se mahine ke ant tak ~₹{projected * inr:,.0f}."
            + (f" Sabse zyada: {feats[0]['label']} ({feats[0]['share']:.0f}%)." if feats else ""))
+    try:   # v0.161 her thumbs on replies in the same window
+        from .livereply import feedback_counts
+        thumbs = feedback_counts(tenant, datetime.combine(today - timedelta(days=days - 1), datetime.min.time(), IST)
+                                 .astimezone(timezone.utc))
+    except Exception:
+        log.exception("usage: reply feedback")
+        thumbs = {"up": 0, "down": 0}
     return {"days": days, "usd_inr": inr, "total_usd": round(total, 4), "total_inr": round(total * inr, 2),
             "month": {**st, "spent_inr": round(st["spent_usd"] * inr, 2), "limit_inr": round(st["limit_usd"] * inr, 2),
                       "projected_usd": round(projected, 4), "projected_inr": round(projected * inr, 2)},
-            "features": feats, "models": models, "daily": daily, "say": say,
+            "features": feats, "models": models, "daily": daily, "say": say, "replies": thumbs,
             "note": "Andaaza: official price list (22 Oct 2026) se; asli bill provider ke dashboard par."}
 
 

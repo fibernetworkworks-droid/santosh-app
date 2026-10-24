@@ -49,6 +49,19 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class ChatFeedback(Base):
+    """v0.161 her thumbs up / down on one reply (`turn`), for the usage report."""
+    __tablename__ = "chat_feedback"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    conversation_id: Mapped[str] = mapped_column(String(40), index=True)
+    turn: Mapped[str] = mapped_column(String(40))
+    value: Mapped[str] = mapped_column(String(8))          # up | down | none
+    note: Mapped[str] = mapped_column(String(500), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class LeadList(Base):
     __tablename__ = "lead_lists"
     id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("list"))

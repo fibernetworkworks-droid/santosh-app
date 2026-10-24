@@ -23,8 +23,10 @@ from .db import Event, Message, session
 # the live voice call whose tool is running now (set by voice.Call.run_tool; copied into tasks / to_thread)
 CALL: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_call", default="")
 
-# never part of the chat's story (live-only noise) - still stored so a reconnect mid-turn catches up
-LIVE_ONLY = {"typing", "step", "work", "log"}
+# v0.161 a reply as it is being written: sent to open streams only, NEVER stored (the final `message` is the record)
+STREAM_KINDS = {"reply_start", "delta", "delta_reset", "reply_end"}
+# never part of the chat's story (live-only noise) - still stored so a reconnect mid-turn catches up (except STREAM_KINDS)
+LIVE_ONLY = {"typing", "step", "work", "log"} | STREAM_KINDS
 # belong to the chat they were made in only (answers' sources, phone actions, list refreshes...): never copied to others
 LOCAL_KINDS = LIVE_ONLY | {
     "message", "upload", "reminders", "routines", "lists", "email_sent", "hoola_update", "galla", "mshop", "office",
@@ -131,6 +133,27 @@ class EventBus:
             pass
         return data
 
+    def publish_live(self, conversation_id: str, kind: str, payload: dict) -> dict:
+        """v0.161 a STREAM_KINDS event: to this chat's open streams only. No database row, no push, no job watch;
+        id 0 so a stream sends it without an SSE id (Last-Event-ID never moves on it)."""
+        assert kind in STREAM_KINDS, kind
+        data = {"id": 0, "kind": kind, "payload": payload, "at": datetime.now(timezone.utc).isoformat(),
+                "call": CALL.get() or None, "conv": conversation_id, "live": True}
+        for q in list(self._subs.get(conversation_id, ())):
+            loop = self._loops.get(id(q))
+            try:
+                running = asyncio.get_running_loop()
+            except RuntimeError:
+                running = None
+            try:
+                if loop is not None and loop is not running:
+                    loop.call_soon_threadsafe(q.put_nowait, data)
+                else:
+                    q.put_nowait(data)
+            except RuntimeError:
+                pass  # that loop is closed
+        return data
+
     def subscribe(self, conversation_id: str, tenant: str = "") -> asyncio.Queue:
         q: asyncio.Queue = asyncio.Queue()
         self._subs[conversation_id].add(q)
@@ -196,6 +219,8 @@ def _collapse(rows) -> list[dict]:
     """Newest-first rows -> items in story order: {key, first (Event), latest (Event)}."""
     items: dict[str, dict] = {}
     for e in rows:
+        if e.kind == "message" and isinstance(e.payload, dict) and e.payload.get("replaced_by"):
+            continue          # v0.161 a reply she retried: kept as a branch, not part of the story
         k = card_key(e.kind, e.payload, e.id)
         it = items.get(k)
         if it is None:

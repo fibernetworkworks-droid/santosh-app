@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/static/console/app.css?v=0.160.0">
+<link rel="stylesheet" href="/static/console/app.css?v=0.161.0">
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -78,8 +78,8 @@
           <div class="cats" id="cats" role="group" aria-label="Ideas"></div>
           <div class="sugs" id="sugs"></div>
         </div>
-        <div class="thread" id="thread" hidden><div class="col" id="col"></div></div>
-        <div class="dock" id="dock" hidden><div class="slot" id="slotDock"></div><p class="disclaim"><span class="aname">Santosh</span> bhi galti kar sakta hai. Bhejna, paisa, sign aur delete hamesha aapki Haan se.</p></div>
+        <div class="thread" id="thread" hidden tabindex="-1"><div class="col" id="col"></div></div>
+        <div class="dock" id="dock" hidden><button type="button" class="jump" id="jump" hidden aria-label="Neeche jao, naya jawab">↓ Neeche jao</button><div class="slot" id="slotDock"></div><p class="disclaim"><span class="aname">Santosh</span> bhi galti kar sakta hai. Bhejna, paisa, sign aur delete hamesha aapki Haan se.</p></div>
       </section>
       <section class="view" id="v-aaj" aria-label="Aaj" hidden><div class="pad" id="aaj"></div></section>
       <section class="view" id="v-kaam" aria-label="Kaam" hidden><div class="pad" id="kaam"></div></section>
@@ -117,9 +117,11 @@
 </form>
 <div class="toast" id="toast" role="status" hidden></div>
 <noscript><p style="padding:40px;text-align:center">Hoola Console ke liye JavaScript chahiye.</p></noscript>
-<script src="/static/console/kaam.js?v=0.160.0"></script>
+<script src="/static/console/kaam.js?v=0.161.0"></script>
 <script src="/static/console/vendor/qrcode.js?v=1.4.4"></script>
-<script src="/static/console/build.js?v=0.160.0"></script>
-<script src="/static/console/app.js?v=0.160.0"></script>
+<script src="/static/console/build.js?v=0.161.0"></script>
+<script src="/static/console/md.js?v=0.161.0"></script>
+<script src="/static/console/stream.js?v=0.161.0"></script>
+<script src="/static/console/app.js?v=0.161.0"></script>
 </body>
 </html>

@@ -128,9 +128,21 @@ $('#newChat').addEventListener('click', async () => {
 });
 
 /* ================= chat view ================= */
-const composer = $('#composer'), msg = $('#msg'), col = $('#col');
+const composer = $('#composer'), msg = $('#msg'), col = $('#col'), thread = $('#thread');
 $('#slotLand').appendChild(composer);
-const scrollDown = (force) => { const t = $('#thread'); if (force || t.scrollHeight - t.scrollTop - t.clientHeight < 260) t.scrollTop = t.scrollHeight; };
+/* v0.161 stick to the bottom: the newest line stays in view while a reply grows; scrolling up stops the pull and shows
+   "Neeche jao". Handled here (Safari has no overflow-anchor): a ResizeObserver re-pins only while she is at the bottom. */
+let STICK = true;
+const scrollDown = force => { if (force) STICK = true; if (STICK) thread.scrollTop = thread.scrollHeight; $('#jump').hidden = STICK; };
+const unstick = () => { if (thread.scrollHeight - thread.clientHeight > 4) { STICK = false; $('#jump').hidden = false; } };
+thread.addEventListener('scroll', () => { const d = thread.scrollHeight - thread.scrollTop - thread.clientHeight; if (d < 48) { STICK = true; $('#jump').hidden = true; } else if (!STICK) $('#jump').hidden = false; }, {passive: true});
+thread.addEventListener('wheel', e => { if (e.deltaY < 0) unstick(); }, {passive: true});
+let touchY = 0;
+thread.addEventListener('touchstart', e => { touchY = e.touches[0]?.clientY || 0; }, {passive: true});
+thread.addEventListener('touchmove', e => { if ((e.touches[0]?.clientY || 0) > touchY + 6) unstick(); }, {passive: true});
+thread.addEventListener('keydown', e => { if (['PageUp', 'ArrowUp', 'Home'].includes(e.key)) unstick(); });
+if (window.ResizeObserver) new ResizeObserver(() => { if (STICK) thread.scrollTop = thread.scrollHeight; }).observe(col);
+$('#jump').addEventListener('click', () => { thread.scrollTo({top: thread.scrollHeight, behavior: 'smooth'}); STICK = true; $('#jump').hidden = true; });
 function landing(on) {
   $('#landing').hidden = !on; $('#thread').hidden = on; $('#dock').hidden = on;
   (on ? $('#slotLand') : $('#slotDock')).appendChild(composer);
@@ -148,56 +160,51 @@ function hoolaBlock() {
   d.innerHTML = `<span class="av"><img src="${$('#uimg').src}" alt=""></span><div class="bd"></div>`;
   col.appendChild(d); return d.querySelector('.bd');
 }
-function turn() { if (!TURN) TURN = {bd: hoolaBlock(), tools: null, tl: null, text: null, steps: {}, t0: Date.now()}; return TURN; }
+function turn() { if (!TURN) TURN = {bd: hoolaBlock(), groups: [], text: null, afterText: false, t0: Date.now()}; return TURN; }
+/* new content of the turn goes above the typing dots */
+function put(t, el) { t.bd.insertBefore(el, TYPING && TYPING.parentNode === t.bd ? TYPING : null); }
 
-/* small, safe markdown: paragraphs, **bold**, `code`, lists, links (http/https only) */
-function md(text) {
-  const lines = esc(text).split('\n'); let html = '', list = false;
-  const inline = s => s.replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
-    .replace(/\[(\d{1,2})\]/g, '<span class="tag v">[$1]</span>')
-    .replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)])/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
-  for (const l of lines) {
-    const m = l.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/);
-    if (m) { if (!list) { html += '<ul>'; list = true; } html += `<li>${inline(m[1])}</li>`; continue; }
-    if (list) { html += '</ul>'; list = false; }
-    if (l.trim()) html += `<p>${inline(l)}</p>`;
-  }
-  return html + (list ? '</ul>' : '');
-}
-function hoolaText(text, source) {
+const md = text => window.HoolaMD ? HoolaMD.render(text, false) : esc(text);
+function hoolaText(text, source) {   // a reply without a turn id (streaming off, notes, greetings): as before
   const t = turn();
   if (t.text && (text.startsWith(t.text.dataset.raw) || t.text.dataset.raw === text)) { t.text.dataset.raw = text; t.text.innerHTML = md(text); scrollDown(); return; }
   const el = document.createElement('div'); el.className = 'txt textmd'; el.dataset.raw = text; el.innerHTML = md(text);
   if (source === 'worker' || source === 'greeting') el.classList.add('note-in');
-  t.bd.appendChild(el); t.text = el; scrollDown();
+  put(t, el); t.text = el; t.afterText = true; scrollDown();
 }
 
-/* steps (tool calls) inside the turn + the live panel */
+/* steps (tool calls) inside the turn + the live panel. v0.161: in the order they happened (text -> steps -> text);
+   each run of steps is one group that folds into "N kadam · Xs" when the turn is over */
 function stepEvent(p) {
   const t = turn();
-  if (!t.tools) {
-    t.tools = document.createElement('details'); t.tools.className = 'tools'; t.tools.open = true;
-    t.tools.innerHTML = `<summary><span class="spin"></span><span class="sm">${esc(AV)} kaam kar raha hai…</span><span class="chev">⌄</span></summary><div class="tl"></div>`;
-    t.bd.insertBefore(t.tools, t.text || null); t.tl = t.tools.querySelector('.tl'); t.n = 0;
-    $('#lsteps').innerHTML = '';
+  let g = t.groups[t.groups.length - 1];
+  if (!g || t.afterText) {
+    t.afterText = false;
+    const el = document.createElement('details'); el.className = 'tools'; el.open = true;
+    el.innerHTML = `<summary><span class="spin"></span><span class="sm">${esc(AV)} kaam kar raha hai…</span><span class="chev">⌄</span></summary><div class="tl"></div>`;
+    put(t, el); g = {el, tl: el.querySelector('.tl'), n: 0, t0: Date.now()}; t.groups.push(g);
+    if (t.groups.length === 1) $('#lsteps').innerHTML = '';
   }
   const id = String(p.id || p.tool || Math.random());
   const row = p.state === 'running' ? `<span class="spin" style="width:16px;height:16px"></span>${esc(p.label || p.tool)} <code>${esc(p.tool || '')}</code>`
     : p.state === 'error' ? `<span class="ic" style="background:rgba(248,113,113,.18);color:var(--bad)">!</span>${esc(p.label || p.tool)} <code>${esc(p.tool || '')}</code>${p.detail ? `<span class="tm">${esc(String(p.detail).slice(0, 60))}</span>` : ''}`
     : `<span class="ic">✓</span>${esc(p.label || p.tool)} <code>${esc(p.tool || '')}</code>`;
   const cls = 'ts ' + (p.state === 'running' ? 'run' : p.state === 'error' ? 'err' : 'done');
-  for (const box of [t.tl, $('#lsteps')]) {
+  for (const box of [t.bd, $('#lsteps')]) {
     let el = box.querySelector(`[data-step="${CSS.escape(id)}"]`);
-    if (!el) { el = document.createElement('div'); el.dataset.step = id; box.appendChild(el); if (box === t.tl) t.n++; }
+    if (!el) { el = document.createElement('div'); el.dataset.step = id; (box === t.bd ? g.tl : box).appendChild(el); if (box === t.bd) g.n++; }
     el.className = cls; el.innerHTML = row;
   }
   live(p.state === 'running' ? 'run' : 'idle'); scrollDown();
 }
-function closeTurnTools() {
-  const t = TURN; if (!t || !t.tools) return;
-  const secs = ((Date.now() - t.t0) / 1000).toFixed(1);
-  t.tools.querySelector('summary').innerHTML = `<span class="ic" style="width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:rgba(52,211,153,.18);color:var(--ok);font-size:10px;font-weight:900">✓</span><span>${t.n} kadam · ${secs}s</span><span class="chev">⌄</span>`;
-  t.tools.open = false;
+function closeTurnTools(t = TURN) {
+  if (!t) return;
+  for (const g of t.groups || []) {
+    if (g.closed) continue; g.closed = true;
+    const secs = Math.round((Date.now() - g.t0) / 1000);
+    g.el.querySelector('summary').innerHTML = `<span class="ic" style="width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:rgba(52,211,153,.18);color:var(--ok);font-size:10px;font-weight:900">✓</span><span>${g.n} kadam · ${secs < 1 ? '<1' : secs} s</span><span class="chev">⌄</span>`;
+    g.el.open = false;
+  }
 }
 let TYPING = null;
 function typing(on) {
@@ -205,6 +212,76 @@ function typing(on) {
   if (on) { if (!TYPING) { const t = turn(); TYPING = document.createElement('div'); TYPING.className = 'typing'; TYPING.innerHTML = '<i></i><i></i><i></i>'; t.bd.appendChild(TYPING); scrollDown(); } live('run'); }
   else { TYPING?.remove(); TYPING = null; closeTurnTools(); live(QUEUE.length ? 'ask' : 'idle'); TURN = null; }
 }
+
+/* ================= v0.161 streamed replies: one per turn id, text blocks (seg) paced word by word ================= */
+const REPLIES = new Map();   // turn -> {turn, t, segs: Map(seg -> {el, live, pacer}), seq, done, acts, fb}
+let LAST_TURN = null;
+function reply(turnId) {
+  let R = REPLIES.get(turnId);
+  if (!R) { R = {turn: turnId, t: turn(), segs: new Map(), seq: 0, done: false, acts: null, fb: ''}; REPLIES.set(turnId, R); }
+  return R;
+}
+function seg(R, n) {
+  let S = R.segs.get(n);
+  if (S) return S;
+  const el = document.createElement('div'); el.className = 'txt textmd'; el.dataset.seg = n;
+  put(R.t, el); R.t.afterText = true;
+  if (TYPING && TYPING.parentNode === R.t.bd) TYPING.hidden = true;    // the words themselves show that it is working
+  const view = new HoolaMD.Live(el);
+  S = {el, view, pacer: new HoolaStream.Pacer((text, fin) => { view.update(text, !fin); scrollDown(); })};
+  R.segs.set(n, S);
+  return S;
+}
+function replyMessage(p, instant) {
+  const R = reply(p.turn), S = seg(R, p.seg ?? 0);
+  if (instant) { S.pacer.finalText = p.text || ''; S.pacer.flush(); } else S.pacer.final(p.text || '');
+  S.el.classList.toggle('stopped', !!p.stopped);
+  if (instant) R.done = true;
+}
+function replyText(R) { return [...R.segs.values()].map(S => S.pacer.finalText ?? S.pacer.target).filter(Boolean).join('\n\n'); }
+function drawActs(R) {
+  R.acts?.remove();
+  if (!R.done || !R.segs.size) return;
+  const a = document.createElement('div'); a.className = 'racts'; a.setAttribute('role', 'group'); a.setAttribute('aria-label', 'Reply actions');
+  const can = !!CONFIG.stream, last = R.turn === LAST_TURN;
+  a.innerHTML = `<button type="button" class="ra" data-act="copy" aria-label="Copy reply">${svg('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>')}<span>Copy</span></button>`
+    + (can && last ? `<button type="button" class="ra" data-act="retry" aria-label="Retry">${svg('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>')}<span>Dobara</span></button>` : '')
+    + (can ? `<button type="button" class="ra" data-act="up" aria-label="Accha jawab" aria-pressed="${R.fb === 'up'}">${svg('<path d="M7 10v11H3V10zM7 10l5-8a3 3 0 0 1 3 3v4h5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 18.6 21H7"/>')}</button>`
+      + `<button type="button" class="ra" data-act="down" aria-label="Kharab jawab" aria-pressed="${R.fb === 'down'}">${svg('<path d="M17 14V3h4v11zM17 14l-5 8a3 3 0 0 1-3-3v-4H4a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 5.4 3H17"/>')}</button>` : '')
+    + (R.stopped ? '<span class="rstop">Roka gaya</span>' : '');
+  a.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b) replyAct(R, b.dataset.act, b); });
+  R.t.bd.appendChild(a); R.acts = a;
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch { const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch {} ta.remove(); return ok; }
+}
+async function replyAct(R, act, b) {
+  if (act === 'copy') { if (await copyText(replyText(R))) { b.querySelector('span').textContent = 'Copied ✓'; setTimeout(() => { const s = b.querySelector('span'); if (s) s.textContent = 'Copy'; }, 1500); } else toast('Copy nahi ho paya.', true); return; }
+  if (act === 'up' || act === 'down') {
+    const value = R.fb === act ? 'none' : act;
+    try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/feedback`, {turn: R.turn, value}); R.fb = value === 'none' ? '' : value; drawActs(R);
+      if (value === 'down') toast('Shukriya. Behtar jawab ke liye "Dobara" dabaiye ya bataiye kya galat tha.'); }
+    catch (e) { toast(e.message, true); }
+    return;
+  }
+  if (act === 'retry') {
+    if (TYPING) return toast(`${AV} abhi kaam kar raha hai. Pehle Rokiye.`, true);
+    b.disabled = true;
+    try {
+      await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/retry`);
+      for (const S of R.segs.values()) { S.pacer.reset(); S.el.remove(); }   // the old words go; cards and steps stay
+      R.acts?.remove(); REPLIES.delete(R.turn); if (LAST_TURN === R.turn) LAST_TURN = null; TURN = null; scrollDown(true);
+    } catch (e) { b.disabled = false; toast(e.message, true); }
+  }
+}
+document.addEventListener('click', async e => {     // Copy on a code block
+  const b = e.target.closest('[data-copy]'); if (!b) return;
+  const code = b.closest('.cb')?.querySelector('code'); if (!code) return;
+  if (await copyText(code.textContent || '')) { b.textContent = 'Copied ✓'; setTimeout(() => b.textContent = 'Copy', 1500); }
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) REPLIES.forEach(R => R.segs.forEach(S => { if (S.pacer.raf) S.pacer.flush(); })); });
 
 /* ================= live work line (v0.158: the animated stage is gone) ================= */
 const WHERE = {browser:'Hoola ka browser · server', pc:'Aapka PC', email:'Email', payment:'Paisa · aapki Haan', network:'Hoola Network', bluetooth:'Ghar', website:'Website'};
@@ -346,42 +423,42 @@ function renderCard(kind, p, at, live) {
   scrollDown();
 }
 
-/* ================= events (SSE over fetch) ================= */
-let STREAM = null, LAST = 0, RETRY = 0;
+/* ================= events (SSE over fetch, stream.js) ================= */
+let STREAM = null, LAST = 0;
 function setConn(state, text) { const c = $('#conn'); c.className = 'conn ' + state; c.querySelector('span').textContent = text; }
 function stopStream() { if (STREAM) { STREAM.abort(); STREAM = null; } }
-async function stream(conv) {
-  stopStream(); const ctl = new AbortController(); STREAM = ctl;
-  while (STREAM === ctl) {
-    try {
-      setConn('', 'Jud raha hai…');
-      const r = await fetch(`/api/conversations/${encodeURIComponent(conv)}/events?after=${LAST}`, {headers: {Authorization: 'Bearer ' + TOKEN, 'Last-Event-ID': String(LAST)}, signal: ctl.signal, cache: 'no-store'});
-      if (r.status === 401) return logout(true);
-      if (!r.ok || !r.body) throw new Error('stream ' + r.status);
-      setConn('ok', 'Live'); RETRY = 0;
-      const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '';
-      for (;;) {
-        const {value, done} = await rd.read(); if (done) break;
-        buf += dec.decode(value, {stream: true});
-        let i; while ((i = buf.indexOf('\n\n')) >= 0) {
-          const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
-          const data = chunk.split('\n').filter(l => l.startsWith('data:')).map(l => l.slice(5).trimStart()).join('\n');
-          if (!data) continue;
-          try { const ev = JSON.parse(data); if (ev.kind === 'resync') { setTimeout(() => openConv(conv), 0); return; } if (ev.id > LAST) { LAST = ev.id; onEvent(ev); } } catch (e) { console.warn('event', e); }
-        }
-      }
-    } catch (e) { if (ctl.signal.aborted) return; }
-    if (STREAM !== ctl) return;
-    setConn('bad', 'Dobara jud raha hai…'); RETRY = Math.min(RETRY + 1, 6); await new Promise(r => setTimeout(r, 800 * 2 ** RETRY));
-  }
+function stream(conv) {
+  stopStream();
+  const s = HoolaStream.open({url: `/api/conversations/${encodeURIComponent(conv)}/events`, token: TOKEN, after: LAST,
+    onState: setConn, onAuth: () => logout(true),
+    onEvent: ev => {
+      if (STREAM !== s || CONV !== conv) return;
+      if (ev.kind === 'resync') { setTimeout(() => openConv(conv), 0); return; }
+      if (!ev.live) LAST = ev.id;
+      onEvent(ev);
+    }});
+  STREAM = s;
 }
 function onEvent(ev) {
   const p = ev.payload || {};
   switch (ev.kind) {
+    case 'reply_start': {
+      landing(false); const prev = LAST_TURN; LAST_TURN = p.turn; reply(p.turn);
+      if (prev && REPLIES.has(prev)) drawActs(REPLIES.get(prev));         // Dobara only on the newest reply
+      return; }
+    case 'delta': {
+      const R = reply(p.turn); if (p.seq <= R.seq) return; R.seq = p.seq;
+      landing(false); seg(R, p.seg ?? 0).pacer.push(p.text || ''); return; }
+    case 'delta_reset': { const S = REPLIES.get(p.turn)?.segs.get(p.seg ?? 0); if (S) S.pacer.reset(); return; }
+    case 'reply_end': {
+      const R = REPLIES.get(p.turn); if (!R) return;
+      R.segs.forEach(S => S.pacer.flush()); R.done = true; R.stopped = !!p.stopped; drawActs(R); closeTurnTools(R.t); return; }
     case 'message':
       if (p.role === 'user') { const i = USER_ECHO.indexOf(p.text); if (i > -1) { USER_ECHO.splice(i, 1); return; } landing(false); userBubble(p.text, p.files); return; }
       if (p.source === 'greeting' && !col.children.length) return;        // the landing greets instead
-      landing(false); hoolaText(p.text || '', p.source); return;
+      landing(false);
+      if (p.turn && window.HoolaStream) { replyMessage(p, false); const R = REPLIES.get(p.turn); if (R?.done) drawActs(R); return; }
+      hoolaText(p.text || '', p.source); return;
     case 'typing': typing(!!p.on); return;
     case 'step': landing(false); stepEvent(p); return;
     case 'work': workEvent(p); return;
@@ -393,6 +470,7 @@ function onEvent(ev) {
 /* ================= open a conversation ================= */
 async function openConv(id, fresh) {
   stopStream(); CONV = id; col.innerHTML = ''; CARDS.clear(); B?.reset(); TURN = null; TYPING = null; USER_ECHO = []; $('#stopBtn').hidden = true;
+  REPLIES.forEach(R => R.segs.forEach(S => S.pacer.reset())); REPLIES.clear(); LAST_TURN = null; STICK = true;
   $$('#recents .rc').forEach(b => b.toggleAttribute('aria-current', b.dataset.conv === id));
   // v0.158 the chat in order from the server: messages and each card once where it happened (latest state)
   let tl = {events: [], last_event_id: 0};
@@ -403,11 +481,29 @@ async function openConv(id, fresh) {
   landing(!any);
   for (const ev of tl.events) {
     const p = ev.payload || {};
-    if (ev.kind === 'message') { if (p.role === 'user') userBubble(p.text, p.files); else if (any) hoolaText(p.text || '', p.source); }
+    if (ev.kind === 'message') {
+      if (p.role === 'user') userBubble(p.text, p.files);
+      else if (!any) continue;
+      else if (p.turn && window.HoolaStream) { replyMessage(p, true); LAST_TURN = p.turn; }
+      else hoolaText(p.text || '', p.source);
+    }
     else renderCard(ev.kind, p, ev.at);
   }
-  const recent = tl;
-  TURN = null; LAST = recent.last_event_id || 0; scrollDown(true);
+  REPLIES.forEach(R => { drawActs(R); closeTurnTools(R.t); });
+  TURN = null; LAST = tl.last_event_id || 0;
+  // v0.161 a reply still being written (she reloaded mid-reply): its words so far, then the stream goes on from there
+  if (CONFIG.stream && window.HoolaStream) {
+    try {
+      const r = await api('GET', `/api/conversations/${encodeURIComponent(id)}/live`, undefined, {raw: true});
+      if (r.status === 200 && CONV === id) {
+        const s = await r.json(), R = reply(s.turn);
+        R.done = false; R.acts?.remove(); R.seq = s.seq; LAST_TURN = s.turn; landing(false);
+        const S = seg(R, s.seg); S.pacer.reset(); S.pacer.push(s.text || ''); S.pacer.flush();
+        TURN = R.t; $('#stopBtn').hidden = false; live('run');
+      }
+    } catch {}
+  }
+  scrollDown(true);
   stream(id);
 }
 

@@ -246,5 +246,93 @@ async def openai_create(brain: str, system: str, tools: list[dict], messages: li
     return blocks, stop, usage
 
 
+def _stream_body(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int):
+    st = get_settings()
+    url, model, label, headers, extra = _target(brain)
+    msgs, fns = to_openai(system, tools, messages)
+    body: dict = {"model": model, "messages": msgs, "max_tokens": max_tokens, "temperature": st.glm_temperature,
+                  "stream": True, **extra}
+    if fns:
+        body["tools"] = fns
+        body["tool_choice"] = "auto"
+    return url, model, label, headers, body
+
+
+def _assemble(text: str, calls: dict[int, dict]) -> dict:
+    """The streamed pieces as one ordinary (non-stream) answer, so from_openai reads it the same way."""
+    tcs = [{"id": c["id"], "type": "function", "function": {"name": c["name"], "arguments": c["args"] or "{}"}}
+           for _, c in sorted(calls.items())]
+    msg: dict = {"content": text}
+    if tcs:
+        msg["tool_calls"] = tcs
+    return {"choices": [{"message": msg}]}
+
+
+async def openai_stream(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int,
+                        on_text) -> tuple[list[dict], str, dict]:
+    """v0.161 the same answer as openai_create, but the words reach `on_text` as the model writes them. Tool-call
+    arguments are joined and parsed only when the answer is complete (never partial JSON). Retries only before the
+    first word arrived (after that the caller resets the words and falls back to the other brain)."""
+    url, model, label, headers, body = _stream_body(brain, system, tools, messages, max_tokens)
+    tries = 1 + max(0, get_settings().llm_retries)
+    for i in range(tries):
+        wait = min(RETRY_DELAY * (2 ** i), 5.0)
+        text: list[str] = []
+        calls: dict[int, dict] = {}
+        usage: dict = {}
+        try:
+            async with _client().stream("POST", url, json=body, headers=headers) as r:
+                if r.status_code >= 400:
+                    detail = (await r.aread()).decode("utf-8", "replace")[:300]
+                    err = LLMError(f"{label} error {r.status_code}: {detail}")
+                    if r.status_code not in TRANSIENT_STATUS or i + 1 >= tries:
+                        raise err
+                    log.warning("%s (try %d of %d); retrying in %.1fs", err, i + 1, tries, wait)
+                    await asyncio.sleep(wait)
+                    continue
+                route = r.headers.get("x-omniroute-decision")
+                async for line in r.aiter_lines():
+                    if not line.startswith("data:"):
+                        continue
+                    data = line[5:].strip()
+                    if data == "[DONE]":
+                        break
+                    try:
+                        j = json.loads(data)
+                    except ValueError:
+                        continue
+                    if j.get("usage"):
+                        usage = dict(j["usage"])
+                    for ch in j.get("choices") or []:
+                        d = ch.get("delta") or {}
+                        if d.get("content"):
+                            text.append(d["content"])
+                            on_text(d["content"])
+                        for tc in d.get("tool_calls") or []:
+                            c = calls.setdefault(int(tc.get("index") or 0), {"id": "", "name": "", "args": ""})
+                            fn = tc.get("function") or {}
+                            c["id"] = tc.get("id") or c["id"]
+                            c["name"] += fn.get("name") or ""
+                            c["args"] += fn.get("arguments") or ""
+        except httpx.HTTPError as e:
+            if text or i + 1 >= tries:
+                raise LLMError(f"{label} not reachable: {e}") from e
+            log.warning("%s not reachable (try %d of %d): %s", label, i + 1, tries, e)
+            await asyncio.sleep(wait)
+            continue
+        blocks, stop = from_openai(_assemble("".join(text), calls))
+        if not blocks:
+            raise LLMError(f"{label} returned an empty answer")
+        if not usage:   # some gateways send no usage on streams: a fair estimate keeps the monthly limit honest
+            usage = {"prompt_tokens": len(json.dumps(body["messages"], ensure_ascii=False)) // 4,
+                     "completion_tokens": max(1, len(json.dumps(blocks, ensure_ascii=False)) // 4), "estimated": True}
+        if route:
+            usage["route"] = route
+        from .. import usage as _usage
+        _usage.from_openai(model, usage)
+        return blocks, stop, usage
+    raise LLMError(f"{label} returned no answer")
+
+
 async def glm_create(system: str, tools: list[dict], messages: list[dict], max_tokens: int) -> tuple[list[dict], str, dict]:
     return await openai_create("glm", system, tools, messages, max_tokens)

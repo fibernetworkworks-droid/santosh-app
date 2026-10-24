@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.160.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.161.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -442,12 +442,16 @@ REPLAY_MAX = 3000   # v0.158 more events than this to catch up = the app reloads
 
 
 @app.get("/api/conversations/{conversation_id}/events", dependencies=[Depends(require_key)])
-async def events(conversation_id: str, request: Request, after: int = 0, tenant: str = Depends(current_tenant)):
+async def events(conversation_id: str, request: Request, after: int = 0, live: int = 0,
+                 tenant: str = Depends(current_tenant)):
     """Server-sent events: everything after `after` (this chat + cards from her other chats), then live.
 
     v0.158: the catch-up is paged until it reaches now (it used to send the oldest 500 and then skip the rest), a
     `replay_end` marker tells the app when catching up is over (no more guessing with a timer), and a gap too big to
-    catch up sends `resync` so the app reloads the chat in order instead of showing a broken one."""
+    catch up sends `resync` so the app reloads the chat in order instead of showing a broken one.
+
+    v0.161 `live=1`: also the reply being written (reply_start / delta / delta_reset / reply_end, never stored, sent
+    without an SSE id). Without it (older apps) the stream is exactly as before."""
     _conv_or_404(conversation_id, tenant)
     from . import convs
     last = int(request.headers.get("last-event-id") or after or 0)
@@ -484,6 +488,10 @@ async def events(conversation_id: str, request: Request, after: int = 0, tenant:
                     offline.touch(tenant)   # the stream is still open: the phone is online
                     yield ": ping\n\n"
                     continue
+                if ev.get("live"):
+                    if live:
+                        yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
+                    continue
                 if ev["id"] <= sent:
                     continue
                 sent = ev["id"]
@@ -493,6 +501,47 @@ async def events(conversation_id: str, request: Request, after: int = 0, tenant:
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/api/conversations/{conversation_id}/live", dependencies=[Depends(require_key)])
+def chat_live(conversation_id: str, tenant: str = Depends(current_tenant)):
+    """v0.161 the reply being written right now ({turn, seg, seq, text}) so a reload continues it; 204 when none."""
+    _conv_or_404(conversation_id, tenant)
+    from . import livereply
+    snap = livereply.snapshot(conversation_id)
+    return snap if snap else Response(status_code=204)
+
+
+@app.post("/api/conversations/{conversation_id}/retry", status_code=202, dependencies=[Depends(require_key)])
+async def chat_retry(conversation_id: str, background: BackgroundTasks, tenant: str = Depends(current_tenant)):
+    """v0.161 Dobara: her last message runs again and the new answer replaces the last reply (the old one is kept in
+    the database as a branch). Nothing already sent / paid is repeated without a new card (see livereply.RETRY_NOTE)."""
+    _conv_or_404(conversation_id, tenant)
+    from . import convs, livereply
+    try:
+        text, context = livereply.prepare_retry(conversation_id)
+    except livereply.RetryError as e:
+        raise HTTPException(e.status, str(e))
+    convs.mark(tenant, conversation_id, "message")
+    background.add_task(run_turn, conversation_id, text, tenant, False, context=context)
+    return {"accepted": True, "text": text}
+
+
+class FeedbackIn(BaseModel):
+    turn: str = Field(min_length=1, max_length=40)
+    value: str = Field(max_length=8)
+    note: str = Field(default="", max_length=500)
+
+
+@app.post("/api/conversations/{conversation_id}/feedback", dependencies=[Depends(require_key)])
+def chat_feedback(conversation_id: str, body: FeedbackIn, tenant: str = Depends(current_tenant)):
+    """v0.161 thumbs up / down on one reply (counted in the usage report)."""
+    _conv_or_404(conversation_id, tenant)
+    from . import livereply
+    try:
+        return livereply.feedback(tenant, conversation_id, body.turn, body.value, body.note)
+    except livereply.RetryError as e:
+        raise HTTPException(e.status, str(e))
 
 
 @app.get("/api/conversations/{conversation_id}/timeline", dependencies=[Depends(require_key)])
@@ -839,7 +888,8 @@ def console_page():
 @app.get("/api/console/config")
 def console_config():
     from . import accounts
-    return {"app": "Hoola", "version": app.version, "google": accounts.oauth_configured(), "password": True}
+    return {"app": "Hoola", "version": app.version, "google": accounts.oauth_configured(), "password": True,
+            "stream": bool(get_settings().console_stream)}
 
 
 class ConsoleLoginIn(BaseModel):
