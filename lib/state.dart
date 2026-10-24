@@ -406,8 +406,45 @@ class Santosh extends ChangeNotifier {
     } catch (_) {}
   }
 
+  // v0.158.1 the server restarts for ~20-40 s on every update: the app keeps trying by itself instead of
+  // stopping at "Server se connect nahi ho paya" until she taps the banner or reopens the app.
+  bool _connecting = false;
+  Timer? _retryTimer;
+  int _retryWait = 0;
+  bool _keyRefused = false;
+
+  /// Try again soon (3 s, 6 s, 12 s ... up to 30 s) unless the key itself was refused.
+  void _scheduleRetry() {
+    if (_keyRefused || !configured) return;
+    _retryTimer?.cancel();
+    _retryWait = _retryWait == 0 ? 3 : (_retryWait >= 15 ? 30 : _retryWait * 2);
+    _retryTimer = Timer(Duration(seconds: _retryWait), () {
+      if (!connected && !_connecting) connect();
+    });
+  }
+
+  /// Called when the app comes back on screen: reconnect at once if the last try failed.
+  void reconnectIfNeeded() {
+    if (connected || _connecting || _keyRefused || !configured) return;
+    _retryTimer?.cancel();
+    _retryWait = 0;
+    connect();
+  }
+
   Future<void> connect({bool fresh = false}) async {
+    if (_connecting) return;
+    _connecting = true;
+    _retryTimer?.cancel();
+    try {
+      await _connect(fresh: fresh);
+    } finally {
+      _connecting = false;
+    }
+  }
+
+  Future<void> _connect({bool fresh = false}) async {
     error = null;
+    _keyRefused = false;
     await _sub?.cancel();
     _clearStory();
     _storyLimit = 60;
@@ -484,9 +521,17 @@ class Santosh extends ChangeNotifier {
       }
     } catch (e) {
       connected = false;
-      error = e is ApiException && e.status == 401 ? 'API key galat hai. Settings mein theek kijiye.' : 'Server se connect nahi ho paya: $e';
+      _keyRefused = e is ApiException && e.status == 401;
+      if (_keyRefused) {
+        error = 'API key galat hai. Settings mein theek kijiye.';
+      } else {
+        error = 'Hoola server se jud raha hoon… (server abhi update / restart ho raha ho sakta hai, main khud dobara koshish kar raha hoon. Abhi try karne ke liye yahan tap kijiye.)';
+        _scheduleRetry();
+      }
       notifyListeners();
+      return;
     }
+    _retryWait = 0;
   }
 
   Future<void> refreshAccount() async {
@@ -1008,8 +1053,16 @@ class Santosh extends ChangeNotifier {
     }
     notifyListeners();
     _sub = api!.events(conv, after: after).listen(_onEvent, onError: (e) {
-      error = e.toString();
       connected = false;
+      if (e is ApiException && e.status == 401) {
+        _keyRefused = true;
+        error = 'API key galat hai. Settings mein theek kijiye.';
+      } else {
+        // v0.158.1 e.g. the chat is gone after a server change: open again by itself (a fresh chat if needed)
+        error = 'Hoola server se dobara jud raha hoon…';
+        if (e is ApiException && e.status == 404) _prefs.remove('conv');
+        _scheduleRetry();
+      }
       notifyListeners();
     });
     // the stream says when catching up is over (replay_end); an older server doesn't: give up waiting after 8 s
@@ -2381,6 +2434,7 @@ class Santosh extends ChangeNotifier {
 
   @override
   void dispose() {
+    _retryTimer?.cancel();
     _moodTimer?.cancel();
     _replies.close();
     _sub?.cancel();

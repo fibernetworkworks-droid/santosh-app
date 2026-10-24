@@ -317,7 +317,8 @@ class Api {
   Future<void> logout() async => _send('POST', '/api/logout');
   /// v0.98 everything the app needs to open, in one call (404 on an older server: the app falls back).
   Future<Map<String, dynamic>> bootstrap(String? conv, {bool fresh = false}) async => Map<String, dynamic>.from(
-      await _send('GET', '/api/bootstrap', query: {if (conv != null && conv.isNotEmpty) 'conv': conv, if (fresh) 'new': 'true'}) as Map);
+      await _send('GET', '/api/bootstrap', query: {if (conv != null && conv.isNotEmpty) 'conv': conv, if (fresh) 'new': 'true'},
+          timeout: const Duration(seconds: 45)) as Map);   // v0.158.1 the first open after a server restart can be slow
   // ---- v0.158 the chat in order, old chats, self-check, call cards ----
   Future<Map<String, dynamic>> timeline(String conv, {int limit = 60, int before = 0}) async => Map<String, dynamic>.from(
       await _send('GET', '/api/conversations/$conv/timeline', query: {'limit': '$limit', if (before > 0) 'before': '$before'}) as Map);

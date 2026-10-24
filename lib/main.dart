@@ -198,6 +198,7 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
     widget.app.inBackground = s != AppLifecycleState.resumed;
     if (s == AppLifecycleState.paused) widget.app.markSeen();
     if (s == AppLifecycleState.resumed && widget.app.configured) {
+      widget.app.reconnectIfNeeded();   // v0.158.1 a failed connect is tried again when she comes back
       widget.app.catchUp().then((r) {
         final nav = navKey.currentState;
         if (r != null && nav != null) nav.push(MaterialPageRoute(builder: (_) => CatchUpScreen(app: widget.app, data: r)));
