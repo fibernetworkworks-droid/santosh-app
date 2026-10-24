@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/static/console/app.css?v=0.158.0">
+<link rel="stylesheet" href="/static/console/app.css?v=0.160.0">
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -67,6 +67,7 @@
       <span class="sp"></span>
       <span class="conn" id="conn" role="status"><i></i><span>Jud raha hai…</span></span>
       <button class="btn soft stopb" id="stopBtn" hidden>■ Rokiye</button>
+      <button class="livebtn stbtn" id="studioBtn" type="button" hidden aria-label="Build studio"><i></i><span>Studio</span></button>
       <button class="livebtn" id="liveBtn" aria-label="Show live work"><i></i><span id="liveTxt">Live</span></button>
     </div>
     <div class="views">
@@ -97,6 +98,7 @@
       <div class="queue" id="queue"><div class="empty">Abhi kuch nahi.</div></div>
     </div>
   </aside>
+  <aside class="studio" id="studio" aria-label="Build studio"></aside>
 
   <nav class="tabbar gl" id="tabbar" aria-label="Tabs"></nav>
 </div>
@@ -115,7 +117,9 @@
 </form>
 <div class="toast" id="toast" role="status" hidden></div>
 <noscript><p style="padding:40px;text-align:center">Hoola Console ke liye JavaScript chahiye.</p></noscript>
-<script src="/static/console/kaam.js?v=0.158.0"></script>
-<script src="/static/console/app.js?v=0.158.0"></script>
+<script src="/static/console/kaam.js?v=0.160.0"></script>
+<script src="/static/console/vendor/qrcode.js?v=1.4.4"></script>
+<script src="/static/console/build.js?v=0.160.0"></script>
+<script src="/static/console/app.js?v=0.160.0"></script>
 </body>
 </html>

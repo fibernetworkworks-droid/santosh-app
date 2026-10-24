@@ -95,7 +95,7 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-v]')
 $('#menu').addEventListener('click', () => $('#app').classList.add('drawer'));
 $('#scrim').addEventListener('click', () => $('#app').classList.remove('drawer'));
 $('#collapse').addEventListener('click', () => $('#app').classList.toggle('collapsed'));
-$('#liveBtn').addEventListener('click', () => $('#app').classList.toggle('open'));
+$('#liveBtn').addEventListener('click', () => { if (B?.isOpen()) { B.close(); $('#app').classList.add('open'); return; } $('#app').classList.toggle('open'); });
 $('#liveClose').addEventListener('click', () => $('#app').classList.remove('open'));
 $('#model').addEventListener('click', () => go('main'));
 
@@ -214,7 +214,7 @@ function workEvent(p) {
   const site = p.data && (p.data.site || p.data.url) ? ' · ' + String(p.data.site || p.data.url).slice(0, 60) : '';
   $('#stageWhere').textContent = (WHERE[p.scene] || 'Hoola server') + site + (p.phase === 'done' ? ' · ho gaya' : p.phase === 'waiting' ? ' · aapki haan' : '');
   $('#nowline').classList.toggle('err', err);
-  if (!narrow() && p.phase === 'start') $('#app').classList.add('open');
+  if (!narrow() && p.phase === 'start' && !B?.isOpen()) $('#app').classList.add('open');
 }
 function live(state) {
   const b = $('#liveBtn'); b.classList.toggle('on', state !== 'idle');
@@ -230,6 +230,9 @@ const LABEL = {bazar_approval:'Aapki Haan chahiye', employee_ask:'Employee ka sa
   artifact:'Page', pc_file:'File', photo_made:'Picture', motion:'Reel', video_job:'Video', studio_approval:'AI video ka kharcha', gst_return:'GST return',
   payroll_run:'Salary run', google_reconnect:'Google dobara jodiye', campaign:'WhatsApp campaign'};
 const CARDS = new Map();      // kind:id -> element (updated in place)
+// v0.160 Build studio (build.js): website / app design / Android builds live, like the phone app
+const B = window.HoolaBuild ? window.HoolaBuild({api, esc, toast, narrow, conv: () => CONV,
+  say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); }}) : null;
 const SKIP_FIELDS = /(^id$|_id$|^tenant|token|secret|^sig|hash|nonce|^at$|_at$|preview|thumb|^b64|^data$|^raw)/i;
 function kvRows(p, max = 8, used = []) {
   const rows = [];
@@ -272,7 +275,8 @@ function decisionRow(el, {yes, no, yesLabel = 'Slide karke Haan karein', noLabel
 }
 const fingerprintMsg = 'Yeh paise wala card hai: Haan sirf aapke phone ke fingerprint se hogi. Hoola app mein yahi card khol kar Haan kijiye.';
 
-function renderCard(kind, p, at) {
+function renderCard(kind, p, at, live) {
+  if (B && B.kinds.has(kind)) { const el = cardShell(kind, p); B.card(kind, p, el, !!live); scrollDown(); return; }
   if (kind === 'gyaan_sources') {
     const el = document.createElement('div'); el.className = 'srcs';
     el.innerHTML = (p.sources || []).map(s => `<span class="chip">[${esc(s.n ?? '')}] ${esc(s.title || s.source || '')}</span>`).join(''); turn().bd.appendChild(el); return;
@@ -381,20 +385,21 @@ function onEvent(ev) {
     case 'typing': typing(!!p.on); return;
     case 'step': landing(false); stepEvent(p); return;
     case 'work': workEvent(p); return;
-    default: landing(false); renderCard(ev.kind, p, ev.at);
+    default: landing(false); renderCard(ev.kind, p, ev.at, true);
       if (/ask|approval|draft|_sign|quote|confirm|knock/.test(ev.kind)) refreshPending();
   }
 }
 
 /* ================= open a conversation ================= */
 async function openConv(id, fresh) {
-  stopStream(); CONV = id; col.innerHTML = ''; CARDS.clear(); TURN = null; TYPING = null; USER_ECHO = []; $('#stopBtn').hidden = true;
+  stopStream(); CONV = id; col.innerHTML = ''; CARDS.clear(); B?.reset(); TURN = null; TYPING = null; USER_ECHO = []; $('#stopBtn').hidden = true;
   $$('#recents .rc').forEach(b => b.toggleAttribute('aria-current', b.dataset.conv === id));
   // v0.158 the chat in order from the server: messages and each card once where it happened (latest state)
   let tl = {events: [], last_event_id: 0};
   try { tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=${fresh ? 10 : 80}`); }
   catch (e) { toast(e.message, true); }
-  const any = tl.events.some(e => e.kind === 'message' && (e.payload || {}).role === 'user');
+  const any = tl.events.some(e => e.kind === 'message' && (e.payload || {}).role === 'user')
+    || (!fresh && !!B && tl.events.some(e => B.kinds.has(e.kind)));           // a chat with a build in it opens on the thread
   landing(!any);
   for (const ev of tl.events) {
     const p = ev.payload || {};

@@ -6520,7 +6520,8 @@ async def site_preview(token: str, path: str = ""):
         data, ctype, headers = await asyncio.to_thread(S.preview_file, token, path)
     except S.SiteError:
         raise HTTPException(404, "not found")
-    return Response(content=data, media_type=ctype, headers=headers)
+    # v0.160 the console shows it in a sandboxed frame (opaque origin): its own fonts / files must load from there
+    return Response(content=data, media_type=ctype, headers={**headers, "Access-Control-Allow-Origin": "*"})
 
 
 _SITE_FORM_CORS = {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -7035,7 +7036,7 @@ async def app_preview(token: str, path: str = ""):
         data, ctype, headers = await asyncio.to_thread(A.preview_file, token, path)
     except A.AppError:
         raise HTTPException(404, "not found")
-    return Response(content=data, media_type=ctype, headers=headers)
+    return Response(content=data, media_type=ctype, headers={**headers, "Access-Control-Allow-Origin": "*"})
 
 
 # ---------------------------------------------------------------- v0.118 Brand Sahayak (brand designer; final artwork on her tap)

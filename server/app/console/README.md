@@ -26,3 +26,25 @@
 - Server `.env`: PUBLIC_BASE_URL=https://hoola.ainewtika.com (every Google / Microsoft / DigiLocker return link) and
   HOOLA_DOMAIN=santosh.139-59-10-30.sslip.io kept for Hoola Network avatar addresses until a separate migration.
   Caddy serves both names (the sslip block stays for old app builds).
+
+# Build studio: website / app / Android builds, live (static/console/build.js)
+
+- The console now understands the builders' live events `site_board`, `app_board`, `app_android` (before: a plain generic
+  card). `window.HoolaBuild(ctx)` (build.js, loaded before app.js) renders them; app.js hands it `api / esc / toast / narrow /
+  conv / say` and sends these kinds to `B.card()` (cards keep updating in place, `live` = arrived on the stream, not replayed).
+- Chat card: stages strip, Abhi line + progress, plan list / 3 look pictures / scores, and the real buttons (Haan looks banao,
+  Rokiye, Aage badhao, Design pakka, Android app banao, APK download).
+- Studio = right-hand panel (`#app.st`, ~50% width; side sheet at <=1100 px; bottom sheet at <=820 px); one per project
+  (`site:<id>` / `app:<id>`, picker when there are several). Opens by itself when a build event arrives live (not if she
+  closed it for that project). Tabs: website Plan / Looks / Preview / Board / Kadam / Jaanch; app Plan / Looks / Screens /
+  Prototype / Dhaancha / Android / Kadam. Badlav box -> `/change`, answers -> `/answers`, look -> `/look` {index, colors_from},
+  plan -> `/plan`, approve -> `/approve` {hash} (confirm), Android -> `/android` (`redo` for code-made screens).
+- Live preview: the public-by-token `/api/site-preview/<t>/` and `/api/app-preview/<t>/` in iframes with
+  `sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"` (no allow-same-origin: the preview can
+  never read the console's token). A finished part reloads it (at most every 3 s) into a second frame that replaces the old
+  one after it has drawn. Opaque-origin frames need CORS for their fonts: both preview routes add `Access-Control-Allow-Origin: *`.
+- Pictures (look shots, screen thumbs, screenshots, scroll video) are behind the login: fetched with the Bearer token into
+  blob: URLs (CSP img-src / media-src blob: already allowed). APK QR = vendor/qrcode.js (qrcode-generator 1.4.4, MIT).
+- Kadam = the real "now" lines as they arrive (with time and seconds per part); opened later = what the board shows done.
+- Domain / live: buttons put the request in chat; buying a domain or going live still needs her Haan card.
+- Tests: `server/tests/test_console_build.py`.
