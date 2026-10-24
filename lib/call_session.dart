@@ -35,6 +35,7 @@ const callCardKinds = {
   'sheet_milaan', 'doc_edit', 'memory_saved', // v0.108
   'upi_result', // v0.109
   'hoola_rfq', 'hoola_mandate', 'hoola_promo', // v0.112
+  'hoola_dosti', // v0.160
   'a2a_task', 'handoff_reminder', 'digilocker', // v0.116
   // v0.133 Seva suite
   'seva_exception', 'helpdesk_ticket', 'helpdesk_change', 'helpdesk_escalate', 'helpdesk_alert', 'shikayat_comp', 'shikayat_case',

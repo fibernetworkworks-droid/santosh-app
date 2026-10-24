@@ -665,6 +665,7 @@ def init_db(url: str | None = None):
     from .net import promo as _net_promo  # noqa: F401  (v0.112 offers, opt-in)
     from .net import booking as _net_booking  # noqa: F401  (v0.113 service hours / slots)
     from .net import a2a as _net_a2a  # noqa: F401  (v0.116 A2A 1.0 tasks + outbound)
+    from .net import dosti as _net_dosti  # noqa: F401  (v0.160 free talk, work diary, doc asks, friends' skills)
     from .handoff import aa as _ho_aa, abdm as _ho_abdm, digilocker as _ho_dl, ondc as _ho_ondc  # noqa: F401  (v0.116)
     from .bt import models as _bt_models  # noqa: F401
     from . import procedures as _procedures  # noqa: F401

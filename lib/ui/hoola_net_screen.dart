@@ -11,6 +11,7 @@ import 'hoola_media.dart';
 import 'attach.dart';
 import 'hoola_business_screen.dart';
 import 'deal_screen.dart';
+import 'dosti_screen.dart';
 import 'hoola_samaj_screen.dart';
 
 const _relations = {'family': 'Parivar', 'team': 'Team', 'business': 'Business', 'friend': 'Dost'};
@@ -524,6 +525,11 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
             backgroundColor: Colors.transparent,
             actions: [
               IconButton(
+                tooltip: 'Dosti',
+                icon: const Icon(Icons.diversity_3_rounded),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DostiScreen(app: app))),
+              ),
+              IconButton(
                 tooltip: 'Khareed aur bikri',
                 icon: const Icon(Icons.shopping_bag_rounded),
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DealsScreen(app: app))),
@@ -618,7 +624,11 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
     if (t.isEmpty) return;
     setState(() => _busy = true);
     try {
-      await app.api!.netReply(widget.threadId, t);
+      if (_t['kind'] == 'dosti') {          // v0.160 her word in a Dosti chat: the avatar's chat goes on, streak resets
+        await app.api!.dostiAct('talk', {'thread_id': widget.threadId, 'text': t});
+      } else {
+        await app.api!.netReply(widget.threadId, t);
+      }
       _text.clear();
       await _load();
     } catch (e) {
@@ -933,7 +943,7 @@ class _Bubble extends StatelessWidget {
   final ValueChanged<String> onDecide;
 
   static const _kindText = {
-    'ask': '❓ sawaal', 'meeting': '📅 meeting', 'task': '✅ kaam', 'reminder': '⏰ reminder', 'voice_note': '🎙️ voice note',
+    'dosti_msg': '🤝 dosti', 'doc_ask': '📄 document request', 'ask': '❓ sawaal', 'meeting': '📅 meeting', 'task': '✅ kaam', 'reminder': '⏰ reminder', 'voice_note': '🎙️ voice note',
     'email': '✉️ email', 'link': '🔗 link', 'presentation': '📊 presentation', 'payment_request': '₹ payment request',
     'contact_card': '👤 contact', 'location': '📍 jagah', 'meeting_ok': '📅 meeting pakki', 'meeting_no': '📅 meeting nahi',
   };
@@ -968,6 +978,12 @@ class _Bubble extends StatelessWidget {
       if ((b['url'] ?? '') != '') '🔗 ${b['url']}',
       if ((b['place'] ?? '') != '') '📍 ${b['place']}',
       if (b['amount'] != null) '₹${b['amount']} ${b['upi_note'] ?? ''}',
+      // v0.160 Dosti: work experience / skills / a document asked for, shown inside the bubble
+      for (final e in (b['experiences'] as List? ?? const []))
+        if (e is Map) '🧠 ${e['title'] ?? ''}${(e['learned'] ?? '') != '' ? '\n   seekha: ${e['learned']}' : ''}',
+      for (final k in (b['skills'] as List? ?? const []))
+        if (k is Map) '🎓 skill: ${k['name'] ?? ''}',
+      if (b['doc'] is Map && ((b['doc'] as Map)['what'] ?? '') != '') '📄 maanga: ${(b['doc'] as Map)['what']}',
     ];
     final st = _status(status);
     return Padding(

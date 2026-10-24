@@ -413,6 +413,10 @@ async def mail_jobs() -> None:
         _mail_last["photos"] = t
         from .photos import service as phs
         jobs.append(phs.poll_tick)
+    if t - _mail_last.get("dosti", 0) >= 10:    # v0.160 Dosti: friends' avatars get their reply within seconds
+        _mail_last["dosti"] = t
+        from .net import dosti as hdosti
+        jobs.append(hdosti.tick)
     if t - _mail_last["hoola"] >= 60:           # Hoola Network: snoozed requests, quiet hours over
         _mail_last["hoola"] = t
         from .net import service as hns

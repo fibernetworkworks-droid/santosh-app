@@ -111,6 +111,7 @@ import 'motion_screen.dart';
 import 'hoola_cards.dart';
 import 'deal_screen.dart';
 import 'market_screen.dart';
+import 'dosti_screen.dart';
 import 'handoff_screen.dart';
 import 'hoola_media.dart';
 import 'attach.dart';
@@ -763,6 +764,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return DigiLockerCard(v: it.data, app: app);
     case 'hoola_mandate':
       return MandateCard(key: ValueKey('md${it.data['id']}${it.data['state']}'), v: it.data, app: app);
+    case 'hoola_dosti':
+      return DostiCard(key: ValueKey('ds${it.data['card']}${(it.data['ask'] as Map?)?['id'] ?? (it.data['item'] as Map?)?['id'] ?? it.data['thread_id']}'), v: it.data, app: app);
     case 'hoola_promo':
       return PromoCard(key: ValueKey('pr${it.data['id']}'), v: it.data, app: app);
     case 'hoola_deal':

@@ -1385,6 +1385,21 @@ class Api {
       _hm(await _send('POST', '/api/net/promos/$action', body: body, timeout: const Duration(seconds: 90)));
   Future<Map<String, dynamic>> netPromoItem(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       _hm(await _send('POST', '/api/net/promos/$id/$action', body: body, timeout: const Duration(seconds: 60)));
+  // ---- v0.160 Hoola Dosti: free talk, work diary, doc requests, friends' skills ----
+  Future<Map<String, dynamic>> dosti() async => _hm(await _send('GET', '/api/net/dosti', timeout: const Duration(seconds: 60)));
+  Future<Map<String, dynamic>> dostiSet(Map<String, dynamic> body) async => _hm(await _send('PUT', '/api/net/dosti', body: body));
+  Future<Map<String, dynamic>> dostiAct(String action, Map<String, dynamic> body) async =>
+      _hm(await _send('POST', '/api/net/dosti/$action', body: body, timeout: const Duration(seconds: 90)));
+  Future<Map<String, dynamic>> dostiThread(String threadId, String action) async =>
+      _hm(await _send('POST', '/api/net/dosti/threads/$threadId/$action', body: const {}));
+  Future<Map<String, dynamic>> dostiDiary(String id, Map<String, dynamic> body) async =>
+      _hm(await _send('PATCH', '/api/net/dosti/diary/$id', body: body));
+  Future<Map<String, dynamic>> dostiVideo(String id, String action, [String to = '']) async =>
+      _hm(await _send('POST', '/api/net/dosti/diary/$id/$action', body: {'to': to}, timeout: const Duration(seconds: 90)));
+  Future<Map<String, dynamic>> dostiDoc(String askId, String action, [String fileId = '']) async =>
+      _hm(await _send('POST', '/api/net/dosti/docs/$askId', body: {'action': action, 'file_id': fileId}, timeout: const Duration(seconds: 90)));
+  Future<Map<String, dynamic>> dostiItem(String itemId, String action) async =>
+      _hm(await _send('POST', '/api/net/dosti/items/$itemId', body: {'action': action}));
   // ---- v0.116 A2A 1.0 (outside AI agents), AA / ABDM consent hand-offs, DigiLocker requester, ONDC listing ----
   Future<Map<String, dynamic>> a2aHome() async => _hm(await _send('GET', '/api/a2a'));
   Future<Map<String, dynamic>> a2aMode(String mode) async => _hm(await _send('PUT', '/api/a2a/mode', body: {'mode': mode}));

@@ -73,6 +73,7 @@ import 'app_design_screen.dart';
 import 'kalam_screen.dart';
 import 'telecall_screen.dart';
 import 'deal_screen.dart';
+import 'dosti_screen.dart';
 import 'handoff_screen.dart';
 import 'video_editor.dart';
 import 'operator_screen.dart';
@@ -312,6 +313,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Har hissa abhi jaancho: kya kharab hai, kaise theek hoga, kaun si website server se nahi khulti'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => JaanchScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.diversity_3_rounded, color: C.accent),
+              title: Text('${app.aName} ki Dosti', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Doston ke avatar se khud kaam ki baat, apna anubhav aur skills; document aapki haan se'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DostiScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

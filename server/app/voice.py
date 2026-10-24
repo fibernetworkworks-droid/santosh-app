@@ -77,7 +77,7 @@ VOICE_TOOL_NAMES = {
     "youtube_analytics", "app_check",
     "hoola_me", "hoola_connect", "hoola_connections", "hoola_answer_connect", "hoola_send", "hoola_reply", "hoola_inbox",
     "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "hoola_jaanch", "ask_form", "ai_kharcha", "video_edit", "computer_operator", "video_studio", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_banao", "blender_3d", "postgres", "kaam_status", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
-    "hoola_learn", "hoola_learned", "hoola_samaj", "hoola_community_search", "hoola_business", "hoola_chain", "hoola_deal", "hoola_pick", "hoola_market", "hoola_booking", "a2a_bahar", "consent_jaanch", "digilocker", "ondc_listing", "hoola_seekha", "website", "website_dekho", "app_banao", "app_dekho",
+    "hoola_learn", "hoola_learned", "hoola_samaj", "hoola_community_search", "hoola_business", "hoola_chain", "hoola_deal", "hoola_pick", "hoola_market", "hoola_booking", "hoola_dosti", "a2a_bahar", "consent_jaanch", "digilocker", "ondc_listing", "hoola_seekha", "website", "website_dekho", "app_banao", "app_dekho",
     "sheets_find", "sheet_info", "sheet_query", "sheet_update", "sheet_create", "sheet_export",
     "maps_search", "maps_directions", "maps_navigate",
     "pc_status", "pc_search", "pc_read", "pc_send_to_phone", "tally_report",
@@ -305,7 +305,7 @@ VOICE_VIA_KAAM = {
     "ondc_listing", "digilocker", "agent_army", "doc_desk", "sheet_milaan", "employee", "notebook_make", "notebook_audio", "notebook_studio", "notebook_output", "notebook_discover",
     "notebook_sources", "notebook_chat_config", "notebook_note",
     "form_settings", "form_alerts", "youtube_analytics", "youtube_comments", "app_check", "hoola_chain",
-    "hoola_community_search", "hoola_samaj", "hoola_learn", "hoola_learned", "slides_edit", "slides_export",
+    "hoola_community_search", "hoola_samaj", "hoola_learn", "hoola_learned", "slides_edit", "slides_export", "hoola_dosti",
 }
 # a name ending in _dekho goes with its base tool (darzi_dekho with darzi ...)
 VOICE_TOOL_BUDGET = 150_000   # characters of tool JSON sent to Gemini Live (v0.119, the last version that worked well: ~213k)

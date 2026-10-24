@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.159.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.160.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -3175,6 +3175,103 @@ def net_promo_item(promo_id: str, action: str, body: PromoIn, tenant: str = Depe
     if action == "dismiss":
         return _net(pr.dismiss, tenant, promo_id)
     raise HTTPException(400, "action: order, dismiss")
+
+
+class DostiIn(BaseModel):
+    on: bool | None = None
+    who: str | None = None
+    chosen: list[str] | None = None
+    share_work: bool | None = None
+    share_skills: bool | None = None
+    share_videos: str | None = None
+    daily_max: int | None = None
+    to: str = ""
+    text: str = ""
+    thread_id: str = ""
+    share: bool = False
+    what: str = ""
+    why: str = ""
+    action: str = ""
+    file_id: str = ""
+    status: str | None = None
+    shared: bool | None = None
+    title: str | None = None
+    summary: str | None = None
+    learned: str | None = None
+    category: str = "other"
+
+
+@app.get("/api/net/dosti", dependencies=[Depends(require_key)])
+def net_dosti(tenant: str = Depends(current_tenant)):
+    """v0.160 Dosti: her setting, the work diary, friends' chats, what friends shared, doc requests."""
+    from .net import dosti as ds
+    _net(ds.sync, tenant)
+    return ds.overview(tenant)
+
+
+@app.put("/api/net/dosti", dependencies=[Depends(require_key)])
+def net_dosti_set(body: DostiIn, tenant: str = Depends(current_tenant)):
+    from .net import dosti as ds
+    return _net(ds.set_settings, tenant, on=body.on, who=body.who, chosen=body.chosen, share_work=body.share_work,
+                share_skills=body.share_skills, share_videos=body.share_videos, daily_max=body.daily_max)
+
+
+@app.post("/api/net/dosti/{action}", dependencies=[Depends(require_key)])
+def net_dosti_act(action: str, body: DostiIn, tenant: str = Depends(current_tenant)):
+    """talk (to | thread_id, text, share) / doc_ask (to, what, why) / diary (add: title, summary, learned, category) /
+    share_now / sync."""
+    from .net import dosti as ds
+    if action == "talk":
+        return _net(ds.talk, tenant, body.to, body.text, body.thread_id, body.share)
+    if action == "doc_ask":
+        return _net(ds.ask_doc, tenant, body.to, body.what, body.why)
+    if action == "diary":
+        return _net(ds.add_experience, tenant, body.title or "", body.summary or "", body.learned or "", body.category)
+    if action == "share_now":
+        return {"friends_told": _net(ds.share_learnings, tenant, True)}
+    if action == "sync":
+        return {"new": _net(ds.sync, tenant, 10)}
+    raise HTTPException(400, "action: talk, doc_ask, diary, share_now, sync")
+
+
+@app.post("/api/net/dosti/threads/{thread_id}/{action}", dependencies=[Depends(require_key)])
+def net_dosti_thread(thread_id: str, action: str, tenant: str = Depends(current_tenant)):
+    from .net import dosti as ds
+    if action not in ("pause", "resume"):
+        raise HTTPException(400, "action: pause, resume")
+    return _net(ds.pause, tenant, thread_id, action == "pause")
+
+
+@app.patch("/api/net/dosti/diary/{exp_id}", dependencies=[Depends(require_key)])
+def net_dosti_diary(exp_id: str, body: DostiIn, tenant: str = Depends(current_tenant)):
+    from .net import dosti as ds
+    return _net(ds.update_experience, tenant, exp_id, status=body.status, shared=body.shared, title=body.title,
+                summary=body.summary, learned=body.learned)
+
+
+@app.post("/api/net/dosti/diary/{exp_id}/{action}", dependencies=[Depends(require_key)])
+def net_dosti_video(exp_id: str, action: str, body: DostiIn, tenant: str = Depends(current_tenant)):
+    """video = make the explainer video of this skill; send_video = to a friend (this tap is her consent)."""
+    from .net import dosti as ds
+    if action == "video":
+        return _net(ds.make_video, tenant, exp_id)
+    if action == "send_video":
+        return _net(ds.send_video, tenant, exp_id, body.to, by_tap=True)
+    raise HTTPException(400, "action: video, send_video")
+
+
+@app.post("/api/net/dosti/docs/{ask_id}", dependencies=[Depends(require_key)])
+def net_dosti_doc(ask_id: str, body: DostiIn, tenant: str = Depends(current_tenant)):
+    """Her tap on a document request: send (file_id) or decline. The only way a requested document goes out."""
+    from .net import dosti as ds
+    return _net(ds.doc_answer, tenant, ask_id, body.action, body.file_id, by_tap=True)
+
+
+@app.post("/api/net/dosti/items/{item_id}", dependencies=[Depends(require_key)])
+def net_dosti_item(item_id: str, body: DostiIn, tenant: str = Depends(current_tenant)):
+    """Her yes / no on a skill a friend's avatar shared (learn | decline)."""
+    from .net import dosti as ds
+    return _net(ds.item_answer, tenant, item_id, body.action, by_tap=True)
 
 
 @app.get("/api/net/khata", dependencies=[Depends(require_key)])

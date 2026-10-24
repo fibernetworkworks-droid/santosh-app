@@ -1324,6 +1324,10 @@ class Santosh extends ChangeNotifier {
       case 'digilocker':                   // v0.116 DigiLocker sign-in link / documents
         feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
         break;
+      case 'hoola_dosti':                  // v0.160 Dosti: live chat updates only refresh; cards need her
+        if (p['card'] != 'live') feed.add(FeedItem('hoola_dosti', Map<String, dynamic>.from(p)));
+        hoolaTick++;
+        break;
       case 'hoola_mandate':                // v0.112 standing order notices
       case 'hoola_promo':                  // v0.112 an offer from a shop she opted in to
         feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
