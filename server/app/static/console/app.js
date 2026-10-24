@@ -79,6 +79,7 @@ async function logout(expired) {
 /* ================= state + shell ================= */
 let ME = null, CONV = null, VIEW = 'chat', AV = 'Santosh';
 const NAV = [['chat','Chat'],['aaj','Aaj'],['kaam','Saare kaam'],['baat','Baat'],['main','Main']];
+IC.bana = '<path d="M4 4h16v5H4zM4 11h7v9H4zM13 11h7v9h-7z"/>';
 function drawNav() {
   $('#snav').innerHTML = NAV.map(([k, n]) => `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k])}<span class="txt">${n}</span>${k === 'aaj' && QUEUE.length ? `<span class="ct txt">${QUEUE.length}</span>` : ''}</button>`).join('');
   const T = [['chat','Chat'],['aaj','Aaj'],['baat',''],['kaam','Kaam'],['main','Main']];
@@ -87,15 +88,20 @@ function drawNav() {
 }
 function go(v) {
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat:'', aaj:'· Aaj', kaam:'· Saare kaam', baat:'· Baat', main:'· Main'}[v] || '';
+  $('#ttl').textContent = {chat:'', aaj:'· Aaj', kaam:'· Saare kaam', baat:'· Baat', main:'· Main', bana:'· Banaya hua'}[v] || '';
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawAaj(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
+  if (v === 'bana') PN?.library($('#bana'));
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) go(b.dataset.v); });
 $('#menu').addEventListener('click', () => $('#app').classList.add('drawer'));
 $('#scrim').addEventListener('click', () => $('#app').classList.remove('drawer'));
 $('#collapse').addEventListener('click', () => $('#app').classList.toggle('collapsed'));
-$('#liveBtn').addEventListener('click', () => { if (B?.isOpen()) { B.close(); $('#app').classList.add('open'); return; } $('#app').classList.toggle('open'); });
+$('#liveBtn').addEventListener('click', () => {
+  if (B?.isOpen()) { B.close(); $('#app').classList.add('open'); return; }
+  if (PN?.isOpen()) { PN.close(); $('#app').classList.add('open'); return; }     // v0.163 one right-hand column at a time
+  $('#app').classList.toggle('open');
+});
 $('#liveClose').addEventListener('click', () => $('#app').classList.remove('open'));
 $('#model').addEventListener('click', () => go('main'));
 
@@ -113,6 +119,13 @@ async function enter() {
     CH = HoolaChats({api, esc, toast, current: () => CONV, open: id => { go('chat'); openConv(id); },
                      jump: (c, e) => jumpTo(c, e), newChat: () => $('#newChat').click()});
     $('#searchBtn').hidden = false;
+  }
+  if (CONFIG.panel && window.HoolaPanel && !PN) {   // v0.163 finished work opens beside the chat
+    PN = HoolaPanel({api, esc, toast, token: () => TOKEN, conv: () => CONV, goLibrary: () => go('bana'),
+      say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); },
+      closeStudio: () => { if (B?.isOpen()) B.close(); },
+      studio: (kind, p) => { go('chat'); const b = col.querySelector(`[data-key="${CSS.escape(kind + ':' + p.id)}"] [data-ba="studio"]`); if (b) b.click(); else toast('Studio ke liye chat mein us kaam ka card kholiye.'); }});
+    NAV.splice(3, 0, ['bana', 'Banaya hua']); drawNav();
   }
   const list = await loadRecents();
   const fromUrl = (location.pathname.match(/^\/console\/c\/([^/?#]+)/) || [])[1];
@@ -343,11 +356,12 @@ const LABEL = {bazar_approval:'Aapki Haan chahiye', employee_ask:'Employee ka sa
   email_draft:'Email draft', hoola_deal:'Hoola Deal', hoola_knock:'Hoola Network', hoola_msg:'Hoola Network message', calendar_event:'Calendar',
   reminders:'Reminders', lists:'Lists', gyaan_sources:'Sources', call_receipt:'Call receipt', procedure:'Seekha', memory_saved:'Yaad rakha',
   artifact:'Page', pc_file:'File', photo_made:'Picture', motion:'Reel', video_job:'Video', studio_approval:'AI video ka kharcha', gst_return:'GST return',
-  payroll_run:'Salary run', google_reconnect:'Google dobara jodiye', campaign:'WhatsApp campaign'};
+  payroll_run:'Salary run', google_reconnect:'Google dobara jodiye', campaign:'WhatsApp campaign', share_ask:'Share karein?'};
 const CARDS = new Map();      // kind:id -> element (updated in place)
 // v0.160 Build studio (build.js): website / app design / Android builds live, like the phone app
 const B = window.HoolaBuild ? window.HoolaBuild({api, esc, toast, narrow, conv: () => CONV,
   say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); }}) : null;
+let PN = null;          // v0.163 panel.js (SIDE_PANEL)
 const SKIP_FIELDS = /(^id$|_id$|^tenant|token|secret|^sig|hash|nonce|^at$|_at$|preview|thumb|^b64|^data$|^raw)/i;
 function kvRows(p, max = 8, used = []) {
   const rows = [];
@@ -446,16 +460,32 @@ function renderCard(kind, p, at, live) {
       a.children[0].addEventListener('click', async () => { try { const body = el.querySelector('textarea').value; await api('POST', `/api/emails/${encodeURIComponent(p.id)}/send`, body !== p.body ? {body} : {}); decided(el, true, '✓ Bhej diya'); } catch (e) { toast(e.message, true); } });
       a.children[1].addEventListener('click', async () => { try { await api('POST', `/api/emails/${encodeURIComponent(p.id)}/cancel`); decided(el, false, '✕ Cancel'); } catch (e) { toast(e.message, true); } });
       el.classList.add('ask'); el.appendChild(a); break; }
+    case 'share_ask': {   // v0.163 Share from the panel: nothing is public until she says Haan here
+      const own = typeof p.url === 'string' && p.url.startsWith(location.origin + '/') ? p.url : '';
+      const url = p.status === 'approved' ? (safeLink(p.url) || own) : '';
+      el.innerHTML = head(p.title || 'Share karein?', p.status === 'pending' ? 'Aapki Haan' : p.status === 'approved' ? 'shared' : 'nahi', p.status === 'pending' ? 'warn' : 'v')
+        + `<div class="kv"><span>Kya</span><b>${esc(p.what || '')}</b></div><p style="font-size:14px">${esc(p.say || '')}</p>`
+        + (url ? `<div class="acts"><input class="fld" readonly value="${esc(url)}" aria-label="Share link"><button class="btn soft" type="button" data-copy-link>Copy link</button></div>` : '');
+      el.querySelector('[data-copy-link]')?.addEventListener('click', async e => { if (await copyText(url)) e.target.textContent = 'Copied ✓'; });
+      if (p.status !== 'pending') break;
+      decisionRow(el, {yesLabel: 'Slide karke share karein',
+        yes: async () => { const r = await api('POST', `/api/panel/share/${encodeURIComponent(p.id)}`, {approve: true}); renderCard(kind, r); },
+        no: async () => { const r = await api('POST', `/api/panel/share/${encodeURIComponent(p.id)}`, {approve: false}); renderCard(kind, r); }});
+      break; }
     default: {
       const tk = ['title', 'name', 'label', 'what', 'subject'].find(k => p[k]), sk = ['say', 'summary', 'text', 'reason', 'message'].find(k => p[k]);
       const title = (tk && p[tk]) || LABEL[kind] || kind.replace(/_/g, ' ');
       const sub = (sk && p[sk]) || '';
-      const link = safeLink(p.url || p.link || p.open_url || '');
+      const pit = PN?.itemOf(kind, p);     // v0.163 finished work opens beside the chat, not in a new tab
+      const link = pit ? '' : safeLink(p.url || p.link || p.open_url || '');
       const money = /approval|_pay|deal|studio|payroll|spend|bill/.test(kind) && (p.status === 'pending' || p.waiting);
       el.innerHTML = head(title, LABEL[kind] && LABEL[kind] !== title ? LABEL[kind] : (p.status || ''), money ? 'warn' : 'v')
         + (sub ? `<p style="font-size:14px">${esc(String(sub).slice(0, 600))}</p>` : '') + kvRows(p, 8, [tk, sk])
+        + (pit ? `<div class="acts"><button class="btn go" type="button" data-pn>Kholo</button></div>` : '')
         + (link ? `<div class="acts"><a class="btn soft" href="${esc(link)}" target="_blank" rel="noopener noreferrer">Kholo</a></div>` : '')
         + (money ? `<p class="faint" style="font-size:12.5px">Is card par Haan Hoola app se hoti hai (fingerprint ya app ka apna screen).</p>` : '');
+      el.querySelector('[data-pn]')?.addEventListener('click', () => PN.open(pit));
+      if (live) PN?.update(kind, p);
     }
   }
   scrollDown();

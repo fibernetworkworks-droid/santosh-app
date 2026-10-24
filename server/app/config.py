@@ -103,6 +103,7 @@ class Settings(BaseSettings):
     prompt_cache: bool = True               # v0.86 Anthropic prompt caching on tools + conversation (faster replies)
     console_stream: bool = False            # v0.161 replies stream word by word (live-only delta events, /live, retry, thumbs)
     chat_sessions: bool = False             # v0.162 many chats: titles, pin / archive / delete, search, edit + branches
+    side_panel: bool = False                # v0.163 finished work (pages, files, videos, sites, apps) opens beside the chat
     glm_api_key: str = ""
     glm_base_url: str = "https://api.z.ai/api/paas/v4"
     glm_model: str = "glm-4.7"

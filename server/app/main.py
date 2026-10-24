@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.162.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.163.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -970,7 +970,7 @@ def api_disconnect(provider: str, request: Request):
 _CONSOLE_NOREF = {"Referrer-Policy": "no-referrer", "Cache-Control": "no-store"}
 _CONSOLE_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                 "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; "
-                "worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+                "worker-src 'self' blob:; frame-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 
 
 @app.get("/console")
@@ -989,7 +989,8 @@ def console_config():
     from . import accounts
     st = get_settings()
     return {"app": "Hoola", "version": app.version, "google": accounts.oauth_configured(), "password": True,
-            "stream": bool(st.console_stream), "sessions": bool(st.chat_sessions)}
+            "stream": bool(st.console_stream), "sessions": bool(st.chat_sessions),
+            "panel": bool(st.side_panel)}
 
 
 @app.get("/api/console/stream", dependencies=[Depends(require_key)])
@@ -9043,6 +9044,100 @@ def wake_keyword(tenant: str = Depends(current_tenant)):
     return FileResponse(f, media_type="application/octet-stream", filename="hey_santosh.onnx")
 
 
+# ------------------------------------------------------------------ v0.163 side panel (SIDE_PANEL)
+def _panel_on():
+    from . import panel
+    if not panel.enabled():
+        raise HTTPException(404, "Side panel is off (SIDE_PANEL)")
+    return panel
+
+
+def _panel_call(fn, *a):
+    from . import panel
+    try:
+        return fn(*a)
+    except panel.PanelError as e:
+        raise HTTPException(e.status, str(e))
+
+
+@app.get("/api/panel/library", dependencies=[Depends(require_key)])
+def panel_library(kind: str = "", q: str = "", tenant: str = Depends(current_tenant)):
+    """Banaya hua: every page, file, picture, video, website and app Hoola made for her (newest first)."""
+    panel = _panel_on()
+    return {"items": panel.library(tenant, kind[:10], q[:100])}
+
+
+@app.get("/api/panel/files/{file_id}/info", dependencies=[Depends(require_key)])
+def panel_file_info(file_id: str, tenant: str = Depends(current_tenant)):
+    panel = _panel_on()
+    return _panel_call(panel.file_info, tenant, file_id)
+
+
+@app.get("/api/panel/files/{file_id}", dependencies=[Depends(require_key)])
+def panel_file(file_id: str, download: int = 0, tenant: str = Depends(current_tenant)):
+    """Her file with her login. Only images / video / audio / PDF are viewable; everything else is a download."""
+    panel = _panel_on()
+    data, mt, name, viewable = _panel_call(panel.file_bytes, tenant, file_id)
+    from urllib.parse import quote
+    disp = "inline" if viewable and not download else "attachment"
+    return Response(content=data, media_type=mt, headers={
+        "Content-Disposition": f"{disp}; filename*=UTF-8''{quote(name)}", "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "private, no-store", "Content-Security-Policy": "default-src 'none'; img-src 'self'; media-src 'self'"
+        if disp == "inline" and not mt.endswith("pdf") else "default-src 'none'; sandbox"})
+
+
+@app.get("/api/panel/files/{file_id}/text", dependencies=[Depends(require_key)])
+def panel_file_text(file_id: str, tenant: str = Depends(current_tenant)):
+    panel = _panel_on()
+    return _panel_call(panel.file_text, tenant, file_id)
+
+
+@app.get("/api/panel/files/{file_id}/pdf", dependencies=[Depends(require_key)])
+def panel_file_pdf(file_id: str, tenant: str = Depends(current_tenant)):
+    """Word / Excel / PowerPoint as a PDF to look at (Gotenberg on the server)."""
+    panel = _panel_on()
+    pdf = _panel_call(panel.file_pdf, tenant, file_id)
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": "inline", "X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store"})
+
+
+@app.get("/api/panel/pages/{aid}/source", dependencies=[Depends(require_key)])
+def panel_page_source(aid: str, version: int = 0, tenant: str = Depends(current_tenant)):
+    panel = _panel_on()
+    return _panel_call(panel.page_source, tenant, aid, version)
+
+
+@app.get("/api/panel/pages/{aid}/view", dependencies=[Depends(require_key)])
+def panel_page_view(aid: str, version: int = 0, tenant: str = Depends(current_tenant)):
+    panel = _panel_on()
+    return _panel_call(panel.page_view, tenant, aid, version)
+
+
+class PanelShareIn(BaseModel):
+    kind: str = Field(max_length=8)
+    id: str = Field(min_length=1, max_length=64)
+    conversation_id: str = Field(default="", max_length=40)
+
+
+@app.post("/api/panel/share", dependencies=[Depends(require_key)])
+def panel_share(body: PanelShareIn, tenant: str = Depends(current_tenant)):
+    """Share = a Haan card first (nothing is public until she taps it)."""
+    panel = _panel_on()
+    if body.conversation_id:
+        _conv_or_404(body.conversation_id, tenant)
+    return _panel_call(panel.ask_share, tenant, body.conversation_id, body.kind, body.id)
+
+
+class PanelDecideIn(BaseModel):
+    approve: bool
+
+
+@app.post("/api/panel/share/{sid}", dependencies=[Depends(require_key)])
+def panel_share_decide(sid: str, body: PanelDecideIn, tenant: str = Depends(current_tenant)):
+    panel = _panel_on()
+    return _panel_call(panel.decide_share, tenant, sid, body.approve)
+
+
 # ------------------------------------------------------------------ Santosh Artifacts
 class ArtShareIn(BaseModel):
     on: bool = True
@@ -9151,7 +9246,7 @@ async def artifact_revise(aid: str, body: ArtReviseIn, tenant: str = Depends(cur
 
 
 @app.get("/a/{aid}/{version}")
-def artifact_page(aid: str, version: int, exp: int = 0, sig: str = ""):
+def artifact_page(aid: str, version: int, exp: int = 0, sig: str = "", panel: int = 0):
     """The owner's signed, expiring link (opened inside the app). Sandboxed: the page can't reach Santosh's API."""
     from . import artifacts
     from .db import Artifact, session as dbs
@@ -9166,7 +9261,7 @@ def artifact_page(aid: str, version: int, exp: int = 0, sig: str = ""):
     if page is None:
         raise HTTPException(404, "Not found")
     state = artifacts.state_all(tenant, aid) or {}
-    return HTMLResponse(artifacts.render(aid, version, page, state), headers=artifacts.headers())
+    return HTMLResponse(artifacts.render(aid, version, page, state, panel=bool(panel)), headers=artifacts.headers())
 
 
 @app.get("/s/{token}")

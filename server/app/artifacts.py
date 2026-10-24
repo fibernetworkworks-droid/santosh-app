@@ -284,8 +284,12 @@ async def make(tenant: str, conversation_id: str, request: str, artifact_id: str
 
 
 # ----------------------------------------------------------------------------- serving
-SHIM = """<script>(function(){var P={},n=0,M=%(state)s;
-function B(){return window.SantoshBridge&&typeof window.SantoshBridge.postMessage==='function'?window.SantoshBridge:null}
+SHIM = """<script>(function(){var P={},n=0,M=%(state)s,PANEL=%(panel)s;
+function B(){if(window.SantoshBridge&&typeof window.SantoshBridge.postMessage==='function')return window.SantoshBridge;
+if(PANEL&&window.parent!==window)return {postMessage:function(s){window.parent.postMessage({hoola:'bridge',msg:s},'*')}};return null}
+if(PANEL&&window.parent!==window){window.addEventListener('message',function(e){var d=e.data;if(e.source===window.parent&&d&&d.hoola==='reply')window.__santoshReply(d.id,d.ok,d.v)});
+var E=function(m,l){try{window.parent.postMessage({hoola:'error',message:String(m||'').slice(0,500),line:l||0},'*')}catch(x){}};
+window.addEventListener('error',function(e){E(e.message,e.lineno)});window.addEventListener('unhandledrejection',function(e){E(e.reason&&e.reason.message||e.reason)})}
 function call(op,a){var b=B();if(!b){if(op==='storage.get')return Promise.resolve(M.hasOwnProperty(a.key)?M[a.key]:null);
 if(op==='storage.set'){if(a.value===null||a.value===undefined)delete M[a.key];else M[a.key]=a.value;return Promise.resolve(true)}
 if(op==='storage.all')return Promise.resolve(JSON.parse(JSON.stringify(M)));
@@ -299,11 +303,12 @@ remove:function(k){return call('storage.set',{key:String(k),value:null})},all:fu
 ask:function(q){return call('ask',{question:String(q)})}};})();</script>"""
 
 
-def render(aid: str, version: int, page: str, state: dict[str, Any] | None = None) -> str:
+def render(aid: str, version: int, page: str, state: dict[str, Any] | None = None, panel: bool = False) -> str:
     """The page plus the window.santosh bridge. `state` (only for the owner's own signed link) pre-fills saved data so
-    pages that read storage synchronously at start see it."""
+    pages that read storage synchronously at start see it. v0.163 `panel`: opened in the console's side panel, the
+    bridge talks to the console by postMessage (the console answers for this page only) and errors are reported."""
     st = json.dumps(state or {}, ensure_ascii=False).replace("</", "<\\/")
-    shim = SHIM % {"aid": json.dumps(aid), "ver": int(version), "state": st}
+    shim = SHIM % {"aid": json.dumps(aid), "ver": int(version), "state": st, "panel": 1 if panel else 0}
     m = re.search(r"<head[^>]*>", page, re.I)
     if m:
         return page[:m.end()] + shim + page[m.end():]
