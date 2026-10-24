@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.161.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.162.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -201,7 +201,7 @@ def require_key(request: Request) -> None:
 def _conv_or_404(conversation_id: str, tenant: str) -> Conversation:
     with session() as s:
         c = s.get(Conversation, conversation_id)
-        if not c or c.tenant_id != tenant:
+        if not c or c.tenant_id != tenant or c.deleted:     # v0.162 a deleted chat is gone from links too
             raise HTTPException(404, "Conversation not found")
         return c
 
@@ -517,10 +517,10 @@ async def chat_retry(conversation_id: str, background: BackgroundTasks, tenant: 
     """v0.161 Dobara: her last message runs again and the new answer replaces the last reply (the old one is kept in
     the database as a branch). Nothing already sent / paid is repeated without a new card (see livereply.RETRY_NOTE)."""
     _conv_or_404(conversation_id, tenant)
-    from . import convs, livereply
-    try:
-        text, context = livereply.prepare_retry(conversation_id)
-    except livereply.RetryError as e:
+    from . import chats, convs, livereply
+    try:   # v0.162 CHAT_SESSIONS: the old reply stays as version 1 of 2 (‹ › arrows) instead of being replaced
+        text, context = chats.retry(conversation_id) if chats.enabled() else livereply.prepare_retry(conversation_id)
+    except (livereply.RetryError, chats.ChatError) as e:
         raise HTTPException(e.status, str(e))
     convs.mark(tenant, conversation_id, "message")
     background.add_task(run_turn, conversation_id, text, tenant, False, context=context)
@@ -562,10 +562,107 @@ def chat_timeline_head(conversation_id: str, n: int = 40, tenant: str = Depends(
 
 
 @app.get("/api/conversations", dependencies=[Depends(require_key)])
-def chat_list(limit: int = 40, tenant: str = Depends(current_tenant)):
-    """v0.158 her old chats (newest activity first): nothing is lost when she starts a new one."""
-    from . import convs
+def chat_list(limit: int = 40, archived: bool = False, tenant: str = Depends(current_tenant)):
+    """v0.158 her old chats (newest activity first): nothing is lost when she starts a new one.
+    v0.162 CHAT_SESSIONS: one query, pinned first, titles, archive list (`archived=true`), busy flags."""
+    from . import chats, convs
+    if chats.enabled():
+        return {"conversations": chats.chat_list(tenant, archived, limit), "current": convs.current(tenant)}
     return {"conversations": convs.chats(tenant, limit), "current": convs.current(tenant)}
+
+
+@app.get("/api/conversations/search", dependencies=[Depends(require_key)])
+def chat_search(q: str = "", tenant: str = Depends(current_tenant)):
+    """v0.162 titles and message text of her chats; each hit has the event id to jump to."""
+    from . import chats
+    if not chats.enabled():
+        raise HTTPException(404, "Chat search is off (CHAT_SESSIONS)")
+    return {"results": chats.search(tenant, q[:200])}
+
+
+class ChatPatchIn(BaseModel):
+    title: str | None = Field(default=None, max_length=120)
+    pinned: bool | None = None
+    archived: bool | None = None
+
+
+def _chats_on():
+    from . import chats
+    if not chats.enabled():
+        raise HTTPException(404, "Many chats is off (CHAT_SESSIONS)")
+    return chats
+
+
+@app.patch("/api/conversations/{conversation_id}", dependencies=[Depends(require_key)])
+def chat_patch(conversation_id: str, body: ChatPatchIn, tenant: str = Depends(current_tenant)):
+    """v0.162 rename / pin / archive."""
+    chats = _chats_on()
+    try:
+        return chats.patch(tenant, conversation_id, body.title, body.pinned, body.archived)
+    except chats.ChatError as e:
+        raise HTTPException(e.status, str(e))
+
+
+@app.delete("/api/conversations/{conversation_id}", dependencies=[Depends(require_key)])
+def chat_delete(conversation_id: str, tenant: str = Depends(current_tenant)):
+    """v0.162 soft delete (the console asks first): gone from the list, search and links; rows kept."""
+    chats = _chats_on()
+    _conv_or_404(conversation_id, tenant)
+    try:
+        return chats.delete(tenant, conversation_id)
+    except chats.ChatError as e:
+        raise HTTPException(e.status, str(e))
+
+
+class ChatEditIn(BaseModel):
+    event_id: int
+    text: str = Field(min_length=1, max_length=4000)
+
+
+async def _edited_turn(conversation_id: str, text: str, tenant: str, parent: int | None) -> None:
+    await run_turn(conversation_id, text, tenant, False)
+    if parent:
+        from .db import Message
+        with session() as s:   # the new version of her message points to the one she edited
+            row = s.scalars(select(Message).where(Message.conversation_id == conversation_id, Message.role == "user",
+                                                  Message.in_history.is_(True), Message.parent_id.is_(None),
+                                                  Message.id > parent).order_by(Message.id)).first()
+            if row is not None:
+                row.parent_id = parent
+
+
+@app.post("/api/conversations/{conversation_id}/edit", status_code=202, dependencies=[Depends(require_key)])
+def chat_edit(conversation_id: str, body: ChatEditIn, background: BackgroundTasks, tenant: str = Depends(current_tenant)):
+    """v0.162 her message edited: a new version from there (the old one stays, ‹ 1/2 ›); the new text runs as a turn."""
+    chats = _chats_on()
+    _conv_or_404(conversation_id, tenant)
+    try:
+        b = chats.edit(conversation_id, body.event_id, body.text)
+    except chats.ChatError as e:
+        raise HTTPException(e.status, str(e))
+    from . import convs
+    convs.mark(tenant, conversation_id, "message")
+    ev = bus.publish(conversation_id, "message", {"role": "user", "text": body.text.strip(), "source": "user",
+                                                  "edited": True, "branch": b["group"]})
+    chats.started(conversation_id, b["group"], ev["id"])
+    background.add_task(_edited_turn, conversation_id, body.text.strip(), tenant, b.get("parent"))
+    return {"accepted": True, **b, "event_id": ev["id"]}
+
+
+class ChatBranchIn(BaseModel):
+    group: int
+    index: int
+
+
+@app.post("/api/conversations/{conversation_id}/branch", dependencies=[Depends(require_key)])
+def chat_branch(conversation_id: str, body: ChatBranchIn, tenant: str = Depends(current_tenant)):
+    """v0.162 ‹ / ›: show another version of an edited message or a re-asked reply (nothing is lost)."""
+    chats = _chats_on()
+    _conv_or_404(conversation_id, tenant)
+    try:
+        return chats.switch(conversation_id, body.group, body.index)
+    except chats.ChatError as e:
+        raise HTTPException(e.status, str(e))
 
 
 @app.post("/api/conversations/{conversation_id}/open", dependencies=[Depends(require_key)])
@@ -878,8 +975,10 @@ _CONSOLE_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe
 
 @app.get("/console")
 @app.get("/console/")
-def console_page():
-    """The Hoola Console: chat-first web app on the same APIs as the phone (login: Google or Hoola ID + password)."""
+@app.get("/console/c/{conversation_id}")
+def console_page(conversation_id: str = ""):
+    """The Hoola Console: chat-first web app on the same APIs as the phone (login: Google or Hoola ID + password).
+    v0.162 /console/c/<id> = a link to one chat (same page; the page opens that chat)."""
     return FileResponse(STATIC / "console" / "index.html", headers={
         **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
@@ -888,8 +987,62 @@ def console_page():
 @app.get("/api/console/config")
 def console_config():
     from . import accounts
+    st = get_settings()
     return {"app": "Hoola", "version": app.version, "google": accounts.oauth_configured(), "password": True,
-            "stream": bool(get_settings().console_stream)}
+            "stream": bool(st.console_stream), "sessions": bool(st.chat_sessions)}
+
+
+@app.get("/api/console/stream", dependencies=[Depends(require_key)])
+async def console_stream(request: Request, after: int = 0, tenant: str = Depends(current_tenant)):
+    """v0.162 ONE stream for all her chats (CHAT_SESSIONS): every event of every chat, tagged `conv`, including the
+    reply being written (live-only, no SSE id). The console switches chats without reconnecting, so work in one chat
+    never stops when she opens another, and every chat that works gets a busy badge."""
+    _chats_on()
+    last = int(request.headers.get("last-event-id") or after or 0)
+    q = bus.subscribe_account(tenant)
+
+    async def gen():
+        try:
+            sent = last
+            if last > 0:
+                total = 0
+                while True:
+                    page = await asyncio.to_thread(bus.backlog_account, tenant, sent, 500)
+                    for ev in page:
+                        sent = ev["id"]
+                        yield f"id: {ev['id']}\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"
+                    total += len(page)
+                    if len(page) < 500:
+                        break
+                    if total >= REPLAY_MAX:
+                        sent = await asyncio.to_thread(bus.last_account_id, tenant)
+                        yield f"data: {json.dumps({'id': 0, 'kind': 'resync', 'payload': {'why': 'gap'}})}\n\n"
+                        break
+            else:
+                sent = await asyncio.to_thread(bus.last_account_id, tenant)
+            yield f"data: {json.dumps({'id': 0, 'kind': 'replay_end', 'payload': {'last': sent}})}\n\n"
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    ev = await asyncio.wait_for(q.get(), timeout=15)
+                except asyncio.TimeoutError:
+                    from . import offline
+                    offline.touch(tenant)
+                    yield ": ping\n\n"
+                    continue
+                if ev.get("live"):
+                    yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
+                    continue
+                if ev["id"] <= sent:
+                    continue
+                sent = ev["id"]
+                yield f"id: {ev['id']}\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"
+        finally:
+            bus.unsubscribe_account(tenant, q)
+
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 class ConsoleLoginIn(BaseModel):
@@ -948,7 +1101,10 @@ def console_me(tenant: str = Depends(current_tenant)):
 
 
 @app.get("/api/console/conversations", dependencies=[Depends(require_key)])
-def console_conversations(limit: int = 40, tenant: str = Depends(current_tenant)):
+def console_conversations(limit: int = 40, archived: bool = False, tenant: str = Depends(current_tenant)):
+    from . import chats
+    if chats.enabled():   # v0.162 one query instead of 2 per chat; pinned first, titles, busy
+        return {"conversations": chats.chat_list(tenant, archived, max(limit, 200))}
     from .console import service as console
     return {"conversations": console.conversations(tenant, limit)}
 

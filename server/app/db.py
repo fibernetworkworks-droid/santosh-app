@@ -29,6 +29,13 @@ class Conversation(Base):
     id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("conv"))
     tenant_id: Mapped[str] = mapped_column(String(64), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    # v0.162 many chats (CHAT_SESSIONS): her title (else the auto title / first message), pin, archive, soft delete
+    title: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    pinned: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    archived: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    deleted: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    project_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    last_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Message(Base):
@@ -46,6 +53,24 @@ class Message(Base):
     display: Mapped[str | None] = mapped_column(Text, nullable=True)
     in_history: Mapped[bool] = mapped_column(Boolean, default=True)
     delivered_to_agent: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    # v0.162 Edit / Dobara branches: the message she edited (parent) and "hid:<group>:<version>" while its branch is
+    # not the one shown (then it is out of the model's history too)
+    parent_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    branch: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
+
+class ChatBranch(Base):
+    """v0.162 one place in a chat with more than one version: her edited message (kind edit) or a reply she asked
+    again (kind retry). Each version = event / message id ranges [lo, hi) (hi None = still growing); only the active
+    version's ranges are part of the chat and of the model's history."""
+    __tablename__ = "chat_branches"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    conversation_id: Mapped[str] = mapped_column(String(40), index=True)
+    kind: Mapped[str] = mapped_column(String(8))             # edit | retry
+    anchor_event_id: Mapped[int] = mapped_column(Integer)    # her message (edit: its first version; retry: the question)
+    versions: Mapped[list] = mapped_column(JSON, default=list)
+    active: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

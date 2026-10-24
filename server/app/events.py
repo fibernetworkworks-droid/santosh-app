@@ -85,6 +85,7 @@ class EventBus:
     def __init__(self) -> None:
         self._subs: dict[str, set[asyncio.Queue]] = defaultdict(set)
         self._tsubs: dict[str, set[tuple[str, asyncio.Queue]]] = defaultdict(set)   # tenant -> (conv, queue)
+        self._all: dict[str, set[asyncio.Queue]] = defaultdict(set)                 # v0.162 tenant -> account streams
         self._loops: dict[int, asyncio.AbstractEventLoop] = {}
 
     def publish(self, conversation_id: str, kind: str, payload: dict, campaign_id: str | None = None,
@@ -97,7 +98,11 @@ class EventBus:
             s.flush()
             data = {"id": ev.id, "kind": kind, "campaign_id": campaign_id, "payload": payload,
                     "at": _utc(ev.created_at).isoformat(), "call": call, "conv": conversation_id}
+            if kind == "message":   # v0.162 the chat list orders by the latest message
+                from .chats import touch
+                touch(s, conversation_id)
         targets = list(self._subs.get(conversation_id, ()))
+        targets += [q for q in self._account(conversation_id) if q not in targets]
         if kind not in LOCAL_KINDS and self._tsubs:
             try:   # v0.158 the card also reaches her other open chats (phone on one chat, console on another)
                 from . import convs
@@ -139,7 +144,7 @@ class EventBus:
         assert kind in STREAM_KINDS, kind
         data = {"id": 0, "kind": kind, "payload": payload, "at": datetime.now(timezone.utc).isoformat(),
                 "call": CALL.get() or None, "conv": conversation_id, "live": True}
-        for q in list(self._subs.get(conversation_id, ())):
+        for q in list(self._subs.get(conversation_id, ())) + self._account(conversation_id):
             loop = self._loops.get(id(q))
             try:
                 running = asyncio.get_running_loop()
@@ -153,6 +158,52 @@ class EventBus:
             except RuntimeError:
                 pass  # that loop is closed
         return data
+
+    def _account(self, conversation_id: str) -> list[asyncio.Queue]:
+        """v0.162 queues of her account-wide streams (every event of every chat of hers)."""
+        if not self._all:
+            return []
+        try:
+            from . import convs
+            return list(self._all.get(convs.tenant_of(conversation_id), ()))
+        except Exception:
+            return []
+
+    def subscribe_account(self, tenant: str) -> asyncio.Queue:
+        q: asyncio.Queue = asyncio.Queue()
+        self._all[tenant].add(q)
+        try:
+            self._loops[id(q)] = asyncio.get_running_loop()
+        except RuntimeError:
+            pass
+        return q
+
+    def unsubscribe_account(self, tenant: str, q: asyncio.Queue) -> None:
+        self._all[tenant].discard(q)
+        if not self._all[tenant]:
+            self._all.pop(tenant, None)
+        self._loops.pop(id(q), None)
+
+    @staticmethod
+    def backlog_account(tenant: str, after_id: int = 0, limit: int = 500) -> list[dict]:
+        """Events of all her chats after `after_id`, oldest first (STREAM_KINDS are never stored)."""
+        from . import convs
+        ids = convs.ids(tenant)
+        if not ids:
+            return []
+        with session() as s:
+            rows = s.scalars(select(Event).where(Event.conversation_id.in_(ids), Event.id > after_id)
+                             .order_by(Event.id).limit(limit)).all()
+            return [_row(e) for e in rows]
+
+    @staticmethod
+    def last_account_id(tenant: str) -> int:
+        from . import convs
+        ids = convs.ids(tenant)
+        if not ids:
+            return 0
+        with session() as s:
+            return int(s.scalar(select(func.max(Event.id)).where(Event.conversation_id.in_(ids))) or 0)
 
     def subscribe(self, conversation_id: str, tenant: str = "") -> asyncio.Queue:
         q: asyncio.Queue = asyncio.Queue()
@@ -201,13 +252,16 @@ bus = EventBus()
 
 def _story(conversation_id: str, tenant: str, before: int = 0, scan: int = 6000):
     """Story events of a chat (newest first): its own non-live events + other chats' cards."""
-    from . import convs
+    from . import chats, convs
+    hide = chats.story_filter(conversation_id)     # v0.162 Edit / Dobara versions that are not shown now
     with session() as s:
         cond = (Event.conversation_id == conversation_id) & (Event.kind.not_in(LIVE_ONLY | ACTIONS))
         others = [c for c in convs.ids(tenant) if c != conversation_id] if tenant else []
         if others:
             cond = or_(cond, (Event.conversation_id.in_(others)) & (Event.kind.not_in(LOCAL_KINDS)))
         q = select(Event).where(cond)
+        if hide is not None:
+            q = q.where(hide)
         if before:
             q = q.where(Event.id < before)
         rows = s.scalars(q.order_by(Event.id.desc()).limit(scan)).all()
@@ -246,7 +300,12 @@ def timeline(conversation_id: str, tenant: str, limit: int = 60, before: int = 0
     return {"events": out, "has_more": bool(older) or len(rows) >= 6000,
             "before": page[0]["first"].id if page else 0,
             "last_event_id": bus.last_id(conversation_id, tenant) if not before else 0,
-            "conversation_id": conversation_id}
+            "conversation_id": conversation_id, "branches": _branches(conversation_id)}
+
+
+def _branches(conversation_id: str) -> list[dict]:
+    from . import chats
+    return chats.info(conversation_id)
 
 
 def head(conversation_id: str, tenant: str, n: int = 40) -> dict[str, Any]:

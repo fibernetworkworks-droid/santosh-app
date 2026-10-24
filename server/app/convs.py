@@ -97,9 +97,9 @@ def current(tenant: str) -> str:
         row = s.get(ConvFocus, tenant)
         if row is not None:
             c = s.get(Conversation, row.conversation_id)
-            if c is not None and c.tenant_id == tenant:
+            if c is not None and c.tenant_id == tenant and not c.deleted:
                 return c.id
-        c = s.scalars(select(Conversation).where(Conversation.tenant_id == tenant)
+        c = s.scalars(select(Conversation).where(Conversation.tenant_id == tenant, Conversation.deleted.is_not(True))
                       .order_by(Conversation.created_at.desc())).first()
         return c.id if c else ""
 

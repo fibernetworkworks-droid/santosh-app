@@ -680,4 +680,18 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
                 yaad.after_turn(tenant_id, conversation_id, user_text, final_text, "owner" if who == "owner" else who)
             except Exception:
                 log.exception("memory after turn failed")
+        if who == "owner":
+            from .. import chats
+            if chats.enabled():   # v0.162 the chat gets a short title after her first exchange (background)
+                _bg(chats.auto_title(tenant_id, conversation_id))
         return final_text
+
+
+_BG: set = set()
+
+
+def _bg(coro) -> None:
+    """A small background job that must not be garbage-collected before it finishes."""
+    t = asyncio.ensure_future(coro)
+    _BG.add(t)
+    t.add_done_callback(_BG.discard)

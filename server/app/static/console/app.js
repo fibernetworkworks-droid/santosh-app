@@ -71,7 +71,7 @@ $('#kbtn').addEventListener('click', async () => {
   try { await enter(); } catch (er) { setToken(''); $('#lerr').textContent = er.status === 401 ? 'Key galat hai.' : er.message; $('#lerr').hidden = false; }
 });
 async function logout(expired) {
-  stopStream(); endCall();
+  stopStream(); endCall(); ACC?.abort(); ACC = null;
   if (TOKEN && !expired) { try { await api('POST', '/api/logout'); } catch {} }
   setToken(''); showLogin(expired ? 'Session khatam ho gaya. Dobara login kijiye.' : '');
 }
@@ -109,20 +109,32 @@ async function enter() {
   const h = new Date().getHours(), first = (ME.owner && ME.owner !== 'Hoola user') ? ME.owner.split(' ')[0] : '';
   $('#greet').textContent = `${h < 12 ? 'Good morning' : h < 17 ? 'Namaste' : 'Good evening'}${first ? ', ' + first : ''}`;
   $('#login').hidden = true; $('#app').hidden = false; drawNav(); drawKaam(); go('chat');
+  if (CONFIG.sessions && window.HoolaChats && window.HoolaStream && !CH) {   // v0.162 many chats
+    CH = HoolaChats({api, esc, toast, current: () => CONV, open: id => { go('chat'); openConv(id); },
+                     jump: (c, e) => jumpTo(c, e), newChat: () => $('#newChat').click()});
+    $('#searchBtn').hidden = false;
+  }
   const list = await loadRecents();
-  const target = list[0]?.id || (await api('POST', '/api/conversations')).id;
-  await openConv(target);
+  const fromUrl = (location.pathname.match(/^\/console\/c\/([^/?#]+)/) || [])[1];
+  const firstChat = async () => list[0]?.id || (await api('POST', '/api/conversations')).id;
+  if (CH) accountStream();
+  if (CH && fromUrl) await openConv(decodeURIComponent(fromUrl), false, {noPush: true, fallback: async () => {
+    toast('Woh chat nahi mili (shayad delete ho gayi). Haal ki chat khol raha hoon.'); await openConv(await firstChat()); }});
+  else await openConv(await firstChat());
   refreshPending(); setInterval(refreshPending, 30000);
 }
 
 /* ================= recents ================= */
+let CH = null;          // v0.162 chatlist.js (CHAT_SESSIONS)
 async function loadRecents() {
+  if (CH) return CH.load();
   let list = [];
   try { list = (await api('GET', '/api/console/conversations')).conversations || []; } catch {}
   $('#recents').innerHTML = list.map(c => `<button class="rc" data-conv="${esc(c.id)}" title="${esc(timeOf(c.updated_at))}"${c.id === CONV ? ' aria-current="true"' : ''}>${esc(c.title)}</button>`).join('') || '<div class="empty" style="padding:8px 12px">Abhi koi chat nahi.</div>';
   return list;
 }
-$('#recents').addEventListener('click', e => { const b = e.target.closest('[data-conv]'); if (b) { openConv(b.dataset.conv); go('chat'); } });
+$('#recents').addEventListener('click', e => { if (CH) return; const b = e.target.closest('[data-conv]'); if (b) { openConv(b.dataset.conv); go('chat'); } });
+$('#searchBtn').addEventListener('click', () => CH?.openSearch());
 $('#newChat').addEventListener('click', async () => {
   try { const c = await api('POST', '/api/conversations'); await openConv(c.id, true); go('chat'); loadRecents(); } catch (e) { toast(e.message, true); }
 });
@@ -150,25 +162,50 @@ function landing(on) {
 let TURN = null;          // the open Hoola turn: {bd, tools, tl, text, steps:{}}
 let USER_ECHO = [];       // texts she sent from here (their echo from the server is not drawn twice)
 
-function userBubble(text, files) {
+let SINK = col;           // v0.162 where new rows go (an off-screen box while an older page is drawn above)
+function userBubble(text, files, eid) {
   const d = document.createElement('div'); d.className = 'mu';
-  d.innerHTML = (files?.length ? `<div class="att">${files.map(f => `<span class="chip">📎 ${esc(f.name || f)}</span>`).join('')}</div>` : '') + esc(text);
-  col.appendChild(d); scrollDown(true); TURN = null; return d;
+  d.innerHTML = (files?.length ? `<div class="att">${files.map(f => `<span class="chip">📎 ${esc(f.name || f)}</span>`).join('')}</div>` : '') + `<span class="mut">${esc(text)}</span>`;
+  if (eid && !files?.length) attachEdit(d, text, eid);
+  SINK.appendChild(d); if (SINK === col) scrollDown(true); TURN = null; return d;
+}
+function attachEdit(d, text, eid) {   // v0.162 Edit her own message: a new version from here (the old one stays)
+  d.dataset.eid = eid;
+  if (!CH || d.querySelector('.medit')) return;
+  d.insertAdjacentHTML('beforeend', `<button type="button" class="medit" aria-label="Message badlo">${svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>')}</button>`);
+  d.querySelector('.medit').addEventListener('click', () => editBubble(d, text));
+}
+function editBubble(d, text) {
+  if (TYPING) return toast(`${AV} abhi kaam kar raha hai. Pehle Rokiye.`, true);
+  const keep = d.innerHTML; d.classList.add('editing');
+  d.innerHTML = `<textarea aria-label="Message badlo" rows="2"></textarea><div class="acts"><button type="button" class="btn soft" data-x>Cancel</button><button type="button" class="btn go" data-s>Bhejo</button></div>`;
+  const ta = d.querySelector('textarea'); ta.value = text; ta.focus(); ta.setSelectionRange(text.length, text.length);
+  ta.style.height = Math.min(220, ta.scrollHeight) + 'px'; ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(220, ta.scrollHeight) + 'px'; });
+  const cancel = () => { d.classList.remove('editing'); d.innerHTML = keep; d.querySelector('.medit')?.addEventListener('click', () => editBubble(d, text)); };
+  const save = async () => {
+    const t = ta.value.trim(); if (!t || t === text) return cancel();
+    d.querySelector('[data-s]').disabled = true;
+    try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/edit`, {event_id: +d.dataset.eid, text: t}); await openConv(CONV, false, {noPush: true}); }
+    catch (e) { toast(e.message, true); cancel(); }
+  };
+  d.querySelector('[data-x]').addEventListener('click', cancel); d.querySelector('[data-s]').addEventListener('click', save);
+  ta.addEventListener('keydown', e => { if (e.key === 'Escape') cancel(); if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); save(); } });
 }
 function hoolaBlock() {
   const d = document.createElement('div'); d.className = 'mh';
   d.innerHTML = `<span class="av"><img src="${$('#uimg').src}" alt=""></span><div class="bd"></div>`;
-  col.appendChild(d); return d.querySelector('.bd');
+  SINK.appendChild(d); return d.querySelector('.bd');
 }
 function turn() { if (!TURN) TURN = {bd: hoolaBlock(), groups: [], text: null, afterText: false, t0: Date.now()}; return TURN; }
 /* new content of the turn goes above the typing dots */
 function put(t, el) { t.bd.insertBefore(el, TYPING && TYPING.parentNode === t.bd ? TYPING : null); }
 
 const md = text => window.HoolaMD ? HoolaMD.render(text, false) : esc(text);
-function hoolaText(text, source) {   // a reply without a turn id (streaming off, notes, greetings): as before
+function hoolaText(text, source, eid) {   // a reply without a turn id (streaming off, notes, greetings): as before
   const t = turn();
-  if (t.text && (text.startsWith(t.text.dataset.raw) || t.text.dataset.raw === text)) { t.text.dataset.raw = text; t.text.innerHTML = md(text); scrollDown(); return; }
+  if (t.text && (text.startsWith(t.text.dataset.raw) || t.text.dataset.raw === text)) { t.text.dataset.raw = text; t.text.innerHTML = md(text); if (eid) t.text.dataset.eid = eid; scrollDown(); return; }
   const el = document.createElement('div'); el.className = 'txt textmd'; el.dataset.raw = text; el.innerHTML = md(text);
+  if (eid) el.dataset.eid = eid;
   if (source === 'worker' || source === 'greeting') el.classList.add('note-in');
   put(t, el); t.text = el; t.afterText = true; scrollDown();
 }
@@ -232,8 +269,9 @@ function seg(R, n) {
   R.segs.set(n, S);
   return S;
 }
-function replyMessage(p, instant) {
+function replyMessage(p, instant, eid) {
   const R = reply(p.turn), S = seg(R, p.seg ?? 0);
+  if (eid) S.el.dataset.eid = eid;
   if (instant) { S.pacer.finalText = p.text || ''; S.pacer.flush(); } else S.pacer.final(p.text || '');
   S.el.classList.toggle('stopped', !!p.stopped);
   if (instant) R.done = true;
@@ -454,11 +492,19 @@ function onEvent(ev) {
       const R = REPLIES.get(p.turn); if (!R) return;
       R.segs.forEach(S => S.pacer.flush()); R.done = true; R.stopped = !!p.stopped; drawActs(R); closeTurnTools(R.t); return; }
     case 'message':
-      if (p.role === 'user') { const i = USER_ECHO.indexOf(p.text); if (i > -1) { USER_ECHO.splice(i, 1); return; } landing(false); userBubble(p.text, p.files); return; }
+      if (p.role === 'user') {
+        const i = USER_ECHO.indexOf(p.text);
+        if (i > -1) {   // her own send, already drawn: it now gets its event id (Edit, search jumps)
+          USER_ECHO.splice(i, 1); const b = [...col.querySelectorAll('.mu:not([data-eid])')].pop();
+          if (b && !p.files?.length) attachEdit(b, p.text, ev.id); else if (b) b.dataset.eid = ev.id;
+          return;
+        }
+        landing(false); userBubble(p.text, p.files, ev.id); return;
+      }
       if (p.source === 'greeting' && !col.children.length) return;        // the landing greets instead
       landing(false);
-      if (p.turn && window.HoolaStream) { replyMessage(p, false); const R = REPLIES.get(p.turn); if (R?.done) drawActs(R); return; }
-      hoolaText(p.text || '', p.source); return;
+      if (p.turn && window.HoolaStream) { replyMessage(p, false, ev.id); const R = REPLIES.get(p.turn); if (R?.done) drawActs(R); return; }
+      hoolaText(p.text || '', p.source, ev.id); return;
     case 'typing': typing(!!p.on); return;
     case 'step': landing(false); stepEvent(p); return;
     case 'work': workEvent(p); return;
@@ -468,29 +514,43 @@ function onEvent(ev) {
 }
 
 /* ================= open a conversation ================= */
-async function openConv(id, fresh) {
-  stopStream(); CONV = id; col.innerHTML = ''; CARDS.clear(); B?.reset(); TURN = null; TYPING = null; USER_ECHO = []; $('#stopBtn').hidden = true;
-  REPLIES.forEach(R => R.segs.forEach(S => S.pacer.reset())); REPLIES.clear(); LAST_TURN = null; STICK = true;
-  $$('#recents .rc').forEach(b => b.toggleAttribute('aria-current', b.dataset.conv === id));
-  // v0.158 the chat in order from the server: messages and each card once where it happened (latest state)
-  let tl = {events: [], last_event_id: 0};
-  try { tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=${fresh ? 10 : 80}`); }
-  catch (e) { toast(e.message, true); }
-  const any = tl.events.some(e => e.kind === 'message' && (e.payload || {}).role === 'user')
-    || (!fresh && !!B && tl.events.some(e => B.kinds.has(e.kind)));           // a chat with a build in it opens on the thread
-  landing(!any);
-  for (const ev of tl.events) {
+let LOADING = false, PENDING = [], BEFORE = 0, HAS_MORE = false, OLDER = false, ANY = false;
+function renderEvents(events, any) {
+  for (const ev of events) {
     const p = ev.payload || {};
     if (ev.kind === 'message') {
-      if (p.role === 'user') userBubble(p.text, p.files);
+      if (p.role === 'user') userBubble(p.text, p.files, ev.id);
       else if (!any) continue;
-      else if (p.turn && window.HoolaStream) { replyMessage(p, true); LAST_TURN = p.turn; }
-      else hoolaText(p.text || '', p.source);
+      else if (p.turn && window.HoolaStream) { replyMessage(p, true, ev.id); if (SINK === col) LAST_TURN = p.turn; }
+      else hoolaText(p.text || '', p.source, ev.id);
     }
     else renderCard(ev.kind, p, ev.at);
   }
+}
+async function openConv(id, fresh, opts = {}) {
+  if (!CH) stopStream();
+  LOADING = true; PENDING = [];
+  CONV = id; col.innerHTML = ''; CARDS.clear(); B?.reset(); TURN = null; TYPING = null; USER_ECHO = []; $('#stopBtn').hidden = true;
+  REPLIES.forEach(R => R.segs.forEach(S => S.pacer.reset())); REPLIES.clear(); LAST_TURN = null; STICK = true;
+  $$('#recents .rc').forEach(b => b.toggleAttribute('aria-current', b.dataset.conv === id));
+  if (CH) {   // v0.162 every chat has its own link; reload / back / a new tab open the same chat
+    const url = '/console/c/' + encodeURIComponent(id);
+    if (!opts.noPush && location.pathname !== url) history.pushState({conv: id}, '', url);
+    CH.draw();
+  }
+  // v0.158 the chat in order from the server: messages and each card once where it happened (latest state)
+  let tl = {events: [], last_event_id: 0};
+  try { tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=${fresh ? 10 : 80}`); }
+  catch (e) { LOADING = false; if (e.status === 404 && opts.fallback) return opts.fallback(); toast(e.message, true); }
+  if (CONV !== id) return;
+  const any = tl.events.some(e => e.kind === 'message' && (e.payload || {}).role === 'user')
+    || (!fresh && !!B && tl.events.some(e => B.kinds.has(e.kind)));           // a chat with a build in it opens on the thread
+  ANY = any; landing(!any);
+  renderEvents(tl.events, any);
   REPLIES.forEach(R => { drawActs(R); closeTurnTools(R.t); });
+  BEFORE = tl.before || 0; HAS_MORE = !!tl.has_more; drawBranches(tl.branches || []);
   TURN = null; LAST = tl.last_event_id || 0;
+  if (CH?.isBusy(id)) typing(true);          // that chat is working: Rokiye shows, the dots wait for its words
   // v0.161 a reply still being written (she reloaded mid-reply): its words so far, then the stream goes on from there
   if (CONFIG.stream && window.HoolaStream) {
     try {
@@ -504,8 +564,94 @@ async function openConv(id, fresh) {
     } catch {}
   }
   scrollDown(true);
-  stream(id);
+  if (!CH) { LOADING = false; stream(id); return; }
+  // v0.162 the account stream never stopped: events of this chat that arrived while it loaded, without duplicates
+  LOADING = false;
+  const held = PENDING; PENDING = [];
+  for (const ev of held) if (ev.live || ev.id > LAST) onEvent(ev);
 }
+
+/* ================= v0.162 older messages, jumping to a message, branch arrows ================= */
+async function loadOlder() {
+  if (OLDER || !HAS_MORE || !BEFORE || !CONV) return false;
+  OLDER = true; const id = CONV;
+  try {
+    const tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=60&before=${BEFORE}`);
+    if (CONV !== id) return false;
+    const box = document.createElement('div'), saveTurn = TURN, saveLast = LAST_TURN;
+    SINK = box; TURN = null;
+    try { renderEvents(tl.events, true); } finally { SINK = col; TURN = saveTurn; LAST_TURN = saveLast; }
+    const fromBottom = thread.scrollHeight - thread.scrollTop;          // keep her place (no browser scroll anchoring)
+    col.prepend(...box.children);
+    thread.scrollTop = thread.scrollHeight - fromBottom;
+    REPLIES.forEach(R => { if (!R.acts) { R.done = true; drawActs(R); closeTurnTools(R.t); } });
+    BEFORE = tl.before || 0; HAS_MORE = !!tl.has_more && tl.events.length > 0;
+    return true;
+  } catch (e) { toast(e.message, true); return false; }
+  finally { OLDER = false; }
+}
+thread.addEventListener('scroll', () => { if (thread.scrollTop < 240 && HAS_MORE && !LOADING) loadOlder(); }, {passive: true});
+
+async function jumpTo(conv, eventId) {
+  go('chat');
+  if (conv !== CONV) await openConv(conv); else if (!col.children.length) await openConv(conv, false, {noPush: true});
+  if (!eventId) return;
+  let el = null;
+  for (let i = 0; i < 25 && CONV === conv; i++) {
+    el = col.querySelector(`[data-eid="${eventId}"]`); if (el || !HAS_MORE) break;
+    if (!(await loadOlder())) break;
+  }
+  if (!el) return toast('Woh message ab is chat mein nahi dikh raha (shayad doosre version mein hai).');
+  STICK = false; el.scrollIntoView({block: 'center', behavior: 'smooth'});
+  el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 2200);
+}
+
+function drawBranches(list) {
+  for (const b of list) {
+    const host = b.kind === 'edit' ? col.querySelector(`.mu[data-eid="${b.at}"]`)
+      : col.querySelector(`.mu[data-eid="${b.anchor}"]`)?.nextElementSibling?.querySelector('.bd');
+    if (!host) continue;
+    host.querySelector(':scope > .barrows')?.remove();
+    const n = b.active + 1, w = document.createElement('span'); w.className = 'barrows';
+    w.innerHTML = `<button type="button" aria-label="Pichhla version" ${n <= 1 ? 'disabled' : ''} data-i="${b.active - 1}">‹</button>`
+      + `<span aria-live="polite">${n}/${b.count}</span>`
+      + `<button type="button" aria-label="Agla version" ${n >= b.count ? 'disabled' : ''} data-i="${b.active + 1}">›</button>`;
+    w.addEventListener('click', async e => {
+      const btn = e.target.closest('button[data-i]'); if (!btn || btn.disabled) return;
+      try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/branch`, {group: b.id, index: +btn.dataset.i}); await openConv(CONV, false, {noPush: true}); }
+      catch (er) { toast(er.message, true); }
+    });
+    if (b.kind === 'edit') host.appendChild(w); else host.insertBefore(w, host.querySelector('.racts'));
+  }
+}
+
+/* ================= v0.162 one stream for all her chats (CHAT_SESSIONS) ================= */
+// kinds that belong to their own chat only (events.LOCAL_KINDS); every other card of another chat shows here too (v0.158)
+const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 'delta_reset', 'reply_end', 'message', 'upload',
+  'reminders', 'routines', 'lists', 'email_sent', 'hoola_update', 'galla', 'mshop', 'office', 'employee', 'darzi_order',
+  'phonedoc_open', 'phonedoc_check', 'device_action', 'device_action_result', 'home_device', 'bt_request', 'bazar_open',
+  'bazar_link', 'gyaan_sources', 'memory_saved', 'procedure', 'open', 'link', 'call_receipt', 'speaker', 'voice',
+  'biz_inbox', 'biz_appointment', 'propagent_listing', 'chai_order']);
+let ACC = null, ACC_LAST = 0;
+function accountStream() {
+  ACC?.abort();
+  const s = HoolaStream.open({url: '/api/console/stream', token: TOKEN, after: ACC_LAST, onState: setConn, onAuth: () => logout(true),
+    onEvent: ev => {
+      if (ACC !== s) return;
+      if (ev.kind === 'resync') { ACC_LAST = 0; setTimeout(() => { accountStream(); if (CONV) openConv(CONV, false, {noPush: true}); }, 0); return; }
+      if (!ev.live) ACC_LAST = Math.max(ACC_LAST, ev.id);
+      const c = ev.conv;
+      if (ev.kind === 'typing') { CH.busy(c, !!ev.payload?.on); if (!ev.payload?.on) setTimeout(() => CH.load(), 1500); }   // a new auto title
+      if (c === CONV) { if (LOADING) PENDING.push(ev); else onEvent(ev); return; }
+      if (ev.kind === 'message' && ev.payload?.role === 'assistant') CH.unread(c);
+      if (!ev.live && !LOCAL.has(ev.kind) && !LOADING && CONV) onEvent(ev);
+    }});
+  ACC = s;
+}
+addEventListener('popstate', () => {
+  const m = location.pathname.match(/^\/console\/c\/([^/?#]+)/);
+  if (CH && m && decodeURIComponent(m[1]) !== CONV) { go('chat'); openConv(decodeURIComponent(m[1]), false, {noPush: true}); }
+});
 
 /* ================= sending ================= */
 let FILES = [];   // {file_id, name}
