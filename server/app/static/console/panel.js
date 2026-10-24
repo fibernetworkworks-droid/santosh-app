@@ -166,7 +166,7 @@ async function renderPage(t) {
 }
 async function pageView(t) {
   const view = t.el.querySelector('.pnview'); t.el.querySelector('.pnerr').hidden = true;
-  view.innerHTML = '<div class="pnempty"><span class="spin"></span> Khul raha hai…</div>';
+  view.innerHTML = '<div class="pnempty skel-page" style="width:100%"><i class="skel" style="height:46px"></i><i class="skel" style="height:240px"></i></div>';
   try {
     if (t.view === 'code') {
       const s = await api('GET', `/api/panel/pages/${encodeURIComponent(t.aid)}/source?version=${t.ver}`);
@@ -232,13 +232,13 @@ function renderUrlVideo(t) {
 /* her file: viewable types as blob:, Office as PDF, text as code, the rest download */
 async function renderFile(t) {
   const it = t.item, fid = it.ref, P = `/api/panel/files/${encodeURIComponent(fid)}`;
-  t.el.innerHTML = `<div class="pnview center"><div class="pnempty"><span class="spin"></span> Khul raha hai…</div></div>`;
+  t.el.innerHTML = `<div class="pnview center"><div class="skel-page" style="width:100%;padding:16px" aria-label="Khul raha hai"><i class="skel" style="height:46px"></i><i class="skel" style="height:260px"></i></div></div>`;
   let info;
   try { info = await api('GET', P + '/info'); } catch (e) { t.el.querySelector('.pnview').innerHTML = err(e.message); return; }
   if (!it.title || it.title === it.name) it.title = info.name || it.title; drawTabs();
   t.el.innerHTML = bar(t, `<span class="pnnote">${esc(info.name)} · ${Math.max(1, Math.round((info.size || 0) / 1024))} KB</span><span class="sp"></span>
       <button type="button" class="btn soft" data-a="share">Share</button><button type="button" class="btn soft" data-a="dl">Download</button>`)
-    + '<div class="pnview center"><div class="pnempty"><span class="spin"></span> Khul raha hai…</div></div>';
+    + '<div class="pnview center"><div class="skel-page" style="width:100%;padding:16px" aria-label="Khul raha hai"><i class="skel" style="height:46px"></i><i class="skel" style="height:260px"></i></div></div>';
   t.el.querySelector('[data-a="dl"]').addEventListener('click', () => download(P + '?download=1', info.name));
   t.el.querySelector('[data-a="share"]').addEventListener('click', () => share('file', fid));
   const view = t.el.querySelector('.pnview');
@@ -270,7 +270,7 @@ async function library(el, kind = '', q = '') {
   el.innerHTML = `<div class="vh"><h2>Banaya hua</h2><span class="faint" style="font-weight:700">Hoola ne aapke liye jo banaya: tap karte hi panel mein khulta hai</span></div>
     <label class="ksearch gl"><span aria-hidden="true">⌕</span><input id="libq" placeholder="Dhoondhiye: EMI, poster, bill…" value="${esc(q)}" aria-label="Search"></label>
     <div class="kchips" role="group" aria-label="Filter">${FILTERS.map(([k, n]) => `<button type="button" class="chip${k === kind ? ' on' : ''}" data-f="${k}" aria-pressed="${k === kind}">${n}</button>`).join('')}</div>
-    <div class="libgrid" id="libgrid"><div class="empty">Laa raha hoon…</div></div>`;
+    <div class="libgrid" id="libgrid"><div class="skel-grid" aria-hidden="true">${'<i class="skel"></i>'.repeat(6)}</div></div>`;
   el.querySelector('.kchips').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) library(el, b.dataset.f, el.querySelector('#libq').value); });
   let tm = 0; el.querySelector('#libq').addEventListener('input', e => { clearTimeout(tm); tm = setTimeout(() => fill(el, kind, e.target.value), 250); });
   fill(el, kind, q);

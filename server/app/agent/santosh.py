@@ -332,6 +332,13 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     mcp_defs, mcp_route = mcp_live.tool_defs(mcp_snap, settings.mcp_native_tools)
     system += "\n\n" + mcp_live.prompt_block(mcp_snap, mcp_route)
     system += state.get("hint") or ""
+    try:   # v0.164 a chat in one of her projects: its instructions, notes and files
+        from .. import projects
+        _proj = await asyncio.to_thread(projects.prompt_block, conversation_id) if projects.enabled() else ""
+        if _proj:
+            system += "\n\n" + _proj
+    except Exception:
+        log.exception("project block failed")
     tools = TOOLS + mcp_defs
     from .. import livereply
     live = livereply.current(conversation_id)

@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.163.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.164.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -370,9 +370,18 @@ def _already_sent(tenant: str, conversation_id: str, client_id: str | None) -> b
 
 
 @app.post("/api/conversations", dependencies=[Depends(require_key)])
-def create_conversation(tenant: str = Depends(current_tenant)):
+def create_conversation(tenant: str = Depends(current_tenant), project_id: str = ""):
+    # (tenant stays the FIRST argument: /api/bootstrap calls create_conversation(tenant) directly)
+    if project_id:   # v0.164 "Naya chat" inside one of her projects
+        from . import projects
+        if not projects.enabled():
+            raise HTTPException(404, "Projects are off (CHAT_PROJECTS)")
+        try:
+            projects.get(tenant, project_id)
+        except projects.ProjectError as e:
+            raise HTTPException(e.status, str(e))
     with session() as s:
-        c = Conversation(tenant_id=tenant)
+        c = Conversation(tenant_id=tenant, project_id=project_id or None)
         s.add(c)
         s.flush()
         cid = c.id
@@ -584,6 +593,7 @@ class ChatPatchIn(BaseModel):
     title: str | None = Field(default=None, max_length=120)
     pinned: bool | None = None
     archived: bool | None = None
+    project_id: str | None = Field(default=None, max_length=40)    # v0.164 "" / null = out of the project
 
 
 def _chats_on():
@@ -595,10 +605,21 @@ def _chats_on():
 
 @app.patch("/api/conversations/{conversation_id}", dependencies=[Depends(require_key)])
 def chat_patch(conversation_id: str, body: ChatPatchIn, tenant: str = Depends(current_tenant)):
-    """v0.162 rename / pin / archive."""
+    """v0.162 rename / pin / archive. v0.164 project_id: into / out of one of her projects."""
+    out: dict = {}
+    if "project_id" in body.model_fields_set:
+        from . import projects
+        if not projects.enabled():
+            raise HTTPException(404, "Projects are off (CHAT_PROJECTS)")
+        try:
+            out = projects.set_chat(tenant, conversation_id, body.project_id or None)
+        except projects.ProjectError as e:
+            raise HTTPException(e.status, str(e))
+        if not ({"title", "pinned", "archived"} & body.model_fields_set):
+            return out
     chats = _chats_on()
     try:
-        return chats.patch(tenant, conversation_id, body.title, body.pinned, body.archived)
+        return {**out, **chats.patch(tenant, conversation_id, body.title, body.pinned, body.archived)}
     except chats.ChatError as e:
         raise HTTPException(e.status, str(e))
 
@@ -990,7 +1011,7 @@ def console_config():
     st = get_settings()
     return {"app": "Hoola", "version": app.version, "google": accounts.oauth_configured(), "password": True,
             "stream": bool(st.console_stream), "sessions": bool(st.chat_sessions),
-            "panel": bool(st.side_panel)}
+            "panel": bool(st.side_panel), "projects": bool(st.chat_projects)}
 
 
 @app.get("/api/console/stream", dependencies=[Depends(require_key)])
@@ -1102,10 +1123,10 @@ def console_me(tenant: str = Depends(current_tenant)):
 
 
 @app.get("/api/console/conversations", dependencies=[Depends(require_key)])
-def console_conversations(limit: int = 40, archived: bool = False, tenant: str = Depends(current_tenant)):
+def console_conversations(limit: int = 40, archived: bool = False, project: str = "", tenant: str = Depends(current_tenant)):
     from . import chats
-    if chats.enabled():   # v0.162 one query instead of 2 per chat; pinned first, titles, busy
-        return {"conversations": chats.chat_list(tenant, archived, max(limit, 200))}
+    if chats.enabled():   # v0.162 one query instead of 2 per chat; pinned first, titles, busy (v0.164 + project filter)
+        return {"conversations": chats.chat_list(tenant, archived, max(limit, 200), project[:40])}
     from .console import service as console
     return {"conversations": console.conversations(tenant, limit)}
 
@@ -9042,6 +9063,73 @@ def wake_keyword(tenant: str = Depends(current_tenant)):
     if not f.endswith(".onnx"):
         raise HTTPException(404, "WAKE_KEYWORD_FILE must be a hey_santosh.onnx (Santosh Wake)")
     return FileResponse(f, media_type="application/octet-stream", filename="hey_santosh.onnx")
+
+
+# ------------------------------------------------------------------ v0.164 projects, "Kaam ke folder" (CHAT_PROJECTS)
+def _projects_on():
+    from . import projects
+    if not projects.enabled():
+        raise HTTPException(404, "Projects are off (CHAT_PROJECTS)")
+    return projects
+
+
+def _proj_call(fn, *a):
+    from . import projects
+    try:
+        return fn(*a)
+    except projects.ProjectError as e:
+        raise HTTPException(e.status, str(e))
+
+
+class ProjectIn(BaseModel):
+    name: str | None = Field(default=None, max_length=80)
+    instructions: str | None = Field(default=None, max_length=8000)
+    memory: str | None = Field(default=None, max_length=8000)
+    emoji: str | None = Field(default=None, max_length=8)
+
+
+@app.get("/api/projects", dependencies=[Depends(require_key)])
+def projects_list(tenant: str = Depends(current_tenant)):
+    p = _projects_on()
+    return {"projects": p.list_for(tenant)}
+
+
+@app.post("/api/projects", status_code=201, dependencies=[Depends(require_key)])
+def projects_create(body: ProjectIn, tenant: str = Depends(current_tenant)):
+    p = _projects_on()
+    return _proj_call(p.create, tenant, body.name or "", body.instructions or "", body.emoji or "")
+
+
+@app.get("/api/projects/{pid}", dependencies=[Depends(require_key)])
+def projects_get(pid: str, tenant: str = Depends(current_tenant)):
+    p = _projects_on()
+    return _proj_call(p.get, tenant, pid)
+
+
+@app.patch("/api/projects/{pid}", dependencies=[Depends(require_key)])
+def projects_patch(pid: str, body: ProjectIn, tenant: str = Depends(current_tenant)):
+    p = _projects_on()
+    return _proj_call(p.patch, tenant, pid, body.name, body.instructions, body.memory, body.emoji)
+
+
+@app.delete("/api/projects/{pid}", dependencies=[Depends(require_key)])
+def projects_delete(pid: str, tenant: str = Depends(current_tenant)):
+    p = _projects_on()
+    return _proj_call(p.delete, tenant, pid)
+
+
+@app.post("/api/projects/{pid}/files", status_code=201, dependencies=[Depends(require_key)])
+async def projects_file(pid: str, file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
+    """A file for the project (kept until she removes it; big ones are searched through her Gyaan)."""
+    p = _projects_on()
+    data = await file.read(p.MAX_FILE + 1)
+    return await asyncio.to_thread(_proj_call, p.add_file, tenant, pid, file.filename or "file", data)
+
+
+@app.delete("/api/projects/{pid}/files/{fid}", dependencies=[Depends(require_key)])
+def projects_file_delete(pid: str, fid: str, tenant: str = Depends(current_tenant)):
+    p = _projects_on()
+    return _proj_call(p.remove_file, tenant, pid, fid)
 
 
 # ------------------------------------------------------------------ v0.163 side panel (SIDE_PANEL)

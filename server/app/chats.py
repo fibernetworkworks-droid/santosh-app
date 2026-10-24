@@ -53,7 +53,7 @@ def _not_busy(conv: str) -> None:
 
 
 # ------------------------------------------------------------------ list / patch / delete
-def chat_list(tenant: str, archived: bool = False, limit: int = 200) -> list[dict[str, Any]]:
+def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: str = "") -> list[dict[str, Any]]:
     """Her chats in one query: pinned first, then newest activity. Title = hers / auto, else her first message."""
     first = (select(Message.display).where(Message.conversation_id == Conversation.id, Message.role == "user",
                                            Message.display.is_not(None)).order_by(Message.id).limit(1)
@@ -66,6 +66,8 @@ def chat_list(tenant: str, archived: bool = False, limit: int = 200) -> list[dic
          .order_by(func.coalesce(Conversation.pinned, False).desc(), at.desc()).limit(max(1, min(limit, 500))))
     q = q.where(Conversation.archived.is_(True)) if archived else \
         q.where(or_(Conversation.archived.is_(None), Conversation.archived.is_(False)))
+    if project:   # v0.164 one project's chats
+        q = q.where(Conversation.project_id == project)
     from .convs import current
     cur = current(tenant)
     out = []
@@ -75,7 +77,8 @@ def chat_list(tenant: str, archived: bool = False, limit: int = 200) -> list[dic
             when = _utc(c.last_at or c.created_at)
             out.append({"id": c.id, "title": title, "auto_title": bool(c.title), "pinned": bool(c.pinned),
                         "archived": bool(c.archived), "messages": int(n or 0), "empty": not n,
-                        "updated_at": when.isoformat() if when else "", "current": c.id == cur, "busy": _busy(c.id)})
+                        "updated_at": when.isoformat() if when else "", "current": c.id == cur, "busy": _busy(c.id),
+                        "project_id": c.project_id or ""})
     return out
 
 

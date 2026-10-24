@@ -104,6 +104,8 @@ class Settings(BaseSettings):
     console_stream: bool = False            # v0.161 replies stream word by word (live-only delta events, /live, retry, thumbs)
     chat_sessions: bool = False             # v0.162 many chats: titles, pin / archive / delete, search, edit + branches
     side_panel: bool = False                # v0.163 finished work (pages, files, videos, sites, apps) opens beside the chat
+    chat_projects: bool = False             # v0.164 projects ("Kaam ke folder"): instructions, notes, files for their chats
+    projects_dir: str = "./data/projects"   # v0.164 project files (kept until she removes them, unlike pc_files)
     glm_api_key: str = ""
     glm_base_url: str = "https://api.z.ai/api/paas/v4"
     glm_model: str = "glm-4.7"

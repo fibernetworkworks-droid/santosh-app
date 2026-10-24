@@ -734,6 +734,7 @@ def init_db(url: str | None = None):
     from .aftersales import service as _aftersales  # noqa: F401
     from .feedback import models as _feedback  # noqa: F401
     from . import panel as _panel  # noqa: F401  (v0.163 share-with-Haan cards)
+    from . import projects as _projects  # noqa: F401  (v0.164 Kaam ke folder)
     from .wapsi import models as _wapsi  # noqa: F401
     from .samudaay import models as _samudaay  # noqa: F401
     from .callcentre import models as _callcentre  # noqa: F401

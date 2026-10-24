@@ -2,6 +2,7 @@
 2-week-old chat with the event to jump to, Edit and Dobara as branches that switch without losing anything, two chats
 working at once, one account-wide stream, auto titles, /console/c/<id>."""
 import asyncio
+from types import SimpleNamespace
 import json
 from datetime import timedelta
 
@@ -185,7 +186,24 @@ def test_two_chats_work_at_once_and_both_finish(env, monkeypatch):
         s.add_all([a, b])
         s.flush()
         a, b = a.id, b.id
-    set_client(StreamingClaude([[_text([f"a{i} " for i in range(30)])], [_text([f"b{i} " for i in range(30)])]], delay=0.02))
+    from tests.test_v161_stream import _Stream
+
+    class ByQuestion:   # each chat gets its own answer whatever order the two turns reach the brain in
+        def __init__(self):
+            self.messages = SimpleNamespace(stream=self._stream, create=self._create)
+
+        def _blocks(self, kw):
+            c = kw["messages"][-1]["content"]        # her own words are the last text (memory blocks come first)
+            asked = c if isinstance(c, str) else [b.get("text", "") for b in c if b.get("type") == "text"][-1]
+            who = "a" if asked.strip().endswith("chat A") else "b"
+            return [_text([f"{who}{i} " for i in range(30)])]
+
+        def _stream(self, **kw):
+            return _Stream(self._blocks(kw), 0.02)
+
+        async def _create(self, **kw):
+            return SimpleNamespace(content=[{"type": "text", "text": "ok"}], stop_reason="end_turn")
+    set_client(ByQuestion())
 
     async def go():
         q = bus.subscribe_account("default")

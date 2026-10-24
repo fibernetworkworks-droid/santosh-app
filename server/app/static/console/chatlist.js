@@ -55,6 +55,7 @@ function openMenu(id, btn) {
   const m = document.createElement('div'); m.className = 'rmenu gl'; m.setAttribute('role', 'menu');
   m.innerHTML = `<button role="menuitem" data-a="rename">✎ Naam badlo</button>
     ${c.archived ? '' : `<button role="menuitem" data-a="pin">${c.pinned ? '📌 Pin hatao' : '📌 Pin karo'}</button>`}
+    ${ctx.pickProject ? `<button role="menuitem" data-a="folder">📁 ${c.project_id ? 'Folder badlo / nikalo' : 'Folder mein daalo'}</button>` : ''}
     <button role="menuitem" data-a="archive">${c.archived ? '↩ Archive se wapas' : '🗄 Archive karo'}</button>
     <button role="menuitem" data-a="delete" class="bad">🗑 Delete karo</button>`;
   document.body.appendChild(m);
@@ -75,6 +76,7 @@ async function act(c, a) {
   closeMenu();
   try {
     if (a === 'rename') { rename(c); return; }
+    if (a === 'folder') { ctx.pickProject(c); return; }
     if (a === 'pin') await api('PATCH', `/api/conversations/${encodeURIComponent(c.id)}`, {pinned: !c.pinned});
     if (a === 'archive') { await api('PATCH', `/api/conversations/${encodeURIComponent(c.id)}`, {archived: !c.archived}); toast(c.archived ? 'Chat wapas aa gayi.' : 'Chat archive mein chali gayi.'); }
     if (a === 'delete') {

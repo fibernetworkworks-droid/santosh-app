@@ -88,7 +88,8 @@ function drawNav() {
 }
 function go(v) {
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat:'', aaj:'· Aaj', kaam:'· Saare kaam', baat:'· Baat', main:'· Main', bana:'· Banaya hua'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Aaj', kaam:'· Saare kaam', baat:'· Baat', main:'· Main', bana:'· Banaya hua', project:'· Folder'}[v] || '';
+  if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawAaj(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
   if (v === 'bana') PN?.library($('#bana'));
@@ -117,8 +118,14 @@ async function enter() {
   $('#login').hidden = true; $('#app').hidden = false; drawNav(); drawKaam(); go('chat');
   if (CONFIG.sessions && window.HoolaChats && window.HoolaStream && !CH) {   // v0.162 many chats
     CH = HoolaChats({api, esc, toast, current: () => CONV, open: id => { go('chat'); openConv(id); },
-                     jump: (c, e) => jumpTo(c, e), newChat: () => $('#newChat').click()});
+                     jump: (c, e) => jumpTo(c, e), newChat: () => $('#newChat').click(),
+                     get pickProject() { return PJ ? c => PJ.pick(c) : null; }});
     $('#searchBtn').hidden = false;
+  }
+  if (CONFIG.projects && window.HoolaProjects && !PJ) {   // v0.164 Kaam ke folder
+    PJ = HoolaProjects({api, esc, toast, go, avatar: () => AV, current: () => CONV,
+      openChat: (id, fresh) => { go('chat'); openConv(id, fresh); }, reloadChats: () => loadRecents()});
+    PJ.load();
   }
   if (CONFIG.panel && window.HoolaPanel && !PN) {   // v0.163 finished work opens beside the chat
     PN = HoolaPanel({api, esc, toast, token: () => TOKEN, conv: () => CONV, goLibrary: () => go('bana'),
@@ -140,7 +147,7 @@ async function enter() {
 /* ================= recents ================= */
 let CH = null;          // v0.162 chatlist.js (CHAT_SESSIONS)
 async function loadRecents() {
-  if (CH) return CH.load();
+  if (CH) { const l = await CH.load(); if (VIEW === 'chat') $('#ttl').textContent = chatFolder(); return l; }
   let list = [];
   try { list = (await api('GET', '/api/console/conversations')).conversations || []; } catch {}
   $('#recents').innerHTML = list.map(c => `<button class="rc" data-conv="${esc(c.id)}" title="${esc(timeOf(c.updated_at))}"${c.id === CONV ? ' aria-current="true"' : ''}>${esc(c.title)}</button>`).join('') || '<div class="empty" style="padding:8px 12px">Abhi koi chat nahi.</div>';
@@ -362,6 +369,8 @@ const CARDS = new Map();      // kind:id -> element (updated in place)
 const B = window.HoolaBuild ? window.HoolaBuild({api, esc, toast, narrow, conv: () => CONV,
   say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); }}) : null;
 let PN = null;          // v0.163 panel.js (SIDE_PANEL)
+let PJ = null;          // v0.164 projects.js (CHAT_PROJECTS)
+function chatFolder() { const c = CH?.find(CONV), p = c?.project_id && PJ?.nameOf(c.project_id); return p ? `· ${p.emoji || '📁'} ${p.name}` : ''; }
 const SKIP_FIELDS = /(^id$|_id$|^tenant|token|secret|^sig|hash|nonce|^at$|_at$|preview|thumb|^b64|^data$|^raw)/i;
 function kvRows(p, max = 8, used = []) {
   const rows = [];
@@ -568,11 +577,15 @@ async function openConv(id, fresh, opts = {}) {
     if (!opts.noPush && location.pathname !== url) history.pushState({conv: id}, '', url);
     CH.draw();
   }
+  if (VIEW === 'chat') $('#ttl').textContent = chatFolder();
+  // v0.164 skeleton rows while the chat loads (not a spinner)
+  col.innerHTML = '<div class="skel-chat" aria-hidden="true"><i class="skel r"></i><i class="skel l"></i><i class="skel l s"></i><i class="skel r s"></i><i class="skel l"></i></div>';
   // v0.158 the chat in order from the server: messages and each card once where it happened (latest state)
   let tl = {events: [], last_event_id: 0};
   try { tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=${fresh ? 10 : 80}`); }
-  catch (e) { LOADING = false; if (e.status === 404 && opts.fallback) return opts.fallback(); toast(e.message, true); }
+  catch (e) { LOADING = false; col.innerHTML = ''; if (e.status === 404 && opts.fallback) return opts.fallback(); toast(e.message, true); }
   if (CONV !== id) return;
+  col.innerHTML = '';
   const any = tl.events.some(e => e.kind === 'message' && (e.payload || {}).role === 'user')
     || (!fresh && !!B && tl.events.some(e => B.kinds.has(e.kind)));           // a chat with a build in it opens on the thread
   ANY = any; landing(!any);
@@ -700,8 +713,11 @@ composer.addEventListener('submit', async e => {
 });
 $('#stopBtn').addEventListener('click', async () => { try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/stop`); toast('Rokne ko kaha. Jo kadam chal raha tha woh beech mein ruk sakta hai.'); } catch (e) { toast(e.message, true); } });
 $('#attach').addEventListener('click', () => $('#fileIn').click());
-$('#fileIn').addEventListener('change', async e => {
-  const picked = [...e.target.files].slice(0, 6 - FILES.length); e.target.value = '';
+$('#fileIn').addEventListener('change', e => { const picked = [...e.target.files]; e.target.value = ''; addFiles(picked); });
+async function addFiles(list) {     // v0.164 paperclip, drag and drop, pasted screenshots: one path
+  const picked = list.slice(0, Math.max(0, 6 - FILES.length));
+  if (list.length > picked.length) toast('Ek baar mein 6 files tak.');
+  if (picked.length) msg.focus();
   for (const f of picked) {
     if (f.size > 25 * 1024 * 1024) { toast(`${f.name}: 25 MB se badi file nahi chalegi.`, true); continue; }
     const item = {name: f.name, file_id: null}; FILES.push(item); drawFiles();
@@ -709,6 +725,27 @@ $('#fileIn').addEventListener('change', async e => {
     catch (er) { FILES.splice(FILES.indexOf(item), 1); toast(`${f.name}: ${er.message}`, true); }
     drawFiles();
   }
+}
+// drag and drop anywhere on the chat; a screenshot pasted into the composer
+const chatView = $('#v-chat'); let dragN = 0;
+chatView.addEventListener('dragenter', e => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); dragN++; chatView.classList.add('dropping'); } });
+chatView.addEventListener('dragover', e => { if ([...(e.dataTransfer?.types || [])].includes('Files')) e.preventDefault(); });
+chatView.addEventListener('dragleave', () => { if (--dragN <= 0) { dragN = 0; chatView.classList.remove('dropping'); } });
+chatView.addEventListener('drop', e => { if (!e.dataTransfer?.files?.length) return; e.preventDefault(); dragN = 0; chatView.classList.remove('dropping'); landing(false); addFiles([...e.dataTransfer.files]); });
+msg.addEventListener('paste', e => {
+  const files = [...(e.clipboardData?.files || [])];
+  if (!files.length) return;
+  e.preventDefault();
+  const stamp = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
+  addFiles(files.map((f, i) => f.name && f.name !== 'image.png' ? f : new File([f], `screenshot-${stamp}${i ? '-' + i : ''}.png`, {type: f.type || 'image/png'})));
+});
+
+/* v0.164 shortcuts: Ctrl+K search (chatlist.js), Ctrl+Shift+O new chat, / composer, Esc stops Hoola */
+document.addEventListener('keydown', e => {
+  const typingIn = e.target.closest?.('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]');
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'o') { e.preventDefault(); $('#newChat').click(); return; }
+  if (e.key === '/' && !typingIn && !e.ctrlKey && !e.metaKey && !e.altKey && !$('#app').hidden) { e.preventDefault(); go('chat'); msg.focus(); return; }
+  if (e.key === 'Escape' && !document.querySelector('.sbg, .rmenu') && !$('#stopBtn').hidden && (!typingIn || e.target === msg)) { e.preventDefault(); $('#stopBtn').click(); }
 });
 function drawFiles() {
   $('#files').innerHTML = FILES.map((f, i) => `<span class="fchip${f.file_id ? '' : ' up'}">📎 ${esc(f.name)}${f.file_id ? '' : ' · upload…'}<button type="button" data-rm="${i}" aria-label="Remove ${esc(f.name)}">✕</button></span>`).join('');
