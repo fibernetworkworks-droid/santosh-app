@@ -190,9 +190,9 @@ def test_names_are_never_mixed_in_what_hoola_reads():
 
 
 def test_the_card_names_where_it_really_runs():
-    from app import theatre
+    from app import livework
     from app.agent import where
     assert where.shown("browse_web", {"task": "irctc kholo"}, "pc") == "pc_do"
     assert where.shown("pc_do", {"task": "Chrome mein irctc.co.in kholo"}, "hoola") == "pc_do"   # refused later, no raise here
     assert where.shown("browse_web", {"task": "x"}, "") == "browse_web"
-    assert theatre.scene_for("computer_operator") == "browser" and theatre.scene_for("pc_do") == "pc"
+    assert livework.scene_for("computer_operator") == "browser" and livework.scene_for("pc_do") == "pc"

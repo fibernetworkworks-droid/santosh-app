@@ -100,14 +100,66 @@ class CallSession extends ChangeNotifier {
   double get inLevel => _call?.inLevel ?? 0;
   double get outLevel => _call?.outLevel ?? 0;
 
-  /// Cards that arrived during this call and were not closed: shown right in the call.
-  List<FeedItem> get cards => inCall || startedAt != null
-      ? app.feed.where((f) => callCardKinds.contains(f.kind) && !_before.contains(f) && !dismissed.contains(f)).toList()
-      : const [];
+  /// v0.158 this call's id (from 'ready'): cards made by this call's own tools carry it.
+  String? callId;
+  /// Card kinds Hoola learned to keep out of her calls (closed unused before); money / OTP asks are never held.
+  Set<String> holdKinds = {};
+  final Map<FeedItem, String> _shownAt = {};   // every card this call showed -> its state when first shown
+  final Set<String> watchBrowser = {};         // live browser views she tapped open during this call
+
+  static const _alwaysAsk = {'bazar', 'employee_ask', 'operator_ask', 'studio_approval', 'ask_form', 'pg_write', 'upi_result'};
+
+  /// Does this card belong in the call? Only what the call itself started, or an ask that needs her answer now.
+  bool belongs(FeedItem f) {
+    if (!callCardKinds.contains(f.kind) || _before.contains(f) || dismissed.contains(f)) return false;
+    if (callId != null && f.call == callId) return true;      // made by a tool this call ran
+    if (!f.live) return false;                                 // history / catch-up never pops into a call
+    if (_alwaysAsk.contains(f.kind)) return feedNeedsHer(f);   // money / OTP / form asks that arrive now
+    return feedNeedsHer(f) && !holdKinds.contains(f.kind);
+  }
+
+  /// Cards that belong to this call and were not closed: shown right in the call.
+  List<FeedItem> get cards {
+    if (!(inCall || startedAt != null)) return const [];
+    final out = app.feed.where(belongs).toList();
+    for (final f in out) {
+      _shownAt.putIfAbsent(f, () => '${f.data['status'] ?? ''}|${f.data.length}');
+    }
+    return out;
+  }
+
+  /// Other work that moved during the call (stays in the chat; the call shows one quiet chip for it).
+  int get backgroundCount => !(inCall || startedAt != null)
+      ? 0
+      : app.feed.where((f) => f.live && callCardKinds.contains(f.kind) && !_before.contains(f) && !belongs(f) && !dismissed.contains(f)).length;
+
+  /// The live browser / PC view shows in the call only for a job this call started, or one she tapped open.
+  bool ownsBrowser(Map<String, dynamic> v) {
+    final sid = '${v['session_id'] ?? ''}';
+    return watchBrowser.contains(sid) || (callId != null && v['_call'] == callId);
+  }
 
   void dismiss(FeedItem f) {
     dismissed.add(f);
     notifyListeners();
+  }
+
+  /// At hang-up: which cards this call showed and what she did with them (Hoola learns what to keep out).
+  void _reportCards() {
+    final cid = callId;
+    final conv = app.conversationId;
+    if (cid == null || conv == null || _shownAt.isEmpty || app.api == null) return;
+    final cards = <Map<String, dynamic>>[
+      for (final e in _shownAt.entries)
+        {
+          'kind': e.key.kind,
+          'title': '${e.key.data['title'] ?? e.key.data['what'] ?? e.key.data['label'] ?? ''}',
+          'used': '${e.key.data['status'] ?? ''}|${e.key.data.length}' != e.value,
+          'dismissed': dismissed.contains(e.key),
+          'tagged': e.key.call == cid,
+        }
+    ];
+    unawaited(app.api!.voiceCallCards(cid, conv, cards).catchError((_) {}));
   }
 
   /// "Hey Santosh" was heard: pick up straight away, whatever screen is open.
@@ -147,7 +199,13 @@ class CallSession extends ChangeNotifier {
     tool = null;
     _before = app.feed.toSet();
     dismissed.clear();
+    _shownAt.clear();
+    watchBrowser.clear();
+    callId = null;
     startedAt = DateTime.now();
+    unawaited(app.api?.voiceCardRules().then((r) {
+      holdKinds = Set<String>.from((r['hold'] as List?) ?? const []);
+    }).catchError((_) {}));
     app.voiceMode = true;
     app.pushLocation();
     notifyListeners();
@@ -247,6 +305,8 @@ class CallSession extends ChangeNotifier {
     final secs = startedAt == null ? 0 : DateTime.now().difference(startedAt!).inSeconds;
     final cid = _ratedCallId;
     _ratedCallId = null;
+    if (was) _reportCards();
+    callId = null;
     if (was && cid != null && secs >= 20) {
       // v0.98 one tap after a call: was it good? (feeds the voice-quality numbers)
       app.addLocalCard('call_rate', {'call_id': cid, 'seconds': secs});
@@ -269,7 +329,10 @@ class CallSession extends ChangeNotifier {
   void _onEvent(Map<String, dynamic> e) {
     switch (e['type']) {
       case 'ready':
-        if (e['call_id'] is String) _ratedCallId ??= e['call_id'] as String;
+        if (e['call_id'] is String) {
+          _ratedCallId ??= e['call_id'] as String;
+          callId = e['call_id'] as String;
+        }
         act = CallAct.listening;
         linkNote = null;
         speaker = null;

@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     usage_usd_inr: float = 88.0            # v0.98 rupees per dollar for the Kharcha screen
     agent_max_steps: int = 24              # v0.78: more room to finish (the circuit breaker still stops loops)
     agent_max_tokens: int = 2000
+    chat_heal_ai: bool = True              # v0.158 after a call, a cheap model judges if its cards were relevant
     agent_self_check: bool = True          # v0.78 Pakka kaam: check the real results before saying done
     memory_auto: bool = True               # v0.108 lasting facts picked after her turns ("yaad rakha" chip)
     agent_fix_search: bool = True          # v0.78: a failed step with no known fix -> search the web for the solution

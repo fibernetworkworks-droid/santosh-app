@@ -679,6 +679,8 @@ class _ArtifactCallPillState extends State<ArtifactCallPill> {
     final app = widget.app;
     final a = app.latestArtifact;
     if (a == null || app.artifactTick <= _seen) return const SizedBox.shrink();
+    // v0.158 during a call only a page this call made pops up here (the rest stays in the chat)
+    if (app.voiceCall.inCall && a['_call'] != app.voiceCall.callId) return const SizedBox.shrink();
     final id = a['id'] as String? ?? '';
     final rawTitle = a['title'] as String? ?? '';
     final title = rawTitle.isEmpty ? 'Artifact' : rawTitle;

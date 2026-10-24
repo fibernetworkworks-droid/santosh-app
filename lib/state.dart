@@ -19,6 +19,28 @@ class FeedItem {
   final String kind; // message / steps / campaign / note
   Map<String, dynamic> data;
   final List<Map<String, dynamic>> steps = [];
+  int? eid;        // v0.158 the server event that first made it (its place in the chat's story)
+  String? call;    // the voice call whose tool made it (only those cards show in that call)
+  bool live = false; // arrived live (not loaded from history)
+}
+
+/// v0.158 statuses that mean "this card waits for her answer / tap now".
+const waitStatuses = {
+  'waiting', 'pending', 'needs_tap', 'waiting_payment', 'waiting_sign', 'notice_waiting', 'minutes_waiting', 'awaiting',
+  'needs_approval', 'pending_tap', 'ask',
+};
+
+/// Does this chat card wait for her right now (by its own latest state)?
+bool feedNeedsHer(FeedItem f) {
+  if (f.kind == 'message' || f.kind == 'note' || f.kind == 'steps') return false;
+  final d = f.data;
+  final st = '${d['status'] ?? d['state'] ?? ''}'.toLowerCase();
+  if (waitStatuses.contains(st)) return true;
+  if (const {'employee_ask', 'operator_ask', 'studio_approval', 'ask_form', 'pg_write'}.contains(f.kind)) {
+    if (d['decided'] == true || d['answered'] == true) return false;
+    return st.isEmpty || st == 'open';
+  }
+  return false;
 }
 
 const languages = <String, String>{
@@ -387,22 +409,16 @@ class Santosh extends ChangeNotifier {
   Future<void> connect({bool fresh = false}) async {
     error = null;
     await _sub?.cancel();
-    feed.clear();
+    _clearStory();
+    _storyLimit = 60;
+    hasOlder = false;
     lastEventId = 0;
-    _campaigns.clear();
-    _emails.clear();
-    _calEvents.clear();
-    _picks.clear();
-    _artifacts.clear();
-    _browsers.clear();
-    _hoola.clear();
-    _steps = null;
     api = Api(serverUrl, apiKey);
     try {
       // v0.98 one call brings everything the app needs to open (it used to wait for 8 calls in a row)
       Map<String, dynamic>? boot;
       try {
-        boot = await api!.bootstrap(fresh ? null : _prefs.getString('conv'));
+        boot = await api!.bootstrap(fresh ? null : _prefs.getString('conv'), fresh: fresh);
       } on ApiException catch (e) {
         if (e.status == 401) rethrow;
         boot = null; // an older server: the old way below
@@ -432,20 +448,9 @@ class Santosh extends ChangeNotifier {
       unawaited(Native.chatLink(serverUrl, apiKey, conversationId!));
       unawaited(screenSync());
       connected = true;
-      _replaying = true;
       _connectedAt = DateTime.now().toUtc();
       notifyListeners();
-      _sub = api!.events(conversationId!).listen(_onEvent, onError: (e) {
-        error = e.toString();
-        connected = false;
-        notifyListeners();
-      });
-      // once history has replayed, hand the latest event id to the background service
-      Timer(const Duration(seconds: 2), () {
-        _replaying = false;
-        applyBackground();
-        _syncBazar();
-      });
+      await _openStory();   // v0.158 the chat in order (history from /timeline, then live from where it ended)
       await Device.instance.init();
       await Device.instance.askNotificationPermission();
       if (!(_prefs.getBool('asked_location') ?? false)) {
@@ -916,7 +921,199 @@ class Santosh extends ChangeNotifier {
     }
   }
 
+  // ---------------------------------------------------------------- v0.158 the chat as one story, in order
+  bool hasOlder = false;          // older chat history exists above (tap "Purani baatein" to load)
+  bool loadingOlder = false;
+  int _storyLimit = 60;
+  Timer? _healTimer;
+  Timer? _replayGuard;
+  bool _healing = false;
+  int healFixes = 0;              // times this session's self-check found the chat different and reloaded it
+  List<Map<String, dynamic>> chatList = [];
+
+  void _clearStory() {
+    feed.clear();
+    _hoola.clear();
+    _deals.clear();
+    _upiCards.clear();
+    _pickCards.clear();
+    _campaigns.clear();
+    _emails.clear();
+    _bazar.clear();
+    _studio.clear();
+    _studioAsks.clear();
+    _opTasks.clear();
+    _opAsks.clear();
+    _videoJobs.clear();
+    _pgCards.clear();
+    _b3dCards.clear();
+    _nbCards.clear();
+    _empAsks.clear();
+    _darziCards.clear();
+    _chaiPlans.clear();
+    _mshopCards.clear();
+    _phonedocCards.clear();
+    _gstCards.clear();
+    _payCards.clear();
+    _officeCards.clear();
+    _lekhakCards.clear();
+    _askForms.clear();
+    _siteCards.clear();
+    _appCards.clear();
+    _androidCards.clear();
+    _brandCards.clear();
+    _sevaCards.clear();
+    _techCards.clear();
+    _safarCards.clear();
+    _gharCards.clear();
+    _kanoonCards.clear();
+    _mehmaanCards.clear();
+    _kalaCards.clear();
+    _adsPlans.clear();
+    _kalamCards.clear();
+    _deskCards.clear();
+    _artifacts.clear();
+    _browsers.clear();
+    _calEvents.clear();
+    _picks.clear();
+    _steps = null;
+  }
+
+  /// Cards in this chat that wait for her now (the "Aapki haan chahiye" strip), newest first.
+  List<FeedItem> get waitingCards => feed.reversed.where(feedNeedsHer).toList();
+
+  /// Load the chat's story from the server in order, then stream live from where it ended.
+  Future<void> _openStory({bool reload = false}) async {
+    final conv = conversationId;
+    if (conv == null || api == null) return;
+    await _sub?.cancel();
+    _replaying = true;
+    var after = 0;
+    try {
+      final tl = await api!.timeline(conv, limit: _storyLimit);
+      _clearStory();
+      for (final j in (tl['events'] as List? ?? const [])) {
+        await _onEvent(SantoshEvent.fromJson(Map<String, dynamic>.from(j as Map)));
+      }
+      hasOlder = tl['has_more'] == true;
+      after = (tl['last_event_id'] as num?)?.toInt() ?? lastEventId;
+      if (after > lastEventId) lastEventId = after;
+    } on ApiException catch (e) {
+      if (e.status == 401) rethrow;
+      if (!reload) _clearStory();
+      after = reload ? lastEventId : 0;   // an older server without /timeline: the old full replay
+    } catch (_) {
+      if (!reload) _clearStory();
+      after = reload ? lastEventId : 0;
+    }
+    notifyListeners();
+    _sub = api!.events(conv, after: after).listen(_onEvent, onError: (e) {
+      error = e.toString();
+      connected = false;
+      notifyListeners();
+    });
+    // the stream says when catching up is over (replay_end); an older server doesn't: give up waiting after 8 s
+    _replayGuard?.cancel();
+    _replayGuard = Timer(const Duration(seconds: 8), () => _replayDone());
+    _healTimer?.cancel();
+    _healTimer = Timer.periodic(const Duration(seconds: 90), (_) => unawaited(selfCheck()));
+  }
+
+  void _replayDone() {
+    _replayGuard?.cancel();
+    if (!_replaying) return;
+    _replaying = false;
+    applyBackground();
+    _syncBazar();
+    notifyListeners();
+  }
+
+  /// Older history above the first loaded item ("Purani baatein dikhao").
+  Future<void> loadOlder() async {
+    if (loadingOlder || !hasOlder) return;
+    loadingOlder = true;
+    notifyListeners();
+    _storyLimit = (_storyLimit + 60).clamp(60, 400);
+    await _openStory(reload: true);
+    loadingOlder = false;
+    notifyListeners();
+  }
+
+  /// v0.158 self-healing: the newest part of this chat must match the server's story (same items, same order);
+  /// anything missing or out of order = reload the chat in order (and tell the server, for Hoola Jaanch).
+  Future<void> selfCheck({String why = 'check'}) async {
+    final conv = conversationId;
+    if (_healing || conv == null || api == null || !connected || _replaying || inBackground || typing) return;
+    _healing = true;
+    try {
+      final h = await api!.timelineHead(conv, n: 40);
+      final want = List<int>.from(((h['ids'] as List?) ?? const []).map((e) => (e as num).toInt()));
+      final mine = [for (final f in feed) if (f.eid != null) f.eid!];
+      final have = mine.toSet();
+      final floor = mine.isEmpty ? 0 : mine.first;
+      final missing = want.where((i) => i >= floor && !have.contains(i)).length;
+      var outOfOrder = 0;
+      for (var i = 1; i < mine.length; i++) {
+        if (mine[i] < mine[i - 1]) outOfOrder++;
+      }
+      if (missing > 0 || outOfOrder > 0) {
+        healFixes++;
+        unawaited(api!.chatHeal('missing $missing, out of order $outOfOrder ($why)',
+            {'missing': missing, 'out_of_order': outOfOrder, 'items': mine.length}).catchError((_) {}));
+        await _openStory(reload: true);
+      }
+    } catch (_) {
+    } finally {
+      _healing = false;
+    }
+  }
+
+  /// Her old chats (newest first). Nothing is lost when she starts a new one.
+  Future<void> refreshChats() async {
+    try {
+      final r = await api!.chats();
+      chatList = List<Map<String, dynamic>>.from(((r['conversations'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Open one of her old chats.
+  Future<void> openChat(String id) async {
+    if (id == conversationId || api == null) return;
+    conversationId = id;
+    await _prefs.setString('conv', id);
+    unawaited(api!.openChat(id).catchError((_) {}));
+    unawaited(Native.chatLink(serverUrl, apiKey, id));
+    _storyLimit = 60;
+    lastEventId = 0;
+    await _openStory();
+    unawaited(refreshChats());
+  }
+
+  void _onMarker(SantoshEvent ev) {
+    if (ev.kind == 'replay_end') {
+      _replayDone();
+    } else if (ev.kind == 'resync') {
+      unawaited(_openStory(reload: true));   // too much to catch up: reload the chat in order
+    }
+  }
+
   Future<void> _onEvent(SantoshEvent ev) async {
+    if (ev.isMarker) {
+      _onMarker(ev);
+      return;
+    }
+    final n0 = feed.length;
+    await _handle(ev);
+    for (var i = n0; i < feed.length; i++) {   // the new items get their place in the story (and their call)
+      final f = feed[i];
+      f.eid ??= ev.id;
+      f.call ??= ev.call;
+      if (!_replaying) f.live = true;
+    }
+  }
+
+  Future<void> _handle(SantoshEvent ev) async {
     final p = ev.payload;
     if (ev.id > lastEventId) lastEventId = ev.id;
     switch (ev.kind) {
@@ -1028,10 +1225,9 @@ class Santosh extends ChangeNotifier {
       case 'hoola_deal':                   // v0.102: info steps update the card; a step that needs her brings it down
         final dk = '${p['id']}';
         final dOld = _deals[dk];
-        if (dOld != null && p['card'] == 'info') {
-          dOld.data = {...dOld.data, ...p};
+        if (dOld != null) {   // v0.158 updated where it is (a step that needs her shows in "Aapki haan chahiye")
+          dOld.data = p['card'] == 'info' ? {...dOld.data, ...p} : Map<String, dynamic>.from(p);
         } else {
-          if (dOld != null) feed.remove(dOld);
           _deals[dk] = FeedItem('hoola_deal', Map<String, dynamic>.from(p));
           feed.add(_deals[dk]!);
         }
@@ -1040,16 +1236,22 @@ class Santosh extends ChangeNotifier {
       case 'upi_result':                   // v0.109 what the UPI app said after 'Paisa bhejo' (or her answer)
         final uk = '${p['txn_ref']}';
         final uOld = _upiCards[uk];
-        if (uOld != null) feed.remove(uOld);
-        _upiCards[uk] = FeedItem('upi_result', Map<String, dynamic>.from(p));
-        feed.add(_upiCards[uk]!);
+        if (uOld != null) {
+          uOld.data = Map<String, dynamic>.from(p);
+        } else {
+          _upiCards[uk] = FeedItem('upi_result', Map<String, dynamic>.from(p));
+          feed.add(_upiCards[uk]!);
+        }
         break;
       case 'hoola_rfq':                    // v0.112 one live compare card per comparison
         final rk = 'rfq${p['id']}';
         final rOld = _deals[rk];
-        if (rOld != null) feed.remove(rOld);
-        _deals[rk] = FeedItem('hoola_rfq', Map<String, dynamic>.from(p));
-        feed.add(_deals[rk]!);
+        if (rOld != null) {
+          rOld.data = Map<String, dynamic>.from(p);
+        } else {
+          _deals[rk] = FeedItem('hoola_rfq', Map<String, dynamic>.from(p));
+          feed.add(_deals[rk]!);
+        }
         hoolaTick++;
         break;
       case 'a2a_task':                     // v0.116 an outside A2A agent at her counter: one live card per request
@@ -1057,9 +1259,12 @@ class Santosh extends ChangeNotifier {
         final inner = Map<String, dynamic>.from((p[ev.kind == 'a2a_task' ? 'task' : 'out'] ?? const {}) as Map);
         final ak = '${ev.kind}${inner['id']}';
         final aOld = _deals[ak];
-        if (aOld != null) feed.remove(aOld);
-        _deals[ak] = FeedItem(ev.kind, Map<String, dynamic>.from(p));
-        feed.add(_deals[ak]!);
+        if (aOld != null) {
+          aOld.data = Map<String, dynamic>.from(p);
+        } else {
+          _deals[ak] = FeedItem(ev.kind, Map<String, dynamic>.from(p));
+          feed.add(_deals[ak]!);
+        }
         hoolaTick++;
         break;
       case 'handoff_reminder':             // v0.116 AA / ABDM consent still on: revoke?
@@ -1078,10 +1283,9 @@ class Santosh extends ChangeNotifier {
       case 'hoola_pick':                   // v0.105 a pick list on the packer's own Hoola
         final pkk = '${p['id']}';
         final pOld = _pickCards[pkk];
-        if (pOld != null && p['card'] == 'info') {
-          pOld.data = {...pOld.data, ...p};
+        if (pOld != null) {
+          pOld.data = p['card'] == 'info' ? {...pOld.data, ...p} : Map<String, dynamic>.from(p);
         } else {
-          if (pOld != null) feed.remove(pOld);
           _pickCards[pkk] = FeedItem('hoola_pick', Map<String, dynamic>.from(p));
           feed.add(_pickCards[pkk]!);
         }
@@ -1698,10 +1902,6 @@ class Santosh extends ChangeNotifier {
         final bc = _brandCards[bid];
         if (bc != null) {
           bc.data = bdata;
-          if (ev.kind == 'brand_approval') {
-            feed.remove(bc);
-            feed.add(bc);
-          }
         } else if (bid.isNotEmpty) {
           final it = FeedItem('brand_design', bdata);
           _brandCards[bid] = it;
@@ -1718,10 +1918,6 @@ class Santosh extends ChangeNotifier {
         final sc = _siteCards[sid];
         if (sc != null) {
           sc.data = sdata;
-          if (p['push'] == true) {   // a step that needs her (plan, looks) or the finished site comes back down
-            feed.remove(sc);
-            feed.add(sc);
-          }
         } else if (sid.isNotEmpty) {
           final it = FeedItem('site_board', sdata);
           _siteCards[sid] = it;
@@ -1738,10 +1934,6 @@ class Santosh extends ChangeNotifier {
         final ac = _appCards[aid];
         if (ac != null) {
           ac.data = adata;
-          if (p['push'] == true) {
-            feed.remove(ac);
-            feed.add(ac);
-          }
         } else if (aid.isNotEmpty) {
           final it = FeedItem('app_board', adata);
           _appCards[aid] = it;
@@ -1758,10 +1950,6 @@ class Santosh extends ChangeNotifier {
         final nc = _androidCards[nid];
         if (nc != null) {
           nc.data = ndata;
-          if (p['push'] == true) {
-            feed.remove(nc);
-            feed.add(nc);
-          }
         } else if (nid.isNotEmpty) {
           final it = FeedItem('app_android', ndata);
           _androidCards[nid] = it;
@@ -2019,7 +2207,7 @@ class Santosh extends ChangeNotifier {
           feed.add(_artifacts[aid]!);
         }
         if (!_replaying) {
-          latestArtifact = Map<String, dynamic>.from(_artifacts[aid]!.data);
+          latestArtifact = {...Map<String, dynamic>.from(_artifacts[aid]!.data), '_call': ev.call ?? _artifacts[aid]!.call};
           artifactTick++;
           if (nowReady && inBackground && !pushOn) Device.instance.showNow('$aName ne banaya', p['title'] as String? ?? '');
         }
@@ -2034,9 +2222,9 @@ class Santosh extends ChangeNotifier {
           _browsers[bsid] = FeedItem('browser', Map<String, dynamic>.from(p));
           feed.add(_browsers[bsid]!);
         }
-        if (!_replaying) {
-          latestBrowser = Map<String, dynamic>.from(_browsers[bsid]!.data);
-          artifactTick++;
+        // v0.158 only a live, fresh event can bring up the live view (never history, never an old job)
+        if (!_replaying && DateTime.now().toUtc().difference(ev.at) < const Duration(minutes: 2)) {
+          latestBrowser = {...Map<String, dynamic>.from(_browsers[bsid]!.data), '_call': ev.call ?? _browsers[bsid]!.call};
         }
         break;
       case 'device_action':
@@ -2084,7 +2272,7 @@ class Santosh extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ---- Hoola Work Theatre: the 3D scene of the tool Hoola is running right now ----
+  // ---- live work line (v0.158 WorkStrip; the 3D Work Theatre is gone): the tool Hoola is running right now ----
   Map<String, dynamic>? work;                       // latest `work` event {id, tool, scene, phase, label, data}
   final List<Map<String, dynamic>> workLog = [];   // this task's tool calls, oldest first
   bool workMin = false;

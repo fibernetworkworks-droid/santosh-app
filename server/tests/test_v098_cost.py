@@ -154,8 +154,9 @@ def test_bootstrap_is_one_call(env):
         assert first["conversation_new"] is True and first["health"]["ok"] is True
         again = c.get(f"/api/bootstrap?conv={first['conversation_id']}").json()
         assert again["conversation_id"] == first["conversation_id"] and again["conversation_new"] is False
-        other = c.get("/api/bootstrap?conv=not-hers").json()
-        assert other["conversation_new"] is True
+        other = c.get("/api/bootstrap?conv=not-hers").json()   # v0.158 a wrong / old id = her chat, never a new empty one
+        assert other["conversation_new"] is False and other["conversation_id"] == first["conversation_id"]
+        assert c.get("/api/bootstrap?new=true").json()["conversation_new"] is True
 
 
 def test_call_rating_reaches_the_voice_numbers(env):

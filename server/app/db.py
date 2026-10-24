@@ -138,6 +138,8 @@ class Event(Base):
     kind: Mapped[str] = mapped_column(String(24))   # message / step / log / campaign / typing
     payload: Mapped[dict] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    # v0.158 the live voice call that caused it (a tool the call ran), so the call shows only its own cards
+    call_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
 
 class Profile(Base):
@@ -643,6 +645,7 @@ def init_db(url: str | None = None):
     from .site import care as _site_care  # noqa: F401  (v0.124 visits / uptime per day, monthly care notes)
     from .site import github as _site_github  # noqa: F401  (v0.124 GitHub export of her site)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
+    from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
     from .appmaker import models as _app_models  # noqa: F401  (v0.128 App Sahayak designs)
     from .console import service as _console  # noqa: F401  (v0.142 Hoola Console logins)
     from .net import models as _net_models  # noqa: F401

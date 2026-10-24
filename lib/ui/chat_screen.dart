@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show File;
 import 'dart:math' as math;
 
@@ -119,7 +120,7 @@ import 'notebook_screen.dart';
 import 'pc_screen.dart';
 import 'photos_screen.dart';
 import 'live_santosh.dart';
-import 'work_theatre.dart';
+import 'work_strip.dart';
 import 'gyaan_screen.dart';
 import 'postgres_screen.dart' show PgWriteCard;
 import '../nav.dart';
@@ -331,7 +332,8 @@ class _ChatScreenState extends State<ChatScreen> {
           _header(),
           if (app.error != null) _banner(app.error!, onTap: () => app.connect()),
           if (app.connected && !app.brainReady) _banner('Hoola ka dimaag server par connect nahi hai (ANTHROPIC_API_KEY).'),
-          WorkTheatrePanel(app: app),
+          WorkStrip(app: app),
+          _waitingStrip(),
           Expanded(child: Stack(children: [
             Positioned.fill(child: _list()),
             Positioned(
@@ -362,18 +364,20 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _list() {
     final feed = app.feed;
     final extra = (app.typing ? 1 : 0);
-    final hero = feed.length <= 1 ? 1 : 0;
+    final older = app.hasOlder ? 1 : 0;   // v0.158 older history above: one tap loads it, in order
+    final hero = feed.length <= 1 && older == 0 ? 1 : 0;
     return ListView.builder(
       controller: _scroll,
       reverse: true,
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      itemCount: extra + feed.length + hero,
+      itemCount: extra + feed.length + older + hero,
       itemBuilder: (context, i) {
         if (app.typing && i == 0) {
           return Align(alignment: Alignment.centerLeft, child: _Arrive(key: const ValueKey('typing'), child: _Typing(step: app.currentStep)));
         }
         final k = i - extra;
+        if (k == feed.length && older == 1) return _olderButton();
         if (k >= feed.length) return _hero();
         final it = feed[feed.length - 1 - k];
         final fresh = !_old.contains(it) && !_animated.contains(it);
@@ -400,9 +404,156 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           if (widget.onVoice != null)
             IconButton(tooltip: 'Bolkar baat karein', onPressed: widget.onVoice, icon: const Icon(Icons.graphic_eq_rounded, color: C.accent)),
+          IconButton(tooltip: 'Purani chats', onPressed: _showChats, icon: const Icon(Icons.history_rounded, color: C.chip)),
           IconButton(tooltip: 'Naya chat', onPressed: () => app.connect(fresh: true), icon: const Icon(Icons.add_comment_outlined, color: C.chip)),
         ]),
       );
+
+  // ---- v0.158 the chat as one story: older history, cards that wait for her, her old chats ----
+  Widget _olderButton() => Padding(
+        padding: const EdgeInsets.only(bottom: 12, top: 4),
+        child: Center(
+          child: app.loadingOlder
+              ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+              : TextButton.icon(
+                  onPressed: app.loadOlder,
+                  icon: const Icon(Icons.expand_less_rounded, size: 18),
+                  label: const Text('Purani baatein dikhao', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+        ),
+      );
+
+  Widget _waitingStrip() {
+    final w = app.waitingCards;
+    if (w.isEmpty) return const SizedBox.shrink();
+    return GestureDetector(
+      onTap: _showWaiting,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(14, 0, 14, 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0x24FFB15C),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0x55FFB15C)),
+        ),
+        child: Row(children: [
+          const Icon(Icons.pending_actions_rounded, color: C.accentSoft, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text('Aapki haan chahiye (${w.length})',
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: C.accentSoft)),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: C.accentSoft),
+        ]),
+      ),
+    );
+  }
+
+  void _showWaiting() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xF2141029),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => ListenableBuilder(
+        listenable: app,
+        builder: (ctx, _) {
+          final w = app.waitingCards;
+          return SafeArea(
+            child: SizedBox(
+              height: MediaQuery.sizeOf(ctx).height * .78,
+              child: Column(children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 14, 8, 4),
+                  child: Row(children: [
+                    Expanded(child: Text('Aapki haan chahiye · ${w.length}', style: display(18, w: FontWeight.w700))),
+                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close_rounded, color: C.muted)),
+                  ]),
+                ),
+                Expanded(
+                  child: w.isEmpty
+                      ? const Center(child: Text('Sab ho gaya ✓', style: TextStyle(color: C.muted)))
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(14, 4, 14, 16),
+                          children: [for (final it in w) Padding(padding: const EdgeInsets.only(bottom: 8), child: _item(it))],
+                        ),
+                ),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _showChats() async {
+    unawaited(app.refreshChats());
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xF2141029),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => ListenableBuilder(
+        listenable: app,
+        builder: (ctx, _) {
+          final chats = app.chatList;
+          return SafeArea(
+            child: SizedBox(
+              height: MediaQuery.sizeOf(ctx).height * .7,
+              child: Column(children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 14, 8, 4),
+                  child: Row(children: [
+                    Expanded(child: Text('Aapki chats', style: display(18, w: FontWeight.w700))),
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        app.connect(fresh: true);
+                      },
+                      icon: const Icon(Icons.add_comment_outlined, size: 18),
+                      label: const Text('Naya chat'),
+                    ),
+                  ]),
+                ),
+                Expanded(
+                  child: chats.isEmpty
+                      ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(10, 0, 10, 16),
+                          children: [
+                            for (final c in chats)
+                              ListTile(
+                                leading: Icon(c['id'] == app.conversationId ? Icons.chat_rounded : Icons.chat_bubble_outline_rounded,
+                                    color: c['id'] == app.conversationId ? C.accent : C.muted),
+                                title: Text('${c['title'] ?? 'Naya chat'}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                                subtitle: Text(_when('${c['updated_at'] ?? ''}'), style: const TextStyle(color: C.faint, fontSize: 12)),
+                                trailing: c['id'] == app.conversationId ? const Pill('Abhi', fg: C.onAccent, bg: C.accent) : null,
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  app.openChat('${c['id']}');
+                                },
+                              ),
+                          ],
+                        ),
+                ),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  String _when(String iso) {
+    final t = DateTime.tryParse(iso)?.toLocal();
+    if (t == null) return '';
+    final d = DateTime.now().difference(t);
+    if (d.inMinutes < 2) return 'abhi';
+    if (d.inHours < 1) return '${d.inMinutes} min pehle';
+    if (d.inDays < 1) return '${d.inHours} ghante pehle';
+    if (d.inDays < 7) return '${d.inDays} din pehle';
+    return '${t.day}/${t.month}/${t.year}';
+  }
 
   Widget _banner(String t, {VoidCallback? onTap}) => GestureDetector(
         onTap: onTap,

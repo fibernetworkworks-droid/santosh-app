@@ -46,19 +46,9 @@ def _utc(dt: datetime | None) -> datetime | None:
 
 # ---------------------------------------------------------------- telling the owner
 def home_conv(tenant: str) -> str:
-    """The conversation where this owner's avatar talks to them (latest chat; made if none)."""
-    from ..cal.service import _conversation_for
-    try:
-        c = _conversation_for(tenant)
-    except Exception:
-        c = None
-    if c:
-        return c
-    with session() as s:
-        row = Conversation(tenant_id=tenant)
-        s.add(row)
-        s.flush()
-        return row.id
+    """The conversation where this owner's avatar talks to them (v0.158: the chat she is in; made if none)."""
+    from .. import convs
+    return convs.current_or_new(tenant)
 
 
 def _note(tenant: str, conv: str, text: str) -> None:

@@ -413,6 +413,10 @@ def _tenants_with_calendar() -> set[str]:
 
 
 def _conversation_for(tenant: str) -> str | None:
+    from .. import convs
+    cur = convs.current(tenant)     # v0.158 the chat she is in first (a saved alert chat may be one she left)
+    if cur:
+        return cur
     p = prefs(tenant)
     with session() as s:
         for cid in (p.get("alert_conversation_id"), getattr(s.get(Profile, tenant), "briefing_conversation_id", None)):

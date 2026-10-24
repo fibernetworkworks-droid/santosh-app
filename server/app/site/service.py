@@ -687,7 +687,7 @@ def run_build(site_id: str, only: list[str] | None = None, note: str = "", extra
             _emit(r, push=True)
 
 
-def _theatre_list(board: dict[str, Any], slug: str) -> list[dict[str, str]]:
+def _work_list(board: dict[str, Any], slug: str) -> list[dict[str, str]]:
     for p in board.get("pages", []):
         if p["slug"] == slug:
             return [{"n": s["label"], "s": s["state"]} for s in p["sections"]]
@@ -734,7 +734,7 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
             line = f"{p['title']} page → {T.SECTIONS[s['type']]['label']}"
             board = _board(cur, plan, states, line)
             r = _save(r.id, board=board)
-            _work(r, "start", line, f"{board['pct']}% · {line}", _theatre_list(board, p["slug"]))
+            _work(r, "start", line, f"{board['pct']}% · {line}", _work_list(board, p["slug"]))
             _emit(r)
             sec = write_section(r, p["slug"], s, [o for o in others if o != T.SECTIONS[s["type"]]["label"]], extra.get(k, ""))
             _sec_path(r, k).write_text(json.dumps(sec))

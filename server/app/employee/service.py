@@ -48,7 +48,7 @@ def _clean(v: Any, n: int) -> str:
 
 def _mask(tool: str, args: dict[str, Any] | None) -> str:
     """Short, masked words about a call for the audit log: no keys, long digit runs cut to the last 4."""
-    from ..theatre import _SECRET_KEYS, _txt
+    from ..livework import _SECRET_KEYS, _txt
     parts = []
     for k, v in (args or {}).items():
         if _SECRET_KEYS.search(str(k)) or k in ("body_html", "html", "content_b64", "data"):

@@ -11,7 +11,6 @@ import 'glass.dart';
 import 'lock_safe.dart';
 import '../emotion.dart';
 import 'live_santosh.dart';
-import 'work_theatre.dart';
 import 'chat_screen.dart' show feedCard;
 
 /// Baat, live: a real-time voice call with the avatar (full duplex, interrupt any time).
@@ -93,7 +92,10 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
       listenable: Listenable.merge([app, call]),
       builder: (context, _) {
         final cards = call.cards;
-        if (cards.length > _seenCards) _cardsOpen = true;   // a new card: show it
+        if (cards.length > _seenCards) {   // a new card: show it (the newest is the open one)
+          _cardsOpen = true;
+          _focus = null;
+        }
         _seenCards = cards.length;
         // v0.86 an open card tray takes the room of the work view and captions, so a card is never squeezed
         final tray = cards.isNotEmpty && _cardsOpen;
@@ -118,7 +120,20 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
               child: Text('Doosre section mein jaane par bhi call chalti rahegi.',
                   style: TextStyle(color: C.faint, fontSize: 11.5, fontWeight: FontWeight.w600)),
             ),
-          if (!tray) Padding(padding: const EdgeInsets.only(top: 8), child: WorkTheatrePanel(app: app)),
+          if (!tray && call.backgroundCount > 0)   // v0.158 other work moving in the background: one quiet chip
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Tooltip(
+                message: 'Yeh sab chat mein hai; call ke beech nahi dikhate',
+                child: Chip(
+                  avatar: const Icon(Icons.sync_rounded, size: 16, color: C.muted),
+                  label: Text('${call.backgroundCount} kaam chat mein chal rahe hain',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.muted)),
+                  backgroundColor: const Color(0x14FFFFFF),
+                  side: BorderSide.none,
+                ),
+              ),
+            ),
           Expanded(
             child: Stack(children: [
               Positioned.fill(
@@ -213,6 +228,16 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
   }
 
   /// Approvals, downloads, drafts and other cards that came during the call: right here, no need to open Chat.
+  FeedItem? _focus;
+
+  FeedItem _focusCard(List<FeedItem> cards) =>
+      _focus != null && cards.contains(_focus) ? _focus! : cards.last;
+
+  String _cardTitle(FeedItem f) {
+    final t = '${f.data['title'] ?? f.data['what'] ?? f.data['label'] ?? f.data['reason'] ?? ''}'.trim();
+    return t.isEmpty ? f.kind.replaceAll('_', ' ') : (t.length > 26 ? '${t.substring(0, 26)}…' : t);
+  }
+
   Widget _cardsTray(List<FeedItem> cards) {
     if (!_cardsOpen) {
       return Align(
@@ -247,11 +272,31 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
             TextButton(onPressed: () => setState(() => _cardsOpen = false), child: const Text('Chhota karo')),
           ]),
         ),
+        if (cards.length > 1)   // v0.158 one card open at a time; the others wait as chips
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              children: [
+                for (final it in cards.reversed)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      selected: identical(it, _focusCard(cards)),
+                      onSelected: (_) => setState(() => _focus = it),
+                      label: Text(_cardTitle(it), maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
             children: [
-              for (final it in cards.reversed)
+              for (final it in [_focusCard(cards)])
                 Stack(children: [
                   feedCard(context, app, it) ?? const SizedBox.shrink(),
                   Positioned(

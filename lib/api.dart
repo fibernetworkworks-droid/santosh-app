@@ -17,17 +17,26 @@ class ApiException implements Exception {
 
 /// One event from the backend's live stream.
 class SantoshEvent {
-  SantoshEvent(this.id, this.kind, this.payload, this.at);
+  SantoshEvent(this.id, this.kind, this.payload, this.at, {this.call, this.conv, this.key});
   final int id;
   final String kind;
   final Map<String, dynamic> payload;
   final DateTime at;
+  final String? call;  // v0.158 the voice call whose tool made it (only those cards show in that call)
+  final String? conv;  // the chat it was made in (cards from her other chats reach this one too)
+  final String? key;   // one card = one key (timeline only)
+
+  /// v0.158 the stream's own markers: catching up is over / reload the chat in order.
+  bool get isMarker => id == 0 && (kind == 'replay_end' || kind == 'resync');
 
   static SantoshEvent fromJson(Map<String, dynamic> j) => SantoshEvent(
-        (j['id'] as num).toInt(),
-        j['kind'] as String,
+        (j['id'] as num?)?.toInt() ?? 0,
+        j['kind'] as String? ?? '',
         Map<String, dynamic>.from(j['payload'] as Map? ?? {}),
         DateTime.tryParse(j['at'] as String? ?? '')?.toUtc() ?? DateTime.now().toUtc(),
+        call: j['call'] as String?,
+        conv: j['conv'] as String?,
+        key: j['key'] as String?,
       );
 }
 
@@ -307,8 +316,21 @@ class Api {
   Future<Map<String, dynamic>> health() async => Map<String, dynamic>.from(await _send('GET', '/healthz'));
   Future<void> logout() async => _send('POST', '/api/logout');
   /// v0.98 everything the app needs to open, in one call (404 on an older server: the app falls back).
-  Future<Map<String, dynamic>> bootstrap(String? conv) async => Map<String, dynamic>.from(
-      await _send('GET', '/api/bootstrap', query: {if (conv != null && conv.isNotEmpty) 'conv': conv}) as Map);
+  Future<Map<String, dynamic>> bootstrap(String? conv, {bool fresh = false}) async => Map<String, dynamic>.from(
+      await _send('GET', '/api/bootstrap', query: {if (conv != null && conv.isNotEmpty) 'conv': conv, if (fresh) 'new': 'true'}) as Map);
+  // ---- v0.158 the chat in order, old chats, self-check, call cards ----
+  Future<Map<String, dynamic>> timeline(String conv, {int limit = 60, int before = 0}) async => Map<String, dynamic>.from(
+      await _send('GET', '/api/conversations/$conv/timeline', query: {'limit': '$limit', if (before > 0) 'before': '$before'}) as Map);
+  Future<Map<String, dynamic>> timelineHead(String conv, {int n = 40}) async => Map<String, dynamic>.from(
+      await _send('GET', '/api/conversations/$conv/timeline/head', query: {'n': '$n'}) as Map);
+  Future<Map<String, dynamic>> chats() async => Map<String, dynamic>.from(await _send('GET', '/api/conversations') as Map);
+  Future<void> openChat(String conv) async => _send('POST', '/api/conversations/$conv/open');
+  Future<void> chatHeal(String reason, Map<String, dynamic> data) async =>
+      _send('POST', '/api/chat/heal', body: {'kind': 'resync', 'reason': reason, 'data': data});
+  Future<Map<String, dynamic>> chatWaiting() async => Map<String, dynamic>.from(await _send('GET', '/api/chat/waiting') as Map);
+  Future<Map<String, dynamic>> voiceCardRules() async => Map<String, dynamic>.from(await _send('GET', '/api/voice/card_rules') as Map);
+  Future<void> voiceCallCards(String callId, String conv, List<Map<String, dynamic>> cards) async =>
+      _send('POST', '/api/voice/calls/$callId/cards', body: {'conversation_id': conv, 'cards': cards});
   // ---- v0.98 Kharcha (AI cost) + call rating ----
   Future<Map<String, dynamic>> usageReport({int days = 30}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/usage', query: {'days': '$days'}) as Map);
@@ -1647,7 +1669,9 @@ class Api {
           } else if (line.isEmpty && buf.isNotEmpty) {
             final ev = SantoshEvent.fromJson(Map<String, dynamic>.from(jsonDecode(buf.toString()) as Map));
             buf.clear();
-            if (ev.id > last) {
+            if (ev.isMarker) {
+              yield ev; // v0.158 replay_end / resync
+            } else if (ev.id > last) {
               last = ev.id;
               yield ev;
             }

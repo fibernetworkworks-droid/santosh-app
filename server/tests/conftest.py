@@ -21,6 +21,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("VOICE_TOOL_ACK", "false")
     monkeypatch.setenv("VIDEO_EDIT_WORKER", "false")   # tests call videoedit.run_job themselves
     monkeypatch.setenv("OPERATOR_WORKER", "false")     # tests call operator.run_job themselves
+    monkeypatch.setenv("CHAT_HEAL_AI", "false")        # v0.158 no model judge of call cards in tests
     monkeypatch.setenv("AGENT_SELF_CHECK", "false")    # v0.78: scripted model tests don't expect the extra check call
     monkeypatch.setenv("NOTEBOOK_PAINT", "false")      # v0.155: Notebook pages are painted by Gemini; tests use the HTML renderer
     monkeypatch.setenv("NOTEBOOK_TTS_MODEL", "gemini-2.5-flash-preview-tts")   # v0.155: tests use the patched older TTS path

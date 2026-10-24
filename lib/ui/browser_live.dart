@@ -31,6 +31,8 @@ class BrowserLive {
       };
 
   static void open(BuildContext context, Santosh app, Map<String, dynamic> v) {
+    final sid = '${v['session_id'] ?? ''}';
+    if (sid.isNotEmpty && app.voiceCall.inCall) app.voiceCall.watchBrowser.add(sid);   // she chose to watch it
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => BrowserLiveScreen(app: app, initial: v)));
   }
 }
@@ -362,7 +364,8 @@ class BrowserCallThumb extends StatelessWidget {
       listenable: app,
       builder: (context, _) {
         final v = app.latestBrowser;
-        if (v == null || app.lockedMode) return const SizedBox.shrink();
+        // v0.158 only a job this call started (or one she tapped open) shows its live view in the call
+        if (v == null || app.lockedMode || !app.voiceCall.ownsBrowser(v)) return const SizedBox.shrink();
         final sid = v['session_id'] as String? ?? '';
         final cur = app.browserItem(sid)?.data ?? v;
         if (!BrowserLive.running(cur['status'] as String?)) return const SizedBox.shrink();

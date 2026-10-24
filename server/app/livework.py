@@ -1,11 +1,12 @@
-"""Hoola Work Theatre: turns real tool calls into a 3D scene the phone shows while Hoola works.
+"""Live work line: every real tool call becomes a small ``work`` event the app shows as one line (what is running,
+Rokiye) and the Hoola Screen board lists. (v0.158: the 3D Work Theatre that used to draw these is gone.)
 
 Every tool call publishes a ``work`` event: {id, tool, scene, phase, label, data}
   phase: start (tool began) · done · waiting (needs the owner's tap) · error
-  scene: email · browser · payment · bluetooth · network · pc · work (anything else)
+  scene: email · browser · payment · bluetooth · network · pc · website · work (anything else): the icon of the line
   data:  short, display-only facts taken from the tool's real input / output (senders and subjects, the site, the
          biller and amount, the TV, the other avatar, the PC app and fields). Nothing is invented: a missing fact is
-         simply left out and the scene shows its neutral state.
+         simply left out.
 
 Privacy: data is display text for the owner's own phone, but it is still cut short, stripped of control characters
 and any long digit run (account, consumer, card, phone numbers) is masked to its last 4 digits. PIN/OTP/password-like
@@ -109,7 +110,7 @@ def _money(v: Any) -> str:
 
 
 def brief(tool: str, args: dict[str, Any] | None, out: Any = None) -> dict[str, Any]:
-    """Display-only facts for the scene, from the real call."""
+    """Display-only facts for the line, from the real call."""
     a = {k: v for k, v in (args or {}).items() if not _SECRET_KEYS.search(str(k))}
     scene = scene_for(tool, a)
     d: dict[str, Any] = {}

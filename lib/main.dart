@@ -209,6 +209,8 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
       widget.app.refreshBackgroundInfo();
       widget.app.refreshBazar();
       widget.app.pushLocation();
+      // v0.158 back from the background: does the chat still match the server's story? (else reload it in order)
+      Future.delayed(const Duration(seconds: 3), () => widget.app.selfCheck(why: 'resume'));
     }
   }
 

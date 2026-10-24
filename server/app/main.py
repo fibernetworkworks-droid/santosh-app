@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.157.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.158.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -213,7 +213,7 @@ def healthz():
     from .voice import MALE_VOICES
     from . import mail
     from .voiceid import engine as _vid_engine
-    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "theatre", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design", "app_android", "seva", "helpdesk", "shikayat", "aftersales", "feedback", "wapsi", "samudaay", "gyaan", "kaam_watch", "app_ideas", "devsahayak", "itadmin", "isp_noc", "cyber", "devops", "docwriter", "app_review", "product", "customs", "travel", "warehouse", "fleet", "courier", "drivers", "logistics", "propagent", "rentdesk", "site_supervisor", "interior", "archassist", "society", "vakil", "legal_research", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo", "front_office", "eventplan", "shaadi", "tourguide", "homestay", "banquet", "edit_desk", "motiondesk", "patrakar", "photoassist", "artistmgr", "kitab", "podcast", "influencer", "graphic"] + (["film_desk"] if shutil.which("ffmpeg") else []) + (["qa"] if _qa_ok() else []) + (["callcentre"] if st.public_base_url and st.gemini_api_key else []) + (["video_editor"] if shutil.which("ffmpeg") else []) + (["blender_3d"] if _blender_ok() else []) + (["postgres"] if _pg_ok() else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) + (["side_talk"] if st.gemini_api_key and st.voice_side_talk else []) \
+    features = ["routines", "voice", "web", "bazar", "avatar", "bluetooth", "chat_files", "public_apis", "reels", "employee", "procedures", "darzi", "chai", "office", "lekhak", "mobile_shop", "phone_doctor", "gst", "payroll", "finance", "audit", "telecall", "insurance", "seo", "kalam", "thok", "niryat", "ads", "franchise", "theka", "brand", "website", "hoola_screen", "app_design", "app_android", "seva", "helpdesk", "shikayat", "aftersales", "feedback", "wapsi", "samudaay", "gyaan", "kaam_watch", "app_ideas", "devsahayak", "itadmin", "isp_noc", "cyber", "devops", "docwriter", "app_review", "product", "customs", "travel", "warehouse", "fleet", "courier", "drivers", "logistics", "propagent", "rentdesk", "site_supervisor", "interior", "archassist", "society", "vakil", "legal_research", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo", "front_office", "eventplan", "shaadi", "tourguide", "homestay", "banquet", "edit_desk", "motiondesk", "patrakar", "photoassist", "artistmgr", "kitab", "podcast", "influencer", "graphic"] + (["film_desk"] if shutil.which("ffmpeg") else []) + (["qa"] if _qa_ok() else []) + (["callcentre"] if st.public_base_url and st.gemini_api_key else []) + (["video_editor"] if shutil.which("ffmpeg") else []) + (["blender_3d"] if _blender_ok() else []) + (["postgres"] if _pg_ok() else []) + (["computer_operator"] if _operator_ok() else []) + (["video_studio"] if shutil.which("ffmpeg") and get_settings().studio_on else []) + (["voiceid"] if _vid_engine.available() else []) + (["realtime_voice", "google_search"] if st.gemini_api_key else []) + (["side_talk"] if st.gemini_api_key and st.voice_side_talk else []) \
         + (["email"] if (mail.configured() or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("google")
                          or __import__("app.mailbox.accounts", fromlist=["x"]).oauth_ready("microsoft")) else []) + (["calendar"] if (__import__("app.gcal", fromlist=["x"]).configured()
                             or __import__("app.cal.accounts", fromlist=["x"]).oauth_ready()) else []) \
@@ -381,6 +381,8 @@ def create_conversation(tenant: str = Depends(current_tenant)):
         s.add(Message(conversation_id=cid, role="assistant", content=greeting, display=greeting,
                       in_history=False, delivered_to_agent=True))
     bus.publish(cid, "message", {"role": "assistant", "text": greeting, "source": "greeting"})
+    from . import convs
+    convs.mark(tenant, cid, "new")
     return {"id": cid}
 
 
@@ -410,7 +412,8 @@ async def post_message(conversation_id: str, body: NewMessage, background: Backg
     _conv_or_404(conversation_id, tenant)
     if _already_sent(tenant, conversation_id, body.client_id):
         return {"accepted": True, "duplicate": True}
-    from . import chatfiles
+    from . import chatfiles, convs
+    convs.mark(tenant, conversation_id, "message")   # v0.158 this is the chat she is in: notes and cards come here
     context = chatfiles.context(tenant, body.files) if body.files else ""
     shown = chatfiles.shown(tenant, body.files) if body.files else []
     bus.publish(conversation_id, "message", {"role": "user", "text": body.text, "source": "user",
@@ -435,19 +438,42 @@ async def chat_file(conversation_id: str, file: UploadFile = File(...), tenant: 
         raise HTTPException(413 if len(data) > chatfiles.MAX_BYTES else 400, str(e))
 
 
+REPLAY_MAX = 3000   # v0.158 more events than this to catch up = the app reloads the chat in order instead
+
+
 @app.get("/api/conversations/{conversation_id}/events", dependencies=[Depends(require_key)])
 async def events(conversation_id: str, request: Request, after: int = 0, tenant: str = Depends(current_tenant)):
-    """Server-sent events: replays everything after `after`, then streams live."""
+    """Server-sent events: everything after `after` (this chat + cards from her other chats), then live.
+
+    v0.158: the catch-up is paged until it reaches now (it used to send the oldest 500 and then skip the rest), a
+    `replay_end` marker tells the app when catching up is over (no more guessing with a timer), and a gap too big to
+    catch up sends `resync` so the app reloads the chat in order instead of showing a broken one."""
     _conv_or_404(conversation_id, tenant)
+    from . import convs
     last = int(request.headers.get("last-event-id") or after or 0)
-    q = bus.subscribe(conversation_id)
+    q = bus.subscribe(conversation_id, tenant)
+    convs.mark(tenant, conversation_id, "stream")
 
     async def gen():
         try:
             sent = last
-            for ev in bus.backlog(conversation_id, last):
-                sent = ev["id"]
-                yield f"id: {ev['id']}\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"
+            if last > 0:
+                total = 0
+                while True:
+                    page = await asyncio.to_thread(bus.backlog, conversation_id, sent, 500, tenant)
+                    for ev in page:
+                        sent = ev["id"]
+                        yield f"id: {ev['id']}\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"
+                    total += len(page)
+                    if len(page) < 500:
+                        break
+                    if total >= REPLAY_MAX:   # away too long: reload the chat in order
+                        sent = await asyncio.to_thread(bus.last_id, conversation_id, tenant)
+                        yield f"data: {json.dumps({'id': 0, 'kind': 'resync', 'payload': {'why': 'gap'}})}\n\n"
+                        break
+            else:
+                sent = await asyncio.to_thread(bus.last_id, conversation_id, tenant)   # the app loads /timeline first
+            yield f"data: {json.dumps({'id': 0, 'kind': 'replay_end', 'payload': {'last': sent}})}\n\n"
             while True:
                 if await request.is_disconnected():
                     break
@@ -467,6 +493,85 @@ async def events(conversation_id: str, request: Request, after: int = 0, tenant:
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/api/conversations/{conversation_id}/timeline", dependencies=[Depends(require_key)])
+def chat_timeline(conversation_id: str, limit: int = 60, before: int = 0, tenant: str = Depends(current_tenant)):
+    """v0.158 the chat in order: messages and each card once where it first appeared, in its latest state (cards from
+    her other chats too), newest page last; `before` = the page before that event id."""
+    _conv_or_404(conversation_id, tenant)
+    from .events import timeline
+    return timeline(conversation_id, tenant, limit, before)
+
+
+@app.get("/api/conversations/{conversation_id}/timeline/head", dependencies=[Depends(require_key)])
+def chat_timeline_head(conversation_id: str, n: int = 40, tenant: str = Depends(current_tenant)):
+    """v0.158 the app's self-check: the newest story ids in order (missing / out of order on the phone = reload)."""
+    _conv_or_404(conversation_id, tenant)
+    from .events import head
+    return head(conversation_id, tenant, n)
+
+
+@app.get("/api/conversations", dependencies=[Depends(require_key)])
+def chat_list(limit: int = 40, tenant: str = Depends(current_tenant)):
+    """v0.158 her old chats (newest activity first): nothing is lost when she starts a new one."""
+    from . import convs
+    return {"conversations": convs.chats(tenant, limit), "current": convs.current(tenant)}
+
+
+@app.post("/api/conversations/{conversation_id}/open", dependencies=[Depends(require_key)])
+def chat_open(conversation_id: str, tenant: str = Depends(current_tenant)):
+    _conv_or_404(conversation_id, tenant)
+    from . import convs
+    convs.mark(tenant, conversation_id, "open")
+    return {"ok": True}
+
+
+class ChatHealIn(BaseModel):
+    kind: str = Field(default="resync", max_length=16)
+    reason: str = Field(default="", max_length=300)
+    data: dict = Field(default_factory=dict)
+
+
+@app.post("/api/chat/heal", dependencies=[Depends(require_key)])
+def chat_heal(body: ChatHealIn, tenant: str = Depends(current_tenant)):
+    """The app found its chat different from the server's and reloaded it: kept for Hoola Jaanch."""
+    from . import convs
+    data = {k: v for k, v in (body.data or {}).items() if isinstance(v, (int, float, str, bool))}
+    return convs.heal_report(tenant, "resync", body.reason, data)
+
+
+@app.get("/api/chat/health", dependencies=[Depends(require_key)])
+def chat_health(tenant: str = Depends(current_tenant)):
+    from . import convs
+    return convs.health(tenant)
+
+
+@app.get("/api/chat/waiting", dependencies=[Depends(require_key)])
+def chat_waiting(tenant: str = Depends(current_tenant)):
+    """Cards in any of her chats that wait for her now."""
+    from .events import waiting_cards
+    return {"waiting": waiting_cards(tenant, 40)}
+
+
+class CallCardsIn(BaseModel):
+    conversation_id: str = Field(default="", max_length=40)
+    cards: list[dict] = Field(default_factory=list, max_length=30)
+
+
+@app.get("/api/voice/card_rules", dependencies=[Depends(require_key)])
+def voice_card_rules(tenant: str = Depends(current_tenant)):
+    """v0.158 card kinds that stay out of her calls (learned from what she closed unused before)."""
+    from . import convs
+    return convs.call_rules(tenant)
+
+
+@app.post("/api/voice/calls/{call_id}/cards", dependencies=[Depends(require_key)])
+async def voice_call_cards(call_id: str, body: CallCardsIn, tenant: str = Depends(current_tenant)):
+    """The app reports which cards a call showed and what she did with them; Hoola learns what to keep out."""
+    from . import convs
+    conv = body.conversation_id if body.conversation_id and convs.tenant_of(body.conversation_id) == tenant else ""
+    return await asyncio.to_thread(convs.call_report, tenant, call_id[:40], body.cards, conv)
 
 
 # ---------------- leads ----------------
@@ -8733,7 +8838,7 @@ def agents_item(ref: str):
 
 # ------------------------------------------------------------------ v0.98 one call at app open
 @app.get("/api/bootstrap", dependencies=[Depends(require_key)])
-def bootstrap(request: Request, conv: str = "", tenant: str = Depends(current_tenant)):
+def bootstrap(request: Request, conv: str = "", new: bool = False, tenant: str = Depends(current_tenant)):
     """Everything the app needs to open, in one round trip (it used to wait for 8 calls one after another): server
     health, the chat to use (hers if still valid, else a new one), account, lists, routines, avatar, actions the phone
     still has to run, and this month's AI spend vs her limit."""
@@ -8744,8 +8849,12 @@ def bootstrap(request: Request, conv: str = "", tenant: str = Depends(current_te
             c = s.get(Conversation, conv)
             if c is not None and c.tenant_id == tenant:
                 cid = c.id
+    from . import convs
+    if not cid and not new:
+        cid = convs.current(tenant)    # v0.158 sign-in / re-install / cleared app: her last chat, not an empty new one
     out["conversation_id"] = cid or create_conversation(tenant)["id"]
     out["conversation_new"] = not cid
+    convs.mark(tenant, out["conversation_id"], "app")
     for key, fn in (("me", lambda: api_me(request)), ("lists", lambda: get_lists(tenant)["lists"]),
                     ("routines", lambda: get_routines(tenant)["routines"]), ("avatar", lambda: avatar_get(tenant)),
                     ("pending_actions", lambda: pending_actions(tenant)["actions"])):

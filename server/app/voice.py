@@ -1432,6 +1432,8 @@ class Call:
 
     async def run_tool(self, session, fc) -> None:
         from google.genai import types
+        from .events import CALL
+        CALL.set(self.call_id)   # v0.158 every card this tool (and the jobs it starts) makes belongs to this call
         name, args = fc.name, dict(fc.args or {})
         from .avatar.service import gendered
         shown = name
@@ -1444,7 +1446,7 @@ class Call:
             raw = f"{self.name} kaam kar raha hai" if name == "santosh_kaam" else TOOL_LABELS.get(shown, shown)
         label = gendered(raw, self.gender)
         await self.send_json({"type": "tool", "label": label, "state": "running"})
-        from . import theatre
+        from . import livework
         from .events import bus
         call_id = getattr(fc, "id", None) or f"v{id(fc)}"
         show = name != "santosh_kaam"      # the delegated agent turn publishes its own work events
@@ -1483,7 +1485,7 @@ class Call:
                 self._breaker = Breaker(max_calls=120)
             return
         if show:
-            bus.publish(self.conv, "work", theatre.event(call_id, shown, label, "start", args))
+            bus.publish(self.conv, "work", livework.event(call_id, shown, label, "start", args))
         watch = asyncio.create_task(self._ack_watch(time.monotonic()))
         self._tools.add(watch)
         watch.add_done_callback(self._tools.discard)
@@ -1521,8 +1523,8 @@ class Call:
         await self.send_json({"type": "tool", "label": label, "state": state})
         if show:
             res = out.get("result") if isinstance(out, dict) else None
-            ph = "error" if state == "error" else theatre.phase_of(res)
-            bus.publish(self.conv, "work", theatre.event(call_id, shown, label, ph, args, res, out.get("error", "") if state == "error" else ""))
+            ph = "error" if state == "error" else livework.phase_of(res)
+            bus.publish(self.conv, "work", livework.event(call_id, shown, label, ph, args, res, out.get("error", "") if state == "error" else ""))
         await self._answer_tool(session, fc, name, out, state)
 
     async def _answer_tool(self, session, fc, name: str, out: dict, state: str) -> None:

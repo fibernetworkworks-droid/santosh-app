@@ -12,7 +12,7 @@ from sqlalchemy import select
 from ..config import get_settings
 from ..db import Message, session
 from ..events import bus
-from .. import theatre
+from .. import livework
 from ..avatar.service import gendered, persona
 from ..life import context_block
 from . import llm
@@ -359,7 +359,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 continue
             ran_tools = True
             args_in = b.get("input") or {}
-            from . import where as _where   # v0.93 the card / theatre name the place where it REALLY runs
+            from . import where as _where   # v0.93 the card / work line name the place where it REALLY runs
             shown = _where.shown(b["name"], args_in, getattr(ctx, "place", "") or _where.working(conversation_id))
             label = gendered(mcp_live.label(b["name"], mcp_route, mcp_snap) if b["name"] in mcp_route
                              else TOOL_LABELS.get(shown, shown), gender)
@@ -378,7 +378,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 state["calls"].append(call)
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": content})
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "done", "id": b["id"]})
-                _work(conversation_id, b["id"], shown, label, theatre.phase_of(out), args_in, out)
+                _work(conversation_id, b["id"], shown, label, livework.phase_of(out), args_in, out)
             except _Halted as h:
                 state["halted"] = h.why
                 state["calls"].append({"tool": b["name"], "ok": False, "error": "stopped by the owner", "args": args_in,
@@ -503,7 +503,7 @@ def _work(conversation_id: str, call_id: str, tool: str, label: str, phase: str,
         from . import quick
         quick.note_step(conversation_id, label)
     try:
-        bus.publish(conversation_id, "work", theatre.event(call_id, tool, label, phase, args, out, error))
+        bus.publish(conversation_id, "work", livework.event(call_id, tool, label, phase, args, out, error))
     except Exception:
         log.exception("work event failed")
 

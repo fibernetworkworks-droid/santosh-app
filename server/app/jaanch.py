@@ -250,6 +250,16 @@ async def _memory(tenant: str) -> dict[str, Any]:
               "VPS: .venv/bin/pip install fastembed (ek baar ~220 MB model)" if not h["meaning_search"] else "")
 
 
+async def _chat(tenant: str) -> dict[str, Any]:
+    """v0.158 Chat sehat: one current chat, cards waiting for her across chats, what the app's self-check fixed."""
+    from . import convs
+    h = await asyncio.to_thread(convs.health, tenant)
+    detail = (f"{h['chats']} chats, {h['waiting']} card haan ke intezaar mein, self-check ne {h['self_fixes_7d']} baar theek kiya (7 din)"
+              + (f"; call mein bahar rakhe: {', '.join(h['held_in_calls'][:4])}" if h["held_in_calls"] else ""))
+    return _c("chat", "Chat sehat", True if h["ok"] else None, detail + ("; " + " ".join(h["problems"]) if h["problems"] else ""),
+              "Chat mein upar 'Aapki haan chahiye' dabaiye" if h["waiting_old"] else "")
+
+
 async def _voice_settings() -> dict[str, Any]:
     """v0.108 a Gemini that refused session resumption / context compression makes every network blip a fresh call."""
     from . import voice
@@ -344,7 +354,8 @@ async def run(tenant: str) -> dict[str, Any]:
                (_pc(tenant), "pc", "Mera PC"), (_push(), "push", "Phone par notification"),
                (_mcp_runner(), "mcp_runner", "Ek-tap MCP (runner)"),
                (_google(tenant), "google", "Google"), (_disk(), "disk", "Server ki jagah"),
-               (_memory(tenant), "memory", "Hoola ki yaad"), (_voice_settings(), "voice_memory", "Call ki yaad (Gemini)")]
+               (_memory(tenant), "memory", "Hoola ki yaad"), (_voice_settings(), "voice_memory", "Call ki yaad (Gemini)"),
+               (_chat(tenant), "chat", "Chat sehat")]
     parts = await asyncio.gather(*[_guard(c, i, n) for c, i, n in singles],
                                  _guard(_portals(), "portals", "Sarkari / roz ki websites"))
     checks: list[dict[str, Any]] = []

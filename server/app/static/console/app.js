@@ -206,24 +206,14 @@ function typing(on) {
   else { TYPING?.remove(); TYPING = null; closeTurnTools(); live(QUEUE.length ? 'ask' : 'idle'); TURN = null; }
 }
 
-/* ================= live stage (Work Theatre events) ================= */
-const SCENE = {
-  work:() => `<div class="orb"></div>`,
-  browser:() => `<div class="brw"><div class="url"><i></i><i></i><span class="u">website</span></div><div class="pg"><b class="h" style="font-size:12px">Hoola ka browser</b><div class="in f"></div><div class="in"></div><span class="sb">…</span></div></div>`,
-  pc:() => `<div class="pcw"><div class="tb"><span>Aapka PC</span></div><div class="gridx">${Array.from({length: 20}, (_, i) => `<i class="${i % 6 === 2 ? 'hl' : ''}"></i>`).join('')}</div></div>`,
-  email:() => `<div class="mails"><div>✉️ Inbox</div><div>✉️ Drafts</div><div>✉️ Sent</div></div>`,
-  payment:() => `<div class="calc"><div><span>Kul</span><span>₹ …</span></div><div><span>Payee</span><span>pinned</span></div><div><span>Aapki Haan</span><span>zaroori</span></div></div>`,
-  network:() => `<div class="netsc"><span class="lk"></span><span class="av a" style="left:6%"><img src="${$('#uimg').src}" alt=""></span><span class="env"></span><span class="av a" style="right:6%"><img src="/static/santosh-happy.png" alt=""></span></div>`,
-  bluetooth:() => `<div class="home"><i>❄️</i><i class="on">📺</i><i>🔊</i><i>💡</i><i class="on">🎛</i><i>🚪</i></div>`,
-  website:() => `<div class="site"><div class="h"></div><div class="b">${'<i style="min-height:30px"></i>'.repeat(5)}</div></div>`};
-let STAGE_KIND = '';
+/* ================= live work line (v0.158: the animated stage is gone) ================= */
+const WHERE = {browser:'Hoola ka browser · server', pc:'Aapka PC', email:'Email', payment:'Paisa · aapki Haan', network:'Hoola Network', bluetooth:'Ghar', website:'Website'};
 function workEvent(p) {
-  const kind = SCENE[p.scene] ? p.scene : 'work';
-  if (kind !== STAGE_KIND) { const st = $('#stage'); st.querySelector('.sc')?.remove(); st.insertAdjacentHTML('afterbegin', `<div class="sc">${SCENE[kind]()}</div>`); STAGE_KIND = kind; }
-  $('#stageCap').textContent = p.label || p.tool || 'Kaam';
-  $('#stageWhere').textContent = {browser:'Hoola ka browser · server', pc:'Aapka PC', email:'Email', payment:'Paisa · aapki Haan', network:'Hoola Network', bluetooth:'Ghar', website:'Website'}[kind] || 'Hoola server';
-  const u = $('#stage .u'); if (u && p.data && (p.data.site || p.data.url)) u.textContent = String(p.data.site || p.data.url).slice(0, 60);
-  if (p.phase === 'error' || p.phase === 'stopped') $('#stageCap').textContent = (p.phase === 'stopped' ? 'Roka gaya: ' : 'Dikkat: ') + (p.error || p.label || '');
+  const err = p.phase === 'error' || p.phase === 'stopped';
+  $('#stageCap').textContent = err ? (p.phase === 'stopped' ? 'Roka gaya: ' : 'Dikkat: ') + (p.error || p.label || '') : (p.label || p.tool || 'Kaam');
+  const site = p.data && (p.data.site || p.data.url) ? ' · ' + String(p.data.site || p.data.url).slice(0, 60) : '';
+  $('#stageWhere').textContent = (WHERE[p.scene] || 'Hoola server') + site + (p.phase === 'done' ? ' · ho gaya' : p.phase === 'waiting' ? ' · aapki haan' : '');
+  $('#nowline').classList.toggle('err', err);
   if (!narrow() && p.phase === 'start') $('#app').classList.add('open');
 }
 function live(state) {
@@ -373,7 +363,7 @@ async function stream(conv) {
           const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
           const data = chunk.split('\n').filter(l => l.startsWith('data:')).map(l => l.slice(5).trimStart()).join('\n');
           if (!data) continue;
-          try { const ev = JSON.parse(data); if (ev.id > LAST) { LAST = ev.id; onEvent(ev); } } catch (e) { console.warn('event', e); }
+          try { const ev = JSON.parse(data); if (ev.kind === 'resync') { setTimeout(() => openConv(conv), 0); return; } if (ev.id > LAST) { LAST = ev.id; onEvent(ev); } } catch (e) { console.warn('event', e); }
         }
       }
     } catch (e) { if (ctl.signal.aborted) return; }
@@ -400,20 +390,18 @@ function onEvent(ev) {
 async function openConv(id, fresh) {
   stopStream(); CONV = id; col.innerHTML = ''; CARDS.clear(); TURN = null; TYPING = null; USER_ECHO = []; $('#stopBtn').hidden = true;
   $$('#recents .rc').forEach(b => b.toggleAttribute('aria-current', b.dataset.conv === id));
-  let msgs = [], recent = {last_event_id: 0, cards: []};
-  if (!fresh) {
-    try { [msgs, recent] = await Promise.all([api('GET', `/api/conversations/${encodeURIComponent(id)}/messages?limit=120`).then(r => r.messages || []),
-                                            api('GET', `/api/console/conversations/${encodeURIComponent(id)}/recent?n=30`)]); }
-    catch (e) { toast(e.message, true); }
-  } else { try { recent = await api('GET', `/api/console/conversations/${encodeURIComponent(id)}/recent?n=1`); } catch {} }
-  const any = msgs.some(m => m.role === 'user');
+  // v0.158 the chat in order from the server: messages and each card once where it happened (latest state)
+  let tl = {events: [], last_event_id: 0};
+  try { tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=${fresh ? 10 : 80}`); }
+  catch (e) { toast(e.message, true); }
+  const any = tl.events.some(e => e.kind === 'message' && (e.payload || {}).role === 'user');
   landing(!any);
-  // history: messages and the last cards merged by time
-  const items = [...msgs.map(m => ({t: m.at, m})), ...recent.cards.map(c => ({t: c.at, c}))].sort((a, b) => String(a.t).localeCompare(String(b.t)));
-  for (const it of items) {
-    if (it.m) { if (it.m.role === 'user') userBubble(it.m.text); else if (any) hoolaText(it.m.text); }
-    else renderCard(it.c.kind, it.c.payload, it.c.at);
+  for (const ev of tl.events) {
+    const p = ev.payload || {};
+    if (ev.kind === 'message') { if (p.role === 'user') userBubble(p.text, p.files); else if (any) hoolaText(p.text || '', p.source); }
+    else renderCard(ev.kind, p, ev.at);
   }
+  const recent = tl;
   TURN = null; LAST = recent.last_event_id || 0; scrollDown(true);
   stream(id);
 }
