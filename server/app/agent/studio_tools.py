@@ -16,8 +16,9 @@ STUDIO_TOOLS = [
         "You are the director; the studio picks the BEST model per shot (Wan 3.0 / Seedance 2.5 / MiniMax H3 / Gemini Omni "
         "Flash / Sync 3 lip sync). Actions: guide (read once) | models | create (name, aspect 9:16|16:9|1:1|4:3|3:4, style, "
         "language, brief) | list | show | character (name, description, file_ids of her photos, consent=true only if she "
-        "said the person agreed, voice female|male) | character_generate (name, description: fictional person / mascot / "
-        "product) | plan (brief, seconds: Claude writes the whole storyboard, preferred) | storyboard (shots: [{kind "
+        "said the person agreed, voice female|male, kind person|place|product: a place / product photo keeps that place / "
+        "product the same in every shot, no consent needed) | character_generate (name, description, kind: fictional person "
+        "/ mascot / product / place) | plan (brief, seconds: Claude writes the whole storyboard, preferred) | storyboard (shots: [{kind "
         "scene|product|talk|dialogue|link, prompt, duration, camera, characters, dialogue (spoken line) | voiceover, speaker, "
         "caption, transition, start_image_file_id}]) | shot_update (shot_id, changes) | keyframes (shot_ids: paint each "
         "shot's opening picture, Nano Banana Pro, a card) | estimate (quality) | generate (quality preview = FREE animatic "
@@ -36,7 +37,7 @@ STUDIO_TOOLS = [
          "project": {"type": "string"}, "name": {"type": "string"}, "aspect": {"type": "string"},
          "style": {"type": "string"}, "language": {"type": "string"}, "brief": {"type": "string"},
          "description": {"type": "string"}, "file_ids": {"type": "array", "items": {"type": "string"}},
-         "consent": {"type": "boolean"}, "shots": {"type": "array", "items": {"type": "object"}},
+         "consent": {"type": "boolean"}, "kind": {"type": "string", "enum": ["person", "place", "product"]}, "shots": {"type": "array", "items": {"type": "object"}},
          "shot_id": {"type": "string"}, "changes": {"type": "object"},
          "quality": {"type": "string", "enum": ["preview", "draft", "final", "premium"]},
          "seconds": {"type": "integer"}, "voice": {"type": "string"},
@@ -74,9 +75,10 @@ async def video_studio(ctx: Ctx, action, **a: Any):
             return v
         if action == "character":
             return await ss.character(t, project, a.get("name") or "", a.get("description") or "", a.get("file_ids") or [],
-                                      bool(a.get("consent")), a.get("voice") or "")
+                                      bool(a.get("consent")), a.get("voice") or "", a.get("kind") or "person")
         if action == "character_generate":
-            return await ss.character_generate(t, project, a.get("name") or "", a.get("description") or "")
+            return await ss.character_generate(t, project, a.get("name") or "", a.get("description") or "",
+                                               a.get("kind") or "person", a.get("voice") or "")
         if action == "plan":
             return await ss.plan(t, project, a.get("brief") or "", int(a.get("seconds") or 30), ctx.conversation_id)
         if action == "storyboard":

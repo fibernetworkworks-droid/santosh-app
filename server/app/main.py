@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.158.1", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.159.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -1966,7 +1966,9 @@ def studio_home(tenant: str = Depends(current_tenant)):
             pass
     st = get_settings()
     return {"available": ss.available(), "ready": ss.ready_providers(tenant), "projects": projects,
-            "month_spent_usd": ss.month_spent(tenant), "month_limit_usd": st.studio_month_usd, "usd_inr": st.studio_usd_inr}
+            "month_spent_usd": ss.month_spent(tenant), "month_limit_usd": st.studio_month_usd, "usd_inr": st.studio_usd_inr,
+            "can_paint": bool(st.gemini_api_key), "lyria": ss.lyria_ready(), "voices": list(ss.VOICES),
+            "styles": list(ss.catalog.STYLES), "moods": list(ss.MOODS)}
 
 
 @app.get("/api/studio/projects/{name}", dependencies=[Depends(require_key)])
@@ -2006,6 +2008,11 @@ class StudioNew(BaseModel):          # v0.157 the app's "Naya video" form
     style: str = "reel"
     language: str = "Hindi"
     seconds: int = Field(default=30, ge=6, le=600)
+    voice: str = ""                  # v0.159 male | female
+    captions: bool = True
+    caption_style: str = "bold"
+    music: str = ""                  # a mood (Lyria, paid in the same card) or "" = none
+    quality: str = "final"
 
 
 class StudioPlan(BaseModel):
@@ -2031,11 +2038,21 @@ class StudioShot(BaseModel):
     duration: int | None = Field(default=None, ge=2, le=30)
     kind: str | None = None
     camera: str | None = None
+    characters: list[str] | None = Field(default=None, max_length=6)
+    transition: str | None = None
+    speaker: str | None = None
 
 
 class StudioMusic(BaseModel):
     mood: str = "upbeat"
     volume: float = 0.25
+    file_id: str = ""                # v0.159 her own licensed song
+
+
+class StudioVoiceover(BaseModel):
+    shot_id: str
+    text: str = Field(default="", max_length=600)
+    file_id: str = ""
 
 
 class StudioCharacter(BaseModel):
@@ -2044,6 +2061,45 @@ class StudioCharacter(BaseModel):
     file_ids: list[str] = Field(default_factory=list, max_length=4)
     consent: bool = False
     voice: str = ""
+    kind: str = "person"             # v0.159 person | place | product
+
+
+class StudioSettings(BaseModel):
+    voice: str | None = None
+    captions: bool | None = None
+    caption_style: str | None = None
+    music: str | None = None
+    quality: str | None = None
+    logo_position: str | None = None
+    style: str | None = None
+    music_volume: float | None = Field(default=None, ge=0, le=1)
+
+
+class StudioAddShot(BaseModel):
+    prompt: str = Field(default="", max_length=1500)
+    duration: int = Field(default=5, ge=2, le=30)
+    kind: str = "scene"
+    camera: str | None = None
+    dialogue: str | None = Field(default=None, max_length=600)
+    caption: str | None = Field(default=None, max_length=120)
+    characters: list[str] = Field(default_factory=list, max_length=6)
+    after: str = ""
+
+
+class StudioRedo(BaseModel):
+    change: str = Field(default="", max_length=300)
+    quality: str = ""
+
+
+class StudioImprove(BaseModel):
+    brief: str = Field(min_length=1, max_length=2000)
+    language: str = "Hindi"
+    seconds: int = Field(default=30, ge=6, le=600)
+
+
+class StudioLogo(BaseModel):
+    file_id: str
+    position: str = "top-right"
 
 
 def _studio_call(fn):
@@ -2059,7 +2115,9 @@ def _studio_call(fn):
 @app.post("/api/studio/projects", dependencies=[Depends(require_key)])
 async def studio_new(body: StudioNew, tenant: str = Depends(current_tenant)):
     from .studio import service as ss
-    v = await _studio_call(ss.create)(tenant, body.name, body.aspect, body.style, body.language, body.brief, "")
+    v = await _studio_call(ss.create)(tenant, body.name, body.aspect, body.style, body.language, body.brief, "",
+                                      {"voice": body.voice, "captions": body.captions, "caption_style": body.caption_style,
+                                       "music": body.music, "quality": body.quality})
     if body.brief.strip():
         await _studio_call(ss.plan)(tenant, v["project"], body.brief, body.seconds, "")
     return ss.view(tenant, ss._load(tenant, v["project"]))
@@ -2110,15 +2168,86 @@ async def studio_shot(name: str, shot_id: str, body: StudioShot, tenant: str = D
 @app.post("/api/studio/projects/{name}/music", dependencies=[Depends(require_key)])
 async def studio_music(name: str, body: StudioMusic, tenant: str = Depends(current_tenant)):
     from .studio import service as ss
-    return await _studio_call(ss.music)(tenant, name, body.mood, "", body.volume)
+    return await _studio_call(ss.music)(tenant, name, body.mood, body.file_id, body.volume)
+
+
+@app.post("/api/studio/projects/{name}/voiceover", dependencies=[Depends(require_key)])
+async def studio_voiceover(name: str, body: StudioVoiceover, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    await _studio_call(ss.voiceover)(tenant, name, body.shot_id, body.text, body.file_id)
+    return ss.view(tenant, ss._load(tenant, name))
 
 
 @app.post("/api/studio/projects/{name}/characters", dependencies=[Depends(require_key)])
 async def studio_character(name: str, body: StudioCharacter, tenant: str = Depends(current_tenant)):
     from .studio import service as ss
     if body.file_ids:
-        return await _studio_call(ss.character)(tenant, name, body.name, body.description, body.file_ids, body.consent, body.voice)
-    return await _studio_call(ss.character_generate)(tenant, name, body.name, body.description)
+        return await _studio_call(ss.character)(tenant, name, body.name, body.description, body.file_ids, body.consent, body.voice,
+                                                body.kind)
+    return await _studio_call(ss.character_generate)(tenant, name, body.name, body.description, body.kind, body.voice)
+
+
+@app.post("/api/studio/projects/{name}/settings", dependencies=[Depends(require_key)])
+async def studio_settings(name: str, body: StudioSettings, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    return await _studio_call(ss.settings)(tenant, name, body.model_dump(exclude_none=True))
+
+
+@app.post("/api/studio/projects/{name}/shots", dependencies=[Depends(require_key)])
+async def studio_add_shot(name: str, body: StudioAddShot, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    d = body.model_dump(exclude_none=True)
+    after = d.pop("after", "")
+    return await _studio_call(ss.add_shot)(tenant, name, d, after)
+
+
+@app.delete("/api/studio/projects/{name}/shots/{shot_id}", dependencies=[Depends(require_key)])
+async def studio_delete_shot(name: str, shot_id: str, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    return await _studio_call(ss.delete_shot)(tenant, name, shot_id)
+
+
+@app.post("/api/studio/projects/{name}/shots/{shot_id}/redo", dependencies=[Depends(require_key)])
+async def studio_redo_shot(name: str, shot_id: str, body: StudioRedo, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    return await _studio_call(ss.redo_shot)(tenant, name, shot_id, body.change, body.quality)
+
+
+@app.post("/api/studio/projects/{name}/shots/{shot_id}/line", dependencies=[Depends(require_key)])
+async def studio_line(name: str, shot_id: str, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    return await _studio_call(ss.speak_line)(tenant, name, shot_id)
+
+
+@app.post("/api/studio/projects/{name}/cancel", dependencies=[Depends(require_key)])
+async def studio_cancel(name: str, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    return await _studio_call(ss.cancel)(tenant, name)
+
+
+@app.post("/api/studio/projects/{name}/logo", dependencies=[Depends(require_key)])
+async def studio_logo(name: str, body: StudioLogo, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    await _studio_call(ss.logo)(tenant, name, body.file_id, body.position)
+    return ss.view(tenant, ss._load(tenant, name))
+
+
+@app.delete("/api/studio/projects/{name}", dependencies=[Depends(require_key)])
+async def studio_hide(name: str, tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    return await _studio_call(ss.hide)(tenant, name)
+
+
+@app.post("/api/studio/improve", dependencies=[Depends(require_key)])
+async def studio_improve(body: StudioImprove):
+    from .studio import service as ss
+    return await _studio_call(ss.improve_brief)(body.brief, body.language, body.seconds)
+
+
+@app.get("/api/studio/voice_sample", dependencies=[Depends(require_key)])
+async def studio_voice_sample(voice: str = "male", language: str = "Hindi", tenant: str = Depends(current_tenant)):
+    from .studio import service as ss
+    return await _studio_call(ss.voice_sample)(tenant, voice, language)
 
 
 @app.get("/api/studio/files/{tenant_key}/{exp}/{sig}/{name}")

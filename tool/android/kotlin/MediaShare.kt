@@ -11,12 +11,19 @@ import java.io.File
 
 /** v0.63 Hoola Motion: hand a finished video to WhatsApp / Instagram (Android share sheet), or save it to the gallery. */
 object MediaShare {
-    fun share(act: Activity, path: String, mime: String, title: String): String? {
+    fun share(act: Activity, path: String, mime: String, title: String, pkg: String = ""): String? {
         val f = File(path)
         if (!f.exists() || !f.canonicalPath.startsWith(act.cacheDir.canonicalPath)) return "File nahi mili"
         val uri = FileProvider.getUriForFile(act, act.packageName + ".hoolafiles", f)
         val send = Intent(Intent.ACTION_SEND).setType(mime).putExtra(Intent.EXTRA_STREAM, uri)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        if (pkg.isNotBlank()) {          // v0.159 straight into WhatsApp / Instagram / YouTube; not installed -> the normal sheet
+            try {
+                act.startActivity(Intent(send).setPackage(pkg))
+                return null
+            } catch (e: Exception) {
+            }
+        }
         act.startActivity(Intent.createChooser(send, title.ifBlank { "Share" }))
         return null
     }

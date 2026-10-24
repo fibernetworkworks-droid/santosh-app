@@ -166,6 +166,37 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/music', body: {'mood': mood}) as Map);
   Future<Map<String, dynamic>> studioCharacter(String name, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/characters', body: body, timeout: const Duration(seconds: 60)) as Map);
+  // v0.159 the full studio in the app
+  Future<Map<String, dynamic>> studioSettings(String name, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/settings', body: body) as Map);
+  Future<Map<String, dynamic>> studioAddShot(String name, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/shots', body: body) as Map);
+  Future<Map<String, dynamic>> studioDeleteShot(String name, String shot) async =>
+      Map<String, dynamic>.from(await _send('DELETE', '${_sp(name)}/shots/${Uri.encodeComponent(shot)}') as Map);
+  Future<Map<String, dynamic>> studioRedo(String name, String shot, String change, {String quality = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/shots/${Uri.encodeComponent(shot)}/redo',
+          body: {'change': change, 'quality': quality}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> studioLine(String name, String shot) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/shots/${Uri.encodeComponent(shot)}/line',
+          timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> studioCancel(String name) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/cancel') as Map);
+  Future<Map<String, dynamic>> studioLogo(String name, String fileId, String position) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/logo', body: {'file_id': fileId, 'position': position}) as Map);
+  Future<Map<String, dynamic>> studioHide(String name) async =>
+      Map<String, dynamic>.from(await _send('DELETE', _sp(name)) as Map);
+  Future<Map<String, dynamic>> studioImprove(String brief, String language, int seconds) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/studio/improve',
+          body: {'brief': brief, 'language': language, 'seconds': seconds}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> studioVoiceSample(String voice, String language) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/studio/voice_sample', query: {'voice': voice, 'language': language},
+          timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> studioMusicMood(String name, String mood, {double volume = 0.25, String fileId = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/music', body: {'mood': mood, 'volume': volume, 'file_id': fileId},
+          timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> studioVoiceover(String name, String shot, String text) async =>
+      Map<String, dynamic>.from(await _send('POST', '${_sp(name)}/voiceover', body: {'shot_id': shot, 'text': text},
+          timeout: const Duration(seconds: 90)) as Map);
 
   // ---- Hoola Computer Operator (v0.67) ----
   Future<Map<String, dynamic>> operatorHome() async => Map<String, dynamic>.from(await _send('GET', '/api/operator') as Map);

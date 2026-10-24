@@ -120,8 +120,8 @@ class Native {
   static Future<bool> safeVoice({bool? on}) async => await _call<bool>('safeVoice', {if (on != null) 'on': on}) ?? false;
   /// v0.63 Hoola Motion: share a file from the app cache (Android share sheet) / save a video to the gallery.
   /// Both return null when fine, else the reason.
-  static Future<String?> shareFile(String path, {String mime = 'video/mp4', String title = 'Share'}) async =>
-      _call<String>('shareFile', {'path': path, 'mime': mime, 'title': title});
+  static Future<String?> shareFile(String path, {String mime = 'video/mp4', String title = 'Share', String app = ''}) async =>
+      _call<String>('shareFile', {'path': path, 'mime': mime, 'title': title, 'pkg': app});   // v0.159 app = straight into that app
   static Future<String?> saveVideo(String path, String name) async {
     try {
       return await _ch.invokeMethod<String>('saveVideo', {'path': path, 'name': name});

@@ -6977,3 +6977,43 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
 - `lib/state.dart`: `connect()` guarded (`_connecting`), real work in `_connect`; a non-401 failure retries by itself
   (`_scheduleRetry` 3, 6, 12, 24, 30 s...), friendly banner "jud raha hoon… tap kijiye"; 401 = key wrong, no retry. Event stream
   errors (404 chat gone) retry too (fresh chat). `reconnectIfNeeded()` on app resume (`main.dart`). Bootstrap timeout 25 -> 45 s.
+
+## v0.159 Video Studio rebuilt as a real studio (owner approved the 12 screen designs first)
+- Design canvas (Claude Design artifact "Hoola Video Studio — Redesign"): home, new video (idea / look + quality), storyboard
+  being written, project editor (monitor + timeline + Shots / Cast / Awaaz / Brand), shot editor, cast, price sheet, live
+  render, takes + AI check, voice / music / brand, final video + share. Hoola's own dark theme (saffron, Sora + Manrope).
+- App `lib/ui/studio/`: `studio_kit` (palette `SC`, `SImage` signed pictures, `Tag`, `SChip`, `SSegment`, `SButton`,
+  `SBottomBar`, `SoundButton` (voice samples / spoken lines / music via video_player), `SVideo` inline player, `localCopy`,
+  `pickOne`), `studio_home` (StudioScreen: one idea box + mic + quick chips, starters, `ProjectTile` posters with the 4-step bar
+  and the next step + price; `StudioCard` in chat = the same tile), `studio_new` (NewVideoScreen 2 steps: photos as person /
+  product / place with consent, "Hoola se behtar karwao", length, shape, language in its script, voice samples, look tiles,
+  quality with rough ₹, captions + style, Lyria music, logo; creates the project, adds photos + logo, THEN plans), `studio_project`
+  (planning checklist; editor with monitor, VID / BOL / SUR timeline, banners to Live / Final, tabs, bottom bar Preview free /
+  Banao / Final jodo / Final dekho; `ShotCard`), `studio_shot` (ShotEditorScreen), `studio_cast` (CastTab), `studio_approve`
+  (price sheet `approveGenerate` / `approveSimple`: her tap on the sheet = `askAndApprove` = card made + approved with the
+  fingerprint flow; `StudioApprovalCard` in chat with the same lines), `studio_render` (RenderScreen: %, ETA, spent, 5 stages, per
+  shot, Rok do), `studio_takes` (TakesScreen: inline player, AI check good / problems, keep, redo with words or premium),
+  `studio_audio` (AudioTab voice / music / volume / lines + narration, BrandTab captions on-off + 3 styles, 3x3 logo spot, AI
+  label), `studio_final` (FinalScreen: player, versions, WhatsApp / Instagram / YouTube straight in, gallery, link, revise via chat).
+  `lib/ui/studio_screen.dart` only re-exports StudioScreen / StudioCard / StudioApprovalCard / StudioProjectScreen.
+- Native: `Native.shareFile(..., app: pkg)` -> `MediaShare.share(pkg)` opens that app directly (falls back to the share sheet).
+- Server `studio/service.py`: project `prefs` (voice (Gemini name) + voice_kind, captions, caption_style bold | words | plain, music
+  mood, quality) from the app (`create(prefs)`, `settings()`); `quote()` = one run's price line by line (video / opening
+  pictures / lip sync / music) used by BOTH the view's `estimates` and the card (`cap_usd` = the video part, music + pictures
+  paid separately in the same tap: music mood from prefs comes in the generate card and is made on approve); `view()` adds per
+  shot `phase` (paint / queued / video / lipsync / retrying / failed / cancelled / done / pictured) + `pct`, `model_label`,
+  `lipsync`, `line_url` / `vo_url`, take `good` / `fix` / `cost_inr` / `picked`; project `progress` (batch: done / failed /
+  cancelled / live / pct / eta_s / spent_inr), `step` 0-5, `phase`, `next` {kind keyframes | generate | assemble | done | wait,
+  label, inr}, `character_list` with kind + signed images, `music_info`, `logo_info`, `month`. Links expire on whole days (phone
+  image cache keeps working). Places / products as references (`kind`; no consent needed; keyframe + build wording per kind;
+  `Studio.speaker_of` skips them). AI-made characters painted by Nano Banana Pro after a card (`CHARACTER_LOOK`,
+  `_paint_character`) when the Gemini key is set (FLUX / placeholder otherwise). `add_shot` / `delete_shot` (`_reboard` keeps
+  existing pictures; app keys whitelisted), `redo_shot` (her words appended as "Change: ...", replaces an earlier change, card),
+  `cancel` (`Studio.cancel_jobs`, watcher ends on cancelled), `hide` (project off her list; spend record kept), `improve_brief`
+  (Claude, never invents prices / numbers), `voice_sample`, `speak_line`, voiceover in the project's voice. Assembly:
+  `caption_texts` (bold outlined / words in 2-3 word saffron chunks / plain on a strip). GUIDE's duplicated old tail removed.
+- API: POST /api/studio/projects (+ voice, captions, caption_style, music, quality), POST .../{name}/settings, POST
+  .../shots, DELETE .../shots/{id}, POST .../shots/{id}/redo, POST .../shots/{id}/line, POST .../cancel, POST .../logo, POST
+  .../voiceover, POST .../music (+ file_id), DELETE /api/studio/projects/{name}, POST /api/studio/improve, GET
+  /api/studio/voice_sample; GET /api/studio adds can_paint, lyria, voices, styles, moods. Agent tool `video_studio` character
+  takes `kind`. Tests `server/tests/test_v159_studio.py` (7).

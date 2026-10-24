@@ -30,6 +30,28 @@ from ..vedit import ops as vops
 DEFAULT_FONT = str((Path(__file__).resolve().parent.parent / "videoedit" / "fonts" / "NotoSansDevanagari-Bold.ttf"))
 
 
+CAPTION_STYLES = ("bold", "words", "plain")
+
+
+def caption_texts(cap: str, dur: float, style: str = "bold", font: str | None = None, aspect: str = "9:16") -> list[dict]:
+    """v0.159 Three caption looks: bold (big outlined words), words (2-3 words at a time, saffron, karaoke feel),
+    plain (smaller text on a dark strip)."""
+    f = {"font": font} if font else {}
+    style = style if style in CAPTION_STYLES else "bold"
+    if style == "plain":
+        return [{"text": cap, "position": "bottom", "start": 0.2, "fade": 0.2, "size": 44, "box": True,
+                 "box_color": "black@0.6", **f}]
+    if style == "words":
+        words = cap.split()
+        n = 3 if len(words) > 8 else 2
+        chunks = [" ".join(words[i:i + n]) for i in range(0, len(words), n)] or [cap]
+        span = max(0.6, float(dur) - 0.4)
+        step = span / len(chunks)
+        return [{"text": c, "position": "bottom", "start": round(0.2 + i * step, 3), "end": round(0.2 + (i + 1) * step, 3),
+                 "size": 72, "box": False, "color": "#FFD27A", **f} for i, c in enumerate(chunks)]
+    return [{"text": cap, "position": "bottom", "start": 0.2, "fade": 0.2, "box": False, **f}]
+
+
 class StudioError(Exception):
     """Message written for the AI (and the person) using the studio."""
 
@@ -158,7 +180,8 @@ class Studio:
         for d in sorted((self.home / "projects").iterdir()):
             if (d / "project.json").exists():
                 p = json.loads((d / "project.json").read_text())
-                out.append({"project": p["name"], "shots": len(p["shots"]), "spent_usd": round(p["spent_usd"], 3), "updated": p.get("updated")})
+                out.append({"project": p["name"], "shots": len(p["shots"]), "spent_usd": round(p["spent_usd"], 3), "updated": p.get("updated"),
+                            "hidden": bool(p.get("hidden"))})
         return out
 
     # ------------------------------------------------------------------ characters
@@ -291,8 +314,12 @@ class Studio:
                 if cfg["provider"] == "google":
                     parts.append(f"<IMAGE_REF_{i}> is {c}: {p['characters'][c]['description']}.")
                 elif cfg["provider"] == "openrouter":
-                    parts.append(f"Reference image {i + 1} shows {c}: {p['characters'][c]['description']}. "
-                                 f"Keep {c}'s face, clothes and look exactly as in reference image {i + 1}.")
+                    if p["characters"][c].get("kind") == "place":
+                        parts.append(f"Reference image {i + 1} shows the place {c}: {p['characters'][c]['description']}. "
+                                     f"Keep this place exactly as in reference image {i + 1}.")
+                    else:
+                        parts.append(f"Reference image {i + 1} shows {c}: {p['characters'][c]['description']}. "
+                                     f"Keep {c}'s look exactly as in reference image {i + 1}.")
                 else:
                     parts.append(f"@Image{i + 1} is {c}: {p['characters'][c]['description']}.")
         else:
@@ -305,7 +332,7 @@ class Studio:
             parts.append(catalog.CAMERA[s["camera"]].capitalize() + ".")
         parts.append(f"Style: {catalog.STYLES.get(p['style'], p['style'])}.")
         if s.get("dialogue"):
-            who = s.get("speaker") or (s["characters"][0] if s["characters"] else "The person")
+            who = s.get("speaker") or self.speaker_of(p, s) or "The person"
             if self.needs_lipsync(p, s, quality):
                 parts.append(f"{who} talks naturally with clear mouth movement, face well lit and visible; "
                              "no audible words in the soundtrack, only ambient sound.")
@@ -543,22 +570,34 @@ class Studio:
                     self._changed(project)
                     return
 
-    async def _speech(self, project: str, shot: dict) -> str:
-        """The shot's spoken line as our own voice file (made once per text + voice, kept in the project)."""
+    def speech_plan(self, p: dict, shot: dict) -> tuple[str, str, str, Path]:
+        """(text, voice, language, file) of a shot's spoken line; the file exists once it has been made."""
         import hashlib
-        p = self.load(project)
         text = str(shot.get("dialogue") or "").strip()
-        if not text:
-            raise ProviderError("this shot has no line to speak")
         voice = shot.get("voice") or ""
-        who = shot.get("speaker") or (shot["characters"][0] if shot.get("characters") else "")
+        who = shot.get("speaker") or self.speaker_of(p, shot)
         if not voice and who:
             voice = p["characters"].get(who, {}).get("voice") or ""
-        d = self.pdir(project) / "audio"
-        d.mkdir(parents=True, exist_ok=True)
+        voice = voice or (p.get("prefs") or {}).get("voice") or ""      # v0.159 the voice she chose for the video
         lang = p.get("language", "Hindi")
         key = hashlib.sha1(f"{text}|{voice}|{lang}".encode()).hexdigest()[:12]
-        out = d / f"line_{key}.wav"
+        return text, voice, lang, self.pdir(p["name"]) / "audio" / f"line_{key}.wav"
+
+    @staticmethod
+    def speaker_of(p: dict, shot: dict) -> str:
+        """The first person in the shot (places and products don't speak)."""
+        for c in shot.get("characters") or []:
+            if (p["characters"].get(c) or {}).get("kind", "person") == "person":
+                return c
+        return ""
+
+    async def _speech(self, project: str, shot: dict) -> str:
+        """The shot's spoken line as our own voice file (made once per text + voice, kept in the project)."""
+        p = self.load(project)
+        text, voice, lang, out = self.speech_plan(p, shot)
+        if not text:
+            raise ProviderError("this shot has no line to speak")
+        out.parent.mkdir(parents=True, exist_ok=True)
         if out.is_file():
             return str(out)
         if not self.speak:
@@ -596,11 +635,19 @@ class Studio:
             ch = p["characters"].get(c)
             if ch and ch.get("images"):
                 refs.append(ch["images"][0])
-                who.append(f"{c} ({ch.get('description', '')}) looks exactly like the reference photo {len(refs)}: same face, "
-                           "hair, skin tone, clothes / same product shape, colours and label")
+                kind = ch.get("kind", "person")
+                if kind == "place":
+                    who.append(f"The setting is {c} ({ch.get('description', '')}), exactly as in reference photo {len(refs)}: "
+                               "same place, buildings / trees / water, colours and layout")
+                elif kind == "product":
+                    who.append(f"{c} ({ch.get('description', '')}) looks exactly like reference photo {len(refs)}: same product "
+                               "shape, colours, packaging and label")
+                else:
+                    who.append(f"{c} ({ch.get('description', '')}) looks exactly like the reference photo {len(refs)}: same face, "
+                               "hair, skin tone, clothes")
         style = catalog.STYLES.get(p["style"], p["style"])
         if (s.get("kind") or "scene") == "talk":
-            body = (f"A medium close-up of {s.get('speaker') or (s['characters'][0] if s.get('characters') else 'the speaker')} "
+            body = (f"A medium close-up of {s.get('speaker') or self.speaker_of(p, s) or 'the speaker'} "
                     f"looking into the camera, about to speak, face evenly lit, mouth closed and relaxed, shoulders visible. "
                     f"Setting: {s.get('prompt') or 'a simple pleasant background that suits the topic'}.")
         else:
@@ -668,6 +715,30 @@ class Studio:
                     self.tasks[jid] = asyncio.ensure_future(self._run_job(p["name"], jid))
                     n += 1
         return n
+
+    async def cancel_jobs(self, project: str) -> dict:
+        """v0.159 'Rok do': stop every shot still waiting or being made (finished takes stay; nothing more is charged
+        here, though a provider may still bill a clip it had already started)."""
+        p = self.load(project)
+        live = [jid for jid, j in p["jobs"].items() if j["state"] in ("queued", "submitted", "running", "retrying")]
+        for jid in live:
+            t = self.tasks.pop(jid, None)
+            if t and not t.done():
+                t.cancel()
+            j = p["jobs"][jid]
+            if j.get("handle"):
+                try:
+                    await self.providers[self.models[j["model"]]["provider"]].cancel(j["handle"])
+                except Exception:
+                    pass
+
+        def fn(q):
+            for jid in live:
+                if q["jobs"][jid]["state"] in ("queued", "submitted", "running", "retrying"):
+                    q["jobs"][jid].update(state="cancelled", finished=now(), handle=None, error="rok diya")
+        await self.update(project, fn)
+        self._changed(project)
+        return {"cancelled": len(live)}
 
     def jobs(self, project: str) -> dict:
         p = self.load(project)
@@ -815,8 +886,8 @@ class Studio:
                 c["volume"] = 0.3
             cap = s.get("caption")
             if captions and cap:
-                c["texts"] = [{"text": cap, "position": "bottom", "start": 0.2, "fade": 0.2,
-                               **({"font": p["font"]} if p.get("font") else {})}]
+                c["texts"] = caption_texts(cap, dur, (p.get("prefs") or {}).get("caption_style") or "bold", p.get("font"),
+                                           p["aspect"])
             tr = s.get("transition") or transition_default
             td = 0.0
             if tr and i < len(p["shots"]) - 1:

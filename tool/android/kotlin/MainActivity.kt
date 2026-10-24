@@ -150,7 +150,8 @@ class MainActivity : FlutterActivity() {
                         result.success(HomeDevices.hasBluetoothPermission(this) && BtControl.canScan(this))
                     }
                     "shareFile" -> result.success(MediaShare.share(this, call.argument<String>("path") ?: "",
-                        call.argument<String>("mime") ?: "video/mp4", call.argument<String>("title") ?: ""))
+                        call.argument<String>("mime") ?: "video/mp4", call.argument<String>("title") ?: "",
+                        call.argument<String>("pkg") ?: ""))
                     "saveVideo" -> {
                         val p = call.argument<String>("path") ?: ""
                         val n = call.argument<String>("name") ?: "hoola.mp4"
