@@ -36,6 +36,8 @@ class HomeExtra {
   List<Map<String, dynamic>> factsToday = [];// memory facts added today
   List<Map<String, dynamic>> lessons = [];   // Hoola Network lessons (latest 2)
   List<Map<String, dynamic>> words = [];     // her own words (latest 2)
+  List<Map<String, dynamic>> fixes = [];     // v0.175 misheard→meant corrections (confirmed first)
+  List<Map<String, dynamic>> skills = [];    // v0.175 skills installed from the network
   Map<String, dynamic>? catchup;             // /api/catchup 24h → items, count
   Map<String, dynamic>? day;                 // v0.166 /api/day → weather, aaj ki baaki meetings, next reminder
   bool loaded = false;
@@ -93,6 +95,8 @@ class HomeExtra {
 
       lessons = _list((r[8] as Map?)?['lessons']).take(2).toList();
       words = _list((r[7] as Map?)?['words']).take(2).toList();
+      fixes = _list((r[7] as Map?)?['fixes']).take(2).toList();    // v0.175 same voiceLearned call
+      skills = _list((r[8] as Map?)?['skills']).take(2).toList();  // v0.175 same netLearned call
 
       catchup = r[9] as Map<String, dynamic>?;
       day = r[10] as Map<String, dynamic>?;
@@ -102,7 +106,7 @@ class HomeExtra {
 
   int get catchupCount => catchup == null ? 0 : _list(catchup!['items']).length;
   bool get nothingNew =>
-      employee == null && jobs.isEmpty && notebooks.isEmpty && factsToday.isEmpty && lessons.isEmpty && words.isEmpty && catchupCount == 0;
+      employee == null && jobs.isEmpty && notebooks.isEmpty && factsToday.isEmpty && lessons.isEmpty && words.isEmpty && fixes.isEmpty && skills.isEmpty && catchupCount == 0;
 }
 
 /// Section caption with optional NAYA pill and count.
@@ -1291,104 +1295,289 @@ class NotebookSection extends StatelessWidget {
   }
 }
 
-/// AAJ KYA SEEKHA — what Hoola learned today: today's memory facts, her words, network lessons.
-/// One tap = bhool jao (trust keeps the partnership honest).
-class _LearnLine {
-  const _LearnLine(this.icon, this.text, this.src, this.forget);
-  final IconData icon;
-  final String text;
-  final String src;
-  final Future<void> Function() forget;
-}
-
+/// AAJ KYA SEEKHA — what Hoola learned today, category-wise: chats, voice, network.
+/// v0.175 premium: khaali state shows the invite card; live state groups the real
+/// learning into three labelled blocks — BAATEIN SE (today's facts, auto/manual + time),
+/// AWAAZ SE (her words + misheard→meant fixes with counts), NETWORK SE (lessons with
+/// topic chips + installed skills) — every forgettable row forgets in one tap.
 class LearnedSection extends StatelessWidget {
   const LearnedSection({super.key, required this.extra, required this.app, required this.reload});
   final HomeExtra extra;
   final Santosh app;
   final Future<void> Function() reload;
 
-  List<_LearnLine> get _lines {
-    final out = <_LearnLine>[];
-    for (final f in extra.factsToday) {
-      out.add(_LearnLine(Icons.psychology_alt_rounded, _s(f['text']), 'Aapki baaton se · aaj', () async {
-        await app.api?.forget(_n(f['id']));
-        await reload();
-      }));
-    }
-    if (extra.words.isNotEmpty) {
-      final terms = [for (final w in extra.words) _s(w['term'])].where((t) => t.isNotEmpty).join(', ');
-      out.add(_LearnLine(Icons.record_voice_over_rounded, 'Aapke shabd: $terms', 'Aapki calls se seekhe shabd', () async {
-        await app.api?.voiceWordRemove(_n(extra.words.first['id']));
-        await reload();
-      }));
-    }
-    for (final l in extra.lessons) {
-      out.add(_LearnLine(Icons.school_rounded, _s(l['text']), 'Hoola Network · seekha', () async {
-        await app.api?.netLessonAct('${l['id']}', 'forget');
-        await reload();
-      }));
-    }
-    return out;
+  void _all(BuildContext context) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => VoiceLearnedScreen(app: app)));
+
+  static const List<Color> _cViolet = [Color(0xFFA78BFA), Color(0xFF7C5CFF)];
+  static const List<Color> _cRose = [Color(0xFFFB7185), Color(0xFFE11D48)];
+  static const List<Color> _cEmerald = [Color(0xFF34D399), Color(0xFF0D9488)];
+
+  Widget _tile(IconData icon, List<Color> grad, {double size = 40, double ic = 20}) => Container(
+        width: size, height: size,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
+          borderRadius: BorderRadius.circular(13),
+          boxShadow: [BoxShadow(color: grad.last.withOpacity(.35), blurRadius: 13, offset: const Offset(0, 4))],
+        ),
+        child: Icon(icon, size: ic, color: Colors.white),
+      );
+
+  String _when(String iso) {
+    final t = DateTime.tryParse(iso.replaceFirst('Z', ''))?.toLocal();
+    if (t == null) return '';
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
+
+  Widget _catHead(IconData icon, List<Color> grad, String label, int count) => Padding(
+        padding: const EdgeInsets.only(bottom: 2),
+        child: Row(children: [
+          _tile(icon, grad),
+          const SizedBox(width: 11),
+          Expanded(child: Text(app.g(label), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 1.1, color: C.chip))),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: grad.last.withOpacity(.18)),
+            child: Text('$count', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: grad.first)),
+          ),
+        ]),
+      );
+
+  Widget _forget(Future<void> Function() act) => Press(
+        onTap: () async {
+          try {
+            await act();
+            await reload();
+          } catch (_) {}
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), border: Border.all(color: Colors.white.withOpacity(.13))),
+          child: Text(app.g('Bhool jao'), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: C.faint)),
+        ),
+      );
+
+  Widget _sep() => Container(height: 1, margin: const EdgeInsets.symmetric(vertical: 9), color: Colors.white.withOpacity(.06));
+
+  Widget _emptyLine(String s) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Text(s, style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: C.faint)),
+      );
+
+  Widget _factRow(Map<String, dynamic> f) {
+    final when = _when(_s(f['created_at']));
+    final auto = f['auto'] == true;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(_s(f['text']), maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12.5, height: 1.4, color: C.ink)),
+            const SizedBox(height: 3),
+            Row(children: [
+              if (when.isNotEmpty)
+                Text(app.g('aaj · {x}', x: when), style: const TextStyle(fontSize: 10, color: C.faint)),
+              if (auto) ...[
+                const SizedBox(width: 7),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), border: Border.all(color: const Color(0x55A78BFA))),
+                  child: Text(app.g('khud seekha'), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFFC4B5FD))),
+                ),
+              ],
+            ]),
+          ]),
+        ),
+        const SizedBox(width: 8),
+        _forget(() => app.api!.forget(_n(f['id']))),
+      ]),
+    );
+  }
+
+  Widget _wordRow(Map<String, dynamic> w) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_s(w['term']), maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: C.ink)),
+              const SizedBox(height: 3),
+              Text(_s(w['source']) == 'call' ? app.g('Calls se pakda') : app.g('Aapne sikhaya'),
+                  style: const TextStyle(fontSize: 10, color: C.faint)),
+            ]),
+          ),
+          const SizedBox(width: 8),
+          _forget(() => app.api!.voiceWordRemove(_n(w['id']))),
+        ]),
+      );
+
+  Widget _fixRow(Map<String, dynamic> x) {
+    final cnt = _n(x['count']);
+    final ok = x['confirmed'] == true;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Flexible(
+                child: Text('"${_s(x['heard'])}"', maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11.5, color: C.faint, decoration: TextDecoration.lineThrough, decorationColor: Color(0x33FFFFFF))),
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.east_rounded, size: 13, color: Color(0xFFFB7185)),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(_s(x['meant']), maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: C.ink)),
+              ),
+            ]),
+            const SizedBox(height: 3),
+            Row(children: [
+              if (cnt > 0)
+                Text(app.g('{x} baar galat suna', x: '$cnt'), style: const TextStyle(fontSize: 10, color: C.faint)),
+              if (ok) ...[
+                const SizedBox(width: 7),
+                const Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF34D399)),
+                const SizedBox(width: 3),
+                Text(app.g('pakka'), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF6EE7B7))),
+              ],
+            ]),
+          ]),
+        ),
+        const SizedBox(width: 8),
+        _forget(() => app.api!.voiceFixRemove(_n(x['id']))),
+      ]),
+    );
+  }
+
+  Widget _lessonRow(Map<String, dynamic> l) {
+    final topic = _s(l['topic']);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (topic.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), border: Border.all(color: const Color(0x5534D399))),
+                child: Text(topic.toUpperCase(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: .8, color: Color(0xFF6EE7B7))),
+              ),
+            Text(_s(l['text']), maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12.5, height: 1.4, color: C.ink)),
+          ]),
+        ),
+        const SizedBox(width: 8),
+        _forget(() => app.api!.netLessonAct('${l['id']}', 'forget')),
+      ]),
+    );
+  }
+
+  Widget _skillRow(Map<String, dynamic> sk) {
+    final comm = _s(sk['community']);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(children: [
+        Container(
+          width: 26, height: 26,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: _cEmerald, begin: Alignment.topLeft, end: Alignment.bottomRight),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [BoxShadow(color: _cEmerald.last.withOpacity(.30), blurRadius: 9, offset: const Offset(0, 3))],
+          ),
+          child: const Icon(Icons.extension_rounded, size: 14, color: Colors.white),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(_s(sk['name']), maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: C.ink)),
+            const SizedBox(height: 2),
+            Text(comm.isEmpty ? app.g('Network se seekhi skill') : app.g('{x} se seekhi skill', x: comm),
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: C.faint)),
+          ]),
+        ),
+      ]),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final lines = _lines;
+    final facts = extra.factsToday;
+    final words = extra.words;
+    final fixes = extra.fixes;
+    final lessons = extra.lessons;
+    final skills = extra.skills;
+    final total = facts.length + words.length + fixes.length + lessons.length + skills.length;
+
+    // ── Khaali: the invite card — aaj kuch naya nahi seekha ──
+    if (total == 0) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        HomeLabel(app.g('AAJ KYA SEEKHA')),
+        Glass(
+          tint: const Color(0xFFA78BFA),
+          opacity: .05,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              _tile(Icons.auto_awesome_rounded, _cViolet),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(app.g('Aaj kuch naya nahi seekha'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  const SizedBox(height: 3),
+                  Text(app.g('Baat karo, calls lo, network chalao — jitna karengi, utna seekhungi.'),
+                      style: const TextStyle(fontSize: 12.5, height: 1.45, color: C.muted)),
+                ]),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            Text(app.g('Har baat aur har call se kuch naya sikhti hoon.'),
+                style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0xB3C4B5FF))),
+          ]),
+        ),
+      ]);
+    }
+
+    // ── Live: the real learning, category-wise ──
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      HomeLabel('AAJ KYA SEEKHA', isNew: true, trailing: Press(
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VoiceLearnedScreen(app: app))),
-        child: const Text('Sab dekho', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: C.violet)),
+      HomeLabel(app.g('AAJ KYA SEEKHA'), isNew: true, count: total, trailing: Press(
+        onTap: () => _all(context),
+        child: Text(app.g('Sab dekho'), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: C.violet)),
       )),
       Glass(
-        padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          if (lines.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text('Aaj kuch naya nahi seekha. Jitni baat karenge, utni behtar samjhungi. 💛',
-                  style: TextStyle(fontSize: 13, height: 1.45, color: C.muted)),
-            )
+          _catHead(Icons.forum_rounded, _cViolet, 'BAATEIN SE', facts.length),
+          if (facts.isEmpty)
+            _emptyLine(app.g('Aaj baaton se kuch naya nahi.'))
           else
-            for (final l in lines)
-              _line(l),
-          const SizedBox(height: 6),
-          const Text('"Jo na pasand ho, ek tap mein bhula do."', style: TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0xB3C4B5FF))),
+            for (final f in facts) _factRow(f),
+          _sep(),
+          _catHead(Icons.graphic_eq_rounded, _cRose, 'AWAAZ SE', words.length + fixes.length),
+          if (words.isEmpty && fixes.isEmpty)
+            _emptyLine(app.g('Aaj awaaz se kuch naya nahi.'))
+          else ...[
+            for (final w in words) _wordRow(w),
+            for (final x in fixes) _fixRow(x),
+          ],
+          _sep(),
+          _catHead(Icons.school_rounded, _cEmerald, 'NETWORK SE', lessons.length + skills.length),
+          if (lessons.isEmpty && skills.isEmpty)
+            _emptyLine(app.g('Network se aaj kuch naya nahi.'))
+          else ...[
+            for (final l in lessons) _lessonRow(l),
+            for (final sk in skills) _skillRow(sk),
+          ],
+          const SizedBox(height: 4),
+          Text(app.g('"Jo na pasand ho, ek tap mein bhula do."'),
+              style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0xB3C4B5FF))),
         ]),
       ),
     ]);
   }
-
-  Widget _line(_LearnLine l) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(color: const Color(0x24C4B5FF), borderRadius: BorderRadius.circular(10)),
-            child: Icon(l.icon, size: 15, color: const Color(0xFFC4B5FF)),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(l.text, style: const TextStyle(fontSize: 13, height: 1.45, color: C.ink)),
-              const SizedBox(height: 2),
-              Text(l.src, style: const TextStyle(fontSize: 10.5, color: C.faint)),
-            ]),
-          ),
-          const SizedBox(width: 8),
-          Press(
-            onTap: () async {
-              try {
-                await l.forget();
-              } catch (_) {}
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), border: Border.all(color: Colors.white.withOpacity(.15))),
-              child: const Text('Bhool jao', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: C.faint)),
-            ),
-          ),
-        ]),
-      );
 }
 
 /// HOOLA NE KIYA — the 24-hour recap: her report of what she did while the owner was away.
