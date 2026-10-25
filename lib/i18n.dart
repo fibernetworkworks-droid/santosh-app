@@ -128,6 +128,15 @@ const Map<String, Map<String, String>> uiStrings = {
     'Text chuniye': 'Select text',
     'Text ko dabakar kheenchiye': 'Long-press and drag the text',
     'Text chunna band karo': 'Done selecting',
+    // ---- Jaldi Se Karo quick actions (today screen) ----
+    'Bill bharo': 'Pay a bill',
+    'Dukaan': 'Shop',
+    'Rasta': 'Directions',
+    'Cab': 'Book a cab',
+    'Photo banao': 'Edit a photo',
+    'Video banao': 'Make a reel',
+    'Email likho': 'Write an email',
+    'TV': 'Play on TV',
   },
 };
 

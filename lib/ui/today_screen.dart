@@ -51,16 +51,27 @@ class _TodayScreenState extends State<TodayScreen> {
     widget.app.send(text);
   }
 
-  Widget _action(IconData icon, Color c, String label, String prompt) => Expanded(
+  // v0.167 Jaldi Se Karo: each task gets its own topic gradient tile — one glance and you know the job.
+  // Gradients continue the hues the section already used (saffron bill, violet shop, teal route, rose cab).
+  Widget _action(IconData icon, List<Color> grad, Color glow, String label, String prompt) => Expanded(
         child: Press(
           onTap: () => _ask(prompt),
           child: Glass(
             radius: 20,
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            padding: const EdgeInsets.symmetric(vertical: 13),
             child: Column(children: [
-              Icon(icon, color: c, size: 24),
-              const SizedBox(height: 7),
-              Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
+                  borderRadius: BorderRadius.circular(17),
+                  boxShadow: [BoxShadow(color: glow, blurRadius: 16, offset: const Offset(0, 5))],
+                ),
+                child: Icon(icon, color: Colors.white, size: 24),
+              ),
+              const SizedBox(height: 8),
+              Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .2)),
             ]),
           ),
         ),
@@ -193,26 +204,26 @@ class _TodayScreenState extends State<TodayScreen> {
           Stagger(index: 4, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const HomeLabel('JALDI SE KARO'),
             Row(children: [
-              _action(Icons.bolt_rounded, C.accentSoft, 'Bill bharo', 'Mera bijli bill bhar do'),
+              _action(Icons.receipt_long_rounded, const [Color(0xFFFB923C), Color(0xFFF97316)], const Color(0x59F97316), app.g('Bill bharo'), 'Mera bijli bill bhar do'),
               const SizedBox(width: 10),
-              _action(Icons.shopping_cart_outlined, const Color(0xFFC4B5FF), 'Dukaan', 'Paas ki kirana dukaan se saamaan mangwana hai'),
+              _action(Icons.storefront_rounded, const [Color(0xFFA78BFA), Color(0xFF7C5CFF)], const Color(0x597C5CFF), app.g('Dukaan'), 'Paas ki kirana dukaan se saamaan mangwana hai'),
               const SizedBox(width: 10),
-              _action(Icons.place_outlined, const Color(0xFF5EEAD4), 'Rasta', 'Paas mein kya khula hai aur rasta batao'),
+              _action(Icons.near_me_rounded, const [Color(0xFF2DD4BF), Color(0xFF0D9488)], const Color(0x592DD4BF), app.g('Rasta'), 'Paas mein kya khula hai aur rasta batao'),
               const SizedBox(width: 10),
-              _action(Icons.local_taxi_outlined, const Color(0xFFFDA4AF), 'Cab', 'Mere liye cab book karni hai'),
+              _action(Icons.local_taxi_rounded, const [Color(0xFFFB7185), Color(0xFFE11D48)], const Color(0x59FB7185), app.g('Cab'), 'Mere liye cab book karni hai'),
             ]),
             const SizedBox(height: 10),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               clipBehavior: Clip.none,
               child: Row(children: [
-                _chip('📷 Photo banao', 'Meri ek photo edit karni hai'),
+                _chip(Icons.auto_fix_high_rounded, const [Color(0xFFA78BFA), Color(0xFF7C5CFF)], app.g('Photo banao'), 'Meri ek photo edit karni hai'),
                 const SizedBox(width: 8),
-                _chip('🎬 Video banao', 'Mere liye ek reel video banani hai'),
+                _chip(Icons.movie_rounded, const [Color(0xFFFB7185), Color(0xFFE11D48)], app.g('Video banao'), 'Mere liye ek reel video banani hai'),
                 const SizedBox(width: 8),
-                _chip('📝 Email likho', 'Ek email likhna hai'),
+                _chip(Icons.mail_rounded, const [Color(0xFF2DD4BF), Color(0xFF0D9488)], app.g('Email likho'), 'Ek email likhna hai'),
                 const SizedBox(width: 8),
-                _chip('📺 TV', 'TV pe kuch chalao'),
+                _chip(Icons.smart_display_rounded, const [Color(0xFFFFB15C), Color(0xFFFB923C)], app.g('TV'), 'TV pe kuch chalao'),
               ]),
             ),
           ])),
@@ -316,12 +327,25 @@ class _TodayScreenState extends State<TodayScreen> {
     );
   }
 
-  Widget _chip(String label, String prompt) => Press(
+  // v0.167 chips: proper topic badge instead of an emoji — same Night Glass pill, sharper inside.
+  Widget _chip(IconData icon, List<Color> grad, String label, String prompt) => Press(
         onTap: () => _ask(prompt),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(color: const Color(0x12FFFFFF), borderRadius: BorderRadius.circular(999), border: Border.all(color: const Color(0x21FFFFFF))),
-          child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.chip)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Icon(icon, color: Colors.white, size: 12),
+            ),
+            const SizedBox(width: 6),
+            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.chip)),
+          ]),
         ),
       );
 
