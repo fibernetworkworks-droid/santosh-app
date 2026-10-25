@@ -186,6 +186,24 @@ const Map<String, Map<String, String>> uiStrings = {
         'Chat, take calls, run the network — the more we do, the more I learn.',
     'Har baat aur har call se kuch naya sikhti hoon.': 'Every chat and every call teaches me something new.',
     '"Jo na pasand ho, ek tap mein bhula do."': '"Don\'t like something? One tap and it\'s forgotten."',
+    // ---- Reminders section (v0.176): grouped by day, countdown, repeat chips ----
+    'REMINDERS': 'REMINDERS',
+    'AAJ': 'TODAY',
+    'KAL': 'TOMORROW',
+    'BAAD MEIN': 'LATER',
+    'Koi reminder nahi': 'Nothing to remind — yet',
+    'Boliye: "Kal 9 baje dawai yaad dilana" — main turant likh lungi.':
+        'Say: "Remind me about my medicine tomorrow at 9" — I\'ll write it down at once.',
+    'Baat shuru karo': 'Start a chat',
+    'Har yaad time par dugi.': 'Every reminder, right on time.',
+    'Roz': 'Daily',
+    'Mon–Fri': 'Weekdays',
+    'Har hafte': 'Weekly',
+    'Har mahine': 'Monthly',
+    '{x} min baad': 'in {x} min',
+    '{x} ghante baad': 'in {x} hrs',
+    '{x} din baad': 'in {x} days',
+    'Reminder hata diya': 'Reminder removed',
   },
 };
 

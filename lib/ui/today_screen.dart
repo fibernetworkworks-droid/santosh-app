@@ -236,34 +236,7 @@ class _TodayScreenState extends State<TodayScreen> {
           const SizedBox(height: 18),
           Stagger(index: 8, child: LearnedSection(extra: _extra, app: app, reload: _load)),
           const SizedBox(height: 22),
-          const HomeLabel('REMINDERS'),
-          if (app.reminders.isEmpty)
-            const Glass(child: Text('Koi reminder nahi. Chat mein boliye: "Kal 9 baje dawai yaad dilana".', style: TextStyle(color: C.muted)))
-          else
-            Glass(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              child: Column(children: [
-                for (final r in app.reminders)
-                  ListTile(
-                    leading: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(color: const Color(0x24FFB15C), borderRadius: BorderRadius.circular(12)),
-                      child: const Icon(Icons.notifications_active_outlined, color: C.accentSoft, size: 20),
-                    ),
-                    title: Text(r['text'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text([r['when'], repeatLabel[r['repeat']]].whereType<String>().join(' · ')),
-                    trailing: IconButton(
-                      tooltip: 'Reminder hatao',
-                      icon: const Icon(Icons.close_rounded, color: C.muted),
-                      onPressed: () async {
-                        await app.api?.cancelReminder(r['id'] as String);
-                        await app.refreshReminders();
-                      },
-                    ),
-                  ),
-              ]),
-            ),
+          ReminderSection(app: app, onTab: widget.onTab),
           const SizedBox(height: 20),
           const HomeLabel('HOOLA KE APNE KAAM'),
           if (app.routines.isEmpty)
@@ -350,4 +323,188 @@ class _TodayScreenState extends State<TodayScreen> {
       );
 
   static String _title(String k) => k.isEmpty ? k : k[0].toUpperCase() + k.substring(1);
+}
+
+/// REMINDERS — v0.176 premium: khaali state shows the invite card (CTA jumps to chat);
+/// live state groups the active reminders by day — AAJ / KAL / BAAD MEIN — with
+/// time-of-day gradient tiles (subah/dopahar/shaat/raat), repeat chips, a live
+/// countdown pill on the next reminder and one-tap dismiss with a snack confirmation.
+class ReminderSection extends StatelessWidget {
+  const ReminderSection({super.key, required this.app, this.onTab});
+  final Santosh app;
+  final ValueChanged<int>? onTab;
+
+  static const Map<String, String> repeatLabel = {'daily': 'Roz', 'weekdays': 'Mon–Fri', 'weekly': 'Har hafte', 'monthly': 'Har mahine'};
+
+  /// Time-of-day look: subah / dopahar / shaam / raat — icon + gradient.
+  static (IconData, List<Color>) _look(int hour) {
+    if (hour >= 5 && hour < 12) return (Icons.wb_twilight_rounded, [Color(0xFFFBBF24), Color(0xFFD97706)]);
+    if (hour >= 12 && hour < 17) return (Icons.wb_sunny_rounded, [Color(0xFFFB923C), Color(0xFFEA580C)]);
+    if (hour >= 17 && hour < 21) return (Icons.bedtime_rounded, [Color(0xFFFB7185), Color(0xFFBE123C)]);
+    return (Icons.dark_mode_rounded, [Color(0xFF818CF8), Color(0xFF4338CA)]);
+  }
+
+  String _countdown(DateTime due, DateTime now) {
+    final d = due.difference(now);
+    if (d.inMinutes < 1) return app.g('abhi');
+    if (d.inMinutes < 60) return app.g('{x} min baad', x: '${d.inMinutes}');
+    if (d.inHours < 24) return app.g('{x} ghante baad', x: '${d.inHours}');
+    return app.g('{x} din baad', x: '${d.inDays}');
+  }
+
+  Future<void> _dismiss(BuildContext context, Map<String, dynamic> r) async {
+    await app.api?.cancelReminder('${r['id']}');
+    await app.refreshReminders();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Row(children: [
+          const Icon(Icons.check_rounded, size: 16, color: C.ok),
+          const SizedBox(width: 8),
+          Expanded(child: Text(app.g('Reminder hata diya'), style: const TextStyle(color: C.ink))),
+        ]),
+      ));
+    }
+  }
+
+  Widget _tile(IconData icon, List<Color> grad, {double size = 40, double ic = 19}) => Container(
+        width: size, height: size,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
+          borderRadius: BorderRadius.circular(13),
+          boxShadow: [BoxShadow(color: grad.last.withOpacity(.35), blurRadius: 13, offset: const Offset(0, 4))],
+        ),
+        child: Icon(icon, size: ic, color: Colors.white),
+      );
+
+  Widget _groupHead(String label) => Padding(
+        padding: const EdgeInsets.fromLTRB(8, 10, 8, 2),
+        child: Row(children: [
+          Text(app.g(label), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: C.faint)),
+          const SizedBox(width: 8),
+          Expanded(child: Container(height: 1, color: Colors.white.withOpacity(.06))),
+        ]),
+      );
+
+  Widget _row(BuildContext context, Map<String, dynamic> r, {bool isNext = false}) {
+    final due = DateTime.tryParse('${r['due_at']}')?.toLocal();
+    final look = _look(due?.hour ?? 9);
+    final rep = repeatLabel[r['repeat']];
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _tile(look.$1, look.$2),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('${r['text'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, height: 1.35, color: C.ink)),
+            const SizedBox(height: 3),
+            Row(children: [
+              Flexible(child: Text('${r['when'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: C.faint))),
+              if (rep != null) ...[
+                const SizedBox(width: 7),
+                Icon(Icons.repeat_rounded, size: 11, color: C.faint),
+                const SizedBox(width: 3),
+                Text(app.g(rep), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: C.faint)),
+              ],
+              if (isNext && due != null) ...[
+                const SizedBox(width: 7),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0x24FBBF24)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.schedule_rounded, size: 10, color: Color(0xFFFCD34D)),
+                    const SizedBox(width: 3),
+                    Text(_countdown(due, DateTime.now()), style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: Color(0xFFFCD34D))),
+                  ]),
+                ),
+              ],
+            ]),
+          ]),
+        ),
+        const SizedBox(width: 4),
+        Press(
+          onTap: () => _dismiss(context, r),
+          child: Container(
+            width: 30, height: 30,
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withOpacity(.10))),
+            child: const Icon(Icons.close_rounded, size: 15, color: C.muted),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rem = app.reminders;
+
+    // ── Khaali: the invite card — bol kar reminder banwao ──
+    if (rem.isEmpty) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        HomeLabel(app.g('REMINDERS')),
+        Glass(
+          tint: const Color(0xFFFBBF24),
+          opacity: .05,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              _tile(Icons.alarm_rounded, const [Color(0xFFFBBF24), Color(0xFFD97706)]),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(app.g('Koi reminder nahi'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  const SizedBox(height: 3),
+                  Text(app.g('Boliye: "Kal 9 baje dawai yaad dilana" — main turant likh lungi.'),
+                      style: const TextStyle(fontSize: 12.5, height: 1.45, color: C.muted)),
+                ]),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            Press(
+              onTap: () => onTab?.call(1),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), border: Border.all(color: const Color(0x33FBBF24))),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.forum_rounded, size: 14, color: Color(0xFFFCD34D)),
+                  const SizedBox(width: 6),
+                  Text(app.g('Baat shuru karo'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFFFCD34D))),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(app.g('Har yaad time par dugi.'), style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0x99FCD34D))),
+          ]),
+        ),
+      ]);
+    }
+
+    // ── Live: grouped by day, countdown on the next one ──
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tom = today.add(const Duration(days: 1));
+    final groups = <String, List<Map<String, dynamic>>>{'today': [], 'tom': [], 'later': []};
+    for (final r in rem) {
+      final d = DateTime.tryParse('${r['due_at']}')?.toLocal();
+      final day = d == null ? null : DateTime(d.year, d.month, d.day);
+      final key = day == today ? 'today' : day == tom ? 'tom' : 'later';
+      groups[key]!.add(r);
+    }
+    final nextId = '${rem.first['id']}';   // server orders by due_at — the soonest gets the countdown
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      HomeLabel(app.g('REMINDERS'), count: rem.length),
+      Glass(
+        padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          for (final g in const ['today', 'tom', 'later'])
+            if (groups[g]!.isNotEmpty) ...[
+              _groupHead(g == 'today' ? 'AAJ' : g == 'tom' ? 'KAL' : 'BAAD MEIN'),
+              for (final r in groups[g]!) _row(context, r, isNext: '${r['id']}' == nextId),
+            ],
+        ]),
+      ),
+    ]);
+  }
 }
