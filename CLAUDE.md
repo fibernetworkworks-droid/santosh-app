@@ -7281,3 +7281,39 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
   thinking cards, tool args + diffs, export), composer steering (queue with receipts + take-back, drafts, slash/@),
   sidebar rebuild + FTS5 search + shortcut system, artifacts panel + review changes, Claude Code power (plan mode,
   permission modes, share), phone parity + the deferred CI / APK catch-up for the console phases.
+
+## v0.171.0 Console v2 transcript power, phase 2 of the console rebuild: the reply shows its thinking, every step opens up, and the chat exports
+- Thinking cards ("Soch"): the model's reasoning now reaches the console while it thinks, as the live-only `think`
+  event (`{turn, seg, seq, text}` — `clear` when a brain failed mid-thought). Sources: Claude's `thinking_delta`
+  (streamed in `_claude_stream`, was dropped before) and GLM's `reasoning_content` (`openai_stream` grew an
+  `on_think` callback, `_call_brain` wires `live.feed_think`). `think` joined STREAM_KINDS in events.py, so the
+  same discipline as the words applies: cleaned (`scrub.text` + OTP + Aadhaar, word-edge holdback via the same
+  `_safe_end`), batched ~50 ms, NEVER stored, never re-sent — the card lives only on the open screen, a reload
+  mid-thought gets what was thought so far from /live (`snapshot` grew `think`). One card per model call
+  (`turn:seg`), counts its seconds, folds to "ne socha · 8s" on reply_end, opens again only from a /live resume.
+- Step chips open: every `step` event now carries `args` — a display-safe brief of what the model asked the tool
+  (`livework.args_brief`: secret-looking keys dropped outright, never masked-but-present; multi-line text becomes
+  "N lines · first line"; lists/dicts become "N ×" / "N fields"; long digit runs masked like everywhere else;
+  max 6 pairs). On the running AND the done event, so late joiners see it too. The chip is a `<details>`: the
+  summary is the row as before, opening it shows the args brief + the `work` event's display facts (site, amount,
+  rows, note) merged client-side (`STEPS_ARGS` / `STEPS_DATA`) — Claude-Code-like "what did it do" without moving
+  raw tool input one byte off the server. Export uses the same masked brief.
+- Export: GET `/api/conversations/{id}/export?fmt=md|json` (CONSOLE_V2-gated, key-authed). Markdown reads like the
+  chat — her messages ("Aap", badla hua marked), Hoola's replies (persona name), steps with ✓/✕ + masked args,
+  📎 files; replaced retry branches, empty shells, running steps, typing/log noise stay out. JSON is the full
+  stored event list (minus typing/log) with title/version/exported_at for keeping/backup. Filenames slug the chat
+  title (`<title>-<YYYYMMDD-HHMM>.md`). The top bar got an export button + menu (Markdown / JSON), download goes
+  through a blob with the server's filename.
+- Her messages grew a hover toolbar (Copy + Edit, replacing the lone pencil — Edit's Cancel rebinds it), replies
+  grew a Quote action (the reply lands in the composer as `> …` so she can answer point by point). Both keep the
+  Hinglish voice. The v2 cache-bust is `?v=0.171.0` everywhere.
+- Tests: `tests/test_v171_transcript.py` (9) — thinking streams cleaned and never stored with the final text
+  unchanged; think reset clears the card on a mid-thought brain failure; snapshot resumes a reload mid-thought;
+  step events carry the masked args brief; args_brief unit (secrets dropped, multi-line markers, digit masking);
+  GLM reasoning_content → on_think never into text; export md (reads like the chat, masked account, old branch
+  out) and json (every stored event, version stamped) + 401 without a key + 404 when the switch is off.
+  Also fixed for real: `test_glm.py`'s two mocks returned non-stream JSON, which broke when v0.170 made streaming
+  the default (they failed at v0.170.0 HEAD too) — the mocks now answer SSE when the body asks for a stream, and
+  the tool-turn test pins auto-title off instead of racing the call count.
+- Ritual: version 0.171.0 (main.py `APP_VERSION` — now a constant used by both FastAPI and /healthz — +
+  pubspec 0.171.0+200 + test_routines assert). Deploy is unchanged: git pull + cp server/app + pm2 restart.

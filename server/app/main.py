@@ -32,6 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
+APP_VERSION = "0.171.0"   # v0.171 console v2 transcript power: thinking cards, step args, export (bump with pubspec)
 
 
 @asynccontextmanager
@@ -93,7 +94,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.170.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version=APP_VERSION, lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -554,12 +555,14 @@ def chat_feedback(conversation_id: str, body: FeedbackIn, tenant: str = Depends(
 
 
 @app.get("/api/conversations/{conversation_id}/timeline", dependencies=[Depends(require_key)])
-def chat_timeline(conversation_id: str, limit: int = 60, before: int = 0, tenant: str = Depends(current_tenant)):
+def chat_timeline(conversation_id: str, limit: int = 60, before: int = 0, steps: bool = False,
+                  tenant: str = Depends(current_tenant)):
     """v0.158 the chat in order: messages and each card once where it first appeared, in its latest state (cards from
-    her other chats too), newest page last; `before` = the page before that event id."""
+    her other chats too), newest page last; `before` = the page before that event id.
+    v0.171 `steps=1` (the console): tool-call step events ride along so the transcript keeps what each turn did."""
     _conv_or_404(conversation_id, tenant)
     from .events import timeline
-    return timeline(conversation_id, tenant, limit, before)
+    return timeline(conversation_id, tenant, limit, before, steps=steps)
 
 
 @app.get("/api/conversations/{conversation_id}/timeline/head", dependencies=[Depends(require_key)])
@@ -568,6 +571,79 @@ def chat_timeline_head(conversation_id: str, n: int = 40, tenant: str = Depends(
     _conv_or_404(conversation_id, tenant)
     from .events import head
     return head(conversation_id, tenant, n)
+
+
+def _export_name(conv: Conversation, ext: str) -> str:
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", (conv.title or "hoola-chat")).strip("-").lower()[:40] or "hoola-chat"
+    return f"{slug}-{time.strftime('%Y%m%d-%H%M')}.{ext}"
+
+
+@app.get("/api/conversations/{conversation_id}/export", dependencies=[Depends(require_key)])
+def chat_export(conversation_id: str, fmt: str = "md", tenant: str = Depends(current_tenant)):
+    """v0.171 the whole chat as one file (console: Export). `fmt=md` reads like the chat itself — her messages,
+    Hoola's replies and the steps of each turn in order; `fmt=json` keeps every stored event for keeping/backup.
+    Live-only noise (typing, deltas, think) was never stored, so it is simply absent; cards from her other chats
+    and old retry branches are marked as what they are, never shown as reply text."""
+    if not (get_settings().console_v2 or get_settings().console_stream):
+        raise HTTPException(404, "Export is off (CONSOLE_V2)")
+    conv = _conv_or_404(conversation_id, tenant)
+    from .db import Event
+    from .events import LIVE_ONLY
+    from .avatar.service import persona
+    with session() as s:
+        rows = s.scalars(select(Event).where(Event.conversation_id == conversation_id).order_by(Event.id)).all()
+        rows = [e for e in rows if e.kind not in ("typing", "log")]      # pure noise never belongs in a file
+    avatar = persona(tenant)[0] or "Hoola"
+    when = lambda iso: (iso or "")[:16].replace("T", " ")                # noqa: E731  2026-10-25 16:20
+    if fmt == "json":
+        import json as _json
+        body = _json.dumps({
+            "conversation": conversation_id, "title": conv.title or "", "tenant": tenant,
+            "exported_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "version": APP_VERSION,
+            "events": [{"id": e.id, "kind": e.kind, "at": e.created_at.isoformat() if e.created_at else None,
+                        "payload": e.payload} for e in rows],
+        }, ensure_ascii=False, default=str, indent=1)
+        return Response(body, media_type="application/json; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{_export_name(conv, "json")}"'})
+    out = [f"# {conv.title or 'Hoola chat'}", "", f"> {avatar} ki chat · export {time.strftime('%d %b %Y, %H:%M')} · Hoola Console", ""]
+    n_steps = 0
+    for e in rows:
+        p = e.payload if isinstance(e.payload, dict) else {}
+        at = when(e.created_at.isoformat() if e.created_at else None)
+        if e.kind == "message":
+            text = str(p.get("text") or "").strip()
+            if not text or p.get("replaced_by"):
+                continue                                  # an empty shell or the old retry branch: the new one is below
+            who = "Aap" if p.get("role") == "user" else avatar
+            files = p.get("files") or []
+            head = f"## {who} · {at}"
+            if p.get("edited"):
+                head += " · (badla hua)"
+            out += [head, "", text, ""]
+            for f in files:
+                name = f.get("name") if isinstance(f, dict) else str(f)
+                if name:
+                    out += [f"- 📎 {name}", ""]
+            n_steps = 0
+        elif e.kind == "step":
+            if p.get("state") == "running":
+                continue                                  # the done / error step of the same call follows it
+            mark = "✓" if p.get("state") == "done" else "✕"
+            line = f"- {mark} {p.get('label') or p.get('tool') or 'kadam'} `{p.get('tool') or ''}`"
+            brief = p.get("args") or []
+            if brief:                                     # v0.171 what was asked (already masked server-side)
+                line += " — " + ", ".join(f"{k} {v}" for k, v in brief[:4])
+            elif p.get("detail"):
+                line += f" — {p['detail']}"
+            if not n_steps:
+                out += ["**Kadam**", ""]
+            out += [line]
+            n_steps += 1
+        elif e.kind not in LIVE_ONLY and e.kind != "message":
+            out += [f"_(card: {e.kind})_"] if out and out[-1] == "" else []
+    md = "\n".join(out).rstrip() + "\n"
+    return Response(md, media_type="text/markdown; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{_export_name(conv, "md")}"'})
 
 
 @app.get("/api/conversations", dependencies=[Depends(require_key)])

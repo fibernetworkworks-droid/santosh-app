@@ -173,9 +173,6 @@ mark{background:rgba(255,177,92,.32);color:var(--ink);border-radius:3px;padding:
 .mu{align-self:flex-end;max-width:min(86%,640px);background:var(--you);border:1px solid rgba(124,92,255,.38);border-radius:20px 20px 6px 20px;padding:12px 16px;position:relative;box-shadow:var(--sh2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur)}
 .mu .mut{white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px}
 .mu .att{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
-.mu .medit{position:absolute;top:-12px;right:10px;width:26px;height:26px;border-radius:9px;background:var(--panel);border:1px solid var(--hair);display:grid;place-items:center;color:var(--mut);opacity:0;transition:opacity .15s}
-.mu .medit svg{width:13px;height:13px}
-.mu:hover .medit{opacity:1}
 .mu.editing{width:min(86%,640px);align-self:flex-end}
 .mu.editing textarea{width:100%;background:rgba(11,10,26,.5);border:1px solid var(--hair);border-radius:12px;padding:10px 12px;resize:vertical;font:inherit}
 .acts{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
@@ -544,3 +541,45 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
 }
+
+/* ---------- v0.171 transcript power: thinking card, step args, her toolbar, quote, export ---------- */
+.top{position:relative;z-index:30}   /* the export menu must paint above the thread (backdrop-filter makes .top its own world) */
+.think{background:rgba(124,92,255,.08);border:1px solid rgba(124,92,255,.28);border-radius:16px;overflow:hidden;width:100%}
+.think summary{display:flex;align-items:center;gap:9px;padding:9px 13px;cursor:pointer;list-style:none;font-size:12.5px;font-weight:800;color:var(--mut)}
+.think summary::-webkit-details-marker{display:none}
+.think .tic{width:18px;height:18px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:10px;color:var(--violet2);background:rgba(124,92,255,.16);animation:thinkpulse 1.6s ease-in-out infinite}
+.think .tt{margin-left:auto;font-size:11px;font-weight:700;color:var(--dim);font-variant-numeric:tabular-nums}
+.think .chev{color:var(--dim);transition:transform .15s;font-size:10px}
+.think[open] summary .chev{transform:rotate(180deg)}
+.think:not([open]) .tic{animation:none}
+@keyframes thinkpulse{0%,100%{opacity:.55}50%{opacity:1}}
+.think .tbody{padding:2px 14px 11px;font-size:13px;line-height:1.6;color:var(--dim);white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow-y:auto;border-top:1px solid rgba(124,92,255,.14);font-style:italic}
+.think[open] .tbody{padding-top:9px}
+
+/* steps: one row, opens to what was asked (args) + what came back (facts) */
+.ts{display:block;border-radius:10px}
+.ts summary{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:10px;list-style:none;cursor:default}
+.ts summary::-webkit-details-marker{display:none}
+.ts[open]{background:rgba(11,10,26,.35)}
+.ts[open] summary{cursor:pointer}
+.ts summary .chev{margin-left:auto;color:var(--dim);font-size:10px;transition:transform .15s}
+.ts[open] summary .chev{transform:rotate(180deg)}
+.targs{padding:2px 8px 8px 37px}
+.targs .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12px}
+.targs .kv span{color:var(--dim);font-weight:700}
+.targs .kv b{color:var(--lit);font-weight:600;overflow-wrap:anywhere}
+
+/* her message's hover toolbar: Copy + Edit */
+.mu .utbar{position:absolute;top:-12px;right:10px;display:flex;gap:4px;padding:3px;background:var(--panel);border:1px solid var(--hair);border-radius:10px;opacity:0;transition:opacity .15s;box-shadow:var(--sh2)}
+.mu:hover .utbar,.mu:focus-within .utbar{opacity:1}
+.mu .ua{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;color:var(--mut)}
+.mu .ua svg{width:12px;height:12px}
+.mu .ua:hover{background:var(--glass2);color:var(--ink)}
+.mu .ua.did{color:var(--ok)}
+.mu.editing .utbar{display:none}
+
+/* export menu under the top bar */
+.xmenu{position:absolute;top:calc(100% - 2px);right:10px;z-index:60;padding:6px;display:flex;flex-direction:column;min-width:190px;box-shadow:var(--sh)}
+.xmenu button{text-align:left;padding:9px 12px;border-radius:10px;font-size:13.5px;font-weight:700;color:var(--mut)}
+.xmenu button:hover{background:var(--glass2);color:var(--ink)}
+@media (max-width:560px){.xmenu{right:6px;min-width:170px}}

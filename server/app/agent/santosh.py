@@ -142,7 +142,8 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
     streaming = live is not None and live.streaming
     if brain in ("glm", "omniroute"):
         if streaming:
-            blocks, stop, usage = await llm.openai_stream(brain, system, tools, history, settings.agent_max_tokens, live.feed)
+            blocks, stop, usage = await llm.openai_stream(brain, system, tools, history, settings.agent_max_tokens,
+                                                          live.feed, on_think=live.feed_think)   # v0.171 thinking
         else:
             blocks, stop, usage = await llm.openai_create(brain, system, tools, history, settings.agent_max_tokens)
         log.info("%s in=%s out=%s %s", llm.describe(), usage.get("prompt_tokens"), usage.get("completion_tokens"),
@@ -160,14 +161,19 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
 
 async def _claude_stream(api, kw: dict, live) -> tuple[list[dict], str]:
     """v0.161 Claude's answer word by word: text deltas go to the live reply; tool input (input_json_delta) is left to
-    the SDK, which parses it only when the block is complete. Prompt caching is the same request shape."""
+    the SDK, which parses it only when the block is complete. Prompt caching is the same request shape.
+    v0.171 thinking deltas (adaptive / extended thinking) stream to the console's Soch card, never into the answer."""
     async with api.stream(**kw) as st:
         async for ev in st:
             t = getattr(ev, "type", "")
             if t == "content_block_start" and getattr(getattr(ev, "content_block", None), "type", "") == "text":
                 live.new_text_block()
-            elif t == "content_block_delta" and getattr(getattr(ev, "delta", None), "type", "") == "text_delta":
-                live.feed(ev.delta.text)
+            elif t == "content_block_delta":
+                dt = getattr(getattr(ev, "delta", None), "type", "")
+                if dt == "text_delta":
+                    live.feed(ev.delta.text)
+                elif dt == "thinking_delta":
+                    live.feed_think(getattr(ev.delta, "thinking", "") or "")
         msg = await st.get_final_message()
     from .. import usage   # the SDK wrapper counts messages.create only: a streamed answer is counted here
     usage.from_anthropic(kw.get("model", ""), msg)
@@ -192,6 +198,7 @@ async def _think(brain: str, system: str, history: list[dict], settings, tools: 
             blocks, stop = await _call_brain(b, system, history, settings, tools, live)
             if live is not None:
                 live.flush(final=True)     # the answer is complete: the held-back end can go (nothing can split now)
+                live.think_flush(final=True)
             return blocks, stop, b
         except asyncio.CancelledError:
             raise
@@ -416,7 +423,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             shown = _where.shown(b["name"], args_in, getattr(ctx, "place", "") or _where.working(conversation_id))
             label = gendered(mcp_live.label(b["name"], mcp_route, mcp_snap) if b["name"] in mcp_route
                              else TOOL_LABELS.get(shown, shown), gender)
-            bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "running", "id": b["id"]})
+            bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "running", "id": b["id"],
+                                                  "args": livework.args_brief(args_in)})   # v0.171 masked, display-safe
             _work(conversation_id, b["id"], shown, label, "start", args_in)
             try:
                 out = await _watched(_run_tool(b["name"], args_in, ctx, settings, mcp_route), conversation_id, ctx, state)
@@ -430,7 +438,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                     call["internet_fix"] = (state.get("web_fix") or {}).get(b["name"], "")
                 state["calls"].append(call)
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": content})
-                bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "done", "id": b["id"]})
+                bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "done", "id": b["id"],
+                                                      "args": livework.args_brief(args_in)})   # v0.171 again: late joiners see it too
                 _work(conversation_id, b["id"], shown, label, livework.phase_of(out), args_in, out)
             except _Halted as h:
                 state["halted"] = h.why

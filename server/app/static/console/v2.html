@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/static/console/v2.css?v=0.170.0">
+<link rel="stylesheet" href="/static/console/v2.css?v=0.171.0">
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -70,6 +70,11 @@
       <span class="sp"></span>
       <span class="conn" id="conn" role="status"><i></i><span>Jud raha hai…</span></span>
       <button class="btn soft stopb" id="stopBtn" hidden>■ Rokiye</button>
+      <button class="ib" id="exportBtn" type="button" aria-label="Chat export karein" aria-haspopup="menu" title="Chat export (Markdown / JSON)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg></button>
+      <div class="xmenu gl" id="exportMenu" hidden role="menu" aria-label="Export format">
+        <button type="button" role="menuitem" data-fmt="md">Markdown (.md)</button>
+        <button type="button" role="menuitem" data-fmt="json">JSON (.json)</button>
+      </div>
       <button class="livebtn stbtn" id="studioBtn" type="button" hidden aria-label="Build studio"><i></i><span>Studio</span></button>
       <button class="livebtn" id="liveBtn" aria-label="Show live work"><i></i><span id="liveTxt">Live</span></button>
     </div>
@@ -124,14 +129,14 @@
 </form>
 <div class="toast" id="toast" role="status" hidden></div>
 <noscript><p style="padding:40px;text-align:center">Hoola Console ke liye JavaScript chahiye.</p></noscript>
-<script src="/static/console/kaam.js?v=0.170.0"></script>
+<script src="/static/console/kaam.js?v=0.171.0"></script>
 <script src="/static/console/vendor/qrcode.js?v=1.4.4"></script>
-<script src="/static/console/build.js?v=0.170.0"></script>
-<script src="/static/console/md.js?v=0.170.0"></script>
-<script src="/static/console/stream.js?v=0.170.0"></script>
-<script src="/static/console/chatlist.js?v=0.170.0"></script>
-<script src="/static/console/panel.js?v=0.170.0"></script>
-<script src="/static/console/projects.js?v=0.170.0"></script>
-<script src="/static/console/v2.js?v=0.170.0"></script>
+<script src="/static/console/build.js?v=0.171.0"></script>
+<script src="/static/console/md.js?v=0.171.0"></script>
+<script src="/static/console/stream.js?v=0.171.0"></script>
+<script src="/static/console/chatlist.js?v=0.171.0"></script>
+<script src="/static/console/panel.js?v=0.171.0"></script>
+<script src="/static/console/projects.js?v=0.171.0"></script>
+<script src="/static/console/v2.js?v=0.171.0"></script>
 </body>
 </html>

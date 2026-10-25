@@ -36,6 +36,10 @@ def test_conversion_roundtrip():
 def test_glm_runs_a_tool_turn(bz, monkeypatch):  # noqa: F811
     _glm_env(monkeypatch)
     from app.agent import llm, run_turn
+    from app import chats as chats_mod
+    async def _no_title(tenant, conv):     # v0.162 auto-title fires in the background and would race the call count
+        return ""
+    monkeypatch.setattr(chats_mod, "auto_title", _no_title)
     calls = []
 
     def handler(req: httpx.Request):
@@ -43,6 +47,18 @@ def test_glm_runs_a_tool_turn(bz, monkeypatch):  # noqa: F811
         calls.append(body)
         assert req.headers["authorization"] == "Bearer glm-test"
         assert body["model"] == "glm-4.7" and body["thinking"] == {"type": "disabled"}
+        if body.get("stream"):   # v0.170 CONSOLE_V2 streams the turn: the same answers as SSE chunks
+            if len(calls) == 1:
+                chunks = [{"choices": [{"delta": {"tool_calls": [{"index": 0, "id": "call_1",
+                           "function": {"name": "bazar_find", "arguments": "{\"query\": \"msedcl bijli bill\"}"}}]}}]},
+                          {"choices": [{"delta": {}, "finish_reason": "tool_calls"}],
+                           "usage": {"prompt_tokens": 10, "completion_tokens": 5}}]
+            else:
+                assert body["messages"][-1]["role"] == "tool"
+                assert "msedcl" in body["messages"][-1]["content"]
+                chunks = [{"choices": [{"delta": {"content": "MSEDCL mil gaya."}}]}]
+            sse = b"".join(b"data: " + json.dumps(c).encode() + b"\n\n" for c in chunks) + b"data: [DONE]\n\n"
+            return httpx.Response(200, headers={"content-type": "text/event-stream"}, content=sse)
         if len(calls) == 1:
             return httpx.Response(200, json={"choices": [{"finish_reason": "tool_calls", "message": {"content": None, "tool_calls": [
                 {"id": "call_1", "type": "function", "function": {"name": "bazar_find", "arguments": "{\"query\": \"msedcl bijli bill\"}"}}]}}],
@@ -102,6 +118,10 @@ def test_omniroute_brain(bz, monkeypatch):  # noqa: F811
         assert str(req.url) == "http://127.0.0.1:20128/v1/chat/completions"
         assert req.headers["authorization"] == "Bearer sk-omni" and req.headers["x-omniroute-compression"] == "off"
         assert body["model"] == "santosh" and "thinking" not in body
+        if body.get("stream"):   # v0.170 CONSOLE_V2 streams the turn
+            sse = b"data: " + json.dumps({"choices": [{"delta": {"content": "Namaste ji"}}]}).encode() + b"\n\n" + b"data: [DONE]\n\n"
+            return httpx.Response(200, headers={"x-omniroute-decision": "strategy=priority; provider=deepseek",
+                                                "content-type": "text/event-stream"}, content=sse)
         return httpx.Response(200, headers={"x-omniroute-decision": "strategy=priority; provider=deepseek"},
                               json={"choices": [{"message": {"content": "Namaste ji"}}]})
     llm.set_http(httpx.AsyncClient(transport=httpx.MockTransport(handler)))

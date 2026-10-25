@@ -210,3 +210,30 @@ def event(call_id: str, tool: str, label: str, phase: str, args: dict[str, Any] 
     if error:
         ev["error"] = _txt(error, 120)
     return ev
+
+
+def args_brief(args: dict[str, Any] | None, max_pairs: int = 6) -> list[list[str]]:
+    """v0.171 what the model asked the tool to do, display-safe for the console's step chips.
+
+    The raw input never leaves the server: secret-looking keys are dropped outright (never masked — there is
+    nothing to guess), long values are cut to a short preview and every long digit run is masked like everywhere
+    else. Multi-line text (a file body, a draft, a diff's new side) becomes a `k: <N lines>` marker plus its first
+    line, so the chip stays one row tall. Returns [[key, value], ...] — empty when there is nothing worth showing."""
+    out: list[list[str]] = []
+    for k, v in (args or {}).items():
+        if len(out) >= max_pairs or _SECRET_KEYS.search(str(k)):
+            continue
+        if v is None or v == "" or isinstance(v, (dict, list)):
+            if isinstance(v, list) and v:
+                out.append([str(k), f"{len(v)} ×"])
+            elif isinstance(v, dict) and v:
+                out.append([str(k), f"{len(v)} fields"])
+            continue
+        s = re.sub(r"\s+", " ", str(v)).strip()
+        if not s:
+            continue
+        if len(str(v).strip().splitlines()) > 1:          # multi-line text: a marker, not a wall of words
+            out.append([str(k), f"{len(str(v).strip().splitlines())} lines · {_txt(str(v).strip().splitlines()[0], 46)}"])
+            continue
+        out.append([str(k), _txt(s, 80)])
+    return out

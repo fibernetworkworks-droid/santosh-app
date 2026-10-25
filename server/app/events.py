@@ -24,7 +24,8 @@ from .db import Event, Message, session
 CALL: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_call", default="")
 
 # v0.161 a reply as it is being written: sent to open streams only, NEVER stored (the final `message` is the record)
-STREAM_KINDS = {"reply_start", "delta", "delta_reset", "reply_end"}
+# v0.171 `think`: the model's reasoning as it thinks (Claude thinking / GLM reasoning), same live-only discipline
+STREAM_KINDS = {"reply_start", "delta", "delta_reset", "reply_end", "think"}
 # never part of the chat's story (live-only noise) - still stored so a reconnect mid-turn catches up (except STREAM_KINDS)
 LIVE_ONLY = {"typing", "step", "work", "log"} | STREAM_KINDS
 # belong to the chat they were made in only (answers' sources, phone actions, list refreshes...): never copied to others
@@ -250,12 +251,16 @@ class EventBus:
 bus = EventBus()
 
 
-def _story(conversation_id: str, tenant: str, before: int = 0, scan: int = 6000):
-    """Story events of a chat (newest first): its own non-live events + other chats' cards."""
+def _story(conversation_id: str, tenant: str, before: int = 0, scan: int = 6000,
+           steps: bool = False):
+    """Story events of a chat (newest first): its own non-live events + other chats' cards.
+    v0.171 `steps` also keeps the `step` events (the console's transcript shows what each turn did, like Claude's
+    chat does; the phone timeline stays as it was — it never asked)."""
     from . import chats, convs
     hide = chats.story_filter(conversation_id)     # v0.162 Edit / Dobara versions that are not shown now
+    noise = LIVE_ONLY - {"step"} if steps else LIVE_ONLY
     with session() as s:
-        cond = (Event.conversation_id == conversation_id) & (Event.kind.not_in(LIVE_ONLY | ACTIONS))
+        cond = (Event.conversation_id == conversation_id) & (Event.kind.not_in(noise | ACTIONS))
         others = [c for c in convs.ids(tenant) if c != conversation_id] if tenant else []
         if others:
             cond = or_(cond, (Event.conversation_id.in_(others)) & (Event.kind.not_in(LOCAL_KINDS)))
@@ -281,13 +286,18 @@ def _collapse(rows) -> list[dict]:
             items[k] = {"key": k, "first": e, "latest": e}
         else:
             it["first"] = e
+            # v0.171 a step still running never hides how the same call ended (rows come newest-first)
+            if not (e.kind == "step" and isinstance(e.payload, dict) and e.payload.get("state") == "running"
+                    and isinstance(it["latest"].payload, dict) and it["latest"].payload.get("state") != "running"):
+                it["latest"] = e
     return sorted(items.values(), key=lambda it: it["first"].id)
 
 
-def timeline(conversation_id: str, tenant: str, limit: int = 60, before: int = 0) -> dict[str, Any]:
-    """The chat in order (see the module doc). `before` = load the page before that event id."""
+def timeline(conversation_id: str, tenant: str, limit: int = 60, before: int = 0, steps: bool = False) -> dict[str, Any]:
+    """The chat in order (see the module doc). `before` = load the page before that event id.
+    v0.171 `steps=True` (the console): tool-call step events ride along, args and all."""
     limit = max(10, min(int(limit or 60), 400))
-    rows = _story(conversation_id, tenant, before)
+    rows = _story(conversation_id, tenant, before, steps=steps)
     items = _collapse(rows)
     page, older = items[-limit:], items[:-limit]
     # cards that started before this page but still wait for her: kept, at their own place (just above the page)

@@ -187,17 +187,51 @@ let TURN = null;          // the open Hoola turn: {bd, tools, tl, text, steps:{}
 let USER_ECHO = [];       // texts she sent from here (their echo from the server is not drawn twice)
 
 let SINK = col;           // where new rows go (an off-screen box while an older page is drawn above)
+let STEPBUF = null;       // v0.171 replay: consecutive step events fold into one closed group, like a live turn
+function replayStep(p) {
+  const id = String(p.id || p.tool || Math.random());
+  if (p.args) STEPS_ARGS.set(id, p.args);
+  if (p.state === 'running') return;      // the done / error step of the same call follows it
+  if (!STEPBUF) {
+    STEPBUF = document.createElement('details'); STEPBUF.className = 'tools'; STEPBUF.open = false;
+    STEPBUF.innerHTML = `<summary><span class="ic" style="width:18px;height:18px;font-size:10px">✓</span><span class="sm"></span><span class="chev">⌄</span></summary><div class="tl"></div>`;
+    SINK.appendChild(STEPBUF);
+  }
+  const row = p.state === 'error' ? `<span class="ic" style="background:rgba(248,113,113,.18);color:var(--bad)">!</span>${esc(p.label || p.tool)} <code>${esc(p.tool || '')}</code>${p.detail ? `<span class="tm">${esc(String(p.detail).slice(0, 60))}</span>` : ''}`
+    : `<span class="ic">✓</span>${esc(p.label || p.tool)} <code>${esc(p.tool || '')}</code>`;
+  const has = !!STEPS_ARGS.get(id)?.length;
+  const el = document.createElement(has ? 'details' : 'div'); el.className = 'ts ' + (p.state === 'error' ? 'err' : 'done');
+  if (has) { el.innerHTML = `<summary>${row}<span class="chev" aria-hidden="true">⌄</span></summary>${stepArgsHtml(id)}`; el.open = false; }
+  else el.innerHTML = row;
+  STEPBUF.querySelector('.tl').appendChild(el);
+}
+function flushStepBuf() {
+  if (!STEPBUF) return;
+  const n = STEPBUF.querySelectorAll('.ts').length;
+  if (!n) STEPBUF.remove();
+  else STEPBUF.querySelector('.sm').textContent = `${n} kadam${n > 1 ? '' : ''}`;
+  STEPBUF = null;
+}
 function userBubble(text, files, eid) {
   const d = document.createElement('div'); d.className = 'mu';
   d.innerHTML = (files?.length ? `<div class="att">${files.map(f => `<span class="chip">📎 ${esc(f.name || f)}</span>`).join('')}</div>` : '') + `<span class="mut">${esc(text)}</span>`;
   if (eid && !files?.length) attachEdit(d, text, eid);
   SINK.appendChild(d); if (SINK === col) scrollDown(true); TURN = null; return d;
 }
-function attachEdit(d, text, eid) {   // Edit her own message: a new version from here (the old one stays)
+function attachEdit(d, text, eid) {   // v0.171 her message gets a hover toolbar: Copy + Edit (a new version from here)
   d.dataset.eid = eid;
-  if (!CH || d.querySelector('.medit')) return;
-  d.insertAdjacentHTML('beforeend', `<button type="button" class="medit" aria-label="Message badlo">${svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>')}</button>`);
-  d.querySelector('.medit').addEventListener('click', () => editBubble(d, text));
+  if (!CH || d.querySelector('.utbar')) return;
+  d.insertAdjacentHTML('beforeend', `<span class="utbar" role="group" aria-label="Message actions">`
+    + `<button type="button" class="ua" data-ua="copy" aria-label="Copy">${svg('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>')}</button>`
+    + `<button type="button" class="ua" data-ua="edit" aria-label="Message badlo">${svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>')}</button></span>`);
+  bindUserBar(d, text);
+}
+function bindUserBar(d, text) {   // separate: Edit ka Cancel the same toolbar dobara jodta hai
+  d.querySelector('[data-ua="copy"]')?.addEventListener('click', async e => {
+    e.stopPropagation();
+    if (await copyText(text)) { const b = e.currentTarget; b.classList.add('did'); setTimeout(() => b.classList.remove('did'), 1200); }
+  });
+  d.querySelector('[data-ua="edit"]')?.addEventListener('click', e => { e.stopPropagation(); editBubble(d, text); });
 }
 function editBubble(d, text) {
   if (TYPING) return toast(`${AV} abhi kaam kar raha hai. Pehle Rokiye.`, true);
@@ -205,7 +239,7 @@ function editBubble(d, text) {
   d.innerHTML = `<textarea aria-label="Message badlo" rows="2"></textarea><div class="acts"><button type="button" class="btn soft" data-x>Cancel</button><button type="button" class="btn go" data-s>Bhejo</button></div>`;
   const ta = d.querySelector('textarea'); ta.value = text; ta.focus(); ta.setSelectionRange(text.length, text.length);
   ta.style.height = Math.min(220, ta.scrollHeight) + 'px'; ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(220, ta.scrollHeight) + 'px'; });
-  const cancel = () => { d.classList.remove('editing'); d.innerHTML = keep; d.querySelector('.medit')?.addEventListener('click', () => editBubble(d, text)); };
+  const cancel = () => { d.classList.remove('editing'); d.innerHTML = keep; bindUserBar(d, text); };
   const save = async () => {
     const t = ta.value.trim(); if (!t || t === text) return cancel();
     d.querySelector('[data-s]').disabled = true;
@@ -235,9 +269,30 @@ function hoolaText(text, source, eid) {   // a reply without a turn id (streamin
 }
 
 /* steps (tool calls) inside the turn + the live panel: in the order they happened (text -> steps -> text);
-   each run of steps is one group that folds into "N kadam · Xs" when the turn is over */
+   each run of steps is one group that folds into "N kadam · Xs" when the turn is over.
+   v0.171 every step opens: what the model asked (masked args brief) + what came back (the work line's facts). */
+const STEPS_ARGS = new Map();   // step id -> [[k, v], ...] from the server (secrets dropped server-side)
+const STEPS_DATA = new Map();   // step id -> the `work` event's display facts (site, amount, note...)
+function stepArgsHtml(id) {
+  const rows = [];
+  for (const [k, v] of STEPS_ARGS.get(id) || []) rows.push(`<span>${esc(k)}</span><b>${esc(v)}</b>`);
+  for (const [k, v] of Object.entries(STEPS_DATA.get(id) || {})) {
+    if (v == null || typeof v === 'boolean') continue;
+    if (Array.isArray(v)) {
+      const s = v.map(x => typeof x === 'string' ? x : Array.isArray(x) ? x.join(': ') :
+        [x.from, x.subject, x.name, x.device].filter(Boolean).join(' · ') || '').filter(Boolean).slice(0, 4).join(', ');
+      if (s) rows.push(`<span>${esc(k)}</span><b>${esc(s.slice(0, 140))}</b>`);
+      continue;
+    }
+    if (typeof v === 'object') continue;
+    rows.push(`<span>${esc(k)}</span><b>${esc(String(v).slice(0, 140))}</b>`);
+  }
+  return rows.length ? `<div class="targs"><div class="kv">${rows.join('')}</div></div>` : '';
+}
 function stepEvent(p) {
   const t = turn();
+  const id = String(p.id || p.tool || Math.random());
+  if (p.args) STEPS_ARGS.set(id, p.args);
   let g = t.groups[t.groups.length - 1];
   if (!g || t.afterText) {
     t.afterText = false;
@@ -246,15 +301,33 @@ function stepEvent(p) {
     put(t, el); g = {el, tl: el.querySelector('.tl'), n: 0, t0: Date.now()}; t.groups.push(g);
     if (t.groups.length === 1) $('#lsteps').innerHTML = '';
   }
-  const id = String(p.id || p.tool || Math.random());
   const row = p.state === 'running' ? `<span class="spin" style="width:16px;height:16px"></span>${esc(p.label || p.tool)} <code>${esc(p.tool || '')}</code>`
     : p.state === 'error' ? `<span class="ic" style="background:rgba(248,113,113,.18);color:var(--bad)">!</span>${esc(p.label || p.tool)} <code>${esc(p.tool || '')}</code>${p.detail ? `<span class="tm">${esc(String(p.detail).slice(0, 60))}</span>` : ''}`
     : `<span class="ic">✓</span>${esc(p.label || p.tool)} <code>${esc(p.tool || '')}</code>`;
   const cls = 'ts ' + (p.state === 'running' ? 'run' : p.state === 'error' ? 'err' : 'done');
+  const has = (STEPS_ARGS.get(id)?.length || Object.keys(STEPS_DATA.get(id) || {}).length) ? true : false;
   for (const box of [t.bd, $('#lsteps')]) {
     let el = box.querySelector(`[data-step="${CSS.escape(id)}"]`);
-    if (!el) { el = document.createElement('div'); el.dataset.step = id; (box === t.bd ? g.tl : box).appendChild(el); if (box === t.bd) g.n++; }
-    el.className = cls; el.innerHTML = row;
+    if (!el) {
+      el = document.createElement(has ? 'details' : 'div'); el.dataset.step = id; el.className = cls;
+      if (has) {
+        el.innerHTML = `<summary>${row}<span class="chev" aria-hidden="true">⌄</span></summary>${stepArgsHtml(id)}`;
+        el.open = false;
+      } else el.innerHTML = row;
+      (box === t.bd ? g.tl : box).appendChild(el); if (box === t.bd) g.n++;
+      continue;
+    }
+    if (has && el.tagName !== 'DETAILS') {   // the facts arrived after the row existed: upgrade it in place
+      const nu = document.createElement('details'); nu.dataset.step = id; nu.className = cls; nu.open = el.open === true;
+      nu.innerHTML = `<summary>${row}<span class="chev" aria-hidden="true">⌄</span></summary>${stepArgsHtml(id)}`;
+      el.replaceWith(nu); el = nu;
+    } else {
+      el.className = cls;
+      const sm = el.tagName === 'DETAILS' ? el.querySelector('summary') : el;
+      sm.innerHTML = has && el.tagName === 'DETAILS' ? `${row}<span class="chev" aria-hidden="true">⌄</span>` : row;
+      if (el.tagName === 'DETAILS') { const old = el.querySelector('.targs'); const html = stepArgsHtml(id);
+        if (html) { if (old) old.outerHTML = html; else el.insertAdjacentHTML('beforeend', html); } else old?.remove(); }
+    }
   }
   live(p.state === 'running' ? 'run' : 'idle'); scrollDown();
 }
@@ -272,6 +345,40 @@ function typing(on) {
   $('#stopBtn').hidden = !on;
   if (on) { if (!TYPING) { const t = turn(); TYPING = document.createElement('div'); TYPING.className = 'typing'; TYPING.innerHTML = '<i></i><i></i><i></i>'; t.bd.appendChild(TYPING); scrollDown(); } live('run'); }
   else { TYPING?.remove(); TYPING = null; closeTurnTools(); live(QUEUE.length ? 'ask' : 'idle'); TURN = null; }
+}
+
+/* ================= thinking card (v0.171): the model's reasoning while it thinks — Claude thinking /
+   GLM reasoning arrive as live-only `think` events (turn:seg, like the text blocks). Live: open, counting.
+   Reply over: folded to "ne socha · 8s". Never stored, so a reload builds it only from a /live resume. */
+const THINKS = new Map();   // turn:seg -> {el, tb, t0, timer}
+function thinkEvent(p) {
+  const key = (p.turn || '') + ':' + (p.seg ?? 0);
+  let K = THINKS.get(key);
+  if (p.clear) { if (K) { K.raw = ''; K.tb.textContent = ''; } return; }
+  if (!K) {
+    const t = turn();
+    const el = document.createElement('details'); el.className = 'think'; el.open = true;
+    el.innerHTML = `<summary><span class="tic" aria-hidden="true">✦</span><span class="tsm">${esc(AV)} soch raha hai…</span><span class="tt">0s</span><span class="chev">⌄</span></summary><div class="tbody"></div>`;
+    put(t, el);
+    K = {el, tb: el.querySelector('.tbody'), raw: '', t0: Date.now(), timer: 0};
+    K.timer = setInterval(() => { const s = Math.round((Date.now() - K.t0) / 1000), tt = K.el.querySelector('.tt');
+      if (tt) tt.textContent = s < 60 ? s + 's' : Math.floor(s / 60) + 'm' + String(s % 60).padStart(2, '0'); }, 1000);
+    THINKS.set(key, K);
+  }
+  K.raw += (p.text || '');
+  K.tb.textContent = K.raw;
+  scrollDown();
+}
+function closeThinks(turnId) {
+  for (const [key, K] of [...THINKS]) {
+    if (!key.startsWith(turnId + ':')) continue;
+    THINKS.delete(key); clearInterval(K.timer);
+    if (!K.raw.trim()) { K.el.remove(); continue; }        // thought but never said anything worth keeping
+    const s = Math.max(1, Math.round((Date.now() - K.t0) / 1000)), tt = K.el.querySelector('.tt'), sm = K.el.querySelector('.tsm');
+    if (tt) tt.textContent = s < 60 ? s + 's' : Math.floor(s / 60) + 'm' + String(s % 60).padStart(2, '0');
+    if (sm) sm.textContent = `${AV} ne socha`;
+    K.el.open = false;
+  }
 }
 
 /* ================= streamed replies: one per turn id, text blocks (seg) paced word by word ================= */
@@ -307,6 +414,7 @@ function drawActs(R) {
   const a = document.createElement('div'); a.className = 'racts'; a.setAttribute('role', 'group'); a.setAttribute('aria-label', 'Reply actions');
   const can = !!CONFIG.stream, last = R.turn === LAST_TURN;
   a.innerHTML = `<button type="button" class="ra" data-act="copy" aria-label="Copy reply">${svg('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>')}<span>Copy</span></button>`
+    + `<button type="button" class="ra" data-act="quote" aria-label="Quote karein" title="Composer mein quote karein">${svg('<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/>')}<span>Quote</span></button>`
     + (can && last ? `<button type="button" class="ra" data-act="retry" aria-label="Retry">${svg('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>')}<span>Dobara</span></button>` : '')
     + (can ? `<button type="button" class="ra" data-act="up" aria-label="Accha jawab" aria-pressed="${R.fb === 'up'}">${svg('<path d="M7 10v11H3V10zM7 10l5-8a3 3 0 0 1 3 3v4h5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 18.6 21H7"/>')}</button>`
       + `<button type="button" class="ra" data-act="down" aria-label="Kharab jawab" aria-pressed="${R.fb === 'down'}">${svg('<path d="M17 14V3h4v11zM17 14l-5 8a3 3 0 0 1-3-3v-4H4a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 5.4 3H17"/>')}</button>` : '')
@@ -321,6 +429,13 @@ async function copyText(text) {
 }
 async function replyAct(R, act, b) {
   if (act === 'copy') { if (await copyText(replyText(R))) { b.querySelector('span').textContent = 'Copied ✓'; setTimeout(() => { const s = b.querySelector('span'); if (s) s.textContent = 'Copy'; }, 1500); } else toast('Copy nahi ho paya.', true); return; }
+  if (act === 'quote') {   // v0.171 the reply goes into the composer as a quote, so she can point at any line of it
+    const q = (replyText(R) || '').trim().split('\n').map(l => '> ' + l).join('\n');
+    if (!q) return;
+    go('chat'); msg.value = (msg.value ? msg.value.replace(/\s*$/, '\n\n') : '') + q + '\n\n';
+    msg.dispatchEvent(new Event('input')); msg.focus(); msg.setSelectionRange(msg.value.length, msg.value.length);
+    return;
+  }
   if (act === 'up' || act === 'down') {
     const value = R.fb === act ? 'none' : act;
     try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/feedback`, {turn: R.turn, value}); R.fb = value === 'none' ? '' : value; drawActs(R);
@@ -349,6 +464,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) REPLI
 const WHERE = {browser:'Hoola ka browser · server', pc:'Aapka PC', email:'Email', payment:'Paisa · aapki Haan', network:'Hoola Network', bluetooth:'Ghar', website:'Website'};
 function workEvent(p) {
   const err = p.phase === 'error' || p.phase === 'stopped';
+  if (p.id && p.data) STEPS_DATA.set(String(p.id), p.data);   // v0.171 the step's facts join its args in the chip
   $('#stageCap').textContent = err ? (p.phase === 'stopped' ? 'Roka gaya: ' : 'Dikkat: ') + (p.error || p.label || '') : (p.label || p.tool || 'Kaam');
   const site = p.data && (p.data.site || p.data.url) ? ' · ' + String(p.data.site || p.data.url).slice(0, 60) : '';
   $('#stageWhere').textContent = (WHERE[p.scene] || 'Hoola server') + site + (p.phase === 'done' ? ' · ho gaya' : p.phase === 'waiting' ? ' · aapki haan' : '');
@@ -533,7 +649,9 @@ function onEvent(ev) {
     case 'delta_reset': { const S = REPLIES.get(p.turn)?.segs.get(p.seg ?? 0); if (S) S.pacer.reset(); return; }
     case 'reply_end': {
       const R = REPLIES.get(p.turn); if (!R) return;
-      R.segs.forEach(S => S.pacer.flush()); R.done = true; R.stopped = !!p.stopped; drawActs(R); closeTurnTools(R.t); return; }
+      R.segs.forEach(S => S.pacer.flush()); R.done = true; R.stopped = !!p.stopped; drawActs(R); closeTurnTools(R.t);
+      closeThinks(p.turn);   // v0.171 the Soch cards fold when the reply is over
+      return; }
     case 'message':
       if (p.role === 'user') {
         const i = USER_ECHO.indexOf(p.text);
@@ -551,6 +669,7 @@ function onEvent(ev) {
     case 'typing': typing(!!p.on); return;
     case 'step': landing(false); stepEvent(p); return;
     case 'work': workEvent(p); return;
+    case 'think': landing(false); thinkEvent(p); return;   // v0.171 the model's reasoning, live in its card
     default: landing(false); renderCard(ev.kind, p, ev.at, true);
       if (/ask|approval|draft|_sign|quote|confirm|knock/.test(ev.kind)) refreshPending();
   }
@@ -559,22 +678,28 @@ function onEvent(ev) {
 /* ================= open a conversation ================= */
 let LOADING = false, PENDING = [], BEFORE = 0, HAS_MORE = false, OLDER = false, ANY = false;
 function renderEvents(events, any) {
+  flushStepBuf();
   for (const ev of events) {
     const p = ev.payload || {};
     if (ev.kind === 'message') {
+      flushStepBuf();
       if (p.role === 'user') userBubble(p.text, p.files, ev.id);
       else if (!any) continue;
       else if (p.turn && window.HoolaStream) { replyMessage(p, true, ev.id); if (SINK === col) LAST_TURN = p.turn; }
       else hoolaText(p.text || '', p.source, ev.id);
     }
-    else renderCard(ev.kind, p, ev.at);
+    else if (ev.kind === 'step') replayStep(p);   // v0.171 the transcript keeps what each turn did (steps=1)
+    else { flushStepBuf(); renderCard(ev.kind, p, ev.at); }
   }
+  flushStepBuf();
 }
 async function openConv(id, fresh, opts = {}) {
   if (!CH) stopStream();
   LOADING = true; PENDING = [];
   CONV = id; col.innerHTML = ''; CARDS.clear(); B?.reset(); TURN = null; TYPING = null; USER_ECHO = []; $('#stopBtn').hidden = true;
   REPLIES.forEach(R => R.segs.forEach(S => S.pacer.reset())); REPLIES.clear(); LAST_TURN = null; STICK = true;
+  for (const K of THINKS.values()) clearInterval(K.timer);   // v0.171 the old chat's Soch timers stop with it
+  THINKS.clear(); STEPS_ARGS.clear(); STEPS_DATA.clear();
   $$('#recents .rc').forEach(b => b.toggleAttribute('aria-current', b.dataset.conv === id));
   if (CH) {   // every chat has its own link; reload / back / a new tab open the same chat
     const url = '/console/c/' + encodeURIComponent(id);
@@ -586,7 +711,7 @@ async function openConv(id, fresh, opts = {}) {
   col.innerHTML = '<div class="skel-chat" aria-hidden="true"><i class="skel r"></i><i class="skel l"></i><i class="skel l s"></i><i class="skel r s"></i><i class="skel l"></i></div>';
   // the chat in order from the server: messages and each card once where it happened (latest state)
   let tl = {events: [], last_event_id: 0};
-  try { tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=${fresh ? 10 : 80}`); }
+  try { tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=${fresh ? 10 : 80}&steps=1`); }
   catch (e) { LOADING = false; col.innerHTML = ''; if (e.status === 404 && opts.fallback) return opts.fallback(); toast(e.message, true); }
   if (CONV !== id) return;
   col.innerHTML = '';
@@ -605,6 +730,7 @@ async function openConv(id, fresh, opts = {}) {
       if (r.status === 200 && CONV === id) {
         const s = await r.json(), R = reply(s.turn);
         R.done = false; R.acts?.remove(); R.seq = s.seq; LAST_TURN = s.turn; landing(false);
+        if (s.think) thinkEvent({turn: s.turn, seg: s.seg, text: s.think});   // v0.171 mid-thought reload: the card reopens
         const S = seg(R, s.seg); S.pacer.reset(); S.pacer.push(s.text || ''); S.pacer.flush();
         TURN = R.t; $('#stopBtn').hidden = false; live('run');
       }
@@ -623,7 +749,7 @@ async function loadOlder() {
   if (OLDER || !HAS_MORE || !BEFORE || !CONV) return false;
   OLDER = true; const id = CONV;
   try {
-    const tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=60&before=${BEFORE}`);
+    const tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=60&before=${BEFORE}&steps=1`);
     if (CONV !== id) return false;
     const box = document.createElement('div'), saveTurn = TURN, saveLast = LAST_TURN;
     SINK = box; TURN = null;
@@ -674,7 +800,7 @@ function drawBranches(list) {
 
 /* ================= one stream for all her chats (CHAT_SESSIONS; on with CONSOLE_V2) ================= */
 // kinds that belong to their own chat only (events.LOCAL_KINDS); every other card of another chat shows here too
-const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 'delta_reset', 'reply_end', 'message', 'upload',
+const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 'delta_reset', 'reply_end', 'think', 'message', 'upload',
   'reminders', 'routines', 'lists', 'email_sent', 'hoola_update', 'galla', 'mshop', 'office', 'employee', 'darzi_order',
   'phonedoc_open', 'phonedoc_check', 'device_action', 'device_action_result', 'home_device', 'bt_request', 'bazar_open',
   'bazar_link', 'gyaan_sources', 'memory_saved', 'procedure', 'open', 'link', 'call_receipt', 'speaker', 'voice',
@@ -750,6 +876,23 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'o') { e.preventDefault(); $('#newChat').click(); return; }
   if (e.key === '/' && !typingIn && !e.ctrlKey && !e.metaKey && !e.altKey && !$('#app').hidden) { e.preventDefault(); go('chat'); msg.focus(); return; }
   if (e.key === 'Escape' && !document.querySelector('.sbg, .rmenu') && !$('#stopBtn').hidden && (!typingIn || e.target === msg)) { e.preventDefault(); $('#stopBtn').click(); }
+  if (e.key === 'Escape' && !$('#exportMenu').hidden) $('#exportMenu').hidden = true;
+});
+
+/* ================= export (v0.171): this chat as a Markdown file to read, or JSON to keep ================= */
+$('#exportBtn').addEventListener('click', () => { const m = $('#exportMenu'); m.hidden = !m.hidden; });
+document.addEventListener('click', e => { if (!e.target.closest('#exportMenu, #exportBtn')) $('#exportMenu').hidden = true; });
+$('#exportMenu').addEventListener('click', async e => {
+  const b = e.target.closest('[data-fmt]'); if (!b || !CONV) return;
+  $('#exportMenu').hidden = true;
+  try {
+    const r = await api('GET', `/api/conversations/${encodeURIComponent(CONV)}/export?fmt=${b.dataset.fmt}`, undefined, {raw: true});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(await r.blob());
+    a.download = (r.headers.get('content-disposition') || '').match(/filename="?([^";]+)"?/)?.[1] || `hoola-chat.${b.dataset.fmt}`;
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('Chat export ho gayi.');
+  } catch (er) { toast('Export nahi hui: ' + er.message, true); }
 });
 function drawFiles() {
   $('#files').innerHTML = FILES.map((f, i) => `<span class="fchip${f.file_id ? '' : ' up'}">📎 ${esc(f.name)}${f.file_id ? '' : ' · upload…'}<button type="button" data-rm="${i}" aria-label="Remove ${esc(f.name)}">✕</button></span>`).join('');

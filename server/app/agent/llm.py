@@ -269,10 +269,12 @@ def _assemble(text: str, calls: dict[int, dict]) -> dict:
 
 
 async def openai_stream(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int,
-                        on_text) -> tuple[list[dict], str, dict]:
+                        on_text, on_think=None) -> tuple[list[dict], str, dict]:
     """v0.161 the same answer as openai_create, but the words reach `on_text` as the model writes them. Tool-call
     arguments are joined and parsed only when the answer is complete (never partial JSON). Retries only before the
-    first word arrived (after that the caller resets the words and falls back to the other brain)."""
+    first word arrived (after that the caller resets the words and falls back to the other brain).
+    v0.171 `reasoning_content` deltas (GLM thinking) go to `on_think` when the brain sends them; they are never
+    part of the answer text."""
     url, model, label, headers, body = _stream_body(brain, system, tools, messages, max_tokens)
     tries = 1 + max(0, get_settings().llm_retries)
     for i in range(tries):
@@ -308,6 +310,9 @@ async def openai_stream(brain: str, system: str, tools: list[dict], messages: li
                         if d.get("content"):
                             text.append(d["content"])
                             on_text(d["content"])
+                        rc = d.get("reasoning_content") or d.get("reasoning")   # v0.171 thinking deltas
+                        if rc and on_think:
+                            on_think(rc)
                         for tc in d.get("tool_calls") or []:
                             c = calls.setdefault(int(tc.get("index") or 0), {"id": "", "name": "", "args": ""})
                             fn = tc.get("function") or {}

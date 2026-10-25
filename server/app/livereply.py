@@ -6,8 +6,11 @@ text, as it happened. Events (all STREAM_KINDS: live-only, never stored, only to
   delta       {turn, seg, seq, text}      new words of block `seg` (seq counts up across the whole reply)
   delta_reset {turn, seg}                 that block's words are void (the brain failed mid-stream; another answers)
   reply_end   {turn, stopped?}            the reply is over
+  think       {turn, seg, seq, text}      v0.171 the model's reasoning while it thinks (Claude thinking / GLM
+                                          reasoning); `clear` instead of `text` when the brain failed mid-thought
 The final `message` of each block is published and saved exactly as before, plus `turn` / `seg`: it replaces the
-live words, so an old client (or a reload) shows the same reply.
+live words, so an old client (or a reload) shows the same reply. Thinking is never stored and never re-sent: the
+card lives only while the reply is on the screen (a reload mid-thought gets what was thought so far in /live).
 
 Cleaning (before any word leaves the server): `scrub.text` (this server's keys + well-known key shapes), an OTP box
 waiting for her (its digits never echo), and Aadhaar numbers masked. The last TAIL characters, and any word still
@@ -33,7 +36,7 @@ log = logging.getLogger("santosh.livereply")
 TAIL = 24            # characters held back at the end of the text written so far
 FLUSH_S = 0.05       # deltas are batched about every 50 ms
 _LIVE: dict[str, "Live"] = {}
-STATS = {"replies": 0, "deltas": 0, "resets": 0, "held": 0, "retries": 0}
+STATS = {"replies": 0, "deltas": 0, "resets": 0, "held": 0, "retries": 0, "thinks": 0}
 
 
 def enabled() -> bool:
@@ -95,6 +98,10 @@ class Live:
         self.tagged = False            # a message of this block was published
         self.last = 0.0
         self.stopped = False
+        self.traw = ""                 # v0.171 this block's thinking so far
+        self.tsent = ""                # thinking already sent (cleaned)
+        self.tseq = 0
+        self.tlast = 0.0
 
     # ---- one reply
     def start(self) -> None:
@@ -116,6 +123,7 @@ class Live:
         if self.seg < 0 or self.raw or self.sent or self.tagged:
             self.seg += 1
         self.raw, self.sent, self.streaming, self.last, self.tagged = "", "", stream, 0.0, False
+        self.traw, self.tsent, self.tseq, self.tlast = "", "", 0, 0.0     # a new call thinks into its own card
 
     def tag(self, new_block: bool = False) -> dict:
         """`turn` / `seg` for a message of this reply (a new block for a closing line after the streamed text)."""
@@ -163,6 +171,39 @@ class Live:
             STATS["resets"] += 1
             bus.publish_live(self.conv, "delta_reset", {"turn": self.turn, "seg": self.seg})
         self.raw, self.sent, self.last = "", "", 0.0
+        self.think_reset()
+
+    # ---- thinking (v0.171): the same discipline as the words — held back at word edges, cleaned, never stored
+    def feed_think(self, piece: str) -> None:
+        if not piece:
+            return
+        self.traw += piece
+        if time.monotonic() - self.tlast >= FLUSH_S:
+            self.think_flush()
+
+    def think_flush(self, final: bool = False) -> None:
+        if not self.traw:
+            return
+        self.tlast = time.monotonic()
+        end = len(self.traw) if final else _safe_end(self.traw)
+        if end <= 0:
+            return
+        words = clean(self.tenant, self.traw[:end])
+        if len(words) <= len(self.tsent):
+            return
+        if not words.startswith(self.tsent):
+            self.traw = self.tsent        # cleaning changed words already sent: the card keeps what it has
+            return
+        new, self.tsent = words[len(self.tsent):], words
+        self.tseq += 1
+        STATS["thinks"] += 1
+        bus.publish_live(self.conv, "think", {"turn": self.turn, "seg": max(0, self.seg), "seq": self.tseq, "text": new})
+
+    def think_reset(self) -> None:
+        """The brain failed while thinking out loud: the card empties, the next brain starts clean."""
+        if self.tsent:
+            bus.publish_live(self.conv, "think", {"turn": self.turn, "seg": max(0, self.seg), "clear": True})
+        self.traw, self.tsent, self.tseq, self.tlast = "", "", 0, 0.0
 
     def partial(self) -> str:
         """What she saw of the block being written (cleaned), e.g. when she stopped it."""
@@ -186,7 +227,10 @@ def snapshot(conversation_id: str) -> dict | None:
     lv = _LIVE.get(conversation_id)
     if lv is None:
         return None
-    return {"turn": lv.turn, "seg": max(0, lv.seg), "seq": lv.seq, "text": lv.sent}
+    out = {"turn": lv.turn, "seg": max(0, lv.seg), "seq": lv.seq, "text": lv.sent}
+    if lv.tsent:
+        out["think"] = lv.tsent        # v0.171 a reload mid-thought reopens the Soch card with what was thought
+    return out
 
 
 # ---------------------------------------------------------------- retry + thumbs
