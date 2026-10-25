@@ -142,6 +142,18 @@ const Map<String, Map<String, String>> uiStrings = {
     'Mujhe apni dukaan pe lagao': 'Put me on your shop',
     'Aur AI employee lagao — kaam hoga tez': 'Hire more AI employees — work faster',
     'AAJ KE KAAM': "TODAY'S WORK",
+    // ---- Hoola Network section (v0.171) ----
+    'Pehle dost se shuru kariye': 'Start with your first friend',
+    'Dusre Hoolas se knocks, baatein, deals — sab yahan aayega': 'Knocks, talks and deals from other Hoolas will land here',
+    'QR ya ID se pehla dost jodiye': 'Add your first friend — QR or ID',
+    'Aapki haan ke bina koi jud nahi sakta': 'No one connects without your OK',
+    'Aapka Hoola, dusre Hoolas se mila': 'Your Hoola met other Hoolas',
+    'Knocks, baatein, deals — sab khud sambhalti hoon': 'Knocks, talks, deals — I handle them all',
+    'AAJ KE KNOCKS': "TODAY'S KNOCKS",
+    'AAJ KI BAATEIN': 'LATEST TALKS',
+    'AAPKE DOST': 'YOUR PEOPLE',
+    'Network kholo — knocks, baatein, deals': 'Open the network — knocks, talks, deals',
+    'Aapka {x}: ': 'Your {x}: ',
   },
 };
 

@@ -21,13 +21,17 @@ List<Map<String, dynamic>> _list(Object? o) =>
 int _n(Object? v) => v is num ? v.toInt() : 0;
 String _s(Object? v) => '${v ?? ''}';
 
-/// One loader for everything the coworker sections need. 11 soft calls, ~parallel; failures stay null.
+/// One loader for everything the coworker sections need. 12 soft calls, ~parallel; failures stay null.
 class HomeExtra {
   Map<String, dynamic>? employee;            // /api/employee → status (+ first pending ask + team count)
   List<Map<String, dynamic>> empRoles = [];  // v0.168 ROLES catalog — the choose-the-job cards
   List<Map<String, dynamic>> jobs = [];      // video studio jobs actually running right now
   Map<String, dynamic>? netCounts;           // /api/net/inbox → counts (connections, requests, inbox)
   int netThreads = 0, netGroups = 0;
+  List<Map<String, dynamic>> netWaiting = [];  // v0.171 top knocks (from, what, kind) for the home cards
+  List<Map<String, dynamic>> netThreadList = [];// v0.171 latest 2 baatein (peer, last msg) for the home cards
+  List<Map<String, dynamic>> netConn = [];     // v0.171 active dost (label, handle, relation, vip, verified)
+  List<Map<String, dynamic>> netGroupList = []; // v0.171 latest 2 mandali (emoji, name, count)
   List<Map<String, dynamic>> notebooks = []; // latest 5, for the strip
   List<Map<String, dynamic>> factsToday = [];// memory facts added today
   List<Map<String, dynamic>> lessons = [];   // Hoola Network lessons (latest 2)
@@ -52,7 +56,7 @@ class HomeExtra {
       _soft(api.employee()), _soft(api.videoJobs()), _soft(api.netInbox()),
       _soft(api.netThreads()), _soft(api.netGroups()), _soft(api.notebooks()),
       _soft(api.memory()), _soft(api.voiceLearned()), _soft(api.netLearned()),
-      _soft(api.catchup(dayAgo)), _soft(api.day()),
+      _soft(api.catchup(dayAgo)), _soft(api.day()), _soft(api.netConnections()),
     ]);
     try {
       final emp = r[0] as Map<String, dynamic>?;
@@ -72,8 +76,12 @@ class HomeExtra {
 
       final inbox = r[2] as Map<String, dynamic>?;
       netCounts = (inbox?['counts'] as Map?)?.cast<String, dynamic>();
+      netWaiting = _list(inbox?['waiting']).take(2).toList();   // v0.171 knock detail cards
       netThreads = _list(r[3]).length;   // netThreads() returns the thread list unwrapped
+      netThreadList = _list(r[3]).take(2).toList();
       netGroups = _list(r[4]).length;
+      netGroupList = _list(r[4]).take(2).toList();
+      netConn = _list(r[11]).where((l) => l['status'] == 'active').take(8).toList();
 
       notebooks = _list(r[5]).take(5).toList();   // notebooks() returns the list unwrapped
 
@@ -737,42 +745,307 @@ class EmployeeSection extends StatelessWidget {
 }
 
 /// HOOLA NETWORK — her avatars talk to other Hoolas: knocks, dost, baatein, mandali.
+/// v0.171 premium: khaali network shows the invite card, live network shows knock detail
+/// cards (topic tile by kind), baatein rows that deep-open the thread, a dost strip with
+/// relation-coloured rings, mandali chips and the open-network CTA.
 class NetworkSection extends StatelessWidget {
   const NetworkSection({super.key, required this.extra, required this.app});
   final HomeExtra extra;
   final Santosh app;
+
+  void _open(BuildContext context, {int tab = 0}) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaNetScreen(app: app, initialTab: tab)));
+
+  void _openThread(BuildContext context, String id) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaThreadScreen(app: app, threadId: id)));
+
+  /// Topic look per knock kind (icon + gradient). Unknown kinds fall back to the brand knock tile.
+  static (IconData, List<Color>) _kindLook(String kind) {
+    switch (kind) {
+      case 'meeting': return (Icons.event_rounded, const [Color(0xFF60A5FA), Color(0xFF2563EB)]);
+      case 'task': return (Icons.task_alt_rounded, const [Color(0xFF34D399), Color(0xFF059669)]);
+      case 'reminder': return (Icons.alarm_rounded, const [Color(0xFFFFB15C), Color(0xFFFB923C)]);
+      case 'ask': return (Icons.front_hand_rounded, const [Color(0xFFFCD34D), Color(0xFFF59E0B)]);
+      case 'message': return (Icons.chat_bubble_rounded, const [Color(0xFFA78BFA), Color(0xFF7C5CFF)]);
+      case 'voice_note': return (Icons.graphic_eq_rounded, const [Color(0xFFE879F9), Color(0xFFC026D3)]);
+      case 'file': return (Icons.attach_file_rounded, const [Color(0xFF38BDF8), Color(0xFF0284C7)]);
+      default: return (Icons.notifications_active_rounded, const [Color(0xFF7C5CFF), Color(0xFFE0458B)]);
+    }
+  }
+
+  /// Dost ring colour by relation: parivar rose, team sky, business emerald, dost violet.
+  static List<Color> _relationLook(String relation) {
+    switch (relation) {
+      case 'family': return const [Color(0xFFFB7185), Color(0xFFE11D48)];
+      case 'team': return const [Color(0xFF38BDF8), Color(0xFF0284C7)];
+      case 'business': return const [Color(0xFF34D399), Color(0xFF059669)];
+      default: return const [Color(0xFFA78BFA), Color(0xFF7C5CFF)];
+    }
+  }
+
+  static Widget _tile(IconData icon, List<Color> grad, {double size = 40, double radius = 13, double ic = 20}) => Container(
+        width: size, height: size,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
+          borderRadius: BorderRadius.circular(radius),
+          boxShadow: [BoxShadow(color: grad.last.withOpacity(.35), blurRadius: 14, offset: const Offset(0, 4))],
+        ),
+        child: Icon(icon, size: ic, color: Colors.white),
+      );
+
+  /// Gradient avatar with the peer's initial — dost strip and baatein rows.
+  static Widget _avatar(String name, List<Color> grad, {double size = 38}) {
+    final initial = name.isEmpty ? 'H' : name.substring(0, 1).toUpperCase();
+    return Container(
+      width: size, height: size,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
+        shape: BoxShape.circle,
+        boxShadow: [BoxShadow(color: grad.last.withOpacity(.35), blurRadius: 10, offset: const Offset(0, 3))],
+      ),
+      child: Center(child: Text(initial, style: TextStyle(fontSize: size * .42, fontWeight: FontWeight.w800, color: Colors.white))),
+    );
+  }
+
+  /// Knock one-liner: what → body title → body text, jo pehle mile.
+  static String _knockWhat(Map<String, dynamic> k) {
+    final body = Map<String, dynamic>.from(k['body'] as Map? ?? const {});
+    for (final v in [_s(k['what']), _s(body['title']), _s(body['text'])]) {
+      if (v.isNotEmpty) return v;
+    }
+    return '';
+  }
+
+  /// One knock card: topic tile by kind + kaun / kya, tap = inbox tab.
+  Widget _knockRow(BuildContext context, Map<String, dynamic> k) {
+    final (icon, grad) = _kindLook(_s(k['kind']));
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Press(
+        onTap: () => _open(context, tab: 2),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: const Color(0x14FFB15C), borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0x40FFB15C))),
+          child: Row(children: [
+            _tile(icon, grad, size: 34, radius: 11, ic: 17),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(
+                    child: Text(_s(k['from']).isEmpty ? 'Hoola' : _s(k['from']),
+                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                  if (_s(k['kind']).isNotEmpty)
+                    Text(_s(k['kind']).toUpperCase(), style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w800, letterSpacing: .4, color: C.accentSoft)),
+                ]),
+                const SizedBox(height: 2),
+                Text(_knockWhat(k), style: const TextStyle(fontSize: 11.5, color: C.muted, height: 1.3), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ]),
+            ),
+            const Icon(Icons.chevron_right_rounded, size: 18, color: C.faint),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  /// One baat card: avatar (+bot badge), peer, last line; tap = thread seedha khulta hai.
+  Widget _threadRow(BuildContext context, Map<String, dynamic> t) {
+    final peer = _s(t['peer_avatar']).isEmpty ? _s(t['with']) : _s(t['peer_avatar']);
+    final last = _s(t['last']).isEmpty ? _s(t['subject']) : _s(t['last']);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Press(
+        onTap: () => _openThread(context, _s(t['id'])),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(13), border: Border.all(color: Colors.white.withOpacity(.10))),
+          child: Row(children: [
+            Stack(clipBehavior: Clip.none, children: [
+              _avatar(peer, const [Color(0xFFA78BFA), Color(0xFF7C5CFF)], size: 36),
+              if (t['mode'] == 'handle')
+                Positioned(
+                  right: -3, bottom: -3,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(color: C.bgTop, shape: BoxShape.circle),
+                    child: const Icon(Icons.smart_toy_rounded, size: 12, color: C.teal),
+                  ),
+                ),
+            ]),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(
+                    child: Text(peer.isEmpty ? 'Hoola' : '${_s(t['peer_owner']).isEmpty ? peer : '$peer  ·  ${_s(t['peer_owner'])}'}',
+                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                  if (_s(t['status']).isNotEmpty && _s(t['status']) != 'open')
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(.06), borderRadius: BorderRadius.circular(999), border: Border.all(color: Colors.white.withOpacity(.14))),
+                      child: Text(_s(t['status']).toUpperCase(), style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w800, letterSpacing: .4, color: C.faint)),
+                    ),
+                ]),
+                const SizedBox(height: 2),
+                Row(children: [
+                  if (_s(t['last_kind']) == 'file') ...[
+                    const Icon(Icons.attach_file_rounded, size: 13, color: C.faint),
+                    const SizedBox(width: 3),
+                  ],
+                  Expanded(
+                    child: Text(
+                      '${t['last_dir'] == 'out' ? app.g('Aapka {x}: ', x: _s(t['my_avatar']).isEmpty ? app.aName : _s(t['my_avatar'])) : ''}$last',
+                      style: const TextStyle(fontSize: 11.5, color: C.muted, height: 1.3), maxLines: 1, overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ]),
+              ]),
+            ),
+            const Icon(Icons.chevron_right_rounded, size: 18, color: C.faint),
+          ]),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = extra.netCounts;
-    if (c == null) return const SizedBox.shrink();
+    if (c == null) return const SizedBox.shrink();   // network off / old server
     final knocks = _n(c['inbox']);
     final dost = _n(c['connections']);
-    if (knocks == 0 && dost == 0 && extra.netThreads == 0) return const SizedBox.shrink();
-    final open = () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaNetScreen(app: app)));
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const HomeLabel('HOOLA NETWORK', isNew: true),
-      Press(
-        onTap: open,
-        child: Glass(
+    final hasAny = knocks > 0 || dost > 0 || extra.netThreads > 0;
+
+    // ── Khaali network: the invite card — pehla dost jodiye ──
+    if (!hasAny) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const HomeLabel('HOOLA NETWORK'),
+        Glass(
           padding: const EdgeInsets.all(14),
           tint: const Color(0xFF7C5CFF),
           opacity: .06,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Container(
-                width: 42, height: 42,
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), gradient: const LinearGradient(colors: [Color(0xFF7C5CFF), Color(0xFFE0458B)])),
-                child: const Icon(Icons.public_rounded, size: 21, color: C.onAccent),
-              ),
+              _tile(Icons.public_rounded, const [Color(0xFF7C5CFF), Color(0xFFE0458B)], size: 42, radius: 14, ic: 21),
               const SizedBox(width: 11),
-              const Expanded(
+              Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Aapka Hoola, dusre Hoolas se mila', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                  Text('Knocks, baatein, deals — sab khud sambhalti hoon', style: TextStyle(fontSize: 11.5, color: C.muted)),
+                  Text(app.g('Pehle dost se shuru kariye'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text(app.g('Dusre Hoolas se knocks, baatein, deals — sab yahan aayega'), style: const TextStyle(fontSize: 11.5, color: C.muted)),
                 ]),
               ),
             ]),
             const SizedBox(height: 12),
+            Press(
+              onTap: () => _open(context, tab: 1),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(13), gradient: const LinearGradient(colors: [Color(0xFF7C5CFF), Color(0xFFE0458B)])),
+                child: Row(children: [
+                  const Icon(Icons.qr_code_rounded, size: 20, color: C.onAccent),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(app.g('QR ya ID se pehla dost jodiye'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14))),
+                  const Icon(Icons.chevron_right_rounded, color: C.muted),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(app.g('Aapki haan ke bina koi jud nahi sakta'),
+                style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0xCCA78BFA))),
+          ]),
+        ),
+      ]);
+    }
+
+    // ── Network live: knocks, baatein, dost, mandali ──
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      HomeLabel('HOOLA NETWORK', isNew: knocks > 0),
+      Press(
+        onTap: () => _open(context),
+        child: Glass(
+          padding: const EdgeInsets.all(14),
+          tint: const Color(0xFF7C5CFF),
+          opacity: .06,
+          border: const Color(0x47A78BFA),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              _tile(Icons.public_rounded, const [Color(0xFF7C5CFF), Color(0xFFE0458B)], size: 42, radius: 14, ic: 21),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(app.g('Aapka Hoola, dusre Hoolas se mila'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text(app.g('Knocks, baatein, deals — sab khud sambhalti hoon'), style: const TextStyle(fontSize: 11.5, color: C.muted)),
+                ]),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: knocks > 0 ? const Color(0x55FFC27A) : const Color(0x552DD4BF)),
+                  color: knocks > 0 ? const Color(0x1AFFB15C) : const Color(0x1A2DD4BF),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  if (knocks == 0) Container(width: 6, height: 6, decoration: const BoxDecoration(color: C.ok, shape: BoxShape.circle)),
+                  if (knocks == 0) const SizedBox(width: 5),
+                  Text(knocks > 0 ? '$knocks KNOCK' : 'LIVE',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: .5, color: knocks > 0 ? C.accentSoft : C.teal)),
+                ]),
+              ),
+            ]),
+            if (extra.netWaiting.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(app.g('AAJ KE KNOCKS'), style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: .4, color: C.faint)),
+              const SizedBox(height: 6),
+              for (final k in extra.netWaiting) _knockRow(context, k),
+            ],
+            if (extra.netThreadList.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(app.g('AAJ KI BAATEIN'), style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: .4, color: C.faint)),
+              const SizedBox(height: 6),
+              for (final t in extra.netThreadList) _threadRow(context, t),
+            ],
+            if (extra.netConn.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(app.g('AAPKE DOST'), style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: .4, color: C.faint)),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 64,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  itemCount: extra.netConn.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  itemBuilder: (_, i) {
+                    final l = extra.netConn[i];
+                    final name = _s(l['label']);
+                    return Press(
+                      onTap: () => _open(context, tab: 1),
+                      child: SizedBox(
+                        width: 46,
+                        child: Column(children: [
+                          Stack(clipBehavior: Clip.none, children: [
+                            _avatar(name, _relationLook(_s(l['relation'])), size: 40),
+                            if (l['vip'] == true || l['verified'] == true)
+                              Positioned(
+                                right: -4, bottom: -4,
+                                child: Icon(l['vip'] == true ? Icons.star_rounded : Icons.verified_rounded,
+                                    size: 14, color: l['vip'] == true ? C.accent : C.ok),
+                              ),
+                          ]),
+                          const SizedBox(height: 4),
+                          Text(name.split(' ').first, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: C.chip),
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ]),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
             Row(children: [
               _stat('$knocks', 'KNOCK WAIT', hot: knocks > 0),
               const SizedBox(width: 8),
@@ -782,16 +1055,40 @@ class NetworkSection extends StatelessWidget {
               const SizedBox(width: 8),
               _stat('${extra.netGroups}', 'MANDALI'),
             ]),
-            const SizedBox(height: 11),
-            Container(
-              height: 36,
-              decoration: BoxDecoration(color: const Color(0x17FFFFFF), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0x29FFFFFF))),
-              alignment: Alignment.center,
-              child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.public_rounded, size: 16, color: C.chip),
-                SizedBox(width: 7),
-                Text('Network kholo — knocks, baatein, deals', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: C.chip)),
+            if (extra.netGroupList.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                for (final g in extra.netGroupList)
+                  Press(
+                    onTap: () => _open(context, tab: 4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(999), border: Border.all(color: Colors.white.withOpacity(.10))),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        if (_s(g['emoji']).isNotEmpty)
+                          Text(_s(g['emoji']), style: const TextStyle(fontSize: 12))
+                        else
+                          const Icon(Icons.group_rounded, size: 13, color: C.chip),
+                        const SizedBox(width: 5),
+                        Text('${_s(g['name'])} · ${_n(g['count'])}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: C.chip)),
+                      ]),
+                    ),
+                  ),
               ]),
+            ],
+            const SizedBox(height: 11),
+            Press(
+              onTap: () => _open(context),
+              child: Container(
+                height: 36,
+                decoration: BoxDecoration(color: const Color(0x17FFFFFF), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0x29FFFFFF))),
+                alignment: Alignment.center,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.public_rounded, size: 16, color: C.chip),
+                  const SizedBox(width: 7),
+                  Text(app.g('Network kholo — knocks, baatein, deals'), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: C.chip)),
+                ]),
+              ),
             ),
           ]),
         ),
