@@ -23,7 +23,6 @@ class FeedItem {
   int? eid;        // v0.158 the server event that first made it (its place in the chat's story)
   String? call;    // the voice call whose tool made it (only those cards show in that call)
   bool live = false; // arrived live (not loaded from history)
-  DateTime? at;    // v0.164.5 when the server event happened (bubble timestamps)
 }
 
 /// v0.158 statuses that mean "this card waits for her answer / tap now".
@@ -1170,7 +1169,6 @@ class Santosh extends ChangeNotifier {
       final f = feed[i];
       f.eid ??= ev.id;
       f.call ??= ev.call;
-      f.at ??= ev.at;   // v0.164.5 bubble timestamps read the event's own time, live or history
       if (!_replaying) f.live = true;
     }
   }

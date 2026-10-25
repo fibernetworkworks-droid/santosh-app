@@ -475,12 +475,6 @@ class _ChatScreenState extends State<ChatScreen> {
   /// Newest at the bottom; the list is reversed so it always opens on the latest conversation and stays there.
   Widget _list() {
     final feed = app.feed;
-    // v0.164.5 read ticks: every user message that came before Santosh's last reply counts as seen.
-    var lastAsst = -1;
-    for (var i = 0; i < feed.length; i++) {
-      final f = feed[i];
-      if (f.kind == 'message' && f.data['role'] == 'assistant') lastAsst = i;
-    }
     final extra = (app.typing ? 1 : 0);
     final older = app.hasOlder ? 1 : 0;   // v0.158 older history above: one tap loads it, in order
     final hero = feed.length <= 1 && older == 0 ? 1 : 0;
@@ -501,7 +495,7 @@ class _ChatScreenState extends State<ChatScreen> {
         final it = feed[fi];
         final fresh = !_old.contains(it) && !_animated.contains(it);
         if (fresh) _animated.add(it);
-        final child = _item(it, fresh: fresh, seen: fi < lastAsst);
+        final child = _item(it, fresh: fresh);
         return KeyedSubtree(key: ObjectKey(it), child: fresh ? _Arrive(card: it.kind != 'message', child: child) : child);
       },
     );
@@ -726,7 +720,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ]),
       );
 
-  Widget _item(FeedItem it, {bool fresh = false, bool seen = false}) {
+  Widget _item(FeedItem it, {bool fresh = false}) {
     switch (it.kind) {
       case 'message':
         final me = it.data['role'] == 'user';
@@ -750,7 +744,6 @@ class _ChatScreenState extends State<ChatScreen> {
                     SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45))
                   else
                     Text(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45)),
-                  _msgMeta(it, me, seen),
                 ]),
               )
             : Glass(flat: true,
@@ -760,7 +753,6 @@ class _ChatScreenState extends State<ChatScreen> {
                   fresh
                       ? _Reveal(text: text, builder: (t) => linkText(t, const TextStyle(fontSize: 15, height: 1.45, color: C.ink), selectable: selecting))
                       : linkText(text, const TextStyle(fontSize: 15, height: 1.45, color: C.ink), selectable: selecting),
-                  _msgMeta(it, me, seen),
                 ]));
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -827,29 +819,6 @@ class _ChatScreenState extends State<ChatScreen> {
       height: 20,
       decoration: BoxDecoration(shape: BoxShape.circle, color: state == 'done' ? const Color(0xFF34D399) : const Color(0xFFFFC27A)),
       child: Icon(state == 'done' ? Icons.check : Icons.priority_high, size: 13, color: Colors.white),
-    );
-  }
-
-  // ---- v0.164.5 bubble footer: when it arrived (and, on her messages, whether Santosh has replied since) ----
-  String _clock(DateTime t) {
-    var h = t.hour % 12;
-    if (h == 0) h = 12;
-    return '$h:${t.minute.toString().padLeft(2, '0')} ${t.hour >= 12 ? 'pm' : 'am'}';
-  }
-
-  Widget _msgMeta(FeedItem it, bool me, bool seen) {
-    final at = it.at?.toLocal();
-    if (at == null) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text(_clock(at), style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: .3, color: me ? const Color(0xB8FFFFFF) : C.faint)),
-        if (me) ...[
-          const SizedBox(width: 3),
-          Icon(seen ? Icons.done_all_rounded : Icons.done_rounded, size: 13,
-              color: seen ? const Color(0xCCFFFFFF) : const Color(0x8CFFFFFF)),
-        ],
-      ]),
     );
   }
 
