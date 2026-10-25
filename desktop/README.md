@@ -1,5 +1,8 @@
 # Santosh Desktop
 
+> 🔒 **FROZEN BY OWNER (25 Oct 2026)** — Mera PC / Santosh Desktop is feature-complete (desktop 1.3.1).
+> Do not change anything in this folder until the developer explicitly asks. Full list of frozen paths: top of `/CLAUDE.md`.
+
 Connects an office or home PC to Santosh on the phone. The PC dials out to the Santosh server (no port forwarding),
 so it works behind any broadband router.
 

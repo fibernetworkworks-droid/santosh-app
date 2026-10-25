@@ -1,5 +1,23 @@
 # HOOLA — project brief for any new session (read fully before working)
 
+## 🔒 FROZEN BY OWNER — MERA PC / PC OPERATOR / SANTOSH DESKTOP (25 Oct 2026)
+The owner froze ALL Mera PC code and its AI side. DO NOT touch, edit, refactor, "improve", reformat
+or upgrade any of these until the owner EXPLICITLY asks in chat:
+- `server/app/pc/` — hub.py, operator.py, service.py (the PC Operator brain: vision loop, prompts, tools)
+- `server/app/agent/pc_tools.py` + `server/app/bazar/connectors/pc.py` (agent-facing PC tool schemas, approvals)
+- PC endpoints in `server/app/main.py` (`/api/pc/*`) and the `pc_*` settings in `server/app/config.py`
+- `desktop/` — the whole Santosh Desktop app, including `santosh_desktop.spec`
+- `.github/workflows/build-desktop.yml`
+- `lib/ui/pc_screen.dart` (phone Mera PC screen)
+- PC tests: `server/tests/test_pc_bridge.py`, `test_pc_operator.py`, `test_v0911_pc_clicks.py`,
+  `test_v0166_pc_full_hands.py`, `test_appcheck.py`
+
+Rules: READING these files is fine; CHANGING them is not. New work must not ride on PC files — if an
+unrelated change would touch or break anything above, STOP and ask the developer first instead of
+"just fixing it". Last verified good state (25 Oct 2026): desktop 1.3.1 + v0.168 full-hands PC,
+PC suites 29/29 pass, PC commit `e2c91ee`, CI run 40166550140 green,
+desktop-latest exe sha256 `c00ce0d1…a600e6fcb` (size 20405287).
+
 ## What it is
 **Hoola** is an Indian "Dots-like" always-on AI coworker app by Newtika Pvt Ltd (FNW). Owner: Meghana.
 Each user names their own **avatar** (e.g. "Santosh", male or female voice). The avatar works for the owner
