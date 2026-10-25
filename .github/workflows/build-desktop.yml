@@ -28,10 +28,11 @@ jobs:
           python -c "import santosh_desktop.app, santosh_desktop.tally, santosh_desktop.index"
       - name: Build SantoshDesktop.exe
         working-directory: desktop
+        run: pyinstaller --noconfirm santosh_desktop.spec
+      - name: Guard - AVIF codec must not be bundled
+        working-directory: desktop
         run: |
-          pyinstaller --noconfirm --onefile --windowed --name SantoshDesktop `
-            --hidden-import websockets.asyncio.client --hidden-import websockets.legacy.client `
-            --collect-submodules pypdf launcher.py
+          python -c "from PyInstaller.archive.readers import CArchiveReader; toc = CArchiveReader('dist/SantoshDesktop.exe').toc; names = list(toc) if hasattr(toc, 'keys') else [n for n, _ in toc]; bad = [n for n in names if 'avif' in n.lower()]; print('AVIF entries:', bad); assert not bad, 'AVIF module bundled - build must use santosh_desktop.spec excludes'"
       - uses: actions/upload-artifact@v4
         with:
           name: SantoshDesktop
@@ -42,7 +43,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
+          SIZE=$(stat -c%s desktop/dist/SantoshDesktop.exe)
+          SHA=$(sha256sum desktop/dist/SantoshDesktop.exe | cut -d' ' -f1)
           gh release delete desktop-latest --yes --cleanup-tag || true
           gh release create desktop-latest desktop/dist/SantoshDesktop.exe \
             --title "Santosh Desktop (Windows)" --latest=false \
-            --notes "Connects your office PC to Santosh on your phone. Download: https://github.com/${{ github.repository }}/releases/download/desktop-latest/SantoshDesktop.exe"
+            --notes "Connects your office PC to Santosh on your phone. Download: https://github.com/${{ github.repository }}/releases/download/desktop-latest/SantoshDesktop.exe
+          Verify your download: size ${SIZE} bytes, sha256 ${SHA}. If the exe shows \"Failed to extract ...\", the download was cut short or antivirus interfered - re-download and compare the size (see desktop/README.md)."

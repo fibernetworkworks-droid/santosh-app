@@ -24,3 +24,30 @@ In TallyPrime: Help > Settings > Connectivity > Client/Server configuration: "Ta
     python -m santosh_desktop --headless --code 123456 --folder "D:\Accounts"
 
 The server is fixed: https://hoola.ainewtika.com (a test machine can set HOOLA_SERVER or pass --server).
+
+## Build SantoshDesktop.exe (Windows, 64-bit Python 3.12)
+    cd desktop
+    pip install -r requirements.txt pyinstaller
+    pyinstaller santosh_desktop.spec
+
+Output: `dist\SantoshDesktop.exe` (onefile, no console). Always build with the spec — it excludes
+`PIL._avif` (an unused ~1.5 MB AVIF codec that makes first-launch extraction slow and fragile)
+and keeps UPX off (UPX-packed exes trip antivirus false positives). Publish the exe size and
+`certutil -hashfile dist\SantoshDesktop.exe SHA256` output with the release so users can verify
+a complete download.
+
+## "Failed to extract PIL_.avif... decompression resulted in return code -1!"
+This popup comes from the exe itself at launch: the onefile bootloader unpacks its payload into
+`%TEMP%\_MEIxxxx` and one file failed to come out intact. In order of likelihood:
+
+1. **Incomplete download.** Re-download `SantoshDesktop.exe` from the release and compare the file
+   size (right-click > Properties > Size) with the size published on the release page. A download
+   cut mid-way is the most common cause.
+2. **Antivirus interference.** Defender or a third-party AV can lock the `.pyd` while it is being
+   written to `%TEMP%`. Add an exclusion for the folder that holds the exe (e.g. Downloads), clear
+   leftover `%TEMP%\_MEI*` folders (Win+R > `%TEMP%`), and launch again.
+3. **Disk space / permissions.** Make sure the C: drive has a few hundred MB free, and try
+   right-click > Run as administrator once.
+
+Exes built with `santosh_desktop.spec` (desktop 1.3.1+) never contain the AVIF module, so this
+specific failure cannot happen; the steps above still apply to any "Failed to extract" popup.

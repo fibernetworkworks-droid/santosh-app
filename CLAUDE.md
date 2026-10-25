@@ -7240,6 +7240,13 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
   long (>24 chars) or non-ASCII text through the clipboard (paste, then HER clipboard content is restored; short/OTP
   text still types key by key; no pyperclip -> falls back to typing); open_app also on macOS (`open -a`).
 - Desktop `actions.py`: `do_window`, `do_open_url`, `do_screen(monitor=)`; version 1.3.0 (desktop-latest release).
+- Desktop 1.3.1 (installer fix, owner hit "Failed to extract PIL_.avif.cp312-win_amd64.pyd: decompression resulted in
+  return code -1!" launching SantoshDesktop.exe): first committed build `desktop/santosh_desktop.spec` — the canonical
+  way to build the exe. It excludes `PIL._avif` / `PIL.AvifImagePlugin` (newer Pillow Windows wheels bundle a native
+  AVIF codec the desktop never uses; that big .pyd was the file failing to unpack) and keeps `upx=False` (UPX trips
+  antivirus false positives). `desktop/README.md` gained "Build SantoshDesktop.exe" + a "Failed to extract …"
+  troubleshooting section: re-download and compare size (truncated download is the #1 cause), AV exclusion for the
+  exe folder + clear `%TEMP%\_MEI*`, free disk space / run as admin; publish exe size + SHA256 with each release.
 - Tests `server/tests/test_v0166_pc_full_hands.py` (12): open_url one-step + refusals (javascript/file/.exe/backslash),
   window ops reach the desktop, monitor switch holds blind clicks (and the guarded done) + live frames follow the
   monitor, old-desktop upgrade note, prompt/tool schema carry the new actions, and the REAL desktop Control: stitched

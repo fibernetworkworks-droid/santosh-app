@@ -3,6 +3,8 @@ __pycache__/
 desktop/build/
 desktop/dist/
 *.spec
+# the canonical Windows exe build recipe must be committed (desktop/README.md "Build SantoshDesktop.exe")
+!desktop/santosh_desktop.spec
 
 # v0.130 font cache filled at runtime (downloaded open-licence fonts)
 server/data/app_fonts/
