@@ -32,7 +32,7 @@ MAX_FIXES = 60
 MAX_WORDS = 100
 READY_TURNS = 15           # turns before the style hint is used
 READY_PAUSES = 20          # mid-sentence pauses before her own end-of-turn wait is used
-SILENCE_MIN, SILENCE_MAX = 500, 1000
+SILENCE_MIN, SILENCE_MAX = 420, 1000   # v0.181 floor 500 -> 420: quick people get a quick reply; her own pauses still raise it
 
 
 class SpeechProfile(Base):

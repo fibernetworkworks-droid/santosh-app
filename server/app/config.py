@@ -158,7 +158,7 @@ class Settings(BaseSettings):
     mcp_runner_url: str = ""               # v0.154 https://mcp-run.example.com (server/mcp_runner on a SEPARATE machine)
     mcp_runner_secret: str = ""            # v0.154 shared secret (HMAC of every control call)
     mcp_runner_trust_downloads: int = 1000  # v0.154 packages this popular are trusted for one tap without the full check
-    voice_silence_ms: int = 700            # pause that ends your turn: Google recommends 500-800 (people reply in ~0.2 s)
+    voice_silence_ms: int = 550            # v0.181 (was 700): pause that ends your turn - people reply in ~0.2 s, 700+ felt like a pause on a bad line; her own pauses raise it again (voicestyle)
     voice_end_sensitivity: str = ""        # "" = Gemini's default | low (waits longer) | high (answers sooner)
     voice_prefix_padding_ms: int = 300     # speech kept from just before the voice was detected (100-300)
     voice_start_sensitivity: str = "low"   # low = TV / far voices / clatter don't count as you starting to talk | high | ""
@@ -170,8 +170,8 @@ class Settings(BaseSettings):
     operator_preflight: bool = True        # v0.92 check a website job's site from this server first; refused -> her PC
     call_receipt: bool = True              # v0.91 after a call: a short card of what was decided and what really ran
     voice_tool_ack: bool = True            # a tool runs and he is silent: say a quick "ek second" in his own voice
-    voice_ack_tts_model: str = "gemini-2.5-flash-preview-tts"   # makes those short clips once per voice
-    # (affective dialog and proactive audio are gone: gemini-3.8-live removed the first and always has the second on)
+    voice_ack_tts_model: str = "gemini-3.8-flash-tts"   # v0.181 (was gemini-2.5-flash-preview-tts): new TTS, far more natural delivery; legacy model is the automatic fallback
+    voice_affective: bool = True           # v0.181 affective dialog: he answers with the emotional tone he HEARS (happy with her, gentle when she is low). If Gemini refuses the field for a model, the call retries without it and remembers (voice.py _AFFECTIVE_OK)
     # --- Awaaz Pehchaan: who is talking (owner / family) from the voice; free models, CPU (sherpa-onnx) ---
     voiceid_models_dir: str = "./data/voiceid_models"   # tools/setup_voiceid.sh downloads the two models here
     voiceid_match: float = 0.30            # similarity needed to say "this is X" (0..1)

@@ -71,6 +71,9 @@ class Santosh extends ChangeNotifier {
   String get serverUrl => hoolaServer;
   String get apiKey => _prefs.getString('key') ?? '';
   String get language => _prefs.getString('lang') ?? 'en-IN';   // v0.164.2 English is the default UI language
+  /// v0.181 the language the CALL starts in: Hinglish, not the UI language. Fresh users were getting English-locked
+  /// calls in a Hinglish product; the server's learned language (voicelang) still wins after her first calls.
+  String get voiceLang => _prefs.getString('vlang') ?? 'hi-IN';
   bool get speakReplies => _prefs.getBool('speak') ?? true;
   bool get configured => apiKey.isNotEmpty;
   /// Background mode: a native service keeps Santosh working while the app is closed.
@@ -2515,11 +2518,21 @@ class Santosh extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// v0.181 what goes to the phone TTS is cleaned like the voice screen does: no links, no emoji, no bullets -
+  /// the old voice read "https://..." and every emoji out loud.
+  String _speakable(String text) => text
+      .replaceAll(RegExp(r'https?://\S+'), 'link')
+      .replaceAll(RegExp(r'[\u{1F000}-\u{1FAFF}\u{2190}-\u{2BFF}\u{FE0F}\u{200D}]', unicode: true), '')
+      .replaceAll(RegExp(r'\s*[-\u2022\u00B7\u2013]\s+'), ', ')
+      .replaceAll(RegExp(r'[*_#`>|]'), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+
   Future<void> _speak(String text) async {
     try {
       await _tts.setLanguage(language);
       await _tts.setSpeechRate(0.5);
-      await _tts.speak(text.replaceAll(RegExp(r'[*_#]'), ''));
+      await _tts.speak(_speakable(text));
     } catch (_) {}
   }
 

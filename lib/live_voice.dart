@@ -134,7 +134,7 @@ class LiveVoice {
       final sock = _ws;
       if (!muted && !_closed && !_reconnecting && !_audioPaused && sock != null && sock.readyState == WebSocket.open) {
         // while he talks (and for a moment after), only clear speech over the room's noise gets through
-        final speaking = DateTime.now().isBefore(_playEnd.add(const Duration(milliseconds: 300)));
+        final speaking = DateTime.now().isBefore(_playEnd.add(const Duration(milliseconds: 150))); // v0.181 300 -> 150 ms: a quick interjection right after his turn is no longer held back
         try {
           final fresh = DateTime.now().difference(_speechAt).inMilliseconds < 200;
           final p = fresh ? _speech : null;
@@ -229,6 +229,8 @@ class LiveVoice {
             _gate.speechNeed = need;
             _idle.need = need;
           }
+          final fast = (v['fast'] as num?)?.toDouble();   // v0.181: the server-tuned sure-voice threshold now actually reaches the gate
+          if (fast != null && fast > 0.5 && fast < 0.99) _gate.speechFast = fast;
           _idleOn = v['idle_gate'] != false;
         }
         if (e['type'] == 'error' && e['code'] == 'gone') _noResume = true;

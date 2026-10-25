@@ -13,6 +13,11 @@ class BargeGate {
   /// Consecutive loud chunks (40 ms each) needed to open the gate while Hoola talks: 6 = 240 ms.
   static const int needChunks = 6;
 
+  /// v0.181 when Silero is VERY sure it is a voice (>= speechFast), the gate opens in 3 chunks (120 ms) instead:
+  /// a real interjection reaches Gemini almost at once. Set from the server's ready.vad.fast (VOICE_VAD_FAST).
+  double? speechFast;
+  static const int fastChunks = 3;
+
   /// Never treat anything quieter than this as talking (RMS, full scale = 1.0).
   static const double minSpeech = 0.02;
 
@@ -91,7 +96,8 @@ class BargeGate {
       _loudRun = 0;
       _gap = 0;
     }
-    if (_loudRun >= needChunks && _background.length >= 10) {
+    if (_loudRun >= (speech != null && speechFast != null && speech! >= speechFast! ? fastChunks : needChunks) &&
+        _background.length >= 10) {
       open = true;
       opens++;
       _quietRun = 0;

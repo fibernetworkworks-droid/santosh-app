@@ -222,6 +222,8 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
 
   String _speakable(String t) => t
       .replaceAll(RegExp(r'https?://\S+'), '')
+      .replaceAll(RegExp(r'[\u{1F000}-\u{1FAFF}\u{2190}-\u{2BFF}\u{FE0F}\u{200D}]', unicode: true), '')   // v0.181 emoji kabhi nahi bole jaate
+      .replaceAll(RegExp(r'\s*[-\u2022\u00B7\u2013]\s+'), ', ')   // v0.181 bullets bolne ki jagah ek chhota pause
       .replaceAll(RegExp(r'[*_#`>|]'), '')
       .replaceAll(RegExp(r'\n+'), '. ')
       .trim();

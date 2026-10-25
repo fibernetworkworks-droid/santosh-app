@@ -214,7 +214,7 @@ class CallSession extends ChangeNotifier {
     final call = LiveVoice(onEvent: _onEvent, onClosed: _onClosed);
     _call = call;
     final err = await call.start(
-        server: app.serverUrl, key: app.apiKey, conv: app.conversationId!, voice: app.voiceName, lang: app.language);
+        server: app.serverUrl, key: app.apiKey, conv: app.conversationId!, voice: app.voiceName, lang: app.voiceLang);
     if (err != null) {
       _call = null;
       inCall = false;

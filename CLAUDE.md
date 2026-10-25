@@ -7371,6 +7371,35 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
   `client_id` kwarg (test_chat_files, test_employee). Ritual: 0.172.0 (main.py + pubspec 0.172.0+201 +
   test_routines), cache-bust ?v=0.172.0. Deploy unchanged.
 
+## v0.181.0 HUMAN VOICE: the call now answers with feeling, faster, and in Hinglish from the first call
+- Owner: "LETS WORK ON VOICE TO VOICE --- FIRST FIND THE FAULTS --- THEN DEEP RESEARCH HOW ENTERPRISE LEVEL VOICE
+  TO VOICE WORKS --- WE WANT IT TO UNDERSTAND AND SPEAK LIKE A REAL HUMAN, WITH EMOTIONS AND LOW AND HIGH VOICE.
+  100% HUMAN LIKE VOICE SYSTEM." Full audit (30 faults found) + enterprise research (affective dialog, turn-taking,
+  backchanneling, sentence buffering); the voice files are NOT part of the Mera PC freeze.
+- Emotion — affective dialog is BACK: `live_config` sets `enable_affective_dialog` (the model HEARS her laugh /
+  stress / excitement and answers with a matching tone - the persona line "listen to how they sound and match it"
+  finally has a switch behind it). If this model generation refuses the field, the first connect fails, the call
+  retries immediately WITHOUT it and `_AFFECTIVE["ok"] = False` remembers for the process (no SETUP step burnt,
+  never a dead call); `voice_affective` (default on) is the master switch.
+- Emotion — the "ek second" ack clips got a real voice: 5 fixed lines -> 16 varied lines (thinking / found-it /
+  on-it flavours) spoken by `gemini-3.8-flash-tts` (was the old 2.5 preview model) with a warm, hurried delivery
+  prompt; the legacy model is the automatic per-clip fallback. Same prebuilt voice as the call, still cached once.
+- Speed — the pause that ends her turn is 550 ms (was 700; her own pauses still raise it, floor 420 ms), the call
+  now says "ready" sooner (yaad + kaamwatch + MCP context blocks load in parallel instead of three stacked awaits),
+  and the tuned 120 ms fast barge-in finally REACHES the phone: `ready.vad.fast` (VOICE_VAD_FAST 0.85) is read by
+  `LiveVoice` into `BargeGate.speechFast` - a very-sure voice opens the gate in 3 chunks instead of 6 - and the
+  post-talk gate is 150 ms (was 300), so an interjection right after his turn is no longer held back.
+- Language — fresh users' calls start in Hinglish: the app sends `voiceLang` (`vlang` pref, default `hi-IN`) to the
+  call instead of the UI language (`en-IN`); the UI stays English, and the server's learned language still wins
+  after her first calls (voicelang remembers whatever she really speaks).
+- Chat-speak fallback — `state._speakable` (new) and `voice_screen._speakable` strip links / emoji / bullets
+  before the phone TTS speaks (the old voice literally read "https://..." and emoji out loud; bullets become a
+  small comma pause).
+- Tests: `server/tests/test_v0181_human_voice.py` (affective on/off/refused-heal, ack variety + legacy fallback,
+  silence + floor pins, fast in vad_config). Ritual: 0.181.0 (main.py + pubspec 0.181.0+211 + cache-busts follow
+  APP_VERSION). Desktop untouched 1.3.1; Mera PC untouched.
+
+
 ## v0.180.0 REAL TIME: the phone sees every task as it happens (Mera PC + all her own tasks)
 - Owner: "HOOLA AI MUST SEE THE TASK IN REAL TIME NOT DELAYED. CURRENTLY EVERY TASK IS COMPLETED THEN AFTER FEW SEC
   IT GIVES REPLY. SOME TASKS TAKE LONG, SOME NEVER REPLIED. FIX THIS PERFECTLY... FOR MERA PC AS WELL AS FOR ALL OWN

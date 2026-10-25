@@ -67,11 +67,11 @@ def test_profile_sets_her_wait_and_style_hint(env):
     # a fast talker with short pauses
     _calls("t2", 1, 25, [200, 250, 300], words="haan bhej do na", wps=4.0)
     pv2 = vs.profile_view("t2")
-    assert pv2["silence_ms"] == 500 and "short bits" in " ".join(pv2["hint"])
+    assert pv2["silence_ms"] == 450 and "short bits" in " ".join(pv2["hint"])   # 300+150, floor 420 (v0.181)
     assert "'haan'" in " ".join(pv2["hint"]) and "'na'" in " ".join(pv2["hint"])
     # "beech mein kaat diya" -> waits longer next time
     vs.note_cut_off("t2")
-    assert vs.profile_view("t2")["silence_ms"] == 600
+    assert vs.profile_view("t2")["silence_ms"] == 550   # 450 + 100 cut-off (v0.181 floor)
     # too little speech: the default wait, no hint
     _calls("t3", 1, 3, [500])
     pv3 = vs.profile_view("t3")
@@ -121,7 +121,7 @@ def test_live_config_uses_her_wait_vocabulary_and_block(env, monkeypatch):
     assert "hoola_seekha add_word" in text
     # no style: the server's default wait, no vocabulary
     cfg2 = voice.live_config("Puck", "hi-IN", "ctx", None, langst=st)
-    assert cfg2.realtime_input_config.automatic_activity_detection.silence_duration_ms == 700
+    assert cfg2.realtime_input_config.automatic_activity_detection.silence_duration_ms == 550   # v0.181 default 700 -> 550
     assert cfg2.input_audio_transcription.custom_vocabulary is None
     # Gemini refusing the vocabulary drops only that field
     err = RuntimeError('Unknown name "customVocabulary" at \'setup.input_audio_transcription\': Cannot find field.')
@@ -174,14 +174,14 @@ def test_call_moves_her_to_chat_after_two_misses_and_learns_her_correction(env, 
     fx = voicestyle.fixes("default")
     assert fx and fx[0]["heard"] == "rames" and fx[0]["meant"] == "Rameshwar" and not fx[0]["confirmed"]
     assert voicestyle.profile_view("default")["turns"] == 3
-    assert configs[0].realtime_input_config.automatic_activity_detection.silence_duration_ms == 700
+    assert configs[0].realtime_input_config.automatic_activity_detection.silence_duration_ms == 550   # v0.181
 
 
 def test_api_tool_and_rating(env):
     from app import main, voicestyle
     from app.agent.tools import Ctx, HANDLERS
     with TestClient(main.app) as c:
-        assert c.get("/api/voice/learned").json()["profile"]["silence_ms"] == 700
+        assert c.get("/api/voice/learned").json()["profile"]["silence_ms"] == 550   # v0.181 default 700 -> 550
         w = c.post("/api/voice/learned/words", json={"term": "Kothrud"}).json()
         assert c.post("/api/voice/learned/words", json={"term": "1234567890"}).status_code == 400
         f = c.post("/api/voice/learned/fixes", json={"heard": "rames", "meant": "Rameshwar"}).json()
@@ -197,7 +197,7 @@ def test_api_tool_and_rating(env):
         c.put("/api/voice/learned", json={"learn": True})
         c.post("/api/voice/calls/abc/rating", json={"good": False, "reasons": ["cut_off"], "seconds": 60})
         c.post("/api/voice/calls/abc/rating", json={"good": False, "reasons": ["cut_off"], "seconds": 60})   # same call
-        assert voicestyle.profile_view("default")["silence_ms"] == 800
+        assert voicestyle.profile_view("default")["silence_ms"] == 650   # 550 + 100 cut-off (v0.181)
     h = HANDLERS["hoola_seekha"]
     out = asyncio.run(h(Ctx("default", conv), action="add_word", term="Bisleri"))
     assert out["ok"] and out["term"] == "Bisleri"

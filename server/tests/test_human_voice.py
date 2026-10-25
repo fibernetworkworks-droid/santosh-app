@@ -39,10 +39,10 @@ def test_persona_talks_like_a_person_not_a_helpdesk(env):
 def test_turn_taking_is_fast_and_tunable(env, monkeypatch):
     cfg = voice.live_config("Puck", "hi-IN", "", None)
     aad = cfg.realtime_input_config.automatic_activity_detection
-    assert aad.silence_duration_ms == 700 and aad.end_of_speech_sensitivity is None and aad.prefix_padding_ms == 300
+    assert aad.silence_duration_ms == 550 and aad.end_of_speech_sensitivity is None and aad.prefix_padding_ms == 300
     # noise and far voices must not count as the user starting to talk
     assert aad.start_of_speech_sensitivity == types.StartSensitivity.START_SENSITIVITY_LOW
-    assert cfg.enable_affective_dialog is None and cfg.proactivity is None
+    assert cfg.enable_affective_dialog is True and cfg.proactivity is None   # v0.181 affective dialog back (hears her tone)
     _gemini_env(monkeypatch, VOICE_SILENCE_MS=600, VOICE_END_SENSITIVITY="High", VOICE_PREFIX_PADDING_MS=200,
                 VOICE_START_SENSITIVITY="")
     aad = voice.live_config("Puck", "hi-IN", "", None).realtime_input_config.automatic_activity_detection

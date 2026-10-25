@@ -402,6 +402,14 @@ def _tool_specs() -> list[dict]:
 
 # Settings this Gemini model refused ("Unknown name ..."); learned at runtime and skipped from then on.
 UNSUPPORTED: set[str] = set()
+_AFFECTIVE = {"ok": True}   # v0.181 stays true until Gemini refuses enable_affective_dialog for this model generation
+
+
+def _affective_refused(e: BaseException) -> bool:
+    s = str(e).lower()
+    return "affect" in s or "enable_affective" in s
+
+
 # v0.108 how often a dropped connection came back as the SAME Gemini session vs a fresh one (Hoola Jaanch reads it)
 RESUME = {"resumed": 0, "fresh_after_drop": 0, "fresh_rebriefs": 0, "resume_failed": 0}
 
@@ -614,11 +622,15 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
                 prefix_padding_ms=min(max(st.voice_prefix_padding_ms, 0), 1000),
                 silence_duration_ms=min(max(int(silence), 300), 3000),
             )),
-        # no affective dialog / proactivity: gemini-3.8-live removed the first and always has the second on
         session_resumption=types.SessionResumptionConfig(handle=handle),
         context_window_compression=None if "compression" in without else
         types.ContextWindowCompressionConfig(sliding_window=types.SlidingWindow()),
     )
+    # v0.181 affective dialog is back: the model HEARS her tone (laugh, stress, excitement) and answers with a matching
+    # one - happy with her, gentle when she is low. If this model generation refuses the field, the first connect
+    # fails, _AFFECTIVE turns it off for the process and the call retries immediately without it (no SETUP step burnt).
+    if _AFFECTIVE["ok"] and get_settings().voice_affective and "enable_affective_dialog" in type(cfg).model_fields:
+        cfg.enable_affective_dialog = True
     for f in UNSUPPORTED:
         if f == "sliding_window":
             f = "context_window_compression"
@@ -763,7 +775,11 @@ def stats_summary(tenant: str) -> dict:
 
 
 # ---- "ek second": short clips in his own voice for a tool that runs while he is silent ----
-ACK_LINES = ["Haan, ek second.", "Achha, dekhta hoon.", "Ruko, check karta hoon.", "Hmm, ek minute.", "Haan, kar raha hoon."]
+ACK_LINES = ["Haan, ek second.", "Achha, dekhta hoon.", "Ruko, check karta hoon.", "Hmm, ek minute.", "Haan, kar raha hoon.",
+             "Ek minute, dekh leta hoon.", "Haan haan, ho raha hai.", "Achha achha, wait.", "Haan, mil gaya... ek second.",
+             "Arre haan, abhi karta hoon.", "Theek hai, dekh raha hoon.", "Haan bolo, main sun raha hoon... ek minute.",
+             "Hmm... sochne do, ek second.", "Haan, ho gaya... bas ek minute.", "Achha wait, khol raha hoon.",
+             "Haan, pakka. Ek minute deta hoon."]   # v0.181 5 -> 16: ek hi line har baar sunai deti thi; ab variety
 ACK_DIR = Path("data") / "voice_acks"
 _ACKS: dict[str, list[bytes]] = {}
 _ACK_BUSY: set[str] = set()
@@ -771,7 +787,8 @@ _ACK_LOCK = threading.Lock()
 
 
 def _ack_tts(text: str, voice: str, gender: str) -> bytes:
-    """One short line with Gemini's TTS, in the same prebuilt voice the call uses (24 kHz PCM16)."""
+    """One short line with Gemini's TTS, in the same prebuilt voice the call uses (24 kHz PCM16).
+    v0.181 the new gemini-3.8-flash-tts sounds far more human; if a model is unavailable / refuses, the legacy one speaks."""
     from google.genai import Client, types
     st = get_settings()
     who = "young Indian woman" if gender == "f" else "young Indian guy"
@@ -779,10 +796,17 @@ def _ack_tts(text: str, voice: str, gender: str) -> bytes:
         response_modalities=["AUDIO"],
         speech_config=types.SpeechConfig(voice_config=types.VoiceConfig(
             prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice))))
-    resp = Client(api_key=st.gemini_api_key).models.generate_content(
-        model=st.voice_ack_tts_model, config=cfg,
-        contents=f"Say this quickly and casually, like a {who} from Pune on a phone call, natural Hinglish accent, "
-                 f"half to yourself: {text}")
+    ask = (f"Say this quickly and casually, like a {who} from Pune on a phone call, natural Hinglish accent, "
+           f"half to yourself, with real feeling in the voice (warm, a little hurried): {text}")
+    resp = None
+    for model in (st.voice_ack_tts_model, "gemini-2.5-flash-preview-tts"):
+        try:
+            resp = Client(api_key=st.gemini_api_key).models.generate_content(model=model, config=cfg, contents=ask)
+            if any(getattr(p, "inline_data", None) and p.inline_data.data for p in resp.candidates[0].content.parts):
+                break
+        except Exception:
+            if model == "gemini-2.5-flash-preview-tts":
+                raise
     for part in resp.candidates[0].content.parts:
         if getattr(part, "inline_data", None) and part.inline_data.data:
             return part.inline_data.data
@@ -1814,24 +1838,30 @@ class Call:
         await self._setup_voiceid()
         try:
             while not self.closed.is_set():
-                context = life.context_block(self.ctx.tenant_id)
-                try:   # v0.108 the call knows what the chat knows: recent exchanges, work diary, summary, facts
-                    from . import yaad
-                    ymem = await asyncio.to_thread(yaad.voice_block, self.ctx.tenant_id, self.ctx.conversation_id)
-                    if ymem:
-                        context += "\n\n" + ymem
-                except Exception:
-                    log.exception("voice memory block failed")
-                try:   # v0.136 live state of her jobs (changes during the call arrive as quiet notes)
-                    from . import kaamwatch
-                    kb = await asyncio.to_thread(kaamwatch.block, self.ctx.tenant_id)
-                    if kb:
-                        context += "\n\n" + kb
-                except Exception:
-                    log.exception("voice kaam block failed")
+                # v0.181 the context blocks now load in PARALLEL (yaad + kaamwatch + MCP together): the call goes
+                # "ready" several hundred ms sooner instead of stacking three awaits before the Gemini connect.
+                async def _yaad_block() -> str:
+                    try:
+                        from . import yaad
+                        return await asyncio.to_thread(yaad.voice_block, self.ctx.tenant_id, self.ctx.conversation_id) or ""
+                    except Exception:
+                        log.exception("voice memory block failed")
+                        return ""
+                async def _kaam_block() -> str:
+                    try:
+                        from . import kaamwatch
+                        return await asyncio.to_thread(kaamwatch.block, self.ctx.tenant_id) or ""
+                    except Exception:
+                        log.exception("voice kaam block failed")
+                        return ""
                 if self._safe >= 1:
                     self._mcp_off = True      # v0.150 her MCP servers are listed, used through bazar_run
-                mcp_defs = await self._load_mcp()
+                ymem, kb, mcp_defs = await asyncio.gather(_yaad_block(), _kaam_block(), self._load_mcp())
+                context = life.context_block(self.ctx.tenant_id)
+                if ymem:
+                    context += "\n\n" + ymem
+                if kb:
+                    context += "\n\n" + kb
                 context += "\n\n" + self._mcp_block
                 started = loop.time()
                 err: Exception | None = None
@@ -1841,7 +1871,17 @@ class Call:
                         cfg = live_config(self.voice, self.lang, context, self.handle, self.name, self.gender, mcp_defs,
                                           langst=self.langst, style=self.style, safe=self._safe)
                         # a Gemini that does not answer must not freeze the call
-                        session = await asyncio.wait_for(stack.enter_async_context(connector(cfg)), timeout=20)
+                        try:
+                            session = await asyncio.wait_for(stack.enter_async_context(connector(cfg)), timeout=20)
+                        except Exception as connect_err:
+                            # v0.181 this model generation may refuse affective dialog: retry once without it, remember for the process
+                            if not (_AFFECTIVE["ok"] and _affective_refused(connect_err)):
+                                raise
+                            _AFFECTIVE["ok"] = False
+                            log.warning("affective dialog refused by %s: calls continue without it", get_settings().gemini_live_model)
+                            cfg = live_config(self.voice, self.lang, context, self.handle, self.name, self.gender, mcp_defs,
+                                              langst=self.langst, style=self.style, safe=self._safe)
+                            session = await asyncio.wait_for(stack.enter_async_context(connector(cfg)), timeout=20)
                         self._session = session
                         if first:
                             await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id, "vad": vad_config()})
