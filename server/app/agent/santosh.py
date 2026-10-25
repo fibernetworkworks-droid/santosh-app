@@ -517,6 +517,25 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
 
 _stopped: set[str] = set()
 
+# v0.173 steering: a message she took back while it was only queued (Hoola busy with the previous kaam) never
+# reaches the model. _active_msg remembers which message's turn is running right now, so a take-back can refuse
+# the one that already started (Rokiye is for that) and allow the ones still waiting behind the lock.
+_held: set[tuple[str, str]] = set()
+_active_msg: dict[str, str] = {}
+
+
+def hold_message(conversation_id: str, client_id: str) -> None:
+    if client_id:
+        _held.add((conversation_id, client_id))
+
+
+def message_running(conversation_id: str, client_id: str) -> bool:
+    """True when this exact message's turn is the one running now (take-back too late — Rokiye instead)."""
+    from .. import livereply
+    return _locks[conversation_id].locked() and client_id != "" and _active_msg.get(conversation_id, "") == client_id \
+        or (livereply.current(conversation_id) is not None and client_id != ""
+            and _active_msg.get(conversation_id, "") == client_id)
+
 
 def _tag(live, new_block: bool = False) -> dict:
     """v0.161 `turn` / `seg` of the live reply for a message (nothing when streaming is off: messages as before)."""
@@ -580,8 +599,15 @@ def _work(conversation_id: str, call_id: str, tool: str, label: str, phase: str,
 
 
 async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None = None, voice: bool = False,
-                   context: str = "", actor: str = "owner", place: str = "") -> str:
-    """Handle one user message end to end. Returns Santosh's final reply text."""
+                   context: str = "", actor: str = "owner", place: str = "", client_id: str = "") -> str:
+    """Handle one user message end to end. Returns Santosh's final reply text.
+    v0.173 `client_id` (the console's steering): a message she took back while queued returns at once — nothing
+    runs, nothing is published (the take-back endpoint already hid the bubble)."""
+    if client_id and (conversation_id, client_id) in _held:
+        _held.discard((conversation_id, client_id))
+        return ""
+    # _active_msg is claimed only when the turn actually holds the lock (below): a message still waiting behind
+    # it stays take-back-able, which is the whole point of the receipt.
     settings = get_settings()
     tenant_id = tenant_id or settings.tenant_id
     ctx = Ctx(tenant_id=tenant_id, conversation_id=conversation_id, actor=actor or "owner")
@@ -630,6 +656,11 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         if got and not got["queued"]:
             return got["text"]
     async with lock:
+        if client_id and (conversation_id, client_id) in _held:   # taken back while it waited behind this lock
+            _held.discard((conversation_id, client_id))
+            return ""
+        if client_id:
+            _active_msg[conversation_id] = client_id   # v0.173 this message's turn runs now (take-back refuses it)
         notes = _pending_worker_notes(conversation_id)
         from . import quick as _quick
         notes += _quick.take_notes(conversation_id)

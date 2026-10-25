@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.171.0"   # v0.171 console v2 transcript power: thinking cards, step args, export (bump with pubspec)
+APP_VERSION = "0.173.0"   # v0.173 composer steering: queue receipts + take-back, drafts, slash, gauge (bump with pubspec)
 
 
 @asynccontextmanager
@@ -94,7 +94,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.172.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version=APP_VERSION, lifespan=lifespan)   # v0.170: one constant, /healthz agrees
 
 
 @app.middleware("http")
@@ -427,11 +427,14 @@ async def post_message(conversation_id: str, body: NewMessage, background: Backg
     context = chatfiles.context(tenant, body.files) if body.files else ""
     shown = chatfiles.shown(tenant, body.files) if body.files else []
     bus.publish(conversation_id, "message", {"role": "user", "text": body.text, "source": "user",
+                                             **({"client_id": body.client_id} if body.client_id else {}),
                                              **({"files": shown} if shown else {})})
     if context:
-        background.add_task(run_turn, conversation_id, body.text, tenant, body.voice, context=context)
+        background.add_task(run_turn, conversation_id, body.text, tenant, body.voice, context=context,
+                            client_id=body.client_id or "")   # v0.173 steering: take-back while queued
     else:
-        background.add_task(run_turn, conversation_id, body.text, tenant, body.voice)
+        background.add_task(run_turn, conversation_id, body.text, tenant, body.voice,
+                            client_id=body.client_id or "")
     return {"accepted": True}
 
 
@@ -612,8 +615,8 @@ def chat_export(conversation_id: str, fmt: str = "md", tenant: str = Depends(cur
         at = when(e.created_at.isoformat() if e.created_at else None)
         if e.kind == "message":
             text = str(p.get("text") or "").strip()
-            if not text or p.get("replaced_by"):
-                continue                                  # an empty shell or the old retry branch: the new one is below
+            if not text or p.get("replaced_by") or p.get("taken_back"):
+                continue                  # empty shell, the old retry branch, or a message she took back
             who = "Aap" if p.get("role") == "user" else avatar
             files = p.get("files") or []
             head = f"## {who} · {at}"
@@ -749,6 +752,33 @@ def chat_edit(conversation_id: str, body: ChatEditIn, background: BackgroundTask
 class ChatBranchIn(BaseModel):
     group: int
     index: int
+
+
+class TakebackIn(BaseModel):
+    client_id: str = Field(min_length=8, max_length=64)
+
+
+@app.post("/api/conversations/{conversation_id}/takeback", dependencies=[Depends(require_key)])
+def chat_takeback(conversation_id: str, body: TakebackIn, tenant: str = Depends(current_tenant)):
+    """v0.173 she takes back a message that is still only queued (Hoola busy with the previous kaam): it never
+    reaches the model and its bubble leaves the chat. The turn already running with it cannot be taken back
+    (Rokiye is for that)."""
+    _conv_or_404(conversation_id, tenant)
+    from .agent import santosh
+    if santosh.message_running(conversation_id, body.client_id):
+        raise HTTPException(409, "Yeh message chal padi hai. Rokne ke liye 'Rokiye' dabaiye.")
+    from .db import Event
+    with session() as s:
+        rows = s.scalars(select(Event).where(Event.conversation_id == conversation_id, Event.kind == "message")
+                         .order_by(Event.id.desc()).limit(80)).all()
+        hit = next((e for e in rows if isinstance(e.payload, dict) and e.payload.get("client_id") == body.client_id
+                    and e.payload.get("role") == "user" and not e.payload.get("taken_back")), None)
+        if hit is None:
+            raise HTTPException(404, "Woh message nahi mili (shayad pehle hi le li gayi).")
+        hit.payload = {**hit.payload, "taken_back": True}
+        eid = hit.id
+    santosh.hold_message(conversation_id, body.client_id)
+    return {"taken": True, "event_id": eid}
 
 
 @app.post("/api/conversations/{conversation_id}/branch", dependencies=[Depends(require_key)])

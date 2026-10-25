@@ -278,8 +278,9 @@ def _collapse(rows) -> list[dict]:
     """Newest-first rows -> items in story order: {key, first (Event), latest (Event)}."""
     items: dict[str, dict] = {}
     for e in rows:
-        if e.kind == "message" and isinstance(e.payload, dict) and e.payload.get("replaced_by"):
+        if e.kind == "message" and isinstance(e.payload, dict) and (e.payload.get("replaced_by") or e.payload.get("taken_back")):
             continue          # v0.161 a reply she retried: kept as a branch, not part of the story
+            # v0.173 a message she took back while queued: it never reached the model, it leaves the chat too
         k = card_key(e.kind, e.payload, e.id)
         it = items.get(k)
         if it is None:

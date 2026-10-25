@@ -221,7 +221,7 @@ def test_team_task_over_hoola_network(env, monkeypatch):
     assert len(tasks) == 1 and tasks[0]["who"] == "Kunal" and tasks[0]["status"] == "pending"
     seen = {}
 
-    async def fake_turn(conv, text, tenant_id=None, voice=False, context="", actor="owner"):
+    async def fake_turn(conv, text, tenant_id=None, voice=False, context="", actor="owner", **_):
         seen.update(actor=actor, text=text)
         return "Kal 4 appointments hain: 10, 11:30, 3 aur 5 baje. Patient ka number 9876543210."
 

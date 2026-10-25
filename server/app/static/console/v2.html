@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/static/console/v2.css?v=0.171.0">
+<link rel="stylesheet" href="/static/console/v2.css?v=0.173.0">
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -116,6 +116,8 @@
 </div>
 
 <form class="box" id="composer" autocomplete="off">
+  <div class="slash gl" id="slash" role="listbox" aria-label="Commands" hidden></div>
+  <div class="gauge" id="gauge" aria-hidden="true" hidden><i></i></div>
   <div class="files" id="files"></div>
   <textarea id="msg" rows="1" placeholder="Kuch bhi kahiye… bill ka photo, GST, reel, website" aria-label="Message"></textarea>
   <div class="row">
@@ -123,20 +125,20 @@
     <input type="file" id="fileIn" multiple hidden>
     <button type="button" class="ib" id="toolsBtn" aria-label="Everything Hoola can do"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></button>
     <span class="who"><span class="aname">Santosh</span> · Hinglish</span>
-    <button type="button" class="ib" id="micBtn" aria-label="Live voice call"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <button type="button" class="ib" id="micBtn" aria-label="Dictation" title="Bolo karke likhiye"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
     <button type="submit" class="ib send" id="sendBtn" aria-label="Send" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
   </div>
 </form>
 <div class="toast" id="toast" role="status" hidden></div>
 <noscript><p style="padding:40px;text-align:center">Hoola Console ke liye JavaScript chahiye.</p></noscript>
-<script src="/static/console/kaam.js?v=0.171.0"></script>
+<script src="/static/console/kaam.js?v=0.173.0"></script>
 <script src="/static/console/vendor/qrcode.js?v=1.4.4"></script>
-<script src="/static/console/build.js?v=0.171.0"></script>
-<script src="/static/console/md.js?v=0.171.0"></script>
-<script src="/static/console/stream.js?v=0.171.0"></script>
-<script src="/static/console/chatlist.js?v=0.171.0"></script>
-<script src="/static/console/panel.js?v=0.171.0"></script>
-<script src="/static/console/projects.js?v=0.171.0"></script>
-<script src="/static/console/v2.js?v=0.171.0"></script>
+<script src="/static/console/build.js?v=0.173.0"></script>
+<script src="/static/console/md.js?v=0.173.0"></script>
+<script src="/static/console/stream.js?v=0.173.0"></script>
+<script src="/static/console/chatlist.js?v=0.173.0"></script>
+<script src="/static/console/panel.js?v=0.173.0"></script>
+<script src="/static/console/projects.js?v=0.173.0"></script>
+<script src="/static/console/v2.js?v=0.173.0"></script>
 </body>
 </html>

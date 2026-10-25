@@ -7335,3 +7335,32 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
   the tool-turn test pins auto-title off instead of racing the call count.
 - Ritual: version 0.171.0 (main.py `APP_VERSION` — now a constant used by both FastAPI and /healthz — +
   pubspec 0.171.0+200 + test_routines assert). Deploy is unchanged: git pull + cp server/app + pm2 restart.
+
+## v0.173.0 Console v2 composer steering, phase 3 of the console rebuild: queued messages show receipts and can be taken back, drafts, slash commands, the kharcha line, dictation, smart picture shrink
+- Take-back ("Wapas lo"): a message sent while Hoola is busy is already queued by the server (the turn waits on
+  the conversation lock, the quick lane may answer beside it). Now the console shows a receipt on the bubble —
+  "⏳ queue mein" with a Wapas lo button — and the server makes the take-back REAL: POST
+  `/api/conversations/{id}/takeback {client_id}` marks the stored message event `taken_back: True` (the story, the
+  Markdown export and even a reload stop showing it; the JSON backup keeps the raw truth) and holds the client_id
+  in `santosh._held`, so the queued `run_turn` (which now carries `client_id` through `post_message`) returns at
+  the door — before the quick lane and again inside the lock. A turn already running with that message refuses
+  with 409 (`_active_msg` + the lock say so; Rokiye is for that); a second take-back is a polite 404. The chat
+  event carries `client_id` so the console matches its bubble exactly (USER_ECHO text matching stays as fallback).
+  Receipts flip by themselves: a `source:"quick"` answer turns the chip into "⚡ turant jawab alag se diya",
+  typing-off turns queued chips into "✓ bhej diya".
+- Drafts: every chat keeps her unfinished words (localStorage `hoola.draft.<conv>`, 300 ms debounce), restored
+  when she returns to the chat, cleared when sent.
+- Slash commands: "/" at the start of the composer opens a Hinglish command menu — /nayi /dhoondo /export /rok
+  /aaj /kaam /baat /main — filter as she types, ↑↓ + Enter runs, Tab completes, Esc closes; a "/word" that matches
+  nothing just sends as a normal message.
+- Kharcha gauge: one thin brand-gradient line on the composer's top edge, this month's AI spend vs her limit from
+  /api/usage (5-min refresh; warn ≥ 80% saffron, over = red; hidden when no limit is set).
+- Dictation: the composer mic now speaks hi-IN into the box (webkitSpeechRecognition, interim + final, pulsing
+  red while listening; the live call stays on Baat). Browsers without speech recognition keep the old jump to
+  Baat. Picture shrink: picked / dropped / pasted images larger than 1600 px are downscaled on a canvas before
+  upload (PNG stays PNG, others JPEG 0.9, only when it actually helps) — a toast says how much was saved.
+- Tests: `tests/test_v173_composer.py` (4) — the message event carries client_id; take-back hides the queued
+  message from story + export (JSON keeps the raw truth) and run_turn with the held id returns without a single
+  model call; 409 while that message's turn runs; 404 twice / unknown id. Two test stubs grew the additive
+  `client_id` kwarg (test_chat_files, test_employee). Ritual: 0.172.0 (main.py + pubspec 0.172.0+201 +
+  test_routines), cache-bust ?v=0.172.0. Deploy unchanged.

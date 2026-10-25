@@ -583,3 +583,27 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 .xmenu button{text-align:left;padding:9px 12px;border-radius:10px;font-size:13.5px;font-weight:700;color:var(--mut)}
 .xmenu button:hover{background:var(--glass2);color:var(--ink)}
 @media (max-width:560px){.xmenu{right:6px;min-width:170px}}
+
+/* ---------- v0.173 composer steering: receipts, slash menu, kharcha gauge, dictation ---------- */
+.rq{display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:4px 10px;border-radius:999px;background:rgba(124,92,255,.14);border:1px solid rgba(124,92,255,.3);color:var(--lit);font-size:11.5px;font-weight:700}
+.rq.ok{background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.3);color:var(--ok)}
+.rqx{font-size:11.5px;font-weight:800;color:var(--saffron2);padding:2px 8px;border-radius:999px;background:rgba(255,177,92,.12);border:1px solid rgba(255,177,92,.3)}
+.rqx:hover{background:rgba(255,177,92,.22)}
+.mu.editing .rq{display:none}
+
+.slash{position:absolute;bottom:calc(100% + 8px);left:0;right:0;z-index:55;padding:6px;display:flex;flex-direction:column;max-height:284px;overflow-y:auto;box-shadow:var(--sh)}
+.slash button{display:flex;align-items:center;gap:10px;text-align:left;padding:9px 12px;border-radius:12px;font-size:13.5px;color:var(--mut)}
+.slash button b{color:var(--saffron2);font-weight:800;min-width:74px}
+.slash button span{color:var(--ink);font-weight:700}
+.slash button em{margin-left:auto;font-style:normal;font-size:11.5px;color:var(--dim)}
+.slash button[aria-selected="true"]{background:var(--glass2)}
+.slash button:hover{background:var(--glass2)}
+.box{position:relative}
+
+.gauge{position:absolute;top:0;left:14px;right:14px;height:3px;border-radius:999px;background:rgba(244,242,255,.08);overflow:hidden;opacity:.9}
+.gauge i{display:block;height:100%;width:0;border-radius:999px;background:var(--grad);transition:width .6s ease}
+.gauge.warn i{background:linear-gradient(90deg,#FFD9A8,#FF9A3C)}
+.gauge.over i{background:linear-gradient(90deg,#F87171,#FF9A3C)}
+
+#micBtn.on{color:var(--bad);background:rgba(248,113,113,.14);border-radius:12px;animation:micpulse 1.2s ease-in-out infinite}
+@keyframes micpulse{0%,100%{opacity:1}50%{opacity:.55}}

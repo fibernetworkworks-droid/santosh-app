@@ -267,7 +267,7 @@ def test_export_json_keeps_every_stored_event(env, monkeypatch):
         r = c.get(f"/api/conversations/{conv}/export?fmt=json", headers=H)
         assert r.status_code == 200 and "application/json" in r.headers["content-type"]
         data = json.loads(r.text)
-        assert data["conversation"] == conv and data["version"] == "0.171.0"
+        assert data["conversation"] == conv and data["version"] == "0.173.0"   # stamps the server's APP_VERSION
         assert len(data["events"]) == len(rows)
         kinds = [e["kind"] for e in data["events"]]
         assert "message" in kinds and "step" in kinds and "typing" not in kinds

@@ -17,7 +17,7 @@ def test_any_file_attaches_and_reaches_hoola(env, monkeypatch):
     from app import main
     seen = {}
 
-    async def fake_turn(conv, text, tenant=None, voice=False, context=""):
+    async def fake_turn(conv, text, tenant=None, voice=False, context="", client_id=""):   # v0.172 steering kwarg
         seen["text"], seen["context"] = text, context
         return "ok"
     monkeypatch.setattr(main, "run_turn", fake_turn)

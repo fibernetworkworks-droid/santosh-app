@@ -142,6 +142,7 @@ async function enter() {
   const fromUrl = (location.pathname.match(/^\/console\/c\/([^/?#]+)/) || [])[1];
   const firstChat = async () => list[0]?.id || (await api('POST', '/api/conversations')).id;
   if (CH) accountStream();
+  loadGauge(); GAUGE_T = setInterval(loadGauge, 300000);   // v0.173 the kharcha line stays honest
   if (CH && fromUrl) await openConv(decodeURIComponent(fromUrl), false, {noPush: true, fallback: async () => {
     toast('Woh chat nahi mili (shayad delete ho gayi). Haal ki chat khol raha hoon.'); await openConv(await firstChat()); }});
   else await openConv(await firstChat());
@@ -185,6 +186,7 @@ function landing(on) {
 }
 let TURN = null;          // the open Hoola turn: {bd, tools, tl, text, steps:{}}
 let USER_ECHO = [];       // texts she sent from here (their echo from the server is not drawn twice)
+const RCPTS = new Map();  // v0.173 client_id -> {el, chip} receipts of messages sent while Hoola was busy
 
 let SINK = col;           // where new rows go (an off-screen box while an older page is drawn above)
 let STEPBUF = null;       // v0.171 replay: consecutive step events fold into one closed group, like a live turn
@@ -212,12 +214,37 @@ function flushStepBuf() {
   else STEPBUF.querySelector('.sm').textContent = `${n} kadam${n > 1 ? '' : ''}`;
   STEPBUF = null;
 }
-function userBubble(text, files, eid) {
+function userBubble(text, files, eid, cid) {
   const d = document.createElement('div'); d.className = 'mu';
   d.innerHTML = (files?.length ? `<div class="att">${files.map(f => `<span class="chip">📎 ${esc(f.name || f)}</span>`).join('')}</div>` : '') + `<span class="mut">${esc(text)}</span>`;
+  if (cid) d.dataset.cid = cid;
   if (eid && !files?.length) attachEdit(d, text, eid);
   SINK.appendChild(d); if (SINK === col) scrollDown(true); TURN = null; return d;
 }
+/* v0.173 receipts: a message sent while Hoola works shows what became of it — queue mein (take-back possible),
+   turant jawab (the quick lane answered beside the running kaam), bhej diya (the queued turn took it). */
+function receipt(d, cid, state) {
+  const R = RCPTS.get(cid) || {};
+  R.el = d; R.state = state; RCPTS.set(cid, R);
+  d.querySelector('.rq')?.remove();
+  if (state === 'queue') {
+    d.insertAdjacentHTML('beforeend', `<span class="rq">⏳ queue mein — Hoola ke is kaam ke baad chalega <button type="button" class="rqx">Wapas lo</button></span>`);
+    d.querySelector('.rqx').addEventListener('click', async e => {
+      e.stopPropagation();
+      try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/takeback`, {client_id: cid});
+        d.style.transition = 'opacity .25s, transform .25s'; d.style.opacity = '0'; d.style.transform = 'translateY(6px)';
+        setTimeout(() => d.remove(), 240); RCPTS.delete(cid); toast('Wapas le liya — Hoola tak pahunchi hi nahi.'); }
+      catch (er) { receipt(d, cid, 'sent'); toast(er.status === 409 ? 'Yeh chal padi hai — Rokiye dabaiye.' : er.message, er.status !== 200); }
+    });
+  } else if (state === 'quick') {
+    d.insertAdjacentHTML('beforeend', `<span class="rq ok">⚡ turant jawab alag se diya</span>`);
+    setTimeout(() => { d.querySelector('.rq')?.remove(); RCPTS.delete(cid); }, 6000);
+  } else {
+    d.insertAdjacentHTML('beforeend', `<span class="rq ok">✓ bhej diya</span>`);
+    setTimeout(() => { d.querySelector('.rq')?.remove(); RCPTS.delete(cid); }, 3000);
+  }
+}
+function receiptUpdate(cid, state) { const R = RCPTS.get(cid); if (R && R.state === 'queue') receipt(R.el, cid, state); }
 function attachEdit(d, text, eid) {   // v0.171 her message gets a hover toolbar: Copy + Edit (a new version from here)
   d.dataset.eid = eid;
   if (!CH || d.querySelector('.utbar')) return;
@@ -344,7 +371,9 @@ let TYPING = null;
 function typing(on) {
   $('#stopBtn').hidden = !on;
   if (on) { if (!TYPING) { const t = turn(); TYPING = document.createElement('div'); TYPING.className = 'typing'; TYPING.innerHTML = '<i></i><i></i><i></i>'; t.bd.appendChild(TYPING); scrollDown(); } live('run'); }
-  else { TYPING?.remove(); TYPING = null; closeTurnTools(); live(QUEUE.length ? 'ask' : 'idle'); TURN = null; }
+  else { TYPING?.remove(); TYPING = null; closeTurnTools();
+    for (const [cid, R] of [...RCPTS]) if (R.state === 'queue') receiptUpdate(cid, 'sent');   // v0.173 the queued turn took them
+    live(QUEUE.length ? 'ask' : 'idle'); TURN = null; }
 }
 
 /* ================= thinking card (v0.171): the model's reasoning while it thinks — Claude thinking /
@@ -654,6 +683,11 @@ function onEvent(ev) {
       return; }
     case 'message':
       if (p.role === 'user') {
+        if (p.client_id && col.querySelector(`.mu[data-cid="${CSS.escape(p.client_id)}"]`)) {
+          const b = col.querySelector(`.mu[data-cid="${CSS.escape(p.client_id)}"]`);   // her own send, echoed back
+          if (!b.dataset.eid && !p.files?.length) attachEdit(b, p.text, ev.id); else b.dataset.eid = ev.id;
+          return;
+        }
         const i = USER_ECHO.indexOf(p.text);
         if (i > -1) {   // her own send, already drawn: it now gets its event id (Edit, search jumps)
           USER_ECHO.splice(i, 1); const b = [...col.querySelectorAll('.mu:not([data-eid])')].pop();
@@ -664,6 +698,10 @@ function onEvent(ev) {
       }
       if (p.source === 'greeting' && !col.children.length) return;        // the landing greets instead
       landing(false);
+      if (p.source === 'quick') {   // v0.173 the quick lane answered beside the running kaam: flip the receipt
+        const qr = [...RCPTS].reverse().find(([, R]) => R.state === 'queue');
+        if (qr) receiptUpdate(qr[0], 'quick');
+      }
       if (p.turn && window.HoolaStream) { replyMessage(p, false, ev.id); const R = REPLIES.get(p.turn); if (R?.done) drawActs(R); return; }
       hoolaText(p.text || '', p.source, ev.id); return;
     case 'typing': typing(!!p.on); return;
@@ -698,6 +736,7 @@ async function openConv(id, fresh, opts = {}) {
   LOADING = true; PENDING = [];
   CONV = id; col.innerHTML = ''; CARDS.clear(); B?.reset(); TURN = null; TYPING = null; USER_ECHO = []; $('#stopBtn').hidden = true;
   REPLIES.forEach(R => R.segs.forEach(S => S.pacer.reset())); REPLIES.clear(); LAST_TURN = null; STICK = true;
+  RCPTS.clear();   // v0.173 receipts belong to their chat
   for (const K of THINKS.values()) clearInterval(K.timer);   // v0.171 the old chat's Soch timers stop with it
   THINKS.clear(); STEPS_ARGS.clear(); STEPS_DATA.clear();
   $$('#recents .rc').forEach(b => b.toggleAttribute('aria-current', b.dataset.conv === id));
@@ -707,6 +746,10 @@ async function openConv(id, fresh, opts = {}) {
     CH.draw();
   }
   if (VIEW === 'chat') $('#ttl').textContent = chatFolder();
+  slashClose();
+  msg.value = store.get('hoola.draft.' + id) || '';   // v0.173 her unfinished words come back with the chat
+  msg.style.height = 'auto'; msg.style.height = Math.min(200, msg.scrollHeight) + 'px';
+  $('#sendBtn').disabled = !msg.value.trim() && !FILES.length;
   // skeleton rows while the chat loads (not a spinner)
   col.innerHTML = '<div class="skel-chat" aria-hidden="true"><i class="skel r"></i><i class="skel l"></i><i class="skel l s"></i><i class="skel r s"></i><i class="skel l"></i></div>';
   // the chat in order from the server: messages and each card once where it happened (latest state)
@@ -828,14 +871,80 @@ addEventListener('popstate', () => {
 
 /* ================= sending ================= */
 let FILES = [];   // {file_id, name}
-msg.addEventListener('input', () => { msg.style.height = 'auto'; msg.style.height = Math.min(200, msg.scrollHeight) + 'px'; $('#sendBtn').disabled = !msg.value.trim() && !FILES.length; });
-msg.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); composer.requestSubmit(); } });
+let DRAFT_T = 0;
+msg.addEventListener('input', () => { msg.style.height = 'auto'; msg.style.height = Math.min(200, msg.scrollHeight) + 'px'; $('#sendBtn').disabled = !msg.value.trim() && !FILES.length;
+  clearTimeout(DRAFT_T); DRAFT_T = setTimeout(() => {   // v0.173 every chat keeps her unfinished words
+    if (CONV) { if (msg.value.trim()) store.set('hoola.draft.' + CONV, msg.value); else store.del('hoola.draft.' + CONV); }
+  }, 300);
+  slashMaybe(); });
+msg.addEventListener('keydown', e => {
+  if (SLASH.open && ['ArrowUp', 'ArrowDown', 'Tab'].includes(e.key)) { e.preventDefault(); SLASH.nav(e.key === 'ArrowUp' ? -1 : 1, e.key === 'Tab'); return; }
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (SLASH.open && SLASH.pick()) return; composer.requestSubmit(); }
+});
+
+/* ================= slash commands (v0.172): "/" in the composer runs the console, Hinglish ================= */
+const SLASH = {open: false, items: [], sel: 0};
+const SLASH_CMDS = [
+  ['nayi', 'Nayi chat', 'nayi kholo', () => $('#newChat').click()],
+  ['dhoondo', 'Chats dhoondo', 'Ctrl K wala search', () => CH?.openSearch()],
+  ['export', 'Chat export', 'Markdown ya JSON file', () => $('#exportBtn').click()],
+  ['rok', 'Rokiye', 'chalta kaam rok do', () => $('#stopBtn').click()],
+  ['aaj', 'Aaj', 'aaj ka din', () => go('aaj')],
+  ['kaam', 'Saare kaam', 'sab kuch jo Hoola karta hai', () => go('kaam')],
+  ['baat', 'Baat', 'live voice call', () => go('baat')],
+  ['main', 'Main', 'profile, password, kharcha', () => go('main')],
+];
+function slashMaybe() {
+  const v = msg.value;
+  const m = v.startsWith('/') && !v.slice(1).includes(' ');
+  if (!m) { slashClose(); return; }
+  const q = v.slice(1).toLowerCase();
+  SLASH.items = SLASH_CMDS.filter(c => !q || c[0].startsWith(q) || c[1].toLowerCase().includes(q));
+  const box = $('#slash');
+  if (!SLASH.items.length) { slashClose(); return; }
+  SLASH.open = true; SLASH.sel = 0;
+  box.hidden = false;
+  box.innerHTML = SLASH.items.map((c, i) => `<button type="button" role="option" aria-selected="${i === 0}" data-si="${i}"><b>/${esc(c[0])}</b><span>${esc(c[1])}</span><em>${esc(c[2])}</em></button>`).join('');
+}
+function slashClose() { SLASH.open = false; const b = $('#slash'); if (b) { b.hidden = true; b.innerHTML = ''; } }
+SLASH.pick = () => {
+  if (!SLASH.open || !SLASH.items.length) return false;
+  SLASH.items[SLASH.sel][3]();
+  msg.value = ''; msg.dispatchEvent(new Event('input')); slashClose();
+  return true;
+};
+SLASH.nav = (d, tab) => {
+  if (!SLASH.open) return;
+  SLASH.sel = (SLASH.sel + d + SLASH.items.length) % SLASH.items.length;
+  $$('#slash [data-si]').forEach(b => b.setAttribute('aria-selected', +b.dataset.si === SLASH.sel));
+  if (tab) { const it = SLASH.items[SLASH.sel]; msg.value = '/' + it[0]; }   // Tab completes, does not run
+  $$('#slash [data-si]')[SLASH.sel]?.scrollIntoView({block: 'nearest'});
+};
+document.addEventListener('click', e => { const b = e.target.closest('#slash [data-si]'); if (b) { SLASH.sel = +b.dataset.si; SLASH.pick(); } else if (!e.target.closest('#slash') && e.target !== msg) slashClose(); });
+
+/* ================= kharcha gauge (v0.172): this month's AI spend as one thin line on the composer ================= */
+let GAUGE_T = 0;
+async function loadGauge() {
+  try {
+    const r = await api('GET', '/api/usage?days=1');
+    const m = r.month || {};
+    const g = $('#gauge');
+    if (!m.limit_usd) { g.hidden = true; return; }   // no limit set: nothing to gauge
+    g.hidden = false;
+    g.className = 'gauge' + (m.over ? ' over' : m.warn ? ' warn' : '');
+    g.querySelector('i').style.width = Math.max(1.5, Math.min(100, m.pct || 0)) + '%';
+    g.title = `Is mahine ka AI kharcha: $${m.spent_usd.toFixed(2)} / $${m.limit_usd.toFixed(2)} (${Math.round(m.pct)}%)${m.over ? ' — seema paar' : ''}`;
+  } catch {}
+}
 composer.addEventListener('submit', async e => {
   e.preventDefault(); const text = msg.value.trim(); if ((!text && !FILES.length) || !CONV) return;
   if (FILES.some(f => !f.file_id)) return toast('File abhi upload ho rahi hai…');
   const files = FILES.splice(0); drawFiles(); msg.value = ''; msg.style.height = 'auto'; $('#sendBtn').disabled = true;
+  store.del('hoola.draft.' + CONV);   // v0.173 the draft went out with the message
   const body = {text: text || 'Ye file dekho', client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), files: files.map(f => f.file_id)};
-  landing(false); userBubble(body.text, files); USER_ECHO.push(body.text);
+  landing(false); const bbl = userBubble(body.text, files, null, body.client_id);
+  if (TYPING) receipt(bbl, body.client_id, 'queue');   // v0.173 steering: she sees it is queued and can take it back
+  USER_ECHO.push(body.text);
   for (let i = 0; i < 3; i++) {
     try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/messages`, body); loadRecents(); return; }
     catch (er) { if (i === 2 || er.status === 401 || er.status === 400) { toast('Bheja nahi gaya: ' + er.message, true); msg.value = text; return; } await new Promise(r => setTimeout(r, 800 * (i + 1))); }
@@ -850,11 +959,25 @@ async function addFiles(list) {     // paperclip, drag and drop, pasted screensh
   if (picked.length) msg.focus();
   for (const f of picked) {
     if (f.size > 25 * 1024 * 1024) { toast(`${f.name}: 25 MB se badi file nahi chalegi.`, true); continue; }
-    const item = {name: f.name, file_id: null}; FILES.push(item); drawFiles();
-    try { const fd = new FormData(); fd.append('file', f, f.name); const r = await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/files`, undefined, {form: fd}); item.file_id = r.file_id; }
-    catch (er) { FILES.splice(FILES.indexOf(item), 1); toast(`${f.name}: ${er.message}`, true); }
+    const up = await shrink(f);   // v0.173 big pictures shrink here: upload fast, phone data saved
+    if (up !== f) toast(`${f.name}: chhota kar diya (${Math.round(f.size / 1024)} KB → ${Math.round(up.size / 1024)} KB).`);
+    const item = {name: up.name, file_id: null}; FILES.push(item); drawFiles();
+    try { const fd = new FormData(); fd.append('file', up, up.name); const r = await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/files`, undefined, {form: fd}); item.file_id = r.file_id; }
+    catch (er) { FILES.splice(FILES.indexOf(item), 1); toast(`${up.name}: ${er.message}`, true); }
     drawFiles();
   }
+}
+async function shrink(f) {
+  if (!f.type.startsWith('image/') || f.type === 'image/gif' || !window.createImageBitmap) return f;
+  const img = await createImageBitmap(f).catch(() => null);
+  if (!img || (img.width <= 1600 && img.height <= 1600)) return f;
+  const k = 1600 / Math.max(img.width, img.height);
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  const blob = await new Promise(r => c.toBlob(r, f.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.9));
+  if (!blob || blob.size >= f.size) return f;
+  return new File([blob], f.name, {type: blob.type});
 }
 // drag and drop anywhere on the chat; a screenshot pasted into the composer
 const chatView = $('#v-chat'); let dragN = 0;
@@ -877,6 +1000,7 @@ document.addEventListener('keydown', e => {
   if (e.key === '/' && !typingIn && !e.ctrlKey && !e.metaKey && !e.altKey && !$('#app').hidden) { e.preventDefault(); go('chat'); msg.focus(); return; }
   if (e.key === 'Escape' && !document.querySelector('.sbg, .rmenu') && !$('#stopBtn').hidden && (!typingIn || e.target === msg)) { e.preventDefault(); $('#stopBtn').click(); }
   if (e.key === 'Escape' && !$('#exportMenu').hidden) $('#exportMenu').hidden = true;
+  if (e.key === 'Escape' && SLASH.open) { e.preventDefault(); slashClose(); }
 });
 
 /* ================= export (v0.171): this chat as a Markdown file to read, or JSON to keep ================= */
@@ -899,8 +1023,34 @@ function drawFiles() {
   $('#sendBtn').disabled = !msg.value.trim() && !FILES.length;
 }
 $('#files').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (b) { FILES.splice(+b.dataset.rm, 1); drawFiles(); } });
-$('#micBtn').addEventListener('click', () => go('baat'));
+$('#micBtn').title = 'Bolo karke likhiye (dictation)';
 $('#toolsBtn').addEventListener('click', () => go('kaam'));
+
+/* v0.173 dictation in the composer: mic button speaks hi-IN into the box (Chrome / Android); the live call
+   stays on Baat. No speech recognition in this browser = the old jump to Baat, with a one-line why. */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let DICT = null;
+$('#micBtn').addEventListener('click', () => {
+  if (!SR) { go('baat'); return; }
+  if (DICT) { DICT.stop(); return; }
+  const r = new SR();
+  r.lang = 'hi-IN'; r.interimResults = true; r.continuous = true;
+  const base = msg.value ? msg.value.replace(/\s*$/, ' ') : '';
+  DICT = r;
+  $('#micBtn').classList.add('on');
+  r.onresult = ev => {
+    let fin = '', mid = '';
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      if (ev.results[i].isFinal) fin += ev.results[i][0].transcript; else mid += ev.results[i][0].transcript;
+    }
+    if (fin) { base += (base && !/\s$/.test(base) ? ' ' : '') + fin.trim(); }
+    msg.value = base + (mid ? (base ? ' ' : '') + mid : '');
+    msg.dispatchEvent(new Event('input')); scrollDown(true);
+  };
+  const stop = () => { DICT = null; $('#micBtn').classList.remove('on'); };
+  r.onend = stop; r.onerror = ev => { stop(); if (ev.error === 'not-allowed') toast('Mic ki permission chahiye — browser ke address bar se allow kijiye.', true); };
+  try { r.start(); toast('Boliye — likhta ja raha hoon. Mic dobara dabaiye to ruk jayega.'); } catch { stop(); go('baat'); }
+});
 
 /* ================= landing ideas + "Saare kaam" (real prompts) ================= */
 const KAAM = window.KAAM || [], KI = window.KAAM_ICON || {};
