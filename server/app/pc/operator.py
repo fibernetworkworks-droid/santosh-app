@@ -171,6 +171,7 @@ class Op:
     reason: str = ""
     step: int = 0
     action: str = ""
+    thinking: bool = False         # v0.178 the vision call is running: the card shows 'Soch raha hoon…' live
     window: str = ""
     monitor: str = "primary"       # v0.166 which screen the operator works on (model can switch with screenshot)
     mem: list[str] = field(default_factory=list)   # v0.173 what this run did to the PC (open_app/open_url/...)
@@ -188,6 +189,7 @@ class Op:
 
     def live(self) -> dict[str, Any]:
         out = {"session_id": self.id, "status": self.status, "step": self.step, "action": self.action,
+               "steps_max": MAX_STEPS, "thinking": self.thinking,
                "url": self.window, "title": self.window, "seq": self.frame_seq, "source": "pc",
                "summary": self.summary if self.status not in ("running",) else "", "timeline": self.timeline[-30:]}
         if self.pending and self.status == "needs_confirm":
@@ -205,19 +207,23 @@ def get(tenant: str, sid: str) -> Op | None:
 
 
 def _work(op: Op, name: str) -> None:
-    """v0.86 each PC step shows at once in the Work Theatre / chat (not only after the job)."""
+    """v0.86 each PC step shows at once in the Work Theatre / chat (not only after the job).
+    v0.178 the chat's PC card also refreshes on EVERY step (step n/40 + what she is doing right now), so the task
+    is seen in real time in the chat itself — not only inside the live view."""
     try:
         prev = getattr(op, "_last_work", None)
         if prev:
             bus.publish(op.conv, "work", {**prev, "phase": "done"})
         if name == "_end":
             op._last_work = None
+            _event(op)
             return
         from ..agent import quick
         quick.note_step(op.conv, f"PC: {op.action[:100]}")
         op._last_work = {"id": f"{op.id}:{op.step}", "tool": "pc_do", "scene": "pc", "phase": "start",
-                         "label": f"PC: {op.action[:120]}", "data": {"step": op.step, "do": name}}
+                         "label": f"PC ({op.step}/{MAX_STEPS}): {op.action[:110]}", "data": {"step": op.step, "do": name}}
         bus.publish(op.conv, "work", op._last_work)
+        _event(op)   # v0.178 the PC card in the chat updates live on every step
     except Exception:
         pass
 
@@ -225,7 +231,9 @@ def _work(op: Op, name: str) -> None:
 def _event(op: Op) -> None:
     try:
         bus.publish(op.conv, "browser", {"session_id": op.id, "status": op.status, "source": "pc", "site": "Aapka PC", "place": "pc",
-                                         "task": op.task[:300], "url": op.window, "summary": op.summary[:600]})
+                                         "task": op.task[:300], "url": op.window, "summary": op.summary[:600],
+                                         "step": op.step, "steps_max": MAX_STEPS, "action": op.action[:200],
+                                         "thinking": op.thinking})   # v0.178 live step + soch state on the card
     except Exception:
         log.exception("pc op event failed")
 
@@ -251,6 +259,49 @@ SETTLE_S = {"click": 0.35, "key": 0.35, "type": 0.2, "scroll": 0.25, "drag": 0.3
 # v0.166 a desktop older than 1.3.0 answers 'Unknown action open_url' etc.; the model gets a clean upgrade line instead
 _OLD_DESKTOP = "Yeh Santosh Desktop purana hai. PC par naya SantoshDesktop.exe install kijiye (Hoola app > Mera PC > " \
                "Link copy), phir dobara boliye."
+
+
+def _say(name: str, a: dict[str, Any]) -> str:
+    """v0.178 a short human line for the chat card of what Santosh is doing RIGHT NOW (Hinglish, like a person
+    sitting at the PC would say). Privacy-safe by design: never the text being typed, never an OTP/ID value, and a
+    URL shows only its host. The card refreshes live on every step (owner: 'task real time mein dikhe')."""
+    if name == "click":
+        return "double-click kar raha hoon" if a.get("double") else ("right-click kar raha hoon" if a.get("button") == "right" else "click kar raha hoon")
+    if name == "type":
+        n = len(str(a.get("text", "")))
+        return f"likh raha hoon ({n} akshar)" if n else "likh raha hoon"
+    if name == "key":
+        return f"'{str(a.get('keys', ''))[:24]}' daba raha hoon"
+    if name == "scroll":
+        return "scroll kar raha hoon"
+    if name == "drag":
+        return "drag kar raha hoon"
+    if name == "open_app":
+        return f"{str(a.get('name', ''))[:30]} khol raha hoon"
+    if name == "open_url":
+        from urllib.parse import urlparse
+        try:
+            host = urlparse(str(a.get("url", ""))).hostname or str(a.get("url", ""))
+        except Exception:
+            host = str(a.get("url", ""))
+        return f"{host[:36]} khol raha hoon"
+    if name == "screenshot":
+        return "dono screen dekh raha hoon" if str(a.get("monitor") or "") == "all" else "dobara dekh raha hoon"
+    if name == "window":
+        return f"window {a.get('op', '')} kar raha hoon"
+    if name == "list_apps":
+        return "apps aur windows dekh raha hoon"
+    if name == "focus_window":
+        return f"'{str(a.get('title', ''))[:40]}' saamne la raha hoon"
+    if name == "wait":
+        return "khulne ka intezaar…"
+    if name == "ask_approval":
+        return "aapki manzoori ka intezaar…"
+    if name == "ask_otp":
+        return "OTP ka intezaar…"
+    if name == "done":
+        return "nateeja taiyaar kar raha hoon"
+    return name
 
 
 def _desktop_says(e: Exception, action: str) -> str | None:
@@ -580,8 +631,11 @@ async def _run(op: Op) -> None:
         deadline = time.time() + TASK_MINUTES * 60
         while op.step < MAX_STEPS and time.time() < deadline and op.status == "running":
             _trim_images(messages)
+            op.thinking = True                     # v0.178 the card shows 'Soch raha hoon…' while the vision call runs
+            _event(op)
             resp = await _think_live(op, client.messages.create(**cache.shape(dict(
                 model=st.anthropic_model, max_tokens=1500, system=system, tools=TOOLS, messages=messages), st.prompt_cache)))
+            op.thinking = False
             content = [b.model_dump(exclude_none=True) if hasattr(b, "model_dump") else b for b in resp.content]
             messages.append({"role": "assistant", "content": content})
             uses = [b for b in content if b.get("type") == "tool_use"]
@@ -603,7 +657,8 @@ async def _run(op: Op) -> None:
                                                "screenshot and send this again only if it is still needed."})
                     continue
                 op.step += 1
-                op.action = (text or f"{name} {a.get('keys') or a.get('name') or a.get('text', '')[:40] or ''}").strip()[:200]
+                # v0.178 the card / chat line says what a person would say ("Chrome khol raha hoon"), not tool-speak
+                op.action = _say(name, a)
                 op.timeline.append({"step": op.step, "action": op.action, "do": name, "url": op.window, "t": int(time.time())})
                 del op.timeline[:-60]
                 if name in ("open_app", "open_url", "window", "focus_window", "screenshot"):

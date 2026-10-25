@@ -19,6 +19,10 @@ PC suites 29/29 pass, PC commit `e2c91ee`, CI run 40166550140 green,
 desktop-latest exe sha256 `c00ce0d1…a600e6fcb` (size 20405287).
 Exception recorded: the PC-memory work below (v0.177.1) was done ON the owner's explicit ask the
 same day — the freeze stands for everything else until she asks again.
+Exception recorded (same day, later): v0.180.0 REAL-TIME — the owner asked "Hoola AI must see the task in real
+time... FOR MERA PC AS WELL AS FOR ALL OWN TASKS", so `server/app/pc/operator.py` was touched for the live step
+narration (Step n/40, Hinglish lines, Soch state on the card). Desktop/ stayed untouched (1.3.1, no exe rebuild);
+the freeze is back in force for everything else the moment this ships.
 
 ## What it is
 **Hoola** is an Indian "Dots-like" always-on AI coworker app by Newtika Pvt Ltd (FNW). Owner: Meghana.
@@ -7366,6 +7370,41 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
   model call; 409 while that message's turn runs; 404 twice / unknown id. Two test stubs grew the additive
   `client_id` kwarg (test_chat_files, test_employee). Ritual: 0.172.0 (main.py + pubspec 0.172.0+201 +
   test_routines), cache-bust ?v=0.172.0. Deploy unchanged.
+
+## v0.180.0 REAL TIME: the phone sees every task as it happens (Mera PC + all her own tasks)
+- Owner: "HOOLA AI MUST SEE THE TASK IN REAL TIME NOT DELAYED. CURRENTLY EVERY TASK IS COMPLETED THEN AFTER FEW SEC
+  IT GIVES REPLY. SOME TASKS TAKE LONG, SOME NEVER REPLIED. FIX THIS PERFECTLY... FOR MERA PC AS WELL AS FOR ALL OWN
+  TASKS." Four root causes found and fixed (PC freeze lifted by the owner for exactly this; desktop untouched 1.3.1).
+- Root cause 1 — the phone never streamed: the server has streamed replies since v0.161 (reply_start / delta /
+  reply_end, live-only) but the phone's SSE client never asked for them (no `live=1`) and had no delta handling —
+  replies appeared only when the model finished. Now: `Api.events(live: true)` (old servers just ignore it), live
+  events (id 0) pass through, `state.dart` builds a growing 'stream' bubble per turn (reply_start -> deltas ->
+  reply_end), the final message (same `turn` tag) replaces it — the chat answers word by word like a person.
+  A reply caught mid-writing on reload continues from GET /live. Empty bubble on reply_end is removed cleanly.
+- Root cause 2 — the PC card was not alive in the chat: `_event()` only fired at start / status changes. Now the
+  card gets a `browser` event on EVERY step (Step n/40 + a thin progress bar + what she is doing right now) and the
+  Soch state while the vision call runs. `op.action` became `_say()` — short human Hinglish lines ("Chrome khol raha
+  hoon", "likh raha hoon (27 akshar)", "'ctrl+s' daba raha hoon", "aapki manzoori ka intezaar…") — privacy-safe by
+  design: never the typed text, never OTP/ID values, URLs only as host. The work line counts steps too ("PC (3/40):
+  ..."). The card and the full live screen both show 'Soch raha hoon…' while the vision call runs.
+- Root cause 3 — a turn could die silently: code before run_turn's inner guard (persona, memory, place, history,
+  saving the user message) could crash -> BackgroundTask exception swallowed -> NO reply and typing dots for ever.
+  Now `run_turn` is a never-silent wrapper around `_run_turn`: whatever crashes, the chat still gets a reply
+  (friendly error, saved) and `typing off` is always published (CancelledError still passes through).
+- Root cause 4 — typing dots hung after a dead turn: the SSE stream now re-sends `typing on` every ~60 s while the
+  chat's turn really holds the lock (`santosh.turn_running`), and the phone clears the dots 75 s after the last
+  refresh — a crashed turn's dots go away by themselves instead of spinning for ever.
+- Also repaired 8 stale tests the dev's own 0.174–0.177 work had broken (fake `_think` signatures now accept
+  `tools/live`; robust_chat pins streaming off; export/healthz version pins use APP_VERSION; FastAPI app version
+  back on the APP_VERSION constant). Full suite: zero regressions — every failing file fails identically at HEAD
+  (playwright/network sandbox limits) and everything else passes.
+- Tests `test_v0178_realtime.py` (6): word-by-word streaming to a live stream (and live-only, old streams never see
+  deltas), no invented deltas for a non-streaming brain, crashed turn still replies + typing off, turn_running
+  mirrors the chat lock, PC card narrates every step live (step order, Soch state, privacy: typed text never shown),
+  `_say` narration privacy/wording. Ritual: 0.180.0 (main.py APP_VERSION + FastAPI version + pubspec
+  0.180.0+210 + console cache busts + test_v0179's APP_VERSION pin); phone needs the new APK for streaming;
+  server-only deploy also works (old APK unaffected). Re-versioned after the dev's 0.178 chat-premium and
+  0.179 console-search landed mid-work (rebased on top of both; their new tests also use the APP_VERSION pin).
 
 ## v0.177.1 PC operator yaad: Hoola remembers what she did on this PC ("all infinite tasks" memory)
 - Owner: "WHEN DESKTOP WORK IS GOING BY HOOLA AI IT MUST REMEMBER... I TELL HOOLA TO OPEN WHATSAPP ON CHROME IT OPENS,

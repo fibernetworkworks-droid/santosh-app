@@ -144,7 +144,7 @@ def test_chat_turn_carries_the_place_to_the_model_and_the_tools(env, monkeypatch
     conv = _conv()
     seen, ran = {}, []
 
-    async def think(brain, system, history, settings, tools=None):
+    async def think(brain, system, history, settings, tools=None, live=None):
         if "hist" not in seen:
             seen["hist"] = str(history[-1])
             return [{"type": "tool_use", "id": "t1", "name": "browse_web",

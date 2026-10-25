@@ -159,6 +159,6 @@ def test_console_files_carry_the_search_power(env):
     assert "function openFind" in v2 and "/find?q=" in v2 and "fhit" in v2             # the in-chat find bar
     assert "const KEYS" in v2 and "openKeys" in v2 and "normCombo" in v2               # the shortcut registry
     assert "FIND_SEQ" in cl and "&lt;&lt;" in cl                                       # FTS marks painted safely
-    assert "?v=0.179.0" in html                                                        # cache busts moved too
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.179.0"
+    assert f"?v={APP_VERSION}" in html                                                 # cache busts moved too
+    assert APP_VERSION == "0.180.0"    # re-versioned after my 0.178/0.179 landed (bump with pubspec)

@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.179.0"   # v0.179.0 Console v2 phase 4: sidebar + search power (re-versioned after rebase onto the dev's 0.178 chat-premium) (bump with pubspec)
+APP_VERSION = "0.180.0"   # v0.180.0 real time: replies stream to the phone too (live=1), the PC card narrates every step (Hinglish, soch state, step n/40) and a crashed turn can never leave the chat silent again (re-versioned after the dev's 0.178 chat-premium + 0.179 search) (bump with pubspec)
 
 
 @asynccontextmanager
@@ -94,7 +94,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.179.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version=APP_VERSION, lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -491,6 +491,7 @@ async def events(conversation_id: str, request: Request, after: int = 0, live: i
             else:
                 sent = await asyncio.to_thread(bus.last_id, conversation_id, tenant)   # the app loads /timeline first
             yield f"data: {json.dumps({'id': 0, 'kind': 'replay_end', 'payload': {'last': sent}})}\n\n"
+            ticks = 0
             while True:
                 if await request.is_disconnected():
                     break
@@ -499,6 +500,14 @@ async def events(conversation_id: str, request: Request, after: int = 0, live: i
                 except asyncio.TimeoutError:
                     from . import offline
                     offline.touch(tenant)   # the stream is still open: the phone is online
+                    ticks += 1
+                    if live and ticks % 4 == 0:   # v0.178 every ~60 s: while a turn really runs, refresh its typing
+                        try:                      # dots on the phone (a crashed turn stops refreshing -> they clear)
+                            from .agent.santosh import turn_running
+                            if turn_running(conversation_id):
+                                yield f"data: {json.dumps({'id': 0, 'kind': 'typing', 'payload': {'on': True}, 'live': True})}\n\n"
+                        except Exception:
+                            pass
                     yield ": ping\n\n"
                     continue
                 if ev.get("live"):

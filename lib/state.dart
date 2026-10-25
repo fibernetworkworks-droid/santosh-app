@@ -218,6 +218,8 @@ class Santosh extends ChangeNotifier {
   bool dryRun = true;
   bool brainReady = true;
   bool typing = false;
+  Timer? _typingGuard;            // v0.178 typing shows only while the turn is really alive (the stream refreshes it)
+  FeedItem? _streamItem;          // v0.178 the reply being written right now (grows word by word, live-only)
   String? error;
   bool inBackground = false;
 
@@ -995,6 +997,7 @@ class Santosh extends ChangeNotifier {
 
   void _clearStory() {
     feed.clear();
+    _streamItem = null;
     _hoola.clear();
     _deals.clear();
     _upiCards.clear();
@@ -1069,7 +1072,18 @@ class Santosh extends ChangeNotifier {
       after = reload ? lastEventId : 0;
     }
     notifyListeners();
-    _sub = api!.events(conv, after: after).listen(_onEvent, onError: (e) {
+    // v0.178 the phone also streams the reply as it is written (word by word, like a person); an older server
+    // simply ignores the live flag. A reply caught mid-writing on reload continues from /live (we are still
+    // replaying here by design: this item is the live continuation, not history).
+    try {
+      final snap = await api!.liveReply(conv);
+      final t = (snap?['text'] as String? ?? '').trim();
+      if (snap != null && t.isNotEmpty) {
+        _streamItem = FeedItem('stream', {'turn': snap?['turn'] ?? '', 'text': t, 'seg': snap?['seg'] ?? 0});
+        feed.add(_streamItem!);
+      }
+    } catch (_) {}
+    _sub = api!.events(conv, after: after, live: true).listen(_onEvent, onError: (e) {
       connected = false;
       if (e is ApiException && e.status == 401) {
         _keyRefused = true;
@@ -1200,11 +1214,60 @@ class Santosh extends ChangeNotifier {
           if (inBackground && !backgroundRunning && !pushOn) Device.instance.showNow(aName, p['text'] as String? ?? '');
           if (!voiceMode && _lastInputWasVoice && speakReplies && p['source'] == 'agent') _speak(p['text'] as String? ?? '');
         }
+        if (p['role'] == 'assistant' && p['turn'] != null) _streamDrop(onlyTurn: p['turn'] as String?);   // v0.178 the bubble makes way for this final message
         break;
       case 'work':
         if (!_replaying) _onWork(Map<String, dynamic>.from(p));
         break;
+      case 'reply_start':
+        _streamDrop();                                   // a new reply begins: any leftover bubble goes
+        _streamItem = FeedItem('stream', {'turn': p['turn'] ?? '', 'text': '', 'seg': -1});
+        feed.add(_streamItem!);
+        notifyListeners();
+        break;
+      case 'delta':
+        final turn = '${p['turn'] ?? ''}';
+        if (_streamItem == null || '${_streamItem!.data['turn']}' != turn) {
+          _streamDrop();
+          _streamItem = FeedItem('stream', {'turn': turn, 'text': '', 'seg': -1});   // joined mid-reply
+          feed.add(_streamItem!);
+        }
+        final seg = (p['seg'] as num?)?.toInt() ?? 0;
+        final prevSeg = (_streamItem!.data['seg'] as num?)?.toInt() ?? -1;
+        final cur = '${_streamItem!.data['text']}';
+        _streamItem!.data['text'] = (cur.isEmpty || seg == prevSeg ? cur : '$cur\n\n') + '${p['text'] ?? ''}';
+        _streamItem!.data['seg'] = seg;
+        notifyListeners();
+        break;
+      case 'delta_reset':
+        if (_streamItem != null && '${_streamItem!.data['turn']}' == '${p['turn'] ?? ''}') {
+          _streamItem!.data['text'] = '';
+          notifyListeners();
+        }
+        break;
+      case 'reply_end':
+        if (_streamItem != null && '${_streamItem!.data['turn']}' == '${p['turn'] ?? ''}') {
+          if ('${_streamItem!.data['text']}'.trim().isEmpty) {
+            feed.remove(_streamItem);   // nothing was shown: the final message arrives right after
+            _streamItem = null;
+          }
+          notifyListeners();
+        }
+        break;
       case 'typing':
+        if (p['on'] == true) {
+          _typingGuard?.cancel();
+          _typingGuard = Timer(const Duration(seconds: 75), () {
+            // v0.178 the stream stopped refreshing (turn over / server gone): the dots must not hang for ever
+            if (typing) {
+              typing = false;
+              currentStep = null;
+              notifyListeners();
+            }
+          });
+        } else {
+          _typingGuard?.cancel();
+        }
         if (p['on'] != true && !_replaying) _scheduleWorkHide(const Duration(seconds: 4));
         typing = p['on'] == true && !_replaying;
         if (p['on'] == true) _steps = null;
@@ -2352,6 +2415,17 @@ class Santosh extends ChangeNotifier {
   final List<Map<String, dynamic>> workLog = [];   // this task's tool calls, oldest first
   bool workMin = false;
   Timer? _workHide;
+
+  /// v0.178 the streamed reply bubble goes away: `onlyTurn` = only that reply's final message arrived;
+  /// with no argument any leftover bubble goes (a new reply is starting / the chat is reloading).
+  void _streamDrop({String? onlyTurn}) {
+    final it = _streamItem;
+    if (it == null) return;
+    if (onlyTurn != null && onlyTurn.isNotEmpty && onlyTurn != '${it.data['turn']}') return;
+    feed.remove(it);
+    _streamItem = null;
+    notifyListeners();
+  }
 
   void _onWork(Map<String, dynamic> p) {
     final phase = p['phase'] as String? ?? 'start';

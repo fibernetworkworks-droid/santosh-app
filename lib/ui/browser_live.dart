@@ -168,9 +168,29 @@ class BrowserLiveCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               if (run) ...[
+                if ((l['steps_max'] as num? ?? 0) > 0) ...[
+                  // v0.178 live progress: Step n/40 + a thin bar, so a long PC job is never a silent wait
+                  Row(children: [
+                    Text('Step ${l['step'] ?? 0}/${l['steps_max']}',
+                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: C.muted)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: LinearProgressIndicator(
+                          value: ((l['step'] as num? ?? 0) / (l['steps_max'] as num? ?? 1)).clamp(0.0, 1.0),
+                          minHeight: 4,
+                          backgroundColor: const Color(0x22FFFFFF),
+                          valueColor: const AlwaysStoppedAnimation(Color(0xFFC026D3)),
+                        ),
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 6),
+                ],
                 for (final st in _lastSteps(l, 2))
                   Text('✓ ${st['action']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.faint, fontSize: 11.5)),
-                Text(action.isEmpty ? 'Page padh raha hoon…' : '▶ $action',
+                Text((l['thinking'] == true) ? 'Soch raha hoon…' : (action.isEmpty ? 'Page padh raha hoon…' : '▶ $action'),
                     maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.warn, fontSize: 12.5, fontWeight: FontWeight.w600)),
               ]
               else if (summary.isNotEmpty)
@@ -325,7 +345,9 @@ class BrowserLiveScreen extends StatelessWidget {
                       Text(run ? 'Abhi kya kar raha hoon · step ${l['step'] ?? 0}' : 'Nateeja',
                           style: const TextStyle(color: C.faint, fontSize: 12, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 4),
-                      Text(run ? (action.isEmpty ? 'Page padh raha hoon…' : action) : (summary.isEmpty ? BrowserLive.label(l) : summary),
+                      Text(run
+                              ? ((l['thinking'] == true) ? 'Soch raha hoon…' : (action.isEmpty ? 'Page padh raha hoon…' : action))
+                              : (summary.isEmpty ? BrowserLive.label(l) : summary),
                           maxLines: 6, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, height: 1.35)),
                       if (run) ...[
                         const SizedBox(height: 10),

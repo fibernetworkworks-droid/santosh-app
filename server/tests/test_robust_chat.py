@@ -10,6 +10,10 @@ from tests.test_campaign_flow import ScriptedClaude, text, tool
 
 def _glm_env(monkeypatch):
     monkeypatch.setenv("GLM_API_KEY", "glm-test")
+    # these tests script the OLD non-streaming JSON answers; v0.178 streams by default, and a JSON body is not
+    # an SSE stream - so the live reply is turned off here (the retry / fallback behaviour is what is being tested)
+    monkeypatch.setenv("CONSOLE_V2", "false")
+    monkeypatch.setenv("CONSOLE_STREAM", "false")
     from app.config import get_settings
     get_settings.cache_clear()
 
@@ -92,6 +96,8 @@ def test_hung_tool_is_stopped_and_the_turn_finishes(bz, monkeypatch):  # noqa: F
 
 
 def test_turn_that_runs_forever_releases_the_chat(bz, monkeypatch):  # noqa: F811
+    monkeypatch.setenv("CONSOLE_V2", "false")   # the timeout is tested on the plain path (no live deltas)
+    monkeypatch.setenv("CONSOLE_STREAM", "false")
     monkeypatch.setenv("AGENT_TURN_TIMEOUT_S", "30")
     from app.config import get_settings
     get_settings.cache_clear()

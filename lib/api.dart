@@ -29,6 +29,10 @@ class SantoshEvent {
   /// v0.158 the stream's own markers: catching up is over / reload the chat in order.
   bool get isMarker => id == 0 && (kind == 'replay_end' || kind == 'resync');
 
+  /// v0.178 a live-only event (id 0, never stored): the reply being written (reply_start / delta / reply_end /
+  /// think) or a typing refresh. Older servers never send these; the phone renders them as they come.
+  bool get isLive => id == 0 && !isMarker;
+
   static SantoshEvent fromJson(Map<String, dynamic> j) => SantoshEvent(
         (j['id'] as num?)?.toInt() ?? 0,
         j['kind'] as String? ?? '',
@@ -1699,12 +1703,17 @@ class Api {
   }
 
   /// Server-sent events with automatic reconnect that resumes from the last event id.
-  Stream<SantoshEvent> events(String conv, {int after = 0}) async* {
+  /// v0.178 `live: true` also streams the reply as it is written (reply_start / delta / reply_end, live-only,
+  /// never stored) — the chat answers word by word like a person, not all at once after the model finishes.
+  Stream<SantoshEvent> events(String conv, {int after = 0, bool live = false}) async* {
     var last = after;
     var backoff = 1;
     while (true) {
       try {
-        final req = http.Request('GET', _u('/api/conversations/$conv/events', {'after': '$last'}))
+        final req = http.Request('GET', _u('/api/conversations/$conv/events', {
+          'after': '$last',
+          if (live) 'live': '1',
+        }))
           ..headers.addAll({..._headers, 'Accept': 'text/event-stream'});
         final client = http.Client();
         final res = await client.send(req);
@@ -1721,8 +1730,8 @@ class Api {
           } else if (line.isEmpty && buf.isNotEmpty) {
             final ev = SantoshEvent.fromJson(Map<String, dynamic>.from(jsonDecode(buf.toString()) as Map));
             buf.clear();
-            if (ev.isMarker) {
-              yield ev; // v0.158 replay_end / resync
+            if (ev.isMarker || ev.isLive) {
+              yield ev; // v0.158 replay_end / resync · v0.178 the reply being written (id 0, order never moves)
             } else if (ev.id > last) {
               last = ev.id;
               yield ev;
@@ -1737,6 +1746,17 @@ class Api {
       }
       await Future.delayed(Duration(seconds: backoff));
       backoff = backoff >= 16 ? 16 : backoff * 2;
+    }
+  }
+
+  /// v0.178 the reply being written right now ({turn, seg, seq, text}) so a reload mid-reply continues it; null when none.
+  Future<Map<String, dynamic>?> liveReply(String conv) async {
+    try {
+      final res = await _http.get(_u('/api/conversations/$conv/live'), headers: _headers);
+      if (res.statusCode != 200) return null;
+      return Map<String, dynamic>.from(jsonDecode(utf8.decode(res.bodyBytes)) as Map);
+    } catch (_) {
+      return null;
     }
   }
 }

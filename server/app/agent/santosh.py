@@ -588,6 +588,12 @@ def stop(conversation_id: str) -> None:
                                           "label": "Roka gaya", "data": {}})
 
 
+def turn_running(conversation_id: str) -> bool:
+    """v0.178 is a turn of this chat holding the lock right now? (The SSE stream refreshes the typing dots only
+    while this is true, so a crashed turn's dots go away on the phone by themselves.)"""
+    return _locks[conversation_id].locked()
+
+
 def _work(conversation_id: str, call_id: str, tool: str, label: str, phase: str, args=None, out=None, error: str = "") -> None:
     if phase == "start":
         from . import quick
@@ -600,6 +606,28 @@ def _work(conversation_id: str, call_id: str, tool: str, label: str, phase: str,
 
 async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None = None, voice: bool = False,
                    context: str = "", actor: str = "owner", place: str = "", client_id: str = "") -> str:
+    """v0.178 the never-silent promise: WHATEVER happens around the turn (a crash before the inner guard, a DB
+    hiccup, a bug in place / persona / memory code), the user always gets a reply and the typing dots always go
+    away. (Owner: 'some tasks never replied'.) The real work is in _run_turn; CancelledError still passes through."""
+    try:
+        return await _run_turn(conversation_id, user_text, tenant_id, voice, context, actor, place, client_id)
+    except asyncio.CancelledError:
+        raise
+    except BaseException as e:   # noqa: BLE001 - the last line of defence: silence is worse than any error text
+        log.exception("agent turn crashed outside its guard")
+        try:
+            text = _friendly_error(e)
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "error"})
+            _save(conversation_id, "assistant", [{"type": "text", "text": text}], display=text)
+            bus.publish(conversation_id, "typing", {"on": False})
+            return text
+        except Exception:
+            log.exception("even the crash reply failed")
+            return ""
+
+
+async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None = None, voice: bool = False,
+                    context: str = "", actor: str = "owner", place: str = "", client_id: str = "") -> str:
     """Handle one user message end to end. Returns Santosh's final reply text.
     v0.173 `client_id` (the console's steering): a message she took back while queued returns at once — nothing
     runs, nothing is published (the take-back endpoint already hid the bubble)."""

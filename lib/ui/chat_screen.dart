@@ -904,6 +904,30 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
         );
+      case 'stream':
+        // v0.178 the reply as it is written: the bubble grows word by word with a soft caret, like a person typing.
+        final t = it.data['text'] as String? ?? '';
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .82),
+              child: Glass(flat: true,
+                radius: 22,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: t, style: const TextStyle(fontSize: 15, height: 1.45, color: C.ink)),
+                      const WidgetSpan(child: _Caret()),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
       case 'steps':
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -2015,6 +2039,36 @@ class _TypingState extends State<_Typing> with SingleTickerProviderStateMixin {
             ),
           ),
         ]),
+      );
+}
+
+/// v0.178 the soft blinking caret at the end of a reply being written (the streamed bubble).
+class _Caret extends StatefulWidget {
+  const _Caret();
+  @override
+  State<_Caret> createState() => _CaretState();
+}
+
+class _CaretState extends State<_Caret> with SingleTickerProviderStateMixin {
+  late final AnimationController _t = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat();
+  @override
+  void dispose() {
+    _t.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: _t,
+        builder: (context, _) => Opacity(
+          opacity: .25 + .75 * (1 - _t.value),
+          child: Container(
+            width: 2.5,
+            height: 16,
+            margin: const EdgeInsets.only(left: 2, bottom: -2),
+            decoration: BoxDecoration(color: C.accent, borderRadius: BorderRadius.circular(2)),
+          ),
+        ),
       );
 }
 
