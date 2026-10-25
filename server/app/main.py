@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.178.0"   # v0.178.0 chat premium: day heads, time stamps, swipe-to-reply, reply bar, icon chips, invite hero (bump with pubspec)
+APP_VERSION = "0.179.0"   # v0.179.0 Console v2 phase 4: sidebar + search power (re-versioned after rebase onto the dev's 0.178 chat-premium) (bump with pubspec)
 
 
 @asynccontextmanager
@@ -94,7 +94,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.178.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.179.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -661,11 +661,23 @@ def chat_list(limit: int = 40, archived: bool = False, tenant: str = Depends(cur
 
 @app.get("/api/conversations/search", dependencies=[Depends(require_key)])
 def chat_search(q: str = "", tenant: str = Depends(current_tenant)):
-    """v0.162 titles and message text of her chats; each hit has the event id to jump to."""
+    """v0.162 titles and message text of her chats; each hit has the event id to jump to.
+    v0.178 backed by the FTS5 index (chatsearch): prefix words, Hinglish / Devanagari, bm25 rank, real snippets."""
     from . import chats
     if not chats.enabled():
         raise HTTPException(404, "Chat search is off (CHAT_SESSIONS)")
     return {"results": chats.search(tenant, q[:200])}
+
+
+@app.get("/api/conversations/{conversation_id}/find", dependencies=[Depends(require_key)])
+def chat_find(conversation_id: str, q: str = "", tenant: str = Depends(current_tenant)):
+    """v0.178 in-chat find (console Ctrl+F): every live match of this chat in document order + a total count, so the
+    find bar can walk 3/17 with the arrows and jumpTo can load older pages on the way."""
+    _conv_or_404(conversation_id, tenant)
+    from . import chatsearch, chats
+    if not chats.enabled():
+        raise HTTPException(404, "Chat search is off (CHAT_SESSIONS)")
+    return chatsearch.find_in_chat(tenant, conversation_id, q[:200])
 
 
 class ChatPatchIn(BaseModel):

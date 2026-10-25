@@ -607,3 +607,41 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 
 #micBtn.on{color:var(--bad);background:rgba(248,113,113,.14);border-radius:12px;animation:micpulse 1.2s ease-in-out infinite}
 @keyframes micpulse{0%,100%{opacity:1}50%{opacity:.55}}
+
+/* ================= v0.178 sidebar + search power: in-chat find, day jump rail, shortcut sheet ================= */
+.fbar{position:absolute;top:10px;right:22px;z-index:40;display:flex;align-items:center;gap:8px;padding:7px 10px;
+  border-radius:14px;background:rgba(23,18,47,.94);border:1px solid var(--hair);box-shadow:var(--sh2);backdrop-filter:var(--blur);animation:fin .16s ease}
+@keyframes fin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.fbar .fic{color:var(--dim);font-size:16px;line-height:1}
+.fbar input{width:min(240px,32vw);border:0;background:none;outline:none;font-size:13.5px;font-weight:600;color:var(--ink)}
+.fbar input::placeholder{color:var(--dim);font-weight:500}
+.fbar .fcount{min-width:44px;text-align:center;font-size:12px;font-weight:800;color:var(--saffron2);font-variant-numeric:tabular-nums}
+.fbar .fb{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;color:var(--mut);font-size:13px;border:1px solid transparent}
+.fbar .fb:hover{background:var(--glass2);color:var(--ink)}
+.fbar .fb.x:hover{background:rgba(248,113,113,.16);color:var(--bad)}
+.mu.fhit,.mh.fhit{box-shadow:0 0 0 1.5px rgba(255,177,92,.5),0 0 22px rgba(255,177,92,.12);border-radius:16px}
+.mh.fhit .bd{background:rgba(255,177,92,.05);border-radius:16px}
+
+.jrail{position:absolute;top:16px;bottom:110px;right:7px;width:18px;z-index:30}
+.jrail b{position:absolute;right:2px;transform:translateY(-50%);display:flex;align-items:center;cursor:pointer;opacity:.85}
+.jrail b i{width:7px;height:7px;border-radius:50%;background:var(--glass3);border:1px solid var(--hair2);transition:all .15s ease}
+.jrail b .lbl{position:absolute;right:16px;white-space:nowrap;font-size:11px;font-weight:800;color:var(--lit);
+  background:rgba(23,18,47,.95);border:1px solid var(--hair);border-radius:9px;padding:3px 8px;opacity:0;pointer-events:none;transition:opacity .12s ease}
+.jrail b:hover i,.jrail b:focus-visible i{background:var(--saffron);border-color:var(--saffron);box-shadow:0 0 10px rgba(255,177,92,.5);opacity:1}
+.jrail b:hover .lbl,.jrail b:focus-visible .lbl{opacity:1}
+
+.kbg{position:fixed;inset:0;z-index:80;background:rgba(6,4,20,.66);backdrop-filter:blur(6px);display:grid;place-items:center;padding:18px}
+.kbox{width:min(480px,94vw);max-height:82vh;overflow-y:auto;padding:22px 22px 16px;border-radius:22px;background:rgba(23,18,47,.96);border:1px solid var(--hair);box-shadow:var(--sh)}
+.kbox h3{font-size:19px;margin-bottom:4px}
+.kgrp{margin-top:14px}
+.kgrp>b{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.krow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:6.5px 10px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--lit)}
+.krow:hover{background:var(--glass)}
+.krow kbd{font-size:11.5px;font-weight:800;color:var(--saffron2);background:rgba(255,177,92,.1);border:1px solid rgba(255,177,92,.28);border-radius:7px;padding:2.5px 8px;white-space:nowrap}
+.kbox .faint{font-size:12.5px;color:var(--dim);margin:14px 0 0}
+
+.sres .scount{font-size:11.5px;font-weight:800;color:var(--dim);letter-spacing:.04em;padding:8px 12px 2px;text-transform:uppercase}
+.sr b .rwho{display:inline-block;font-style:normal;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--teal);background:rgba(45,212,191,.12);border-radius:6px;padding:1.5px 6px;margin-right:8px;vertical-align:1px}
+.sr span mark{font-weight:800}
+@media (max-width:1100px){ .fbar{right:12px} .jrail{display:none} }

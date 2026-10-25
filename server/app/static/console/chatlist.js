@@ -125,17 +125,24 @@ function openSearch() {
 async function find(q, res) {
   q = q.trim(); if (q.length < 2) { res.innerHTML = '<div class="empty">Kam se kam 2 akshar likhiye.</div>'; return; }
   res.innerHTML = '<div class="empty"><span class="spin"></span> Dhoondh raha hoon…</div>';
-  let r = []; try { r = (await api('GET', `/api/conversations/search?q=${encodeURIComponent(q)}`)).results || []; } catch (e) { res.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
-  const mark = s => { const i = s.toLowerCase().indexOf(q.toLowerCase()); return i < 0 ? esc(s) : esc(s.slice(0, i)) + '<mark>' + esc(s.slice(i, i + q.length)) + '</mark>' + esc(s.slice(i + q.length)); };
-  res.innerHTML = r.length ? r.map(h => `<button type="button" class="sr" role="option" data-c="${esc(h.conversation_id)}" data-e="${h.event_id || 0}">
-      <b>${esc(h.title || 'Chat')}</b><span>${h.role === 'user' ? 'Aap: ' : h.role === 'assistant' ? '' : ''}${mark(h.snippet || '')}</span>
-      <time>${esc(new Date(h.at).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}))}</time></button>`).join('')
+  const me = ++FIND_SEQ;                              // v0.178 only the newest query may paint
+  let r = []; try { r = (await api('GET', `/api/conversations/search?q=${encodeURIComponent(q)}`)).results || []; } catch (e) { if (me === FIND_SEQ) res.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  if (me !== FIND_SEQ) return;                        // she typed again while this fetch was out
+  /* v0.178 the server sends <<match>> marks from FTS5 (snippet()); paint them after esc, never before */
+  const mark = s => esc(s || '').replace(/&lt;&lt;/g, '<mark>').replace(/&gt;&gt;/g, '</mark>');
+  const who = h => h.role === 'user' ? 'Aap' : h.role === 'title' ? 'Naam' : (ctx.avatar ? ctx.avatar() : 'Hoola');
+  res.innerHTML = r.length
+    ? `<div class="scount">${r.length} jagah mila · Enter se khologiye</div>` + r.map(h => `<button type="button" class="sr" role="option" data-c="${esc(h.conversation_id)}" data-e="${h.event_id || 0}">
+      <b><i class="rwho">${esc(who(h))}</i>${esc(h.title || 'Chat')}</b><span>${mark(h.snippet || '')}</span>
+      <time>${esc(new Date(h.at).toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}))}</time></button>`).join('')
     : '<div class="empty">Kuch nahi mila.</div>';
 }
+let FIND_SEQ = 0;
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openSearch(); } });
 
 return {
   load, openSearch, draw,
+  ids: () => LIST.map(c => c.id),                     // v0.178 Alt+↑/↓ walks this order
   busy(id, on) { const had = BUSY.has(id); on ? BUSY.add(id) : BUSY.delete(id); if (had !== !!on) draw(); },
   unread(id) { if (id !== ctx.current() && !UNREAD.has(id)) { UNREAD.add(id); draw(); } },
   isBusy: id => BUSY.has(id),

@@ -122,7 +122,7 @@ async function enter() {
   $('#login').hidden = true; $('#app').hidden = false; drawNav(); drawKaam(); go('chat');
   if (CONFIG.sessions && window.HoolaChats && window.HoolaStream && !CH) {   // v0.162 many chats (v0.170: on with CONSOLE_V2)
     CH = HoolaChats({api, esc, toast, current: () => CONV, open: id => { go('chat'); openConv(id); },
-                     jump: (c, e) => jumpTo(c, e), newChat: () => $('#newChat').click(),
+                     jump: (c, e) => jumpTo(c, e), newChat: () => $('#newChat').click(), avatar: () => AV,
                      get pickProject() { return PJ ? c => PJ.pick(c) : null; }});
     $('#searchBtn').hidden = false;
   }
@@ -214,11 +214,12 @@ function flushStepBuf() {
   else STEPBUF.querySelector('.sm').textContent = `${n} kadam${n > 1 ? '' : ''}`;
   STEPBUF = null;
 }
-function userBubble(text, files, eid, cid) {
+function userBubble(text, files, eid, cid, at) {
   const d = document.createElement('div'); d.className = 'mu';
   d.innerHTML = (files?.length ? `<div class="att">${files.map(f => `<span class="chip">📎 ${esc(f.name || f)}</span>`).join('')}</div>` : '') + `<span class="mut">${esc(text)}</span>`;
   if (cid) d.dataset.cid = cid;
   if (eid && !files?.length) attachEdit(d, text, eid);
+  if (at) d.dataset.at = at;                             // v0.178 the jump rail reads the day off this
   SINK.appendChild(d); if (SINK === col) scrollDown(true); TURN = null; return d;
 }
 /* v0.173 receipts: a message sent while Hoola works shows what became of it — queue mein (take-back possible),
@@ -286,13 +287,15 @@ function turn() { if (!TURN) TURN = {bd: hoolaBlock(), groups: [], text: null, a
 function put(t, el) { t.bd.insertBefore(el, TYPING && TYPING.parentNode === t.bd ? TYPING : null); }
 
 const md = text => window.HoolaMD ? HoolaMD.render(text, false) : esc(text);
-function hoolaText(text, source, eid) {   // a reply without a turn id (streaming off, notes, greetings): as before
+function hoolaText(text, source, eid, at) {   // a reply without a turn id (streaming off, notes, greetings): as before
   const t = turn();
-  if (t.text && (text.startsWith(t.text.dataset.raw) || t.text.dataset.raw === text)) { t.text.dataset.raw = text; t.text.innerHTML = md(text); if (eid) t.text.dataset.eid = eid; scrollDown(); return; }
+  if (t.text && (text.startsWith(t.text.dataset.raw) || t.text.dataset.raw === text)) { t.text.dataset.raw = text; t.text.innerHTML = md(text); if (eid) t.text.dataset.eid = eid; if (at) t.text.closest('.mh').dataset.at = at; scrollDown(); return; }
   const el = document.createElement('div'); el.className = 'txt textmd'; el.dataset.raw = text; el.innerHTML = md(text);
   if (eid) el.dataset.eid = eid;
   if (source === 'worker' || source === 'greeting') el.classList.add('note-in');
-  put(t, el); t.text = el; t.afterText = true; scrollDown();
+  put(t, el); t.text = el; t.afterText = true;
+  if (at && t.bd.closest('.mh')) t.bd.closest('.mh').dataset.at = at;   // v0.178 rail day stamp
+  scrollDown();
 }
 
 /* steps (tool calls) inside the turn + the live panel: in the order they happened (text -> steps -> text);
@@ -429,9 +432,10 @@ function seg(R, n) {
   R.segs.set(n, S);
   return S;
 }
-function replyMessage(p, instant, eid) {
+function replyMessage(p, instant, eid, at) {
   const R = reply(p.turn), S = seg(R, p.seg ?? 0);
   if (eid) S.el.dataset.eid = eid;
+  if (at && !S.el.dataset.at) S.el.dataset.at = at;   // v0.178 rail day stamp (first seg wins)
   if (instant) { S.pacer.finalText = p.text || ''; S.pacer.flush(); } else S.pacer.final(p.text || '');
   S.el.classList.toggle('stopped', !!p.stopped);
   if (instant) R.done = true;
@@ -694,7 +698,7 @@ function onEvent(ev) {
           if (b && !p.files?.length) attachEdit(b, p.text, ev.id); else if (b) b.dataset.eid = ev.id;
           return;
         }
-        landing(false); userBubble(p.text, p.files, ev.id); return;
+        landing(false); userBubble(p.text, p.files, ev.id, null, ev.at); return;
       }
       if (p.source === 'greeting' && !col.children.length) return;        // the landing greets instead
       landing(false);
@@ -702,8 +706,8 @@ function onEvent(ev) {
         const qr = [...RCPTS].reverse().find(([, R]) => R.state === 'queue');
         if (qr) receiptUpdate(qr[0], 'quick');
       }
-      if (p.turn && window.HoolaStream) { replyMessage(p, false, ev.id); const R = REPLIES.get(p.turn); if (R?.done) drawActs(R); return; }
-      hoolaText(p.text || '', p.source, ev.id); return;
+      if (p.turn && window.HoolaStream) { replyMessage(p, false, ev.id, ev.at); const R = REPLIES.get(p.turn); if (R?.done) drawActs(R); return; }
+      hoolaText(p.text || '', p.source, ev.id, ev.at); return;
     case 'typing': typing(!!p.on); return;
     case 'step': landing(false); stepEvent(p); return;
     case 'work': workEvent(p); return;
@@ -721,10 +725,10 @@ function renderEvents(events, any) {
     const p = ev.payload || {};
     if (ev.kind === 'message') {
       flushStepBuf();
-      if (p.role === 'user') userBubble(p.text, p.files, ev.id);
+      if (p.role === 'user') userBubble(p.text, p.files, ev.id, null, ev.at);
       else if (!any) continue;
-      else if (p.turn && window.HoolaStream) { replyMessage(p, true, ev.id); if (SINK === col) LAST_TURN = p.turn; }
-      else hoolaText(p.text || '', p.source, ev.id);
+      else if (p.turn && window.HoolaStream) { replyMessage(p, true, ev.id, ev.at); if (SINK === col) LAST_TURN = p.turn; }
+      else hoolaText(p.text || '', p.source, ev.id, ev.at);
     }
     else if (ev.kind === 'step') replayStep(p);   // v0.171 the transcript keeps what each turn did (steps=1)
     else { flushStepBuf(); renderCard(ev.kind, p, ev.at); }
@@ -734,6 +738,7 @@ function renderEvents(events, any) {
 async function openConv(id, fresh, opts = {}) {
   if (!CH) stopStream();
   LOADING = true; PENDING = [];
+  closeFind();                          // v0.178 find results belong to their chat, like receipts
   CONV = id; col.innerHTML = ''; CARDS.clear(); B?.reset(); TURN = null; TYPING = null; USER_ECHO = []; $('#stopBtn').hidden = true;
   REPLIES.forEach(R => R.segs.forEach(S => S.pacer.reset())); REPLIES.clear(); LAST_TURN = null; STICK = true;
   RCPTS.clear();   // v0.173 receipts belong to their chat
@@ -780,6 +785,7 @@ async function openConv(id, fresh, opts = {}) {
     } catch {}
   }
   scrollDown(true);
+  drawRail();                            // v0.178 the day rail rebuilds with the chat
   if (!CH) { LOADING = false; stream(id); return; }
   // the account stream never stopped: events of this chat that arrived while it loaded, without duplicates
   LOADING = false;
@@ -802,6 +808,7 @@ async function loadOlder() {
     thread.scrollTop = thread.scrollHeight - fromBottom;
     REPLIES.forEach(R => { if (!R.acts) { R.done = true; drawActs(R); closeTurnTools(R.t); } });
     BEFORE = tl.before || 0; HAS_MORE = !!tl.has_more && tl.events.length > 0;
+    drawRail();                          // v0.178 older days join the rail
     return true;
   } catch (e) { toast(e.message, true); return false; }
   finally { OLDER = false; }
@@ -820,6 +827,7 @@ async function jumpTo(conv, eventId) {
   if (!el) return toast('Woh message ab is chat mein nahi dikh raha (shayad doosre version mein hai).');
   STICK = false; el.scrollIntoView({block: 'center', behavior: 'smooth'});
   el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 2200);
+  drawRail();
 }
 
 function drawBranches(list) {
@@ -840,6 +848,108 @@ function drawBranches(list) {
     if (b.kind === 'edit') host.appendChild(w); else host.insertBefore(w, host.querySelector('.racts'));
   }
 }
+
+/* ================= v0.178 search power in the thread: in-chat find (Ctrl+F) + the day jump rail ================= */
+let FIND = null;   // {q, hits:[eventId], total, i, box, inp, st}
+function openFind() {
+  if (FIND) { FIND.inp.focus(); FIND.inp.select(); return; }
+  if (!CONV || VIEW !== 'chat') return;
+  const bar = document.createElement('div'); bar.className = 'fbar gl'; bar.setAttribute('role', 'search'); bar.setAttribute('aria-label', 'Is chat mein dhoondo');
+  bar.innerHTML = `<span class="fic" aria-hidden="true">⌕</span><input placeholder="Is chat mein dhoondo…" aria-label="Is chat mein dhoondo" autocomplete="off"><span class="fcount" aria-live="polite"></span>`
+    + `<button type="button" class="fb" data-d="-1" aria-label="Pichhla mila (Shift+Enter)">↑</button>`
+    + `<button type="button" class="fb" data-d="1" aria-label="Agla mila (Enter)">↓</button>`
+    + `<button type="button" class="fb x" aria-label="Band karo (Esc)">✕</button>`;
+  $('#v-chat').appendChild(bar);
+  const inp = bar.querySelector('input');
+  FIND = {q: '', hits: [], total: 0, i: -1, box: bar, inp, st: 0};
+  inp.focus();
+  inp.addEventListener('input', () => { clearTimeout(FIND.st); FIND.st = setTimeout(() => findRun(inp.value), 240); });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeFind(); }
+    else if (e.key === 'Enter') { e.preventDefault(); findGo(e.shiftKey ? -1 : 1); }
+  });
+  bar.addEventListener('click', e => { const b = e.target.closest('.fb'); if (!b) return;
+    if (b.classList.contains('x')) closeFind(); else findGo(+b.dataset.d); });
+  highlightHits();
+}
+function closeFind() {
+  if (!FIND) return;
+  FIND.box.remove(); FIND = null;
+  col.querySelectorAll('.fhit').forEach(x => x.classList.remove('fhit'));
+}
+function findRun(q) {
+  if (!FIND) return;
+  FIND.q = q; FIND.hits = []; FIND.total = 0; FIND.i = -1;
+  FIND.box.querySelector('.fcount').textContent = '';
+  col.querySelectorAll('.fhit').forEach(x => x.classList.remove('fhit'));
+  q = q.trim();
+  if (!q) return;
+  api('GET', `/api/conversations/${encodeURIComponent(CONV)}/find?q=${encodeURIComponent(q)}`).then(r => {
+    if (!FIND || FIND.q !== q) return;                    // she typed again while this was out
+    FIND.hits = (r.matches || []).map(m => m.event_id).filter(Boolean);
+    FIND.total = r.total || FIND.hits.length;
+    if (FIND.total) findGo(1, true);
+    else FIND.box.querySelector('.fcount').textContent = '0 mile';
+    highlightHits();
+  }).catch(() => { if (FIND) FIND.box.querySelector('.fcount').textContent = 'dikkat'; });
+}
+async function findGo(d, first) {
+  if (!FIND || !FIND.hits.length) return;
+  FIND.i = first ? 0 : (FIND.i + d + FIND.hits.length) % FIND.hits.length;
+  FIND.box.querySelector('.fcount').textContent = `${FIND.i + 1}/${FIND.hits.length}${FIND.total > FIND.hits.length ? '+' : ''}`;
+  await jumpTo(CONV, FIND.hits[FIND.i]);
+}
+function highlightHits() {   // loaded bubbles glow; older ones light up as the rail/pages bring them in
+  if (!FIND || !FIND.q.trim()) return;
+  const q = FIND.q.toLowerCase();
+  col.querySelectorAll('.mu, .mh').forEach(el => {
+    el.classList.toggle('fhit', (el.textContent || '').toLowerCase().includes(q));
+  });
+}
+
+/* the rail: one slim line on the right edge, one tick per day of the loaded chat (Aaj / Kal / 12 Okt);
+   hover says the day, one tap jumps to that day's first message. Only when it earns its place. */
+let RAIL_T = 0;
+function dayLabel(d) {
+  const today = new Date(), start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const day = new Date(d.getFullYear(), d.getMonth(), d.getDate()), DAY = 86400000;
+  if (day.getTime() === start.getTime()) return 'Aaj';
+  if (day.getTime() === start.getTime() - DAY) return 'Kal';
+  return d.toLocaleDateString('en-IN', {day: 'numeric', month: 'short'});
+}
+function drawRail() {
+  clearTimeout(RAIL_T);
+  RAIL_T = setTimeout(() => {
+    const rail = $('#jrail');
+    if (!rail) return;
+    const msgs = [...col.querySelectorAll('[data-at]')];
+    const land = !$('#landing').hidden;
+    const tall = thread.scrollHeight > thread.clientHeight * 1.6;
+    if (VIEW !== 'chat' || land || msgs.length < 6) { rail.hidden = true; return; }
+    const base = thread.getBoundingClientRect().top, H = thread.scrollHeight;
+    const days = new Map();     // dayKey -> {label, top, n}
+    for (const el of msgs) {
+      const d = new Date(el.dataset.at); if (isNaN(d)) continue;
+      const key = d.toDateString();
+      if (!days.has(key)) {
+        const top = el.getBoundingClientRect().top - base + thread.scrollTop;
+        days.set(key, {label: dayLabel(d), top, n: 0});
+      }
+      days.get(key).n++;
+    }
+    if (days.size < 2 && !tall) { rail.hidden = true; return; }
+    rail.innerHTML = [...days.values()].map(g =>
+      `<b role="button" tabindex="0" aria-label="${esc(g.label)} ke messages" data-top="${Math.round(g.top)}" style="top:${Math.max(2, Math.min(97, (g.top / H) * 100))}%"><span class="lbl">${esc(g.label)} · ${g.n}</span><i></i></b>`).join('');
+    rail.hidden = false;
+  }, 160);
+}
+$('#v-chat').insertAdjacentHTML('beforeend', '<div class="jrail" id="jrail" hidden aria-label="Din par jao"></div>');
+$('#jrail').addEventListener('click', e => {
+  const b = e.target.closest('b[data-top]'); if (!b) return;
+  thread.scrollTo({top: +b.dataset.top - 76, behavior: 'smooth'}); STICK = false;
+});
+$('#jrail').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { const b = e.target.closest('b[data-top]'); if (b) { e.preventDefault(); thread.scrollTo({top: +b.dataset.top - 76, behavior: 'smooth'}); } } });
+addEventListener('resize', drawRail);
 
 /* ================= one stream for all her chats (CHAT_SESSIONS; on with CONSOLE_V2) ================= */
 // kinds that belong to their own chat only (events.LOCAL_KINDS); every other card of another chat shows here too
@@ -993,15 +1103,62 @@ msg.addEventListener('paste', e => {
   addFiles(files.map((f, i) => f.name && f.name !== 'image.png' ? f : new File([f], `screenshot-${stamp}${i ? '-' + i : ''}.png`, {type: f.type || 'image/png'})));
 });
 
-/* shortcuts: Ctrl+K search (chatlist.js), Ctrl+Shift+O new chat, / composer, Esc stops Hoola */
+/* v0.178 shortcuts: one registry (KEYS), one listener — the cheat sheet (?) always tells the truth.
+   Ctrl+K search (chatlist.js), Ctrl+F in-chat find, Alt+↑/↓ chat hop, / composer, Ctrl+Shift+O new chat,
+   ? this list, Esc the layered exit. Combos normalise so Ctrl+Shift+O and Ctrl+O stay one thing. */
+const KEYS = [
+  {k: 'Ctrl+F', g: 'Dhoondo', label: 'Is chat mein dhoondo', fn: () => { go('chat'); openFind(); }},
+  {k: 'Ctrl+K', g: 'Dhoondo', label: 'Saari chats mein dhoondo', fn: () => CH?.openSearch()},
+  {k: 'Alt+ArrowDown', g: 'Chat', label: 'Agli chat', fn: () => chatStep(1)},
+  {k: 'Alt+ArrowUp', g: 'Chat', label: 'Pichhli chat', fn: () => chatStep(-1)},
+  {k: 'Ctrl+Shift+O', g: 'Chat', label: 'Nayi chat', fn: () => $('#newChat').click()},
+  {k: '/', g: 'Composer', label: 'Likhne ka box kholo', when: e => !typingIn(e), fn: () => { go('chat'); msg.focus(); }},
+  {k: '?', g: 'Saamaany', label: 'Yahin shorcut list', when: e => !typingIn(e), fn: () => openKeys()},
+  {k: 'Escape', g: 'Saamaany', label: 'Band karo · Rokiye', fn: escLayer},
+];
+const typingIn = e => !!(e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]'));
+const normCombo = c => { const p = String(c).split('+'), key = p.pop(); const m = new Set(p.map(x => x.toLowerCase()));
+  if (key.length === 1) m.delete('shift');                    // Ctrl+Shift+O == Ctrl+O (shift is how she types it)
+  return [...m, key.toLowerCase()].join('+'); };
+const comboOf = e => {
+  if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return '';
+  const k = e.key === ' ' ? 'Space' : e.key;
+  const mods = [(e.ctrlKey || e.metaKey) ? 'ctrl' : '', e.altKey ? 'alt' : ''].filter(Boolean);
+  return normCombo([...mods, k].join('+'));
+};
+const KEYMAP = KEYS.map(x => ({...x, c: normCombo(x.k)}));
 document.addEventListener('keydown', e => {
-  const typingIn = e.target.closest?.('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]');
-  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'o') { e.preventDefault(); $('#newChat').click(); return; }
-  if (e.key === '/' && !typingIn && !e.ctrlKey && !e.metaKey && !e.altKey && !$('#app').hidden) { e.preventDefault(); go('chat'); msg.focus(); return; }
-  if (e.key === 'Escape' && !document.querySelector('.sbg, .rmenu') && !$('#stopBtn').hidden && (!typingIn || e.target === msg)) { e.preventDefault(); $('#stopBtn').click(); }
-  if (e.key === 'Escape' && !$('#exportMenu').hidden) $('#exportMenu').hidden = true;
-  if (e.key === 'Escape' && SLASH.open) { e.preventDefault(); slashClose(); }
+  if (e.isComposing || $('#app').hidden) return;
+  const c = comboOf(e); if (!c) return;
+  const hit = KEYMAP.find(x => x.c === c && (!x.when || x.when(e)));
+  if (hit) { e.preventDefault(); hit.fn(); }
 });
+function chatStep(d) {          // Alt+↑/↓: walk the sidebar's order without touching the mouse
+  if (!CH) return;
+  const ids = CH.ids ? CH.ids() : [];
+  if (ids.length < 2) return;
+  const i = ids.indexOf(CONV);
+  openConv(ids[(i + d + ids.length) % ids.length]);
+}
+function escLayer() {           // one Esc peels one layer, deepest first
+  if (FIND) { closeFind(); return; }
+  const kb = document.querySelector('.kbg'); if (kb) { kb.remove(); return; }
+  if (!$('#exportMenu').hidden) { $('#exportMenu').hidden = true; return; }
+  if (SLASH.open) { slashClose(); return; }
+  if (!$('#stopBtn').hidden) $('#stopBtn').click();
+}
+function openKeys() {           // the cheat sheet: toggle, glass, Hinglish
+  const old = document.querySelector('.kbg');
+  if (old) { old.remove(); return; }
+  const groups = [];
+  for (const x of KEYS) { let g = groups.find(([n]) => n === x.g); if (!g) { g = [x.g, []]; groups.push(g); } g[1].push(x); }
+  const w = document.createElement('div'); w.className = 'kbg'; w.setAttribute('role', 'dialog'); w.setAttribute('aria-modal', 'true'); w.setAttribute('aria-label', 'Keyboard shortcuts');
+  w.innerHTML = `<div class="kbox gl"><h3>Shorcut ke list</h3>
+    ${groups.map(([g, xs]) => `<div class="kgrp"><b>${esc(g)}</b>${xs.map(x => `<div class="krow"><span>${esc(x.label)}</span><kbd>${esc(x.k)}</kbd></div>`).join('')}</div>`).join('')}
+    <p class="faint">Composer mein "/" likhiye — /nayi /dhoondo /export jaise commands khud aa jaate hain. Ctrl+K search bhi hai.</p></div>`;
+  document.body.appendChild(w);
+  w.addEventListener('click', e => { if (e.target === w) w.remove(); });
+}
 
 /* ================= export (v0.171): this chat as a Markdown file to read, or JSON to keep ================= */
 $('#exportBtn').addEventListener('click', () => { const m = $('#exportMenu'); m.hidden = !m.hidden; });

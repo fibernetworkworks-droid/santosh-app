@@ -139,7 +139,16 @@ def _snippet(text: str, q: str, width: int = 70) -> str:
 
 def search(tenant: str, q: str, limit: int = 30) -> list[dict[str, Any]]:
     """Titles and message text of her chats (not deleted, not in a hidden branch). Each hit carries the event id of
-    that message so the console can jump to it."""
+    that message so the console can jump to it.
+    v0.178 backed by FTS5 (chatsearch) when the host SQLite has it; the LIKE scan below stays as the fallback."""
+    from . import chatsearch
+    if chatsearch.available():
+        return chatsearch.search(tenant, q, limit)
+    return _search_like(tenant, q, limit)
+
+
+def _search_like(tenant: str, q: str, limit: int = 30) -> list[dict[str, Any]]:
+    """v0.162 the original LIKE search (fallback for SQLite builds without FTS5)."""
     q = (q or "").strip()
     if len(q) < 2:
         return []

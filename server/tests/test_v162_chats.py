@@ -106,7 +106,8 @@ def test_search_finds_a_word_from_a_two_week_old_chat(cs):
     mine = [h for h in hits if h["conversation_id"] == old]
     assert mine and all(h["event_id"] > 0 for h in mine)
     user_hit = next(h for h in mine if h["role"] == "user")
-    assert "kiraya agreement" in user_hit["snippet"] and user_hit["title"].startswith("Sharma ji")
+    sn = user_hit["snippet"].replace("<<", "").replace(">>", "")   # v0.178: FTS snippets carry <<marks>>
+    assert "kiraya agreement" in sn and user_hit["title"].startswith("Sharma ji")
     tl = c.get(f"/api/conversations/{old}/timeline", headers=H).json()
     assert user_hit["event_id"] in [e["id"] for e in tl["events"]]       # the console can jump to it
     assert c.get("/api/conversations/search?q=a", headers=H).json()["results"] == []
