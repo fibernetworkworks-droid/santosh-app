@@ -156,6 +156,7 @@ class _ChatScreenState extends State<ChatScreen> {
     app.addListener(_autoScroll);
     app.addListener(_maybeShare);
     _scroll.addListener(_onScroll);
+    _text.addListener(_onTextChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShare());
   }
 
@@ -191,6 +192,8 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     app.removeListener(_autoScroll);
     app.removeListener(_maybeShare);
+    _text.removeListener(_onTextChanged);
+    _voiceTimer?.cancel();
     _scroll.dispose();
     _stt.stop();
     super.dispose();
@@ -236,6 +239,7 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() => _listening = false);
       return;
     }
+    _disarmVoiceSend();   // tapping the mic while a message waits: forget the auto-send, listen fresh
     await app.stopSpeaking();
     _sttReady = _sttReady || await _stt.initialize(onStatus: (s) {
       if ((s == 'done' || s == 'notListening') && mounted) setState(() => _listening = false);
@@ -253,11 +257,82 @@ class _ChatScreenState extends State<ChatScreen> {
       onResult: (r) {
         _text.text = r.recognizedWords;
         if (r.finalResult && r.recognizedWords.trim().isNotEmpty) {
-          app.send(r.recognizedWords, voice: true);
-          _text.clear();
-          setState(() => _listening = false);
+          // v0.164.2 not an instant send any more: the transcript waits in the box with a short
+          // countdown (see _voiceStrip), so Hinglish STT slips can be fixed before it goes.
+          _armVoiceSend();
         }
       },
+    );
+  }
+
+  // ---- v0.164.2 spoken message: 4 s review window before it sends itself ----
+  Timer? _voiceTimer;
+  int _voiceCountdown = 0;
+  bool _voicePending = false;        // this message was spoken, keep the voice flag on send
+  String _voiceArmedText = '';       // transcript at arm time; editing the box cancels the auto-send
+
+  void _onTextChanged() {
+    if (_voiceCountdown > 0 && _text.text != _voiceArmedText) _disarmVoiceSend();
+  }
+
+  void _disarmVoiceSend() {
+    _voiceTimer?.cancel();
+    _voiceTimer = null;
+    if (!mounted || (_voiceCountdown == 0 && !_voicePending)) return;
+    setState(() {
+      _voiceCountdown = 0;
+      _voicePending = false;
+    });
+  }
+
+  void _armVoiceSend() {
+    if (!mounted) return;
+    _voiceTimer?.cancel();
+    _voicePending = true;
+    _voiceArmedText = _text.text;
+    setState(() => _voiceCountdown = 4);
+    _voiceTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      if (_voiceCountdown <= 1) {
+        t.cancel();
+        _voiceTimer = null;
+        setState(() {
+          _voiceCountdown = 0;
+          _voicePending = false;
+        });
+        _send();
+      } else {
+        setState(() => _voiceCountdown -= 1);
+      }
+    });
+  }
+
+  /// v0.164.2 the strip above the composer while a spoken message waits out its countdown.
+  Widget _voiceStrip() {
+    if (_voiceCountdown <= 0) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 6),
+      padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+      decoration: BoxDecoration(
+        color: const Color(0x24FFB15C),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0x55FFB15C)),
+      ),
+      child: Row(children: [
+        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: C.accentSoft)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(app.g('Sahi hai? {x} second mein bhej rahe hain…', x: '$_voiceCountdown'),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: C.accentSoft)),
+        ),
+        TextButton(
+          onPressed: _disarmVoiceSend,
+          child: Text(app.g('Ruk jao'), style: const TextStyle(fontWeight: FontWeight.w800)),
+        ),
+      ]),
     );
   }
 
@@ -314,9 +389,15 @@ class _ChatScreenState extends State<ChatScreen> {
     final files = List<Map<String, dynamic>>.from(_files);
     if (t.trim().isEmpty && files.isEmpty) return;
     if (t.trim().isEmpty) t = files.map((f) => '📎 ${f['name']}').join('\n');
+    final voice = _voicePending;   // v0.164.2 a spoken message keeps its voice flag
+    _disarmVoiceSend();
+    if (_listening) {
+      await _stt.stop();
+      if (mounted) setState(() => _listening = false);
+    }
     _text.clear();
     setState(() => _files.clear());
-    final ok = await app.send(t, files: [for (final f in files) '${f['file_id']}']);
+    final ok = await app.send(t, files: [for (final f in files) '${f['file_id']}'], voice: voice);
     if (!ok && mounted) {
       setState(() => _files.addAll(files));
       if (_text.text.isEmpty) {
@@ -358,6 +439,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ])),
           _quick(),
           _pendingFiles(),
+          _voiceStrip(),
           _composer(),
         ]),
       );

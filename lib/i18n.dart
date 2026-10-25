@@ -31,6 +31,8 @@ const Map<String, Map<String, String>> uiStrings = {
     // ---- composer / mic / attach ----
     '{a} se boliye…': 'Message {a}…',
     'Sun raha hoon…': 'Listening…',
+    'Sahi hai? {x} second mein bhej rahe hain…': 'Looks right? Sending in {x}s…',
+    'Ruk jao': 'Wait',
     'Photo, PDF, video ya koi bhi file': 'Photo, PDF, video or any file',
     'Speak to {a}': 'Speak to {a}',
     'Microphone permission chahiye. Phone settings mein Hoola ko mic ki permission dijiye.':
