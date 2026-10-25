@@ -18,7 +18,7 @@ from typing import Any
 from sqlalchemy import func, select
 
 from ..config import get_settings
-from ..db import (BulkMail, BulkRecipient, EmailDraft, MailWatch, PcFile, Profile, as_utc, now, session)
+from ..db import (BulkMail, BulkRecipient, EmailDraft, MailSetting, MailWatch, PcFile, Profile, as_utc, now, session)
 from ..events import bus, notify
 from . import contacts, mime
 from .accounts import get_box, mark_error
@@ -68,11 +68,58 @@ def _public(box: Box, item: dict[str, Any]) -> dict[str, Any]:
 
 def check(tenant: str, folder: str = "inbox", unread_only: bool = False, search: str | None = None, limit: int = 10,
           account: str | None = None, since: datetime | None = None, snippets: bool = True) -> dict[str, Any]:
+    if (account or "").strip().lower() == "all":
+        return _check_all(tenant, folder, unread_only, search, limit, since, snippets)
     box = get_box(tenant, account)
     items = _guard(box, lambda: box.list(folder or "inbox", unread_only, search, limit, since, snippets))
     contacts.learn(tenant, [(i.get("from", ""), i.get("from_email", "")) for i in items if not i.get("bulk")], 0.2)
     return {"account": box.address, "folder": folder or "inbox", "count": len(items),
             "emails": [_public(box, i) for i in items]}
+
+
+def _check_all(tenant: str, folder: str, unread_only: bool, search: str | None, limit: int,
+               since: datetime | None, snippets: bool) -> dict[str, Any]:
+    """v0.181.0 unified inbox: every connected mailbox side by side, newest first."""
+    from email.utils import parsedate_to_datetime
+    from .accounts import boxes          # call-time import: tests (and hot config) may swap the boxes list
+    items: list[dict[str, Any]] = []
+    errors: list[str] = []
+    for box in boxes(tenant):
+        try:
+            got = _guard(box, lambda box=box: box.list(folder or "inbox", unread_only, search, limit, since, snippets))
+        except (MailError, NotConnected) as e:
+            errors.append(f"{box.address}: {e}")
+            continue
+        except Exception as e:                       # one dead mailbox never kills the unified inbox
+            log.warning("unified inbox: %s failed: %s", box.address, e)
+            errors.append(f"{box.address}: {e}")
+            continue
+        contacts.learn(tenant, [(i.get("from", ""), i.get("from_email", "")) for i in got if not i.get("bulk")], 0.2)
+        items.extend(_public(box, i) for i in got)
+
+    def when(i: dict[str, Any]) -> datetime:
+        try:
+            return parsedate_to_datetime(i.get("date") or "") or datetime.min.replace(tzinfo=timezone.utc)
+        except (TypeError, ValueError):
+            return datetime.min.replace(tzinfo=timezone.utc)
+
+    items.sort(key=when, reverse=True)
+    out: dict[str, Any] = {"account": "all", "folder": folder or "inbox", "count": len(items[:limit]),
+                           "emails": items[:limit]}
+    if errors:
+        out["errors"] = errors
+    return out
+
+
+def thread(tenant: str, ref: str) -> dict[str, Any]:
+    """v0.181.0 the whole conversation, in order, one call."""
+    box, native = split_ref(tenant, ref)
+    out = _guard(box, lambda: box.thread(native))
+    out["account"] = box.address
+    out["id"] = make_ref(box, native)
+    for m in out.get("messages", []):
+        m["id"] = make_ref(box, m.get("id", ""))
+    return out
 
 
 def read(tenant: str, ref: str, mark_seen: bool = True) -> dict[str, Any]:
@@ -112,7 +159,8 @@ def _by_box(tenant: str, refs: list[str]) -> dict[str, tuple[Box, list[str]]]:
     return groups
 
 
-ACTIONS = ("archive", "mark_read", "mark_unread", "star", "unstar", "move", "spam", "not_spam")
+ACTIONS = ("archive", "mark_read", "mark_unread", "star", "unstar", "move", "spam", "not_spam",
+           "mark_important", "mark_not_important", "category")
 
 
 def act(tenant: str, refs: list[str], action: str, folder: str = "") -> dict[str, Any]:
@@ -134,6 +182,10 @@ def act(tenant: str, refs: list[str], action: str, folder: str = "") -> dict[str
                 box.move(natives, "spam")
             elif action == "not_spam":
                 box.move(natives, "inbox")
+            elif action in ("mark_important", "mark_not_important"):
+                box.mark_important(natives, action == "mark_important")
+            elif action == "category":
+                box.set_category(natives, folder)
             else:
                 box.move(natives, folder)
         _guard(box, go)
@@ -149,6 +201,66 @@ def trash(tenant: str, refs: list[str]) -> int:
 def folders(tenant: str, account: str | None = None) -> list[str]:
     box = get_box(tenant, account)
     return _guard(box, box.folders)
+
+
+# ---------------- v0.181.0 labels (Gmail) ----------------
+def label_op(tenant: str, action: str, name: str = "", new_name: str = "", account: str | None = None) -> dict[str, Any]:
+    box = get_box(tenant, account)
+    if action == "list":
+        return {"labels": _guard(box, box.folders)}
+    if action == "create":
+        if not name.strip():
+            raise MailError("Label ka naam do.")
+        _guard(box, lambda: box.label_create(name))
+        return {"created": name.strip(), "labels": _guard(box, box.folders)}
+    if action == "rename":
+        if not name.strip() or not new_name.strip():
+            raise MailError("Kaunsa label, aur naya naam? dono do.")
+        _guard(box, lambda: box.label_rename(name, new_name))
+        return {"renamed": f"{name} -> {new_name}"}
+    if action == "delete":
+        if not name.strip():
+            raise MailError("Kaunsa label? naam do.")
+        _guard(box, lambda: box.label_delete(name))
+        return {"deleted": name.strip()}
+    raise MailError("action: create / rename / delete / list")
+
+
+# ---------------- v0.181.0 drafts inside Gmail itself ----------------
+def gmail_drafts(tenant: str, limit: int = 10, account: str | None = None) -> dict[str, Any]:
+    box = get_box(tenant, account)
+    out = _guard(box, lambda: box.drafts_list(max(1, min(int(limit or 10), 25))))
+    for d in out:
+        d["ref"] = make_ref(box, d.get("draft_id", ""))
+    return {"account": box.address, "count": len(out), "drafts": out}
+
+
+def delete_gmail_draft(tenant: str, ref: str) -> None:
+    box, native = split_ref(tenant, ref)
+    _guard(box, lambda: box.draft_delete(native))
+
+
+def push_gmail_draft(tenant: str, draft_id: str) -> dict[str, Any]:
+    """Save a prepared Hoola draft into the mailbox's own Drafts folder (Gmail), so she can finish/send it
+    from any device. The Hoola draft stays pending here — nothing is sent."""
+    with session() as s:
+        d = s.get(EmailDraft, draft_id)
+        if d is None or d.tenant_id != tenant:
+            raise MailError("Draft not found")
+        if d.status != "pending":
+            raise MailError("Sirf taiyaar (pending) draft hi mailbox ke Drafts mein save hota hai.")
+        to_addr, cc, bcc, subject = d.to_addr, d.cc_addr or "", d.bcc_addr or "", d.subject
+        irt, refs, account, thread_id = d.in_reply_to, d.references, d.account, d.thread_id
+        atts, body, md = list(d.attachments or []), d.body, bool(d.markdown)
+    box = get_box(tenant, account or None)
+    files = load_files(tenant, atts)
+    msg = mime.build(from_addr=box.address, from_name=sender_name(tenant, box), to=to_addr, cc=cc, bcc=bcc,
+                     subject=subject, body=mime.md_to_plain(body) if md else body,
+                     in_reply_to=irt, references=refs, files=files,
+                     html_body=mime.md_to_html(body) if md else None)
+    out = _guard(box, lambda: box.save_draft(msg, thread_id or None))
+    return {"gmail_draft_id": out.get("draft_id", ""), "account": box.address,
+            "note": "Mailbox ke Drafts folder mein save ho gaya; yahan ka draft bhi pending hai."}
 
 
 # ---------------- sorting the inbox ----------------
@@ -231,8 +343,32 @@ def describe_attachments(tenant: str, refs: list[dict[str, Any]] | None) -> list
                 raise MailError("Woh Santosh page (artifact) nahi mila ya abhi ban raha hai.")
             name = re.sub(r"[^\w\- ]+", "", art.title).strip() or "santosh-page"
             out.append({"type": "artifact", "artifact_id": art.id, "name": f"{name}.html", "size": 0, "mime": "text/html"})
+        elif a.get("drive_file_id"):
+            from ..drive.accounts import get_client as _drive_client
+            try:
+                c = _drive_client(tenant)
+                meta = c.get(str(a["drive_file_id"]))
+                name, mt = meta.get("name") or "file", meta.get("mimeType") or "application/octet-stream"
+                if mt.startswith("application/vnd.google-apps"):
+                    export = {"document": ("application/pdf", ".pdf"),
+                              "spreadsheet": ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx"),
+                              "presentation": ("application/pdf", ".pdf"), "drawing": ("image/png", ".png")}
+                    kind = mt.rsplit(".", 1)[-1]
+                    if kind not in export:
+                        raise MailError("Yeh Google file type attach nahi hoti; use PDF/XLSX bana kar Drive mein rakhiye.")
+                    mt, ext = export[kind]
+                    name = (name.rsplit(".", 1)[0] if "." in name else name) + ext
+                    data = c.export(str(a["drive_file_id"]), mt)
+                else:
+                    data = c.download(str(a["drive_file_id"]))
+            except MailError:
+                raise
+            except Exception as e:
+                raise MailError(f"Drive file nahi mili ({type(e).__name__}). Google Drive judi hai? Profile > Google Drive.")
+            out.append({"type": "drive", "drive_file_id": str(a["drive_file_id"]), "name": name[:200],
+                        "size": len(data), "mime": mt})
         else:
-            raise MailError("attachments: use {email_id, attachment_id}, {file_id} or {artifact_id}")
+            raise MailError("attachments: use {email_id, attachment_id}, {file_id}, {drive_file_id} or {artifact_id}")
     cap = get_settings().mail_max_attach_mb * 1024 * 1024
     if sum(int(x.get("size") or 0) for x in out) > cap:
         raise MailError(f"Attachments {get_settings().mail_max_attach_mb} MB se bade hain; email itna bada nahi ja sakta. "
@@ -253,6 +389,19 @@ def load_files(tenant: str, refs: list[dict[str, Any]] | None) -> list[tuple[str
             if not p.exists():
                 raise MailError(f"{f.name} ab server par nahi hai (files 24 ghante baad hat jaati hain). Dobara bhejiye.")
             files.append((f.name, a.get("mime") or "application/octet-stream", p.read_bytes()))
+        elif t == "drive":
+            from ..drive.accounts import get_client as _drive_client
+            try:
+                c = _drive_client(tenant)
+                meta = c.get(a["drive_file_id"])
+                mt = meta.get("mimeType") or a.get("mime") or "application/octet-stream"
+                if mt.startswith("application/vnd.google-apps"):
+                    data = c.export(a["drive_file_id"], "application/pdf")
+                else:
+                    data = c.download(a["drive_file_id"])
+            except Exception as e:
+                raise MailError(f"Drive file ab nahi mili ({type(e).__name__}).")
+            files.append((a.get("name") or meta.get("name") or "file", mt, data))
         elif t == "artifact":
             from .. import artifacts
             html = artifacts.latest_html(a["artifact_id"])
@@ -295,6 +444,39 @@ def draft_view(d: EmailDraft) -> dict[str, Any]:
             "follow_up_days": d.follow_up_days}
 
 
+# ---------------- v0.181.0 undo send ----------------
+UNDO_MAX = 60
+
+
+def get_undo_seconds(tenant: str) -> int:
+    with session() as s:
+        row = s.get(MailSetting, (tenant, "undo_seconds"))
+    try:
+        n = int((row.value if row else "") or 0)
+    except ValueError:
+        return 0
+    return max(0, min(n, UNDO_MAX))
+
+
+def set_undo_seconds(tenant: str, seconds) -> int:
+    try:
+        n = int(seconds)
+    except (TypeError, ValueError):
+        if str(seconds).strip().lower() in ("off", "0", "no", "band", ""):
+            n = 0
+        else:
+            raise MailError("undo_seconds: 0 (off) se 60 ke beech ka number do.")
+    n = max(0, min(n, UNDO_MAX))
+    with session() as s:
+        row = s.get(MailSetting, (tenant, "undo_seconds"))
+        if row is None:
+            row = MailSetting(tenant_id=tenant, key="undo_seconds", value=str(n))
+            s.add(row)
+        else:
+            row.value = str(n)
+    return n
+
+
 def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, from_worker: bool = False) -> dict[str, Any]:
     """The user tapped Bhejo (or a scheduled time came). Sends now, or schedules if send_at is still ahead."""
     with session() as s:
@@ -320,6 +502,17 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
     if scheduled:
         bus.publish(conv, "email_sent", view)
         return {"status": "scheduled", "send_at": send_at.isoformat()}
+    undo = 0 if from_worker else get_undo_seconds(tenant)
+    if undo > 0:
+        # v0.181.0 undo send: a tiny scheduled send — the existing cancel endpoint (or 'Roko') stops it in time
+        with session() as s:
+            d = s.get(EmailDraft, draft_id)
+            d.status, d.send_at = "scheduled", now() + timedelta(seconds=undo)
+            s.flush()
+            view, conv = draft_view(d), d.conversation_id
+        bus.publish(conv, "email_sent", view)
+        return {"status": "undo_window", "undo_seconds": undo, "send_at": view["send_at"],
+                "note": f"Email {undo} second mein jayega. Rokna ho to abhi cancel kijiye."}
     with session() as s:
         d = s.get(EmailDraft, draft_id)
         if d.status in ("sent", "sending"):
@@ -327,6 +520,7 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
         d.status = "sending"
         irt, refs, conv, account, thread_id = d.in_reply_to, d.references, d.conversation_id, d.account, d.thread_id
         atts, follow = list(d.attachments or []), d.follow_up_days
+        md = bool(d.markdown)
     try:
         for a in [x for x in (to_addr + "," + cc + "," + bcc).split(",") if x.strip()]:
             if not contacts.valid(email.utils.parseaddr(a)[1]):
@@ -334,7 +528,8 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
         box = get_box(tenant, account or None)
         files = load_files(tenant, atts)
         msg = mime.build(from_addr=box.address, from_name=sender_name(tenant, box), to=to_addr, cc=cc, bcc=bcc,
-                         subject=subject, body=body, in_reply_to=irt, references=refs, files=files)
+                         subject=subject, body=mime.md_to_plain(body) if md else body, in_reply_to=irt,
+                         references=refs, files=files, html_body=mime.md_to_html(body) if md else None)
         sent = _guard(box, lambda: box.send(msg, thread_id or None))
     except (MailError, NotConnected) as e:
         with session() as s:

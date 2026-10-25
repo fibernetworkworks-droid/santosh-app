@@ -284,6 +284,7 @@ class EmailDraft(Base):
     send_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # scheduled send
     follow_up_days: Mapped[int | None] = mapped_column(Integer, nullable=True)    # remind if no reply after N days
     sent_message_id: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    markdown: Mapped[bool | None] = mapped_column(Boolean, nullable=True)          # v0.181.0 body is markdown-lite; sent as rich HTML too
 
 
 class MailAccount(Base):
@@ -443,6 +444,14 @@ class MailWatch(Base):
     due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     status: Mapped[str] = mapped_column(String(12), default="waiting")   # waiting | replied | reminded | cancelled
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class MailSetting(Base):
+    """Small per-user mail preferences (v0.181.0: undo send window). Tenant + key is the identity."""
+    __tablename__ = "mail_settings"
+    tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    key: Mapped[str] = mapped_column(String(40), primary_key=True)
+    value: Mapped[str] = mapped_column(String(200), default="")
 
 
 class BulkMail(Base):

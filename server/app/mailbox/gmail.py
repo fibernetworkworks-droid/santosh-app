@@ -171,3 +171,70 @@ class GmailBox(Box):
             else:
                 res["from_them"] = True
         return res
+
+    # ---------------- v0.181.0 threads: the whole conversation ----------------
+    def thread(self, mid: str, max_messages: int = 30, body_chars: int = 3000) -> dict[str, Any]:
+        t = self._req("GET", f"/threads/{mid}",
+                      params=[("format", "metadata")] + [("metadataHeaders", h) for h in META])
+        msgs: list[dict[str, Any]] = []
+        for m in (t.get("messages") or [])[:max_messages]:
+            try:
+                p = mime.parse(self.raw(m["id"]))
+            except MailError:
+                continue                       # a message that vanished (deleted/spam purge) never breaks the thread
+            p["id"] = m["id"]
+            p["thread_id"] = m.get("threadId") or t.get("id", "")
+            if len(p.get("body", "")) > body_chars:
+                p["body"] = p["body"][:body_chars]
+                p["truncated"] = True
+            msgs.append(p)
+        return {"thread_id": t.get("id", ""), "count": len(msgs), "messages": msgs}
+
+    # ---------------- v0.181.0 drafts inside Gmail itself ----------------
+    def save_draft(self, msg: EmailMessage, thread_id: str | None = None) -> dict[str, Any]:
+        body: dict[str, Any] = {"message": {"raw": b64url(msg.as_bytes())}}
+        if thread_id:
+            body["message"]["threadId"] = thread_id
+        out = self._req("POST", "/drafts", json=body)
+        m = out.get("message") or {}
+        return {"draft_id": out.get("id", ""), "message_id": m.get("id", ""),
+                "thread_id": m.get("threadId") or thread_id or ""}
+
+    def drafts_list(self, limit: int = 10) -> list[dict[str, Any]]:
+        ids = [d["id"] for d in self._req("GET", "/drafts", params={"maxResults": max(1, min(int(limit or 10), 25))}).get("drafts", [])]
+        out = []
+        for did in ids:
+            d = self._req("GET", f"/drafts/{did}", params=[("format", "metadata")] + [("metadataHeaders", h) for h in META])
+            s = self._summary(d.get("message") or {})
+            s["draft_id"] = did
+            out.append(s)
+        return out
+
+    def draft_delete(self, draft_id: str) -> None:
+        self._req("DELETE", f"/drafts/{draft_id}")
+
+    # ---------------- v0.181.0 labels: full management ----------------
+    def label_create(self, name: str) -> dict[str, Any]:
+        return self._req("POST", "/labels", json={"name": (name or "").strip()[:60], "labelListVisibility": "labelShow",
+                                                  "messageListVisibility": "show"})
+
+    def label_rename(self, name: str, new_name: str) -> None:
+        lid = self._label_id(name)
+        self._req("PATCH", f"/labels/{lid}", json={"name": (new_name or "").strip()[:60]})
+
+    def label_delete(self, name: str) -> None:
+        lid = self._label_id(name)
+        self._req("DELETE", f"/labels/{lid}")
+
+    # ---------------- v0.181.0 importance + category tabs ----------------
+    CATEGORIES = {"personal": "CATEGORY_PERSONAL", "social": "CATEGORY_SOCIAL", "updates": "CATEGORY_UPDATES",
+                  "forums": "CATEGORY_FORUMS", "promotions": "CATEGORY_PROMOTIONS"}
+
+    def mark_important(self, ids: list[str], on: bool) -> None:
+        self._modify(ids, add=["IMPORTANT"]) if on else self._modify(ids, remove=["IMPORTANT"])
+
+    def set_category(self, ids: list[str], category: str) -> None:
+        cat = self.CATEGORIES.get((category or "").strip().lower())
+        if not cat:
+            raise MailError("category personal / social / updates / forums / promotions mein se hai")
+        self._modify(ids, add=[cat], remove=[c for c in self.CATEGORIES.values() if c != cat])

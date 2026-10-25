@@ -7,12 +7,13 @@
   "layer": "L0",
   "phase": "MVP",
   "priority": "P0",
-  "description": "Your Gmail, Outlook or any email: read, sort, reply, forward, attachments, follow-ups, scheduled and bulk mail. Asks before sending, deleting or bulk mail",
-  "notes": "Driven by the email_* tools; this pack holds the delete and bulk-mail confirm cards",
+  "description": "Your Gmail, Outlook or any email: read, threads, sort, reply (rich markdown), forward, attachments (incl. Drive files), labels, Gmail drafts, follow-ups, undo send, scheduled and bulk mail. Asks before sending, deleting or bulk mail",
+  "notes": "Driven by the email_* tools; this pack holds the delete, bulk-mail, label-delete and Gmail-draft-delete confirm cards",
   "master_list_row": 0,
   "executor": "mail",
   "config": {},
-  "tools": [{"name": "confirm_delete", "tier": 2}, {"name": "confirm_bulk", "tier": 2}],
+  "tools": [{"name": "confirm_delete", "tier": 2}, {"name": "confirm_bulk", "tier": 2},
+            {"name": "confirm_label_delete", "tier": 2}, {"name": "confirm_draft_delete", "tier": 2}],
   "keywords": ["email", "mail", "gmail", "outlook", "inbox", "bulk mail"],
   "wave": "MVP"
 }

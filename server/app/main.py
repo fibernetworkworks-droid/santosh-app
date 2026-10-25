@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.182.0"   # v0.182.0 cards close themselves: resolved asks stay resolved, TTL janitor, keyboard-safe card fields (re-versioned after the dev's 0.181 human-voice) (bump with pubspec)
+APP_VERSION = "0.181.0"   # v0.181.0 Gmail poora: thread view (poori baat-cheet), rich markdown mail (safe HTML + plain), inline images, drafts saved inside Gmail (list/delete behind a card), labels CRUD (delete behind a card), mark-important + category tabs, unified inbox across mailboxes, undo-send window (0-60s), Drive files as attachments, picture attachments read by OCR/vision (bump with pubspec)
 
 
 @asynccontextmanager

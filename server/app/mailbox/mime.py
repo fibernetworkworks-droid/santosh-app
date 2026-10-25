@@ -163,9 +163,77 @@ def is_automated(sender: str, bulk: bool = False) -> bool:
 
 
 # ---------------- building ----------------
+_MD_CODE = re.compile(r"`([^`\n]+)`")
+_MD_BOLD = re.compile(r"\*\*([^*\n]+)\*\*")
+_MD_ITAL = re.compile(r"(?<!\*)\*([^*\n]+)\*(?!\*)|(?<![\w])_([^_\n]+)_(?![\w])")
+_MD_LINK = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
+_BARE_URL = re.compile(r"(?<![\"'>=\w])(https?://[^\s<]+)")
+
+
+def md_to_plain(md: str) -> str:
+    """Markdown-lite -> plain text (markers stripped, links shown as text (url))."""
+    text = _MD_LINK.sub(lambda m: f"{m.group(1)} ({m.group(2)})", str(md or ""))
+    text = _MD_BOLD.sub(r"\1", text)
+    text = _MD_ITAL.sub(lambda m: m.group(1) or m.group(2) or "", text)
+    text = _MD_CODE.sub(r"\1", text)
+    text = re.sub(r"^#{1,4}\s+", "", text, flags=re.M)
+    return text
+
+
+def md_to_html(md: str) -> str:
+    """Markdown-lite -> safe HTML. EVERYTHING is html-escaped first, so the output can only contain the
+    few tags we generate ourselves (b, i, code, a, p, br, ul/ol/li, h3) — no script ever survives."""
+    text = _html.escape(str(md or "").replace("\r\n", "\n"))
+    text = _MD_CODE.sub(lambda m: f"<code>{m.group(1)}</code>", text)
+    text = _MD_BOLD.sub(lambda m: f"<b>{m.group(1)}</b>", text)
+    text = _MD_ITAL.sub(lambda m: f"<i>{m.group(1) or m.group(2)}</i>", text)
+    text = _MD_LINK.sub(lambda m: f'<a href="{m.group(2)}">{m.group(1)}</a>', text)
+    text = _BARE_URL.sub(lambda m: f'<a href="{m.group(1)}">{m.group(1)}</a>', text)
+    out: list[str] = []
+    list_tag = ""
+
+    def _close_list():
+        nonlocal list_tag
+        if list_tag:
+            out.append(f"</{list_tag}>")
+            list_tag = ""
+
+    for ln in text.split("\n"):
+        s = ln.strip()
+        bullet = re.match(r"[-*]\s+(.*)", s)
+        number = re.match(r"\d+[.)]\s+(.*)", s)
+        heading = re.match(r"#{1,4}\s+(.*)", s)
+        if heading and not bullet:
+            _close_list()
+            out.append(f"<h3>{heading.group(1)}</h3>")
+        elif bullet:
+            if list_tag != "ul":
+                _close_list()
+                out.append("<ul>")
+                list_tag = "ul"
+            out.append(f"<li>{bullet.group(1)}</li>")
+        elif number:
+            if list_tag != "ol":
+                _close_list()
+                out.append("<ol>")
+                list_tag = "ol"
+            out.append(f"<li>{number.group(1)}</li>")
+        elif s:
+            _close_list()
+            out.append(f"<p>{s}</p>")
+        else:
+            _close_list()
+    _close_list()
+    return "".join(out)
+
+
 def build(*, from_addr: str, from_name: str, to: str, subject: str, body: str, cc: str = "", bcc: str = "",
           in_reply_to: str | None = None, references: str | None = None,
-          files: list[tuple[str, str, bytes]] | None = None) -> EmailMessage:
+          files: list[tuple[str, str, bytes]] | None = None,
+          html_body: str | None = None,
+          inline: list[tuple[str, str, bytes, str]] | None = None) -> EmailMessage:
+    """html_body: the rich alternative part (already safe — md_to_html output). inline: (name, mime, data, cid)
+    images the html references as <img src="cid:...">; they ride inside the html part (multipart/related)."""
     msg = EmailMessage()
     msg["From"] = email.utils.formataddr((str(make_header([(from_name or from_addr.split("@")[0], "utf-8")])), from_addr))
     msg["To"] = to
@@ -180,6 +248,11 @@ def build(*, from_addr: str, from_name: str, to: str, subject: str, body: str, c
         msg["In-Reply-To"] = in_reply_to
         msg["References"] = f"{references} {in_reply_to}".strip() if references else in_reply_to
     msg.set_content(body)
+    if html_body:
+        msg.add_alternative(html_body, subtype="html")
+        for name, mtype, data, cid in inline or []:
+            sub = (mtype or "image/png").split("/", 1)[1]
+            msg.get_payload()[1].add_related(data, maintype="image", subtype=sub, cid=f"<{cid}>", filename=name)
     for name, mime, data in files or []:
         maintype, _, subtype = (mime or "application/octet-stream").partition("/")
         msg.add_attachment(data, maintype=maintype or "application", subtype=subtype or "octet-stream", filename=name)

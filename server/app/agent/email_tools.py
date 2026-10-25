@@ -20,23 +20,30 @@ from .tools import Ctx, ToolError
 ATTACH_SCHEMA = {"type": "array", "description": (
     "Files to attach. Each item is ONE of: {email_id, attachment_id} (a file from a received email, ids from "
     "email_read), {file_id} (a file from the user's PC via pc_send_to_phone, or one the user added), "
-    "{artifact_id} (a Santosh page)."),
+    "{drive_file_id} (a file from the user's Google Drive), {artifact_id} (a Santosh page)."),
     "items": {"type": "object", "properties": {"email_id": {"type": "string"}, "attachment_id": {"type": "string"},
-                                               "file_id": {"type": "string"}, "artifact_id": {"type": "string"}}}}
+                                               "file_id": {"type": "string"}, "drive_file_id": {"type": "string"},
+                                               "artifact_id": {"type": "string"}}}}
 
 EMAIL_TOOLS = [
     {"name": "email_check", "description": (
         "List emails (newest first) with a short preview. folder: inbox (default), sent, archive, starred, spam, trash, "
-        "or a label/folder name. unread_only for 'koi nayi mail aayi?'. search finds by sender, subject or words "
-        "(Gmail accounts accept Gmail search like 'from:bank has:attachment'). Read one fully with email_read."),
+        "or a label/folder name. account: a mailbox address, or 'all' for a unified inbox across every connected "
+        "mailbox. unread_only for 'koi nayi mail aayi?'. search finds by sender, subject or words (Gmail accounts "
+        "accept Gmail search like 'from:bank has:attachment'). Read one fully with email_read, a whole conversation "
+        "with email_thread."),
      "input_schema": {"type": "object", "properties": {
          "folder": {"type": "string"}, "unread_only": {"type": "boolean"},
          "limit": {"type": "integer", "description": "How many (default 10, max 50)"},
          "search": {"type": "string"},
-         "account": {"type": "string", "description": "Which mailbox (address), when the user has more than one"}}}},
+         "account": {"type": "string", "description": "Which mailbox (address), or 'all' (default: the first mailbox)"}}}},
     {"name": "email_read", "description": (
         "Read one email fully: sender, recipients, subject, full text and its attachments (id, name, size). "
         "Marks it read."),
+     "input_schema": {"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]}},
+    {"name": "email_thread", "description": (
+        "Read a whole conversation (thread) in order: every message with sender, time and text. id from email_check "
+        "or email_read. Use for 'poora baat-cheet dikhao', 'is thread mein kya hua'."),
      "input_schema": {"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]}},
     {"name": "email_triage", "description": (
         "Sort the inbox: what needs the user's reply, bills/payments, OTP and security alerts, newsletters, other. Use "
@@ -54,19 +61,24 @@ EMAIL_TOOLS = [
     {"name": "email_draft", "description": (
         "Write an email for the user to approve and send: a reply (reply_to_id = the email being answered; reply_all "
         "to include everyone) or a new mail ('to' = addresses, or people's names: Santosh finds their address from past "
-        "mail). WRITE THE FULL BODY yourself in the user's language and tone. If the mailbox has a signature it is added "
-        "automatically, so don't sign then; otherwise sign with the user's name. The user approves with Bhejo in the app; "
-        "it is NOT sent automatically. send_at schedules it (local time, e.g. 2026-10-20T09:00). follow_up_days = remind "
-        "the user if nobody replies. Never put passwords, OTPs or card numbers in an email."),
+        "mail). WRITE THE FULL BODY yourself in the user's language and tone. markdown=true makes the body rich: "
+        "**bold**, *italic*, `code`, [text](url), - bullets, numbered lists, ## headings (sent as nice HTML plus plain "
+        "text; never write raw HTML tags yourself). If the mailbox has a signature it is added automatically, so don't "
+        "sign then; otherwise sign with the user's name. The user approves with Bhejo in the app; it is NOT sent "
+        "automatically. send_at schedules it (local time, e.g. 2026-10-20T09:00). follow_up_days = remind the user if "
+        "nobody replies. save_to_gmail=true also puts the draft in their Gmail Drafts folder (they can finish it in "
+        "the Gmail app too). Never put passwords, OTPs or card numbers in an email."),
      "input_schema": {"type": "object", "properties": {
          "to": {"type": "string", "description": "Emails or names, comma-separated. Omit on a reply to answer the sender."},
          "cc": {"type": "string"}, "bcc": {"type": "string"},
          "subject": {"type": "string", "description": "Omit on a reply to keep 'Re: ...'"},
          "body": {"type": "string", "description": "The full email text, ready to send"},
+         "markdown": {"type": "boolean", "description": "body is markdown-lite; goes out as rich HTML + plain text"},
          "reply_to_id": {"type": "string"}, "reply_all": {"type": "boolean"},
          "attachments": ATTACH_SCHEMA,
          "send_at": {"type": "string", "description": "Optional: send later at this local time"},
          "follow_up_days": {"type": "number", "description": "Optional: remind if no reply after this many days"},
+         "save_to_gmail": {"type": "boolean", "description": "Also save into the Gmail Drafts folder"},
          "account": {"type": "string", "description": "Send from this mailbox (address)"}},
          "required": ["body"]}},
     {"name": "email_forward", "description": (
@@ -77,12 +89,26 @@ EMAIL_TOOLS = [
          "note": {"type": "string"}, "include_attachments": {"type": "boolean", "description": "default true"}},
          "required": ["id", "to"]}},
     {"name": "email_action", "description": (
-        "Organise emails (done at once, can be undone): archive, mark_read, mark_unread, star, unstar, spam, not_spam, "
-        "move (to folder/label; created if missing). ids from email_check. To delete use email_delete."),
+        "Organise emails (done at once, can be undone): archive, mark_read, mark_unread, star, unstar, move (to "
+        "folder/label; created if missing), spam, not_spam, mark_important, mark_not_important, category (folder= "
+        "personal / social / updates / forums / promotions; Gmail). ids from email_check. To delete use email_delete."),
      "input_schema": {"type": "object", "properties": {
          "ids": {"type": "array", "items": {"type": "string"}},
          "action": {"type": "string", "enum": list(ms.ACTIONS)}, "folder": {"type": "string"}},
          "required": ["ids", "action"]}},
+    {"name": "email_label", "description": (
+        "Manage Gmail labels. action='list' shows them, 'create' (name), 'rename' (name, new_name). 'delete' first "
+        "asks the user with a card — mails stay, only the label goes."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["list", "create", "rename", "delete"]},
+         "name": {"type": "string"}, "new_name": {"type": "string"},
+         "account": {"type": "string"}}, "required": ["action"]}},
+    {"name": "email_drafts", "description": (
+        "The drafts saved in the mailbox's own Drafts folder (Gmail). action='list' shows them (subject, to, when). "
+        "action='delete' with id removes one — behind a confirm card, because a Gmail draft does not go to Trash."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["list", "delete"]}, "id": {"type": "string"},
+         "limit": {"type": "integer"}, "account": {"type": "string"}}, "required": ["action"]}},
     {"name": "email_delete", "description": (
         "Delete emails (move to Trash). Shows the user a confirm card; nothing is deleted until they approve."),
      "input_schema": {"type": "object", "properties": {"ids": {"type": "array", "items": {"type": "string"}}},
@@ -115,17 +141,22 @@ EMAIL_TOOLS = [
      "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
     {"name": "email_accounts", "description": (
         "The user's connected mailboxes and their signatures, and settings: signature (set for a mailbox), "
-        "make_default (address), daily_summary ('09:00' local time for a daily inbox summary, or 'off'). Call with no "
-        "arguments to just list. If nothing is connected, tell the user: Profile > Email > Gmail / Outlook / Other."),
+        "make_default (address), daily_summary ('09:00' local time for a daily inbox summary, or 'off'), undo_seconds "
+        "(0-60: after Bhejo the email waits this many seconds and can still be cancelled; 0 = send at once). Call with "
+        "no arguments to just list. If nothing is connected, tell the user: Profile > Email > Gmail / Outlook / Other."),
      "input_schema": {"type": "object", "properties": {
          "account": {"type": "string"}, "signature": {"type": "string"}, "make_default": {"type": "string"},
-         "daily_summary": {"type": "string"}}}},
+         "daily_summary": {"type": "string"},
+         "undo_seconds": {"type": "integer", "description": "0-60, 0 = off"}}}},
 ]
 
 EMAIL_LABELS = {"email_check": "Inbox dekh raha hoon", "email_read": "Email padh raha hoon",
-                "email_triage": "Inbox chhaant raha hoon", "email_attachment": "Attachment khol raha hoon",
+                "email_thread": "Poora conversation padh raha hoon", "email_triage": "Inbox chhaant raha hoon",
+                "email_attachment": "Attachment khol raha hoon",
                 "email_draft": "Email likh raha hoon", "email_forward": "Email forward kar raha hoon",
-                "email_action": "Emails sambhal raha hoon", "email_delete": "Delete ki manzoori le raha hoon",
+                "email_action": "Emails sambhal raha hoon", "email_label": "Labels sambhal raha hoon",
+                "email_drafts": "Mailbox ke drafts dekh raha hoon",
+                "email_delete": "Delete ki manzoori le raha hoon",
                 "email_follow_up": "Follow-up laga raha hoon", "email_bulk": "Bulk email taiyaar kar raha hoon",
                 "email_bulk_status": "Bulk email dekh raha hoon", "email_contacts": "Address dhoondh raha hoon",
                 "email_accounts": "Email settings dekh raha hoon"}
@@ -150,8 +181,42 @@ async def email_read(ctx: Ctx, id, **_):
     return await _t(ms.read, ctx.tenant_id, str(id))
 
 
+async def email_thread(ctx: Ctx, id, **_):
+    return await _t(ms.thread, ctx.tenant_id, str(id))
+
+
 async def email_triage(ctx: Ctx, hours=24, unread_only=True, account=None, **_):
     return await _t(ms.triage, ctx.tenant_id, int(hours or 24), 40, account, unread_only is not False)
+
+
+def _read_image(ctx: Ctx, name: str, mtype: str, data: bytes) -> dict[str, Any]:
+    """v0.181.0 a picture attachment: QR + our own OCR first, vision only if that is weak — same ladder as file_read."""
+    from ..net import media
+    from .. import ocr, qrread
+    info = media.analyse(name, mtype, data)
+    out: dict[str, Any] = {"name": name, "size": len(data), "kind": "image"}
+    codes = qrread.scan(data)
+    if codes:
+        out["codes"] = codes
+    try:
+        from .file_tools import _owner_lang
+        lang = _owner_lang(ctx.tenant_id)
+    except Exception:
+        lang = "hinglish"
+    r = ocr.read(data, lang)
+    if r and r.get("text"):
+        out["text"] = r["text"][:15000]
+        out["ocr"] = {k: r[k] for k in ("conf", "langs", "good") if k in r}
+        return out
+    try:
+        seen = media.understand(ctx.tenant_id, info, name, mtype, data, "")
+    except Exception:
+        seen = None
+    if seen:
+        out["seen"] = seen
+    else:
+        out["note"] = "Is picture mein padhne layak kuch nahi mila; do='phone' se phone par bhej sakte hain."
+    return out
 
 
 async def email_attachment(ctx: Ctx, email_id, attachment_id, do="read", **_):
@@ -173,6 +238,8 @@ async def email_attachment(ctx: Ctx, email_id, attachment_id, do="read", **_):
         except Exception as e:
             raise ToolError(f"PC par save nahi hua: {e}")
         return {"saved_on_pc": name, **({k: v for k, v in (out or {}).items() if k in ("path", "message")})}
+    if do == "read" and (mtype or "").startswith("image/"):
+        return await asyncio.to_thread(_read_image, ctx, name, mtype, data)
     out = await asyncio.to_thread(mime.attachment_text, name, mtype, data)
     return {"name": name, "size": len(data), **out}
 
@@ -222,7 +289,8 @@ def _save_draft(ctx: Ctx, **f) -> dict[str, Any]:
 
 
 async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, reply_to_id=None, reply_all=False,
-                      attachments=None, send_at=None, follow_up_days=None, account=None, **_):
+                      attachments=None, send_at=None, follow_up_days=None, account=None, markdown=False,
+                      save_to_gmail=False, **_):
     def work():
         to_addr = _resolve(ctx, to or "", "to")
         cc_addr = _resolve(ctx, cc or "", "cc")
@@ -258,9 +326,13 @@ async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, repl
         return _save_draft(ctx, to_addr=to_addr[:1000], cc_addr=cc_addr[:1000], bcc_addr=bcc_addr[:1000] or None,
                            subject=(subj or "(no subject)")[:500], body=text, in_reply_to=in_reply_to, references=refs,
                            thread_id=thread_id, account=key, kind=kind, attachments=atts or None, send_at=when,
-                           follow_up_days=int(follow_up_days) if follow_up_days else None)
+                           follow_up_days=int(follow_up_days) if follow_up_days else None, markdown=bool(markdown))
     view = await _t(work)
+    if save_to_gmail:
+        await _t(ms.push_gmail_draft, ctx.tenant_id, str(view["id"]))
     note = "Draft taiyaar hai. User app mein 'Bhejo' dabakar approve karega; tab tak bheja nahi jayega."
+    if save_to_gmail:
+        note += " Mailbox ke apne Drafts folder mein bhi save kar diya."
     if view.get("send_at_label"):
         note += f" Bhejo dabane par yeh {view['send_at_label']} ko jayega."
     return {"draft_id": view["id"], "to": view["to"], "cc": view["cc"], "subject": view["subject"],
@@ -291,6 +363,24 @@ async def email_forward(ctx: Ctx, id, to, cc="", note="", include_attachments=Tr
 
 async def email_action(ctx: Ctx, ids, action, folder="", **_):
     return await _t(ms.act, ctx.tenant_id, [str(i) for i in ids or []], action, folder or "")
+
+
+async def email_label(ctx: Ctx, action, name="", new_name="", account=None, **_):
+    if action == "delete":
+        out = await _t(_bazar, ctx, "confirm_label_delete", {"name": str(name or "")})
+        out.setdefault("say", "A confirm card is in the chat; mails stay, only the label goes after the user approves.")
+        return out
+    return await _t(ms.label_op, ctx.tenant_id, str(action or "list"), str(name or ""), str(new_name or ""), account)
+
+
+async def email_drafts(ctx: Ctx, action="list", id=None, limit=10, account=None, **_):
+    if action == "delete":
+        if not id:
+            raise ToolError("Kaunsa draft? id do (email_drafts list se).")
+        out = await _t(_bazar, ctx, "confirm_draft_delete", {"id": str(id)})
+        out.setdefault("say", "A confirm card is in the chat; the Gmail draft goes only after the user approves.")
+        return out
+    return await _t(ms.gmail_drafts, ctx.tenant_id, int(limit or 10), account)
 
 
 def _bazar(ctx: Ctx, tool: str, args: dict) -> dict:
@@ -354,7 +444,8 @@ async def email_contacts(ctx: Ctx, query, **_):
     return {"contacts": await _t(contacts.find, ctx.tenant_id, str(query or ""))}
 
 
-async def email_accounts(ctx: Ctx, account=None, signature=None, make_default=None, daily_summary=None, **_):
+async def email_accounts(ctx: Ctx, account=None, signature=None, make_default=None, daily_summary=None,
+                         undo_seconds=None, **_):
     changed = []
     if signature is not None:
         box = await _t(get_box, ctx.tenant_id, account)
@@ -366,6 +457,9 @@ async def email_accounts(ctx: Ctx, account=None, signature=None, make_default=No
         changed.append(f"default mailbox {box.address}")
     if daily_summary:
         changed.append(await _daily_summary(ctx, str(daily_summary)))
+    if undo_seconds is not None:
+        n = await _t(ms.set_undo_seconds, ctx.tenant_id, undo_seconds)
+        changed.append(f"undo window {n}s" if n else "undo send off")
     out: dict[str, Any] = {"mailboxes": await _t(views, ctx.tenant_id)}
     if changed:
         out["changed"] = changed
@@ -403,8 +497,10 @@ async def _daily_summary(ctx: Ctx, at: str) -> str:
     return f"daily inbox summary at {hh:02d}:{mm:02d}"
 
 
-EMAIL_HANDLERS = {"email_check": email_check, "email_read": email_read, "email_triage": email_triage,
+EMAIL_HANDLERS = {"email_check": email_check, "email_read": email_read, "email_thread": email_thread,
+                  "email_triage": email_triage,
                   "email_attachment": email_attachment, "email_draft": email_draft, "email_forward": email_forward,
-                  "email_action": email_action, "email_delete": email_delete, "email_follow_up": email_follow_up,
+                  "email_action": email_action, "email_label": email_label, "email_drafts": email_drafts,
+                  "email_delete": email_delete, "email_follow_up": email_follow_up,
                   "email_bulk": email_bulk, "email_bulk_status": email_bulk_status, "email_contacts": email_contacts,
                   "email_accounts": email_accounts}

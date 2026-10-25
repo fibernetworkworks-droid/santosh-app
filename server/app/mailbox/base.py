@@ -66,6 +66,36 @@ class Box:
         """Has anyone answered this mail since `since`? {"from_them": bool, "from_me": bool}."""
         raise NotImplementedError
 
+    # ---------------- v0.181.0: richer abilities, Gmail-first, clean "nahi hota" elsewhere ----------------
+    def thread(self, mid: str) -> dict[str, Any]:
+        raise MailError("Poora conversation (thread view) abhi Gmail mailbox par khulta hai; "
+                        "is mailbox par mail ek ek karke kholta hoon.")
+
+    def save_draft(self, msg: EmailMessage, thread_id: str | None = None) -> dict[str, Any]:
+        raise MailError("Draft is mailbox ke apne Drafts folder mein save nahi hota (abhi Gmail par). "
+                        "Hoola ka draft bana rahega; wahi se Bhejo hoga.")
+
+    def drafts_list(self, limit: int = 10) -> list[dict[str, Any]]:
+        raise MailError("Mailbox ke apne drafts abhi Gmail par dikhte hain.")
+
+    def draft_delete(self, draft_id: str) -> None:
+        raise MailError("Mailbox ke apne drafts abhi Gmail par delete hote hain.")
+
+    def label_create(self, name: str) -> dict[str, Any]:
+        raise MailError("Labels ka poora management abhi Gmail mailbox par hai (move se label banti hai).")
+
+    def label_rename(self, name: str, new_name: str) -> None:
+        raise MailError("Labels ka poora management abhi Gmail mailbox par hai.")
+
+    def label_delete(self, name: str) -> None:
+        raise MailError("Labels ka poora management abhi Gmail mailbox par hai.")
+
+    def mark_important(self, ids: list[str], on: bool) -> None:
+        raise MailError("Important mark abhi Gmail mailbox par hota hai.")
+
+    def set_category(self, ids: list[str], category: str) -> None:
+        raise MailError("Category tabs (Social / Promotions...) abhi Gmail mailbox par hain.")
+
     def view(self) -> dict[str, Any]:
         return {"key": self.key, "kind": self.kind, "address": self.address, "name": self.name,
                 "signature": self.signature}
