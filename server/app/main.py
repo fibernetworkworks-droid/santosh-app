@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.176.0"   # v0.173 composer steering: queue receipts + take-back, drafts, slash, gauge (bump with pubspec)
+APP_VERSION = "0.177.0"   # v0.173 composer steering: queue receipts + take-back, drafts, slash, gauge (bump with pubspec)
 
 
 @asynccontextmanager
@@ -94,7 +94,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.176.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.177.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -945,7 +945,7 @@ async def receive_webhook(request: Request):
 
 # ---------------- daily life (used by the Santosh phone app) ----------------
 from . import life  # noqa: E402
-from .db import DeviceAction, ListItem, MemoryFact, Profile, Reminder  # noqa: E402
+from .db import DeviceAction, ListItem, MemoryFact, Profile, Reminder, as_utc, now  # noqa: E402
 
 
 @app.get("/api/reminders", dependencies=[Depends(require_key)])
@@ -4335,13 +4335,22 @@ def cancel_routine_api(routine_id: str, tenant: str = Depends(current_tenant)):
 
 @app.get("/api/lists", dependencies=[Depends(require_key)])
 def get_lists(tenant: str = Depends(current_tenant)):
+    from datetime import datetime
+    tz = life.tz_of(tenant)
+    day_start = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
     with session() as s:
         rows = s.scalars(select(ListItem).where(ListItem.tenant_id == tenant, ListItem.done.is_(False))
                          .order_by(ListItem.list_name, ListItem.id)).all()
         out: dict[str, list[dict]] = {}
         for r in rows:
             out.setdefault(r.list_name, []).append({"id": r.id, "text": r.text})
-        return {"lists": out}
+        # v0.177: what she finished TODAY stays visible — the daily completed feed (tenant-local day)
+        done_rows = s.scalars(select(ListItem).where(ListItem.tenant_id == tenant, ListItem.done.is_(True),
+                                                     ListItem.done_at >= day_start)
+                              .order_by(ListItem.done_at.desc())).all()
+        done_today = [{"id": r.id, "text": r.text, "list_name": r.list_name,
+                       "done_at": as_utc(r.done_at).isoformat() if r.done_at else None} for r in done_rows]
+        return {"lists": out, "done_today": done_today}
 
 
 @app.post("/api/lists/items/{item_id}/done", dependencies=[Depends(require_key)])
@@ -4351,6 +4360,19 @@ def tick_item(item_id: int, tenant: str = Depends(current_tenant)):
         if not it or it.tenant_id != tenant:
             raise HTTPException(404, "Item not found")
         it.done = True
+        it.done_at = now()          # v0.177: stamped so the daily completed feed can show it
+    return get_lists()
+
+
+@app.post("/api/lists/items/{item_id}/undo", dependencies=[Depends(require_key)])
+def undo_item(item_id: int, tenant: str = Depends(current_tenant)):
+    """v0.177: ticked the wrong thing? One tap puts it back on the list (and out of done-today)."""
+    with session() as s:
+        it = s.get(ListItem, item_id)
+        if not it or it.tenant_id != tenant:
+            raise HTTPException(404, "Item not found")
+        it.done = False
+        it.done_at = None
     return get_lists()
 
 
@@ -9642,7 +9664,7 @@ def bootstrap(request: Request, conv: str = "", new: bool = False, tenant: str =
     out["conversation_id"] = cid or create_conversation(tenant)["id"]
     out["conversation_new"] = not cid
     convs.mark(tenant, out["conversation_id"], "app")
-    for key, fn in (("me", lambda: api_me(request)), ("lists", lambda: get_lists(tenant)["lists"]),
+    for key, fn in (("me", lambda: api_me(request)), ("lists", lambda: get_lists(tenant)),
                     ("routines", lambda: get_routines(tenant)["routines"]), ("avatar", lambda: avatar_get(tenant)),
                     ("pending_actions", lambda: pending_actions(tenant)["actions"])):
         try:

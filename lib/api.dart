@@ -642,8 +642,10 @@ class Api {
       List<Map<String, dynamic>>.from((await _send('GET', '/api/reminders'))['reminders'] as List);
   Future<void> cancelReminder(String id) async => _send('POST', '/api/reminders/$id/cancel');
 
-  Future<Map<String, dynamic>> lists() async => Map<String, dynamic>.from((await _send('GET', '/api/lists'))['lists'] as Map);
+  Future<Map<String, dynamic>> lists() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/lists') as Map);   // v0.177: {lists, done_today}
   Future<void> tickItem(int id) async => _send('POST', '/api/lists/items/$id/done');
+  Future<void> undoItem(int id) async => _send('POST', '/api/lists/items/$id/undo');   // v0.177: wapas list mein
 
   Future<List<Map<String, dynamic>>> memory() async =>
       List<Map<String, dynamic>>.from((await _send('GET', '/api/memory'))['facts'] as List);

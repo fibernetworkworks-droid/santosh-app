@@ -204,6 +204,26 @@ const Map<String, Map<String, String>> uiStrings = {
     '{x} ghante baad': 'in {x} hrs',
     '{x} din baad': 'in {x} days',
     'Reminder hata diya': 'Reminder removed',
+    // ---- Hoola ke apne kaam + LISTS (v0.177): cadence tiles, proof-of-work, done-today with undo ----
+    'HOOLA KE APNE KAAM': "HOOLA'S OWN JOBS",
+    'AAGE': 'AHEAD',
+    'Ek baar': 'Once',
+    'Har ghante': 'Every hour',
+    '{x} baar': '{x} times',
+    'Hoola ka koi kaam chalu nahi': 'No self-run jobs yet',
+    'Boliye: "Har subah 7 baje mausam bata dena" — main roz khud karungi, yaad dilana nahi padega.':
+        'Say: "Tell me the weather every morning at 7" — I\'ll do it daily on my own; you never have to remind me.',
+    'Mera kaam, meri zimmedari — time par, bina yaad dilaye.': 'My job, my responsibility — on time, without being asked.',
+    'Kaam band kar diya': 'Job stopped',
+    'LISTS': 'LISTS',
+    'Koi list nahi': 'No lists yet',
+    'Boliye: "Doodh aur bread shopping list mein daalo" — main likh lungi, aur tick karti jaungi.':
+        'Say: "Add milk and bread to the shopping list" — I\'ll write it down and tick things off as they\'re done.',
+    'Har chhoti cheez likhi jaayegi — poore hote hi neeche tikti jaayegi.':
+        'Every little thing gets written down — and ticks itself off below the moment it\'s done.',
+    '{x} baaki': '{x} left',
+    'AAJ POORE KIYE': 'DONE TODAY',
+    'Wapas list mein': 'Back in the list',
   },
 };
 

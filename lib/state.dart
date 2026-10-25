@@ -375,6 +375,7 @@ class Santosh extends ChangeNotifier {
   FeedItem? _steps;
   List<Map<String, dynamic>> reminders = [];
   Map<String, dynamic> lists = {};
+  List<Map<String, dynamic>> doneToday = [];   // v0.177: ticked today — the daily completed feed
 
   StreamSubscription<SantoshEvent>? _sub;
   final FlutterTts _tts = FlutterTts();
@@ -503,7 +504,14 @@ class Santosh extends ChangeNotifier {
       }
       pushLocation();
       if (boot != null) {
-        if (boot['lists'] is Map) lists = Map<String, dynamic>.from(boot['lists'] as Map);
+        // v0.177: boot['lists'] is the full {lists, done_today} dict; older servers send just the inner map
+        final bl = boot['lists'];
+        if (bl is Map && bl['lists'] is Map) {
+          lists = Map<String, dynamic>.from(bl['lists'] as Map);
+          doneToday = List<Map<String, dynamic>>.from((bl['done_today'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+        } else if (bl is Map) {
+          lists = Map<String, dynamic>.from(bl);
+        }
         if (boot['routines'] is List) routines = List<Map<String, dynamic>>.from((boot['routines'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
         final me = boot['me'] is Map ? Map<String, dynamic>.from(boot['me'] as Map) : null;
         account = me != null && me['signed_in'] == true ? me : null;
@@ -641,7 +649,9 @@ class Santosh extends ChangeNotifier {
 
   Future<void> refreshLists() async {
     try {
-      lists = await api!.lists();
+      final r = await api!.lists();
+      lists = Map<String, dynamic>.from(r['lists'] as Map? ?? const {});
+      doneToday = List<Map<String, dynamic>>.from((r['done_today'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
       notifyListeners();
     } catch (_) {}
   }

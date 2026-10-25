@@ -242,6 +242,7 @@ class ListItem(Base):
     list_name: Mapped[str] = mapped_column(String(80), index=True)
     text: Mapped[str] = mapped_column(String(200))
     done: Mapped[bool] = mapped_column(Boolean, default=False)
+    done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # v0.177: when it was ticked (daily completed feed)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
