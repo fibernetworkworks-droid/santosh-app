@@ -53,6 +53,8 @@ const Map<String, Map<String, String>> uiStrings = {
     'Aaj ka mausam': "Today's weather",
     'Meri shopping list': 'My shopping list',
     'Roz subah briefing bhejna': 'Send me a daily briefing',
+    'Meri haan kahan ruki hai?': "What's waiting for my OK?",
+    'Kal ka plan banao': "Plan tomorrow",
     // ---- email card ----
     'Email': 'Email',
     'Email · forward': 'Email · forward',

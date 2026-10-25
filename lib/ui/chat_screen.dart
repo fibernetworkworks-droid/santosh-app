@@ -886,20 +886,45 @@ class _ChatScreenState extends State<ChatScreen> {
     FocusScope.of(context).requestFocus(_composeFocus);
   }
 
-  Widget _quick() {
-    const q = ['Kal subah 7 baje yaad dilana', 'Aaj ka mausam', 'Meri shopping list', 'Roz subah briefing bhejna'];
-    return SizedBox(
-      height: 44,
-      child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 14), children: [
-        for (final s in q)
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ActionChip(label: Text(app.g(s)), onPressed: () => app.send(app.g(s)), backgroundColor: const Color(0x14FFFFFF),
-                labelStyle: const TextStyle(color: C.chip, fontWeight: FontWeight.w600, fontSize: 13)),
-          ),
-      ]),
-    );
+  // ---- v0.164.4 quick chips read the room: what waits for her OK comes first, then an ask that
+  // fits the hour (briefing in the morning, weather at lunch, tomorrow's plan by evening, a
+  // morning reminder late at night), then the evergreen asks. Always four, never a repeat.
+  List<String> _quickChips() {
+    final h = DateTime.now().hour;
+    final byHour = h >= 5 && h < 12
+        ? 'Roz subah briefing bhejna'
+        : h < 17
+            ? 'Aaj ka mausam'
+            : h < 22
+                ? 'Kal ka plan banao'
+                : 'Kal subah 7 baje yaad dilana';
+    final pool = <String>[
+      if (app.waitingCards.isNotEmpty) 'Meri haan kahan ruki hai?',
+      byHour,
+      'Meri shopping list',
+      'Aaj ka mausam',
+      'Kal subah 7 baje yaad dilana',
+      'Roz subah briefing bhejna',
+    ];
+    final chips = <String>[];
+    for (final c in pool) {
+      if (chips.length >= 4) break;
+      if (!chips.contains(c)) chips.add(c);
+    }
+    return chips;
   }
+
+  Widget _quick() => SizedBox(
+        height: 44,
+        child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 14), children: [
+          for (final s in _quickChips())
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ActionChip(label: Text(app.g(s)), onPressed: () => app.send(app.g(s)), backgroundColor: const Color(0x14FFFFFF),
+                  labelStyle: const TextStyle(color: C.chip, fontWeight: FontWeight.w600, fontSize: 13)),
+            ),
+        ]),
+      );
 
   Widget _composer() => Glass(
         margin: const EdgeInsets.fromLTRB(14, 6, 14, 12),
