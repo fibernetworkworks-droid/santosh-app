@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.182.0"   # v0.182.0 Mail aayi!: the 60-second new-mail watcher (Gmail history.list watermark, expired-history fallback), watch modes (off / vip / all), inbox rules (label/archive/star/mark-read/important/mute/notify, forward = draft only — never a send), mute list, email snooze with wake cards, OTP digits always masked (bump with pubspec)
+APP_VERSION = "0.183.0"   # v0.183.0 Gmail settings: vacation auto-reply, signature pushed INTO Gmail (sendAs), send-as aliases, Gmail's own auto-forward — all behind cards, on the new gmail.settings.basic scope (one-time reconnect for old mailboxes) (bump with pubspec)
 
 
 @asynccontextmanager
@@ -1812,6 +1812,19 @@ def mail_account_remove(key: str, tenant: str = Depends(current_tenant)):
     if not ma.remove(tenant, key):
         raise HTTPException(404, "Mailbox not found")
     return {"accounts": ma.views(tenant)}
+
+
+# ---------------- v0.183.0 Gmail's own settings (vacation / aliases / auto-forward) for the Email screen ----------------
+@app.get("/api/mail/settings", dependencies=[Depends(require_key)])
+async def mail_settings(account: str = "", tenant: str = Depends(current_tenant)):
+    """Read-only view: vacation reply, send-as aliases and auto-forwarding of the (first) Gmail mailbox,
+    plus scope_ok = whether this mailbox granted gmail.settings.basic (else a reconnect is needed for settings)."""
+    from .mailbox import service as ms
+    from .mailbox.base import MailError
+    try:
+        return await asyncio.to_thread(ms.settings_status, tenant, account or None)
+    except MailError as e:
+        raise HTTPException(400, str(e))
 
 
 # ---------------- v0.182.0 rules / watch / mute / snooze (the app's Email screen) ----------------

@@ -11,6 +11,7 @@ from typing import Any
 from .config import get_settings
 
 FEATURES = {"drive": "https://www.googleapis.com/auth/drive", "gmail": "https://www.googleapis.com/auth/gmail.modify",
+            "gmail_settings": "https://www.googleapis.com/auth/gmail.settings.basic",
             "calendar": "https://www.googleapis.com/auth/calendar", "sheets": "https://www.googleapis.com/auth/spreadsheets",
             "docs": "https://www.googleapis.com/auth/documents"}
 

@@ -13,7 +13,7 @@ from ..db import EmailDraft, now, session
 from ..events import bus
 from ..mailbox import contacts, mime, sync
 from ..mailbox import service as ms
-from ..mailbox.accounts import get_box, set_default, set_signature, views
+from ..mailbox.accounts import (get_box, set_default, set_signature, settings_scope_message, settings_scope_ok, views)
 from ..mailbox.base import MailError, NotConnected
 from .tools import Ctx, ToolError
 
@@ -138,6 +138,21 @@ EMAIL_TOOLS = [
          "when": {"type": "string", "description": "Local time, e.g. 2026-10-26T09:00"},
          "hours": {"type": "number"}, "days": {"type": "number"}, "snooze_id": {"type": "string"}},
          "required": ["action"]}},
+    {"name": "email_vacation", "description": (
+        "Gmail ka vacation / out-of-office auto-reply. action='get' shows the current setting. action='set' turns it "
+        "on or off: write `message` (the auto-reply text, in the user's language), optional `subject` (Gmail uses "
+        "'Re: <their subject>' when empty), optional start / end local times like 2026-10-27T09:00 (no end = until "
+        "she switches it off), contacts_only=true answers only saved contacts. Any ON or OFF shows a confirm card "
+        "first — it answers EVERY incoming mail until she turns it off."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["get", "set"]},
+         "enable": {"type": "boolean", "description": "set: true = on, false = off"},
+         "message": {"type": "string", "description": "The auto-reply text (required to switch on)"},
+         "subject": {"type": "string", "description": "Optional subject line of the auto-reply"},
+         "start": {"type": "string", "description": "Local time, e.g. 2026-10-27T09:00 (default: now)"},
+         "end": {"type": "string", "description": "Local time; omit = until switched off"},
+         "contacts_only": {"type": "boolean", "description": "Answer only saved contacts"},
+         "account": {"type": "string", "description": "Which Gmail mailbox (address)"}}, "required": ["action"]}},
     {"name": "email_delete", "description": (
         "Delete emails (move to Trash). Shows the user a confirm card; nothing is deleted until they approve."),
      "input_schema": {"type": "object", "properties": {"ids": {"type": "array", "items": {"type": "string"}}},
@@ -169,17 +184,22 @@ EMAIL_TOOLS = [
     {"name": "email_contacts", "description": "Find people's email addresses by name (learned from the user's mail).",
      "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
     {"name": "email_accounts", "description": (
-        "The user's connected mailboxes and their signatures, and settings: signature (set for a mailbox), "
-        "make_default (address), daily_summary ('09:00' local time for a daily inbox summary, or 'off'), undo_seconds "
-        "(0-60: after Bhejo the email waits this many seconds and can still be cancelled; 0 = send at once), "
-        "watch_mode ('off' = no new-mail announcements, 'vip' = important mail + people she mails herself [default], "
-        "'all' = every new mail; for one account or all), mute (sender emails, comma-separated, to never announce; "
-        "'clear' empties the list). Call with no arguments to just list everything. If nothing is connected, tell "
-        "the user: Profile > Email > Gmail / Outlook / Other."),
+        "The user's connected mailboxes and their signatures, and settings: signature (set for a mailbox; "
+        "signature_push=true also pushes it INTO Gmail itself, behind a confirm card), make_default (address), "
+        "daily_summary ('09:00' local time for a daily inbox summary, or 'off'), undo_seconds (0-60: after Bhejo the "
+        "email waits this many seconds and can still be cancelled; 0 = send at once), watch_mode ('off' = no new-mail "
+        "announcements, 'vip' = important mail + people she mails herself [default], 'all' = every new mail; for one "
+        "account or all), mute (sender emails, comma-separated, to never announce; 'clear' empties the list), "
+        "send_as=true lists the Gmail send-as aliases plus the current auto-forwarding (read-only), auto_forward="
+        "('off', or an email address to forward new mail to — always behind a confirm card). Call with no arguments "
+        "to just list everything. If nothing is connected, tell the user: Profile > Email > Gmail / Outlook / Other."),
      "input_schema": {"type": "object", "properties": {
          "account": {"type": "string"}, "signature": {"type": "string"}, "make_default": {"type": "string"},
          "daily_summary": {"type": "string"},
          "undo_seconds": {"type": "integer", "description": "0-60, 0 = off"},
+         "signature_push": {"type": "boolean", "description": "Push this mailbox's signature into Gmail itself"},
+         "send_as": {"type": "boolean", "description": "List Gmail send-as aliases + auto-forwarding (read-only)"},
+         "auto_forward": {"type": "string", "description": "'off', or an email address to forward new mail to"},
          "watch_mode": {"type": "string", "enum": ["off", "vip", "all"],
                         "description": "New-mail announcements: off / vip (default) / all"},
          "mute": {"type": "string", "description": "Sender emails to never announce (comma-separated), or 'clear'"}}}},
@@ -195,7 +215,8 @@ EMAIL_LABELS = {"email_check": "Inbox dekh raha hoon", "email_read": "Email padh
                 "email_follow_up": "Follow-up laga raha hoon", "email_bulk": "Bulk email taiyaar kar raha hoon",
                 "email_bulk_status": "Bulk email dekh raha hoon", "email_contacts": "Address dhoondh raha hoon",
                 "email_accounts": "Email settings dekh raha hoon",
-                "email_rule": "Inbox rule sambhal raha hoon", "email_snooze": "Mail snooze kar raha hoon"}
+                "email_rule": "Inbox rule sambhal raha hoon", "email_snooze": "Mail snooze kar raha hoon",
+                "email_vacation": "Vacation reply sambhal raha hoon"}
 
 SUMMARY_TITLE = "Inbox summary"
 
@@ -481,7 +502,8 @@ async def email_contacts(ctx: Ctx, query, **_):
 
 
 async def email_accounts(ctx: Ctx, account=None, signature=None, make_default=None, daily_summary=None,
-                         undo_seconds=None, watch_mode=None, mute=None, **_):
+                         undo_seconds=None, watch_mode=None, mute=None, signature_push=None, send_as=None,
+                         auto_forward=None, **_):
     changed = []
     if signature is not None:
         box = await _t(get_box, ctx.tenant_id, account)
@@ -507,9 +529,30 @@ async def email_accounts(ctx: Ctx, account=None, signature=None, make_default=No
         else:
             lst = await _t(sync.mute_edit, ctx.tenant_id, add=[x for x in s.split(",") if x.strip()])
             changed.append(f"{len(lst)} senders muted")
+    if signature_push is not None and signature_push is not False:
+        box, blocked = await _settings_gate(ctx, account)
+        if blocked:
+            return blocked
+        out_card = await _t(_bazar, ctx, "confirm_signature_push", {"account": box.key, "signature": str(signature or "")})
+        out_card.setdefault("say", "A confirm card is in the chat; the signature goes into Gmail only after the user "
+                                   "approves.")
+        return out_card
+    if auto_forward is not None:
+        box, blocked = await _settings_gate(ctx, account)
+        if blocked:
+            return blocked
+        s = str(auto_forward).strip()
+        enable = s.lower() not in ("off", "band", "no", "0", "false")
+        out_card = await _t(_bazar, ctx, "confirm_auto_forward", {"enable": enable, "to": s if enable else "",
+                                                                  "account": box.key})
+        out_card.setdefault("say", "A confirm card is in the chat; Gmail's own forwarding changes only after the user "
+                                   "approves.")
+        return out_card
     out: dict[str, Any] = {"mailboxes": await _t(views, ctx.tenant_id),
                            "watch": await _t(sync.watch_views, ctx.tenant_id),
                            "muted": await _t(sync.muted, ctx.tenant_id)}
+    if send_as:
+        out["settings"] = await _t(ms.settings_status, ctx.tenant_id, account)
     if changed:
         out["changed"] = changed
     if not out["mailboxes"]:
@@ -600,10 +643,40 @@ async def email_snooze(ctx: Ctx, action="list", email_id=None, when=None, hours=
     return {**out, "note": f"Mail inbox se hata di; {out['wake_label']} par wapas aayegi (unread mark ho gi)."}
 
 
+async def _settings_gate(ctx: Ctx, account=None):
+    """Resolve the settings mailbox and check it granted gmail.settings.basic; old mailboxes get the honest
+    reconnect note instead of a card that can only fail."""
+    box = await _t(ms.settings_gmail, ctx.tenant_id, account or None)
+    if not await _t(settings_scope_ok, ctx.tenant_id, box):
+        return box, {"scope_ok": False, "account": box.address, "note": settings_scope_message(box.address),
+                     "say": "Is Gmail ne settings ki permission abhi nahi di — ek baar Profile > Email se is Gmail ko "
+                            "dobara jodna hoga (mail sab waisi hi chalegi)."}
+    return box, None
+
+
+async def email_vacation(ctx: Ctx, action="get", enable=None, message="", subject="", start=None, end=None,
+                         contacts_only=False, account=None, **_):
+    if action == "set":
+        _box, blocked = await _settings_gate(ctx, account)
+        if blocked:
+            return blocked
+        on = bool(enable)
+        out_card = await _t(_bazar, ctx, "confirm_vacation", {"enable": on, "message": str(message or ""),
+                                                              "subject": str(subject or ""), "start": str(start or ""),
+                                                              "end": str(end or ""),
+                                                              "contacts_only": bool(contacts_only),
+                                                              "account": _box.key})
+        out_card.setdefault("say", "A confirm card is in the chat; the vacation reply changes only after the user "
+                                   "approves.")
+        return out_card
+    return await _t(ms.vacation_get, ctx.tenant_id, account)
+
+
 EMAIL_HANDLERS = {"email_check": email_check, "email_read": email_read, "email_thread": email_thread,
                   "email_triage": email_triage,
                   "email_attachment": email_attachment, "email_draft": email_draft, "email_forward": email_forward,
                   "email_action": email_action, "email_label": email_label, "email_drafts": email_drafts,
                   "email_delete": email_delete, "email_follow_up": email_follow_up,
                   "email_bulk": email_bulk, "email_bulk_status": email_bulk_status, "email_contacts": email_contacts,
-                  "email_accounts": email_accounts, "email_rule": email_rule, "email_snooze": email_snooze}
+                  "email_accounts": email_accounts, "email_rule": email_rule, "email_snooze": email_snooze,
+                  "email_vacation": email_vacation}

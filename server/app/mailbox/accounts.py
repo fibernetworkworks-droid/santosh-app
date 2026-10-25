@@ -23,7 +23,10 @@ from .outlook import OutlookBox
 
 GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN = "https://oauth2.googleapis.com/token"
-GMAIL_SCOPES = ["openid", "email", "profile", "https://www.googleapis.com/auth/gmail.modify"]
+# v0.183.0: gmail.settings.basic (vacation reply, signature sendAs, aliases, auto-forward) rides on every NEW
+# google consent. Mailboxes linked before it keep working for mail — the settings tools just ask for one reconnect.
+SETTINGS_SCOPE = "https://www.googleapis.com/auth/gmail.settings.basic"
+GMAIL_SCOPES = ["openid", "email", "profile", "https://www.googleapis.com/auth/gmail.modify", SETTINGS_SCOPE]
 GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.modify"
 MS_SCOPES = ["offline_access", "openid", "email", "profile", "https://graph.microsoft.com/Mail.ReadWrite",
              "https://graph.microsoft.com/Mail.Send", "https://graph.microsoft.com/User.Read"]
@@ -92,6 +95,8 @@ def _oauth_token(account_id: str, force: bool) -> str:
         if tok.get("refresh_token"):
             a.refresh_token_enc = acc.encrypt(tok["refresh_token"])
         a.expiry = now() + timedelta(seconds=int(tok.get("expires_in", 3600)))
+        if tok.get("scope"):                       # Google tells the granted scopes here too; keep the record fresh
+            a.scopes = tok["scope"]
         a.status, a.last_error = "ok", ""
     return tok["access_token"]
 
@@ -311,6 +316,26 @@ def is_link_state(state: str) -> bool:
     return (state or "").startswith("mail_")
 
 
+def settings_scope_ok(tenant: str, box: Box) -> bool:
+    """v0.183.0 does this mailbox carry the gmail.settings.basic permission? Mail works without it; the settings
+    tools (vacation / signature push / aliases / auto-forward) use this to ask for a one-time reconnect."""
+    if box.kind != "gmail":
+        return False
+    if box.key == "google":                       # the sign-in's own Gmail: scopes live on the OAuthConnection
+        with session() as s:
+            c = _signin_conn(s, tenant)
+            return bool(c and SETTINGS_SCOPE in (c.scopes or "").split())
+    with session() as s:
+        a = s.get(MailAccount, box.key)
+        return bool(a and a.tenant_id == tenant and a.kind == "gmail" and SETTINGS_SCOPE in (a.scopes or "").split())
+
+
+def settings_scope_message(address: str) -> str:
+    return (f"({address}) ne Gmail settings ki permission abhi nahi di hai — iske liye ek baar Profile > Email se is "
+            "Gmail ko dobara jodna hoga ('Jodiye' dabaiye, Google ke page par saare boxes tick rahiye). Mail, watcher, "
+            "rules — sab pehle jaisa chalega; sirf vacation / signature / alias / auto-forward is permission se chalte hain.")
+
+
 def finish_link(code: str, state: str) -> dict[str, Any]:
     st = get_settings()
     with session() as s:
@@ -339,7 +364,7 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
     if not tok.get("refresh_token"):
         raise MailError("Login server ne refresh token nahi diya; dobara jodiye.")
     view = _save(tenant, kind, address, name, access_token_enc=acc.encrypt(tok["access_token"]),
-                 refresh_token_enc=acc.encrypt(tok["refresh_token"]),
+                 refresh_token_enc=acc.encrypt(tok["refresh_token"]), scopes=tok.get("scope", ""),
                  expiry=now() + timedelta(seconds=int(tok.get("expires_in", 3600))))
     view["tenant"] = tenant
     return view

@@ -309,6 +309,8 @@ class MailAccount(Base):
     smtp_port: Mapped[int] = mapped_column(Integer, default=587)
     status: Mapped[str] = mapped_column(String(12), default="ok")   # ok | error
     last_error: Mapped[str] = mapped_column(Text, default="")
+    scopes: Mapped[str] = mapped_column(Text, default="")            # v0.183.0: granted OAuth scopes (space-separated;
+    # gmail.settings.basic here tells the settings tools (vacation / signature / aliases / auto-forward) they may run.
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

@@ -253,3 +253,31 @@ class GmailBox(Box):
         (history purged) — the sync engine falls back to a plain `after:` listing, nothing is ever lost."""
         return self._req("GET", "/history", params={"startHistoryId": start_history_id, "historyTypes": types,
                                                     "maxResults": max(1, min(int(max_results), 500))})
+
+    # ---------------- v0.183.0 settings: vacation reply, sendAs (signature / aliases), auto-forward ----------------
+    # These need the gmail.settings.basic scope (one-time reconnect for mailboxes linked before v0.183.0).
+    def vacation_get(self) -> dict[str, Any]:
+        return self._req("GET", "/settings/vacation")
+
+    def vacation_set(self, enable: bool, message: str = "", subject: str = "", start_ms: int = 0, end_ms: int = 0,
+                     restrict_to_contacts: bool = False) -> dict[str, Any]:
+        body = {"enableAutoReply": bool(enable), "responseBody": (message or "")[:10000],
+                "responseSubject": (subject or "")[:500], "restrictToContacts": bool(restrict_to_contacts),
+                "restrictToDomain": False, "startTime": str(max(0, int(start_ms or 0))),
+                "endTime": str(max(0, int(end_ms or 0)))}
+        return self._req("PUT", "/settings/vacation", json=body)
+
+    def send_as_list(self) -> list[dict[str, Any]]:
+        return self._req("GET", "/settings/sendAs").get("sendAs", [])
+
+    def send_as_signature(self, send_as_email: str, signature_html: str) -> dict[str, Any]:
+        """Gmail's signature field is HTML; we push escaped text with <br> line breaks."""
+        return self._req("PATCH", f"/settings/sendAs/{send_as_email}", json={"signature": (signature_html or "")[:2000]})
+
+    def auto_forwarding_get(self) -> dict[str, Any]:
+        return self._req("GET", "/settings/autoForwarding")
+
+    def auto_forwarding_set(self, enabled: bool, email_address: str, disposition: str = "keep") -> dict[str, Any]:
+        return self._req("PUT", "/settings/autoForwarding",
+                         json={"enabled": bool(enabled), "emailAddress": (email_address or "").strip().lower(),
+                               "disposition": disposition})

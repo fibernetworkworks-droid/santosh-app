@@ -7,6 +7,7 @@ Sending, deleting and bulk mail only ever happen after the user's tap (draft car
 from __future__ import annotations
 
 import email.utils
+import html
 import logging
 import mimetypes
 import re
@@ -21,7 +22,7 @@ from ..config import get_settings
 from ..db import (BulkMail, BulkRecipient, EmailDraft, MailSetting, MailWatch, PcFile, Profile, as_utc, now, session)
 from ..events import bus, notify
 from . import contacts, mime
-from .accounts import get_box, mark_error
+from .accounts import get_box, mark_error, settings_scope_message, settings_scope_ok
 from .base import Box, MailError, NotConnected
 
 log = logging.getLogger("santosh.mailbox")
@@ -261,6 +262,161 @@ def push_gmail_draft(tenant: str, draft_id: str) -> dict[str, Any]:
     out = _guard(box, lambda: box.save_draft(msg, thread_id or None))
     return {"gmail_draft_id": out.get("draft_id", ""), "account": box.address,
             "note": "Mailbox ke Drafts folder mein save ho gaya; yahan ka draft bhi pending hai."}
+
+
+# ---------------- v0.183.0 Gmail settings: vacation reply, signature (sendAs), aliases, auto-forward ----------------
+# All of this rides the gmail.settings.basic scope; a mailbox linked before v0.183.0 gets an honest
+# "ek baar dobara jodiye" instead of a silent failure. Mail itself never needs this scope.
+def settings_gmail(tenant: str, account: str | None = None) -> Box:
+    """The Gmail mailbox whose own settings are meant (the first Gmail when no account is named)."""
+    if account and str(account).strip().lower() not in ("", "all"):
+        box = get_box(tenant, account)
+    else:
+        from .accounts import boxes          # call-time import: tests may swap the boxes list
+        gmails = [b for b in boxes(tenant) if b.kind == "gmail"]
+        if not gmails:
+            raise MailError("Yeh settings Gmail ke apne menu ki cheezein hain — koi Gmail mailbox judi nahi hai.")
+        box = gmails[0]
+    if box.kind != "gmail":
+        raise MailError("Yeh settings sirf Gmail mailbox par kaam karti hain (yeh mailbox Gmail nahi hai).")
+    return box
+
+
+def _ms_dt(tenant: str, when: str | None, field: str) -> datetime | None:
+    if not when or not str(when).strip():
+        return None
+    from ..life import parse_local
+    try:
+        return parse_local(str(when), _tz(tenant))
+    except ValueError as e:
+        raise MailError(f"{field}: '{when}' samajh nahi aaya ({e}). Local time do, jaise 2026-10-27T09:00.")
+
+
+def _millis(dt: datetime | None) -> int:
+    return int(dt.timestamp() * 1000) if dt else 0
+
+
+def _vacation_view(tenant: str, v: dict[str, Any]) -> dict[str, Any]:
+    tz = _tz(tenant)
+
+    def label(n) -> str:
+        try:
+            n = int(n or 0)
+        except (TypeError, ValueError):
+            return ""
+        return datetime.fromtimestamp(n / 1000, tz).strftime("%d %b %Y, %I:%M %p") if n > 0 else ""
+
+    return {"on": bool(v.get("enableAutoReply")), "subject": v.get("responseSubject", ""),
+            "message": v.get("responseBody", ""), "start": label(v.get("startTime")), "end": label(v.get("endTime")),
+            "contacts_only": bool(v.get("restrictToContacts"))}
+
+
+def _send_as_view(sa: dict[str, Any]) -> dict[str, Any]:
+    return {"email": sa.get("sendAsEmail", ""), "name": sa.get("displayName", ""),
+            "primary": bool(sa.get("isPrimary")), "default": bool(sa.get("isDefault")),
+            "verified": sa.get("verificationStatus", "") != "pending", "has_signature": bool(sa.get("signature"))}
+
+
+def _forward_view(v: dict[str, Any]) -> dict[str, Any]:
+    disp = v.get("disposition", "keep")
+    return {"enabled": bool(v.get("enabled")), "to": v.get("emailAddress", ""), "disposition": disp,
+            "disposition_label": {"keep": "Gmail inbox mein rakhta hai", "archive": "archive kar deta hai",
+                                  "trash": "Trash mein daalta hai",
+                                  "markRead": "padha hua mark kar deta hai"}.get(disp, disp)}
+
+
+def settings_status(tenant: str, account: str | None = None) -> dict[str, Any]:
+    """One honest view of the Gmail mailbox's own settings (vacation / aliases / auto-forward) for chat and screen."""
+    box = settings_gmail(tenant, account)
+    out: dict[str, Any] = {"account": box.address, "key": box.key, "scope_ok": settings_scope_ok(tenant, box)}
+    if not out["scope_ok"]:
+        out["note"] = settings_scope_message(box.address)
+        return out
+    out["vacation"] = _vacation_view(tenant, _guard(box, box.vacation_get))
+    out["aliases"] = [_send_as_view(sa) for sa in _guard(box, box.send_as_list)]
+    try:
+        out["forwarding"] = _forward_view(_guard(box, box.auto_forwarding_get))
+    except MailError:
+        pass                                            # auto-forward reading is best-effort
+    return out
+
+
+def vacation_get(tenant: str, account: str | None = None) -> dict[str, Any]:
+    return settings_status(tenant, account)
+
+
+def vacation_set(tenant: str, account: str | None, enable: bool, message: str = "", subject: str = "",
+                 start: str | None = None, end: str | None = None, contacts_only: bool = False) -> dict[str, Any]:
+    enable = bool(enable)
+    message = (message or "").strip()
+    if enable and not message:
+        raise MailError("Vacation reply ON karne ke liye message do (wahi sabko auto-jawab jayega).")
+    start_dt = _ms_dt(tenant, start, "start") or (now() if enable else None)
+    end_dt = _ms_dt(tenant, end, "end")
+    if end_dt and end_dt <= (start_dt or now()):
+        raise MailError("end, start ke baad ka time hona chahiye.")
+    box = settings_gmail(tenant, account)
+    if not settings_scope_ok(tenant, box):
+        raise MailError(settings_scope_message(box.address))
+    _guard(box, lambda: box.vacation_set(enable, message, (subject or "").strip(), _millis(start_dt),
+                                         _millis(end_dt), bool(contacts_only)))
+    return {"account": box.address, "vacation": _vacation_view(tenant, _guard(box, box.vacation_get)),
+            "note": ("Vacation reply chalu ho gaya. Aane wali har mail ko yahi auto-jawab jayega." if enable
+                     else "Vacation reply band ho gaya.")}
+
+
+def send_as_list(tenant: str, account: str | None = None) -> dict[str, Any]:
+    return settings_status(tenant, account)
+
+
+def signature_push(tenant: str, account: str | None, signature: str = "") -> dict[str, Any]:
+    """Push the mailbox's Hoola signature INTO Gmail (sendAs.update) — Gmail web and the Gmail app show the same one."""
+    box = settings_gmail(tenant, account)
+    if not settings_scope_ok(tenant, box):
+        raise MailError(settings_scope_message(box.address))
+    sig = (signature or "").strip() or (box.signature or "").strip()
+    if not sig:
+        raise MailError("Is mailbox ka signature khaali hai — pehle email_accounts signature='...' se set kijiye.")
+    rows = _guard(box, box.send_as_list)
+    primary = next((sa.get("sendAsEmail") for sa in rows if sa.get("isPrimary")), None) or box.address
+    sig_html = "<br>".join(html.escape(line) for line in sig.splitlines()[:12])[:2000]
+    _guard(box, lambda: box.send_as_signature(primary, sig_html))
+    return {"account": box.address, "pushed_to": primary, "signature": sig[:500],
+            "note": "Signature Gmail ke andar bhi set ho gaya — web, phone, sab jagah wahi dikhega."}
+
+
+def auto_forwarding_get(tenant: str, account: str | None = None) -> dict[str, Any]:
+    return settings_status(tenant, account)
+
+
+def auto_forwarding_set(tenant: str, account: str | None, enable: bool, to: str = "",
+                        disposition: str = "keep") -> dict[str, Any]:
+    enable = bool(enable)
+    to = (to or "").strip().lower()
+    disp = (disposition or "keep").strip()
+    if disp not in ("keep", "archive", "trash", "markRead"):
+        raise MailError("disposition: keep / archive / trash / markRead")
+    if enable and not contacts.valid(to):
+        raise MailError("Forward kis address par? Sahi email do.")
+    box = settings_gmail(tenant, account)
+    if not settings_scope_ok(tenant, box):
+        raise MailError(settings_scope_message(box.address))
+    if not enable and not to:
+        try:      # switching off: keep the address Gmail already knows (its PUT always carries one)
+            cur = _guard(box, box.auto_forwarding_get)
+            to = (cur.get("emailAddress") or "").strip().lower()
+        except MailError:
+            to = ""
+    try:
+        _guard(box, lambda: box.auto_forwarding_set(enable, to, disp))
+    except MailError as e:
+        if enable and ("400" in str(e) or "403" in str(e)):
+            raise MailError("Gmail ne auto-forward nahi maana: pehle Gmail (web) ke Settings > Forwarding mein us "
+                            f"address ko verify karna hota hai. ({str(e)[:160]})")
+        raise
+    return {"account": box.address, "forwarding": _forward_view(_guard(box, box.auto_forwarding_get)),
+            "note": (f"Har nayi mail ab {to} par bhi jayegi (Gmail ke apne forward se)." if enable
+                     else "Auto-forward band ho gaya.")}
 
 
 # ---------------- sorting the inbox ----------------

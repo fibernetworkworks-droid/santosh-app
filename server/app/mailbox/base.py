@@ -105,6 +105,26 @@ class Box:
     def history(self, start_history_id: str, types: str = "messageAdded", max_results: int = 100) -> dict[str, Any]:
         raise MailError("Yeh mailbox watcher ke liye history nahi deta.")
 
+    # ---------------- v0.183.0 Gmail settings: vacation / sendAs / auto-forward ----------------
+    def vacation_get(self) -> dict[str, Any]:
+        raise MailError("Vacation reply (out of office) abhi Gmail mailbox par hota hai.")
+
+    def vacation_set(self, enable: bool, message: str = "", subject: str = "", start_ms: int = 0, end_ms: int = 0,
+                     restrict_to_contacts: bool = False) -> dict[str, Any]:
+        raise MailError("Vacation reply (out of office) abhi Gmail mailbox par hota hai.")
+
+    def send_as_list(self) -> list[dict[str, Any]]:
+        raise MailError("Send-as aliases abhi Gmail mailbox par dikhte hain.")
+
+    def send_as_signature(self, send_as_email: str, signature_html: str) -> dict[str, Any]:
+        raise MailError("Signature ko Gmail ke andar badalna abhi Gmail mailbox par hota hai.")
+
+    def auto_forwarding_get(self) -> dict[str, Any]:
+        raise MailError("Auto-forward abhi Gmail ki apni setting hai.")
+
+    def auto_forwarding_set(self, enabled: bool, email_address: str, disposition: str = "keep") -> dict[str, Any]:
+        raise MailError("Auto-forward abhi Gmail ki apni setting hai.")
+
     def view(self) -> dict[str, Any]:
         return {"key": self.key, "kind": self.kind, "address": self.address, "name": self.name,
                 "signature": self.signature}

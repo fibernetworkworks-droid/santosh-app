@@ -7486,6 +7486,48 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
   Next: Phase 3 settings scope (vacation/signature/aliases), Phase 4 polish.
 
 
+## v0.183.0 GMAIL SETTINGS: vacation reply, signature pushed INTO Gmail, aliases, auto-forward (the settings phase)
+- Owner: "PHASE 3 -- NOW END TO END" (of the Gmail 100% plan). The only phase that needs a NEW Google scope:
+  `gmail.settings.basic` added to GMAIL_SCOPES on the dedicated mail OAuth link AND surfaced in google_check.py
+  FEATURES (gmail_settings) — the Google sign-in path already shows every ticked scope. Old mailboxes keep working
+  for mail/watcher/rules exactly as before: `MailAccount.scopes` (new auto-migrated column) stores what Google
+  actually granted (set at finish_link, refreshed on every token refresh), `settings_scope_ok()` reads it, and any
+  settings attempt without it answers with the honest "ek baar Profile > Email se dobara jodiye" — never a silent
+  failure, never a doomed API call (the tools check BEFORE building a card).
+- NEW `email_vacation` tool: get (live view: on/off, message, subject, window as local-time labels, contacts_only)
+  and set — any ON or OFF shows a tier-2 confirm card ("Vacation reply chalu/band karein?") that spells out the
+  auto-jawab text, the window ("Abhi se … tak / band karne tak"), the contacts-only note and the truth that Gmail
+  answers EVERY incoming mail while it is on. Validation: ON needs a message; end must be after start; start
+  defaults to now. PUT /settings/vacation (millis), GET round-trips it back.
+- Signature sync: `email_accounts signature_push=true` — the mailbox's Hoola signature is pushed INTO Gmail via
+  sendAs.update on the PRIMARY sendAs (POST-card; Gmail's signature field is HTML so text lines are html-escaped
+  and joined with <br> — a "<b>FNW</b>" in her signature arrives as literal text, never live HTML). Empty
+  signature -> "pehle email_accounts signature=... se set kijiye".
+- Aliases + auto-forward read view: `email_accounts send_as=true` returns aliases (primary flag, verification
+  status, has_signature) AND the current auto-forwarding with a Hinglish disposition label. Read-only — sending
+  FROM an alias stays Phase 4.
+- Gmail's own auto-forward: `email_accounts auto_forward='<address>' | 'off'` — ALWAYS behind a tier-2 card
+  ("Auto-forward chalu/band karein?"); invalid addresses are refused at card time; switching OFF preserves the
+  address Gmail already has (its PUT always carries one); Google refusing the set (unverified forwarding address)
+  becomes "pehle Gmail web ke Settings > Forwarding mein verify kijiye". disposition defaults to keep (mail stays
+  in the inbox too).
+- Bazar: 3 new confirm specs on the mail executor (confirm_vacation / confirm_signature_push /
+  confirm_auto_forward), cards computed from the mailbox + args, santosh-mail.json manifest carries them; EMAIL_LABELS
+  grew email_vacation (19 email tools now); prompts section 78 grew the settings paragraph (settings changes ALWAYS
+  wait for the user's own tap; Gmail answers every mail during vacation — say it plainly).
+- NEW GET /api/mail/settings (read-only: vacation + aliases + forwarding + scope_ok) for the Email screen; no
+  unguarded settings-write endpoint on purpose — writes happen in chat, behind cards, on the user's tap.
+- Tests `tests/test_email_phase3.py` (9): vacation get + card round-trip (nothing changes before the tap, PUT
+  after approve, window labels), window/contacts validation + scope-gate (old mailbox: no card, no API call, the
+  "dobara jodiye" note everywhere incl. service-level raises), signature push (PATCH on primary, escaping, card
+  first), aliases + forwarding read view, auto-forward card on/off + address validation, settings refuse on
+  non-Gmail boxes, the consent URL carries the scope + finish_link stores it + the old-token diagnosis,
+  google_check FEATURES, the API endpoint, version. Ritual: 0.183.0 (main.py APP_VERSION + pubspec 0.183.0+213 +
+  test_v0179 + test_email_phase1/2 pins + console ?v=0.183.0). Deploy: git pull + pm2 restart santosh-core; the
+  phone needs no new APK for this (server-only). Next: Phase 4 polish (send-from-alias, colored stars,
+  in:snoozed view, Profile "Gmail, poora" help card, manifest finalisation).
+
+
 ## v0.180.0 REAL TIME: the phone sees every task as it happens (Mera PC + all her own tasks)
 - Owner: "HOOLA AI MUST SEE THE TASK IN REAL TIME NOT DELAYED. CURRENTLY EVERY TASK IS COMPLETED THEN AFTER FEW SEC
   IT GIVES REPLY. SOME TASKS TAKE LONG, SOME NEVER REPLIED. FIX THIS PERFECTLY... FOR MERA PC AS WELL AS FOR ALL OWN
