@@ -80,9 +80,9 @@ class Actions:
             raise ActionError("PC chalane ki permission band hai. PC par Hoola Desktop > Settings > "
                               "'Hoola ko PC chalane dein' on kijiye.")
 
-    def do_screen(self, max_width: int = 1280, **_) -> dict[str, Any]:
+    def do_screen(self, max_width: int = 1280, monitor: str = "primary", **_) -> dict[str, Any]:
         self._control_on()
-        return self.control.screen(int(max_width or 1280))
+        return self.control.screen(int(max_width or 1280), monitor=str(monitor or "primary"))
 
     def do_control(self, op: str = "", x: Any = None, y: Any = None, text: str = "", keys: str = "", amount: int = 0,
                    to_x: Any = None, to_y: Any = None, **_) -> dict[str, Any]:
@@ -102,6 +102,18 @@ class Actions:
     def do_focus(self, title: str = "", **_) -> dict[str, Any]:
         self._control_on()
         return self.control.focus(title)
+
+    def do_window(self, op: str = "", title: str = "", **_) -> dict[str, Any]:
+        """v1.3 Minimise / maximise / restore / close an open window by (part of) its title."""
+        self._control_on()
+        self.log(f"Window: {op} {title[:60]}")
+        return self.control.window_op(op, title)
+
+    def do_open_url(self, url: str = "", **_) -> dict[str, Any]:
+        """v1.3 Open a website in her default browser (http/https only, checked twice: server + here)."""
+        self._control_on()
+        self.log(f"Site khol raha hoon: {url[:80]}")
+        return self.control.open_url(url)
 
     def do_status(self, **_) -> dict[str, Any]:
         i = self.info()

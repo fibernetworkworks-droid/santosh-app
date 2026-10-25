@@ -7217,3 +7217,31 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
 - Not yet: phone app for all four phases (streaming + markdown, chat drawer + deep links, viewer sheet, folders);
   project-scoped Gyaan search (big project files are found among all her Gyaan files); CI / APK run (owner: after all
   phases).
+
+## v0.168 Full hands on the PC ("100% PC tasks") + Santosh Desktop 1.3.0
+- Owner: "IT MUST PERFROM ALL 100 % PC TASKS --- FROM OPENING APPS LIKE CROME, SOFTWARE, ENTIER PC HANDS ON".
+- PC Operator (`pc/operator.py`) gained 3 tools (15 now): `open_url` (a website opens straight in her default browser,
+  http/https ONLY — a leading scheme must already be http(s), so `javascript:` can never become `https://javascript:...`
+  (the test caught exactly that hole); `.exe` and backslash URLs refused), `screenshot` (look again; `monitor:"all"` =
+  EVERY monitor stitched into one picture via the virtual-screen bbox; the operator tracks `Op.monitor` and the live
+  frames follow it — one monitor + one width for every capture keeps the v0.91.1 click rule), `window`
+  (minimize / maximize / restore / close by title; closing her unsaved work still needs ask_approval). `wait` cap
+  15 -> 30 s (heavy software). New tools are FOCUS_MOVERS: after open_url / window / screenshot even type / key in the
+  same turn is held back until the model has looked (blind-point guard extended). The turn-end screenshot now keeps the
+  previous tool_result text properly (blocks were stringified before).
+- Old desktop (Santosh Desktop < 1.3.0): "Unknown action open_url" from the PC becomes a clean
+  "naya SantoshDesktop.exe install kijiye" line to the model (`_desktop_says`), no error loop.
+- Desktop `control.py` 1.3.0: screenshots JPEG quality 80 (was 60 — invoice digits stay readable); `self.origin`
+  tracks WHERE the capture starts (monitors left of the primary are negative), `_xy` maps through it; `monitor="all"`
+  via GetSystemMetrics virtual screen; `open_url` (win32 startfile / open / xdg-open, same scheme guard as the server);
+  `window_op` via pygetwindow; `open_app` also launches Microsoft Store / UWP apps (`Get-StartApps` AppUserModelID,
+  cached 10 min, `explorer shell:appsFolder\...`) and a full `.exe` path the Start menu missed — blocked-word list
+  (cmd/powershell/regedit/...) checked on the name AND the path, mirror of the server's BLOCKED_APPS; `type` sends
+  long (>24 chars) or non-ASCII text through the clipboard (paste, then HER clipboard content is restored; short/OTP
+  text still types key by key; no pyperclip -> falls back to typing); open_app also on macOS (`open -a`).
+- Desktop `actions.py`: `do_window`, `do_open_url`, `do_screen(monitor=)`; version 1.3.0 (desktop-latest release).
+- Tests `server/tests/test_v0166_pc_full_hands.py` (12): open_url one-step + refusals (javascript/file/.exe/backslash),
+  window ops reach the desktop, monitor switch holds blind clicks (and the guarded done) + live frames follow the
+  monitor, old-desktop upgrade note, prompt/tool schema carry the new actions, and the REAL desktop Control: stitched
+  clicks land on the left (negative-origin) monitor, clipboard typing restores her clipboard (short OTP text untouched),
+  open_url scheme validation, window ops + refusals, blocked app names even by path.

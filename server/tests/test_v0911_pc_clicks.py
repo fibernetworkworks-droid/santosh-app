@@ -42,7 +42,8 @@ def _desktop(monkeypatch, width=1920, height=1080):
     monkeypatch.setattr(dc, "_gui", lambda: gui)
     monkeypatch.setattr(dc, "_dpi_aware", lambda: None)
     import PIL.ImageGrab
-    monkeypatch.setattr(PIL.ImageGrab, "grab", lambda all_screens=False: Image.new("RGB", (width, height), (30, 30, 60)))
+    monkeypatch.setattr(PIL.ImageGrab, "grab",
+                        lambda all_screens=False, bbox=None: Image.new("RGB", (width, height), (30, 30, 60)))
     ctl = dc.Control()
     monkeypatch.setattr(ctl, "windows", lambda: {"active_window": "Chrome - UIDAI", "windows": ["Chrome - UIDAI"]})
     return ctl, gui

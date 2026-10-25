@@ -49,6 +49,16 @@ After your actions you get a new screenshot.
 How to work:
 - Prefer the fastest reliable way: open_app by name, keyboard shortcuts (ctrl+s, alt+tab, ctrl+f, win to search...),
   focus_window to switch apps. Click the centre of buttons/fields. Wait (wait tool) when something is loading.
+- The whole PC is reachable:
+  - open_url opens a website straight in her default browser ('Chrome mein IRCTC kholo' = open_url, no need to open
+    Chrome first and click the address bar).
+  - open_app also opens Microsoft Store apps (Mail, Photos, Teams...) and a program by its full .exe path when the
+    Start menu misses it ('C:\\Program Files\\App\\app.exe').
+  - screenshot monitor="all" shows EVERY monitor stitched into one picture (a second screen is not blind any more);
+    clicks on it land correctly. The default screenshot stays the main monitor.
+  - window minimizes / maximizes / restores / closes an open window by title. Never close a window with her unsaved
+    work unless the task needs it (ask_approval first).
+  - Long or mixed-language text is typed at once through the clipboard; just use type normally.
 - Read what is on the screen and report it accurately; never invent numbers.
 - When the task is done, call done with a short answer in the user's language (Hinglish by default) with the key facts.
   If you cannot finish, call done(success=false) with what you did and what is left.
@@ -88,8 +98,19 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {"x": {"type": "number"}, "y": {"type": "number"},
                                                        "to_x": {"type": "number"}, "to_y": {"type": "number"}},
                       "required": ["x", "y", "to_x", "to_y"]}},
-    {"name": "open_app", "description": "Open an installed app by name (e.g. 'Tally', 'Excel', 'Word', 'Chrome', 'Notepad').",
+    {"name": "open_app", "description": "Open an installed app by name (e.g. 'Tally', 'Excel', 'Word', 'Chrome', 'Notepad'). "
+                                         "Also Store apps, or a full .exe path when the Start menu misses it.",
      "input_schema": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}},
+    {"name": "open_url", "description": "Open a website in her default browser (Chrome etc.) in one step. Only http(s) URLs.",
+     "input_schema": {"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"]}},
+    {"name": "screenshot", "description": "Look again without doing anything. monitor 'primary' (default) or 'all' = every "
+                                          "monitor stitched into one picture (use when the thing you need may be on her "
+                                          "second screen).",
+     "input_schema": {"type": "object", "properties": {"monitor": {"type": "string", "enum": ["primary", "all"]}}}},
+    {"name": "window", "description": "Minimize / maximize / restore / close an open window by (part of) its title. Closing a "
+                                     "window with her unsaved work needs ask_approval first.",
+     "input_schema": {"type": "object", "properties": {"op": {"type": "string", "enum": ["minimize", "maximize", "restore", "close"]},
+                                                      "title": {"type": "string"}}, "required": ["op", "title"]}},
     {"name": "list_apps", "description": "Names of installed apps (Start menu) and open windows.",
      "input_schema": {"type": "object", "properties": {}}},
     {"name": "focus_window", "description": "Bring an open window to the front by (part of) its title.",
@@ -142,6 +163,7 @@ class Op:
     step: int = 0
     action: str = ""
     window: str = ""
+    monitor: str = "primary"       # v0.166 which screen the operator works on (model can switch with screenshot)
     frame: bytes = b""
     frame_seq: int = 0
     timeline: list = field(default_factory=list)
@@ -208,10 +230,24 @@ LIVE_EVERY_S = 0.9      # v0.86 while the model decides the next step, the phone
 # the LAST screenshot it took; v0.86 took the live frames at 960 px while the model looked at 1280 px, so every click
 # after a live frame landed ~1/3 too far right and down ("clicking randomly"). Never use two sizes.
 SHOT_WIDTH = 1280
-MOVES_SCREEN = {"click", "scroll", "drag", "open_app", "focus_window"}
+MOVES_SCREEN = {"click", "scroll", "drag", "open_app", "focus_window", "open_url", "window", "screenshot"}
 POINTING = {"click", "scroll", "drag", "done"}
+# after any of these the WHOLE screen may have moved: even type / key in the same turn is held back
+FOCUS_MOVERS = {"open_app", "focus_window", "open_url", "window", "screenshot"}
 STATS = {"held_blind": 0}
-SETTLE_S = {"click": 0.35, "key": 0.35, "type": 0.2, "scroll": 0.25, "drag": 0.3, "focus_window": 0.3, "open_app": 0.8}
+SETTLE_S = {"click": 0.35, "key": 0.35, "type": 0.2, "scroll": 0.25, "drag": 0.3, "focus_window": 0.3, "open_app": 0.8,
+            "open_url": 1.2, "window": 0.4}
+
+# v0.166 a desktop older than 1.3.0 answers 'Unknown action open_url' etc.; the model gets a clean upgrade line instead
+_OLD_DESKTOP = "Yeh Santosh Desktop purana hai. PC par naya SantoshDesktop.exe install kijiye (Hoola app > Mera PC > " \
+               "Link copy), phir dobara boliye."
+
+
+def _desktop_says(e: Exception, action: str) -> str | None:
+    msg = str(e)
+    if action in ("open_url", "window", "screenshot") and "Unknown action" in msg:
+        return _OLD_DESKTOP
+    return None
 
 
 async def _think_live(op: Op, coro):
@@ -222,7 +258,9 @@ async def _think_live(op: Op, coro):
         while not stop.is_set():
             t0 = time.monotonic()
             try:
-                s = await _pc(op, "screen", {"max_width": SHOT_WIDTH}, timeout=10, log=False)
+                # same monitor the operator is working on (v0.166): one monitor + one width for every capture, so a
+                # click always maps with the picture the model last saw (the v0.91.1 rule, now monitor-aware too)
+                s = await _pc(op, "screen", {"max_width": SHOT_WIDTH, "monitor": op.monitor}, timeout=10, log=False)
                 img = s.get("image_b64", "")
                 if img and not stop.is_set():
                     op.frame, op.frame_seq = base64.b64decode(img), op.frame_seq + 1
@@ -263,15 +301,18 @@ def _trim_images(messages: list[dict]) -> None:
                     m["content"][i] = {"type": "text", "text": "[older screenshot removed]"}
 
 
-async def _shot(op: Op) -> list[dict]:
+async def _shot(op: Op, monitor: str = "") -> list[dict]:
     """Screenshot as Claude content blocks (+ updates the live view)."""
-    s = await _pc(op, "screen", {"max_width": SHOT_WIDTH}, timeout=25)
+    mon = monitor or op.monitor
+    s = await _pc(op, "screen", {"max_width": SHOT_WIDTH, "monitor": mon}, timeout=25)
     img = s.get("image_b64", "")
     if img:
         op.frame, op.frame_seq = base64.b64decode(img), op.frame_seq + 1
+    op.monitor = s.get("monitor", mon) or mon
     op.window = s.get("active_window", "") or op.window
     wins = ", ".join((s.get("windows") or [])[:12])
-    return [{"type": "text", "text": f"Screen {s.get('width')}x{s.get('height')}. Active window: {op.window or '-'}. "
+    where = "ALL monitors stitched" if op.monitor == "all" else "main monitor"
+    return [{"type": "text", "text": f"Screen {s.get('width')}x{s.get('height')} ({where}). Active window: {op.window or '-'}. "
                                      f"Open windows: {wins or '-'}"},
             {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": img}}]
 
@@ -309,8 +350,40 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         app = str(a.get("name", ""))
         if BLOCKED_APPS.search(app):
             return "REFUSED: Santosh doesn't open command-line or system tools. Use the normal app instead."
-        r = await _pc(op, "open_app", {"name": app}, timeout=40)
+        try:
+            r = await _pc(op, "open_app", {"name": app}, timeout=40)
+        except Exception as e:
+            return _desktop_says(e, "open_app") or f"ERROR: {e}"
         return f"opened {r.get('opened', app)}"
+    if name == "open_url":
+        url = str(a.get("url", "")).strip()[:2000]
+        if "\\" in url or url.lower().endswith(".exe"):
+            return "REFUSED: that is not a website."
+        # a leading scheme must already be http(s): 'javascript:alert(1)' must not become 'https://javascript:...'
+        m = re.match(r"^[a-zA-Z][a-zA-Z0-9+.\-]*:", url)
+        if m and m.group(0)[:-1].lower() not in ("http", "https"):
+            return "REFUSED: only http(s) websites open here."
+        if not m:
+            url = "https://" + url
+        from urllib.parse import urlparse
+        if urlparse(url).scheme.lower() not in ("http", "https") or not urlparse(url).netloc:
+            return "REFUSED: only http(s) websites open here."
+        try:
+            r = await _pc(op, "open_url", {"url": url}, timeout=30)
+        except Exception as e:
+            return _desktop_says(e, "open_url") or f"ERROR: {e}"
+        return f"opened {r.get('opened', url)} in her browser"
+    if name == "screenshot":
+        return "looked"        # the real image is delivered by the loop (special case, like ask_otp)
+    if name == "window":
+        wop = str(a.get("op", "")).lower()
+        if wop not in ("minimize", "maximize", "restore", "close"):
+            return "REFUSED: op must be minimize, maximize, restore or close."
+        try:
+            r = await _pc(op, "window", {"op": wop, "title": str(a.get("title", ""))[:200]}, timeout=25)
+        except Exception as e:
+            return _desktop_says(e, "window") or f"ERROR: {e}"
+        return f"window {wop}: {r.get('window', '')}"
     if name == "list_apps":
         r = await _pc(op, "apps", {}, timeout=25)
         return "Installed apps: " + ", ".join(r.get("apps", [])[:250]) + ". Open windows: " + ", ".join(r.get("windows", [])[:20])
@@ -318,7 +391,7 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         r = await _pc(op, "focus", {"title": str(a.get("title", ""))})
         return f"focused {r.get('focused', '')}"
     if name == "wait":
-        await asyncio.sleep(max(0.5, min(float(a.get("seconds") or 2), 15)))
+        await asyncio.sleep(max(0.5, min(float(a.get("seconds") or 2), 30)))   # v0.166 heavy software loads slowly
         return "waited"
     return f"Unknown tool {name}"
 
@@ -504,8 +577,9 @@ async def _run(op: Op) -> None:
             moved = ""                      # a screen-changing action already ran in this turn
             for u in uses:
                 name, a = u["name"], u.get("input") or {}
-                if moved and (name in POINTING or moved in ("open_app", "focus_window")):
-                    # v0.91.1 never point at a screen the model has not seen yet
+                if moved and (name in POINTING or moved in FOCUS_MOVERS):
+                    # v0.91.1 never point at (or type into) a screen the model has not seen yet; v0.166 the same for
+                    # a monitor switch (screenshot) and browser / window moves
                     STATS["held_blind"] += 1
                     results.append({"type": "tool_result", "tool_use_id": u["id"], "is_error": True,
                                     "content": f"NOT RUN: the screen may have changed after '{moved}'. Look at the new "
@@ -538,6 +612,13 @@ async def _run(op: Op) -> None:
                                     "content": "APPROVED by the user: do exactly that now." if ok else
                                     "NOT approved: don't do it. Finish with done or try a safe alternative."})
                     continue
+                if name == "screenshot":
+                    # v0.166 look again / switch monitor: the image goes to the model as THIS tool's result;
+                    # moved=screenshot holds any further click / type this turn (the model has not SEEN it yet)
+                    blocks = await _shot(op, monitor=str(a.get("monitor") or "primary"))
+                    results.append({"type": "tool_result", "tool_use_id": u["id"], "content": blocks})
+                    moved = "screenshot"
+                    continue
                 try:
                     msg = await _do(op, name, a)
                     is_err = msg.startswith("REFUSED")
@@ -552,7 +633,10 @@ async def _run(op: Op) -> None:
             if SETTLE_S.get(last):          # let the PC react (menus open, pages paint) before looking again
                 await asyncio.sleep(SETTLE_S[last])
             shot = await _shot(op)
-            results[-1] = {**results[-1], "content": [{"type": "text", "text": str(results[-1]["content"])}, *shot]}
+            prev = results[-1]["content"]
+            prev_text = prev if isinstance(prev, str) else " ".join(
+                b.get("text", "") for b in prev if isinstance(b, dict) and b.get("type") == "text")
+            results[-1] = {**results[-1], "content": [{"type": "text", "text": prev_text}, *shot]}
             messages.append({"role": "user", "content": results})
         if op.status == "running":
             op.status = "partial"

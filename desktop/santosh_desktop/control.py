@@ -11,15 +11,67 @@ import base64
 import io
 import os
 import re
+import subprocess
 import sys
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 MAX_WIDTH = 1280
 _dpi_done = False
 
 BLOCKED_KEYS = {("win", "l")}                                  # locking the PC would end the session for the owner
+
+# names the PC must never open for Hoola even if the model finds a direct path (mirror of the server list)
+BLOCKED_APP_WORDS = re.compile(r"\b(cmd|command prompt|powershell|windows terminal|terminal|regedit|registry|wsl|bash|"
+                              r"task scheduler|group policy|gpedit|diskpart|format)\b", re.I)
+
+# v1.3 the part of Windows behind the taskbar: AppUserModelIDs of Start-menu apps (normal + Store/UWP), cached
+_uwp_cache: tuple[float, dict[str, str]] = (0.0, {})
+
+
+def _uwp_apps() -> dict[str, str]:
+    """Friendly name -> AppUserModelID for every app Windows knows (Start menu, Microsoft Store, preinstalled).
+    Uses PowerShell's Get-StartApps once per 10 minutes and caches it; empty on non-Windows or when it fails."""
+    global _uwp_cache
+    t, cache = _uwp_cache
+    if time.time() - t < 600:
+        return cache
+    out: dict[str, str] = {}
+    if sys.platform == "win32":
+        try:
+            r = subprocess.run(["powershell", "-NoProfile", "-Command", "Get-StartApps | "
+                                "ForEach-Object { '$($PSItem.Name)`t$($PSItem.AppID)' }"],
+                               capture_output=True, timeout=15)
+            for line in r.stdout.decode("utf-8", "ignore").splitlines():
+                name, _, appid = line.partition("\t")
+                name, appid = name.strip(), appid.strip()
+                if name and appid and "!" in appid:      # real launchable apps (not control-panel entries)
+                    out.setdefault(name.lower(), appid)
+        except Exception:
+            pass
+    _uwp_cache = (time.time(), out)
+    return out
+
+
+def _virtual_screen() -> tuple[int, int, int, int]:
+    """(left, top, width, height) of the WHOLE desktop across all monitors (primary when unknown)."""
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            sm = ctypes.windll.user32.GetSystemMetrics
+            x0, y0, w, h = sm(76), sm(77), sm(78), sm(79)   # SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SM_CX/CY
+            if w > 0 and h > 0:
+                return int(x0), int(y0), int(w), int(h)
+        except Exception:
+            pass
+    try:
+        from PIL import ImageGrab
+        w, h = ImageGrab.grab().size
+        return 0, 0, w, h
+    except Exception:
+        return 0, 0, 0, 0
 
 
 class ControlError(Exception):
@@ -56,6 +108,7 @@ def _gui():
 class Control:
     def __init__(self) -> None:
         self.scale = 1.0           # screen pixels per screenshot pixel
+        self.origin = (0, 0)       # v1.3 screen position of the screenshot's top-left corner (monitors left of the primary are negative)
         self.on_activity = None    # set by the window app: shows the "Hoola is using this PC" banner
 
     def _touch(self, what: str) -> None:
@@ -66,23 +119,37 @@ class Control:
                 pass
 
     # ---------------- seeing ----------------
-    def screen(self, max_width: int = MAX_WIDTH) -> dict[str, Any]:
+    def screen(self, max_width: int = MAX_WIDTH, monitor: str = "primary") -> dict[str, Any]:
+        """v1.3 monitor="all" = every monitor stitched into one picture (a second screen is no longer blind).
+        self.scale + self.origin turn screenshot pixels back into screen pixels for THIS capture; the server keeps
+        the model's screenshots and the live-view frames on the same monitor and width, so a click always maps with
+        the capture the model just looked at (the v0.91.1 rule)."""
         _dpi_aware()
+        whole = (str(monitor or "primary").lower() == "all")
+        bbox = None
+        if whole:
+            x0, y0, vw, vh = _virtual_screen()
+            if vw > 0 and vh > 0:
+                bbox = (x0, y0, x0 + vw, y0 + vh)
         try:
             from PIL import ImageGrab
-            img = ImageGrab.grab(all_screens=False)
+            img = ImageGrab.grab(all_screens=whole, bbox=bbox)
         except Exception as e:
             raise ControlError(f"Screenshot failed: {type(e).__name__}: {e}")
         w, h = img.size
+        if whole:
+            self.origin = (bbox[0], bbox[1]) if bbox else (0, 0)
+        else:
+            self.origin = (0, 0)
         if w > max_width:
             self.scale = w / max_width
             img = img.resize((max_width, round(h / self.scale)))
         else:
             self.scale = 1.0
         buf = io.BytesIO()
-        img.convert("RGB").save(buf, "JPEG", quality=60, optimize=True)
+        img.convert("RGB").save(buf, "JPEG", quality=80, optimize=True)   # v1.3 was 60: invoice digits stay readable
         out = {"image_b64": base64.b64encode(buf.getvalue()).decode(), "width": img.size[0], "height": img.size[1],
-               "screen": [w, h]}
+               "screen": [w, h], "monitor": "all" if whole else "primary", "origin": list(self.origin)}
         out.update(self.windows())
         return out
 
@@ -98,7 +165,8 @@ class Control:
     # ---------------- doing ----------------
     def _xy(self, x: Any, y: Any) -> tuple[int, int]:
         try:
-            return round(float(x) * self.scale), round(float(y) * self.scale)
+            return (self.origin[0] + round(float(x) * self.scale),
+                    self.origin[1] + round(float(y) * self.scale))
         except (TypeError, ValueError):
             raise ControlError("x and y must be numbers (pixels on the last screenshot)")
 
@@ -127,10 +195,13 @@ class Control:
         elif op == "type":
             if not text:
                 raise ControlError("Nothing to type")
-            if text.isascii():
-                g.write(text, interval=0.012)
-            else:   # Hindi / Marathi text: paste through the clipboard
+            # v1.3 long or mixed-language text goes through the clipboard (instant, no dropped keys);
+            # the user's own clipboard is saved and put back. Short plain text still types key by key
+            # (no clipboard side effects for OTP-style one-liners).
+            if not text.isascii() or len(text) > 24:
                 self._paste(text)
+            else:
+                g.write(text, interval=0.012)
         elif op in ("key", "hotkey"):
             parts = [p.strip().lower() for p in re.split(r"[+ ]+", keys or "") if p.strip()]
             if not parts:
@@ -156,10 +227,46 @@ class Control:
         g = _gui()
         try:
             import pyperclip
-            pyperclip.copy(text)
         except Exception as e:
+            # no clipboard: type it out instead (slower, but it lands)
+            if text.isascii():
+                g.write(text, interval=0.012)
+                return
             raise ControlError(f"Could not type this text: {e}")
+        saved = ""
+        try:
+            saved = pyperclip.paste() or ""
+        except Exception:
+            pass
+        pyperclip.copy(text)
         g.hotkey("ctrl", "v")
+        time.sleep(0.15)
+        try:                          # her own copied text goes back after the paste
+            pyperclip.copy(saved)
+        except Exception:
+            pass
+
+    # ---------------- windows (v1.3: minimise / maximise / restore / close by title) ----------------
+    def window_op(self, op: str = "", title: str = "") -> dict[str, Any]:
+        try:
+            import pygetwindow as gw
+        except Exception:
+            raise ControlError("Window control not available")
+        op = (op or "").lower()
+        if op not in ("minimize", "maximize", "restore", "close"):
+            raise ControlError("op must be minimize, maximize, restore or close")
+        wins = [w for w in gw.getAllWindows() if title.lower() in (w.title or "").lower() and w.title.strip()]
+        if not wins:
+            raise ControlError(f"No open window matches '{title}'")
+        w = wins[0]
+        self._touch(f"window {op}: {w.title[:60]}")
+        try:
+            getattr(w, {"minimize": "minimize", "maximize": "maximize",
+                        "restore": "restore", "close": "close"}[op])()
+        except Exception as e:
+            raise ControlError(f"Could not {op} the window: {type(e).__name__}")
+        time.sleep(0.5)
+        return {"window": w.title, "op": op}
 
     # ---------------- apps ----------------
     @staticmethod
@@ -182,6 +289,8 @@ class Control:
         q = (name or "").strip().lower()
         if not q:
             raise ControlError("Which app?")
+        if BLOCKED_APP_WORDS.search(q):
+            raise ControlError("Santosh doesn't open command-line or system tools")
         self._touch("open " + name)
         found = [p for p in self._start_menu() if q == p.stem.lower()] or \
                 [p for p in self._start_menu() if q in p.stem.lower()]
@@ -189,6 +298,21 @@ class Control:
             aliases = {"notepad": "notepad.exe", "calculator": "calc.exe", "calc": "calc.exe", "paint": "mspaint.exe",
                        "explorer": "explorer.exe", "file explorer": "explorer.exe", "cmd": None, "powershell": None}
             exe = aliases.get(q)
+            if exe is None and sys.platform == "win32":
+                # v1.3 Microsoft Store / UWP apps (Mail, Calculator, Teams, Photos...) by their real name
+                uwp = _uwp_apps()
+                appid = uwp.get(q) or next((v for k, v in uwp.items() if q in k), "")
+                if appid:
+                    os.startfile("shell:appsFolder\\" + appid)  # type: ignore[attr-defined]
+                    time.sleep(2.0)
+                    return {"opened": name}
+                # v1.3 a full path to an installed program the Start menu missed ('C:\...\app.exe')
+                if q.endswith(".exe") and "\\" in q:
+                    p = Path(os.path.expandvars(q))
+                    if p.is_file() and not BLOCKED_APP_WORDS.search(str(p)):
+                        os.startfile(str(p))  # type: ignore[attr-defined]
+                        time.sleep(2.0)
+                        return {"opened": p.stem}
             if exe and sys.platform == "win32":
                 os.startfile(exe)  # type: ignore[attr-defined]
                 time.sleep(1.5)
@@ -197,10 +321,37 @@ class Control:
         target = sorted(found, key=lambda p: len(p.stem))[0]
         if sys.platform == "win32":
             os.startfile(str(target))  # type: ignore[attr-defined]
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", "-a", str(target.stem)])
         else:
             raise ControlError("Opening apps is supported on Windows")
         time.sleep(2.0)
         return {"opened": target.stem}
+
+    def open_url(self, url: str = "") -> dict[str, Any]:
+        """v1.3 Open a website in her own default browser (Chrome etc.). http(s) only."""
+        u = (url or "").strip()
+        if not u:
+            raise ControlError("Which site?")
+        if "\\" in u or u.lower().endswith(".exe"):
+            raise ControlError("That is not a website")
+        # a leading scheme must already be http(s); only a scheme-less address gets https:// in front
+        m = re.match(r"^[a-zA-Z][a-zA-Z0-9+.\-]*:", u)
+        if m and m.group(0)[:-1].lower() not in ("http", "https"):
+            raise ControlError("Only http(s) websites open here")
+        if not m:
+            u = "https://" + u
+        if urlparse(u).scheme.lower() not in ("http", "https") or not urlparse(u).netloc:
+            raise ControlError("Only http(s) websites open here")
+        self._touch("open " + u[:80])
+        if sys.platform == "win32":
+            os.startfile(u)  # type: ignore[attr-defined]
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", u])
+        else:
+            subprocess.Popen(["xdg-open", u])
+        time.sleep(1.5)
+        return {"opened": u[:200]}
 
     def focus(self, title: str = "") -> dict[str, Any]:
         try:
