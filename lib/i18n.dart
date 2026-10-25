@@ -78,6 +78,8 @@ const Map<String, Map<String, String>> uiStrings = {
     'Abhi bhejo': 'Send now',
     'Email badlo': 'Edit email',
     'Rehne do': 'Cancel',
+    'Save karo': 'Save',
+    'Cancel': 'Cancel',
     // ---- bazar (money) card ----
     'APPROVE KAREIN': 'APPROVE',
     'HAAN CHAHIYE': 'NEEDS YOUR OK',

@@ -475,6 +475,12 @@ class _ChatScreenState extends State<ChatScreen> {
   /// Newest at the bottom; the list is reversed so it always opens on the latest conversation and stays there.
   Widget _list() {
     final feed = app.feed;
+    // v0.164.5 read ticks: every user message that came before Santosh's last reply counts as seen.
+    var lastAsst = -1;
+    for (var i = 0; i < feed.length; i++) {
+      final f = feed[i];
+      if (f.kind == 'message' && f.data['role'] == 'assistant') lastAsst = i;
+    }
     final extra = (app.typing ? 1 : 0);
     final older = app.hasOlder ? 1 : 0;   // v0.158 older history above: one tap loads it, in order
     final hero = feed.length <= 1 && older == 0 ? 1 : 0;
@@ -491,10 +497,11 @@ class _ChatScreenState extends State<ChatScreen> {
         final k = i - extra;
         if (k == feed.length && older == 1) return _olderButton();
         if (k >= feed.length) return _hero();
-        final it = feed[feed.length - 1 - k];
+        final fi = feed.length - 1 - k;
+        final it = feed[fi];
         final fresh = !_old.contains(it) && !_animated.contains(it);
         if (fresh) _animated.add(it);
-        final child = _item(it, fresh: fresh);
+        final child = _item(it, fresh: fresh, seen: fi < lastAsst);
         return KeyedSubtree(key: ObjectKey(it), child: fresh ? _Arrive(card: it.kind != 'message', child: child) : child);
       },
     );
@@ -719,7 +726,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ]),
       );
 
-  Widget _item(FeedItem it, {bool fresh = false}) {
+  Widget _item(FeedItem it, {bool fresh = false, bool seen = false}) {
     switch (it.kind) {
       case 'message':
         final me = it.data['role'] == 'user';
@@ -743,14 +750,18 @@ class _ChatScreenState extends State<ChatScreen> {
                     SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45))
                   else
                     Text(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45)),
+                  _msgMeta(it, me, seen),
                 ]),
               )
             : Glass(flat: true,
                 radius: 22,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                child: fresh
-                    ? _Reveal(text: text, builder: (t) => linkText(t, const TextStyle(fontSize: 15, height: 1.45, color: C.ink), selectable: selecting))
-                    : linkText(text, const TextStyle(fontSize: 15, height: 1.45, color: C.ink), selectable: selecting));
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  fresh
+                      ? _Reveal(text: text, builder: (t) => linkText(t, const TextStyle(fontSize: 15, height: 1.45, color: C.ink), selectable: selecting))
+                      : linkText(text, const TextStyle(fontSize: 15, height: 1.45, color: C.ink), selectable: selecting),
+                  _msgMeta(it, me, seen),
+                ]));
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Align(
@@ -816,6 +827,29 @@ class _ChatScreenState extends State<ChatScreen> {
       height: 20,
       decoration: BoxDecoration(shape: BoxShape.circle, color: state == 'done' ? const Color(0xFF34D399) : const Color(0xFFFFC27A)),
       child: Icon(state == 'done' ? Icons.check : Icons.priority_high, size: 13, color: Colors.white),
+    );
+  }
+
+  // ---- v0.164.5 bubble footer: when it arrived (and, on her messages, whether Santosh has replied since) ----
+  String _clock(DateTime t) {
+    var h = t.hour % 12;
+    if (h == 0) h = 12;
+    return '$h:${t.minute.toString().padLeft(2, '0')} ${t.hour >= 12 ? 'pm' : 'am'}';
+  }
+
+  Widget _msgMeta(FeedItem it, bool me, bool seen) {
+    final at = it.at?.toLocal();
+    if (at == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text(_clock(at), style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: .3, color: me ? const Color(0xB8FFFFFF) : C.faint)),
+        if (me) ...[
+          const SizedBox(width: 3),
+          Icon(seen ? Icons.done_all_rounded : Icons.done_rounded, size: 13,
+              color: seen ? const Color(0xCCFFFFFF) : const Color(0x8CFFFFFF)),
+        ],
+      ]),
     );
   }
 
@@ -1971,7 +2005,7 @@ class _EmailCard extends StatelessWidget {
                       to: v['to'] as String?, cc: v['cc'] as String?, subject: v['subject'] as String?, body: v['body'] as String?))),
               const SizedBox(width: 8),
               IconButton(tooltip: app.g('Badlo'), onPressed: busy ? null : () => _edit(context), icon: const Icon(Icons.edit_outlined, color: C.chip)),
-              IconButton(tooltip: 'Cancel', onPressed: busy ? null : () => app.cancelEmail(v['id'] as String), icon: const Icon(Icons.close_rounded, color: C.muted)),
+              IconButton(tooltip: app.g('Cancel'), onPressed: busy ? null : () => app.cancelEmail(v['id'] as String), icon: const Icon(Icons.close_rounded, color: C.muted)),
             ]),
           ],
           if (status == 'scheduled')
@@ -1981,7 +2015,7 @@ class _EmailCard extends StatelessWidget {
                 TextButton.icon(onPressed: busy ? null : () => app.sendEmail(v['id'] as String, sendNow: true),
                     icon: const Icon(Icons.send_rounded, size: 18), label: Text(app.g('Abhi bhejo'))),
                 const Spacer(),
-                TextButton(onPressed: busy ? null : () => app.cancelEmail(v['id'] as String), child: const Text('Cancel', style: TextStyle(color: C.muted))),
+                TextButton(onPressed: busy ? null : () => app.cancelEmail(v['id'] as String), child: Text(app.g('Cancel'), style: const TextStyle(color: C.muted))),
               ]),
             ),
         ]),
@@ -2007,27 +2041,46 @@ class _EmailCard extends StatelessWidget {
         ]),
       );
 
+  // v0.164.5 edit sheet: the email opens in a Night Glass bottom sheet - the old AlertDialog
+  // felt like a stranger, and a long email needs the width. Keyboard-aware, same fields.
   Future<void> _edit(BuildContext context) async {
     final to = TextEditingController(text: v['to'] as String? ?? '');
     final cc = TextEditingController(text: v['cc'] as String? ?? '');
     final subject = TextEditingController(text: v['subject'] as String? ?? '');
     final body = TextEditingController(text: v['body'] as String? ?? '');
-    final ok = await showDialog<bool>(
+    final ok = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(app.g('Email badlo')),
-        content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: to, decoration: InputDecoration(labelText: app.g('Ko (email)'))),
-            TextField(controller: cc, decoration: const InputDecoration(labelText: 'Cc')),
-            TextField(controller: subject, decoration: InputDecoration(labelText: app.g('Vishay'))),
-            TextField(controller: body, minLines: 4, maxLines: 12, decoration: const InputDecoration(labelText: 'Email')),
-          ]),
+      isScrollControlled: true,
+      backgroundColor: const Color(0xF2141029),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Row(children: [
+                Expanded(child: Text(app.g('Email badlo'), style: display(18, w: FontWeight.w700))),
+                IconButton(onPressed: () => Navigator.pop(ctx, false), icon: const Icon(Icons.close_rounded, color: C.muted)),
+              ]),
+              const SizedBox(height: 4),
+              TextField(controller: to, keyboardType: TextInputType.emailAddress, decoration: InputDecoration(labelText: app.g('Ko (email)'))),
+              const SizedBox(height: 8),
+              TextField(controller: cc, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Cc')),
+              const SizedBox(height: 8),
+              TextField(controller: subject, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: app.g('Vishay'))),
+              const SizedBox(height: 8),
+              TextField(controller: body, minLines: 4, maxLines: 12, decoration: const InputDecoration(labelText: 'Email')),
+              const SizedBox(height: 16),
+              Row(children: [
+                Expanded(child: GlassButton(label: app.g('Rehne do'), onTap: () => Navigator.pop(ctx, false))),
+                const SizedBox(width: 10),
+                Expanded(child: GradientButton(label: app.g('Save karo'), height: 46, onTap: () => Navigator.pop(ctx, true))),
+              ]),
+            ]),
+          ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(app.g('Rehne do'))),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
-        ],
       ),
     );
     if (ok == true) {
