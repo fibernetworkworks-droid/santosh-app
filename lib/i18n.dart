@@ -116,6 +116,14 @@ const Map<String, Map<String, String>> uiStrings = {
     '{x} kadam': '{x} steps',
     'Rok raha…': 'Stopping…',
     'Band kijiye': 'Close',
+    // ---- long-press message menu ----
+    'Copy karo': 'Copy',
+    'Copy ho gaya': 'Copied',
+    'Jawab mein quote karo': 'Quote in reply',
+    'Box mein "> " ke saath aayega': 'Goes into the box with "> " marks',
+    'Text chuniye': 'Select text',
+    'Text ko dabakar kheenchiye': 'Long-press and drag the text',
+    'Text chunna band karo': 'Done selecting',
   },
 };
 

@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../state.dart';
@@ -150,6 +151,10 @@ class _ChatScreenState extends State<ChatScreen> {
   /// Items already on screen when Chat opened (history): they show at once, only new ones animate in.
   late final Set<FeedItem> _old = app.feed.toSet();
   final Set<FeedItem> _animated = {};
+  /// v0.164.3 long-press menu: the message whose text is in select mode (null = none).
+  FeedItem? _selecting;
+  /// v0.164.3 quoting a message puts it in the box and opens the keyboard.
+  final _composeFocus = FocusNode();
 
   Santosh get app => widget.app;
 
@@ -199,6 +204,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _text.removeListener(_onTextChanged);
     _voiceTimer?.cancel();
     _scrollIdle?.cancel();
+    _composeFocus.dispose();
     auroraPaused.value = false;   // leaving Chat: let the night sky drift again everywhere
     _scroll.dispose();
     _stt.stop();
@@ -718,6 +724,10 @@ class _ChatScreenState extends State<ChatScreen> {
       case 'message':
         final me = it.data['role'] == 'user';
         final text = it.data['text'] as String? ?? '';
+        // v0.164.3 long-press menu: text is plain by default (links still tappable) so the
+        // bubble's long-press opens Copy / Quote / Select. Select flips just this bubble
+        // into selectable text - then a long-press on the words drags the selection handles.
+        final selecting = _selecting == it;
         final bubble = me
             ? Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -729,20 +739,40 @@ class _ChatScreenState extends State<ChatScreen> {
                   for (final f in (it.data['files'] as List? ?? const []))
                     if (f is Map && f['codes'] is List) QrNote(codes: f['codes'] as List),
                   if ((it.data['files'] as List? ?? const []).isNotEmpty) const SizedBox(height: 6),
-                  SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45)),
+                  if (selecting)
+                    SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45))
+                  else
+                    Text(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45)),
                 ]),
               )
             : Glass(flat: true,
                 radius: 22,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
                 child: fresh
-                    ? _Reveal(text: text, builder: (t) => linkText(t, const TextStyle(fontSize: 15, height: 1.45, color: C.ink)))
-                    : linkText(text, const TextStyle(fontSize: 15, height: 1.45, color: C.ink)));
+                    ? _Reveal(text: text, builder: (t) => linkText(t, const TextStyle(fontSize: 15, height: 1.45, color: C.ink), selectable: selecting))
+                    : linkText(text, const TextStyle(fontSize: 15, height: 1.45, color: C.ink), selectable: selecting));
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Align(
             alignment: me ? Alignment.centerRight : Alignment.centerLeft,
-            child: ConstrainedBox(constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .82), child: bubble),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .82),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: me ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(onLongPress: () => _msgMenu(it, text, me), behavior: HitTestBehavior.opaque, child: bubble),
+                  if (selecting)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Press(
+                        onTap: () => setState(() => _selecting = null),
+                        child: Pill('✓ ${app.g('Ho gaya')}', fg: C.onAccent, bg: C.ok),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
         );
       case 'steps':
@@ -789,6 +819,73 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  // ---- v0.164.3 dabakar rakhiye (long-press) on a message: copy it, quote it in the box, or select its text ----
+  void _msgMenu(FeedItem it, String text, bool me) {
+    if (text.trim().isEmpty) return;   // files-only message: nothing to copy or quote
+    HapticFeedback.mediumImpact();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xF2141029),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => SafeArea(
+        top: false,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const SizedBox(height: 10),
+          Container(width: 36, height: 4, decoration: BoxDecoration(color: Colors.white.withOpacity(.18), borderRadius: BorderRadius.circular(2))),
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(14), border: Border.all(color: C.line)),
+            child: Row(children: [
+              Icon(me ? Icons.person_rounded : Icons.auto_awesome_rounded, size: 15, color: me ? const Color(0xFFB44CF0) : C.accentSoft),
+              const SizedBox(width: 8),
+              Expanded(child: Text(text, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: C.faint, height: 1.35))),
+            ]),
+          ),
+          ListTile(
+            leading: const Icon(Icons.copy_rounded, color: C.accent),
+            title: Text(app.g('Copy karo'), style: const TextStyle(fontWeight: FontWeight.w700)),
+            onTap: () {
+              Navigator.pop(ctx);
+              _copyMsg(text);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.format_quote_rounded, color: C.accent),
+            title: Text(app.g('Jawab mein quote karo'), style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: Text(app.g('Box mein "> " ke saath aayega'), style: const TextStyle(fontSize: 12, color: C.faint)),
+            onTap: () {
+              Navigator.pop(ctx);
+              _quoteMsg(text);
+            },
+          ),
+          ListTile(
+            leading: Icon(_selecting == it ? Icons.check_circle_rounded : Icons.highlight_alt_rounded, color: C.accent),
+            title: Text(app.g(_selecting == it ? 'Text chunna band karo' : 'Text chuniye'), style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: _selecting == it ? null : Text(app.g('Text ko dabakar kheenchiye'), style: const TextStyle(fontSize: 12, color: C.faint)),
+            onTap: () {
+              Navigator.pop(ctx);
+              setState(() => _selecting = _selecting == it ? null : it);
+            },
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _copyMsg(String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) _snack(app.g('Copy ho gaya'));
+  }
+
+  /// Quoted lines go above whatever is in the box, `> ` on every line, cursor ready for her reply.
+  void _quoteMsg(String text) {
+    final q = text.trim().split('\n').map((l) => '> $l').join('\n');
+    _text.text = _text.text.isEmpty ? '$q\n\n' : '$q\n\n${_text.text}';
+    _text.selection = TextSelection.collapsed(offset: q.length + 2);
+    FocusScope.of(context).requestFocus(_composeFocus);
+  }
+
   Widget _quick() {
     const q = ['Kal subah 7 baje yaad dilana', 'Aaj ka mausam', 'Meri shopping list', 'Roz subah briefing bhejna'];
     return SizedBox(
@@ -812,6 +909,7 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: TextField(
               controller: _text,
+              focusNode: _composeFocus,
               minLines: 1,
               maxLines: 4,
               textInputAction: TextInputAction.send,

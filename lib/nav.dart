@@ -48,7 +48,10 @@ final _urlRe = RegExp(r'(https?://[^\s<>()\[\]"]+[^\s<>()\[\]".,;:!?])', caseSen
 /// Chat text with tappable links that open in Santosh's browser.
 /// v0.164.1 link colour brightened: A78BFA on the dark glass = ~6.6:1 contrast (WCAG AA);
 /// the old 6D3FE0 was ~3:1 and hard to read on budget AMOLEDs. Saffron stays reserved for buttons.
-Widget linkText(String text, TextStyle style, {Color linkColor = const Color(0xFFA78BFA)}) {
+/// v0.164.3 [selectable]: chat bubbles pass false so the bubble's own long-press can open the
+/// Copy/Quote/Select menu; when Select is on, it passes true and selection comes back.
+/// Links stay tappable in both forms.
+Widget linkText(String text, TextStyle style, {Color linkColor = const Color(0xFFA78BFA), bool selectable = true}) {
   final spans = <InlineSpan>[];
   var last = 0;
   for (final m in _urlRe.allMatches(text)) {
@@ -63,5 +66,6 @@ Widget linkText(String text, TextStyle style, {Color linkColor = const Color(0xF
     last = m.end;
   }
   if (last < text.length) spans.add(TextSpan(text: text.substring(last)));
-  return SelectableText.rich(TextSpan(style: style, children: spans));
+  final rich = TextSpan(style: style, children: spans);
+  return selectable ? SelectableText.rich(rich) : Text.rich(rich);
 }
