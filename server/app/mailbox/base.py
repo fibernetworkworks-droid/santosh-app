@@ -96,6 +96,15 @@ class Box:
     def set_category(self, ids: list[str], category: str) -> None:
         raise MailError("Category tabs (Social / Promotions...) abhi Gmail mailbox par hain.")
 
+    def apply_label(self, ids: list[str], name: str) -> None:
+        raise MailError("Label lagana bina inbox se hataye abhi Gmail mailbox par hota hai.")
+
+    def profile(self) -> dict[str, Any]:
+        raise MailError("Yeh mailbox watcher ke liye history nahi deta; purani mail dekhne ke liye email_check hai.")
+
+    def history(self, start_history_id: str, types: str = "messageAdded", max_results: int = 100) -> dict[str, Any]:
+        raise MailError("Yeh mailbox watcher ke liye history nahi deta.")
+
     def view(self) -> dict[str, Any]:
         return {"key": self.key, "kind": self.kind, "address": self.address, "name": self.name,
                 "signature": self.signature}

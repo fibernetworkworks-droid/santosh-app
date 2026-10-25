@@ -229,6 +229,42 @@ const Map<String, Map<String, String>> uiStrings = {
     '{x} baaki': '{x} left',
     'AAJ POORE KIYE': 'DONE TODAY',
     'Wapas list mein': 'Back in the list',
+    // ---- v0.182.0 Mail aayi!: watcher cards + email screen ----
+    'Nayi mail': 'New mail',
+    'Inbox update': 'Inbox update',
+    'ZAROORI': 'IMPORTANT',
+    'Padho': 'Read',
+    'Jawab do': 'Reply',
+    'Archive': 'Archive',
+    '1 ghanta': '1 hour',
+    'Kal subah': 'Tomorrow morning',
+    'Snooze khatam': 'Snooze over',
+    'WAPAS': 'BACK',
+    'Yeh mail wapas inbox mein hai (unread).': 'This mail is back in your inbox (unread).',
+    'Is mail mein login/OTP ka code ho sakta hai — Santosh code kabhi nahi batata.':
+        'This mail may hold a login/OTP code — Santosh never reads codes out.',
+    'Nayi mail ki khabar': 'New-mail announcements',
+    'Hoola har minute aapka inbox dekhta hai. Zaroori mail ya apne logon ki mail aaye to chat mein bata deta hai; newsletters chup rehte hain. OTP codes kabhi nahi batata.':
+        'Hoola checks your inbox every minute and tells you in chat when important mail or mail from your own people arrives; newsletters stay quiet. OTP codes are never shown.',
+    'Shant': 'Quiet',
+    'Zaroori': 'Important',
+    'Sab': 'All',
+    'Mail rules': 'Mail rules',
+    'Naya rule': 'New rule',
+    'Rule ka naam': 'Rule name',
+    'Kisase aaye to (jaise hdfcbank)': 'From contains (e.g. hdfcbank)',
+    'Vishay mein shabd (jaise bill, invoice)': 'Subject words (e.g. bill, invoice)',
+    'Kya karein': 'What to do',
+    'Label lagao (naam)': 'Apply label (name)',
+    'Archive karo': 'Archive it',
+    'Star laga do': 'Star it',
+    'Padha hua mark karo': 'Mark as read',
+    'Rule chalu hai. Ab se aane wali nayi mail par chalega.':
+        'The rule is on. It runs on new mail from now on.',
+    'Rules nayi mail par chalte hain; bhejna hamesha aapke Bhejo par.':
+        'Rules act on new mail; sending always waits for your tap.',
+    'Koi rule nahi. Bolo "bank ki mail aaye to archive karo" jaisa rule chat mein.':
+        'No rules yet. Say a rule in chat, like "archive mail from my bank".',
   },
 };
 

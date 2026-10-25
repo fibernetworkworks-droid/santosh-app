@@ -640,6 +640,22 @@ class Api {
   Future<Map<String, dynamic>> mailAccountRemove(String key) async =>
       Map<String, dynamic>.from(await _send('DELETE', '/api/mail/accounts/$key') as Map);
 
+  // ---- v0.182.0 rules / watch / mute / snooze (the Email screen) ----
+  Future<Map<String, dynamic>> mailRules() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/mail/rules') as Map);
+  Future<Map<String, dynamic>> mailRuleCreate(String name, Map<String, dynamic> match, Map<String, dynamic> actions) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/mail/rules', body: {'name': name, 'match': match, 'actions': actions}) as Map);
+  Future<Map<String, dynamic>> mailRuleEdit(String id, bool enabled) async =>
+      Map<String, dynamic>.from(await _send('PATCH', '/api/mail/rules/$id', body: {'enabled': enabled}) as Map);
+  Future<Map<String, dynamic>> mailRuleRemove(String id) async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/mail/rules/$id') as Map);
+  Future<Map<String, dynamic>> mailWatch(String mode, {String? account}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/mail/watch', body: {'mode': mode, if (account != null) 'account': account}) as Map);
+  Future<Map<String, dynamic>> mailMute({String add = '', bool clear = false}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/mail/mute', body: {'add': add, 'clear': clear}) as Map);
+  Future<Map<String, dynamic>> mailSnoozeCancel(String id) async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/mail/snoozes/$id') as Map);
+
   Future<void> cancelEmail(String id) async => _send('POST', '/api/emails/$id/cancel');
 
   Future<List<Map<String, dynamic>>> reminders() async =>

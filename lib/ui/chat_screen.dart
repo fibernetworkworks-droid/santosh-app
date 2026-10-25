@@ -1197,6 +1197,10 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
   switch (it.kind) {
     case 'email':
       return _EmailCard(v: it.data, app: app);
+    case 'email_new':
+      return EmailNewCard(v: it.data, app: app);
+    case 'email_snooze':
+      return EmailSnoozeCard(v: it.data, app: app);
     case 'calendar_event':
       return CalendarEventCard(v: it.data);
     case 'sheet':
@@ -2305,6 +2309,122 @@ class _EmailCard extends StatelessWidget {
       v['body'] = body.text;
       app.notifyChange();
     }
+  }
+}
+
+/// v0.182.0 "Mail aayi!": the watcher's new-mail card. Quick actions speak to Santosh in chat —
+/// organising stays reversible, sending stays behind the Bhejo tap, OTP codes never leave the server unmasked.
+class EmailNewCard extends StatelessWidget {
+  const EmailNewCard({super.key, required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+
+  void _say(String text) => app.send(text);
+
+  @override
+  Widget build(BuildContext context) {
+    final digest = v['digest'] == true;
+    final otp = v['otp'] == true;
+    final from = (v['from'] as String? ?? '').trim();
+    final fromEmail = (v['from_email'] as String? ?? '').trim();
+    final subject = v['subject'] as String? ?? '';
+    final snippet = v['snippet'] as String? ?? '';
+    final account = v['account'] as String? ?? '';
+    final ref = v['id'] as String? ?? '';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Glass(flat: true,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            Icon(digest ? Icons.mark_email_read_outlined : Icons.mark_email_unread_outlined, color: C.accent, size: 20),
+            const SizedBox(width: 8),
+            Expanded(child: Text(app.g(digest ? 'Inbox update' : 'Nayi mail'),
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5))),
+            if (v['important'] == true) Flexible(child: Pill(app.g('ZAROORI'), fg: C.warn)),
+          ]),
+          const SizedBox(height: 8),
+          if (from.isNotEmpty || fromEmail.isNotEmpty)
+            Text(from.isNotEmpty ? from : fromEmail, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+          Text(subject, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+          if (snippet.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(snippet, style: const TextStyle(fontSize: 13, height: 1.35, color: Color(0xFFD7D2F2))),
+            ),
+          if (otp)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(app.g('Is mail mein login/OTP ka code ho sakta hai — Santosh code kabhi nahi batata.'),
+                  style: const TextStyle(color: C.warn, fontSize: 12)),
+            ),
+          if (account.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(account, style: const TextStyle(color: C.muted, fontSize: 11.5)),
+            ),
+          if (!digest && ref.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              ActionChip(onPressed: () => _say('Email "$ref" padho aur chhota mein batao kya hai.'),
+                  label: Text(app.g('Padho'), style: const TextStyle(fontSize: 12.5))),
+              ActionChip(onPressed: () => _say('Email "$ref" ka jawab likho.'),
+                  label: Text(app.g('Jawab do'), style: const TextStyle(fontSize: 12.5))),
+              ActionChip(onPressed: () => _say('Email "$ref" archive kar do.'),
+                  label: Text(app.g('Archive'), style: const TextStyle(fontSize: 12.5))),
+              ActionChip(onPressed: () => _say('Email "$ref" ko 1 ghante ke liye snooze karo.'),
+                  avatar: const Icon(Icons.alarm_add_rounded, size: 16, color: C.chip),
+                  label: Text(app.g('1 ghanta'), style: const TextStyle(fontSize: 12.5))),
+              ActionChip(onPressed: () => _say('Email "$ref" ko kal subah tak snooze karo.'),
+                  avatar: const Icon(Icons.wb_twilight_rounded, size: 16, color: C.chip),
+                  label: Text(app.g('Kal subah'), style: const TextStyle(fontSize: 12.5))),
+            ]),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+/// v0.182.0 a snoozed mail is back: wapas inbox mein (unread), with the same quick actions.
+class EmailSnoozeCard extends StatelessWidget {
+  const EmailSnoozeCard({super.key, required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+
+  @override
+  Widget build(BuildContext context) {
+    final subject = v['subject'] as String? ?? '';
+    final peer = v['peer'] as String? ?? '';
+    final ref = v['email_ref'] as String? ?? '';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Glass(flat: true,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Icon(Icons.alarm_on_rounded, color: C.ok, size: 20),
+            const SizedBox(width: 8),
+            Expanded(child: Text(app.g('Snooze khatam'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5))),
+            Flexible(child: Pill(app.g('WAPAS'), fg: C.ok)),
+          ]),
+          const SizedBox(height: 8),
+          if (peer.isNotEmpty) Text(peer, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+          Text(subject, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(app.g('Yeh mail wapas inbox mein hai (unread).'), style: const TextStyle(color: C.muted, fontSize: 12.5)),
+          ),
+          if (ref.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              ActionChip(onPressed: () => app.send('Email "$ref" padho aur chhota mein batao kya hai.'),
+                  label: Text(app.g('Padho'), style: const TextStyle(fontSize: 12.5))),
+              ActionChip(onPressed: () => app.send('Email "$ref" ka jawab likho.'),
+                  label: Text(app.g('Jawab do'), style: const TextStyle(fontSize: 12.5))),
+            ]),
+          ],
+        ]),
+      ),
+    );
   }
 }
 

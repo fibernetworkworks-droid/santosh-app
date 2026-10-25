@@ -7437,6 +7437,55 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
   test_v0179 pin + console ?v=0.181.0). Next: Phase 2 watcher/rules/snooze (still no new scope).
 
 
+## v0.182.0 MAIL AAYI!: the proactive watcher — Hoola tells her when mail arrives (rules, snooze, quiet hours)
+- Owner: "START PHASE 2" (of the Gmail 100% plan). Still NO new Google scope: the watcher reads
+  `users.history.list` with a stored historyId watermark (scope gmail.modify already grants it); IMAP/Outlook
+  watchers ride a since-watermark listing. No Pub/Sub on a single VPS.
+- NEW `mailbox/sync.py`: `sync_tick` (worker.mail_jobs slot, every 60s, round-robin start rotation so at scale no
+  mailbox starves; cap 60 accounts/tick) -> per-account `sync_account`: Gmail = profile() watermark + history.list
+  (messagesAdded filtered to INBOX, minus SENT/DRAFT/CHAT, 3 pages max); a 404/purged historyId (or any MailError)
+  falls back to a plain recent listing — nothing is ever lost. FIRST PASS ON A FRESH MAILBOX IS SILENT
+  CALIBRATION (watermark bharo, khabar nahi) — nobody gets a flood of old mail on connecting or deploying;
+  switching off -> vip/all also recalibrates (Gmail behaviour: no backlog announce). Watermarks, recent-ids
+  (dedupe, last 60), mode and last_error live in the new `MailSyncState` table (tenant+account, auto-migrated).
+- Watch modes (per mailbox, `email_accounts watch_mode=` or the Email screen): off (shant) / vip (DEFAULT:
+  important mail [Gmail IMPORTANT label or classify needs_reply/bills] + "apne log" = the learned address book
+  sent_to>0; OTP/login alerts always announce) / all (sab; bulk mail becomes one grouped digest card instead of
+  one each). Mute list (`email_accounts mute=` / clear) silences senders completely.
+- NEW `email_rule` tool: her own rules, Santosh-side so they work for Gmail AND Outlook/IMAP. match = from words /
+  subject words / has_attachment / bulk / unread; actions = label (Gmail apply_label adds WITHOUT archiving,
+  others move to folder), archive, star, mark_read, important (Gmail), mute, notify, forward_to — A FORWARD RULE
+  ONLY PREPARES A DRAFT CARD (kind=forward, "attachments nahi hain" note); Santosh NEVER auto-sends or
+  auto-replies. Rules run QUIETLY (a rule's work makes no announcement card unless its notify action says so),
+  apply to NEW mail only, never delete. pause/resume/delete/test (test = dry run against the newest inbox mail).
+  `MailRule` table (tenant-scoped JSON match/actions, hit counter).
+- NEW `email_snooze` tool (Gmail parity): snooze = read (mark_seen=False) -> archive -> `MailSnooze` row
+  (5 min..30 days); worker snooze_tick wakes due rows: move back to inbox + mark unread + email_snooze card +
+  "Snooze khatam" note in her chat. cancel = wake at once. when = ISO local time or hours/days.
+- Announcements: `email_new` events (LOCAL kind) carry from/subject/snippet/otp/important/account — OTP digits
+  are masked to •••• SERVER-SIDE before any card leaves (regex \b\d{4,8}\b, same discipline as triage).
+  push.py maps email_new/email_snooze to FCM titles ("Nayi mail: <from>" / "Snooze khatam"). `email_snooze`
+  events + wake notes complete the loop.
+- Flutter: `email_new` / `email_snooze` feed cards (chat_screen EmailNewCard: Padho / Jawab do / Archive quick
+  actions + snooze chips 1 ghanta / Kal subah — they speak to Santosh in chat; EmailSnoozeCard for wakes),
+  state.dart merges both by kind+id; Email screen gains the "Nayi mail ki khabar" watch-mode chips (Shant /
+  Zaroori / Sab) + a rules editor (name, from, subject, archive/star/mark-read/label, pause switch, delete) on
+  the NEW REST endpoints GET/POST/PATCH/DELETE /api/mail/rules, POST /api/mail/watch, POST /api/mail/mute,
+  DELETE /api/mail/snoozes/{id}; api.dart grew mailRules/mailRuleCreate/mailRuleEdit/mailRuleRemove/mailWatch/
+  mailMute/mailSnoozeCancel. i18n en table for the new strings.
+- Prompts §78 grew the watcher paragraph (watch modes, rules never send, snooze); EMAIL_LABELS for the 2 new
+  tools (18 email tools now); manifest description mentions watcher/rules/snooze. GmailBox gained profile(),
+  history(page_token), apply_label(); base Box defaults raise clean Hinglish errors on non-Gmail.
+- Tests: `tests/test_email_phase2.py` (16) — first-run silent calibration, history tick announces only new mail
+  + watermark advance, expired-history fallback heals the watermark, vip gating (stranger shant / VIP + OTP
+  announce, digits masked), off/all modes + bulk digest, mute list, sync_tick plumbing, rule matching matrix,
+  rule tool create/pause/resume/delete + validation (no match, no actions, mute+notify conflict), rule_test dry
+  run changes nothing, rules fire quietly with hits counter, notify action makes a card, forward rule makes a
+  pending draft and never sends, mute rule suppresses, snooze add/wake/cancel + min window, version. Ritual:
+  0.182.0 (main.py + pubspec 0.182.0+212 + test_v0179 + test_email_phase1 pins + console ?v=0.182.0).
+  Next: Phase 3 settings scope (vacation/signature/aliases), Phase 4 polish.
+
+
 ## v0.180.0 REAL TIME: the phone sees every task as it happens (Mera PC + all her own tasks)
 - Owner: "HOOLA AI MUST SEE THE TASK IN REAL TIME NOT DELAYED. CURRENTLY EVERY TASK IS COMPLETED THEN AFTER FEW SEC
   IT GIVES REPLY. SOME TASKS TAKE LONG, SOME NEVER REPLIED. FIX THIS PERFECTLY... FOR MERA PC AS WELL AS FOR ALL OWN

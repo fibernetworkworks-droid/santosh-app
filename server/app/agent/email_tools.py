@@ -11,7 +11,7 @@ from typing import Any
 
 from ..db import EmailDraft, now, session
 from ..events import bus
-from ..mailbox import contacts, mime
+from ..mailbox import contacts, mime, sync
 from ..mailbox import service as ms
 from ..mailbox.accounts import get_box, set_default, set_signature, views
 from ..mailbox.base import MailError, NotConnected
@@ -109,6 +109,35 @@ EMAIL_TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["list", "delete"]}, "id": {"type": "string"},
          "limit": {"type": "integer"}, "account": {"type": "string"}}, "required": ["action"]}},
+    {"name": "email_rule", "description": (
+        "Her inbox rules (Santosh-side, so they work for Gmail AND Outlook/IMAP). action='create' with match + "
+        "actions: match = {from: 'hdfcbank' (sender words/emails, comma = any of), subject: 'words, comma = all of', "
+        "has_attachment: true, bulk: true (newsletters), unread: true}; actions = {label: 'Bills', archive: true, "
+        "star: true, mark_read: true, important: true/false (Gmail), mute: true (no new-mail announcement), "
+        "notify: true (announce even in vip mode), forward_to: 'email' (makes a DRAFT card for her Bhejo tap — "
+        "Santosh NEVER sends by himself)}. action='list' shows rules with hit counts, 'pause'/'resume' with rule_id, "
+        "'delete' with rule_id, 'test' dry-runs a rule against the newest inbox mail (nothing changes). Rules apply "
+        "to NEW mail from now on, not to old mail."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["create", "list", "pause", "resume", "delete", "test"]},
+         "name": {"type": "string"},
+         "match": {"type": "object", "properties": {
+             "from": {"type": "string"}, "subject": {"type": "string"}, "has_attachment": {"type": "boolean"},
+             "bulk": {"type": "boolean"}, "unread": {"type": "boolean"}}},
+         "actions": {"type": "object", "properties": {
+             "label": {"type": "string"}, "archive": {"type": "boolean"}, "star": {"type": "boolean"},
+             "mark_read": {"type": "boolean"}, "important": {"type": "boolean"}, "mute": {"type": "boolean"},
+             "notify": {"type": "boolean"}, "forward_to": {"type": "string"}}},
+         "rule_id": {"type": "string"}, "account": {"type": "string"}}, "required": ["action"]}},
+    {"name": "email_snooze", "description": (
+        "Snooze an email: it leaves the inbox now and comes back unread at the chosen time with a reminder card "
+        "(like Gmail's snooze). action='add' with email_id + when (local time like 2026-10-26T09:00) or hours / days. "
+        "action='list' shows snoozed mail, 'cancel' with snooze_id brings one back at once. Never for OTP mails."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["add", "list", "cancel"]}, "email_id": {"type": "string"},
+         "when": {"type": "string", "description": "Local time, e.g. 2026-10-26T09:00"},
+         "hours": {"type": "number"}, "days": {"type": "number"}, "snooze_id": {"type": "string"}},
+         "required": ["action"]}},
     {"name": "email_delete", "description": (
         "Delete emails (move to Trash). Shows the user a confirm card; nothing is deleted until they approve."),
      "input_schema": {"type": "object", "properties": {"ids": {"type": "array", "items": {"type": "string"}}},
@@ -142,12 +171,18 @@ EMAIL_TOOLS = [
     {"name": "email_accounts", "description": (
         "The user's connected mailboxes and their signatures, and settings: signature (set for a mailbox), "
         "make_default (address), daily_summary ('09:00' local time for a daily inbox summary, or 'off'), undo_seconds "
-        "(0-60: after Bhejo the email waits this many seconds and can still be cancelled; 0 = send at once). Call with "
-        "no arguments to just list. If nothing is connected, tell the user: Profile > Email > Gmail / Outlook / Other."),
+        "(0-60: after Bhejo the email waits this many seconds and can still be cancelled; 0 = send at once), "
+        "watch_mode ('off' = no new-mail announcements, 'vip' = important mail + people she mails herself [default], "
+        "'all' = every new mail; for one account or all), mute (sender emails, comma-separated, to never announce; "
+        "'clear' empties the list). Call with no arguments to just list everything. If nothing is connected, tell "
+        "the user: Profile > Email > Gmail / Outlook / Other."),
      "input_schema": {"type": "object", "properties": {
          "account": {"type": "string"}, "signature": {"type": "string"}, "make_default": {"type": "string"},
          "daily_summary": {"type": "string"},
-         "undo_seconds": {"type": "integer", "description": "0-60, 0 = off"}}}},
+         "undo_seconds": {"type": "integer", "description": "0-60, 0 = off"},
+         "watch_mode": {"type": "string", "enum": ["off", "vip", "all"],
+                        "description": "New-mail announcements: off / vip (default) / all"},
+         "mute": {"type": "string", "description": "Sender emails to never announce (comma-separated), or 'clear'"}}}},
 ]
 
 EMAIL_LABELS = {"email_check": "Inbox dekh raha hoon", "email_read": "Email padh raha hoon",
@@ -159,7 +194,8 @@ EMAIL_LABELS = {"email_check": "Inbox dekh raha hoon", "email_read": "Email padh
                 "email_delete": "Delete ki manzoori le raha hoon",
                 "email_follow_up": "Follow-up laga raha hoon", "email_bulk": "Bulk email taiyaar kar raha hoon",
                 "email_bulk_status": "Bulk email dekh raha hoon", "email_contacts": "Address dhoondh raha hoon",
-                "email_accounts": "Email settings dekh raha hoon"}
+                "email_accounts": "Email settings dekh raha hoon",
+                "email_rule": "Inbox rule sambhal raha hoon", "email_snooze": "Mail snooze kar raha hoon"}
 
 SUMMARY_TITLE = "Inbox summary"
 
@@ -445,7 +481,7 @@ async def email_contacts(ctx: Ctx, query, **_):
 
 
 async def email_accounts(ctx: Ctx, account=None, signature=None, make_default=None, daily_summary=None,
-                         undo_seconds=None, **_):
+                         undo_seconds=None, watch_mode=None, mute=None, **_):
     changed = []
     if signature is not None:
         box = await _t(get_box, ctx.tenant_id, account)
@@ -460,7 +496,20 @@ async def email_accounts(ctx: Ctx, account=None, signature=None, make_default=No
     if undo_seconds is not None:
         n = await _t(ms.set_undo_seconds, ctx.tenant_id, undo_seconds)
         changed.append(f"undo window {n}s" if n else "undo send off")
-    out: dict[str, Any] = {"mailboxes": await _t(views, ctx.tenant_id)}
+    if watch_mode:
+        await _t(sync.set_watch_mode, ctx.tenant_id, str(watch_mode), account)
+        changed.append(f"new-mail announcements: {watch_mode}" + (f" ({account})" if account else ""))
+    if mute is not None:
+        s = str(mute).strip()
+        if s.lower() in ("clear", "off", "band", "hatao", "sab hatao"):
+            await _t(sync.mute_edit, ctx.tenant_id, clear=True)
+            changed.append("mute list cleared")
+        else:
+            lst = await _t(sync.mute_edit, ctx.tenant_id, add=[x for x in s.split(",") if x.strip()])
+            changed.append(f"{len(lst)} senders muted")
+    out: dict[str, Any] = {"mailboxes": await _t(views, ctx.tenant_id),
+                           "watch": await _t(sync.watch_views, ctx.tenant_id),
+                           "muted": await _t(sync.muted, ctx.tenant_id)}
     if changed:
         out["changed"] = changed
     if not out["mailboxes"]:
@@ -497,10 +546,64 @@ async def _daily_summary(ctx: Ctx, at: str) -> str:
     return f"daily inbox summary at {hh:02d}:{mm:02d}"
 
 
+async def email_rule(ctx: Ctx, action="list", name="", match=None, actions=None, rule_id=None, account=None, **_):
+    if action == "create":
+        out = await _t(sync.rule_create, ctx.tenant_id, str(name or ""), dict(match or {}), dict(actions or {}))
+        return {**out, "note": "Rule chalu hai. Ab se aane wali nayi mail par chalega (purani mail par nahi). "
+                               "forward_to wala rule sirf draft banata hai — bhejna hamesha user ke Bhejo par."}
+    if action in ("pause", "resume"):
+        if not rule_id:
+            raise ToolError("Kaunsa rule? rule_id do (email_rule list se).")
+        out = await _t(sync.rule_edit, ctx.tenant_id, str(rule_id), action == "resume")
+        return {**out, "note": "Rule " + ("chalu kar diya." if action == "resume" else "roka (delete nahi hua).")}
+    if action == "delete":
+        if not rule_id or not await _t(sync.rule_delete, ctx.tenant_id, str(rule_id)):
+            raise ToolError("Woh rule nahi mila (ids email_rule list se).")
+        return {"deleted": rule_id}
+    if action == "test":
+        if not rule_id:
+            raise ToolError("Kaunsa rule? rule_id do (email_rule list se).")
+        return await _t(sync.rule_test, ctx.tenant_id, str(rule_id), account)
+    return {"rules": await _t(sync.rules_list, ctx.tenant_id),
+            "note": "Rules nayi mail par chalte hain. Kaam: label, archive, star, mark_read, important, mute, "
+                    "notify; forward_to sirf draft banata hai (Santosh khud kabhi nahi bhejta)."}
+
+
+def _snooze_when(ctx: Ctx, when, hours, days):
+    from datetime import timedelta as _td
+    if when:
+        return _when(ctx, str(when))
+    try:
+        h = float(hours or 0)
+    except (TypeError, ValueError):
+        h = 0.0
+    try:
+        d = float(days or 0)
+    except (TypeError, ValueError):
+        d = 0.0
+    if h <= 0 and d <= 0:
+        raise ToolError("Kab wapas laaun? when (local time) ya hours ya days do.")
+    return now() + _td(hours=h) + _td(days=d)
+
+
+async def email_snooze(ctx: Ctx, action="list", email_id=None, when=None, hours=None, days=None, snooze_id=None, **_):
+    if action == "list":
+        return {"snoozed": await _t(sync.snooze_list, ctx.tenant_id)}
+    if action == "cancel":
+        if not snooze_id or not await _t(sync.snooze_cancel, ctx.tenant_id, str(snooze_id)):
+            raise ToolError("Woh snooze nahi mila (ids email_snooze list se).")
+        return {"cancelled": snooze_id, "note": "Mail wapas inbox mein aa gayi (unread)."}
+    if not email_id:
+        raise ToolError("Kaunsi email? email_id do (email_check se).")
+    wake = _snooze_when(ctx, when, hours, days)
+    out = await _t(sync.snooze_add, ctx.tenant_id, ctx.conversation_id, str(email_id), wake)
+    return {**out, "note": f"Mail inbox se hata di; {out['wake_label']} par wapas aayegi (unread mark ho gi)."}
+
+
 EMAIL_HANDLERS = {"email_check": email_check, "email_read": email_read, "email_thread": email_thread,
                   "email_triage": email_triage,
                   "email_attachment": email_attachment, "email_draft": email_draft, "email_forward": email_forward,
                   "email_action": email_action, "email_label": email_label, "email_drafts": email_drafts,
                   "email_delete": email_delete, "email_follow_up": email_follow_up,
                   "email_bulk": email_bulk, "email_bulk_status": email_bulk_status, "email_contacts": email_contacts,
-                  "email_accounts": email_accounts}
+                  "email_accounts": email_accounts, "email_rule": email_rule, "email_snooze": email_snooze}

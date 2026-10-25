@@ -1485,6 +1485,17 @@ class Santosh extends ChangeNotifier {
         final it = _emails[p['id'] as String];
         if (it != null) it.data = {...it.data, ...p};
         break;
+      case 'email_new':
+      case 'email_snooze':          // v0.182.0 "Mail aayi!": watcher cards, merged by kind+id
+        final wn = '${ev.kind}:${p['id']}';
+        final knownW = _emails[wn];
+        if (knownW != null) {
+          knownW.data = {...knownW.data, ...p};
+        } else {
+          _emails[wn] = FeedItem(ev.kind, Map<String, dynamic>.from(p));
+          feed.add(_emails[wn]!);
+        }
+        break;
       case 'lists':
         await refreshLists();
         break;

@@ -454,6 +454,52 @@ class MailSetting(Base):
     value: Mapped[str] = mapped_column(String(200), default="")
 
 
+class MailSyncState(Base):
+    """v0.182.0 the new-mail watcher's watermark for one mailbox: Gmail keeps a historyId, IMAP the last seen
+    UID/date, Outlook the last receivedDateTime. mode: off (shant) / vip (default: important + known senders) /
+    all (sab batao). recent holds the last message ids so a fallback re-list never announces the same mail twice."""
+    __tablename__ = "mail_sync_state"
+    tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    account: Mapped[str] = mapped_column(String(40), primary_key=True)
+    mode: Mapped[str] = mapped_column(String(8), default="vip")
+    history_id: Mapped[str] = mapped_column(String(40), default="")
+    last_ts: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    recent: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str] = mapped_column(Text, default="")
+
+
+class MailRule(Base):
+    """v0.182.0 an inbox rule she speaks ("bank se aane wali sab mail label Bills mein daalo, archive karo").
+    match and actions are JSON dicts; rules never send mail — a forward rule only prepares a draft for her tap."""
+    __tablename__ = "mail_rules"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("rule"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    name: Mapped[str] = mapped_column(String(120), default="")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    match: Mapped[dict] = mapped_column(JSON)
+    actions: Mapped[dict] = mapped_column(JSON)
+    hits: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class MailSnooze(Base):
+    """v0.182.0 an email pushed out of the inbox until a time she chose. At wake_at the worker brings it back
+    (unarchive + mark unread) and drops a reminder card in her chat. Reversible: cancel brings it back at once."""
+    __tablename__ = "mail_snoozes"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("snz"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    conversation_id: Mapped[str] = mapped_column(String(40), default="")
+    account: Mapped[str] = mapped_column(String(40), default="")
+    email_ref: Mapped[str] = mapped_column(String(300), default="")
+    message_id: Mapped[str] = mapped_column(String(500), default="")
+    subject: Mapped[str] = mapped_column(String(500), default="")
+    peer: Mapped[str] = mapped_column(String(320), default="")
+    snoozed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    wake_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    status: Mapped[str] = mapped_column(String(12), default="snoozed")   # snoozed | woken | cancelled
+
+
 class BulkMail(Base):
     """One email sent separately to many people (mail merge). Starts only after the user approves the card."""
     __tablename__ = "bulk_mails"

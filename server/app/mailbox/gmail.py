@@ -238,3 +238,18 @@ class GmailBox(Box):
         if not cat:
             raise MailError("category personal / social / updates / forums / promotions mein se hai")
         self._modify(ids, add=[cat], remove=[c for c in self.CATEGORIES.values() if c != cat])
+
+    def apply_label(self, ids: list[str], name: str) -> None:
+        """v0.182.0 a label on top of the mail, inbox nahi chhodti (a rule's 'label' action)."""
+        self._modify(ids, add=[self._label_id(name, create=True)])
+
+    # ---------------- v0.182.0 the new-mail watcher: history.list with a stored watermark ----------------
+    def profile(self) -> dict[str, Any]:
+        """The mailbox's own view: historyId (the watcher's watermark), address, messages count."""
+        return self._req("GET", "/profile")
+
+    def history(self, start_history_id: str, types: str = "messageAdded", max_results: int = 100) -> dict[str, Any]:
+        """Everything that changed since the watermark (new mail). A 404 here means the watermark expired
+        (history purged) — the sync engine falls back to a plain `after:` listing, nothing is ever lost."""
+        return self._req("GET", "/history", params={"startHistoryId": start_history_id, "historyTypes": types,
+                                                    "maxResults": max(1, min(int(max_results), 500))})

@@ -30,7 +30,8 @@ STREAM_KINDS = {"reply_start", "delta", "delta_reset", "reply_end", "think"}
 LIVE_ONLY = {"typing", "step", "work", "log"} | STREAM_KINDS
 # belong to the chat they were made in only (answers' sources, phone actions, list refreshes...): never copied to others
 LOCAL_KINDS = LIVE_ONLY | {
-    "message", "upload", "reminders", "routines", "lists", "email_sent", "hoola_update", "galla", "mshop", "office",
+    "message", "upload", "reminders", "routines", "lists", "email_sent", "email_new", "email_snooze", "hoola_update",
+    "galla", "mshop", "office",
     "employee", "darzi_order", "phonedoc_open", "phonedoc_check", "device_action", "device_action_result", "home_device",
     "bt_request", "bazar_open", "bazar_link", "gyaan_sources", "memory_saved", "procedure", "open", "link",
     "call_receipt", "speaker", "voice", "biz_inbox", "biz_appointment", "propagent_listing", "chai_order",

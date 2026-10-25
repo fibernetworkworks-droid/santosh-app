@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.181.0"   # v0.181.0 Gmail poora: thread view (poori baat-cheet), rich markdown mail (safe HTML + plain), inline images, drafts saved inside Gmail (list/delete behind a card), labels CRUD (delete behind a card), mark-important + category tabs, unified inbox across mailboxes, undo-send window (0-60s), Drive files as attachments, picture attachments read by OCR/vision (bump with pubspec)
+APP_VERSION = "0.182.0"   # v0.182.0 Mail aayi!: the 60-second new-mail watcher (Gmail history.list watermark, expired-history fallback), watch modes (off / vip / all), inbox rules (label/archive/star/mark-read/important/mute/notify, forward = draft only — never a send), mute list, email snooze with wake cards, OTP digits always masked (bump with pubspec)
 
 
 @asynccontextmanager
@@ -1812,6 +1812,87 @@ def mail_account_remove(key: str, tenant: str = Depends(current_tenant)):
     if not ma.remove(tenant, key):
         raise HTTPException(404, "Mailbox not found")
     return {"accounts": ma.views(tenant)}
+
+
+# ---------------- v0.182.0 rules / watch / mute / snooze (the app's Email screen) ----------------
+@app.get("/api/mail/rules", dependencies=[Depends(require_key)])
+def mail_rules(tenant: str = Depends(current_tenant)):
+    from .mailbox import sync
+    return {"rules": sync.rules_list(tenant), "watch": sync.watch_views(tenant), "muted": sync.muted(tenant),
+            "snoozed": sync.snooze_list(tenant)}
+
+
+class MailRuleIn(BaseModel):
+    name: str = ""
+    match: dict = {}
+    actions: dict = {}
+
+
+@app.post("/api/mail/rules", dependencies=[Depends(require_key)])
+def mail_rule_create(body: MailRuleIn, tenant: str = Depends(current_tenant)):
+    from .mailbox import sync
+    from .mailbox.base import MailError
+    try:
+        return sync.rule_create(tenant, body.name, body.match, body.actions)
+    except MailError as e:
+        raise HTTPException(400, str(e))
+
+
+class MailRuleEdit(BaseModel):
+    enabled: bool
+
+
+@app.patch("/api/mail/rules/{rid}", dependencies=[Depends(require_key)])
+def mail_rule_edit(rid: str, body: MailRuleEdit, tenant: str = Depends(current_tenant)):
+    from .mailbox import sync
+    from .mailbox.base import MailError
+    try:
+        return sync.rule_edit(tenant, rid, body.enabled)
+    except MailError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.delete("/api/mail/rules/{rid}", dependencies=[Depends(require_key)])
+def mail_rule_remove(rid: str, tenant: str = Depends(current_tenant)):
+    from .mailbox import sync
+    if not sync.rule_delete(tenant, rid):
+        raise HTTPException(404, "Rule not found")
+    return {"rules": sync.rules_list(tenant)}
+
+
+class MailWatchIn(BaseModel):
+    mode: str
+    account: str | None = None
+
+
+@app.post("/api/mail/watch", dependencies=[Depends(require_key)])
+def mail_watch(body: MailWatchIn, tenant: str = Depends(current_tenant)):
+    from .mailbox import sync
+    from .mailbox.base import MailError
+    try:
+        return {"watch": sync.set_watch_mode(tenant, body.mode, body.account)}
+    except MailError as e:
+        raise HTTPException(400, str(e))
+
+
+class MailMuteIn(BaseModel):
+    add: str = ""
+    clear: bool = False
+
+
+@app.post("/api/mail/mute", dependencies=[Depends(require_key)])
+def mail_mute(body: MailMuteIn, tenant: str = Depends(current_tenant)):
+    from .mailbox import sync
+    return {"muted": sync.mute_edit(tenant, add=[x for x in body.add.split(",") if x.strip()], clear=body.clear)}
+
+
+@app.delete("/api/mail/snoozes/{sid}", dependencies=[Depends(require_key)])
+def mail_snooze_cancel(sid: str, tenant: str = Depends(current_tenant)):
+    """Cancel = the mail comes back to the inbox right now (unread)."""
+    from .mailbox import sync
+    if not sync.snooze_cancel(tenant, sid):
+        raise HTTPException(404, "Snooze not found")
+    return {"snoozed": sync.snooze_list(tenant)}
 
 
 def _mail_linked_page(view: dict | None, error: str = "") -> HTMLResponse:

@@ -426,11 +426,13 @@ async def bazar_reminders() -> None:
         log.exception("bazar reminders failed")
 
 
-_mail_last = {"bulk": 0.0, "scheduled": 0.0, "watch": 0.0, "cal": 0.0, "forms": 0.0, "photos": 0.0, "hoola": 0.0}
+_mail_last = {"bulk": 0.0, "scheduled": 0.0, "watch": 0.0, "sync": 0.0, "cal": 0.0, "forms": 0.0, "photos": 0.0,
+              "hoola": 0.0}
 
 
 async def mail_jobs() -> None:
-    """Email: bulk mail at its pace (every few seconds), scheduled sends (every minute), follow-ups (every 10 min)."""
+    """Email: bulk mail at its pace (every few seconds), scheduled sends (every minute), follow-ups (every 10 min),
+    v0.182.0 the new-mail watcher + snooze wakes (every minute)."""
     from .mailbox import service as ms
     t = time.time()
     jobs = []
@@ -443,6 +445,11 @@ async def mail_jobs() -> None:
     if t - _mail_last["watch"] >= 600:
         _mail_last["watch"] = t
         jobs.append(ms.check_watches)
+    if t - _mail_last.get("sync", 0) >= 60:     # v0.182.0 "Mail aayi!": watcher + snooze, staggered per account
+        _mail_last["sync"] = t
+        from .mailbox import sync as msync
+        jobs.append(msync.sync_tick)
+        jobs.append(msync.snooze_tick)
     if t - _mail_last["cal"] >= 120:            # Google Calendar: "10 minute mein meeting" nudges
         _mail_last["cal"] = t
         from .cal import service as cs

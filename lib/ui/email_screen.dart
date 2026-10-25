@@ -16,6 +16,8 @@ class EmailScreen extends StatefulWidget {
 class _EmailScreenState extends State<EmailScreen> {
   List<Map<String, dynamic>> _accounts = [];
   Map<String, dynamic> _canLink = {};
+  List<Map<String, dynamic>> _rules = [];
+  List<Map<String, dynamic>> _watch = [];
   bool _loaded = false;
   bool _busy = false;
   String? _err;
@@ -52,9 +54,15 @@ class _EmailScreenState extends State<EmailScreen> {
   Future<void> _load() async {
     try {
       final r = await app.api!.mailAccounts();
+      Map<String, dynamic> rules = {};
+      try {
+        rules = await app.api!.mailRules();
+      } catch (_) {}                     // purana server: watcher section chhup jaati hai
       if (!mounted) return;
       setState(() {
         _apply(r);
+        _rules = List<Map<String, dynamic>>.from((rules['rules'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+        _watch = List<Map<String, dynamic>>.from((rules['watch'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
         _loaded = true;
         _err = null;
       });
@@ -159,6 +167,131 @@ class _EmailScreenState extends State<EmailScreen> {
     }
   }
 
+  String get _watchMode {
+    if (_watch.isEmpty) return 'vip';
+    final off = _watch.where((w) => w['mode'] == 'off').length;
+    if (off == _watch.length && _watch.isNotEmpty) return 'off';
+    final all = _watch.where((w) => w['mode'] == 'all').length;
+    if (all == _watch.length) return 'all';
+    return 'vip';
+  }
+
+  Future<void> _setWatch(String mode) async {
+    try {
+      final r = await app.api!.mailWatch(mode);
+      if (!mounted) return;
+      setState(() => _watch = List<Map<String, dynamic>>.from((r['watch'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map))));
+    } catch (e) {
+      _snack(e.toString());
+    }
+  }
+
+  Future<void> _addRule() async {
+    final name = TextEditingController();
+    final from = TextEditingController();
+    final subject = TextEditingController();
+    final label = TextEditingController();
+    var archive = false, star = false, markRead = false;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setD) => AlertDialog(
+        backgroundColor: C.bgBottom,
+        title: const Text('Naya rule'),
+        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          TextField(controller: name, decoration: const InputDecoration(labelText: 'Rule ka naam')),
+          TextField(controller: from, decoration: const InputDecoration(labelText: 'Kisase aaye to (jaise hdfcbank)')),
+          TextField(controller: subject, decoration: const InputDecoration(labelText: 'Vishay mein shabd (jaise bill, invoice)')),
+          const SizedBox(height: 10),
+          const Text('Kya karein', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          CheckboxListTile(dense: true, value: archive, onChanged: (v) => setD(() => archive = v ?? false),
+              title: const Text('Archive karo')), 
+          CheckboxListTile(dense: true, value: star, onChanged: (v) => setD(() => star = v ?? false),
+              title: const Text('Star laga do')),
+          CheckboxListTile(dense: true, value: markRead, onChanged: (v) => setD(() => markRead = v ?? false),
+              title: const Text('Padha hua mark karo')),
+          TextField(controller: label, decoration: const InputDecoration(labelText: 'Label lagao (naam)')),
+          const SizedBox(height: 6),
+          const Text('Rule nayi mail par chalte hain; bhejna hamesha aapke Bhejo par.',
+              style: TextStyle(color: C.muted, fontSize: 12)),
+        ])),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Banaiye')),
+        ],
+      )),
+    );
+    if (ok != true) return;
+    final match = <String, dynamic>{
+      if (from.text.trim().isNotEmpty) 'from': from.text.trim(),
+      if (subject.text.trim().isNotEmpty) 'subject': subject.text.trim(),
+    };
+    final actions = <String, dynamic>{
+      if (label.text.trim().isNotEmpty) 'label': label.text.trim(),
+      if (archive) 'archive': true,
+      if (star) 'star': true,
+      if (markRead) 'mark_read': true,
+    };
+    try {
+      await app.api!.mailRuleCreate(name.text.trim(), match, actions);
+      _snack('Rule chalu hai. Ab se aane wali nayi mail par chalega.');
+      _load();
+    } catch (e) {
+      _snack(e.toString());
+    }
+  }
+
+  Future<void> _toggleRule(Map<String, dynamic> r) async {
+    try {
+      await app.api!.mailRuleEdit(r['id'] as String, r['enabled'] != true);
+      _load();
+    } catch (e) {
+      _snack(e.toString());
+    }
+  }
+
+  Future<void> _delRule(Map<String, dynamic> r) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: C.bgBottom,
+        title: Text('Rule "${r['name']}" hatayein?'),
+        content: const Text('Rule hi hatega; mail par koi asar nahi.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hataiye')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await app.api!.mailRuleRemove(r['id'] as String);
+      _load();
+    } catch (e) {
+      _snack(e.toString());
+    }
+  }
+
+  String _ruleSummary(Map<String, dynamic> r) {
+    final m = Map<String, dynamic>.from(r['match'] as Map? ?? const {});
+    final a = Map<String, dynamic>.from(r['actions'] as Map? ?? const {});
+    final parts = <String>[
+      if (m['from'] != null) '${m['from']} se',
+      if (m['subject'] != null) '"${m['subject']}" vishay',
+      if (m['has_attachment'] == true) 'attachment wali',
+      if (m['bulk'] == true) 'bulk',
+    ];
+    final acts = <String>[
+      if (a['label'] != null) 'label ${a['label']}',
+      if (a['archive'] == true) 'archive',
+      if (a['star'] == true) 'star',
+      if (a['mark_read'] == true) 'padha hua',
+      if (a['mute'] == true) 'shant',
+      if (a['notify'] == true) 'khabar',
+      if (a['forward_to'] != null) '${a['forward_to']} ko draft',
+    ];
+    return '${parts.join(' + ')} → ${acts.join(', ')}';
+  }
+
   Future<void> _remove(Map<String, dynamic> a) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -248,6 +381,48 @@ class _EmailScreenState extends State<EmailScreen> {
                     'Tab tak "Koi aur email" se app password daal kar jodiye (Gmail aur Outlook bhi chalte hain).',
                     style: const TextStyle(color: C.faint, fontSize: 12)),
               ),
+            if (_accounts.isNotEmpty) ...[
+              const SizedBox(height: 18),
+              Text(app.g('Nayi mail ki khabar'), style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
+              Text(app.g('Hoola har minute aapka inbox dekhta hai. Zaroori mail ya apne logon ki mail aaye to chat mein bata deta hai; '
+                  'newsletters chup rehte hain. OTP codes kabhi nahi batata.'),
+                  style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 6, children: [
+                for (final m in const [('off', 'Shant'), ('vip', 'Zaroori'), ('all', 'Sab')])
+                  ChoiceChip(
+                    label: Text(app.g(m.$2)),
+                    selected: _watchMode == m.$1,
+                    onSelected: (_) => _setWatch(m.$1),
+                  ),
+              ]),
+              const SizedBox(height: 18),
+              Row(children: [
+                Expanded(child: Text(app.g('Mail rules'), style: const TextStyle(fontWeight: FontWeight.w700))),
+                IconButton(tooltip: app.g('Naya rule'), onPressed: _addRule,
+                    icon: const Icon(Icons.add_circle_outline_rounded, color: C.accent)),
+              ]),
+              if (_rules.isEmpty)
+                Text(app.g('Koi rule nahi. Bolo "bank ki mail aaye to archive karo" jaisa rule chat mein.'),
+                    style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              for (final r in _rules)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Glass(child: Row(children: [
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(r['name'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 2),
+                      Text(_ruleSummary(r), style: const TextStyle(color: C.chip, fontSize: 12.5)),
+                      if ((r['hits'] as int? ?? 0) > 0)
+                        Padding(padding: const EdgeInsets.only(top: 2),
+                            child: Text('${r['hits']} baar chala', style: const TextStyle(color: C.muted, fontSize: 11.5))),
+                    ])),
+                    Switch(value: r['enabled'] == true, onChanged: (_) => _toggleRule(r)),
+                    IconButton(onPressed: () => _delRule(r), icon: const Icon(Icons.delete_outline_rounded, color: C.muted)),
+                  ])),
+                ),
+            ],
             const SizedBox(height: 18),
             const Text('Bolkar dekhiye', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
