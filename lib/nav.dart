@@ -46,7 +46,9 @@ Future<bool> openReel(Map<String, dynamic> share) async {
 final _urlRe = RegExp(r'(https?://[^\s<>()\[\]"]+[^\s<>()\[\]".,;:!?])', caseSensitive: false);
 
 /// Chat text with tappable links that open in Santosh's browser.
-Widget linkText(String text, TextStyle style, {Color linkColor = const Color(0xFF6D3FE0)}) {
+/// v0.164.1 link colour brightened: A78BFA on the dark glass = ~6.6:1 contrast (WCAG AA);
+/// the old 6D3FE0 was ~3:1 and hard to read on budget AMOLEDs. Saffron stays reserved for buttons.
+Widget linkText(String text, TextStyle style, {Color linkColor = const Color(0xFFA78BFA)}) {
   final spans = <InlineSpan>[];
   var last = 0;
   for (final m in _urlRe.allMatches(text)) {
