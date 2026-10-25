@@ -16,7 +16,7 @@ from tests.test_v161_stream import KEY, StreamingClaude, _text
 @pytest.fixture
 def sess_server(env, monkeypatch):
     sync_api = pytest.importorskip("playwright.sync_api")
-    for k, v in (("CONSOLE_STREAM", "true"), ("CHAT_SESSIONS", "true"), ("API_KEY", KEY)):
+    for k, v in (("CONSOLE_STREAM", "true"), ("CHAT_SESSIONS", "true"), ("API_KEY", KEY), ("CONSOLE_V2", "false")):
         monkeypatch.setenv(k, v)
     from app.config import get_settings
     get_settings.cache_clear()

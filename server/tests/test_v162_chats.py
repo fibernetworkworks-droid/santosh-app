@@ -248,6 +248,7 @@ def test_auto_title_page_route_config_and_switch_off(cs, monkeypatch):
     assert asyncio.run(chats.auto_title("default", conv)) == ""         # never overwrites her title
     # switch off: the new endpoints are gone, the old list works as before
     monkeypatch.setenv("CHAT_SESSIONS", "false")
+    monkeypatch.setenv("CONSOLE_V2", "false")   # v0.170 CONSOLE_V2 (default on) turns sessions on by itself
     from app.config import get_settings
     get_settings.cache_clear()
     assert c.get("/api/conversations/search?q=pune", headers=H).status_code == 404

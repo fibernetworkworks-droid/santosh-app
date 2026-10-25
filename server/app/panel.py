@@ -48,7 +48,7 @@ class PanelError(Exception):
 
 
 def enabled() -> bool:
-    return bool(get_settings().side_panel)
+    return bool(get_settings().console_v2 or get_settings().side_panel)   # v0.170 CONSOLE_V2 turns the chat phases on in one go
 
 
 def _utc(d: datetime | None) -> datetime | None:

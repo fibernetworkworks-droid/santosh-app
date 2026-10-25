@@ -103,6 +103,7 @@ def test_files_and_the_prompt_of_a_project_chat(pj, monkeypatch):
     assert len(list((Path(get_settings().projects_dir) / pid).iterdir())) == 1
     # switch off: no project block, endpoints gone
     monkeypatch.setenv("CHAT_PROJECTS", "false")
+    monkeypatch.setenv("CONSOLE_V2", "false")   # v0.170 CONSOLE_V2 (default on) turns projects on by itself
     get_settings.cache_clear()
     assert projects.prompt_block(inside) == ""
     assert c.get("/api/projects", headers=H).status_code == 404

@@ -64,7 +64,7 @@ class ProjectError(Exception):
 
 
 def enabled() -> bool:
-    return bool(get_settings().chat_projects)
+    return bool(get_settings().console_v2 or get_settings().chat_projects)   # v0.170 CONSOLE_V2 turns the chat phases on in one go
 
 
 def _dir(pid: str) -> Path:

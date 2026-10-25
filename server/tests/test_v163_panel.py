@@ -154,6 +154,7 @@ def test_switch_off(pn, monkeypatch):
     c, conv = pn
     assert c.get("/api/console/config").json()["panel"] is True
     monkeypatch.setenv("SIDE_PANEL", "false")
+    monkeypatch.setenv("CONSOLE_V2", "false")   # v0.170 CONSOLE_V2 (default on) turns the panel on by itself
     from app.config import get_settings
     get_settings.cache_clear()
     assert c.get("/api/console/config").json()["panel"] is False

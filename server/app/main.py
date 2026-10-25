@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.169.0", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.170.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -997,10 +997,14 @@ _CONSOLE_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe
 @app.get("/console")
 @app.get("/console/")
 @app.get("/console/c/{conversation_id}")
-def console_page(conversation_id: str = ""):
+def console_page(conversation_id: str = "", legacy: bool = False):
     """The Hoola Console: chat-first web app on the same APIs as the phone (login: Google or Hoola ID + password).
-    v0.162 /console/c/<id> = a link to one chat (same page; the page opens that chat)."""
-    return FileResponse(STATIC / "console" / "index.html", headers={
+    v0.162 /console/c/<id> = a link to one chat (same page; the page opens that chat).
+    v0.170 Console v2 (CONSOLE_V2, default on): the Night-Glass v2 shell serves the same address and the same APIs;
+    ?legacy=1 (or CONSOLE_V2=false) serves the previous console page unchanged."""
+    st = get_settings()
+    page = "index.html" if (legacy or not st.console_v2) else "v2.html"
+    return FileResponse(STATIC / "console" / page, headers={
         **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
@@ -1010,8 +1014,9 @@ def console_config():
     from . import accounts
     st = get_settings()
     return {"app": "Hoola", "version": app.version, "google": accounts.oauth_configured(), "password": True,
-            "stream": bool(st.console_stream), "sessions": bool(st.chat_sessions),
-            "panel": bool(st.side_panel), "projects": bool(st.chat_projects)}
+            "v2": bool(st.console_v2),
+            "stream": bool(st.console_v2 or st.console_stream), "sessions": bool(st.console_v2 or st.chat_sessions),
+            "panel": bool(st.console_v2 or st.side_panel), "projects": bool(st.console_v2 or st.chat_projects)}
 
 
 @app.get("/api/console/stream", dependencies=[Depends(require_key)])

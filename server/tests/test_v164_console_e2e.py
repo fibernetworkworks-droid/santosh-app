@@ -15,7 +15,7 @@ from tests.test_v161_stream import KEY, StreamingClaude, _text
 def p4_server(env, monkeypatch, tmp_path):
     sync_api = pytest.importorskip("playwright.sync_api")
     for k, v in (("CONSOLE_STREAM", "true"), ("CHAT_SESSIONS", "true"), ("SIDE_PANEL", "true"), ("CHAT_PROJECTS", "true"),
-                 ("API_KEY", KEY), ("PROJECTS_DIR", str(tmp_path / "projects"))):
+                 ("API_KEY", KEY), ("PROJECTS_DIR", str(tmp_path / "projects")), ("CONSOLE_V2", "false")):
         monkeypatch.setenv(k, v)
     from app.config import get_settings
     get_settings.cache_clear()

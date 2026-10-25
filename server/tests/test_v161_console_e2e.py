@@ -64,6 +64,7 @@ def _free_port():
 def server(env, monkeypatch):
     sync_api = pytest.importorskip("playwright.sync_api")
     monkeypatch.setenv("CONSOLE_STREAM", "true")
+    monkeypatch.setenv("CONSOLE_V2", "false")   # v0.170: this walkthrough pins the previous console page (?legacy=1)
     monkeypatch.setenv("API_KEY", KEY)
     from app.config import get_settings
     get_settings.cache_clear()

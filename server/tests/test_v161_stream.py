@@ -16,6 +16,8 @@ SECRET = "sk-ant-api03-" + "Q" * 40          # a key the model "echoes": must ne
 
 def _on(monkeypatch, on=True):
     monkeypatch.setenv("CONSOLE_STREAM", "true" if on else "false")
+    if not on:
+        monkeypatch.setenv("CONSOLE_V2", "false")   # v0.170 CONSOLE_V2 (default on) turns the stream on by itself
     monkeypatch.setenv("API_KEY", KEY)
     from app.config import get_settings
     get_settings.cache_clear()
@@ -297,6 +299,10 @@ def test_clean_holds_back_a_key_split_over_chunks():
 
 def test_api_live_retry_feedback_and_config(env, monkeypatch):
     _on(monkeypatch)
+    from app.agent import pakka
+    async def _named_title(system, text, settings):          # v0.170: sessions are on by default, so auto-title runs;
+        return "Ek sawaal"                                   # keep it off the scripted brain this test counts
+    monkeypatch.setattr(pakka, "_ask", _named_title)
     from app import main
     from app.agent import set_client
     H = {"Authorization": f"Bearer {KEY}"}

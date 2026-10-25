@@ -14,20 +14,25 @@ def test_console_page_loads_the_build_studio(env):
     html = c.get("/console/").text
     assert 'id="studio"' in html and 'id="studioBtn"' in html
     order = [m.group(1) for m in re.finditer(r'<script src="/static/console/([\w/.-]+)\?', html)]
-    assert order.index("vendor/qrcode.js") < order.index("build.js") < order.index("app.js")
-    for f in ("build.js", "vendor/qrcode.js", "app.js", "app.css"):
+    # v0.170: /console/ serves the v2 shell (v2.js); the same build studio rides along in the same order
+    assert order.index("vendor/qrcode.js") < order.index("build.js") < order.index("v2.js")
+    for f in ("build.js", "vendor/qrcode.js", "app.js", "app.css", "v2.js", "v2.css"):
         r = c.get(f"/static/console/{f}")
         assert r.status_code == 200 and len(r.content) > 1000, f
     csp = c.get("/console/").headers["content-security-policy"]
-    assert "default-src 'self'" in csp and "frame-src" not in csp          # same-server preview frames are allowed
+    # same-server preview frames are allowed (frame-src 'self' blob:), but nobody else may frame the console
+    assert "default-src 'self'" in csp and "frame-src 'self' blob:" in csp and "frame-ancestors 'none'" in csp
     js = (STATIC / "build.js").read_text()
     # previews run without same-origin (they can't read the console's login); only our own preview paths are framed
     assert 'allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox' in js and "allow-same-origin" not in js
     assert r"^\/api\/(site|app)-preview\/[\w-]+\/$" in js
     for kind in ("site_board", "app_board", "app_android"):
         assert f"'{kind}'" in js
-    app_js = (STATIC / "app.js").read_text()
+    app_js = (STATIC / "v2.js").read_text()
     assert "B.kinds.has(kind)" in app_js and "renderCard(ev.kind, p, ev.at, true)" in app_js
+    # the previous console stays reachable and unchanged behind ?legacy=1
+    old = c.get("/console/?legacy=1").text
+    assert 'id="studio"' in old and "app.js" in old
 
 
 def test_previews_allow_the_console_frame(env, monkeypatch):

@@ -37,7 +37,7 @@ STATS = {"replies": 0, "deltas": 0, "resets": 0, "held": 0, "retries": 0}
 
 
 def enabled() -> bool:
-    return bool(get_settings().console_stream)
+    return bool(get_settings().console_v2 or get_settings().console_stream)   # v0.170 CONSOLE_V2 turns the chat phases on in one go
 
 
 def _mask_ids(tenant: str, text: str) -> str:

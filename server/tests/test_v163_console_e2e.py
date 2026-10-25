@@ -23,6 +23,7 @@ PDF = (b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pag
 def panel_server(env, monkeypatch):
     sync_api = pytest.importorskip("playwright.sync_api")
     for k, v in (("CONSOLE_STREAM", "true"), ("CHAT_SESSIONS", "true"), ("SIDE_PANEL", "true"), ("API_KEY", KEY),
+                 ("CONSOLE_V2", "false"),   # v0.170: this walkthrough pins the previous console page (?legacy=1)
                  ("SECRET_KEY", "a-very-long-random-secret-for-tests-0123456789")):
         monkeypatch.setenv(k, v)
     port = _free_port()

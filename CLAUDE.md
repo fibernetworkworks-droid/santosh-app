@@ -7245,3 +7245,32 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
   monitor, old-desktop upgrade note, prompt/tool schema carry the new actions, and the REAL desktop Control: stitched
   clicks land on the left (negative-origin) monitor, clipboard typing restores her clipboard (short OTP text untouched),
   open_url scheme validation, window ops + refusals, blocked app names even by path.
+## v0.170.0 Console v2 foundation, phase 1 of the console rebuild ("powerful like Claude's chat"): one switch turns every chat phase on, and the Hoola brand (Night Glass) becomes the console's skin
+- `.env` switch `CONSOLE_V2` (default TRUE — the first console flag that is on without asking). It is the master switch
+  for the whole v2 experience: when true, `livereply.enabled()` (CONSOLE_STREAM), `chats.enabled()` (CHAT_SESSIONS),
+  `panel.enabled()` (SIDE_PANEL) and `projects.enabled()` (CHAT_PROJECTS) all return true in one go (each file keeps its
+  own switch as a way to force a feature off). `/api/console/config` now reports the *effective* flags plus `"v2"`, so
+  the page knows which shell it is. The weak-console root cause was exactly this: v0.161–164 shipped behind four
+  default-off flags, so most servers ran the bare v0.160 console.
+- The v2 shell: `server/app/static/console/v2.html` + `v2.css` + `v2.js` (served at /console, /console/ and
+  /console/c/<id> when CONSOLE_V2; `?legacy=1` or CONSOLE_V2=false serves the previous index.html + app.js unchanged —
+  strangler migration, nothing removed). Same CSP, same login (Google one-time code / Hoola ID + console password /
+  server key), same APIs, same feature modules reused unchanged (kaam.js, build.js + vendor/qrcode.js, md.js, stream.js,
+  chatlist.js, panel.js, projects.js) — v2.js is the app core with the same event contract (reply_start / delta /
+  delta_reset / reply_end / message / typing / step / work / cards), the account stream for all chats, deep links,
+  edit + branches, retry + feedback, files (paperclip, drag-drop, paste), shortcuts (Ctrl K, Ctrl Shift O, /, Esc).
+- Night Glass brand, ported 1:1 from the Hoola app (`lib/ui/glass.dart`): Sora display + Manrope body (Google Fonts,
+  CSP allows both hosts), deep night surfaces #0B0A1A → #120E2A, glass surfaces (white 6% fill, 11–14% hairline,
+  18–22px blur, 22–26px radius), the Aurora blobs (#6D4AFF / #FF8A2A / #14B8A6, 80px blur, 24–31s drift) behind
+  everything, saffron #FFB15C + violet #7C5CFF / #C055F5 accents, the brand gradient (#FFD9A8 → #FF9A3C → #C055F5) on
+  CTAs, violet-gradient user bubbles and flat-glass assistant bubbles in the thread, conic brand-ring avatar (halo).
+  Dark is the brand in v2 (the old console keeps its light theme); asset URLs carry ?v=0.170.0 for cache-busting.
+- Version 0.170.0 (main.py + pubspec 0.170.0+199 + the test_routines assert; re-versioned after the owner's parallel v0.166.2–v0.169.0 landed first). Tests updated where the new default
+  changes them: the four "switch off" tests also set CONSOLE_V2=false (test_v161_stream, test_v162_chats,
+  test_v163_panel, test_v164_projects), the four Playwright walkthroughs pin CONSOLE_V2=false so they keep exercising
+  the legacy page byte-for-byte, and test_console_build asserts the v2 script order (qrcode → build.js → v2.js), the
+  v2 assets, and that ?legacy=1 still serves the old page.
+- Not yet (later phases of the plan, versioned as they land after v0.170): transcript power (edit/regen/fork polish,
+  thinking cards, tool args + diffs, export), composer steering (queue with receipts + take-back, drafts, slash/@),
+  sidebar rebuild + FTS5 search + shortcut system, artifacts panel + review changes, Claude Code power (plan mode,
+  permission modes, share), phone parity + the deferred CI / APK catch-up for the console phases.
