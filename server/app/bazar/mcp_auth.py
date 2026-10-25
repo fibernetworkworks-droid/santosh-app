@@ -12,6 +12,7 @@ import datetime as dt
 import hashlib
 import json
 import secrets
+import threading
 import time
 from typing import Any
 from urllib.parse import urlencode, urlparse
@@ -24,6 +25,20 @@ from .db import Connection, KVState
 from .security import vault
 
 TIMEOUT = 20
+
+_refresh_locks: dict[str, threading.RLock] = {}
+_refresh_locks_guard = threading.Lock()
+
+
+def _refresh_lock(user_id: str, provider: str) -> threading.RLock:
+    """One lock per connection, so two concurrent refreshes never burn a rotating token twice."""
+    key = f"{user_id}:{provider}"
+    with _refresh_locks_guard:
+        lk = _refresh_locks.get(key)
+        if lk is None:
+            lk = threading.RLock()
+            _refresh_locks[key] = lk
+        return lk
 
 
 class LinkError(Exception):
@@ -183,7 +198,13 @@ def save(session, user_id: str, provider: str, tok: dict[str, Any], st: dict[str
 
 
 def access_token(session, conn: Connection, client: httpx.Client | None = None) -> str:
-    """Decrypts the token; refreshes (rotating refresh token) when it is about to expire."""
+    """Decrypts the token; refreshes (rotating refresh token) when it is about to expire.
+
+    v0.181: two concurrent callers used to race on a rotating refresh token - the loser got invalid_grant and was
+    logged out. The refresh now runs in a dedicated session with a row lock (SELECT ... FOR UPDATE where supported),
+    serialised per connection in-process. A caller that wakes up after another already refreshed just uses the new
+    token instead of sending the same (now-burned) refresh token to the provider.
+    """
     raw = vault().open(conn.token_enc) if conn.token_enc else ""
     if not raw.startswith("{"):
         return raw  # a plain token linked by the operator
@@ -194,21 +215,55 @@ def access_token(session, conn: Connection, client: httpx.Client | None = None) 
     own = client is None
     client = client or _client(conn.provider)
     try:
-        data = {"grant_type": "refresh_token", "refresh_token": b["refresh_token"], "client_id": b["client_id"]}
-        if b.get("client_secret"):
-            data["client_secret"] = b["client_secret"]
-        try:
-            tok = _token_request(b["token_endpoint"], data, client)
-        except LinkError:
-            conn.status = "expired"
-            session.flush()
-            raise
+        with _refresh_lock(conn.user_id, conn.provider):
+            from .db import session_factory
+            with session_factory() as rs:
+                locked = rs.scalars(select(Connection).where(
+                    Connection.user_id == conn.user_id,
+                    Connection.provider == conn.provider,
+                    Connection.status == "active",
+                ).with_for_update()).first()
+                if locked is None:
+                    raise LinkError("This connection is no longer active. Please link the app again.")
+                cur_raw = vault().open(locked.token_enc) if locked.token_enc else ""
+                if not cur_raw.startswith("{"):
+                    conn.status = locked.status
+                    return cur_raw
+                cur = json.loads(cur_raw)
+                if locked.expires_at is not None and locked.expires_at > soon and cur.get("refresh_token"):
+                    # another caller already refreshed while we waited on the lock
+                    conn.token_enc = locked.token_enc
+                    conn.expires_at = locked.expires_at
+                    return cur["access_token"]
+                if not cur.get("refresh_token"):
+                    conn.expires_at = locked.expires_at
+                    return cur["access_token"]
+                data = {"grant_type": "refresh_token", "refresh_token": cur["refresh_token"],
+                        "client_id": cur["client_id"]}
+                if cur.get("client_secret"):
+                    data["client_secret"] = cur["client_secret"]
+                try:
+                    tok = _token_request(cur["token_endpoint"], data, client)
+                except LinkError:
+                    locked.status = "expired"
+                    rs.commit()
+                    conn.status = "expired"
+                    try:
+                        session.flush()
+                    except Exception:
+                        pass
+                    raise
+                cur["access_token"] = tok["access_token"]
+                cur["refresh_token"] = tok.get("refresh_token") or cur["refresh_token"]
+                new_enc = vault().seal(json.dumps(cur))
+                new_exp = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) + dt.timedelta(
+                    seconds=int(tok.get("expires_in") or 3600))
+                locked.token_enc = new_enc
+                locked.expires_at = new_exp
+                rs.commit()
+                conn.token_enc = new_enc
+                conn.expires_at = new_exp
+                return cur["access_token"]
     finally:
         if own:
             client.close()
-    b["access_token"] = tok["access_token"]
-    b["refresh_token"] = tok.get("refresh_token") or b["refresh_token"]
-    conn.token_enc = vault().seal(json.dumps(b))
-    conn.expires_at = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) + dt.timedelta(seconds=int(tok.get("expires_in") or 3600))
-    session.flush()
-    return b["access_token"]

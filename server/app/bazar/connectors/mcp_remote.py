@@ -207,13 +207,19 @@ class McpExecutor:
                          pack.tier_of(t["name"])) for t in tools]
 
     def call(self, pack: Pack, tool: str, args: dict[str, Any], ctx: Ctx) -> dict[str, Any] | NeedsApproval:
-        if pack.config.get("custom"):
-            from ...mcp_prefs import enabled
+        custom = bool(pack.config.get("custom"))
+        explicit_ask = False
+        if custom:
+            from ...mcp_prefs import enabled, prefs
             if not enabled(ctx.user.id, pack.id, tool):
                 raise ToolError(f"Owner ne {pack.name} ka '{tool}' tool band kar rakha hai (Connect > MCP servers > Tools). "
                                 "Yeh nahi chalega; koi aur tarika batao ya owner se chalu karne ko kaho.")
+            p = prefs(ctx.user.id, pack.id).get(tool)
+            # v0.181: 'pehle poochho' is a real switch now - a user who flipped it ON for a read-only tool
+            # gets the confirm card, not just tier 2 writes.
+            explicit_ask = p is not None and p[1] is True
         tier = pack.tier_of(tool)
-        if tier >= 2 and pack.config.get("custom"):
+        if custom and (tier >= 2 or explicit_ask):
             # a server the user added: show exactly what will be sent, run only that frozen call after the tap
             shown = json.dumps(args, ensure_ascii=False, default=str)
             shown = shown if len(shown) <= 600 else shown[:600] + "…"
