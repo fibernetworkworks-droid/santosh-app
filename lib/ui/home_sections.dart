@@ -205,7 +205,7 @@ class DayTilesSection extends StatelessWidget {
 
   static const _repeat = {'none': 'Ek baar', 'hourly': 'Har ghante', 'daily': 'Roz', 'weekdays': 'Mon–Fri', 'weekly': 'Har hafte', 'monthly': 'Har mahine'};
 
-  static String _wIcon(int? code, bool isDay) {
+  static String wIconFor(int? code, bool isDay) {
     if (code == null) return '🌤️';
     if (code <= 1) return isDay ? '☀️' : '🌙';
     if (code == 2) return isDay ? '⛅' : '☁️';
@@ -332,7 +332,7 @@ class DayTilesSection extends StatelessWidget {
                   Container(
                     width: 46, height: 46, alignment: Alignment.center,
                     decoration: BoxDecoration(color: const Color(0x1FFFFFFF), shape: BoxShape.circle, border: Border.all(color: const Color(0x22FFFFFF))),
-                    child: Text(_wIcon(code, isDay), style: const TextStyle(fontSize: 23)),
+                    child: Text(wIconFor(code, isDay), style: const TextStyle(fontSize: 23)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

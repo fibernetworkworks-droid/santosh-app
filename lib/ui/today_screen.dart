@@ -76,7 +76,7 @@ class _TodayScreenState extends State<TodayScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(color: const Color(0x12FFFFFF), borderRadius: BorderRadius.circular(999), border: Border.all(color: const Color(0x21FFFFFF))),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text(DayTilesSection._wIcon(code, isDay), style: const TextStyle(fontSize: 12)),
+        Text(DayTilesSection.wIconFor(code, isDay), style: const TextStyle(fontSize: 12)),
         const SizedBox(width: 5),
         Text('${(w['now_c'] as num).round()}°', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: C.chip)),
       ]),
