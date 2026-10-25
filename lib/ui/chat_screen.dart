@@ -411,12 +411,18 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
-  /// The text goes back into the box if it could not be sent, so nothing typed is lost on a bad network.
+  /// The text goes back into the box (and the reply back into its bar) if it could not be
+  /// sent, so nothing typed is lost on a bad network.
   Future<void> _send() async {
     var t = _text.text;
     final files = List<Map<String, dynamic>>.from(_files);
+    final reply = _replyTo;   // v0.178 the quoted message rides above this one
     if (t.trim().isEmpty && files.isEmpty) return;
     if (t.trim().isEmpty) t = files.map((f) => '📎 ${f['name']}').join('\n');
+    if (reply != null && reply.isNotEmpty) {
+      final q = reply.trim().split('\n').map((l) => '> $l').join('\n');
+      t = '$q\n\n$t';
+    }
     final voice = _voicePending;   // v0.164.2 a spoken message keeps its voice flag
     _disarmVoiceSend();
     if (_listening) {
@@ -424,10 +430,18 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) setState(() => _listening = false);
     }
     _text.clear();
-    setState(() => _files.clear());
+    setState(() {
+      _files.clear();
+      _replyTo = null;
+    });
     final ok = await app.send(t, files: [for (final f in files) '${f['file_id']}'], voice: voice);
-    if (!ok && mounted) {
-      setState(() => _files.addAll(files));
+    if (ok) {
+      HapticFeedback.lightImpact();   // v0.178 the send lands with a small tick in the hand
+    } else if (mounted) {
+      setState(() {
+        _files.addAll(files);
+        _replyTo = reply;
+      });
       if (_text.text.isEmpty) {
         _text.text = t;
         _text.selection = TextSelection.collapsed(offset: t.length);
@@ -468,6 +482,7 @@ class _ChatScreenState extends State<ChatScreen> {
           _quick(),
           _pendingFiles(),
           _voiceStrip(),
+          _replyBar(),
           _composer(),
         ]),
       );
@@ -478,6 +493,15 @@ class _ChatScreenState extends State<ChatScreen> {
     final extra = (app.typing ? 1 : 0);
     final older = app.hasOlder ? 1 : 0;   // v0.158 older history above: one tap loads it, in order
     final hero = feed.length <= 1 && older == 0 ? 1 : 0;
+    // v0.178 the chat as days: which message items start a new day (cards/notes never break a day run).
+    final dayJump = <int>{};
+    DateTime? prev;
+    for (var fi = 0; fi < feed.length; fi++) {
+      final t = _msgTime(feed[fi]);
+      if (t == null) continue;
+      if (prev == null || t.day != prev.day || t.month != prev.month || t.year != prev.year) dayJump.add(fi);
+      prev = t;
+    }
     return ListView.builder(
       controller: _scroll,
       reverse: true,
@@ -495,9 +519,42 @@ class _ChatScreenState extends State<ChatScreen> {
         final it = feed[fi];
         final fresh = !_old.contains(it) && !_animated.contains(it);
         if (fresh) _animated.add(it);
-        final child = _item(it, fresh: fresh);
-        return KeyedSubtree(key: ObjectKey(it), child: fresh ? _Arrive(card: it.kind != 'message', child: child) : child);
+        Widget node = _item(it, fresh: fresh);
+        if (dayJump.contains(fi)) {
+          node = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [_dayHead(_msgTime(it)!), node]);
+        }
+        return KeyedSubtree(key: ObjectKey(it), child: fresh ? _Arrive(card: it.kind != 'message', child: node) : node);
       },
+    );
+  }
+
+  /// v0.178 when this message arrived (the state layer stamps every message with its event time).
+  DateTime? _msgTime(FeedItem it) {
+    if (it.kind != 'message') return null;
+    return DateTime.tryParse(it.data['at'] as String? ?? '')?.toLocal();
+  }
+
+  static const _mon = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+  /// v0.178 the day turns with a hairline head, WhatsApp-style: AAJ / KAL / 25 OCT.
+  Widget _dayHead(DateTime t) {
+    final now = DateTime.now();
+    final yest = now.subtract(const Duration(days: 1));
+    final label = (t.day == now.day && t.month == now.month && t.year == now.year)
+        ? app.g('AAJ')
+        : (t.day == yest.day && t.month == yest.month && t.year == yest.year)
+            ? app.g('KAL')
+            : '${t.day} ${_mon[t.month - 1]}${t.year == now.year ? '' : ' ${t.year}'}';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, top: 2),
+      child: Row(children: [
+        const Expanded(child: Divider(color: Color(0x1FFFFFFF), height: 1)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Text(label, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: C.faint, letterSpacing: 1.2)),
+        ),
+        const Expanded(child: Divider(color: Color(0x1FFFFFFF), height: 1)),
+      ]),
     );
   }
 
@@ -710,14 +767,57 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       );
 
+  // ---- v0.178 the empty chat is an invitation: three starter asks, one tap each ----
   Widget _hero() => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         child: Column(children: [
-          LiveSantosh(feeling: app.mood, size: 200, thought: true),
-          const SizedBox(height: 6),
-          Text(app.g('Boliye: "Kal subah 7 baje yaad dilana", "Doodh list mein daalo", "Pune ka mausam?"'),
-              textAlign: TextAlign.center, style: const TextStyle(color: C.muted, fontSize: 13.5)),
+          LiveSantosh(feeling: app.mood, size: 170, thought: true),
+          const SizedBox(height: 4),
+          Text(app.g('Kaise madad karoon?'), style: display(19, w: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(app.g('Boliye ya likhiye — dono chalega.'), textAlign: TextAlign.center,
+              style: const TextStyle(color: C.muted, fontSize: 13)),
+          const SizedBox(height: 14),
+          Glass(
+            flat: true,
+            radius: 20,
+            margin: const EdgeInsets.symmetric(horizontal: 26),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              for (final s in const ['Kal subah 7 baje yaad dilana', 'Doodh list mein daalo', 'Aaj ka mausam'])
+                Press(
+                  onTap: () => app.send(app.g(s)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    child: Row(children: [
+                      _starterTile(s),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(app.g(s), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: C.ink))),
+                      const Icon(Icons.arrow_upward_rounded, size: 16, color: C.faint),
+                    ]),
+                  ),
+                ),
+            ]),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 30),
+            child: Text(app.g('Baat aapki — sirf aapke phone aur server par.'), textAlign: TextAlign.center,
+                style: TextStyle(color: C.faint, fontSize: 12, fontStyle: FontStyle.italic)),
+          ),
         ]),
+      );
+
+  /// v0.178 the 40 px gradient starter tile with the saffron glow (the house pattern).
+  Widget _starterTile(String s) => Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          gradient: C.gradient,
+          borderRadius: BorderRadius.circular(13),
+          boxShadow: const [BoxShadow(color: Color(0x4DFFA046), blurRadius: 12, offset: Offset(0, 4))],
+        ),
+        child: Icon(_chipIcon[s] ?? Icons.chat_bubble_outline_rounded, size: 20, color: C.onAccent),
       );
 
   Widget _item(FeedItem it, {bool fresh = false}) {
@@ -729,6 +829,8 @@ class _ChatScreenState extends State<ChatScreen> {
         // bubble's long-press opens Copy / Quote / Select. Select flips just this bubble
         // into selectable text - then a long-press on the words drags the selection handles.
         final selecting = _selecting == it;
+        // v0.178 swipe the bubble toward either side: it leans with the finger and turns into a reply.
+        final leaning = _swiping == it ? _swipeDx * .35 : 0.0;
         final bubble = me
             ? Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -764,7 +866,31 @@ class _ChatScreenState extends State<ChatScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: me ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                 children: [
-                  GestureDetector(onLongPress: () => _msgMenu(it, text, me), behavior: HitTestBehavior.opaque, child: bubble),
+                  GestureDetector(
+                    onLongPress: () => _msgMenu(it, text, me),
+                    behavior: HitTestBehavior.opaque,
+                    onHorizontalDragStart: (_) => setState(() {
+                      _swiping = it;
+                      _swipeDx = 0;
+                    }),
+                    onHorizontalDragUpdate: (d) => setState(() => _swipeDx = (_swipeDx + d.delta.dx).clamp(-52.0, 52.0).toDouble()),
+                    onHorizontalDragEnd: (_) {
+                      final good = _swipeDx.abs() > 40;
+                      setState(() {
+                        _swiping = null;
+                        _swipeDx = 0;
+                      });
+                      if (good) {
+                        HapticFeedback.mediumImpact();
+                        _startReply(text);
+                      }
+                    },
+                    onHorizontalDragCancel: () => setState(() {
+                      _swiping = null;
+                      _swipeDx = 0;
+                    }),
+                    child: Transform.translate(offset: Offset(leaning, 0), child: bubble),
+                  ),
                   if (selecting)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
@@ -822,6 +948,10 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  // ---- v0.178 swipe a bubble sideways and it leans, then becomes a reply in the bar above ----
+  FeedItem? _swiping;
+  double _swipeDx = 0;
+
   // ---- v0.164.3 dabakar rakhiye (long-press) on a message: copy it, quote it in the box, or select its text ----
   void _msgMenu(FeedItem it, String text, bool me) {
     if (text.trim().isEmpty) return;   // files-only message: nothing to copy or quote
@@ -856,10 +986,10 @@ class _ChatScreenState extends State<ChatScreen> {
           ListTile(
             leading: const Icon(Icons.format_quote_rounded, color: C.accent),
             title: Text(app.g('Jawab mein quote karo'), style: const TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: Text(app.g('Box mein "> " ke saath aayega'), style: const TextStyle(fontSize: 12, color: C.faint)),
+            subtitle: Text(app.g('Reply bar mein upar dikhega'), style: const TextStyle(fontSize: 12, color: C.faint)),
             onTap: () {
               Navigator.pop(ctx);
-              _quoteMsg(text);
+              _startReply(text);
             },
           ),
           ListTile(
@@ -881,12 +1011,41 @@ class _ChatScreenState extends State<ChatScreen> {
     if (mounted) _snack(app.g('Copy ho gaya'));
   }
 
-  /// Quoted lines go above whatever is in the box, `> ` on every line, cursor ready for her reply.
-  void _quoteMsg(String text) {
-    final q = text.trim().split('\n').map((l) => '> $l').join('\n');
-    _text.text = _text.text.isEmpty ? '$q\n\n' : '$q\n\n${_text.text}';
-    _text.selection = TextSelection.collapsed(offset: q.length + 2);
+  // ---- v0.178 WhatsApp-style reply: the quoted message waits in a violet bar above the
+  // composer (one tap to remove); at send time it rides above the message as "> " lines.
+  String? _replyTo;
+
+  void _startReply(String text) {
+    if (!mounted) return;
+    setState(() => _replyTo = text.trim().isEmpty ? null : text);
     FocusScope.of(context).requestFocus(_composeFocus);
+  }
+
+  /// The quoted message waits above the composer, one tap to remove it.
+  Widget _replyBar() {
+    final r = _replyTo;
+    if (r == null || r.isEmpty) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 6),
+      padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+      decoration: BoxDecoration(
+        color: const Color(0x1E7C5CFF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0x407C5CFF)),
+      ),
+      child: Row(children: [
+        Container(width: 3, height: 30, decoration: BoxDecoration(color: C.violet, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(app.g('IS PAR JAWAB'), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: C.accentSoft, letterSpacing: .8)),
+            const SizedBox(height: 2),
+            Text(r, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.chip)),
+          ]),
+        ),
+        IconButton(tooltip: app.g('Reply hatao'), onPressed: () => setState(() => _replyTo = null), icon: const Icon(Icons.close_rounded, size: 18, color: C.muted)),
+      ]),
+    );
   }
 
   // ---- v0.164.4 quick chips read the room: what waits for her OK comes first, then an ask that
@@ -917,21 +1076,50 @@ class _ChatScreenState extends State<ChatScreen> {
     return chips;
   }
 
-  Widget _quick() => SizedBox(
-        height: 44,
-        child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 14), children: [
-          for (final s in _quickChips())
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ActionChip(label: Text(app.g(s)), onPressed: () => app.send(app.g(s)), backgroundColor: const Color(0x14FFFFFF),
-                  labelStyle: const TextStyle(color: C.chip, fontWeight: FontWeight.w600, fontSize: 13)),
+  // ---- v0.178 quick asks with icons: what waits for her OK glows amber first ----
+  static const _chipIcon = <String, IconData>{
+    'Meri haan kahan ruki hai?': Icons.pending_actions_rounded,
+    'Kal subah 7 baje yaad dilana': Icons.alarm_rounded,
+    'Aaj ka mausam': Icons.wb_cloudy_rounded,
+    'Meri shopping list': Icons.shopping_bag_outlined,
+    'Roz subah briefing bhejna': Icons.wb_sunny_rounded,
+    'Kal ka plan banao': Icons.event_note_rounded,
+  };
+
+  Widget _quick() {
+    return SizedBox(
+      height: 46,
+      child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 14), children: [
+        for (final s in _quickChips())
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Press(
+              onTap: () => app.send(app.g(s)),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                decoration: BoxDecoration(
+                  color: s == 'Meri haan kahan ruki hai?' ? const Color(0x26FFB15C) : const Color(0x14FFFFFF),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: s == 'Meri haan kahan ruki hai?' ? const Color(0x59FFB15C) : const Color(0x22FFFFFF)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(_chipIcon[s] ?? Icons.chat_bubble_outline_rounded, size: 15,
+                      color: s == 'Meri haan kahan ruki hai?' ? C.accentSoft : C.chip),
+                  const SizedBox(width: 7),
+                  Text(app.g(s), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+                      color: s == 'Meri haan kahan ruki hai?' ? C.accentSoft : C.chip)),
+                ]),
+              ),
             ),
-        ]),
-      );
+          ),
+      ]),
+    );
+  }
 
   Widget _composer() => Glass(
         margin: const EdgeInsets.fromLTRB(14, 6, 14, 12),
         padding: const EdgeInsets.all(8),
+        border: _listening ? const Color(0x66FFB15C) : null,   // v0.178 the glass rim warms up while she speaks
         child: Row(children: [
           IconButton(tooltip: app.g('Photo, PDF, video ya koi bhi file'), onPressed: _attach, icon: const Icon(Icons.attach_file_rounded, color: C.chip)),
           Expanded(

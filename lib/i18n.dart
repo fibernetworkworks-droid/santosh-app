@@ -26,8 +26,14 @@ const Map<String, Map<String, String>> uiStrings = {
     '{x} din pehle': '{x} days ago',
     '(dobara koshish ke liye tap kijiye)': '(tap to try again)',
     'Hoola ka dimaag server par connect nahi hai (ANTHROPIC_API_KEY).': "Hoola's brain is not connected on the server (ANTHROPIC_API_KEY).",
-    'Boliye: "Kal subah 7 baje yaad dilana", "Doodh list mein daalo", "Pune ka mausam?"':
-        'Try: "Remind me tomorrow at 7 am", "Add milk to my list", "Weather in Pune?"',
+    // ---- v0.178 chat premium: day heads, reply bar, hero invitation ----
+    'IS PAR JAWAB': 'REPLYING TO',
+    'Reply hatao': 'Remove reply',
+    'Reply bar mein upar dikhega': 'It waits in the reply bar above',
+    'Kaise madad karoon?': 'How can I help?',
+    'Boliye ya likhiye — dono chalega.': 'Speak it or type it — both work.',
+    'Baat aapki — sirf aapke phone aur server par.': 'Your words stay yours — on your phone and server only.',
+    'Doodh list mein daalo': 'Add milk to my list',
     // ---- composer / mic / attach ----
     '{a} se boliye…': 'Message {a}…',
     'Sun raha hoon…': 'Listening…',
@@ -124,7 +130,6 @@ const Map<String, Map<String, String>> uiStrings = {
     'Copy karo': 'Copy',
     'Copy ho gaya': 'Copied',
     'Jawab mein quote karo': 'Quote in reply',
-    'Box mein "> " ke saath aayega': 'Goes into the box with "> " marks',
     'Text chuniye': 'Select text',
     'Text ko dabakar kheenchiye': 'Long-press and drag the text',
     'Text chunna band karo': 'Done selecting',

@@ -1189,7 +1189,8 @@ class Santosh extends ChangeNotifier {
     switch (ev.kind) {
       case 'message':
         if (p['role'] == 'user') _steps = null;
-        feed.add(FeedItem('message', p));
+        // v0.178 the bubble knows when it arrived: day separators and time stamps come from this
+        feed.add(FeedItem('message', {...Map<String, dynamic>.from(p), 'at': ev.at.toIso8601String()}));
         final fresh = !_replaying && ev.at.isAfter(_connectedAt.subtract(const Duration(seconds: 5)));
         if (p['role'] == 'assistant' && fresh) {
           _syncBazar();

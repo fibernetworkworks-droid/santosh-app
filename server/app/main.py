@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.177.1"   # v0.177.1 PC operator yaad: what she did on this PC survives between tasks (bump with pubspec)
+APP_VERSION = "0.178.0"   # v0.178.0 chat premium: day heads, time stamps, swipe-to-reply, reply bar, icon chips, invite hero (bump with pubspec)
 
 
 @asynccontextmanager
@@ -94,7 +94,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.177.1", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.178.0", lifespan=lifespan)
 
 
 @app.middleware("http")
