@@ -495,54 +495,86 @@ class _ChatScreenState extends State<ChatScreen> {
       isScrollControlled: true,
       backgroundColor: const Color(0xF2141029),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => ListenableBuilder(
-        listenable: app,
-        builder: (ctx, _) {
-          final chats = app.chatList;
-          return SafeArea(
-            child: SizedBox(
-              height: MediaQuery.sizeOf(ctx).height * .7,
-              child: Column(children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 14, 8, 4),
-                  child: Row(children: [
-                    Expanded(child: Text(app.g('Aapki chats'), style: display(18, w: FontWeight.w700))),
-                    TextButton.icon(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        app.connect(fresh: true);
-                      },
-                      icon: const Icon(Icons.add_comment_outlined, size: 18),
-                      label: Text(app.g('Naya chat')),
+      builder: (ctx) {
+        var q = '';   // v0.164.2 search box: filter old chats by title, client side
+        return ListenableBuilder(
+          listenable: app,
+          builder: (ctx, _) => StatefulBuilder(
+            builder: (ctx, setSheet) {
+              final chats = app.chatList;
+              final needle = q.trim().toLowerCase();
+              final shown = needle.isEmpty
+                  ? chats
+                  : [
+                      for (final c in chats)
+                        if ('${c['title'] ?? app.g('Naya chat')}'.toLowerCase().contains(needle)) c,
+                    ];
+              return SafeArea(
+                child: SizedBox(
+                  height: MediaQuery.sizeOf(ctx).height * .7,
+                  child: Column(children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 14, 8, 4),
+                      child: Row(children: [
+                        Expanded(child: Text(app.g('Aapki chats'), style: display(18, w: FontWeight.w700))),
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            app.connect(fresh: true);
+                          },
+                          icon: const Icon(Icons.add_comment_outlined, size: 18),
+                          label: Text(app.g('Naya chat')),
+                        ),
+                      ]),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+                      child: TextField(
+                        onChanged: (v) => setSheet(() => q = v),
+                        decoration: InputDecoration(
+                          hintText: app.g('Chat khojo…'),
+                          prefixIcon: const Icon(Icons.search_rounded, size: 22, color: C.muted),
+                          isDense: true,
+                          suffixIcon: q.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: app.g('Mitt do'),
+                                  icon: const Icon(Icons.close_rounded, size: 20, color: C.muted),
+                                  onPressed: () => setSheet(() => q = ''),
+                                ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: chats.isEmpty
+                          ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                          : shown.isEmpty
+                              ? Center(child: Text(app.g('Koi chat nahi mili'), style: const TextStyle(color: C.muted)))
+                              : ListView(
+                                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 16),
+                                  children: [
+                                    for (final c in shown)
+                                      ListTile(
+                                        leading: Icon(c['id'] == app.conversationId ? Icons.chat_rounded : Icons.chat_bubble_outline_rounded,
+                                            color: c['id'] == app.conversationId ? C.accent : C.muted),
+                                        title: Text('${c['title'] ?? app.g('Naya chat')}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                                        subtitle: Text(_when('${c['updated_at'] ?? ''}'), style: const TextStyle(color: C.faint, fontSize: 12)),
+                                        trailing: c['id'] == app.conversationId ? Pill(app.g('Abhi'), fg: C.onAccent, bg: C.accent) : null,
+                                        onTap: () {
+                                          Navigator.pop(ctx);
+                                          app.openChat('${c['id']}');
+                                        },
+                                      ),
+                                  ],
+                                ),
                     ),
                   ]),
                 ),
-                Expanded(
-                  child: chats.isEmpty
-                      ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-                      : ListView(
-                          padding: const EdgeInsets.fromLTRB(10, 0, 10, 16),
-                          children: [
-                            for (final c in chats)
-                              ListTile(
-                                leading: Icon(c['id'] == app.conversationId ? Icons.chat_rounded : Icons.chat_bubble_outline_rounded,
-                                    color: c['id'] == app.conversationId ? C.accent : C.muted),
-                                title: Text('${c['title'] ?? app.g('Naya chat')}', maxLines: 1, overflow: TextOverflow.ellipsis),
-                                subtitle: Text(_when('${c['updated_at'] ?? ''}'), style: const TextStyle(color: C.faint, fontSize: 12)),
-                                trailing: c['id'] == app.conversationId ? Pill(app.g('Abhi'), fg: C.onAccent, bg: C.accent) : null,
-                                onTap: () {
-                                  Navigator.pop(ctx);
-                                  app.openChat('${c['id']}');
-                                },
-                              ),
-                          ],
-                        ),
-                ),
-              ]),
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
