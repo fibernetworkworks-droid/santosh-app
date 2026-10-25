@@ -154,6 +154,15 @@ const Map<String, Map<String, String>> uiStrings = {
     'AAPKE DOST': 'YOUR PEOPLE',
     'Network kholo — knocks, baatein, deals': 'Open the network — knocks, talks, deals',
     'Aapka {x}: ': 'Your {x}: ',
+    // ---- Hoola Notebook section (v0.173) ----
+    'Pehla notebook banaiye': 'Create your first notebook',
+    'Web, PDF, YouTube, Drive — jo daaloge, {a} padh kar yaad rakhegi': 'Add web, PDFs, YouTube or Drive — {a} reads and remembers',
+    'Notebook banao': 'Create a notebook',
+    'Sirf aapke sources — {a} inhi se seekhti hai': 'Only your sources — {a} learns from them alone',
+    'Padho, poochho, studio banao': 'Read, ask and make in the studio',
+    'Sources daalo — {a} padh kar jawab degi': 'Add sources — {a} reads and answers',
+    'Naya notebook': 'New notebook',
+    'Sab notebooks kholo': 'Open all notebooks',
   },
 };
 

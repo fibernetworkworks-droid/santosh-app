@@ -1110,53 +1110,178 @@ class NetworkSection extends StatelessWidget {
       );
 }
 
-/// HOOLA NOTEBOOK — her notebooks strip: padho, poochho, studio.
+/// HOOLA NOTEBOOK — her notebooks: padho, poochho, studio.
+/// v0.173 premium: khaali state shows the invite card, live state wraps the strip in a
+/// glass card with per-notebook colour-tile cards (emoji or book icon), overview lines,
+/// source/studio counts, updated date and the open-all CTA.
 class NotebookSection extends StatelessWidget {
   const NotebookSection({super.key, required this.extra, required this.app});
   final HomeExtra extra;
   final Santosh app;
+
+  void _all(BuildContext context) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => NotebooksScreen(app: app)));
+
+  static Widget _tile(IconData icon, List<Color> grad, {double size = 42, double radius = 14, double ic = 21}) => Container(
+        width: size, height: size,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
+          borderRadius: BorderRadius.circular(radius),
+          boxShadow: [BoxShadow(color: grad.last.withOpacity(.35), blurRadius: 14, offset: const Offset(0, 4))],
+        ),
+        child: Icon(icon, size: ic, color: Colors.white),
+      );
+
+  /// One notebook card: colour tile (emoji or book icon), title, overview, counts, date.
+  Widget _nbCard(BuildContext context, Map<String, dynamic> nb) {
+    final col = nbColor(nb['color']);
+    final em = _s(nb['emoji']);
+    final updated = _s(nb['updated']).split('T').first;
+    return Press(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => NotebookDetailScreen(app: app, id: _s(nb['id'])))),
+      child: Container(
+        width: 150,
+        padding: const EdgeInsets.all(11),
+        decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(.10))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              width: 34, height: 34,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [col, col.withOpacity(.55)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                borderRadius: BorderRadius.circular(11),
+                boxShadow: [BoxShadow(color: col.withOpacity(.35), blurRadius: 12, offset: const Offset(0, 3))],
+              ),
+              child: Center(child: em.isEmpty ? const Icon(Icons.auto_stories_rounded, size: 17, color: Colors.white) : Text(em, style: const TextStyle(fontSize: 16))),
+            ),
+            const Spacer(),
+            if (updated.isNotEmpty)
+              Text(updated, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: C.faint)),
+          ]),
+          const Spacer(),
+          Text(_s(nb['title']), maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, height: 1.25)),
+          if (_s(nb['overview']).isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(_s(nb['overview']), maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 9.5, color: C.faint, height: 1.3)),
+          ],
+          const SizedBox(height: 7),
+          Row(children: [
+            Icon(Icons.library_books_rounded, size: 12, color: col),
+            const SizedBox(width: 3),
+            Text('${_n(nb['sources'])}', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: C.chip)),
+            const SizedBox(width: 9),
+            Icon(Icons.movie_filter_rounded, size: 12, color: col),
+            const SizedBox(width: 3),
+            Text('${_n(nb['outputs'])}', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: C.chip)),
+            const Spacer(),
+            Container(width: 22, height: 4, decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), gradient: LinearGradient(colors: [col, col.withOpacity(.35)]))),
+          ]),
+        ]),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (extra.notebooks.isEmpty) return const SizedBox.shrink();
-    Widget tile(Map<String, dynamic> nb) {
-      final color = nbColor(nb['color']);
-      return Press(
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => NotebookDetailScreen(app: app, id: _s(nb['id'])))),
-        child: Container(
-          width: 132,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: Colors.white.withOpacity(.055), borderRadius: BorderRadius.circular(18), border: Border.all(color: Colors.white.withOpacity(.12))),
+    // ── Khaali: the invite card — pehla notebook banaiye ──
+    if (extra.notebooks.isEmpty) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const HomeLabel('HOOLA NOTEBOOK'),
+        Glass(
+          padding: const EdgeInsets.all(14),
+          tint: const Color(0xFF2DD4BF),
+          opacity: .05,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(_s(nb['emoji']).isEmpty ? '📓' : _s(nb['emoji']), style: const TextStyle(fontSize: 21)),
-            const SizedBox(height: 7),
-            Text(_s(nb['title']), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, height: 1.25)),
-            const SizedBox(height: 3),
-            Text('${_n(nb['sources'])} sources · ${_n(nb['outputs'])} studio', style: const TextStyle(fontSize: 10.5, color: C.muted)),
-            const SizedBox(height: 9),
-            Container(height: 4, decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), gradient: LinearGradient(colors: [color, color.withOpacity(.35)]))),
+            Row(children: [
+              _tile(Icons.auto_stories_rounded, const [Color(0xFF2DD4BF), Color(0xFF7C5CFF)]),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(app.g('Pehla notebook banaiye'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text(app.g('Web, PDF, YouTube, Drive — jo daaloge, {a} padh kar yaad rakhegi'),
+                      style: const TextStyle(fontSize: 11.5, color: C.muted)),
+                ]),
+              ),
+            ]),
+            const SizedBox(height: 12),
+            Press(
+              onTap: () => _all(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(13), gradient: const LinearGradient(colors: [Color(0xFF2DD4BF), Color(0xFF7C5CFF)])),
+                child: Row(children: [
+                  const Icon(Icons.add_rounded, size: 20, color: C.onAccent),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(app.g('Notebook banao'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14))),
+                  const Icon(Icons.chevron_right_rounded, color: C.muted),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(app.g('Sirf aapke sources — {a} inhi se seekhti hai'),
+                style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0xCC5EEAD4))),
           ]),
         ),
-      );
+      ]);
     }
+
+    // ── Notebooks live: colour-tile cards on the strip ──
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const HomeLabel('HOOLA NOTEBOOK', isNew: true),
-      SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        clipBehavior: Clip.none,
-        child: Row(children: [
-          for (final nb in extra.notebooks) ...[
-            tile(nb),
-            const SizedBox(width: 10),
-          ],
+      HomeLabel('HOOLA NOTEBOOK', count: extra.notebooks.length),
+      Glass(
+        padding: const EdgeInsets.all(14),
+        tint: const Color(0xFF2DD4BF),
+        opacity: .05,
+        border: const Color(0x475EEAD4),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            _tile(Icons.auto_stories_rounded, const [Color(0xFF2DD4BF), Color(0xFF7C5CFF)]),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(app.g('Padho, poochho, studio banao'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                Text(app.g('Sources daalo — {a} padh kar jawab degi'), style: const TextStyle(fontSize: 11.5, color: C.muted)),
+              ]),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 128,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              itemCount: extra.notebooks.length + 1,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (_, i) {
+                if (i < extra.notebooks.length) return _nbCard(context, extra.notebooks[i]);
+                return Press(
+                  onTap: () => _all(context),
+                  child: Container(
+                    width: 96,
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(.25), width: 1.2)),
+                    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      const Icon(Icons.add_rounded, color: C.muted, size: 22),
+                      const SizedBox(height: 4),
+                      Text(app.g('Naya notebook'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: C.muted), textAlign: TextAlign.center),
+                    ]),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 11),
           Press(
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => NotebooksScreen(app: app))),
+            onTap: () => _all(context),
             child: Container(
-              width: 108,
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: Colors.white.withOpacity(.25), style: BorderStyle.solid, width: 1.2)),
-              child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.add_rounded, color: C.muted, size: 22),
-                SizedBox(height: 4),
-                Text('Naya notebook', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: C.muted)),
+              height: 36,
+              decoration: BoxDecoration(color: const Color(0x17FFFFFF), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0x29FFFFFF))),
+              alignment: Alignment.center,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.menu_book_rounded, size: 16, color: C.chip),
+                const SizedBox(width: 7),
+                Text(app.g('Sab notebooks kholo'), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: C.chip)),
               ]),
             ),
           ),
