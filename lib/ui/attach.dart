@@ -3,6 +3,7 @@ import 'dart:io' show File;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../i18n.dart';
 import 'glass.dart';
 import 'video_shrink.dart';
 
@@ -20,7 +21,7 @@ const maxAttachBytes = 25 * 1024 * 1024;
 Future<List<PickedFile>> pickAttachmentsOfType(BuildContext context, FileType type) =>
     pickAttachments(context, max: 1, showSheet: false, type: type);
 
-Future<List<PickedFile>> pickAttachments(BuildContext context, {int max = 6, bool showSheet = true, FileType type = FileType.any}) async {
+Future<List<PickedFile>> pickAttachments(BuildContext context, {int max = 6, bool showSheet = true, FileType type = FileType.any, String lang = 'en-IN'}) async {
   if (showSheet) {
     final pick = await showModalBottomSheet<FileType>(
       context: context,
@@ -29,7 +30,7 @@ Future<List<PickedFile>> pickAttachments(BuildContext context, {int max = 6, boo
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           ListTile(leading: const Icon(Icons.photo_library_rounded, color: C.accent), title: const Text('Photo / Video'),
               onTap: () => Navigator.pop(ctx, FileType.media)),
-          ListTile(leading: const Icon(Icons.description_rounded, color: C.accent), title: const Text('PDF / Document / Excel / koi bhi file'),
+          ListTile(leading: const Icon(Icons.description_rounded, color: C.accent), title: Text(tr(lang, 'PDF / Document / Excel / koi bhi file')),
               onTap: () => Navigator.pop(ctx, FileType.any)),
           ListTile(leading: const Icon(Icons.audiotrack_rounded, color: C.accent), title: const Text('Audio'),
               onTap: () => Navigator.pop(ctx, FileType.audio)),
@@ -44,7 +45,7 @@ Future<List<PickedFile>> pickAttachments(BuildContext context, {int max = 6, boo
     // bytes are read from the picked path ourselves: a 200 MB video is never loaded into memory just to be refused
     res = await FilePicker.platform.pickFiles(type: type, allowMultiple: max > 1, withData: false);
   } catch (e) {
-    if (context.mounted) _snack(context, 'File chun nahi paye: $e');
+    if (context.mounted) _snack(context, '${tr(lang, 'File chun nahi paye:')} $e');
     return const [];
   }
   if (res == null) return const [];
@@ -62,7 +63,7 @@ Future<List<PickedFile>> pickAttachments(BuildContext context, {int max = 6, boo
       continue;
     }
     if (f.size > maxAttachBytes) {
-      if (context.mounted) _snack(context, '${f.name}: ${(f.size / 1024 / 1024).toStringAsFixed(0)} MB hai, 25 MB tak bhej sakte hain. Badi file Drive link se bhejiye.');
+      if (context.mounted) _snack(context, '${f.name}: ${tr(lang, '{x} MB hai, 25 MB tak bhej sakte hain. Badi file Drive link se bhejiye.', x: '${(f.size / 1024 / 1024).toStringAsFixed(0)}')}');
       continue;
     }
     List<int>? bytes = f.bytes;
@@ -72,7 +73,7 @@ Future<List<PickedFile>> pickAttachments(BuildContext context, {int max = 6, boo
       } catch (_) {}
     }
     if (bytes == null || bytes.isEmpty) {
-      if (context.mounted) _snack(context, '${f.name} padh nahi paye. Phone mein download karke dobara chuniye.');
+      if (context.mounted) _snack(context, tr(lang, '{x} padh nahi paye. Phone mein download karke dobara chuniye.', x: f.name));
       continue;
     }
     out.add(PickedFile(f.name, bytes));

@@ -11,6 +11,7 @@ import 'ui/bluetooth_panel.dart' show btWhy;
 import 'device.dart';
 import 'emotion.dart';
 import 'hoola.dart';
+import 'i18n.dart';
 import 'native.dart';
 import 'ui/avatar_look.dart' show currentLook, lookFits;
 
@@ -69,7 +70,7 @@ class Santosh extends ChangeNotifier {
   static const String hoolaServer = String.fromEnvironment('HOOLA_SERVER', defaultValue: 'https://hoola.ainewtika.com');
   String get serverUrl => hoolaServer;
   String get apiKey => _prefs.getString('key') ?? '';
-  String get language => _prefs.getString('lang') ?? 'hi-IN';
+  String get language => _prefs.getString('lang') ?? 'en-IN';   // v0.164.2 English is the default UI language
   bool get speakReplies => _prefs.getBool('speak') ?? true;
   bool get configured => apiKey.isNotEmpty;
   /// Background mode: a native service keeps Santosh working while the app is closed.
@@ -99,8 +100,14 @@ class Santosh extends ChangeNotifier {
   bool get needsAvatarSetup => connected && avatarLoaded && avatar['setup_done'] != true;
   Map<String, dynamic> get avatarRules => Map<String, dynamic>.from(avatar['rules'] as Map? ?? const {});
 
-  /// Hindi verb forms for the avatar: "kar raha hoon" -> "kar rahi hoon" when she is female.
-  String g(String text) => aFemale ? genderedHi(text) : text;
+  /// v0.164.2 UI text in her language: English default; हिंदी keeps the classic gender-aware Hinglish;
+  /// other languages fall back to English until their table fills in (lib/i18n.dart).
+  /// {a} = avatar name, {x} = a value the caller passes.
+  String g(String text, {String? a, String? x}) {
+    final code = language.split('-').first;
+    var t = code == 'hi' ? (aFemale ? genderedHi(text) : text) : tr(language, text);
+    return t.replaceAll('{a}', a ?? aName).replaceAll('{x}', x ?? '');
+  }
 
   Future<void> loadAvatar() async {
     try {

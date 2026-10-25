@@ -44,11 +44,11 @@ class _WorkStripState extends State<WorkStrip> {
     final scene = w['scene'] as String? ?? 'work';
     final phase = w['phase'] as String? ?? 'start';
     final status = switch (phase) {
-      'done' => 'Ho gaya',
-      'error' => 'Nahi ho paya',
-      'waiting' => 'Aapki haan chahiye',
-      'stopped' => 'Roka gaya',
-      _ => 'Chal raha hai',
+      'done' => app.g('Ho gaya'),
+      'error' => app.g('Nahi ho paya'),
+      'waiting' => app.g('Aapki haan chahiye'),
+      'stopped' => app.g('Roka gaya'),
+      _ => app.g('Chal raha hai'),
     };
     final col = switch (phase) { 'done' => C.ok, 'error' => C.bad, 'stopped' => C.faint, _ => C.accentSoft };
     final detail = _detail(w);
@@ -65,7 +65,7 @@ class _WorkStripState extends State<WorkStrip> {
             Text(w['label'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
             Text(
-                [status, _where[scene] ?? 'Kaam', if (detail.isNotEmpty) detail, if (steps > 1) '$steps kadam'].join(' · '),
+                [status, _where[scene] ?? app.g('Kaam'), if (detail.isNotEmpty) detail, if (steps > 1) app.g('{x} kadam', x: '$steps')].join(' · '),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: col)),
@@ -81,10 +81,10 @@ class _WorkStripState extends State<WorkStrip> {
                   },
             style: TextButton.styleFrom(foregroundColor: const Color(0xFFFCA5A5), minimumSize: const Size(44, 40)),
             icon: const Icon(Icons.stop_rounded, size: 18),
-            label: Text(_stopping ? 'Rok raha…' : 'Rokiye', style: const TextStyle(fontWeight: FontWeight.w800)),
+            label: Text(_stopping ? app.g('Rok raha…') : app.g('Rokiye'), style: const TextStyle(fontWeight: FontWeight.w800)),
           )
         else
-          IconButton(tooltip: 'Band kijiye', onPressed: app.closeWork, icon: const Icon(Icons.close_rounded, color: C.muted, size: 20)),
+          IconButton(tooltip: app.g('Band kijiye'), onPressed: app.closeWork, icon: const Icon(Icons.close_rounded, color: C.muted, size: 20)),
       ]),
     );
   }
