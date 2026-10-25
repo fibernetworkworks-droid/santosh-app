@@ -137,6 +137,11 @@ const Map<String, Map<String, String>> uiStrings = {
     'Video banao': 'Make a reel',
     'Email likho': 'Write an email',
     'TV': 'Play on TV',
+    // ---- Hoola Employee section ----
+    'Naukri chuniye — Hoola wahi kaam sambhalegi': 'Pick a job — Hoola will own it',
+    'Mujhe apni dukaan pe lagao': 'Put me on your shop',
+    'Aur AI employee lagao — kaam hoga tez': 'Hire more AI employees — work faster',
+    'AAJ KE KAAM': "TODAY'S WORK",
   },
 };
 

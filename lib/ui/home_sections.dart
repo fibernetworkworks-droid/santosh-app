@@ -23,7 +23,8 @@ String _s(Object? v) => '${v ?? ''}';
 
 /// One loader for everything the coworker sections need. 11 soft calls, ~parallel; failures stay null.
 class HomeExtra {
-  Map<String, dynamic>? employee;            // /api/employee → status (+ first pending ask)
+  Map<String, dynamic>? employee;            // /api/employee → status (+ first pending ask + team count)
+  List<Map<String, dynamic>> empRoles = [];  // v0.168 ROLES catalog — the choose-the-job cards
   List<Map<String, dynamic>> jobs = [];      // video studio jobs actually running right now
   Map<String, dynamic>? netCounts;           // /api/net/inbox → counts (connections, requests, inbox)
   int netThreads = 0, netGroups = 0;
@@ -55,9 +56,15 @@ class HomeExtra {
     ]);
     try {
       final emp = r[0] as Map<String, dynamic>?;
+      empRoles = _list(emp?['roles']);   // v0.168 keep the job catalog even before hiring
       final status = (emp?['status'] as Map?)?.cast<String, dynamic>();
       if (status != null && status['set_up'] == true) {
-        employee = {'status': status, 'asks': _list(emp?['asks']).take(1).toList()};
+        final team = _list(emp?['team']);
+        employee = {
+          'status': status,
+          'asks': _list(emp?['asks']).take(1).toList(),
+          'team_active': team.where((m) => m['active'] != false).length,
+        };
       } else {
         employee = null;
       }
@@ -450,39 +457,147 @@ class DayTilesSection extends StatelessWidget {
   }
 }
 
-/// HOOLA EMPLOYEE — Hoola on duty at the owner's business: status, today's numbers, the one ask waiting.
+/// HOOLA EMPLOYEE — v0.168 premium: nothing hired yet → pick-the-job cards straight on home;
+/// hired → the job card with today's duties + trust tiers, stats, the waiting ask, and a
+/// hire-more CTA. Every job carries its own topic icon + gradient, like the Jaldi tiles.
 class EmployeeSection extends StatelessWidget {
   const EmployeeSection({super.key, required this.extra, required this.app});
   final HomeExtra extra;
   final Santosh app;
+
+  void _open(BuildContext context, {int tab = 0, String? role}) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => EmployeeScreen(app: app, initialTab: tab, initialRole: role)));
+
+  /// Unique topic look per job (icon + gradient). Anything unknown falls back to the brand tile.
+  static (IconData, List<Color>) _look(String role) {
+    const vio = [Color(0xFFA78BFA), Color(0xFF7C5CFF)];
+    switch (role) {
+      case 'front_desk': return (Icons.support_agent_rounded, vio);
+      case 'support_collect': return (Icons.headset_mic_rounded, [Color(0xFF2DD4BF), Color(0xFF0D9488)]);
+      case 'office': return (Icons.business_center_rounded, [Color(0xFFFBBF24), Color(0xFFD97706)]);
+      case 'accounts': return (Icons.calculate_rounded, [Color(0xFF34D399), Color(0xFF059669)]);
+      case 'field_service': return (Icons.engineering_rounded, [Color(0xFFFB923C), Color(0xFFEA580C)]);
+      case 'sales': return (Icons.trending_up_rounded, [Color(0xFFFB7185), Color(0xFFE11D48)]);
+      case 'hr_admin': return (Icons.groups_rounded, [Color(0xFF818CF8), Color(0xFF4F46E5)]);
+      case 'marketing': return (Icons.campaign_rounded, [Color(0xFFF472B6), Color(0xFFDB2777)]);
+      case 'video_editor': return (Icons.movie_rounded, [Color(0xFFE879F9), Color(0xFFC026D3)]);
+      case 'computer_operator': return (Icons.computer_rounded, [Color(0xFF60A5FA), Color(0xFF2563EB)]);
+      case 'tailor': return (Icons.checkroom_rounded, [Color(0xFFC084FC), Color(0xFF9333EA)]);
+      case 'chai_stall': return (Icons.local_cafe_rounded, [Color(0xFFFCD34D), Color(0xFFF59E0B)]);
+      case 'office_manager': return (Icons.inventory_2_rounded, [Color(0xFF94A3B8), Color(0xFF475569)]);
+      case 'typist': return (Icons.keyboard_rounded, [Color(0xFF22D3EE), Color(0xFF0891B2)]);
+      case 'mobile_shop': return (Icons.phone_android_rounded, [Color(0xFF38BDF8), Color(0xFF0284C7)]);
+      case 'gst_practitioner': return (Icons.receipt_long_rounded, [Color(0xFF6EE7B7), Color(0xFF10B981)]);
+      case 'insurance_agent': return (Icons.verified_user_rounded, [Color(0xFF7DD3FC), Color(0xFF0284C7)]);
+      case 'performance_marketer': return (Icons.ads_click_rounded, [Color(0xFFE879F9), Color(0xFFA21CAF)]);
+      case 'web_developer': return (Icons.web_rounded, [Color(0xFFA5B4FC), Color(0xFF6366F1)]);
+      case 'brand_designer': return (Icons.palette_rounded, [Color(0xFFF0ABFC), Color(0xFFD946EF)]);
+      case 'content_writer': return (Icons.edit_note_rounded, [Color(0xFF86EFAC), Color(0xFF22C55E)]);
+      case 'site_manager': return (Icons.construction_rounded, [Color(0xFFFDBA74), Color(0xFFC2410C)]);
+      case 'franchise_manager': return (Icons.storefront_rounded, [Color(0xFF5EEAD4), Color(0xFF0D9488)]);
+      case 'export_assistant': return (Icons.local_shipping_rounded, [Color(0xFF93C5FD), Color(0xFF1D4ED8)]);
+      case 'wholesale_assistant': return (Icons.warehouse_rounded, [Color(0xFFFCA5A5), Color(0xFFDC2626)]);
+      case 'seo_specialist': return (Icons.travel_explore_rounded, [Color(0xFF6EE7B7), Color(0xFF059669)]);
+      case 'telecaller': return (Icons.call_rounded, [Color(0xFFFDA4AF), Color(0xFFE11D48)]);
+      case 'audit_assistant': return (Icons.fact_check_rounded, [Color(0xFF5EEAD4), Color(0xFF0F766E)]);
+      case 'financial_analyst': return (Icons.query_stats_rounded, [Color(0xFF6EE7B7), Color(0xFF047857)]);
+      case 'payroll_officer': return (Icons.payments_rounded, [Color(0xFFA7F3D0), Color(0xFF059669)]);
+      case 'support_agent': return (Icons.support_agent_rounded, [Color(0xFF7DD3FC), Color(0xFF0369A1)]);
+      case 'custom': return (Icons.auto_awesome_rounded, vio);
+      default: return (Icons.badge_rounded, vio);
+    }
+  }
+
+  static Widget _tile(IconData icon, List<Color> grad, {double size = 40, double radius = 13, double ic = 20}) => Container(
+        width: size, height: size,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
+          borderRadius: BorderRadius.circular(radius),
+          boxShadow: [BoxShadow(color: grad.last.withOpacity(.35), blurRadius: 14, offset: const Offset(0, 4))],
+        ),
+        child: Icon(icon, size: ic, color: Colors.white),
+      );
+
   @override
   Widget build(BuildContext context) {
     final emp = extra.employee;
-    final open = () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EmployeeScreen(app: app)));
-    // Employee mode never set up: a slim invitation instead of the full card.
+    final roles = extra.empRoles;
     if (emp == null) {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const HomeLabel('HOOLA EMPLOYEE', isNew: true),
-        Press(
-          onTap: open,
-          child: Glass(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-            child: Row(children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(13), gradient: const LinearGradient(colors: [Color(0xFF2DD4BF), Color(0xFF7C5CFF)])),
-                child: const Icon(Icons.storefront_rounded, size: 20, color: C.onAccent),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
+        Glass(
+          padding: const EdgeInsets.all(14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              _tile(Icons.auto_awesome_rounded, const [Color(0xFF2DD4BF), Color(0xFF7C5CFF)], size: 42, radius: 14, ic: 21),
+              const SizedBox(width: 11),
+              Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Mujhe apni dukaan pe lagao', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-                  Text('Calls, appointments, hisaab — sab main sambhaalungi', style: TextStyle(fontSize: 12, color: C.muted)),
+                  Text('${app.aName} · AI Employee', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text(app.g('Naukri chuniye — Hoola wahi kaam sambhalegi'), style: const TextStyle(fontSize: 11.5, color: C.muted)),
                 ]),
               ),
-              const Icon(Icons.chevron_right_rounded, color: C.muted),
             ]),
-          ),
+            const SizedBox(height: 12),
+            if (roles.isEmpty)
+              Press(
+                onTap: () => _open(context, tab: 5),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(13), gradient: const LinearGradient(colors: [Color(0xFF2DD4BF), Color(0xFF7C5CFF)])),
+                  child: Row(children: [
+                    const Icon(Icons.storefront_rounded, size: 20, color: C.onAccent),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(app.g('Mujhe apni dukaan pe lagao'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14))),
+                    const Icon(Icons.chevron_right_rounded, color: C.muted),
+                  ]),
+                ),
+              )
+            else
+              SizedBox(
+                height: 116,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  itemCount: roles.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final r = roles[i];
+                    final id = _s(r['id']);
+                    final (icon, grad) = _look(id);
+                    return Press(
+                      onTap: () => _open(context, tab: 5, role: id),
+                      child: Container(
+                        width: 128,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(.10))),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          _tile(icon, grad),
+                          const Spacer(),
+                          Text(_s(r['label']), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 3),
+                          Text(_s(r['say']), style: const TextStyle(fontSize: 9.5, color: C.faint, height: 1.25), maxLines: 2, overflow: TextOverflow.ellipsis),
+                        ]),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 10),
+            Press(
+              onTap: () => _open(context, tab: 5),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(color: const Color(0x14FFB15C), borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0x40FFB15C))),
+                child: Row(children: [
+                  const Icon(Icons.bolt_rounded, size: 17, color: C.accent),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(app.g('Aur AI employee lagao — kaam hoga tez'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.accentSoft))),
+                  const Icon(Icons.chevron_right_rounded, size: 18, color: C.faint),
+                ]),
+              ),
+            ),
+          ]),
         ),
       ]);
     }
@@ -490,10 +605,12 @@ class EmployeeSection extends StatelessWidget {
     final paused = st['paused'] == true || st['enabled'] != true;
     final asks = _list(emp['asks']);
     final ask = asks.isEmpty ? null : asks.first;
+    final trust = _list(st['trust']);
+    final teamN = _n(emp['team_active']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const HomeLabel('HOOLA EMPLOYEE', isNew: true),
       Press(
-        onTap: open,
+        onTap: () => _open(context),
         child: Glass(
           padding: const EdgeInsets.all(14),
           tint: const Color(0xFF2DD4BF),
@@ -527,13 +644,29 @@ class EmployeeSection extends StatelessWidget {
                 ]),
               ),
             ]),
-            const SizedBox(height: 12),
+            if (trust.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(app.g('AAJ KE KAAM'), style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: .4, color: C.faint)),
+              const SizedBox(height: 6),
+              for (final t in trust.take(4))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 5),
+                  child: Row(children: [
+                    Icon(t['level'] == 'seekh' ? Icons.school_rounded : Icons.check_circle_rounded,
+                        size: 14, color: t['level'] == 'seekh' ? C.faint : C.ok),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_s(t['duty']), style: const TextStyle(fontSize: 12, height: 1.3), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    _tier('${t['level']}'),
+                  ]),
+                ),
+            ],
+            const SizedBox(height: 10),
             Row(children: [
               _stat('${_n(st['done_today'])}', 'AAJ POORE'),
               const SizedBox(width: 8),
               _stat('${_n(st['pending_asks'])}', 'ASK WAIT', hot: _n(st['pending_asks']) > 0),
               const SizedBox(width: 8),
-              _stat('${_n(st['team_tasks_waiting'])}', 'TEAM TASKS'),
+              _stat(teamN > 0 ? '$teamN + 1' : '${_n(st['team_tasks_waiting'])}', 'TEAM TASKS'),
             ]),
             if (ask != null) ...[
               const SizedBox(height: 10),
@@ -541,7 +674,7 @@ class EmployeeSection extends StatelessWidget {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0x66FFB15C)), color: const Color(0x1AFFB15C)),
                 child: Row(children: [
-                  const Text('🙋', style: TextStyle(fontSize: 14)),
+                  _tile(Icons.front_hand_rounded, const [Color(0xFFFFB15C), Color(0xFFFB923C)], size: 26, radius: 9, ic: 14),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text('${_s(ask['why']).isEmpty ? 'Ek kaam aapki haan ka intezaar kar raha hai' : _s(ask['why'])}',
@@ -555,10 +688,38 @@ class EmployeeSection extends StatelessWidget {
               paused ? '"Jab bolo, phir duty pe aa jaungi."' : '"Dukaan pe sab main sambhaal rahi hoon — aap chinta mat karo."',
               style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0xCC5EEAD4)),
             ),
+            const SizedBox(height: 10),
+            Press(
+              onTap: () => _open(context, tab: 3),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(color: const Color(0x14FFB15C), borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0x40FFB15C))),
+                child: Row(children: [
+                  const Icon(Icons.group_add_rounded, size: 17, color: C.accent),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(app.g('Aur AI employee lagao — kaam hoga tez'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.accentSoft))),
+                  const Icon(Icons.chevron_right_rounded, size: 18, color: C.faint),
+                ]),
+              ),
+            ),
           ]),
         ),
       ),
     ]);
+  }
+
+  /// Trust tier chip: Seekh (learning) / Saathi (partner) / Bharosa (trusted).
+  static Widget _tier(String level) {
+    final (label, fg, bg, bc) = switch (level) {
+      'bharosa' => ('BHAROSA', const Color(0xFF2DD4BF), const Color(0x1A2DD4BF), const Color(0x552DD4BF)),
+      'saathi' => ('SAATHI', C.accentSoft, const Color(0x1AFFB15C), const Color(0x55FFC27A)),
+      _ => ('SEEKH', C.faint, Colors.white.withOpacity(.06), Colors.white.withOpacity(.14)),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999), border: Border.all(color: bc)),
+      child: Text(label, style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w800, letterSpacing: .4, color: fg)),
+    );
   }
 
   static Widget _stat(String n, String k, {bool hot = false}) => Expanded(

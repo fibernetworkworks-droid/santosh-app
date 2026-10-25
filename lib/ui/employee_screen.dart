@@ -27,8 +27,10 @@ String _when(String? iso) {
 }
 
 class EmployeeScreen extends StatefulWidget {
-  const EmployeeScreen({super.key, required this.app});
+  const EmployeeScreen({super.key, required this.app, this.initialTab = 0, this.initialRole});
   final Santosh app;
+  final int initialTab;      // v0.168 open straight on Team (3) or Naukri (5) from the home section
+  final String? initialRole; // v0.168 pre-pick the job on the Naukri tab
   @override
   State<EmployeeScreen> createState() => _EmployeeScreenState();
 }
@@ -79,6 +81,7 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
     final ready = p != null && p['enabled'] == true;
     return DefaultTabController(
       length: 6,
+      initialIndex: widget.initialTab.clamp(0, 5),
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.transparent,
@@ -104,7 +107,7 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
                   ready ? _trust() : _notReady(),
                   _team(),
                   _AuditTab(api: _api, onChanged: _load),
-                  _SetupTab(api: _api, o: _o!, app: widget.app, onSaved: _load),
+                  _SetupTab(api: _api, o: _o!, app: widget.app, onSaved: _load, initialRole: widget.initialRole),
                 ]),
         ),
       ),
@@ -543,11 +546,12 @@ class _AuditTabState extends State<_AuditTab> {
 
 // ------------------------------------------------------------------ Naukri (setup + job sheet)
 class _SetupTab extends StatefulWidget {
-  const _SetupTab({required this.api, required this.o, required this.app, required this.onSaved});
+  const _SetupTab({required this.api, required this.o, required this.app, required this.onSaved, this.initialRole});
   final Api api;
   final Map<String, dynamic> o;
   final Santosh app;
   final Future<void> Function() onSaved;
+  final String? initialRole;   // v0.168 job picked on home pre-fills the role here
   @override
   State<_SetupTab> createState() => _SetupTabState();
 }
@@ -558,7 +562,7 @@ class _SetupTabState extends State<_SetupTab> {
   late final _kind = TextEditingController(text: _p['business_kind'] as String? ?? '');
   late final _about = TextEditingController(text: _p['about'] as String? ?? '');
   late final _rules = TextEditingController(text: _p['rules'] as String? ?? '');
-  late String _role = _p['role'] as String? ?? 'front_desk';
+  late String _role = _p['role'] as String? ?? widget.initialRole ?? 'front_desk';
   late final Set<String> _custom = {...List<String>.from((_p['custom_duties'] as List?) ?? const [])};
   late final Map<String, dynamic> _hours = Map<String, dynamic>.from((_p['hours'] as Map?) ?? const {});
   late String _open = _hours['open'] as String? ?? '10:00';
