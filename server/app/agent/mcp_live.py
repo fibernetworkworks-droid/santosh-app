@@ -23,7 +23,7 @@ from typing import Any
 log = logging.getLogger("santosh.mcp_live")
 
 SNAPSHOT_TTL_S = 120           # tool lists are also cached per server for 10 min by the MCP executor
-FETCH_TIMEOUT_S = 4.0          # a slow server never holds up a reply: it is listed as "not answering"
+FETCH_TIMEOUT_S = 10.0  # v0.183: raised from 4.0 (Todoist takes 5.5s, Webflow 5.5s)          # a slow server never holds up a reply: it is listed as "not answering"
 _cache: dict[str, tuple[float, str, list[dict]]] = {}
 _lock = threading.Lock()
 
