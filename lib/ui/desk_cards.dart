@@ -67,7 +67,7 @@ class _SheetMilaanCardState extends State<SheetMilaanCard> {
     final warnings = [...((v['warnings'] as List?) ?? const []), ...((v['notes'] as List?) ?? const [])].map((e) => '$e').toList();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Glass(
+      child: Glass(flat: true,
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -182,7 +182,7 @@ class _DocEditCardState extends State<DocEditCard> {
     final warnings = ((v['warnings'] as List?) ?? const []).map((e) => '$e').toList();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Glass(
+      child: Glass(flat: true,
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [

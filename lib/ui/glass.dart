@@ -7,6 +7,13 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'avatar_look.dart';
 
+/// v0.164.3 blur perf guard: the chat list flips this on while it scrolls fast, and the
+/// Aurora drift freezes for a moment. The drifting blobs are the costliest pixels on a
+/// budget phone — recomputed every frame while glass panels sit on top of them — and
+/// nobody can see them move mid-flick anyway. The chat clears it a beat after the
+/// scrolling stops (chat_screen.dart owns the timing), so the night sky glides on.
+final ValueNotifier<bool> auroraPaused = ValueNotifier(false);
+
 /// Santosh "Night Glass": deep indigo night, frosted glass, saffron action colour, violet for you.
 class C {
   static const ink = Color(0xFFF4F2FF);       // main text
@@ -90,7 +97,22 @@ class _AuroraState extends State<Aurora> with SingleTickerProviderStateMixin {
   late final AnimationController _t = AnimationController(vsync: this, duration: const Duration(seconds: 24))..repeat();
 
   @override
+  void initState() {
+    super.initState();
+    auroraPaused.addListener(_onPaused);
+  }
+
+  void _onPaused() {
+    if (auroraPaused.value) {
+      _t.stop();   // ticker sleeps: no ticks, no repaints, zero GPU work while the list flies
+    } else if (!_t.isAnimating) {
+      _t.repeat();   // resumes from the value it froze at — the drift never jumps
+    }
+  }
+
+  @override
   void dispose() {
+    auroraPaused.removeListener(_onPaused);
     _t.dispose();
     super.dispose();
   }
@@ -133,7 +155,7 @@ class _AuroraState extends State<Aurora> with SingleTickerProviderStateMixin {
 /// Frosted glass panel.
 class Glass extends StatelessWidget {
   const Glass({super.key, required this.child, this.radius = 24, this.padding = const EdgeInsets.all(14), this.opacity = .07,
-      this.margin, this.border, this.tint});
+      this.margin, this.border, this.tint, this.flat = false});
   final Widget child;
   final double radius;
   final EdgeInsetsGeometry padding;
@@ -142,31 +164,43 @@ class Glass extends StatelessWidget {
   final Color? border;
   final Color? tint;
 
+  /// v0.164.3 blur perf guard: [flat] skips the BackdropFilter and keeps the same
+  /// night-glass paint (translucent fill, hairline border, top sheen, shadow). Every
+  /// BackdropFilter re-blurs the whole layer beneath it each frame, so a Glass card
+  /// inside the scrolling chat list is the #1 jank source on budget phones — cards
+  /// there are flat. The true blur stays where it shines: the header and the composer.
+  final bool flat;
+
   @override
-  Widget build(BuildContext context) => Container(
-        margin: margin,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(radius),
-          boxShadow: const [BoxShadow(color: Color(0x59050314), blurRadius: 30, offset: Offset(0, 10))],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(radius),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-            child: Container(
-              padding: padding,
-              decoration: BoxDecoration(
-                color: (tint ?? Colors.white).withOpacity(opacity),
-                borderRadius: BorderRadius.circular(radius),
-                border: Border.all(color: border ?? Colors.white.withOpacity(.14)),
-                gradient: LinearGradient(colors: [Colors.white.withOpacity(.06), Colors.white.withOpacity(0)],
-                    begin: Alignment.topCenter, end: Alignment.center),
+  Widget build(BuildContext context) {
+    final body = Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: (tint ?? Colors.white).withOpacity(opacity),
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: border ?? Colors.white.withOpacity(.14)),
+        gradient: LinearGradient(colors: [Colors.white.withOpacity(.06), Colors.white.withOpacity(0)],
+            begin: Alignment.topCenter, end: Alignment.center),
+      ),
+      child: child,
+    );
+    return Container(
+      margin: margin,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: const [BoxShadow(color: Color(0x59050314), blurRadius: 30, offset: Offset(0, 10))],
+      ),
+      child: flat
+          ? body
+          : ClipRRect(
+              borderRadius: BorderRadius.circular(radius),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                child: body,
               ),
-              child: child,
             ),
-          ),
-        ),
-      );
+    );
+  }
 }
 
 /// Press feedback for any tappable: a soft squash + a light haptic tick.

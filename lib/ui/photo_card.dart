@@ -97,7 +97,7 @@ class _PhotoMadeCardState extends State<PhotoMadeCard> {
     final best = v['quality'] == 'best';
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Glass(
+      child: Glass(flat: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             Icon(_edit ? Icons.auto_fix_high_rounded : Icons.image_rounded, color: C.teal),

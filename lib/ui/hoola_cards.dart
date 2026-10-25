@@ -165,7 +165,7 @@ class _HoolaKnockCardState extends State<HoolaKnockCard> {
     final hasMedia = v['preview'] != null || (v['media'] != null && (v['name'] ?? '') != '');
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Glass(
+      child: Glass(flat: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             _avatarDot(v['peer_avatar'] as String? ?? v['from'] as String? ?? '', look: v['peer_look'] as String?),
@@ -289,7 +289,7 @@ class _HoolaConnectCardState extends State<HoolaConnectCard> {
     final rel = _rel ?? (v['relation'] as String? ?? 'friend');
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Glass(
+      child: Glass(flat: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             _avatarDot(v['label'] as String? ?? '', look: v['avatar_look'] as String?),
@@ -379,7 +379,7 @@ class HoolaMsgCard extends StatelessWidget {
     final canReply = (v['thread_id'] as String? ?? '').isNotEmpty && v['kind'] != 'key_warning';
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Glass(
+      child: Glass(flat: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             _avatarDot(v['peer_avatar'] as String? ?? v['from'] as String? ?? '', look: v['peer_look'] as String?),
@@ -457,7 +457,7 @@ class _HoolaGroupCardState extends State<HoolaGroupCard> {
     };
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Glass(
+      child: Glass(flat: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             Text(v['emoji'] as String? ?? '👥', style: const TextStyle(fontSize: 24)),
@@ -523,7 +523,7 @@ class _HoolaGroupPostCardState extends State<HoolaGroupPostCard> {
     final text = (body['text'] ?? v['text'] ?? '') as String;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Glass(
+      child: Glass(flat: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             const Icon(Icons.groups_rounded, color: C.violet, size: 20),
@@ -589,7 +589,7 @@ class _HoolaLessonCardState extends State<HoolaLessonCard> {
     final comms = List<Map<String, dynamic>>.from((v['communities'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Glass(
+      child: Glass(flat: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             const Icon(Icons.lightbulb_rounded, color: C.accent),
@@ -672,7 +672,7 @@ class _HoolaSamajCardState extends State<HoolaSamajCard> {
     };
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Glass(
+      child: Glass(flat: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             Icon(icon, color: kind == 'alert' ? C.bad : C.teal, size: 20),
@@ -785,7 +785,7 @@ class _HoolaChainCardState extends State<HoolaChainCard> {
     final steps = List<Map<String, dynamic>>.from((v['steps'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Glass(
+      child: Glass(flat: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             const Icon(Icons.link_rounded, color: C.violet),
@@ -855,7 +855,7 @@ class _HoolaTicketCardState extends State<HoolaTicketCard> {
     final status = _status ?? v['status'] as String? ?? 'open';
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Glass(
+      child: Glass(flat: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             const Icon(Icons.confirmation_number_rounded, color: C.accent),
@@ -907,7 +907,7 @@ class _HoolaOutboxCardState extends State<HoolaOutboxCard> {
     final body = Map<String, dynamic>.from(v['body'] as Map? ?? const {});
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Glass(
+      child: Glass(flat: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             const Icon(Icons.outbox_rounded, color: C.accent),

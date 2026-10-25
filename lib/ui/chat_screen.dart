@@ -143,6 +143,10 @@ class _ChatScreenState extends State<ChatScreen> {
   int _lastLen = 0;
   bool _away = false;            // scrolled up, away from the newest message
   int _unseen = 0;               // new items that arrived while scrolled up
+  /// v0.164.3 blur perf guard: how fast the list is moving right now.
+  DateTime _lastScrollAt = DateTime.now();
+  double _lastScrollOffset = 0;
+  Timer? _scrollIdle;
   /// Items already on screen when Chat opened (history): they show at once, only new ones animate in.
   late final Set<FeedItem> _old = app.feed.toSet();
   final Set<FeedItem> _animated = {};
@@ -194,6 +198,8 @@ class _ChatScreenState extends State<ChatScreen> {
     app.removeListener(_maybeShare);
     _text.removeListener(_onTextChanged);
     _voiceTimer?.cancel();
+    _scrollIdle?.cancel();
+    auroraPaused.value = false;   // leaving Chat: let the night sky drift again everywhere
     _scroll.dispose();
     _stt.stop();
     super.dispose();
@@ -205,6 +211,22 @@ class _ChatScreenState extends State<ChatScreen> {
     if (away != _away) setState(() {
       _away = away;
       if (!away) _unseen = 0;
+    });
+    // v0.164.3 blur perf guard: a quick flick freezes the Aurora drift (the list cards are
+    // already flat), so scrolling stays smooth even on budget phones. ~1400 px/s is a real
+    // flick — slow drags and the glide-to-newest keep the sky moving.
+    final now = DateTime.now();
+    final dt = now.difference(_lastScrollAt).inMilliseconds;
+    if (dt >= 8 && _scroll.hasClients) {
+      final speed = (_scroll.offset - _lastScrollOffset).abs() * 1000 / dt;   // px per second
+      _lastScrollAt = now;
+      _lastScrollOffset = _scroll.offset;
+      final fast = speed > 1400;
+      if (auroraPaused.value != fast) auroraPaused.value = fast;
+    }
+    _scrollIdle?.cancel();
+    _scrollIdle = Timer(const Duration(milliseconds: 200), () {
+      if (auroraPaused.value) auroraPaused.value = false;   // flick over: the sky glides on
     });
   }
 
@@ -710,7 +732,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45)),
                 ]),
               )
-            : Glass(
+            : Glass(flat: true,
                 radius: 22,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
                 child: fresh
@@ -728,7 +750,7 @@ class _ChatScreenState extends State<ChatScreen> {
           padding: const EdgeInsets.only(bottom: 10),
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Glass(
+            child: Glass(flat: true,
               radius: 18,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1652,7 +1674,7 @@ class _TypingState extends State<_Typing> with SingleTickerProviderStateMixin {
           ),
           const SizedBox(width: 8),
           Flexible(
-            child: Glass(
+            child: Glass(flat: true,
               radius: 18,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1710,7 +1732,7 @@ class _CampaignCard extends StatelessWidget {
         );
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Glass(
+      child: Glass(flat: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             Expanded(child: Text(v['title'] as String? ?? 'Campaign', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5))),
@@ -1776,7 +1798,7 @@ class _EmailCard extends StatelessWidget {
     final title = kind == 'reply' ? app.g('Email · jawab') : kind == 'forward' ? app.g('Email · forward') : app.g('Email');
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Glass(
+      child: Glass(flat: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             const Icon(Icons.mail_outline_rounded, color: C.accent, size: 20),
@@ -1917,7 +1939,7 @@ class _BazarCard extends StatelessWidget {
     if (status == 'rejected') { chip = 'CANCEL'; chipFg = C.muted; }
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Glass(
+      child: Glass(flat: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             Icon(v['tier'] == 3 ? Icons.currency_rupee_rounded : (money ? Icons.shopping_bag_outlined : Icons.touch_app_rounded),
@@ -2006,7 +2028,7 @@ class _OpenCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 10),
-        child: Glass(
+        child: Glass(flat: true,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text(v['pack'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             if ((v['message'] as String? ?? '').isNotEmpty)
@@ -2026,7 +2048,7 @@ class _LinkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 10),
-        child: Glass(
+        child: Glass(flat: true,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text(app.g('{x} jodiye', x: '${v['name']}'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             Padding(

@@ -53,7 +53,7 @@ class _WorkStripState extends State<WorkStrip> {
     final col = switch (phase) { 'done' => C.ok, 'error' => C.bad, 'stopped' => C.faint, _ => C.accentSoft };
     final detail = _detail(w);
     final steps = app.workLog.length;
-    return Glass(
+    return Glass(flat: true,
       margin: const EdgeInsets.fromLTRB(14, 0, 14, 6),
       padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
       radius: 18,

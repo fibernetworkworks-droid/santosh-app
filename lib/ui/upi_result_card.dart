@@ -62,7 +62,7 @@ class _UpiResultCardState extends State<UpiResultCard> {
     final tail = _s('ref_tail');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Glass(
+      child: Glass(flat: true,
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [

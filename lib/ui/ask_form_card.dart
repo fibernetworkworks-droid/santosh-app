@@ -156,7 +156,7 @@ class _AskFormCardState extends State<AskFormCard> {
     final status = '${v['status'] ?? 'pending'}';
     final open = status == 'pending' && !_busy;
     final answers = Map<String, dynamic>.from((v['answers'] as Map?) ?? const {});
-    return Glass(
+    return Glass(flat: true,
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [

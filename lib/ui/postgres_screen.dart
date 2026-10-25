@@ -53,7 +53,7 @@ class _PgWriteCardState extends State<PgWriteCard> {
     final st = '${v['status'] ?? 'pending'}';
     final danger = ((v['danger'] as List?) ?? const []).map((e) => '$e').toList();
     final color = st == 'done' ? C.ok : st == 'failed' ? C.bad : st == 'pending' ? C.accent : C.faint;
-    return Glass(
+    return Glass(flat: true,
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [

@@ -167,7 +167,7 @@ class _LiveSantoshState extends State<LiveSantosh> with TickerProviderStateMixin
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 420),
                   transitionBuilder: (c, a) => ScaleTransition(scale: CurvedAnimation(parent: a, curve: Curves.elasticOut), alignment: Alignment.bottomLeft, child: FadeTransition(opacity: a, child: c)),
-                  child: Glass(
+                  child: Glass(flat: true,
                     key: ValueKey(st.thought),
                     radius: 16,
                     padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),

@@ -46,7 +46,7 @@ class _CallRateCardState extends State<CallRateCard> {
   @override
   Widget build(BuildContext context) {
     final done = widget.v['rated'] == true || (_sent && _good == true);
-    return Glass(
+    return Glass(flat: true,
       margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
