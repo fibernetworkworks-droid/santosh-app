@@ -66,6 +66,23 @@ class _TodayScreenState extends State<TodayScreen> {
         ),
       );
 
+  /// v0.166 — tiny live weather chip next to the date, fed by the same /api/day call as the Aaj ka Din card.
+  Widget? _weatherChip() {
+    final w = _extra.day?['weather'] as Map?;
+    if (w == null || w['now_c'] is! num) return null;
+    final code = w['now_code'] is num ? (w['now_code'] as num).toInt() : null;
+    final isDay = w['is_day'] is bool ? w['is_day'] as bool : true;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(color: const Color(0x12FFFFFF), borderRadius: BorderRadius.circular(999), border: Border.all(color: const Color(0x21FFFFFF))),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text(DayTilesSection._wIcon(code, isDay), style: const TextStyle(fontSize: 12)),
+        const SizedBox(width: 5),
+        Text('${(w['now_c'] as num).round()}°', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: C.chip)),
+      ]),
+    );
+  }
+
   Widget _hero(BuildContext context) {
     final app = widget.app;
     final pend = app.pendingApprovals.length;
@@ -132,8 +149,13 @@ class _TodayScreenState extends State<TodayScreen> {
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 18, 16, 24), children: [
           Builder(builder: (context) {
             final d = DateTime.now();
-            return Text('${_days[d.weekday - 1]}, ${d.day} ${_months[d.month - 1]}',
-                style: const TextStyle(fontSize: 13, color: C.muted, fontWeight: FontWeight.w700, letterSpacing: .3));
+            return Row(children: [
+              Expanded(
+                child: Text('${_days[d.weekday - 1]}, ${d.day} ${_months[d.month - 1]}',
+                    style: const TextStyle(fontSize: 13, color: C.muted, fontWeight: FontWeight.w700, letterSpacing: .3)),
+              ),
+              _weatherChip() ?? const SizedBox.shrink(),
+            ]);
           }),
           const SizedBox(height: 2),
           Text(_greet(), style: display(26)),

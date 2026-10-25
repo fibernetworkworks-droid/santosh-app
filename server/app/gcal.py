@@ -92,11 +92,12 @@ def _event_view(ev, tz) -> dict:
         "description": str(comp.get("description") or "")[:500],
         "attendees": attendees,
         "_start_raw": start.isoformat() if start else "",
+        "_end_raw": end.isoformat() if end else "",
     }
 
 
 # ---------------- reading ----------------
-def _agenda(start_local: datetime, end_local: datetime):
+def _agenda(start_local: datetime, end_local: datetime, keep_raw: bool = False):
     tz = _tz()
     client = _client()
     cal = _primary(client)
@@ -116,8 +117,10 @@ def _agenda(start_local: datetime, end_local: datetime):
         except Exception:
             continue
     views.sort(key=lambda v: v["_start_raw"])
-    for v in views:
-        v.pop("_start_raw", None)
+    if not keep_raw:   # v0.166: /api/day keeps raw ISO for countdowns; agent-facing views stay clean
+        for v in views:
+            v.pop("_start_raw", None)
+            v.pop("_end_raw", None)
     return views
 
 
@@ -181,8 +184,8 @@ def _cancel(uid: str):
 
 
 # ---------------- async wrappers ----------------
-async def agenda(start_local, end_local):
-    return await asyncio.to_thread(_agenda, start_local, end_local)
+async def agenda(start_local, end_local, keep_raw: bool = False):
+    return await asyncio.to_thread(_agenda, start_local, end_local, keep_raw)
 
 
 async def find(query, days=30):

@@ -196,17 +196,21 @@ async def geocode(city: str) -> tuple[float, float, str] | None:
 async def weather(lat: float, lon: float, tz: str = "Asia/Kolkata") -> dict:
     r = await _client().get("https://api.open-meteo.com/v1/forecast", params={
         "latitude": lat, "longitude": lon, "timezone": tz,
-        "current": "temperature_2m,weather_code,relative_humidity_2m",
-        "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code",
+        "current": "temperature_2m,weather_code,relative_humidity_2m,is_day,apparent_temperature,wind_speed_10m",
+        "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code,sunrise,sunset",
         "forecast_days": 2})
     r.raise_for_status()
     d = r.json()
     cur, day = d.get("current", {}), d.get("daily", {})
     pick = lambda k, i=0: (day.get(k) or [None])[i]
     return {"now_c": cur.get("temperature_2m"), "humidity": cur.get("relative_humidity_2m"),
-            "now": WMO.get(cur.get("weather_code"), "mausam"),
+            "feels_c": cur.get("apparent_temperature"), "wind_kmph": cur.get("wind_speed_10m"),
+            "is_day": bool(cur.get("is_day", 1)),   # v0.166 Aaj ka Din card picks icon/colours from code + day/night
+            "now_code": cur.get("weather_code"), "now": WMO.get(cur.get("weather_code"), "mausam"),
+            "today_code": pick("weather_code"),
             "today_max_c": pick("temperature_2m_max"), "today_min_c": pick("temperature_2m_min"),
             "rain_chance_pct": pick("precipitation_probability_max"),
+            "sunrise": pick("sunrise"), "sunset": pick("sunset"),
             "today": WMO.get(pick("weather_code"), "mausam"),
             "tomorrow_max_c": pick("temperature_2m_max", 1), "tomorrow_min_c": pick("temperature_2m_min", 1),
             "tomorrow_rain_chance_pct": pick("precipitation_probability_max", 1)}

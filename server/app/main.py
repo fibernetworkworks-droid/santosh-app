@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.165.1", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.166.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -9033,6 +9033,65 @@ def catchup(since: str, tenant: str = Depends(current_tenant)):
         items = [{"text": r.display or "", "at": r.created_at.isoformat()} for r in rows if (r.display or "").strip()]
     pending = bazar.pending_approvals(tenant)
     return {"items": items, "pending": pending, "count": len(items)}
+
+
+# ---------------- Aaj ka Din: one call for the home card — weather + today's meetings + next reminder ----------------
+_day_weather: dict[str, tuple[float, dict]] = {}   # tenant → (fetched_at, weather; {} = last fetch failed)
+
+
+@app.get("/api/day", dependencies=[Depends(require_key)])
+async def day(tenant: str = Depends(current_tenant)):
+    """v0.166 premium Aaj ka Din card: mausam (cached 15 min), aaj ki baaki meetings, agla reminder — one round trip."""
+    from datetime import datetime, timedelta
+    from . import gcal
+    tz = life.tz_of(tenant)
+    now = datetime.now(tz)
+    out: dict = {"weather": None, "events": [], "next_reminder": None}
+
+    hit = _day_weather.get(tenant)
+    if hit and now.timestamp() - hit[0] < 900:
+        out["weather"] = hit[1] or None
+    else:
+        try:
+            w = await life.weather_for(tenant)
+            _day_weather[tenant] = (now.timestamp(), w)
+            out["weather"] = w
+        except Exception:
+            _day_weather[tenant] = (now.timestamp(), {})   # short-circuit failures too — never hammer open-meteo
+
+    if gcal.configured():   # aaj ki meetings jo abhi baaqi hain (ya abhi chal rahi hain)
+        try:
+            start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            views = await gcal.agenda(start, start + timedelta(days=1), keep_raw=True)
+            evs: list[dict] = []
+            for v in views:
+                if v.get("all_day"):
+                    continue
+                try:
+                    st = datetime.fromisoformat(v["_start_raw"])
+                    en = datetime.fromisoformat(v["_end_raw"]) if v.get("_end_raw") else None
+                    running = st <= now and (en is None or en > now)
+                    if en is not None and en <= now:
+                        continue   # khatam ho chuki
+                    evs.append({"title": v.get("title") or "(no title)", "start": v.get("start") or "",
+                                "location": (v.get("location") or "").strip(),
+                                "attendees": len(v.get("attendees") or []),
+                                "starts_in_mins": None if running else max(0, int((st - now).total_seconds() // 60)),
+                                "running": running})
+                except Exception:
+                    continue
+                if len(evs) >= 3:
+                    break
+            out["events"] = evs
+        except Exception:
+            pass
+
+    try:
+        rem = life.upcoming_reminders(tenant, limit=1)
+        out["next_reminder"] = rem[0] if rem else None
+    except Exception:
+        pass
+    return out
 
 
 # ---------------- "Hey Santosh" wake word (runs on the phone; the server only hands out the keyword) ----------------

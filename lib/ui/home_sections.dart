@@ -21,7 +21,7 @@ List<Map<String, dynamic>> _list(Object? o) =>
 int _n(Object? v) => v is num ? v.toInt() : 0;
 String _s(Object? v) => '${v ?? ''}';
 
-/// One loader for everything the coworker sections need. 10 soft calls, ~parallel; failures stay null.
+/// One loader for everything the coworker sections need. 11 soft calls, ~parallel; failures stay null.
 class HomeExtra {
   Map<String, dynamic>? employee;            // /api/employee → status (+ first pending ask)
   List<Map<String, dynamic>> jobs = [];      // video studio jobs actually running right now
@@ -32,6 +32,7 @@ class HomeExtra {
   List<Map<String, dynamic>> lessons = [];   // Hoola Network lessons (latest 2)
   List<Map<String, dynamic>> words = [];     // her own words (latest 2)
   Map<String, dynamic>? catchup;             // /api/catchup 24h → items, count
+  Map<String, dynamic>? day;                 // v0.166 /api/day → weather, aaj ki baaki meetings, next reminder
   bool loaded = false;
 
   static Future<dynamic> _soft(Future<dynamic> f) async {
@@ -50,7 +51,7 @@ class HomeExtra {
       _soft(api.employee()), _soft(api.videoJobs()), _soft(api.netInbox()),
       _soft(api.netThreads()), _soft(api.netGroups()), _soft(api.notebooks()),
       _soft(api.memory()), _soft(api.voiceLearned()), _soft(api.netLearned()),
-      _soft(api.catchup(dayAgo)),
+      _soft(api.catchup(dayAgo)), _soft(api.day()),
     ]);
     try {
       final emp = r[0] as Map<String, dynamic>?;
@@ -79,6 +80,7 @@ class HomeExtra {
       words = _list((r[7] as Map?)?['words']).take(2).toList();
 
       catchup = r[9] as Map<String, dynamic>?;
+      day = r[10] as Map<String, dynamic>?;
     } catch (_) {/* never let one odd payload break the home */}
     loaded = true;
   }
@@ -194,63 +196,256 @@ class LiveWorkSection extends StatelessWidget {
   }
 }
 
-/// AAJ KA DIN — three small tiles: away-catchup, next reminder, today's kaam.
+/// AAJ KA DIN — one premium card: mausam band (icon, temp, hi/lo, rain chip, day progress),
+/// aaj ki baaki meetings with countdown, agla reminder, and away-catchup. v0.166.
 class DayTilesSection extends StatelessWidget {
   const DayTilesSection({super.key, required this.extra, required this.app});
   final HomeExtra extra;
   final Santosh app;
+
+  static const _repeat = {'none': 'Ek baar', 'hourly': 'Har ghante', 'daily': 'Roz', 'weekdays': 'Mon–Fri', 'weekly': 'Har hafte', 'monthly': 'Har mahine'};
+
+  static String _wIcon(int? code, bool isDay) {
+    if (code == null) return '🌤️';
+    if (code <= 1) return isDay ? '☀️' : '🌙';
+    if (code == 2) return isDay ? '⛅' : '☁️';
+    if (code == 3) return '☁️';
+    if (code == 45 || code == 48) return '🌫️';
+    if (code >= 51 && code <= 55) return '🌦️';
+    if (code >= 61 && code <= 65) return '🌧️';
+    if (code >= 71 && code <= 77) return '🌨️';
+    if (code >= 80 && code <= 82) return '🌧️';
+    if (code >= 95) return '⛈️';
+    return '🌤️';
+  }
+
+  /// Dark-glass-compatible tint for the band, keyed to the condition.
+  static List<Color> _wTint(int? code, bool isDay) {
+    if (code == null) return const [Color(0x1AFFFFFF), Color(0x05FFFFFF)];
+    if (code <= 1) return isDay ? const [Color(0x2EFFB15C), Color(0x0AFFB15C)] : const [Color(0x2E7C5CFF), Color(0x0A7C5CFF)];
+    if (code == 2 || code == 3) return const [Color(0x2494A3B8), Color(0x0894A3B8)];
+    if (code == 45 || code == 48) return const [Color(0x249CA3AF), Color(0x089CA3AF)];
+    if ((code >= 51 && code <= 65) || (code >= 80 && code <= 82)) return const [Color(0x2E60A5FA), Color(0x0A60A5FA)];
+    if (code >= 71 && code <= 77) return const [Color(0x2EBAE6FD), Color(0x0ABAE6FD)];
+    if (code >= 95) return const [Color(0x2EA78BFA), Color(0x0AA78BFA)];
+    return const [Color(0x1AFFFFFF), Color(0x05FFFFFF)];
+  }
+
+  /// "aaj 4:30 PM" → "4:30 PM".
+  static String _time(String when) {
+    final p = when.split(' ');
+    return p.length >= 3 ? p.sublist(p.length - 2).join(' ') : when;
+  }
+
+  static String _inMins(int? m, bool running) {
+    if (running) return 'Abhi chal rahi hai';
+    if (m == null) return '';
+    if (m < 1) return 'Ab shuru hone wali';
+    if (m < 60) return '$m min mein';
+    if (m < 1440) return '${(m / 60).round()} ghante mein';
+    return 'Aaj baad mein';
+  }
+
+  Widget _wchip(String emoji, String text) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(color: const Color(0x14FFFFFF), borderRadius: BorderRadius.circular(999), border: Border.all(color: const Color(0x1FFFFFFF))),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Text(emoji, style: const TextStyle(fontSize: 11)),
+          const SizedBox(width: 5),
+          Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: C.chip)),
+        ]),
+      );
+
+  Widget _divider() => Container(height: 1, margin: const EdgeInsets.only(left: 61), color: C.line);
+
+  Widget _drow(IconData ic, Color bg, Color icc, String title, String detail,
+      {String? time, bool running = false, bool chevron = false, VoidCallback? onTap}) {
+    final row = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(children: [
+        Container(width: 34, height: 34, alignment: Alignment.center,
+            decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(11)), child: Icon(ic, size: 18, color: icc)),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              if (running) ...[
+                Container(width: 7, height: 7, decoration: const BoxDecoration(color: C.ok, shape: BoxShape.circle)),
+                const SizedBox(width: 6),
+              ],
+              Expanded(child: Text(title, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
+                  maxLines: 1, overflow: TextOverflow.ellipsis)),
+            ]),
+            if (detail.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(detail, style: const TextStyle(fontSize: 11.5, color: C.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
+            ],
+          ]),
+        ),
+        if (time != null && time.isNotEmpty) ...[
+          const SizedBox(width: 8),
+          Text(time, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: running ? C.ok : C.accentSoft)),
+        ],
+        if (chevron) ...[
+          const SizedBox(width: 2),
+          const Icon(Icons.chevron_right_rounded, size: 20, color: C.muted),
+        ],
+      ]),
+    );
+    return onTap == null ? row : Press(onTap: onTap, child: row);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final st = (extra.employee?['status'] as Map?)?.cast<String, dynamic>();
-    final next = app.reminders.isEmpty ? null : app.reminders.first;
+    final day = extra.day;
+    final w = day == null ? null : (day['weather'] as Map?)?.cast<String, dynamic>();
+    final int? code = w == null || w['now_code'] is! num ? null : (w['now_code'] as num).toInt();
+    final bool isDay = w != null && w['is_day'] is bool ? w['is_day'] as bool : true;
+    final events = day == null ? <Map<String, dynamic>>[] : _list(day['events']);
+    final rem = day == null ? null : (day['next_reminder'] as Map?)?.cast<String, dynamic>();
+    final next = rem ?? (app.reminders.isEmpty ? null : app.reminders.first);
+    final cu = extra.catchupCount;
+
+    final now = DateTime.now();
+    final dayStart = DateTime(now.year, now.month, now.day, 6);
+    final dayEnd = DateTime(now.year, now.month, now.day, 23);
+    final dayPct = ((now.millisecondsSinceEpoch - dayStart.millisecondsSinceEpoch) /
+            (dayEnd.millisecondsSinceEpoch - dayStart.millisecondsSinceEpoch))
+        .clamp(0.0, 1.0);
+
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const HomeLabel('AAJ KA DIN'),
-      Row(children: [
-        Expanded(
-          child: Press(
-            onTap: extra.catchup == null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CatchUpScreen(app: app, data: extra.catchup!))),
-            child: Glass(
-              radius: 18,
-              padding: const EdgeInsets.all(12),
+      Glass(
+        radius: 24,
+        padding: EdgeInsets.zero,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // ---------- mausam band ----------
+          if (w != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: _wTint(code, isDay), begin: Alignment.topLeft, end: Alignment.bottomRight),
+              ),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('AAPKA DIN', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 1, color: C.faint)),
-                const SizedBox(height: 5),
-                Text('${extra.catchupCount} naye', style: display(15)),
-                Text(extra.catchupCount > 0 ? 'jab aap bahar thi' : 'sab dekh liya', style: const TextStyle(fontSize: 11.5, color: C.muted), maxLines: 2),
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Container(
+                    width: 46, height: 46, alignment: Alignment.center,
+                    decoration: BoxDecoration(color: const Color(0x1FFFFFFF), shape: BoxShape.circle, border: Border.all(color: const Color(0x22FFFFFF))),
+                    child: Text(_wIcon(code, isDay), style: const TextStyle(fontSize: 23)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(w['now_c'] is num ? '${(w['now_c'] as num).round()}°' : '--°', style: display(30, w: FontWeight.w800)),
+                        if (w['feels_c'] is num)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8, top: 9),
+                            child: Text('Mehsus ${(w['feels_c'] as num).round()}°',
+                                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: C.faint)),
+                          ),
+                      ]),
+                      const SizedBox(height: 1),
+                      Text(_s(w['now']).isEmpty ? 'Mausam' : _s(w['now']),
+                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: C.chip)),
+                    ]),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    Text(_s(w['place']).split(',').first.toUpperCase(),
+                        style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: C.faint)),
+                    const SizedBox(height: 4),
+                    Text('↑ ${w['today_max_c'] is num ? (w['today_max_c'] as num).round() : '--'}°  ·  ↓ ${w['today_min_c'] is num ? (w['today_min_c'] as num).round() : '--'}°',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.chip)),
+                  ]),
+                ]),
+                if (w['rain_chance_pct'] is num || w['wind_kmph'] is num) ...[
+                  const SizedBox(height: 10),
+                  Wrap(spacing: 6, runSpacing: 6, children: [
+                    if (w['rain_chance_pct'] is num) _wchip('💧', '${(w['rain_chance_pct'] as num).round()}% baarish'),
+                    if (w['wind_kmph'] is num) _wchip('💨', '${(w['wind_kmph'] as num).round()} km/h hawa'),
+                    if (w['humidity'] is num) _wchip('🌫️', '${(w['humidity'] as num).round()}% nami'),
+                  ]),
+                ],
+                const SizedBox(height: 11),
+                Row(children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(99),
+                      child: LinearProgressIndicator(value: dayPct, minHeight: 3.5,
+                          backgroundColor: const Color(0x14FFFFFF), valueColor: const AlwaysStoppedAnimation<Color>(C.accent)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text('Din ka ${(dayPct * 100).round()}%',
+                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: C.faint)),
+                ]),
+              ]),
+            )
+          else if (day != null) // calendar/day loaded but no sheher set — invite, don't fake data
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
+              decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0x1AFFFFFF), Color(0x05FFFFFF)], begin: Alignment.topLeft, end: Alignment.bottomRight)),
+              child: Row(children: [
+                Container(width: 40, height: 40, alignment: Alignment.center,
+                    decoration: BoxDecoration(color: const Color(0x1FFFFFFF), shape: BoxShape.circle, border: Border.all(color: const Color(0x22FFFFFF))),
+                    child: const Text('🌤️', style: TextStyle(fontSize: 19))),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Mausam ke liye sheher chahiye', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800)),
+                    SizedBox(height: 2),
+                    Text('Profile mein apna sheher jodo — main roz mausam bataungi.', style: TextStyle(fontSize: 11.5, color: C.muted)),
+                  ]),
+                ),
               ]),
             ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Glass(
-            radius: 18,
-            padding: const EdgeInsets.all(12),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('AGLA REMINDER', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 1, color: C.faint)),
-              const SizedBox(height: 5),
-              Text(next == null ? 'Koi nahi' : _s(next['when']), style: display(15), maxLines: 1, overflow: TextOverflow.ellipsis),
-              Text(next == null ? 'bolo to yaad dila doon' : _s(next['text']), style: const TextStyle(fontSize: 11.5, color: C.muted), maxLines: 2, overflow: TextOverflow.ellipsis),
+          // ---------- aaj ki baaki meetings ----------
+          if (events.isEmpty)
+            _drow(Icons.event_rounded, const Color(0x247C5CFF), const Color(0xFFA78BFA), 'Aaj koi meeting nahi',
+                day == null ? '' : 'Calendar se sab main yaad rakhungi')
+          else ...[
+            for (var i = 0; i < events.length; i++) ...[
+              if (i > 0) _divider(),
+              _drow(Icons.event_rounded, const Color(0x247C5CFF), const Color(0xFFA78BFA), _s(events[i]['title']),
+                  [
+                    _inMins(events[i]['starts_in_mins'] is int ? events[i]['starts_in_mins'] as int : null, events[i]['running'] == true),
+                    if (_s(events[i]['location']).isNotEmpty) _s(events[i]['location']),
+                    if (events[i]['attendees'] is int && (events[i]['attendees'] as int) > 0) '${events[i]['attendees']} log',
+                  ].where((x) => x.isNotEmpty).join(' · '),
+                  time: _time(_s(events[i]['start'])), running: events[i]['running'] == true),
+            ],
+          ],
+          // ---------- agla reminder ----------
+          _divider(),
+          if (next == null)
+            _drow(Icons.notifications_active_outlined, const Color(0x24FFB15C), C.accentSoft, 'Aaj koi reminder nahi',
+                'Boliye — "kal 9 baje dawai yaad dilana"')
+          else
+            _drow(Icons.notifications_active_outlined, const Color(0x24FFB15C), C.accentSoft, _s(next['text']),
+                next['repeat'] is String && (next['repeat'] as String) != 'none'
+                    ? 'Yaad dila dunga · ${_repeat[next['repeat']] ?? ''}'.trim()
+                    : 'Yaad dila dunga',
+                time: _time(_s(next['when']))),
+          // ---------- away-catchup ----------
+          if (cu > 0 && extra.catchup != null) ...[
+            _divider(),
+            _drow(Icons.history_rounded, const Color(0x242DD4BF), C.teal, 'Jab aap bahar thi', '$cu naye kaam — ek ek karke dikha dungi',
+                chevron: true, onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CatchUpScreen(app: app, data: extra.catchup!)))),
+          ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 11),
+            child: Row(children: [
+              const Icon(Icons.favorite_rounded, size: 10, color: C.faint),
+              const SizedBox(width: 6),
+              Expanded(child: Text('Main din bhar nazar rakhungi — aap nishchint rahiye.',
+                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: C.faint))),
             ]),
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Glass(
-            radius: 18,
-            padding: const EdgeInsets.all(12),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('AAJ KA KAAM', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 1, color: C.faint)),
-              const SizedBox(height: 5),
-              Text(st == null ? '${app.routines.length}' : '${_n(st['done_today'])}', style: display(15)),
-              Text(st == null
-                      ? (app.routines.isEmpty ? 'roz ka koi kaam nahi' : 'roz ke kaam chal rahe')
-                      : 'poore · ${_n(st['pending_asks'])} ask wait',
-                  style: const TextStyle(fontSize: 11.5, color: C.muted), maxLines: 2),
-            ]),
-          ),
-        ),
-      ]),
+        ]),
+      ),
     ]);
   }
 }

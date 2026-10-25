@@ -1208,6 +1208,9 @@ class Api {
   Future<Map<String, dynamic>> catchup(DateTime since) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/catchup', query: {'since': since.toUtc().toIso8601String()}));
 
+  /// v0.166 Aaj ka Din premium card: weather + today's remaining meetings + next reminder, one call.
+  Future<Map<String, dynamic>> day() async => Map<String, dynamic>.from(await _send('GET', '/api/day') as Map);
+
   Future<void> putLocation(double lat, double lng, {double? accuracy}) async =>
       _send('PUT', '/api/location', body: {'lat': lat, 'lng': lng, if (accuracy != null) 'accuracy_m': accuracy});
 
