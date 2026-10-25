@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Santosh Core", version="0.164.1", lifespan=lifespan)
+app = FastAPI(title="Santosh Core", version="0.165.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -4247,7 +4247,8 @@ def tick_item(item_id: int, tenant: str = Depends(current_tenant)):
 def get_memory(tenant: str = Depends(current_tenant)):
     facts = life.memory_facts(tenant, 500)
     used = sum(len(f.text) for f in facts if f.pinned)
-    return {"facts": [{"id": f.id, "text": f.text, "pinned": bool(f.pinned), "auto": getattr(f, "source", None) == "auto"}
+    return {"facts": [{"id": f.id, "text": f.text, "pinned": bool(f.pinned), "auto": getattr(f, "source", None) == "auto",
+                       "created_at": f.created_at.isoformat()}   # v0.165 home "aaj kya seekha" filters today's facts
                       for f in facts],
             "pinned_chars": used, "pinned_max": life.PINNED_CHARS, "in_prompt": life.RECENT_FACTS}
 
