@@ -628,12 +628,22 @@ async def _tell_customer(tenant: str, ask_id: str, label: str, status: str, resu
 
 
 def expire_asks() -> int:
+    old: list[tuple[str, str, str]] = []
     with session() as s:
-        old = s.scalars(select(EmployeeAsk).where(EmployeeAsk.status == "pending",
-                                                  EmployeeAsk.created_at < now() - timedelta(hours=ASK_HOURS))).all()
-        for a in old:
+        rows = s.scalars(select(EmployeeAsk).where(EmployeeAsk.status == "pending",
+                                                   EmployeeAsk.created_at < now() - timedelta(hours=ASK_HOURS))).all()
+        for a in rows:
             a.status = "expired"
-        return len(old)
+            old.append((a.tenant_id, a.conversation_id or "", a.id))
+    # v0.179 the expired state reaches her chat too: the card on the timeline stops asking for her tap
+    from ..events import bus
+    for tenant, conv, aid in old:
+        if conv:
+            try:
+                bus.publish(conv, "employee_ask", ask_view_by_id(tenant, aid))
+            except Exception:
+                pass
+    return len(old)
 
 
 # ---------------------------------------------------------------- telling the owner

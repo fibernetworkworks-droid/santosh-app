@@ -629,26 +629,30 @@ class _ChatScreenState extends State<ChatScreen> {
         listenable: app,
         builder: (ctx, _) {
           final w = app.waitingCards;
-          return SafeArea(
-            child: SizedBox(
-              height: MediaQuery.sizeOf(ctx).height * .78,
-              child: Column(children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 14, 8, 4),
-                  child: Row(children: [
-                    Expanded(child: Text(app.g('Aapki haan chahiye · {x}', x: '${w.length}'), style: display(18, w: FontWeight.w700))),
-                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close_rounded, color: C.muted)),
-                  ]),
-                ),
-                Expanded(
-                  child: w.isEmpty
-                      ? Center(child: Text(app.g('Sab ho gaya ✓'), style: const TextStyle(color: C.muted)))
-                      : ListView(
-                          padding: const EdgeInsets.fromLTRB(14, 4, 14, 16),
-                          children: [for (final it in w) Padding(padding: const EdgeInsets.only(bottom: 8), child: _item(it))],
-                        ),
-                ),
-              ]),
+          // v0.179 the sheet rises with the keyboard: a form card inside must never hide behind it
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+            child: SafeArea(
+              child: SizedBox(
+                height: MediaQuery.sizeOf(ctx).height * .78,
+                child: Column(children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 14, 8, 4),
+                    child: Row(children: [
+                      Expanded(child: Text(app.g('Aapki haan chahiye · {x}', x: '${w.length}'), style: display(18, w: FontWeight.w700))),
+                      IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close_rounded, color: C.muted)),
+                    ]),
+                  ),
+                  Expanded(
+                    child: w.isEmpty
+                        ? Center(child: Text(app.g('Sab ho gaya ✓'), style: const TextStyle(color: C.muted)))
+                        : ListView(
+                            padding: const EdgeInsets.fromLTRB(14, 4, 14, 16),
+                            children: [for (final it in w) Padding(padding: const EdgeInsets.only(bottom: 8), child: _item(it))],
+                          ),
+                  ),
+                ]),
+              ),
             ),
           );
         },

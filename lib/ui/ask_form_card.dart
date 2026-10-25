@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'kb.dart';
 
 /// v0.97 One card with several questions from Hoola (ask_form). Answers go back as her next message; ID numbers go into
 /// her Pehchaan Locker first (Hoola only sees a masked reference). Works in chat and inside a call.
@@ -115,28 +116,32 @@ class _AskFormCardState extends State<AskFormCard> {
       ]);
     } else {
       final isId = kind == 'id';
-      body = TextField(
-        controller: _text[name],
-        enabled: open,
-        readOnly: kind == 'date',
-        onTap: kind == 'date' && open ? () => _pickDate(name) : null,
-        obscureText: isId && !_showId.contains(name),
-        keyboardType: switch (kind) {
-          'number' => const TextInputType.numberWithOptions(decimal: true),
-          'phone' => TextInputType.phone,
-          'email' => TextInputType.emailAddress,
-          'date' => TextInputType.none,
-          _ => TextInputType.text,
-        },
-        decoration: InputDecoration(
-          isDense: true,
-          hintText: hint.isNotEmpty ? hint : (kind == 'date' ? 'Tareekh chuniye' : null),
-          helperText: isId ? 'Pehchaan Locker mein jayega; Hoola ko sirf aakhri 4 ank dikhenge' : null,
-          suffixIcon: isId
-              ? IconButton(
-                  icon: Icon(_showId.contains(name) ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 18),
-                  onPressed: () => setState(() => _showId.contains(name) ? _showId.remove(name) : _showId.add(name)))
-              : (kind == 'date' ? const Icon(Icons.event_rounded, size: 18) : null),
+      // v0.179 KbField: the keyboard must never hide the box she is typing in (chat feed, call tray, waiting sheet)
+      body = KbField(
+        child: TextField(
+          controller: _text[name],
+          enabled: open,
+          readOnly: kind == 'date',
+          onTap: kind == 'date' && open ? () => _pickDate(name) : null,
+          obscureText: isId && !_showId.contains(name),
+          keyboardType: switch (kind) {
+            'number' => const TextInputType.numberWithOptions(decimal: true),
+            'phone' => TextInputType.phone,
+            'email' => TextInputType.emailAddress,
+            'date' => TextInputType.none,
+            _ => TextInputType.text,
+          },
+          textInputAction: TextInputAction.next,
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: hint.isNotEmpty ? hint : (kind == 'date' ? 'Tareekh chuniye' : null),
+            helperText: isId ? 'Pehchaan Locker mein jayega; Hoola ko sirf aakhri 4 ank dikhenge' : null,
+            suffixIcon: isId
+                ? IconButton(
+                    icon: Icon(_showId.contains(name) ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 18),
+                    onPressed: () => setState(() => _showId.contains(name) ? _showId.remove(name) : _showId.add(name)))
+                : (kind == 'date' ? const Icon(Icons.event_rounded, size: 18) : null),
+          ),
         ),
       );
     }

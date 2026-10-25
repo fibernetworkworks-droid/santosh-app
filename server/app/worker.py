@@ -280,6 +280,47 @@ def expire_device_actions() -> None:
                      "Profile > 'Background mein kaam' on rakhiye aur internet chalu rakhiye.")
 
 
+_ask_ttl_last = 0.0
+
+
+async def expire_stale_asks() -> None:
+    """v0.179 ask cards that waited too long go terminal on their own key (worker sweep, every ~15 min):
+    operator asks, bazar confirm cards, ask_forms, SQL cards, studio price cards. Her chat stops asking
+    for decisions nobody will ever give, even when the job died without an answer."""
+    global _ask_ttl_last
+    import time
+    if time.time() - _ask_ttl_last < 900:
+        return
+    _ask_ttl_last = time.time()
+    from .config import get_settings
+    ttl = get_settings().ask_ttl_hours
+    try:
+        from .operator import service as op
+        op.expire_stale_asks(ttl)
+    except Exception:
+        log.exception("operator ask expiry failed")
+    try:
+        from .bazar import service as bazar
+        bazar.expire_approvals(ttl)
+    except Exception:
+        log.exception("bazar approval expiry failed")
+    try:
+        from .askform import expire_asks as form_expire
+        form_expire(ttl)
+    except Exception:
+        log.exception("ask_form expiry failed")
+    try:
+        from .pgdb import service as pgdb
+        pgdb.expire_asks(ttl)
+    except Exception:
+        log.exception("pg_write expiry failed")
+    try:
+        from .studio import service as studio
+        await studio.expire_asks(ttl)
+    except Exception:
+        log.exception("studio approval expiry failed")
+
+
 async def tick() -> None:
     await check_approvals()
     await send_batches()
@@ -289,6 +330,7 @@ async def tick() -> None:
     await morning_briefings()
     await run_routines()
     expire_device_actions()
+    await expire_stale_asks()
     await bazar_reminders()
     await offline_digests()
     await pc_cleanup()

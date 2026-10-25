@@ -260,6 +260,7 @@ class Settings(BaseSettings):
     # --- multi-tenant product: Google sign-in + token encryption ---
     pc_files_dir: str = "./data/pc_files"     # PC <-> phone files, deleted after pc_file_hours
     pc_file_hours: int = 24
+    ask_ttl_hours: int = 24                   # v0.179 ask cards (approvals / forms / SQL) expire after this many hours
     pc_max_file_mb: int = 50
     pc_memory_runs: int = 8                   # v0.173 PC operator: last N finished tasks she remembers per PC
     pc_memory_hours: int = 24                 # and how long an entry stays useful

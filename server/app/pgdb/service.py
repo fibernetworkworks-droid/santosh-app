@@ -831,6 +831,29 @@ def decide(tenant: str, wid: str, yes: bool, hash_: str = "", by_tap: bool = Fal
     return v
 
 
+def expire_asks(ttl_h: int = 24) -> int:
+    """v0.179 a SQL card nobody tapped goes stale after the TTL (worker tick): her chat stops showing it as waiting,
+    on the same card key. Nothing ever ran."""
+    from datetime import timedelta
+    with session() as s:
+        rows = s.scalars(select(PgWrite).where(PgWrite.status == "pending", PgWrite.created_at < now() - timedelta(hours=max(1, int(ttl_h))))).all()
+        for w in rows:
+            w.status = "stale"
+        ids = [(w.id, w.conversation_id or "") for w in rows]
+    n = 0
+    for wid, conv in ids:
+        if not conv:
+            continue
+        with session() as s:
+            w = s.get(PgWrite, wid)
+            if w is None:
+                continue
+            c = s.get(PgConn, w.conn_id)
+            _publish(conv, _wview(w, c.name if c else "", c.label if c else ""))
+        n += 1
+    return n
+
+
 def summary(tenant: str) -> str:
     rows = conns(tenant)
     if not rows:

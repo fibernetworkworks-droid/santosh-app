@@ -99,6 +99,27 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
         _seenCards = cards.length;
         // v0.86 an open card tray takes the room of the work view and captions, so a card is never squeezed
         final tray = cards.isNotEmpty && _cardsOpen;
+        // v0.179 typing inside a card: the keyboard takes the room, so the avatar, captions and call buttons
+        // step aside and the card gets the whole screen (a form squeezed to nothing hid its fields).
+        if (tray && MediaQuery.viewInsetsOf(context).bottom > 0) {
+          return Column(children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 14, 0),
+              child: Row(children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Baat karein', style: display(28)),
+                    Text('Card bhara ja raha hai · call chalu hai',
+                        style: const TextStyle(color: C.muted, fontSize: 12.5, fontWeight: FontWeight.w600)),
+                  ]),
+                ),
+                if (call.inCall) const Pill('● LIVE', fg: Colors.white, bg: Color(0xCCDC2626)),
+              ]),
+            ),
+            Expanded(child: _cardsTray(cards)),
+            const SizedBox(height: 8),
+          ]);
+        }
         return Column(children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 14, 0),
@@ -298,9 +319,13 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
             children: [
               for (final it in [_focusCard(cards)])
                 Stack(children: [
-                  feedCard(context, app, it) ?? const SizedBox.shrink(),
+                  // v0.179 the card keeps its own lane (40px) on the right: the dismiss x never sits on its status pill
+                  Padding(
+                    padding: const EdgeInsets.only(right: 40),
+                    child: feedCard(context, app, it) ?? const SizedBox.shrink(),
+                  ),
                   Positioned(
-                    right: 0, top: 0,
+                    right: 0, top: 6,
                     child: IconButton(
                       tooltip: 'Hataiye',
                       visualDensity: VisualDensity.compact,

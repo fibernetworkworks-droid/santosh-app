@@ -511,6 +511,30 @@ def decide(tenant_id: str, approval_id: str, decision: str) -> dict[str, Any]:
     return {"status": ap.decision, "outcome": outcome, "open": act}
 
 
+def expire_approvals(ttl_h: int = 24) -> int:
+    """v0.179 a confirm card nobody tapped goes expired after the TTL (worker tick): her chat stops asking for a
+    decision on the same card key. Nothing was ordered, nothing was paid."""
+    from datetime import timedelta
+    from ..db import now
+    reg = registry()
+    with session() as s:
+        rows = s.scalars(select(Approval).where(Approval.decision == "pending",
+                                                Approval.created_at < now() - timedelta(hours=max(1, int(ttl_h))))).all()
+        for ap in rows:
+            ap.decision, ap.decided_at = "expired", now()
+        cards = [(ap.conversation_id or "", card_of(ap, reg.lookup((ap.action or {}).get("pack_id", "")))) for ap in rows]
+    n = 0
+    for conv, card in cards:
+        if not conv:
+            continue
+        try:
+            bus.publish(conv, "bazar_approval", {**card, "result": {"message": "Yeh card kaafi purana ho gaya; kuch order ya payment nahi hua."}})
+            n += 1
+        except Exception:  # noqa: BLE001
+            log.exception("bazar approval expiry publish failed")
+    return n
+
+
 def approval_card(tenant_id: str, approval_id: str) -> dict[str, Any] | None:
     """v0.97 One pending card as it is now (fingerprint-signed approvals hash it); None when gone or decided."""
     reg = registry()

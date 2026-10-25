@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.181.0"   # v0.181.0 human voice: affective dialog is back (he answers with the tone he hears, self-healing if the model refuses), turn-taking is quicker (silence 700->550 ms, her-pause floor 500->420 ms), the tuned 120 ms fast barge-in finally reaches the phone (ready.vad.fast -> BargeGate.speechFast + post-talk gate 300->150 ms), fresh users' calls start in Hinglish (voiceLang hi-IN, UI language untouched), 16 varied ack lines spoken by the new gemini-3.8-flash-tts (legacy fallback), call-start context blocks load in parallel so "ready" comes sooner, and the chat-speak fallback no longer reads links/emoji/bullets out loud (bump with pubspec)
+APP_VERSION = "0.182.0"   # v0.182.0 cards close themselves: resolved asks stay resolved, TTL janitor, keyboard-safe card fields (re-versioned after the dev's 0.181 human-voice) (bump with pubspec)
 
 
 @asynccontextmanager

@@ -22,6 +22,8 @@ class FeedItem {
   final List<Map<String, dynamic>> steps = [];
   int? eid;        // v0.158 the server event that first made it (its place in the chat's story)
   String? call;    // the voice call whose tool made it (only those cards show in that call)
+  String? key;     // v0.179 one card = one key (kind + its own id) - the server's own identity for this card
+  DateTime? at;    // v0.179 when this card's latest state arrived (old asks leave the waiting strip)
   bool live = false; // arrived live (not loaded from history)
 }
 
@@ -31,14 +33,20 @@ const waitStatuses = {
   'needs_approval', 'pending_tap', 'ask',
 };
 
+/// v0.179 a card that has waited this long stops nagging from the strip (the server's TTL closes it properly;
+/// this is the phone-side net for old servers and odd states).
+const needsHerMaxH = 48;
+
 /// Does this chat card wait for her right now (by its own latest state)?
 bool feedNeedsHer(FeedItem f) {
   if (f.kind == 'message' || f.kind == 'note' || f.kind == 'steps') return false;
   final d = f.data;
   final st = '${d['status'] ?? d['state'] ?? ''}'.toLowerCase();
-  if (waitStatuses.contains(st)) return true;
-  if (const {'employee_ask', 'operator_ask', 'studio_approval', 'ask_form', 'pg_write'}.contains(f.kind)) {
+  if (waitStatuses.contains(st) || const {'employee_ask', 'operator_ask', 'studio_approval', 'ask_form', 'pg_write'}.contains(f.kind)) {
     if (d['decided'] == true || d['answered'] == true) return false;
+    final old = f.at != null && DateTime.now().toUtc().difference(f.at!).inHours >= needsHerMaxH;
+    if (old) return false;                          // v0.179 days-old asks leave the strip (the card itself stays in the feed)
+    if (waitStatuses.contains(st)) return true;
     return st.isEmpty || st == 'open';
   }
   return false;
@@ -1143,10 +1151,19 @@ class Santosh extends ChangeNotifier {
       for (var i = 1; i < mine.length; i++) {
         if (mine[i] < mine[i - 1]) outOfOrder++;
       }
-      if (missing > 0 || outOfOrder > 0) {
+      // v0.179 the story's card keys must line up too: a card that survived as a zombie (same card shown twice
+      // under different event ids) heals here, not just missing / reordered events.
+      final wantKeys = List<String>.from(((h['keys'] as List?) ?? const []).map((e) => '$e'));
+      final mineKeys = <int, String>{for (final f in feed) if (f.eid != null && (f.key ?? '').isNotEmpty) f.eid!: f.key!};
+      var keyMismatch = 0;
+      for (var i = 0; i < want.length && i < wantKeys.length; i++) {
+        final k = mineKeys[want[i]];
+        if (k != null && wantKeys[i].isNotEmpty && k != wantKeys[i]) keyMismatch++;
+      }
+      if (missing > 0 || outOfOrder > 0 || keyMismatch > 0) {
         healFixes++;
-        unawaited(api!.chatHeal('missing $missing, out of order $outOfOrder ($why)',
-            {'missing': missing, 'out_of_order': outOfOrder, 'items': mine.length}).catchError((_) {}));
+        unawaited(api!.chatHeal('missing $missing, out of order $outOfOrder, keys $keyMismatch ($why)',
+            {'missing': missing, 'out_of_order': outOfOrder, 'key_mismatch': keyMismatch, 'items': mine.length}).catchError((_) {}));
         await _openStory(reload: true);
       }
     } catch (_) {
@@ -1196,6 +1213,8 @@ class Santosh extends ChangeNotifier {
       final f = feed[i];
       f.eid ??= ev.id;
       f.call ??= ev.call;
+      f.key ??= ev.key;                        // v0.179 the server's card key (timeline rows carry it)
+      f.at ??= ev.at;                          // v0.179 when this state arrived (old asks leave the waiting strip)
       if (!_replaying) f.live = true;
     }
   }

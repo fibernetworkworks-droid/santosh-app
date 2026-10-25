@@ -772,6 +772,44 @@ async def decide(tenant: str, approval_id: str, yes: bool) -> dict:
     return st.load(project)["approvals"][approval_id]
 
 
+async def expire_asks(ttl_h: int = 24) -> int:
+    """v0.179 a price card that waited longer than the TTL closes itself (worker tick): nothing was spent,
+    and her chat stops asking for a Haan that will never come."""
+    root = Path("data") / "studio"
+    if not root.is_dir():
+        return 0
+    cut = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=max(1, int(ttl_h)))
+    n = 0
+    for d in root.iterdir():
+        if not (d.is_dir() and (d / "projects").is_dir()):
+            continue
+        tenant = d.name
+        try:
+            st = await studio(tenant)
+            for p in listing(tenant):
+                proj = p["project"]
+                aps = st.load(proj).get("approvals") or {}
+                stale = []
+                for aid, a in aps.items():
+                    if a.get("status") != "pending":
+                        continue
+                    try:
+                        made = dt.datetime.fromisoformat(str(a.get("created") or ""))
+                        if made.tzinfo is None:
+                            made = made.replace(tzinfo=dt.timezone.utc)
+                    except ValueError:
+                        continue
+                    if made < cut:
+                        stale.append(aid)
+                for aid in stale:
+                    p2 = await st.update(proj, lambda q, _aid=aid: q["approvals"][_aid].update(status="expired"))
+                    _publish(tenant, p2, "studio_approval", p2["approvals"][aid])
+                    n += 1
+        except Exception:  # noqa: BLE001
+            log.exception("studio expire %s", tenant)
+    return n
+
+
 def _what(a: dict) -> str:
     k = a.get("kind")
     if k == "generate":

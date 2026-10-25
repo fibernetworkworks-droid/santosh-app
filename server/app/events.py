@@ -287,9 +287,13 @@ def _collapse(rows) -> list[dict]:
             items[k] = {"key": k, "first": e, "latest": e}
         else:
             it["first"] = e
-            # v0.171 a step still running never hides how the same call ended (rows come newest-first)
-            if not (e.kind == "step" and isinstance(e.payload, dict) and e.payload.get("state") == "running"
-                    and isinstance(it["latest"].payload, dict) and it["latest"].payload.get("state") != "running"):
+            # v0.179 `latest` keeps the card's NEWEST state: a resolved ask card must not fall back to its original
+            # "waiting" state on reload, and a finished job must not look running again (rows come newest-first, so
+            # older rows never overwrite). One v0.171 exception stays: a step that already ended keeps its end state
+            # even when a later event of the same step says "running" again (an echo never hides how the call ended).
+            step_end_hidden = (e.kind == "step" and isinstance(e.payload, dict) and e.payload.get("state") != "running"
+                               and isinstance(it["latest"].payload, dict) and it["latest"].payload.get("state") == "running")
+            if e.id > it["latest"].id or step_end_hidden:
                 it["latest"] = e
     return sorted(items.values(), key=lambda it: it["first"].id)
 

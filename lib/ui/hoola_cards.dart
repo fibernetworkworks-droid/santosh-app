@@ -6,6 +6,7 @@ import 'avatar_look.dart';
 import 'glass.dart';
 import 'hoola_media.dart';
 import 'hoola_net_screen.dart' show HoolaThreadScreen;
+import 'kb.dart';
 
 Widget _avatarDot(String label, {Color color = C.violet, String? look}) => isLook(look)
     ? AvatarFace(look: look, size: 36)
@@ -228,9 +229,11 @@ class _HoolaKnockCardState extends State<HoolaKnockCard> {
             ]),
           ],
           if (open) ...[
-            TextField(
-              controller: _note,
-              decoration: const InputDecoration(isDense: true, hintText: 'Jawab mein kuch kehna hai? (optional)'),
+            KbField(
+              child: TextField(
+                controller: _note,
+                decoration: const InputDecoration(isDense: true, hintText: 'Jawab mein kuch kehna hai? (optional)'),
+              ),
             ),
             const SizedBox(height: 8),
             Row(children: [

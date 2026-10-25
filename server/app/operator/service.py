@@ -141,6 +141,22 @@ def _publish(row: OperatorTask, kind: str = "operator_task", payload: dict | Non
         pass
 
 
+def _close_pending_ask(row: OperatorTask, pend: Any, say: str) -> None:
+    """v0.179 the ask card on its OWN key goes terminal: a job that ended (done / failed / stopped / restart)
+    must never leave its "aapki zaroorat" card waiting forever in the chat."""
+    if not isinstance(pend, dict) or not pend.get("id"):
+        return
+    from ..events import bus
+    try:
+        bus.publish(row.conversation_id or _home_conv(row.tenant_id), "operator_ask",
+                    {**pend, "status": "expired", "decided": True, "say": say})
+    except Exception:
+        pass
+
+
+_TERMINAL = {"done", "failed", "stopped", "cancelled"}
+
+
 def _note(row: OperatorTask, text: str) -> None:
     from ..events import notify
     try:
@@ -154,6 +170,7 @@ def _set(task_id: str, publish: bool = True, **cols: Any) -> OperatorTask:
         row = s.get(OperatorTask, task_id)
         if row is None:
             raise OperatorJobError("No such job")
+        prev_pending = row.pending                       # v0.179 the ask waiting on this job, before the change
         for k, v in cols.items():
             if k in ("pending", "proof", "outputs", "log") and not isinstance(v, str):
                 v = json.dumps(v, ensure_ascii=False) if v is not None else ""
@@ -162,6 +179,10 @@ def _set(task_id: str, publish: bool = True, **cols: Any) -> OperatorTask:
         s.expunge(row)
     if publish:
         _publish(row)
+    # v0.179 the job reached an end while a question was still open: close that ask card too (its own key)
+    if cols.get("status") in _TERMINAL and prev_pending:
+        _close_pending_ask(row, _j(prev_pending, None),
+                           "Yeh sawaal ab purana ho gaya - kaam aage badh gaya / band ho gaya, iski zaroorat nahi rahi.")
     return row
 
 
@@ -291,6 +312,27 @@ def resume_pending() -> int:
     return len(ids)
 
 
+def expire_stale_asks(ttl_h: int) -> int:
+    """v0.179 an ask that has waited longer than the TTL goes terminal (worker tick): the card closes itself
+    on its own key instead of waiting at the top of her chat for days."""
+    from datetime import timedelta
+    from ..db import now as _now
+    cut = _now() - timedelta(hours=max(1, int(ttl_h)))
+    with session() as s:
+        ids = [r.id for r in s.scalars(select(OperatorTask).where(OperatorTask.status == "waiting")).all()
+               if r.pending and r.updated_at is not None
+               and (r.updated_at if r.updated_at.tzinfo else r.updated_at.replace(tzinfo=_now().tzinfo)) < cut]
+    n = 0
+    for i in ids:
+        try:
+            _set(i, status="stopped", stage="Bahut purana sawaal", pending=None,
+                 error="Yeh sawaal bahut der tak khula pada tha; ab band kar diya.")
+            n += 1
+        except OperatorJobError:
+            pass
+    return n
+
+
 # ---------------------------------------------------------------- the owner's answers (cards + desk)
 async def _asked(tenant: str, a: Approval) -> None:
     """A request for the owner: the card in the chat (push) + the live job shows it."""
@@ -365,6 +407,30 @@ async def fill_otp(tenant: str, request_id: str, value: str) -> dict[str, Any]:
     return {"ok": True, "kind": "otp", "masked": "•" * len(value), "say": "OTP page mein bhar diya. Aage badh raha hoon."}
 
 
+def _expire_ask_by_id(tenant: str, request_id: str, say: str) -> bool:
+    """v0.179 the ask card a tap could not reach (browser closed, request unknown): close it on its own key
+    so the card stops waiting in the chat. True when a waiting ask was found and closed."""
+    hit = None
+    with session() as s:
+        rows = s.scalars(select(OperatorTask).where(OperatorTask.tenant_id == tenant,
+                                                    OperatorTask.status.in_(("waiting", "running", "queued")))).all()
+        for row in rows:
+            pend = _j(row.pending, None)
+            if isinstance(pend, dict) and pend.get("id") == request_id:
+                row.pending, row.stage = "", "Aage badh raha hoon" if row.status == "running" else row.stage
+                s.flush()
+                s.expunge(row)
+                hit = (row, pend)
+                break
+    if hit is None:
+        return False
+    row, pend = hit                     # v0.179 publish AFTER the write transaction closed (SQLite: one writer)
+    _close_pending_ask(row, pend, say)
+    if row.status == "waiting":
+        _publish(row)
+    return True
+
+
 async def resolve(tenant: str, request_id: str, status: str, answer: str = "") -> dict[str, Any]:
     if str(request_id).startswith("pcotp_"):          # v0.92 an OTP box on her PC (card / SMS Allow / chat)
         from ..pc import operator as pcop
@@ -378,13 +444,20 @@ async def resolve(tenant: str, request_id: str, status: str, answer: str = "") -
         out = req.public() if req is not None and req.id == request_id else {"id": request_id, "kind": "otp"}
         return {**out, "status": "approved" if status == "approved" else "rejected"}
     have = _ops.get(tenant)
-    if not have:
+    op = have[1] if have else None
+    if op is not None:
+        try:
+            a = await op.resolve_human(request_id, "approved" if status == "approved" else "rejected", answer)
+        except OperatorError as e:
+            # v0.179 the browser no longer knows this request (restarted / gone): close the card, then say so
+            _expire_ask_by_id(tenant, request_id, "Yeh sawaal band ho gaya - website ka kaam aage nahi badha.")
+            raise OperatorJobError(str(e)) from None
+    else:
+        # v0.179 browser is closed: the ask card must not stay pending forever - close it and tell her plainly
+        if _expire_ask_by_id(tenant, request_id,
+                             "Browser band ho gaya tha, isliye yeh sawaal purana ho gaya. Kaam dobara boliye to phir se hoga."):
+            raise OperatorJobError("Yeh sawaal purana ho gaya (browser band hai); card chat mein band kar diya hai.")
         raise OperatorJobError("Browser band hai; yeh sawaal ab purana ho gaya.")
-    op = have[1]
-    try:
-        a = await op.resolve_human(request_id, "approved" if status == "approved" else "rejected", answer)
-    except OperatorError as e:
-        raise OperatorJobError(str(e)) from None
     if a.kind == "otp" and a.status == "approved":
         _FILLED[tenant] = time.time()
     t = active(tenant)

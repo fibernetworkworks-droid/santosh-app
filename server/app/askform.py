@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import DateTime, String, Text, select
@@ -212,3 +212,25 @@ def pending(tenant: str, conv: str = "") -> list[dict[str, Any]]:
         if conv:
             q = q.where(AskForm.conversation_id == conv)
         return [view(f) for f in s.scalars(q.order_by(AskForm.created_at.desc()).limit(10)).all()]
+
+
+def expire_asks(ttl_h: int = 24) -> int:
+    """v0.179 a form nobody filled goes expired after the TTL (worker tick): the card in her chat closes itself
+    instead of waiting at the top for days. The conversation hears the terminal state on the same card key."""
+    from .events import bus
+    cut = now() - timedelta(hours=max(1, int(ttl_h)))
+    with session() as s:
+        rows = s.scalars(select(AskForm).where(AskForm.status == "pending", AskForm.created_at < cut)).all()
+        for f in rows:
+            f.status = "expired"
+        ids = [f.id for f in rows]
+    for fid in ids:
+        with session() as s:
+            f = s.get(AskForm, fid)
+            if f is None or not f.conversation_id:
+                continue
+            try:
+                bus.publish(f.conversation_id, "ask_form", view(f))
+            except Exception:  # noqa: BLE001
+                log.exception("ask_form expiry publish failed")
+    return len(ids)
