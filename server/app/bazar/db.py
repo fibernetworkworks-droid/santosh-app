@@ -465,6 +465,18 @@ class McpToken(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
 
 
+class McpSantoshToken(Base):
+    """v0.182 Bearer token for /santosh/mcp. Separate from McpToken so a notebook client can
+    never place a shopping order and a commerce client can never read notebooks/drive."""
+    __tablename__ = "bz_mcp_santosh_tokens"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)  # = tenant id
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    label: Mapped[str] = mapped_column(String(80), default="")
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=now)
+
+
 class RunnerSpec(Base):
     """v0.154 a directory MCP server Hoola runs on the MCP runner box for this user (one-tap connect)."""
     __tablename__ = "bz_runner_specs"

@@ -9168,6 +9168,11 @@ from .bazar.api import commerce as bazar_commerce  # noqa: E402
 
 bazar_commerce.mount(app, require_key, current_tenant)
 
+# ---------------- Santosh (read-only) MCP at /santosh/mcp ----------------
+from . import mcp_santosh  # noqa: E402
+mcp_santosh.mount(app, require_key, current_tenant)
+
+
 
 # ---------------- catch-up: what Santosh did while the phone was off ----------------
 @app.get("/api/catchup", dependencies=[Depends(require_key)])
