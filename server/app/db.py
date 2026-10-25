@@ -576,6 +576,14 @@ class PcJob(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class PcMemory(Base):
+    """v0.173 What Santosh recently did on this person's PC (operator memory between tasks)."""
+    __tablename__ = "pc_memory"
+    tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    entries: Mapped[list] = mapped_column(JSON, default=list)     # [{t, task, did, status, answer, window}]
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
 class PcFile(Base):
     """A file passing between the PC and the phone. Kept on the server for a short time only."""
     __tablename__ = "pc_files"

@@ -59,6 +59,15 @@ How to work:
   - window minimizes / maximizes / restores / closes an open window by title. Never close a window with her unsaved
     work unless the task needs it (ask_approval first).
   - Long or mixed-language text is typed at once through the clipboard; just use type normally.
+- Remember what is already open (never redo work):
+  - The screenshot lists the open windows. If the app or site the task needs is ALREADY open (a window, or a tab in
+    her browser), switch to it (focus_window / alt+tab / click that tab) and continue THERE. Never open a second copy
+    of the same app or the same site.
+  - Browser continuity: if this work was started in a browser (e.g. WhatsApp Web in Chrome), stay in THAT browser.
+    open_url opens her DEFAULT browser - if the site is already open in Chrome, do not open_url again (it can open
+    Edge instead): focus Chrome and use its address bar (ctrl+l, type the URL, enter).
+  - YAAD at the end of this prompt is your memory of recent finished tasks on this PC: what is done there is done -
+    build on it, don't repeat it.
 - Read what is on the screen and report it accurately; never invent numbers.
 - When the task is done, call done with a short answer in the user's language (Hinglish by default) with the key facts.
   If you cannot finish, call done(success=false) with what you did and what is left.
@@ -164,6 +173,7 @@ class Op:
     action: str = ""
     window: str = ""
     monitor: str = "primary"       # v0.166 which screen the operator works on (model can switch with screenshot)
+    mem: list[str] = field(default_factory=list)   # v0.173 what this run did to the PC (open_app/open_url/...)
     frame: bytes = b""
     frame_seq: int = 0
     timeline: list = field(default_factory=list)
@@ -556,6 +566,13 @@ async def _run(op: Op) -> None:
             system += "\nID LOCKER (type the reference, the PC gets the real number): " + ids
     except Exception:
         pass
+    try:   # v0.173 her memory of what Santosh recently did on this PC ("WhatsApp already Chrome mein khula hai")
+        from . import memory
+        block = memory.prompt_block(op.tenant)
+        if block:
+            system += "\n\n" + block
+    except Exception:
+        pass
     messages: list[dict] = []
     try:
         first = await _shot(op)
@@ -589,6 +606,12 @@ async def _run(op: Op) -> None:
                 op.action = (text or f"{name} {a.get('keys') or a.get('name') or a.get('text', '')[:40] or ''}").strip()[:200]
                 op.timeline.append({"step": op.step, "action": op.action, "do": name, "url": op.window, "t": int(time.time())})
                 del op.timeline[:-60]
+                if name in ("open_app", "open_url", "window", "focus_window", "screenshot"):
+                    # v0.173 the next task's YAAD needs WHAT was opened, not the model's phrasing
+                    arg = a.get("name") or a.get("url") or a.get("title") or \
+                        (f"{a.get('op')} '{a.get('title')}'" if name == "window" else "") or \
+                        (f"monitor={a.get('monitor')}" if name == "screenshot" and a.get("monitor") else "")
+                    op.mem.append(f"{name} {arg or ''}".strip()[:120])
                 _work(op, name)
                 if name == "done":
                     op.summary = str(a.get("answer") or text or "Ho gaya.")[:4000]
@@ -654,6 +677,11 @@ async def _run(op: Op) -> None:
             await _shot(op)
         except Exception:
             pass
+        try:   # v0.173 remember this run for the NEXT task (owner: "Hoola bhool jata hai WhatsApp pehle se khula hai")
+            from . import memory
+            memory.remember(op.tenant, op.task, op.mem[-14:], op.status, op.summary, op.window)
+        except Exception:
+            log.exception("pc memory save failed")
         op.action = {"done": "Ho gaya", "partial": "Poora nahi hua", "failed": "Ruk gaya", "cancelled": "Aapne rok diya"}.get(op.status, op.action)
         _work(op, "_end")
         op.done_event.set()

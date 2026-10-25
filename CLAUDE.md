@@ -17,6 +17,8 @@ unrelated change would touch or break anything above, STOP and ask the developer
 "just fixing it". Last verified good state (25 Oct 2026): desktop 1.3.1 + v0.168 full-hands PC,
 PC suites 29/29 pass, PC commit `e2c91ee`, CI run 40166550140 green,
 desktop-latest exe sha256 `c00ce0d1…a600e6fcb` (size 20405287).
+Exception recorded: the PC-memory work below (v0.177.1) was done ON the owner's explicit ask the
+same day — the freeze stands for everything else until she asks again.
 
 ## What it is
 **Hoola** is an Indian "Dots-like" always-on AI coworker app by Newtika Pvt Ltd (FNW). Owner: Meghana.
@@ -7364,3 +7366,33 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
   model call; 409 while that message's turn runs; 404 twice / unknown id. Two test stubs grew the additive
   `client_id` kwarg (test_chat_files, test_employee). Ritual: 0.172.0 (main.py + pubspec 0.172.0+201 +
   test_routines), cache-bust ?v=0.172.0. Deploy unchanged.
+
+## v0.177.1 PC operator yaad: Hoola remembers what she did on this PC ("all infinite tasks" memory)
+- Owner: "WHEN DESKTOP WORK IS GOING BY HOOLA AI IT MUST REMEMBER... I TELL HOOLA TO OPEN WHATSAPP ON CHROME IT OPENS,
+  BUT LATER 'SEND MSG TO THIS PERSON ON WHATSAPP' HOOLA FORGOT WHATSAPP IS ALREADY OPEN AND OPENS EDGE" — every
+  pc_do used to start from zero: fresh messages, no idea what it opened 10 minutes ago. Done ON the owner's explicit
+  ask (the Mera PC freeze names this one exception). Version re-aligned after rebase onto the dev's 0.174–0.177.
+- `app/pc/memory.py` (new): per-tenant task memory in the DB (`pc_memory` table, one row per person, JSON entries).
+  `remember()` is called in the operator's `finally` for EVERY finished run (done / partial / failed / even cancelled
+  with where it stopped): task text, WHAT was opened (`Op.mem` — open_app Chrome / open_url https://web.whatsapp.com /
+  window close 'X' / focus_window — real tool args, not the model's phrasing), result status, her-language answer, and
+  the LAST ACTIVE WINDOW (so "WhatsApp - Google Chrome" survives even after the operator forgets the picture).
+  `recall()` drops entries older than `pc_memory_hours` (24) and caps at `pc_memory_runs` (8); only the newest 6 go
+  into a prompt. `forget()` on device revoke (unpair = memory of that PC goes with it).
+- The next run's system prompt gets a YAAD block ("your own recent finished work on THIS PC (newest first)... build on
+  it, never redo it") right after the ID LOCKER. And SYSTEM itself grew the reuse-first discipline (works even with an
+  empty YAAD, because the first screenshot already lists open windows): look before opening — if the app/site is
+  ALREADY open (window or browser tab), focus it and continue THERE, never a second copy; browser continuity — work
+  started in Chrome stays in Chrome (open_url opens her DEFAULT browser: if the site is already open in Chrome, do not
+  open_url again, it can open Edge — focus Chrome, ctrl+l, type, enter).
+- Privacy note: memory stores only task text + tool names/args (open_app/open_url/window/focus/screenshot-monitor) +
+  the final answer + last window title — never typed text, screenshots, OTPs or ID numbers.
+- Tests `tests/test_v0173_pc_memory.py` (6): the WhatsApp scenario end to end (task 1 opens WhatsApp Web in Chrome;
+  task 2's system prompt carries the YAAD with the task, open_app/open_url and the WhatsApp window; WhatsApp Web is
+  never open_url-ed again), reuse-first rules always in the prompt, first-ever task has no fake memories, cap=3 and
+  TTL expiry (a 2-hour-old entry under a 1-hour TTL never reaches the model), unpair forgets, a cancelled run still
+  records where it stopped. Also fixed the stale export version pin in `test_v171_transcript.py` (asserted 0.173.0 —
+  broke at the dev's own v0.174–0.177 HEADs; now follows APP_VERSION 0.177.1).
+- Ritual: version 0.177.1 (main.py APP_VERSION + FastAPI version + pubspec 0.177.1+207 + test_routines assert).
+  Desktop untouched: still 1.3.1, no exe rebuild needed (server-side memory only). Deploy unchanged: git pull +
+  cp server/app + pm2 restart.

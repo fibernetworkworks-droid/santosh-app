@@ -167,7 +167,12 @@ def revoke(tenant_id: str, device_id: str) -> bool:
         if not d or d.tenant_id != tenant_id or d.revoked:
             return False
         d.revoked = True
-        return True
+    try:   # v0.173 her memory of that PC's recent work goes with the pairing
+        from . import memory
+        memory.forget(tenant_id)
+    except Exception:
+        log.exception("pc memory forget failed")
+    return True
 
 
 # ---------------- activity log ----------------

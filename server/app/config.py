@@ -261,6 +261,8 @@ class Settings(BaseSettings):
     pc_files_dir: str = "./data/pc_files"     # PC <-> phone files, deleted after pc_file_hours
     pc_file_hours: int = 24
     pc_max_file_mb: int = 50
+    pc_memory_runs: int = 8                   # v0.173 PC operator: last N finished tasks she remembers per PC
+    pc_memory_hours: int = 24                 # and how long an entry stays useful
     secret_key: str = ""                    # encrypts stored tokens (set a long random value in production)
     public_base_url: str = ""               # e.g. https://santosh.139-59-10-30.sslip.io (for the OAuth redirect)
     google_oauth_client_id: str = ""
