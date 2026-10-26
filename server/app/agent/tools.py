@@ -33,6 +33,11 @@ TEMPLATE_PROPS = {
 }
 
 TOOLS = [
+    {"name": "make_advanced_excel", "description": "Create a complex Excel workbook with multiple sheets, formulas, formatting, and charts. Pass a JSON spec exactly as defined in the xlsx skill.", "input_schema": {"type": "object", "properties": {"spec": {"type": "object", "description": "The JSON spec matching the xlsx.md schema"}}, "required": ["spec"]}},
+    {"name": "url_to_pdf", "description": "Download any webpage, article, or documentation, and convert it into a beautifully formatted, multi-page A4 PDF with page numbers. Use this when the user wants a PDF of a URL.", "input_schema": {"type": "object", "properties": {"url": {"type": "string"}, "title": {"type": "string", "description": "Optional title for the PDF"}}, "required": ["url"]}},
+    {"name": "make_document", "description": "Create a professional PDF, DOCX, or XLSX file. Use the document skill standards for perfect fonts, margins, and styles.", "input_schema": {"type": "object", "properties": {"type": {"type": "string", "enum": ["pdf", "docx", "xlsx", "preview"]}, "title": {"type": "string"}, "html_content": {"type": "string", "description": "For PDF/preview: full HTML with inline CSS"}, "paragraphs": {"type": "array", "items": {"type": "string"}}, "headers": {"type": "array", "items": {"type": "string"}}, "rows": {"type": "array", "items": {"type": "array"}}}, "required": ["type", "title"]}},
+    {"name": "todo_write", "description": "Create or update your task list. Call this when you start a multi-step task (3+ steps), and after every step to mark it completed. Each call REPLACES the whole list. Status: pending | in_progress | completed.", "input_schema": {"type": "object", "properties": {"todos": {"type": "array", "items": {"type": "object", "properties": {"content": {"type": "string"}, "status": {"type": "string", "enum": ["pending", "in_progress", "completed"]}}, "required": ["content", "status"]}}}, "required": ["todos"]}},
+    {"name": "sleep", "description": "Wait for N seconds. Use this to pause before checking a background task status.", "input_schema": {"type": "object", "properties": {"seconds": {"type": "integer"}}, "required": ["seconds"]}},
     {"name": "list_lead_lists", "description": "List the contact lists the user has uploaded, newest first.",
      "input_schema": {"type": "object", "properties": {}}},
     {"name": "get_lead_list", "description": "Details of one contact list: counts, columns, whether it has an opt-in column, a few sample first names.",
@@ -70,7 +75,50 @@ TOOLS = [
                       "required": ["campaign_id", "action"]}},
 ]
 
+async def sleep_tool(ctx, seconds=10, **_):
+    import asyncio
+    await asyncio.sleep(min(int(seconds), 60))
+    return f"Waited {seconds} seconds."
+
+async def todo_write(ctx, todos=None, **_):
+    """Store the todo list in memory (per conversation) so it can be injected into the system prompt."""
+    from .. import livereply
+    live = livereply.current(ctx.conversation_id)
+    if live is not None:
+        live.todos = todos or []
+    # Publish to the app so the user sees the checklist live
+    from ..events import bus
+    bus.publish(ctx.conversation_id, "todos", {"todos": todos or []})
+    return f"Todo list updated: {len(todos or [])} items."
+
+async def make_document(ctx, type, title, html_content="", paragraphs=None, headers=None, rows=None, **_):
+    from ..document_generator import generate_pdf, generate_docx, generate_xlsx, generate_preview
+    if type == "pdf":
+        return generate_pdf(html_content or f"<h1>{title}</h1>")
+    if type == "docx":
+        return generate_docx(title, paragraphs or [])
+    if type == "xlsx":
+        return generate_xlsx(title, headers or [], rows or [])
+    if type == "preview":
+        return generate_preview(html_content or f"<h1>{title}</h1>")
+    return {"error": "Unknown document type"}
+
+async def url_to_pdf(ctx, url, title="", **_):
+    import asyncio
+    from ..document_generator import generate_pdf_from_url
+    return await asyncio.to_thread(generate_pdf_from_url, url, title)
+
+async def make_advanced_excel(ctx, spec, **_):
+    import asyncio
+    from ..document_generator import generate_advanced_excel
+    return await asyncio.to_thread(generate_advanced_excel, spec)
+
 TOOL_LABELS = {
+    "make_advanced_excel": "Excel sheet bana raha hoon",
+    "url_to_pdf": "Website ka PDF bana raha hoon",
+    "make_document": "Document bana raha hoon",
+    "todo_write": "Kaam ki list bana raha hoon",
+    "sleep": "Ruk raha hoon...",
     "list_lead_lists": "Contact lists dekh raha hoon",
     "get_lead_list": "Leads padh raha hoon",
     "check_template": "Template ke rules check kar raha hoon",
@@ -873,3 +921,59 @@ for _t, _l, _h in ((EDITDESK_TOOLS, EDITDESK_LABELS, EDITDESK_HANDLERS), (MOTION
     TOOLS.extend(t for t in _t if t["name"] not in _seen)
     TOOL_LABELS.update(_l)
     HANDLERS.update(_h)
+
+
+# ---------- v0.195 clipboard tools ----------
+try:
+    from .clipboard_tools import CLIPBOARD_TOOLS, CLIPBOARD_HANDLERS, CLIPBOARD_LABELS
+    TOOLS.extend(CLIPBOARD_TOOLS)
+    TOOL_LABELS.update(CLIPBOARD_LABELS)
+    if "TOOL_HANDLERS" in dir():
+        TOOL_HANDLERS.update(CLIPBOARD_HANDLERS)
+    elif "HANDLERS" in dir():
+        HANDLERS.update(CLIPBOARD_HANDLERS)
+    print(f"[clipboard] registered {len(CLIPBOARD_TOOLS)} tools")
+except Exception as _e:
+    print(f"[clipboard] registration skipped: {_e}")
+
+
+# v0.196 WIRE HANDLERS: ensure every declared tool has a handler in HOOLA_HANDLERS
+try:
+    from .clipboard_tools import CLIPBOARD_HANDLERS as _CH
+    for _k, _fn in _CH.items():
+        if _k not in HOOLA_HANDLERS:
+            HOOLA_HANDLERS[_k] = _fn
+            print(f"[v0.196] wired clipboard handler: {_k}")
+except Exception as _e:
+    print(f"[v0.196] clipboard wiring skipped: {_e}")
+
+for _name, _fn_name in [
+    ("sleep", "sleep_tool"),
+    ("todo_write", "todo_write"),
+    ("make_document", "make_document"),
+    ("url_to_pdf", "url_to_pdf"),
+    ("make_advanced_excel", "make_advanced_excel"),
+]:
+    if _name not in HOOLA_HANDLERS:
+        _fn = globals().get(_fn_name)
+        if _fn and callable(_fn):
+            HOOLA_HANDLERS[_name] = _fn
+            print(f"[v0.196] wired handler: {_name}")
+        else:
+            print(f"[v0.196] MISSING function: {_fn_name}")
+
+
+# v0.196c MERGE HANDLERS: copy the original HANDLERS dict into HOOLA_HANDLERS
+try:
+    _orig = globals().get("HANDLERS") or {}
+    _merged = 0
+    for _k, _fn in _orig.items():
+        if _k not in HOOLA_HANDLERS and callable(_fn):
+            HOOLA_HANDLERS[_k] = _fn
+            _merged += 1
+    if _merged:
+        print(f"[v0.196c] merged {_merged} handlers from HANDLERS into HOOLA_HANDLERS")
+    else:
+        print("[v0.196c] no new handlers to merge")
+except Exception as _e:
+    print(f"[v0.196c] merge failed: {_e}")
