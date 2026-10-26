@@ -1955,6 +1955,19 @@ class Call:
                         self._handle_dropped = True
                         self.handle = None
                         continue
+                    # v0.185.3 the refusal's REAL arrival (seen live on the VPS, 26 Oct): the SDK's connect()
+                    # returns before setupComplete, so the generic 1007 comes in as a stream close ("voice
+                    # stream ended: ConnectionClosedError 1007"), never as a connect error - the connect-time
+                    # heal above never fired, and every ladder rung went out with affective still on (both
+                    # test calls died "0 turns" while the phone showed a connected-but-silent call). The same
+                    # heal, at the place the refusal actually arrives: drop affective process-wide and retry
+                    # the SAME setup once. With affective already off (or disabled in .env) the ladder climbs
+                    # exactly as before - no loop, no hang.
+                    if _AFFECTIVE["ok"] and get_settings().voice_affective:
+                        _AFFECTIVE["ok"] = False
+                        log.warning("Gemini refused the setup with affective dialog on (%s); dropping it for the "
+                                    "process and retrying the same setup", str(err)[:160])
+                        continue
                     if (get_settings().voice_safe_setup and not self._safe_worked and loop.time() - started < 30
                             and self._safe < len(SETUP_STEPS)):
                         if self._safe == 0 and not mcp_defs:

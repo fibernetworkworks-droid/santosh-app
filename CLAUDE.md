@@ -7727,6 +7727,30 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
   Desktop untouched: still 1.3.1, no exe rebuild needed (server-side memory only). Deploy unchanged: git pull +
   cp server/app + pm2 restart.
 
+## v0.185.3 THE AFFECTIVE HEAL MOVES TO WHERE THE REFUSAL REALLY ARRIVES (the connected-but-silent call)
+
+- THE REAL SHAPE (live VPS pm2 log, 26 Oct ~11:49, both calls "done: 0 turns"): the google-genai SDK's
+  connect() returns BEFORE setupComplete, so Gemini's generic "1007 Request contains an invalid argument"
+  does NOT raise at connect - it arrives mid-stream as "voice stream ended: ConnectionClosedError(Close
+  (code=1007, reason='Request contains an invalid argument.')...)". The v0.185.1 heal sat only on the
+  connect-error path, so in production it never fired; the SETUP ladder climbed rung by rung
+  (without mcp -> mcp,vocab -> +langcodes -> +compression) with enable_affective_dialog STILL ON in every
+  rebuilt config, and every rung was refused. voicecheck kept saying "healthy" because its _attempt()
+  catches the refusal wherever it arrives and drops affective - the instrument was right, the call loop
+  was not. The old v0.185.1 test faked the refusal AT connect (raise before yield) - green tests, broken
+  production path.
+- FIX (voice.py call loop): in the setup_refused() handling - AFTER the mid-call-client_content branch and
+  the stale-handle branch, BEFORE the ladder climb - the same process-wide affective drop now runs:
+  _AFFECTIVE["ok"] = False, log, retry the SAME setup once. With affective already off (or VOICE_AFFECTIVE
+  =false in .env) the ladder climbs exactly as before - no loop, no hang. Connect-time heal unchanged.
+- TESTS: NEW tests/test_v01853_voice_stream_heal.py (2) - the EXACT VPS shape (connect ok, receive() raises
+  the real websockets ConnectionClosedError(Close(1007))): heal fires in place, 2 connects, ladder untouched,
+  the healed session's turn plays out to turn_done; and with affective off the stream-close still climbs the
+  ladder to the honest error event. Version 0.185.3 (pubspec 0.185.3+218, console ?v=0.185.3, conscious pins
+  0.185.2->0.185.3 in test_v0179/email_phase1-4/test_v0185); desktop untouched 1.4.0 (server-only deploy).
+- Owner-side instant mitigation (no deploy): VOICE_AFFECTIVE=false in ~/apps/santosh-core/.env - the config
+  then matches exactly what voicecheck proved works (works_at=0).
+
 ## v0.185.2 VOICECHECK X-RAY FIX: the instrument now finds the affective refusal (and the rollback day)
 - The day 0.185.1 went live, the owner reported voice still broken; the voicecheck X-ray on her VPS returned
   "works_at: null — nothing works at any rung", which contradicted the v0.180-known-good baseline. The audit
