@@ -92,8 +92,11 @@ class GoalCard extends StatelessWidget {
           const SizedBox(height: 12),
           SizedBox(height: 38, child: OutlinedButton.icon(
             onPressed: () async {
+              final id = app.conversationId;
+              final api = app.api;
+              if (id == null || api == null) return;
               try {
-                await app.api.stopGoal(app.conversationId);
+                await api.stopGoal(id);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Lamba kaam rok diya gaya.'), duration: Duration(seconds: 2)));
