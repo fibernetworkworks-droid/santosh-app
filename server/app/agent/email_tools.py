@@ -1,7 +1,7 @@
 """Email tools: the user's own mailboxes (Gmail / Outlook by sign-in, or any email by app password).
 
 Reading, sorting and organising happen straight away. Sending (draft card -> Bhejo), deleting and bulk mail
-(approval cards) always wait for the user's tap.
+(always) and delete-forever / draft-send / alias-remove (confirm cards) wait for the user's tap.
 """
 from __future__ import annotations
 
@@ -110,10 +110,66 @@ EMAIL_TOOLS = [
          "account": {"type": "string"}}, "required": ["action"]}},
     {"name": "email_drafts", "description": (
         "The drafts saved in the mailbox's own Drafts folder (Gmail). action='list' shows them (subject, to, when). "
-        "action='delete' with id removes one — behind a confirm card, because a Gmail draft does not go to Trash."),
+        "action='read' with id shows one fully (to, cc, subject, body, attachment names). action='edit' with id + only "
+        "the fields that change (to / cc / subject / body / markdown) rewrites that Gmail draft in place — attachments "
+        "and the conversation thread stay. action='send' with id sends that Gmail draft — behind a confirm card, "
+        "because it really goes out. action='delete' with id removes one — behind a confirm card (a Gmail draft does "
+        "not go to Trash). id is the draft_id (or ref) from 'list'. Gmail accounts only; other mailboxes are told so."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["list", "delete"]}, "id": {"type": "string"},
+         "action": {"type": "string", "enum": ["list", "read", "edit", "send", "delete"]}, "id": {"type": "string"},
+         "to": {"type": "string"}, "cc": {"type": "string"}, "subject": {"type": "string"},
+         "body": {"type": "string"}, "markdown": {"type": "boolean"},
          "limit": {"type": "integer"}, "account": {"type": "string"}}, "required": ["action"]}},
+    {"name": "email_filters", "description": (
+        "Gmail's OWN filters (Gmail web > Settings > Filters): they run INSIDE Gmail forever — even when the phone is "
+        "off and even if Hoola's server is down (unlike email_rule, which runs on Hoola's watcher). action='list' shows "
+        "them. action='create' with match + do: match = {from, to, subject, query (raw Gmail search), has_attachment, "
+        "larger_kb, smaller_kb, exclude_chats}; do = {label (created if missing), archive, star, mark_read, important, "
+        "not_important, category (personal/social/updates/forums/promotions), forward (a VERIFIED forwarding address)"
+        "}. Delete-keeping actions are deliberately NOT offered — new mail is never destroyed by a filter. "
+        "action='delete' with filter_id removes one (mails it already labelled stay)."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["list", "create", "delete"]},
+         "match": {"type": "object", "properties": {
+             "from": {"type": "string"}, "to": {"type": "string"}, "subject": {"type": "string"},
+             "query": {"type": "string"}, "has_attachment": {"type": "boolean"},
+             "larger_kb": {"type": "integer"}, "smaller_kb": {"type": "integer"},
+             "exclude_chats": {"type": "boolean"}}},
+         "do": {"type": "object", "properties": {
+             "label": {"type": "string"}, "archive": {"type": "boolean"}, "star": {"type": "boolean"},
+             "mark_read": {"type": "boolean"}, "important": {"type": "boolean"}, "not_important": {"type": "boolean"},
+             "category": {"type": "string"}, "forward": {"type": "string"}}},
+         "filter_id": {"type": "string"}, "account": {"type": "string"}}, "required": ["action"]}},
+    {"name": "email_forwarding", "description": (
+        "Gmail's forwarding-address book. auto_forward (email_accounts) and a filter's forward both need an address "
+        "that is IN this book AND verified. action='list' shows them with status. action='add' with email adds one — "
+        "Google mails a verification link to that inbox; she clicks it there, then forwarding can start. "
+        "action='remove' with email takes it off the book."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["list", "add", "remove"]}, "email": {"type": "string"},
+         "account": {"type": "string"}}, "required": ["action"]}},
+    {"name": "email_alias", "description": (
+        "Gmail send-as aliases. action='list' shows them (verified / pending, has signature). action='add' with email "
+        "(name optional) adds a NEW 'Send mail as' address — Google sends that inbox a confirmation; after it is "
+        "verified, email_draft from_alias sends from it. action='remove' with email takes an alias off (the primary "
+        "address never) — behind a confirm card."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["list", "add", "remove"]}, "email": {"type": "string"},
+         "name": {"type": "string"}, "reply_to": {"type": "string"}, "account": {"type": "string"}},
+         "required": ["action"]}},
+    {"name": "email_threads", "description": (
+        "WHOLE Gmail conversations in one go (threads.modify / threads.trash): action='list' with query (Gmail "
+        "search, default in:inbox) + limit shows conversations with ref, subject, from, count, unread, snippet. "
+        "action='read' with a message id from email_check reads the whole conversation (same as email_thread). "
+        "action='act' with refs + one of archive / trash / inbox / mark_read / mark_unread / star / unstar / move "
+        "(folder=) applies it to EVERY mail in those conversations at once. Gmail accounts only."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["list", "read", "act"]},
+         "query": {"type": "string"}, "limit": {"type": "integer"},
+         "refs": {"type": "array", "items": {"type": "string"}},
+         "id": {"type": "string", "description": "a message id for action=read"},
+         "act": {"type": "string", "enum": ["archive", "trash", "inbox", "mark_read", "mark_unread", "star", "unstar", "move"]},
+         "folder": {"type": "string"}, "account": {"type": "string"}}, "required": ["action"]}},
     {"name": "email_rule", "description": (
         "Her inbox rules and saved searches (Santosh-side, so they work for Gmail AND Outlook/IMAP). "
         "action='create' with match + actions: match = {from: 'hdfcbank' (sender words/emails, comma = any of), "
@@ -165,8 +221,11 @@ EMAIL_TOOLS = [
          "contacts_only": {"type": "boolean", "description": "Answer only saved contacts"},
          "account": {"type": "string", "description": "Which Gmail mailbox (address)"}}, "required": ["action"]}},
     {"name": "email_delete", "description": (
-        "Delete emails (move to Trash). Shows the user a confirm card; nothing is deleted until they approve."),
-     "input_schema": {"type": "object", "properties": {"ids": {"type": "array", "items": {"type": "string"}}},
+        "Delete emails. Default: move to Trash (recoverable for 30 days) behind a confirm card. forever=true asks for "
+        "a PERMANENT delete instead (Gmail only): the mail skips Trash and cannot be recovered — the card says this "
+        "in plain words and only the user's tap does it. OTP / security mails are never deleted by themselves."),
+     "input_schema": {"type": "object", "properties": {"ids": {"type": "array", "items": {"type": "string"}},
+                      "forever": {"type": "boolean", "description": "true = permanent delete, no Trash (Gmail only)"}},
                       "required": ["ids"]}},
     {"name": "email_follow_up", "description": (
         "Follow-up reminders. action='add' with email_id + days: for a mail the user SENT, remind if the other person "
@@ -212,6 +271,11 @@ EMAIL_TOOLS = [
          "signature_push": {"type": "boolean", "description": "Push this mailbox's signature into Gmail itself"},
          "send_as": {"type": "boolean", "description": "List Gmail send-as aliases + auto-forwarding (read-only)"},
          "auto_forward": {"type": "string", "description": "'off', or an email address to forward new mail to"},
+         "imap": {"type": "string", "enum": ["get", "on", "off"], "description": "Gmail ka IMAP setting"},
+         "pop": {"type": "string", "enum": ["get", "off", "all", "from_now_on"], "description": "Gmail ka POP download setting"},
+         "pop_disposition": {"type": "string", "enum": ["leave_in_inbox", "archive", "trash", "mark_read"],
+                             "description": "what Gmail does with mail fetched via POP (with pop)"},
+         "language": {"type": "string", "description": "'get', or a Gmail display language code (hi / en / en-GB / mr / ta)"},
          "watch_mode": {"type": "string", "enum": ["off", "vip", "all"],
                         "description": "New-mail announcements: off / vip (default) / all"},
          "mute": {"type": "string", "description": "Sender emails to never announce (comma-separated), or 'clear'"}}}},
@@ -222,7 +286,11 @@ EMAIL_LABELS = {"email_check": "Inbox dekh raha hoon", "email_read": "Email padh
                 "email_attachment": "Attachment khol raha hoon",
                 "email_draft": "Email likh raha hoon", "email_forward": "Email forward kar raha hoon",
                 "email_action": "Emails sambhal raha hoon", "email_label": "Labels sambhal raha hoon",
-                "email_drafts": "Mailbox ke drafts dekh raha hoon",
+                "email_drafts": "Mailbox ke drafts sambhal raha hoon",
+                "email_filters": "Gmail ka filter sambhal raha hoon",
+                "email_forwarding": "Forwarding addresses sambhal raha hoon",
+                "email_alias": "Send-as alias sambhal raha hoon",
+                "email_threads": "Poore conversations sambhal raha hoon",
                 "email_delete": "Delete ki manzoori le raha hoon",
                 "email_follow_up": "Follow-up laga raha hoon", "email_bulk": "Bulk email taiyaar kar raha hoon",
                 "email_bulk_status": "Bulk email dekh raha hoon", "email_contacts": "Address dhoondh raha hoon",
@@ -446,12 +514,31 @@ async def email_label(ctx: Ctx, action, name="", new_name="", color="", account=
                     account, str(color or ""))
 
 
-async def email_drafts(ctx: Ctx, action="list", id=None, limit=10, account=None, **_):
+async def email_drafts(ctx: Ctx, action="list", id=None, limit=10, account=None, to=None, cc=None, subject=None,
+                       body=None, markdown=None, **_):
     if action == "delete":
         if not id:
             raise ToolError("Kaunsa draft? id do (email_drafts list se).")
         out = await _t(_bazar, ctx, "confirm_draft_delete", {"id": str(id)})
         out.setdefault("say", "A confirm card is in the chat; the Gmail draft goes only after the user approves.")
+        return out
+    if action == "read":
+        if not id:
+            raise ToolError("Kaunsa draft? id do (email_drafts list se).")
+        return await _t(ms.gmail_draft_view, ctx.tenant_id, str(id), account)
+    if action == "edit":
+        if not id:
+            raise ToolError("Kaunsa draft? id do (email_drafts list se).")
+        if to is None and cc is None and subject is None and body is None:
+            raise ToolError("Kya badalna hai? to / cc / subject / body mein se jo badle wahi dijiye.")
+        return await _t(ms.gmail_draft_edit, ctx.tenant_id, str(id), None if to is None else str(to),
+                        None if cc is None else str(cc), None if subject is None else str(subject),
+                        None if body is None else str(body), markdown, account)
+    if action == "send":
+        if not id:
+            raise ToolError("Kaunsa draft? id do (email_drafts list se).")
+        out = await _t(_bazar, ctx, "confirm_draft_send", {"id": str(id), "account": account or ""})
+        out.setdefault("say", "A confirm card is in the chat; the Gmail draft really goes out only after the user approves.")
         return out
     return await _t(ms.gmail_drafts, ctx.tenant_id, int(limit or 10), account)
 
@@ -465,10 +552,42 @@ def _bazar(ctx: Ctx, tool: str, args: dict) -> dict:
         raise ToolError(str(e))
 
 
-async def email_delete(ctx: Ctx, ids, **_):
-    out = await _t(_bazar, ctx, "confirm_delete", {"ids": [str(i) for i in ids or []]})
-    out.setdefault("say", "A confirm card is in the chat; the emails go to Trash only after the user approves.")
+async def email_delete(ctx: Ctx, ids, forever=False, **_):
+    out = await _t(_bazar, ctx, "confirm_delete", {"ids": [str(i) for i in ids or []], "forever": bool(forever)})
+    out.setdefault("say", "A confirm card is in the chat; nothing is deleted until the user approves "
+                         "(Trash normally, forever only if the card says so).")
     return out
+
+
+async def email_filters(ctx: Ctx, action="list", match=None, do=None, filter_id=None, account=None, **_):
+    return await _t(ms.filter_op, ctx.tenant_id, str(action or "list"), dict(match or {}), dict(do or {}),
+                    str(filter_id or ""), account)
+
+
+async def email_forwarding(ctx: Ctx, action="list", email="", account=None, **_):
+    return await _t(ms.forwarding_op, ctx.tenant_id, str(action or "list"), str(email or ""), account)
+
+
+async def email_alias(ctx: Ctx, action="list", email="", name="", reply_to="", account=None, **_):
+    if action == "remove":
+        out = await _t(_bazar, ctx, "confirm_alias_delete", {"email": str(email or ""), "account": account or ""})
+        out.setdefault("say", "A confirm card is in the chat; the alias goes only after the user approves.")
+        return out
+    return await _t(ms.alias_op, ctx.tenant_id, str(action or "list"), str(email or ""), str(name or ""),
+                    str(reply_to or ""), account)
+
+
+async def email_threads(ctx: Ctx, action="list", query="", limit=10, refs=None, id=None, act="", folder="",
+                        account=None, **_):
+    if action == "list":
+        return await _t(ms.threads_list, ctx.tenant_id, str(query or "in:inbox"), int(limit or 10), account)
+    if action == "read":
+        if not id:
+            raise ToolError("Kaunsa conversation? ek mail ka id do (email_check se).")
+        return await _t(ms.thread, ctx.tenant_id, str(id))
+    if action == "act":
+        return await _t(ms.thread_act, ctx.tenant_id, [str(r) for r in refs or []], str(act or ""), folder or "")
+    raise ToolError("action: list / read / act")
 
 
 async def email_follow_up(ctx: Ctx, action, email_id=None, days=3, watch_id=None, **_):
@@ -519,7 +638,7 @@ async def email_contacts(ctx: Ctx, query, **_):
 
 async def email_accounts(ctx: Ctx, account=None, signature=None, make_default=None, daily_summary=None,
                          undo_seconds=None, watch_mode=None, mute=None, signature_push=None, send_as=None,
-                         auto_forward=None, **_):
+                         auto_forward=None, imap=None, pop=None, pop_disposition=None, language=None, **_):
     changed = []
     if signature is not None:
         box = await _t(get_box, ctx.tenant_id, account)
@@ -564,6 +683,34 @@ async def email_accounts(ctx: Ctx, account=None, signature=None, make_default=No
         out_card.setdefault("say", "A confirm card is in the chat; Gmail's own forwarding changes only after the user "
                                    "approves.")
         return out_card
+    if imap is not None:                                   # v0.186.0 Gmail's IMAP / POP / language settings
+        box, blocked = await _settings_gate(ctx, account)
+        if blocked:
+            return blocked
+        if str(imap).strip().lower() == "get":
+            out = await _t(ms.settings_status, ctx.tenant_id, box.key)
+            return {"imap": out.get("imap"), "account": out.get("account"),
+                    "note": "'on' / 'off' se badal sakte hain."}
+        return await _t(ms.imap_set, ctx.tenant_id, box.key, str(imap).strip().lower() == "on")
+    if pop is not None:
+        box, blocked = await _settings_gate(ctx, account)
+        if blocked:
+            return blocked
+        if str(pop).strip().lower() == "get":
+            out = await _t(ms.settings_status, ctx.tenant_id, box.key)
+            return {"pop": out.get("pop"), "account": out.get("account"),
+                    "note": "'off' / 'all' / 'from_now_on' se badal sakte hain."}
+        return await _t(ms.pop_set, ctx.tenant_id, box.key, str(pop).strip().lower(),
+                        str(pop_disposition or "leave_in_inbox"))
+    if language is not None:
+        box, blocked = await _settings_gate(ctx, account)
+        if blocked:
+            return blocked
+        if str(language).strip().lower() == "get":
+            out = await _t(ms.settings_status, ctx.tenant_id, box.key)
+            return {"language": out.get("language"), "account": out.get("account"),
+                    "note": "Naya code dijiye (hi / en / en-GB / mr / ta)."}
+        return await _t(ms.language_set, ctx.tenant_id, box.key, str(language))
     out: dict[str, Any] = {"mailboxes": await _t(views, ctx.tenant_id),
                            "watch": await _t(sync.watch_views, ctx.tenant_id),
                            "muted": await _t(sync.muted, ctx.tenant_id)}
@@ -722,6 +869,8 @@ EMAIL_HANDLERS = {"email_check": email_check, "email_read": email_read, "email_t
                   "email_triage": email_triage,
                   "email_attachment": email_attachment, "email_draft": email_draft, "email_forward": email_forward,
                   "email_action": email_action, "email_label": email_label, "email_drafts": email_drafts,
+                  "email_filters": email_filters, "email_forwarding": email_forwarding,
+                  "email_alias": email_alias, "email_threads": email_threads,
                   "email_delete": email_delete, "email_follow_up": email_follow_up,
                   "email_bulk": email_bulk, "email_bulk_status": email_bulk_status, "email_contacts": email_contacts,
                   "email_accounts": email_accounts, "email_rule": email_rule, "email_snooze": email_snooze,

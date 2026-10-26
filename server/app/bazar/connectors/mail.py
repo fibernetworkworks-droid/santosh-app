@@ -15,8 +15,10 @@ class MailExecutor:
 
     def tool_specs(self, pack: Pack, ctx: Ctx) -> list[ToolSpec]:
         return [
-            ToolSpec("confirm_delete", "Ask the user to approve moving these emails to Trash.",
-                     {"type": "object", "properties": {"ids": {"type": "array", "items": {"type": "string"}}},
+            ToolSpec("confirm_delete", "Ask the user to approve moving these emails to Trash (or, with forever=true, "
+                     "deleting them PERMANENTLY — no Trash).",
+                     {"type": "object", "properties": {"ids": {"type": "array", "items": {"type": "string"}},
+                                                       "forever": {"type": "boolean"}},
                       "required": ["ids"]}, 2),
             ToolSpec("confirm_bulk", "Ask the user to approve sending a prepared bulk email.",
                      {"type": "object", "properties": {"bulk_id": {"type": "string"}}, "required": ["bulk_id"]}, 2),
@@ -36,6 +38,12 @@ class MailExecutor:
             ToolSpec("confirm_auto_forward", "Ask the user to approve changing Gmail's own auto-forwarding.",
                      {"type": "object", "properties": {"enable": {"type": "boolean"}, "to": {"type": "string"},
                                                         "account": {"type": "string"}}, "required": ["enable"]}, 2),
+            ToolSpec("confirm_draft_send", "Ask the user to approve SENDING the draft that already sits in Gmail.",
+                     {"type": "object", "properties": {"id": {"type": "string"}, "account": {"type": "string"}},
+                      "required": ["id"]}, 2),
+            ToolSpec("confirm_alias_delete", "Ask the user to approve removing a Gmail send-as alias (the primary never).",
+                     {"type": "object", "properties": {"email": {"type": "string"}, "account": {"type": "string"}},
+                      "required": ["email"]}, 2),
         ]
 
     def call(self, pack: Pack, tool: str, args: dict[str, Any], ctx: Ctx) -> dict[str, Any] | NeedsApproval:
@@ -44,6 +52,7 @@ class MailExecutor:
         tenant = ctx.user.id
         if tool == "confirm_delete":
             ids = [str(i) for i in (args.get("ids") or []) if str(i).strip()]
+            forever = bool(args.get("forever"))
             if not ids:
                 raise ToolError("Kaunsi emails delete karni hain? ids do.")
             if len(ids) > MAX_DELETE:
@@ -51,17 +60,27 @@ class MailExecutor:
             items = []
             try:
                 for ref in ids[:5]:
-                    m = ms.read(tenant, ref, mark_seen=False)
+                    # learn_contacts=False: this runs INSIDE the bazar transaction - a nested write on SQLite
+                    # locked the whole DB ("database is locked") whenever the mail was from a real person.
+                    m = ms.read(tenant, ref, mark_seen=False, learn_contacts=False)
                     items.append({"name": f"{m['from'][:40]}: {m['subject'][:70]}"})
             except MailError as e:
                 raise ToolError(str(e))
             if len(ids) > 5:
                 items.append({"name": f"+ {len(ids) - 5} aur emails"})
-            items.append({"name": "Trash mein jayengi (30 din tak wapas la sakte hain)."})
-            return NeedsApproval(tier=2, title=f"{len(ids)} email delete karein?", payee="Email", amount_paise=0,
+            if forever:
+                items.append({"name": "HAMESHA KE LIYE delete hongi — Trash mein bhi nahi milengi, wapas NAHI aayengi."})
+                items.append({"name": "Pakka? Agar shak ho to forever ke bina wahi delete Trash mein jaati (30 din tak wapas la sakte hain)."})
+            else:
+                items.append({"name": "Trash mein jayengi (30 din tak wapas la sakte hain)."})
+            title = (f"{len(ids)} email HAMESHA KE LIYE delete karein?" if forever
+                     else f"{len(ids)} email delete karein?")
+            return NeedsApproval(tier=2, title=title, payee="Email", amount_paise=0,
                                  items=items, pay_method="Santosh Email",
-                                 preview={"message": f"Approve to move {len(ids)} email(s) to Trash."},
-                                 action={"executor": "mail", "pack_id": pack.id, "name": "delete", "args": {"ids": ids}})
+                                 preview={"message": (f"Approve to permanently delete {len(ids)} email(s) — no Trash."
+                                                      if forever else f"Approve to move {len(ids)} email(s) to Trash.")},
+                                 action={"executor": "mail", "pack_id": pack.id,
+                                         "name": ("delete_forever" if forever else "delete"), "args": {"ids": ids}})
         if tool == "confirm_bulk":
             v = ms.bulk_view(tenant, str(args.get("bulk_id", "")))
             if v is None or v["status"] != "pending":
@@ -102,6 +121,44 @@ class MailExecutor:
                                  preview={"message": "Approve to delete this draft from the Gmail Drafts folder."},
                                  action={"executor": "mail", "pack_id": pack.id, "name": "draft_delete",
                                          "args": {"id": did}})
+        if tool == "confirm_draft_send":
+            did = str(args.get("id") or "").strip()
+            if not did:
+                raise ToolError("Kaunsa draft? id do (email_drafts list se).")
+            try:
+                v = ms.gmail_draft_view(tenant, did, str(args.get("account") or "") or None)
+            except MailError as e:
+                raise ToolError(str(e))
+            items = [{"name": f"Kiske liye: {v['to'][:90]}"}]
+            if v.get("cc"):
+                items.append({"name": f"Cc: {v['cc'][:90]}"})
+            items.append({"name": f"Vishay: {v['subject'][:90]}"})
+            items.append({"name": (v.get("body") or "")[:240] + ("…" if len(v.get("body") or "") > 240 else "")})
+            if v.get("attachments"):
+                items.append({"name": "Attachments: " + ", ".join(v["attachments"])[:120]})
+            items.append({"name": "Yeh Gmail ke Drafts folder wala draft seedha BHEJEGI — baad mein undo nahi hoga."})
+            return NeedsApproval(tier=2, title="Yeh Gmail draft bhejein?", payee=v.get("account") or "Gmail",
+                                 amount_paise=0, items=items, pay_method="Santosh Email",
+                                 preview={"message": f"Approve to send the Gmail draft '{v['subject'][:60]}'."},
+                                 action={"executor": "mail", "pack_id": pack.id, "name": "draft_send",
+                                         "args": {"id": did, "account": str(args.get("account") or "")}})
+        if tool == "confirm_alias_delete":
+            em = str(args.get("email") or "").strip().lower()
+            if not em:
+                raise ToolError("Kaunsa alias? email do (email_alias list se).")
+            me = ms.alias_find(tenant, em, str(args.get("account") or "") or None)
+            if me is None:
+                raise ToolError(f"'{em}' naam ka alias is Gmail mein nahi hai.")
+            if me.get("isPrimary"):
+                raise ToolError("Primary address kabhi hat nahi sakta — woh khud Gmail ka login hai.")
+            return NeedsApproval(tier=2, title=f"Alias '{em}' hatayein?", payee="Gmail", amount_paise=0,
+                                 items=[{"name": f"Gmail ka send-as alias '{em}' hata degi."},
+                                        {"name": "Is address se ab mail nahi bhej paayengi (purane mails waise hi hain)."},
+                                        {"name": "Dobara jodna ho to email_alias action='add' se hoga."}],
+                                 pay_method="Santosh Email",
+                                 preview={"message": f"Approve to remove the send-as alias '{em}'."},
+                                 action={"executor": "mail", "pack_id": pack.id, "name": "alias_delete",
+                                         "args": {"email": em, "account": str(args.get("account") or "")}})
         if tool == "confirm_vacation":
             from ...mailbox.accounts import get_box, settings_scope_ok
             enable = bool(args.get("enable"))
@@ -199,6 +256,15 @@ class MailExecutor:
             if action == "delete":
                 n = ms.trash(tenant, list(args["ids"]))
                 return {"message": f"{n} email Trash mein daal di."}
+            if action == "delete_forever":
+                n = ms.delete_forever(tenant, list(args["ids"]))
+                return {"message": f"{n} email hamesha ke liye delete kar di (Trash mein bhi nahi)."}
+            if action == "draft_send":
+                out = ms.send_gmail_draft(tenant, str(args.get("id") or ""), str(args.get("account") or "") or None)
+                return {"message": out["note"]}
+            if action == "alias_delete":
+                out = ms.alias_op(tenant, "remove", str(args.get("email") or ""), account=str(args.get("account") or "") or None)
+                return {"message": out["note"]}
             if action == "bulk_send":
                 out = ms.start_bulk(tenant, args["bulk_id"])
                 return {"message": f"{out.get('total', '')} logon ko email bhejna shuru kar diya.".strip()}

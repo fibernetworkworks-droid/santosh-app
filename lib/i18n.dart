@@ -274,8 +274,14 @@ const Map<String, Map<String, String>> uiStrings = {
         'Writing: rich mail, attach Drive files, schedule, undo window, send from an alias (verified ones).',
     'Khud sambhale: rules, saved searches, labels (rang aur nesting ke saath), snooze, follow-up yaad, bulk mail.':
         'It organises itself: rules, saved searches, labels (colours and nesting), snooze, follow-up reminders, bulk mail.',
-    'Gmail ki apni settings: vacation auto-reply, signature, send-as aliases, auto-forward — sab aapke tap par.':
-        'Gmail\'s own settings: vacation auto-reply, signature, send-as aliases, auto-forward — all on your tap.',
+    'Gmail ke apne filters bhi — Gmail ke andar hi chalte hain, Hoola band ho to bhi.':
+        'Gmail\'s OWN filters too — they run inside Gmail, even when Hoola is off.',
+    'Gmail ki apni settings: vacation auto-reply, signature, send-as aliases (jodna, hatana, unse bhejna), forwarding addresses, IMAP / POP, language, auto-forward — sab aapke tap par.':
+        'Gmail\'s own settings: vacation auto-reply, signature, send-as aliases (add, remove, send from them), forwarding addresses, IMAP / POP, display language, auto-forward — all on your tap.',
+    'Gmail ke drafts: dekhna, wahin badalna (attachments bane rehte hain), seedha bhejna — card ke baad.':
+        'Gmail drafts: read them, edit them in place (attachments stay), send them — after the card.',
+    'Poore conversations ek saath, aur delete hamesha ke liye tabhi jab card par likha ho.':
+        'Whole conversations in one go; delete-forever only when the card says so.',
     'Nayi mail ki khabar har minute, zaroori ka pehle; OTP codes kabhi nahi batata.':
         'New-mail alerts every minute, important mail first; OTP codes are never shown.',
     'Settings ke liye Gmail ek baar dobara jodna pade to is screen par “Jodiye” dabaiye — mail pehle jaisi chalti hai.':

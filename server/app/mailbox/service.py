@@ -24,6 +24,7 @@ from ..events import bus, notify
 from . import contacts, mime
 from .accounts import get_box, mark_error, settings_scope_message, settings_scope_ok
 from .base import Box, MailError, NotConnected
+from .gmail import GmailBox
 
 log = logging.getLogger("santosh.mailbox")
 
@@ -127,7 +128,7 @@ def thread(tenant: str, ref: str) -> dict[str, Any]:
     return out
 
 
-def read(tenant: str, ref: str, mark_seen: bool = True) -> dict[str, Any]:
+def read(tenant: str, ref: str, mark_seen: bool = True, learn_contacts: bool = True) -> dict[str, Any]:
     box, native = split_ref(tenant, ref)
     raw = _guard(box, lambda: box.raw(native))
     out = mime.parse(raw)
@@ -142,8 +143,9 @@ def read(tenant: str, ref: str, mark_seen: bool = True) -> dict[str, Any]:
             box.mark([native], True)
         except MailError:
             pass
-    people = [(out["from"], out["from_email"])] + mime.addr_list(out.get("to")) + mime.addr_list(out.get("cc"))
-    contacts.learn(tenant, [p for p in people if p[1] != box.address], 0.3 if not out.get("bulk") else 0)
+    if learn_contacts:
+        people = [(out["from"], out["from_email"])] + mime.addr_list(out.get("to")) + mime.addr_list(out.get("cc"))
+        contacts.learn(tenant, [p for p in people if p[1] != box.address], 0.3 if not out.get("bulk") else 0)
     return out
 
 
@@ -401,6 +403,21 @@ def settings_status(tenant: str, account: str | None = None) -> dict[str, Any]:
         out["forwarding"] = _forward_view(_guard(box, box.auto_forwarding_get))
     except MailError:
         pass                                            # auto-forward reading is best-effort
+    try:                                                # v0.186.0 imap / pop / language join the one view
+        iv = _guard(box, box.imap_get)
+        out["imap"] = {"enabled": bool(iv.get("enabled")), "expunge_behavior": iv.get("expungeBehavior", "archive")}
+    except MailError:
+        pass
+    try:
+        pv = _guard(box, box.pop_get)
+        out["pop"] = {"on": pv.get("accessWindow", "disabled") != "disabled",
+                      "access_window": pv.get("accessWindow", "disabled"), "disposition": pv.get("disposition", "")}
+    except MailError:
+        pass
+    try:
+        out["language"] = _guard(box, box.language_get).get("displayLanguage", "")
+    except MailError:
+        pass
     return out
 
 
@@ -480,6 +497,346 @@ def auto_forwarding_set(tenant: str, account: str | None, enable: bool, to: str 
     return {"account": box.address, "forwarding": _forward_view(_guard(box, box.auto_forwarding_get)),
             "note": (f"Har nayi mail ab {to} par bhi jayegi (Gmail ke apne forward se)." if enable
                      else "Auto-forward band ho gaya.")}
+
+
+# ---------------- v0.186.0 the remaining surface: filters, forwarding addresses, alias add/remove,
+# IMAP / POP / language, Gmail drafts read-edit-send, threads as a unit, delete forever ----------------
+def _settings_box(tenant: str, account: str | None) -> Box:
+    """settings_gmail + the scope gate, one place (filters / forwarding / aliases / imap / pop / language)."""
+    box = settings_gmail(tenant, account)
+    if not settings_scope_ok(tenant, box):
+        raise MailError(settings_scope_message(box.address))
+    return box
+
+
+FILTER_MATCH_KEYS = ("from", "to", "subject", "query", "has_attachment", "larger_kb", "smaller_kb", "exclude_chats")
+FILTER_ACTIONS = ("label", "archive", "star", "mark_read", "important", "not_important", "category", "forward")
+
+
+def filter_op(tenant: str, action: str, match: dict[str, Any] | None = None, do: dict[str, Any] | None = None,
+              filter_id: str = "", account: str | None = None) -> dict[str, Any]:
+    """Gmail's OWN filters (Settings > Filters): they run inside Gmail forever, Hoola band ho to bhi."""
+    box = _settings_box(tenant, account)
+    if action == "list":
+        rows = _guard(box, box.filters_list)
+        names: dict[str, str] = {}
+        try:
+            names = {lb["id"]: lb.get("name", lb["id"]) for lb in _guard(box, box.labels_full)}
+        except MailError:
+            pass
+        out = []
+        for f in rows:
+            c, a = f.get("criteria") or {}, f.get("action") or {}
+            out.append({"id": f.get("id", ""),
+                        "match": {k: c[k] for k in ("from", "to", "subject", "query", "hasAttachment") if c.get(k)},
+                        "add_labels": [names.get(x, x) for x in (a.get("addLabelIds") or [])],
+                        "remove_labels": [names.get(x, x) for x in (a.get("removeLabelIds") or [])],
+                        "forward": a.get("forward", "")})
+        return {"account": box.address, "count": len(out), "filters": out}
+    if action == "create":
+        m, d = dict(match or {}), dict(do or {})
+        crit: dict[str, Any] = {}
+        if str(m.get("from") or "").strip():
+            crit["from"] = str(m["from"]).strip()
+        if str(m.get("to") or "").strip():
+            crit["to"] = str(m["to"]).strip()
+        if str(m.get("subject") or "").strip():
+            crit["subject"] = str(m["subject"]).strip()
+        if str(m.get("query") or "").strip():
+            crit["query"] = str(m["query"]).strip()
+        if m.get("has_attachment"):
+            crit["hasAttachment"] = True
+        if m.get("exclude_chats"):
+            crit["excludeChats"] = True
+        for key, cmp in (("larger_kb", "larger"), ("smaller_kb", "smaller")):
+            if m.get(key):
+                crit["size"] = int(m[key]) * 1024
+                crit["sizeComparison"] = cmp
+        if not crit:
+            raise MailError("Filter kisse milega? match do: from / to / subject / query / has_attachment / "
+                            "larger_kb / smaller_kb.")
+        act: dict[str, Any] = {"addLabelIds": [], "removeLabelIds": []}
+        if str(d.get("label") or "").strip():
+            act["addLabelIds"].append(_label_id_for(box, str(d["label"]).strip()))
+        if d.get("archive"):
+            act["removeLabelIds"].append("INBOX")
+        if d.get("star"):
+            act["addLabelIds"].append("STARRED")
+        if d.get("mark_read"):
+            act["removeLabelIds"].append("UNREAD")
+        if d.get("important"):
+            act["addLabelIds"].append("IMPORTANT")
+        if d.get("not_important"):
+            act["removeLabelIds"].append("IMPORTANT")
+        if str(d.get("category") or "").strip():
+            cat = GmailBox.CATEGORIES.get(str(d["category"]).strip().lower())
+            if not cat:
+                raise MailError("category personal / social / updates / forums / promotions mein se hai.")
+            act["addLabelIds"].append(cat)
+        if str(d.get("forward") or "").strip():
+            fwd = str(d["forward"]).strip().lower()
+            rows = _guard(box, box.forwarding_list)
+            ok = [r for r in rows if (r.get("forwardingEmail") or "").lower() == fwd
+                  and r.get("verificationStatus") == "accepted"]
+            if not ok:
+                raise MailError(f"'{fwd}' abhi Gmail ka verified forwarding address nahi hai. Pehle email_forwarding "
+                                f"action='add' se jodiye, us inbox mein Google ka verification link click kijiye, "
+                                f"phir yeh filter lagaiye.")
+            act["forward"] = fwd
+        if not act["addLabelIds"] and not act["removeLabelIds"] and not act.get("forward"):
+            raise MailError("Filter kya karega? do mein se: label / archive / star / mark_read / important / "
+                            "not_important / category / forward. (Delete-wala action Gmail filter mein rakha hi "
+                            "nahi jaata — mails kabhi khud nahi jaati.)")
+        created = _guard(box, lambda: box.filter_create(crit, act))
+        return {"created": created.get("id", ""), "account": box.address,
+                "note": "Gmail ka apna filter ban gaya — Gmail ke andar hi chalta rahega, Hoola band ho to bhi."}
+    if action == "delete":
+        fid = str(filter_id or "").strip()
+        if not fid:
+            raise MailError("Kaunsa filter? id do (email_filters list se).")
+        _guard(box, lambda: box.filter_delete(fid))
+        return {"deleted": fid, "note": "Filter hata diya; uske pehle lagte labels mails par bane rehte hain."}
+    raise MailError("action: list / create / delete")
+
+
+def _label_id_for(box: Box, name: str) -> str:
+    try:
+        return box._label_id(name, create=True)          # same lookup the labels tool uses
+    except MailError:
+        raise
+
+
+def forwarding_op(tenant: str, action: str, email: str = "", account: str | None = None) -> dict[str, Any]:
+    """Gmail's forwarding-address book: auto-forward and filter-forward need a VERIFIED address from here."""
+    box = _settings_box(tenant, account)
+    if action == "list":
+        rows = _guard(box, box.forwarding_list)
+        out = [{"email": r.get("forwardingEmail", ""),
+                "status": ("verified" if r.get("verificationStatus") == "accepted" else "pending")}
+               for r in rows]
+        return {"account": box.address, "count": len(out), "addresses": out}
+    if action == "add":
+        to = (email or "").strip().lower()
+        if not contacts.valid(to):
+            raise MailError("Kaunsa address? Sahi email do.")
+        rows = _guard(box, box.forwarding_list)
+        if any((r.get("forwardingEmail") or "").lower() == to for r in rows):
+            return {"email": to, "note": "Yeh address pehle se isi list mein hai."}
+        _guard(box, lambda: box.forwarding_create(to))
+        return {"email": to, "note": "Google ne us inbox mein ek verification mail bheji hai — us mein link click "
+                                     "kijiye (ya Gmail web ke Forwarding mein code daaliye). Uske baad auto-forward "
+                                     "ya filter us address par chal sakega."}
+    if action == "remove":
+        to = (email or "").strip().lower()
+        if not to:
+            raise MailError("Kaunsa address? email do (email_forwarding list se).")
+        _guard(box, lambda: box.forwarding_delete(to))
+        return {"removed": to, "note": "Address forwarding book se hata diya. (Chalu auto-forward Gmail web se bhi "
+                                       "band ho sakta hai.)"}
+    raise MailError("action: list / add / remove")
+
+
+def alias_op(tenant: str, action: str, email: str = "", name: str = "", reply_to: str = "",
+             account: str | None = None) -> dict[str, Any]:
+    """Send-as aliases: list (v0.183), and now ADD / REMOVE through the API too."""
+    box = _settings_box(tenant, account)
+    if action == "list":
+        return {"account": box.address, "aliases": [_send_as_view(sa) for sa in _guard(box, box.send_as_list)]}
+    if action == "add":
+        to = (email or "").strip().lower()
+        if not contacts.valid(to):
+            raise MailError("Kaunsa alias? Sahi email do.")
+        rows = _guard(box, box.send_as_list)
+        if any((sa.get("sendAsEmail") or "").lower() == to for sa in rows):
+            return {"email": to, "note": "Yeh alias pehle se hai."}
+        created = _guard(box, lambda: box.send_as_create(to, str(name or ""), str(reply_to or "")))
+        status = created.get("verificationStatus", "pending")
+        return {"email": to, "status": status,
+                "note": ("Alias ban gaya (Google ne confirm bhi kar diya)." if status == "accepted"
+                         else "Alias ban gaya — Google ne us inbox mein confirmation code bheja hai; wahan se confirm "
+                              "kijiye. Uske baad email_draft from_alias se usi address se bhej sakta hai.")}
+    if action == "remove":
+        to = (email or "").strip().lower()
+        if not to:
+            raise MailError("Kaunsa alias? email do (email_alias list se).")
+        me = alias_find(tenant, to, account)
+        if me is None:
+            raise MailError(f"'{to}' naam ka alias is Gmail mein nahi hai.")
+        if me.get("isPrimary"):
+            raise MailError("Primary address kabhi hat nahi sakta — woh khud Gmail ka login hai.")
+        _guard(box, lambda: box.send_as_delete(to))
+        return {"removed": to, "note": "Alias hata di; us par purane mails waise hi pade hain."}
+    raise MailError("action: list / add / remove")
+
+
+def alias_find(tenant: str, email: str, account: str | None = None) -> dict[str, Any] | None:
+    """The send-as row for one alias (or None) — the confirm card reads this BEFORE asking."""
+    box = _settings_box(tenant, account)
+    em = (email or "").strip().lower()
+    rows = _guard(box, box.send_as_list)
+    return next((sa for sa in rows if (sa.get("sendAsEmail") or "").lower() == em), None)
+
+
+def imap_set(tenant: str, account: str | None, on: bool) -> dict[str, Any]:
+    box = _settings_box(tenant, account)
+    cur = _guard(box, box.imap_get)
+    _guard(box, lambda: box.imap_set(bool(on), cur.get("autoExpunge", True),
+                                     cur.get("expungeBehavior", "archive"), cur.get("maxFolderSize", 0)))
+    return {"account": box.address, "imap": "ON" if on else "OFF",
+            "note": ("IMAP chalu — Outlook/Thunderbird jaise apps phir sync honge." if on
+                     else "IMAP band — IMAP apps is Gmail ko sync nahi karenge.")}
+
+
+_POP_WINDOW = {"off": "disabled", "disabled": "disabled", "all": "allMail", "allmail": "allMail",
+               "from_now_on": "fromNowOn", "fromnowon": "fromNowOn", "new": "fromNowOn"}
+_POP_DISP = {"leave_in_inbox": "leaveInInbox", "leaveinbox": "leaveInInbox", "inbox": "leaveInInbox",
+             "archive": "archive", "trash": "trash", "mark_read": "markRead", "markread": "markRead"}
+
+
+def pop_set(tenant: str, account: str | None, mode: str, disposition: str = "leave_in_inbox") -> dict[str, Any]:
+    box = _settings_box(tenant, account)
+    window = _POP_WINDOW.get((mode or "").strip().lower())
+    if window is None:
+        raise MailError("pop mode: off / all / from_now_on")
+    disp = _POP_DISP.get((disposition or "").strip().lower(), "leaveInInbox")
+    _guard(box, lambda: box.pop_set(window, disp))
+    label = {"disabled": "BAND", "allMail": "saari mails (jo abhi tak POP se nahi aayi)",
+             "fromNowOn": "ab se aane wali mails"}[window]
+    return {"account": box.address, "pop": window,
+            "note": f"POP ab {label} par hai ({disp}); yeh Gmail web ke POP/IMAP settings mein bhi dikhega."}
+
+
+def language_set(tenant: str, account: str | None, lang: str) -> dict[str, Any]:
+    box = _settings_box(tenant, account)
+    code = (lang or "").strip()
+    if not re.fullmatch(r"[a-zA-Z]{2,3}(-[A-Za-z0-9]{2,8})*", code):
+        raise MailError("Language ka code do (RFC 3066), jaise hi / en / en-GB / mr / ta.")
+    _guard(box, lambda: box.language_set(code))
+    return {"account": box.address, "language": code,
+            "note": "Gmail ka display language badal gaya (web + apps jab next refresh ho). "
+                    "Yeh sirf Gmail ka menu language hai — Hoola aapki language mein hi baat karta hai."}
+
+
+# ---------------- Gmail drafts: read / edit / send (the drafts that live in Gmail itself) ----------------
+def _draft_box(tenant: str, ref: str, account: str | None) -> tuple[Box, str]:
+    box, native = (split_ref(tenant, ref) if "~" in str(ref or "") else (get_box(tenant, account), str(ref or "")))
+    if box.kind != "gmail":
+        raise MailError("Yeh kaam Gmail ke apne drafts par hota hai (is mailbox ka draft system alag hai).")
+    if not native:
+        raise MailError("Kaunsa draft? id do (email_drafts list se).")
+    return box, native
+
+
+def gmail_draft_view(tenant: str, ref: str, account: str | None = None) -> dict[str, Any]:
+    box, native = _draft_box(tenant, ref, account)
+    raw, thread_id = _guard(box, lambda: box.draft_raw(native))
+    p = mime.parse(raw)
+    return {"draft_id": native, "account": box.address, "thread_id": thread_id, "ref": make_ref(box, native),
+            "to": p["to"], "cc": p["cc"], "subject": p["subject"], "body": p["body"],
+            "attachments": [a["name"] for a in p["attachments"]], "from_email": p["from_email"]}
+
+
+def gmail_draft_edit(tenant: str, ref: str, to: str | None = None, cc: str | None = None, subject: str | None = None,
+                     body: str | None = None, markdown: bool | None = None, account: str | None = None) -> dict[str, Any]:
+    """Edit a Gmail-side draft IN PLACE (drafts.update): fields jo diye wahi badle, attachments aur thread barkarar."""
+    box, native = _draft_box(tenant, ref, account)
+    raw, thread_id = _guard(box, lambda: box.draft_raw(native))
+    import email as _email
+    orig = _email.message_from_bytes(raw)
+    from_name, from_addr = mime.addr(orig.get("From"))
+    irt = (orig.get("In-Reply-To") or "").strip() or None
+    refs = " ".join(str(orig.get("References") or "").split()) or None
+    files = []
+    for a in mime.attachments(orig):                     # ids are leaf-part positions, not 0..N
+        try:
+            files.append(mime.get_attachment(raw, a["id"]))
+        except KeyError:
+            continue
+    new_body = mime.md_to_plain(body) if (markdown and body is not None) else (body if body is not None else mime.body_text(orig))
+    html_body = mime.md_to_html(body) if (markdown and body is not None) else None
+    msg = mime.build(from_addr=from_addr or box.address, from_name=from_name or sender_name(tenant, box),
+                     to=(to or "").strip() or mime.dec(orig.get("To")),
+                     cc=(cc or "").strip() or mime.dec(orig.get("Cc")),
+                     subject=(subject or "").strip() or (mime.dec(orig.get("Subject")) or ""),
+                     body=new_body, in_reply_to=irt, references=refs, files=files, html_body=html_body)
+    out = _guard(box, lambda: box.draft_update(native, msg, thread_id or None))
+    return {"draft_id": out.get("draft_id", native), "account": box.address,
+            "edited": [k for k, v in (("to", to), ("cc", cc), ("subject", subject), ("body", body)) if v is not None],
+            "attachments_kept": len(files),
+            "note": "Gmail ka draft badal gaya (attachments waise ke waise)."}
+
+
+def send_gmail_draft(tenant: str, ref: str, account: str | None = None) -> dict[str, Any]:
+    """Send the draft that already sits in Gmail (drafts.send). Only after the user's tap (confirm card)."""
+    box, native = _draft_box(tenant, ref, account)
+    out = _guard(box, lambda: box.draft_send(native))
+    return {"sent": True, "account": box.address, "id": out.get("id", ""), "thread_id": out.get("thread_id", ""),
+            "note": "Gmail ka draft bhej diya."}
+
+
+# ---------------- threads as a unit (Gmail): list / read / act on the WHOLE conversation ----------------
+def threads_list(tenant: str, query: str = "in:inbox", limit: int = 10, account: str | None = None) -> dict[str, Any]:
+    box = get_box(tenant, account)
+    if box.kind != "gmail":
+        raise MailError("Thread-level listing Gmail par hai; is mailbox mein email_check use kijiye.")
+    rows = _guard(box, lambda: box.threads_list(query or "in:inbox", max(1, min(int(limit or 10), 25))))
+    for r in rows:
+        r["ref"] = make_ref(box, "th:" + r["thread_id"])
+    return {"account": box.address, "count": len(rows), "threads": rows}
+
+
+THREAD_ACTIONS = ("archive", "trash", "inbox", "mark_read", "mark_unread", "star", "unstar", "move")
+
+
+def thread_act(tenant: str, refs: list[str], action: str, folder: str = "") -> dict[str, Any]:
+    if action not in THREAD_ACTIONS:
+        raise MailError(f"action must be one of {', '.join(THREAD_ACTIONS)}")
+    if not refs:
+        raise MailError("Kaunse threads? refs do (email_threads list se).")
+    if action == "move" and not folder:
+        raise MailError("Kis folder/label mein?")
+    done = 0
+    for ref in refs:
+        r = str(ref or "")
+        if "~" not in r:
+            raise MailError("Yeh thread ka ref nahi lag raha — email_threads list se refs lijiye.")
+        box, native = split_ref(tenant, r)
+        tid = native[3:] if native.startswith("th:") else native
+        if box.kind != "gmail":
+            raise MailError("Thread-level actions Gmail par hain.")
+        def go(box=box, tid=tid, action=action, folder=folder):
+            if action == "archive":
+                box.thread_modify(tid, remove=["INBOX"])
+            elif action == "trash":
+                box.thread_trash(tid)
+            elif action == "inbox":
+                box.thread_modify(tid, add=["INBOX"], remove=["TRASH", "SPAM"])
+            elif action == "mark_read":
+                box.thread_modify(tid, remove=["UNREAD"])
+            elif action == "mark_unread":
+                box.thread_modify(tid, add=["UNREAD"])
+            elif action == "star":
+                box.thread_modify(tid, add=["STARRED"])
+            elif action == "unstar":
+                box.thread_modify(tid, remove=["STARRED"])
+            else:
+                box.thread_modify(tid, add=[box._label_id(folder, create=True)])
+        _guard(box, go)
+        done += 1
+    return {"done": action, "count": done}
+
+
+def delete_forever(tenant: str, refs: list[str]) -> int:
+    """Permanent delete (messages.delete): Gmail par hi, Trash ko bhi skip karta hai. Card ke baad hi yahan aate hain."""
+    n = 0
+    for box, natives in _by_box(tenant, refs).values():
+        if box.kind != "gmail":
+            raise MailError("Hamesha-ke-liye delete abhi sirf Gmail par hai; baaki mailbox mein email_delete "
+                            "(Trash) use kijiye.")
+        for i in natives:
+            _guard(box, lambda box=box, i=i: box.message_delete(i))
+            n += 1
+    return n
 
 
 # ---------------- sorting the inbox ----------------

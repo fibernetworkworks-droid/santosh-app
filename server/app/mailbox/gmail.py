@@ -297,3 +297,117 @@ class GmailBox(Box):
         return self._req("PUT", "/settings/autoForwarding",
                          json={"enabled": bool(enabled), "emailAddress": (email_address or "").strip().lower(),
                                "disposition": disposition})
+
+    # ---------------- v0.186.0 the remaining surface: filters, forwarding addresses, alias add/remove,
+    # IMAP / POP / language, drafts read-edit-send, threads as a unit, delete forever ----------------
+    def filters_list(self) -> list[dict[str, Any]]:
+        return self._req("GET", "/settings/filters").get("filter", [])
+
+    def filter_create(self, criteria: dict[str, Any], action: dict[str, Any]) -> dict[str, Any]:
+        return self._req("POST", "/settings/filters", json={"criteria": criteria, "action": action})
+
+    def filter_delete(self, filter_id: str) -> None:
+        self._req("DELETE", f"/settings/filters/{filter_id}")
+
+    def forwarding_list(self) -> list[dict[str, Any]]:
+        return self._req("GET", "/settings/forwardingAddresses").get("forwardingAddresses", [])
+
+    def forwarding_create(self, email: str) -> dict[str, Any]:
+        return self._req("POST", "/settings/forwardingAddresses",
+                         json={"forwardingEmail": (email or "").strip().lower()})
+
+    def forwarding_delete(self, email: str) -> None:
+        self._req("DELETE", f"/settings/forwardingAddresses/{(email or '').strip().lower()}")
+
+    def send_as_create(self, email: str, name: str = "", reply_to: str = "") -> dict[str, Any]:
+        body: dict[str, Any] = {"sendAsEmail": (email or "").strip().lower()}
+        if name.strip():
+            body["displayName"] = name.strip()[:100]
+        if reply_to.strip():
+            body["replyToAddress"] = reply_to.strip()
+        return self._req("POST", "/settings/sendAs", json=body)
+
+    def send_as_delete(self, email: str) -> None:
+        self._req("DELETE", f"/settings/sendAs/{(email or '').strip().lower()}")
+
+    def imap_get(self) -> dict[str, Any]:
+        return self._req("GET", "/settings/imap")
+
+    def imap_set(self, enabled: bool, auto_expunge: bool = True, expunge_behavior: str = "archive",
+                 max_folder_size: int = 0) -> dict[str, Any]:
+        return self._req("PUT", "/settings/imap",
+                         json={"enabled": bool(enabled), "autoExpunge": bool(auto_expunge),
+                               "expungeBehavior": expunge_behavior, "maxFolderSize": int(max_folder_size)})
+
+    def pop_get(self) -> dict[str, Any]:
+        return self._req("GET", "/settings/pop")
+
+    def pop_set(self, access_window: str, disposition: str = "leaveInInbox") -> dict[str, Any]:
+        return self._req("PUT", "/settings/pop", json={"accessWindow": access_window, "disposition": disposition})
+
+    def language_get(self) -> dict[str, Any]:
+        return self._req("GET", "/settings/language")
+
+    def language_set(self, display_language: str) -> dict[str, Any]:
+        return self._req("PUT", "/settings/language", json={"displayLanguage": (display_language or "").strip()})
+
+    def draft_get(self, draft_id: str) -> dict[str, Any]:
+        return self._req("GET", f"/drafts/{draft_id}")
+
+    def draft_raw(self, draft_id: str) -> tuple[bytes, str]:
+        """The draft's raw MIME + its thread id — the edit path rebuilds from this, attachments included."""
+        m = (self._req("GET", f"/drafts/{draft_id}").get("message") or {})
+        return unb64url(m.get("raw", "")), m.get("threadId", "")
+
+    def draft_update(self, draft_id: str, msg: EmailMessage, thread_id: str | None = None) -> dict[str, Any]:
+        body: dict[str, Any] = {"message": {"raw": b64url(msg.as_bytes())}}
+        if thread_id:
+            body["message"]["threadId"] = thread_id
+        out = self._req("PUT", f"/drafts/{draft_id}", json=body)
+        m = out.get("message") or {}
+        return {"draft_id": out.get("id", draft_id), "message_id": m.get("id", ""),
+                "thread_id": m.get("threadId") or thread_id or ""}
+
+    def draft_send(self, draft_id: str) -> dict[str, Any]:
+        out = self._req("POST", "/drafts/send", json={"id": draft_id})
+        return {"id": out.get("id", ""), "thread_id": out.get("threadId", ""), "message_id": out.get("id", "")}
+
+    def threads_list(self, query: str = "in:inbox", limit: int = 10) -> list[dict[str, Any]]:
+        ids = self._req("GET", "/threads", params={"q": query or "in:inbox",
+                                                   "maxResults": max(1, min(int(limit or 10), 25))}).get("threads", [])
+        out = []
+        for t in ids:
+            tid = t.get("id", "")
+            if not tid:
+                continue
+            one = self._req("GET", f"/threads/{tid}",
+                            params=[("format", "metadata")] + [("metadataHeaders", h) for h in ("From", "Subject", "Date")])
+            msgs = one.get("messages") or []
+            if not msgs:
+                continue
+            first = msgs[0]
+            last = msgs[-1]
+            hdrs = lambda m: {h["name"].lower(): h["value"] for h in (m.get("payload") or {}).get("headers", [])}
+            lf, ll = hdrs(first), hdrs(last)
+            label_ids = last.get("labelIds") or []
+            out.append({"thread_id": tid, "count": len(msgs),
+                        "subject": mime.dec(ll.get("subject")) or mime.dec(lf.get("subject")) or "(no subject)",
+                        "from": mime.addr(lf.get("from"))[0] or mime.addr(lf.get("from"))[1],
+                        "from_email": mime.addr(lf.get("from"))[1],
+                        "last_from": mime.addr(ll.get("from"))[1],
+                        "date": ll.get("date", lf.get("date", "")),
+                        "snippet": html.unescape(last.get("snippet", "")),
+                        "unread": "UNREAD" in label_ids, "starred": "STARRED" in label_ids,
+                        "labels": [l for l in label_ids if l in ("INBOX", "SENT", "TRASH", "SPAM")]})
+        return out
+
+    def thread_modify(self, thread_id: str, add=(), remove=()) -> None:
+        self._req("POST", f"/threads/{thread_id}/modify",
+                  json={"addLabelIds": list(add), "removeLabelIds": list(remove)})
+
+    def thread_trash(self, thread_id: str) -> None:
+        self._req("POST", f"/threads/{thread_id}/trash")
+
+    def message_delete(self, mid: str) -> None:
+        """DELETE /messages/{id} — permanently, Trash bhi nahi (the card says this in plain words)."""
+        self._req("DELETE", f"/messages/{mid}")

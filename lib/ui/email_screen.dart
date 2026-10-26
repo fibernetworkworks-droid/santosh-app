@@ -384,7 +384,10 @@ class _EmailScreenState extends State<EmailScreen> {
                   app.g('Padhna, chhaantna: inbox, thread poora, attachments (PDF, Excel, photos bhi), Gmail ke apne snoozed folder samet.'),
                   app.g('Likhte waqt: rich mail, Drive file attach, schedule, undo window, alias se bhejna (verified aliases).'),
                   app.g('Khud sambhale: rules, saved searches, labels (rang aur nesting ke saath), snooze, follow-up yaad, bulk mail.'),
-                  app.g('Gmail ki apni settings: vacation auto-reply, signature, send-as aliases, auto-forward — sab aapke tap par.'),
+                  app.g('Gmail ke apne filters bhi — Gmail ke andar hi chalte hain, Hoola band ho to bhi.'),
+                  app.g('Gmail ke drafts: dekhna, wahin badalna (attachments bane rehte hain), seedha bhejna — card ke baad.'),
+                  app.g('Poore conversations ek saath, aur delete hamesha ke liye tabhi jab card par likha ho.'),
+                  app.g('Gmail ki apni settings: vacation auto-reply, signature, send-as aliases (jodna, hatana, unse bhejna), forwarding addresses, IMAP / POP, language, auto-forward — sab aapke tap par.'),
                   app.g('Nayi mail ki khabar har minute, zaroori ka pehle; OTP codes kabhi nahi batata.'),
                   app.g('Settings ke liye Gmail ek baar dobara jodna pade to is screen par “Jodiye” dabaiye — mail pehle jaisi chalti hai.'),
                 ])
