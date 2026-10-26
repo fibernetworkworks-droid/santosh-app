@@ -75,15 +75,34 @@ def _xlsx_view(data: bytes) -> dict[str, Any]:
     from openpyxl import load_workbook
     wb = load_workbook(io.BytesIO(data), data_only=False)
     sheets = []
+    cf_count = dv_count = 0
     for name in wb.sheetnames[:20]:
         ws = wb[name]
         headers = []
         for row in ws.iter_rows(min_row=4, max_row=4, min_col=2, max_col=min(ws.max_column, 14)):
             headers = [str(c.value) if c.value is not None else "" for c in row]
             break
-        sheets.append({"name": name, "rows": max(0, ws.max_row - 4), "cols": max(0, ws.max_column - 1),
+        try:
+            cf_count += sum(len(rules) for rules in ws.conditional_formatting._cf_rules.values())
+        except Exception:
+            pass
+        try:
+            dv_count += len(ws.data_validations.dataValidation)
+        except Exception:
+            pass
+        sheets.append({"name": name, "rows": max(0, ws.max_row - 4),
+                       "cols": max(0, ws.max_column - 1),
                        "headers": headers})
-    return {"sheets": sheets}
+    view: dict[str, Any] = {"sheets": sheets}
+    try:
+        view["defined_names"] = sorted(list(wb.defined_names))[:20]
+    except Exception:
+        pass
+    if cf_count:
+        view["conditional_formats"] = cf_count
+    if dv_count:
+        view["validations"] = dv_count
+    return view
 
 
 def _docx_view(data: bytes) -> dict[str, Any]:

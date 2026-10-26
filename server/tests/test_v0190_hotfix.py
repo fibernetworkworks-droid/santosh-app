@@ -144,4 +144,4 @@ def test_quiet_http_logs():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.190.1"
+    assert APP_VERSION == "0.191.0"

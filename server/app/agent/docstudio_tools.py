@@ -27,10 +27,12 @@ DOCSTUDIO_TOOLS = [
          "title": {"type": "string", "description": "document title (drives the palette)"},
          "text": {"type": "string", "description": "content: '# ' h1, '## ' h2, '- ' bullets, "
                   "'| a | b |' table rows, '> ' quote, '[stat: 12% | label]' callout"},
-         "sheets": {"type": "object", "description": "xlsx: {'Sheet': [[header...], [row...]]}"},
+         "sheets": {"type": "object", "description": "xlsx: {'Sheet': [[header...], [row...]]} - up to "
+                   "16,384 cols/sheet (wider auto-splits to -P1/-P2 + Index), 100K rows; a sheet may "
+                   "be a dict {rows, conditional_formatting, validation, merges, defined_names}"},
          "slides": {"type": "array", "description": "pptx: [{title, bullets[], notes}]"},
-         "charts": {"type": "array", "description": "xlsx charts: [{sheet, type: bar|line|pie, "
-                    "categories: 'B4:B12', values: 'C4:C12', title}]"},
+         "charts": {"type": "array", "description": "xlsx charts: [{sheet, type: bar|column|line|pie|scatter|"
+                    "area|doughnut|radar|combo, categories: 'B4:B12', values: 'C4:C12', line_values (combo), title}]"},
          "style": {"type": "string", "enum": ["auto", "professional", "boardroom", "warm",
                    "elegant", "forest"], "description": "palette (auto = from the title)"},
          "subject": {"type": "string", "description": "one-line subtitle / purpose"},
@@ -91,6 +93,10 @@ async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, c
         notes.append(f"QA ne kaha: {qa.get('issues')}")
     if kind == "xlsx" and res.get("formulas"):
         notes.append(f"{res['formulas']} live formulas.")
+    if kind == "xlsx" and res.get("splits"):
+        sp = res["splits"][0]
+        notes.append(f"{sp['cols']:,} cols Excel ki ek-sheet limit (16,384) se bade the - "
+                     f"{len(sp['parts'])} parts + Index bane.")
     return view | {"made": kind, "style": res.get("style"), "preview": prev,
                    "note": " ".join(notes)}
 
