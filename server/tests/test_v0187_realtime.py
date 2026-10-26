@@ -327,5 +327,5 @@ def test_enqueue_dedupes_same_job_and_state(fu):
 def test_version():
     from app.config import get_settings
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.188.0"
+    assert APP_VERSION == "0.189.0"
     assert get_settings().agent_ack_after_s == 5.0

@@ -408,6 +408,14 @@ TOOLS.extend(MAKE_TOOLS)
 TOOL_LABELS.update(MAKE_LABELS)
 HANDLERS.update(MAKE_HANDLERS)
 
+# v0.189.0 Document Studio: Claude-grade PDF / Word / Excel / PowerPoint (design system + QA)
+from .docstudio_tools import (DOCSTUDIO_HANDLERS, DOCSTUDIO_LABELS,  # noqa: E402
+                              DOCSTUDIO_TOOLS)
+
+TOOLS.extend(DOCSTUDIO_TOOLS)
+TOOL_LABELS.update(DOCSTUDIO_LABELS)
+HANDLERS.update(DOCSTUDIO_HANDLERS)
+
 from .reel_tools import REEL_HANDLERS, REEL_LABELS, REEL_TOOLS  # noqa: E402
 
 TOOLS.extend(REEL_TOOLS)
