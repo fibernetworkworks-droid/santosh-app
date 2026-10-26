@@ -1598,6 +1598,15 @@ def usage_all(days: int = 30, tenant: str = Depends(current_tenant)):
     return {"tenants": usage.all_tenants(days), "usd_inr": usage.usd_inr()}
 
 
+
+@app.websocket("/api/voice/ws_chat")
+async def ws_voice_chat(websocket: WebSocket):
+    """v0.193: Voice-to-Chat Bridge. Uses STT from the phone, routes to the Chat Agent, speaks back with TTS."""
+    from .voice_chat import voice_chat_endpoint
+    tenant = websocket.query_params.get("tenant", "default")
+    conversation = websocket.query_params.get("conv", "voice-call")
+    await voice_chat_endpoint(websocket, tenant, conversation)
+
 @app.websocket("/api/voice/ws")
 async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "hi-IN", resume: str = ""):
     """Realtime voice call (Baat tab). See app/voice.py for the protocol. `resume` re-joins a call whose phone
