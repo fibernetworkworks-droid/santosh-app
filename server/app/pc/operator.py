@@ -392,6 +392,69 @@ async def _think_live(op: Op, coro):
             streamer.cancel()
 
 
+def _sanitize(messages: list[dict]) -> None:
+    """v0.185.4 the API rule behind EVERY mid-task 'PC par kaam ruk gaya': a tool_result with is_error=true must
+    carry text and nothing else — an image block inside one makes the WHOLE request fail with 400
+    ('all content must be type `text` if `is_error` is true', seen live on the VPS 26 Oct 13:40 + 13:42), and
+    _run's outer handler then marks the whole task failed. Enforce the invariant on the whole history before
+    every model call, whatever code path built the blocks: the error text stays, a screenshot that rode inside
+    an error result becomes a one-line note (the fresh round-end screenshot still shows the screen)."""
+    for m in messages:
+        if m.get("role") != "user" or not isinstance(m.get("content"), list):
+            continue
+        for b in m["content"]:
+            if not (isinstance(b, dict) and b.get("type") == "tool_result" and b.get("is_error")):
+                continue
+            blocks = b.get("content") if isinstance(b.get("content"), list) else []
+            if all(isinstance(blk, dict) and blk.get("type") == "text" for blk in blocks):
+                continue          # already legal (text-only or empty)
+            texts = [blk.get("text", "") for blk in blocks if isinstance(blk, dict) and blk.get("type") == "text"]
+            imgs = sum(1 for blk in blocks if isinstance(blk, dict) and blk.get("type") == "image")
+            flat = "\n".join(t for t in texts if t.strip()) or "(error)"
+            if imgs:
+                flat += f"\n[{imgs} screenshot(s) removed from this error result — call screenshot to look again]"
+            b["content"] = flat
+
+
+async def _think_retry(op: Op, client, messages: list[dict], params: dict):
+    """v0.185.4 one flaky model call must not kill a 20-minute PC task: transient failures (connection error,
+    timeout, 429 / 5xx / 529 overloaded) get two more tries with a short backoff, and a 400 gets the history
+    sanitized once (the is_error/image rule above — a task that started on an older build can carry one) and a
+    second try. Real non-retryable errors still raise into _run's handler, as before."""
+    import anthropic
+    from ..agent import cache          # _run imports it the same (lazy) way
+    st = get_settings()
+    for attempt in range(3):
+        try:
+            return await _think_live(op, client.messages.create(**cache.shape(dict(params), st.prompt_cache)))
+        except anthropic.APIStatusError as e:
+            code = getattr(e, "status_code", 0) or 0
+            if code == 400 and attempt == 0:
+                _sanitize(messages)
+                continue
+            if code in (408, 429, 500, 502, 503, 504, 529) and attempt < 2:
+                await asyncio.sleep(min(8, 2 + 2 * attempt))
+                continue
+            raise
+        except (anthropic.APIConnectionError, anthropic.APITimeoutError):
+            if attempt < 2:
+                await asyncio.sleep(min(8, 2 + 2 * attempt))
+                continue
+            raise
+    raise RuntimeError("unreachable")   # the loop always returns or raises
+
+
+async def _shot_retry(op: Op, monitor: str = "") -> list[dict]:
+    """v0.185.4 every screenshot goes over her one WebSocket to a real desktop she may be using right now, so a
+    single slow round-trip used to kill the WHOLE task ('PC did not answer in time'). One retry after a short
+    pause; if the PC is truly gone the second raise fails the task honestly, like before."""
+    try:
+        return await _shot(op, monitor)
+    except Exception:
+        await asyncio.sleep(2.5)
+        return await _shot(op, monitor)
+
+
 def _trim_images(messages: list[dict]) -> None:
     """Keep only the last few screenshots in the conversation (cost and context)."""
     seen = 0
@@ -744,15 +807,15 @@ async def _run(op: Op) -> None:
         pass
     messages: list[dict] = []
     try:
-        first = await _shot(op)
+        first = await _shot_retry(op)          # v0.185.4 one busy capture at task start must not kill the task
         messages.append({"role": "user", "content": [{"type": "text", "text": f"Task: {op.task}"}, *first]})
         deadline = time.time() + op.minutes * 60
         while op.step < op.steps_max and time.time() < deadline and op.status == "running":
             _trim_images(messages)
             op.thinking = True                     # v0.178 the card shows 'Soch raha hoon…' while the vision call runs
             _event(op)
-            resp = await _think_live(op, client.messages.create(**cache.shape(dict(
-                model=st.anthropic_model, max_tokens=1500, system=system, tools=TOOLS, messages=messages), st.prompt_cache)))
+            resp = await _think_retry(op, client, messages, dict(
+                model=st.anthropic_model, max_tokens=1500, system=system, tools=TOOLS, messages=messages))
             op.thinking = False
             content = [b.model_dump(exclude_none=True) if hasattr(b, "model_dump") else b for b in resp.content]
             messages.append({"role": "assistant", "content": content})
@@ -811,7 +874,7 @@ async def _run(op: Op) -> None:
                 if name == "screenshot":
                     # v0.166 look again / switch monitor: the image goes to the model as THIS tool's result;
                     # moved=screenshot holds any further click / type this turn (the model has not SEEN it yet)
-                    blocks = await _shot(op, monitor=str(a.get("monitor") or "primary"))
+                    blocks = await _shot_retry(op, monitor=str(a.get("monitor") or "primary"))
                     results.append({"type": "tool_result", "tool_use_id": u["id"], "content": blocks})
                     moved = "screenshot"
                     continue
@@ -828,10 +891,16 @@ async def _run(op: Op) -> None:
             last = moved or (uses[-1]["name"] if uses else "")
             if SETTLE_S.get(last):          # let the PC react (menus open, pages paint) before looking again
                 await asyncio.sleep(SETTLE_S[last])
-            shot = await _shot(op)
+            shot = await _shot_retry(op)
             prev = results[-1]["content"]
             prev_text = prev if isinstance(prev, str) else " ".join(
                 b.get("text", "") for b in prev if isinstance(b, dict) and b.get("type") == "text")
+            if results[-1].get("is_error"):
+                # v0.185.4 the round-end screenshot may NOT ride inside an is_error tool_result: the API 400s the
+                # NEXT model call ('all content must be type `text` if `is_error` is true') and the whole task
+                # dies as 'PC par kaam ruk gaya' (proven live on the VPS, twice on 26 Oct). Drop the flag here;
+                # the error text itself stays in plain sight and _sanitize guards the rest.
+                results[-1] = {k: v for k, v in results[-1].items() if k != "is_error"}
             results[-1] = {**results[-1], "content": [{"type": "text", "text": prev_text}, *shot]}
             messages.append({"role": "user", "content": results})
         if op.status == "running":

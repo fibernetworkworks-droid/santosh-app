@@ -23,6 +23,10 @@ Exception recorded (same day, later): v0.180.0 REAL-TIME — the owner asked "Ho
 time... FOR MERA PC AS WELL AS FOR ALL OWN TASKS", so `server/app/pc/operator.py` was touched for the live step
 narration (Step n/40, Hinglish lines, Soch state on the card). Desktop/ stayed untouched (1.3.1, no exe rebuild);
 the freeze is back in force for everything else the moment this ships.
+Exception recorded (26 Oct 2026): v0.185.4 — the owner asked in chat to find why PC tasks die mid-way ("PC PER
+KAAM RUK GAYA HAI... IT MUST COMPLETE THE GIVEN TASK ON PC SYSTEMATICALLY AND SMOOTHLY TILL FINAL COMPLETION"),
+so `server/app/pc/operator.py` was fixed (the is_error/screenshot 400) with its test file. Desktop/ stayed
+untouched (1.4.0); the freeze is back in force for everything else the moment this ships.
 
 ## What it is
 **Hoola** is an Indian "Dots-like" always-on AI coworker app by Newtika Pvt Ltd (FNW). Owner: Meghana.
@@ -7726,6 +7730,34 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
 - Ritual: version 0.177.1 (main.py APP_VERSION + FastAPI version + pubspec 0.177.1+207 + test_routines assert).
   Desktop untouched: still 1.3.1, no exe rebuild needed (server-side memory only). Deploy unchanged: git pull +
   cp server/app + pm2 restart.
+
+## v0.185.4 "PC PAR KAAM RUK GAYA" ROOT-CAUSED AND FIXED (PC tasks died a few steps in, every time)
+
+- Owner report (26 Oct): every Mera PC task starts and then Hoola says "PC par kaam ruk gaya" — work drops in
+  between instead of completing systematically. Evidence pulled LIVE from the VPS via the vps-ops workflow
+  (`job=errors`): `ERROR santosh.pcop: pc operator failed` twice that afternoon (13:40:50 + 13:42:43), both
+  ending `anthropic.BadRequestError: 400 - invalid_request_error: 'messages.N.content.M.tool_result: all
+  content must be type `text` if `is_error` is true'` at operator.py:754 (the per-step vision call).
+- THE BUG (operator.py `_run`): at the end of every action round the loop attaches the fresh screenshot INSIDE
+  the LAST tool_result of the round (`results[-1] = {**results[-1], "content": [prev_text, *shot]}`). When that
+  result was an error (`is_error: true` — a REFUSED shortcut / idvault refusal, the v0.91.1 held_blind guard, a
+  `_do` exception), the screenshot's image block rode inside an is_error result. The API rejects the WHOLE next
+  request (that exact 400), `_run`'s outer handler marks the task failed, `_report` says "Aapke PC par kaam ruk
+  gaya". Error results are routine in real PC tasks, so nearly every non-trivial task died a few steps in —
+  the "drops work in between" the owner saw.
+- FIX, three layers (operator.py): (1) the producer — the flag is dropped before the screenshot rides in (the
+  error text itself stays in plain sight); (2) `_sanitize()` — the invariant "is_error ⇒ text-only" enforced
+  over the WHOLE history before every model call, so a task started on an older build heals too (screenshots
+  inside error results become a one-line note); (3) `_think_retry()` — one 400 (sanitize + same call again),
+  transient connection/timeout/429/5xx/529 failures (2 more tries, short backoff) no longer kill a 20-minute
+  task; plus `_shot_retry()` — a single busy screen capture (her one WebSocket, she may be using the PC)
+  retries once instead of failing the task.
+- TESTS: NEW tests/test_v01854_pc_is_error.py (7): the exact bug shape (error result + round-end screenshot →
+  flag stripped, image rides without is_error, REFUSED text intact, invariant holds, task reaches done); a pure
+  text is_error result KEEPS its flag; _sanitize flattens image-in-error and leaves legal results untouched;
+  the EXACT VPS 400 now heals in place (3 creates, done); one connection error heals (2 creates, done); one
+  busy round-end capture heals. Sweep green: 72 pc/search/email-phase1 + 42 email-phase2-4/voicecheck/stream +
+  12 voice heal/ladder suites. Freeze exception recorded (owner asked for this exact fix in chat).
 
 ## v0.185.3 THE AFFECTIVE HEAL MOVES TO WHERE THE REFUSAL REALLY ARRIVES (the connected-but-silent call)
 

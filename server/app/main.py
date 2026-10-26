@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.185.3"   # v0.185.3 the affective heal moved to where the refusal REALLY arrives: the VPS proved the SDK connect() returns before setupComplete, so the generic 1007 lands as a stream close ("voice stream ended") and the v0.185.1 connect-time heal never fired - every ladder rung went out with affective still on and both calls died 0 turns (connected-but-silent). setup_refused() handling now drops affective process-wide and retries the SAME setup once before the ladder climbs (bump with pubspec)
+APP_VERSION = "0.185.4"   # v0.185.4 "PC par kaam ruk gaya" root-caused and fixed: the round-end screenshot rode inside an is_error tool_result, the Anthropic API 400s the next call ("all content must be type `text` if `is_error` is true", seen live twice on the VPS 26 Oct) and the whole task died mid-way - the flag is now dropped before the shot rides in, _sanitize() enforces the rule over the whole history before every model call, transient API failures (400 once / connection / 429 / 5xx / 529) retry instead of killing the task, and a single busy screenshot retries once too (bump with pubspec)
 
 
 @asynccontextmanager
