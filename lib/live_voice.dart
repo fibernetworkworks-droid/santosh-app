@@ -85,7 +85,7 @@ class LiveVoice {
     final base = Uri.parse(server.endsWith('/') ? server.substring(0, server.length - 1) : server);
     return base.replace(
       scheme: base.scheme == 'https' ? 'wss' : 'ws',
-      path: '${base.path}/api/voice/ws',
+      path: '${base.path}/api/voice/ws_chat',
       queryParameters: {'conv': conv, 'voice': voice, 'lang': lang, if (resume != null) 'resume': resume},
     );
   }
