@@ -1,0 +1,111 @@
+name: VPS ops
+
+# A fixed list of jobs on the Hoola VPS, started by hand (Actions tab, or Claude through the GitHub API).
+# No free-typed commands: the job is a choice, every command below is written here and reviewed in git.
+# Secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY (a key made only for this; remove its line from the VPS
+# ~/.ssh/authorized_keys to cut access at any time).
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: What to run on the VPS
+        required: true
+        type: choice
+        options:
+          - status
+          - logs
+          - errors
+          - voicecheck
+          - deploy
+          - rollback_stable
+      lines:
+        description: Log lines for logs / errors (50-2000)
+        required: false
+        default: "300"
+
+concurrency:
+  group: vps-ops
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Prepare SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          [ -n "$VPS_HOST" ] && [ -n "$VPS_SSH_KEY" ] || { echo "::error::VPS_HOST / VPS_SSH_KEY secret missing"; exit 1; }
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/vps && chmod 600 ~/.ssh/vps
+          ssh-keyscan -T 15 -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          [ -s ~/.ssh/known_hosts ] || { echo "::error::VPS did not answer on port 22"; exit 1; }
+
+      - name: Build the job script
+        env:
+          JOB: ${{ inputs.job }}
+          LINES_IN: ${{ inputs.lines }}
+        run: |
+          # inputs go through env + strict checks, never straight into the script (no injection)
+          case "$LINES_IN" in ''|*[!0-9]*) N=300 ;; *) N=$LINES_IN ;; esac
+          [ "$N" -lt 50 ] && N=50; [ "$N" -gt 2000 ] && N=2000
+          {
+            echo 'set -u'
+            echo 'export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"'
+            echo 'for d in "$HOME/.nvm/versions/node"/*/bin; do [ -d "$d" ] && export PATH="$d:$PATH"; done'
+            echo 'REPO=$HOME/santosh_app; CORE=$HOME/apps/santosh-core'
+            echo 'health(){ curl -s -m 10 http://172.18.0.1:8077/healthz || curl -s -m 10 http://127.0.0.1:8077/healthz; echo; }'
+            case "$JOB" in
+              status)
+                echo 'echo "== version / health"; health'
+                echo 'echo "== git"; cd $REPO && git branch --show-current && git log --oneline -3'
+                echo 'echo "== pm2"; pm2 status'
+                echo 'echo "== disk / memory"; df -h / | tail -1; free -m | head -2; uptime' ;;
+              logs)
+                echo "pm2 logs santosh --lines $N --nostream --raw" ;;
+              errors)
+                echo "pm2 logs santosh --lines $N --nostream --raw --err" ;;
+              voicecheck)
+                echo 'cd $CORE && timeout 600 .venv/bin/python -m app.voicecheck' ;;
+              deploy)
+                echo 'set -e'
+                echo 'cp $CORE/santosh.db $CORE/santosh.db.bak-$(date +%F-%H%M)'
+                echo 'ls -1t $CORE/santosh.db.bak-* | tail -n +6 | xargs -r rm -f   # keep the newest 5 backups'
+                echo 'cd $REPO && git fetch origin main && git checkout main && git reset --hard origin/main'
+                echo 'git log --oneline -1'
+                echo 'cp -r $REPO/server/app $CORE/'
+                echo 'pm2 restart santosh --update-env'
+                echo 'sleep 20; echo "== after restart"; health'
+                echo 'pm2 logs santosh --lines 40 --nostream --raw --err' ;;
+              rollback_stable)
+                echo 'set -e'
+                echo 'cp $CORE/santosh.db $CORE/santosh.db.bak-$(date +%F-%H%M)'
+                echo 'cd $REPO && git fetch origin stable-2026-10-22 && git checkout stable-2026-10-22'
+                echo 'git log --oneline -1'
+                echo 'cp -r $REPO/server/app $CORE/'
+                echo 'pm2 restart santosh --update-env'
+                echo 'sleep 20; echo "== after restart"; health' ;;
+              *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
+            esac
+          } > job.sh
+          echo "---- job.sh"; cat job.sh
+
+      - name: Run on the VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -o pipefail
+          ssh -i ~/.ssh/vps -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=30 \
+            "$VPS_USER@$VPS_HOST" 'bash -s' < job.sh 2>&1 \
+            | sed -E 's/(sk-ant-[A-Za-z0-9_-]{6})[A-Za-z0-9_-]+/\1…/g; s/(AIza[A-Za-z0-9_-]{4})[A-Za-z0-9_-]+/\1…/g; s/((key|token|secret|password)["=: ]+)[^ ",]{6,}/\1[hataya]/Ig'
+
+      - name: Clean up
+        if: always()
+        run: rm -f ~/.ssh/vps
