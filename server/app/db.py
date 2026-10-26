@@ -863,6 +863,11 @@ def init_db(url: str | None = None):
     from .agent import pakka as _pakka  # noqa: F401
     from .agent import goal as _goal  # noqa: F401  (v0.186 goal_runs: lamba kaam pakka)
     from . import kaamwatch as _kaamwatch  # noqa: F401  (v0.136 live job watch)
+    from . import kaam_followup as _kaam_followup  # noqa: F401  (v0.190.1 P0: this model only ever had LAZY
+        # imports - worker.tick and kaamwatch.enqueue both import it inside the function - so create_all()
+        # never saw it and the kaam_followups table did not exist on the live DB: every tick died
+        # 'no such table: kaam_followups' and finished jobs never reported; 'poora hote hi bata dungi' was
+        # a broken promise on production since v0.187 went live)
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401

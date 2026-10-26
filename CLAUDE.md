@@ -7951,3 +7951,38 @@ sections, microcompaction). The plan (phased) is in the chat + worklog; PHASE 1 
   employee + avatar + appcheck = 55. 297 passed, zero failures. Version 0.190.0 (pubspec 0.190.0+224, console
   ?v=0.190.0, conscious pins 0.189.0→0.190.0 in test_v0179/email_phase1-5/test_v0185/test_v0187/test_v0189); desktop
   untouched 1.4.0 (server-only deploy; old APKs keep working - the pruner/parallel/cache are all server-side).
+
+## v0.190.1 P0 HOTFIX (found LIVE on the VPS 2026-10-26: load 147, healthz silent, santosh flapping, ~2500 pm2 restarts)
+
+The owner said "P0 hotfix + v0.190.0 implementation" - v0.190.0 was committed and CI-green but NEVER deployed
+(last VPS ops run predated the push), and the status job exposed the real P0: the box was in a load spiral.
+
+- ROOT CAUSE 1 - the kaam_followups table NEVER existed on the live DB. The model had only LAZY imports
+  (worker.tick and kaamwatch.enqueue import it inside the function), so init_db's create_all() never saw it;
+  every tick since v0.187 went live died 'no such table: kaam_followups' (13 tracebacks per 150 log lines) and
+  enqueue's INSERT died silently in its try/except - finished jobs NEVER reported, the owner's 'jab result aaye
+  to batana' was a broken promise in production even though 297 tests were green (tests import the module
+  before init_db; production imports it after - the classic order trap). FIX: db.init_db now registers
+  kaam_followup explicitly, AND kaam_followup.ensure_table() self-heals on the first tick/enqueue (checkfirst
+  create) - old DBs repair themselves at the first touch after deploy, no manual SQL.
+- ROOT CAUSE 2 - the TV catalog refresh ran on the first loop of EVERY process start: fetch every iptv-org list
+  + parse + probe every stream with 24 workers (thousands of httpx GETs, each one an INFO line to the error log)
+  - a restart-y server re-did this at every boot, the flood was still running minutes into every diagnosis.
+  FIX: tv.catalog._needs_refresh() - the daemon skips while channels.json is under 23h old; only genuinely
+  stale data (or a first boot) refreshes.
+- ROOT CAUSE 3 - /api/browser/{sid}/live|frame were polled ~90 rps during the spiral (704 completions in 8 s);
+  every poll a fresh thread + handler. FIX: a 1 s per-(kind, tenant, session) memo (TTL 1 s, 512 entries, lock-
+  guarded OrderedDict) in front of both endpoints - the phone polls every 4 s and never notices; a flood now
+  costs one real call per second per session.
+- PLUS httpx/httpcore INFO logging silenced (main._quiet_http_logs, wired in lifespan) - every probe line left
+  the error log; warnings and above still speak; inbound access log (uvicorn.access) untouched.
+- Tests: NEW tests/test_v0190_hotfix.py (9): tick survives the dropped table and self-heals; enqueue queues on
+  an old DB and the report flows; init_db creates the table on restart; ensure_table idempotent; fresh list
+  skips / 25h-old refreshes / missing refreshes; daemon reentry guard; memo TTL + per-session isolation +
+  eviction cap; httpx quiet. Sweeps green: hotfix(9) + realtime + harness + pc_browser 51; api + routines +
+  bazar + cards 33; email x5 + search + goal + basics 116; livework + robust_chat + pc_is_error + console 20;
+  gcal + gdrive + drive + employee + avatar + appcheck 64 = 284 passed, zero failures (google.genai voice
+  suites unimportable in this sandbox - pre-existing). Version 0.190.1 (pubspec 0.190.1+225, APP_VERSION,
+  console ?v=0.190.1 x9, conscious pins 0.190.0->0.190.1 in test_v0179/email_phase1-4/test_v0185/test_v0187/
+  test_v0189). Deploy carries both v0.190.0 HARNESS-1 (never live) and this hotfix in one restart; desktop
+  untouched 1.4.0, old APKs keep working (all four fixes are server-side).

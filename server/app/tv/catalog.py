@@ -364,6 +364,15 @@ def refresh(client=None, check=True) -> dict:
 _bg = False
 
 
+def _needs_refresh(every_s: float) -> bool:
+    """v0.190.1 P0: True only when the saved list is genuinely stale (older than every_s - 1h) or missing.
+    The refresh used to run on the first loop of EVERY process start, so a restart-y server re-fetched every
+    iptv-org list and re-probed every stream with 24 workers each boot - the load spiral seen live."""
+    f = _file()
+    age = time.time() - f.stat().st_mtime if f.exists() else float("inf")
+    return not (age < every_s - 3600)
+
+
 def refresh_in_background(every_s: float = 24 * 3600) -> None:
     """Nightly: download the lists again and check which channels work (a daemon thread)."""
     global _bg
@@ -375,7 +384,10 @@ def refresh_in_background(every_s: float = 24 * 3600) -> None:
         time.sleep(60)
         while True:
             try:
-                refresh()
+                if _needs_refresh(every_s):
+                    refresh()
+                else:
+                    log.info("tv list is fresh; refresh skipped")
             except Exception:
                 log.exception("tv list refresh failed; keeping the last good list")
             time.sleep(every_s)

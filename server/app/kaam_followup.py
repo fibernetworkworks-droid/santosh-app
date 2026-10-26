@@ -39,6 +39,25 @@ def _on() -> bool:
     return os.environ.get("KAAM_FOLLOWUP", "true").lower() not in ("0", "false", "off")
 
 
+_table_ready = False
+
+
+def ensure_table() -> None:
+    """v0.190.1 P0 self-heal: on databases born before the model was registered with init_db, the
+    kaam_followups table does not exist (create_all never saw the model - it only had lazy imports), and
+    every query died 'no such table'. The first tick / enqueue after deploy creates it in place and the
+    promise 'poora hote hi bata dungi' starts working on old servers too - no manual SQL, no restore."""
+    global _table_ready
+    if _table_ready:
+        return
+    from . import db as _db
+    eng = getattr(_db, "_engine", None)
+    if eng is not None:
+        KaamFollowup.__table__.create(eng, checkfirst=True)
+    _table_ready = True
+    log.info("kaam_followups table ready (self-heal checked)")
+
+
 class KaamFollowup(Base):
     __tablename__ = "kaam_followups"
     id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("kf"))
@@ -69,6 +88,7 @@ def enqueue(tenant: str, conv: str, job: dict[str, Any]) -> bool:
     hers, in Hoola's own words, not a dry ⏹ line."""
     if not _on() or not tenant or not conv:
         return False
+    ensure_table()          # v0.190.1 P0 self-heal: first touch after deploy creates the table on old DBs
     st = job.get("state")
     if st not in ("done", "failed", "stopped"):
         return False
@@ -163,6 +183,7 @@ async def tick() -> int:
     postponed (her words must not interleave); after a few postpones the canned line goes out anyway."""
     if not _on():
         return 0
+    ensure_table()          # v0.190.1 P0 self-heal (see enqueue)
     out = 0
     with session() as s:
         rows = s.scalars(select(KaamFollowup).where(KaamFollowup.status == "pending", KaamFollowup.tries < 5)

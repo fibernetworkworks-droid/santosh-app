@@ -8,6 +8,7 @@ from urllib.parse import quote
 import json
 import re
 import logging
+import threading
 import time
 import shutil
 from collections import OrderedDict
@@ -32,12 +33,21 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.190.0"   # v0.190.0 HARNESS-1, re-versioned on rebase (the dev's Document Studio had taken 0.189.0 first - both kept): v0.189.0 HARNESS-1 (from the deepseek-harness + Claude Code study): old tool results leave the request (agent/prune.py - head+marker+tail, newest step whole, her words and the stored history untouched), a step asking several pure look-ups (search/weather/status) runs them TOGETHER while results commit in the model's order (PARALLEL_SAFE + agent_parallel_tools - writes, PC socket and mail/Drive stay strictly serial), the prompt cache covers the system prompt too (cache.system_prompt, 3rd breakpoint), and a STOPPED background job reports in Hoola's own words like done/failed always did (kaam_followup + kaamwatch coverage hole closed); previous: v0.189.0 Document Studio: Claude-grade documents for the owner (cascade palettes derived from the title with tier-capped saturation, pdfgen report line with clickable-TOC multiBuild + zebra tables + Devanagari shaping + pypdf QA, xlsxgen typed values + live formulas with XLOOKUP refusal + A1 rebase, docxgen R1 cover + real heading styles + Word TOC field, pptxgen palette deck, deep preview); previous to that: v0.188.0 Gmail: the remaining surface - Gmail's OWN filters (settings.filters, run inside Gmail forever), the forwarding-address book (verify flow), send-as alias add/remove (remove behind card), IMAP / POP / language settings, Gmail drafts read-edit-send (drafts.update keeps attachments + thread, send behind card), threads as a unit (threads.modify/trash via email_threads), delete-forever (messages.delete behind a plain-words card); ALSO the real bug the sweep exposed: confirm_delete read mail with contact learning INSIDE the bazar transaction - a nested write that locked SQLite ("database is locked") whenever the mail was from a real person; the card now reads with learn_contacts=False. 4 new tools (email_filters/email_forwarding/email_alias/email_threads), email_drafts gains read/edit/send, email_accounts gains imap/pop/pop_disposition/language, settings_status view grows imap/pop/language; 20 new tests (test_email_phase5.py). Re-versioned twice: 0.186.0->0.187.0 onto the goals v0.186.0, then 0.187.0->0.188.0 onto the realtime v0.187.0 - both had taken the same numbers (bump with pubspec) (bump with pubspec)
+APP_VERSION = "0.190.1"   # v0.190.1 P0 hotfix, found LIVE on the VPS 2026-10-26 (load 147, healthz silent, santosh flapping): (1) the kaam_followups table NEVER existed on the live DB - the model had only lazy imports (worker.tick, kaamwatch.enqueue import it inside the function) so init_db's create_all never saw it and every tick since v0.187 went live died 'no such table: kaam_followups' - finished jobs never reported, 'poora hote hi bata dungi' was a broken promise; init_db now registers the model AND kaam_followup.ensure_table() self-heals the table on the first tick/enqueue on old DBs; (2) the TV catalog refresh ran on the first loop of EVERY process start - a restart-y server re-fetched every iptv-org list and re-probed every stream with 24 workers each boot (thousands of httpx GETs, the load spiral); refresh now skips while channels.json is under 23h old; (3) the browser live/frame endpoints were polled ~90 rps during the spiral - a 1s per-(tenant,session) memo caps the pile-up; (4) httpx/httpcore INFO logging silenced (every probe was a stderr line); previous: v0.190.0 HARNESS-1, re-versioned on rebase (the dev's Document Studio had taken 0.189.0 first - both kept): v0.189.0 HARNESS-1 (from the deepseek-harness + Claude Code study): old tool results leave the request (agent/prune.py - head+marker+tail, newest step whole, her words and the stored history untouched), a step asking several pure look-ups (search/weather/status) runs them TOGETHER while results commit in the model's order (PARALLEL_SAFE + agent_parallel_tools - writes, PC socket and mail/Drive stay strictly serial), the prompt cache covers the system prompt too (cache.system_prompt, 3rd breakpoint), and a STOPPED background job reports in Hoola's own words like done/failed always did (kaam_followup + kaamwatch coverage hole closed); previous: v0.189.0 Document Studio: Claude-grade documents for the owner (cascade palettes derived from the title with tier-capped saturation, pdfgen report line with clickable-TOC multiBuild + zebra tables + Devanagari shaping + pypdf QA, xlsxgen typed values + live formulas with XLOOKUP refusal + A1 rebase, docxgen R1 cover + real heading styles + Word TOC field, pptxgen palette deck, deep preview); previous to that: v0.188.0 Gmail: the remaining surface - Gmail's OWN filters (settings.filters, run inside Gmail forever), the forwarding-address book (verify flow), send-as alias add/remove (remove behind card), IMAP / POP / language settings, Gmail drafts read-edit-send (drafts.update keeps attachments + thread, send behind card), threads as a unit (threads.modify/trash via email_threads), delete-forever (messages.delete behind a plain-words card); ALSO the real bug the sweep exposed: confirm_delete read mail with contact learning INSIDE the bazar transaction - a nested write that locked SQLite ("database is locked") whenever the mail was from a real person; the card now reads with learn_contacts=False. 4 new tools (email_filters/email_forwarding/email_alias/email_threads), email_drafts gains read/edit/send, email_accounts gains imap/pop/pop_disposition/language, settings_status view grows imap/pop/language; 20 new tests (test_email_phase5.py). Re-versioned twice: 0.186.0->0.187.0 onto the goals v0.186.0, then 0.187.0->0.188.0 onto the realtime v0.187.0 - both had taken the same numbers (bump with pubspec) (bump with pubspec)
+
+
+def _quiet_http_logs() -> None:
+    """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
+    the error log and the disk drowned while the box crawled. Warnings and above still come through.
+    Tool traffic is unaffected: inbound access is uvicorn.access, a different logger, untouched."""
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    _quiet_http_logs()
     from . import usage as _usage
     _usage.install()          # v0.98 every Claude / Gemini call is counted (owner, feature, cost)
     stop = asyncio.Event()
@@ -9714,35 +9724,72 @@ def push_token_delete(body: PushTokenIn, tenant: str = Depends(current_tenant)):
 
 
 # ------------------------------------------------------------------ Santosh Browser live view
+_browser_memo: OrderedDict = OrderedDict()      # v0.190.1 P0: (kind, tenant, sid) -> (at, value), TTL 1 s
+_BROWSER_MEMO_S = 1.0
+_BROWSER_MEMO_MAX = 512
+_browser_memo_lock = threading.Lock()
+
+
+def _browser_memo_get(key: tuple):
+    hit = None
+    with _browser_memo_lock:
+        pair = _browser_memo.get(key)
+        if pair:
+            at, val = pair
+            if time.time() - at <= _BROWSER_MEMO_S:
+                hit = val
+            else:
+                _browser_memo.pop(key, None)
+    return hit
+
+
+def _browser_memo_put(key: tuple, val) -> None:
+    with _browser_memo_lock:
+        _browser_memo[key] = (time.time(), val)
+        _browser_memo.move_to_end(key)
+        while len(_browser_memo) > _BROWSER_MEMO_MAX:
+            _browser_memo.popitem(last=False)
+
+
 @app.get("/api/browser/{sid}/live", dependencies=[Depends(require_key)])
 def browser_live(sid: str, tenant: str = Depends(current_tenant)):
+    hit = _browser_memo_get(("live", tenant, sid))   # v0.190.1 P0: the live page was polled ~90 rps during the
+    if hit is not None:                              # load spiral - every hit is a fresh thread + dict read; a
+        return hit                                   # 1 s memo caps the pile-up without changing what she sees
     from . import browser
     if sid.startswith("pcop_"):
         from .pc import operator
         op = operator.get(tenant, sid)
         if op is None:
             raise HTTPException(404, "not found")
-        return op.live()
-    try:
-        return browser.live(tenant, sid)
-    except browser.BrowserError as e:
-        raise HTTPException(404, str(e))
+        out = op.live()
+    else:
+        try:
+            out = browser.live(tenant, sid)
+        except browser.BrowserError as e:
+            raise HTTPException(404, str(e))
+    _browser_memo_put(("live", tenant, sid), out)
+    return out
 
 
 @app.get("/api/browser/{sid}/frame", dependencies=[Depends(require_key)])
 def browser_frame(sid: str, tenant: str = Depends(current_tenant)):
-    from fastapi.responses import Response
+    hit = _browser_memo_get(("frame", tenant, sid))  # same 1 s memo - the JPEG bytes are immutable
+    if hit is not None:
+        return Response(hit, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
     from . import browser
     if sid.startswith("pcop_"):
         from .pc import operator
         op = operator.get(tenant, sid)
         if op is None or not op.frame:
             raise HTTPException(404, "no frame yet")
-        return Response(op.frame, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
-    try:
-        img = browser.frame(tenant, sid)
-    except browser.BrowserError as e:
-        raise HTTPException(404, str(e))
+        img = op.frame
+    else:
+        try:
+            img = browser.frame(tenant, sid)
+        except browser.BrowserError as e:
+            raise HTTPException(404, str(e))
+    _browser_memo_put(("frame", tenant, sid), img)
     return Response(img, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
 
