@@ -83,8 +83,10 @@ class LiveVoice {
 
   static Uri _url(String server, String conv, String voice, String lang, {String? resume}) {
     final base = Uri.parse(server.endsWith('/') ? server.substring(0, server.length - 1) : server);
-    return base.replace(
+    return Uri(
       scheme: base.scheme == 'https' ? 'wss' : 'ws',
+      host: base.host,
+      port: base.hasPort && base.port != 0 ? base.port : null,
       path: '${base.path}/api/voice/ws_chat',
       queryParameters: {'conv': conv, 'voice': voice, 'lang': lang, if (resume != null) 'resume': resume},
     );
