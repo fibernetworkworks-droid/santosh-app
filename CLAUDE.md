@@ -7588,6 +7588,49 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
   working — the new help card arrives with the next APK build). Gmail plan: 4/4 phases shipped.
 
 
+## v0.185.0 MERA PC BROWSER INTELLIGENCE: Hoola reads her browser like a person (page text, tabs, downloads, verified typing)
+- Owner: "NOW LETS WORK ON MERA PC :::: WE WILL MAKE IT VERY POWERFULL THAT HOOLA AI CAN PERFROM ALL OPERATIONS ON
+  BROWSER VERY SMOOTHLY. FIRST READ THE MERA PC." Then: "start with Phase 1 + 2 (PC-side browser intelligence + speed)".
+  This work is the owner's explicit unfreeze of the Mera PC freeze (exception recorded like v0.180.0; safety rules
+  untouched — ask_approval / OTP / no-passwords all unchanged).
+- PHASE 1 — PC-side browser intelligence (Santosh Desktop 1.4.0, new `desktop/santosh_desktop/browser.py`, Windows
+  UI Automation): the browser (Chrome / Edge / Brave / Firefox) exposes its page as an accessibility tree, so the
+  desktop now answers 4 NEW jobs: `page_text` (the page's exact words in order: labels, prices, buttons, errors +
+  title + address-bar URL; 240-node walk budget, ~1-3 s, degrades quietly off-Windows), `tabs` (open tabs with
+  number / title / which is active via TabItem IsSelected), `switch_tab` (move by title substring or index:
+  SelectionItem → Invoke → Click fallback), `downloads` (recent files in her Downloads folder, .crdownload/.part
+  flagged STILL DOWNLOADING) and `verify_typed` (after every `type`, the focused field is read back via UIA — ONLY
+  {kind, length, matches true/false} travels to the server, never the value, so Locker-filled IDs stay private).
+  `open_url` was rewritten: it finds the RUNNING browser (tasklist, cached 30 s), focuses its window, ctrl+l →
+  clipboard-paste → enter (a NEW TAB in HER browser — no more default-browser-opens-Edge trap), then waits for the
+  page-load signal WITHOUT DevTools: the window title (= active tab title) must change and hold steady 2 polls,
+  max 8 s; result carries {in: "Chrome (new tab)", title, loaded}. requirements.txt adds
+  `uiautomation>=2.0.18; sys_platform == 'win32'`.
+- PHASE 2 — speed on the server (`pc/operator.py` + `pc/hub.py`): 4 NEW operator tools wired to those jobs
+  (page_text / tabs / switch_tab / downloads) with Hinglish `_say` lines, hub JOB_TIMEOUT entries (35/30/35/30)
+  and old-desktop "Unknown action" → clean upgrade note (same as open_url since v0.166). `open_url`'s result now
+  reports "page title now: …" and, when loaded, rides a FREE page_text digest (800 chars, log=False, failures
+  ignored) — wrong site / login wall / error is visible in ONE step instead of screenshot-guessing. `type` reads
+  the desktop's verify block: mismatch returns "typed, BUT the field does NOT show the sent text (n chars)…
+  clear and retype" so dead submits self-heal; old desktops stay plain "typed". switch_tab joins MOVES_SCREEN +
+  FOCUS_MOVERS (a tab switch holds same-turn clicks, v0.91.1 rule) with SETTLE_S 0.6; open_url settle 1.2 → 1.0
+  (the desktop waits for the page itself now), its timeout 30 → 50 s. BUDGETS: `_WEB_TASK` regex picks browser
+  jobs from her words (urls, chrome/browser/online/youtube/form/download/irctc/…) and `_budget()` gives them
+  MAX_STEPS_WEB=64 / TASK_MINUTES_WEB=22 (was 40/15 for everything); `Op.steps_max`/`Op.minutes` feed the live
+  card, work labels and the loop, so "PC (37/64)" is honest. SYSTEM prompt gained the BROWSER READING section
+  (page_text beats pixel guessing, tabs/switch_tab never re-open a site, downloads before "done", retype on
+  verify-mismatch) and open_url is described as new-tab-in-her-browser.
+- Tests `tests/test_v0185_pc_browser.py` (19): web-task budget pick + start() sets steps_max on the live card,
+  tool schema + prompt promises + _say lines, page_text/tabs/switch_tab/downloads end-to-end through the loop
+  (FakePC), switch_tab holds blind clicks, downloads finished vs STILL DOWNLOADING, type verify warns on
+  mismatch / confirms on match / stays quiet on old desktops, open_url title+digest / old-desktop plain /
+  upgrade note for browser tools on a 1.3.x desktop, real `browser.downloads()` flags partials, page_text
+  degrades off-Windows, desktop 1.4.0 + APP_VERSION pins. All previous PC suites still green (35 tests).
+- Ritual: 0.185.0 (main.py APP_VERSION + pubspec 0.185.0+215 + desktop __init__ 1.4.0); lands on top of the parallel Gmail-polish v0.184.0.. The desktop needs a NEW
+  SantoshDesktop.exe (1.4.0) on her PC for page_text/tabs/switch_tab/downloads/verify + the new open_url; the
+  server keeps working with 1.3.x desktops (plain open_url, no browser reads, upgrade note when tried).
+
+
 ## v0.180.0 REAL TIME: the phone sees every task as it happens (Mera PC + all her own tasks)
 - Owner: "HOOLA AI MUST SEE THE TASK IN REAL TIME NOT DELAYED. CURRENTLY EVERY TASK IS COMPLETED THEN AFTER FEW SEC
   IT GIVES REPLY. SOME TASKS TAKE LONG, SOME NEVER REPLIED. FIX THIS PERFECTLY... FOR MERA PC AS WELL AS FOR ALL OWN

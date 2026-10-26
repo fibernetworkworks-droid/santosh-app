@@ -21,6 +21,10 @@ from urllib.parse import urlparse
 MAX_WIDTH = 1280
 _dpi_done = False
 
+# v1.4 browsers whose running process makes open_url land inside them (a new tab in HER browser, not whatever
+# Windows calls the 'default' today)
+_BROWSER_EXES = (("chrome", "Chrome"), ("msedge", "Edge"), ("brave", "Brave"), ("firefox", "Firefox"))
+
 BLOCKED_KEYS = {("win", "l")}                                  # locking the PC would end the session for the owner
 
 # names the PC must never open for Hoola even if the model finds a direct path (mirror of the server list)
@@ -110,6 +114,7 @@ class Control:
         self.scale = 1.0           # screen pixels per screenshot pixel
         self.origin = (0, 0)       # v1.3 screen position of the screenshot's top-left corner (monitors left of the primary are negative)
         self.on_activity = None    # set by the window app: shows the "Hoola is using this PC" banner
+        self._br_cache: tuple[float, str | None] = (0.0, None)   # v1.4 running-browser check (tasklist is slow; cached 30 s)
 
     def _touch(self, what: str) -> None:
         if self.on_activity:
@@ -328,8 +333,75 @@ class Control:
         time.sleep(2.0)
         return {"opened": target.stem}
 
+    def _running_browser(self) -> str | None:
+        """v1.4 A browser with a window open right now (Chrome / Edge / Brave / Firefox), else None.
+        tasklist runs once and is cached 30 s — this runs on every open_url."""
+        if sys.platform != "win32":
+            return None
+        t, name = self._br_cache
+        if time.time() - t < 30:
+            return name
+        name = None
+        try:
+            r = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, timeout=12)
+            procs = r.stdout.decode("utf-8", "ignore").lower()
+            for exe, label in _BROWSER_EXES:
+                if f'"{exe}.exe"' in procs:
+                    name = label
+                    break
+        except Exception:
+            name = None
+        self._br_cache = (time.time(), name)
+        return name
+
+    def _focus_browser(self, label: str) -> bool:
+        """v1.4 Bring the named browser's window to the front (True when one was found and focused)."""
+        try:
+            import pygetwindow as gw
+        except Exception:
+            return False
+        try:
+            wins = [w for w in gw.getAllWindows()
+                    if label.lower() in (w.title or "").lower() and w.title.strip()]
+        except Exception:
+            return False
+        if not wins:
+            return False
+        w = wins[0]
+        try:
+            if w.isMinimized:
+                w.restore()
+            w.activate()
+        except Exception:
+            pass
+        time.sleep(0.5)
+        return True
+
+    def _wait_title_change(self, before: str, seconds: float = 8.0) -> str:
+        """v1.4 Page-load signal without DevTools: the browser window title IS the active tab's title, so wait
+        until it changes (page loaded) and then holds steady for two polls. Returns the settled title ('' = unknown)."""
+        end = time.time() + max(1.0, seconds)
+        last, same = "", 0
+        while time.time() < end:
+            time.sleep(0.4)
+            try:
+                import pygetwindow as gw
+                act = gw.getActiveWindow()
+                title = (act.title if act else "") or ""
+            except Exception:
+                return ""
+            if title and title != before:
+                if title == last:
+                    same += 1
+                    if same >= 2:
+                        return title        # loaded and stable
+                else:
+                    last, same = title, 1
+        return last
+
     def open_url(self, url: str = "") -> dict[str, Any]:
-        """v1.3 Open a website in her own default browser (Chrome etc.). http(s) only."""
+        """v1.4 Open a website in the browser she is ALREADY using (new tab in Chrome/Edge/Brave/Firefox) and wait
+        for the page to load. Falls back to her default browser when none is running. http(s) only."""
         u = (url or "").strip()
         if not u:
             raise ControlError("Which site?")
@@ -345,13 +417,29 @@ class Control:
             raise ControlError("Only http(s) websites open here")
         self._touch("open " + u[:80])
         if sys.platform == "win32":
+            label = self._running_browser()
+            if label and self._focus_browser(label):
+                try:
+                    import pygetwindow as gw
+                    act = gw.getActiveWindow()
+                    before = (act.title if act else "") or ""
+                except Exception:
+                    before = ""
+                g = _gui()
+                g.hotkey("ctrl", "l")        # address bar of the running browser
+                time.sleep(0.15)
+                self._paste(u)               # clipboard: exact, instant, any language
+                time.sleep(0.15)
+                g.press("enter")
+                title = self._wait_title_change(before, 8.0)
+                return {"opened": u[:200], "in": f"{label} (new tab)", "title": title[:200], "loaded": bool(title)}
             os.startfile(u)  # type: ignore[attr-defined]
         elif sys.platform == "darwin":
             subprocess.Popen(["open", u])
         else:
             subprocess.Popen(["xdg-open", u])
         time.sleep(1.5)
-        return {"opened": u[:200]}
+        return {"opened": u[:200], "in": "default browser", "title": "", "loaded": False}
 
     def focus(self, title: str = "") -> dict[str, Any]:
         try:

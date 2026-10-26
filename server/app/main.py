@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.184.0"   # v0.184.0 Gmail polish: saved searches (email_rule kind=search), weekly digest, send-from-alias (verified send-as), Gmail's snoozed folder, nested labels + label colours (star colours honestly impossible), Profile>Email 'Gmail, poora' help card (bump with pubspec)
+APP_VERSION = "0.185.0"   # v0.185.0 Mera PC browser intelligence: page_text / tabs / switch_tab / downloads over UIA (desktop 1.4.0), open_url opens a new tab in the browser she already uses and reports the loaded title + first words of the page, typing verifies itself in the field, browser jobs run with a bigger budget (64 steps / 22 min) (bump with pubspec)
 
 
 @asynccontextmanager

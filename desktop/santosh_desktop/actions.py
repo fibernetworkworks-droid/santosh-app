@@ -11,7 +11,7 @@ from typing import Any, Callable
 
 import httpx
 
-from . import __version__, extract
+from . import __version__, browser, extract
 from .config import Config
 from .index import Index
 from .safety import Denied, allowed, roots, unique
@@ -88,7 +88,14 @@ class Actions:
                    to_x: Any = None, to_y: Any = None, **_) -> dict[str, Any]:
         self._control_on()
         self.log(f"PC control: {op} {keys or ''}".strip())
-        return self.control.act(op, x, y, text, keys, amount, to_x, to_y)
+        out = self.control.act(op, x, y, text, keys, amount, to_x, to_y)
+        # v1.4 after typing, check the field itself (UIA): the server warns the model when the text did not land,
+        # so a dead submit never happens. Only lengths + a true/false travel back — never the value.
+        if op == "type" and text:
+            v = browser.verify_typed(text)
+            if v:
+                out["verify"] = v
+        return out
 
     def do_apps(self, **_) -> dict[str, Any]:
         self._control_on()
@@ -110,10 +117,48 @@ class Actions:
         return self.control.window_op(op, title)
 
     def do_open_url(self, url: str = "", **_) -> dict[str, Any]:
-        """v1.3 Open a website in her default browser (http/https only, checked twice: server + here)."""
+        """v1.4 Open a site as a new tab in the browser she already uses, and wait for the page to load."""
         self._control_on()
         self.log(f"Site khol raha hoon: {url[:80]}")
         return self.control.open_url(url)
+
+    # ---------------- v1.4 browser intelligence (Chrome / Edge / Firefox, read-only) ----------------
+    def do_page_text(self, max_chars: int = 6000, **_) -> dict[str, Any]:
+        """The exact words of the page open in her browser (UIA): labels, prices, buttons, lists."""
+        self._control_on()
+        try:
+            out = browser.page_text(max(500, min(int(max_chars or 6000), 20000)))
+        except browser.BrowserUnavailable as e:
+            raise ActionError(str(e))
+        self.log(f"Page text padha: {out.get('title', '')[:60]}")
+        return out
+
+    def do_tabs(self, **_) -> dict[str, Any]:
+        """The open tabs of the browser in front (title + which is active)."""
+        self._control_on()
+        try:
+            out = browser.tabs()
+        except browser.BrowserUnavailable as e:
+            raise ActionError(str(e))
+        self.log(f"Tabs dekhe ({out.get('count', 0)})")
+        return out
+
+    def do_switch_tab(self, tab: str = "", index: int = 0, **_) -> dict[str, Any]:
+        """Move to a tab by (part of) its title or its number from tabs()."""
+        self._control_on()
+        try:
+            out = browser.switch_tab(tab, int(index or 0))
+        except browser.BrowserUnavailable as e:
+            raise ActionError(str(e))
+        self.log(f"Tab par gaya: {(tab or index)!s:.60}")
+        return out
+
+    def do_downloads(self, minutes: int = 15, **_) -> dict[str, Any]:
+        """Recent files in her Downloads folder (.crdownload = still downloading)."""
+        self._control_on()
+        out = browser.downloads(minutes=int(minutes or 15))
+        self.log(f"Downloads dekhe ({out.get('count', 0)})")
+        return out
 
     def do_status(self, **_) -> dict[str, Any]:
         i = self.info()

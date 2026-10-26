@@ -33,11 +33,27 @@ from ..events import bus, notify
 log = logging.getLogger("santosh.pcop")
 
 MAX_STEPS = 40
+MAX_STEPS_WEB = 64        # v0.184 browser jobs need more room (forms, logins, OTP, downloads, multi-tab)
 TASK_MINUTES = 15
+TASK_MINUTES_WEB = 22     # v0.184
 KEEP_IMAGES = 3
+# v0.184 tasks that will live in her browser get the bigger budget (chosen from her words, not a guess)
+_WEB_TASK = re.compile(r"(https?://|www\.|\.(com|in|org|net|gov|edu)\b|website|web ?site|browser|chrome|edge|"
+                       r"brave|firefox|online|youtube|gmail|whatsapp web|form|download|upload|log ?in|sign ?up|"
+                       r"sign ?in|search karo|search kar|paytm|amazon|flipkart|irctc|linkedin|instagram|facebook|"
+                       r"netflix|portal)", re.I)
 BLOCKED_APPS = re.compile(r"\b(cmd|command prompt|powershell|windows terminal|terminal|regedit|registry|wsl|bash|"
                           r"task scheduler|group policy|gpedit|diskpart|format)\b", re.I)
 BLOCKED_KEYS = {("win", "r"), ("win", "x"), ("ctrl", "shift", "esc"), ("win", "l")}
+
+def _is_web_task(task: str) -> bool:
+    return bool(_WEB_TASK.search(task or ""))
+
+
+def _budget(task: str) -> tuple[int, int]:
+    """(max_steps, minutes) for this task — browser jobs simply get more room instead of dying at step 40."""
+    return (MAX_STEPS_WEB, TASK_MINUTES_WEB) if _is_web_task(task) else (MAX_STEPS, TASK_MINUTES)
+
 
 SYSTEM = """You are Santosh, operating the user's own Windows PC for them, like a careful assistant sitting at the
 keyboard. Each turn you see a screenshot (coordinates are pixels on that screenshot) plus the active window title.
@@ -50,22 +66,32 @@ How to work:
 - Prefer the fastest reliable way: open_app by name, keyboard shortcuts (ctrl+s, alt+tab, ctrl+f, win to search...),
   focus_window to switch apps. Click the centre of buttons/fields. Wait (wait tool) when something is loading.
 - The whole PC is reachable:
-  - open_url opens a website straight in her default browser ('Chrome mein IRCTC kholo' = open_url, no need to open
-    Chrome first and click the address bar).
+  - open_url opens a website as a NEW TAB in the browser she already has open (Chrome / Edge / Brave / Firefox) and
+    waits for the page to load: the result tells you the loaded page's title and its first words. ('Chrome mein
+    IRCTC kholo' = open_url, no need to open Chrome first.)
   - open_app also opens Microsoft Store apps (Mail, Photos, Teams...) and a program by its full .exe path when the
     Start menu misses it ('C:\\Program Files\\App\\app.exe').
   - screenshot monitor="all" shows EVERY monitor stitched into one picture (a second screen is not blind any more);
     clicks on it land correctly. The default screenshot stays the main monitor.
   - window minimizes / maximizes / restores / closes an open window by title. Never close a window with her unsaved
     work unless the task needs it (ask_approval first).
-  - Long or mixed-language text is typed at once through the clipboard; just use type normally.
+  - Long or mixed-language text is typed at once through the clipboard; just use type normally. After typing, the
+    result says whether the field verified the text — if it did not, clear the field (ctrl+a, delete) and type
+    again; never submit blindly.
+- BROWSER READING (exact words beat pixel guessing, and each read is one cheap step):
+  - page_text reads the text of the page open in her browser: labels, prices, table cells, button names, error
+    messages. Use it to find a field, read a list, or check what really loaded (login wall / error / wrong site).
+  - tabs lists her open browser tabs (number, title, which is active); switch_tab moves between them by title or
+    number. If the site is already open in a tab, switch_tab THERE — never open a second copy of the same site.
+  - downloads shows what actually landed in her Downloads folder (a .crdownload file is STILL downloading — wait
+    and check again before you say the download finished).
 - Remember what is already open (never redo work):
   - The screenshot lists the open windows. If the app or site the task needs is ALREADY open (a window, or a tab in
-    her browser), switch to it (focus_window / alt+tab / click that tab) and continue THERE. Never open a second copy
+    her browser), switch to it (focus_window / alt+tab / switch_tab) and continue THERE. Never open a second copy
     of the same app or the same site.
   - Browser continuity: if this work was started in a browser (e.g. WhatsApp Web in Chrome), stay in THAT browser.
-    open_url opens her DEFAULT browser - if the site is already open in Chrome, do not open_url again (it can open
-    Edge instead): focus Chrome and use its address bar (ctrl+l, type the URL, enter).
+    open_url adds a tab to the browser already running, so it is safe; but if the site is already open in a tab,
+    prefer switch_tab over opening it again.
   - YAAD at the end of this prompt is your memory of recent finished tasks on this PC: what is done there is done -
     build on it, don't repeat it.
 - Read what is on the screen and report it accurately; never invent numbers.
@@ -110,8 +136,20 @@ TOOLS = [
     {"name": "open_app", "description": "Open an installed app by name (e.g. 'Tally', 'Excel', 'Word', 'Chrome', 'Notepad'). "
                                          "Also Store apps, or a full .exe path when the Start menu misses it.",
      "input_schema": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}},
-    {"name": "open_url", "description": "Open a website in her default browser (Chrome etc.) in one step. Only http(s) URLs.",
+    {"name": "open_url", "description": "Open a website as a new tab in the browser she already has open (Chrome / Edge /"
+                                         " Firefox) and wait for the page to load. Only http(s) URLs.",
      "input_schema": {"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"]}},
+    {"name": "page_text", "description": "Read the exact text of the page open in her browser (labels, prices, table "
+                                          "cells, buttons, errors). More exact than screenshots for finding fields or "
+                                          "checking what loaded.",
+     "input_schema": {"type": "object", "properties": {"max_chars": {"type": "integer"}}}},
+    {"name": "tabs", "description": "List her browser's open tabs: number, title, which is active.",
+     "input_schema": {"type": "object", "properties": {}}},
+    {"name": "switch_tab", "description": "Move to a browser tab by (part of) its title or its number from tabs.",
+     "input_schema": {"type": "object", "properties": {"tab": {"type": "string"}, "index": {"type": "integer"}}}},
+    {"name": "downloads", "description": "Recent files in her Downloads folder; a .crdownload file is still downloading. "
+                                          "Use to confirm a download really finished.",
+     "input_schema": {"type": "object", "properties": {"minutes": {"type": "integer"}}}},
     {"name": "screenshot", "description": "Look again without doing anything. monitor 'primary' (default) or 'all' = every "
                                           "monitor stitched into one picture (use when the thing you need may be on her "
                                           "second screen).",
@@ -172,6 +210,8 @@ class Op:
     step: int = 0
     action: str = ""
     thinking: bool = False         # v0.178 the vision call is running: the card shows 'Soch raha hoon…' live
+    steps_max: int = MAX_STEPS     # v0.184 browser tasks run with a bigger budget (set at start from the task)
+    minutes: int = TASK_MINUTES
     window: str = ""
     monitor: str = "primary"       # v0.166 which screen the operator works on (model can switch with screenshot)
     mem: list[str] = field(default_factory=list)   # v0.173 what this run did to the PC (open_app/open_url/...)
@@ -189,7 +229,7 @@ class Op:
 
     def live(self) -> dict[str, Any]:
         out = {"session_id": self.id, "status": self.status, "step": self.step, "action": self.action,
-               "steps_max": MAX_STEPS, "thinking": self.thinking,
+               "steps_max": self.steps_max, "thinking": self.thinking,
                "url": self.window, "title": self.window, "seq": self.frame_seq, "source": "pc",
                "summary": self.summary if self.status not in ("running",) else "", "timeline": self.timeline[-30:]}
         if self.pending and self.status == "needs_confirm":
@@ -221,7 +261,7 @@ def _work(op: Op, name: str) -> None:
         from ..agent import quick
         quick.note_step(op.conv, f"PC: {op.action[:100]}")
         op._last_work = {"id": f"{op.id}:{op.step}", "tool": "pc_do", "scene": "pc", "phase": "start",
-                         "label": f"PC ({op.step}/{MAX_STEPS}): {op.action[:110]}", "data": {"step": op.step, "do": name}}
+                         "label": f"PC ({op.step}/{op.steps_max}): {op.action[:110]}", "data": {"step": op.step, "do": name}}
         bus.publish(op.conv, "work", op._last_work)
         _event(op)   # v0.178 the PC card in the chat updates live on every step
     except Exception:
@@ -232,7 +272,7 @@ def _event(op: Op) -> None:
     try:
         bus.publish(op.conv, "browser", {"session_id": op.id, "status": op.status, "source": "pc", "site": "Aapka PC", "place": "pc",
                                          "task": op.task[:300], "url": op.window, "summary": op.summary[:600],
-                                         "step": op.step, "steps_max": MAX_STEPS, "action": op.action[:200],
+                                         "step": op.step, "steps_max": op.steps_max, "action": op.action[:200],
                                          "thinking": op.thinking})   # v0.178 live step + soch state on the card
     except Exception:
         log.exception("pc op event failed")
@@ -248,13 +288,13 @@ LIVE_EVERY_S = 0.9      # v0.86 while the model decides the next step, the phone
 # the LAST screenshot it took; v0.86 took the live frames at 960 px while the model looked at 1280 px, so every click
 # after a live frame landed ~1/3 too far right and down ("clicking randomly"). Never use two sizes.
 SHOT_WIDTH = 1280
-MOVES_SCREEN = {"click", "scroll", "drag", "open_app", "focus_window", "open_url", "window", "screenshot"}
+MOVES_SCREEN = {"click", "scroll", "drag", "open_app", "focus_window", "open_url", "window", "screenshot", "switch_tab"}
 POINTING = {"click", "scroll", "drag", "done"}
 # after any of these the WHOLE screen may have moved: even type / key in the same turn is held back
-FOCUS_MOVERS = {"open_app", "focus_window", "open_url", "window", "screenshot"}
+FOCUS_MOVERS = {"open_app", "focus_window", "open_url", "window", "screenshot", "switch_tab"}
 STATS = {"held_blind": 0}
 SETTLE_S = {"click": 0.35, "key": 0.35, "type": 0.2, "scroll": 0.25, "drag": 0.3, "focus_window": 0.3, "open_app": 0.8,
-            "open_url": 1.2, "window": 0.4}
+            "open_url": 1.0, "window": 0.4, "switch_tab": 0.6}   # v0.184 open_url shorter: the desktop itself waits for the page
 
 # v0.166 a desktop older than 1.3.0 answers 'Unknown action open_url' etc.; the model gets a clean upgrade line instead
 _OLD_DESKTOP = "Yeh Santosh Desktop purana hai. PC par naya SantoshDesktop.exe install kijiye (Hoola app > Mera PC > " \
@@ -293,6 +333,15 @@ def _say(name: str, a: dict[str, Any]) -> str:
         return "apps aur windows dekh raha hoon"
     if name == "focus_window":
         return f"'{str(a.get('title', ''))[:40]}' saamne la raha hoon"
+    if name == "page_text":
+        return "page ka text padh raha hoon"
+    if name == "tabs":
+        return "browser tabs dekh raha hoon"
+    if name == "switch_tab":
+        t = str(a.get("tab") or a.get("index") or "")
+        return f"tab par ja raha hoon ({t[:30]})" if t else "tab badal raha hoon"
+    if name == "downloads":
+        return "Downloads check kar raha hoon"
     if name == "wait":
         return "khulne ka intezaar…"
     if name == "ask_approval":
@@ -306,7 +355,7 @@ def _say(name: str, a: dict[str, Any]) -> str:
 
 def _desktop_says(e: Exception, action: str) -> str | None:
     msg = str(e)
-    if action in ("open_url", "window", "screenshot") and "Unknown action" in msg:
+    if action in ("open_url", "window", "screenshot", "page_text", "tabs", "switch_tab", "downloads") and "Unknown action" in msg:
         return _OLD_DESKTOP
     return None
 
@@ -392,8 +441,15 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
                 text, _kinds = idvault.fill_value(text, op.tenant)
             except idvault.VaultError as e:
                 return f"REFUSED: {e}"
-        await _pc(op, "control", {"op": "type", "text": text}, timeout=90)
-        return "typed"
+        try:
+            r = await _pc(op, "control", {"op": "type", "text": text}, timeout=90)
+        except Exception as e:
+            return f"ERROR: {e}"
+        v = r.get("verify") if isinstance(r, dict) else None   # v0.184 the desktop checked the field itself (UIA)
+        if v and v.get("matches") is False:
+            return (f"typed, BUT the field does NOT show the sent text (it has {v.get('length', '?')} chars). Check the "
+                    "latest screenshot: clear the field (ctrl+a then delete) and type again, or use a different field.")
+        return "typed" + (" (verified in the field)" if v and v.get("matches") else "")
     if name == "key":
         keys = str(a.get("keys", ""))
         parts = tuple(p.strip().lower() for p in re.split(r"[+ ]+", keys) if p.strip())
@@ -430,10 +486,24 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         if urlparse(url).scheme.lower() not in ("http", "https") or not urlparse(url).netloc:
             return "REFUSED: only http(s) websites open here."
         try:
-            r = await _pc(op, "open_url", {"url": url}, timeout=30)
+            r = await _pc(op, "open_url", {"url": url}, timeout=50)   # v0.184 desktop waits for the page to load
         except Exception as e:
             return _desktop_says(e, "open_url") or f"ERROR: {e}"
-        return f"opened {r.get('opened', url)} in her browser"
+        opened = r.get("opened", url)
+        where = r.get("in") or "her browser"
+        title = str(r.get("title") or "")
+        out = f"opened {opened} in {where}"
+        if title:
+            out += f"; page title now: {title}" + ("" if r.get("loaded") else " (still loading)")
+        if r.get("loaded"):
+            try:   # v0.184 the first words of the page ride along: wrong site / login wall / error is visible at once
+                pt = await _pc(op, "page_text", {"max_chars": 800}, timeout=20, log=False)
+                digest = (pt.get("text") or "").strip()[:600]
+                if digest:
+                    out += "\nPage text starts with: " + digest
+            except Exception:
+                pass
+        return out
     if name == "screenshot":
         return "looked"        # the real image is delivered by the loop (special case, like ask_otp)
     if name == "window":
@@ -451,6 +521,54 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
     if name == "focus_window":
         r = await _pc(op, "focus", {"title": str(a.get("title", ""))})
         return f"focused {r.get('focused', '')}"
+    if name == "page_text":
+        try:
+            n = max(500, min(int(a.get("max_chars") or 2500), 4000))
+        except (TypeError, ValueError):
+            n = 2500
+        try:
+            r = await _pc(op, "page_text", {"max_chars": n}, timeout=35)
+        except Exception as e:
+            return _desktop_says(e, "page_text") or f"ERROR: {e}"
+        t = (r.get("text") or "").strip()
+        head = f"Page: {r.get('title') or '-'}" + (f" | url: {r.get('url')}" if r.get("url") else "")
+        return head + "\n" + t if t else head + " (no readable text — the page may be a PDF, a video or flash content; use the screenshot)"
+    if name == "tabs":
+        try:
+            r = await _pc(op, "tabs", {}, timeout=30)
+        except Exception as e:
+            return _desktop_says(e, "tabs") or f"ERROR: {e}"
+        ts = r.get("tabs") or []
+        if not ts:
+            return "No tabs visible (her browser may be closed or it hides its tab strip)."
+        return "Open tabs: " + "; ".join(
+            f"{t.get('index', i + 1)}. {(t.get('title') or '')[:60]}" + (" [active]" if t.get("active") else "")
+            for i, t in enumerate(ts[:15]))
+    if name == "switch_tab":
+        args = {"tab": str(a.get("tab", ""))[:120], "index": int(a.get("index") or 0)}
+        try:
+            r = await _pc(op, "switch_tab", args, timeout=35)
+        except Exception as e:
+            return _desktop_says(e, "switch_tab") or f"ERROR: {e}"
+        out = f"switched to tab: {r.get('switched', '')}"
+        if r.get("title"):
+            out += f" (active tab now: {str(r.get('title'))[:80]})"
+        return out
+    if name == "downloads":
+        try:
+            mins = int(a.get("minutes") or 15)
+        except (TypeError, ValueError):
+            mins = 15
+        try:
+            r = await _pc(op, "downloads", {"minutes": mins}, timeout=30)
+        except Exception as e:
+            return _desktop_says(e, "downloads") or f"ERROR: {e}"
+        fs = r.get("files") or []
+        if not fs:
+            return f"Nothing in her Downloads folder from the last {mins} minutes."
+        lines = [f"- {f.get('name', '')} ({f.get('size_text', '?')}" +
+                 (", STILL DOWNLOADING" if f.get("partial") else ", finished") + ")" for f in fs[:15]]
+        return f"Recent downloads ({r.get('folder', 'Downloads')}):\n" + "\n".join(lines)
     if name == "wait":
         await asyncio.sleep(max(0.5, min(float(a.get("seconds") or 2), 30)))   # v0.166 heavy software loads slowly
         return "waited"
@@ -628,8 +746,8 @@ async def _run(op: Op) -> None:
     try:
         first = await _shot(op)
         messages.append({"role": "user", "content": [{"type": "text", "text": f"Task: {op.task}"}, *first]})
-        deadline = time.time() + TASK_MINUTES * 60
-        while op.step < MAX_STEPS and time.time() < deadline and op.status == "running":
+        deadline = time.time() + op.minutes * 60
+        while op.step < op.steps_max and time.time() < deadline and op.status == "running":
             _trim_images(messages)
             op.thinking = True                     # v0.178 the card shows 'Soch raha hoon…' while the vision call runs
             _event(op)
@@ -790,6 +908,7 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150) -> dict[st
             o.status = "cancelled"
             o.task_obj.cancel()
     op = Op(id="pcop_" + secrets.token_hex(6), tenant=tenant, conv=conv, task=task.strip()[:4000])
+    op.steps_max, op.minutes = _budget(op.task)   # v0.184 browser jobs get the bigger budget from the first step
     OPS[op.id] = op
     _event(op)
     op.task_obj = asyncio.create_task(_run(op))

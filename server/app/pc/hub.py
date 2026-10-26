@@ -23,7 +23,8 @@ from typing import Any
 log = logging.getLogger("santosh.pc")
 
 JOB_TIMEOUT = {"search": 30, "list": 20, "read": 45, "send_file": 180, "save_file": 180, "print": 30,
-               "tally_report": 60, "tally_voucher": 60, "status": 15, "open_file": 20, "recent": 30}
+               "tally_report": 60, "tally_voucher": 60, "status": 15, "open_file": 20, "recent": 30,
+               "page_text": 35, "tabs": 30, "switch_tab": 35, "downloads": 30, "open_url": 50}   # v0.184 browser reads
 
 
 class PcOffline(Exception):
