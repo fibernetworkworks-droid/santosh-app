@@ -46,11 +46,23 @@ def messages(history: list[dict]) -> list[dict]:
     return out
 
 
+def system_prompt(system: Any) -> Any:
+    """v0.189 the third breakpoint: the system prompt is the biggest constant prefix of all (persona, rules, tools
+    guidance, memory summary) and never changes inside a turn - cache it like everything before the newest block.
+    Anthropic allows up to 4 breakpoints; we use 3 (system, last tool, newest message). A non-string system passes
+    through untouched."""
+    if isinstance(system, str) and system.strip():
+        return [{"type": "text", "text": system, "cache_control": _EPH}]
+    return system
+
+
 def shape(kw: dict[str, Any], on: bool = True) -> dict[str, Any]:
     """messages.create(**kw) arguments with caching breakpoints (off -> unchanged)."""
     if not on:
         return kw
     kw = dict(kw)
+    if kw.get("system") is not None:
+        kw["system"] = system_prompt(kw["system"])
     if kw.get("tools"):
         kw["tools"] = tools(kw["tools"])
     if kw.get("messages"):

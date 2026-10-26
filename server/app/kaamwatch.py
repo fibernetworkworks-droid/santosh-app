@@ -231,10 +231,11 @@ def _update(tenant: str, conv: str, job: dict[str, Any]) -> None:
                 r.moved_at = t
                 r.stuck_told = ""
             say = _decide(r, job, prev_state, new, t)
-            if say and job["state"] in ("done", "failed"):
+            if say and job["state"] in ("done", "failed", "stopped"):
                 # v0.187 the dry line is replaced by ONE result message in Hoola's own words (the worker slot sends
                 # it a few seconds later; the canned words stay as the fallback inside kaam_followup). The dry
                 # line is also still told to her live call at once when the queue refused (outage safety).
+                # v0.189: a stopped job reports too (band hone ki khabar bhi uski hai).
                 try:
                     from . import kaam_followup
                     if kaam_followup.enqueue(tenant, r.conversation_id, job):

@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     agent_goal_rounds: int = 3              # background continuation turns per goal (across turns)
     agent_goal_minutes: int = 60            # total minutes across all rounds of one goal
     agent_ack_after_s: float = 5.0          # v0.187 a turn silent this long first says "ek second, dekh raha hoon…" (0 = off)
+    agent_parallel_tools: bool = True       # v0.189 a step asking several pure look-ups (search/weather/status) runs them together; everything else stays serial
     tv_refresh: bool = True                # Hoola TV: download + check the free channel list nightly
     app_release_repo: str = "fibernetworkworks-droid/santosh-app"   # v0.62 where the phone app's releases live
     video_edit_worker: bool = True         # v0.65 Hoola Video Editor: run edits in the background (tests run them inline)

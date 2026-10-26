@@ -29,7 +29,7 @@ from .events import notify
 
 log = logging.getLogger("santosh.kaam_followup")
 
-STATE_WORD = {"done": "poora ho gaya", "failed": "ruk gaya, dikkat aayi"}
+STATE_WORD = {"done": "poora ho gaya", "failed": "ruk gaya, dikkat aayi", "stopped": "band kar diya gaya"}
 _LOCK = threading.Lock()
 _SENDING: set[int] = set()
 STATS: dict[str, int] = {"enqueued": 0, "sent": 0, "fallback": 0, "skipped": 0, "postponed": 0, "dup": 0}
@@ -48,7 +48,7 @@ class KaamFollowup(Base):
     kind: Mapped[str] = mapped_column(String(40), default="")
     label: Mapped[str] = mapped_column(String(80), default="")
     title: Mapped[str] = mapped_column(String(200), default="")
-    state: Mapped[str] = mapped_column(String(16), default="done")     # done | failed
+    state: Mapped[str] = mapped_column(String(16), default="done")     # done | failed | stopped
     detail: Mapped[str] = mapped_column(Text, default="")
     link: Mapped[str] = mapped_column(String(300), default="")
     status: Mapped[str] = mapped_column(String(16), default="pending")  # pending | sent | skipped
@@ -64,11 +64,13 @@ def _aware(d: datetime | None) -> datetime | None:
 
 
 def enqueue(tenant: str, conv: str, job: dict[str, Any]) -> bool:
-    """Queue one result report for a finished/failed job (deduped per job key + state). False = not queued."""
+    """Queue one result report for a finished/failed/stopped job (deduped per job key + state). False = not queued.
+    v0.189: stopped jobs report too - she told Hoola to Rokiye a kaam, or the system stopped it; the news is still
+    hers, in Hoola's own words, not a dry ⏹ line."""
     if not _on() or not tenant or not conv:
         return False
     st = job.get("state")
-    if st not in ("done", "failed"):
+    if st not in ("done", "failed", "stopped"):
         return False
     key = str(job.get("key") or "")
     if not key:
@@ -98,6 +100,9 @@ def _canned(r: KaamFollowup) -> str:
     if r.state == "failed":
         return f"❌ {head}: ruk gaya, dikkat aayi." + (f" ({r.detail})" if r.detail else "") + \
             " Bataiye to dobara koshish karun ya doosra raasta lun."
+    if r.state == "stopped":
+        return f"⏹ {head}: band kar diya gaya." + (f" ({r.detail})" if r.detail else "") + \
+            " Jab chahiye, bas bol dena - phir shuru kar dunga."
     return f"✅ {head}: ho gaya." + (f" {r.detail}" if r.detail else "") + (f" {r.link}" if r.link else "")
 
 
@@ -105,9 +110,9 @@ async def _model_line(r: KaamFollowup, settings) -> str:
     """One tiny one-shot call (cheap brain first, no tools): the result in Hoola's own words, 1-2 lines."""
     from .agent.pakka import _ask
     system = ("Tum Hoola ho, ek Bharatiya AI coworker. Tumhari malik ke ek kaam ka natija abhi aaya hai. "
-              "Usko 1-2 chhoti Hinglish lines mein batao: kya poora hua ya ruk gaya, asli natija kya hai. "
-              "Sirf wahi fact bolo jo neeche diya hai - kuch apne aap se jodna mat. Link ho to ek baar saaf likho. "
-              "Koi emoji nahi, koi markdown nahi, koi ✅ ❌ jaise symbol nahi.")
+              "Usko 1-2 chhoti Hinglish lines mein batao: kya poora hua, ruk gaya, ya band kar diya gaya, asli "
+              "natija kya hai. Sirf wahi fact bolo jo neeche diya hai - kuch apne aap se jodna mat. Link ho to ek "
+              "baar saaf likho. Koi emoji nahi, koi markdown nahi, koi ✅ ❌ jaise symbol nahi.")
     text = f"Kaam: {r.label} {r.title}\nNatija: {STATE_WORD.get(r.state, r.state)}" + \
            (f"\nVivaran: {r.detail}" if r.detail else "") + (f"\nLink: {r.link}" if r.link else "")
     try:

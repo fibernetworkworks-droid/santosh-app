@@ -7903,3 +7903,51 @@ v0185) read 0.186.0; test_livework's turn test uses the goal-era loop unchanged 
 - Devanagari rides the v0.144 uharfbuzz path (indicpdf.rl_markup with the bundled NotoSansDevanagari): Hindi reports shape correctly in PDFs; docx sets the complex-script font for Word.
 - Agent surface: doc_studio (kind pdf/docx/xlsx/pptx, style auto/professional/boardroom/warm/elegant/forest, cover/toc auto, charts list; PII guard like make_document; delivery through the v0.51 file-card path so file_id works for email/hoola_send) and doc_preview (deep preview of any owner file by file_id). make_document stays for quick plain files; prompts teach: anything formal (reports, quotations, invoices, price lists, decks) goes to the studio. Schema diet trims both tools' prose; names/enums untouched.
 - Tests: tests/test_v0189_docstudio.py (18) - palette determinism + tier caps, title chunking, block parsing (consecutive table rows = ONE table), table iron rules (widths <= available, all cells Paragraph, M-tier header fill, zebra below header), small doc no cover/toc, long doc cover+TOC with real page numbers + no blank pages, Devanagari PDF, xlsx typed values + totals + zebra + freeze, XLOOKUP refusal with cell named + IFERROR warn, rebase_a1 (incl. LOG10 trap + whole-column + $-refs), chart baked title + rebased ranges, docx cover size + Heading styles + 1.3x + TOC field + tblHeader/cantSplit, pptx deck + notes, preview per kind + PNG pages, tool registration + diet survival, PII refusal, bad kind / missing sheets refusal, build+deliver through the faked file path. Version 0.189.0 (pubspec 0.189.0+223, console ?v=0.189.0, conscious pins 0.188.0->0.189.0 in test_v0179/email_phase1-4/test_v0185/test_v0187); desktop untouched 1.4.0 (server-only deploy possible; the file card already previews PDFs on the phone).
+
+## v0.190.0 HARNESS-1 (re-versioned on rebase: the dev's Document Studio had taken 0.189.0 first - both kept): the dsh / Claude Code study → three latency killers + one monitoring hole (owner: "READ deepseek-harness, research how Claude harness works, make plan for HOOLA AI, then deployment")
+
+The owner's order: read `deepseek-ai/deepseek-harness`, research how Claude Code's harness works, make the plan for
+HOOLA AI, then deploy. Deep study done (dsh monorepo: session log / ctx.jobs dual-lane completion / ctx.goals /
+compaction 0.8-0.16 / tool-result pruner 8192→4096+1024 / spill / bounded parallel pool 10 / KV-cache discipline;
+Claude Code: 8-step loop, read-parallel write-serial batching, ~13K-token auto-compact, cached vs uncached prompt
+sections, microcompaction). The plan (phased) is in the chat + worklog; PHASE 1 ships here:
+
+- Pruner (NEW server/app/agent/prune.py): old steps' tool results leave the REQUEST (head 2800 + one-line marker +
+  tail 500 above PRUNE_OLD_RESULT_CHARS=3500; envs PRUNE_*); the newest step stays whole (the model is about to use
+  it); her messages and the memory/goal blocks (text lists) are never touched; PURE projection - the stored history
+  and the in-memory dicts `_save` holds are untouched (pruned blocks are copies), idempotent, nothing is lost (the
+  DB keeps full results; the next turn reloads them fresh). Wired at BOTH `_think` call sites. Why: every tool
+  result is capped 6 KB at birth but stayed 6 KB in the history forever, and the history rides into every one of up
+  to 24 (goal 80) model calls - a research turn carried ~90 KB of stale page text into every later call; the
+  production brain has no prompt cache, so that was pure TTFT tax (dsh prunes exactly like this; Claude Code
+  microcompacts).
+- Parallel read-only look-ups (santosh.py): the per-tool body is extracted into `_one(b)` (every path RETURNS one
+  tool_result - behaviour identical to the old inline loop) and a step that asks for SEVERAL tools all in
+  `PARALLEL_SAFE` (google_search, youtube_search, open_website, web_sources, get_weather, maps_search,
+  hoola_community_search, memory_search, kaam_status - pure look-ups ONLY) runs them as one asyncio.gather
+  (return_exceptions=True). Results commit STRICTLY in the model's order; a look-up that finishes first does not
+  jump the queue. Anything not clearly safe (writes, her PC's single WebSocket, mail/Drive reads - the v0.188
+  nested-SQLite-write lesson) keeps the byte-for-byte serial path, as does any mixed step. Config
+  `agent_parallel_tools` (default True). Her Rokiye still lands: every `_one` runs under its own `_watched`.
+- Prompt cache covers the system prompt too (cache.system_prompt): the 3rd of Anthropic's 4 breakpoints (system,
+  last tool, newest message) - the biggest constant prefix (persona + rules + tools guidance + memory summary) is
+  finally cached on the Claude path; words byte-identical, non-string systems pass through, off-switch unchanged.
+- Stopped jobs report (kaam_followup + kaamwatch): v0.187's coverage hole closed - `stopped` joins done/failed in
+  the enqueue gate (deduped per key+state, waiting still NEVER reports: her baari = card/push), STATE_WORD gains
+  "band kar diya gaya", the canned fallback is "⏹ …: band kar diya gaya. Jab chahiye, bas bol dena - phir shuru kar
+  dunga.", and the one-shot model prompt says the work may be poora / ruka / band kiya gaya. She now hears about a
+  Rokiye'd or system-stopped job in Hoola's own words, not a dry ⏹ line.
+- NOT in this ship (Phase 2+, documented in the plan): step-admitted tool subsets (the ~389 specs still ride every
+  call; deferred families + a tool-search tool is the next big TTFT lever), job-completion → WAKE the brain with a
+  follow-up turn (dsh's completionDelivery: 'wakeup' + maxConsecutiveWakes), durable accepted-message inbox (202 +
+  BackgroundTasks loses accepted messages on a crash), event-sourced session log, subagents.
+- Tests: NEW tests/test_v0189_harness.py (8): prune caps old/keeps newest whole/her words + memory blocks untouched/
+  pure projection/idempotent; the parallel BARRIER test (three look-ups only ever finish if all three truly overlap)
+  + model-order commit asserted from the brain's own second request; the serial path kept for a mixed PC+WhatsApp
+  step (strictly one after another); cache breakpoints x3 + off-switch + input never mutated; stopped job reports in
+  her voice + gate/canned/waiting-still-refused. Sweeps green: email x5 + cards + bazar + basics + realtime(v0.187) +
+  goal(v0.186) + pc(v0.185) + search(v0.179) + NEW = 186; routines + livework + robust_chat + human_voice +
+  voicestyle + voice_heal + pc_is_error + realtime(v0.178) = 56; api + console_build + gcal + gdrive + drive +
+  employee + avatar + appcheck = 55. 297 passed, zero failures. Version 0.190.0 (pubspec 0.190.0+224, console
+  ?v=0.190.0, conscious pins 0.189.0→0.190.0 in test_v0179/email_phase1-5/test_v0185/test_v0187/test_v0189); desktop
+  untouched 1.4.0 (server-only deploy; old APKs keep working - the pruner/parallel/cache are all server-side).

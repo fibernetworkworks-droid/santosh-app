@@ -19,6 +19,7 @@ from ..avatar.service import gendered, persona
 from ..life import context_block
 from . import llm
 from . import say as _say
+from .prune import prune_history   # v0.189 old tool results leave the request, the newest step stays whole
 from .prompts import system_prompt
 from . import mcp_live
 from ..gyaan import answer as _gyaan
@@ -280,6 +281,15 @@ async def _watched(work, conversation_id: str, ctx: Ctx, state: dict | None = No
 HALTED_TEXT = {"stop": "Theek hai, maine kaam rok diya.",
                "pause": "Owner ne kaam rok diya (Pause), isliye main yahin ruk gaya. 'Kaam shuru' hone par aage karunga."}
 
+# v0.189 Tools that may run TOGETHER when one step asks for several (dsh's bounded pool, Claude Code's
+# concurrency-safe read batching - kept deliberately small): pure look-ups only. Anything that writes,
+# touches her PC's single WebSocket, reads her mail/Drive (nested SQLite writes, the v0.188 lesson), or
+# sends anything stays strictly serial, exactly as before. Results still commit in the model's order.
+PARALLEL_SAFE = frozenset({
+    "google_search", "youtube_search", "open_website", "web_sources", "get_weather",
+    "maps_search", "hoola_community_search", "memory_search", "kaam_status",
+})
+
 
 async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict | None = None):
     """A tool call that can never hang the whole turn."""
@@ -395,8 +405,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             live.block(stream=not _gyaan.used(conversation_id))
         try:
             try:   # stays on the brain that worked; Rokiye cancels the model call itself, not just the next step
-                blocks, stop, brain = await _watched(_think(brain, system, history, settings, tools, live,
-                                                             state.get("max_tokens")),
+                blocks, stop, brain = await _watched(_think(brain, system, prune_history(history), settings, tools,
+                                                             live, state.get("max_tokens")),
                                                      conversation_id, ctx, state)
             except _Halted:
                 raise
@@ -408,8 +418,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 mcp_defs, mcp_route, tools = [], {}, TOOLS
                 if live is not None:
                     live.reset()
-                blocks, stop, brain = await _watched(_think(brain, system, history, settings, tools, live,
-                                                             state.get("max_tokens")),
+                blocks, stop, brain = await _watched(_think(brain, system, prune_history(history), settings, tools,
+                                                             live, state.get("max_tokens")),
                                                      conversation_id, ctx, state)
         except _Halted as h:
             state["halted"] = h.why
@@ -462,18 +472,16 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                                                          **_tag(live)})
                 _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
             break
-        results = []
-        for b in blocks:
-            if b.get("type") != "tool_use":
-                continue
+        async def _one(b: dict) -> dict:
+            """One tool_use block, run to its tool_result (v0.189: every path RETURNS exactly one result, so the
+            same body serves the serial loop and the parallel gather - behaviour identical to the old inline loop)."""
+            nonlocal ran_tools
             if conversation_id in _stopped or state.get("halted"):
-                results.append({"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
-                                "content": "The user tapped Stop. Do not continue this task; say in one line what was done."})
-                continue
+                return {"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
+                        "content": "The user tapped Stop. Do not continue this task; say in one line what was done."}
             held = breaker.before(b["name"], b.get("input") or {})
             if held:                       # circuit breaker: steered / constrained / stopped, the call does not run
-                results.append({"type": "tool_result", "tool_use_id": b["id"], "is_error": True, "content": held})
-                continue
+                return {"type": "tool_result", "tool_use_id": b["id"], "is_error": True, "content": held}
             ran_tools = True
             args_in = b.get("input") or {}
             from . import where as _where   # v0.93 the card / work line name the place where it REALLY runs
@@ -494,7 +502,6 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                     content += await pakka.on_failure(tenant_id, b["name"], call["error"], state.get("request", ""), state)
                     call["internet_fix"] = (state.get("web_fix") or {}).get(b["name"], "")
                 state["calls"].append(call)
-                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": content})
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "done", "id": b["id"],
                                                       "args": livework.args_brief(args_in)})   # v0.171 again: late joiners see it too
                 _work(conversation_id, b["id"], shown, label, livework.phase_of(out), args_in, out)
@@ -504,25 +511,26 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                         live.feed_say(_s)
                 except Exception:
                     log.debug("say line failed", exc_info=True)
+                return {"type": "tool_result", "tool_use_id": b["id"], "content": content}
             except _Halted as h:
                 state["halted"] = h.why
                 state["calls"].append({"tool": b["name"], "ok": False, "error": "stopped by the owner", "args": args_in,
                                        "key": _key(b["name"], args_in)})
-                results.append({"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
-                                "content": "Stopped by the owner while this step was running; it may have partly happened."})
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error", "id": b["id"],
                                                       "detail": "roka gaya"})
                 _work(conversation_id, b["id"], shown, label, "stopped", args_in, error="Roka gaya")
+                return {"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
+                        "content": "Stopped by the owner while this step was running; it may have partly happened."}
             except ToolError as e:
                 breaker.after(b["name"], False)
                 help_ = await pakka.on_failure(tenant_id, b["name"], str(e), state.get("request", ""), state)
                 state["calls"].append({"tool": b["name"], "ok": False, "error": str(e)[:300], "args": args_in,
                                        "key": _key(b["name"], args_in),
                                        "internet_fix": (state.get("web_fix") or {}).get(b["name"], "")})
-                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": str(e) + help_, "is_error": True})
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error",
                                                       "id": b["id"], "detail": str(e)[:300]})
                 _work(conversation_id, b["id"], shown, label, "error", args_in, error=str(e))
+                return {"type": "tool_result", "tool_use_id": b["id"], "content": str(e) + help_, "is_error": True}
             except asyncio.TimeoutError:
                 breaker.after(b["name"], False)
                 state["calls"].append({"tool": b["name"], "ok": False, "error": "timeout", "args": args_in,
@@ -531,20 +539,38 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                        "Don't stop the task: check this step's status, try a lighter way or another tool, or hand the "
                        "step to a route that answers faster.")
                 log.warning("tool %s timed out", b["name"])
-                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": msg, "is_error": True})
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error",
                                                       "id": b["id"], "detail": "bahut der lag rahi thi, rok diya"})
                 _work(conversation_id, b["id"], shown, label, "error", args_in, error="Bahut der lag rahi thi, rok diya")
+                return {"type": "tool_result", "tool_use_id": b["id"], "content": msg, "is_error": True}
             except Exception as e:  # unexpected bug: tell the model, keep the turn alive
                 breaker.after(b["name"], False)
                 state["calls"].append({"tool": b["name"], "ok": False, "error": f"crash: {e}"[:300], "args": args_in,
                                        "key": _key(b["name"], args_in)})
                 log.exception("tool %s crashed", b["name"])
                 help_ = await pakka.on_failure(tenant_id, b["name"], f"internal error: {e}", state.get("request", ""), state)
-                results.append({"type": "tool_result", "tool_use_id": b["id"],
-                                "content": f"Internal error in {b['name']}: {e}" + help_, "is_error": True})
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error", "id": b["id"]})
                 _work(conversation_id, b["id"], shown, label, "error", args_in, error="Kuch gadbad ho gayi")
+                return {"type": "tool_result", "tool_use_id": b["id"],
+                        "content": f"Internal error in {b['name']}: {e}" + help_, "is_error": True}
+
+        tblocks = [b for b in blocks if b.get("type") == "tool_use"]
+        results: list[dict] = []
+        if len(tblocks) > 1 and getattr(settings, "agent_parallel_tools", True) \
+                and all(b["name"] in PARALLEL_SAFE for b in tblocks):
+            # v0.189 one step asked for several pure look-ups: they run together (dsh's bounded pool, Claude Code's
+            # concurrency-safe read batching), results commit strictly in the model's order. Her Rokiye still lands:
+            # every _one watches for the halt itself and returns the stopped result.
+            outs = await asyncio.gather(*(_one(b) for b in tblocks), return_exceptions=True)
+            for b, o in zip(tblocks, outs):
+                results.append(o if isinstance(o, dict) else
+                               {"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
+                                "content": f"Internal error in {b['name']}: {o}"})
+        else:
+            for b in blocks:
+                if b.get("type") != "tool_use":
+                    continue
+                results.append(await _one(b))
         history.append({"role": "user", "content": results})
         if state["breaker"].rescue_note:   # v0.187 the replan rescue rides with the results, as data for the model
             note = state["breaker"].rescue_note
