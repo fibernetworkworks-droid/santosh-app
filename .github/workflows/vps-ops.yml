@@ -14,6 +14,7 @@ on:
         type: choice
         options:
           - status
+          - diagnose
           - logs
           - errors
           - voicecheck
@@ -69,6 +70,24 @@ jobs:
                 echo 'echo "== git"; cd $REPO && git branch --show-current && git log --oneline -3'
                 echo 'echo "== pm2"; pm2 status'
                 echo 'echo "== disk / memory"; df -h / | tail -1; free -m | head -2; uptime' ;;
+              diagnose)
+                echo 'echo "== repo"; cd $REPO && git branch --show-current && git log --oneline -1 && git status --short | head -20'
+                echo 'echo "== files that differ: clean repo vs RUNNING app (Only in = extra/missing file)"'
+                echo 'diff -rq $REPO/server/app $CORE/app -x __pycache__ -x "*.pyc" -x data 2>&1 | head -60'
+                echo 'for f in agent/tools.py agent/santosh.py voice.py main.py agent/mcp_live.py agent/prompts.py events.py; do echo "== diff $f"; diff -u $REPO/server/app/$f $CORE/app/$f | head -120; done'
+                echo 'echo "== tool check (running app)"; cd $CORE && timeout 180 .venv/bin/python - <<"PY" 2>&1 | tail -30'
+                echo 'import collections'
+                echo 'from app.agent import tools as T'
+                echo 'c = collections.Counter(t["name"] for t in T.TOOLS)'
+                echo 'print("chat tools:", len(T.TOOLS), "DUPLICATES:", [n for n, k in c.items() if k > 1])'
+                echo 'print("no handler:", [t["name"] for t in T.TOOLS if t["name"] not in T.HANDLERS][:20])'
+                echo 'from app import voice as V'
+                echo 'sp = V._tool_specs(); c2 = collections.Counter(d.get("name") for s in sp for d in (s.get("function_declarations") or [s]))'
+                echo 'print("voice tools:", sum(c2.values()), "DUPLICATES:", [n for n, k in c2.items() if k > 1])'
+                echo 'bad = [p for s in sp for d in (s.get("function_declarations") or [s]) for p in V.schema_problems(d.get("parameters") or {}, d.get("name",""))]'
+                echo 'print("voice schema problems:", bad[:10])'
+                echo 'PY'
+                echo 'echo "== last errors"; pm2 logs santosh --lines 150 --nostream --raw --err | tail -150' ;;
               logs)
                 echo "pm2 logs santosh --lines $N --nostream --raw" ;;
               errors)
