@@ -7726,3 +7726,25 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
 - Ritual: version 0.177.1 (main.py APP_VERSION + FastAPI version + pubspec 0.177.1+207 + test_routines assert).
   Desktop untouched: still 1.3.1, no exe rebuild needed (server-side memory only). Deploy unchanged: git pull +
   cp server/app + pm2 restart.
+
+## v0.185.2 VOICECHECK X-RAY FIX: the instrument now finds the affective refusal (and the rollback day)
+- The day 0.185.1 went live, the owner reported voice still broken; the voicecheck X-ray on her VPS returned
+  "works_at: null — nothing works at any rung", which contradicted the v0.180-known-good baseline. The audit
+  showed WHY: voicecheck predates the v0.181 affective return and built EVERY rung (including bare no_tools)
+  with enable_affective_dialog on — so a model that refuses that field reports "nothing works / model-key-Google"
+  when only the field is refused. The incident itself was the owner's MCP work on the VPS checking out the OLD
+  TAG v0.183.0-b344 and deploying it (reflog HEAD@{2}), rolling prod back past the 0.185.1 voice fix; recovered
+  same day to 142e380 via the corrected deploy flow.
+- voicecheck._attempt(): one attempt that mirrors the REAL call loop's heal — a generic setup refusal while
+  affective is on drops it process-wide (voice._AFFECTIVE) and retries the SAME rung once; every step reports
+  "without_affective", the report gains "affective": {"refused": ...}, the say verdict names the refused field,
+  and total failure now says "bina affective ke BHI" + the GEMINI_LIVE_MODEL=<model> test line (no env prefix).
+- Test-infra repairs found by the first full-sweep run in one process: (1) remember_setup() persists
+  data/voice_setup.json on disk, so the voicecheck tests unlinked it in teardown (it poisoned later suites);
+  (2) the call loop's affective heal flips _AFFECTIVE process-wide, so test_v150's fixture now restores it;
+  (3) test_v150::test_refused_setup_heals was stale against the heal era — the picky fake now sees exactly 3
+  connects (affective+vocab refused → heal's same-rung retry no-affective+vocab refused → no-affective
+  no-vocab works) and SETUP step still 2. New tests/test_v01852_voicecheck_affective.py (3 tests: affective
+  named as the cause at works_at=0, total-failure verdict says model/key, rung refusal still bisects to the
+  bad tool while reporting the heal). Version 0.185.2 (pubspec 0.185.2+217, console ?v=0.185.2, conscious
+  pins 0.185.1→0.185.2 in test_v0179/email_phase1-4/test_v0185); desktop untouched 1.4.0 (server-only deploy).

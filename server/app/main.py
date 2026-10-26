@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.185.1"   # v0.185.1 voice call fix: Gemini refuses affective dialog with a GENERIC 1007 (never names the field) so the v0.181 heal never fired and every call died in the setup ladder with 0 turns — a generic setup refusal with affective on now drops affective once, process-wide, and retries at once; ack clips build with ONE shared TTS client per batch (bump with pubspec)
+APP_VERSION = "0.185.2"   # v0.185.2 voicecheck X-ray fix: the instrument now mirrors the real call loop's affective heal (a generic 1007 while enable_affective_dialog is on drops it process-wide and retries the same rung) — without it voicecheck tested every rung WITH the field on and reported "nothing works" even when only the field was refused (the live VPS answer, 26 Oct); report gains affective/without_affective, the say verdict names the refused field or the GEMINI_LIVE_MODEL test fallback (bump with pubspec)
 
 
 @asynccontextmanager

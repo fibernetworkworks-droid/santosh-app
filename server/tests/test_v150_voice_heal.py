@@ -22,12 +22,19 @@ BAD = "1007 None. Request contains an invalid argument."
 
 @pytest.fixture(autouse=True)
 def _fresh():
+    voice._AFFECTIVE["ok"] = True
     voice.SETUP.update(step=0, key="", at=0.0, refusals=0, healed=0, loaded=False)
     voice.QUIET.update(client_content=None, queued=0, live=0, sent=0, learned_off=0)
     voice.UNSUPPORTED.clear()
     yield
+    voice._AFFECTIVE["ok"] = True     # v0.185.2 the call loop's heal flips this process-wide - never leak it
     voice.SETUP.update(step=0, key="", at=0.0, loaded=False)
     voice.QUIET.update(client_content=None)
+    # v0.185.2 the voicecheck test here calls remember_setup(5), which persists data/voice_setup.json
+    # on disk - without this unlink the file poisoned later suites in the same sweep (seen 26 Oct)
+    import contextlib as _cl
+    with _cl.suppress(Exception):
+        voice._setup_file().unlink(missing_ok=True)
 
 
 def _audio(text="Haan, boliye."):
@@ -138,11 +145,16 @@ def test_refused_setup_heals_step_by_step_and_is_remembered(env, monkeypatch):
         with c.websocket_connect(f"/api/voice/ws?conv={conv}") as ws:
             evs = read_events(ws, lambda e: e["type"] == "turn_done", limit=80)
             ws.send_text(json.dumps({"type": "end"}))
-        assert len(configs) == 2
+        # v0.185.2 the affective heal adds ONE connect: the generic 1007 while enable_affective_dialog is on
+        # drops it and retries the same rung BEFORE the ladder moves (v0.150-era shape was exactly 2 connects)
+        assert len(configs) == 3
+        assert configs[0].enable_affective_dialog is True
         assert configs[0].input_audio_transcription.custom_vocabulary == ["Rameshwar", "Akot"]
-        assert configs[1].input_audio_transcription.custom_vocabulary is None
-        assert configs[1].input_audio_transcription.language_codes      # only the refused extra is left out
-        assert configs[1].context_window_compression is not None
+        assert configs[1].enable_affective_dialog is None             # the heal's same-rung retry
+        assert configs[1].input_audio_transcription.custom_vocabulary == ["Rameshwar", "Akot"]
+        assert configs[2].input_audio_transcription.custom_vocabulary is None
+        assert configs[2].input_audio_transcription.language_codes      # only the refused extra is left out
+        assert configs[2].context_window_compression is not None
         assert evs[0]["type"] == "ready"
         assert voice.SETUP["step"] == 2 and json.loads(open("data/voice_setup.json").read())["step"] == 2
         # the next call starts straight from what worked: one connect, no refusal

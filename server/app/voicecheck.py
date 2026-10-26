@@ -98,12 +98,28 @@ async def _bisect(make, names: list[str], keep: list[str]) -> str | None:
     """The one tool (from `names`) that makes Gemini refuse; `keep` is always declared."""
     while len(names) > 1:
         half = names[: len(names) // 2]
-        ok, _ = await _try(make(keep + half))
+        ok, _, _ = await _attempt(lambda: make(keep + half))
         names = names[len(names) // 2:] if ok else half
     if names:
-        ok, _ = await _try(make(keep + names))
+        ok, _, _ = await _attempt(lambda: make(keep + names))
         return None if ok else names[0]
     return None
+
+
+async def _attempt(build, note: bool = False, timeout: float = 15) -> tuple[bool, str, bool]:
+    """v0.185.2 one attempt that mirrors the REAL call loop's affective heal: a generic setup refusal while
+    enable_affective_dialog is on drops it (process-wide, like voice.py) and retries the SAME config once.
+    Returns (ok, error, healed_without_affective). Without this the instrument tested every rung WITH the
+    field on and reported 'nothing works' even when only the field was refused (the VPS answer, 26 Oct)."""
+    from . import voice
+    cfg = build()
+    affective_on = bool(getattr(cfg, "enable_affective_dialog", None))
+    ok, why = await _try(cfg, note=note, timeout=timeout)
+    if ok or not affective_on or not voice.setup_refused(RuntimeError(why or "")):
+        return ok, why, False
+    voice._AFFECTIVE["ok"] = False
+    ok, why = await _try(build(), note=note, timeout=timeout)
+    return ok, why, True
 
 
 async def run(tenant: str | None = None) -> dict:
@@ -121,17 +137,27 @@ async def run(tenant: str | None = None) -> dict:
     out["prompt_chars"] = len(full.system_instruction.parts[0].text)
     out["schema_problems"] = [f"{d.name}: {p}" for d in (full.tools[0].function_declarations if full.tools else [])
                               for p in voice.schema_problems(d.parameters_json_schema or {})]
-    ok, why = await _try(full)
-    out["steps"].append({"try": "full", "ok": ok, "error": why})
+    affective = {"refused": False}
+    ok, why, healed = await _attempt(lambda: make(0))
+    step = {"try": "full", "ok": ok, "error": why}
+    if healed:
+        step["without_affective"] = True
+        affective["refused"] = True
+    out["steps"].append(step)
     works_at = 0 if ok else None
     if not ok:
         for i in range(1, len(voice.SETUP_STEPS) + 1):
-            ok, why2 = await _try(make(i))
-            out["steps"].append({"try": "without " + ", ".join(voice.SETUP_STEPS[:i]), "ok": ok, "error": why2})
+            ok, why2, healed2 = await _attempt(lambda i=i: make(i))
+            step = {"try": "without " + ", ".join(voice.SETUP_STEPS[:i]), "ok": ok, "error": why2}
+            if healed2:
+                step["without_affective"] = True
+                affective["refused"] = True
+            out["steps"].append(step)
             if ok:
                 works_at = i
                 break
     out["works_at"] = works_at
+    out["affective"] = affective
     culprit = None
     if works_at:
         step = voice.SETUP_STEPS[works_at - 1]
@@ -151,21 +177,24 @@ async def run(tenant: str | None = None) -> dict:
         out["culprit"] = culprit
     # Gemini 3.x and mid-call client_content (how quiet notes used to travel)
     if works_at is not None:
-        ok_cc, why_cc = await _try(make(works_at), note=True, timeout=25)
+        ok_cc, why_cc, _ = await _attempt(lambda: make(works_at), note=True, timeout=25)
         out["mid_call_client_content"] = {"ok": ok_cc, "error": why_cc}
     # what the server now does on its own
     out["server_now"] = voice.setup_view()
+    affective_note = ("Gemini enable_affective_dialog mana karta hai (generic 1007) - real calls ye khud "
+                      "heal kar leti hain (bina affective ke chalti hain). ") if affective["refused"] else ""
     if works_at == 0:
-        out["say"] = ("Gemini poori call setup le raha hai. " +
+        out["say"] = (affective_note + "Gemini poori call setup le raha hai. " +
                       ("Beech call mein client_content bhi chalta hai." if out.get("mid_call_client_content", {}).get("ok")
                        else "Beech call mein client_content NAHI chalta (isliye notes ab tool jawab / text ke saath jaate hain)."))
     elif works_at:
-        out["say"] = (f"Gemini '{voice.SETUP_STEPS[works_at - 1]}' ke saath call mana karta hai" +
+        out["say"] = (affective_note + f"Gemini '{voice.SETUP_STEPS[works_at - 1]}' ke saath call mana karta hai" +
                       (f" ({culprit})" if culprit else "") + ". Calls ab apne aap iske bina chalti hain.")
         voice.remember_setup(works_at)
     else:
-        out["say"] = "Gemini kisi bhi setup ke saath jawab nahi de raha: " + (why or "") + \
-                     " (key / model naam / Google ki taraf ki dikkat; GEMINI_LIVE_MODEL check karein)."
+        out["say"] = (affective_note + "Gemini bina affective ke BHI kisi setup ko jawab nahi de raha: " + (why or "") +
+                     " (key / model naam / Google ki taraf ki dikkat; GEMINI_LIVE_MODEL check karein - "
+                     "dusre model se aise test karein: GEMINI_LIVE_MODEL=<model-naam> .venv/bin/python -m app.voicecheck)")
     return out
 
 
