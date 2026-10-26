@@ -43,7 +43,9 @@ jobs:
         run: |
           [ -n "$VPS_HOST" ] && [ -n "$VPS_SSH_KEY" ] || { echo "::error::VPS_HOST / VPS_SSH_KEY secret missing"; exit 1; }
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/vps && chmod 600 ~/.ssh/vps
+          printf '%s\n' "$VPS_SSH_KEY" | tr -d '\r' > ~/.ssh/vps && chmod 600 ~/.ssh/vps   # Windows copy-paste CRLF
+          grep -q 'BEGIN .*PRIVATE KEY' ~/.ssh/vps || { echo "::error::VPS_SSH_KEY is not a private key (needs the -----BEGIN ... PRIVATE KEY----- block from cat ~/hoola_gh, not the .pub line)"; exit 1; }
+          ssh-keygen -y -f ~/.ssh/vps > /dev/null || { echo "::error::VPS_SSH_KEY private key is broken (copy the whole block again, BEGIN to END lines)"; exit 1; }
           ssh-keyscan -T 15 -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
           [ -s ~/.ssh/known_hosts ] || { echo "::error::VPS did not answer on port 22"; exit 1; }
 
