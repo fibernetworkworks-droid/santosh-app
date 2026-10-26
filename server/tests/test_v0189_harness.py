@@ -184,6 +184,8 @@ def test_cache_covers_the_system_prompt_too():
 
 def test_stopped_job_reports_in_her_voice(fu, monkeypatch):  # noqa: F811
     conv = fu["conv"]
+    from app.config import get_settings as _gs
+    monkeypatch.setattr(_gs(), "agent_wake_turns", False)   # v0.191: pins the one-shot FALLBACK path (auto-restored)
 
     async def fake_line(r, settings):
         return "Long reel ka kaam band kar diya gaya hai."
@@ -215,6 +217,6 @@ def test_stopped_enqueue_gate_and_canned_line():
 def test_version():
     from app.config import get_settings
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.191.0"
+    assert APP_VERSION == "0.192.0"
     assert get_settings().agent_parallel_tools is True
     assert get_settings().agent_ack_after_s == 5.0

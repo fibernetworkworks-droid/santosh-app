@@ -220,6 +220,8 @@ def tick_drain():
 
 def test_done_job_reports_in_her_voice(fu, monkeypatch):
     conv = fu["conv"]
+    from app.config import get_settings as _gs
+    monkeypatch.setattr(_gs(), "agent_wake_turns", False)   # v0.191: pins the one-shot FALLBACK path (auto-restored)
     async def fake_line(r, settings):
         return "Diwali reel taiyaar hai, link yahan hai."
     monkeypatch.setattr(kf, "_model_line", fake_line)
@@ -239,6 +241,8 @@ def test_done_job_reports_in_her_voice(fu, monkeypatch):
 
 def test_model_failure_falls_back_to_the_honest_line(fu, monkeypatch):
     conv = fu["conv"]
+    from app.config import get_settings as _gs
+    monkeypatch.setattr(_gs(), "agent_wake_turns", False)   # v0.191: pins the one-shot FALLBACK path (auto-restored)
     async def dead_line(r, settings):
         return ""
     monkeypatch.setattr(kf, "_model_line", dead_line)
@@ -250,6 +254,8 @@ def test_model_failure_falls_back_to_the_honest_line(fu, monkeypatch):
 
 def test_failed_job_asks_for_her_word(fu, monkeypatch):
     conv = fu["conv"]
+    from app.config import get_settings as _gs
+    monkeypatch.setattr(_gs(), "agent_wake_turns", False)   # v0.191: pins the one-shot FALLBACK path (auto-restored)
     async def dead_line(r, settings):
         return ""
     monkeypatch.setattr(kf, "_model_line", dead_line)
@@ -263,6 +269,8 @@ def test_running_turn_postpones_the_report(fu, monkeypatch):
     from app.kaam_followup import KaamFollowup
     from app.db import session
     conv = fu["conv"]
+    from app.config import get_settings as _gs
+    monkeypatch.setattr(_gs(), "agent_wake_turns", False)   # v0.191: pins the one-shot FALLBACK path (auto-restored)
     calls, notices = [], []
     async def fake_line(r, settings):
         calls.append(r.title)
@@ -327,5 +335,5 @@ def test_enqueue_dedupes_same_job_and_state(fu):
 def test_version():
     from app.config import get_settings
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.191.0"
+    assert APP_VERSION == "0.192.0"
     assert get_settings().agent_ack_after_s == 5.0

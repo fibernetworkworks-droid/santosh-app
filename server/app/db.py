@@ -868,6 +868,9 @@ def init_db(url: str | None = None):
         # never saw it and the kaam_followups table did not exist on the live DB: every tick died
         # 'no such table: kaam_followups' and finished jobs never reported; 'poora hote hi bata dungi' was
         # a broken promise on production since v0.187 went live)
+    from . import turn_inbox as _turn_inbox  # noqa: F401  (v0.192.0 the durable accepted-message inbox - registered
+        # HERE on day one, the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
+        # stays without its table; turn_inbox.ensure_table() self-heals old DBs on the first accept/sweep too)
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401

@@ -19,6 +19,7 @@ from ..avatar.service import gendered, persona
 from ..life import context_block
 from . import llm
 from . import say as _say
+from . import admit as _admit   # v0.191 step-admitted tool subsets (HARNESS-2)
 from .prune import prune_history   # v0.189 old tool results leave the request, the newest step stays whole
 from .prompts import system_prompt
 from . import mcp_live
@@ -387,12 +388,25 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             system += "\n\n" + _proj
     except Exception:
         log.exception("project block failed")
-    tools = TOOLS + mcp_defs
+    # v0.191 HARNESS-2 step-admitted tools: the families her words (plus any open goal's steps and the procedure
+    # hint) actually need, computed ONCE for the whole turn - byte-stable across every step, so the Anthropic
+    # prompt cache holds. tool_search may admit a family mid-turn; the next loop iteration rebuilds the list.
+    adm = None
+    if (getattr(ctx, "actor", "owner") or "owner") in ("owner", "wake") or \
+            str(getattr(ctx, "actor", "owner") or "owner").startswith("approved:"):
+        _extra = state.get("hint") or ""
+        _g0 = state.get("goal")
+        if _g0:
+            _extra += " " + " ".join(str(s.get("text") or "") for s in (_g0.get("steps") or []))
+        adm = _admit.plan_for(state.get("request", ""), settings, extra_text=_extra)
+    ctx.admit = adm                 # tool_search writes through here (None = admission off)
+    tools = (adm.specs()) + mcp_defs if adm is not None else TOOLS + mcp_defs
     from .. import livereply
-    live = livereply.current(conversation_id)
+    live = None if conversation_id in _NO_STREAM else livereply.current(conversation_id)
     ran_steps = 0
     while ran_steps < (settings.agent_goal_max_steps if state.get("goal") else settings.agent_max_steps):
         ran_steps += 1
+        tools = (adm.specs()) + mcp_defs if adm is not None else TOOLS + mcp_defs   # v0.191 after tool_search
         if settings.agent_goal and "goal" not in state:
             # v0.187 the plan can be written mid-turn (kaam_plan set): the goal caps rise from that moment
             g_top = _goal.active_for(conversation_id)
@@ -626,6 +640,10 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
 
 _stopped: set[str] = set()
 
+# v0.191 wake turns never stream: a live call on this chat owns its own reply stream (livereply), and the
+# wake turn's words must publish as plain messages instead of feeding into it.
+_NO_STREAM: set[str] = set()
+
 # v0.187 the first words come fast: a turn that says nothing for agent_ack_after_s seconds sends a tiny human
 # line ("Ek second, dekh rahi hoon…") as an EPHEMERAL message - no Event row, no push, never in history, the
 # real reply replaces it. One ack per turn, owner chats only (voice calls have their own ack clips).
@@ -770,12 +788,15 @@ def _work(conversation_id: str, call_id: str, tool: str, label: str, phase: str,
 
 
 async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None = None, voice: bool = False,
-                   context: str = "", actor: str = "owner", place: str = "", client_id: str = "") -> str:
+                   context: str = "", actor: str = "owner", place: str = "", client_id: str = "",
+                   save_user: bool = True) -> str:
     """v0.178 the never-silent promise: WHATEVER happens around the turn (a crash before the inner guard, a DB
     hiccup, a bug in place / persona / memory code), the user always gets a reply and the typing dots always go
-    away. (Owner: 'some tasks never replied'.) The real work is in _run_turn; CancelledError still passes through."""
+    away. (Owner: 'some tasks never replied'.) The real work is in _run_turn; CancelledError still passes through.
+    v0.191 `save_user=False` = the inbox re-run of a crashed turn: her message row already exists, never double it."""
     try:
-        return await _run_turn(conversation_id, user_text, tenant_id, voice, context, actor, place, client_id)
+        return await _run_turn(conversation_id, user_text, tenant_id, voice, context, actor, place, client_id,
+                               save_user)
     except asyncio.CancelledError:
         raise
     except BaseException as e:   # noqa: BLE001 - the last line of defence: silence is worse than any error text
@@ -792,7 +813,8 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
 
 
 async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None = None, voice: bool = False,
-                    context: str = "", actor: str = "owner", place: str = "", client_id: str = "") -> str:
+                    context: str = "", actor: str = "owner", place: str = "", client_id: str = "",
+                    save_user: bool = True) -> str:
     """Handle one user message end to end. Returns Santosh's final reply text.
     v0.173 `client_id` (the console's steering): a message she took back while queued returns at once — nothing
     runs, nothing is published (the take-back endpoint already hid the bubble)."""
@@ -807,7 +829,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     from .. import usage
     who = actor or "owner"
     feature = ("call" if usage.current()[1] == "call" else "chat") if who.startswith(("owner", "approved:")) else \
-        ("routine" if who == "routine" else "employee")
+        ("routine" if who in ("routine", "wake") else "employee")   # v0.191 wake = routine lane (never the employee budget)
     usage.bind(tenant_id, feature)       # v0.98 what this turn's model calls cost, and for whom
     if not usage.allowed(tenant_id, feature):
         text = usage.blocked_text(tenant_id)
@@ -865,7 +887,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             agent_text += "\n\n" + where.note(ctx.place, conversation_id)
         if notes:
             agent_text = "\n".join(f"[Santosh worker update] {n}" for n in notes) + "\n\n" + agent_text
-        _save(conversation_id, "user", agent_text, display=user_text)
+        if save_user:
+            _save(conversation_id, "user", agent_text, display=user_text)
         bus.publish(conversation_id, "typing", {"on": True})
         if (actor or "owner") == "owner" and not voice:   # v0.187 the first words come fast (see _ack_later)
             _ACKED.add(conversation_id)
@@ -873,7 +896,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
 
         history = _load_history(conversation_id)
         block = ""
-        if who == "owner" or who == "routine" or who.startswith("approved:"):
+        if who == "owner" or who in ("routine", "wake") or who.startswith("approved:"):
             try:   # v0.108 work diary, facts by meaning, recalled old exchanges: for this message only
                 from .. import yaad
                 block = await asyncio.to_thread(yaad.turn_block, tenant_id, conversation_id, user_text)
@@ -896,7 +919,12 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         final_text = ""
         _stopped.discard(conversation_id)
         from .. import livereply
-        live = livereply.begin(conversation_id, tenant_id)    # v0.161 CONSOLE_STREAM: the reply streams as written
+        # v0.191 a wake turn never streams into an already-open channel (a live call owns its own reply stream);
+        # it publishes whole messages like every non-streaming path.
+        live = livereply.begin(conversation_id, tenant_id)
+        if who == "wake":
+            live = None
+            _NO_STREAM.add(conversation_id)
         try:
             # one stuck call must never keep this conversation locked forever (v0.187: an open goal gets the longer cap)
             from . import goal as _goalt
@@ -922,6 +950,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         finally:
             _ACKED.discard(conversation_id)   # v0.187 no ack after this turn for any reason
+            _NO_STREAM.discard(conversation_id)   # v0.191 wake over: the chat streams normally again
             if live is not None:
                 live.stopped = live.stopped or conversation_id in _stopped
                 live.end()
@@ -936,7 +965,12 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             from .. import chats
             if chats.enabled():   # v0.162 the chat gets a short title after her first exchange (background)
                 _bg(chats.auto_title(tenant_id, conversation_id))
-        if settings.agent_goal:   # v0.187 the turn ended but the goal is still open: ONE background continuation
+            try:   # v0.191 her own words reset the wake budget: a fresh ask earns fresh wake-ups
+                from .. import kaam_followup
+                kaam_followup.wake_reset(conversation_id)
+            except Exception:
+                log.debug("wake reset failed", exc_info=True)
+        if settings.agent_goal and who != "wake":   # v0.187 the turn ended but the goal is still open: ONE background continuation (a wake never chains into it)
             try:
                 from . import goal as _goalc
                 _goalc.maybe_continue(conversation_id, tenant_id, who)

@@ -68,6 +68,8 @@ def test_routine_api_and_voice_flag(env, monkeypatch):
         seen.append(voice)
         return "ok"
 
+    import app.agent as agent_pkg
+    monkeypatch.setattr(agent_pkg, "run_turn", fake_turn)   # v0.191 the endpoint runs turns through the inbox
     monkeypatch.setattr(main, "run_turn", fake_turn)
     with TestClient(main.app) as c:
         h = c.get("/healthz").json()

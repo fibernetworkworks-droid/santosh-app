@@ -32,7 +32,42 @@ log = logging.getLogger("santosh.kaam_followup")
 STATE_WORD = {"done": "poora ho gaya", "failed": "ruk gaya, dikkat aayi", "stopped": "band kar diya gaya"}
 _LOCK = threading.Lock()
 _SENDING: set[int] = set()
-STATS: dict[str, int] = {"enqueued": 0, "sent": 0, "fallback": 0, "skipped": 0, "postponed": 0, "dup": 0}
+STATS: dict[str, int] = {"enqueued": 0, "sent": 0, "fallback": 0, "skipped": 0, "postponed": 0, "dup": 0,
+                         "wake": 0}
+
+# v0.191 HARNESS-2 the wake budget (dsh maxConsecutiveWakes): a chat wakes at most AGENT_WAKE_MAX_CONSECUTIVE times
+# without an intervening message of hers (the window ages out too). Her own words reset it (santosh calls wake_reset).
+_WAKE_N: dict[str, tuple[int, float]] = {}
+
+
+def wake_reset(conv: str) -> None:
+    """She spoke in this chat again: the wake budget is whole."""
+    if conv:
+        _WAKE_N.pop(conv, None)
+
+
+def _wake_allowed(conv: str, settings) -> bool:
+    """The brain may be woken for this finished job: feature on, chat idle, budget left."""
+    if not getattr(settings, "agent_wake_turns", True):
+        return False
+    import time as _t
+    n, at = _WAKE_N.get(conv, (0, 0.0))
+    win = float(getattr(settings, "agent_wake_window_min", 10) or 10) * 60.0
+    if win and _t.time() - at > win:
+        n = 0
+    if n >= int(getattr(settings, "agent_wake_max_consecutive", 3) or 3):
+        return False
+    try:
+        from .agent import santosh
+        return not santosh.turn_running(conv)   # her turn holds the chat: the tick path postpones instead
+    except Exception:
+        return False
+
+
+def _wake_spend(conv: str) -> None:
+    import time as _t
+    n, _at = _WAKE_N.get(conv, (0, 0.0))
+    _WAKE_N[conv] = (n + 1, _t.time())
 
 
 def _on() -> bool:
@@ -111,6 +146,45 @@ def enqueue(tenant: str, conv: str, job: dict[str, Any]) -> bool:
         return True
     except Exception:
         log.exception("kaam followup enqueue failed")
+        return False
+
+
+def _wake_text(r: KaamFollowup) -> str:
+    """The wake turn's 'user' words: the job's own public status line + the instruction. The admission router reads
+    these words too, so the tools the result talks about (mail, sheet, video...) are loaded for the follow-up."""
+    head = f"{r.label} {r.title}".strip()
+    digest = f"Kaam: {head}\nNatija: {STATE_WORD.get(r.state, r.state)}"
+    if r.detail:
+        digest += f"\nVivaran: {r.detail}"
+    if r.link:
+        digest += f"\nLink: {r.link}"
+    return ("[Santosh worker update, not the user] Ek background kaam ka natija abhi aaya hai:\n" + digest +
+            "\n\nIsko apni awaaz mein 1-3 chhoti lines mein batao - kya hua, asli natija kya hai. Agar natija adhura "
+            "ya galat lag raha hai, ya usme jo bataya gaya usse zyada kaam baaki hai, to tools se haalat check kar ke "
+            "sahi jaankari do (jo tools dikhe unse; jo nahi dikhe tool_search se lao). Jo pata hai wahi bolo, kuch "
+            "apne aap se mat jodo.")
+
+
+async def _wake_turn(r: KaamFollowup, settings) -> bool:
+    """Wake the REAL brain for this finished job (tools allowed, actor='wake'): Hoola reads the result, may check
+    the truth with tools, and reports in her own words through the normal message path (SSE + FCM push).
+    False/exception = fall back to the v0.187 one-shot line - the news is never lost."""
+    try:
+        from .agent import santosh
+        text = await santosh.run_turn(r.conversation_id, _wake_text(r), tenant_id=r.tenant_id, actor="wake",
+                                      save_user=False)
+        if not str(text or "").strip():
+            return False
+        _wake_spend(r.conversation_id)
+        STATS["wake"] += 1
+        try:   # the same quiet note into her live call, exactly like the one-shot line
+            from . import kaamwatch
+            kaamwatch._voice(r.tenant_id, r.conversation_id, " ".join(str(text).split())[:300])
+        except Exception:
+            log.debug("wake voice note failed", exc_info=True)
+        return True
+    except Exception:
+        log.exception("wake turn failed")
         return False
 
 
@@ -248,6 +322,20 @@ async def _send(fid: str, settings) -> None:
                     r2.status, r2.sent_at = "skipped", now()
             STATS["dup"] += 1
             return
+        with session() as s:   # v0.191 a fresh copy for the wake decision (the row may age while we work)
+            rr = s.get(KaamFollowup, fid)
+            snapshot = None if rr is None else KaamFollowup(
+                id=rr.id, tenant_id=rr.tenant_id, conversation_id=rr.conversation_id, key=rr.key, kind=rr.kind,
+                label=rr.label, title=rr.title, state=rr.state, detail=rr.detail, link=rr.link,
+                status=rr.status, tries=rr.tries, created_at=rr.created_at, sent_at=rr.sent_at)
+        if snapshot is not None and _wake_allowed(conv, settings):
+            if await _wake_turn(snapshot, settings):
+                with session() as s:
+                    r2 = s.get(KaamFollowup, fid)
+                    if r2 is not None and r2.status == "pending":
+                        r2.status, r2.sent_at = "sent", now()
+                return                   # the wake turn already told her (and the call) in Hoola's own words
+            log.info("wake turn declined for %s; the one-shot line goes instead", fid)
         line = ""
         try:
             with session() as s:

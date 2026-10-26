@@ -967,3 +967,18 @@ DIET_STATS["raw_chars"] = _diet_size(_RAW_SPECS)
 TOOLS[:] = diet_tool_specs(TOOLS)
 DIET_STATS["diet_chars"] = _diet_size(TOOLS)
 
+
+# ---------------------------------------------------------------- v0.191 tool families (step-admitted subsets)
+# Every family list merged above (LIFE_TOOLS, WEB_TOOLS, EMAIL_TOOLS, ...) is still in this module's namespace, so
+# the name -> family map is built here in one pass. Tools that arrived outside a named family (the campaign/base
+# specs at the top, the goal tools) are unmapped and are treated as CORE by agent/admit.py - the small always-on set.
+FAMILY_OF: dict[str, str] = {}
+
+for _n, _v in list(globals().items()):
+    if _n.endswith("_TOOLS") and isinstance(_v, list):
+        _fam = _n[:-6].lower()                    # LIFE_TOOLS -> "life"
+        for _t in _v:
+            if isinstance(_t, dict) and _t.get("name"):
+                FAMILY_OF.setdefault(_t["name"], _fam)
+
+

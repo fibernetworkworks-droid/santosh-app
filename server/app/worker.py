@@ -339,6 +339,7 @@ async def tick() -> None:
     await employee_jobs()
     kaam_jobs()
     await followup_jobs()
+    await inbox_jobs()
 
 
 _fu_last = 0.0
@@ -358,6 +359,24 @@ async def followup_jobs() -> None:
         await kaam_followup.tick()
     except Exception:
         log.exception("kaam followup tick failed")
+
+
+_ti_last = 0.0
+
+
+async def inbox_jobs() -> None:
+    """v0.191 the durable accepted-message inbox: a turn whose process died before it replied (pm2 restart,
+    crash) is re-run once here, idempotently - her message is never silently eaten again."""
+    global _ti_last
+    import time
+    if time.time() - _ti_last < 15:
+        return
+    _ti_last = time.time()
+    try:
+        from . import turn_inbox
+        await turn_inbox.sweep()
+    except Exception:
+        log.exception("turn inbox sweep failed")
 
 
 _kaam_last = 0.0

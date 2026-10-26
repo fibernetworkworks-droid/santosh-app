@@ -7989,3 +7989,68 @@ The owner said "P0 hotfix + v0.190.0 implementation" - v0.190.0 was committed an
   console ?v=0.190.1 x9, conscious pins 0.190.0->0.190.1 in test_v0179/email_phase1-4/test_v0185/test_v0187/
   test_v0189). Deploy carries both v0.190.0 HARNESS-1 (never live) and this hotfix in one restart; desktop
   untouched 1.4.0, old APKs keep working (all four fixes are server-side).
+## v0.192.0 HARNESS-2 (re-versioned on rebase: the dev's Excel-at-scale had taken 0.191.0 first - both kept) (Phase 2 of the harness study - owner: "START STEP 2 PERFECTLY AND DEPLOY"): step-admitted tool subsets + job-completion WAKE turns + the durable accepted-message inbox
+
+Phase 1 (v0.190.0) documented three gaps "fixable now"; this ship closes all three, exactly as planned (dsh:
+step-admitted subsets + deferred families + tool search, completionDelivery wakeup + maxConsecutiveWakes, durable
+session state; Claude Code: small stable tool sets, background-task notifications, crash-safe turn ownership):
+
+- Step-admitted tool subsets (NEW server/app/agent/admit.py): a turn shows the model ONLY the tool families her
+  words actually need, on top of a small always-on CORE (kaam_status, kaam_plan, bazar, web, gyaan, procedure,
+  google_status, make/memory, life, maps, file_read, id_locker, ai_kharcha, phone_health + the unmapped base
+  campaign specs + tool_search). Routing = family auto-keys (family tag + tool-name words, stopwords stripped)
+  + a hand-written Hinglish/Hindi/English map (mail→email, calendar→gcal, spreadsheet→sheets, "bhej/send"→email
+  + drive, photo→photos, video/reel→video+reel, order/amazon→shop, courier→courier, gst/payroll/vakil→their
+  desks...). Measured on the merged tree: a casual chat turn = 45 specs, a mail turn = 79 specs (~45 KB) instead
+  of 391 specs (~381 KB) - every one of the up-to-24 (goal 80) calls pays only its share, the direct TTFT win on
+  the cache-less production brain. THE SET IS COMPUTED ONCE PER TURN and stays byte-stable across all its steps
+  (the Anthropic cache holds); `tool_search` (tiny always-offered spec + handler in admit.py) admits a family for
+  the REST of the turn - one deliberate cache re-write, then the model uses the new tools. Safety: a valve falls
+  back to the FULL registry when the router over-matches (> tool_admit_cap=220); admission only changes what the
+  model SEES - dispatch(), employee.gate, the confirm-card rules, Rokiye, where.steer all run exactly as before;
+  missed families never break a job (dispatch still knows every handler; prompts teach "never call a job
+  impossible: tool_search first"); routine / staff / customer actors keep the FULL set (their gates already
+  restrict them); wake turns route on the job digest itself so the follow-up sees the tools the result talks
+  about. Config agent_tool_admission (default True).
+- Job-completion WAKE turns (kaam_followup): when a finished/failed/stopped job's chat is IDLE (no turn holds the
+  lock), the REAL brain is woken instead of only the v0.187 one-shot line - run_turn(actor="wake", save_user=
+  False) with the job's own public status line + "batao apni awaaz mein; adhura lage to tools se haalat check
+  karke sahi jaankari do". Hoola may verify with tools (kaam_status, email_bulk_status, ...) and reports through
+  the normal message path (SSE + FCM push + the quiet note into her live call). Bounded like dsh: budget of
+  agent_wake_max_consecutive=3 wakes per chat per agent_wake_window_min=10 minutes, her next message resets it
+  (santosh calls wake_reset), the window ages out; ANY failure (model down, empty text, exception) falls back to
+  the v0.187 one-shot line - the news is NEVER lost. A wake turn never streams (live=None + _NO_STREAM guard: a
+  live call on this chat owns its own reply stream), never chains a goal continuation, and rides the routine
+  usage lane (never the employee budget).
+- Durable accepted-message inbox (NEW server/app/turn_inbox.py + worker slot inbox_jobs): POST /messages now
+  persists the accepted message (turn_inbox table) BEFORE the 202 and the turn runs wrapped
+  (accepted→running→done/failed) - a pm2 restart or crashed worker no longer silently eats her message. The
+  worker sweep (every ~15 s) re-runs dead turns ONCE (tries<2), idempotently: skip when a real in_history
+  assistant reply already exists after acceptance; accepted-but-never-started past turn_inbox_stale_s=120 = the
+  task died before it ran; running-with-FREE-lock for 5 min = the process died mid-turn (a LIVE turn always
+  holds the conversation lock - the tool-steps-keep-running case can never false-positive); the re-run passes
+  save_user=False when her message row survived, so history never doubles; done rows cleaned after a day.
+  Config agent_turn_inbox (default True).
+- Tests: NEW tests/test_v0191_harness2.py (15): core-subset routing (45-spec chat turn, everyday tools in, the
+  big unrelated families out), word routing (mail/video/spreadsheet) incl. the short-key guard ('id' never
+  matches inside 'video', 'app' not inside 'apple'), per-turn byte-stability, tool_search opens a family for the
+  rest of the turn (through the real dispatch), the valve, admission-off, the diet surviving admission (every
+  admitted spec IS the registry spec); the wake turn fires for an idle chat with actor='wake' + the digest +
+  voice note + row sent + no dry notify, the budget (3 → fallback line, wake_reset restores, window ages out,
+  running-turn postpones then wakes when free), wake-off; the inbox (accept persists, run_owned wraps, a dead
+  accepted turn re-runs once with save_user=True and never twice, an already-answered row is skipped, live
+  turns are left alone, a mid-turn crash re-runs with save_user=False). Fallout fixes: the v0.187 one-shot tests
+  + v0.189 stopped-job test + routines API test pin the fallback path / patch the inbox-wrapped runner (they
+  pin the OLD path, wake-off via auto-restoring monkeypatch). Sweeps green: ring1 (email x5 + cards + bazar +
+  basics + realtime v0.187 + goal v0.186 + pc v0.185 + search v0.179 + harness v0.189 + NEW + docstudio) = 199;
+  ring2 (routines + livework + robust_chat + human_voice x2 + voicestyle + voice_heal + pc_is_error + realtime
+  v0.178) = 56; ring3 (api + console_build + gcal + gdrive + drive + employee + employee_inbox + avatar +
+  appcheck) = 66. 321 passed, zero failures. REBASED onto the dev's parallel v0.191.0 Excel-at-scale + v0.190.1 P0 hotfix and
+  RE-VERSIONED 0.192.0 (both kept; the number collision again). THE v0.190.1 LESSON APPLIED ON DAY ONE:
+  turn_inbox is registered with init_db AND ensure_table() self-heals old DBs (a lazily-imported model never
+  reaches create_all() - the kaam_followups table was missing on the LIVE DB and every tick since v0.187
+  died 'no such table'). Version 0.192.0 (main.py APP_VERSION story merged with the dev's chain, pubspec
+  0.192.0+226, console ?v=0.192.0 x9, pins →0.192.0 in test_v0179/email_phase1-4/test_v0185/test_v0187/
+  test_v0189/test_v0191_harness2); desktop untouched 1.4.0 (server-only deploy; old APKs keep working - all
+  three mechanisms are
+  server-side; the phone just sees faster first words and proactive result messages).

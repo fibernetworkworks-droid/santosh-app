@@ -31,6 +31,20 @@ class Settings(BaseSettings):
     agent_goal_minutes: int = 60            # total minutes across all rounds of one goal
     agent_ack_after_s: float = 5.0          # v0.187 a turn silent this long first says "ek second, dekh raha hoon…" (0 = off)
     agent_parallel_tools: bool = True       # v0.189 a step asking several pure look-ups (search/weather/status) runs them together; everything else stays serial
+    # v0.191 HARNESS-2: step-admitted tool subsets (dsh / Claude Code pattern) - the model of one turn sees only the
+    # tool families her words (and any open goal) actually need; the rest stay one tool_search away. Stable for the
+    # WHOLE turn, so the Anthropic prompt cache holds; a family admitted mid-turn re-caches once, by design.
+    agent_tool_admission: bool = True
+    tool_admit_cap: int = 220               # admitted specs above this = router over-matched: send the FULL set instead
+    # v0.191 HARNESS-2: job-completion WAKE turns (dsh completionDelivery + maxConsecutiveWakes) - a finished job whose
+    # chat is idle wakes the real brain (tools allowed) instead of only the v0.187 one-shot line; budget keeps it finite.
+    agent_wake_turns: bool = True
+    agent_wake_max_consecutive: int = 3     # wakes without an intervening user message, per chat
+    agent_wake_window_min: int = 10         # ...within this many minutes (then the budget resets by age)
+    # v0.191 HARNESS-2: durable accepted-message inbox - the 202 is persisted BEFORE the turn runs; a pm2 restart or a
+    # crashed worker no longer silently eats her message (the worker re-runs it once, idempotently).
+    agent_turn_inbox: bool = True
+    turn_inbox_stale_s: int = 120           # accepted-but-never-started for this long = the task died before it ran
     tv_refresh: bool = True                # Hoola TV: download + check the free channel list nightly
     app_release_repo: str = "fibernetworkworks-droid/santosh-app"   # v0.62 where the phone app's releases live
     video_edit_worker: bool = True         # v0.65 Hoola Video Editor: run edits in the background (tests run them inline)
