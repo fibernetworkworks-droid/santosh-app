@@ -265,6 +265,24 @@ const Map<String, Map<String, String>> uiStrings = {
         'Rules act on new mail; sending always waits for your tap.',
     'Koi rule nahi. Bolo "bank ki mail aaye to archive karo" jaisa rule chat mein.':
         'No rules yet. Say a rule in chat, like "archive mail from my bank".',
+    'Gmail, poora': 'Gmail, poora',
+    'Gmail ke saare kaam, chat se — hifazat ke saath':
+        'Every Gmail job, from chat — with the guardrails on',
+    'Padhna, chhaantna: inbox, thread poora, attachments (PDF, Excel, photos bhi), Gmail ke apne snoozed folder samet.':
+        'Reading and sorting: inbox, whole threads, attachments (PDF, Excel, photos too), even Gmail\'s own snoozed folder.',
+    'Likhte waqt: rich mail, Drive file attach, schedule, undo window, alias se bhejna (verified aliases).':
+        'Writing: rich mail, attach Drive files, schedule, undo window, send from an alias (verified ones).',
+    'Khud sambhale: rules, saved searches, labels (rang aur nesting ke saath), snooze, follow-up yaad, bulk mail.':
+        'It organises itself: rules, saved searches, labels (colours and nesting), snooze, follow-up reminders, bulk mail.',
+    'Gmail ki apni settings: vacation auto-reply, signature, send-as aliases, auto-forward — sab aapke tap par.':
+        'Gmail\'s own settings: vacation auto-reply, signature, send-as aliases, auto-forward — all on your tap.',
+    'Nayi mail ki khabar har minute, zaroori ka pehle; OTP codes kabhi nahi batata.':
+        'New-mail alerts every minute, important mail first; OTP codes are never shown.',
+    'Settings ke liye Gmail ek baar dobara jodna pade to is screen par “Jodiye” dabaiye — mail pehle jaisi chalti hai.':
+        'If Gmail ever needs a one-time reconnect for settings, tap "Jodiye" here — mail keeps working as before.',
+    'Saved searches': 'Saved searches',
+    'Chat mein boliye “<naam> dikhao” — yeh sirf dikhata hai, kuch nahi badalta.':
+        'Say "show <name>" in chat — it only shows what matches now, nothing changes.',
   },
 };
 

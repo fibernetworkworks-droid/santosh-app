@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.183.0"   # v0.183.0 Gmail settings: vacation auto-reply, signature pushed INTO Gmail (sendAs), send-as aliases, Gmail's own auto-forward — all behind cards, on the new gmail.settings.basic scope (one-time reconnect for old mailboxes) (bump with pubspec)
+APP_VERSION = "0.184.0"   # v0.184.0 Gmail polish: saved searches (email_rule kind=search), weekly digest, send-from-alias (verified send-as), Gmail's snoozed folder, nested labels + label colours (star colours honestly impossible), Profile>Email 'Gmail, poora' help card (bump with pubspec)
 
 
 @asynccontextmanager
@@ -1832,7 +1832,7 @@ async def mail_settings(account: str = "", tenant: str = Depends(current_tenant)
 def mail_rules(tenant: str = Depends(current_tenant)):
     from .mailbox import sync
     return {"rules": sync.rules_list(tenant), "watch": sync.watch_views(tenant), "muted": sync.muted(tenant),
-            "snoozed": sync.snooze_list(tenant)}
+            "snoozed": sync.snooze_list(tenant), "searches": sync.searches_list(tenant)}
 
 
 class MailRuleIn(BaseModel):

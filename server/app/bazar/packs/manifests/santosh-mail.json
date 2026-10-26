@@ -7,8 +7,8 @@
   "layer": "L0",
   "phase": "MVP",
   "priority": "P0",
-  "description": "Your Gmail, Outlook or any email: read, threads, sort, reply (rich markdown), forward, attachments (incl. Drive files), labels, Gmail drafts, follow-ups, undo send, scheduled and bulk mail. New-mail watcher with rules, snooze and quiet hours. Gmail settings: vacation auto-reply, signature pushed into Gmail, send-as aliases, auto-forward. Asks before sending, deleting or bulk mail",
-  "notes": "Driven by the email_* tools; this pack holds the delete, bulk-mail, label-delete, Gmail-draft-delete, vacation, signature-push and auto-forward confirm cards",
+  "description": "Your Gmail, Outlook or any email, poora: read, threads, sort, reply (rich markdown), forward, attachments (incl. Drive files), labels (nested + colours), Gmail drafts, follow-ups, undo send, scheduled and bulk mail. Saved searches, new-mail watcher with rules, snooze (Hoola's own + Gmail's snoozed pile), daily or weekly digest. Gmail settings: vacation auto-reply, signature pushed into Gmail, send-as aliases (send from them too), auto-forward. Asks before sending, deleting or bulk mail",
+  "notes": "Driven by the email_* tools; this pack holds the delete, bulk-mail, label-delete, Gmail-draft-delete, vacation, signature-push and auto-forward confirm cards. Sending from an alias rides the normal Bhejo draft card; saved searches only list, they change nothing; star colours are impossible through Google's API and are said so plainly",
   "master_list_row": 0,
   "executor": "mail",
   "config": {},
@@ -17,6 +17,7 @@
             {"name": "confirm_vacation", "tier": 2}, {"name": "confirm_signature_push", "tier": 2},
             {"name": "confirm_auto_forward", "tier": 2}],
   "keywords": ["email", "mail", "gmail", "outlook", "inbox", "bulk mail", "rules", "snooze", "watch",
-               "vacation", "out of office", "signature", "alias", "auto forward"],
+               "vacation", "out of office", "signature", "alias", "auto forward", "saved search",
+               "digest", "labels", "nested labels", "label colour"],
   "wave": "MVP"
 }

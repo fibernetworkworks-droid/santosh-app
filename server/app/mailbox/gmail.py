@@ -15,7 +15,8 @@ from .base import Box, MailError
 
 API = "https://gmail.googleapis.com/gmail/v1/users/me"
 FOLDER_Q = {"inbox": "in:inbox", "sent": "in:sent", "trash": "in:trash", "spam": "in:spam", "starred": "is:starred",
-            "drafts": "in:drafts", "archive": "-in:inbox -in:sent -in:drafts -in:trash -in:spam -in:chats"}
+            "drafts": "in:drafts", "snoozed": "in:snoozed",
+            "archive": "-in:inbox -in:sent -in:drafts -in:trash -in:spam -in:chats"}
 META = ["From", "To", "Cc", "Subject", "Date", "Message-ID", "List-Unsubscribe", "Precedence", "Auto-Submitted"]
 
 
@@ -72,7 +73,12 @@ class GmailBox(Box):
 
     def list(self, folder="inbox", unread_only=False, search=None, limit=10, since=None, snippets=False):
         f = (folder or "inbox").lower()
-        q = [FOLDER_Q.get(f) or f'label:"{folder}"']
+        q = []
+        if f == "search":                      # v0.184.0 a saved search's raw query: no folder operator on top
+            pass
+        else:
+            op = FOLDER_Q.get(f)
+            q.append(op if op else f'label:"{folder}"')
         if unread_only:
             q.append("is:unread")
         if since:
@@ -139,7 +145,7 @@ class GmailBox(Box):
         self._modify(ids, add=[self._label_id(folder, create=True)], remove=["INBOX"])
 
     def folders(self):
-        return ["inbox", "sent", "archive", "starred", "spam", "trash"] + \
+        return ["inbox", "sent", "archive", "starred", "snoozed", "spam", "trash"] + \
             sorted(lb["name"] for lb in self._labels() if lb.get("type") == "user")
 
     # ---------------- sending ----------------
@@ -225,6 +231,16 @@ class GmailBox(Box):
     def label_delete(self, name: str) -> None:
         lid = self._label_id(name)
         self._req("DELETE", f"/labels/{lid}")
+
+    # ---------------- v0.184.0 labels with colours + nesting ----------------
+    def labels_full(self) -> list[dict[str, Any]]:
+        """Raw label rows (id, name, type, color) — the tree display and the colour picker read this."""
+        return self._labels()
+
+    def label_color(self, name: str, background: str, text: str) -> dict[str, Any]:
+        lid = self._label_id(name)
+        return self._req("PATCH", f"/labels/{lid}",
+                         json={"color": {"backgroundColor": background, "textColor": text}})
 
     # ---------------- v0.181.0 importance + category tabs ----------------
     CATEGORIES = {"personal": "CATEGORY_PERSONAL", "social": "CATEGORY_SOCIAL", "updates": "CATEGORY_UPDATES",

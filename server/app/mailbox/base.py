@@ -90,6 +90,12 @@ class Box:
     def label_delete(self, name: str) -> None:
         raise MailError("Labels ka poora management abhi Gmail mailbox par hai.")
 
+    def labels_full(self) -> list[dict[str, Any]]:
+        raise MailError("Labels ke rang aur nesting abhi Gmail mailbox par dikhte hain.")
+
+    def label_color(self, name: str, background: str, text: str) -> dict[str, Any]:
+        raise MailError("Label ka rang abhi Gmail mailbox par badalta hai.")
+
     def mark_important(self, ids: list[str], on: bool) -> None:
         raise MailError("Important mark abhi Gmail mailbox par hota hai.")
 

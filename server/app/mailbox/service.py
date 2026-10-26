@@ -72,6 +72,10 @@ def check(tenant: str, folder: str = "inbox", unread_only: bool = False, search:
     if (account or "").strip().lower() == "all":
         return _check_all(tenant, folder, unread_only, search, limit, since, snippets)
     box = get_box(tenant, account)
+    if (folder or "").strip().lower() == "snoozed" and box.kind != "gmail":
+        # v0.184.0 in:snoozed is Gmail's own snooze pile; Hoola's own snoozes are listed by email_snooze
+        raise MailError("Snoozed folder Gmail ka apna hai. Hoola ke apne snooze (jo yahan se gaye the) "
+                        "email_snooze action='list' se dikhte hain.")
     items = _guard(box, lambda: box.list(folder or "inbox", unread_only, search, limit, since, snippets))
     contacts.learn(tenant, [(i.get("from", ""), i.get("from_email", "")) for i in items if not i.get("bulk")], 0.2)
     return {"account": box.address, "folder": folder or "inbox", "count": len(items),
@@ -205,14 +209,63 @@ def folders(tenant: str, account: str | None = None) -> list[str]:
 
 
 # ---------------- v0.181.0 labels (Gmail) ----------------
-def label_op(tenant: str, action: str, name: str = "", new_name: str = "", account: str | None = None) -> dict[str, Any]:
+def _label_tree(names: list[str]) -> list[dict[str, Any]]:
+    """v0.184.0 'Office', 'Office/Clients', 'Office/Clients/Acme' -> a nested tree (Gmail's nesting is just / in the name)."""
+    root: dict[str, Any] = {}
+    for n in sorted(names):
+        node = root
+        for part in [p for p in str(n).split("/") if p]:
+            node = node.setdefault(part, {})
+
+    def walk(d: dict[str, Any], path: str = "") -> list[dict[str, Any]]:
+        out = []
+        for k in d:
+            p = f"{path}/{k}" if path else k
+            out.append({"name": k, "path": p, "children": walk(d[k], p)})
+        return out
+
+    return walk(root)
+
+
+# Gmail label colours (labels.update color): a small named palette of (background, text) pairs Gmail accepts.
+LABEL_COLORS = {"red": ("#f83a22", "#ffffff"), "orange": ("#ff7537", "#ffffff"), "amber": ("#ffad46", "#000000"),
+                "yellow": ("#fbe983", "#000000"), "green": ("#16a765", "#ffffff"), "mint": ("#42d692", "#000000"),
+                "teal": ("#9fe1e7", "#000000"), "sky": ("#9fc6e7", "#000000"), "blue": ("#4986e7", "#ffffff"),
+                "lavender": ("#9a9cff", "#000000"), "purple": ("#a47ae2", "#ffffff"), "grey": ("#999999", "#ffffff")}
+
+
+def _ensure_label_path(box: Box, name: str) -> None:
+    """'Office/Clients/Acme' -> create each missing level, so the nested label really nests."""
+    parts = [p.strip() for p in name.split("/") if p.strip()]
+    have = {lb.get("name", "") for lb in _guard(box, box.labels_full)}
+    built = ""
+    for p in parts:
+        built = f"{built}/{p}" if built else p
+        if built not in have:
+            _guard(box, lambda b=built: box.label_create(b))
+
+
+def label_op(tenant: str, action: str, name: str = "", new_name: str = "", account: str | None = None,
+             color: str = "") -> dict[str, Any]:
     box = get_box(tenant, account)
     if action == "list":
-        return {"labels": _guard(box, box.folders)}
+        labels = _guard(box, box.folders)
+        out: dict[str, Any] = {"labels": labels}
+        try:
+            rows = _guard(box, box.labels_full)
+            out["tree"] = _label_tree([lb.get("name", "") for lb in rows if lb.get("type") == "user"])
+            out["colors"] = {lb["name"]: (lb.get("color") or {}).get("backgroundColor", "")
+                             for lb in rows if lb.get("type") == "user" and lb.get("color")}
+        except MailError:
+            pass
+        return out
     if action == "create":
         if not name.strip():
             raise MailError("Label ka naam do.")
-        _guard(box, lambda: box.label_create(name))
+        if "/" in name and box.kind == "gmail":
+            _ensure_label_path(box, name)
+        else:
+            _guard(box, lambda: box.label_create(name))
         return {"created": name.strip(), "labels": _guard(box, box.folders)}
     if action == "rename":
         if not name.strip() or not new_name.strip():
@@ -224,7 +277,16 @@ def label_op(tenant: str, action: str, name: str = "", new_name: str = "", accou
             raise MailError("Kaunsa label? naam do.")
         _guard(box, lambda: box.label_delete(name))
         return {"deleted": name.strip()}
-    raise MailError("action: create / rename / delete / list")
+    if action == "color":
+        if not name.strip():
+            raise MailError("Kis label ka rang? naam do.")
+        pal = LABEL_COLORS.get((color or "").strip().lower())
+        if pal is None:
+            raise MailError(f"Rang in mein se hai: {', '.join(LABEL_COLORS)}. (Star ka rang Gmail ki API se nahi "
+                            "badalta — woh web/app se hota hai.)")
+        _guard(box, lambda: box.label_color(name, pal[0], pal[1]))
+        return {"colored": name.strip(), "color": (color or "").strip().lower()}
+    raise MailError("action: list / create / rename / delete / color")
 
 
 # ---------------- v0.181.0 drafts inside Gmail itself ----------------
@@ -253,10 +315,11 @@ def push_gmail_draft(tenant: str, draft_id: str) -> dict[str, Any]:
         to_addr, cc, bcc, subject = d.to_addr, d.cc_addr or "", d.bcc_addr or "", d.subject
         irt, refs, account, thread_id = d.in_reply_to, d.references, d.account, d.thread_id
         atts, body, md = list(d.attachments or []), d.body, bool(d.markdown)
+        alias = (d.from_alias or "").strip().lower()
     box = get_box(tenant, account or None)
     files = load_files(tenant, atts)
-    msg = mime.build(from_addr=box.address, from_name=sender_name(tenant, box), to=to_addr, cc=cc, bcc=bcc,
-                     subject=subject, body=mime.md_to_plain(body) if md else body,
+    msg = mime.build(from_addr=alias or box.address, from_name=sender_name(tenant, box),
+                     to=to_addr, cc=cc, bcc=bcc, subject=subject, body=mime.md_to_plain(body) if md else body,
                      in_reply_to=irt, references=refs, files=files,
                      html_body=mime.md_to_html(body) if md else None)
     out = _guard(box, lambda: box.save_draft(msg, thread_id or None))
@@ -594,6 +657,7 @@ def draft_view(d: EmailDraft) -> dict[str, Any]:
     send_at = as_utc(d.send_at)
     return {"id": d.id, "to": d.to_addr, "cc": d.cc_addr, "bcc": d.bcc_addr or "", "subject": d.subject, "body": d.body,
             "status": d.status, "error": d.error, "account": d.account or "", "kind": d.kind or "new",
+            "from_alias": (d.from_alias or "") if d.account else "",
             "attachments": [{k: v for k, v in a.items() if k in ("name", "size", "type")} for a in (d.attachments or [])],
             "send_at": send_at.isoformat() if send_at else None,
             "send_at_label": send_at.astimezone(tz).strftime("%d %b, %I:%M %p") if send_at else None,
@@ -631,6 +695,27 @@ def set_undo_seconds(tenant: str, seconds) -> int:
         else:
             row.value = str(n)
     return n
+
+
+def _alias_verified(tenant: str, box: Box, alias: str) -> None:
+    """v0.184.0 sending FROM a Gmail send-as alias: the alias must be registered and verified on this mailbox.
+    Listing aliases rides gmail.settings.basic — a mailbox without the scope gets the honest reconnect note
+    (same rule as v0.183.0) instead of a draft Gmail will only refuse."""
+    from .accounts import settings_scope_message, settings_scope_ok
+    if box.kind != "gmail":
+        raise MailError("Kisi doosre address se bhejna (alias) abhi Gmail mailbox par hota hai.")
+    if alias == box.address:
+        return                                            # the mailbox's own address — always fine
+    if not settings_scope_ok(tenant, box):
+        raise MailError(settings_scope_message(box.address))
+    rows = _guard(box, box.send_as_list)
+    sa = next((r for r in rows if (r.get("sendAsEmail") or "").strip().lower() == alias), None)
+    if sa is None:
+        raise MailError(f"'{alias}' is Gmail ka send-as alias nahi hai. Aliases: "
+                        f"{', '.join((r.get('sendAsEmail') or '') for r in rows)}")
+    if (sa.get("verificationStatus") or "") == "pending":
+        raise MailError(f"'{alias}' abhi verify nahi hua — pehle Gmail (web) ke Settings > Accounts mein us par "
+                        "aaya confirmation click kijiye.")
 
 
 def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, from_worker: bool = False) -> dict[str, Any]:
@@ -677,13 +762,16 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
         irt, refs, conv, account, thread_id = d.in_reply_to, d.references, d.conversation_id, d.account, d.thread_id
         atts, follow = list(d.attachments or []), d.follow_up_days
         md = bool(d.markdown)
+        alias = (d.from_alias or "").strip().lower()
     try:
         for a in [x for x in (to_addr + "," + cc + "," + bcc).split(",") if x.strip()]:
             if not contacts.valid(email.utils.parseaddr(a)[1]):
                 raise MailError(f"'{a.strip()}' sahi email address nahi hai")
         box = get_box(tenant, account or None)
+        if alias:
+            _alias_verified(tenant, box, alias)     # verified send-as only, before anything moves
         files = load_files(tenant, atts)
-        msg = mime.build(from_addr=box.address, from_name=sender_name(tenant, box), to=to_addr, cc=cc, bcc=bcc,
+        msg = mime.build(from_addr=alias or box.address, from_name=sender_name(tenant, box), to=to_addr, cc=cc, bcc=bcc,
                          subject=subject, body=mime.md_to_plain(body) if md else body, in_reply_to=irt,
                          references=refs, files=files, html_body=mime.md_to_html(body) if md else None)
         sent = _guard(box, lambda: box.send(msg, thread_id or None))

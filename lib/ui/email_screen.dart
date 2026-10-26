@@ -18,6 +18,7 @@ class _EmailScreenState extends State<EmailScreen> {
   Map<String, dynamic> _canLink = {};
   List<Map<String, dynamic>> _rules = [];
   List<Map<String, dynamic>> _watch = [];
+  List<Map<String, dynamic>> _searches = [];
   bool _loaded = false;
   bool _busy = false;
   String? _err;
@@ -63,6 +64,7 @@ class _EmailScreenState extends State<EmailScreen> {
         _apply(r);
         _rules = List<Map<String, dynamic>>.from((rules['rules'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
         _watch = List<Map<String, dynamic>>.from((rules['watch'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+        _searches = List<Map<String, dynamic>>.from((rules['searches'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
         _loaded = true;
         _err = null;
       });
@@ -292,6 +294,17 @@ class _EmailScreenState extends State<EmailScreen> {
     return '${parts.join(' + ')} → ${acts.join(', ')}';
   }
 
+  String _searchSummary(Map<String, dynamic> r) {
+    final m = Map<String, dynamic>.from(r['match'] as Map? ?? const {});
+    return [
+      if (m['query'] != null) '“${m['query']}”',
+      if (m['from'] != null) '${m['from']} se',
+      if (m['subject'] != null) '“${m['subject']}” vishay',
+      if (m['has_attachment'] == true) 'attachment wali',
+      if (m['bulk'] == true) 'bulk',
+    ].join(' + ');
+  }
+
   Future<void> _remove(Map<String, dynamic> a) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -358,6 +371,29 @@ class _EmailScreenState extends State<EmailScreen> {
             const Text('Hoola aapki mail padhta, chhaant-ta, jawab likhta, attachment kholta, follow-up yaad dilata aur '
                 'bulk mail bhejta hai. Bhejna, delete aur bulk mail hamesha aapke tap ke baad hi.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
+            const SizedBox(height: 10),
+            // v0.184.0 "Gmail, poora" — the one help card that says what Hoola now covers end to end
+            Glass(child: Theme(data: Theme.of(context).copyWith(dividerColor: Colors.transparent), child: ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              iconColor: C.accent, collapsedIconColor: C.accent,
+              title: Text(app.g('Gmail, poora'), style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text(app.g('Gmail ke saare kaam, chat se — hifazat ke saath'), style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              children: [
+                for (final t in [
+                  app.g('Padhna, chhaantna: inbox, thread poora, attachments (PDF, Excel, photos bhi), Gmail ke apne snoozed folder samet.'),
+                  app.g('Likhte waqt: rich mail, Drive file attach, schedule, undo window, alias se bhejna (verified aliases).'),
+                  app.g('Khud sambhale: rules, saved searches, labels (rang aur nesting ke saath), snooze, follow-up yaad, bulk mail.'),
+                  app.g('Gmail ki apni settings: vacation auto-reply, signature, send-as aliases, auto-forward — sab aapke tap par.'),
+                  app.g('Nayi mail ki khabar har minute, zaroori ka pehle; OTP codes kabhi nahi batata.'),
+                  app.g('Settings ke liye Gmail ek baar dobara jodna pade to is screen par “Jodiye” dabaiye — mail pehle jaisi chalti hai.'),
+                ])
+                  Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Padding(padding: EdgeInsets.only(top: 2), child: Icon(Icons.check_circle_outline_rounded, size: 15, color: C.accent)),
+                    const SizedBox(width: 7),
+                    Expanded(child: Text(t, style: const TextStyle(color: C.chip, fontSize: 12.5))),
+                  ])),
+              ]))),
             const SizedBox(height: 14),
             if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
             if (!_loaded) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
@@ -422,6 +458,26 @@ class _EmailScreenState extends State<EmailScreen> {
                     IconButton(onPressed: () => _delRule(r), icon: const Icon(Icons.delete_outline_rounded, color: C.muted)),
                   ])),
                 ),
+              if (_searches.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(app.g('Saved searches'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                const SizedBox(height: 4),
+                for (final q in _searches)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Glass(child: Row(children: [
+                      const Icon(Icons.search_rounded, color: C.accent, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(q['name'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 2),
+                        Text(_searchSummary(q), style: const TextStyle(color: C.chip, fontSize: 12.5)),
+                      ])),
+                    ])),
+                  ),
+                Text(app.g('Chat mein boliye “<naam> dikhao” — yeh sirf dikhata hai, kuch nahi badalta.'),
+                    style: const TextStyle(color: C.muted, fontSize: 11.5)),
+              ],
             ],
             const SizedBox(height: 18),
             const Text('Bolkar dekhiye', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -431,6 +487,11 @@ class _EmailScreenState extends State<EmailScreen> {
               '"Ramesh ki mail ka jawab do, quotation attach karke"',
               '"Bijli bill wali PDF padho, kitna dena hai?"',
               '"Har subah 9 baje inbox summary bhejo"',
+              '"Har Somvaar ko weekly inbox digest do"',
+              '"Bank wali mails save karo search mein"',
+              '"hello@newtika.in se bhejo yeh mail"',
+              '"Snoozed mails dikhao"',
+              '"Bills label ko green rang do"',
               '"Is Excel ki list mein sabko Diwali offer mail karo"',
               '"Kal subah 9 baje Swati ko yeh mail bhejna"',
             ])

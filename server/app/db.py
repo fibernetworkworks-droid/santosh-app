@@ -285,6 +285,7 @@ class EmailDraft(Base):
     follow_up_days: Mapped[int | None] = mapped_column(Integer, nullable=True)    # remind if no reply after N days
     sent_message_id: Mapped[str | None] = mapped_column(String(500), nullable=True)
     markdown: Mapped[bool | None] = mapped_column(Boolean, nullable=True)          # v0.181.0 body is markdown-lite; sent as rich HTML too
+    from_alias: Mapped[str | None] = mapped_column(String(200), nullable=True)     # v0.184.0 send from a Gmail send-as alias
 
 
 class MailAccount(Base):
@@ -483,6 +484,7 @@ class MailRule(Base):
     actions: Mapped[dict] = mapped_column(JSON)
     hits: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    kind: Mapped[str] = mapped_column(String(16), default="rule")   # v0.184.0: rule (watcher) | search (saved search)
 
 
 class MailSnooze(Base):

@@ -7528,6 +7528,66 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
   in:snoozed view, Profile "Gmail, poora" help card, manifest finalisation).
 
 
+## v0.184.0 GMAIL POLISH: saved searches, weekly digest, send-from-alias, snoozed pile, nested + coloured labels (Gmail 100% complete)
+- Owner: "START PHASE 4" (final phase of the Gmail 100% plan). No new Google scope — everything rides gmail.modify
+  plus the v0.183.0 settings scope where sendAs listing is needed. 4 of 4 phases done: 100% of the official-API
+  Gmail surface; the 3 impossible-by-API items stay honestly impossible (hard delete is our own safety rule,
+  report-phishing is covered by Cyber check_email; star COLOURS verified not settable through Gmail's API —
+  label colours ARE, and are shipped instead).
+- Saved searches (`email_rule kind=search`): the rule table gains a `kind` column ("rule" | "search", auto-migrated,
+  old rows stay rules). A saved search is a NAMED match she can ask for again ("bank wali mails dikhao"): match =
+  from / subject / has_attachment / bulk / unread (works on EVERY mailbox kind, filtered Hoola-side with the same
+  matcher rules use) or `query` = a raw Gmail search string ('from:hdfcbank has:attachment') that goes to Gmail
+  VERBATIM on the search folder (GmailBox.list skips the folder operator for folder="search"). Running one ONLY
+  lists what matches right now — nothing moves, nothing is announced; the watcher never sees them (rules_for and
+  rules_list both filter kind). actions: email_rule searches / run rule_id=... / delete works for both kinds;
+  paused search refuses to run. GET /api/mail/rules now also returns "searches".
+- Weekly digest: `email_accounts daily_summary='weekly 09:30'` (also 'week 09:30') creates the "Weekly inbox
+  summary" routine with repeat=weekly (runs on the weekday of the first run) and a wider instruction (last 7 days,
+  pending replies, bills due soon, newsletters/bulk count, top senders — never OTPs). '09:00' switches back to the
+  daily "Inbox summary" routine, 'off' cancels BOTH titles; switching kinds always replaces (both titles are
+  cancelled first). MAX_ROUTINES guard still applies.
+- Send-from-alias (coverage #33, the last "send" gap): `email_draft from_alias='hello@newtika.in'` — validated at
+  draft time AND again at send time by `service._alias_verified(tenant, box, alias)`: the mailbox must be Gmail,
+  the alias must be in its sendAs list AND verified (pending -> "pehle Gmail web ke Settings > Accounts mein
+  confirmation click kijiye"); listing aliases rides gmail.settings.basic so a not-yet-reconnected mailbox gets
+  the honest v0.183.0 "dobara jodiye" BEFORE any card exists (same gate as vacation). The alias is stored on
+  EmailDraft (new nullable `from_alias` column, auto-migrated), shown on the draft card (draft_view.from_alias),
+  used as the MIME From: header (mime.build from_addr), and honoured by save_to_gmail pushes too. Sending from the
+  mailbox's own address needs nothing new. The Bhejo tap remains the only way it ever leaves.
+- Gmail's own snoozed pile (coverage #37): FOLDER_Q gains "snoozed" -> the official `in:snoozed` operator (verified
+  against Google's operator docs); `email_check folder='snoozed'` lists it read-only on Gmail; non-Gmail boxes get
+  the honest "Snoozed folder Gmail ka apna hai; Hoola ke apne snooze email_snooze action='list' se" (never a
+  silent empty list). Hoola's own snoozes (v0.182.0) are unchanged.
+- Labels: nesting + colours (the plan's "colored stars / nested labels display"):
+  - Nesting: Gmail nests with "/" in the name; `email_label create name='Office/Clients/Acme'` creates each missing
+    level in order (_ensure_label_path walks labels_full), so the path really nests in Gmail web/app; `list` now
+    returns a `tree` (name/path/children) next to the flat list.
+  - Colours: `email_label color name=... color=red|orange|amber|yellow|green|mint|teal|sky|blue|lavender|purple|grey`
+    -> labels.update with a (backgroundColor, textColor) pair from a fixed palette Gmail accepts. An unknown colour
+    gets the palette list AND the honest note that STAR colours are not possible through Google's API (say it
+    plainly — verified: no API surface, unlike labels). Non-Gmail boxes get the clean "Gmail mailbox par" refusal.
+- Profile > Email "Gmail, poora" help card: an ExpansionTile at the top of email_screen.dart listing what Hoola now
+  covers end to end (read/sort incl. Gmail's snoozed pile, write incl. alias sending, self-organisation incl. rules
+  and saved searches, Gmail's own settings behind taps, minute watcher without OTP leaks, the one-time reconnect
+  hint). The Email screen also lists her saved searches (read-only chips under rules) and grew "Bolkar dekhiye"
+  examples (weekly digest, saved search, alias send, snoozed, label colour). i18n: 10 new keys (gender-safe
+  Hinglish keys -> English values). santosh-mail.json manifest description/notes/keywords finalised — NO new
+  confirm cards this phase (nothing new is irreversible: searches only list, colours are reversible, alias sends
+  already wait for Bhejo).
+- Tests `tests/test_email_phase4.py` (12): saved-search save/run/delete + empty-match refusal + run changes
+  nothing + query passes through verbatim on the search folder (RecBox records list calls) + paused search refuses
+  + watcher/rules lists never show searches + Gmail-syntax-only search honestly refuses on non-Gmail + the API
+  lists searches; weekly digest creates repeat=weekly routine with the wide instruction + daily replaces it + off
+  cancels both; alias refuses pending/unverified/unknown and the scope-less mailbox BEFORE any card, then really
+  sends From: the alias (case-insensitive), the card carries from_alias, own-address alias needs no round-trip;
+  snoozed gate + FOLDER_Q pin; label tree/colours/nested create (level-by-level, parent reuse), palette + star
+  note, tool-level colour. Ritual: 0.184.0 (main.py APP_VERSION + pubspec 0.184.0+214 + test_v0179 +
+  test_email_phase1/2/3 pins + console ?v=0.184.0). Full email suite 75 passed; bazar/routines/life/search 35;
+  basics/api/cards/console-build 17. Deploy: git pull + pm2 restart santosh-core (server-first; old APKs keep
+  working — the new help card arrives with the next APK build). Gmail plan: 4/4 phases shipped.
+
+
 ## v0.180.0 REAL TIME: the phone sees every task as it happens (Mera PC + all her own tasks)
 - Owner: "HOOLA AI MUST SEE THE TASK IN REAL TIME NOT DELAYED. CURRENTLY EVERY TASK IS COMPLETED THEN AFTER FEW SEC
   IT GIVES REPLY. SOME TASKS TAKE LONG, SOME NEVER REPLIED. FIX THIS PERFECTLY... FOR MERA PC AS WELL AS FOR ALL OWN

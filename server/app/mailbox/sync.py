@@ -20,7 +20,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from .. import convs
 from ..db import (MailAccount, MailContact, MailRule, MailSetting, MailSnooze, MailSyncState, as_utc, now, session)
@@ -35,6 +35,7 @@ log = logging.getLogger("santosh.mailbox.sync")
 MODES = ("off", "vip", "all")
 ACTION_KEYS = ("label", "archive", "star", "important", "mark_read", "mute", "notify", "forward_to")
 MATCH_KEYS = ("from", "subject", "has_attachment", "bulk", "unread")
+SEARCH_KEYS = ("from", "subject", "has_attachment", "bulk", "unread", "query")   # v0.184.0 saved searches
 RECENT_KEEP = 60
 FALLBACK_HOURS = 6          # expired history: at most this far back re-list
 TS_OVERLAP = timedelta(minutes=2)   # watermark back-dated a little; recent-ids catch the borderline mails
@@ -127,12 +128,14 @@ def mute_edit(tenant: str, add: list[str] | None = None, clear: bool = False) ->
 # ---------------- rules ----------------
 def rule_view(r: MailRule) -> dict[str, Any]:
     return {"id": r.id, "name": r.name, "enabled": bool(r.enabled), "match": dict(r.match or {}),
-            "actions": dict(r.actions or {}), "hits": int(r.hits or 0)}
+            "actions": dict(r.actions or {}), "hits": int(r.hits or 0), "kind": (r.kind or "rule")}
 
 
 def rules_list(tenant: str) -> list[dict[str, Any]]:
     with session() as s:
-        return [rule_view(r) for r in s.scalars(select(MailRule).where(MailRule.tenant_id == tenant)
+        return [rule_view(r) for r in s.scalars(select(MailRule)
+                                                .where(MailRule.tenant_id == tenant,
+                                                       or_(MailRule.kind == "rule", MailRule.kind.is_(None)))
                                                 .order_by(MailRule.created_at)).all()]
 
 
@@ -212,8 +215,10 @@ def matches(rule: MailRule | dict, item: dict[str, Any]) -> bool:
 
 
 def rules_for(tenant: str) -> list[MailRule]:
+    """The watcher's rules only — saved searches (kind='search') never run on new mail."""
     with session() as s:
-        rows = s.scalars(select(MailRule).where(MailRule.tenant_id == tenant, MailRule.enabled.is_(True))
+        rows = s.scalars(select(MailRule).where(MailRule.tenant_id == tenant, MailRule.enabled.is_(True),
+                                                or_(MailRule.kind == "rule", MailRule.kind.is_(None)))
                          .order_by(MailRule.created_at)).all()
         for r in rows:
             s.expunge(r)
@@ -233,6 +238,60 @@ def rule_test(tenant: str, rid: str, account: str | None = None, limit: int = 15
     hit = [{"id": f"{box.key}~{it['id']}", "from": it.get("from"), "subject": it.get("subject")}
            for it in items if matches(rule, it)]
     return {"rule": name, "account": box.address, "checked": len(items), "matches": hit[:max(1, min(int(limit or 15), 50))]}
+
+
+# ---------------- v0.184.0 saved searches (email_rule kind=search) ----------------
+def search_save(tenant: str, name: str, match: dict) -> dict[str, Any]:
+    """A named search she can run again any time ('bank ki mails dikhao'): the same match words as a rule, plus
+    query = a raw Gmail search string ('from:hdfcbank has:attachment') for Gmail mailboxes. Read-only: running it
+    lists what matches NOW; nothing is moved, nothing is announced."""
+    m: dict[str, Any] = {}
+    for k in ("from", "subject", "query"):
+        if str(match.get(k) or "").strip():
+            m[k] = _clean(match[k], 300)
+    for k in ("has_attachment", "bulk", "unread"):
+        if match.get(k):
+            m[k] = True
+    if not m:
+        raise MailError("Kya dhoondhna hai? from / subject / query (Gmail search) / has_attachment / bulk / unread "
+                        "mein se kuch dijiye.")
+    with session() as s:
+        r = MailRule(tenant_id=tenant, name=_clean(name, 120) or "Search", match=m, actions={}, kind="search")
+        s.add(r)
+        s.flush()
+        return rule_view(r)
+
+
+def searches_list(tenant: str) -> list[dict[str, Any]]:
+    with session() as s:
+        return [rule_view(r) for r in s.scalars(select(MailRule).where(MailRule.tenant_id == tenant,
+                                                                       MailRule.kind == "search")
+                                                .order_by(MailRule.created_at)).all()]
+
+
+def search_run(tenant: str, rid: str, account: str | None = None, limit: int = 15) -> dict[str, Any]:
+    with session() as s:
+        r = s.get(MailRule, rid)
+        if r is None or r.tenant_id != tenant or (r.kind or "rule") != "search":
+            raise MailError("Woh saved search nahi mila (ids email_rule action='searches' se).")
+        m, name, enabled = dict(r.match or {}), r.name, bool(r.enabled)
+    if not enabled:
+        raise MailError(f"'{name}' saved search roka hua hai (email_rule resume se chalu kijiye).")
+    limit = max(1, min(int(limit or 15), 50))
+    box = get_box(tenant, account)
+    q = m.get("query", "")
+    if q and box.kind == "gmail":                       # raw Gmail search, straight to the provider
+        items = box.list("search", bool(m.get("unread")), q, limit)
+    else:
+        if q and not any(k in m for k in ("from", "subject", "has_attachment", "bulk", "unread")):
+            raise MailError("Yeh saved search Gmail ke apne syntax mein hai; is mailbox par from / subject wale "
+                            "search hi chalte hain.")
+        items = [it for it in box.list("inbox", bool(m.get("unread")), None, limit * 3, None, True)
+                 if matches(m, it)][:limit]
+    return {"search": name, "account": box.address, "count": len(items),
+            "emails": [{"id": f"{box.key}~{it['id']}", "from": it.get("from"), "subject": it.get("subject"),
+                        "date": it.get("date", ""), "unread": bool(it.get("unread")),
+                        "snippet": (it.get("snippet") or "")[:160]} for it in items]}
 
 
 def _apply_rule_actions(tenant: str, box: Box, native: str, actions: dict[str, Any], item: dict[str, Any],

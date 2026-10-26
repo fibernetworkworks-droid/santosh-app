@@ -27,11 +27,11 @@ ATTACH_SCHEMA = {"type": "array", "description": (
 
 EMAIL_TOOLS = [
     {"name": "email_check", "description": (
-        "List emails (newest first) with a short preview. folder: inbox (default), sent, archive, starred, spam, trash, "
-        "or a label/folder name. account: a mailbox address, or 'all' for a unified inbox across every connected "
-        "mailbox. unread_only for 'koi nayi mail aayi?'. search finds by sender, subject or words (Gmail accounts "
-        "accept Gmail search like 'from:bank has:attachment'). Read one fully with email_read, a whole conversation "
-        "with email_thread."),
+        "List emails (newest first) with a short preview. folder: inbox (default), sent, archive, starred, snoozed "
+        "(Gmail's own snooze pile), spam, trash, or a label/folder name. account: a mailbox address, or 'all' for a "
+        "unified inbox across every connected mailbox. unread_only for 'koi nayi mail aayi?'. search finds by sender, "
+        "subject or words (Gmail accounts accept Gmail search like 'from:bank has:attachment'). Read one fully with "
+        "email_read, a whole conversation with email_thread."),
      "input_schema": {"type": "object", "properties": {
          "folder": {"type": "string"}, "unread_only": {"type": "boolean"},
          "limit": {"type": "integer", "description": "How many (default 10, max 50)"},
@@ -67,7 +67,9 @@ EMAIL_TOOLS = [
         "sign then; otherwise sign with the user's name. The user approves with Bhejo in the app; it is NOT sent "
         "automatically. send_at schedules it (local time, e.g. 2026-10-20T09:00). follow_up_days = remind the user if "
         "nobody replies. save_to_gmail=true also puts the draft in their Gmail Drafts folder (they can finish it in "
-        "the Gmail app too). Never put passwords, OTPs or card numbers in an email."),
+        "the Gmail app too). from_alias='address' sends from one of her Gmail send-as aliases (only verified ones; "
+        "needs the Gmail settings permission — an old mailbox is told to reconnect once). Never put passwords, OTPs "
+        "or card numbers in an email."),
      "input_schema": {"type": "object", "properties": {
          "to": {"type": "string", "description": "Emails or names, comma-separated. Omit on a reply to answer the sender."},
          "cc": {"type": "string"}, "bcc": {"type": "string"},
@@ -79,6 +81,7 @@ EMAIL_TOOLS = [
          "send_at": {"type": "string", "description": "Optional: send later at this local time"},
          "follow_up_days": {"type": "number", "description": "Optional: remind if no reply after this many days"},
          "save_to_gmail": {"type": "boolean", "description": "Also save into the Gmail Drafts folder"},
+         "from_alias": {"type": "string", "description": "Send from this Gmail send-as alias (verified ones only)"},
          "account": {"type": "string", "description": "Send from this mailbox (address)"}},
          "required": ["body"]}},
     {"name": "email_forward", "description": (
@@ -97,11 +100,13 @@ EMAIL_TOOLS = [
          "action": {"type": "string", "enum": list(ms.ACTIONS)}, "folder": {"type": "string"}},
          "required": ["ids", "action"]}},
     {"name": "email_label", "description": (
-        "Manage Gmail labels. action='list' shows them, 'create' (name), 'rename' (name, new_name). 'delete' first "
-        "asks the user with a card — mails stay, only the label goes."),
+        "Manage Gmail labels. action='list' shows them as a nested tree (Gmail nests with /). 'create' (name) — "
+        "'Office/Clients' creates the nested path too. 'rename' (name, new_name). 'color' (name, color: red / orange / "
+        "amber / yellow / green / mint / teal / sky / blue / lavender / purple / grey). 'delete' first asks the user "
+        "with a card — mails stay, only the label goes. Star colors are NOT possible through Google's API (say so)."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["list", "create", "rename", "delete"]},
-         "name": {"type": "string"}, "new_name": {"type": "string"},
+         "action": {"type": "string", "enum": ["list", "create", "rename", "delete", "color"]},
+         "name": {"type": "string"}, "new_name": {"type": "string"}, "color": {"type": "string"},
          "account": {"type": "string"}}, "required": ["action"]}},
     {"name": "email_drafts", "description": (
         "The drafts saved in the mailbox's own Drafts folder (Gmail). action='list' shows them (subject, to, when). "
@@ -110,20 +115,26 @@ EMAIL_TOOLS = [
          "action": {"type": "string", "enum": ["list", "delete"]}, "id": {"type": "string"},
          "limit": {"type": "integer"}, "account": {"type": "string"}}, "required": ["action"]}},
     {"name": "email_rule", "description": (
-        "Her inbox rules (Santosh-side, so they work for Gmail AND Outlook/IMAP). action='create' with match + "
-        "actions: match = {from: 'hdfcbank' (sender words/emails, comma = any of), subject: 'words, comma = all of', "
-        "has_attachment: true, bulk: true (newsletters), unread: true}; actions = {label: 'Bills', archive: true, "
-        "star: true, mark_read: true, important: true/false (Gmail), mute: true (no new-mail announcement), "
-        "notify: true (announce even in vip mode), forward_to: 'email' (makes a DRAFT card for her Bhejo tap — "
-        "Santosh NEVER sends by himself)}. action='list' shows rules with hit counts, 'pause'/'resume' with rule_id, "
-        "'delete' with rule_id, 'test' dry-runs a rule against the newest inbox mail (nothing changes). Rules apply "
-        "to NEW mail from now on, not to old mail."),
+        "Her inbox rules and saved searches (Santosh-side, so they work for Gmail AND Outlook/IMAP). "
+        "action='create' with match + actions: match = {from: 'hdfcbank' (sender words/emails, comma = any of), "
+        "subject: 'words, comma = all of', has_attachment: true, bulk: true (newsletters), unread: true}; actions = "
+        "{label: 'Bills', archive: true, star: true, mark_read: true, important: true/false (Gmail), mute: true (no "
+        "new-mail announcement), notify: true (announce even in vip mode), forward_to: 'email' (makes a DRAFT card for "
+        "her Bhejo tap — Santosh NEVER sends by himself)}. Rules apply to NEW mail from now on, not to old mail. "
+        "kind='search' with match (from / subject / has_attachment / bulk / unread, or query: a raw Gmail search like "
+        "'from:hdfcbank has:attachment') saves a SEARCH instead: a name she can ask for again any time ('bank wali "
+        "mails dikhao') — running one only lists what matches now, it changes nothing. action='list' shows rules with "
+        "hit counts, 'searches' shows the saved searches, 'run' with rule_id runs one saved search now, 'pause'/'resume' "
+        "with rule_id, 'delete' with rule_id (rules and searches), 'test' dry-runs a rule against the newest inbox mail "
+        "(nothing changes)."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["create", "list", "pause", "resume", "delete", "test"]},
+         "action": {"type": "string", "enum": ["create", "list", "searches", "run", "pause", "resume", "delete", "test"]},
+         "kind": {"type": "string", "enum": ["rule", "search"], "description": "create: 'rule' (default) or 'search'"},
          "name": {"type": "string"},
          "match": {"type": "object", "properties": {
              "from": {"type": "string"}, "subject": {"type": "string"}, "has_attachment": {"type": "boolean"},
-             "bulk": {"type": "boolean"}, "unread": {"type": "boolean"}}},
+             "bulk": {"type": "boolean"}, "unread": {"type": "boolean"},
+             "query": {"type": "string", "description": "saved search: raw Gmail search string"}}},
          "actions": {"type": "object", "properties": {
              "label": {"type": "string"}, "archive": {"type": "boolean"}, "star": {"type": "boolean"},
              "mark_read": {"type": "boolean"}, "important": {"type": "boolean"}, "mute": {"type": "boolean"},
@@ -186,13 +197,14 @@ EMAIL_TOOLS = [
     {"name": "email_accounts", "description": (
         "The user's connected mailboxes and their signatures, and settings: signature (set for a mailbox; "
         "signature_push=true also pushes it INTO Gmail itself, behind a confirm card), make_default (address), "
-        "daily_summary ('09:00' local time for a daily inbox summary, or 'off'), undo_seconds (0-60: after Bhejo the "
-        "email waits this many seconds and can still be cancelled; 0 = send at once), watch_mode ('off' = no new-mail "
-        "announcements, 'vip' = important mail + people she mails herself [default], 'all' = every new mail; for one "
-        "account or all), mute (sender emails, comma-separated, to never announce; 'clear' empties the list), "
-        "send_as=true lists the Gmail send-as aliases plus the current auto-forwarding (read-only), auto_forward="
-        "('off', or an email address to forward new mail to — always behind a confirm card). Call with no arguments "
-        "to just list everything. If nothing is connected, tell the user: Profile > Email > Gmail / Outlook / Other."),
+        "daily_summary ('09:00' local time for a daily inbox summary, 'weekly 09:00' for a weekly digest every "
+        "weekday of the first run, or 'off'), undo_seconds (0-60: after Bhejo the email waits this many seconds and "
+        "can still be cancelled; 0 = send at once), watch_mode ('off' = no new-mail announcements, 'vip' = important "
+        "mail + people she mails herself [default], 'all' = every new mail; for one account or all), mute (sender "
+        "emails, comma-separated, to never announce; 'clear' empties the list), send_as=true lists the Gmail send-as "
+        "aliases plus the current auto-forwarding (read-only), auto_forward=('off', or an email address to forward "
+        "new mail to — always behind a confirm card). Call with no arguments to just list everything. If nothing is "
+        "connected, tell the user: Profile > Email > Gmail / Outlook / Other."),
      "input_schema": {"type": "object", "properties": {
          "account": {"type": "string"}, "signature": {"type": "string"}, "make_default": {"type": "string"},
          "daily_summary": {"type": "string"},
@@ -217,8 +229,6 @@ EMAIL_LABELS = {"email_check": "Inbox dekh raha hoon", "email_read": "Email padh
                 "email_accounts": "Email settings dekh raha hoon",
                 "email_rule": "Inbox rule sambhal raha hoon", "email_snooze": "Mail snooze kar raha hoon",
                 "email_vacation": "Vacation reply sambhal raha hoon"}
-
-SUMMARY_TITLE = "Inbox summary"
 
 
 async def _t(fn, *a, **kw):
@@ -347,7 +357,7 @@ def _save_draft(ctx: Ctx, **f) -> dict[str, Any]:
 
 async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, reply_to_id=None, reply_all=False,
                       attachments=None, send_at=None, follow_up_days=None, account=None, markdown=False,
-                      save_to_gmail=False, **_):
+                      save_to_gmail=False, from_alias=None, **_):
     def work():
         to_addr = _resolve(ctx, to or "", "to")
         cc_addr = _resolve(ctx, cc or "", "cc")
@@ -377,13 +387,18 @@ async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, repl
             thread_id = orig.get("thread_id") or None
         if not to_addr:
             raise ToolError("Kis email par bhejna hai? 'to' address ya naam do, ya reply_to_id do.")
+        alias = (str(from_alias or "")).strip().lower()
+        if alias:                                        # v0.184.0 send-from-alias: check before the card exists
+            abox = get_box(ctx.tenant_id, acct)
+            ms._alias_verified(ctx.tenant_id, abox, alias)   # raises the honest reconnect / unverified error
         text, key = _with_signature(ctx, body, acct)
         atts = ms.describe_attachments(ctx.tenant_id, attachments)
         when = _when(ctx, send_at)
         return _save_draft(ctx, to_addr=to_addr[:1000], cc_addr=cc_addr[:1000], bcc_addr=bcc_addr[:1000] or None,
                            subject=(subj or "(no subject)")[:500], body=text, in_reply_to=in_reply_to, references=refs,
                            thread_id=thread_id, account=key, kind=kind, attachments=atts or None, send_at=when,
-                           follow_up_days=int(follow_up_days) if follow_up_days else None, markdown=bool(markdown))
+                           follow_up_days=int(follow_up_days) if follow_up_days else None, markdown=bool(markdown),
+                           from_alias=alias or None)
     view = await _t(work)
     if save_to_gmail:
         await _t(ms.push_gmail_draft, ctx.tenant_id, str(view["id"]))
@@ -422,12 +437,13 @@ async def email_action(ctx: Ctx, ids, action, folder="", **_):
     return await _t(ms.act, ctx.tenant_id, [str(i) for i in ids or []], action, folder or "")
 
 
-async def email_label(ctx: Ctx, action, name="", new_name="", account=None, **_):
+async def email_label(ctx: Ctx, action, name="", new_name="", color="", account=None, **_):
     if action == "delete":
         out = await _t(_bazar, ctx, "confirm_label_delete", {"name": str(name or "")})
         out.setdefault("say", "A confirm card is in the chat; mails stay, only the label goes after the user approves.")
         return out
-    return await _t(ms.label_op, ctx.tenant_id, str(action or "list"), str(name or ""), str(new_name or ""), account)
+    return await _t(ms.label_op, ctx.tenant_id, str(action or "list"), str(name or ""), str(new_name or ""),
+                    account, str(color or ""))
 
 
 async def email_drafts(ctx: Ctx, action="list", id=None, limit=10, account=None, **_):
@@ -560,28 +576,44 @@ async def email_accounts(ctx: Ctx, account=None, signature=None, make_default=No
     return out
 
 
+SUMMARY_TITLE = "Inbox summary"
+SUMMARY_WEEK_TITLE = "Weekly inbox summary"
+
+
 async def _daily_summary(ctx: Ctx, at: str) -> str:
+    """v0.181.0 the daily inbox summary; v0.184.0 'weekly 09:00' makes it a weekly digest instead."""
     from sqlalchemy import select
     from .. import life
     from ..db import Routine
     from .life_tools import create_routine
     with session() as s:
         for r in s.scalars(select(Routine).where(Routine.tenant_id == ctx.tenant_id, Routine.status == "active",
-                                                 Routine.title == SUMMARY_TITLE)).all():
+                                                 Routine.title.in_([SUMMARY_TITLE, SUMMARY_WEEK_TITLE]))).all():
             r.status = "cancelled"
-    if at.strip().lower() in ("off", "band", "no", "stop", "none"):
+    at = at.strip().lower()
+    if at in ("off", "band", "no", "stop", "none"):
         bus.publish(ctx.conversation_id, "routines", {"routines": life.active_routines(ctx.tenant_id)})
-        return "daily inbox summary off"
+        return "inbox summary off"
+    weekly = at.split()[0] in ("weekly", "week", "weekly:", "weekly-") if at.split() else False
+    when = " ".join(at.split()[1:]) if weekly else at
     try:
-        hh, mm = [int(x) for x in at.strip().split(":")[:2]]
+        hh, mm = [int(x) for x in when.split(":")[:2]]
     except ValueError:
-        raise ToolError("daily_summary: time like '09:00', or 'off'")
+        raise ToolError("daily_summary: time like '09:00', 'weekly 09:00', or 'off'")
     from datetime import datetime as _dt
     tz = life.tz_of(ctx.tenant_id)
     local = _dt.now(tz)
     first = local.replace(hour=hh, minute=mm, second=0, microsecond=0)
     if first <= local:
         first += timedelta(days=1)
+    if weekly:
+        await create_routine(ctx, title=SUMMARY_WEEK_TITLE, repeat="weekly", first_run=first.strftime("%Y-%m-%dT%H:%M"),
+                             instruction=("Use email_triage (last 7 days, unread_only=false) and give me my WEEKLY "
+                                          "inbox digest: the mails that still need my reply (one line each), bills or "
+                                          "payments due soon, anything important I may have missed, how many "
+                                          "newsletters/bulk mails came in, and the top senders of the week. Never read "
+                                          "out OTPs. End by offering to draft the pending replies."))
+        return f"weekly inbox digest at {hh:02d}:{mm:02d}"
     await create_routine(ctx, title=SUMMARY_TITLE, repeat="daily", first_run=first.strftime("%Y-%m-%dT%H:%M"),
                          instruction=("Use email_triage (last 24 hours) and give me my inbox summary: who needs my reply "
                                       "(one line each), bills or payments due, anything important; one line for how many "
@@ -589,11 +621,24 @@ async def _daily_summary(ctx: Ctx, at: str) -> str:
     return f"daily inbox summary at {hh:02d}:{mm:02d}"
 
 
-async def email_rule(ctx: Ctx, action="list", name="", match=None, actions=None, rule_id=None, account=None, **_):
+async def email_rule(ctx: Ctx, action="list", name="", match=None, actions=None, rule_id=None, account=None,
+                     kind="rule", **_):
+    if action == "create" and (str(kind or "rule")).strip().lower() == "search":
+        out = await _t(sync.search_save, ctx.tenant_id, str(name or ""), dict(match or {}))
+        return {**out, "note": "Saved search taiyaar hai. Boliye 'is naam se dikhao' aur main use chala dunga — "
+                               "yeh sirf dikhata hai, kuch nahi badalta."}
     if action == "create":
         out = await _t(sync.rule_create, ctx.tenant_id, str(name or ""), dict(match or {}), dict(actions or {}))
         return {**out, "note": "Rule chalu hai. Ab se aane wali nayi mail par chalega (purani mail par nahi). "
                                "forward_to wala rule sirf draft banata hai — bhejna hamesha user ke Bhejo par."}
+    if action == "searches":
+        return {"searches": await _t(sync.searches_list, ctx.tenant_id),
+                "note": "Saved searches: 'run' se chal sakta hai, delete se hata sakta hai. Run sirf dikhata hai "
+                        "jo ABHI match hota hai — kuch nahi badalta."}
+    if action == "run":
+        if not rule_id:
+            raise ToolError("Kaunsa saved search? rule_id do (email_rule action='searches' se).")
+        return await _t(sync.search_run, ctx.tenant_id, str(rule_id), account)
     if action in ("pause", "resume"):
         if not rule_id:
             raise ToolError("Kaunsa rule? rule_id do (email_rule list se).")
@@ -601,7 +646,7 @@ async def email_rule(ctx: Ctx, action="list", name="", match=None, actions=None,
         return {**out, "note": "Rule " + ("chalu kar diya." if action == "resume" else "roka (delete nahi hua).")}
     if action == "delete":
         if not rule_id or not await _t(sync.rule_delete, ctx.tenant_id, str(rule_id)):
-            raise ToolError("Woh rule nahi mila (ids email_rule list se).")
+            raise ToolError("Woh rule / saved search nahi mila (ids email_rule list ya searches se).")
         return {"deleted": rule_id}
     if action == "test":
         if not rule_id:
@@ -609,7 +654,8 @@ async def email_rule(ctx: Ctx, action="list", name="", match=None, actions=None,
         return await _t(sync.rule_test, ctx.tenant_id, str(rule_id), account)
     return {"rules": await _t(sync.rules_list, ctx.tenant_id),
             "note": "Rules nayi mail par chalte hain. Kaam: label, archive, star, mark_read, important, mute, "
-                    "notify; forward_to sirf draft banata hai (Santosh khud kabhi nahi bhejta)."}
+                    "notify; forward_to sirf draft banata hai (Santosh khud kabhi nahi bhejta). "
+                    "Saved searches ke liye action='searches'."}
 
 
 def _snooze_when(ctx: Ctx, when, hours, days):
