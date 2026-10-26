@@ -27,10 +27,10 @@ class FeedItem {
   bool live = false; // arrived live (not loaded from history)
 }
 
-/// v0.158 statuses that mean "this card waits for her answer / tap now".
+/// v0.158 statuses that mean "this card waits for her answer / tap now" (v0.186: + blocked = a goal waiting on her).
 const waitStatuses = {
   'waiting', 'pending', 'needs_tap', 'waiting_payment', 'waiting_sign', 'notice_waiting', 'minutes_waiting', 'awaiting',
-  'needs_approval', 'pending_tap', 'ask',
+  'needs_approval', 'pending_tap', 'ask', 'blocked',
 };
 
 /// v0.179 a card that has waited this long stops nagging from the strip (the server's TTL closes it properly;
@@ -314,6 +314,7 @@ class Santosh extends ChangeNotifier {
   final List<FeedItem> feed = [];
   final Map<String, FeedItem> _campaigns = {};
   final Map<String, FeedItem> _emails = {};
+  final Map<String, FeedItem> _goals = {};   // v0.186 lamba kaam: one live goal card per goal id, updated in place
   final Map<String, FeedItem> _bazar = {};   // confirm cards by approval id
   final Map<String, FeedItem> _studio = {};       // v0.68 video studio: one live card per project
   final Map<String, FeedItem> _studioAsks = {};   // its price cards
@@ -1495,6 +1496,20 @@ class Santosh extends ChangeNotifier {
           _emails[wn] = FeedItem(ev.kind, Map<String, dynamic>.from(p));
           feed.add(_emails[wn]!);
         }
+        break;
+      case 'goal':                  // v0.186 lamba kaam pakka: ONE live card per goal id, every tick updates in place
+        final gid = '${p['id']}';
+        final had = _goals[gid];
+        if (had != null) {
+          had.data = Map<String, dynamic>.from(p);
+        } else {
+          _goals[gid] = FeedItem('goal', Map<String, dynamic>.from(p));
+          feed.add(_goals[gid]!);
+          if (inBackground && !_replaying && !pushOn && p['status'] == 'blocked') {
+            Device.instance.showNow(aName, 'Lamba kaam aapke jawab par ruka hai: ${p['title'] ?? ''}');
+          }
+        }
+        if (!_replaying && p['status'] == 'blocked') setMood(Mood.think, hold: const Duration(seconds: 8));
         break;
       case 'lists':
         await refreshLists();

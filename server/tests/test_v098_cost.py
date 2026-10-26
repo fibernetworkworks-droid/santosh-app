@@ -72,7 +72,7 @@ def test_chat_turn_is_counted_for_her_as_chat(env, monkeypatch):
     from app.agent import santosh
     conv = _conv()
 
-    async def think(brain, system, history, settings, tools=None, live=None):
+    async def think(brain, system, history, settings, tools=None, live=None, max_tokens=None):
         usage.record("claude-sonnet-5-5", tok_in=10_000, tok_out=1_000)
         return [{"type": "text", "text": "ho gaya"}], "end_turn", brain
     monkeypatch.setattr(santosh, "_think", think)
@@ -100,7 +100,7 @@ def test_limit_warns_then_pauses_background_work_but_not_her_chat(env, monkeypat
     # a routine turn waits; her own chat still runs
     calls = []
 
-    async def think(brain, system, history, settings, tools=None, live=None):
+    async def think(brain, system, history, settings, tools=None, live=None, max_tokens=None):
         calls.append(1)
         return [{"type": "text", "text": "ok"}], "end_turn", brain
     monkeypatch.setattr(santosh, "_think", think)

@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.185.4"   # v0.185.4 "PC par kaam ruk gaya" root-caused and fixed: the round-end screenshot rode inside an is_error tool_result, the Anthropic API 400s the next call ("all content must be type `text` if `is_error` is true", seen live twice on the VPS 26 Oct) and the whole task died mid-way - the flag is now dropped before the shot rides in, _sanitize() enforces the rule over the whole history before every model call, transient API failures (400 once / connection / 429 / 5xx / 529) retry instead of killing the task, and a single busy screenshot retries once too (bump with pubspec)
+APP_VERSION = "0.186.0"   # v0.186.0 lamba kaam pakka: kaam_plan goals finish end to end (goal mode caps + nudges, the doosra-tareeka ladder with doc reads, one breaker replan rescue, background continuations, truthful voice late-results, goal cards in chat + call + console) (bump with pubspec)
 
 
 @asynccontextmanager
@@ -399,10 +399,32 @@ def create_conversation(tenant: str = Depends(current_tenant), project_id: str =
 
 @app.post("/api/conversations/{conversation_id}/stop", dependencies=[Depends(require_key)])
 def stop_turn(conversation_id: str, tenant: str = Depends(current_tenant)):
-    """Rokiye: Hoola stops the task after the step it is on (nothing new starts)."""
+    """Rokiye: Hoola stops the task after the step it is on (nothing new starts).
+    v0.186: an open goal of this chat stops with it (the goal card shows stopped)."""
     _conv_or_404(conversation_id, tenant)
     from .agent.santosh import stop
     stop(conversation_id)
+    return {"stopped": True}
+
+@app.get("/api/conversations/{conversation_id}/goal", dependencies=[Depends(require_key)])
+def get_goal(conversation_id: str, tenant: str = Depends(current_tenant)):
+    """v0.186 the working (or newest) goal of this chat, for the phone's goal card."""
+    _conv_or_404(conversation_id, tenant)
+    from .agent import goal
+    v = goal.active_for(conversation_id)
+    if v is None:
+        with goal.session() as s:
+            r = s.scalars(select(goal.GoalRun).where(goal.GoalRun.conversation_id == conversation_id)
+                          .order_by(goal.GoalRun.updated_at.desc())).first()
+            v = goal._row_view(r) if r is not None else None
+    return {"goal": v}
+
+@app.post("/api/conversations/{conversation_id}/goal/stop", dependencies=[Depends(require_key)])
+def stop_goal(conversation_id: str, tenant: str = Depends(current_tenant)):
+    """v0.186 Rokiye for the goal only: the plan stops, the chat itself stays free."""
+    _conv_or_404(conversation_id, tenant)
+    from .agent import goal
+    goal.mark_stopped(conversation_id)
     return {"stopped": True}
 
 @app.get("/api/conversations/{conversation_id}/messages", dependencies=[Depends(require_key)])

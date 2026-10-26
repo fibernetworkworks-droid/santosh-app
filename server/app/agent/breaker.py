@@ -13,6 +13,7 @@ SAME_CALL_STEER = 2        # the 3rd identical call (same tool + same input) is 
 TOOL_FAILS_CONSTRAIN = 3   # a tool that failed 3 times in this turn is taken away
 FAILS_IN_ROW_STOP = 4      # 4 failed calls in a row: stop
 MAX_CALLS = 30             # more tool calls than this in one turn: stop
+FAILS_IN_ROW_GOAL = 7      # v0.186 goal mode: more patience before a hard stop (one replan rescue first)
 
 STATS: Counter = Counter()   # steer / constrain / stop, since start (GET /api/agent/stats)
 
@@ -25,8 +26,12 @@ def _key(name: str, args: dict[str, Any] | None) -> str:
 
 
 class Breaker:
-    def __init__(self, max_calls: int = MAX_CALLS):
+    def __init__(self, max_calls: int = MAX_CALLS, fails_in_row: int = FAILS_IN_ROW_STOP, rescue: bool = False):
         self.max_calls = max_calls
+        self.fails_in_row = fails_in_row
+        self.rescue = rescue          # v0.186 goal mode: the first stop becomes one replan rescue instead
+        self.rescued = False
+        self.rescue_note = ""        # the replan message for the model (read by the turn right after it trips)
         self.calls = 0
         self.same: Counter = Counter()
         self.fails: Counter = Counter()
@@ -67,13 +72,29 @@ class Breaker:
         if self.fails[name] >= TOOL_FAILS_CONSTRAIN and name not in self.blocked:
             self.blocked.add(name)
             self._trip("constrain")
-        if self.in_row >= FAILS_IN_ROW_STOP:
+        if self.in_row >= self.fails_in_row and not self._rescue_or_stop(name):
             self._stop(f"{self.in_row} kaam lagatar fail hue")
+
+    def _rescue_or_stop(self, name: str) -> bool:
+        """v0.186 goal mode: the FIRST trip of the in-a-row cap is one replan rescue, not a stop: the failing tool
+        is taken away and the model is told to search + read docs and pick a different route. Only the second trip
+        really stops. True when a rescue was given (the turn goes on)."""
+        if not (self.rescue and not self.rescued and not self.stopped):
+            return False
+        self.rescued = True
+        self.in_row = 0
+        if name:
+            self.blocked.add(name)
+        self.rescue_note = (f"[replan: {name or 'yeh raasta'} lagatar fail ho gaya; is tool ke bina kaam karo. "
+                            "google_search/web_sources se dekho yeh kaam hota kaise hai, docs padho (open_website) "
+                            "aur doosra tool ya doosra route chuno. Jo ho chuka woh batao, phir naye raaste se aage badho.]")
+        self._trip("rescue")
+        return True
 
     def _insisting(self) -> bool:
         """A refused call counts as one more failure in a row: insisting on a blocked path ends the turn."""
         self.in_row += 1
-        if self.in_row >= FAILS_IN_ROW_STOP:
+        if self.in_row >= self.fails_in_row and not self._rescue_or_stop(""):
             self._stop("baar baar wahi atka hua kaam")
             return True
         return False

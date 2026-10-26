@@ -861,6 +861,7 @@ def init_db(url: str | None = None):
     from .office import service as _office  # noqa: F401
     from .lekhak import service as _lekhak  # noqa: F401
     from .agent import pakka as _pakka  # noqa: F401
+    from .agent import goal as _goal  # noqa: F401  (v0.186 goal_runs: lamba kaam pakka)
     from . import kaamwatch as _kaamwatch  # noqa: F401  (v0.136 live job watch)
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)

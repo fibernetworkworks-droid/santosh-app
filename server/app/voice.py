@@ -76,7 +76,7 @@ VOICE_TOOL_NAMES = {
     "youtube_search", "youtube_play", "youtube_video", "youtube_watch", "youtube_channel", "youtube_comments", "youtube_my_channel",
     "youtube_analytics", "app_check",
     "hoola_me", "hoola_connect", "hoola_connections", "hoola_answer_connect", "hoola_send", "hoola_reply", "hoola_inbox",
-    "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "hoola_jaanch", "ask_form", "ai_kharcha", "video_edit", "computer_operator", "video_studio", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_banao", "blender_3d", "postgres", "kaam_status", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest",
+    "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "hoola_jaanch", "ask_form", "ai_kharcha", "video_edit", "computer_operator", "video_studio", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_banao", "blender_3d", "postgres", "kaam_status", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest", "kaam_plan",
     "hoola_learn", "hoola_learned", "hoola_samaj", "hoola_community_search", "hoola_business", "hoola_chain", "hoola_deal", "hoola_pick", "hoola_market", "hoola_booking", "hoola_dosti", "a2a_bahar", "consent_jaanch", "digilocker", "ondc_listing", "hoola_seekha", "website", "website_dekho", "app_banao", "app_dekho",
     "sheets_find", "sheet_info", "sheet_query", "sheet_update", "sheet_create", "sheet_export",
     "maps_search", "maps_directions", "maps_navigate",
@@ -159,7 +159,8 @@ Language
 
 Doing real work
 - Use your tools instead of only talking about it. Before a tool that takes a moment, say ONE short, varied line ("ek sec", "dekhta hoon", "ruko, check karta hoon"), then call it; not while the user is still talking. When the result comes, lead with the answer and do not repeat the filler.
-- Never say something is done before the tool says so. If a tool fails, first try once more another way yourself (a known fix in the result, other input, another tool, or santosh_kaam for a bigger job); only then say simply what went wrong ("hmm, ye nahi hua") and the next step; never read an error out.
+- Never say something is done before the tool says so. If a tool fails, say "ek sec, doosra tareeka try karta hoon" and actually try the next way (a known fix in the result, other input, another tool; a bigger job goes to santosh_kaam). Never read an error out.
+- A MULTI-STEP goal ("order kar do...", "ye pura kaam kar do...") goes to santosh_kaam as ONE request with the WHOLE goal and its details — never split it into piecewise asks, never say "nahi ho paya" before santosh_kaam has tried. It keeps going after this call ends if it must, and the result lands in chat + a note.
 - A result that arrives late: first say what it is about ("woh jo aapne poochha tha, kal ki meeting..."), then the answer.
 - If santosh_kaam says the job is still working, carry on chatting. When a note says it is done or could not be finished, tell the user in a line or two.
 - If a note says the call connection dropped for a moment and came back, just say a quick "haan, boliye" and continue; do not repeat what was already said.
@@ -306,6 +307,7 @@ VOICE_VIA_KAAM = {
     "notebook_sources", "notebook_chat_config", "notebook_note",
     "form_settings", "form_alerts", "youtube_analytics", "youtube_comments", "app_check", "hoola_chain",
     "hoola_community_search", "hoola_samaj", "hoola_learn", "hoola_learned", "slides_edit", "slides_export", "hoola_dosti",
+    "kaam_plan",   # v0.186 the goal plan tool belongs to the full brain; the call hears the progress as notes
 }
 # a name ending in _dekho goes with its base tool (darzi_dekho with darzi ...)
 VOICE_TOOL_BUDGET = 150_000   # characters of tool JSON sent to Gemini Live (v0.119, the last version that worked well: ~213k)
@@ -1423,7 +1425,28 @@ class Call:
             log.warning("late voice job failed: %r", exc)
             self.push("text", f"(Woh bada kaam{about} poora nahi ho paya. Pehle batao kis baare mein hai, phir ek line mein "
                               "sach batao aur poochho ki dobara karein?)")
+            return
+        # v0.186 the TRUTH: santosh.LAST_OUTCOME knows how the turn really ended (never a fake "ho gaya" on a timeout)
+        oc: dict = {}
+        try:
+            from .agent import santosh
+            oc = dict(santosh.LAST_OUTCOME.get(self.conv) or {})
+        except Exception:
+            oc = {}
+        outcome = str(oc.get("outcome") or "")
+        left = str(oc.get("left") or "")[:220]
+        if outcome in ("done", "talk"):
+            self.push("text", f"(Woh bada kaam{about} ho gaya: {str(job.result())[:1500]}. Pehle ek chhote se batao kis baare "
+                              "mein hai ('woh jo aapne kaha tha...'), phir result ek-do chhoti lines mein.)")
+        elif outcome in ("partial", "continuing"):
+            self.push("text", f"(Woh bada kaam{about} abhi chal raha hai — {left or 'kuch hissa baaki'}. User ko mat kehna "
+                              "ki poora ho gaya: bolo 'abhi kaam chal raha hai, khatam hote hi bataunga', aur baat jatari rahe.)")
+        elif outcome in ("stuck", "stopped"):
+            why = left or ("owner ne rok diya" if outcome == "stopped" else "ek jagah atak gaya")
+            self.push("text", f"(Woh bada kaam{about} atka hai: {why}. Sach batao ek line mein — kya ho gaya, kya baaki, "
+                              "aapse kya chahiye. 'Ho gaya' bilkul mat kehna.)")
         else:
+            # no goal record (a plain short job, or the record lost): the classic done wording stays
             self.push("text", f"(Woh bada kaam{about} ho gaya: {str(job.result())[:1500]}. Pehle ek chhote se batao kis baare "
                               "mein hai ('woh jo aapne kaha tha...'), phir result ek-do chhoti lines mein.)")
 
@@ -1530,7 +1553,7 @@ class Call:
             out, state = {"error": str(e)}, "error"
         except asyncio.TimeoutError:
             log.warning("voice tool %s timed out", name)
-            out, state = {"error": "Yeh kaam bahut der le raha hai, abhi nahi ho paya. User ko batao aur baad mein dobara try karne ko kaho."}, "error"
+            out, state = {"error": "Yeh kaam bahut der le raha hai. User ko ek line batao ki kaam chal raha hai; bade hisse santosh_kaam ko de do ya kaam_status se haalat dekho. Bas 'baad mein karenge' mat kaho."}, "error"
         except Exception as e:
             log.exception("voice tool %s failed", name)
             out, state = {"error": f"Internal error: {e}"}, "error"

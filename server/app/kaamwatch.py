@@ -52,6 +52,8 @@ KINDS: dict[str, dict[str, Any]] = {
     "motion": {"label": "Motion reel", "map": {}, "done_always": True},
     "notebook_output": {"label": "Notebook Studio", "map": {"ready": "done", "queued": "working"}},
     "blender3d": {"label": "3D model (Blender)", "map": {"writing": "working", "building": "working", "rendering": "working", "checking": "working"}},
+    "goal": {"label": "Lamba kaam", "map": {"blocked": "waiting"},   # v0.186 goal mode: blocked on her = aapki baari
+             "waiting_say": "lamba kaam aapke jawab par ruka hai"},
 }
 # quick results made inside one tool call (letters, posters, photos, lekh) are told by the turn itself: not watched
 # kinds whose events are steps of ONE agent turn: the turn itself reports them

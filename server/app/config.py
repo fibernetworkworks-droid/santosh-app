@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     agent_fix_search: bool = True          # v0.78: a failed step with no known fix -> search the web for the solution
     agent_tool_timeout_s: int = 300         # a tool that hangs never blocks a chat turn longer than this (browser waits go up to 270 s)
     agent_turn_timeout_s: int = 900         # a whole turn never holds the chat lock longer than this
+    # v0.186 Lamba kaam pakka (goal mode): these apply ONLY while a kaam_plan goal is open; short jobs keep today's numbers
+    agent_goal: bool = True                 # goal mode on: the turn does not stop on text while goal steps are open
+    agent_goal_max_steps: int = 80          # model steps in one goal turn (vs 24)
+    agent_goal_max_calls: int = 150         # breaker max_calls while a goal is open (vs 30)
+    agent_goal_turn_s: int = 2700           # turn timeout while a goal is open (vs 900)
+    agent_goal_max_tokens: int = 6000       # per model call while a goal is open (vs 2000)
+    agent_goal_rounds: int = 3              # background continuation turns per goal (across turns)
+    agent_goal_minutes: int = 60            # total minutes across all rounds of one goal
     tv_refresh: bool = True                # Hoola TV: download + check the free channel list nightly
     app_release_repo: str = "fibernetworkworks-droid/santosh-app"   # v0.62 where the phone app's releases live
     video_edit_worker: bool = True         # v0.65 Hoola Video Editor: run edits in the background (tests run them inline)

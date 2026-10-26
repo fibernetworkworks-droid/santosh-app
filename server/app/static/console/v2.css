@@ -645,3 +645,14 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
   color:var(--teal);background:rgba(45,212,191,.12);border-radius:6px;padding:1.5px 6px;margin-right:8px;vertical-align:1px}
 .sr span mark{font-weight:800}
 @media (max-width:1100px){ .fbar{right:12px} .jrail{display:none} }
+
+/* v0.186 goal card (lamba kaam pakka) */
+.pbar{height:4px;border-radius:999px;background:rgba(255,255,255,.08);margin:8px 0 10px;overflow:hidden}
+.pbar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#FFD9A8,#FF9A3C,#C055F5)}
+.gstep{font-size:12.5px;padding:3px 0;color:var(--ink,#F4F2FF)}
+.gstep span{display:inline-block;width:18px;font-weight:800}
+.gstep.done{color:#9C96C2;text-decoration:line-through}
+.gstep.current{font-weight:800}
+.gstep.current span{color:#FFB15C}
+.gstep.failed span{color:#F87171}
+.gstep small{color:#9C96C2}

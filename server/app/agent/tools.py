@@ -873,3 +873,10 @@ for _t, _l, _h in ((EDITDESK_TOOLS, EDITDESK_LABELS, EDITDESK_HANDLERS), (MOTION
     TOOLS.extend(t for t in _t if t["name"] not in _seen)
     TOOL_LABELS.update(_l)
     HANDLERS.update(_h)
+
+# v0.186 Lamba kaam pakka: the brain's own plan tool (goal mode lives in agent/goal.py)
+from .goal_tools import GOAL_HANDLERS, GOAL_LABELS, GOAL_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in GOAL_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(GOAL_LABELS)
+HANDLERS.update(GOAL_HANDLERS)

@@ -568,6 +568,23 @@ const fingerprintMsg = 'Yeh paise wala card hai: Haan sirf aapke phone ke finger
 
 function renderCard(kind, p, at, live) {
   if (B && B.kinds.has(kind)) { const el = cardShell(kind, p); B.card(kind, p, el, !!live); scrollDown(); return; }
+  if (kind === 'goal') {   // v0.186 lamba kaam pakka: live checklist, one card per goal id
+    const el = cardShell(kind, p);
+    const st = p.status || 'working';
+    const HEAD = {working: 'LAMBA KAAM CHAL RAHA HAI', done: 'LAMBA KAAM POORA HUA', blocked: 'AAPKE JAWAB KA INTEZAAR',
+                  failed: 'LAMBA KAAM ADHOORA RAHA', stopped: 'LAMBA KAAM ROK DIYA GAYA'};
+    const steps = Array.isArray(p.steps) ? p.steps : [];
+    const done = p.done != null ? p.done : steps.filter(x => x.state === 'done').length;
+    const total = p.total != null ? p.total : steps.length;
+    const ico = {done: '\u2713', current: '\u23F3', failed: '\u2715', skipped: '\u2013', pending: '\u2022'};
+    el.innerHTML = head(HEAD[st] || HEAD.working, total ? (done + '/' + total) : '', st === 'done' ? 'ok' : st === 'failed' ? 'bad' : 'v') +
+      `<div class="bd" style="margin-top:4px"><b>${esc(p.title || p.goal || 'Lamba kaam')}</b>` +
+      (total ? `<div class="pbar"><i style="width:${Math.max(0, Math.min(100, p.pct ?? Math.round(100 * done / total)))}%"></i></div>` : '') +
+      steps.slice(0, 15).map(x => `<div class="gstep ${esc(x.state || 'pending')}"><span>${ico[x.state] || '\u2022'}</span> ${esc(x.text || '')}` +
+        (x.note ? ` <small>(${esc(x.note)})</small>` : '') + `</div>`).join('') +
+      (p.reason && st !== 'working' ? `<div class="note">${esc(p.reason)}</div>` : '') + `</div>`;
+    scrollDown(); return;
+  }
   if (kind === 'gyaan_sources') {
     const el = document.createElement('div'); el.className = 'srcs';
     el.innerHTML = (p.sources || []).map(s => `<span class="chip">[${esc(s.n ?? '')}] ${esc(s.title || s.source || '')}</span>`).join(''); turn().bd.appendChild(el); return;

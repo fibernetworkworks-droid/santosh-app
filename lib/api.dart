@@ -403,6 +403,11 @@ class Api {
   Future<void> checkConversation(String id) async => _send('GET', '/api/conversations/$id/messages');
   /// Stop the task Hoola is running in this conversation (after the current step).
   Future<void> stopTurn(String id) async => _send('POST', '/api/conversations/$id/stop');
+  /// v0.186 the goal card's data (the newest goal of this chat), or {} when none.
+  Future<Map<String, dynamic>> goal(String id) async =>
+      Map<String, dynamic>.from((await _send('GET', '/api/conversations/$id/goal') as Map)['goal'] as Map? ?? {});
+  /// v0.186 Rokiye for the goal only: the plan stops, the chat itself stays free.
+  Future<void> stopGoal(String id) async => _send('POST', '/api/conversations/$id/goal/stop');
   /// Sends a message. A flaky mobile network is retried (same client_id, so the server runs it only once).
   /// Uploads one file (multipart) with retries on a bad network and plain-words errors, whatever the server or
   /// nginx answers (an HTML 404/413 page never shows up as "Not Found" / a JSON crash).

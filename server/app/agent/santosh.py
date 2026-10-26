@@ -25,6 +25,9 @@ log = logging.getLogger("santosh.agent")
 
 _client = None
 _locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+# v0.186 the truth about the last finished turn of this conversation, for the voice call's late result
+# ({"outcome": done|partial|stuck|stopped|talk|continuing, "left": what remains, "goal": the goal line, "at": ts})
+LAST_OUTCOME: dict[str, dict] = {}
 
 
 def get_client():
@@ -136,21 +139,23 @@ def _claude_ready() -> bool:
 
 
 async def _call_brain(brain: str, system: str, history: list[dict], settings, tools: list[dict] | None = None,
-                      live=None) -> tuple[list[dict], str]:
-    """One model call on one brain. Raises when that brain fails. With `live` (v0.161) the words stream as written."""
+                      live=None, max_tokens: int | None = None) -> tuple[list[dict], str]:
+    """One model call on one brain. Raises when that brain fails. With `live` (v0.161) the words stream as written.
+    v0.186 goal mode raises max_tokens (6000) so a plan's steps are not cut at the chat-size 2000."""
     tools = tools if tools is not None else TOOLS
+    cap = max_tokens or settings.agent_max_tokens
     streaming = live is not None and live.streaming
     if brain in ("glm", "omniroute"):
         if streaming:
-            blocks, stop, usage = await llm.openai_stream(brain, system, tools, history, settings.agent_max_tokens,
+            blocks, stop, usage = await llm.openai_stream(brain, system, tools, history, cap,
                                                           live.feed, on_think=live.feed_think)   # v0.171 thinking
         else:
-            blocks, stop, usage = await llm.openai_create(brain, system, tools, history, settings.agent_max_tokens)
+            blocks, stop, usage = await llm.openai_create(brain, system, tools, history, cap)
         log.info("%s in=%s out=%s %s", llm.describe(), usage.get("prompt_tokens"), usage.get("completion_tokens"),
                  usage.get("route", ""))
         return blocks, stop
     from . import cache
-    kw = cache.shape(dict(model=settings.anthropic_model, max_tokens=settings.agent_max_tokens,
+    kw = cache.shape(dict(model=settings.anthropic_model, max_tokens=cap,
                           system=system, tools=tools, messages=history), getattr(settings, "prompt_cache", True))
     api = get_client().messages
     if streaming and hasattr(api, "stream"):
@@ -181,7 +186,7 @@ async def _claude_stream(api, kw: dict, live) -> tuple[list[dict], str]:
 
 
 async def _think(brain: str, system: str, history: list[dict], settings, tools: list[dict] | None = None,
-                 live=None) -> tuple[list[dict], str, str]:
+                 live=None, max_tokens: int | None = None) -> tuple[list[dict], str, str]:
     """One model call that survives a failing brain: the chosen brain first, then the other one, so an outage of
     either never leaves the user without an answer. Returns (blocks, stop_reason, the brain that answered).
     v0.161 a brain that fails after some streamed words: `delta_reset`, and the next brain writes them again."""
@@ -195,7 +200,7 @@ async def _think(brain: str, system: str, history: list[dict], settings, tools: 
     last: Exception | None = None
     for b in order:
         try:
-            blocks, stop = await _call_brain(b, system, history, settings, tools, live)
+            blocks, stop = await _call_brain(b, system, history, settings, tools, live, max_tokens)
             if live is not None:
                 live.flush(final=True)     # the answer is complete: the held-back end can go (nothing can split now)
                 live.think_flush(final=True)
@@ -286,11 +291,22 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
 
 async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str,
                  user_text: str = "") -> str:
-    """One turn with the v0.63 extras around it: seekhe hue kaam as hints, a circuit breaker, learning afterwards."""
+    """One turn with the v0.63 extras around it: seekhe hue kaam as hints, a circuit breaker, learning afterwards.
+    v0.186: while a kaam_plan goal is open for this chat the caps rise (AGENT_GOAL_*), the breaker gets one replan
+    rescue, and the real outcome lands in LAST_OUTCOME for the voice call to tell the truth about."""
     from .. import procedures
-    from .breaker import Breaker
+    from .breaker import Breaker, FAILS_IN_ROW_GOAL
     from . import pakka
-    state: dict = {"calls": [], "breaker": Breaker(), "used": [], "hint": "", "request": user_text, "t0": time.time()}
+    from . import goal as _goal
+    state: dict = {"calls": [], "breaker": Breaker(), "used": [], "hint": "", "request": user_text, "t0": time.time(),
+                   "conv": conversation_id}
+    if settings.agent_goal:
+        g0 = _goal.active_for(conversation_id)
+        if g0 is not None:   # goal open when the turn began: the goal caps apply from the first step
+            state["goal"] = g0
+            state["breaker"] = Breaker(max_calls=settings.agent_goal_max_calls, fails_in_row=FAILS_IN_ROW_GOAL,
+                                       rescue=True)
+            state["max_tokens"] = settings.agent_goal_max_tokens
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor != "owner" and not actor.startswith("approved:"):
         try:   # v0.91 remember whether the job was paused when this turn began: turning Pause on mid-turn stops it
@@ -304,14 +320,23 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
         except Exception:
             log.exception("procedure hint failed")
     text = await _steps_inner(conversation_id, ctx, gender, history, settings, tenant_id, state)
-    ok = (bool(text.strip()) and not state["breaker"].stopped and conversation_id not in _stopped and not state.get("halted")
-          and not text.startswith(("Yeh kaam lamba", "Maaf kijiye")))
+    g = _goal.active_for(conversation_id) if settings.agent_goal else None
+    if g is not None and _goal.steps_left(g):
+        ok = False
+        state["left"] = (f"goal '{g['goal']}': {g['done']}/{g['total']} steps ho gaye, "
+                         f"{len(_goal.steps_left(g))} baaki ({g['stage'] or 'aage badhega'})")
+    else:
+        ok = (bool(text.strip()) and not state["breaker"].stopped and conversation_id not in _stopped
+              and not state.get("halted")
+              and not text.startswith(("Yeh kaam lamba", "Maaf kijiye")))
     if user_text:
         lessons = await asyncio.to_thread(pakka.learn, tenant_id, state["calls"], ok, state.get("lessons_used", []))
         if lessons:
             bus.publish(conversation_id, "procedure", {"event": "lesson", "title": lessons[0][:120], "count": len(lessons)})
         outcome = ("stopped" if conversation_id in _stopped or state.get("halted") else "stuck" if state["breaker"].stopped else
                    "talk" if not state["calls"] else "partial" if state.get("left") else "done" if ok else "partial")
+        LAST_OUTCOME[conversation_id] = {"outcome": outcome, "left": state.get("left", ""),
+                                         "goal": (g or state.get("goal") or {}).get("goal", ""), "at": time.time()}
         await asyncio.to_thread(pakka.record, tenant_id, user_text, outcome, state["calls"], state,
                                 time.time() - state["t0"], state.get("left", ""))
         learned = await asyncio.to_thread(procedures.after_turn, tenant_id, user_text, state["calls"], state["used"], ok, actor)
@@ -322,8 +347,11 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
 
 async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str,
                        state: dict) -> str:
-    """The think -> tools -> think loop of one turn. Returns the final text shown to the user."""
+    """The think -> tools -> think loop of one turn. Returns the final text shown to the user.
+    v0.186: while a kaam_plan goal is open, text never ends the turn — the goal nudge sends it back to work."""
     from . import pakka
+    from . import goal as _goal
+    from .breaker import FAILS_IN_ROW_GOAL
     breaker = state["breaker"]
     _gyaan.begin(conversation_id)        # v0.134 fresh [n] numbering for this turn
     final_text = ""
@@ -349,12 +377,23 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     tools = TOOLS + mcp_defs
     from .. import livereply
     live = livereply.current(conversation_id)
-    for _ in range(settings.agent_max_steps):
+    ran_steps = 0
+    while ran_steps < (settings.agent_goal_max_steps if state.get("goal") else settings.agent_max_steps):
+        ran_steps += 1
+        if settings.agent_goal and "goal" not in state:
+            # v0.186 the plan can be written mid-turn (kaam_plan set): the goal caps rise from that moment
+            g_top = _goal.active_for(conversation_id)
+            if g_top is not None:
+                state["goal"] = g_top
+                b = state["breaker"]
+                b.max_calls, b.fails_in_row, b.rescue = settings.agent_goal_max_calls, FAILS_IN_ROW_GOAL, True
+                state["max_tokens"] = settings.agent_goal_max_tokens
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
             live.block(stream=not _gyaan.used(conversation_id))
         try:
             try:   # stays on the brain that worked; Rokiye cancels the model call itself, not just the next step
-                blocks, stop, brain = await _watched(_think(brain, system, history, settings, tools, live),
+                blocks, stop, brain = await _watched(_think(brain, system, history, settings, tools, live,
+                                                             state.get("max_tokens")),
                                                      conversation_id, ctx, state)
             except _Halted:
                 raise
@@ -366,7 +405,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 mcp_defs, mcp_route, tools = [], {}, TOOLS
                 if live is not None:
                     live.reset()
-                blocks, stop, brain = await _watched(_think(brain, system, history, settings, tools, live),
+                blocks, stop, brain = await _watched(_think(brain, system, history, settings, tools, live,
+                                                             state.get("max_tokens")),
                                                      conversation_id, ctx, state)
         except _Halted as h:
             state["halted"] = h.why
@@ -394,7 +434,21 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                     bus.publish(conversation_id, "gyaan_sources", {"sources": srcs})
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent", **_tag(live)})
         if stop != "tool_use":
+            if stop == "max_tokens":
+                # v0.186 the words were cut mid-thought: continue exactly where the cut happened, in goal mode and out
+                nudge = "[System: aapka jawab beech mein cut gaya (max_tokens). Wahi se exactly aage badho — kaam ya " \
+                        "baaki baat poore karo, dobara shuru mat karo.]"
+                history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
+                _save(conversation_id, "user", [{"type": "text", "text": nudge}])
+                continue
             nudge = await _pakka_check(state, final_text, settings, ran_tools, conversation_id)
+            if not nudge and settings.agent_goal:
+                # v0.186 goal mode: text never ends a turn while the goal's steps are open
+                g = _goal.active_for(conversation_id)
+                if g is not None and _goal.steps_left(g) and state.get("goal_nudges", 0) < 8:
+                    state["goal"] = g
+                    state["goal_nudges"] = state.get("goal_nudges", 0) + 1
+                    nudge = _goal.nudge_text(g)
             if nudge:
                 history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
@@ -464,7 +518,9 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 breaker.after(b["name"], False)
                 state["calls"].append({"tool": b["name"], "ok": False, "error": "timeout", "args": args_in,
                                        "key": _key(b["name"], args_in)})
-                msg = f"{b['name']} did not finish in {settings.agent_tool_timeout_s} seconds and was stopped. Tell the user and offer to try again."
+                msg = (f"{b['name']} did not finish in {settings.agent_tool_timeout_s} seconds and was stopped. "
+                       "Don't stop the task: check this step's status, try a lighter way or another tool, or hand the "
+                       "step to a route that answers faster.")
                 log.warning("tool %s timed out", b["name"])
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": msg, "is_error": True})
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error",
@@ -481,6 +537,14 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error", "id": b["id"]})
                 _work(conversation_id, b["id"], shown, label, "error", args_in, error="Kuch gadbad ho gayi")
         history.append({"role": "user", "content": results})
+        if state["breaker"].rescue_note:   # v0.186 the replan rescue rides with the results, as data for the model
+            note = state["breaker"].rescue_note
+            state["breaker"].rescue_note = ""
+            history[-1] = {"role": "user", "content": results + [{"type": "text", "text": note}]}
+            if live is not None:
+                live.new_text_block()
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": "Soch badal raha hoon — doosra raasta try karta hoon.",
+                                                     "source": "agent", **_tag(live, True)})
         _save(conversation_id, "user", results)
         if breaker.stopped:                # stuck: stop here and say so plainly
             log.warning("circuit breaker stopped a turn: %s", breaker.stopped)
@@ -500,6 +564,16 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
             return final_text
     else:
+        # the step cap ran out: an honest line, never the stale mid-task text
+        g = _goal.active_for(conversation_id) if settings.agent_goal else None
+        if g is not None and _goal.steps_left(g):
+            state["goal"] = g
+            honest = (f"Goal jaari hai: {g['done']}/{g['total']} steps ho gaye ({g['goal'][:120]}); "
+                      f"{len(_goal.steps_left(g))} baaki hain — main background mein aage badh raha hoon.")
+            final_text = (final_text + "\n\n" + honest).strip() if final_text else honest
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": honest, "source": "agent", **_tag(live, True)})
+            _save(conversation_id, "assistant", [{"type": "text", "text": honest}], display=honest)
+            return final_text
         if not final_text:
             final_text = "Yeh kaam lamba ho gaya, main yahin ruk raha hoon. Aage kya karoon?"
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
@@ -549,11 +623,13 @@ def _key(name: str, args) -> str:
 
 async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, conversation_id: str) -> str:
     """v0.78 self-check before the turn ends: real results vs. her request. Returns a nudge to keep working, or ''.
-    Sets state['correct'] when the answer claims more than was done, state['left'] when something stays open."""
+    Sets state['correct'] when the answer claims more than was done, state['left'] when something stays open.
+    v0.186 goal mode: 4 self-checks a turn instead of 2."""
     from . import pakka
+    cap = pakka.SELF_CHECKS_GOAL if state.get("goal") else pakka.SELF_CHECKS_PER_TURN
     calls = state.get("calls") or []
     if (not ran_tools or not calls or conversation_id in _stopped or state["breaker"].stopped or state.get("halted")
-            or state.get("checks", 0) >= pakka.SELF_CHECKS_PER_TURN):
+            or state.get("checks", 0) >= cap):
         return ""
     real = [c for c in calls if c.get("tool") not in pakka.SKIP]
     if not real:
@@ -582,10 +658,16 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
 
 
 def stop(conversation_id: str) -> None:
-    """The owner tapped Stop: the running model call / tool call is cancelled at once (v0.91) and nothing more runs."""
+    """The owner tapped Stop: the running model call / tool call is cancelled at once (v0.91), nothing more runs,
+    and an open goal of this chat is marked stopped (v0.186: Rokiye stops the goal, not just the turn)."""
     _stopped.add(conversation_id)
     bus.publish(conversation_id, "work", {"id": "stop", "tool": "", "scene": "work", "phase": "stopped",
                                           "label": "Roka gaya", "data": {}})
+    try:
+        from . import goal as _goal
+        _goal.mark_stopped(conversation_id)
+    except Exception:
+        log.exception("goal stop failed")
 
 
 def turn_running(conversation_id: str) -> bool:
@@ -704,6 +786,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         bus.publish(conversation_id, "typing", {"on": True})
 
         history = _load_history(conversation_id)
+        block = ""
         if who == "owner" or who == "routine" or who.startswith("approved:"):
             try:   # v0.108 work diary, facts by meaning, recalled old exchanges: for this message only
                 from .. import yaad
@@ -715,19 +798,26 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                         block = (block + "\n\n" + kb) if block else kb
                 except Exception:
                     log.exception("kaam block failed")
-                if block:
-                    _with_memory(history, block)
+                if settings.agent_goal:   # v0.186 an open goal rides above everything: this turn continues it
+                    from . import goal as _goalb
+                    gb = _goalb.goal_block(conversation_id)
+                    if gb:
+                        block = (gb + "\n\n" + block) if block else gb
             except Exception:
                 log.exception("memory block failed")
+            if block:
+                _with_memory(history, block)
         final_text = ""
         _stopped.discard(conversation_id)
         from .. import livereply
         live = livereply.begin(conversation_id, tenant_id)    # v0.161 CONSOLE_STREAM: the reply streams as written
         try:
-            # one stuck call must never keep this conversation locked forever
+            # one stuck call must never keep this conversation locked forever (v0.186: an open goal gets the longer cap)
+            from . import goal as _goalt
+            goal_on = settings.agent_goal and _goalt.active_for(conversation_id) is not None
             final_text = await asyncio.wait_for(
                 _steps(conversation_id, ctx, _gender, history, settings, tenant_id, user_text),
-                timeout=max(30, settings.agent_turn_timeout_s))
+                timeout=max(30, settings.agent_goal_turn_s if goal_on else settings.agent_turn_timeout_s))
         except asyncio.TimeoutError:
             log.error("agent turn timed out after %ss", settings.agent_turn_timeout_s)
             final_text = "Yeh kaam bahut der se chal raha tha, isliye maine ise rok diya. Thoda chhota karke phir bolein?"
@@ -759,6 +849,12 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             from .. import chats
             if chats.enabled():   # v0.162 the chat gets a short title after her first exchange (background)
                 _bg(chats.auto_title(tenant_id, conversation_id))
+        if settings.agent_goal:   # v0.186 the turn ended but the goal is still open: ONE background continuation
+            try:
+                from . import goal as _goalc
+                _goalc.maybe_continue(conversation_id, tenant_id, who)
+            except Exception:
+                log.exception("goal continuation scheduling failed")
         return final_text
 
 

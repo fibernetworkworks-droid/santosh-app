@@ -109,6 +109,7 @@ import 'slides_screen.dart';
 import 'youtube_screen.dart';
 import 'appcheck_screen.dart';
 import 'motion_screen.dart';
+import 'goal_card.dart';
 import 'hoola_cards.dart';
 import 'deal_screen.dart';
 import 'market_screen.dart';
@@ -1195,6 +1196,8 @@ class _ChatScreenState extends State<ChatScreen> {
 /// nothing that needs a tap is ever only in Chat. Returns null for plain messages and notes.
 Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
   switch (it.kind) {
+    case 'goal':   // v0.186 lamba kaam pakka: one live checklist card per goal id
+      return GoalCard(app: app, it: it);
     case 'email':
       return _EmailCard(v: it.data, app: app);
     case 'email_new':

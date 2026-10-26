@@ -7804,3 +7804,48 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
   named as the cause at works_at=0, total-failure verdict says model/key, rung refusal still bisects to the
   bad tool while reporting the heal). Version 0.185.2 (pubspec 0.185.2+217, console ?v=0.185.2, conscious
   pins 0.185.1→0.185.2 in test_v0179/email_phase1-4/test_v0185); desktop untouched 1.4.0 (server-only deploy).
+
+## v0.186.0 — Lamba kaam pakka (goals finish end to end, in chat and in calls)
+
+Owner brief: short tasks ke liye theek hai, but long goals ruk jaate hain — "Pehle X, phir Y" bol ke turn khatam,
+24 steps / 30 calls / 900 s ke short-job caps, false "ho gaya" in calls even on timeouts. Opus-jaisa chalega: plan
+banao, kaam khatam hone tak jao, fail hua to "ek doosra tareeka try karta hoon" — search, docs padho, doosra route.
+
+Server: new `agent/goal.py` (+ `goal_runs` table, imported in db.init_db) and the brain's own plan tool
+`kaam_plan` (`agent/goal_tools.py`: set / step / add / show / finish; `blocked_on_her` only for a REAL dependency
+on her — her tap, OTP, or a fact; never for a tool failure). Every change publishes a `goal` card event
+(kind not LOCAL, WAIT_STATUS + "blocked", card_key goal:id:<id>): kaamwatch KINDS["goal"] turns it into live chat
+lines + quiet call notes + stuck alarms for free; push.py pushes only blocked-on-her or done. While a goal is
+open (kaam_plan set mid-turn counts), `agent/santosh.py` switches to goal caps (config agent_goal_*: 80 steps,
+150 calls, 2700 s turn, 6000 tokens), the turn NEVER ends on text while steps are open (continue nudge, 8/turn),
+max_tokens cuts always continue exactly where they stopped, steps running out ends honestly ("X/Y steps ho gaye,
+background mein aage badh raha hoon") and ONE background continuation turn is scheduled (`goal.maybe_continue`;
+refuses waiting cards / Rokiye / rounds / minutes / budget / non-owner turns); every new turn in that chat gets a
+"GOAL JAARI HAI" block. `agent/pakka.py` goal mode: 6 web fixes, 4 self-checks, after a web fix the top official
+page is READ (web.open_website, trimmed, marked data) and she SEES "Yeh raasta nahi chala (...) — ek doosra
+tareeka try karta hoon…" (message progress, in_history False, 45 s throttle) + hears it in a call (voice.inject);
+`agent/breaker.py` got fails_in_row/rescue params — goal mode's first in-a-row trip is ONE replan rescue (the
+failing tool is blocked, the model gets a search+docs+different-route note) instead of a stop. Voice: `_late_result`
+reads santosh.LAST_OUTCOME (set by _steps: outcome/left/goal) — done says ho gaya, partial/continuing says "abhi
+kaam chal raha hai, khatam hote hi bataunga", stuck/stopped says "atka hai" — never a fake "ho gaya"; persona
+lines now say the ladder ("ek sec, doosra tareeka try karta hoon", whole goals to santosh_kaam in ONE request,
+never "nahi ho paya" before santosh_kaam has tried); tool-timeout text says hand it to santosh_kaam / check status.
+`kaam_plan` rides in VOICE_VIA_KAAM (never declared to Gemini Live; schema clean).
+
+Phone: new `lib/ui/goal_card.dart` (◎ gradient tile, LAMBA KAAM head, progress bar, ✓/⏳/✕/– checklist rows with
+notes, Rokiye button -> POST /goal/stop), wired in state.dart (one card per goal id, `_goals`, live in-place
+updates, blocked -> notification + think mood; waitStatuses + "blocked"), chat_screen feedCard case 'goal',
+callCardKinds + 'goal' (the call tray shows her goals), api.dart goal()/stopGoal(). Console: v2.js renderCard
+branch 'goal' (checklist + progress bar, card per goal id) + v2.css .pbar/.gstep, cache busts ?v=0.186.0.
+Endpoints: GET /api/conversations/{id}/goal, POST /api/conversations/{id}/goal/stop. Every safety gate (cards,
+money taps, OTP, confirm-before-send) untouched; Mera PC freeze respected (no pc/, pc_tools, connectors/pc,
+desktop changes); send_client_content never used mid-call (notes go through voice.inject).
+
+Tests: new tests/test_v0186_long_goal.py (10) — plan keeps the turn going till done (goal events, LAST_OUTCOME),
+failed path reads docs + doosra-tareeka once + breaker rescues exactly once, steps-out ends honest + ONE
+continuation finishes, no continuation while a card waits / after Rokiye / past rounds, max_tokens continues,
+short tasks unchanged (24 caps, no goal block/events), goal block rides above every turn, voice late-result
+truth, goal events reach voice.inject via kaamwatch, kaam_plan never declared to Gemini. fake _think signatures
+in livework/place/cost tests accept max_tokens (santosh now passes it); conscious-bump pins (v0179, email_phase1-4,
+v0185) read 0.186.0; test_livework's turn test uses the goal-era loop unchanged otherwise. Version 0.186.0
+(pubspec 0.186.0+219, console ?v=0.186.0); desktop untouched.

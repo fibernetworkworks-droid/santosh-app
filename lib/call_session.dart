@@ -13,6 +13,7 @@ enum CallAct { idle, connecting, listening, userTalking, working, speaking }
 /// Feed items that are cards the owner may need to act on or open during a call (approvals, downloads, drafts...).
 const callCardKinds = {
   'bazar', 'email', 'pc_file', 'photo_made', 'blender3d', 'pg_write', 'artifact', 'open', 'link', 'browser', 'calendar_event', 'sheet', 'form', 'slides',
+  'goal',   // v0.186 the lamba-kaam checklist shows in the call too
   'notebook', 'notebook_output', 'youtube', 'app_check', 'photos_pick', 'campaign',
   'hoola_knock', 'hoola_connect', 'hoola_msg', 'hoola_group', 'hoola_group_post', 'hoola_outbox', 'hoola_chain',
   'hoola_ticket', 'hoola_lesson', 'hoola_samaj', 'employee_ask', 'biz_handover', 'operator_ask', 'operator_task', 'studio', 'studio_approval', 'google_reconnect',

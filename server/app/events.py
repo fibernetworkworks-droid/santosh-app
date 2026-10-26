@@ -40,7 +40,7 @@ LOCAL_KINDS = LIVE_ONLY | {
 ACTIONS = {"device_action", "device_action_result", "home_device", "bt_request", "phonedoc_open", "bazar_open", "bazar_link"}
 _ID_KEYS = ("id", "task_id", "session_id", "job_id", "deal_id", "ticket_id", "card_id", "project", "ref")
 WAIT_STATUS = {"waiting", "pending", "needs_tap", "waiting_payment", "waiting_sign", "notice_waiting", "minutes_waiting",
-               "awaiting", "needs_approval", "pending_tap", "ask"}
+               "awaiting", "needs_approval", "pending_tap", "ask", "blocked"}   # v0.186: a goal blocked on her
 # card kinds that always wait for her when they are open (no status field of their own)
 TAP_KINDS = {"bazar_approval", "employee_ask", "operator_ask", "studio_approval", "ask_form", "pg_write"}
 
