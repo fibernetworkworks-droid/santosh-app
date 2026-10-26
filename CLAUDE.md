@@ -7631,6 +7631,37 @@ share · v0.30 "tum sambhalo" + translation · v0.31 groups (Mandali) · v0.32 l
   server keeps working with 1.3.x desktops (plain open_url, no browser reads, upgrade note when tried).
 
 
+## v0.185.1 VOICE CALL FIX: the generic 1007 that killed every call (affective dialog now heals process-wide)
+- Found LIVE on the VPS the day 0.181–0.185 first actually went live (the deploy had silently re-copied v0.180.0
+  since ~v0.181: the VPS checkout sat on branch mcp/santosh-server, so git pull always said "Already up to date"
+  while local main sat 7 commits behind; fixed with git fetch + checkout main + reset --hard origin/main). With the
+  real code finally running, EVERY voice call died: Gemini refuses enable_affective_dialog with a generic
+  "1007 None. Request contains an invalid argument." that never names the field, so v0.181's _affective_refused()
+  (matches only "affect"/"enable_affective" in the message) never fired; SETUP_STEPS has no affective rung, so the
+  ladder burnt mcp → vocab → langcodes and the call still ended "done: 0 turns" — Hoola picked up and said nothing.
+  The error log also showed 15 ack clips in a row "not made: client has been closed" (the dying old process's ack
+  thread; clips cache to disk after one good build, so cosmetic — but the batch now builds with ONE shared client).
+- Fix (voice.py): the connect-error heal now ALSO fires on a GENERIC setup refusal (setup_refused()) while
+  affective is on — drops enable_affective_dialog once, process-wide (_AFFECTIVE remembers), rebuilds the config
+  and reconnects inside the same call. The named-field refusal path is unchanged, and with affective already off
+  a generic 1007 still climbs the SETUP ladder exactly as before and ends in an honest error event (no heal loop,
+  no hang). Net: one refused connect per process, then calls behave like v0.180 (which worked) minus affective.
+- Ack clips (voice.py): _build_acks makes ONE genai client for the whole 16-clip batch and hands it to _ack_tts
+  (new optional client= param; old 3-arg callers unaffected). If the batch client cannot be made, each clip falls
+  back to a fresh one exactly as before. 16 client handshakes per batch → 1.
+- Tests test_v01851_voice_heal.py (4): the exact VPS shape (generic 1007 on the first connect → second config has
+  no affective, the call completes, the process remembers), affective-already-off + generic 1007 still climbs the
+  ladder and ends honestly (no heal loop), the ack batch builds every clip with exactly ONE client, _ack_tts without
+  a shared client still works. Also repaired two v0.185.0-stale pins the sweep had missed (test_v0178_realtime: the
+  PC card steps_max + work line now assert the run's REAL budget — a browser-worded task runs 64, not MAX_STEPS 40)
+  and test_human_voice's fake _ack_tts grew the client= param. Full ring green: voice core, v0.181, human voice,
+  v0.185 PC browser, v0.179 search, email phase1–4, realtime, voicestyle (132 tests).
+- Ritual: 0.185.1 (main.py APP_VERSION + pubspec 0.185.1+216 + the six conscious-bump pins 0.185.0→0.185.1 +
+  console ?v=0.185.1). Desktop untouched 1.4.0 — no exe rebuild, server-only deploy. Instant VPS mitigation without
+  this deploy: VOICE_AFFECTIVE=false in ~/apps/santosh-core/.env + pm2 restart santosh (remove the line after
+  deploying 0.185.1 to get affective back).
+
+
 ## v0.180.0 REAL TIME: the phone sees every task as it happens (Mera PC + all her own tasks)
 - Owner: "HOOLA AI MUST SEE THE TASK IN REAL TIME NOT DELAYED. CURRENTLY EVERY TASK IS COMPLETED THEN AFTER FEW SEC
   IT GIVES REPLY. SOME TASKS TAKE LONG, SOME NEVER REPLIED. FIX THIS PERFECTLY... FOR MERA PC AS WELL AS FOR ALL OWN

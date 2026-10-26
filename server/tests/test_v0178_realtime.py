@@ -166,7 +166,8 @@ def test_pc_card_narrates_every_step_live(op, monkeypatch):
     assert o.status == "done"
     evs = _events(bz["conv"], "browser")
     assert evs and evs[0]["session_id"].startswith("pcop_")
-    assert all(e.get("steps_max") == operator.MAX_STEPS for e in evs)
+    assert o.steps_max == 64                                    # v0.185: a browser-worded task ("Chrome kholo") gets the bigger budget
+    assert all(e.get("steps_max") == o.steps_max for e in evs)  # the card shows the REAL budget of this run
     assert any(e.get("thinking") is True for e in evs)                       # 'Soch raha hoon…' state was on the card
     steps = [e for e in evs if e.get("step")]
     seq = [e["step"] for e in steps]
@@ -178,7 +179,7 @@ def test_pc_card_narrates_every_step_live(op, monkeypatch):
     assert not any("Raaz-Baatein-123" in a for a in actions)                 # privacy: typed text never on the card
     works = _events(bz["conv"], "work")
     labels = [w.get("label") or "" for w in works]
-    assert any(f"PC (1/{operator.MAX_STEPS})" in lb for lb in labels)        # the work line counts the steps too
+    assert any(f"PC (1/{o.steps_max})" in lb for lb in labels)               # the work line counts the steps too (the run's real budget)
     assert not any("Raaz-Baatein-123" in lb for lb in labels)
 
 

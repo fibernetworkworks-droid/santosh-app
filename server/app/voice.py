@@ -786,9 +786,11 @@ _ACK_BUSY: set[str] = set()
 _ACK_LOCK = threading.Lock()
 
 
-def _ack_tts(text: str, voice: str, gender: str) -> bytes:
+def _ack_tts(text: str, voice: str, gender: str, client=None) -> bytes:
     """One short line with Gemini's TTS, in the same prebuilt voice the call uses (24 kHz PCM16).
-    v0.181 the new gemini-3.8-flash-tts sounds far more human; if a model is unavailable / refuses, the legacy one speaks."""
+    v0.181 the new gemini-3.8-flash-tts sounds far more human; if a model is unavailable / refuses, the legacy one speaks.
+    v0.185.1 takes the batch's shared client — a fresh Client per clip could hit closed/poisoned shared state
+    (every clip died with 'client has been closed' on the VPS) and 16 handshakes per batch was slow anyway."""
     from google.genai import Client, types
     st = get_settings()
     who = "young Indian woman" if gender == "f" else "young Indian guy"
@@ -801,7 +803,7 @@ def _ack_tts(text: str, voice: str, gender: str) -> bytes:
     resp = None
     for model in (st.voice_ack_tts_model, "gemini-2.5-flash-preview-tts"):
         try:
-            resp = Client(api_key=st.gemini_api_key).models.generate_content(model=model, config=cfg, contents=ask)
+            resp = (client or Client(api_key=st.gemini_api_key)).models.generate_content(model=model, config=cfg, contents=ask)
             if any(getattr(p, "inline_data", None) and p.inline_data.data for p in resp.candidates[0].content.parts):
                 break
         except Exception:
@@ -834,10 +836,16 @@ def _build_acks(key: str, voice: str, gender: str) -> None:
     clips: list[bytes] = []
     try:
         ACK_DIR.mkdir(parents=True, exist_ok=True)
+        client = None                      # v0.185.1 ONE client for the whole batch; if it cannot be made,
+        try:                               # _ack_tts falls back to a fresh one per clip exactly as before
+            from google.genai import Client as _AckClient
+            client = _AckClient(api_key=get_settings().gemini_api_key)
+        except Exception as e:
+            log.info("ack client not made: %r", e)
         for i, line in enumerate(ACK_LINES):
             f = ACK_DIR / f"{voice}_{gender}_{i}.pcm"
             try:
-                clip = f.read_bytes() if f.exists() else _trim(_ack_tts(gendered(line, gender), voice, gender))
+                clip = f.read_bytes() if f.exists() else _trim(_ack_tts(gendered(line, gender), voice, gender, client))
             except Exception as e:
                 log.info("ack clip %s/%s not made: %r", voice, i, e)
                 continue
@@ -1874,14 +1882,22 @@ class Call:
                         try:
                             session = await asyncio.wait_for(stack.enter_async_context(connector(cfg)), timeout=20)
                         except Exception as connect_err:
-                            # v0.181 this model generation may refuse affective dialog: retry once without it, remember for the process
-                            if not (_AFFECTIVE["ok"] and _affective_refused(connect_err)):
+                            # v0.181 this model generation may refuse affective dialog: retry once without it, remember for
+                            # the process. v0.185.1 the REAL refusal is a generic "1007 invalid argument" that never names
+                            # the field, so _affective_refused() never matched and every call burnt the whole SETUP ladder
+                            # and died with 0 turns (seen live on the VPS, 26 Oct). A generic setup refusal while affective
+                            # is on now drops affective once, process-wide, and retries immediately; the named-field case
+                            # still heals exactly as before, and a refusal with affective already off climbs the ladder.
+                            if _AFFECTIVE["ok"] and get_settings().voice_affective and (
+                                    _affective_refused(connect_err) or setup_refused(connect_err)):
+                                _AFFECTIVE["ok"] = False
+                                log.warning("Gemini refused the setup with affective dialog on (%s); calls continue "
+                                            "without it and this is remembered for the process", str(connect_err)[:160])
+                                cfg = live_config(self.voice, self.lang, context, self.handle, self.name, self.gender, mcp_defs,
+                                                  langst=self.langst, style=self.style, safe=self._safe)
+                                session = await asyncio.wait_for(stack.enter_async_context(connector(cfg)), timeout=20)
+                            else:
                                 raise
-                            _AFFECTIVE["ok"] = False
-                            log.warning("affective dialog refused by %s: calls continue without it", get_settings().gemini_live_model)
-                            cfg = live_config(self.voice, self.lang, context, self.handle, self.name, self.gender, mcp_defs,
-                                              langst=self.langst, style=self.style, safe=self._safe)
-                            session = await asyncio.wait_for(stack.enter_async_context(connector(cfg)), timeout=20)
                         self._session = session
                         if first:
                             await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id, "vad": vad_config()})

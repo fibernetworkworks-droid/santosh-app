@@ -80,7 +80,7 @@ def _ack_setup(monkeypatch, tool_s=1.5):
     voice._ACK_BUSY.clear()
     made = []
 
-    def fake_tts(text, v, g):
+    def fake_tts(text, v, g, client=None):   # v0.185.1 _build_acks hands the batch's shared client (ignored here)
         made.append((text, v, g))
         return b"\x00\x00" * 100 + array("h", [7000, -7000] * 2400).tobytes() + b"\x00\x00" * 100
 

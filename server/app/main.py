@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.185.0"   # v0.185.0 Mera PC browser intelligence: page_text / tabs / switch_tab / downloads over UIA (desktop 1.4.0), open_url opens a new tab in the browser she already uses and reports the loaded title + first words of the page, typing verifies itself in the field, browser jobs run with a bigger budget (64 steps / 22 min) (bump with pubspec)
+APP_VERSION = "0.185.1"   # v0.185.1 voice call fix: Gemini refuses affective dialog with a GENERIC 1007 (never names the field) so the v0.181 heal never fired and every call died in the setup ladder with 0 turns — a generic setup refusal with affective on now drops affective once, process-wide, and retries at once; ack clips build with ONE shared TTS client per batch (bump with pubspec)
 
 
 @asynccontextmanager
