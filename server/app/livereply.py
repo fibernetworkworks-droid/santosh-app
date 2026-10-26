@@ -102,6 +102,7 @@ class Live:
         self.tsent = ""                # thinking already sent (cleaned)
         self.tseq = 0
         self.tlast = 0.0
+        self.sayq: list[str] = []      # v0.187 the little true lines between steps ("12 mails aaye")
 
     # ---- one reply
     def start(self) -> None:
@@ -208,6 +209,19 @@ class Live:
     def partial(self) -> str:
         """What she saw of the block being written (cleaned), e.g. when she stopped it."""
         return clean(self.tenant, self.raw).strip() if self.raw else ""
+
+    def feed_say(self, line: str) -> None:
+        """v0.187 one short true line about what a tool just really returned, shown while the next model call
+        thinks (rule-based from the result, no model call, never a guess). Replaces the previous say line -
+        it is one growing whisper above the stream bubble, gone the moment the reply arrives."""
+        line = " ".join(str(line or "").split())
+        if not line:
+            return
+        if line in self.sayq:
+            return                     # already shown: no re-send
+        self.sayq.append(line)
+        del self.sayq[:-3]             # keep the last three
+        bus.publish_live(self.conv, "say", {"turn": self.turn, "text": "  ·  ".join(self.sayq)})
 
 
 def begin(conversation_id: str, tenant: str) -> Live | None:

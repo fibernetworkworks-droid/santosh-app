@@ -933,6 +933,22 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
         );
+      case 'say':
+        // v0.187 one true line about what a tool just really returned ("12 mails aaye"), shown while the next
+        // step thinks. A quiet whisper, not a bubble: small, italic, gone the moment the reply arrives.
+        final s = it.data['text'] as String? ?? '';
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const SizedBox(width: 8, height: 8, child: _SayDot()),
+              const SizedBox(width: 8),
+              Flexible(child: Text(s, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12.5, fontStyle: FontStyle.italic, color: Color(0xFFB9B2E6)))),
+            ]),
+          ),
+        );
       case 'steps':
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -1196,7 +1212,7 @@ class _ChatScreenState extends State<ChatScreen> {
 /// nothing that needs a tap is ever only in Chat. Returns null for plain messages and notes.
 Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
   switch (it.kind) {
-    case 'goal':   // v0.186 lamba kaam pakka: one live checklist card per goal id
+    case 'goal':   // v0.187 lamba kaam pakka: one live checklist card per goal id
       return GoalCard(app: app, it: it);
     case 'email':
       return _EmailCard(v: it.data, app: app);
@@ -2078,6 +2094,33 @@ class _CaretState extends State<_Caret> with SingleTickerProviderStateMixin {
             height: 16,
             margin: const EdgeInsets.only(left: 2, bottom: -2),
             decoration: BoxDecoration(color: C.accent, borderRadius: BorderRadius.circular(2)),
+          ),
+        ),
+      );
+}
+
+/// v0.187 the tiny breathing dot beside the say-line ("12 mails aaye") - alive, quiet, gone with the reply.
+class _SayDot extends StatefulWidget {
+  const _SayDot();
+  @override
+  State<_SayDot> createState() => _SayDotState();
+}
+
+class _SayDotState extends State<_SayDot> with SingleTickerProviderStateMixin {
+  late final AnimationController _t = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
+  @override
+  void dispose() {
+    _t.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: _t,
+        builder: (context, _) => Opacity(
+          opacity: .35 + .65 * (0.5 - (2 * _t.value % 1).abs()) * 2,
+          child: Container(
+            decoration: BoxDecoration(color: C.accent, shape: BoxShape.circle),
           ),
         ),
       );

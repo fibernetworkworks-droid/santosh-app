@@ -338,6 +338,26 @@ async def tick() -> None:
     await mail_jobs()
     await employee_jobs()
     kaam_jobs()
+    await followup_jobs()
+
+
+_fu_last = 0.0
+
+
+async def followup_jobs() -> None:
+    """v0.187 kaam ka natija Hoola ki awaaz mein: pending task-result reports go out as her own short message
+    (a tiny one-shot model call, no tools). A report whose chat has a turn running is postponed; the canned
+    kaamwatch line is the fallback if the model has no words. Never more than a handful at once."""
+    global _fu_last
+    import time
+    if time.time() - _fu_last < 10:
+        return
+    _fu_last = time.time()
+    try:
+        from . import kaam_followup
+        await kaam_followup.tick()
+    except Exception:
+        log.exception("kaam followup tick failed")
 
 
 _kaam_last = 0.0

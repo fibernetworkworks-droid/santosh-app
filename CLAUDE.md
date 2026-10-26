@@ -7849,3 +7849,49 @@ truth, goal events reach voice.inject via kaamwatch, kaam_plan never declared to
 in livework/place/cost tests accept max_tokens (santosh now passes it); conscious-bump pins (v0179, email_phase1-4,
 v0185) read 0.186.0; test_livework's turn test uses the goal-era loop unchanged otherwise. Version 0.186.0
 (pubspec 0.186.0+219, console ?v=0.186.0); desktop untouched.
+
+## v0.187.0 REALTIME: the first words fast, and every job's result in Hoola's own words (owner: "AI doesn't monitor tasks end to end; delayed response after 30s more")
+- Owner's two complaints, root-caused by a three-agent deep analysis of the turn pipeline: (1) EVERY model call re-sent all
+  384 tool specs = 568 KB (~142 K tokens) plus a 120 KB system prompt, uncached on the production brain -> 15-60 s TTFT per
+  call, xN steps, before any word; the words existed only in the FINAL call. (2) All ~32 task families DID post a canned
+  kaamwatch line on completion, but it carried no result, was silenced while her turn ran (`in_turn`/young), and the chat
+  brain never followed up on its own - "jab result aaye to batana" was a promise nothing kept (only the voice call's
+  late-result loop worked).
+- FIX 1 - schema diet (agent/tools.py): every tool NAME, type, enum, required field and nested structure untouched; prose
+  shrinks with graduated caps - ordinary tool descriptions to 140 chars (first sentences), safety-word tools (confirm /
+  approval / consent / otp / password / tier-2 / bhejo / manzoori / payment / money in the description) to 700 so their
+  rules survive, property descriptions to 72. 568 KB -> 383 KB per call (~33%, ~24 K tokens x every one of the up-to-24
+  calls). _RAW_SPECS + DIET_STATS kept for tests; diet applied in-place at import (TOOLS[:] =), so dispatch / TOOL_LABELS /
+  handlers are untouched. Old APKs benefit with zero changes.
+- FIX 2 - the 5-second ack (agent/santosh.py): a turn that says nothing for `agent_ack_after_s` (config, default 5) sends
+  "Ek second, dekh raha hoon…" (6 variants, gendered) as an EPHEMERAL message - events.publish(ephemeral=True) fans out to
+  the chat's open streams only: no Event row, no chat-list touch, NO FCM push, no kaamwatch; a reload never shows it, the
+  real reply replaces it. One per turn (_ACKED), owner chats only (voice calls have their own ack clips), every condition
+  re-checked after the wait: turn over / stopped / words already streaming (livereply.partial) / an assistant Message saved
+  in the last seconds -> no ack.
+- FIX 3 - say-lines (agent/say.py + livereply.feed_say + STREAM kind "say"): after EVERY tool step, one TRUE line about the
+  result ("12 mails mile", "Video taiyar — drive.google.com") streams while the next model call thinks. Rule-based from the
+  tool result (count/total/items length, url -> host-only, query strings stripped, ok/status) - no model call (that would be
+  the delay we are killing), never a guess: no fact -> no line; errors stay the step chip's job. The phone renders it as a
+  small italic whisper with a breathing dot above the stream bubble (state.dart _sayItem + chat_screen 'say' case +
+  _SayDot), cleared on reply_end / final message; old APKs ignore the kind silently.
+- FIX 4 - kaam_followup (new server/app/kaam_followup.py): a done/failed watched job now gets ONE message in Hoola's own
+  words with the actual result - a tiny one-shot call (pakka._ask: cheap brain, NO tools, ~400 tokens) over a digest built
+  from kaamwatch's shaped job (label/title/state/detail + NEW link capture from url/link/preview_url/file_url/share_url/
+  download_url/path/file, query-stripped, 300 cap). kaamwatch._update enqueues on every done/failed (deduped per key+state,
+  10 min window) INSTEAD of posting the dry line; worker slot followup_jobs (every ~10 s, after kaam_jobs) sends pending
+  ones; a report whose chat has a turn running is POSTPONED (tries++, at 5 the canned line goes out anyway - never lose the
+  news); _recent_said skips when her turn's own reply already named the job (last 4 assistant messages, 5 min); model empty
+  or failed -> the honest canned ✅/❌ line (fallback counter); sent via events.notify (Message + SSE + FCM) + the same
+  quiet voice.inject note as every kaamwatch line. New table kaam_followups (auto-created); KAAM_FOLLOWUP env off-switch;
+  prompts.py teaches the promise is now real ("poora hote hi bata dungi" - and the result message IS the truth, no
+  re-checking; never invent a manual follow-up mechanism).
+- Tests: NEW tests/test_v0186_realtime.py (15): diet keeps all 384 names/order/uniqueness + enums/required/properties +
+  shrinks >25% + safety prose survives as a clean prefix; ack publishes only when silent-held (ephemeral kw asserted), skips
+  when words already out or turn over, ephemeral publish stores no Event and pushes nothing; say-line rules true-or-silent +
+  feed_say accumulates (dup no re-send, last-3 window); followup: done job -> her voice + link stored + NO dry line +
+  voice note, model failure -> ✅ fallback, failed -> ❌, running turn postpones (tries++) then sends after, turn's own reply
+  dedupes to skipped, enqueue dedupes. Sweeps green: email x5 + v0185_pc_browser + v0179_search 101, bazar + cards +
+  routines 31, v0178_realtime 6, livework + robust_chat + basics 15, NEW 15 (168 total in-sandbox; the google.genai voice
+  suites can't import in this sandbox - pre-existing). Version 0.186.0 (pubspec 0.186.0+219, console ?v=0.186.0, conscious
+  pins 0.185.3->0.186.0 in test_v0179/email_phase1-4/test_v0185); desktop untouched (server + phone deploy).

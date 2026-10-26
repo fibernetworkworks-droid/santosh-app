@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.186.0"   # v0.186.0 lamba kaam pakka: kaam_plan goals finish end to end (goal mode caps + nudges, the doosra-tareeka ladder with doc reads, one breaker replan rescue, background continuations, truthful voice late-results, goal cards in chat + call + console) (bump with pubspec)
+APP_VERSION = "0.187.0"   # v0.187.0 realtime: schema diet (568K->383K per model call), the 5s ack line, say-lines between steps; kaam_followup (job results in Hoola's own words via one-shot model, canned fallback), worker slot, prompts promise; new say stream kind + Flutter whisper UI (bump with pubspec) — was v0.186.0 lamba kaam pakka: kaam_plan goals finish end to end (goal mode caps + nudges, the doosra-tareeka ladder with doc reads, one breaker replan rescue, background continuations, truthful voice late-results, goal cards in chat + call + console)
 
 
 @asynccontextmanager

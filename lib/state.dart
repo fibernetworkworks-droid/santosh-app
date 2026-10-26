@@ -27,7 +27,7 @@ class FeedItem {
   bool live = false; // arrived live (not loaded from history)
 }
 
-/// v0.158 statuses that mean "this card waits for her answer / tap now" (v0.186: + blocked = a goal waiting on her).
+/// v0.158 statuses that mean "this card waits for her answer / tap now" (v0.187: + blocked = a goal waiting on her).
 const waitStatuses = {
   'waiting', 'pending', 'needs_tap', 'waiting_payment', 'waiting_sign', 'notice_waiting', 'minutes_waiting', 'awaiting',
   'needs_approval', 'pending_tap', 'ask', 'blocked',
@@ -231,6 +231,7 @@ class Santosh extends ChangeNotifier {
   bool typing = false;
   Timer? _typingGuard;            // v0.178 typing shows only while the turn is really alive (the stream refreshes it)
   FeedItem? _streamItem;          // v0.178 the reply being written right now (grows word by word, live-only)
+  FeedItem? _sayItem;             // v0.187 the little true lines between steps ("12 mails aaye"), live-only
   String? error;
   bool inBackground = false;
 
@@ -314,7 +315,7 @@ class Santosh extends ChangeNotifier {
   final List<FeedItem> feed = [];
   final Map<String, FeedItem> _campaigns = {};
   final Map<String, FeedItem> _emails = {};
-  final Map<String, FeedItem> _goals = {};   // v0.186 lamba kaam: one live goal card per goal id, updated in place
+  final Map<String, FeedItem> _goals = {};   // v0.187 lamba kaam: one live goal card per goal id, updated in place
   final Map<String, FeedItem> _bazar = {};   // confirm cards by approval id
   final Map<String, FeedItem> _studio = {};       // v0.68 video studio: one live card per project
   final Map<String, FeedItem> _studioAsks = {};   // its price cards
@@ -1244,6 +1245,7 @@ class Santosh extends ChangeNotifier {
         break;
       case 'reply_start':
         _streamDrop();                                   // a new reply begins: any leftover bubble goes
+        _sayDrop();                                      // v0.187 and the old whisper too
         _streamItem = FeedItem('stream', {'turn': p['turn'] ?? '', 'text': '', 'seg': -1});
         feed.add(_streamItem!);
         notifyListeners();
@@ -1276,6 +1278,23 @@ class Santosh extends ChangeNotifier {
           }
           notifyListeners();
         }
+        _sayDrop();                     // v0.187 the whisper's job is done - the reply is here
+        break;
+      case 'say':                       // v0.187 one true line about what a tool just returned
+        final text = '${p['text'] ?? ''}';
+        if (text.isEmpty) break;
+        if (_sayItem != null) {
+          _sayItem!.data['text'] = text;
+        } else {
+          _sayItem = FeedItem('say', {'turn': p['turn'] ?? '', 'text': text});
+          final at = _streamItem != null ? feed.indexOf(_streamItem!) : -1;
+          if (at >= 0) {
+            feed.insert(at, _sayItem!);
+          } else {
+            feed.add(_sayItem!);
+          }
+        }
+        notifyListeners();
         break;
       case 'typing':
         if (p['on'] == true) {
@@ -1497,7 +1516,7 @@ class Santosh extends ChangeNotifier {
           feed.add(_emails[wn]!);
         }
         break;
-      case 'goal':                  // v0.186 lamba kaam pakka: ONE live card per goal id, every tick updates in place
+      case 'goal':                  // v0.187 lamba kaam pakka: ONE live card per goal id, every tick updates in place
         final gid = '${p['id']}';
         final had = _goals[gid];
         if (had != null) {
@@ -2468,10 +2487,21 @@ class Santosh extends ChangeNotifier {
   /// with no argument any leftover bubble goes (a new reply is starting / the chat is reloading).
   void _streamDrop({String? onlyTurn}) {
     final it = _streamItem;
-    if (it == null) return;
-    if (onlyTurn != null && onlyTurn.isNotEmpty && onlyTurn != '${it.data['turn']}') return;
-    feed.remove(it);
-    _streamItem = null;
+    if (it != null) {
+      if (onlyTurn == null || onlyTurn.isEmpty || onlyTurn == '${it.data['turn']}') {
+        feed.remove(it);
+        _streamItem = null;
+        notifyListeners();
+      }
+    }
+    _sayDrop();                       // v0.187 the whisper goes when the reply goes
+  }
+
+  void _sayDrop() {
+    final s = _sayItem;
+    if (s == null) return;
+    feed.remove(s);
+    _sayItem = null;
     notifyListeners();
   }
 

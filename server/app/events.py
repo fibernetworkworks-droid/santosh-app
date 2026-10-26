@@ -25,7 +25,7 @@ CALL: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_call", default
 
 # v0.161 a reply as it is being written: sent to open streams only, NEVER stored (the final `message` is the record)
 # v0.171 `think`: the model's reasoning as it thinks (Claude thinking / GLM reasoning), same live-only discipline
-STREAM_KINDS = {"reply_start", "delta", "delta_reset", "reply_end", "think"}
+STREAM_KINDS = {"reply_start", "delta", "delta_reset", "reply_end", "think", "say"}
 # never part of the chat's story (live-only noise) - still stored so a reconnect mid-turn catches up (except STREAM_KINDS)
 LIVE_ONLY = {"typing", "step", "work", "log"} | STREAM_KINDS
 # belong to the chat they were made in only (answers' sources, phone actions, list refreshes...): never copied to others
@@ -40,7 +40,7 @@ LOCAL_KINDS = LIVE_ONLY | {
 ACTIONS = {"device_action", "device_action_result", "home_device", "bt_request", "phonedoc_open", "bazar_open", "bazar_link"}
 _ID_KEYS = ("id", "task_id", "session_id", "job_id", "deal_id", "ticket_id", "card_id", "project", "ref")
 WAIT_STATUS = {"waiting", "pending", "needs_tap", "waiting_payment", "waiting_sign", "notice_waiting", "minutes_waiting",
-               "awaiting", "needs_approval", "pending_tap", "ask", "blocked"}   # v0.186: a goal blocked on her
+               "awaiting", "needs_approval", "pending_tap", "ask", "blocked"}   # v0.187: a goal blocked on her
 # card kinds that always wait for her when they are open (no status field of their own)
 TAP_KINDS = {"bazar_approval", "employee_ask", "operator_ask", "studio_approval", "ask_form", "pg_write"}
 
@@ -91,8 +91,29 @@ class EventBus:
         self._loops: dict[int, asyncio.AbstractEventLoop] = {}
 
     def publish(self, conversation_id: str, kind: str, payload: dict, campaign_id: str | None = None,
-                call_id: str | None = None) -> dict:
+                call_id: str | None = None, ephemeral: bool = False) -> dict:
+        """v0.187 `ephemeral` (the turn's ack line): fanned out to this chat's open streams only - no Event row,
+        no chat-list touch, no FCM push, no job watch. It is a word of comfort, not part of the chat's story;
+        a reload never shows it and the real reply replaces it."""
         call = (call_id if call_id is not None else CALL.get()) or None
+        if ephemeral:
+            data = {"id": 0, "kind": kind, "campaign_id": campaign_id, "payload": payload,
+                    "at": datetime.now(timezone.utc).isoformat(), "call": call, "conv": conversation_id,
+                    "live": True}
+            for q in list(self._subs.get(conversation_id, ())) + self._account(conversation_id):
+                loop = self._loops.get(id(q))
+                try:
+                    running = asyncio.get_running_loop()
+                except RuntimeError:
+                    running = None
+                try:
+                    if loop is not None and loop is not running:
+                        loop.call_soon_threadsafe(q.put_nowait, data)
+                    else:
+                        q.put_nowait(data)
+                except RuntimeError:
+                    pass  # that loop is closed
+            return data
         with session() as s:
             ev = Event(conversation_id=conversation_id, campaign_id=campaign_id, kind=kind, payload=payload,
                        call_id=(call or None) and str(call)[:40])

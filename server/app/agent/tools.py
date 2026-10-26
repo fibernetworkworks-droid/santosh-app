@@ -1,6 +1,7 @@
 """The tools Santosh can use. Each has a JSON schema for Claude and a handler."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from sqlalchemy import select
@@ -880,3 +881,81 @@ _seen = {t["name"] for t in TOOLS}
 TOOLS.extend(t for t in GOAL_TOOLS if t["name"] not in _seen)
 TOOL_LABELS.update(GOAL_LABELS)
 HANDLERS.update(GOAL_HANDLERS)
+
+
+# ---------------------------------------------------------------- v0.187 schema diet
+# 384 tool specs measured ~568 KB (~142 K tokens) and EVERY one of the up-to-24 model calls of a turn re-sent
+# all of it: on the production brain (no prompt cache) that alone put 15-60 s of dead air before the first word.
+# The diet keeps every tool NAME, every type, every enum, every required field and every nested structure -
+# only the prose shrinks, with graduated caps: a tool description keeps its first sentence(s); tools whose
+# prose IS the safety rule (confirm cards, approvals, consent, money, OTP) get a much higher cap so their
+# safety sentences survive; a property description becomes one short line. Names are untouched, so dispatch(),
+# TOOL_LABELS and every handler keep working exactly as before.
+DIET_DESC_MAX = 140      # tool description cap (chars) for ordinary tools
+DIET_SAFETY_MAX = 700    # tool description cap for safety-word tools (their rules must survive)
+DIET_PROP_MAX = 72       # property / nested description cap
+_DIET_KEEP_RE = re.compile(r"confirm|approval|consent|otp|password|tier-2|bhejo|manzoori|payment|money", re.I)
+
+_RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)
+DIET_STATS: dict[str, int] = {"raw_chars": 0, "diet_chars": 0, "kept_full": 0}
+
+
+def _first_sentences(text: str, cap: int) -> str:
+    t = " ".join(str(text or "").split())
+    if len(t) <= cap:
+        return t
+    cut = t[:cap]
+    dot = max(cut.rfind(". "), cut.rfind("। "))
+    if dot >= cap // 2:
+        return cut[:dot + 1]
+    sp = cut.rfind(" ")
+    return ((cut[:sp] if sp >= cap // 2 else cut).rstrip(" ,;:")) + "…"
+
+
+def _diet_schema(node: object, depth: int = 0) -> object:
+    """Trim only `description` strings inside a JSON schema; types / enums / required / structure untouched."""
+    if depth > 10:
+        return node
+    if isinstance(node, list):
+        return [_diet_schema(x, depth + 1) for x in node]
+    if isinstance(node, dict):
+        out: dict = {}
+        for k, v in node.items():
+            if k == "description" and isinstance(v, str):
+                out[k] = _first_sentences(v, DIET_PROP_MAX)
+            else:
+                out[k] = _diet_schema(v, depth + 1)
+        return out
+    return node
+
+
+def diet_tool_specs(specs: list[dict]) -> list[dict]:
+    out: list[dict] = []
+    for t in specs:
+        if not isinstance(t, dict) or not t.get("name"):
+            out.append(t)
+            continue
+        desc = " ".join(str(t.get("description") or "").split())
+        cap = DIET_SAFETY_MAX if _DIET_KEEP_RE.search(desc) else DIET_DESC_MAX
+        if len(desc) <= cap:
+            if len(desc) > DIET_DESC_MAX:
+                DIET_STATS["kept_full"] += 1
+            out.append(t)
+            continue
+        d = dict(t)
+        d["description"] = _first_sentences(desc, cap)
+        if isinstance(t.get("input_schema"), dict):
+            d["input_schema"] = _diet_schema(t["input_schema"])
+        out.append(d)
+    return out
+
+
+def _diet_size(specs: list[dict]) -> int:
+    import json as _json
+    return sum(len(_json.dumps(t, ensure_ascii=False)) for t in specs)
+
+
+DIET_STATS["raw_chars"] = _diet_size(_RAW_SPECS)
+TOOLS[:] = diet_tool_specs(TOOLS)
+DIET_STATS["diet_chars"] = _diet_size(TOOLS)
+

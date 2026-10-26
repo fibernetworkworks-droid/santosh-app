@@ -52,7 +52,7 @@ KINDS: dict[str, dict[str, Any]] = {
     "motion": {"label": "Motion reel", "map": {}, "done_always": True},
     "notebook_output": {"label": "Notebook Studio", "map": {"ready": "done", "queued": "working"}},
     "blender3d": {"label": "3D model (Blender)", "map": {"writing": "working", "building": "working", "rendering": "working", "checking": "working"}},
-    "goal": {"label": "Lamba kaam", "map": {"blocked": "waiting"},   # v0.186 goal mode: blocked on her = aapki baari
+    "goal": {"label": "Lamba kaam", "map": {"blocked": "waiting"},   # v0.187 goal mode: blocked on her = aapki baari
              "waiting_say": "lamba kaam aapke jawab par ruka hai"},
 }
 # quick results made inside one tool call (letters, posters, photos, lekh) are told by the turn itself: not watched
@@ -162,8 +162,11 @@ def shape(kind: str, p: dict[str, Any]) -> dict[str, Any] | None:
     except (TypeError, ValueError):
         pct = -1
     stage = _tidy(p.get("now") or board.get("now") or p.get("stage") or p.get("stage_label") or status, 80)
+    link = _tidy(p.get("url") or p.get("link") or p.get("preview_url") or p.get("file_url") or p.get("share_url")
+                 or p.get("download_url") or p.get("path") or p.get("file") or "", 300)   # v0.187 the result's own link
     return {"key": f"{kind}:{jid}", "kind": kind, "label": conf["label"], "title": title, "state": state, "status": status,
-            "detail": detail, "pct": pct, "stage": stage, "waiting_say": conf.get("waiting_say", ""), "push": bool(p.get("push"))}
+            "detail": detail, "pct": pct, "stage": stage, "waiting_say": conf.get("waiting_say", ""), "push": bool(p.get("push")),
+            "link": link}
 
 
 def _studio(p: dict[str, Any]) -> dict[str, Any]:
@@ -221,13 +224,23 @@ def _update(tenant: str, conv: str, job: dict[str, Any]) -> None:
             prev_state = r.state if not new else ""
             r.conversation_id = conv or r.conversation_id
             r.title, r.state, r.status, r.pct = job["title"][:200], job["state"], job["status"][:40], job["pct"]
-            r.detail = json.dumps({"detail": job["detail"], "stage": job["stage"], "waiting_say": job["waiting_say"]},
-                                  ensure_ascii=False)
+            r.detail = json.dumps({"detail": job["detail"], "stage": job["stage"], "waiting_say": job["waiting_say"],
+                                   "link": job.get("link", "")}, ensure_ascii=False)
             r.updated_at = t
             if moved:
                 r.moved_at = t
                 r.stuck_told = ""
             say = _decide(r, job, prev_state, new, t)
+            if say and job["state"] in ("done", "failed"):
+                # v0.187 the dry line is replaced by ONE result message in Hoola's own words (the worker slot sends
+                # it a few seconds later; the canned words stay as the fallback inside kaam_followup). The dry
+                # line is also still told to her live call at once when the queue refused (outage safety).
+                try:
+                    from . import kaam_followup
+                    if kaam_followup.enqueue(tenant, r.conversation_id, job):
+                        say = ""
+                except Exception:
+                    log.debug("followup enqueue failed", exc_info=True)
             young = (t - (_aware(r.started_at) or t)).total_seconds() < 120
             if job.get("in_turn") and (new or young):
                 say = ""                 # the turn she is in started it and is telling her itself
@@ -373,7 +386,7 @@ def _row_view(r: KaamJob) -> dict[str, Any]:
     except ValueError:
         pass
     return {"key": r.key, "kind": r.kind, "label": r.label, "title": r.title, "state": r.state, "status": r.status,
-            "stage": d.get("stage", ""), "detail": d.get("detail", ""), "pct": r.pct,
+            "stage": d.get("stage", ""), "detail": d.get("detail", ""), "link": d.get("link", ""), "pct": r.pct,
             "started_at": (_aware(r.started_at) or now()).isoformat(), "updated_at": (_aware(r.updated_at) or now()).isoformat(),
             "minutes_since_change": int((now() - (_aware(r.moved_at) or now())).total_seconds() // 60)}
 
