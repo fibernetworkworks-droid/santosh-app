@@ -605,6 +605,22 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
         specs = [t for t in specs if t["name"] in CORE_TOOLS or t["name"] in ("santosh_kaam", "side_talk")]
     decls = [types.FunctionDeclaration(name=t["name"], description=t["description"], parameters_json_schema=t["input_schema"])
              for t in specs]
+    # v0.187 GEMINI SCHEMA FIX: Strip unsupported JSON Schema keys to prevent 1007 errors
+    def _clean_gemini_schema(s):
+        if isinstance(s, dict):
+            for k in ["additionalProperties", "$schema", "$id", "$defs", "definitions", "title", "$ref"]:
+                s.pop(k, None)
+            for v in s.values():
+                _clean_gemini_schema(v)
+        elif isinstance(s, list):
+            for v in s:
+                _clean_gemini_schema(v)
+
+    decls = decls[:40]
+    for _d in decls:
+        if "parameters" in _d:
+            _clean_gemini_schema(_d["parameters"])
+
     cfg = types.LiveConnectConfig(
         response_modalities=["AUDIO"],
         speech_config=types.SpeechConfig(
