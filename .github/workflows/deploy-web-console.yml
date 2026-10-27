@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   console:
-    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'deploy/hoola-web-single-progress-20261027')
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'deploy/hoola-web-subtitle-progress-20261027')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

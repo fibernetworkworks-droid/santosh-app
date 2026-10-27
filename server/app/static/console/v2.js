@@ -345,7 +345,7 @@ function simpleProgress(kind,p={}) {
   const t=turn();
   if (!SIMPLE_PROGRESS) {
     SIMPLE_PROGRESS=document.createElement('details');SIMPLE_PROGRESS.className='simple-progress';
-    SIMPLE_PROGRESS.innerHTML='<summary><span class="progress-label" role="status" aria-live="polite"></span><span class="progress-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="progress-chevron" aria-hidden="true">⌄</span></summary><ol class="progress-activity" aria-label="Task activity"></ol>';
+    SIMPLE_PROGRESS.innerHTML='<summary><span class="progress-label" role="status" aria-live="polite"></span><span class="progress-dots" aria-hidden="true"><i></i><i></i><i></i></span><svg class="progress-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><ol class="progress-activity" aria-label="Task activity"></ol>';
   }
   if(SIMPLE_PROGRESS.parentElement!==t.bd)t.bd.appendChild(SIMPLE_PROGRESS);
   t.bd.closest('.mh').classList.add('progress-active');
@@ -737,6 +737,7 @@ function onEvent(ev) {
       closeThinks(p.turn);   // v0.171 the Soch cards fold when the reply is over
       return; }
     case 'message':
+      if (p.role === 'assistant' && p.ack === true) { simpleProgress('work'); return; }
       if (p.role === 'user') {
         if (p.client_id && col.querySelector(`.mu[data-cid="${CSS.escape(p.client_id)}"]`)) {
           const b = col.querySelector(`.mu[data-cid="${CSS.escape(p.client_id)}"]`);   // her own send, echoed back
@@ -782,6 +783,7 @@ function renderEvents(events, any) {
     if (p.role === 'user' && typeof p.text === 'string') p.text = p.text.replace(/\n\n\[Web console language preference: Reply in English unless I explicitly request another language\.\]$/, '');
     if (ev.kind === 'message') {
       flushStepBuf();
+      if (p.role === 'assistant' && p.ack === true) continue;
       if (p.role === 'user') userBubble(p.text, p.files, ev.id, null, ev.at);
       else if (!any) continue;
       else if (p.turn && window.HoolaStream) { replyMessage(p, true, ev.id, ev.at); if (SINK === col) LAST_TURN = p.turn; }

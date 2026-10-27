@@ -79,6 +79,12 @@ const server=http.createServer((req,res)=>{
  for(let i=0;i<30;i++)emit('step',{id:'s'+i,tool:'browser',label:'INTERNAL_LIVE_STEP',state:'running'});
  await page.locator('.simple-progress').filter({hasText:'Working on it…'}).waitFor();
  assert.equal(await page.locator('#col .simple-progress').count(),1);assert.equal(await page.locator('#dock .simple-progress').count(),0);assert.equal(await page.locator('#col .progress-active > .av img').count(),1);assert.equal(await page.locator('.progress-dots i').count(),3);await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('.progress-dots i').first().evaluate(e=>getComputedStyle(e).animationName),'none');await page.emulateMedia({reducedMotion:'no-preference'});assert.equal(await page.getByText('INTERNAL_LIVE_STEP',{exact:true}).count(),0);
+ emit('message',{role:'assistant',ack:true,source:'agent',text:'Ek second, dekh raha hoon…'});
+ await page.waitForTimeout(80);
+ assert.equal(await page.getByText('Ek second, dekh raha hoon…',{exact:true}).count(),0);
+ assert.equal(await page.locator('#col .simple-progress').count(),1);
+ assert.equal(await page.locator('.simple-progress summary svg').count(),1);
+ assert.equal(await page.locator('.progress-label').evaluate(e=>getComputedStyle(e).fontWeight),'500');
  emit('think',{turn:'final-fixture',seg:0,text:'PRIVATE_REASONING'});await page.locator('.simple-progress').filter({hasText:'Thinking…'}).waitFor();
  assert.equal(await page.getByText('PRIVATE_REASONING',{exact:true}).count(),0);
  emit('reply_start',{turn:'final-fixture'});await page.locator('.simple-progress').filter({hasText:'Preparing your response…'}).waitFor();

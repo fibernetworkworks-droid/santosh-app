@@ -195,3 +195,16 @@
 #app .mh.progress-active>.av{outline:2px solid var(--saffron);outline-offset:3px;animation:progress-avatar-pulse 2s ease-in-out infinite}
 @keyframes progress-avatar-pulse{50%{outline-color:rgba(124,92,255,.4)}}
 @media(prefers-reduced-motion:reduce){#app .mh.progress-active>.av{animation:none}#app .progress-chevron{transition:none}}
+
+/* Quiet subtitle treatment: no card, pill, or bright avatar ring. */
+#app details.simple-progress{font-size:12.5px;font-weight:500;min-height:28px;padding:3px 0;color:var(--mut)}
+#app .simple-progress summary{gap:7px;padding:3px 0;line-height:1.5;max-width:100%;transition:color .18s ease}
+#app .simple-progress .progress-label{font-size:12.5px;font-weight:500;letter-spacing:.015em;color:var(--mut)}
+#app .simple-progress summary:hover .progress-label{color:var(--lit)}
+#app .progress-chevron{width:14px;height:14px;flex:none;opacity:.6;margin-left:2px}
+#app .progress-dots{gap:3px;margin-left:1px}
+#app .progress-dots i{width:3px;height:3px;background:currentColor}
+#app .progress-activity{margin:9px 0 5px 2px;padding:0 0 0 13px;border-color:rgba(168,155,208,.16);font-size:12px;line-height:1.6;font-weight:400;animation:progress-enter .18s ease-out}
+#app .progress-activity li{padding:3px 0}
+#app .mh.progress-active>.av{outline:none;animation:none}
+@media(prefers-reduced-motion:reduce){#app .progress-activity{animation:none}#app .simple-progress summary{transition:none}}
