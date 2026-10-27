@@ -24,6 +24,7 @@ import logging
 import re
 import secrets
 import time
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -67,6 +68,14 @@ Differences from her Windows PC:
 - Still ask_approval for anything that reaches OUTSIDE this VM: sending a message or email, submitting a form,
   paying, posting publicly, deleting data on an external site. Passwords / PINs / OTPs follow the same rules
   as always (never typed by you). Nothing inside the VM (installs, files, shell, apps) needs approval.
+- THE USER'S PC (her own Windows computer - you say 'aapka PC') is reachable from HERE for FILES, through
+  four tools: user_pc_search (find her files by name / content words), user_pc_read (read one file's text),
+  user_pc_pull (copy one of her files into THIS VM - it lands in /data/Downloads; then install / open / run
+  it here) and user_pc_push (hand a finished file back to her PC - the system shows her a confirm card by
+  itself; never push files she did not ask for). Use them when the task on this VM needs HER file as input
+  ('meri Excel Hoola ke PC pe kholo' = user_pc_search + user_pc_pull, then open it in LibreOffice here) or
+  to deliver the result to her computer. If they answer PC_OFFLINE, her PC is not online: finish without it
+  and say so plainly. Her PC is for FILES only from here - never try to control its screen from this VM.
 """
 # v0.191 TAPGATE (samajhdaar card): card SIRF asli faisle par jaata hai. Kuch nahi badalne wali step auto-approve
 # (no card), CAPTCHA ek confirm ke baad apne aap type, aur paise/bhejna/delete/order jaise faisle par hi card.
@@ -237,6 +246,27 @@ HOOLA_TOOLS = TOOLS + [
                                      "pdftotext, ffmpeg, file conversion, checking a port. Your own VM - no approval needed.",
      "input_schema": {"type": "object", "properties": {"command": {"type": "string"}, "timeout": {"type": "integer", "description": "seconds, max 180"}},
                       "required": ["command"]}},
+    # v0.202 THE BRIDGE to the user's personal PC ("Mera PC"): while working on THIS VM the operator can use
+    # her PC for files - search / read are read-only; pull copies her file INTO this VM; push copies a finished
+    # file back to her PC (the code shows her a confirm card before anything lands there). Her own PC's
+    # operator NEVER gets these tools (TOOLS stays untouched) - only the Hoola PC does.
+    {"name": "user_pc_search", "description": "Search files on the USER'S personal PC (her Windows computer, NOT this VM) "
+                                             "by name or content words. Use when the task on THIS VM needs one of her "
+                                             "files as input (then user_pc_pull it). Her PC must be online.",
+     "input_schema": {"type": "object", "properties": {"query": {"type": "string"},
+                                                       "kind": {"type": "string", "enum": ["any", "pdf", "excel", "word", "image", "text", "tally"]},
+                                                       "limit": {"type": "integer"}}, "required": ["query"]}},
+    {"name": "user_pc_read", "description": "Read the text of ONE file on the USER'S personal PC (PDF, Word, Excel/CSV, text) "
+                                           "without copying it into this VM. Get the exact path from user_pc_search first.",
+     "input_schema": {"type": "object", "properties": {"path": {"type": "string"}, "max_chars": {"type": "integer"}}, "required": ["path"]}},
+    {"name": "user_pc_pull", "description": "Copy ONE file from the USER'S personal PC into THIS VM (it lands in /data/Downloads, "
+                                           "ready to open / convert / edit here). Use user_pc_search first for the exact path. "
+                                           "Her PC must be online.",
+     "input_schema": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}},
+    {"name": "user_pc_push", "description": "Copy ONE finished file from THIS VM to the USER'S personal PC (her Santosh Inbox "
+                                           "folder). The user must approve - a confirm card is shown automatically before "
+                                           "the file moves. Never push files she did not ask for.",
+     "input_schema": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}},
 ]
 
 
@@ -351,6 +381,22 @@ async def _pc(op: Op, action: str, args: dict[str, Any] | None = None, timeout: 
                           kind=(op.kind or None))
 
 
+async def _pc_user(op: Op, action: str, args: dict[str, Any] | None = None, timeout: float = 60) -> dict[str, Any]:
+    """v0.202 the bridge to the USER'S personal PC while the operator works on Hoola's own VM: her files
+    can be searched / read / pulled in as task input and finished files can be pushed back to her. Always
+    routed by hub.call_personal (HER PC explicitly), never the legacy last-connected pick, never this VM."""
+    from .hub import hub
+    return await hub.call_personal(op.tenant, action, args or {}, timeout=timeout)
+
+
+def _user_pc_err(e: Exception) -> str:
+    from .hub import PcOffline
+    if isinstance(e, PcOffline) or "PC_OFFLINE" in str(e):
+        return ("ERROR: PC_OFFLINE - the user's personal PC is not online right now (this VM is fine). "
+                "Finish the task without her files if you can, or tell the user to switch her PC on.")
+    return f"ERROR: {e}"
+
+
 LIVE_EVERY_S = 0.9      # v0.86 while the model decides the next step, the phone's live view keeps moving
 # v0.91.1 ONE screenshot size for everything. Santosh Desktop turns click positions into screen pixels with the size of
 # the LAST screenshot it took; v0.86 took the live frames at 960 px while the model looked at 1280 px, so every click
@@ -441,6 +487,14 @@ def _say(name: str, a: dict[str, Any]) -> str:
         return f"{str(a.get('packages', ''))[:32]} install kar raha hoon (apne PC par)"
     if name == "run":
         return "command chala raha hoon (apne PC par)"
+    if name == "user_pc_search":
+        return "aapke PC par file dhoondh raha hoon"
+    if name == "user_pc_read":
+        return "aapki PC file padh raha hoon"
+    if name == "user_pc_pull":
+        return "aapke PC se file apne PC par la raha hoon"
+    if name == "user_pc_push":
+        return "file aapke PC par bhej raha hoon (manzoori aayegi)"
     if name == "wait":
         return "khulne ka intezaar…"
     if name == "ask_approval":
@@ -758,7 +812,87 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         if len(body) > 2500:
             body = body[:1200] + " ... [middle cut] ... " + body[-1200:]
         return f"exit={r.get('exit', '?')}\n{body}"[:3600]
+    # v0.202 THE BRIDGE: the user's personal PC is reachable for FILES while the operator works on Hoola's
+    # own VM. Search / read are read-only; pull copies her file into this VM; push ALWAYS raises a confirm
+    # card in code before anything is written to her PC. All of them route by hub.call_personal (her PC).
+    if name == "user_pc_search":
+        q = str(a.get("query", "")).strip()[:200]
+        if not q:
+            return "REFUSED: say what to search for on the user's PC (file name or content words)."
+        args = {"query": q, "limit": max(1, min(int(a.get("limit") or 10), 30))}
+        if a.get("kind") and a.get("kind") != "any":
+            args["kind"] = str(a["kind"])
+        try:
+            r = await _pc_user(op, "search", args)
+        except Exception as e:
+            return _user_pc_err(e)
+        res = r.get("results") or []
+        if not res:
+            return f"Nothing found on the user's PC for '{q}'."
+        lines = []
+        for f in res[:10]:
+            p = str(f.get("path") or f.get("name") or "?")
+            size = f.get("size_text") or f.get("size")
+            lines.append(f"- {p}" + (f" ({size})" if size else ""))
+        return ("Found on the USER'S PC:\n" + "\n".join(lines)
+                + "\n(user_pc_pull with the exact path to use one of these in THIS VM)")
+    if name == "user_pc_read":
+        path = str(a.get("path", "")).strip()
+        if not path:
+            return "REFUSED: give the file path on the user's PC (from user_pc_search)."
+        try:
+            r = await _pc_user(op, "read", {"path": path,
+                                            "max_chars": max(500, min(int(a.get("max_chars") or 8000), 20000))})
+        except Exception as e:
+            return _user_pc_err(e)
+        text = str(r.get("text") or "")
+        head = f"'{r.get('name') or path}' (on the USER'S PC):\n"
+        return head + (text[:8000] if text else "(no readable text - a scanned image or unsupported type; try user_pc_pull)")
+    if name == "user_pc_pull":
+        path = str(a.get("path", "")).strip()
+        if not path:
+            return "REFUSED: give the file path on the user's PC (from user_pc_search)."
+        try:
+            r = await _pc_user(op, "send_file", {"path": path}, timeout=200)   # her PC uploads to the server
+            fid = str(r.get("file_id") or "")
+            if not fid:
+                return "ERROR: the file did not arrive from the user's PC."
+            from ..pc import service as pcs
+            r2 = await _pc(op, "save_file", {"file_id": fid, "name": str(r.get("name") or Path(path).name),
+                                             "url": pcs.download_path(fid)}, timeout=200)   # THIS VM fetches it
+        except Exception as e:
+            return _user_pc_err(e)
+        where = str(r2.get("saved_path") or r2.get("name") or "")
+        return f"Copied from the USER'S PC into THIS VM: {where or 'saved in'} /data/Downloads."
+    if name == "user_pc_push":
+        path = str(a.get("path", "")).strip()
+        if not path:
+            return "REFUSED: give the file path in THIS VM (e.g. /data/Downloads/report.pdf)."
+        from .hub import hub
+        if not hub.has_personal(op.tenant):
+            return ("ERROR: PC_OFFLINE - the user's personal PC is not online right now (this VM is fine). "
+                    "Finish the task without her files if you can, or tell the user to switch her PC on.")
+        return await _push_to_user_pc(op, path)
     return f"Unknown tool {name}"
+
+
+async def _push_to_user_pc(op: Op, path: str) -> str:
+    """v0.202 the guarded half of the bridge: her confirm card FIRST (in code, never the model's choice),
+    then the VM uploads the file (direction to_pc) and her desktop saves it into her Santosh Inbox."""
+    fname = Path(path).name
+    ok = await _approval(op, f"Hoola PC ki file '{fname}' aapke PC ke Santosh Inbox mein save karni hai")
+    if not ok:
+        return "REFUSED: the user did not approve saving this file on their PC. Do not push it again without a new OK."
+    try:
+        r = await _pc(op, "send_file", {"path": path}, timeout=200)   # THIS VM uploads (direction to_pc)
+        fid = str(r.get("file_id") or "")
+        name = str(r.get("name") or fname)
+        if not fid:
+            return "ERROR: the file did not leave this VM."
+        await _pc_user(op, "save_file", {"file_id": fid, "name": name, "url": f"/api/pc/fetch/{fid}"}, timeout=200)
+    except Exception as e:
+        return _user_pc_err(e)
+    return f"'{name}' copied from THIS VM to the USER'S PC (Santosh Inbox folder)."
 
 
 async def _approval(op: Op, what: str) -> bool:

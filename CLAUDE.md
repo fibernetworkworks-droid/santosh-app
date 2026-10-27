@@ -8254,3 +8254,27 @@ Tests: test_v0200_pc_kinds.py rewritten for the final rule (8): devices() hides 
 legacy desktop kind "", jobs() hides Hoola PC work, call_personal routing + PcOffline, has_personal truth
 table, pc_search endpoint, version pin. Sweeps green: PC family 80, pinned suites 43. Ritual: APP_VERSION
 0.201.0, pubspec 0.201.0+235, console ?v=0.201.0 x9, pins →0.201.0 in 14 suites. Desktop untouched 1.4.0.
+
+## v0.203.0 HOOLA PC CAN REACH MERA PC (the user's personal PC)
+Owner: "hoola must run on its own container and can access mera pc of user". Hoola ka apna PC stays Hoola's
+own container (the v0.201 rule untouched - nothing of it on the Mera PC screen), and NOW while it works on
+its own VM it can also use the USER'S personal PC for FILES through a code-enforced bridge:
+- operator.py: _pc_user (routes by hub.call_personal - HER PC explicitly, never the legacy pick, never the
+  VM) + HOOLA_TOOLS gains user_pc_search / user_pc_read (read-only looks at her PC), user_pc_pull (her PC
+  uploads the file to the server, THIS VM fetches it with a signed expiring link into /data/Downloads) and
+  user_pc_push (THIS VM uploads with the new direction=to_pc; _push_to_user_pc raises her confirm card IN
+  CODE before anything lands on her PC; her desktop saves it into Santosh Inbox over /api/pc/fetch).
+- HOOLA_PC_ADDENDUM + _say labels + hoola_pc_do description + prompts.py (PC routing bullets) teach the
+  bridge: "meri Excel Hoola ke PC pe kholo" = user_pc_search + user_pc_pull, then open it in LibreOffice;
+  finished files ride user_pc_push back to her. HER PC's operator (TOOLS) never sees the bridge tools.
+- main.py: /api/pc/files takes an optional direction form field (default to_phone = every old desktop
+  unchanged; to_pc files are fetchable ONLY by her paired desktop, never by a phone link).
+- desktop-linux/agent.py 1.1.0: do_send_file (Bearer-token upload, 50 MB cap, direction to_pc, relative
+  paths resolve under /data) and do_save_file never overwrites (unique "name (1).ext" names, Windows parity).
+Tests: test_v0202_pc_bridge.py (12): tool surface (bridge only on the Hoola operator, additions = bridge +
+install/run), descriptions teach it (hoola_pc_do yes, pc_do no), search/read ride call_personal, pull moves
+her file through the signed link, push refuses without her tap and lands in her inbox with it, honest
+PC_OFFLINE for search/push, upload direction to_pc + bogus->to_phone, version pin. Ritual: APP_VERSION
+0.203.0, pubspec 0.203.0+237, console ?v=0.203.0 x9, pins ->0.203.0 in 16 suites. Rebased onto the parallel v0.202.0 AWAAZ-2 (feeling engine) commit - it keeps its shipped number; the bridge took 0.203.0. Windows desktop 1.4.0
+untouched. Deploy = server (vps-ops deploy) + the container rebuild (vps-ops pc_deploy) so the VM gets
+do_send_file; pairing still pending the owner's 6-digit code.

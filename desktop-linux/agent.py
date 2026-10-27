@@ -6,9 +6,12 @@ Speaks the SAME wire protocol as the Windows Santosh Desktop (server/app/pc/hub.
   PC exactly like her Windows PC - the vision loop cannot tell the difference.
 
 The difference is what this PC IS: an Ubuntu container Hoola owns (Xvfb + openbox + Chromium).
-So it gets two extra actions the user's PC never offers:
-  install - apt-get / pip install packages (this is Hoola's own VM; no approval needed)
-  run     - run a shell command inside the VM (the Claude-harness bash tool, same trust model)
+So it gets extra actions the user's PC never offers:
+  install    - apt-get / pip install packages (this is Hoola's own VM; no approval needed)
+  run        - run a shell command inside the VM (the Claude-harness bash tool, same trust model)
+  send_file  - v0.202 upload one of MY files to the server tagged direction "to_pc", so the USER'S
+               personal PC can fetch it into her Santosh Inbox (the PC-to-PC file bridge; the server
+               shows her a confirm card before it lands on her PC)
 
 Browser intelligence goes over the Chrome DevTools Protocol (Chromium started lazily with
 --remote-debugging-port=9222), NOT screen scraping: page_text / tabs / switch_tab / open_url
@@ -39,7 +42,8 @@ SERVER = os.environ.get("HOOLA_SERVER", "http://127.0.0.1:8077").strip().rstrip(
 NAME = os.environ.get("HOOLA_PC_NAME", "Hoola PC")
 DISPLAY = os.environ.get("DISPLAY", ":1")
 CDP = "http://127.0.0.1:9222"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
+MAX_SEND = 50 * 1024 * 1024   # same upload cap as the Windows Santosh Desktop
 DOWNLOADS = DATA / "Downloads"
 PROFILE = DATA / "chrome"
 SHOT_DIR = Path("/tmp")
@@ -418,7 +422,13 @@ class Actions:
         return {"path": str(p), "name": p.name, "text": text}
 
     def do_save_file(self, file_id: str = "", name: str = "", url: str = "", **_) -> dict[str, Any]:
-        dest = DOWNLOADS / (name or file_id or "file")
+        stem = Path(name or file_id or "file").stem
+        ext = Path(name or file_id or "file").suffix
+        dest = DOWNLOADS / (stem + ext)
+        n = 1
+        while dest.exists():                     # v0.202 never overwrite (Windows desktop parity)
+            dest = DOWNLOADS / f"{stem} ({n}){ext}"
+            n += 1
         with httpx.stream("GET", SERVER + (url or f"/api/pc/fetch/{file_id}"), timeout=300) as r:
             if r.status_code >= 400:
                 raise ActionError(f"Download failed ({r.status_code})")
@@ -427,6 +437,28 @@ class Actions:
                     out.write(chunk)
         return {"saved_path": str(dest), "name": dest.name,
                 "message": f"{dest.name} Hoola PC ke Downloads mein save ho gayi."}
+
+    def do_send_file(self, path: str = "", **_) -> dict[str, Any]:
+        """v0.202 the PC-to-PC bridge: hand one of MY files to the server so the USER'S personal PC can
+        fetch it (her desktop saves it into her Santosh Inbox after she approves the confirm card the
+        operator raised). Tagged direction "to_pc": only her paired desktop can fetch it - a phone
+        download link can never pick it up. Same shape as the Windows desktop's do_send_file."""
+        p = Path(path)
+        if not p.is_absolute():
+            p = DATA / p
+        if not p.is_file():
+            raise ActionError("File nahi mili")
+        size = p.stat().st_size
+        if size > MAX_SEND:
+            raise ActionError(f"{p.name} is {size // (1024 * 1024)} MB; the limit is 50 MB.")
+        token = _identity().get("token", "")
+        with p.open("rb") as fh:
+            r = httpx.post(SERVER + "/api/pc/files", headers={"Authorization": f"Bearer {token}"},
+                           files={"file": (p.name, fh, "application/octet-stream")},
+                           data={"path": str(p), "direction": "to_pc"}, timeout=300)
+        if r.status_code >= 400:
+            raise ActionError(f"Upload failed ({r.status_code}): {r.text[:160]}")
+        return r.json()
 
     # ---- THE COWORKER SURFACE: install software + run commands (Hoola's own VM) ----
     def do_install(self, packages: str = "", pip: bool = False, **_) -> dict[str, Any]:
