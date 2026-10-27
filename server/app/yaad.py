@@ -38,6 +38,7 @@ from sqlalchemy import Integer, LargeBinary, String, Text, DateTime, select, fun
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base, Message, Conversation, MemoryFact, session, now, as_utc
+from .config import get_settings   # v0.200 the focus block's caps (focus_user_words / focus_word_chars / focus_max_chars)
 
 log = logging.getLogger("santosh.yaad")
 
@@ -76,6 +77,37 @@ class YaadItem(Base):
     text: Mapped[str] = mapped_column(Text, default="")
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     vec: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+
+
+class FocusNote(Base):
+    """v0.200 word-level continuity: what she was saying / doing when a call died mid-air.
+    The exchange window compresses older work and a fresh call after a drop used to see only 360-char
+    one-liners of it - her EXACT last words now survive here, and the next call CONTINUES the work
+    instead of greeting her like a stranger. Kind `call_drop` is written by voice.py at grace expiry
+    and consumed once by the next call's greeting; the words themselves also live in Messages."""
+    __tablename__ = "focus_notes"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    conversation_id: Mapped[str] = mapped_column(String(64), index=True)
+    kind: Mapped[str] = mapped_column(String(16), default="call_drop")   # call_drop (more kinds may come)
+    text: Mapped[str] = mapped_column(Text, default="")
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+_table_ready = False
+
+
+def ensure_focus_table() -> None:
+    """v0.190.1 lesson: a model only reached through lazy imports never reaches create_all() on the
+    LIVE DB - create it here (checkfirst), idempotent, before the first write or read."""
+    global _table_ready
+    if _table_ready:
+        return
+    from . import db as _db
+    eng = getattr(_db, "_engine", None)
+    if eng is not None:
+        FocusNote.__table__.create(eng, checkfirst=True)
+        _table_ready = True
 
 
 # ---------------------------------------------------------------- exchanges
@@ -802,9 +834,109 @@ def _clip_block(t: str, n: int) -> str:
 
 
 # ---------------------------------------------------------------- what each turn / call gets
+# ---------------------------------------------------------------- v0.200 FOCUSED WORD-LEVEL MEMORY
+def note_call_drop(conversation_id: str, tenant: str, text: str) -> None:
+    """The phone never came back within the grace window: her last words + the half-said sentence are
+    saved so the NEXT call continues the work instead of greeting her like a stranger."""
+    ensure_focus_table()
+    with session() as s:
+        s.add(FocusNote(tenant_id=tenant, conversation_id=conversation_id, kind="call_drop", text=_clip(text, 1200)))
+        # focused means small: the newest 20 notes per chat, nothing older than 7 days
+        stale = s.scalars(select(FocusNote).where(FocusNote.conversation_id == conversation_id,
+                                                  FocusNote.at < datetime.now(timezone.utc) - timedelta(days=7))).all()
+        for r in stale:
+            s.delete(r)
+        extra = s.scalars(select(FocusNote).where(FocusNote.conversation_id == conversation_id)
+                          .order_by(FocusNote.id.desc()).offset(20)).all()
+        for r in extra:
+            s.delete(r)
+
+
+def recent_call_drop(conversation_id: str, minutes: int = 60) -> str:
+    """The note of a call that died mid-air within the last `minutes` ("" = none)."""
+    ensure_focus_table()
+    since = datetime.now(timezone.utc) - timedelta(minutes=max(1, minutes))
+    with session() as s:
+        r = s.scalars(select(FocusNote).where(FocusNote.conversation_id == conversation_id,
+                                              FocusNote.kind == "call_drop", FocusNote.at >= since)
+                      .order_by(FocusNote.id.desc())).first()
+        return (r.text or "") if r else ""
+
+
+def take_call_drop(conversation_id: str, minutes: int = 60) -> str:
+    """v0.200 read-AND-consume: the next call continues the dropped one; the note is used ONCE (the new
+    call's own turns take over from here). The words also live in Messages either way."""
+    ensure_focus_table()
+    since = datetime.now(timezone.utc) - timedelta(minutes=max(1, minutes))
+    with session() as s:
+        r = s.scalars(select(FocusNote).where(FocusNote.conversation_id == conversation_id,
+                                              FocusNote.kind == "call_drop", FocusNote.at >= since)
+                      .order_by(FocusNote.id.desc())).first()
+        if r is None:
+            return ""
+        text = r.text or ""
+        s.delete(r)
+        return text
+
+
+def _recent_user_words(conversation_id: str, n: int, cap: int) -> list[tuple[datetime, str]]:
+    """Her newest n messages WORD-FOR-WORD (the `display` text is always her clean words), oldest first.
+    Works for chat turns AND [Voice call] turns - both are Message rows - so one memory serves both paths."""
+    with session() as s:
+        rows = s.scalars(select(Message).where(Message.conversation_id == conversation_id,
+                                               Message.role == "user", Message.in_history.is_(True),
+                                               Message.display.is_not(None), Message.display != "")
+                         .order_by(Message.id.desc()).limit(n)).all()
+        out = [(as_utc(r.created_at), r.display or "") for r in rows]
+    out.reverse()
+    return [(at, _clip(t, cap)) for at, t in out]
+
+
+def focus_block(tenant: str, conversation_id: str, exclude_text: str = "", for_voice: bool = False) -> str:
+    """v0.200 FOCUSED WORD-LEVEL MEMORY - the fix for 'wo apni baat bhool jaati hai' and 'call katne par
+    sab bhool gayi'. A human coworker remembers what you JUST SAID, word for word - not a summary of it.
+    This block rides EVERY chat turn (via turn_block) and EVERY voice session (via voice_block):
+    - her newest messages VERBATIM (chat and call turns alike, from the DB so a pm2 restart forgets nothing);
+    - a call that died mid-air within the hour, with her last words, so the work is picked up where it stopped.
+    Volatile, never saved into history, pure SQL - no model, no latency."""
+    st = get_settings()
+    want = max(1, st.focus_user_words)
+    cap = max(120, st.focus_word_chars)
+    words = _recent_user_words(conversation_id, want + (1 if exclude_text else 0), cap)
+    if exclude_text:   # the chat path: her current message IS the message being answered - never repeat it
+        cur = _clip(exclude_text, cap)
+        words = [(at, t) for at, t in words if t != cur][-want:]
+    parts = []
+    if words:
+        lines = [f"- ({_when(at, tenant)}) {t}" for at, t in words]
+        parts.append("IS WAQT KA KAAM - uske APNE shabd, word by word (saar nahi, exact shabd):\n" + "\n".join(lines))
+    try:
+        drop = recent_call_drop(conversation_id, st.voice_continuation_min)
+    except Exception:
+        log.exception("focus drop read failed")
+        drop = ""
+    if drop:
+        parts.append("PICHHLI CALL NETWORK SE BEECH MEIN KAT GAYI THI - wahi kaam chal raha tha. Wahan se aage badho, "
+                     "puchho mat kaunsa kaam:\n" + drop)
+    if not parts:
+        return ""
+    body = _clip_block("\n\n".join(parts), max(800, st.focus_max_chars))
+    tag = ("[Hoola ki yaad - FOCUS: ye uske EXACT shabd hain. Jab wo inhi ka refer karti hai ('jo maine bola tha', "
+           "'wahi file', 'pichhli baat'), INHI shabdon se kaam karo - kisi saar se nahi.]")
+    if for_voice:
+        tag += " (Ye sab chat aur pichhli calls ka hai - call mein jab zaroor pade tab hi dohrao.)"
+    return tag + "\n" + body + "\n[/focus]"
+
+
 def turn_block(tenant: str, conversation_id: str, user_text: str) -> str:
     """The volatile memory for THIS message (never saved into the history)."""
     parts = []
+    try:   # v0.200 her exact recent words ride every turn - 'jo maine bola tha' always has the words
+        fb = focus_block(tenant, conversation_id, exclude_text=user_text)
+        if fb:
+            parts.append(fb)
+    except Exception:
+        log.exception("focus block failed")
     try:
         dia = diary_block(tenant, conversation_id)
         if dia:
@@ -841,6 +973,12 @@ def turn_block(tenant: str, conversation_id: str, user_text: str) -> str:
 def voice_block(tenant: str, conversation_id: str, recent: int = 14, max_chars: int = 10000) -> str:
     """For a voice call session: everything a coworker who was in the room would know."""
     parts = []
+    try:   # v0.200 the fresh session now has her EXACT recent words (chat AND calls), not just one-liners
+        fb = focus_block(tenant, conversation_id, for_voice=True)
+        if fb:
+            parts.append(fb)
+    except Exception:
+        log.exception("voice focus failed")
     summ = summary_block(conversation_id)
     if summ:
         parts.append("Purani baaton ka saar:\n" + summ)

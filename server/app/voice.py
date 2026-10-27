@@ -692,9 +692,17 @@ CALLS: dict[str, "Call"] = {}
 # big jobs handed over by a call keep running after the call ends; hold a reference so they are not collected
 _JOBS: set[asyncio.Task] = set()
 
-def greeting(tenant: str, gender: str = "m") -> str:
-    """The first line of a NEW call (never after a reconnect): short, different every time, like a friend picking up."""
+def greeting(tenant: str, gender: str = "m", continuation: str = "") -> str:
+    """The first line of a NEW call (never after a reconnect): short, different every time, like a friend picking up.
+    v0.200 with `continuation` (a call on this chat died mid-air within the hour): this is NOT a fresh call - a
+    human picks up and continues the work, they do not say 'good morning' like nothing happened."""
     from .avatar.service import gendered
+    if continuation:
+        return gendered(
+            "(YE KOI NAYA CALL NAHI HAI: pichli call network se beech mein kat gayi thi aur us waqt yeh baat chal "
+            "rahi thi - " + continuation[:600] + ". Pehle EK chhoti si line bolo jaise 'Haan, line aa gayi - wahi kaam "
+            "pe chalte hain' ya 'Theek hai, sun raha hoon - aage bolo', phir USI kaam se aage badho. Koi fresh greeting, "
+            "introduction, 'kya haal hai' ya good-morning bilkul nahi - ye usi call ka doosra hissa hai.)", gender)
     h = datetime.now(life.tz_of(tenant)).hour
     part = "morning" if 4 <= h < 12 else "afternoon" if h < 17 else "evening" if h < 22 else "late night"
     hello = f"'Arre, good {part}! Kya haal hai?'" if part != "late night" else "'Haan bolo, sab theek?'"
@@ -1148,7 +1156,31 @@ class Call:
         await asyncio.sleep(max(1, get_settings().voice_resume_grace_s))
         if self.ws is None and not self.closed.is_set():
             log.info("call %s: phone did not come back, ending the call", self.call_id)
+            try:   # v0.200 the call died mid-air: her exact last words survive for the NEXT call
+                await asyncio.to_thread(self._save_drop_note)
+            except Exception:
+                log.exception("focus drop note failed")
             self.closed.set()
+
+    def _save_drop_note(self) -> None:
+        """v0.200 FOCUSED WORD-LEVEL MEMORY, call-drop half: the phone never came back. What she said and
+        what she was still saying go to yaad's focus memory, so the next call on this chat CONTINUES the
+        work ('haan, line aa gayi - wahi kaam pe chalte hain') instead of greeting her like a stranger."""
+        if not (self.recent or self.user_buf.strip() or self.stats.get("turns")):
+            return   # nobody said anything: nothing to remember, no note (an abandoned dial is not a dropped chat)
+        user = self.recent[-1][0] if self.recent else ""
+        partial = self.user_buf.strip()
+        if self._otp_said:   # OTPs she said never land in any memory (the finish_turn rule)
+            from .operator.otpwords import mask
+            for v in self._otp_said:
+                user, partial = mask(user, v), mask(partial, v)
+        bits = []
+        if user:
+            bits.append(f"aakhri poori baat: {user[-600:]}")
+        if partial:
+            bits.append(f"beech mein ye keh rahi thi (aadha hi suna): {partial[:400]}")
+        from . import yaad
+        yaad.note_call_drop(self.conv, self.tenant, " | ".join(bits) or "(baat adhoori chal rahi thi)")
 
     async def attach(self, ws: WebSocket) -> asyncio.Task:
         """The phone is back on a new connection: carry on the same call. Returns the task reading it."""
@@ -2031,7 +2063,13 @@ class Call:
                         if first:
                             await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id, "vad": vad_config()})
                             # live text input (3.x Live models accept client_content only for seeding history)
-                            await session.send_realtime_input(text=greeting(self.tenant, self.gender))
+                            drop = ""   # v0.200 a call that died mid-air within the hour is CONTINUED, not greeted fresh
+                            try:
+                                from . import yaad as _yaad
+                                drop = await asyncio.to_thread(_yaad.take_call_drop, self.conv, get_settings().voice_continuation_min)
+                            except Exception:
+                                log.exception("continuation check failed")
+                            await session.send_realtime_input(text=greeting(self.tenant, self.gender, continuation=drop))
                             first = False
                         else:
                             self._drop_stale_audio()

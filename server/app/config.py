@@ -215,6 +215,10 @@ class Settings(BaseSettings):
     voiceid_margin: float = 0.06           # and this much ahead of the next closest person
     voiceid_min_speech_s: float = 1.6      # speech needed before the first guess in a call
     voice_resume_grace_s: int = 25         # a dropped phone connection can re-join the same call within this time
+    focus_user_words: int = 6              # v0.200 her newest messages kept WORD-FOR-WORD in the focus block (a human remembers what you just SAID, not a summary of it)
+    focus_word_chars: int = 600            # v0.200 cap per saved message inside the focus block
+    focus_max_chars: int = 4000            # v0.200 the whole focus block's cap ("focused" = small and exact, never a dump)
+    voice_continuation_min: int = 60       # v0.200 a call that died within this many minutes is CONTINUED by the next call, never greeted fresh
     voice_quiet_notes: str = "auto"        # v0.150 quiet context notes mid-call: auto (by model) | client_content | queue
     voice_safe_setup: bool = True          # v0.150 Gemini refuses the call setup: retry step by step with fewer extras
     voice_side_talk: bool = True           # v0.142 talk not meant for Hoola (her phone call, people in the room) is never answered
