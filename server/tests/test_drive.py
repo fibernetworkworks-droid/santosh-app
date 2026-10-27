@@ -13,7 +13,7 @@ import pytest
 import app.drive.models  # noqa: F401  (tables)
 from app.agent import drive_tools as dt
 from app.agent.tools import Ctx, ToolError
-from app.drive.client import FOLDER, GDOC
+from app.drive.client import FOLDER, GDOC, GSHEET, GSLIDES
 from tests.test_life import conv_ctx
 
 ME = "meghana@fnw.in"
@@ -32,14 +32,25 @@ class FakeDrive:
     def __init__(self):
         self.files = {}
         self.perms = {}
+        self.comments_store: dict = {}      # fid -> [comment dicts]
+        self.revs: dict = {}                # fid -> [revision dicts]
         self.n = 0
+        self.pn = 0                         # permission id counter
+        self.cn = 0                         # comment id counter
         self.add("root", "My Drive", FOLDER, parents=[])
 
     def add(self, fid, name, mime, parents=("root",), content=b"", **kw):
         self.files[fid] = {"id": fid, "name": name, "mimeType": mime, "parents": list(parents), "trashed": False,
                            "starred": False, "shared": False, "modifiedTime": f"2026-10-{10 + len(self.files):02d}T10:00:00Z",
-                           "size": str(len(content)), "webViewLink": f"https://drive.google.com/file/d/{fid}/view",
+                           "size": str(len(content)), "quotaBytesUsed": str(len(content)), "description": "",
+                           "createdTime": "2026-10-01T09:00:00Z", "lastModifyingUser": {"displayName": "Meghana"},
+                           "copyRequiresWriterPermission": False, "writersCanShare": True,
+                           "webViewLink": f"https://drive.google.com/file/d/{fid}/view",
                            "owners": [{"displayName": "Meghana", "emailAddress": ME}], "_content": content, **kw}
+        if mime in (GDOC, GSHEET, GSLIDES):
+            self.revs[fid] = [{"id": "1", "modifiedTime": self.files[fid]["modifiedTime"],
+                               "lastModifyingUser": {"displayName": "Meghana"}, "keepForever": False,
+                               "mimeType": mime, "size": str(len(content))}]
         return self.files[fid]
 
     @staticmethod
@@ -52,6 +63,8 @@ class FakeDrive:
             return any(self._atom(f, x) for x in re.split(r"\s+or\s+", a[1:-1]))
         if a == "trashed = false":
             return not f["trashed"]
+        if a == "trashed = true":
+            return f["trashed"]
         if a == "starred = true":
             return f["starred"]
         if a == "sharedWithMe = true":
@@ -106,8 +119,17 @@ class FakeDrive:
         if path == "/files" and req.method == "POST":
             body = json.loads(req.content)
             self.n += 1
-            f = self.add(f"fo{self.n}", body["name"], body["mimeType"], parents=body.get("parents") or ["root"])
+            f = self.add(f"fo{self.n}", body["name"], body["mimeType"], parents=body.get("parents") or ["root"],
+                         **({"shortcutDetails": body["shortcutDetails"]} if body.get("shortcutDetails") else {}))
             return httpx.Response(200, json=self._pub(f))
+        if path == "/drives" and req.method == "GET":
+            return httpx.Response(200, json={"drives": [{"id": "sd1", "name": "FNW Team Drive"}]})
+        if path == "/files/emptyTrash" and req.method == "DELETE":
+            for k in [k for k, v in self.files.items() if v["trashed"]]:
+                self.files.pop(k)
+                self.perms.pop(k, None)
+                self.comments_store.pop(k, None)
+            return httpx.Response(204)
         parts = path.split("/")          # /files/<id>[/<sub>]
         fid = parts[2]
         if fid not in self.files:
@@ -125,11 +147,57 @@ class FakeDrive:
             nf = self.add(f"cp{self.n}", body.get("name", f["name"]), f["mimeType"], parents=body.get("parents") or f["parents"],
                           content=f["_content"])
             return httpx.Response(200, json=self._pub(nf))
+        if sub == "permissions" and len(parts) > 4:      # /files/<id>/permissions/<pid>
+            me = next((x for x in self.perms.get(fid, []) if x.get("id") == parts[4]), None)
+            if me is None:
+                return httpx.Response(404, json={"error": {"message": "Permission not found"}})
+            if req.method == "PATCH":
+                me["role"] = json.loads(req.content).get("role", me["role"])
+                return httpx.Response(200, json=me)
+            if req.method == "DELETE":
+                self.perms[fid].remove(me)
+                return httpx.Response(204)
+        if sub == "comments":
+            if req.method == "GET":
+                return httpx.Response(200, json={"comments": self.comments_store.get(fid, [])})
+            if req.method == "POST" and len(parts) == 4:
+                body = json.loads(req.content)
+                self.cn += 1
+                cm = {"id": f"cm{self.cn}", "author": {"displayName": "Meghana", "emailAddress": ME},
+                      "content": body["content"], "createdTime": "2026-10-27T10:00:00Z",
+                      "modifiedTime": "2026-10-27T10:00:00Z", "resolved": False, "replies": []}
+                self.comments_store.setdefault(fid, []).append(cm)
+                return httpx.Response(200, json=cm)
+            cm = next((x for x in self.comments_store.get(fid, []) if x["id"] == parts[4]), None)
+            if cm is None:
+                return httpx.Response(404, json={"error": {"message": "Comment not found"}})
+            if len(parts) > 5 and req.method == "POST":        # .../comments/<cid>/replies
+                rp = {"id": f"cr{self.cn}", "author": {"displayName": "Meghana"},
+                      "content": json.loads(req.content)["content"], "createdTime": "2026-10-27T10:05:00Z",
+                      "resolved": False}
+                cm["replies"].append(rp)
+                return httpx.Response(200, json=rp)
+            if req.method == "PATCH":
+                cm.update({k: v for k, v in json.loads(req.content).items() if k in ("content", "resolved")})
+                return httpx.Response(200, json=cm)
+            if req.method == "DELETE":
+                self.comments_store[fid].remove(cm)
+                return httpx.Response(204)
+        if sub == "revisions":
+            if req.method == "GET":
+                return httpx.Response(200, json={"revisions": self.revs.get(fid, [])})
+            rev = next((x for x in self.revs.get(fid, []) if x["id"] == parts[4]), None)
+            if req.method == "PATCH" and rev is not None:
+                rev["keepForever"] = json.loads(req.content).get("keepForever")
+                return httpx.Response(200, json=rev)
+            return httpx.Response(404, json={"error": {"message": "Revision not found"}})
         if sub == "permissions":
             if req.method == "POST":
-                self.perms.setdefault(fid, []).append({**json.loads(req.content), "notify": p.get("sendNotificationEmail")})
+                self.pn += 1
+                self.perms.setdefault(fid, []).append({**json.loads(req.content), "notify": p.get("sendNotificationEmail"),
+                                                       "id": f"perm{self.pn}"})
                 f["shared"] = True
-                return httpx.Response(200, json={"id": "perm1"})
+                return httpx.Response(200, json={"id": f"perm{self.pn}"})
             return httpx.Response(200, json={"permissions": self.perms.get(fid, [])})
         if req.method == "GET":
             if p.get("alt") == "media":
@@ -137,10 +205,18 @@ class FakeDrive:
             return httpx.Response(200, json=self._pub(f))
         if req.method == "PATCH":
             body = json.loads(req.content or b"{}")
-            f.update({k: v for k, v in body.items() if k in ("name", "starred", "trashed")})
+            f.update({k: v for k, v in body.items()
+                      if k in ("name", "starred", "trashed", "description", "copyRequiresWriterPermission",
+                               "writersCanShare")})
             if p.get("addParents"):
                 f["parents"] = [x for x in f["parents"] if x not in p.get("removeParents", "").split(",")] + [p["addParents"]]
             return httpx.Response(200, json=self._pub(f))
+        if req.method == "DELETE" and not sub:
+            self.files.pop(fid)
+            self.perms.pop(fid, None)
+            self.comments_store.pop(fid, None)
+            self.revs.pop(fid, None)
+            return httpx.Response(204)
         return httpx.Response(400)
 
 
@@ -270,7 +346,8 @@ def test_share_public_and_trash_wait_for_tap(d):
     assert out["needs_approval"] and out["card"]["title"] == "File share karein?"
     assert "swati@fnw.in" in json.dumps(out["card"]) and not d.fake.perms           # nothing shared yet
     msg = _approve(d)["message"]
-    assert d.fake.perms["doc1"][0] == {"type": "user", "role": "writer", "emailAddress": "swati@fnw.in", "notify": "true"}
+    assert d.fake.perms["doc1"][0] == {"type": "user", "role": "writer", "emailAddress": "swati@fnw.in", "notify": "true",
+                                       "id": "perm1"}
     assert "swati@fnw.in" in msg
     from app.bazar.connectors.base import ToolError as CardError
     with pytest.raises(CardError, match="baaki nahi"):
@@ -304,3 +381,157 @@ def test_storage_and_accounts(d):
 def test_not_connected(env):
     with pytest.raises(ToolError, match="Profile > Google Drive"):
         asyncio.run(dt.DRIVE_HANDLERS["drive_find"](Ctx("someone", "c"), query="x"))
+
+
+# ---------------- v0.197.0: full Drive coverage ----------------
+def test_trash_list_find_and_delete_forever(d):
+    run("drive_trash", {"files": ["Shop photo.jpg"]})
+    _approve(d)
+    assert d.fake.files["img1"]["trashed"]
+    tl = run("drive_trash_list", {})
+    assert [f["name"] for f in tl["items"]] == ["Shop photo.jpg"]
+    tr = run("drive_find", {"query": "Shop photo", "in_trash": True})
+    assert tr["count"] == 1 and tr["files"][0]["name"] == "Shop photo.jpg"
+    ref = tl["items"][0]["id"]
+    out = run("drive_delete", {"files": [ref]})
+    assert out["needs_approval"] and out["card"]["title"] == "Hamesha ke liye delete?"
+    assert "img1" in d.fake.files                                              # nothing deleted yet
+    msg = _approve(d)["message"]
+    assert "img1" not in d.fake.files and "hamesha" in msg.lower()
+    with pytest.raises(ToolError, match="Kaunsi files"):
+        run("drive_delete", {})
+
+
+def test_empty_trash_card(d):
+    run("drive_trash", {"files": ["Shop photo.jpg"]})
+    _approve(d)
+    out = run("drive_delete", {"empty": True})
+    assert out["card"]["title"] == "Poora Trash khaalein?"
+    assert "img1" in d.fake.files
+    _approve(d)
+    assert "img1" not in d.fake.files and not any(f["trashed"] for f in d.fake.files.values())
+
+
+def test_details_and_access(d):
+    from app.mailbox import contacts
+    contacts.learn("default", [("Swati Sirsath", "swati@fnw.in")], 1.0, sent=True)
+    contacts.learn("default", [("Ramesh Patil", "ramesh@fnw.in")], 1.0, sent=True)
+    d.fake.perms["doc1"] = [{"id": "perm0", "type": "user", "role": "owner", "emailAddress": ME,
+                             "displayName": "Meghana"}]                         # the real API lists the owner too
+    run("drive_share", {"file": "Quotation Sharma Traders", "people": ["Swati"], "role": "writer"})
+    _approve(d)
+    run("drive_share", {"file": "Quotation Sharma Traders", "people": ["Ramesh"], "role": "reader"})
+    _approve(d)
+    det = run("drive_details", {"file": "Quotation Sharma Traders"})
+    who = {a["who"]: a["role"] for a in det["access"]}
+    assert who.get("swati@fnw.in") == "writer" and who.get("ramesh@fnw.in") == "reader"
+    assert who.get(ME) == "owner" and det["modified_by"] == "Meghana"
+    out = run("drive_access", {"file": "Quotation Sharma Traders", "action": "role", "person": "swati",
+                               "role": "reader"})
+    assert out["card"]["title"] == "Role badlein?" and d.fake.perms["doc1"][1]["role"] == "writer"
+    _approve(d)
+    assert d.fake.perms["doc1"][1]["role"] == "reader"
+    out = run("drive_access", {"file": "Quotation Sharma Traders", "action": "remove", "person": "ramesh"})
+    assert out["card"]["title"] == "Sharing hata dein?"
+    _approve(d)
+    assert all(x["emailAddress"] != "ramesh@fnw.in" for x in d.fake.perms["doc1"])
+    with pytest.raises(ToolError, match="Owner ki permission nahi hatati"):
+        run("drive_access", {"file": "Quotation Sharma Traders", "action": "remove", "person": "Meghana"})
+    run("drive_access", {"file": "Quotation Sharma Traders", "action": "stop"})
+    _approve(d)
+    assert [x["id"] for x in d.fake.perms["doc1"]] == ["perm0"]                 # only the owner remains
+    run("drive_share", {"file": "Quotation Sharma Traders", "people": ["Swati"], "role": "writer"})
+    _approve(d)
+    out = run("drive_access", {"file": "Quotation Sharma Traders", "action": "owner", "person": "swati"})
+    assert out["card"]["title"] == "Ownership de dein?"
+    _approve(d)
+    sw = next(x for x in d.fake.perms["doc1"] if x["emailAddress"] == "swati@fnw.in")
+    assert sw["role"] == "owner"
+    with pytest.raises(ToolError, match="action: remove"):
+        run("drive_access", {"file": "Quotation Sharma Traders", "action": "magic"})
+
+
+def test_comments(d):
+    out = run("drive_comments", {"file": "Quotation Sharma Traders"})
+    assert out["count"] == 0 and "manzoori" in out["note"]
+    add = run("drive_comments", {"file": "Quotation Sharma Traders", "action": "add",
+                                 "text": "Please check the rates"})
+    assert add["card"]["title"] == "Comment daalein?" and not d.fake.comments_store.get("doc1")
+    _approve(d)
+    assert d.fake.comments_store["doc1"][0]["content"] == "Please check the rates"
+    lst = run("drive_comments", {"file": "Quotation Sharma Traders"})
+    assert lst["count"] == 1 and lst["comments"][0]["by"] == "Meghana"
+    cid = lst["comments"][0]["comment_id"]
+    rep = run("drive_comments", {"file": "Quotation Sharma Traders", "action": "reply", "comment": cid,
+                                 "text": "Done, rates are final"})
+    assert rep["card"]["title"] == "Reply daalein?" and "rates" in rep["card"]["items"][0]["name"]
+    _approve(d)
+    lst = run("drive_comments", {"file": "Quotation Sharma Traders"})
+    assert lst["comments"][0]["replies"][0]["text"] == "Done, rates are final"
+    res = run("drive_comments", {"file": "Quotation Sharma Traders", "action": "resolve", "comment": cid})
+    assert res["done"] == "resolved" and d.fake.comments_store["doc1"][0]["resolved"]
+    run("drive_comments", {"file": "Quotation Sharma Traders", "action": "reopen", "comment": cid})
+    assert not d.fake.comments_store["doc1"][0]["resolved"]
+    dele = run("drive_comments", {"file": "Quotation Sharma Traders", "action": "delete", "comment": cid})
+    assert dele["card"]["title"] == "Comment hatayein?"
+    _approve(d)
+    assert d.fake.comments_store["doc1"] == []
+    with pytest.raises(ToolError, match="card/Aadhaar"):
+        run("drive_comments", {"file": "Quotation Sharma Traders", "action": "add", "text": "OTP 123456 hai"})
+    with pytest.raises(ToolError, match="kya likhna"):
+        run("drive_comments", {"file": "Quotation Sharma Traders", "action": "add", "text": "  "})
+    with pytest.raises(ToolError, match="comment nahi mila"):
+        run("drive_comments", {"file": "Quotation Sharma Traders", "action": "reply", "comment": "cm99",
+                               "text": "x"})
+
+
+def test_revisions(d):
+    out = run("drive_revisions", {"file": "Quotation Sharma Traders"})
+    assert out["count"] == 1 and out["revisions"][0]["revision_id"] == "1" and "100 revisions" in out["note"]
+    res = run("drive_revisions", {"file": "Quotation Sharma Traders", "revision": "1", "keep": True})
+    assert res["done"] == "kept" and d.fake.revs["doc1"][0]["keepForever"]
+    rel = run("drive_revisions", {"file": "Quotation Sharma Traders", "revision": "1", "keep": False})
+    assert rel["done"] == "released" and not d.fake.revs["doc1"][0]["keepForever"]
+
+
+def test_organize_describe_restrict_shortcut(d):
+    run("drive_organize", {"file": "Quotation Sharma Traders", "action": "describe",
+                           "description": "Quotation for 10 routers"})
+    assert d.fake.files["doc1"]["description"] == "Quotation for 10 routers"
+    with pytest.raises(ToolError, match="description"):
+        run("drive_organize", {"file": "Quotation Sharma Traders", "action": "describe"})
+    run("drive_organize", {"file": "Quotation Sharma Traders", "action": "restrict_copying"})
+    assert d.fake.files["doc1"]["copyRequiresWriterPermission"]
+    run("drive_organize", {"file": "Quotation Sharma Traders", "action": "allow_copying"})
+    assert not d.fake.files["doc1"]["copyRequiresWriterPermission"]
+    sc = run("drive_organize", {"file": "Quotation Sharma Traders", "action": "shortcut", "folder": "Invoices"})
+    assert sc["file"]["type"] == "Shortcut" and sc["file"]["name"] == "Quotation Sharma Traders"
+    assert d.fake.files[sc["file"]["id"].split("~", 1)[1]]["parents"] == ["fold1"]
+
+
+def test_changes_biggest_shared_drives(d):
+    ch = run("drive_changes", {"hours": 24})
+    assert ch["count"] >= 6 and "Shop photo.jpg" in [f["name"] for f in ch["files"]]
+    d.fake.add("big1", "Backup.pst", "application/octet-stream", size="104857600", quotaBytesUsed="104857600")
+    big = run("drive_biggest", {})
+    assert big["files"][0]["name"] == "Backup.pst" and "MB" in big["files"][0]["size"]
+    sd = run("drive_shared_drives", {})
+    assert sd["count"] == 1 and sd["shared_drives"][0]["name"] == "FNW Team Drive"
+
+
+def test_find_order_size_and_hours(d):
+    d.fake.add("big1", "Backup.pst", "application/octet-stream", size="104857600", quotaBytesUsed="104857600")
+    out = run("drive_find", {"order": "size"})
+    assert out["files"][0]["name"] == "Backup.pst"
+    out = run("drive_find", {"modified_hours": 1})
+    assert out["count"] >= 7
+
+
+def test_export_new_formats(d):
+    ctx = conv_ctx()
+    out = run("drive_send_file", {"file": "Quotation Sharma Traders", "to": "email", "format": "md"}, ctx)
+    assert out["name"] == "Quotation Sharma Traders.md"
+    out2 = run("drive_send_file", {"file": "Quotation Sharma Traders", "to": "email", "format": "epub"}, ctx)
+    assert out2["name"].endswith(".epub")
+    with pytest.raises(ToolError):
+        run("drive_send_file", {"file": "Quotation Sharma Traders", "to": "email", "format": "exe"}, ctx)

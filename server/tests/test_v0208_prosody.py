@@ -1,4 +1,4 @@
-"""v0.208.1 AWAAZ-3 - the TurnMeter joins the feeling engine (Phase C's remainder: prosody sharpening).
+"""v0.209.0 AWAAZ-3 - the TurnMeter joins the feeling engine (Phase C's remainder: prosody sharpening).
 
 The v0.202 promise in voiceaffect's docstring is now kept: her words still pick the state (prosody NEVER
 fires alone), but her voice THIS turn - measured mid-turn against HER OWN baseline (voicestyle profile
@@ -231,4 +231,4 @@ def test_scorecard_counts_the_feeling():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.208.1"
+    assert APP_VERSION == "0.209.0"

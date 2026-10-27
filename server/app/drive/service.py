@@ -7,6 +7,7 @@ user's tap on a confirm card. Text inside files is information, not instructions
 from __future__ import annotations
 
 import re
+from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -14,7 +15,7 @@ from sqlalchemy import select
 from ..db import now, session
 from ..events import bus
 from .accounts import clients, get_client
-from .client import FOLDER, GDOC, GDRAWING, GSHEET, GSLIDES, DriveClient, DriveError, id_from, q_str
+from .client import FOLDER, GDOC, GDRAWING, GSHEET, GSLIDES, SHORTCUT, DriveClient, DriveError, id_from, q_str
 from .models import DrivePending, DriveRecent
 
 MAX_BYTES = 25 * 1024 * 1024
@@ -30,15 +31,21 @@ KINDS = {
     "folder": f"mimeType = '{FOLDER}'",
 }
 LABEL = {FOLDER: "Folder", GDOC: "Google Doc", GSHEET: "Google Sheet", GSLIDES: "Google Slides", GDRAWING: "Drawing",
-         "application/pdf": "PDF"}
+         SHORTCUT: "Shortcut", "application/pdf": "PDF"}
 # Google files have no bytes of their own: export them
 EXPORT = {GDOC: {"docx": ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx"),
-                 "pdf": ("application/pdf", ".pdf"), "txt": ("text/plain", ".txt")},
+                 "pdf": ("application/pdf", ".pdf"), "txt": ("text/plain", ".txt"),
+                 "odt": ("application/vnd.oasis.opendocument.text", ".odt"), "rtf": ("application/rtf", ".rtf"),
+                 "html": ("text/html", ".html"), "epub": ("application/epub+zip", ".epub"),
+                 "md": ("text/markdown", ".md")},
           GSHEET: {"xlsx": ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx"),
-                   "pdf": ("application/pdf", ".pdf"), "csv": ("text/csv", ".csv")},
+                   "pdf": ("application/pdf", ".pdf"), "csv": ("text/csv", ".csv"),
+                   "ods": ("application/vnd.oasis.opendocument.spreadsheet", ".ods"),
+                   "tsv": ("text/tab-separated-values", ".tsv")},
           GSLIDES: {"pptx": ("application/vnd.openxmlformats-officedocument.presentationml.presentation", ".pptx"),
                     "pdf": ("application/pdf", ".pdf"), "txt": ("text/plain", ".txt")},
-          GDRAWING: {"pdf": ("application/pdf", ".pdf"), "png": ("image/png", ".png")}}
+          GDRAWING: {"pdf": ("application/pdf", ".pdf"), "png": ("image/png", ".png"),
+                     "jpeg": ("image/jpeg", ".jpeg"), "svg": ("image/svg+xml", ".svg")}}
 DEFAULT_EXPORT = {GDOC: "docx", GSHEET: "xlsx", GSLIDES: "pptx", GDRAWING: "pdf"}
 # card / Aadhaar-style numbers (4-4-4 groups), OTP / CVV codes, "password: ..." (an Indian PIN code is fine)
 SECRET_RE = re.compile(r"\b\d{4}[ -]?\d{4}[ -]?\d{4}(?:[ -]?\d{1,7})?\b|\b(otp|one[- ]time password|cvv)\b\W{0,3}\d{3,8}"
@@ -154,8 +161,9 @@ def resolve(tenant: str, ref: str, folder: bool | None = None) -> tuple[DriveCli
 
 def find(tenant: str, query: str = "", kind: str = "any", folder: str | None = None, limit: int = 20,
          shared_with_me: bool = False, starred: bool = False, modified_days: int | None = None,
-         account: str | None = None) -> dict[str, Any]:
-    q = ["trashed = false"]
+         account: str | None = None, in_trash: bool = False, modified_hours: int | None = None,
+         order: str = "") -> dict[str, Any]:
+    q = ["trashed = true" if in_trash else "trashed = false"]
     words = (query or "").strip()
     if words:
         q.append(f"(name contains {q_str(words)} or fullText contains {q_str(words)})")
@@ -167,9 +175,9 @@ def find(tenant: str, query: str = "", kind: str = "any", folder: str | None = N
         q.append("sharedWithMe = true")
     if starred:
         q.append("starred = true")
-    if modified_days:
-        from datetime import timedelta
-        since = (now() - timedelta(days=max(1, int(modified_days)))).strftime("%Y-%m-%dT%H:%M:%S")
+    if modified_days or modified_hours:
+        hours = int(modified_hours) if modified_hours else max(1, int(modified_days)) * 24
+        since = (now() - timedelta(hours=max(1, hours))).strftime("%Y-%m-%dT%H:%M:%S")
         q.append(f"modifiedTime > '{since}'")
     cs = [get_client(tenant, account)] if account else (clients(tenant) or [get_client(tenant)])
     parent = None
@@ -177,6 +185,7 @@ def find(tenant: str, query: str = "", kind: str = "any", folder: str | None = N
         c0, fo = resolve(tenant, folder, folder=True)
         cs, parent = [c0], fo["id"]
     out, notes, seen = [], [], set()
+    rows: list[tuple[int, dict[str, Any]]] = []
     for c in cs:
         parts = list(q)
         if parent:
@@ -184,12 +193,20 @@ def find(tenant: str, query: str = "", kind: str = "any", folder: str | None = N
         elif c.kind == "service" and c.root != "root":
             parts.append(f"{q_str(c.root)} in parents")
         try:
-            for f in c.search(" and ".join(parts), limit, order="" if words else "modifiedTime desc"):
-                if f["id"] not in seen:
-                    seen.add(f["id"])
+            api_order = "quotaBytesUsed desc" if order == "size" else ("" if (words or order) else "modifiedTime desc")
+            for f in c.search(" and ".join(parts), limit, order=api_order):
+                if f["id"] in seen:
+                    continue
+                seen.add(f["id"])
+                if order == "size":
+                    rows.append((int(f.get("quotaBytesUsed") or 0), view(c, f)))
+                else:
                     out.append(view(c, f))
         except DriveError as e:
             notes.append(f"{c.address}: {e}")
+    if order == "size":
+        rows.sort(key=lambda t: t[0], reverse=True)
+        out = [v for _, v in rows]
     res: dict[str, Any] = {"count": len(out), "files": out[:limit]}
     if notes and not out:
         raise DriveError("; ".join(notes))
@@ -354,7 +371,8 @@ def create_doc(tenant: str, title: str, text: str = "", folder: str | None = Non
     return {"doc": view(c, f)}
 
 
-def organize(tenant: str, ref: str, action: str, name: str | None = None, folder: str | None = None) -> dict[str, Any]:
+def organize(tenant: str, ref: str, action: str, name: str | None = None, folder: str | None = None,
+             description: str | None = None) -> dict[str, Any]:
     c, f = resolve(tenant, ref)
     if action == "rename":
         if not name:
@@ -375,10 +393,24 @@ def organize(tenant: str, ref: str, action: str, name: str | None = None, folder
         f2 = c.copy(f["id"], name or f"Copy of {f.get('name', '')}", pid)
     elif action in ("star", "unstar"):
         f2 = c.update(f["id"], {"starred": action == "star"})
+    elif action == "describe":
+        if description is None:
+            raise DriveError("Kya description likhni hai? description do.")
+        f2 = c.update(f["id"], {"description": str(description)[:1000]})
+    elif action == "restrict_copying":
+        f2 = c.update(f["id"], {"copyRequiresWriterPermission": True})
+    elif action == "allow_copying":
+        f2 = c.update(f["id"], {"copyRequiresWriterPermission": False})
+    elif action == "shortcut":
+        fc, pid = _folder_id(tenant, folder)
+        if fc.key != c.key:
+            raise DriveError("Alag Google account ke folder mein shortcut nahi banta; copy kijiye.")
+        f2 = c.create_shortcut(name or f.get("name", ""), f["id"], pid)
     elif action == "restore":
         f2 = c.update(f["id"], {"trashed": False})
     else:
-        raise DriveError("action: rename, move, copy, star, unstar, restore")
+        raise DriveError("action: rename, move, copy, star, unstar, describe, restrict_copying, allow_copying, "
+                         "shortcut, restore")
     _remember(tenant, c, f2)
     return {"done": action, "file": view(c, f2)}
 
@@ -397,6 +429,260 @@ def storage(tenant: str) -> dict[str, Any]:
                     "in_drive": _size(q.get("usageInDrive")), "in_trash": _size(q.get("usageInDriveTrash")),
                     "percent": round(used * 100 / limit, 1) if limit else None})
     return {"storage": out}
+
+
+# ---------------- trash / changes / biggest / shared drives ----------------
+def trash_list(tenant: str, limit: int = 50) -> dict[str, Any]:
+    out, notes = [], []
+    for c in clients(tenant) or [get_client(tenant)]:
+        try:
+            out += [view(c, f) for f in c.search("trashed = true", limit, order="modifiedTime desc")]
+        except DriveError as e:
+            notes.append(f"{c.address}: {e}")
+    if notes and not out:
+        raise DriveError("; ".join(notes))
+    res: dict[str, Any] = {"count": len(out), "items": out[:limit]}
+    if notes:
+        res["notes"] = notes
+    return res
+
+
+def changes(tenant: str, hours: int = 24, limit: int = 30) -> dict[str, Any]:
+    since = (now() - timedelta(hours=max(1, int(hours)))).strftime("%Y-%m-%dT%H:%M:%S")
+    out, notes, seen = [], [], set()
+    for c in clients(tenant) or [get_client(tenant)]:
+        parts = [f"modifiedTime > '{since}'"]
+        if c.kind == "service" and c.root != "root":
+            parts.append(f"{q_str(c.root)} in parents")
+        try:
+            for f in c.search(" and ".join(parts), limit, order="modifiedTime desc"):
+                if f["id"] not in seen:
+                    seen.add(f["id"])
+                    out.append(view(c, f))
+        except DriveError as e:
+            notes.append(f"{c.address}: {e}")
+    out.sort(key=lambda x: x.get("modified", ""), reverse=True)
+    if notes and not out:
+        raise DriveError("; ".join(notes))
+    res: dict[str, Any] = {"since_hours": int(hours), "count": len(out), "files": out[:limit]}
+    if notes:
+        res["notes"] = notes
+    return res
+
+
+def biggest(tenant: str, limit: int = 15) -> dict[str, Any]:
+    rows, notes, seen = [], [], set()
+    for c in clients(tenant) or [get_client(tenant)]:
+        parts = ["trashed = false"]
+        if c.kind == "service" and c.root != "root":
+            parts.append(f"{q_str(c.root)} in parents")
+        try:
+            for f in c.search(" and ".join(parts), limit * 3, order="quotaBytesUsed desc"):
+                if f["id"] not in seen and int(f.get("quotaBytesUsed") or 0) > 0:
+                    seen.add(f["id"])
+                    rows.append((int(f.get("quotaBytesUsed") or 0), view(c, f)))
+        except DriveError as e:
+            notes.append(f"{c.address}: {e}")
+    rows.sort(key=lambda t: t[0], reverse=True)
+    if notes and not rows:
+        raise DriveError("; ".join(notes))
+    res: dict[str, Any] = {"count": len(rows), "files": [v for _, v in rows[:limit]]}
+    if notes:
+        res["notes"] = notes
+    return res
+
+
+def shared_drives(tenant: str) -> dict[str, Any]:
+    out, notes = [], []
+    for c in clients(tenant) or [get_client(tenant)]:
+        if c.kind == "service":
+            continue
+        try:
+            out += [{"id": f"{c.key}~{d['id']}", "name": d.get("name", ""), "account": c.address}
+                    for d in c.drives()]
+        except DriveError as e:
+            notes.append(f"{c.address}: {e}")
+    if notes and not out:
+        raise DriveError("; ".join(notes))
+    res: dict[str, Any] = {"count": len(out), "shared_drives": out}
+    if notes:
+        res["notes"] = notes
+    return res
+
+
+# ---------------- details / comments / revisions ----------------
+def details(tenant: str, ref: str) -> dict[str, Any]:
+    c, f = resolve(tenant, ref)
+    perms: list[dict[str, Any]] = []
+    perm_note = ""
+    try:
+        perms = c.permissions(f["id"])
+    except DriveError as e:
+        perm_note = str(e)
+    out = {**view(c, f), "description": f.get("description", ""), "created": (f.get("createdTime") or "")[:10],
+           "modified_by": ((f.get("lastModifyingUser") or {}).get("displayName") or ""),
+           "copy_restricted": bool(f.get("copyRequiresWriterPermission")),
+           "writers_can_share": f.get("writersCanShare", True),
+           "access": [{"who": p.get("emailAddress") or p.get("displayName") or p.get("type", "?"),
+                       "role": p.get("role", ""), "type": p.get("type", ""), "perm_id": p.get("id", "")}
+                      for p in perms]}
+    if f.get("mimeType") == SHORTCUT and f.get("shortcutDetails"):
+        out["points_to"] = f["shortcutDetails"].get("targetId", "")
+    if perm_note:
+        out["access_note"] = perm_note
+    return out
+
+
+def revisions(tenant: str, ref: str) -> dict[str, Any]:
+    c, f = resolve(tenant, ref)
+    rows = [{"revision_id": r.get("id", ""), "modified": (r.get("modifiedTime") or "")[:16].replace("T", " "),
+             "by": ((r.get("lastModifyingUser") or {}).get("displayName") or ""), "kept": bool(r.get("keepForever")),
+             "size": _size(r.get("size"))} for r in c.revisions(f["id"])]
+    return {"file": f.get("name", ""), "count": len(rows), "revisions": rows,
+            "note": "Google khud 100 revisions tak ya 30 din tak rakhti hai; kept=True wale nahi jaate."}
+
+
+def keep_revision(tenant: str, ref: str, revision: str, keep: bool = True) -> dict[str, Any]:
+    c, f = resolve(tenant, ref)
+    c.revision_update(f["id"], str(revision), keep)
+    return {"done": "kept" if keep else "released", "file": f.get("name", ""), "revision": str(revision)}
+
+
+def comments(tenant: str, ref: str) -> dict[str, Any]:
+    c, f = resolve(tenant, ref)
+    out = []
+    for m in c.comments(f["id"]):
+        out.append({"comment_id": m.get("id", ""), "by": (m.get("author") or {}).get("displayName") or "?",
+                    "text": m.get("content", ""), "when": (m.get("createdTime") or "")[:10],
+                    "resolved": bool(m.get("resolved")),
+                    "replies": [{"by": (r.get("author") or {}).get("displayName") or "?", "text": r.get("content", ""),
+                                 "when": (r.get("createdTime") or "")[:10]} for r in (m.get("replies") or [])]})
+    return {"file": f.get("name", ""), "count": len(out), "comments": out,
+            "note": "Naya comment ya reply card ki manzoori ke baad jaata hai (logon ko email jata hai)."}
+
+
+def _comment(c: DriveClient, fid: str, ref: str) -> dict[str, Any]:
+    cms = c.comments(fid)
+    want = str(ref or "").strip()
+    hits = [m for m in cms if m.get("id") == want]
+    if not hits and len(want) >= 6:
+        hits = [m for m in cms if str(m.get("id", "")).startswith(want)]
+    if not hits:
+        raise DriveError("Woh comment nahi mila; drive_comments se comment_id lijiye.")
+    if len(hits) > 1:
+        raise DriveError("Is prefix par kai comments hain; poora comment_id dijiye.")
+    return hits[0]
+
+
+def comment_resolve(tenant: str, ref: str, comment: str, resolved: bool = True) -> dict[str, Any]:
+    c, f = resolve(tenant, ref)
+    m = _comment(c, f["id"], comment)
+    c.comment_update(f["id"], m["id"], resolved=resolved)
+    return {"done": "resolved" if resolved else "reopened", "file": f.get("name", ""),
+            "note": "Resolved comment wapas khola ja sakta hai (resolved=false)."}
+
+
+# ---------------- access management (confirm cards) ----------------
+def _perm_pick(perms: list[dict[str, Any]], person: str, owner_ok: bool = False) -> dict[str, Any]:
+    want = str(person or "").strip().lower()
+    if not want:
+        raise DriveError("Kis ki permission? person do (email ya naam).")
+    hits = [p for p in perms if want in ((p.get("emailAddress") or "") + " " + (p.get("displayName") or "")).lower()]
+    if not hits:
+        raise DriveError(f"'{person}' ki is file par permission nahi mili; drive_details ke access se email lijiye.")
+    if len(hits) > 1:
+        opts = "; ".join(f"{p.get('emailAddress') or p.get('displayName')} ({p.get('role')}, id {p.get('id')})"
+                         for p in hits[:5])
+        raise DriveError(f"Is naam par kai permissions hain: {opts}. Email dijiye.")
+    p = hits[0]
+    if p.get("role") == "owner" and not owner_ok:
+        raise DriveError("Owner ki permission nahi hatati; ownership transfer kijiye (drive_access action=owner).")
+    return p
+
+
+def plan_access(tenant: str, conv: str, ref: str, action: str, person: str | None = None,
+                role: str | None = None) -> str:
+    c, f = resolve(tenant, ref)
+    perms = c.permissions(f["id"])
+    if action == "remove":
+        p = _perm_pick(perms, person)
+        return pend(tenant, conv, "unshare", {"account": c.key, "fid": f["id"], "perm_ids": [p["id"]]},
+                    {"name": f.get("name", ""), "stop": "ek",
+                     "people": [p.get("emailAddress") or p.get("displayName") or ""]})
+    if action == "stop":
+        targets = [p for p in perms if p.get("role") != "owner"]
+        if not targets:
+            raise DriveError("Yeh file kisi ke saath share nahi hai — sirf aap hi ho.")
+        return pend(tenant, conv, "unshare", {"account": c.key, "fid": f["id"],
+                                              "perm_ids": [p["id"] for p in targets]},
+                    {"name": f.get("name", ""), "stop": "sab",
+                     "people": [p.get("emailAddress") or p.get("displayName") or p.get("type", "?")
+                                for p in targets]})
+    if action == "role":
+        if role not in ("reader", "commenter", "writer"):
+            raise DriveError("role: reader (sirf dekhna), commenter ya writer (edit)")
+        p = _perm_pick(perms, person)
+        return pend(tenant, conv, "role", {"account": c.key, "fid": f["id"], "perm_id": p["id"], "role": role},
+                    {"name": f.get("name", ""),
+                     "people": [p.get("emailAddress") or p.get("displayName") or ""], "role": role})
+    if action == "owner":
+        p = _perm_pick(perms, person, owner_ok=True)
+        if p.get("role") == "owner":
+            raise DriveError("Woh pehle se owner hai.")
+        if p.get("type") != "user":
+            raise DriveError("Ownership sirf ek insaan (user) ko ja sakti hai; group ya link ko nahi.")
+        return pend(tenant, conv, "transfer", {"account": c.key, "fid": f["id"], "perm_id": p["id"]},
+                    {"name": f.get("name", ""),
+                     "people": [p.get("emailAddress") or p.get("displayName") or ""]})
+    raise DriveError("action: remove (ek hatana), stop (sab hatana), role (badalna), owner (transfer)")
+
+
+def plan_comment(tenant: str, conv: str, ref: str, text: str) -> str:
+    _guard_text(str(text or ""))
+    if not (text or "").strip():
+        raise DriveError("Comment mein kya likhna hai? text dijiye.")
+    c, f = resolve(tenant, ref)
+    return pend(tenant, conv, "comment", {"account": c.key, "fid": f["id"], "content": str(text)[:4000]},
+                {"name": f.get("name", ""), "type": LABEL.get(f.get("mimeType", ""), "File"),
+                 "content": str(text)[:300]})
+
+
+def plan_reply(tenant: str, conv: str, ref: str, comment: str, text: str) -> str:
+    _guard_text(str(text or ""))
+    if not (text or "").strip():
+        raise DriveError("Reply mein kya likhna hai? text dijiye.")
+    c, f = resolve(tenant, ref)
+    m = _comment(c, f["id"], comment)
+    return pend(tenant, conv, "reply", {"account": c.key, "fid": f["id"], "comment_id": m["id"],
+                                        "content": str(text)[:4000]},
+                {"name": f.get("name", ""), "content": str(text)[:300], "quoted": (m.get("content") or "")[:120]})
+
+
+def plan_comment_delete(tenant: str, conv: str, ref: str, comment: str) -> str:
+    c, f = resolve(tenant, ref)
+    m = _comment(c, f["id"], comment)
+    return pend(tenant, conv, "comment_delete", {"account": c.key, "fid": f["id"], "comment_id": m["id"]},
+                {"name": f.get("name", ""), "quoted": (m.get("content") or "")[:120],
+                 "by": (m.get("author") or {}).get("displayName") or ""})
+
+
+def plan_delete(tenant: str, conv: str, refs: list[str], empty: bool = False,
+                account: str | None = None) -> str:
+    if empty:
+        cs = [get_client(tenant, account)] if account else (clients(tenant) or [get_client(tenant)])
+        c = cs[0]
+        return pend(tenant, conv, "empty_trash", {"account": c.key}, {"name": c.address, "all": True})
+    if not refs:
+        raise DriveError("Kaunsi files hamesha ke liye delete karni hain?")
+    if len(refs) > 50:
+        raise DriveError("Ek baar mein 50 files tak.")
+    items = []
+    for r in refs:
+        c, f = resolve(tenant, r)
+        items.append({"account": c.key, "fid": f["id"], "name": f.get("name", ""),
+                      "folder": f.get("mimeType") == FOLDER})
+    return pend(tenant, conv, "delete", {"items": items},
+                {"names": [i["name"] for i in items], "folders": sum(1 for i in items if i["folder"])})
 
 
 # ---------------- confirm cards (share / public link / trash) ----------------
@@ -473,6 +759,43 @@ def run_pending(tenant: str, pid: str) -> dict[str, Any]:
             for it in pl["items"]:
                 get_client(tenant, it["account"]).update(it["fid"], {"trashed": True})
             msg = f"{len(pl['items'])} file Trash mein daal di (30 din tak Drive ke Trash se wapas la sakte hain)."
+        elif p["action"] == "unshare":
+            c = get_client(tenant, pl["account"])
+            for pr in pl["perm_ids"]:
+                c.permission_delete(pl["fid"], pr)
+            if sm.get("stop") == "sab":
+                msg = f"\"{sm['name']}\" ab sirf aapke paas hai — sab ki permission hata di."
+            else:
+                msg = f"\"{sm['name']}\" se {', '.join(sm['people'])} ki permission hata di."
+        elif p["action"] == "role":
+            c = get_client(tenant, pl["account"])
+            c.permission_update(pl["fid"], pl["perm_id"], pl["role"])
+            what = {"reader": "sirf dekh sakte hain", "commenter": "comment kar sakte hain",
+                    "writer": "edit kar sakte hain"}[pl["role"]]
+            msg = f"\"{sm['name']}\" par {', '.join(sm['people'])} ab {what}."
+        elif p["action"] == "transfer":
+            c = get_client(tenant, pl["account"])
+            c.permission_update(pl["fid"], pl["perm_id"], "owner", transfer=True)
+            msg = f"\"{sm['name']}\" ki ownership {', '.join(sm['people'])} ko de di; ab woh owner hain, aap editor."
+        elif p["action"] == "delete":
+            for it in pl["items"]:
+                get_client(tenant, it["account"]).delete(it["fid"])
+            msg = f"{len(pl['items'])} file hamesha ke liye delete kar di — Trash se bhi nahi lautegi."
+        elif p["action"] == "empty_trash":
+            get_client(tenant, pl["account"]).empty_trash()
+            msg = f"{sm['name']} ka poora Trash khaali kar diya."
+        elif p["action"] == "comment":
+            c = get_client(tenant, pl["account"])
+            c.comment_add(pl["fid"], pl["content"])
+            msg = f"\"{sm['name']}\" par comment daal diya."
+        elif p["action"] == "reply":
+            c = get_client(tenant, pl["account"])
+            c.reply_add(pl["fid"], pl["comment_id"], pl["content"])
+            msg = "Reply daal di."
+        elif p["action"] == "comment_delete":
+            c = get_client(tenant, pl["account"])
+            c.comment_delete(pl["fid"], pl["comment_id"])
+            msg = "Comment hata diya."
         else:
             raise DriveError("unknown drive action")
     except DriveError:

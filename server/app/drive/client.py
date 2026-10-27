@@ -15,7 +15,10 @@ GDOC = "application/vnd.google-apps.document"
 GSHEET = "application/vnd.google-apps.spreadsheet"
 GSLIDES = "application/vnd.google-apps.presentation"
 GDRAWING = "application/vnd.google-apps.drawing"
-FIELDS = "id,name,mimeType,modifiedTime,size,webViewLink,parents,starred,shared,trashed,owners(displayName,emailAddress)"
+SHORTCUT = "application/vnd.google-apps.shortcut"
+FIELDS = ("id,name,mimeType,modifiedTime,size,webViewLink,parents,starred,shared,trashed,description,createdTime,"
+          "lastModifyingUser(displayName),copyRequiresWriterPermission,writersCanShare,quotaBytesUsed,"
+          "shortcutDetails(targetId,targetMimeType),owners(displayName,emailAddress)")
 
 
 class DriveError(Exception):
@@ -164,3 +167,68 @@ class DriveClient:
     def share_anyone(self, fid: str, role: str = "reader") -> dict:
         return self._req("POST", f"{API}/files/{fid}/permissions", params={"supportsAllDrives": "true"},
                          json={"type": "anyone", "role": role})
+
+    def permission_update(self, fid: str, pid: str, role: str, transfer: bool = False) -> dict:
+        params: dict[str, str] = {"supportsAllDrives": "true"}
+        if transfer:
+            params["transferOwnership"] = "true"
+            params["moveToNewOwnersRoot"] = "true"
+        return self._req("PATCH", f"{API}/files/{fid}/permissions/{pid}", params=params, json={"role": role})
+
+    def permission_delete(self, fid: str, pid: str) -> None:
+        self._req("DELETE", f"{API}/files/{fid}/permissions/{pid}", params={"supportsAllDrives": "true"})
+
+    # ---------------- comments ----------------
+    def comments(self, fid: str, limit: int = 50) -> list[dict]:
+        return self._req("GET", f"{API}/files/{fid}/comments", params={
+            "pageSize": max(1, min(int(limit), 100)), "includeDeleted": "false", "supportsAllDrives": "true",
+            "fields": "comments(id,author(displayName,emailAddress),content,createdTime,modifiedTime,resolved,"
+                      "quotedFileContent(value),replies(id,author(displayName),content,createdTime,resolved))"}
+            ).get("comments", [])
+
+    def comment_add(self, fid: str, content: str) -> dict:
+        return self._req("POST", f"{API}/files/{fid}/comments", params={"supportsAllDrives": "true"},
+                         json={"content": str(content)[:4000]})
+
+    def reply_add(self, fid: str, cid: str, content: str) -> dict:
+        return self._req("POST", f"{API}/files/{fid}/comments/{cid}/replies", params={"supportsAllDrives": "true"},
+                         json={"content": str(content)[:4000]})
+
+    def comment_update(self, fid: str, cid: str, content: str | None = None, resolved: bool | None = None) -> dict:
+        body: dict[str, Any] = {}
+        if content is not None:
+            body["content"] = str(content)[:4000]
+        if resolved is not None:
+            body["resolved"] = bool(resolved)
+        return self._req("PATCH", f"{API}/files/{fid}/comments/{cid}", params={"supportsAllDrives": "true"}, json=body)
+
+    def comment_delete(self, fid: str, cid: str) -> None:
+        self._req("DELETE", f"{API}/files/{fid}/comments/{cid}", params={"supportsAllDrives": "true"})
+
+    # ---------------- revisions ----------------
+    def revisions(self, fid: str, limit: int = 50) -> list[dict]:
+        return self._req("GET", f"{API}/files/{fid}/revisions", params={
+            "pageSize": max(1, min(int(limit), 200)), "supportsAllDrives": "true",
+            "fields": "revisions(id,modifiedTime,lastModifyingUser(displayName),keepForever,size,mimeType)"}
+            ).get("revisions", [])
+
+    def revision_update(self, fid: str, rid: str, keep: bool) -> dict:
+        return self._req("PATCH", f"{API}/files/{fid}/revisions/{rid}", params={"supportsAllDrives": "true"},
+                         json={"keepForever": bool(keep)})
+
+    # ---------------- hard delete / shared drives / shortcuts ----------------
+    def delete(self, fid: str) -> None:
+        self._req("DELETE", f"{API}/files/{fid}", params={"supportsAllDrives": "true"})
+
+    def empty_trash(self) -> None:
+        self._req("DELETE", f"{API}/files/emptyTrash", params={"supportsAllDrives": "true"})
+
+    def drives(self, limit: int = 50) -> list[dict]:
+        return self._req("GET", API + "/drives", params={"pageSize": max(1, min(int(limit), 100))}).get("drives", [])
+
+    def create_shortcut(self, name: str, target_id: str, parent: str | None = None) -> dict:
+        body: dict[str, Any] = {"name": (name or "Shortcut")[:200], "mimeType": SHORTCUT,
+                                "shortcutDetails": {"targetId": target_id}}
+        if parent:
+            body["parents"] = [parent]
+        return self._req("POST", API + "/files", params={"fields": FIELDS, "supportsAllDrives": "true"}, json=body)
