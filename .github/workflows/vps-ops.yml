@@ -205,6 +205,13 @@ jobs:
                 echo 'echo "== nginx processes"; ps -eo pid,user,etime,cmd 2>/dev/null | grep -E "nginx" | grep -v grep | head -6'
                 echo 'echo "== nginx error log tail"; tail -25 /var/log/nginx/error.log 2>&1'
                 echo 'echo "== disk full?"; df -h / /run 2>&1 | tail -3'
+                echo 'echo "== EDGE HUNT: caddy/traefik system services"; systemctl is-active caddy 2>&1; systemctl is-enabled caddy 2>&1; systemctl list-unit-files 2>/dev/null | grep -iE "caddy|traefik|haproxy|caddy" | head -5'
+                echo 'echo "== EDGE HUNT: edge processes running?"; ps -eo pid,user,etime,cmd 2>/dev/null | grep -iE "caddy|traefik|haproxy" | grep -v grep | head -8'
+                echo 'echo "== EDGE HUNT: conf.d + all nginx dirs"; ls -la /etc/nginx/conf.d/ 2>&1; ls -la /etc/nginx/sites-available/ 2>&1'
+                echo 'echo "== EDGE HUNT: ALL containers incl stopped"; docker ps -a --format "{{.Names}} {{.Status}} {{.Ports}}" 2>/dev/null | head -25'
+                echo 'echo "== EDGE HUNT: bash history (how was the edge started by hand?)"; tail -60 ~/.bash_history 2>/dev/null | grep -vE "^ls|^cd|^cat|^tail|^pm2 logs" | tail -30'
+                echo 'echo "== EDGE HUNT: crontab"; crontab -l 2>/dev/null | head -15; echo "== sudo rights"; sudo -n -l 2>&1 | head -8'
+                echo 'echo "== EDGE HUNT: caddy homes"; ls -la /etc/caddy 2>&1 | head -5; ls -la /var/lib/caddy 2>/dev/null | head -5; ls ~/.local/share/caddy 2>/dev/null | head -5; ls -la /root 2>/dev/null | head -3'
                 echo 'systemctl is-active nginx 2>&1 | grep -q active && echo "WEB-EDGE: ACTIVE" || echo "WEB-EDGE: STILL DOWN - see report above"' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
