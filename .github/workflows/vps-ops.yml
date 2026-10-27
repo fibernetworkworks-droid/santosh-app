@@ -172,9 +172,11 @@ jobs:
                 # then reads the page text back. Fixed URL on purpose (no free-typed commands).
                 # v1.3.0: also proves the SEMANTIC chain live: page_elements -> page_click by ref ->
                 # the more-information link navigates to iana.org -> wait_for finds its text.
+                # exec NEEDS -i to feed the heredoc to python's stdin (v1.3.0 selftest lesson: without
+                # -i python read EOF and exited 0 silently - the job passed while testing nothing).
                 echo 'set -e'
                 echo 'echo "== browser binary"; docker exec hoola-pc which google-chrome google-chrome-stable chromium 2>/dev/null || true'
-                echo 'docker exec hoola-pc python - <<"PY"'
+                echo 'docker exec -i hoola-pc python - <<"PY"'
                 echo 'from agent import Actions'
                 echo 'a = Actions()'
                 echo 'r = a.handle("open_url", {"url": "https://example.com"}); print("open_url:", r.get("title"), "loaded:", r.get("loaded"))'
