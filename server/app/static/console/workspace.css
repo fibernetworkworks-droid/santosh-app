@@ -158,3 +158,10 @@
  #app .side{width:min(320px,86vw)}
  #app.workspace-full .studio,#app.workspace-full .panel,#app.workspace-full.collapsed .studio,#app.workspace-full.collapsed .panel{width:100%}
 }
+
+/* Keep messages and the dock on the same center as the conversation grows. */
+#app .thread{scrollbar-gutter:stable both-edges}
+#app .landing{scrollbar-gutter:stable both-edges}
+#app .col{width:100%;min-width:0}
+#app #slotDock{width:min(880px,100%);margin-inline:auto}
+#app #slotDock #composer{width:100%}

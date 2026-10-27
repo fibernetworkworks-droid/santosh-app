@@ -16,7 +16,7 @@ const server=http.createServer((req,res)=>{
    if(p.endsWith('/me'))return json({owner:'Santosh',handle:'fnw',avatar:{name:'Hoola'}});
    if(p==='/api/console/conversations')return json({conversations:Array.from({length:60},(_,i)=>({id:'chat-'+(i+1),title:i?'Campaign research '+i:'Launch campaign',updated_at:new Date().toISOString()}))});
    if(p==='/api/projects')return json({projects:[]});
-   if(p.endsWith('/timeline'))return json({events:posts.length?[{id:1,kind:'message',payload:{role:'user',text:'Create an image'}},{id:2,kind:'photo_made',payload:{id:'photo-1',file_id:'result-1',name:'launch.png',title:'Launch image'}}]:[],last_event_id:2});
+   if(p.endsWith('/timeline'))return json({events:posts.length?[{id:1,kind:'message',payload:{role:'user',text:'Create an image'}},{id:2,kind:'photo_made',payload:{id:'photo-1',file_id:'result-1',name:'launch.png',title:'Launch image'}},...(posts.length>1?[{id:3,kind:'message',payload:{role:'assistant',text:'This is a long reply that keeps the conversation centered.\n\n'.repeat(50)}}]:[])]:[],last_event_id:3});
    if(p==='/api/panel/files/result-1/info')return json({name:'launch.png',size:68,mime:'image/png',media:'image',inline:true});
    if(p==='/api/panel/files/result-1'){res.setHeader('Content-Type','image/png');return res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==','base64'));}
    if(p.endsWith('/pending'))return json({pending:[]});
@@ -65,15 +65,26 @@ const server=http.createServer((req,res)=>{
  await page.locator('[data-v="creative"]').click();await page.locator('#cw-prompt').fill('A crafted image of the FNW AI Node');
  await page.waitForTimeout(500);if(shots)await page.screenshot({path:path.join(shots,'hoola-studio-desktop.png'),fullPage:true});
  await page.locator('#cw-submit').click();await page.waitForFunction(()=>!document.querySelector('#v-chat').hidden);assert.match(posts.at(-1).text,/photo_banao/);
+ const aligned=async()=>{
+  const geometry=await page.evaluate(()=>{
+   const col=document.querySelector('#col').getBoundingClientRect(),box=document.querySelector('#composer').getBoundingClientRect();
+   return {chat:col.left+col.width/2,input:box.left+box.width/2,overflow:document.documentElement.scrollWidth>innerWidth};
+  });
+  assert.ok(Math.abs(geometry.chat-geometry.input)<2,'Chat and composer share a center: '+JSON.stringify(geometry));assert.equal(geometry.overflow,false);
+ };
+ await aligned();
+ await divider.focus();await page.keyboard.press('End');await page.waitForFunction(()=>Math.round(document.querySelector('.side').getBoundingClientRect().width)===420);await aligned();
+ await divider.dblclick();await page.waitForFunction(()=>Math.round(document.querySelector('.side').getBoundingClientRect().width)===224);await aligned();
+
  for(const mode of ['video','research','document']){
   await page.locator('[data-v="creative"]').click();await page.locator(`[data-mode="${mode}"]`).click();await page.locator('#cw-prompt').fill('Build a clear launch brief from verified information');
   if(mode==='research'){
    await page.locator('#cw-sources').selectOption('files');await page.locator('#cw-submit').click();assert.equal(posts.length,2);
    await page.locator('#cw-files').setInputFiles({name:'source.txt',mimeType:'text/plain',buffer:Buffer.from('Verified product source')});await page.locator('#cw-submit').waitFor({state:'visible'});await page.waitForFunction(()=>!document.querySelector('#cw-submit').disabled);
   }
-  await page.locator('#cw-submit').click();await page.waitForFunction(()=>!document.querySelector('#v-chat').hidden);
+  await page.locator('#cw-submit').click();await page.waitForFunction(()=>!document.querySelector('#v-chat').hidden);await aligned();
  }
- await page.locator('[data-expand]').click();
+ await page.locator('.result-card').scrollIntoViewIfNeeded();await page.locator('[data-expand]').click();
  await page.locator('#panel .workspace-handle button').click();assert.ok(await page.locator('#app').evaluate(e=>e.classList.contains('workspace-full')));
  await page.keyboard.press('Escape');assert.equal(await page.locator('#app').evaluate(e=>e.classList.contains('workspace-full')),false);
  await page.locator('#pnClose').click();await page.locator('[data-reuse]').click();assert.equal(await page.locator('#cw-refs .fchip').count(),1);
@@ -83,9 +94,10 @@ const server=http.createServer((req,res)=>{
  await page.locator('#cw-files').setInputFiles({name:'reference.txt',mimeType:'text/plain',buffer:Buffer.from('Reference')});
  await page.waitForFunction(()=>!document.querySelector('#cw-submit').disabled);
  await page.locator('[data-mode="image"]').click();assert.equal(await page.locator('#cw-refs .fchip').count(),0);
+ await page.locator('.side [data-v="chat"]').click();await aligned();
  for(const width of [1024,768,390,320]){
   await page.setViewportSize({width,height:900});await page.waitForTimeout(100);
-  const sizes=await page.evaluate(()=>({w:innerWidth,scroll:document.documentElement.scrollWidth}));assert.ok(sizes.scroll<=sizes.w,JSON.stringify(sizes));
+  const sizes=await page.evaluate(()=>({w:innerWidth,scroll:document.documentElement.scrollWidth}));assert.ok(sizes.scroll<=sizes.w,JSON.stringify(sizes));await aligned();
   assert.equal(await divider.isVisible(),false,'Resize handle stays off mobile drawer');
   if(width===390){
    await page.locator('#menu').click();await page.locator('.side').hover();await page.mouse.wheel(0,600);await page.waitForTimeout(150);
