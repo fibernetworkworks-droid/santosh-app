@@ -176,6 +176,8 @@ jobs:
                 # -i python read EOF and exited 0 silently - the job passed while testing nothing).
                 echo 'set -e'
                 echo 'echo "== browser binary"; docker exec hoola-pc which google-chrome google-chrome-stable chromium 2>/dev/null || true'
+                echo 'echo "== chrome version (does the binary even run?)"; docker exec hoola-pc google-chrome --version 2>&1 | head -3'
+                echo 'echo "== chrome boot probe (stderr VISIBLE, throwaway profile)"; docker exec hoola-pc sh -c "timeout 12 google-chrome --headless=new --no-sandbox --user-data-dir=/tmp/probe --remote-debugging-port=0 about:blank 2>&1 | head -10; echo probe_done"'
                 echo 'docker exec -i hoola-pc python - <<"PY"'
                 echo 'from agent import Actions'
                 echo 'a = Actions()'
