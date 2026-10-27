@@ -1,0 +1,54 @@
+name: Deploy Hoola web console only
+
+# One explicitly named release branch creates this deployment; no APK/desktop build is involved.
+# The release commit uses [skip ci] for existing push-based APK CI. create is a separate event.
+on:
+  create:
+  workflow_dispatch:
+
+concurrency:
+  group: vps-ops
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  console:
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'deploy/hoola-web-20261027')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify web modules
+        run: |
+          node --check server/app/static/console/v2.js
+          node --check server/app/static/console/workspace.js
+          node --check server/app/static/console/panel.js
+          node --test server/tests/web/results.test.cjs
+      - name: Package only console assets
+        run: |
+          tar -czf /tmp/hoola-console.tar.gz -C server/app/static/console v2.html v2.css v2.js panel.js results.js workspace.js workspace.css
+      - name: Install and verify console assets
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test -n "$VPS_HOST" && test -n "$VPS_USER" && test -n "$VPS_SSH_KEY"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          trap 'rm -f ~/.ssh/hoola-web' EXIT
+          printf '%s\n' "$VPS_SSH_KEY" | tr -d '\r' > ~/.ssh/hoola-web
+          chmod 600 ~/.ssh/hoola-web
+          ssh-keygen -y -f ~/.ssh/hoola-web >/dev/null
+          ssh-keyscan -T 15 -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          test -s ~/.ssh/known_hosts
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          scp -i ~/.ssh/hoola-web -o BatchMode=yes -o ConnectTimeout=20 /tmp/hoola-console.tar.gz "$VPS_USER@$VPS_HOST:/tmp/hoola-console-$RELEASE_SHA.tar.gz"
+          scp -i ~/.ssh/hoola-web -o BatchMode=yes -o ConnectTimeout=20 server/deploy/deploy_console_static.py "$VPS_USER@$VPS_HOST:/tmp/hoola-console-$RELEASE_SHA.py"
+          ssh -i ~/.ssh/hoola-web -o BatchMode=yes -o ConnectTimeout=20 "$VPS_USER@$VPS_HOST" "python3 /tmp/hoola-console-$RELEASE_SHA.py /tmp/hoola-console-$RELEASE_SHA.tar.gz $RELEASE_SHA"
