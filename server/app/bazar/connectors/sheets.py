@@ -1,5 +1,6 @@
 """Confirm cards for Google Sheets changes that are hard to undo or reach other people: deleting rows, editing many
-rows at once, sharing a sheet. The card and the action come from the stored change, never from model text."""
+rows at once, sharing a sheet, clearing ranges, deleting a tab, locking a range. The card and the action come from the
+stored change, never from model text."""
 from __future__ import annotations
 
 from typing import Any
@@ -7,7 +8,9 @@ from typing import Any
 from ..packs.registry import Pack
 from .base import Ctx, NeedsApproval, ToolError, ToolSpec
 
-TITLES = {"update": "Itni rows badlein?", "delete": "Rows hatayein?", "share": "Sheet share karein?"}
+# v0.210.0 grew from 3 to 6 confirm-card actions (added: clear / delete_tab / protect)
+TITLES = {"update": "Itni rows badlein?", "delete": "Rows hatayein?", "share": "Sheet share karein?",
+          "clear": "Values saaf karein?", "delete_tab": "Tab hatayein?", "protect": "Lock kar dein?"}
 
 
 class SheetsExecutor:

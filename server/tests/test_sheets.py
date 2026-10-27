@@ -32,6 +32,18 @@ class FakeSheets:
         self.calls = []
         self.perms = []
         self.n = 0
+        # v0.210 tracking
+        self.clears = []            # list of [sid, ranges]
+        self.copy_tabs = []         # list of (sid, sheet_id, dest_sid, new_title)
+        self.batch_log = []         # every batchUpdate request (full body)
+        self.protects = []          # [(sid, tab_id, range, editors)]
+        self.named_ranges = {}     # sid -> [{"name":..., "range":..., "namedRangeId":...}]
+        self.cf_rules = {}         # sid -> list of rules added
+        self.validations = {}      # sid -> list of validation rules
+        self.merges = []           # [(sid, tab_id, range, merge_type)]
+        self.unmerges = []
+        self.notes_set = []        # [(sid, tab_id, row, col, note)]
+        self.find_replace_calls = []  # [(sid, find, replace, allSheets, sheetId)]
 
     def book(self, sid, title, tabs):
         self.books[sid] = {"title": title, "tabs": {name: {"id": i, "grid": [list(r) for r in grid]}
@@ -105,21 +117,117 @@ class FakeSheets:
         if sid not in self.books:
             return httpx.Response(404, json={"error": {"message": "not found"}})
         bk = self.books[sid]
+        # ---- GET meta OR sheets-with-data (for cell_notes read_only) ----
         if not rest and not action and req.method == "GET":
+            fields = url.params.get("fields", "")
+            sheets_out = []
+            for name, t in bk["tabs"].items():
+                props = {"sheetId": t["id"], "title": name, "index": t["id"],
+                         "gridProperties": {"rowCount": 1000, "columnCount": 26}}
+                sh: dict = {"properties": props}
+                if "data(" in fields:
+                    # build rowData from the grid so cell_notes can read notes; we return no notes (empty)
+                    row_data = []
+                    for ri, row in enumerate(t["grid"]):
+                        vals = []
+                        for v in row:
+                            vals.append({"userEnteredValue": str(v) if v != "" else None})
+                        row_data.append({"values": vals})
+                    sh["data"] = [{"rowData": row_data}] if row_data else []
+                sheets_out.append(sh)
             return httpx.Response(200, json={"spreadsheetId": sid, "properties": {"title": bk["title"]},
                                              "spreadsheetUrl": f"https://docs.google.com/spreadsheets/d/{sid}/edit",
-                                             "sheets": [{"properties": {"sheetId": t["id"], "title": n, "index": t["id"],
-                                                                        "gridProperties": {"rowCount": 1000, "columnCount": 26}}}
-                                                        for n, t in bk["tabs"].items()]})
+                                             "sheets": sheets_out,
+                                             "namedRanges": self.named_ranges.get(sid, [])})
+        # ---- copyTo: POST /sheets/{sheet_id}:copyTo ----
+        if rest.startswith("sheets/") and rest.endswith(":copyTo") and req.method == "POST":
+            sheet_id = int(rest.split("/")[1].split(":")[0])
+            dest_sid = body["destination_spreadsheet_id"]
+            new_title = body.get("newTitle") or "Copy"
+            self.copy_tabs.append((sid, sheet_id, dest_sid, new_title))
+            return httpx.Response(200, json={"sheetId": 9999, "title": new_title,
+                                             "spreadsheetId": dest_sid})
+        # ---- values:batchClear ----
+        if rest == "values:batchClear":
+            self.clears.append((sid, list(body.get("ranges", []))))
+            return httpx.Response(200, json={})
         if action == "batchUpdate":
+            self.batch_log.append((sid, body["requests"]))
+            replies = []
             for r in body["requests"]:
+                rep: dict = {}
                 if "deleteDimension" in r:
                     rg = r["deleteDimension"]["range"]
                     tab = next(t for t in bk["tabs"].values() if t["id"] == rg["sheetId"])
                     del tab["grid"][rg["startIndex"]:rg["endIndex"]]
                 if "addSheet" in r:
-                    bk["tabs"][r["addSheet"]["properties"]["title"]] = {"id": len(bk["tabs"]), "grid": []}
-            return httpx.Response(200, json={})
+                    name = r["addSheet"]["properties"]["title"]
+                    bk["tabs"][name] = {"id": len(bk["tabs"]), "grid": []}
+                    rep["addSheet"] = {"properties": {"sheetId": bk["tabs"][name]["id"], "title": name}}
+                if "duplicateSheet" in r:
+                    src_id = r["duplicateSheet"]["sourceSheetId"]
+                    new_name = r["duplicateSheet"]["newSheetName"]
+                    src_tab = next((n, t) for n, t in bk["tabs"].items() if t["id"] == src_id)
+                    new_id = max(t["id"] for t in bk["tabs"].values()) + 1
+                    bk["tabs"][new_name] = {"id": new_id, "grid": [list(r) for r in src_tab[1]["grid"]]}
+                    rep["duplicateSheet"] = {"newSheetId": new_id, "title": new_name}
+                if "deleteSheet" in r:
+                    tid = r["deleteSheet"]["sheetId"]
+                    name = next(n for n, t in bk["tabs"].items() if t["id"] == tid)
+                    del bk["tabs"][name]
+                    rep["deleteSheet"] = {"sheetId": tid}
+                if "repeatCell" in r:
+                    pass  # format applied; FakeSheets doesn't model cell formatting
+                if "updateSheetProperties" in r:
+                    pass  # freeze; FakeSheets ignores
+                if "addProtectedRange" in r:
+                    pr = r["addProtectedRange"]["protectedRange"]
+                    self.protects.append((sid, pr["range"]["sheetId"], pr["range"],
+                                          pr.get("editors", {}).get("users", [])))
+                if "addNamedRange" in r:
+                    nr = r["addNamedRange"]["namedRange"]
+                    rng = self.named_ranges.setdefault(sid, [])
+                    nr_id = str(len(rng) + 1)   # real API uses numeric strings as IDs
+                    stored = {"namedRangeId": nr_id, "name": nr["name"], "range": nr["range"]}
+                    rng.append(stored)
+                    rep["addNamedRange"] = {"namedRange": stored}
+                if "updateNamedRange" in r:
+                    nr = r["updateNamedRange"]["namedRange"]
+                    for stored in self.named_ranges.get(sid, []):
+                        if stored["namedRangeId"] == nr.get("namedRangeId"):
+                            stored.update({k: v for k, v in nr.items() if k != "namedRangeId"})
+                if "deleteNamedRange" in r:
+                    nrid = r["deleteNamedRange"]["namedRangeId"]
+                    self.named_ranges[sid] = [n for n in self.named_ranges.get(sid, []) if n["namedRangeId"] != nrid]
+                if "addConditionalFormatRule" in r:
+                    self.cf_rules.setdefault(sid, []).append(r["addConditionalFormatRule"])
+                if "updateConditionalFormatRule" in r:
+                    pass
+                if "deleteConditionalFormatRule" in r:
+                    pass
+                if "setDataValidation" in r:
+                    self.validations.setdefault(sid, []).append(r["setDataValidation"])
+                if "mergeCells" in r:
+                    self.merges.append((sid, r["mergeCells"]["range"]["sheetId"],
+                                         r["mergeCells"]["range"], r["mergeCells"]["mergeType"]))
+                if "unmergeCells" in r:
+                    self.unmerges.append((sid, r["unmergeCells"]["range"]["sheetId"], r["unmergeCells"]["range"]))
+                if "updateCells" in r:
+                    start = r["updateCells"]["start"]
+                    for row in r["updateCells"].get("rows", []):
+                        for ci, cell in enumerate(row.get("values", [])):
+                            if "note" in cell and cell["note"]:
+                                self.notes_set.append((sid, start["sheetId"],
+                                                       start["rowIndex"] + 1, start["columnIndex"] + ci + 1,
+                                                       cell["note"]))
+                if "findReplace" in r:
+                    fr = r["findReplace"]
+                    self.find_replace_calls.append((sid, fr.get("find"), fr.get("replacement"),
+                                                    fr.get("allSheets"), fr.get("sheetId")))
+                    rep["findReplace"] = {"valuesChanged": 3, "formulasChanged": 0,
+                                          "rowsChanged": 2, "sheetsChanged": 1}
+                replies.append(rep)
+            return httpx.Response(200, json={"replies": replies})
         if rest == "values:batchUpdate":
             n = sum(self._write(sid, d["range"], d["values"]) for d in body["data"])
             return httpx.Response(200, json={"totalUpdatedCells": n})
@@ -294,3 +402,198 @@ def test_create_import_and_export(gs, env):
 def test_not_connected(env):
     with pytest.raises(ToolError, match="Profile > Google Sheets"):
         run("sheet_query", {"spreadsheet": "x"}, Ctx("someone", "c"))
+
+
+# ---- v0.210.0 Google Sheets 100% coverage: 12 new tools (clear, copy_tab, duplicate_tab,
+# delete_tab, format, protect, named_range, conditional_format, data_validation, merge,
+# notes, find_replace) ----
+
+def test_clear_card_flow(bz, gs):  # noqa: F811
+    """sheet_clear creates a confirm card; approve clears the ranges."""
+    ctx = Ctx("default", bz["conv"])
+    # pre-populate some data
+    gs.books[SID]["tabs"]["Customers"]["grid"][1][1] = "Pune"
+    out = run("sheet_clear", {"spreadsheet": "Sales Oct 2026", "ranges": ["A2:C3"]}, ctx)
+    assert out["needs_approval"]
+    assert gs.clears == []     # nothing cleared yet
+    card = _events(bz["conv"], "bazar_approval")[-1]
+    assert card["title"] == "Values saaf karein?"
+    bz["svc"].decide("default", card["id"], "approve")
+    assert gs.clears == [(SID, ["'Customers'!A2:C3"])]    # q_tab() quotes the tab name
+
+
+def test_copy_tab_to_another(gs, env):
+    """sheet_copy_tab copies a tab to another spreadsheet; returns new tab id."""
+    ctx = conv_ctx()
+    out = run("sheet_copy_tab", {"spreadsheet": "Sales Oct 2026", "tab": "Customers",
+                                  "dest_spreadsheet": "Sales Sep 2026", "new_title": "Cust Copy"}, ctx)
+    assert out["src_tab"] == "Customers" and out["new_tab"] == "Cust Copy"
+    assert out["dest_spreadsheet_id"] == "2ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+    assert out["new_sheet_id"] == 9999     # FakeSheets returns a fixed new sheetId for copyTo
+    assert gs.copy_tabs and gs.copy_tabs[0][0] == SID and gs.copy_tabs[0][2] == "2ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+
+
+def test_duplicate_tab_in_same_sheet(gs):
+    """sheet_duplicate_tab creates a new tab inside the same spreadsheet."""
+    ctx = conv_ctx()
+    out = run("sheet_duplicate_tab", {"spreadsheet": "Sales Oct 2026", "tab": "Customers",
+                                       "new_title": "Customers Backup"}, ctx)
+    assert out["src_tab"] == "Customers" and out["new_tab"] == "Customers Backup"
+    # the FakeSheets batchUpdate handler for duplicateSheet copies the grid into a new tab name
+    assert "Customers Backup" in gs.books[SID]["tabs"]
+    # the new tab should have the same grid as the source
+    assert gs.books[SID]["tabs"]["Customers Backup"]["grid"][0] == ["Name", "City", "Due", "Status", "Salesman"]
+
+
+def test_delete_tab_card_flow(bz, gs):  # noqa: F811
+    """sheet_delete_tab shows a confirm card; approve deletes the tab."""
+    ctx = Ctx("default", bz["conv"])
+    out = run("sheet_delete_tab", {"spreadsheet": "Sales Oct 2026", "tab": "Notes"}, ctx)
+    assert out["needs_approval"]
+    assert "Notes" in gs.books[SID]["tabs"]    # nothing deleted yet
+    card = _events(bz["conv"], "bazar_approval")[-1]
+    assert card["title"] == "Tab hatayein?"
+    bz["svc"].decide("default", card["id"], "approve")
+    assert "Notes" not in gs.books[SID]["tabs"]
+
+
+def test_delete_tab_refuses_on_last_tab(bz, gs):  # noqa: F811
+    """The last tab can't be deleted."""
+    ctx = Ctx("default", bz["conv"])
+    # delete every tab except Notes
+    for n in list(gs.books[SID]["tabs"]):
+        if n != "Notes":
+            del gs.books[SID]["tabs"][n]
+    with pytest.raises(ToolError, match="akhaari tab"):
+        run("sheet_delete_tab", {"spreadsheet": "Sales Oct 2026", "tab": "Notes"}, ctx)
+
+
+def test_format_cells_bold_and_freeze(gs):
+    """sheet_format applies bold + bg_color + freeze rows via batchUpdate."""
+    ctx = conv_ctx()
+    out = run("sheet_format", {"spreadsheet": "Sales Oct 2026", "range": "A1:F1",
+                                 "format": {"bold": True, "bg_color": "lightblue", "freeze_rows": 2}}, ctx)
+    assert out["range"] == "A1:F1"
+    assert "bold" in out["applied"] and "bg_color" in out["applied"] and "freeze_rows" in out["applied"]
+    # batchUpdate should have been called with repeatCell + updateSheetProperties
+    sid, reqs = gs.batch_log[-1]
+    kinds = [next(iter(r)) for r in reqs]
+    assert "repeatCell" in kinds and "updateSheetProperties" in kinds
+
+
+def test_protect_card_with_editors(bz, gs):  # noqa: F811
+    """sheet_protect shows a card; approve locks the range with the listed editors."""
+    ctx = Ctx("default", bz["conv"])
+    out = run("sheet_protect", {"spreadsheet": "Sales Oct 2026", "range": "A1:C10",
+                                  "editors": ["swati@fnw.in", "sandesh@fnw.in"], "description": "locked totals"}, ctx)
+    assert out["needs_approval"]
+    assert gs.protects == []     # not locked yet
+    card = _events(bz["conv"], "bazar_approval")[-1]
+    assert card["title"] == "Lock kar dein?"
+    bz["svc"].decide("default", card["id"], "approve")
+    assert len(gs.protects) == 1
+    sid, tab_id, rng, editors = gs.protects[0]
+    assert sid == SID and set(editors) == {"swati@fnw.in", "sandesh@fnw.in"}
+    assert rng["sheetId"] == tab_id and rng["startRowIndex"] == 0 and rng["endRowIndex"] == 10
+
+
+def test_named_range_lifecycle(gs):
+    """sheet_named_range add / list / delete."""
+    ctx = conv_ctx()
+    # add
+    add = run("sheet_named_range", {"spreadsheet": "Sales Oct 2026", "action": "add",
+                                      "name": "Revenue", "range": "B1:B100", "tab": "Customers"}, ctx)
+    assert add["action"] == "added" and add["name"] == "Revenue"
+    assert add["range"] == "Customers!B1:B100"
+    # list
+    lst = run("sheet_named_range", {"spreadsheet": "Sales Oct 2026", "action": "list"}, ctx)
+    assert any(nr["name"] == "Revenue" for nr in lst["named_ranges"])
+    # delete
+    nr_id = lst["named_ranges"][0]["namedRangeId"]
+    dl = run("sheet_named_range", {"spreadsheet": "Sales Oct 2026", "action": "delete",
+                                     "named_id": int(nr_id.replace("nr", ""))}, ctx)
+    assert dl["action"] == "deleted"
+    lst2 = run("sheet_named_range", {"spreadsheet": "Sales Oct 2026", "action": "list"}, ctx)
+    assert not any(nr["name"] == "Revenue" for nr in lst2["named_ranges"])
+
+
+def test_conditional_format_color_scale(gs):
+    """sheet_conditional_format with a color_scale rule."""
+    ctx = conv_ctx()
+    out = run("sheet_conditional_format", {"spreadsheet": "Sales Oct 2026", "range": "C2:C10",
+                                              "rule": {"type": "color_scale",
+                                                        "min": {"color": "red", "type": "min"},
+                                                        "max": {"color": "green", "type": "max"}}}, ctx)
+    assert out["rule_type"] == "color_scale" and out["action"] == "added"
+    sid, reqs = gs.batch_log[-1]
+    rule = reqs[0]["addConditionalFormatRule"]["rule"]
+    assert "gradientRule" in rule
+    assert rule["gradientRule"]["minpoint"]["color"] == {"red": 1.0, "green": 0.0, "blue": 0.0}
+    assert rule["gradientRule"]["maxpoint"]["color"] == {"red": 0.0, "green": 1.0, "blue": 0.0}
+
+
+def test_conditional_format_expression(gs):
+    """sheet_conditional_format with an expression rule."""
+    ctx = conv_ctx()
+    out = run("sheet_conditional_format", {"spreadsheet": "Sales Oct 2026", "range": "C2:C10",
+                                              "rule": {"type": "expression", "formula": "=C2>1000",
+                                                        "format": {"bg_color": "lightyellow"}}}, ctx)
+    assert out["rule_type"] == "expression"
+    sid, reqs = gs.batch_log[-1]
+    rule = reqs[0]["addConditionalFormatRule"]["rule"]
+    assert rule["booleanRule"]["condition"]["type"] == "CUSTOM_FORMULA"
+    assert rule["booleanRule"]["condition"]["values"][0]["userEnteredValue"] == "C2>1000"
+
+
+def test_data_validation_list(gs):
+    """sheet_data_validation with a list validation (dropdown)."""
+    ctx = conv_ctx()
+    out = run("sheet_data_validation", {"spreadsheet": "Sales Oct 2026", "range": "D2:D100",
+                                          "rule": {"type": "list", "values": ["Paid", "Pending", "Cancelled"],
+                                                    "show_dropdown": True, "strict": False}}, ctx)
+    assert out["validation_type"] == "list" and out["action"] == "set"
+    sid, reqs = gs.batch_log[-1]
+    dv = reqs[0]["setDataValidation"]["rule"]
+    assert dv["condition"]["type"] == "ONE_OF_LIST"
+    assert dv["condition"]["values"][0]["userEnteredValue"] == "Paid,Pending,Cancelled"
+    assert dv["showCustomUi"] is True and dv["strict"] is False
+
+
+def test_merge_and_unmerge(gs):
+    """sheet_merge + sheet_merge action=unmerge."""
+    ctx = conv_ctx()
+    out = run("sheet_merge", {"spreadsheet": "Sales Oct 2026", "range": "A1:C1",
+                                "merge_type": "MERGE_ALL"}, ctx)
+    assert out["action"] == "merged" and out["merge_type"] == "MERGE_ALL"
+    assert len(gs.merges) == 1 and gs.merges[0][3] == "MERGE_ALL"
+    out2 = run("sheet_merge", {"spreadsheet": "Sales Oct 2026", "range": "A1:C1", "action": "unmerge"}, ctx)
+    assert out2["action"] == "unmerged"
+    assert len(gs.unmerges) == 1
+
+
+def test_notes_set_and_pii_guard(gs):
+    """sheet_notes sets cell notes; refuses PII text."""
+    ctx = conv_ctx()
+    out = run("sheet_notes", {"spreadsheet": "Sales Oct 2026", "tab": "Customers",
+                                "notes": [{"row": 2, "col": 5, "note": "follow up next week"}]}, ctx)
+    assert out["notes_set"] == 1
+    assert len(gs.notes_set) == 1
+    sid, tab_id, row, col, note = gs.notes_set[0]
+    assert row == 2 and col == 5 and "follow up" in note
+    # PII guard refuses Aadhaar in note text
+    with pytest.raises(ToolError, match="personal"):
+        run("sheet_notes", {"spreadsheet": "Sales Oct 2026", "tab": "Customers",
+                             "notes": [{"row": 2, "col": 5, "note": "Aadhaar 2342 3456 7890"}]}, ctx)
+
+
+def test_find_replace_counts_and_pii_guard(gs):
+    """sheet_find_replace returns counts; refuses PII in replacement text."""
+    ctx = conv_ctx()
+    out = run("sheet_find_replace", {"spreadsheet": "Sales Oct 2026", "tab": "Customers",
+                                       "find": "Pune", "replace": "Mumbai"}, ctx)
+    assert out["values_changed"] == 3 and out["sheets_changed"] == 1
+    assert len(gs.find_replace_calls) == 1
+    # PII guard refuses Aadhaar in replacement text
+    with pytest.raises(ToolError, match="personal"):
+        run("sheet_find_replace", {"spreadsheet": "Sales Oct 2026", "tab": "Customers",
+                                     "find": "x", "replace": "Aadhaar 2342 3456 7890"}, ctx)

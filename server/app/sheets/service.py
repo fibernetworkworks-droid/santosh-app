@@ -16,7 +16,7 @@ from sqlalchemy import select
 from ..db import SheetsPending, SheetsRecent, now, session
 from ..events import bus
 from .accounts import clients, get_client
-from .client import SheetError, SheetsClient, a1_col, col_index, id_from, q_tab
+from .client import SHEETS, SheetError, SheetsClient, a1_col, col_index, id_from, q_tab
 
 BIG_UPDATE = 20          # editing more rows than this needs a tap
 MAX_ROWS = 5000
@@ -466,6 +466,541 @@ def add_tab(tenant: str, spreadsheet: str, name: str, header: list[str] | None =
     return {"title": meta["title"], "tab": name.strip()[:90], "link": meta["link"]}
 
 
+# ---------- helpers (color + A1 grid range) ----------
+
+HEX_RE = re.compile(r"^#?([0-9a-fA-F]{6})$")
+NAMED_COLORS: dict[str, tuple[float, float, float]] = {
+    "red": (1, 0, 0), "green": (0, 1, 0), "blue": (0, 0, 1),
+    "yellow": (1, 1, 0), "black": (0, 0, 0), "white": (1, 1, 1),
+    "orange": (1, 0.65, 0), "purple": (0.5, 0, 0.5), "pink": (1, 0.75, 0.75),
+    "cyan": (0, 1, 1), "magenta": (1, 0, 1), "grey": (0.5, 0.5, 0.5), "gray": (0.5, 0.5, 0.5),
+    "lightblue": (0.68, 0.85, 0.9), "lightgreen": (0.56, 0.93, 0.56), "lightyellow": (1, 1, 0.71),
+    "lightgrey": (0.83, 0.83, 0.83), "lightgray": (0.83, 0.83, 0.83),
+}
+
+
+def _rgb(color: Any) -> dict[str, float] | None:
+    """Resolve a color spec (#hex, named, or {r,g,b}) into Sheets API RGB channels (0..1 floats, long keys)."""
+    if color is None:
+        return None
+    if isinstance(color, dict) and ({"r", "g", "b"} & set(color) or {"red", "green", "blue"} & set(color)):
+        # accept both short {r,g,b} and long {red,green,blue} input; output is long-form
+        return {"red": float(color.get("red", color.get("r", 0))),
+                "green": float(color.get("green", color.get("g", 0))),
+                "blue": float(color.get("blue", color.get("b", 0)))}
+    s = str(color).strip().lower()
+    if s in NAMED_COLORS:
+        r, g, b = NAMED_COLORS[s]
+        return {"red": r, "green": g, "blue": b}
+    m = HEX_RE.match(s)
+    if m:
+        h = m.group(1)
+        return {"red": int(h[0:2], 16) / 255, "green": int(h[2:4], 16) / 255, "blue": int(h[4:6], 16) / 255}
+    raise SheetError(f"Color nahi samajh aaya: {color}")
+
+
+def _text_format(spec: dict) -> dict:
+    tf: dict[str, Any] = {}
+    for k in ("bold", "italic", "underline", "strikethrough"):
+        if k in spec:
+            tf[k] = bool(spec[k])
+    if "font_size" in spec:
+        tf["fontSize"] = int(spec["font_size"])
+    if "font_family" in spec:
+        tf["fontFamily"] = str(spec["font_family"])[:64]
+    if "font_color" in spec:
+        fc = _rgb(spec["font_color"])
+        if fc is not None:
+            tf["foregroundColor"] = fc
+    return tf
+
+
+def _user_format(spec: dict) -> dict:
+    fmt: dict[str, Any] = {}
+    tf = _text_format(spec)
+    if tf:
+        fmt["textFormat"] = tf
+    if "bg_color" in spec:
+        bc = _rgb(spec["bg_color"])
+        if bc is not None:
+            fmt["backgroundColor"] = bc
+    if "number_format" in spec:
+        nf = str(spec["number_format"]).strip()
+        # Named types accepted by Sheets API: TEXT, NUMBER, PERCENT, CURRENCY, DATE, TIME, DATE_TIME, SCIENTIFIC
+        named = {"text", "number", "percent", "currency", "date", "time", "datetime", "scientific"}
+        if nf.lower() in named:
+            t = "DATE_TIME" if nf.lower() == "datetime" else nf.upper()
+            fmt["numberFormat"] = {"type": t}
+        else:
+            fmt["numberFormat"] = {"type": "NUMBER", "pattern": nf}  # pattern like "#,##0.00" or "yyyy-mm-dd"
+    if "horizontal_alignment" in spec:
+        fmt["horizontalAlignment"] = str(spec["horizontal_alignment"]).upper()
+    if "vertical_alignment" in spec:
+        fmt["verticalAlignment"] = str(spec["vertical_alignment"]).upper()
+    if "wrap_strategy" in spec:
+        fmt["wrapStrategy"] = str(spec["wrap_strategy"]).upper()
+    return fmt
+
+
+def _a1_to_grid_range(rng_str: str, sheet_id: int) -> dict:
+    """A1 (e.g. 'A1:C10' or 'B2' or 'A:A') -> Sheets GridRange dict (0-indexed)."""
+    rng_str = rng_str.strip()
+    m = re.fullmatch(r"([A-Z]*)(\d*)(?::([A-Z]*)(\d*))?", rng_str)
+    if not m:
+        raise SheetError(f"A1 range samajh nahi aaya: {rng_str}")
+    sc, sr, ec, er = m.group(1), m.group(2), m.group(3), m.group(4)
+    start_col = col_index(sc) - 1 if sc else 0
+    start_row = int(sr) - 1 if sr else 0
+    end_col = col_index(ec) if ec else 16383
+    end_row = int(er) if er else 1048575
+    if end_col <= start_col:
+        end_col = start_col + 1
+    if end_row <= start_row:
+        end_row = start_row + 1
+    return {"sheetId": sheet_id, "startRowIndex": start_row, "endRowIndex": end_row,
+            "startColumnIndex": start_col, "endColumnIndex": end_col}
+
+
+def _split_tab_range(meta: dict, rng: str, tab: str | None) -> tuple[dict, str]:
+    """Return (tab_dict, a1_only) for a range string that may or may not have a tab prefix."""
+    if "!" in rng:
+        tab_name, a1 = rng.split("!", 1)
+        tab_name = tab_name.strip("'").replace("''", "'")
+    else:
+        t = tab_of(meta, tab)
+        tab_name, a1 = t["title"], rng
+    return tab_of(meta, tab_name), a1
+
+
+# ---------- clear ----------
+
+def plan_clear(tenant: str, spreadsheet: str, ranges: list[str], tab: str | None = None) -> dict[str, Any]:
+    """Clear one or more A1 ranges of their VALUES (formatting stays). Always behind a confirm card."""
+    if not ranges:
+        raise SheetError("Kya saaf karna hai? ranges do (jaise ['A1:C10', 'Summary!B1:F5']).")
+    if len(ranges) > 50:
+        raise SheetError("Ek baar mein 50 ranges tak.")
+    c, meta = resolve(tenant, spreadsheet)
+    norm = []
+    for r in ranges:
+        t, a1 = _split_tab_range(meta, str(r), tab)
+        norm.append(f"{q_tab(t['title'])}!{a1}")
+    return {"client": c, "meta": meta, "ranges": norm,
+            "summary": {"title": meta["title"], "lines": [f"{len(norm)} range ki values clear hongi"] + norm[:6],
+                        "more": max(0, len(norm) - 6),
+                        "note": "Format bold/rang nahi utrte; sirf values. Undo: Google Sheets version history."}}
+
+
+def do_clear(c: SheetsClient, sid: str, ranges: list[str]) -> int:
+    c.clear(sid, ranges)
+    return len(ranges)
+
+
+# ---------- copy / duplicate / delete tabs ----------
+
+def copy_tab(tenant: str, spreadsheet: str, tab: str, dest_spreadsheet: str, new_title: str | None = None) -> dict[str, Any]:
+    """Copy a tab to another spreadsheet (or the same one). Not destructive — runs at once."""
+    if not dest_spreadsheet:
+        raise SheetError("Kis sheet mein copy karna hai? dest_spreadsheet do (naam/link/id).")
+    c, meta = resolve(tenant, spreadsheet)
+    src_tab = tab_of(meta, tab)
+    dest_sid = id_from(str(dest_spreadsheet))
+    if not dest_sid:
+        try:
+            dc, dmeta = resolve(tenant, str(dest_spreadsheet))
+            dest_sid = dmeta["id"]
+        except SheetError:
+            raise SheetError(f"Destination sheet '{dest_spreadsheet}' nahi mili.")
+    out = c.copy_tab(meta["id"], src_tab["id"], dest_sid, new_title)
+    return {"src_tab": src_tab["title"], "new_tab": out.get("title") or new_title or src_tab["title"],
+            "dest_spreadsheet_id": dest_sid, "new_sheet_id": out.get("sheet_id"), "link": meta["link"]}
+
+
+def duplicate_tab(tenant: str, spreadsheet: str, tab: str, new_title: str | None = None,
+                  new_index: int | None = None) -> dict[str, Any]:
+    """Duplicate a tab inside the same spreadsheet. Not destructive — runs at once."""
+    c, meta = resolve(tenant, spreadsheet)
+    t = tab_of(meta, tab)
+    name = (new_title or f"{t['title']} copy")[:100]
+    # find a sheet id that doesn't collide
+    used = {x["id"] for x in meta["tabs"]}
+    new_id = max(used) + 1 if used else 1
+    c.batch(meta["id"], [{"duplicateSheet": {
+        "sourceSheetId": t["id"], "insertSheetIndex": int(new_index) if new_index is not None else len(meta["tabs"]),
+        "newSheetId": new_id, "newSheetName": name}}])
+    return {"title": meta["title"], "src_tab": t["title"], "new_tab": name, "link": meta["link"]}
+
+
+def plan_delete_tab(tenant: str, spreadsheet: str, tab: str) -> dict[str, Any]:
+    """Delete a whole tab. Destructive — confirm card first; refuses on the last tab."""
+    c, meta = resolve(tenant, spreadsheet)
+    t = tab_of(meta, tab)
+    if len(meta["tabs"]) == 1:
+        raise SheetError("Yeh akhaari tab hai; sheet khali nahi ho sakti. Pehle naya tab banaiye.")
+    return {"client": c, "meta": meta, "tab_id": t["id"], "tab": t["title"],
+            "summary": {"title": meta["title"], "lines": [f"Tab '{t['title']}' hata di jayegi"],
+                        "note": "Undo: Google Sheets version history se wapas la sakte hain."}}
+
+
+def do_delete_tab(c: SheetsClient, sid: str, tab_id: int) -> int:
+    c.batch(sid, [{"deleteSheet": {"sheetId": int(tab_id)}}])
+    return 1
+
+
+# ---------- format ----------
+
+def format_cells(tenant: str, spreadsheet: str, rng: str, format: dict, tab: str | None = None) -> dict[str, Any]:
+    """Apply a cell/text format to an A1 range. Bold / italic / color / number format / align / wrap / freeze."""
+    if not format or not isinstance(format, dict):
+        raise SheetError("Kya format lagana hai? format do (bold, italic, font_size, font_color, bg_color, "
+                         "number_format, horizontal_alignment, vertical_alignment, wrap_strategy, freeze_rows, freeze_cols).")
+    c, meta = resolve(tenant, spreadsheet)
+    t, a1 = _split_tab_range(meta, str(rng), tab)
+    user_fmt = _user_format(format)
+    if not user_fmt and "freeze_rows" not in format and "freeze_cols" not in format:
+        raise SheetError("format khaali hai. Kam se kam ek property do.")
+    requests: list[dict] = []
+    if user_fmt:
+        fmt_fields = list(user_fmt.keys())
+        fields_str = "userEnteredFormat(" + ",".join(fmt_fields) + ")"
+        requests.append({"repeatCell": {"range": _a1_to_grid_range(a1, t["id"]),
+                                        "cell": {"userEnteredFormat": user_fmt}, "fields": fields_str}})
+    fr_rows = int(format.get("freeze_rows", 0)) if "freeze_rows" in format else None
+    fr_cols = int(format.get("freeze_cols", 0)) if "freeze_cols" in format else None
+    if fr_rows is not None or fr_cols is not None:
+        gp: dict[str, int] = {}
+        if fr_rows is not None:
+            gp["frozenRowCount"] = max(0, fr_rows)
+        if fr_cols is not None:
+            gp["frozenColumnCount"] = max(0, fr_cols)
+        requests.append({"updateSheetProperties": {
+            "properties": {"sheetId": t["id"], "gridProperties": gp},
+            "fields": "gridProperties(frozenRowCount,frozenColumnCount)"}})
+    c.batch(meta["id"], requests)
+    return {"title": meta["title"], "tab": t["title"], "range": a1, "applied": list(format.keys())[:20],
+            "link": meta["link"]}
+
+
+# ---------- protect (confirm card) ----------
+
+def plan_protect(tenant: str, spreadsheet: str, rng: str, tab: str | None = None,
+                 description: str = "", editors: list[str] | None = None) -> dict[str, Any]:
+    """Lock a range so only listed editors can change it. Destructive (blocks editing) — confirm card first."""
+    c, meta = resolve(tenant, spreadsheet)
+    t, a1 = _split_tab_range(meta, str(rng), tab)
+    desc = (description or "")[:200]
+    ed = [str(e).strip()[:320] for e in (editors or []) if str(e).strip()]
+    return {"client": c, "meta": meta, "tab_id": t["id"], "tab": t["title"], "range": a1,
+            "description": desc, "editors": ed,
+            "summary": {"title": meta["title"], "tab": t["title"],
+                        "lines": [f"Lock kar dein: {a1}" + (f" - {desc[:60]}" if desc else "")]
+                                 + ([f"Editors: {', '.join(ed[:6])}"] if ed else []),
+                        "note": "Locked cell sirf editors edit kar sakte hain."}}
+
+
+def do_protect(c: SheetsClient, sid: str, tab_id: int, rng: str, description: str, editors: list[str]) -> int:
+    body: dict[str, Any] = {"protectedRange": {"range": _a1_to_grid_range(rng, int(tab_id)),
+                                               "description": description or ""}}
+    if editors:
+        body["protectedRange"]["editors"] = {"users": editors}
+    c.batch(sid, [{"addProtectedRange": body}])
+    return 1
+
+
+# ---------- named ranges ----------
+
+def named_range(tenant: str, spreadsheet: str, action: str, name: str | None = None,
+                rng: str | None = None, named_id: int | None = None, tab: str | None = None) -> dict[str, Any]:
+    """Add / update / delete / list named ranges."""
+    action = (action or "list").lower()
+    if action not in ("add", "update", "delete", "list"):
+        raise SheetError("action: add / update / delete / list")
+    c, meta = resolve(tenant, spreadsheet)
+    if action == "list":
+        res = c._req("GET", f"{SHEETS}/{meta['id']}", params={"fields": "namedRanges"})
+        return {"title": meta["title"], "named_ranges": res.get("namedRanges", [])}
+    if action == "add" and not name:
+        raise SheetError("Naam do (named range ka naam).")
+    if action == "add":
+        if not rng:
+            raise SheetError("Range do (jaise 'A1:C10' ya 'Summary!B2:F20').")
+        t, a1 = _split_tab_range(meta, str(rng), tab)
+        c.batch(meta["id"], [{"addNamedRange": {"namedRange": {"name": str(name)[:250],
+                                                               "range": _a1_to_grid_range(a1, t["id"])}}}])
+        return {"title": meta["title"], "name": name, "range": f"{t['title']}!{a1}", "action": "added"}
+    if action == "delete":
+        if named_id is None:
+            raise SheetError("named_id do (delete karne ke liye).")
+        c.batch(meta["id"], [{"deleteNamedRange": {"namedRangeId": str(int(named_id))}}])
+        return {"title": meta["title"], "named_id": int(named_id), "action": "deleted"}
+    if action == "update":
+        if named_id is None:
+            raise SheetError("named_id do (update karne ke liye).")
+        props: dict[str, Any] = {"namedRangeId": str(int(named_id))}
+        if name:
+            props["name"] = str(name)[:250]
+        if rng:
+            t, a1 = _split_tab_range(meta, str(rng), tab)
+            props["range"] = _a1_to_grid_range(a1, t["id"])
+        c.batch(meta["id"], [{"updateNamedRange": {"namedRange": props, "fields": "*"}}])
+        return {"title": meta["title"], "named_id": int(named_id), "action": "updated"}
+    raise SheetError("unreachable")
+
+
+# ---------- conditional formatting ----------
+
+def _cf_rule(spec: dict, sheet_id: int) -> dict:
+    """Build a conditional-format rule from a compact spec.
+
+    spec.type = color_scale | data_bar | cell_is | expression
+    color_scale: min/mid/max = {color, type ('min'|'number'|'percent'|'max'), value (number/percent)}
+    data_bar: min/max (same shape), color (a single named/hex color)
+    cell_is: operator (GREATER_THAN / LESS_THAN / BETWEEN / ...), values (list), format (cell format dict)
+    expression: formula (str starting with '='), format (cell format dict)
+    """
+    t = str(spec.get("type") or "").lower()
+    if t == "color_scale":
+        pts = []
+        for k in ("min", "mid", "max"):
+            if k in spec:
+                p = spec[k]
+                rgb = _rgb(p.get("color"))
+                pts.append({"color": rgb or {}, "type": str(p.get("type", "min")).lower(),
+                            "value": p.get("value") if p.get("value") is not None else 0})
+        if len(pts) < 2:
+            raise SheetError("color_scale needs min and max.")
+        rule: dict[str, Any] = {"gradientRule": {"minpoint": pts[0],
+                                                 "maxpoint": pts[-1]}}
+        if len(pts) >= 3:
+            rule["gradientRule"]["midpoint"] = pts[1]
+        return rule
+    if t == "data_bar":
+        rgb = _rgb(spec.get("color", "blue"))
+        rule = {"booleanRule": {"condition": {"type": "NUMBER_GREATER_THAN", "values": [{"userEnteredValue": "0"}]},
+                                "format": {"backgroundColor": rgb or {}}}}
+        return rule
+    if t == "cell_is":
+        op = str(spec.get("operator", "GREATER_THAN")).upper()
+        vals = [str(v) for v in (spec.get("values") or [])]
+        cond = {"type": op, "values": [{"userEnteredValue": v} for v in vals]}
+        fmt = _user_format(spec.get("format") or {"bg_color": "lightgreen"})
+        return {"booleanRule": {"condition": cond, "format": fmt}}
+    if t == "expression":
+        formula = str(spec.get("formula") or "")
+        if not formula:
+            raise SheetError("expression formula do (jaise '=B1>1000').")
+        fmt = _user_format(spec.get("format") or {"bg_color": "lightyellow"})
+        return {"booleanRule": {"condition": {"type": "CUSTOM_FORMULA",
+                                             "values": [{"userEnteredValue": formula.lstrip("=")}]},
+                                "format": fmt}}
+    raise SheetError(f"conditional_format type: color_scale / data_bar / cell_is / expression")
+
+
+def conditional_format(tenant: str, spreadsheet: str, rng: str, rule: dict,
+                       tab: str | None = None, action: str = "add", rule_index: int | None = None) -> dict[str, Any]:
+    """Add / update / delete a conditional formatting rule on a range."""
+    action = (action or "add").lower()
+    c, meta = resolve(tenant, spreadsheet)
+    t, a1 = _split_tab_range(meta, str(rng), tab)
+    grid = _a1_to_grid_range(a1, t["id"])
+    if action == "add":
+        if not rule:
+            raise SheetError("rule do (type: color_scale / data_bar / cell_is / expression).")
+        c.batch(meta["id"], [{"addConditionalFormatRule": {"rule": _cf_rule(rule, t["id"]), "range": grid,
+                                                            "index": 0}}])
+        return {"title": meta["title"], "tab": t["title"], "range": a1, "action": "added", "rule_type": rule.get("type")}
+    if action == "delete":
+        if rule_index is None:
+            raise SheetError("rule_index do (delete karne ke liye).")
+        c.batch(meta["id"], [{"deleteConditionalFormatRule": {"sheetId": t["id"], "index": int(rule_index)}}])
+        return {"title": meta["title"], "tab": t["title"], "action": "deleted", "rule_index": int(rule_index)}
+    if action == "update":
+        if rule_index is None or not rule:
+            raise SheetError("rule_index aur rule dono do (update ke liye).")
+        c.batch(meta["id"], [{"updateConditionalFormatRule": {
+            "rule": _cf_rule(rule, t["id"]), "rule_index": int(rule_index), "sheetId": t["id"]}}])
+        return {"title": meta["title"], "tab": t["title"], "action": "updated", "rule_index": int(rule_index)}
+    raise SheetError("action: add / update / delete")
+
+
+# ---------- data validation ----------
+
+def _dv_condition(spec: dict) -> dict:
+    """Build a Sheets DataValidationCondition from a compact spec.
+
+    spec.type = list | number | whole | date | text_length | boolean | custom_formula
+    spec.operator = BETWEEN / NOT_BETWEEN / GREATER_THAN / LESS_THAN / EQUAL / NOT_EQUAL / GREATER_THAN_OR_EQUAL_TO / ...
+    spec.values = list (for list type, a list of allowed values; for number/date/etc., [low, high])
+    spec.formula = single formula (only for custom_formula or list-from-range)
+    """
+    t = str(spec.get("type") or "list").lower()
+    if t == "list":
+        vals = spec.get("values") or []
+        if not vals:
+            raise SheetError("list ke liye values do (jaise ['Paid', 'Pending', 'Cancelled']).")
+        # Sheets API uses ONE_CONDITION_VALUE for lists, joined by comma
+        joined = ",".join(str(v) for v in vals[:200])
+        return {"type": "ONE_OF_LIST", "values": [{"userEnteredValue": joined}]}
+    if t == "custom_formula":
+        f = str(spec.get("formula") or "")
+        if not f:
+            raise SheetError("custom_formula ke liye formula do.")
+        return {"type": "CUSTOM_IS_VALID", "values": [{"userEnteredValue": f.lstrip("=")}]}
+    op_map = {
+        "between": "NUMBER_BETWEEN", "not_between": "NUMBER_NOT_BETWEEN",
+        "greater_than": "NUMBER_GREATER_THAN", "less_than": "NUMBER_LESS_THAN",
+        "equal": "NUMBER_EQ", "not_equal": "NUMBER_NOT_EQ",
+        "greater_than_or_equal_to": "NUMBER_GREATER_THAN_OR_EQUAL_TO",
+        "less_than_or_equal_to": "NUMBER_LESS_THAN_OR_EQUAL_TO",
+    }
+    base = "DATE_" if t == "date" else "TEXT_LENGTH_" if t == "text_length" else "NUMBER_"
+    op = str(spec.get("operator", "between")).lower()
+    ctype = op_map.get(op)
+    if not ctype:
+        raise SheetError(f"operator: between / not_between / greater_than / less_than / equal / not_equal")
+    if t == "date":
+        ctype = ctype.replace("NUMBER_", "DATE_")
+    elif t == "text_length":
+        ctype = ctype.replace("NUMBER_", "TEXT_LENGTH_")
+    elif t == "whole":
+        ctype = ctype.replace("NUMBER_", "NUMBER_")  # whole numbers are NUMBER_*
+    vals = [str(v) for v in (spec.get("values") or []) if v is not None and str(v).strip() != ""]
+    return {"type": ctype, "values": [{"userEnteredValue": v} for v in vals]}
+
+
+def data_validation(tenant: str, spreadsheet: str, rng: str, rule: dict,
+                     tab: str | None = None, action: str = "set") -> dict[str, Any]:
+    """Set or clear data validation on a range."""
+    action = (action or "set").lower()
+    c, meta = resolve(tenant, spreadsheet)
+    t, a1 = _split_tab_range(meta, str(rng), tab)
+    grid = _a1_to_grid_range(a1, t["id"])
+    if action == "clear":
+        c.batch(meta["id"], [{"setDataValidation": {"range": grid, "rule": None}}])
+        return {"title": meta["title"], "tab": t["title"], "range": a1, "action": "cleared"}
+    if action != "set":
+        raise SheetError("action: set / clear")
+    cond = _dv_condition(rule)
+    body = {"range": grid, "rule": {"condition": cond,
+                                    "showCustomUi": bool(rule.get("show_dropdown", True)),
+                                    "strict": bool(rule.get("strict", False))}}
+    if rule.get("input_message"):
+        body["rule"]["inputMessage"] = str(rule["input_message"])[:500]
+    if rule.get("error_message"):
+        body["rule"]["errorMessage"] = str(rule["error_message"])[:500]
+    c.batch(meta["id"], [{"setDataValidation": body}])
+    return {"title": meta["title"], "tab": t["title"], "range": a1, "action": "set",
+            "validation_type": rule.get("type")}
+
+
+# ---------- merge cells ----------
+
+def merge_cells(tenant: str, spreadsheet: str, rng: str, merge_type: str = "MERGE_ALL",
+                tab: str | None = None, action: str = "merge") -> dict[str, Any]:
+    """Merge or unmerge a range. merge_type: MERGE_ALL / MERGE_COLUMNS / MERGE_ROWS."""
+    action = (action or "merge").lower()
+    c, meta = resolve(tenant, spreadsheet)
+    t, a1 = _split_tab_range(meta, str(rng), tab)
+    grid = _a1_to_grid_range(a1, t["id"])
+    if action == "merge":
+        mt = str(merge_type or "MERGE_ALL").upper()
+        if mt not in ("MERGE_ALL", "MERGE_COLUMNS", "MERGE_ROWS"):
+            raise SheetError("merge_type: MERGE_ALL / MERGE_COLUMNS / MERGE_ROWS")
+        c.batch(meta["id"], [{"mergeCells": {"range": grid, "mergeType": mt}}])
+        return {"title": meta["title"], "tab": t["title"], "range": a1, "action": "merged", "merge_type": mt}
+    if action == "unmerge":
+        c.batch(meta["id"], [{"unmergeCells": {"range": grid}}])
+        return {"title": meta["title"], "tab": t["title"], "range": a1, "action": "unmerged"}
+    raise SheetError("action: merge / unmerge")
+
+
+# ---------- cell notes (PII-guarded) ----------
+
+def cell_notes(tenant: str, spreadsheet: str, notes: list[dict] | None = None,
+               tab: str | None = None, read_only: bool = False) -> dict[str, Any]:
+    """Read cell notes (read_only=True) or set cell notes from a list of {row, col, note} dicts.
+
+    Note text passes the same PII guard as drive_comments / uploads (no Aadhaar / OTP / password / CVV).
+    """
+    c, meta = resolve(tenant, spreadsheet)
+    t = tab_of(meta, tab)
+    if read_only or not notes:
+        # read existing notes via the values API with notes renderOption? Actually notes are in cells metaData.
+        res = c._req("GET", f"{SHEETS}/{meta['id']}", params={
+            "fields": "sheets(data(rowData(values(note,userEnteredValue))),properties"}
+        )
+        sheets = res.get("sheets", [])
+        out: list[dict[str, Any]] = []
+        for s in sheets:
+            sheet_id = s.get("properties", {}).get("sheetId")
+            if sheet_id != t["id"]:
+                continue
+            for ri, row in enumerate(s.get("data", [])):
+                for ci, cell in enumerate(row.get("rowData", [])):
+                    note = cell.get("values", [{}])[0].get("note")
+                    if note:
+                        out.append({"row": ri + 1, "col": ci + 1, "note": note})
+        return {"title": meta["title"], "tab": t["title"], "notes": out}
+    # set notes: build updateCells request
+    if len(notes) > 100:
+        raise SheetError("Ek baar mein 100 notes tak.")
+    from .. import pii
+    for n in notes:
+        text = str(n.get("note") or "")
+        if pii.find(text):
+            raise SheetError("Note mein personal / OTP / password jaankari nahi likhi ja sakti.")
+    # group by row, sort
+    by_row: dict[int, list[dict]] = {}
+    for n in notes:
+        r = int(n.get("row", 0))
+        if r < 1:
+            raise SheetError(f"row number 1 ya usse bada chahiye (mile: {r}).")
+        by_row.setdefault(r, []).append(n)
+    requests: list[dict] = []
+    for r, items in sorted(by_row.items()):
+        max_col = max(int(n.get("col", 0)) for n in items)
+        row_vals = [{}] * (max_col + 1)
+        for n in items:
+            col = int(n.get("col", 0))
+            if col < 1:
+                raise SheetError(f"col number 1 ya usse bada chahiye (mile: {col}).")
+            row_vals[col - 1] = {"note": str(n["note"])[:500]}
+        requests.append({"updateCells": {
+            "start": {"sheetId": t["id"], "rowIndex": r - 1, "columnIndex": 0},
+            "rows": [{"values": row_vals}],
+            "fields": "note"}})
+    c.batch(meta["id"], requests)
+    return {"title": meta["title"], "tab": t["title"], "notes_set": len(notes), "link": meta["link"]}
+
+
+# ---------- find / replace (PII-guarded) ----------
+
+def find_replace(tenant: str, spreadsheet: str, find: str, replace: str, tab: str | None = None,
+                 match_case: bool = False, match_entire_cell: bool = False,
+                 search_by_formulas: bool = False, include_formulas: bool = True) -> dict[str, Any]:
+    """Find and replace within a sheet (or one tab). Replacement text is PII-guarded."""
+    if not find:
+        raise SheetError("Kya dhoondhna hai? find do.")
+    from .. import pii
+    if pii.find(str(replace)):
+        raise SheetError("Replace mein personal / OTP / password jaankari nahi daal sakte.")
+    c, meta = resolve(tenant, spreadsheet)
+    body: dict[str, Any] = {"find": str(find), "replacement": str(replace),
+                            "matchCase": bool(match_case), "matchEntireCell": bool(match_entire_cell),
+                            "searchByFormulas": bool(search_by_formulas),
+                            "includeFormulas": bool(include_formulas)}
+    if tab:
+        body["sheetId"] = tab_of(meta, tab)["id"]
+    else:
+        body["allSheets"] = True
+    res = c.batch(meta["id"], [{"findReplace": body}])
+    rep = (res.get("replies", [{}])[0].get("findReplace", {}))
+    return {"title": meta["title"], "tab": tab or "(all)",
+            "values_changed": rep.get("valuesChanged", 0),
+            "formulas_changed": rep.get("formulasChanged", 0),
+            "rows_changed": rep.get("rowsChanged", 0),
+            "sheets_changed": rep.get("sheetsChanged", 0), "link": meta["link"]}
+
 # ---------------- files: import / export ----------------
 def import_rows(tenant: str, source: dict[str, Any]) -> tuple[list[list[Any]], str]:
     from ..mailbox import mime
@@ -553,6 +1088,15 @@ def run_pending(tenant: str, pid: str) -> dict[str, Any]:
             for e in pl["emails"]:
                 c.share(pl["sid"], e, pl["role"])
             msg = f"{p['summary']['title']} share kar di: {', '.join(pl['emails'])} ({'edit' if pl['role'] == 'writer' else 'dekh'} sakte hain)."
+        elif p["action"] == "clear":
+            c.clear(pl["sid"], pl["ranges"])
+            msg = f"{p['summary']['title']}: {len(pl['ranges'])} range clear kar di. (Undo: version history.)"
+        elif p["action"] == "delete_tab":
+            do_delete_tab(c, pl["sid"], pl["tab_id"])
+            msg = f"{p['summary']['title']}: tab '{pl.get('tab', '')}' hata di. (Undo: version history.)"
+        elif p["action"] == "protect":
+            do_protect(c, pl["sid"], pl["tab_id"], pl["range"], pl.get("description", ""), pl.get("editors", []))
+            msg = f"{p['summary']['title']}: range '{pl['range']}' lock kar di."
         else:
             raise SheetError("unknown sheet action")
     except SheetError:

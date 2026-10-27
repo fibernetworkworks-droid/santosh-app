@@ -144,6 +144,19 @@ class SheetsClient:
     def batch(self, sid: str, requests: list[dict]) -> dict:
         return self._req("POST", f"{SHEETS}/{sid}:batchUpdate", json={"requests": requests})
 
+    def clear(self, sid: str, ranges: list[str]) -> dict:
+        """values.batchClear — wipes the values out of one or more A1 ranges (formatting stays)."""
+        return self._req("POST", f"{SHEETS}/{sid}/values:batchClear", json={"ranges": ranges})
+
+    def copy_tab(self, sid: str, sheet_id: int, dest_sid: str, new_title: str | None = None) -> dict:
+        """sheets.copyTo — copies a tab to another (or the same) spreadsheet. Returns the new sheetId."""
+        body: dict[str, Any] = {"destination_spreadsheet_id": dest_sid}
+        if new_title:
+            body["newTitle"] = new_title[:100]
+        res = self._req("POST", f"{SHEETS}/{sid}/sheets/{sheet_id}:copyTo", json=body)
+        return {"sheet_id": res.get("sheetId"), "title": res.get("title", ""),
+                "spreadsheet_id": res.get("spreadsheetId", dest_sid)}
+
     def create(self, title: str, tabs: list[str]) -> dict:
         body = {"properties": {"title": title},
                 "sheets": [{"properties": {"title": t, "gridProperties": {"frozenRowCount": 1}}} for t in tabs or ["Sheet1"]]}

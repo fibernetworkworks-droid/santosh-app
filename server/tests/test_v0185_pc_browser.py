@@ -333,4 +333,4 @@ def test_desktop_version_is_150():
 
 def test_app_version_is_0185():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.211.0"
+    assert APP_VERSION == "0.212.0"

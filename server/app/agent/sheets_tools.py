@@ -101,6 +101,110 @@ SHEETS_TOOLS = [
      "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "people": {"type": "array", "items": {"type": "string"}},
                                                        "role": {"type": "string", "enum": ["reader", "writer"]}},
                       "required": ["spreadsheet", "people"]}},
+    # ---- v0.210.0 Google Sheets 100% coverage: 12 new tools (sheets clear / tabs copy-dup-del / format / protect /
+    # named-range / conditional-format / data-validation / merge / notes / find-replace) ----
+    {"name": "sheet_clear", "description": (
+        "Clear the VALUES out of one or more A1 ranges (formatting stays). Always shows a confirm card first because values "
+        "go away. Undo: Google Sheets version history."),
+     "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
+         "ranges": {"type": "array", "items": {"type": "string"},
+                    "description": "A1 ranges like ['A1:C10', 'B2:F20']. Without a tab prefix, the default tab is used."}},
+      "required": ["spreadsheet", "ranges"]}},
+    {"name": "sheet_copy_tab", "description": (
+        "Copy a tab to another spreadsheet (or the same one, by giving its name/link/id as dest_spreadsheet). Returns the "
+        "new tab id."),
+     "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
+         "dest_spreadsheet": {"type": "string", "description": "The destination sheet: name, link or id"},
+         "new_title": {"type": "string"}},
+      "required": ["spreadsheet", "dest_spreadsheet"]}},
+    {"name": "sheet_duplicate_tab", "description": "Duplicate a tab within the same spreadsheet (copy of data + format).",
+     "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
+         "new_title": {"type": "string"}, "new_index": {"type": "integer", "description": "Where to place the new tab"}},
+      "required": ["spreadsheet", "tab"]}},
+    {"name": "sheet_delete_tab", "description": (
+        "Delete a whole tab from a sheet. Always shows a confirm card; refuses on the last tab."),
+     "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB},
+      "required": ["spreadsheet", "tab"]}},
+    {"name": "sheet_format", "description": (
+        "Apply a cell/text format to an A1 range: bold / italic / underline / strikethrough / font_size / font_family / "
+        "font_color / bg_color (named like 'red' or '#ff0000') / number_format ('Rs #,##0.00' / 'yyyy-mm-dd' / 'percent' / "
+        "'date' etc.) / horizontal_alignment (LEFT/CENTER/RIGHT) / vertical_alignment (TOP/MIDDLE/BOTTOM) / wrap_strategy "
+        "(OVERFLOW_CELL/WRAP/CLIP) / freeze_rows (int) / freeze_cols (int)."),
+     "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
+         "range": {"type": "string", "description": "A1 range like 'B2:F10' or 'Summary!B2:F10'"},
+         "format": {"type": "object", "description": "Any subset of the format keys above",
+                    "properties": {"bold": {"type": "boolean"}, "italic": {"type": "boolean"},
+                                    "underline": {"type": "boolean"}, "strikethrough": {"type": "boolean"},
+                                    "font_size": {"type": "integer"}, "font_family": {"type": "string"},
+                                    "font_color": {"type": "string"}, "bg_color": {"type": "string"},
+                                    "number_format": {"type": "string"},
+                                    "horizontal_alignment": {"type": "string", "enum": ["LEFT", "CENTER", "RIGHT"]},
+                                    "vertical_alignment": {"type": "string", "enum": ["TOP", "MIDDLE", "BOTTOM"]},
+                                    "wrap_strategy": {"type": "string", "enum": ["OVERFLOW_CELL", "WRAP", "CLIP"]},
+                                    "freeze_rows": {"type": "integer"}, "freeze_cols": {"type": "integer"}}}},
+      "required": ["spreadsheet", "range", "format"]}},
+    {"name": "sheet_protect", "description": (
+        "Lock a range so only listed editors (by email) can change it. Always shows a confirm card; the user (the sheet "
+        "owner) stays an editor automatically."),
+     "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
+         "range": {"type": "string"}, "description": {"type": "string"},
+         "editors": {"type": "array", "items": {"type": "string"}, "description": "Email addresses of allowed editors"}},
+      "required": ["spreadsheet", "range"]}},
+    {"name": "sheet_named_range", "description": (
+        "Add / update / delete / list named ranges. A named range lets you say 'Revenue' instead of 'Summary!B2:B100'."),
+     "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "action": {"type": "string", "enum": ["add", "update", "delete", "list"]},
+         "name": {"type": "string"}, "range": {"type": "string"}, "named_id": {"type": "integer"}, "tab": TAB},
+      "required": ["spreadsheet", "action"]}},
+    {"name": "sheet_conditional_format", "description": (
+        "Add / update / delete a conditional-format rule on a range. rule.type = color_scale (min/mid/max with color + "
+        "type min|number|percent|max), data_bar (single color, highlights > 0), cell_is (operator GREATER_THAN / "
+        "LESS_THAN / BETWEEN / EQUAL / ... + values + format), expression (formula like '=B1>1000' + format)."),
+     "input_schema": {"type": "object",
+                      "properties": {"spreadsheet": SHEET, "tab": TAB,
+         "range": {"type": "string"}, "action": {"type": "string", "enum": ["add", "update", "delete"]},
+         "rule_index": {"type": "integer"},
+         "rule": {"type": "object",
+                  "properties": {"type": {"type": "string",
+                                          "enum": ["color_scale", "data_bar", "cell_is", "expression"]}}}},
+      "required": ["spreadsheet", "range"]}},
+    {"name": "sheet_data_validation", "description": (
+        "Set or clear data validation on a range. rule.type = list (allowed values) / number / whole / date / text_length / "
+        "custom_formula. operator: between / not_between / greater_than / less_than / equal / not_equal / "
+        "greater_than_or_equal_to / less_than_or_equal_to. values = [low, high] or [list, items]. show_dropdown shows the "
+        "Google Sheets UI dropdown; strict refuses invalid input."),
+     "input_schema": {"type": "object",
+                      "properties": {"spreadsheet": SHEET, "tab": TAB,
+         "range": {"type": "string"}, "action": {"type": "string", "enum": ["set", "clear"]},
+         "rule": {"type": "object",
+                  "properties": {"type": {"type": "string",
+                                          "enum": ["list", "number", "whole", "date", "text_length", "custom_formula"]},
+                          "operator": {"type": "string"}, "values": {"type": "array"},
+                          "formula": {"type": "string"}, "show_dropdown": {"type": "boolean"},
+                          "strict": {"type": "boolean"}, "input_message": {"type": "string"},
+                          "error_message": {"type": "string"}}}},
+      "required": ["spreadsheet", "range"]}},
+    {"name": "sheet_merge", "description": (
+        "Merge or unmerge a range. merge_type: MERGE_ALL (single cell), MERGE_COLUMNS (one column per row), MERGE_ROWS "
+        "(one row per column). action: merge / unmerge."),
+     "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
+         "range": {"type": "string"}, "merge_type": {"type": "string", "enum": ["MERGE_ALL", "MERGE_COLUMNS", "MERGE_ROWS"]},
+         "action": {"type": "string", "enum": ["merge", "unmerge"]}},
+      "required": ["spreadsheet", "range"]}},
+    {"name": "sheet_notes", "description": (
+        "Read cell notes (read_only=true, returns [{row, col, note}]) or set cell notes from a list of {row, col, note}. "
+        "Note text passes the same Aadhaar/OTP/password/CVV PII guard as uploads."),
+     "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
+         "notes": {"type": "array", "items": {"type": "object", "properties": {"row": {"type": "integer"}, "col": {"type": "integer"}, "note": {"type": "string"}}}},
+         "read_only": {"type": "boolean"}},
+      "required": ["spreadsheet"]}},
+    {"name": "sheet_find_replace", "description": (
+        "Find and replace within a sheet (or one tab). match_case / match_entire_cell / search_by_formulas are optional. "
+        "Replacement text is PII-guarded (no Aadhaar/OTP/password/CVV)."),
+     "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
+         "find": {"type": "string"}, "replace": {"type": "string"},
+         "match_case": {"type": "boolean"}, "match_entire_cell": {"type": "boolean"},
+         "search_by_formulas": {"type": "boolean"}},
+      "required": ["spreadsheet", "find", "replace"]}},
 ]
 
 SHEETS_LABELS = {"sheets_find": "Sheet dhoondh raha hoon", "sheet_info": "Sheet dekh raha hoon",
@@ -108,7 +212,20 @@ SHEETS_LABELS = {"sheets_find": "Sheet dhoondh raha hoon", "sheet_info": "Sheet 
                  "sheet_append": "Sheet mein row daal raha hoon", "sheet_update": "Sheet badal raha hoon",
                  "sheet_write_range": "Cells likh raha hoon", "sheet_delete_rows": "Delete ki manzoori le raha hoon",
                  "sheet_create": "Nayi sheet bana raha hoon", "sheet_add_tab": "Naya tab bana raha hoon",
-                 "sheet_export": "Sheet ki file bana raha hoon", "sheet_share": "Share ki manzoori le raha hoon"}
+                 "sheet_export": "Sheet ki file bana raha hoon", "sheet_share": "Share ki manzoori le raha hoon",
+                 # v0.210.0 Google Sheets 100% coverage
+                 "sheet_clear": "Clear ki manzoori le raha hoon",
+                 "sheet_copy_tab": "Tab copy kar raha hoon",
+                 "sheet_duplicate_tab": "Tab duplicate kar raha hoon",
+                 "sheet_delete_tab": "Tab delete ki manzoori le raha hoon",
+                 "sheet_format": "Format laga raha hoon",
+                 "sheet_protect": "Lock ki manzoori le raha hoon",
+                 "sheet_named_range": "Named range bana raha hoon",
+                 "sheet_conditional_format": "Conditional format laga raha hoon",
+                 "sheet_data_validation": "Validation laga raha hoon",
+                 "sheet_merge": "Cells merge kar raha hoon",
+                 "sheet_notes": "Note likh raha hoon",
+                 "sheet_find_replace": "Find & replace chala raha hoon"}
 
 
 async def _t(fn, *a, **kw):
@@ -263,8 +380,102 @@ async def sheet_share(ctx: Ctx, spreadsheet, people, role="reader", **_):
     return {**card, "status": "needs_approval"}
 
 
+# ---- v0.210.0 Google Sheets 100% coverage handlers ----
+
+async def sheet_clear(ctx: Ctx, spreadsheet, ranges, tab=None, **_):
+    def work():
+        plan = ss.plan_clear(ctx.tenant_id, str(spreadsheet), [str(r) for r in ranges or []], tab)
+        c, meta = plan["client"], plan["meta"]
+        return ss.pend(ctx.tenant_id, ctx.conversation_id, "clear",
+                       {"account": c.key, "sid": meta["id"], "ranges": plan["ranges"], "link": meta["link"]},
+                       plan["summary"])
+    pid = await _t(work)
+    card = await asyncio.to_thread(_card, ctx, pid)
+    return {**card, "status": "needs_approval", "note": "Confirm card with the ranges is in the chat; nothing cleared yet."}
+
+
+async def sheet_copy_tab(ctx: Ctx, spreadsheet, dest_spreadsheet, tab=None, new_title=None, **_):
+    out = await _t(ss.copy_tab, ctx.tenant_id, str(spreadsheet), tab, str(dest_spreadsheet), new_title)
+    _card_event(ctx, out.get("src_tab", ""), out.get("link", ""), "", "tab_copied", out)
+    return {**out, "note": f"Tab '{out.get('src_tab')}' ko '{out.get('new_tab')}' ke naam se copy kar diya."}
+
+
+async def sheet_duplicate_tab(ctx: Ctx, spreadsheet, tab, new_title=None, new_index=None, **_):
+    out = await _t(ss.duplicate_tab, ctx.tenant_id, str(spreadsheet), tab, new_title, new_index)
+    _card_event(ctx, out.get("new_tab", ""), out.get("link", ""), "", "tab_duplicated", out)
+    return {**out, "note": f"Tab duplicated: '{out.get('src_tab')}' -> '{out.get('new_tab')}'."}
+
+
+async def sheet_delete_tab(ctx: Ctx, spreadsheet, tab, **_):
+    def work():
+        plan = ss.plan_delete_tab(ctx.tenant_id, str(spreadsheet), tab)
+        c, meta = plan["client"], plan["meta"]
+        return ss.pend(ctx.tenant_id, ctx.conversation_id, "delete_tab",
+                       {"account": c.key, "sid": meta["id"], "tab_id": plan["tab_id"], "tab": plan["tab"],
+                        "link": meta["link"]}, plan["summary"])
+    pid = await _t(work)
+    card = await asyncio.to_thread(_card, ctx, pid)
+    return {**card, "status": "needs_approval", "note": "Confirm card is in the chat; tab not deleted yet."}
+
+
+async def sheet_format(ctx: Ctx, spreadsheet, range, format, tab=None, **_):
+    out = await _t(ss.format_cells, ctx.tenant_id, str(spreadsheet), str(range), dict(format or {}), tab)
+    return {**out, "note": "Format lag gaya."}
+
+
+async def sheet_protect(ctx: Ctx, spreadsheet, range, tab=None, description="", editors=None, **_):
+    def work():
+        plan = ss.plan_protect(ctx.tenant_id, str(spreadsheet), str(range), tab, description, editors or [])
+        c, meta = plan["client"], plan["meta"]
+        return ss.pend(ctx.tenant_id, ctx.conversation_id, "protect",
+                       {"account": c.key, "sid": meta["id"], "tab_id": plan["tab_id"], "tab": plan["tab"],
+                        "range": plan["range"], "description": plan["description"], "editors": plan["editors"],
+                        "link": meta["link"]}, plan["summary"])
+    pid = await _t(work)
+    card = await asyncio.to_thread(_card, ctx, pid)
+    return {**card, "status": "needs_approval", "note": "Confirm card is in the chat; range not locked yet."}
+
+
+async def sheet_named_range(ctx: Ctx, spreadsheet, action, name=None, range=None, named_id=None, tab=None, **_):
+    out = await _t(ss.named_range, ctx.tenant_id, str(spreadsheet), action, name, range, named_id, tab)
+    return out
+
+
+async def sheet_conditional_format(ctx: Ctx, spreadsheet, range, rule=None, tab=None, action="add", rule_index=None, **_):
+    out = await _t(ss.conditional_format, ctx.tenant_id, str(spreadsheet), str(range), rule or {}, tab, action, rule_index)
+    return out
+
+
+async def sheet_data_validation(ctx: Ctx, spreadsheet, range, rule=None, tab=None, action="set", **_):
+    out = await _t(ss.data_validation, ctx.tenant_id, str(spreadsheet), str(range), rule or {}, tab, action)
+    return out
+
+
+async def sheet_merge(ctx: Ctx, spreadsheet, range, merge_type="MERGE_ALL", tab=None, action="merge", **_):
+    out = await _t(ss.merge_cells, ctx.tenant_id, str(spreadsheet), str(range), merge_type, tab, action)
+    return out
+
+
+async def sheet_notes(ctx: Ctx, spreadsheet, notes=None, tab=None, read_only=False, **_):
+    out = await _t(ss.cell_notes, ctx.tenant_id, str(spreadsheet), notes or [], tab, bool(read_only))
+    return out
+
+
+async def sheet_find_replace(ctx: Ctx, spreadsheet, find, replace, tab=None,
+                              match_case=False, match_entire_cell=False, search_by_formulas=False, **_):
+    out = await _t(ss.find_replace, ctx.tenant_id, str(spreadsheet), str(find), str(replace), tab,
+                   bool(match_case), bool(match_entire_cell), bool(search_by_formulas))
+    return out
+
+
 SHEETS_HANDLERS = {"sheets_find": sheets_find, "sheet_info": sheet_info, "sheet_read": sheet_read,
                    "sheet_query": sheet_query, "sheet_append": sheet_append, "sheet_update": sheet_update,
                    "sheet_write_range": sheet_write_range, "sheet_delete_rows": sheet_delete_rows,
                    "sheet_create": sheet_create, "sheet_add_tab": sheet_add_tab, "sheet_export": sheet_export,
-                   "sheet_share": sheet_share}
+                   "sheet_share": sheet_share,
+                   # v0.210.0 Google Sheets 100% coverage
+                   "sheet_clear": sheet_clear, "sheet_copy_tab": sheet_copy_tab, "sheet_duplicate_tab": sheet_duplicate_tab,
+                   "sheet_delete_tab": sheet_delete_tab, "sheet_format": sheet_format, "sheet_protect": sheet_protect,
+                   "sheet_named_range": sheet_named_range, "sheet_conditional_format": sheet_conditional_format,
+                   "sheet_data_validation": sheet_data_validation, "sheet_merge": sheet_merge,
+                   "sheet_notes": sheet_notes, "sheet_find_replace": sheet_find_replace}
