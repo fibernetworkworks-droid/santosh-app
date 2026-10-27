@@ -27,6 +27,7 @@ on:
           - mem
           - pc_chrome_selftest
           - web
+          - web_fix
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
         required: false
@@ -213,6 +214,19 @@ jobs:
                 echo 'echo "== EDGE HUNT: crontab"; crontab -l 2>/dev/null | head -15; echo "== sudo rights"; sudo -n -l 2>&1 | head -8'
                 echo 'echo "== EDGE HUNT: caddy homes"; ls -la /etc/caddy 2>&1 | head -5; ls -la /var/lib/caddy 2>/dev/null | head -5; ls ~/.local/share/caddy 2>/dev/null | head -5; ls -la /root 2>/dev/null | head -3'
                 echo 'systemctl is-active nginx 2>&1 | grep -q active && echo "WEB-EDGE: ACTIVE" || echo "WEB-EDGE: STILL DOWN - see report above"' ;;
+              web_fix)
+                # STEP 1 (READ-ONLY): the 443 edge is a hand-run root caddy (no unit, invisible to
+                # pm2/nginx); the resize reboot left it alive but certless (nginx holds 80 -> ACME
+                # HTTP-01 blocked -> caddy never binds 443). The deploy user has no sudo but IS in
+                # the docker group -> read root-side ground truth through a bind-mounted container.
+                # NO writes in this step: decide the repair from facts first.
+                echo 'echo "== caddy binary in PATH dirs"; ls -la /usr/local/bin/caddy /usr/bin/caddy /snap/bin/caddy 2>/dev/null; which caddy 2>/dev/null'
+                echo 'echo "== caddy argv from /proc (world-readable)"; for d in /proc/[0-9]*/cmdline; do if tr "\000" " " < "$d" 2>/dev/null | grep -q caddy; then echo "$d:"; tr "\000" " " < "$d"; echo; fi; done'
+                echo 'echo "== stat /etc/caddy"; stat /etc/caddy 2>&1 | head -4'
+                echo 'echo "== ROOT VIEW via docker bind mount (READ-ONLY)"'
+                echo 'docker run --rm -v /:/host alpine sh -c "echo ---Caddyfile; cat /host/etc/caddy/Caddyfile 2>&1 | head -50; echo; echo ---caddy-data; ls -la /host/root/.local/share/caddy 2>&1 | head -10; echo ---hoola-certs; find /host/root/.local/share/caddy -path "*ainewtika*" 2>/dev/null | head -8; echo ---root-crontab; cat /host/var/spool/cron/crontabs/root 2>/dev/null; echo ---rc-local; cat /host/etc/rc.local 2>/dev/null; echo ---systemd-units; ls /host/etc/systemd/system/ 2>/dev/null | head -25; echo ---enabled; ls /host/etc/systemd/system/multi-user.target.wants/ 2>/dev/null | head -25"'
+                echo 'echo "== alpine image ok?"; docker images alpine --format "{{.Repository}} {{.Tag}}" | head -2'
+                echo 'systemctl is-active nginx 2>&1 | grep -q active && echo "WEB-EDGE: STILL DOWN (this is the read-only step)" || echo "WEB-EDGE: n/a"' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh
