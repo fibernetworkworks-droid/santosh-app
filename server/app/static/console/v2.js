@@ -111,10 +111,16 @@ function go(v) {
 document.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) go(b.dataset.v); });
 $('#menu').addEventListener('click', () => $('#app').classList.add('drawer'));
 $('#scrim').addEventListener('click', () => $('#app').classList.remove('drawer'));
-$('#collapse').addEventListener('click', () => $('#app').classList.toggle('collapsed'));
-$('#collapse').addEventListener('click', () => {
-  $('#collapse').setAttribute('aria-expanded', String(!$('#app').classList.contains('collapsed')));
-});
+function sidebarState(collapsed) {
+  $('#app').classList.toggle('collapsed',collapsed);
+  $('#collapse').setAttribute('aria-expanded',String(!collapsed));
+  $('#collapse').setAttribute('aria-label',collapsed?'Expand sidebar':'Collapse sidebar');
+  $('#collapse').title=collapsed?'Expand sidebar':'Collapse sidebar';
+  store.set('hoola.web.sidebar.collapsed',collapsed?'1':'0');
+}
+sidebarState(store.get('hoola.web.sidebar.collapsed')==='1');
+$('#collapse').addEventListener('click',()=>sidebarState(!$('#app').classList.contains('collapsed')));
+$('#historyBtn').addEventListener('click',()=>CH?.openHistory());
 $('#liveBtn').addEventListener('click', () => {
   if (B?.isOpen()) { B.close(); $('#app').classList.add('open'); return; }
   if (PN?.isOpen()) { PN.close(); $('#app').classList.add('open'); return; }     // v0.163 one right-hand column at a time
@@ -342,22 +348,27 @@ const PROGRESS_POLICY = window.HoolaProgressPolicy;
 let SIMPLE_PROGRESS = null;
 function simpleProgress(kind,p={}) {
   if(kind!=='typing' && !TYPING)return;
+  const t=turn();
   if (!SIMPLE_PROGRESS) {
-    SIMPLE_PROGRESS=document.createElement('div');SIMPLE_PROGRESS.className='simple-progress';
-    SIMPLE_PROGRESS.setAttribute('role','status');SIMPLE_PROGRESS.setAttribute('aria-live','polite');SIMPLE_PROGRESS.setAttribute('aria-atomic','true');
-    const avatar=document.createElement('span');avatar.className='progress-avatar av';avatar.setAttribute('aria-hidden','true');
-    const img=document.createElement('img');img.src=$('#uimg').src;img.alt='';avatar.appendChild(img);
-    const label=document.createElement('span');label.className='progress-label';
-    const dots=document.createElement('span');dots.className='progress-dots';dots.setAttribute('aria-hidden','true');dots.innerHTML='<i></i><i></i><i></i>';
-    SIMPLE_PROGRESS.append(avatar,label,dots);
+    SIMPLE_PROGRESS=document.createElement('details');SIMPLE_PROGRESS.className='simple-progress';
+    SIMPLE_PROGRESS.innerHTML='<summary><span class="progress-label" role="status" aria-live="polite"></span><span class="progress-dots" aria-hidden="true"><i></i><i></i><i></i></span><svg class="progress-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><ol class="progress-activity" aria-label="Task activity"></ol>';
   }
-  if(SIMPLE_PROGRESS.parentElement!==col)col.appendChild(SIMPLE_PROGRESS);
+  if(SIMPLE_PROGRESS.parentElement!==t.bd)t.bd.appendChild(SIMPLE_PROGRESS);
+  t.bd.closest('.mh').classList.add('progress-active');
   SIMPLE_PROGRESS.hidden=false;
   const label=PROGRESS_POLICY.phase(kind,p);
   const text=SIMPLE_PROGRESS.querySelector('.progress-label');if(text.textContent!==label)text.textContent=label;
+  const activity=PROGRESS_POLICY.activity(kind,p),list=SIMPLE_PROGRESS.querySelector('ol');
+  if(activity && list.lastElementChild?.textContent!==activity){
+    const item=document.createElement('li');item.textContent=activity;list.appendChild(item);
+    if(list.children.length>12)list.firstElementChild.remove();
+  }
   scrollDown();
 }
-function clearSimpleProgress(){SIMPLE_PROGRESS?.remove();SIMPLE_PROGRESS=null;}
+function clearSimpleProgress(){
+  SIMPLE_PROGRESS?.closest('.mh')?.classList.remove('progress-active');
+  SIMPLE_PROGRESS?.remove();SIMPLE_PROGRESS=null;
+}
 function stepEvent(p) { simpleProgress('step',p); }
 function closeTurnTools(t = TURN) {
   if (!t) return;
@@ -732,6 +743,7 @@ function onEvent(ev) {
       closeThinks(p.turn);   // v0.171 the Soch cards fold when the reply is over
       return; }
     case 'message':
+      if (p.role === 'assistant' && p.ack === true) { simpleProgress('work'); return; }
       if (p.role === 'user') {
         if (p.client_id && col.querySelector(`.mu[data-cid="${CSS.escape(p.client_id)}"]`)) {
           const b = col.querySelector(`.mu[data-cid="${CSS.escape(p.client_id)}"]`);   // her own send, echoed back
@@ -777,6 +789,7 @@ function renderEvents(events, any) {
     if (p.role === 'user' && typeof p.text === 'string') p.text = p.text.replace(/\n\n\[Web console language preference: Reply in English unless I explicitly request another language\.\]$/, '');
     if (ev.kind === 'message') {
       flushStepBuf();
+      if (p.role === 'assistant' && p.ack === true) continue;
       if (p.role === 'user') userBubble(p.text, p.files, ev.id, null, ev.at);
       else if (!any) continue;
       else if (p.turn && window.HoolaStream) { replyMessage(p, true, ev.id, ev.at); if (SINK === col) LAST_TURN = p.turn; }

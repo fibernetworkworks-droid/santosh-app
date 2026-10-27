@@ -53,7 +53,7 @@ def _not_busy(conv: str) -> None:
 
 
 # ------------------------------------------------------------------ list / patch / delete
-def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: str = "") -> list[dict[str, Any]]:
+def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: str = "", offset: int = 0) -> list[dict[str, Any]]:
     """Her chats in one query: pinned first, then newest activity. Title = hers / auto, else her first message."""
     first = (select(Message.display).where(Message.conversation_id == Conversation.id, Message.role == "user",
                                            Message.display.is_not(None)).order_by(Message.id).limit(1)
@@ -63,7 +63,7 @@ def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: st
     at = func.coalesce(Conversation.last_at, Conversation.created_at)
     q = (select(Conversation, first, count).where(Conversation.tenant_id == tenant,
                                                   or_(Conversation.deleted.is_(None), Conversation.deleted.is_(False)))
-         .order_by(func.coalesce(Conversation.pinned, False).desc(), at.desc()).limit(max(1, min(limit, 500))))
+         .order_by(func.coalesce(Conversation.pinned, False).desc(), at.desc(), Conversation.id.desc()).limit(max(1, min(limit, 500))).offset(max(0, offset)))
     q = q.where(Conversation.archived.is_(True)) if archived else \
         q.where(or_(Conversation.archived.is_(None), Conversation.archived.is_(False)))
     if project:   # v0.164 one project's chats

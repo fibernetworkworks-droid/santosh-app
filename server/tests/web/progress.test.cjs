@@ -10,3 +10,10 @@ test('progress is general English, never tool arguments or reasoning',()=>{
  assert.equal(p.phase('reply_start'),'Preparing your response…');assert.equal(p.phase('browser',{status:'partial'}),'Reviewing an incomplete result…');
  assert.equal(p.phase('browser',{status:'blocked'}),'Waiting for the next step…');
 });
+
+test('dropdown activity uses safe event summaries only',()=>{
+ assert.equal(p.activity('step',{tool:'browser',args:'SECRET'}),'Checking sources');
+ assert.equal(p.activity('think',{text:'SECRET'}),'Considering the request');
+ assert.equal(p.activity('say',{text:'SECRET'}),null);
+ assert.equal(p.activity('browser',{status:'failed'}),'Checking an incomplete result');
+});

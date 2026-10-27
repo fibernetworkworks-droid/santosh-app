@@ -181,3 +181,63 @@
 @keyframes progress-dot{0%,70%,100%{opacity:.3;transform:translateY(0)}35%{opacity:1;transform:translateY(-3px)}}
 @keyframes progress-enter{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){#app .simple-progress,#app .progress-avatar:before,#app .progress-dots i{animation:none}#app .progress-dots i{opacity:.7}}
+
+/* Progress shares the assistant turn and its single avatar. */
+#app details.simple-progress{display:block;padding:5px 0;min-height:32px}
+#app .simple-progress summary{display:flex;align-items:center;gap:9px;cursor:pointer;list-style:none;width:fit-content;border-radius:6px}
+#app .simple-progress summary::-webkit-details-marker{display:none}
+#app .simple-progress summary:focus-visible{outline:2px solid var(--saffron);outline-offset:4px}
+#app .progress-chevron{transition:transform .18s ease;color:var(--mut)}
+#app .simple-progress[open] .progress-chevron{transform:rotate(180deg)}
+#app .progress-activity{margin:10px 0 4px;padding-left:20px;border-left:1px solid var(--line);list-style:none;font-size:13px;font-weight:500;color:var(--mut);max-height:220px;overflow:auto}
+#app .progress-activity li{padding:4px 0}
+#app .progress-activity li:last-child{color:var(--lit)}
+#app .mh.progress-active>.av{outline:2px solid var(--saffron);outline-offset:3px;animation:progress-avatar-pulse 2s ease-in-out infinite}
+@keyframes progress-avatar-pulse{50%{outline-color:rgba(124,92,255,.4)}}
+@media(prefers-reduced-motion:reduce){#app .mh.progress-active>.av{animation:none}#app .progress-chevron{transition:none}}
+
+/* Quiet subtitle treatment: no card, pill, or bright avatar ring. */
+#app details.simple-progress{font-size:12.5px;font-weight:500;min-height:28px;padding:3px 0;color:var(--mut)}
+#app .simple-progress summary{gap:7px;padding:3px 0;line-height:1.5;max-width:100%;transition:color .18s ease}
+#app .simple-progress .progress-label{font-size:12.5px;font-weight:500;letter-spacing:.015em;color:var(--mut)}
+#app .simple-progress summary:hover .progress-label{color:var(--lit)}
+#app .progress-chevron{width:14px;height:14px;flex:none;opacity:.6;margin-left:2px}
+#app .progress-dots{gap:3px;margin-left:1px}
+#app .progress-dots i{width:3px;height:3px;background:currentColor}
+#app .progress-activity{margin:9px 0 5px 2px;padding:0 0 0 13px;border-color:rgba(168,155,208,.16);font-size:12px;line-height:1.6;font-weight:400;animation:progress-enter .18s ease-out}
+#app .progress-activity li{padding:3px 0}
+#app .mh.progress-active>.av{outline:none;animation:none}
+@media(prefers-reduced-motion:reduce){#app .progress-activity{animation:none}#app .simple-progress summary{transition:none}}
+
+/* Hoola navigation: calm surfaces, keyboard and touch parity. */
+#app #historyBtn{gap:12px;margin:8px 0 2px;width:100%}
+#app .rcw:focus-within .rcm{opacity:1}
+#app .rcm{min-width:30px;min-height:30px}
+#app .rcw{border-radius:9px;transition:background .16s ease}
+#app .rcw:hover{background:rgba(166,145,255,.07)}
+#app .rcw.cur{box-shadow:inset 2px 0 var(--saffron)}
+.rmenu{z-index:120}
+.rmenu button:focus-visible,.rcren input:focus-visible{outline:2px solid var(--saffron);outline-offset:1px}
+.history-overlay{position:fixed;inset:0;z-index:95;display:grid;place-items:center;padding:24px;background:rgba(5,5,15,.65);backdrop-filter:blur(8px)}
+.history-surface{width:min(820px,100%);height:min(760px,90dvh);display:flex;flex-direction:column;min-height:0;background:var(--bg1,#141025);color:var(--ink,#eeeaf7);border:1px solid var(--hair2,rgba(255,255,255,.12));border-radius:22px;padding:24px;box-shadow:0 28px 90px #0006;animation:progress-enter .18s ease-out}
+.history-surface header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.history-brand{font-size:10px;letter-spacing:.16em;color:var(--mut)}
+.history-surface h2{font-size:24px;margin:5px 0 0;font-weight:600}
+.history-search{display:flex;gap:10px;align-items:center;border:1px solid var(--hair2);border-radius:12px;padding:10px 14px}
+.history-search input{width:100%;background:transparent;border:0;outline:0;color:inherit;font:inherit;font-size:14px}
+.history-search:focus-within{outline:2px solid var(--saffron);outline-offset:2px}
+.history-filters{display:flex;align-items:center;gap:8px;padding:16px 0}
+.history-filters button{padding:6px 12px;border-radius:8px;font-size:13px;color:var(--mut);border:1px solid var(--hair2)}
+.history-filters button[aria-pressed="true"]{background:rgba(153,123,255,.16);color:var(--ink)}
+.history-count{margin-left:auto;font-size:12px;color:var(--mut)}
+.history-list{min-height:0;flex:1;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.history-list .rcw{display:flex;align-items:center;min-height:48px;border-radius:10px}
+.history-list .rc{display:flex;gap:10px;flex:1;min-width:0;padding:12px;font-size:15px;color:inherit;text-decoration:none}
+.history-list .rct{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history-list .rcw.cur{background:rgba(153,123,255,.10)}
+.history-list .rcw:hover,.history-list .rcw:focus-within{background:rgba(153,123,255,.07)}
+.history-list .rcm{opacity:1;width:36px;height:36px;margin-right:6px}
+.history-surface footer{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--hair2);padding-top:14px;margin-top:12px;font-size:12px;color:var(--mut)}
+@media(max-width:600px){.history-overlay{padding:10px}.history-surface{padding:18px;height:94dvh;border-radius:16px}.history-count{font-size:11px}.history-surface footer{flex-wrap:wrap}}
+@media(hover:none){#app .rcm{opacity:1}}
+@media(prefers-reduced-motion:reduce){.history-surface,#app .rcw{animation:none;transition:none}}
