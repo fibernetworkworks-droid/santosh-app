@@ -7998,7 +7998,55 @@ The owner said "P0 hotfix + v0.190.0 implementation" - v0.190.0 was committed an
   console ?v=0.190.1 x9, conscious pins 0.190.0->0.190.1 in test_v0179/email_phase1-4/test_v0185/test_v0187/
   test_v0189). Deploy carries both v0.190.0 HARNESS-1 (never live) and this hotfix in one restart; desktop
   untouched 1.4.0, old APKs keep working (all four fixes are server-side).
-## v0.193.0 HOOLA KA APNA PC — Phase 1 of the per-user coworker environment (owner: "HOOLA OWN PC / ENVIRONMENT / CPU, RAM ETC FOR EVERY USER WHERE HOOLA COWORKER CAN WORK, INSTALL SOFTWARE ETC SAME LIKE OPEN AI DOTS AND LIKE MUSE OR LIKE GROK BOT — FIRST DEEP RESEARCH AND THEN A PERFECT PLAN" → "START PHASE 1")
+## v0.198.0 SAMAJHDAR CARD (re-versioned TWICE on rebase: Excel-at-scale took 0.191.0, Design Router took 0.196.0 - all works kept) (owner: "BIGGEST ISSUE: RESULT AND APPROVAL CARD" -> choices: CAPTCHA ek confirm ke baad apne aap type; non-money orders voice haan se approve; "NOT ONLY HAAN, ANY KARDO, APPROVE HAI ETC")
+
+The approval/result card was dumb: an irrelevant HAAN card fired on almost every PC step (2-4 per pizza task),
+and in voice-to-voice saying "haan" did NOTHING - the card waited for a tap, the op stalled 600s and died (RC-A
+over-triggering ask_approval, RC-B tap-only voice dead-end, from the v0.191 RCA in the worklog). Five fixes:
+
+- approval_words.py (NEW) - approval ki boli EK jagah: pure approvals (haan/haanji/haan karo/kar do/kardo/yes/
+  approve/approve hai/confirm/theek hai/sahi hai/manzoor/ok/pakka/bhej do/aage badho/go ahead/+ Devanagari हाँ कर दो/
+  मंज़ूर है), rejection ALWAYS wins (nahi/mat karo/rehne do/cancel/band karo; "mat" ke baad ke approval shabd ulte -
+  is_pure_rejection unhe nikaal kar dekhta hai), approve_lead ("haan, address yeh raha" = yes + extra, 7 tokens max;
+  "pizza order karo" = naya kaam, kabhi lead nahi), money_risk (pay/upi/bank/card/cvv/otp/password/pin/₹/rs) - bol
+  ya likh se money approval KABHI nahi. Tokenizer Devanagari-aware (Python \w candrabindu/nukta kaat deta hai).
+- TAPGATE (pc/operator.py, RC-A ka ilaaj) - ask_approval par classify: (1) CAPTCHA: pehli baar card; op.captcha_ok
+  set hone par is task ki har aage CAPTCHA auto-type ("ek confirm ke baad apne aap type"); (2) popup/cookie/banner/
+  notification ALWAYS auto (checked first - "cookie banner hata doon" is not a remove-risk); (3) money/order/bhejna/
+  delete/install/settings = card; (4) benign steps (cart/search/form bhar/tab/download/login/continue) auto-approve
+  with a note that teaches the model not to ask again; unclear = card (safe default). SYSTEM prompt narrowed:
+  "SUBMITS a form" -> "the FINAL form that creates something real" + an explicit kabhi-mat-maango list. Result:
+  pizza flow makes ZERO meaningless cards.
+- VOICE APPROVAL PATH (voice.py, RC-B ka ilaaj) - Call._approval_listen, the _otp_listen pattern: on every input
+  transcription piece a pure yes approves INSTANTLY (the stalled job moves while she talks); at turn end a pure
+  "nahi" rejects and an approve_lead ("haan par cheese burst bhi...") approves + Gemini gets a note with her extra
+  words; money words in her utterance = the honest "yeh card se hoga" note, never an approval. bazar.service.
+  voice_approve/voice_reject + voice_pending (pending pcop/browser, non-money, <=15 min young) -> decide(notify_ok=
+  False) so ONE line is spoken (no double result message). CHAT too: run_turn's owner block resolves a pure typed
+  "haan karo" before the brain (never for "pizza order karo").
+- RESULT INTELLIGENCE (kaamwatch.py) - KINDS.browser (aapka PC + Hoola browser dono kind='browser' bolte hain):
+  needs_confirm -> waiting = the call hears "aapki baari - card par haan, ya bas bol kar 'haan karo'"; voice_only
+  (no chat line - the card IS the story); no_start_say (running steps say nothing, the live card is already there);
+  shape() now reads session_id as a job id (pc/browser events never had 'id' - the browser kind was invisible to
+  kaamwatch before this). done/failed keep the v0.187 one-result-message followup.
+- CHANNEL SPLIT (Flutter + console) - card_of.voice_ok on every non-money pcop/browser approval; _BazarCard shows
+  "Bol kar bhi ho jayega - 'haan karo' ya 'approve' kahiye." (chat AND the live call tray - both render feedCard);
+  console v2.js bazar branch shows the same hint. Money cards unchanged: APPROVE KAREIN + UPI PIN warning + tap.
+- operator.decide() got the missing else branch (no-loop callers set the Event directly - latent give_otp-style gap).
+- Tests: NEW tests/test_v0191_smart_cards.py (16): the whole boli (HAAN se हाँ तक), rejection-wins, lead-vs-new-
+  command, money-risk; tapgate benign-no-card + real-decisions-still-card + CAPTCHA once-then-auto (fresh task asks
+  again); voice approve end-to-end (Approval row decided + op.approved + Event set), ANY word, money-words-refused,
+  new-command-not-an-approval, pure-nahi-cancels, chat typed haan resolves WITHOUT the brain (monkeypatched _steps
+  would boom), card_of.voice_ok flags, kaamwatch browser waiting/quiet lines, decide notify_ok silence. Sweeps
+  green: smart_cards 16 + cards/routines/goal/hotfix/harness 39 + realtime/pc/search/console 50 + email x5 + bazar
+  101 + livework/robust/api/basics/gcal/gdrive/drive/employee/appcheck 54 + captcha/pakka/place/cost/commerce 43 =
+  303 passed, zero failures (google.genai voice suites unimportable in sandbox - pre-existing). verify_chat ALL
+  GREEN. Version 0.198.0 (pubspec 0.198.0+232, APP_VERSION story comment, console ?v=0.198.0 x9, conscious pins
+  0.190.1->0.198.0 in test_v0179/email_phase1-4/test_v0185/test_v0187/test_v0189/test_v0190). Every safety gate
+  untouched (money/UPI/bank-OTP/password = card + PIN only, OTP box flow unchanged, Mera PC freeze respected);
+  desktop untouched 1.4.0 (APK change is only the hint line - old APKs keep working, the brain is server-side).
+
+## v0.195.0 HOOLA KA APNA PC — Phase 1 of the per-user coworker environment (owner: "HOOLA OWN PC / ENVIRONMENT / CPU, RAM ETC FOR EVERY USER WHERE HOOLA COWORKER CAN WORK, INSTALL SOFTWARE ETC SAME LIKE OPEN AI DOTS AND LIKE MUSE OR LIKE GROK BOT — FIRST DEEP RESEARCH AND THEN A PERFECT PLAN" → "START PHASE 1")
 
 Deep research first (20+ sources): OpenAI Dots (persistent agents, each with its own cloud computer + browser), Meta Muse (per-user Secure VM + the Sentinel egress watcher + human-approval dialogs straight to the user, never through the model), Grok Bot (role-based bots, each with its own cloud computer, live screen watch + takeover), Manus (per-user VM, Cloud Computer), Anthropic's computer-use harness (Ubuntu container + Xvfb + xdotool + the computer/bash/editor tools, "you can install Ubuntu applications with your bash tool"), CUA/Operator, E2B/Daytona/Fly/Hetzner infra costs. The one pattern they all share: per-user persistent cloud computer + browser + logged-in sessions + watchable screen + human takeover + egress policy. Hoola already owned ~80% of it (pc/operator.py vision loop + bridge + voice dispatch + wake lane) — the missing piece was a computer that belongs to Hoola.
 
@@ -8153,3 +8201,4 @@ and the session surface e2e (create → chat born inside via ?project_id → ren
 delete session leaves the chat alive outside; unknown project_id refused 404). Ritual: APP_VERSION 0.194.0,
 pubspec 0.194.0+228, console ?v=0.194.0 x9, pins →0.194.0 in test_v0179 / test_v0185 / test_v0187 / test_v0189 /
 test_v0190_hotfix / test_v0191_harness2 / email_phase1-4.
+

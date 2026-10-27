@@ -960,6 +960,7 @@ class Call:
         self._otp_req = ""                     # v0.83 the website OTP box we are listening for
         self._otp_heard = ""                   # what she said since that box asked (only while it waits)
         self._otp_said: set[str] = set()       # OTPs filled in this call: hidden from the saved transcript
+        self._appr_heard = ""                  # v0.191 what she said since a PC/browser step asked her yes/no
         self.turns_log: list[tuple[str, str]] = []   # v0.91 the whole call (masked), for the call receipt
         self.did: list[dict] = []              # v0.91 tools that really ran in this call, with their real outcome
         # v0.142 doosre se baat: while on hold the talk Gemini hears is not for Hoola (her phone call, people in the room)
@@ -1190,6 +1191,7 @@ class Call:
                     elif not self.hold:
                         await self.send_json({"type": "user_text", "text": self.user_buf.strip()})
                         await self._otp_listen(sc.input_transcription.text)
+                        await self._approval_listen(sc.input_transcription.text)   # v0.191 boli hui manzoori
                         if get_settings().voice_side_talk:
                             from . import sidetalk
                             if sidetalk.wants_hold(self.user_buf):   # "ek minute, main kisi se baat kar rahi hoon"
@@ -1280,7 +1282,48 @@ class Call:
         await self.send_json({"type": "user_text", "text": mask(self.user_buf.strip(), v)})
         await self.send_json({"type": "otp_filled"})
 
+    async def _approval_listen(self, piece: str = "", final: bool = False) -> None:
+        """v0.191 SAMAJHDAR CARD (RC-B ka ilaaj): PC/browser step uski haan ka intezaar karta hai aur woh CALL par
+        bolti hai — 'haan karo' / 'approve hai' / 'confirm' / 'theek hai' / 'kar do' (koi bhi manzoori ka shabd):
+        card khud resolve ho jata hai, atka kaam aage badhta hai. Paise / UPI / bank-OTP wali manzoori bol se
+        KABHI nahi hoti (card par hi). _otp_listen jaisa hi: koi tool call nahi, Gemini ko bas ek note."""
+        try:
+            from . import approval_words
+            if piece:
+                self._appr_heard = (self._appr_heard + " " + piece).strip()[-400:]
+            t = self._appr_heard.strip()
+            if not t or not approval_words.might_answer(t):
+                return
+            if final:
+                # poora uttar sun liya: saaf 'nahi', ya manzoori (poori ya shuru mein) — dono chalte hain
+                if approval_words.is_pure_rejection(t):
+                    act = "reject"
+                elif approval_words.is_approval(t) and (approval_words.is_pure_approval(t) or approval_words.approve_lead(t)):
+                    act = "approve"
+                else:
+                    return
+            else:
+                # abhi bolti ja rahi hai: sirf bilkul saaf haan par turant (atka kaam jald jald aage badhe)
+                if not approval_words.is_pure_approval(t):
+                    return
+                act = "approve"
+            from .bazar import service
+            if act == "approve":
+                got = await asyncio.to_thread(service.voice_approve, self.tenant, self.conv, t, False, "voice")
+            else:
+                got = await asyncio.to_thread(service.voice_reject, self.tenant, self.conv)
+        except Exception:
+            log.exception("approval by voice failed")
+            return
+        if not got:
+            return
+        self._appr_heard = ""
+        if got.get("approved"):
+            self.stats["voice_approvals"] = self.stats.get("voice_approvals", 0) + 1
+        self.push("text", got["say"])
+
     async def finish_turn(self, interrupted: bool = False) -> None:
+        await self._approval_listen(final=True)   # v0.191 poora uttar: 'haan, address yeh raha' jaisi manzoori bhi
         await self._otp_listen(final=True)
         user, reply = self.user_buf.strip(), self.reply_buf.strip()
         name_prompt, self._name_prompt = self._name_prompt, False

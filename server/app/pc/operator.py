@@ -68,6 +68,22 @@ Differences from her Windows PC:
   paying, posting publicly, deleting data on an external site. Passwords / PINs / OTPs follow the same rules
   as always (never typed by you). Nothing inside the VM (installs, files, shell, apps) needs approval.
 """
+# v0.191 TAPGATE (samajhdaar card): card SIRF asli faisle par jaata hai. Kuch nahi badalne wali step auto-approve
+# (no card), CAPTCHA ek confirm ke baad apne aap type, aur paise/bhejna/delete/order jaise faisle par hi card.
+_CAPTCHA = re.compile(r"captcha", re.I)
+# unconditionally benign things (checked FIRST - 'cookie banner hata doon' is not a 'remove' risk)
+_ALWAYS_OK = re.compile(r"(popup|pop-?up|cookie|cookies|notification|banner|dialog|dailog|promo)", re.I)
+# a real decision: the card ALWAYS goes (and voice can never approve these silently)
+_STAYS_ASK = re.compile(r"(pay|payment|paise|paisa|rupaye|rupees|rs\.?\s*\d|\u20b9|\$\s?\d|money|upi|bank|card|cvv|"
+                        r"password|otp|order|kharid|purchase|checkout|place kare|bhej|send|submit|post|publish|email|"
+                        r"whatsapp|message|delete|hatana|hata do|remove|uninstall|install|settings|save over|overwrite|"
+                        r"format|account bana|register)", re.I)
+# nothing-consequence steps: the tapgate approves these without a card (owner: 'HAAN card har baar, bina matlab')
+_BENIGN = re.compile(r"(popup|pop-?up|dialog|dailog|cookie|cookies|notification|banner|promo|advertis|\bad\b|tab|"
+                     r"search|type|likh|likhna|fill|bhar|bharn|form|filter|sort|cart|wishlist|read|padh|khol|open|"
+                     r"navigate|scroll|download|copy|select|highlight|zoom|play|pause|accept|agree|continue|next|"
+                     r"close|dismiss|band k|clear|refresh|reload|log ?in|sign ?in|login|skip|excel|word|notepad|"
+                     r"folder|address|number likh|detail|enter|press)", re.I)
 
 def _is_web_task(task: str) -> bool:
     return bool(_WEB_TASK.search(task or ""))
@@ -122,9 +138,16 @@ How to work:
   If you cannot finish, call done(success=false) with what you did and what is left.
 
 Safety rules (always):
-- Before anything that SENDS (email, WhatsApp, message), SUBMITS a form, SAVES OVER / DELETES files or data, PAYS,
-  PLACES an order, INSTALLS/UNINSTALLS software, CHANGES system settings, or POSTS publicly: call ask_approval first
-  with exactly what you will do. Only continue after it says approved.
+- ask_approval SIRF asli faislon se pehle: SENDS (email, WhatsApp, message), the FINAL form that creates/changes
+  something real (places an order, books, registers), SAVES OVER / DELETES files or data, PAYS, INSTALLS/UNINSTALLS,
+  CHANGES system settings, or POSTS publicly. Say exactly what will happen. Only continue after it says approved.
+- ask_approval IN steps ke liye KABHI mat maango (kuch nahi badalti, system inhe khud approve kar deta hai): sites,
+  apps ya tabs kholna, search, page padhna, fields bharna, cart/wishlist mein add karna, filters, sorting, popup /
+  cookie banner / notification / dialog band karna, file download, copy, login (password waise bhi tumhara kaam nahi),
+  page par continue / next dabana. Seedha karo.
+- CAPTCHA: is task ki PEHLI CAPTCHA par ask_approval("CAPTCHA mein '<what you read>' likhu?") karo aur manzoori ke
+  baad type karo (uska jawab correction ho to approval refused: dobara padho). Uski ek manzoori ke baad system is
+  task ki har aage ki CAPTCHA apne aap approve kar deta hai — aage ki CAPTCHAs poochhe bina seedha type karo.
 - Aadhaar / PAN / voter ID / any ID number and every other number (mobile, account, consumer, GSTIN, amounts): type
   them yourself. ID numbers appear as references like {id:ab12cd34ef}: type the reference exactly, the PC gets the real
   number (ID LOCKER below lists what she has saved).
@@ -266,6 +289,7 @@ class Op:
     created: float = field(default_factory=time.time)
     done_event: asyncio.Event = field(default_factory=asyncio.Event)
     otp: PcOtp | None = None
+    captcha_ok: bool = False   # v0.191 usne is task mein ek CAPTCHA manzoor ki: aage ki CAPTCHAs apne aap type
 
     def live(self) -> dict[str, Any]:
         out = {"session_id": self.id, "status": self.status, "step": self.step, "action": self.action,
@@ -339,6 +363,33 @@ FOCUS_MOVERS = {"open_app", "focus_window", "open_url", "window", "screenshot", 
 STATS = {"held_blind": 0}
 SETTLE_S = {"click": 0.35, "key": 0.35, "type": 0.2, "scroll": 0.25, "drag": 0.3, "focus_window": 0.3, "open_app": 0.8,
             "open_url": 1.0, "window": 0.4, "switch_tab": 0.6}   # v0.184 open_url shorter: the desktop itself waits for the page
+
+
+def _tapgate(op: Op, what: str) -> tuple[bool, str]:
+    """v0.191 samajhdaar card (RC-A ka ilaaj): har ask_approval par card NAHI jaata.
+    - CAPTCHA: pehli baar card; uski manzoori ke baad is task ki har CAPTCHA apne aap type (owner ki manzoori:
+      'ek confirm ke baad apne aap type').
+    - Paise / bhejna / delete / order / install / settings: card hamesha (asli faisla).
+    - Kuch nahi badalne wali step (popup, cookie, cart, search, form bharna, tab...): auto-approve, card nahi.
+    Returns (auto_approved, model_note)."""
+    from .. import approval_words
+    w = what or ""
+    if _CAPTCHA.search(w):
+        if op.captcha_ok:
+            return True, ("APPROVED (auto: aapne is task mein pehli CAPTCHA manzoor kar di thi — ab is task ki har CAPTCHA "
+                          "apne aap type hoti hai). Do exactly that now.")
+        return False, ""
+    if not approval_words.money_risk(w) and _ALWAYS_OK.search(w):
+        STATS["tapgate_auto"] = STATS.get("tapgate_auto", 0) + 1
+        return True, ("APPROVED (auto — popup/cookie jaisi chhoti cheez hai, card nahi bheja gaya). Do exactly that now.")
+    if approval_words.money_risk(w) or _STAYS_ASK.search(w):
+        return False, ""                     # asli faisla: card jaata hai
+    if _BENIGN.search(w):
+        STATS["tapgate_auto"] = STATS.get("tapgate_auto", 0) + 1
+        return True, ("APPROVED (auto — is step ka koi asar nahi, isliye card nahi bheja gaya). "
+                      "Do exactly that now; aage aise steps ke liye ask_approval mat karo.")
+    return False, ""                         # unclear: card jaata hai (safe default)
+
 
 # v0.166 a desktop older than 1.3.0 answers 'Unknown action open_url' etc.; the model gets a clean upgrade line instead
 _OLD_DESKTOP = "Yeh Santosh Desktop purana hai. PC par naya SantoshDesktop.exe install kijiye (Hoola app > Mera PC > " \
@@ -851,6 +902,8 @@ def decide(tenant: str, sid: str, pending_id: str, approve: bool) -> bool:
     loop = _loop
     if loop is not None:
         loop.call_soon_threadsafe(op.decision.set)
+    else:
+        op.decision.set()   # no loop recorded (tests / same-thread callers): set it here
     return True
 
 
@@ -938,7 +991,14 @@ async def _run(op: Op) -> None:
                     results.append({"type": "tool_result", "tool_use_id": u["id"], "content": msg})
                     continue
                 if name == "ask_approval":
-                    ok = await _approval(op, str(a.get("what", "this step")))
+                    what = str(a.get("what", "this step"))
+                    auto, note = _tapgate(op, what)   # v0.191 samajhdaar card: card sirf asli faislon par
+                    if auto:
+                        results.append({"type": "tool_result", "tool_use_id": u["id"], "content": note})
+                        continue
+                    ok = await _approval(op, what)
+                    if ok and _CAPTCHA.search(what):
+                        op.captcha_ok = True   # v0.191 ek confirm ke baad CAPTCHA apne aap type (owner ki manzoori)
                     if op.status == "cancelled":
                         finished = True
                         break

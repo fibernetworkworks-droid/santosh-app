@@ -889,6 +889,24 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _save(conversation_id, "assistant", [{"type": "text", "text": got["say"]}], display=got["say"])
             bus.publish(conversation_id, "message", {"role": "assistant", "text": got["say"], "source": "operator"})
             return got["say"]
+        try:   # v0.191 SAMAJHDAR CARD: PC/browser step uski haan ka intezaar hai aur usne LIKH diya ('haan karo',
+               # 'approve hai', 'confirm'...) — card khud resolve, tap ki zaroorat nahi (paise wali card par hi).
+               # Sirf POORA uttar hi manzoori ho tabhi ('haan, address yeh raha' ka baaki hissa brain dekhega).
+            from .. import approval_words
+            if approval_words.is_pure_approval(user_text):
+                from ..bazar import service as _bz
+                _ap = await asyncio.to_thread(_bz.voice_approve, tenant_id, conversation_id, user_text, True, "chat")
+            else:
+                _ap = None
+        except Exception:
+            log.exception("approval by chat text failed")
+            _ap = None
+        if _ap:
+            _save(conversation_id, "user", user_text, display=user_text)
+            _save(conversation_id, "assistant", [{"type": "text", "text": _ap["say"]}], display=_ap["say"])
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": _ap["say"], "source": "approval"})
+            bus.publish(conversation_id, "typing", {"on": False})
+            return _ap["say"]
         try:
             from ..idvault import capture
             user_text, _ids = capture(tenant_id, user_text)

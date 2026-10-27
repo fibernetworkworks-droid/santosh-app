@@ -2534,6 +2534,16 @@ class _BazarCard extends StatelessWidget {
           ],
           if (v['needs_pin'] == true && status == 'pending')
             Text(app.g('UPI PIN sirf aapke UPI app mein daaliye. Hoola kabhi PIN nahi maangega.'), style: const TextStyle(color: C.muted, fontSize: 12)),
+          if (v['voice_ok'] == true && status == 'pending') ...[
+            // v0.191 samajhdaar card: boli/likhi hui manzoori — tap ki zaroorat nahi
+            const SizedBox(height: 8),
+            Row(children: [
+              Icon(Icons.graphic_eq_rounded, size: 15, color: C.accent),
+              const SizedBox(width: 6),
+              Expanded(child: Text(app.g('Bol kar bhi ho jayega — "haan karo" ya "approve" kahiye.'),
+                  style: const TextStyle(color: C.accent, fontSize: 12))),
+            ]),
+          ],
           if (status == 'pending') ...[
             const SizedBox(height: 10),
             Row(children: [

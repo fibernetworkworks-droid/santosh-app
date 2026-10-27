@@ -389,6 +389,9 @@ def card_of(ap: Approval, pack: Pack | None) -> dict[str, Any]:
             "needs_pin": ap.tier >= 3 or "UPI" in (ap.pay_method or ""),
             # v0.86 a step that moves no money (PC / website step, a send, a booking without price) gets the plain card
             "money": bool(ap.amount_paise) or ap.tier >= 3 or bool(re.search(r"upi|card|wallet|pay|bank|cash", ap.pay_method or "", re.I))}
+    # v0.191 SAMAJHDAR CARD: PC / browser step approvals (non-money) bhi bol kar ya likh kar ho jaati hain —
+    # "haan karo" / "approve hai" / "confirm" — card ka tap zaroori nahi. Money cards par yeh kabhi nahi.
+    card["voice_ok"] = (ap.action or {}).get("executor") in ("pcop", "browser") and not card["money"]
     if disclosures:
         card["disclosures"] = disclosures
     return card
@@ -482,7 +485,7 @@ def _run_pc_read(tenant_id: str, pack: Pack, tool: str, args: dict[str, Any], ev
     return out
 
 
-def decide(tenant_id: str, approval_id: str, decision: str) -> dict[str, Any]:
+def decide(tenant_id: str, approval_id: str, decision: str, notify_ok: bool = True) -> dict[str, Any]:
     if decision not in ("approve", "reject"):
         raise ToolError("decision must be approve or reject")
     reg = registry()
@@ -501,14 +504,116 @@ def decide(tenant_id: str, approval_id: str, decision: str) -> dict[str, Any]:
         from . import upiresult
         upiresult.copy_card(tenant_id, act["txn_ref"])
     if conv:
-        bus.publish(conv, "bazar_approval", card)
-        if outcome.get("error"):
-            notify(conv, f"{card['title']}: nahi ho paya. {outcome['error']}")
-        elif decision == "reject":
-            notify(conv, f"Theek hai, '{card['title']}' cancel kar diya. Kuch order ya payment nahi hua.")
-        else:
-            notify(conv, outcome.get("message") or f"'{card['title']}' ho gaya.")
+        bus.publish(conv, "bazar_approval", card)   # the card resolves in place (chat + call) — hamesha
+        if notify_ok:                               # v0.191 voice/text approval apni ek hi line bolti hai
+            if outcome.get("error"):
+                notify(conv, f"{card['title']}: nahi ho paya. {outcome['error']}")
+            elif decision == "reject":
+                notify(conv, f"Theek hai, '{card['title']}' cancel kar diya. Kuch order ya payment nahi hua.")
+            else:
+                notify(conv, outcome.get("message") or f"'{card['title']}' ho gaya.")
     return {"status": ap.decision, "outcome": outcome, "open": act}
+
+
+# ------------------------------------------------------------------ v0.191 SAMAJHDAR CARD: manzoori boli/likhi hui
+VOICE_OK_EXECUTORS = ("pcop", "browser")   # aapka PC + Hoola ka browser: step approvals jo bol se ho sakti hain
+VOICE_WINDOW_MIN = 15                      # itni nayi manzoori par hi uske shabd kaam karte hain
+
+
+def voice_pending(tenant_id: str, conversation_id: str) -> list[Approval]:
+    """Is baat-cheet ke young (<= 15 min), pending, NON-MONEY PC/browser step approvals — jinko uske shabd
+    resolve kar sakte hain. Money / UPI / tier>=3 / password-OTP wali manzoori yahan KABHI nahi aati."""
+    from datetime import timedelta
+    from .. import approval_words
+    from ..db import now
+    with session() as s:
+        rows = s.scalars(select(Approval).where(
+            Approval.conversation_id == conversation_id, Approval.decision == "pending",
+            Approval.created_at >= now() - timedelta(minutes=VOICE_WINDOW_MIN))
+            .order_by(Approval.created_at.desc()).limit(5)).all()
+        s.expunge_all()
+    out: list[Approval] = []
+    for ap in rows:
+        if (ap.action or {}).get("executor") not in VOICE_OK_EXECUTORS:
+            continue
+        if ap.amount_paise or ap.tier >= 3 or re.search(r"upi|card|wallet|pay|bank|cash", ap.pay_method or "", re.I):
+            continue
+        text = " ".join([ap.title or ""] + [str((it or {}).get("name", "")) for it in (ap.items or [])])
+        if approval_words.money_risk(text):
+            continue
+        out.append(ap)
+    return out
+
+
+def voice_approve(tenant_id: str, conversation_id: str, text: str, pure_only: bool = False,
+                  source: str = "voice") -> dict[str, Any] | None:
+    """Usne 'haan karo' / 'approve hai' / 'confirm' / 'theek hai' kaha ya likha: pending NON-MONEY PC/browser
+    step approval card ke tap ke bina resolve ho jaati hai (owner: 'NOT ONLY HAAN — ANY KARDO, APPROVE HAI ETC').
+
+    pure_only (chat): poora uttar hi manzoori ho tabhi ('haan karo'). Baaki shabdon wala uttar brain dekhega.
+    voice: 'haan, address yeh raha' jaisa chhota lead bhi chalta hai — card resolve + baaki baat normal.
+    Money wale shabd uske uttar mein hon to manzoori NAHI hoti — card-only ka saaf jawab.
+    Returns {approved|rejected|money, pure, say} — say ek hi line hai (voice: Gemini ke liye note; chat: uska reply)."""
+    from .. import approval_words
+    text = (text or "").strip()
+    if not text:
+        return None
+    pending = voice_pending(tenant_id, conversation_id)
+    if not pending:
+        return None
+    if approval_words.is_pure_rejection(text):
+        return voice_reject(tenant_id, conversation_id)
+    pure = approval_words.is_pure_approval(text)
+    if not pure and not (approval_words.approve_lead(text) and not pure_only):
+        return None
+    if approval_words.money_risk(text):
+        if source == "voice":
+            say = ("(System: yeh manzoori PAISE/OTP wali hai — bol se nahi hoti. Ek chhoti line mein batao: app ke card "
+                   "par hi Approve dabana hoga; tumhe is step se aage nahi badhna.)")
+        else:
+            say = "Paise wali manzoori card se hi hoti hai — app mein card khol kar 'Approve' dabaiye. Main us se aage nahi badha."
+        return {"money": True, "say": say}
+    said: list[str] = []
+    for ap in pending[:1]:   # ek manzoori, ek haan
+        try:
+            decide(tenant_id, ap.id, "approve", notify_ok=False)
+        except Exception:
+            log.exception("voice approve failed for %s", ap.id)
+            continue
+        said.append(ap.title)
+    if not said:
+        return None
+    title = said[0]
+    if source == "voice":
+        if pure:
+            say = (f"(System: usne 'haan' kahi — '{title}' wali manzoori card par approve ho gayi, kaam aage badh raha hai. "
+                   "Bas ek chhoti line bolo: 'manzoori mil gayi, kaam aage badh gaya'.)")
+        else:
+            say = (f"(System: usne manzoori di — '{title}' wali manzoori approve ho gayi, kaam aage badh raha hai. Usne yeh "
+                   f"bhi kaha: \"{text}\" — is baat ka jawab do.)")
+    else:
+        say = f"Theek hai — '{title}' manzoor. Kaam aage badh raha hoon, poora hote hi bata dungi."
+    return {"approved": said, "pure": pure, "say": say}
+
+
+def voice_reject(tenant_id: str, conversation_id: str) -> dict[str, Any] | None:
+    """Usne saaf mana kar diya ('nahi' / 'mat karo'): is baat-cheet ki young step manzooriyan cancel ho jaati hain."""
+    pending = voice_pending(tenant_id, conversation_id)
+    said: list[str] = []
+    for ap in pending:
+        try:
+            decide(tenant_id, ap.id, "reject", notify_ok=False)
+        except Exception:
+            log.exception("voice reject failed for %s", ap.id)
+            continue
+        said.append(ap.title)
+    if not said:
+        return None
+    title = said[0]
+    if len(said) > 1:
+        title = f"{len(said)} manzooriyan"
+    return {"rejected": said, "say": f"(System: usne mana kar diya — '{title}' wala step cancel ho gaya, kuch nahi hua. "
+                                     "Ek chhoti line mein batao aur poochho aage kya karna hai.)"}
 
 
 def expire_approvals(ttl_h: int = 24) -> int:

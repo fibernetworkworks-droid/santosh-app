@@ -97,6 +97,9 @@ const Map<String, Map<String, String>> uiStrings = {
     'Ho raha hai…': 'Doing it…',
     'Approve karein': 'Approve',
     'Haan, karo': 'Yes, do it',
+    // v0.191 samajhdaar card: boli/likhi hui manzoori (non-money PC/browser steps)
+    'Bol kar bhi ho jayega — "haan karo" ya "approve" kahiye.':
+        'You can just say it — say "haan karo" or "approve" and it is done. No tap needed.',
     // ---- campaign card ----
     'Taiyaar': 'READY',
     'Bhej raha hoon': 'SENDING',

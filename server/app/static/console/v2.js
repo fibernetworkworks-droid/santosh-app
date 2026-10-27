@@ -604,7 +604,8 @@ function renderCard(kind, p, at, live) {
       el.innerHTML = head(p.title || 'Aapki Haan chahiye', p.money ? 'paisa' : 'Aapki Haan', p.money ? 'bad' : 'warn')
         + (p.amount ? `<div class="big">${esc(p.amount)}</div>` : '') + (p.payee ? `<div class="faint" style="font-size:13px">${esc(p.payee)}</div>` : '')
         + (p.items || []).map(i => `<div class="ln"><span>${esc(i.name)}</span><b>${esc(i.price)}</b></div>`).join('')
-        + (p.disclosures || []).map(i => `<div class="ln"><span>${esc(i.label)}</span><b>${esc(i.value)}</b></div>`).join('');
+        + (p.disclosures || []).map(i => `<div class="ln"><span>${esc(i.label)}</span><b>${esc(i.value)}</b></div>`).join('')
+        + (p.voice_ok && !p.money ? `<p class="faint" style="font-size:12.5px">Bol kar ya chat mein bhi ho jayega — "haan karo" ya "approve" kahiye.</p>` : '');
       if (p.status && p.status !== 'pending') { decided(el, p.status === 'approved', p.status === 'approved' ? '✓ Haan diya' : '✕ ' + p.status); break; }
       decisionRow(el, {
         yes: async () => { try { await api('POST', `/api/bazar/approvals/${encodeURIComponent(p.id)}`, {decision: 'approve'}); decided(el, true, '✓ Haan diya'); }

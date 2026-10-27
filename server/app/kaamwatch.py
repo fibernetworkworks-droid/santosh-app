@@ -55,6 +55,12 @@ KINDS: dict[str, dict[str, Any]] = {
     "goal": {"label": "Lamba kaam", "map": {"blocked": "waiting"},   # v0.187 goal mode: blocked on her = aapki baari
              "waiting_say": "lamba kaam aapke jawab par ruka hai"},
     "agent_team": {"label": "Agent team", "map": {}},   # v0.193 background agent crews (agent/team.py)
+    # v0.191 SAMAJHDAR CARD: aapka PC (source='pc') aur Hoola ka browser dono kind='browser' bolte hain — jab step
+    # uski manzoori par atakti hai (needs_confirm), woh sun'ti hai 'aapki baari' aur bas 'haan karo' bol deti hai
+    # (card khud resolve). Start lines shant (live card already dikhta hai); chat line bhi nahi — CARD hi kahani hai.
+    "browser": {"label": "Browser ka kaam", "map": {"needs_confirm": "waiting"},
+                "waiting_say": "aapki manzoori chahiye — card par haan, ya bas bol kar 'haan karo'",
+                "no_start_say": True, "voice_only": True},
 }
 # quick results made inside one tool call (letters, posters, photos, lekh) are told by the turn itself: not watched
 # kinds whose events are steps of ONE agent turn: the turn itself reports them
@@ -140,7 +146,7 @@ def shape(kind: str, p: dict[str, Any]) -> dict[str, Any] | None:
         if not status or status not in (WORKING | WAITING | DONE | FAILED | STOPPED) or not (p.get("id") or p.get("number")):
             return None
         conf = {"label": kind.replace("_", " ").capitalize(), "map": {}}
-    jid = str(p.get("id") or p.get("number") or p.get("job") or "")
+    jid = str(p.get("id") or p.get("number") or p.get("job") or p.get("session_id") or "")   # v0.191: pc/browser events carry session_id
     if not jid:
         return None
     if conf.get("done_always") and not status:
@@ -167,7 +173,7 @@ def shape(kind: str, p: dict[str, Any]) -> dict[str, Any] | None:
                  or p.get("download_url") or p.get("path") or p.get("file") or "", 300)   # v0.187 the result's own link
     return {"key": f"{kind}:{jid}", "kind": kind, "label": conf["label"], "title": title, "state": state, "status": status,
             "detail": detail, "pct": pct, "stage": stage, "waiting_say": conf.get("waiting_say", ""), "push": bool(p.get("push")),
-            "link": link}
+            "link": link, "no_start_say": bool(conf.get("no_start_say")), "voice_only": bool(conf.get("voice_only"))}
 
 
 def _studio(p: dict[str, Any]) -> dict[str, Any]:
@@ -275,6 +281,8 @@ def _decide(r: KaamJob, job: dict[str, Any], prev: str, new: bool, t: datetime) 
             return f"⏹ {head}: band kar diya gaya."
         return f"⏳ {head}: aapki baari." + (f" {job['detail'] or job['waiting_say']}" if (job["waiting_say"] or job["detail"]) else "")
     # working
+    if job.get("no_start_say"):
+        return ""                      # v0.191: live card dikhta hai — start/progress lines sirf shor
     if new or prev in ("", "waiting", "done", "failed", "stopped"):
         if job.get("in_turn"):
             return ""          # started by the turn she is in: the reply itself says so
@@ -314,6 +322,10 @@ def _recent_same(conv: str, job: dict[str, Any], say: str) -> bool:
 
 
 def _tell(tenant: str, conv: str, say: str, job: dict[str, Any]) -> None:
+    if job.get("voice_only"):
+        # v0.191: is kind ki chat line card ke saath duplicate hoti — baat SIRF live call mein karo
+        _voice(tenant, conv, say)
+        return
     if job["state"] != "working" and _recent_same(conv, job, say):
         STATS["skipped_dup"] += 1
         _voice(tenant, conv, say)
