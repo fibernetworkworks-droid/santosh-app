@@ -1,6 +1,6 @@
 {
  "positives_train": 10314,
- "negatives_train": 22905,
+ "negatives_train": 22893,
  "voices": [
   "en_US-libritts_r-medium",
   "en_US-arctic-medium",
@@ -25,27 +25,27 @@
  ],
  "held_out_positive_clips": 762,
  "thr_0.3": {
-  "recall_held_out_voices": 0.979,
-  "confusable_false_rate": 0.0525,
-  "false_accepts_per_hour_librispeech_test": 9.19,
+  "recall_held_out_voices": 0.9869,
+  "confusable_false_rate": 0.0276,
+  "false_accepts_per_hour_librispeech_test": 12.253,
   "eval_hours": 1.31
  },
  "thr_0.5": {
-  "recall_held_out_voices": 0.9751,
-  "confusable_false_rate": 0.0442,
-  "false_accepts_per_hour_librispeech_test": 8.424,
+  "recall_held_out_voices": 0.9803,
+  "confusable_false_rate": 0.0166,
+  "false_accepts_per_hour_librispeech_test": 10.721,
   "eval_hours": 1.31
  },
  "thr_0.7": {
-  "recall_held_out_voices": 0.9672,
-  "confusable_false_rate": 0.0359,
-  "false_accepts_per_hour_librispeech_test": 4.595,
+  "recall_held_out_voices": 0.9724,
+  "confusable_false_rate": 0.0138,
+  "false_accepts_per_hour_librispeech_test": 8.424,
   "eval_hours": 1.31
  },
  "thr_0.85": {
-  "recall_held_out_voices": 0.9554,
-  "confusable_false_rate": 0.0276,
-  "false_accepts_per_hour_librispeech_test": 2.297,
+  "recall_held_out_voices": 0.9633,
+  "confusable_false_rate": 0.0083,
+  "false_accepts_per_hour_librispeech_test": 5.361,
   "eval_hours": 1.31
  }
 }
