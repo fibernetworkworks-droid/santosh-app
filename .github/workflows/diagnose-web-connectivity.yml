@@ -1,0 +1,54 @@
+name: Diagnose Hoola web connectivity
+on:
+  create:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'diagnose/hoola-web-connectivity-20261027')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Public DNS, TLS and HTTP probes (read only)
+        run: |
+          echo 'PUBLIC DNS'
+          dig +short hoola.ainewtika.com A
+          dig +short hoola.ainewtika.com AAAA
+          echo 'CURL FEATURES'
+          curl --version
+          for protocol in --http1.1 --http2; do
+            for path in /console/ /healthz /static/console/workspace.css?web=6; do
+              echo "PROBE $protocol $path"
+              curl "$protocol" -sS --connect-timeout 10 --max-time 25 -D /tmp/hoola-headers -o /tmp/hoola-body -w 'status=%{http_code} protocol=%{http_version} tls_verify=%{ssl_verify_result} remote_ip=%{remote_ip}\n' "https://hoola.ainewtika.com$path" || true
+              cat /tmp/hoola-headers
+              if [ "$path" = /healthz ]; then head -c 2000 /tmp/hoola-body; echo; fi
+              if [ "$path" = /console/ ]; then grep -oE '<title>[^<]+|workspace.css[^" ]*|workspace.js[^" ]*' /tmp/hoola-body || true; fi
+            done
+          done
+          if curl --version | grep -q HTTP3; then
+            curl --http3-only -sS -I --connect-timeout 10 --max-time 25 https://hoola.ainewtika.com/console/ || true
+          fi
+      - name: Origin listener and transport configuration (read only)
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          trap 'rm -f ~/.ssh/hoola-diag' EXIT
+          printf '%s\n' "$VPS_SSH_KEY" | tr -d '\r' > ~/.ssh/hoola-diag
+          chmod 600 ~/.ssh/hoola-diag
+          ssh-keyscan -T 15 -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/hoola-diag -o BatchMode=yes -o ConnectTimeout=20 "$VPS_USER@$VPS_HOST" 'bash -s' <<'SH'
+          echo 'LOCAL CONSOLE CONFIG'
+          curl -sS --max-time 10 http://172.18.0.1:8077/api/console/config || true
+          echo
+          echo 'NGINX TRANSPORT CONFIG'
+          nginx -T 2>&1 | grep -Ei '(^|[[:space:]])(listen|server_name|http3|quic_retry|quic_host_key|ssl_protocols)[[:space:]]|Alt-Svc' || true
+          echo 'TLS/HTTP LISTENERS'
+          ss -lnt | grep -E ':(80|443|8077)[[:space:]]' || true
+          ss -lnu | grep -E ':443[[:space:]]' || true
+          SH
