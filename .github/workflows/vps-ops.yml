@@ -26,6 +26,7 @@ on:
           - pc_logs
           - mem
           - pc_chrome_selftest
+          - web
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
         required: false
@@ -182,6 +183,22 @@ jobs:
                 echo 'echo "== paired? (look for PAIRED / connected above)"' ;;
               pc_logs)
                 echo "docker logs --tail $N hoola-pc 2>&1" ;;
+              web)
+                # v0.208.1 incident: the droplet resize reboot left nginx (host systemd service,
+                # NOT a pm2 process) down - the API behind it was healthy but the app + website
+                # both ride this one edge. Report the edge honestly, then best-effort start.
+                echo 'echo "== nginx unit"; systemctl is-active nginx 2>&1; systemctl is-enabled nginx 2>&1'
+                echo 'echo "== listeners 80/443"; (ss -tln 2>/dev/null || sudo -n ss -tln 2>/dev/null) | grep -E ":80 |:443 " || echo "NOTHING listening on 80/443"'
+                echo 'echo "== config test"; (nginx -t 2>&1 || sudo -n nginx -t 2>&1) | head -10'
+                echo 'echo "== last nginx journal"; (journalctl -u nginx --no-pager -n 25 2>/dev/null || sudo -n journalctl -u nginx --no-pager -n 25 2>/dev/null || echo "journal unreadable as this user") | tail -25'
+                echo 'echo "== try start"; if sudo -n systemctl start nginx 2>&1; then echo "started via sudo"; else service nginx start 2>&1 || echo "COULD NOT START without root - needs DO console: sudo systemctl start nginx"; fi'
+                echo 'echo "== ufw (if readable)"; sudo -n ufw status 2>/dev/null | head -8 || echo "ufw unreadable as this user"'
+                echo 'sleep 3'
+                echo 'echo "== listeners again"; (ss -tln 2>/dev/null || sudo -n ss -tln 2>/dev/null) | grep -E ":80 |:443 " || echo "STILL nothing on 80/443"'
+                echo 'echo "== public probe from the box"; curl -sS -m 10 https://hoola.ainewtika.com/healthz 2>&1 | head -2; echo'
+                echo 'echo "== localhost probe"; curl -sS -m 10 -H "Host: hoola.ainewtika.com" http://127.0.0.1/healthz 2>&1 | head -2; echo'
+                echo 'echo "== docker ps (edge could live here too)"; docker ps --format "{{.Names}} {{.Status}} {{.Ports}}" 2>/dev/null | head -8'
+                echo 'systemctl is-active nginx 2>&1 | grep -q active && echo "WEB-EDGE: ACTIVE" || echo "WEB-EDGE: STILL DOWN - see report above"' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh
