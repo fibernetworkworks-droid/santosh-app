@@ -88,30 +88,157 @@ def _as_blocks(c) -> list[dict]:
     return c if isinstance(c, list) else [{"type": "text", "text": c}]
 
 
+def _tool_ids(content) -> set:
+    """v0.216 every tool_use id an assistant message carries."""
+    return {b.get("id") for b in _as_blocks(content)
+            if isinstance(b, dict) and b.get("type") == "tool_use" and b.get("id")}
+
+
+def _result_ids(content) -> set:
+    """v0.216 every tool_use id a user message answers."""
+    return {b.get("tool_use_id") for b in _as_blocks(content)
+            if isinstance(b, dict) and b.get("type") == "tool_result"}
+
+
+def _results_first(blocks: list) -> list:
+    """v0.216 the API wants tool_result blocks at the START of a user message, text after."""
+    return ([b for b in blocks if isinstance(b, dict) and b.get("type") == "tool_result"]
+            + [b for b in blocks if not (isinstance(b, dict) and b.get("type") == "tool_result")])
+
+
+# v0.216 the honest answer for a result the crash lost (the model is told to check the step, not to guess)
+TOOL_RESULT_LOST = ("[System: yeh tool result ek crash ke beech save nahi ho paya tha. Is step ka asli status "
+                    "khud check karke (status/list jaisa tool) aage badho, andaza mat lagao.]")
+# v0.213 the prefill guard's continuation line (unchanged text, now inside _api_ready)
+CONTINUE_NUDGE = "[System: upar ki baat-cheet ke hisaab se aage badho.]"
+
+
 def _sanitize(msgs: list[dict]) -> list[dict]:
-    """Repair history after a crash: drop tool calls that never got results and merge
-    back-to-back turns from the same role, so the API always accepts the history."""
+    """Repair history after a crash: drop tool calls that never got results, drop results whose call is
+    gone, and merge back-to-back turns from the same role, so the API always accepts the history.
+    v0.216 TOOL-JOD: the check is now per-ID - the old 'any tool_result present' passed a PARTIAL pair
+    (assistant asked A+B, only A's result survived the crash) straight through, and the API answered
+    "messages.12: tool_use ids were found without tool_result blocks immediately after: toolu_01B..."
+    on every later turn of that conversation (owner saw it on long work)."""
     out: list[dict] = []
     for i, m in enumerate(msgs):
         c = m["content"]
-        if m["role"] == "assistant" and isinstance(c, list) and any(b.get("type") == "tool_use" for b in c):
-            nxt = msgs[i + 1] if i + 1 < len(msgs) else None
-            answered = (nxt is not None and nxt["role"] == "user" and isinstance(nxt["content"], list)
-                        and any(b.get("type") == "tool_result" for b in nxt["content"]))
-            if not answered:
-                texts = [b for b in c if b.get("type") == "text"]
-                if not texts:
-                    continue
-                m = {"role": "assistant", "content": texts}
-        if m["role"] == "user" and isinstance(m["content"], list) and m["content"] and m["content"][0].get("type") == "tool_result":
-            prev = out[-1] if out else None
-            if not (prev and prev["role"] == "assistant" and any(b.get("type") == "tool_use" for b in _as_blocks(prev["content"]))):
-                continue   # orphan results
+        if m["role"] == "assistant":
+            ids = _tool_ids(c)
+            if ids:
+                nxt = msgs[i + 1] if i + 1 < len(msgs) else None
+                answered = _result_ids(nxt["content"]) if nxt is not None and nxt.get("role") == "user" else set()
+                if not ids <= answered:   # EVERY id must be answered, not just any result present
+                    keep = [b for b in _as_blocks(c)
+                            if not (isinstance(b, dict) and b.get("type") == "tool_use") or b.get("id") in answered]
+                    if not keep:
+                        continue
+                    m = {"role": "assistant", "content": keep}
+        if m["role"] == "user" and isinstance(m["content"], list):
+            rb = [b for b in m["content"] if isinstance(b, dict) and b.get("type") == "tool_result"]
+            if rb:
+                prev = out[-1] if out else None
+                pids = _tool_ids(prev.get("content")) if prev is not None and prev.get("role") == "assistant" else set()
+                known = [b for b in rb if b.get("tool_use_id") in pids]
+                if len(known) != len(rb):   # v0.216 orphan results leave wherever they sit in the content
+                    rest = [b for b in m["content"] if not (isinstance(b, dict) and b.get("type") == "tool_result")]
+                    if not known and not rest:
+                        continue
+                    m = {**m, "content": _results_first(known + rest)}
         if out and out[-1]["role"] == m["role"]:
-            out[-1] = {"role": m["role"], "content": _as_blocks(out[-1]["content"]) + _as_blocks(m["content"])}
+            merged = _as_blocks(out[-1]["content"]) + _as_blocks(m["content"])
+            out[-1] = {"role": m["role"], "content": _results_first(merged) if m["role"] == "user" else merged}
         else:
             out.append(m)
     return out
+
+
+def _strip_orphans(msgs: list[dict]) -> tuple[list[dict], bool]:
+    """v0.216 pass 1: a tool_result whose call is not the message right before it ('unexpected
+    tool_use_id' 400) leaves the request - wherever it sits in the content. Returns (new list, changed)."""
+    out: list[dict] = []
+    changed = False
+    for m in msgs:
+        if isinstance(m, dict) and m.get("role") == "user" and isinstance(m.get("content"), list):
+            rb = [b for b in m["content"] if isinstance(b, dict) and b.get("type") == "tool_result"]
+            if rb:
+                prev = out[-1] if out else None
+                pids = _tool_ids(prev.get("content")) if isinstance(prev, dict) and prev.get("role") == "assistant" else set()
+                known = [b for b in rb if b.get("tool_use_id") in pids]
+                if len(known) != len(rb):
+                    restb = [b for b in m["content"] if not (isinstance(b, dict) and b.get("type") == "tool_result")]
+                    if not known and not restb:
+                        changed = True
+                        continue          # a results-only orphan row disappears
+                    m = {**m, "content": _results_first(known + restb)}
+                    changed = True
+        out.append(m)
+    return out, changed
+
+
+def _api_ready(history: list[dict]) -> list[dict]:
+    """v0.216 TOOL-JOD the last line of defence before EVERY model call (Claude / GLM / OmniRoute, team
+    sub-agents and the mini-loop included): the conversation goes out with every tool_use answered.
+    v0.213's guard fixed assistant-final arrays by appending a text nudge - but when that final assistant
+    message carried tool_use blocks (a sub-agent interrupted mid-step and retried: Rokiye's CancelledError
+    is a BaseException its `except Exception` never saw, or a max_tokens cut inside a tool call), the nudge
+    landed right after the tool_use and the API 400ed: 'tool_use ids were found without tool_result blocks
+    immediately after' (owner: 'THIS ERROR IS IT IS SAME', messages.12, toolu_01BDvvVMZtTnhnxv). Now every
+    unanswered tool_use gets an honest synthetic result in the very next user message - mid-array partials
+    are rebuilt, orphan results are dropped, and a tool-tailed array ends with its results, not with a text
+    nudge. Clean user-final arrays return the SAME list untouched (byte-identical happy path); a broken
+    shape is repaired on a COPY, never mutating the caller's list (team sub-agents share theirs)."""
+    msgs, changed = _strip_orphans(history)
+    out: list[dict] = []
+    i, n = 0, len(msgs)
+    while i < n:
+        m = msgs[i]
+        out.append(m)
+        i += 1
+        if not isinstance(m, dict) or m.get("role") != "assistant":
+            continue
+        ids = [b.get("id") for b in _as_blocks(m.get("content"))
+               if isinstance(b, dict) and b.get("type") == "tool_use" and b.get("id")]
+        if not ids:
+            continue
+        nxt = msgs[i] if i < n else None
+        got: dict = {}
+        rest: list = []
+        if isinstance(nxt, dict) and nxt.get("role") == "user":
+            for b in _as_blocks(nxt.get("content")):
+                if isinstance(b, dict) and b.get("type") == "tool_result":
+                    got[b.get("tool_use_id")] = b
+                else:
+                    rest.append(b)
+        if len(got) == len(ids) and set(ids) <= set(got):
+            continue   # healthy pair: the next user message answers every id and nothing else
+        results = [got.get(tid) or {"type": "tool_result", "tool_use_id": tid, "is_error": True,
+                                    "content": TOOL_RESULT_LOST} for tid in ids]
+        out.append({"role": "user", "content": _results_first(results + rest)})
+        changed = True
+        if isinstance(nxt, dict) and nxt.get("role") == "user":
+            i += 1     # the next user message was folded into the repaired one
+    if not changed:
+        if history and history[-1].get("role") == "user":
+            return history   # clean and user-final: byte-identical, no copy, no mutation
+        out = list(msgs)
+    if not out or out[-1].get("role") != "user":
+        lids = _tool_ids(out[-1].get("content")) if out and isinstance(out[-1], dict) else set()
+        if lids:   # a tool-tailed array ends with its results (not with the text nudge - that was the 400)
+            out.append({"role": "user",
+                        "content": [{"type": "tool_result", "tool_use_id": t, "is_error": True,
+                                     "content": TOOL_RESULT_LOST} for t in lids]})
+        else:
+            out.append({"role": "user", "content": [{"type": "text", "text": CONTINUE_NUDGE}]})
+    # same-role adjacency would 400 in its own way: merge it, exactly like _sanitize does
+    merged: list[dict] = []
+    for m in out:
+        if merged and merged[-1].get("role") == m.get("role"):
+            c = _as_blocks(merged[-1].get("content")) + _as_blocks(m.get("content"))
+            merged[-1] = {"role": m["role"], "content": _results_first(c) if m["role"] == "user" else c}
+        else:
+            merged.append(m)
+    return merged
 
 
 def _save(conversation_id: str, role: str, content, display: str | None = None) -> None:
@@ -150,11 +277,12 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
     v0.187 goal mode raises max_tokens (6000) so a plan's steps are not cut at the chat-size 2000.
     v0.213 the prefill guard: the production model refuses a conversation whose LAST message is an assistant
     message ('This model does not support assistant message prefill', 400 - owner saw it on every long job's
-    wake turn). Every model call now goes out with a user message last, on a COPY, so no caller's list is ever
-    mutated behind its back (team sub-agents share their history list across steps)."""
-    if not history or history[-1].get("role") != "user":
-        history = history + [{"role": "user", "content": [{"type": "text",
-                                                           "text": "[System: upar ki baat-cheet ke hisaab se aage badho.]"}]}]
+    wake turn). v0.216 TOOL-JOD: the guard grew into _api_ready - every call goes out with EVERY tool_use
+    answered (an interrupted sub-agent's tail tool_use + the old text nudge was exactly the owner's second
+    error: 'tool_use ids were found without tool_result blocks immediately after'), mid-array partial pairs
+    are rebuilt and orphan results dropped, always on a COPY so no caller's history list is ever mutated
+    behind its back (team sub-agents share their history list across steps)."""
+    history = _api_ready(history)
     tools = tools if tools is not None else TOOLS
     cap = max_tokens or settings.agent_max_tokens
     streaming = live is not None and live.streaming
