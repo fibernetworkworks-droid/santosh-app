@@ -6,7 +6,7 @@ permissions:
   contents: read
 jobs:
   diagnose:
-    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'diagnose/hoola-web-connectivity-20261027')
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'diagnose/hoola-web-connectivity-2-20261027')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -22,7 +22,7 @@ jobs:
               echo "PROBE $protocol $path"
               curl "$protocol" -sS --connect-timeout 10 --max-time 25 -D /tmp/hoola-headers -o /tmp/hoola-body -w 'status=%{http_code} protocol=%{http_version} tls_verify=%{ssl_verify_result} remote_ip=%{remote_ip}\n' "https://hoola.ainewtika.com$path" || true
               cat /tmp/hoola-headers
-              if [ "$path" = /healthz ]; then head -c 2000 /tmp/hoola-body; echo; fi
+              if [ "$path" = /healthz ]; then head -c 2000 /tmp/hoola-body 2>/dev/null || true; echo; fi
               if [ "$path" = /console/ ]; then grep -oE '<title>[^<]+|workspace.css[^" ]*|workspace.js[^" ]*' /tmp/hoola-body || true; fi
             done
           done
@@ -30,6 +30,7 @@ jobs:
             curl --http3-only -sS -I --connect-timeout 10 --max-time 25 https://hoola.ainewtika.com/console/ || true
           fi
       - name: Origin listener and transport configuration (read only)
+        if: always()
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
