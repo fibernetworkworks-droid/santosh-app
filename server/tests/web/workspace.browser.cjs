@@ -78,7 +78,7 @@ const server=http.createServer((req,res)=>{
  emit('typing',{on:true});await page.getByRole('status').filter({hasText:'Thinking…'}).waitFor();
  for(let i=0;i<30;i++)emit('step',{id:'s'+i,tool:'browser',label:'INTERNAL_LIVE_STEP',state:'running'});
  await page.locator('.simple-progress').filter({hasText:'Working on it…'}).waitFor();
- assert.equal(await page.locator('.simple-progress').count(),1);assert.equal(await page.getByText('INTERNAL_LIVE_STEP',{exact:true}).count(),0);
+ assert.equal(await page.locator('#col > .simple-progress').count(),1);assert.equal(await page.locator('#dock .simple-progress').count(),0);assert.equal(await page.locator('#col .simple-progress img').count(),1);assert.equal(await page.locator('.progress-dots i').count(),3);await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('.progress-dots i').first().evaluate(e=>getComputedStyle(e).animationName),'none');await page.emulateMedia({reducedMotion:'no-preference'});assert.equal(await page.getByText('INTERNAL_LIVE_STEP',{exact:true}).count(),0);
  emit('think',{turn:'final-fixture',seg:0,text:'PRIVATE_REASONING'});await page.locator('.simple-progress').filter({hasText:'Thinking…'}).waitFor();
  assert.equal(await page.getByText('PRIVATE_REASONING',{exact:true}).count(),0);
  emit('reply_start',{turn:'final-fixture'});await page.locator('.simple-progress').filter({hasText:'Preparing your response…'}).waitFor();

@@ -344,14 +344,20 @@ function simpleProgress(kind,p={}) {
   if(kind!=='typing' && !TYPING)return;
   if (!SIMPLE_PROGRESS) {
     SIMPLE_PROGRESS=document.createElement('div');SIMPLE_PROGRESS.className='simple-progress';
-    SIMPLE_PROGRESS.setAttribute('role','status');SIMPLE_PROGRESS.setAttribute('aria-live','polite');
-    $('#slotDock').before(SIMPLE_PROGRESS);
+    SIMPLE_PROGRESS.setAttribute('role','status');SIMPLE_PROGRESS.setAttribute('aria-live','polite');SIMPLE_PROGRESS.setAttribute('aria-atomic','true');
+    const avatar=document.createElement('span');avatar.className='progress-avatar av';avatar.setAttribute('aria-hidden','true');
+    const img=document.createElement('img');img.src=$('#uimg').src;img.alt='';avatar.appendChild(img);
+    const label=document.createElement('span');label.className='progress-label';
+    const dots=document.createElement('span');dots.className='progress-dots';dots.setAttribute('aria-hidden','true');dots.innerHTML='<i></i><i></i><i></i>';
+    SIMPLE_PROGRESS.append(avatar,label,dots);
   }
+  if(SIMPLE_PROGRESS.parentElement!==col)col.appendChild(SIMPLE_PROGRESS);
   SIMPLE_PROGRESS.hidden=false;
   const label=PROGRESS_POLICY.phase(kind,p);
-  if(SIMPLE_PROGRESS.textContent!==label)SIMPLE_PROGRESS.textContent=label;
+  const text=SIMPLE_PROGRESS.querySelector('.progress-label');if(text.textContent!==label)text.textContent=label;
+  scrollDown();
 }
-function clearSimpleProgress(){if(SIMPLE_PROGRESS)SIMPLE_PROGRESS.hidden=true;}
+function clearSimpleProgress(){SIMPLE_PROGRESS?.remove();SIMPLE_PROGRESS=null;}
 function stepEvent(p) { simpleProgress('step',p); }
 function closeTurnTools(t = TURN) {
   if (!t) return;
