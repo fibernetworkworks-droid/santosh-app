@@ -262,6 +262,236 @@ def verify_typed(expected: str) -> dict[str, Any]:
 PARTIAL_EXT = (".crdownload", ".part", ".tmp")
 
 
+# ---------------- v1.5.0 SEMANTIC ACTIONS (UIA): act on page elements by ref, not by guessed pixels --------
+# The operator's root pain: the model guesses X,Y on a JPEG and pyautogui clicks - misses on layout shift
+# / DPI, one slow vision round trip per step. The accessibility tree already carries the REAL elements
+# (browser.py reads it since v1.4); now it also ACTS on them: page_elements -> page_click / page_type /
+# page_select / page_fill_form by ref. The OS resolves the element; the click cannot miss on coordinates.
+INTERACTIVE = ("ButtonControl", "HyperlinkControl", "EditControl", "ComboBoxControl",
+               "CheckBoxControl", "RadioButtonControl", "TabItemControl", "MenuItemControl", "SummaryControl")
+_ROLE = {"ButtonControl": "button", "HyperlinkControl": "link", "EditControl": "input",
+         "ComboBoxControl": "select", "CheckBoxControl": "checkbox", "RadioButtonControl": "radio",
+         "TabItemControl": "tab", "MenuItemControl": "menuitem", "SummaryControl": "button"}
+_REFS: list[dict[str, str]] = []       # ref -> {"type": ControlTypeName, "name": Name} from the last page_elements
+
+
+def _iter_interactive(win, out: list, budget: dict) -> None:
+    """Depth-first walk collecting VISIBLE interactive controls (same shape as page_text's walk)."""
+    if budget["n"] <= 0 or len(out) >= 300:
+        return
+    budget["n"] -= 1
+    try:
+        t = win.ControlTypeName
+        name = (win.Name or "").strip()
+    except Exception:
+        return
+    if t in INTERACTIVE and len(name) > 0:
+        out.append({"type": t, "name": name[:90]})
+    if t in ("EditControl", "ComboBoxControl"):     # leaf-ish: no descent (saves COM calls)
+        return
+    try:
+        kids = win.GetChildren()
+    except Exception:
+        return
+    for k in kids[:60]:
+        _iter_interactive(k, out, budget)
+
+
+def _refind(kind: str, name: str, nth: int = 0):
+    """Re-find a live control by (ControlTypeName, Name, occurrence #) - controls die between calls
+    (same lesson as switch_tab), so refs are re-walked at action time, never cached as objects."""
+    win = _active_browser()
+    if win is None:
+        raise BrowserUnavailable("No browser window is open right now.")
+    hits: list = []
+    budget = {"n": 400}
+
+    def walk(c, d: int) -> None:
+        if budget["n"] <= 0 or len(hits) > nth + 4 or d > WALK_DEPTH:
+            return
+        budget["n"] -= 1
+        try:
+            if c.ControlTypeName == kind and (c.Name or "").strip() == name:
+                hits.append(c)
+                return
+        except Exception:
+            return
+        try:
+            kids = c.GetChildren()
+        except Exception:
+            return
+        for k in kids[:60]:
+            walk(k, d + 1)
+
+    walk(win, 0)
+    if nth >= len(hits):
+        return None
+    return hits[nth]
+
+
+def page_elements(max_items: int = 60) -> dict[str, Any]:
+    """The page's clickable / typeable elements as a numbered list (ref, role, visible name).
+    THE exact way to act: refs go to page_click / page_type / page_select / page_fill_form."""
+    global _REFS
+    win = _active_browser()
+    if win is None:
+        raise BrowserUnavailable("No browser window is open right now (Chrome / Edge / Firefox).")
+    raw: list = []
+    _iter_interactive(win, raw, {"n": 400})
+    _REFS = raw[:max(1, min(int(max_items or 60), 200))]
+    elements = [{"ref": i, "role": _ROLE.get(e["type"], e["type"]), "name": e["name"]}
+                for i, e in enumerate(_REFS, 1)]
+    return {"title": (win.Name or "")[:200], "url": _url_of(win), "count": len(elements), "elements": elements}
+
+
+def page_click(ref: int) -> dict[str, Any]:
+    """Click a page element BY REF (Invoke / Toggle / Expand / Select patterns, else a click at the
+    control's own centre - OS-computed, never a model-guessed pixel)."""
+    i = int(ref or 0)
+    if not 1 <= i <= len(_REFS):
+        raise BrowserUnavailable(f"ref {ref} gaya - pehle page_elements dobara chalao.")
+    e = _REFS[i - 1]
+    c = _refind(e["type"], e["name"])
+    if c is None:
+        raise BrowserUnavailable("Element ab nahi mila (page badla?) - page_elements dobara chalao.")
+    done = False
+    for call in (lambda: c.GetInvokePattern().Invoke(), lambda: c.GetTogglePattern().Toggle(),
+                 lambda: c.GetExpandCollapsePattern().Expand(), lambda: c.GetSelectionItemPattern().Select(),
+                 lambda: c.Click(simulateMove=False)):
+        try:
+            call()
+            done = True
+            break
+        except Exception:
+            continue
+    if not done:
+        raise BrowserUnavailable("Element par koi action nahi chala ( Invoke/Toggle/Click sab fail).")
+    time.sleep(0.8)
+    after = _active_browser()
+    return {"clicked": True, "title": (after.Name or "")[:200] if after else ""}
+
+
+def page_type(ref: int, text: str = "", clear: bool = True) -> dict[str, Any]:
+    """Type into a page field BY REF. ValuePattern first (fast + fires real events in Chromium/Edge),
+    clipboard paste as fallback. PRIVACY: only length + matches come back, never the value."""
+    from .control import paste_text
+    i = int(ref or 0)
+    if not 1 <= i <= len(_REFS):
+        raise BrowserUnavailable(f"ref {ref} gaya - pehle page_elements dobara chalao.")
+    e = _REFS[i - 1]
+    c = _refind(e["type"], e["name"])
+    if c is None:
+        raise BrowserUnavailable("Field ab nahi mila (page badla?) - page_elements dobara chalao.")
+    val = ""
+    try:
+        c.SetFocus()
+    except Exception:
+        pass
+    if clear:
+        try:
+            c.GetValuePattern().SetValue("")
+        except Exception:
+            pass
+    ok = False
+    try:
+        c.GetValuePattern().SetValue(text or "")
+        ok = True
+    except Exception:
+        try:
+            paste_text(text or "")
+            ok = True
+        except Exception:
+            ok = False
+    try:
+        val = c.GetValuePattern().Value or ""
+    except Exception:
+        val = ""
+    got = re.sub(r"\s+", " ", val).strip()
+    want = re.sub(r"\s+", " ", text or "").strip()
+    return {"typed": ok, "length": len(val), "matches": (got == want or got.endswith(want)) if want else bool(ok)}
+
+
+def page_select(ref: int, value: str = "") -> dict[str, Any]:
+    """Pick an option BY REF in a dropdown/combobox (expand, then select the matching item)."""
+    i = int(ref or 0)
+    if not 1 <= i <= len(_REFS):
+        raise BrowserUnavailable(f"ref {ref} gaya - pehle page_elements dobara chalao.")
+    e = _REFS[i - 1]
+    c = _refind(e["type"], e["name"])
+    if c is None:
+        raise BrowserUnavailable("Dropdown ab nahi mila - page_elements dobara chalao.")
+    want = re.sub(r"\s+", " ", (value or "")).strip().lower()
+    try:
+        c.GetExpandCollapsePattern().Expand()
+        time.sleep(0.4)
+    except Exception:
+        pass
+    opts: list = []
+    budget = {"n": 120}
+
+    def find_items(p, d: int) -> None:
+        if budget["n"] <= 0 or len(opts) > 40 or d > 6:
+            return
+        budget["n"] -= 1
+        try:
+            if p.ControlTypeName == "ListItemControl":
+                opts.append(p)
+                return
+        except Exception:
+            return
+        try:
+            kids = p.GetChildren()
+        except Exception:
+            return
+        for k in kids[:40]:
+            find_items(k, d + 1)
+
+    find_items(c, 0)
+    for o in opts:
+        try:
+            nm = re.sub(r"\s+", " ", (o.Name or "")).strip()
+        except Exception:
+            continue
+        if want and (nm.lower() == want or want in nm.lower()):
+            for call in (lambda: o.GetSelectionItemPattern().Select(), lambda: o.GetInvokePattern().Invoke(),
+                         lambda: o.Click(simulateMove=False)):
+                try:
+                    call()
+                    return {"selected": nm[:90]}
+                except Exception:
+                    continue
+    return {"selected": "", "options": [ (o.Name or "")[:60] for o in opts[:20] ]}
+
+
+def page_fill_form(entries: list) -> dict[str, Any]:
+    """Many fields in ONE step: entries = [{'ref': 2, 'text': '...'}, ...]."""
+    out = []
+    for it in (entries or [])[:20]:
+        try:
+            r = page_type(int(it.get("ref") or 0), str(it.get("text") or ""), clear=True)
+            out.append({"ref": it.get("ref"), **r})
+        except BrowserUnavailable as e:
+            out.append({"ref": it.get("ref"), "typed": False, "err": str(e)[:120]})
+    return {"filled": sum(1 for x in out if x.get("typed")), "total": len(out), "results": out}
+
+
+def wait_for(text: str = "", seconds: int = 15) -> dict[str, Any]:
+    """Wait until a text appears in her browser's page (polls the UIA tree; max 20s)."""
+    want = re.sub(r"\s+", " ", (text or "")).strip().lower()
+    if not want:
+        raise BrowserUnavailable("Kis text ka intezaar?")
+    end = time.time() + max(2, min(int(seconds or 15), 20))
+    while time.time() < end:
+        try:
+            body = re.sub(r"\s+", " ", (page_text(4000).get("text") or "")).lower()
+            if want in body:
+                return {"found": True}
+        except BrowserUnavailable:
+            pass
+        time.sleep(1.0)
+    return {"found": False, "note": f"'{want[:60]}' {int(seconds or 15)}s mein nahi dikha"}
+
+
 def downloads(minutes: int = 15, limit: int = 20) -> dict[str, Any]:
     """What actually landed in her Downloads folder recently — and what is STILL downloading."""
     home = Path.home()

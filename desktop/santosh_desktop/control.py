@@ -109,6 +109,31 @@ def _gui():
     return pyautogui
 
 
+def paste_text(text: str) -> None:
+    """Module-level clipboard paste (v1.5.0): shared by Control._paste and browser.page_type's fallback."""
+    g = _gui()
+    try:
+        import pyperclip
+    except Exception as e:
+        # no clipboard: type it out instead (slower, but it lands)
+        if (text or "").isascii():
+            g.write(text, interval=0.012)
+            return
+        raise ControlError(f"Could not type this text: {e}")
+    saved = ""
+    try:
+        saved = pyperclip.paste() or ""
+    except Exception:
+        pass
+    pyperclip.copy(text)
+    g.hotkey("ctrl", "v")
+    time.sleep(0.15)
+    try:                          # her own copied text goes back after the paste
+        pyperclip.copy(saved)
+    except Exception:
+        pass
+
+
 class Control:
     def __init__(self) -> None:
         self.scale = 1.0           # screen pixels per screenshot pixel
@@ -229,27 +254,7 @@ class Control:
         return {"ok": True, "op": op}
 
     def _paste(self, text: str) -> None:
-        g = _gui()
-        try:
-            import pyperclip
-        except Exception as e:
-            # no clipboard: type it out instead (slower, but it lands)
-            if text.isascii():
-                g.write(text, interval=0.012)
-                return
-            raise ControlError(f"Could not type this text: {e}")
-        saved = ""
-        try:
-            saved = pyperclip.paste() or ""
-        except Exception:
-            pass
-        pyperclip.copy(text)
-        g.hotkey("ctrl", "v")
-        time.sleep(0.15)
-        try:                          # her own copied text goes back after the paste
-            pyperclip.copy(saved)
-        except Exception:
-            pass
+        paste_text(text)               # v1.5.0: one shared implementation (module-level, browser.py uses it too)
 
     # ---------------- windows (v1.3: minimise / maximise / restore / close by title) ----------------
     def window_op(self, op: str = "", title: str = "") -> dict[str, Any]:

@@ -326,11 +326,11 @@ def test_page_text_degrades_quietly_off_windows():
         browser.page_text()
 
 
-def test_desktop_version_is_140():
+def test_desktop_version_is_150():
     import santosh_desktop
-    assert santosh_desktop.__version__ == "1.4.0"
+    assert santosh_desktop.__version__ == "1.5.0"
 
 
 def test_app_version_is_0185():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.210.0"
+    assert APP_VERSION == "0.211.0"

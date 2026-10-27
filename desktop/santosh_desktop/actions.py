@@ -133,6 +133,67 @@ class Actions:
         self.log(f"Page text padha: {out.get('title', '')[:60]}")
         return out
 
+    # ---------------- v1.5.0 SEMANTIC BROWSER (UIA): act on elements by ref, not by pixel guesses --------
+    def do_page_elements(self, max_items: int = 60, **_) -> dict[str, Any]:
+        """The page's buttons / links / fields as a numbered list - refs feed page_click / page_type / etc."""
+        self._control_on()
+        try:
+            out = browser.page_elements(max(1, min(int(max_items or 60), 200)))
+        except browser.BrowserUnavailable as e:
+            raise ActionError(str(e))
+        self.log(f"Page elements: {out.get('count', 0)} (semantic mode)")
+        return out
+
+    def do_page_click(self, ref: int, **_) -> dict[str, Any]:
+        """Click a page element BY REF (Invoke/Toggle/Expand patterns, else the control's own centre)."""
+        self._control_on()
+        try:
+            out = browser.page_click(ref)
+        except browser.BrowserUnavailable as e:
+            raise ActionError(str(e))
+        self.log(f"Element #{ref} par click (semantic)")
+        return out
+
+    def do_page_type(self, ref: int, text: str = "", clear: bool = True, **_) -> dict[str, Any]:
+        """Type into a page field BY REF; only length + matches come back (the value never leaves the PC)."""
+        self._control_on()
+        try:
+            out = browser.page_type(ref, str(text or "")[:4000], clear=bool(clear))
+        except browser.BrowserUnavailable as e:
+            raise ActionError(str(e))
+        self.log(f"Element #{ref} mein likha (semantic, {out.get('length', 0)} akshar)")
+        return out
+
+    def do_page_select(self, ref: int, value: str = "", **_) -> dict[str, Any]:
+        """Pick an option BY REF in a dropdown / combobox."""
+        self._control_on()
+        try:
+            out = browser.page_select(ref, str(value or ""))
+        except browser.BrowserUnavailable as e:
+            raise ActionError(str(e))
+        self.log(f"Dropdown #{ref}: chuna (semantic)")
+        return out
+
+    def do_page_fill_form(self, entries: list | dict | None = None, **_) -> dict[str, Any]:
+        """Many fields in ONE step: entries = [{'ref': 2, 'text': '...'}, ...]."""
+        self._control_on()
+        items = entries.get("entries") if isinstance(entries, dict) else entries
+        try:
+            out = browser.page_fill_form(list(items or []))
+        except browser.BrowserUnavailable as e:
+            raise ActionError(str(e))
+        self.log(f"Form bhara (semantic): {out.get('filled', 0)}/{out.get('total', 0)}")
+        return out
+
+    def do_wait_for(self, text: str = "", seconds: int = 15, **_) -> dict[str, Any]:
+        """Wait until a text really appears in her browser (polls the UIA tree, max 20s)."""
+        self._control_on()
+        try:
+            out = browser.wait_for(str(text or ""), min(int(seconds or 15), 20))
+        except browser.BrowserUnavailable as e:
+            raise ActionError(str(e))
+        return out
+
     def do_tabs(self, **_) -> dict[str, Any]:
         """The open tabs of the browser in front (title + which is active)."""
         self._control_on()

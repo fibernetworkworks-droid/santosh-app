@@ -8357,6 +8357,44 @@ veto sends nothing and moves no clock / confirm+rider / no rider on neutral word
 v0.202, `for_call` carries her baseline facts, scorecard counters, version pin. Server-only — old APKs keep
 working; desktop untouched 1.4.0; Mera PC freeze respected. Version 0.208.0 (pubspec 0.208.0+242, console
 ?v=0.208.0 x9, conscious pins →0.208.0 in 20 suites + the sessions cache-stamp set).
+
+## v0.211.0 SEMANTIC BROWSER — browser ops by REF, not pixels (owner: "WHY HOOLA AI IN BOTH MERA PC AND OWN PC, NOT ABLE TO PERFORM BROWSER OPERATION SMOOTHLY AND PERFECTLY --- FIND THE ROOT CAUSE")
+
+THE ROOT CAUSE (proved in code): both PCs ran browser steps as computer-use-by-pixels — the operator loop is
+"screenshot -> vision model picks ONE action -> PC does it -> repeat" (server/app/pc/operator.py line 5); every
+click was an X,Y GUESS on a lossy 1280px JPEG (quality 72 Hoola PC / 80 desktop), with no DOM knowledge, no
+wait-for-element, no hit feedback (the model only learned from the NEXT screenshot one full turn later), and one
+action per turn — so each micro-step cost a screenshot capture + upload + vision round trip ("Slow (a few seconds
+per step)" was in the tool description itself), a 6-field form took 10-15 turns, and browser tasks died at step 40
+before _budget widened them. The v0.86 "960px live frames vs 1280px model view, every click off" bug was the same
+disease. CDP/UIA were used only for READING (page_text) — never for ACTING. Chrome codecs (v1.2.0) fixed WHAT
+loads; pixels were why the WORK was clumsy.
+
+THE FIX — one shared action contract, two native engines, refs instead of coordinates:
+- page_elements: the page's real buttons/links/fields as numbered refs (Hoola PC: ONE CDP Runtime.evaluate DOM
+  walk in desktop-linux/agent.py v1.3.0; her Windows PC: the existing UIA accessibility tree in
+  desktop/santosh_desktop/browser.py v1.5.0, INTERACTIVE control types).
+- page_click / page_type / page_select BY REF: Linux = el.scrollIntoView + el.click(), typing via execCommand
+  insertText with the native-setter input/change-event fallback (React-safe), select matches option text and lists
+  options on a miss; Windows = UIA Invoke/Toggle/ExpandCollapse/SelectionItem patterns with a control-centre click
+  fallback, ValuePattern.SetValue with clipboard-paste fallback. The OS/browser resolves the element — a click
+  CANNOT miss on layout shift, scroll or DPI.
+- page_fill_form: a WHOLE form in ONE step (entries [{ref,text},...], max 20) — a 6-field form = 1 round trip.
+- wait_for: poll the page for a text (max 20s) instead of blind waits.
+- SERVER (operator.py): 6 new TOOLS, _do dispatch (idvault REF protection rides page_type like type), _say
+  narration lines, _desktop_says upgrade hint extended to the new names (old desktop -> the clean "update the exe"
+  line, model falls back to pixels), SYSTEM "WEB PAGES - SEMANTIC FIRST" + HOOLA_PC_ADDENDUM "SEMANTIC MODE IS
+  NATIVE HERE". Privacy pins kept: a field's value NEVER returns to the server — only length + matches, both engines.
+- desktop/santosh_desktop/control.py: _paste body hoisted into module-level paste_text (shared with browser.page_type).
+- vps-ops pc_chrome_selftest proves the chain LIVE on the container: example.com -> page_elements -> page_click the
+  more-information link -> iana.org loads.
+
+Tests: NEW test_v0208_semantic_browser.py — TOOLS/HOOLA_TOOLS wiring, _do dispatch via a fake _pc, privacy (typed
+text never echoed in results or _say), page_fill_form per-entry pass-through, wait_for clamp, _desktop_says upgrade
+line for the new names, semantic-first prompt pins (SYSTEM + addendum), TOOLS untouched for her PC beyond the
+additive actions. Ritual: pubspec 0.211.0+246, console ?v=0.211.0 x9, APP_VERSION story, pins ->0.211.0 in 20 suites (re-versioned 0.208.0->0.211.0 on rebase: the dev's parallel v0.209.0 Drive-coverage + v0.210.0 REA Khoj took the numbers first - REBASE PROTOCOL respected, their content untouched).
+Windows desktop exe needs a rebuild for her PC; the Hoola PC container gets everything on the next pc_deploy.
+
 ## v0.207.0 BOL-KAR-HAAN TOOL (Block 2, voice-to-voice alag) (re-versioned TWICE more on rebase: VOICE DELIVERY took 0.199.0, the dev's Hoola-PC-section took 0.205.0 and KAAN KAAPI took 0.206.0 - all works kept, REBASE PROTOCOL respected) (owner: "naya voice-side tool - model call karega jab aap 'haan karo' bolo -> usi call ke job ka pending approval approve. Paise wala (tier 3 / UPI / bank OTP) hamesha tap + fingerprint only - voice se kabhi nahi")
 
 v0.198.0 gave calls a PASSIVE listener (_approval_listen): boli ke shabdon par regex chalta hai. Par uski haan

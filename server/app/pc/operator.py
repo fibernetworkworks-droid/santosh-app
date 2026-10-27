@@ -63,7 +63,10 @@ Differences from her Windows PC:
   Prefer it over clicking whenever a terminal answers faster: python, curl, pdftotext, unzip, ffprobe,
   converting a file, counting lines. Keep one command per call.
 - This is Linux: Chromium is Chrome here (open_url opens tabs in it; page_text / tabs / switch_tab / downloads
-  all work). Files live under /data (Downloads = /data/Downloads). There is no Windows, no Tally, no Excel -
+  all work). SEMANTIC MODE IS NATIVE HERE (v0.208): page_elements / page_click / page_type / page_select /
+  page_fill_form / wait_for run over the browser's own DevTools protocol - exact every time, no screenshot
+  guessing, and page_fill_form types a whole form in one step. ALWAYS prefer them over pixel clicks on pages.
+  Files live under /data (Downloads = /data/Downloads). There is no Windows, no Tally, no Excel -
   LibreOffice Calc/Writer can be installed when a spreadsheet/document job needs it.
 - Still ask_approval for anything that reaches OUTSIDE this VM: sending a message or email, submitting a form,
   paying, posting publicly, deleting data on an external site. Passwords / PINs / OTPs follow the same rules
@@ -129,6 +132,13 @@ How to work:
 - BROWSER READING (exact words beat pixel guessing, and each read is one cheap step):
   - page_text reads the text of the page open in her browser: labels, prices, table cells, button names, error
     messages. Use it to find a field, read a list, or check what really loaded (login wall / error / wrong site).
+- WEB PAGES - SEMANTIC FIRST (v0.208: the exact way, one step, no pixel guessing):
+  - page_elements lists every button / link / field with a number (ref). page_click / page_type / page_select
+    act BY REF - the PC finds the element itself, so a click cannot miss because of layout, scroll position or
+    screen scaling. Use pixels ONLY when page_elements shows nothing usable (image-only UI, canvas) or after a
+    semantic action failed and the screenshot confirms why.
+  - FORMS: page_fill_form fills ALL fields in ONE step ([{ref, text}, ...]). A 6-field form = 1 step, not 12.
+  - After page_click on something that navigates, wait_for or page_text confirms what loaded before acting again.
   - tabs lists her open browser tabs (number, title, which is active); switch_tab moves between them by title or
     number. If the site is already open in a tab, switch_tab THERE — never open a second copy of the same site.
   - downloads shows what actually landed in her Downloads folder (a .crdownload file is STILL downloading — wait
@@ -198,6 +208,37 @@ TOOLS = [
                                           "cells, buttons, errors). More exact than screenshots for finding fields or "
                                           "checking what loaded.",
      "input_schema": {"type": "object", "properties": {"max_chars": {"type": "integer"}}}},
+    # v0.208 SEMANTIC BROWSER (both PCs): act on page elements BY REF - the exact cure for pixel guessing.
+    # page_elements lists the real buttons/links/fields once (one cheap step); the PC then clicks/types the
+    # element itself (CDP on the Linux VM, UIA on her Windows PC), so a layout shift / DPI can never make the
+    # click miss, and page_fill_form does a WHOLE form in ONE step instead of a dozen screenshot rounds.
+    {"name": "page_elements", "description": "List the CLICKABLE / TYPEABLE elements of the page open in the browser as a "
+                                            "numbered list (ref, role, visible name): buttons, links, inputs, dropdowns. "
+                                            "THE exact way to work a web page: get refs here, then page_click / page_type / "
+                                            "page_select / page_fill_form by ref. Always try this BEFORE pixel clicks.",
+     "input_schema": {"type": "object", "properties": {"max_items": {"type": "integer"}}}},
+    {"name": "page_click", "description": "Click a page element BY REF from page_elements (not by pixels). The PC scrolls "
+                                          "it into view and clicks it exactly; result carries the new page title.",
+     "input_schema": {"type": "object", "properties": {"ref": {"type": "integer"}}, "required": ["ref"]}},
+    {"name": "page_type", "description": "Type text into a page field BY REF from page_elements (clears the field first "
+                                          "unless clear=false). Result says the length typed and whether it matches - the "
+                                          "field's value itself never comes back.",
+     "input_schema": {"type": "object", "properties": {"ref": {"type": "integer"}, "text": {"type": "string"},
+                                                       "clear": {"type": "boolean"}}, "required": ["ref", "text"]}},
+    {"name": "page_select", "description": "Pick an option in a dropdown BY REF (by its visible text). Error lists the "
+                                          "available options when the text does not match.",
+     "input_schema": {"type": "object", "properties": {"ref": {"type": "integer"}, "value": {"type": "string"}},
+                      "required": ["ref", "value"]}},
+    {"name": "page_fill_form", "description": "Fill SEVERAL page fields in ONE step: entries = [{ref, text}, ...] from "
+                                            "page_elements. ALWAYS prefer this over typing field by field - a whole form "
+                                            "becomes one step instead of many.",
+     "input_schema": {"type": "object", "properties": {"entries": {"type": "array", "items": {"type": "object",
+                                                       "properties": {"ref": {"type": "integer"}, "text": {"type": "string"}},
+                                                       "required": ["ref", "text"]}}}, "required": ["entries"]}},
+    {"name": "wait_for", "description": "Wait until a text really appears on the open page (max 20s) - smarter than a "
+                                          "blind wait when something is loading.",
+     "input_schema": {"type": "object", "properties": {"text": {"type": "string"}, "seconds": {"type": "integer"}},
+                      "required": ["text"]}},
     {"name": "tabs", "description": "List her browser's open tabs: number, title, which is active.",
      "input_schema": {"type": "object", "properties": {}}},
     {"name": "switch_tab", "description": "Move to a browser tab by (part of) its title or its number from tabs.",
@@ -476,6 +517,18 @@ def _say(name: str, a: dict[str, Any]) -> str:
         return f"'{str(a.get('title', ''))[:40]}' saamne la raha hoon"
     if name == "page_text":
         return "page ka text padh raha hoon"
+    if name == "page_elements":
+        return "page ke elements gin raha hoon (exact mode)"
+    if name == "page_click":
+        return f"page ke element #{a.get('ref', '?')} par click kar raha hoon"
+    if name == "page_type":
+        return f"field #{a.get('ref', '?')} bhar raha hoon"
+    if name == "page_select":
+        return "dropdown se chun raha hoon"
+    if name == "page_fill_form":
+        return "poora form ek saath bhar raha hoon"
+    if name == "wait_for":
+        return "page par aane ka intezaar…"
     if name == "tabs":
         return "browser tabs dekh raha hoon"
     if name == "switch_tab":
@@ -508,7 +561,8 @@ def _say(name: str, a: dict[str, Any]) -> str:
 
 def _desktop_says(e: Exception, action: str) -> str | None:
     msg = str(e)
-    if action in ("open_url", "window", "screenshot", "page_text", "tabs", "switch_tab", "downloads") and "Unknown action" in msg:
+    if action in ("open_url", "window", "screenshot", "page_text", "tabs", "switch_tab", "downloads",
+                  "page_elements", "page_click", "page_type", "page_select", "page_fill_form", "wait_for") and "Unknown action" in msg:
         return _OLD_DESKTOP
     return None
 
@@ -760,6 +814,109 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         return "Open tabs: " + "; ".join(
             f"{t.get('index', i + 1)}. {(t.get('title') or '')[:60]}" + (" [active]" if t.get("active") else "")
             for i, t in enumerate(ts[:15]))
+    # v0.208 SEMANTIC BROWSER: act by ref (page_elements -> page_click/page_type/page_select/page_fill_form)
+    if name == "page_elements":
+        try:
+            n = max(10, min(int(a.get("max_items") or 60), 200))
+        except (TypeError, ValueError):
+            n = 60
+        try:
+            r = await _pc(op, "page_elements", {"max_items": n}, timeout=40)
+        except Exception as e:
+            return _desktop_says(e, "page_elements") or f"ERROR: {e}"
+        els = r.get("elements") or []
+        if not els:
+            return ("No clickable/typeable elements found (image-only page, PDF or video - use the screenshot "
+                    "and pixel clicks for this one).")
+        lines = [f"{e.get('ref')}. {e.get('role', '?')} '{(e.get('name') or '')[:70]}'"
+                 + (" [DISABLED]" if e.get("disabled") else "")
+                 + (f" placeholder:'{e.get('placeholder')[:40]}'" if e.get("placeholder") else "")
+                 for e in els]
+        return (f"Page: {r.get('title') or '-'}" + (f" | url: {r.get('url')}" if r.get("url") else "")
+                + f" - {len(els)} elements:\n" + "\n".join(lines)
+                + "\n(Act by ref: page_click / page_type / page_select, forms via page_fill_form.)")
+    if name == "page_click":
+        try:
+            ref = int(a.get("ref") or 0)
+        except (TypeError, ValueError):
+            return "REFUSED: ref must be a number from page_elements."
+        try:
+            r = await _pc(op, "page_click", {"ref": ref}, timeout=40)
+        except Exception as e:
+            return _desktop_says(e, "page_click") or f"ERROR: {e}"
+        out = f"clicked element #{ref}"
+        if r.get("title"):
+            out += f"; page now: {str(r.get('title'))[:90]}"
+        if r.get("navigated"):
+            out += " (navigated - use wait_for / page_text to confirm what loaded)"
+        return out
+    if name == "page_type":
+        text = str(a.get("text", ""))[:4000]
+        if not text:
+            return "REFUSED: empty text."
+        from .. import idvault
+        if idvault.REF.search(text):      # the real ID number only goes to the PC, never back to the model
+            try:
+                text, _kinds = idvault.fill_value(text, op.tenant)
+            except idvault.VaultError as e:
+                return f"REFUSED: {e}"
+        try:
+            ref = int(a.get("ref") or 0)
+        except (TypeError, ValueError):
+            return "REFUSED: ref must be a number from page_elements."
+        try:
+            r = await _pc(op, "page_type", {"ref": ref, "text": text, "clear": bool(a.get("clear", True))}, timeout=60)
+        except Exception as e:
+            return _desktop_says(e, "page_type") or f"ERROR: {e}"
+        if r.get("matches") is False:
+            return (f"typed into #{ref}, BUT the field does NOT match ({r.get('length', '?')} chars). Re-list with "
+                    "page_elements, then type again with clear=true - never submit blindly.")
+        return f"typed into #{ref}" + (f" ({r.get('length', '?')} chars, verified)" if r.get("matches") else "")
+    if name == "page_select":
+        try:
+            ref = int(a.get("ref") or 0)
+        except (TypeError, ValueError):
+            return "REFUSED: ref must be a number from page_elements."
+        val = str(a.get("value", ""))[:200]
+        try:
+            r = await _pc(op, "page_select", {"ref": ref, "value": val}, timeout=40)
+        except Exception as e:
+            return _desktop_says(e, "page_select") or f"ERROR: {e}"
+        if r.get("selected"):
+            return f"selected '{r.get('selected')[:90]}' in #{ref}"
+        opts = ", ".join(str(o) for o in (r.get("options") or [])[:12])
+        return f"ERROR: '{val[:60]}' not found in #{ref}." + (f" Options: {opts}" if opts else "")
+    if name == "page_fill_form":
+        items = a.get("entries")
+        if not isinstance(items, list) or not items:
+            return "REFUSED: entries needed, e.g. [{\"ref\": 2, \"text\": \"...\"}, ...]"
+        clean = [{"ref": int(x.get("ref") or 0), "text": str(x.get("text", ""))[:4000]} for x in items[:20]
+                 if isinstance(x, dict)]
+        try:
+            r = await _pc(op, "page_fill_form", {"entries": clean}, timeout=180)
+        except Exception as e:
+            return _desktop_says(e, "page_fill_form") or f"ERROR: {e}"
+        res = r.get("results") or []
+        bad = [f"#{x.get('ref')} ({(x.get('err') or 'no match')[:40]})" for x in res if not x.get("typed") and not x.get("ok")]
+        out = f"filled {r.get('filled', 0)}/{r.get('total', 0)} fields in one step"
+        if bad:
+            out += "; FAILED: " + ", ".join(bad) + " - re-list with page_elements and retry just those"
+        return out
+    if name == "wait_for":
+        want = str(a.get("text", "")).strip()[:200]
+        if not want:
+            return "REFUSED: say which text to wait for."
+        try:
+            secs = max(2, min(int(a.get("seconds") or 15), 20))
+        except (TypeError, ValueError):
+            secs = 15
+        try:
+            r = await _pc(op, "wait_for", {"text": want, "seconds": secs}, timeout=secs + 25)
+        except Exception as e:
+            return _desktop_says(e, "wait_for") or f"ERROR: {e}"
+        if r.get("found"):
+            return f"'{want[:60]}' is on the page now" + (f" (title: {r.get('title', '')[:80]})" if r.get("title") else "")
+        return f"'{want[:60]}' did NOT appear in {secs}s - take a screenshot / page_text to see what loaded instead."
     if name == "switch_tab":
         args = {"tab": str(a.get("tab", ""))[:120], "index": int(a.get("index") or 0)}
         try:

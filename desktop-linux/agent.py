@@ -42,7 +42,7 @@ SERVER = os.environ.get("HOOLA_SERVER", "http://127.0.0.1:8077").strip().rstrip(
 NAME = os.environ.get("HOOLA_PC_NAME", "Hoola PC")
 DISPLAY = os.environ.get("DISPLAY", ":1")
 CDP = "http://127.0.0.1:9222"
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 MAX_SEND = 50 * 1024 * 1024   # same upload cap as the Windows Santosh Desktop
 DOWNLOADS = DATA / "Downloads"
 PROFILE = DATA / "chrome"
@@ -190,6 +190,8 @@ def _cdp_eval(t: dict[str, Any], expr: str, timeout: float = 15) -> Any:
 class Actions:
     def __init__(self) -> None:
         self.log = print
+        self._els: dict[int, str] = {}          # v1.3.0 semantic refs: ref -> CSS selector of the element
+        self._els_src: str = ""                 # title+url the refs were taken from (staleness check)
 
     def info(self) -> dict[str, Any]:
         return {"type": "info", "name": NAME, "os": f"Linux {platform.release()} (Hoola PC)",
@@ -364,6 +366,190 @@ class Actions:
         n = max(500, min(int(max_chars or 6000), 20000))
         text = _cdp_eval(t, "document.body ? document.body.innerText : ''", timeout=20) or ""
         return {"title": t.get("title", ""), "url": t.get("url", ""), "text": str(text)[:n]}
+
+    # ---- v1.3.0 SEMANTIC BROWSER (CDP): act on elements by ref, never by guessed pixels ----
+    # The root cause of 'browser operations not smooth' was pixel clicking: a JPEG screenshot -> the model
+    # guesses X,Y -> xdotool clicks. Every step was a vision round trip and a miss on layout shift / DPI.
+    # Here the PAGE tells us its real elements (one cheap exact step) and the browser itself clicks/types
+    # the element the model named - the click cannot miss, and page_fill_form does a whole form in ONE step.
+
+    _JS_ELEMENTS = r"""
+(() => {
+  const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+    return r.width > 1 && r.height > 1 && s.visibility !== 'hidden' && s.display !== 'none'; };
+  const nm = el => { let t = el.getAttribute('aria-label') || el.getAttribute('title') || el.placeholder || '';
+    if (!t && el.value && ['INPUT','SELECT','TEXTAREA','BUTTON'].includes(el.tagName) && el.type !== 'password') t = String(el.value);
+    if (!t && el.labels && el.labels[0]) t = el.labels[0].textContent;
+    if (!t && el.tagName === 'IMG') t = el.alt || '';
+    if (!t) t = (el.textContent || '').trim().replace(/\s+/g, ' ');
+    return (t || '').trim().slice(0, 90); };
+  const path = el => { if (el.id) return '#' + CSS.escape(el.id);
+    const parts = []; let e = el;
+    while (e && e.nodeType === 1 && parts.length < 7) {
+      if (e.id) { parts.unshift('#' + CSS.escape(e.id)); break; }
+      let s = e.tagName.toLowerCase(); const p = e.parentElement;
+      if (p) { const sib = Array.from(p.children).filter(c => c.tagName === e.tagName);
+        if (sib.length > 1) s += ':nth-of-type(' + (sib.indexOf(e) + 1) + ')'; }
+      parts.unshift(s); e = p; }
+    return parts.join(' > '); };
+  const nodes = document.querySelectorAll('a[href], button, input, select, textarea, summary, [role="button"], [role="link"], [role="tab"], [role="checkbox"], [role="radio"], [role="combobox"], [role="menuitem"], [onclick]');
+  const seen = new Set(); const out = [];
+  for (const el of nodes) {
+    if (out.length >= 300) break;
+    if (!vis(el)) continue;
+    const tag = el.tagName.toLowerCase(); const ty = (el.getAttribute('type') || '').toLowerCase();
+    if (tag === 'input' && ['hidden','file'].includes(ty)) continue;
+    const role = tag === 'input' ? ({checkbox:'checkbox', radio:'radio', button:'button', submit:'button', reset:'button'}[ty] || 'input')
+                                 : (el.getAttribute('role') || (tag === 'a' ? 'link' : tag));
+    const name = nm(el);
+    const key = role + '|' + name + '|' + (el.disabled ? 'd' : 'e');
+    if (seen.has(key) && !['input','textarea','select'].includes(role)) continue;
+    seen.add(key);
+    out.push({role, name, path: path(el), disabled: !!el.disabled,
+              ph: (el.placeholder || '').slice(0, 60), ty: ty || undefined});
+  }
+  return {title: document.title, url: location.href, elements: out};
+})()
+"""
+
+    def do_page_elements(self, max_items: int = 60, **_) -> dict[str, Any]:
+        _chrome_up()
+        t = _active_target()
+        r = _cdp_eval(t, self._JS_ELEMENTS, timeout=25) or {}
+        els = list(r.get("elements") or [])[:max(1, min(int(max_items or 60), 200))]
+        out = []
+        self._els = {}
+        for i, e in enumerate(els, 1):
+            self._els[i] = e.get("path") or ""
+            item = {"ref": i, "role": e.get("role"), "name": e.get("name")}
+            if e.get("ph"): item["placeholder"] = e["ph"]
+            if e.get("ty"): item["type"] = e["ty"]
+            if e.get("disabled"): item["disabled"] = True
+            out.append(item)
+        self._els_src = f"{r.get('title', '')}|{r.get('url', '')}"
+        return {"title": r.get("title", ""), "url": r.get("url", ""), "count": len(out), "elements": out}
+
+    def _ref_sel(self, ref: int) -> str:
+        sel = self._els.get(int(ref or 0))
+        if not sel:
+            raise ActionError(f"ref {ref} gaya - pehle page_elements dobara chalao (page badla ya naya session)")
+        return sel
+
+    def _js_on_ref(self, sel: str, body: str) -> Any:
+        """Run body(el) inside a IIFE after resolving sel; body returns a plain object."""
+        t = _active_target()
+        js = ("(() => { const el = document.querySelector(" + json.dumps(sel) + ");"
+              " if (!el) return {ok:false, err:'gone'};" + body + "})()")
+        return _cdp_eval(t, js, timeout=25) or {"ok": False, "err": "no-answer"}
+
+    def do_page_click(self, ref: int, **_) -> dict[str, Any]:
+        _chrome_up()
+        sel = self._ref_sel(ref)
+        r = self._js_on_ref(sel, """ el.scrollIntoView({block:'center'}); el.focus();
+            const before = location.href; el.click();
+            return {ok:true, was: before, now: location.href, title: document.title}; """)
+        if not r.get("ok"):
+            raise ActionError(f"click nahi hua ({r.get('err', '?')}) - page_elements dobara chalao")
+        t = _active_target()
+        return {"clicked": True, "title": t.get("title", ""), "url": t.get("url", ""),
+                "navigated": r.get("was") != r.get("now")}
+
+    _JS_TYPE = r""" el.scrollIntoView({block:'center'}); el.focus();
+        if (el.disabled || el.readOnly) return {ok:false, err:'disabled'};
+        if (CLR) { if (el.select) try { el.select(); } catch(e) {}
+          let okDel = false; try { okDel = document.execCommand('delete'); } catch(e) {}
+          if (!okDel && el.value !== undefined) { try { el.value = ''; } catch(e) {} } }
+        let ok = false; try { ok = document.execCommand('insertText', false, TXT); } catch(e) {}
+        if (!ok || (el.value || '') === '') {
+          const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+          const d = Object.getOwnPropertyDescriptor(proto, 'value');
+          if (d && d.set) { d.set.call(el, (el.value || '') + TXT);
+            el.dispatchEvent(new Event('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true})); }
+        }
+        const v = el.value || '';
+        return {ok:true, length:v.length, matches: v === TXT || v.endsWith(TXT)};"""
+
+    def do_page_type(self, ref: int, text: str = "", clear: bool = True, **_) -> dict[str, Any]:
+        _chrome_up()
+        sel = self._ref_sel(ref)
+        txt = str(text or "")[:4000]
+        js = ("(() => { const el = document.querySelector(" + json.dumps(sel) + ");"
+              " if (!el) return {ok:false, err:'gone'};"
+              " const TXT = " + json.dumps(txt) + "; const CLR = " + json.dumps(bool(clear)) + ";"
+              + self._JS_TYPE + "})()")
+        t = _active_target()
+        r = _cdp_eval(t, js, timeout=25) or {"ok": False, "err": "no-answer"}
+        if not r.get("ok"):
+            raise ActionError(f"type nahi hua ({r.get('err', '?')}) - page_elements dobara chalao")
+        return {"typed": True, "length": r.get("length"), "matches": r.get("matches"),
+                "note": "value kabhi wapas nahi aati (sirf length + match)"}
+
+    def do_page_select(self, ref: int, value: str = "", **_) -> dict[str, Any]:
+        _chrome_up()
+        sel = self._ref_sel(ref)
+        js = ("(() => { const el = document.querySelector(" + json.dumps(sel) + ");"
+              " if (!el) return {ok:false, err:'gone'};"
+              " const VAL = " + json.dumps(str(value or "")) + ";"
+              r""" if (el.tagName === 'SELECT') { el.focus();
+                for (const o of el.options) { if (o.value === VAL || o.text.trim() === VAL ||
+                    o.text.trim().toLowerCase() === VAL.toLowerCase()) { el.value = o.value;
+                    el.dispatchEvent(new Event('input', {bubbles:true}));
+                    el.dispatchEvent(new Event('change', {bubbles:true}));
+                    return {ok:true, picked:o.text.trim()}; } }
+                return {ok:false, err:'option', options: Array.from(el.options).slice(0,30).map(o=>o.text.trim())}; }
+              el.focus();
+              const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+              if (d && d.set) { d.set.call(el, VAL); el.dispatchEvent(new Event('input', {bubbles:true}));
+                el.dispatchEvent(new Event('change', {bubbles:true})); }
+              return {ok:true, picked:VAL}; })()""")
+        t = _active_target()
+        r = _cdp_eval(t, js, timeout=25) or {"ok": False, "err": "no-answer"}
+        if not r.get("ok"):
+            raise ActionError(f"select nahi hua ({r.get('err', '?')})"
+                              + (f" - options: {', '.join((r.get('options') or [])[:12])}" if r.get("options") else ""))
+        return {"selected": r.get("picked")}
+
+    def do_page_fill_form(self, entries: list | dict | None = None, **_) -> dict[str, Any]:
+        """Many fields in ONE step: entries = [{'ref': 2, 'text': '...'}, ...]. Each field types with the
+        same execCommand + events path as page_type; results come back per entry (text never echoed)."""
+        _chrome_up()
+        items = entries.get("entries") if isinstance(entries, dict) else entries
+        if not isinstance(items, list) or not items:
+            raise ActionError("entries chahiye: [{'ref': 2, 'text': '...'}, ...]")
+        out = []
+        for it in items[:20]:
+            try:
+                ref = int(it.get("ref") or 0)
+                sel = self._ref_sel(ref)
+            except (ActionError, TypeError, ValueError) as e:
+                out.append({"ref": it.get("ref"), "ok": False, "err": str(e)[:120]})
+                continue
+            txt = str(it.get("text") or "")[:4000]
+            js = ("(() => { const el = document.querySelector(" + json.dumps(sel) + ");"
+                  " if (!el) return {ok:false, err:'gone'};"
+                  " const TXT = " + json.dumps(txt) + "; const CLR = true;" + self._JS_TYPE + "})()")
+            try:
+                r = _cdp_eval(_active_target(), js, timeout=25) or {"ok": False}
+            except Exception as e:
+                r = {"ok": False, "err": str(e)[:120]}
+            out.append({"ref": ref, "ok": bool(r.get("ok")), "length": r.get("length"),
+                        "matches": r.get("matches"), **({"err": r["err"]} if r.get("err") else {})})
+        return {"filled": sum(1 for x in out if x.get("ok")), "total": len(out), "results": out}
+
+    def do_wait_for(self, text: str = "", seconds: int = 15, **_) -> dict[str, Any]:
+        """Wait until a text really appears on the page (polls innerText over CDP; max 20s)."""
+        _chrome_up()
+        want = str(text or "").strip()
+        if not want:
+            raise ActionError("Kis text ka intezaar?")
+        end = time.time() + max(2, min(int(seconds or 15), 20))
+        while time.time() < end:
+            t = _active_target()
+            body = str(_cdp_eval(t, "document.body ? document.body.innerText : ''", timeout=10) or "")
+            if want.lower() in body.lower():
+                return {"found": True, "title": t.get("title", "")}
+            time.sleep(1.0)
+        return {"found": False, "note": f"'{want[:60]}' {int(seconds or 15)}s mein nahi dikha"}
 
     def do_tabs(self, **_) -> dict[str, Any]:
         _chrome_up()

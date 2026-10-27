@@ -46,7 +46,7 @@ def quiet_bus(bz):
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.210.0"
+    assert APP_VERSION == "0.211.0"
     assert "0.210.0+245" in (REPO / "pubspec.yaml").read_text()
 
 
