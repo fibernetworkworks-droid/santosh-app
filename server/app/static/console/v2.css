@@ -60,8 +60,8 @@ mark{background:rgba(255,177,92,.32);color:var(--ink);border-radius:3px;padding:
 /* ---------- avatars ---------- */
 .av{width:34px;height:34px;border-radius:50%;overflow:hidden;flex:none;position:relative;background:var(--panel);box-shadow:0 0 0 1.5px var(--hair2)}
 .av img{width:100%;height:100%;object-fit:cover}
-.halo{display:inline-grid;place-items:center;width:76px;height:76px;border-radius:50%;padding:3px;background:conic-gradient(from 210deg,#FFD9A8,#FF9A3C,#C055F5,#7C5CFF,#FFD9A8);box-shadow:0 10px 34px rgba(192,85,245,.35)}
-.halo .av{width:70px;height:70px;box-shadow:0 0 0 3px var(--bg1)}
+.halo{display:inline-grid;place-items:center;width:94px;height:94px;border-radius:50%;padding:3px;background:conic-gradient(from 210deg,#FFD9A8,#FF9A3C,#C055F5,#7C5CFF,#FFD9A8);box-shadow:0 10px 34px rgba(192,85,245,.35)}
+.halo .av{width:88px;height:88px;box-shadow:0 0 0 3px var(--bg1)}
 
 /* ---------- buttons / fields / chips / tags ---------- */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:800;border-radius:14px;padding:10px 18px;font-size:14px;border:1px solid transparent;transition:transform .15s ease,filter .15s ease,background .15s ease;text-decoration:none}
@@ -153,12 +153,16 @@ mark{background:rgba(255,177,92,.32);color:var(--ink);border-radius:3px;padding:
 .vh h2{font-size:23px}
 
 /* ================= LANDING ================= */
-.landing{flex:1;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:18px;padding:30px 20px 150px;text-align:center}
-.landing .hi{display:flex;flex-direction:column;align-items:center;gap:16px}
-.landing h1{font-size:clamp(26px,3.6vw,38px);font-weight:800}
-.tagline{color:var(--mut);font-size:15px;margin:-6px 0 4px}
-.cats{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;max-width:720px}
-.cat{display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:999px;background:var(--glass);border:1px solid var(--line);font-weight:700;font-size:13.5px;color:var(--lit);transition:background .15s,border .15s,transform .15s}
+.landing{flex:1;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:20px;padding:32px 20px 48px;text-align:center}
+.landing .hi{display:flex;flex-direction:column;align-items:center;gap:18px}
+.landing h1{font-size:clamp(30px,4vw,44px);font-weight:800;letter-spacing:-.01em}
+.tagline{color:var(--mut);font-size:16px;margin:-4px 0 6px}
+/* v0.196 the landing slot must FILL the column - shrink-wrap here squeezed the composer into a ~270px
+   box (placeholder clipped, the who label wrapped over the text). The dock side is a block and was fine. */
+.slot{display:block;width:min(860px,100%);flex:none}
+.landing .slot{width:min(760px,100%)}   /* landing: the composer matches the ideas row below it; dock keeps the 860px thread width */
+.cats{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:780px}
+.cat{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;background:var(--glass);border:1px solid var(--line);font-weight:700;font-size:14px;color:var(--lit);transition:background .15s,border .15s,transform .15s}
 .cat:hover{background:var(--glass2);transform:translateY(-1px)}
 .cat[aria-pressed="true"]{background:rgba(124,92,255,.2);border-color:rgba(124,92,255,.45);color:#E4DBFF}
 .sugs{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;max-width:760px;width:100%}
@@ -232,13 +236,15 @@ mark{background:rgba(255,177,92,.32);color:var(--ink);border-radius:3px;padding:
 .disclaim{text-align:center;color:var(--dim);font-size:11.5px;margin:8px 0 0}
 
 /* ================= COMPOSER ================= */
-.box{margin:0 auto;width:min(860px,calc(100% - 32px));background:rgba(23,18,47,.72);border:1px solid var(--hair);border-radius:26px;backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);box-shadow:var(--sh);padding:12px 14px 10px;position:relative;z-index:6;transition:border .2s,box-shadow .2s}
+.box{margin:0 auto;width:min(860px,calc(100% - 32px));background:rgba(23,18,47,.72);border:1px solid var(--hair);border-radius:28px;backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);box-shadow:var(--sh);padding:14px 16px 12px;position:relative;z-index:6;transition:border .2s,box-shadow .2s}
 .box:focus-within{border-color:rgba(255,177,92,.45);box-shadow:0 18px 50px rgba(6,4,20,.55),0 0 0 3px rgba(255,177,92,.12)}
-.box textarea{display:block;width:100%;background:transparent;border:0;resize:none;outline:none;font-size:15.5px;line-height:1.5;min-height:46px;max-height:200px;padding:10px 4px 8px}
-.box textarea::placeholder{color:var(--dim)}
-.box .row{display:flex;align-items:center;gap:4px}
-.box .who{margin-left:auto;margin-right:6px;font-size:12px;font-weight:700;color:var(--dim)}
-.box .send{background:var(--grad);color:#1B1030;width:40px;height:40px;border-radius:14px}
+.box textarea{display:block;width:100%;background:transparent;border:0;resize:none;outline:none;font-size:16px;line-height:1.5;min-height:62px;max-height:220px;padding:8px 6px 8px}
+.box textarea::placeholder{color:var(--dim);white-space:pre-wrap}
+.box .row{display:flex;align-items:center;gap:6px;margin-top:2px}
+.box .row .ib{width:40px;height:40px;border-radius:13px}
+.box .row .ib svg{width:21px;height:21px}
+.box .who{margin-inline:auto;font-size:12.5px;font-weight:700;color:var(--dim);white-space:nowrap}
+.box .send{background:var(--grad);color:#1B1030;width:44px;height:44px;border-radius:50%}
 .box .send:disabled{background:var(--glass2);color:var(--dim)}
 .box .files{display:flex;flex-wrap:wrap;gap:7px;padding:0 2px}
 .box .files:not(:empty){padding-bottom:9px}
@@ -523,9 +529,11 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
   .tabbar{display:flex}
   .main{padding-bottom:70px}
   .dock{padding-bottom:74px}
-  .landing{padding-bottom:120px}
+  .landing{padding-bottom:56px;gap:18px}
   .col{padding:18px 14px 10px}
   .box{width:calc(100% - 20px)}
+  .halo{width:82px;height:82px}
+  .halo .av{width:76px;height:76px}
   .view .pad{padding-bottom:100px}
 }
 @media (max-width:560px){
