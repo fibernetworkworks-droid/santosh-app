@@ -63,17 +63,17 @@ window.HoolaResults = ctx => {
     const s = state(el);
     el.className = 'cd result-card';
     el.innerHTML = `<div class="hd"><b>${esc(p.title || p.name || item.title || 'Hoola result')}</b>`
-      + `<span class="tag ok">${kind === 'photo_made' ? 'AI se bana' : 'Taiyaar'}</span></div>`
-      + '<div class="result-preview" aria-busy="true"><span class="muted">Preview khul raha hai…</span></div>';
+      + `<span class="tag ok">${kind === 'photo_made' ? 'AI-generated' : 'Ready'}</span></div>`
+      + '<div class="result-preview" aria-busy="true"><span class="muted">Loading preview…</span></div>';
     const view = el.querySelector('.result-preview');
     try {
       if (item.type === 'page') {
         // Interactive pages keep their existing panel bridge; chat shows a compact launch surface.
-        view.innerHTML = `<div class="result-document"><span aria-hidden="true">◈</span><div><b>Interactive page · v${Number(p.version) || 1}</b><p>${esc(p.summary || 'Workspace mein kholkar istemaal kijiye.')}</p></div></div>`;
+        view.innerHTML = `<div class="result-document"><span aria-hidden="true">◈</span><div><b>Interactive page · v${Number(p.version) || 1}</b><p>${esc(p.summary || 'Open in the workspace to use it.')}</p></div></div>`;
         actions(s, item, '', '');
       } else if (item.url) {
         const url = own(item.url, /^\/api\/(motion|video)\/files\//);
-        if (!url) throw new Error('Is result ka preview link nahi mila.');
+        if (!url) throw new Error('No preview link is available for this result.');
         const m = document.createElement('video'); m.controls = true; m.playsInline = true;
         m.preload = 'metadata'; m.src = url; m.setAttribute('aria-label', item.title || 'Video result'); view.replaceChildren(m);
         actions(s, item, url, p.name || 'hoola-video.mp4');
@@ -98,12 +98,12 @@ window.HoolaResults = ctx => {
       if (alive(s)) {
         const media = view.querySelector('img,video,audio');
         if (media) media.addEventListener('error', () => {
-          if (alive(s)) view.innerHTML = '<p class="muted">Preview load nahi hua. Workspace ya Download se phir koshish kijiye.</p>';
+          if (alive(s)) view.innerHTML = '<p class="muted">Preview could not load. Try opening the workspace or downloading the file.</p>';
         }, {once: true});
       }
     } catch (er) {
       if (!alive(s) || er.name === 'AbortError') return true;
-      view.innerHTML = `<p class="muted">${esc(er.message || 'Preview abhi nahi khula.')}</p>`;
+      view.innerHTML = `<p class="muted">${esc(er.message || 'Preview is unavailable.')}</p>`;
       actions(s, item, '', '');
     } finally {
       if (alive(s)) { view.setAttribute('aria-busy', 'false'); ctx.resize?.(); }

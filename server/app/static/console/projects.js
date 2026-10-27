@@ -1,4 +1,4 @@
-/* v0.164 Hoola Console · projects, "Kaam ke folder" (CHAT_PROJECTS). v0.193: they ARE the sidebar sessions.
+/* v0.164 Hoola Console · projects, "Project folders" (CHAT_PROJECTS). v0.193: they ARE the sidebar sessions.
    Sidebar: the sessions box is slim now — label + "+" only; the sections themselves live in the chat list
    (chatlist.js draws them). A session page: name + emoji, her instructions for it, its notes (yaad), its files
    (drop or pick; kept until she removes them; big ones are searched through Gyaan), its chats + "Is session mein
@@ -17,8 +17,8 @@ async function load() {
 }
 function draw() {
   const box = $('#projects'); if (!box) return;
-  /* v0.193 the folder rows moved into the chat list as session sections — this box stays the "+ Naya" entry */
-  box.innerHTML = `<div class="slabel pjl"><span>Sessions</span><button type="button" class="pjadd" id="pjNew" aria-label="Naya session">+</button></div>`
+  /* v0.193 the folder rows moved into the chat list as session sections — this box stays the "+ New" entry */
+  box.innerHTML = `<div class="slabel pjl"><span>Sessions</span><button type="button" class="pjadd" id="pjNew" aria-label="New project">+</button></div>`
     + (LIST.length ? '' : '<div class="empty pjempty">Kaam ke hisaab se session banaiye — App design, Research…</div>');
   box.querySelector('#pjNew').addEventListener('click', create);
 }
@@ -42,7 +42,7 @@ async function open(pid) {
     chats = (await api('GET', `/api/console/conversations?project=${encodeURIComponent(pid)}`)).conversations || [];
   } catch (e) { box.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
   draw();
-  box.innerHTML = `<div class="vh pjhd"><h2><button type="button" class="pjemo" aria-label="Emoji badlo">${esc(p.emoji || '📁')}</button><span class="pjname" contenteditable="plaintext-only" spellcheck="false" aria-label="Session ka naam">${esc(p.name)}</span></h2>
+  box.innerHTML = `<div class="vh pjhd"><h2><button type="button" class="pjemo" aria-label="Emoji badlo">${esc(p.emoji || '📁')}</button><span class="pjname" contenteditable="plaintext-only" spellcheck="false" aria-label="Project name">${esc(p.name)}</span></h2>
       <div class="acts"><button type="button" class="btn go" data-a="chat">+ Is session mein naya chat</button><button type="button" class="btn soft" data-a="del">Session hatao</button></div></div>
     <div class="grid2 pjgrid">
       <div class="tile gl"><h3>Hidayat <span class="tag v">har chat ko</span></h3>
@@ -53,9 +53,9 @@ async function open(pid) {
         <textarea class="pjta" data-f="memory" rows="6" aria-label="Folder ki yaad" placeholder="Venue: Pune, 12 Dec · Caterer: Sharma ji">${esc(p.memory)}</textarea></div>
       <div class="tile gl pjfiles"><h3>Files <span class="tag v">${p.files}</span></h3>
         <label class="pjdrop" tabindex="0"><input type="file" multiple hidden><b>Files yahan chhodiye</b><span>ya chuniye · 25 MB tak · badi files Gyaan se dhoondhi jaati hain</span></label>
-        <div class="pjfl">${(p.file_list || []).map(f => `<div class="pjf"><span>📎 ${esc(f.name)}</span><small>${Math.max(1, Math.round(f.size / 1024))} KB</small><button type="button" class="ib" data-rm="${esc(f.id)}" aria-label="Hatao: ${esc(f.name)}">✕</button></div>`).join('') || '<div class="empty">Abhi koi file nahi.</div>'}</div></div>
+        <div class="pjfl">${(p.file_list || []).map(f => `<div class="pjf"><span>📎 ${esc(f.name)}</span><small>${Math.max(1, Math.round(f.size / 1024))} KB</small><button type="button" class="ib" data-rm="${esc(f.id)}" aria-label="Hatao: ${esc(f.name)}">✕</button></div>`).join('') || '<div class="empty">No files yet.</div>'}</div></div>
       <div class="tile gl"><h3>Chats <span class="tag v">${chats.length}</span></h3>
-        <div class="pjchats">${chats.map(c => `<button type="button" class="rc" data-chat="${esc(c.id)}"><span class="rct">${esc(c.title)}</span></button>`).join('') || '<div class="empty">Abhi koi chat nahi. "+ Is session mein naya chat" dabaiye.</div>'}</div></div>
+        <div class="pjchats">${chats.map(c => `<button type="button" class="rc" data-chat="${esc(c.id)}"><span class="rct">${esc(c.title)}</span></button>`).join('') || '<div class="empty">No conversations yet. "+ Is session mein naya chat" dabaiye.</div>'}</div></div>
     </div>`;
   // name + emoji
   const nm = box.querySelector('.pjname');

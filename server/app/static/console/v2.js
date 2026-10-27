@@ -28,6 +28,9 @@ async function api(method, path, body, {raw = false, form = null, signal} = {}) 
   const headers = {};
   if (TOKEN) headers.Authorization = 'Bearer ' + TOKEN;
   let payload;
+  if (method === 'POST' && /\/conversations\/[^/]+\/(messages|edit)$/.test(path) && body && typeof body.text === 'string') {
+    body = {...body, text: body.text + '\n\n[Web console language preference: Reply in English unless I explicitly request another language.]'};
+  }
   if (form) payload = form; else if (body !== undefined) { headers['Content-Type'] = 'application/json'; payload = JSON.stringify(body); }
   const r = await fetch(path, {method, headers, body: payload, signal, credentials: 'omit', cache: 'no-store'});
   if (raw) { if (!r.ok) throw new ApiError(r.status, await r.text()); return r; }
@@ -57,22 +60,22 @@ async function boot() {
   }
   if (err) return showLogin(err);
   if (!TOKEN) return showLogin();
-  try { await enter(); if (gApps) toast('Google apps jud gaye: Gmail, Calendar, Drive, Docs, Sheets.'); } catch (e) { if (e.status !== 401) showLogin(e.message); }
+  try { await enter(); if (gApps) toast('Google apps connected: Gmail, Calendar, Drive, Docs and Sheets.'); } catch (e) { if (e.status !== 401) showLogin(e.message); }
 }
 function setToken(t) { TOKEN = t || ''; if (TOKEN) store.set('hoola.console.token', TOKEN); else store.del('hoola.console.token'); }
 $('#gbtn').addEventListener('click', () => {
-  if (!CONFIG.google) { $('#lerr').textContent = 'Google sign-in is server par abhi set nahi hai. Hoola ID + password se login kijiye.'; $('#lerr').hidden = false; return; }
-  $('#gbtn').innerHTML = '<span class="spin"></span> Google khul raha hai…'; location.href = '/auth/google/start?web=1';
+  if (!CONFIG.google) { $('#lerr').textContent = 'Google sign-in is unavailable. Use your Hoola ID and password.'; $('#lerr').hidden = false; return; }
+  $('#gbtn').innerHTML = '<span class="spin"></span> Opening Google…'; location.href = '/auth/google/start?web=1';
 });
 $('#lform').addEventListener('submit', async e => {
-  e.preventDefault(); $('#lerr').hidden = true; const btn = $('#lbtn'); btn.disabled = true; btn.textContent = 'Login ho raha hai…';
+  e.preventDefault(); $('#lerr').hidden = true; const btn = $('#lbtn'); btn.disabled = true; btn.textContent = 'Signing in…';
   try { const r = await api('POST', '/api/console/login', {handle: $('#hid').value.trim(), password: $('#hpw').value}); setToken(r.session_token); $('#hpw').value = ''; await enter(); }
   catch (er) { $('#lerr').textContent = er.message; $('#lerr').hidden = false; }
   finally { btn.disabled = false; btn.textContent = 'Login'; }
 });
 $('#kbtn').addEventListener('click', async () => {
   const k = $('#okey').value.trim(); if (!k) return; setToken(k); $('#okey').value = '';
-  try { await enter(); } catch (er) { setToken(''); $('#lerr').textContent = er.status === 401 ? 'Key galat hai.' : er.message; $('#lerr').hidden = false; }
+  try { await enter(); } catch (er) { setToken(''); $('#lerr').textContent = er.status === 401 ? 'Invalid key.' : er.message; $('#lerr').hidden = false; }
 });
 async function logout(expired) {
   stopStream(); endCall(); ACC?.abort(); ACC = null;
@@ -81,7 +84,7 @@ async function logout(expired) {
   clearTimeout(DRAFT_T); FILES = []; CONV = null; ACC_LAST = 0; msg.value = ''; drawFiles();
   clearInterval(GAUGE_T); clearInterval(PENDING_TIMER);
   if (TOKEN && !expired) { try { await api('POST', '/api/logout'); } catch {} }
-  setToken(''); showLogin(expired ? 'Session khatam ho gaya. Dobara login kijiye.' : '');
+  setToken(''); showLogin(expired ? 'Your session expired. Please sign in again.' : '');
 }
 
 /* ================= state + shell ================= */
@@ -91,16 +94,16 @@ IC.creative = '<path d="M4 4h16v16H4zM8 4v16M4 10h16M4 16h16"/>';
 IC.bana = '<path d="M4 4h16v5H4zM4 11h7v9H4zM13 11h7v9h-7z"/>';
 function drawNav() {
   $('#snav').innerHTML = NAV.map(([k, n]) => `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k])}<span class="txt">${n}</span>${k === 'aaj' && QUEUE.length ? `<span class="ct txt">${QUEUE.length}</span>` : ''}</button>`).join('');
-  const T = [['chat','Chat'],['aaj','Aaj'],['baat',''],['kaam','Kaam'],['main','Main']];
+  const T = [['chat','Chat'],['aaj','Today'],['baat',''],['kaam','Kaam'],['main','Main']];
   $('#tabbar').innerHTML = T.map(([k, n]) => k === 'baat' ? `<div class="mid"><button class="baat" data-v="baat" aria-label="Baat, live voice">${svg(IC.baat).replace('currentColor', '#1B1030')}</button></div>`
     : `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k])}<span>${n}</span></button>`).join('');
 }
 function go(v) {
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Aaj', kaam:'· Saare kaam', baat:'· Baat', main:'· Main', bana:'· Banaya hua', project:'· Folder'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
-  if (v === 'aaj') drawAaj(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
+  if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
   if (v === 'bana') PN?.library($('#bana'));
   if (v === 'creative') WORKSPACE?.open();
   if (v === 'creative') $('#ttl').textContent = '· Creative workspace';
@@ -128,7 +131,7 @@ async function enter() {
   $$('.aimg').forEach(e => e.src = img); $('#uimg').src = img;
   $('#uname').textContent = ME.owner || ME.email || 'Aap'; $('#uhandle').textContent = `${AV} · ${ME.handle || ''}`;
   const h = new Date().getHours(), first = (ME.owner && ME.owner !== 'Hoola user') ? ME.owner.split(' ')[0] : '';
-  $('#greet').textContent = `${h < 12 ? 'Good morning' : h < 17 ? 'Namaste' : 'Good evening'}${first ? ', ' + first : ''}`;
+  $('#greet').textContent = `${h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening'}${first ? ', ' + first : ''}`;
   $('#login').hidden = true; $('#app').hidden = false; drawNav(); drawKaam(); go('chat');
   if (CONFIG.sessions && window.HoolaChats && window.HoolaStream && !CH) {   // v0.162 many chats (v0.170: on with CONSOLE_V2)
     CH = HoolaChats({api, esc, toast, current: () => CONV, open: id => { go('chat'); openConv(id); },
@@ -142,7 +145,7 @@ async function enter() {
                      }});
     $('#searchBtn').hidden = false;
   }
-  if (CONFIG.projects && window.HoolaProjects && !PJ) {   // v0.164 Kaam ke folder
+  if (CONFIG.projects && window.HoolaProjects && !PJ) {   // v0.164 Project folders
     PJ = HoolaProjects({api, esc, toast, go, avatar: () => AV, current: () => CONV,
       openChat: (id, fresh) => { go('chat'); openConv(id, fresh); }, reloadChats: () => loadRecents()});
     PJ.load();
@@ -171,7 +174,7 @@ async function loadRecents() {
   if (CH) { const l = await CH.load(); if (VIEW === 'chat') $('#ttl').textContent = chatFolder(); return l; }
   let list = [];
   try { list = (await api('GET', '/api/console/conversations')).conversations || []; } catch {}
-  $('#recents').innerHTML = list.map(c => `<button class="rc" data-conv="${esc(c.id)}" title="${esc(timeOf(c.updated_at))}"${c.id === CONV ? ' aria-current="true"' : ''}>${esc(c.title)}</button>`).join('') || '<div class="empty" style="padding:8px 12px">Abhi koi chat nahi.</div>';
+  $('#recents').innerHTML = list.map(c => `<button class="rc" data-conv="${esc(c.id)}" title="${esc(timeOf(c.updated_at))}"${c.id === CONV ? ' aria-current="true"' : ''}>${esc(c.title)}</button>`).join('') || '<div class="empty" style="padding:8px 12px">No conversations yet.</div>';
   return list;
 }
 $('#recents').addEventListener('click', e => { if (CH) return; const b = e.target.closest('[data-conv]'); if (b) { openConv(b.dataset.conv); go('chat'); } });
@@ -251,7 +254,7 @@ function receipt(d, cid, state) {
       try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/takeback`, {client_id: cid});
         d.style.transition = 'opacity .25s, transform .25s'; d.style.opacity = '0'; d.style.transform = 'translateY(6px)';
         setTimeout(() => d.remove(), 240); RCPTS.delete(cid); toast('Wapas le liya — Hoola tak pahunchi hi nahi.'); }
-      catch (er) { receipt(d, cid, 'sent'); toast(er.status === 409 ? 'Yeh chal padi hai — Rokiye dabaiye.' : er.message, er.status !== 200); }
+      catch (er) { receipt(d, cid, 'sent'); toast(er.status === 409 ? 'Yeh chal padi hai — Stop dabaiye.' : er.message, er.status !== 200); }
     });
   } else if (state === 'quick') {
     d.insertAdjacentHTML('beforeend', `<span class="rq ok">⚡ turant jawab alag se diya</span>`);
@@ -278,7 +281,7 @@ function bindUserBar(d, text) {   // separate: Edit ka Cancel the same toolbar d
   d.querySelector('[data-ua="edit"]')?.addEventListener('click', e => { e.stopPropagation(); editBubble(d, text); });
 }
 function editBubble(d, text) {
-  if (TYPING) return toast(`${AV} abhi kaam kar raha hai. Pehle Rokiye.`, true);
+  if (TYPING) return toast(`${AV} abhi kaam kar raha hai. First Stop.`, true);
   const keep = d.innerHTML; d.classList.add('editing');
   d.innerHTML = `<textarea aria-label="Message badlo" rows="2"></textarea><div class="acts"><button type="button" class="btn soft" data-x>Cancel</button><button type="button" class="btn go" data-s>Bhejo</button></div>`;
   const ta = d.querySelector('textarea'); ta.value = text; ta.focus(); ta.setSelectionRange(text.length, text.length);
@@ -477,7 +480,7 @@ async function copyText(text) {
     let ok = false; try { ok = document.execCommand('copy'); } catch {} ta.remove(); return ok; }
 }
 async function replyAct(R, act, b) {
-  if (act === 'copy') { if (await copyText(replyText(R))) { b.querySelector('span').textContent = 'Copied ✓'; setTimeout(() => { const s = b.querySelector('span'); if (s) s.textContent = 'Copy'; }, 1500); } else toast('Copy nahi ho paya.', true); return; }
+  if (act === 'copy') { if (await copyText(replyText(R))) { b.querySelector('span').textContent = 'Copied ✓'; setTimeout(() => { const s = b.querySelector('span'); if (s) s.textContent = 'Copy'; }, 1500); } else toast('Could not copy.', true); return; }
   if (act === 'quote') {   // v0.171 the reply goes into the composer as a quote, so she can point at any line of it
     const q = (replyText(R) || '').trim().split('\n').map(l => '> ' + l).join('\n');
     if (!q) return;
@@ -493,7 +496,7 @@ async function replyAct(R, act, b) {
     return;
   }
   if (act === 'retry') {
-    if (TYPING) return toast(`${AV} abhi kaam kar raha hai. Pehle Rokiye.`, true);
+    if (TYPING) return toast(`${AV} abhi kaam kar raha hai. First Stop.`, true);
     b.disabled = true;
     try {
       await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/retry`);
@@ -510,7 +513,7 @@ document.addEventListener('click', async e => {     // Copy on a code block
 document.addEventListener('visibilitychange', () => { if (document.hidden) REPLIES.forEach(R => R.segs.forEach(S => { if (S.pacer.raf) S.pacer.flush(); })); });
 
 /* ================= live work line ================= */
-const WHERE = {browser:'Hoola ka browser · server', pc:'Aapka PC', email:'Email', payment:'Paisa · aapki Haan', network:'Hoola Network', bluetooth:'Ghar', website:'Website'};
+const WHERE = {browser:'Hoola ka browser · server', pc:'Aapka PC', email:'Email', payment:'Payment · your approval', network:'Hoola Network', bluetooth:'Ghar', website:'Website'};
 function workEvent(p) {
   const err = p.phase === 'error' || p.phase === 'stopped';
   if (p.id && p.data) STEPS_DATA.set(String(p.id), p.data);   // v0.171 the step's facts join its args in the chip
@@ -522,16 +525,16 @@ function workEvent(p) {
 }
 function live(state) {
   const b = $('#liveBtn'); b.classList.toggle('on', state !== 'idle');
-  $('#liveTxt').textContent = state === 'run' ? 'Kaam chal raha' : state === 'ask' ? 'Aapki Haan' : 'Live';
-  $('#liveTag').textContent = state === 'run' ? 'chal raha' : state === 'ask' ? 'Haan chahiye' : 'khaali';
+  $('#liveTxt').textContent = state === 'run' ? 'Kaam chal raha' : state === 'ask' ? 'Your approval' : 'Live';
+  $('#liveTag').textContent = state === 'run' ? 'chal raha' : state === 'ask' ? 'Approval required' : 'Idle';
   $('#liveTag').className = 'tag ' + (state === 'ask' ? 'warn' : 'ok');
 }
 
 /* ================= cards ================= */
-const LABEL = {bazar_approval:'Aapki Haan chahiye', employee_ask:'Employee ka sawaal', operator_ask:'Website job ko aapki zaroorat', operator_task:'Website job',
+const LABEL = {bazar_approval:'Your approval is required', employee_ask:'Employee question', operator_ask:'Website job ko aapki zaroorat', operator_task:'Website job',
   email_draft:'Email draft', hoola_deal:'Hoola Deal', hoola_knock:'Hoola Network', hoola_msg:'Hoola Network message', calendar_event:'Calendar',
-  reminders:'Reminders', lists:'Lists', gyaan_sources:'Sources', call_receipt:'Call receipt', procedure:'Seekha', memory_saved:'Yaad rakha',
-  artifact:'Page', pc_file:'File', photo_made:'Picture', motion:'Reel', video_job:'Video', studio_approval:'AI video ka kharcha', gst_return:'GST return',
+  reminders:'Reminders', lists:'Lists', gyaan_sources:'Sources', call_receipt:'Call receipt', procedure:'Seekha', memory_saved:'Saved to memory',
+  artifact:'Page', pc_file:'File', photo_made:'Picture', motion:'Reel', video_job:'Video', studio_approval:'AI video cost', gst_return:'GST return',
   payroll_run:'Salary run', google_reconnect:'Google dobara jodiye', campaign:'WhatsApp campaign', share_ask:'Share karein?'};
 const CARDS = new Map();      // kind:id -> element (updated in place)
 // Build studio (build.js): website / app design / Android builds live, like the phone app
@@ -636,8 +639,8 @@ function renderCard(kind, p, at, live) {
       return `<article><b>[${esc(s.n ?? '')}] ${esc(s.title || s.source || '')}</b>`
         + (s.page ? `<span class="faint">Page ${esc(s.page)}</span>` : '')
         + (s.snippet ? `<p>${esc(s.snippet)}</p>` : '')
-        + (url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Source kholo ↗</a>` : '')
-        + (s.file_id && PN ? `<button class="btn soft" type="button" data-source="${i}">File kholo</button>` : '') + '</article>';
+        + (url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open source ↗</a>` : '')
+        + (s.file_id && PN ? `<button class="btn soft" type="button" data-source="${i}">Open file</button>` : '') + '</article>';
     }).join('');
     el.addEventListener('click', e => {
       const b = e.target.closest('[data-source]'); if (!b) return;
@@ -647,12 +650,12 @@ function renderCard(kind, p, at, live) {
     turn().bd.appendChild(el); return;
   }
   if (kind === 'memory_saved' || kind === 'procedure') {
-    const el = document.createElement('div'); el.className = 'note'; el.textContent = (kind === 'memory_saved' ? '📌 Yaad rakha: ' : '🎓 Seekha: ') + (p.text || p.title || ''); turn().bd.appendChild(el); return;
+    const el = document.createElement('div'); el.className = 'note'; el.textContent = (kind === 'memory_saved' ? '📌 Saved to memory: ' : '🎓 Seekha: ') + (p.text || p.title || ''); turn().bd.appendChild(el); return;
   }
   const el = cardShell(kind, p);
   switch (kind) {
     case 'bazar_approval': {
-      el.innerHTML = head(p.title || 'Aapki Haan chahiye', p.money ? 'paisa' : 'Aapki Haan', p.money ? 'bad' : 'warn')
+      el.innerHTML = head(p.title || 'Your approval is required', p.money ? 'paisa' : 'Your approval', p.money ? 'bad' : 'warn')
         + (p.amount ? `<div class="big">${esc(p.amount)}</div>` : '') + (p.payee ? `<div class="faint" style="font-size:13px">${esc(p.payee)}</div>` : '')
         + (p.items || []).map(i => `<div class="ln"><span>${esc(i.name)}</span><b>${esc(i.price)}</b></div>`).join('')
         + (p.disclosures || []).map(i => `<div class="ln"><span>${esc(i.label)}</span><b>${esc(i.value)}</b></div>`).join('')
@@ -664,7 +667,7 @@ function renderCard(kind, p, at, live) {
         no: async () => { await api('POST', `/api/bazar/approvals/${encodeURIComponent(p.id)}`, {decision: 'reject'}); decided(el, false, '✕ Mana kiya'); }});
       break; }
     case 'employee_ask': {
-      el.innerHTML = head(p.what || 'Employee ka sawaal', p.duty_label || 'Employee', 'warn') + `<div class="kv">${[['Kisne', p.who], ['Kyon', p.why], ['Kya', p.detail]].filter(([, v]) => v).map(([k, v]) => `<span>${k}</span><b>${esc(v)}</b>`).join('')}</div>`;
+      el.innerHTML = head(p.what || 'Employee question', p.duty_label || 'Employee', 'warn') + `<div class="kv">${[['Kisne', p.who], ['Kyon', p.why], ['Kya', p.detail]].filter(([, v]) => v).map(([k, v]) => `<span>${k}</span><b>${esc(v)}</b>`).join('')}</div>`;
       const empDone = st => st === 'done' ? '✓ Ho gaya' : st === 'declined' ? '✕ Mana kiya' : st === 'expired' ? 'Samay nikal gaya' : '✕ Nahi ho paya' + (p.result ? ': ' + String(p.result).slice(0, 140) : '');
       if (p.status && p.status !== 'pending') { decided(el, p.status === 'done', empDone(p.status)); break; }
       decisionRow(el, {
@@ -683,7 +686,7 @@ function renderCard(kind, p, at, live) {
       if (k === 'payment') break;
       decisionRow(el, {yesLabel: typed ? 'Page mein bharo' : 'Slide karke Haan karein',
         yes: async () => { const inp = el.querySelector('input.fld'); const answer = inp ? inp.value.trim() || (k === 'captcha' ? p.suggested_answer || '' : '') : '';
-          if (typed && !answer) { toast('Pehle jawab likhiye.', true); throw new Error('empty'); }
+          if (typed && !answer) { toast('First jawab likhiye.', true); throw new Error('empty'); }
           await api('POST', `/api/operator/requests/${encodeURIComponent(p.id)}`, {status: 'approved', answer}); if (inp) inp.value = ''; decided(el, true, typed ? '✓ Box mein bhar diya (••••)' : '✓ Haan diya'); },
         no: async () => { await api('POST', `/api/operator/requests/${encodeURIComponent(p.id)}`, {status: 'rejected', answer: ''}); decided(el, false, '✕ Mana kiya'); }});
       break; }
@@ -700,7 +703,7 @@ function renderCard(kind, p, at, live) {
     case 'share_ask': {   // Share from the panel: nothing is public until she says Haan here
       const own = typeof p.url === 'string' && p.url.startsWith(location.origin + '/') ? p.url : '';
       const url = p.status === 'approved' ? (safeLink(p.url) || own) : '';
-      el.innerHTML = head(p.title || 'Share karein?', p.status === 'pending' ? 'Aapki Haan' : p.status === 'approved' ? 'shared' : 'nahi', p.status === 'pending' ? 'warn' : 'v')
+      el.innerHTML = head(p.title || 'Share karein?', p.status === 'pending' ? 'Your approval' : p.status === 'approved' ? 'shared' : 'nahi', p.status === 'pending' ? 'warn' : 'v')
         + `<div class="kv"><span>Kya</span><b>${esc(p.what || '')}</b></div><p style="font-size:14px">${esc(p.say || '')}</p>`
         + (url ? `<div class="acts"><input class="fld" readonly value="${esc(url)}" aria-label="Share link"><button class="btn soft" type="button" data-copy-link>Copy link</button></div>` : '');
       el.querySelector('[data-copy-link]')?.addEventListener('click', async e => { if (await copyText(url)) e.target.textContent = 'Copied ✓'; });
@@ -745,7 +748,8 @@ function stream(conv) {
   STREAM = s;
 }
 function onEvent(ev) {
-  const p = ev.payload || {};
+  const p = {...(ev.payload || {})};
+    if (p.role === 'user' && typeof p.text === 'string') p.text = p.text.replace(/\n\n\[Web console language preference: Reply in English unless I explicitly request another language\.\]$/, '');
   switch (ev.kind) {
     case 'reply_start': {
       landing(false); const prev = LAST_TURN; LAST_TURN = p.turn; reply(p.turn);
@@ -801,7 +805,8 @@ let LOADING = false, PENDING = [], BEFORE = 0, HAS_MORE = false, OLDER = false, 
 function renderEvents(events, any) {
   flushStepBuf();
   for (const ev of events) {
-    const p = ev.payload || {};
+    const p = {...(ev.payload || {})};
+    if (p.role === 'user' && typeof p.text === 'string') p.text = p.text.replace(/\n\n\[Web console language preference: Reply in English unless I explicitly request another language\.\]$/, '');
     if (ev.kind === 'message') {
       flushStepBuf();
       if (p.role === 'user') userBubble(p.text, p.files, ev.id, null, ev.at);
@@ -853,7 +858,7 @@ async function openConv(id, fresh, opts = {}) {
   REPLIES.forEach(R => { drawActs(R); closeTurnTools(R.t); });
   BEFORE = tl.before || 0; HAS_MORE = !!tl.has_more; drawBranches(tl.branches || []);
   TURN = null; LAST = tl.last_event_id || 0;
-  if (CH?.isBusy(id)) typing(true);          // that chat is working: Rokiye shows, the dots wait for its words
+  if (CH?.isBusy(id)) typing(true);          // that chat is working: Stop shows, the dots wait for its words
   // a reply still being written (she reloaded mid-reply): its words so far, then the stream goes on from there
   if (CONFIG.stream && window.HoolaStream) {
     try {
@@ -941,7 +946,7 @@ function openFind() {
   bar.innerHTML = `<span class="fic" aria-hidden="true">⌕</span><input placeholder="Is chat mein dhoondo…" aria-label="Is chat mein dhoondo" autocomplete="off"><span class="fcount" aria-live="polite"></span>`
     + `<button type="button" class="fb" data-d="-1" aria-label="Pichhla mila (Shift+Enter)">↑</button>`
     + `<button type="button" class="fb" data-d="1" aria-label="Agla mila (Enter)">↓</button>`
-    + `<button type="button" class="fb x" aria-label="Band karo (Esc)">✕</button>`;
+    + `<button type="button" class="fb x" aria-label="Close (Esc)">✕</button>`;
   $('#v-chat').appendChild(bar);
   const inp = bar.querySelector('input');
   FIND = {q: '', hits: [], total: 0, i: -1, box: bar, inp, st: 0};
@@ -990,14 +995,14 @@ function highlightHits() {   // loaded bubbles glow; older ones light up as the 
   });
 }
 
-/* the rail: one slim line on the right edge, one tick per day of the loaded chat (Aaj / Kal / 12 Okt);
+/* the rail: one slim line on the right edge, one tick per day of the loaded chat (Today / Yesterday / 12 Okt);
    hover says the day, one tap jumps to that day's first message. Only when it earns its place. */
 let RAIL_T = 0;
 function dayLabel(d) {
   const today = new Date(), start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const day = new Date(d.getFullYear(), d.getMonth(), d.getDate()), DAY = 86400000;
-  if (day.getTime() === start.getTime()) return 'Aaj';
-  if (day.getTime() === start.getTime() - DAY) return 'Kal';
+  if (day.getTime() === start.getTime()) return 'Today';
+  if (day.getTime() === start.getTime() - DAY) return 'Yesterday';
   return d.toLocaleDateString('en-IN', {day: 'numeric', month: 'short'});
 }
 function drawRail() {
@@ -1076,15 +1081,15 @@ msg.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (SLASH.open && SLASH.pick()) return; composer.requestSubmit(); }
 });
 
-/* ================= slash commands (v0.172): "/" in the composer runs the console, Hinglish ================= */
+/* ================= slash commands (v0.172): "/" in the composer runs the console, English ================= */
 const SLASH = {open: false, items: [], sel: 0};
 const SLASH_CMDS = [
   ['nayi', 'Nayi chat', 'nayi kholo', () => $('#newChat').click()],
   ['dhoondo', 'Chats dhoondo', 'Ctrl K wala search', () => CH?.openSearch()],
   ['export', 'Chat export', 'Markdown ya JSON file', () => $('#exportBtn').click()],
-  ['rok', 'Rokiye', 'chalta kaam rok do', () => $('#stopBtn').click()],
-  ['aaj', 'Aaj', 'aaj ka din', () => go('aaj')],
-  ['kaam', 'Saare kaam', 'sab kuch jo Hoola karta hai', () => go('kaam')],
+  ['rok', 'Stop', 'chalta kaam rok do', () => $('#stopBtn').click()],
+  ['aaj', 'Today', 'aaj ka din', () => go('aaj')],
+  ['kaam', 'All tools', 'sab kuch jo Hoola karta hai', () => go('kaam')],
   ['baat', 'Baat', 'live voice call', () => go('baat')],
   ['main', 'Main', 'profile, password, kharcha', () => go('main')],
 ];
@@ -1132,7 +1137,7 @@ async function loadGauge() {
 }
 composer.addEventListener('submit', async e => {
   e.preventDefault(); const text = msg.value.trim(); if ((!text && !FILES.length) || !CONV) return;
-  if (FILES.some(f => !f.file_id)) return toast('File abhi upload ho rahi hai…');
+  if (FILES.some(f => !f.file_id)) return toast('File upload in progress…');
   const origin = CONV, auth = TOKEN; clearTimeout(DRAFT_T);
   const files = FILES.splice(0); drawFiles(); msg.value = ''; msg.style.height = 'auto'; $('#sendBtn').disabled = true;
   store.del('hoola.draft.' + origin);   // v0.173 the draft went out with the message
@@ -1143,7 +1148,7 @@ composer.addEventListener('submit', async e => {
   for (let i = 0; i < 3; i++) {
     if (!auth || TOKEN !== auth) return;
     try { await api('POST', `/api/conversations/${encodeURIComponent(origin)}/messages`, body); loadRecents(); return; }
-    catch (er) { if (i === 2 || er.status === 401 || er.status === 400) { toast('Bheja nahi gaya: ' + er.message, true); store.set('hoola.draft.' + origin, text); if (CONV === origin) { msg.value = text; FILES.push(...files); drawFiles(); } return; } await new Promise(r => setTimeout(r, 800 * (i + 1))); }
+    catch (er) { if (i === 2 || er.status === 401 || er.status === 400) { toast('Could not send: ' + er.message, true); store.set('hoola.draft.' + origin, text); if (CONV === origin) { msg.value = text; FILES.push(...files); drawFiles(); } return; } await new Promise(r => setTimeout(r, 800 * (i + 1))); }
   }
 });
 $('#stopBtn').addEventListener('click', async () => { try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/stop`); toast('Rokne ko kaha. Jo kadam chal raha tha woh beech mein ruk sakta hai.'); } catch (e) { toast(e.message, true); } });
@@ -1203,7 +1208,7 @@ const KEYS = [
   {k: 'Ctrl+Shift+O', g: 'Chat', label: 'Nayi chat', fn: () => $('#newChat').click()},
   {k: '/', g: 'Composer', label: 'Likhne ka box kholo', when: e => !typingIn(e), fn: () => { go('chat'); msg.focus(); }},
   {k: '?', g: 'Saamaany', label: 'Yahin shorcut list', when: e => !typingIn(e), fn: () => openKeys()},
-  {k: 'Escape', g: 'Saamaany', label: 'Band karo · Rokiye', fn: escLayer},
+  {k: 'Escape', g: 'Saamaany', label: 'Close · Stop', fn: escLayer},
 ];
 const typingIn = e => !!(e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]'));
 const normCombo = c => { const p = String(c).split('+'), key = p.pop(); const m = new Set(p.map(x => x.toLowerCase()));
@@ -1236,7 +1241,7 @@ function escLayer() {           // one Esc peels one layer, deepest first
   if (SLASH.open) { slashClose(); return; }
   if (!$('#stopBtn').hidden) $('#stopBtn').click();
 }
-function openKeys() {           // the cheat sheet: toggle, glass, Hinglish
+function openKeys() {           // the cheat sheet: toggle, glass, English
   const old = document.querySelector('.kbg');
   if (old) { old.remove(); return; }
   const groups = [];
@@ -1262,7 +1267,7 @@ $('#exportMenu').addEventListener('click', async e => {
     a.download = (r.headers.get('content-disposition') || '').match(/filename="?([^";]+)"?/)?.[1] || `hoola-chat.${b.dataset.fmt}`;
     a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     toast('Chat export ho gayi.');
-  } catch (er) { toast('Export nahi hui: ' + er.message, true); }
+  } catch (er) { toast('Export failed: ' + er.message, true); }
 });
 function drawFiles() {
   $('#files').innerHTML = FILES.map((f, i) => `<span class="fchip${f.file_id ? '' : ' up'}">📎 ${esc(f.name)}${f.file_id ? '' : ' · upload…'}<button type="button" data-rm="${i}" aria-label="Remove ${esc(f.name)}">✕</button></span>`).join('');
@@ -1294,11 +1299,11 @@ $('#micBtn').addEventListener('click', () => {
     msg.dispatchEvent(new Event('input')); scrollDown(true);
   };
   const stop = () => { DICT = null; $('#micBtn').classList.remove('on'); };
-  r.onend = stop; r.onerror = ev => { stop(); if (ev.error === 'not-allowed') toast('Mic ki permission chahiye — browser ke address bar se allow kijiye.', true); };
-  try { r.start(); toast('Boliye — likhta ja raha hoon. Mic dobara dabaiye to ruk jayega.'); } catch { stop(); go('baat'); }
+  r.onend = stop; r.onerror = ev => { stop(); if (ev.error === 'not-allowed') toast('Allow microphone access in your browser address bar.', true); };
+  try { r.start(); toast('Speak to dictate. Click the microphone again to stop.'); } catch { stop(); go('baat'); }
 });
 
-/* ================= landing ideas + "Saare kaam" (real prompts) ================= */
+/* ================= landing ideas + "All tools" (real prompts) ================= */
 const KAAM = window.KAAM || [], KI = window.KAAM_ICON || {};
 let CAT = null;
 $('#cats').innerHTML = KAAM.map(g => `<button class="cat" type="button" data-cat="${g[0]}" aria-pressed="false"><span>${g[1]}</span>${esc(g[2])}</button>`).join('');
@@ -1308,7 +1313,7 @@ $('#cats').addEventListener('click', e => { const b = e.target.closest('.cat'); 
 function usePrompt(id) {
   const t = KAAM.flatMap(g => g[4]).find(x => x[0] === id); if (!t) return;
   go('chat'); msg.value = t[3].replace(/^\[[^\]]+\]\s*/, ''); msg.dispatchEvent(new Event('input'));
-  if (t[4]) { toast(`Pehle file jodiye (${t[4]}), phir bhejiye.`); $('#fileIn').click(); } else composer.requestSubmit();
+  if (t[4]) { toast(`First file jodiye (${t[4]}), phir bhejiye.`); $('#fileIn').click(); } else composer.requestSubmit();
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-say]'); if (b) usePrompt(b.dataset.say); });
 function drawKaam(q = '') {
@@ -1326,7 +1331,7 @@ let QUEUE = [], PENDING_TIMER = 0;
 async function refreshPending() {
   try { QUEUE = (await api('GET', '/api/console/pending')).pending || []; } catch { return; }
   $('#qcount').textContent = QUEUE.length;
-  $('#queue').innerHTML = QUEUE.length ? '' : '<div class="empty">Abhi kuch nahi.</div>';
+  $('#queue').innerHTML = QUEUE.length ? '' : '<div class="empty">Nothing here yet.</div>';
   for (const q of QUEUE) {
     const holder = document.createElement('div'); $('#queue').appendChild(holder);
     const saveTurn = TURN; TURN = {bd: holder, steps: {}}; const k = q.kind + ':' + q.id; CARDS.delete(k);
@@ -1335,18 +1340,18 @@ async function refreshPending() {
   if (!TYPING) live(QUEUE.length ? 'ask' : 'idle'); drawNav();
 }
 
-/* ================= Aaj ================= */
-async function drawAaj() {
-  const box = $('#aaj'); box.innerHTML = '<div class="vh"><h2>Aaj</h2></div><div class="empty">Laa raha hoon…</div>';
+/* ================= Today ================= */
+async function drawToday() {
+  const box = $('#aaj'); box.innerHTML = '<div class="vh"><h2>Today</h2></div><div class="empty">Loading…</div>';
   let d = {reminders: [], lists: {}, pending: []}; try { d = await api('GET', '/api/console/today'); } catch (e) { box.innerHTML += `<p class="badc">${esc(e.message)}</p>`; return; }
   const date = new Date().toLocaleDateString('en-IN', {weekday: 'long', day: 'numeric', month: 'long'});
-  box.innerHTML = `<div class="vh"><h2>Aaj · ${esc(date)}</h2></div>
+  box.innerHTML = `<div class="vh"><h2>Today · ${esc(date)}</h2></div>
     <div class="kpis"><div class="kpi gl"><b>${d.pending.length}</b><span>aapki Haan ka intezaar</span></div><div class="kpi gl"><b>${d.reminders.length}</b><span>aane wale reminders</span></div>
     <div class="kpi gl"><b>${Object.values(d.lists).reduce((n, l) => n + l.length, 0)}</b><span>list mein cheezein</span></div><div class="kpi gl"><b class="hid">${esc(ME?.handle || '')}</b><span>aapka Hoola ID</span></div></div>
     <div class="grid2">
-      <div class="tile gl"><h3>Reminders</h3>${d.reminders.length ? `<div class="ag">${d.reminders.map(r => `<div><time>${esc(timeOf(r.due_at))}</time><span>${esc(r.text)}</span></div>`).join('')}</div>` : '<div class="empty">Koi reminder nahi.</div>'}</div>
+      <div class="tile gl"><h3>Reminders</h3>${d.reminders.length ? `<div class="ag">${d.reminders.map(r => `<div><time>${esc(timeOf(r.due_at))}</time><span>${esc(r.text)}</span></div>`).join('')}</div>` : '<div class="empty">No reminders.</div>'}</div>
       <div class="tile gl"><h3>Lists</h3>${Object.keys(d.lists).length ? Object.entries(d.lists).map(([n, items]) => `<b style="font-size:13px" class="acc">${esc(n)}</b><div class="lst">${items.map(i => `<label><input type="checkbox" disabled> ${esc(i.text)}</label>`).join('')}</div>`).join('') : '<div class="empty">Koi list nahi. Chat mein kahiye: "doodh shopping list mein daalo".</div>'}</div>
-      <div class="tile gl"><h3>Aapki Haan chahiye <span class="tag warn">${d.pending.length}</span></h3>${d.pending.length ? d.pending.map(q => `<div class="ln"><span>${esc(q.title)}</span><b>${q.money ? '📱 phone' : 'console'}</b></div>`).join('') + '<button class="btn soft" type="button" id="toQueue">Cards kholo</button>' : '<div class="empty">Kuch nahi.</div>'}</div>
+      <div class="tile gl"><h3>Your approval is required <span class="tag warn">${d.pending.length}</span></h3>${d.pending.length ? d.pending.map(q => `<div class="ln"><span>${esc(q.title)}</span><b>${q.money ? '📱 phone' : 'console'}</b></div>`).join('') + '<button class="btn soft" type="button" id="toQueue">Open cards</button>' : '<div class="empty">Nothing yet.</div>'}</div>
     </div>`;
   $('#toQueue')?.addEventListener('click', () => { $('#app').classList.add('open'); go('chat'); });
 }
@@ -1359,25 +1364,25 @@ async function drawMain() {
     <div class="grid2">
       <div class="tile gl"><h3>Console password <span class="tag ${m.has_password ? 'ok' : 'warn'}">${m.has_password ? 'set hai' : 'set nahi'}</span></h3>
         <p class="muted" style="font-size:13.5px">Isse aap kisi bhi computer par <b>${esc(m.handle || 'Hoola ID')}</b> + password se login kar sakti hain. Har login aapke chat mein bataya jaata hai.</p>
-        <form class="pwbox" id="pwf" autocomplete="off">${m.has_password ? '<input type="password" id="pwc" placeholder="Abhi wala password" autocomplete="current-password" aria-label="Current password">' : ''}
-          <input type="password" id="pwn" placeholder="Naya password (10+ akshar)" autocomplete="new-password" aria-label="New password" minlength="10">
-          <input type="password" id="pwn2" placeholder="Naya password dobara" autocomplete="new-password" aria-label="Repeat new password">
+        <form class="pwbox" id="pwf" autocomplete="off">${m.has_password ? '<input type="password" id="pwc" placeholder="Current password" autocomplete="current-password" aria-label="Current password">' : ''}
+          <input type="password" id="pwn" placeholder="New password (10+ characters)" autocomplete="new-password" aria-label="New password" minlength="10">
+          <input type="password" id="pwn2" placeholder="Confirm new password" autocomplete="new-password" aria-label="Repeat new password">
           <button class="btn go" type="submit">${m.has_password ? 'Password badlo' : 'Password banao'}</button></form></div>
       <div class="tile gl"><h3>Google apps <span class="tag ${gOn(m) ? 'ok' : 'warn'}">${gOn(m) ? 'jude hain' : 'jode nahi'}</span></h3>
         <p class="muted" style="font-size:13.5px">Login sirf naam aur email leta hai. Gmail, Calendar, Drive, Docs aur Sheets par kaam ke liye Google se alag se ijazat dijiye.</p>
         <div class="feat">${['gmail', 'calendar', 'drive', 'docs', 'sheets'].map(k => `<span class="chip">${(m.google_apps || {})[k] ? '✓' : '○'} ${k[0].toUpperCase() + k.slice(1)}</span>`).join('')}</div>
         <div class="acts" style="margin-top:12px"><button class="btn ${gOn(m) ? 'soft' : 'go'}" type="button" id="gAppsBtn">${gOn(m) ? 'Dobara jodiye' : 'Google apps jodiye'}</button></div></div>
-      <div class="tile gl"><h3>Yaad <span class="tag v" id="memc">…</span></h3><div class="mfacts" id="mfacts"><div class="empty">Laa raha hoon…</div></div></div>
+      <div class="tile gl"><h3>Yaad <span class="tag v" id="memc">…</span></h3><div class="mfacts" id="mfacts"><div class="empty">Loading…</div></div></div>
       <div class="tile gl"><h3>Server</h3><div class="feat" id="feat"><span class="empty">…</span></div></div>
     </div>
     <div class="acts" style="margin-top:22px"><button class="btn soft" type="button" id="logoutBtn">Logout</button>
-      ${CONFIG.v2 ? '<a class="btn soft" href="/console/?legacy=1" style="text-decoration:none">Purana console</a>' : ''}</div>`;
+      ${CONFIG.v2 ? '<a class="btn soft" href="/console/?legacy=1" style="text-decoration:none">Legacy console</a>' : ''}</div>`;
   $('#logoutBtn').addEventListener('click', () => logout(false));
-  $('#gAppsBtn').addEventListener('click', () => { if (!CONFIG.google) return toast('Google sign-in server par set nahi hai.', true); location.href = '/auth/google/start?web=1&apps=1'; });
+  $('#gAppsBtn').addEventListener('click', () => { if (!CONFIG.google) return toast('Google sign-in is not configured.', true); location.href = '/auth/google/start?web=1&apps=1'; });
   $('#pwf').addEventListener('submit', async e => { e.preventDefault(); const n = $('#pwn').value, n2 = $('#pwn2').value;
-    if (n !== n2) return toast('Dono naye password ek jaise nahi hain.', true);
+    if (n !== n2) return toast('The new passwords do not match.', true);
     try { const r = await api('PUT', '/api/console/password', {password: n, current: $('#pwc')?.value || ''}); ME.has_password = true; toast(`Password set. Ab ${r.handle} + password se login ho sakta hai.`); drawMain(); } catch (er) { toast(er.message, true); } });
-  api('GET', '/api/memory').then(r => { const f = r.facts || []; $('#memc').textContent = f.length; $('#mfacts').innerHTML = f.slice(0, 40).map(x => `<div>${x.pinned ? '📌 ' : ''}${esc(x.text)}</div>`).join('') || '<div class="empty">Abhi kuch yaad nahi.</div>'; }).catch(() => { $('#mfacts').innerHTML = '<div class="empty">—</div>'; });
+  api('GET', '/api/memory').then(r => { const f = r.facts || []; $('#memc').textContent = f.length; $('#mfacts').innerHTML = f.slice(0, 40).map(x => `<div>${x.pinned ? '📌 ' : ''}${esc(x.text)}</div>`).join('') || '<div class="empty">No memories yet.</div>'; }).catch(() => { $('#mfacts').innerHTML = '<div class="empty">—</div>'; });
   fetch('/healthz').then(r => r.json()).then(h => { $('#feat').innerHTML = `<span class="chip">v${esc(h.version)}</span>` + (h.features || []).slice(0, 60).map(f => `<span class="chip">${esc(f.replace(/_/g, ' '))}</span>`).join(''); }).catch(() => {});
 }
 
@@ -1387,16 +1392,16 @@ function drawBaat() {
   const v = $('#v-baat');
   if (v.dataset.drawn) return; v.dataset.drawn = '1';
   v.innerHTML = `<div class="call"><div class="callav"><span class="av"><img src="${$('#uimg').src}" alt=""></span></div>
-    <div><h2 style="font-size:26px">${esc(AV)}</h2><div class="callst okc" id="cst">Call shuru karne ke liye dabaiye</div><div class="faint" style="font-size:12.5px">Headphone lagayein to awaaz saaf rahegi · Hinglish</div></div>
+    <div><h2 style="font-size:26px">${esc(AV)}</h2><div class="callst okc" id="cst">Click to start a call</div><div class="faint" style="font-size:12.5px">Use headphones for clearer audio · English</div></div>
     <div class="wave" id="cwave" aria-hidden="true" style="opacity:.3">${Array.from({length: 13}, (_, i) => `<i style="animation-delay:${(i * .09) % 1}s"></i>`).join('')}</div>
     <div class="caption" aria-live="polite" id="caption"></div>
-    <div class="cbtns" id="cbtns"><button class="btn go callgo" type="button" id="callBtn">📞 Baat shuru karein</button></div></div>`;
+    <div class="cbtns" id="cbtns"><button class="btn go callgo" type="button" id="callBtn">📞 Start call</button></div></div>`;
   $('#callBtn').addEventListener('click', startCall);
 }
 function callUI(state, text) {
   const s = $('#cst'); if (s) s.textContent = text; const w = $('#cwave'); if (w) w.style.opacity = state === 'live' ? 1 : .3;
   const b = $('#cbtns'); if (!b) return;
-  if (state === 'idle') { b.innerHTML = '<button class="btn go callgo" type="button" id="callBtn">📞 Baat shuru karein</button>'; $('#callBtn').addEventListener('click', startCall); }
+  if (state === 'idle') { b.innerHTML = '<button class="btn go callgo" type="button" id="callBtn">📞 Start call</button>'; $('#callBtn').addEventListener('click', startCall); }
   else if (!$('#hang')) { b.innerHTML = `<button class="cbx" type="button" id="muteBtn" aria-label="Mute">${svg(IC.baat)}</button><button class="cbx end" type="button" id="hang" aria-label="Hang up">${svg('<path d="M3 15c5-4 13-4 18 0l-2 3-4-1v-3c-2-.6-4-.6-6 0v3l-4 1z"/>')}</button>`;
     $('#hang').addEventListener('click', () => endCall(true)); $('#muteBtn').addEventListener('click', toggleMute); }
 }
@@ -1404,14 +1409,14 @@ async function startCall() {
   if (CALL) return;
   let media;
   try { media = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1}}); }
-  catch { return callUI('idle', 'Mic ki permission chahiye. Browser ke address bar se mic allow kijiye.'); }
+  catch { return callUI('idle', 'Allow microphone access in your browser address bar.'); }
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const q = new URLSearchParams({conv: CONV, voice: ME?.avatar?.voice || '', lang: 'hi-IN'});
-  let ws; try { ws = new WebSocket(`${proto}//${location.host}/api/voice/ws?${q}`, ['hoola', 'hoola-key.' + TOKEN]); } catch { media.getTracks().forEach(t => t.stop()); ctx.close(); return callUI('idle', 'Call shuru nahi hui.'); }
+  const q = new URLSearchParams({conv: CONV, voice: ME?.avatar?.voice || '', lang: 'en-IN'});
+  let ws; try { ws = new WebSocket(`${proto}//${location.host}/api/voice/ws?${q}`, ['hoola', 'hoola-key.' + TOKEN]); } catch { media.getTracks().forEach(t => t.stop()); ctx.close(); return callUI('idle', 'Could not start the call.'); }
   ws.binaryType = 'arraybuffer';
   CALL = {ws, ctx, media, muted: false, playAt: 0, sources: new Set(), ping: null};
-  callUI('connecting', 'Jud raha hai…');
+  callUI('connecting', 'Connecting…');
   const src = ctx.createMediaStreamSource(media), proc = ctx.createScriptProcessor(4096, 1, 1), ratio = ctx.sampleRate / 16000;
   proc.onaudioprocess = e => {
     if (!CALL || ws.readyState !== 1) return;
@@ -1424,12 +1429,12 @@ async function startCall() {
   ws.onmessage = ev => {
     if (typeof ev.data !== 'string') return play(ev.data);
     let m; try { m = JSON.parse(ev.data); } catch { return; }
-    if (m.type === 'ready') { callUI('live', 'Live · baat kijiye'); CALL.ping = setInterval(() => ws.readyState === 1 && ws.send('{"type":"ping"}'), 15000); }
+    if (m.type === 'ready') { callUI('live', 'Live · speak now'); CALL.ping = setInterval(() => ws.readyState === 1 && ws.send('{"type":"ping"}'), 15000); }
     else if (m.type === 'user_text') caption('Aap', m.text);
     else if (m.type === 'santosh_text') caption(AV, m.text);
     else if (m.type === 'interrupted') cutSpeech();
     else if (m.type === 'tool') callUI('live', (m.state === 'done' ? '✓ ' : '… ') + (m.label || 'kaam'));
-    else if (m.type === 'status') callUI('live', m.state === 'reconnecting' ? 'Dobara jud raha hai…' : 'Live');
+    else if (m.type === 'status') callUI('live', m.state === 'reconnecting' ? 'Reconnecting…' : 'Live');
     else if (m.type === 'hold') { if (m.on) cutSpeech(); callUI('live', m.on ? (AV + ' chup hai · "' + AV + '" bolkar bulaiye') : 'Live'); }
     else if (m.type === 'error') { toast(m.message || 'Call mein dikkat', true); callUI('live', m.message || 'Dikkat'); }
   };

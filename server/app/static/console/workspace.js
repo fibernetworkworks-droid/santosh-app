@@ -10,7 +10,7 @@ window.HoolaWorkspace = ctx => {
       starter:'Create a premium product launch image for FNW AI Node. Use violet, indigo and a small orange accent. Keep the product name readable.'},
     video: {label:'Video & motion', title:'Give your idea a story.', tool:'Video studio',
       hint:'Describe the shots, subject and movement. Hoola prepares the storyboard first.',
-      starter:'Plan a product launch film for FNW AI Node: a wide product reveal, a close-up of the hardware, then the brand ending. Hindi voiceover. No unverified product claims.'},
+      starter:'Plan a product launch film for FNW AI Node: a wide product reveal, a close-up of the hardware, then the brand ending. English voiceover. No unverified product claims.'},
     research: {label:'Research', title:'A clearer view of what’s next.', tool:'Research brief',
       hint:'Describe your question, scope and the decision the research should support.',
       starter:'Research the Indian ISP automation market. Compare existing tools using official sources, identify operator workflow gaps, and give a cited launch plan. Separate evidence from assumptions.'},
@@ -38,7 +38,7 @@ window.HoolaWorkspace = ctx => {
         <div class="cw-options">
           ${['image','video'].includes(mode)?`<label>Format<select id="cw-aspect">${ASPECTS.filter(a=>mode!=='video'||a!=='4:5').map(a=>`<option${a===(d.aspect||'16:9')?' selected':''}>${a}</option>`).join('')}</select></label>`:''}
           ${mode==='image'?`<label>Quality<select id="cw-quality"><option value="fast"${d.quality!=='best'?' selected':''}>Standard</option><option value="best"${d.quality==='best'?' selected':''}>Best · higher cost</option></select></label>`:''}
-          ${mode==='video'?`<label>Length<select id="cw-seconds">${[15,30,60].map(n=>`<option value="${n}"${String(n)===(d.seconds||'15')?' selected':''}>${n} seconds</option>`).join('')}</select></label><label>Voiceover<select id="cw-language">${['Hindi','Marathi','English'].map(l=>`<option${l===(d.language||'Hindi')?' selected':''}>${l}</option>`).join('')}</select></label>`:''}
+          ${mode==='video'?`<label>Length<select id="cw-seconds">${[15,30,60].map(n=>`<option value="${n}"${String(n)===(d.seconds||'15')?' selected':''}>${n} seconds</option>`).join('')}</select></label><label>Voiceover<select id="cw-language">${['Hindi','Marathi','English'].map(l=>`<option${l===(d.language||'English')?' selected':''}>${l}</option>`).join('')}</select></label>`:''}
           ${mode==='research'?`<label>Source preference<select id="cw-sources"><option value="web"${d.sources!=='files'?' selected':''}>Public web + attached files</option><option value="files"${d.sources==='files'?' selected':''}>Attached files only</option></select></label>`:''}
           ${mode==='document'?`<label>Output<select id="cw-format">${['Word (.docx)','PDF (.pdf)','Excel (.xlsx)','Presentation (.pptx)'].map(l=>`<option${l===(d.format||'Word (.docx)')?' selected':''}>${l}</option>`).join('')}</select></label>`:''}
         </div>
@@ -83,7 +83,7 @@ window.HoolaWorkspace = ctx => {
     const refs=files.map(f=>`${f.name} [file_id: ${f.file_id}]`).join('\n');
     const context=refs?`\nAttached references:\n${refs}`:'';
     if(mode==='image')return `Create ${files.length?'an edited image using my reference images':'a new image'} with photo_banao. Aspect ${d.aspect||'16:9'}, quality ${d.quality||'fast'}.\nBrief: ${d.text}${context}\nReturn the actual image result. Preserve any provided product identity and exact requested wording.`;
-    if(mode==='video')return `Use video_studio to prepare a ${d.seconds||15}-second ${d.aspect||'16:9'} video storyboard with ${d.language||'Hindi'} voiceover.\nBrief: ${d.text}${context}\nPrepare the shot plan and estimate. Do not start paid generation until I approve its cost. Return the storyboard and existing project card. Do not claim a completed video before generation and assembly.`;
+    if(mode==='video')return `Use video_studio to prepare a ${d.seconds||15}-second ${d.aspect||'16:9'} video storyboard with ${d.language||'English'} voiceover.\nBrief: ${d.text}${context}\nPrepare the shot plan and estimate. Do not start paid generation until I approve its cost. Return the storyboard and existing project card. Do not claim a completed video before generation and assembly.`;
     if(mode==='research')return `Research this question: ${d.text}${context}\nSource preference: ${d.sources==='files'?'Use ONLY the attached files; do not browse or use external sources. State what these files do not establish.':'Use current public sources and the attached files. Prefer primary sources.'}\nShow a work plan, then research. Cite sources, distinguish facts from inference, and state gaps. Return the report here in chat, and create a downloadable document if supported.`;
     return `Create a real ${d.format||'Word (.docx)'} document.\nBrief: ${d.text}${context}\nUse the provided source material. Do not invent company facts. Show the finished file in chat with a download and preview. If information is missing, mark it clearly.`;
   }

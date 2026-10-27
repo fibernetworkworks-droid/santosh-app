@@ -4,7 +4,7 @@
      session still shows a dot when a chat inside is busy or has a new reply), click the name to open the session
      page, hover "+" starts a new chat right inside that session. Drag a chat row onto a session header to move
      it there, onto "Baaki chats" to take it out. No sessions -> the exact old list.
-   - Groups (chats without a session): Pinned, Aaj, Kal, Pichhle 7 din, Purane; a busy badge on every chat that
+   - Groups (chats without a session): Pinned, Today, Yesterday, Previous 7 days, Older; a busy badge on every chat that
      is working, a dot on chats with a new reply; a menu per chat: Rename, Pin, Session, Archive, Delete (asks
      first). Archive list at the bottom.
    - Search (Ctrl+K or the search button): titles + message text of all chats; a result opens the chat at that
@@ -23,12 +23,12 @@ const DAY = 86400000;
 function group(c) {
   if (c.pinned) return 'Pin kiye hue';
   const t = new Date(c.updated_at || 0), now = new Date(), start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  if (t >= start) return 'Aaj';
-  if (t >= start - DAY) return 'Kal';
-  if (t >= start - 6 * DAY) return 'Pichhle 7 din';
-  return 'Purane';
+  if (t >= start) return 'Today';
+  if (t >= start - DAY) return 'Yesterday';
+  if (t >= start - 6 * DAY) return 'Previous 7 days';
+  return 'Older';
 }
-const ORDER = ['Pin kiye hue', 'Aaj', 'Kal', 'Pichhle 7 din', 'Purane'];
+const ORDER = ['Pin kiye hue', 'Today', 'Yesterday', 'Previous 7 days', 'Older'];
 
 /* v0.193 which sessions are collapsed: {"<pid>": 1} — survives reloads, per browser */
 const OPEN_KEY = 'hoola.sessions.v1';
@@ -62,18 +62,18 @@ function item(c, drag) {
 function secHead(p, rows, closed) {
   const live = closed && rows.some(r => BUSY.has(r.id) || UNREAD.has(r.id));
   return `<div class="sgh${closed ? ' closed' : ''}" data-sec="${esc(p.id)}">
-    <button type="button" class="sgc" data-a="tog" aria-expanded="${!closed}" aria-label="${closed ? 'Session kholo' : 'Session band karo'}: ${esc(p.name)}"><i class="chev" aria-hidden="true"></i></button>
+    <button type="button" class="sgc" data-a="tog" aria-expanded="${!closed}" aria-label="${closed ? 'Open project' : 'Collapse project'}: ${esc(p.name)}"><i class="chev" aria-hidden="true"></i></button>
     <button type="button" class="sgn" data-a="open" title="${esc(p.name)} — session kholiye"><span aria-hidden="true">${esc(p.emoji || '📁')}</span><span class="sgnt">${esc(p.name)}</span></button>
     ${live ? '<i class="udot" aria-label="kuch chal raha hai"></i>' : ''}<small class="sgn-n">${rows.length || ''}</small>
-    <span class="sgacts"><button type="button" class="ib" data-a="new" aria-label="Naya chat: ${esc(p.name)}">+</button></span>
+    <span class="sgacts"><button type="button" class="ib" data-a="new" aria-label="New chat: ${esc(p.name)}">+</button></span>
   </div>`;
 }
 function draw() {
   const box = $('#recents'); if (!box) return;
   if (ARCH) {                                     // archive stays one flat list, nothing to drag into
     box.innerHTML = `<div class="rg">Archive</div>` + LIST.map(c => item(c)).join('')
-      || `<div class="empty" style="padding:8px 12px">Archive khaali hai.</div>`;
-    box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">← Saare chats</button>`);
+      || `<div class="empty" style="padding:8px 12px">Archive is empty.</div>`;
+    box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">← All chats</button>`);
     $('#archTog').addEventListener('click', () => { ARCH = !ARCH; load(); });
     return;
   }
@@ -90,7 +90,7 @@ function draw() {
   /* "Baaki chats" is the un-filed home once sessions exist — always visible, so dragging the LAST chat out of
      a session always has a target (it also labels the day groups when they are non-empty) */
   html += (drag ? `<div class="rg sgb" data-rest title="Chat yahan chhodiye to session se bahar">Baaki chats</div>` : '') + rest;
-  box.innerHTML = html || `<div class="empty" style="padding:8px 12px">Abhi koi chat nahi.</div>`;
+  box.innerHTML = html || `<div class="empty" style="padding:8px 12px">No conversations yet.</div>`;
   box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">🗄 Archive dekhiye</button>`);
   $('#archTog').addEventListener('click', () => { ARCH = !ARCH; load(); });
 }
@@ -100,8 +100,8 @@ document.addEventListener('click', e => {
   const b = e.target.closest('#recents .sgh [data-a]'); if (!b) return;
   const pid = b.closest('.sgh').dataset.sec;
   if (b.dataset.a === 'tog') { setOpen(pid, !openState()[pid]); draw(); }
-  else if (b.dataset.a === 'open') ctx.openSection ? ctx.openSection(pid) : toast('Session page nahi khula.');
-  else if (b.dataset.a === 'new') ctx.newChatIn ? ctx.newChatIn(pid) : toast('Naya chat nahi bana.');
+  else if (b.dataset.a === 'open') ctx.openSection ? ctx.openSection(pid) : toast('Could not open the project.');
+  else if (b.dataset.a === 'new') ctx.newChatIn ? ctx.newChatIn(pid) : toast('Could not create a conversation.');
 });
 let DRAG_ID = '';
 const clearDrops = () => document.querySelectorAll('#recents .dropok').forEach(t => t.classList.remove('dropok'));
@@ -142,10 +142,10 @@ function openMenu(id, btn) {
   const c = LIST.find(x => x.id === id); if (!c) return;
   const m = document.createElement('div'); m.className = 'rmenu gl'; m.setAttribute('role', 'menu');
   m.innerHTML = `<button role="menuitem" data-a="rename">✎ Naam badlo</button>
-    ${c.archived ? '' : `<button role="menuitem" data-a="pin">${c.pinned ? '📌 Pin hatao' : '📌 Pin karo'}</button>`}
+    ${c.archived ? '' : `<button role="menuitem" data-a="pin">${c.pinned ? '📌 Pin hatao' : '📌 Pin'}</button>`}
     ${ctx.pickProject ? `<button role="menuitem" data-a="folder">🗂 ${c.project_id ? 'Session badlo / nikalo' : 'Session mein daalo'}</button>` : ''}
-    <button role="menuitem" data-a="archive">${c.archived ? '↩ Archive se wapas' : '🗄 Archive karo'}</button>
-    <button role="menuitem" data-a="delete" class="bad">🗑 Delete karo</button>`;
+    <button role="menuitem" data-a="archive">${c.archived ? '↩ Archive se wapas' : '🗄 Archive'}</button>
+    <button role="menuitem" data-a="delete" class="bad">🗑 Delete</button>`;
   document.body.appendChild(m);
   const r = btn.getBoundingClientRect();
   m.style.top = Math.min(innerHeight - m.offsetHeight - 8, r.bottom + 4) + 'px';
@@ -177,7 +177,7 @@ async function act(c, a) {
 }
 function rename(c) {
   const row = document.querySelector(`[data-row="${CSS.escape(c.id)}"]`); if (!row) return;
-  row.innerHTML = `<form class="rcren"><input aria-label="Chat ka naya naam" maxlength="120" value="${esc(c.title)}"><button class="ib" aria-label="Save">✓</button></form>`;
+  row.innerHTML = `<form class="rcren"><input aria-label="Rename conversation" maxlength="120" value="${esc(c.title)}"><button class="ib" aria-label="Save">✓</button></form>`;
   const f = row.querySelector('form'), inp = f.querySelector('input'); inp.focus(); inp.select();
   const save = async () => { const t = inp.value.trim(); if (t && t !== c.title) { try { await api('PATCH', `/api/conversations/${encodeURIComponent(c.id)}`, {title: t}); } catch (e) { toast(e.message, true); } } load(); };
   f.addEventListener('submit', e => { e.preventDefault(); save(); });
@@ -224,7 +224,7 @@ async function find(q, res) {
     ? `<div class="scount">${r.length} jagah mila · Enter se khologiye</div>` + r.map(h => `<button type="button" class="sr" role="option" data-c="${esc(h.conversation_id)}" data-e="${h.event_id || 0}">
       <b><i class="rwho">${esc(who(h))}</i>${esc(h.title || 'Chat')}${chip(h.conversation_id)}</b><span>${mark(h.snippet || '')}</span>
       <time>${esc(new Date(h.at).toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}))}</time></button>`).join('')
-    : '<div class="empty">Kuch nahi mila.</div>';
+    : '<div class="empty">No results found.</div>';
 }
 let FIND_SEQ = 0;
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openSearch(); } });
