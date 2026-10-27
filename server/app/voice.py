@@ -75,7 +75,7 @@ VOICE_TOOL_NAMES = {
     "notebook_create", "notebook_list", "notebook_open", "notebook_add", "notebook_ask", "notebook_make", "notebook_audio",
     "notebook_studio", "notebook_output", "notebook_discover", "notebook_sources", "notebook_chat_config", "notebook_note",
     "youtube_search", "youtube_play", "youtube_video", "youtube_watch", "youtube_channel", "youtube_comments", "youtube_my_channel",
-    "youtube_analytics", "app_check",
+    "youtube_analytics", "app_check", "rea_khoj",   # rea_khoj v0.212: REA Khoj on a call goes through santosh_kaam (the loop takes minutes)
     "hoola_me", "hoola_connect", "hoola_connections", "hoola_answer_connect", "hoola_send", "hoola_reply", "hoola_inbox",
     "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "hoola_jaanch", "ask_form", "ai_kharcha", "video_edit", "computer_operator", "video_studio", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_banao", "blender_3d", "postgres", "kaam_status", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest", "kaam_plan",
     "hoola_learn", "hoola_learned", "hoola_samaj", "hoola_community_search", "hoola_business", "hoola_chain", "hoola_deal", "hoola_pick", "hoola_market", "hoola_booking", "hoola_dosti", "a2a_bahar", "consent_jaanch", "digilocker", "ondc_listing", "hoola_seekha", "website", "website_dekho", "app_banao", "app_dekho",
@@ -273,6 +273,7 @@ Which tool (details are in each tool's description)
 - Email: email_triage for what is important, email_check / email_read, email_draft (approved in the app with Bhejo; say so), email_forward, email_action, email_delete (approval card), email_follow_up. Give a mail's gist in a line; never read out OTPs or codes. Bulk mail goes through santosh_kaam.
 - Google Drive, Sheets, Docs, Forms, Slides, Photos, Santosh Notebook, YouTube: use the matching tool. Sheet totals come from sheet_query, never your own maths. Photos: you cannot browse the library; photos_pick shows a card for the user to choose. Read out the gist, not every cell.
 - App Jaanch: app_check before installing an APK / EXE someone sent; bank / KYC / challan APKs on WhatsApp are fraud.
+- REA Khoj (reverse-engineering on call): when she asks how a feature WORKS in an app / program / file she has ("yeh app ka payment kaise karta hai", "is exe mein kya hai", "feature samjha de saboot ke saath"), it goes to santosh_kaam (REA Khoj, via kaam): say "file khangal raha hoon, ek-do minute" and keep the call natural. The file is never run - only read. The full brain comes back with the evidence; tell her the 2-3 key lines in plain words. Never crack a licence / unlock paid features / bypass anti-cheat - say no to that.
 - Running jobs (app, website, video, Studio, motion, website jobs in your browser): KAAM KI HAALAT in your brief and
   kaam_status give the real live state. Asked "kya hua?", say it straight: ho gaya / abhi yeh chal raha hai (kitna) /
   aapki haan chahiye / dikkat aayi. Never answer with only "dekh raha hoon". A "[Kaam update ...]" note = tell her in one line.
@@ -315,6 +316,7 @@ VOICE_VIA_KAAM = {
     "ondc_listing", "digilocker", "agent_army", "doc_desk", "sheet_milaan", "employee", "notebook_make", "notebook_audio", "notebook_studio", "notebook_output", "notebook_discover",
     "notebook_sources", "notebook_chat_config", "notebook_note",
     "form_settings", "form_alerts", "youtube_analytics", "youtube_comments", "app_check", "hoola_chain",
+    "rea_khoj",   # v0.212 REA Khoj: the decompile loop (overview -> classes -> method -> refs) is minutes-deep; kaam goal turn runs it, the call hears progress
     "hoola_community_search", "hoola_samaj", "hoola_learn", "hoola_learned", "slides_edit", "slides_export", "hoola_dosti",
     "kaam_plan",   # v0.186 the goal plan tool belongs to the full brain; the call hears the progress as notes
 }

@@ -8509,3 +8509,23 @@ across calls + cross-tenant cache isolation. Sweeps: appcheck + rea + core green
 + test_v086_realtime + test_v0185_pc_browser red set unchanged (documented sandbox-only). Version 0.210.0
 (APP_VERSION story, pubspec 0.210.0+245, console ?v=0.210.0 x9, pins ->0.210.0 in 22 suites); desktop untouched
 1.4.0 - server-only deploy, old APKs keep working.
+
+## v0.213.0 REA KHOJ VOICE-TO-VOICE (re-versioned 0.212.0->0.213.0 on rebase: the dev's parallel v0.212.0 Google-Sheets-100%-coverage took the number first - both kept, REBASE PROTOCOL respected) (owner: "IS IT WORK FOR VOICE TO VOICE WORK ALSO" — the honest answer was NO, so this ships the YES)
+
+`rea_khoj` joins the live call exactly the way `app_check` already does: added to `VOICE_TOOL_NAMES` (allowed on a
+call) AND to `VOICE_VIA_KAAM` (never declared to Gemini Live). Why via-kaam: the v0.149 lesson — 280 tool schemas
+(~110k tokens) filled the Live context and killed calls, so the heavy tools stay out of the call's tool JSON; and
+REA's decompile loop (overview -> classes -> class -> method -> refs, each REA call up to rea_timeout_s=300 with a
+one-at-a-time lock) is minutes-deep — a live call cannot wait on it. So when she asks on a call "yeh app ka payment
+kaise kaam karta hai" / "is exe mein kya hai", `run_tool` hands it to `santosh_kaam` with her words + the named-tool
+note; the full chat brain runs the REA investigation in its own goal turn (the per-tenant khoj cache keeps the file
+stable across probes), and the call hears progress + a spoken 2-3 line evidence summary at the end.
+
+Call-side SYSTEM guidance added next to the App Jaanch line: say "file khangal raha hoon, ek-do minute" and keep the
+call natural; the file is never run - only read; never crack a licence / unlock paid features / bypass anti-cheat /
+DRM — say no to that, on the call exactly as in chat.
+
+Pinned by `test_rea_khoj.py::test_voice_wiring`: `rea_khoj` in VOICE_TOOL_NAMES, in VOICE_VIA_KAAM, `via_kaam()`
+True, and NOT among the names declared to Gemini Live by `_tool_specs()` (the via-kaam contract). Version 0.212.0
+(APP_VERSION story, pubspec 0.212.0+247, console ?v=0.212.0 x9, pins ->0.212.0 in 24 suites, verify_chat V/VT
+0.212.0/0.212.0+247); desktop untouched - server-only deploy.
