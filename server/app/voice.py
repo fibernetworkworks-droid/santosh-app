@@ -277,6 +277,12 @@ Which tool (details are in each tool's description)
 - Running jobs (app, website, video, Studio, motion, website jobs in your browser): KAAM KI HAALAT in your brief and
   kaam_status give the real live state. Asked "kya hua?", say it straight: ho gaya / abhi yeh chal raha hai (kitna) /
   aapki haan chahiye / dikkat aayi. Never answer with only "dekh raha hoon". A "[Kaam update ...]" note = tell her in one line.
+- KAAM KA HAAL + HOOLA KI YAAD are your memory of the work you two share: continue open work on your own - never ask
+  again what is already settled ('kya karna tha' phir se pucho = a stranger, not a coworker). A result or news still
+  UNDELIVERED (KAAM KA HAAL lists it): bring it up ONCE yourself at a natural pause, then let it go - no repeating.
+  Her ask half-clear: ONE short clarifying line, then proceed on your own - standing silent or waiting helpdesk-style
+  is failure. Before saying a tool's or delegated result out loud, one beat: is this what she asked for? If it is not,
+  say it straight: 'jo aaya woh yeh hai, par aapne yeh maanga tha'.
 - Pictures: photo_banao action=make draws a new picture from her words (greeting, festival wish, poster idea, product scene), action=edit changes a photo SHE sent (file_ids) with words ("background white karo", "rang badlo"); quality fast unless she wants top quality; it comes to chat with an "AI se bana" label. It refuses fake IDs / notes / certificates, nudity, face swaps and famous people: say so plainly, don't retry.
 - SUPABASE: once Supabase is connected (bazar_mcp featured=supabase) you can read her tables, run read-only SQL, see logs and advisors; migrations, deploys and other writes wait for her tap.
 - 21ST MAGIC: once 21st.dev Magic is connected (bazar_mcp featured=21st-magic) you can make a UI component from her words, show design inspiration or find a brand logo; it only returns code (send it to chat as a file, never read code aloud) and uses her 21st.dev credits.
@@ -792,7 +798,8 @@ def greeting(tenant: str, gender: str = "m", continuation: str = "", followup: s
             "(Pehle yeh news, phir baaki sab: pichhli call ke BAAD ek kaam ka natija aaya tha par bataya nahi ja saka "
             "tha - " + followup[:600] + ". Sabse pehle EK chhoti line mein yeh natija batao - ho gaya to thodi khushi "
             "awaaz mein ('Woh kaam jo aapne kaha tha, ho gaya - ...'), ruk gaya to seedha sach - phir wahin se aage "
-            "badho. Fresh greeting ya 'kya haal hai' iske BAAD mein bhi nahi.)", gender)
+            "badho. Fresh greeting ya 'kya haal hai' iske BAAD mein bhi nahi. Aur bhi pendi news ho to woh KAAM KA HAAL "
+            "mein list hai - usko baad mein kisi natural pause par EK-EK karke khud batao.)", gender)
     h = datetime.now(life.tz_of(tenant)).hour
     part = "morning" if 4 <= h < 12 else "afternoon" if h < 17 else "evening" if h < 22 else "late night"
     hello = f"'Arre, good {part}! Kya haal hai?'" if part != "late night" else "'Haan bolo, sab theek?'"
@@ -2440,7 +2447,10 @@ class Call:
                 async def _yaad_block() -> str:
                     try:
                         from . import yaad
-                        return await asyncio.to_thread(yaad.voice_block, self.ctx.tenant_id, self.ctx.conversation_id) or ""
+                        # v0.216 KAAM YAAD: a fresh call's greeting speaks the newest news, so the block hides that
+                        # one and lists the REST; a reconnect hides nothing (its news was already spoken).
+                        return await asyncio.to_thread(yaad.voice_block, self.ctx.tenant_id, self.ctx.conversation_id,
+                                                       news_skip_newest=first) or ""
                     except Exception:
                         log.exception("voice memory block failed")
                         return ""

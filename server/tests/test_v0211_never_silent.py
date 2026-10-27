@@ -416,4 +416,4 @@ def test_scorecard_has_reliability_rollups():
 
 
 def test_version():
-    assert APP_VERSION == "0.216.0"
+    assert APP_VERSION == "0.217.0"

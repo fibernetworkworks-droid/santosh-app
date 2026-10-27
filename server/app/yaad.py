@@ -1000,9 +1000,38 @@ def turn_block(tenant: str, conversation_id: str, user_text: str) -> str:
             + _clip_block("\n\n".join(parts), 9000) + "\n[/yaad]")
 
 
-def voice_block(tenant: str, conversation_id: str, recent: int = 14, max_chars: int = 10000) -> str:
-    """For a voice call session: everything a coworker who was in the room would know."""
+def _news_pending(conversation_id: str, minutes: int, skip_newest: bool, limit: int = 3, clip: int = 240) -> list[str]:
+    """v0.216 KAAM YAAD: work news (call_followup notes) that still has not reached her - the 'postponed,
+    never lost' pile made visible. The NEWEST note is the greeting's news on a fresh call (take_call_followup
+    speaks it there), so a fresh call skips it here and he never says the same news twice; a reconnect skip
+    nothing (the greeting spoke its news already). Same freshness window as the take - stale news is nobody's
+    news. Each line scrubbed like every memory surface."""
+    ensure_focus_table()
+    since = datetime.now(timezone.utc) - timedelta(minutes=max(1, minutes))
+    with session() as s:
+        rows = s.scalars(select(FocusNote).where(FocusNote.conversation_id == conversation_id,
+                                                 FocusNote.kind == "call_followup", FocusNote.at >= since)
+                         .order_by(FocusNote.id.desc())).all()
+        if skip_newest and rows:
+            rows = rows[1:]
+        return [_scrub(_clip(r.text or "", clip)) for r in rows[:limit] if (r.text or "").strip()]
+
+
+def voice_block(tenant: str, conversation_id: str, recent: int = 14, max_chars: int = 10000,
+                news_skip_newest: bool = True) -> str:
+    """For a voice call session: everything a coworker who was in the room would know.
+    v0.216 KAAM YAAD rides FIRST (news before chat memory, like the greeting: news first): undelivered work
+    news with the bring-it-up-once instruction, so the call continues the WORK, not just the talk."""
     parts = []
+    try:   # v0.216 undelivered work news first - 'wahi kaam pe chalte hain' needs to know what is pending
+        news = _news_pending(conversation_id, get_settings().voice_followup_min, news_skip_newest)
+        if news:
+            parts.append(
+                "KAAM KA HAAL - yeh news us tak pahunchana ABHI BAAKI hai (pichhli call ke baad aayi, boli nahi ja saki; "
+                "kisi natural pause par EK baar KHUD upar lao, phir chhod do, baar-baar nahi):\n"
+                + "\n".join(f"- {t}" for t in news))
+    except Exception:
+        log.exception("voice work news failed")
     try:   # v0.200 the fresh session now has her EXACT recent words (chat AND calls), not just one-liners
         fb = focus_block(tenant, conversation_id, for_voice=True)
         if fb:

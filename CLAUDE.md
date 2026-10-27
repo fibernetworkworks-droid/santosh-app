@@ -8652,3 +8652,28 @@ FIXES (both in `agent/santosh.py`, nowhere else):
 SAFETY: no behaviour change on healthy conversations; the synthetic result fires only on shapes that would otherwise have 400'd; no tool, card, money or approval path touched; frozen zones untouched. Server-only deploy, old APKs keep working.
 
 Tests: NEW `test_v0216_tooljod.py` (10) — the owner's shape (long healthy history + turn words + interrupted `tool_use`) goes out valid with the synthetic result and no text nudge after it; a tool-tailed array ends with its result; a partial pair is rebuilt with the real result kept and the synthetic one added; orphan results dropped at call time AND load time; `_sanitize` per-ID partial repair; happy-path identity (`_api_ready` returns the same list object); copies-not-mutates; wake turn over a crashed tool loop end-to-end; version pin. Sweeps: new suite 10/10; ALL 27 version-pin suites 372/373 with the ONE failure = test_v0185_pc_browser::test_desktop_version_is_140 (the documented sandbox-only red, byte-identical on pristine origin/main, zero desktop changes in this diff); GLM + stream + long-goal ring 24/24. Version 0.216.0 (pubspec 0.216.0+251, console ?v=0.216.0 x9, pins ->0.216.0 in 27 suites).
+## v0.217.0 KAAM YAAD — Wave 1 of the voice-to-voice PERFECT plan: the shared work becomes a first-class memory on a call
+
+Owner picked **START WAVE 1** from the 5-wave PERFECT plan (the claude.ai artifact link stayed login-walled; the
+plan was built from the Task-6 RCA instead). Wave 1 = deep work memory for voice. Re-versioned 0.216.0->0.217.0 on
+rebase: the dev's parallel v0.216.0 TOOL-JOD took the number first - SEVENTH collision, both works kept, REBASE
+PROTOCOL respected (dev touched agent/santosh.py only; voice.py/yaad.py merged clean).
+
+1. **Undelivered work news is VISIBLE**: v0.214 kept late results as `call_followup` notes and the next call
+   OPENS with the news — but only ONE note (the newest) was ever spoken; older pending news sat in the dark for
+   its 7-day life. New `yaad._news_pending` + a **KAAM KA HAAL** section LEAD `voice_block` (news before chat
+   memory, like the greeting): a fresh call skips the greeting's newest note (`news_skip_newest=first` — the same
+   news is never said twice), a reconnect skips nothing (its news was already spoken); each line `_scrub`-ed,
+   capped at 3, clipped 240, held to the same `voice_followup_min` freshness window as the take.
+2. **The work discipline is in the brief** (new bullet beside Running jobs): continue open work on your own
+   (never `'kya karna tha'` again — a stranger asks, a coworker continues); bring up undelivered news ONCE
+   yourself at a natural pause, then let it go; ONE short clarifying line when her ask is half-clear and then
+   proceed on your own (standing silent / helpdesk-waiting is failure); one beat of result-check before saying a
+   tool's / delegated result (`'jo aaya woh yeh hai, par aapne yeh maanga tha'`).
+3. **The greeting ties in**: the v0.211 followup greeting now points at KAAM KA HAAL for the rest of the pile.
+
+Tests: NEW `test_v0217_kaam_yaad.py` (11): fresh-call skip / reconnect shows everything / window drops stale news
+/ cap-clip-scrub (digit runs masked) / block leads with KAAM KA HAAL before chat memory / no-news no-header / brief
+discipline pins / run wiring pin (`news_skip_newest=first`) / greeting tie-in / v0.214 fresh-greeting kaam line
+intact / version. Version 0.216.0 (APP_VERSION story, pubspec 0.217.0+252, console ?v=0.217.0 x9, pins ->0.217.0 in
+28 suites); server-only deploy, old APKs keep working; Mera PC freeze respected; desktop untouched 1.4.0.
