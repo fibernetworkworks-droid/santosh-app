@@ -181,3 +181,17 @@
 @keyframes progress-dot{0%,70%,100%{opacity:.3;transform:translateY(0)}35%{opacity:1;transform:translateY(-3px)}}
 @keyframes progress-enter{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){#app .simple-progress,#app .progress-avatar:before,#app .progress-dots i{animation:none}#app .progress-dots i{opacity:.7}}
+
+/* Progress shares the assistant turn and its single avatar. */
+#app details.simple-progress{display:block;padding:5px 0;min-height:32px}
+#app .simple-progress summary{display:flex;align-items:center;gap:9px;cursor:pointer;list-style:none;width:fit-content;border-radius:6px}
+#app .simple-progress summary::-webkit-details-marker{display:none}
+#app .simple-progress summary:focus-visible{outline:2px solid var(--saffron);outline-offset:4px}
+#app .progress-chevron{transition:transform .18s ease;color:var(--mut)}
+#app .simple-progress[open] .progress-chevron{transform:rotate(180deg)}
+#app .progress-activity{margin:10px 0 4px;padding-left:20px;border-left:1px solid var(--line);list-style:none;font-size:13px;font-weight:500;color:var(--mut);max-height:220px;overflow:auto}
+#app .progress-activity li{padding:4px 0}
+#app .progress-activity li:last-child{color:var(--lit)}
+#app .mh.progress-active>.av{outline:2px solid var(--saffron);outline-offset:3px;animation:progress-avatar-pulse 2s ease-in-out infinite}
+@keyframes progress-avatar-pulse{50%{outline-color:rgba(124,92,255,.4)}}
+@media(prefers-reduced-motion:reduce){#app .mh.progress-active>.av{animation:none}#app .progress-chevron{transition:none}}

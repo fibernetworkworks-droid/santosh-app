@@ -342,22 +342,27 @@ const PROGRESS_POLICY = window.HoolaProgressPolicy;
 let SIMPLE_PROGRESS = null;
 function simpleProgress(kind,p={}) {
   if(kind!=='typing' && !TYPING)return;
+  const t=turn();
   if (!SIMPLE_PROGRESS) {
-    SIMPLE_PROGRESS=document.createElement('div');SIMPLE_PROGRESS.className='simple-progress';
-    SIMPLE_PROGRESS.setAttribute('role','status');SIMPLE_PROGRESS.setAttribute('aria-live','polite');SIMPLE_PROGRESS.setAttribute('aria-atomic','true');
-    const avatar=document.createElement('span');avatar.className='progress-avatar av';avatar.setAttribute('aria-hidden','true');
-    const img=document.createElement('img');img.src=$('#uimg').src;img.alt='';avatar.appendChild(img);
-    const label=document.createElement('span');label.className='progress-label';
-    const dots=document.createElement('span');dots.className='progress-dots';dots.setAttribute('aria-hidden','true');dots.innerHTML='<i></i><i></i><i></i>';
-    SIMPLE_PROGRESS.append(avatar,label,dots);
+    SIMPLE_PROGRESS=document.createElement('details');SIMPLE_PROGRESS.className='simple-progress';
+    SIMPLE_PROGRESS.innerHTML='<summary><span class="progress-label" role="status" aria-live="polite"></span><span class="progress-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="progress-chevron" aria-hidden="true">⌄</span></summary><ol class="progress-activity" aria-label="Task activity"></ol>';
   }
-  if(SIMPLE_PROGRESS.parentElement!==col)col.appendChild(SIMPLE_PROGRESS);
+  if(SIMPLE_PROGRESS.parentElement!==t.bd)t.bd.appendChild(SIMPLE_PROGRESS);
+  t.bd.closest('.mh').classList.add('progress-active');
   SIMPLE_PROGRESS.hidden=false;
   const label=PROGRESS_POLICY.phase(kind,p);
   const text=SIMPLE_PROGRESS.querySelector('.progress-label');if(text.textContent!==label)text.textContent=label;
+  const activity=PROGRESS_POLICY.activity(kind,p),list=SIMPLE_PROGRESS.querySelector('ol');
+  if(activity && list.lastElementChild?.textContent!==activity){
+    const item=document.createElement('li');item.textContent=activity;list.appendChild(item);
+    if(list.children.length>12)list.firstElementChild.remove();
+  }
   scrollDown();
 }
-function clearSimpleProgress(){SIMPLE_PROGRESS?.remove();SIMPLE_PROGRESS=null;}
+function clearSimpleProgress(){
+  SIMPLE_PROGRESS?.closest('.mh')?.classList.remove('progress-active');
+  SIMPLE_PROGRESS?.remove();SIMPLE_PROGRESS=null;
+}
 function stepEvent(p) { simpleProgress('step',p); }
 function closeTurnTools(t = TURN) {
   if (!t) return;
