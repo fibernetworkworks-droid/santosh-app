@@ -169,6 +169,10 @@ async def _wake_turn(r: KaamFollowup, settings) -> bool:
     """Wake the REAL brain for this finished job (tools allowed, actor='wake'): Hoola reads the result, may check
     the truth with tools, and reports in her own words through the normal message path (SSE + FCM push).
     False/exception = fall back to the v0.187 one-shot line - the news is never lost."""
+    from .agent import eventlog
+    eventlog.log_event(r.tenant_id, r.conversation_id, "wake",
+                       {"line": f"{r.label} {r.title} {STATE_WORD.get(r.state, r.state)}", "job": r.key,
+                        "mode": "wake_turn"})
     try:
         from .agent import santosh
         text = await santosh.run_turn(r.conversation_id, _wake_text(r), tenant_id=r.tenant_id, actor="wake",

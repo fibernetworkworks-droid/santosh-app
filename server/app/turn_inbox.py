@@ -77,6 +77,8 @@ def accept(tenant: str, conversation_id: str, text: str, voice: bool, context: s
     if not getattr(st, "agent_turn_inbox", True):
         return None
     try:
+        from .agent import eventlog
+        eventlog.log_event(tenant, conversation_id, "inbox", {"line": "accepted (turn saved before the 202)"})
         ensure_table()
         with session() as s:
             row = TurnInbox(tenant_id=tenant, conversation_id=conversation_id, client_id=(client_id or "")[:80],
@@ -178,6 +180,9 @@ async def sweep() -> int:
                 STATS["skipped_answered"] += 1
                 continue
             save_user = not _user_row_since(conv, r["created_at"])
+            from .agent import eventlog
+            eventlog.log_event(r["tenant_id"], conv, "inbox",
+                               {"line": f"re-running dead turn (tries {r['tries'] + 1}, save_user={save_user})"})
             with session() as s:
                 row = s.get(TurnInbox, r["id"])
                 if row is None or row.status not in ("accepted", "running"):

@@ -54,6 +54,7 @@ KINDS: dict[str, dict[str, Any]] = {
     "blender3d": {"label": "3D model (Blender)", "map": {"writing": "working", "building": "working", "rendering": "working", "checking": "working"}},
     "goal": {"label": "Lamba kaam", "map": {"blocked": "waiting"},   # v0.187 goal mode: blocked on her = aapki baari
              "waiting_say": "lamba kaam aapke jawab par ruka hai"},
+    "agent_team": {"label": "Agent team", "map": {}},   # v0.193 background agent crews (agent/team.py)
 }
 # quick results made inside one tool call (letters, posters, photos, lekh) are told by the turn itself: not watched
 # kinds whose events are steps of ONE agent turn: the turn itself reports them

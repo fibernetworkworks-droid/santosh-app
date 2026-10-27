@@ -340,6 +340,8 @@ async def tick() -> None:
     kaam_jobs()
     await followup_jobs()
     await inbox_jobs()
+    await team_jobs()
+    eventlog_jobs()
 
 
 _fu_last = 0.0
@@ -393,6 +395,40 @@ def kaam_jobs() -> None:
             kaamwatch.forget_old(30)
     except Exception:
         log.exception("kaam watch tick failed")
+
+
+_team_last = 0.0
+
+
+async def team_jobs() -> None:
+    """v0.193 HARNESS-3 background agent crews: start queued crews, recover a dead one once, forget old rows."""
+    global _team_last
+    import time
+    if time.time() - _team_last < 20:
+        return
+    _team_last = time.time()
+    try:
+        from .agent import team
+        await team.tick()
+    except Exception:
+        log.exception("agent team tick failed")
+
+
+_el_last = 0.0
+
+
+def eventlog_jobs() -> None:
+    """v0.193 the harness session log's daily retention (harness_events older than event_log_retain_days go)."""
+    global _el_last
+    if time.time() - _el_last < 86400:
+        return
+    _el_last = time.time()
+    try:
+        from .agent import eventlog
+        from .config import get_settings
+        eventlog.forget_old(int(getattr(get_settings(), "event_log_retain_days", 14) or 14))
+    except Exception:
+        log.exception("event log retention failed")
 
 
 _home_last = 0.0

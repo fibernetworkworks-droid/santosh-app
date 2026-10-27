@@ -50,6 +50,7 @@ CORE_FAMILIES = frozenset({
     "id",         # Pehchaan Locker
     "usage",      # ai_kharcha
     "device",     # phone_health
+    "team",       # v0.193 deploy_agents / agent_status / session_log - the agent team is a first-class tool now
 })
 
 # Hand-written keywords per family (lowercase substrings matched against her words). Tool names add their own
@@ -167,6 +168,8 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "askform": ("ask form", "sawaal form"),
     "a2a": ("a2a",),
     "desk2": ("desk",),
+    "team": ("agents", "agent lagao", "agent banao", "team banao", "team laga", "crew", "deploy",
+             "parallel", "kai agents", "multiple agents", "agents lagao", "madadgar dal", "team se karo"),
 }
 
 # words that appear inside many tool names but mean nothing on their own - never become auto-keys

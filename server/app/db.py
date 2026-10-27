@@ -871,6 +871,10 @@ def init_db(url: str | None = None):
     from . import turn_inbox as _turn_inbox  # noqa: F401  (v0.192.0 the durable accepted-message inbox - registered
         # HERE on day one, the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
         # stays without its table; turn_inbox.ensure_table() self-heals old DBs on the first accept/sweep too)
+    from .agent import eventlog as _harness_eventlog  # noqa: F401  (v0.193.0 HARNESS-3 the event-sourced session
+        # log - registered HERE on day one AND self-healing via eventlog.ensure_table(), same lesson)
+    from .agent import team as _harness_team  # noqa: F401  (v0.193.0 HARNESS-3 the background agent crews'
+        # agent_teams table - registered HERE on day one AND self-healing via team.ensure_table())
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401

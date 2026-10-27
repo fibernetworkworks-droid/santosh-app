@@ -890,6 +890,16 @@ TOOLS.extend(t for t in GOAL_TOOLS if t["name"] not in _seen)
 TOOL_LABELS.update(GOAL_LABELS)
 HANDLERS.update(GOAL_HANDLERS)
 
+# v0.193 HARNESS-3: the agent team (deploy_agents / agent_status) + the session_log reader - the brain can now
+# deploy SEVERAL agents that work in parallel and hand it their deliverables (agent/team.py; depth 1 enforced
+# there by never handing these tools to a sub-agent)
+from .team import TEAM_HANDLERS, TEAM_LABELS, TEAM_TOOLS  # noqa: E402
+
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in TEAM_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(TEAM_LABELS)
+HANDLERS.update(TEAM_HANDLERS)
+
 
 # ---------------------------------------------------------------- v0.187 schema diet
 # 384 tool specs measured ~568 KB (~142 K tokens) and EVERY one of the up-to-24 model calls of a turn re-sent

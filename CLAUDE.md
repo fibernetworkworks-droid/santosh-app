@@ -8054,3 +8054,58 @@ session state; Claude Code: small stable tool sets, background-task notification
   test_v0189/test_v0191_harness2); desktop untouched 1.4.0 (server-only deploy; old APKs keep working - all
   three mechanisms are
   server-side; the phone just sees faster first words and proactive result messages).
+
+## v0.193.0 HARNESS-3: the AGENT TEAM + the event-sourced session log (Phase 3 of the harness study, made ADVANCED - owner: "Phase 3 (subagents, event-sourced session log) --- MAKE IT MORE ADVANCE AS USER TELL HIM DEPLOY SEVERAL AGAENTS THEN IT MUST DO --- LEVEL OF OPUS 5.5")
+
+Phase 3 of the deepseek-harness + Claude Code plan (dsh subagents 8-active/depth-1 + the event-sourced session log;
+Claude Code's parallel Task tool), built ON TOP of everything HARNESS-1/2 shipped - and made more aggressive than
+the study: she says "kai agents lagao" and Hoola actually deploys several agents that work at the same time.
+
+- The AGENT TEAM (NEW server/app/agent/team.py): the brain splits a job into INDEPENDENT parts and calls
+  deploy_agents with one agent per part (name + task + optional tool families). Every sub-agent runs its own
+  mini-loop - own model context, own admitted tool subset (the same admission machinery: CORE + the turn's
+  families + the requested ones, tool_search works inside an agent too), own throwaway history (never saved to
+  the chat), 8 steps, 240 s wall clock, 1500 max tokens - and all agents of a crew run TOGETHER
+  (asyncio.gather; wall time = the slowest agent, not the sum). Their deliverables come back in ONE tool result
+  and the main brain merges them into her answer in her own words ("their facts are the truth, add nothing").
+  DEPTH 1 (dsh): a sub-agent's tool list never contains deploy_agents / agent_status. CAPS: 4 agents per deploy,
+  8 per turn (ctx.team_used), max 160 admitted specs per agent, one broken/timed-out agent never kills the crew.
+  TRUST UNCHANGED: a sub-agent runs as the delegating brain's own actor through the same dispatch() - every
+  confirm card, employee gate, OTP rule and Rokiye applies exactly as before (Rokiye stops an inline crew with
+  the turn via santosh._stopped; agents check it every step). Wake turns never deploy crews.
+- Background crews ("team laga di, kaam hone pe khud bataungi"): mode="background" persists the crew
+  (agent_teams table, registered in init_db on day one + ensure_table() self-heal - the v0.190.1 lesson), the
+  turn answers AT ONCE, and a worker slot (team_jobs, ~20 s) runs it. Completion rides the EXISTING machinery
+  with zero new reporting code: bus "agent_team" events -> kaamwatch shape (label "Agent team", a KINDS entry; the
+  team id rides in the watched title so the turn's own "team laga di" reply can never mask the result through
+  the dup check) -> kaam_followup -> the v0.192 WAKE TURN with the real brain when the chat is idle (the wake
+  digest carries the crew's deliverables; agent_status action=check re-reads the full text). Live progress:
+  "2/3 agents kaam poore" stage lines (kaamwatch's own 5-min throttle applies) + per-agent step cards on the
+  phone. agent_status action=stop is the crew's Rokiye (the runner checks the row between steps and bails;
+  the stopped news reports like any stopped job). Crash recovery: a "running" row not held by this process and
+  stale > 10 min (agents heartbeat the row every step) re-runs ONCE (tries cap 2). Per-tenant cap: 2 crews.
+- The event-sourced session log (NEW server/app/agent/eventlog.py, the dsh foundation): every turn writes
+  turn_started / turn_finished / turn_failed under a per-turn id; every tool call and result writes
+  tool_call / tool_result with duration and ok (a ContextVar carries turn_id + actor, so sub-agents log under
+  team:<name> inside the same task); crews write agent_spawned / agent_finished / team_synthesized; the wake
+  lane and the inbox write wake / inbox. Writes are BEST-EFFORT and never break a turn (self-mute 60 s after a
+  DB failure), per-chat rows capped at 4000, daily retention sweep (eventlog_jobs, 14 days). The BRAIN reads its
+  own history with the session_log tool ("tune kya kiya tha / pichhla turn dikhao" answered from facts, with a
+  kinds filter); the console reads the same rows at GET /api/conversations/{id}/harness-events.
+- Surface + teaching: deploy_agents / agent_status / session_log are the CORE "team" family (always admitted -
+  first-class, never behind an admission miss) with Hinglish keys (agents, agent lagao, team banao, deploy,
+  crew, parallel...); prompts teach when to split a job (independent parts) and when NOT to (one flow), the
+  merge-the-truth rule, background crews' report-itself promise, and session_log for "what did you do".
+- Tests: NEW tests/test_v0193_harness3.py (17): the parallel BARRIER (3 agents with 0.8 s tool calls finish in
+  < 2 s; the serial floor is 2.4 s), depth-1 (no team tools + tool_search + requested families in the agent's
+  tool list), caps/budgets/actor refusals (staff blocked by the gate, wake refused at the handler, empty spec),
+  one failed agent never kills the crew, Rokiye stops an inline crew mid-tool, background end-to-end
+  (queue -> worker slot -> kaamwatch -> kaam_followup -> WAKE turn carrying the deliverables digest, no dry
+  line), stale-crew recovery once, agent_status stop + runner bail, session_log roundtrip + kinds filter,
+  eventlog self-mute + per-chat cap + retention, kaamwatch shape for agent_team, admission carries the family,
+  version pins. Sweeps green: harness3 17 + harness2 15 + harness 8 + realtime 15 + long_goal + hotfix + cards
+  + bazar + basics = 106; email x6 suites + xlsx_scale 20 + docstudio 18 + search + pc_browser = 159; routines
+  + livework + robust_chat + api = 16 - zero failures. Version 0.193.0 (APP_VERSION story, pubspec 0.193.0+227,
+  console ?v=0.193.0 x9, conscious pins 0.192.0->0.193.0 in the 10 older suites). Desktop untouched 1.4.0 -
+  server-only deploy, old APKs keep working (agents/crew cards are plain step events; the agent_team card kind
+  is carried by kaamwatch's existing card path).

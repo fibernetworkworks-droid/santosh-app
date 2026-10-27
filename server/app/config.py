@@ -45,6 +45,19 @@ class Settings(BaseSettings):
     # crashed worker no longer silently eats her message (the worker re-runs it once, idempotently).
     agent_turn_inbox: bool = True
     turn_inbox_stale_s: int = 120           # accepted-but-never-started for this long = the task died before it ran
+    # v0.193 HARNESS-3: the AGENT TEAM (dsh subagents 8-active/depth-1 + Claude Code's parallel Task tool) - she says
+    # "kai agents lagao" and Hoola splits an independent-parts job across a parallel crew; background crews ride the
+    # wake lane when done. Plus the event-sourced session log (harness_events) under every turn.
+    agent_team: bool = True
+    team_max_agents: int = 4                # agents per deploy call (a turn's total is capped at 8)
+    team_agent_max_steps: int = 8           # model steps per sub-agent
+    team_agent_timeout_s: int = 240         # per-agent wall clock (inline clamps to 260: the main tool clock is 300 s)
+    team_max_tokens: int = 1500             # per sub-agent model call
+    team_background: bool = True            # mode="background" crews (persisted, worker-run, self-reporting)
+    team_bg_max_running: int = 2            # running background crews per tenant
+    team_bg_timeout_s: int = 1200           # a whole background crew's wall clock
+    agent_event_log: bool = True            # the harness session log (harness_events; best-effort writes, never breaks a turn)
+    event_log_retain_days: int = 14         # the daily worker sweep drops older rows
     tv_refresh: bool = True                # Hoola TV: download + check the free channel list nightly
     app_release_repo: str = "fibernetworkworks-droid/santosh-app"   # v0.62 where the phone app's releases live
     video_edit_worker: bool = True         # v0.65 Hoola Video Editor: run edits in the background (tests run them inline)

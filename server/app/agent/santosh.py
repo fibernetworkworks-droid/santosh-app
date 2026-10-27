@@ -12,7 +12,7 @@ from datetime import timedelta
 from sqlalchemy import select
 
 from ..config import get_settings
-from ..db import Message, now, session
+from ..db import Message, new_id, now, session
 from ..events import bus
 from .. import livework
 from ..avatar.service import gendered, persona
@@ -20,6 +20,7 @@ from ..life import context_block
 from . import llm
 from . import say as _say
 from . import admit as _admit   # v0.191 step-admitted tool subsets (HARNESS-2)
+from . import eventlog as _evlog   # v0.193 the harness session log (event-sourced turns)
 from .prune import prune_history   # v0.189 old tool results leave the request, the newest step stays whole
 from .prompts import system_prompt
 from . import mcp_live
@@ -293,14 +294,45 @@ PARALLEL_SAFE = frozenset({
 
 
 async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict | None = None):
-    """A tool call that can never hang the whole turn."""
+    """A tool call that can never hang the whole turn.
+    v0.193 it also writes the harness session log (tool_call / tool_result, with the turn's context) - best-effort,
+    the log can never break the call."""
     if mcp_route and name in mcp_route:   # a tool of one of the owner's MCP servers
         work = mcp_live.run(ctx, mcp_route, name, args or {})
     else:
         work = dispatch(name, args or {}, ctx)
-    out = await asyncio.wait_for(work, timeout=max(5, settings.agent_tool_timeout_s))
+    _meta = _evlog.CURRENT.get() or {}
+    _ev_t = getattr(ctx, "tenant_id", "")
+    _ev_c = getattr(ctx, "conversation_id", "")
+    try:
+        from .. import livework as _lw
+        _brief = _lw.args_brief(args or {})
+    except Exception:
+        _brief = {}
+    _evlog.log_event(_ev_t, _ev_c, "tool_call", {"tool": name, "args": _brief},
+                     _meta.get("turn_id", ""), _meta.get("actor", ""))
+    _t0 = time.time()
+    try:
+        out = await asyncio.wait_for(work, timeout=max(5, settings.agent_tool_timeout_s))
+    except asyncio.CancelledError:
+        raise
+    except BaseException as e:
+        _evlog.log_event(_ev_t, _ev_c, "tool_result", {"tool": name, "ok": False,
+                                                         "line": f"{type(e).__name__}: {str(e)[:160]}"},
+                         _meta.get("turn_id", ""), _meta.get("actor", ""))
+        raise
     from ..scrub import scrub          # v0.91 a service that echoes one of our keys back never shows it to the model
-    return scrub(out)
+    out = scrub(out)
+    try:
+        import json as _json
+        _line = _json.dumps(out, ensure_ascii=False, default=str)[:180]
+    except Exception:
+        _line = str(out)[:180]
+    _evlog.log_event(_ev_t, _ev_c, "tool_result", {"tool": name,
+                                                    "ok": not (isinstance(out, dict) and out.get("error")),
+                                                    "ms": int((time.time() - _t0) * 1000), "line": _line},
+                     _meta.get("turn_id", ""), _meta.get("actor", ""))
+    return out
 
 
 async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str,
@@ -828,6 +860,10 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     ctx = Ctx(tenant_id=tenant_id, conversation_id=conversation_id, actor=actor or "owner")
     from .. import usage
     who = actor or "owner"
+    # v0.193 the harness session log: every turn gets an id and everything it does logs under it
+    _turn_id = new_id("turn")
+    _t_turn0 = time.time()
+    _evlog.CURRENT.set({"turn_id": _turn_id, "actor": who})
     feature = ("call" if usage.current()[1] == "call" else "chat") if who.startswith(("owner", "approved:")) else \
         ("routine" if who in ("routine", "wake") else "employee")   # v0.191 wake = routine lane (never the employee budget)
     usage.bind(tenant_id, feature)       # v0.98 what this turn's model calls cost, and for whom
@@ -893,6 +929,9 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         if (actor or "owner") == "owner" and not voice:   # v0.187 the first words come fast (see _ack_later)
             _ACKED.add(conversation_id)
             _bg(_ack_later(conversation_id, _gender))
+        _evlog.log_event(tenant_id, conversation_id, "turn_started", {"line": str(user_text or "")[:160],
+                                                                       "voice": bool(voice)},
+                         turn_id=_turn_id, actor=who)
 
         history = _load_history(conversation_id)
         block = ""
@@ -935,6 +974,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         except asyncio.TimeoutError:
             log.error("agent turn timed out after %ss", settings.agent_turn_timeout_s)
             final_text = "Yeh kaam bahut der se chal raha tha, isliye maine ise rok diya. Thoda chhota karke phir bolein?"
+            _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": f"turn timeout ({settings.agent_turn_timeout_s}s)"},
+                             turn_id=_turn_id, actor=who)
             if live is not None:
                 live.reset()
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
@@ -943,6 +984,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         except Exception as e:
             log.exception("agent turn failed")
             final_text = _friendly_error(e)
+            _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": str(e)[:200]},
+                             turn_id=_turn_id, actor=who)
             if live is not None:
                 live.reset()
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
@@ -955,6 +998,9 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 live.stopped = live.stopped or conversation_id in _stopped
                 live.end()
             bus.publish(conversation_id, "typing", {"on": False})
+            _evlog.log_event(tenant_id, conversation_id, "turn_finished",
+                             {"line": str(final_text or "")[:160], "seconds": round(time.time() - _t_turn0, 1)},
+                             turn_id=_turn_id, actor=who)
         if who == "owner" or who == "routine" or who.startswith("approved:"):
             try:   # v0.108 index this exchange, fold old ones into the summary, pick lasting facts (background)
                 from .. import yaad
