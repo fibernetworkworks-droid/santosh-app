@@ -215,18 +215,21 @@ jobs:
                 echo 'echo "== EDGE HUNT: caddy homes"; ls -la /etc/caddy 2>&1 | head -5; ls -la /var/lib/caddy 2>/dev/null | head -5; ls ~/.local/share/caddy 2>/dev/null | head -5; ls -la /root 2>/dev/null | head -3'
                 echo 'systemctl is-active nginx 2>&1 | grep -q active && echo "WEB-EDGE: ACTIVE" || echo "WEB-EDGE: STILL DOWN - see report above"' ;;
               web_fix)
-                # STEP 5: nginx disabled+inactive OK; caddy claims srv0:443 but host 443 dead; container
-                # DNS still 127.0.0.53 (bridge loopback - restarting host resolved can NEVER fix that).
-                # FIX the resolver INSIDE the running container (8.8.8.8/1.1.1.1), read the REAL port
-                # bindings, full listener list, then verify the public edge end to end.
-                echo 'echo "== EDGE name"; EDGE=$(docker ps -a --format "{{.Names}}" | grep -i caddy | grep -vi staging | head -1); echo "$EDGE"'
-                echo 'echo "== REAL port bindings"; docker port "$EDGE" 2>&1; docker inspect --format "netmode={{.HostConfig.NetworkMode}} pub={{json .HostConfig.PortBindings}}" "$EDGE" 2>&1; docker inspect --format "active={{json .NetworkSettings.Ports}}" "$EDGE" 2>&1 | head -3'
-                echo 'echo "== DNS FIX: write working resolvers inside the running container"; docker exec "$EDGE" sh -c "printf \"nameserver 8.8.8.8\\nnameserver 1.1.1.1\\n\" > /etc/resolv.conf; cat /etc/resolv.conf" 2>&1'
-                echo 'echo "== DNS test now"; docker exec "$EDGE" sh -c "nslookup acme-v02.api.letsencrypt.org 2>&1 | tail -3"'
-                echo 'sleep 15; echo "== edge log after DNS fix (retries should succeed)"; docker logs --tail 40 "$EDGE" 2>&1 | grep -iE "certificate obtained|success|error|failed|443" | tail -8'
-                echo 'echo "== FULL listener list"; docker run --rm --privileged --pid=host alpine nsenter -t 1 -n netstat -tln 2>&1 | head -20'
-                echo 'echo "== VERIFY public: hoola healthz"; curl -sS -m 15 https://hoola.ainewtika.com/healthz 2>&1 | head -2; echo'
-                echo 'echo "== VERIFY public: main site"; curl -sS -m 15 -o /dev/null -w "www.ainewtika.com HTTP %{http_code}\n" https://www.ainewtika.com/ 2>&1' ;;
+                # STEP 6: container runs but its NETWORK SANDBOX IS DEAD (active ports {}, 8.8.8.8
+                # unreachable) - the unclean power-off left docker's endpoint state broken. Rebuild the
+                # endpoint via network disconnect+connect; if ports stay dead, clean docker restart.
+                echo 'echo "== EDGE + network"; EDGE=$(docker ps -a --format "{{.Names}}" | grep -i caddy | grep -vi staging | head -1); echo "$EDGE"; NET=$(docker inspect --format "{{range \$k,\$v := .NetworkSettings.Networks}}{{\$k}}{{end}}" "$EDGE"); echo "net: $NET"'
+                echo 'echo "== network facts"; docker network inspect "$NET" --format "driver={{.Driver}} internal={{.Internal}}" 2>&1; docker inspect --format "{{range \$k,\$v := .NetworkSettings.Networks}}ip={{\$v.IPAddress}} gw={{\$v.Gateway}}{{end}}" "$EDGE" 2>&1'
+                echo 'echo "== container sees"; docker exec "$EDGE" ip addr 2>&1 | grep -E "eth0|inet " | head -4; docker exec "$EDGE" ip route 2>&1 | head -3'
+                echo 'echo "== host bridge ifs"; docker run --rm --privileged --pid=host alpine nsenter -t 1 -n ip -br link 2>/dev/null | grep -E "br-|docker0" | head -6'
+                echo 'echo "== FIX D: rebuild the endpoint"; docker network disconnect "$NET" "$EDGE" 2>&1; docker network connect "$NET" "$EDGE" 2>&1; sleep 4'
+                echo 'echo "== ports after reconnect"; docker inspect --format "active={{json .NetworkSettings.Ports}}" "$EDGE" 2>&1 | head -2'
+                echo 'echo "== FIX E (only if still dead): clean docker restart"; ACTIVE=$(docker inspect --format "{{json .NetworkSettings.Ports}}" "$EDGE"); if [ "$ACTIVE" = "{}" ] || [ -z "$ACTIVE" ]; then echo "ports still dead - restarting docker daemon"; docker run --rm --privileged --pid=host alpine nsenter -t 1 -m -u -i -n systemctl restart docker 2>&1 | tail -2; sleep 25; docker start "$EDGE" 2>&1; sleep 8; fi'
+                echo 'echo "== FINAL: ports"; docker port "$EDGE" 2>&1 | head -5'
+                echo 'echo "== FINAL: listeners"; docker run --rm --privileged --pid=host alpine nsenter -t 1 -n netstat -tln 2>/dev/null | grep -E ":80 |:443 " | head -6'
+                echo 'echo "== FINAL: edge log"; docker logs --tail 12 "$EDGE" 2>&1 | grep -iE "obtained|success|error|failed" | tail -5'
+                echo 'echo "== FINAL: public hoola healthz"; curl -sS -m 15 https://hoola.ainewtika.com/healthz 2>&1 | head -2; echo'
+                echo 'echo "== FINAL: public main site"; curl -sS -m 15 -o /dev/null -w "www HTTP %{http_code}\n" https://www.ainewtika.com/ 2>&1' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh
