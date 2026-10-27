@@ -215,14 +215,21 @@ jobs:
                 echo 'echo "== EDGE HUNT: caddy homes"; ls -la /etc/caddy 2>&1 | head -5; ls -la /var/lib/caddy 2>/dev/null | head -5; ls ~/.local/share/caddy 2>/dev/null | head -5; ls -la /root 2>/dev/null | head -3'
                 echo 'systemctl is-active nginx 2>&1 | grep -q active && echo "WEB-EDGE: ACTIVE" || echo "WEB-EDGE: STILL DOWN - see report above"' ;;
               web_fix)
-                # STEP 2 (STILL READ-ONLY): the host has NO /etc/caddy and NO caddy unit/crontab,
-                # yet a root caddy process runs -> it is CONTAINERIZED. Identify it, read its logs,
-                # and get the ROOT view of who owns 80/443. Facts, then the repair decision.
-                echo 'echo "== pid 2428 cgroup (containerized?)"; cat /proc/2428/cgroup 2>&1 | head -4'
-                echo 'echo "== ROOT listener view (nsenter into host netns)"; docker run --rm --privileged --pid=host alpine nsenter -t 1 -n ss -tlnp 2>&1 | head -25'
-                echo 'echo "== all caddy-ish containers + network mode + restart policy"; for c in $(docker ps -a --format "{{.Names}}" | grep -i caddy); do echo "--- $c"; docker inspect --format "netmode={{.HostConfig.NetworkMode}} restart={{.HostConfig.RestartPolicy.Name}} status={{.State.Status}}" "$c"; docker inspect --format "{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}" "$c" | head -6; done'
-                echo 'echo "== caddy container LOGS (why is it not serving?)"; for c in $(docker ps -a --format "{{.Names}}" | grep -i caddy); do echo "--- $c"; docker logs --tail 30 "$c" 2>&1 | tail -30; done'
-                echo 'echo "== ainewtika-api + orchestrator netmodes (who else could be the edge)"; for c in ainewtika-api; do docker inspect --format "$c netmode={{.HostConfig.NetworkMode}} ports={{.HostConfig.PortBindings}}" "$c" 2>/dev/null; done' ;;
+                # STEP 3 (THE FIX): root-caused - the public TLS edge for hoola.ainewtika.com is the
+                # connect_caddy DOCKER container (its logs proxy hoola.ainewtika.com -> 172.18.0.1:8077);
+                # the resize power-off SIGKILLed it and restart=unless-stopped did NOT revive it, while
+                # host nginx (enabled, default-404-only, zero useful sites) steals :80 at every boot.
+                # Fix: stop+disable nginx, start the edge, restart=always so reboots never kill it again.
+                echo 'echo "== before: sites-enabled (must be default-only to justify nginx stop)"; ls /etc/nginx/sites-enabled/ 2>&1'
+                echo 'echo "== FIX 1: stop + disable host nginx (frees 80/443 for the real edge, ends the boot race)"; docker run --rm --privileged -v /:/host alpine chroot /host systemctl disable --now nginx 2>&1 | tail -3'
+                echo 'sleep 2; echo "== nginx now:"; systemctl is-active nginx 2>&1'
+                echo 'echo "== FIX 2: revive the production edge container"; EDGE=$(docker ps -a --format "{{.Names}}" | grep -i caddy | grep -vi staging | head -1); echo "edge container: $EDGE"; docker start "$EDGE" 2>&1'
+                echo 'echo "== FIX 3: restart=always on the edge + the api (survive every future reboot)"; docker update --restart always "$EDGE" 2>&1; docker update --restart always ainewtika-api 2>&1'
+                echo 'sleep 8'
+                echo 'echo "== VERIFY: listeners"; docker run --rm --privileged --pid=host alpine nsenter -t 1 -n netstat -tln 2>/dev/null | grep -E ":80 |:443 " || echo "NO 80/443 YET"'
+                echo 'echo "== VERIFY: public healthz from the box"; curl -sS -m 15 https://hoola.ainewtika.com/healthz 2>&1 | head -2; echo'
+                echo 'echo "== VERIFY: main site"; curl -sS -m 15 -o /dev/null -w "www.ainewtika.com HTTP %{http_code}\n" https://www.ainewtika.com/ 2>&1'
+                echo 'echo "== edge logs tail (bind/acme errors?)"; docker logs --tail 12 "$EDGE" 2>&1 | tail -12' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh
