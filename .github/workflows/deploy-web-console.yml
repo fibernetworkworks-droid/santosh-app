@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   console:
-    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'deploy/hoola-web-english-20261027')
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'deploy/hoola-web-progress-20261027')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -27,7 +27,7 @@ jobs:
           node --check server/app/static/console/v2.js
           node --check server/app/static/console/workspace.js
           node --check server/app/static/console/panel.js
-          node --test server/tests/web/results.test.cjs
+          node --test server/tests/web/results.test.cjs server/tests/web/progress.test.cjs
       - name: Package only console assets
         run: |
           tar -czf /tmp/hoola-console.tar.gz -C server/app/static/console v2.html v2.css v2.js panel.js results.js workspace.js workspace.css build.js chatlist.js projects.js
@@ -57,9 +57,11 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsS --connect-timeout 10 --max-time 30 https://hoola.ainewtika.com/console/ -o /tmp/hoola-public-html
-          grep -F 'workspace.css?web=7' /tmp/hoola-public-html
-          curl -fsS --connect-timeout 10 --max-time 30 'https://hoola.ainewtika.com/static/console/workspace.css?web=7' -o /tmp/hoola-public-css
+          grep -F 'workspace.css?web=progress1' /tmp/hoola-public-html
+          curl -fsS --connect-timeout 10 --max-time 30 'https://hoola.ainewtika.com/static/console/workspace.css?web=progress1' -o /tmp/hoola-public-css
           grep -F '#app #slotDock{width:min(880px,100%);margin-inline:auto}' /tmp/hoola-public-css
           grep -F '#app #slotDock #composer{width:100%}' /tmp/hoola-public-css
           grep -F 'New chat' /tmp/hoola-public-html
-          echo 'PUBLIC_CONSOLE_ENGLISH_VERIFIED'
+          grep -F 'workspace.js?web=progress1' /tmp/hoola-public-html
+          curl -fsS --connect-timeout 10 --max-time 30 'https://hoola.ainewtika.com/static/console/workspace.js?web=progress1' | grep -F 'window.HoolaProgressPolicy'
+          echo 'PUBLIC_COMPACT_PROGRESS_VERIFIED'

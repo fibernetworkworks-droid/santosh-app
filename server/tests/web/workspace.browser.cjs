@@ -3,11 +3,12 @@ const http=require('http'),fs=require('fs'),path=require('path'),assert=require(
 const root=path.resolve(__dirname,'../../app/static');
 const shots=process.env.CONSOLE_SHOTS;
 if(shots)fs.mkdirSync(shots,{recursive:true});
-let posts=[];
+let posts=[];const streams=new Set();
+const emit=(kind,payload,conv="chat-1")=>{for(const r of streams)r.write("data: "+JSON.stringify({kind,payload,conv,live:true})+"\n\n");};
 const server=http.createServer((req,res)=>{
  const u=new URL(req.url,'http://localhost'),p=u.pathname;
  const json=o=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(o));};
- if(p==='/api/console/stream'||p.endsWith('/events')){res.writeHead(200,{'Content-Type':'text/event-stream'});res.write(': connected\n\n');return;}
+ if(p==='/api/console/stream'||p.endsWith('/events')){res.writeHead(200,{'Content-Type':'text/event-stream'});res.write(': connected\n\n');streams.add(res);res.on('close',()=>streams.delete(res));return;}
  if(p.startsWith('/api/')||p==='/healthz'){
   let raw='';req.on('data',c=>raw+=c);req.on('end',()=>{
    if(req.method==='POST'&&p.endsWith('/messages')){posts.push({path:p,...JSON.parse(raw)});return json({ok:true});}
@@ -16,7 +17,7 @@ const server=http.createServer((req,res)=>{
    if(p.endsWith('/me'))return json({owner:'Santosh',handle:'fnw',avatar:{name:'Hoola'}});
    if(p==='/api/console/conversations')return json({conversations:Array.from({length:60},(_,i)=>({id:'chat-'+(i+1),title:i?'Campaign research '+i:'Launch campaign',updated_at:new Date().toISOString()}))});
    if(p==='/api/projects')return json({projects:[]});
-   if(p.endsWith('/timeline'))return json({events:posts.length?[{id:1,kind:'message',payload:{role:'user',text:'Create an image'}},{id:2,kind:'photo_made',payload:{id:'photo-1',file_id:'result-1',name:'launch.png',title:'Launch image'}},...(posts.length>1?[{id:3,kind:'message',payload:{role:'assistant',text:'This is a long reply that keeps the conversation centered.\n\n'.repeat(50)}}]:[])]:[],last_event_id:3});
+   if(p.endsWith('/timeline'))return json({events:posts.length?[{id:1,kind:'message',payload:{role:'user',text:'Create an image'}},...Array.from({length:25},(_,i)=>({id:10+i,kind:'browser',payload:{session_id:'browser-'+i,status:'done',task:'INTERNAL_WORK_MARKER',step:i}})),{id:40,kind:'operator_ask',payload:{id:'approval-1',status:'pending',reason:'Approve this action'}},{id:2,kind:'photo_made',payload:{id:'photo-1',file_id:'result-1',name:'launch.png',title:'Launch image'}},...(posts.length>1?[{id:3,kind:'message',payload:{role:'assistant',text:'This is a long reply that keeps the conversation centered.\n\n'.repeat(50)}}]:[])]:[],last_event_id:3});
    if(p==='/api/panel/files/result-1/info')return json({name:'launch.png',size:68,mime:'image/png',media:'image',inline:true});
    if(p==='/api/panel/files/result-1'){res.setHeader('Content-Type','image/png');return res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==','base64'));}
    if(p.endsWith('/pending'))return json({pending:[]});
@@ -74,6 +75,18 @@ const server=http.createServer((req,res)=>{
   assert.ok(Math.abs(geometry.chat-geometry.input)<2,'Chat and composer share a center: '+JSON.stringify(geometry));assert.equal(geometry.overflow,false);
  };
  await aligned();
+ emit('typing',{on:true});await page.getByRole('status').filter({hasText:'Thinking…'}).waitFor();
+ for(let i=0;i<30;i++)emit('step',{id:'s'+i,tool:'browser',label:'INTERNAL_LIVE_STEP',state:'running'});
+ await page.locator('.simple-progress').filter({hasText:'Working on it…'}).waitFor();
+ assert.equal(await page.locator('.simple-progress').count(),1);assert.equal(await page.getByText('INTERNAL_LIVE_STEP',{exact:true}).count(),0);
+ emit('think',{turn:'final-fixture',seg:0,text:'PRIVATE_REASONING'});await page.locator('.simple-progress').filter({hasText:'Thinking…'}).waitFor();
+ assert.equal(await page.getByText('PRIVATE_REASONING',{exact:true}).count(),0);
+ emit('reply_start',{turn:'final-fixture'});await page.locator('.simple-progress').filter({hasText:'Preparing your response…'}).waitFor();
+ emit('delta',{turn:'final-fixture',seg:0,seq:1,text:'Final verified answer.'});
+ emit('reply_end',{turn:'final-fixture'});emit('typing',{on:false});
+ await page.locator('.simple-progress').waitFor({state:'hidden'});await page.getByText('Final verified answer.',{exact:true}).waitFor();
+ emit('browser',{session_id:'unrelated',status:'working'},'another-chat');await page.waitForTimeout(100);assert.equal(await page.locator('.simple-progress').isVisible(),false);
+ assert.equal(await page.locator('#col').getByText('INTERNAL_WORK_MARKER').count(),0);assert.equal(await page.locator('#col').getByText('Approve this action',{exact:true}).count(),1);
  await divider.focus();await page.keyboard.press('End');await page.waitForFunction(()=>Math.round(document.querySelector('.side').getBoundingClientRect().width)===420);await aligned();
  await divider.dblclick();await page.waitForFunction(()=>Math.round(document.querySelector('.side').getBoundingClientRect().width)===224);await aligned();
 

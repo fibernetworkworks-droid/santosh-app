@@ -172,3 +172,19 @@ window.HoolaWorkspace = ctx => {
   });
   addEventListener('resize',()=>{if(narrow())finish(true);});
 })();
+
+// Shared presentation policy; backend events remain intact for audit and other clients.
+window.HoolaProgressPolicy = {
+  quiet(kind,p={}) {
+    if (/(^|_)ask($|_)|approval|confirm|draft|quote|_sign/.test(kind)) return false;
+    return ['step','think','work','log','say','goal','browser','operator_task','pc_task','pc_step','pc_job','memory_saved','procedure'].includes(kind);
+  },
+  phase(kind,p={}) {
+    if (/(^|_)ask($|_)|approval|confirm/.test(kind)||p.status==='needs_approval')return 'Your approval is required';
+    if(['waiting','blocked'].includes(p.status||p.phase))return 'Waiting for the next step…';
+    if (['failed','error','partial','stopped'].includes(p.status||p.phase)||p.state==='error')return 'Reviewing an incomplete result…';
+    if(kind==='think'||kind==='typing')return 'Thinking…';
+    if(kind==='reply_start'||kind==='reply_end')return 'Preparing your response…';
+    return 'Working on it…';
+  }
+};
