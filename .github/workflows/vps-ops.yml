@@ -112,7 +112,9 @@ jobs:
                 echo 'echo "== biggest RSS mappings"; pmap -x $PID 2>/dev/null | sort -k3 -n -r | head -12'
                 echo 'echo "== heap-ish totals"; pmap -x $PID 2>/dev/null | awk '\''/total/{print}\'''
                 echo 'echo "== free"; free -m | head -2'
-                echo 'echo "== swap"; swapon --show 2>/dev/null || echo none' ;;
+                echo 'echo "== swap"; swapon --show 2>/dev/null || echo none'
+                echo 'echo "== who kills the fat process?"; ps aux | grep -iE "earlyoom|oomd|guard" | grep -v grep; systemctl is-active systemd-oomd earlyoom 2>&1; grep -H . /proc/pressure/* 2>/dev/null'
+                echo 'echo "== free + swap now"; free -m; swapon --show' ;;
               voicecheck)
                 echo 'cd $CORE && timeout 600 .venv/bin/python -m app.voicecheck' ;;
               ack_refresh)
