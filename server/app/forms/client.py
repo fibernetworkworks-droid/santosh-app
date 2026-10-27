@@ -93,6 +93,17 @@ class FormsClient:
             "publishSettings": {"publishState": {"isPublished": True, "isAcceptingResponses": bool(accepting)}},
             "updateMask": "publishState"})
 
+    def set_published(self, form_id: str, published: bool) -> dict:
+        """v0.213: full publishState control — unpublish (isPublished=false) hides the form entirely; the old
+        publish() above always keeps isPublished=true and only flips accepting."""
+        return self._req("POST", f"{FORMS}/{form_id}:setPublishSettings", json={
+            "publishSettings": {"publishState": {"isPublished": bool(published), "isAcceptingResponses": bool(published)}},
+            "updateMask": "publishState"})
+
+    def response_get(self, form_id: str, response_id: str) -> dict:
+        """v0.213: forms.responses.get — one response by id."""
+        return self._req("GET", f"{FORMS}/{form_id}/responses/{response_id}")
+
     def responses(self, form_id: str, since: str | None = None, limit: int = 5000) -> list[dict]:
         out: list[dict] = []
         token = None
@@ -126,3 +137,15 @@ class FormsClient:
         return self._req("POST", f"{DRIVE}/files/{form_id}/permissions",
                          params={"sendNotificationEmail": "true", "supportsAllDrives": "true"},
                          json={"type": "user", "role": role, "emailAddress": email})
+
+    def trash(self, form_id: str) -> dict:
+        """v0.213: Drive trash for a form (recoverable from Drive's Trash / Version history)."""
+        return self._req("PATCH", f"{DRIVE}/files/{form_id}", params={"supportsAllDrives": "true"},
+                         json={"trashed": True})
+
+    def copy(self, form_id: str, new_title: str | None = None) -> dict:
+        """v0.213: Drive files.copy — duplicate a form with its questions and settings."""
+        body: dict[str, Any] = {"mimeType": GFORM}
+        if new_title:
+            body["name"] = new_title[:300]
+        return self._req("POST", f"{DRIVE}/files/{form_id}/copy", params={"supportsAllDrives": "true"}, json=body)

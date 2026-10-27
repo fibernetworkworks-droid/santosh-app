@@ -26,6 +26,9 @@ class FakeForms:
         self.shares: list = []
         self.batches: list = []
         self.n = 0
+        self.trashed: list = []        # v0.213: form ids sent to Drive Trash
+        self.copies: list = []         # v0.213: (src_id, new_title)
+        self.single_response_gets: list = []   # v0.213: (form_id, response_id)
 
     def _id(self, p):
         self.n += 1
@@ -50,6 +53,27 @@ class FakeForms:
         if host == "www.googleapis.com" and path.endswith("/permissions"):
             self.shares.append((path.split("/")[4], body, dict(params)))
             return httpx.Response(200, json={"id": "perm1"})
+        # v0.213: Drive trash + copy for forms
+        if host == "www.googleapis.com" and req.method == "PATCH" and path.startswith("/drive/v3/files/"):
+            fid = path.split("/")[4]
+            if body.get("trashed"):
+                self.trashed.append(fid)
+            return httpx.Response(200, json={"id": fid, "trashed": True})
+        if host == "www.googleapis.com" and req.method == "POST" and path.endswith("/copy"):
+            src = path.split("/")[4]
+            title = body.get("name") or (self.forms[src]["info"]["title"] + " copy")
+            nf = {"formId": self._id("f"), "info": {"title": title, "documentTitle": title},
+                  "items": json.loads(json.dumps(self.forms[src]["items"])), "settings": json.loads(json.dumps(self.forms[src].get("settings", {}))),
+                  "responderUri": "", "publishSettings": {"publishState": {"isPublished": False, "isAcceptingResponses": False}}}
+            for it in nf["items"]:
+                it["itemId"] = self._id("i")[:8]
+                if "questionItem" in it:
+                    it["questionItem"]["question"]["questionId"] = self._id("q")[:8]
+                if "questionGroupItem" in it and "question" in it["questionGroupItem"]:
+                    it["questionGroupItem"]["question"]["questionId"] = self._id("q")[:8]
+            self.forms[nf["formId"]] = nf
+            self.copies.append((src, title))
+            return httpx.Response(200, json={"id": nf["formId"], "name": title, "mimeType": "application/vnd.google-apps.form"})
         assert host == "forms.googleapis.com"
         p = path.removeprefix("/v1/forms")
         if p == "" and req.method == "POST":
@@ -61,6 +85,9 @@ class FakeForms:
             return httpx.Response(200, json=self.forms[fid])
         fid, _, action = p.lstrip("/").partition(":")
         fid, _, sub = fid.partition("/")
+        sub2 = ""
+        if "/" in sub:
+            sub, _, sub2 = sub.partition("/")   # v0.213: responses/{response_id}
         if fid not in self.forms:
             return httpx.Response(404, json={"error": {"message": "not found"}})
         f = self.forms[fid]
@@ -83,18 +110,28 @@ class FakeForms:
                         if it["questionItem"]["question"].get("grading") and not f["settings"].get("quizSettings", {}).get("isQuiz"):
                             return httpx.Response(400, json={"error": {"message": "grading needs quiz"}})
                         it["questionItem"]["question"]["questionId"] = self._id("q")[:8]
+                    if "questionGroupItem" in it and "question" in it["questionGroupItem"]:   # v0.213 grid
+                        it["questionGroupItem"]["question"]["questionId"] = self._id("q")[:8]
                     f["items"].insert(r["createItem"]["location"]["index"], it)
                 elif "updateItem" in r:
                     i = r["updateItem"]["location"]["index"]
                     f["items"][i] = {**f["items"][i], **r["updateItem"]["item"]}
                 elif "deleteItem" in r:
                     del f["items"][r["deleteItem"]["location"]["index"]]
+                elif "moveItem" in r:                                                      # v0.213 moveItem
+                    i = r["moveItem"]["location"]["index"]
+                    t = r["moveItem"]["toLocation"]["index"]
+                    f["items"].insert(t, f["items"].pop(i))
             return httpx.Response(200, json={"form": f} if body.get("includeFormInResponse") else {})
         if action == "setPublishSettings":
             f["publishSettings"] = body["publishSettings"]
             return httpx.Response(200, json={"formId": fid})
         if sub == "responses":
             rs = self.responses.get(fid, [])
+            if sub2:                                       # v0.213: forms.responses.get - one response by id
+                self.single_response_gets.append((fid, sub2))
+                one = [r for r in rs if r["responseId"] == sub2]
+                return httpx.Response(200, json=one[0]) if one else httpx.Response(404, json={"error": {"message": "no response"}})
             flt = params.get("filter", "")
             if flt.startswith("timestamp > "):
                 since = flt.removeprefix("timestamp > ")
@@ -397,3 +434,139 @@ def test_api_routes_and_finish_page(fake):
         assert c.delete(f"/api/forms/accounts/{st['accounts'][0]['key']}").json()["accounts"] == []
         bad = c.get("/cb", params={"error": "access_denied"})
         assert bad.status_code == 400 and "ok=0" in bad.text
+
+
+# ---- v0.213 Google Forms 100% coverage: move / page / grid / upload / media / delete / copy /
+# settings published+emails / single response / quiz feedback ----
+
+def test_move_reorders_questions(fake):
+    _connect()
+    ctx = conv_ctx()
+    fid = run("form_create", {"title": "Order", "questions": [
+        {"title": "Naam", "type": "short"}, {"title": "Item", "type": "short"}, {"title": "Date", "type": "date"}]}, ctx)["id"]
+    out = run("form_move", {"form": fid, "question": "Date", "new_index": 1}, ctx)
+    titles = [q.split(". ", 1)[1].split(" (")[0] for q in out["questions"]]
+    assert titles == ["Date", "Naam", "Item"] and out["moved"] == "Date" and out["to"] == 1
+    with pytest.raises(ToolError, match="new_index"):
+        run("form_move", {"form": fid, "question": "Naam", "new_index": 9}, ctx)
+
+
+def test_page_grid_upload_item_types(fake):
+    _connect()
+    ctx = conv_ctx()
+    out = run("form_create", {"title": "Club admission", "questions": [
+        {"title": "Aapka naam", "type": "short"},
+        {"title": "Khed details", "type": "page", "description": "Yahan se naya page shuru"},
+        {"title": "Din aur samay", "type": "grid", "rows": ["Somvaar", "Mangalvaar"], "columns": ["Subah", "Sham"]},
+        {"title": "Kya kya aa sakta hai", "type": "checkbox_grid", "rows": ["Khana", "Music"],
+         "columns": ["Haan", "Nahi"]},
+        {"title": "Resume", "type": "upload", "max_files": 2, "max_file_mb": 5, "file_types": ["PDF", "DOCX"]},
+        {"title": "Kitna samay lagega?", "type": "time", "duration": True}]}, ctx)
+    f = fake.forms[out["id"]]
+    assert "pageBreakItem" in f["items"][1] and f["items"][1]["description"] == "Yahan se naya page shuru"
+    g = f["items"][2]["questionGroupItem"]
+    assert [r["value"] for r in g["grid"]["rows"]] == ["Somvaar", "Mangalvaar"]
+    assert [c["value"] for c in g["grid"]["columns"]] == ["Subah", "Sham"]
+    assert "type" not in g["grid"]                                    # mc grid: one answer per row
+    assert f["items"][3]["questionGroupItem"]["grid"]["type"] == "CHECKBOX"   # checkbox grid: many
+    fq = f["items"][4]["questionItem"]["question"]["fileUploadQuestion"]
+    assert fq["maxFiles"] == 2 and fq["maxFileSizeMb"] == 5 and fq["types"] == ["PDF", "DOCX"]
+    assert f["items"][5]["questionItem"]["question"]["timeQuestion"] == {"duration": True}
+    kinds = [q.split(" (")[1].split(",")[0].rstrip(")") for q in out["questions"]]
+    assert kinds == ["short", "page", "grid", "grid", "upload", "time"]
+    with pytest.raises(ToolError, match="rows aur columns"):
+        run("form_create", {"title": "Bad grid", "questions": [{"title": "G", "type": "grid", "rows": ["r"]}]}, ctx)
+
+
+def test_quiz_feedback_fields(fake):
+    _connect()
+    ctx = conv_ctx()
+    out = run("form_create", {"title": "Spoken English test", "questions": [
+        {"title": "Plural of 'child'?", "type": "choice", "options": ["childs", "children"], "correct": "children",
+         "points": 1, "feedback": "Children is the irregular plural.",
+         "feedback_right": "Shabaash!", "feedback_wrong": "Revision chahiye."}]}, ctx)
+    g = fake.forms[out["id"]]["items"][0]["questionItem"]["question"]["grading"]
+    assert g["generalFeedback"] == {"text": "Children is the irregular plural."}
+    assert g["whenRight"] == {"text": "Shabaash!"} and g["whenWrong"] == {"text": "Revision chahiye."}
+    assert out["is_quiz"]
+
+
+def test_media_image_and_video(fake):
+    _connect()
+    ctx = conv_ctx()
+    fid = run("form_create", {"title": "Photo contest", "questions": [{"title": "Naam"}]}, ctx)["id"]
+    out = run("form_media", {"form": fid, "kind": "image", "uri": "https://example.in/poster.jpg",
+                              "title": "Poster", "description": "Event ka poster"}, ctx)
+    assert out["added"] == "image" and out["at"] == 2
+    img = fake.forms[fid]["items"][1]["imageItem"]["image"]
+    assert img["sourceUri"] == "https://example.in/poster.jpg" and img["altText"] == "Poster"
+    out = run("form_media", {"form": fid, "kind": "video", "uri": "https://youtube.com/watch?v=abc", "index": 1}, ctx)
+    assert out["added"] == "video" and out["at"] == 1
+    assert fake.forms[fid]["items"][0]["videoItem"]["video"]["youtubeUri"] == "https://youtube.com/watch?v=abc"
+    with pytest.raises(ToolError, match="kind"):
+        run("form_media", {"form": fid, "kind": "audio", "uri": "x"}, ctx)
+    with pytest.raises(ToolError, match="uri"):
+        run("form_media", {"form": fid, "kind": "image", "uri": ""}, ctx)
+
+
+def test_form_delete_card_flow(fake, monkeypatch):
+    """form_delete queues a confirm card; the executor's approval moves the form to Drive Trash."""
+    _connect()
+    ctx = conv_ctx()
+    fid = run("form_create", {"title": "Old survey", "questions": [{"title": "Q"}]}, ctx)["id"]
+    ex, pack, bctx = _executor()
+    seen = {}
+    monkeypatch.setattr(ft, "_card", lambda c, pid: seen.setdefault("na", ex.call(pack, "confirm_change", {"pending_id": pid}, bctx))
+                        and {"needs_approval": True})
+    out = run("form_delete", {"form": fid}, ctx)
+    assert out["needs_approval"] and fake.trashed == []
+    na = seen["na"]
+    assert na.title == "Form delete karein?" and "Trash" in json.dumps(na.items)
+    res = ex.execute(pack, na.action["name"], na.action["args"], bctx)
+    assert "Trash" in res["message"] and fake.trashed == [fid]
+
+
+def test_copy_duplicates_form(fake):
+    from tests.test_bazar import _events
+    _connect()
+    ctx = conv_ctx()
+    fid = run("form_create", {"title": "August feedback", "questions": EVENT_FORM}, ctx)["id"]
+    out = run("form_copy", {"form": fid, "new_title": "September feedback"}, ctx)
+    cp = out["copy"]
+    assert cp["title"] == "September feedback" and cp["id"] != fid and len(cp["questions"]) == 5
+    assert fake.copies == [(fid, "September feedback")]
+    card = _events(ctx.conversation_id, "form")[-1]
+    assert card["title"] == "September feedback" and card["status"] == "created"
+    src, dst = fid, cp["id"]
+    assert len(fake.forms[dst]["items"]) == len(fake.forms[src]["items"])
+
+
+def test_settings_published_and_emails(fake):
+    _connect()
+    ctx = conv_ctx()
+    fid = run("form_create", {"title": "Reg", "questions": [{"title": "Naam"}]}, ctx)["id"]
+    out = run("form_settings", {"form": fid, "published": False}, ctx)
+    assert out["published"] is False and out["accepting"] is False
+    assert fake.forms[fid]["publishSettings"]["publishState"]["isPublished"] is False
+    back = run("form_settings", {"form": fid, "published": True}, ctx)
+    assert back["published"] is True and back["accepting"] is True
+    run("form_settings", {"form": fid, "emails": "verify"}, ctx)
+    assert fake.forms[fid]["settings"]["emailCollectionType"] == "VERIFIED_EMAIL"
+    run("form_settings", {"form": fid, "emails": "off"}, ctx)
+    assert fake.forms[fid]["settings"]["emailCollectionType"] == "DONT_COLLECT"
+    with pytest.raises(ToolError, match="off / collect / verify"):
+        run("form_settings", {"form": fid, "emails": "maybe"}, ctx)
+
+
+def test_single_response_get(fake):
+    _connect()
+    ctx = conv_ctx()
+    fid = run("form_create", {"title": "Admission", "questions": [{"title": "Naam"}]}, ctx)["id"]
+    fake.answer(fid, {"Naam": "Raju"}, "2026-10-19T10:00:00Z", email="raju@x.in")
+    fake.answer(fid, {"Naam": "Sita"}, "2026-10-19T11:00:00Z", email="sita@x.in")
+    rid = fake.responses[fid][0]["responseId"]
+    one = run("form_responses", {"form": fid, "response_id": rid}, ctx)
+    assert one["total"] == 1 and one["rows"][0]["Naam"] == "Raju" and one["response_id"] == rid
+    assert fake.single_response_gets == [(fid, rid)]
+    with pytest.raises(Exception):
+        run("form_responses", {"form": fid, "response_id": "nope"}, ctx)

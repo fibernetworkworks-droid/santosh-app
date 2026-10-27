@@ -7,7 +7,8 @@ from typing import Any
 from ..packs.registry import Pack
 from .base import Ctx, NeedsApproval, ToolError, ToolSpec
 
-TITLES = {"share": "Form share karein?", "delete_questions": "Jawab wale sawaal hatayein?"}
+TITLES = {"share": "Form share karein?", "delete_questions": "Jawab wale sawaal hatayein?",
+          "delete_form": "Form delete karein?"}   # v0.213 grew 2 -> 3 confirm-card actions
 
 
 class FormsExecutor:
