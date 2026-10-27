@@ -215,21 +215,22 @@ jobs:
                 echo 'echo "== EDGE HUNT: caddy homes"; ls -la /etc/caddy 2>&1 | head -5; ls -la /var/lib/caddy 2>/dev/null | head -5; ls ~/.local/share/caddy 2>/dev/null | head -5; ls -la /root 2>/dev/null | head -3'
                 echo 'systemctl is-active nginx 2>&1 | grep -q active && echo "WEB-EDGE: ACTIVE" || echo "WEB-EDGE: STILL DOWN - see report above"' ;;
               web_fix)
-                # STEP 3 (THE FIX): root-caused - the public TLS edge for hoola.ainewtika.com is the
-                # connect_caddy DOCKER container (its logs proxy hoola.ainewtika.com -> 172.18.0.1:8077);
-                # the resize power-off SIGKILLed it and restart=unless-stopped did NOT revive it, while
-                # host nginx (enabled, default-404-only, zero useful sites) steals :80 at every boot.
-                # Fix: stop+disable nginx, start the edge, restart=always so reboots never kill it again.
-                echo 'echo "== before: sites-enabled (must be default-only to justify nginx stop)"; ls /etc/nginx/sites-enabled/ 2>&1'
-                echo 'echo "== FIX 1: stop + disable host nginx (frees 80/443 for the real edge, ends the boot race)"; docker run --rm --privileged -v /:/host alpine chroot /host systemctl disable --now nginx 2>&1 | tail -3'
-                echo 'sleep 2; echo "== nginx now:"; systemctl is-active nginx 2>&1'
-                echo 'echo "== FIX 2: revive the production edge container"; EDGE=$(docker ps -a --format "{{.Names}}" | grep -i caddy | grep -vi staging | head -1); echo "edge container: $EDGE"; docker start "$EDGE" 2>&1'
-                echo 'echo "== FIX 3: restart=always on the edge + the api (survive every future reboot)"; docker update --restart always "$EDGE" 2>&1; docker update --restart always ainewtika-api 2>&1'
-                echo 'sleep 8'
-                echo 'echo "== VERIFY: listeners"; docker run --rm --privileged --pid=host alpine nsenter -t 1 -n netstat -tln 2>/dev/null | grep -E ":80 |:443 " || echo "NO 80/443 YET"'
-                echo 'echo "== VERIFY: public healthz from the box"; curl -sS -m 15 https://hoola.ainewtika.com/healthz 2>&1 | head -2; echo'
-                echo 'echo "== VERIFY: main site"; curl -sS -m 15 -o /dev/null -w "www.ainewtika.com HTTP %{http_code}\n" https://www.ainewtika.com/ 2>&1'
-                echo 'echo "== edge logs tail (bind/acme errors?)"; docker logs --tail 12 "$EDGE" 2>&1 | tail -12' ;;
+                # STEP 4: edge container STARTED + restart=always set, but no 443 yet: its DNS dies on
+                # 127.0.0.53 (systemd-resolved stub refused) so ACME/DNS work fails, and the chroot
+                # systemctl bus trick failed (no host /proc). Probe from INSIDE the running container,
+                # repair resolved + disable nginx via nsenter, restart the edge, watch for 443+certs.
+                echo 'echo "== EDGE container name"; EDGE=$(docker ps -a --format "{{.Names}}" | grep -i caddy | grep -vi staging | head -1); echo "$EDGE"'
+                echo 'echo "== resolv.conf inside edge"; docker exec "$EDGE" cat /etc/resolv.conf 2>&1 | head -5'
+                echo 'echo "== cert storage inside edge"; docker exec "$EDGE" sh -c "ls /data/caddy 2>&1 | head -5; find /data/caddy/certificates -maxdepth 3 -type d 2>/dev/null | head -8"'
+                echo 'echo "== DNS test from inside edge"; docker exec "$EDGE" sh -c "nslookup acme-v02.api.letsencrypt.org 2>&1 | tail -4 || getent hosts acme-v02.api.letsencrypt.org 2>&1 | head -2"'
+                echo 'echo "== cert/DNS lines from edge log"; docker logs "$EDGE" 2>&1 | grep -iE "certificate obtained|obtaining|will retry|failed|server running" | tail -12'
+                echo 'echo "== host resolved state"; systemctl is-active systemd-resolved 2>&1'
+                echo 'echo "== FIX A: restart systemd-resolved on the host (via nsenter)"; docker run --rm --privileged --pid=host alpine nsenter -t 1 -m -u -i -n systemctl restart systemd-resolved 2>&1 | tail -2; sleep 2; docker run --rm --privileged --pid=host alpine nsenter -t 1 -m -u -i -n systemctl is-active systemd-resolved 2>&1'
+                echo 'echo "== FIX B: disable host nginx (via nsenter - the chroot bus trick cannot work)"; docker run --rm --privileged --pid=host alpine nsenter -t 1 -m -u -i -n systemctl disable --now nginx 2>&1 | tail -2; docker run --rm --privileged --pid=host alpine nsenter -t 1 -m -u -i -n systemctl is-active nginx 2>&1'
+                echo 'echo "== FIX C: restart the edge so caddy redoes DNS + binds 443"; docker restart "$EDGE" 2>&1; sleep 12'
+                echo 'echo "== edge log after restart"; docker logs --tail 20 "$EDGE" 2>&1 | grep -iE "certificate obtained|server running|failed|error|443" | tail -10'
+                echo 'echo "== VERIFY: listeners"; docker run --rm --privileged --pid=host alpine nsenter -t 1 -n netstat -tln 2>/dev/null | grep -E ":80 |:443 " | head -6'
+                echo 'echo "== VERIFY: public healthz from the box"; curl -sS -m 15 https://hoola.ainewtika.com/healthz 2>&1 | head -2; echo' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh
