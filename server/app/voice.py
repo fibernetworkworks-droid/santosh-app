@@ -125,8 +125,9 @@ How it sounds (delivery)
 - The voice carries half the message: pace, pitch, volume and pauses are your grammar. Never the newsreader tone - no uniform robot rhythm, no sing-song, no reading. If a line sounds flat, reword it until it sounds like you on a phone.
 - Pauses are punctuation: a comma is a small beat, "..." is a thinking pause, and a full stop before something important is a real stop with a small breath. Never rush past an amount, a date or a name; put the word that matters where the ear lands - first or last ("paise kal aayenge, aaj nahi").
 - One idea per breath; a longer answer breathes between its parts instead of running on.
+- A schedule, a list or several numbers: one item per short sentence and a real breath between items - the time or the amount stands in its own small sentence ("chaar baje. kal dopahar."). Never one long run-on line.
 - Match their energy within your own band: they sound stressed or sad, slow down and be gentle; excited, be happy with them; in a hurry, be quick; joking, joke back. Stay natural, never an imitation.
-- Feelings are allowed and wanted. Something is genuinely funny: laugh, short and real, then carry on. Good news: warmth and a little more energy. Heavy, sad or worrying news: go softer and lower, let a small pause sit before you answer, and stay with them - no forced cheer. You slipped up: own it in one plain line, then fix it.
+- Feelings are allowed and wanted. Something is genuinely funny - or she laughs herself: laugh, short and real, then carry on (a small breath-laugh is enough, never the word "haha"). Good news: warmth and a little more energy. Heavy, sad or worrying news: go softer and lower, let a small pause sit before you answer, and stay with them - no forced cheer. You slipped up: own it in one plain line, then fix it.
 
 When to speak
 - Let the user finish. People pause to think mid-sentence; if it sounds unfinished, wait for the rest.
@@ -587,6 +588,13 @@ def _end_sensitivity(value: str):
             "high": types.EndSensitivity.END_SENSITIVITY_HIGH}.get((value or "").strip().lower())
 
 
+# v0.202.0 AWAAZ-2 the delivery reminder rides at the VERY end of the system prompt (recency): the owner's ear
+# test showed the mid-prompt block alone leaves the voice flat - the last lines are the ones every fresh turn
+# still "hears". One compact line; the feeling engine's mid-call note adds the moment-specific part.
+DELIVERY_END = ("(Awaaz ki yaad, har jawab mein: thoda dheere, apni hi raftaar; list kabhi ek saans mein nahi - "
+                "har item ke baad ek saans; uski baat bhaari ho to awaaz naram aur neeche, acchi khabar ho to garmi.)")
+
+
 def live_config(voice: str, lang: str, context: str, handle: str | None, name: str = "Santosh", gender: str = "m",
                 extra_tools: list[dict] | None = None, langst=None, style: dict | None = None, safe: int = 0):
     from google.genai import types
@@ -598,7 +606,7 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
     # v0.114 the language is the server's decision: Google's lock line + examples at the top AND the end
     # v0.119 how SHE speaks (style hint, words misheard before, her names) sits just before the closing lock
     style = style or {}
-    prompt = voicelang.lock_block(langst, "top") + prompt + (style.get("block") or "") + voicelang.lock_block(langst, "end")
+    prompt = voicelang.lock_block(langst, "top") + prompt + (style.get("block") or "") + voicelang.lock_block(langst, "end") + "\n" + DELIVERY_END
     without = set(SETUP_STEPS[:max(0, min(safe, len(SETUP_STEPS)))])   # v0.150 extras left out after Gemini refused them
     tr = types.AudioTranscriptionConfig(
         language_codes=None if "langcodes" in without else voicelang.transcription_codes(langst),
@@ -789,6 +797,15 @@ ACK_LINES = ["Haan, ek second.", "Achha, dekhta hoon.", "Ruko, check karta hoon.
              "Hmm... sochne do, ek second.", "Haan, ho gaya... bas ek minute.", "Achha wait, khol raha hoon.",
              "Haan, pakka. Ek minute deta hoon."]   # v0.181 5 -> 16: ek hi line har baar sunai deti thi; ab variety
 ACK_DIR = Path("data") / "voice_acks"
+_ACK_GEN = "a2"   # v0.202.0 AWAAZ-2: the ask behind a clip changed (per-flavour energy), so the generation rides
+#                  in the filename - the old flat-energy renders on an old server are orphaned instead of played
+#                  forever (the owner's ear test: acks FAILed because the v0.181 clips outlived their ask).
+
+
+def _ack_file(v: str, gender: str, i: int) -> Path:
+    return ACK_DIR / f"{v}_{gender}_{i}_{_ACK_GEN}.pcm"
+
+
 _ACKS: dict[str, list[bytes]] = {}
 _ACK_BUSY: set[str] = set()
 _ACK_LOCK = threading.Lock()
@@ -864,7 +881,7 @@ def _build_acks(key: str, voice: str, gender: str) -> None:
         except Exception as e:
             log.info("ack client not made: %r", e)
         for i, line in enumerate(ACK_LINES):
-            f = ACK_DIR / f"{voice}_{gender}_{i}.pcm"
+            f = _ack_file(voice, gender, i)
             try:
                 clip = f.read_bytes() if f.exists() else _trim(_ack_tts(gendered(line, gender), voice, gender, client))
             except Exception as e:
@@ -954,6 +971,8 @@ class Call:
         self._turn_audio = False               # audio of the current turn has started
         self._last_ack = 0.0
         self._latency: int | None = None
+        self._affect_last = ""                 # v0.201 the feeling engine: last state a note was sent for
+        self._affect_at = 0.0                  # ... and when it went out (never two notes close together)
         self.vid = None                        # Awaaz Pehchaan: who is talking (set up when the call starts)
         self._mcp_route: dict = {}             # the owner's MCP tools in this call: name -> (pack_id, tool)
         self._mcp_snap: list = []
@@ -1211,6 +1230,7 @@ class Call:
                         await self.send_json({"type": "user_text", "text": self.user_buf.strip()})
                         await self._otp_listen(sc.input_transcription.text)
                         await self._approval_listen(sc.input_transcription.text)   # v0.191 boli hui manzoori
+                        await self._affect_watch()   # v0.201 uski feeling ka note, jab wahi bol rahi ho
                         if get_settings().voice_side_talk:
                             from . import sidetalk
                             if sidetalk.wants_hold(self.user_buf):   # "ek minute, main kisi se baat kar rahi hoon"
@@ -1257,6 +1277,30 @@ class Call:
             if 0 <= gap < 15:
                 self._latency = int(gap * 1000)
                 self.stats["latency_ms"].append(self._latency)
+
+    async def _affect_watch(self) -> None:
+        """v0.201 AWAAZ-2 the feeling engine: while SHE is speaking, her own words say how she is right now;
+        one quiet delivery note rides the open client_content channel before he answers (static persona lines
+        proved too far from the moment - the owner's ear test: pauses/soft-news FAILED on v0.199.0). Debounced
+        hard: only her own voice, once a state, never two notes inside 20 s, the same state again only after 90 s."""
+        try:
+            cur = (self.vid.current or {}) if self.vid is not None else {}
+            if cur and cur.get("relation") != "self":
+                return                        # someone else's mouth, not hers: no notes on their words
+            from . import voiceaffect
+            st, _hit = voiceaffect.decide(self.user_buf)
+            if not st:
+                return
+            now = time.monotonic()
+            if now - self._affect_at < 20:
+                return
+            if st == self._affect_last and now - self._affect_at < 90:
+                return
+            self._affect_last, self._affect_at = st, now
+            self.stats["affect_notes"] = self.stats.get("affect_notes", 0) + 1
+            await self._tell_quietly(voiceaffect.NOTE[st])
+        except Exception:
+            log.exception("affect watch failed")
 
     async def _otp_listen(self, piece: str = "", final: bool = False) -> None:
         """v0.83 a website job is waiting for an OTP and she SAYS it on the call: the system catches the digits from

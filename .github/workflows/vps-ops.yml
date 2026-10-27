@@ -18,6 +18,7 @@ on:
           - logs
           - errors
           - voicecheck
+          - ack_refresh
           - deploy
           - rollback_stable
           - pc_deploy
@@ -102,6 +103,17 @@ jobs:
                 echo "pm2 logs santosh --lines $N --nostream --raw --err" ;;
               voicecheck)
                 echo 'cd $CORE && timeout 600 .venv/bin/python -m app.voicecheck' ;;
+              ack_refresh)
+                # v0.201.0 AWAAZ-2: the ack clips are disk-cached by filename with no ask-hash, so a changed
+                # delivery ask never regenerates them on an old server. This job drops the cache; the next
+                # call rebuilds all 16 clips with the current asks (one-time TTS cost, then cached again).
+                echo 'set -e'
+                echo 'echo "== ack clips before: $(ls -1 $CORE/data/voice_acks 2>/dev/null | wc -l)"'
+                echo 'rm -rf $CORE/data/voice_acks'
+                echo 'pm2 restart santosh --update-env'
+                echo 'UP=0; wait_up || UP=$?'
+                echo 'echo "== ack clips after: $(ls -1 $CORE/data/voice_acks 2>/dev/null | wc -l) (0 is fine - they rebuild on the next call)"'
+                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
               deploy)
                 echo 'set -e'
                 echo 'cp $CORE/santosh.db $CORE/santosh.db.bak-$(date +%F-%H%M)'

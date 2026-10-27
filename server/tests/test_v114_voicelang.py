@@ -64,7 +64,8 @@ def test_live_config_lock_top_and_end_and_transcript_hint(env):
     cfg = voice.live_config("Puck", "mr-IN", "ctx", None, langst=st)
     text = cfg.system_instruction.parts[0].text
     assert text.startswith("LANGUAGE LOCK\nRESPOND IN MARATHI. YOU MUST RESPOND UNMISTAKABLY IN MARATHI.")
-    assert text.rstrip().endswith("Only a note that says 'Language note' can change it.")
+    assert text.rstrip().endswith("garmi.)")   # v0.201 the delivery reminder rides last
+    assert "Only a note that says 'Language note' can change it." in text   # the end lock is still in
     assert "उद्याची मीटिंग" in text                  # examples in her language
     assert "follow them" not in text
     assert cfg.input_audio_transcription.language_codes == ["mr-IN", "en-IN"]

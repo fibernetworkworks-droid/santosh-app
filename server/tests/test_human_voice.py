@@ -121,8 +121,8 @@ def test_silent_tool_gets_a_quick_ek_second_in_his_voice(env, monkeypatch):
         assert wait_until(lambda: voice.STATS and voice.STATS[-1]["call_id"])
         s = c.get("/api/voice/stats").json()
     assert s["tool_calls"] >= 1 and s["acks_played"] >= 1 and s["silent_tools_pct"] == 100.0
-    # the clips are kept on disk: the next server start does not make them again
-    assert (voice.ACK_DIR / "Puck_m_0.pcm").exists()
+    # the clips are kept on disk: the next server start does not make them again (v0.201: generation tag in the name)
+    assert (voice.ACK_DIR / voice._ack_file("Puck", "m", 0).name).exists()
 
 
 def _no_followup(fake):

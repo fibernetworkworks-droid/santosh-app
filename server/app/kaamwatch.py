@@ -344,9 +344,11 @@ def _voice(tenant: str, conv: str, say: str) -> None:
     try:
         from . import voice
         # v0.193 the delivery brief rides along: speech, not reading, and energy that matches the news
+        # v0.201 the rider grows a breath: two short lines, not one flat sentence - "tell a friend" warmth
         note = (f"[Kaam update, tell her briefly in your own words when there is a natural pause; don't read symbols; "
                 f"say it like speech - short sentences, a small pause before the result, energy that matches the news "
-                f"(a small smile in the voice if it worked, calm and straight if it did not)] {say}")
+                f"(a small smile in the voice if it worked, calm and straight if it did not); "
+                f"two breaths, not one run-on line - jaise dost ko batate hain, aise sunao] {say}")
         n = voice.inject(conv, note)
         for c2, calls in list(getattr(voice, "ACTIVE", {}).items()):
             if c2 == conv:

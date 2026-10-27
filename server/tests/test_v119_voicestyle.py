@@ -113,7 +113,9 @@ def test_live_config_uses_her_wait_vocabulary_and_block(env, monkeypatch):
              "vocab": ["Kothrud", "Rameshwar"]}
     cfg = voice.live_config("Puck", "hi-IN", "ctx", None, langst=st, style=style)
     text = cfg.system_instruction.parts[0].text
-    assert "HER NAMES AND WORDS" in text and text.rstrip().endswith("Only a note that says 'Language note' can change it.")
+    assert "HER NAMES AND WORDS" in text and text.rstrip().endswith("garmi.)")   # v0.201 the delivery reminder rides last
+    assert "Only a note that says 'Language note' can change it." in text            # the end lock is still in
+    assert text.index("HER NAMES AND WORDS") < text.rindex(voice.DELIVERY_END)      # ...just before the reminder
     assert text.index("HER NAMES AND WORDS") > text.index("About the user")
     aad = cfg.realtime_input_config.automatic_activity_detection
     assert aad.silence_duration_ms == 950
