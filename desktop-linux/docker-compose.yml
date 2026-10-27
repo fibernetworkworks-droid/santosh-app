@@ -11,10 +11,11 @@ services:
     image: hoola-pc:latest
     container_name: hoola-pc
     restart: unless-stopped
-    mem_limit: 1500m
+    mem_limit: 2500m   # v1.2.0: real Chrome + heavy pages need headroom (VPS has 8 GB, 3 GB free)
     environment:
-      # docker bridge -> the Hoola server on the host (matches the vps-ops health probe)
-      HOOLA_SERVER: http://172.18.0.1:8077
+      # public URL, same path every desktop uses (the 172.18.0.1 bridge is firewall-dropped
+      # on this VPS - v0.195 lesson: the pair POST sat in silent timeout on the bridge path)
+      HOOLA_SERVER: https://hoola.ainewtika.com
       HOOLA_PC_NAME: Hoola PC
     volumes:
       - hoola-pc-data:/data

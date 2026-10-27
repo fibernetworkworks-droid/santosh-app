@@ -42,7 +42,7 @@ SERVER = os.environ.get("HOOLA_SERVER", "http://127.0.0.1:8077").strip().rstrip(
 NAME = os.environ.get("HOOLA_PC_NAME", "Hoola PC")
 DISPLAY = os.environ.get("DISPLAY", ":1")
 CDP = "http://127.0.0.1:9222"
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 MAX_SEND = 50 * 1024 * 1024   # same upload cap as the Windows Santosh Desktop
 DOWNLOADS = DATA / "Downloads"
 PROFILE = DATA / "chrome"
@@ -107,9 +107,19 @@ def _active_window() -> str:
         return ""
 
 
-# ---------------- Chromium over CDP (lazy) ----------------
+# ---------------- Chrome over CDP (lazy) ----------------
 _chrome_lock = threading.Lock()
 _chrome: subprocess.Popen | None = None
+
+
+def _browser_exe() -> str:
+    """v1.2.0 real Google Chrome first (full codecs H.264/AAC/MP3 + the build sites are tested
+    against - Debian's chromium has no proprietary codecs and that is most of the 'Chromium has
+    issues' pain: videos black, some media sites broken). chromium stays as the fallback."""
+    for e in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser"):
+        if subprocess.run(["which", e], capture_output=True).returncode == 0:
+            return e
+    return "chromium"
 
 
 def _chrome_up() -> None:
@@ -121,11 +131,14 @@ def _chrome_up() -> None:
                 return
             except Exception:
                 pass
+        # --no-sandbox: the container runs as root - Chrome refuses to start without it
+        # (Debian's chromium wrapper adds it silently for root, Google Chrome does not).
         flags = ["--remote-debugging-port=9222", f"--user-data-dir={PROFILE}", "--no-first-run",
                  "--no-default-browser-check", "--disable-session-crashed-bubble", "--start-maximized",
                  "--window-position=0,0", "--window-size=1280,760", "--disable-dev-shm-usage",
-                 "--disable-crash-reporter", "--force-device-scale-factor=1", "--password-store=basic"]
-        exe = "chromium" if subprocess.run(["which", "chromium"], capture_output=True).returncode == 0 else "chromium-browser"
+                 "--disable-crash-reporter", "--force-device-scale-factor=1", "--password-store=basic",
+                 "--no-sandbox"]
+        exe = _browser_exe()
         _chrome = subprocess.Popen([exe, *flags], env={**os.environ, "DISPLAY": DISPLAY},
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(60):          # up to ~15s for first paint
@@ -252,12 +265,12 @@ class Actions:
         raise ActionError(f"Unknown control op {op}")
 
     # ---- apps / windows ----
-    _APPS = {"chrome": "chromium", "chromium": "chromium", "browser": "chromium", "files": "xdg-open",
+    _APPS = {"chrome": "@browser", "chromium": "@browser", "browser": "@browser", "files": "xdg-open",
              "calculator": "gnome-calculator", "text editor": "gedit", "editor": "gedit",
              "terminal": None, "cmd": None}
 
     def do_apps(self, **_) -> dict[str, Any]:
-        apps = ["Chromium (Chrome)", "Files", "Text Editor (gedit)", "Calculator",
+        apps = ["Chrome (Google Chrome)", "Files", "Text Editor (gedit)", "Calculator",
                 "LibreOffice / anything installed via the install action"]
         return {"apps": apps, "windows": _windows()[:20]}
 
@@ -265,6 +278,8 @@ class Actions:
         name = str(name or "").strip()
         low = name.lower()
         cmd = self._APPS.get(low)
+        if cmd == "@browser":
+            cmd = _browser_exe()          # v1.2.0 google-chrome when present, chromium otherwise
         if cmd is None and low in self._APPS:
             raise ActionError("Terminal yahan nahi khulta - run action use kijiye (yeh Hoola ka apna VM hai).")
         if cmd is None:
