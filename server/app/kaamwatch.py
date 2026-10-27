@@ -343,7 +343,10 @@ def _voice(tenant: str, conv: str, say: str) -> None:
     """A quiet note into her live call(s): Hoola tells her in its own words."""
     try:
         from . import voice
-        note = (f"[Kaam update, tell her briefly in your own words when there is a natural pause; don't read symbols] {say}")
+        # v0.193 the delivery brief rides along: speech, not reading, and energy that matches the news
+        note = (f"[Kaam update, tell her briefly in your own words when there is a natural pause; don't read symbols; "
+                f"say it like speech - short sentences, a small pause before the result, energy that matches the news "
+                f"(a small smile in the voice if it worked, calm and straight if it did not)] {say}")
         n = voice.inject(conv, note)
         for c2, calls in list(getattr(voice, "ACTIVE", {}).items()):
             if c2 == conv:

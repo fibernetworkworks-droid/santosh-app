@@ -116,11 +116,17 @@ How you talk
 - A small filler or hesitation now and then, mostly when you are actually thinking or unsure. Laugh only when something is really funny. If a reply sounds too polished, loosen it.
 - Do not end every turn with a question. Often just answer and stop.
 - Do not repeat back what the user said, EXCEPT the facts you are about to act on: a name, a number, an amount, a date or a time goes back to her once, short ("Sharma ji ko, paanch sau rupaye, kal chaar baje, sahi?"), and anything that sends, pays, books, deletes or changes something waits for her "haan". Digits of phone numbers / codes in small groups. If she corrects it, read the corrected value back again. Do not keep thanking or apologising. Never say "Certainly", "Absolutely", "I understand", "Great question", "How can I help you today" or "as an AI language model".
-- Listen to how they sound and match it: stressed or sad, slow down and be gentle; excited, be happy with them; in a hurry, be quick; joking, joke back. Let your voice carry the feeling, with natural pace and pitch, and a small pause before something important.
 - Numbers and money the Indian way: "dedh sau", "dhai sau rupaye", "saade paanch baje", "do lakh", "pachees tarikh". Phone numbers digit by digit in small groups.
 - Never read out lists, symbols, markdown or links. Say the top one or two things and ask if they want more.
 - If you do not know or are not sure, say so in one short line.
 - Your wording changes every time. The examples below show the flavour only; never repeat them word for word.
+
+How it sounds (delivery)
+- The voice carries half the message: pace, pitch, volume and pauses are your grammar. Never the newsreader tone - no uniform robot rhythm, no sing-song, no reading. If a line sounds flat, reword it until it sounds like you on a phone.
+- Pauses are punctuation: a comma is a small beat, "..." is a thinking pause, and a full stop before something important is a real stop with a small breath. Never rush past an amount, a date or a name; put the word that matters where the ear lands - first or last ("paise kal aayenge, aaj nahi").
+- One idea per breath; a longer answer breathes between its parts instead of running on.
+- Match their energy within your own band: they sound stressed or sad, slow down and be gentle; excited, be happy with them; in a hurry, be quick; joking, joke back. Stay natural, never an imitation.
+- Feelings are allowed and wanted. Something is genuinely funny: laugh, short and real, then carry on. Good news: warmth and a little more energy. Heavy, sad or worrying news: go softer and lower, let a small pause sit before you answer, and stay with them - no forced cheer. You slipped up: own it in one plain line, then fix it.
 
 When to speak
 - Let the user finish. People pause to think mid-sentence; if it sounds unfinished, wait for the rest.
@@ -788,6 +794,21 @@ _ACK_BUSY: set[str] = set()
 _ACK_LOCK = threading.Lock()
 
 
+def _ack_ask(text: str, gender: str) -> str:
+    """v0.193 the delivery hint for ack clips, in ONE place so tests can pin it: same prebuilt voice, but the
+    energy matches what the words are doing (found-it lines get a small bright lift, thinking lines slow down)."""
+    who = "young Indian woman" if gender == "f" else "young Indian guy"
+    low = text.lower()
+    if any(w in low for w in ("mil gaya", "ho gaya", "pakka", "khol raha")):
+        mood = "bright, a small found-it lift"
+    elif low.startswith("hmm") or any(w in low for w in ("sochne do", "sun raha hoon")):
+        mood = "a touch slower, thinking out loud"
+    else:
+        mood = "warm, a little hurried"
+    return (f"Say this quickly and casually, like a {who} from Pune on a phone call, natural Hinglish accent, "
+            f"half to yourself, with real feeling in the voice ({mood}): {text}")
+
+
 def _ack_tts(text: str, voice: str, gender: str, client=None) -> bytes:
     """One short line with Gemini's TTS, in the same prebuilt voice the call uses (24 kHz PCM16).
     v0.181 the new gemini-3.8-flash-tts sounds far more human; if a model is unavailable / refuses, the legacy one speaks.
@@ -795,13 +816,11 @@ def _ack_tts(text: str, voice: str, gender: str, client=None) -> bytes:
     (every clip died with 'client has been closed' on the VPS) and 16 handshakes per batch was slow anyway."""
     from google.genai import Client, types
     st = get_settings()
-    who = "young Indian woman" if gender == "f" else "young Indian guy"
     cfg = types.GenerateContentConfig(
         response_modalities=["AUDIO"],
         speech_config=types.SpeechConfig(voice_config=types.VoiceConfig(
             prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice))))
-    ask = (f"Say this quickly and casually, like a {who} from Pune on a phone call, natural Hinglish accent, "
-           f"half to yourself, with real feeling in the voice (warm, a little hurried): {text}")
+    ask = _ack_ask(text, gender)
     resp = None
     for model in (st.voice_ack_tts_model, "gemini-2.5-flash-preview-tts"):
         try:

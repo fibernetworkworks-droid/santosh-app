@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -159,7 +160,9 @@ def _wake_text(r: KaamFollowup) -> str:
     if r.link:
         digest += f"\nLink: {r.link}"
     return ("[Santosh worker update, not the user] Ek background kaam ka natija abhi aaya hai:\n" + digest +
-            "\n\nIsko apni awaaz mein 1-3 chhoti lines mein batao - kya hua, asli natija kya hai. Agar natija adhura "
+            "\n\nIsko apni awaaz mein 1-3 chhoti lines mein batao - kya hua, asli natija kya hai. Bole jaise phone "
+            "par bolte hain: chhote vaakya, comma ka matlab chhota pause, aur energy natije ke hisaab se (sahi nikla "
+            "to thodi khushi awaaz mein, adhura ya galat to dheemi aur seedhi). Agar natija adhura "
             "ya galat lag raha hai, ya usme jo bataya gaya usse zyada kaam baaki hai, to tools se haalat check kar ke "
             "sahi jaankari do (jo tools dikhe unse; jo nahi dikhe tool_search se lao). Jo pata hai wahi bolo, kuch "
             "apne aap se mat jodo.")
@@ -204,13 +207,27 @@ def _canned(r: KaamFollowup) -> str:
     return f"✅ {head}: ho gaya." + (f" {r.detail}" if r.detail else "") + (f" {r.link}" if r.link else "")
 
 
+_ONE_SHOT_SYSTEM = (   # v0.193 the delivery brief lives in ONE place so tests pin it
+    "Tum Hoola ho, ek Bharatiya AI coworker. Tumhari malik ke ek kaam ka natija abhi aaya hai. "
+    "Usko 1-2 chhoti Hinglish lines mein batao: kya poora hua, ruk gaya, ya band kar diya gaya, asli "
+    "natija kya hai. Jaise phone par bolti hai waise likho: chhote vaakya, comma ka matlab chhota pause, "
+    "energy natije ke hisaab se (sahi nikla to thodi khushi, ruk gaya ya band hua to dheemi aur seedhi "
+    "awaaz). Sirf wahi fact bolo jo neeche diya hai - kuch apne aap se jodna mat. Link ho to ek "
+    "baar saaf likho. Koi emoji nahi, koi markdown nahi, koi ✅ ❌ jaise symbol nahi.")
+
+
+def _spoken(line: str) -> str:
+    """The chat line as SHE would hear it in a live call: symbols out, the flat 'title: state' colon becomes a
+    spoken comma. The chat keeps the original line as it is."""
+    out = re.sub(r"[✅❌⏹▶🔄⚠⏳]\s*", "", str(line or "")).strip()
+    out = out.replace(": ", ", ", 1)
+    return out
+
+
 async def _model_line(r: KaamFollowup, settings) -> str:
     """One tiny one-shot call (cheap brain first, no tools): the result in Hoola's own words, 1-2 lines."""
     from .agent.pakka import _ask
-    system = ("Tum Hoola ho, ek Bharatiya AI coworker. Tumhari malik ke ek kaam ka natija abhi aaya hai. "
-              "Usko 1-2 chhoti Hinglish lines mein batao: kya poora hua, ruk gaya, ya band kar diya gaya, asli "
-              "natija kya hai. Sirf wahi fact bolo jo neeche diya hai - kuch apne aap se jodna mat. Link ho to ek "
-              "baar saaf likho. Koi emoji nahi, koi markdown nahi, koi ✅ ❌ jaise symbol nahi.")
+    system = _ONE_SHOT_SYSTEM
     text = f"Kaam: {r.label} {r.title}\nNatija: {STATE_WORD.get(r.state, r.state)}" + \
            (f"\nVivaran: {r.detail}" if r.detail else "") + (f"\nLink: {r.link}" if r.link else "")
     try:
@@ -361,9 +378,9 @@ async def _send(fid: str, settings) -> None:
         except Exception:
             log.exception("followup notify failed")
             return
-        try:   # the same quiet note into her live call(s), like every kaamwatch line
+        try:   # the same quiet note into her live call(s), like every kaamwatch line - spoken shaped (v0.193)
             from . import kaamwatch
-            kaamwatch._voice(tenant, conv, line)
+            kaamwatch._voice(tenant, conv, _spoken(line))
         except Exception:
             log.debug("followup voice note failed", exc_info=True)
         STATS["sent"] += 1
