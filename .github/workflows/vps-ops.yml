@@ -267,7 +267,13 @@ jobs:
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
                 echo 'UP=0; wait_up || UP=$?'
                 echo 'echo "== health"; health'
-                echo 'echo "== rea_khoj status (live app, REA_BIN forced for the check only)"; cd $CORE && REA_BIN="$HOME/apps/rea/node_modules/.bin/rea" REA_JADX_JAR="$HOME/apps/rea/jadx-headless-mcp-0.7.1-all.jar" timeout 90 .venv/bin/python -c "from app.appcheck import khoj; s=khoj.status(); print(s); assert s[\"enabled\"] and s[\"apk\"], \"rea_khoj not ready on the live app"; print(\"rea_khoj READY: tools=%d apk=%s\" % (s[\"tools\"], s[\"apk\"]))" 2>&1 | tail -8'
+                echo 'echo "== rea_khoj status (live app, REA_BIN forced for the check only)"; cd $CORE && REA_BIN="$HOME/apps/rea/node_modules/.bin/rea" REA_JADX_JAR="$HOME/apps/rea/jadx-headless-mcp-0.7.1-all.jar" timeout 90 .venv/bin/python - <<PY 2>&1 | tail -8'
+                echo 'from app.appcheck import khoj'
+                echo 's = khoj.status()'
+                echo 'print(s)'
+                echo 'assert s["enabled"] and s["apk"], "rea_khoj not ready on the live app"'
+                echo 'print("rea_khoj READY: tools=%d apk=%s" % (s["tools"], s["apk"]))'
+                echo 'PY'
                 echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
