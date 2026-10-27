@@ -69,6 +69,14 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {"campaign_id": {"type": "string"},
                                                         "action": {"type": "string", "enum": ["pause", "resume", "cancel"]}},
                       "required": ["campaign_id", "action"]}},
+    {"name": "haan_karo", "description": (
+        "v0.199 BOL-KAR-HAAN: a PC/browser step of THIS conversation's running job is waiting on a 'Haan, karo' "
+        "approval card and the user's words in this turn approve it in context ('haan karo', 'kar do', 'theek hai', "
+        "any clear yes). Call this to approve THAT step: the job moves at once. ONLY when such a step card is really "
+        "pending; if the tool says none, don't insist. NEVER for money / UPI / bank-OTP / password cards: those "
+        "approve only by tapping the card in the app; voice can never approve them - say so plainly."),
+     "input_schema": {"type": "object", "properties": {
+         "heard": {"type": "string", "description": "Her words that approved it (short quote)"}}}},
 ]
 
 TOOL_LABELS = {
@@ -81,6 +89,7 @@ TOOL_LABELS = {
     "confirm_send": "Bhejne ki permission set kar raha hoon",
     "get_campaign_status": "Campaign ki report nikaal raha hoon",
     "control_campaign": "Campaign update kar raha hoon",
+    "haan_karo": "Manzoori laga raha hoon",
 }
 
 
@@ -202,6 +211,15 @@ async def control_campaign(ctx: Ctx, campaign_id, action, **_):
         raise ToolError(str(e))
 
 
+async def haan_karo_tool(ctx: Ctx, heard: str = "", **_):
+    """v0.199 BLOCK 2: the model judged her words as a yes for THIS conversation's pending step approval — resolve
+    it without a tap. Money approvals can never reach here: voice_pending only carries non-money PC/browser steps
+    (amount / tier>=3 / UPI-bank-OTP / money words are filtered before), and money words in her own sentence are
+    refused again inside."""
+    from ..bazar import service
+    return service.voice_tool_approve(ctx.tenant_id, ctx.conversation_id, heard)
+
+
 HANDLERS = {
     "list_lead_lists": list_lead_lists,
     "get_lead_list": get_lead_list,
@@ -212,6 +230,7 @@ HANDLERS = {
     "confirm_send": confirm_send,
     "get_campaign_status": get_campaign_status,
     "control_campaign": control_campaign,
+    "haan_karo": haan_karo_tool,
 }
 
 

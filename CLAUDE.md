@@ -8309,6 +8309,33 @@ endpoint shapes, version pin. Sweeps green: PC family 37 (pc_kinds + pc_bridge +
 ?v=0.205.0 x9, pins ->0.205.0 in 17 suites. Windows desktop 1.4.0 untouched. Deploy = server only (vps-ops
 deploy); the APK needs a rebuild for the new section; Hoola PC container pairing still pending the owner's
 6-digit code.
+## v0.207.0 BOL-KAR-HAAN TOOL (Block 2, voice-to-voice alag) (re-versioned TWICE more on rebase: VOICE DELIVERY took 0.199.0, the dev's Hoola-PC-section took 0.205.0 and KAAN KAAPI took 0.206.0 - all works kept, REBASE PROTOCOL respected) (owner: "naya voice-side tool - model call karega jab aap 'haan karo' bolo -> usi call ke job ka pending approval approve. Paise wala (tier 3 / UPI / bank OTP) hamesha tap + fingerprint only - voice se kabhi nahi")
+
+v0.198.0 gave calls a PASSIVE listener (_approval_listen): boli ke shabdon par regex chalta hai. Par uski haan
+apne andaaz mein aati hai ("theek hai bhai, jaisa tumhe theek lage", "haan kar do aur jaldi karo" - 10 shabd,
+regex MAX tokens se miss) - card atka rehta hai, op timeout par marta hai. Ab the call MODEL has its own tool:
+
+- `haan_karo` (agent/tools.py TOOLS/HANDLERS/TOOL_LABELS -> haan_karo_tool): model calls it when from CONTEXT it
+  judges that she approved THIS conversation's pending step approval. Server half: bazar/service.py
+  voice_tool_approve(tenant, conv, heard) - voice_pending (call-scoped, <=15 min, non-money pcop/browser) ->
+  decide(notify_ok=False), one note speaks. No regex gate on her words (the model's understanding IS the new
+  path); the vocabulary gate stays on the passive listener.
+- MONEY GATES triple-parriert, tool call par bhi: (1) voice_pending STRUCTURAL - amount / tier>=3 /
+  UPI-card-wallet-pay-bank pay_method / money words in title+items never reach the tool, so there is nothing
+  money-shaped to approve (tier 3 / UPI / bank-OTP = card tap + PIN/fingerprint ALWAYS); (2) money_risk on her
+  own words ("haan pay kar do" -> card-only refusal note); (3) voice-lock: haan_karo is NOT in TRUSTED/FAMILY
+  (voiceid/permissions.py) - any voice but the owner's is refused by the server (fail-closed).
+- Honest edges: pure rejection in her words -> nothing approved; no pending -> status none ("kuch approve nahi
+  hua"); approval row gone/expired -> none with a plain line. Rejection stays the passive listener's job (nahi
+  cancels young approvals, unchanged).
+- Wiring: VOICE_TOOL_NAMES direct (NOT via_kaam - instant in-call answer), where.steer untouched (default
+  passthrough), call prompt "Which tool" line (only-when-pending + money-never), stats.voice_approvals counts
+  the tool path too. Chat brain also sees the tool (same conversation-scoped gates apply).
+- Tests: server/tests/test_v0199_voice_tool.py (12): approve end-to-end (op.approved + decision), call-scope
+  (another conversation's approval stays pending), young-window filter, money pending unreachable (amount /
+  tier3 / upi), money words refused (3 samples), rejection heard refused, no-pending honest, wiring + _compact
+  600-char pin, voice-lock owner-only, prompt lines.
+
 ## v0.206.0 KAAN KAAPI — Phase B backchannels (owner: "GOOD NOW LETS WORK ON NEXT PHASE" after GOOD on the v0.202 feeling engine; Phase B of the Dessa/Sesame natural-voice plan) (re-versioned 0.205.0->0.206.0 on rebase: the dev's parallel v0.205.0 Hoola-PC-section took the number first — fourth collision, all their work kept, REBASE PROTOCOL respected)
 THE GAP (exact): Gemini Live is half-duplex. While SHE talks — a story, a list of details — he stays dead silent until his answer starts, and while a long tool runs the first "ek second" is followed by dead air again. Dessa-class audio-native models murmur backchannels natively ("haan", "achha" in her pauses); a real person on a phone does both. THE FIX — two new clip pools in his own voice through the shared TTS path: (1) **listener murmurs in her pauses** — `BC_LINES` (10: "Haan...", "Achha...", "Hmm...", "Achha achha...", "Theek hai..."...), asked as a murmur that trails off (`_bc_ask`: "an acknowledging murmur, never a question, never a full sentence"); every input transcription re-arms a 1.2 s timer (`_arm_backchannel`, beside `_affect_watch` in the reader); the murmur fires (`_bc_watch`) only if the pause HELD, she has said 4+ words this turn (`BC_MIN_WORDS`), he has NOT taken the turn (`_mark_audio` and `finish_turn` cancel the timer), max 2 per turn of hers, 7 s between murmurs, never inside 8 s of an ack. (2) **one progress sound on a long silent tool** — `PROG_LINES` (6: "Dekh raha hoon... ruko.", "Ho gaya... bas, ek sec."), `_prog_watch` armed beside `_ack_watch` in `run_tool`, fires at `PROG_AFTER_S`=8 s of continued mutual silence (he said nothing since the tool started, she is quiet, the first ack is ≥7 s old), cancelled with the tool (`prog.cancel()`); asked half-to-himself (`_prog_ask`). Infrastructure: `_tts_clip(ask, voice, client)` now takes the ask itself — acks, murmurs and progress share one request path (the acks keep their `_ack_ask`/a2 contract); generation tags ride in the filenames (`bc_*_b1.pcm`, `prog_*_p1.pcm` — the `ack_refresh` vps-ops job clears all pools at once); no-repeat picks (`_last_bc_i/_last_ack_i/_last_prog_i`); ONE clip clock (`_last_ack`) so acks, murmurs and progress never stack (a fresh murmur blocks the ack for 6 s and vice versa); the pools render at call start beside the acks when `voice_backchannel` is on (config kill switch, default on). Stats: `backchannels` + `progress` per call, `backchannels_played` + `progress_clips` in the scorecard, both in the end-of-call log line. The dev's v0.205.0 Hoola-PC section rides untouched beside it.
 Tests: NEW test_v0206_backchannels.py (24) — both asks pinned (murmur-never-a-question, half-to-himself, gendered, no format braces), generation-tag filenames distinct from the ack a2, pool lines tiny/no-questions/variety, builder uses cached renders + TTS for the rest + writes files, `pool_clips` never lets a call wait, murmur fires in a real pause, skips when he speaks / took the turn / she resumed / bare "haan" / cap 2 / cooldown / hold / closed / kill switch / fresh ack, arm-reschedules + `_mark_audio` cancels, `finish_turn` clears the cap (source pin), progress fires after long silence and aborts on result / her voice / fresh ack, `_ack_watch` no-repeat + respects a fresh murmur, run_tool wiring source pins, scorecard carries the new counters, version pin. Version 0.206.0 (pubspec 0.206.0+240, console ?v=0.206.0 x9, conscious pins →0.206.0 in 18 suites + the sessions cache-stamp set). Server-only — old APKs keep working; desktop untouched 1.4.0; Mera PC freeze respected.

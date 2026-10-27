@@ -57,6 +57,7 @@ MALE_VOICES = {
 }
 
 VOICE_TOOL_NAMES = {
+    "haan_karo",                   # v0.199 BOL-KAR-HAAN: she said yes on the call -> model approves THIS call's pending step card (money NEVER — voice_pending non-money only)
     "create_reminder", "list_reminders", "cancel_reminder", "set_phone_alarm", "set_phone_timer",
     "add_calendar_event", "remember", "forget", "list_add", "list_show", "list_done", "set_profile",
     "get_weather", "create_routine", "list_routines", "cancel_routine",
@@ -177,6 +178,7 @@ Which tool (details are in each tool's description)
 - Reminders, phone alarms and timers, lists, memory, weather, daily routines: call them directly.
 - Business work in a call (her Sahayaks: tailor, chai, office, GST, payroll, accounts, audit, insurance, telecaller, SEO, wholesale, export, franchise, contractor, ads, brand, support / helpdesk / complaints / returns / community / call centre, developer / QA / IT / NOC / cyber / DevOps / docs / product, logistics / fleet / godown / courier / travel / drivers / customs, real estate / society / interior / architect, website, app design, 3D, video studio, Hoola Deals / bookings / compare, Postgres, Document desk / Sheet Milaan): those tools are not in this call. Hand the job to santosh_kaam with her words and the details ("darzi: Riya ka blouse order, 15 tareekh"); say one line that it is being done, and the result comes back as a note / card. Tool names in these notes for such work = santosh_kaam.
 - Payments, bills, shop orders, UPI, cabs, Swiggy/Zomato, WhatsApp campaigns, multi-step work, drafting: santosh_kaam with the full request ("MSEDCL ka bill bharna hai, consumer number 1234"). It prepares a confirm card on the phone; tell the user the amount and to tap Approve. Never say it is paid or ordered yourself, and never ask for a UPI PIN or OTP.
+- A PC/browser step of a running job waits on a 'Haan, karo' card and she says yes in her own words ("haan karo", "kar do", "theek hai", any clear yes): call haan_karo so the step moves at once (a note confirms it). ONLY when such a card is really pending; if the tool says none, don't insist. Money / UPI / bank-OTP / password cards are NEVER approved by voice — she taps them in the app; say that plainly.
 - Something to use, keep, see or share (a calculator, tracker, hisaab, checklist, chart, quiz, poster, price list, plan, simple game): artifact_make with a complete brief (purpose, every number and detail, language, style); it pops up on their screen in under a minute. To change one: artifact_list for the id, then artifact_make with artifact_id and the change.
 - TV channels: tv_channel to play a free channel on the phone or on the TV ("DD Sahyadri lagao", "TV pe Aaj Tak chalao", "BBC News lagao"; ~4,300 free channels from 140 countries, country= for one country). Paid channels (Star, Sony, Colors) aren't there. If the TV can't be cast to, use youtube_play on=tv query="<channel> live".
 - YouTube: youtube_play to PLAY a video right away ("YouTube pe Arijit ke gaane lagao", "TV pe Masterchef chalao"): on=phone = YouTube app on her phone, on=tv = her smart TV. It picks the best match itself; say the title it played.
@@ -1763,6 +1765,8 @@ class Call:
         # a call can't wait minutes: these three answer after a short wait and the rest arrives later
         extra = {"pc_do": {"_wait": 8}, "hoola_pc_do": {"_wait": 8}, "artifact_make": {"_wait": 0}, "browse_web": {"_wait": 10}}.get(name, {})
         result = await asyncio.wait_for(dispatch(name, {**args, **extra}, self.ctx), timeout=max(5, get_settings().voice_tool_timeout_s))
+        if name == "haan_karo" and isinstance(result, dict) and result.get("status") == "approved":
+            self.stats["voice_approvals"] = self.stats.get("voice_approvals", 0) + 1   # v0.199 bol-kar-haan tool
         return {"result": result}
 
     def _note_result(self, name: str, out: dict) -> None:

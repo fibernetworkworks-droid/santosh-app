@@ -616,6 +616,44 @@ def voice_reject(tenant_id: str, conversation_id: str) -> dict[str, Any] | None:
                                      "Ek chhoti line mein batao aur poochho aage kya karna hai.)"}
 
 
+def voice_tool_approve(tenant_id: str, conversation_id: str, heard: str = "") -> dict[str, Any]:
+    """v0.199 BLOCK 2 (bol-kar-haan, voice-to-voice alag): live call mein model ne KHUD `haan_karo` tool call kiya —
+    usne baat-cheet ke context se samjha ki usne ISI call ke atke kaam ki manzoori de di ('haan karo', 'kar do',
+    'theek hai', ya koi bhi apne andaaz ki haan jo boli ke shabdon mein pakdi na jaye — wahi gap jo passive
+    _approval_listen ka regex nahi pakadta). Boli ka vocabulary gate yahan NAHI (model ki samajh hi to naya raasta
+    hai) — par paise ke gates teen parriert, tool call par bhi:
+      1. voice_pending sirf NON-MONEY pcop/browser young manzooriyan deta hai (amount / tier>=3 / UPI-card-wallet-
+         pay-bank pay_method / title-items mein money shabd — kabhi is list mein aati hi nahi), to approve hone
+         ke liye money wali manzoori maujood hi nahi hoti (tier 3 / UPI / bank-OTP = hamesha card par);
+      2. uske bol mein hi paise / OTP / password ke shabd hon to bhi manzoori nahi (money_risk);
+      3. voice-lock: haan_karo TRUSTED/FAMILY list mein nahi — owner ki awaaz ke alawa server khud rok deta hai.
+    Returns {status: approved|none|no|money, title?, say} — say Gemini ke liye note (result tool channel se jata hai)."""
+    from .. import approval_words
+    heard = (heard or "").strip()
+    pending = voice_pending(tenant_id, conversation_id)
+    if not pending:
+        return {"status": "none", "say": ("(System: is call ke chal rahe kaam ki koi pending manzoori nahi mili — kuch "
+                                          "approve nahi hua. Usse ek chhoti line mein poochho kis step ki haan thi, "
+                                          "ya aage badho.)")}
+    if approval_words.is_pure_rejection(heard):
+        return {"status": "no", "say": ("(System: uske shabd mana kar rahe hain — maine kuch approve NAHI kiya. Uski baat "
+                                        "maano aur poochho aage kya karna hai.)")}
+    if approval_words.money_risk(heard):
+        return {"status": "money", "say": ("(System: uske shabdon mein PAISE/OTP ki baat hai — aisi manzoori bol se nahi "
+                                           "hoti. Ek chhoti line mein batao: app ke card par hi Approve dabana hoga; tumne "
+                                           "is step se aage nahi badhna.)")}
+    ap = pending[0]          # ek manzoori, ek haan (sabse nayi)
+    title = ap.title or ""
+    try:
+        decide(tenant_id, ap.id, "approve", notify_ok=False)
+    except Exception:
+        log.exception("voice tool approve failed for %s", ap.id)
+        return {"status": "none", "say": "(System: manzoori approve nahi ho payi — ek line mein batao ki yeh app ke card se karna hoga.)"}
+    return {"status": "approved", "title": title,
+            "say": (f"(System: usne manzoori de di — '{title}' wali manzoori card par approve ho gayi, kaam aage badh "
+                    "raha hai. Bas ek chhoti line bolo: 'manzoori mil gayi, kaam aage badh gaya'.)")}
+
+
 def expire_approvals(ttl_h: int = 24) -> int:
     """v0.179 a confirm card nobody tapped goes expired after the TTL (worker tick): her chat stops asking for a
     decision on the same card key. Nothing was ordered, nothing was paid."""
