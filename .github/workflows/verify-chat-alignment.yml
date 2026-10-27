@@ -1,0 +1,48 @@
+name: Verify running Hoola chat alignment
+on:
+  create:
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.event.ref_type == 'branch' && github.event.ref == 'diagnose/hoola-chat-alignment-20261027'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Check public console
+        run: |
+          curl -sS --connect-timeout 10 --max-time 20 -o /tmp/public-console -w 'PUBLIC_HTTP_STATUS=%{http_code} TLS_VERIFY=%{ssl_verify_result}\n' https://hoola.ainewtika.com/console/ || true
+          if test -f /tmp/public-console; then grep -oE '<title>[^<]+|workspace.css[^" ]*' /tmp/public-console || true; fi
+      - name: Verify the CSS and HTML actually served by Hoola
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          trap 'rm -f ~/.ssh/hoola-verify' EXIT
+          printf '%s\n' "$VPS_SSH_KEY" | tr -d '\r' > ~/.ssh/hoola-verify
+          chmod 600 ~/.ssh/hoola-verify
+          ssh-keyscan -T 15 -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/hoola-verify -o BatchMode=yes -o ConnectTimeout=20 "$VPS_USER@$VPS_HOST" 'bash -s' <<'SH'
+          set -euo pipefail
+          css=$(mktemp)
+          html=$(mktemp)
+          trap 'rm -f "$css" "$html"' EXIT
+          curl -fsS --max-time 15 http://172.18.0.1:8077/static/console/workspace.css > "$css"
+          curl -fsS --max-time 15 http://172.18.0.1:8077/console/ > "$html"
+          echo 'RUNNING_CSS_HASH'
+          sha256sum "$css"
+          echo 'RUNNING_ALIGNMENT_RULES'
+          grep -F '#app #slotDock' "$css" || true
+          echo 'SERVED_HTML_ASSETS'
+          grep -oE '<title>[^<]+|workspace.css[^" ]*|workspace.js[^" ]*' "$html" || true
+          if grep -Fq '#app #slotDock{width:min(880px,100%);margin-inline:auto}' "$css" && grep -Fq '#app #slotDock #composer{width:100%}' "$css"; then
+            echo ALIGNMENT_FIX_PRESENT
+          else
+            echo ALIGNMENT_FIX_MISSING
+            exit 1
+          fi
+          SH
