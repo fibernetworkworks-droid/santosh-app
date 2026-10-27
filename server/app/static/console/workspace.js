@@ -138,3 +138,37 @@ window.HoolaWorkspace = ctx => {
     app.classList.remove('workspace-full');app.querySelectorAll('.workspace-handle button').forEach(b=>{b.setAttribute('aria-pressed','false');b.textContent='Expand workspace';});
   }});
 })();
+
+// Sidebar divider: drag, keyboard resize, double-click reset, remembered width.
+(() => {
+  const app=document.getElementById('app'),side=app.querySelector('.side');
+  const divider=document.createElement('div');
+  divider.className='sidebar-divider';divider.tabIndex=0;
+  divider.setAttribute('role','separator');divider.setAttribute('aria-label','Resize sidebar');
+  divider.setAttribute('aria-orientation','vertical');divider.setAttribute('aria-valuemin','220');
+  divider.setAttribute('aria-valuemax','420');divider.title='Drag to resize sidebar · double-click to reset';
+  side.id='console-sidebar';divider.setAttribute('aria-controls',side.id);side.after(divider);
+  const narrow=()=>matchMedia('(max-width:1100px)').matches;
+  let width=224,drag=null;
+  try{const saved=Number(localStorage.getItem('hoola.web.sidebar.width'));if(saved>=220&&saved<=420)width=saved;}catch{}
+  const set=value=>{width=Math.max(220,Math.min(420,Math.round(value)));app.style.setProperty('--sidebar-width',width+'px');divider.setAttribute('aria-valuenow',String(width));};
+  const save=()=>{try{localStorage.setItem('hoola.web.sidebar.width',String(width));}catch{}};
+  set(width);
+  divider.addEventListener('pointerdown',e=>{
+    if(narrow()||e.button!==0)return;
+    e.preventDefault();app.classList.remove('collapsed');document.getElementById('collapse').setAttribute('aria-expanded','true');
+    drag={x:e.clientX,width,id:e.pointerId};divider.setPointerCapture(e.pointerId);app.classList.add('sidebar-resizing');
+  });
+  divider.addEventListener('pointermove',e=>{if(drag&&e.pointerId===drag.id)set(drag.width+e.clientX-drag.x);});
+  function finish(cancel=false){if(!drag)return;const current=drag;drag=null;if(cancel)set(current.width);else save();app.classList.remove('sidebar-resizing');if(divider.hasPointerCapture(current.id))divider.releasePointerCapture(current.id);}
+  divider.addEventListener('pointerup',()=>finish());divider.addEventListener('pointercancel',()=>finish(true));
+  divider.addEventListener('lostpointercapture',()=>finish(true));
+  divider.addEventListener('dblclick',()=>{set(224);save();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drag){e.preventDefault();e.stopImmediatePropagation();finish(true);}});
+  divider.addEventListener('keydown',e=>{
+    if(narrow()||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
+    e.preventDefault();app.classList.remove('collapsed');document.getElementById('collapse').setAttribute('aria-expanded','true');
+    set(e.key==='Home'?220:e.key==='End'?420:width+(e.key==='ArrowRight'?1:-1)*(e.shiftKey?20:10));save();
+  });
+  addEventListener('resize',()=>{if(narrow())finish(true);});
+})();

@@ -138,3 +138,23 @@
 #app .side .user span,#app .side .projects .faint{font-size:13px;font-weight:600}
 #app .side kbd.txt{font-size:10px;font-weight:700;white-space:nowrap}
 #app .side .console-controls .livebtn{font-size:13px;font-weight:750}
+
+/* A separate drag target stays fixed while the sidebar content scrolls. */
+#app .side{width:var(--sidebar-width,224px);scrollbar-color:rgba(182,144,231,.22) transparent}
+#app .side::-webkit-scrollbar{width:6px}
+#app .side::-webkit-scrollbar-thumb{background:rgba(182,144,231,.22);border:0}
+#app .side:hover{scrollbar-color:rgba(182,144,231,.5) transparent}
+#app .side:hover::-webkit-scrollbar-thumb{background:rgba(182,144,231,.5)}
+#app .sidebar-divider{position:absolute;top:0;bottom:0;left:calc(var(--sidebar-width,224px) - 4px);width:8px;z-index:38;cursor:col-resize;touch-action:none}
+#app .sidebar-divider:after{content:'';position:absolute;inset:0 3px;background:transparent;transition:background .15s}
+#app .sidebar-divider:hover:after,#app .sidebar-divider:focus-visible:after,#app.sidebar-resizing .sidebar-divider:after{background:var(--saffron)}
+#app.collapsed .sidebar-divider{left:68px}
+#app.sidebar-resizing,#app.sidebar-resizing *{cursor:col-resize!important;user-select:none!important}
+#app.sidebar-resizing .side{transition:none}
+#app.workspace-full .studio,#app.workspace-full .panel{width:calc(100% - var(--sidebar-width,224px))}
+#app.workspace-full.collapsed .studio,#app.workspace-full.collapsed .panel{width:calc(100% - 72px)}
+@media(max-width:1100px){
+ #app .sidebar-divider{display:none}
+ #app .side{width:min(320px,86vw)}
+ #app.workspace-full .studio,#app.workspace-full .panel,#app.workspace-full.collapsed .studio,#app.workspace-full.collapsed .panel{width:100%}
+}

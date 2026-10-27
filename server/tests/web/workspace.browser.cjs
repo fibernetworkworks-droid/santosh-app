@@ -36,6 +36,23 @@ const server=http.createServer((req,res)=>{
  page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>localStorage.setItem('hoola.console.token','fixture-only'));
  await page.goto(`http://127.0.0.1:${server.address().port}/console/`);await page.locator('#app').waitFor({state:'visible'});
+ const divider=page.getByRole('separator',{name:'Resize sidebar'});
+ const edge=await divider.boundingBox();
+ await page.mouse.move(edge.x+4,200);await page.mouse.down();await page.mouse.move(edge.x+80,200,{steps:8});await page.mouse.up();
+ assert.equal(await page.locator('.side').evaluate(e=>Math.round(e.getBoundingClientRect().width)),300);
+ await divider.focus();await page.keyboard.press('ArrowRight');
+ await page.reload();await page.locator('#app').waitFor({state:'visible'});
+ assert.equal(await page.locator('.side').evaluate(e=>Math.round(e.getBoundingClientRect().width)),310);
+ await divider.focus();await page.keyboard.press('End');await page.waitForTimeout(250);
+ await page.waitForFunction(n=>Math.round(document.querySelector('.side').getBoundingClientRect().width)===n,420);
+ assert.equal(await page.locator('.side').evaluate(e=>Math.round(e.getBoundingClientRect().width)),420);
+ await divider.dblclick();await page.waitForTimeout(250);
+ await page.waitForFunction(n=>Math.round(document.querySelector('.side').getBoundingClientRect().width)===n,224);
+ assert.equal(await page.locator('.side').evaluate(e=>Math.round(e.getBoundingClientRect().width)),224);
+ await page.locator('#collapse').click();await page.waitForTimeout(250);
+ await page.waitForFunction(n=>Math.round(document.querySelector('.side').getBoundingClientRect().width)===n,72);
+ assert.equal(await page.locator('.side').evaluate(e=>Math.round(e.getBoundingClientRect().width)),72);
+ await page.locator('#collapse').click();await page.waitForTimeout(250);
  await page.locator('.side').hover();await page.mouse.wheel(0,600);await page.waitForTimeout(150);
  assert.ok(await page.locator('.side').evaluate(e=>e.scrollTop>0),'Sidebar must scroll with wheel');
  assert.ok(await page.locator('.side .sn .txt').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=15 && Number(getComputedStyle(e).fontWeight)>=700),'Sidebar labels must be larger and bold');
@@ -69,6 +86,7 @@ const server=http.createServer((req,res)=>{
  for(const width of [1024,768,390,320]){
   await page.setViewportSize({width,height:900});await page.waitForTimeout(100);
   const sizes=await page.evaluate(()=>({w:innerWidth,scroll:document.documentElement.scrollWidth}));assert.ok(sizes.scroll<=sizes.w,JSON.stringify(sizes));
+  assert.equal(await divider.isVisible(),false,'Resize handle stays off mobile drawer');
   if(width===390){
    await page.locator('#menu').click();await page.locator('.side').hover();await page.mouse.wheel(0,600);await page.waitForTimeout(150);
    assert.ok(await page.locator('.side').evaluate(e=>e.scrollTop>0),'Mobile drawer must scroll');
