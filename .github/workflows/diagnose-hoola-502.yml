@@ -1,0 +1,16 @@
+name: Check public Hoola HTTPS status
+on:
+  create:
+permissions: {}
+jobs:
+  check:
+    if: github.event.ref_type == 'branch' && github.event.ref == 'diagnose/hoola-public-status-20261027'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Unauthenticated public status only
+        run: |
+          for path in /healthz /console/; do
+            printf 'PUBLIC_PATH=%s\n' "$path"
+            curl -sS --connect-timeout 10 --max-time 20 -o /dev/null -w 'HTTP_STATUS=%{http_code} TLS_VERIFY=%{ssl_verify_result}\n' "https://hoola.ainewtika.com$path" || true
+          done
