@@ -139,15 +139,18 @@ def _chrome_up() -> None:
                  "--disable-crash-reporter", "--force-device-scale-factor=1", "--password-store=basic",
                  "--no-sandbox"]
         exe = _browser_exe()
+        # stderr to a file, not DEVNULL (v1.3.0 lesson: a chrome that will not boot was INVISIBLE -
+        # the selftest could only say 'CDP ready nahi hua'; now the real error is in /tmp/chrome_err.log)
         _chrome = subprocess.Popen([exe, *flags], env={**os.environ, "DISPLAY": DISPLAY},
-                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    for _ in range(60):          # up to ~15s for first paint
-        try:
+                                   stdout=subprocess.DEVNULL,
+                                   stderr=open("/tmp/chrome_err.log", "ab"))
+    for _ in range(90):          # up to ~45s for first paint (real Chrome on a big profile is slower
+        try:                     # than 15s on its first boot - dbus/machine-id noise + profile work)
             httpx.get(CDP + "/json/version", timeout=2)
             return
         except Exception:
-            time.sleep(0.25)
-    raise ActionError("Chromium nahi khula (CDP ready nahi hua)")
+            time.sleep(0.5)
+    raise ActionError("Chrome nahi khula (CDP ready nahi hua) - /tmp/chrome_err.log par dekho")
 
 
 def _targets() -> list[dict[str, Any]]:
