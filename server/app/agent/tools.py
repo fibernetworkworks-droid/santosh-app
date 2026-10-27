@@ -362,6 +362,7 @@ from .notebook_tools import NOTEBOOK_HANDLERS, NOTEBOOK_LABELS, NOTEBOOK_TOOLS  
 from .youtube_tools import YOUTUBE_HANDLERS, YOUTUBE_LABELS, YOUTUBE_TOOLS  # noqa: E402
 from .photo_tools import PHOTO_HANDLERS, PHOTO_LABELS, PHOTO_TOOLS  # noqa: E402
 from .appcheck_tools import APPCHECK_HANDLERS, APPCHECK_LABELS, APPCHECK_TOOLS  # noqa: E402
+from .rea_tools import REA_HANDLERS, REA_LABELS, REA_TOOLS  # noqa: E402
 from .hoola_tools import HOOLA_HANDLERS, HOOLA_LABELS, HOOLA_TOOLS  # noqa: E402
 
 # Google Sheets and Google Drive have their own full toolsets now (per-user sign-in, service account as fallback);
@@ -374,7 +375,7 @@ for _t, _l, _h in ((SHEETS_TOOLS, SHEETS_LABELS, SHEETS_HANDLERS), (DRIVE_TOOLS,
                    (FORMS_TOOLS, FORMS_LABELS, FORMS_HANDLERS), (SLIDES_TOOLS, SLIDES_LABELS, SLIDES_HANDLERS),
                    (PHOTOS_TOOLS, PHOTOS_LABELS, PHOTOS_HANDLERS), (NOTEBOOK_TOOLS, NOTEBOOK_LABELS, NOTEBOOK_HANDLERS),
                    (YOUTUBE_TOOLS, YOUTUBE_LABELS, YOUTUBE_HANDLERS), (PHOTO_TOOLS, PHOTO_LABELS, PHOTO_HANDLERS), (APPCHECK_TOOLS, APPCHECK_LABELS, APPCHECK_HANDLERS),
-                   (HOOLA_TOOLS, HOOLA_LABELS, HOOLA_HANDLERS)):
+                   (REA_TOOLS, REA_LABELS, REA_HANDLERS), (HOOLA_TOOLS, HOOLA_LABELS, HOOLA_HANDLERS)):
     TOOLS.extend(_t)
     TOOL_LABELS.update(_l)
     HANDLERS.update(_h)

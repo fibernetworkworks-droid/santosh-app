@@ -269,4 +269,4 @@ def test_email_label_tool_color(lbox):
 # ---------------- version ----------------
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.209.0"
+    assert APP_VERSION == "0.210.0"

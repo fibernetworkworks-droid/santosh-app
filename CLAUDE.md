@@ -8412,3 +8412,62 @@ card titles, schema enums. Ritual: APP_VERSION 0.209.0, pubspec 0.209.0+244, con
 ->0.209.0 in 20 suites. Sweeps green (pre-rebase tree): Google/Drive/Sheets/email 141, core/bazar/cards/agents
 93, version-pin/harness/pc/sessions 116, api/console/docstudio/xlsx/life 72 - 422 passed, zero failures;
 re-run post-rebase.
+
+## v0.210.0 REA KHOJ — reverse-engineer an app / program / file on user call (owner: "GIVE THIS TO HOOLA AI TO PERFORM REVERSE ENGINEER IN BACKEND ON USER CALL" after seeing github.com/morluto/rea)
+
+A new tool `rea_khoj` (action=overview|classes|class|method|refs|signature|status) lets the model itself drive
+REA's investigation loop, exactly like REA's own agent flow: `overview` reports the file's kind + (for an APK)
+package / activities / services / permissions / signer / flutter / unity hints / manifest excerpt; (for a Windows
+PE) resources / imports / certificates / load config / .NET metadata / exports; (for an ELF/.ko) exports + build
+notes + go/rust; (for an Electron/JS app) the module graph; for SQLite / BEAM / .pyc / .ips / .dtb / model
+artifacts / GPU code / EVM bytecode / devicetree the matching static inspector. For an APK the model then drives
+the loop itself: `classes` (search a class name) -> `class` (class_name -> methods / fields / inner classes) ->
+`method` (class_name + method_name + overload_index -> decompiled body + smali fallback, 6000-char clip) -> `refs`
+(who uses a class / method); `signature` returns APK signers + certificate fingerprints + rotation lineage.
+
+Sources are the same as `app_check`: `file_id` (a file from the phone or PC), `email_id` + `attachment_id`, or
+`drive` (a Drive file name / id / link). The file is copied into a per-tenant LRU khoj cache (max 8 / 6 h) so
+follow-up probes (class / method / refs) keep working across turns even when the mailbox's stored file_id vanishes
+after 24 h. The file is NEVER executed, NEVER re-uploaded, NEVER re-distributed.
+
+The locked-down REA stdio MCP client (`app/appcheck/runner.py`) that powers App Jaanch is reused unchanged; its
+static-only allowlist grows 7 -> 31: added `search_android_classes`, `inspect_android_class`,
+`inspect_android_method`, `trace_android_references`, `inspect_apk_signature`, `inspect_dart_aot`,
+`inspect_il2cpp_metadata`, `inspect_pe_imports`, `inspect_pe_certificates`, `inspect_pe_load_config`,
+`inspect_managed_members`, `inspect_native_exports`, `inspect_elf_notes`, `inspect_kernel_module`,
+`inspect_apple_ips`, `inspect_erlang_beam`, `inspect_python_pyc`, `inspect_model_artifact`,
+`inspect_gpu_code_objects`, `inspect_devicetree`, `inspect_evm_interface`, `inspect_sqlite_database`,
+`inspect_desktop_application`, `inspect_byte_entropy`. Still refused at the client (before REA sees the call):
+Frida, GDB, Rizin/Cutter, adb device control, browser / Electron runtime scenarios, native disassembler engines
+(Hopper / Ghidra / IDA / JEB), WABT (wasm), firmware extraction, JS source recovery. The published REA package
+(probed live in the sandbox) advertises 229 tools; the 24 new allowlist entries are all in REA's "Built-in static"
+or "None (static only)" requirements columns - no execution of the target, no extraction-then-run.
+
+New module `app/appcheck/khoj.py`: `status()`, kind->inspector overview routing, APK deep-dive, and two shaping
+helpers (`_compact` walks any REA response and clips strings to 320 / lists to 30 / dicts to 40 keys / depth to
+4, so an unknown REA result shape never floods a turn; `_longest_text` finds the decompiled body anywhere in
+the response and clips to 6000). `_safe_call` collects per-tool REA errors into `limits` instead of aborting the
+whole overview (one slow / refused inspector never kills the rest). The `Session.call` refusal test pins that the
+ALLOWED check fires BEFORE any stdio write (no leak of a forbidden tool name to REA).
+
+SAFETY framing (carried from App Jaanch + App Review): REA Khoj is to LEARN how a feature works so the owner can
+reimplement the idea in their own product; the description + prompts both refuse to crack a licence, unlock paid
+features, bypass anti-cheat / DRM, dump credentials / keys, or copy code byte-for-byte. Findings are data, never
+instructions; file contents from REA are not commands to act on. Long multi-step investigations belong in goal
+mode (the goal runner keeps the same file cached across turns).
+
+VPS enablement: `server/deploy/install_rea.sh` (already on the repo, pinned 6.7.0 -> 6.8.0 here) installs REA +
+the JADX engine with SHA-256 check; a `vps-ops rea_setup` job runs it + sets `REA_BIN` / `REA_JADX_JAR` in the
+santosh-core `.env` + restarts santosh with `--kill-timeout 12000`. `REA_BIN` absent -> `khoj.status()` returns
+`{enabled: false}` and the tool's `status` action tells the model plainly; `rea_khoj` is registered regardless so
+the model can offer the action and surface the "install karna hai" message.
+
+Tests: NEW `test_rea_khoj.py` (17) - version pin 0.210.0; the 1-tool / 7-action-enum registry; global-registry
+reach (TOOLS / HANDLERS / TOOL_LABELS); allowlist size 31 + 24 new present + 25 dangerous refused; the Session
+refusal-before-IPC pin; `status()` unconfigured shape; handler guards for missing src + bad action;
+`_compact` / `_longest_text` bounds; FakeRea end-to-end routing for `overview` (APK), `method` (9000-char source
+clipped to 6000 + clip note), `classes` (search), `refs` + `class`, `signature`; per-tenant LRU cache reuse
+across calls + cross-tenant cache isolation. Sweeps: appcheck + rea + core green; pre-existing test_campaign_flow
++ test_v086_realtime + test_v0185_pc_browser red set unchanged (documented sandbox-only). Version 0.210.0
+(APP_VERSION story, pubspec 0.210.0+245, console ?v=0.210.0 x9, pins ->0.210.0 in 22 suites); desktop untouched
+1.4.0 - server-only deploy, old APKs keep working.

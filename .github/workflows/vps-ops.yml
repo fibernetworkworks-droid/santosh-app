@@ -28,6 +28,7 @@ on:
           - pc_chrome_selftest
           - web
           - web_fix
+          - rea_setup
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
         required: false
@@ -229,6 +230,27 @@ jobs:
                 echo 'echo "== FINAL: listeners"; docker run --rm --privileged --pid=host alpine nsenter -t 1 -n netstat -tln 2>/dev/null | grep -E ":80 |:443 " | head -6'
                 echo 'echo "== FINAL: public hoola healthz"; curl -sS -m 15 https://hoola.ainewtika.com/healthz 2>&1 | head -2; echo'
                 echo 'echo "== FINAL: public main site"; curl -sS -m 15 -o /dev/null -w "www HTTP %{http_code}\n" https://www.ainewtika.com/ 2>&1' ;;
+              rea_setup)
+                # v0.210.0 REA Khoj: install the REA engine + JADX (server/deploy/install_rea.sh,
+                # pinned 6.8.0, SHA-256-checked JADX jar) + wire REA_BIN / REA_JADX_JAR into the
+                # santosh-core .env + restart santosh so the new rea_khoj tool can do static
+                # reverse-engineering on user call. Needs node + npm + JDK 17+ (java) for APK
+                # deep-dive; install_rea.sh tells the owner plainly when java is missing and the
+                # deploy user has no passwordless sudo, so the owner runs the apt install from the
+                # DigitalOcean console and re-runs this job.
+                echo 'set -e'
+                echo 'echo "== node + java (pre-install)"; node --version 2>&1 | head -1; npm --version 2>&1 | head -1; command -v java >/dev/null && java -version 2>&1 | head -1 || echo "JDK missing: owner runs in DO console: sudo apt install -y openjdk-21-jdk-headless"'
+                echo 'echo "== REA pre-existing?"; [ -x "$HOME/apps/rea/node_modules/.bin/rea" ] && "$HOME/apps/rea/node_modules/.bin/rea" --version 2>&1 | head -2 || echo "REA not yet installed"'
+                echo 'echo "== run install_rea.sh (idempotent; pinned 6.8.0)"; bash $REPO/server/deploy/install_rea.sh 2>&1 | tail -25'
+                echo 'echo "== REA version (post-install)"; "$HOME/apps/rea/node_modules/.bin/rea" --version 2>&1 | head -2'
+                echo 'echo "== wire .env (idempotent)"; touch $CORE/.env'
+                echo 'grep -q "^REA_BIN=" $CORE/.env || { printf "REA_BIN=%s/apps/rea/node_modules/.bin/rea\n" "$HOME" >> $CORE/.env; printf "REA_JADX_JAR=%s/apps/rea/jadx-headless-mcp-0.7.1-all.jar\n" "$HOME" >> $CORE/.env; echo "added"; }'
+                echo 'echo "== .env REA_*"; grep -E "^REA_|^APPCHECK_" $CORE/.env | sed -E "s/(=).*/\1<redacted>/" 2>/dev/null || echo "no REA_ keys in .env"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?'
+                echo 'echo "== health"; health'
+                echo 'echo "== rea_khoj status (live app, REA_BIN forced for the check only)"; cd $CORE && REA_BIN="$HOME/apps/rea/node_modules/.bin/rea" REA_JADX_JAR="$HOME/apps/rea/jadx-headless-mcp-0.7.1-all.jar" timeout 90 .venv/bin/python -c "from app.appcheck import khoj; s=khoj.status(); print(s); assert s[\"enabled\"] and s[\"apk\"], \"rea_khoj not ready on the live app"; print(\"rea_khoj READY: tools=%d apk=%s\" % (s[\"tools\"], s[\"apk\"]))" 2>&1 | tail -8'
+                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh

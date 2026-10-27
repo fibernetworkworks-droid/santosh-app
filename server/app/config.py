@@ -266,7 +266,7 @@ class Settings(BaseSettings):
     photo_best_models: str = ""   # comma list overriding photogen.BEST
     # --- App Jaanch: check an APK / EXE before installing, with REA (github.com/morluto/rea), static analysis only ---
     appcheck_enabled: bool = True           # also needs REA_BIN; off automatically when REA is not installed
-    rea_bin: str = ""                       # absolute path to the pinned `rea` launcher (npm rea-agents@6.7.0)
+    rea_bin: str = ""                       # absolute path to the pinned `rea` launcher (npm rea-agents@6.8.0)
     rea_jadx_jar: str = ""                  # jadx-headless-mcp-0.7.1-all.jar (SHA-256 checked at install) for APKs
     rea_java_home: str = ""                 # optional JDK 17+ for JADX (else java on PATH)
     rea_home: str = ""                      # REA's private HOME / work folders (default ./data/rea_home)

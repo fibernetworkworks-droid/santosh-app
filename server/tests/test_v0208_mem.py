@@ -1,4 +1,4 @@
-"""v0.209.0 MEM-CURE - the voice-to-voice drop root cause, fixed in-process.
+"""v0.210.0 MEM-CURE - the voice-to-voice drop root cause, fixed in-process.
 
 The vps-ops mem RCA: long tasks and live calls share one process; RSS climbed ~100 MB/min
 until the 8 GB box (swap 100% full) force-killed the process every 10-40 min - all 14 kills
@@ -46,8 +46,8 @@ def quiet_bus(bz):
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.209.0"
-    assert "0.209.0+244" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.210.0"
+    assert "0.210.0+245" in (REPO / "pubspec.yaml").read_text()
 
 
 def test_queue_bound_and_drop_oldest(quiet_bus):

@@ -1,8 +1,10 @@
 """A small, locked-down MCP client for REA (`rea mcp`, stdio JSON-RPC).
 
 Safety:
-- only the static, read-only tools in ALLOWED can be called; REA's runtime tools (Frida, GDB, debuggers, adb device
-  control, browser / Electron / process scenarios, arbitrary Rizin or Cutter commands) are refused here, before REA
+- only the static, read-only tools in ALLOWED can be called; REA's runtime tools (Frida, GDB, Rizin/Cutter debuggers,
+  adb device control, browser / Electron / process scenarios, native disassembler engines (Hopper / Ghidra / IDA / JEB),
+  wasm (needs WABT), firmware extraction, JS source recovery) are refused here, before REA. Every allowed tool parses
+  the file's bytes and reports facts; none of them runs, installs, debugs or extracts-then-runs the target
 - the child gets a minimal environment (no Santosh API keys, tokens or database settings), its own HOME and a fresh
   working folder, a time limit, and is killed with its whole process group afterwards
 - one check at a time (JADX is memory-hungry)
@@ -25,6 +27,7 @@ from typing import Any
 from ..config import get_settings
 
 ALLOWED = {
+    # App Jaanch (verdict) originals
     "inspect_android_package",          # APK manifest, permissions, SDKs (JADX, no execution)
     "identify_flutter_build",           # Flutter build facts (pure parsing)
     "inspect_managed_artifact",         # .NET PE/CLI metadata (no loading)
@@ -32,6 +35,33 @@ ALLOWED = {
     "inspect_go_binary",                # Go build info / dependencies (pure parsing)
     "inspect_rust_binary",              # cargo-auditable dependencies (pure parsing)
     "analyze_javascript_application",   # Electron ASAR / JS app graph (does not run the app)
+    # REA Khoj (investigation): Android deep-dive (all through JADX headless, static)
+    "search_android_classes",           # class-name search over the decompiler inventory
+    "inspect_android_class",            # one class: methods, fields, inner classes (no source gen)
+    "inspect_android_method",           # decompile one method (smali fallback)
+    "trace_android_references",         # incoming static uses of a class / method
+    "inspect_apk_signature",            # v1/v2/v3/v3.1 signers, fingerprints, rotation lineage
+    "inspect_dart_aot",                 # Flutter Dart AOT snapshot facts per ABI
+    "inspect_il2cpp_metadata",          # Unity global-metadata decoding (24/27/29/31/39)
+    # PE / .NET deep-dive
+    "inspect_pe_imports",               # import + delay-load DLLs, IAT RVAs, import hash
+    "inspect_pe_certificates",          # Authenticode table, PKCS#7 signer / X.509 identity
+    "inspect_pe_load_config",           # TLS callbacks, CFG / SafeSEH / EH flags
+    "inspect_managed_members",          # .NET members, CIL hashes, call edges, #US literals
+    "inspect_native_exports",           # PE export dir / ELF .dynsym defined symbols
+    # Static one-shots (built into REA, no external engine)
+    "inspect_elf_notes",                # PT_NOTE owners, GNU build-id, ABI tag
+    "inspect_kernel_module",            # .modinfo, __versions CRCs, signature trailer
+    "inspect_apple_ips",                # .ips crash report metadata, threads, registers
+    "inspect_erlang_beam",              # BEAM chunks, atoms, exports/imports
+    "inspect_python_pyc",               # CPython 3.7-3.13 code objects, names, constants
+    "inspect_model_artifact",           # GGUF / safetensors headers, tensor declarations
+    "inspect_gpu_code_objects",         # CUDA/HIP fatbin / CUBIN / PTX inventory
+    "inspect_devicetree",               # flattened devicetree blob node/property tree
+    "inspect_evm_interface",            # EVM bytecode selectors / interface candidates
+    "inspect_sqlite_database",          # schema, indexes, views, bounded rows (Node sqlite)
+    "inspect_desktop_application",      # bounded directory/header inspection, no execution
+    "inspect_byte_entropy",             # Shannon entropy: packed / encrypted regions hint
 }
 
 PROTOCOL = "2025-06-18"

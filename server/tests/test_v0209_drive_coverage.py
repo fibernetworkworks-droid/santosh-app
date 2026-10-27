@@ -1,4 +1,4 @@
-"""v0.209.0 - Google Drive 100% coverage: the tool registry grew 12 -> 21 tools (details, access management, trash
+"""v0.210.0 - Google Drive 100% coverage: the tool registry grew 12 -> 21 tools (details, access management, trash
 list, delete-forever / empty-trash, comments, revisions, shared drives, changes, biggest files), find gained
 in_trash / modified_hours / order=size, organize gained describe / restrict_copying / allow_copying / shortcut, and
 export gained odt / rtf / html / epub / md (Docs), ods / tsv (Sheets), jpeg / svg (Drawings). The old five-tool
@@ -20,7 +20,7 @@ NEW = ["drive_details", "drive_access", "drive_trash_list", "drive_delete", "dri
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.209.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert APP_VERSION == "0.210.0"    # conscious-bump guard: moves with every release (bump with pubspec)
 
 
 def test_registry_has_21_tools():
