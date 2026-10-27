@@ -42,7 +42,7 @@ SERVER = os.environ.get("HOOLA_SERVER", "http://127.0.0.1:8077").strip().rstrip(
 NAME = os.environ.get("HOOLA_PC_NAME", "Hoola PC")
 DISPLAY = os.environ.get("DISPLAY", ":1")
 CDP = "http://127.0.0.1:9222"
-VERSION = "1.3.0"
+VERSION = "1.3.1"
 MAX_SEND = 50 * 1024 * 1024   # same upload cap as the Windows Santosh Desktop
 DOWNLOADS = DATA / "Downloads"
 PROFILE = DATA / "chrome"
@@ -139,6 +139,17 @@ def _chrome_up() -> None:
                  "--disable-crash-reporter", "--force-device-scale-factor=1", "--password-store=basic",
                  "--no-sandbox"]
         exe = _browser_exe()
+        # v1.3.1: a recreated container has a NEW hostname, but the volume's profile carries the OLD
+        # container's SingletonLock - Chrome refuses to boot on it ("The profile appears to be in use
+        # by another Google Chrome process ... on another computer") and headless there is no dialog
+        # to unlock it. NOTHING is alive here (the CDP check above just failed and the agent is the
+        # only chrome supervisor in this container), so the stale locks are safe to clear. A lock from
+        # THIS hostname with a dead PID is cleared by Chrome itself.
+        for f in ("SingletonLock", "SingletonSocket", "SingletonCookie", "SingletonCookie-1"):
+            try:
+                (PROFILE / f).unlink()
+            except OSError:
+                pass
         # stderr to a file, not DEVNULL (v1.3.0 lesson: a chrome that will not boot was INVISIBLE -
         # the selftest could only say 'CDP ready nahi hua'; now the real error is in /tmp/chrome_err.log)
         _chrome = subprocess.Popen([exe, *flags], env={**os.environ, "DISPLAY": DISPLAY},
