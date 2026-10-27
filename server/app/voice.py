@@ -766,6 +766,11 @@ def stats_summary(tenant: str) -> dict:
         "acks_played": sum(c["acks"] for c in calls),
         "backchannels_played": sum(c.get("backchannels", 0) for c in calls),   # v0.205 KAAN KAAPI
         "progress_clips": sum(c.get("progress", 0) for c in calls),
+        # v0.202 the feeling engine + v0.208 its prosody sharpening: notes sent, vetoed by her voice, confirmed
+        "affect_notes": sum(c.get("affect_notes", 0) for c in calls),
+        "affect_vetoed": sum(c.get("affect_vetoed", 0) for c in calls),
+        "affect_confirmed": sum(c.get("affect_confirmed", 0) for c in calls),
+        "affect_pauses_rider": sum(c.get("affect_pauses_rider", 0) for c in calls),
         "false_stops_per_call": round(sum(c.get("false_stops", 0) for c in calls) / len(calls), 2) if calls else None,
         # v0.53 phone gate: loud sounds that were not a voice (kept away from Gemini), noise muted while nobody spoke
         "vad_calls": sum(1 for c in calls if (c.get("gate") or {}).get("vad")),
@@ -1046,6 +1051,9 @@ class Call:
             self.style = {}
         self.meter = voicestyle.TurnMeter()
         self.callstyle = voicestyle.CallStyle()
+        self._pros_base = (self.style or {}).get("facts") or {}   # v0.208 her prosody baseline (pitch/spread/level
+        #     medians from her own calls): the feeling engine measures her voice THIS turn against HER normal,
+        #     never against absolute numbers - a phone mic in a purse knows nothing about "quiet".
         self._prev_reply = ""                  # what Hoola said last (her correction refers to it)
         self._repairs = 0                      # asks-again / her corrections in a row
         self.call_id = secrets.token_urlsafe(12)
@@ -1423,7 +1431,11 @@ class Call:
         """v0.201 AWAAZ-2 the feeling engine: while SHE is speaking, her own words say how she is right now;
         one quiet delivery note rides the open client_content channel before he answers (static persona lines
         proved too far from the moment - the owner's ear test: pauses/soft-news FAILED on v0.199.0). Debounced
-        hard: only her own voice, once a state, never two notes inside 20 s, the same state again only after 90 s."""
+        hard: only her own voice, once a state, never two notes inside 20 s, the same state again only after 90 s.
+        v0.208 AWAAZ-3 the TurnMeter joins as the sharpening rule (never as the only signal): her prosody THIS
+        turn (a mid-turn, non-destructive meter.peek()), measured against her own baseline, vetoes a glad note
+        her voice contradicts (sarcasm ya thakaan), confirms a low one, and her measured thinking-pauses add a
+        'jaldi mat kaato' rider. A veto moves NO debounce clock - more words and more voice can still speak."""
         try:
             cur = (self.vid.current or {}) if self.vid is not None else {}
             if cur and cur.get("relation") != "self":
@@ -1432,6 +1444,14 @@ class Call:
             st, _hit = voiceaffect.decide(self.user_buf)
             if not st:
                 return
+            pros = None                       # her voice this turn; v0.202 words-only when the kill switch is off
+            if get_settings().voice_prosody:
+                meter = getattr(self, "meter", None)
+                pros = meter.peek() if meter is not None else None
+            st, why = voiceaffect.sharpen(st, pros, getattr(self, "_pros_base", None) or {})
+            if not st:                        # her voice contradicted her words: no note, no clock moved
+                self.stats["affect_vetoed"] = self.stats.get("affect_vetoed", 0) + 1
+                return
             now = time.monotonic()
             if now - self._affect_at < 20:
                 return
@@ -1439,7 +1459,14 @@ class Call:
                 return
             self._affect_last, self._affect_at = st, now
             self.stats["affect_notes"] = self.stats.get("affect_notes", 0) + 1
-            await self._tell_quietly(voiceaffect.NOTE[st])
+            if why == "confirmed_low":        # her voice agreed with her words: the note is twice as safe
+                self.stats["affect_confirmed"] = self.stats.get("affect_confirmed", 0) + 1
+            note = voiceaffect.NOTE[st]
+            rider = voiceaffect.pause_rider(pros)
+            if rider:                         # her measured pauses: 'usse jaldi mat kaato' rides on any note
+                note = f"{note} {rider}"
+                self.stats["affect_pauses_rider"] = self.stats.get("affect_pauses_rider", 0) + 1
+            await self._tell_quietly(note)
         except Exception:
             log.exception("affect watch failed")
 
@@ -2411,10 +2438,12 @@ class Call:
                 rt.add_done_callback(_JOBS.discard)
             lat = self.stats["latency_ms"]
             log.info("call %s done: %s turns, reply start p50 %s ms, %s interruptions (%s noise), %s/%s silent tools, "
-                     "%s acks, %s backchannels, %s progress",
+                     "%s acks, %s backchannels, %s progress, %s affect notes (%s vetoed, %s confirmed, %s pauserider)",
                      self.call_id, self.stats["turns"], _pct(lat, .5), self.stats["interruptions"], self.stats["false_stops"],
                      self.stats["silent_tools"], self.stats["tools"], self.stats["acks"],
-                     self.stats.get("backchannels", 0), self.stats.get("progress", 0))
+                     self.stats.get("backchannels", 0), self.stats.get("progress", 0), self.stats.get("affect_notes", 0),
+                     self.stats.get("affect_vetoed", 0), self.stats.get("affect_confirmed", 0),
+                     self.stats.get("affect_pauses_rider", 0))
             ws, self.ws = self.ws, None
             if ws is not None:
                 with contextlib.suppress(Exception):

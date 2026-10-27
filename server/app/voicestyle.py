@@ -163,12 +163,21 @@ class TurnMeter:
         elif self._started:
             self._gap += ms
 
+    def _snapshot(self) -> dict[str, Any]:
+        return {"voiced_s": self.voiced_ms / 1000, "speech_s": (self.voiced_ms + self.pause_ms) / 1000,
+                "pauses": list(self.pauses), "level": _pct(self._levels, .5),
+                "pitch": _pct(self._pitches, .5) if len(self._pitches) >= 3 else None,
+                "spread": (12 * math.log2(_pct(self._pitches, .9) / _pct(self._pitches, .1))
+                           if len(self._pitches) >= 6 else None)}
+
+    def peek(self) -> dict[str, Any]:
+        """v0.208 the same numbers take() returns, read MID-TURN without resetting: the feeling engine listens to
+        her prosody while she is still speaking (the turn is not over, take() must keep its data for the
+        end-of-turn learning). Cheap - a few list medians on the transcription path."""
+        return self._snapshot()
+
     def take(self) -> dict[str, Any]:
-        out = {"voiced_s": self.voiced_ms / 1000, "speech_s": (self.voiced_ms + self.pause_ms) / 1000,
-               "pauses": list(self.pauses), "level": _pct(self._levels, .5),
-               "pitch": _pct(self._pitches, .5) if len(self._pitches) >= 3 else None,
-               "spread": (12 * math.log2(_pct(self._pitches, .9) / _pct(self._pitches, .1))
-                          if len(self._pitches) >= 6 else None)}
+        out = self._snapshot()
         self.reset()
         return out
 
@@ -598,7 +607,8 @@ def for_call(tenant: str) -> dict[str, Any]:
     if vc:
         lines.append("HER NAMES AND WORDS (hear and say them exactly like this): " + ", ".join(vc[:60]))
     out.update(block=("\n\n" + "\n".join(lines) + "\n") if lines else "", vocab=vc, fixes=len(fx),
-               styled=bool(pv.get("hint")))
+               styled=bool(pv.get("hint")),
+               facts=(pv.get("facts") or {}))   # v0.208 her prosody baseline (pitch/spread/level medians) for the feeling engine
     return out
 
 

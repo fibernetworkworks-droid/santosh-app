@@ -8309,6 +8309,31 @@ endpoint shapes, version pin. Sweeps green: PC family 37 (pc_kinds + pc_bridge +
 ?v=0.205.0 x9, pins ->0.205.0 in 17 suites. Windows desktop 1.4.0 untouched. Deploy = server only (vps-ops
 deploy); the APK needs a rebuild for the new section; Hoola PC container pairing still pending the owner's
 6-digit code.
+## v0.208.0 AWAAZ-3 — TurnMeter prosody sharpening (Phase C's remainder; owner: "start Phase C remainder" after GOOD on Phase B KAAN KAAPI — the voiceaffect docstring promise "TurnMeter prosody joins later as a sharpening rule, never as the only signal" is now kept)
+The v0.202 feeling engine reads WHAT she says; the same TurnMeter that has measured her pauses/pitch/level
+since v0.119 now also answers HOW she says it — mid-turn, before he replies. Her words still pick the state
+(prosody NEVER fires alone); her voice THIS turn, measured against HER OWN baseline (the voicestyle profile
+facts — pitch/spread/level medians of her own calls, now carried to the call in `for_call` facts; a phone mic
+lies, her normal doesn't), sharpens it three ways: (1) **VETO** — glad words said in a voice clearly BELOW
+her normal (−2 semitones or more, or −4 dB quieter, or flattened to ≤2 st while her normal spread is ≥5 st)
+send NO note (sarcasm ya thakaan — a celebration voice over flat words is exactly the uncanny note the
+precision rule forbids), and a veto moves NO debounce clock — more words and more voice can still speak;
+(2) **CONFIRM** — low words in a dropped/quieter voice (−1 st or −3 dB) count `affect_confirmed`: the
+heavy-news note is twice as safe; tense is NEVER vetoed (a raised voice IS the agreement); (3) **PAUSE
+RIDER** — two-plus measured ≥600 ms mid-turn pauses (she is thinking while talking) attach "uske rukne par
+usse jaldi mat kaato; apne jawab ke items bhi ek ek saans le ke bolo" to whatever note goes out — the ear
+test's list-rush failure (scenarios 1+2), grounded in her own measured pauses. Infrastructure:
+`TurnMeter._snapshot()` + new `peek()` — the same numbers as `take()`, read MID-TURN without consuming the
+turn (`take()` stays the end-of-turn learning call); `config.voice_prosody` kill switch (off = the exact
+v0.202 words-only engine); stats `affect_vetoed` / `affect_confirmed` / `affect_pauses_rider` join
+`affect_notes` in the scorecard and the end-of-call log line. Tests: NEW test_v0208_prosody.py (21) — peek
+non-destructive + same shape as take, prosody-never-alone, thin/absent baseline → words_lead, glad veto ×3
+(down / quiet / flat) + glad stands + a naturally-flat speaker passes, low confirmed ×2 + untouched without
+agreement, tense never vetoed, absurd baseline ignored, rider needs two real pauses + content pins, wiring:
+veto sends nothing and moves no clock / confirm+rider / no rider on neutral words / kill switch returns to
+v0.202, `for_call` carries her baseline facts, scorecard counters, version pin. Server-only — old APKs keep
+working; desktop untouched 1.4.0; Mera PC freeze respected. Version 0.208.0 (pubspec 0.208.0+242, console
+?v=0.208.0 x9, conscious pins →0.208.0 in 20 suites + the sessions cache-stamp set).
 ## v0.207.0 BOL-KAR-HAAN TOOL (Block 2, voice-to-voice alag) (re-versioned TWICE more on rebase: VOICE DELIVERY took 0.199.0, the dev's Hoola-PC-section took 0.205.0 and KAAN KAAPI took 0.206.0 - all works kept, REBASE PROTOCOL respected) (owner: "naya voice-side tool - model call karega jab aap 'haan karo' bolo -> usi call ke job ka pending approval approve. Paise wala (tier 3 / UPI / bank OTP) hamesha tap + fingerprint only - voice se kabhi nahi")
 
 v0.198.0 gave calls a PASSIVE listener (_approval_listen): boli ke shabdon par regex chalta hai. Par uski haan
