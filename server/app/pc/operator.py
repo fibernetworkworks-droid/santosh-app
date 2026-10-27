@@ -29,6 +29,7 @@ from typing import Any
 
 from ..config import get_settings
 from ..events import bus, notify
+from .hub import HOOLA_PC_KIND
 
 log = logging.getLogger("santosh.pcop")
 
@@ -45,6 +46,28 @@ _WEB_TASK = re.compile(r"(https?://|www\.|\.(com|in|org|net|gov|edu)\b|website|w
 BLOCKED_APPS = re.compile(r"\b(cmd|command prompt|powershell|windows terminal|terminal|regedit|registry|wsl|bash|"
                           r"task scheduler|group policy|gpedit|diskpart|format)\b", re.I)
 BLOCKED_KEYS = {("win", "r"), ("win", "x"), ("ctrl", "shift", "esc"), ("win", "l")}
+
+# v0.194 appended to SYSTEM when the task runs on HOOLA'S OWN cloud PC (kind hoola_pc): the VM belongs to
+# the coworker, so installs and shell runs are free - the same trust model as the Claude computer-use harness
+# (root inside an isolated container). Her Windows PC NEVER gets these tools; its rules stay untouched.
+HOOLA_PC_ADDENDUM = """
+
+THIS PC: you are on HOOLA'S OWN cloud computer - a Linux PC in the cloud that belongs to you (the coworker),
+not to the user. It is yours: work freely inside it; nothing that only touches THIS VM needs approval.
+Differences from her Windows PC:
+- install {packages, pip} installs software into your own VM (apt-get, or pip with pip=true) - no approval
+  needed. Install whatever the task needs (ffmpeg, libreoffice-calc, pandoc...), then open_app it. If an app
+  is missing, INSTALL it instead of saying it is not available.
+- run {command} runs one shell command in your VM (max 3 minutes) and shows stdout / stderr / exit code.
+  Prefer it over clicking whenever a terminal answers faster: python, curl, pdftotext, unzip, ffprobe,
+  converting a file, counting lines. Keep one command per call.
+- This is Linux: Chromium is Chrome here (open_url opens tabs in it; page_text / tabs / switch_tab / downloads
+  all work). Files live under /data (Downloads = /data/Downloads). There is no Windows, no Tally, no Excel -
+  LibreOffice Calc/Writer can be installed when a spreadsheet/document job needs it.
+- Still ask_approval for anything that reaches OUTSIDE this VM: sending a message or email, submitting a form,
+  paying, posting publicly, deleting data on an external site. Passwords / PINs / OTPs follow the same rules
+  as always (never typed by you). Nothing inside the VM (installs, files, shell, apps) needs approval.
+"""
 
 def _is_web_task(task: str) -> bool:
     return bool(_WEB_TASK.search(task or ""))
@@ -172,9 +195,25 @@ TOOLS = [
                                        "the focused box. Not for bank / card / payment OTPs.",
      "input_schema": {"type": "object", "properties": {"reason": {"type": "string", "description": "which site sent it, e.g. 'myAadhaar'"},
                                                        "digits": {"type": "integer"}}, "required": ["reason"]}},
-    {"name": "done", "description": "Finish: the answer / what was done (short, key facts). success=false if not finished.",
-     "input_schema": {"type": "object", "properties": {"answer": {"type": "string"}, "success": {"type": "boolean"}},
-                      "required": ["answer"]}},
+    {
+        "name": "done", "description": "Finish: the answer / what was done (short, key facts). success=false if not finished.",
+        "input_schema": {"type": "object", "properties": {"answer": {"type": "string"}, "success": {"type": "boolean"}},
+                         "required": ["answer"]}},
+]
+
+# v0.193 Hoola PC only: the coworker surface (install software + run commands in Hoola's OWN VM).
+HOOLA_TOOLS = TOOLS + [
+    {"name": "install", "description": "Install software into THIS VM (Hoola's own computer): apt-get packages by "
+                                         "default, pip packages with pip=true. No approval needed - it is your own PC. "
+                                         "Package names only (no shell).",
+     "input_schema": {"type": "object", "properties": {"packages": {"type": "string", "description": "space-separated names, e.g. 'libreoffice-calc' or 'ffmpeg'"},
+                                                       "pip": {"type": "boolean", "description": "true = Python packages via pip"}},
+                      "required": ["packages"]}},
+    {"name": "run", "description": "Run ONE shell command inside this VM (max 3 minutes) and get stdout / stderr / exit "
+                                     "code. Faster than clicking for anything terminal-shaped: python, curl, unzip, "
+                                     "pdftotext, ffmpeg, file conversion, checking a port. Your own VM - no approval needed.",
+     "input_schema": {"type": "object", "properties": {"command": {"type": "string"}, "timeout": {"type": "integer", "description": "seconds, max 180"}},
+                      "required": ["command"]}},
 ]
 
 
@@ -215,6 +254,7 @@ class Op:
     window: str = ""
     monitor: str = "primary"       # v0.166 which screen the operator works on (model can switch with screenshot)
     mem: list[str] = field(default_factory=list)   # v0.173 what this run did to the PC (open_app/open_url/...)
+    kind: str = ""                 # v0.193 "" = her Windows PC; "hoola_pc" = Hoola's own cloud computer
     frame: bytes = b""
     frame_seq: int = 0
     timeline: list = field(default_factory=list)
@@ -270,7 +310,10 @@ def _work(op: Op, name: str) -> None:
 
 def _event(op: Op) -> None:
     try:
-        bus.publish(op.conv, "browser", {"session_id": op.id, "status": op.status, "source": "pc", "site": "Aapka PC", "place": "pc",
+        own = op.kind == HOOLA_PC_KIND
+        bus.publish(op.conv, "browser", {"session_id": op.id, "status": op.status, "source": "pc",
+                                         "site": "Hoola ka PC" if own else "Aapka PC",
+                                         "place": "hoolapc" if own else "pc",
                                          "task": op.task[:300], "url": op.window, "summary": op.summary[:600],
                                          "step": op.step, "steps_max": op.steps_max, "action": op.action[:200],
                                          "thinking": op.thinking})   # v0.178 live step + soch state on the card
@@ -280,7 +323,8 @@ def _event(op: Op) -> None:
 
 async def _pc(op: Op, action: str, args: dict[str, Any] | None = None, timeout: float = 40, log: bool = True) -> dict[str, Any]:
     from .hub import hub
-    return await hub.call(op.tenant, action, args or {}, timeout=timeout, log=log)
+    return await hub.call(op.tenant, action, args or {}, timeout=timeout, log=log,
+                          kind=(op.kind or None))
 
 
 LIVE_EVERY_S = 0.9      # v0.86 while the model decides the next step, the phone's live view keeps moving
@@ -342,6 +386,10 @@ def _say(name: str, a: dict[str, Any]) -> str:
         return f"tab par ja raha hoon ({t[:30]})" if t else "tab badal raha hoon"
     if name == "downloads":
         return "Downloads check kar raha hoon"
+    if name == "install":
+        return f"{str(a.get('packages', ''))[:32]} install kar raha hoon (apne PC par)"
+    if name == "run":
+        return "command chala raha hoon (apne PC par)"
     if name == "wait":
         return "khulne ka intezaar…"
     if name == "ask_approval":
@@ -635,6 +683,30 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
     if name == "wait":
         await asyncio.sleep(max(0.5, min(float(a.get("seconds") or 2), 30)))   # v0.166 heavy software loads slowly
         return "waited"
+    if name == "install":
+        pkgs = str(a.get("packages", "")).strip()[:200]
+        if not pkgs or any(ch in pkgs for ch in ";|&`$"):
+            return "REFUSED: package names only (space separated), no shell characters."
+        try:
+            r = await _pc(op, "install", {"packages": pkgs, "pip": bool(a.get("pip"))}, timeout=500)
+        except Exception as e:
+            return f"ERROR: {e}"
+        note = str(r.get("note") or "").strip()[-300:]
+        return f"installed {pkgs}" + (f" ({note})" if note else "")
+    if name == "run":
+        cmd = str(a.get("command", "")).strip()[:600]
+        if not cmd:
+            return "REFUSED: empty command."
+        try:
+            r = await _pc(op, "run", {"command": cmd, "timeout": min(int(a.get("timeout") or 60), 180)}, timeout=200)
+        except Exception as e:
+            return f"ERROR: {e}"
+        out = str(r.get("stdout") or "").strip()
+        err = str(r.get("stderr") or "").strip()
+        body = out or err or "(no output)"
+        if len(body) > 2500:
+            body = body[:1200] + " ... [middle cut] ... " + body[-1200:]
+        return f"exit={r.get('exit', '?')}\n{body}"[:3600]
     return f"Unknown tool {name}"
 
 
@@ -791,6 +863,8 @@ async def _run(op: Op) -> None:
     client = get_client()
     from ..avatar.service import personalise, persona
     system = personalise(SYSTEM, *persona(op.tenant))
+    if op.kind == HOOLA_PC_KIND:   # v0.194 the coworker VM: install/run are free, her-PC wording adjusted
+        system += HOOLA_PC_ADDENDUM
     try:
         from .. import idvault
         ids = idvault.summary_for_model(op.tenant)
@@ -815,7 +889,8 @@ async def _run(op: Op) -> None:
             op.thinking = True                     # v0.178 the card shows 'Soch raha hoon…' while the vision call runs
             _event(op)
             resp = await _think_retry(op, client, messages, dict(
-                model=st.anthropic_model, max_tokens=1500, system=system, tools=TOOLS, messages=messages))
+                model=st.anthropic_model, max_tokens=1500, system=system,
+                tools=(HOOLA_TOOLS if op.kind == HOOLA_PC_KIND else TOOLS), messages=messages))
             op.thinking = False
             content = [b.model_dump(exclude_none=True) if hasattr(b, "model_dump") else b for b in resp.content]
             messages.append({"role": "assistant", "content": content})
@@ -933,9 +1008,11 @@ async def _run(op: Op) -> None:
 
 
 def _report(op: Op) -> None:
-    text = {"done": op.summary or "Aapke PC par kaam ho gaya.",
-            "partial": f"Aapke PC par poora nahi ho paya. {op.summary}",
-            "cancelled": "Aapke PC ka kaam rok diya gaya."}.get(op.status, f"Aapke PC par kaam ruk gaya. {op.summary or op.reason}")
+    own = op.kind == HOOLA_PC_KIND
+    pc_name = "Hoola ke apne PC" if own else "Aapke PC"
+    text = {"done": op.summary or f"{pc_name} par kaam ho gaya.",
+            "partial": f"{pc_name} par poora nahi ho paya. {op.summary}",
+            "cancelled": f"{pc_name} ka kaam rok diya gaya."}.get(op.status, f"{pc_name} par kaam ruk gaya. {op.summary or op.reason}")
     try:
         notify(op.conv, text.strip())
     except Exception:
@@ -943,13 +1020,16 @@ def _report(op: Op) -> None:
     try:   # v0.104 a website job on her PC keeps its place: the next steps stay on her PC, not in Hoola's browser
         from ..agent import where
         if where._WEBBY.search(op.task or ""):
-            where.touch(op.conv, "pc")
+            where.touch(op.conv, "hoolapc" if own else "pc")
     except Exception:
         pass
     try:
         from ..voice import inject
-        inject(op.conv, f"(Result from HER PC (aapka PC, not your own browser): {text[:1500]}. Tell the user this now in one or two "
-                         "short lines and say it happened on her PC.)")
+        whose = ("HOOLA'S OWN PC (the cloud computer that belongs to you - not her machine, not your browser)"
+                 if own else "HER PC (aapka PC, not your own browser)")
+        inject(op.conv, f"(Result from {whose}: {text[:1500]}. Tell the user this now in one or two "
+                        "short lines." + (" Say it happened on Hoola ke apne PC par." if own else
+                                          " Say it happened on her PC.") + ")")
     except Exception:
         pass
 
@@ -961,22 +1041,28 @@ def _cleanup() -> None:
             OPS.pop(sid, None)
 
 
-async def start(tenant: str, conv: str, task: str, wait: float = 150) -> dict[str, Any]:
+async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str = "") -> dict[str, Any]:
     global _loop
     _loop = asyncio.get_running_loop()
     _cleanup()
     from .hub import hub
-    if not hub.is_online(tenant):
+    if kind:
+        online = hub.is_online(tenant, kind=kind)
+    else:
+        online = hub.is_online(tenant)
+    if not online:
+        if kind == HOOLA_PC_KIND:   # v0.194 her PC may be fine while the Hoola PC is down: a clear, separate line
+            raise RuntimeError("HOOLA_PC_OFFLINE: Hoola ka apna PC abhi online nahi hai. Thodi der baad koshish kijiye.")
         raise RuntimeError("PC_OFFLINE")
-    conns = hub.online(tenant)
-    if conns and not (conns[-1].info or {}).get("control"):
+    conn = hub._pick(tenant, kind=kind or None)
+    if conn is not None and not (conn.info or {}).get("control"):
         raise PermissionError("PC chalane ki permission band hai. PC par Santosh Desktop > Settings > "
                               "'Santosh ko PC chalane dein' on kijiye, phir dobara boliye.")
     for o in OPS.values():          # one operator per person
         if o.tenant == tenant and o.task_obj and not o.task_obj.done():
             o.status = "cancelled"
             o.task_obj.cancel()
-    op = Op(id="pcop_" + secrets.token_hex(6), tenant=tenant, conv=conv, task=task.strip()[:4000])
+    op = Op(id="pcop_" + secrets.token_hex(6), tenant=tenant, conv=conv, task=task.strip()[:4000], kind=kind or "")
     op.steps_max, op.minutes = _budget(op.task)   # v0.184 browser jobs get the bigger budget from the first step
     OPS[op.id] = op
     _event(op)

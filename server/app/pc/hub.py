@@ -24,7 +24,10 @@ log = logging.getLogger("santosh.pc")
 
 JOB_TIMEOUT = {"search": 30, "list": 20, "read": 45, "send_file": 180, "save_file": 180, "print": 30,
                "tally_report": 60, "tally_voucher": 60, "status": 15, "open_file": 20, "recent": 30,
-               "page_text": 35, "tabs": 30, "switch_tab": 35, "downloads": 30, "open_url": 50}   # v0.184 browser reads
+               "page_text": 35, "tabs": 30, "switch_tab": 35, "downloads": 30, "open_url": 50,   # v0.184 browser reads
+               "install": 500, "run": 200}   # v0.194 Hoola PC (the coworker VM installs its own software)
+
+HOOLA_PC_KIND = "hoola_pc"   # the info.kind the Linux Hoola PC agent reports
 
 
 class PcOffline(Exception):
@@ -66,8 +69,30 @@ class Hub:
         with self._lock:
             return list((self.conns.get(tenant_id) or {}).values())
 
-    def is_online(self, tenant_id: str, device_id: str | None = None) -> bool:
+    def is_online(self, tenant_id: str, device_id: str | None = None, kind: str | None = None) -> bool:
+        if kind:
+            return any((c.info or {}).get("kind") == kind for c in self.online(tenant_id))
         return any(device_id in (None, c.device_id) for c in self.online(tenant_id))
+
+    def _pick(self, tenant_id: str, device_id: str | None = None, kind: str | None = None) -> Conn | None:
+        """v0.194 a tenant can have SEVERAL PCs (her Windows PC + Hoola's own cloud PC): pick by kind first,
+        then by device_id, else the legacy last-connected one (her PC alone never notices)."""
+        conns = self.online(tenant_id)
+        if not conns:
+            return None
+        if kind:
+            for c in conns:
+                if (c.info or {}).get("kind") == kind:
+                    return c
+            return None
+        if device_id is not None:
+            for c in conns:
+                if c.device_id == device_id:
+                    return c
+        return conns[-1]
+
+    def has_kind(self, tenant_id: str, kind: str) -> bool:
+        return self.is_online(tenant_id, kind=kind)
 
     def info_of(self, tenant_id: str, device_id: str) -> dict[str, Any] | None:
         for c in self.online(tenant_id):
@@ -104,7 +129,7 @@ class Hub:
                     if item is not None and item[1] == device_id and not item[0].done():
                         item[0].set_result(msg)
                 elif t == "info":
-                    conn.info = {k: msg.get(k) for k in ("name", "os", "version", "folders", "tally", "indexed", "inbox", "paused", "control")}
+                    conn.info = {k: msg.get(k) for k in ("name", "os", "version", "folders", "tally", "indexed", "inbox", "paused", "control", "kind")}
                     service.save_info(device_id, conn.info)
                 elif t == "pong":
                     service.touch_device(device_id)
@@ -136,12 +161,12 @@ class Hub:
 
     # ---------------- jobs ----------------
     async def call(self, tenant_id: str, action: str, args: dict[str, Any] | None = None,
-                   device_id: str | None = None, timeout: float | None = None, log: bool = True) -> dict[str, Any]:
+                   device_id: str | None = None, timeout: float | None = None, log: bool = True,
+                   kind: str | None = None) -> dict[str, Any]:
         args = args or {}
-        conns = [c for c in self.online(tenant_id) if device_id in (None, c.device_id)]
-        if not conns:
+        conn = self._pick(tenant_id, device_id, kind)
+        if conn is None:
             raise PcOffline("PC_OFFLINE")
-        conn = conns[-1]
         if (conn.info or {}).get("paused"):
             raise PcError("Santosh Desktop is paused on the PC. Ask the user to press Resume there.")
         from . import service

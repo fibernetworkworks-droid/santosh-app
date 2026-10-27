@@ -1,0 +1,22 @@
+# Hoola PC - the coworker's own cloud computer (Phase 1: one container on the Hoola VPS).
+#
+# First run (pairing): create a 6-digit code in the Hoola app (Mera PC > naya PC / pair), then:
+#   docker exec -i hoola-pc sh -c 'echo CODE > /data/pair_code'
+# The agent pairs once and stores its token in the volume - later restarts need nothing.
+#
+# The vps-ops workflow jobs (pc_deploy / pc_pair / pc_logs) do all of this on the VPS.
+services:
+  hoola-pc:
+    build: .
+    image: hoola-pc:latest
+    container_name: hoola-pc
+    restart: unless-stopped
+    mem_limit: 1500m
+    environment:
+      # docker bridge -> the Hoola server on the host (matches the vps-ops health probe)
+      HOOLA_SERVER: http://172.18.0.1:8077
+      HOOLA_PC_NAME: Hoola PC
+    volumes:
+      - hoola-pc-data:/data
+volumes:
+  hoola-pc-data:

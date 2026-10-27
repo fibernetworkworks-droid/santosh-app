@@ -1,4 +1,4 @@
-"""v0.192.0 "HARNESS-2" - Phase 2 of the dsh / Claude Code harness study, the three mechanisms:
+"""v0.195.0 "HARNESS-2" - Phase 2 of the dsh / Claude Code harness study, the three mechanisms:
 
 1. step-admitted tool subsets (agent/admit.py): a turn sees only the tool families her words (+ open goal +
    hints) need, on top of a small always-on CORE; the set is stable for the WHOLE turn (Anthropic cache
@@ -354,7 +354,7 @@ def test_sweep_leaves_live_turns_alone_and_decides_save_user(env, monkeypatch):
 
 def test_version_and_config():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.194.0"
+    assert APP_VERSION == "0.195.0"
     s = get_settings()
     assert s.agent_tool_admission is True
     assert s.agent_wake_turns is True

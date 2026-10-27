@@ -60,7 +60,7 @@ VOICE_TOOL_NAMES = {
     "create_reminder", "list_reminders", "cancel_reminder", "set_phone_alarm", "set_phone_timer",
     "add_calendar_event", "remember", "forget", "list_add", "list_show", "list_done", "set_profile",
     "get_weather", "create_routine", "list_routines", "cancel_routine",
-    "google_search", "open_website", "open_on_phone", "browse_web", "artifact_make", "artifact_list", "agent_army", "browse_result", "pc_do", "pc_task_result",
+    "google_search", "open_website", "open_on_phone", "browse_web", "artifact_make", "artifact_list", "agent_army", "browse_result", "pc_do", "pc_task_result", "hoola_pc_do",
     "email_check", "email_read", "email_draft", "email_triage", "email_forward", "email_action", "email_delete",
     "email_follow_up", "email_contacts", "email_attachment", "email_accounts",
     "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_cancel_event",
@@ -1474,7 +1474,7 @@ class Call:
         if name not in VOICE_TOOL_NAMES:
             return {"error": f"Unknown tool {name}"}
         # a call can't wait minutes: these three answer after a short wait and the rest arrives later
-        extra = {"pc_do": {"_wait": 8}, "artifact_make": {"_wait": 0}, "browse_web": {"_wait": 10}}.get(name, {})
+        extra = {"pc_do": {"_wait": 8}, "hoola_pc_do": {"_wait": 8}, "artifact_make": {"_wait": 0}, "browse_web": {"_wait": 10}}.get(name, {})
         result = await asyncio.wait_for(dispatch(name, {**args, **extra}, self.ctx), timeout=max(5, get_settings().voice_tool_timeout_s))
         return {"result": result}
 

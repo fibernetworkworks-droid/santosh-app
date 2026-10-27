@@ -27,6 +27,12 @@ Exception recorded (26 Oct 2026): v0.185.4 — the owner asked in chat to find w
 KAAM RUK GAYA HAI... IT MUST COMPLETE THE GIVEN TASK ON PC SYSTEMATICALLY AND SMOOTHLY TILL FINAL COMPLETION"),
 so `server/app/pc/operator.py` was fixed (the is_error/screenshot 400) with its test file. Desktop/ stayed
 untouched (1.4.0); the freeze is back in force for everything else the moment this ships.
+Exception recorded (26 Oct 2026): v0.193.0 HOOLA KA APNA PC — the owner asked in chat for "HOOLA OWN PC /
+ENVIRONMENT / CPU RAM FOR EVERY USER where Hoola coworker can work, INSTALL SOFTWARE - like OpenAI Dots /
+Muse / Grok Bot" and approved "START PHASE 1", so `server/app/pc/hub.py` + `operator.py` and
+`agent/pc_tools.py` gained the multi-PC kind routing and the coworker VM mode (her-PC behaviour kept
+byte-identical), and the NEW `desktop-linux/` agent was added (the Windows `desktop/` app stays untouched,
+1.4.0). The freeze is back in force for everything else the moment this ships.
 
 ## What it is
 **Hoola** is an Indian "Dots-like" always-on AI coworker app by Newtika Pvt Ltd (FNW). Owner: Meghana.
@@ -7989,6 +7995,19 @@ The owner said "P0 hotfix + v0.190.0 implementation" - v0.190.0 was committed an
   console ?v=0.190.1 x9, conscious pins 0.190.0->0.190.1 in test_v0179/email_phase1-4/test_v0185/test_v0187/
   test_v0189). Deploy carries both v0.190.0 HARNESS-1 (never live) and this hotfix in one restart; desktop
   untouched 1.4.0, old APKs keep working (all four fixes are server-side).
+## v0.193.0 HOOLA KA APNA PC — Phase 1 of the per-user coworker environment (owner: "HOOLA OWN PC / ENVIRONMENT / CPU, RAM ETC FOR EVERY USER WHERE HOOLA COWORKER CAN WORK, INSTALL SOFTWARE ETC SAME LIKE OPEN AI DOTS AND LIKE MUSE OR LIKE GROK BOT — FIRST DEEP RESEARCH AND THEN A PERFECT PLAN" → "START PHASE 1")
+
+Deep research first (20+ sources): OpenAI Dots (persistent agents, each with its own cloud computer + browser), Meta Muse (per-user Secure VM + the Sentinel egress watcher + human-approval dialogs straight to the user, never through the model), Grok Bot (role-based bots, each with its own cloud computer, live screen watch + takeover), Manus (per-user VM, Cloud Computer), Anthropic's computer-use harness (Ubuntu container + Xvfb + xdotool + the computer/bash/editor tools, "you can install Ubuntu applications with your bash tool"), CUA/Operator, E2B/Daytona/Fly/Hetzner infra costs. The one pattern they all share: per-user persistent cloud computer + browser + logged-in sessions + watchable screen + human takeover + egress policy. Hoola already owned ~80% of it (pc/operator.py vision loop + bridge + voice dispatch + wake lane) — the missing piece was a computer that belongs to Hoola.
+
+Shipped in Phase 1 (all on the existing VPS, zero new infra cost):
+- `desktop-linux/agent.py` + Dockerfile + start.sh + compose: the Linux cloud PC that belongs to Hoola. Speaks the EXACT Windows Santosh Desktop bridge protocol, so hub pairing, jobs, the vision loop, page_text/tabs/switch_tab/downloads and the live phone card all work unchanged. Xvfb 1280x800 + openbox + xdotool + scrot (screen/mouse/keyboard), Chromium over CDP (exact page_text/tabs/open_url, lazy launch), files over /data, pairing by the normal 6-digit code (docker exec → /data/pair_code), state on the hoola-pc-data volume (identity + chrome profile with logged-in sessions + Downloads + installed.log). Image ~150 MB RAM idle, <1 GB busy.
+- `pc/hub.py`: a tenant can have SEVERAL PCs — info.kind preserved, hub.call(kind=) / _pick / is_online(kind) / has_kind; no kind = legacy last-connected (her-PC-only setups never notice). JOB_TIMEOUT += install 500 / run 200.
+- `pc/operator.py`: Op.kind="hoola_pc" — every job rides hub.call(kind=...); HOOLA_TOOLS adds install (apt/pip, names only) + run (one shell command ≤180s); HOOLA_PC_ADDENDUM teaches the VM ("this computer belongs to you — installs and shell need no approval; anything LEAVING the VM still needs ask_approval; passwords/OTPs same rules"); her-PC wording byte-identical; HOOLA_PC_OFFLINE is its own clear error.
+- `agent/pc_tools.py` hoola_pc_do (family "pc" → admit.py admits it on pc/computer/laptop words), `agent/where.py` place "hoolapc" (aapke/tumhare/apne/hoola ke + computer wins over the bare-noun PC match; steer browse_web/open_on_phone/computer_operator → hoola_pc_do, pc_do refused with the pointer; work-stickiness kept), prompts.py teaches the third computer, voice.py carries it (8s _wait lane).
+- `vps-ops.yml`: pc_deploy (build + run the container), pc_pair (6-digit code in the lines field, validated on the runner), pc_logs.
+
+Tests: NEW server/tests/test_v0193_hoola_pc.py (18) — hub kind routing + legacy fallback, where.py hoolapc words (Hinglish + Hindi + negation + regressions), steer/note/worked, the REAL operator loop on the Hoola PC (install flows end to end, the model sees the addendum + install/run tools, her-PC loop never does, kind rides every hub call), HOOLA_PC_OFFLINE vs PC_OFFLINE, install/run shapes incl. shell-metachar refusal, _say/_report/_inject wording, registry + FAMILY_OF + voice wiring. Regression sweeps: pc bridge + v0185 pc browser + v01854 is_error 30, harness x2 + search + realtime 45, bazar + email 1-2 53, email 3-5 + long goal 51 — 197 passed, zero failures.
+
 ## v0.192.0 HARNESS-2 (re-versioned on rebase: the dev's Excel-at-scale had taken 0.191.0 first - both kept) (Phase 2 of the harness study - owner: "START STEP 2 PERFECTLY AND DEPLOY"): step-admitted tool subsets + job-completion WAKE turns + the durable accepted-message inbox
 
 Phase 1 (v0.190.0) documented three gaps "fixable now"; this ship closes all three, exactly as planned (dsh:

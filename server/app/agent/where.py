@@ -40,6 +40,8 @@ _WHY: dict[str, str] = {}                    # conv -> named | follow | work (fo
 
 PC_WORDS = "Aapka PC (Santosh Desktop: Chrome / apps on HER own computer)"
 HOOLA_WORDS = "Hoola ka apna browser (on Hoola's server - not her PC, not her phone)"
+# v0.194 the third computer: Hoola's OWN cloud PC (the coworker VM, Linux + Chromium + install software)
+HOOLAPC_WORDS = "Hoola ka apna cloud PC (the Linux computer owned by Hoola: Chromium, apt/pip installs, shell)"
 
 _NOUN = r"(?:pc|p\.c\.|computer|kompyuter|compyuter|laptop|desktop|पीसी|कंप्यूटर|कम्प्यूटर|लैपटॉप|डेस्कटॉप)"
 _PC = [
@@ -62,6 +64,15 @@ _PHONE = [
 ]
 _NOT_AFTER = re.compile(r"^[\s,.)]*(?:\w+\s+)?(?:(?:nahi|nahin|nai|mat|na|not|no)\b|नहीं|नही|मत)", re.I)
 _NOT_BEFORE = re.compile(r"(?:\bnot|\bno|\bmat|\bna|नहीं|मत)\s+(?:\w+\s+)?$", re.I)
+# v0.194 HOOLA KA APNA PC: the possessive points at Hoola (aapke / tumhare / apne / hoola ke) + a COMPUTER noun
+# (not browser). From her mouth 'apna computer' attaches to the doer - Hoola - same convention as 'apne browser'.
+_HOOLAPC = [
+    re.compile(r"\b(?:apn[aei]|tumhar[aei]|tumhare|ter[aei]|aapk[aei]|aap\s+k[aei]|your|your\s+own|khud\s+k[aei]|"
+               r"hoola\s+k[aei]|santosh\s+k[aei]|hoola)\s+(?:own\s+|wal[aei]\s+|hi\s+)?"
+               r"(?:pc|p\.c\.|computer|kompyuter|compyuter|laptop|desktop|machine)\b", re.I),
+    re.compile(r"\bhoola\s+ka\s+(?:apna\s+)?(?:pc|computer|laptop|desktop)\b|\bhoola\s+(?:pc|laptop)\b", re.I),
+    re.compile(r"(?:अपने|तुम्हारे|आपके|होला\s+के)\s*(?:पीसी|कंप्यूटर|कम्प्यूटर|लैपटॉप|डेस्कटॉप)"),
+]
 # names of features, not places: "computer operator" is Hoola's own browser, "PC operator" is her PC (kept)
 _FEATURE = re.compile(r"\bcomputer\s+operator\b", re.I)
 _WEBBY = re.compile(r"https?://|www\.|\.(?:com|in|org|net|gov|co)\b|\b(?:chrome|browser|website|site|portal|web\s*page|"
@@ -78,10 +89,12 @@ def _hit(text: str, pats: list[re.Pattern]) -> bool:
 
 
 def place(text: str) -> str:
-    """Where she wants it: 'pc' | 'hoola' | 'phone' | '' (none named, or two different places)."""
+    """Where she wants it: 'pc' | 'hoolapc' | 'hoola' | 'phone' | '' (none named, or two different places)."""
     t = _FEATURE.sub(" ", str(text or ""))[:2000]
     if not t.strip():
         return ""
+    if _hit(t, _HOOLAPC):   # v0.194 the possessive named Hoola's own computer: wins over the bare-noun PC match
+        return "hoolapc"
     got = {p for p, pats in (("pc", _PC), ("hoola", _HOOLA), ("phone", _PHONE)) if _hit(t, pats)}
     return next(iter(got)) if len(got) == 1 else ""
 
@@ -135,7 +148,7 @@ def working(conv: str) -> str:
 
 def touch(conv: str, where: str) -> None:
     """A step or a result of website work just happened in this place (keeps the job where it is)."""
-    if conv and where in ("pc", "hoola"):
+    if conv and where in ("pc", "hoola", "hoolapc"):
         _WORK[conv] = (where, time.time())
 
 
@@ -145,6 +158,8 @@ def worked(conv: str, name: str, args: dict[str, Any], out: Any = None) -> None:
     w = ""
     if name == "pc_do" and _WEBBY.search(str(args.get("task") or "")):
         w = "pc"
+    elif name == "hoola_pc_do" and _WEBBY.search(str(args.get("task") or "")):
+        w = "hoolapc"
     elif name == "browse_web":
         w = "hoola"
     elif name == "computer_operator" and str(args.get("action") or "") == "start":
@@ -175,6 +190,24 @@ def _url(u: Any) -> str:
 def steer(name: str, args: dict[str, Any], where: str) -> tuple[str, dict[str, Any], str]:
     """(tool, args, note). Moves a website tool to the place she named; refuses a call that goes to the other place."""
     args = dict(args or {})
+    if where == "hoolapc":   # v0.193 she named Hoola's OWN computer: website jobs run in Chromium on the Hoola PC
+        if name in ("browse_web", "open_on_phone"):
+            url = _url(args.get("start_url") or args.get("url"))
+            task = (str(args.get("task") or "").strip() + (f" Website: {url}." if url else "") +
+                    " Do it in Chromium on Hoola's own PC (your own cloud computer).")
+            STATS["steered"] += 1
+            return "hoola_pc_do", {"task": task}, ("She asked for HOOLA KA APNA PC, so this runs in Chromium on the "
+                                                    "Hoola PC (your own cloud computer), not the server browser.")
+        if name == "pc_do":
+            STATS["refused"] += 1
+            raise ToolError("She asked for HOOLA KA APNA PC (your own cloud computer), not her PC. Use hoola_pc_do "
+                            "for this task; pc_do drives HER Windows PC and needs her to say 'mere PC pe'.")
+        if name == "computer_operator" and str(args.get("action") or "") == "start":
+            url = _url(args.get("start_url"))
+            task = (str(args.get("task") or "").strip() + (f" Website: {url}." if url else "") +
+                    " Do it in Chromium on Hoola's own PC (your own cloud computer).")
+            STATS["steered"] += 1
+            return "hoola_pc_do", {"task": task}, "She asked for HOOLA KA APNA PC: this website job runs in Chromium on the Hoola PC."
     if where == "pc":
         if name == "browse_web":
             url = _url(args.get("start_url"))
@@ -205,16 +238,24 @@ def steer(name: str, args: dict[str, Any], where: str) -> tuple[str, dict[str, A
 
 def note(where: str, conv: str = "") -> str:
     """The line the model gets with her message when a place holds for it."""
-    if conv and _WHY.get(conv) == "work" and where in ("pc", "hoola"):
+    if conv and _WHY.get(conv) == "work" and where in ("pc", "hoola", "hoolapc"):
         if where == "pc":
             return ("[Jagah: the website work in this chat is running in Chrome on HER PC. Keep every website step of it there "
                     "(pc_do / pc_task_result) - do NOT open your own browser (browse_web / computer_operator) for it. If her PC "
                     "doesn't answer, tell her plainly and ask; never switch by yourself. Call it 'aapka PC'.]")
+        if where == "hoolapc":
+            return ("[Jagah: the website work in this chat is running in Chromium on HOOLA KA APNA PC (your own cloud "
+                    "computer). Keep every website step of it there (hoola_pc_do / pc_task_result) - do NOT open the server "
+                    "browser (browse_web / computer_operator) or her PC (pc_do) for it. If the Hoola PC doesn't answer, tell "
+                    "her plainly and ask; never switch by yourself.]")
         return ("[Jagah: the website work in this chat is running in YOUR OWN browser (Hoola's browser on the server). Keep it "
                 "there (browse_web / computer_operator); don't move it to her PC unless she says 'PC par'.]")
     return {
         "pc": "[Jagah: she said HER PC. Website work runs in Chrome on her PC (pc_do, or computer_operator where=pc), "
               "not in your own browser. Call it 'aapka PC', never 'mera PC'.]",
+        "hoolapc": "[Jagah: she said HOOLA KA APNA PC (your own cloud computer). The job runs there (hoola_pc_do): "
+                   "Chromium, and you may install software / run commands freely inside your own VM. Not her PC (pc_do), "
+                   "not the server browser (browse_web).]",
         "hoola": "[Jagah: she said YOUR OWN browser (Hoola's browser on the server): browse_web / computer_operator. "
                  "Not her PC. If the site refuses your server, tell her and ask before moving it to her PC.]",
         "phone": "[Jagah: she said her PHONE: open_on_phone opens it there for her.]",

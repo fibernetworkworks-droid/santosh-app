@@ -53,6 +53,46 @@ PC_TOOLS.append({"name": "pc_task_result", "description": "[HER PC] Status or re
 PC_LABELS.update({"pc_do": "Aapke PC par kaam kar raha hoon", "pc_task_result": "Aapke PC ka kaam dekh raha hoon"})
 
 
+# ---- v0.193 HOOLA KA APNA PC: the Linux cloud computer that belongs to Hoola (the coworker VM) ----
+PC_TOOLS.append({"name": "hoola_pc_do", "description": (
+    "[HOOLA KA APNA PC - the cloud computer that belongs to YOU, the coworker] Hoola uses its OWN Linux computer "
+    "in the cloud like a person: sees the screen, opens apps, clicks, types, INSTALLS SOFTWARE (apt/pip, no "
+    "permission needed - it is Hoola's own VM) and runs shell commands. Use when the job needs a computer that "
+    "is NOT her PC: software she does not have installed ('ffmpeg se video compress karo', 'LibreOffice mein "
+    "sheet banao', 'pandoc se convert karo'), heavy/clean work, a second browser session, downloads that should "
+    "not touch her laptop, or anything where the user said 'aapke computer pe / tumhare PC pe / Hoola ke PC pe'. "
+    "Her-PC jobs ('mere PC pe') stay with pc_do; quick web look-ups stay with browse_web. Chromium is Chrome here; "
+    "files live in /data. Same safety rules as pc_do for anything that leaves the VM (sends, submits, pays). "
+    "Describe the full goal with every detail. The user watches it live; it asks on the phone before sending, "
+    "submitting, deleting or paying, and never types passwords/OTPs. Slow (a few seconds per step)."),
+    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}}, "required": ["task"]}})
+PC_LABELS.update({"hoola_pc_do": "Hoola ke apne PC par kaam kar raha hoon"})
+
+
+async def hoola_pc_do(ctx: Ctx, task, _wait=None, **_):
+    from ..pc import operator
+    from ..pc.hub import HOOLA_PC_KIND
+    task = str(task or "").strip()
+    if len(task) < 3:
+        raise ToolError("Batayiye Hoola ke PC par kya karna hai")
+    try:
+        r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, kind=HOOLA_PC_KIND,
+                                 wait=get_settings().pc_wait_seconds if _wait is None else float(_wait))
+    except RuntimeError as e:
+        if "HOOLA_PC_OFFLINE" in str(e):
+            raise ToolError("Hoola ka apna PC abhi online nahi hai. Thodi der baad boliye.")
+        if "PC_OFFLINE" in str(e):
+            raise ToolError("Hoola ka apna PC abhi online nahi hai. Thodi der baad boliye.")
+        raise ToolError(str(e))
+    r.pop("timeline", None)
+    r.setdefault("where", "Hoola ka apna PC (the cloud computer owned by Hoola, Linux + Chromium)")
+    if r["status"] in ("running", "needs_confirm"):
+        r["say"] = ("Still working on Hoola ke apne PC (live card in chat; a confirm card appears if a step needs "
+                    "approval). The result is posted automatically; if asked before that, call pc_task_result with "
+                    f"session_id '{r['session_id']}'.")
+    return r
+
+
 async def pc_do(ctx: Ctx, task, _wait=None, **_):
     from ..pc import operator
     task = str(task or "").strip()
@@ -90,4 +130,4 @@ async def pc_task_result(ctx: Ctx, session_id, **_):
     return r
 
 
-PC_HANDLERS.update({"pc_do": pc_do, "pc_task_result": pc_task_result})
+PC_HANDLERS.update({"pc_do": pc_do, "pc_task_result": pc_task_result, "hoola_pc_do": hoola_pc_do})
