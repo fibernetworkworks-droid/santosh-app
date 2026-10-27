@@ -14,7 +14,7 @@ const server=http.createServer((req,res)=>{
    if(req.method==='POST'&&p.endsWith('/files'))return json({file_id:'uploaded-reference'});
    if(p.endsWith('/config'))return json({v2:true,sessions:true,panel:true,projects:true,stream:false});
    if(p.endsWith('/me'))return json({owner:'Santosh',handle:'fnw',avatar:{name:'Hoola'}});
-   if(p==='/api/console/conversations')return json({conversations:[{id:'chat-1',title:'Launch campaign',updated_at:new Date().toISOString()}]});
+   if(p==='/api/console/conversations')return json({conversations:Array.from({length:60},(_,i)=>({id:'chat-'+(i+1),title:i?'Campaign research '+i:'Launch campaign',updated_at:new Date().toISOString()}))});
    if(p==='/api/projects')return json({projects:[]});
    if(p.endsWith('/timeline'))return json({events:posts.length?[{id:1,kind:'message',payload:{role:'user',text:'Create an image'}},{id:2,kind:'photo_made',payload:{id:'photo-1',file_id:'result-1',name:'launch.png',title:'Launch image'}}]:[],last_event_id:2});
    if(p==='/api/panel/files/result-1/info')return json({name:'launch.png',size:68,mime:'image/png',media:'image',inline:true});
@@ -36,6 +36,12 @@ const server=http.createServer((req,res)=>{
  page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>localStorage.setItem('hoola.console.token','fixture-only'));
  await page.goto(`http://127.0.0.1:${server.address().port}/console/`);await page.locator('#app').waitFor({state:'visible'});
+ await page.locator('.side').hover();await page.mouse.wheel(0,600);await page.waitForTimeout(150);
+ assert.ok(await page.locator('.side').evaluate(e=>e.scrollTop>0),'Sidebar must scroll with wheel');
+ assert.ok(await page.locator('.side .sn .txt').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=15 && Number(getComputedStyle(e).fontWeight)>=700),'Sidebar labels must be larger and bold');
+ await page.locator('.side').focus();await page.keyboard.press('End');await page.waitForFunction(()=>{const e=document.querySelector('.side');return e.scrollTop+e.clientHeight>=e.scrollHeight-2});
+ assert.ok(await page.locator('.side').evaluate(e=>e.scrollTop+e.clientHeight>=e.scrollHeight-2),'End reaches sidebar footer');
+ await page.keyboard.press('Home');
  assert.equal(await page.locator('.main > .top').count(),0);
  assert.equal(await page.locator('.main > .views').evaluate(e=>e.getBoundingClientRect().top),0);
  assert.equal(await page.locator('.side #exportBtn').count(),1);
@@ -63,6 +69,13 @@ const server=http.createServer((req,res)=>{
  for(const width of [1024,768,390,320]){
   await page.setViewportSize({width,height:900});await page.waitForTimeout(100);
   const sizes=await page.evaluate(()=>({w:innerWidth,scroll:document.documentElement.scrollWidth}));assert.ok(sizes.scroll<=sizes.w,JSON.stringify(sizes));
+  if(width===390){
+   await page.locator('#menu').click();await page.locator('.side').hover();await page.mouse.wheel(0,600);await page.waitForTimeout(150);
+   assert.ok(await page.locator('.side').evaluate(e=>e.scrollTop>0),'Mobile drawer must scroll');
+   await page.locator('.side').focus();await page.keyboard.press('End');await page.waitForFunction(()=>{const e=document.querySelector('.side');return e.scrollTop+e.clientHeight>=e.scrollHeight-2});
+   assert.ok(await page.locator('.side').evaluate(e=>e.scrollTop+e.clientHeight>=e.scrollHeight-2));
+   await page.locator('#scrim').click({position:{x:360,y:100}});
+  }
   if(width===390 && shots){await page.waitForTimeout(500);await page.screenshot({path:path.join(shots,'hoola-studio-mobile.png'),fullPage:true});}
  }
  assert.deepEqual(errors,[]);console.log('PASS: four workflow submissions, file-only validation/upload, approval wording, image attachment filtering, result reuse, workspace expansion/Escape, 4 responsive widths, no browser exceptions');

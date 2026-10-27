@@ -122,3 +122,19 @@
  #app .view>.pad{padding-top:64px}
  #app .thread{padding-top:52px}
 }
+
+/* One continuous sidebar scroll: navigation, sessions and chats cannot squeeze the footer off screen. */
+#app .side{overflow-y:auto;overflow-x:hidden;min-height:0;overscroll-behavior-y:contain;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:rgba(182,144,231,.55) transparent}
+#app .side>*{flex-shrink:0}
+#app .side .recents{flex:1 0 auto;overflow:visible;min-height:80px}
+#app .side::-webkit-scrollbar{width:8px}
+#app .side::-webkit-scrollbar-thumb{background:rgba(182,144,231,.55);border-radius:8px}
+#app .side .sn,#app .side .txt,#app .side .newc{font-size:15px;font-weight:750;line-height:1.5}
+#app .side .sn{padding:11px 12px}
+#app .side .slabel,#app .side .rg{font-size:12px;font-weight:800}
+#app .side .rc,#app .side .rct,#app .side .rcarch{font-size:14px;font-weight:700;line-height:1.5}
+#app .side .sgh .sgn{font-size:13px;font-weight:750;letter-spacing:0;text-transform:none}
+#app .side .user b{font-size:15px;font-weight:800}
+#app .side .user span,#app .side .projects .faint{font-size:13px;font-weight:600}
+#app .side kbd.txt{font-size:10px;font-weight:700;white-space:nowrap}
+#app .side .console-controls .livebtn{font-size:13px;font-weight:750}
