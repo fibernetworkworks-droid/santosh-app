@@ -383,6 +383,16 @@ async def _send(fid: str, settings) -> None:
             kaamwatch._voice(tenant, conv, _spoken(line))
         except Exception:
             log.debug("followup voice note failed", exc_info=True)
+        try:   # v0.211 NO live call? the SERVER may ring her phone for this news: kind=voice_ring data push,
+               # gated in push.on_event (setting off until the native side learns the kind, quiet hours,
+               # daily budget, never while a call is live) - 'if we dont give call it never reply on its own'
+            if settings.voice_ring:
+                from . import push as _push
+                _push.on_event(conv, {"kind": "voice_ring", "id": r3.key, "at": "",
+                                      "payload": {"reason": f"kaam {r3.state}: {title}"[:80], "ref": r3.key,
+                                                  "conv": conv}})
+        except Exception:
+            log.debug("voice ring skipped", exc_info=True)
         STATS["sent"] += 1
     except Exception:
         log.exception("kaam followup send failed")

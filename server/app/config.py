@@ -228,6 +228,15 @@ class Settings(BaseSettings):
     voice_call_hold_max_s: int = 3600      # v0.142 her other phone call longer than this ends the Hoola call
     voice_tool_wait_s: int = 12            # v0.86 (was 25) a call waits this long for a big job, then talks on and gets told when it is done
     voice_tool_timeout_s: int = 60         # any other call tool is cut off after this
+    voice_stall_watch: bool = True         # v0.211 Gemini goes quiet mid-call: one nudge, then a forced reconnect - the call is never silently dead
+    voice_stall_nudge_s: int = 14          # her turn open + nobody has spoken this long: the nudge note goes to Gemini
+    voice_stall_reconnect_s: int = 28      # still nothing this long after the nudge: the session is closed and reconnected
+    voice_followup_min: int = 720          # v0.211 a result that landed after the call closed is told on her next call within this window
+    voice_auto_rescue: bool = True         # v0.211 a tool failing twice hands the work to the full agent by itself (the call never just gives up)
+    voice_setup_hard_keep_s: int = 3600    # v0.211 heavy setup losses (compression / tools) self-heal after this long - memory and tools come back on their own
+    voice_ring: bool = False               # v0.211 server-initiated voice ring (kind=voice_ring data push -> the phone's wake: path); ON when the native side learns the kind
+    voice_ring_max_day: int = 2            # v0.211 rings per tenant per day (the phone is not an alarm clock)
+    voice_ring_quiet: str = "22-8"         # v0.211 quiet hours in the tenant's own timezone - no rings inside
 
     # --- email (Baat/Chat can read your inbox and send approved replies). App password, not your login password. ---
     email_address: str = ""

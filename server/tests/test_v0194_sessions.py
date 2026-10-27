@@ -72,14 +72,14 @@ def test_cache_busts_follow_the_version():
     html = _read("v2.html")
     stamps = re.findall(r'\?v=([0-9.]+)', html)
     app = [s for s in stamps if s != "1.4.4"]                           # vendor qrcode keeps its own version
-    assert len(app) == 9 and set(app) == {"0.213.0"}, stamps            # x9, all moved together
+    assert len(app) == 9 and set(app) == {"0.214.0"}, stamps            # x9, all moved together
     from app.main import APP_VERSION
     assert f"?v={APP_VERSION}" in html
 
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.213.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert APP_VERSION == "0.214.0"    # conscious-bump guard: moves with every release (bump with pubspec)
 
 
 # ---------- the server surface, end to end ----------

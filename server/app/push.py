@@ -604,7 +604,7 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
 
 
 PUSH_KINDS = {"message", "goal", "bazar_approval", "artifact", "pc_file", "photo_made", "blender3d", "notebook_output", "pg_write", "email_draft", "email_new", "email_snooze", "bazar_open", "device_action",
-              "home_device", "bt_request", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "hoola_pick", "hoola_khata", "thok_order", "thok_alert", "thok_day", "sheet_milaan", "doc_edit", "niryat_pi", "niryat_day", "ads_change", "ads_report", "hoola_rfq", "hoola_promo", "hoola_mandate", "hoola_dosti", "fr_statement", "fr_day", "a2a_task", "a2a_out", "handoff_reminder", "digilocker", "theka_bill", "theka_letter", "theka_day", "brand_approval", "brand_idea", "site_board", "site_lead", "site_launch", "site_live", "site_dns", "site_down", "site_domain", "site_care", "site_github", "app_board", "app_android",
+              "home_device", "bt_request", "voice_ring", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "hoola_pick", "hoola_khata", "thok_order", "thok_alert", "thok_day", "sheet_milaan", "doc_edit", "niryat_pi", "niryat_day", "ads_change", "ads_report", "hoola_rfq", "hoola_promo", "hoola_mandate", "hoola_dosti", "fr_statement", "fr_day", "a2a_task", "a2a_out", "handoff_reminder", "digilocker", "theka_bill", "theka_letter", "theka_day", "brand_approval", "brand_idea", "site_board", "site_lead", "site_launch", "site_live", "site_dns", "site_down", "site_domain", "site_care", "site_github", "app_board", "app_android",
               # v0.133 Seva suite
               "seva_exception", "seva_sla", "seva_ticket", "seva_day", "helpdesk_change", "helpdesk_alert", "helpdesk_escalate", "helpdesk_day", "shikayat_comp", "shikayat_case", "shikayat_alert", "shikayat_day", "aftersales_charge", "aftersales_reminders", "aftersales_visit", "aftersales_day", "feedback_reply", "feedback_alert", "feedback_report", "wapsi_return", "wapsi_refund", "wapsi_day", "samudaay_alert", "samudaay_action", "samudaay_question", "samudaay_join", "samudaay_template", "samudaay_week", "callcentre_script", "callcentre_message", "callcentre_call",
               # v0.137 Tech suite
@@ -619,7 +619,7 @@ PUSH_KINDS = {"message", "goal", "bazar_approval", "artifact", "pc_file", "photo
               "frontoffice_card", "frontoffice_message", "frontoffice_alert", "frontoffice_day", "eventplan_booking", "eventplan_doc", "eventplan_message", "eventplan_spend", "eventplan_alert", "eventplan_day", "shaadi_card", "shaadi_alert", "shaadi_day", "tourguide_card", "tourguide_alert", "tourguide_day", "homestay_card", "homestay_alert", "homestay_day", "banquet_card", "banquet_alert", "banquet_day",
               # v0.156 Kala suite
               "editdesk_card", "editdesk_alert", "editdesk_day", "motiondesk_card", "motiondesk_alert", "motiondesk_day", "filmdesk_card", "filmdesk_alert", "filmdesk_day", "patrakar_card", "patrakar_alert", "patrakar_day", "photoassist_card", "photoassist_alert", "photoassist_day", "graphic_card", "graphic_alert", "graphic_day", "artistmgr_card", "artistmgr_alert", "artistmgr_day", "kitab_card", "kitab_alert", "kitab_day", "podcast_card", "podcast_alert", "podcast_day", "influencer_card", "influencer_alert", "influencer_day", "editdesk_note", "motiondesk_update"}
-RAW_KINDS = {"device_action", "home_device", "bt_request"}   # the phone runs these itself; no notification text
+RAW_KINDS = {"device_action", "home_device", "bt_request", "voice_ring"}   # the phone runs these itself; no notification text (voice_ring: v0.211 the SERVER calls HER - the native side turns it into the wake: broadcast and the app auto-starts the call)
 
 
 def on_event(conversation_id: str, ev: dict[str, Any]) -> None:
@@ -631,7 +631,44 @@ def on_event(conversation_id: str, ev: dict[str, Any]) -> None:
     tenant = _tenant(conversation_id)
     if not tenant:
         return
+    if ev["kind"] == "voice_ring" and not _ring_allowed(tenant, conversation_id):
+        return
     try:
         _pool.submit(_send, tenant, ev)
     except RuntimeError:
         pass
+
+
+# v0.211 the server-initiated voice ring: a finished job calls HER phone when no call is live. Gated hard in
+# code (the phone is not an alarm clock): setting off by default (until the phone's native side learns the
+# kind), tenant-tz quiet hours, a small daily budget, and never while a call is already live on that chat.
+_RING_DAY: dict[str, tuple[str, int]] = {}
+
+
+def _ring_allowed(tenant: str, conv: str) -> bool:
+    st = get_settings()
+    if not st.voice_ring:
+        return False
+    try:   # a live call on this chat would hear the phone ring for nothing
+        from . import voice
+        if voice.ACTIVE.get(conv):
+            return False
+    except Exception:
+        pass
+    try:
+        from datetime import datetime, timezone
+        from .life import tz_of
+        h = datetime.now(tz_of(tenant)).hour
+        a, b = (st.voice_ring_quiet or "22-8").split("-")[:2]
+        a, b = int(a), int(b)
+        if (a > b and (h >= a or h < b)) or (a <= b and a <= h < b):
+            return False                      # inside the quiet hours
+        day = datetime.now(timezone.utc).strftime("%Y%m%d")
+        prev_day, n = _RING_DAY.get(tenant, ("", 0))
+        n = n + 1 if prev_day == day else 1
+        if n > max(1, st.voice_ring_max_day):
+            return False
+        _RING_DAY[tenant] = (day, n)
+    except Exception:
+        return False
+    return True

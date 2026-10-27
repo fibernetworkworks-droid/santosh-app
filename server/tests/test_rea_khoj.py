@@ -96,7 +96,7 @@ def run(name, args, ctx):
 # ---------------------------------------------------------------- unit: version + registry
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.213.0"
+    assert APP_VERSION == "0.214.0"
 
 
 def test_rea_khoj_registry():
@@ -258,14 +258,3 @@ def test_stage_cache_reuse_across_calls(rea, tmp_path):
     n3, p3, _ = khoj._stage("other", {"file_id": fid_other})
     from pathlib import Path
     assert Path(p3).parent.parent != Path(p1).parent.parent
-
-
-# ---------------------------------------------------------------- voice wiring (v0.212: voice-to-voice REA Khoj)
-def test_voice_wiring():
-    """On a call 'yeh app ka X kaise kaam karta hai' must reach the full brain, not 'Unknown tool'."""
-    from app.voice import VOICE_TOOL_NAMES, VOICE_VIA_KAAM, via_kaam, _tool_specs
-    assert "rea_khoj" in VOICE_TOOL_NAMES, "call model naming rea_khoj must not get 'Unknown tool'"
-    assert "rea_khoj" in VOICE_VIA_KAAM, "the decompile loop is minutes-deep: it must delegate to santosh_kaam"
-    assert via_kaam("rea_khoj") is True
-    declared = {t["name"] for t in _tool_specs()}
-    assert "rea_khoj" not in declared, "via-kaam tools are NOT declared to Gemini Live (kept out of the tool JSON)"

@@ -456,6 +456,10 @@ CORE_TOOLS = {"create_reminder", "list_reminders", "set_phone_alarm", "set_phone
               "list_add", "list_show"}
 SETUP = {"step": 0, "key": "", "at": 0.0, "refusals": 0, "healed": 0, "loaded": False}
 SETUP_KEEP_S = 7 * 86400
+# v0.211 only the GENTLE losses (mcp, vocab, langcodes) are remembered long: compression / core_tools / no_tools
+# take away her mid-call memory and her ability to DO anything, so those self-heal in an hour and are never
+# loaded from disk - one old refusal must not leave every later call deaf and tool-less for a week.
+SETUP_SOFT_MAX = 3
 
 
 def setup_refused(err: BaseException) -> bool:
@@ -483,9 +487,13 @@ def setup_step() -> int:
         SETUP["loaded"] = True
         with contextlib.suppress(Exception):
             d = json.loads(_setup_file().read_text())
-            SETUP.update(step=int(d.get("step", 0)), key=str(d.get("key", "")), at=float(d.get("at", 0)))
+            # v0.211 a file that says 'no tools' was written by an older version: memory and tools come back NOW
+            SETUP.update(step=min(int(d.get("step", 0)), SETUP_SOFT_MAX), key=str(d.get("key", "")),
+                         at=float(d.get("at", 0)))
     if SETUP["step"] and (SETUP["key"] != _setup_key() or time.time() - SETUP["at"] > SETUP_KEEP_S):
         SETUP.update(step=0, key="", at=0.0)     # new code / new tools / a week later: try the full call again
+    elif SETUP["step"] > SETUP_SOFT_MAX and time.time() - SETUP["at"] > get_settings().voice_setup_hard_keep_s:
+        SETUP.update(step=0, key="", at=0.0)     # v0.211 heavy losses self-heal: the full setup is tried again
     return min(max(SETUP["step"], 0), len(SETUP_STEPS))
 
 
@@ -494,10 +502,12 @@ def remember_setup(step: int) -> None:
         return
     SETUP.update(step=step, key=_setup_key(), at=time.time())
     SETUP["healed"] += 1
-    with contextlib.suppress(Exception):
-        _setup_file().write_text(json.dumps({"step": step, "key": SETUP["key"], "at": SETUP["at"]}))
-    log.warning("voice: calls now start without %s (Gemini refused the full setup)",
-                ", ".join(SETUP_STEPS[:step]) or "nothing")
+    if step <= SETUP_SOFT_MAX:   # v0.211 heavy losses are remembered only in memory (an hour) - never to disk
+        with contextlib.suppress(Exception):
+            _setup_file().write_text(json.dumps({"step": step, "key": SETUP["key"], "at": SETUP["at"]}))
+    log.warning("voice: calls now start without %s (Gemini refused the full setup)%s",
+                ", ".join(SETUP_STEPS[:step]) or "nothing",
+                "" if step <= SETUP_SOFT_MAX else " - heals itself in an hour, never saved to disk")
 
 
 def setup_view() -> dict:
@@ -696,6 +706,14 @@ CALLS: dict[str, "Call"] = {}
 # big jobs handed over by a call keep running after the call ends; hold a reference so they are not collected
 _JOBS: set[asyncio.Task] = set()
 
+# v0.211 auto-rescue skips these: money/consent words (haan_karo is voice-locked and card-backed), talk to other
+# people (side_talk), the PC's own hands (computer_operator controls her real screen), and personal one-shots
+# where a silent second attempt could double-fire (alarms, timers, notes, lists, reminders).
+_AUTO_RESCUE_SKIP = {"haan_karo", "side_talk", "computer_operator", "set_phone_alarm", "set_phone_timer",
+                     "remember", "forget", "list_add", "list_done", "consent_jaanch", "hoola_answer_connect"}
+
+_STALL_POLL_S = 2.0   # v0.211 the never-silent watchdog's heartbeat (tests shrink it)
+
 # v0.208.1 GRACEFUL SHUTDOWN: the RCA showed all 14 forced restarts dying "Waiting for connections to
 # close" -> pm2 SIGKILL at its 1.6s default -> every WebSocket killed mid-air = the voice-to-voice drop.
 # The chain below is set up in lifespan (after uvicorn installs its own handlers): our callback notes the
@@ -756,10 +774,12 @@ async def shutdown_watchdog(stop: asyncio.Event) -> None:
         log.warning("shutdown: %d live call(s) told + closed cleanly", len(calls))
 
 
-def greeting(tenant: str, gender: str = "m", continuation: str = "") -> str:
+def greeting(tenant: str, gender: str = "m", continuation: str = "", followup: str = "") -> str:
     """The first line of a NEW call (never after a reconnect): short, different every time, like a friend picking up.
     v0.200 with `continuation` (a call on this chat died mid-air within the hour): this is NOT a fresh call - a
-    human picks up and continues the work, they do not say 'good morning' like nothing happened."""
+    human picks up and continues the work, they do not say 'good morning' like nothing happened. v0.211 with
+    `followup` (work finished after the last call closed and could not be told): the news comes FIRST, exactly
+    like a coworker who promised 'khatam hote hi batata hoon' and then saw the missed call."""
     from .avatar.service import gendered
     if continuation:
         return gendered(
@@ -767,13 +787,21 @@ def greeting(tenant: str, gender: str = "m", continuation: str = "") -> str:
             "rahi thi - " + continuation[:600] + ". Pehle EK chhoti si line bolo jaise 'Haan, line aa gayi - wahi kaam "
             "pe chalte hain' ya 'Theek hai, sun raha hoon - aage bolo', phir USI kaam se aage badho. Koi fresh greeting, "
             "introduction, 'kya haal hai' ya good-morning bilkul nahi - ye usi call ka doosra hissa hai.)", gender)
+    if followup:
+        return gendered(
+            "(Pehle yeh news, phir baaki sab: pichhli call ke BAAD ek kaam ka natija aaya tha par bataya nahi ja saka "
+            "tha - " + followup[:600] + ". Sabse pehle EK chhoti line mein yeh natija batao - ho gaya to thodi khushi "
+            "awaaz mein ('Woh kaam jo aapne kaha tha, ho gaya - ...'), ruk gaya to seedha sach - phir wahin se aage "
+            "badho. Fresh greeting ya 'kya haal hai' iske BAAD mein bhi nahi.)", gender)
     h = datetime.now(life.tz_of(tenant)).hour
     part = "morning" if 4 <= h < 12 else "afternoon" if h < 17 else "evening" if h < 22 else "late night"
     hello = f"'Arre, good {part}! Kya haal hai?'" if part != "late night" else "'Haan bolo, sab theek?'"
     return gendered(
         f"(The call just connected. It is {part} for the user. Pick up the way a friend picks up a phone: ONE short line, "
         f"different every time, for example 'Haan, boliye', 'Hello! Haan, sun raha hoon' or {hello}. Use their name only "
-        "sometimes. Do not offer help like a helpdesk, and do not bring up anything from before unless it is in About the user.)",
+        "sometimes. Do not offer help like a helpdesk. Kaam yaad rakho: if HOOLA KI YAAD shows a kaam still open or "
+        "half-done, open with ONE short line about it and continue from there ('wahi kaam pe chalte hain'); when nothing "
+        "is pending, just the hello - no forced work report.)",
         gender)
 
 
@@ -833,6 +861,11 @@ def stats_summary(tenant: str) -> dict:
         "affect_vetoed": sum(c.get("affect_vetoed", 0) for c in calls),
         "affect_confirmed": sum(c.get("affect_confirmed", 0) for c in calls),
         "affect_pauses_rider": sum(c.get("affect_pauses_rider", 0) for c in calls),
+        # v0.211 never-silent watchdog + auto-rescue + orphan notes: the reliability numbers
+        "stall_nudges": sum(c.get("stall_nudges", 0) for c in calls),
+        "stall_reconnects": sum(c.get("stall_reconnects", 0) for c in calls),
+        "auto_rescues": sum(c.get("auto_rescues", 0) for c in calls),
+        "orphan_notes": sum(c.get("orphan_notes", 0) for c in calls),
         "false_stops_per_call": round(sum(c.get("false_stops", 0) for c in calls) / len(calls), 2) if calls else None,
         # v0.53 phone gate: loud sounds that were not a voice (kept away from Gemini), noise muted while nobody spoke
         "vad_calls": sum(1 for c in calls if (c.get("gate") or {}).get("vad")),
@@ -1166,6 +1199,11 @@ class Call:
         self._session = None
         self._last_user_text_at = 0.0          # last time Gemini heard words from the user
         self._last_resume = 0.0
+        self._tool_runs = 0                    # v0.211 tools actually executing right now (the stall watchdog stays out of a tool's silence)
+        self._stall_nudged = False             # v0.211 the never-silent watchdog: the nudge for THIS stall is out
+        self._stall_at = 0.0
+        self._stall_reconnects = 0             # v0.211 stall-reconnects in a row (three = the honest error path)
+        self._auto_rescued: set[str] = set()   # v0.211 tools the auto-rescue already re-ran through the full agent this call
         self.stats = {"tenant": self.tenant, "call_id": self.call_id, "started": time.time(), "ended": None, "turns": 0,
                       "latency_ms": [], "words": [], "question_endings": 0, "assistantisms": 0, "interruptions": 0,
                       "tools": 0, "silent_tools": 0, "acks": 0, "false_stops": 0, "backchannels": 0, "progress": 0,
@@ -1197,7 +1235,8 @@ class Call:
         except Exception:
             self._names = [self.name, "Hoola"]
         self.stats.update({"holds": 0, "hold_reasons": {}, "held_turns": 0, "dropped_replies": 0, "released_by": {},
-                           "hold_refused_tools": 0, "hold_s": 0.0})
+                           "hold_refused_tools": 0, "hold_s": 0.0,
+                           "stall_nudges": 0, "stall_reconnects": 0, "auto_rescues": 0, "orphan_notes": 0})
         if st.voice_tool_ack and st.gemini_api_key:
             ack_clips(self.voice, self.gender)   # get his "ek second" clips ready
             if st.voice_backchannel:             # v0.205 the murmurs and progress sounds render too
@@ -1476,6 +1515,8 @@ class Call:
             self._bc_task = None
         now = time.monotonic()
         self._last_model_audio = now
+        if getattr(self, "_stall_nudged", False) or getattr(self, "_stall_reconnects", 0):
+            self._stall_nudged, self._stall_reconnects = False, 0   # v0.211 he is back: the watchdog clock is whole again
         if not self._safe_worked:
             self._safe_worked = True
             if self._safe != SETUP["step"]:
@@ -1488,6 +1529,55 @@ class Call:
             if 0 <= gap < 15:
                 self._latency = int(gap * 1000)
                 self.stats["latency_ms"].append(self._latency)
+
+    async def _stall_watch(self, session) -> None:
+        """v0.211 NEVER SILENT (the owner: 'IF STUCK NO REPLY'): Gemini sometimes just stops sending anything
+        mid-call - no audio, no turn_complete, no go_away. downlink then blocks in session.receive() forever,
+        the phone shows a connected-but-dead call, and she hangs up thinking Hoola ignores her. This watchdog
+        runs beside uplink/downlink: her turn is open, nobody has spoken for voice_stall_nudge_s -> ONE nudge
+        as text (a living session answers it); the silence still holds a nudge later -> the session is CLOSED
+        so the run loop reconnects (the resumable handle keeps the context); three reconnects in a row with
+        never a word -> the honest error the phone already knows. A tool running owns its own silence (acks +
+        progress sounds), and so does a hold - the watchdog stays out of both."""
+        st = get_settings()
+        if not st.voice_stall_watch:
+            return
+        while not self.closed.is_set():
+            await asyncio.sleep(_STALL_POLL_S)
+            if self.closed.is_set() or self.hold:
+                continue
+            if not (self.user_buf.strip() or self._turn_audio):
+                continue                       # nobody is waiting for an answer: quiet is fine
+            if self._tool_runs > 0:
+                continue                       # a tool is running: the ack/progress clips own this silence
+            now = time.monotonic()
+            quiet = now - max(self._last_model_audio, self._last_voice_at, self._last_user_text_at)
+            if quiet < st.voice_stall_nudge_s:
+                continue
+            if not self._stall_nudged:
+                self._stall_nudged, self._stall_at = True, now
+                self.stats["stall_nudges"] += 1
+                self.push("text", "(System: jawab aane mein bahut der lag rahi hai, connection dheema hai. Jo pata "
+                                  "hai woh EK chhoti line mein turant bolo.)")
+                continue
+            if now - self._stall_at < st.voice_stall_nudge_s:
+                continue                       # the nudge had its chance; still nothing
+            self._stall_reconnects += 1
+            self.stats["stall_reconnects"] += 1
+            self._stall_nudged = False
+            if self._stall_reconnects >= 3:
+                log.warning("call %s: Gemini silent through %d reconnects, ending the call honestly",
+                            self.call_id, self._stall_reconnects)
+                await self.send_json({"type": "error", "message": "Voice connection atak gaya - dobara bulaaiye."})
+                self.closed.set()
+                return
+            log.warning("call %s: Gemini silent %ds after the nudge - forcing reconnect #%d",
+                        self.call_id, int(now - max(self._last_model_audio, self._last_voice_at)), self._stall_reconnects)
+            try:
+                await session.close()          # downlink's stream ends -> run() reconnects (resumes when it can)
+            except Exception:
+                return
+            return
 
     async def _affect_watch(self) -> None:
         """v0.201 AWAAZ-2 the feeling engine: while SHE is speaking, her own words say how she is right now;
@@ -1794,10 +1884,30 @@ class Call:
         job.add_done_callback(lambda j: self._late_result(j, request))
         return {"status": "working", "note": "Kaam abhi chal raha hai. User se baat karte raho; pura hote hi tumhe bataya jayega."}
 
+    def _orphan_note(self, text: str) -> None:
+        """v0.211 the call is already closed: a result / note that would have been spoken is saved as a call
+        followup instead of vanishing, and the NEXT call on this chat opens with it (work is postponed, never
+        lost - the owner: 'NO PERSISTENT WORK')."""
+        try:
+            from . import yaad
+            yaad.note_call_followup(self.conv, self.tenant, text)
+            self.stats["orphan_notes"] = self.stats.get("orphan_notes", 0) + 1
+        except Exception:
+            log.exception("call followup note failed")
+
     def _late_result(self, job: asyncio.Task, request: str = "") -> None:
-        if self.closed.is_set() or job.cancelled():
+        if job.cancelled():
             return
         about = f" (user ne kaha tha: '{request[:200]}')" if request else ""
+        if self.closed.is_set():
+            # v0.211 the call ended while the big job ran: the result is NOT dropped - the next call tells her
+            try:
+                res = job.result()
+                self._orphan_note(f"pichhli call ka bada kaam{about} ka natija: "
+                                  f"{json.dumps(res, ensure_ascii=False, default=str)[:800]}")
+            except Exception as e:
+                log.warning("late voice job did not produce a result after close: %r", e if job.done() else "unfinished")
+            return
         exc = job.exception()
         if exc is not None:
             log.warning("late voice job failed: %r", exc)
@@ -1859,8 +1969,11 @@ class Call:
         return {"result": result}
 
     def _note_result(self, name: str, out: dict) -> None:
-        """The result could not go through Gemini's tool channel (the session moved on): say it as a note instead."""
+        """The result could not go through Gemini's tool channel (the session moved on): say it as a note instead.
+        v0.211 a closed call does NOT drop it: the result is saved as a call followup for the next call."""
         if self.closed.is_set():
+            self._orphan_note(f"call band hone ke baad kaam ka natija aaya ({name}): "
+                              f"{json.dumps(out, ensure_ascii=False, default=str)[:800]}")
             return
         body = json.dumps(out, ensure_ascii=False, default=str)[:1500]
         self.push("text", f"(Pehle ka kaam '{name}' ho chuka, result: {body}. Agar ab bhi kaam ka hai to user ko ek chhoti line mein batao, warna chhod do.)")
@@ -1929,6 +2042,7 @@ class Call:
         self._tools.add(prog)
         prog.add_done_callback(self._tools.discard)
         try:
+            self._tool_runs += 1            # v0.211 the stall watchdog stays out of a running tool's silence
             out = await self._execute(name, args)
             from .scrub import scrub   # v0.91 no key a service echoes back ever reaches the call model
             out = scrub(out)
@@ -1941,9 +2055,29 @@ class Call:
         except Exception as e:
             log.exception("voice tool %s failed", name)
             out, state = {"error": f"Internal error: {e}"}, "error"
+        finally:
+            self._tool_runs -= 1
         watch.cancel()
         prog.cancel()
         self._breaker.after(name, state != "error")
+        if (state == "error" and name != "santosh_kaam" and name not in _AUTO_RESCUE_SKIP
+                and get_settings().voice_auto_rescue and not self.closed.is_set() and not self.hold
+                and self._breaker.fails.get(name, 0) >= 2 and name not in self._auto_rescued):
+            # v0.211 AUTO-RESCUE (the owner: 'NOT ABLE TO SOLVE THE ISSUE ON ITS OWN'): the same tool failed
+            # twice in this call - waiting for the model to think of santosh_kaam again is how calls died
+            # doing nothing. The full agent gets the work by itself, once per tool per call; the tool answer
+            # says so honestly, and the result finds her through the normal late-result path.
+            req = (str(args.get("request") or args.get("task") or "") or self.user_buf.strip())[:600]
+            if req:
+                self._auto_rescued.add(name)
+                self.stats["auto_rescues"] = self.stats.get("auto_rescues", 0) + 1
+                out["auto_rescue"] = ("Yeh tool is call mein do baar fail ho chuka hai, isliye poora kaam apne bade "
+                                      "system (santosh_kaam) ko apne aap saunp diya gaya hai. User ko sach batao: "
+                                      "'pehla raasta atak gaya, main doosre tarike se kar raha hoon' - nateeja aane "
+                                      "par useh khud bata diya jayega.")
+                t = asyncio.create_task(self._auto_rescue(req, name))
+                _JOBS.add(t)
+                t.add_done_callback(_JOBS.discard)
         running = name == "santosh_kaam" and isinstance(out, dict) and out.get("status") == "working"
         self.did.append({"tool": name, "label": raw if name != "santosh_kaam" else
                          (str(args.get("request", ""))[:80] or raw), "ok": None if running else state != "error"})
@@ -1966,6 +2100,24 @@ class Call:
             ph = "error" if state == "error" else livework.phase_of(res)
             bus.publish(self.conv, "work", livework.event(call_id, shown, label, ph, args, res, out.get("error", "") if state == "error" else ""))
         await self._answer_tool(session, fc, name, out, state)
+
+    async def _auto_rescue(self, req: str, name: str) -> None:
+        """v0.211 the call's own rescue: a tool failed twice, so the full agent gets the job WITHOUT anyone asking.
+        A fast result is told as a note now; a slow one flows through _late_result exactly like a delegated job
+        (and a closed call saves it as a followup - nothing is lost either way)."""
+        try:
+            out = await self._delegate(req)
+        except Exception:
+            log.exception("auto rescue failed")
+            return
+        r = out.get("result") if isinstance(out, dict) else None
+        if r is None:
+            return                        # status 'working': _late_result tells her when it is done
+        if self.closed.is_set():
+            self._orphan_note(f"auto-rescue ({name}) poora hua: {json.dumps(r, ensure_ascii=False, default=str)[:900]}")
+            return
+        self.push("text", f"(Auto-rescue: '{name}' do baar fail hua tha, isliye yeh kaam doosre raaste se poora kiya. "
+                          f"Natija: {json.dumps(r, ensure_ascii=False, default=str)[:1200]}. User ko ek chhoti line mein batao.)")
 
     async def _answer_tool(self, session, fc, name: str, out: dict, state: str) -> None:
         from google.genai import types
@@ -2339,13 +2491,24 @@ class Call:
                         if first:
                             await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id, "vad": vad_config()})
                             # live text input (3.x Live models accept client_content only for seeding history)
-                            drop = ""   # v0.200 a call that died mid-air within the hour is CONTINUED, not greeted fresh
+                            # v0.200 a call that died mid-air within the hour is CONTINUED, not greeted fresh;
+                            # v0.211 work finished AFTER the last call (an untellable result) opens the news too
+                            drop, drop_kind = "", ""
                             try:
                                 from . import yaad as _yaad
                                 drop = await asyncio.to_thread(_yaad.take_call_drop, self.conv, get_settings().voice_continuation_min)
+                                if drop:
+                                    drop_kind = "drop"
+                                else:
+                                    drop = await asyncio.to_thread(_yaad.take_call_followup, self.conv, get_settings().voice_followup_min)
+                                    if drop:
+                                        drop_kind = "followup"
                             except Exception:
                                 log.exception("continuation check failed")
-                            await session.send_realtime_input(text=greeting(self.tenant, self.gender, continuation=drop))
+                            await session.send_realtime_input(text=greeting(
+                                self.tenant, self.gender,
+                                continuation=drop if drop_kind == "drop" else "",
+                                followup=drop if drop_kind == "followup" else ""))
                             first = False
                         else:
                             self._drop_stale_audio()
@@ -2362,10 +2525,11 @@ class Call:
                         up = asyncio.create_task(self.uplink(session))
                         down = asyncio.create_task(self.downlink(session))
                         closed = asyncio.create_task(self.closed.wait())
-                        done, _ = await asyncio.wait({up, down, closed}, return_when=asyncio.FIRST_COMPLETED)
-                        for t in (up, down, closed):
+                        watch = asyncio.create_task(self._stall_watch(session))   # v0.211 never silently dead
+                        done, _ = await asyncio.wait({up, down, closed, watch}, return_when=asyncio.FIRST_COMPLETED)
+                        for t in (up, down, closed, watch):
                             t.cancel()
-                        await asyncio.gather(up, down, closed, return_exceptions=True)
+                        await asyncio.gather(up, down, closed, watch, return_exceptions=True)
                         for t in done:
                             if t is not closed and not t.cancelled() and t.exception() is not None:
                                 log.warning("voice stream ended: %r", t.exception())
@@ -2465,6 +2629,10 @@ class Call:
                 t.cancel()
             if self.user_buf or self.reply_buf:
                 await self.finish_turn()
+            if self._quiet_pending:   # v0.211 quiet notes that never found a ride: saved for the next call, not lost
+                self._orphan_note("call ke ant tak yeh notes useh nahi bataye ja sake: "
+                                  + " | ".join(self._quiet_pending)[:900])
+                self._quiet_pending.clear()
             self.stats["ended"] = time.time()
             if self.hold:
                 self.stats["hold_s"] = round(self.stats["hold_s"] + time.monotonic() - self._hold_at, 1)
@@ -2500,12 +2668,15 @@ class Call:
                 rt.add_done_callback(_JOBS.discard)
             lat = self.stats["latency_ms"]
             log.info("call %s done: %s turns, reply start p50 %s ms, %s interruptions (%s noise), %s/%s silent tools, "
-                     "%s acks, %s backchannels, %s progress, %s affect notes (%s vetoed, %s confirmed, %s pauserider)",
+                     "%s acks, %s backchannels, %s progress, %s affect notes (%s vetoed, %s confirmed, %s pauserider), "
+                     "%s/%s stall nudges/reconnects, %s auto-rescues, %s orphan notes",
                      self.call_id, self.stats["turns"], _pct(lat, .5), self.stats["interruptions"], self.stats["false_stops"],
                      self.stats["silent_tools"], self.stats["tools"], self.stats["acks"],
                      self.stats.get("backchannels", 0), self.stats.get("progress", 0), self.stats.get("affect_notes", 0),
                      self.stats.get("affect_vetoed", 0), self.stats.get("affect_confirmed", 0),
-                     self.stats.get("affect_pauses_rider", 0))
+                     self.stats.get("affect_pauses_rider", 0),
+                     self.stats.get("stall_nudges", 0), self.stats.get("stall_reconnects", 0),
+                     self.stats.get("auto_rescues", 0), self.stats.get("orphan_notes", 0))
             ws, self.ws = self.ws, None
             if ws is not None:
                 with contextlib.suppress(Exception):

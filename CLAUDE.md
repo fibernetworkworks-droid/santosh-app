@@ -8529,3 +8529,69 @@ Pinned by `test_rea_khoj.py::test_voice_wiring`: `rea_khoj` in VOICE_TOOL_NAMES,
 True, and NOT among the names declared to Gemini Live by `_tool_specs()` (the via-kaam contract). Version 0.212.0
 (APP_VERSION story, pubspec 0.212.0+247, console ?v=0.212.0 x9, pins ->0.212.0 in 24 suites, verify_chat V/VT
 0.212.0/0.212.0+247); desktop untouched - server-only deploy.
+
+## v0.214.0 NEVER SILENT — the five voice-to-voice reliability failures, root-caused then fixed in-process (built as 0.211.0 on the v0.210.0 REA chain; REBASED onto the dev's parallel v0.211 SEMANTIC BROWSER + v0.212 Google Sheets + v0.213 REA-voice-to-voice chain and RE-VERSIONED 0.214.0 — sixth collision, both works kept) (owner: "BEFORE PHASE D ::: THERE IS ISSUE WITH VOICE TO VOICE ---- IT FORGOT THE WORK -- NO PERSISTENT WORK, NO CONSISTENCY, IF STUCK NO REPLY, NOT ABLE TO SOLVE THE ISSUE ON ITS OWN, IF WE DONT GIVE CALL TO VOICE AI IT NEVER REPLY ON ITS OWN ---------- FIND THE ROOT CAUSE FIRST")
+
+The RCA (code-read, five root causes): (1) no model-silence watchdog — Gemini sometimes stops sending ANYTHING
+mid-call and `downlink` blocks in `session.receive()` forever (a connected-but-dead call; the v0.208.1
+shutdown watchdog only covered pm2 restarts); (2) `_late_result` + `_note_result` DROPPED results when the
+call had closed, and pending quiet notes died with the session — work finished but was never told; (3) the
+SETUP ladder persisted `compression`/`core_tools`/`no_tools` losses to data/voice_setup.json for 7 DAYS after
+ONE refusal — calls forgot mid-call (no compression) and could do nothing (no tools); (4) the fresh greeting
+ORDERED amnesia ("do not bring up anything from before"), fighting the yaad memory block; (5) proactive voice
+is architecturally impossible today: voice.inject reaches ACTIVE calls only, FCM has no voice-call kind, the
+phone starts calls only via mic tap / wake word.
+
+THE FIX, in-process, server-only:
+1. **NEVER SILENT** — `Call._stall_watch` runs beside uplink/downlink (`_STALL_POLL_S` heartbeat): her turn
+   open + nobody spoke for `voice_stall_nudge_s` (14s) → ONE nudge as text ("jo pata hai woh EK chhoti line
+   mein turant bolo"); still nothing a nudge later → `session.close()` so run() reconnects (the resumable
+   handle keeps the context, `_reseed` re-briefs a fresh one); three reconnects in a row with never a word →
+   the honest "Voice connection atak gaya - dobara bulaaiye." error. Stays out of holds and running tools
+   (the ack/progress clips own that silence); `_mark_audio` resets the clock; `voice_stall_watch` kill switch.
+2. **PERSISTENT WORK** — every result that would have been spoken is saved instead of dropped:
+   `yaad.note_call_followup` / `take_call_followup` (FocusNote kind=call_followup, same 20-note/7-day trim
+   helper `_focus_trim`); `_late_result` (closed call), `_note_result` (dead tool channel), end-of-call
+   `_quiet_pending` flush, and `_auto_rescue` on a closed call all route there; the NEXT call on that chat
+   OPENS with the news via `greeting(followup=...)` — "pichhli call ke BAAD ek kaam ka natija aaya tha par
+   bataya nahi ja saka tha - ... Sabse pehle EK chhoti line mein yeh natija batao" (news first, then the
+   talk); v0.200 mid-air continuation wins when both notes exist (`voice_followup_min` 720 = 12h window).
+3. **CONSISTENCY** — the fresh greeting's amnesia clause is REPLACED: "Kaam yaad rakho: if HOOLA KI YAAD
+   shows a kaam still open or half-done, open with ONE short line about it and continue from there ('wahi
+   kaam pe chalte hain'); when nothing is pending, just the hello - no forced work report."
+4. **SELF-SOLVE** — `SETUP_SOFT_MAX = 3`: only gentle losses (mcp/vocab/langcodes) stay remembered (7 days);
+   heavy losses (compression/core_tools/no_tools) decay after `voice_setup_hard_keep_s` (1h) and are NEVER
+   written to disk; a loaded file with step > 3 clamps to 3 (old servers heal on restart). Plus the
+   **AUTO-RESCUE** in `run_tool`: the same tool failing twice in a call (`breaker.fails >= 2`) hands the
+   work to the full agent BY ITSELF (`_auto_rescue` → `_delegate`; fast result spoken as an Auto-rescue
+   note, slow one through the normal late-result path, closed call → followup note; once per tool per call;
+   skip-list `_AUTO_RESCUE_SKIP` guards money/consent/PC-hands/one-shots: haan_karo, side_talk,
+   computer_operator, alarms, timers, remember/forget, lists, consent_jaanch, hoola_answer_connect; the
+   tool answer carries `auto_rescue` so the model tells her honestly "pehla raasta atak gaya, main doosre
+   tarike se kar raha hoon").
+5. **IT SPEAKS FIRST** (server half) — `kind=voice_ring` joins PUSH_KINDS + RAW_KINDS (data-only, no
+   notification text); kaam_followup fires it after a result lands; gated hard in `push._ring_allowed`:
+   `voice_ring` OFF by default until the phone's native shell learns the kind and turns it into the `wake:`
+   broadcast the app already auto-calls on, tenant-tz quiet hours (`voice_ring_quiet` "22-8"), daily budget
+   (`voice_ring_max_day` 2), never while a call is live on that chat. The native half stays in the private
+   shell repo — documented, not blocked on.
+
+New settings: voice_stall_watch, voice_stall_nudge_s, voice_stall_reconnect_s, voice_followup_min,
+voice_auto_rescue, voice_setup_hard_keep_s, voice_ring, voice_ring_max_day, voice_ring_quiet. Scorecard +
+end-of-call log gain stall_nudges / stall_reconnects / auto_rescues / orphan_notes.
+
+Tests: NEW test_v0211_never_silent.py (29): ladder soft-max + heavy-never-persists + disk-clamp-to-3 +
+hour-decay; greeting followup/fresh-continuity-no-amnesia/continuation-unchanged + run() drop-then-followup
+pin; watchdog nudge-then-patience / reconnect / three-strikes-error / tools+holds / closed+kill-switch /
+mark-audio-reset; orphan-note + late-result-on-closed + note-result-on-closed + quiet-flush pin +
+followup-roundtrip (newest-first, one at a time); auto-rescue skip-list + run_tool wiring pins + fast-told /
+closed-saved / working-keeps-late-path; voice_ring raw-kind shape + gates (off, quiet hours, budget, live
+call) + kaam_followup hook pin; scorecard rollups; version. Maintenance: test_v0208_mem kill-timeout pin 3 → 4
+(the dev's v0.210.0 rea_setup job added a 4th `pm2 restart santosh --kill-timeout 12000` site). Sweeps green
+(pre-rebase tree): v0211+mem+prosody+backchannels+focus+feeling+delivery+sessions+harness2+harness+realtime+
+hotfix+routines+rea+pc_bridge-pins+pc_kinds-pins+hoola_section+pc_kinds+search+email x4 = 310 passed;
+pre-existing sandbox-only reds unchanged (test_v0185_pc_browser, test_v0200/v0202 PC-VM suites,
+test_campaign_flow — verified red on pristine HEAD too). Version 0.214.0 (APP_VERSION story, pubspec
+0.214.0+249, console ?v=0.214.0 x9, pins ->0.214.0 in 24 suites); desktop untouched 1.4.0 — server-only
+deploy, old APKs keep working; Mera PC freeze respected. voice.py/yaad.py/push.py/config.py/kaam_followup.py
+cherry-picked CLEAN onto the dev's v0.213 chain (no overlap with REA Khoj voice tools).

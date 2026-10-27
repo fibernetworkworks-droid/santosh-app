@@ -835,21 +835,25 @@ def _clip_block(t: str, n: int) -> str:
 
 # ---------------------------------------------------------------- what each turn / call gets
 # ---------------------------------------------------------------- v0.200 FOCUSED WORD-LEVEL MEMORY
+def _focus_trim(s, conversation_id: str) -> None:
+    """Focused means small: the newest 20 notes per chat, nothing older than 7 days."""
+    stale = s.scalars(select(FocusNote).where(FocusNote.conversation_id == conversation_id,
+                                              FocusNote.at < datetime.now(timezone.utc) - timedelta(days=7))).all()
+    for r in stale:
+        s.delete(r)
+    extra = s.scalars(select(FocusNote).where(FocusNote.conversation_id == conversation_id)
+                      .order_by(FocusNote.id.desc()).offset(20)).all()
+    for r in extra:
+        s.delete(r)
+
+
 def note_call_drop(conversation_id: str, tenant: str, text: str) -> None:
     """The phone never came back within the grace window: her last words + the half-said sentence are
     saved so the NEXT call continues the work instead of greeting her like a stranger."""
     ensure_focus_table()
     with session() as s:
         s.add(FocusNote(tenant_id=tenant, conversation_id=conversation_id, kind="call_drop", text=_clip(text, 1200)))
-        # focused means small: the newest 20 notes per chat, nothing older than 7 days
-        stale = s.scalars(select(FocusNote).where(FocusNote.conversation_id == conversation_id,
-                                                  FocusNote.at < datetime.now(timezone.utc) - timedelta(days=7))).all()
-        for r in stale:
-            s.delete(r)
-        extra = s.scalars(select(FocusNote).where(FocusNote.conversation_id == conversation_id)
-                          .order_by(FocusNote.id.desc()).offset(20)).all()
-        for r in extra:
-            s.delete(r)
+        _focus_trim(s, conversation_id)
 
 
 def recent_call_drop(conversation_id: str, minutes: int = 60) -> str:
@@ -861,6 +865,32 @@ def recent_call_drop(conversation_id: str, minutes: int = 60) -> str:
                                               FocusNote.kind == "call_drop", FocusNote.at >= since)
                       .order_by(FocusNote.id.desc())).first()
         return (r.text or "") if r else ""
+
+
+def note_call_followup(conversation_id: str, tenant: str, text: str) -> None:
+    """v0.211 the call is gone, the WORK is not: a result / note that arrived too late to speak (a big job
+    finished after she hung up, a tool answer with nowhere to go) is kept here, and the NEXT call on this chat
+    OPENS with it - the work is postponed, never lost. Same retention rules as the call-drop notes."""
+    ensure_focus_table()
+    with session() as s:
+        s.add(FocusNote(tenant_id=tenant, conversation_id=conversation_id, kind="call_followup", text=_clip(text, 1200)))
+        _focus_trim(s, conversation_id)
+
+
+def take_call_followup(conversation_id: str, minutes: int = 720) -> str:
+    """v0.211 read-AND-consume (the take_call_drop pattern): the next call tells her the pending news and the
+    note is used once - her own turns take over from there. ("" = nothing waiting.)"""
+    ensure_focus_table()
+    since = datetime.now(timezone.utc) - timedelta(minutes=max(1, minutes))
+    with session() as s:
+        r = s.scalars(select(FocusNote).where(FocusNote.conversation_id == conversation_id,
+                                              FocusNote.kind == "call_followup", FocusNote.at >= since)
+                      .order_by(FocusNote.id.desc())).first()
+        if r is None:
+            return ""
+        text = r.text or ""
+        s.delete(r)
+        return text
 
 
 def take_call_drop(conversation_id: str, minutes: int = 60) -> str:
