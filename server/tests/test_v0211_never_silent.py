@@ -1,4 +1,4 @@
-"""v0.214.0 NEVER SILENT (built as 0.211.0 on the v0.210.0 REA chain; rebased onto the dev's parallel v0.211 SEMANTIC BROWSER + v0.212 Sheets + v0.213 REA-voice chain and RE-VERSIONED 0.214.0 - sixth collision, both works kept): — the five voice-to-voice reliability failures the owner reported BEFORE Phase D
+"""v0.215.0 NEVER SILENT (built as 0.211.0 on the v0.210.0 REA chain; rebased onto the dev's parallel v0.211 SEMANTIC BROWSER + v0.212 Sheets + v0.213 REA-voice chain and RE-VERSIONED 0.215.0 - sixth collision, both works kept): — the five voice-to-voice reliability failures the owner reported BEFORE Phase D
 ("IT FORGOT THE WORK -- NO PERSISTENT WORK, NO CONSISTENCY, IF STUCK NO REPLY, NOT ABLE TO SOLVE THE ISSUE
 ON ITS OWN, IF WE DONT GIVE CALL TO VOICE AI IT NEVER REPLY ON ITS OWN"), root-caused first (Task 6 RCA),
 now fixed in-process:
@@ -416,4 +416,4 @@ def test_scorecard_has_reliability_rollups():
 
 
 def test_version():
-    assert APP_VERSION == "0.214.0"
+    assert APP_VERSION == "0.215.0"

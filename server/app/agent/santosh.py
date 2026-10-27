@@ -147,7 +147,14 @@ def _claude_ready() -> bool:
 async def _call_brain(brain: str, system: str, history: list[dict], settings, tools: list[dict] | None = None,
                       live=None, max_tokens: int | None = None) -> tuple[list[dict], str]:
     """One model call on one brain. Raises when that brain fails. With `live` (v0.161) the words stream as written.
-    v0.187 goal mode raises max_tokens (6000) so a plan's steps are not cut at the chat-size 2000."""
+    v0.187 goal mode raises max_tokens (6000) so a plan's steps are not cut at the chat-size 2000.
+    v0.213 the prefill guard: the production model refuses a conversation whose LAST message is an assistant
+    message ('This model does not support assistant message prefill', 400 - owner saw it on every long job's
+    wake turn). Every model call now goes out with a user message last, on a COPY, so no caller's list is ever
+    mutated behind its back (team sub-agents share their history list across steps)."""
+    if not history or history[-1].get("role") != "user":
+        history = history + [{"role": "user", "content": [{"type": "text",
+                                                           "text": "[System: upar ki baat-cheet ke hisaab se aage badho.]"}]}]
     tools = tools if tools is not None else TOOLS
     cap = max_tokens or settings.agent_max_tokens
     streaming = live is not None and live.streaming
@@ -952,6 +959,13 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                          turn_id=_turn_id, actor=who)
 
         history = _load_history(conversation_id)
+        if not save_user and agent_text.strip():
+            # v0.213 wake / inbox re-run turns: this turn's words were deliberately NOT saved (save_user=False,
+            # kaam_followup._wake_turn / turn_inbox re-runs), so the array below used to end with the PREVIOUS
+            # turn's assistant reply - the production model refuses assistant-final arrays (400 'assistant
+            # message prefill' on EVERY wake turn of every long job) and never saw this turn's words at all.
+            # In-memory only: nothing is double-saved, the next turn still loads the DB fresh.
+            history.append({"role": "user", "content": agent_text})
         block = ""
         if who == "owner" or who in ("routine", "wake") or who.startswith("approved:"):
             try:   # v0.108 work diary, facts by meaning, recalled old exchanges: for this message only

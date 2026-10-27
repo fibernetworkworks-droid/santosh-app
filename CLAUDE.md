@@ -8595,3 +8595,43 @@ test_campaign_flow — verified red on pristine HEAD too). Version 0.214.0 (APP_
 0.214.0+249, console ?v=0.214.0 x9, pins ->0.214.0 in 24 suites); desktop untouched 1.4.0 — server-only
 deploy, old APKs keep working; Mera PC freeze respected. voice.py/yaad.py/push.py/config.py/kaam_followup.py
 cherry-picked CLEAN onto the dev's v0.213 chain (no overlap with REA Khoj voice tools).
+## v0.215.0 NO-PREFILL — every model call ends with a user message; wake turns finally see their own words (owner: "FOR EVERY LONG WORK HOOLA AI SHOW THIS ERROR :: (Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'This model does not support assistant message prefill. The conversation must end with a user message.'}")
+
+The production model snapshot changed under the floating alias: it now REFUSES a conversation whose LAST
+message is an assistant message (assistant prefill), returning 400. Two Hoola paths built exactly that shape,
+and both belong to long jobs - which is why the owner saw the error "for every long work":
+
+1. **Wake turns were blind AND broken** (the real bug, masked for months): `kaam_followup._wake_turn` and the
+   `turn_inbox` re-run call `run_turn(..., save_user=False)` - the turn's words are deliberately not saved.
+   But `_run_turn` built the model's array ONLY from `_load_history(conversation_id)` (the DB), so (a) the
+   array ended with the PREVIOUS turn's final assistant reply -> the new model 400s on EVERY wake turn of
+   EVERY long job (the error text the owner saw as the "report"), and (b) the wake text never reached the
+   brain at all - the old snapshot silently accepted assistant-final arrays and just rambled on from the old
+   conversation, so the WAKE feature's own report was invisible to the model since v0.191.
+2. **The general shape**: any caller of `_call_brain` with an assistant-final array 400s.
+
+FIXES (both in `agent/santosh.py`, nowhere else):
+- `_run_turn`: when `save_user=False` and the turn has words, they are appended to the IN-MEMORY history
+  before the first call - wake reports and inbox re-runs reach the brain, nothing is double-saved, the next
+  turn still loads the DB fresh, and `_with_memory` now pins the diary block to the wake words instead of the
+  stale previous user message.
+- `_call_brain` prefill guard: EVERY model call on EVERY brain (Claude, GLM, OmniRoute - team sub-agents and
+  the employee mini-loop included) goes out with a user message last, built on a COPY so no caller's history
+  list is ever mutated behind its back. This error class is dead everywhere at once, including any future
+  caller that gets the shape wrong.
+
+SAFETY: no behaviour change on the happy path (user-final arrays pass through untouched, byte-identical
+requests); the guard's synthetic user line ("[System: upar ki baat-cheet ke hisaab se aage badho.]") fires
+only on shapes that would otherwise have 400'd; no tool, card, money or approval path is touched; frozen
+zones untouched.
+
+Tests: NEW `test_v0215_noprefill.py` (6) - wake turn goes out user-last WITH its words and nothing is
+double-saved; inbox re-run after a crash's assistant error row recovers (was an endless 400 loop); normal
+`save_user=True` turns byte-unchanged (user-last, one row); the guard copies-not-mutates; the guard is a
+no-op on user-final arrays; the empty-history guard; version pin. Stale-count repair on the dev's behalf:
+`test_v0208_mem::test_vps_ops_restarts_carry_kill_timeout` 3 -> 4 restart lines (the dev's web_fix chain
+added the rea_install restart; all 4 carry `--kill-timeout 12000`, workflow file untouched). Sweeps: new
+suite 6/6; ALL 25 version-pin suites 334/334 (incl. harness x3, mem-cure, focus, sessions, pc_kinds,
+pc_bridge, hoola_section, sheets, drive, rea, semantic browser); voice/goal/inbox/stream/glm ring 99/99.
+Version 0.214.0 (pubspec 0.214.0+249, console ?v=0.214.0 x9, pins ->0.214.0 in 25 suites) - re-versioned 0.213.0->0.214.0 on rebase: the dev's parallel v0.213.0 REA-KHOJ-VOICE took the number first, REBASE PROTOCOL respected; server-only
+deploy, old APKs keep working.
