@@ -144,11 +144,11 @@ jobs:
                 echo 'docker build -t hoola-pc:latest .'
                 echo 'docker rm -f hoola-pc 2>/dev/null || true'
                 echo 'docker run -d --name hoola-pc --restart unless-stopped --memory 1500m --shm-size 256m \
-                  -v hoola-pc-data:/data -e HOOLA_SERVER=http://172.18.0.1:8077 -e HOOLA_PC_NAME="Hoola PC" hoola-pc:latest'
+                  -v hoola-pc-data:/data -e HOOLA_SERVER=https://hoola.ainewtika.com -e HOOLA_PC_NAME="Hoola PC" hoola-pc:latest'
                 echo 'sleep 4; echo "== container"; docker ps --filter name=hoola-pc --format "{{.Names}} {{.Status}}"'
                 echo 'echo "== logs"; docker logs --tail 15 hoola-pc 2>&1'
                 echo 'echo "== mem"; docker stats --no-stream --format "{{.Name}} {{.MemUsage}}" hoola-pc 2>/dev/null || true'
-                echo 'echo "If the log says waiting for pair code: run the pc_pair job with the 6-digit code from her app (Mera PC screen)."' ;;
+                echo 'echo "If the log says waiting for pair code: run the pc_pair job with the 6-digit code from her app (Mera PC screen). Server path = the same public URL every desktop uses (the 172.18.0.1 bridge is firewall-dropped on this VPS - v0.195 lesson)."' ;;
               pc_pair)
                 PC_CODE="$LINES_IN"   # validated HERE on the runner: job.sh runs on the VPS where LINES_IN is empty
                 case "$PC_CODE" in ''|*[!0-9]*) echo "::error::pc_pair needs the 6-digit code in the lines field" >&2; exit 1 ;; esac
@@ -159,7 +159,7 @@ jobs:
                 echo 'docker logs --tail 10 hoola-pc 2>&1'
                 echo 'echo "== paired? (look for PAIRED / connected above)"' ;;
               pc_logs)
-                echo "docker logs --lines $N hoola-pc 2>&1 | tail -$N" ;;
+                echo "docker logs --tail $N hoola-pc 2>&1" ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh
