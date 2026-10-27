@@ -14,12 +14,14 @@ import android.os.Build
 object Notify {
     const val SERVICE_ID = 1717
     const val CALL_ID = 1718
+    const val RING_ID = 1719          // v0.219 VOICE RING: the server calling her
     private const val MSG_BASE = 3000
     private const val MSG_SLOTS = 40
     private const val CH_SERVICE = "santosh_service"
     private const val CH_MESSAGES = "santosh_messages"
     private const val CH_ALARM = "santosh_alarm"
     private const val CH_CALL = "santosh_call_v2"
+    private const val CH_RING = "santosh_ring"
 
     private fun nm(ctx: Context) = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -42,6 +44,14 @@ object Notify {
             setShowBadge(false)
             setSound(null, null)
             enableVibration(false)
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+        })
+        // v0.219 VOICE RING: the server rings her phone when a kaam is done and no call is live. Default sound
+        // on purpose (no setSound) - the phone audibly rings, that is the point; she controls it like any channel.
+        m.createNotificationChannel(NotificationChannel(CH_RING, "Hoola bula rahi hai", NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "Hoola khud call karti hai jab koi kaam pura ho jata hai"
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0, 350, 250, 350, 250, 350)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         })
         m.createNotificationChannel(NotificationChannel(CH_ALARM, "Hoola alarms", NotificationManager.IMPORTANCE_HIGH).apply {
@@ -158,6 +168,30 @@ object Notify {
         val n = b.build()
         n.flags = n.flags or Notification.FLAG_INSISTENT   // keeps ringing until dismissed
         nm(ctx).notify(id, n)
+    }
+
+    /** v0.219 VOICE RING: an incoming-call style alert. The full-screen intent carries the same "santosh.WAKE"
+     *  action the wake word uses, so everything after the tap - over the lock screen, the app auto-starts the
+     *  call, the wake listener hands over the mic - is the code that already works. Never a normal heads-up:
+     *  the server rings only when no call is live and the daily budget allows (gates live on the server). */
+    fun ring(ctx: Context, reason: String) {
+        channels(ctx)
+        val open = Intent(ctx, MainActivity::class.java)
+            .setAction(WakeService.ACTION_WAKE)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+        val pi = PendingIntent.getActivity(ctx, 7105, open, piFlags())
+        val b = builder(ctx, CH_RING)
+            .setSmallIcon(R.drawable.ic_stat_santosh)
+            .setContentTitle("Hoola bolna chahta hai")
+            .setContentText(reason.ifBlank { "Baat karne ke liye tap kijiye" })
+            .setCategory(Notification.CATEGORY_CALL)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setFullScreenIntent(pi, true)
+            .setContentIntent(pi)
+            .setAutoCancel(true)
+        if (Build.VERSION.SDK_INT >= 26) b.setTimeoutAfter(30 * 1000L)   // a ring nobody answers fades, it never nags
+        else b.setPriority(Notification.PRIORITY_MAX).setDefaults(Notification.DEFAULT_ALL)
+        nm(ctx).notify(RING_ID, b.build())
     }
 
     fun cancel(ctx: Context, id: Int) = nm(ctx).cancel(id)

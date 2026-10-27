@@ -2448,6 +2448,9 @@ class Santosh extends ChangeNotifier {
       case 'bt_request':
         unawaited(_runBt(Map<String, dynamic>.from(p), at: ev.at));
         break;
+      case 'voice_ring': // v0.219 VOICE RING: the server is calling her (never over a live call, gated on the server); the app starts the call itself
+        if (!_replaying) wake(locked: false);
+        break;
     }
     notifyListeners();
   }

@@ -8677,3 +8677,33 @@ Tests: NEW `test_v0217_kaam_yaad.py` (11): fresh-call skip / reconnect shows eve
 discipline pins / run wiring pin (`news_skip_newest=first`) / greeting tie-in / v0.214 fresh-greeting kaam line
 intact / version. Version 0.216.0 (APP_VERSION story, pubspec 0.217.0+252, console ?v=0.217.0 x9, pins ->0.217.0 in
 28 suites); server-only deploy, old APKs keep working; Mera PC freeze respected; desktop untouched 1.4.0.
+
+## v0.219.0 VOICE RING — Wave 2 of the voice-to-voice PERFECT plan: the SERVER calls HER, the phone finally answers (re-versioned: the plan named it 0.218.0 but the dev's parallel Google-Forms-100% took 0.218.0 first — the number moves, the work is unchanged) (owner: "WAVE 2")
+
+Since v0.214 the server could ring her phone when a kaam finished — gated hard (max 2/tenant/day,
+tenant-tz quiet 22–8, never while a call is live) — but the setting stayed OFF because the phone did
+not know the kind. Wave 2 teaches it and flips the switch:
+
+1. **The phone learns `kind=voice_ring`** (`tool/android/kotlin/SantoshPush.kt`): skips when the app is
+   open (the live stream takes it), refuses stale pushes (`Actions.tooOld`) and Firebase retries
+   (`Store.claim "ring"+event_id` — a retried push never rings twice), hands the mic from the wake
+   listener to the coming call (`WakeService.pauseFor`), then `Notify.ring` — an incoming-call style
+   alert on its own `santosh_ring` channel (IMPORTANCE_HIGH, default sound — the phone audibly rings —
+   vibration pattern, public lock-screen visibility). The full-screen intent carries the SAME
+   `santosh.WAKE` action "Hey Santosh" uses, so over-the-lock-screen, auto-call and mic handover are
+   the code that already works. An unanswered ring fades after 30s; it never nags.
+2. **The app answers the live stream too** (`lib/state.dart`): a fresh (never replayed) `voice_ring`
+   event calls `wake(locked: false)` — the same auto-call path.
+3. **The setting flips ON** (`config.py voice_ring=True`): the config comment's own promise kept.
+   Gates untouched and re-pinned; `voice_ring=false` still kills it.
+
+Old APKs keep working: an old SantoshPush receives a body-less data push and shows nothing, exactly
+like today. This is the first voice wave that needs a NEW APK — the server deploy alone flips nothing
+visible until the APK lands.
+
+Tests: NEW `test_v0219_voice_ring.py` (9) — setting-on, gates-survive-the-flip (budget spent / live
+call / quiet hours / off-means-off), raw push contract (no title/body, HIGH, ttl 600s, reason rides),
+kaam_followup publisher pins, SantoshPush learns-the-kind pins, wake-path entry pins (ACTION_WAKE,
+full-screen intent, CATEGORY_CALL, own channel, timeout), state.dart fresh-only auto-call, version.
+Version 0.219.0 (APP_VERSION story, pubspec 0.219.0+254, console ?v=0.219.0 x9, pins ->0.219.0 in
+28 suites); Mera PC freeze respected; desktop untouched 1.4.0.

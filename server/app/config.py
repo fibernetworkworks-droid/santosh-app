@@ -234,7 +234,7 @@ class Settings(BaseSettings):
     voice_followup_min: int = 720          # v0.211 a result that landed after the call closed is told on her next call within this window
     voice_auto_rescue: bool = True         # v0.211 a tool failing twice hands the work to the full agent by itself (the call never just gives up)
     voice_setup_hard_keep_s: int = 3600    # v0.211 heavy setup losses (compression / tools) self-heal after this long - memory and tools come back on their own
-    voice_ring: bool = False               # v0.211 server-initiated voice ring (kind=voice_ring data push -> the phone's wake: path); ON when the native side learns the kind
+    voice_ring: bool = True                # v0.219 ON: the native side learned the kind (SantoshPush turns the push into the wake: path + auto-call); off = the v0.214 behaviour
     voice_ring_max_day: int = 2            # v0.211 rings per tenant per day (the phone is not an alarm clock)
     voice_ring_quiet: str = "22-8"         # v0.211 quiet hours in the tenant's own timezone - no rings inside
 

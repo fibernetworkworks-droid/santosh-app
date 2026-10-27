@@ -385,8 +385,11 @@ def test_ring_gates(monkeypatch):
     monkeypatch.setattr(push, "get_settings", lambda: SimpleNamespace(voice_ring=True, voice_ring_max_day=2,
                                                                       voice_ring_quiet=inside))
     assert not push._ring_allowed("default", "c1")            # quiet hours now
+    # v0.219 hour-independent: the "22-8" default broke these True-asserts whenever the suite ran inside
+    # the IST quiet window (22-8) - a wrap-around window excluding the current hour proves the same thing
+    outside = f"{(now_h + 1) % 24}-{now_h}"
     monkeypatch.setattr(push, "get_settings", lambda: SimpleNamespace(voice_ring=True, voice_ring_max_day=2,
-                                                                      voice_ring_quiet="22-8"))
+                                                                      voice_ring_quiet=outside))
     assert push._ring_allowed("default", "c1") is True
     assert push._ring_allowed("default", "c1") is True
     assert push._ring_allowed("default", "c1") is False       # the daily budget is spent (2)
@@ -416,4 +419,4 @@ def test_scorecard_has_reliability_rollups():
 
 
 def test_version():
-    assert APP_VERSION == "0.218.0"
+    assert APP_VERSION == "0.219.0"

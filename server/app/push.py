@@ -619,7 +619,7 @@ PUSH_KINDS = {"message", "goal", "bazar_approval", "artifact", "pc_file", "photo
               "frontoffice_card", "frontoffice_message", "frontoffice_alert", "frontoffice_day", "eventplan_booking", "eventplan_doc", "eventplan_message", "eventplan_spend", "eventplan_alert", "eventplan_day", "shaadi_card", "shaadi_alert", "shaadi_day", "tourguide_card", "tourguide_alert", "tourguide_day", "homestay_card", "homestay_alert", "homestay_day", "banquet_card", "banquet_alert", "banquet_day",
               # v0.156 Kala suite
               "editdesk_card", "editdesk_alert", "editdesk_day", "motiondesk_card", "motiondesk_alert", "motiondesk_day", "filmdesk_card", "filmdesk_alert", "filmdesk_day", "patrakar_card", "patrakar_alert", "patrakar_day", "photoassist_card", "photoassist_alert", "photoassist_day", "graphic_card", "graphic_alert", "graphic_day", "artistmgr_card", "artistmgr_alert", "artistmgr_day", "kitab_card", "kitab_alert", "kitab_day", "podcast_card", "podcast_alert", "podcast_day", "influencer_card", "influencer_alert", "influencer_day", "editdesk_note", "motiondesk_update"}
-RAW_KINDS = {"device_action", "home_device", "bt_request", "voice_ring"}   # the phone runs these itself; no notification text (voice_ring: v0.211 the SERVER calls HER - the native side turns it into the wake: broadcast and the app auto-starts the call)
+RAW_KINDS = {"device_action", "home_device", "bt_request", "voice_ring"}   # the phone runs these itself; no notification text (voice_ring: the SERVER calls HER - the native side turns it into the wake: broadcast and the app auto-starts the call; learned in v0.219)
 
 
 def on_event(conversation_id: str, ev: dict[str, Any]) -> None:
@@ -640,8 +640,8 @@ def on_event(conversation_id: str, ev: dict[str, Any]) -> None:
 
 
 # v0.211 the server-initiated voice ring: a finished job calls HER phone when no call is live. Gated hard in
-# code (the phone is not an alarm clock): setting off by default (until the phone's native side learns the
-# kind), tenant-tz quiet hours, a small daily budget, and never while a call is already live on that chat.
+# code (the phone is not an alarm clock): tenant-tz quiet hours, a small daily budget, and never while a call
+# is already live on that chat. Off until v0.219, when the phone's native side learned the kind.
 _RING_DAY: dict[str, tuple[str, int]] = {}
 
 

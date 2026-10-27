@@ -14,6 +14,9 @@ import java.net.URL
  * connected. A push carries one Santosh event:
  *   message / approval / artifact / file -> a notification (title + body made by the server)
  *   device_action                         -> alarm / timer / calendar done on the phone, result reported back
+ *   voice_ring (v0.219)                   -> the SERVER calls HER: the push becomes the wake: path and the
+ *                                            app auto-starts the call (gated hard on the server: quiet hours,
+ *                                            daily budget, never while a call is already live)
  */
 class SantoshPush : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
@@ -42,6 +45,19 @@ class SantoshPush : FirebaseMessagingService() {
                 "home_device", "bt_request" -> {
                     val payload = try { JSONObject(d["payload"] ?: "{}") } catch (_: Exception) { JSONObject() }
                     PhoneJobs.handle(this, d["kind"] ?: "", payload, d["at"] ?: "")
+                }
+                "voice_ring" -> {
+                    // v0.219 VOICE RING: the server is calling her (kaam news, no call live on the server side).
+                    // Same entry as "Hey Santosh" - the WAKE intent - so lock screen, auto-call and mic handover
+                    // are the code that already works. The server's gates (budget, quiet hours, no live call)
+                    // already fired before this push was sent; here we only refuse stale and repeated rings.
+                    if (MainActivity.visible) return   // the open app takes it from the live stream itself
+                    val payload = try { JSONObject(d["payload"] ?: "{}") } catch (_: Exception) { JSONObject() }
+                    if (Actions.tooOld(d["at"] ?: "")) return   // a stale ring never rings
+                    val rid = d["event_id"] ?: ""
+                    if (rid.isNotEmpty() && !Store.claim(this, "ring$rid")) return   // a Firebase retry must not ring twice
+                    try { WakeService.pauseFor(this) } catch (_: Exception) {}   // a listening wake word hands the mic to the coming call
+                    Notify.ring(this, payload.optString("reason"))
                 }
                 else -> {
                     if (MainActivity.visible) return          // the open app shows it in the chat
