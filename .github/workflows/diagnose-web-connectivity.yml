@@ -6,7 +6,7 @@ permissions:
   contents: read
 jobs:
   diagnose:
-    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'diagnose/hoola-web-connectivity-3-20261027')
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'diagnose/hoola-web-connectivity-4-20261027')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -50,13 +50,16 @@ jobs:
           echo
           echo 'NGINX TRANSPORT CONFIG'
           nginx -T 2>&1 | grep -Ei '(^|[[:space:]])(listen|server_name|http3|quic_retry|quic_host_key|ssl_protocols)[[:space:]]|Alt-Svc' || true
-          echo 'WEB SERVICES'
-          command -v nginx || true
-          systemctl is-active nginx || true
-          systemctl is-active apache2 || true
-          docker ps -a --format '{{.Names}} {{.Status}} {{.Ports}}' || true
-          echo 'PRIVILEGE CHECK'
-          sudo -n true 2>/dev/null && echo SUDO_AVAILABLE || true
+          echo 'HTTPS PROXY CONTAINER'
+          ids=$(docker ps -a --filter name=connect_caddy --format '{{.ID}}')
+          for cid in $ids; do
+            docker inspect --format 'name={{.Name}} status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}} restart={{.HostConfig.RestartPolicy.Name}} ports={{json .HostConfig.PortBindings}}' "$cid"
+            temp=$(mktemp)
+            if docker cp "$cid:/etc/caddy/Caddyfile" "$temp"; then
+              grep -A12 -B2 'hoola.ainewtika.com' "$temp" | grep -E 'hoola.ainewtika.com|reverse_proxy|tls|header|encode|(^|[[:space:]])}' || true
+            fi
+            rm -f "$temp"
+          done
           echo 'TLS/HTTP LISTENERS'
           ss -lnt | grep -E ':(80|443|8077)[[:space:]]' || true
           ss -lnu | grep -E ':443[[:space:]]' || true
