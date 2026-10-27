@@ -24,4 +24,4 @@ Files come back as bytes; make_tools-style callers store them as the owner's fil
 """
 from __future__ import annotations
 
-STUDIO_VERSION = "v0.189.0"
+STUDIO_VERSION = "v0.192.0"

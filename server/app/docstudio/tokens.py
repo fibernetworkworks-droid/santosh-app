@@ -42,12 +42,24 @@ def rgb_tuple(hexs: str) -> tuple[float, float, float]:
 
 STYLES: dict[str, dict] = {
     # name: (hue override or None=derive from title, mode label)
-    "auto":        (None, "derived from the title itself"),
+    "auto":        (None, "design matched to the topic by designs.py"),
     "professional": (215, "deep steel blue - reports, analyses, business letters"),
     "boardroom":   (222, "navy charcoal - board notes, quotations, contracts"),
     "warm":        (26,  "terracotta - shop / family / festival documents"),
     "elegant":     (282, "muted plum - invitations, profiles, Portfolios"),
     "forest":      (150, "calm green - farm, health, education"),
+    # v0.192.0 topic families - hue anchors for the design router (explicit use also welcome)
+    "finance":     (168, "deep teal - invoices, budgets, ledgers, GST, tax"),
+    "technology":  (234, "indigo - software, releases, engineering notes"),
+    "education":   (36,  "amber - school, exams, courses, students"),
+    "health":      (152, "clinic green - hospitals, patients, treatment"),
+    "legal":       (208, "slate - agreements, contracts, notices"),
+    "marketing":   (336, "magenta - campaigns, offers, brand"),
+    "people":      (192, "teal - HR, teams, attendance, hiring"),
+    "agriculture": (96,  "leaf green - farms, crops, mandi"),
+    "government":  (226, "civic navy - schemes, panchayat, ward"),
+    "travel":      (190, "sky blue - tours, itineraries, bookings"),
+    "festive":     (12,  "vermilion - festivals, weddings, invitations"),
 }
 DEFAULT_STYLE = "auto"
 
@@ -144,6 +156,18 @@ XLSX_PALETTES: dict[str, dict[str, object]] = {
     "warm":         {"PRIMARY": "7A3B20", "PRIMARY_LIGHT": "F2DDD2"},
     "elegant":      {"PRIMARY": "4A2E4F", "PRIMARY_LIGHT": "E7DAEA"},
     "forest":       {"PRIMARY": "1E4633", "PRIMARY_LIGHT": "D7E8DE"},
+    # v0.192.0 topic families - same anchors as STYLES so Excel matches the PDF look
+    "finance":     {"PRIMARY": "14453C", "PRIMARY_LIGHT": "D2E5DF"},
+    "technology":  {"PRIMARY": "232B47", "PRIMARY_LIGHT": "D8DCEA"},
+    "education":   {"PRIMARY": "6E4318", "PRIMARY_LIGHT": "F0E0CC"},
+    "health":      {"PRIMARY": "1C4634", "PRIMARY_LIGHT": "D7E8DE"},
+    "legal":       {"PRIMARY": "24344D", "PRIMARY_LIGHT": "D6DEE8"},
+    "marketing":   {"PRIMARY": "5C2440", "PRIMARY_LIGHT": "EBD9E2"},
+    "people":      {"PRIMARY": "1E4A4F", "PRIMARY_LIGHT": "D5E6E8"},
+    "agriculture": {"PRIMARY": "2E4A1E", "PRIMARY_LIGHT": "E0E8D5"},
+    "government":  {"PRIMARY": "1F2A52", "PRIMARY_LIGHT": "D5DAEA"},
+    "travel":      {"PRIMARY": "1D4A54", "PRIMARY_LIGHT": "D3E6EA"},
+    "festive":     {"PRIMARY": "6E2A1C", "PRIMARY_LIGHT": "F0DBD4"},
 }
 XLSX_BASE: dict[str, object] = {
     "ACCENT_POSITIVE": "1B7D46", "ACCENT_NEGATIVE": "C0392B", "ACCENT_WARNING": "D4820A",

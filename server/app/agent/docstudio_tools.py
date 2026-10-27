@@ -1,4 +1,4 @@
-"""v0.189.0 Document Studio tools: doc_studio (Claude-grade PDF / Word / Excel / PowerPoint with the
+"""v0.192.0 Document Studio tools: doc_studio (Claude-grade PDF / Word / Excel / PowerPoint with the
 cascade-palette design system, cover, TOC, live formulas, QA + deep preview) and doc_preview (look
 inside any owner file - pages, outline, sheets - before answering). Delivery rides the v0.51 file-card
 path (store_bytes -> public_file -> pc_file event), so file_id works for email / hoola_send exactly as before.
@@ -34,7 +34,10 @@ DOCSTUDIO_TOOLS = [
          "charts": {"type": "array", "description": "xlsx charts: [{sheet, type: bar|column|line|pie|scatter|"
                     "area|doughnut|radar|combo, categories: 'B4:B12', values: 'C4:C12', line_values (combo), title}]"},
          "style": {"type": "string", "enum": ["auto", "professional", "boardroom", "warm",
-                   "elegant", "forest"], "description": "palette (auto = from the title)"},
+                   "elegant", "forest", "finance", "technology", "education", "health", "legal",
+                   "marketing", "people", "agriculture", "government", "travel", "festive"],
+                   "description": "design (auto = matched to the topic: cover, fonts, palette; "
+                   "or force a look)"},
          "subject": {"type": "string", "description": "one-line subtitle / purpose"},
          "filename": {"type": "string", "description": "output file name"},
          "cover": {"type": "boolean", "description": "cover page (auto by size)"},
@@ -91,14 +94,18 @@ async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, c
     notes = ["The file card is in chat; file_id email / hoola_send ke liye ready hai."]
     if qa.get("status") == "warn":
         notes.append(f"QA ne kaha: {qa.get('issues')}")
+    if kind == "pdf" and res.get("design"):
+        d = res["design"]
+        notes.append(f"Design matched to the topic: {d['label']} ({d['cover']} cover, "
+                     f"{d['fonts']['head']} headings).")
     if kind == "xlsx" and res.get("formulas"):
         notes.append(f"{res['formulas']} live formulas.")
     if kind == "xlsx" and res.get("splits"):
         sp = res["splits"][0]
         notes.append(f"{sp['cols']:,} cols Excel ki ek-sheet limit (16,384) se bade the - "
                      f"{len(sp['parts'])} parts + Index bane.")
-    return view | {"made": kind, "style": res.get("style"), "preview": prev,
-                   "note": " ".join(notes)}
+    return view | {"made": kind, "style": res.get("style"), "design": res.get("design"),
+                   "preview": prev, "note": " ".join(notes)}
 
 
 async def doc_preview(ctx: Ctx, file_id, **_):
