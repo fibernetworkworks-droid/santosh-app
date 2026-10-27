@@ -36,6 +36,9 @@ const server=http.createServer((req,res)=>{
  page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>localStorage.setItem('hoola.console.token','fixture-only'));
  await page.goto(`http://127.0.0.1:${server.address().port}/console/`);await page.locator('#app').waitFor({state:'visible'});
+ assert.equal(await page.locator('.main > .top').count(),0);
+ assert.equal(await page.locator('.main > .views').evaluate(e=>e.getBoundingClientRect().top),0);
+ assert.equal(await page.locator('.side #exportBtn').count(),1);
  await page.locator('[data-v="creative"]').click();await page.locator('#cw-prompt').fill('A crafted image of the FNW AI Node');
  await page.waitForTimeout(500);if(shots)await page.screenshot({path:path.join(shots,'hoola-studio-desktop.png'),fullPage:true});
  await page.locator('#cw-submit').click();await page.waitForFunction(()=>!document.querySelector('#v-chat').hidden);assert.match(posts.at(-1).text,/photo_banao/);
