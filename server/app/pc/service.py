@@ -145,7 +145,11 @@ def save_info(device_id: str, info: dict[str, Any]) -> None:
 
 
 def devices(tenant_id: str) -> list[dict[str, Any]]:
-    from .hub import hub
+    """v0.201 MERA PC = FOR THE USER'S PC ONLY: the Hoola PC (kind "hoola_pc", Hoola's own cloud
+    container) NEVER appears in this list — not offline, not online, never. This endpoint feeds the
+    phone's Mera PC screen and that screen is the user's personal computer feature. Hoola's own PC
+    is Hoola infrastructure: it shows up in chat when Hoola works and is managed via vps-ops."""
+    from .hub import hub, HOOLA_PC_KIND
     with session() as s:
         rows = s.scalars(select(PcDevice).where(PcDevice.tenant_id == tenant_id, PcDevice.revoked.is_(False))
                          .order_by(PcDevice.created_at)).all()
@@ -153,12 +157,15 @@ def devices(tenant_id: str) -> list[dict[str, Any]]:
         for d in rows:
             live = hub.info_of(tenant_id, d.id)
             info = live if live is not None else (d.info or {})
+            kind = str(info.get("kind") or "")
+            if kind == HOOLA_PC_KIND:
+                continue
             out.append({"id": d.id, "name": d.name, "os": d.os, "online": live is not None,
                         "last_seen": _aware(d.last_seen).isoformat() if d.last_seen else None,
                         "folders": info.get("folders") or [], "tally": info.get("tally") or {},
                         "version": info.get("version") or "", "indexed": info.get("indexed") or 0,
                         "inbox": info.get("inbox") or "", "paused": bool(info.get("paused")),
-                        "kind": str(info.get("kind") or "")})   # v0.200 "" = user's personal PC, "hoola_pc" = Hoola's own cloud PC
+                        "kind": kind})   # "" = the user's personal PC
         return out
 
 
@@ -200,8 +207,17 @@ def finish_job(job_id: str, status: str, error: str = "") -> None:
 
 
 def jobs(tenant_id: str, limit: int = 50) -> list[dict[str, Any]]:
+    """v0.201 Mera PC screen activity = the USER'S personal PCs' work only; the Hoola PC's jobs
+    are Hoola's own work and stay out of her personal-PC history (they live in chat/kaamwatch)."""
+    from .hub import HOOLA_PC_KIND
     with session() as s:
-        rows = s.scalars(select(PcJob).where(PcJob.tenant_id == tenant_id).order_by(PcJob.created_at.desc())
+        hoola_ids = {d.id for d in s.scalars(select(PcDevice).where(
+            PcDevice.tenant_id == tenant_id, PcDevice.revoked.is_(False))).all()
+            if str((d.info or {}).get("kind") or "") == HOOLA_PC_KIND}
+        q = select(PcJob).where(PcJob.tenant_id == tenant_id)
+        if hoola_ids:
+            q = q.where(PcJob.device_id.not_in(hoola_ids))
+        rows = s.scalars(q.order_by(PcJob.created_at.desc())
                          .limit(max(1, min(limit, 200)))).all()
         return [{"id": j.id, "device_id": j.device_id, "action": j.action, "summary": j.summary, "status": j.status,
                  "error": j.error, "at": _aware(j.created_at).isoformat()} for j in rows]

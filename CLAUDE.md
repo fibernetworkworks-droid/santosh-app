@@ -8230,3 +8230,27 @@ flattener, suite green again (the 2 failures reproduced on pristine v0.199.0 HEA
 Sweeps green: pc family 65 (bridge, operator, v0173 memory, v0185 browser, v01854 is_error, v0193 hoola_pc,
 v0200 kinds), harness x3 + sessions + delivery + hotfix + realtime 83, email 1-4 + search 62. Ritual:
 APP_VERSION 0.200.0, pubspec 0.200.0+234, console ?v=0.200.0 x9, pins →0.200.0 in the 13 pinned suites.
+
+## v0.201.0 MERA PC IS FOR THE USER'S PC, NOT FOR HOOLA'S OWN CONTAINER PC (owner, twice: "MERA PC IS USER PERSONAL PC FEATURE" then "MERA PC IS FOR USER PC NOT FOR HOOLA OWN CONTAINER PC" — the final form of the rule)
+
+v0.200.0 had put the Hoola PC on the Mera PC screen in its own labeled section; the owner drew the line
+cleaner: the Mera PC screen is ONLY the user's personal PC feature. Hoola's own cloud container is Hoola
+infrastructure, not a row in her PC list.
+
+- `pc/service.devices()` FILTERS kind "hoola_pc" out server-side (live-conn path and stored-info path both):
+  the cloud PC never appears on the Mera PC screen — not offline, not online, never — and because the filter
+  is on the endpoint, OLD APKs get the same behavior with no update. Personal PCs still carry the `kind`
+  field ("" for desktops) for any future surface.
+- `pc/service.jobs()` also hides the Hoola PC's jobs from the "SANTOSH NE PC PAR KYA KIYA" history (jobs
+  whose device_id belongs to a hoola_pc device); its work lives in chat/kaamwatch where every other Hoola
+  job lives.
+- Flutter: the v0.200 "HOOLA KA APNA PC" section + _hoolaCard are REMOVED — the screen is back to the clean
+  personal-only layout (pair card, personal cards, send/search/history), pairing card still says "aapka
+  personal PC". Hoola's own PC remains fully alive underneath: operator kind routing, install/run tools,
+  hoola_pc_do voice dispatch, the container on the VPS — just never on her personal-PC screen.
+- v0.200's phone-button routing (hub.call_personal / has_personal on pc_search/pc_send/pc_pull) stays: those
+  buttons can still never land on the cloud PC, and only-cloud-online = honest 409.
+Tests: test_v0200_pc_kinds.py rewritten for the final rule (8): devices() hides the cloud PC on both paths,
+legacy desktop kind "", jobs() hides Hoola PC work, call_personal routing + PcOffline, has_personal truth
+table, pc_search endpoint, version pin. Sweeps green: PC family 80, pinned suites 43. Ritual: APP_VERSION
+0.201.0, pubspec 0.201.0+235, console ?v=0.201.0 x9, pins →0.201.0 in 14 suites. Desktop untouched 1.4.0.

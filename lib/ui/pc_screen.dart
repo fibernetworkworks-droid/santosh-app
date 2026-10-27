@@ -211,48 +211,12 @@ class _PcScreenState extends State<PcScreen> {
     );
   }
 
-  /// v0.200 Hoola ka apna PC — the cloud computer Hoola itself works on. Shown on the same
-  /// screen but always as its own thing, never mixed into the user's personal PC list.
-  Widget _hoolaCard(Map<String, dynamic> d) {
-    final online = d['online'] == true;
-    final paused = d['paused'] == true;
-    return Glass(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(Icons.cloud_rounded, size: 20, color: online ? C.ok : C.faint),
-          const SizedBox(width: 8),
-          Expanded(child: Text(d['name'] as String? ?? 'Hoola PC', style: display(18))),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded, color: C.muted),
-            onSelected: (v) async {
-              if (v == 'remove') {
-                await app.api!.pcRemove(d['id'] as String);
-                _load();
-              }
-            },
-            itemBuilder: (_) => const [PopupMenuItem(value: 'remove', child: Text('Is PC ko hataiye'))],
-          ),
-        ]),
-        Text(
-            online
-                ? (paused ? 'Hoola ka apna cloud computer · roka hua hai' : 'Hamesha on · Hoola ka apna cloud computer')
-                : 'Hoola ka apna cloud computer · thodi der mein apne aap jud jayega',
-            style: TextStyle(color: online ? C.ok : C.muted, fontSize: 12.5)),
-        const SizedBox(height: 6),
-        const Text('Yahan Hoola khud kaam karta hai — Chrome, files, software install. Aapke personal PC se alag, iske liye Hoola se boliye: "apne computer pe…".',
-            style: TextStyle(color: C.chip, fontSize: 12.5, height: 1.35)),
-      ]),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    // v0.200 MERA PC = USER PERSONAL PC FEATURE: this screen is the user's own computer(s).
-    // Hoola ka apna PC (the cloud computer Hoola works on) is a different thing and gets its
-    // own clearly-labeled section so the two are never confused.
-    final hoola = _devices.where((d) => d['kind'] == 'hoola_pc').toList();
-    final personal = _devices.where((d) => d['kind'] != 'hoola_pc').toList();
-    final online = personal.any((d) => d['online'] == true);
+    // v0.201 MERA PC IS FOR THE USER'S PC, NOT FOR HOOLA'S OWN CONTAINER PC: the server already
+    // returns personal PCs only (the Hoola PC never enters this list), so this screen is purely
+    // the user's own computer feature - pairing, files, search, history.
+    final online = _devices.any((d) => d['online'] == true);
     return Scaffold(
       appBar: AppBar(title: const Text('Mera PC'), backgroundColor: Colors.transparent),
       body: Aurora(
@@ -261,20 +225,9 @@ class _PcScreenState extends State<PcScreen> {
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
             if (!_loaded) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
-            if (_loaded && personal.isEmpty) _pairCard(),
-            if (hoola.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              const Caption('HOOLA KA APNA PC'),
-              const SizedBox(height: 8),
-              for (final d in hoola) Padding(padding: const EdgeInsets.only(bottom: 10), child: _hoolaCard(d)),
-              const SizedBox(height: 10),
-            ],
-            if (personal.isNotEmpty && hoola.isNotEmpty) ...[
-              const Caption('AAPKA PERSONAL PC'),
-              const SizedBox(height: 8),
-            ],
-            for (final d in personal) Padding(padding: const EdgeInsets.only(bottom: 10), child: _deviceCard(d)),
-            if (personal.isNotEmpty) ...[
+            if (_loaded && _devices.isEmpty) _pairCard(),
+            for (final d in _devices) Padding(padding: const EdgeInsets.only(bottom: 10), child: _deviceCard(d)),
+            if (_devices.isNotEmpty) ...[
               const SizedBox(height: 8),
               Row(children: [
                 Expanded(child: GlassButton(label: 'Phone se PC par bhejo', icon: Icons.upload_rounded, height: 46,
@@ -292,8 +245,6 @@ class _PcScreenState extends State<PcScreen> {
                       ])));
                 })),
               ]),
-            ],
-            if (_devices.isNotEmpty) ...[
               const SizedBox(height: 18),
               const Caption('PC PAR DHOONDHIYE'),
               Glass(

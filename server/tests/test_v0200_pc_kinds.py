@@ -1,16 +1,19 @@
-"""v0.200 MERA PC = USER PERSONAL PC FEATURE (owner: "MERA PC IS USER PERSONAL PC FEATURE").
+"""v0.201 MERA PC IS FOR THE USER'S PC, NOT FOR HOOLA'S OWN CONTAINER PC (owner, twice:
+"MERA PC IS USER PERSONAL PC FEATURE" then "MERA PC IS FOR USER PC NOT FOR HOOLA OWN CONTAINER PC").
 
-The product rule this locks in:
-- Mera PC (the phone screen + its buttons) is the USER'S PERSONAL PC feature — her own Windows
-  computer paired via Hoola Desktop. Search / send / pull from the phone always target a PERSONAL
-  PC, never Hoola's own cloud PC.
-- Hoola ka apna PC (kind "hoola_pc", the Linux cloud computer) shows up in the app as its own
-  clearly-labeled thing: service.devices() now carries "kind" so the app can separate the two.
+The product rule this locks in, in its final form:
+- Mera PC (the phone screen + its buttons + its history) is the USER'S PERSONAL PC feature and
+  NOTHING else: the Hoola PC (kind "hoola_pc", the Linux cloud container) NEVER appears in the
+  devices list and its jobs NEVER appear in the personal-PC activity history. Hoola's own PC is
+  Hoola infrastructure - it shows up in chat when Hoola works and is managed via vps-ops.
+- The phone's search / send / pull still route to a PERSONAL PC explicitly (v0.200 hub.call_personal),
+  and raise the honest PcOffline 409 when only the cloud PC is online.
+- service.devices() filters the cloud PC OUT server-side, so even OLD APKs never show it.
 
-Tests: devices() exposes kind (live conn path + stored-info path + legacy "" for her desktops),
-hub.call_personal routes to the personal PC even when the cloud PC connected last, raises
-PcOffline when ONLY the cloud PC is online, has_personal tells the send endpoint the truth, and
-the phone's pc_search endpoint rides call_personal (the wire Mera PC speaks).
+Tests: devices() excludes the hoola_pc device on both the live-conn and stored-info paths while
+personal PCs keep their kind field, jobs() hides the Hoola PC's work, hub.call_personal routes to
+the personal PC even when the cloud PC connected first, raises PcOffline when ONLY the cloud PC is
+online, has_personal tells the truth, the pc_search endpoint rides call_personal, version pin.
 """
 import asyncio
 import json
@@ -62,25 +65,25 @@ def _mk_device(tenant, device_id, info):
         s.flush()
 
 
-# ---------------- devices() tells the app which PC is which ----------------
+# ---------------- devices() is the user's personal PCs ONLY ----------------
 
-def test_devices_kinds_live_and_stored_and_legacy(hub2):
+def test_devices_hides_the_hoola_pc_on_both_paths(hub2):
     from app.pc import service
     her_info = {"name": "Office PC", "os": "Windows 11", "version": "1.4.0", "control": True}   # desktops report NO kind
     hp_info = {"name": "Hoola PC", "os": "Linux 6.8.0 (Hoola PC)", "version": "1.0.0",
                "kind": KIND, "control": True}
     _mk_device("default", "dev-her", her_info)
     _mk_device("default", "dev-hp", hp_info)
-    _conn(hub2, "default", "dev-her", "")          # live personal PC
-    # dev-hp has NO live conn -> the stored info path must still carry the kind
 
-    out = {d["id"]: d for d in service.devices("default")}
-    assert out["dev-her"]["kind"] == "" and out["dev-her"]["online"] is True
-    assert out["dev-hp"]["kind"] == KIND and out["dev-hp"]["online"] is False
+    out = service.devices("default")                    # dev-hp has NO live conn: stored-info path
+    assert [d["id"] for d in out] == ["dev-her"]        # the cloud PC is not in the list, even offline
+    assert out[0]["kind"] == "" and out[0]["online"] is False
 
-    _conn(hub2, "default", "dev-hp", KIND)         # now live: kind comes off conn.info
-    out = {d["id"]: d for d in service.devices("default")}
-    assert out["dev-hp"]["kind"] == KIND and out["dev-hp"]["online"] is True
+    _conn(hub2, "default", "dev-her", "")
+    _conn(hub2, "default", "dev-hp", KIND)             # now BOTH live: live-conn path
+    out = service.devices("default")
+    assert [d["id"] for d in out] == ["dev-her"]        # still personal-only, cloud PC online or not
+    assert out[0]["online"] is True
 
 
 def test_legacy_desktop_without_info_is_personal(hub2):
@@ -88,6 +91,20 @@ def test_legacy_desktop_without_info_is_personal(hub2):
     _mk_device("default", "dev-old", {})           # paired before kinds existed
     out = service.devices("default")
     assert out[0]["kind"] == ""
+
+
+def test_jobs_hide_the_hoola_pcs_work(hub2):
+    from app.db import PcJob, session as db_session
+    from app.pc import service
+    _mk_device("default", "dev-her", {"name": "Office PC"})
+    _mk_device("default", "dev-hp", {"name": "Hoola PC", "kind": KIND})
+    with db_session() as s:
+        s.add(PcJob(id="job-her", tenant_id="default", device_id="dev-her", action="open_url",
+                    summary="Chrome mein bill khola", status="done"))
+        s.add(PcJob(id="job-hp", tenant_id="default", device_id="dev-hp", action="install",
+                    summary="ffmpeg install kiya", status="done"))
+    out = service.jobs("default")
+    assert [j["id"] for j in out] == ["job-her"]        # her personal-PC history stays personal
 
 
 # ---------------- the phone's buttons can never land on the Hoola PC ----------------
@@ -167,4 +184,4 @@ async def test_pc_search_endpoint_goes_to_the_personal_pc(hub2, monkeypatch):
 
 def test_version_pin():
     import app.main as m
-    assert m.APP_VERSION == "0.200.0"
+    assert m.APP_VERSION == "0.201.0"
