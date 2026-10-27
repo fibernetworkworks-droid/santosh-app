@@ -81,6 +81,7 @@ import 'studio_screen.dart';
 import 'home_devices_screen.dart';
 import 'notebook_screen.dart';
 import 'pc_screen.dart';
+import 'hoola_pc_screen.dart';
 import 'photos_screen.dart';
 import 'sheets_screen.dart';
 import 'slides_screen.dart';
@@ -1046,9 +1047,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.computer_rounded, color: C.teal),
           title: const Text('Mera PC', style: TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: const Text('Office ka computer jodiye: files, print aur Tally phone se'),
+          subtitle: const Text('AAPKA personal PC jodiye: files, print aur Tally phone se'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PcScreen(app: app))),
+        ),
+      ),
+      const SizedBox(height: 18),
+      Glass(
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.dns_rounded, color: C.accent),
+          title: const Text('Hoola ka PC', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('HOOLA ka apna computer (alag section): apne container mein, hamesha on — Chrome, files, software'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaPcScreen(app: app))),
         ),
       ),
       const SizedBox(height: 18),

@@ -169,6 +169,29 @@ def devices(tenant_id: str) -> list[dict[str, Any]]:
         return out
 
 
+def hoola_devices(tenant_id: str) -> list[dict[str, Any]]:
+    """v0.205 HOOLA PC AND MERA PC ARE DIFFERENT SECTIONS: the mirror of devices() — this one
+    returns ONLY the Hoola PC (kind "hoola_pc", Hoola's own cloud container), for the phone's
+    own "Hoola ka PC" section. The personal PCs never appear here, exactly as the Hoola PC never
+    appears in devices(): two sections, two endpoints, each shows only its own kind."""
+    from .hub import hub, HOOLA_PC_KIND
+    with session() as s:
+        rows = s.scalars(select(PcDevice).where(PcDevice.tenant_id == tenant_id, PcDevice.revoked.is_(False))
+                         .order_by(PcDevice.created_at)).all()
+        out = []
+        for d in rows:
+            live = hub.info_of(tenant_id, d.id)
+            info = live if live is not None else (d.info or {})
+            kind = str(info.get("kind") or "")
+            if kind != HOOLA_PC_KIND:
+                continue
+            out.append({"id": d.id, "name": d.name, "os": d.os, "online": live is not None,
+                        "last_seen": _aware(d.last_seen).isoformat() if d.last_seen else None,
+                        "version": info.get("version") or "", "indexed": info.get("indexed") or 0,
+                        "kind": kind})
+        return out
+
+
 def revoke(tenant_id: str, device_id: str) -> bool:
     with session() as s:
         d = s.get(PcDevice, device_id)
@@ -218,6 +241,23 @@ def jobs(tenant_id: str, limit: int = 50) -> list[dict[str, Any]]:
         if hoola_ids:
             q = q.where(PcJob.device_id.not_in(hoola_ids))
         rows = s.scalars(q.order_by(PcJob.created_at.desc())
+                         .limit(max(1, min(limit, 200)))).all()
+        return [{"id": j.id, "device_id": j.device_id, "action": j.action, "summary": j.summary, "status": j.status,
+                 "error": j.error, "at": _aware(j.created_at).isoformat()} for j in rows]
+
+
+def hoola_jobs(tenant_id: str, limit: int = 50) -> list[dict[str, Any]]:
+    """v0.205 the Hoola PC section's own activity feed — ONLY the Hoola PC's jobs (the mirror of
+    the v0.201 rule: the personal-PC history hides this work, this feed shows nothing else)."""
+    from .hub import HOOLA_PC_KIND
+    with session() as s:
+        hoola_ids = {d.id for d in s.scalars(select(PcDevice).where(
+            PcDevice.tenant_id == tenant_id, PcDevice.revoked.is_(False))).all()
+            if str((d.info or {}).get("kind") or "") == HOOLA_PC_KIND}
+        if not hoola_ids:
+            return []
+        rows = s.scalars(select(PcJob).where(PcJob.tenant_id == tenant_id, PcJob.device_id.in_(hoola_ids))
+                         .order_by(PcJob.created_at.desc())
                          .limit(max(1, min(limit, 200)))).all()
         return [{"id": j.id, "device_id": j.device_id, "action": j.action, "summary": j.summary, "status": j.status,
                  "error": j.error, "at": _aware(j.created_at).isoformat()} for j in rows]

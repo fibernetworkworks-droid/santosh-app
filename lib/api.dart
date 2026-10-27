@@ -1250,6 +1250,12 @@ class Api {
   Future<void> pcRemove(String id) async => _send('DELETE', '/api/pc/devices/$id');
   Future<List<Map<String, dynamic>>> pcJobs() async =>
       List<Map<String, dynamic>>.from(((await _send('GET', '/api/pc/jobs'))['jobs'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  /// v0.205 HOOLA PC AND MERA PC ARE DIFFERENT SECTIONS: the "Hoola ka PC" section's own feeds —
+  /// only Hoola's own cloud PC and only its work; the Mera PC endpoints above stay personal-only.
+  Future<List<Map<String, dynamic>>> pcHoolaDevices() async =>
+      List<Map<String, dynamic>>.from(((await _send('GET', '/api/pc/hoola'))['devices'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<List<Map<String, dynamic>>> pcHoolaJobs() async =>
+      List<Map<String, dynamic>>.from(((await _send('GET', '/api/pc/hoola/jobs'))['jobs'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
   Future<List<Map<String, dynamic>>> pcSearch(String q, {String kind = 'any'}) async =>
       List<Map<String, dynamic>>.from(((await _send('POST', '/api/pc/search', body: {'query': q, 'kind': kind}, timeout: const Duration(seconds: 40)))['results'] as List)
           .map((e) => Map<String, dynamic>.from(e as Map)));

@@ -8283,3 +8283,29 @@ do_send_file; pairing still pending the owner's 6-digit code.
 THE RCA (exact): (a) a fresh voice session was briefed by `yaad.voice_block`, whose recent exchanges were 360-char ONE-LINERS (`one_line(ex, 360)`) — the exact words of the recent work never reached a new call; (b) `greeting()` told a fresh session "do not bring up anything from before" — a network drop past `voice_resume_grace_s` (25 s) ended the call, and the next call opened like a COLD START ("Arre, good morning!") with the interrupted work compressed to a gist line; (c) in chat, exchanges older than the newest ~4 were compressed (`compress()`: steps → ≤14 gist lines, values clipped 40–60 chars, `gist()`), and past the 40–49 exchange window only the ≤1600-char summary survived — "jo maine bola tha" had no words left to point at. Facts were paraphrased by a model; `LAST_OUTCOME` lived only in process memory.
 THE FIX — FOCUSED WORD-LEVEL MEMORY, both paths, zero new latency (pure SQL, no model, no extra model calls): (1) **`yaad.focus_block()`** — her newest messages VERBATIM (`focus_user_words`=6, 600 chars each) with `_when` timestamps, read from `Messages.display` so chat turns AND `[Voice call]` turns share ONE word-level memory and a pm2 restart forgets nothing; a call that died mid-air within `voice_continuation_min` (60 min) rides with its last words; whole block capped at `focus_max_chars`=4000 ("focused" = small and exact, never a dump); the chat path excludes her CURRENT message (it is the message being answered); volatile, rides the current message only — the cached prompt prefix stays byte-identical (the v0.108 rule). Wired into `turn_block` (chat) and LEADS `voice_block` (voice). (2) **`yaad.FocusNote`** (`focus_notes` table; `ensure_focus_table()` self-heal with the `_table_ready` flag — the v0.190.1 lesson; yaad is already imported in init_db day-one) + **`voice.py _save_drop_note()`**: at grace expiry the dying call saves her last complete words + the half-said sentence (`user_buf`, OTP-masked like finish_turn) as a `call_drop` note; `note_call_drop` prunes to 20 notes/chat and 7 days; an abandoned dial with zero turns writes NOTHING. (3) **CONTINUATION, not cold start**: the next NEW call consumes the note (`take_call_drop`, read-ONCE) and `greeting(continuation=...)` seeds the fresh Gemini session with "YE KOI NAYA CALL NAHI HAI - pichli call kat gayi thi, wahi baat chal rahi thi - ek chhoti line bolo ('Haan, line aa gayi - wahi kaam pe chalte hain') aur USI kaam se aage badho; fresh greeting/introduction bilkul nahi"; until consumed, `focus_block` repeats the note to the brain. (4) The resume-within-grace path and `_reseed` (same-call verbatim replay) are unchanged and keep working; the dev's v0.202 Awaaz-2 feeling engine (voiceaffect.py, DELIVERY_END, ack generation tags) rides untouched beside it.
 Tests: NEW test_v0204_focus.py (15) — verbatim words in focus_block (chat + `[Voice call]` turns), exclude-current, turn_block/voice_block wiring, drop-note write→recent→consume-once, aged-note window, grace-expiry note with partial words + OTP mask + timer wiring, abandoned-dial silence, continuation vs fresh greeting, caps, ensure_focus_table idempotent, version pin. Version 0.204.0 (pubspec 0.204.0+238, console ?v=0.204.0 x9, conscious pins →0.204.0 in 16 suites + the sessions cache-stamp set). Server-only — old APKs keep working; desktop untouched; Mera PC freeze respected.
+
+## v0.205.0 HOOLA PC AND MERA PC ARE DIFFERENT SECTIONS (owner: "NOW HOOAL PC AND MERA PC IS DIFFRENT SECTIONS")
+v0.201 removed the Hoola PC from the Mera PC screen entirely (correct: Mera PC is ONLY the user's personal
+PC), which left Hoola's own cloud PC invisible in the app. This makes them TWO DIFFERENT SECTIONS, each with
+its own endpoint and its own screen - both rules hold at once:
+- service.hoola_devices(): the mirror of devices() - returns ONLY kind "hoola_pc" (Hoola's own cloud
+  container); a personal PC never appears here, exactly as the Hoola PC never appears in devices().
+- service.hoola_jobs(): the mirror of the v0.201-filtered jobs() - ONLY the Hoola PC's work; when no cloud
+  PC is paired it returns [] and never leaks hers.
+- main.py: GET /api/pc/hoola + GET /api/pc/hoola/jobs (require_key) feed the new section; /api/pc/devices
+  + /api/pc/jobs stay personal-only - the v0.201 rule byte-untouched, old APKs keep the clean Mera PC screen.
+- Flutter: NEW lib/ui/hoola_pc_screen.dart (HoolaPcScreen) - intro card teaches the difference ("Yeh aapka
+  personal PC NAHI hai. Aapka apna computer 'Mera PC' section mein juda hota hai - dono alag-alag hain"),
+  always-on status card (online/offline + "hamesha on, khud dobara judta hai") and its OWN job history;
+  READ-ONLY by design: no pairing, no search, no file buttons - the Hoola PC is Hoola infrastructure, it
+  pairs itself (vps-ops pc_pair), the user never pairs it.
+- profile_screen.dart: TWO entries side by side - "Mera PC" (subtitle now says AAPKA personal PC) and the
+  new "Hoola ka PC" (HOOLA ka apna computer, alag section, apne container mein - dns icon).
+- api.dart: pcHoolaDevices() + pcHoolaJobs().
+Tests: NEW test_v0205_hoola_section.py (7): hoola_devices only-the-cloud-PC on stored+live paths while
+devices() stays personal-only, never-leaks-her, hoola_jobs vs jobs() both directions, empty-when-unpaired,
+endpoint shapes, version pin. Sweeps green: PC family 37 (pc_kinds + pc_bridge + hoola_section + pc_memory
++ pc_bridge-old), pinned+voice+email 119. Ritual: APP_VERSION 0.205.0, pubspec 0.205.0+239, console
+?v=0.205.0 x9, pins ->0.205.0 in 17 suites. Windows desktop 1.4.0 untouched. Deploy = server only (vps-ops
+deploy); the APK needs a rebuild for the new section; Hoola PC container pairing still pending the owner's
+6-digit code.
