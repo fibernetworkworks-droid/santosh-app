@@ -71,7 +71,7 @@ function open(item) {
   const key = item.type + ':' + item.ref;
   let t = TABS.find(x => x.key === key);
   if (!t) {
-    t = {key, item, el: document.createElement('div'), blobs: []};
+    t = {key, item, el: document.createElement('div'), blobs: [], controller: new AbortController()};
     t.el.className = 'pnitem'; box.querySelector('.pnbody').appendChild(t.el);
     TABS.push(t);
     if (TABS.length > 6) drop(TABS[0].key);
@@ -85,7 +85,7 @@ function select(t) {
 }
 function drop(key) {
   const i = TABS.findIndex(x => x.key === key); if (i < 0) return;
-  const [t] = TABS.splice(i, 1); t.blobs.forEach(u => URL.revokeObjectURL(u)); t.el.remove();
+  const [t] = TABS.splice(i, 1); t.closed = true; t.controller?.abort(); t.el.querySelectorAll('audio,video').forEach(m => m.pause()); t.blobs.forEach(u => URL.revokeObjectURL(u)); t.el.remove();
   if (CUR === t) CUR = TABS[Math.max(0, i - 1)] || null;
   if (!TABS.length) { close(); drawTabs(); return; }
   select(CUR);
@@ -93,9 +93,10 @@ function drop(key) {
 
 /* ---------- helpers ---------- */
 async function blobOf(t, path, type) {
-  const r = await fetch(path, {headers: {Authorization: 'Bearer ' + ctx.token()}, cache: 'no-store', credentials: 'omit'});
+  const r = await fetch(path, {headers: {Authorization: 'Bearer ' + ctx.token()}, cache: 'no-store', credentials: 'omit', signal: t.controller.signal});
   if (!r.ok) { let m = ''; try { m = (await r.json()).detail; } catch {} throw new Error(m || `Nahi khula (${r.status})`); }
-  const u = URL.createObjectURL(new Blob([await r.arrayBuffer()], {type}));
+  const bytes = await r.arrayBuffer(); if (t.closed) throw new Error('Workspace closed');
+  const u = URL.createObjectURL(new Blob([bytes], {type}));
   t.blobs.push(u); return u;
 }
 async function download(path, name) {
@@ -234,7 +235,7 @@ async function renderFile(t) {
   const it = t.item, fid = it.ref, P = `/api/panel/files/${encodeURIComponent(fid)}`;
   t.el.innerHTML = `<div class="pnview center"><div class="skel-page" style="width:100%;padding:16px" aria-label="Khul raha hai"><i class="skel" style="height:46px"></i><i class="skel" style="height:260px"></i></div></div>`;
   let info;
-  try { info = await api('GET', P + '/info'); } catch (e) { t.el.querySelector('.pnview').innerHTML = err(e.message); return; }
+  try { info = await api('GET', P + '/info'); if(t.closed)return; } catch (e) { if(t.closed)return; t.el.querySelector('.pnview').innerHTML = err(e.message); return; }
   if (!it.title || it.title === it.name) it.title = info.name || it.title; drawTabs();
   t.el.innerHTML = bar(t, `<span class="pnnote">${esc(info.name)} · ${Math.max(1, Math.round((info.size || 0) / 1024))} KB</span><span class="sp"></span>
       <button type="button" class="btn soft" data-a="share">Share</button><button type="button" class="btn soft" data-a="dl">Download</button>`)
@@ -288,5 +289,9 @@ async function fill(el, kind, q) {
     open(it.type === 'video' && it.url ? {...it, url: ownPath(it.url)} : it.type === 'page' ? {type: 'page', ref: it.ref, title: it.title} : it); };
 }
 
-return {itemOf, open, update, library, isOpen, close};
+function reset() {
+  for (const t of [...TABS]) drop(t.key);
+  CUR=null; close();
+}
+return {itemOf, open, update, library, isOpen, close, reset};
 };

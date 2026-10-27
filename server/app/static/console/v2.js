@@ -76,13 +76,18 @@ $('#kbtn').addEventListener('click', async () => {
 });
 async function logout(expired) {
   stopStream(); endCall(); ACC?.abort(); ACC = null;
+  RESULTS?.reset();
+  WORKSPACE?.reset(); PN?.reset();
+  clearTimeout(DRAFT_T); FILES = []; CONV = null; ACC_LAST = 0; msg.value = ''; drawFiles();
+  clearInterval(GAUGE_T); clearInterval(PENDING_TIMER);
   if (TOKEN && !expired) { try { await api('POST', '/api/logout'); } catch {} }
   setToken(''); showLogin(expired ? 'Session khatam ho gaya. Dobara login kijiye.' : '');
 }
 
 /* ================= state + shell ================= */
 let ME = null, CONV = null, VIEW = 'chat', AV = 'Santosh';
-const NAV = [['chat','Chat'],['aaj','Aaj'],['kaam','Saare kaam'],['baat','Baat'],['main','Main']];
+const NAV = [['chat','Chat'],['creative','Creative studio'],['aaj','Today'],['kaam','Tools'],['baat','Voice'],['main','Account']];
+IC.creative = '<path d="M4 4h16v16H4zM8 4v16M4 10h16M4 16h16"/>';
 IC.bana = '<path d="M4 4h16v5H4zM4 11h7v9H4zM13 11h7v9h-7z"/>';
 function drawNav() {
   $('#snav').innerHTML = NAV.map(([k, n]) => `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k])}<span class="txt">${n}</span>${k === 'aaj' && QUEUE.length ? `<span class="ct txt">${QUEUE.length}</span>` : ''}</button>`).join('');
@@ -97,11 +102,16 @@ function go(v) {
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawAaj(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
   if (v === 'bana') PN?.library($('#bana'));
+  if (v === 'creative') WORKSPACE?.open();
+  if (v === 'creative') $('#ttl').textContent = '· Creative workspace';
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) go(b.dataset.v); });
 $('#menu').addEventListener('click', () => $('#app').classList.add('drawer'));
 $('#scrim').addEventListener('click', () => $('#app').classList.remove('drawer'));
 $('#collapse').addEventListener('click', () => $('#app').classList.toggle('collapsed'));
+$('#collapse').addEventListener('click', () => {
+  $('#collapse').setAttribute('aria-expanded', String(!$('#app').classList.contains('collapsed')));
+});
 $('#liveBtn').addEventListener('click', () => {
   if (B?.isOpen()) { B.close(); $('#app').classList.add('open'); return; }
   if (PN?.isOpen()) { PN.close(); $('#app').classList.add('open'); return; }     // v0.163 one right-hand column at a time
@@ -142,17 +152,17 @@ async function enter() {
       say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); },
       closeStudio: () => { if (B?.isOpen()) B.close(); },
       studio: (kind, p) => { go('chat'); const b = col.querySelector(`[data-key="${CSS.escape(kind + ':' + p.id)}"] [data-ba="studio"]`); if (b) b.click(); else toast('Studio ke liye chat mein us kaam ka card kholiye.'); }});
-    NAV.splice(3, 0, ['bana', 'Banaya hua']); drawNav();
+    NAV.splice(3, 0, ['bana', 'Creations']); drawNav();
   }
   const list = await loadRecents();
   const fromUrl = (location.pathname.match(/^\/console\/c\/([^/?#]+)/) || [])[1];
   const firstChat = async () => list[0]?.id || (await api('POST', '/api/conversations')).id;
   if (CH) accountStream();
-  loadGauge(); GAUGE_T = setInterval(loadGauge, 300000);   // v0.173 the kharcha line stays honest
+  loadGauge(); clearInterval(GAUGE_T); GAUGE_T = setInterval(loadGauge, 300000);   // v0.173 the kharcha line stays honest
   if (CH && fromUrl) await openConv(decodeURIComponent(fromUrl), false, {noPush: true, fallback: async () => {
     toast('Woh chat nahi mili (shayad delete ho gayi). Haal ki chat khol raha hoon.'); await openConv(await firstChat()); }});
   else await openConv(await firstChat());
-  refreshPending(); setInterval(refreshPending, 30000);
+  refreshPending(); clearInterval(PENDING_TIMER); PENDING_TIMER = setInterval(refreshPending, 30000);
 }
 
 /* ================= recents ================= */
@@ -529,6 +539,30 @@ const B = window.HoolaBuild ? window.HoolaBuild({api, esc, toast, narrow, conv: 
   say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); }}) : null;
 let PN = null;          // panel.js (SIDE_PANEL)
 let PJ = null;          // projects.js (CHAT_PROJECTS)
+const RESULTS = window.HoolaResults ? HoolaResults({api, esc, toast,
+  itemOf: (kind, p) => PN?.itemOf(kind, p), open: item => PN?.open(item),
+  reuse: item => WORKSPACE?.reuse(item), resize: () => scrollDown()}) : null;
+const WORKSPACE = window.HoolaWorkspace ? HoolaWorkspace({api, esc, toast, conv: () => CONV,
+  library: () => PN ? go('bana') : toast('Creations workspace is not enabled on this server.',true), show: () => {
+    VIEW = 'creative'; $$('.view').forEach(x => x.hidden = x.id !== 'v-creative'); drawNav();
+    $('#ttl').textContent = '· Creative workspace'; $('#app').classList.remove('drawer');
+  },
+  openChat: id => { go('chat'); openConv(id, false, {noPush: true}); },
+  submit: async (id, text, files) => {
+    const auth = TOKEN;
+    const body = {text, files, client_id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())};
+    for (let i=0; i<3; i++) {
+      if (!auth || TOKEN !== auth) throw new Error('Session changed. Open your conversation and try again.');
+      try { return await api('POST', `/api/conversations/${encodeURIComponent(id)}/messages`, body); }
+      catch(e) { if(i===2 || (e.status && e.status<500)) throw e; await new Promise(r=>setTimeout(r,600*(i+1))); }
+    }
+  }}) : null;
+// Workflow entry points stay connected to the same conversation and its real output events.
+$('#slotLand').insertAdjacentHTML('beforebegin', '<div class="workflow-entry" aria-label="Create with Hoola"><button type="button" data-create="image">Image creation</button><button type="button" data-create="video">Video & motion</button><button type="button" data-create="research">Research</button><button type="button" data-create="document">Documents</button></div>');
+document.addEventListener('click', e => {
+  const b=e.target.closest('[data-create]'); if(!b || !WORKSPACE)return;
+  go('creative'); WORKSPACE.open(b.dataset.create);
+});
 function chatFolder() { const c = CH?.find(CONV), p = c?.project_id && PJ?.nameOf(c.project_id); return p ? `· ${p.emoji || '📁'} ${p.name}` : ''; }
 const SKIP_FIELDS = /(^id$|_id$|^tenant|token|secret|^sig|hash|nonce|^at$|_at$|preview|thumb|^b64|^data$|^raw)/i;
 function kvRows(p, max = 8, used = []) {
@@ -574,6 +608,9 @@ const fingerprintMsg = 'Yeh paise wala card hai: Haan sirf aapke phone ke finger
 
 function renderCard(kind, p, at, live) {
   if (B && B.kinds.has(kind)) { const el = cardShell(kind, p); B.card(kind, p, el, !!live); scrollDown(); return; }
+  if (RESULTS?.kinds.has(kind) && PN?.itemOf(kind, p) && (kind !== 'artifact' || p.status === 'ready')) {
+    const el = cardShell(kind, p); RESULTS.card(kind, p, el); if (live) PN.update(kind, p); scrollDown(); return;
+  }
   if (kind === 'goal') {   // v0.186 lamba kaam pakka: live checklist, one card per goal id
     const el = cardShell(kind, p);
     const st = p.status || 'working';
@@ -592,8 +629,22 @@ function renderCard(kind, p, at, live) {
     scrollDown(); return;
   }
   if (kind === 'gyaan_sources') {
-    const el = document.createElement('div'); el.className = 'srcs';
-    el.innerHTML = (p.sources || []).map(s => `<span class="chip">[${esc(s.n ?? '')}] ${esc(s.title || s.source || '')}</span>`).join(''); turn().bd.appendChild(el); return;
+    const el = document.createElement('details'); el.className = 'result-sources';
+    const sources = p.sources || [];
+    el.innerHTML = `<summary>Sources · ${sources.length}</summary>` + sources.map((s, i) => {
+      const url = safeLink(s.link);
+      return `<article><b>[${esc(s.n ?? '')}] ${esc(s.title || s.source || '')}</b>`
+        + (s.page ? `<span class="faint">Page ${esc(s.page)}</span>` : '')
+        + (s.snippet ? `<p>${esc(s.snippet)}</p>` : '')
+        + (url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Source kholo ↗</a>` : '')
+        + (s.file_id && PN ? `<button class="btn soft" type="button" data-source="${i}">File kholo</button>` : '') + '</article>';
+    }).join('');
+    el.addEventListener('click', e => {
+      const b = e.target.closest('[data-source]'); if (!b) return;
+      const s = sources[Number(b.dataset.source)];
+      PN?.open({type: 'file', ref: s.file_id, title: s.title || 'Source file'});
+    });
+    turn().bd.appendChild(el); return;
   }
   if (kind === 'memory_saved' || kind === 'procedure') {
     const el = document.createElement('div'); el.className = 'note'; el.textContent = (kind === 'memory_saved' ? '📌 Yaad rakha: ' : '🎓 Seekha: ') + (p.text || p.title || ''); turn().bd.appendChild(el); return;
@@ -735,6 +786,10 @@ function onEvent(ev) {
     case 'typing': typing(!!p.on); return;
     case 'step': landing(false); stepEvent(p); return;
     case 'work': workEvent(p); return;
+    case 'say': {
+      // The backend's real result summary is transient progress, never a generic result card.
+      $('#stageCap').textContent = p.text || 'Kaam chal raha hai'; return;
+    }
     case 'think': landing(false); thinkEvent(p); return;   // v0.171 the model's reasoning, live in its card
     default: landing(false); renderCard(ev.kind, p, ev.at, true);
       if (/ask|approval|draft|_sign|quote|confirm|knock/.test(ev.kind)) refreshPending();
@@ -763,6 +818,10 @@ async function openConv(id, fresh, opts = {}) {
   if (!CH) stopStream();
   LOADING = true; PENDING = [];
   closeFind();                          // v0.178 find results belong to their chat, like receipts
+  RESULTS?.reset();
+  if (CONV && CONV !== id) { if (msg.value.trim()) store.set('hoola.draft.' + CONV, msg.value); else store.del('hoola.draft.' + CONV); }
+  clearTimeout(DRAFT_T);
+  if (CONV !== id) { FILES = []; drawFiles(); }
   CONV = id; col.innerHTML = ''; CARDS.clear(); B?.reset(); TURN = null; TYPING = null; USER_ECHO = []; $('#stopBtn').hidden = true;
   REPLIES.forEach(R => R.segs.forEach(S => S.pacer.reset())); REPLIES.clear(); LAST_TURN = null; STICK = true;
   RCPTS.clear();   // v0.173 receipts belong to their chat
@@ -977,7 +1036,7 @@ addEventListener('resize', drawRail);
 
 /* ================= one stream for all her chats (CHAT_SESSIONS; on with CONSOLE_V2) ================= */
 // kinds that belong to their own chat only (events.LOCAL_KINDS); every other card of another chat shows here too
-const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 'delta_reset', 'reply_end', 'think', 'message', 'upload',
+const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 'delta_reset', 'reply_end', 'think', 'say', 'message', 'upload',
   'reminders', 'routines', 'lists', 'email_sent', 'hoola_update', 'galla', 'mshop', 'office', 'employee', 'darzi_order',
   'phonedoc_open', 'phonedoc_check', 'device_action', 'device_action_result', 'home_device', 'bt_request', 'bazar_open',
   'bazar_link', 'gyaan_sources', 'memory_saved', 'procedure', 'open', 'link', 'call_receipt', 'speaker', 'voice',
@@ -1007,8 +1066,9 @@ addEventListener('popstate', () => {
 let FILES = [];   // {file_id, name}
 let DRAFT_T = 0;
 msg.addEventListener('input', () => { msg.style.height = 'auto'; msg.style.height = Math.min(200, msg.scrollHeight) + 'px'; $('#sendBtn').disabled = !msg.value.trim() && !FILES.length;
+  const draftConv = CONV, draftText = msg.value;
   clearTimeout(DRAFT_T); DRAFT_T = setTimeout(() => {   // v0.173 every chat keeps her unfinished words
-    if (CONV) { if (msg.value.trim()) store.set('hoola.draft.' + CONV, msg.value); else store.del('hoola.draft.' + CONV); }
+    if (draftConv) { if (draftText.trim()) store.set('hoola.draft.' + draftConv, draftText); else store.del('hoola.draft.' + draftConv); }
   }, 300);
   slashMaybe(); });
 msg.addEventListener('keydown', e => {
@@ -1073,31 +1133,36 @@ async function loadGauge() {
 composer.addEventListener('submit', async e => {
   e.preventDefault(); const text = msg.value.trim(); if ((!text && !FILES.length) || !CONV) return;
   if (FILES.some(f => !f.file_id)) return toast('File abhi upload ho rahi hai…');
+  const origin = CONV, auth = TOKEN; clearTimeout(DRAFT_T);
   const files = FILES.splice(0); drawFiles(); msg.value = ''; msg.style.height = 'auto'; $('#sendBtn').disabled = true;
-  store.del('hoola.draft.' + CONV);   // v0.173 the draft went out with the message
+  store.del('hoola.draft.' + origin);   // v0.173 the draft went out with the message
   const body = {text: text || 'Ye file dekho', client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), files: files.map(f => f.file_id)};
   landing(false); const bbl = userBubble(body.text, files, null, body.client_id);
   if (TYPING) receipt(bbl, body.client_id, 'queue');   // v0.173 steering: she sees it is queued and can take it back
   USER_ECHO.push(body.text);
   for (let i = 0; i < 3; i++) {
-    try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/messages`, body); loadRecents(); return; }
-    catch (er) { if (i === 2 || er.status === 401 || er.status === 400) { toast('Bheja nahi gaya: ' + er.message, true); msg.value = text; return; } await new Promise(r => setTimeout(r, 800 * (i + 1))); }
+    if (!auth || TOKEN !== auth) return;
+    try { await api('POST', `/api/conversations/${encodeURIComponent(origin)}/messages`, body); loadRecents(); return; }
+    catch (er) { if (i === 2 || er.status === 401 || er.status === 400) { toast('Bheja nahi gaya: ' + er.message, true); store.set('hoola.draft.' + origin, text); if (CONV === origin) { msg.value = text; FILES.push(...files); drawFiles(); } return; } await new Promise(r => setTimeout(r, 800 * (i + 1))); }
   }
 });
 $('#stopBtn').addEventListener('click', async () => { try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/stop`); toast('Rokne ko kaha. Jo kadam chal raha tha woh beech mein ruk sakta hai.'); } catch (e) { toast(e.message, true); } });
 $('#attach').addEventListener('click', () => $('#fileIn').click());
 $('#fileIn').addEventListener('change', e => { const picked = [...e.target.files]; e.target.value = ''; addFiles(picked); });
 async function addFiles(list) {     // paperclip, drag and drop, pasted screenshots: one path
-  const picked = list.slice(0, Math.max(0, 6 - FILES.length));
+  const origin = CONV, target = FILES;
+  if (!origin) return;
+  const picked = list.slice(0, Math.max(0, 6 - target.length));
   if (list.length > picked.length) toast('Ek baar mein 6 files tak.');
   if (picked.length) msg.focus();
   for (const f of picked) {
     if (f.size > 25 * 1024 * 1024) { toast(`${f.name}: 25 MB se badi file nahi chalegi.`, true); continue; }
     const up = await shrink(f);   // v0.173 big pictures shrink here: upload fast, phone data saved
     if (up !== f) toast(`${f.name}: chhota kar diya (${Math.round(f.size / 1024)} KB → ${Math.round(up.size / 1024)} KB).`);
-    const item = {name: up.name, file_id: null}; FILES.push(item); drawFiles();
-    try { const fd = new FormData(); fd.append('file', up, up.name); const r = await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/files`, undefined, {form: fd}); item.file_id = r.file_id; }
-    catch (er) { FILES.splice(FILES.indexOf(item), 1); toast(`${up.name}: ${er.message}`, true); }
+    if (CONV !== origin || FILES !== target) return;
+    const item = {name: up.name, file_id: null}; target.push(item); drawFiles();
+    try { const fd = new FormData(); fd.append('file', up, up.name); const r = await api('POST', `/api/conversations/${encodeURIComponent(origin)}/files`, undefined, {form: fd}); item.file_id = r.file_id; }
+    catch (er) { if (target.includes(item)) target.splice(target.indexOf(item), 1); toast(`${up.name}: ${er.message}`, true); }
     drawFiles();
   }
 }
@@ -1216,7 +1281,7 @@ $('#micBtn').addEventListener('click', () => {
   if (DICT) { DICT.stop(); return; }
   const r = new SR();
   r.lang = 'hi-IN'; r.interimResults = true; r.continuous = true;
-  const base = msg.value ? msg.value.replace(/\s*$/, ' ') : '';
+  let base = msg.value ? msg.value.replace(/\s*$/, ' ') : '';
   DICT = r;
   $('#micBtn').classList.add('on');
   r.onresult = ev => {
@@ -1257,7 +1322,7 @@ function drawKaam(q = '') {
 }
 
 /* ================= pending queue (Haan list) ================= */
-let QUEUE = [];
+let QUEUE = [], PENDING_TIMER = 0;
 async function refreshPending() {
   try { QUEUE = (await api('GET', '/api/console/pending')).pending || []; } catch { return; }
   $('#qcount').textContent = QUEUE.length;
