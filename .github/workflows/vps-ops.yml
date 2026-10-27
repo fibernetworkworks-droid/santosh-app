@@ -198,6 +198,13 @@ jobs:
                 echo 'echo "== public probe from the box"; curl -sS -m 10 https://hoola.ainewtika.com/healthz 2>&1 | head -2; echo'
                 echo 'echo "== localhost probe"; curl -sS -m 10 -H "Host: hoola.ainewtika.com" http://127.0.0.1/healthz 2>&1 | head -2; echo'
                 echo 'echo "== docker ps (edge could live here too)"; docker ps --format "{{.Names}} {{.Status}} {{.Ports}}" 2>/dev/null | head -8'
+                echo 'echo "== sites-enabled"; ls -la /etc/nginx/sites-enabled/ 2>&1'
+                echo 'echo "== nginx.conf includes"; grep -n "include" /etc/nginx/nginx.conf 2>&1 | head -8'
+                echo 'echo "== running config: does it know hoola + 443?"; (nginx -T 2>/dev/null || sudo -n nginx -T 2>&1) | grep -nE "server_name|listen .*443|ssl_certificate" | head -15'
+                echo 'echo "== certs on disk"; ls -la /etc/letsencrypt/live/ 2>&1 | head -8; for c in /etc/letsencrypt/live/*/fullchain.pem; do [ -e "$c" ] && echo "$c:" && openssl x509 -noout -enddate -subject -in "$c" 2>&1; done'
+                echo 'echo "== nginx processes"; ps -eo pid,user,etime,cmd 2>/dev/null | grep -E "nginx" | grep -v grep | head -6'
+                echo 'echo "== nginx error log tail"; tail -25 /var/log/nginx/error.log 2>&1'
+                echo 'echo "== disk full?"; df -h / /run 2>&1 | tail -3'
                 echo 'systemctl is-active nginx 2>&1 | grep -q active && echo "WEB-EDGE: ACTIVE" || echo "WEB-EDGE: STILL DOWN - see report above"' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
