@@ -8309,6 +8309,29 @@ endpoint shapes, version pin. Sweeps green: PC family 37 (pc_kinds + pc_bridge +
 ?v=0.205.0 x9, pins ->0.205.0 in 17 suites. Windows desktop 1.4.0 untouched. Deploy = server only (vps-ops
 deploy); the APK needs a rebuild for the new section; Hoola PC container pairing still pending the owner's
 6-digit code.
+## v0.208.1 MEM-CURE — the voice-to-voice drop root cause, fixed in-process (owner: "OK I WILL INCRSE INFRA" after the RCA)
+The RCA (vps-ops mem job): long tasks ran in the same process as live calls; RSS climbed ~100 MB/min
+(2.4 GB @29min → 5.03 GB @57min) to eat ALL 8 GB + a 100%-full 4 GB swap; the box force-killed the
+process every 10-40 min (14x in 5h, all mid-WebSocket: "Shutting down / Waiting for connections" with
+no "Finished server process") — every kill dropped every live call instantly, and in-memory call state
+made resume impossible. THREE fixes in-process (infra RAM 8→16 GB still worth it, but the leak is the
+code's to stop): (1) events.py stream queues BOUNDED — Q_MAX 400, drop-oldest keeps the newest state
+(SSE replays missed events from the DB backlog, so nothing is lost), plus `sweep()`: a queue whose
+consumer died without unsubscribe used to receive EVERY later publish forever (the structural leak) —
+now pruned at ≥800 missed publishes or a closed event loop; (2) NEW memjanitor.py — `arena_cap(2)`
+(mallopt M_ARENA_MAX at boot, before thread churn: the RCA saw a 1.5 GB single heap arena + dozens of
+64 MB arenas across 37-44 threads — Python freed, glibc kept) + `malloc_trim(0)` every 5 min (returns
+free arena tops to the OS after big transient blocks: screenshots, base64, JSON) + one honest RSS/swap
+log line per cycle (`hoola.mem` logger) so the next RCA reads the curve from pm2 logs; (3) GRACEFUL
+SHUTDOWN — voice.py `SHUTDOWN` event + `chain_signals()` (our note chains uvicorn's own SIGINT/SIGTERM
+handler — installed AFTER uvicorn's capture_signals, original preserved and called) + `shutdown_watchdog`
+(tells every live call "Server update ho raha hai — call yahin rukti hai, thodi der mein dobara bulaao"
+and closes the phone side with close code 1001, so "Waiting for connections" finishes in milliseconds);
+vps-ops deploy/rollback/ack_refresh pass `pm2 restart santosh --kill-timeout 12000` (default 1600 ms
+was the SIGKILL inside the wait). Tests: NEW test_v0208_mem.py (queue bound + drop-oldest, sweep prunes
+dead/closed-loop queues and spares live ones, _push never raises, arena_cap/trim/rss honest on any
+platform, signal chain installs + watchdog goodbye-to-calls + clean return on signalless shutdown,
+kill-timeout pins in all three vps-ops restart sites, version pin).
 ## v0.208.0 AWAAZ-3 — TurnMeter prosody sharpening (Phase C's remainder; owner: "start Phase C remainder" after GOOD on Phase B KAAN KAAPI — the voiceaffect docstring promise "TurnMeter prosody joins later as a sharpening rule, never as the only signal" is now kept)
 The v0.202 feeling engine reads WHAT she says; the same TurnMeter that has measured her pauses/pitch/level
 since v0.119 now also answers HOW she says it — mid-turn, before he replies. Her words still pick the state

@@ -694,6 +694,66 @@ CALLS: dict[str, "Call"] = {}
 # big jobs handed over by a call keep running after the call ends; hold a reference so they are not collected
 _JOBS: set[asyncio.Task] = set()
 
+# v0.208.1 GRACEFUL SHUTDOWN: the RCA showed all 14 forced restarts dying "Waiting for connections to
+# close" -> pm2 SIGKILL at its 1.6s default -> every WebSocket killed mid-air = the voice-to-voice drop.
+# The chain below is set up in lifespan (after uvicorn installs its own handlers): our callback notes the
+# shutdown, then calls uvicorn's handler so the normal graceful shutdown proceeds. The watchdog task then
+# tells every live call what is happening and closes the phone side, so "Waiting for connections" finishes
+# in milliseconds instead of never. Needs pm2 kill_timeout headroom (vps-ops deploy job passes 12000ms).
+SHUTDOWN = asyncio.Event()
+
+
+def chain_signals() -> None:
+    """Chain uvicorn's SIGINT/SIGTERM handlers with our shutdown note. Runs in lifespan startup -
+    by then uvicorn's capture_signals has installed handle_exit, which we must NOT lose."""
+    import signal
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        try:
+            old = signal.getsignal(sig)
+            if not callable(old):
+                continue
+
+            def chained(_old=old, _sig=sig) -> None:   # add_signal_handler calls back with NO args
+                SHUTDOWN.set()
+                _old(_sig, None)   # uvicorn's handle_exit: starts the normal graceful shutdown
+
+            loop.add_signal_handler(sig, chained)
+        except (NotImplementedError, ValueError, RuntimeError):
+            pass   # non-main thread or unsupported platform: the old behaviour stays
+
+
+async def shutdown_watchdog(stop: asyncio.Event) -> None:
+    """Waits for the shutdown note, then says goodbye to every live call and closes the phone side.
+    Best effort on every call: one broken WebSocket must not skip the others. A lifespan shutdown
+    without a signal (tests, clean restart) wakes it too - then there is nothing to say."""
+    stop_t = asyncio.ensure_future(stop.wait())
+    shut_t = asyncio.ensure_future(SHUTDOWN.wait())
+    try:
+        await asyncio.wait({stop_t, shut_t}, return_when=asyncio.FIRST_COMPLETED)
+    except asyncio.CancelledError:
+        return
+    finally:
+        for t in (stop_t, shut_t):
+            t.cancel()
+    if not SHUTDOWN.is_set():
+        return   # lifespan ended (tests) without a process signal: normal teardown, no goodbye
+    calls = list(CALLS.values())
+    for call in calls:
+        try:
+            await call.send_json({"type": "status", "state": "restarting",
+                                  "message": "Server update ho raha hai - call yahin rukti hai, thodi der mein dobara bulaao."})
+        except Exception:
+            pass
+        try:
+            if call.ws is not None:
+                await call.ws.close(code=1001)   # 1001 going away: honest reason for the client
+        except Exception:
+            pass
+    if calls:
+        log.warning("shutdown: %d live call(s) told + closed cleanly", len(calls))
+
+
 def greeting(tenant: str, gender: str = "m", continuation: str = "") -> str:
     """The first line of a NEW call (never after a reconnect): short, different every time, like a friend picking up.
     v0.200 with `continuation` (a call on this chat died mid-air within the hour): this is NOT a fresh call - a

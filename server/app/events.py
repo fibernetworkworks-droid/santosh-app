@@ -83,6 +83,25 @@ def _row(e: Event, payload: Any = None, updated: datetime | None = None) -> dict
     return out
 
 
+Q_MAX = 400   # v0.208.1 a stream queue holds minutes of bursts, not forever: the SSE client replays the
+              # missed events from the DB (backlog), so dropping the OLDEST on a full queue loses nothing.
+
+
+def _push(q: asyncio.Queue, data: dict) -> None:
+    """v0.208.1 put_nowait with drop-oldest. The old unbounded Queue grew without limit whenever a
+    consumer stalled or died without unsubscribe (a dead SSE stream leaked EVERY later publish -
+    the ~100 MB/min climb behind the voice drops)."""
+    try:
+        q.put_nowait(data)
+    except asyncio.QueueFull:
+        try:
+            q.get_nowait()   # drop the oldest - the newest state is what a live stream needs
+            q.put_nowait(data)
+            q._hoola_drops = getattr(q, "_hoola_drops", 0) + 1   # grows only when nobody reads
+        except (asyncio.QueueEmpty, asyncio.QueueFull):
+            pass
+
+
 class EventBus:
     def __init__(self) -> None:
         self._subs: dict[str, set[asyncio.Queue]] = defaultdict(set)
@@ -108,9 +127,9 @@ class EventBus:
                     running = None
                 try:
                     if loop is not None and loop is not running:
-                        loop.call_soon_threadsafe(q.put_nowait, data)
+                        loop.call_soon_threadsafe(_push, q, data)
                     else:
-                        q.put_nowait(data)
+                        _push(q, data)
                 except RuntimeError:
                     pass  # that loop is closed
             return data
@@ -144,11 +163,11 @@ class EventBus:
             if loop is not None and loop is not running:
                 # published from a worker thread (e.g. Bazar tools run in a thread): hand over safely
                 try:
-                    loop.call_soon_threadsafe(q.put_nowait, data)
+                    loop.call_soon_threadsafe(_push, q, data)
                 except RuntimeError:
                     pass  # that loop is closed
             else:
-                q.put_nowait(data)
+                _push(q, data)
         try:   # also to the phone through Firebase, for when the app is closed or the screen is locked
             from . import push
             push.on_event(conversation_id, data)
@@ -175,12 +194,45 @@ class EventBus:
                 running = None
             try:
                 if loop is not None and loop is not running:
-                    loop.call_soon_threadsafe(q.put_nowait, data)
+                    loop.call_soon_threadsafe(_push, q, data)
                 else:
-                    q.put_nowait(data)
+                    _push(q, data)
             except RuntimeError:
                 pass  # that loop is closed
         return data
+
+    def sweep(self) -> int:
+        """v0.208.1 dead-queue GC: a queue whose consumer never reads is removed once it has missed
+        enough publishes (drop counter), and any queue whose event loop is closed goes immediately.
+        Returns how many queues were pruned (the janitor logs it)."""
+        def dead(q: asyncio.Queue) -> bool:
+            loop = self._loops.get(id(q))
+            if loop is not None and loop.is_closed():
+                return True
+            return getattr(q, "_hoola_drops", 0) >= 800
+        gone = 0
+        for reg in (self._subs, self._all):
+            for key in list(reg):
+                alive = {q for q in reg.get(key, ()) if not dead(q)}
+                gone += len(reg.get(key, ())) - len(alive)
+                if alive:
+                    reg[key] = alive
+                else:
+                    reg.pop(key, None)
+        for tenant in list(self._tsubs):
+            alive = {(c, q) for (c, q) in self._tsubs.get(tenant, ()) if not dead(q)}
+            gone += len(self._tsubs.get(tenant, ())) - len(alive)
+            if alive:
+                self._tsubs[tenant] = alive
+            else:
+                self._tsubs.pop(tenant, None)
+        keep = {id(q) for qs in self._subs.values() for q in qs} | \
+               {id(q) for qs in self._all.values() for q in qs} | \
+               {id(q) for pairs in self._tsubs.values() for _, q in pairs}
+        for iq in list(self._loops):
+            if iq not in keep:
+                self._loops.pop(iq, None)
+        return gone
 
     def _account(self, conversation_id: str) -> list[asyncio.Queue]:
         """v0.162 queues of her account-wide streams (every event of every chat of hers)."""
@@ -193,7 +245,7 @@ class EventBus:
             return []
 
     def subscribe_account(self, tenant: str) -> asyncio.Queue:
-        q: asyncio.Queue = asyncio.Queue()
+        q: asyncio.Queue = asyncio.Queue(maxsize=Q_MAX)
         self._all[tenant].add(q)
         try:
             self._loops[id(q)] = asyncio.get_running_loop()
@@ -229,7 +281,7 @@ class EventBus:
             return int(s.scalar(select(func.max(Event.id)).where(Event.conversation_id.in_(ids))) or 0)
 
     def subscribe(self, conversation_id: str, tenant: str = "") -> asyncio.Queue:
-        q: asyncio.Queue = asyncio.Queue()
+        q: asyncio.Queue = asyncio.Queue(maxsize=Q_MAX)
         self._subs[conversation_id].add(q)
         if tenant:
             self._tsubs[tenant].add((conversation_id, q))

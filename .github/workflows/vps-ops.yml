@@ -123,7 +123,7 @@ jobs:
                 echo 'set -e'
                 echo 'echo "== ack clips before: $(ls -1 $CORE/data/voice_acks 2>/dev/null | wc -l)"'
                 echo 'rm -rf $CORE/data/voice_acks'
-                echo 'pm2 restart santosh --update-env'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
                 echo 'UP=0; wait_up || UP=$?'
                 echo 'echo "== ack clips after: $(ls -1 $CORE/data/voice_acks 2>/dev/null | wc -l) (0 is fine - they rebuild on the next call)"'
                 echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
@@ -134,7 +134,7 @@ jobs:
                 echo 'cd $REPO && git fetch origin main && git checkout main && git reset --hard origin/main'
                 echo 'git log --oneline -1'
                 echo 'cp -r $REPO/server/app $CORE/'
-                echo 'pm2 restart santosh --update-env'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
                 echo 'UP=0; wait_up || UP=$?'
                 echo 'echo "== after restart"; health || true'
                 echo 'pm2 logs santosh --lines 40 --nostream --raw --err'
@@ -145,7 +145,7 @@ jobs:
                 echo 'cd $REPO && git fetch origin stable-2026-10-22 && git checkout stable-2026-10-22'
                 echo 'git log --oneline -1'
                 echo 'cp -r $REPO/server/app $CORE/'
-                echo 'pm2 restart santosh --update-env'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
                 echo 'UP=0; wait_up || UP=$?'
                 echo 'echo "== after restart"; health || true'
                 echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
