@@ -6,7 +6,7 @@ permissions:
   contents: read
 jobs:
   diagnose:
-    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'diagnose/hoola-web-connectivity-2-20261027')
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'diagnose/hoola-web-connectivity-3-20261027')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -15,6 +15,7 @@ jobs:
           echo 'PUBLIC DNS'
           dig +short hoola.ainewtika.com A
           dig +short hoola.ainewtika.com AAAA
+          curl -sS -I --connect-timeout 10 --max-time 20 http://hoola.ainewtika.com/console/ || true
           echo 'CURL FEATURES'
           curl --version
           for protocol in --http1.1 --http2; do
@@ -49,6 +50,13 @@ jobs:
           echo
           echo 'NGINX TRANSPORT CONFIG'
           nginx -T 2>&1 | grep -Ei '(^|[[:space:]])(listen|server_name|http3|quic_retry|quic_host_key|ssl_protocols)[[:space:]]|Alt-Svc' || true
+          echo 'WEB SERVICES'
+          command -v nginx || true
+          systemctl is-active nginx || true
+          systemctl is-active apache2 || true
+          docker ps -a --format '{{.Names}} {{.Status}} {{.Ports}}' || true
+          echo 'PRIVILEGE CHECK'
+          sudo -n true 2>/dev/null && echo SUDO_AVAILABLE || true
           echo 'TLS/HTTP LISTENERS'
           ss -lnt | grep -E ':(80|443|8077)[[:space:]]' || true
           ss -lnu | grep -E ':443[[:space:]]' || true
