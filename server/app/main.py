@@ -1299,10 +1299,10 @@ def console_me(tenant: str = Depends(current_tenant)):
 
 
 @app.get("/api/console/conversations", dependencies=[Depends(require_key)])
-def console_conversations(limit: int = 40, archived: bool = False, project: str = "", tenant: str = Depends(current_tenant)):
+def console_conversations(limit: int = 40, archived: bool = False, project: str = "", offset: int = 0, tenant: str = Depends(current_tenant)):
     from . import chats
     if chats.enabled():   # v0.162 one query instead of 2 per chat; pinned first, titles, busy (v0.164 + project filter)
-        return {"conversations": chats.chat_list(tenant, archived, max(limit, 200), project[:40])}
+        return {"conversations": chats.chat_list(tenant, archived, max(limit, 200), project[:40], max(0, offset))}
     from .console import service as console
     return {"conversations": console.conversations(tenant, limit)}
 

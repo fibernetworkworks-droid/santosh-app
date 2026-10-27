@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="/static/console/v2.css?v=0.217.0&web=1">
-<link rel="stylesheet" href="/static/console/workspace.css?web=progress2">
+<link rel="stylesheet" href="/static/console/workspace.css?web=progress2&rev=5">
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -55,10 +55,10 @@
   <aside class="side" aria-label="Sidebar" tabindex="0">
     <div class="shd"><div class="mk"><img src="/static/santosh-head.png" alt=""><span>Hoola</span></div><button class="ib" id="collapse" aria-label="Collapse sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
     <button class="newc" id="newChat"><i>+</i><span class="txt">New chat</span></button>
-    <button class="sn srch" id="searchBtn" type="button" hidden aria-label="Chats mein dhoondhiye (Ctrl K)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span class="txt">Search</span><kbd class="txt">Ctrl K</kbd></button>
+    <button class="sn srch" id="searchBtn" type="button" hidden aria-label="Search conversations (Ctrl K)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span class="txt">Search</span><kbd class="txt">Ctrl K</kbd></button>
     <nav id="snav" aria-label="Sections"></nav>
     <div id="projects" class="projects"></div>
-    <div class="slabel">Recent chats</div>
+    <button class="sn" id="historyBtn" type="button" aria-label="Chats and tasks"><span aria-hidden="true">◷</span><span class="txt">Chats and tasks</span></button><div class="slabel">Recent conversations</div>
     <div class="recents" id="recents"></div>
     <div class="console-controls" aria-label="Conversation tools">
       <button class="ib" id="exportBtn" type="button" aria-label="Chat export karein" aria-haspopup="menu" title="Chat export (Markdown / JSON)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg></button>
@@ -136,11 +136,11 @@
 <script src="/static/console/build.js?v=0.217.0&web=en1"></script>
 <script src="/static/console/md.js?v=0.217.0"></script>
 <script src="/static/console/stream.js?v=0.217.0"></script>
-<script src="/static/console/chatlist.js?v=0.217.0&web=en1"></script>
+<script src="/static/console/chatlist.js?v=0.217.0&nav=1&web=en1"></script>
 <script src="/static/console/panel.js?v=0.217.0&web=en1"></script>
 <script src="/static/console/projects.js?v=0.217.0&web=en1"></script>
 <script src="/static/console/results.js?v=web-en1"></script>
-<script src="/static/console/workspace.js?web=progress1"></script>
-<script src="/static/console/v2.js?v=0.217.0&web=progress2"></script>
+<script src="/static/console/workspace.js?web=progress1&rev=5"></script>
+<script src="/static/console/v2.js?v=0.217.0&web=navigation1"></script>
 </body>
 </html>

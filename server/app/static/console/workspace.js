@@ -179,6 +179,22 @@ window.HoolaProgressPolicy = {
     if (/(^|_)ask($|_)|approval|confirm|draft|quote|_sign/.test(kind)) return false;
     return ['step','think','work','log','say','goal','browser','operator_task','pc_task','pc_step','pc_job','memory_saved','procedure'].includes(kind);
   },
+  activity(kind,p={}) {
+    if(kind==='think')return 'Considering the request';
+    if(kind==='typing')return 'Request received';
+    if(kind==='reply_start')return 'Preparing the response';
+    if(['failed','error','partial','stopped'].includes(p.status||p.phase))return 'Checking an incomplete result';
+    if(['waiting','blocked'].includes(p.status||p.phase))return 'Waiting for the next step';
+    if(kind==='step'){
+      const tool=String(p.tool||'').toLowerCase();
+      if(/search|research|browse|browser/.test(tool))return 'Checking sources';
+      if(/file|document|pdf|sheet/.test(tool))return 'Working with files';
+      if(/image|photo|video|media/.test(tool))return 'Working on media';
+      return 'Working on the task';
+    }
+    if(kind==='work')return 'Processing task results';
+    return null;
+  },
   phase(kind,p={}) {
     if (/(^|_)ask($|_)|approval|confirm/.test(kind)||p.status==='needs_approval')return 'Your approval is required';
     if(['waiting','blocked'].includes(p.status||p.phase))return 'Waiting for the next step…';

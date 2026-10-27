@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   console:
-    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'deploy/hoola-web-avatar-progress-20261027')
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'deploy/hoola-navigation-20261027')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -50,7 +50,7 @@ jobs:
           test -s ~/.ssh/known_hosts
           [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
           scp -i ~/.ssh/hoola-web -o BatchMode=yes -o ConnectTimeout=20 /tmp/hoola-console.tar.gz "$VPS_USER@$VPS_HOST:/tmp/hoola-console-$RELEASE_SHA.tar.gz"
-          scp -i ~/.ssh/hoola-web -o BatchMode=yes -o ConnectTimeout=20 server/deploy/deploy_console_static.py "$VPS_USER@$VPS_HOST:/tmp/hoola-console-$RELEASE_SHA.py"
+          scp -i ~/.ssh/hoola-web -o BatchMode=yes -o ConnectTimeout=20 server/deploy/deploy_web_navigation.py "$VPS_USER@$VPS_HOST:/tmp/hoola-console-$RELEASE_SHA.py"
           ssh -i ~/.ssh/hoola-web -o BatchMode=yes -o ConnectTimeout=20 "$VPS_USER@$VPS_HOST" "python3 /tmp/hoola-console-$RELEASE_SHA.py /tmp/hoola-console-$RELEASE_SHA.tar.gz $RELEASE_SHA"
 
       - name: Verify public page loads the alignment fix
@@ -65,4 +65,6 @@ jobs:
           grep -F 'workspace.js?web=progress1' /tmp/hoola-public-html
           curl -fsS --connect-timeout 10 --max-time 30 'https://hoola.ainewtika.com/static/console/workspace.js?web=progress1' | grep -F 'window.HoolaProgressPolicy'
           grep -F '#app .progress-avatar' /tmp/hoola-public-css
-          echo 'PUBLIC_AVATAR_PROGRESS_VERIFIED'
+          curl -fsS --connect-timeout 10 --max-time 30 'https://hoola.ainewtika.com/static/console/chatlist.js?nav=1' | grep -F 'function openHistory()'
+          grep -F 'historyBtn' /tmp/hoola-public-html
+          echo 'PUBLIC_NAVIGATION_VERIFIED'
