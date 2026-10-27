@@ -1,5 +1,5 @@
 /* v0.163 Hoola Console · side panel for finished work (SIDE_PANEL): pages, files, pictures, reels, videos, websites and
-   apps open beside the chat in tabs; "Banaya hua" lists everything Hoola made.
+   apps open beside the chat in tabs; "Creations" lists everything Hoola made.
    Safety: pages and site / app previews run in sandboxed frames WITHOUT allow-same-origin (they can't see the login).
    A page's bridge (storage / ask / errors) arrives here by postMessage from that frame only and is answered for that
    page only. Her files are fetched with the token into blob: URLs, and only for the types the server marks viewable
@@ -50,13 +50,13 @@ new MutationObserver(() => { if (appEl.classList.contains('st') && isOpen()) app
 function drawTabs() {
   box.querySelector('.pntabs').innerHTML = TABS.map(t => `<div class="pntab${t === CUR ? ' on' : ''}" role="tab" aria-selected="${t === CUR}">
     <button type="button" data-tab="${esc(t.key)}" title="${esc(t.item.title)}"><span aria-hidden="true">${ICON[t.item.type] || '📎'}</span><span class="pnt">${esc(t.item.title)}</span></button>
-    <button type="button" class="pnx" data-close="${esc(t.key)}" aria-label="Band karo: ${esc(t.item.title)}">✕</button></div>`).join('');
+    <button type="button" class="pnx" data-close="${esc(t.key)}" aria-label="Close: ${esc(t.item.title)}">✕</button></div>`).join('');
 }
 function shell() {
   if (box.dataset.ready) return;
   box.dataset.ready = '1';
   box.innerHTML = `<div class="pnhd"><div class="pntabs" role="tablist" aria-label="Khule hue kaam"></div>
-      <button type="button" class="ib" id="pnLib" aria-label="Banaya hua" title="Banaya hua"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v5H4zM4 11h7v9H4zM13 11h7v9h-7z"/></svg></button><button type="button" class="ib" id="pnClose" aria-label="Panel band karo">✕</button></div>
+      <button type="button" class="ib" id="pnLib" aria-label="Creations" title="Creations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v5H4zM4 11h7v9H4zM13 11h7v9h-7z"/></svg></button><button type="button" class="ib" id="pnClose" aria-label="Panel band karo">✕</button></div>
     <div class="pnbody"></div>`;
   box.addEventListener('click', e => {
     const t = e.target.closest('[data-tab]'); if (t) { select(TABS.find(x => x.key === t.dataset.tab)); return; }
@@ -118,7 +118,7 @@ function code(text, lang) {
   return `<pre class="pcode" tabindex="0" aria-label="Code"><code data-lang="${esc(lang || '')}">${lines.map((l, i) => `<span class="ln" data-n="${i + 1}">${esc(l)}</span>`).join('\n')}</code></pre>`;
 }
 async function share(kind, id) {
-  try { await api('POST', '/api/panel/share', {kind, id, conversation_id: ctx.conv() || ''}); toast('Chat mein Haan card aaya hai: Haan karne par hi link banega.'); }
+  try { await api('POST', '/api/panel/share', {kind, id, conversation_id: ctx.conv() || ''}); toast('An approval card is in your conversation. The link is created after approval.'); }
   catch (e) { toast(e.message, true); }
 }
 function selectionIn(el) {
@@ -135,14 +135,14 @@ function render(t) {
   return renderFile(t);
 }
 
-/* page (artifact): preview in a sandboxed frame / code, versions, Badlo, Share, Download, errors -> Theek karo */
+/* page (artifact): preview in a sandboxed frame / code, versions, Edit, Share, Download, errors -> Fix */
 async function renderPage(t) {
   const it = t.item; t.aid = it.ref; t.view = 'preview';
   t.el.innerHTML = bar(t, `<select class="pnsel" aria-label="Version"></select>
       <div class="bseg" role="group" aria-label="Dikhao"><button type="button" data-v="preview" aria-pressed="true">Preview</button><button type="button" data-v="code" aria-pressed="false">Code</button></div>
       <span class="sp"></span><button type="button" class="btn soft" data-a="share">Share</button><button type="button" class="btn soft" data-a="dl">Download</button>`)
     + `<div class="pnerr" hidden></div><div class="pnview"></div>
-    <form class="pnchg"><input placeholder="Kya badlein? (Code mein hissa select karke bhi)" aria-label="Badlav"><button class="btn go" type="submit">Badlo</button></form>`;
+    <form class="pnchg"><input placeholder="Kya badlein? (Code mein hissa select karke bhi)" aria-label="Badlav"><button class="btn go" type="submit">Edit</button></form>`;
   const sel = t.el.querySelector('.pnsel'), view = t.el.querySelector('.pnview');
   try {
     const d = await api('GET', `/api/artifacts/${encodeURIComponent(t.aid)}`);
@@ -161,7 +161,7 @@ async function renderPage(t) {
     e.preventDefault(); const inp = e.target.querySelector('input'), want = inp.value.trim(); if (!want) return;
     const part = selectionIn(view);
     const request = part ? `Is hisse ko badlo:\n"""\n${part}\n"""\nBadlav: ${want}` : want;
-    try { await api('POST', `/api/artifacts/${encodeURIComponent(t.aid)}/revise`, {request}); inp.value = ''; toast('Naya version ban raha hai… taiyaar hote hi yahin dikhega.'); }
+    try { await api('POST', `/api/artifacts/${encodeURIComponent(t.aid)}/revise`, {request}); inp.value = ''; toast('Creating a new version. It will appear here when ready.'); }
     catch (er) { toast(er.message, true); } });
   pageView(t);
 }
@@ -172,7 +172,7 @@ async function pageView(t) {
     if (t.view === 'code') {
       const s = await api('GET', `/api/panel/pages/${encodeURIComponent(t.aid)}/source?version=${t.ver}`);
       view.innerHTML = `<div class="pncodebar"><button type="button" class="btn soft" data-copy-code>Copy</button></div>` + code(s.html, 'html');
-      view.querySelector('[data-copy-code]').addEventListener('click', async e => { try { await navigator.clipboard.writeText(s.html); e.target.textContent = 'Copied ✓'; } catch { toast('Copy nahi hua', true); } });
+      view.querySelector('[data-copy-code]').addEventListener('click', async e => { try { await navigator.clipboard.writeText(s.html); e.target.textContent = 'Copied ✓'; } catch { toast('Could not copy', true); } });
       return;
     }
     const v = await api('GET', `/api/panel/pages/${encodeURIComponent(t.aid)}/view?version=${t.ver}`);
@@ -203,7 +203,7 @@ addEventListener('message', async e => {
 function showError(t, d) {
   const box = t.el.querySelector('.pnerr'); if (!box) return;
   box.hidden = false;
-  box.innerHTML = `<span>⚠️ Page mein error: <code>${esc(String(d.message || '').slice(0, 160))}</code></span><button type="button" class="btn go">Theek karo</button>`;
+  box.innerHTML = `<span>⚠️ Page mein error: <code>${esc(String(d.message || '').slice(0, 160))}</code></span><button type="button" class="btn go">Fix</button>`;
   box.querySelector('button').onclick = () => {
     ctx.say(`Page "${t.item.title}" (v${t.ver}) mein error aa raha hai: ${String(d.message || '').slice(0, 300)}${d.line ? ` (line ${d.line})` : ''}. Isse theek karke naya version banao.`);
     box.hidden = true;
@@ -214,7 +214,7 @@ function showError(t, d) {
 function renderPreview(t) {
   const it = t.item;
   t.el.innerHTML = bar(t, `<span class="pnnote">${it.type === 'app' ? 'App prototype' : 'Website preview'} · live</span><span class="sp"></span>
-      ${ctx.studio && it.payload ? '<button type="button" class="btn soft" data-a="studio">Build studio kholo</button>' : ''}
+      ${ctx.studio && it.payload ? '<button type="button" class="btn soft" data-a="studio">Open build studio</button>' : ''}
       <a class="btn soft" href="${esc(it.preview)}" target="_blank" rel="noopener noreferrer">Naye tab mein</a>`)
     + `<div class="pnview ${it.type === 'app' ? 'phone' : ''}"></div>`;
   const f = document.createElement('iframe');
@@ -233,13 +233,13 @@ function renderUrlVideo(t) {
 /* her file: viewable types as blob:, Office as PDF, text as code, the rest download */
 async function renderFile(t) {
   const it = t.item, fid = it.ref, P = `/api/panel/files/${encodeURIComponent(fid)}`;
-  t.el.innerHTML = `<div class="pnview center"><div class="skel-page" style="width:100%;padding:16px" aria-label="Khul raha hai"><i class="skel" style="height:46px"></i><i class="skel" style="height:260px"></i></div></div>`;
+  t.el.innerHTML = `<div class="pnview center"><div class="skel-page" style="width:100%;padding:16px" aria-label="Loading"><i class="skel" style="height:46px"></i><i class="skel" style="height:260px"></i></div></div>`;
   let info;
   try { info = await api('GET', P + '/info'); if(t.closed)return; } catch (e) { if(t.closed)return; t.el.querySelector('.pnview').innerHTML = err(e.message); return; }
   if (!it.title || it.title === it.name) it.title = info.name || it.title; drawTabs();
   t.el.innerHTML = bar(t, `<span class="pnnote">${esc(info.name)} · ${Math.max(1, Math.round((info.size || 0) / 1024))} KB</span><span class="sp"></span>
       <button type="button" class="btn soft" data-a="share">Share</button><button type="button" class="btn soft" data-a="dl">Download</button>`)
-    + '<div class="pnview center"><div class="skel-page" style="width:100%;padding:16px" aria-label="Khul raha hai"><i class="skel" style="height:46px"></i><i class="skel" style="height:260px"></i></div></div>';
+    + '<div class="pnview center"><div class="skel-page" style="width:100%;padding:16px" aria-label="Loading"><i class="skel" style="height:46px"></i><i class="skel" style="height:260px"></i></div></div>';
   t.el.querySelector('[data-a="dl"]').addEventListener('click', () => download(P + '?download=1', info.name));
   t.el.querySelector('[data-a="share"]').addEventListener('click', () => share('file', fid));
   const view = t.el.querySelector('.pnview');
@@ -254,7 +254,7 @@ async function renderFile(t) {
     }
     if (info.office) { const u = await blobOf(t, P + '/pdf', 'application/pdf'); view.innerHTML = `<iframe class="pnframe" title="${esc(info.name)}" src="${u}"></iframe>`; return; }
     if (info.text) { const s = await api('GET', P + '/text'); view.classList.remove('center'); view.innerHTML = code(s.text, s.lang); return; }
-    view.innerHTML = `<div class="pnempty">Is file ka preview yahan nahi hota. <b>Download</b> karke kholiye.</div>`;
+    view.innerHTML = `<div class="pnempty">This file cannot be previewed here. <b>Download</b> karke kholiye.</div>`;
   } catch (e) { view.innerHTML = err(e.message); }
 }
 
@@ -265,10 +265,10 @@ function update(kind, p) {
   if (t && p.status === 'ready' && p.version && p.version !== t.ver) { toast(`${p.title || 'Page'}: naya version v${p.version} taiyaar.`); renderPage(t); }
 }
 
-/* ---------- Banaya hua ---------- */
+/* ---------- Creations ---------- */
 const FILTERS = [['', 'Sab'], ['pages', 'Pages'], ['sites', 'Websites'], ['apps', 'Apps'], ['photos', 'Photos'], ['videos', 'Videos'], ['files', 'Files']];
 async function library(el, kind = '', q = '') {
-  el.innerHTML = `<div class="vh"><h2>Banaya hua</h2><span class="faint" style="font-weight:700">Hoola ne aapke liye jo banaya: tap karte hi panel mein khulta hai</span></div>
+  el.innerHTML = `<div class="vh"><h2>Creations</h2><span class="faint" style="font-weight:700">Your creations — select an item to open it in the workspace.</span></div>
     <label class="ksearch gl"><span aria-hidden="true">⌕</span><input id="libq" placeholder="Dhoondhiye: EMI, poster, bill…" value="${esc(q)}" aria-label="Search"></label>
     <div class="kchips" role="group" aria-label="Filter">${FILTERS.map(([k, n]) => `<button type="button" class="chip${k === kind ? ' on' : ''}" data-f="${k}" aria-pressed="${k === kind}">${n}</button>`).join('')}</div>
     <div class="libgrid" id="libgrid"><div class="skel-grid" aria-hidden="true">${'<i class="skel"></i>'.repeat(6)}</div></div>`;

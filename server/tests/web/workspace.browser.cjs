@@ -64,7 +64,7 @@ const server=http.createServer((req,res)=>{
  assert.equal(await page.locator('.side #exportBtn').count(),1);
  await page.locator('[data-v="creative"]').click();await page.locator('#cw-prompt').fill('A crafted image of the FNW AI Node');
  await page.waitForTimeout(500);if(shots)await page.screenshot({path:path.join(shots,'hoola-studio-desktop.png'),fullPage:true});
- await page.locator('#cw-submit').click();await page.waitForFunction(()=>!document.querySelector('#v-chat').hidden);assert.match(posts.at(-1).text,/photo_banao/);
+ await page.locator('#cw-submit').click();await page.waitForFunction(()=>!document.querySelector('#v-chat').hidden);assert.match(posts.at(-1).text,/photo_banao/);assert.match(posts.at(-1).text,/Reply in English/);
  const aligned=async()=>{
   await page.waitForFunction(()=>{const col=document.querySelector('#col'),box=document.querySelector('#composer');return !document.querySelector('#v-chat').hidden && col.getBoundingClientRect().width>0 && box.parentElement.id==='slotDock';});
   const geometry=await page.evaluate(()=>{

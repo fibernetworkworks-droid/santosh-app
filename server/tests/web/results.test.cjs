@@ -88,7 +88,7 @@ test('pending artifacts stay with ordinary status rendering',async()=>{
 test('external video URL is rejected without requesting it',async()=>{
   let n=0;const x=setup(async()=>{n++;},{type:'video',url:'https://attacker.test/api/video/files/x'});
   const el=new El();await x.R.card('video_job',{},el);assert.equal(n,0);
-  assert.match(el.querySelector('.result-preview').innerHTML,/link nahi mila/);
+  assert.match(el.querySelector('.result-preview').innerHTML,/No preview link is available/);
 });
 test('real signed local video plays with controls and no autoplay',async()=>{
   const x=setup(async()=>response,{type:'video',title:'Reel',url:'/api/motion/files/abc?sig=test'});

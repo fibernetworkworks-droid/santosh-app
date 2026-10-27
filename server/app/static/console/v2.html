@@ -11,7 +11,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/static/console/v2.css?v=0.212.0">
+<link rel="stylesheet" href="/static/console/v2.css?v=0.212.0&web=1">
+<link rel="stylesheet" href="/static/console/workspace.css?web=7">
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -30,46 +31,36 @@
     </div>
     <form class="lcard gl" id="lform" autocomplete="on">
       <div class="brand"><img src="/static/santosh-head.png" alt="">Hoola Console</div>
-      <p class="muted" style="margin-top:-6px">Login karke apni Hoola se miliye.</p>
+      <p class="muted" style="margin-top:-6px">Sign in to your Hoola workspace.</p>
       <button type="button" class="gbtn" id="gbtn">
         <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.2l7.9 6.2C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.3 5.7c4.3-3.9 7-9.8 7-17z"/><path fill="#FBBC05" d="M10.5 28.6A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.9-4.6l-7.9-6.2A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.3-5.7c-2 1.4-4.7 2.3-8.6 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.2C6.6 42.6 14.6 48 24 48z"/></svg>
         Continue with Google
       </button>
-      <div class="or">ya Hoola account se</div>
+      <div class="or">or use your Hoola account</div>
       <div class="field"><label for="hid">Hoola ID</label><input id="hid" name="username" placeholder="@meghana" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
       <div class="field"><label for="hpw">Console password</label><input id="hpw" name="password" type="password" placeholder="••••••••••" autocomplete="current-password"></div>
       <button type="submit" class="btn go" id="lbtn" style="height:50px;border-radius:16px">Login</button>
       <p class="lerr" id="lerr" role="alert" hidden></p>
-      <details class="lmore"><summary>Server owner key se</summary>
+      <details class="lmore"><summary>Use a server owner key</summary>
         <div class="field" style="margin-top:10px"><label for="okey">Server API key</label><input id="okey" type="password" autocomplete="off" placeholder="API_KEY (server .env)"></div>
-        <button type="button" class="btn soft" id="kbtn" style="margin-top:8px">Key se login</button>
+        <button type="button" class="btn soft" id="kbtn" style="margin-top:8px">Sign in with key</button>
       </details>
-      <p class="faint" style="font-size:12.5px;text-align:center">Console password pehli baar Google se login karke Main › Console mein banta hai.</p>
+      <p class="faint" style="font-size:12.5px;text-align:center">Sign in with Google first, then set a console password in Account.</p>
     </form>
   </div>
 </section>
 
 <!-- ================= APP ================= -->
 <div id="app" hidden>
-  <aside class="side" aria-label="Sidebar">
+  <aside class="side" aria-label="Sidebar" tabindex="0">
     <div class="shd"><div class="mk"><img src="/static/santosh-head.png" alt=""><span>Hoola</span></div><button class="ib" id="collapse" aria-label="Collapse sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
-    <button class="newc" id="newChat"><i>+</i><span class="txt">Naya chat</span></button>
-    <button class="sn srch" id="searchBtn" type="button" hidden aria-label="Chats mein dhoondhiye (Ctrl K)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span class="txt">Dhoondho</span><kbd class="txt">Ctrl K</kbd></button>
+    <button class="newc" id="newChat"><i>+</i><span class="txt">New chat</span></button>
+    <button class="sn srch" id="searchBtn" type="button" hidden aria-label="Chats mein dhoondhiye (Ctrl K)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span class="txt">Search</span><kbd class="txt">Ctrl K</kbd></button>
     <nav id="snav" aria-label="Sections"></nav>
     <div id="projects" class="projects"></div>
-    <div class="slabel">Haal ke chats</div>
+    <div class="slabel">Recent chats</div>
     <div class="recents" id="recents"></div>
-    <div class="user"><span class="av"><img id="uimg" src="/static/santosh-head.png" alt=""></span><div><b id="uname">Hoola</b><span id="uhandle"></span></div></div>
-  </aside>
-  <div class="scrim" id="scrim"></div>
-
-  <main class="main">
-    <div class="top">
-      <button class="ib mob" id="menu" aria-label="Open menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-      <button class="model" id="model" aria-label="Your avatar"><span class="av"><img class="aimg" src="/static/santosh-head.png" alt=""></span><span class="nm2 aname">Santosh</span><span class="faint" style="font-size:12px;font-weight:700" id="ttl"></span></button>
-      <span class="sp"></span>
-      <span class="conn" id="conn" role="status"><i></i><span>Jud raha hai…</span></span>
-      <button class="btn soft stopb" id="stopBtn" hidden>■ Rokiye</button>
+    <div class="console-controls" aria-label="Conversation tools">
       <button class="ib" id="exportBtn" type="button" aria-label="Chat export karein" aria-haspopup="menu" title="Chat export (Markdown / JSON)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg></button>
       <div class="xmenu gl" id="exportMenu" hidden role="menu" aria-label="Export format">
         <button type="button" role="menuitem" data-fmt="md">Markdown (.md)</button>
@@ -78,35 +69,43 @@
       <button class="livebtn stbtn" id="studioBtn" type="button" hidden aria-label="Build studio"><i></i><span>Studio</span></button>
       <button class="livebtn" id="liveBtn" aria-label="Show live work"><i></i><span id="liveTxt">Live</span></button>
     </div>
+    <span id="ttl" hidden></span><span class="sr-only" id="conn" role="status"><i></i><span>Connecting…</span></span>
+    <button type="button" class="user" id="model" aria-label="Account"><span class="av"><img id="uimg" src="/static/santosh-head.png" alt=""></span><div><b id="uname">Hoola</b><span id="uhandle"></span></div></button>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <main class="main">
+      <button class="ib console-menu" id="menu" aria-label="Open menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     <div class="views">
       <section class="view" id="v-chat" aria-label="Chat">
         <div class="landing" id="landing">
-          <div class="hi"><span class="halo"><span class="av"><img class="aimg" src="/static/santosh-head.png" alt=""></span></span><h1 id="greet">Namaste</h1></div>
-          <p class="tagline"><span class="aname">Santosh</span> hai hi na — poochho, kaam karwao, live dekho.</p>
+          <div class="hi"><span class="halo"><span class="av"><img class="aimg" src="/static/santosh-head.png" alt=""></span></span><h1 id="greet">Hello</h1></div>
+          <p class="tagline"><span class="aname">Santosh</span> is ready to help — ask, create, and follow the work live.</p>
           <div class="slot" id="slotLand"></div>
           <div class="cats" id="cats" role="group" aria-label="Ideas"></div>
           <div class="sugs" id="sugs"></div>
         </div>
         <div class="thread" id="thread" hidden tabindex="-1"><div class="col" id="col"></div></div>
-        <div class="dock" id="dock" hidden><button type="button" class="jump" id="jump" hidden aria-label="Neeche jao, naya jawab">↓ Neeche jao</button><div class="slot" id="slotDock"></div><p class="disclaim"><span class="aname">Santosh</span> bhi galti kar sakta hai. Bhejna, paisa, sign aur delete hamesha aapki Haan se.</p></div>
+        <div class="dock" id="dock" hidden><button type="button" class="jump" id="jump" hidden aria-label="Go to latest reply">↓ Latest reply</button><div class="slot" id="slotDock"></div><p class="disclaim"><span class="aname">Santosh</span> can make mistakes. Sending, payments, signatures and deletion require your approval.</p></div>
       </section>
-      <section class="view" id="v-aaj" aria-label="Aaj" hidden><div class="pad" id="aaj"></div></section>
+      <section class="view" id="v-aaj" aria-label="Today" hidden><div class="pad" id="aaj"></div></section>
       <section class="view" id="v-kaam" aria-label="Kaam" hidden><div class="pad" id="kaam"></div></section>
       <section class="view" id="v-baat" aria-label="Baat" hidden></section>
       <section class="view" id="v-main" aria-label="Main" hidden><div class="pad" id="mainp"></div></section>
-      <section class="view" id="v-bana" aria-label="Banaya hua" hidden><div class="pad" id="bana"></div></section>
+      <section class="view" id="v-bana" aria-label="Creations" hidden><div class="pad" id="bana"></div></section>
       <section class="view" id="v-project" aria-label="Folder" hidden><div class="pad" id="project"></div></section>
+      <section class="view" id="v-creative" aria-label="Creative workspace" hidden><div class="pad" id="creative"></div></section>
     </div>
   </main>
 
   <aside class="live" id="live" aria-label="Live work">
     <div class="livein">
-      <div class="lhd"><h3>Live kaam</h3><span class="tag ok" id="liveTag">khaali</span><button class="ib" id="liveClose" aria-label="Close live work">✕</button></div>
-      <div class="nowline" id="nowline"><b id="stageCap">Taiyaar</b><span id="stageWhere">Hoola server</span></div>
-      <div class="lsec">Kadam</div>
-      <div class="lsteps" id="lsteps"><div class="empty">Koi kaam nahi chal raha.</div></div>
-      <div class="lsec">Aapki Haan chahiye <span class="tag warn" id="qcount">0</span></div>
-      <div class="queue" id="queue"><div class="empty">Abhi kuch nahi.</div></div>
+      <div class="lhd"><h3>Live activity</h3><span class="tag ok" id="liveTag">Idle</span><button class="ib" id="liveClose" aria-label="Close live work">✕</button></div>
+      <div class="nowline" id="nowline"><b id="stageCap">Ready</b><span id="stageWhere">Hoola server</span></div>
+      <div class="lsec">Steps</div>
+      <div class="lsteps" id="lsteps"><div class="empty">No work in progress.</div></div>
+      <div class="lsec">Your approval is required <span class="tag warn" id="qcount">0</span></div>
+      <div class="queue" id="queue"><div class="empty">Nothing here yet.</div></div>
     </div>
   </aside>
   <aside class="studio" id="studio" aria-label="Build studio"></aside>
@@ -119,13 +118,14 @@
   <div class="slash gl" id="slash" role="listbox" aria-label="Commands" hidden></div>
   <div class="gauge" id="gauge" aria-hidden="true" hidden><i></i></div>
   <div class="files" id="files"></div>
-  <textarea id="msg" rows="1" placeholder="Kuch bhi kahiye… bill ka photo, GST, reel, website" aria-label="Message"></textarea>
+  <textarea id="msg" rows="1" placeholder="Ask anything, attach a file, or describe what you want to create" aria-label="Message"></textarea>
   <div class="row">
     <button type="button" class="ib" id="attach" aria-label="Attach files"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.5l-8.5 8.5a5 5 0 0 1-7-7L14 5.5a3.3 3.3 0 0 1 4.7 4.7L10.2 18.7a1.7 1.7 0 0 1-2.4-2.4L15.5 8.6"/></svg></button>
     <input type="file" id="fileIn" multiple hidden>
     <button type="button" class="ib" id="toolsBtn" aria-label="Everything Hoola can do"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></button>
-    <span class="who"><span class="aname">Santosh</span> · Hinglish</span>
+    <span class="who"><span class="aname">Santosh</span> · English</span>
     <button type="button" class="ib" id="micBtn" aria-label="Dictation" title="Bolo karke likhiye"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <button type="button" class="btn soft stopb" id="stopBtn" hidden>■ Stop</button>
     <button type="submit" class="ib send" id="sendBtn" aria-label="Send" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
   </div>
 </form>
@@ -133,12 +133,14 @@
 <noscript><p style="padding:40px;text-align:center">Hoola Console ke liye JavaScript chahiye.</p></noscript>
 <script src="/static/console/kaam.js?v=0.212.0"></script>
 <script src="/static/console/vendor/qrcode.js?v=1.4.4"></script>
-<script src="/static/console/build.js?v=0.212.0"></script>
+<script src="/static/console/build.js?v=0.212.0&web=en1"></script>
 <script src="/static/console/md.js?v=0.212.0"></script>
 <script src="/static/console/stream.js?v=0.212.0"></script>
-<script src="/static/console/chatlist.js?v=0.212.0"></script>
-<script src="/static/console/panel.js?v=0.212.0"></script>
-<script src="/static/console/projects.js?v=0.212.0"></script>
-<script src="/static/console/v2.js?v=0.212.0"></script>
+<script src="/static/console/chatlist.js?v=0.212.0&web=en1"></script>
+<script src="/static/console/panel.js?v=0.212.0&web=en1"></script>
+<script src="/static/console/projects.js?v=0.212.0&web=en1"></script>
+<script src="/static/console/results.js?v=web-en1"></script>
+<script src="/static/console/workspace.js?web=en1"></script>
+<script src="/static/console/v2.js?v=0.212.0&web=en1"></script>
 </body>
 </html>
