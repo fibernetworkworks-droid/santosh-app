@@ -110,7 +110,7 @@ jobs:
                 echo 'git log --oneline -1'
                 echo 'cp -r $REPO/server/app $CORE/'
                 echo 'pm2 restart santosh --update-env'
-                echo 'wait_up || UP=$?'
+                echo 'UP=0; wait_up || UP=$?'
                 echo 'echo "== after restart"; health || true'
                 echo 'pm2 logs santosh --lines 40 --nostream --raw --err'
                 echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
@@ -121,7 +121,7 @@ jobs:
                 echo 'git log --oneline -1'
                 echo 'cp -r $REPO/server/app $CORE/'
                 echo 'pm2 restart santosh --update-env'
-                echo 'wait_up || UP=$?'
+                echo 'UP=0; wait_up || UP=$?'
                 echo 'echo "== after restart"; health || true'
                 echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
               pc_deploy)
