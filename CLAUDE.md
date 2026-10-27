@@ -8109,3 +8109,25 @@ the study: she says "kai agents lagao" and Hoola actually deploys several agents
   console ?v=0.193.0 x9, conscious pins 0.192.0->0.193.0 in the 10 older suites). Desktop untouched 1.4.0 -
   server-only deploy, old APKs keep working (agents/crew cards are plain step events; the agent_team card kind
   is carried by kaamwatch's existing card path).
+## v0.194.0 Sidebar sessions (re-versioned on rebase: the dev's HARNESS-3 had taken 0.193.0 first - both kept) (owner: "sidebar should have a session for every work on web console not for mobile - one session handling app design, 2nd research etc")
+The kaam folders (CHAT_PROJECTS since v0.164, now called "Sessions" in words) stopped living in their own little
+sidebar box and became the structure of the chat list itself: every folder renders as a collapsible section IN
+`#recents` (chatlist.js) — a header with emoji + name + chat count; the chevron collapses it (state in
+localStorage `hoola.sessions.v1`, a collapsed session still shows the unread/busy dot so nothing is missed), the
+name opens the session page (instructions / yaad / files / chats, unchanged), hover "+" starts a new chat right
+inside that session (`POST /api/conversations?project_id=`), a chat row DRAGGED onto a header moves there and onto
+"Baaki chats" to leave (the same `PATCH /api/conversations/{id} {project_id}` the ⋯ menu picker uses); chats
+without a session keep the day groups (Pin kiye hue / Aaj / Kal / Pichhle 7 din / Purane) under a "Baaki chats"
+label that only appears when it actually separates something; a deleted session's chats fall back automatically
+(dangling project_id simply doesn't match); search results carry a 📁 session chip; archive view stays flat; with
+ZERO sessions the list is byte-for-byte the old one (no drag, no labels, no regression). The `#projects` sidebar
+box is slim now (label + "+ Naya session" only — the rows moved into the list), menu copy folder → session, the
+session page copy follows ("Is session mein naya chat", "Session hatao"), orphaned `.pjrow` css pruned. SERVER
+SURFACE UNCHANGED — projects CRUD, project_id on create + assign all existed since v0.164; mobile untouched (the
+Flutter app ignores project_id; sections are a console-only read). Mobile freeze respected; desktop untouched.
+Tests: NEW test_v0194_sessions.py (8, renamed from v0193 on the rebase): console files carry the phase (headers, localStorage key, drag, chips,
+slim box, ctx wiring, css selectors, .pjrow gone), cache busts x9 (vendor qrcode keeps 1.4.4), APP_VERSION pin,
+and the session surface e2e (create → chat born inside via ?project_id → rename → move out/in via PATCH →
+delete session leaves the chat alive outside; unknown project_id refused 404). Ritual: APP_VERSION 0.194.0,
+pubspec 0.194.0+228, console ?v=0.194.0 x9, pins →0.194.0 in test_v0179 / test_v0185 / test_v0187 / test_v0189 /
+test_v0190_hotfix / test_v0191_harness2 / email_phase1-4.

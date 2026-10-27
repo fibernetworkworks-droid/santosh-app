@@ -1,15 +1,23 @@
-/* v0.162 Hoola Console: the chat list and search (CHAT_SESSIONS).
-   - Groups: Pinned, Aaj, Kal, Pichhle 7 din, Purane; a busy badge on every chat that is working, a dot on chats with
-     a new reply; a menu per chat: Rename, Pin, Archive, Delete (asks first). Archive list at the bottom.
-   - Search (Ctrl+K or the search button): titles + message text of all chats; a result opens the chat at that message.
-   window.HoolaChats(ctx) -> {load, busy, unread, current, openSearch}; ctx = {api, esc, toast, open(id), jump(id, eventId),
-   current() -> id, newChat()} */
+/* v0.162 Hoola Console: the chat list and search (CHAT_SESSIONS). v0.193: sessions in the sidebar.
+   - Sessions (v0.193): every kaam folder (project) becomes a collapsible section in the list itself — a header
+     with emoji, name and chat count; click the chevron to collapse (state lives in localStorage, a collapsed
+     session still shows a dot when a chat inside is busy or has a new reply), click the name to open the session
+     page, hover "+" starts a new chat right inside that session. Drag a chat row onto a session header to move
+     it there, onto "Baaki chats" to take it out. No sessions -> the exact old list.
+   - Groups (chats without a session): Pinned, Aaj, Kal, Pichhle 7 din, Purane; a busy badge on every chat that
+     is working, a dot on chats with a new reply; a menu per chat: Rename, Pin, Session, Archive, Delete (asks
+     first). Archive list at the bottom.
+   - Search (Ctrl+K or the search button): titles + message text of all chats; a result opens the chat at that
+     message and carries a chip naming the session it lives in.
+   window.HoolaChats(ctx) -> {load, busy, unread, current, openSearch}; ctx = {api, esc, toast, open(id),
+   jump(id, eventId), current() -> id, newChat(), newChatIn(sessionId), openSection(sessionId), avatar()} */
 'use strict';
 window.HoolaChats = ctx => {
 const {api, esc, toast} = ctx;
 const $ = s => document.querySelector(s);
 const BUSY = new Set(), UNREAD = new Set();
 let LIST = [], ARCH = false, MENU = null;
+let SECS = [];                        // v0.193 sessions (projects), server order — last-touched first
 
 const DAY = 86400000;
 function group(c) {
@@ -22,30 +30,110 @@ function group(c) {
 }
 const ORDER = ['Pin kiye hue', 'Aaj', 'Kal', 'Pichhle 7 din', 'Purane'];
 
+/* v0.193 which sessions are collapsed: {"<pid>": 1} — survives reloads, per browser */
+const OPEN_KEY = 'hoola.sessions.v1';
+const openState = () => { try { return JSON.parse(localStorage.getItem(OPEN_KEY) || '{}') || {}; } catch { return {}; } };
+const setOpen = (pid, closed) => { const st = openState(); if (closed) st[pid] = 1; else delete st[pid];
+  try { localStorage.setItem(OPEN_KEY, JSON.stringify(st)); } catch {} };
+const secOf = c => c.project_id ? SECS.find(p => p.id === c.project_id) : null;
+
 async function load() {
-  try { LIST = (await api('GET', `/api/console/conversations${ARCH ? '?archived=true' : ''}`)).conversations || []; }
-  catch { return LIST; }
+  const [list, pj] = await Promise.all([          // sessions ride along (skipped in archive view)
+    api('GET', `/api/console/conversations${ARCH ? '?archived=true' : ''}`).then(r => r.conversations || []).catch(() => null),
+    ARCH ? Promise.resolve(null)
+         : api('GET', '/api/projects').then(r => r.projects || []).catch(() => SECS),
+  ]);
+  if (list === null) return LIST;                 // the list fetch failed: keep what we had
+  LIST = list;
+  if (pj) SECS = pj;
   for (const c of LIST) if (c.busy) BUSY.add(c.id);
   draw();
   return LIST;
 }
-function item(c) {
+function item(c, drag) {
   const cur = c.id === ctx.current();
-  return `<div class="rcw${cur ? ' cur' : ''}" data-row="${esc(c.id)}">
+  return `<div class="rcw${cur ? ' cur' : ''}" data-row="${esc(c.id)}"${drag ? ' draggable="true"' : ''}>
     <a class="rc" href="/console/c/${encodeURIComponent(c.id)}" data-conv="${esc(c.id)}"${cur ? ' aria-current="true"' : ''} title="${esc(c.title)}">
       ${BUSY.has(c.id) ? '<span class="spin" aria-label="kaam chal raha"></span>' : UNREAD.has(c.id) ? '<i class="udot" aria-label="naya jawab"></i>' : ''}<span class="rct">${esc(c.title)}</span></a>
     <button type="button" class="rcm" data-menu="${esc(c.id)}" aria-label="Chat options: ${esc(c.title)}" aria-haspopup="menu">⋯</button></div>`;
 }
+/* v0.193 one session header: chevron collapses, the name opens the session page, "+" starts a chat inside,
+   the count lives at the right; a collapsed session that still has a busy/unread chat shows the dot. */
+function secHead(p, rows, closed) {
+  const live = closed && rows.some(r => BUSY.has(r.id) || UNREAD.has(r.id));
+  return `<div class="sgh${closed ? ' closed' : ''}" data-sec="${esc(p.id)}">
+    <button type="button" class="sgc" data-a="tog" aria-expanded="${!closed}" aria-label="${closed ? 'Session kholo' : 'Session band karo'}: ${esc(p.name)}"><i class="chev" aria-hidden="true"></i></button>
+    <button type="button" class="sgn" data-a="open" title="${esc(p.name)} — session kholiye"><span aria-hidden="true">${esc(p.emoji || '📁')}</span><span class="sgnt">${esc(p.name)}</span></button>
+    ${live ? '<i class="udot" aria-label="kuch chal raha hai"></i>' : ''}<small class="sgn-n">${rows.length || ''}</small>
+    <span class="sgacts"><button type="button" class="ib" data-a="new" aria-label="Naya chat: ${esc(p.name)}">+</button></span>
+  </div>`;
+}
 function draw() {
   const box = $('#recents'); if (!box) return;
+  if (ARCH) {                                     // archive stays one flat list, nothing to drag into
+    box.innerHTML = `<div class="rg">Archive</div>` + LIST.map(c => item(c)).join('')
+      || `<div class="empty" style="padding:8px 12px">Archive khaali hai.</div>`;
+    box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">← Saare chats</button>`);
+    $('#archTog').addEventListener('click', () => { ARCH = !ARCH; load(); });
+    return;
+  }
+  const drag = SECS.length > 0;                   // no sessions yet -> the old plain list, nothing draggable
+  let html = '';
+  for (const p of SECS) {
+    const rows = LIST.filter(c => c.project_id === p.id);
+    const closed = !!openState()[p.id];
+    html += secHead(p, rows, closed) + (closed ? '' : rows.map(c => item(c, drag)).join(''));
+  }
   const by = {};
-  for (const c of LIST) (by[ARCH ? 'Archive' : group(c)] ||= []).push(c);
-  const keys = ARCH ? ['Archive'] : ORDER;
-  box.innerHTML = keys.filter(k => by[k]?.length).map(k => `<div class="rg">${esc(k)}</div>${by[k].map(item).join('')}`).join('')
-    || `<div class="empty" style="padding:8px 12px">${ARCH ? 'Archive khaali hai.' : 'Abhi koi chat nahi.'}</div>`;
-  box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">${ARCH ? '← Saare chats' : '🗄 Archive dekhiye'}</button>`);
+  for (const c of LIST) if (!secOf(c)) (by[group(c)] ||= []).push(c);   // a deleted session's chats come back here on their own
+  const rest = ORDER.filter(k => by[k]?.length).map(k => `<div class="rg">${esc(k)}</div>${by[k].map(c => item(c, drag)).join('')}`).join('');
+  /* "Baaki chats" is the un-filed home once sessions exist — always visible, so dragging the LAST chat out of
+     a session always has a target (it also labels the day groups when they are non-empty) */
+  html += (drag ? `<div class="rg sgb" data-rest title="Chat yahan chhodiye to session se bahar">Baaki chats</div>` : '') + rest;
+  box.innerHTML = html || `<div class="empty" style="padding:8px 12px">Abhi koi chat nahi.</div>`;
+  box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">🗄 Archive dekhiye</button>`);
   $('#archTog').addEventListener('click', () => { ARCH = !ARCH; load(); });
 }
+
+/* ---------- session header actions + drag & drop (v0.193, listeners live on document so draw() can repaint freely) ---------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('#recents .sgh [data-a]'); if (!b) return;
+  const pid = b.closest('.sgh').dataset.sec;
+  if (b.dataset.a === 'tog') { setOpen(pid, !openState()[pid]); draw(); }
+  else if (b.dataset.a === 'open') ctx.openSection ? ctx.openSection(pid) : toast('Session page nahi khula.');
+  else if (b.dataset.a === 'new') ctx.newChatIn ? ctx.newChatIn(pid) : toast('Naya chat nahi bana.');
+});
+let DRAG_ID = '';
+const clearDrops = () => document.querySelectorAll('#recents .dropok').forEach(t => t.classList.remove('dropok'));
+document.addEventListener('dragstart', e => {
+  const row = e.target.closest && e.target.closest('#recents .rcw[draggable="true"]'); if (!row) return;
+  DRAG_ID = row.dataset.row;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', LIST.find(c => c.id === DRAG_ID)?.title || 'chat');   // Firefox needs data to drag
+  row.classList.add('dragging');
+});
+document.addEventListener('dragend', () => { DRAG_ID = ''; clearDrops(); document.querySelector('#recents .dragging')?.classList.remove('dragging'); });
+document.addEventListener('dragover', e => {
+  const t = e.target.closest && e.target.closest('#recents .sgh, #recents .sgb');
+  if (!t || !DRAG_ID) return;
+  e.preventDefault(); e.dataTransfer.dropEffect = 'move'; t.classList.add('dropok');
+});
+document.addEventListener('dragleave', e => {
+  const t = e.target.closest && e.target.closest('#recents .sgh, #recents .sgb');
+  if (t && !t.contains(e.relatedTarget)) t.classList.remove('dropok');
+});
+document.addEventListener('drop', e => {
+  const t = e.target.closest && e.target.closest('#recents .sgh, #recents .sgb');
+  if (!t || !DRAG_ID) return;
+  e.preventDefault();
+  const pid = t.classList.contains('sgb') ? '' : t.dataset.sec;
+  const c = LIST.find(x => x.id === DRAG_ID);
+  DRAG_ID = ''; clearDrops();
+  if (!c || (c.project_id || '') === (pid || '')) return;
+  api('PATCH', `/api/conversations/${encodeURIComponent(c.id)}`, {project_id: pid})
+    .then(() => { toast(pid ? `"${c.title}" session mein aa gayi.` : `"${c.title}" session se bahar.`); load(); })
+    .catch(er => toast(er.message, true));
+});
 
 /* ---------- menu ---------- */
 function closeMenu() { MENU?.remove(); MENU = null; }
@@ -55,7 +143,7 @@ function openMenu(id, btn) {
   const m = document.createElement('div'); m.className = 'rmenu gl'; m.setAttribute('role', 'menu');
   m.innerHTML = `<button role="menuitem" data-a="rename">✎ Naam badlo</button>
     ${c.archived ? '' : `<button role="menuitem" data-a="pin">${c.pinned ? '📌 Pin hatao' : '📌 Pin karo'}</button>`}
-    ${ctx.pickProject ? `<button role="menuitem" data-a="folder">📁 ${c.project_id ? 'Folder badlo / nikalo' : 'Folder mein daalo'}</button>` : ''}
+    ${ctx.pickProject ? `<button role="menuitem" data-a="folder">🗂 ${c.project_id ? 'Session badlo / nikalo' : 'Session mein daalo'}</button>` : ''}
     <button role="menuitem" data-a="archive">${c.archived ? '↩ Archive se wapas' : '🗄 Archive karo'}</button>
     <button role="menuitem" data-a="delete" class="bad">🗑 Delete karo</button>`;
   document.body.appendChild(m);
@@ -131,9 +219,10 @@ async function find(q, res) {
   /* v0.178 the server sends <<match>> marks from FTS5 (snippet()); paint them after esc, never before */
   const mark = s => esc(s || '').replace(/&lt;&lt;/g, '<mark>').replace(/&gt;&gt;/g, '</mark>');
   const who = h => h.role === 'user' ? 'Aap' : h.role === 'title' ? 'Naam' : (ctx.avatar ? ctx.avatar() : 'Hoola');
+  const chip = cid => { const p = secOf(LIST.find(x => x.id === cid) || {}); return p ? `<i class="srsec" aria-hidden="true">📁 ${esc(p.name)}</i>` : ''; };   // v0.193
   res.innerHTML = r.length
     ? `<div class="scount">${r.length} jagah mila · Enter se khologiye</div>` + r.map(h => `<button type="button" class="sr" role="option" data-c="${esc(h.conversation_id)}" data-e="${h.event_id || 0}">
-      <b><i class="rwho">${esc(who(h))}</i>${esc(h.title || 'Chat')}</b><span>${mark(h.snippet || '')}</span>
+      <b><i class="rwho">${esc(who(h))}</i>${esc(h.title || 'Chat')}${chip(h.conversation_id)}</b><span>${mark(h.snippet || '')}</span>
       <time>${esc(new Date(h.at).toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}))}</time></button>`).join('')
     : '<div class="empty">Kuch nahi mila.</div>';
 }

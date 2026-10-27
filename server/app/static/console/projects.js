@@ -1,7 +1,8 @@
-/* v0.164 Hoola Console · projects, "Kaam ke folder" (CHAT_PROJECTS).
-   Sidebar: her folders (+ new). A folder page: name + emoji, her instructions for the folder, its notes (yaad), its files
-   (drop or pick; kept until she removes them; big ones are searched through Gyaan), its chats + "Is folder mein naya
-   chat". A chat's ⋯ menu moves it in / out of a folder (chatlist.js asks `pick`).
+/* v0.164 Hoola Console · projects, "Kaam ke folder" (CHAT_PROJECTS). v0.193: they ARE the sidebar sessions.
+   Sidebar: the sessions box is slim now — label + "+" only; the sections themselves live in the chat list
+   (chatlist.js draws them). A session page: name + emoji, her instructions for it, its notes (yaad), its files
+   (drop or pick; kept until she removes them; big ones are searched through Gyaan), its chats + "Is session mein
+   naya chat". A chat's ⋯ menu moves it in / out of a session (chatlist.js asks `pick`).
    window.HoolaProjects(ctx) -> {load, draw, open(pid), pick(chat), nameOf(pid), list()};
    ctx = {api, esc, toast, go(view), openChat(id), current() -> chat id, reloadChats()} */
 'use strict';
@@ -16,18 +17,16 @@ async function load() {
 }
 function draw() {
   const box = $('#projects'); if (!box) return;
-  box.innerHTML = `<div class="slabel pjl"><span>Kaam ke folder</span><button type="button" class="pjadd" id="pjNew" aria-label="Naya folder">+</button></div>`
-    + (LIST.length ? LIST.map(p => `<button type="button" class="rc pjrow${p.id === CUR && document.getElementById('v-project')?.hidden === false ? ' cur' : ''}" data-pj="${esc(p.id)}">
-        <span aria-hidden="true">${esc(p.emoji || '📁')}</span><span class="rct">${esc(p.name)}</span><small>${p.chats || ''}</small></button>`).join('')
-      : '<div class="empty pjempty">Folder mein chats, files aur hidayat ek jagah rakhiye.</div>');
+  /* v0.193 the folder rows moved into the chat list as session sections — this box stays the "+ Naya" entry */
+  box.innerHTML = `<div class="slabel pjl"><span>Sessions</span><button type="button" class="pjadd" id="pjNew" aria-label="Naya session">+</button></div>`
+    + (LIST.length ? '' : '<div class="empty pjempty">Kaam ke hisaab se session banaiye — App design, Research…</div>');
   box.querySelector('#pjNew').addEventListener('click', create);
 }
-document.addEventListener('click', e => { const b = e.target.closest('[data-pj]'); if (b) open(b.dataset.pj); });
 
 async function create() {
-  const name = (prompt('Naye folder ka naam (jaise "Shaadi ka kaam", "GST", "Dukaan")') || '').trim();
+  const name = (prompt('Naye session ka naam (jaise "App design", "Research", "GST")') || '').trim();
   if (!name) return;
-  try { const p = await api('POST', '/api/projects', {name}); await load(); open(p.id); toast('Folder ban gaya. Hidayat aur files daal dijiye.'); }
+  try { const p = await api('POST', '/api/projects', {name}); await load(); ctx.reloadChats?.(); open(p.id); toast('Session ban gaya. Hidayat, files aur chats yahan rehenge.'); }
   catch (e) { toast(e.message, true); }
 }
 const nameOf = pid => LIST.find(p => p.id === pid);
@@ -43,8 +42,8 @@ async function open(pid) {
     chats = (await api('GET', `/api/console/conversations?project=${encodeURIComponent(pid)}`)).conversations || [];
   } catch (e) { box.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
   draw();
-  box.innerHTML = `<div class="vh pjhd"><h2><button type="button" class="pjemo" aria-label="Emoji badlo">${esc(p.emoji || '📁')}</button><span class="pjname" contenteditable="plaintext-only" spellcheck="false" aria-label="Folder ka naam">${esc(p.name)}</span></h2>
-      <div class="acts"><button type="button" class="btn go" data-a="chat">+ Is folder mein naya chat</button><button type="button" class="btn soft" data-a="del">Folder hatao</button></div></div>
+  box.innerHTML = `<div class="vh pjhd"><h2><button type="button" class="pjemo" aria-label="Emoji badlo">${esc(p.emoji || '📁')}</button><span class="pjname" contenteditable="plaintext-only" spellcheck="false" aria-label="Session ka naam">${esc(p.name)}</span></h2>
+      <div class="acts"><button type="button" class="btn go" data-a="chat">+ Is session mein naya chat</button><button type="button" class="btn soft" data-a="del">Session hatao</button></div></div>
     <div class="grid2 pjgrid">
       <div class="tile gl"><h3>Hidayat <span class="tag v">har chat ko</span></h3>
         <p class="muted" style="font-size:13px">Is folder ki har chat mein ${esc(ctx.avatar())} inhe maanega (jaise "Budget 5 lakh", "Hamesha Hindi mein").</p>
@@ -56,7 +55,7 @@ async function open(pid) {
         <label class="pjdrop" tabindex="0"><input type="file" multiple hidden><b>Files yahan chhodiye</b><span>ya chuniye · 25 MB tak · badi files Gyaan se dhoondhi jaati hain</span></label>
         <div class="pjfl">${(p.file_list || []).map(f => `<div class="pjf"><span>📎 ${esc(f.name)}</span><small>${Math.max(1, Math.round(f.size / 1024))} KB</small><button type="button" class="ib" data-rm="${esc(f.id)}" aria-label="Hatao: ${esc(f.name)}">✕</button></div>`).join('') || '<div class="empty">Abhi koi file nahi.</div>'}</div></div>
       <div class="tile gl"><h3>Chats <span class="tag v">${chats.length}</span></h3>
-        <div class="pjchats">${chats.map(c => `<button type="button" class="rc" data-chat="${esc(c.id)}"><span class="rct">${esc(c.title)}</span></button>`).join('') || '<div class="empty">Abhi koi chat nahi. "+ Is folder mein naya chat" dabaiye.</div>'}</div></div>
+        <div class="pjchats">${chats.map(c => `<button type="button" class="rc" data-chat="${esc(c.id)}"><span class="rct">${esc(c.title)}</span></button>`).join('') || '<div class="empty">Abhi koi chat nahi. "+ Is session mein naya chat" dabaiye.</div>'}</div></div>
     </div>`;
   // name + emoji
   const nm = box.querySelector('.pjname');
@@ -73,15 +72,15 @@ async function open(pid) {
   ['dragleave', 'drop'].forEach(k => drop.addEventListener(k, () => drop.classList.remove('over')));
   drop.addEventListener('drop', e => { e.preventDefault(); upload([...(e.dataTransfer?.files || [])]); });
   box.querySelector('.pjfl').addEventListener('click', async e => { const b = e.target.closest('[data-rm]'); if (!b) return;
-    if (!confirm('Yeh file folder se hatayein?')) return;
+    if (!confirm('Yeh file session se hatayein?')) return;
     try { await api('DELETE', `/api/projects/${encodeURIComponent(pid)}/files/${encodeURIComponent(b.dataset.rm)}`); open(pid); } catch (er) { toast(er.message, true); } });
   box.querySelector('.pjchats').addEventListener('click', e => { const b = e.target.closest('[data-chat]'); if (b) ctx.openChat(b.dataset.chat); });
   box.querySelector('[data-a="chat"]').addEventListener('click', async () => {
     try { const c = await api('POST', `/api/conversations?project_id=${encodeURIComponent(pid)}`); ctx.openChat(c.id, true); ctx.reloadChats(); load(); }
     catch (e) { toast(e.message, true); } });
   box.querySelector('[data-a="del"]').addEventListener('click', async () => {
-    if (!confirm(`"${p.name}" folder hatayein? Chats bachi rahengi, bas folder se bahar ho jayengi.`)) return;
-    try { await api('DELETE', `/api/projects/${encodeURIComponent(pid)}`); CUR = null; await load(); ctx.reloadChats(); ctx.go('chat'); toast('Folder hata diya.'); }
+    if (!confirm(`"${p.name}" session hatayein? Chats bachi rahengi, bas session se bahar ho jayengi.`)) return;
+    try { await api('DELETE', `/api/projects/${encodeURIComponent(pid)}`); CUR = null; await load(); ctx.reloadChats(); ctx.go('chat'); toast('Session hata diya.'); }
     catch (e) { toast(e.message, true); } });
 
   async function save(patch, quiet) {
@@ -92,7 +91,7 @@ async function open(pid) {
     for (const f of files.slice(0, 10)) {
       if (f.size > 25 * 1024 * 1024) { toast(`${f.name}: 25 MB se badi file nahi chalegi.`, true); continue; }
       const fd = new FormData(); fd.append('file', f, f.name);
-      try { await api('POST', `/api/projects/${encodeURIComponent(pid)}/files`, undefined, {form: fd}); toast(`${f.name} folder mein aa gayi.`); }
+      try { await api('POST', `/api/projects/${encodeURIComponent(pid)}/files`, undefined, {form: fd}); toast(`${f.name} session mein aa gayi.`); }
       catch (e) { toast(`${f.name}: ${e.message}`, true); }
     }
     open(pid);
@@ -103,13 +102,13 @@ async function open(pid) {
 async function pick(chat) {
   if (!LIST.length) await load();
   const choices = LIST.map((p, i) => `${i + 1}. ${p.emoji || '📁'} ${p.name}`).join('\n');
-  const inFolder = chat.project_id ? `\n0. Folder se bahar nikalo` : '';
-  const ans = prompt(`Kis folder mein daalein? Number likhiye:\n${choices}${inFolder}`, '');
+  const inFolder = chat.project_id ? `\n0. Session se bahar nikalo` : '';
+  const ans = prompt(`Kis session mein daalein? Number likhiye:\n${choices}${inFolder}`, '');
   if (ans === null || ans.trim() === '') return;
   const n = parseInt(ans, 10);
   const pid = n === 0 ? null : LIST[n - 1]?.id;
-  if (pid === undefined) return toast('Aisa koi folder nahi.', true);
-  try { await api('PATCH', `/api/conversations/${encodeURIComponent(chat.id)}`, {project_id: pid}); toast(pid ? 'Chat folder mein aa gayi.' : 'Chat folder se bahar.'); ctx.reloadChats(); load(); }
+  if (pid === undefined) return toast('Aisa koi session nahi.', true);
+  try { await api('PATCH', `/api/conversations/${encodeURIComponent(chat.id)}`, {project_id: pid}); toast(pid ? 'Chat session mein aa gayi.' : 'Chat session se bahar.'); ctx.reloadChats(); load(); }
   catch (e) { toast(e.message, true); }
 }
 

@@ -435,7 +435,6 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 .pjemo{font-size:22px;background:var(--glass2);border:1px solid var(--line);border-radius:12px;padding:4px 10px}
 .pjname{font-family:var(--fd);font-weight:800;font-size:19px;background:transparent;border:1px solid transparent;border-radius:10px;padding:4px 8px;min-width:120px}
 .pjname:hover,.pjname:focus{border-color:var(--hair);outline:none;background:rgba(11,10,26,.4)}
-.pjrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .pjl{display:flex;flex-direction:column;gap:10px}
 .pjf{background:var(--glass);border:1px solid var(--line);border-radius:18px;padding:15px;display:flex;flex-direction:column;gap:10px;backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur)}
 .pjta{width:100%;min-height:74px;background:rgba(11,10,26,.5);border:1px solid var(--hair);border-radius:12px;padding:10px 12px;resize:vertical;font-size:13.5px}
@@ -656,3 +655,33 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 .gstep.current span{color:#FFB15C}
 .gstep.failed span{color:#F87171}
 .gstep small{color:#9C96C2}
+
+/* v0.193 sidebar sessions — kaam ke hisaab se sections in the chat list */
+.sgh{display:flex;align-items:center;gap:2px;padding:5px 6px 4px 8px;margin-top:7px;border-radius:10px;color:var(--dim);
+  transition:background .15s ease}
+.sgh:hover,.sgh:focus-within{background:var(--glass)}
+.sgh .sgc{width:22px;height:22px;display:grid;place-items:center;border-radius:8px;color:var(--dim);flex:none}
+.sgh .sgc:hover{background:var(--glass2);color:var(--lit)}
+.sgh .chev{width:0;height:0;border-left:5px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent;
+  display:block;transition:transform .18s ease;margin-left:1px}
+.sgh.closed .chev{transform:rotate(0deg)}
+.sgh:not(.closed) .chev{transform:rotate(90deg)}
+.sgh .sgn{flex:1;display:flex;align-items:center;gap:6px;min-width:0;text-align:left;font-size:10.5px;font-weight:800;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--dim);padding:3px 4px;border-radius:8px}
+.sgh .sgn:hover{color:var(--lit)}
+.sgh .sgnt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sgh .udot{flex:none}
+.sgh .sgn-n{flex:none;font-size:10.5px;font-weight:800;color:var(--dim);opacity:.85}
+.sgh .sgacts{flex:none;opacity:0;transition:opacity .15s ease}
+.sgh:hover .sgacts,.sgh:focus-within .sgacts{opacity:1}
+.sgh .sgacts .ib{width:20px;height:20px;font-size:15px;line-height:1;display:grid;place-items:center;border-radius:8px;
+  color:var(--saffron);background:rgba(255,177,92,.1);border:1px solid rgba(255,177,92,.22)}
+.sgh .sgacts .ib:hover{background:rgba(255,177,92,.2)}
+.sgh.dropok,.sgb.dropok{background:rgba(255,177,92,.14);box-shadow:inset 0 0 0 1.5px rgba(255,177,92,.55);color:var(--saffron)}
+.sgb{display:block;cursor:default}
+.rcw[draggable="true"]{cursor:grab}
+.rcw.dragging{opacity:.35}
+.rcw.dragging .rc{background:var(--glass2)}
+.srsec{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--saffron);
+  background:rgba(255,177,92,.12);border:1px solid rgba(255,177,92,.25);border-radius:999px;padding:1.5px 8px;margin-left:7px;
+  white-space:nowrap;vertical-align:1px}

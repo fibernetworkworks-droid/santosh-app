@@ -123,7 +123,13 @@ async function enter() {
   if (CONFIG.sessions && window.HoolaChats && window.HoolaStream && !CH) {   // v0.162 many chats (v0.170: on with CONSOLE_V2)
     CH = HoolaChats({api, esc, toast, current: () => CONV, open: id => { go('chat'); openConv(id); },
                      jump: (c, e) => jumpTo(c, e), newChat: () => $('#newChat').click(), avatar: () => AV,
-                     get pickProject() { return PJ ? c => PJ.pick(c) : null; }});
+                     get pickProject() { return PJ ? c => PJ.pick(c) : null; },
+                     get openSection() { return PJ ? pid => PJ.open(pid) : null; },   // v0.193 session name opens its page
+                     newChatIn: async pid => {                                        // v0.193 "+" on a session header
+                       try { const c = await api('POST', `/api/conversations?project_id=${encodeURIComponent(pid)}`);
+                             await openConv(c.id, true); go('chat'); loadRecents(); }
+                       catch (e) { toast(e.message, true); }
+                     }});
     $('#searchBtn').hidden = false;
   }
   if (CONFIG.projects && window.HoolaProjects && !PJ) {   // v0.164 Kaam ke folder
