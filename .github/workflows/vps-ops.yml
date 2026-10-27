@@ -67,6 +67,11 @@ jobs:
             echo 'for d in "$HOME/.nvm/versions/node"/*/bin; do [ -d "$d" ] && export PATH="$d:$PATH"; done'
             echo 'REPO=$HOME/santosh_app; CORE=$HOME/apps/santosh-core'
             echo 'health(){ curl -s -m 10 http://172.18.0.1:8077/healthz || curl -s -m 10 http://127.0.0.1:8077/healthz; echo; }'
+            # v0.198.0 fix: the old deploy did sleep 20 + ONE health call - a cold boot (imports, init_db,
+            # plugin warm) often missed the window and the second curl being the final ||-command made
+            # set -e exit 7 (VPS ops run#22 died right after '== after restart'). wait_up probes for up
+            # to 60s instead; deploy reports and FAILS only after the real wait, never on a slow boot.
+            echo 'wait_up(){ for i in 1 2 3 4 5 6 7 8 9 10 11 12; do sleep 5; if curl -s -m 5 http://172.18.0.1:8077/healthz >/dev/null 2>&1 || curl -s -m 5 http://127.0.0.1:8077/healthz >/dev/null 2>&1; then echo "== server up after ~$((i*5))s"; return 0; fi; echo "== boot waiting... $((i*5))s"; done; return 1; }'
             case "$JOB" in
               status)
                 echo 'echo "== version / health"; health'
@@ -105,8 +110,10 @@ jobs:
                 echo 'git log --oneline -1'
                 echo 'cp -r $REPO/server/app $CORE/'
                 echo 'pm2 restart santosh --update-env'
-                echo 'sleep 20; echo "== after restart"; health'
-                echo 'pm2 logs santosh --lines 40 --nostream --raw --err' ;;
+                echo 'wait_up || UP=$?'
+                echo 'echo "== after restart"; health || true'
+                echo 'pm2 logs santosh --lines 40 --nostream --raw --err'
+                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
               rollback_stable)
                 echo 'set -e'
                 echo 'cp $CORE/santosh.db $CORE/santosh.db.bak-$(date +%F-%H%M)'
@@ -114,7 +121,9 @@ jobs:
                 echo 'git log --oneline -1'
                 echo 'cp -r $REPO/server/app $CORE/'
                 echo 'pm2 restart santosh --update-env'
-                echo 'sleep 20; echo "== after restart"; health' ;;
+                echo 'wait_up || UP=$?'
+                echo 'echo "== after restart"; health || true'
+                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
               pc_deploy)
                 echo 'set -e'
                 echo 'cd $REPO && git fetch origin main && git checkout main && git reset --hard origin/main'
