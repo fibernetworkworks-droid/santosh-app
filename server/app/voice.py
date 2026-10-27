@@ -762,6 +762,8 @@ def stats_summary(tenant: str) -> dict:
         "tool_calls": tools,
         "silent_tools_pct": round(100 * sum(c["silent_tools"] for c in calls) / tools, 1) if tools else None,
         "acks_played": sum(c["acks"] for c in calls),
+        "backchannels_played": sum(c.get("backchannels", 0) for c in calls),   # v0.205 KAAN KAAPI
+        "progress_clips": sum(c.get("progress", 0) for c in calls),
         "false_stops_per_call": round(sum(c.get("false_stops", 0) for c in calls) / len(calls), 2) if calls else None,
         # v0.53 phone gate: loud sounds that were not a voice (kept away from Gemini), noise muted while nobody spoke
         "vad_calls": sum(1 for c in calls if (c.get("gate") or {}).get("vad")),
@@ -834,18 +836,18 @@ def _ack_ask(text: str, gender: str) -> str:
             f"half to yourself, with real feeling in the voice ({mood}): {text}")
 
 
-def _ack_tts(text: str, voice: str, gender: str, client=None) -> bytes:
+def _tts_clip(ask: str, voice: str, client=None) -> bytes:
     """One short line with Gemini's TTS, in the same prebuilt voice the call uses (24 kHz PCM16).
     v0.181 the new gemini-3.8-flash-tts sounds far more human; if a model is unavailable / refuses, the legacy one speaks.
     v0.185.1 takes the batch's shared client — a fresh Client per clip could hit closed/poisoned shared state
-    (every clip died with 'client has been closed' on the VPS) and 16 handshakes per batch was slow anyway."""
+    (every clip died with 'client has been closed' on the VPS) and 16 handshakes per batch was slow anyway.
+    v0.205 the ask itself is the parameter: acks, backchannels and progress clips share one request path."""
     from google.genai import Client, types
     st = get_settings()
     cfg = types.GenerateContentConfig(
         response_modalities=["AUDIO"],
         speech_config=types.SpeechConfig(voice_config=types.VoiceConfig(
             prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice))))
-    ask = _ack_ask(text, gender)
     resp = None
     for model in (st.voice_ack_tts_model, "gemini-2.5-flash-preview-tts"):
         try:
@@ -859,6 +861,10 @@ def _ack_tts(text: str, voice: str, gender: str, client=None) -> bytes:
         if getattr(part, "inline_data", None) and part.inline_data.data:
             return part.inline_data.data
     raise RuntimeError("TTS gave no audio")
+
+
+def _ack_tts(text: str, voice: str, gender: str, client=None) -> bytes:
+    return _tts_clip(_ack_ask(text, gender), voice, client)
 
 
 def _trim(pcm: bytes, rate: int = 24000) -> bytes:
@@ -920,6 +926,95 @@ def ack_clips(voice: str, gender: str) -> list[bytes]:
     return []
 
 
+# ---- v0.205.0 KAAN KAAPI (Phase B of the natural-voice plan: backchannels) ----
+# Gemini Live is half-duplex: while SHE talks (a story, a list of details) he stays dead silent till his
+# answer starts, and while a long tool runs the first "ek second" is followed by dead air again. A real
+# listener does neither: he murmurs tiny sounds in her pauses ("haan...", "achha...") and mutters one
+# honest progress sound when the work runs long. Dessa-class models do this natively; here the two
+# silences get real sounds, pre-rendered in his own voice through the same TTS pipeline. Generation tags
+# ride in the filenames (b1/p1, like the acks' a2) so a changed ask never plays a stale clip forever.
+
+BC_LINES = ["Haan...", "Achha...", "Hmm...", "Achha achha...", "Theek hai...", "Haan haan...",
+            "Sahi hai...", "Hmm, achha...", "Haan, theek...", "Achha, sun raha hoon..."]         # her pauses
+PROG_LINES = ["Haan... ho raha hai.", "Ek minute... bas ho gaya.", "Dekh raha hoon... ruko.",
+              "Haan, bas ek minute...", "Ho gaya... bas, ek sec.", "Ruko ruko... ho raha hai."]   # long tools
+_BC_GEN, _PROG_GEN = "b1", "p1"
+
+
+def _bc_file(v: str, gender: str, i: int) -> Path:
+    return ACK_DIR / f"bc_{v}_{gender}_{i}_{_BC_GEN}.pcm"
+
+
+def _prog_file(v: str, gender: str, i: int) -> Path:
+    return ACK_DIR / f"prog_{v}_{gender}_{i}_{_PROG_GEN}.pcm"
+
+
+_POOLS: dict[str, list[bytes]] = {}
+_POOL_BUSY: set[str] = set()
+_POOL_LOCK = threading.Lock()
+
+
+def _bc_ask(text: str, gender: str) -> str:
+    """v0.205 the ask behind a backchannel clip, in ONE place so tests can pin it: a listening murmur -
+    never a question, never an answer, just the sound a friend makes while you are still talking."""
+    who = "young Indian woman" if gender == "f" else "young Indian guy"
+    return (f"Say ONLY this tiny sound, softly, half under your breath, like a {who} from Pune on a phone "
+            f"call who is listening hard to a friend who is still talking - an acknowledging murmur that "
+            f"trails off, never a question, never a full sentence: {text}")
+
+
+def _prog_ask(text: str, gender: str) -> str:
+    """v0.205 the ask behind a mid-run progress clip: honest, unhurried, half to himself."""
+    who = "young Indian woman" if gender == "f" else "young Indian guy"
+    return (f"Say this quietly, half to yourself, like a {who} from Pune who is still working on something "
+            f"while a friend waits on the phone - unhurried and honest, not a question: {text}")
+
+
+def _build_pool(kind: str, voice: str, gender: str) -> None:
+    lines = BC_LINES if kind == "bc" else PROG_LINES
+    ffn, ask = (_bc_file, _bc_ask) if kind == "bc" else (_prog_file, _prog_ask)
+    clips: list[bytes] = []
+    try:
+        ACK_DIR.mkdir(parents=True, exist_ok=True)
+        client = None                      # one client for the batch, exactly like the acks (v0.185.1)
+        try:
+            from google.genai import Client as _PoolClient
+            client = _PoolClient(api_key=get_settings().gemini_api_key)
+        except Exception as e:
+            log.info("clip pool %s client not made: %r", kind, e)
+        from .avatar.service import gendered
+        for i, line in enumerate(lines):
+            f = ffn(voice, gender, i)
+            try:
+                clip = f.read_bytes() if f.exists() else _trim(_tts_clip(ask(gendered(line, gender), gender), voice, client))
+            except Exception as e:
+                log.info("clip %s %s/%s not made: %r", kind, voice, i, e)
+                continue
+            if clip:
+                if not f.exists():
+                    with contextlib.suppress(OSError):
+                        f.write_bytes(clip)
+                clips.append(clip)
+    finally:
+        with _POOL_LOCK:
+            _POOLS[f"{kind}:{voice}:{gender}"] = clips
+            _POOL_BUSY.discard(f"{kind}:{voice}:{gender}")
+
+
+def pool_clips(kind: str, voice: str, gender: str) -> list[bytes]:
+    """The backchannel / progress clips for this voice; the first call starts making them in the background
+    and gets none yet (same contract as ack_clips: a call never waits for a clip)."""
+    key = f"{kind}:{voice}:{gender}"
+    with _POOL_LOCK:
+        if key in _POOLS:
+            return _POOLS[key]
+        if key in _POOL_BUSY:
+            return []
+        _POOL_BUSY.add(key)
+    threading.Thread(target=_build_pool, args=(kind, voice, gender), daemon=True, name=f"santosh-{kind}").start()
+    return []
+
+
 def inject(conversation_id: str, text: str) -> int:
     """Hand a note to every live call on this conversation (thread-safe). Returns how many calls got it."""
     n = 0
@@ -978,6 +1073,11 @@ class Call:
         self._turn_end_at = 0.0                # when his previous turn ended
         self._turn_audio = False               # audio of the current turn has started
         self._last_ack = 0.0
+        self._last_ack_i = -1                 # v0.205 never the same clip twice in a row
+        self._bc_at = 0.0                     # v0.205 last backchannel murmur
+        self._bc_this_turn = 0                # v0.205 cap: two murmurs in one turn of hers, no more
+        self._bc_task: asyncio.Task | None = None
+        self._last_bc_i = self._last_prog_i = -1
         self._latency: int | None = None
         self._affect_last = ""                 # v0.201 the feeling engine: last state a note was sent for
         self._affect_at = 0.0                  # ... and when it went out (never two notes close together)
@@ -996,7 +1096,7 @@ class Call:
         self._last_resume = 0.0
         self.stats = {"tenant": self.tenant, "call_id": self.call_id, "started": time.time(), "ended": None, "turns": 0,
                       "latency_ms": [], "words": [], "question_endings": 0, "assistantisms": 0, "interruptions": 0,
-                      "tools": 0, "silent_tools": 0, "acks": 0, "false_stops": 0,
+                      "tools": 0, "silent_tools": 0, "acks": 0, "false_stops": 0, "backchannels": 0, "progress": 0,
                       "gate": {},
                       "speaker_guesses": 0, "speaker_sure": 0, "speaker_changes": 0, "blocked_tools": 0, "otp_filled": 0,
                       "lang_switches": 0, "lang_drifts": 0, "lang_unclear": 0, "asked_again": 0, "her_corrections": 0,
@@ -1028,6 +1128,9 @@ class Call:
                            "hold_refused_tools": 0, "hold_s": 0.0})
         if st.voice_tool_ack and st.gemini_api_key:
             ack_clips(self.voice, self.gender)   # get his "ek second" clips ready
+            if st.voice_backchannel:             # v0.205 the murmurs and progress sounds render too
+                pool_clips("bc", self.voice, self.gender)
+                pool_clips("prog", self.voice, self.gender)
 
     # ---- sending to the phone (silently dropped while the phone is away) ----
     async def send_json(self, obj: dict) -> None:
@@ -1263,6 +1366,7 @@ class Call:
                         await self._otp_listen(sc.input_transcription.text)
                         await self._approval_listen(sc.input_transcription.text)   # v0.191 boli hui manzoori
                         await self._affect_watch()   # v0.201 uski feeling ka note, jab wahi bol rahi ho
+                        self._arm_backchannel()      # v0.205 uska pause phir se armed (woh phir boli)
                         if get_settings().voice_side_talk:
                             from . import sidetalk
                             if sidetalk.wants_hold(self.user_buf):   # "ek minute, main kisi se baat kar rahi hoon"
@@ -1295,6 +1399,9 @@ class Call:
 
     def _mark_audio(self) -> None:
         """Gemini's voice is coming. The first audio of a turn after the user spoke = how long he took to answer."""
+        if self._bc_task is not None:          # v0.205 he took the turn: no murmur now
+            self._bc_task.cancel()
+            self._bc_task = None
         now = time.monotonic()
         self._last_model_audio = now
         if not self._safe_worked:
@@ -1333,6 +1440,44 @@ class Call:
             await self._tell_quietly(voiceaffect.NOTE[st])
         except Exception:
             log.exception("affect watch failed")
+
+    BC_AFTER_S = 1.2     # her pause this long with her turn still open: a real listener murmurs something
+    BC_MIN_WORDS = 4     # she must actually be mid-sentence - a bare "haan" from her gets no murmur
+
+    def _arm_backchannel(self) -> None:
+        """v0.205 KAAN KAAPI: she is mid-turn. Every new transcription re-arms the murmur timer; if the pause
+        holds (she is thinking, not done), ONE tiny listening sound plays in his own voice. His voice or the
+        turn ending cancels it, and the fire-time guards re-check everything - a murmur must never land on
+        top of his answer or on top of another clip."""
+        if self._bc_task is not None:
+            self._bc_task.cancel()
+        self._bc_task = asyncio.create_task(self._bc_watch())
+
+    async def _bc_watch(self) -> None:
+        await asyncio.sleep(self.BC_AFTER_S)
+        st = get_settings()
+        now = time.monotonic()
+        if (not st.voice_backchannel or self.closed.is_set() or self.hold
+                or self._bc_this_turn >= 2
+                or self._last_model_audio >= self._last_voice_at   # he is the one talking (or nothing yet)
+                or self._turn_audio                                # or he already took this turn
+                or now - self._last_user_text_at < self.BC_AFTER_S # she resumed speaking: no murmur
+                or now - self._last_voice_at < 0.8
+                or len(self.user_buf.split()) < self.BC_MIN_WORDS
+                or now - self._bc_at < 7
+                or now - self._last_ack < 8):                      # a tool's silence belongs to the acks
+            return
+        clips = pool_clips("bc", self.voice, self.gender)
+        if not clips:
+            return
+        i = random.randrange(len(clips))
+        if i == self._last_bc_i and len(clips) > 1:
+            i = (i + 1) % len(clips)
+        self._last_bc_i = i
+        self._bc_at = now
+        self._bc_this_turn += 1
+        self.stats["backchannels"] += 1
+        await self.send_audio(clips[i])
 
     async def _otp_listen(self, piece: str = "", final: bool = False) -> None:
         """v0.83 a website job is waiting for an OTP and she SAYS it on the call: the system catches the digits from
@@ -1448,6 +1593,10 @@ class Call:
         self._latency = None
         self._turn_audio = False
         self._turn_end_at = time.monotonic()
+        if self._bc_task is not None:          # v0.205 the turn is over: the murmur timer goes with it
+            self._bc_task.cancel()
+            self._bc_task = None
+        self._bc_this_turn = 0
         await self.send_json(done)
         unclear = False
         try:   # v0.114 her language: sticky on the server; Hoola's own drift gets one quiet correction
@@ -1679,9 +1828,13 @@ class Call:
             return
         if show:
             bus.publish(self.conv, "work", livework.event(call_id, shown, label, "start", args))
-        watch = asyncio.create_task(self._ack_watch(time.monotonic()))
+        t0 = time.monotonic()
+        watch = asyncio.create_task(self._ack_watch(t0))
         self._tools.add(watch)
         watch.add_done_callback(self._tools.discard)
+        prog = asyncio.create_task(self._prog_watch(t0))   # v0.205 one progress sound if it runs long
+        self._tools.add(prog)
+        prog.add_done_callback(self._tools.discard)
         try:
             out = await self._execute(name, args)
             from .scrub import scrub   # v0.91 no key a service echoes back ever reaches the call model
@@ -1696,6 +1849,7 @@ class Call:
             log.exception("voice tool %s failed", name)
             out, state = {"error": f"Internal error: {e}"}, "error"
         watch.cancel()
+        prog.cancel()
         self._breaker.after(name, state != "error")
         running = name == "santosh_kaam" and isinstance(out, dict) and out.get("status") == "working"
         self.did.append({"tool": name, "label": raw if name != "santosh_kaam" else
@@ -1983,14 +2137,43 @@ class Call:
             return   # he spoke about it, or the user is talking
         self.stats["silent_tools"] += 1
         st = get_settings()
-        if not st.voice_tool_ack or now - self._last_ack < 8:
-            return
+        if not st.voice_tool_ack or now - self._last_ack < 8 or now - self._bc_at < 6:
+            return   # v0.205 a fresh murmur means her ears just got a clip: no ack on top of it
         clips = ack_clips(self.voice, self.gender)
         if not clips:
             return
         self._last_ack = now
         self.stats["acks"] += 1
-        await self.send_audio(random.choice(clips))
+        i = random.randrange(len(clips))
+        if i == self._last_ack_i and len(clips) > 1:
+            i = (i + 1) % len(clips)
+        self._last_ack_i = i
+        await self.send_audio(clips[i])
+
+    PROG_AFTER_S = 8.0   # the tool still runs, nobody has spoken this long: one honest progress sound
+
+    async def _prog_watch(self, t0: float) -> None:
+        """v0.205 KAAN KAAPI: the first 'ek second' played, the tool still runs, he silent, she quiet -
+        a real coworker mutters ONE progress sound ("dekh raha hoon... ruko") instead of dead air. The
+        result arriving (he speaks), her speaking or any fresh clip on the clock all abort it."""
+        await asyncio.sleep(self.PROG_AFTER_S)
+        st = get_settings()
+        now = time.monotonic()
+        if (not st.voice_tool_ack or self.closed.is_set() or self.hold
+                or self._last_model_audio >= t0 - 1.5
+                or now - self._last_voice_at < 0.8
+                or now - self._last_ack < 7):
+            return
+        clips = pool_clips("prog", self.voice, self.gender)
+        if not clips:
+            return
+        i = random.randrange(len(clips))
+        if i == self._last_prog_i and len(clips) > 1:
+            i = (i + 1) % len(clips)
+        self._last_prog_i = i
+        self._last_ack = now                     # one clock for every clip: acks, murmurs, progress
+        self.stats["progress"] += 1
+        await self.send_audio(clips[i])
 
     # ---- the call ----
     async def run(self) -> None:
@@ -2223,9 +2406,11 @@ class Call:
                 _JOBS.add(rt)
                 rt.add_done_callback(_JOBS.discard)
             lat = self.stats["latency_ms"]
-            log.info("call %s done: %s turns, reply start p50 %s ms, %s interruptions (%s noise), %s/%s silent tools, %s acks",
+            log.info("call %s done: %s turns, reply start p50 %s ms, %s interruptions (%s noise), %s/%s silent tools, "
+                     "%s acks, %s backchannels, %s progress",
                      self.call_id, self.stats["turns"], _pct(lat, .5), self.stats["interruptions"], self.stats["false_stops"],
-                     self.stats["silent_tools"], self.stats["tools"], self.stats["acks"])
+                     self.stats["silent_tools"], self.stats["tools"], self.stats["acks"],
+                     self.stats.get("backchannels", 0), self.stats.get("progress", 0))
             ws, self.ws = self.ws, None
             if ws is not None:
                 with contextlib.suppress(Exception):
