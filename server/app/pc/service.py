@@ -157,7 +157,8 @@ def devices(tenant_id: str) -> list[dict[str, Any]]:
                         "last_seen": _aware(d.last_seen).isoformat() if d.last_seen else None,
                         "folders": info.get("folders") or [], "tally": info.get("tally") or {},
                         "version": info.get("version") or "", "indexed": info.get("indexed") or 0,
-                        "inbox": info.get("inbox") or "", "paused": bool(info.get("paused"))})
+                        "inbox": info.get("inbox") or "", "paused": bool(info.get("paused")),
+                        "kind": str(info.get("kind") or "")})   # v0.200 "" = user's personal PC, "hoola_pc" = Hoola's own cloud PC
         return out
 
 

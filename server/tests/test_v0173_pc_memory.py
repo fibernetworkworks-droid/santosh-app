@@ -43,6 +43,14 @@ def _finish(op_mod, pc, bz, monkeypatch, script, task):
     return run(go())
 
 
+def _sys_text(system):
+    """v0.200 helper: cache.system_prompt (v0.192) wraps the system prompt in blocks - read the text out.
+    Written when system was a plain string; pre-existing failures were the str-vs-blocks trap."""
+    if isinstance(system, str):
+        return system
+    return "\n".join(b.get("text", "") for b in (system or []) if isinstance(b, dict))
+
+
 def test_finished_task_is_remembered_and_shown_to_the_next_run(op, monkeypatch):
     operator, pc, bz, memory, flush = op
 
@@ -74,7 +82,7 @@ def test_finished_task_is_remembered_and_shown_to_the_next_run(op, monkeypatch):
     o2, claude2 = _finish(operator, pc, bz, monkeypatch, [
         [tu(1, "done", answer="Message bhej diya.", success=True)],
     ], "Riya ko WhatsApp par message bhejo")
-    systems = [kw["system"] for kw in claude2.seen]
+    systems = [_sys_text(kw["system"]) for kw in claude2.seen]
     yaad = next((s for s in systems if "your own recent finished work on THIS PC" in (s or "")), "")
     assert yaad and "WhatsApp kholo Chrome mein" in yaad and "web.whatsapp.com" in yaad
     open_urls = [a for act, a in pc.calls if act == "open_url"]
@@ -86,7 +94,7 @@ def test_reuse_first_rules_are_always_in_the_prompt(op, monkeypatch):
     o, claude = _finish(operator, pc, bz, monkeypatch, [
         [tu(1, "done", answer="ho gaya", success=True)],
     ], "calculator kholo")
-    system = claude.seen[0]["system"]
+    system = _sys_text(claude.seen[0]["system"])
     assert "Remember what is already open" in system
     assert "Browser continuity" in system and "Edge" in system
     assert "focus_window" in system
@@ -97,7 +105,7 @@ def test_memory_block_empty_on_first_task(op, monkeypatch):
     o, claude = _finish(operator, pc, bz, monkeypatch, [
         [tu(1, "done", answer="ok", success=True)],
     ], "notepad kholo")
-    assert "your own recent finished work on THIS PC" not in claude.seen[0]["system"]   # first ever task: no fake memories
+    assert "your own recent finished work on THIS PC" not in _sys_text(claude.seen[0]["system"])   # first ever task: no fake memories
     flush()
     assert memory.recall("default")
 

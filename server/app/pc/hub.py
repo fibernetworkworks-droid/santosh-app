@@ -94,6 +94,25 @@ class Hub:
     def has_kind(self, tenant_id: str, kind: str) -> bool:
         return self.is_online(tenant_id, kind=kind)
 
+    # v0.200 MERA PC = USER PERSONAL PC FEATURE: the phone's Mera-PC screen buttons (search / send /
+    # pull) always mean the USER'S OWN paired computer, never Hoola's own cloud PC. A desktop that
+    # reports no kind (every Windows Santosh Desktop) is personal; kind == HOOLA_PC_KIND is not.
+    @staticmethod
+    def _is_personal(c: "Conn") -> bool:
+        return (c.info or {}).get("kind") != HOOLA_PC_KIND
+
+    def has_personal(self, tenant_id: str) -> bool:
+        return any(self._is_personal(c) for c in self.online(tenant_id))
+
+    async def call_personal(self, tenant_id: str, action: str, args: dict[str, Any],
+                            timeout: float | None = None) -> dict[str, Any]:
+        """Route a job to the user's personal PC (by device_id so the legacy last-connected pick
+        can never land on the Hoola PC). Raises PcOffline when only the cloud PC is online."""
+        personal = [c for c in self.online(tenant_id) if self._is_personal(c)]
+        if not personal:
+            raise PcOffline("PC_OFFLINE")
+        return await self.call(tenant_id, action, args, device_id=personal[0].device_id, timeout=timeout)
+
     def info_of(self, tenant_id: str, device_id: str) -> dict[str, Any] | None:
         for c in self.online(tenant_id):
             if c.device_id == device_id:

@@ -8202,3 +8202,31 @@ delete session leaves the chat alive outside; unknown project_id refused 404). R
 pubspec 0.194.0+228, console ?v=0.194.0 x9, pins →0.194.0 in test_v0179 / test_v0185 / test_v0187 / test_v0189 /
 test_v0190_hotfix / test_v0191_harness2 / email_phase1-4.
 
+
+## v0.200.0 MERA PC = USER PERSONAL PC FEATURE (owner: "MERA PC IS USER PERSONAL PC FEATURE")
+
+The product rule, now real in code: the **Mera PC** screen and everything on it is the USER'S OWN PERSONAL
+PC feature (her Windows computer paired via Hoola Desktop), and **Hoola ka apna PC** (the v0.195.0 cloud
+computer) is a DIFFERENT thing that the app now labels separately — the two are never confused.
+
+- `pc/service.devices()` carries `kind` ("" = her personal desktop, "hoola_pc" = Hoola's own cloud PC). The
+  kind was already persisted in the row's info JSON by `save_info` since v0.195; only never shown. No migration.
+- `pc/hub.py` gains `_is_personal` / `has_personal` / `call_personal`: the phone's pc_search / pc_send /
+  pc_pull endpoints (main.py) route to the user's PERSONAL PC explicitly by device_id, so the legacy
+  last-connected pick can never land a Mera-PC button on the cloud PC (which has no search action and whose
+  Downloads belong to Hoola). Only the cloud PC online = the honest 409 "PC offline hai" (PcOffline path).
+- Mera PC screen (lib/ui/pc_screen.dart): devices split into "HOOLA KA APNA PC" (own cloud card — cloud icon,
+  "Hamesha on · Hoola ka apna cloud computer", auto-reconnect note when offline, "Hoola khud kaam karta hai —
+  Chrome, files, software install; iske liye boliye: apne computer pe…") and "AAPKA PERSONAL PC" (the old
+  cards with Tally/folders/indexed, unchanged). Pairing card now says "aapka personal PC". Send/pair buttons
+  gated on a PERSONAL PC being online; search box enabled by the personal PC only; job history shows all PCs.
+- Old APKs keep working (the extra `kind` key is ignored by older screens).
+Tests: NEW test_v0200_pc_kinds.py (7): devices() kind on the live-conn path + stored-info path + legacy ""
+desktop, call_personal targets her PC even when the cloud PC connected first, PcOffline when only the cloud
+PC is online, has_personal truth table, the pc_search endpoint rides call_personal, version pin. ALSO fixed
+pre-existing v0.192-era debt: test_v0173_pc_memory.py asserted on the system prompt as a STRING while
+cache.system_prompt wraps it in blocks (the v0.195 worklog's str-vs-blocks trap) — added _sys_text()
+flattener, suite green again (the 2 failures reproduced on pristine v0.199.0 HEAD first).
+Sweeps green: pc family 65 (bridge, operator, v0173 memory, v0185 browser, v01854 is_error, v0193 hoola_pc,
+v0200 kinds), harness x3 + sessions + delivery + hotfix + realtime 83, email 1-4 + search 62. Ritual:
+APP_VERSION 0.200.0, pubspec 0.200.0+234, console ?v=0.200.0 x9, pins →0.200.0 in the 13 pinned suites.
