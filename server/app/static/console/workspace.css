@@ -165,3 +165,8 @@
 #app .col{width:100%;min-width:0}
 #app #slotDock{width:min(880px,100%);margin-inline:auto}
 #app #slotDock #composer{width:100%}
+
+#app .simple-progress{width:min(880px,100%);margin:0 auto 10px;padding:0 6px;color:var(--mut);font-size:13px;font-weight:600;display:flex;align-items:center;gap:9px;min-height:24px}
+#app .simple-progress:before{content:'';width:7px;height:7px;border-radius:50%;background:var(--saffron);animation:progress-pulse 1.5s ease-in-out infinite}
+@keyframes progress-pulse{50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){#app .simple-progress:before{animation:none}}

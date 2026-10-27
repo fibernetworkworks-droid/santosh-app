@@ -80,7 +80,7 @@ $('#kbtn').addEventListener('click', async () => {
 async function logout(expired) {
   stopStream(); endCall(); ACC?.abort(); ACC = null;
   RESULTS?.reset();
-  WORKSPACE?.reset(); PN?.reset();
+  WORKSPACE?.reset(); PN?.reset(); clearSimpleProgress();
   clearTimeout(DRAFT_T); FILES = []; CONV = null; ACC_LAST = 0; msg.value = ''; drawFiles();
   clearInterval(GAUGE_T); clearInterval(PENDING_TIMER);
   if (TOKEN && !expired) { try { await api('POST', '/api/logout'); } catch {} }
@@ -338,48 +338,21 @@ function stepArgsHtml(id) {
   }
   return rows.length ? `<div class="targs"><div class="kv">${rows.join('')}</div></div>` : '';
 }
-function stepEvent(p) {
-  const t = turn();
-  const id = String(p.id || p.tool || Math.random());
-  if (p.args) STEPS_ARGS.set(id, p.args);
-  let g = t.groups[t.groups.length - 1];
-  if (!g || t.afterText) {
-    t.afterText = false;
-    const el = document.createElement('details'); el.className = 'tools'; el.open = true;
-    el.innerHTML = `<summary><span class="spin"></span><span class="sm">${esc(AV)} kaam kar raha hai…</span><span class="chev">⌄</span></summary><div class="tl"></div>`;
-    put(t, el); g = {el, tl: el.querySelector('.tl'), n: 0, t0: Date.now()}; t.groups.push(g);
-    if (t.groups.length === 1) $('#lsteps').innerHTML = '';
+const PROGRESS_POLICY = window.HoolaProgressPolicy;
+let SIMPLE_PROGRESS = null;
+function simpleProgress(kind,p={}) {
+  if(kind!=='typing' && !TYPING)return;
+  if (!SIMPLE_PROGRESS) {
+    SIMPLE_PROGRESS=document.createElement('div');SIMPLE_PROGRESS.className='simple-progress';
+    SIMPLE_PROGRESS.setAttribute('role','status');SIMPLE_PROGRESS.setAttribute('aria-live','polite');
+    $('#slotDock').before(SIMPLE_PROGRESS);
   }
-  const row = p.state === 'running' ? `<span class="spin" style="width:16px;height:16px"></span>${esc(p.label || p.tool)} <code>${esc(p.tool || '')}</code>`
-    : p.state === 'error' ? `<span class="ic" style="background:rgba(248,113,113,.18);color:var(--bad)">!</span>${esc(p.label || p.tool)} <code>${esc(p.tool || '')}</code>${p.detail ? `<span class="tm">${esc(String(p.detail).slice(0, 60))}</span>` : ''}`
-    : `<span class="ic">✓</span>${esc(p.label || p.tool)} <code>${esc(p.tool || '')}</code>`;
-  const cls = 'ts ' + (p.state === 'running' ? 'run' : p.state === 'error' ? 'err' : 'done');
-  const has = (STEPS_ARGS.get(id)?.length || Object.keys(STEPS_DATA.get(id) || {}).length) ? true : false;
-  for (const box of [t.bd, $('#lsteps')]) {
-    let el = box.querySelector(`[data-step="${CSS.escape(id)}"]`);
-    if (!el) {
-      el = document.createElement(has ? 'details' : 'div'); el.dataset.step = id; el.className = cls;
-      if (has) {
-        el.innerHTML = `<summary>${row}<span class="chev" aria-hidden="true">⌄</span></summary>${stepArgsHtml(id)}`;
-        el.open = false;
-      } else el.innerHTML = row;
-      (box === t.bd ? g.tl : box).appendChild(el); if (box === t.bd) g.n++;
-      continue;
-    }
-    if (has && el.tagName !== 'DETAILS') {   // the facts arrived after the row existed: upgrade it in place
-      const nu = document.createElement('details'); nu.dataset.step = id; nu.className = cls; nu.open = el.open === true;
-      nu.innerHTML = `<summary>${row}<span class="chev" aria-hidden="true">⌄</span></summary>${stepArgsHtml(id)}`;
-      el.replaceWith(nu); el = nu;
-    } else {
-      el.className = cls;
-      const sm = el.tagName === 'DETAILS' ? el.querySelector('summary') : el;
-      sm.innerHTML = has && el.tagName === 'DETAILS' ? `${row}<span class="chev" aria-hidden="true">⌄</span>` : row;
-      if (el.tagName === 'DETAILS') { const old = el.querySelector('.targs'); const html = stepArgsHtml(id);
-        if (html) { if (old) old.outerHTML = html; else el.insertAdjacentHTML('beforeend', html); } else old?.remove(); }
-    }
-  }
-  live(p.state === 'running' ? 'run' : 'idle'); scrollDown();
+  SIMPLE_PROGRESS.hidden=false;
+  const label=PROGRESS_POLICY.phase(kind,p);
+  if(SIMPLE_PROGRESS.textContent!==label)SIMPLE_PROGRESS.textContent=label;
 }
+function clearSimpleProgress(){if(SIMPLE_PROGRESS)SIMPLE_PROGRESS.hidden=true;}
+function stepEvent(p) { simpleProgress('step',p); }
 function closeTurnTools(t = TURN) {
   if (!t) return;
   for (const g of t.groups || []) {
@@ -391,35 +364,20 @@ function closeTurnTools(t = TURN) {
 }
 let TYPING = null;
 function typing(on) {
-  $('#stopBtn').hidden = !on;
-  if (on) { if (!TYPING) { const t = turn(); TYPING = document.createElement('div'); TYPING.className = 'typing'; TYPING.innerHTML = '<i></i><i></i><i></i>'; t.bd.appendChild(TYPING); scrollDown(); } live('run'); }
-  else { TYPING?.remove(); TYPING = null; closeTurnTools();
-    for (const [cid, R] of [...RCPTS]) if (R.state === 'queue') receiptUpdate(cid, 'sent');   // v0.173 the queued turn took them
-    live(QUEUE.length ? 'ask' : 'idle'); TURN = null; }
+  $('#stopBtn').hidden=!on;
+  if(on){TYPING ||= document.createElement('div');simpleProgress('typing');live('run');}
+  else {
+    TYPING=null;clearSimpleProgress();closeTurnTools();
+    for(const [cid,R] of [...RCPTS])if(R.state==='queue')receiptUpdate(cid,'sent');
+    live(QUEUE.length?'ask':'idle');TURN=null;
+  }
 }
 
 /* ================= thinking card (v0.171): the model's reasoning while it thinks — Claude thinking /
    GLM reasoning arrive as live-only `think` events (turn:seg, like the text blocks). Live: open, counting.
    Reply over: folded to "ne socha · 8s". Never stored, so a reload builds it only from a /live resume. */
 const THINKS = new Map();   // turn:seg -> {el, tb, t0, timer}
-function thinkEvent(p) {
-  const key = (p.turn || '') + ':' + (p.seg ?? 0);
-  let K = THINKS.get(key);
-  if (p.clear) { if (K) { K.raw = ''; K.tb.textContent = ''; } return; }
-  if (!K) {
-    const t = turn();
-    const el = document.createElement('details'); el.className = 'think'; el.open = true;
-    el.innerHTML = `<summary><span class="tic" aria-hidden="true">✦</span><span class="tsm">${esc(AV)} soch raha hai…</span><span class="tt">0s</span><span class="chev">⌄</span></summary><div class="tbody"></div>`;
-    put(t, el);
-    K = {el, tb: el.querySelector('.tbody'), raw: '', t0: Date.now(), timer: 0};
-    K.timer = setInterval(() => { const s = Math.round((Date.now() - K.t0) / 1000), tt = K.el.querySelector('.tt');
-      if (tt) tt.textContent = s < 60 ? s + 's' : Math.floor(s / 60) + 'm' + String(s % 60).padStart(2, '0'); }, 1000);
-    THINKS.set(key, K);
-  }
-  K.raw += (p.text || '');
-  K.tb.textContent = K.raw;
-  scrollDown();
-}
+function thinkEvent(p) { simpleProgress('think',p); }
 function closeThinks(turnId) {
   for (const [key, K] of [...THINKS]) {
     if (!key.startsWith(turnId + ':')) continue;
@@ -515,13 +473,14 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) REPLI
 /* ================= live work line ================= */
 const WHERE = {browser:'Hoola ka browser · server', pc:'Aapka PC', email:'Email', payment:'Payment · your approval', network:'Hoola Network', bluetooth:'Ghar', website:'Website'};
 function workEvent(p) {
+  simpleProgress("work",p);
   const err = p.phase === 'error' || p.phase === 'stopped';
   if (p.id && p.data) STEPS_DATA.set(String(p.id), p.data);   // v0.171 the step's facts join its args in the chip
   $('#stageCap').textContent = err ? (p.phase === 'stopped' ? 'Roka gaya: ' : 'Dikkat: ') + (p.error || p.label || '') : (p.label || p.tool || 'Kaam');
   const site = p.data && (p.data.site || p.data.url) ? ' · ' + String(p.data.site || p.data.url).slice(0, 60) : '';
   $('#stageWhere').textContent = (WHERE[p.scene] || 'Hoola server') + site + (p.phase === 'done' ? ' · ho gaya' : p.phase === 'waiting' ? ' · aapki haan' : '');
   $('#nowline').classList.toggle('err', err);
-  if (!narrow() && p.phase === 'start' && !B?.isOpen()) $('#app').classList.add('open');
+  // Detailed activity opens only when the user requests it.
 }
 function live(state) {
   const b = $('#liveBtn'); b.classList.toggle('on', state !== 'idle');
@@ -610,6 +569,7 @@ function decisionRow(el, {yes, no, yesLabel = 'Slide karke Haan karein', noLabel
 const fingerprintMsg = 'Yeh paise wala card hai: Haan sirf aapke phone ke fingerprint se hogi. Hoola app mein yahi card khol kar Haan kijiye.';
 
 function renderCard(kind, p, at, live) {
+  if(PROGRESS_POLICY.quiet(kind,p)){if(live)simpleProgress(kind,p);return;}
   if (B && B.kinds.has(kind)) { const el = cardShell(kind, p); B.card(kind, p, el, !!live); scrollDown(); return; }
   if (RESULTS?.kinds.has(kind) && PN?.itemOf(kind, p) && (kind !== 'artifact' || p.status === 'ready')) {
     const el = cardShell(kind, p); RESULTS.card(kind, p, el); if (live) PN.update(kind, p); scrollDown(); return;
@@ -720,7 +680,7 @@ function renderCard(kind, p, at, live) {
       const link = pit ? '' : safeLink(p.url || p.link || p.open_url || '');
       const money = /approval|_pay|deal|studio|payroll|spend|bill/.test(kind) && (p.status === 'pending' || p.waiting);
       el.innerHTML = head(title, LABEL[kind] && LABEL[kind] !== title ? LABEL[kind] : (p.status || ''), money ? 'warn' : 'v')
-        + (sub ? `<p style="font-size:14px">${esc(String(sub).slice(0, 600))}</p>` : '') + kvRows(p, 8, [tk, sk])
+        + (sub ? `<p style="font-size:14px">${esc(String(sub).slice(0, 600))}</p>` : '')
         + (pit ? `<div class="acts"><button class="btn go" type="button" data-pn>Kholo</button></div>` : '')
         + (link ? `<div class="acts"><a class="btn soft" href="${esc(link)}" target="_blank" rel="noopener noreferrer">Kholo</a></div>` : '')
         + (money ? `<p class="faint" style="font-size:12.5px">Is card par Haan Hoola app se hoti hai (fingerprint ya app ka apna screen).</p>` : '');
@@ -752,6 +712,7 @@ function onEvent(ev) {
     if (p.role === 'user' && typeof p.text === 'string') p.text = p.text.replace(/\n\n\[Web console language preference: Reply in English unless I explicitly request another language\.\]$/, '');
   switch (ev.kind) {
     case 'reply_start': {
+      simpleProgress('reply_start',p);
       landing(false); const prev = LAST_TURN; LAST_TURN = p.turn; reply(p.turn);
       if (prev && REPLIES.has(prev)) drawActs(REPLIES.get(prev));         // Dobara only on the newest reply
       return; }
@@ -791,6 +752,7 @@ function onEvent(ev) {
     case 'step': landing(false); stepEvent(p); return;
     case 'work': workEvent(p); return;
     case 'say': {
+      simpleProgress('say',p);
       // The backend's real result summary is transient progress, never a generic result card.
       $('#stageCap').textContent = p.text || 'Kaam chal raha hai'; return;
     }
@@ -814,7 +776,7 @@ function renderEvents(events, any) {
       else if (p.turn && window.HoolaStream) { replyMessage(p, true, ev.id, ev.at); if (SINK === col) LAST_TURN = p.turn; }
       else hoolaText(p.text || '', p.source, ev.id, ev.at);
     }
-    else if (ev.kind === 'step') replayStep(p);   // v0.171 the transcript keeps what each turn did (steps=1)
+    else if (ev.kind === 'step') continue;   // v0.171 the transcript keeps what each turn did (steps=1)
     else { flushStepBuf(); renderCard(ev.kind, p, ev.at); }
   }
   flushStepBuf();
@@ -823,7 +785,7 @@ async function openConv(id, fresh, opts = {}) {
   if (!CH) stopStream();
   LOADING = true; PENDING = [];
   closeFind();                          // v0.178 find results belong to their chat, like receipts
-  RESULTS?.reset();
+  RESULTS?.reset(); clearSimpleProgress();
   if (CONV && CONV !== id) { if (msg.value.trim()) store.set('hoola.draft.' + CONV, msg.value); else store.del('hoola.draft.' + CONV); }
   clearTimeout(DRAFT_T);
   if (CONV !== id) { FILES = []; drawFiles(); }
@@ -851,7 +813,7 @@ async function openConv(id, fresh, opts = {}) {
   catch (e) { LOADING = false; col.innerHTML = ''; if (e.status === 404 && opts.fallback) return opts.fallback(); toast(e.message, true); }
   if (CONV !== id) return;
   col.innerHTML = '';
-  const any = tl.events.some(e => e.kind === 'message' && (e.payload || {}).role === 'user')
+  const any = tl.events.some(e => e.kind === 'message')
     || (!fresh && !!B && tl.events.some(e => B.kinds.has(e.kind)));           // a chat with a build in it opens on the thread
   ANY = any; landing(!any);
   renderEvents(tl.events, any);
@@ -1058,7 +1020,7 @@ function accountStream() {
       if (ev.kind === 'typing') { CH.busy(c, !!ev.payload?.on); if (!ev.payload?.on) setTimeout(() => CH.load(), 1500); }   // a new auto title
       if (c === CONV) { if (LOADING) PENDING.push(ev); else onEvent(ev); return; }
       if (ev.kind === 'message' && ev.payload?.role === 'assistant') CH.unread(c);
-      if (!ev.live && !LOCAL.has(ev.kind) && !LOADING && CONV) onEvent(ev);
+      if (!ev.live && !LOCAL.has(ev.kind) && !PROGRESS_POLICY.quiet(ev.kind,ev.payload) && !LOADING && CONV) onEvent(ev);
     }});
   ACC = s;
 }
