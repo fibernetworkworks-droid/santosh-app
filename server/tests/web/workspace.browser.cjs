@@ -200,6 +200,20 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-v="creative"]').click();
  }
  await page.locator('.side [data-v="chat"]').click();await aligned();
+ emit('message',{role:'assistant',text:'Geometry fixture: https://example.test/'+('verylongpath'.repeat(160))+'\n\n```js\n'+('const_value_'.repeat(240))+'\n```'});
+ await page.locator('#col .cb').last().waitFor();await aligned();
+ assert.equal(await page.locator('#thread').evaluate(e=>e.scrollWidth>e.clientWidth),false);
+ assert.equal(await page.locator('#col .cb pre').last().evaluate(e=>e.scrollWidth>e.clientWidth),true);
+ emit('photo_made',{id:'geometry-art',file_id:'result-1',name:'geometry.png',title:'Geometry preview'});await page.locator('[data-expand]').first().waitFor();
+ await page.locator('#thread').hover();await page.mouse.wheel(0,-500);await page.waitForTimeout(80);
+ await page.locator('#thread').evaluate(e=>e.scrollTop=e.scrollHeight*.45);await page.waitForTimeout(100);
+ const before=await page.evaluate(()=>{const t=document.querySelector('#thread'),r=t.getBoundingClientRect(),p=[...document.querySelectorAll('#col .textmd p')].find(n=>n.getBoundingClientRect().bottom>r.top+12),b=p.getBoundingClientRect();const range=document.caretRangeFromPoint(b.left+12,Math.max(r.top+14,b.top+12));window.__readingRange=range;return range.getBoundingClientRect().top-r.top;});
+ await page.locator('[data-expand]').first().evaluate(e=>e.click());await page.waitForTimeout(500);
+ const after=await page.evaluate(()=>window.__readingRange.getBoundingClientRect().top-document.querySelector('#thread').getBoundingClientRect().top);
+ assert.ok(Math.abs(before-after)<4,'Workspace preserves visible text anchor: '+JSON.stringify({before,after}));await aligned();
+ await page.locator('#pnClose').click();await page.waitForTimeout(450);
+ const restored=await page.evaluate(()=>window.__readingRange.getBoundingClientRect().top-document.querySelector('#thread').getBoundingClientRect().top);
+ assert.ok(Math.abs(before-restored)<4,'Closing workspace preserves visible text anchor');
  for(const width of [1024,768,390,320]){
   await page.setViewportSize({width,height:900});await page.waitForTimeout(100);
   const sizes=await page.evaluate(()=>({w:innerWidth,scroll:document.documentElement.scrollWidth}));assert.ok(sizes.scroll<=sizes.w,JSON.stringify(sizes));await aligned();
