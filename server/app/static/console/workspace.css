@@ -320,3 +320,14 @@
 #app .progress-record[open] .progress-chevron{transform:rotate(180deg)}
 #app .progress-record .progress-activity{max-height:220px}
 #app .progress-search-count{font-size:11px;color:var(--dim);white-space:nowrap}
+
+/* Shared conversation geometry; wide content scrolls within its own block. */
+#app{--conversation-width:880px}
+#app .col{max-width:var(--conversation-width);min-width:0}
+#app #slotDock{width:min(var(--conversation-width),100%);margin-inline:auto;min-width:0}
+#app .thread{min-width:0;overflow-x:hidden;scrollbar-gutter:stable both-edges;overflow-anchor:none}
+#app :is(.mh,.mh .bd,.txt,.textmd,.mdb,.cb,.result-card){min-width:0;max-width:100%}
+#app :is(.textmd,.mu,.result-card a){overflow-wrap:anywhere;word-break:normal}
+#app .cb pre{white-space:pre;overflow-x:auto;max-width:100%;overscroll-behavior-x:contain}
+#app .textmd .mdt{display:block;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+#app .textmd :is(img,video,iframe){max-width:100%}

@@ -205,6 +205,39 @@ thread.addEventListener('touchmove', e => { if ((e.touches[0]?.clientY || 0) > t
 thread.addEventListener('keydown', e => { if (['PageUp', 'ArrowUp', 'Home'].includes(e.key)) unstick(); });
 if (window.ResizeObserver) new ResizeObserver(() => { if (STICK) thread.scrollTop = thread.scrollHeight; }).observe(col);
 $('#jump').addEventListener('click', () => { thread.scrollTo({top: thread.scrollHeight, behavior: 'smooth'}); STICK = true; $('#jump').hidden = true; });
+
+// Preserve the visible text anchor while sidebar/workspace geometry reflows.
+(() => {
+  let anchor=null,restoring=false,raf=0,until=0,signature='';
+  function capture(){
+    if(restoring||!thread.clientHeight)return;
+    const rect=thread.getBoundingClientRect();
+    const nodes=[...col.querySelectorAll('.textmd p,.textmd li,.textmd pre,.txt,.mu,.result-card')];
+    const el=nodes.find(n=>{const r=n.getBoundingClientRect();return r.bottom>rect.top+12&&r.top<rect.bottom;});
+    if(!el){anchor={stick:STICK};return;}
+    const r=el.getBoundingClientRect(),x=Math.max(rect.left+8,Math.min(rect.right-12,r.left+12)),y=Math.max(rect.top+14,Math.min(rect.bottom-12,r.top+12));
+    let range=null;
+    if(document.caretRangeFromPoint)range=document.caretRangeFromPoint(x,y);
+    else if(document.caretPositionFromPoint){const pos=document.caretPositionFromPoint(x,y);if(pos){range=document.createRange();range.setStart(pos.offsetNode,pos.offset);range.collapse(true);}}
+    if(range&&col.contains(range.startContainer)){const rr=range.getBoundingClientRect();if(rr.height)anchor={range,el,top:rr.top-rect.top,stick:STICK};else anchor={el,top:r.top-rect.top,stick:STICK};}
+    else anchor={el,top:r.top-rect.top,stick:STICK};
+  }
+  function restore(){
+    if(!anchor||!thread.clientHeight){restoring=false;return;}
+    restoring=true;
+    if(anchor.stick){thread.scrollTop=thread.scrollHeight;}
+    else if(anchor.el?.isConnected){const r=anchor.range?.getBoundingClientRect()||anchor.el.getBoundingClientRect();if(r.height)thread.scrollTop+=r.top-thread.getBoundingClientRect().top-anchor.top;STICK=false;$('#jump').hidden=false;}
+    if(performance.now()<until)raf=requestAnimationFrame(restore);
+    else{restoring=false;capture();}
+  }
+  function changed(){const next=$('#app').className+'|'+$('#app').style.getPropertyValue('--workspace-width')+'|'+$('#app').style.getPropertyValue('--sidebar-width');if(next===signature)return;signature=next;if(!anchor)capture();until=performance.now()+350;cancelAnimationFrame(raf);raf=requestAnimationFrame(restore);}
+  thread.addEventListener('scroll',()=>{if(!restoring)capture();},{passive:true});
+  for(const kind of ['wheel','touchstart','pointerdown','keydown'])thread.addEventListener(kind,()=>{cancelAnimationFrame(raf);restoring=false;capture();},{passive:true});
+  new MutationObserver(changed).observe($('#app'),{attributes:true,attributeFilter:['class','style']});
+  new MutationObserver(()=>{if(anchor?.el&&!anchor.el.isConnected)anchor=null;}).observe(col,{childList:true});
+  addEventListener('resize',()=>{if(!anchor)capture();until=performance.now()+350;cancelAnimationFrame(raf);raf=requestAnimationFrame(restore);});
+  thread.addEventListener('pointerleave',capture);capture();
+})();
 function landing(on) {
   $('#landing').hidden = !on; $('#thread').hidden = on; $('#dock').hidden = on;
   (on ? $('#slotLand') : $('#slotDock')).appendChild(composer);
