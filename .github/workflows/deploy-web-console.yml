@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   console:
-    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'deploy/hoola-selection-20261028')
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'deploy/hoola-inputs-20261028')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -69,4 +69,8 @@ jobs:
           grep -F 'historyBtn' /tmp/hoola-public-html
           grep -F 'appearance-init.js?v=1' /tmp/hoola-public-html
           curl -fsS --connect-timeout 10 --max-time 30 'https://hoola.ainewtika.com/static/console/appearance-init.js?v=1' | grep -F 'hoola.web.appearance'
-          echo 'PUBLIC_APPEARANCE_VERIFIED'
+          grep -F 'voiceBtn' /tmp/hoola-public-html
+          curl -fsS --connect-timeout 10 --max-time 30 'https://hoola.ainewtika.com/static/console/v2.js?web=inputs1' -o /tmp/hoola-public-inputs
+          grep -F 'View saved conversation' /tmp/hoola-public-inputs
+          grep -F 'Reserve slots before any async' /tmp/hoola-public-inputs
+          echo 'PUBLIC_INPUTS_VERIFIED'
