@@ -241,3 +241,54 @@
 @media(max-width:600px){.history-overlay{padding:10px}.history-surface{padding:18px;height:94dvh;border-radius:16px}.history-count{font-size:11px}.history-surface footer{flex-wrap:wrap}}
 @media(hover:none){#app .rcm{opacity:1}}
 @media(prefers-reduced-motion:reduce){.history-surface,#app .rcw{animation:none;transition:none}}
+/* Appearance: Hoola's palette in light and dark, with consistent surface tokens. */
+:root{--chat-font:var(--fb);--chat-leading:1.7;--chat-spacing:normal;--chat-word-spacing:normal;color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light;--bg0:#F8F7FC;--bg1:#FFFFFF;--panel:#F1EFF8;--deep:#ECE8F5;--ink:#252038;--mut:#615971;--dim:#756D86;--lit:#433B57;--soft:#312A43;--saffron:#A64F0B;--saffron2:#96440B;--violet:#6541C4;--violet2:#7540B4;--ok:#16734F;--bad:#B5263C;--teal:#126F6C;--line:rgba(43,30,73,.11);--hair:rgba(43,30,73,.14);--hair2:rgba(43,30,73,.21);--glass:rgba(82,53,128,.035);--glass2:rgba(82,53,128,.065);--glass3:rgba(82,53,128,.10);--sh:0 18px 50px rgba(42,25,75,.12);--sh2:0 8px 24px rgba(42,25,75,.07);--you:linear-gradient(135deg,#EEE6FC,#F5EAF8)}
+:root[data-theme="light"] body{background:radial-gradient(ellipse at top left,#F0EAFB,var(--bg0) 65%)}
+:root[data-theme="light"] .aurora{opacity:.12}
+:root[data-theme="light"] #app .side{background:rgba(247,245,252,.97)}
+:root[data-theme="light"] #app .box,:root[data-theme="light"] #app .cw-form,:root[data-theme="light"] #app .result-card{background:var(--bg1);box-shadow:var(--sh2)}
+:root[data-theme="light"] #app .mu{background:var(--you)}
+:root[data-theme="light"] #app .result-preview,:root[data-theme="light"] #app #cw-prompt,:root[data-theme="light"] #app .cw-options select{background:var(--panel)}
+:root[data-theme="light"] .rmenu,:root[data-theme="light"] .sbox,:root[data-theme="light"] .xmenu,:root[data-theme="light"] .slash{background:var(--bg1);color:var(--ink)}
+:root[data-theme="light"] .rcren input,:root[data-theme="light"] .sin input{background:var(--bg1);color:var(--ink)}
+:root[data-theme="light"] #app .dock,:root[data-theme="light"] #app .top{background:var(--bg0)}
+:root[data-theme="light"] ::-webkit-scrollbar-thumb{background-color:rgba(70,49,103,.22)}
+:root[data-theme="light"] :focus-visible{outline-color:var(--violet)}
+:root[data-chat-font="system"]{--chat-font:system-ui,-apple-system,'Segoe UI',sans-serif}
+:root[data-chat-font="readable"]{--chat-font:Verdana,Tahoma,Arial,sans-serif;--chat-leading:1.9;--chat-spacing:.055em;--chat-word-spacing:.10em}
+#app .textmd,#app .mu,#msg,.appearance-preview p{font-family:var(--chat-font);line-height:var(--chat-leading);letter-spacing:var(--chat-spacing);word-spacing:var(--chat-word-spacing)}
+#app .textmd pre,#app .textmd code{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;letter-spacing:normal;word-spacing:normal}
+.appearance-overlay{position:fixed;inset:0;z-index:130;display:grid;place-items:center;background:rgba(8,6,20,.48);backdrop-filter:blur(8px);padding:20px}
+.appearance-surface{width:min(520px,100%);max-height:90dvh;overflow:auto;background:var(--bg1);border:1px solid var(--hair2);border-radius:22px;padding:26px;box-shadow:var(--sh);animation:progress-enter .18s ease-out}
+.appearance-surface header{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px}
+.appearance-eyebrow{font-size:10px;letter-spacing:.16em;color:var(--mut)}
+.appearance-surface h2{font-size:24px;margin-top:4px}
+.appearance-surface fieldset{border:0;padding:0;margin:0 0 24px;min-width:0}
+.appearance-surface legend,.appearance-font{font-size:14px;font-weight:600;margin-bottom:12px}
+.appearance-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.appearance-modes label{position:relative;display:grid;gap:10px;justify-items:center;border:1px solid var(--hair2);padding:17px 8px;border-radius:13px;cursor:pointer;background:var(--glass)}
+.appearance-modes label:has(input:checked){border-color:var(--violet);background:var(--glass3);box-shadow:inset 0 0 0 1px var(--violet)}
+.appearance-modes label:focus-within{outline:2px solid var(--saffron);outline-offset:3px}
+.appearance-modes input{position:absolute;opacity:0;width:1px;height:1px}
+.appearance-modes span{font-size:24px;color:var(--mut)}
+.appearance-modes b{font-size:12px;font-weight:600}
+.appearance-font{display:grid;gap:10px}
+.appearance-font select{width:100%;background:var(--panel);border:1px solid var(--hair2);border-radius:10px;padding:11px 12px}
+.appearance-note,.appearance-surface footer{font-size:12px;color:var(--mut);line-height:1.6}
+.appearance-preview{background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:18px;margin:20px 0}
+.appearance-preview>span{font-size:9px;letter-spacing:.14em;color:var(--dim)}
+.appearance-preview p{font-size:14px;margin:10px 0}
+.composer-add-menu{position:fixed;z-index:125;width:min(270px,calc(100vw - 16px));overflow:auto;padding:6px;background:var(--bg1);color:var(--ink);border:1px solid var(--hair2);border-radius:16px;box-shadow:var(--sh);animation:progress-enter .14s ease-out}
+.composer-add-menu button{display:flex;gap:12px;align-items:center;width:100%;text-align:left;padding:11px 12px;font-size:14px;border-radius:10px;font-weight:500}
+.composer-add-menu button:hover,.composer-add-menu button:focus-visible{background:var(--glass3)}
+.composer-add-menu button>span{width:20px;color:var(--mut);font-size:17px;text-align:center}
+.composer-add-menu hr{height:1px;background:var(--line);border:0;margin:5px 7px}
+#app #appearanceBtn{gap:12px;width:100%}
+@media(max-width:420px){.appearance-overlay{padding:12px}.appearance-surface{padding:20px}.appearance-modes{gap:7px}.appearance-modes b{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.appearance-surface,.composer-add-menu{animation:none}}
+
+:root[data-theme="light"] :is(.field input,.mu.editing textarea,.tools,.cb,.cd textarea,.cd .fld,.btxt,.blook,.bscr,.bpg,.bvid,.bshot,.bbox,.pncodebar,.pcode,.pjta,.pwbox input){background:var(--panel);color:var(--ink)}
+:root[data-theme="light"] .pjname:hover,:root[data-theme="light"] .pjname:focus{background:var(--panel)}
+:root[data-theme="light"] #app .side .user{background:var(--glass)}
+#app .textmd .mdh{font-family:var(--chat-font)}

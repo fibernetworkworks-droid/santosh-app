@@ -1133,7 +1133,7 @@ composer.addEventListener('submit', async e => {
   }
 });
 $('#stopBtn').addEventListener('click', async () => { try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/stop`); toast('Rokne ko kaha. Jo kadam chal raha tha woh beech mein ruk sakta hai.'); } catch (e) { toast(e.message, true); } });
-$('#attach').addEventListener('click', () => $('#fileIn').click());
+// Composer additions menu is managed by Hoola appearance controls in workspace.js.
 $('#fileIn').addEventListener('change', e => { const picked = [...e.target.files]; e.target.value = ''; addFiles(picked); });
 async function addFiles(list) {     // paperclip, drag and drop, pasted screenshots: one path
   const origin = CONV, target = FILES;

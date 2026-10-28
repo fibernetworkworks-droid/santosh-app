@@ -10,7 +10,7 @@ import tarfile
 import time
 from urllib.request import urlopen
 
-FILES = ('v2.html','v2.css','v2.js','panel.js','results.js','workspace.js','workspace.css','build.js','chatlist.js','projects.js')
+FILES = ('v2.html','v2.css','v2.js','panel.js','results.js','workspace.js','workspace.css','build.js','chatlist.js','projects.js', 'appearance-init.js')
 
 
 def pagination(source, kind):

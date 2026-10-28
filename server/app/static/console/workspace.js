@@ -204,3 +204,38 @@ window.HoolaProgressPolicy = {
     return 'Working on it…';
   }
 };
+
+// Hoola appearance and composer additions. Preferences are local to this browser.
+(() => {
+  const root=document.documentElement,key='hoola.web.appearance',media=matchMedia('(prefers-color-scheme:dark)');
+  let prefs={theme:'system',font:'default'},dialog=null,menu=null;
+  function read(){try{const p=JSON.parse(localStorage.getItem(key)||'{}')||{};return {theme:['light','dark','system'].includes(p.theme)?p.theme:'system',font:['default','system','readable'].includes(p.font)?p.font:'default'};}catch{return {theme:'system',font:'default'};}}
+  function apply(){root.dataset.theme=prefs.theme==='system'?(media.matches?'dark':'light'):prefs.theme;root.dataset.chatFont=prefs.font;root.style.colorScheme=root.dataset.theme;document.querySelector('meta[name="theme-color"]')?.setAttribute('content',root.dataset.theme==='light'?'#F8F7FC':'#0B0A1A');}
+  function save(){try{localStorage.setItem(key,JSON.stringify(prefs));}catch{}apply();}
+  prefs=read();apply();media.addEventListener('change',()=>{if(prefs.theme==='system')apply();});
+  addEventListener('storage',e=>{if(e.key===key){prefs=read();apply();if(dialog){dialog.querySelector('[name="theme"][value="'+prefs.theme+'"]').checked=true;dialog.querySelector('select').value=prefs.font;}}});
+  function closeAppearance(){dialog?.remove();dialog=null;document.getElementById('appearanceBtn')?.focus();}
+  function appearance(){
+    closeMenu(false);if(dialog)return;
+    dialog=document.createElement('div');dialog.className='appearance-overlay';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','appearanceTitle');
+    dialog.innerHTML='<section class="appearance-surface"><header><div><span class="appearance-eyebrow">MAKE HOOLA YOURS</span><h2 id="appearanceTitle">Appearance</h2></div><button class="ib" data-close aria-label="Close appearance">×</button></header><fieldset><legend>Color mode</legend><div class="appearance-modes">'+[['light','Light','☀'],['dark','Dark','☾'],['system','Match system','◐']].map(([value,label,icon])=>'<label><input type="radio" name="theme" value="'+value+'"'+(prefs.theme===value?' checked':'')+'><span aria-hidden="true">'+icon+'</span><b>'+label+'</b></label>').join('')+'</div></fieldset><label class="appearance-font">Chat font<select aria-label="Chat font"><option value="default">Default · Hoola</option><option value="system">Match system</option><option value="readable">Dyslexia-friendly</option></select></label><p class="appearance-note">Dyslexia-friendly uses a familiar sans-serif font with extra spacing. Choose what feels easiest to read.</p><div class="appearance-preview"><span>READING PREVIEW</span><p>Your ideas, clearly expressed.</p><p>Hoola keeps your conversation comfortable and your work in focus.</p></div><footer>Saved automatically on this browser.</footer></section>';
+    document.body.appendChild(dialog);dialog.querySelector('select').value=prefs.font;dialog.querySelector('input:checked').focus();
+    dialog.addEventListener('change',e=>{if(e.target.name==='theme')prefs.theme=e.target.value;else if(e.target.matches('select'))prefs.font=e.target.value;save();});
+    dialog.addEventListener('click',e=>{if(e.target===dialog||e.target.closest('[data-close]'))closeAppearance();});
+    dialog.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();closeAppearance();return;}if(e.key==='Tab'){const nodes=[...dialog.querySelectorAll('button,select,input:checked')],first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
+  }
+  const trigger=document.getElementById('attach');
+  function closeMenu(restore=true){menu?.remove();menu=null;trigger.setAttribute('aria-expanded','false');if(restore)trigger.focus();}
+  function position(){if(!menu)return;const r=trigger.getBoundingClientRect();menu.style.left=Math.max(8,Math.min(innerWidth-menu.offsetWidth-8,r.left))+'px';menu.style.top=Math.max(8,r.top-menu.offsetHeight-9)+'px';menu.style.maxHeight=Math.max(80,r.top-18)+'px';}
+  function openMenu(){
+    if(menu){closeMenu();return;}
+    menu=document.createElement('div');menu.id='composerAddMenu';menu.className='composer-add-menu';menu.setAttribute('role','menu');menu.setAttribute('aria-label','Add to conversation');
+    menu.innerHTML='<button type="button" role="menuitem" data-add="files"><span aria-hidden="true">↥</span>Add files or photos</button><hr><button type="button" role="menuitem" data-create="image"><span aria-hidden="true">▧</span>Create image</button><button type="button" role="menuitem" data-create="research"><span aria-hidden="true">⌕</span>Research</button><button type="button" role="menuitem" data-create="document"><span aria-hidden="true">▤</span>Create document</button><hr><button type="button" role="menuitem" data-add="appearance"><span aria-hidden="true">◐</span>Appearance</button>';
+    document.body.appendChild(menu);trigger.setAttribute('aria-expanded','true');position();menu.querySelector('button').focus();
+    menu.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.add==='files')document.getElementById('fileIn').click();if(b.dataset.add==='appearance'){closeMenu(false);appearance();return;}setTimeout(()=>closeMenu(!b.dataset.create),0);});
+    menu.addEventListener('keydown',e=>{const nodes=[...menu.querySelectorAll('button')],i=nodes.indexOf(document.activeElement);if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeMenu();}else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();nodes[e.key==='Home'?0:e.key==='End'?nodes.length-1:(i+(e.key==='ArrowDown'?1:-1)+nodes.length)%nodes.length].focus();}else if(e.key==='Tab')closeMenu();});
+  }
+  trigger.addEventListener('click',openMenu);document.getElementById('appearanceBtn')?.addEventListener('click',appearance);
+  document.addEventListener('pointerdown',e=>{if(menu&&!menu.contains(e.target)&&!trigger.contains(e.target))closeMenu(false);});
+  addEventListener('resize',position);document.addEventListener('scroll',()=>{if(menu)position();},true);
+})();
