@@ -331,3 +331,15 @@
 #app .cb pre{white-space:pre;overflow-x:auto;max-width:100%;overscroll-behavior-x:contain}
 #app .textmd .mdt{display:block;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
 #app .textmd :is(img,video,iframe){max-width:100%}
+#app .artifact-templates{margin:22px 0 28px}
+#app .artifact-templates h3,#app .artifact-library-label{font-size:14px;font-weight:600;margin-bottom:12px}
+#app .artifact-template-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+#app .artifact-template-grid button{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:9px;background:var(--glass);border:1px solid var(--hair);border-radius:16px;padding:18px;transition:background .16s,border-color .16s}
+#app .artifact-template-grid button:hover{background:var(--glass3);border-color:var(--violet)}
+#app .artifact-template-grid button>span{font-size:24px;color:var(--saffron2)}
+#app .artifact-template-grid b{font-size:14px;font-weight:600}
+#app .artifact-template-grid small,#app .artifact-templates p{font-size:12px;color:var(--mut);line-height:1.6;font-weight:400}
+#app .pnchg input{background:var(--panel);color:var(--ink)}
+@media(max-width:1000px){#app .artifact-template-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:380px){#app .artifact-template-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){#app .artifact-template-grid button{transition:none}}

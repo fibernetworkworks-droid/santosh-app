@@ -39,7 +39,7 @@ window.HoolaResults = ctx => {
   }
   function actions(s, item, download, name) {
     const row = document.createElement('div'); row.className = 'result-actions';
-    row.innerHTML = '<button type="button" class="btn soft" data-expand>Kholo · workspace</button>'
+    row.innerHTML = '<button type="button" class="btn soft" data-expand>Open in workspace</button>'
       + (ctx.reuse && !item.url && item.type !== 'page' ? '<button type="button" class="btn soft" data-reuse>Use as reference</button>' : '')
       + (download ? '<button type="button" class="btn soft" data-download>Download</button>' : '');
     row.querySelector('[data-expand]').onclick = () => ctx.open(item);

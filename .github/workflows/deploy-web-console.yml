@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   console:
-    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'deploy/hoola-geometry-20261028')
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'deploy/hoola-artifacts-20261028')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -77,4 +77,7 @@ jobs:
           curl -fsS --connect-timeout 10 --max-time 30 'https://hoola.ainewtika.com/static/console/workspace.js?web=progress1' -o /tmp/hoola-public-research
           grep -F 'Web + connected apps + files' /tmp/hoola-public-research
           grep -F 'Preserve the visible text anchor' /tmp/hoola-public-inputs
-          echo 'PUBLIC_GEOMETRY_VERIFIED'
+          curl -fsS --connect-timeout 10 --max-time 30 'https://hoola.ainewtika.com/static/console/panel.js?web=artifacts1' -o /tmp/hoola-public-artifacts
+          grep -F 'Start from a template' /tmp/hoola-public-artifacts
+          grep -F 'Refine in chat' /tmp/hoola-public-artifacts
+          echo 'PUBLIC_ARTIFACTS_VERIFIED'

@@ -157,11 +157,11 @@ async function enter() {
     PJ.load();
   }
   if (CONFIG.panel && window.HoolaPanel && !PN) {   // v0.163 finished work opens beside the chat
-    PN = HoolaPanel({api, esc, toast, token: () => TOKEN, conv: () => CONV, goLibrary: () => go('bana'),
+    PN = HoolaPanel({api, esc, toast, token: () => TOKEN, conv: () => CONV, goLibrary: () => go('bana'), canOpen:()=>VIEW==='chat',
       say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); },
       closeStudio: () => { if (B?.isOpen()) B.close(); },
       studio: (kind, p) => { go('chat'); const b = col.querySelector(`[data-key="${CSS.escape(kind + ':' + p.id)}"] [data-ba="studio"]`); if (b) b.click(); else toast('Studio ke liye chat mein us kaam ka card kholiye.'); }});
-    NAV.splice(3, 0, ['bana', 'Creations']); drawNav();
+    NAV.splice(3, 0, ['bana', 'Artifacts']); drawNav();
   }
   const list = await loadRecents();
   const fromUrl = (location.pathname.match(/^\/console\/c\/([^/?#]+)/) || [])[1];
