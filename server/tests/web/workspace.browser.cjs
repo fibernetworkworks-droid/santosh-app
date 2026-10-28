@@ -29,6 +29,7 @@ const server=http.createServer((req,res)=>{
  }
  const file=p.startsWith('/static/')?path.join(root,p.slice(8)):path.join(root,'console/v2.html');
  if(!file.startsWith(root)||!fs.existsSync(file)){res.writeHead(404);return res.end();}
+ if(file.endsWith('.html'))res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'");
  res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.html')?'text/html':'image/png');res.end(fs.readFileSync(file));
 });
 (async()=>{
@@ -38,6 +39,40 @@ const server=http.createServer((req,res)=>{
  page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>localStorage.setItem('hoola.console.token','fixture-only'));
  await page.goto(`http://127.0.0.1:${server.address().port}/console/`);await page.locator('#app').waitFor({state:'visible'});
+ await page.locator('#appearanceBtn').click();
+ const appearance=page.getByRole('dialog',{name:'Appearance',exact:true});
+ await appearance.getByRole('radio',{name:'Light',exact:true}).check();
+ assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
+ assert.equal(await page.locator('.side').evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(247, 245, 252, 0.97)');
+ const selection=async()=>{await page.waitForSelector('.side .rcw.cur');const colors=await page.evaluate(()=>{const style=s=>{const c=getComputedStyle(document.querySelector(s));return {background:c.backgroundColor,color:c.color,shadow:c.boxShadow};};return {nav:style('.side .sn[aria-current="true"]'),row:style('.side .rcw.cur'),link:style('.side .rcw.cur .rc')};});assert.deepEqual(colors.nav,colors.row);assert.equal(colors.link.color,colors.nav.color);assert.equal(colors.link.background,'rgba(0, 0, 0, 0)');};
+ await selection();
+ await appearance.getByRole('combobox',{name:'Chat font'}).selectOption('readable');
+ assert.equal(await page.locator('html').getAttribute('data-chat-font'),'readable');
+ assert.ok(await page.locator('#msg').evaluate(e=>parseFloat(getComputedStyle(e).letterSpacing)>0));
+ if(shots)await page.screenshot({path:path.join(shots,'hoola-appearance-light.png')});
+ await page.keyboard.press('Escape');assert.equal(await page.locator('#appearanceBtn').evaluate(e=>e===document.activeElement),true);
+ await page.reload();await page.locator('#app').waitFor({state:'visible'});
+ assert.equal(await page.locator('html').getAttribute('data-theme'),'light');assert.equal(await page.locator('html').getAttribute('data-chat-font'),'readable');
+ await page.locator('#appearanceBtn').click();await appearance.getByRole('radio',{name:'Match system',exact:true}).check();
+ await page.emulateMedia({colorScheme:'dark'});await page.waitForFunction(()=>document.documentElement.dataset.theme==='dark');
+ await page.emulateMedia({colorScheme:'light'});await page.waitForFunction(()=>document.documentElement.dataset.theme==='light');
+ await appearance.getByRole('radio',{name:'Dark',exact:true}).check();await page.emulateMedia({colorScheme:'light'});assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
+ await selection();
+ await appearance.getByRole('combobox',{name:'Chat font'}).selectOption('system');assert.equal(await page.locator('html').getAttribute('data-chat-font'),'system');
+ await appearance.getByRole('combobox',{name:'Chat font'}).selectOption('default');
+ if(shots)await page.screenshot({path:path.join(shots,'hoola-appearance-dark.png')});
+ await appearance.getByRole('button',{name:'Close appearance'}).click();
+ await page.locator('#attach').click();assert.equal(await page.locator('#attach').getAttribute('aria-expanded'),'true');
+ await page.keyboard.press('End');assert.equal(await page.getByRole('menuitem',{name:'Appearance',exact:true}).evaluate(e=>e===document.activeElement),true);
+ await page.keyboard.press('Escape');assert.equal(await page.locator('#attach').evaluate(e=>e===document.activeElement),true);
+ await page.locator('#attach').click();const chooserPromise=page.waitForEvent('filechooser');await page.getByRole('menuitem',{name:'Add files or photos'}).click();const chooser=await chooserPromise;assert.ok(chooser.isMultiple());
+ await page.locator('#attach').click();await page.getByRole('menuitem',{name:'Create image',exact:true}).click();await page.locator('#cw-prompt').waitFor({state:'visible'});
+ await page.locator('.side [data-v="chat"]').click();
+ await page.setViewportSize({width:390,height:844});await page.locator('#attach').click();
+ const bounds=await page.locator('#composerAddMenu').boundingBox();assert.ok(bounds.x>=0 && bounds.x+bounds.width<=390 && bounds.y>=0);
+ await page.waitForTimeout(220);assert.equal(await page.locator('#composerAddMenu').evaluate(e=>getComputedStyle(e).opacity),'1');
+ if(shots)await page.screenshot({path:path.join(shots,'hoola-composer-mobile.png')});
+ await page.keyboard.press('Escape');await page.setViewportSize({width:1440,height:1000});
  const divider=page.getByRole('separator',{name:'Resize sidebar'});
  const edge=await divider.boundingBox();
  await page.mouse.move(edge.x+4,200);await page.mouse.down();await page.mouse.move(edge.x+80,200,{steps:8});await page.mouse.up();

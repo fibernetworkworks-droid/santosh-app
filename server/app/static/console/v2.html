@@ -5,14 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#0B0A1A">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="light dark">
+<script src="/static/console/appearance-init.js?v=1"></script>
 <title>Hoola Console</title>
 <link rel="icon" href="/static/santosh-head.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="/static/console/v2.css?v=0.217.0&web=1">
-<link rel="stylesheet" href="/static/console/workspace.css?web=progress2&rev=5">
+<link rel="stylesheet" href="/static/console/workspace.css?web=progress2&rev=7">
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -60,6 +61,7 @@
     <div id="projects" class="projects"></div>
     <button class="sn" id="historyBtn" type="button" aria-label="Chats and tasks"><span aria-hidden="true">◷</span><span class="txt">Chats and tasks</span></button><div class="slabel">Recent conversations</div>
     <div class="recents" id="recents"></div>
+    <button class="sn" id="appearanceBtn" type="button"><span aria-hidden="true">◐</span><span class="txt">Appearance</span></button>
     <div class="console-controls" aria-label="Conversation tools">
       <button class="ib" id="exportBtn" type="button" aria-label="Chat export karein" aria-haspopup="menu" title="Chat export (Markdown / JSON)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg></button>
       <div class="xmenu gl" id="exportMenu" hidden role="menu" aria-label="Export format">
@@ -120,7 +122,7 @@
   <div class="files" id="files"></div>
   <textarea id="msg" rows="1" placeholder="Ask anything, attach a file, or describe what you want to create" aria-label="Message"></textarea>
   <div class="row">
-    <button type="button" class="ib" id="attach" aria-label="Attach files"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.5l-8.5 8.5a5 5 0 0 1-7-7L14 5.5a3.3 3.3 0 0 1 4.7 4.7L10.2 18.7a1.7 1.7 0 0 1-2.4-2.4L15.5 8.6"/></svg></button>
+    <button type="button" class="ib" id="attach" aria-label="Add to conversation" aria-haspopup="menu" aria-expanded="false" aria-controls="composerAddMenu" title="Add to conversation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
     <input type="file" id="fileIn" multiple hidden>
     <button type="button" class="ib" id="toolsBtn" aria-label="Everything Hoola can do"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></button>
     <span class="who"><span class="aname">Santosh</span> · English</span>
@@ -140,7 +142,7 @@
 <script src="/static/console/panel.js?v=0.217.0&web=en1"></script>
 <script src="/static/console/projects.js?v=0.217.0&web=en1"></script>
 <script src="/static/console/results.js?v=web-en1"></script>
-<script src="/static/console/workspace.js?web=progress1&rev=5"></script>
-<script src="/static/console/v2.js?v=0.217.0&web=navigation1"></script>
+<script src="/static/console/workspace.js?web=progress1&rev=7"></script>
+<script src="/static/console/v2.js?v=0.217.0&web=appearance1"></script>
 </body>
 </html>
