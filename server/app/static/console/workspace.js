@@ -39,7 +39,7 @@ window.HoolaWorkspace = ctx => {
           ${['image','video'].includes(mode)?`<label>Format<select id="cw-aspect">${ASPECTS.filter(a=>mode!=='video'||a!=='4:5').map(a=>`<option${a===(d.aspect||'16:9')?' selected':''}>${a}</option>`).join('')}</select></label>`:''}
           ${mode==='image'?`<label>Quality<select id="cw-quality"><option value="fast"${d.quality!=='best'?' selected':''}>Standard</option><option value="best"${d.quality==='best'?' selected':''}>Best · higher cost</option></select></label>`:''}
           ${mode==='video'?`<label>Length<select id="cw-seconds">${[15,30,60].map(n=>`<option value="${n}"${String(n)===(d.seconds||'15')?' selected':''}>${n} seconds</option>`).join('')}</select></label><label>Voiceover<select id="cw-language">${['Hindi','Marathi','English'].map(l=>`<option${l===(d.language||'English')?' selected':''}>${l}</option>`).join('')}</select></label>`:''}
-          ${mode==='research'?`<label>Source preference<select id="cw-sources"><option value="web"${d.sources!=='files'?' selected':''}>Public web + attached files</option><option value="files"${d.sources==='files'?' selected':''}>Attached files only</option></select></label>`:''}
+          ${mode==='research'?`<label>Source preference<select id="cw-sources"><option value="web"${!['files','connected','all'].includes(d.sources)?' selected':''}>Public web + attached files</option><option value="connected"${d.sources==='connected'?' selected':''}>Connected apps + attached files</option><option value="all"${d.sources==='all'?' selected':''}>Web + connected apps + files</option><option value="files"${d.sources==='files'?' selected':''}>Attached files only</option></select></label>`:''}
           ${mode==='document'?`<label>Output<select id="cw-format">${['Word (.docx)','PDF (.pdf)','Excel (.xlsx)','Presentation (.pptx)'].map(l=>`<option${l===(d.format||'Word (.docx)')?' selected':''}>${l}</option>`).join('')}</select></label>`:''}
         </div>
         <div class="cw-refhead"><span>${mode==='image'?'Reference images':'Source files'}</span><button class="btn soft" type="button" data-cw="attach">+ Add files</button><input id="cw-files" type="file" multiple ${mode==='image'?'accept="image/png,image/jpeg,image/webp"':''} hidden></div>
@@ -84,7 +84,10 @@ window.HoolaWorkspace = ctx => {
     const context=refs?`\nAttached references:\n${refs}`:'';
     if(mode==='image')return `Create ${files.length?'an edited image using my reference images':'a new image'} with photo_banao. Aspect ${d.aspect||'16:9'}, quality ${d.quality||'fast'}.\nBrief: ${d.text}${context}\nReturn the actual image result. Preserve any provided product identity and exact requested wording.`;
     if(mode==='video')return `Use video_studio to prepare a ${d.seconds||15}-second ${d.aspect||'16:9'} video storyboard with ${d.language||'English'} voiceover.\nBrief: ${d.text}${context}\nPrepare the shot plan and estimate. Do not start paid generation until I approve its cost. Return the storyboard and existing project card. Do not claim a completed video before generation and assembly.`;
-    if(mode==='research')return `Research this question: ${d.text}${context}\nSource preference: ${d.sources==='files'?'Use ONLY the attached files; do not browse or use external sources. State what these files do not establish.':'Use current public sources and the attached files. Prefer primary sources.'}\nShow a work plan, then research. Cite sources, distinguish facts from inference, and state gaps. Return the report here in chat, and create a downloadable document if supported.`;
+    if(mode==='research'){
+      const scopes={files:'Use ONLY the attached files. Do not search the web or connected apps. State gaps in these files.',web:'Use current public web sources and attached files. Do not access private connected apps.',connected:'Use only my already connected apps and attached files. Do not search the public web.',all:'Use current public web sources, my already connected apps and attached files.'};
+      return `Research this question: ${d.text}${context}\nSource scope: ${scopes[d.sources]||scopes.web}\nBreak the question into a few focused research questions. Run distinct relevant searches and refine them from the evidence; do not repeat identical searches to inflate activity. Read promising results, compare independent sources, reconcile conflicts and cite the actual sources used. Prefer primary public sources. For connected sources, use only tools already authorized for my account; check availability and report unavailable sources honestly, without connecting new accounts or requesting broader access. Research is read-only: do not send messages, change files, or publish anything.\nKeep progress short in English; report meaningful milestones rather than every small step. Return a clear final report in chat with findings, citations, uncertainty and source-coverage gaps. Distinguish facts from inference. Create a downloadable document only if supported. Do not claim completion before the research finishes.`;
+    }
     return `Create a real ${d.format||'Word (.docx)'} document.\nBrief: ${d.text}${context}\nUse the provided source material. Do not invent company facts. Show the finished file in chat with a download and preview. If information is missing, mark it clearly.`;
   }
   async function submit(e){
@@ -183,11 +186,15 @@ window.HoolaProgressPolicy = {
     if(kind==='think')return 'Considering the request';
     if(kind==='typing')return 'Request received';
     if(kind==='reply_start')return 'Preparing the response';
-    if(['failed','error','partial','stopped'].includes(p.status||p.phase))return 'Checking an incomplete result';
+    if(['failed','error','partial','stopped'].includes(p.status||p.phase||p.state))return 'Checking an incomplete result';
     if(['waiting','blocked'].includes(p.status||p.phase))return 'Waiting for the next step';
     if(kind==='step'){
       const tool=String(p.tool||'').toLowerCase();
-      if(/search|research|browse|browser/.test(tool))return 'Checking sources';
+      if(/drive_find/.test(tool))return 'Searching connected files';
+      if(/email_check|email_threads|mail.*search/.test(tool))return 'Searching connected email';
+      if(/gyaan_khojo|yaad_khojo/.test(tool))return 'Searching available knowledge';
+      if(/search|research/.test(tool))return 'Searching sources';
+      if(/browse|browser|fetch|web_read/.test(tool))return 'Checking sources';
       if(/file|document|pdf|sheet/.test(tool))return 'Working with files';
       if(/image|photo|video|media/.test(tool))return 'Working on media';
       return 'Working on the task';
@@ -195,14 +202,21 @@ window.HoolaProgressPolicy = {
     if(kind==='work')return 'Processing task results';
     return null;
   },
+  search(kind,p={}){return kind==='step'&&!!p.id&&/search|research|drive_find|email_check|email_threads|gyaan_khojo|yaad_khojo/.test(String(p.tool||'').toLowerCase());},
   phase(kind,p={}) {
     if (/(^|_)ask($|_)|approval|confirm/.test(kind)||p.status==='needs_approval')return 'Your approval is required';
     if(['waiting','blocked'].includes(p.status||p.phase))return 'Waiting for the next step…';
     if (['failed','error','partial','stopped'].includes(p.status||p.phase)||p.state==='error')return 'Reviewing an incomplete result…';
     if(kind==='think'||kind==='typing')return 'Thinking…';
     if(kind==='reply_start'||kind==='reply_end')return 'Preparing your response…';
+    const tool=String(p.tool||'').toLowerCase();
+    if(['step','work'].includes(kind)&&['done','completed'].includes(p.state||p.phase)&&/search|research|drive_find|email_check|email_threads|gyaan_khojo|yaad_khojo/.test(tool))return 'Reviewing sources…';
+    if(['step','work'].includes(kind)&&/drive_find/.test(tool))return 'Searching connected files…';
+    if(['step','work'].includes(kind)&&/email_check|email_threads|mail.*search/.test(tool))return 'Searching connected email…';
+    if(['step','work'].includes(kind)&&/search|research|gyaan_khojo|yaad_khojo/.test(tool))return 'Searching sources…';
     return 'Working on it…';
-  }
+  },
+  elapsed(ms){const seconds=Math.max(0,Math.floor(ms/1000));return seconds<60?seconds+'s':Math.floor(seconds/60)+'m '+seconds%60+'s';}
 };
 
 // Hoola appearance and composer additions. Preferences are local to this browser.

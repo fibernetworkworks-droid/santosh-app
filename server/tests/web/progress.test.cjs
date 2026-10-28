@@ -17,3 +17,16 @@ test('dropdown activity uses safe event summaries only',()=>{
  assert.equal(p.activity('say',{text:'SECRET'}),null);
  assert.equal(p.activity('browser',{status:'failed'}),'Checking an incomplete result');
 });
+
+test('search indicators reflect actual tool events and safe completion states',()=>{
+ assert.equal(p.phase('step',{tool:'google_search',state:'running'}),'Searching sources…');
+ assert.equal(p.phase('work',{tool:'drive_find',phase:'running'}),'Searching connected files…');
+ assert.equal(p.phase('step',{tool:'email_check',state:'done'}),'Reviewing sources…');
+ assert.equal(p.phase('step',{tool:'google_search',state:'error'}),'Reviewing an incomplete result…');
+ assert.equal(p.search('step',{id:'s1',tool:'drive_find'}),true);
+ assert.equal(p.search('work',{id:'s1',tool:'drive_find'}),false);
+ assert.equal(p.search('step',{tool:'google_search'}),false);
+});
+test('elapsed time is honest wall-clock duration without percentages',()=>{
+ assert.equal(p.elapsed(-1),'0s');assert.equal(p.elapsed(59000),'59s');assert.equal(p.elapsed(61000),'1m 1s');
+});

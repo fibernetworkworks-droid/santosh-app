@@ -345,17 +345,19 @@ function stepArgsHtml(id) {
   return rows.length ? `<div class="targs"><div class="kv">${rows.join('')}</div></div>` : '';
 }
 const PROGRESS_POLICY = window.HoolaProgressPolicy;
-let SIMPLE_PROGRESS = null;
+let SIMPLE_PROGRESS = null, PROGRESS_CLOCK = null, PROGRESS_STARTED = 0, PROGRESS_SEARCH_IDS = new Set();
 function simpleProgress(kind,p={}) {
   if(kind!=='typing' && !TYPING)return;
   const t=turn();
   if (!SIMPLE_PROGRESS) {
     SIMPLE_PROGRESS=document.createElement('details');SIMPLE_PROGRESS.className='simple-progress';
-    SIMPLE_PROGRESS.innerHTML='<summary><span class="progress-label" role="status" aria-live="polite"></span><span class="progress-dots" aria-hidden="true"><i></i><i></i><i></i></span><svg class="progress-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><ol class="progress-activity" aria-label="Task activity"></ol>';
+    SIMPLE_PROGRESS.innerHTML='<summary><span class="progress-label" role="status" aria-live="polite"></span><span class="progress-elapsed" aria-label="Elapsed response time"></span><span class="progress-search-count" hidden></span><span class="progress-dots" aria-hidden="true"><i></i><i></i><i></i></span><svg class="progress-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><ol class="progress-activity" aria-label="Activity summary"></ol>';
   }
+  if(!PROGRESS_CLOCK){PROGRESS_STARTED=performance.now();const tick=()=>{if(SIMPLE_PROGRESS)SIMPLE_PROGRESS.querySelector('.progress-elapsed').textContent=PROGRESS_POLICY.elapsed(performance.now()-PROGRESS_STARTED);};tick();PROGRESS_CLOCK=setInterval(tick,1000);}
   if(SIMPLE_PROGRESS.parentElement!==t.bd)t.bd.appendChild(SIMPLE_PROGRESS);
   t.bd.closest('.mh').classList.add('progress-active');
   SIMPLE_PROGRESS.hidden=false;
+  if(PROGRESS_POLICY.search(kind,p)){PROGRESS_SEARCH_IDS.add(String(p.id));const count=SIMPLE_PROGRESS.querySelector('.progress-search-count');count.hidden=false;count.textContent=PROGRESS_SEARCH_IDS.size+' '+(PROGRESS_SEARCH_IDS.size===1?'search':'searches');}
   const label=PROGRESS_POLICY.phase(kind,p);
   const text=SIMPLE_PROGRESS.querySelector('.progress-label');if(text.textContent!==label)text.textContent=label;
   const activity=PROGRESS_POLICY.activity(kind,p),list=SIMPLE_PROGRESS.querySelector('ol');
@@ -365,10 +367,19 @@ function simpleProgress(kind,p={}) {
   }
   scrollDown();
 }
-function clearSimpleProgress(){
+function clearSimpleProgress(keep=false){
+  clearInterval(PROGRESS_CLOCK);PROGRESS_CLOCK=null;
   SIMPLE_PROGRESS?.closest('.mh')?.classList.remove('progress-active');
-  SIMPLE_PROGRESS?.remove();SIMPLE_PROGRESS=null;
+  if(keep&&SIMPLE_PROGRESS){
+    SIMPLE_PROGRESS.className='progress-record';SIMPLE_PROGRESS.open=false;
+    SIMPLE_PROGRESS.querySelector('.progress-label').textContent='Activity';
+    SIMPLE_PROGRESS.querySelector('.progress-label').removeAttribute('role');SIMPLE_PROGRESS.querySelector('.progress-label').removeAttribute('aria-live');
+    SIMPLE_PROGRESS.querySelector('.progress-elapsed').textContent=PROGRESS_POLICY.elapsed(performance.now()-PROGRESS_STARTED);
+    SIMPLE_PROGRESS.querySelector('.progress-dots').remove();
+  }else SIMPLE_PROGRESS?.remove();
+  SIMPLE_PROGRESS=null;PROGRESS_STARTED=0;PROGRESS_SEARCH_IDS.clear();
 }
+
 function stepEvent(p) { simpleProgress('step',p); }
 function closeTurnTools(t = TURN) {
   if (!t) return;
@@ -384,7 +395,7 @@ function typing(on) {
   $('#stopBtn').hidden=!on;
   if(on){TYPING ||= document.createElement('div');simpleProgress('typing');live('run');}
   else {
-    TYPING=null;clearSimpleProgress();closeTurnTools();
+    TYPING=null;clearSimpleProgress(true);closeTurnTools();
     for(const [cid,R] of [...RCPTS])if(R.state==='queue')receiptUpdate(cid,'sent');
     live(QUEUE.length?'ask':'idle');TURN=null;
   }

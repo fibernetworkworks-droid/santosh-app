@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   console:
-    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'deploy/hoola-inputs-20261028')
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'deploy/hoola-research-20261028')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -73,4 +73,7 @@ jobs:
           curl -fsS --connect-timeout 10 --max-time 30 'https://hoola.ainewtika.com/static/console/v2.js?web=inputs1' -o /tmp/hoola-public-inputs
           grep -F 'View saved conversation' /tmp/hoola-public-inputs
           grep -F 'Reserve slots before any async' /tmp/hoola-public-inputs
-          echo 'PUBLIC_INPUTS_VERIFIED'
+          grep -F 'PROGRESS_CLOCK' /tmp/hoola-public-inputs
+          curl -fsS --connect-timeout 10 --max-time 30 'https://hoola.ainewtika.com/static/console/workspace.js?web=progress1' -o /tmp/hoola-public-research
+          grep -F 'Web + connected apps + files' /tmp/hoola-public-research
+          echo 'PUBLIC_RESEARCH_VERIFIED'
