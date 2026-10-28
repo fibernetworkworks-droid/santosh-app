@@ -12,7 +12,14 @@ as the only signal. Her words still pick the state; her voice THIS turn, measure
 (voicestyle profile facts - phone mics lie, but her normal does not), can now VETO a glad note it
 contradicts (sarcasm, tiredness - a celebration voice over flat words is exactly the uncanny note the
 precision rule forbids), CONFIRM a low one, and her measured thinking-pauses add a 'jaldi mat kaato' rider
-(the ear test's list-rush failure, grounded in her own pauses)."""
+(the ear test's list-rush failure, grounded in her own pauses).
+
+v0.220.0 SOORAT (Wave 3 of the PERFECT plan, Phase C's last remainder - prosody AT the moment): the v0.201
+note speaks once and dies, while the scripted moments around it keep their own fixed energy - after heavy
+news a tool's ack clip can still go bright on 'mil gaya!', and when SHE MOVES (heavy to light, anger to
+calm) nothing tells him to move with her. Two pieces here: TAG, a short tone clause per state that the
+caller rides on the scripted notes while the state is still fresh (TONE_S), and flip_note(), the one
+clause a state FLIP adds so the next reply drops the old energy and follows her."""
 
 import math
 
@@ -97,6 +104,34 @@ def pause_rider(pros: dict | None) -> str | None:
     if sum(1 for p in (pros.get("pauses") or []) if p >= PAUSE_MS) < PAUSE_N:
         return None
     return PAUSE_RIDER
+
+# ---------------------------------------------------------------- her tone, at the moment (v0.220 SOORAT)
+# A state note speaks ONCE for one reply (high precision, debounced); these two pieces let his energy
+# FOLLOW her across the moments in between. TAG is what a scripted note carries while the tone is still
+# fresh; the caller decides which moments are scripted enough to need it (the ack clips that cannot be
+# retuned, the result / stall notes he reads out, the reconnect re-brief). TONE_S is deliberately a
+# lifetime, not a debounce: fresh words re-anchor it, and after it lapses his own band is allowed back.
+TONE_S = 150
+
+TAG = {
+    "low": ("(Awaaz is pal: dheere aur naram - bhaari baat ke beech hain; koi zor ki khushi ya tez 'mil gaya' "
+            "wali awaaz nahi.)"),
+    "tense": ("(Awaaz is pal: shaant aur pakad ke - woh pareshan ya gusse mein hai; na jaldi, na uchhal.)"),
+    "glad": ("(Awaaz is pal: thodi garm aur zinda - acchi khabar chal rahi hai; sookhi helpdesk awaaz nahi.)"),
+}
+
+FLIP_FROM = {"low": "bhaari/udaas se", "glad": "khush/halke se", "tense": "gusse/pareshani se"}
+FLIP_TO = {"low": "phir bhaari par", "glad": "halke-khush par", "tense": "gusse/pareshani par"}
+
+
+def flip_note(prev: str, cur: str) -> str | None:
+    """A state FLIP (she moved): the clause the note gains so his energy follows her - 'pichli energy abhi
+    se chhod do'. None when there is no flip (first note, same state again, or an unknown state)."""
+    if not prev or prev == cur or prev not in FLIP_FROM or cur not in FLIP_TO:
+        return None
+    return (f"(Uski awaaz abhi badli hai - {FLIP_FROM[prev]} {FLIP_TO[cur]} aa gayi; apni awaaz uske saath "
+            "le jao, pichli energy isi pal chhod do.)")
+
 
 NOTE = {
     "low": ("(Deli ka note: uski baat mein dukh ya bhaari pan hai - is jawab mein dheere bolo, awaaz thodi "

@@ -8707,3 +8707,36 @@ kaam_followup publisher pins, SantoshPush learns-the-kind pins, wake-path entry 
 full-screen intent, CATEGORY_CALL, own channel, timeout), state.dart fresh-only auto-call, version.
 Version 0.219.0 (APP_VERSION story, pubspec 0.219.0+254, console ?v=0.219.0 x9, pins ->0.219.0 in
 28 suites); Mera PC freeze respected; desktop untouched 1.4.0.
+
+## v0.220.0 SOORAT — Wave 3 of the voice-to-voice PERFECT plan: his energy follows her transitions, prosody AT the moment (owner: "WAVE 3 -- START")
+
+Phase C's last remainder. The v0.201 feeling note speaks once for one reply — but around it the SCRIPTED
+moments kept their fixed energy, and that is the residue of ear-test failures 1/2/5: after heavy news a
+tool's pre-rendered ack clip can still go bright on "mil gaya!", and when SHE MOVES (heavy to light, anger
+to calm) nothing told him to move with her. Two pieces:
+
+1. **The tone stays and tints the scripted moments.** The feeling note re-anchors a tone
+   (`voiceaffect.TONE_S` = 150 s lifetime; fresh words re-anchor it; then his own band is allowed back —
+   an old mood never tints a bright new topic). While it is fresh, `TAG` — a short tone clause per state —
+   rides the moments he speaks from a script: the stall nudge, the tool-result announcements
+   (`_note_result`, all four `_late_result` wordings), and the reconnect re-brief (`_reseed` tells the
+   fresh session HOW she is talking right now, not just WHAT was said). The ack pool goes mood-aware:
+   `_ACK_BRIGHT` is the ONE keyword rule (`_ack_ask` renders by it, `_bright_ack_ix()` reads it at play
+   time), `_ACK_IX` keeps pool-position → ACK_LINES-index through failed renders, and while her tone is
+   low/tense the ack watch picks ONLY the soft clips — a heavy moment never hears a bright "mil gaya!"
+   (an all-bright pool still speaks — never dead air; glad/neutral pools untouched). Backchannels and
+   progress stay neutral murmurs by design, tone-safe.
+2. **A flip is named.** A state change (low→glad, glad→tense, …) adds `voiceaffect.flip_note` — "uski
+   awaaz abhi badli hai … pichli energy isi pal chhod do" — to the note and counts `affect_transitions`:
+   the next reply drops the old energy instead of trailing behind.
+
+Kill switch `voice_soorat`: off = the v0.219 engine exactly (no tone, no filter, no flip clause).
+Server-only deploy, old APKs keep working.
+
+Tests: NEW `test_v0220_soorat.py` (19) — tags compact for all states, flip_note only on real flips, tone
+decay + kill switch, `_bright_ack_ix` pinned to the SAME rule `_ack_ask` speaks, the ix map survives a
+dead render, the ack watch never plays bright while heavy (30 draws) and allows it back when glad,
+all-bright fallback, kill-switch never filters, flip clause + re-anchor / first note is no transition,
+scripted notes (result, reseed, stall, late result) carry the tone fresh and drop it stale, scorecard
+counters, version. Version 0.220.0 (APP_VERSION story, pubspec 0.220.0+255, console ?v=0.220.0 x9,
+pins ->0.220.0 in 32 suites); Mera PC freeze respected; desktop untouched 1.4.0.

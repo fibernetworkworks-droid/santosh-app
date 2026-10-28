@@ -39,6 +39,10 @@ class _FakeCall:
         self._last_ack = 0.0
         self._last_ack_i = -1
         self._bc_at = 0.0
+        # v0.220 the tone surface exists but stays empty on this fake (the pool is never mood-filtered here)
+        self._tone, self._tone_at = "", 0.0
+        self._tone_now = lambda: voice.Call._tone_now(self)
+        self._tone_tag = lambda: voice.Call._tone_tag(self)
         self._bc_this_turn = 0
         self._bc_task = None
         self._last_bc_i = -1
@@ -351,4 +355,4 @@ def test_stats_carry_the_new_clips():
 
 
 def test_version():
-    assert APP_VERSION == "0.219.0"
+    assert APP_VERSION == "0.220.0"

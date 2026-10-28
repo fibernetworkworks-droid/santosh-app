@@ -57,6 +57,10 @@ class _FakeCall:
         self._stall_nudged = False
         self._stall_at = 0.0
         self._stall_reconnects = 0
+        # v0.220 the tone surface exists but stays empty on this fake (no tag rides the nudge here)
+        self._tone, self._tone_at = "", 0.0
+        self._tone_now = lambda: voice.Call._tone_now(self)
+        self._tone_tag = lambda: voice.Call._tone_tag(self)
         self._auto_rescued = set()
         self.pushed = []
         self.sent_json = []
@@ -419,4 +423,4 @@ def test_scorecard_has_reliability_rollups():
 
 
 def test_version():
-    assert APP_VERSION == "0.219.0"
+    assert APP_VERSION == "0.220.0"

@@ -868,6 +868,9 @@ def stats_summary(tenant: str) -> dict:
         "affect_vetoed": sum(c.get("affect_vetoed", 0) for c in calls),
         "affect_confirmed": sum(c.get("affect_confirmed", 0) for c in calls),
         "affect_pauses_rider": sum(c.get("affect_pauses_rider", 0) for c in calls),
+        # v0.220 SOORAT: the energy followed her - flips named, bright acks held back in a heavy moment
+        "affect_transitions": sum(c.get("affect_transitions", 0) for c in calls),
+        "tone_soft_acks": sum(c.get("tone_soft_acks", 0) for c in calls),
         # v0.211 never-silent watchdog + auto-rescue + orphan notes: the reliability numbers
         "stall_nudges": sum(c.get("stall_nudges", 0) for c in calls),
         "stall_reconnects": sum(c.get("stall_reconnects", 0) for c in calls),
@@ -926,8 +929,21 @@ def _ack_file(v: str, gender: str, i: int) -> Path:
 
 
 _ACKS: dict[str, list[bytes]] = {}
+_ACK_IX: dict[str, list[int]] = {}      # v0.220 pool position -> ACK_LINES index (the mood filter reads it)
 _ACK_BUSY: set[str] = set()
 _ACK_LOCK = threading.Lock()
+
+
+# v0.220.0 SOORAT: the ONE keyword rule that decides which ack lines render bright (and which are skipped
+# while her tone is low/tense) - _ack_ask speaks it at render time, _bright_ack_ix() reads it at play time.
+_ACK_BRIGHT = ("mil gaya", "ho gaya", "pakka", "khol raha")
+
+
+def _bright_ack_ix() -> set[int]:
+    """The ACK_LINES indexes whose rendered mood is the bright found-it lift (same words _ack_ask uses).
+    The clips are pre-rendered - their energy cannot be retuned at play time - so SOORAT filters by mood:
+    while she is heavy/tense, a bright 'mil gaya!' ack is exactly the uncanny note the feeling engine forbids."""
+    return {i for i, ln in enumerate(ACK_LINES) if any(w in ln.lower() for w in _ACK_BRIGHT)}
 
 
 def _ack_ask(text: str, gender: str) -> str:
@@ -935,7 +951,7 @@ def _ack_ask(text: str, gender: str) -> str:
     energy matches what the words are doing (found-it lines get a small bright lift, thinking lines slow down)."""
     who = "young Indian woman" if gender == "f" else "young Indian guy"
     low = text.lower()
-    if any(w in low for w in ("mil gaya", "ho gaya", "pakka", "khol raha")):
+    if any(w in low for w in _ACK_BRIGHT):
         mood = "bright, a small found-it lift"
     elif low.startswith("hmm") or any(w in low for w in ("sochne do", "sun raha hoon")):
         mood = "a touch slower, thinking out loud"
@@ -995,6 +1011,7 @@ def _trim(pcm: bytes, rate: int = 24000) -> bytes:
 def _build_acks(key: str, voice: str, gender: str) -> None:
     from .avatar.service import gendered
     clips: list[bytes] = []
+    ixs: list[int] = []
     try:
         ACK_DIR.mkdir(parents=True, exist_ok=True)
         client = None                      # v0.185.1 ONE client for the whole batch; if it cannot be made,
@@ -1015,9 +1032,11 @@ def _build_acks(key: str, voice: str, gender: str) -> None:
                     with contextlib.suppress(OSError):
                         f.write_bytes(clip)
                 clips.append(clip)
+                ixs.append(i)              # v0.220 the mood filter needs pool position -> line index
     finally:
         with _ACK_LOCK:
             _ACKS[key] = clips
+            _ACK_IX[key] = ixs
             _ACK_BUSY.discard(key)
 
 
@@ -1193,6 +1212,8 @@ class Call:
         self._latency: int | None = None
         self._affect_last = ""                 # v0.201 the feeling engine: last state a note was sent for
         self._affect_at = 0.0                  # ... and when it went out (never two notes close together)
+        self._tone = ""                        # v0.220 SOORAT: her current tone ("" low glad tense)...
+        self._tone_at = 0.0                    # ... and when fresh words last re-anchored it (TONE_S lifetime)
         self.vid = None                        # Awaaz Pehchaan: who is talking (set up when the call starts)
         self._mcp_route: dict = {}             # the owner's MCP tools in this call: name -> (pack_id, tool)
         self._mcp_snap: list = []
@@ -1564,8 +1585,12 @@ class Call:
             if not self._stall_nudged:
                 self._stall_nudged, self._stall_at = True, now
                 self.stats["stall_nudges"] += 1
-                self.push("text", "(System: jawab aane mein bahut der lag rahi hai, connection dheema hai. Jo pata "
-                                  "hai woh EK chhoti line mein turant bolo.)")
+                note = ("(System: jawab aane mein bahut der lag rahi hai, connection dheema hai. Jo pata "
+                        "hai woh EK chhoti line mein turant bolo.)")
+                tag = self._tone_tag()         # v0.220 even a stall answer follows her tone
+                if tag:
+                    note = f"{note} {tag}"
+                self.push("text", note)
                 continue
             if now - self._stall_at < st.voice_stall_nudge_s:
                 continue                       # the nudge had its chance; still nothing
@@ -1616,11 +1641,19 @@ class Call:
                 return
             if st == self._affect_last and now - self._affect_at < 90:
                 return
-            self._affect_last, self._affect_at = st, now
+            prev, self._affect_last, self._affect_at = self._affect_last, st, now
             self.stats["affect_notes"] = self.stats.get("affect_notes", 0) + 1
             if why == "confirmed_low":        # her voice agreed with her words: the note is twice as safe
                 self.stats["affect_confirmed"] = self.stats.get("affect_confirmed", 0) + 1
             note = voiceaffect.NOTE[st]
+            if getattr(get_settings(), "voice_soorat", True):
+                # v0.220 SOORAT: a FLIP is the moment his energy must follow her - the note names the move
+                # ("pichli energy isi pal chhod do") so the next reply drops the old energy; and the tone
+                # stays current from here, tinting every scripted moment until fresh words re-anchor it.
+                if prev and prev != st:
+                    note = f"{note} {voiceaffect.flip_note(prev, st)}"
+                    self.stats["affect_transitions"] = self.stats.get("affect_transitions", 0) + 1
+                self._tone, self._tone_at = st, now
             rider = voiceaffect.pause_rider(pros)
             if rider:                         # her measured pauses: 'usse jaldi mat kaato' rides on any note
                 note = f"{note} {rider}"
@@ -1628,6 +1661,24 @@ class Call:
             await self._tell_quietly(note)
         except Exception:
             log.exception("affect watch failed")
+
+    def _tone_now(self) -> str:
+        """v0.220 SOORAT: her current tone, while it is still fresh - voiceaffect.TONE_S without fresh words
+        and his own band is allowed back (an old mood must not tint a bright new topic). Kill switch
+        voice_soorat: off = the v0.219 engine exactly."""
+        if not getattr(get_settings(), "voice_soorat", True):
+            return ""
+        from . import voiceaffect
+        t = getattr(self, "_tone", "")
+        if t and time.monotonic() - getattr(self, "_tone_at", 0.0) < voiceaffect.TONE_S:
+            return t
+        return ""
+
+    def _tone_tag(self) -> str:
+        """The tone clause a scripted note carries right now ("" = no tone: say it in his own band)."""
+        from . import voiceaffect
+        t = self._tone_now()
+        return voiceaffect.TAG[t] if t else ""
 
     BC_AFTER_S = 1.2     # her pause this long with her turn still open: a real listener murmurs something
     BC_MIN_WORDS = 4     # she must actually be mid-sentence - a bare "haan" from her gets no murmur
@@ -1871,10 +1922,12 @@ class Call:
         if len(lines) > 5000:          # v0.108 a much bigger re-brief: keep the newest part whole
             lines = "…" + lines[-5000:]
         RESUME["fresh_rebriefs"] += 1
-        return ("(Call ka connection ek pal ke liye toota aur wapas juda. Pichli baat (is call mein ab tak; pehle ka sab upar "
+        tag = self._tone_tag()         # v0.220 the fresh session also learns HOW she is talking right now
+        return (("(Call ka connection ek pal ke liye toota aur wapas juda. Pichli baat (is call mein ab tak; pehle ka sab upar "
                 "'HOOLA KI YAAD' mein):\n" + lines +
-                "\nUser ko bas ek chhota 'haan, boliye' kehkar wahin se aage badho; pichli baat dohrao mat.)" +
-                Call._take_pending(self))
+                "\nUser ko bas ek chhota 'haan, boliye' kehkar wahin se aage badho; pichli baat dohrao mat.)"
+                + (("\n" + tag) if tag else ""))
+                + Call._take_pending(self))
 
     # ---- tools ----
     async def _delegate(self, request: str) -> dict:
@@ -1921,6 +1974,8 @@ class Call:
             self.push("text", f"(Woh bada kaam{about} poora nahi ho paya. Pehle batao kis baare mein hai, phir ek line mein "
                               "sach batao aur poochho ki dobara karein?)")
             return
+        tag = self._tone_tag()             # v0.220 SOORAT: even a finished job's news follows her tone
+        tail = f" {tag}" if tag else ""
         # v0.186 the TRUTH: santosh.LAST_OUTCOME knows how the turn really ended (never a fake "ho gaya" on a timeout)
         oc: dict = {}
         try:
@@ -1932,18 +1987,18 @@ class Call:
         left = str(oc.get("left") or "")[:220]
         if outcome in ("done", "talk"):
             self.push("text", f"(Woh bada kaam{about} ho gaya: {str(job.result())[:1500]}. Pehle ek chhote se batao kis baare "
-                              "mein hai ('woh jo aapne kaha tha...'), phir result ek-do chhoti lines mein.)")
+                              f"mein hai ('woh jo aapne kaha tha...'), phir result ek-do chhoti lines mein.){tail}")
         elif outcome in ("partial", "continuing"):
             self.push("text", f"(Woh bada kaam{about} abhi chal raha hai — {left or 'kuch hissa baaki'}. User ko mat kehna "
-                              "ki poora ho gaya: bolo 'abhi kaam chal raha hai, khatam hote hi bataunga', aur baat jatari rahe.)")
+                              f"ki poora ho gaya: bolo 'abhi kaam chal raha hai, khatam hote hi bataunga', aur baat jatari rahe.){tail}")
         elif outcome in ("stuck", "stopped"):
             why = left or ("owner ne rok diya" if outcome == "stopped" else "ek jagah atak gaya")
             self.push("text", f"(Woh bada kaam{about} atka hai: {why}. Sach batao ek line mein — kya ho gaya, kya baaki, "
-                              "aapse kya chahiye. 'Ho gaya' bilkul mat kehna.)")
+                              f"aapse kya chahiye. 'Ho gaya' bilkul mat kehna.){tail}")
         else:
             # no goal record (a plain short job, or the record lost): the classic done wording stays
             self.push("text", f"(Woh bada kaam{about} ho gaya: {str(job.result())[:1500]}. Pehle ek chhote se batao kis baare "
-                              "mein hai ('woh jo aapne kaha tha...'), phir result ek-do chhoti lines mein.)")
+                              f"mein hai ('woh jo aapne kaha tha...'), phir result ek-do chhoti lines mein.){tail}")
 
     def _place(self, request: str = "") -> str:
         """v0.93 where she said the job runs (her PC / Hoola's own browser / phone): her words in this turn, else what
@@ -1983,7 +2038,12 @@ class Call:
                               f"{json.dumps(out, ensure_ascii=False, default=str)[:800]}")
             return
         body = json.dumps(out, ensure_ascii=False, default=str)[:1500]
-        self.push("text", f"(Pehle ka kaam '{name}' ho chuka, result: {body}. Agar ab bhi kaam ka hai to user ko ek chhoti line mein batao, warna chhod do.)")
+        note = (f"(Pehle ka kaam '{name}' ho chuka, result: {body}. Agar ab bhi kaam ka hai to user ko ek chhoti "
+                f"line mein batao, warna chhod do.)")
+        tag = self._tone_tag()             # v0.220 the announcement follows her tone
+        if tag:
+            note = f"{note} {tag}"
+        self.push("text", note)
 
     async def run_tool(self, session, fc) -> None:
         from google.genai import types
@@ -2396,9 +2456,19 @@ class Call:
             return
         self._last_ack = now
         self.stats["acks"] += 1
-        i = random.randrange(len(clips))
-        if i == self._last_ack_i and len(clips) > 1:
-            i = (i + 1) % len(clips)
+        cand = list(range(len(clips)))
+        tone = self._tone_now()            # v0.220 SOORAT: her tone decides which pre-rendered moods may play
+        if tone in ("low", "tense"):
+            bright = _bright_ack_ix()
+            with _ACK_LOCK:
+                ix = list(_ACK_IX.get(f"{self.voice}:{self.gender}", []))
+            soft = [p for p, li in enumerate(ix) if li not in bright]
+            if soft and len(soft) < len(cand):   # a heavy moment never hears a bright 'mil gaya!' clip
+                cand = soft
+                self.stats["tone_soft_acks"] = self.stats.get("tone_soft_acks", 0) + 1
+        i = cand[random.randrange(len(cand))]
+        if i == self._last_ack_i and len(cand) > 1:
+            i = cand[(cand.index(i) + 1) % len(cand)]
         self._last_ack_i = i
         await self.send_audio(clips[i])
 
@@ -2678,13 +2748,15 @@ class Call:
                 rt.add_done_callback(_JOBS.discard)
             lat = self.stats["latency_ms"]
             log.info("call %s done: %s turns, reply start p50 %s ms, %s interruptions (%s noise), %s/%s silent tools, "
-                     "%s acks, %s backchannels, %s progress, %s affect notes (%s vetoed, %s confirmed, %s pauserider), "
+                     "%s acks (%s tone-soft), %s backchannels, %s progress, %s affect notes (%s vetoed, %s confirmed, "
+                     "%s pauserider, %s transitions), "
                      "%s/%s stall nudges/reconnects, %s auto-rescues, %s orphan notes",
                      self.call_id, self.stats["turns"], _pct(lat, .5), self.stats["interruptions"], self.stats["false_stops"],
                      self.stats["silent_tools"], self.stats["tools"], self.stats["acks"],
+                     self.stats.get("tone_soft_acks", 0),
                      self.stats.get("backchannels", 0), self.stats.get("progress", 0), self.stats.get("affect_notes", 0),
                      self.stats.get("affect_vetoed", 0), self.stats.get("affect_confirmed", 0),
-                     self.stats.get("affect_pauses_rider", 0),
+                     self.stats.get("affect_pauses_rider", 0), self.stats.get("affect_transitions", 0),
                      self.stats.get("stall_nudges", 0), self.stats.get("stall_reconnects", 0),
                      self.stats.get("auto_rescues", 0), self.stats.get("orphan_notes", 0))
             ws, self.ws = self.ws, None
