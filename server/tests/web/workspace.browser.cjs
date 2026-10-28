@@ -44,6 +44,8 @@ const server=http.createServer((req,res)=>{
  await appearance.getByRole('radio',{name:'Light',exact:true}).check();
  assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
  assert.equal(await page.locator('.side').evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(247, 245, 252, 0.97)');
+ const selection=async()=>{await page.waitForSelector('.side .rcw.cur');const colors=await page.evaluate(()=>{const style=s=>{const c=getComputedStyle(document.querySelector(s));return {background:c.backgroundColor,color:c.color,shadow:c.boxShadow};};return {nav:style('.side .sn[aria-current="true"]'),row:style('.side .rcw.cur'),link:style('.side .rcw.cur .rc')};});assert.deepEqual(colors.nav,colors.row);assert.equal(colors.link.color,colors.nav.color);assert.equal(colors.link.background,'rgba(0, 0, 0, 0)');};
+ await selection();
  await appearance.getByRole('combobox',{name:'Chat font'}).selectOption('readable');
  assert.equal(await page.locator('html').getAttribute('data-chat-font'),'readable');
  assert.ok(await page.locator('#msg').evaluate(e=>parseFloat(getComputedStyle(e).letterSpacing)>0));
@@ -55,6 +57,7 @@ const server=http.createServer((req,res)=>{
  await page.emulateMedia({colorScheme:'dark'});await page.waitForFunction(()=>document.documentElement.dataset.theme==='dark');
  await page.emulateMedia({colorScheme:'light'});await page.waitForFunction(()=>document.documentElement.dataset.theme==='light');
  await appearance.getByRole('radio',{name:'Dark',exact:true}).check();await page.emulateMedia({colorScheme:'light'});assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
+ await selection();
  await appearance.getByRole('combobox',{name:'Chat font'}).selectOption('system');assert.equal(await page.locator('html').getAttribute('data-chat-font'),'system');
  await appearance.getByRole('combobox',{name:'Chat font'}).selectOption('default');
  if(shots)await page.screenshot({path:path.join(shots,'hoola-appearance-dark.png')});

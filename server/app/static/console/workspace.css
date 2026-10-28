@@ -292,3 +292,7 @@
 :root[data-theme="light"] .pjname:hover,:root[data-theme="light"] .pjname:focus{background:var(--panel)}
 :root[data-theme="light"] #app .side .user{background:var(--glass)}
 #app .textmd .mdh{font-family:var(--chat-font)}
+/* One selection treatment for navigation and conversation rows in both themes. */
+#app .side .sn[aria-current="true"],#app .side .rcw.cur{background:rgba(124,92,255,.14);color:var(--saffron2);box-shadow:inset 2px 0 0 var(--saffron);border-radius:12px}
+#app .side .rcw.cur .rc{background:transparent;box-shadow:none;color:inherit}
+#app .side .rcw.cur .rcm{color:inherit}

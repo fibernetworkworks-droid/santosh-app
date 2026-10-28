@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   console:
-    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'deploy/hoola-appearance-20261028')
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'deploy/hoola-selection-20261028')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
