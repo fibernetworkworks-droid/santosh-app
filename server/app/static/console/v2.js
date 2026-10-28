@@ -78,10 +78,10 @@ $('#kbtn').addEventListener('click', async () => {
   try { await enter(); } catch (er) { setToken(''); $('#lerr').textContent = er.status === 401 ? 'Invalid key.' : er.message; $('#lerr').hidden = false; }
 });
 async function logout(expired) {
-  stopStream(); endCall(); ACC?.abort(); ACC = null;
+  stopStream(); endCall(); VOICE_CONV=null;$('#v-baat').replaceChildren();delete $('#v-baat').dataset.drawn; ACC?.abort(); ACC = null;
   RESULTS?.reset();
   WORKSPACE?.reset(); PN?.reset(); clearSimpleProgress();
-  clearTimeout(DRAFT_T); FILES = []; CONV = null; ACC_LAST = 0; msg.value = ''; drawFiles();
+  clearTimeout(DRAFT_T); clearAttachments(); CONV = null; ACC_LAST = 0; msg.value = ''; drawFiles();
   clearInterval(GAUGE_T); clearInterval(PENDING_TIMER);
   if (TOKEN && !expired) { try { await api('POST', '/api/logout'); } catch {} }
   setToken(''); showLogin(expired ? 'Your session expired. Please sign in again.' : '');
@@ -807,7 +807,7 @@ async function openConv(id, fresh, opts = {}) {
   RESULTS?.reset(); clearSimpleProgress();
   if (CONV && CONV !== id) { if (msg.value.trim()) store.set('hoola.draft.' + CONV, msg.value); else store.del('hoola.draft.' + CONV); }
   clearTimeout(DRAFT_T);
-  if (CONV !== id) { FILES = []; drawFiles(); }
+  if (CONV !== id) { clearAttachments(); if(CALL)endCall(true); }
   CONV = id; col.innerHTML = ''; CARDS.clear(); B?.reset(); TURN = null; TYPING = null; USER_ECHO = []; $('#stopBtn').hidden = true;
   REPLIES.forEach(R => R.segs.forEach(S => S.pacer.reset())); REPLIES.clear(); LAST_TURN = null; STICK = true;
   RCPTS.clear();   // v0.173 receipts belong to their chat
@@ -823,7 +823,7 @@ async function openConv(id, fresh, opts = {}) {
   slashClose();
   msg.value = store.get('hoola.draft.' + id) || '';   // v0.173 her unfinished words come back with the chat
   msg.style.height = 'auto'; msg.style.height = Math.min(200, msg.scrollHeight) + 'px';
-  $('#sendBtn').disabled = !msg.value.trim() && !FILES.length;
+  $('#sendBtn').disabled = FILES.some(f=>!f.file_id)||(!msg.value.trim()&&!FILES.length);
   // skeleton rows while the chat loads (not a spinner)
   col.innerHTML = '<div class="skel-chat" aria-hidden="true"><i class="skel r"></i><i class="skel l"></i><i class="skel l s"></i><i class="skel r s"></i><i class="skel l"></i></div>';
   // the chat in order from the server: messages and each card once where it happened (latest state)
@@ -1051,7 +1051,7 @@ addEventListener('popstate', () => {
 /* ================= sending ================= */
 let FILES = [];   // {file_id, name}
 let DRAFT_T = 0;
-msg.addEventListener('input', () => { msg.style.height = 'auto'; msg.style.height = Math.min(200, msg.scrollHeight) + 'px'; $('#sendBtn').disabled = !msg.value.trim() && !FILES.length;
+msg.addEventListener('input', () => { msg.style.height = 'auto'; msg.style.height = Math.min(200, msg.scrollHeight) + 'px'; $('#sendBtn').disabled = FILES.some(f=>!f.file_id)||(!msg.value.trim()&&!FILES.length);
   const draftConv = CONV, draftText = msg.value;
   clearTimeout(DRAFT_T); DRAFT_T = setTimeout(() => {   // v0.173 every chat keeps her unfinished words
     if (draftConv) { if (draftText.trim()) store.set('hoola.draft.' + draftConv, draftText); else store.del('hoola.draft.' + draftConv); }
@@ -1122,7 +1122,7 @@ composer.addEventListener('submit', async e => {
   const origin = CONV, auth = TOKEN; clearTimeout(DRAFT_T);
   const files = FILES.splice(0); drawFiles(); msg.value = ''; msg.style.height = 'auto'; $('#sendBtn').disabled = true;
   store.del('hoola.draft.' + origin);   // v0.173 the draft went out with the message
-  const body = {text: text || 'Ye file dekho', client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), files: files.map(f => f.file_id)};
+  const body = {text: text || 'Please review the attached files.', client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), files: files.map(f => f.file_id)};
   landing(false); const bbl = userBubble(body.text, files, null, body.client_id);
   if (TYPING) receipt(bbl, body.client_id, 'queue');   // v0.173 steering: she sees it is queued and can take it back
   USER_ECHO.push(body.text);
@@ -1135,31 +1135,41 @@ composer.addEventListener('submit', async e => {
 $('#stopBtn').addEventListener('click', async () => { try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/stop`); toast('Rokne ko kaha. Jo kadam chal raha tha woh beech mein ruk sakta hai.'); } catch (e) { toast(e.message, true); } });
 // Composer additions menu is managed by Hoola appearance controls in workspace.js.
 $('#fileIn').addEventListener('change', e => { const picked = [...e.target.files]; e.target.value = ''; addFiles(picked); });
-async function addFiles(list) {     // paperclip, drag and drop, pasted screenshots: one path
-  const origin = CONV, target = FILES;
-  if (!origin) return;
-  const picked = list.slice(0, Math.max(0, 6 - target.length));
-  if (list.length > picked.length) toast('Ek baar mein 6 files tak.');
-  if (picked.length) msg.focus();
-  for (const f of picked) {
-    if (f.size > 25 * 1024 * 1024) { toast(`${f.name}: 25 MB se badi file nahi chalegi.`, true); continue; }
-    const up = await shrink(f);   // v0.173 big pictures shrink here: upload fast, phone data saved
-    if (up !== f) toast(`${f.name}: chhota kar diya (${Math.round(f.size / 1024)} KB → ${Math.round(up.size / 1024)} KB).`);
-    if (CONV !== origin || FILES !== target) return;
-    const item = {name: up.name, file_id: null}; target.push(item); drawFiles();
-    try { const fd = new FormData(); fd.append('file', up, up.name); const r = await api('POST', `/api/conversations/${encodeURIComponent(origin)}/files`, undefined, {form: fd}); item.file_id = r.file_id; }
-    catch (er) { if (target.includes(item)) target.splice(target.indexOf(item), 1); toast(`${up.name}: ${er.message}`, true); }
-    drawFiles();
+async function addFiles(list) {
+  const origin=CONV,target=FILES;if(!origin)return;
+  const slots=Math.max(0,6-target.length),picked=list.slice(0,slots);
+  if(list.length>slots)toast('Attach up to 6 files per message.');
+  // Reserve slots before any async decoding or network request.
+  const batch=[];
+  for(const f of picked){if(f.size>25*1024*1024){toast(`${f.name}: maximum file size is 25 MB.`,true);continue;}const item={name:f.name,file_id:null,loading:true,controller:new AbortController()};target.push(item);batch.push({f,item});}
+  if(batch.length)msg.focus();drawFiles();
+  for(const {f,item} of batch){
+    if(CONV!==origin||FILES!==target)return;
+    if(!target.includes(item))continue;
+    try{
+      const up=await shrink(f);if(CONV!==origin||FILES!==target||!target.includes(item))continue;
+      item.name=up.name;
+      if(['image/png','image/jpeg','image/webp'].includes(up.type)&&window.createImageBitmap){try{const bitmap=await createImageBitmap(up);const canvas=document.createElement('canvas');canvas.width=72;canvas.height=72;const k=Math.min(72/bitmap.width,72/bitmap.height);canvas.getContext('2d').drawImage(bitmap,(72-bitmap.width*k)/2,(72-bitmap.height*k)/2,bitmap.width*k,bitmap.height*k);bitmap.close();item.preview=canvas.toDataURL('image/png');}catch{}}
+      if(CONV!==origin||FILES!==target||!target.includes(item))continue;
+      const fd=new FormData();fd.append('file',up,up.name);drawFiles();
+      const r=await api('POST',`/api/conversations/${encodeURIComponent(origin)}/files`,undefined,{form:fd,signal:item.controller.signal});
+      if(!r.file_id)throw Error('The upload did not return a file.');
+      item.file_id=r.file_id;item.loading=false;
+    }catch(er){if(target.includes(item))target.splice(target.indexOf(item),1);if(er.name!=='AbortError'&&CONV===origin&&FILES===target)toast(`${f.name}: ${er.message}`,true);}
+    if(CONV===origin&&FILES===target)drawFiles();
   }
 }
+function clearAttachments(){for(const f of FILES)f.controller?.abort();FILES=[];drawFiles();}
+
 async function shrink(f) {
   if (!f.type.startsWith('image/') || f.type === 'image/gif' || !window.createImageBitmap) return f;
   const img = await createImageBitmap(f).catch(() => null);
-  if (!img || (img.width <= 1600 && img.height <= 1600)) return f;
+  if (!img) return f;
+  if(img.width<=1600&&img.height<=1600){img.close();return f;}
   const k = 1600 / Math.max(img.width, img.height);
   const c = document.createElement('canvas');
   c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);img.close();
   const blob = await new Promise(r => c.toBlob(r, f.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.9));
   if (!blob || blob.size >= f.size) return f;
   return new File([blob], f.name, {type: blob.type});
@@ -1169,10 +1179,11 @@ const chatView = $('#v-chat'); let dragN = 0;
 chatView.addEventListener('dragenter', e => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); dragN++; chatView.classList.add('dropping'); } });
 chatView.addEventListener('dragover', e => { if ([...(e.dataTransfer?.types || [])].includes('Files')) e.preventDefault(); });
 chatView.addEventListener('dragleave', () => { if (--dragN <= 0) { dragN = 0; chatView.classList.remove('dropping'); } });
-chatView.addEventListener('drop', e => { if (!e.dataTransfer?.files?.length) return; e.preventDefault(); dragN = 0; chatView.classList.remove('dropping'); landing(false); addFiles([...e.dataTransfer.files]); });
+chatView.addEventListener('drop',e=>{dragN=0;chatView.classList.remove('dropping');if(!e.dataTransfer?.files?.length)return;e.preventDefault();landing(false);addFiles([...e.dataTransfer.files]);});
 msg.addEventListener('paste', e => {
   const files = [...(e.clipboardData?.files || [])];
   if (!files.length) return;
+  if(e.clipboardData.getData('text/plain'))return addFiles(files);
   e.preventDefault();
   const stamp = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
   addFiles(files.map((f, i) => f.name && f.name !== 'image.png' ? f : new File([f], `screenshot-${stamp}${i ? '-' + i : ''}.png`, {type: f.type || 'image/png'})));
@@ -1251,11 +1262,13 @@ $('#exportMenu').addEventListener('click', async e => {
   } catch (er) { toast('Export failed: ' + er.message, true); }
 });
 function drawFiles() {
-  $('#files').innerHTML = FILES.map((f, i) => `<span class="fchip${f.file_id ? '' : ' up'}">📎 ${esc(f.name)}${f.file_id ? '' : ' · upload…'}<button type="button" data-rm="${i}" aria-label="Remove ${esc(f.name)}">✕</button></span>`).join('');
-  $('#sendBtn').disabled = !msg.value.trim() && !FILES.length;
+  $('#files').innerHTML=FILES.map((f,i)=>`<span class="fchip${f.file_id?'':' up'}">${f.preview?`<img src="${esc(f.preview)}" alt="Preview of ${esc(f.name)}">`:'<span aria-hidden="true">↥</span>'}<span>${esc(f.name)}<small>${f.file_id?'Ready':'Uploading…'}</small></span><button type="button" data-rm="${i}" aria-label="Remove ${esc(f.name)}">×</button></span>`).join('');
+  $('#files').setAttribute('aria-busy',String(FILES.some(f=>!f.file_id)));
+  $('#sendBtn').disabled=FILES.some(f=>!f.file_id)||(!msg.value.trim()&&!FILES.length);
 }
-$('#files').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (b) { FILES.splice(+b.dataset.rm, 1); drawFiles(); } });
-$('#micBtn').title = 'Bolo karke likhiye (dictation)';
+$('#files').addEventListener('click',e=>{const b=e.target.closest('[data-rm]');if(b){const [f]=FILES.splice(+b.dataset.rm,1);f?.controller?.abort();drawFiles();}});
+$('#micBtn').title='Dictate a message';
+$('#voiceBtn').addEventListener('click',()=>{go('baat');startCall();});
 $('#toolsBtn').addEventListener('click', () => go('kaam'));
 
 /* v0.173 dictation in the composer: mic button speaks hi-IN into the box (Chrome / Android); the live call
@@ -1368,60 +1381,73 @@ async function drawMain() {
 }
 
 /* ================= Baat: live voice in the browser ================= */
-let CALL = null;
+let CALL = null, CALL_STARTING = false, VOICE_CONV = null, CALL_START_SEQ = 0;
 function drawBaat() {
   const v = $('#v-baat');
   if (v.dataset.drawn) return; v.dataset.drawn = '1';
   v.innerHTML = `<div class="call"><div class="callav"><span class="av"><img src="${$('#uimg').src}" alt=""></span></div>
     <div><h2 style="font-size:26px">${esc(AV)}</h2><div class="callst okc" id="cst">Click to start a call</div><div class="faint" style="font-size:12.5px">Use headphones for clearer audio · English</div></div>
     <div class="wave" id="cwave" aria-hidden="true" style="opacity:.3">${Array.from({length: 13}, (_, i) => `<i style="animation-delay:${(i * .09) % 1}s"></i>`).join('')}</div>
-    <div class="caption" aria-live="polite" id="caption"></div>
+    <div class="caption" aria-live="polite" id="caption"></div><details class="voice-transcript" open><summary>Conversation transcript</summary><div id="voiceTranscript" role="log" aria-label="Live voice transcript" aria-live="off"><p class="faint">Your words and Hoola’s replies appear here. Completed turns are saved in this chat.</p></div></details><button class="btn soft" type="button" id="voiceHistory">View saved conversation</button>
     <div class="cbtns" id="cbtns"><button class="btn go callgo" type="button" id="callBtn">📞 Start call</button></div></div>`;
   $('#callBtn').addEventListener('click', startCall);
+  $('#voiceHistory').addEventListener('click',()=>{const id=CALL?.conv||VOICE_CONV||CONV;if(id){go('chat');openConv(id,false,{noPush:true});}});
 }
 function callUI(state, text) {
   const s = $('#cst'); if (s) s.textContent = text; const w = $('#cwave'); if (w) w.style.opacity = state === 'live' ? 1 : .3;
   const b = $('#cbtns'); if (!b) return;
   if (state === 'idle') { b.innerHTML = '<button class="btn go callgo" type="button" id="callBtn">📞 Start call</button>'; $('#callBtn').addEventListener('click', startCall); }
-  else if (!$('#hang')) { b.innerHTML = `<button class="cbx" type="button" id="muteBtn" aria-label="Mute">${svg(IC.baat)}</button><button class="cbx end" type="button" id="hang" aria-label="Hang up">${svg('<path d="M3 15c5-4 13-4 18 0l-2 3-4-1v-3c-2-.6-4-.6-6 0v3l-4 1z"/>')}</button>`;
+  else if (!$('#hang')) { b.innerHTML = `<button class="cbx" type="button" id="muteBtn" aria-label="Mute microphone" aria-pressed="false">${svg(IC.baat)}</button><button class="cbx end" type="button" id="hang" aria-label="Hang up">${svg('<path d="M3 15c5-4 13-4 18 0l-2 3-4-1v-3c-2-.6-4-.6-6 0v3l-4 1z"/>')}</button>`;
     $('#hang').addEventListener('click', () => endCall(true)); $('#muteBtn').addEventListener('click', toggleMute); }
 }
 async function startCall() {
-  if (CALL) return;
-  let media;
-  try { media = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1}}); }
-  catch { return callUI('idle', 'Allow microphone access in your browser address bar.'); }
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const q = new URLSearchParams({conv: CONV, voice: ME?.avatar?.voice || '', lang: 'en-IN'});
-  let ws; try { ws = new WebSocket(`${proto}//${location.host}/api/voice/ws?${q}`, ['hoola', 'hoola-key.' + TOKEN]); } catch { media.getTracks().forEach(t => t.stop()); ctx.close(); return callUI('idle', 'Could not start the call.'); }
-  ws.binaryType = 'arraybuffer';
-  CALL = {ws, ctx, media, muted: false, playAt: 0, sources: new Set(), ping: null};
-  callUI('connecting', 'Connecting…');
-  const src = ctx.createMediaStreamSource(media), proc = ctx.createScriptProcessor(4096, 1, 1), ratio = ctx.sampleRate / 16000;
-  proc.onaudioprocess = e => {
-    if (!CALL || ws.readyState !== 1) return;
-    const inp = e.inputBuffer.getChannelData(0), n = Math.floor(inp.length / ratio), out = new Int16Array(n);
-    for (let i = 0; i < n; i++) { const s = CALL.muted ? 0 : inp[Math.floor(i * ratio)]; out[i] = Math.max(-1, Math.min(1, s)) * 0x7fff; }
-    ws.send(out.buffer);
-  };
-  const sink = ctx.createGain(); sink.gain.value = 0; src.connect(proc); proc.connect(sink); sink.connect(ctx.destination);
-  CALL.proc = proc; CALL.src = src;
-  ws.onmessage = ev => {
-    if (typeof ev.data !== 'string') return play(ev.data);
-    let m; try { m = JSON.parse(ev.data); } catch { return; }
-    if (m.type === 'ready') { callUI('live', 'Live · speak now'); CALL.ping = setInterval(() => ws.readyState === 1 && ws.send('{"type":"ping"}'), 15000); }
-    else if (m.type === 'user_text') caption('Aap', m.text);
-    else if (m.type === 'santosh_text') caption(AV, m.text);
-    else if (m.type === 'interrupted') cutSpeech();
-    else if (m.type === 'tool') callUI('live', (m.state === 'done' ? '✓ ' : '… ') + (m.label || 'kaam'));
-    else if (m.type === 'status') callUI('live', m.state === 'reconnecting' ? 'Reconnecting…' : 'Live');
-    else if (m.type === 'hold') { if (m.on) cutSpeech(); callUI('live', m.on ? (AV + ' chup hai · "' + AV + '" bolkar bulaiye') : 'Live'); }
-    else if (m.type === 'error') { toast(m.message || 'Call mein dikkat', true); callUI('live', m.message || 'Dikkat'); }
-  };
-  ws.onclose = e => { endCall(false); callUI('idle', e.code === 4401 ? 'Login dobara chahiye.' : 'Call khatam.'); };
+  if(CALL||CALL_STARTING)return;
+  const origin=CONV,auth=TOKEN,seq=++CALL_START_SEQ;if(!origin)return toast('Open a conversation first.',true);
+  CALL_STARTING=true;let media,ctx;
+  try{
+    callUI('connecting','Allow microphone access to start…');
+    media=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+    if(CONV!==origin||TOKEN!==auth||seq!==CALL_START_SEQ){media.getTracks().forEach(t=>t.stop());callUI('idle','Call cancelled.');return;}
+    ctx=new(window.AudioContext||window.webkitAudioContext)();await ctx.resume();
+    if(seq!==CALL_START_SEQ||CONV!==origin||TOKEN!==auth){media.getTracks().forEach(t=>t.stop());await ctx.close();return;}
+    const proto=location.protocol==='https:'?'wss:':'ws:',q=new URLSearchParams({conv:origin,voice:ME?.avatar?.voice||'',lang:'en-IN'});
+    const ws=new WebSocket(`${proto}//${location.host}/api/voice/ws?${q}`,['hoola','hoola-key.'+auth]);ws.binaryType='arraybuffer';
+    const call={ws,ctx,media,conv:origin,muted:false,playAt:0,sources:new Set(),ping:null,captions:new Map()};CALL=call;VOICE_CONV=origin;
+    $('#voiceTranscript').replaceChildren();$('#caption').textContent='';callUI('connecting','Connecting…');
+    const src=ctx.createMediaStreamSource(media),proc=ctx.createScriptProcessor(4096,1,1),ratio=ctx.sampleRate/16000;
+    proc.onaudioprocess=e=>{if(CALL!==call||ws.readyState!==1)return;const inp=e.inputBuffer.getChannelData(0),n=Math.floor(inp.length/ratio),out=new Int16Array(n);for(let i=0;i<n;i++){const value=call.muted?0:inp[Math.floor(i*ratio)];out[i]=Math.max(-1,Math.min(1,value))*0x7fff;}ws.send(out.buffer);};
+    const sink=ctx.createGain();sink.gain.value=0;src.connect(proc);proc.connect(sink);sink.connect(ctx.destination);call.proc=proc;call.src=src;
+    ws.onmessage=ev=>{
+      if(CALL!==call)return;
+      if(typeof ev.data!=='string')return play(ev.data);
+      let m;try{m=JSON.parse(ev.data);}catch{return;}
+      if(m.type==='ready'){callUI('live','Live · speak now');if(!call.ping)call.ping=setInterval(()=>ws.readyState===1&&ws.send('{"type":"ping"}'),15000);}
+      else if(m.type==='user_text')caption('You',m.text,'user');
+      else if(m.type==='santosh_text')caption(AV,m.text,'assistant');
+      else if(m.type==='turn_done'){call.captions.clear();callUI('live','Live · listening');}
+      else if(m.type==='interrupted'){cutSpeech();call.captions.clear();callUI('live','Live · listening');}
+      else if(m.type==='tool')callUI('live',m.state==='done'?'Live · task updated':'Live · working on your request');
+      else if(m.type==='status')callUI('live',m.state==='reconnecting'?'Reconnecting…':'Live · listening');
+      else if(m.type==='hold'){if(m.on)cutSpeech();callUI('live',m.on?'Paused · say '+AV+' to continue':'Live · listening');}
+      else if(m.type==='error'){toast(m.message||'The voice service reported an error.',true);callUI('live','Voice connection needs attention');}
+    };
+    ws.onclose=e=>{if(CALL!==call)return;endCall(false);callUI('idle',e.code===4401?'Please sign in again.':'Call ended. Completed turns are available in chat.');};
+    ws.onerror=()=>{if(CALL!==call)return;endCall(false);callUI('idle','Could not connect. Please try again.');};
+  }catch(e){
+    if(CALL?.media===media)endCall(false);else{media?.getTracks().forEach(t=>t.stop());try{await ctx?.close();}catch{}}
+    callUI('idle',e.name==='NotAllowedError'?'Allow microphone access in your browser address bar.':'Could not start the microphone or voice connection.');
+  }finally{CALL_STARTING=false;}
 }
-function caption(who, text) { const c = $('#caption'); if (c) c.innerHTML = `<b>${esc(who)}</b>${esc(text)}`; }
+function caption(who,text,role) {
+  const c=$('#caption');if(c){c.replaceChildren();const name=document.createElement('b');name.textContent=who;c.append(name,document.createTextNode(text||''));}
+  if(!CALL||!text?.trim())return;
+  const box=$('#voiceTranscript'),nearBottom=box.scrollHeight-box.scrollTop-box.clientHeight<70;
+  let row=CALL.captions.get(role);
+  if(!row){row=document.createElement('div');row.className='voice-line';const name=document.createElement('b');name.textContent=who;row.append(name,document.createElement('p'));box.appendChild(row);CALL.captions.set(role,row);}
+  row.querySelector('p').textContent=text;
+  if(nearBottom)box.scrollTop=box.scrollHeight;
+}
+
 function play(buf) {
   if (!CALL) return; const ctx = CALL.ctx, pcm = new Int16Array(buf), f = new Float32Array(pcm.length);
   for (let i = 0; i < pcm.length; i++) f[i] = pcm[i] / 0x8000;
@@ -1431,14 +1457,15 @@ function play(buf) {
   CALL.sources.add(s); s.onended = () => CALL && CALL.sources.delete(s);
 }
 function cutSpeech() { if (!CALL) return; CALL.sources.forEach(s => { try { s.stop(); } catch {} }); CALL.sources.clear(); CALL.playAt = 0; }
-function toggleMute() { if (!CALL) return; CALL.muted = !CALL.muted; try { CALL.ws.send(JSON.stringify({type: CALL.muted ? 'mute' : 'unmute'})); } catch {} const b = $('#muteBtn'); if (b) b.style.background = CALL.muted ? 'var(--bad)' : ''; }
+function toggleMute() { if (!CALL) return; CALL.muted = !CALL.muted; try { CALL.ws.send(JSON.stringify({type: CALL.muted ? 'mute' : 'unmute'})); } catch {} const b = $('#muteBtn'); if(b){b.style.background=CALL.muted?'var(--bad)':'';b.setAttribute('aria-pressed',String(CALL.muted));b.setAttribute('aria-label',CALL.muted?'Unmute microphone':'Mute microphone');} }
 function endCall(send) {
-  const c = CALL; if (!c) return; CALL = null;
+  CALL_START_SEQ++;
+  const c = CALL; if (!c) { if(CALL_STARTING)callUI('idle','Call cancelled.');return; } CALL = null;
   try { if (send && c.ws.readyState === 1) c.ws.send('{"type":"end"}'); } catch {}
   clearInterval(c.ping); try { c.proc.disconnect(); c.src.disconnect(); } catch {}
   c.media.getTracks().forEach(t => t.stop()); c.sources.forEach(s => { try { s.stop(); } catch {} });
   try { c.ws.close(); } catch {} try { c.ctx.close(); } catch {}
-  callUI('idle', 'Call khatam. Receipt chat mein aayegi.');
+  callUI('idle','Call ended. Completed turns are available in chat.');
 }
 addEventListener('beforeunload', () => endCall(true));
 

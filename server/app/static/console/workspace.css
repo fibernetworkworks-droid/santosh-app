@@ -296,3 +296,19 @@
 #app .side .sn[aria-current="true"],#app .side .rcw.cur{background:rgba(124,92,255,.14);color:var(--saffron2);box-shadow:inset 2px 0 0 var(--saffron);border-radius:12px}
 #app .side .rcw.cur .rc{background:transparent;box-shadow:none;color:inherit}
 #app .side .rcw.cur .rcm{color:inherit}
+#app #files .fchip{align-items:center;max-width:100%;gap:9px;padding:8px 10px}
+#app #files .fchip img{width:42px;height:42px;object-fit:contain;border-radius:7px;background:var(--panel)}
+#app #files .fchip>span{min-width:0;overflow-wrap:anywhere}
+#app #files .fchip small{display:block;font-size:11px;color:var(--mut);font-weight:400;margin-top:2px}
+#app #files .fchip button{min-width:28px;min-height:28px;flex:none}
+#app .dropping::after{content:'Drop files or photos to attach';background:var(--bg1);border-color:var(--violet);color:var(--ink)}
+#app .voice-transcript{width:min(620px,100%);text-align:left;border:1px solid var(--hair);border-radius:16px;padding:14px 18px;background:var(--glass)}
+#app .voice-transcript summary{cursor:pointer;font-size:13px;color:var(--mut);font-weight:600}
+#app #voiceTranscript{max-height:280px;overflow:auto;overscroll-behavior:contain;margin-top:12px}
+#app .voice-line{padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+#app .voice-line b{font-size:12px;color:var(--saffron2)}
+#app .voice-line p{white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0;font-family:var(--chat-font);line-height:var(--chat-leading)}
+#app .call{overflow:auto;max-height:100%;padding-bottom:24px}
+@media(max-width:420px){#app #composer .row{gap:3px}#app #composer .row>.ib{width:34px;min-width:30px}#app #composer .who{font-size:10px}}
+
+#app #muteBtn[aria-pressed="true"]{color:#fff}

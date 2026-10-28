@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="/static/console/v2.css?v=0.217.0&web=1">
-<link rel="stylesheet" href="/static/console/workspace.css?web=progress2&rev=7">
+<link rel="stylesheet" href="/static/console/workspace.css?web=progress2&rev=8">
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -119,7 +119,7 @@
 <form class="box" id="composer" autocomplete="off">
   <div class="slash gl" id="slash" role="listbox" aria-label="Commands" hidden></div>
   <div class="gauge" id="gauge" aria-hidden="true" hidden><i></i></div>
-  <div class="files" id="files"></div>
+  <div class="files" id="files" aria-label="Attached files" aria-live="polite"></div>
   <textarea id="msg" rows="1" placeholder="Ask anything, attach a file, or describe what you want to create" aria-label="Message"></textarea>
   <div class="row">
     <button type="button" class="ib" id="attach" aria-label="Add to conversation" aria-haspopup="menu" aria-expanded="false" aria-controls="composerAddMenu" title="Add to conversation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -127,6 +127,7 @@
     <button type="button" class="ib" id="toolsBtn" aria-label="Everything Hoola can do"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></button>
     <span class="who"><span class="aname">Santosh</span> · English</span>
     <button type="button" class="ib" id="micBtn" aria-label="Dictation" title="Bolo karke likhiye"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <button type="button" class="ib" id="voiceBtn" aria-label="Start voice conversation" title="Talk with Hoola"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/></svg></button>
     <button type="button" class="btn soft stopb" id="stopBtn" hidden>■ Stop</button>
     <button type="submit" class="ib send" id="sendBtn" aria-label="Send" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
   </div>
@@ -142,7 +143,7 @@
 <script src="/static/console/panel.js?v=0.217.0&web=en1"></script>
 <script src="/static/console/projects.js?v=0.217.0&web=en1"></script>
 <script src="/static/console/results.js?v=web-en1"></script>
-<script src="/static/console/workspace.js?web=progress1&rev=7"></script>
-<script src="/static/console/v2.js?v=0.217.0&web=appearance1"></script>
+<script src="/static/console/workspace.js?web=progress1&rev=8"></script>
+<script src="/static/console/v2.js?v=0.217.0&web=inputs1"></script>
 </body>
 </html>
