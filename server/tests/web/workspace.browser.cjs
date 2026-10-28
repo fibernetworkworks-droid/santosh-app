@@ -150,6 +150,11 @@ const server=http.createServer((req,res)=>{
  assert.equal(await page.locator('.progress-label').evaluate(e=>getComputedStyle(e).fontWeight),'500');
  emit('think',{turn:'final-fixture',seg:0,text:'PRIVATE_REASONING'});await page.locator('.simple-progress').filter({hasText:'Thinking…'}).waitFor();
  assert.equal(await page.getByText('PRIVATE_REASONING',{exact:true}).count(),0);
+ const elapsedBefore=await page.locator('.progress-elapsed').textContent();await page.waitForTimeout(1100);assert.notEqual(await page.locator('.progress-elapsed').textContent(),elapsedBefore);
+ emit('step',{id:'search-a',tool:'google_search',state:'running'});await page.locator('.progress-label').filter({hasText:'Searching sources…'}).waitFor();
+ emit('step',{id:'search-a',tool:'google_search',state:'done'});await page.locator('.progress-label').filter({hasText:'Reviewing sources…'}).waitFor();
+ emit('step',{id:'search-b',tool:'drive_find',state:'running'});await page.locator('.progress-label').filter({hasText:'Searching connected files…'}).waitFor();
+ assert.equal(await page.locator('.progress-search-count').textContent(),'2 searches');
  emit('reply_start',{turn:'final-fixture'});await page.locator('.simple-progress').filter({hasText:'Preparing your response…'}).waitFor();
  assert.equal(await page.locator('#col .progress-active > .av').count(),1);
  assert.equal(await page.locator('.simple-progress img').count(),0);
@@ -160,6 +165,9 @@ const server=http.createServer((req,res)=>{
  emit('delta',{turn:'final-fixture',seg:0,seq:1,text:'Final verified answer.'});
  emit('reply_end',{turn:'final-fixture'});emit('typing',{on:false});
  await page.locator('.simple-progress').waitFor({state:'hidden'});await page.getByText('Final verified answer.',{exact:true}).waitFor();
+ assert.equal(await page.locator('.progress-record').count(),1);assert.equal(await page.locator('.progress-record').getAttribute('open'),null);
+ await page.locator('.progress-record summary').click();assert.equal(await page.locator('.progress-record .progress-activity').isVisible(),true);
+ assert.equal(await page.locator('.progress-record').getByText('PRIVATE_REASONING',{exact:true}).count(),0);
  emit('browser',{session_id:'unrelated',status:'working'},'another-chat');await page.waitForTimeout(100);assert.equal(await page.locator('.simple-progress').isVisible(),false);
  assert.equal(await page.locator('#col').getByText('INTERNAL_WORK_MARKER').count(),0);assert.equal(await page.locator('#col').getByText('Approve this action',{exact:true}).count(),1);
  await divider.focus();await page.keyboard.press('End');await page.waitForFunction(()=>Math.round(document.querySelector('.side').getBoundingClientRect().width)===420);await aligned();
@@ -183,6 +191,14 @@ const server=http.createServer((req,res)=>{
  await page.locator('#cw-files').setInputFiles({name:'reference.txt',mimeType:'text/plain',buffer:Buffer.from('Reference')});
  await page.waitForFunction(()=>!document.querySelector('#cw-submit').disabled);
  await page.locator('[data-mode="image"]').click();assert.equal(await page.locator('#cw-refs .fchip').count(),0);
+ for(const scope of ['web','connected','all']){
+  await page.locator('[data-mode="research"]').click();await page.locator('#cw-sources').selectOption(scope);await page.locator('#cw-prompt').fill('Compare verified sources for a research brief');await page.locator('#cw-submit').click();await page.waitForFunction(()=>!document.querySelector('#v-chat').hidden);
+  const sent=posts.at(-1).text;assert.match(sent,/distinct relevant searches/);assert.match(sent,/Research is read-only/);
+  if(scope==='web')assert.match(sent,/Do not access private connected apps/);
+  if(scope==='connected')assert.match(sent,/Do not search the public web/);
+  if(scope==='all')assert.match(sent,/public web sources, my already connected apps/);
+  await page.locator('[data-v="creative"]').click();
+ }
  await page.locator('.side [data-v="chat"]').click();await aligned();
  for(const width of [1024,768,390,320]){
   await page.setViewportSize({width,height:900});await page.waitForTimeout(100);
