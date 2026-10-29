@@ -154,8 +154,8 @@ async function enter() {
                      get pickProject() { return PJ ? c => PJ.pick(c) : null; },
                      get openSection() { return PJ ? pid => PJ.open(pid) : null; },   // v0.193 session name opens its page
                      newChatIn: async pid => {                                        // v0.193 "+" on a session header
-                       try { const c = await api('POST', `/api/conversations?project_id=${encodeURIComponent(pid)}`);
-                             await openConv(c.id, true); go('chat'); loadRecents(); }
+                       try { const c = await api('POST', `/api/conversations?reuse=1&project_id=${encodeURIComponent(pid)}`);
+                             go('chat'); await openConv(c.id, true); loadRecents(); }
                        catch (e) { toast(e.message, true); }
                      }});
     $('#searchBtn').hidden = false;
@@ -196,7 +196,9 @@ async function loadRecents() {
 $('#recents').addEventListener('click', e => { if (CH) return; const b = e.target.closest('[data-conv]'); if (b) { openConv(b.dataset.conv); go('chat'); } });
 $('#searchBtn').addEventListener('click', () => CH?.openSearch());
 $('#newChat').addEventListener('click', async () => {
-  try { const c = await api('POST', '/api/conversations'); await openConv(c.id, true); go('chat'); loadRecents(); } catch (e) { toast(e.message, true); }
+  // v0.231 New chat opens her untouched empty chat if she has one (never a pile of identical "Naya chat" rows)
+  try { const c = await api('POST', '/api/conversations?reuse=1'); go('chat'); await openConv(c.id, true); loadRecents(); msg.focus(); }
+  catch (e) { toast(e.message, true); }
 });
 
 /* ================= chat view ================= */
@@ -870,7 +872,7 @@ async function openConv(id, fresh, opts = {}) {
   catch (e) { LOADING = false; col.innerHTML = ''; if (e.status === 404 && opts.fallback) return opts.fallback(); toast(e.message, true); }
   if (CONV !== id) return;
   col.innerHTML = '';
-  const any = tl.events.some(e => e.kind === 'message')
+  const any = tl.events.some(e => e.kind === 'message' && e.payload?.source !== 'greeting')   // v0.231 only the greeting = home
     || (!fresh && !!B && tl.events.some(e => B.kinds.has(e.kind)));           // a chat with a build in it opens on the thread
   ANY = any; landing(!any);
   renderEvents(tl.events, any);
@@ -1078,7 +1080,7 @@ function accountStream() {
       const c = ev.conv;
       if (ev.kind === 'typing') { CH.busy(c, !!ev.payload?.on); if (!ev.payload?.on) setTimeout(() => CH.load(), 1500); }   // a new auto title
       if (c === CONV) { if (LOADING) PENDING.push(ev); else onEvent(ev); return; }
-      if (ev.kind === 'message' && ev.payload?.role === 'assistant') CH.unread(c);
+      if (ev.kind === 'message' && ev.payload?.role === 'assistant' && ev.payload?.source !== 'greeting') CH.unread(c);
       if (!ev.live && !LOCAL.has(ev.kind) && !PROGRESS_POLICY.quiet(ev.kind,ev.payload)) CH.unread(c);   // v0.227.4 stays in its own chat
     }});
   ACC = s;

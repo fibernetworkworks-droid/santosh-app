@@ -97,11 +97,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.232.0 (pubspec 0.232.0+272). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.234.0 (pubspec 0.234.0+274). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.232 long jobs Phase C: she sees Hoola think (adaptive thinking on Claude for long jobs / big asks, setting
-  `chat_thinking` goal|on|off; thinking blocks never saved or sent to GLM; phone Soch card `lib/ui/think_card.dart`).
+- v0.234 long jobs Phase C (built as 0.232): she sees Hoola think (adaptive thinking on Claude for long jobs / big
+  asks, setting `chat_thinking` goal|on|off; thinking never saved or sent to GLM; phone Soch card `lib/ui/think_card.dart`).
+- v0.233 console New chat reuses her untouched empty chat and opens on the home · v0.232 voice Phase 4 (call scorecards saved per call in data/voice_calls, grade + end reason, /api/voice/quality per
+  version, ear test + phone checklist /api/voice/eartest, Profile > Call ki jaanch).
 - v0.231 SAHI JAWAB, the Claude-style reply end to end (one reply rulebook for chat / console / quick lane /
   voice; the 128 KB guide slimmed to ~31 KB per turn by tool family; the phone renders markdown; a free
   claim-check plus one cheap draft check AFTER the words are out; a 24-ask scorecard with before/after numbers).

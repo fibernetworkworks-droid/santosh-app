@@ -9242,8 +9242,43 @@ Phase 1 put "check your draft once" in the rulebook; this is the part that does 
   keep working. Mera PC freeze respected; desktop untouched 1.4.0; the scorecard never touches her data, her chats or
   her budget.
 
+## v0.232.0 VOICE PHASE 4 (built as 0.231.0; re-versioned after the parallel v0.231.0 SAHI JAWAB took the number) — call quality you can measure (owner: "START PHASE 4")
+1. **Scorecards that survive deploys** (`app/callquality.py`): `voice.STATS` lived only in memory, so every pm2 restart wiped
+   the call numbers. Now `Call.run`'s finally writes ONE line per finished call to `data/voice_calls/<tenant>.jsonl` (last
+   `KEEP` 300) through `callquality.record` (in a thread, never raises into the call). Only numbers and labels are kept
+   (`NUM_KEYS`, latency / words lists, gate counters, end, lang, app version) — never words, transcripts or audio.
+2. **End reason** (`stats["end"]`): `Call._end_reason` = `stall` (three silent reconnects), `error` (Gemini connection gave up),
+   `server_restart` (shutdown watchdog), `hold_timeout`; else `hung_up` (her end) or `dropped`.
+3. **A grade per call** (`grade`): bad = broke mid-call, reply start p90 > 2,500 ms, Gemini silent with reconnects, her 👎;
+   ok = p90 > ~1,900 ms, a nudge, a forced GoAway cut, a hold that dropped a reply, language drift > 10%, asked again > 25%,
+   3+ false stops, line dropped without her hang-up. Problems in plain Hinglish.
+4. **`GET /api/voice/quality?days=`**: overall roll-up + the same per app version (newest 6) + the last 15 calls with grade,
+   problems, end, her rating (joined from `call_ratings`), targets (p50 1,200 ms, p90 2,500 ms, 80% good) and a `say` line.
+   Phase 2 numbers (goaway, graceful %, forced, prebuilt, gap audio kept, his missed voice replayed), Phase 3 (news merged /
+   deduped, murmurs, acks, orphan notes), reliability (stalls, auto-rescues, setup refusals), talk (interruptions, false stops,
+   language drift, asked again, silent tools, voice approvals) and cost. `/api/voice/stats` adds `quality` {overall, say, targets}.
+5. **Ear test + real-phone checklist** (`EAR_TESTS`, 18: 10 ear scenarios — first reply speed, long story without cutting in,
+   interrupt, list pace, low / glad feeling, tool wait, job news at a pause, Hinglish kept, bol-kar-haan — and 8 phone ones —
+   Wi-Fi to data, GSM call, WhatsApp call, headset, song, lock screen, 15-minute call, reconnect memory). Each has what to do and
+   what good sounds like. `GET /api/voice/eartest`, `POST /api/voice/eartest/{id}` {result pass|fail|skip|clear, note}; saved in
+   `data/voice_eartest/<tenant>.json` per APP_VERSION (each version starts fresh, old results kept; summary per version).
+6. **Phone** `lib/ui/call_quality_screen.dart` (Profile > Call ki jaanch): 7 / 30 / 90 days, the say line, grade chips,
+   numbers vs targets, per version, recent calls with grade and problems, the ear test with Sahi / Galat (asks what felt
+   wrong) / Chhodo. New APK; the server part works without it.
+Tests: NEW `test_v0232_voice_phase4.py` (12). Version 0.232.0 (pubspec 0.232.0+272, console ?v=0.232.0, pins -> 0.232.0).
 
-## v0.232.0 LONG JOBS PHASE C — she SEES Hoola think (owner: "NOW START PHASE C END TO END"; fix 6 of the Claude-vs-Hoola long-task report)
+## v0.233.0 New chat lands on a clean chat (owner: "WHEN CLICK ON NEW CHAT IT LANDS ON ANY RANDOM CHAT"; built as 0.231.0, re-versioned after the parallel v0.231.0 SAHI JAWAB + v0.232.0 voice Phase 4)
+- Cause: every console New chat tap made one more identical "Naya chat" row, opened as a thread with the greeting, and
+  the greeting (published before the console switched to that chat) put an unread dot on it - she could not tell which
+  of many identical chats she was in.
+- Fix: `POST /api/conversations?reuse=1` (console New chat and the session "+") returns her newest UNTOUCHED empty chat
+  (`main._untouched_chat`: same session, not archived / deleted, only the greeting event, no message of hers - a chat a
+  card or note landed in is never reused) and makes a new one only when there is none; without `reuse` (phone, bootstrap)
+  nothing changes. A greeting-only chat opens on the home screen; the greeting never marks a chat unread.
+- Old empty "Naya chat" rows already made stay in the list (delete from the chat menu).
+- Tests: NEW `test_v0233_new_chat.py` (4). Version 0.233.0 (pubspec 0.233.0+273, console ?v=0.233.0, pins -> 0.233.0).
+
+## v0.234.0 LONG JOBS PHASE C (built as 0.232.0, re-versioned after the parallel v0.232.0 voice Phase 4 + v0.233.0) — she SEES Hoola think (owner: "NOW START PHASE C END TO END"; fix 6 of the Claude-vs-Hoola long-task report)
 - THE GAP (found in code): the server could stream thinking since v0.171 (`think` live events, `livereply.feed_think`,
   `/live` snapshot `think`), but `_call_brain` never asked Claude to think and the production GLM has thinking
   disabled, so no Soch card could ever appear — not on the console, not on the phone (the phone had no card at all).
@@ -9259,6 +9294,6 @@ Phase 1 put "check your draft once" in the rulebook; this is the part that does 
   turn:seg (`_onThink`, newest 6,000 chars kept), inserted above the growing reply; `clear` empties it; live = open
   with a ticking clock "Soch raha hoon · 12s" and the newest lines; reply_end / typing off / the next reply folds it
   to "<name> ne socha · 12s" (tap opens all of it); a reload mid-thought reopens it from `/live`. Never stored.
-- Tests NEW `test_v0232_phase_c.py` (9). Version 0.232.0 (pubspec 0.232.0+272, console ?v=0.232.0, pins -> 0.232.0).
+- Tests NEW `test_v0234_phase_c.py` (9). Version 0.234.0 (pubspec 0.234.0+274, console ?v=0.234.0, pins -> 0.234.0). Sub-agents never think (contextvar `_THINK_NOW`, not a new keyword, so every `_think` / `_call_brain` caller keeps its signature).
   Server deploy turns thinking on (console shows it in its progress line); the phone card needs the new APK. Mera PC
   freeze respected; desktop untouched.
