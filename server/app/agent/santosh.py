@@ -901,9 +901,13 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             if state.get("goal"):
                 spoke = any(b.get("type") == "text" and (b.get("text") or "").strip() for b in blocks)
                 state["quiet"] = 0 if spoke else state.get("quiet", 0) + 1
-                every = int(getattr(settings, "agent_narrate_every", 3) or 0)
-                if every and state["quiet"] >= every:
+                every = int(getattr(settings, "agent_narrate_every", 8) or 0)
+                cap = int(getattr(settings, "agent_narrate_max", 2) or 0)
+                # v0.239 CHHOTA JAWAB: the live card is the progress report, so the chat hears from a long job at
+                # most `cap` times - never a line per step (the owner: "it must work in the background").
+                if every and state["quiet"] >= every and state.get("narrated", 0) < cap:
                     state["quiet"] = 0
+                    state["narrated"] = state.get("narrated", 0) + 1
                     STATS_LONG["narrate"] += 1
                     results.append({"type": "text", "text": _goal.NARRATE})
             elif (not state.get("plan_nudged") and not state.get("extended")
