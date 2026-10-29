@@ -1693,3 +1693,17 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 .pdfpill i{width:1px;height:16px;background:var(--line);margin:0 3px}
 .pdfpg{min-width:58px;text-align:center;font:600 12.5px var(--fb);color:var(--ink);font-variant-numeric:tabular-nums}
 @media (hover:none){.pdfpill{opacity:1}}
+
+/* ================================================================================================
+   v0.249 ONE READING WIDTH (owner: "THE CHAT SPACE WORDING IS EXTENDED TO CHAT TYPING SECTION IN CLAUDE - SAME FOR
+   HOOLA"): the conversation column is exactly the composer's width (880px, 16px gutters when narrow), so her bubble's
+   right edge and Hoola's words line up with the edges of the box she types in. When there is room the reply avatar
+   hangs just outside the left edge (the words start where the composer starts); on narrow screens it stays inline.
+   ================================================================================================ */
+#app .thread{container-type:inline-size;container-name:thread}
+#app .col{width:min(880px,calc(100% - 20px));max-width:none;margin-inline:auto;padding-left:0;padding-right:0}
+#app .mu{max-width:min(78%,640px)}
+#app .mh .cd,#app .mh .appr{max-width:100%}
+@container thread (min-width: 980px){
+  #app .mh{margin-left:-44px;width:calc(100% + 44px);max-width:none}
+}
