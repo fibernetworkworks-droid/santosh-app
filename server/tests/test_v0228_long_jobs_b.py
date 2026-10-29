@@ -81,22 +81,19 @@ def test_silent_goal_rounds_ask_for_one_progress_line(gz, monkeypatch):  # noqa:
     brain = _set_brain(monkeypatch, FakeBrain([
         ([txt("Plan."), tu(1, "kaam_plan", action="set", goal="Bada kaam",
                            steps=["a", "b", "c", "d", "e", "f"])], "tool_use"),
-        ([tu(2, "kaam_plan", action="step", n=1, state="done")], "tool_use"),     # silent 1
-        ([tu(3, "kaam_plan", action="step", n=2, state="done")], "tool_use"),     # silent 2
-        ([tu(4, "kaam_plan", action="step", n=3, state="done")], "tool_use"),     # silent 3 -> narrate
-        ([txt("3 ho gaye, ab d."), tu(5, "kaam_plan", action="step", n=4, state="done")], "tool_use"),
-        ([tu(6, "kaam_plan", action="step", n=5, state="done")], "tool_use"),
-        ([tu(7, "kaam_plan", action="step", n=6, state="done")], "tool_use"),
-        ([txt("Sab ho gaya."), tu(8, "kaam_plan", action="finish", outcome="done", reason="poora")], "tool_use"),
+        # v0.240 the owner: "it must work on background" - 8 silent rounds, not 3, and at most 2 lines per job
+        *[([tu(i, "kaam_plan", action="step", n=min(i - 1, 6), state="done")], "tool_use") for i in range(2, 11)],
+        ([txt("Sab ho gaya."), tu(11, "kaam_plan", action="finish", outcome="done", reason="poora")], "tool_use"),
         ([txt("Sab ho gaya.")], "end_turn"),
     ]))
     from app.agent.santosh import STATS_LONG, run_turn
     before = STATS_LONG["narrate"]
     asyncio.run(run_turn(conv, "bada kaam karo", tenant_id="default"))
     assert "kaafi der se tumne use kuch nahi bataya" in _texts(brain)
-    assert STATS_LONG["narrate"] == before + 1         # the line she got reset the count: asked once, not every round
-    # kaam_plan step done itself asks for the one line while steps are left
-    assert "EK chhoti line mein use batao" in _texts(brain)
+    assert STATS_LONG["narrate"] == before + 1         # asked once - and v0.240 caps a whole job at 2
+    # v0.240 a finished step now asks for NO chat line: the card already shows it
+    assert "EK chhoti line mein use batao" not in _texts(brain)
+    assert "chat mein iska koi line mat likho" in _texts(brain)
 
 
 # ---------------------------------------------------------------- (3) milestones
@@ -162,8 +159,11 @@ def test_kaam_plan_finish_returns_the_report_for_her_final_answer(gz):  # noqa: 
     asyncio.run(kaam_plan(ctx, action="step", n=1, state="done"))
     out = asyncio.run(kaam_plan(ctx, action="finish", outcome="blocked_on_her", reason="Aapka OTP chahiye",
                                 made=["draft-42"]))
-    assert "👉 Aapko kya karna hai: Aapka OTP chahiye" in out["report"]
-    assert "chaar hisson" in out["note"]
+    # v0.240 the four parts stay on her CARD; the chat gets one short human line
+    assert "👉 Aapko kya karna hai: Aapka OTP chahiye" in out["card_shows"]
+    assert "report" not in out
+    assert "chaar hisson" not in out["note"]
+    assert "EK chhoti insaani line" in out["note"] and "Bullet list" in out["note"]
 
 
 # ---------------------------------------------------------------- the phone + console + wiring
@@ -175,10 +175,12 @@ def test_phone_and_console_show_report_and_continue():
     assert "function goalReport" in js and "goalReport(p.report)" in js
     assert ".greport" in (ROOT / "server/app/static/console/v2.css").read_text()
     prompt = (ROOT / "server/app/agent/prompts.py").read_text()
-    assert "Kaam karte hue BOLTE raho" in prompt and "Aapko kya karna hai" in prompt
+    # v0.240 the prompt now orders the opposite: work in the background, one short line in chat
+    assert "CHUPCHAP background mein karo" in prompt
+    assert "Aakhri jawab hamesha chaar hisson mein" not in prompt
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.240.0"
-    assert "0.240.0+280" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.243.0"
+    assert "0.243.0+283" in (ROOT / "pubspec.yaml").read_text()

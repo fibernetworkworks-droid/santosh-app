@@ -413,6 +413,12 @@ class Api {
   /// v0.186 the goal card's data (the newest goal of this chat), or {} when none.
   Future<Map<String, dynamic>> goal(String id) async =>
       Map<String, dynamic>.from((await _send('GET', '/api/conversations/$id/goal') as Map)['goal'] as Map? ?? {});
+  /// v0.242 the chat's checkpoint summary (Claude-style compact), or {} when it was never compacted.
+  Future<Map<String, dynamic>> compactInfo(String id) async =>
+      Map<String, dynamic>.from((await _send('GET', '/api/conversations/$id/compact') as Map)['active'] as Map? ?? {});
+  /// v0.242 "Chat chhoti karo": write the checkpoint now ({} = nothing old enough to fold yet).
+  Future<Map<String, dynamic>> compactNow(String id) async => Map<String, dynamic>.from(
+      (await _send('POST', '/api/conversations/$id/compact', timeout: const Duration(seconds: 150)) as Map)['compact'] as Map? ?? {});
   /// v0.186 Rokiye for the goal only: the plan stops, the chat itself stays free.
   Future<void> stopGoal(String id) async => _send('POST', '/api/conversations/$id/goal/stop');
   // v0.228 the job ran out of budget and ASKS: her tap carries it on with a fresh budget (done steps kept)

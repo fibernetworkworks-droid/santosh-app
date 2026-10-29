@@ -9480,6 +9480,117 @@ asked how Claude would do it, compared it with Hoola's flow, asked "WHY FOR EVER
   long -> clean line, no raw text in errors, the gauge learns (first count, 30% moves, estimated counts ignored, named
   window), Claude's real count on the reading, the context endpoint. The v0.108 window test pins
   CHAT_CONTEXT=hoola. Version 0.239.0 (pubspec 0.239.0+279, console ?v=0.239.0, pins -> 0.239.0).
+
+## v0.240.0 CHHOTA JAWAB — a long job works in the background; the chat gets one short human line (owner: "IT GIVE HUGE REPLY FOR EVERY SMALL WORK IN BACKEND -- EVERY MINUE DETAILS --- IT MUST WORK ON BACKGOUD AND ON CHAT SCREEN IT MUST SHOW JUST A SMALL PERFECT HUMAN UNDERSTANDABLE ENGLISH PERFECLY LIKE CLAUDE DOES")
+Research first (how Claude's chat gives a reply in the chat space): the assistant's answer is short prose; the tool
+work sits collapsed in its own rows, and the detail is available without being in the sentence. Hoola was doing the
+opposite — and the detail it put in the chat was not missing information, it was a DUPLICATE: the four-part report
+(kya hua / kya bana / kya baaki / aapko kya karna hai) already renders on her goal card (phone `_Report` in
+`lib/ui/goal_card.dart`, console `goalReport` in `v2.js`), and v0.228 ALSO ordered the model to write those same four
+parts as its chat answer. A 12-step job therefore produced: 12 per-step lines + ~4 narration lines + a wall of bullets
+she was already looking at on the card.
+- FIVE sites pushed detail into the chat space; all five now point the other way:
+  1. `prompts.SYSTEM` (the strongest one): "Aakhri jawab hamesha chaar hisson mein: ✅ Kya hua · 📎 Kya bana · ⏳ Kya
+     baaki hai · 👉 Aapko kya karna hai" → "Kaam CHUPCHAP background mein karo ... uska card har step live dikha raha
+     hai, isliye har step ka koi line chat mein mat likho ... chat mein aakhri jawab EK chhoti insaani line ho — ek ya
+     do vaakya, jaise ek sathi batata hai ('Ho gaya, teeno bill ban gaye') — koi bullet list, koi ✅ / 📎 / ⏳ / 👉
+     heading, koi step-by-step detail nahi."
+  2. `goal_tools.kaam_plan` action=finish: the bulleted `report_text()` no longer rides as `report` (which reads as a
+     template to echo) but as `card_shows` (what she is already looking at), and the note forbids the bullets and the
+     four headings BY NAME: "Yeh report uske CARD par pehle se dikh rahi hai. Chat mein sirf EK chhoti insaani line do."
+  3. `goal_tools.kaam_plan` action=step: a finished step used to add "Ab EK chhoti line mein use batao is step mein kya
+     mila / kya bana" → now "Card par yeh step apne aap done dikh gaya - chat mein iska koi line mat likho, bas agla
+     tool chalao."
+  4. The narration cadence (`santosh._steps_inner` + `goal.NARRATE`): `agent_narrate_every` 3 → 8 AND a new
+     `agent_narrate_max` 2 (`state["narrated"]`), so a 40-step job can never produce 13 progress lines; NARRATE itself
+     now asks for one sentence like a person's, with no number, link or bullet ("Bills ban rahe hain, do ho gaye").
+  5. `agent/replystyle.py` (the v0.231 rulebook, chat AND voice): "Results of work: say what was really done with the
+     real details from the tool (name, number, amount, date, link)" → "Results of work, the short way: one or two
+     sentences, the way a person tells a colleague it is done ... the step-by-step detail, the numbers and the links are
+     ALREADY on her card: never repeat them in the reply, never a bullet list of the steps you ran, never 'Kya hua /
+     Kya bana / Kya baaki' headings ... a twenty-step job gets the same short line as a one-step job." The voice rule
+     gets the same discipline ("never a list of the steps you ran, never every number — she can see the card").
+- NOTHING IS LOST: `goal.build_report` and both cards are untouched, so every link, step, note and number is still one
+  tap away — it simply stops being pasted into the conversation. The push body and the call note were already short.
+- Language: "perfect human understandable English" is read as plain, clear sentences instead of a bulleted technical
+  dump, in her own language (Claude answers in the user's language, and the v0.231 rulebook's "her style wins" stands).
+  If she means literally English for result lines, that is a one-line change to the rulebook.
+- Tests: NEW `server/tests/test_v0239_chhota_jawab.py` (10) — the finish note no longer orders the four parts and
+  forbids each shape of the dump by name; the bulleted text rides as `card_shows` and `report` is gone from the tool
+  result; nothing is lost from the card (all four parts still built, `report_text` still renders them); a finished step
+  asks for no chat line; the cadence defaults (8 / max 2); NARRATE's wording; the loop stops narrating at the cap over
+  60 silent rounds + a source pin; the rulebook on both surfaces (and still brace-free, so `voice.PERSONA.format()`
+  holds); the rulebook rides in the slim per-turn guide. The two v0.228 assertions that pinned the old behaviour
+  (`test_silent_goal_rounds_ask_for_one_progress_line`, `test_kaam_plan_finish_returns_the_report_for_her_final_answer`)
+  were UPDATED to the owner's decision, not deleted, so the change of intent is visible in git.
+- Not covered by the Phase 5 scorecard: its 24 asks are single-turn, so a goal-mode long job's reply length is not
+  measured by it. The natural next step is a 25th ask that runs a scripted multi-step job and scores the final line.
+
+## v0.241.0 VOICE PHASE 5 (built as 0.234.0; re-versioned past the parallel v0.234.0-v0.240.0 work) — the plan's leftovers (owner: "START PHASE 5")
+The voice plan had four phases plus "later: full-duplex on our own GPUs" (still not buildable: no Hindi full-duplex
+model / vendor). Phase 5 = everything the plan promised that Phases 1-4 had not shipped:
+1. **The slow tail** (`callquality._p99`, nearest rank, rounds up): `reply_start_ms_p99` in the roll-up and per version,
+   target `P99_ALERT_MS` 4,000 ms; the `say` line names it when it is over. A call now keeps 120 latencies (was 60).
+2. **Dead air** (`dead_air_s`): seconds she waited past a person-like start (1,200 ms), summed; total + per call; a call
+   with 20 s+ is graded ok with "kul N second khamoshi mein intezaar".
+3. **Talk-over** (`stats["talk_over"]`, `voice.TALK_OVER_S` 0.25): his first audio of a turn while her mic was loud
+   that recently (not during a tool). **Repeats** (`is_repeat`, `REPEAT_LOOKBACK` 6, word overlap >= 0.8, 6+ words):
+   only word sets in memory, only the count saved. Both per 100 turns; 2+ in a call = ok grade with a plain problem.
+4. **Alert** (`alert_state`, `maybe_alert` after each saved call): newest 30 calls, p99 > 4 s (20+ turns) or 3 of the
+   last 10 broken (error / stall) -> ONE `voice_alert` event + FCM push to her home chat, at most once a day
+   (`data/voice_calls/<tenant>.alert.json`). `/api/voice/quality` and `/api/voice/stats` carry `alert`.
+5. **Ear test before / after** (`eartest_compare`): this version's marks vs the newest OLDER version she marked:
+   better (fail -> pass), worse (pass -> fail), same, new, not_yet. `GET /api/voice/eartest` adds `compare`.
+6. **Stall watchdog ignores noise** (`real_words`): a transcript of only "<noise>", punctuation or a lone "hmm" no longer
+   nudges him into answering the fan (`stall_noise_skips`, once per turn).
+7. **"Ek second" clips at his live loudness** (`_rms`, `_level`, `Call._hear_him`, `Call._clip`): the TTS-made clips
+   are scaled to his running Gemini Live loudness in this call (0.5x-2x, no clipping, after 24 chunks heard) for acks,
+   murmurs and progress sounds (`level_matched`).
+8. **No silent swallows**: the ack TTS falling back to the legacy model (a different-sounding voice) logs a warning and
+   counts `TTS_FALLBACKS` (`/api/voice/stats` `ack_tts_fallbacks`); the names lookup, OTP listener and last-outcome
+   read log instead of hiding.
+9. **Phone** (Call ki jaanch): p99, dead air, talk-over, repeats rows; the alert banner; "pehle se behtar / kharab /
+   pehle jaisa" on each ear-test card and a "vX ke muqable" line. New APK; the server part works without it.
+Tests: NEW `test_v0234_voice_phase5.py` (13). Version 0.241.0 (pubspec 0.241.0+281, console ?v=0.241.0, pins -> 0.241.0). End-to-end test plan: docs/VOICE_E2E_TEST_PLAN.md.
+
+## v0.242.0 FULL CLAUDE MODE — Phase 2: COMPACT, Claude's way of keeping a long chat alive (owner: "START PHASE 2")
+- WHY: Phase 1 sends the whole chat word for word; when it no longer fits, its safety net shortened the oldest
+  exchanges to one-line gists. Claude instead writes ONE careful summary of the older part when the window is nearly
+  full and keeps going. Phase 2 does exactly that.
+- NEW `agent/compact.py` + table `chat_compact` (registered in `db.init_db`, self-heals with `ensure_table`): rows are
+  checkpoints (status active), background drafts (draft) or older checkpoints (replaced); upto_id = the last Message.id
+  a summary covers, tokens before / after, reason auto | manual | overflow, who wrote it (claude / glm / plain).
+- WHEN: `compact.before_turn` runs in `santosh._run_turn` under the chat lock, BEFORE her message is saved:
+  estimate = the chat after its checkpoint + the prompt / tools overhead the gauge measured last time (60,000 chars
+  before the first call). Over CHAT_CONTEXT_FULL_AT (75%) -> compact now (typing dots on); past
+  CHAT_COMPACT_PREPARE_AT (60%) -> a background draft, so the 75% switch normally needs no model call at all (only
+  exchanges newer than the draft are folded). A long job compacts between its rounds (each round is a turn); inside
+  one turn the Phase 1 net / squeeze still protects the call. A "too long" answer puts the chat in `compact.FORCE`, so
+  the next turn compacts first (reason overflow).
+- WHAT: every exchange but the newest CHAT_COMPACT_KEEP (4) folds into the summary; each new checkpoint is written on
+  top of the previous one (nothing older is lost). Claude writes it (system prompt with 7 sections: LAKSHYA, USKE SHABD
+  in her exact words, FAISLE, KAAM HUA with ids / files / links exactly, DIKKAT AUR HAL, BAAKI, ABHI), the cheap brain if
+  Claude is down, plain one-line-per-exchange text if no model answers - a compaction never fails. Big older parts go
+  in 60,000-char pieces, each folded into the summary so far. `scrub`: OTP / PIN / CVV / password next to their word
+  -> ****, any 10+ digit run (cards, accounts, Aadhaar) -> ######. Max CHAT_COMPACT_MAX_CHARS (8000).
+- HISTORY: `yaad.full_history` = the checkpoint as the first message ("[PICHHLI BAATON KA SAAR ...]") + every row after
+  upto_id word for word. `context.fit` / `squeeze` split that head off (`_split_head`, also after `_sanitize` merged it
+  with her first words) and never shorten or drop it; the gauge's reading now keeps `fixed` (prompt + tools chars).
+- SHE SEES: event `compact` (LOCAL_KINDS, no push) {exchanges, total, before_pct, after_pct, preview}. Phone: `CompactChip`
+  "Purani baatein saar mein rakh di (n) · Dekho" -> `showCompactSheet` (the summary, selectable, + "Chat chhoti karo");
+  the same sheet from the "Aapki chats" sheet header (unfold-less icon). Console: a <details> note "Older messages
+  summarised · X% -> Y% full · View" (loads the full summary on open) and "🗜 Compact chat" in each chat's menu.
+- ROUTES: GET /api/conversations/{id}/compact (active + recent + health); POST = compact now (409 while Hoola works in
+  that chat or when compaction is off; {compact: null, say} when nothing old enough to fold).
+- SETTINGS: chat_compact true, chat_compact_prepare_at 0.6, chat_compact_keep 4, chat_compact_max_chars 8000.
+  CHAT_COMPACT=false = Phase 1 only; CHAT_CONTEXT=hoola = the old window (no compaction).
+- Tests: NEW `test_v0242_compact.py` (10): compacts before the turn at 90% + newest 4 word for word + summary first +
+  event + fits again, history after a checkpoint survives a restart, the second checkpoint builds on the first, a 60%
+  draft switched in at 75% with no new writing, secrets scrubbed, plain fallback, overflow -> next turn compacts, off
+  switches, the net / squeeze never cut the checkpoint, manual endpoints (+409 while busy). The Phase 1 net test runs
+  with CHAT_COMPACT=false. Version 0.242.0 (pubspec 0.242.0+282, console ?v=0.242.0, pins -> 0.242.0).
+- Phone chip / sheet need the new APK; the server part works with old APKs (they just do not draw the chip).
+  Mera PC / desktop untouched.
 ## v0.237.0 The console sidebar adapts to its width (owner: "WHEN SIDE BAR SHRINKS NEW CHAT AND OTHERS GET MISPLACED - IT MUST BE AUTOMATICALLY ADJUSTED")
 - Cause: at the default / dragged-narrow sidebar width (~220px) "New chat" + its "Ctrl ⇧ O" hint did not fit, so the label
   wrapped onto two lines and the row grew.
@@ -9490,7 +9601,7 @@ asked how Claude would do it, compared it with Hoola's flow, asked "WHY FOR EVER
   first message) is "Untitled chat", never "Naya chat".
 - Tests: NEW `test_v0237_sidebar.py` (3). Version 0.237.0 (pubspec 0.237.0+277, console ?v=0.237.0, pins -> 0.237.0).
 
-## v0.240.0 CALM BRAND console (Light / Dark / System) + the sidebar fit
+## v0.243.0 CALM BRAND console (built as 0.240.0; re-versioned past the parallel v0.240-v0.242) (Light / Dark / System) + the sidebar fit
 Owner: "NOW CHECK CONSOL LOOK LIKE A FULLY AI MADE -- MAKE IT HUMAN NATIVE WEB DESIGN WORK. ALSO INCLUDE MODES ::: DARK , LIGHT ,
 SYSTEM", then on the prototype "PUT THE COLOUR ON BUT ORANGE -- MAKE IT APP BRAND DESIGN ... MORE PREMIUM WITH ANIMATIONS AND
 SHEDING ON BORDERS", then "PERFECT NOW --- DEPLOY IT END TO END SAME AS PROTOTYPE SHOWN". Prototype artifact: claude.ai/artifact/9PXUc9MZyRLnox2VisS9zN.

@@ -777,6 +777,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 if _ctx.is_overflow(e) and not state.get("squeezed"):
                     # v0.237 the model said the chat is too long: the hard form, ONCE - a chat never gets stuck on size
                     _ctx.overflowed(brain, e)
+                    from . import compact as _compact
+                    _compact.FORCE.add(conversation_id)   # v0.242 the next turn compacts first
                     state["squeezed"] = True
                     log.warning("context overflow on %s (%s); retrying once with the squeezed chat", brain, str(e)[:200])
                     if live is not None:
@@ -967,9 +969,13 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             if state.get("goal"):
                 spoke = any(b.get("type") == "text" and (b.get("text") or "").strip() for b in blocks)
                 state["quiet"] = 0 if spoke else state.get("quiet", 0) + 1
-                every = int(getattr(settings, "agent_narrate_every", 3) or 0)
-                if every and state["quiet"] >= every:
+                every = int(getattr(settings, "agent_narrate_every", 8) or 0)
+                cap = int(getattr(settings, "agent_narrate_max", 2) or 0)
+                # v0.240 CHHOTA JAWAB: the live card is the progress report, so the chat hears from a long job at
+                # most `cap` times - never a line per step (the owner: "it must work in the background").
+                if every and state["quiet"] >= every and state.get("narrated", 0) < cap:
                     state["quiet"] = 0
+                    state["narrated"] = state.get("narrated", 0) + 1
                     STATS_LONG["narrate"] += 1
                     results.append({"type": "text", "text": _goal.NARRATE})
             elif (not state.get("plan_nudged") and not state.get("extended")
@@ -1354,6 +1360,11 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             agent_text += "\n\n" + where.note(ctx.place, conversation_id)
         if notes:
             agent_text = "\n".join(f"[Santosh worker update] {n}" for n in notes) + "\n\n" + agent_text
+        try:   # v0.242 FULL CLAUDE MODE Phase 2: a chat near its window is compacted BEFORE this turn (Claude's way)
+            from . import compact as _compact
+            await _compact.before_turn(conversation_id, tenant_id, settings)
+        except Exception:
+            log.exception("compact before turn failed")
         saved_wake = False
         if save_user:
             # v0.221 a goal's background round is not her words: kept in history, but never shown as her message
