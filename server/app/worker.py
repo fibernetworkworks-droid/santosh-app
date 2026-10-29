@@ -359,6 +359,7 @@ def goal_resume_jobs() -> None:
     try:
         from .agent import goal
         goal.resume_tick()
+        goal.recover_tick()      # v0.223 a job a restart left half-done is picked up again
     except Exception:
         log.exception("goal resume tick failed")
 

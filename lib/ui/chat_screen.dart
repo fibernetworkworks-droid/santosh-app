@@ -12,6 +12,7 @@ import 'employee_inbox.dart';
 import 'chai_screen.dart';
 import 'darzi_screen.dart';
 import 'lekhak_screen.dart';
+import 'md_text.dart';
 import 'office_screen.dart';
 import 'employee_screen.dart';
 import 'mshop_screen.dart';
@@ -126,7 +127,6 @@ import 'live_santosh.dart';
 import 'work_strip.dart';
 import 'gyaan_screen.dart';
 import 'postgres_screen.dart' show PgWriteCard;
-import '../nav.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, required this.app, this.onVoice});
@@ -857,9 +857,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 radius: 22,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  // v0.222 SAAF CHAT: Hoola's reply rendered (lists, headings, bold, code, tables, links), not raw marks
                   fresh
-                      ? _Reveal(text: text, builder: (t) => linkText(t, const TextStyle(fontSize: 15, height: 1.45, color: C.ink), selectable: selecting))
-                      : linkText(text, const TextStyle(fontSize: 15, height: 1.45, color: C.ink), selectable: selecting),
+                      ? _Reveal(text: text, builder: (t) => MdText(t, style: const TextStyle(fontSize: 15, height: 1.45, color: C.ink),
+                          streaming: t.length < text.length, selectable: selecting))
+                      : MdText(text, style: const TextStyle(fontSize: 15, height: 1.45, color: C.ink), selectable: selecting),
                 ]));
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -872,7 +874,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 crossAxisAlignment: me ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                 children: [
                   GestureDetector(
-                    onLongPress: () => _msgMenu(it, text, me),
+                    onLongPress: () => _msgMenu(it, me ? text : mdPlain(text), me),
                     behavior: HitTestBehavior.opaque,
                     onHorizontalDragStart: (_) => setState(() {
                       _swiping = it;
@@ -887,7 +889,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       });
                       if (good) {
                         HapticFeedback.mediumImpact();
-                        _startReply(text);
+                        _startReply(me ? text : mdPlain(text));
                       }
                     },
                     onHorizontalDragCancel: () => setState(() {
@@ -921,14 +923,9 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Glass(flat: true,
                 radius: 22,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(text: t, style: const TextStyle(fontSize: 15, height: 1.45, color: C.ink)),
-                      const WidgetSpan(child: _Caret()),
-                    ],
-                  ),
-                ),
+                // v0.222 the half-written reply is rendered too: an open mark styles what follows, never shows
+                child: MdText(t, style: const TextStyle(fontSize: 15, height: 1.45, color: C.ink), streaming: true,
+                    trailing: const WidgetSpan(child: _Caret())),
               ),
             ),
           ),

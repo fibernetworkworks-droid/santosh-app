@@ -1,4 +1,4 @@
-"""v0.220.0 SOORAT - Wave 3 of the voice-to-voice PERFECT plan (Phase C's last remainder: prosody AT the moment).
+"""v0.222.0 SOORAT - Wave 3 of the voice-to-voice PERFECT plan (Phase C's last remainder: prosody AT the moment).
 
 The v0.201 note speaks once and dies; around it the scripted moments keep their fixed energy - after heavy
 news a tool's ack clip can still go bright on 'mil gaya!', and when SHE MOVES (heavy to light, anger to
@@ -52,6 +52,9 @@ class _TonedCall:
 
     def push(self, kind, data, force=False):
         self.notes.append(str(data))
+
+    def push_news(self, text):                       # v0.230 the news queue; tested in test_v0228
+        self.push("text", text)
 
     async def send_audio(self, data):
         self.notes.append(data)
@@ -348,4 +351,4 @@ def test_scorecard_counts_soorat():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.225.0"
+    assert APP_VERSION == "0.232.0"

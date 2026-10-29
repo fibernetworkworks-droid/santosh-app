@@ -19,6 +19,21 @@ from websockets.frames import Close
 from app import main, voice
 from tests.test_voice import FakeSession, _gemini_env, _msg, read_events
 
+
+import pytest as _pytest
+
+
+@_pytest.fixture(autouse=True)
+def _older_live_model(monkeypatch):
+    """v0.221 gemini-3.8-live dropped affective dialog (Hoola never sends it to 3.x); these heal paths are for
+    older native-audio models that still take the field, so they pin one."""
+    from app.config import get_settings
+    monkeypatch.setenv("GEMINI_LIVE_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 # the EXACT shape from the VPS pm2 log, 26 Oct ~11:49
 CLOSE_1007 = ConnectionClosedError(Close(1007, "Request contains an invalid argument."),
                                    Close(1007, "Request contains an invalid argument."), True)

@@ -96,7 +96,8 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
     if kind == "message":
         if p.get("role") != "assistant":
             return None
-        text = str(p.get("text") or "").strip()
+        from .agent.replystyle import plain   # v0.222 the notification shows words, never ** or ###
+        text = plain(str(p.get("text") or ""))
         return (name, text[:400]) if text else None
     if kind == "goal":   # v0.186 lamba kaam: push only when it blocks on her, or it is done
         st = p.get("status")
@@ -104,7 +105,13 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         if st == "blocked":
             return (f"{name}: aapki zaroorat", f"Lamba kaam ruka hai: {title} — {str(p.get('reason') or 'aapka jawab chahiye')[:200]}")
         if st == "done":
-            return (f"{name}: kaam poora", f"Lamba kaam ho gaya: {title}")
+            rep = p.get("report") if isinstance(p.get("report"), dict) else {}
+            extra = (" · " + str(rep.get("aapka"))[:120]) if rep.get("aapka") and "Kuch nahi" not in str(rep.get("aapka")) else ""
+            return (f"{name}: kaam poora", f"Lamba kaam ho gaya: {title}{extra}")
+        if st == "working" and p.get("milestone"):   # v0.228 a real milestone, at most a few per job (never every step)
+            stage = str(p.get("stage") or "")[:100]
+            return (f"{name}: kaam aage badh raha hai",
+                    f"{title} — {p['milestone']} steps ho gaye" + (f". Ab: {stage}" if stage else ""))
         return None
     if kind == "bazar_approval":
         if p.get("status") not in (None, "", "pending") or p.get("result"):

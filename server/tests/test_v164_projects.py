@@ -20,7 +20,10 @@ class SystemSpy:
         self.messages = SimpleNamespace(create=self._create)
 
     async def _create(self, **kw):
-        self.systems.append(kw.get("system") or "")
+        sys_ = kw.get("system") or ""
+        if isinstance(sys_, list):   # v0.190 cache.system_prompt wraps the system prompt in cached text blocks
+            sys_ = "".join(b.get("text", "") for b in sys_ if isinstance(b, dict))
+        self.systems.append(sys_)
         return SimpleNamespace(content=[{"type": "text", "text": "ok"}], stop_reason="end_turn")
 
 

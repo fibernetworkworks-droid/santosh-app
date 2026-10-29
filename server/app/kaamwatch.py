@@ -405,6 +405,7 @@ def _row_view(r: KaamJob) -> dict[str, Any]:
     except ValueError:
         pass
     return {"key": r.key, "kind": r.kind, "label": r.label, "title": r.title, "state": r.state, "status": r.status,
+            "conversation_id": r.conversation_id or "",   # v0.222 the console's live-job cards open their chat
             "stage": d.get("stage", ""), "detail": d.get("detail", ""), "link": d.get("link", ""), "pct": r.pct,
             "started_at": (_aware(r.started_at) or now()).isoformat(), "updated_at": (_aware(r.updated_at) or now()).isoformat(),
             "minutes_since_change": int((now() - (_aware(r.moved_at) or now())).total_seconds() // 60)}

@@ -218,7 +218,7 @@ def test_no_continuation_when_blocked_on_her_after_rokiye_or_past_rounds(gz, mon
     assert goal_mod.active_for(conv) is None
     assert goal_mod.maybe_continue(conv, "default", "owner") is False
 
-    # 3) rounds cap: a goal past AGENT_GOAL_ROUNDS closes as failed instead of continuing
+    # 3) rounds cap: a goal past AGENT_GOAL_ROUNDS stops and asks instead of continuing (v0.223; was: failed)
     #    (a fresh chat: part 1's approval card would rightly block the check)
     from app.db import Conversation
     with goal_mod.session() as s:
@@ -233,7 +233,8 @@ def test_no_continuation_when_blocked_on_her_after_rokiye_or_past_rounds(gz, mon
         r.rounds = get_settings().agent_goal_rounds
     assert goal_mod.maybe_continue(conv2, "default", "owner") is False
     v2 = goal_mod.show("default", v["id"])
-    assert v2["status"] == "failed" and "rounds" in v2["reason"]
+    # v0.223: the budget ran out = the job stops and ASKS ("Aage badhaun?"), it is no longer thrown away as failed
+    assert v2["status"] == "blocked" and v2["hold"] == "limit" and "Aage badhaun" in v2["reason"]
 
 
 def test_max_tokens_cut_continues_exactly_where_it_stopped(gz, monkeypatch):  # noqa: F811
@@ -294,6 +295,7 @@ def _bare_call(conv):
     c.conv = conv
     got = []
     c.push = lambda kind, data, force=False: got.append((kind, data))
+    c.push_news = lambda text: c.push("text", text)    # v0.230 the news queue itself is tested in test_v0230
     return c, got
 
 

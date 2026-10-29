@@ -73,7 +73,7 @@ PRICES: dict[str, dict[str, float]] = {
     "*": {"in": 1.0, "out": 4.0},        # an unknown model: counted, marked as an estimate
 }
 STATS = {"recorded": 0, "flushes": 0, "paused": 0, "warned": 0, "unknown_models": 0}
-BACKGROUND = {"routine", "employee", "website", "video", "motion", "studio", "network"}
+BACKGROUND = {"routine", "employee", "website", "video", "motion", "studio", "network", "draft_check"}
 FEATURE_LABEL = {"chat": "Chat", "call": "Voice call", "routine": "Routines", "employee": "Team / graahak", "website":
                  "Website jobs", "pc": "PC par kaam", "video": "Video editor", "motion": "Motion reels", "studio":
                  "Video Studio", "network": "Hoola Network", "lekhak": "Typist / translator", "reels": "Reels",

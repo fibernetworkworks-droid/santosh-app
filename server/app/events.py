@@ -372,11 +372,14 @@ def _collapse(rows) -> list[dict]:
     return sorted(items.values(), key=lambda it: it["first"].id)
 
 
-def timeline(conversation_id: str, tenant: str, limit: int = 60, before: int = 0, steps: bool = False) -> dict[str, Any]:
+def timeline(conversation_id: str, tenant: str, limit: int = 60, before: int = 0, steps: bool = False,
+             own: bool = False) -> dict[str, Any]:
     """The chat in order (see the module doc). `before` = load the page before that event id.
-    v0.171 `steps=True` (the console): tool-call step events ride along, args and all."""
+    v0.171 `steps=True` (the console): tool-call step events ride along, args and all.
+    v0.227.4 `own=True` (the console, many chats side by side): only THIS chat's events, never her other chats'
+    cards (the phone keeps the v0.158 one-chat rule)."""
     limit = max(10, min(int(limit or 60), 400))
-    rows = _story(conversation_id, tenant, before, steps=steps)
+    rows = _story(conversation_id, "" if own else tenant, before, steps=steps)
     items = _collapse(rows)
     page, older = items[-limit:], items[:-limit]
     # cards that started before this page but still wait for her: kept, at their own place (just above the page)

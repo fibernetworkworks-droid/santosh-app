@@ -5,10 +5,12 @@ IST = timezone(timedelta(hours=5, minutes=30))
 SYSTEM = """You are Santosh, an AI coworker for Indian businesses and professionals. You do the work yourself using your tools and report back like a reliable colleague.
 
 How you talk
-- Reply in the user's language and script. If they write Hinglish in Roman letters, reply in Hinglish in Roman letters. If they write Devanagari, reply in Devanagari. Marathi, Gujarati, Tamil etc. the same way. Keep that language for the whole conversation: a few English words from her, an English tool result, an English web page or an English note never switch you to English; switch only when she writes full messages in another language or asks you to. Understand first, then act: if her message could mean two different things (which file, which person, which date, how much), ask ONE short question that names the choices instead of guessing; if it is clear, just do it. Never fill a gap with a made-up answer. Before anything that sends, pays, books or deletes, repeat the key values once (name, number, amount, date).
-- Short, warm and clear. Two to four sentences in chat. No long lists unless asked. No emoji unless the user uses them.
+- Reply in the user's language and script. If they write Hinglish in Roman letters, reply in Hinglish in Roman letters. If they write Devanagari, reply in Devanagari. Marathi, Gujarati, Tamil etc. the same way. Keep that language for the whole conversation: a few English words from her, an English tool result, an English web page or an English note never switch you to English; switch only when she writes full messages in another language or asks you to. Before anything that sends, pays, books or deletes, repeat the key values once (name, number, amount, date).
+- Warm and clear, like a sharp colleague. How long and in what shape: the rules under "How you answer" below.
 - Say what you are doing and what happens next. Never claim something is done before the tool says so.
 
+
+{REPLY_RULES}
 
 How you get work done (Pakka kaam: finish it, end to end, no excuses)
 - Understand first: what exactly must be true when you are done (sent? saved? booked? a file in her hands?).
@@ -18,6 +20,10 @@ How you get work done (Pakka kaam: finish it, end to end, no excuses)
   rukna kaam poora NAHI hai. Plan ke beech naya step dikhe to `kaam_plan add` karo. Poora hone par
   `kaam_plan finish done` (chhota result saath). Sirf tab `finish blocked_on_her` jab sach mein USKI zaroorat ho:
   uska tap, OTP, ya ek fact jo tumhare paas nahi — tool ki failure iska jawab NAHI hai, uske liye doosra tareeka.
+  Kaam karte hue BOLTE raho (Claude ki tarah): har bade step ke baad EK chhoti line — kya mila / kya bana, ab kya
+  kar rahe ho — phir agla tool. Lamba mat likho, chup bhi mat raho. `kaam_plan finish` mein `made` = asli links /
+  files / ids (tool results se), `your_turn` = agar use kuch karna hai. Aakhri jawab hamesha chaar hisson mein:
+  ✅ Kya hua · 📎 Kya bana (links / files) · ⏳ Kya baaki hai · 👉 Aapko kya karna hai (kuch nahi to "kuch nahi").
 - Do it yourself with the tools. Check each result: read what the tool returned and use the real ids / numbers / links
   from it. If a "Seekhe hue kaam" hint matches, follow it (it is how you did this before), unless her words now differ.
 - Tools load by need: a turn first shows only the tool families this job needs (mail, calendar, sheets, video, PC,
@@ -229,8 +235,95 @@ Rules
 - For anything outside WhatsApp campaigns and the daily-life tools, help with advice and drafting in chat, and say plainly that doing it automatically is coming soon.
 """
 
+from .replystyle import CHAT as _REPLY_RULES   # v0.221 SAHI JAWAB: one rulebook for chat, console and voice
 
-def system_prompt(dry_run: bool, context: str = "", tenant: str | None = None) -> str:
+SYSTEM = SYSTEM.replace("{REPLY_RULES}", _REPLY_RULES, 1)
+
+# v0.221 PATLA PROMPT (phase 2): SYSTEM grew to ~128 KB - every turn re-sent the whole guide of every Sahayak, which
+# slowed the first word and thinned the model's attention ("more context can make it worse"). The guide is a list
+# of "- Feature: ..." blocks; a block that names tools of a family OUTSIDE the always-on core is that family's
+# guide and rides only on turns that admitted the family (the same admission the tool list uses, v0.191). Blocks
+# with no tool names, core-family blocks and the pinned routing rules always stay. A one-line index names every
+# guide that was left out, so Hoola always knows the skill exists and opens it with tool_search.
+PINNED = ("- WHERE a website opens", "- Making files", "- Internet:", "- Files the user attaches",
+          "- Long jobs that run", "- v0.187 the promise", "- Reply in the user", "- AGENT TEAM", "- LAMBA KAAM",
+          "- Her PC (", "- MCP servers:", "- When a step fails", "- What you learn", "- Alarms that must ring",
+          "- Your memory", "- Photos of bills")
+GUIDE_STATS: dict[str, int] = {"built": 0, "full": 0, "chars_full": 0, "chars_last": 0}
+_GUIDE: list | None = None
+
+
+def _label(block: str) -> str:
+    head = block[2:].split("\n", 1)[0]
+    cut = min([i for i in (head.find(" ("), head.find(":"), head.find(" -"), head.find(" ->")) if i > 0] or [len(head)])
+    return head[:cut].strip().strip("`").strip()[:48]
+
+
+def _guide() -> list:
+    """SYSTEM cut into blocks: (text, families or None = always, label). Built once (needs the tool registry)."""
+    global _GUIDE
+    if _GUIDE is not None:
+        return _GUIDE
+    import re
+    from .tools import FAMILY_OF
+    from .admit import CORE_FAMILIES
+    # a tool name with "_" counts wherever it stands; a one-word name (gst, office, product, travel...) is also an
+    # everyday word, so it counts only when written as a tool: `gst`, "gst action=..." or "gst(".
+    under = sorted((n for n in FAMILY_OF if "_" in n), key=len, reverse=True)
+    plain = sorted((n for n in FAMILY_OF if "_" not in n), key=len, reverse=True)
+    alts = []
+    if under:
+        alts.append(r"(?<![a-z0-9_])(" + "|".join(map(re.escape, under)) + r")(?![a-z0-9_])")
+    if plain:
+        p = "|".join(map(re.escape, plain))
+        alts.append(r"(?<![a-z0-9_])(" + p + r")(?=`| action=| ?\()")
+    pat = re.compile("|".join(alts))
+    blocks: list[str] = []
+    cur: list[str] = []
+    for ln in SYSTEM.split("\n"):
+        if ln.startswith("- ") or (ln and not ln.startswith((" ", "-"))):
+            if cur:
+                blocks.append("\n".join(cur))
+            cur = [ln]
+        else:
+            cur.append(ln)
+    if cur:
+        blocks.append("\n".join(cur))
+    out = []
+    for b in blocks:
+        fams = {FAMILY_OF[g] for m in pat.finditer(b) for g in m.groups() if g} - set(CORE_FAMILIES)
+        if not fams or b.startswith(PINNED):
+            out.append((b, None, ""))
+        else:
+            out.append((b, frozenset(fams), _label(b)))
+    _GUIDE = out
+    return out
+
+
+def system_text(families=None) -> str:
+    """The guide for one turn. families=None (admission off, routines, staff, direct callers) = the full SYSTEM,
+    byte-identical to before. Otherwise only the guides of the admitted families + an index of the rest."""
+    if families is None:
+        GUIDE_STATS["full"] += 1
+        return SYSTEM
+    fams = set(families)
+    kept, left = [], []
+    for text, need, label in _guide():
+        if need is None or need & fams:
+            kept.append(text)
+        elif label and label not in left:
+            left.append(label)
+    txt = "\n".join(kept)
+    if left:
+        txt += ("\n\nMore skills you have (their full guide loads with their tools; if one is not loaded in this turn, "
+                "call tool_search with the need and then use them - never say you can't): " + "; ".join(left) + ".")
+    GUIDE_STATS["built"] += 1
+    GUIDE_STATS["chars_full"] = len(SYSTEM)
+    GUIDE_STATS["chars_last"] = len(txt)
+    return txt
+
+
+def system_prompt(dry_run: bool, context: str = "", tenant: str | None = None, families=None) -> str:
     when = datetime.now(IST).strftime("%A %d %B %Y, %I:%M %p IST")
     mode = ("\nMode: TEST MODE for WhatsApp. Campaign messages are simulated; nothing reaches real phones. Mention this once if the user expects real delivery."
             if dry_run else "\nMode: LIVE. WhatsApp messages go to real customers.")
@@ -338,4 +431,4 @@ def system_prompt(dry_run: bool, context: str = "", tenant: str | None = None) -
             ids = f"\n\nPehchaan Locker (her saved ID numbers, masked for you; use the {{id:...}} reference): {s}" if s else ""
         except Exception:
             ids = ""
-    return personalise(SYSTEM, name, gender) + f"\nCurrent time: {when}." + mode + ctx + learned + job + ids
+    return personalise(system_text(families), name, gender) + f"\nCurrent time: {when}." + mode + ctx + learned + job + ids

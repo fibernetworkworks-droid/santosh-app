@@ -77,9 +77,12 @@ class BargeGate {
     if (open) {
       // Real talking over him makes Gemini stop within a moment, and then he is no longer speaking.
       // If he is still talking 1.2 s later, or it went quiet for 600 ms, it was noise: close again.
+      // v0.230 unless Silero still hears HER voice: then the gate stays open (up to 8 s) - a slow network or a
+      // late Gemini stop must not turn her interruption into silence ("he keeps talking over me").
       _openFor++;
       _quietRun = loud ? 0 : _quietRun + 1;
-      if (_quietRun < 15 && _openFor <= 30) return [chunk];
+      final stillHer = speech != null && voice && loud && _openFor <= 200;
+      if (_quietRun < 15 && (_openFor <= 30 || stillHer)) return [chunk];
       open = false;
       _loudRun = 0;
       _gap = 0;
