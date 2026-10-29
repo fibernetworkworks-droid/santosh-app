@@ -36,6 +36,8 @@ class Conversation(Base):
     deleted: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     project_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     last_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # v0.250 incognito chat: Hoola reads her memory but writes NOTHING from it (no facts, index, diary, page, recall)
+    incognito: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
 
 class Message(Base):
@@ -193,6 +195,9 @@ class Profile(Base):
     briefing_time: Mapped[str | None] = mapped_column(String(5), nullable=True)   # "07:30" local
     briefing_conversation_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     last_briefing_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # v0.250 her memory switches (None = on): Hoola picks up facts by itself / uses her past chats (search, page)
+    memory_auto: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    memory_recall: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
 
 class Reminder(Base):
@@ -865,6 +870,7 @@ def init_db(url: str | None = None):
     from .agent import pakka as _pakka  # noqa: F401
     from .agent import goal as _goal  # noqa: F401  (v0.186 goal_runs: lamba kaam pakka)
     from .agent import compact as _compact  # noqa: F401  (v0.242 chat_compact: Claude-style chat checkpoints)
+    from . import aboutme as _aboutme  # noqa: F401  (v0.250 about_me: her memory page)
     from . import kaamwatch as _kaamwatch  # noqa: F401  (v0.136 live job watch)
     from . import kaam_followup as _kaam_followup  # noqa: F401  (v0.190.1 P0: this model only ever had LAZY
         # imports - worker.tick and kaamwatch.enqueue both import it inside the function - so create_all()

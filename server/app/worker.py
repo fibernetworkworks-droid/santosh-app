@@ -343,6 +343,27 @@ async def tick() -> None:
     await inbox_jobs()
     await team_jobs()
     eventlog_jobs()
+    aboutme_jobs()
+
+
+_about_last = 0.0
+_about_task: "asyncio.Task | None" = None
+
+
+def aboutme_jobs() -> None:
+    """v0.250 "Mere baare mein": once an hour, a few owners active today whose page is a day old get it rewritten -
+    in the BACKGROUND (a model call must never hold up reminders and the rest of this tick)."""
+    global _about_last, _about_task
+    if time.time() - _about_last < 3600 or (_about_task is not None and not _about_task.done()):
+        return
+    _about_last = time.time()
+    try:
+        from . import aboutme
+        if not getattr(get_settings(), "about_me", True):
+            return
+        _about_task = asyncio.get_running_loop().create_task(aboutme.rebuild_due())
+    except Exception:
+        log.exception("about-me jobs failed")
 
 
 _fu_last = 0.0

@@ -126,6 +126,11 @@ async def sheet_milaan(ctx: Ctx, old: str, new: str, key: str = "", key_new: str
 
 async def yaad_khojo(ctx: Ctx, query: str, days: int | None = None, kind: str = "any", **_) -> dict[str, Any]:
     from .. import yaad
+    from ..fence import prefs
+    if not prefs(ctx.tenant_id)["recall"]:   # v0.250 her "Purani chats se yaad" switch
+        return {"hits": [], "count": 0, "off": True,
+                "note": "She turned 'Purani chats se yaad' off (Profile > Hoola ki yaad): past chats are not searched. "
+                        "Ask her briefly instead, and say she can turn it back on."}
     hits = await asyncio.to_thread(yaad.search, ctx.tenant_id, query, 10, days or None,
                                    None if kind in ("", "any") else [kind],
                                    conversation_id=getattr(ctx, "conversation_id", "") or "")   # v0.246 fenced

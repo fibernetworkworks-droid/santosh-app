@@ -1,4 +1,4 @@
-"""v0.250.0 SIRF LINE - the owner heard English mid-call ("say it quietly and simply"): the TTS model sometimes spoke
+"""v0.251.0 SIRF LINE - the owner heard English mid-call ("say it quietly and simply"): the TTS model sometimes spoke
 the clip's delivery ask ("Say this quietly, half to yourself...") instead of only the line, and _trim + the file cache
 replayed that English instruction in every call. A clip is now accepted only when its speech fits the line."""
 from array import array
@@ -75,5 +75,5 @@ def test_mid_call_notes_in_hinglish():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.250.0"
-    assert "0.250.0+290" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.251.0"
+    assert "0.251.0+291" in (ROOT / "pubspec.yaml").read_text()

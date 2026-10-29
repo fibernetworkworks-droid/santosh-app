@@ -91,7 +91,7 @@ def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: st
             out.append({"id": c.id, "title": title, "auto_title": bool(c.title), "pinned": bool(c.pinned),
                         "archived": bool(c.archived), "messages": int(n or 0), "empty": not n,
                         "updated_at": when.isoformat() if when else "", "current": c.id == cur, "busy": _busy(c.id),
-                        "project_id": c.project_id or ""})
+                        "project_id": c.project_id or "", "incognito": bool(c.incognito)})   # v0.250
     return out
 
 

@@ -9793,7 +9793,41 @@ PDF ONLY WITH MATCHING BACKGROUND OF OUR DESIGN. ALSO CHECK AT TOP UNWANTED TAB.
 - NOT VERIFIED: nobody has seen this on a real screen yet. The serif at 16px will look bigger and airier than the old
   15px sans — that is Claude's shape, but it is a visible change to every reply on both surfaces.
 
-## v0.250.0 SIRF LINE — no more English instructions spoken mid-call (owner: "IN BETWEEN VOICE CALL AI START TALK IN ENGLISH --- I.E SAY IT QUITLY AND SIMPLY ETC --- FIND ROOT CAUSE AND FIX")
+## v0.250.0 FULL CLAUDE MODE — Phase 3B: CLAUDE-STYLE MEMORY (owner: "START PHASE 3B"; built as 0.248.0, re-versioned past the parallel v0.248.0 CLEAN WORKSPACE and v0.249.0 CLAUDE JAISA AKSHAR)
+- "MERE BAARE MEIN" (Claude's memory summary): NEW `app/aboutme.py`, table `about_me` (registered in `db.init_db`, self-heals).
+  ONE page (max 1,600 chars: KAAM / LOG / PASAND / CHAL RAHA KAAM) at the top of every chat's and call's system prompt
+  (`life.context_block` -> `aboutme.block`). Rebuilt by `worker.aboutme_jobs` (checked hourly, in the BACKGROUND so the
+  tick never waits): at most 3 owners per run, only owners who wrote in the last 24 h, at most once per 20 h, and only
+  when there are new global facts or new words (no model call otherwise). Sources: GLOBAL facts (asked / pinned / older)
+  + her words in GENERAL chats since the last build - never a Session chat (a client's deal never lands on the page
+  every chat reads) and never an incognito chat. Her edit (PUT) is marked "her" and the next build must keep it.
+  `clean`: OTP / PIN / password words masked, 10+ digit runs removed. Routes GET / PUT / DELETE /api/memory/about,
+  POST /api/memory/about/rebuild (her tap). Setting `about_me` (false = never rebuilt).
+- HAAL KI CHATS (Claude's recent-chats tool): NEW `agent/recall_tools.py` `haal_ki_chats(when, query)` - aaj / kal /
+  parso / is hafte / pichhle hafte / YYYY-MM-DD in her time zone; her other chats with her words in that window (+ the
+  last reply, + the chat's checkpoint tail), query narrows; fenced to the same Session, never incognito, never the open
+  chat. Family "recall" is CORE (one tiny spec always offered). The memory guide line in `prompts.py` names it.
+- INCOGNITO CHAT: `Conversation.incognito` (nullable). `POST /api/conversations?incognito=1`, `/api/bootstrap?new=1&
+  incognito=1` (+ `incognito` in the bootstrap answer and in the chat list). It READS her memory (profile, page, facts)
+  but WRITES nothing: `yaad.after_turn` skips the index and fact picking (the chat's own summary stays in the chat),
+  `pakka.record` skips the diary line, `remember` refuses, `yaad.backfill` / `search` (Hoola's recall) / raw word search
+  / `fence.chats_in` / the page never draw on it. The model is told in the system tail ("INCOGNITO CHAT ... never say
+  'yaad rakh liya'"); the greeting says it from the first line. Her own search screen still shows it.
+- HER SWITCHES: `Profile.memory_auto` ("Khud yaad rakhna": fact picking + page rebuilds) and `Profile.memory_recall`
+  ("Purani chats se yaad": automatic recall in turn_block, yaad_khojo, haal_ki_chats, Gyaan's chat hits, the page in the
+  prompt). None = on. `fence.prefs`. GET / PUT /api/memory/settings.
+- PHONE: NEW `lib/ui/memory_page_screen.dart` (Profile > "Hoola ki yaad · Mere baare mein": the page to read / edit /
+  save / clear, "Hoola se naya likhwao", the two switches); "🕶 Incognito" next to "Naya chat" in "Aapki chats"; the chat
+  header line says "🕶 Incognito · yaad nahi rakha jayega" (`Santosh.incognito` from bootstrap / the chat list).
+  CONSOLE: "/incognito" slash command, the header tag "🕶 Incognito".
+- Tests NEW `test_v0250_memory.py` (10): page built from global facts + general chats only (no Session, no incognito,
+  secrets masked, no second call when nothing is new), page in every chat + her edit wins, due only for active owners
+  once a day, switches, recent chats by time (fenced, never incognito, never the open chat), the tool always offered,
+  incognito reads but writes nothing, remember refused in incognito, incognito endpoints, page endpoints. The console
+  slash-command count is 13. Version 0.250.0 (pubspec 0.250.0+290, console ?v=0.250.0, pins). Needs the new APK for
+  the phone screens; the server part works with old APKs.
+
+## v0.251.0 SIRF LINE (built as 0.250.0; re-versioned after the parallel v0.250.0 FULL CLAUDE MODE Phase 3B) — no more English instructions spoken mid-call (owner: "IN BETWEEN VOICE CALL AI START TALK IN ENGLISH --- I.E SAY IT QUITLY AND SIMPLY ETC --- FIND ROOT CAUSE AND FIX")
 - **Root cause:** the "ek second" acks, the "haan..." murmurs and the progress sounds are pre-rendered by the Gemini TTS
   model from an English delivery ask ("Say this quickly and casually, like a young Indian guy from Pune...",
   "Say this quietly, half to yourself...", "Say ONLY this tiny sound, softly..."). TTS models sometimes SPEAK the ask
@@ -9810,4 +9844,4 @@ PDF ONLY WITH MATCHING BACKGROUND OF OUR DESIGN. ALSO CHECK AT TOP UNWANTED TAB.
   briefly.") -> Hinglish, so nothing in the call nudges him toward English.
 - `/api/voice/stats` adds `clips_rejected`.
 Tests: NEW `test_v0250_sirf_line.py` (7); generation pins in `test_v0201_feeling.py` / `test_v0206_backchannels.py` moved.
-Version 0.250.0 (pubspec 0.250.0+290, console ?v=0.250.0, pins -> 0.250.0). Server only; no new APK needed.
+Version 0.251.0 (pubspec 0.251.0+291, console ?v=0.251.0, pins -> 0.251.0). Server only; no new APK needed.

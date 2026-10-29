@@ -217,6 +217,9 @@ def search(tenant: str, query: str, queries: list[str] | None = None, sources: l
                      "cos": round(cos_of.get(cid, 0.0), 3), "exact": "id" in why.get(cid, []), "why": why.get(cid, []),
                      "named": "name" in why.get(cid, [])})
     # 5. her chats and calls (Hoola ki yaad), searched in place
+    if memory and conversation_id:   # v0.250 her "Purani chats se yaad" switch also covers Gyaan's chat hits
+        from ..fence import prefs
+        memory = prefs(tenant)["recall"]
     if memory and (not sources or "chat" in sources):
         try:
             from .. import yaad

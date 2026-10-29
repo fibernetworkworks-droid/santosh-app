@@ -569,7 +569,8 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(app.aName, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: display(20, w: FontWeight.w700)),
-              Text(!app.connected ? app.g('Connect ho raha hai…') : app.typing ? (app.currentStep ?? app.g('Kaam kar raha hoon…')) : 'Online · ${languages[app.language] ?? ''}',
+              Text(!app.connected ? app.g('Connect ho raha hai…') : app.typing ? (app.currentStep ?? app.g('Kaam kar raha hoon…'))
+                  : app.incognito ? '🕶 Incognito · ${app.g('yaad nahi rakha jayega')}' : 'Online · ${languages[app.language] ?? ''}',
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: app.connected ? C.ok : C.muted)),
             ]),
@@ -706,6 +707,13 @@ class _ChatScreenState extends State<ChatScreen> {
                           },
                           icon: const Icon(Icons.add_comment_outlined, size: 18),
                           label: Text(app.g('Naya chat')),
+                        ),
+                        TextButton(   // v0.250 a chat Hoola never remembers
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            app.connect(fresh: true, incognito: true);
+                          },
+                          child: Text('🕶 ${app.g('Incognito')}'),
                         ),
                       ]),
                     ),
