@@ -102,7 +102,7 @@ async function blobOf(t, path, type) {
 async function download(path, name) {
   try {
     const r = await fetch(path, {headers: {Authorization: 'Bearer ' + ctx.token()}, credentials: 'omit'});
-    if (!r.ok) throw new Error(`Download nahi hua (${r.status})`);
+    if (!r.ok) throw new Error(`Download failed (${r.status})`);
     saveBlob(await r.blob(), name);
   } catch (e) { toast(e.message, true); }
 }
@@ -142,7 +142,7 @@ async function renderPage(t) {
       <div class="bseg" role="group" aria-label="Dikhao"><button type="button" data-v="preview" aria-pressed="true">Preview</button><button type="button" data-v="code" aria-pressed="false">Code</button></div>
       <span class="sp"></span><button type="button" class="btn soft" data-a="share">Share</button><button type="button" class="btn soft" data-a="dl">Download</button>`)
     + `<div class="pnerr" hidden></div><div class="pnview"></div>
-    <form class="pnchg"><input placeholder="Kya badlein? (Code mein hissa select karke bhi)" aria-label="Badlav"><button class="btn go" type="submit">Edit</button></form>`;
+    <form class="pnchg"><input placeholder="What should change? (you can select part of the code too)" aria-label="Change request"><button class="btn go" type="submit">Edit</button></form>`;
   const sel = t.el.querySelector('.pnsel'), view = t.el.querySelector('.pnview');
   try {
     const d = await api('GET', `/api/artifacts/${encodeURIComponent(t.aid)}`);
@@ -203,7 +203,7 @@ addEventListener('message', async e => {
 function showError(t, d) {
   const box = t.el.querySelector('.pnerr'); if (!box) return;
   box.hidden = false;
-  box.innerHTML = `<span>⚠️ Page mein error: <code>${esc(String(d.message || '').slice(0, 160))}</code></span><button type="button" class="btn go">Fix</button>`;
+  box.innerHTML = `<span>⚠️ Page error: <code>${esc(String(d.message || '').slice(0, 160))}</code></span><button type="button" class="btn go">Fix</button>`;
   box.querySelector('button').onclick = () => {
     ctx.say(`Page "${t.item.title}" (v${t.ver}) mein error aa raha hai: ${String(d.message || '').slice(0, 300)}${d.line ? ` (line ${d.line})` : ''}. Isse theek karke naya version banao.`);
     box.hidden = true;
@@ -215,7 +215,7 @@ function renderPreview(t) {
   const it = t.item;
   t.el.innerHTML = bar(t, `<span class="pnnote">${it.type === 'app' ? 'App prototype' : 'Website preview'} · live</span><span class="sp"></span>
       ${ctx.studio && it.payload ? '<button type="button" class="btn soft" data-a="studio">Open build studio</button>' : ''}
-      <a class="btn soft" href="${esc(it.preview)}" target="_blank" rel="noopener noreferrer">Naye tab mein</a>`)
+      <a class="btn soft" href="${esc(it.preview)}" target="_blank" rel="noopener noreferrer">Open in new tab</a>`)
     + `<div class="pnview ${it.type === 'app' ? 'phone' : ''}"></div>`;
   const f = document.createElement('iframe');
   f.className = 'pnframe'; f.title = it.title; f.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups'); f.setAttribute('referrerpolicy', 'no-referrer');
@@ -262,11 +262,11 @@ async function renderFile(t) {
 function update(kind, p) {
   if (kind !== 'artifact' || !p?.id) return;
   const t = TABS.find(x => x.item.type === 'page' && x.aid === p.id);
-  if (t && p.status === 'ready' && p.version && p.version !== t.ver) { toast(`${p.title || 'Page'}: naya version v${p.version} taiyaar.`); renderPage(t); }
+  if (t && p.status === 'ready' && p.version && p.version !== t.ver) { toast(`${p.title || 'Page'}: new version v${p.version} is ready.`); renderPage(t); }
 }
 
 /* ---------- Creations ---------- */
-const FILTERS = [['', 'Sab'], ['pages', 'Pages'], ['sites', 'Websites'], ['apps', 'Apps'], ['photos', 'Photos'], ['videos', 'Videos'], ['files', 'Files']];
+const FILTERS = [['', 'All'], ['pages', 'Pages'], ['sites', 'Websites'], ['apps', 'Apps'], ['photos', 'Photos'], ['videos', 'Videos'], ['files', 'Files']];
 async function library(el, kind = '', q = '') {
   el.innerHTML = `<div class="vh"><h2>Creations</h2><span class="faint" style="font-weight:700">Your creations — select an item to open it in the workspace.</span></div>
     <label class="ksearch gl"><span aria-hidden="true">⌕</span><input id="libq" placeholder="Dhoondhiye: EMI, poster, bill…" value="${esc(q)}" aria-label="Search"></label>
@@ -284,7 +284,7 @@ async function fill(el, kind, q) {
   const when = s => { try { return new Date(s).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}); } catch { return ''; } };
   g.innerHTML = items.length ? items.map((it, i) => `<button type="button" class="libit gl" data-i="${i}"><i aria-hidden="true">${ICON[it.type] || '📎'}</i>
       <b>${esc(it.title)}</b><span>${esc(it.sub || it.type)}</span><time>${esc(when(it.at))}${it.version ? ' · v' + it.version : ''}</time></button>`).join('')
-    : '<div class="empty">Abhi yahan kuch nahi. Chat mein kahiye: "EMI calculator banao" ya "Diwali poster banao".</div>';
+    : '<div class="empty">Nothing here yet. Ask in chat, for example: "EMI calculator banao" or "Diwali poster banao".</div>';
   g.onclick = e => { const b = e.target.closest('[data-i]'); if (!b) return; const it = items[+b.dataset.i];
     open(it.type === 'video' && it.url ? {...it, url: ownPath(it.url)} : it.type === 'page' ? {type: 'page', ref: it.ref, title: it.title} : it); };
 }

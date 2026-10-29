@@ -8740,3 +8740,27 @@ all-bright fallback, kill-switch never filters, flip clause + re-anchor / first 
 scripted notes (result, reseed, stall, late result) carry the tone fresh and drop it stale, scorecard
 counters, version. Version 0.220.0 (APP_VERSION story, pubspec 0.220.0+255, console ?v=0.220.0 x9,
 pins ->0.220.0 in 32 suites); Mera PC freeze respected; desktop untouched 1.4.0.
+
+## v0.221.0 CONSOLE R1 — web console redesign, phase 1: one stylesheet, one cache-buster, one language rule (owner: "START R1")
+- The redesign: the owner asked for the web console "like Claude chat, ChatGPT and OpenArt, keep the Hoola brand"; the approved
+  canvas is the private Claude Design artifact "Hoola Console Redesign" (Home, Conversation + Work panel, Create studio, phone
+  width; Night Glass tokens unchanged). Phases R1 foundation · R2 sidebar + home · R3 conversation polish · R4 work panel
+  (panel.js + build.js) · R5 create studio (workspace.js + results.js) · R6 phone width, motion, accessibility, checks +
+  console-only release. The old console stays at /console/?legacy=1 throughout.
+- R1 (this version) changes nothing in the layout (pixel-identical before/after at 1440 + 390 px, login / shell / creative,
+  animations frozen):
+  1. ONE stylesheet: `workspace.css` (the dev web layer: creative studio, result cards, compact layout, avatar progress) is
+     merged at the END of `v2.css` (its old <link> loaded right after v2.css, so the cascade is unchanged) and deleted.
+     New console styling goes into `v2.css` only.
+  2. ONE cache-buster: every console asset in `v2.html` is `?v=<APP_VERSION>` (11 stamps: v2.css + 10 scripts); the hand tags
+     `&web=1 / ?web=progress1 / progress2 / en1` are gone; vendor/qrcode.js keeps `?v=1.4.4`. Bump them with every version.
+     `server/deploy/deploy_console_static.py` FILES and `.github/workflows/deploy-web-console.yml` (tar list + public checks,
+     which now read the version from the page) follow; the old workspace.css left on a server is harmless.
+  3. ONE language rule: console chrome (labels, menus, toasts, confirms, settings, errors, build-studio stages) is English.
+     Kept on purpose: Haan / Mana (Hoola's approval words), lines the console sends TO Hoola (`ctx.say` / `C.say`), and the
+     kaam.js starter prompts (her words to Hoola). Legacy `app.js` / `index.html` untouched.
+- Tests: NEW `test_v0221_console_r1.py` (5: one stylesheet + merged rules after the brand tokens, every asset on the release
+  version, deploy set matches the files, no Hinglish in console chrome + English labels present, version pin);
+  `test_v0194_sessions` pins moved to the English copy and to 11 stamps; `test_v164_projects` SystemSpy flattens the cached
+  system blocks (pre-existing red since v0.190, the str-vs-blocks trap). Ritual: APP_VERSION 0.221.0, pubspec 0.221.0+256, pins
+  ->0.221.0 in 33 suites. Server-only / console-only deploy; old APKs and the desktop untouched; Mera PC freeze respected.

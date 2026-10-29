@@ -154,7 +154,7 @@ async function enter() {
     PN = HoolaPanel({api, esc, toast, token: () => TOKEN, conv: () => CONV, goLibrary: () => go('bana'),
       say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); },
       closeStudio: () => { if (B?.isOpen()) B.close(); },
-      studio: (kind, p) => { go('chat'); const b = col.querySelector(`[data-key="${CSS.escape(kind + ':' + p.id)}"] [data-ba="studio"]`); if (b) b.click(); else toast('Studio ke liye chat mein us kaam ka card kholiye.'); }});
+      studio: (kind, p) => { go('chat'); const b = col.querySelector(`[data-key="${CSS.escape(kind + ':' + p.id)}"] [data-ba="studio"]`); if (b) b.click(); else toast('To open the studio, open that job’s card in the chat.'); }});
     NAV.splice(3, 0, ['bana', 'Creations']); drawNav();
   }
   const list = await loadRecents();
@@ -163,7 +163,7 @@ async function enter() {
   if (CH) accountStream();
   loadGauge(); clearInterval(GAUGE_T); GAUGE_T = setInterval(loadGauge, 300000);   // v0.173 the kharcha line stays honest
   if (CH && fromUrl) await openConv(decodeURIComponent(fromUrl), false, {noPush: true, fallback: async () => {
-    toast('Woh chat nahi mili (shayad delete ho gayi). Haal ki chat khol raha hoon.'); await openConv(await firstChat()); }});
+    toast('That chat was not found (it may have been deleted). Opening your latest chat.'); await openConv(await firstChat()); }});
   else await openConv(await firstChat());
   refreshPending(); clearInterval(PENDING_TIMER); PENDING_TIMER = setInterval(refreshPending, 30000);
 }
@@ -248,19 +248,19 @@ function receipt(d, cid, state) {
   R.el = d; R.state = state; RCPTS.set(cid, R);
   d.querySelector('.rq')?.remove();
   if (state === 'queue') {
-    d.insertAdjacentHTML('beforeend', `<span class="rq">⏳ queue mein — Hoola ke is kaam ke baad chalega <button type="button" class="rqx">Wapas lo</button></span>`);
+    d.insertAdjacentHTML('beforeend', `<span class="rq">⏳ Queued — runs after Hoola’s current job <button type="button" class="rqx">Take back</button></span>`);
     d.querySelector('.rqx').addEventListener('click', async e => {
       e.stopPropagation();
       try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/takeback`, {client_id: cid});
         d.style.transition = 'opacity .25s, transform .25s'; d.style.opacity = '0'; d.style.transform = 'translateY(6px)';
-        setTimeout(() => d.remove(), 240); RCPTS.delete(cid); toast('Wapas le liya — Hoola tak pahunchi hi nahi.'); }
-      catch (er) { receipt(d, cid, 'sent'); toast(er.status === 409 ? 'Yeh chal padi hai — Stop dabaiye.' : er.message, er.status !== 200); }
+        setTimeout(() => d.remove(), 240); RCPTS.delete(cid); toast('Taken back — it never reached Hoola.'); }
+      catch (er) { receipt(d, cid, 'sent'); toast(er.status === 409 ? 'It has already started — press Stop.' : er.message, er.status !== 200); }
     });
   } else if (state === 'quick') {
-    d.insertAdjacentHTML('beforeend', `<span class="rq ok">⚡ turant jawab alag se diya</span>`);
+    d.insertAdjacentHTML('beforeend', `<span class="rq ok">⚡ Answered right away</span>`);
     setTimeout(() => { d.querySelector('.rq')?.remove(); RCPTS.delete(cid); }, 6000);
   } else {
-    d.insertAdjacentHTML('beforeend', `<span class="rq ok">✓ bhej diya</span>`);
+    d.insertAdjacentHTML('beforeend', `<span class="rq ok">✓ Sent</span>`);
     setTimeout(() => { d.querySelector('.rq')?.remove(); RCPTS.delete(cid); }, 3000);
   }
 }
@@ -281,7 +281,7 @@ function bindUserBar(d, text) {   // separate: Edit ka Cancel the same toolbar d
   d.querySelector('[data-ua="edit"]')?.addEventListener('click', e => { e.stopPropagation(); editBubble(d, text); });
 }
 function editBubble(d, text) {
-  if (TYPING) return toast(`${AV} abhi kaam kar raha hai. First Stop.`, true);
+  if (TYPING) return toast(`${AV} is working right now. Stop it first.`, true);
   const keep = d.innerHTML; d.classList.add('editing');
   d.innerHTML = `<textarea aria-label="Message badlo" rows="2"></textarea><div class="acts"><button type="button" class="btn soft" data-x>Cancel</button><button type="button" class="btn go" data-s>Bhejo</button></div>`;
   const ta = d.querySelector('textarea'); ta.value = text; ta.focus(); ta.setSelectionRange(text.length, text.length);
@@ -430,11 +430,11 @@ function drawActs(R) {
   const a = document.createElement('div'); a.className = 'racts'; a.setAttribute('role', 'group'); a.setAttribute('aria-label', 'Reply actions');
   const can = !!CONFIG.stream, last = R.turn === LAST_TURN;
   a.innerHTML = `<button type="button" class="ra" data-act="copy" aria-label="Copy reply">${svg('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>')}<span>Copy</span></button>`
-    + `<button type="button" class="ra" data-act="quote" aria-label="Quote karein" title="Composer mein quote karein">${svg('<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/>')}<span>Quote</span></button>`
-    + (can && last ? `<button type="button" class="ra" data-act="retry" aria-label="Retry">${svg('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>')}<span>Dobara</span></button>` : '')
+    + `<button type="button" class="ra" data-act="quote" aria-label="Quote" title="Quote in the composer">${svg('<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/>')}<span>Quote</span></button>`
+    + (can && last ? `<button type="button" class="ra" data-act="retry" aria-label="Retry">${svg('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>')}<span>Retry</span></button>` : '')
     + (can ? `<button type="button" class="ra" data-act="up" aria-label="Accha jawab" aria-pressed="${R.fb === 'up'}">${svg('<path d="M7 10v11H3V10zM7 10l5-8a3 3 0 0 1 3 3v4h5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 18.6 21H7"/>')}</button>`
       + `<button type="button" class="ra" data-act="down" aria-label="Kharab jawab" aria-pressed="${R.fb === 'down'}">${svg('<path d="M17 14V3h4v11zM17 14l-5 8a3 3 0 0 1-3-3v-4H4a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 5.4 3H17"/>')}</button>` : '')
-    + (R.stopped ? '<span class="rstop">Roka gaya</span>' : '');
+    + (R.stopped ? '<span class="rstop">Stopped</span>' : '');
   a.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b) replyAct(R, b.dataset.act, b); });
   R.t.bd.appendChild(a); R.acts = a;
 }
@@ -455,12 +455,12 @@ async function replyAct(R, act, b) {
   if (act === 'up' || act === 'down') {
     const value = R.fb === act ? 'none' : act;
     try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/feedback`, {turn: R.turn, value}); R.fb = value === 'none' ? '' : value; drawActs(R);
-      if (value === 'down') toast('Shukriya. Behtar jawab ke liye "Dobara" dabaiye ya bataiye kya galat tha.'); }
+      if (value === 'down') toast('Thanks. Press Retry for a better answer, or tell Hoola what was wrong.'); }
     catch (e) { toast(e.message, true); }
     return;
   }
   if (act === 'retry') {
-    if (TYPING) return toast(`${AV} abhi kaam kar raha hai. First Stop.`, true);
+    if (TYPING) return toast(`${AV} is working right now. Stop it first.`, true);
     b.disabled = true;
     try {
       await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/retry`);
@@ -482,25 +482,25 @@ function workEvent(p) {
   simpleProgress("work",p);
   const err = p.phase === 'error' || p.phase === 'stopped';
   if (p.id && p.data) STEPS_DATA.set(String(p.id), p.data);   // v0.171 the step's facts join its args in the chip
-  $('#stageCap').textContent = err ? (p.phase === 'stopped' ? 'Roka gaya: ' : 'Dikkat: ') + (p.error || p.label || '') : (p.label || p.tool || 'Kaam');
+  $('#stageCap').textContent = err ? (p.phase === 'stopped' ? 'Stopped: ' : 'Problem: ') + (p.error || p.label || '') : (p.label || p.tool || 'Working');
   const site = p.data && (p.data.site || p.data.url) ? ' · ' + String(p.data.site || p.data.url).slice(0, 60) : '';
-  $('#stageWhere').textContent = (WHERE[p.scene] || 'Hoola server') + site + (p.phase === 'done' ? ' · ho gaya' : p.phase === 'waiting' ? ' · aapki haan' : '');
+  $('#stageWhere').textContent = (WHERE[p.scene] || 'Hoola server') + site + (p.phase === 'done' ? ' · done' : p.phase === 'waiting' ? ' · needs your Haan' : '');
   $('#nowline').classList.toggle('err', err);
   // Detailed activity opens only when the user requests it.
 }
 function live(state) {
   const b = $('#liveBtn'); b.classList.toggle('on', state !== 'idle');
-  $('#liveTxt').textContent = state === 'run' ? 'Kaam chal raha' : state === 'ask' ? 'Your approval' : 'Live';
-  $('#liveTag').textContent = state === 'run' ? 'chal raha' : state === 'ask' ? 'Approval required' : 'Idle';
+  $('#liveTxt').textContent = state === 'run' ? 'Working' : state === 'ask' ? 'Your approval' : 'Live';
+  $('#liveTag').textContent = state === 'run' ? 'Running' : state === 'ask' ? 'Approval required' : 'Idle';
   $('#liveTag').className = 'tag ' + (state === 'ask' ? 'warn' : 'ok');
 }
 
 /* ================= cards ================= */
-const LABEL = {bazar_approval:'Your approval is required', employee_ask:'Employee question', operator_ask:'Website job ko aapki zaroorat', operator_task:'Website job',
+const LABEL = {bazar_approval:'Your approval is required', employee_ask:'Employee question', operator_ask:'The website job needs you', operator_task:'Website job',
   email_draft:'Email draft', hoola_deal:'Hoola Deal', hoola_knock:'Hoola Network', hoola_msg:'Hoola Network message', calendar_event:'Calendar',
-  reminders:'Reminders', lists:'Lists', gyaan_sources:'Sources', call_receipt:'Call receipt', procedure:'Seekha', memory_saved:'Saved to memory',
+  reminders:'Reminders', lists:'Lists', gyaan_sources:'Sources', call_receipt:'Call receipt', procedure:'Learned', memory_saved:'Saved to memory',
   artifact:'Page', pc_file:'File', photo_made:'Picture', motion:'Reel', video_job:'Video', studio_approval:'AI video cost', gst_return:'GST return',
-  payroll_run:'Salary run', google_reconnect:'Google dobara jodiye', campaign:'WhatsApp campaign', share_ask:'Share karein?'};
+  payroll_run:'Salary run', google_reconnect:'Reconnect Google', campaign:'WhatsApp campaign', share_ask:'Share this?'};
 const CARDS = new Map();      // kind:id -> element (updated in place)
 // Build studio (build.js): website / app design / Android builds live, like the phone app
 const B = window.HoolaBuild ? window.HoolaBuild({api, esc, toast, narrow, conv: () => CONV,
@@ -565,14 +565,14 @@ function slider(label, onDone) {
   w.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); finish().catch(() => {}); } });
   return w;
 }
-function decisionRow(el, {yes, no, yesLabel = 'Slide karke Haan karein', noLabel = 'Mana karein'}) {
+function decisionRow(el, {yes, no, yesLabel = 'Slide for Haan', noLabel = 'Mana'}) {
   const s = slider(yesLabel, async () => { try { await yes(); } catch (e) { toast(e.message, true); throw e; } });
   const a = document.createElement('div'); a.className = 'acts dec';
   a.innerHTML = `<button class="btn soft" type="button">${esc(noLabel)}</button>`;
   a.firstChild.addEventListener('click', async () => { try { await no(); } catch (e) { toast(e.message, true); } });
   el.classList.add('ask'); el.append(s, a);
 }
-const fingerprintMsg = 'Yeh paise wala card hai: Haan sirf aapke phone ke fingerprint se hogi. Hoola app mein yahi card khol kar Haan kijiye.';
+const fingerprintMsg = 'This card moves money: Haan needs your phone’s fingerprint. Open this card in the Hoola app to approve.';
 
 function renderCard(kind, p, at, live) {
   if(PROGRESS_POLICY.quiet(kind,p)){if(live)simpleProgress(kind,p);return;}
@@ -625,16 +625,16 @@ function renderCard(kind, p, at, live) {
         + (p.amount ? `<div class="big">${esc(p.amount)}</div>` : '') + (p.payee ? `<div class="faint" style="font-size:13px">${esc(p.payee)}</div>` : '')
         + (p.items || []).map(i => `<div class="ln"><span>${esc(i.name)}</span><b>${esc(i.price)}</b></div>`).join('')
         + (p.disclosures || []).map(i => `<div class="ln"><span>${esc(i.label)}</span><b>${esc(i.value)}</b></div>`).join('')
-        + (p.voice_ok && !p.money ? `<p class="faint" style="font-size:12.5px">Bol kar ya chat mein bhi ho jayega — "haan karo" ya "approve" kahiye.</p>` : '');
-      if (p.status && p.status !== 'pending') { decided(el, p.status === 'approved', p.status === 'approved' ? '✓ Haan diya' : '✕ ' + p.status); break; }
+        + (p.voice_ok && !p.money ? `<p class="faint" style="font-size:12.5px">You can also approve by voice or in chat — say "haan karo" or "approve".</p>` : '');
+      if (p.status && p.status !== 'pending') { decided(el, p.status === 'approved', p.status === 'approved' ? '✓ Approved' : '✕ ' + p.status); break; }
       decisionRow(el, {
-        yes: async () => { try { await api('POST', `/api/bazar/approvals/${encodeURIComponent(p.id)}`, {decision: 'approve'}); decided(el, true, '✓ Haan diya'); }
+        yes: async () => { try { await api('POST', `/api/bazar/approvals/${encodeURIComponent(p.id)}`, {decision: 'approve'}); decided(el, true, '✓ Approved'); }
                            catch (e) { if (e.status === 428) { decided(el, false, '📱 ' + fingerprintMsg); return; } throw e; } },
         no: async () => { await api('POST', `/api/bazar/approvals/${encodeURIComponent(p.id)}`, {decision: 'reject'}); decided(el, false, '✕ Mana kiya'); }});
       break; }
     case 'employee_ask': {
       el.innerHTML = head(p.what || 'Employee question', p.duty_label || 'Employee', 'warn') + `<div class="kv">${[['Kisne', p.who], ['Kyon', p.why], ['Kya', p.detail]].filter(([, v]) => v).map(([k, v]) => `<span>${k}</span><b>${esc(v)}</b>`).join('')}</div>`;
-      const empDone = st => st === 'done' ? '✓ Ho gaya' : st === 'declined' ? '✕ Mana kiya' : st === 'expired' ? 'Samay nikal gaya' : '✕ Nahi ho paya' + (p.result ? ': ' + String(p.result).slice(0, 140) : '');
+      const empDone = st => st === 'done' ? '✓ Done' : st === 'declined' ? '✕ Declined' : st === 'expired' ? 'Expired' : '✕ Could not finish' + (p.result ? ': ' + String(p.result).slice(0, 140) : '');
       if (p.status && p.status !== 'pending') { decided(el, p.status === 'done', empDone(p.status)); break; }
       decisionRow(el, {
         yes: async () => { const r = await api('POST', `/api/employee/asks/${encodeURIComponent(p.id)}`, {approve: true}); p.result = r.result; decided(el, r.status === 'done', empDone(r.status)); },
@@ -642,18 +642,18 @@ function renderCard(kind, p, at, live) {
       break; }
     case 'operator_ask': {
       const k = p.kind || 'approve', typed = ['otp', 'secret', 'captcha', 'question'].includes(k);
-      el.innerHTML = head(p.reason || 'Website ko aapki zaroorat hai', p.site || 'Hoola ka browser', 'warn')
-        + (k === 'payment' ? `<p class="muted" style="font-size:13.5px">Paisa wala step: Hoola isse nahi dabata. Phone app mein live view kholkar khud dabaiye.</p>` : '')
+      el.innerHTML = head(p.reason || 'The website needs you', p.site || 'Hoola’s browser', 'warn')
+        + (k === 'payment' ? `<p class="muted" style="font-size:13.5px">Payment step: Hoola never presses this. Open the live view in the phone app and press it yourself.</p>` : '')
         + (k === 'captcha' ? `<img class="cap" alt="CAPTCHA" hidden>` + (p.suggested_answer ? `<div class="faint" style="font-size:13px">Hoola ne padha: <b>${esc(p.suggested_answer)}</b></div>` : '') : '')
         + (typed ? `<input class="fld" type="${k === 'question' ? 'text' : 'password'}" inputmode="${k === 'otp' ? 'numeric' : 'text'}" autocomplete="one-time-code" placeholder="${k === 'otp' ? 'OTP' : k === 'captcha' ? 'CAPTCHA' : 'Jawab'}" aria-label="Answer">
-            <p class="faint" style="font-size:12.5px">Yeh sirf page ke box mein jayega. Chat, yaad ya AI ko nahi dikhega.</p>` : '');
-      if (p.status && p.status !== 'pending') { decided(el, true, '✓ Jawab diya'); break; }
+            <p class="faint" style="font-size:12.5px">This goes only into the page’s box. It is never shown to the chat, memory or the AI.</p>` : '');
+      if (p.status && p.status !== 'pending') { decided(el, true, '✓ Answered'); break; }
       if (k === 'captcha') api('GET', `/api/operator/requests/${encodeURIComponent(p.id)}/captcha`, undefined, {raw: true}).then(r => r.blob()).then(b => { const i = el.querySelector('img.cap'); if (i) { i.src = URL.createObjectURL(b); i.hidden = false; } }).catch(() => {});
       if (k === 'payment') break;
-      decisionRow(el, {yesLabel: typed ? 'Page mein bharo' : 'Slide karke Haan karein',
+      decisionRow(el, {yesLabel: typed ? 'Fill the page' : 'Slide for Haan',
         yes: async () => { const inp = el.querySelector('input.fld'); const answer = inp ? inp.value.trim() || (k === 'captcha' ? p.suggested_answer || '' : '') : '';
           if (typed && !answer) { toast('First jawab likhiye.', true); throw new Error('empty'); }
-          await api('POST', `/api/operator/requests/${encodeURIComponent(p.id)}`, {status: 'approved', answer}); if (inp) inp.value = ''; decided(el, true, typed ? '✓ Box mein bhar diya (••••)' : '✓ Haan diya'); },
+          await api('POST', `/api/operator/requests/${encodeURIComponent(p.id)}`, {status: 'approved', answer}); if (inp) inp.value = ''; decided(el, true, typed ? '✓ Filled in the box (••••)' : '✓ Approved'); },
         no: async () => { await api('POST', `/api/operator/requests/${encodeURIComponent(p.id)}`, {status: 'rejected', answer: ''}); decided(el, false, '✕ Mana kiya'); }});
       break; }
     case 'email_draft': {
@@ -669,12 +669,12 @@ function renderCard(kind, p, at, live) {
     case 'share_ask': {   // Share from the panel: nothing is public until she says Haan here
       const own = typeof p.url === 'string' && p.url.startsWith(location.origin + '/') ? p.url : '';
       const url = p.status === 'approved' ? (safeLink(p.url) || own) : '';
-      el.innerHTML = head(p.title || 'Share karein?', p.status === 'pending' ? 'Your approval' : p.status === 'approved' ? 'shared' : 'nahi', p.status === 'pending' ? 'warn' : 'v')
+      el.innerHTML = head(p.title || 'Share this?', p.status === 'pending' ? 'Your approval' : p.status === 'approved' ? 'shared' : 'declined', p.status === 'pending' ? 'warn' : 'v')
         + `<div class="kv"><span>Kya</span><b>${esc(p.what || '')}</b></div><p style="font-size:14px">${esc(p.say || '')}</p>`
         + (url ? `<div class="acts"><input class="fld" readonly value="${esc(url)}" aria-label="Share link"><button class="btn soft" type="button" data-copy-link>Copy link</button></div>` : '');
       el.querySelector('[data-copy-link]')?.addEventListener('click', async e => { if (await copyText(url)) e.target.textContent = 'Copied ✓'; });
       if (p.status !== 'pending') break;
-      decisionRow(el, {yesLabel: 'Slide karke share karein',
+      decisionRow(el, {yesLabel: 'Slide to share',
         yes: async () => { const r = await api('POST', `/api/panel/share/${encodeURIComponent(p.id)}`, {approve: true}); renderCard(kind, r); },
         no: async () => { const r = await api('POST', `/api/panel/share/${encodeURIComponent(p.id)}`, {approve: false}); renderCard(kind, r); }});
       break; }
@@ -689,7 +689,7 @@ function renderCard(kind, p, at, live) {
         + (sub ? `<p style="font-size:14px">${esc(String(sub).slice(0, 600))}</p>` : '')
         + (pit ? `<div class="acts"><button class="btn go" type="button" data-pn>Kholo</button></div>` : '')
         + (link ? `<div class="acts"><a class="btn soft" href="${esc(link)}" target="_blank" rel="noopener noreferrer">Kholo</a></div>` : '')
-        + (money ? `<p class="faint" style="font-size:12.5px">Is card par Haan Hoola app se hoti hai (fingerprint ya app ka apna screen).</p>` : '');
+        + (money ? `<p class="faint" style="font-size:12.5px">Approve this card in the Hoola app (fingerprint or the app’s own screen).</p>` : '');
       el.querySelector('[data-pn]')?.addEventListener('click', () => PN.open(pit));
       if (live) PN?.update(kind, p);
     }
@@ -760,7 +760,7 @@ function onEvent(ev) {
     case 'say': {
       simpleProgress('say',p);
       // The backend's real result summary is transient progress, never a generic result card.
-      $('#stageCap').textContent = p.text || 'Kaam chal raha hai'; return;
+      $('#stageCap').textContent = p.text || 'Working…'; return;
     }
     case 'think': landing(false); thinkEvent(p); return;   // v0.171 the model's reasoning, live in its card
     default: landing(false); renderCard(ev.kind, p, ev.at, true);
@@ -880,7 +880,7 @@ async function jumpTo(conv, eventId) {
     el = col.querySelector(`[data-eid="${eventId}"]`); if (el || !HAS_MORE) break;
     if (!(await loadOlder())) break;
   }
-  if (!el) return toast('Woh message ab is chat mein nahi dikh raha (shayad doosre version mein hai).');
+  if (!el) return toast('That message is not in this chat any more (it may be in another version).');
   STICK = false; el.scrollIntoView({block: 'center', behavior: 'smooth'});
   el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 2200);
   drawRail();
@@ -910,8 +910,8 @@ let FIND = null;   // {q, hits:[eventId], total, i, box, inp, st}
 function openFind() {
   if (FIND) { FIND.inp.focus(); FIND.inp.select(); return; }
   if (!CONV || VIEW !== 'chat') return;
-  const bar = document.createElement('div'); bar.className = 'fbar gl'; bar.setAttribute('role', 'search'); bar.setAttribute('aria-label', 'Is chat mein dhoondo');
-  bar.innerHTML = `<span class="fic" aria-hidden="true">⌕</span><input placeholder="Is chat mein dhoondo…" aria-label="Is chat mein dhoondo" autocomplete="off"><span class="fcount" aria-live="polite"></span>`
+  const bar = document.createElement('div'); bar.className = 'fbar gl'; bar.setAttribute('role', 'search'); bar.setAttribute('aria-label', 'Find in this chat');
+  bar.innerHTML = `<span class="fic" aria-hidden="true">⌕</span><input placeholder="Find in this chat…" aria-label="Find in this chat" autocomplete="off"><span class="fcount" aria-live="polite"></span>`
     + `<button type="button" class="fb" data-d="-1" aria-label="Pichhla mila (Shift+Enter)">↑</button>`
     + `<button type="button" class="fb" data-d="1" aria-label="Agla mila (Enter)">↓</button>`
     + `<button type="button" class="fb x" aria-label="Close (Esc)">✕</button>`;
@@ -1052,12 +1052,12 @@ msg.addEventListener('keydown', e => {
 /* ================= slash commands (v0.172): "/" in the composer runs the console, English ================= */
 const SLASH = {open: false, items: [], sel: 0};
 const SLASH_CMDS = [
-  ['nayi', 'Nayi chat', 'nayi kholo', () => $('#newChat').click()],
-  ['dhoondo', 'Chats dhoondo', 'Ctrl K wala search', () => CH?.openSearch()],
+  ['nayi', 'New chat', 'start a new chat', () => $('#newChat').click()],
+  ['dhoondo', 'Search chats', 'the Ctrl K search', () => CH?.openSearch()],
   ['export', 'Chat export', 'Markdown ya JSON file', () => $('#exportBtn').click()],
   ['rok', 'Stop', 'chalta kaam rok do', () => $('#stopBtn').click()],
   ['aaj', 'Today', 'aaj ka din', () => go('aaj')],
-  ['kaam', 'All tools', 'sab kuch jo Hoola karta hai', () => go('kaam')],
+  ['kaam', 'All tools', 'everything Hoola can do', () => go('kaam')],
   ['baat', 'Baat', 'live voice call', () => go('baat')],
   ['main', 'Main', 'profile, password, kharcha', () => go('main')],
 ];
@@ -1119,19 +1119,19 @@ composer.addEventListener('submit', async e => {
     catch (er) { if (i === 2 || er.status === 401 || er.status === 400) { toast('Could not send: ' + er.message, true); store.set('hoola.draft.' + origin, text); if (CONV === origin) { msg.value = text; FILES.push(...files); drawFiles(); } return; } await new Promise(r => setTimeout(r, 800 * (i + 1))); }
   }
 });
-$('#stopBtn').addEventListener('click', async () => { try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/stop`); toast('Rokne ko kaha. Jo kadam chal raha tha woh beech mein ruk sakta hai.'); } catch (e) { toast(e.message, true); } });
+$('#stopBtn').addEventListener('click', async () => { try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/stop`); toast('Stopping. The step that was running may stop halfway.'); } catch (e) { toast(e.message, true); } });
 $('#attach').addEventListener('click', () => $('#fileIn').click());
 $('#fileIn').addEventListener('change', e => { const picked = [...e.target.files]; e.target.value = ''; addFiles(picked); });
 async function addFiles(list) {     // paperclip, drag and drop, pasted screenshots: one path
   const origin = CONV, target = FILES;
   if (!origin) return;
   const picked = list.slice(0, Math.max(0, 6 - target.length));
-  if (list.length > picked.length) toast('Ek baar mein 6 files tak.');
+  if (list.length > picked.length) toast('Up to 6 files at a time.');
   if (picked.length) msg.focus();
   for (const f of picked) {
-    if (f.size > 25 * 1024 * 1024) { toast(`${f.name}: 25 MB se badi file nahi chalegi.`, true); continue; }
+    if (f.size > 25 * 1024 * 1024) { toast(`${f.name}: files over 25 MB are not supported.`, true); continue; }
     const up = await shrink(f);   // v0.173 big pictures shrink here: upload fast, phone data saved
-    if (up !== f) toast(`${f.name}: chhota kar diya (${Math.round(f.size / 1024)} KB → ${Math.round(up.size / 1024)} KB).`);
+    if (up !== f) toast(`${f.name}: shrunk (${Math.round(f.size / 1024)} KB → ${Math.round(up.size / 1024)} KB).`);
     if (CONV !== origin || FILES !== target) return;
     const item = {name: up.name, file_id: null}; target.push(item); drawFiles();
     try { const fd = new FormData(); fd.append('file', up, up.name); const r = await api('POST', `/api/conversations/${encodeURIComponent(origin)}/files`, undefined, {form: fd}); item.file_id = r.file_id; }
@@ -1169,12 +1169,12 @@ msg.addEventListener('paste', e => {
    Ctrl+K search (chatlist.js), Ctrl+F in-chat find, Alt+↑/↓ chat hop, / composer, Ctrl+Shift+O new chat,
    ? this list, Esc the layered exit. Combos normalise so Ctrl+Shift+O and Ctrl+O stay one thing. */
 const KEYS = [
-  {k: 'Ctrl+F', g: 'Dhoondo', label: 'Is chat mein dhoondo', fn: () => { go('chat'); openFind(); }},
-  {k: 'Ctrl+K', g: 'Dhoondo', label: 'Saari chats mein dhoondo', fn: () => CH?.openSearch()},
+  {k: 'Ctrl+F', g: 'Search', label: 'Find in this chat', fn: () => { go('chat'); openFind(); }},
+  {k: 'Ctrl+K', g: 'Search', label: 'Search all chats', fn: () => CH?.openSearch()},
   {k: 'Alt+ArrowDown', g: 'Chat', label: 'Agli chat', fn: () => chatStep(1)},
   {k: 'Alt+ArrowUp', g: 'Chat', label: 'Pichhli chat', fn: () => chatStep(-1)},
   {k: 'Ctrl+Shift+O', g: 'Chat', label: 'Nayi chat', fn: () => $('#newChat').click()},
-  {k: '/', g: 'Composer', label: 'Likhne ka box kholo', when: e => !typingIn(e), fn: () => { go('chat'); msg.focus(); }},
+  {k: '/', g: 'Composer', label: 'Focus the message box', when: e => !typingIn(e), fn: () => { go('chat'); msg.focus(); }},
   {k: '?', g: 'Saamaany', label: 'Yahin shorcut list', when: e => !typingIn(e), fn: () => openKeys()},
   {k: 'Escape', g: 'Saamaany', label: 'Close · Stop', fn: escLayer},
 ];
@@ -1217,7 +1217,7 @@ function openKeys() {           // the cheat sheet: toggle, glass, English
   const w = document.createElement('div'); w.className = 'kbg'; w.setAttribute('role', 'dialog'); w.setAttribute('aria-modal', 'true'); w.setAttribute('aria-label', 'Keyboard shortcuts');
   w.innerHTML = `<div class="kbox gl"><h3>Shorcut ke list</h3>
     ${groups.map(([g, xs]) => `<div class="kgrp"><b>${esc(g)}</b>${xs.map(x => `<div class="krow"><span>${esc(x.label)}</span><kbd>${esc(x.k)}</kbd></div>`).join('')}</div>`).join('')}
-    <p class="faint">Composer mein "/" likhiye — /nayi /dhoondo /export jaise commands khud aa jaate hain. Ctrl+K search bhi hai.</p></div>`;
+    <p class="faint">Type "/" in the message box for commands like /nayi /dhoondo /export. Ctrl+K searches all chats.</p></div>`;
   document.body.appendChild(w);
   w.addEventListener('click', e => { if (e.target === w) w.remove(); });
 }
@@ -1281,12 +1281,12 @@ $('#cats').addEventListener('click', e => { const b = e.target.closest('.cat'); 
 function usePrompt(id) {
   const t = KAAM.flatMap(g => g[4]).find(x => x[0] === id); if (!t) return;
   go('chat'); msg.value = t[3].replace(/^\[[^\]]+\]\s*/, ''); msg.dispatchEvent(new Event('input'));
-  if (t[4]) { toast(`First file jodiye (${t[4]}), phir bhejiye.`); $('#fileIn').click(); } else composer.requestSubmit();
+  if (t[4]) { toast(`Attach a file first (${t[4]}), then send.`); $('#fileIn').click(); } else composer.requestSubmit();
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-say]'); if (b) usePrompt(b.dataset.say); });
 function drawKaam(q = '') {
   const qq = q.trim().toLowerCase(), total = KAAM.reduce((n, g) => n + g[4].length, 0);
-  $('#kaam').innerHTML = `<div class="vh"><h2>${esc(AV)} kya kya karta hai</h2><span class="faint" style="font-weight:700">${total} kaam · tap karte hi asli ${esc(AV)} ko jaata hai</span></div>
+  $('#kaam').innerHTML = `<div class="vh"><h2>What ${esc(AV)} can do</h2><span class="faint" style="font-weight:700">${total} jobs · a tap sends it to the real ${esc(AV)}</span></div>
     <label class="ksearch gl"><span aria-hidden="true">⌕</span><input id="kq" placeholder="Dhoondhiye: GST, reel, OTP, TV…" value="${esc(q)}" aria-label="Search"></label>
     <div class="kchips">${KAAM.map(g => `<a class="chip" href="#k-${g[0]}" style="text-decoration:none"><span>${g[1]}</span>${esc(g[2])}</a>`).join('')}</div>
     ${KAAM.map(g => { const items = g[4].filter(t => !qq || (t[1] + ' ' + t[2] + ' ' + t[3] + ' ' + g[2]).toLowerCase().includes(qq)); if (!items.length) return '';
@@ -1314,11 +1314,11 @@ async function drawToday() {
   let d = {reminders: [], lists: {}, pending: []}; try { d = await api('GET', '/api/console/today'); } catch (e) { box.innerHTML += `<p class="badc">${esc(e.message)}</p>`; return; }
   const date = new Date().toLocaleDateString('en-IN', {weekday: 'long', day: 'numeric', month: 'long'});
   box.innerHTML = `<div class="vh"><h2>Today · ${esc(date)}</h2></div>
-    <div class="kpis"><div class="kpi gl"><b>${d.pending.length}</b><span>aapki Haan ka intezaar</span></div><div class="kpi gl"><b>${d.reminders.length}</b><span>aane wale reminders</span></div>
-    <div class="kpi gl"><b>${Object.values(d.lists).reduce((n, l) => n + l.length, 0)}</b><span>list mein cheezein</span></div><div class="kpi gl"><b class="hid">${esc(ME?.handle || '')}</b><span>aapka Hoola ID</span></div></div>
+    <div class="kpis"><div class="kpi gl"><b>${d.pending.length}</b><span>waiting for your Haan</span></div><div class="kpi gl"><b>${d.reminders.length}</b><span>upcoming reminders</span></div>
+    <div class="kpi gl"><b>${Object.values(d.lists).reduce((n, l) => n + l.length, 0)}</b><span>items in lists</span></div><div class="kpi gl"><b class="hid">${esc(ME?.handle || '')}</b><span>your Hoola ID</span></div></div>
     <div class="grid2">
       <div class="tile gl"><h3>Reminders</h3>${d.reminders.length ? `<div class="ag">${d.reminders.map(r => `<div><time>${esc(timeOf(r.due_at))}</time><span>${esc(r.text)}</span></div>`).join('')}</div>` : '<div class="empty">No reminders.</div>'}</div>
-      <div class="tile gl"><h3>Lists</h3>${Object.keys(d.lists).length ? Object.entries(d.lists).map(([n, items]) => `<b style="font-size:13px" class="acc">${esc(n)}</b><div class="lst">${items.map(i => `<label><input type="checkbox" disabled> ${esc(i.text)}</label>`).join('')}</div>`).join('') : '<div class="empty">Koi list nahi. Chat mein kahiye: "doodh shopping list mein daalo".</div>'}</div>
+      <div class="tile gl"><h3>Lists</h3>${Object.keys(d.lists).length ? Object.entries(d.lists).map(([n, items]) => `<b style="font-size:13px" class="acc">${esc(n)}</b><div class="lst">${items.map(i => `<label><input type="checkbox" disabled> ${esc(i.text)}</label>`).join('')}</div>`).join('') : '<div class="empty">No lists yet. Ask in chat, for example: "doodh shopping list mein daalo".</div>'}</div>
       <div class="tile gl"><h3>Your approval is required <span class="tag warn">${d.pending.length}</span></h3>${d.pending.length ? d.pending.map(q => `<div class="ln"><span>${esc(q.title)}</span><b>${q.money ? '📱 phone' : 'console'}</b></div>`).join('') + '<button class="btn soft" type="button" id="toQueue">Open cards</button>' : '<div class="empty">Nothing yet.</div>'}</div>
     </div>`;
   $('#toQueue')?.addEventListener('click', () => { $('#app').classList.add('open'); go('chat'); });
@@ -1330,16 +1330,16 @@ async function drawMain() {
   const m = ME || {}; const box = $('#mainp');
   box.innerHTML = `<div class="prof gl"><span class="av"><img src="${$('#uimg').src}" alt=""></span><div><h2>${esc(AV)}</h2><div class="muted">${esc(m.handle || '')} · ${esc(m.owner || '')}${m.email ? ' · ' + esc(m.email) : ''}</div></div></div>
     <div class="grid2">
-      <div class="tile gl"><h3>Console password <span class="tag ${m.has_password ? 'ok' : 'warn'}">${m.has_password ? 'set hai' : 'set nahi'}</span></h3>
-        <p class="muted" style="font-size:13.5px">Isse aap kisi bhi computer par <b>${esc(m.handle || 'Hoola ID')}</b> + password se login kar sakti hain. Har login aapke chat mein bataya jaata hai.</p>
+      <div class="tile gl"><h3>Console password <span class="tag ${m.has_password ? 'ok' : 'warn'}">${m.has_password ? 'set' : 'not set'}</span></h3>
+        <p class="muted" style="font-size:13.5px">Sign in on any computer with <b>${esc(m.handle || 'Hoola ID')}</b> + this password. Every sign-in is reported in your chat.</p>
         <form class="pwbox" id="pwf" autocomplete="off">${m.has_password ? '<input type="password" id="pwc" placeholder="Current password" autocomplete="current-password" aria-label="Current password">' : ''}
           <input type="password" id="pwn" placeholder="New password (10+ characters)" autocomplete="new-password" aria-label="New password" minlength="10">
           <input type="password" id="pwn2" placeholder="Confirm new password" autocomplete="new-password" aria-label="Repeat new password">
-          <button class="btn go" type="submit">${m.has_password ? 'Password badlo' : 'Password banao'}</button></form></div>
-      <div class="tile gl"><h3>Google apps <span class="tag ${gOn(m) ? 'ok' : 'warn'}">${gOn(m) ? 'jude hain' : 'jode nahi'}</span></h3>
-        <p class="muted" style="font-size:13.5px">Login sirf naam aur email leta hai. Gmail, Calendar, Drive, Docs aur Sheets par kaam ke liye Google se alag se ijazat dijiye.</p>
+          <button class="btn go" type="submit">${m.has_password ? 'Change password' : 'Set password'}</button></form></div>
+      <div class="tile gl"><h3>Google apps <span class="tag ${gOn(m) ? 'ok' : 'warn'}">${gOn(m) ? 'connected' : 'not connected'}</span></h3>
+        <p class="muted" style="font-size:13.5px">Sign-in only reads your name and email. To work in Gmail, Calendar, Drive, Docs and Sheets, give Google permission separately.</p>
         <div class="feat">${['gmail', 'calendar', 'drive', 'docs', 'sheets'].map(k => `<span class="chip">${(m.google_apps || {})[k] ? '✓' : '○'} ${k[0].toUpperCase() + k.slice(1)}</span>`).join('')}</div>
-        <div class="acts" style="margin-top:12px"><button class="btn ${gOn(m) ? 'soft' : 'go'}" type="button" id="gAppsBtn">${gOn(m) ? 'Dobara jodiye' : 'Google apps jodiye'}</button></div></div>
+        <div class="acts" style="margin-top:12px"><button class="btn ${gOn(m) ? 'soft' : 'go'}" type="button" id="gAppsBtn">${gOn(m) ? 'Reconnect' : 'Connect Google apps'}</button></div></div>
       <div class="tile gl"><h3>Yaad <span class="tag v" id="memc">…</span></h3><div class="mfacts" id="mfacts"><div class="empty">Loading…</div></div></div>
       <div class="tile gl"><h3>Server</h3><div class="feat" id="feat"><span class="empty">…</span></div></div>
     </div>
@@ -1349,7 +1349,7 @@ async function drawMain() {
   $('#gAppsBtn').addEventListener('click', () => { if (!CONFIG.google) return toast('Google sign-in is not configured.', true); location.href = '/auth/google/start?web=1&apps=1'; });
   $('#pwf').addEventListener('submit', async e => { e.preventDefault(); const n = $('#pwn').value, n2 = $('#pwn2').value;
     if (n !== n2) return toast('The new passwords do not match.', true);
-    try { const r = await api('PUT', '/api/console/password', {password: n, current: $('#pwc')?.value || ''}); ME.has_password = true; toast(`Password set. Ab ${r.handle} + password se login ho sakta hai.`); drawMain(); } catch (er) { toast(er.message, true); } });
+    try { const r = await api('PUT', '/api/console/password', {password: n, current: $('#pwc')?.value || ''}); ME.has_password = true; toast(`Password set. You can now sign in with ${r.handle} + password.`); drawMain(); } catch (er) { toast(er.message, true); } });
   api('GET', '/api/memory').then(r => { const f = r.facts || []; $('#memc').textContent = f.length; $('#mfacts').innerHTML = f.slice(0, 40).map(x => `<div>${x.pinned ? '📌 ' : ''}${esc(x.text)}</div>`).join('') || '<div class="empty">No memories yet.</div>'; }).catch(() => { $('#mfacts').innerHTML = '<div class="empty">—</div>'; });
   fetch('/healthz').then(r => r.json()).then(h => { $('#feat').innerHTML = `<span class="chip">v${esc(h.version)}</span>` + (h.features || []).slice(0, 60).map(f => `<span class="chip">${esc(f.replace(/_/g, ' '))}</span>`).join(''); }).catch(() => {});
 }
@@ -1403,10 +1403,10 @@ async function startCall() {
     else if (m.type === 'interrupted') cutSpeech();
     else if (m.type === 'tool') callUI('live', (m.state === 'done' ? '✓ ' : '… ') + (m.label || 'kaam'));
     else if (m.type === 'status') callUI('live', m.state === 'reconnecting' ? 'Reconnecting…' : 'Live');
-    else if (m.type === 'hold') { if (m.on) cutSpeech(); callUI('live', m.on ? (AV + ' chup hai · "' + AV + '" bolkar bulaiye') : 'Live'); }
-    else if (m.type === 'error') { toast(m.message || 'Call mein dikkat', true); callUI('live', m.message || 'Dikkat'); }
+    else if (m.type === 'hold') { if (m.on) cutSpeech(); callUI('live', m.on ? (AV + ' is on hold · say "' + AV + '" to bring it back') : 'Live'); }
+    else if (m.type === 'error') { toast(m.message || 'Call problem', true); callUI('live', m.message || 'Problem'); }
   };
-  ws.onclose = e => { endCall(false); callUI('idle', e.code === 4401 ? 'Login dobara chahiye.' : 'Call khatam.'); };
+  ws.onclose = e => { endCall(false); callUI('idle', e.code === 4401 ? 'Please sign in again.' : 'Call ended.'); };
 }
 function caption(who, text) { const c = $('#caption'); if (c) c.innerHTML = `<b>${esc(who)}</b>${esc(text)}`; }
 function play(buf) {
@@ -1425,7 +1425,7 @@ function endCall(send) {
   clearInterval(c.ping); try { c.proc.disconnect(); c.src.disconnect(); } catch {}
   c.media.getTracks().forEach(t => t.stop()); c.sources.forEach(s => { try { s.stop(); } catch {} });
   try { c.ws.close(); } catch {} try { c.ctx.close(); } catch {}
-  callUI('idle', 'Call khatam. Receipt chat mein aayegi.');
+  callUI('idle', 'Call ended. The call receipt will appear in the chat.');
 }
 addEventListener('beforeunload', () => endCall(true));
 
