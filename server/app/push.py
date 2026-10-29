@@ -96,7 +96,8 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
     if kind == "message":
         if p.get("role") != "assistant":
             return None
-        text = str(p.get("text") or "").strip()
+        from .agent.replystyle import plain   # v0.222 the notification shows words, never ** or ###
+        text = plain(str(p.get("text") or ""))
         return (name, text[:400]) if text else None
     if kind == "goal":   # v0.186 lamba kaam: push only when it blocks on her, or it is done
         st = p.get("status")
