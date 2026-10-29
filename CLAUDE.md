@@ -8836,3 +8836,55 @@ Phase 1 put "check your draft once" in the rulebook; this is the part that does 
   and the end-to-end proof that the reply is back before the check finishes.
 - Version 0.223.0 (pubspec 0.223.0+258, console ?v=0.223.0 x9, pins -> 0.223.0 in 35 suites). Server-only — old APKs
   keep working. Mera PC freeze respected; desktop untouched 1.4.0; every money / OTP / card / approval gate untouched.
+
+## v0.224.0 KAAM KA SCORECARD — Phase 5 of the Claude-style reply plan: the same questions, measured before and after every change (owner: "START PHASE 5")
+"Behtar hua ya nahi" ab andaaze se nahi, numbers se. `server/app/quality/`.
+- **The fixed set** (`asks.py`, `SET_V = 1`, 24 asks, `check()` keeps it sound): greeting (Hinglish AND Devanagari),
+  yes/no (incl. one Hoola must refuse), a fact, a Marathi fact, two figure asks (one derivable total, one GST sum),
+  advice, a plan, two multi-part asks, an explainer, a read-work ask, a claim-prone work ask, a money ask, two vague
+  asks, TWO two-turn style asks ("hamesha chhota likho" / "list mat do" — her style must hold over turns), a heavy
+  personal ask, a general-rule ask, a follow-up that must carry her own order number, and one nobody can know
+  (tomorrow's Nifty). Each carries a length `band`, the `want` flags and, where it matters, the figures that are
+  legitimately derivable. The set never changes without bumping SET_V — a scorecard is worth nothing if the
+  questions move.
+- **The scorer** (`score.py`, pure code, no model, the same reply always scores the same): words / lines / sentences,
+  formatting counts (bold, headings, tables, list lines, code, emoji, links), filler openers ("Bilkul!" as an opener
+  is a filler, "Bilkul ho sakta hai" as the ANSWER is not), the closing "aur kuch?", answer-first (the first sentence
+  is not her question handed back, and a yes/no ask really gets a yes or no in it), length-band fit (padding costs
+  MORE than being short — the rulebook's own order), her script kept, list where a list is wrong, bold / heading /
+  table in a tiny reply, an invented figure (reuses v0.223's `loose_facts`, so both features agree on what a hard
+  fact is), a fake claim of done (v0.223's `claims_done` + `nothing_ran`, the heaviest penalty), and 2+ questions
+  back on a vague ask. Points out of 100 per ask, `totals()` for the run.
+- **Two cards, because they honestly measure different things** (`run.py`): `pipeline_card()` needs NO model and NO
+  keys — per ask it reads what the turn would SEND (the slim guide's KB and how many of the 422 tools are offered,
+  via v0.191 admission + v0.221's `system_text`) and that the rulebook really rides in the prompt; CI can run it on
+  every change, so Phase 2's win can never quietly come undone. `reply_card()` runs the REAL turns on a dedicated
+  tenant `__quality__` (never her chats, never her AI budget) and measures what she would actually get: time to the
+  first word (from the bus: the first `delta`, else the first assistant message), the whole reply's time, length,
+  shape, every scorer flag, plus the real model calls / prompt KB / tool count captured by a `_Watch` wrapper around
+  `_think`. One broken ask never loses the rest of the run. `--judge` adds ONE cheap-brain call per ask (0-5 for
+  "did it answer what was asked" and "would a busy shop owner be glad to get this"; it may never mark down Hinglish,
+  a short complete answer or an honest refusal, and a made-up figure is a 0).
+- **Before / after** (`compare()`): every number that moved, with "behtar / bura / same" the right way round
+  (prompt KB, tools, times → lower is better; points, clean replies → higher), every flag counted both ways, a
+  `worse` list, and a Hinglish `say` line. Two different SET_V refuse to compare. Snapshots are JSON in
+  `QUALITY_DIR` (default `data/quality/`).
+- CLI: `python -m app.quality` (free card), `--live` (real replies), `--live --judge`, `--label "..."`,
+  `compare a.json b.json`. API (read-only + the free card): `GET /api/quality`, `/api/quality/asks`,
+  `/api/quality/report/{file}`, `GET /api/quality/compare?before=&after=`, `POST /api/quality/pipeline`. A live run
+  stays a VPS command on purpose — it costs real model calls and minutes.
+- Measured here on v0.224.0: the guide is **31.3 KB median** per owner turn (max 43.5) against the **128 KB** full
+  guide, **48 of 422 tools** offered on a typical turn — Phase 2's win as a hard number, and `compare` prints it as
+  `prompt_kb_median: 128.0 -> 31.3 (-96.7) behtar`.
+- Tests: NEW `server/tests/test_v0224_scorecard.py` (20): the set is sound and fixed; filler + closing cost points
+  while "Bilkul" as an answer does not; answer-first and yes/no; the band with padding costing more than short; her
+  script, lists, light formatting (and a list being free in a plan); an invented figure is the biggest shape penalty
+  while her own / derivable numbers are free; a fake claim is the worst and a real tool run is never called one; a
+  vague ask may ask ONE question not three; totals count every flag; the free card needs no model and PINS Phase 2's
+  win; the free card notices if the rulebook ever leaves the prompt; a real turn measured end to end with a scripted
+  brain (words, model calls, prompt KB, tools, timings); a two-turn ask scores only the last reply; a broken ask
+  never loses the run; the judge is optional and averaged; a snapshot is saved, listed and reloaded; compare says
+  behtar / bura per number and refuses two different sets; the API.
+- Version 0.224.0 (pubspec 0.224.0+259, console ?v=0.224.0 x9, pins -> 0.224.0 in 36 suites). Server-only — old APKs
+  keep working. Mera PC freeze respected; desktop untouched 1.4.0; the scorecard never touches her data, her chats or
+  her budget.
