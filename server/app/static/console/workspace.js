@@ -167,26 +167,49 @@ window.HoolaWorkspace = ctx => {
   return {open(next){if(MODES[next]&&!sending&&!pending){take();mode=next;if(mode==='image')files=files.filter(f=>f.mime?.startsWith('image/')).slice(0,3);}render();},reuse,reset,request};
 };
 
-// Controls survive the existing studio/panel render cycles.
+// v0.244 the workspace edge: no width bar on top any more. The workspace's left edge is a drag handle like the
+// sidebar's (drag, arrow keys, double-click = full width), dragging it all the way left gives the whole screen, and a
+// small button on the edge toggles full width. The width is remembered in this browser. It lives inside the studio /
+// panel box (re-mounted after their renders) and keeps the .workspace-handle name the browser tests click.
 (() => {
-  const app=document.getElementById('app');
+  const app=document.getElementById('app'),KEY='hoola.web.workspace.width',MIN=360;
+  let width=0;try{const v=Number(localStorage.getItem(KEY));if(v>=MIN)width=v;}catch{}
+  const narrow=()=>matchMedia('(max-width:1100px)').matches;
+  const room=box=>{const m=app.querySelector('.main');const r=box.getBoundingClientRect();return Math.max(MIN,r.right-(m?m.getBoundingClientRect().left:0));};
+  const label=full=>{app.querySelectorAll('.workspace-handle button').forEach(b=>{b.setAttribute('aria-pressed',String(full));
+    b.setAttribute('aria-label',full?'Restore workspace':'Expand workspace');b.title=full?'Restore workspace (Esc)':'Expand workspace';
+    b.innerHTML=full?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>'
+      :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';});};
+  const full=on=>{app.classList.toggle('workspace-full',on);label(on);};
+  const set=(box,w,save)=>{const max=room(box);
+    if(w>=max-200){full(true);}            // dragged nearly to the chat's edge: the whole screen
+    else{full(false);width=Math.max(MIN,Math.round(w));app.style.setProperty('--workspace-width',width+'px');}
+    app.querySelectorAll('.workspace-handle').forEach(h=>h.setAttribute('aria-valuenow',String(Math.round(box.getBoundingClientRect().width))));
+    if(save){try{localStorage.setItem(KEY,String(width||''));}catch{}}};
+  if(width)app.style.setProperty('--workspace-width',width+'px');
   for(const id of ['studio','panel']){
     const box=document.getElementById(id);if(!box)continue;
     const mount=()=>{
-      if(!box.children.length||box.querySelector('.workspace-handle'))return;
-      const bar=document.createElement('div');bar.className='workspace-handle';
-      bar.innerHTML='<label>Workspace width <input type="range" min="360" max="1000" step="20" value="640" aria-label="Workspace width"></label><button type="button" aria-pressed="false">Expand workspace</button>';
-      bar.querySelector('input').addEventListener('input',e=>app.style.setProperty('--workspace-width',`min(${e.target.value}px, 80vw)`));
-      bar.querySelector('button').addEventListener('click',()=>{
-        const full=app.classList.toggle('workspace-full');
-        app.querySelectorAll('.workspace-handle button').forEach(b=>{b.setAttribute('aria-pressed',String(full));b.textContent=full?'Restore workspace':'Expand workspace';});
-      });box.prepend(bar);
+      if(!box.children.length||box.querySelector(':scope>.workspace-handle'))return;
+      const h=document.createElement('div');h.className='workspace-handle';h.tabIndex=0;
+      h.setAttribute('role','separator');h.setAttribute('aria-orientation','vertical');h.setAttribute('aria-label','Resize workspace');
+      h.setAttribute('aria-valuemin',String(MIN));h.title='Drag to resize · double-click for full width';
+      h.innerHTML='<i class="wsgrip" aria-hidden="true"></i><button type="button" aria-pressed="false"></button>';
+      let drag=null;
+      h.addEventListener('pointerdown',e=>{if(e.button!==0||e.target.closest('button')||narrow())return;e.preventDefault();
+        drag={x:e.clientX,w:box.getBoundingClientRect().width,id:e.pointerId};h.setPointerCapture(e.pointerId);app.classList.add('workspace-resizing');});
+      h.addEventListener('pointermove',e=>{if(drag&&e.pointerId===drag.id)set(box,drag.w+drag.x-e.clientX,false);});
+      const end=()=>{if(!drag)return;const id=drag.id;drag=null;app.classList.remove('workspace-resizing');if(h.hasPointerCapture(id))h.releasePointerCapture(id);set(box,app.classList.contains('workspace-full')?room(box):box.getBoundingClientRect().width,true);};
+      h.addEventListener('pointerup',end);h.addEventListener('pointercancel',end);h.addEventListener('lostpointercapture',end);
+      h.addEventListener('dblclick',e=>{if(e.target.closest('button'))return;full(!app.classList.contains('workspace-full'));});
+      h.addEventListener('keydown',e=>{if(e.target.closest('button')||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();
+        const w=box.getBoundingClientRect().width;set(box,e.key==='Home'?room(box):e.key==='End'?MIN:w+(e.key==='ArrowLeft'?1:-1)*(e.shiftKey?80:24),true);});
+      h.querySelector('button').addEventListener('click',()=>full(!app.classList.contains('workspace-full')));
+      box.prepend(h);label(app.classList.contains('workspace-full'));
     };
     new MutationObserver(mount).observe(box,{childList:true});mount();
   }
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'){
-    app.classList.remove('workspace-full');app.querySelectorAll('.workspace-handle button').forEach(b=>{b.setAttribute('aria-pressed','false');b.textContent='Expand workspace';});
-  }});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&app.classList.contains('workspace-full'))full(false);});
 })();
 
 // Sidebar divider: drag, keyboard resize, double-click reset, remembered width.

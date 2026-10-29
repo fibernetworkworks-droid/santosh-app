@@ -441,10 +441,14 @@ def status(tenant: str, q: str = "") -> dict[str, Any]:
             "Abhi koi lamba kaam nahi chal raha.", "checked_at": now().isoformat()}
 
 
-def block(tenant: str) -> str:
-    """For this turn / call: the REAL state of her jobs (last 24 h). Empty when nothing."""
+def block(tenant: str, conversation_id: str = "") -> str:
+    """For this turn / call: the REAL state of her jobs (last 24 h). Empty when nothing.
+    v0.246 FENCE: with a chat, only jobs of chats in the same Session (jobs with no chat stay visible)."""
     try:
-        js = jobs(tenant, 24, 12)
+        js = jobs(tenant, 24, 40 if conversation_id else 12)
+        if conversation_id:
+            from .fence import chats_in, keep
+            js = keep(js, chats_in(tenant, conversation_id))[:12]
     except Exception:
         return ""
     live = [j for j in js if j["state"] in ("working", "waiting")]

@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     chat_context_limit_claude: int = 200000
     chat_context_limit_omniroute: int = 128000   # the smallest window your OmniRoute combo can land on
     chat_context_full_at: float = 0.75     # the request may fill this share of the window; above it the safety net runs
+    chat_context_max_tokens: int = 0       # v0.244 cost cap: compact at this many tokens whatever the model's window (0 = off)
+    # v0.242 FULL CLAUDE MODE Phase 2 (agent/compact.py): Claude-style compaction at the full_at line
+    memory_fence: bool = True              # v0.246 PHASE 3C: Hoola's own memory stays inside its Session (fence.py); false = all chats share
+    chat_compact: bool = True              # false = Phase 1 only (the safety net shortens instead of a summary)
+    chat_compact_prepare_at: float = 0.6   # past this share a draft summary is written in the background
+    chat_compact_keep: int = 4             # newest exchanges that always stay word for word
+    chat_compact_max_chars: int = 8000     # the checkpoint summary's size
     tool_admit_cap: int = 220               # admitted specs above this = router over-matched: send the FULL set instead
     # v0.191 HARNESS-2: job-completion WAKE turns (dsh completionDelivery + maxConsecutiveWakes) - a finished job whose
     # chat is idle wakes the real brain (tools allowed) instead of only the v0.187 one-shot line; budget keeps it finite.

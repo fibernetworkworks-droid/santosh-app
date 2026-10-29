@@ -137,4 +137,4 @@ def test_followup_sends_spoken_line_to_the_call(env, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.242.0"
+    assert APP_VERSION == "0.248.0"

@@ -691,6 +691,14 @@ class _ChatScreenState extends State<ChatScreen> {
                       padding: const EdgeInsets.fromLTRB(18, 14, 8, 4),
                       child: Row(children: [
                         Expanded(child: Text(app.g('Aapki chats'), style: display(18, w: FontWeight.w700))),
+                        IconButton(   // v0.248 this chat's checkpoint summary + "Chat chhoti karo"
+                          tooltip: app.g('Is chat ka saar'),
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            showCompactSheet(context, app);
+                          },
+                          icon: const Icon(Icons.unfold_less_rounded, color: C.chip),
+                        ),
                         TextButton.icon(
                           onPressed: () {
                             Navigator.pop(ctx);
@@ -1897,6 +1905,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return DocEditCard(key: ValueKey('de${it.data['id']}'), v: it.data, app: app);
     case 'memory_saved':
       return MemorySavedChip(v: it.data, app: app);
+    case 'compact':
+      return CompactChip(v: it.data, app: app);
     case 'pg_write':
       return PgWriteCard(key: ValueKey('pgw${it.data['id']}${it.data['status']}'), v: it.data, app: app);
     case 'blender3d':

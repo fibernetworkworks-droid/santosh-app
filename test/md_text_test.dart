@@ -41,7 +41,7 @@ void main() {
     expect(t.contains('Ho gaya'), true);
     expect(t.contains('site'), true);
     expect(t.contains('🔗 example.com'), true);
-    expect(hasStyle(s, (st) => st.fontWeight == FontWeight.w600), true);   // v0.242 Claude's bold is 600
+    expect(hasStyle(s, (st) => st.fontWeight == FontWeight.w600), true);   // v0.248 Claude's bold is 600
     expect(hasStyle(s, (st) => st.fontStyle == FontStyle.italic), true);
   });
 
@@ -53,7 +53,7 @@ void main() {
   test('streaming never shows a half-written mark', () {
     final s = mdInline('Total **450 rup', streaming: true);
     expect(spansText(s), 'Total 450 rup');
-    expect(hasStyle(s, (st) => st.fontWeight == FontWeight.w600), true);   // v0.242 Claude's bold is 600
+    expect(hasStyle(s, (st) => st.fontWeight == FontWeight.w600), true);   // v0.248 Claude's bold is 600
     expect(spansText(mdInline('dekho `fla', streaming: true)), 'dekho fla');
     expect(spansText(mdInline('yeh *', streaming: true)), 'yeh ');
     expect(spansText(mdInline('yahan [Hoola site', streaming: true)), 'yahan Hoola site');

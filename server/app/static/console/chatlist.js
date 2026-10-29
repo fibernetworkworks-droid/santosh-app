@@ -144,6 +144,7 @@ function openMenu(id, btn) {
   m.innerHTML = `<button role="menuitem" data-a="rename">✎ Rename</button>
     ${c.archived ? '' : `<button role="menuitem" data-a="pin">${c.pinned ? '📌 Unpin' : '📌 Pin'}</button>`}
     ${ctx.pickProject ? `<button role="menuitem" data-a="folder">🗂 ${c.project_id ? 'Change / leave session' : 'Move to session'}</button>` : ''}
+    ${c.archived ? '' : '<button role="menuitem" data-a="compact">🗜 Compact chat</button>'}
     <button role="menuitem" data-a="archive">${c.archived ? '↩ Restore from archive' : '🗄 Archive'}</button>
     <button role="menuitem" data-a="delete" class="bad">🗑 Delete</button>`;
   document.body.appendChild(m);
@@ -165,6 +166,11 @@ async function act(c, a) {
   try {
     if (a === 'rename') { rename(c); return; }
     if (a === 'folder') { ctx.pickProject(c); return; }
+    if (a === 'compact') {   // v0.242 Claude's /compact: older messages into one checkpoint summary
+      const r = await api('POST', `/api/conversations/${encodeURIComponent(c.id)}/compact`);
+      toast(r.compact ? 'Older messages summarised - the chat has room again.' : (r.say || 'Nothing to summarise yet.'));
+      return;
+    }
     if (a === 'pin') await api('PATCH', `/api/conversations/${encodeURIComponent(c.id)}`, {pinned: !c.pinned});
     if (a === 'archive') { await api('PATCH', `/api/conversations/${encodeURIComponent(c.id)}`, {archived: !c.archived}); toast(c.archived ? 'Chat restored.' : 'Chat archived.'); }
     if (a === 'delete') {

@@ -1,4 +1,4 @@
-"""v0.242 CLAUDE JAISA AKSHAR (owner: "NOW CHECK THE FONT AND ITS SIZE.... OF CLAUDE CHAT" then
+"""v0.248 CLAUDE JAISA AKSHAR (owner: "NOW CHECK THE FONT AND ITS SIZE.... OF CLAUDE CHAT" then
 "MAKE IT SAME LIKE CLAUDE - FONT AND SIZE BOTH").
 
 Read off Claude's own live stylesheet, not from memory:
@@ -34,8 +34,9 @@ def test_console_loads_the_serif():
 
 def test_console_reply_is_claude_serif_16_over_1_5():
     css = _css()
-    live = [ln for ln in css.splitlines() if ln.startswith("#app .mh .txt{")]
-    assert len(live) == 1, live                           # the rule that actually paints the live chat
+    # main's theme block adds a colour-only #app .mh .txt rule later; exactly ONE rule carries the typography
+    live = [ln for ln in css.splitlines() if ln.startswith("#app .mh .txt{") and "font-family" in ln]
+    assert len(live) == 1, live
     rule = live[0]
     for pin in ("font-family:var(--fr)", "font-size:16px", "font-weight:400", "line-height:1.5"):
         assert pin in rule, (pin, rule)
@@ -48,7 +49,7 @@ def test_console_reply_is_claude_serif_16_over_1_5():
 def test_console_her_own_message_stays_sans():
     """Claude keeps the user message in its UI sans - only the reply is serif. Hoola does the same."""
     css = _css()
-    mine = [ln for ln in css.splitlines() if ln.startswith("#app .mu .mut{")]
+    mine = [ln for ln in css.splitlines() if ln.startswith("#app .mu .mut{") and "font-size" in ln]
     assert len(mine) == 1, mine
     assert "var(--fb)" in mine[0]                         # Manrope, the body sans
     assert "var(--fr)" not in mine[0]                     # never the serif
@@ -61,6 +62,15 @@ def test_console_reply_headings_are_serif_600():
     assert len(mdh) == 1 and "var(--fr)" in mdh[0] and "font-weight:600" in mdh[0]
     assert "var(--fd)" not in mdh[0]                      # not Sora any more
     assert "font-weight:800" not in mdh[0]
+
+
+def test_default_size_lands_on_claudes_16px_and_her_setting_still_works():
+    """Main added Small / Default / Large (`--fs`). Re-based so Default IS Claude's 16px, not overridden by it."""
+    css = _css()
+    assert "#app .mh .txt,#app .mu .mut{font-size:calc(var(--fs) + 1px);line-height:1.5}" in css
+    assert "--fs:15px" in css                             # Default -> 15 + 1 = 16px, Claude's token
+    assert ':root[data-size="sm"]{--fs:14px}' in css and ':root[data-size="lg"]{--fs:16.5px}' in css
+    assert "calc(var(--fs) + .5px)" not in css            # the old fudge is gone
 
 
 def test_console_code_at_claudes_small_size():
@@ -125,6 +135,6 @@ def test_nothing_lost_the_reply_is_still_rendered_markdown():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.242.0"
-    assert "0.242.0+282" in (ROOT / "pubspec.yaml").read_text()
-    assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 11
+    assert APP_VERSION == "0.248.0"
+    assert "0.248.0+288" in (ROOT / "pubspec.yaml").read_text()
+    assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 12   # theme.js added on main

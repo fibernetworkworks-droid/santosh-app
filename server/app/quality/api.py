@@ -33,6 +33,15 @@ def make_router(require_key) -> APIRouter:
         return {"set": SET_V, "asks": [{"id": a["id"], "kind": a["kind"], "turns": turns_of(a),
                                         "band": list(a.get("band", ())), "want": a.get("want", [])} for a in ASKS]}
 
+    @r.get("/tools")
+    async def tools():
+        """v0.245 tool choice: the free router card now + the saved live cards (python -m app.quality tools --live)."""
+        from . import toolchoice as T
+        card = await asyncio.to_thread(T.router_card)
+        return {"router": {k: v for k, v in card.items() if k != "rows"}, "lines": T.lines(card),
+                "saved": await asyncio.to_thread(T.saved),
+                "how": "live: python -m app.quality tools --live   (one model call per ask, nothing is run)"}
+
     @r.get("/report/{name}")
     async def report(name: str):
         try:

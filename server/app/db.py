@@ -233,6 +233,8 @@ class MemoryFact(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     pinned: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=False)   # v0.63 "hamesha yaad"
     source: Mapped[str | None] = mapped_column(String(20), nullable=True)   # v0.108 None = she asked | auto = picked by Hoola
+    # v0.246 FENCE: the chat an AUTO fact was picked up in (its Session = its fence); None = global (she asked / pinned / old)
+    conversation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class ListItem(Base):
@@ -862,6 +864,7 @@ def init_db(url: str | None = None):
     from .lekhak import service as _lekhak  # noqa: F401
     from .agent import pakka as _pakka  # noqa: F401
     from .agent import goal as _goal  # noqa: F401  (v0.186 goal_runs: lamba kaam pakka)
+    from .agent import compact as _compact  # noqa: F401  (v0.242 chat_compact: Claude-style chat checkpoints)
     from . import kaamwatch as _kaamwatch  # noqa: F401  (v0.136 live job watch)
     from . import kaam_followup as _kaam_followup  # noqa: F401  (v0.190.1 P0: this model only ever had LAZY
         # imports - worker.tick and kaamwatch.enqueue both import it inside the function - so create_all()

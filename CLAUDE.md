@@ -101,13 +101,25 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.242.0 (pubspec 0.242.0+282). Version ritual = main.py APP_VERSION + pubspec version(+build) +
-  console `?v=` stamps in `server/app/static/console/v2.html` + the version pins in tests (grep the old number in
+- Current version: v0.248.0 (pubspec 0.248.0+288). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+  console `?v=` stamps in `server/app/static/console/v2.html` (12 now, theme.js added) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.242 CLAUDE JAISA AKSHAR: the chat is set like Claude's - the REPLY in a serif at 16px / 400 / 1.5 (Source
+- v0.248 CLAUDE JAISA AKSHAR: the chat is set like Claude's - the REPLY in a serif at 16px / 400 / 1.5 (Source
   Serif 4; Anthropic Serif is not ours), her own message in the sans at the same 16 / 1.5, reply headings serif 600,
   bold 600 not 800, code mono 14. Both surfaces (console `--fr` in v2.css, phone `replyText()` in lib/ui/glass.dart);
-  the serif rule stays SCOPED to the chat block (`.txt` is also the sidebar nav label). Console chrome unchanged.
+  the serif rule stays SCOPED to the chat block (`.txt` is also the sidebar nav label). Console chrome unchanged; her Small / Default / Large size setting still works (Default = 16px).
+- v0.247 console workspace edge: no width bar, drag the left edge like the sidebar (full width at the chat's edge, edge button,
+  Esc), PDFs/Office open full-size with no thumbnail strip (`panel.js` docView).
+- v0.246 FULL CLAUDE MODE 3C FENCED SESSIONS: `app/fence.py` - auto facts / diary / jobs / search stay in their Session
+  (her own + pinned facts global; `MEMORY_FENCE`); GET /api/context/report; `server/tools/memory_quiz.py` (next: 3B).
+- v0.245 SAHI AUZAAR (built as 0.242): the right tool for every ask - router intents + PC gate + clean auto-keys
+  (`agent/admit.py`), `agent/pick.py` refuses a PC not in view / data sent to a PC, pinned TOOL CHOOSER; card `python -m app.quality tools [--live]`.
+- v0.244 FULL CLAUDE MODE 3A ONE MEMORY: call + quick lane read the checkpoint, `CHAT_CONTEXT_MAX_TOKENS` cost cap,
+  console memory meter, greeting with the avatar's name (next: 3C fence Sessions, then 3B memory page / incognito).
+- v0.243 CALM BRAND console (built as 0.240): Light / Dark / System (`console/theme.js` before first paint, tokens at the top of
+  v2.css, every colour a token), brand violet actions, card edge + live sheen, Appearance card in Account; v0.237 sidebar fit.
+- v0.242 FULL CLAUDE MODE Phase 2 COMPACT: `agent/compact.py` checkpoint summary (table chat_compact) drafted at 60%,
+  switched in at 75% before the turn; GET/POST /api/conversations/{id}/compact; phone chip + sheet, console menu.
 - v0.241 voice Phase 5 (p99 + dead air + talk-over + repeats, once-a-day voice_alert, ear test vs previous version,
   stall watchdog ignores noise, clips at his live loudness, TTS fallback logged).
 - v0.240 CHHOTA JAWAB: a long job works in the BACKGROUND and the chat gets one short human line. The four-part

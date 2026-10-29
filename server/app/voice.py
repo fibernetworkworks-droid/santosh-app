@@ -1805,7 +1805,7 @@ class Call:
         async def _kaam_block() -> str:
             try:
                 from . import kaamwatch
-                return await asyncio.to_thread(kaamwatch.block, self.ctx.tenant_id) or ""
+                return await asyncio.to_thread(kaamwatch.block, self.ctx.tenant_id, self.ctx.conversation_id) or ""
             except Exception:
                 log.exception("voice kaam block failed")
                 return ""
@@ -1819,7 +1819,8 @@ class Call:
             self._mcp_off = True      # v0.150 her MCP servers are listed, used through bazar_run
         ymem, kb, mcp_defs = await asyncio.gather(_yaad_block(), _kaam_block(), _mcp())
         self._last_mcp_defs = mcp_defs
-        context = await asyncio.to_thread(life.context_block, self.ctx.tenant_id)   # v0.221 off the audio loop
+        context = await asyncio.to_thread(life.context_block, self.ctx.tenant_id,   # v0.221 off the audio loop
+                                          self.ctx.conversation_id)                    # v0.246 Session fence
         if ymem:
             context += "\n\n" + ymem
         if kb:

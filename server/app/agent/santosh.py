@@ -731,7 +731,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             _extra += " " + " ".join(str(s.get("text") or "") for s in (_g0.get("steps") or []))
         adm = _admit.plan_for(state.get("request", ""), settings, extra_text=_extra)
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
-    _ctxb = context_block(tenant_id)
+    _ctxb = context_block(tenant_id, conversation_id)   # v0.246 facts fenced to this chat's Session
 
     def _system(fams) -> str:
         # v0.221 PATLA PROMPT: only the guides of the admitted families ride (None = the full guide, as before)
@@ -777,6 +777,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 if _ctx.is_overflow(e) and not state.get("squeezed"):
                     # v0.237 the model said the chat is too long: the hard form, ONCE - a chat never gets stuck on size
                     _ctx.overflowed(brain, e)
+                    from . import compact as _compact
+                    _compact.FORCE.add(conversation_id)   # v0.242 the next turn compacts first
                     state["squeezed"] = True
                     log.warning("context overflow on %s (%s); retrying once with the squeezed chat", brain, str(e)[:200])
                     if live is not None:
@@ -1358,6 +1360,11 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             agent_text += "\n\n" + where.note(ctx.place, conversation_id)
         if notes:
             agent_text = "\n".join(f"[Santosh worker update] {n}" for n in notes) + "\n\n" + agent_text
+        try:   # v0.242 FULL CLAUDE MODE Phase 2: a chat near its window is compacted BEFORE this turn (Claude's way)
+            from . import compact as _compact
+            await _compact.before_turn(conversation_id, tenant_id, settings)
+        except Exception:
+            log.exception("compact before turn failed")
         saved_wake = False
         if save_user:
             # v0.221 a goal's background round is not her words: kept in history, but never shown as her message
@@ -1393,7 +1400,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 block = await asyncio.to_thread(yaad.turn_block, tenant_id, conversation_id, user_text)
                 try:   # v0.136 the REAL state of her running / finished jobs, so Hoola never says "dekh raha hoon"
                     from .. import kaamwatch
-                    kb = await asyncio.to_thread(kaamwatch.block, tenant_id)
+                    kb = await asyncio.to_thread(kaamwatch.block, tenant_id, conversation_id)   # v0.246 fenced
                     if kb:
                         block = (block + "\n\n" + kb) if block else kb
                 except Exception:

@@ -66,10 +66,22 @@ def limit(brain: str, settings=None) -> int:
     return max(8000, min(int(lim or 200000), seen or 10 ** 9))
 
 
+def _share(s) -> float:
+    return min(0.95, max(0.2, float(getattr(s, "chat_context_full_at", 0.75) or 0.75)))
+
+
+def window(brain: str, settings=None) -> int:
+    """v0.244 the window Hoola plans with: the model's own, or smaller when CHAT_CONTEXT_MAX_TOKENS caps the request
+    (cost control at scale: the cap IS the compaction line, the 60% / 75% lines scale with it)."""
+    s = settings or _settings()
+    lim = limit(brain, s)
+    cap = int(getattr(s, "chat_context_max_tokens", 0) or 0)
+    return max(8000, min(lim, int(cap / _share(s)))) if cap > 0 else lim
+
+
 def budget(brain: str, settings=None) -> int:
     s = settings or _settings()
-    share = float(getattr(s, "chat_context_full_at", 0.75) or 0.75)
-    return int(limit(brain, s) * min(0.95, max(0.2, share)))
+    return int(window(brain, s) * _share(s))
 
 
 def ratio(brain: str) -> float:
@@ -201,6 +213,29 @@ def _trim_results(msgs: list[dict], cap: int) -> list[dict]:
     return out
 
 
+def _markers() -> tuple[str, ...]:
+    from .. import yaad
+    from . import compact
+    return (compact.OPEN, yaad.SUMMARY_OPEN)
+
+
+def _split_head(old: list[dict]) -> tuple[list[dict], list[dict]]:
+    """v0.242 (head, rest): the chat's leading summary (a compaction checkpoint, or the rolling summary of a very long
+    chat) as its own message - _sanitize may have merged it with her first words after it."""
+    if not old or old[0].get("role") != "user":
+        return [], old
+    c = old[0].get("content")
+    marks = _markers()
+    if isinstance(c, str):
+        return ([old[0]], old[1:]) if c.startswith(marks) else ([], old)
+    if isinstance(c, list) and c and isinstance(c[0], dict) and c[0].get("type") == "text" \
+            and str(c[0].get("text", "")).startswith(marks):
+        head = [{"role": "user", "content": c[0]["text"]}]
+        rest = [{"role": "user", "content": c[1:]}] + old[1:] if len(c) > 1 else old[1:]
+        return head, rest
+    return [], old
+
+
 def _flat(exs: list[list[dict]]) -> list[dict]:
     return [m for ex in exs for m in ex]
 
@@ -216,8 +251,8 @@ def fit(history: list[dict], system: Any, tools: Any, brain: str, conversation_i
     est = tokens(brain, fixed + hist_chars)
     line = budget(brain, s)
     STATS["measured"] += 1
-    reading = {"brain": brain, "limit": limit(brain, s), "budget": line, "estimate": est,
-               "chars": fixed + hist_chars, "ratio": round(ratio(brain), 3), "at": time.time()}
+    reading = {"brain": brain, "limit": limit(brain, s), "window": window(brain, s), "budget": line, "estimate": est,
+               "chars": fixed + hist_chars, "fixed": fixed, "ratio": round(ratio(brain), 3), "at": time.time()}
     if not full_mode(s):
         _note(conversation_id, reading, "hoola", est)
         return history, "hoola"
@@ -228,11 +263,12 @@ def fit(history: list[dict], system: Any, tools: Any, brain: str, conversation_i
     # the SAFETY NET: shorten the oldest exchanges (blocks of 10) until the request is ~15% under the line
     turn_start = max(0, min(turn_start, len(history)))
     old, cur = history[:turn_start], history[turn_start:]
+    head, old = _split_head(old)      # v0.242 a checkpoint summary is never shortened or dropped
     exs = _exchanges(old)
-    target = int(limit(brain, s) * max(0.1, float(getattr(s, "chat_context_full_at", 0.75)) - TARGET_GAP))
+    target = int(window(brain, s) * max(0.1, _share(s) - TARGET_GAP))
     sizes = [sum(size(m.get("content")) for m in ex) for ex in exs]
     short = [None] * len(exs)
-    total = fixed + sum(size(m.get("content")) for m in cur) + sum(sizes)
+    total = fixed + sum(size(m.get("content")) for m in cur + head) + sum(sizes)
     i = 0
     while i < len(exs) and tokens(brain, total) > target:
         for j in range(i, min(i + BLOCK, len(exs))):
@@ -242,15 +278,16 @@ def fit(history: list[dict], system: Any, tools: Any, brain: str, conversation_i
         i += BLOCK
     kept = [short[k] if short[k] is not None else exs[k] for k in range(len(exs))]
     drop = 0
-    summ = _summary_msg(conversation_id)
+    summ = head or _summary_msg(conversation_id)
     if tokens(brain, total) > target:   # even shortened it does not fit: the oldest blocks leave, the summary stays
-        total += size([m.get("content") for m in summ])
+        if not head:
+            total += size([m.get("content") for m in summ])
         while drop < len(kept) and tokens(brain, total) > target:
             for j in range(drop, min(drop + BLOCK, len(kept))):
                 total -= sizes[j]
             drop = min(drop + BLOCK, len(kept))
         STATS["net_dropped"] += 1
-    out = (summ if drop else []) + _flat(kept[drop:]) + cur
+    out = (summ if (drop or head) else []) + _flat(kept[drop:]) + cur
     STATS["net"] += 1
     reading.update(shortened=sum(1 for x in short if x is not None), dropped=drop, after=tokens(brain, total))
     _note(conversation_id, reading, "net", tokens(brain, total))
@@ -265,9 +302,10 @@ def squeeze(history: list[dict], conversation_id: str = "", turn_start: int = 0)
     STATS["squeezed"] += 1
     turn_start = max(0, min(turn_start, len(history)))
     old, cur = history[:turn_start], history[turn_start:]
+    head, old = _split_head(old)
     exs = _exchanges(old)
     keep = [_short(ex) for ex in exs[-SQUEEZE_KEEP:]]
-    summ = _summary_msg(conversation_id) if len(exs) > SQUEEZE_KEEP else []
+    summ = head or (_summary_msg(conversation_id) if len(exs) > SQUEEZE_KEEP else [])
     out = summ + _flat(keep) + _trim_results(cur, SQUEEZE_RESULT)
     if conversation_id in LAST:
         LAST[conversation_id]["form"] = "squeezed"
@@ -277,8 +315,9 @@ def squeeze(history: list[dict], conversation_id: str = "", turn_start: int = 0)
 def _note(conversation_id: str, reading: dict, form: str, est: int) -> None:
     if not conversation_id:
         return
-    lim = reading.get("limit") or 1
-    LAST[conversation_id] = {**reading, "form": form, "sent": est, "percent": round(100.0 * est / lim, 1)}
+    lim = reading.get("window") or reading.get("limit") or 1   # v0.244 % of the window Hoola plans with (the cap)
+    LAST[conversation_id] = {**reading, "form": form, "sent": est, "percent": round(100.0 * est / lim, 1),
+                             "full": round(100.0 * est / (reading.get("budget") or 1))}   # v0.244 % of the way to compaction
     if len(LAST) > 5000:
         for k in list(LAST)[:1000]:
             LAST.pop(k, None)
@@ -306,9 +345,10 @@ def reading(conversation_id: str) -> dict[str, Any]:
     except Exception:
         brain = "claude"
     est = tokens(brain, sum(size(m.get("content")) for m in hist))
-    lim = limit(brain, s)
-    return {"mode": "claude" if full_mode(s) else "hoola", "measured": False, "brain": brain, "limit": lim,
-            "budget": budget(brain, s), "estimate": est, "percent": round(100.0 * est / lim, 1),
+    lim = window(brain, s)
+    return {"mode": "claude" if full_mode(s) else "hoola", "measured": False, "brain": brain, "limit": limit(brain, s),
+            "window": lim, "budget": budget(brain, s), "estimate": est,
+            "percent": round(100.0 * est / lim, 1), "full": round(100.0 * est / (budget(brain, s) or 1)),
             "messages": len(hist), "ratio": round(ratio(brain), 3)}
 
 

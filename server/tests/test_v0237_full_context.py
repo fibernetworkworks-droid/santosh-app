@@ -102,7 +102,7 @@ def test_hoola_mode_is_the_old_window_byte_for_byte(gauge, monkeypatch):
 
 # ------------------------------------------------------------------ 2. the safety net
 def test_safety_net_shortens_the_oldest_and_keeps_this_turn_whole(gauge, monkeypatch):
-    _settings(monkeypatch, CHAT_CONTEXT_LIMIT_CLAUDE=60000)
+    _settings(monkeypatch, CHAT_CONTEXT_LIMIT_CLAUDE=60000, CHAT_COMPACT="false")   # v0.242: the net alone (no compact)
     c = conv()
     for i in range(40):
         add_exchange(c, i, steps=2, big=2500)               # big tool results: the chat no longer fits 45k tokens
