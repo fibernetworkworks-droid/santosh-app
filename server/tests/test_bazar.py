@@ -286,7 +286,8 @@ def test_mcp_oauth_discovery_register_pkce_refresh(bz):
         conn = s.scalars(select(Connection).where(Connection.provider == "swiggy_food", Connection.status == "active")).one()
         assert "AT1" not in conn.token_enc  # encrypted at rest
         assert mcp_auth.access_token(s, conn, client=client) == "AT2"  # expires in 60 s -> refreshed (rotating)
-    assert seen["tok"][1] == {"grant_type": "refresh_token", "refresh_token": "RT1", "client_id": "cli-1"}
+    assert seen["tok"][1] == {"grant_type": "refresh_token", "refresh_token": "RT1", "client_id": "cli-1",
+                              "resource": "https://mcp.swiggy.test/food"}   # v0.162 RFC 8707 on refresh too
     with session() as s:
         with pytest.raises(mcp_auth.LinkError):
             mcp_auth.finish(s, q["state"], "CODE", client=client)  # state is single-use

@@ -52,6 +52,9 @@ class _FakeCall:
         self.PROG_AFTER_S = 0.01
         self.ACK_AFTER_S = 0.01
         self.BC_MIN_WORDS = 4
+        self.BC_WINDOW_S = 0.5      # v0.230 the murmur watches her mic for a breath INSIDE her turn
+        self.BC_END_MARGIN_S = 0.15
+        self._bc_end_s = lambda: 0.55
 
     async def send_audio(self, data):
         self.sent.append(data)
@@ -65,8 +68,8 @@ def _awake(c, words="suno na kal ka poora din bhar gaya tha kaam se"):
     """A fake call sitting in HER open turn, in a real pause: she said enough, then went quiet."""
     now = time.monotonic()
     c.user_buf = words
-    c._last_voice_at = now - 3.0        # her last speech chunk was a while ago
-    c._last_user_text_at = now - 3.0    # ...and her last transcription too
+    c._last_voice_at = now - 0.3        # v0.230 a breath inside her sentence (before her end-of-turn pause)
+    c._last_user_text_at = now - 0.3    # ...and her last transcription too
     c._last_model_audio = 0.0           # he has said nothing yet
     return c
 
@@ -355,4 +358,4 @@ def test_stats_carry_the_new_clips():
 
 
 def test_version():
-    assert APP_VERSION == "0.224.0"
+    assert APP_VERSION == "0.231.0"

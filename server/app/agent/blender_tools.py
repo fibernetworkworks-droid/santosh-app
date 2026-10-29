@@ -47,7 +47,7 @@ def _opts(kw: dict) -> dict:
 async def blender_3d(ctx: Ctx, action="list", **kw):
     from ..blender3d import guard, sandbox, service
     actor = str(getattr(ctx, "actor", "owner") or "owner")
-    if action in ("make", "change", "run_code") and not actor.startswith(("owner", "approved")):
+    if action in ("make", "change", "run_code") and not actor.startswith(("owner", "approved", "goal")):
         from .. import usage
         if not usage.allowed(ctx.tenant_id, "routine"):
             raise ToolError(usage.blocked_text(ctx.tenant_id))

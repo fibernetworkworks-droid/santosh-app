@@ -157,6 +157,8 @@ def from_openai(data: dict) -> tuple[list[dict], str]:
     text = (msg.get("content") or "").strip()
     if text:
         blocks.append({"type": "text", "text": text})
+    cut = (ch.get("finish_reason") or "") == "length"
+    broken = 0
     for tc in msg.get("tool_calls") or []:
         fn = tc.get("function") or {}
         try:
@@ -164,12 +166,25 @@ def from_openai(data: dict) -> tuple[list[dict], str]:
             if not isinstance(args, dict):
                 args = {}
         except json.JSONDecodeError:
-            args = {}
+            # v0.221 half-written arguments = the answer was cut (some gateways never say "length"): never run a
+            # tool with empty inputs - drop the call and let the turn continue where the cut happened.
+            broken += 1
+            STATS["broken_calls"] += 1
+            continue
         tid = re.sub(r"[^a-zA-Z0-9_-]", "_", tc.get("id") or "") or f"call_{uuid.uuid4().hex[:12]}"
         blocks.append({"type": "tool_use", "id": tid,
                        "name": fn.get("name", ""), "input": args})
-    stop = "tool_use" if any(b["type"] == "tool_use" for b in blocks) else "end_turn"
+    if any(b["type"] == "tool_use" for b in blocks):
+        stop = "tool_use"           # the whole calls run; the next step carries on
+    elif cut or broken:
+        stop = "max_tokens"         # v0.221 the cheap brain's cut answer is NOT a finished answer (was 'end_turn')
+        STATS["cut"] += 1
+    else:
+        stop = "end_turn"
     return blocks, stop
+
+
+STATS: dict[str, int] = {"cut": 0, "broken_calls": 0}   # v0.221 cut answers seen on the OpenAI-style brains
 
 
 class LLMError(RuntimeError):
@@ -258,14 +273,14 @@ def _stream_body(brain: str, system: str, tools: list[dict], messages: list[dict
     return url, model, label, headers, body
 
 
-def _assemble(text: str, calls: dict[int, dict]) -> dict:
+def _assemble(text: str, calls: dict[int, dict], finish: str = "") -> dict:
     """The streamed pieces as one ordinary (non-stream) answer, so from_openai reads it the same way."""
     tcs = [{"id": c["id"], "type": "function", "function": {"name": c["name"], "arguments": c["args"] or "{}"}}
            for _, c in sorted(calls.items())]
     msg: dict = {"content": text}
     if tcs:
         msg["tool_calls"] = tcs
-    return {"choices": [{"message": msg}]}
+    return {"choices": [{"message": msg, "finish_reason": finish or None}]}
 
 
 async def openai_stream(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int,
@@ -282,6 +297,7 @@ async def openai_stream(brain: str, system: str, tools: list[dict], messages: li
         text: list[str] = []
         calls: dict[int, dict] = {}
         usage: dict = {}
+        finish = ""
         try:
             async with _client().stream("POST", url, json=body, headers=headers) as r:
                 if r.status_code >= 400:
@@ -306,6 +322,8 @@ async def openai_stream(brain: str, system: str, tools: list[dict], messages: li
                     if j.get("usage"):
                         usage = dict(j["usage"])
                     for ch in j.get("choices") or []:
+                        if ch.get("finish_reason"):
+                            finish = ch["finish_reason"]
                         d = ch.get("delta") or {}
                         if d.get("content"):
                             text.append(d["content"])
@@ -325,7 +343,7 @@ async def openai_stream(brain: str, system: str, tools: list[dict], messages: li
             log.warning("%s not reachable (try %d of %d): %s", label, i + 1, tries, e)
             await asyncio.sleep(wait)
             continue
-        blocks, stop = from_openai(_assemble("".join(text), calls))
+        blocks, stop = from_openai(_assemble("".join(text), calls, finish))
         if not blocks:
             raise LLMError(f"{label} returned an empty answer")
         if not usage:   # some gateways send no usage on streams: a fair estimate keeps the monthly limit honest

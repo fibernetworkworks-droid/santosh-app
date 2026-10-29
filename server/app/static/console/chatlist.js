@@ -21,14 +21,14 @@ let SECS = [];                        // v0.193 sessions (projects), server orde
 
 const DAY = 86400000;
 function group(c) {
-  if (c.pinned) return 'Pin kiye hue';
+  if (c.pinned) return 'Pinned';
   const t = new Date(c.updated_at || 0), now = new Date(), start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   if (t >= start) return 'Today';
   if (t >= start - DAY) return 'Yesterday';
   if (t >= start - 6 * DAY) return 'Previous 7 days';
   return 'Older';
 }
-const ORDER = ['Pin kiye hue', 'Today', 'Yesterday', 'Previous 7 days', 'Older'];
+const ORDER = ['Pinned', 'Today', 'Yesterday', 'Previous 7 days', 'Older'];
 
 /* v0.193 which sessions are collapsed: {"<pid>": 1} — survives reloads, per browser */
 const OPEN_KEY = 'hoola.sessions.v1';
@@ -47,14 +47,14 @@ async function load() {
   LIST = list;
   if (pj) SECS = pj;
   for (const c of LIST) if (c.busy) BUSY.add(c.id);
-  draw();
+  draw(); ctx.loaded?.();                          // v0.222 the chat header follows renames / moves
   return LIST;
 }
 function item(c, drag) {
   const cur = c.id === ctx.current();
   return `<div class="rcw${cur ? ' cur' : ''}" data-row="${esc(c.id)}"${drag ? ' draggable="true"' : ''}>
     <a class="rc" href="/console/c/${encodeURIComponent(c.id)}" data-conv="${esc(c.id)}"${cur ? ' aria-current="true"' : ''} title="${esc(c.title)}">
-      ${BUSY.has(c.id) ? '<span class="spin" aria-label="kaam chal raha"></span>' : UNREAD.has(c.id) ? '<i class="udot" aria-label="naya jawab"></i>' : ''}<span class="rct">${esc(c.title)}</span></a>
+      ${BUSY.has(c.id) ? '<span class="spin" aria-label="working"></span>' : UNREAD.has(c.id) ? '<i class="udot" aria-label="new reply"></i>' : ''}<span class="rct">${esc(c.title)}</span></a>
     <button type="button" class="rcm" data-menu="${esc(c.id)}" aria-label="Chat options: ${esc(c.title)}" aria-haspopup="menu">⋯</button></div>`;
 }
 /* v0.193 one session header: chevron collapses, the name opens the session page, "+" starts a chat inside,
@@ -64,7 +64,7 @@ function secHead(p, rows, closed) {
   return `<div class="sgh${closed ? ' closed' : ''}" data-sec="${esc(p.id)}">
     <button type="button" class="sgc" data-a="tog" aria-expanded="${!closed}" aria-label="${closed ? 'Open project' : 'Collapse project'}: ${esc(p.name)}"><i class="chev" aria-hidden="true"></i></button>
     <button type="button" class="sgn" data-a="open" title="${esc(p.name)} — session kholiye"><span aria-hidden="true">${esc(p.emoji || '📁')}</span><span class="sgnt">${esc(p.name)}</span></button>
-    ${live ? '<i class="udot" aria-label="kuch chal raha hai"></i>' : ''}<small class="sgn-n">${rows.length || ''}</small>
+    ${live ? '<i class="udot" aria-label="something is running"></i>' : ''}<small class="sgn-n">${rows.length || ''}</small>
     <span class="sgacts"><button type="button" class="ib" data-a="new" aria-label="New chat: ${esc(p.name)}">+</button></span>
   </div>`;
 }
@@ -89,9 +89,9 @@ function draw() {
   const rest = ORDER.filter(k => by[k]?.length).map(k => `<div class="rg">${esc(k)}</div>${by[k].map(c => item(c, drag)).join('')}`).join('');
   /* "Baaki chats" is the un-filed home once sessions exist — always visible, so dragging the LAST chat out of
      a session always has a target (it also labels the day groups when they are non-empty) */
-  html += (drag ? `<div class="rg sgb" data-rest title="Chat yahan chhodiye to session se bahar">Baaki chats</div>` : '') + rest;
+  html += (drag ? `<div class="rg sgb" data-rest title="Drop a chat here to take it out of its session">Other chats</div>` : '') + rest;
   box.innerHTML = html || `<div class="empty" style="padding:8px 12px">No conversations yet.</div>`;
-  box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">🗄 Archive dekhiye</button>`);
+  box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">🗄 Show archived</button>`);
   $('#archTog').addEventListener('click', () => { ARCH = !ARCH; load(); });
 }
 
@@ -131,7 +131,7 @@ document.addEventListener('drop', e => {
   DRAG_ID = ''; clearDrops();
   if (!c || (c.project_id || '') === (pid || '')) return;
   api('PATCH', `/api/conversations/${encodeURIComponent(c.id)}`, {project_id: pid})
-    .then(() => { toast(pid ? `"${c.title}" session mein aa gayi.` : `"${c.title}" session se bahar.`); load(); })
+    .then(() => { toast(pid ? `"${c.title}" moved into the session.` : `"${c.title}" moved out of the session.`); load(); })
     .catch(er => toast(er.message, true));
 });
 
@@ -141,10 +141,10 @@ function openMenu(id, btn) {
   closeMenu();
   const c = LIST.find(x => x.id === id); if (!c) return;
   const m = document.createElement('div'); m.className = 'rmenu gl'; m.setAttribute('role', 'menu');
-  m.innerHTML = `<button role="menuitem" data-a="rename">✎ Naam badlo</button>
-    ${c.archived ? '' : `<button role="menuitem" data-a="pin">${c.pinned ? '📌 Pin hatao' : '📌 Pin'}</button>`}
-    ${ctx.pickProject ? `<button role="menuitem" data-a="folder">🗂 ${c.project_id ? 'Session badlo / nikalo' : 'Session mein daalo'}</button>` : ''}
-    <button role="menuitem" data-a="archive">${c.archived ? '↩ Archive se wapas' : '🗄 Archive'}</button>
+  m.innerHTML = `<button role="menuitem" data-a="rename">✎ Rename</button>
+    ${c.archived ? '' : `<button role="menuitem" data-a="pin">${c.pinned ? '📌 Unpin' : '📌 Pin'}</button>`}
+    ${ctx.pickProject ? `<button role="menuitem" data-a="folder">🗂 ${c.project_id ? 'Change / leave session' : 'Move to session'}</button>` : ''}
+    <button role="menuitem" data-a="archive">${c.archived ? '↩ Restore from archive' : '🗄 Archive'}</button>
     <button role="menuitem" data-a="delete" class="bad">🗑 Delete</button>`;
   document.body.appendChild(m);
   const r = btn.getBoundingClientRect();
@@ -166,10 +166,10 @@ async function act(c, a) {
     if (a === 'rename') { rename(c); return; }
     if (a === 'folder') { ctx.pickProject(c); return; }
     if (a === 'pin') await api('PATCH', `/api/conversations/${encodeURIComponent(c.id)}`, {pinned: !c.pinned});
-    if (a === 'archive') { await api('PATCH', `/api/conversations/${encodeURIComponent(c.id)}`, {archived: !c.archived}); toast(c.archived ? 'Chat wapas aa gayi.' : 'Chat archive mein chali gayi.'); }
+    if (a === 'archive') { await api('PATCH', `/api/conversations/${encodeURIComponent(c.id)}`, {archived: !c.archived}); toast(c.archived ? 'Chat restored.' : 'Chat archived.'); }
     if (a === 'delete') {
-      if (!confirm(`"${c.title}" delete karein? Yeh chat list, search aur link se hat jayegi.`)) return;
-      await api('DELETE', `/api/conversations/${encodeURIComponent(c.id)}`); toast('Chat delete ho gayi.');
+      if (!confirm(`Delete "${c.title}"? It leaves the chat list, search and its link.`)) return;
+      await api('DELETE', `/api/conversations/${encodeURIComponent(c.id)}`); toast('Chat deleted.');
       if (c.id === ctx.current()) ctx.newChat();
     }
     load();
@@ -195,8 +195,8 @@ document.addEventListener('click', e => {
 let SBOX = null, ST = 0;
 function openSearch() {
   if (SBOX) { SBOX.querySelector('input').focus(); return; }
-  const w = document.createElement('div'); w.className = 'sbg'; w.setAttribute('role', 'dialog'); w.setAttribute('aria-modal', 'true'); w.setAttribute('aria-label', 'Chats mein dhoondhiye');
-  w.innerHTML = `<div class="sbox gl"><label class="sin"><span aria-hidden="true">⌕</span><input placeholder="Saari chats mein dhoondhiye…" aria-label="Search" autocomplete="off"><kbd>Esc</kbd></label><div class="sres" role="listbox"><div class="empty">Kam se kam 2 akshar likhiye.</div></div></div>`;
+  const w = document.createElement('div'); w.className = 'sbg'; w.setAttribute('role', 'dialog'); w.setAttribute('aria-modal', 'true'); w.setAttribute('aria-label', 'Search chats');
+  w.innerHTML = `<div class="sbox gl"><label class="sin"><span aria-hidden="true">⌕</span><input placeholder="Search all chats…" aria-label="Search" autocomplete="off"><kbd>Esc</kbd></label><div class="sres" role="listbox"><div class="empty">Type at least 2 letters.</div></div></div>`;
   document.body.appendChild(w); SBOX = w;
   const inp = w.querySelector('input'), res = w.querySelector('.sres'); inp.focus();
   const close = () => { w.remove(); SBOX = null; };
@@ -211,8 +211,8 @@ function openSearch() {
   res.addEventListener('click', e => { const b = e.target.closest('.sr'); if (!b) return; close(); UNREAD.delete(b.dataset.c); ctx.jump(b.dataset.c, +b.dataset.e || 0); });
 }
 async function find(q, res) {
-  q = q.trim(); if (q.length < 2) { res.innerHTML = '<div class="empty">Kam se kam 2 akshar likhiye.</div>'; return; }
-  res.innerHTML = '<div class="empty"><span class="spin"></span> Dhoondh raha hoon…</div>';
+  q = q.trim(); if (q.length < 2) { res.innerHTML = '<div class="empty">Type at least 2 letters.</div>'; return; }
+  res.innerHTML = '<div class="empty"><span class="spin"></span> Searching…</div>';
   const me = ++FIND_SEQ;                              // v0.178 only the newest query may paint
   let r = []; try { r = (await api('GET', `/api/conversations/search?q=${encodeURIComponent(q)}`)).results || []; } catch (e) { if (me === FIND_SEQ) res.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
   if (me !== FIND_SEQ) return;                        // she typed again while this fetch was out
@@ -221,7 +221,7 @@ async function find(q, res) {
   const who = h => h.role === 'user' ? 'Aap' : h.role === 'title' ? 'Naam' : (ctx.avatar ? ctx.avatar() : 'Hoola');
   const chip = cid => { const p = secOf(LIST.find(x => x.id === cid) || {}); return p ? `<i class="srsec" aria-hidden="true">📁 ${esc(p.name)}</i>` : ''; };   // v0.193
   res.innerHTML = r.length
-    ? `<div class="scount">${r.length} jagah mila · Enter se khologiye</div>` + r.map(h => `<button type="button" class="sr" role="option" data-c="${esc(h.conversation_id)}" data-e="${h.event_id || 0}">
+    ? `<div class="scount">${r.length} matches · press Enter to open</div>` + r.map(h => `<button type="button" class="sr" role="option" data-c="${esc(h.conversation_id)}" data-e="${h.event_id || 0}">
       <b><i class="rwho">${esc(who(h))}</i>${esc(h.title || 'Chat')}${chip(h.conversation_id)}</b><span>${mark(h.snippet || '')}</span>
       <time>${esc(new Date(h.at).toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}))}</time></button>`).join('')
     : '<div class="empty">No results found.</div>';
@@ -236,5 +236,6 @@ return {
   unread(id) { if (id !== ctx.current() && !UNREAD.has(id)) { UNREAD.add(id); draw(); } },
   isBusy: id => BUSY.has(id),
   find: id => LIST.find(x => x.id === id),
+  menu: (id, btn) => openMenu(id, btn),              // v0.222 R3 the chat header's ⋯ opens the same menu
 };
 };

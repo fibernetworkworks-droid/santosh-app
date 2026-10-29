@@ -20,7 +20,7 @@ window.HoolaBuild = function (C) {
   const L = v => Array.isArray(v) ? v : [];
   const M = v => (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
   const hex = h => /^#[0-9a-f]{3,8}$/i.test(S(h)) ? S(h) : '';
-  const ago = t => { const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 5 ? 'abhi' : s < 60 ? `${s} sec pehle` : `${Math.round(s / 60)} min pehle`; };
+  const ago = t => { const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 5 ? 'just now' : s < 60 ? `${s}s ago` : `${Math.round(s / 60)} min ago`; };
   const clock = t => new Date(t).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: false});
   const spin = (sz = 14) => `<span class="spin" style="width:${sz}px;height:${sz}px"></span>`;
   const btn = (a, label, cls = 'soft', extra = '') => `<button class="btn ${cls}" type="button" data-ba="${a}"${extra}>${label}</button>`;
@@ -50,16 +50,16 @@ window.HoolaBuild = function (C) {
   function hydrate(root) {
     root.querySelectorAll('[data-src]').forEach(el => {
       const p = el.dataset.src; el.removeAttribute('data-src');
-      blob(p).then(u => { el.src = u; el.classList.add('in'); }).catch(() => { el.classList.add('miss'); el.alt = 'Tasveer nahi mili'; });
+      blob(p).then(u => { el.src = u; el.classList.add('in'); }).catch(() => { el.classList.add('miss'); el.alt = 'Picture not found'; });
     });
   }
 
   /* ---------------- words ---------------- */
   const ST = {
-    site: {draft: 'Shuru', planned: 'Plan: aapki Haan', looks: 'Look chuniye', building: 'Ban rahi hai', checking: 'Jaanch', ready: 'Ready', failed: 'Dikkat', stopped: 'Ruka hua'},
-    app: {draft: 'Shuru', planned: 'Plan: aapki Haan', looks: 'Look chuniye', designing: 'Screens ban rahi', checking: 'Jaanch', ready: 'Design taiyaar', approved: 'Design pakka', failed: 'Dikkat', stopped: 'Ruka hua'},
-    an: {writing: 'Kotlin likh raha', building: 'Compile ho raha', fixing: 'Galtiyan theek', ready: 'APK taiyaar', zip: 'Project ZIP', failed: 'Dikkat'}};
-  const TILE = {todo: ['baaki', 'todo'], writing: ['likh raha', 'run'], written: ['likh di', 'ok'], compiling: ['compile', 'run'], fixing: ['theek ho rahi', 'fix'], done: ['✓', 'ok'], code: ['saada version', 'fix']};
+    site: {draft: 'Starting', planned: 'Plan: needs your Haan', looks: 'Pick a look', building: 'Building', checking: 'Checking', ready: 'Ready', failed: 'Problem', stopped: 'Stopped'},
+    app: {draft: 'Starting', planned: 'Plan: needs your Haan', looks: 'Pick a look', designing: 'Designing screens', checking: 'Checking', ready: 'Design ready', approved: 'Design approved', failed: 'Problem', stopped: 'Stopped'},
+    an: {writing: 'Writing Kotlin', building: 'Compiling', fixing: 'Fixing errors', ready: 'APK ready', zip: 'Project ZIP', failed: 'Problem'}};
+  const TILE = {todo: ['to do', 'todo'], writing: ['writing', 'run'], written: ['written', 'ok'], compiling: ['compiling', 'run'], fixing: ['fixing', 'fix'], done: ['✓', 'ok'], code: ['simple version', 'fix']};
   const making = o => S(o.v?.status) === 'looks' && !L(o.v?.looks).length;      // the 3 looks are still being made
   const working = o => making(o) || (o.type === 'site' ? ['building', 'checking'].includes(S(o.v?.status)) : ['designing', 'checking'].includes(S(o.v?.status)));
   const anWorking = o => ['writing', 'building', 'fixing'].includes(S(o.an?.status));
@@ -109,8 +109,8 @@ window.HoolaBuild = function (C) {
     const s = S(p.status), b = M(p.board);
     if (b.now) logLine(o, b.now, ['ready', 'approved'].includes(s) ? 'ok' : s === 'failed' ? 'bad' : s === 'stopped' ? 'stop' : undefined);
     if (prev && S(prev.status) !== s) {
-      if (s === 'failed') logLine(o, 'Dikkat: ' + S(p.error), 'bad');
-      if (s === 'stopped') logLine(o, 'Rok diya', 'stop');
+      if (s === 'failed') logLine(o, 'Problem: ' + S(p.error), 'bad');
+      if (s === 'stopped') logLine(o, 'Stopped', 'stop');
       if (s === 'ready') logLine(o, `${o.type === 'site' ? 'Website' : 'App design'} v${S(p.version)} taiyaar`, 'ok');
     }
   }
@@ -133,7 +133,7 @@ window.HoolaBuild = function (C) {
       <div class="bsub">${N(b.done)} / ${N(b.total)} ${unit} · ${N(b.pct)}%</div>`;
   }
   const chip = (label, state) => { const c = {done: 'ok', building: 'run', fixing: 'fix', failed: 'bad'}[state] || 'todo';
-    return `<span class="bchip ${c}">${state === 'done' ? '✓ ' : state === 'building' ? '⋯ ' : state === 'fixing' ? 'theek ho raha: ' : ''}${esc(label)}</span>`; };
+    return `<span class="bchip ${c}">${state === 'done' ? '✓ ' : state === 'building' ? '⋯ ' : state === 'fixing' ? 'fixing: ' : ''}${esc(label)}</span>`; };
   function checksBlock(o, ttl) {
     const c = M(o.v?.checks), bl = L(c.blocking), wa = L(c.warnings);
     if (!bl.length && !wa.length && c.passed !== true) return '';
@@ -141,8 +141,8 @@ window.HoolaBuild = function (C) {
     return `<section class="bbox"><h4>${esc(ttl)}</h4>
       ${bl.slice(0, 8).map(x => `<div class="badc bln">⛔ ${where(x)}${esc(x.text)}</div>`).join('')}
       ${wa.slice(0, 8).map(x => `<div class="warnc bln">⚠ ${where(x)}${esc(x.text)}</div>`).join('')}
-      ${!bl.length && c.passed === true ? '<div class="okc bln" style="font-weight:700">✓ Sab zaroori jaanch paas</div>' : ''}
-      ${N(c.blanks) ? `<div class="faint bln">${N(c.blanks)} jagah aapki jaankari baaki ([…] wale khane)</div>` : ''}</section>`;
+      ${!bl.length && c.passed === true ? '<div class="okc bln" style="font-weight:700">✓ All required checks passed</div>' : ''}
+      ${N(c.blanks) ? `<div class="faint bln">${N(c.blanks)} spot(s) still need your details (the […] boxes)</div>` : ''}</section>`;
   }
   function scoresBlock(sc) {
     sc = M(sc); if (!Object.keys(sc).length) return '';
@@ -170,37 +170,37 @@ window.HoolaBuild = function (C) {
   const IC_WEB = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>';
   const IC_APP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>';
   const IC_AND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="9" width="14" height="10" rx="2"/><path d="M8 9V7a4 4 0 0 1 8 0v2M9 14h.01M15 14h.01"/></svg>';
-  function nowLine(text, run) { return text ? `<div class="bnow">${run ? spin() : ''}<span>Abhi: <b>${esc(text)}</b></span></div>` : ''; }
+  function nowLine(text, run) { return text ? `<div class="bnow">${run ? spin() : ''}<span>Now: <b>${esc(text)}</b></span></div>` : ''; }
   function siteCard(o) {
     const v = o.v, s = S(v.status), b = M(v.board), pv = previewPath(v.preview);
     let body = '';
     if (s === 'planned') body = L(v.plan?.pages).slice(0, 8).map(p => `<div class="bln faint">• ${esc(p.title)}: ${esc(L(p.sections).join(', '))}</div>`).join('')
-      + `<div class="acts">${btn('studio', 'Dekho / jawab do')}${btn('plan', 'Haan, 3 looks banao', 'go')}</div>`;
-    else if (s === 'looks') body = lookThumbs(o) + `<div class="acts">${btn('studio', 'Studio mein chuniye', 'go')}</div>`;
+      + `<div class="acts">${btn('studio', 'Review / answer')}${btn('plan', 'Haan, make 3 looks', 'go')}</div>`;
+    else if (s === 'looks') body = lookThumbs(o) + `<div class="acts">${btn('studio', 'Pick in studio', 'go')}</div>`;
     else if (working(o)) body = nowLine(b.now, true) + progress(o)
-      + `<div class="acts">${btn('stop', 'Stop')}${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Naye tab mein preview</a>` : ''}${btn('studio', 'Open studio', 'go')}</div>`;
+      + `<div class="acts">${btn('stop', 'Stop')}${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Preview in new tab</a>` : ''}${btn('studio', 'Open studio', 'go')}</div>`;
     else if (s === 'ready') body = scoresBlock(v.scores)
-      + `<div class="acts">${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Open preview</a>` : ''}${btn('studio', 'Badlav / dekho', 'go')}</div>`;
-    else if (s === 'failed' || s === 'stopped') body = (v.error ? `<div class="badc bln">${esc(v.error)}</div>` : '') + `<div class="acts">${btn('studio', 'Studio')}${btn('resume', 'Aage badhao', 'go')}</div>`;
+      + `<div class="acts">${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Open preview</a>` : ''}${btn('studio', 'Review / change', 'go')}</div>`;
+    else if (s === 'failed' || s === 'stopped') body = (v.error ? `<div class="badc bln">${esc(v.error)}</div>` : '') + `<div class="acts">${btn('studio', 'Studio')}${btn('resume', 'Continue', 'go')}</div>`;
     return cardHead(o, IC_WEB) + stages(o, true) + (v.say ? `<p class="bsay">${esc(v.say)}</p>` : '') + body;
   }
   function appCard(o) {
     const v = o.v, s = S(v.status), b = M(v.board), pv = previewPath(v.preview);
     let body = '';
-    if (s === 'planned') body = `<div class="bln faint">${L(v.plan?.screens).length + L(v.plan?.code_screens).length} screens · neeche tabs: ${esc(L(v.plan?.tabs).join(' · '))}</div>`
-      + `<div class="acts">${btn('studio', 'Dekho / jawab do')}${btn('plan', 'Haan, 3 looks banao', 'go')}</div>`;
-    else if (s === 'looks') body = lookThumbs(o) + `<div class="acts">${btn('studio', 'Studio mein chuniye', 'go')}</div>`;
+    if (s === 'planned') body = `<div class="bln faint">${L(v.plan?.screens).length + L(v.plan?.code_screens).length} screens · bottom tabs: ${esc(L(v.plan?.tabs).join(' · '))}</div>`
+      + `<div class="acts">${btn('studio', 'Review / answer')}${btn('plan', 'Haan, make 3 looks', 'go')}</div>`;
+    else if (s === 'looks') body = lookThumbs(o) + `<div class="acts">${btn('studio', 'Pick in studio', 'go')}</div>`;
     else if (working(o)) body = nowLine(b.now, true) + progress(o) + miniScreens(o)
       + `<div class="acts">${btn('stop', 'Stop')}${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Prototype</a>` : ''}${btn('studio', 'Open studio', 'go')}</div>`;
     else if (s === 'ready' || s === 'approved') body = miniScreens(o)
-      + `<div class="acts">${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Tap karke dekho</a>` : ''}${btn('studio', 'Studio')}${s === 'ready' ? btn('approve', 'Design pakka', 'go') : (!o.an || !S(o.an.status) ? btn('android', 'Android app banao', 'go') : '')}</div>`;
-    else if (s === 'failed' || s === 'stopped') body = (v.error ? `<div class="badc bln">${esc(v.error)}</div>` : '') + `<div class="acts">${btn('studio', 'Studio')}${btn('resume', 'Aage badhao', 'go')}</div>`;
+      + `<div class="acts">${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Try the prototype</a>` : ''}${btn('studio', 'Studio')}${s === 'ready' ? btn('approve', 'Approve design', 'go') : (!o.an || !S(o.an.status) ? btn('android', 'Build Android app', 'go') : '')}</div>`;
+    else if (s === 'failed' || s === 'stopped') body = (v.error ? `<div class="badc bln">${esc(v.error)}</div>` : '') + `<div class="acts">${btn('studio', 'Studio')}${btn('resume', 'Continue', 'go')}</div>`;
     return cardHead(o, IC_APP) + stages(o, true) + (v.say ? `<p class="bsay">${esc(v.say)}</p>` : '') + body;
   }
   function androidCard(o) {
     const a = o.an, s = S(a.status), dl = publicLink(a.apk_url);
     const run = ['writing', 'building', 'fixing'].includes(s);
-    return `<div class="hd"><span class="bic" aria-hidden="true">${IC_AND}</span><b>${esc(S(a.number))} · ${esc(S(a.name))} · Android</b><span class="tag ${s === 'ready' ? 'ok' : s === 'failed' ? 'bad' : 'v'}">${esc(ST.an[s] || s || 'Shuru nahi')}</span></div>`
+    return `<div class="hd"><span class="bic" aria-hidden="true">${IC_AND}</span><b>${esc(S(a.number))} · ${esc(S(a.name))} · Android</b><span class="tag ${s === 'ready' ? 'ok' : s === 'failed' ? 'bad' : 'v'}">${esc(ST.an[s] || s || 'Not started')}</span></div>`
       + (a.say ? `<p class="bsay">${esc(a.say)}</p>` : '') + (run && a.now ? nowLine(a.now, true) : '')
       + (s === 'failed' && a.error ? `<div class="badc bln">${esc(a.error)}</div>` : '')
       + (a.apk && a.apk.file ? `<div class="bln faint">${esc(a.apk.file)} · ${mb(a.apk.size)} · v${esc(S(a.apk.version_name))}</div>` : '')
@@ -208,7 +208,7 @@ window.HoolaBuild = function (C) {
   }
   const mb = n => N(n) ? (N(n) / 1048576).toFixed(1) + ' MB' : '';
   function lookThumbs(o) {
-    const looks = L(o.v.looks); if (!looks.length) return `<div class="bln faint">${spin()} Looks ban rahe hain…</div>`;
+    const looks = L(o.v.looks); if (!looks.length) return `<div class="bln faint">${spin()} Making the looks…</div>`;
     return `<div class="blooks">${looks.slice(0, 3).map((lk, i) => `<figure>${pic(shotPath(o.type, o.id, o.type === 'site' ? M(lk.shots)['390'] : M(lk.shots).android), `Look ${i + 1}`)}<figcaption>${i + 1}. ${esc(lk.label)}</figcaption></figure>`).join('')}</div>`;
   }
   function miniScreens(o) {
@@ -219,7 +219,7 @@ window.HoolaBuild = function (C) {
 
   /* ---------------- studio ---------------- */
   const isOpen = () => appEl.classList.contains('st');
-  function showBtn() { if (!sbtn) return; sbtn.hidden = !P.size; const any = [...P.values()].some(busy); sbtn.classList.toggle('on', any); sbtn.querySelector('span').textContent = any ? 'Studio · ban raha' : 'Studio'; }
+  function showBtn() { if (!sbtn) return; sbtn.hidden = !P.size; const any = [...P.values()].some(busy); sbtn.classList.toggle('on', any); sbtn.querySelector('span').textContent = any ? 'Studio · building' : 'Studio'; }
   function open(k) {
     if (!P.has(k)) return;
     const changed = CUR !== k; CUR = k; P.get(k).dismissed = false;
@@ -240,8 +240,8 @@ window.HoolaBuild = function (C) {
     if (s === 'planned') pre.push(['plan', 'Plan']);
     if (s === 'looks') pre.push(['looks', 'Looks']);
     return o.type === 'site'
-      ? [...pre, ['preview', 'Preview'], ['board', 'Board'], ['kadam', 'Steps'], ['jaanch', 'Jaanch']]
-      : [...pre, ['screens', 'Screens'], ['prototype', 'Prototype'], ['dhaancha', 'Dhaancha'], ['android', 'Android'], ['kadam', 'Steps']];
+      ? [...pre, ['preview', 'Preview'], ['board', 'Board'], ['kadam', 'Steps'], ['jaanch', 'Checks']]
+      : [...pre, ['screens', 'Screens'], ['prototype', 'Prototype'], ['dhaancha', 'Structure'], ['android', 'Android'], ['kadam', 'Steps']];
   }
   function draw(rebuild) {
     const o = P.get(CUR); if (!o || !studio) return;
@@ -251,15 +251,15 @@ window.HoolaBuild = function (C) {
       studio.dataset.k = o.k;
       studio.innerHTML = `<div class="sthd"></div><div class="stnow"></div><div class="stst"></div><div class="sttabs" role="tablist" aria-label="Studio"></div>
         <div class="stpanes"><div class="stpane" data-pane="frames"></div><div class="stpane" data-pane="other"></div></div>
-        <form class="stchg" autocomplete="off"><label class="sr" for="stIn">Badlav bolo</label><input id="stIn" placeholder="Badlav bolo, jaise 'rang thoda laal karo'"><button class="btn go" type="submit">Edit</button><span class="stq"></span></form>`;
+        <form class="stchg" autocomplete="off"><label class="sr" for="stIn">Request a change</label><input id="stIn" placeholder="Describe a change, e.g. 'make the colours a little warmer'"><button class="btn go" type="submit">Edit</button><span class="stq"></span></form>`;
       studio.querySelector('.stchg').addEventListener('submit', e => { e.preventDefault(); change(o); });
       studio.onclick = e => act(e, P.get(CUR));
       studio.onsubmit = async e => {
         if (e.target.dataset.form !== 'answers') return;
         e.preventDefault(); const cur = P.get(CUR); if (!cur) return;
         const answers = {}; new FormData(e.target).forEach((val, key) => { if (String(val).trim()) answers[key] = String(val).trim(); });
-        if (!Object.keys(answers).length) return toast('Kam se kam ek jawab likhiye.', true);
-        try { await api('POST', base(cur) + '/answers', {answers}); toast('Jawab rakh liye.'); } catch (er) { toast(er.message, true); }
+        if (!Object.keys(answers).length) return toast('Write at least one answer.', true);
+        try { await api('POST', base(cur) + '/answers', {answers}); toast('Answers saved.'); } catch (er) { toast(er.message, true); }
       };
       o.framesFor = '';
     }
@@ -268,8 +268,8 @@ window.HoolaBuild = function (C) {
     studio.querySelector('.sthd').innerHTML = `<button class="ib" type="button" data-ba="close" aria-label="Close studio">✕</button>
       <div class="stti"><h3>${o.type === 'site' ? 'Website studio' : 'App studio'}</h3><span>${esc(title(o))}</span></div>
       <span class="tag ${c === 'ok' ? 'ok' : c === 'bad' ? 'bad' : c === 'ask' ? 'warn' : 'v'}">${busy(o) ? '● LIVE · ' : ''}${esc(t)}</span>
-      ${others.length > 1 ? `<label class="sr" for="stPick">Project</label><select id="stPick" class="stpick">${others.map(x => `<option value="${esc(x.k)}"${x.k === o.k ? ' selected' : ''}>${esc(title(x))}${busy(x) ? ' · ban raha' : ''}</option>`).join('')}</select>` : ''}
-      ${working(o) ? btn('stop', '■ Stop') : ['failed', 'stopped'].includes(S(o.v?.status)) ? btn('resume', 'Aage badhao', 'go') : ''}`;
+      ${others.length > 1 ? `<label class="sr" for="stPick">Project</label><select id="stPick" class="stpick">${others.map(x => `<option value="${esc(x.k)}"${x.k === o.k ? ' selected' : ''}>${esc(title(x))}${busy(x) ? ' · building' : ''}</option>`).join('')}</select>` : ''}
+      ${working(o) ? btn('stop', '■ Stop') : ['failed', 'stopped'].includes(S(o.v?.status)) ? btn('resume', 'Continue', 'go') : ''}`;
     const pick = studio.querySelector('#stPick'); if (pick) pick.onchange = () => open(pick.value);
     // now line
     const b = M(o.v?.board), an = o.an || {};
@@ -278,12 +278,12 @@ window.HoolaBuild = function (C) {
     const run = busy(o);
     studio.querySelector('.stnow').innerHTML = (nowText || o.v) ? `<div class="stn ${run ? 'run' : S(o.v?.status) === 'failed' || an.status === 'failed' ? 'bad' : 'idle'}">
         ${run ? spin(22) : '<span class="stok" aria-hidden="true">✓</span>'}
-        <div><b>${run ? 'Abhi: ' : ''}${esc(nowText || S(o.v?.say) || '')}</b><span>${esc(run ? (anWorking(o) ? `Build machine${an.rounds ? ' · round ' + an.rounds : ''}` : `${S(o.v?.model) || 'Opus 5.5'} likh raha hai · har hissa bante hi yahan dikhega`) : anShown ? S(an.say) : S(o.v?.say && nowText ? o.v.say : ''))}</span></div>
+        <div><b>${run ? 'Now: ' : ''}${esc(nowText || S(o.v?.say) || '')}</b><span>${esc(run ? (anWorking(o) ? `Build machine${an.rounds ? ' · round ' + an.rounds : ''}` : `${S(o.v?.model) || 'Opus 5.5'} is writing · each part shows here as it is built`) : anShown ? S(an.say) : S(o.v?.say && nowText ? o.v.say : ''))}</span></div>
         ${o.v && !anShown && N(b.total) && !['planned', 'looks'].includes(S(o.v.status)) ? `<div class="stpct"><b>${N(b.pct)}%</b><span>${N(b.done)} / ${N(b.total)} ${o.type === 'site' ? 'hisse' : 'screens'}</span></div>` : ''}</div>` : '';
     studio.querySelector('.stst').innerHTML = stages(o);
     const tabs = tabsOf(o); if (!tabs.some(x => x[0] === o.tab)) o.tab = tabs[0][0];
     studio.querySelector('.sttabs').innerHTML = tabs.map(([k, n]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${k === o.tab}">${n}</button>`).join('');
-    const q = N(o.v?.queued); studio.querySelector('.stq').textContent = q ? `${q} badlav line mein: chal rahe hisse ke baad lagenge` : '';
+    const q = N(o.v?.queued); studio.querySelector('.stq').textContent = q ? `${q} change(s) queued: applied after the current part` : '';
     studio.querySelector('.stchg').hidden = !o.v || ['planned', 'looks', 'draft'].includes(S(o.v.status));
     // panes: frames (preview / prototype iframes, never rebuilt while they show the same project) + everything else
     const fr = studio.querySelector('[data-pane=frames]'), ot = studio.querySelector('[data-pane=other]');
@@ -296,10 +296,10 @@ window.HoolaBuild = function (C) {
   /* live preview frames */
   function frames(o, box) {
     const path = previewPath(o.v?.preview), want = o.k + '|' + o.tab + '|' + path;
-    if (!path) { box.innerHTML = `<div class="stempty">${spin()} Preview banana shuru hote hi yahan dikhega.</div>`; o.framesFor = ''; return; }
+    if (!path) { box.innerHTML = `<div class="stempty">${spin()} The preview appears here as soon as it starts.</div>`; o.framesFor = ''; return; }
     if (o.pvPath !== path) { o.pvPath = path; o.pvOk = false; }
     if (!o.pvOk) {           // the preview link exists before its first page: open the frame only once it is really there
-      box.innerHTML = `<div class="stempty">${spin()} Pehla hissa bante hi live preview yahan khulega.</div>`; o.framesFor = '';
+      box.innerHTML = `<div class="stempty">${spin()} The live preview opens here once the first part is built.</div>`; o.framesFor = '';
       if (!o.pvCheck) {
         o.pvCheck = true;
         fetch(path, {cache: 'no-store', credentials: 'omit'}).then(r => { o.pvCheck = false; if (r.ok) { o.pvOk = true; if (CUR === o.k && isOpen()) draw(); } })
@@ -314,11 +314,11 @@ window.HoolaBuild = function (C) {
       box.innerHTML = o.type === 'site'
         ? `<div class="pvrow"><figure class="pvpc"><div class="pvbar"><i></i><i></i><i></i><span class="pvurl">${esc(location.host + path)}</span><span class="pvage okc"></span></div>
              <div class="pvfit" data-w="1280" data-h="800"><iframe title="Website preview, computer" sandbox="${fsb}" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div>
-             <figcaption>Computer par · har hissa bante hi apne aap taaza hota hai</figcaption></figure>
+             <figcaption>Desktop · refreshes by itself as each part is built</figcaption></figure>
            <figure class="pvph"><div class="pvfit phone" data-w="390" data-h="844"><iframe title="Website preview, phone" sandbox="${fsb}" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div><figcaption>Phone par (390 px)</figcaption></figure></div>
            <div class="acts"><a class="btn soft" href="${esc(path)}" target="_blank" rel="noopener">Open in new tab</a>${btn('reload', 'Refresh')}</div>`
         : `<div class="pvrow center"><figure class="pvph big"><div class="pvfit phone" data-w="390" data-h="844"><iframe title="App prototype" sandbox="${fsb}" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div>
-             <figcaption>Tap karke chalaiye: asli raasta, asli screens</figcaption></figure></div>
+             <figcaption>Tap to try it: the real flow, the real screens</figcaption></figure></div>
            <div class="acts" style="justify-content:center"><a class="btn soft" href="${esc(path)}" target="_blank" rel="noopener">Open in new tab</a>${btn('reload', 'Refresh')}</div>`;
       fit(box); o.loadedAt = Date.now();
     }
@@ -345,7 +345,7 @@ window.HoolaBuild = function (C) {
       nf.addEventListener('load', () => { setTimeout(() => { nf.classList.remove('next'); w.querySelectorAll('iframe').forEach(x => { if (x !== nf) x.remove(); }); }, 250); }, {once: true});
       w.appendChild(nf); scaleOne(w);
     });
-    const age = studio.querySelector('.pvage'); if (age) age.textContent = 'taaza · abhi';
+    const age = studio.querySelector('.pvage'); if (age) age.textContent = 'fresh · just now';
   }
 
   /* the other panes */
@@ -354,7 +354,7 @@ window.HoolaBuild = function (C) {
     switch (o.tab) {
       case 'plan': return planPane(o);
       case 'looks': return looksPane(o);
-      case 'board': return `<section class="bbox"><h4>Board: page aur unke hisse</h4>${progress(o)}${L(b.pages).map(p => `<div class="bpg"><b>${esc(p.title)}</b><div class="bchips">${L(p.sections).map(s => chip(s.label, s.state)).join('')}</div></div>`).join('') || '<div class="stempty">Plan pakka hote hi hisse yahan dikhenge.</div>'}</section>`;
+      case 'board': return `<section class="bbox"><h4>Board: pages and their parts</h4>${progress(o)}${L(b.pages).map(p => `<div class="bpg"><b>${esc(p.title)}</b><div class="bchips">${L(p.sections).map(s => chip(s.label, s.state)).join('')}</div></div>`).join('') || '<div class="stempty">Plan pakka hote hi hisse yahan dikhenge.</div>'}</section>`;
       case 'kadam': return kadamPane(o);
       case 'jaanch': return sitePane(o);
       case 'screens': return screensPane(o);
@@ -369,106 +369,106 @@ window.HoolaBuild = function (C) {
       rows = L(M(o.v?.board).pages).flatMap(p => L(p.sections).filter(s => ['done', 'building', 'fixing'].includes(s.state))
         .map(s => ({text: `${p.title} → ${s.label}`, state: s.state === 'done' ? 'ok' : 'run'}))).reverse();
     }
-    if (!rows.length) return '<section class="bbox"><h4>Steps</h4><div class="stempty">Abhi koi kadam nahi.</div></section>';
+    if (!rows.length) return '<section class="bbox"><h4>Steps</h4><div class="stempty">No steps yet.</div></section>';
     const mk = {ok: '✓', run: '⋯', bad: '✕', stop: '■'};
-    return `<section class="bbox"><h4>Steps (asli kaam, jaise hua)</h4><ol class="bsteps">${rows.map(r => `<li class="${r.state}"><time>${r.t ? clock(r.t) : ''}</time><i>${mk[r.state] || '·'}</i><span>${esc(r.text)}${r.secs ? ` <em>· ${r.secs} sec</em>` : ''}</span></li>`).join('')}</ol>
-      <p class="faint" style="font-size:12px;margin-top:8px">Time wale kadam is console ke khulne ke baad ke hain; pehle ke board se.</p></section>`;
+    return `<section class="bbox"><h4>Steps (the real work, as it happened)</h4><ol class="bsteps">${rows.map(r => `<li class="${r.state}"><time>${r.t ? clock(r.t) : ''}</time><i>${mk[r.state] || '·'}</i><span>${esc(r.text)}${r.secs ? ` <em>· ${r.secs} sec</em>` : ''}</span></li>`).join('')}</ol>
+      <p class="faint" style="font-size:12px;margin-top:8px">Timed steps are from after this console opened; earlier ones come from the board.</p></section>`;
   }
   function planPane(o) {
     const v = o.v || {}, pl = M(v.plan), qs = L(v.questions);
     const list = o.type === 'site'
       ? L(pl.pages).map(p => `<div class="bln">• <b>${esc(p.title)}</b>: ${esc(L(p.sections).join(', '))}</div>`).join('')
-      : `<div class="bln"><b>${L(pl.screens).length + L(pl.code_screens).length} screens</b>${L(pl.tabs).length ? ` · neeche tabs: ${esc(L(pl.tabs).join(' · '))}` : ''}</div>`
+      : `<div class="bln"><b>${L(pl.screens).length + L(pl.code_screens).length} screens</b>${L(pl.tabs).length ? ` · bottom tabs: ${esc(L(pl.tabs).join(' · '))}` : ''}</div>`
         + (L(pl.flow).length ? `<div class="bln faint">Raasta: ${esc(L(pl.flow).join(' → '))}</div>` : '')
         + L(pl.screens).map(s => `<div class="bln">• ${esc(s.label)}${s.tab ? ' <span class="tag v">tab</span>' : ''}${s.design ? ` <span class="faint">${esc(S(s.design).slice(0, 90))}</span>` : ''}</div>`).join('')
         + L(pl.code_screens).map(s => `<div class="bln">• ${esc(s.label)} <span class="tag ok">kanoon</span> <span class="faint">${esc(s.why)}</span></div>`).join('')
         + (M(pl.scope).request ? `<div class="bln faint" style="font-style:italic">Aapne kaha: "${esc(pl.scope.request)}"</div>` : '');
-    return `<section class="bbox"><h4>Plan</h4>${list || '<div class="stempty">Plan ban raha hai…</div>'}</section>`
-      + (qs.length ? `<section class="bbox"><h4>Thode sawaal (jitne pata hain utne)</h4><form class="bqs" data-form="answers">${qs.map((q, i) => `<label>${esc(q)}<input name="${i}" autocomplete="off"></label>`).join('')}<div class="acts"><button class="btn soft" type="submit">Jawab bhejo</button></div></form></section>` : '')
-      + (S(v.status) === 'planned' ? `<div class="acts">${btn('plan', 'Haan, 3 looks banao', 'go')}</div>` : '');
+    return `<section class="bbox"><h4>Plan</h4>${list || '<div class="stempty">Writing the plan…</div>'}</section>`
+      + (qs.length ? `<section class="bbox"><h4>A few questions (answer what you know)</h4><form class="bqs" data-form="answers">${qs.map((q, i) => `<label>${esc(q)}<input name="${i}" autocomplete="off"></label>`).join('')}<div class="acts"><button class="btn soft" type="submit">Send answers</button></div></form></section>` : '')
+      + (S(v.status) === 'planned' ? `<div class="acts">${btn('plan', 'Haan, make 3 looks', 'go')}</div>` : '');
   }
   function looksPane(o) {
     const looks = L(o.v?.looks);
-    if (!looks.length) return `<div class="stempty">${spin()} 3 looks ban rahe hain: asli Home screen, teen andaaz mein…</div>`;
+    if (!looks.length) return `<div class="stempty">${spin()} Making 3 looks: the real Home screen in three styles…</div>`;
     const cf = o.colorsFrom;
-    return `<p class="faint" style="font-size:13px">Asli Home screen, teen andaaz mein. Baaki ${o.type === 'site' ? 'hisse' : 'screens'} isi look mein banenge.</p>
+    return `<p class="faint" style="font-size:13px">The real Home screen in three styles. The other ${o.type === 'site' ? 'sections' : 'screens'} follow the look you pick.</p>
       <div class="blookgrid">${looks.slice(0, 3).map((lk, i) => {
         const sh = M(lk.shots), art = M(lk.art);
         const cols = L(lk.colors).map(hex).filter(Boolean);
         return `<article class="blook${cf === i ? ' cf' : ''}">
           <div class="blkpics">${o.type === 'site' ? pic(shotPath('site', o.id, sh['390']), `Look ${i + 1} phone`, 'ph') + pic(shotPath('site', o.id, sh['1440']), `Look ${i + 1} computer`, 'pc') : pic(shotPath('app', o.id, sh.android), `Look ${i + 1}`, 'ph')}</div>
           <b>${i + 1} · ${esc(lk.label)}</b>${art.concept ? `<span class="faint">${esc(art.concept)}</span>` : ''}
-          <div class="bsw">${cols.map(c => `<i style="background:${c}" role="img" aria-label="Rang ${esc(c)}"></i>`).join('')}</div>
-          <div class="acts">${btn('look', 'Yeh wala', 'go', ` data-i="${i}"`)}${btn('colors', cf === i ? '✓ Iske rang' : 'Iske rang', 'soft', ` data-i="${i}" aria-pressed="${cf === i}"`)}</div></article>`;
-      }).join('')}</div>${cf != null ? `<p class="acc" style="font-size:13px;font-weight:700">Rang look ${cf + 1} ke lagenge. Ab jo look chunoge uska dhaancha, inke rang.</p>` : ''}`;
+          <div class="bsw">${cols.map(c => `<i style="background:${c}" role="img" aria-label="Colour ${esc(c)}"></i>`).join('')}</div>
+          <div class="acts">${btn('look', 'This one', 'go', ` data-i="${i}"`)}${btn('colors', cf === i ? '✓ Its colours' : 'Its colours', 'soft', ` data-i="${i}" aria-pressed="${cf === i}"`)}</div></article>`;
+      }).join('')}</div>${cf != null ? `<p class="acc" style="font-size:13px;font-weight:700">Look ${cf + 1}&rsquo;s colours will be used. The look you pick now gives the structure, these give the colours.</p>` : ''}`;
   }
   function sitePane(o) {
     const v = o.v || {}, sh = M(v.shots);
     const phone = shotPath('site', o.id, sh['home-390.jpg']), pc = shotPath('site', o.id, sh['home-1440.jpg']), vid = shotPath('site', o.id, sh['scroll.mp4']);
     const pv = previewPath(v.preview);
     return (Object.keys(M(v.scores)).length ? `<section class="bbox"><h4>Number (Lighthouse)</h4>${scoresBlock(v.scores)}</section>` : '')
-      + ((phone || pc) ? `<section class="bbox"><h4>Phone aur computer par (asli screenshot)</h4><div class="bshots">${pic(phone, 'Phone screenshot', 'ph')}${pic(pc, 'Computer screenshot', 'pc')}</div>
+      + ((phone || pc) ? `<section class="bbox"><h4>On phone and computer (real screenshots)</h4><div class="bshots">${pic(phone, 'Phone screenshot', 'ph')}${pic(pc, 'Computer screenshot', 'pc')}</div>
           ${vid ? `<video class="bvid" data-src="${esc(vid)}" controls muted playsinline preload="none" aria-label="Scroll video"></video>` : ''}</section>` : '')
-      + (checksBlock(o, 'Jaanch (chhota phone, contrast, buttons, links)') || `<div class="stempty">${working(o) ? spin() + ' Jaanch website banne ke baad chalegi.' : 'Jaanch abhi nahi chali.'}</div>`)
-      + (S(v.status) === 'ready' ? `<section class="bbox next"><h4>Aage: Domain → Hosting + DNS → Live</h4><p class="faint" style="font-size:13px">Domain kharidna aur live karna aapki Haan se hota hai (card chat mein aayega).</p>
-          <div class="acts">${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Open preview</a>` : ''}${btn('say-domain', 'Domain dhoondho', 'go')}${btn('say-live', 'Live karne ki taiyaari')}</div></section>` : '');
+      + (checksBlock(o, 'Checks (small phone, contrast, buttons, links)') || `<div class="stempty">${working(o) ? spin() + ' Checks run after the website is built.' : 'Checks have not run yet.'}</div>`)
+      + (S(v.status) === 'ready' ? `<section class="bbox next"><h4>Next: Domain → Hosting + DNS → Live</h4><p class="faint" style="font-size:13px">Buying a domain and going live need your Haan (the card comes in the chat).</p>
+          <div class="acts">${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Open preview</a>` : ''}${btn('say-domain', 'Find a domain', 'go')}${btn('say-live', 'Prepare to go live')}</div></section>` : '');
   }
   function screensPane(o) {
     const v = o.v || {}, b = M(v.board), ov = M(b.overview), plat = o.plat && ov[o.plat] ? o.plat : 'android';
     const labels = Object.fromEntries(L(v.plan?.screens).map(s => [s.id, s.label]));
     const sc = M(b.scores);
-    return `<section class="bbox"><h4>Har screen, asli tasveer ke saath</h4>${progress(o)}
+    return `<section class="bbox"><h4>Every screen, as a real screenshot</h4>${progress(o)}
       ${L(b.pages).map(p => `<div class="bpg"><b>${esc(p.title)}</b><div class="bscr">${L(p.sections).map(s => {
         const cls = s.state === 'done' ? 'ok' : s.state === 'building' ? 'run' : s.state === 'fixing' ? 'fix' : s.state === 'failed' ? 'bad' : 'todo';
         const th = shotPath('app', o.id, s.thumb), full = shotPath('app', o.id, S(s.thumb).replace(/^thumb\//, ''));
         return `<button type="button" class="bsc ${cls}" ${th ? `data-ba="zoom" data-full="${esc(full)}" data-cap="${esc(s.label)}"` : 'disabled'} aria-label="${esc(s.label)}">
           <span class="fr">${th ? pic(th, s.label) : s.state === 'building' ? spin(20) : `<i>${s.state === 'done' ? '✓' : ''}</i>`}</span>
-          <span class="lb">${s.state === 'done' ? '✓ ' : s.state === 'building' ? '⋯ ' : ''}${esc(s.label)}</span></button>`; }).join('')}</div></div>`).join('') || '<div class="stempty">Look chunne ke baad screens yahan banengi.</div>'}
-      <p class="faint" style="font-size:12px">Tasveer par click: badi khulegi. "Code se" screens (privacy, account hatao) kanoon ke liye zaroori hain.</p></section>
-      ${ov.android ? `<section class="bbox"><div class="bhrow"><h4>Sab screens ek saath</h4><div class="bseg" role="group" aria-label="Phone">${[['android', 'Android'], ['ios', 'iPhone'], ['android-alt', M(v.design).dark ? 'Light' : 'Dark']].filter(([k]) => ov[k]).map(([k, n]) => `<button type="button" data-ba="plat" data-p="${k}" aria-pressed="${k === plat}">${n}</button>`).join('')}</div></div>
-          <button type="button" class="bov" data-ba="zoom" data-full="${esc(shotPath('app', o.id, ov[plat]))}" data-cap="Sab screens">${pic(shotPath('app', o.id, ov[plat]), 'Sab screens')}</button></section>` : ''}
-      ${Object.keys(sc).length ? `<section class="bbox"><h4>Opus ne apni screens dekh kar number diye</h4><div class="bchips">${Object.entries(sc).map(([k, x]) => { x = M(x); const n = +x.score || 0;
+          <span class="lb">${s.state === 'done' ? '✓ ' : s.state === 'building' ? '⋯ ' : ''}${esc(s.label)}</span></button>`; }).join('')}</div></div>`).join('') || '<div class="stempty">Screens appear here after you pick a look.</div>'}
+      <p class="faint" style="font-size:12px">Click a picture to enlarge it. The code-made screens (privacy, delete account) are required by law.</p></section>
+      ${ov.android ? `<section class="bbox"><div class="bhrow"><h4>All screens at once</h4><div class="bseg" role="group" aria-label="Phone">${[['android', 'Android'], ['ios', 'iPhone'], ['android-alt', M(v.design).dark ? 'Light' : 'Dark']].filter(([k]) => ov[k]).map(([k, n]) => `<button type="button" data-ba="plat" data-p="${k}" aria-pressed="${k === plat}">${n}</button>`).join('')}</div></div>
+          <button type="button" class="bov" data-ba="zoom" data-full="${esc(shotPath('app', o.id, ov[plat]))}" data-cap="All screens">${pic(shotPath('app', o.id, ov[plat]), 'All screens')}</button></section>` : ''}
+      ${Object.keys(sc).length ? `<section class="bbox"><h4>Opus’s own scores for its screens</h4><div class="bchips">${Object.entries(sc).map(([k, x]) => { x = M(x); const n = +x.score || 0;
           return `<span class="bchip ${n >= 8 ? 'ok' : n >= 6 ? 'run' : 'bad'}">${esc(labels[k] || k)}: ${x.before ? esc(x.before) + ' → ' : ''}${n.toFixed(1)}/10</span>`; }).join('')}</div></section>` : ''}
-      ${checksBlock(o, 'Jaanch (Android + iPhone, chhota phone)')}
-      ${S(v.status) === 'ready' ? `<div class="acts">${btn('approve', 'Design pakka', 'go')}</div>` : ''}`;
+      ${checksBlock(o, 'Checks (Android + iPhone, small phone)')}
+      ${S(v.status) === 'ready' ? `<div class="acts">${btn('approve', 'Approve design', 'go')}</div>` : ''}`;
   }
   function dnaPane(o) {
     const v = o.v || {}, art = M(v.art), d = M(v.design), pl = M(v.plan);
     const line = (k, t) => t ? `<div class="bkv"><span>${k}</span><b>${esc(t)}</b></div>` : '';
     const cols = L(d.colors).map(hex).filter(Boolean);
-    return `<section class="bbox"><h4>${esc(art.concept || 'Design ki soch')}${v.model ? ` <span class="tag v">${esc(v.model)}</span>` : ''}</h4>
+    return `<section class="bbox"><h4>${esc(art.concept || 'Design idea')}${v.model ? ` <span class="tag v">${esc(v.model)}</span>` : ''}</h4>
         ${art.idea ? `<p style="font-style:italic;font-size:13.5px">${esc(art.idea)}</p>` : ''}
-        ${line('Pehchaan', art.signature)}${line('Layout', art.layout)}${line('Shuruaat', art.hero)}${line('Motion', art.motion)}${art.three_d ? line('3D', L(art.scenes).join(', ') || 'haan') : ''}</section>
-      ${Object.keys(d).length ? `<section class="bbox"><h4>Design ka dhaancha</h4>${cols.length ? `<div class="bsw lg">${cols.map(c => `<i style="background:${c}" role="img" aria-label="Rang ${esc(c)}"></i>`).join('')}</div>` : ''}
-        ${line('Navigation', d.nav)}${line('Bada button', d.fab)}${line('Card', d.card)}${line('Button', d.button)}${line('Upar ka hissa', d.header)}${line('Chalaav', d.transition)}${line('Font', L(d.fonts).filter(Boolean).join(' / '))}${line('Mode', d.dark ? 'dark' : d.mode)}</section>` : ''}
-      ${L(pl.tabs).length || L(pl.flow).length ? `<section class="bbox"><h4>Raasta</h4>${line('Neeche tabs', L(pl.tabs).join(' · '))}${line('Raasta', L(pl.flow).join(' → '))}${L(pl.rules).length ? line('Niyam', L(pl.rules).join(' · ')) : ''}</section>` : ''}`;
+        ${line('Signature', art.signature)}${line('Layout', art.layout)}${line('Hero', art.hero)}${line('Motion', art.motion)}${art.three_d ? line('3D', L(art.scenes).join(', ') || 'yes') : ''}</section>
+      ${Object.keys(d).length ? `<section class="bbox"><h4>Design structure</h4>${cols.length ? `<div class="bsw lg">${cols.map(c => `<i style="background:${c}" role="img" aria-label="Colour ${esc(c)}"></i>`).join('')}</div>` : ''}
+        ${line('Navigation', d.nav)}${line('Main button', d.fab)}${line('Card', d.card)}${line('Button', d.button)}${line('Header', d.header)}${line('Transition', d.transition)}${line('Font', L(d.fonts).filter(Boolean).join(' / '))}${line('Mode', d.dark ? 'dark' : d.mode)}</section>` : ''}
+      ${L(pl.tabs).length || L(pl.flow).length ? `<section class="bbox"><h4>Flow</h4>${line('Bottom tabs', L(pl.tabs).join(' · '))}${line('Flow', L(pl.flow).join(' → '))}${L(pl.rules).length ? line('Rules', L(pl.rules).join(' · ')) : ''}</section>` : ''}`;
   }
   function androidPane(o) {
     const v = o.v || {}, a = o.an || {}, s = S(a.status);
-    if (!v.approved && !s) return `<section class="bbox"><h4>Asli Android app</h4><p class="muted" style="font-size:13.5px">First "Design pakka" kijiye: asli app usi naksha se banti hai.</p>${S(v.status) === 'ready' ? `<div class="acts">${btn('approve', 'Design pakka', 'go')}</div>` : ''}</section>`;
-    if (!s) return `<section class="bbox"><h4>Asli Android app</h4><p class="muted" style="font-size:13.5px">Kotlin + Jetpack Compose mein har screen likhunga, build machine par compile karke APK aapke phone ke liye.</p><div class="acts">${btn('android', 'Android app banao', 'go')}</div></section>`;
+    if (!v.approved && !s) return `<section class="bbox"><h4>Real Android app</h4><p class="muted" style="font-size:13.5px">Approve the design first: the real app is built from it.</p>${S(v.status) === 'ready' ? `<div class="acts">${btn('approve', 'Approve design', 'go')}</div>` : ''}</section>`;
+    if (!s) return `<section class="bbox"><h4>Real Android app</h4><p class="muted" style="font-size:13.5px">Every screen is written in Kotlin + Jetpack Compose and compiled on the build machine into an APK for your phone.</p><div class="acts">${btn('android', 'Build Android app', 'go')}</div></section>`;
     const step = {writing: 0, building: 1, fixing: 2, ready: 4, zip: 4, failed: -1}[s] ?? 0;
     const failAt = s === 'failed' ? (N(a.rounds) ? 2 : L(a.screens).every(x => ['written', 'done', 'code'].includes(x.state)) ? 1 : 0) : -1;
-    const pipe = [['Screens likhna', `Kotlin + Compose · ${L(a.screens).filter(x => ['written', 'done', 'code', 'compiling'].includes(x.state)).length} / ${L(a.screens).length}`],
-      ['Compile', S(a.where) || 'build machine'], ['Galtiyan theek', N(a.rounds) ? `${a.rounds} round` : 'har round ke baad khud'], ['APK', s === 'zip' ? 'build machine nahi: project ZIP' : 'aapke phone ke liye']]
+    const pipe = [['Writing screens', `Kotlin + Compose · ${L(a.screens).filter(x => ['written', 'done', 'code', 'compiling'].includes(x.state)).length} / ${L(a.screens).length}`],
+      ['Compile', S(a.where) || 'build machine'], ['Error fixes', N(a.rounds) ? `${a.rounds} round(s)` : 'automatic after each round'], ['APK', s === 'zip' ? 'no build machine: project ZIP' : 'for your phone']]
       .map(([t, sub], i) => { const st = failAt === i ? 'bad' : (step === 4 || i < step) ? 'ok' : i === step ? 'run' : 'todo';
         return `<li class="${st}"><i>${st === 'ok' ? '✓' : st === 'bad' ? '✕' : i + 1}</i><b>${t}</b><span>${esc(sub)}</span></li>`; }).join('');
     const apk = M(a.apk), dl = publicLink(a.apk_url), zip = publicLink(a.zip_url), redo = L(a.screens).filter(x => x.state === 'code').map(x => x.id);
     return `<ol class="bpipe">${pipe}</ol>
       ${s === 'failed' && a.error ? `<div class="badc bln">${esc(a.error)}</div>` : ''}${a.note ? `<div class="muted bln">${esc(a.note)}</div>` : ''}
-      <div class="bcols"><section class="bbox"><h4>Screens Kotlin mein</h4>${L(a.screens).map(x => { const [t, c] = TILE[x.state] || TILE.todo;
+      <div class="bcols"><section class="bbox"><h4>Screens in Kotlin</h4>${L(a.screens).map(x => { const [t, c] = TILE[x.state] || TILE.todo;
           return `<div class="bscrow"><i class="${c}"></i><span>${esc(x.label)}</span><em class="${c}">${esc(t)}</em></div>`; }).join('') || '<div class="stempty">…</div>'}
-          ${N(a.rounds) ? `<p class="faint" style="font-size:12px;margin-top:6px">Compile ke ${a.rounds} round mein galtiyan khud theek ki.</p>` : ''}</section>
+          ${N(a.rounds) ? `<p class="faint" style="font-size:12px;margin-top:6px">Fixed compile errors by itself in ${a.rounds} round(s).</p>` : ''}</section>
         <section class="bbox"><h4>APK</h4>${apk.file ? `<div class="bln">${esc(apk.file)} · ${mb(apk.size)} · v${esc(S(apk.version_name))}</div>
             <div class="bln faint">package ${esc(S(apk.package))}${apk.sha256 ? ` · SHA-256 ${esc(S(apk.sha256).slice(0, 8))}…${esc(S(apk.sha256).slice(-6))}` : ''}</div>` : `<div class="stempty">${anWorking(o) ? spin() + ' ' : ''}APK compile poora hone par yahan.</div>`}
-          ${dl ? `<div class="bqr"><img data-qr="${esc(location.origin + dl)}" alt="APK link ka QR code" width="148" height="148"><span class="faint">Phone se scan karo: APK download khulega. Link kuch din chalta hai.</span></div>` : ''}
-          <p class="faint" style="font-size:12px">Yeh preview build hai aapke phone ke liye. Play Store par daalna agla kadam hai, aapke apne developer account se.</p>
+          ${dl ? `<div class="bqr"><img data-qr="${esc(location.origin + dl)}" alt="QR code for the APK link" width="148" height="148"><span class="faint">Scan with your phone to download the APK. The link lasts a few days.</span></div>` : ''}
+          <p class="faint" style="font-size:12px">This is a preview build for your phone. Publishing on the Play Store is the next step, from your own developer account.</p>
           <div class="acts">${dl ? `<a class="btn go" href="${esc(dl)}" download>APK download</a>` : ''}${zip ? `<a class="btn soft" href="${esc(zip)}" download>Project ZIP${a.zip_size ? ' (' + mb(a.zip_size) + ')' : ''}</a>` : ''}
-            ${redo.length && !anWorking(o) ? btn('redo', `Saada screens dobara likho (${redo.length})`, 'soft', ` data-ids="${esc(redo.join(','))}"`) : ''}${['ready', 'zip', 'failed'].includes(s) && !redo.length ? btn('android', 'Dobara build karo') : ''}</div></section></div>`;
+            ${redo.length && !anWorking(o) ? btn('redo', `Rewrite simple screens (${redo.length})`, 'soft', ` data-ids="${esc(redo.join(','))}"`) : ''}${['ready', 'zip', 'failed'].includes(s) && !redo.length ? btn('android', 'Build again') : ''}</div></section></div>`;
   }
   function qr(root) {
     root.querySelectorAll('img[data-qr]').forEach(img => {
-      try { const q = window.qrcode(0, 'M'); q.addData(img.dataset.qr); q.make(); img.src = q.createDataURL(4, 2); } catch { img.replaceWith(Object.assign(document.createElement('span'), {className: 'faint', textContent: 'QR nahi bana: link se download kijiye.'})); }
+      try { const q = window.qrcode(0, 'M'); q.addData(img.dataset.qr); q.make(); img.src = q.createDataURL(4, 2); } catch { img.replaceWith(Object.assign(document.createElement('span'), {className: 'faint', textContent: 'Could not make the QR code: download from the link.'})); }
       img.removeAttribute('data-qr');
     });
   }
@@ -481,7 +481,7 @@ window.HoolaBuild = function (C) {
   }
   async function change(o) {
     const inp = studio.querySelector('#stIn'), t = inp.value.trim(); if (!t) return;
-    inp.value = ''; const r = await call(o, '/change', {instruction: t}, 'Badlav le liya: ' + t); if (!r) inp.value = t;
+    inp.value = ''; const r = await call(o, '/change', {instruction: t}, 'Change noted: ' + t); if (!r) inp.value = t;
   }
   async function act(e, o) {
     const tab = e.target.closest('[data-tab]');
@@ -494,17 +494,17 @@ window.HoolaBuild = function (C) {
         case 'close': close(); break;
         case 'studio': open(o.k); break;
         case 'studio-android': o.tab = 'android'; open(o.k); o.tab = 'android'; draw(); break;
-        case 'stop': await call(o, '/stop', {}, 'Rokne ko kaha: chal raha hissa poora karke rukega.'); break;
-        case 'resume': await call(o, '/resume', {}, 'Wahin se aage badha raha hoon.'); break;
-        case 'plan': await call(o, '/plan', {}, '3 looks ban rahe hain, yahin dikhenge.'); break;
-        case 'look': await call(o, '/look', {index: +b.dataset.i, ...(o.colorsFrom != null ? {colors_from: o.colorsFrom} : {})}, 'Look chun liya: banana shuru.'); o.colorsFrom = null; break;
+        case 'stop': await call(o, '/stop', {}, 'Stopping: it finishes the current part, then stops.'); break;
+        case 'resume': await call(o, '/resume', {}, 'Continuing from where it stopped.'); break;
+        case 'plan': await call(o, '/plan', {}, 'Making 3 looks — they will appear here.'); break;
+        case 'look': await call(o, '/look', {index: +b.dataset.i, ...(o.colorsFrom != null ? {colors_from: o.colorsFrom} : {})}, 'Look chosen: building starts.'); o.colorsFrom = null; break;
         case 'colors': o.colorsFrom = o.colorsFrom === +b.dataset.i ? null : +b.dataset.i; draw(); break;
         case 'approve': {
-          if (!confirm('Design pakka karein? Isi design se asli Android / iPhone app banegi. Baad mein badlav ke liye naya version banega.')) break;
-          try { const r = await api('POST', base(o) + '/approve', {hash: S(o.v?.hash)}); toast(r?.say || 'Design pakka!'); } catch (er) { toast(er.message, true); }
+          if (!confirm('Approve this design? The real Android / iPhone app is built from it. Later changes make a new version.')) break;
+          try { const r = await api('POST', base(o) + '/approve', {hash: S(o.v?.hash)}); toast(r?.say || 'Design approved!'); } catch (er) { toast(er.message, true); }
           break; }
-        case 'android': await call(o, '/android', {}, 'Android app banana shuru: har screen Kotlin mein, phir compile.'); o.tab = 'android'; break;
-        case 'redo': await call(o, '/android', {redo: S(b.dataset.ids).split(',').filter(Boolean)}, 'Saada screens dobara likh raha hoon.'); break;
+        case 'android': await call(o, '/android', {}, 'Building the Android app: every screen in Kotlin, then compile.'); o.tab = 'android'; break;
+        case 'redo': await call(o, '/android', {redo: S(b.dataset.ids).split(',').filter(Boolean)}, 'Rewriting the simple screens.'); break;
         case 'reload': reloadFrames(o, true); break;
         case 'plat': o.plat = b.dataset.p; draw(); break;
         case 'zoom': zoom(b.dataset.full, b.dataset.cap); break;
@@ -519,7 +519,7 @@ window.HoolaBuild = function (C) {
     d.innerHTML = `<button class="ib" type="button" aria-label="Close">✕</button><img alt="${esc(cap || '')}"><span>${esc(cap || '')}</span>`;
     const shut = () => { d.remove(); removeEventListener('keydown', key); }, key = e => { if (e.key === 'Escape') shut(); };
     d.addEventListener('click', shut); addEventListener('keydown', key); document.body.appendChild(d);
-    blob(path).then(u => { d.querySelector('img').src = u; }).catch(() => { d.querySelector('span').textContent = 'Tasveer nahi mili.'; });
+    blob(path).then(u => { d.querySelector('img').src = u; }).catch(() => { d.querySelector('span').textContent = 'Picture not found.'; });
   }
   function reset() { appEl.classList.remove('st'); P.clear(); CUR = null; showBtn(); if (studio) { studio.innerHTML = ''; delete studio.dataset.k; } }
 

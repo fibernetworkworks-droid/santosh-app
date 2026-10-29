@@ -19,39 +19,84 @@ window.HoolaWorkspace = ctx => {
       starter:'Create a professional FNW AI Node product overview for an ISP owner. Use only the features in my attached source files. Clearly mark any details that still need confirmation.'}
   };
   const ASPECTS = ['16:9','1:1','9:16','4:5','3:4','4:3'];
+  const SHAPE = {'16:9':'Wide','1:1':'Square','9:16':'Status / Reel','4:5':'Insta post','3:4':'Portrait','4:3':'Classic'};
+  const STYLES = ['Festive glow','Cinematic','Product studio','Watercolour','Indian folk','3D clay'];
+  const COST = {fast:'~₹3', best:'~₹12'};          // photo_banao estimates (v0.129); the real cost is in AI spend
+  const GALLERY = [['', 'All'], ['photos', 'Images'], ['videos', 'Videos'], ['pages', 'Pages'], ['files', 'Files']];
   let mode='image', files=[], pending=0, sending=false, generation=0, controller=null;
-  let drafts={};
+  let drafts={}, gal={kind:'', q:'', urls:[], ctl:null, t:0};
   const $ = s => root.querySelector(s);
   const take = () => {
     if (!$('#cw-prompt')) return;
     drafts[mode] = {text:$('#cw-prompt').value, aspect:$('#cw-aspect')?.value,
-      quality:$('#cw-quality')?.value, seconds:$('#cw-seconds')?.value,
+      quality:$('#cw-quality')?.value, seconds:$('#cw-seconds')?.value, style:drafts[mode]?.style||'',
       language:$('#cw-language')?.value, format:$('#cw-format')?.value, sources:$('#cw-sources')?.value};
   };
+  const chips = (group, list, cur, label) => `<div class="cw-chips" role="group" aria-label="${label}">${list.map(([v, n]) =>
+    `<button type="button" class="cw-chip" data-${group}="${esc(v)}" aria-pressed="${v === cur}">${n}</button>`).join('')}</div>`;
+  function submitLabel(d) {
+    if (mode === 'image') return `Create image · ${COST[d.quality === 'best' ? 'best' : 'fast']}`;
+    if (mode === 'video') return 'Prepare storyboard · free';
+    return mode === 'research' ? 'Start research' : 'Create document';
+  }
   function render() {
-    const m=MODES[mode],d=drafts[mode]||{};
-    root.innerHTML=`<div class="cw-heading"><div><span class="cw-eyebrow">HOOLA CREATIVE WORKSPACE</span><h2>${m.title}</h2><p>Start here. Keep refining in the conversation.</p></div><button class="btn soft" type="button" data-cw="library">Creations ↗</button></div>
-      <div class="cw-tabs" role="group" aria-label="Creation type">${Object.entries(MODES).map(([k,v])=>`<button type="button" data-mode="${k}" aria-pressed="${k===mode}">${v.label}</button>`).join('')}</div>
-      <div class="cw-layout"><form class="cw-form gl" id="cw-form">
-        <label class="cw-label" for="cw-prompt">${mode==='research'?'What do you want to find out?':'What would you like to create?'}</label>
-        <textarea id="cw-prompt" maxlength="12000" required placeholder="${esc(m.hint)}">${esc(d.text||'')}</textarea>
+    const m=MODES[mode],d=drafts[mode]||{},asp=d.aspect||'16:9',shapes=ASPECTS.filter(a=>mode!=='video'||a!=='4:5');
+    root.innerHTML=`<div class="cw-studio"><form class="cw-form cw-rail" id="cw-form">
+        <div class="cw-head"><span class="cw-eyebrow">Create</span><h2>${m.title}</h2></div>
+        <div class="cw-tabs" role="group" aria-label="Creation type">${Object.entries(MODES).map(([k,v])=>`<button type="button" data-mode="${k}" aria-pressed="${k===mode}">${v.label}</button>`).join('')}</div>
+        <div class="cw-tool"><b>${m.tool}</b><span>${mode==='image'?'Readable text in Hindi, Marathi or English':mode==='video'?'Storyboard and price first, video only on your Haan':mode==='research'?'Cited sources, facts kept apart from guesses':'Word, PDF, Excel or slides from your sources'}</span></div>
+        <div class="cw-box">
+          <div class="cw-lrow"><label class="cw-label" for="cw-prompt">${mode==='research'?'What do you want to find out?':'Prompt'}</label><button class="cw-link" type="button" data-cw="example">Try an example</button></div>
+          <textarea id="cw-prompt" maxlength="12000" required placeholder="${esc(m.hint)}">${esc(d.text||'')}</textarea>
+          <div class="cw-lrow cw-foot"><span class="cw-count" id="cw-count">${(d.text||'').length} / 12000</span></div>
+        </div>
+        <div class="cw-refhead"><span>${mode==='image'?'Reference photos':'Source files'}</span><button class="btn soft" type="button" data-cw="attach">+ Add files</button><input id="cw-files" type="file" multiple ${mode==='image'?'accept="image/png,image/jpeg,image/webp"':''} hidden></div>
+        <div id="cw-refs" class="cw-refs"></div>
+        ${mode==='image'?`<div class="cw-sec"><span class="cw-sl">Style <i>optional</i></span>${chips('style',STYLES.map(x=>[x,x]),d.style||'','Style')}</div>`:''}
+        ${['image','video'].includes(mode)?`<div class="cw-sec"><span class="cw-sl">Shape</span>${chips('aspect',shapes.map(a=>[a,`<i class="cw-ar" style="aspect-ratio:${a.replace(':','/')}"></i>${a} <small>${SHAPE[a]}</small>`]),asp,'Shape')}
+          <select id="cw-aspect" hidden aria-hidden="true" tabindex="-1">${shapes.map(a=>`<option${a===asp?' selected':''}>${a}</option>`).join('')}</select></div>`:''}
+        ${mode==='image'?`<div class="cw-sec"><span class="cw-sl">Quality</span>${chips('quality',[['fast',`Standard <small>${COST.fast}</small>`],['best',`Best <small>${COST.best}</small>`]],d.quality==='best'?'best':'fast','Quality')}
+          <select id="cw-quality" hidden aria-hidden="true" tabindex="-1"><option value="fast"${d.quality!=='best'?' selected':''}>Standard</option><option value="best"${d.quality==='best'?' selected':''}>Best</option></select></div>`:''}
         <div class="cw-options">
-          ${['image','video'].includes(mode)?`<label>Format<select id="cw-aspect">${ASPECTS.filter(a=>mode!=='video'||a!=='4:5').map(a=>`<option${a===(d.aspect||'16:9')?' selected':''}>${a}</option>`).join('')}</select></label>`:''}
-          ${mode==='image'?`<label>Quality<select id="cw-quality"><option value="fast"${d.quality!=='best'?' selected':''}>Standard</option><option value="best"${d.quality==='best'?' selected':''}>Best · higher cost</option></select></label>`:''}
           ${mode==='video'?`<label>Length<select id="cw-seconds">${[15,30,60].map(n=>`<option value="${n}"${String(n)===(d.seconds||'15')?' selected':''}>${n} seconds</option>`).join('')}</select></label><label>Voiceover<select id="cw-language">${['Hindi','Marathi','English'].map(l=>`<option${l===(d.language||'English')?' selected':''}>${l}</option>`).join('')}</select></label>`:''}
           ${mode==='research'?`<label>Source preference<select id="cw-sources"><option value="web"${d.sources!=='files'?' selected':''}>Public web + attached files</option><option value="files"${d.sources==='files'?' selected':''}>Attached files only</option></select></label>`:''}
           ${mode==='document'?`<label>Output<select id="cw-format">${['Word (.docx)','PDF (.pdf)','Excel (.xlsx)','Presentation (.pptx)'].map(l=>`<option${l===(d.format||'Word (.docx)')?' selected':''}>${l}</option>`).join('')}</select></label>`:''}
         </div>
-        <div class="cw-refhead"><span>${mode==='image'?'Reference images':'Source files'}</span><button class="btn soft" type="button" data-cw="attach">+ Add files</button><input id="cw-files" type="file" multiple ${mode==='image'?'accept="image/png,image/jpeg,image/webp"':''} hidden></div>
-        <div id="cw-refs" class="cw-refs"></div>
-        <div class="cw-send"><span id="cw-sending" role="status" aria-live="polite"></span><button class="btn go" id="cw-submit" type="submit">${mode==='video'?'Prepare storyboard':mode==='research'?'Start research':mode==='document'?'Create document':'Create image'} ↗</button></div>
-        <p class="cw-note">${mode==='video'?'Review the storyboard and cost before paid video generation.':mode==='image'?'Generation uses your configured image service and account budget.':'Hoola works with the sources and services available to your account.'}</p>
-      </form><aside class="cw-guide"><div class="cw-orbit" aria-hidden="true"><span>h</span><i></i><i></i><i></i></div><span class="cw-eyebrow">${m.tool}</span><h3>Your work.<br>Your direction.</h3><p>${m.hint}</p><button class="cw-example" type="button" data-cw="example">Try a starting brief <span>↗</span></button><div class="cw-path"><span>01 &nbsp; Give Hoola a brief</span><span>02 &nbsp; Follow the real work in chat</span><span>03 &nbsp; Review, refine and export</span></div></aside></div>`;
-    $('#cw-prompt').addEventListener('input',take);
+        <div class="cw-send"><span id="cw-sending" role="status" aria-live="polite"></span><button class="btn go" id="cw-submit" type="submit">${submitLabel(d)}</button></div>
+        <p class="cw-note">${mode==='video'?'You see the storyboard and the price before any paid video is made.':mode==='image'?'Prices are estimates; the real cost shows in AI spend. Every picture carries the "AI se bana" label.':'Hoola works with the sources and services available to your account.'}</p>
+      </form>${ctx.gallery?.()?`<section class="cw-gallery" aria-label="Your creations"><div class="cw-ghead"><h3>Your creations</h3><button class="btn soft" type="button" data-cw="library">Open library ↗</button></div>
+        <div class="cw-gbar">${chips('gk',GALLERY.map(([k,n])=>[k,n]),gal.kind,'Show')}<label class="cw-gq"><span aria-hidden="true">⌕</span><input id="cw-gq" placeholder="Search creations" aria-label="Search creations" value="${esc(gal.q)}"></label></div>
+        <div class="cw-ggrid" id="cw-ggrid"></div></section>`
+      :`<aside class="cw-guide"><div class="cw-orbit" aria-hidden="true"><span>h</span><i></i><i></i><i></i></div><span class="cw-eyebrow">${m.tool}</span><h3>Your work.<br>Your direction.</h3><p>${m.hint}</p><div class="cw-path"><span>01 &nbsp; Give Hoola a brief</span><span>02 &nbsp; Follow the real work in chat</span><span>03 &nbsp; Review, refine and export</span></div></aside>`}</div>`;
+    $('#cw-prompt').addEventListener('input',()=>{take();$('#cw-count').textContent=`${$('#cw-prompt').value.length} / 12000`;});
     root.querySelectorAll('select').forEach(e=>e.addEventListener('change',take));
     $('#cw-files').addEventListener('change',e=>{upload([...e.target.files]);e.target.value='';});
     $('#cw-form').addEventListener('submit',submit);
-    drawFiles();
+    $('#cw-gq')?.addEventListener('input',e=>{clearTimeout(gal.t);gal.q=e.target.value;gal.t=setTimeout(fillGallery,250);});
+    drawFiles(); fillGallery();
+  }
+  /* the gallery: her real creations from the panel library; pictures load with her login as blob: URLs */
+  function dropThumbs(){gal.ctl?.abort();gal.ctl=null;gal.urls.forEach(u=>URL.revokeObjectURL(u));gal.urls=[];}
+  async function fillGallery(){
+    const g=$('#cw-ggrid');if(!g)return;dropThumbs();const ctl=gal.ctl=new AbortController();
+    g.innerHTML=`<div class="skel-grid" aria-hidden="true">${'<i class="skel"></i>'.repeat(6)}</div>`;
+    let items=[];
+    try{items=((await api('GET',`/api/panel/library?kind=${encodeURIComponent(gal.kind)}&q=${encodeURIComponent(gal.q.trim())}`)).items||[]).slice(0,24);}
+    catch(e){if(gal.ctl===ctl)g.innerHTML=`<div class="cw-empty">${esc(e.message)}</div>`;return;}
+    if(gal.ctl!==ctl)return;
+    const ICON={image:'🖼',video:'🎬',page:'✨',website:'🌐',app:'📱',pdf:'📄',doc:'📝',sheet:'📊',slides:'📑',audio:'🎵'};
+    g.innerHTML=items.length?items.map((it,i)=>`<button type="button" class="cw-tile${it.type==='image'?' pic':''}" data-gi="${i}" aria-label="Open ${esc(it.title)}">
+        <span class="cw-thumb"><i aria-hidden="true">${ICON[it.type]||'📎'}</i></span><b>${esc(it.title)}</b><span class="cw-tsub">${esc(it.sub||it.type)}</span></button>`).join('')
+      :'<div class="cw-empty">Nothing here yet. What you make here shows up in this gallery.</div>';
+    g.onclick=e=>{const b=e.target.closest('[data-gi]');if(b)ctx.open?.(items[+b.dataset.gi]);};
+    items.forEach(async(it,i)=>{
+      if(it.type!=='image'||!it.ref)return;
+      try{const r=await api('GET',`/api/panel/files/${encodeURIComponent(it.ref)}`,undefined,{raw:true,signal:ctl.signal});
+        const b=await r.blob();if(gal.ctl!==ctl||!b.type.startsWith('image/'))return;
+        const u=URL.createObjectURL(b);gal.urls.push(u);
+        const box=g.querySelector(`[data-gi="${i}"] .cw-thumb`);if(box)box.innerHTML=`<img alt="" src="${u}">`;
+      }catch{}
+    });
   }
   function drawFiles() {
     const box=$('#cw-refs');if(!box)return;
@@ -82,7 +127,7 @@ window.HoolaWorkspace = ctx => {
   function request(mode,d,files) {
     const refs=files.map(f=>`${f.name} [file_id: ${f.file_id}]`).join('\n');
     const context=refs?`\nAttached references:\n${refs}`:'';
-    if(mode==='image')return `Create ${files.length?'an edited image using my reference images':'a new image'} with photo_banao. Aspect ${d.aspect||'16:9'}, quality ${d.quality||'fast'}.\nBrief: ${d.text}${context}\nReturn the actual image result. Preserve any provided product identity and exact requested wording.`;
+    if(mode==='image')return `Create ${files.length?'an edited image using my reference images':'a new image'} with photo_banao. Aspect ${d.aspect||'16:9'}, quality ${d.quality||'fast'}.${d.style?` Style: ${d.style}.`:''}\nBrief: ${d.text}${context}\nReturn the actual image result. Preserve any provided product identity and exact requested wording.`;
     if(mode==='video')return `Use video_studio to prepare a ${d.seconds||15}-second ${d.aspect||'16:9'} video storyboard with ${d.language||'English'} voiceover.\nBrief: ${d.text}${context}\nPrepare the shot plan and estimate. Do not start paid generation until I approve its cost. Return the storyboard and existing project card. Do not claim a completed video before generation and assembly.`;
     if(mode==='research')return `Research this question: ${d.text}${context}\nSource preference: ${d.sources==='files'?'Use ONLY the attached files; do not browse or use external sources. State what these files do not establish.':'Use current public sources and the attached files. Prefer primary sources.'}\nShow a work plan, then research. Cite sources, distinguish facts from inference, and state gaps. Return the report here in chat, and create a downloadable document if supported.`;
     return `Create a real ${d.format||'Word (.docx)'} document.\nBrief: ${d.text}${context}\nUse the provided source material. Do not invent company facts. Show the finished file in chat with a download and preview. If information is missing, mark it clearly.`;
@@ -101,9 +146,14 @@ window.HoolaWorkspace = ctx => {
   root.addEventListener('click',e=>{
     const b=e.target.closest('button');if(!b||b.disabled)return;
     if(b.dataset.mode){if(pending||sending)return;take();mode=b.dataset.mode;if(mode==='image')files=files.filter(f=>f.mime?.startsWith('image/')).slice(0,3);render();return;}
+    if(b.dataset.style!==undefined){take();const d=drafts[mode];d.style=d.style===b.dataset.style?'':b.dataset.style;
+      root.querySelectorAll('[data-style]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.style===d.style));return;}
+    if(b.dataset.aspect||b.dataset.quality){const k=b.dataset.aspect?'aspect':'quality',sel=$(`#cw-${k}`);sel.value=b.dataset[k];take();
+      root.querySelectorAll(`[data-${k}]`).forEach(x=>x.setAttribute('aria-pressed',x===b));$('#cw-submit').textContent=submitLabel(drafts[mode]);return;}
+    if(b.dataset.gk!==undefined){gal.kind=b.dataset.gk;root.querySelectorAll('[data-gk]').forEach(x=>x.setAttribute('aria-pressed',x===b));fillGallery();return;}
     if(b.dataset.rm!==undefined){if(sending)return;files.splice(+b.dataset.rm,1);drawFiles();return;}
     if(b.dataset.cw==='attach')$('#cw-files').click();
-    if(b.dataset.cw==='example'){$('#cw-prompt').value=MODES[mode].starter;take();$('#cw-prompt').focus();}
+    if(b.dataset.cw==='example'){$('#cw-prompt').value=MODES[mode].starter;take();$('#cw-count').textContent=`${MODES[mode].starter.length} / 12000`;$('#cw-prompt').focus();}
     if(b.dataset.cw==='library')ctx.library();
   });
   function reuse(item){
@@ -113,7 +163,7 @@ window.HoolaWorkspace = ctx => {
     if(!files.some(x=>x.file_id===item.ref))files.push({file_id:item.ref,mime:item.type==='image'?'image/png':item.mime,name:item.name||item.title||'Reference'});
     files=files.slice(0,mode==='image'?3:6);render();ctx.show();
   }
-  function reset(){generation++;controller?.abort();controller=null;files=[];drafts={};pending=0;sending=false;root.innerHTML='';}
+  function reset(){generation++;dropThumbs();gal={kind:'',q:'',urls:[],ctl:null,t:0};controller?.abort();controller=null;files=[];drafts={};pending=0;sending=false;root.innerHTML='';}
   return {open(next){if(MODES[next]&&!sending&&!pending){take();mode=next;if(mode==='image')files=files.filter(f=>f.mime?.startsWith('image/')).slice(0,3);}render();},reuse,reset,request};
 };
 
@@ -183,6 +233,7 @@ window.HoolaProgressPolicy = {
     if (/(^|_)ask($|_)|approval|confirm/.test(kind)||p.status==='needs_approval')return 'Your approval is required';
     if(['waiting','blocked'].includes(p.status||p.phase))return 'Waiting for the next step…';
     if (['failed','error','partial','stopped'].includes(p.status||p.phase)||p.state==='error')return 'Reviewing an incomplete result…';
+    if(kind==='ack')return 'Still working on it…';
     if(kind==='think'||kind==='typing')return 'Thinking…';
     if(kind==='reply_start'||kind==='reply_end')return 'Preparing your response…';
     return 'Working on it…';

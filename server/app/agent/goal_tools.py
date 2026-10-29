@@ -19,7 +19,8 @@ KAAM_PLAN_DEF = {
         "Plan and track a long job (3+ steps) so it finishes end to end: set the plan first, then work through it "
         "step by step, marking each step done / failed as you go. Never stop with just text while steps are open. "
         "Actions: set (goal, steps), step (n, state done|failed|skipped|current, note), add (text), show, "
-        "finish (outcome done|blocked_on_her|failed|stopped, reason). blocked_on_her is only when you truly need "
+        "finish (outcome done|blocked_on_her|failed|stopped, reason, made, left, your_turn). After every big step write "
+        "ONE short line to her (what you found / made, what is next), then the next tool. blocked_on_her is only when you truly need "
         "HER: her tap on a card, an OTP, or a fact only she knows."),
     "input_schema": {
         "type": "object",
@@ -32,6 +33,10 @@ KAAM_PLAN_DEF = {
             "text": {"type": "string", "description": "(add) the new step"},
             "outcome": {"type": "string", "enum": ["done", "blocked_on_her", "failed", "stopped"], "description": "(finish)"},
             "reason": {"type": "string", "description": "(step/finish) one short line: what happened / what she must do"},
+            "made": {"type": "array", "items": {"type": "string"},
+                     "description": "(finish) links / file names / ids that the job produced (real ones from tool results)"},
+            "left": {"type": "string", "description": "(finish) anything still left that is not a plan step"},
+            "your_turn": {"type": "string", "description": "(finish) what SHE must do now, if anything (one line)"},
             "goal_id": {"type": "string", "description": "(step/add/show/finish) from the set result; the active plan needs none"},
         },
         "required": ["action"],
@@ -40,11 +45,12 @@ KAAM_PLAN_DEF = {
 
 
 async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[str] | None = None, n: int = 0,
-                    state: str = "", text: str = "", outcome: str = "", reason: str = "", goal_id: str = "") -> dict:
+                    state: str = "", text: str = "", outcome: str = "", reason: str = "", goal_id: str = "",
+                    made: list[str] | None = None, left: str = "", your_turn: str = "") -> dict:
     tenant, conv = ctx.tenant_id, ctx.conversation_id
     try:
         if action == "set":
-            v = goal_mod.set_goal(tenant, conv, goal, steps or [])
+            v = goal_mod.set_goal(tenant, conv, goal, steps or [], origin=getattr(ctx, "actor", "owner") or "owner")
         elif action == "step":
             if not goal_id:
                 a = goal_mod.active_for(conv)
@@ -73,7 +79,8 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
                 goal_id = a["id"]
             if not outcome:
                 raise ToolError("outcome chahiye: done | blocked_on_her | failed | stopped")
-            v = goal_mod.finish(tenant, goal_id, outcome, reason, conv)
+            v = goal_mod.finish(tenant, goal_id, outcome, reason, conv, made=made or [], left=left,
+                                your_turn=your_turn)
         else:
             raise ToolError("action set | step | add | show | finish")
     except ToolError:
@@ -91,8 +98,15 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
         out["baaki"] = "; ".join(f"{x['n']}. {x['text']}" for x in left[:10])
         out["note"] = ("Steps baaki hain: tools se kaam karte raho, text par mat ruko. Poora hone par kaam_plan finish done. "
                        "Sirf uska tap / OTP / uska fact chahiye to finish blocked_on_her.")
+    if action == "step" and state == "done" and left:
+        out["note"] += " Ab EK chhoti line mein use batao is step mein kya mila / kya bana, phir agla tool."
     elif action == "step" and v["done"] == v["total"]:
-        out["note"] = "Sab steps done: kaam_plan finish done laga do (chhote sa result ke saath)."
+        out["note"] = ("Sab steps done: kaam_plan finish done laga do — made mein asli links / files, aur your_turn "
+                       "mein agar use kuch karna hai.")
+    if action == "finish" and v.get("report"):
+        out["report"] = goal_mod.report_text(v["report"])
+        out["note"] = ("Ab apna aakhri jawab isi report ke chaar hisson mein do: kya hua, kya bana (links / files), "
+                       "kya baaki hai, aapko kya karna hai. Chhota aur saaf.")
     return out
 
 

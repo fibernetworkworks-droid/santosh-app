@@ -475,6 +475,9 @@ object VoiceAudio {
             var data = chunk
             if (now > playingUntil + 150) {
                 // a new reply after a silence: gather a small cushion first, then fade in so it never clicks
+                // v0.230 the cushion eases back 20 ms per reply once the network is fine again (it only ever grew,
+                // so one bad patch made every later reply start up to 240 ms late for the rest of the call)
+                cushionMs = maxOf(80, cushionMs - 20)
                 data = gather(chunk, gen, now)
                 fadeIn(data)
             } else if (now > playingUntil + 20) {

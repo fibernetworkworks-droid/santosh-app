@@ -157,7 +157,7 @@ def test_many_chats_in_the_browser(sess_server):
     row.hover()
     row.locator(".rcm").click()
     page.click(".rmenu >> text=Pin karo")
-    page.wait_for_selector("#recents .rg >> text=Pin kiye hue", timeout=5000)
+    page.wait_for_selector("#recents .rg >> text=Pinned", timeout=5000)
     row = page.locator(f"#recents [data-row='{url_b.rsplit('/', 1)[1]}']")
     row.hover()
     row.locator(".rcm").click()

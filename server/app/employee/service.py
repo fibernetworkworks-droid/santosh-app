@@ -78,6 +78,8 @@ def actor_label(tenant: str, actor: str) -> str:
         return "Owner"
     if actor == "routine":
         return "Roz ka kaam"
+    if actor == "goal":
+        return "Owner ka lamba kaam"
     if actor.startswith("approved:"):
         return "Owner ki haan"
     if actor.startswith("staff:"):
@@ -463,11 +465,12 @@ def gate(ctx, tool: str, args: dict[str, Any]) -> dict[str, Any] | None:
                 raise Blocked("Owner ne is team member ko yeh kaam karwane ki ijazat nahi di hai.")
     if kind == "read":
         return None
-    if paused and (in_job or actor != "owner"):
+    hers = actor in ("owner", "goal")   # v0.222 a background round of HER own long job keeps her authority
+    if paused and (in_job or not hers):
         _audit(tenant, actor, duty, tool, kind, "paused", _mask(tool, args))
         raise Blocked("Owner ne Hoola ka kaam abhi rok rakha hai (Pause). Owner app mein 'Kaam shuru' dabayein tab yeh hoga.")
-    if actor == "owner" or not in_job:
-        return None                     # the owner's own word, or a routine about her personal things
+    if hers or not in_job:
+        return None                     # the owner's own word (or her own long job), or a routine about her personal things
     with session() as s:
         t = _trust_row(s, tenant, duty)
         level, cap = t.level, t.per_day or CAP[t.level]

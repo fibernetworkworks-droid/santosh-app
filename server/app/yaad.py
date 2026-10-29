@@ -48,6 +48,13 @@ FULL_EX = 4           # newest exchanges with every tool block as it was
 FULL_CHARS = 60000    # ... while they fit in this many characters (the current one always stays full)
 ROWS_MAX = 5000       # messages read per turn (newest)
 STEP_LINES = 14
+# v0.221 KAAM KHAATA: the newest work exchanges that leave the full window keep EVERY step (newest kept first,
+# ids / links / values whole) instead of the first 13 - the root cause of "kaam beech mein bhool gaya".
+RICH_WORK_EX = 3      # newest compressed exchanges that did tool work get the rich form
+RICH_STEP_LINES = 80  # steps kept in the rich form (a goal turn's cap)
+RICH_GIST = 320       # characters per step line in the rich form
+RICH_REPLY = 3000     # Hoola's final reply kept in the rich form
+HEAD_STEPS = 2        # when steps must be dropped: keep how it began + everything newest, drop the middle
 DIARY_DAYS = 7
 CALLS_MAX = 40
 STATS = {"turns": 0, "compressed": 0, "summaries": 0, "facts_saved": 0, "facts_refused": 0, "facts_dupe": 0,
@@ -171,8 +178,29 @@ def _clip(s: Any, n: int) -> str:
     return t if len(t) <= n else t[: n - 1] + "…"
 
 
-def gist(content: Any, is_error: bool = False) -> str:
-    """A tool result in one short line: the fields that matter later (status, names, ids, counts, errors)."""
+# v0.221 values that must survive WHOLE (a cut link / id / path is useless later)
+_WHOLE = ("file_id", "id", "url", "link", "path", "saved_path", "order_ref", "ref", "name", "title")
+_PAIR = re.compile(r'"([A-Za-z_][A-Za-z0-9_]{0,30})"\s*:\s*("(?:[^"\\]|\\.){0,400}"|-?\d+(?:\.\d+)?|true|false)')
+
+
+def _salvage(text: str) -> dict:
+    """v0.221 a result cut at 6,000 characters is no longer valid JSON: read its top-level-looking key: value pairs
+    anyway, so the ids / links / status of a big result are not lost to a 120-character clip."""
+    out: dict = {}
+    for k, v in _PAIR.findall(text[:6000]):
+        if k in out:
+            continue
+        try:
+            out[k] = json.loads(v)
+        except Exception:
+            out[k] = v.strip('"')
+    return out
+
+
+def gist(content: Any, is_error: bool = False, width: int = 170) -> str:
+    """A tool result in one short line: the fields that matter later (status, names, ids, counts, errors).
+    v0.221: ids / links / paths keep their full value (up to 200 chars), a truncated result is salvaged, and
+    `width` lets the rich form keep more."""
     if isinstance(content, list):
         content = " ".join(b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text")
     text = str(content or "")
@@ -180,7 +208,7 @@ def gist(content: Any, is_error: bool = False) -> str:
     try:
         data = json.loads(text.split("…(truncated)")[0]) if text[:1] in "{[" else None
     except Exception:
-        data = None
+        data = _salvage(text) if text[:1] == "{" else None
     if isinstance(data, dict):
         parts = []
         for k in _KEYS:
@@ -189,8 +217,8 @@ def gist(content: Any, is_error: bool = False) -> str:
                 continue
             if isinstance(v, (list, dict)):
                 v = f"{len(v)} items" if isinstance(v, list) else _clip(json.dumps(v, ensure_ascii=False), 50)
-            parts.append(f"{k}={_clip(v, 60)}")
-            if len(parts) >= 5:
+            parts.append(f"{k}={_clip(v, 200 if k in _WHOLE else 60)}")
+            if len(parts) >= (8 if width > 170 else 5):
                 break
         if not parts:
             keys = [k for k in data.keys()][:5]
@@ -199,8 +227,8 @@ def gist(content: Any, is_error: bool = False) -> str:
     elif isinstance(data, list):
         line = f"{len(data)} items"
     else:
-        line = _clip(text, 120)
-    return ("✗ " if is_error else "") + _clip(line, 170)
+        line = _clip(text, max(120, width - 50))
+    return ("✗ " if is_error else "") + _clip(line, max(width, 260 if "url=" in line or "link=" in line else width))
 
 
 def _args(a: Any) -> str:
@@ -214,7 +242,7 @@ def _args(a: Any) -> str:
     return ", ".join(parts)
 
 
-def steps_of(ex: list[dict]) -> list[str]:
+def steps_of(ex: list[dict], width: int = 170) -> list[str]:
     """One line per tool step: tool(args) -> key result."""
     calls: dict[str, tuple[str, str]] = {}
     order: list[str] = []
@@ -226,7 +254,7 @@ def steps_of(ex: list[dict]) -> list[str]:
                 order.append(b.get("id", ""))
             elif b.get("type") == "tool_result":
                 name, args = calls.get(b.get("tool_use_id", ""), ("?", ""))
-                lines.append(f"{name}({args}) → {gist(b.get('content'), bool(b.get('is_error')))}")
+                lines.append(f"{name}({args}) → {gist(b.get('content'), bool(b.get('is_error')), width)}")
     return lines
 
 
@@ -241,13 +269,24 @@ def final_of(ex: list[dict]) -> str:
     return texts[-1] if texts else ""
 
 
-def compress(ex: list[dict], user_max: int = 1500, reply_max: int = 1500) -> list[dict]:
-    """An old exchange as two short messages: her words, then '⟦kiya: ...⟧' + Hoola's final reply."""
+def keep_steps(steps: list[str], limit: int) -> list[str]:
+    """v0.221 too many steps: keep how the job began (HEAD_STEPS) and EVERYTHING newest; the middle goes.
+    (Before: the first 13 were kept and the newest progress - the part that matters - was dropped.)"""
+    if len(steps) <= limit:
+        return steps
+    head = min(HEAD_STEPS, max(0, limit - 2))
+    tail = limit - head - 1
+    return steps[:head] + [f"… beech ke {len(steps) - head - tail} kadam …"] + steps[-tail:]
+
+
+def compress(ex: list[dict], user_max: int = 1500, reply_max: int = 1500, rich: bool = False) -> list[dict]:
+    """An old exchange as two short messages: her words, then '⟦kiya: ...⟧' + Hoola's final reply.
+    v0.221 `rich` (the newest work exchanges / an open goal's turns): every step up to RICH_STEP_LINES, longer
+    lines, longer reply - the job's progress survives the next message."""
     u = _clip(_user_text(ex), user_max) or "(—)"
-    steps = steps_of(ex)
-    if len(steps) > STEP_LINES:
-        steps = steps[:STEP_LINES - 1] + [f"… +{len(steps) - STEP_LINES + 1} aur kadam"]
-    reply = _clip(final_of(ex), reply_max)
+    steps = steps_of(ex, RICH_GIST if rich else 170)
+    steps = keep_steps(steps, RICH_STEP_LINES if rich else STEP_LINES)
+    reply = _clip(final_of(ex), RICH_REPLY if rich else reply_max)
     body = (STEPS_OPEN + "; ".join(steps) + STEPS_CLOSE + "\n" if steps else "") + (reply or "(koi jawab nahi)")
     return [{"role": "user", "content": u}, {"role": "assistant", "content": [{"type": "text", "text": body}]}]
 
@@ -257,7 +296,8 @@ def one_line(ex: list[dict], n: int = 420) -> str:
     u = _clip(_user_text(ex), 200)
     st = steps_of(ex)
     reply = _clip(final_of(ex), 200)
-    s = ("Owner: " + u if u else "") + (" | kiya: " + "; ".join(_clip(x, 70) for x in st[:5]) if st else "") + \
+    st = keep_steps(st, 5)      # v0.221 the newest progress, not only how it began
+    s = ("Owner: " + u if u else "") + (" | kiya: " + "; ".join(_clip(x, 70) for x in st) if st else "") + \
         (" | Hoola: " + reply if reply else "")
     return _clip(s, n)
 
@@ -274,17 +314,49 @@ def history(conversation_id: str) -> list[dict]:
             break
         used += size
         full_from = i
+    rich = _rich_set(conversation_id, kept, full_from)
     msgs: list[dict] = []
     for i, ex in enumerate(kept):
         if i >= full_from:
             msgs += [{"role": m["role"], "content": m["content"]} for m in ex]
         else:
-            msgs += compress(ex)
+            msgs += compress(ex, rich=i in rich)
             STATS["compressed"] += 1
+            if i in rich:
+                STATS["rich"] = STATS.get("rich", 0) + 1
     while msgs and not (msgs[0]["role"] == "user" and isinstance(msgs[0]["content"], str)):
         msgs.pop(0)
     STATS["turns"] += 1
     return msgs
+
+
+def _has_steps(ex: list[dict]) -> bool:
+    return any(b.get("type") == "tool_use" for m in ex if m["role"] == "assistant" for b in _blocks(m["content"]))
+
+
+def _rich_set(conversation_id: str, kept: list[list[dict]], full_from: int) -> set[int]:
+    """v0.221 which compressed exchanges keep the rich form: the newest RICH_WORK_EX that did tool work, and every
+    exchange since the open goal (kaam_plan) began - a job in progress is never squeezed to a gist."""
+    out: set[int] = set()
+    n = 0
+    for i in range(full_from - 1, -1, -1):
+        if n >= RICH_WORK_EX:
+            break
+        if _has_steps(kept[i]):
+            out.add(i)
+            n += 1
+    try:
+        from .agent import goal as _goal
+        g = _goal.active_for(conversation_id)
+        started = _goal.started_at(g["id"]) if g else None
+    except Exception:
+        started = None
+    if started is not None:
+        for i in range(full_from):
+            at = kept[i][-1].get("at")   # the exchange reached past the goal's start
+            if at is not None and as_utc(at) >= as_utc(started) - timedelta(seconds=5) and _has_steps(kept[i]):
+                out.add(i)
+    return out
 
 
 def window_start_id(conversation_id: str) -> int:
