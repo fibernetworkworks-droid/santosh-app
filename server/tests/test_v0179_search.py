@@ -161,4 +161,4 @@ def test_console_files_carry_the_search_power(env):
     assert "FIND_SEQ" in cl and "&lt;&lt;" in cl                                       # FTS marks painted safely
     from app.main import APP_VERSION
     assert f"?v={APP_VERSION}" in html                                                 # cache busts moved too
-    assert APP_VERSION == "0.238.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert APP_VERSION == "0.241.0"    # conscious-bump guard: moves with every release (bump with pubspec)

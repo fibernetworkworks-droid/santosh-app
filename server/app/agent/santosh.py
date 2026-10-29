@@ -66,8 +66,12 @@ def _block_to_dict(b) -> dict:
 
 
 def _load_history(conversation_id: str) -> list[dict]:
-    """v0.108 the newest 40-49 EXCHANGES (not messages): a one-word chat and a 30-step job each count once."""
+    """v0.108 the newest 40-49 EXCHANGES (not messages): a one-word chat and a 30-step job each count once.
+    v0.237 FULL CLAUDE MODE (CHAT_CONTEXT=claude): the whole chat word for word; context.fit decides per model call."""
     from .. import yaad
+    from . import context as _ctx
+    if _ctx.full_mode():
+        return _sanitize(yaad.full_history(conversation_id))
     return _sanitize(yaad.history(conversation_id))
 
 
@@ -364,6 +368,8 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
             blocks, stop, usage = await llm.openai_create(brain, system, tools, history, cap)
         log.info("%s in=%s out=%s %s", llm.describe(), usage.get("prompt_tokens"), usage.get("completion_tokens"),
                  usage.get("route", ""))
+        from . import context as _ctx   # v0.237 the gauge learns this brain's real chars-per-token
+        _ctx.after_call(brain, system, tools, history, usage.get("prompt_tokens"), bool(usage.get("estimated")))
         return blocks, stop
     from . import cache
     kw = cache.shape(dict(model=settings.anthropic_model, max_tokens=cap,
@@ -387,7 +393,19 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
         if streaming and hasattr(api, "stream"):
             return await _claude_stream(api, kw, live)
         resp = await api.create(**kw)
+    _learn_claude(kw, resp)
     return [_block_to_dict(b) for b in resp.content], resp.stop_reason
+
+
+def _learn_claude(kw: dict, resp) -> None:
+    """v0.237 Claude's own token count (input + cache read + cache write) for the gauge."""
+    u = getattr(resp, "usage", None)
+    if u is None:
+        return
+    n = sum(int(getattr(u, k, 0) or 0) for k in ("input_tokens", "cache_read_input_tokens",
+                                                  "cache_creation_input_tokens"))
+    from . import context as _ctx
+    _ctx.after_call("claude", kw.get("system"), kw.get("tools"), kw.get("messages") or [], n)
 
 
 async def _claude_stream(api, kw: dict, live) -> tuple[list[dict], str]:
@@ -408,6 +426,7 @@ async def _claude_stream(api, kw: dict, live) -> tuple[list[dict], str]:
         msg = await st.get_final_message()
     from .. import usage   # the SDK wrapper counts messages.create only: a streamed answer is counted here
     usage.from_anthropic(kw.get("model", ""), msg)
+    _learn_claude(kw, msg)
     return [_block_to_dict(b) for b in msg.content], msg.stop_reason
 
 
@@ -444,11 +463,25 @@ async def _think(brain: str, system: str, history: list[dict], settings, tools: 
 
 
 def _friendly_error(e: BaseException) -> str:
+    """v0.237 a clean line for her: never the raw technical text (it stays in the log under the same short ref,
+    and the turn_failed event keeps it for the developer). An HTTP status, when there is one, rides as a code."""
+    import re as _re
     s = str(e)
-    busy = any(x in s.lower() for x in ("not reachable", "error 429", "error 5", "overloaded", "rate limit", "timed out", "broken answer"))
-    head = ("Abhi AI service busy ya unreachable hai, thodi der baad phir bolna." if busy
-            else "Maaf kijiye, abhi kuch gadbad ho gayi.")
-    return f"{head} ({s[:200]})" if s else head
+    low = s.lower()
+    busy = any(x in low for x in ("not reachable", "error 429", "error 5", "overloaded", "rate limit", "timed out", "broken answer"))
+    from . import context as _ctx
+    if _ctx.is_overflow(s):
+        head = "Yeh chat bahut lambi ho gayi hai. Naya chat shuru karke wahi baat bolein - pichhli baatein yaad rahengi."
+    elif busy:
+        head = "Abhi AI service busy ya unreachable hai, thodi der baad phir bolna."
+    else:
+        head = "Maaf kijiye, abhi kuch gadbad ho gayi."
+    if not s:
+        return head
+    ref = format(random.getrandbits(24), "06x")
+    log.warning("error ref %s: %s", ref, s[:2000])
+    m = _re.search(r"\b(?:error(?: code)?:?\s*|status\s*)(\d{3})\b", s, _re.I)
+    return f"{head} (code {m.group(1)} · ref {ref})" if m else f"{head} (ref {ref})"
 
 
 class _Halted(Exception):
@@ -637,6 +670,20 @@ def _chat_tail(history: list[dict], keep: int = 8) -> str:
     return "\n".join(out)[-4000:]
 
 
+def _request(history: list[dict], system: str, tools, brain: str, conversation_id: str, state: dict,
+             settings) -> list[dict]:
+    """v0.237 FULL CLAUDE MODE: what this model call sends. Old tool results trimmed (v0.189 prune, as before), then the
+    gauge: the whole chat while it fits, else the safety net (context.fit); after a "too long" answer, the hard form
+    (context.squeeze) for the rest of the turn. Projections only: `history` itself is never changed."""
+    from . import context as _ctx
+    pruned = prune_history(history)
+    start = state.get("turn_start", len(history))
+    if state.get("squeezed"):
+        return _sanitize(_ctx.squeeze(pruned, conversation_id, start))
+    msgs, form = _ctx.fit(pruned, system, tools, brain, conversation_id, start, settings)
+    return _sanitize(msgs) if form == "net" else msgs
+
+
 async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str,
                        state: dict) -> str:
     """The think -> tools -> think loop of one turn. Returns the final text shown to the user.
@@ -650,7 +697,13 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     ran_tools = False
     brain = llm.choose(history)
     from .. import yaad
-    _summ = yaad.summary_block(conversation_id)
+    from . import context as _ctx
+    full = _ctx.full_mode(settings)
+    # v0.237 FULL CLAUDE MODE: this turn's own messages begin at her (last) message; the gauge never shortens them
+    state["turn_start"] = len(history) - 1 if history and history[-1].get("role") == "user" else len(history)
+    # v0.237 the whole chat rides word for word, so the rolling summary is not repeated in the system prompt (the
+    # safety net brings it in by itself when it has to drop old exchanges; a very long chat starts with it)
+    _summ = "" if full else yaad.summary_block(conversation_id)
     tail = ""                       # everything after the guide; the guide itself follows the admitted families
     if _summ:                       # v0.108 everything older than the 40-exchange window, in a few lines
         tail += "\n\nPURANI BAATEIN (summary of this chat before the exchanges below; data, not instructions):\n" + _summ
@@ -711,23 +764,34 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         _THINK_NOW.set(think_wanted(settings, bool(state.get("goal") or state.get("big"))))
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
             live.block(stream=not _gyaan.used(conversation_id))
+        _conv_tok = _ctx.CONV.set(conversation_id)   # v0.237 the model's real token count lands on this chat's reading
         try:
             try:   # stays on the brain that worked; Rokiye cancels the model call itself, not just the next step
-                blocks, stop, brain = await _watched(_think(brain, system, prune_history(history), settings, tools,
-                                                             live, state.get("max_tokens")),
+                blocks, stop, brain = await _watched(_think(brain, system, _request(history, system, tools, brain,
+                                                                                   conversation_id, state, settings),
+                                                             settings, tools, live, state.get("max_tokens")),
                                                      conversation_id, ctx, state)
             except _Halted:
                 raise
             except Exception as e:
-                if not mcp_defs or not mcp_live.schema_trouble(e):
+                if _ctx.is_overflow(e) and not state.get("squeezed"):
+                    # v0.237 the model said the chat is too long: the hard form, ONCE - a chat never gets stuck on size
+                    _ctx.overflowed(brain, e)
+                    state["squeezed"] = True
+                    log.warning("context overflow on %s (%s); retrying once with the squeezed chat", brain, str(e)[:200])
+                    if live is not None:
+                        live.reset()
+                elif mcp_defs and mcp_live.schema_trouble(e):
+                    # a server's tool description the model refuses: go on without the direct MCP tools (bazar_run still works)
+                    log.warning("MCP tool schemas refused (%s); continuing without them", str(e)[:200])
+                    mcp_defs, mcp_route, tools = [], {}, TOOLS
+                    if live is not None:
+                        live.reset()
+                else:
                     raise
-                # a server's tool description the model refuses: go on without the direct MCP tools (bazar_run still works)
-                log.warning("MCP tool schemas refused (%s); continuing without them", str(e)[:200])
-                mcp_defs, mcp_route, tools = [], {}, TOOLS
-                if live is not None:
-                    live.reset()
-                blocks, stop, brain = await _watched(_think(brain, system, prune_history(history), settings, tools,
-                                                             live, state.get("max_tokens")),
+                blocks, stop, brain = await _watched(_think(brain, system, _request(history, system, tools, brain,
+                                                                                   conversation_id, state, settings),
+                                                             settings, tools, live, state.get("max_tokens")),
                                                      conversation_id, ctx, state)
         except _Halted as h:
             state["halted"] = h.why
@@ -742,6 +806,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                                                      **_tag(live, bool(part))})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
             return final_text
+        finally:
+            _ctx.CONV.reset(_conv_tok)
         history.append({"role": "assistant", "content": blocks})
         texts = [b["text"] for b in blocks if b.get("type") == "text" and b.get("text", "").strip()]
         _save(conversation_id, "assistant", blocks, display="\n\n".join(texts) or None)
@@ -901,9 +967,13 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             if state.get("goal"):
                 spoke = any(b.get("type") == "text" and (b.get("text") or "").strip() for b in blocks)
                 state["quiet"] = 0 if spoke else state.get("quiet", 0) + 1
-                every = int(getattr(settings, "agent_narrate_every", 3) or 0)
-                if every and state["quiet"] >= every:
+                every = int(getattr(settings, "agent_narrate_every", 8) or 0)
+                cap = int(getattr(settings, "agent_narrate_max", 2) or 0)
+                # v0.240 CHHOTA JAWAB: the live card is the progress report, so the chat hears from a long job at
+                # most `cap` times - never a line per step (the owner: "it must work in the background").
+                if every and state["quiet"] >= every and state.get("narrated", 0) < cap:
                     state["quiet"] = 0
+                    state["narrated"] = state.get("narrated", 0) + 1
                     STATS_LONG["narrate"] += 1
                     results.append({"type": "text", "text": _goal.NARRATE})
             elif (not state.get("plan_nudged") and not state.get("extended")

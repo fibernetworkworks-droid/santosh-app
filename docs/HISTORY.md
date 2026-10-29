@@ -9432,3 +9432,123 @@ asked how Claude would do it, compared it with Hoola's flow, asked "WHY FOR EVER
 - Not done (needs "GO WITH PC"): fix 4, VM files sent back to the chat.
 - Tests `server/tests/test_v0238_data_desk.py`. Version 0.238.0 (pubspec 0.238.0+278, console ?v=0.238.0 x11, pins).
   Server-only deploy; old APKs keep working.
+
+
+## v0.239.0 FULL CLAUDE MODE — Phase 1 (built as 0.237.0, re-versioned past the parallel v0.237.0 WEBSITE PHASES 1-3 and v0.238.0 DATA DESK): the whole chat, word for word, with a gauge (owner: "FULL CLAUDE MODE -- MAKE PLAN" / "START PHASE 1")
+- THE GAP (found in code): every turn the model saw only the newest 40-49 exchanges (`yaad.history`), the newest 4 in
+  full and the rest cut to her words + one line per step + the final reply, so file names, ids and exact words faded
+  early. Nothing ever measured the whole request: no cap on system + tools + history, and a model's "prompt is too long"
+  went to `_friendly_error` -> every later message of that chat failed the same way (stuck chat), with the raw error
+  text shown to her.
+- HOW CLAUDE DOES IT: the whole conversation word for word every turn (prompt cache makes it cheap), old tool output
+  cleared when space runs low, one summary only when the window is nearly full. Phase 1 copies the first two parts and
+  the never-stuck promise; Phase 2 (planned) adds the Claude-style compaction summary in place of the safety net.
+- SERVER:
+  - `config.py`: `chat_context` = claude (default) | hoola (the v0.108 window byte for byte, instant rollback);
+    `chat_context_limit_glm` 200000, `chat_context_limit_claude` 200000, `chat_context_limit_omniroute` 128000,
+    `chat_context_full_at` 0.75.
+  - `yaad.full_history`: every message of the chat, tool blocks intact; a chat longer than ROWS_MAX (5000 rows) starts
+    with its rolling summary (`SUMMARY_OPEN`). `agent/santosh._load_history` picks it in claude mode.
+  - NEW `agent/context.py` (the gauge): `fit` measures system + tools + history (JSON chars / a per-brain chars-per-token
+    ratio, careful default 3.0) before EVERY model call of the step loop (`santosh._request`, after the v0.189 prune).
+    Fits -> sent as loaded ("full"). Too big -> the SAFETY NET ("net"): the oldest exchanges are shortened with
+    `yaad.compress` in blocks of 10 (prefix stable turn to turn, cache-friendly) down to full_at - 15%; if that is not
+    enough the oldest blocks leave and the rolling summary stands in for them. THIS turn's messages (from
+    `state["turn_start"]`) are never shortened. Pure projections, `_sanitize`d; the caller's history is never edited.
+  - Overflow rescue: `context.is_overflow` (Anthropic / OpenAI-style "too long" wordings) -> `overflowed` (ratio x0.75,
+    the window the error names is believed: smallest number >= 8000 in the message) -> `squeeze` (summary + the last 6
+    exchanges shortened + this turn's older tool results cut to 1,500) -> retried ONCE; the rest of the turn stays
+    squeezed. Works in hoola mode too. The next turn starts fresh, so a chat can no longer get stuck on its size.
+  - The gauge learns: `_call_brain` (GLM / OmniRoute `usage.prompt_tokens`, never the made-up `estimated` count) and
+    `_learn_claude` (input + cache read + cache write, streamed and plain) call `context.after_call`: the first real count
+    replaces the guess, later ones move it 30%. `context.CONV` (set only around the step loop's model call) records the
+    real count on that chat's reading.
+  - `_friendly_error`: never the raw text; a "too long" line ("Yeh chat bahut lambi ho gayi hai ..."), the busy line or
+    the gadbad line, plus `(code 503 · ref 1a2b3c)`; the raw error is logged under the same ref (and the turn_failed
+    event still keeps it).
+  - `GET /api/conversations/{id}/context` (last measured call: brain, limit, budget, estimate, real, percent, form
+    full | net | squeezed | hoola; else an estimate of the chat alone) and `context` in `GET /api/yaad` health.
+  - The guide line on memory (`prompts.py`) now says the history is the whole chat while it fits.
+  - In claude mode the rolling summary no longer rides the system prompt (the whole chat is there; the net brings it in
+    when it drops blocks). `refresh_summary` keeps running after turns (voice calls and the net use it).
+- NOT CHANGED: quick lane, voice call memory (`voice_block`), long-job rounds' own logic, phone app, Mera PC / desktop
+  (freeze respected). Cost: long chats send more tokens per step until the net runs; watch `/api/usage` and lower
+  CHAT_CONTEXT_FULL_AT or set CHAT_CONTEXT=hoola to roll back.
+- Tests: NEW `test_v0237_full_context.py` (10): whole chat word for word (63 exchanges, oldest tool steps intact, no
+  summary in the prompt), hoola mode byte for byte, net shortens the oldest in blocks + keeps this turn whole + lands
+  under budget, net drops blocks with the summary in front, "too long" retried once + the next turn works, still too
+  long -> clean line, no raw text in errors, the gauge learns (first count, 30% moves, estimated counts ignored, named
+  window), Claude's real count on the reading, the context endpoint. The v0.108 window test pins
+  CHAT_CONTEXT=hoola. Version 0.239.0 (pubspec 0.239.0+279, console ?v=0.239.0, pins -> 0.239.0).
+
+## v0.240.0 CHHOTA JAWAB — a long job works in the background; the chat gets one short human line (owner: "IT GIVE HUGE REPLY FOR EVERY SMALL WORK IN BACKEND -- EVERY MINUE DETAILS --- IT MUST WORK ON BACKGOUD AND ON CHAT SCREEN IT MUST SHOW JUST A SMALL PERFECT HUMAN UNDERSTANDABLE ENGLISH PERFECLY LIKE CLAUDE DOES")
+Research first (how Claude's chat gives a reply in the chat space): the assistant's answer is short prose; the tool
+work sits collapsed in its own rows, and the detail is available without being in the sentence. Hoola was doing the
+opposite — and the detail it put in the chat was not missing information, it was a DUPLICATE: the four-part report
+(kya hua / kya bana / kya baaki / aapko kya karna hai) already renders on her goal card (phone `_Report` in
+`lib/ui/goal_card.dart`, console `goalReport` in `v2.js`), and v0.228 ALSO ordered the model to write those same four
+parts as its chat answer. A 12-step job therefore produced: 12 per-step lines + ~4 narration lines + a wall of bullets
+she was already looking at on the card.
+- FIVE sites pushed detail into the chat space; all five now point the other way:
+  1. `prompts.SYSTEM` (the strongest one): "Aakhri jawab hamesha chaar hisson mein: ✅ Kya hua · 📎 Kya bana · ⏳ Kya
+     baaki hai · 👉 Aapko kya karna hai" → "Kaam CHUPCHAP background mein karo ... uska card har step live dikha raha
+     hai, isliye har step ka koi line chat mein mat likho ... chat mein aakhri jawab EK chhoti insaani line ho — ek ya
+     do vaakya, jaise ek sathi batata hai ('Ho gaya, teeno bill ban gaye') — koi bullet list, koi ✅ / 📎 / ⏳ / 👉
+     heading, koi step-by-step detail nahi."
+  2. `goal_tools.kaam_plan` action=finish: the bulleted `report_text()` no longer rides as `report` (which reads as a
+     template to echo) but as `card_shows` (what she is already looking at), and the note forbids the bullets and the
+     four headings BY NAME: "Yeh report uske CARD par pehle se dikh rahi hai. Chat mein sirf EK chhoti insaani line do."
+  3. `goal_tools.kaam_plan` action=step: a finished step used to add "Ab EK chhoti line mein use batao is step mein kya
+     mila / kya bana" → now "Card par yeh step apne aap done dikh gaya - chat mein iska koi line mat likho, bas agla
+     tool chalao."
+  4. The narration cadence (`santosh._steps_inner` + `goal.NARRATE`): `agent_narrate_every` 3 → 8 AND a new
+     `agent_narrate_max` 2 (`state["narrated"]`), so a 40-step job can never produce 13 progress lines; NARRATE itself
+     now asks for one sentence like a person's, with no number, link or bullet ("Bills ban rahe hain, do ho gaye").
+  5. `agent/replystyle.py` (the v0.231 rulebook, chat AND voice): "Results of work: say what was really done with the
+     real details from the tool (name, number, amount, date, link)" → "Results of work, the short way: one or two
+     sentences, the way a person tells a colleague it is done ... the step-by-step detail, the numbers and the links are
+     ALREADY on her card: never repeat them in the reply, never a bullet list of the steps you ran, never 'Kya hua /
+     Kya bana / Kya baaki' headings ... a twenty-step job gets the same short line as a one-step job." The voice rule
+     gets the same discipline ("never a list of the steps you ran, never every number — she can see the card").
+- NOTHING IS LOST: `goal.build_report` and both cards are untouched, so every link, step, note and number is still one
+  tap away — it simply stops being pasted into the conversation. The push body and the call note were already short.
+- Language: "perfect human understandable English" is read as plain, clear sentences instead of a bulleted technical
+  dump, in her own language (Claude answers in the user's language, and the v0.231 rulebook's "her style wins" stands).
+  If she means literally English for result lines, that is a one-line change to the rulebook.
+- Tests: NEW `server/tests/test_v0239_chhota_jawab.py` (10) — the finish note no longer orders the four parts and
+  forbids each shape of the dump by name; the bulleted text rides as `card_shows` and `report` is gone from the tool
+  result; nothing is lost from the card (all four parts still built, `report_text` still renders them); a finished step
+  asks for no chat line; the cadence defaults (8 / max 2); NARRATE's wording; the loop stops narrating at the cap over
+  60 silent rounds + a source pin; the rulebook on both surfaces (and still brace-free, so `voice.PERSONA.format()`
+  holds); the rulebook rides in the slim per-turn guide. The two v0.228 assertions that pinned the old behaviour
+  (`test_silent_goal_rounds_ask_for_one_progress_line`, `test_kaam_plan_finish_returns_the_report_for_her_final_answer`)
+  were UPDATED to the owner's decision, not deleted, so the change of intent is visible in git.
+- Not covered by the Phase 5 scorecard: its 24 asks are single-turn, so a goal-mode long job's reply length is not
+  measured by it. The natural next step is a 25th ask that runs a scripted multi-step job and scores the final line.
+
+## v0.241.0 VOICE PHASE 5 (built as 0.234.0; re-versioned past the parallel v0.234.0-v0.240.0 work) — the plan's leftovers (owner: "START PHASE 5")
+The voice plan had four phases plus "later: full-duplex on our own GPUs" (still not buildable: no Hindi full-duplex
+model / vendor). Phase 5 = everything the plan promised that Phases 1-4 had not shipped:
+1. **The slow tail** (`callquality._p99`, nearest rank, rounds up): `reply_start_ms_p99` in the roll-up and per version,
+   target `P99_ALERT_MS` 4,000 ms; the `say` line names it when it is over. A call now keeps 120 latencies (was 60).
+2. **Dead air** (`dead_air_s`): seconds she waited past a person-like start (1,200 ms), summed; total + per call; a call
+   with 20 s+ is graded ok with "kul N second khamoshi mein intezaar".
+3. **Talk-over** (`stats["talk_over"]`, `voice.TALK_OVER_S` 0.25): his first audio of a turn while her mic was loud
+   that recently (not during a tool). **Repeats** (`is_repeat`, `REPEAT_LOOKBACK` 6, word overlap >= 0.8, 6+ words):
+   only word sets in memory, only the count saved. Both per 100 turns; 2+ in a call = ok grade with a plain problem.
+4. **Alert** (`alert_state`, `maybe_alert` after each saved call): newest 30 calls, p99 > 4 s (20+ turns) or 3 of the
+   last 10 broken (error / stall) -> ONE `voice_alert` event + FCM push to her home chat, at most once a day
+   (`data/voice_calls/<tenant>.alert.json`). `/api/voice/quality` and `/api/voice/stats` carry `alert`.
+5. **Ear test before / after** (`eartest_compare`): this version's marks vs the newest OLDER version she marked:
+   better (fail -> pass), worse (pass -> fail), same, new, not_yet. `GET /api/voice/eartest` adds `compare`.
+6. **Stall watchdog ignores noise** (`real_words`): a transcript of only "<noise>", punctuation or a lone "hmm" no longer
+   nudges him into answering the fan (`stall_noise_skips`, once per turn).
+7. **"Ek second" clips at his live loudness** (`_rms`, `_level`, `Call._hear_him`, `Call._clip`): the TTS-made clips
+   are scaled to his running Gemini Live loudness in this call (0.5x-2x, no clipping, after 24 chunks heard) for acks,
+   murmurs and progress sounds (`level_matched`).
+8. **No silent swallows**: the ack TTS falling back to the legacy model (a different-sounding voice) logs a warning and
+   counts `TTS_FALLBACKS` (`/api/voice/stats` `ack_tts_fallbacks`); the names lookup, OTP listener and last-outcome
+   read log instead of hiding.
+9. **Phone** (Call ki jaanch): p99, dead air, talk-over, repeats rows; the alert banner; "pehle se behtar / kharab /
+   pehle jaisa" on each ear-test card and a "vX ke muqable" line. New APK; the server part works without it.
+Tests: NEW `test_v0234_voice_phase5.py` (13). Version 0.241.0 (pubspec 0.241.0+281, console ?v=0.241.0, pins -> 0.241.0). End-to-end test plan: docs/VOICE_E2E_TEST_PLAN.md.
