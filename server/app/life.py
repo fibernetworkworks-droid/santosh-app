@@ -146,6 +146,13 @@ def context_block(tenant_id: str, conversation_id: str = "") -> str:
     p = get_profile(tenant_id)
     tz = tz_of(tenant_id)
     lines = []
+    try:   # v0.248 "Mere baare mein": her memory page first (unless she turned recall off)
+        from .aboutme import block as _about
+        ab = _about(tenant_id)
+        if ab:
+            lines.append(ab)
+    except Exception:
+        log.exception("about-me block failed")
     if p.name:
         lines.append(f"User's name: {p.name}")
     if p.city:

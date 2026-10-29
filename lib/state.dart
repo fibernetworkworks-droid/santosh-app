@@ -225,6 +225,7 @@ class Santosh extends ChangeNotifier {
 
   Api? api;
   String? conversationId;
+  bool incognito = false;   // v0.248 the open chat is incognito: nothing from it goes into her memory
   bool connected = false;
   bool dryRun = true;
   bool brainReady = true;
@@ -455,18 +456,18 @@ class Santosh extends ChangeNotifier {
     connect();
   }
 
-  Future<void> connect({bool fresh = false}) async {
+  Future<void> connect({bool fresh = false, bool incognito = false}) async {
     if (_connecting) return;
     _connecting = true;
     _retryTimer?.cancel();
     try {
-      await _connect(fresh: fresh);
+      await _connect(fresh: fresh, incognito: incognito);
     } finally {
       _connecting = false;
     }
   }
 
-  Future<void> _connect({bool fresh = false}) async {
+  Future<void> _connect({bool fresh = false, bool incognito = false}) async {
     error = null;
     _keyRefused = false;
     await _sub?.cancel();
@@ -479,7 +480,7 @@ class Santosh extends ChangeNotifier {
       // v0.98 one call brings everything the app needs to open (it used to wait for 8 calls in a row)
       Map<String, dynamic>? boot;
       try {
-        boot = await api!.bootstrap(fresh ? null : _prefs.getString('conv'), fresh: fresh);
+        boot = await api!.bootstrap(fresh ? null : _prefs.getString('conv'), fresh: fresh, incognito: incognito);
       } on ApiException catch (e) {
         if (e.status == 401) rethrow;
         boot = null; // an older server: the old way below
@@ -492,6 +493,7 @@ class Santosh extends ChangeNotifier {
       voices = List<Map<String, dynamic>>.from((h['voices'] as List?) ?? const []);
       googleLogin = h['google_login'] == true;
       conversationId = boot?['conversation_id'] as String? ?? (fresh ? null : _prefs.getString('conv'));
+      this.incognito = boot?['incognito'] == true;
       if (conversationId != null && boot == null) {
         try {
           await api!.checkConversation(conversationId!);
@@ -1199,6 +1201,7 @@ class Santosh extends ChangeNotifier {
   Future<void> openChat(String id) async {
     if (id == conversationId || api == null) return;
     conversationId = id;
+    incognito = chatList.any((c) => c['id'] == id && c['incognito'] == true);   // v0.248
     await _prefs.setString('conv', id);
     unawaited(api!.openChat(id).catchError((_) {}));
     unawaited(Native.chatLink(serverUrl, apiKey, id));

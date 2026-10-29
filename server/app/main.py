@@ -389,7 +389,8 @@ def _already_sent(tenant: str, conversation_id: str, client_id: str | None) -> b
 
 
 @app.post("/api/conversations", dependencies=[Depends(require_key)])
-def create_conversation(tenant: str = Depends(current_tenant), project_id: str = "", reuse: bool = False):
+def create_conversation(tenant: str = Depends(current_tenant), project_id: str = "", reuse: bool = False,
+                        incognito: bool = False):
     # (tenant stays the FIRST argument: /api/bootstrap calls create_conversation(tenant) directly)
     if project_id:   # v0.164 "Naya chat" inside one of her projects
         from . import projects
@@ -399,26 +400,29 @@ def create_conversation(tenant: str = Depends(current_tenant), project_id: str =
             projects.get(tenant, project_id)
         except projects.ProjectError as e:
             raise HTTPException(e.status, str(e))
-    if reuse:   # v0.233 the console's New chat: her newest untouched empty chat instead of one more "Naya chat"
+    if reuse and not incognito:   # v0.233 the console's New chat: her newest untouched empty chat instead of one more "Naya chat"
         cid = _untouched_chat(tenant, project_id)
         if cid:
             from . import convs
             convs.mark(tenant, cid, "new")
             return {"id": cid, "reused": True}
     with session() as s:
-        c = Conversation(tenant_id=tenant, project_id=project_id or None)
+        c = Conversation(tenant_id=tenant, project_id=project_id or None, incognito=True if incognito else None)
         s.add(c)
         s.flush()
         cid = c.id
     from .avatar.service import persona   # v0.244 her avatar's own name (was always "Santosh")
     greeting = f"Namaskar! Main {persona(tenant)[0]} hoon, aapka AI coworker. Aaj kya kaam poora karna hai?"
+    if incognito:   # v0.248 she must see it is incognito from the first line
+        greeting = (f"🕶 Incognito chat. Main {persona(tenant)[0]} hoon - yahan ki baatein aapki yaad mein nahi jayengi "
+                    "aur doosri chats ko pata nahi chalega. Bataiye, kya karna hai?")
     with session() as s:
         s.add(Message(conversation_id=cid, role="assistant", content=greeting, display=greeting,
                       in_history=False, delivered_to_agent=True))
     bus.publish(cid, "message", {"role": "assistant", "text": greeting, "source": "greeting"})
     from . import convs
     convs.mark(tenant, cid, "new")
-    return {"id": cid}
+    return {"id": cid, "incognito": bool(incognito)}
 
 
 def _untouched_chat(tenant: str, project_id: str = "") -> str:
@@ -459,6 +463,64 @@ def get_context(conversation_id: str, tenant: str = Depends(current_tenant)):
     _conv_or_404(conversation_id, tenant)
     from .agent import context as _ctx
     return {"context": _ctx.reading(conversation_id), "gauge": _ctx.health()}
+
+class AboutBody(BaseModel):
+    text: str = Field(default="", max_length=4000)
+
+
+class MemorySwitches(BaseModel):
+    auto: bool | None = None      # "Khud yaad rakhna": Hoola picks up facts / writes her page by itself
+    recall: bool | None = None    # "Purani chats se yaad": search, recent chats, her page
+
+
+@app.get("/api/memory/about", dependencies=[Depends(require_key)])
+def about_get(tenant: str = Depends(current_tenant)):
+    """v0.248 "Mere baare mein": the memory page Hoola keeps about her (+ her two switches)."""
+    from . import aboutme, fence
+    return {"about": aboutme.get(tenant), "switches": fence.prefs(tenant), "max_chars": aboutme.MAX_CHARS}
+
+
+@app.put("/api/memory/about", dependencies=[Depends(require_key)])
+def about_put(body: AboutBody, tenant: str = Depends(current_tenant)):
+    """Her edit of the page (her words win over Hoola's next rebuild)."""
+    from . import aboutme
+    return {"about": aboutme.set_text(tenant, body.text)}
+
+
+@app.delete("/api/memory/about", dependencies=[Depends(require_key)])
+def about_delete(tenant: str = Depends(current_tenant)):
+    from . import aboutme
+    return {"about": aboutme.set_text(tenant, "")}
+
+
+@app.post("/api/memory/about/rebuild", dependencies=[Depends(require_key)])
+async def about_rebuild(tenant: str = Depends(current_tenant)):
+    """Rewrite the page now from what is new (her tap)."""
+    from . import aboutme
+    v = await aboutme.rebuild(tenant, force=True)
+    return {"about": v or aboutme.get(tenant), "changed": v is not None}
+
+
+@app.get("/api/memory/settings", dependencies=[Depends(require_key)])
+def memory_switches_get(tenant: str = Depends(current_tenant)):
+    from . import fence
+    return {"switches": fence.prefs(tenant)}
+
+
+@app.put("/api/memory/settings", dependencies=[Depends(require_key)])
+def memory_switches_put(body: MemorySwitches, tenant: str = Depends(current_tenant)):
+    """v0.248 her memory switches (Claude's memory settings): stored on her profile."""
+    from . import fence, life
+    from .db import Profile
+    life.get_profile(tenant)   # makes the row
+    with session() as s:
+        p = s.get(Profile, tenant)
+        if body.auto is not None:
+            p.memory_auto = bool(body.auto)
+        if body.recall is not None:
+            p.memory_recall = bool(body.recall)
+    return {"switches": fence.prefs(tenant)}
+
 
 @app.get("/api/context/report", dependencies=[Depends(require_key)])
 def context_report(days: int = 7, tenant: str = Depends(current_tenant)):
@@ -10042,7 +10104,8 @@ def agents_item(ref: str):
 
 # ------------------------------------------------------------------ v0.98 one call at app open
 @app.get("/api/bootstrap", dependencies=[Depends(require_key)])
-def bootstrap(request: Request, conv: str = "", new: bool = False, tenant: str = Depends(current_tenant)):
+def bootstrap(request: Request, conv: str = "", new: bool = False, incognito: bool = False,
+              tenant: str = Depends(current_tenant)):
     """Everything the app needs to open, in one round trip (it used to wait for 8 calls one after another): server
     health, the chat to use (hers if still valid, else a new one), account, lists, routines, avatar, actions the phone
     still has to run, and this month's AI spend vs her limit."""
@@ -10056,8 +10119,10 @@ def bootstrap(request: Request, conv: str = "", new: bool = False, tenant: str =
     from . import convs
     if not cid and not new:
         cid = convs.current(tenant)    # v0.158 sign-in / re-install / cleared app: her last chat, not an empty new one
-    out["conversation_id"] = cid or create_conversation(tenant)["id"]
+    out["conversation_id"] = cid or create_conversation(tenant, incognito=incognito)["id"]   # v0.248 incognito new chat
     out["conversation_new"] = not cid
+    from .fence import is_incognito
+    out["incognito"] = is_incognito(out["conversation_id"])
     convs.mark(tenant, out["conversation_id"], "app")
     for key, fn in (("me", lambda: api_me(request)), ("lists", lambda: get_lists(tenant)),
                     ("routines", lambda: get_routines(tenant)["routines"]), ("avatar", lambda: avatar_get(tenant)),

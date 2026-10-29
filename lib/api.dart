@@ -351,8 +351,9 @@ class Api {
   Future<Map<String, dynamic>> health() async => Map<String, dynamic>.from(await _send('GET', '/healthz'));
   Future<void> logout() async => _send('POST', '/api/logout');
   /// v0.98 everything the app needs to open, in one call (404 on an older server: the app falls back).
-  Future<Map<String, dynamic>> bootstrap(String? conv, {bool fresh = false}) async => Map<String, dynamic>.from(
-      await _send('GET', '/api/bootstrap', query: {if (conv != null && conv.isNotEmpty) 'conv': conv, if (fresh) 'new': 'true'},
+  Future<Map<String, dynamic>> bootstrap(String? conv, {bool fresh = false, bool incognito = false}) async => Map<String, dynamic>.from(
+      await _send('GET', '/api/bootstrap', query: {if (conv != null && conv.isNotEmpty) 'conv': conv, if (fresh) 'new': 'true',
+          if (incognito) 'incognito': 'true'},
           timeout: const Duration(seconds: 45)) as Map);   // v0.158.1 the first open after a server restart can be slow
   // ---- v0.158 the chat in order, old chats, self-check, call cards ----
   Future<Map<String, dynamic>> timeline(String conv, {int limit = 60, int before = 0}) async => Map<String, dynamic>.from(
@@ -419,6 +420,15 @@ class Api {
   /// v0.242 "Chat chhoti karo": write the checkpoint now ({} = nothing old enough to fold yet).
   Future<Map<String, dynamic>> compactNow(String id) async => Map<String, dynamic>.from(
       (await _send('POST', '/api/conversations/$id/compact', timeout: const Duration(seconds: 150)) as Map)['compact'] as Map? ?? {});
+  // ---- v0.248 Hoola ki yaad: "Mere baare mein" (her memory page) + her two memory switches ----
+  Future<Map<String, dynamic>> aboutMe() async => Map<String, dynamic>.from(await _send('GET', '/api/memory/about') as Map);
+  Future<Map<String, dynamic>> aboutMeSave(String text) async => Map<String, dynamic>.from(
+      (await _send('PUT', '/api/memory/about', body: {'text': text}) as Map)['about'] as Map? ?? {});
+  Future<Map<String, dynamic>> aboutMeRebuild() async => Map<String, dynamic>.from(
+      (await _send('POST', '/api/memory/about/rebuild', timeout: const Duration(seconds: 90)) as Map)['about'] as Map? ?? {});
+  Future<Map<String, dynamic>> memorySwitches({bool? auto, bool? recall}) async => Map<String, dynamic>.from(
+      (await _send('PUT', '/api/memory/settings', body: {if (auto != null) 'auto': auto, if (recall != null) 'recall': recall})
+          as Map)['switches'] as Map? ?? {});
   /// v0.186 Rokiye for the goal only: the plan stops, the chat itself stays free.
   Future<void> stopGoal(String id) async => _send('POST', '/api/conversations/$id/goal/stop');
   // v0.228 the job ran out of budget and ASKS: her tap carries it on with a fresh budget (done steps kept)

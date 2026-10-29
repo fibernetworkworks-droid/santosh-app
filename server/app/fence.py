@@ -46,6 +46,39 @@ def scope_of(conversation_id: str) -> str | None:
         return None
 
 
+def is_incognito(conversation_id: str) -> bool:
+    """v0.248 an incognito chat: Hoola reads her memory there but writes nothing from it."""
+    if not conversation_id:
+        return False
+    try:
+        with session() as s:
+            c = s.get(Conversation, conversation_id)
+            return bool(c is not None and c.incognito)
+    except Exception:
+        log.exception("incognito read failed")
+        return False
+
+
+def incognito_ids(tenant: str) -> set[str]:
+    """Her incognito chats: never a source of memory for any other chat (v0.248)."""
+    with session() as s:
+        return set(s.scalars(select(Conversation.id).where(Conversation.tenant_id == tenant,
+                                                           Conversation.incognito.is_(True))).all())
+
+
+def prefs(tenant: str) -> dict[str, bool]:
+    """v0.248 her memory switches: auto = Hoola picks up facts / writes her page by itself; recall = Hoola uses her
+    past chats (search, recent chats, her page). Both on unless she turned them off (Profile > Hoola ki yaad)."""
+    try:
+        from .db import Profile
+        with session() as s:
+            p = s.get(Profile, tenant)
+            return {"auto": not (p is not None and p.memory_auto is False),
+                    "recall": not (p is not None and p.memory_recall is False)}
+    except Exception:
+        return {"auto": True, "recall": True}
+
+
 def chats_in(tenant: str, conversation_id: str) -> set[str] | None:
     """Every chat of hers in the SAME scope as this one (itself included). None = no fence (off / unknown chat):
     callers then see everything, exactly as before v0.246."""
@@ -55,10 +88,11 @@ def chats_in(tenant: str, conversation_id: str) -> set[str] | None:
     if scope is None:
         return None
     with session() as s:
-        q = select(Conversation.id).where(Conversation.tenant_id == tenant)
+        q = select(Conversation.id).where(Conversation.tenant_id == tenant,
+                                          or_(Conversation.incognito.is_(None), Conversation.incognito.is_(False)))
         q = q.where(Conversation.project_id == scope) if scope else \
             q.where(or_(Conversation.project_id.is_(None), Conversation.project_id == ""))
-        out = set(s.scalars(q).all())
+        out = set(s.scalars(q).all())   # v0.248 incognito chats are never a source
     out.add(conversation_id)
     STATS["scoped"] += 1
     return out

@@ -53,6 +53,7 @@ CORE_FAMILIES = frozenset({
     "docstudio",  # v0.245 doc_studio / doc_preview: a document ask in any words finds the design studio
     "data",       # v0.238 data_fetch / data_read: big data stays in a server file (never escape to the cloud PC)
     "team",       # v0.193 deploy_agents / agent_status / session_log - the agent team is a first-class tool now
+    "recall",     # v0.248 haal_ki_chats: her other chats by time (one tiny spec, like Claude's recent-chats tool)
 })
 
 # Hand-written keywords per family (lowercase substrings matched against her words). Tool names add their own
