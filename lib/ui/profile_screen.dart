@@ -39,6 +39,7 @@ import 'logistics_screen.dart';
 import 'travel_screen.dart';
 import 'warehouse_screen.dart';
 import 'archassist_screen.dart';
+import 'memory_page_screen.dart';
 import 'interior_screen.dart';
 import 'propagent_screen.dart';
 import 'rentdesk_screen.dart';
@@ -1285,6 +1286,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ]),
       ),
       const SizedBox(height: 18),
+      Glass(   // v0.250 Claude-style memory: her page + switches
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.psychology_outlined, color: C.teal),
+          title: const Text('Hoola ki yaad · Mere baare mein', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('Hoola aapke baare mein kya jaanta hai - padhiye, sudhaariye; yaad ke switch'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MemoryPageScreen(app: app))),
+        ),
+      ),
+      const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Hoola ko yaad hai', style: TextStyle(fontWeight: FontWeight.w700)),

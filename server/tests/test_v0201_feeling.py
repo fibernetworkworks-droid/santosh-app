@@ -129,8 +129,8 @@ def test_delivery_end_rides_last(env):
 
 def test_ack_clip_filename_carries_generation():
     f = voice._ack_file("Puck", "m", 3)
-    assert f.name == "Puck_m_3_a2.pcm" and f.parent == voice.ACK_DIR
-    assert voice._ACK_GEN == "a2"
+    assert f.name == "Puck_m_3_a3.pcm" and f.parent == voice.ACK_DIR
+    assert voice._ACK_GEN == "a3"   # v0.250 a2 -> a3: every clip re-rendered through the read-aloud check
 
 
 # ---------------- the kaamwatch rider grew a breath ----------------
@@ -149,4 +149,4 @@ def test_kaamwatch_rider_still_pins_and_grew():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.248.0"
+    assert APP_VERSION == "0.251.0"

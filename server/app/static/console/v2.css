@@ -30,6 +30,7 @@
   --fd:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif;
   --fb:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
   --fs:15px;
+  --fr:'Source Serif 4',Georgia,'Times New Roman',Times,serif;
   --side:292px; --right:min(430px,38vw);
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
@@ -214,7 +215,7 @@ mark{background:rgb(var(--acc-rgb) / .32);color:var(--ink);border-radius:3px;pad
 .thread{flex:1;overflow-y:auto;overscroll-behavior:contain}
 .col{max-width:860px;margin:0 auto;padding:26px 20px 14px;display:flex;flex-direction:column;gap:18px}
 .mu{align-self:flex-end;max-width:min(86%,640px);background:var(--you);border:1px solid rgb(var(--acc-rgb) / .38);border-radius:20px 20px 6px 20px;padding:12px 16px;position:relative;box-shadow:var(--sh2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur)}
-.mu .mut{white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px}
+.mu .mut{white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px;line-height:1.5}
 .mu .att{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .mu.editing{width:min(86%,640px);align-self:flex-end}
 .mu.editing textarea{width:100%;background:rgb(var(--surf-rgb) / .5);border:1px solid var(--hair);border-radius:12px;padding:10px 12px;resize:vertical;font:inherit}
@@ -224,6 +225,9 @@ mark{background:rgb(var(--acc-rgb) / .32);color:var(--ink);border-radius:3px;pad
 .mh>.av{margin-top:2px}
 .mh .bd{min-width:0;background:var(--glass);border:1px solid var(--line);border-radius:6px 20px 20px 20px;padding:13px 17px;backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);box-shadow:var(--sh2);display:flex;flex-direction:column;gap:8px;flex:1}
 .txt{overflow-wrap:anywhere;font-size:15px}
+/* v0.249 CLAUDE JAISA AKSHAR: Hoola's reply reads like Claude's - serif 16px/1.5 at weight 400.
+   Scoped to the chat block, because .txt is also the sidebar nav label. */
+.mh .txt{font-family:var(--fr);font-size:16px;font-weight:400;line-height:1.5}
 .txt.stopped{opacity:.8}
 .note-in{animation:sugin .3s ease both}
 .flash{animation:flash 2.2s ease}
@@ -295,15 +299,16 @@ mark{background:rgb(var(--acc-rgb) / .32);color:var(--ink);border-radius:3px;pad
 
 /* ================= MARKDOWN ================= */
 .textmd p{margin:0 0 2px}
-.textmd .mdh{font-family:var(--fd);font-size:16.5px;font-weight:800;margin:8px 0 4px}
-.textmd h3.mdh{font-size:15.5px}
+.textmd code,.textmd kbd{font-size:14px}   /* v0.249 Claude's small token (.875rem) */
+.textmd .mdh{font-family:var(--fr);font-size:20px;font-weight:600;line-height:1.3;margin:8px 0 4px}
+.textmd h3.mdh{font-size:17px}
 .textmd a{text-decoration:underline}
 .textmd ul,.textmd ol{margin:2px 0;padding-left:22px;display:flex;flex-direction:column;gap:3px}
 .cb{background:var(--code-bg);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:6px 0}
 .cbh{display:flex;align-items:center;justify-content:space-between;padding:7px 13px;border-bottom:1px solid var(--line);font-size:11.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--dim)}
 .cbcopy{font-size:11.5px;font-weight:800;color:var(--lit);background:var(--glass2);border:1px solid var(--line);border-radius:8px;padding:3px 10px}
 .cbcopy:hover{background:var(--glass3)}
-.cb pre{margin:0;padding:13px 15px;overflow-x:auto;font-size:13px;line-height:1.55}
+.cb pre{margin:0;padding:13px 15px;overflow-x:auto;font-size:14px;line-height:1.5}
 .cb code{background:none;padding:0}
 code:not(pre code){background:rgb(var(--acc-rgb) / .16);border:1px solid rgb(var(--acc-rgb) / .22);border-radius:6px;padding:1px 6px;font-size:.86em;color:var(--pri-ink)}
 .hk{color:#C792EA;font-weight:600}
@@ -1168,11 +1173,11 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 #app .chead~.thread{padding-top:0}
 #app .col{max-width:760px;gap:22px;padding-top:28px}
 #app .mu{background:linear-gradient(135deg,rgb(var(--acc-rgb) / .34),rgba(192,85,245,.2));border:1px solid rgb(var(--acc-rgb) / .22);border-radius:20px 20px 6px 20px;max-width:min(78%,600px)}
-#app .mu .mut{font-size:15px;line-height:1.55}
+#app .mu .mut{font-family:var(--fb);font-size:16px;line-height:1.5}
 #app .mh{gap:14px}
 #app .mh>.av{width:30px;height:30px;margin-top:0;box-shadow:0 0 0 2px rgb(var(--acc-rgb) / .45)}
 #app .mh .bd{flex:1;gap:12px}
-#app .mh .txt{font-size:15.5px;line-height:1.7;color:var(--ink)}
+#app .mh .txt{font-family:var(--fr);font-size:16px;font-weight:400;line-height:1.5;color:var(--ink)}
 #app .racts{gap:2px}
 #app .ra{height:30px;padding:0 10px;border-radius:9px;font-size:12px;font-weight:600}
 /* approval card */
@@ -1392,7 +1397,9 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 a{color:var(--pri-ink)}
 :focus-visible{outline:2px solid var(--pri)}
 #app :is(button,a,select,input,textarea,[tabindex]):focus-visible{outline-color:var(--pri)}
-#app .mh .txt,#app .mu .mut{font-size:calc(var(--fs) + .5px)}
+/* v0.249 CLAUDE JAISA AKSHAR x her text-size setting: Default (--fs 15px) lands on Claude's exact 16px,
+   and Small / Large still move it (15 / 17.5px) keeping Claude's 1.5 ratio. */
+#app .mh .txt,#app .mu .mut{font-size:calc(var(--fs) + 1px);line-height:1.5}
 :root[data-size="sm"]{--fs:14px} :root[data-size="lg"]{--fs:16.5px}
 :root[data-size="sm"] #app .side .sn,:root[data-size="sm"] #app .rc{font-size:13px}
 :root[data-size="lg"] #app .side .sn,:root[data-size="lg"] #app .rc{font-size:15.5px}

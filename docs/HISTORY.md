@@ -9749,3 +9749,99 @@ PDF ONLY WITH MATCHING BACKGROUND OF OUR DESIGN. ALSO CHECK AT TOP UNWANTED TAB.
   the bar returns home. q(t, sel) / qa(t, sel) find a tab's controls wherever its bar sits.
 - Tests: test_v0248_clean_workspace.py; 13 `?v=` stamps now (pdfview.js).
 - Preview shown to the owner before deploy (owner asked).
+
+## v0.249.0 CLAUDE JAISA AKSHAR — the chat is set the way Claude sets it (owner: "NOW CHECK THE FONT AND ITS SIZE.... OF CLAUDE CHAT ----- TELL ME", then "MAKE IT SAME LIKE CLAUDE - FONT AND SIZE BOTH")
+- MEASURED, NOT REMEMBERED. Claude's live stylesheet was fetched and read
+  (`assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c6a992d55-CGuUmOei.css`, 493 KB, 29 Oct 2026):
+  - `--font-anthropic-sans: "Anthropic Sans", system-ui, …` · `--font-anthropic-serif: "Anthropic Serif", Georgia, …`
+    · `--font-anthropic-mono: "Anthropic Mono", ui-monospace, …`
+  - `--font-claude-response: var(--font-anthropic-serif)` and `--font-user-message: var(--font-ui)` (= the sans)
+  - `.font-claude-response-body{font-size:1rem;font-weight:400;line-height:1.5}`, `-small{.875rem}`,
+    `-title{1.75rem;600;1.3;font-variation-settings:"opsz" 28}`; UI chrome `.font-base{var(--font-ui);.875rem;430;1.4}`
+  - no `html{font-size}` override, so 1rem = 16px; the scale is plain 12 / 14 / 16 / 18 / 20 / 24 / 30px
+  So Claude's REPLY is a serif at 16px / 400 / 1.5 and HER message is the UI sans. The older "Styrene + Tiempos"
+  write-ups are out of date: the current CSS has replaced both with Anthropic's own families.
+- WHERE HOOLA STOOD: sans on both surfaces. Console `#app .mh .txt` 15.5px / 1.7 (Manrope), `#app .mu .mut` 15 / 1.55,
+  reply headings `.textmd .mdh` in Sora at weight 800. Phone: three `MdText` sites at `fontSize: 15, height: 1.45`,
+  her bubble 15 / 1.45, md_text headings 19 / 17.5 / 16 at w800, inline bold w800, code 13–13.5px.
+- THE FONT: Anthropic Serif is not ours to use, so **Source Serif 4** — the closest free one, a transitional serif
+  with the same optical-size axis — loaded the way Sora / Manrope already are. Console: `Source+Serif+4:opsz,wght@8..60,400;8..60,600`
+  on the existing Google Fonts link in `v2.html`, as `--fr` in `v2.css`. Phone: `GoogleFonts.sourceSerif4` through the
+  `google_fonts` package already in pubspec, as one shared `replyText({size = 16})` in `lib/ui/glass.dart`.
+- CONSOLE (`v2.css`): `#app .mh .txt` → `var(--fr)` 16px / 400 / 1.5 (was 15.5 / 1.7); the legacy `.mh .txt` carries the
+  same tokens; `#app .mu .mut` → `var(--fb)` 16 / 1.5 (sans, as Claude keeps the user message); `.textmd .mdh` → serif
+  20px / 600 / 1.3 (was Sora 16.5 / 800), `h3.mdh` 17px. The serif rule is SCOPED to `.mh .txt`, never the bare `.txt`,
+  because `.txt` is also the sidebar nav label (`<span class="txt">` inside `.sn`) — a global rule would have turned the
+  whole left rail serif.
+- PHONE: the three reply sites in `chat_screen.dart` (saved reply, revealed reply, streaming reply) all take
+  `replyText()`; her own bubble stays the theme sans at 16 / 1.5. `md_text.dart` scaled to the bigger body — headings
+  22 / 20 / 17 at w600, inline bold w600 (Claude's bold is 600, not 800), code and tables mono at 14px.
+- NOTHING ELSE MOVED: the console's Night Glass chrome keeps its own sizes and weights (Claude's UI sits at 14px / 430,
+  Hoola's at 11–14.5px / 700–900 — matching that would be a redesign of the whole console, not a chat-font change, and
+  was deliberately left alone). The markdown renderer, the streaming caret and `mdPlain()` for copy / quote are untouched.
+- A JUDGEMENT CALL, STATED: Source Serif 4 is a near match, not the same typeface — Anthropic Serif is custom and not
+  licensed to us. If the owner wants a different free serif (Literata is the other good one), it is a one-line change in
+  two places (`--fr` and `replyText()`).
+- Tests: NEW `server/tests/test_v0242_claude_akshar.py` (10) — the font loads with its opsz axis, the live console rule
+  carries all four tokens and the old shape is gone, her own message is pinned SANS (never the serif), the headings are
+  serif 600, the bare `.txt` is pinned NOT serif (the nav-label trap), the phone's shared style is Source Serif 4 at
+  16 / 400 / 1.5, all three phone reply sites use it, the markdown is scaled, and nothing is lost (mdBlocks / mdInline /
+  mdPlain / MdText / the caret all still there). The two `test/md_text_test.dart` assertions that pinned bold at `w800`
+  were updated to the owner's decision, not deleted. `dart analyze` 0 errors on Flutter 3.24.5 (CI's version),
+  `flutter test test/md_text_test.dart` 7/7.
+- Version 0.248.0 (pubspec 0.248.0+288, console ?v=0.248.0, pins → 0.242.0).
+- NOT VERIFIED: nobody has seen this on a real screen yet. The serif at 16px will look bigger and airier than the old
+  15px sans — that is Claude's shape, but it is a visible change to every reply on both surfaces.
+
+## v0.250.0 FULL CLAUDE MODE — Phase 3B: CLAUDE-STYLE MEMORY (owner: "START PHASE 3B"; built as 0.248.0, re-versioned past the parallel v0.248.0 CLEAN WORKSPACE and v0.249.0 CLAUDE JAISA AKSHAR)
+- "MERE BAARE MEIN" (Claude's memory summary): NEW `app/aboutme.py`, table `about_me` (registered in `db.init_db`, self-heals).
+  ONE page (max 1,600 chars: KAAM / LOG / PASAND / CHAL RAHA KAAM) at the top of every chat's and call's system prompt
+  (`life.context_block` -> `aboutme.block`). Rebuilt by `worker.aboutme_jobs` (checked hourly, in the BACKGROUND so the
+  tick never waits): at most 3 owners per run, only owners who wrote in the last 24 h, at most once per 20 h, and only
+  when there are new global facts or new words (no model call otherwise). Sources: GLOBAL facts (asked / pinned / older)
+  + her words in GENERAL chats since the last build - never a Session chat (a client's deal never lands on the page
+  every chat reads) and never an incognito chat. Her edit (PUT) is marked "her" and the next build must keep it.
+  `clean`: OTP / PIN / password words masked, 10+ digit runs removed. Routes GET / PUT / DELETE /api/memory/about,
+  POST /api/memory/about/rebuild (her tap). Setting `about_me` (false = never rebuilt).
+- HAAL KI CHATS (Claude's recent-chats tool): NEW `agent/recall_tools.py` `haal_ki_chats(when, query)` - aaj / kal /
+  parso / is hafte / pichhle hafte / YYYY-MM-DD in her time zone; her other chats with her words in that window (+ the
+  last reply, + the chat's checkpoint tail), query narrows; fenced to the same Session, never incognito, never the open
+  chat. Family "recall" is CORE (one tiny spec always offered). The memory guide line in `prompts.py` names it.
+- INCOGNITO CHAT: `Conversation.incognito` (nullable). `POST /api/conversations?incognito=1`, `/api/bootstrap?new=1&
+  incognito=1` (+ `incognito` in the bootstrap answer and in the chat list). It READS her memory (profile, page, facts)
+  but WRITES nothing: `yaad.after_turn` skips the index and fact picking (the chat's own summary stays in the chat),
+  `pakka.record` skips the diary line, `remember` refuses, `yaad.backfill` / `search` (Hoola's recall) / raw word search
+  / `fence.chats_in` / the page never draw on it. The model is told in the system tail ("INCOGNITO CHAT ... never say
+  'yaad rakh liya'"); the greeting says it from the first line. Her own search screen still shows it.
+- HER SWITCHES: `Profile.memory_auto` ("Khud yaad rakhna": fact picking + page rebuilds) and `Profile.memory_recall`
+  ("Purani chats se yaad": automatic recall in turn_block, yaad_khojo, haal_ki_chats, Gyaan's chat hits, the page in the
+  prompt). None = on. `fence.prefs`. GET / PUT /api/memory/settings.
+- PHONE: NEW `lib/ui/memory_page_screen.dart` (Profile > "Hoola ki yaad · Mere baare mein": the page to read / edit /
+  save / clear, "Hoola se naya likhwao", the two switches); "🕶 Incognito" next to "Naya chat" in "Aapki chats"; the chat
+  header line says "🕶 Incognito · yaad nahi rakha jayega" (`Santosh.incognito` from bootstrap / the chat list).
+  CONSOLE: "/incognito" slash command, the header tag "🕶 Incognito".
+- Tests NEW `test_v0250_memory.py` (10): page built from global facts + general chats only (no Session, no incognito,
+  secrets masked, no second call when nothing is new), page in every chat + her edit wins, due only for active owners
+  once a day, switches, recent chats by time (fenced, never incognito, never the open chat), the tool always offered,
+  incognito reads but writes nothing, remember refused in incognito, incognito endpoints, page endpoints. The console
+  slash-command count is 13. Version 0.250.0 (pubspec 0.250.0+290, console ?v=0.250.0, pins). Needs the new APK for
+  the phone screens; the server part works with old APKs.
+
+## v0.251.0 SIRF LINE (built as 0.250.0; re-versioned after the parallel v0.250.0 FULL CLAUDE MODE Phase 3B) — no more English instructions spoken mid-call (owner: "IN BETWEEN VOICE CALL AI START TALK IN ENGLISH --- I.E SAY IT QUITLY AND SIMPLY ETC --- FIND ROOT CAUSE AND FIX")
+- **Root cause:** the "ek second" acks, the "haan..." murmurs and the progress sounds are pre-rendered by the Gemini TTS
+  model from an English delivery ask ("Say this quickly and casually, like a young Indian guy from Pune...",
+  "Say this quietly, half to yourself...", "Say ONLY this tiny sound, softly..."). TTS models sometimes SPEAK the ask
+  instead of only the line after the colon. `_trim` kept the first 1.6 s of that ("Say this quietly, half to...") and
+  the clip file cache (`data/voice_acks`) replayed it in every later call - English words in the middle of a Hinglish
+  call, exactly when a tool ran or she paused.
+- **Fix:** `_safe_clip(line, render, voice, client)` measures the render's speech (`_speech_s`) against what the line can
+  take (`_max_speech_s` = 1.2 s + 0.11 s a character; a read-out ask is 8-20 s). Too long -> rejected
+  (`CLIP_REJECTED`, warning in the log) and rendered once more from the BARE line (nothing else to read); still too long
+  -> no clip (dead air is better than English). Acks (`_build_acks`) and both pools (`_build_pool`) go through it.
+- **Every cached clip re-renders:** generation tags `_ACK_GEN` a2 -> a3, `_BC_GEN` / `_PROG_GEN` b1/p1 -> b2/p2, so the
+  bad files already on the VPS are never played again (they stay orphaned in `data/voice_acks`; safe to delete).
+- Two mid-call notes were English ("Ask her once more to say them slowly...", "She called you by name... Answer her now,
+  briefly.") -> Hinglish, so nothing in the call nudges him toward English.
+- `/api/voice/stats` adds `clips_rejected`.
+Tests: NEW `test_v0250_sirf_line.py` (7); generation pins in `test_v0201_feeling.py` / `test_v0206_backchannels.py` moved.
+Version 0.251.0 (pubspec 0.251.0+291, console ?v=0.251.0, pins -> 0.251.0). Server only; no new APK needed.
