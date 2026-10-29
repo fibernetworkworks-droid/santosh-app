@@ -9306,3 +9306,11 @@ Tests: NEW `test_v0232_voice_phase4.py` (12). Version 0.232.0 (pubspec 0.232.0+2
 - Tests NEW `test_v0235_phase_c.py` (9). Version 0.235.0 (pubspec 0.235.0+275, console ?v=0.235.0, pins -> 0.235.0). Sub-agents never think (contextvar `_THINK_NOW`, not a new keyword, so every `_think` / `_call_brain` caller keeps its signature).
   Server deploy turns thinking on (console shows it in its progress line); the phone card needs the new APK. Mera PC
   freeze respected; desktop untouched.
+
+## v0.236.0 No empty "Naya chat" rows (owner: "HIDE EMPTY NAYA CHAT ROWS FROM THE LIST" / "REMOVE NAYA CHAT ENTIRELY IF USER WANT CHAT ANYTHING")
+- The console chat list (`GET /api/console/conversations` -> `chats.chat_list(..., hide_empty=True)`) leaves out every chat
+  she never wrote in; pinned or renamed chats always stay. The chat appears in the list the moment she sends her first
+  message (the console reloads the list after a send). The phone's `/api/conversations` is unchanged.
+- Titles: the console's own notes (`[Web console language preference ...]`, mode / place hints) are stripped from the
+  first-message title and from the auto-title prompt (`chats.plain`).
+- Tests: NEW `test_v0236_no_empty_rows.py` (3). Version 0.236.0 (pubspec 0.236.0+276, console ?v=0.236.0, pins -> 0.236.0).

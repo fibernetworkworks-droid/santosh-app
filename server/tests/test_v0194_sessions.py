@@ -80,7 +80,14 @@ def test_cache_busts_follow_the_version():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.235.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert APP_VERSION == "0.236.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+
+
+def _wrote(*convs):   # v0.236 the console lists a chat only once she wrote in it
+    from app.db import Message, session
+    with session() as s:
+        for cv in convs:
+            s.add(Message(conversation_id=cv, role="user", content="hi", display="hi"))
 
 
 # ---------- the server surface, end to end ----------
@@ -92,6 +99,7 @@ def test_session_lifecycle_create_chat_move(cs):
     pid = p.json()["id"]
     # a chat born inside the session (the "+" on the header does exactly this)
     conv = c.post("/api/conversations", params={"project_id": pid}, headers=H).json()["id"]
+    _wrote(conv)
     rows = c.get("/api/console/conversations", headers=H).json()["conversations"]
     row = next(r for r in rows if r["id"] == conv)
     assert row["project_id"] == pid                                     # the sidebar can section it
