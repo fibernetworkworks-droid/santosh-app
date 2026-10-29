@@ -894,8 +894,16 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 _work(conversation_id, b["id"], shown, label, livework.phase_of(out), args_in, out)
                 try:   # v0.187 one true line about the result, out while the next model call thinks
                     _s = _say.line_for(label, shown, out)
-                    if _s and live is not None:
-                        live.feed_say(_s)
+                    if _s:
+                        # v0.258 CHALTE CHALTE BOLO: the whisper used to die with the turn (livereply.feed_say:
+                        # "gone the moment the reply arrives"). The same true fact now also rides into the
+                        # narration line, so what she reads between the steps is the tool's own number, not a guess.
+                        said_now = state.setdefault("saylines", [])
+                        if _s not in said_now:
+                            said_now.append(_s)
+                            del said_now[:-4]
+                        if live is not None:
+                            live.feed_say(_s)
                 except Exception:
                     log.debug("say line failed", exc_info=True)
                 return {"type": "tool_result", "tool_use_id": b["id"], "content": content}
@@ -974,19 +982,22 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             # v0.228 PHASE B (Claude-style): a long job narrates as it goes and has its plan early. In goal mode, a
             # run of tool rounds with no line to her asks for ONE progress line; without a plan, N tool steps ask for
             # the plan now (it used to come only at step 24).
-            if state.get("goal"):
+            # v0.258 CHALTE CHALTE BOLO: narration is no longer goal-only. v0.228 put it behind `state["goal"]`,
+            # so an ordinary ask that ran five tools without a kaam_plan said NOTHING until the answer appeared -
+            # the owner's "HOOLA DIRECTLY LOADS THE RESULT". Claude writes a line after every tool group whether or
+            # not there is a plan. Only a human-watched lane gets it; a routine talking to itself stays quiet.
+            _narrate_lane = (getattr(ctx, "actor", "owner") or "owner") in ("owner", "goal")
+            if _narrate_lane:
                 spoke = any(b.get("type") == "text" and (b.get("text") or "").strip() for b in blocks)
                 state["quiet"] = 0 if spoke else state.get("quiet", 0) + 1
-                every = int(getattr(settings, "agent_narrate_every", 8) or 0)
-                cap = int(getattr(settings, "agent_narrate_max", 2) or 0)
-                # v0.240 CHHOTA JAWAB: the live card is the progress report, so the chat hears from a long job at
-                # most `cap` times - never a line per step (the owner: "it must work in the background").
+                every = int(getattr(settings, "agent_narrate_every", 1) or 0)
+                cap = int(getattr(settings, "agent_narrate_max", 6) or 0)
                 if every and state["quiet"] >= every and state.get("narrated", 0) < cap:
                     state["quiet"] = 0
                     state["narrated"] = state.get("narrated", 0) + 1
                     STATS_LONG["narrate"] += 1
-                    results.append({"type": "text", "text": _goal.NARRATE})
-            elif (not state.get("plan_nudged") and not state.get("extended")
+                    results.append({"type": "text", "text": _goal.narrate_line(state.get("saylines"))})
+            if not state.get("goal") and (not state.get("plan_nudged") and not state.get("extended")
                   and ran_steps >= int(getattr(settings, "agent_plan_after_steps", 6) or 0) > 0
                   and (getattr(ctx, "actor", "owner") or "owner") in ("owner", "goal", "routine")
                   and not any(b.get("name") == "kaam_plan" for b in tblocks)):

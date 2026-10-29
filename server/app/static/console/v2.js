@@ -93,7 +93,7 @@ async function logout(expired) {
 
 /* ================= state + shell ================= */
 let ME = null, CONV = null, VIEW = 'chat', AV = 'Santosh';
-let CREATE = null;      // v0.258 the Create Studio (studio.js): the Create button lands on it, OpenArt-style
+let CREATE = null;      // v0.259 the Create Studio (studio.js): the Create button lands on it, OpenArt-style
 /* v0.222 R2: the sidebar is Claude-style - New chat + Search on top, then the places; Chat is the brand mark (home),
    Account is the user card at the bottom. The phone tabbar keeps its own five. */
 const SMOOTH = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';   // v0.226 R6: no smooth scroll under reduced motion
@@ -114,7 +114,7 @@ function drawNav() {
     : `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k])}<span>${n}</span></button>`).join('');
 }
 function go(v) {
-  if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.258 Create = the full-screen Create Studio
+  if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
   $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder'}[v] || '';
   if (v !== 'project') PJ?.draw();
@@ -638,7 +638,7 @@ function showWorkspace() {
   VIEW = 'creative'; $$('.view').forEach(x => x.hidden = x.id !== 'v-creative'); drawNav();
   $('#ttl').textContent = '· Creative workspace'; $('#app').classList.remove('drawer');
 }
-// v0.258 CREATE STUDIO: Create (sidebar, slash command, the home pills for pictures and video) opens the full-screen
+// v0.259 CREATE STUDIO: Create (sidebar, slash command, the home pills for pictures and video) opens the full-screen
 // studio; Research and Document pills keep the brief workspace on the same conversation.
 CREATE = window.HoolaCreate ? HoolaCreate({api, esc, toast, conv: () => CONV,
   newConv: async () => { const c = await api('POST', '/api/conversations'); await openConv(c.id, false, {noPush: true}); return c.id; },

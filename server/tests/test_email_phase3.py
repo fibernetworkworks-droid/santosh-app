@@ -231,4 +231,4 @@ def test_api_mail_settings_endpoint(sbox):  # noqa: F811
 # ---------------- version ----------------
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.257.0"
+    assert APP_VERSION == "0.259.0"

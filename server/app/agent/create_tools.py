@@ -1,4 +1,4 @@
-"""v0.258 Tool `create_studio`: the Create Studio engines Video Studio does not already have - a whole SONG (Google
+"""v0.259 Tool `create_studio`: the Create Studio engines Video Studio does not already have - a whole SONG (Google
 Lyria), a VOICE-OVER in any Gemini voice, and DUBBING of her own video into other languages. Every result lands in
 the chat as a card (play / download / open in the workspace) and in her creations."""
 from __future__ import annotations

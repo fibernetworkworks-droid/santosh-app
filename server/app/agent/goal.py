@@ -373,9 +373,27 @@ PLAN_FIRST = ("[System: yeh kaam kai steps ka lagta hai. Sabse PEHLA tool call `
               "kya hua aur aage kya. Aakhir mein `kaam_plan finish` (made = links / files jo bane).]")
 PLAN_NOW = ("[System: tum kai steps se kaam kar rahe ho par plan nahi likha. Abhi `kaam_plan set` karo (jo ho chuka "
             "use done likho), taaki use card par dikhe kya ho raha hai aur kya baaki hai. Phir aage badho.]")
-NARRATE = ("[System: kaafi der se tumne use kuch nahi bataya. Ab EK chhoti line likho — ek hi vaakya, jaise ek "
-           "insaan bolta hai ('Bills ban rahe hain, do ho gaye') — phir agla tool. Koi detail, koi bullet, koi "
-           "number ya link nahi: woh sab card par dikh raha hai. v0.240: yeh line kaam mein se sirf do baar aati hai.]")
+# v0.258 CHALTE CHALTE BOLO. v0.240 told this line to carry no number and no link, which left it empty filler
+# ("Bills ban rahe hain"). Claude's between-step line IS the number - "the live site is on v0.256.0, the same commit
+# as main (213d505). Creating the checkpoint branch next." One sentence: what the tool really returned + what you are
+# doing now. Still no bullets, no headings, no step dumps - that part of CHHOTA JAWAB stands.
+_NARRATE = ("[System: ab use EK chhoti line batao — ek ya do vaakya, jaise ek sathi kaam karte hue bolta hai. "
+            "Do cheezein us line mein: (1) abhi ke tool se jo SACH mila — asli number / id / naam / link, tool ke "
+            "result se, banaya hua nahi; (2) ab turant kya kar rahe ho. Jaise: 'Live site v0.256.0 par hai, wahi "
+            "commit jo main par hai — ab checkpoint branch bana raha hoon.' Koi bullet, koi heading, koi step-by-step "
+            "list, koi emoji nahi. Agar kaam ab POORA ho gaya hai to yeh line mat likho — seedha aakhri jawab do.{fact}]")
+
+
+def narrate_line(facts: object = None) -> str:
+    """The between-steps ask, with the true fact the tools just returned (app/agent/say.py) handed back to the model."""
+    seen = [" ".join(str(f).split()) for f in (facts or []) if str(f or "").strip()]
+    tail = ""
+    if seen:
+        tail = " Abhi ke tool results se sach: " + " · ".join(seen[-2:]) + " — isi mein se lo, naya mat banao."
+    return _NARRATE.format(fact=tail)
+
+
+NARRATE = _NARRATE.format(fact="")      # the bare ask, kept for anything that imports the constant
 
 
 # ---------------------------------------------------------------- carry on across turns

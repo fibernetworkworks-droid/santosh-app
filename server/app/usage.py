@@ -60,7 +60,7 @@ PRICES: dict[str, dict[str, float]] = {
     "gemini-3.6-flash": {"in": 0.75, "out": 3.75},
     "gemini-2.5-flash-preview-tts": {"in": 0.50, "out": 10.0, "audio_out": 10.0},
     "gemini-3.1-flash-tts": {"in": 1.0, "out": 20.0, "audio_out": 20.0},
-    "lyria": {"audio_out_min": 0.08},          # v0.258 a Lyria song is counted as one "minute" = studio MUSIC_USD per song
+    "lyria": {"audio_out_min": 0.08},          # v0.259 a Lyria song is counted as one "minute" = studio MUSIC_USD per song
     "gemini-2.5-flash-image": {"in": 0.30, "out": 30.0},
     "gemini-3.1-flash-lite-image": {"in": 0.25, "out": 30.0},       # ~$0.034 per 1K picture
     "gemini-nano-banana-2.1": {"in": 1.50, "out": 30.0},

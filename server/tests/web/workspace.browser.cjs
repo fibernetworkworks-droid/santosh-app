@@ -56,14 +56,14 @@ const server=http.createServer((req,res)=>{
  await page.locator('#collapse').click();await page.waitForTimeout(250);
  await page.locator('.side').hover();await page.mouse.wheel(0,600);await page.waitForTimeout(150);
  assert.ok(await page.locator('.side').evaluate(e=>e.scrollTop>0),'Sidebar must scroll with wheel');
- assert.ok(await page.locator('.side .sn .txt').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=15 && Number(getComputedStyle(e).fontWeight)>=700),'Sidebar labels must be larger and bold');
+ assert.ok(await page.locator('.side .sn .txt').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=14 && Number(getComputedStyle(e).fontWeight)<=600),'Sidebar labels: Claude-size type, no heavy weights (v0.256)');
  await page.locator('.side').focus();await page.keyboard.press('End');await page.waitForFunction(()=>{const e=document.querySelector('.side');return e.scrollTop+e.clientHeight>=e.scrollHeight-2});
  assert.ok(await page.locator('.side').evaluate(e=>e.scrollTop+e.clientHeight>=e.scrollHeight-2),'End reaches sidebar footer');
  await page.keyboard.press('Home');
  assert.equal(await page.locator('.main > .top').count(),0);
  assert.equal(await page.locator('.main > .views').evaluate(e=>e.getBoundingClientRect().top),0);
  assert.equal(await page.locator('.side #exportBtn').count(),1);
- await page.locator('[data-v="creative"]').click();await page.locator('#cw-prompt').fill('A crafted image of the FNW AI Node');
+ await page.locator('[data-create="research"]').first().dispatchEvent('click');await page.locator('[data-mode="image"]').click();await page.locator('#cw-prompt').fill('A crafted image of the FNW AI Node');
  await page.waitForTimeout(500);if(shots)await page.screenshot({path:path.join(shots,'hoola-studio-desktop.png'),fullPage:true});
  await page.locator('#cw-submit').click();await page.waitForFunction(()=>!document.querySelector('#v-chat').hidden);assert.match(posts.at(-1).text,/photo_banao/);assert.match(posts.at(-1).text,/Reply in English/);
  const aligned=async()=>{
@@ -91,7 +91,7 @@ const server=http.createServer((req,res)=>{
  await divider.dblclick();await page.waitForFunction(()=>Math.round(document.querySelector('.side').getBoundingClientRect().width)===224);await aligned();
 
  for(const mode of ['video','research','document']){
-  await page.locator('[data-v="creative"]').click();await page.locator(`[data-mode="${mode}"]`).click();await page.locator('#cw-prompt').fill('Build a clear launch brief from verified information');
+  await page.locator('[data-create="research"]').first().dispatchEvent('click');await page.locator(`[data-mode="${mode}"]`).click();await page.locator('#cw-prompt').fill('Build a clear launch brief from verified information');
   if(mode==='research'){
    await page.locator('#cw-sources').selectOption('files');await page.locator('#cw-submit').click();assert.equal(posts.length,2);
    await page.locator('#cw-files').setInputFiles({name:'source.txt',mimeType:'text/plain',buffer:Buffer.from('Verified product source')});await page.locator('#cw-submit').waitFor({state:'visible'});await page.waitForFunction(()=>!document.querySelector('#cw-submit').disabled);
@@ -103,7 +103,7 @@ const server=http.createServer((req,res)=>{
  await page.keyboard.press('Escape');assert.equal(await page.locator('#app').evaluate(e=>e.classList.contains('workspace-full')),false);
  await page.locator('#pnClose').click();await page.locator('[data-reuse]').click();assert.equal(await page.locator('#cw-refs .fchip').count(),1);
  assert.equal(posts.length,4);assert.match(posts[1].text,/Do not start paid generation until I approve/);assert.deepEqual(posts[2].files,['uploaded-reference']);assert.match(posts[3].text,/real Word/);
- await page.locator('[data-v="creative"]').click();await page.locator('[data-mode="image"]').click();await page.locator('[data-rm]').click();assert.equal(await page.locator('#cw-refs .fchip').count(),0);
+ await page.locator('[data-create="research"]').first().dispatchEvent('click');await page.locator('[data-mode="image"]').click();await page.locator('[data-rm]').click();assert.equal(await page.locator('#cw-refs .fchip').count(),0);
  await page.locator('[data-mode="document"]').click();
  await page.locator('#cw-files').setInputFiles({name:'reference.txt',mimeType:'text/plain',buffer:Buffer.from('Reference')});
  await page.waitForFunction(()=>!document.querySelector('#cw-submit').disabled);

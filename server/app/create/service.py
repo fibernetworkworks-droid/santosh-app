@@ -1,4 +1,4 @@
-"""v0.258 CREATE STUDIO engines that the studio's own pages need and Video Studio does not already cover.
+"""v0.259 CREATE STUDIO engines that the studio's own pages need and Video Studio does not already cover.
 
   * song   - a whole song (or an instrumental, a jingle, a score) from Google Lyria: genre, language, singers, mood,
              tempo, length and her lyrics (or lyrics Hoola writes) go into one prompt; the MP3 lands in her files.

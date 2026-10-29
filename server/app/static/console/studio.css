@@ -1,4 +1,4 @@
-/* v0.258 CREATE STUDIO (owner: "WHEN CLICK ON CREATE IT MUST LAND ON THIS PAGE DESIGN" - OpenArt's layout and flow, in
+/* v0.259 CREATE STUDIO (owner: "WHEN CLICK ON CREATE IT MUST LAND ON THIS PAGE DESIGN" - OpenArt's layout and flow, in
    Hoola's brand; approved prototype, then "BUILD"). Lives in a shadow root (studio.js), so none of these class names
    meet the console's own; the console's colour tokens flow in, so Light / Dark / System follow her Appearance setting.
    Crisp-text rules hold: no held animation fills, no backdrop blur, rings repaint an angle (--a is registered in v2.css). */
@@ -317,7 +317,7 @@ p{margin:0}
 .turn .thumb{aspect-ratio:3/4}
 .turn small{display:block;text-align:center;color:var(--dim);font-size:12px;margin-top:4px}
 
-/* ---------- v0.258 real-data pieces (results, price cards, lightbox, editor strip) ---------- */
+/* ---------- v0.259 real-data pieces (results, price cards, lightbox, editor strip) ---------- */
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .lnk{display:inline-flex;align-items:center;gap:5px;color:var(--priInk);font-size:12.5px;font-weight:500}
 .lnk:hover{text-decoration:underline}

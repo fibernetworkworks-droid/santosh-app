@@ -9983,3 +9983,110 @@ DEVELOPED FOR HOOLA".
   curl / git clean; Chromium 1750 URLs (DoH endpoints...) with 148 fragments skipped.
 - Tests `server/tests/test_v0257_reverse_engineer.py`; `test_rea_khoj.py` enum pin + "endpoints". No PC file changed.
   Version 0.257.0 (pubspec 0.257.0+297, console ?v=0.257.0 x13, pins). Server-only deploy.
+
+## v0.258.0 CHALTE CHALTE BOLO — Hoola talks while it works, the way Claude does (owner, with a screenshot of Claude mid-task: "CHECK HOW CLAUDE GIVE PROPER RESPONSE IN BETWEEN AND A FINAL RESULT PERFECTLY AND IN USER PROPER ENGLISH FRIENDLY. HOOLA DIRECTLY LOADS THE RESULT OR GIVE THE BULK BACKEND UNWANTED RESPONSES ... ALSO FIND FLAWS IN HOOLA AI", then "GO")
+- CLAUDE'S RHYTHM, read off her screenshot (one turn, four tool groups, four lines):
+  - BEFORE any tool, one sentence of intent: *"I'll save this as a known-good checkpoint, the same way the 22 Oct one
+    was saved: a separate branch at this exact commit... First confirming what's live."*
+  - a collapsed, expandable tool row: `Ran a command ▸` · `Used github: List GitHub Actions workflows ▸`
+  - AFTER each group, one line = **the real finding with its number + what it is doing now**: *"The live site is on
+    v0.256.0, the same commit as main (213d505). Creating the checkpoint branch and looking up the phone app build."*
+  - while a tool runs: `⋯ Running a command 46s`
+  Shape: one or two sentences, no bullets, no headings, no emoji; the tool noise is COLLAPSED, not deleted.
+- THE UI NEEDED NO WORK. `v2.js:316-339` already builds exactly Claude's row: `<details class="tools">` with a
+  summary of "N steps", each step expandable to its arguments; and interleaved text blocks already render between the
+  groups. Every flaw was in the policy layer - what the model is told to say.
+- FLAW 1, THE BIG ONE: NARRATION WAS GOAL-ONLY. v0.228 put the whole thing behind `if state.get("goal")`
+  (`santosh.py`), so an ordinary ask that ran five tools without a `kaam_plan` said **nothing** between the steps -
+  exactly her "HOOLA DIRECTLY LOADS THE RESULT". The gate is now the ACTOR, not the plan: `_narrate_lane` = owner or
+  goal, so a routine talking to itself still stays quiet. (The PLAN_NOW nudge keeps its own `not state.get("goal")`.)
+- FLAW 2: THE CADENCE WAS SILENCE, AND THAT ONE WAS MINE. v0.240 CHHOTA JAWAB set `agent_narrate_every` 3 -> 8 and
+  added `agent_narrate_max: 2`, so a 12-step job got at most two lines. Her complaint then was the BULK DETAIL; the
+  fix removed the TALKING along with it. Now 1 and 6 - a line per tool group, still capped so a 40-step job cannot
+  produce 40 lines.
+- FLAW 3: THE LINE WAS FORBIDDEN FROM SAYING ANYTHING. `NARRATE` read *"Koi detail, koi bullet, koi number ya link
+  nahi"*, which left empty filler ("Bills ban rahe hain"). Claude's line IS the number. Rewritten to demand the
+  opposite: (1) the real thing this tool returned - number / id / name / link, from the result, never invented;
+  (2) what you are doing now. Still no bullets, headings, step lists or emoji, and it says to SKIP the line when the
+  work is finished (no filler right before the answer).
+- AND THE FACTS WERE ALREADY THERE, BEING THROWN AWAY. `app/agent/say.py` (v0.187) already reads one true line out of
+  every tool result with no model call ("12 naye mails aaye", "video taiyar — drive.google.com"), but `livereply.
+  feed_say` published it as a whisper that is, in its own words, "gone the moment the reply arrives". Those lines are
+  now also kept on the turn state (`state["saylines"]`, last 4, deduped) and handed back to the model by the new
+  `goal.narrate_line(facts)`, so the line she reads is grounded in the tool's own output. The live whisper still runs.
+- ALSO: the opener (`replystyle.CHAT` "work out silently what done looks like" -> "say it in ONE sentence before you
+  touch a tool"), a new keep-talking rule in the CHAT rulebook only (the call keeps its v0.230 news queue and murmur
+  timing; the quick lane runs no tools), and the CONTRADICTIONS removed - `PLAN_FIRST` asked for "har bade step ke
+  baad ek chhoti line" while `prompts.py` and `kaam_plan step` both forbade one, in the same turn.
+- NOTHING v0.240 WON IS LOST: no four-part bullet report in the chat, one short human final answer, the report still
+  rendered on the card, `card_shows` unchanged. A test pins each of those.
+- Tests: NEW `server/tests/test_v0257_chalte_chalte.py` (11) - a plain no-plan four-tool ask now narrates (the case
+  she wrote in about), background actors stay quiet, the cadence, the line carrying the tool's fact and never an
+  empty tail, the saylines plumbing bounded at 4, the opener + per-step line in the prompt, no prompt contradicting
+  another, the rulebook brace-free and chat-only, CHHOTA JAWAB's wins intact, and the console's collapsed step group.
+  The four v0.240 pins and two v0.228 pins that encoded the old silence were UPDATED to the owner's new decision,
+  not deleted. One real bug caught by those tests: `_watched` was already a function in `santosh.py`, so the new
+  local shadowed it and broke every turn - renamed `_narrate_lane`.
+- Version 0.257.0 (pubspec 0.258.0+298, console ?v=0.257.0, pins -> 0.257.0).
+- NOT VERIFIED: how it reads on a real long job. The cap is 6 lines a turn; if that feels chatty, `agent_narrate_every`
+  2 halves it without touching anything else.
+
+
+## v0.259.0 CREATE STUDIO (29 Oct 2026)
+Owner, with OpenArt's home page: "WHEN CLICK ON CREATE IT MUST LAND ON THIS PAGE DESIGN GO DEEP CHECK EVERY PAGE ... CREATE
+WILL GIVE USER VIDEO GENERATION ..., IMAGE GENERATION ..., HIGH END VIDEO EDITOR, MUSIC STUDIO (... FROM SONG TO MUSIC), AI
+DUBBING ENGINE, AI VIDEO EDITOR ... INSIDE IT VARIOUS CATEGORIES DIRECTOR, SCRIPT WRITER, AI CASTING". OpenArt was studied
+page by page (home, chat, director, create-video, create-image, world, character, voice-over, dub, modify-video, inspire,
+media, brand kit, smart shot, lip sync); a clickable prototype in Hoola's own brand was approved ("BUILD"). Layout and flow
+follow OpenArt; their logo, art and wording are not used.
+- CONSOLE: Create (sidebar, the Image / Video home pills) opens `static/console/studio.js` (window.HoolaCreate) - a
+  full-screen layer with its own sidebar (Studio home; Agents: Director, Script writer, AI casting; Tools: Video, Image,
+  Music, Voice, Dubbing, Editor; Assets: Film projects, Brand kit, My creations; Inspire: Templates, How-to guides) and
+  "Back to chat". It lives in a SHADOW ROOT so its class names never meet the console's; `studio.css` maps the console's
+  tokens on :host, so Light / Dark / System follow her Appearance. Crisp-text rules kept (no held fills, no backdrop blur,
+  rings repaint `--a`, registered in v2.css). Research / Document pills still open the v0.243 brief workspace
+  (`showWorkspace()` in v2.js). The console's global shortcuts and Ctrl+K stand down while the studio is open.
+- EVERY PAGE ON A REAL ENGINE (nothing pretend; decorative art only on quick starts and templates):
+  * Image: `/api/create/jobs` kind=image -> photo_banao's engine (`photogen.make`), 1-4 pictures, shape, Standard ~Rs 3 /
+    Best ~Rs 12, style, her reference photos (or a picture from her shelf, `cr_` ids), optional brand colours from the kit.
+  * AI casting: kind=cast -> a four-view character sheet (front, three-quarter, side, back) of an ORIGINAL person
+    (`create.service.cast_prompt`); "Use in a film" prefills the Director's cast form (Video Studio `characters`).
+  * Music: kind=song -> Google Lyria (`studio.service._lyria`, `STUDIO_MUSIC_MODEL`): Song / Instrumental / Jingle / Score,
+    genre, language, singers, mood, tempo, length, her lyrics word for word; "Write with Hoola" = `/api/create/write`
+    kind=lyrics (Claude). A real waveform from the decoded audio. Counted as `PRICES["lyria"]` = MUSIC_USD per song.
+  * Voice: kind=voice -> Gemini TTS in any of the 22 avatar voices or "Your Hoola's voice", language, style, pace.
+  * Dubbing: kind=dub -> her uploaded video (25 MB / 3 min): ffmpeg pulls the audio, Gemini listens ONCE and returns every
+    line with time, speaker, gender and the translation into each target language (up to 4); Gemini TTS speaks each line
+    in a voice matched to the speaker, sped up at most 1.3x to fit its slot; ffmpeg lays them over the picture (original
+    sound at 14% under them, or removed). One MP4 per language + the line-by-line transcript in the page. Honest limits,
+    said on the page and by the tool: voices matched not cloned, lips not re-synced (lip sync = paid Video Studio step),
+    the original voice stays faintly under when the original sound is kept (no stem separation).
+  * Video: one clip = a Video Studio project (`POST /api/studio/projects` writes the shot plan, then `/generate` with her
+    quality and her MODEL PICK - new `StudioRun.model`, `/api/studio` now lists `models` with readiness and Rs/second).
+    Free preview runs at once; a paid run comes back as a price card on the tile: Haan / Na call
+    `/api/studio/approvals/{id}`; a phone fingerprint (HTTP 428) is still required where it was.
+  * Director: the whole film on Video Studio - brief -> storyboard (Claude) -> cast -> opening pictures (card) -> free
+    preview -> shots (card) -> music (Lyria, card) -> final film (assemble); scene cards with the take picker and scene
+    edit (PATCH shot prompt); progress, ETA, Stop; polls every 5 s while anything works or waits for her.
+  * Script writer: `/api/create/write` kind=script (Claude, screenplay format, her format / length / language / tone),
+    kept on her shelf and editable (autosave PUT `/api/create/items/{id}/text`), "Send to Director".
+  * Editor: her clips in story order -> `/api/video/jobs` (platform, length, captions, what to make), changes by words
+    via `/revise`, versions, download, post caption.
+  * Brand kit: `/api/brand/kit` read + save (name, tagline, tone). My creations: her Create shelf + finished films.
+- ENGINES: `app/create/service.py` (song / voice / dub / write / cast prompt), `app/create/jobs.py` (in-memory jobs, max 3
+  running per owner; the shelf in `data/create/<tenant>/` + index.json, kept until she deletes - unlike 24-hour chat
+  files; each result is ALSO posted to the page's chat as a card: photo_made for pictures, pc_file with `ai: true`
+  otherwise, so results.js shows "AI-generated"). Routes: GET /api/create, POST/GET /api/create/jobs[/{id}],
+  POST /api/create/write, GET/DELETE /api/create/items[/{id}], PUT /api/create/items/{id}/text. Usage feature
+  "create" (label Create Studio). `server/data/create/` is git-ignored.
+- AGENT: tool `create_studio` (`agent/create_tools.py`, family "create": song / gaana / jingle / lyrics / voice-over /
+  dub / dubbing keywords) - song, voice, dub, voices; one prompt line (prompts.py, next to the AI video studio line).
+- NOT TOUCHED: Mera PC files (freeze), the phone app, the Video Studio / Video Editor engines themselves.
+- Tests: NEW `server/tests/test_v0259_create_studio.py` (17) incl. a real ffmpeg dub with the two model calls faked,
+  jobs -> shelf -> chat card, write + edit a script, the model pick reaching generate, tool registration, usage, and the
+  console wiring / isolation / every page's engine routes. `tests/web/workspace.browser.cjs` (not in CI) updated: the
+  brief workspace is reached through its pills now, and its stale v0.255 bold-sidebar assertion follows v0.256.
+- Version 0.259.0 (pubspec 0.259.0+299, console ?v=0.259.0 x14, pins -> 0.259.0).
+- NOT VERIFIED here (no keys in the sandbox): real Lyria songs, Gemini voices and dubs, real paid video models. The
+  sandbox ran every page against the real server with seeded files, the error paths (no GEMINI_API_KEY) and the free
+  offline preview of a storyboard.

@@ -106,9 +106,12 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.257.0 (pubspec 0.257.0+297). Version ritual = main.py APP_VERSION + pubspec version(+build) +
-  console `?v=` stamps in `server/app/static/console/v2.html` (13 now: theme.js, pdfview.js) + the version pins in tests (grep the old number in
+- Current version: v0.259.0 (pubspec 0.259.0+299). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+  console `?v=` stamps in `server/app/static/console/v2.html` (14 now: theme.js, pdfview.js, studio.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.259 CREATE STUDIO: Create opens a full-screen OpenArt-style studio (`console/studio.js` + `studio.css`, shadow root) - Image,
+  Video + Director (Video Studio API, price cards tapped in the studio), Music (Lyria), Voice, Dubbing, Editor (Video Editor API),
+  Script writer, AI casting, Brand kit, My creations; engines `app/create/` (`/api/create/*`), agent tool `create_studio`.
 - v0.257 REVERSE-ENGINEER ANYTHING: admit.APPFILE loads REA for any program / app / model / firmware file, rea_khoj
   action=endpoints (`appcheck/endpoints.py`, static, masked, dataset), pick.py refuses such a job on a PC.
 - v0.256 console: Schibsted Grotesk = interface sans (measured closest to Claude's), Claude sidebar sizes; CRISP TEXT rule = no held

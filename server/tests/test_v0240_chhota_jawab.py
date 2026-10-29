@@ -75,29 +75,42 @@ def test_nothing_is_lost_from_the_card(gz):  # noqa: F811
 
 # ---------------------------------------------------------------- per-step silence
 
-def test_a_finished_step_asks_for_no_chat_line(gz):  # noqa: F811
+def test_a_finished_step_asks_for_the_finding_not_a_dump(gz):  # noqa: F811
+    """v0.257 reversed v0.240's silence: Claude writes a line per step. What stays banned is the DUMP."""
     ctx = _ctx(gz["conv"])
     _run(ctx, action="set", goal="paanch kaam", steps=[f"kaam {i}" for i in range(1, 6)])
     out = _run(ctx, action="step", n=1, state="done", text="ho gaya")
     note = out["note"]
-    assert "EK chhoti line mein use batao" not in note          # the v0.228 per-step narration order is gone
-    assert "chat mein iska koi line mat likho" in note
-    assert "agla tool" in note                                   # keep working quietly
+    assert "chat mein iska koi line mat likho" not in note       # the v0.240 silence is gone
+    assert "is step se jo asli cheez mili" in note               # ...replaced by the finding
+    assert "koi bullet ya heading nahi" in note                  # the dump stays banned
+    assert "agla tool" in note
 
 
 # ---------------------------------------------------------------- the progress line: rare, short, capped
 
-def test_narration_is_rare_and_capped_by_default():
+def test_narration_keeps_claudes_cadence_by_default():
+    """v0.240 set 8 / 2, which the owner read as silence ("HOOLA DIRECTLY LOADS THE RESULT"). Claude writes one
+    line per tool group, so v0.257 is 1 / 6 - still capped, so a 40-step job cannot produce 40 lines."""
     st = get_settings()
-    assert st.agent_narrate_every >= 8, "a line every 3 silent rounds is what made a long job chatty"
-    assert st.agent_narrate_max == 2
+    assert st.agent_narrate_every == 1
+    assert st.agent_narrate_max == 6
 
 
-def test_narrate_text_asks_for_one_sentence_without_detail():
+def test_narrate_text_asks_for_the_real_finding_plus_what_is_next():
+    """v0.240 forbade numbers and links, which left the line empty filler. Claude's line IS the number."""
     n = G.NARRATE
-    assert "ek hi vaakya" in n
-    for ban in ("Koi detail", "koi bullet", "card par dikh raha hai"):
+    assert "ek ya do vaakya" in n
+    assert "asli number / id / naam / link" in n and "banaya hua nahi" in n
+    assert "ab turant kya kar rahe ho" in n
+    assert "koi number ya link nahi" not in n                    # the v0.240 ban is gone
+    for ban in ("Koi bullet", "koi heading", "step-by-step list"):
         assert ban in n, ban
+    assert "kaam ab POORA ho gaya hai to yeh line mat likho" in n   # never filler right before the answer
+    # the true facts the tools returned ride into the ask (app/agent/say.py), never invented
+    with_fact = G.narrate_line(["12 naye mails aaye", "site v0.256.0 par hai"])
+    assert "12 naye mails aaye" in with_fact and "naya mat banao" in with_fact
+    assert G.narrate_line([]) == n and G.narrate_line(None) == n
 
 
 def test_the_loop_stops_narrating_after_the_cap():
@@ -111,14 +124,14 @@ def test_the_loop_stops_narrating_after_the_cap():
         blocks, results = [{"type": "tool_use", "name": "web_search"}], []
         spoke = any(b.get("type") == "text" and (b.get("text") or "").strip() for b in blocks)
         state["quiet"] = 0 if spoke else state.get("quiet", 0) + 1
-        every = int(getattr(settings, "agent_narrate_every", 8) or 0)
-        cap = int(getattr(settings, "agent_narrate_max", 2) or 0)
+        every = int(getattr(settings, "agent_narrate_every", 1) or 0)
+        cap = int(getattr(settings, "agent_narrate_max", 6) or 0)
         if every and state["quiet"] >= every and state.get("narrated", 0) < cap:
             state["quiet"] = 0
             state["narrated"] = state.get("narrated", 0) + 1
             results.append({"type": "text", "text": G.NARRATE})
         asked += [r for r in results if r.get("text") == G.NARRATE]
-    assert len(asked) == 2, f"narration must stop at the cap, got {len(asked)}"
+    assert len(asked) == 6, f"narration must stop at the cap, got {len(asked)}"
     # and the real loop carries the same cap (source pin)
     txt = (ROOT / "server/app/agent/santosh.py").read_text()
     assert "agent_narrate_max" in txt and 'state.get("narrated", 0) < cap' in txt
@@ -153,4 +166,4 @@ def test_the_rulebook_still_rides_in_the_prompt():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.257.0"
+    assert APP_VERSION == "0.259.0"

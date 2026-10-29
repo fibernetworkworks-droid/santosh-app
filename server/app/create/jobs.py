@@ -1,4 +1,4 @@
-"""v0.258 CREATE STUDIO jobs + her creations shelf.
+"""v0.259 CREATE STUDIO jobs + her creations shelf.
 
 The console's Create Studio pages start work here directly (no chat turn in between, like OpenArt): image (photo_banao's
 engine), song, voice-over and dubbing (create/service.py). Each job runs in the background; the page polls
