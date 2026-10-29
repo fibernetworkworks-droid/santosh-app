@@ -238,6 +238,37 @@ async def _model_line(r: KaamFollowup, settings) -> str:
     return " ".join(out.split())[:600]
 
 
+def _answered_since(conv: str, since) -> bool:
+    """v0.259: did a REAL reply land in this chat after the job finished? Then the turn she was watching already
+    told her, and waking the brain for a second report is the duplicate she saw on 29 Oct ("Competitor job poora ho
+    gaya" under a full answer). _recent_said below only matched the TITLE's words against the reply, so it missed
+    every paraphrase - and missed completely when the reply came out in another language, which is exactly what
+    happened. This check is about WHEN, not about words, so it holds in any language.
+    """
+    if since is None:
+        return False
+    try:
+        from .db import Message
+        cut = _aware(since) - timedelta(seconds=5)       # the reply may be saved a moment before the row
+        with session() as s:
+            rows = s.scalars(select(Message).where(Message.conversation_id == conv, Message.role == "assistant")
+                             .order_by(Message.id.desc()).limit(6)).all()
+        for m in rows:
+            at = _aware(getattr(m, "created_at", None))
+            if not at or at < cut:
+                continue
+            if getattr(m, "in_history", True) is False:
+                continue                                  # progress lines / notes are not an answer
+            text = (m.display or (m.content if isinstance(m.content, str) else "") or "").strip()
+            if text[:1] in set("\u25b6\U0001f504\u2705\u274c\u23f9\u23f3\u26a0"):
+                continue                                  # a status chip is not an answer either
+            if len(text) >= 40:                           # a real reply, not a one-word ack
+                return True
+    except Exception:
+        log.debug("answered-since check failed", exc_info=True)
+    return False
+
+
 def _recent_said(conv: str, title: str) -> bool:
     """The turn's own reply or the job's service already told her this a moment ago: don't say it twice."""
     import re
@@ -336,7 +367,7 @@ async def _send(fid: str, settings) -> None:
                 if r2:
                     r2.status, r2.sent_at = "skipped", now()
             return
-        if _recent_said(conv, title):
+        if _recent_said(conv, title) or _answered_since(conv, getattr(r, "created_at", None)):
             with session() as s:
                 r2 = s.get(KaamFollowup, fid)
                 if r2:

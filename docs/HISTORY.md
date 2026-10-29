@@ -10030,3 +10030,44 @@ DEVELOPED FOR HOOLA".
 - Version 0.257.0 (pubspec 0.258.0+298, console ?v=0.257.0, pins -> 0.257.0).
 - NOT VERIFIED: how it reads on a real long job. The cap is 6 lines a turn; if that feels chatty, `agent_narrate_every`
   2 halves it without touching anything else.
+
+## v0.259.0 SAAF KAAM — the four flaws her own live test run turned up (owner ran the v0.258 prompts on the live server, then "CHECK ALL RESULTS", then "GO")
+- FIRST, THE GOOD NEWS, IN HER OWN TRANSCRIPT. CHALTE CHALTE BOLO works. The 20-mails -> PDF job wrote seven
+  between-step lines and every one carried a real figure or id:
+  *"Output beech mein kat gaya, sirf 9 mails dikhe"* · *"40 mails mile hain, par 20 wali list beech se kat gayi thi"*
+  · *"Ab tak 18 mails pakke mile hain. Do mails ke ids (env~9824, env~9821) abhi nahi dikhe"* · *"Ab 20 ke 20 mails
+  mil gaye hain, env~9812 se env~9831 tak"*. The opener fired on three of four prompts, the one-tool weather ask
+  correctly wrote NO filler line, and the job even corrected itself honestly ("ek pankti galat likh di thi... PDF
+  dobara bana raha hoon"). The same run exposed four things.
+- FLAW 1, A REAL BUG THAT KILLED A STEP MID-JOB: `kaam_plan() got an unexpected keyword argument 'note'`. The tool's
+  OWN description read `"Actions: set (goal, steps), step (n, state done|failed|skipped|current, note), ..."` while
+  the signature took `reason` and `note` was not a declared property at all - the model followed the documentation
+  and hit a TypeError. Pre-existing (not from v0.258), but it cost her a whole step on 29 Oct. The description now
+  says `reason`, a test walks every parameter the Actions line names and asserts it is really declared, and
+  `kaam_plan` also accepts `note` as an alias (`reason = reason or note`) so no future guess can crash her work.
+- FLAW 2, RAW BACKEND TEXT IN HER CHAT. `pakka._ladder_line` built its line as
+  `f"Yeh raasta nahi chala ({mask(error, 90)}) — ..."`, so the raw tool error went to her screen: *"internal error:
+  kaam_plan() got an unexpected keyword argument 'note'"* and *"Thread-level listing Gmail par hai; is mailbox mein
+  email_check use kijiye"* - text written for the MODEL, not for her, and literally the "BULK BACKEND UNWANTED
+  RESPONSES" she complained about in the first place. The line is now human with no brackets; the real error is
+  already on the step chip (`bus.publish "step"` carries `detail`) and in the work log, one click away - exactly
+  Claude's split between the prose and the collapsed tool row.
+- FLAW 3, LANGUAGE DRIFT. Two of her four replies came back in English although she had written Hinglish. The rule
+  existed - "Her style wins: her language and script" - but as rule 26 of a long rulebook. Her language is now the
+  FIRST block of `replystyle.CHAT`, and it explicitly covers the lines written WHILE working, not only the last one.
+- FLAW 4, TWO FINAL ANSWERS on a finished job (a full reply, then a second "Competitor job poora ho gaya" /
+  "Email digest ka kaam poora ho gaya"). Traced: `kaam_followup._wake_turn` runs a whole second reporting turn for a
+  finished job, and its duplicate guard `_recent_said` matched the job TITLE's words against the recent replies -
+  so a paraphrase slipped through, and an English reply to a Hinglish title never matched at all. SAME CHAIN AS
+  FLAW 3. New `_answered_since(conv, since)` asks WHEN instead of matching words: a real reply (in_history, not a
+  status chip, >= 40 chars) written after the job finished means the turn she was watching already told her, so the
+  wake is skipped. Language-independent, and a genuinely quiet chat still gets its background news (a missing
+  timestamp never blocks it; the old word guard is kept beside it).
+- Tests: NEW `server/tests/test_v0259_saaf_kaam.py` (9) - the description names only declared parameters, the `note`
+  alias and a step actually called with `note=` (the exact shape that raised, asserted to land on the step's note),
+  no raw error in the ladder line while the chip keeps its detail, the language rule proven to be the FIRST block
+  and to cover the working lines, `_answered_since` gated on in_history / length / time with the news never lost,
+  and v0.258's narration proven still intact (cadence 1/6, NARRATE demanding the real number, the opener).
+- Version 0.259.0 (pubspec 0.259.0+299, console ?v=0.259.0, pins -> 0.259.0).
+- NOT VERIFIED: flaws 3 and 4 are prompt / timing fixes whose proof is her next live run - a Hinglish ask that ends
+  in Hinglish, with exactly one final answer.

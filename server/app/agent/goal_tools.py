@@ -18,7 +18,7 @@ KAAM_PLAN_DEF = {
     "description": (
         "Plan and track a long job (3+ steps) so it finishes end to end: set the plan first, then work through it "
         "step by step, marking each step done / failed as you go. Never stop with just text while steps are open. "
-        "Actions: set (goal, steps), step (n, state done|failed|skipped|current, note), add (text), show, "
+        "Actions: set (goal, steps), step (n, state done|failed|skipped|current, reason), add (text), show, "
         "finish (outcome done|blocked_on_her|failed|stopped, reason, made, left, your_turn). After every big step write "
         "ONE short line to her (what you found / made, what is next), then the next tool. blocked_on_her is only when you truly need "
         "HER: her tap on a card, an OTP, or a fact only she knows."),
@@ -46,7 +46,11 @@ KAAM_PLAN_DEF = {
 
 async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[str] | None = None, n: int = 0,
                     state: str = "", text: str = "", outcome: str = "", reason: str = "", goal_id: str = "",
-                    made: list[str] | None = None, left: str = "", your_turn: str = "") -> dict:
+                    made: list[str] | None = None, left: str = "", your_turn: str = "", note: str = "") -> dict:
+    # v0.259: `note` is an alias for `reason`. The schema used to document "step (n, state, note)" while the code
+    # took `reason`, so a model that followed the description died with a TypeError mid-job (it cost the owner a
+    # whole step on 29 Oct). The description is fixed above; this keeps any future guess from crashing her work.
+    reason = reason or note
     tenant, conv = ctx.tenant_id, ctx.conversation_id
     try:
         if action == "set":
