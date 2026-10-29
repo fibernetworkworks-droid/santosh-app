@@ -1,0 +1,55 @@
+# v0.224 Outside uptime check for the websites Hoola hosts. It runs on GitHub's machines, not on the Hoola server, so it
+# also sees the times the whole server is down (Hoola's own 5-minute check cannot: it dies with the server).
+# Every 15 minutes: asks Hoola for its live addresses, opens each one, reports what it saw back to Hoola (same down / up
+# cards as Hoola's own check). Hoola unreachable or a site down = this run fails = GitHub emails the repo owner.
+# Needs repo secrets HOOLA_URL (https://<api host>) and SITES_UPTIME_KEY (same as the server's .env); without them every
+# run just says it is not set up.
+name: site-uptime
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check every live website from outside
+        env:
+          HOOLA_URL: ${{ secrets.HOOLA_URL }}
+          KEY: ${{ secrets.SITES_UPTIME_KEY }}
+        run: |
+          set -u
+          if [ -z "${HOOLA_URL}" ] || [ -z "${KEY}" ]; then
+            echo "::notice::site-uptime not set up (repo secrets HOOLA_URL / SITES_UPTIME_KEY missing)"; exit 0
+          fi
+          base="${HOOLA_URL%/}"
+          if ! list=$(curl -fsS --max-time 30 -H "X-Uptime-Key: ${KEY}" "${base}/api/sites-uptime"); then
+            echo "::error::Hoola server ${base} is not answering (every website it hosts may be down too)"; exit 1
+          fi
+          hosts=$(printf '%s' "$list" | python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin).get("hosts", [])))')
+          results="[]"; down=0
+          for h in $hosts; do
+            case "$h" in *[!a-z0-9.-]*|"") continue ;; esac
+            code=$(curl -s -o /tmp/page -w '%{http_code}' --max-time 20 -A "HoolaUptime/1.0 (outside)" "https://${h}/" || true)
+            ok=false; err=""
+            if [ "$code" = "200" ] && grep -q 'name="generator" content="Hoola"' /tmp/page; then ok=true
+            elif [ "$code" = "000" ] || [ -z "$code" ]; then err="no answer (DNS / TLS / timeout)"
+            else err="page not served"; fi
+            [ "$ok" = true ] || { down=$((down+1)); echo "::warning::${h} down: HTTP ${code} ${err}"; }
+            results=$(python3 -c 'import json,sys; r=json.loads(sys.argv[1]); r.append({"host":sys.argv[2],"ok":sys.argv[3]=="true","status":sys.argv[4],"error":sys.argv[5]}); print(json.dumps(r))' "$results" "$h" "$ok" "$code" "$err")
+          done
+          curl -fsS --max-time 30 -X POST -H "X-Uptime-Key: ${KEY}" -H "Content-Type: application/json" \
+            -d "{\"results\": ${results}}" "${base}/api/sites-uptime" >/dev/null || echo "::warning::could not report back to Hoola"
+          n=$(printf '%s\n' $hosts | grep -c . || true)
+          echo "checked ${n} website(s), ${down} down"
+          [ "$down" -eq 0 ]

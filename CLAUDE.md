@@ -33,6 +33,10 @@ Muse / Grok Bot" and approved "START PHASE 1", so `server/app/pc/hub.py` + `oper
 `agent/pc_tools.py` gained the multi-PC kind routing and the coworker VM mode (her-PC behaviour kept
 byte-identical), and the NEW `desktop-linux/` agent was added (the Windows `desktop/` app stays untouched,
 1.4.0). The freeze is back in force for everything else the moment this ships.
+Exception recorded (29 Oct 2026): v0.238.0 DATA DESK — the owner said "GO for 1–3 (server only)" after the
+100-repo PDF root cause, so ONLY the `hoola_pc_do` description in `agent/pc_tools.py` was rewritten (desktop software
+only, never data; a VM file does not come back to the chat). No PC behaviour, endpoint or desktop file changed; fix 4
+(VM files back to the chat) still needs her "GO WITH PC". The freeze stands for everything else.
 
 ## What it is
 **Hoola** is an Indian "Dots-like" always-on AI coworker app by Newtika Pvt Ltd (FNW). Owner: Meghana.
@@ -97,11 +101,15 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.237.0 (pubspec 0.237.0+277). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.239.0 (pubspec 0.239.0+279). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.237 FULL CLAUDE MODE Phase 1: whole chat word for word (`CHAT_CONTEXT=claude|hoola`), `agent/context.py` gauge +
-  safety net + one retry on "too long", clean error lines, GET /api/conversations/{id}/context (Phase 2 = compaction).
+- v0.239 FULL CLAUDE MODE Phase 1 (built as 0.237): whole chat word for word (`CHAT_CONTEXT=claude|hoola`), `agent/context.py`
+  gauge + safety net + one retry on "too long", clean error lines, GET /api/conversations/{id}/context (Phase 2 = compaction).
+- v0.238 DATA DESK: big data stays in a server file (`app/datasets.py`, tools data_fetch / data_read / data_note,
+  doc_studio data= + part=add); cloud PC = desktop software only, sticks only when she asked; goal waits on a running job.
+- v0.237 WEBSITE PHASES 1-3 (bug fixes, nginx-served sites + outside uptime check + off-server backup, Opus art
+  direction / andaaza / parallel sections / self-critique for website builds; details: grep "WEBSITE PHASE" docs/HISTORY.md).
 - v0.236 console list shows only chats she wrote in (no empty "Naya chat" rows) · v0.235 long jobs Phase C (built as 0.232): she sees Hoola think (adaptive thinking on Claude for long jobs / big
   asks, setting `chat_thinking` goal|on|off; thinking never saved or sent to GLM; phone Soch card `lib/ui/think_card.dart`).
 - v0.234 console: one avatar while replying, no greeting row · v0.233 console New chat reuses her untouched empty chat and opens on the home · v0.232 voice Phase 4 (call scorecards saved per call in data/voice_calls, grade + end reason, /api/voice/quality per

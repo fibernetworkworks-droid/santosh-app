@@ -1,4 +1,4 @@
-"""v0.236.0 the console chat list shows only chats she wrote in; console notes never show in a title."""
+"""v0.237.0 the console chat list shows only chats she wrote in; console notes never show in a title."""
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -32,5 +32,5 @@ def test_plain_strips_console_notes():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.237.0"
-    assert "0.237.0+277" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.239.0"
+    assert "0.239.0+279" in (ROOT / "pubspec.yaml").read_text()

@@ -431,6 +431,10 @@ HANDLERS.update(MAKE_HANDLERS)
 # v0.189.0 Document Studio: Claude-grade PDF / Word / Excel / PowerPoint (design system + QA)
 from .docstudio_tools import (DOCSTUDIO_HANDLERS, DOCSTUDIO_LABELS,  # noqa: E402
                               DOCSTUDIO_TOOLS)
+from .data_tools import DATA_HANDLERS, DATA_LABELS, DATA_TOOLS  # noqa: E402  v0.238 data desk
+TOOLS.extend(DATA_TOOLS)
+TOOL_LABELS.update(DATA_LABELS)
+HANDLERS.update(DATA_HANDLERS)
 
 TOOLS.extend(DOCSTUDIO_TOOLS)
 TOOL_LABELS.update(DOCSTUDIO_LABELS)

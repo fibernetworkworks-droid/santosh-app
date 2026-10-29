@@ -183,6 +183,11 @@ class Settings(BaseSettings):
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)
+    site_opus: bool = True                 # v0.225 every website section / fix / change on the App Sahayak Opus path (thinking, effort, retries, no quiet fallback)
+    site_art: bool = True                  # v0.225 Opus writes a design DNA per look before the hero (art direction)
+    site_critique: str = "home"            # v0.225 Opus looks at the built home page screenshots: home | off
+    site_critique_min: float = 7.5         # v0.225 a section scoring below this (out of 10) is redrawn once with the notes
+    site_parallel: int = 3                 # v0.225 sections written at the same time inside one build
     app_model: str = "claude-opus-5-5"     # v0.140 App Sahayak: EVERY design / screen / fix / change / Kotlin call (owner: Opus 5.5)
     app_model_fallback: bool = False       # v0.140 true = when Opus can't be reached, use the chat model / cheap brain instead
     app_model_tries: int = 5               # v0.140 tries per call when Opus is busy (429 / 5xx / overloaded / timeouts)
@@ -207,6 +212,13 @@ class Settings(BaseSettings):
     sites_porkbun_key: str = ""            # v0.123 Newtika's Porkbun API key / secret (only with sites_resell)
     sites_porkbun_secret: str = ""
     sites_domain_month_inr: float = 5000   # v0.123 ceiling per owner per month for domain purchases
+    sites_uptime_key: str = ""             # v0.224 shared secret for the outside uptime checker (GitHub Actions), >= 16 chars
+    sites_backup_bucket: str = ""          # v0.224 S3-compatible bucket for the daily website files backup (off = empty)
+    sites_backup_endpoint: str = ""        # e.g. https://<account>.r2.cloudflarestorage.com (empty = AWS S3)
+    sites_backup_region: str = "auto"
+    sites_backup_key_id: str = ""
+    sites_backup_secret: str = ""
+    sites_backup_keep_days: int = 14
     app_build_mode: str = ""               # v0.132 native Android builds: worker | github | local | "" (project ZIP only)
     app_build_url: str = ""                # v0.132 worker: https://build.example.com (server/app_builder on a separate machine)
     app_build_secret: str = ""             # v0.132 worker shared secret (HMAC of every request)
