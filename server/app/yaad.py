@@ -333,13 +333,25 @@ def history(conversation_id: str) -> list[dict]:
 def full_history(conversation_id: str) -> list[dict]:
     """v0.237 FULL CLAUDE MODE: the WHOLE chat, every message word for word (tool steps included), nothing compressed
     in advance. agent/context.py measures it before every model call and only then decides whether anything must give.
-    A chat longer than ROWS_MAX messages starts with its rolling summary, so the part the row limit cut is not lost."""
+    A chat longer than ROWS_MAX messages starts with its rolling summary, so the part the row limit cut is not lost.
+    v0.242 Phase 2: a compacted chat = its checkpoint summary first, then every message AFTER it, word for word."""
     rows = _rows(conversation_id)
+    head, upto = None, 0
+    try:
+        from .agent import compact
+        head, upto = compact.head_message(conversation_id)
+    except Exception:
+        log.exception("compact checkpoint read failed")
+    cut = bool(rows) and len(rows) >= ROWS_MAX
+    if upto:
+        rows = [r for r in rows if r["id"] > upto]
     exs = exchanges(rows)
     msgs: list[dict] = [{"role": m["role"], "content": m["content"]} for ex in exs for m in ex]
     while msgs and not (msgs[0]["role"] == "user" and isinstance(msgs[0]["content"], str)):
         msgs.pop(0)
-    if len(rows) >= ROWS_MAX:
+    if head is not None:
+        msgs.insert(0, head)
+    elif cut:
         summ = summary_block(conversation_id)
         if summ:
             msgs.insert(0, {"role": "user", "content": SUMMARY_OPEN + summ})

@@ -459,6 +459,34 @@ def get_context(conversation_id: str, tenant: str = Depends(current_tenant)):
     from .agent import context as _ctx
     return {"context": _ctx.reading(conversation_id), "gauge": _ctx.health()}
 
+@app.get("/api/conversations/{conversation_id}/compact", dependencies=[Depends(require_key)])
+def get_compact(conversation_id: str, tenant: str = Depends(current_tenant)):
+    """v0.242 FULL CLAUDE MODE Phase 2: this chat's checkpoint summary (what the model reads in place of the older
+    part) and its last few compactions."""
+    _conv_or_404(conversation_id, tenant)
+    from .agent import compact
+    return {"active": compact.active(conversation_id), "recent": compact.recent(conversation_id),
+            "health": compact.health()}
+
+
+@app.post("/api/conversations/{conversation_id}/compact", dependencies=[Depends(require_key)])
+async def post_compact(conversation_id: str, tenant: str = Depends(current_tenant)):
+    """v0.242 'Chat chhoti karo' (Claude's /compact): write the checkpoint now. Refused while Hoola works in this chat."""
+    _conv_or_404(conversation_id, tenant)
+    from .agent import compact
+    from .agent.santosh import _locks
+    if not compact.enabled():
+        raise HTTPException(409, "Compaction is off (CHAT_CONTEXT=hoola or CHAT_COMPACT=false)")
+    lk = _locks[conversation_id]
+    if lk.locked():
+        raise HTTPException(409, "Hoola is working in this chat right now - try again when the reply is done")
+    async with lk:
+        v = await compact.run(conversation_id, tenant, "manual")
+    if v is None:
+        return {"compact": None, "say": "Chat abhi chhoti hi hai - saar banane layak purani baatein nahi hain."}
+    return {"compact": v}
+
+
 @app.get("/api/conversations/{conversation_id}/goal", dependencies=[Depends(require_key)])
 def get_goal(conversation_id: str, tenant: str = Depends(current_tenant)):
     """v0.186 the working (or newest) goal of this chat, for the phone's goal card."""

@@ -666,6 +666,19 @@ function renderCard(kind, p, at, live) {
     });
     turn().bd.appendChild(el); return;
   }
+  if (kind === 'compact') {   // v0.242 FULL CLAUDE MODE Phase 2: older messages folded into one checkpoint summary
+    const el = document.createElement('details'); el.className = 'note';
+    const n = Number(p.exchanges || 0);
+    el.innerHTML = `<summary>🗜 Older messages summarised${n ? ` (${n} exchanges)` : ''} · ${esc(String(p.before_pct ?? '?'))}% → ${esc(String(p.after_pct ?? '?'))}% full · View</summary><div class="faint" style="white-space:pre-wrap;font-size:13px;margin-top:6px">${esc(p.preview || '')}…</div>`;
+    let loaded = false;
+    el.addEventListener('toggle', async () => {
+      if (!el.open || loaded) return; loaded = true;
+      try { const r = await api('GET', `/api/conversations/${encodeURIComponent(CONV)}/compact`);
+            if (r.active?.summary) el.querySelector('div').textContent = r.active.summary; }
+      catch (e) { loaded = false; }
+    });
+    turn().bd.appendChild(el); return;
+  }
   if (kind === 'memory_saved' || kind === 'procedure') {
     const el = document.createElement('div'); el.className = 'note'; el.textContent = (kind === 'memory_saved' ? '📌 Saved to memory: ' : '🎓 Learned: ') + (p.text || p.title || ''); turn().bd.appendChild(el); return;
   }
@@ -1067,7 +1080,7 @@ addEventListener('resize', drawRail);
 const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 'delta_reset', 'reply_end', 'think', 'say', 'message', 'upload',
   'reminders', 'routines', 'lists', 'email_sent', 'hoola_update', 'galla', 'mshop', 'office', 'employee', 'darzi_order',
   'phonedoc_open', 'phonedoc_check', 'device_action', 'device_action_result', 'home_device', 'bt_request', 'bazar_open',
-  'bazar_link', 'gyaan_sources', 'memory_saved', 'procedure', 'open', 'link', 'call_receipt', 'speaker', 'voice',
+  'bazar_link', 'gyaan_sources', 'memory_saved', 'procedure', 'compact', 'open', 'link', 'call_receipt', 'speaker', 'voice',
   'biz_inbox', 'biz_appointment', 'propagent_listing', 'chai_order']);
 let ACC = null, ACC_LAST = 0;
 function accountStream() {
