@@ -171,7 +171,7 @@ def test_steps_running_out_ends_honestly_and_one_continuation_finishes(gz, monke
     import app.agent.goal as goal_mod
     conts = []
 
-    async def fake_cont(c, tenant, ask, gid):
+    async def fake_cont(c, tenant, ask, gid, actor="routine"):   # v0.222 rounds carry their actor
         conts.append((c, ask, gid))
         goal_mod.finish("default", gid, "done", "continuation ne poora kiya")
 
