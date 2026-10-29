@@ -9792,3 +9792,22 @@ PDF ONLY WITH MATCHING BACKGROUND OF OUR DESIGN. ALSO CHECK AT TOP UNWANTED TAB.
 - Version 0.248.0 (pubspec 0.248.0+288, console ?v=0.248.0, pins → 0.242.0).
 - NOT VERIFIED: nobody has seen this on a real screen yet. The serif at 16px will look bigger and airier than the old
   15px sans — that is Claude's shape, but it is a visible change to every reply on both surfaces.
+
+## v0.250.0 SIRF LINE — no more English instructions spoken mid-call (owner: "IN BETWEEN VOICE CALL AI START TALK IN ENGLISH --- I.E SAY IT QUITLY AND SIMPLY ETC --- FIND ROOT CAUSE AND FIX")
+- **Root cause:** the "ek second" acks, the "haan..." murmurs and the progress sounds are pre-rendered by the Gemini TTS
+  model from an English delivery ask ("Say this quickly and casually, like a young Indian guy from Pune...",
+  "Say this quietly, half to yourself...", "Say ONLY this tiny sound, softly..."). TTS models sometimes SPEAK the ask
+  instead of only the line after the colon. `_trim` kept the first 1.6 s of that ("Say this quietly, half to...") and
+  the clip file cache (`data/voice_acks`) replayed it in every later call - English words in the middle of a Hinglish
+  call, exactly when a tool ran or she paused.
+- **Fix:** `_safe_clip(line, render, voice, client)` measures the render's speech (`_speech_s`) against what the line can
+  take (`_max_speech_s` = 1.2 s + 0.11 s a character; a read-out ask is 8-20 s). Too long -> rejected
+  (`CLIP_REJECTED`, warning in the log) and rendered once more from the BARE line (nothing else to read); still too long
+  -> no clip (dead air is better than English). Acks (`_build_acks`) and both pools (`_build_pool`) go through it.
+- **Every cached clip re-renders:** generation tags `_ACK_GEN` a2 -> a3, `_BC_GEN` / `_PROG_GEN` b1/p1 -> b2/p2, so the
+  bad files already on the VPS are never played again (they stay orphaned in `data/voice_acks`; safe to delete).
+- Two mid-call notes were English ("Ask her once more to say them slowly...", "She called you by name... Answer her now,
+  briefly.") -> Hinglish, so nothing in the call nudges him toward English.
+- `/api/voice/stats` adds `clips_rejected`.
+Tests: NEW `test_v0250_sirf_line.py` (7); generation pins in `test_v0201_feeling.py` / `test_v0206_backchannels.py` moved.
+Version 0.250.0 (pubspec 0.250.0+290, console ?v=0.250.0, pins -> 0.250.0). Server only; no new APK needed.

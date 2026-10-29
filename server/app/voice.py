@@ -956,7 +956,7 @@ ACK_LINES = ["Haan, ek second.", "Achha, dekhta hoon.", "Ruko, check karta hoon.
              "Hmm... sochne do, ek second.", "Haan, ho gaya... bas ek minute.", "Achha wait, khol raha hoon.",
              "Haan, pakka. Ek minute deta hoon."]   # v0.181 5 -> 16: ek hi line har baar sunai deti thi; ab variety
 ACK_DIR = Path("data") / "voice_acks"
-_ACK_GEN = "a2"   # v0.202.0 AWAAZ-2: the ask behind a clip changed (per-flavour energy), so the generation rides
+_ACK_GEN = "a3"   # v0.202.0 AWAAZ-2: the ask behind a clip changed (per-flavour energy), so the generation rides
 #                  in the filename - the old flat-energy renders on an old server are orphaned instead of played
 #                  forever (the owner's ear test: acks FAILed because the v0.181 clips outlived their ask).
 
@@ -1029,6 +1029,43 @@ def _tts_clip(ask: str, voice: str, client=None) -> bytes:
 
 
 TTS_FALLBACKS = {"count": 0}   # v0.234 clips the call's own TTS model could not render (the legacy one did)
+
+
+# v0.250.0 SIRF LINE (owner: "IN BETWEEN VOICE CALL AI START TALK IN ENGLISH - SAY IT QUIETLY AND SIMPLY"): the TTS
+# model sometimes SPEAKS the delivery ask itself ("Say this quietly, half to yourself, like a young Indian guy...")
+# instead of only the line after the colon. _trim then kept the first 1.6 s of that English instruction and the file
+# cache replayed it in every call, in the middle of the conversation. A clip is now accepted only when its speech is
+# about as long as the LINE could be; otherwise it is rendered once more from the bare line, else dropped.
+CLIP_REJECTED = {"count": 0}
+
+
+def _speech_s(pcm: bytes, rate: int = 24000) -> float:
+    """Seconds from the first to the last loud sample (the same loudness _trim uses)."""
+    a = array("h")
+    a.frombytes(pcm[: len(pcm) // 2 * 2])
+    loud = [i for i in range(0, len(a), 24) if abs(a[i]) > 600]
+    return (loud[-1] - loud[0]) / rate if len(loud) > 1 else 0.0
+
+
+def _max_speech_s(line: str) -> float:
+    """The longest a short Hinglish line can sound (slow, with its '...' pauses): ~0.11 s a character + 1.2 s.
+    A read-out instruction is 120-300 characters (8-20 s), so the two never overlap."""
+    return 1.2 + 0.11 * len(line or "")
+
+
+def _safe_clip(line: str, render, voice: str, client=None) -> bytes:
+    """Render a clip (`render()` = the full ask); refuse audio longer than the line could be (the ask was read
+    aloud). Second try: the bare line, which has nothing else to read. Neither fits -> b"" (no clip beats an English one)."""
+    tries = (render, lambda: _tts_clip(line, voice, client))
+    for i, make in enumerate(tries):
+        raw = make()
+        took = _speech_s(raw)
+        if took <= _max_speech_s(line):
+            return _trim(raw)
+        CLIP_REJECTED["count"] += 1
+        log.warning("clip %r rejected (%.1fs of speech for a %d-char line: the ask was read aloud)%s",
+                    line, took, len(line), "" if i else ", trying the bare line")
+    return b""
 
 
 def _ack_tts(text: str, voice: str, gender: str, client=None) -> bytes:
@@ -1104,7 +1141,7 @@ def _build_acks(key: str, voice: str, gender: str) -> None:
         for i, line in enumerate(ACK_LINES):
             f = _ack_file(voice, gender, i)
             try:
-                clip = f.read_bytes() if f.exists() else _trim(_ack_tts(gendered(line, gender), voice, gender, client))
+                clip = f.read_bytes() if f.exists() else _safe_clip(gendered(line, gender), lambda: _ack_tts(gendered(line, gender), voice, gender, client), voice, client)
             except Exception as e:
                 log.info("ack clip %s/%s not made: %r", voice, i, e)
                 continue
@@ -1147,7 +1184,7 @@ BC_LINES = ["Haan...", "Achha...", "Hmm...", "Achha achha...", "Theek hai...", "
             "Sahi hai...", "Hmm, achha...", "Haan, theek...", "Achha, sun raha hoon..."]         # her pauses
 PROG_LINES = ["Haan... ho raha hai.", "Ek minute... bas ho gaya.", "Dekh raha hoon... ruko.",
               "Haan, bas ek minute...", "Ho gaya... bas, ek sec.", "Ruko ruko... ho raha hai."]   # long tools
-_BC_GEN, _PROG_GEN = "b1", "p1"
+_BC_GEN, _PROG_GEN = "b2", "p2"   # v0.250 b1/p1 -> b2/p2: re-rendered through _safe_clip
 
 
 def _bc_file(v: str, gender: str, i: int) -> Path:
@@ -1195,7 +1232,7 @@ def _build_pool(kind: str, voice: str, gender: str) -> None:
         for i, line in enumerate(lines):
             f = ffn(voice, gender, i)
             try:
-                clip = f.read_bytes() if f.exists() else _trim(_tts_clip(ask(gendered(line, gender), gender), voice, client))
+                clip = f.read_bytes() if f.exists() else _safe_clip(gendered(line, gender), lambda: _tts_clip(ask(gendered(line, gender), gender), voice, client), voice, client)
             except Exception as e:
                 log.info("clip %s %s/%s not made: %r", kind, voice, i, e)
                 continue
@@ -2081,8 +2118,8 @@ class Call:
         if a.digits and len(v) != a.digits:
             if final and len(v) > a.digits:
                 self._otp_heard = ""
-                self.push("text", "(OTP ke digits theek se sunai nahi diye. Ask her once more to say them slowly, one by "
-                                  "one. Don't say any digits yourself.)")
+                self.push("text", "(OTP ke digits theek se sunai nahi diye. Usse ek baar aur dheere, ek-ek karke bolne "
+                                  "ko kaho. Khud koi digit mat bolna.)")
             return            # shorter: she may still be saying it
         if not a.digits and not final:
             return            # length not known: wait till she has finished speaking
@@ -2156,7 +2193,7 @@ class Call:
         after, self._after_release = self._after_release, []
         if name_prompt and user and not reply and not interrupted:
             # v0.142 she called Hoola back with a question while it was told to stay quiet: it answers now
-            self.push("text", f"(She called you by name and said: \"{user[-400:]}\". Answer her now, briefly.)")
+            self.push("text", f"(Usne aapka naam lekar kaha: \"{user[-400:]}\". Ab usko chhote mein jawab do, usi ki bhasha mein.)")
         for t in after:
             self.push("text", t)
         if self._otp_said:                     # the OTP she said never lands in the chat history

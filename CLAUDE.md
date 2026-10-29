@@ -101,9 +101,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.249.0 (pubspec 0.249.0+289). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.250.0 (pubspec 0.250.0+290). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (13 now: theme.js, pdfview.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.250 SIRF LINE: voice clips that read their English TTS ask aloud ("say this quietly...") are rejected by length,
+  re-rendered from the bare line; all cached clips regenerate (a3/b2/p2); two English mid-call notes now Hinglish.
 - v0.249 CLAUDE JAISA AKSHAR: the chat is set like Claude's - the REPLY in a serif at 16px / 400 / 1.5 (Source
   Serif 4; Anthropic Serif is not ours), her own message in the sans at the same 16 / 1.5, reply headings serif 600,
   bold 600 not 800, code mono 14. Both surfaces (console `--fr` in v2.css, phone `replyText()` in lib/ui/glass.dart);

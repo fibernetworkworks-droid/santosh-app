@@ -103,9 +103,9 @@ def test_prog_ask_is_half_to_himself():
 # ---------------- the pools: tiny sounds, tagged renders ----------------
 
 def test_clip_filenames_carry_the_generation_tag():
-    assert voice._bc_file("Cherry", "f", 3).name == "bc_Cherry_f_3_b1.pcm"
-    assert voice._prog_file("Chandu", "m", 1).name == "prog_Chandu_m_1_p1.pcm"
-    assert voice._ack_file("Cherry", "f", 3).name == "Cherry_f_3_a2.pcm"     # acks untouched
+    assert voice._bc_file("Cherry", "f", 3).name == "bc_Cherry_f_3_b2.pcm"
+    assert voice._prog_file("Chandu", "m", 1).name == "prog_Chandu_m_1_p2.pcm"
+    assert voice._ack_file("Cherry", "f", 3).name == "Cherry_f_3_a3.pcm"     # acks untouched
     names = {voice._bc_file("Cherry", "f", 0).name, voice._prog_file("Cherry", "f", 0).name,
              voice._ack_file("Cherry", "f", 0).name}
     assert len(names) == 3                                                   # no collisions in one cache dir
@@ -122,7 +122,7 @@ def test_pool_lines_are_tiny_listener_sounds():
 
 def test_pool_builder_uses_cache_and_renders_the_rest(monkeypatch, tmp_path):
     monkeypatch.setattr(voice, "ACK_DIR", tmp_path)
-    first = tmp_path / "bc_Cherry_f_0_b1.pcm"
+    first = tmp_path / "bc_Cherry_f_0_b2.pcm"
     first.write_bytes(b"CACHED0")
     calls = []
 
@@ -137,7 +137,7 @@ def test_pool_builder_uses_cache_and_renders_the_rest(monkeypatch, tmp_path):
     assert clips[0] == b"CACHED0"          # the cached render is kept, not re-spoken
     assert len(calls) == len(voice.BC_LINES) - 1
     assert all("listening hard" in a for a in calls)
-    assert (tmp_path / "bc_Cherry_f_1_b1.pcm").exists()
+    assert (tmp_path / "bc_Cherry_f_1_b2.pcm").exists()
     assert "bc:Cherry:f" not in voice._POOL_BUSY
 
 
@@ -146,7 +146,7 @@ def test_prog_pool_builds_under_its_own_key(monkeypatch, tmp_path):
     monkeypatch.setattr(voice, "_tts_clip", lambda ask, v, client=None: b"\x24\x40" * 4800)
     voice._build_pool("prog", "Cherry", "f")
     assert len(voice._POOLS["prog:Cherry:f"]) == len(voice.PROG_LINES)
-    assert not (tmp_path / "bc_Cherry_f_0_b1.pcm").exists()        # bc renders were not touched
+    assert not (tmp_path / "bc_Cherry_f_0_b2.pcm").exists()        # bc renders were not touched
 
 
 def test_pool_clips_never_let_a_call_wait(monkeypatch, tmp_path):
@@ -358,4 +358,4 @@ def test_stats_carry_the_new_clips():
 
 
 def test_version():
-    assert APP_VERSION == "0.249.0"
+    assert APP_VERSION == "0.250.0"
