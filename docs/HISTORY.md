@@ -9277,3 +9277,12 @@ Tests: NEW `test_v0232_voice_phase4.py` (12). Version 0.232.0 (pubspec 0.232.0+2
   nothing changes. A greeting-only chat opens on the home screen; the greeting never marks a chat unread.
 - Old empty "Naya chat" rows already made stay in the list (delete from the chat menu).
 - Tests: NEW `test_v0233_new_chat.py` (4). Version 0.233.0 (pubspec 0.233.0+273, console ?v=0.233.0, pins -> 0.233.0).
+
+## v0.234.0 One avatar while Hoola replies (owner: "WHEN USER SEND THE PROMPT AVATAR COMES TWO TIMES ... MAKE IT PERFECT LIKE A CLAUDE CHAT DOES")
+- Cause: at `reply_start` the console opened the reply row (`.mh`, with its avatar) before any words, right under the
+  "Preparing your response…" progress row, which has its own avatar - two avatars, one of them empty. The old greeting
+  could also be drawn twice (timeline + live stream).
+- Fix (console only): `#app .mh:has(>.bd:empty){display:none}` - an empty reply row stays hidden until words or steps
+  arrive; the progress row keeps its avatar while the reply row is still empty (`tail` only under a reply with content);
+  the console never draws a `source: greeting` message (the home screen greets).
+- Tests: NEW `test_v0234_one_avatar.py` (3). Version 0.234.0 (pubspec 0.234.0+274, console ?v=0.234.0, pins -> 0.234.0).
