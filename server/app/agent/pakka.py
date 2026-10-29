@@ -78,6 +78,7 @@ class TaskRun(Base):
     left: Mapped[str] = mapped_column(Text, default="")              # what was still missing, if anything
     seconds: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    conversation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)   # v0.246 FENCE: the job's chat
 
 
 # ---------------------------------------------------------------- masking / signatures
@@ -429,7 +430,7 @@ def record(tenant: str, request: str, outcome: str, calls: list[dict[str, Any]],
             s.add(TaskRun(tenant_id=tenant, request=mask(request, 300), outcome=outcome, steps=len(calls),
                           failures=sum(1 for c in calls if not c.get("ok")), fixes=int(state.get("fixes", 0)),
                           checks=int(state.get("kept_going", 0)), tools=json.dumps(tools[:20]), left=mask(left, 300),
-                          seconds=int(seconds)))
+                          seconds=int(seconds), conversation_id=(state.get("conv") or None)))
             ids = s.scalars(select(TaskRun.id).where(TaskRun.tenant_id == tenant)
                             .order_by(TaskRun.created_at.desc()).offset(MAX_RUNS)).all()
             for i in ids:

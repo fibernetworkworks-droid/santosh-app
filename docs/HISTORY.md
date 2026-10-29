@@ -9687,3 +9687,28 @@ UNIVERSALLY, NOT FOR PDF ONLY - HOOLA MUST CHOOSE PERFECT TOOL FOR THAT PARTICUL
   GET /api/quality/tools. The live card was not run in the sandbox (no model key) - run it on the VPS.
 - Tests `server/tests/test_v0245_tool_choice.py`. Version 0.245.0 (pubspec 0.245.0+285, console ?v=0.245.0 x12, pins).
   Server-only deploy.
+
+## v0.246.0 FULL CLAUDE MODE — Phase 3C: FENCED SESSIONS, Claude's project memory (owner: "PHASE 3 + MEMORY + FENCE SESSIONS" / "START PHASE 3C"; facts: "RECOMMENDED")
+- WHY: a console Session = a project (`Conversation.project_id`). Before, facts, the work diary, running jobs and puri
+  yaad search covered ALL her chats, so a chat in Session "Client X" could recall Client Y's details. Claude keeps a
+  project's memory inside the project; Hoola now does the same.
+- NEW `app/fence.py`: scope of a chat = its project_id ('' = general). `chats_in(tenant, conv)` = her chats of the same
+  scope (None = no fence: off / no chat / unknown chat), `visible`, `keep`. Decided at READ time from the chat a row came
+  from, so moving a chat into / out of a Session moves its memory with it. Setting `memory_fence` (default true).
+- NEW nullable columns (added by `_add_missing_columns`, old rows = global): `MemoryFact.conversation_id` (set for AUTO
+  facts by `yaad.save_fact(..., conversation_id)` from `extract_facts`), `TaskRun.conversation_id` (`pakka.record` from
+  state["conv"]).
+- FENCED readers: `life.memory_facts(tenant, n, conversation_id)` + `life.context_block(tenant, conversation_id)` (system
+  prompt; voice.py passes the call's chat - two call sites only), `yaad._known / relevant_facts / save_fact` dupes,
+  `yaad.search(..., conversation_id)` (index items by their chat, raw word search by chat), `yaad.diary` (TaskRun,
+  OperatorTask, call receipts), `turn_block` / `voice_block`, `kaamwatch.block(tenant, conversation_id)` (chat + call),
+  `memory_search` (make_tools), `yaad_khojo` (desk_tools), Gyaan's chat hits (`gyaan.search(..., conversation_id)` from
+  gyaan_tools). GLOBAL: facts she asked to remember (the `remember` tool saves no chat), pinned facts, rows from before
+  v0.246, her profile. Her own screens (memory list, /api/yaad search) still show everything.
+- PROOF: GET /api/context/report?days=7 (compactions per reason with average tokens before / after, how full her chats
+  were at their last call, gauge ratios, fence counters). `server/tools/memory_quiz.py`: a 300-exchange chat with 20
+  planted details, asked in three modes (hoola / full / compact) on a throw-away SQLite with the REAL brain - run on the
+  VPS: `cd ~/apps/santosh-core && .venv/bin/python ~/santosh_app/server/tools/memory_quiz.py` (about 60 model calls).
+- Tests NEW `test_v0246_fence.py` (10): facts per Session + global ones, context block + recall by meaning, auto facts
+  stamped, search + raw words, diary + running jobs, a moved chat, fence off, a whole turn in Client Y never sees Client
+  X, the report, the quiz plants. Version 0.246.0 (pubspec 0.246.0+286, console ?v=0.246.0, pins). Server only.

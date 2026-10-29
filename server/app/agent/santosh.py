@@ -731,7 +731,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             _extra += " " + " ".join(str(s.get("text") or "") for s in (_g0.get("steps") or []))
         adm = _admit.plan_for(state.get("request", ""), settings, extra_text=_extra)
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
-    _ctxb = context_block(tenant_id)
+    _ctxb = context_block(tenant_id, conversation_id)   # v0.246 facts fenced to this chat's Session
 
     def _system(fams) -> str:
         # v0.221 PATLA PROMPT: only the guides of the admitted families ride (None = the full guide, as before)
@@ -1400,7 +1400,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 block = await asyncio.to_thread(yaad.turn_block, tenant_id, conversation_id, user_text)
                 try:   # v0.136 the REAL state of her running / finished jobs, so Hoola never says "dekh raha hoon"
                     from .. import kaamwatch
-                    kb = await asyncio.to_thread(kaamwatch.block, tenant_id)
+                    kb = await asyncio.to_thread(kaamwatch.block, tenant_id, conversation_id)   # v0.246 fenced
                     if kb:
                         block = (block + "\n\n" + kb) if block else kb
                 except Exception:
