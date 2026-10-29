@@ -382,7 +382,7 @@ function simpleProgress(kind,p={}) {
   }
   if(SIMPLE_PROGRESS.parentElement!==col||SIMPLE_PROGRESS.nextElementSibling)col.appendChild(SIMPLE_PROGRESS);   // v0.227.3 always the last row
   const prev=SIMPLE_PROGRESS.previousElementSibling;   // right under Hoola's own reply row: no second avatar
-  SIMPLE_PROGRESS.classList.toggle('tail',!!prev&&prev.classList.contains('mh')&&!!TURN&&prev.contains(TURN.bd));
+  SIMPLE_PROGRESS.classList.toggle('tail',!!prev&&prev.classList.contains('mh')&&!!TURN&&prev.contains(TURN.bd)&&TURN.bd.childElementCount>0);   // v0.234 an empty (hidden) reply row lends no avatar
   SIMPLE_PROGRESS.hidden=false;
   const label=PROGRESS_POLICY.phase(kind,p);
   const text=SIMPLE_PROGRESS.querySelector('.progress-label');if(text.textContent!==label)text.textContent=label;
@@ -798,7 +798,7 @@ function onEvent(ev) {
         }
         landing(false); userBubble(p.text, p.files, ev.id, null, ev.at); return;
       }
-      if (p.source === 'greeting' && !col.children.length) return;        // the landing greets instead
+      if (p.source === 'greeting') return;        // v0.234 the console never draws the old greeting (the home greets), like Claude
       if (p.ack) { if (TYPING) simpleProgress('ack', p); return; }        // v0.227.3 the 5-second comfort line: one progress row, never a second avatar
       landing(false);
       if (p.source === 'quick') {   // v0.173 the quick lane answered beside the running kaam: flip the receipt
@@ -831,7 +831,7 @@ function renderEvents(events, any) {
     if (ev.kind === 'message') {
       flushStepBuf();
       if (p.role === 'user') userBubble(p.text, p.files, ev.id, null, ev.at);
-      else if (!any) continue;
+      else if (!any || p.source === 'greeting') continue;   // v0.234 no greeting row in the thread
       else if (p.turn && window.HoolaStream) { replyMessage(p, true, ev.id, ev.at); if (SINK === col) LAST_TURN = p.turn; }
       else hoolaText(p.text || '', p.source, ev.id, ev.at);
     }

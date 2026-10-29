@@ -231,6 +231,7 @@ class Santosh extends ChangeNotifier {
   bool typing = false;
   Timer? _typingGuard;            // v0.178 typing shows only while the turn is really alive (the stream refreshes it)
   FeedItem? _streamItem;          // v0.178 the reply being written right now (grows word by word, live-only)
+  FeedItem? _thinkItem;           // v0.232 PHASE C the Soch card: what Hoola is thinking right now (live-only)
   FeedItem? _sayItem;             // v0.187 the little true lines between steps ("12 mails aaye"), live-only
   String? error;
   bool inBackground = false;
@@ -1011,6 +1012,7 @@ class Santosh extends ChangeNotifier {
   void _clearStory() {
     feed.clear();
     _streamItem = null;
+    _thinkItem = null;
     _hoola.clear();
     _deals.clear();
     _upiCards.clear();
@@ -1094,6 +1096,16 @@ class Santosh extends ChangeNotifier {
       if (snap != null && t.isNotEmpty) {
         _streamItem = FeedItem('stream', {'turn': snap?['turn'] ?? '', 'text': t, 'seg': snap?['seg'] ?? 0});
         feed.add(_streamItem!);
+      }
+      final th = (snap?['think'] as String? ?? '').trim();
+      if (snap != null && th.isNotEmpty) {   // v0.232 a reload mid-thought: the Soch card reopens with what was thought
+        _thinkItem = FeedItem('think', _thinkData('${snap['turn'] ?? ''}', (snap['seg'] as num?)?.toInt() ?? 0, th));
+        final at = _streamItem != null ? feed.indexOf(_streamItem!) : -1;
+        if (at >= 0) {
+          feed.insert(at, _thinkItem!);
+        } else {
+          feed.add(_thinkItem!);
+        }
       }
     } catch (_) {}
     _sub = api!.events(conv, after: after, live: true).listen(_onEvent, onError: (e) {
@@ -1243,7 +1255,11 @@ class Santosh extends ChangeNotifier {
       case 'work':
         if (!_replaying) _onWork(Map<String, dynamic>.from(p));
         break;
+      case 'think':                     // v0.232 PHASE C what Hoola is thinking, live in its Soch card
+        _onThink(Map<String, dynamic>.from(p));
+        break;
       case 'reply_start':
+        _thinkFold();                                    // v0.232 an old turn's Soch card folds
         _streamDrop();                                   // a new reply begins: any leftover bubble goes
         _sayDrop();                                      // v0.187 and the old whisper too
         _streamItem = FeedItem('stream', {'turn': p['turn'] ?? '', 'text': '', 'seg': -1});
@@ -1279,6 +1295,7 @@ class Santosh extends ChangeNotifier {
           notifyListeners();
         }
         _sayDrop();                     // v0.187 the whisper's job is done - the reply is here
+        _thinkFold(onlyTurn: '${p['turn'] ?? ''}');   // v0.232 the Soch card folds to "ne socha · 8s"
         break;
       case 'say':                       // v0.187 one true line about what a tool just returned
         final text = '${p['text'] ?? ''}';
@@ -1314,6 +1331,7 @@ class Santosh extends ChangeNotifier {
         typing = p['on'] == true && !_replaying;
         if (p['on'] == true) _steps = null;
         if (!typing) currentStep = null;
+        if (!typing && !_replaying) _thinkFold();   // v0.232 the turn is over: its Soch card folds
         if (typing && mood != Mood.care && mood != Mood.excited && mood != Mood.wow) setMood(Mood.think, hold: Duration.zero);
         if (!typing && !_replaying && (mood == Mood.think || mood == Mood.work)) setMood(userStressed ? Mood.care : Mood.idle, hold: Duration.zero);
         break;
@@ -2498,6 +2516,56 @@ class Santosh extends ChangeNotifier {
       }
     }
     _sayDrop();                       // v0.187 the whisper goes when the reply goes
+  }
+
+  // ---- v0.232 PHASE C the Soch card (fix 6 of the long-task report): Hoola's thinking, live, on the phone too.
+  // One card per model call (turn:seg). Live = open with a ticking clock; reply over = folded "ne socha · 8s".
+  // Thoughts are never stored on the server, so a reload shows only what /live still has.
+  static Map<String, dynamic> _thinkData(String turn, int seg, String text) =>
+      {'turn': turn, 'seg': seg, 'text': text, 't0': DateTime.now().millisecondsSinceEpoch, 'done': false, 'secs': 0};
+
+  void _onThink(Map<String, dynamic> p) {
+    final turn = '${p['turn'] ?? ''}';
+    final seg = (p['seg'] as num?)?.toInt() ?? 0;
+    var it = _thinkItem;
+    if (p['clear'] == true) {           // the brain failed mid-thought: its card empties, the next brain starts clean
+      if (it != null && '${it.data['turn']}' == turn) {
+        it.data['text'] = '';
+        notifyListeners();
+      }
+      return;
+    }
+    final piece = '${p['text'] ?? ''}';
+    if (piece.isEmpty) return;
+    if (it == null || '${it.data['turn']}' != turn || (it.data['seg'] as num?)?.toInt() != seg || it.data['done'] == true) {
+      _thinkFold();
+      it = _thinkItem = FeedItem('think', _thinkData(turn, seg, ''));
+      final at = _streamItem != null ? feed.indexOf(_streamItem!) : (_sayItem != null ? feed.indexOf(_sayItem!) : -1);
+      if (at >= 0) {
+        feed.insert(at, it);
+      } else {
+        feed.add(it);
+      }
+    }
+    final cur = '${it.data['text']}';
+    final all = cur + piece;
+    it.data['text'] = all.length > 6000 ? all.substring(all.length - 6000) : all;   // the newest thinking is what matters
+    notifyListeners();
+  }
+
+  void _thinkFold({String? onlyTurn}) {
+    final it = _thinkItem;
+    if (it == null) return;
+    if (onlyTurn != null && onlyTurn.isNotEmpty && onlyTurn != '${it.data['turn']}') return;
+    _thinkItem = null;
+    if ('${it.data['text']}'.trim().isEmpty) {
+      feed.remove(it);                  // thought nothing worth keeping
+    } else {
+      final t0 = (it.data['t0'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch;
+      it.data['done'] = true;
+      it.data['secs'] = ((DateTime.now().millisecondsSinceEpoch - t0) / 1000).round().clamp(1, 99999).toInt();
+    }
+    notifyListeners();
   }
 
   void _sayDrop() {

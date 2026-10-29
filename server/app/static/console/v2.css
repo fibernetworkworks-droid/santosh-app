@@ -1325,3 +1325,7 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 #app .simple-progress.tail{gap:14px}
 #app .simple-progress.tail .progress-avatar{visibility:hidden;width:30px;height:20px}
 #app .simple-progress[hidden]{display:none}
+
+/* v0.234 one Hoola at a time: a reply row with nothing in it yet (the turn opened, no words / steps) stays hidden,
+   so the "Preparing your response…" line is the only avatar until the words arrive */
+#app .mh:has(>.bd:empty){display:none}

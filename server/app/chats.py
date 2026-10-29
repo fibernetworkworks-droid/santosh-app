@@ -53,8 +53,18 @@ def _not_busy(conv: str) -> None:
 
 
 # ------------------------------------------------------------------ list / patch / delete
-def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: str = "") -> list[dict[str, Any]]:
-    """Her chats in one query: pinned first, then newest activity. Title = hers / auto, else her first message."""
+_HINTS = re.compile(r"\s*\[Web console [^\]\n]*\]")   # v0.235 the console's own notes ride her message; never a title
+
+
+def plain(text: str) -> str:
+    return _HINTS.sub("", text or "")
+
+
+def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: str = "",
+              hide_empty: bool = False) -> list[dict[str, Any]]:
+    """Her chats in one query: pinned first, then newest activity. Title = hers / auto, else her first message.
+    v0.235 `hide_empty` (the console): a chat she never wrote in ("Naya chat") is not listed at all; it shows up
+    with her first message. Pinned or renamed chats always stay."""
     first = (select(Message.display).where(Message.conversation_id == Conversation.id, Message.role == "user",
                                            Message.display.is_not(None)).order_by(Message.id).limit(1)
              .correlate(Conversation).scalar_subquery())
@@ -68,12 +78,14 @@ def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: st
         q.where(or_(Conversation.archived.is_(None), Conversation.archived.is_(False)))
     if project:   # v0.164 one project's chats
         q = q.where(Conversation.project_id == project)
+    if hide_empty:
+        q = q.where(or_(count > 0, func.coalesce(Conversation.title, "") != "", Conversation.pinned.is_(True)))
     from .convs import current
     cur = current(tenant)
     out = []
     with session() as s:
         for c, first_text, n in s.execute(q).all():
-            title = (c.title or (first_text or "").strip().replace("\n", " ")[:80] or "Naya chat")
+            title = (c.title or plain(first_text).strip().replace("\n", " ")[:80] or "Naya chat")
             when = _utc(c.last_at or c.created_at)
             out.append({"id": c.id, "title": title, "auto_title": bool(c.title), "pinned": bool(c.pinned),
                         "archived": bool(c.archived), "messages": int(n or 0), "empty": not n,
@@ -231,7 +243,7 @@ async def auto_title(tenant: str, conv: str) -> str:
         return ""
     try:
         from .agent import pakka
-        txt = await pakka._ask(TITLE_SYSTEM, f"USER: {users[0][:600]}\nASSISTANT: {(reply or '')[:600]}", get_settings())
+        txt = await pakka._ask(TITLE_SYSTEM, f"USER: {plain(users[0])[:600]}\nASSISTANT: {(reply or '')[:600]}", get_settings())
     except Exception:
         log.exception("auto title")
         return ""

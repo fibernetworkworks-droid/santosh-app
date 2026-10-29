@@ -9278,10 +9278,47 @@ Tests: NEW `test_v0232_voice_phase4.py` (12). Version 0.232.0 (pubspec 0.232.0+2
 - Old empty "Naya chat" rows already made stay in the list (delete from the chat menu).
 - Tests: NEW `test_v0233_new_chat.py` (4). Version 0.233.0 (pubspec 0.233.0+273, console ?v=0.233.0, pins -> 0.233.0).
 
+## v0.234.0 One avatar while Hoola replies (owner: "WHEN USER SEND THE PROMPT AVATAR COMES TWO TIMES ... MAKE IT PERFECT LIKE A CLAUDE CHAT DOES")
+- Cause: at `reply_start` the console opened the reply row (`.mh`, with its avatar) before any words, right under the
+  "Preparing your response…" progress row, which has its own avatar - two avatars, one of them empty. The old greeting
+  could also be drawn twice (timeline + live stream).
+- Fix (console only): `#app .mh:has(>.bd:empty){display:none}` - an empty reply row stays hidden until words or steps
+  arrive; the progress row keeps its avatar while the reply row is still empty (`tail` only under a reply with content);
+  the console never draws a `source: greeting` message (the home screen greets).
+- Tests: NEW `test_v0234_one_avatar.py` (3). Version 0.234.0 (pubspec 0.234.0+274, console ?v=0.234.0, pins -> 0.234.0).
 
-> NOTE: the three WEBSITE phases below were built on the branch claude/vigilant-lamport-0hvbp3 as v0.223.0 / v0.224.0 / v0.225.0 while main moved to v0.233.0 (console redesign, long jobs, voice phases 1-4, SAHI JAWAB, New-chat fix). They reached main together as **v0.234.0** (re-versioned on merge, all works kept). The version numbers inside the sections are the branch numbers.
+## v0.235.0 LONG JOBS PHASE C (built as 0.232.0, re-versioned past the parallel v0.232.0 voice Phase 4, v0.233.0 and v0.234.0) — she SEES Hoola think (owner: "NOW START PHASE C END TO END"; fix 6 of the Claude-vs-Hoola long-task report)
+- THE GAP (found in code): the server could stream thinking since v0.171 (`think` live events, `livereply.feed_think`,
+  `/live` snapshot `think`), but `_call_brain` never asked Claude to think and the production GLM has thinking
+  disabled, so no Soch card could ever appear — not on the console, not on the phone (the phone had no card at all).
+- SERVER (`agent/santosh.py`, `config.py`): setting `chat_thinking` = goal (default) | on | off. `think_wanted`: goal =
+  only while a long job runs (an open goal, or a clearly big ask by her from its FIRST call — `goal.looks_big`, since
+  Claude cannot start thinking inside a tool loop and the plan comes first); short chats stay fast. Claude calls carry
+  `thinking: {type: adaptive}` (Claude decides how much) only when `_loop_ok` (a tool_result being answered needs its
+  assistant message to carry a thinking block, Claude's rule; a loop started on the cheap brain finishes without).
+  A 400 naming thinking = `THINK.ok` off for the process, `think_reset` empties the card, the same call goes again
+  without it (never a dead turn). Thinking blocks (`thinking`, `redacted_thinking`) stay in the in-turn history for
+  the tool loop but `_save` strips them (`_no_think`) and the GLM / OmniRoute path never sees them.
+- PHONE (`lib/state.dart`, NEW `lib/ui/think_card.dart`, `lib/ui/chat_screen.dart`): `think` events build ONE card per
+  turn:seg (`_onThink`, newest 6,000 chars kept), inserted above the growing reply; `clear` empties it; live = open
+  with a ticking clock "Soch raha hoon · 12s" and the newest lines; reply_end / typing off / the next reply folds it
+  to "<name> ne socha · 12s" (tap opens all of it); a reload mid-thought reopens it from `/live`. Never stored.
+- Tests NEW `test_v0235_phase_c.py` (9). Version 0.235.0 (pubspec 0.235.0+275, console ?v=0.235.0, pins -> 0.235.0). Sub-agents never think (contextvar `_THINK_NOW`, not a new keyword, so every `_think` / `_call_brain` caller keeps its signature).
+  Server deploy turns thinking on (console shows it in its progress line); the phone card needs the new APK. Mera PC
+  freeze respected; desktop untouched.
 
-## v0.223.0 -> v0.234.0 WEBSITE PHASE 1 — the Website Sahayak bugs from the web-development audit (owner: "FIRST CHECK HOW HOOLA DO THIS FIND FLAWS" -> "START PHASE 1")
+## v0.236.0 No empty "Naya chat" rows (owner: "HIDE EMPTY NAYA CHAT ROWS FROM THE LIST" / "REMOVE NAYA CHAT ENTIRELY IF USER WANT CHAT ANYTHING")
+- The console chat list (`GET /api/console/conversations` -> `chats.chat_list(..., hide_empty=True)`) leaves out every chat
+  she never wrote in; pinned or renamed chats always stay. The chat appears in the list the moment she sends her first
+  message (the console reloads the list after a send). The phone's `/api/conversations` is unchanged.
+- Titles: the console's own notes (`[Web console language preference ...]`, mode / place hints) are stripped from the
+  first-message title and from the auto-title prompt (`chats.plain`).
+- Tests: NEW `test_v0236_no_empty_rows.py` (3). Version 0.236.0 (pubspec 0.236.0+276, console ?v=0.236.0, pins -> 0.236.0).
+
+
+> NOTE: the three WEBSITE phases below were built on the branch claude/vigilant-lamport-0hvbp3 as v0.223.0 / v0.224.0 / v0.225.0 while main moved to v0.236.0 (console redesign, long jobs A-C, voice phases 1-4, SAHI JAWAB, New-chat fix, one avatar). They reached main together as **v0.237.0** (re-versioned on merge, all works kept). The version numbers inside the sections are the branch numbers.
+
+## v0.223.0 -> v0.237.0 WEBSITE PHASE 1 — the Website Sahayak bugs from the web-development audit (owner: "FIRST CHECK HOW HOOLA DO THIS FIND FLAWS" -> "START PHASE 1")
 The audit of `server/app/site/` (build, hosting, care, domains) found bugs that break real use; Phase 1 fixes them.
 Phases 2-4 (hosting off the main process, builder quality on Opus like App Sahayak, editable content) are not in this.
 - **Queued change never ran, site stuck in "building"**: a change asked during a build was started from INSIDE the build

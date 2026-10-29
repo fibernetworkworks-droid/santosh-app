@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     agent_goal_ask_on_limit: bool = True    # rounds / minutes used up = "Aage badhaun?" (her yes = a fresh budget), not 'failed'
     agent_plan_early: bool = True           # v0.228 a clearly big ask gets "plan first" up front; no plan after N steps = asked again
     agent_plan_after_steps: int = 6         # ... tool steps without a kaam_plan before the plan is asked for (was only at 24)
+    chat_thinking: str = "goal"             # v0.232 PHASE C: Claude thinks out loud (adaptive) - goal = only while a long job runs, on = every turn, off = never
     agent_narrate_every: int = 3            # v0.228 goal mode: after this many silent tool rounds, ask for one progress line
     agent_goal_milestones: int = 2          # v0.228 at most this many 'aadha kaam ho gaya' pushes per long job (0 = off)
     agent_ack_after_s: float = 5.0          # v0.187 a turn silent this long first says "ek second, dekh raha hoon…" (0 = off)
