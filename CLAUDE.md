@@ -8950,3 +8950,17 @@ expects the asking card. Version 0.226.0 (pubspec 0.226.0+262 - build 261 left f
   - Console assets keep the one cache-buster (`?v=0.227.0` x11, no `&web=` tags, no workspace.css).
   - Main's long-job "budget ran out" goal button follows the console English rule: Continue / Continuing… / Try again.
   - Version pins move to 0.227.0 / pubspec 0.227.0+263 in every suite.
+
+## v0.227.1 Tools categories in English (owner: "TRANSLATE TOOLS CATEGORY NAMES TO ENGLISH")
+- `kaam.js` category names (the Tools view chips and headings) changed:
+  - Roz ka din → Everyday
+  - Padho aur pehchano → Read & recognise
+  - Baat-cheet → Conversations
+  - Google aur files → Google & files
+  - Photo aur video → Photos & video
+  - Websites aur computer → Websites & computer
+  - Ghar aur TV → Home & TV
+  - Sahayak → Business assistants
+  - Dimaag aur suraksha → Memory & safety
+- Phone / Hoola Network / Hoola Employee are unchanged. Ids and anchors (`#k-<id>`) are unchanged. The tool names, one-line descriptions and starter prompts inside each category stay as they were.
+- Tests: NEW `test_v0227_tools_english.py` (2). Ritual: APP_VERSION 0.227.1, pubspec 0.227.1+264, console ?v=0.227.1 x11, pins →0.227.1. Console-only.
