@@ -658,6 +658,10 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 .pbar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#FFD9A8,#FF9A3C,#C055F5)}
 .gstep{font-size:12.5px;padding:3px 0;color:var(--ink,#F4F2FF)}
 .gstep span{display:inline-block;width:18px;font-weight:800}
+.greport{margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1)}
+.greport .grep{margin-top:8px;font-size:12.5px}
+.greport .grep small{display:block;font-weight:800;letter-spacing:.04em;color:#9C96C2;margin-bottom:2px}
+.greport a{color:inherit;text-decoration:underline}
 .gstep.done{color:#9C96C2;text-decoration:line-through}
 .gstep.current{font-weight:800}
 .gstep.current span{color:#FFB15C}

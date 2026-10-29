@@ -8981,8 +8981,34 @@ expects the asking card. Version 0.226.0 (pubspec 0.226.0+262 - build 261 left f
   - The progress row is always the last row. When it sits right under Hoola's own reply it gets the `tail` class (no avatar, lined up with the reply text).
   - The progress row hides while the words stream.
 - Tests: NEW `test_v0227_single_avatar.py` (3). Ritual: APP_VERSION 0.227.3, pubspec 0.227.3+266, console ?v=0.227.3 x11, pins →0.227.3.
+## v0.228.0 LONG JOBS PHASE B — a long job talks like Claude (owner: "START PHASE B", fixes 4, 5, 7 of the Claude-vs-Hoola long-task report)
+- NARRATE AS IT GOES: in goal mode a run of `agent_narrate_every` (3) tool rounds with no text line to her attaches
+  `goal.NARRATE` to the step's results ("ab EK chhoti line likho - kya hua, ab kya") once, then the count resets
+  (`STATS_LONG.narrate`); `kaam_plan step done` results ask for the one line while steps are left; the system prompt's
+  LAMBA KAAM rule says "Kaam karte hue BOLTE raho". Text blocks next to tool calls were already published as chat
+  messages, so the line reaches her live (streaming) and in the record.
+- PLAN FIRST: `goal.looks_big(text)` (word rules only: sequence words like phir / uske baad / then, a list of 3+, 3+
+  actions with a sequence word, 4+ actions in 25+ words, 80+ words; never "[System" text) puts `goal.PLAN_FIRST` on
+  her message (owner turns, no open goal) = the first tool call is `kaam_plan set` (`STATS_LONG.plan_first`). A turn
+  that reaches `agent_plan_after_steps` (6) tool steps with no plan gets `goal.PLAN_NOW` once (`plan_now`); the
+  v0.221 step-24 move stays as the last net.
+- MILESTONES: `goal._milestone` - jobs of 4+ steps push at 1/2 (4-5 steps) or 1/3 and 2/3 (6+), at most
+  `agent_goal_milestones` (2) per job, never on the last step (`GoalRun.milestones` counts; the event carries
+  `milestone` only on that one publish; `push.render` sends "kaam aage badh raha hai - 2/6 steps ho gaye. Ab: ...").
+- FOUR-PART FINAL REPORT: every `finish` stores `GoalRun.report` = `goal.build_report` (built by code: done steps =
+  kya hua, `made` links / files + links and file names in step notes = kya bana, steps not done + `left` = kya baaki,
+  `your_turn` (or the blocked reason) = aapko kya karna hai; "Kuch nahi — sab ho gaya" when nothing is left).
+  `kaam_plan finish` takes made / left / your_turn and returns `report` text + a note to answer in those four parts;
+  the goal event carries `report`; the done push adds her part. Phone `GoalCard` shows the report and an "Aage
+  badhao" button for a job that ran out of budget (`Api.continueGoal` -> POST /goal/continue); console v2.js
+  `goalReport()` (+ `.greport` css).
+- Config: agent_plan_early, agent_plan_after_steps, agent_narrate_every, agent_goal_milestones. New nullable
+  columns goal_runs.report / milestones (auto-added).
+- Tests NEW test_v0228_long_jobs_b.py (9). Version 0.228.0 (pubspec 0.228.0+267, console ?v=0.228.0, pins). Server
+  deploy gives narration, plan-first, milestones and the report (old APKs show the report text via the push and the
+  final message); the phone card's report + Aage badhao button need the new APK. Phase C (phone Soch card) next.
 
-## v0.227.4 Each console chat keeps its own cards (owner: "UNWANTED CHAT SESSION DATA AND ALL LANDING ON SAME CHAT PANEL")
+## v0.228.1 Each console chat keeps its own cards (built as v0.227.4, re-versioned after the parallel v0.228.0) (owner: "UNWANTED CHAT SESSION DATA AND ALL LANDING ON SAME CHAT PANEL")
 - Root cause: the v0.158 rule "a card from ANY of her chats shows in every chat" was built for the phone's single chat. The console (many chats since v0.162) used it too, twice:
   - its timeline load had no way to ask for one chat only;
   - its account stream copied every other chat's live card into the open chat.
@@ -8992,4 +9018,4 @@ expects the asking card. Version 0.226.0 (pubspec 0.226.0+262 - build 261 left f
   - In the console, another chat's card no longer lands in the open chat. That chat gets the unread dot instead, and Today still counts every approval.
   - The fallback per-chat stream drops events whose `conv` is another chat.
   - The phone timeline (no `own`) is unchanged.
-- Tests: NEW `test_v0227_own_chat.py` (3). Ritual: APP_VERSION 0.227.4, pubspec 0.227.4+267, console ?v=0.227.4 x11, pins →0.227.4.
+- Tests: NEW `test_v0227_own_chat.py` (3). Ritual: APP_VERSION 0.228.1, pubspec 0.228.1+268, console ?v=0.228.1 x11, pins →0.228.1.

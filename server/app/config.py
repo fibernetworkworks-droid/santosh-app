@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     agent_goal_recover_max: int = 3         # ... at most this many times per goal (then it waits for her)
     agent_steer: bool = True                # her message sent mid-job reaches the RUNNING job at its next step
     agent_goal_ask_on_limit: bool = True    # rounds / minutes used up = "Aage badhaun?" (her yes = a fresh budget), not 'failed'
+    agent_plan_early: bool = True           # v0.228 a clearly big ask gets "plan first" up front; no plan after N steps = asked again
+    agent_plan_after_steps: int = 6         # ... tool steps without a kaam_plan before the plan is asked for (was only at 24)
+    agent_narrate_every: int = 3            # v0.228 goal mode: after this many silent tool rounds, ask for one progress line
+    agent_goal_milestones: int = 2          # v0.228 at most this many 'aadha kaam ho gaya' pushes per long job (0 = off)
     agent_ack_after_s: float = 5.0          # v0.187 a turn silent this long first says "ek second, dekh raha hoon…" (0 = off)
     agent_parallel_tools: bool = True       # v0.189 a step asking several pure look-ups (search/weather/status) runs them together; everything else stays serial
     # v0.191 HARNESS-2: step-admitted tool subsets (dsh / Claude Code pattern) - the model of one turn sees only the

@@ -25,6 +25,8 @@ class GoalCard extends StatelessWidget {
     final total = (v['total'] as num?)?.toInt() ?? steps.length;
     final pct = (v['pct'] as num?)?.toInt() ?? (total > 0 ? (100 * done / total).round() : 0);
     final reason = '${v['reason'] ?? ''}';
+    final hold = '${v['hold'] ?? ''}';
+    final report = v['report'] is Map ? Map<String, dynamic>.from(v['report'] as Map) : const <String, dynamic>{};
     final head = <String, String>{
       'working': 'LAMBA KAAM CHAL RAHA HAI',
       'done': 'LAMBA KAAM POORA HUA',
@@ -84,9 +86,40 @@ class GoalCard extends StatelessWidget {
             ]));
           }),
         ],
-        if (reason.isNotEmpty && status != 'working') ...[
+        if (reason.isNotEmpty && status != 'working' && report.isEmpty) ...[
           const SizedBox(height: 10),
           Text(reason, style: TextStyle(fontSize: 12.5, color: headCol, fontWeight: FontWeight.w600)),
+        ],
+        // v0.228 the four-part final report: kya hua / kya bana / kya baaki / aapko kya karna hai
+        if (report.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _Report(report: report, col: headCol),
+        ],
+        // v0.228 the budget ran out: the job ASKS, her tap carries it on (done steps kept)
+        if (status == 'blocked' && hold == 'limit') ...[
+          const SizedBox(height: 12),
+          SizedBox(height: 40, child: FilledButton.icon(
+            onPressed: () async {
+              final id = app.conversationId;
+              final api = app.api;
+              if (id == null || api == null) return;
+              try {
+                await api.continueGoal(id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Theek hai, kaam aage badha raha hoon.'), duration: Duration(seconds: 2)));
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Abhi aage nahi badha paya, phir try karein.'), duration: Duration(seconds: 2)));
+                }
+              }
+            },
+            style: FilledButton.styleFrom(backgroundColor: C.accent, foregroundColor: C.onAccent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            icon: const Icon(Icons.play_arrow_rounded, size: 20),
+            label: const Text('Aage badhao', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
         ],
         if (status == 'working' || status == 'blocked') ...[
           const SizedBox(height: 12),
@@ -114,6 +147,44 @@ class GoalCard extends StatelessWidget {
             icon: const Icon(Icons.stop_circle_outlined, size: 18),
             label: const Text('Rokiye', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)))),
         ],
+      ]),
+    );
+  }
+}
+
+
+/// v0.228 the final report, the same four parts on every long job (like Claude's end-of-job summary).
+class _Report extends StatelessWidget {
+  const _Report({required this.report, required this.col});
+  final Map<String, dynamic> report;
+  final Color col;
+
+  List<String> _list(String k) => (report[k] as List? ?? const []).map((e) => '$e').where((e) => e.isNotEmpty).toList();
+
+  Widget _part(String head, List<String> lines) => Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(head, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: .4, color: C.faint)),
+          ...lines.take(10).map((l) => Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: SelectableText('• $l', style: const TextStyle(fontSize: 12.5, color: C.ink, height: 1.3)))),
+        ]),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = '${report['summary'] ?? ''}';
+    final aapka = '${report['aapka'] ?? ''}';
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(14), border: Border.all(color: C.line)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (summary.isNotEmpty)
+          Text(summary, style: TextStyle(fontSize: 13, color: col, fontWeight: FontWeight.w700)),
+        if (_list('hua').isNotEmpty) _part('✅ KYA HUA', _list('hua')),
+        if (_list('bana').isNotEmpty) _part('📎 KYA BANA', _list('bana')),
+        if (_list('baaki').isNotEmpty) _part('⏳ KYA BAAKI HAI', _list('baaki')),
+        if (aapka.isNotEmpty) _part('👉 AAPKO KYA KARNA HAI', [aapka]),
       ]),
     );
   }
