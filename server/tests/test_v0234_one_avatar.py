@@ -23,4 +23,4 @@ def test_version():
     assert APP_VERSION == "0.243.0"
     assert "0.243.0+283" in (ROOT / "pubspec.yaml").read_text()
     # v0.240: follow the release instead of a hardcoded number, so a version bump cannot fail this
-    assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 11
+    assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 12   # v0.243 + theme.js
