@@ -8741,7 +8741,102 @@ scripted notes (result, reseed, stall, late result) carry the tone fresh and dro
 counters, version. Version 0.220.0 (APP_VERSION story, pubspec 0.220.0+255, console ?v=0.220.0 x9,
 pins ->0.220.0 in 32 suites); Mera PC freeze respected; desktop untouched 1.4.0.
 
-## v0.221.0 CONSOLE R1 — web console redesign, phase 1: one stylesheet, one cache-buster, one language rule (owner: "START R1")
+## v0.221.0 KAAM KHAATA — long jobs keep their progress and keep going (owner: "NOT ABLE TO PERFORM COMPLEX LONG TASK AND FORGOT THE WORK IN BETWEEN --- FIRST FIND THE EXACT ROOT CAUSE")
+THE RCA (reproduced on v0.220 with a 40-step job + "haan aage badho"): (1) `yaad.history` keeps full tool blocks only for
+the newest 4 exchanges within 60,000 chars, so ONE message later a long job was compressed - and `compress()` kept the
+FIRST 13 steps ("… +27 aur kadam"), values clipped at 60 chars, and a result cut by `_short` at 6,000 chars was no longer
+JSON so its ids / links fell to a 120-char clip: 240 KB -> 2 KB, step 5's file remembered, step 40's gone; (2) the
+production brain is GLM / OmniRoute and `llm.from_openai` never read `finish_reason`: a cut answer counted as finished
+('end_turn') and a half-written tool call ran with `{}` inputs - the v0.187 max_tokens continuation only worked on Claude;
+(3) long-job mode needed the model to write `kaam_plan`; otherwise the turn died at step 24 with "Yeh kaam lamba ho
+gaya…", and that line was published but never saved; (4) a goal paused on her tap / OTP / answer was never restarted -
+`maybe_continue` refused while a card waited and nothing ran after she tapped; rounds 3 / 60 minutes (waiting counted);
+(5) a wake turn (finished background job) never saved its input, so the job's real result left history after that turn.
+THE FIX: `yaad` rich form (`compress(rich=True)`, `_rich_set`: the newest RICH_WORK_EX=3 work exchanges + every exchange
+since the open goal began keep up to 80 step lines, 320 chars each, reply 3,000), `keep_steps` (head 2 + the NEWEST, the
+middle goes - short form too, and `one_line`), `gist` keeps id / url / path / name values whole (200) and `_salvage`
+reads key: value pairs out of truncated JSON; `llm.from_openai` (+ stream `_assemble(finish)`): `finish_reason=length`
+or unparsable tool arguments = stop "max_tokens", broken calls dropped (never run with `{}`), whole calls still run;
+`llm.STATS` cut / broken_calls; santosh: every max_tokens cut doubles the next call's room (cap 16,000); a turn that
+reaches agent_max_steps with no goal moves ONCE to the goal caps (steps / breaker / tokens) with a "kaam_plan set now"
+note riding the last tool results (`STATS_LONG.extended`), and `_with_deadline` gives such turns (and turns whose goal
+was written mid-turn) the long-job deadline; the step-cap line is saved; wake turns save their digest as a user row
+with display None (never her words: focus / titles / search / quick lane / turn_inbox skip display-None rows); goal
+continuation rows also display None. `goal.py`: `paused_at` / `paused_s` columns (nullable, auto-added), `_pause` when
+waiting on her, `resume_tick` (worker `goal_resume_jobs` every 10 s: not Rokiye, chat lock free, no card waiting, paused <
+agent_goal_resume_hours 24) restarts it without using a round, `_working_minutes` never counts waiting; defaults rounds
+6, minutes 180 (config agent_goal_resume / agent_goal_resume_hours). Tests NEW test_v0221_kaam_khaata.py (12).
+Version 0.221.0 (pubspec 0.221.0+256, console ?v=0.221.0 x9, pins ->0.221.0). Server-only deploy; old APKs keep working.
+MERGED IN (no force-push): the MCP sign-in fix first built as v0.162 on an old base (branch commit b9cd23f) - code only, same
+as described there: scopes from the 401 challenge / resource metadata, client auth method by what the server allows
+(none > post > basic, `invalid_client` drops the cached registration, REG_VERSION v2), refresh with `resource`, a refused
+token refreshed once then "phir 'Link' dabaiye" (no more 'unhandled errors in a TaskGroup'), PayPal /mcp, Ramp / Square
+/ Figma / Gamma / Vercel one-tap, payment servers always ask before writes. Tests test_v162_mcp_fix.py (7).
+
+## v0.222.0 GOAL HERS — a long job SHE asked for keeps her authority in its background rounds (owner: "FIX 1 AND 2 THEN DEPLOY V0.222")
+THE RCA (found reading the live v0.221 KAAM KHAATA code): every background round of a long job (`goal._continuation`,
+and the v0.221 resume sweep after her answer) ran as actor "routine". So (1) with Employee mode on, `employee.gate`
+treated HER own job like a scheduled routine: at trust 'seekh' every job-duty step became an approval card and the job
+stalled after round 1; (2) once the month's AI limit hit 100%, `run_turn` put the round in the "routine" usage lane and
+refused it as background work - her own job stopped half-way (her own chat and calls always ran).
+THE FIX: `GoalRun.origin` (nullable column, auto-added) = who asked: `set_goal(..., origin=ctx.actor)` from kaam_plan,
+`goal.hers(actor)` (owner / goal / approved:) -> "owner", anything else -> "routine". `goal.round_actor(origin)`: her
+job's rounds run as the new actor **"goal"**, a routine's job stays "routine", goals written before v0.222 (origin None)
+keep the old routine behaviour. Actor "goal" = her authority where it matters and nothing more: `employee.gate` treats
+it like the owner (job duties run; Pause still holds them exactly like her own turns; label "Owner ka lamba kaam"),
+`run_turn` puts it in the "chat" usage lane (never refused by the background limit), photo / 3D tools' background
+check skip it, `_halt_reason` / paused0 like her own turns, procedure hints + memory + gyaan / team permissions like a
+routine (its "[Goal jaari...]" text is never her words: display None, no auto facts, procedures learn as routine).
+Owner-only tool actions that check actor == "owner" (money decisions, rules) are NOT opened to "goal" - those stay her
+tap. `maybe_continue` accepts owner / goal / approved: / routine (staff / customers never). Admission: goal rounds keep
+the FULL tool set like routine rounds did.
+Not changed (stated plainly): website / video / motion jobs started inside her own chat are still refused by their own
+services when the month's limit is used up (v0.98 rule for every actor). Tests NEW test_v0222_goal_hers.py (7): origin
+remembered (owner / routine / approved / replan inside her job), kaam_plan from her turn vs a routine's, rounds run as
+goal vs routine incl. the resume sweep and staff never, gate holds a routine but runs her goal round (+ Pause still
+holds), the AI limit refuses a routine round but never hers, goal round text never her words, version. Version 0.222.0
+(pubspec 0.222.0+257, console ?v=0.222.0 x9, pins ->0.222.0). Built on the live v0.221 KAAM KHAATA branch
+(clever-thompson, incl. the merged MCP sign-in fix). CONSOLE R1 (serene-dijkstra, also numbered 0.221.0, not deployed)
+is NOT in this release - it needs a rebase as v0.223. Server-only deploy; old APKs keep working.
+
+## v0.226.0 LONG JOBS PHASE A — restart-proof, steerable, and they ASK instead of failing (owner: "START PHASE A", after the Claude-vs-Hoola long-task report; numbered 0.226 because a parallel console-redesign session holds 0.221-0.225 on branch serene-dijkstra, not on main)
+THE REPORT'S TOP 3 FLAWS (checked in code on live v0.222): (1) a server restart mid-round left a background long job
+half-done for ever - `resume_tick` only restarted goals PAUSED for her; a `working` goal whose round died just sat
+there ("atka lag raha hai" after 15 min, nothing more); (2) a message she sent mid-job got a quick side-reply and the
+real instruction waited until the WHOLE turn ended (up to 45 min) while the job kept the old plan - only Rokiye could
+change it; (3) when rounds (6) / working minutes (180) ran out the job was marked `failed` and she had to ask again.
+THE FIX, like Claude: (1) `goal.recover_tick` (worker `goal_resume_jobs`, every 10 s): a goal `working`, not paused,
+not moved for `agent_goal_recover_after_s` (600) and younger than `agent_goal_resume_hours`, no turn holding the chat,
+no round of it pending in this process (`goal._PENDING`, a counter so a round that schedules the next one never
+clears it), nothing waiting on her (else `_pause` for the resume sweep) -> `_schedule(count_round=False)` with a chat
+line "Server dobara chalu hua — aapka kaam ... wahin se aage badha raha hoon (x/y steps)"; `GoalRun.recovered` counts,
+at `agent_goal_recover_max` (3) it stops and ASKS instead of looping; Rokiye'd goals (DB status stopped) are never
+touched. `_continuation` re-checks after its 2.5 s settle that the goal is still the active one with steps left.
+(2) NEW `agent/steer.py`: her owner message (no files, not voice) arriving while a turn holds the chat -> the quick lane
+(new `steering=True` line: "chal rahe kaam mein yeh abhi jod raha hoon") answers; a queued instruction is `offer`ed;
+the running turn `take`s it at its next step boundary (after tool results, before the next model call) as a text
+block riding WITH the tool_result message (`steer.note`: acknowledge in one line, then change course; kaam_plan
+add / set; stop if she says stop) and her words are saved as a display row (in_history False, never a 2nd model
+turn); her message's own queued turn `claim`s on getting the lock: taken = return "" (nothing else runs), not taken
+(the job ended first) = runs exactly as before. Console take-backs (`_held`) never reach the job.
+(3) `_schedule`: budget used up + `agent_goal_ask_on_limit` -> `_hold_for_limit`: status `blocked`, `GoalRun.hold` =
+"limit", reason "Itna kaam ho gaya (x/y steps). Baaki: ... Aage badhaun? Bas 'haan aage badho' likhiye / boliye."
+(kaamwatch maps blocked -> waiting = her push + chat line + call note). Her owner message with `wants_continue`
+(aage badho / continue / jaari rakho / a pure yes) -> `goal.reopen` = the SAME goal `working` again, done steps kept,
+rounds 1, fresh started_at, before the turn starts (so the turn gets the GOAL JAARI block). Console card button
+"Aage badhao" -> `POST /api/conversations/{id}/goal/continue` (`continue_now`: reopen + start the next round at once
+as actor goal; 409 when nothing waits). The goal event carries `hold`. Off-switch keeps the old `failed`.
+Config: agent_goal_recover / _recover_after_s / _recover_max, agent_steer, agent_goal_ask_on_limit.
+Phone: the old APK shows the asking card's reason text and push; she replies "haan aage badho" in chat (the button on
+the phone card is Phase B). Tests NEW test_v0226_long_jobs.py (10): restart pickup with her authority + chat line + no
+round used + never doubled; lock / her card / cap / Rokiye respected; used-up budget asks, only real "carry on" words
+reopen, done steps kept; continue API (409 / 200 + next round as goal); card event carries hold; switch-off keeps
+failed; a mid-job message reaches the running job at its next step (results first, her words in the record, no 2nd
+model turn); a message after the job ended runs normally; quick lane line; version. test_v0186 rounds-cap test now
+expects the asking card. Version 0.226.0 (pubspec 0.226.0+262 - build 261 left free for the console chain, console
+?v=0.226.0 x9, pins -> 0.226.0). Server-only deploy; old APKs keep working.
+
+## CONSOLE R1 (released in v0.227.0) — web console redesign, phase 1: one stylesheet, one cache-buster, one language rule (owner: "START R1")
 - The redesign: the owner asked for the web console "like Claude chat, ChatGPT and OpenArt, keep the Hoola brand"; the approved
   canvas is the private Claude Design artifact "Hoola Console Redesign" (Home, Conversation + Work panel, Create studio, phone
   width; Night Glass tokens unchanged). Phases R1 foundation · R2 sidebar + home · R3 conversation polish · R4 work panel
@@ -8765,7 +8860,7 @@ pins ->0.220.0 in 32 suites); Mera PC freeze respected; desktop untouched 1.4.0.
   system blocks (pre-existing red since v0.190, the str-vs-blocks trap). Ritual: APP_VERSION 0.221.0, pubspec 0.221.0+256, pins
   ->0.221.0 in 33 suites. Server-only / console-only deploy; old APKs and the desktop untouched; Mera PC freeze respected.
 
-## v0.222.0 CONSOLE R2 — web console redesign, phase 2: new sidebar + home (owner: "START R2")
+## CONSOLE R2 (released in v0.227.0) — web console redesign, phase 2: new sidebar + home (owner: "START R2")
 - Sidebar (Claude-style): the brand mark is home (`data-v="chat"`); New chat with a saffron edge and `Ctrl ⇧ O`; Search
   (`Ctrl K`); places Create / Library (when SIDE_PANEL) / Today / Tools / Voice call (`NAV` in v2.js; Chat and Account
   left the list: brand mark and user card cover them; the phone tabbar keeps its own five). Today carries two badges:
@@ -8790,7 +8885,7 @@ pins ->0.220.0 in 32 suites); Mera PC freeze respected; desktop untouched 1.4.0.
   0.222.0+257, console ?v=0.222.0 x11, pins →0.222.0 in 34 suites. Console-only + one additive server key; old APKs,
   desktop and Mera PC untouched.
 
-## v0.223.0 CONSOLE R3 — web console redesign, phase 3: the conversation (owner: "START R3")
+## CONSOLE R3 (released in v0.227.0) — web console redesign, phase 3: the conversation (owner: "START R3")
 - Chat header (`#chead`, inside the chat view above the thread; hidden on the home): title from the chat list, a session
   tag, export (`#cShare` → its own Markdown / JSON menu; `exportChat(fmt)` serves both menus) and `#cMore` = the chat's
   own Rename / Pin / Session / Archive / Delete menu (`HoolaChats.menu(id, btn)`; chatlist `ctx.loaded` keeps the header
@@ -8810,12 +8905,12 @@ pins ->0.220.0 in 32 suites); Mera PC freeze respected; desktop untouched 1.4.0.
 - Tests: NEW `test_v0223_console_r3.py` (5). Ritual: APP_VERSION 0.223.0, pubspec 0.223.0+258, console ?v=0.223.0 x11, pins
   →0.223.0. Console-only; old APKs, desktop and Mera PC untouched.
 
-## v0.224.0 CONSOLE R4 — web console redesign, phase 4: the work panel (owner: "START R4")
+## CONSOLE R4 (released in v0.227.0) — web console redesign, phase 4: the work panel (owner: "START R4")
 - Panel (panel.js): tab chips are outlined, and the open one gets a saffron edge instead of the gradient fill. Preview / Code is now a pill segmented control. A new Desktop / Phone switch (`devSeg` / `wireDev`, toggles `.pnview.phone`) appears on pages and on website / app previews (apps start on Phone). Every live preview sits inside a browser frame (`browserFrame`: three dots plus a title / URL line, set as text, never as HTML). The change footer is one rounded row. The bar buttons are compact and don't wrap on desktop. While the panel or studio is open, the composer row doesn't wrap and hides the avatar/language line. The iframe sandboxes are unchanged (`allow-scripts allow-forms allow-popups`, never allow-same-origin).
 - Build studio (build.js): the old rule `.studio>div{flex-direction:column}` also hit the head, the tabs and the workspace handle, which stacked them into columns. R4 makes those three rows again. Tabs are outlined chips with the same saffron edge, the change footer matches the panel's, and the tab labels are now Checks / Structure. The remaining Hinglish chrome is English: "bottom tabs", "Every screen, as a real screenshot", "On phone and computer (real screenshots)", "Tap to try it…", the colour-borrow line, and "· building". Lines sent TO Hoola (`C.say`) stay in her words.
 - Tests: NEW `test_v0224_console_r4.py` (4). Ritual: APP_VERSION 0.224.0, pubspec 0.224.0+259, console ?v=0.224.0 x11, pins →0.224.0. Console-only; old APKs, desktop and Mera PC untouched.
 
-## v0.225.0 CONSOLE R5 — web console redesign, phase 5: the create studio (owner: "START R5")
+## CONSOLE R5 (released in v0.227.0) — web console redesign, phase 5: the create studio (owner: "START R5")
 - Create studio (workspace.js) has two columns, like OpenArt:
   - **Left rail (the form):**
     - Type tabs (Image / Video & motion / Research / Document) as one segmented row.
@@ -8836,7 +8931,7 @@ pins ->0.220.0 in 32 suites); Mera PC freeze respected; desktop untouched 1.4.0.
 - Library search placeholder is now in English.
 - Tests: NEW `test_v0225_console_r5.py` (5). Ritual: APP_VERSION 0.225.0, pubspec 0.225.0+260, console ?v=0.225.0 x11, pins →0.225.0. Console-only; old APKs, desktop and Mera PC untouched.
 
-## v0.226.0 CONSOLE R6 — web console redesign, phase 6: phone width, motion, accessibility, checks (owner: "START R6")
+## CONSOLE R6 (released in v0.227.0) — web console redesign, phase 6: phone width, motion, accessibility, checks (owner: "START R6")
 - Audit: home, chat, create, library, today, tools and account were checked at 1440, 1024, 430, 390 and 360 px against mocked APIs. The checks were axe-core 4.10.2 (WCAG 2.0/2.1 A + AA), elements overflowing the viewport sideways, and tap targets under 32 px on phones. After the fixes below, all 35 combinations are clean: no sideways scroll, no axe violations, no small targets, no page errors. The audit script lives in the scratchpad, not the repo.
 - Fixes:
   - The scrollable view pads take keyboard focus (`tabindex="0"`, axe scrollable-region-focusable).
@@ -8848,3 +8943,10 @@ pins ->0.220.0 in 32 suites); Mera PC freeze respected; desktop untouched 1.4.0.
   - Today no longer throws when the server leaves a field out.
 - Not covered: the legacy Playwright e2e tests (`test_v16x_console_e2e`) skip here because the Python Playwright build doesn't match the sandbox Chromium. The Tools category names and kaam.js prompts stay in Hinglish (her words to Hoola, by the R1 rule).
 - Tests: NEW `test_v0226_console_r6.py` (5). Ritual: APP_VERSION 0.226.0, pubspec 0.226.0+261, console ?v=0.226.0 x11, pins →0.226.0. Console-only.
+
+## v0.227.0 CONSOLE REDESIGN R1–R6 released (merged after main's v0.221–v0.226 long-jobs work)
+- The console redesign was built as R1–R6 on a parallel branch, with numbers v0.221–v0.226 that main's long-jobs work (KAAM KHAATA, GOAL HERS, LONG JOBS PHASE A) had also used. It is merged into main without rewriting history and released as v0.227.0. The R1–R6 sections above are its parts.
+- Merge decisions:
+  - Console assets keep the one cache-buster (`?v=0.227.0` x11, no `&web=` tags, no workspace.css).
+  - Main's long-job "budget ran out" goal button follows the console English rule: Continue / Continuing… / Try again.
+  - Version pins move to 0.227.0 / pubspec 0.227.0+263 in every suite.

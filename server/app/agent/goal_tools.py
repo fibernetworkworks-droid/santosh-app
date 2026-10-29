@@ -44,7 +44,7 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
     tenant, conv = ctx.tenant_id, ctx.conversation_id
     try:
         if action == "set":
-            v = goal_mod.set_goal(tenant, conv, goal, steps or [])
+            v = goal_mod.set_goal(tenant, conv, goal, steps or [], origin=getattr(ctx, "actor", "owner") or "owner")
         elif action == "step":
             if not goal_id:
                 a = goal_mod.active_for(conv)

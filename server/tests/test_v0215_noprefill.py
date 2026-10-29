@@ -81,8 +81,8 @@ def _rows(conv: str, role: str) -> int:
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.226.0"
-    assert "0.226.0+261" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.227.0"
+    assert "0.227.0+263" in (REPO / "pubspec.yaml").read_text()
 
 
 def test_wake_turn_ends_user_and_carries_its_words(claude_only, bz):
@@ -105,7 +105,17 @@ def test_wake_turn_ends_user_and_carries_its_words(claude_only, bz):
     assert "background kaam ka natija" in json.dumps(first[-1]["content"], ensure_ascii=False)
     assert out.strip() == "theek hai, natija dekh liya"
     after = (_rows(conv, "user"), _rows(conv, "assistant"))
-    assert after[0] == before[0]                       # save_user=False: her rows never double
+    # v0.221: the job's RESULT is now kept in history (one user row with display None - never shown as her words);
+    # her own rows never double
+    assert after[0] == before[0] + 1
+    from app.db import Message, session
+    from sqlalchemy import select
+    with session() as s:
+        mine = s.scalars(select(Message).where(Message.conversation_id == conv, Message.role == "user",
+                                               Message.display.is_not(None))).all()
+        saved = s.scalars(select(Message).where(Message.conversation_id == conv, Message.role == "user")
+                          .order_by(Message.id.desc())).first()
+    assert len(mine) == before[0] and saved.display is None and "Calendar meeting" in saved.content
     assert after[1] == before[1] + 1                   # only Hoola's reply landed
 
 

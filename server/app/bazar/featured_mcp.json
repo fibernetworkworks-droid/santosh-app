@@ -17,7 +17,8 @@
    ],
    "key_header": "Authorization",
    "key_format": "basic",
-   "india": true
+   "india": true,
+   "caution": true
   },
   {
    "id": "bigin-by-zoho",
@@ -68,13 +69,14 @@
    "keywords": [
     "mercury",
     "payments"
-   ]
+   ],
+   "caution": true
   },
   {
    "id": "paypal",
    "name": "PayPal",
    "category": "Payments",
-   "url": "https://mcp.paypal.com/http",
+   "url": "https://mcp.paypal.com/mcp",
    "url_hint": "",
    "auth": "oauth_dcr",
    "does": "Invoices, orders and transactions",
@@ -83,7 +85,8 @@
    "keywords": [
     "paypal",
     "payments"
-   ]
+   ],
+   "caution": true
   },
   {
    "id": "ramp",
@@ -91,14 +94,16 @@
    "category": "Payments",
    "url": "https://mcp.ramp.com/mcp",
    "url_hint": "",
-   "auth": "oauth_partner",
+   "auth": "oauth_dcr",
    "does": "Corporate cards and spend",
    "source": "https://agents.ramp.com/docs/mcp/setup",
    "confidence": "high",
    "keywords": [
     "ramp",
     "payments"
-   ]
+   ],
+   "checked": "2026-10-24: registration_endpoint advertised",
+   "caution": true
   },
   {
    "id": "square",
@@ -106,14 +111,16 @@
    "category": "Payments",
    "url": "https://mcp.squareup.com/mcp",
    "url_hint": "",
-   "auth": "oauth_partner",
+   "auth": "oauth_dcr",
    "does": "Orders, payments and catalogue",
    "source": "https://developer.squareup.com/docs/mcp",
    "confidence": "high",
    "keywords": [
     "square",
     "payments"
-   ]
+   ],
+   "checked": "2026-10-24: registration_endpoint advertised",
+   "caution": true
   },
   {
    "id": "stripe",
@@ -128,7 +135,8 @@
    "keywords": [
     "stripe",
     "payments"
-   ]
+   ],
+   "caution": true
   },
   {
    "id": "attio",
@@ -701,14 +709,15 @@
    "category": "Design",
    "url": "https://mcp.figma.com/mcp",
    "url_hint": "",
-   "auth": "oauth_partner",
+   "auth": "oauth_dcr",
    "does": "Design files and FigJam",
    "source": "https://developers.figma.com/docs/figma-mcp-server/remote-server-installation",
    "confidence": "high",
    "keywords": [
     "figma",
     "design"
-   ]
+   ],
+   "checked": "2026-10-24: registration_endpoint advertised"
   },
   {
    "id": "gamma",
@@ -716,14 +725,15 @@
    "category": "Design",
    "url": "https://mcp.gamma.app/mcp",
    "url_hint": "",
-   "auth": "oauth_partner",
+   "auth": "oauth_dcr",
    "does": "Presentations and docs",
    "source": "https://developers.gamma.app/mcp/gamma-mcp-server",
    "confidence": "medium",
    "keywords": [
     "gamma",
     "design"
-   ]
+   ],
+   "checked": "2026-10-24: registration_endpoint advertised"
   },
   {
    "id": "miro",
@@ -1060,14 +1070,15 @@
    "category": "Developer",
    "url": "https://mcp.vercel.com",
    "url_hint": "",
-   "auth": "oauth_partner",
+   "auth": "oauth_dcr",
    "does": "Deployments and projects",
    "source": "https://vercel.com/docs/ai-tooling/vercel-mcp",
    "confidence": "high",
    "keywords": [
     "vercel",
     "developer"
-   ]
+   ],
+   "checked": "2026-10-24: registration_endpoint advertised"
   }
  ]
 }

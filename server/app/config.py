@@ -27,8 +27,16 @@ class Settings(BaseSettings):
     agent_goal_max_calls: int = 150         # breaker max_calls while a goal is open (vs 30)
     agent_goal_turn_s: int = 2700           # turn timeout while a goal is open (vs 900)
     agent_goal_max_tokens: int = 6000       # per model call while a goal is open (vs 2000)
-    agent_goal_rounds: int = 3              # background continuation turns per goal (across turns)
-    agent_goal_minutes: int = 60            # total minutes across all rounds of one goal
+    agent_goal_rounds: int = 6              # background continuation turns per goal (v0.221: 3 -> 6; resumes after her tap are free)
+    agent_goal_minutes: int = 180           # WORKING minutes of one goal (v0.221: 60 -> 180; time waiting on her never counts)
+    agent_goal_resume: bool = True          # v0.221 a goal paused on her tap / OTP / answer restarts by itself once she answers
+    agent_goal_resume_hours: int = 24       # ... if she answers within this many hours
+    # v0.223 PHASE A (long jobs like Claude): restart-proof, steerable, never "failed" just because a limit ran out
+    agent_goal_recover: bool = True         # a goal still 'working' with nothing running it (server restart) is picked up again
+    agent_goal_recover_after_s: int = 600   # ... once it has not moved for this long and no turn holds the chat
+    agent_goal_recover_max: int = 3         # ... at most this many times per goal (then it waits for her)
+    agent_steer: bool = True                # her message sent mid-job reaches the RUNNING job at its next step
+    agent_goal_ask_on_limit: bool = True    # rounds / minutes used up = "Aage badhaun?" (her yes = a fresh budget), not 'failed'
     agent_ack_after_s: float = 5.0          # v0.187 a turn silent this long first says "ek second, dekh raha hoon…" (0 = off)
     agent_parallel_tools: bool = True       # v0.189 a step asking several pure look-ups (search/weather/status) runs them together; everything else stays serial
     # v0.191 HARNESS-2: step-admitted tool subsets (dsh / Claude Code pattern) - the model of one turn sees only the

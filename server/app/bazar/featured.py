@@ -51,7 +51,7 @@ def how(c: dict[str, Any]) -> str:
             "none": "One tap: Connect.",
             "api_key": f"Connect, then paste your {c['name']} API key in the app (never in chat).",
             "per_user_url": f"Copy your personal MCP address from {c['name']} and paste it in the app.",
-            "oauth_partner": f"{c['name']} only allows approved apps; Santosh's partner access is pending."}.get(c["auth"], "") + (
+            "oauth_partner": f"{c['name']} only allows approved apps; Hoola's partner access is pending."}.get(c["auth"], "") + (
         " GitHub: a fine-grained personal access token (github.com > Settings > Developer settings > Fine-grained tokens; only "
         "the repos you choose; Contents / Issues / Pull requests / Actions / Metadata). Or one tap with the token you already "
         "gave Developer Sahayak." if c["id"] == "github" else "") + (

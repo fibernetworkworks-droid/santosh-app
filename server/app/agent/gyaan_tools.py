@@ -56,7 +56,7 @@ GYAAN_LABELS = {"gyaan_khojo": "Aapke Gyaan mein dhoondh raha hoon", "gyaan": "G
 
 def _owner(ctx: Ctx) -> bool:
     a = getattr(ctx, "actor", "owner") or "owner"
-    return a in ("owner", "routine") or a.startswith("approved:")
+    return a in ("owner", "routine", "goal") or a.startswith("approved:")
 
 
 async def gyaan_khojo(ctx: Ctx, query: str = "", queries: list | None = None, sources: list | None = None,

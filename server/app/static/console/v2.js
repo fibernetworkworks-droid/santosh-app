@@ -621,7 +621,14 @@ function renderCard(kind, p, at, live) {
       (total ? `<div class="pbar"><i style="width:${Math.max(0, Math.min(100, p.pct ?? Math.round(100 * done / total)))}%"></i></div>` : '') +
       steps.slice(0, 15).map(x => `<div class="gstep ${esc(x.state || 'pending')}"><span>${ico[x.state] || '\u2022'}</span> ${esc(x.text || '')}` +
         (x.note ? ` <small>(${esc(x.note)})</small>` : '') + `</div>`).join('') +
-      (p.reason && st !== 'working' ? `<div class="note">${esc(p.reason)}</div>` : '') + `</div>`;
+      (p.reason && st !== 'working' ? `<div class="note">${esc(p.reason)}</div>` : '') +
+      (st === 'blocked' && p.hold === 'limit' ? `<div class="row" style="margin-top:8px"><button class="btn" type="button" data-goal-go>Continue</button></div>` : '') + `</div>`;
+    const go = el.querySelector('[data-goal-go]');   // v0.223 the budget ran out: the job ASKS, her tap carries it on
+    if (go) go.onclick = async () => {
+      go.disabled = true;
+      try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/goal/continue`); go.textContent = 'Continuing…'; }
+      catch (e) { go.disabled = false; go.textContent = 'Try again'; }
+    };
     scrollDown(); return;
   }
   if (kind === 'gyaan_sources') {

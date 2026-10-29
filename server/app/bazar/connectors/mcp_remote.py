@@ -27,13 +27,62 @@ class RemoteTools(Protocol):
     def call_tool(self, name: str, args: dict[str, Any]) -> dict[str, Any]: ...
 
 
+class RemoteAuthError(Exception):
+    """v0.162 the server refused the sign-in / key (HTTP 401 / 403)."""
+
+    def __init__(self, status: int, www: str = ""):
+        super().__init__(f"HTTP {status}")
+        self.status, self.www = status, www
+
+
+class RemoteError(Exception):
+    """v0.162 any other failure, with the real reason instead of 'unhandled errors in a TaskGroup'."""
+
+
+def _leaves(e: BaseException) -> list[BaseException]:
+    subs = getattr(e, "exceptions", None)
+    if subs:
+        out: list[BaseException] = []
+        for x in subs:
+            out += _leaves(x)
+        return out
+    return [e]
+
+
+def plain_error(e: BaseException) -> str:
+    """The first real reason inside an exception group, in one short line."""
+    for leaf in _leaves(e):
+        msg = str(getattr(leaf, "message", "") or leaf).strip()
+        if "TaskGroup" in msg:
+            continue
+        return (msg or type(leaf).__name__)[:300]
+    return str(e)[:300]
+
+
 class McpHttpRemote:
     """Sync wrapper over the official MCP Python SDK (streamable HTTP transport)."""
 
     def __init__(self, url: str, token: str | dict[str, str]):
         self.url, self.token = url, token
+        self.seen: list[tuple[int, str]] = []   # v0.162 (status, www-authenticate) of every HTTP answer
+
+    async def _note(self, r: Any) -> None:
+        self.seen.append((r.status_code, r.headers.get("www-authenticate", "")))
 
     async def _with_session(self, fn: Callable[[Any], Any]) -> Any:
+        self.seen = []
+        try:
+            return await self._session(fn)
+        except BaseException as e:   # noqa: BLE001  ExceptionGroups from anyio task groups
+            if isinstance(e, (KeyboardInterrupt, SystemExit, asyncio.CancelledError)):
+                raise
+            for status, www in self.seen:
+                if status in (401, 403):
+                    raise RemoteAuthError(status, www) from None
+            bad = [st for st, _ in self.seen if st >= 400]
+            raise RemoteError((f"HTTP {bad[0]}: " if bad else "") + plain_error(e)) from None
+
+    async def _session(self, fn: Callable[[Any], Any]) -> Any:
         from mcp import ClientSession
         if isinstance(self.token, dict):   # servers the user added: ready-made auth headers
             headers = dict(self.token)
@@ -48,6 +97,7 @@ class McpHttpRemote:
                     await session.initialize()
                     return await fn(session)
         async with create_mcp_http_client(headers=headers) as http:
+            http.event_hooks["response"].append(self._note)
             async with streamable_http_client(self.url, http_client=http) as streams:
                 read, write = streams[0], streams[1]
                 async with ClientSession(read, write) as session:
@@ -91,6 +141,15 @@ class McpHttpRemote:
                         continue
             return out
         return asyncio.run(self._with_session(go))
+
+
+def _refreshable(conn: Connection) -> bool:
+    from ..security import vault
+    try:
+        raw = vault().open(conn.token_enc) if conn.token_enc else ""
+        return raw.startswith("{") and bool(json.loads(raw).get("refresh_token"))
+    except Exception:   # noqa: BLE001
+        return False
 
 
 def _find_total(obj: Any) -> int | None:
@@ -155,21 +214,53 @@ class McpExecutor:
             raise ToolError(f"{pack.name} agent access is not configured yet.")
         return url
 
-    def _remote(self, pack: Pack, ctx: Ctx) -> RemoteTools:
+    def _conn(self, pack: Pack, ctx: Ctx) -> Connection | None:
+        cfg = pack.config
+        if cfg.get("custom") and cfg.get("auth") == "none":
+            return None
+        return ctx.session.scalars(select(Connection).where(Connection.user_id == ctx.user.id,
+                                                            Connection.provider == cfg.get("provider"),
+                                                            Connection.status == "active")).first()
+
+    def _run(self, pack: Pack, ctx: Ctx, op: Callable[[RemoteTools], Any]) -> Any:
+        """v0.162 one MCP round trip. A refused sign-in is refreshed once and tried again; still refused = she links
+        it again (plain words, never 'unhandled errors in a TaskGroup')."""
+        try:
+            return op(self._remote(pack, ctx))
+        except RemoteAuthError:
+            conn = self._conn(pack, ctx)
+            if conn is not None and _refreshable(conn):
+                try:
+                    return op(self._remote(pack, ctx, force=True))
+                except (RemoteAuthError, ToolError):   # refresh refused too
+                    pass
+            if conn is not None:
+                conn.status = "expired"   # kept even though the turn fails: the sign-in is really dead
+                ctx.session.commit()
+                self._cache.pop(pack.id + ":" + ctx.user.id, None)
+            if pack.config.get("custom") and pack.config.get("auth") == "key":
+                raise ToolError(f"NOT_LINKED: {pack.name} ne aapki API key / token mana kar di (galat, purani ya band). "
+                                "Nayi key Hoola app > Connect > MCP servers mein daaliye (chat mein kabhi nahi).")
+            raise ToolError(f"NOT_LINKED: {pack.name} ka sign-in khatam ho gaya. App > Connect > MCP servers > {pack.name} "
+                            "par ek baar phir 'Link' dabaiye.")
+        except RemoteError as e:
+            raise ToolError(f"{pack.name} se baat nahi ho payi: {e}")
+
+    def _remote(self, pack: Pack, ctx: Ctx, force: bool = False) -> RemoteTools:
         if pack.config.get("custom"):
             if pack.config.get("owner") != ctx.user.id:
                 raise ToolError("Unknown pack. Use bazar_find first.")
             from ..custom_mcp import headers_for
             from ..mcp_auth import LinkError
             try:
-                headers = headers_for(ctx.session, pack, ctx.user.id)
+                headers = headers_for(ctx.session, pack, ctx.user.id, force=force)
             except LinkError:
                 headers = None
             if headers is None:
                 if pack.config.get("auth") == "key":
-                    raise ToolError(f"NOT_LINKED: {pack.name} needs its API key. Add it in the Santosh app > Connect > "
+                    raise ToolError(f"NOT_LINKED: {pack.name} needs its API key. Add it in the Hoola app > Connect > "
                                     "MCP servers (never send keys in chat).")
-                raise ToolError(f"NOT_LINKED: Sign in to {pack.name} once (Santosh app > Connect > MCP servers > Link).")
+                raise ToolError(f"NOT_LINKED: Sign in to {pack.name} once (Hoola app > Connect > MCP servers > Link).")
             endpoint = self._endpoint(pack, ctx)
             from .. import runner as mcp_runner
             if mcp_runner.runner_url(endpoint):   # v0.154 one-tap server on the runner box: make sure it knows it
@@ -179,13 +270,13 @@ class McpExecutor:
                                                             Connection.provider == pack.config["provider"],
                                                             Connection.status == "active")).first()
         if not conn:
-            raise ToolError(f"NOT_LINKED: Link your {pack.name} account once (Santosh app > Connect tab > {pack.name}), "
+            raise ToolError(f"NOT_LINKED: Link your {pack.name} account once (Hoola app > Connect tab > {pack.name}), "
                             "then I can order for you.")
         from ..mcp_auth import LinkError, access_token
         try:
-            token = access_token(ctx.session, conn)
+            token = access_token(ctx.session, conn, force=force)
         except LinkError:
-            raise ToolError(f"NOT_LINKED: Your {pack.name} sign-in expired. Please link it again in the Santosh app.")
+            raise ToolError(f"NOT_LINKED: Your {pack.name} sign-in expired. Please link it again in the Hoola app.")
         return self.remote_factory(self._endpoint(pack, ctx), token)
 
     def tool_specs(self, pack: Pack, ctx: Ctx, include_off: bool = False) -> list[ToolSpec]:
@@ -194,7 +285,7 @@ class McpExecutor:
         if hit and time.time() - hit[0] < 600:
             tools = hit[1]
         else:
-            tools = self._remote(pack, ctx).list_tools()
+            tools = self._run(pack, ctx, lambda r: r.list_tools())
             self._cache[key] = (time.time(), tools)
         if pack.config.get("custom"):
             # v0.91 her switches: tools she turned off are never offered; the server's read-only hint is remembered
@@ -240,7 +331,7 @@ class McpExecutor:
                                  pay_method=f"Payment inside {pack.name}",
                                  action={"executor": "mcp", "pack_id": pack.id, "name": tool, "args": args},
                                  preview={"provider_total": rupees(total)})
-        res = self._remote(pack, ctx).call_tool(tool, args)
+        res = self._run(pack, ctx, lambda r: r.call_tool(tool, args))
         if res.get("is_error"):
             raise ToolError(f"{pack.name} said: {res.get('text', '')[:300]}")
         if any(w in tool.lower() for w in CART_WORDS) and res.get("data") is not None:
@@ -252,7 +343,7 @@ class McpExecutor:
         return {"text": res.get("text", "")[:4000], "data": res.get("data")}
 
     def execute(self, pack: Pack, action: str, args: dict[str, Any], ctx: Ctx) -> dict[str, Any]:
-        res = self._remote(pack, ctx).call_tool(action, args)
+        res = self._run(pack, ctx, lambda r: r.call_tool(action, args))
         if res.get("is_error"):
             raise ToolError(f"{pack.name} could not place it: {res.get('text', '')[:300]}")
         if pack.config.get("custom"):

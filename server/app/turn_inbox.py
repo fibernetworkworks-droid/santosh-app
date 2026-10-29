@@ -144,6 +144,7 @@ def _user_row_since(conversation_id: str, since: datetime) -> bool:
         with session() as s:
             row = s.scalars(select(Message.id).where(Message.conversation_id == conversation_id,
                                                      Message.role == "user",
+                                                     Message.display.is_not(None),   # v0.221 not a saved job result
                                                      Message.created_at >= since).limit(1)).first()
         return row is not None
     except Exception:
