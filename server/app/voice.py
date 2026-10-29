@@ -227,6 +227,10 @@ Which tool (details are in each tool's description)
 About the user
 {context}"""
 
+from .agent.replystyle import VOICE as _VOICE_RULES   # v0.221 SAHI JAWAB: the same rulebook as chat, spoken
+assert "\n\nWhen to speak\n" in PERSONA
+PERSONA = PERSONA.replace("\n\nWhen to speak\n", "\n\n" + _VOICE_RULES + "\nWhen to speak\n", 1)
+
 
 # v0.149 The big Sahayak / builder tools are NOT declared to Gemini Live any more: 280 tools (~395 KB of JSON, ~110k
 # tokens) filled the live model's context before she said a word, so sessions died and the call sat on "Connection thoda

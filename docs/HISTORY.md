@@ -9095,8 +9095,154 @@ Tests: NEW `test_v0230_voice_phase3.py` (11); v0206 backchannel fakes follow the
 `push_news`; v150 checks form_create's nested title through `_compact`. Version 0.230.0 (pubspec 0.230.0+270, console
 ?v=0.230.0, pins -> 0.230.0). Server + APK (Dart / Kotlin) - old APKs keep working with the server part.
 
+## v0.231.0 SAHI JAWAB + PATLA PROMPT — Phase 1 + 2 (built as v0.221.0, re-versioned on merge) of the Claude-style reply plan (owner: "START PHASE 1 AND PHASE 2")
+Research first (Anthropic's published system prompts + prompting guides + the context-engineering post): Claude finds
+the real need behind the words, acts on a clear ask, states its assumption on a half-clear one, asks only when a wrong
+guess costs something; answers first; length fits the question; prose by default with lists only for real lists;
+no filler; honest gaps; and keeps its working context small ("more context can make it worse").
+- PHASE 1 — one reply rulebook, `server/app/agent/replystyle.py` (no braces: voice.PERSONA is .format()ed):
+  `CHAT` (How you understand her + How you answer) replaces the old fixed "Two to four sentences in chat" rule inside
+  `prompts.SYSTEM` (marker `{REPLY_RULES}`, swapped once at import; the "repeat the key values once before send / pay /
+  book / delete" rule kept) - phone and web console share it because they share the brain; `QUICK` rides the quick
+  lane's SYSTEM; `VOICE` (the spoken version: answer in the first breath, spoken length follows the question, no
+  symbols) is inserted into `voice.PERSONA` just before "When to speak". Chat shows NO bold / headings / tables (the
+  phone app has no markdown renderer yet - Phase 3), lists only as plain "-" / "1." lines.
+- PHASE 2 — `prompts.system_text(families)` + `prompts._guide()`: SYSTEM (~131 KB) is cut into its "- Feature: ..."
+  blocks once; a block naming a tool of a NON-core family (names with "_" anywhere; one-word names like gst / office /
+  product only when written as a tool: `gst`, "gst action=", "gst(") is that family's guide and rides only on turns that
+  admitted the family (v0.191 admission); untagged blocks, core-family blocks and `PINNED` routing rules always ride; a
+  one-line index ("More skills you have ... call tool_search ...") names every guide left out. `_steps_inner` computes
+  admission first, builds the system prompt from `adm.families`, and rebuilds it once when tool_search opens a family
+  mid-turn. families=None (admission off / valve / routine, staff, customer actors / direct callers) = the full SYSTEM
+  byte-identical. Setting `prompt_slim` (default true; false = full guide). Measured: 131 KB -> ~32-43 KB per owner turn.
+- RULE for new Sahayaks: write the prompt line as "- NAME: ... `toolname action=...`" so it is tagged to its family; a
+  rule every turn needs and that names a non-core tool goes into `PINNED`.
+- Tests `server/tests/test_v0221_sahi_jawab.py` (11). Released in v0.231.0. Server-only deploy; old APKs keep working; Mera PC freeze respected; desktop untouched.
 
-## v0.231.0 VOICE PHASE 4 — call quality you can measure (owner: "START PHASE 4")
+## v0.231.0 SAAF CHAT — Phase 3 (built as v0.222.0, re-versioned on merge) of the Claude-style reply plan: the phone renders replies (owner: "START PHASE 3")
+- `lib/ui/md_text.dart`: our OWN small markdown renderer (no pub package; text is never run, links go through
+  `openInApp`): `mdBlocks` (paragraph, heading, bullet / numbered lists with nesting, fenced code, quote, table with a
+  separator row, rule), `mdInline` (**bold**, __bold__, _italic_ / *italic* only at word edges so snake_case and "2 * 3"
+  stay as written, ~~strike~~, `code`, [label](http/https/mailto/tel), bare links as "🔗 host"), `mdPlain` (words
+  without marks), `MdText` widget (`streaming`, `selectable` via SelectionArea, `trailing` = the typing caret on the
+  last text block).
+- STREAMING rule: a half-written mark never shows - an open ** / ` / ~~ already styles what follows, a lone trailing
+  * / _ / ~, a marker-only last line (#, -, 1.), "[label" without its address and a pipe row without its separator
+  row wait for the next words; an open code fence is a code block at once. A FINISHED message keeps an unmatched mark
+  as written.
+- chat_screen: assistant bubbles (fresh `_Reveal`, history, the streaming bubble with `_Caret`) use MdText; the
+  long-press menu, Copy, Quote and swipe-to-reply get `mdPlain(text)` for Hoola's messages (hers stay as typed).
+- Server: `replystyle.plain()` strips the marks for places that show raw text - `push.render` message bodies (so the
+  lock-screen notification, the bubble and the home-screen widget read clean). The rulebook now allows LIGHT
+  formatting: bold only for the one or two must-not-miss values, a heading only in long answers, a small table only to
+  compare a few items (bigger data = a file), `code` only for ids / codes / commands.
+- Tests: `server/tests/test_v0222_saaf_chat.py` + Dart `test/md_text_test.dart` (7; run `flutter test
+  test/md_text_test.dart` - green on CI's Flutter 3.24.5, `dart analyze` clean on the changed files; the sandbox CAN
+  download Flutter from storage.googleapis.com and pub.dev now - use the exact CI version 3.24.5).
+- Released in v0.231.0. NEEDS A NEW APK for the rendering;
+  the server half works with old APKs. Mera PC freeze respected; desktop untouched.
+
+## v0.231.0 DRAFT JAANCH — Phase 4 (built as v0.223.0, re-versioned on merge) of the Claude-style reply plan: the last look at a reply, with no visible delay (owner: "START PHASE 4")
+Phase 1 put "check your draft once" in the rulebook; this is the part that does not depend on the model remembering to.
+`server/app/agent/draftcheck.py`, two checks, both built so nothing waits for them.
+- **A claim with nothing behind it (free, in code, inside the turn)**: the reply says the work happened — "bhej diya",
+  "book ho gaya", "save kar diya", "order kar diya", "reminder lag gaya" — while every tool that finished ok this turn
+  was a READ (`READS` + `pakka.SKIP` + the whole `<name>_dekho` Sahayak convention), so nothing was really sent, saved or
+  booked. The model is nudged ONCE ("do it now with the right tool, every card / approval / OTP rule as usual, or say
+  plainly it is NOT done"); if it claims again, `state["correct"]` adds "(Saaf baat: yeh kaam abhi hua nahi hai - ab bhi
+  karna baaki hai.)" AFTER the words she already read. The same words about HER ("aapne bhej diya"), in the future
+  ("card par haan karte hi bhej diya jayega"), as an offer ("chahiye to bhej doon?") or as a denial ("nahi bheja hai")
+  are never a claim (`_NOT_A_CLAIM`), and "bana diya / ban gaya" is deliberately NOT in the pattern (in Hinglish a
+  plan, a list or a draft is legitimately "bana diya" inside the reply itself, with no tool behind it). `pakka` (v0.78)
+  still owns every case where tools DID run — its guard was split, not changed — and goal mode is skipped entirely
+  (`_goal_open`): a kaam_plan goal has its own steps and its own honest "X/Y steps ho gaye" line (v0.186), so this
+  check stays out of its way and never spends an extra round there.
+- **The draft check (one cheap-brain call, AFTER the words are on her screen)**: code gates it for FREE —
+  `hard_facts` = amounts (Rs / ₹ / rupaye / lakh / crore), dates (15/11, 15 Nov, 20 tareekh), times (4 baje, 4:30 pm)
+  and 5+ digit ids; percentages and small counts are deliberately NOT facts. A fact whose digits appear nowhere in
+  `sources_text` (her message + `_chat_tail` = her own words and tool results of the last 8 messages, never Hoola's own
+  prose, least of all the reply being checked + this turn's tool args / results / errors) is "loose"; `many_parts` spots
+  a question with 2+ "?" or a numbered second part. No loose fact and no second part = NOT ONE model call. Then
+  `ask_model` asks for JSON `{ok, missed, unsupported}` with the precision rules in `CHECK_SYSTEM`: a figure Hoola
+  WORKED OUT from the given numbers is fine, a public rule / standard rate / statutory due date is NEVER unsupported,
+  `missed` only for a clearly separate question, and never a word about tone / length / formatting.
+- **The code only DECIDES to look; the model is the only thing that may SPEAK.** That is what keeps a legitimate total
+  (3 x 150 = 450, loose in code because the digits are nowhere) from ever becoming a wrong warning. And `note_of` may
+  only name figures the code ALSO saw as unbacked, so the note can never invent a worry of its own.
+- One short line follows the reply through the normal note path (`events.notify`: Message `in_history=False` + SSE +
+  FCM) plus the same quiet line into her live call (`kaamwatch._voice`, v0.193): "(Dhyaan: Rs 7,250 - yeh mujhe kisi
+  pakke source se nahi mila; ek baar khud dekh lijiye.)" or "(Ek baat reh gayi: late fee kitni hai - bataun?)".
+  It NEVER rewrites what she has already read.
+- Scheduled in `_steps` with `_bg` after `_steps_inner` returned, so the reply is out first (the test proves the turn
+  returns before the check has even finished thinking). Owner turns only, `draft_check_max_hour` (4) notes per chat per
+  hour (`_SPOKE`), silent when she tapped Stop / the turn was halted, when the reply already carries a
+  "(Saaf baat: / (Dhyaan: / (Ek baat reh gayi:" note, on an error reply, and when the month's AI budget is used up
+  (new `usage.BACKGROUND` feature "draft_check"). `draft_check=false` = the v0.222 behaviour exactly.
+- Tests: NEW `server/tests/test_v0223_draft_jaanch.py` (17): the fake claim caught then said plainly, her / future /
+  offer wordings are not claims, a real tool run is never called a fake claim but a read is, hard facts vs percentages
+  and counts, a figure from a real source is not loose, the free gate spends nothing on a greeting / a tiny reply / a
+  reply that already carries a note, `many_parts`, a worked-out total never becomes a warning (the model looks once and
+  stays quiet), an unbacked figure gets ONE note in chat + in the call with `in_history=False`, the note can only name
+  figures the code also saw (a flagged NAME too: dropped when her own words name them, kept when nowhere), a missed
+  part, the hourly cap, silence on Stop / error reply / budget over / switch off
+  without a single model call spent, goal mode keeping its own truth (and the very same reply being caught outside it),
+  and the end-to-end proof that the reply is back before the check finishes.
+- Released in v0.231.0. Server-only — old APKs
+  keep working. Mera PC freeze respected; desktop untouched 1.4.0; every money / OTP / card / approval gate untouched.
+
+## v0.231.0 KAAM KA SCORECARD — Phase 5 (built as v0.224.0, re-versioned on merge) of the Claude-style reply plan: the same questions, measured before and after every change (owner: "START PHASE 5")
+"Behtar hua ya nahi" ab andaaze se nahi, numbers se. `server/app/quality/`.
+- **The fixed set** (`asks.py`, `SET_V = 1`, 24 asks, `check()` keeps it sound): greeting (Hinglish AND Devanagari),
+  yes/no (incl. one Hoola must refuse), a fact, a Marathi fact, two figure asks (one derivable total, one GST sum),
+  advice, a plan, two multi-part asks, an explainer, a read-work ask, a claim-prone work ask, a money ask, two vague
+  asks, TWO two-turn style asks ("hamesha chhota likho" / "list mat do" — her style must hold over turns), a heavy
+  personal ask, a general-rule ask, a follow-up that must carry her own order number, and one nobody can know
+  (tomorrow's Nifty). Each carries a length `band`, the `want` flags and, where it matters, the figures that are
+  legitimately derivable. The set never changes without bumping SET_V — a scorecard is worth nothing if the
+  questions move.
+- **The scorer** (`score.py`, pure code, no model, the same reply always scores the same): words / lines / sentences,
+  formatting counts (bold, headings, tables, list lines, code, emoji, links), filler openers ("Bilkul!" as an opener
+  is a filler, "Bilkul ho sakta hai" as the ANSWER is not), the closing "aur kuch?", answer-first (the first sentence
+  is not her question handed back, and a yes/no ask really gets a yes or no in it), length-band fit (padding costs
+  MORE than being short — the rulebook's own order), her script kept, list where a list is wrong, bold / heading /
+  table in a tiny reply, an invented figure (reuses v0.223's `loose_facts`, so both features agree on what a hard
+  fact is), a fake claim of done (v0.223's `claims_done` + `nothing_ran`, the heaviest penalty), and 2+ questions
+  back on a vague ask. Points out of 100 per ask, `totals()` for the run.
+- **Two cards, because they honestly measure different things** (`run.py`): `pipeline_card()` needs NO model and NO
+  keys — per ask it reads what the turn would SEND (the slim guide's KB and how many of the 422 tools are offered,
+  via v0.191 admission + v0.221's `system_text`) and that the rulebook really rides in the prompt; CI can run it on
+  every change, so Phase 2's win can never quietly come undone. `reply_card()` runs the REAL turns on a dedicated
+  tenant `__quality__` (never her chats, never her AI budget) and measures what she would actually get: time to the
+  first word (from the bus: the first `delta`, else the first assistant message), the whole reply's time, length,
+  shape, every scorer flag, plus the real model calls / prompt KB / tool count captured by a `_Watch` wrapper around
+  `_think`. One broken ask never loses the rest of the run. `--judge` adds ONE cheap-brain call per ask (0-5 for
+  "did it answer what was asked" and "would a busy shop owner be glad to get this"; it may never mark down Hinglish,
+  a short complete answer or an honest refusal, and a made-up figure is a 0).
+- **Before / after** (`compare()`): every number that moved, with "behtar / bura / same" the right way round
+  (prompt KB, tools, times → lower is better; points, clean replies → higher), every flag counted both ways, a
+  `worse` list, and a Hinglish `say` line. Two different SET_V refuse to compare. Snapshots are JSON in
+  `QUALITY_DIR` (default `data/quality/`).
+- CLI: `python -m app.quality` (free card), `--live` (real replies), `--live --judge`, `--label "..."`,
+  `compare a.json b.json`. API (read-only + the free card): `GET /api/quality`, `/api/quality/asks`,
+  `/api/quality/report/{file}`, `GET /api/quality/compare?before=&after=`, `POST /api/quality/pipeline`. A live run
+  stays a VPS command on purpose — it costs real model calls and minutes.
+- Measured here on v0.224.0: the guide is **31.3 KB median** per owner turn (max 43.5) against the **128 KB** full
+  guide, **48 of 422 tools** offered on a typical turn — Phase 2's win as a hard number, and `compare` prints it as
+  `prompt_kb_median: 128.0 -> 31.3 (-96.7) behtar`.
+- Tests: NEW `server/tests/test_v0224_scorecard.py` (20): the set is sound and fixed; filler + closing cost points
+  while "Bilkul" as an answer does not; answer-first and yes/no; the band with padding costing more than short; her
+  script, lists, light formatting (and a list being free in a plan); an invented figure is the biggest shape penalty
+  while her own / derivable numbers are free; a fake claim is the worst and a real tool run is never called one; a
+  vague ask may ask ONE question not three; totals count every flag; the free card needs no model and PINS Phase 2's
+  win; the free card notices if the rulebook ever leaves the prompt; a real turn measured end to end with a scripted
+  brain (words, model calls, prompt KB, tools, timings); a two-turn ask scores only the last reply; a broken ask
+  never loses the run; the judge is optional and averaged; a snapshot is saved, listed and reloaded; compare says
+  behtar / bura per number and refuses two different sets; the API.
+- Version 0.231.0 (pubspec 0.231.0+271, console ?v=0.231.0, pins -> 0.231.0). Server-only — old APKs
+  keep working. Mera PC freeze respected; desktop untouched 1.4.0; the scorecard never touches her data, her chats or
+  her budget.
+
+## v0.232.0 VOICE PHASE 4 (built as 0.231.0; re-versioned after the parallel v0.231.0 SAHI JAWAB took the number) — call quality you can measure (owner: "START PHASE 4")
 1. **Scorecards that survive deploys** (`app/callquality.py`): `voice.STATS` lived only in memory, so every pm2 restart wiped
    the call numbers. Now `Call.run`'s finally writes ONE line per finished call to `data/voice_calls/<tenant>.jsonl` (last
    `KEEP` 300) through `callquality.record` (in a thread, never raises into the call). Only numbers and labels are kept
@@ -9119,4 +9265,4 @@ Tests: NEW `test_v0230_voice_phase3.py` (11); v0206 backchannel fakes follow the
 6. **Phone** `lib/ui/call_quality_screen.dart` (Profile > Call ki jaanch): 7 / 30 / 90 days, the say line, grade chips,
    numbers vs targets, per version, recent calls with grade and problems, the ear test with Sahi / Galat (asks what felt
    wrong) / Chhodo. New APK; the server part works without it.
-Tests: NEW `test_v0231_voice_phase4.py` (12). Version 0.231.0 (pubspec 0.231.0+271, console ?v=0.231.0, pins -> 0.231.0).
+Tests: NEW `test_v0232_voice_phase4.py` (12). Version 0.232.0 (pubspec 0.232.0+272, console ?v=0.232.0, pins -> 0.232.0).
