@@ -4,8 +4,9 @@ A long chat (default 300 exchanges) is planted with 20 details far apart (file n
 Then Hoola is asked about each one, three times over, in a fresh copy of the same chat per mode:
   hoola   = the v0.108 40-49 exchange window          (CHAT_CONTEXT=hoola)
   full    = Phase 1, whole chat + safety net          (CHAT_CONTEXT=claude, CHAT_COMPACT=false)
-  compact = Phase 1 + 2, whole chat + checkpoint      (CHAT_CONTEXT=claude, CHAT_COMPACT=true)
-Score = how many answers contain the planted detail. Costs real tokens: about 3 x 20 model calls on a big chat.
+  compact = Phase 1 + 2: the chat is COMPACTED first (a real checkpoint summary of everything but the newest 4
+            exchanges, written by the real brain), then asked - so the planted details must survive the summary
+Score = how many answers contain the planted detail (markdown stripped, a distinctive phrase, not a lone digit). Costs real tokens: about 3 x 20 model calls on a big chat.
 
     cd ~/apps/santosh-core && .venv/bin/python ~/santosh_app/server/tools/memory_quiz.py            # all modes
     cd ~/apps/santosh-core && .venv/bin/python ~/santosh_app/server/tools/memory_quiz.py --modes compact --questions 5
@@ -31,14 +32,14 @@ PLANTS = [
     ("Report hamesha Marathi mein banana, English mein nahi", "Report kis bhasha mein banani hai?", "Marathi"),
     ("Godown ka naya pata Plot 44, Bhosari MIDC hai", "Godown ka naya pata kya hai?", "Bhosari"),
     ("Riya ka birthday 14 August ko hai", "Riya ka birthday kab hai?", "14 August"),
-    ("Supplier Kapoor Steels ka GST state code 27 hai", "Kapoor Steels ka state code kya tha?", "27"),
+    ("Supplier Kapoor Steels ka GST state code 27 hai", "Kapoor Steels ka state code kya tha?", "code 27"),
     ("Meeting room ka wifi naam FNW-Guest-5G hai", "Meeting room ka wifi naam kya hai?", "FNW-Guest-5G"),
     ("Diwali offer ka code DIWALI-LX9 rakhna", "Diwali offer ka code kya rakha tha?", "LX9"),
     ("Truck number MH14-KQ-7781 se maal aayega", "Maal kis truck se aayega?", "7781"),
     ("Client Joshi ko quotation sirf PDF mein bhejna, Excel nahi", "Joshi ko quotation kis format mein bhejni hai?", "PDF"),
     ("Naye intern ka naam Aarav Kulkarni hai", "Naye intern ka naam kya hai?", "Aarav"),
     ("Warehouse ka CCTV password reset ticket TCK-4410 hai", "CCTV reset ka ticket number kya tha?", "4410"),
-    ("Monthly rent 38,500 rupaye har 5 tarikh ko jaata hai", "Rent kis tarikh ko jaata hai?", "5"),
+    ("Monthly rent 38,500 rupaye har 5 tarikh ko jaata hai", "Rent kis tarikh ko jaata hai?", "5 tarikh"),
     ("Website ka naya domain hoola-bakery.in liya hai", "Naya domain kaunsa liya tha?", "hoola-bakery"),
     ("Pune branch ka manager Sameer Deshpande hai", "Pune branch ka manager kaun hai?", "Sameer"),
     ("Price list ki sheet ka naam PL_2026_Q4_final hai", "Price list sheet ka naam kya hai?", "PL_2026_Q4"),
@@ -82,14 +83,22 @@ async def _run_mode(mode: str, conv_n: int, q: int) -> dict:
     plants = PLANTS[:q]
     cid = _build(conv_n, plants)
     from app.agent import run_turn
+    checkpoint = None
+    if mode == "compact":   # a REAL checkpoint first: the details must survive the summary, not ride along unsummarised
+        from app.agent import compact
+        checkpoint = await compact.run(cid, "default", "manual")
+        print(f"  [compact] checkpoint: {(checkpoint or {}).get('exchanges', 0)} exchanges folded, "
+              f"{len((checkpoint or {}).get('summary', ''))} chars, by {(checkpoint or {}).get('model', '-')}", flush=True)
     got = []
     for fact, ask, want in plants:
         out = await run_turn(cid, ask, tenant_id="default")
-        ok = want.lower() in (out or "").lower()
+        flat = " ".join((out or "").replace("**", "").replace("`", "").lower().split())
+        ok = want.lower() in flat
         got.append({"ask": ask, "want": want, "ok": ok, "answer": (out or "")[:160]})
         print(f"  [{mode}] {'OK ' if ok else 'MISS'} {ask} -> {(out or '')[:90]!r}", flush=True)
     from app.agent import context
     return {"mode": mode, "score": sum(g["ok"] for g in got), "of": len(got),
+            "checkpoint_chars": len((checkpoint or {}).get("summary", "")) if checkpoint else None,
             "last_reading": context.LAST.get(cid, {}), "answers": got}
 
 
@@ -109,7 +118,9 @@ def main() -> None:
     for m in [x.strip() for x in a.modes.split(",") if x.strip() in MODES]:
         print(f"== {m} ==", flush=True)
         results.append(asyncio.run(_run_mode(m, a.exchanges, max(1, min(a.questions, len(PLANTS))))))
-    print(json.dumps([{k: r[k] for k in ("mode", "score", "of")} for r in results], indent=1))
+    print(json.dumps([{k: r[k] for k in ("mode", "score", "of", "checkpoint_chars")} for r in results], indent=1))
+    sys.stdout.flush()
+    os._exit(0)   # the embedding / ONNX threads abort noisily at a normal interpreter exit; the results are out
 
 
 if __name__ == "__main__":
