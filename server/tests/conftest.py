@@ -29,6 +29,8 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("GYAAN_GROUND", "false")      # v0.135: no extra grounding call in scripted model tests
     monkeypatch.setenv("MEMORY_AUTO", "false")       # v0.108: no background fact-picking model calls in scripted tests
     monkeypatch.setenv("SEMANTIC_OFF", "1")          # no 40 s embedding-model download attempt (the sandbox has no HF)
+    monkeypatch.setenv("SITE_ART", "false")         # v0.225: no art-direction / critique Opus calls in scripted site tests
+    monkeypatch.setenv("SITE_CRITIQUE", "off")
     monkeypatch.setenv("KAAM_WATCH", "false")        # v0.136: job-watch notes only in its own tests
     monkeypatch.setenv("CALL_RECEIPT", "false")      # v0.91: scripted calls don't expect the extra receipt message
     monkeypatch.setenv("BLENDER3D_WORKER", "false")   # v0.141: tests run 3D jobs themselves

@@ -779,6 +779,11 @@ async def employee_jobs() -> None:
             await asyncio.to_thread(_svc.tick)
         except Exception:
             log.exception("%s tick failed", _mod)
+    try:                                   # v0.223 Website: a build / looks job that died with the process restarts once
+        from .site import service as site_service
+        await asyncio.to_thread(site_service.recover_stuck)
+    except Exception:
+        log.exception("site recover failed")
     try:                                   # v0.122 Website: her domain's DNS / SSL coming up, uptime of live sites
         from .site import hosting as site_hosting
         await asyncio.to_thread(site_hosting.watch)
@@ -789,6 +794,14 @@ async def employee_jobs() -> None:
         await asyncio.to_thread(site_domains.tick)
     except Exception:
         log.exception("site domains tick failed")
+    try:                                   # v0.224 visits nginx served (its own log), the daily website files backup
+        from .site import edge as site_edge
+        from .site import backup as site_backup
+        await asyncio.to_thread(site_edge.ingest_log)
+        await asyncio.to_thread(site_edge.sync)
+        await asyncio.to_thread(site_backup.daily)
+    except Exception:
+        log.exception("site edge / backup failed")
     try:                                   # v0.124 care: visit counters to the DB, monthly care note on the 1st
         from .site import care as site_care
         await asyncio.to_thread(site_care.flush)

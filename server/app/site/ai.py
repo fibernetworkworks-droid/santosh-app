@@ -44,8 +44,14 @@ def _permanent(e: Exception) -> bool:
 
 
 _EXTRAS_OFF: set[str] = set()      # request fields this API / model refused once (thinking, output_config): not sent again
-EFFORT = {"app_art": "xhigh", "app_critique": "high", "app": "high", "app_code": "high", "app_edit": "medium"}
+EFFORT = {"app_art": "xhigh", "app_critique": "high", "app": "high", "app_code": "high", "app_edit": "medium",
+          "build": "high", "site_art": "xhigh", "site_critique": "high", "site_edit": "medium"}
 APP_KINDS = APP_KINDS + ("app_art", "app_critique")
+SITE_KINDS = ("build", "site_art", "site_critique", "site_edit")   # v0.225 Website Sahayak on the same Opus path
+
+
+def _opus_kind(kind: str) -> bool:
+    return kind in APP_KINDS or (kind in SITE_KINDS and bool(getattr(get_settings(), "site_opus", True)))
 
 
 def _app_client():
@@ -94,7 +100,8 @@ def _app_request(model: str, system: str, prompt: str, max_tokens: int, kind: st
     room = max_tokens
     if think == "adaptive" and "thinking" not in _EXTRAS_OFF:
         kw["thinking"] = {"type": "adaptive"}
-        room = max_tokens + {"app_art": 9000, "app_critique": 5000, "app_edit": 3000}.get(kind, 8000)
+        room = max_tokens + {"app_art": 9000, "app_critique": 5000, "app_edit": 3000, "site_art": 9000,
+                             "site_critique": 5000, "site_edit": 3000}.get(kind, 8000)
     eff = effort or (getattr(st, "app_art_effort", "") if kind == "app_art" else "") or \
         (getattr(st, "app_effort", "") if kind in ("app", "app_code") else "") or EFFORT.get(kind, "high")
     if eff in ("low", "medium", "high", "xhigh", "max") and "output_config" not in _EXTRAS_OFF:
@@ -108,14 +115,15 @@ def _ask_app(system: str, prompt: str, max_tokens: int, kind: str, images: list[
     """v0.140 Owner's rule: App Sahayak designs and builds with Claude Opus 5.5. Busy / overloaded / timeouts are tried
     again with growing waits; nothing falls back to another model unless APP_MODEL_FALLBACK is switched on."""
     st = get_settings()
-    model = app_model()
+    model = model_for(kind) if kind in SITE_KINDS else app_model()
     tries = max(1, int(getattr(st, "app_model_tries", 5) or 5))
     if not st.anthropic_api_key:
         if getattr(st, "app_model_fallback", False) and not images:
             STATS["app_fallback"] += 1
             from ..net.ai import llm
             return llm(system, prompt, min(max_tokens, 8000), timeout=240)
-        raise AiError(f"App design {app_model_label()} se hota hai, par server par ANTHROPIC_API_KEY nahi hai.")
+        what = "Website" if kind in SITE_KINDS else "App design"
+        raise AiError(f"{what} {app_model_label()} se hota hai, par server par ANTHROPIC_API_KEY nahi hai.")
     STATS["app_calls"] += 1
     last: Exception | None = None
     attempt = 0
@@ -150,8 +158,8 @@ def _ask_app(system: str, prompt: str, max_tokens: int, kind: str, images: list[
 
 def model_for(kind: str) -> str:
     st = get_settings()
-    if kind in APP_KINDS:
-        return app_model()
+    if _opus_kind(kind):
+        return app_model() if kind in APP_KINDS else (getattr(st, "site_model", "") or app_model())
     if kind == "build":
         return getattr(st, "site_model", "") or "claude-opus-5-5"
     return getattr(st, "site_edit_model", "") or st.anthropic_model
@@ -167,7 +175,7 @@ def _client():
 
 def ask(system: str, prompt: str, max_tokens: int = 6000, kind: str = "build", images: list[bytes] | None = None,
         effort: str = "") -> str:
-    if kind in APP_KINDS:
+    if _opus_kind(kind):
         return _ask_app(system, prompt, max_tokens, kind, images, effort)
     st = get_settings()
     if st.anthropic_api_key:

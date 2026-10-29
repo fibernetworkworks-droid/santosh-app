@@ -55,6 +55,7 @@ def test_projects_crud_and_chats(pj):
     assert c.post("/api/conversations?project_id=prj_nope", headers=H).status_code == 404
     assert c.patch(f"/api/conversations/{b}", json={"project_id": pid}, headers=H).json()["project_id"] == pid
     assert c.patch(f"/api/conversations/{b}", json={"project_id": "prj_nope"}, headers=H).status_code == 404
+    _wrote(a, b)
     lst = c.get(f"/api/console/conversations?project={pid}", headers=H).json()["conversations"]
     assert {x["id"] for x in lst} == {a, b} and all(x["project_id"] == pid for x in lst)
     assert c.patch(f"/api/conversations/{b}", json={"project_id": None}, headers=H).json()["project_id"] is None
@@ -125,3 +126,10 @@ def test_project_limits_and_safety(pj):
         s.get(Project, pid).tenant_id = "someone_else"
     assert c.get(f"/api/projects/{pid}", headers=H).status_code == 404
     assert c.patch(f"/api/projects/{pid}", json={"name": "x"}, headers=H).status_code == 404
+
+
+def _wrote(*convs):   # v0.236 the console lists a chat only once she wrote in it
+    from app.db import Message, session
+    with session() as s:
+        for cv in convs:
+            s.add(Message(conversation_id=cv, role="user", content="hi", display="hi"))
