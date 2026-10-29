@@ -785,6 +785,18 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 if b.get("type") != "tool_use":
                     continue
                 results.append(await _one(b))
+        if getattr(settings, "agent_steer", True):
+            try:   # v0.223 PHASE A: what she sent while this job ran rides with this step's results (Claude-style)
+                from . import steer as _steer
+                said = _steer.take(conversation_id, _held)
+                if said:
+                    results.append({"type": "text", "text": _steer.note(said)})
+                    with session() as _s:   # her words stay in the chat record / her memory (never a 2nd model turn)
+                        for _t in said:
+                            _s.add(Message(conversation_id=conversation_id, role="user", content=_t, display=_t,
+                                           in_history=False, delivered_to_agent=True))
+            except Exception:
+                log.exception("steering delivery failed")
         history.append({"role": "user", "content": results})
         if state["breaker"].rescue_note:   # v0.187 the replan rescue rides with the results, as data for the model
             note = state["breaker"].rescue_note
@@ -1103,14 +1115,29 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             ctx.place = place or where.remember(conversation_id, user_text)
         except Exception:
             log.exception("place check failed")
+        try:   # v0.223 PHASE A: her "haan aage badho" after a used-up budget reopens the SAME job (fresh budget)
+            from . import goal as _g
+            if settings.agent_goal and _g.held_for_limit(conversation_id) and _g.wants_continue(user_text):
+                _g.reopen(tenant_id, conversation_id)
+        except Exception:
+            log.exception("goal reopen failed")
     lock = _locks[conversation_id]
+    _steer_e = None
     if lock.locked() and (actor or "owner") == "owner" and not voice:
         # v0.86 a long job holds the chat: answer this message NOW from the quick lane; only real work waits
         from . import quick
-        got = await quick.answer(conversation_id, tenant_id, user_text)
+        steer_on = bool(getattr(settings, "agent_steer", True)) and not context
+        got = await quick.answer(conversation_id, tenant_id, user_text, steering=steer_on)
         if got and not got["queued"]:
             return got["text"]
+        if steer_on:   # v0.223 the instruction reaches the RUNNING job at its next step (agent.steer)
+            from . import steer as _steer
+            _steer_e = _steer.offer(conversation_id, user_text, client_id)
     async with lock:
+        if _steer_e is not None:
+            from . import steer as _steer
+            if _steer.claim(conversation_id, _steer_e):
+                return ""                   # the running job already took her words and acted on them
         if client_id and (conversation_id, client_id) in _held:   # taken back while it waited behind this lock
             _held.discard((conversation_id, client_id))
             return ""

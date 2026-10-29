@@ -34,7 +34,19 @@ log = logging.getLogger("santosh.goal")
 
 MAX_STEPS = 15               # kaam_plan set cap
 STATS = {"set": 0, "finished": 0, "blocked": 0, "continued": 0, "refused": 0, "stopped_by_her": 0, "paused": 0,
-         "resumed": 0}
+         "resumed": 0, "recovered": 0, "limit_asked": 0, "limit_reopened": 0}
+
+# v0.223 goals whose background round is scheduled / running in THIS process (the recovery sweep never doubles them)
+_PENDING: dict[str, int] = {}
+
+
+def _pend(goal_id: str, d: int) -> None:
+    n = _PENDING.get(goal_id, 0) + d
+    if n > 0:
+        _PENDING[goal_id] = n
+    else:
+        _PENDING.pop(goal_id, None)
+LIMIT = "limit"
 
 # conversations whose owner pressed Rokiye on the goal (the goal stops, the chat stays usable)
 _STOPPED: set[str] = set()
@@ -54,6 +66,8 @@ class GoalRun(Base):
     paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # v0.221 waiting on her
     paused_s: Mapped[int | None] = mapped_column(Integer, nullable=True)       # v0.221 seconds spent waiting on her
     origin: Mapped[str | None] = mapped_column(String(16), nullable=True)      # v0.222 who asked: owner | routine
+    recovered: Mapped[int | None] = mapped_column(Integer, nullable=True)      # v0.223 picked up after a restart (times)
+    hold: Mapped[str | None] = mapped_column(String(16), nullable=True)        # v0.223 "limit" = waiting for her "aage badho"
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -68,7 +82,7 @@ def _row_view(r: GoalRun) -> dict[str, Any]:
     return {"id": r.id, "conversation_id": r.conversation_id, "goal": r.goal or "", "steps": steps,
             "status": r.status or "working",
             "reason": r.reason or "", "rounds": r.rounds or 1, "done": done, "total": len(steps),
-            "stage": stage, "pct": pct,
+            "stage": stage, "pct": pct, "hold": r.hold or "",
             "updated_at": (_aware(r.updated_at) or now()).isoformat()}
 
 
@@ -83,7 +97,8 @@ def _publish(conv: str, view: dict[str, Any]) -> None:
     stage = view["stage"] or (view["reason"] if view["status"] in ("blocked", "failed", "stopped") else "")
     bus.publish(conv, "goal", {"id": view["id"], "title": view["goal"], "status": view["status"],
                                "stage": stage[:120], "pct": view["pct"], "steps": view["steps"][:15],
-                               "done": view["done"], "total": view["total"], "reason": view["reason"][:200]})
+                               "done": view["done"], "total": view["total"], "reason": view["reason"][:200],
+                               "hold": view.get("hold", "")})   # v0.223 "limit" = the card asks "Aage badhaun?"
 
 
 def _mutate(tenant: str, goal_id: str, fn) -> dict[str, Any]:
@@ -335,16 +350,18 @@ def _schedule(conv: str, tenant: str, view: dict[str, Any], count_round: bool) -
             rounds = min(rounds, st.agent_goal_rounds - 1)   # a resume after her answer never uses up a round
         elif rounds < st.agent_goal_rounds and mins < st.agent_goal_minutes:
             r.rounds += 1
-    if rounds >= st.agent_goal_rounds:
-        finish(tenant, view["id"], "failed", f"{rounds} rounds poore; baaki: {view['stage'] or 'steps'}")
-        return False
-    if mins >= st.agent_goal_minutes:
-        finish(tenant, view["id"], "failed", f"{int(mins)} minute ho gaye; baaki: {view['stage'] or 'steps'}")
+    if rounds >= st.agent_goal_rounds or mins >= st.agent_goal_minutes:
+        why = f"{rounds} rounds poore" if rounds >= st.agent_goal_rounds else f"{int(mins)} minute ho gaye"
+        if getattr(st, "agent_goal_ask_on_limit", True):
+            _hold_for_limit(tenant, view)    # v0.223 like Claude: stop and ASK, never throw the job away
+        else:
+            finish(tenant, view["id"], "failed", f"{why}; baaki: {view['stage'] or 'steps'}")
         return False
     left = steps_left(view)
     from .santosh import _bg, run_turn, LAST_OUTCOME
     ask = f"[Goal jaari: {view['goal']} — baaki steps: " + "; ".join(f"{x['n']}. {x['text']}" for x in left[:8]) + \
         ". Aage badho, har step kaam_plan se likho, poora hone par finish done.]"
+    _pend(view["id"], 1)
     _bg(_continuation(conv, tenant, ask, view["id"], who))
     LAST_OUTCOME[conv] = {"outcome": "continuing", "left": f"{view['done']}/{view['total']} steps done, {len(left)} baaki",
                           "goal": view["goal"], "at": time.time()}
@@ -398,6 +415,9 @@ async def _continuation(conv: str, tenant: str, ask: str, goal_id: str, actor: s
     """One background turn that keeps the goal going. Never raises into the caller's context."""
     await asyncio.sleep(2.5)          # let the original turn's final writes / events settle first
     try:
+        v0 = active_for(conv)
+        if v0 is None or v0["id"] != goal_id or not steps_left(v0):
+            return                         # v0.223 finished / stopped / replaced while this round waited: nothing to do
         from .santosh import run_turn, LAST_OUTCOME
         out = await run_turn(conv, ask, tenant_id=tenant, actor=actor)
         LAST_OUTCOME[conv] = {"outcome": "continuing", "left": str(out or "")[:300], "goal": goal_id, "at": time.time()}
@@ -406,3 +426,136 @@ async def _continuation(conv: str, tenant: str, ask: str, goal_id: str, actor: s
             log.info("goal %s still open after continuation; rounds cap will decide the rest", goal_id)
     except Exception:
         log.exception("goal continuation failed")
+    finally:
+        _pend(goal_id, -1)
+
+
+# ---------------------------------------------------------------- v0.223 PHASE A: limits ask, restarts recover
+def _hold_for_limit(tenant: str, view: dict[str, Any]) -> None:
+    """The rounds / minutes budget is used up: the job STOPS AND ASKS (status blocked, hold=limit) instead of being
+    marked failed. Her "haan aage badho" (or the card's button) gives it a fresh budget from where it stopped."""
+    left = steps_left(view)
+    reason = (f"Itna kaam ho gaya ({view['done']}/{view['total']} steps). Baaki: "
+              + "; ".join(x["text"] for x in left[:3]) + (" ..." if len(left) > 3 else "")
+              + ". Aage badhaun? Bas 'haan aage badho' likhiye / boliye.")
+
+    def fn(r: GoalRun):
+        r.status, r.hold, r.reason = "blocked", LIMIT, reason[:400]
+        r.paused_at = None
+    _mutate(tenant, view["id"], fn)
+    STATS["limit_asked"] += 1
+
+
+def held_for_limit(conv: str) -> dict[str, Any] | None:
+    """The newest goal of this chat when it is waiting for her 'aage badho' after a used-up budget."""
+    with session() as s:
+        r = s.scalars(select(GoalRun).where(GoalRun.conversation_id == conv)
+                      .order_by(GoalRun.updated_at.desc())).first()
+        if r is None or r.status != "blocked" or r.hold != LIMIT:
+            return None
+        return _row_view(r)
+
+
+CONTINUE_WORDS = ("aage badh", "aage badho", "aage chalo", "continue", "jaari rakho", "chalu rakho", "karte raho",
+                  "poora karo", "khatam karo", "aage karo", "keep going", "go on", "आगे बढ़", "जारी रखो")
+
+
+def wants_continue(text: str) -> bool:
+    """Her words say 'carry on' (or a pure yes) - only then is a limit-held job reopened by a chat message."""
+    t = (text or "").strip().lower()
+    if not t or len(t) > 160:
+        return False
+    if any(w in t for w in CONTINUE_WORDS):
+        return True
+    try:
+        from .. import approval_words
+        return approval_words.is_pure_approval(t)
+    except Exception:
+        return False
+
+
+def reopen(tenant: str, conv: str) -> dict[str, Any] | None:
+    """Her yes after a used-up budget: the SAME goal works again with a fresh budget (rounds, minutes), done steps kept."""
+    view = held_for_limit(conv)
+    if view is None:
+        return None
+    _STOPPED.discard(conv)
+
+    def fn(r: GoalRun):
+        r.status, r.hold, r.reason = "working", None, ""
+        r.rounds, r.started_at, r.paused_at, r.paused_s = 1, now(), None, 0
+    out = _mutate(tenant, view["id"], fn)
+    STATS["limit_reopened"] += 1
+    return out
+
+
+def continue_now(tenant: str, conv: str) -> dict[str, Any] | None:
+    """The card's 'Aage badhao' button: reopen with a fresh budget AND start the next round right away."""
+    view = reopen(tenant, conv)
+    if view is None:
+        return None
+    from .santosh import _locks
+    if not (conv in _locks and _locks[conv].locked()):
+        who = "goal"                      # she pressed the button herself: this round carries her authority
+        left = steps_left(view)
+        ask = f"[Goal jaari: {view['goal']} — baaki steps: " + "; ".join(f"{x['n']}. {x['text']}" for x in left[:8]) + \
+            ". Owner ne kaha aage badho. Aage badho, har step kaam_plan se likho, poora hone par finish done.]"
+        from .santosh import _bg
+        _pend(view["id"], 1)
+        _bg(_continuation(conv, tenant, ask, view["id"], who))
+    return view
+
+
+def recover_tick() -> int:
+    """v0.223 restart-proof long jobs: a goal still 'working' that nothing is running any more (the server restarted
+    mid-round, or a round died) is picked up again - like Claude, a crash never silently throws the work away.
+    Only when: not moved for agent_goal_recover_after_s, no turn holds the chat, no round of it pending in this
+    process, nothing waits on her (then it pauses for the resume sweep), and at most agent_goal_recover_max times.
+    A recovery never uses up a round."""
+    st = get_settings()
+    if not (st.agent_goal and getattr(st, "agent_goal_recover", True)):
+        return 0
+    from datetime import timedelta
+    t = now()
+    old = t - timedelta(seconds=max(60, int(getattr(st, "agent_goal_recover_after_s", 600))))
+    too_old = t - timedelta(hours=max(1, st.agent_goal_resume_hours))
+    with session() as s:
+        rows = s.scalars(select(GoalRun).where(GoalRun.status == "working", GoalRun.paused_at.is_(None))
+                         .limit(50)).all()
+        todo = [(r.id, r.tenant_id, r.conversation_id, _aware(r.updated_at), int(r.recovered or 0)) for r in rows]
+    from .santosh import _locks
+    n = 0
+    for gid, tenant, conv, upd, times in todo:
+        if gid in _PENDING or conv in _STOPPED:
+            continue
+        if upd is None or upd > old or upd < too_old:
+            continue                         # still moving, or so old she has moved on (her next message carries it)
+        if conv in _locks and _locks[conv].locked():
+            continue                         # a turn is running it right now
+        if _waiting_on_her(conv):
+            _pause(gid)                      # the resume sweep restarts it once she answers
+            continue
+        view = active_for(conv)
+        if view is None or view["id"] != gid or not steps_left(view):
+            continue
+        if times >= max(1, int(getattr(st, "agent_goal_recover_max", 3))):
+            _hold_for_limit(tenant, view)    # restarted too often: stop and ask her instead of looping
+            continue
+
+        def bump(r: GoalRun):
+            r.recovered = int(r.recovered or 0) + 1
+        _mutate(tenant, gid, bump)
+        try:
+            from ..db import Message
+            line = f"Server dobara chalu hua — aapka kaam \"{view['goal'][:80]}\" wahin se aage badha raha hoon " \
+                   f"({view['done']}/{view['total']} steps ho chuke)."
+            with session() as s:
+                s.add(Message(conversation_id=conv, role="assistant", content=line, display=line,
+                              in_history=False, delivered_to_agent=True))
+            bus.publish(conv, "message", {"role": "assistant", "text": line, "source": "goal"})
+        except Exception:
+            log.exception("recovery note failed")
+        if _schedule(conv, tenant, view, count_round=False):
+            STATS["recovered"] += 1
+            n += 1
+    return n
