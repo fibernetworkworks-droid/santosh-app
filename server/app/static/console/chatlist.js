@@ -233,7 +233,7 @@ async function find(q, res) {
     : '<div class="empty">No results found.</div>';
 }
 let FIND_SEQ = 0;
-document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openSearch(); } });
+document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && !document.documentElement.classList.contains('create-on')) { e.preventDefault(); openSearch(); } });
 
 return {
   load, openSearch, draw,

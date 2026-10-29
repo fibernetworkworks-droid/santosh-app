@@ -63,7 +63,7 @@ window.HoolaResults = ctx => {
     const s = state(el);
     el.className = 'cd result-card';
     el.innerHTML = `<div class="hd"><b>${esc(p.title || p.name || item.title || 'Hoola result')}</b>`
-      + `<span class="tag ok">${kind === 'photo_made' ? 'AI-generated' : 'Ready'}</span></div>`
+      + `<span class="tag ok">${kind === 'photo_made' || p.ai ? 'AI-generated' : 'Ready'}</span></div>`
       + '<div class="result-preview" aria-busy="true"><span class="muted">Loading preview…</span></div>';
     const view = el.querySelector('.result-preview');
     try {

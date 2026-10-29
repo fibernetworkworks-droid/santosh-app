@@ -47,7 +47,7 @@ KAAM_PLAN_DEF = {
 async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[str] | None = None, n: int = 0,
                     state: str = "", text: str = "", outcome: str = "", reason: str = "", goal_id: str = "",
                     made: list[str] | None = None, left: str = "", your_turn: str = "", note: str = "") -> dict:
-    # v0.259: `note` is an alias for `reason`. The schema used to document "step (n, state, note)" while the code
+    # v0.260: `note` is an alias for `reason`. The schema used to document "step (n, state, note)" while the code
     # took `reason`, so a model that followed the description died with a TypeError mid-job (it cost the owner a
     # whole step on 29 Oct). The description is fixed above; this keeps any future guess from crashing her work.
     reason = reason or note

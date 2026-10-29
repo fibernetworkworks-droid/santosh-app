@@ -1,4 +1,4 @@
-"""v0.259 SAAF KAAM - four flaws the owner's own test run turned up on live v0.258 ("CHECK ALL RESULTS").
+"""v0.260 SAAF KAAM - four flaws the owner's own test run turned up on live v0.258 ("CHECK ALL RESULTS").
 
 Her four prompts proved CHALTE CHALTE BOLO works: the 20-mails job wrote seven between-step lines, every one of
 them carrying a real figure or id ("sirf 9 mails dikhe", "40 mails mile hain", "Do mails ke ids (env~9824,
@@ -114,8 +114,8 @@ def test_the_between_step_narration_still_stands():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.259.0"
-    assert "0.259.0+299" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.260.0"
+    assert "0.260.0+300" in (ROOT / "pubspec.yaml").read_text()
 
 
 from tests.test_bazar import bz  # noqa: E402,F401

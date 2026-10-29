@@ -22,3 +22,6 @@ server/.venv-test/
 .flutter-plugins-dependencies
 build/
 pubspec.lock
+server/data/create/
+server/data/pc_files/
+server/data/studio/

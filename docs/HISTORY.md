@@ -10031,7 +10031,67 @@ DEVELOPED FOR HOOLA".
 - NOT VERIFIED: how it reads on a real long job. The cap is 6 lines a turn; if that feels chatty, `agent_narrate_every`
   2 halves it without touching anything else.
 
-## v0.259.0 SAAF KAAM — the four flaws her own live test run turned up (owner ran the v0.258 prompts on the live server, then "CHECK ALL RESULTS", then "GO")
+
+## v0.259.0 CREATE STUDIO (29 Oct 2026)
+Owner, with OpenArt's home page: "WHEN CLICK ON CREATE IT MUST LAND ON THIS PAGE DESIGN GO DEEP CHECK EVERY PAGE ... CREATE
+WILL GIVE USER VIDEO GENERATION ..., IMAGE GENERATION ..., HIGH END VIDEO EDITOR, MUSIC STUDIO (... FROM SONG TO MUSIC), AI
+DUBBING ENGINE, AI VIDEO EDITOR ... INSIDE IT VARIOUS CATEGORIES DIRECTOR, SCRIPT WRITER, AI CASTING". OpenArt was studied
+page by page (home, chat, director, create-video, create-image, world, character, voice-over, dub, modify-video, inspire,
+media, brand kit, smart shot, lip sync); a clickable prototype in Hoola's own brand was approved ("BUILD"). Layout and flow
+follow OpenArt; their logo, art and wording are not used.
+- CONSOLE: Create (sidebar, the Image / Video home pills) opens `static/console/studio.js` (window.HoolaCreate) - a
+  full-screen layer with its own sidebar (Studio home; Agents: Director, Script writer, AI casting; Tools: Video, Image,
+  Music, Voice, Dubbing, Editor; Assets: Film projects, Brand kit, My creations; Inspire: Templates, How-to guides) and
+  "Back to chat". It lives in a SHADOW ROOT so its class names never meet the console's; `studio.css` maps the console's
+  tokens on :host, so Light / Dark / System follow her Appearance. Crisp-text rules kept (no held fills, no backdrop blur,
+  rings repaint `--a`, registered in v2.css). Research / Document pills still open the v0.243 brief workspace
+  (`showWorkspace()` in v2.js). The console's global shortcuts and Ctrl+K stand down while the studio is open.
+- EVERY PAGE ON A REAL ENGINE (nothing pretend; decorative art only on quick starts and templates):
+  * Image: `/api/create/jobs` kind=image -> photo_banao's engine (`photogen.make`), 1-4 pictures, shape, Standard ~Rs 3 /
+    Best ~Rs 12, style, her reference photos (or a picture from her shelf, `cr_` ids), optional brand colours from the kit.
+  * AI casting: kind=cast -> a four-view character sheet (front, three-quarter, side, back) of an ORIGINAL person
+    (`create.service.cast_prompt`); "Use in a film" prefills the Director's cast form (Video Studio `characters`).
+  * Music: kind=song -> Google Lyria (`studio.service._lyria`, `STUDIO_MUSIC_MODEL`): Song / Instrumental / Jingle / Score,
+    genre, language, singers, mood, tempo, length, her lyrics word for word; "Write with Hoola" = `/api/create/write`
+    kind=lyrics (Claude). A real waveform from the decoded audio. Counted as `PRICES["lyria"]` = MUSIC_USD per song.
+  * Voice: kind=voice -> Gemini TTS in any of the 22 avatar voices or "Your Hoola's voice", language, style, pace.
+  * Dubbing: kind=dub -> her uploaded video (25 MB / 3 min): ffmpeg pulls the audio, Gemini listens ONCE and returns every
+    line with time, speaker, gender and the translation into each target language (up to 4); Gemini TTS speaks each line
+    in a voice matched to the speaker, sped up at most 1.3x to fit its slot; ffmpeg lays them over the picture (original
+    sound at 14% under them, or removed). One MP4 per language + the line-by-line transcript in the page. Honest limits,
+    said on the page and by the tool: voices matched not cloned, lips not re-synced (lip sync = paid Video Studio step),
+    the original voice stays faintly under when the original sound is kept (no stem separation).
+  * Video: one clip = a Video Studio project (`POST /api/studio/projects` writes the shot plan, then `/generate` with her
+    quality and her MODEL PICK - new `StudioRun.model`, `/api/studio` now lists `models` with readiness and Rs/second).
+    Free preview runs at once; a paid run comes back as a price card on the tile: Haan / Na call
+    `/api/studio/approvals/{id}`; a phone fingerprint (HTTP 428) is still required where it was.
+  * Director: the whole film on Video Studio - brief -> storyboard (Claude) -> cast -> opening pictures (card) -> free
+    preview -> shots (card) -> music (Lyria, card) -> final film (assemble); scene cards with the take picker and scene
+    edit (PATCH shot prompt); progress, ETA, Stop; polls every 5 s while anything works or waits for her.
+  * Script writer: `/api/create/write` kind=script (Claude, screenplay format, her format / length / language / tone),
+    kept on her shelf and editable (autosave PUT `/api/create/items/{id}/text`), "Send to Director".
+  * Editor: her clips in story order -> `/api/video/jobs` (platform, length, captions, what to make), changes by words
+    via `/revise`, versions, download, post caption.
+  * Brand kit: `/api/brand/kit` read + save (name, tagline, tone). My creations: her Create shelf + finished films.
+- ENGINES: `app/create/service.py` (song / voice / dub / write / cast prompt), `app/create/jobs.py` (in-memory jobs, max 3
+  running per owner; the shelf in `data/create/<tenant>/` + index.json, kept until she deletes - unlike 24-hour chat
+  files; each result is ALSO posted to the page's chat as a card: photo_made for pictures, pc_file with `ai: true`
+  otherwise, so results.js shows "AI-generated"). Routes: GET /api/create, POST/GET /api/create/jobs[/{id}],
+  POST /api/create/write, GET/DELETE /api/create/items[/{id}], PUT /api/create/items/{id}/text. Usage feature
+  "create" (label Create Studio). `server/data/create/` is git-ignored.
+- AGENT: tool `create_studio` (`agent/create_tools.py`, family "create": song / gaana / jingle / lyrics / voice-over /
+  dub / dubbing keywords) - song, voice, dub, voices; one prompt line (prompts.py, next to the AI video studio line).
+- NOT TOUCHED: Mera PC files (freeze), the phone app, the Video Studio / Video Editor engines themselves.
+- Tests: NEW `server/tests/test_v0259_create_studio.py` (17) incl. a real ffmpeg dub with the two model calls faked,
+  jobs -> shelf -> chat card, write + edit a script, the model pick reaching generate, tool registration, usage, and the
+  console wiring / isolation / every page's engine routes. `tests/web/workspace.browser.cjs` (not in CI) updated: the
+  brief workspace is reached through its pills now, and its stale v0.255 bold-sidebar assertion follows v0.256.
+- Version 0.259.0 (pubspec 0.259.0+299, console ?v=0.259.0 x14, pins -> 0.259.0).
+- NOT VERIFIED here (no keys in the sandbox): real Lyria songs, Gemini voices and dubs, real paid video models. The
+  sandbox ran every page against the real server with seeded files, the error paths (no GEMINI_API_KEY) and the free
+  offline preview of a storyboard.
+
+## v0.260.0 SAAF KAAM — the four flaws her own live test run turned up (owner ran the v0.258 prompts on the live server, then "CHECK ALL RESULTS", then "GO")
 - FIRST, THE GOOD NEWS, IN HER OWN TRANSCRIPT. CHALTE CHALTE BOLO works. The 20-mails -> PDF job wrote seven
   between-step lines and every one carried a real figure or id:
   *"Output beech mein kat gaya, sirf 9 mails dikhe"* · *"40 mails mile hain, par 20 wali list beech se kat gayi thi"*

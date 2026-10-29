@@ -332,7 +332,7 @@ def _ladder_line(state: dict, tool: str, error: str) -> None:
     if t - _progress_at.get(conv, 0) < 45:
         return
     _progress_at[conv] = t
-    # v0.259: the raw tool error used to ride into the chat in these brackets, so she read things like
+    # v0.260: the raw tool error used to ride into the chat in these brackets, so she read things like
     # "internal error: kaam_plan() got an unexpected keyword argument 'note'" and "Thread-level listing Gmail par
     # hai; is mailbox mein email_check use kijiye" - backend text written for the model, not for her (her own
     # words: "BULK BACKEND UNWANTED RESPONSES"). The line stays human; the real error is already on the step chip

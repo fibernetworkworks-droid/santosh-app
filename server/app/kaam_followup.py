@@ -239,7 +239,7 @@ async def _model_line(r: KaamFollowup, settings) -> str:
 
 
 def _answered_since(conv: str, since) -> bool:
-    """v0.259: did a REAL reply land in this chat after the job finished? Then the turn she was watching already
+    """v0.260: did a REAL reply land in this chat after the job finished? Then the turn she was watching already
     told her, and waking the brain for a second report is the duplicate she saw on 29 Oct ("Competitor job poora ho
     gaya" under a full answer). _recent_said below only matched the TITLE's words against the reply, so it missed
     every paraphrase - and missed completely when the reply came out in another language, which is exactly what
