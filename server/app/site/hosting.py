@@ -447,7 +447,13 @@ def has_hosts(site_id: str) -> bool:
         return s.scalars(select(SiteHost).where(SiteHost.site_id == site_id, SiteHost.status != "removed")).first() is not None
 
 
-def _drop_host(row: SiteHost, files: bool = True) -> None:
+class _Gone:
+    """A removed address, copied out of its session (its row's status change commits)."""
+    def __init__(self, hostname: str, cf_id: str):
+        self.hostname, self.cf_id = hostname, cf_id
+
+
+def _drop_host(row: "_Gone | SiteHost", files: bool = True) -> None:
     """v0.223 one address leaves for good: its Cloudflare custom hostname (quota / bill) and its served files.
     Caller marks the row removed in its own session. files=False when another live address may still point at
     this folder (the free address is a link to the main one)."""
@@ -472,11 +478,10 @@ def take_down(tenant: str, ref: str) -> dict[str, Any]:
         r = S._find(s, tenant, ref)
         rows = s.scalars(select(SiteHost).where(SiteHost.site_id == r.id, SiteHost.status != "removed")).all()
         names = [x.hostname for x in rows]
+        drop = [_Gone(x.hostname, x.cf_id or "") for x in rows]     # plain copies: the status change must commit
         for x in rows:
             x.status = "removed"
-        for x in rows:
-            s.expunge(x)
-    for x in rows:
+    for x in drop:
         _drop_host(x)
     host_map(force=True)
     return {"ok": True, "say": f"Website band kar di ({', '.join(names)})." if names else "Website kahin live nahi thi."}
@@ -532,15 +537,13 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "") -> dict[s
         raise HostError("Aapka domain jodne ke liye: ya to server par Hoola Hosting (Cloudflare for SaaS) chalu ho, ya domain "
                         "ka DNS aapke apne Cloudflare account mein ho aur uska token Hoola mein juda ho (Website > Hosting).")
     keep = {x.hostname for x in rows}
-    gone: list[SiteHost] = []
+    gone: list[_Gone] = []
     with session() as s:
         for old in s.scalars(select(SiteHost).where(SiteHost.site_id == r.id, SiteHost.kind == "custom",
                                                     SiteHost.status != "removed")).all():
             old.status = "removed"
             if not (old.hostname in keep and old.cf_id and any(x.cf_id == old.cf_id for x in rows)):
-                gone.append(old)
-        for x in gone:
-            s.expunge(x)
+                gone.append(_Gone(old.hostname, old.cf_id or ""))
         for x in rows:
             s.add(x)
     for x in gone:          # v0.223 the old domain's Cloudflare hostname goes too (it stayed, costing quota)
