@@ -199,6 +199,7 @@ async def _run_agent(spec: dict, team_id: str, mission: str, main_families: set[
                 except Exception:
                     pass
             tools = _agent_tools(ctx.admit, settings)
+            santosh._THINK_NOW.set(False)   # v0.232 a sub-agent never thinks out loud (no card, no extra cost)
             blocks, stop, brain = await santosh._watched(
                 santosh._think(brain, _agent_system(name, task), history, settings, tools, None,
                                settings.team_max_tokens), conv, ctx, None)

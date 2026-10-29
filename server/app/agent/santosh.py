@@ -310,6 +310,8 @@ def _claude_ready() -> bool:
 
 
 THINK_TYPES = ("thinking", "redacted_thinking")
+import contextvars as _cv
+_THINK_NOW: _cv.ContextVar[bool] = _cv.ContextVar("hoola_think_now", default=False)   # set by the turn's step loop only
 THINK = {"ok": True, "calls": 0, "refused": 0}   # v0.232 PHASE C: Claude's adaptive thinking on the chat brain
 
 
@@ -410,7 +412,7 @@ async def _claude_stream(api, kw: dict, live) -> tuple[list[dict], str]:
 
 
 async def _think(brain: str, system: str, history: list[dict], settings, tools: list[dict] | None = None,
-                 live=None, max_tokens: int | None = None, think: bool = False) -> tuple[list[dict], str, str]:
+                 live=None, max_tokens: int | None = None) -> tuple[list[dict], str, str]:
     """One model call that survives a failing brain: the chosen brain first, then the other one, so an outage of
     either never leaves the user without an answer. Returns (blocks, stop_reason, the brain that answered).
     v0.161 a brain that fails after some streamed words: `delta_reset`, and the next brain writes them again."""
@@ -424,8 +426,8 @@ async def _think(brain: str, system: str, history: list[dict], settings, tools: 
     last: Exception | None = None
     for b in order:
         try:
-            blocks, stop = await _call_brain(b, system, history, settings, tools, live, max_tokens,
-                                             think=think and b == "claude")
+            extra = {"think": True} if (_THINK_NOW.get() and b == "claude") else {}   # v0.232 only when it thinks
+            blocks, stop = await _call_brain(b, system, history, settings, tools, live, max_tokens, **extra)
             if live is not None:
                 live.flush(final=True)     # the answer is complete: the held-back end can go (nothing can split now)
                 live.think_flush(final=True)
@@ -704,13 +706,15 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 b = state["breaker"]
                 b.max_calls, b.fails_in_row, b.rescue = settings.agent_goal_max_calls, FAILS_IN_ROW_GOAL, True
                 state["max_tokens"] = settings.agent_goal_max_tokens
+        # v0.232 PHASE C: this step's model call thinks out loud when a long job runs (read by _think; a contextvar so
+        # sub-agents and every caller of _think keep their signature, and the team's own calls never think)
+        _THINK_NOW.set(think_wanted(settings, bool(state.get("goal") or state.get("big"))))
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
             live.block(stream=not _gyaan.used(conversation_id))
         try:
             try:   # stays on the brain that worked; Rokiye cancels the model call itself, not just the next step
                 blocks, stop, brain = await _watched(_think(brain, system, prune_history(history), settings, tools,
-                                                             live, state.get("max_tokens"),
-                                                             think=think_wanted(settings, bool(state.get("goal") or state.get("big")))),
+                                                             live, state.get("max_tokens")),
                                                      conversation_id, ctx, state)
             except _Halted:
                 raise
@@ -723,8 +727,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 if live is not None:
                     live.reset()
                 blocks, stop, brain = await _watched(_think(brain, system, prune_history(history), settings, tools,
-                                                             live, state.get("max_tokens"),
-                                                             think=think_wanted(settings, bool(state.get("goal") or state.get("big")))),
+                                                             live, state.get("max_tokens")),
                                                      conversation_id, ctx, state)
         except _Halted as h:
             state["halted"] = h.why
