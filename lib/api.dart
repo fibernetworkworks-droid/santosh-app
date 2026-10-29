@@ -372,6 +372,13 @@ class Api {
       Map<String, dynamic>.from(await _send('GET', '/api/usage', query: {'days': '$days'}) as Map);
   Future<Map<String, dynamic>> usageLimit(double inr) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/usage/limit', body: {'month_inr': inr}) as Map);
+  // ---- v0.231 call quality (saved per call) + the ear test / phone checklist ----
+  Future<Map<String, dynamic>> voiceQuality({int days = 30}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/voice/quality', query: {'days': '$days'}) as Map);
+  Future<Map<String, dynamic>> voiceEarTest() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/voice/eartest') as Map);
+  Future<Map<String, dynamic>> voiceEarMark(String id, String result, {String note = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/voice/eartest/$id', body: {'result': result, 'note': note}) as Map);
   // ---- v0.119 "<name> ne kya seekha": how she speaks, words misheard before, her words ----
   Future<Map<String, dynamic>> voiceLearned() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/voice/learned') as Map);
