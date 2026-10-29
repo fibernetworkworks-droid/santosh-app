@@ -1,0 +1,228 @@
+"""v0.245 SAHI AUZAAR - the tool-choice set: real asks (Hinglish / English / Hindi) with the RIGHT tool for each.
+
+Each ask: text, ok = the tools that are a right FIRST pick (any one), bad = tool families that must NOT be loaded
+for it (a wrong family in view is how Hoola ended up on the cloud PC for a data job). The router test pins that
+every ok tool is in view and no bad family is; the live card (app/quality/toolchoice.py) asks the real brain and
+scores its first pick. TOOL_SET_V moves only with a deliberate change of the set.
+"""
+from __future__ import annotations
+
+TOOL_SET_V = 1
+
+PC = ("pc",)
+DATA_BAD = ("pc", "notebook", "artifact", "hoola", "india")
+
+ASKS: list[dict] = [
+    # ---------------------------------------------------------------- documents (the old PDF failure)
+    {"id": "doc_pdf_repos", "text": "Find top 100 AI repos on GitHub and make a PDF with a detailed note on each",
+     "ok": ["data_fetch"], "bad": DATA_BAD},
+    {"id": "doc_pdf_profile", "text": "Ek company profile PDF bana do Newtika ke liye", "ok": ["doc_studio"],
+     "bad": ("pc", "india")},
+    {"id": "doc_report_print", "text": "Is mahine ki sales report print karne layak bana do", "ok": ["doc_studio"],
+     "bad": PC},
+    {"id": "doc_proposal", "text": "Sharma Constructions ke liye ek proposal document banao, 3 pages", "ok": ["doc_studio"],
+     "bad": PC},
+    {"id": "doc_quotation", "text": "50 chairs ka quotation bana do Rs 1200 each, GST alag", "ok": ["doc_studio", "make_document"],
+     "bad": PC},
+    {"id": "doc_ppt", "text": "Investor meeting ke liye 10 slide ka presentation bana do", "ok": ["doc_studio"],
+     "bad": PC},
+    {"id": "doc_excel_budget", "text": "Shaadi ka budget Excel file mein bana do", "ok": ["doc_studio", "make_document"],
+     "bad": PC},
+    {"id": "doc_word_letter", "text": "Word file mein ek appointment letter likh do naye accountant ke liye",
+     "ok": ["doc_studio", "make_document", "lekhak"], "bad": PC},
+    {"id": "doc_resume", "text": "Mera resume PDF mein acchi design ke saath bana do", "ok": ["doc_studio"], "bad": PC},
+    {"id": "doc_invoice", "text": "Make an invoice for Rahul Traders, 20 bags cement at 380 rupees", "ok": ["doc_studio", "make_document"],
+     "bad": PC},
+    {"id": "doc_hindi", "text": "मेरी दुकान के लिए एक रिपोर्ट PDF बना दो", "ok": ["doc_studio"], "bad": PC},
+    {"id": "pdf_merge", "text": "In teeno PDF ko jod kar ek PDF bana do", "ok": ["pdf_tools"], "bad": PC},
+    {"id": "pdf_small", "text": "Yeh PDF bahut badi hai, WhatsApp pe nahi ja rahi, chhoti kar do", "ok": ["pdf_tools"], "bad": PC},
+    {"id": "doc_check_file", "text": "Jo PDF abhi banaya usko andar se check karo sab theek hai na", "ok": ["doc_preview"],
+     "bad": PC},
+    {"id": "gdoc", "text": "Google Doc mein meeting notes likh do", "ok": ["drive_create_doc", "doc_create"], "bad": PC},
+    # ---------------------------------------------------------------- data (lists / APIs / many records)
+    {"id": "data_laptops", "text": "Mere liye 50 laptops ki price list Excel mein bana do", "ok": ["data_fetch", "google_search", "web_sources"],
+     "bad": PC},
+    {"id": "data_weather", "text": "Weather API se agle 7 din ka Jaipur ka data lekar chart banao",
+     "ok": ["data_fetch", "get_weather"], "bad": PC},
+    {"id": "data_github", "text": "GitHub pe sabse zyada stars wale Python repos ki list do", "ok": ["data_fetch"],
+     "bad": DATA_BAD},
+    {"id": "data_top_startups", "text": "List the top 50 Indian startups with funding and city in a sheet",
+     "ok": ["data_fetch", "web_sources", "google_search", "deploy_agents"], "bad": PC},
+    {"id": "data_csv_read", "text": "Pichhla dataset dobara kholo aur top 10 dikhao", "ok": ["data_read"], "bad": PC},
+    {"id": "data_crypto", "text": "Top 20 crypto coins ka price aur market cap table mein do", "ok": ["data_fetch", "google_search"],
+     "bad": PC},
+    {"id": "data_api_find", "text": "Koi free API hai jo IFSC code se bank branch bata de?", "ok": ["api_find", "india_info"],
+     "bad": PC},
+    # ---------------------------------------------------------------- web / research
+    {"id": "web_rate", "text": "Aaj Bitcoin ka rate kya hai", "ok": ["google_search"], "bad": PC},
+    {"id": "web_news", "text": "Aaj ki badi khabar kya hai India mein", "ok": ["google_search", "web_sources"], "bad": PC},
+    {"id": "web_claim", "text": "Kya sach mein RBI ne repo rate kam kiya? Source ke saath batao", "ok": ["web_sources", "google_search"],
+     "bad": PC},
+    {"id": "web_read_link", "text": "Is link mein kya likha hai padh ke batao https://example.com/policy", "ok": ["open_website"],
+     "bad": PC},
+    {"id": "web_compare_site", "text": "Amazon pe 5000 ke andar sabse acche earbuds compare karke batao",
+     "ok": ["browse_web", "google_search", "web_sources", "order_karo"], "bad": PC},
+    {"id": "web_research", "text": "EV scooters ke market pe deep research karo aur report do",
+     "ok": ["deploy_agents", "web_sources", "google_search", "kaam_plan"], "bad": PC},
+    {"id": "web_form", "text": "Passport seva ki website pe appointment ka form bhar do", "ok": ["computer_operator"], "bad": PC},
+    {"id": "web_status", "text": "Mera PAN card application ka status check karo website pe", "ok": ["computer_operator", "browse_web"],
+     "bad": PC},
+    {"id": "web_phone_open", "text": "Yeh YouTube link mere phone pe khol do", "ok": ["open_on_phone", "youtube_play"], "bad": PC},
+    # ---------------------------------------------------------------- her PC / Hoola's PC (only when named)
+    {"id": "pc_tally", "text": "Mere PC pe Tally kholo aur aaj ki entry dekho", "ok": ["pc_do", "tally_report"], "bad": ()},
+    {"id": "pc_file", "text": "Mere laptop se GST wali Excel file dhoondh ke bhejo", "ok": ["pc_search", "doc_desk"], "bad": ()},
+    {"id": "pc_print", "text": "Yeh bill mere PC ke printer se print kar do", "ok": ["pc_print"], "bad": ()},
+    {"id": "pc_chrome", "text": "Mere computer ke Chrome mein IRCTC kholo", "ok": ["pc_do", "computer_operator"], "bad": ()},
+    {"id": "hpc_ffmpeg", "text": "ffmpeg se yeh video compress kar do apne computer pe", "ok": ["hoola_pc_do"], "bad": ()},
+    {"id": "hpc_libre", "text": "Tumhare PC pe LibreOffice se yeh docx ko PDF mein convert karo", "ok": ["hoola_pc_do"], "bad": ()},
+    # ---------------------------------------------------------------- email / calendar / google
+    {"id": "mail_send", "text": "Sharma ji ko mail bhej do ki kal meeting 4 baje hai", "ok": ["email_draft"], "bad": PC},
+    {"id": "mail_check", "text": "Aaj koi zaroori email aaya kya?", "ok": ["email_check", "email_triage"], "bad": PC},
+    {"id": "mail_reply", "text": "Bank wale mail ka reply kar do ki documents kal bhej dungi", "ok": ["email_check", "email_draft"],
+     "bad": PC},
+    {"id": "mail_hindi", "text": "मेरे ईमेल में आज क्या आया है", "ok": ["email_check", "email_triage"], "bad": PC},
+    {"id": "cal_add", "text": "Kal 4 baje meeting calendar mein daal do", "ok": ["calendar_add_event", "add_calendar_event"], "bad": PC},
+    {"id": "cal_agenda", "text": "Is hafte mere kya kya appointments hain", "ok": ["calendar_agenda"], "bad": PC},
+    {"id": "cal_free", "text": "Guruvar ko kab free hoon? Ek ghante ka slot chahiye", "ok": ["calendar_free_slots"], "bad": PC},
+    {"id": "sheet_append", "text": "Meri sales sheet mein naya row add karo: Ramesh, 5000", "ok": ["sheet_append", "sheets_find"],
+     "bad": PC},
+    {"id": "sheet_query", "text": "Google Sheet mein dekho is mahine kitna total bika", "ok": ["sheet_query", "sheets_find", "sheet_read"],
+     "bad": PC},
+    {"id": "drive_find", "text": "Drive mein rent agreement wali file kahan hai", "ok": ["drive_find"], "bad": PC},
+    {"id": "drive_share", "text": "Drive ka Projects folder Rahul ke saath share karo", "ok": ["drive_share", "drive_find"], "bad": PC},
+    {"id": "form_make", "text": "Customer feedback ke liye ek Google Form bana do", "ok": ["form_create"], "bad": PC},
+    {"id": "slides_gs", "text": "Google Slides mein product launch ki deck banao", "ok": ["slides_create", "doc_studio"], "bad": PC},
+    # ---------------------------------------------------------------- everyday life
+    {"id": "remind", "text": "Mujhe shaam 6 baje dawai yaad dila dena", "ok": ["create_reminder"], "bad": PC},
+    {"id": "alarm", "text": "Subah 5:30 ka alarm laga do", "ok": ["set_phone_alarm"], "bad": PC},
+    {"id": "weather", "text": "Kal Pune mein baarish hogi kya", "ok": ["get_weather"], "bad": PC},
+    {"id": "list_add", "text": "Grocery list mein doodh aur atta daal do", "ok": ["list_add"], "bad": PC},
+    {"id": "remember", "text": "Yaad rakhna meri beti ka school 8 baje lagta hai", "ok": ["remember"], "bad": PC},
+    {"id": "memory_past", "text": "Pichhle hafte jo quotation banaya tha woh kaunsa tha", "ok": ["yaad_khojo", "memory_search"],
+     "bad": PC},
+    {"id": "maps_near", "text": "Paas mein koi accha dentist batao", "ok": ["maps_search"], "bad": PC},
+    {"id": "maps_route", "text": "Airport tak kitna time lagega abhi", "ok": ["maps_directions"], "bad": PC},
+    {"id": "holiday", "text": "Agle mahine bank holiday kab kab hai Maharashtra mein", "ok": ["india_info"], "bad": PC},
+    {"id": "kharcha", "text": "Is mahine AI ka kitna kharcha hua", "ok": ["ai_kharcha"], "bad": PC},
+    {"id": "kaam_status", "text": "Woh video wala kaam kahan tak pahuncha", "ok": ["kaam_status"], "bad": PC},
+    {"id": "aadhaar", "text": "Mera Aadhaar number save kar lo", "ok": ["id_locker"], "bad": PC},
+    {"id": "attached", "text": "Maine jo file bheji usme kya likha hai", "ok": ["file_read"], "bad": PC},
+    # ---------------------------------------------------------------- media
+    {"id": "reel_make", "text": "Is video ko 30 second ka reel bana do", "ok": ["video_edit"], "bad": PC},
+    {"id": "reel_look", "text": "Yeh Instagram reel dekh ke batao isme kya recipe hai", "ok": ["reel"], "bad": PC},
+    {"id": "photo_make", "text": "Diwali wish ki ek photo bana do meri dukan ke naam se", "ok": ["photo_banao", "graphic"], "bad": PC},
+    {"id": "photo_clean", "text": "Is photo ka background saaf kar do", "ok": ["photo_clean", "photo_banao"], "bad": PC},
+    {"id": "passport_photo", "text": "Meri passport size photo bana do", "ok": ["id_photo"], "bad": PC},
+    {"id": "yt_play", "text": "YouTube pe Arijit ke gaane chala do", "ok": ["youtube_play", "youtube_search"], "bad": PC},
+    {"id": "yt_stats", "text": "Mere YouTube channel ke views kaise chal rahe hain", "ok": ["youtube_analytics", "youtube_my_channel"],
+     "bad": PC},
+    {"id": "photos_pick", "text": "Google Photos se Goa trip ki photos nikalo", "ok": ["photos_pick", "photos_albums"], "bad": PC},
+    {"id": "music", "text": "Speaker pe gaana chala do", "ok": ["music_control", "bluetooth"], "bad": PC},
+    {"id": "ac", "text": "AC 24 pe kar do", "ok": ["ac_control"], "bad": PC},
+    # ---------------------------------------------------------------- business desks
+    {"id": "gst", "text": "GST return kab file karna hai is mahine", "ok": ["gst", "india_info"], "bad": PC},
+    {"id": "payroll", "text": "Is mahine ki staff salary slip bana do", "ok": ["payroll"], "bad": PC},
+    {"id": "website", "text": "Ek landing page bana do meri bakery ke liye", "ok": ["website"], "bad": PC},
+    {"id": "letter_tehsil", "text": "Tehsildar ko application likho zameen ke naam badalne ke liye", "ok": ["lekhak"], "bad": PC},
+    {"id": "translate", "text": "Is paragraph ka Marathi mein anuvaad karo", "ok": ["lekhak"], "bad": PC},
+    {"id": "contract", "text": "Is rent agreement mein koi khatarnak clause hai kya dekho", "ok": ["contracts", "rentdesk", "file_read"],
+     "bad": PC},
+    {"id": "order", "text": "Swiggy se ek paneer biryani mangwa do", "ok": ["order_karo"], "bad": PC},
+    {"id": "courier", "text": "Mera Delhivery parcel kahan pahuncha, AWB 1234567890", "ok": ["courier"], "bad": PC},
+    {"id": "train", "text": "Kal Delhi se Jaipur ki train kaun si hai", "ok": ["travel", "google_search"], "bad": PC},
+    {"id": "trip", "text": "Manali ka 4 din ka trip plan bana do", "ok": ["tour_guide", "travel"], "bad": PC},
+    {"id": "insurance", "text": "Meri car insurance kab renew hogi", "ok": ["bima"], "bad": PC},
+    {"id": "loan_emi", "text": "20 lakh ke home loan ki EMI kitni banegi 9% pe 20 saal", "ok": ["artifact_make", "paisa"],
+     "bad": PC},
+    {"id": "analyst", "text": "Meri Tally ki P&L file dekh ke business analysis do", "ok": ["paisa", "file_read"], "bad": ()},
+    {"id": "wa_campaign", "text": "Sab customers ko Diwali offer ka WhatsApp campaign bhejo", "ok": ["create_campaign", "list_lead_lists"],
+     "bad": PC},
+    {"id": "notebook", "text": "In 5 PDFs se padhai ke liye ek notebook bana do", "ok": ["notebook_create"], "bad": PC},
+    {"id": "tracker", "text": "Doodh ka hisaab rakhne ke liye ek tracker bana do", "ok": ["artifact_make"], "bad": PC},
+    {"id": "hoola_net", "text": "Mehta ji ke avatar ko message bhejo ki order ready hai", "ok": ["hoola_send", "hoola_find"], "bad": PC},
+    {"id": "agents", "text": "Teen agents lagao: ek competitors dekhe, ek prices, ek reviews", "ok": ["deploy_agents"], "bad": PC},
+    {"id": "app_make", "text": "Meri dukan ke liye ek Android app bana do", "ok": ["app_banao"], "bad": PC},
+    {"id": "seo", "text": "Meri website Google pe upar kaise aayegi, SEO check karo", "ok": ["seo"], "bad": PC},
+    {"id": "tv", "text": "TV pe Aaj Tak laga do", "ok": ["tv_channel", "tv_remote"], "bad": PC},
+    {"id": "phone_health", "text": "Mera phone itna slow kyu chal raha hai", "ok": ["phone_health", "phone_doctor"], "bad": PC},
+    # ---------------------------------------------------------------- set 2 (written fresh to test the router, not tuned on)
+    {"id": "h01", "text": 'Board meeting ke liye annual report ka PDF tayyar karo', "ok": ['doc_studio'], "bad": PC},
+    {"id": "h02", "text": 'Meri bakery ka menu card bana do printable', "ok": ['doc_studio', 'graphic', 'photo_banao'], "bad": PC},
+    {"id": "h03", "text": 'Create a pitch deck for my tea startup', "ok": ['doc_studio', 'slides_create'], "bad": PC},
+    {"id": "h04", "text": 'Salary certificate bana do Priya ke liye letterhead pe', "ok": ['doc_studio', 'make_document', 'lekhak'], "bad": PC},
+    {"id": "h05", "text": 'Ek MoU ka draft Word mein bana do', "ok": ['doc_studio', 'make_document', 'contracts'], "bad": PC},
+    {"id": "h06", "text": 'Mujhe ek attendance sheet chahiye 30 workers ki Excel mein', "ok": ['doc_studio', 'make_document'], "bad": PC},
+    {"id": "h07", "text": 'Price comparison of top 10 smartphones under 20000 as a table', "ok": ['data_fetch', 'google_search', 'web_sources'], "bad": PC},
+    {"id": "h08", "text": 'Collect the 30 most starred JavaScript projects and summarise them', "ok": ['data_fetch'], "bad": PC},
+    {"id": "h09", "text": 'Sensex ke pichhle 30 din ke data se graph bana do', "ok": ['data_fetch', 'google_search', 'artifact_make'], "bad": PC},
+    {"id": "h10", "text": 'Saare Indian states ki population list nikalo', "ok": ['data_fetch', 'google_search', 'web_sources'], "bad": PC},
+    {"id": "h11", "text": 'Kal ka match kisne jeeta', "ok": ['google_search'], "bad": PC},
+    {"id": "h12", "text": 'Petrol ka aaj ka rate Mumbai mein', "ok": ['google_search'], "bad": PC},
+    {"id": "h13", "text": 'Electricity bill online bharne ka form bhar do MSEDCL pe', "ok": ['computer_operator'], "bad": PC},
+    {"id": "h14", "text": 'Driving licence renewal ka online apply kar do', "ok": ['computer_operator'], "bad": PC},
+    {"id": "h15", "text": 'Iska PDF ka page 3 hata do', "ok": ['pdf_tools'], "bad": PC},
+    {"id": "h16", "text": 'Do PDF ko merge kar do', "ok": ['pdf_tools'], "bad": PC},
+    {"id": "h17", "text": 'Client ko invoice mail kar do', "ok": ['email_draft', 'doc_studio'], "bad": PC},
+    {"id": "h18", "text": 'Unread mails padh ke summary do', "ok": ['email_check', 'email_triage'], "bad": PC},
+    {"id": "h19", "text": 'Kal subah 10 baje dentist ka appointment calendar mein', "ok": ['calendar_add_event', 'add_calendar_event'], "bad": PC},
+    {"id": "h20", "text": 'Somvaar ki meeting cancel kar do', "ok": ['calendar_cancel_event', 'calendar_find_event'], "bad": PC},
+    {"id": "h21", "text": 'Expense sheet mein aaj ka 450 petrol add karo', "ok": ['sheet_append', 'sheets_find'], "bad": PC},
+    {"id": "h22", "text": 'Drive se last month ka bank statement nikalo', "ok": ['drive_find'], "bad": PC},
+    {"id": "h23", "text": 'Raat 10 baje yaad dilana gas band karni hai', "ok": ['create_reminder'], "bad": PC},
+    {"id": "h24", "text": '10 minute ka timer lagao', "ok": ['set_phone_timer'], "bad": PC},
+    {"id": "h25", "text": 'Agle hafte Shimla ka mausam kaisa rahega', "ok": ['get_weather'], "bad": PC},
+    {"id": "h26", "text": 'Nearest petrol pump kahan hai', "ok": ['maps_search'], "bad": PC},
+    {"id": "h27", "text": 'Diwali kab hai is saal', "ok": ['india_info', 'google_search'], "bad": PC},
+    {"id": "h28", "text": 'Is video se silence hata ke short bana do', "ok": ['video_edit'], "bad": PC},
+    {"id": "h29", "text": 'Mere naye product ka poster design karo', "ok": ['graphic', 'photo_banao'], "bad": PC},
+    {"id": "h30", "text": 'YouTube pe naya video upload karna hai', "ok": ['youtube_upload'], "bad": PC},
+    {"id": "h31", "text": 'Gaane ka volume kam karo', "ok": ['music_control', 'bluetooth'], "bad": PC},
+    {"id": "h32", "text": 'TDS kitna katega 50000 ke professional fee pe', "ok": ['gst', 'india_info', 'google_search', 'paisa'], "bad": PC},
+    {"id": "h33", "text": 'Mere 12 employees ka PF aur salary calculate karo', "ok": ['payroll'], "bad": PC},
+    {"id": "h34", "text": 'Mere salon ke liye website banao', "ok": ['website'], "bad": PC},
+    {"id": "h35", "text": 'Collector ko shikayat ka patra likho road ke baare mein', "ok": ['lekhak'], "bad": PC},
+    {"id": "h36", "text": 'Translate this into Hindi: we will be closed tomorrow', "ok": ['lekhak'], "bad": PC},
+    {"id": "h37", "text": 'Zomato se do masala dosa order karo', "ok": ['order_karo'], "bad": PC},
+    {"id": "h38", "text": 'Mera Blue Dart courier track karo', "ok": ['courier'], "bad": PC},
+    {"id": "h39", "text": 'Goa ki flight sasti kab milegi', "ok": ['travel', 'google_search'], "bad": PC},
+    {"id": "h40", "text": 'Health insurance ka premium kab bharna hai', "ok": ['bima'], "bad": PC},
+    {"id": "h41", "text": 'Udhaar ka hisaab rakhne ka page bana do', "ok": ['artifact_make'], "bad": PC},
+    {"id": "h42", "text": 'Gupta ji ke Hoola avatar se puchho maal kab aayega', "ok": ['hoola_send', 'hoola_find'], "bad": PC},
+    {"id": "h43", "text": 'Do agent lagao, ek Flipkart dekhe ek Amazon', "ok": ['deploy_agents'], "bad": PC},
+    {"id": "h44", "text": 'Meri website ka SEO report do', "ok": ['seo'], "bad": PC},
+    {"id": "h45", "text": 'Phone ki battery jaldi khatam ho rahi hai', "ok": ['phone_health', 'phone_doctor'], "bad": PC},
+    {"id": "h46", "text": 'Mere laptop ki Downloads folder mein invoice dhoondo', "ok": ['pc_search', 'doc_desk'], "bad": ()},
+    {"id": "h47", "text": 'PC pe Busy software kholo aur stock report dikhao', "ok": ['pc_do'], "bad": ()},
+    {"id": "h48", "text": 'Hoola ke PC pe pandoc install karke yeh markdown docx banao', "ok": ['hoola_pc_do'], "bad": ()},
+    {"id": "h49", "text": 'Mere computer se yeh file phone pe bhejo', "ok": ['pc_send_to_phone', 'pc_search'], "bad": ()},
+    {"id": "h50", "text": 'Hoola, kal ka plan kya hai mera?', "ok": ['calendar_agenda', 'list_reminders'], "bad": PC},
+    {"id": "h51", "text": 'Hoola yeh batao GST registration kaise hota hai', "ok": ['gst', 'google_search', 'web_sources'], "bad": PC},
+    {"id": "h52", "text": 'Hoola ek letter likh do bank manager ko account band karne ke liye', "ok": ['lekhak', 'doc_studio', 'make_document'], "bad": PC},
+    {"id": "h53", "text": 'मुझे कल सुबह 7 बजे उठा देना', "ok": ['set_phone_alarm'], "bad": PC},
+    {"id": "h54", "text": 'मेरी बेटी की फोटो से पासपोर्ट फोटो बना दो', "ok": ['id_photo'], "bad": PC},
+    {"id": "h55", "text": 'इस हफ्ते मेरी कौन सी मीटिंग है', "ok": ['calendar_agenda'], "bad": PC},
+    {"id": "h56", "text": 'Google form ke responses ka summary do', "ok": ['form_responses', 'form_summary'], "bad": PC},
+    {"id": "h57", "text": 'Is notebook mein yeh YouTube video bhi add karo', "ok": ['notebook_add'], "bad": PC},
+    {"id": "h58", "text": 'Mera last quotation kaunsa tha jo Verma ji ko bheja', "ok": ['yaad_khojo', 'memory_search', 'email_check'], "bad": PC},
+    {"id": "h59", "text": 'Customer list ko WhatsApp pe naye saal ki wishes bhejo', "ok": ['create_campaign', 'list_lead_lists'], "bad": PC},
+    {"id": "h60", "text": 'Iska photo ka background white kar do', "ok": ['photo_clean', 'photo_banao'], "bad": PC},
+]
+
+
+def check() -> list[str]:
+    """Problems in the set itself (unknown tools / families) - the test fails on any."""
+    from ..agent.tools import FAMILY_OF, HANDLERS
+    fams = set(FAMILY_OF.values())
+    bad = []
+    seen = set()
+    for a in ASKS:
+        if a["id"] in seen:
+            bad.append(f"duplicate id {a['id']}")
+        seen.add(a["id"])
+        for t in a["ok"]:
+            if t not in HANDLERS:
+                bad.append(f"{a['id']}: unknown tool {t}")
+        for f in a.get("bad") or ():
+            if f not in fams:
+                bad.append(f"{a['id']}: unknown family {f}")
+    return bad

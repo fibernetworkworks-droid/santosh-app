@@ -343,7 +343,7 @@ async def run(conversation_id: str, tenant: str, reason: str = "auto", settings=
         if reason in STATS:
             STATS[reason] += 1
         from . import context
-        lim = context.limit(brain, s) or 1
+        lim = context.window(brain, s) or 1
         v = _view_id(rid)
         bus.publish(conversation_id, "compact", {
             "id": rid, "reason": reason, "exchanges": n_new, "total": done + n_new,
@@ -373,7 +373,7 @@ async def before_turn(conversation_id: str, tenant: str, settings=None) -> dict[
         if est > line or forced:
             bus.publish(conversation_id, "typing", {"on": True})
             return await run(conversation_id, tenant, "overflow" if forced else "auto", s)
-        prep = int(context.limit(brain, s) * float(getattr(s, "chat_compact_prepare_at", 0.6) or 0.6))
+        prep = int(context.window(brain, s) * float(getattr(s, "chat_compact_prepare_at", 0.6) or 0.6))
         if est > prep:
             prepare_later(conversation_id, tenant, s)
     except Exception:
