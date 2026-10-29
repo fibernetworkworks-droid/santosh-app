@@ -8973,3 +8973,11 @@ expects the asking card. Version 0.226.0 (pubspec 0.226.0+262 - build 261 left f
   - An edit over 32,000 shows a plain toast.
   - Any 4xx now stops the console's 3-try retry loop (before, only 400/401 did, so a 422 was sent three times).
 - Tests: NEW `test_v0227_long_message.py` (3). Ritual: APP_VERSION 0.227.2, pubspec 0.227.2+265, console ?v=0.227.2 x11, pins →0.227.2. Server + console (needs the normal deploy).
+
+## v0.227.3 One Hoola at a time (owner: "SHOWING MULTIPLE AVTHARS ... MAKE IT SINGLE AND SOFISTIFATED PERFECT")
+- Cause: the server's 5-second comfort line (`_ack_later`, an ephemeral `message` with `ack: true`) was drawn as its own reply row with a second avatar, next to the progress row's avatar and later the real reply's avatar. The ack line was also in Hinglish.
+- Fix (console only):
+  - v2.js: an `ack` message becomes the progress line ("Still working on it…", `HoolaProgressPolicy.phase('ack')`) and never gets a reply row.
+  - The progress row is always the last row. When it sits right under Hoola's own reply it gets the `tail` class (no avatar, lined up with the reply text).
+  - The progress row hides while the words stream.
+- Tests: NEW `test_v0227_single_avatar.py` (3). Ritual: APP_VERSION 0.227.3, pubspec 0.227.3+266, console ?v=0.227.3 x11, pins →0.227.3.

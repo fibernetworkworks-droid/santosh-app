@@ -378,7 +378,9 @@ function simpleProgress(kind,p={}) {
     const dots=document.createElement('span');dots.className='progress-dots';dots.setAttribute('aria-hidden','true');dots.innerHTML='<i></i><i></i><i></i>';
     SIMPLE_PROGRESS.append(avatar,label,dots);
   }
-  if(SIMPLE_PROGRESS.parentElement!==col)col.appendChild(SIMPLE_PROGRESS);
+  if(SIMPLE_PROGRESS.parentElement!==col||SIMPLE_PROGRESS.nextElementSibling)col.appendChild(SIMPLE_PROGRESS);   // v0.227.3 always the last row
+  const prev=SIMPLE_PROGRESS.previousElementSibling;   // right under Hoola's own reply row: no second avatar
+  SIMPLE_PROGRESS.classList.toggle('tail',!!prev&&prev.classList.contains('mh')&&!!TURN&&prev.contains(TURN.bd));
   SIMPLE_PROGRESS.hidden=false;
   const label=PROGRESS_POLICY.phase(kind,p);
   const text=SIMPLE_PROGRESS.querySelector('.progress-label');if(text.textContent!==label)text.textContent=label;
@@ -437,6 +439,7 @@ function seg(R, n) {
   const el = document.createElement('div'); el.className = 'txt textmd'; el.dataset.seg = n;
   put(R.t, el); R.t.afterText = true;
   if (TYPING && TYPING.parentNode === R.t.bd) TYPING.hidden = true;    // the words themselves show that it is working
+  if (SIMPLE_PROGRESS) SIMPLE_PROGRESS.hidden = true;                    // v0.227.3 one row: the streaming words replace the progress line
   const view = new HoolaMD.Live(el);
   S = {el, view, pacer: new HoolaStream.Pacer((text, fin) => { view.update(text, !fin); scrollDown(); })};
   R.segs.set(n, S);
@@ -782,6 +785,7 @@ function onEvent(ev) {
         landing(false); userBubble(p.text, p.files, ev.id, null, ev.at); return;
       }
       if (p.source === 'greeting' && !col.children.length) return;        // the landing greets instead
+      if (p.ack) { if (TYPING) simpleProgress('ack', p); return; }        // v0.227.3 the 5-second comfort line: one progress row, never a second avatar
       landing(false);
       if (p.source === 'quick') {   // v0.173 the quick lane answered beside the running kaam: flip the receipt
         const qr = [...RCPTS].reverse().find(([, R]) => R.state === 'queue');

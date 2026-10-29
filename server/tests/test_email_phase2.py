@@ -367,4 +367,4 @@ def test_snooze_needs_a_time_and_min(wbox, bz):  # noqa: F811
 # ---------------- version ----------------
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.227.2"
+    assert APP_VERSION == "0.227.3"

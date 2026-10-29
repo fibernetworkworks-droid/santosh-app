@@ -348,4 +348,4 @@ def test_scorecard_counts_soorat():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.227.2"
+    assert APP_VERSION == "0.227.3"

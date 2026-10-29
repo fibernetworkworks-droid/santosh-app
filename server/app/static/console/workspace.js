@@ -233,6 +233,7 @@ window.HoolaProgressPolicy = {
     if (/(^|_)ask($|_)|approval|confirm/.test(kind)||p.status==='needs_approval')return 'Your approval is required';
     if(['waiting','blocked'].includes(p.status||p.phase))return 'Waiting for the next step…';
     if (['failed','error','partial','stopped'].includes(p.status||p.phase)||p.state==='error')return 'Reviewing an incomplete result…';
+    if(kind==='ack')return 'Still working on it…';
     if(kind==='think'||kind==='typing')return 'Thinking…';
     if(kind==='reply_start'||kind==='reply_end')return 'Preparing your response…';
     return 'Working on it…';
