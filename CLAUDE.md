@@ -101,9 +101,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.254.0 (pubspec 0.254.0+294). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.255.0 (pubspec 0.255.0+295). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (13 now: theme.js, pdfview.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.255 console type swept on EVERY page: no weight > 600, no all-caps, nothing < 12px, Sora only on the logo (`--logo`; `--fd` = sans).
 - v0.254 console WHITE LIKE CLAUDE: light theme white + neutral greys (tokens at the top of v2.css), brand violet kept; Claude-style
   interface type (one sans, medium weights, 12-16px, no all-caps; block "v0.254 CLAUDE-STYLE INTERFACE TYPE" at the end of v2.css).
 - v0.253 CLAUDE JAISA PADHAI: measured her two screenshots side by side - pitch / measure / paragraph gaps already

@@ -9916,3 +9916,16 @@ then "ALSO MAKE ENTIRE WEB CONSOLE WHITE SAME AS CLAUDE -- JUST KEEP BUTTON, ANI
   card title 14 / 600, amount 22 / 600, tables sans 14 tabular, buttons 600, home greeting + login headline in Literata 400.
 - Tests: test_v0254_white_like_claude.py; pins moved (R1 / calm-brand anchor --bg:#FFFFFF, v0.249 light ink now neutral).
 - Preview screenshots shown to the owner before merge.
+
+## v0.255.0 ONE TYPE SYSTEM, EVERY PAGE (console)
+Owner pasted the v0.254 font table back with "U HAVENT DEPLOYED THIS". Checked: v0.254 WAS live (healthz 0.254.0, the live
+v2.css carried every rule, HTML no-store, no service worker). The gap was everything the table did not name: a browser scan of
+every page found Create's ALL-CAPS labels (PROMPT / STYLE / REFERENCE PHOTOS / CREATE eyebrow) and 700 weights, Sora 700 on
+Today's numbers and page headings, 800-900 on the call status, Live pill, counters, the ⋯ menu, library titles, and 10-11px text.
+- Fix = a sweep of the whole v2.css (rule by rule, outside the token block): font-weight 700/750/800/900 -> 600 (129),
+  text-transform uppercase -> none + letter-spacing 0 in the same rule (18), font-size 9-11.5px -> 12px unless the selector is
+  a kbd (63); `--fd` = Manrope, NEW `--logo` = Sora used only by `#app .mk` (the Hoola mark); `:where(#app,#login)
+  :is(h1,h2,h3,h4,b,strong,th){font-weight:600}` for browser-default bold; inline `font-weight:700` in v2.js / panel.js /
+  build.js -> 500 / 600.
+- Verified: the scan (every visible text element on chat, home, Today, Tools, Create, Library, call, Account, a Session)
+  reports nothing above 600, no caps, no Sora outside the logo, nothing under 12px. Tests: test_v0255_type_sweep.py.

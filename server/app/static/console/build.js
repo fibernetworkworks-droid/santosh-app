@@ -141,7 +141,7 @@ window.HoolaBuild = function (C) {
     return `<section class="bbox"><h4>${esc(ttl)}</h4>
       ${bl.slice(0, 8).map(x => `<div class="badc bln">⛔ ${where(x)}${esc(x.text)}</div>`).join('')}
       ${wa.slice(0, 8).map(x => `<div class="warnc bln">⚠ ${where(x)}${esc(x.text)}</div>`).join('')}
-      ${!bl.length && c.passed === true ? '<div class="okc bln" style="font-weight:700">✓ All required checks passed</div>' : ''}
+      ${!bl.length && c.passed === true ? '<div class="okc bln" style="font-weight:500">✓ All required checks passed</div>' : ''}
       ${N(c.blanks) ? `<div class="faint bln">${N(c.blanks)} spot(s) still need your details (the […] boxes)</div>` : ''}</section>`;
   }
   function scoresBlock(sc) {
@@ -400,7 +400,7 @@ window.HoolaBuild = function (C) {
           <b>${i + 1} · ${esc(lk.label)}</b>${art.concept ? `<span class="faint">${esc(art.concept)}</span>` : ''}
           <div class="bsw">${cols.map(c => `<i style="background:${c}" role="img" aria-label="Colour ${esc(c)}"></i>`).join('')}</div>
           <div class="acts">${btn('look', 'This one', 'go', ` data-i="${i}"`)}${btn('colors', cf === i ? '✓ Its colours' : 'Its colours', 'soft', ` data-i="${i}" aria-pressed="${cf === i}"`)}</div></article>`;
-      }).join('')}</div>${cf != null ? `<p class="acc" style="font-size:13px;font-weight:700">Look ${cf + 1}&rsquo;s colours will be used. The look you pick now gives the structure, these give the colours.</p>` : ''}`;
+      }).join('')}</div>${cf != null ? `<p class="acc" style="font-size:13px;font-weight:600">Look ${cf + 1}&rsquo;s colours will be used. The look you pick now gives the structure, these give the colours.</p>` : ''}`;
   }
   function sitePane(o) {
     const v = o.v || {}, sh = M(v.shots);
