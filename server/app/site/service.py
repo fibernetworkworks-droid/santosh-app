@@ -753,6 +753,16 @@ def _sec_path(r: Site, key: str) -> Path:
     return B.src_dir(r.tenant_id, r.id) / "sections" / f"{key}.json"
 
 
+def _put_sec(r: Site, key: str, sec: dict[str, Any]) -> None:
+    """Write a section file in one step (temp file + rename): with sections written several at a time, a preview
+    assembled by another thread must never read a half-written file."""
+    f = _sec_path(r, key)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    tmp = f.with_name(f"{f.name}.{threading.get_ident()}.tmp")
+    tmp.write_text(json.dumps(sec))
+    os.replace(tmp, f)
+
+
 def _sections(r: Site) -> dict[str, dict[str, Any]]:
     out = {}
     for p in _j(r.plan, {}).get("pages", []):
@@ -914,7 +924,7 @@ def _write_sections(r: Site, plan: dict[str, Any], states: dict[str, str], extra
             states[k] = "building"
         progress(line, p["slug"])
         sec = write_section(_load(r.id), p["slug"], s, others, extra.get(k, ""))
-        _sec_path(r, k).write_text(json.dumps(sec))
+        _put_sec(r, k, sec)
         with lock:
             states[k] = "done"
             _assemble_live(_load(r.id))

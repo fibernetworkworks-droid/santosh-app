@@ -172,6 +172,19 @@ def test_one_bad_section_fails_the_build_plainly(site_env, monkeypatch):
     assert "building" not in states.values()
 
 
+def test_section_files_are_written_in_one_step(site_env):
+    from app.site import service as S
+    v = S.new(T, "mithai dukaan ki website", conv_ctx().conversation_id, name="Sharma Sweets",
+              answers={"phone": "9876543210"})
+    r = S._load(v["id"])
+    k = S.sec_key("home", "hero")
+    S._put_sec(r, k, {"html": "<section>A</section>"})
+    S._put_sec(r, k, {"html": "<section>B</section>"})
+    d = S._sec_path(r, k).parent
+    assert json.loads(S._sec_path(r, k).read_text())["html"] == "<section>B</section>"
+    assert not list(d.glob("*.tmp"))                    # a reader never meets a half-written file
+
+
 # ---------------------------------------------------------------- 4. Opus looks at its own work
 def _crit_setup(site_env, monkeypatch, tmp_path, after_score):
     from app.site import checks as C
