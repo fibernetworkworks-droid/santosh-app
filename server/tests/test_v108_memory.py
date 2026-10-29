@@ -45,7 +45,10 @@ def add_exchange(c, i, steps=0, big=0):
                       display=f"Kaam {i} ho gaya."))
 
 
-def test_history_keeps_40_plus_exchanges_and_compresses_older_steps(env):
+def test_history_keeps_40_plus_exchanges_and_compresses_older_steps(env, monkeypatch):
+    monkeypatch.setenv("CHAT_CONTEXT", "hoola")   # v0.237 the v0.108 window is the hoola mode (claude = whole chat)
+    from app.config import get_settings
+    get_settings.cache_clear()
     from app import yaad
     from app.agent.santosh import _load_history
     c = conv()

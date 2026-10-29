@@ -9433,7 +9433,55 @@ asked how Claude would do it, compared it with Hoola's flow, asked "WHY FOR EVER
 - Tests `server/tests/test_v0238_data_desk.py`. Version 0.238.0 (pubspec 0.238.0+278, console ?v=0.238.0 x11, pins).
   Server-only deploy; old APKs keep working.
 
-## v0.239.0 CHHOTA JAWAB — a long job works in the background; the chat gets one short human line (owner: "IT GIVE HUGE REPLY FOR EVERY SMALL WORK IN BACKEND -- EVERY MINUE DETAILS --- IT MUST WORK ON BACKGOUD AND ON CHAT SCREEN IT MUST SHOW JUST A SMALL PERFECT HUMAN UNDERSTANDABLE ENGLISH PERFECLY LIKE CLAUDE DOES")
+
+## v0.239.0 FULL CLAUDE MODE — Phase 1 (built as 0.237.0, re-versioned past the parallel v0.237.0 WEBSITE PHASES 1-3 and v0.238.0 DATA DESK): the whole chat, word for word, with a gauge (owner: "FULL CLAUDE MODE -- MAKE PLAN" / "START PHASE 1")
+- THE GAP (found in code): every turn the model saw only the newest 40-49 exchanges (`yaad.history`), the newest 4 in
+  full and the rest cut to her words + one line per step + the final reply, so file names, ids and exact words faded
+  early. Nothing ever measured the whole request: no cap on system + tools + history, and a model's "prompt is too long"
+  went to `_friendly_error` -> every later message of that chat failed the same way (stuck chat), with the raw error
+  text shown to her.
+- HOW CLAUDE DOES IT: the whole conversation word for word every turn (prompt cache makes it cheap), old tool output
+  cleared when space runs low, one summary only when the window is nearly full. Phase 1 copies the first two parts and
+  the never-stuck promise; Phase 2 (planned) adds the Claude-style compaction summary in place of the safety net.
+- SERVER:
+  - `config.py`: `chat_context` = claude (default) | hoola (the v0.108 window byte for byte, instant rollback);
+    `chat_context_limit_glm` 200000, `chat_context_limit_claude` 200000, `chat_context_limit_omniroute` 128000,
+    `chat_context_full_at` 0.75.
+  - `yaad.full_history`: every message of the chat, tool blocks intact; a chat longer than ROWS_MAX (5000 rows) starts
+    with its rolling summary (`SUMMARY_OPEN`). `agent/santosh._load_history` picks it in claude mode.
+  - NEW `agent/context.py` (the gauge): `fit` measures system + tools + history (JSON chars / a per-brain chars-per-token
+    ratio, careful default 3.0) before EVERY model call of the step loop (`santosh._request`, after the v0.189 prune).
+    Fits -> sent as loaded ("full"). Too big -> the SAFETY NET ("net"): the oldest exchanges are shortened with
+    `yaad.compress` in blocks of 10 (prefix stable turn to turn, cache-friendly) down to full_at - 15%; if that is not
+    enough the oldest blocks leave and the rolling summary stands in for them. THIS turn's messages (from
+    `state["turn_start"]`) are never shortened. Pure projections, `_sanitize`d; the caller's history is never edited.
+  - Overflow rescue: `context.is_overflow` (Anthropic / OpenAI-style "too long" wordings) -> `overflowed` (ratio x0.75,
+    the window the error names is believed: smallest number >= 8000 in the message) -> `squeeze` (summary + the last 6
+    exchanges shortened + this turn's older tool results cut to 1,500) -> retried ONCE; the rest of the turn stays
+    squeezed. Works in hoola mode too. The next turn starts fresh, so a chat can no longer get stuck on its size.
+  - The gauge learns: `_call_brain` (GLM / OmniRoute `usage.prompt_tokens`, never the made-up `estimated` count) and
+    `_learn_claude` (input + cache read + cache write, streamed and plain) call `context.after_call`: the first real count
+    replaces the guess, later ones move it 30%. `context.CONV` (set only around the step loop's model call) records the
+    real count on that chat's reading.
+  - `_friendly_error`: never the raw text; a "too long" line ("Yeh chat bahut lambi ho gayi hai ..."), the busy line or
+    the gadbad line, plus `(code 503 · ref 1a2b3c)`; the raw error is logged under the same ref (and the turn_failed
+    event still keeps it).
+  - `GET /api/conversations/{id}/context` (last measured call: brain, limit, budget, estimate, real, percent, form
+    full | net | squeezed | hoola; else an estimate of the chat alone) and `context` in `GET /api/yaad` health.
+  - The guide line on memory (`prompts.py`) now says the history is the whole chat while it fits.
+  - In claude mode the rolling summary no longer rides the system prompt (the whole chat is there; the net brings it in
+    when it drops blocks). `refresh_summary` keeps running after turns (voice calls and the net use it).
+- NOT CHANGED: quick lane, voice call memory (`voice_block`), long-job rounds' own logic, phone app, Mera PC / desktop
+  (freeze respected). Cost: long chats send more tokens per step until the net runs; watch `/api/usage` and lower
+  CHAT_CONTEXT_FULL_AT or set CHAT_CONTEXT=hoola to roll back.
+- Tests: NEW `test_v0237_full_context.py` (10): whole chat word for word (63 exchanges, oldest tool steps intact, no
+  summary in the prompt), hoola mode byte for byte, net shortens the oldest in blocks + keeps this turn whole + lands
+  under budget, net drops blocks with the summary in front, "too long" retried once + the next turn works, still too
+  long -> clean line, no raw text in errors, the gauge learns (first count, 30% moves, estimated counts ignored, named
+  window), Claude's real count on the reading, the context endpoint. The v0.108 window test pins
+  CHAT_CONTEXT=hoola. Version 0.239.0 (pubspec 0.239.0+279, console ?v=0.239.0, pins -> 0.239.0).
+
+## v0.240.0 CHHOTA JAWAB — a long job works in the background; the chat gets one short human line (owner: "IT GIVE HUGE REPLY FOR EVERY SMALL WORK IN BACKEND -- EVERY MINUE DETAILS --- IT MUST WORK ON BACKGOUD AND ON CHAT SCREEN IT MUST SHOW JUST A SMALL PERFECT HUMAN UNDERSTANDABLE ENGLISH PERFECLY LIKE CLAUDE DOES")
 Research first (how Claude's chat gives a reply in the chat space): the assistant's answer is short prose; the tool
 work sits collapsed in its own rows, and the detail is available without being in the sentence. Hoola was doing the
 opposite — and the detail it put in the chat was not missing information, it was a DUPLICATE: the four-part report
