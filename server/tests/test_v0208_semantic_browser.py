@@ -196,4 +196,4 @@ def test_desktop_page_type_returns_only_length_and_matches():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.222.0"
+    assert APP_VERSION == "0.224.0"

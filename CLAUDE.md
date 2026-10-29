@@ -8798,3 +8798,30 @@ holds), the AI limit refuses a routine round but never hers, goal round text nev
 (pubspec 0.222.0+257, console ?v=0.222.0 x9, pins ->0.222.0). Built on the live v0.221 KAAM KHAATA branch
 (clever-thompson, incl. the merged MCP sign-in fix). CONSOLE R1 (serene-dijkstra, also numbered 0.221.0, not deployed)
 is NOT in this release - it needs a rebase as v0.223. Server-only deploy; old APKs keep working.
+
+## v0.224.0 VOICE PHASE 1 — stop the breakage (owner: "START PHASE 1" after the voice-to-voice report; re-versioned 0.221.0 -> 0.224.0 on rebase: the dev took 0.221.0 KAAM KHAATA + 0.222.0 GOAL HERS, 0.223 is reserved for CONSOLE R1)
+The report (Dessa research, Dots / Grok Bot / Muse, code audit) found the call trips on things Google changed in
+gemini-3.8-live and on a few code holes. Phase 1 = the safe, server-only fixes:
+1. **Affective dialog never goes to a 3.x live model** (`voice.affective_allowed(model)`): Google's gemini-3.8-live page
+   (Sept 2026) says "Affective dialogue is removed from the API. Remove any enable_affective_dialog configurations."
+   Sending it made the FIRST connect of every process fail with a vague 1007 and heal itself (v0.185.1/.3). Both heal
+   sites in `Call.run` are now gated on the model too, so an unrelated 1007 on 3.8 climbs the ladder instead of
+   "dropping affective". Older native-audio models (2.5) keep the field + heal. Tone on 3.x = the voiceaffect notes.
+2. **Every call tool says how it runs** (`SLOW_TOOLS`, `is_slow`, `_behavior_kw`): slow work (santosh_kaam, browse,
+   PC, Hoola PC, operator, search, mail, Drive, Sheets reads, notebook, media makers, her `mcp_*` tools, bazar_run)
+   is `NON_BLOCKING` — he keeps talking, the result arrives at a pause (`FunctionResponseScheduling.WHEN_IDLE`, now sent
+   ONLY for non-blocking results). Everything else is `BLOCKING` — reminders, lists, weather, alarms, haan_karo,
+   side_talk return the REAL answer instead of a guess (3.8 made NON_BLOCKING the default for all tools; older
+   models blocked on everything). Kill switch `voice_tool_behavior=false` = model default. Persona line: slow tools
+   = one short line, keep talking, never guess the result.
+3. **Voice approval only answers a fresh card**: `voice_pending/voice_approve/voice_reject(..., since=)`; the call's
+   passive listener passes `Call._appr_since` (call start, then the end of her last turn), and `finish_turn` clears
+   `_appr_heard` — a "haan" to his own question never approves a step card from minutes ago and words never combine
+   across turns. haan_karo (model judgment) and chat keep the full 15-minute window.
+4. `_save_turn` and `life.context_block` run with `asyncio.to_thread` (off the audio loop).
+Tests: NEW `test_v0221_voice_phase1.py` (11). Older affective heal suites pin an older model by fixture
+(`test_v0181`, `v01851`, `v01852`, `v01853`); `test_v150` refused-setup heal back to 2 connects on 3.8;
+`test_voice` / `test_human_voice` default-config asserts → None. Version 0.224.0 (pubspec 0.224.0+258, console
+?v=0.224.0 x9, pins → 0.224.0). Server-only deploy, old APKs keep working; Mera PC freeze respected.
+Next (report Phase 2): GoAway graceful finish + pre-built reconnect + keep her gap audio, compression trigger,
+drop-note on every abnormal end, replay his audio after a phone blip.
