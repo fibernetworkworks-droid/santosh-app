@@ -66,6 +66,9 @@ class _FakeCall:
         self.sent_json = []
         self.breaker = SimpleNamespace(fails=Counter())
 
+
+    def push_news(self, text):                       # v0.230 the news queue; tested in test_v0228
+        self.push("text", text)
     def push(self, kind, data, force=False):
         self.pushed.append((kind, data))
 
@@ -423,4 +426,4 @@ def test_scorecard_has_reliability_rollups():
 
 
 def test_version():
-    assert APP_VERSION == "0.229.0"
+    assert APP_VERSION == "0.230.0"

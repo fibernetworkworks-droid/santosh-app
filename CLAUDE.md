@@ -9067,3 +9067,29 @@ drop-note on every abnormal end, replay his audio after a phone blip.
 Tests: NEW `test_v0225_voice_phase2.py` (14). Version 0.229.0 (pubspec 0.229.0+269, console ?v=0.229.0, pins).
 Server-only deploy, old APKs keep working. Next (report Phase 3): one quiet-aware note queue with job de-dup,
 prompt + tool diet, phone gate / echo timing (APK), murmur timing.
+
+## v0.230.0 VOICE PHASE 3 — natural conversation (owner: "START PHASE 3 IN PARALLEL WITH TEST")
+1. **One quiet-aware news queue** (`Call.push_news`, `voice.inject` routes through it): a finished job's line, a kaamwatch
+   note, a late / auto-rescue result waits until BOTH are quiet for `NEWS_QUIET_S` 0.8 s (her mic, her words, his voice),
+   never longer than `NEWS_MAX_WAIT_S` 25 s; several pieces go as ONE note ("Kai kaam ki khabar ek saath aayi hai - EK natural
+   pause par, ek-ek karke"); the same news (word overlap >= 0.6, brackets ignored) is never told twice within `NEWS_DEDUP_S`
+   120 s; a closed call / news left at the end -> `_orphan_note` = the next call opens with it. Stats news_deduped, news_merged.
+2. **Diet**: PERSONA drops the lines about tools that are not declared in calls (41.7k -> ~22k chars); the "Business work in a
+   call" line names the moved desks (hotel / homestay / banquet / events / weddings / tours, legal / compliance / CS / notary /
+   DPO, media desks, SEO, export, wholesale, franchise, contractor, insurance, App Jaanch / REA, consent, DigiLocker, ONDC).
+   `VOICE_VIA_KAAM` += forms, slides, sheet writes, notebook, Photos uploads, pdf_tools, video_edit, public APIs, hoola_make /
+   business / groups, tally_report, Drive writes, doc_create, id_photo, photo_clean, make_document, email_accounts,
+   calendar_settings, seekhe_kaam, gyaan (152 -> ~103 declared tools, ~54k chars). hoola_seekha stays declared (in-call word fixes).
+   RULE: a new call tool that is not everyday talk goes into VOICE_VIA_KAAM; a persona line only for a declared tool.
+3. **Murmurs in a breath, not at the end**: `_bc_watch` polls 40 ms and murmurs only when her pause is >= `BC_AFTER_S` 0.25 s and
+   still short of her own end-of-turn wait minus 0.15 s (`_bc_end_s` = her learned silence_ms, else voice_silence_ms), inside
+   `BC_WINDOW_S` 4 s, after >= `BC_MIN_WORDS` 10 words, never right after a fresh transcription (0.1 s), max 2 a turn, 7 s apart,
+   8 s from an ack.
+4. **Phone** (new APK): an open `BargeGate` stays open (up to 200 chunks ~8 s) while Silero still hears HER loud voice, instead of
+   closing after 1.2 s when Gemini stops late (her interruption no longer turns into silence); the
+   "he is speaking" margin after playback 150 -> 250 ms and the start-cushion estimate 100 -> 160 ms (`live_voice.dart`);
+   `VoiceAudio.kt` lowers the cushion 20 ms per new reply (floor 80) so it re-learns instead of only growing.
+Tests: NEW `test_v0230_voice_phase3.py` (11); v0206 backchannel fakes follow the new murmur timing; v0211 / v0220 fakes gain
+`push_news`; v150 checks form_create's nested title through `_compact`. Version 0.230.0 (pubspec 0.230.0+270, console
+?v=0.230.0, pins -> 0.230.0). Server + APK (Dart / Kotlin) - old APKs keep working with the server part.
+

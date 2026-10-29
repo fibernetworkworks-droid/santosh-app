@@ -53,6 +53,9 @@ class _TonedCall:
     def push(self, kind, data, force=False):
         self.notes.append(str(data))
 
+    def push_news(self, text):                       # v0.230 the news queue; tested in test_v0228
+        self.push("text", text)
+
     async def send_audio(self, data):
         self.notes.append(data)
 
@@ -348,4 +351,4 @@ def test_scorecard_counts_soorat():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.229.0"
+    assert APP_VERSION == "0.230.0"

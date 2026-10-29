@@ -231,6 +231,8 @@ def test_compact_schemas_keep_fields_named_title(env, monkeypatch):
         assert voice.schema_problems(sch) == [], name
     ev = decls["add_calendar_event"]
     assert "title" in ev["properties"] and "title" in ev["required"]
-    assert decls["form_create"]["properties"]["questions"]["items"]["properties"].get("title")
+    from app.agent.tools import TOOLS                            # form_create runs via santosh_kaam in calls (v0.230)
+    fc = voice._compact(next(t for t in TOOLS if t["name"] == "form_create"))
+    assert fc["input_schema"]["properties"]["questions"]["items"]["properties"].get("title")
     mcp = decls["mcp_x__make"]
     assert mcp["required"] == ["title"] and set(mcp["properties"]) == {"title", "default"} and "title" not in mcp

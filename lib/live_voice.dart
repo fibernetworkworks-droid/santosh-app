@@ -134,7 +134,7 @@ class LiveVoice {
       final sock = _ws;
       if (!muted && !_closed && !_reconnecting && !_audioPaused && sock != null && sock.readyState == WebSocket.open) {
         // while he talks (and for a moment after), only clear speech over the room's noise gets through
-        final speaking = DateTime.now().isBefore(_playEnd.add(const Duration(milliseconds: 150))); // v0.181 300 -> 150 ms: a quick interjection right after his turn is no longer held back
+        final speaking = DateTime.now().isBefore(_playEnd.add(const Duration(milliseconds: 250))); // v0.181 300 -> 150 ms; v0.230 250: the phone really plays 150-350 ms after this estimate (cushion + speaker buffer), so his last words no longer leak back as 'her' speech; her real voice still opens the gate
         try {
           final fresh = DateTime.now().difference(_speechAt).inMilliseconds < 200;
           final p = fresh ? _speech : null;
@@ -213,7 +213,7 @@ class LiveVoice {
       if (_audioPaused) return;
       _ch.invokeMethod('voicePlay', bytes);
       final now = DateTime.now();
-      final start = _playEnd.isAfter(now) ? _playEnd : now.add(const Duration(milliseconds: 100)); // the phone keeps a small cushion before a reply starts
+      final start = _playEnd.isAfter(now) ? _playEnd : now.add(const Duration(milliseconds: 160)); // the phone keeps a small cushion before a reply starts (v0.230 80-240 ms cushion + speaker buffer, was estimated at 100)
       final end = start.add(Duration(microseconds: (bytes.length / 48000 * 1e6).round())); // 24 kHz * 2 bytes
       _timeline.add((start, end, (_rms(bytes) * 2.2).clamp(0.0, 1.0)));
       _playEnd = end;

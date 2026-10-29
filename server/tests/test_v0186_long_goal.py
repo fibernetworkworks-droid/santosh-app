@@ -295,6 +295,7 @@ def _bare_call(conv):
     c.conv = conv
     got = []
     c.push = lambda kind, data, force=False: got.append((kind, data))
+    c.push_news = lambda text: c.push("text", text)    # v0.230 the news queue itself is tested in test_v0230
     return c, got
 
 
