@@ -9278,7 +9278,16 @@ Tests: NEW `test_v0232_voice_phase4.py` (12). Version 0.232.0 (pubspec 0.232.0+2
 - Old empty "Naya chat" rows already made stay in the list (delete from the chat menu).
 - Tests: NEW `test_v0233_new_chat.py` (4). Version 0.233.0 (pubspec 0.233.0+273, console ?v=0.233.0, pins -> 0.233.0).
 
-## v0.234.0 VOICE PHASE 5 — the plan's leftovers (owner: "START PHASE 5")
+## v0.234.0 One avatar while Hoola replies (owner: "WHEN USER SEND THE PROMPT AVATAR COMES TWO TIMES ... MAKE IT PERFECT LIKE A CLAUDE CHAT DOES")
+- Cause: at `reply_start` the console opened the reply row (`.mh`, with its avatar) before any words, right under the
+  "Preparing your response…" progress row, which has its own avatar - two avatars, one of them empty. The old greeting
+  could also be drawn twice (timeline + live stream).
+- Fix (console only): `#app .mh:has(>.bd:empty){display:none}` - an empty reply row stays hidden until words or steps
+  arrive; the progress row keeps its avatar while the reply row is still empty (`tail` only under a reply with content);
+  the console never draws a `source: greeting` message (the home screen greets).
+- Tests: NEW `test_v0234_one_avatar.py` (3). Version 0.234.0 (pubspec 0.234.0+274, console ?v=0.234.0, pins -> 0.234.0).
+
+## v0.235.0 VOICE PHASE 5 (built as 0.234.0; re-versioned after the parallel v0.234.0 one-avatar fix) — the plan's leftovers (owner: "START PHASE 5")
 The voice plan had four phases plus "later: full-duplex on our own GPUs" (still not buildable: no Hindi full-duplex
 model / vendor). Phase 5 = everything the plan promised that Phases 1-4 had not shipped:
 1. **The slow tail** (`callquality._p99`, nearest rank, rounds up): `reply_start_ms_p99` in the roll-up and per version,
@@ -9303,4 +9312,4 @@ model / vendor). Phase 5 = everything the plan promised that Phases 1-4 had not 
    read log instead of hiding.
 9. **Phone** (Call ki jaanch): p99, dead air, talk-over, repeats rows; the alert banner; "pehle se behtar / kharab /
    pehle jaisa" on each ear-test card and a "vX ke muqable" line. New APK; the server part works without it.
-Tests: NEW `test_v0234_voice_phase5.py` (13). Version 0.234.0 (pubspec 0.234.0+274, console ?v=0.234.0, pins -> 0.234.0).
+Tests: NEW `test_v0234_voice_phase5.py` (13). Version 0.235.0 (pubspec 0.235.0+275, console ?v=0.235.0, pins -> 0.235.0).
