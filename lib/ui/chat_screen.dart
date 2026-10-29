@@ -9,6 +9,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 
 import '../state.dart';
 import 'employee_inbox.dart';
+import 'think_card.dart';
 import 'chai_screen.dart';
 import 'darzi_screen.dart';
 import 'lekhak_screen.dart';
@@ -930,6 +931,9 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
         );
+      case 'think':
+        // v0.232 PHASE C the Soch card: Hoola's thinking, live while it works, folded after
+        return ThinkCard(key: ObjectKey(it), it: it, name: app.aName);
       case 'say':
         // v0.187 one true line about what a tool just really returned ("12 mails aaye"), shown while the next
         // step thinks. A quiet whisper, not a bubble: small, italic, gone the moment the reply arrives.

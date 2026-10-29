@@ -99,7 +99,7 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
         out["note"] = ("Steps baaki hain: tools se kaam karte raho, text par mat ruko. Poora hone par kaam_plan finish done. "
                        "Sirf uska tap / OTP / uska fact chahiye to finish blocked_on_her.")
     if action == "step" and state == "done" and left:
-        # v0.235 CHHOTA JAWAB: her card already shows every step live (state + note). The chat gets NO line per step -
+        # v0.236 CHHOTA JAWAB: her card already shows every step live (state + note). The chat gets NO line per step -
         # the work happens in the background, like Claude's tool rows. Keep working quietly.
         out["note"] += (" Card par yeh step apne aap done dikh gaya - chat mein iska koi line mat likho, "
                         "bas agla tool chalao.")
@@ -107,7 +107,7 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
         out["note"] = ("Sab steps done: kaam_plan finish done laga do — made mein asli links / files, aur your_turn "
                        "mein agar use kuch karna hai.")
     if action == "finish" and v.get("report"):
-        # v0.235 CHHOTA JAWAB: the four parts are ALREADY on her card (phone _Report + console goalReport). The chat
+        # v0.236 CHHOTA JAWAB: the four parts are ALREADY on her card (phone _Report + console goalReport). The chat
         # gets ONE short human line, like Claude's end-of-work sentence - never the bullets again. The text rides as
         # `card_shows` (what she is already looking at), not as a template to echo.
         out["card_shows"] = goal_mod.report_text(v["report"])

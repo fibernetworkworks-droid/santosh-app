@@ -375,7 +375,7 @@ PLAN_NOW = ("[System: tum kai steps se kaam kar rahe ho par plan nahi likha. Abh
             "use done likho), taaki use card par dikhe kya ho raha hai aur kya baaki hai. Phir aage badho.]")
 NARRATE = ("[System: kaafi der se tumne use kuch nahi bataya. Ab EK chhoti line likho — ek hi vaakya, jaise ek "
            "insaan bolta hai ('Bills ban rahe hain, do ho gaye') — phir agla tool. Koi detail, koi bullet, koi "
-           "number ya link nahi: woh sab card par dikh raha hai. v0.235: yeh line kaam mein se sirf do baar aati hai.]")
+           "number ya link nahi: woh sab card par dikh raha hai. v0.236: yeh line kaam mein se sirf do baar aati hai.]")
 
 
 # ---------------------------------------------------------------- carry on across turns

@@ -9287,7 +9287,27 @@ Tests: NEW `test_v0232_voice_phase4.py` (12). Version 0.232.0 (pubspec 0.232.0+2
   the console never draws a `source: greeting` message (the home screen greets).
 - Tests: NEW `test_v0234_one_avatar.py` (3). Version 0.234.0 (pubspec 0.234.0+274, console ?v=0.234.0, pins -> 0.234.0).
 
-## v0.235.0 CHHOTA JAWAB — a long job works in the background; the chat gets one short human line (owner: "IT GIVE HUGE REPLY FOR EVERY SMALL WORK IN BACKEND -- EVERY MINUE DETAILS --- IT MUST WORK ON BACKGOUD AND ON CHAT SCREEN IT MUST SHOW JUST A SMALL PERFECT HUMAN UNDERSTANDABLE [line] PERFECLY LIKE CLAUDE DOES")
+## v0.235.0 LONG JOBS PHASE C (built as 0.232.0, re-versioned past the parallel v0.232.0 voice Phase 4, v0.233.0 and v0.234.0) — she SEES Hoola think (owner: "NOW START PHASE C END TO END"; fix 6 of the Claude-vs-Hoola long-task report)
+- THE GAP (found in code): the server could stream thinking since v0.171 (`think` live events, `livereply.feed_think`,
+  `/live` snapshot `think`), but `_call_brain` never asked Claude to think and the production GLM has thinking
+  disabled, so no Soch card could ever appear — not on the console, not on the phone (the phone had no card at all).
+- SERVER (`agent/santosh.py`, `config.py`): setting `chat_thinking` = goal (default) | on | off. `think_wanted`: goal =
+  only while a long job runs (an open goal, or a clearly big ask by her from its FIRST call — `goal.looks_big`, since
+  Claude cannot start thinking inside a tool loop and the plan comes first); short chats stay fast. Claude calls carry
+  `thinking: {type: adaptive}` (Claude decides how much) only when `_loop_ok` (a tool_result being answered needs its
+  assistant message to carry a thinking block, Claude's rule; a loop started on the cheap brain finishes without).
+  A 400 naming thinking = `THINK.ok` off for the process, `think_reset` empties the card, the same call goes again
+  without it (never a dead turn). Thinking blocks (`thinking`, `redacted_thinking`) stay in the in-turn history for
+  the tool loop but `_save` strips them (`_no_think`) and the GLM / OmniRoute path never sees them.
+- PHONE (`lib/state.dart`, NEW `lib/ui/think_card.dart`, `lib/ui/chat_screen.dart`): `think` events build ONE card per
+  turn:seg (`_onThink`, newest 6,000 chars kept), inserted above the growing reply; `clear` empties it; live = open
+  with a ticking clock "Soch raha hoon · 12s" and the newest lines; reply_end / typing off / the next reply folds it
+  to "<name> ne socha · 12s" (tap opens all of it); a reload mid-thought reopens it from `/live`. Never stored.
+- Tests NEW `test_v0235_phase_c.py` (9). Version 0.235.0 (pubspec 0.235.0+275, console ?v=0.235.0, pins -> 0.235.0). Sub-agents never think (contextvar `_THINK_NOW`, not a new keyword, so every `_think` / `_call_brain` caller keeps its signature).
+  Server deploy turns thinking on (console shows it in its progress line); the phone card needs the new APK. Mera PC
+  freeze respected; desktop untouched.
+
+## v0.236.0 CHHOTA JAWAB — a long job works in the background; the chat gets one short human line (owner: "IT GIVE HUGE REPLY FOR EVERY SMALL WORK IN BACKEND -- EVERY MINUE DETAILS --- IT MUST WORK ON BACKGOUD AND ON CHAT SCREEN IT MUST SHOW JUST A SMALL PERFECT HUMAN UNDERSTANDABLE ENGLISH PERFECLY LIKE CLAUDE DOES")
 Research first (how Claude's chat gives a reply in the chat space): the assistant's answer is short prose; the tool
 work sits collapsed in its own rows, and the detail is available without being in the sentence. Hoola was doing the
 opposite — and the detail it put in the chat was not missing information, it was a DUPLICATE: the four-part report
@@ -9321,7 +9341,7 @@ she was already looking at on the card.
 - Language: "perfect human understandable English" is read as plain, clear sentences instead of a bulleted technical
   dump, in her own language (Claude answers in the user's language, and the v0.231 rulebook's "her style wins" stands).
   If she means literally English for result lines, that is a one-line change to the rulebook.
-- Tests: NEW `server/tests/test_v0235_chhota_jawab.py` (10) — the finish note no longer orders the four parts and
+- Tests: NEW `server/tests/test_v0236_chhota_jawab.py` (10) — the finish note no longer orders the four parts and
   forbids each shape of the dump by name; the bulleted text rides as `card_shows` and `report` is gone from the tool
   result; nothing is lost from the card (all four parts still built, `report_text` still renders them); a finished step
   asks for no chat line; the cadence defaults (8 / max 2); NARRATE's wording; the loop stops narrating at the cap over

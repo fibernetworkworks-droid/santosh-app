@@ -270,7 +270,16 @@ async def _with_deadline(coro, conversation_id: str, first: float, long: float):
         raise
 
 
+def _no_think(content):
+    """v0.232 thinking blocks live only inside the running turn (Claude needs them back in its tool loop); they are
+    never saved, never reach GLM / OmniRoute and never ride into a later turn."""
+    if isinstance(content, list):
+        return [b for b in content if not (isinstance(b, dict) and b.get("type") in THINK_TYPES)]
+    return content
+
+
 def _save(conversation_id: str, role: str, content, display: str | None = None) -> None:
+    content = _no_think(content)
     with session() as s:
         s.add(Message(conversation_id=conversation_id, role=role, content=content, display=display, in_history=True))
 
@@ -300,8 +309,39 @@ def _claude_ready() -> bool:
     return bool(get_settings().anthropic_api_key or _client is not None)
 
 
+THINK_TYPES = ("thinking", "redacted_thinking")
+import contextvars as _cv
+_THINK_NOW: _cv.ContextVar[bool] = _cv.ContextVar("hoola_think_now", default=False)   # set by the turn's step loop only
+THINK = {"ok": True, "calls": 0, "refused": 0}   # v0.232 PHASE C: Claude's adaptive thinking on the chat brain
+
+
+def think_wanted(settings, goal_open: bool) -> bool:
+    """v0.232 PHASE C (fix 6 of the long-task report): she sees Hoola THINK - the Soch card on the phone and console.
+    chat_thinking = goal (default: only while a long job runs, short chats stay fast) | on | off."""
+    mode = (getattr(settings, "chat_thinking", "goal") or "off").lower()
+    return THINK["ok"] and (mode == "on" or (mode == "goal" and goal_open))
+
+
+def _loop_ok(history: list[dict]) -> bool:
+    """With thinking on, an assistant tool_use that is being answered must carry its own thinking block (Claude's
+    rule). A tool loop started without thinking (cheap brain, or thinking off) finishes without it."""
+    if not history or history[-1].get("role") != "user":
+        return True
+    c = history[-1].get("content")
+    if not (isinstance(c, list) and any(isinstance(b, dict) and b.get("type") == "tool_result" for b in c)):
+        return True
+    prev = history[-2] if len(history) > 1 else {}
+    pc = prev.get("content") if prev.get("role") == "assistant" else None
+    return isinstance(pc, list) and any(isinstance(b, dict) and b.get("type") in THINK_TYPES for b in pc)
+
+
+def _think_refused(e: Exception) -> bool:
+    m = str(e).lower()
+    return "thinking" in m and any(w in m for w in ("400", "invalid", "not support", "unsupported", "unexpected"))
+
+
 async def _call_brain(brain: str, system: str, history: list[dict], settings, tools: list[dict] | None = None,
-                      live=None, max_tokens: int | None = None) -> tuple[list[dict], str]:
+                      live=None, max_tokens: int | None = None, think: bool = False) -> tuple[list[dict], str]:
     """One model call on one brain. Raises when that brain fails. With `live` (v0.161) the words stream as written.
     v0.187 goal mode raises max_tokens (6000) so a plan's steps are not cut at the chat-size 2000.
     v0.213 the prefill guard: the production model refuses a conversation whose LAST message is an assistant
@@ -316,6 +356,7 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
     cap = max_tokens or settings.agent_max_tokens
     streaming = live is not None and live.streaming
     if brain in ("glm", "omniroute"):
+        history = [{**m, "content": _no_think(m["content"])} for m in history]   # v0.232 Claude-only blocks
         if streaming:
             blocks, stop, usage = await llm.openai_stream(brain, system, tools, history, cap,
                                                           live.feed, on_think=live.feed_think)   # v0.171 thinking
@@ -328,9 +369,24 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
     kw = cache.shape(dict(model=settings.anthropic_model, max_tokens=cap,
                           system=system, tools=tools, messages=history), getattr(settings, "prompt_cache", True))
     api = get_client().messages
-    if streaming and hasattr(api, "stream"):
-        return await _claude_stream(api, kw, live)
-    resp = await api.create(**kw)
+    if think and THINK["ok"] and _loop_ok(history):
+        kw["thinking"] = {"type": "adaptive"}       # v0.232 Claude decides how much to think; thoughts stream to Soch
+        THINK["calls"] += 1
+    try:
+        if streaming and hasattr(api, "stream"):
+            return await _claude_stream(api, kw, live)
+        resp = await api.create(**kw)
+    except Exception as e:
+        if "thinking" not in kw or not _think_refused(e):
+            raise
+        THINK["ok"], THINK["refused"] = False, THINK["refused"] + 1   # this model / API refuses it: never again here
+        log.warning("chat thinking refused, continuing without it: %s", str(e)[:200])
+        kw.pop("thinking", None)
+        if live is not None:
+            live.think_reset()
+        if streaming and hasattr(api, "stream"):
+            return await _claude_stream(api, kw, live)
+        resp = await api.create(**kw)
     return [_block_to_dict(b) for b in resp.content], resp.stop_reason
 
 
@@ -370,7 +426,8 @@ async def _think(brain: str, system: str, history: list[dict], settings, tools: 
     last: Exception | None = None
     for b in order:
         try:
-            blocks, stop = await _call_brain(b, system, history, settings, tools, live, max_tokens)
+            extra = {"think": True} if (_THINK_NOW.get() and b == "claude") else {}   # v0.232 only when it thinks
+            blocks, stop = await _call_brain(b, system, history, settings, tools, live, max_tokens, **extra)
             if live is not None:
                 live.flush(final=True)     # the answer is complete: the held-back end can go (nothing can split now)
                 live.think_flush(final=True)
@@ -510,6 +567,9 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     from . import goal as _goal
     state: dict = {"calls": [], "breaker": Breaker(), "used": [], "hint": "", "request": user_text, "t0": time.time(),
                    "conv": conversation_id}
+    # v0.232 PHASE C a clearly big ask by her thinks from its FIRST call (the plan comes first, and Claude can't start
+    # thinking in the middle of a tool loop, so waiting for kaam_plan set would keep this whole turn silent)
+    state["big"] = bool(ctx.actor in ("owner", "goal") and settings.agent_goal and _goal.looks_big(user_text or ""))
     if settings.agent_goal:
         g0 = _goal.active_for(conversation_id)
         if g0 is not None:   # goal open when the turn began: the goal caps apply from the first step
@@ -646,6 +706,9 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 b = state["breaker"]
                 b.max_calls, b.fails_in_row, b.rescue = settings.agent_goal_max_calls, FAILS_IN_ROW_GOAL, True
                 state["max_tokens"] = settings.agent_goal_max_tokens
+        # v0.232 PHASE C: this step's model call thinks out loud when a long job runs (read by _think; a contextvar so
+        # sub-agents and every caller of _think keep their signature, and the team's own calls never think)
+        _THINK_NOW.set(think_wanted(settings, bool(state.get("goal") or state.get("big"))))
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
             live.block(stream=not _gyaan.used(conversation_id))
         try:
@@ -840,7 +903,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 state["quiet"] = 0 if spoke else state.get("quiet", 0) + 1
                 every = int(getattr(settings, "agent_narrate_every", 8) or 0)
                 cap = int(getattr(settings, "agent_narrate_max", 2) or 0)
-                # v0.235 CHHOTA JAWAB: the live card is the progress report, so the chat hears from a long job at
+                # v0.236 CHHOTA JAWAB: the live card is the progress report, so the chat hears from a long job at
                 # most `cap` times - never a line per step (the owner: "it must work in the background").
                 if every and state["quiet"] >= every and state.get("narrated", 0) < cap:
                     state["quiet"] = 0
