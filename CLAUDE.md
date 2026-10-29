@@ -8965,7 +8965,24 @@ expects the asking card. Version 0.226.0 (pubspec 0.226.0+262 - build 261 left f
 - Phone / Hoola Network / Hoola Employee are unchanged. Ids and anchors (`#k-<id>`) are unchanged. The tool names, one-line descriptions and starter prompts inside each category stay as they were.
 - Tests: NEW `test_v0227_tools_english.py` (2). Ritual: APP_VERSION 0.227.1, pubspec 0.227.1+264, console ?v=0.227.1 x11, pins →0.227.1. Console-only.
 
-## v0.228.0 VOICE PHASE 1 — stop the breakage (owner: "START PHASE 1" after the voice-to-voice report; built as 0.221.0 -> 0.224.0, shipped as 0.228.0 together with Phase 2 after merging the dev's console redesign + long jobs up to 0.227.1)
+## v0.227.2 Long pasted messages (owner: the console showed "Could not send: The server refused the request (422)" for a long pasted brief)
+- Cause: `NewMessage.text` (and the edit body `ChatEditIn.text`) had `max_length=4000`, so FastAPI answered 422 for any longer message. Storage was never the limit: `messages.display` is Text and `content` is JSON. The create studio even allowed 12,000 characters in its own box.
+- Fix:
+  - The server limit is now `MESSAGE_MAX = 32000` for send and edit.
+  - The console sends anything over `INLINE_MAX = 30000` (room for the console hints) as an attached `pasted-text-<time>.txt` file through the normal files endpoint. The message then asks Hoola to read and follow it, so a long brief never fails.
+  - An edit over 32,000 shows a plain toast.
+  - Any 4xx now stops the console's 3-try retry loop (before, only 400/401 did, so a 422 was sent three times).
+- Tests: NEW `test_v0227_long_message.py` (3). Ritual: APP_VERSION 0.227.2, pubspec 0.227.2+265, console ?v=0.227.2 x11, pins →0.227.2. Server + console (needs the normal deploy).
+
+## v0.227.3 One Hoola at a time (owner: "SHOWING MULTIPLE AVTHARS ... MAKE IT SINGLE AND SOFISTIFATED PERFECT")
+- Cause: the server's 5-second comfort line (`_ack_later`, an ephemeral `message` with `ack: true`) was drawn as its own reply row with a second avatar, next to the progress row's avatar and later the real reply's avatar. The ack line was also in Hinglish.
+- Fix (console only):
+  - v2.js: an `ack` message becomes the progress line ("Still working on it…", `HoolaProgressPolicy.phase('ack')`) and never gets a reply row.
+  - The progress row is always the last row. When it sits right under Hoola's own reply it gets the `tail` class (no avatar, lined up with the reply text).
+  - The progress row hides while the words stream.
+- Tests: NEW `test_v0227_single_avatar.py` (3). Ritual: APP_VERSION 0.227.3, pubspec 0.227.3+266, console ?v=0.227.3 x11, pins →0.227.3.
+
+## v0.228.0 VOICE PHASE 1 — stop the breakage (owner: "START PHASE 1" after the voice-to-voice report; built as 0.221.0 -> 0.224.0, shipped as 0.228.0 together with Phase 2 after merging the dev's console redesign + long jobs up to 0.227.3)
 The report (Dessa research, Dots / Grok Bot / Muse, code audit) found the call trips on things Google changed in
 gemini-3.8-live and on a few code holes. Phase 1 = the safe, server-only fixes:
 1. **Affective dialog never goes to a 3.x live model** (`voice.affective_allowed(model)`): Google's gemini-3.8-live page
@@ -8987,7 +9004,7 @@ gemini-3.8-live and on a few code holes. Phase 1 = the safe, server-only fixes:
 4. `_save_turn` and `life.context_block` run with `asyncio.to_thread` (off the audio loop).
 Tests: NEW `test_v0221_voice_phase1.py` (11). Older affective heal suites pin an older model by fixture
 (`test_v0181`, `v01851`, `v01852`, `v01853`); `test_v150` refused-setup heal back to 2 connects on 3.8;
-`test_voice` / `test_human_voice` default-config asserts → None. Version 0.228.0 (pubspec 0.228.0+265, console
+`test_voice` / `test_human_voice` default-config asserts → None. Version 0.228.0 (pubspec 0.228.0+267, console
 ?v=0.228.0, pins → 0.228.0). Server-only deploy, old APKs keep working; Mera PC freeze respected.
 Next (report Phase 2): GoAway graceful finish + pre-built reconnect + keep her gap audio, compression trigger,
 drop-note on every abnormal end, replay his audio after a phone blip.
@@ -9009,6 +9026,6 @@ drop-note on every abnormal end, replay his audio after a phone blip.
 5. **His missed voice is replayed**: while the phone's line is down `send_audio` keeps up to 10 s (`MISSED_MAX`); on
    `attach` it is played if fresh (`MISSED_KEEP_S` 20 s). Stats: goaway, goaway_graceful, goaway_forced, prebuilt,
    gap_audio_kept_s, missed_replayed_s.
-Tests: NEW `test_v0225_voice_phase2.py` (14). Version 0.228.0 (pubspec 0.228.0+265, console ?v=0.228.0, pins).
+Tests: NEW `test_v0225_voice_phase2.py` (14). Version 0.228.0 (pubspec 0.228.0+267, console ?v=0.228.0, pins).
 Server-only deploy, old APKs keep working. Next (report Phase 3): one quiet-aware note queue with job de-dup,
 prompt + tool diet, phone gate / echo timing (APK), murmur timing.

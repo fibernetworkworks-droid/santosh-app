@@ -1316,3 +1316,8 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
  #app .mu .utbar{position:static;opacity:1;gap:2px;width:max-content;margin:6px -8px -8px auto;padding:0;background:none;border:0;box-shadow:none}
  #app .mu .utbar .ua{color:rgba(255,255,255,.72)}
 }
+
+/* v0.227.3 one Hoola at a time: the progress row under Hoola's own reply drops its avatar and lines up with the reply text */
+#app .simple-progress.tail{gap:14px}
+#app .simple-progress.tail .progress-avatar{visibility:hidden;width:30px;height:20px}
+#app .simple-progress[hidden]{display:none}
