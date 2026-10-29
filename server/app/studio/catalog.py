@@ -8,6 +8,7 @@ HOOLA_STUDIO_MODELS (a JSON file with the same shape) before charging users.
 from __future__ import annotations
 
 import json
+import re
 import os
 from pathlib import Path
 
@@ -169,3 +170,225 @@ def load_models() -> dict[str, dict]:
         for k, v in json.loads(Path(f).read_text()).items():
             m[k] = {**m.get(k, {}), **v}
     return m
+
+
+# ================================================================ v0.262 EVERY MODEL, PRICE FIRST (owner: "IT MUST INCLUDE ALL
+# MODEL IN IT LETS USER CHOOSE THE RIGHT ONE FOR THEM ... USER WILL SEE THE PRICING OF EVERY VIDEO BEFORE GENERATION")
+PRICES_CHECKED = "2026-10-29"
+RES_ORDER = ["360p", "480p", "540p", "720p", "768p", "1080p", "2k", "4k"]
+
+# USD per second of output WITH sound, per resolution, from the public price pages (Oct 2026). The live OpenRouter
+# list (Studio.models_sync -> parse_skus) replaces these for OpenRouter models whenever it is reachable.
+_BY_RES = {
+    "gemini-omni-flash": {"360p": 0.034, "720p": 0.10, "1080p": 0.152, "4k": 0.304},
+    "or-veo-3.1-fast": {"720p": 0.10, "1080p": 0.12, "4k": 0.30},
+    "or-veo-3.1-lite": {"720p": 0.05, "1080p": 0.08},
+    "or-seedance-2.5": {"480p": 0.103, "720p": 0.231, "1080p": 0.569},
+    "or-minimax-h3": {"720p": 0.08, "1080p": 0.13},
+    "or-minimax-h3-max": {"720p": 0.08, "1080p": 0.08},
+    "or-wan-3": {"480p": 0.06, "720p": 0.08, "1080p": 0.10},
+    "or-seedance-2": {"480p": 0.07, "720p": 0.11, "1080p": 0.15},
+    "or-seedance-2-fast": {"480p": 0.03, "720p": 0.045, "1080p": 0.07},
+    "seedance-2-byteplus": {"480p": 0.05, "720p": 0.112, "1080p": 0.25},
+    "or-kling-3-std": {"720p": 0.11, "1080p": 0.15},
+}
+for _k, _t in _BY_RES.items():
+    if _k in MODELS:
+        MODELS[_k]["usd_by_res"] = dict(_t)
+
+# Kling 3.0 Pro is listed on OpenRouter's video API as kwaivgi/kling-v3.0-pro (estimate until the live list prices it)
+MODELS["or-kling-3-pro"] = {**_OR, "label": "Kling 3.0 Pro via OpenRouter: cinematic motion, multi-shot, sound",
+                            "model": "kwaivgi/kling-v3.0-pro", "durations": [5, 10], "aspects": ["16:9", "9:16", "1:1"],
+                            "usd_per_s": 0.22, "allowed_durations": [5, 10], "usd_by_res": {"720p": 0.16, "1080p": 0.22}}
+
+# What her picker card says about each model Hoola can call. tier: top | strong | budget | talk | free
+CARDS: dict[str, dict] = {
+    "gemini-omni-flash": {"name": "Gemini Omni 1.1 Flash", "maker": "Google", "tier": "top",
+                          "best": "Top of the human-vote boards; first / last frame, scene links", "rank": "#1 Arena (human votes)"},
+    "or-wan-3": {"name": "Wan 3.0", "maker": "Alibaba", "tier": "top", "best": "Long shots up to 30 s, multi-shot story, great value",
+                 "rank": "#1 Artificial Analysis text-to-video"},
+    "or-seedance-2.5": {"name": "Seedance 2.5", "maker": "ByteDance", "tier": "top",
+                        "best": "Premium look, many references, the same face everywhere, 30 s", "rank": "Top 3 Artificial Analysis"},
+    "or-minimax-h3": {"name": "MiniMax H3", "maker": "MiniMax", "tier": "top", "best": "Photo to video, product shots, stereo sound",
+                      "rank": "Top 3 Artificial Analysis"},
+    "or-minimax-h3-max": {"name": "MiniMax H3 Max", "maker": "MiniMax", "tier": "strong", "best": "First / last frame moves at a low price"},
+    "or-veo-3.1-fast": {"name": "Veo 3.1 Fast", "maker": "Google", "tier": "top", "best": "Most film-like look, 4K, clip extension"},
+    "or-veo-3.1-lite": {"name": "Veo 3.1 Lite", "maker": "Google", "tier": "budget", "best": "Cheapest Google video, quick social clips"},
+    "or-kling-3-pro": {"name": "Kling 3.0 Pro", "maker": "Kuaishou", "tier": "top", "best": "Cinematic motion, people and action",
+                       "rank": "#1 LLM Stats blind votes (Kling v3)"},
+    "or-kling-3-std": {"name": "Kling 3.0 Standard", "maker": "Kuaishou", "tier": "strong", "best": "Kling motion at a lower price"},
+    "or-flux-3-video": {"name": "FLUX 3 Video", "maker": "Black Forest Labs", "tier": "strong", "best": "Premium stills-quality look, timed keyframes"},
+    "or-seedance-2": {"name": "Seedance 2.0", "maker": "ByteDance", "tier": "strong", "best": "Reliable all-rounder, 9 references"},
+    "seedance-2": {"name": "Seedance 2.0 (fal)", "maker": "ByteDance", "tier": "strong", "best": "Seedance 2.0 through a fal account, up to 4K"},
+    "seedance-2-byteplus": {"name": "Seedance 2.0 (BytePlus)", "maker": "ByteDance", "tier": "strong", "best": "Seedance 2.0 direct from ByteDance's cloud"},
+    "or-seedance-2-fast": {"name": "Seedance 2.0 Fast", "maker": "ByteDance", "tier": "budget", "best": "Cheap fast drafts and social clips"},
+    "seedance-2-fast": {"name": "Seedance 2.0 Fast (fal)", "maker": "ByteDance", "tier": "budget", "best": "Cheap drafts through a fal account"},
+    "sync-3": {"name": "Sync 3 lip sync", "maker": "Sync", "tier": "talk",
+               "best": "Lips matched to Hindi and 95+ languages; used by itself for spoken lines"},
+    "offline-preview": {"name": "Free animatic", "maker": "Hoola", "tier": "free", "best": "Check story and timing before paying"},
+}
+
+# The rest of the market (October 2026). Shown in the picker so she sees everything; they switch on by themselves the
+# day OpenRouter's live list carries a model whose id matches `match`. `needs` = what it takes otherwise.
+WATCH: list[dict] = [
+    {"name": "Kling 4.0", "maker": "Kuaishou", "tier": "top", "match": r"kling.*(v4|4\.0|-4)", "usd_s": 0.235,
+     "best": "30 s clips, 15 references, 4K, stereo sound (launched 15 Oct 2026)", "needs": "Kling's own API (not open yet) or a provider that carries it"},
+    {"name": "Vidu Q4", "maker": "Shengshu", "tier": "top", "match": r"vidu.*q4", "usd_s": 0.39,
+     "best": "Acting performances, 15 image + 3 voice references, 4K", "needs": "a Vidu API account"},
+    {"name": "Runway Gen-4.5", "maker": "Runway", "tier": "top", "match": r"(runway.*)?gen-?4\.5", "usd_s": 0.12,
+     "best": "Strong generation plus Aleph 2 video editing", "needs": "a Runway API account"},
+    {"name": "HappyHorse 1.0", "maker": "Alibaba", "tier": "top", "match": r"happy-?horse-1\.0", "usd_s": 0.17,
+     "best": "Top video-to-video (restyle a clip)", "needs": "an Alibaba Cloud / fal account"},
+    {"name": "Wan 3.0 Prime", "maker": "Alibaba", "tier": "top", "match": r"wan-3\.0-prime", "usd_s": 0.28,
+     "best": "Wan 3.0's highest-quality tier, 30 s", "needs": "OpenRouter"},
+    {"name": "HappyHorse 1.1", "maker": "Alibaba", "tier": "top", "match": r"happy-?horse-1\.1", "usd_s": 0.13,
+     "best": "Realistic people and motion, strong in blind votes", "needs": "OpenRouter"},
+    {"name": "Veo 3.1", "maker": "Google", "tier": "top", "match": r"veo-3\.1$", "usd_s": 0.40,
+     "best": "Google's full Veo 3.1: most film-like, 4K", "needs": "OpenRouter"},
+    {"name": "Kling Video O1", "maker": "Kuaishou", "tier": "strong", "match": r"kling-video-o1", "usd_s": 0.112,
+     "best": "Kling with element references and multi-character scenes", "needs": "OpenRouter"},
+    {"name": "Grok Imagine Video 1.5 Lite", "maker": "xAI", "tier": "budget", "match": r"grok-imagine-video-1\.5-lite", "usd_s": 0.03,
+     "best": "Very cheap drafts with sound", "needs": "OpenRouter"},
+    {"name": "Grok Imagine Video", "maker": "xAI", "tier": "budget", "match": r"grok-imagine-video$", "usd_s": 0.07,
+     "best": "Older Grok video, cheap", "needs": "OpenRouter"},
+    {"name": "Seedance 2.0 Mini", "maker": "ByteDance", "tier": "budget", "match": r"seedance-2\.0-mini", "usd_s": 0.076,
+     "best": "Smallest Seedance 2: cheap clips with sound", "needs": "OpenRouter"},
+    {"name": "Seedance 1.5 Pro", "maker": "ByteDance", "tier": "budget", "match": r"seedance-1-?5", "usd_s": 0.05,
+     "best": "Cheapest good-quality clips", "needs": "OpenRouter"},
+    {"name": "Wan 2.7", "maker": "Alibaba", "tier": "budget", "match": r"wan-2\.7", "usd_s": 0.10, "best": "Older Wan, steady value",
+     "needs": "OpenRouter"},
+    {"name": "Wan 2.6", "maker": "Alibaba", "tier": "budget", "match": r"wan-2\.6", "usd_s": 0.08, "best": "Older Wan, low price",
+     "needs": "OpenRouter"},
+    {"name": "Luma Ray3.2", "maker": "Luma", "tier": "strong", "match": r"ray-?3", "usd_s": 0.20,
+     "best": "20 s at 1080p, 16 keyframes, HDR", "needs": "a Luma API account"},
+    {"name": "Grok Imagine Video 1.5", "maker": "xAI", "tier": "strong", "match": r"grok-imagine-video-1\.5$", "usd_s": 0.25,
+     "best": "15 s with sound, 1080p", "needs": "an xAI API account"},
+    {"name": "PixVerse V6", "maker": "PixVerse", "tier": "strong", "match": r"pixverse.*v6", "usd_s": 0.08,
+     "best": "1080p social clips with sound", "needs": "a PixVerse or fal account"},
+    {"name": "Hailuo 2.3", "maker": "MiniMax", "tier": "budget", "match": r"hailuo-?2\.3", "usd_s": 0.082,
+     "best": "Older, cheap", "needs": "a fal account"},
+    {"name": "Pika 2.5", "maker": "Pika", "tier": "budget", "match": r"pika", "usd_s": 0.05,
+     "best": "Playful social effects", "needs": "a Pika or fal account"},
+    {"name": "LTX-2.5", "maker": "Lightricks", "tier": "budget", "match": r"ltx", "usd_s": 0.02,
+     "best": "Open weights: runs on Hoola's own GPU later, sound, up to 4K", "needs": "a GPU server (open model)"},
+    {"name": "Wan 2.2", "maker": "Alibaba", "tier": "budget", "match": r"wan-?2\.2", "usd_s": 0.02,
+     "best": "Open weights (Apache 2.0): cheapest drafts on a GPU", "needs": "a GPU server (open model)"},
+    {"name": "HunyuanVideo 1.5", "maker": "Tencent", "tier": "budget", "match": r"hunyuan", "usd_s": 0.03,
+     "best": "Open weights, cinematic motion (licence excludes EU / UK / Korea)", "needs": "a GPU server (open model)"},
+    {"name": "OmniHuman 1.5", "maker": "ByteDance", "tier": "talk", "match": r"omnihuman", "usd_s": 0.14,
+     "best": "A photo speaks from a real voice track, up to 30 s", "needs": "a BytePlus / fal account"},
+    {"name": "Moonvalley Marey", "maker": "Moonvalley", "tier": "strong", "match": r"marey", "usd_s": 0.30,
+     "best": "Trained only on licensed footage (brand-safe)", "needs": "a Moonvalley account"},
+]
+# Not offered, and why (shown once at the bottom of the picker)
+NOT_OFFERED = [("Sora 2 (OpenAI)", "shut down (app April 2026, API September 2026)"),
+               ("Utopai X", "only inside Utopai's own studio, no API"),
+               ("Meta Movie Gen", "research model, no developer access"),
+               ("Midjourney video", "no current video model")]
+
+
+def norm_res(r: str) -> str:
+    r = str(r or "").lower().strip()
+    return {"2160p": "4k", "1440p": "2k", "uhd": "4k", "fhd": "1080p", "hd": "720p"}.get(r, r)
+
+
+def rate(m: dict, resolution: str = "", audio: bool = True) -> float:
+    """USD per second for this model at this resolution (with or without sound). Unknown resolution -> the nearest one
+    at or above it, else the best it makes; no table -> the model's flat estimate."""
+    table = (m.get("usd_by_res_noaudio") if not audio else None) or m.get("usd_by_res") or {}
+    if table:
+        r = norm_res(resolution)
+        if r in table:
+            return float(table[r])
+        idx = RES_ORDER.index(r) if r in RES_ORDER else RES_ORDER.index("1080p")
+        known = sorted((RES_ORDER.index(k), v) for k, v in table.items() if k in RES_ORDER)
+        if known:
+            above = [v for i, v in known if i >= idx]
+            return float(above[0] if above else known[-1][1])
+    return float(m.get("usd_per_s") or 0.0)
+
+
+# Seedance-style token billing: tokens per second of video = width x height x 24 fps / 1024
+TOKENS_PER_S = {"480p": 9_607, "540p": 12_150, "720p": 21_600, "768p": 24_576, "1080p": 48_600, "2k": 86_400, "4k": 194_400}
+
+
+def parse_skus(skus: dict | None, resolutions: list[str] | None = None) -> tuple[dict, dict, float]:
+    """OpenRouter's pricing_skus -> ({res: usd/s with sound}, {res: usd/s silent}, minimum usd per generation).
+    Real keys (29 Oct 2026 live list): duration_seconds[_with_audio|_without_audio][_<res>] (USD / s),
+    cents_per_second_output[_<res>] and cents_per_video_output_second_<res> (cents / s), text_to_video_duration_seconds_<res>,
+    video_tokens[_without_audio] (USD per token, Seedance), minimum_cents_per_generation. Image / video INPUT, continuation and
+    image-to-video-only keys are not the price of a new clip and are skipped."""
+    w: dict[str, float] = {}
+    wo: dict[str, float] = {}
+    bw = bwo = plain = None
+    tok: dict[str, float] = {}
+    unmarked: dict[str, float] = {}                  # per-resolution keys that do not say with / without sound
+    minimum = 0.0
+    for k, v in (skus or {}).items():
+        try:
+            val = float(v)
+        except (TypeError, ValueError):
+            continue
+        key = str(k).lower()
+        if key.startswith("minimum"):
+            minimum = val / 100 if "cents" in key else val
+            continue
+        if any(x in key for x in ("continuation", "image_input", "reference_image", "image_to_video", "video_input", "input")):
+            continue
+        no_audio = bool(re.search(r"without[-_]?audio|no[-_]?audio|silent", key))
+        if "token" in key:
+            tok["wo" if no_audio else "w"] = val
+            continue
+        if "second" not in key:
+            continue
+        if "cents" in key:
+            val /= 100
+        mres = re.search(r"(360p|480p|540p|720p|768p|1080p|1440p|2160p|2k|4k)", key)
+        if mres:
+            r = norm_res(mres.group(1))
+            if no_audio:
+                wo[r] = val
+            elif "with_audio" in key or "with-audio" in key:
+                w[r] = val
+            else:
+                unmarked[r] = val
+        elif no_audio:
+            bwo = val
+        elif "with_audio" in key or "with-audio" in key:
+            bw = val
+        else:
+            plain = val
+    explicit = bw is not None                        # a separate "_with_audio" price exists
+    for r, val in unmarked.items():                  # next to an explicit sound price, an unmarked one is the silent rate
+        (wo if explicit else w).setdefault(r, val)
+    if bw is None:
+        bw = plain
+    elif plain is not None and bwo is None:
+        bwo = plain                                  # "duration_seconds" next to an explicit "_with_audio" = silent rate
+    ress = [norm_res(x) for x in (resolutions or [])] or list(w) or ["1080p"]
+    if tok:
+        for res in ress:
+            n = TOKENS_PER_S.get(res)
+            if n and "w" in tok:
+                w.setdefault(res, round(tok["w"] * n, 5))
+            if n and "wo" in tok:
+                wo.setdefault(res, round(tok["wo"] * n, 5))
+    for res in ress:
+        if bw is not None:
+            w.setdefault(res, bw)
+        if bwo is not None:
+            wo.setdefault(res, bwo)
+    return w, wo, minimum
+
+# "Best quality first" in her picker: the October 2026 leaderboards (Artificial Analysis, Arena, LLM Stats) merged
+QUALITY_ORDER = ["Gemini Omni 1.1 Flash", "Wan 3.0 Prime", "Wan 3.0", "Kling 4.0", "Seedance 2.5", "MiniMax H3", "HappyHorse 1.1",
+                 "HappyHorse 1.0", "Veo 3.1", "Kling 3.0 Pro", "Vidu Q4", "Veo 3.1 Fast", "Runway Gen-4.5", "FLUX 3 Video",
+                 "Grok Imagine Video 1.5", "Luma Ray3.2", "Kling Video O1", "Seedance 2.0", "Kling 3.0 Standard", "MiniMax H3 Max",
+                 "Moonvalley Marey", "PixVerse V6", "Veo 3.1 Lite", "Seedance 2.0 Fast", "Seedance 2.0 Mini", "Hailuo 2.3",
+                 "Seedance 1.5 Pro", "Wan 2.7", "Wan 2.6", "Grok Imagine Video", "Grok Imagine Video 1.5 Lite", "Pika 2.5",
+                 "HunyuanVideo 1.5", "LTX-2.5", "Wan 2.2"]
+
+
+def quality_rank(name: str) -> int:
+    base = re.sub(r"\s*\((fal|BytePlus)\)$", "", name or "")
+    return QUALITY_ORDER.index(base) if base in QUALITY_ORDER else 99

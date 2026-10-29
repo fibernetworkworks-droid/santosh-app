@@ -10147,3 +10147,46 @@ The v0.259 studio's pickers cycled to the next value on every click - no list, n
 - Tests: `test_v0261_every_picker_is_a_real_dropdown` in test_v0259_create_studio.py; Playwright run in light and dark:
   opens, keyboard pick (ArrowDown x2 + Enter = Video), outside click closes, Director length pick, Esc closes, no errors.
 - Version 0.261.0 (pubspec 0.261.0+301, console ?v=0.261.0 x14, pins -> 0.261.0).
+
+
+## v0.262.0 EVERY MODEL, PRICE FIRST - video Phase 1 (29 Oct 2026)
+Owner: "NOW MAKE A PERFECT PLAN FOR HOOLA VIDEO GENERATION --- 1) IT MUST INCLUDE ALL MODEL IN IT LETS USER CHOOSE THE RIGHT
+ONE FOR THEM 2) USER WILL SEE THE PRICING OF EVERY VIDEO BEFORE GENERATION", then "BUILD PHASE 1" on the plan (Phase 2 =
+daily price sync, actual-vs-estimate, samples, smarter Auto, two-model runs; Phase 3 = Hoola Credits wallet, margin + GST,
+refunds). Her four open decisions (margin %, which provider accounts, credit packs vs pay-per-video, "failed = free") are NOT
+decided yet; Phase 1 needs none of them (prices are pass-through, as before).
+- LIVE MODELS AND PRICES: OpenRouter's /videos/models list (30 models on 29 Oct: Wan 3.0 / 3.0 Prime / 2.7 / 2.6, Veo 3.1 /
+  Fast / Lite, Kling 3.0 Pro / Std / O1, Seedance 2.5 / 2.0 / Fast / Mini / 1.5 Pro, HappyHorse 1.0 / 1.1, Runway Gen-4.5,
+  Grok Imagine 1.5 / Lite, MiniMax H3 / H3 Max, Hailuo 2.3, FLUX 3 Video, HeyGen) is already read when the studio starts
+  (Studio.models_sync); its `pricing_skus` now become per-resolution rates with and without sound. `catalog.parse_skus`
+  reads the four real shapes: duration_seconds[_with_audio|_without_audio][_<res>] (USD/s), cents_per_second_output[_<res>]
+  and cents_per_video_output_second_<res> (cents/s), video_tokens[_without_audio] (Seedance: tokens/s = w x h x 24 / 1024,
+  `TOKENS_PER_S`), minimum_cents_per_generation (`min_usd`); input / continuation / image-to-video keys skipped; an
+  unmarked per-resolution key next to an explicit "_with_audio" price is the silent rate (Kling 3.0 Pro: 0.168 with sound,
+  0.112 silent). Hoola's own fal / BytePlus / Google / Sync models carry `usd_by_res` tables from the public price pages.
+- ONE RATE TABLE: `catalog.rate(model, resolution, audio)` is used by the Create button price, the price card (quote rows)
+  and the run's cost cap (Studio.estimate / generate, incl. the minimum per generation), so the three can never disagree.
+- HER CHOICES: project prefs `model` and `resolution` (StudioNew / StudioSettings, `_clean_prefs`); a scene's own `model`
+  (StudioShot). Precedence (`Studio.model_for(s, quality, override, pref)`): this run's model > the scene's > the film's >
+  the best ready model for the shot (Hoola Auto). A film model whose provider has no key falls back to Auto (`pref_model`).
+  `build()` uses her resolution when the model makes it, else the nearest it makes.
+- API: GET /api/studio/models (catalogue: 41 cards = ready + "needs key" (which .env key) + the market as "coming" -
+  Kling 4.0, Vidu Q4, Luma Ray3.2, PixVerse V6, LTX-2.5, Wan 2.2, HunyuanVideo 1.5, Pika, Marey, OmniHuman, HeyGen avatars -
+  with rupee rates per resolution, leaderboard order `catalog.QUALITY_ORDER`, and "not offered": Sora 2, Utopai X, Meta Movie
+  Gen, Midjourney video); edit / upscale models (FLUX edit / upscale, Runway Aleph) are hidden (they need a video in);
+  POST /api/studio/models/refresh; POST /api/studio/price (model, seconds, resolution, sound, takes -> snapped to what the
+  model makes, `changed` says what moved); GET /api/studio/projects/{name}/quote.
+- CONSOLE (studio.js): a full model picker (tiers, Sound / 4K / 20 s+ / 4+ refs, Ready only, search, sort by quality / price /
+  length, compare up to 3 side by side, Hoola Auto first; every card: maker, ranking, best for, specs, rupees per second
+  and for HER clip, live-price mark, what switches it on). Video page: model, shape, length and resolution limited to what
+  the model makes, sound, takes 1-4, the live price on Create ("Create ≈ ₹136") with the line-by-line sum, Free preview
+  as its own button. Director: model + resolution for the new film and for an open film, a model per scene (with that
+  scene's price). The price card lists every shot (model, seconds x takes, resolution, rupees) plus pictures and music,
+  says "never charged more than", and the Haan button carries the total.
+- Tests: NEW `test_v0262_every_model.py` (9) - every live SKU shape, the rate lookup, models_sync with live prices,
+  her model / resolution / scene model in the estimate, the minimum charge, the itemised card = the run cap, the catalogue
+  and price endpoints (ready / needs key / coming / hidden edit models / order), the request models, the console pieces.
+  One real bug caught by them: the film's model first overrode a scene's own model.
+- Version 0.262.0 (pubspec 0.262.0+302, console ?v=0.262.0 x14, pins -> 0.262.0).
+- NOT VERIFIED: a real paid generation through each newly listed OpenRouter model (the sandbox key is a placeholder);
+  OpenRouter's request schema is the same for all (`/videos`), and the price list came from the live endpoint.

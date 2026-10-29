@@ -181,6 +181,7 @@ window.HoolaCreate = ctx => {
   </main>
 </div>
 <div class="pop" id="pop" role="menu" hidden></div>
+<div class="picker" id="picker" hidden></div>
 <div class="lightbox" id="lightbox" hidden></div>
 ${SPRITE}`;
   }
@@ -200,7 +201,7 @@ ${SPRITE}`;
   }
   function go(v, opts) {
     if (!V[v]) v = 'studio';
-    clearTimeout(poll); poll = 0; alive++; closeMenu();
+    clearTimeout(poll); poll = 0; alive++; closeMenu(); if (!$('#picker').hidden) { $('#picker').hidden = true; $('#picker').innerHTML = ''; }
     VIEW = v; const old = $('#view'), el = old.cloneNode(false); old.replaceWith(el);
     el.className = 'view enter'; el.innerHTML = V[v](opts || {}); el.scrollTop = 0;
     $$('#snav [data-go]').forEach(b => b.setAttribute('aria-current', b.dataset.go === v ? 'page' : 'false'));
@@ -440,28 +441,128 @@ ${SPRITE}`;
     if (o.autostart) create();
   };
 
+  /* ---------------- v0.262 EVERY MODEL, PRICE FIRST (owner: "IT MUST INCLUDE ALL MODEL IN IT LETS USER CHOOSE THE RIGHT ONE
+     FOR THEM ... USER WILL SEE THE PRICING OF EVERY VIDEO BEFORE GENERATION"): the picker lists every model (ready ones, the
+     ones a server key switches on, and the rest of the market) with its rupee price per second at every resolution and
+     the price of THIS clip; the Create button carries the live price; every paid run still stops at the price card. */
+  const RES = ['360p', '480p', '540p', '720p', '768p', '1080p', '2k', '4k'];
+  const QOF = r => ({'360p': 'draft', '480p': 'draft', '540p': 'draft', '720p': 'draft', '768p': 'draft', '1080p': 'final', '2k': 'premium', '4k': 'premium'})[r] || 'final';
+  async function models(force) {
+    if (force || !D.models) { try { D.models = await api('GET', '/api/studio/models'); } catch { D.models = D.models || {models: [], not_offered: []}; } }
+    return D.models;
+  }
+  const mOf = k => (D.models?.models || []).find(m => m.key && m.key === k);
+  const resSort = L => [...new Set(L)].sort((a, b) => RES.indexOf(a) - RES.indexOf(b));
+  function rateAt(m, res) {
+    const t = m?.inr_per_s || {}; if (t[res] != null) return t[res];
+    const ks = resSort(Object.keys(t)); if (!ks.length) return 0;
+    return t[ks.find(k => RES.indexOf(k) >= RES.indexOf(res)) || ks[ks.length - 1]];
+  }
+  const topRes = m => resSort(m.resolutions || Object.keys(m.inr_per_s || {})).slice(-1)[0] || '';
+  const money = n => '₹' + (n < 100 ? (Math.round(n * 10) / 10).toLocaleString('en-IN') : Math.round(n).toLocaleString('en-IN'));
+  const TIERS = [['all', 'All models'], ['top', 'Top quality'], ['strong', 'Strong'], ['budget', 'Budget'], ['talk', 'Talking people']];
+  const MP = {tier: 'all', only: false, sort: 'quality', feat: new Set(), q: '', cmp: [], view: 'grid', ctx: null};
+  /* open the picker. ctx = {current, seconds, res, onPick(key), title} */
+  async function picker(ctx) {
+    MP.ctx = ctx; MP.view = 'grid'; MP.cmp = [];
+    const pk = $('#picker'); pk.hidden = false; pk.innerHTML = `<div class="pkin"><p class="mut" style="padding:30px">Loading every model…</p></div>`;
+    await models(); drawPicker(); requestAnimationFrame(() => pk.classList.add('on'));
+  }
+  function closePicker() { const pk = $('#picker'); pk.classList.remove('on'); setTimeout(() => { if (!pk.classList.contains('on')) { pk.hidden = true; pk.innerHTML = ''; } }, 180); }
+  function pickerList() {
+    const order = {top: 0, strong: 1, budget: 2, talk: 3};
+    const c = MP.ctx, f = MP.feat, q = MP.q.toLowerCase();
+    let L = (D.models?.models || []).filter(m => (MP.tier === 'all' || m.tier === MP.tier) && (!MP.only || m.ready)
+      && (!f.has('sound') || m.audio) && (!f.has('4k') || topRes(m) === '4k') && (!f.has('long') || (m.durations?.[1] || 0) >= 20)
+      && (!f.has('refs') || (m.references || 0) >= 4) && (!q || (m.name + ' ' + m.maker + ' ' + m.best).toLowerCase().includes(q)));
+    const price = m => rateAt(m, c.res) * c.seconds;
+    L.sort((a, b) => (b.ready - a.ready) || (MP.sort === 'price' ? price(a) - price(b) : MP.sort === 'long' ? (b.durations?.[1] || 0) - (a.durations?.[1] || 0)
+      : (order[a.tier] ?? 9) - (order[b.tier] ?? 9) || (a.q ?? 99) - (b.q ?? 99)));
+    return L;
+  }
+  function modelCard(m) {
+    const c = MP.ctx, res = (m.resolutions || []).includes(c.res) || !m.resolutions?.length ? c.res : resSort(m.resolutions).find(r => RES.indexOf(r) >= RES.indexOf(c.res)) || topRes(m);
+    const ps = rateAt(m, res), clip = ps * c.seconds, on = m.key && m.key === c.current, ck = MP.cmp.includes(m.name);
+    const st = m.status === 'ready' ? '' : m.status === 'coming' ? '<span class="tag">Coming</span>' : '<span class="tag hot">Not switched on</span>';
+    return `<div class="mcard${on ? ' on' : ''}${m.ready ? '' : ' off'}">
+      <div class="mh"><div><b>${esc(m.name)}</b><small>${esc(m.maker)}${m.via ? ' · via ' + esc(m.via) : ''}</small></div>${st}<label class="cmpck" title="Compare"><input type="checkbox" data-cmp="${esc(m.name)}" ${ck ? 'checked' : ''}><span>Compare</span></label></div>
+      ${m.rank ? `<span class="rank">${I('star', 'width:13px;height:13px')}${esc(m.rank)}</span>` : ''}
+      <p class="mbest">${esc(m.best)}</p>
+      <div class="specs">${m.durations?.length ? `<span>${I('video', 'width:13px;height:13px')}up to ${m.durations[1]} s</span>` : ''}${topRes(m) ? `<span>${I('grid', 'width:13px;height:13px')}${topRes(m)}</span>` : ''}${m.audio ? `<span>${I('sound', 'width:13px;height:13px')}sound</span>` : ''}${m.references ? `<span>${I('layers', 'width:13px;height:13px')}${m.references} refs</span>` : ''}</div>
+      <div class="mprice"><div><b class="num">${money(ps)}</b><small>/ second at ${esc(res)}${m.estimate_only ? ' · about' : m.price_live ? ' · live price' : ''}</small></div><div><b class="num">${money(clip)}</b><small>for your ${c.seconds} s clip</small></div></div>
+      ${m.ready ? `<button class="btn ${on ? 'sec' : 'pri'}" data-mpick="${esc(m.key)}">${on ? I('check', 'width:15px;height:15px') + 'Chosen' : 'Choose'}</button>` : `<p class="why">${esc(m.why)}</p>`}
+    </div>`;
+  }
+  function drawPicker() {
+    const pk = $('#picker'), c = MP.ctx; if (!pk || !c) return;
+    const L = pickerList(), dm = D.models || {};
+    const auto = `<div class="mcard auto${!c.current ? ' on' : ''}"><div class="mh"><div><b>Hoola Auto</b><small>Recommended</small></div></div><p class="mbest">Hoola picks the best ready model for each shot: scenes, products, talking people and Hindi lip sync. The price card shows which one and the exact price.</p><button class="btn ${!c.current ? 'sec' : 'pri'}" data-mpick="">${!c.current ? I('check', 'width:15px;height:15px') + 'Chosen' : 'Use Hoola Auto'}</button></div>`;
+    const body = MP.view === 'compare' ? compareHTML() : `<div class="mgrid">${MP.tier === 'all' || MP.tier === 'top' ? auto : ''}${L.map(modelCard).join('') || '<p class="mut">No model matches these filters.</p>'}</div>
+      ${(dm.not_offered || []).length ? `<p class="note" style="margin-top:14px">Not offered: ${dm.not_offered.map(x => `<b>${esc(x.name)}</b> (${esc(x.why)})`).join(' · ')}</p>` : ''}`;
+    pk.innerHTML = `<div class="pkin" role="dialog" aria-modal="true" aria-label="Choose a video model">
+      <div class="pkh"><div><h2>${esc(c.title || 'Choose a video model')}</h2><small class="mut">${(dm.models || []).filter(m => m.ready).length} ready · ${(dm.models || []).length} in the market list · prices for ${c.seconds} s at ${esc(c.res)}${dm.synced_at ? ' · live prices checked' : ' · prices checked ' + esc(dm.prices_checked || '')}</small></div>
+        <label class="pks">${I('search', 'width:15px;height:15px')}<input id="pkq" placeholder="Search models" value="${esc(MP.q)}" aria-label="Search models"></label><button class="ib" data-pkclose aria-label="Close">${I('x')}</button></div>
+      <div class="pkf"><div class="chips">${TIERS.map(([k, n]) => `<button class="chip" aria-pressed="${k === MP.tier}" data-tier="${k}">${n}</button>`).join('')}</div>
+        <div class="chips">${[['sound', 'Sound'], ['4k', '4K'], ['long', '20 s or longer'], ['refs', '4+ references']].map(([k, n]) => `<button class="chip" aria-pressed="${MP.feat.has(k)}" data-feat="${k}">${n}</button>`).join('')}<button class="chip" aria-pressed="${MP.only}" data-only>Ready only</button>
+        <button class="dd" data-sort>${I('filter', 'width:14px;height:14px')}<span>${{quality: 'Best quality first', price: 'Lowest price first', long: 'Longest clips first'}[MP.sort]}</span>${I('down', 'width:14px;height:14px')}</button></div></div>
+      <div class="pkb">${body}</div>
+      <div class="pkfoot"><span class="mut">${dm.note ? esc(dm.note) : ''}</span><span class="sp"></span>${MP.view === 'compare' ? `<button class="btn sec" data-pkgrid>Back to all models</button>` : `<button class="btn sec" data-pkcmp ${MP.cmp.length < 2 ? 'disabled' : ''}>Compare ${MP.cmp.length ? '(' + MP.cmp.length + ')' : ''}</button>`}</div></div>`;
+    $('#pkq', pk)?.addEventListener('input', e => { MP.q = e.target.value; const y = $('.pkb', pk).scrollTop; drawPicker(); const i = $('#pkq', pk); i.focus(); i.setSelectionRange(i.value.length, i.value.length); $('.pkb', pk).scrollTop = y; });
+  }
+  function compareHTML() {
+    const c = MP.ctx, L = MP.cmp.map(n => (D.models?.models || []).find(m => m.name === n)).filter(Boolean);
+    const row = (t, f) => `<tr><th>${t}</th>${L.map(m => `<td>${f(m)}</td>`).join('')}</tr>`;
+    return `<table class="cmp"><thead><tr><th></th>${L.map(m => `<th><b>${esc(m.name)}</b><small>${esc(m.maker)}</small></th>`).join('')}</tr></thead><tbody>
+      ${row(`Your ${c.seconds} s clip at ${esc(c.res)}`, m => `<b class="num">${money(rateAt(m, c.res) * c.seconds)}</b>`)}
+      ${row('Per second', m => money(rateAt(m, c.res)) + (m.estimate_only ? ' (about)' : ''))}
+      ${row('Longest clip', m => m.durations?.length ? m.durations[1] + ' s' : '—')}
+      ${row('Best resolution', m => topRes(m) || '—')}
+      ${row('Sound', m => m.audio ? 'Yes' : 'No')}
+      ${row('References', m => m.references || '—')}
+      ${row('Ranking', m => esc(m.rank || '—'))}
+      ${row('Best for', m => esc(m.best))}
+      ${row('', m => m.ready ? `<button class="btn pri" data-mpick="${esc(m.key)}">Choose</button>` : `<span class="why">${esc(m.why)}</span>`)}</tbody></table>`;
+  }
+  async function onPickerClick(e) {
+    const b = e.target.closest('button,input'); const pk = $('#picker');
+    if (e.target === pk) { closePicker(); return; }
+    if (!b) return;
+    if (b.dataset.cmp !== undefined) { const n = b.dataset.cmp; if (b.checked) { if (MP.cmp.length >= 3) { b.checked = false; toast('Compare up to 3 models'); return; } MP.cmp.push(n); } else MP.cmp = MP.cmp.filter(x => x !== n);
+      const f = $('[data-pkcmp]', pk); if (f) { f.disabled = MP.cmp.length < 2; f.textContent = 'Compare' + (MP.cmp.length ? ` (${MP.cmp.length})` : ''); } return; }
+    if (b.hasAttribute('data-pkclose')) { closePicker(); return; }
+    if (b.dataset.tier) { MP.tier = b.dataset.tier; drawPicker(); return; }
+    if (b.dataset.feat) { MP.feat.has(b.dataset.feat) ? MP.feat.delete(b.dataset.feat) : MP.feat.add(b.dataset.feat); drawPicker(); return; }
+    if (b.hasAttribute('data-only')) { MP.only = !MP.only; drawPicker(); return; }
+    if (b.hasAttribute('data-sort')) { menu(b, [{v: 'quality', label: 'Best quality first'}, {v: 'price', label: 'Lowest price first'}, {v: 'long', label: 'Longest clips first'}], MP.sort, v => { MP.sort = v; drawPicker(); }, 'Sort'); return; }
+    if (b.hasAttribute('data-pkcmp')) { MP.view = 'compare'; drawPicker(); return; }
+    if (b.hasAttribute('data-pkgrid')) { MP.view = 'grid'; drawPicker(); return; }
+    if (b.dataset.mpick !== undefined) { const k = b.dataset.mpick, cb = MP.ctx.onPick; closePicker(); cb(k); }
+  }
+
   /* ---------------- video (Video Studio, one clip per project) ---------------- */
-  const VID = {prompt: '', aspect: '9:16', seconds: 8, quality: 'draft', model: '', language: 'Hindi'};
-  const QUAL = [['preview', 'Free preview', 'An animatic from pictures, no cost'], ['draft', 'Draft 720p', 'Quick and cheap'], ['final', 'HD 1080p', 'For posting'], ['premium', 'Premium', 'Best models']];
-  const vidModels = () => (D.studio?.models || []).filter(m => !/image|banana|lyria|flux|offline/i.test(m.model));
-  V.video = () => { const m = vidModels().find(x => x.model === VID.model);
+  const VID = {prompt: '', aspect: '9:16', seconds: 8, res: '1080p', model: '', audio: true, takes: 1, language: 'Hindi', price: null};
+  const vm = () => mOf(VID.model);
+  const lenOpts = m => { const a = m?.allowed_durations; if (a?.length) return a; const [lo, hi] = m?.durations?.length ? m.durations : [4, 30];
+    return [4, 5, 6, 8, 10, 12, 15, 20, 25, 30].filter(x => x >= lo && x <= hi); };
+  const resOpts = m => m ? resSort(m.resolutions || []) : ['480p', '720p', '1080p', '4k'];
+  V.video = () => { const m = vm();
     return `<div class="gen">
   <div class="panel" style="position:relative"><div class="pbody">
     ${toolTabs('video')}
-    <div class="prow"><span class="pi">${I('video', 'width:16px;height:16px')}</span><div><small>Mode</small><b>Text to video</b></div><span class="tag">Same people in every shot</span></div>
-    <button class="prow" data-sheet="model"><span class="pi">${I('spark', 'width:16px;height:16px')}</span><div><small>Model</small><b>${m ? esc(m.label || m.model) : 'Hoola Auto · best model per shot'}</b></div>${I('chev', 'color:var(--dim)')}</button>
+    <button class="prow" data-pickmodel><span class="pi">${I('spark', 'width:16px;height:16px')}</span><div><small>Model</small><b>${m ? esc(m.name) : 'Hoola Auto · best model per shot'}</b></div>${m ? `<span class="tag num">${money(rateAt(m, VID.res))}/s</span>` : '<span class="tag">Recommended</span>'}${I('chev', 'color:var(--dim)')}</button>
     <div class="box">
       <h3>Describe your shot <button type="button" class="lnk" data-improve>${I('wand', 'width:14px;height:14px')} Improve</button></h3>
       <textarea id="vidq" rows="5" maxlength="2000" placeholder="Steam rising from a clay kulhad of chai on a rainy balcony in Mumbai, slow dolly in, warm evening light">${esc(VID.prompt)}</textarea>
     </div>
     <div class="lbl">Shape</div><div class="grid-opts">${['9:16', '16:9', '1:1'].map(a => `<button class="go" aria-pressed="${a === VID.aspect}" data-vasp="${a}">${a}</button>`).join('')}</div>
-    <div class="lbl">Length</div><div class="grid-opts" style="grid-template-columns:repeat(4,1fr)">${[5, 8, 10, 15].map(s => `<button class="go" aria-pressed="${s === VID.seconds}" data-vsec="${s}">${s} s</button>`).join('')}</div>
-    <div class="lbl">Quality</div>${QUAL.map(([k, t, s]) => `<button class="opt" role="radio" aria-checked="${k === VID.quality}" data-vq="${k}"><div><b>${t}</b><small>${s}</small></div>${k === 'preview' ? '<span class="tag new">Free</span>' : ''}</button>`).join('')}
+    <div class="lbl">Length</div><div class="grid-opts" style="grid-template-columns:repeat(4,1fr)">${lenOpts(m).map(s => `<button class="go" aria-pressed="${s === VID.seconds}" data-vsec="${s}">${s} s</button>`).join('')}</div>
+    <div class="lbl">Resolution</div><div class="grid-opts" style="grid-template-columns:repeat(4,1fr)">${resOpts(m).map(r => `<button class="go" aria-pressed="${r === VID.res}" data-vres="${r}">${r}</button>`).join('')}</div>
+    <div class="prow2"><div class="prow"><span class="pi">${I('sound', 'width:16px;height:16px')}</span><div><small>Sound</small><b>${VID.audio ? 'On' : 'Off'}</b></div><button class="sw" role="switch" aria-checked="${VID.audio}" data-vaudio aria-label="Sound"><i></i></button></div>
+      <div class="prow"><span class="pi">${I('layers', 'width:16px;height:16px')}</span><div><small>Takes</small><b class="num">${VID.takes}</b></div><span class="stepper" style="height:32px;border:0;padding:0"><button data-vtake="-1" aria-label="Fewer takes">${I('minus', 'width:14px;height:14px')}</button><button data-vtake="1" aria-label="More takes">${I('plus', 'width:14px;height:14px')}</button></span></div></div>
     <div class="lbl">Spoken lines in</div><div class="chips">${['Hindi', 'Hinglish', 'English', 'Marathi', 'Tamil', 'Telugu'].map(l => `<button class="chip" aria-pressed="${l === VID.language}" data-vlang="${l}">${l}</button>`).join('')}</div>
-    <p class="note">Hoola writes the shot plan first. A paid run shows its price here and starts only when you tap Haan.</p>
+    <div class="pricebox" id="vprice"></div>
   </div>
-  <div class="pfoot"><button class="create" id="vidGo">${I('spark', 'width:17px;height:17px')}Create video</button></div>
-  <div id="sheet" hidden></div></div>
+  <div class="pfoot"><button class="btn sec" id="vidPrev" title="An animatic from pictures, to check the story">Free preview</button><button class="create" id="vidGo">${I('spark', 'width:17px;height:17px')}<span>Create</span><small class="num" id="vidCost">…</small></button></div></div>
   <div class="stage"><div class="sbar"><b>Your videos</b><span class="sp"></span><button class="ib" data-reload aria-label="Refresh">${I('redo', 'width:16px;height:16px')}</button></div>
     <div class="sgrid" id="results"></div></div></div>`; };
   // one tile per Video Studio project: its newest picked take / output, its live state, and any price card waiting
@@ -472,9 +573,15 @@ ${SPRITE}`;
     const kf = (p.shots || []).find(s => s.keyframe); if (kf) return `<img alt="" src="${esc(kf.keyframe)}">`;
     return art('film', p.project);
   }
+  // the price card: line by line, the total on the Haan button; nothing runs before it, never more than it
   function approvalRow(a) {
     const what = {generate: `${a.shots || ''} shot${a.shots === 1 ? '' : 's'} · ${a.quality || ''}`, keyframes: `${a.shots} opening picture${a.shots === 1 ? '' : 's'}`, music: 'Music track (Google Lyria)', character: `Character picture · ${a.name || ''}`}[a.kind] || a.kind;
-    return `<div class="appr"><div><b>${inr(a.inr)}</b><small>${esc(what)}</small></div><button class="btn sec" data-no="${esc(a.id)}">Na</button><button class="btn pri" data-yes="${esc(a.id)}">Haan, make it</button></div>`;
+    const rows = (a.rows || []).map(r => `<tr><td>${esc(r.name)}${r.lipsync ? ' + lip sync' : ''}</td><td class="num">${r.seconds} s${r.takes > 1 ? ' × ' + r.takes : ''}</td><td>${esc(r.resolution)}${r.audio === false ? ' · silent' : ''}</td><td class="num">${money(r.inr)}</td></tr>`).join('');
+    const extra = [a.keyframes ? `<tr><td>Opening pictures × ${a.keyframes}</td><td></td><td></td><td class="num">${money(a.keyframes_inr)}</td></tr>` : '', a.music ? `<tr><td>Music (${esc(a.music)})</td><td></td><td></td><td class="num">${money(a.music_inr)}</td></tr>` : ''].join('');
+    return `<div class="appr"><div class="aph"><b class="num">${inr(a.inr)}</b><small>${esc(what)}</small></div>
+      ${rows || extra ? `<table class="aprows">${rows}${extra}</table>` : ''}
+      <small class="apn">Nothing is spent until you tap Haan. You are never charged more than ${inr(a.inr)}.</small>
+      <div class="apb"><button class="btn sec" data-no="${esc(a.id)}">Na</button><button class="btn pri" data-yes="${esc(a.id)}">Haan, make it · ${inr(a.inr)}</button></div></div>`;
   }
   function projTile(p) {
     const busy = p.working || p.planning || (p.painting || []).length;
@@ -489,8 +596,8 @@ ${SPRITE}`;
     const el = $('#results'); if (!el) return;
     const ps = (D.studio?.projects || []);
     el.innerHTML = (D.studio && D.studio.available === false ? `<div class="empty" style="grid-column:1/-1"><div><h2>Video Studio is off on this server</h2><p class="mut">It needs ffmpeg and STUDIO_ON on the server.</p></div></div>` : '')
-      + (VID.busy ? `<div class="res gening"><span class="thumb">${art('film', 'vb')}<span class="ring"></span><span class="pct">${esc(VID.busy)}</span></span><b class="rt">${esc(VID.prompt.slice(0, 48))}</b><small>Hoola is writing the shot plan</small></div>` : '')
-      + (ps.map(projTile).join('') || (VID.busy ? '' : `<div class="empty" style="grid-column:1/-1"><div><h2>Your videos appear here</h2><p class="mut">Describe a shot on the left and press Create video.</p></div></div>`));
+      + (VID.busy ? `<div class="res gening"><span class="thumb">${art('film', 'vb')}<span class="ring"></span><span class="pct">${esc(VID.busy)}</span></span><b class="rt">${esc(VID.prompt.slice(0, 48))}</b><small>Hoola is writing the shot plan; the price card comes next</small></div>` : '')
+      + (ps.map(projTile).join('') || (VID.busy ? '' : `<div class="empty" style="grid-column:1/-1"><div><h2>Your videos appear here</h2><p class="mut">Describe a shot, pick a model, see the price, press Create.</p></div></div>`));
     paintAll(el);
   }
   function watchStudio(view, draw) {
@@ -502,47 +609,68 @@ ${SPRITE}`;
     };
     poll = setTimeout(tick, 4000);
   }
-  async function newClip() {
+  // the live price: asked from the server on every change (the same table the price card uses)
+  let priceT = 0, priceN = 0;
+  function livePrice() {
+    clearTimeout(priceT); const n = ++priceN; const c = $('#vidCost'); if (c) c.textContent = '…';
+    priceT = setTimeout(async () => {
+      try { const r = await api('POST', '/api/studio/price', {model: VID.model, seconds: VID.seconds, resolution: VID.res, audio: VID.audio, takes: VID.takes});
+        if (n !== priceN || VIEW !== 'video') return; VID.price = r;
+        $('#vidCost').textContent = '≈ ' + money(r.inr);
+        $('#vprice').innerHTML = `<div><b class="num">≈ ${money(r.inr)}</b><small>${esc(r.name)}${r.auto ? ' (Hoola Auto)' : ''} · ${r.seconds} s × ${money(r.inr_per_s)}/s at ${esc(r.resolution)}${r.takes > 1 ? ' × ' + r.takes + ' takes' : ''}${r.audio ? '' : ' · silent'}</small></div>
+          ${r.changed?.length ? `<small class="warnl">This model makes ${r.changed.map(k => k === 'seconds' ? r.seconds + ' s' : r.resolution).join(' and ')}, so the price is for that.</small>` : ''}
+          ${r.ready ? '' : '<small class="warnl">This model is not switched on on the server yet.</small>'}
+          <small>You see the exact price card before anything is spent, and you are never charged more than it.</small>`;
+      } catch (e) { if (n === priceN && $('#vidCost')) $('#vidCost').textContent = ''; }
+    }, 220);
+  }
+  async function newClip(preview) {
     const brief = VID.prompt.trim(); if (!brief) { $('#vidq')?.focus(); toast('Describe the shot first'); return; }
     if (VID.busy) return;
     VID.busy = 'Writing the plan'; drawVideos();
     const name = 'Clip ' + new Date().toLocaleString('en-IN', {day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false}).replace(',', '');
+    const quality = preview ? 'preview' : QOF(VID.res);
     try {
-      const p = await api('POST', '/api/studio/projects', {name, brief, aspect: VID.aspect, seconds: VID.seconds, language: VID.language, quality: VID.quality === 'preview' ? 'draft' : VID.quality});
-      VID.busy = 'Starting';
-      const r = await api('POST', `/api/studio/projects/${encodeURIComponent(p.project)}/generate`, {quality: VID.quality, model: VID.model || null});
-      toast(r.waiting_owner ? `Price: ${inr(r.inr)}. Tap Haan on the tile to make it.` : 'Making your preview');
+      const p = await api('POST', '/api/studio/projects', {name, brief, aspect: VID.aspect, seconds: VID.seconds, language: VID.language,
+        quality: preview ? 'draft' : quality, model: VID.model, resolution: VID.res});
+      VID.busy = preview ? 'Making the free preview' : 'Working out the price';
+      const r = await api('POST', `/api/studio/projects/${encodeURIComponent(p.project)}/generate`, {quality, model: VID.model || null, variants: preview ? 1 : VID.takes});
+      toast(r.waiting_owner ? `Price ${inr(r.inr)}: tap Haan on the tile to make it.` : 'Making your free preview');
     } catch (e) { toast(e.status === 428 ? fp : e.message, true); }
     VID.busy = ''; await load('studio', true); redraw('video', drawVideos);
+  }
+  function fitToModel() {          // keep length / resolution inside what the chosen model makes
+    const m = vm(); if (!m) return;
+    const L = lenOpts(m); if (L.length && !L.includes(VID.seconds)) VID.seconds = L.reduce((a, b) => Math.abs(b - VID.seconds) < Math.abs(a - VID.seconds) ? b : a);
+    const R = resOpts(m); if (R.length && !R.includes(VID.res)) VID.res = R.find(r => RES.indexOf(r) >= RES.indexOf(VID.res)) || R[R.length - 1];
   }
   W.video = (el, o) => {
     const q = $('#vidq'); q.addEventListener('input', () => VID.prompt = q.value);
     load('studio').then(() => redraw('video', drawVideos)); watchStudio('video', drawVideos);
+    models().then(() => { if (VIEW === 'video' && VID.model && !vm()) { VID.model = ''; } livePrice(); });
     el.addEventListener('click', async e => {
       const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.vasp) { VID.aspect = b.dataset.vasp; $$('[data-vasp]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
-      if (b.dataset.vsec) { VID.seconds = +b.dataset.vsec; $$('[data-vsec]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
-      if (b.dataset.vq) { VID.quality = b.dataset.vq; $$('[data-vq]').forEach(x => x.setAttribute('aria-checked', String(x === b))); return; }
+      if (b.dataset.vsec) { VID.seconds = +b.dataset.vsec; $$('[data-vsec]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); livePrice(); return; }
+      if (b.dataset.vres) { VID.res = b.dataset.vres; $$('[data-vres]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); livePrice(); return; }
+      if (b.hasAttribute('data-vaudio')) { VID.audio = !VID.audio; b.setAttribute('aria-checked', String(VID.audio)); b.closest('.prow').querySelector('b').textContent = VID.audio ? 'On' : 'Off'; livePrice(); return; }
+      if (b.dataset.vtake) { VID.takes = Math.max(1, Math.min(4, VID.takes + +b.dataset.vtake)); b.closest('.prow').querySelector('b').textContent = VID.takes; livePrice(); return; }
       if (b.dataset.vlang) { VID.language = b.dataset.vlang; $$('[data-vlang]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
-      if (b.dataset.sheet) { const sh = $('#sheet'); const ms = vidModels();
-        sh.innerHTML = `<div class="sheet"><div class="shh"><b>Choose a model</b><button class="ib" data-close-sheet aria-label="Close">${I('x')}</button></div><div class="shb">
-          <button class="opt" role="radio" aria-checked="${!VID.model}" data-vmodel=""><div><b>Hoola Auto</b><small>The best model for each shot: scenes, products, talking people, lip sync</small></div><span class="tag">Recommended</span></button>
-          ${ms.map(m => `<button class="opt" role="radio" aria-checked="${m.model === VID.model}" data-vmodel="${esc(m.model)}" ${m.ready ? '' : 'disabled'}><div><b>${esc(m.label || m.model)}</b><small>${m.ready ? `about ₹${m.inr_per_second}/second` : 'Not set up on this server'}</small></div></button>`).join('') || '<p class="mut">The server lists no extra video models yet.</p>'}
-        </div></div>`; sh.hidden = false; return; }
-      if (b.dataset.vmodel !== undefined) { VID.model = b.dataset.vmodel; VID.prompt = q.value; go('video'); return; }
-      if (b.hasAttribute('data-close-sheet')) { $('#sheet').hidden = true; return; }
+      if (b.hasAttribute('data-pickmodel')) { VID.prompt = q.value; picker({current: VID.model, seconds: VID.seconds, res: VID.res, title: 'Choose the model for this video',
+        onPick: k => { VID.model = k; fitToModel(); go('video'); }}); return; }
       if (b.hasAttribute('data-improve')) { if (!q.value.trim()) { q.focus(); return; } b.disabled = true;
         try { const r = await api('POST', '/api/studio/improve', {brief: q.value.trim(), language: VID.language, seconds: VID.seconds}); q.value = VID.prompt = r.brief; } catch (er) { toast(er.message, true); } b.disabled = false; return; }
       if (b.dataset.yes || b.dataset.no) { b.disabled = true; await decide(b.dataset.yes || b.dataset.no, !!b.dataset.yes); await load('studio', true); drawVideos(); return; }
-      if (b.dataset.openproj) { DIR.project = b.dataset.openproj; go('director'); return; }
+      if (b.dataset.openproj) { DIR.project = b.dataset.openproj; DIR.view = null; go('director'); return; }
       if (b.hasAttribute('data-reload')) { await load('studio', true); drawVideos(); return; }
-      if (b.id === 'vidGo') { VID.prompt = q.value; newClip(); }
+      if (b.id === 'vidPrev') { VID.prompt = q.value; newClip(true); return; }
+      if (b.id === 'vidGo') { VID.prompt = q.value; newClip(false); }
     });
-    if (o.autostart) { VID.prompt = VID.prompt || q.value; newClip(); }
+    if (o.autostart) { VID.prompt = VID.prompt || q.value; newClip(false); }
   };
 
   /* ---------------- director (a whole film on Video Studio) ---------------- */
-  const DIR = {brief: '', project: '', aspect: '16:9', seconds: 45, language: 'Hindi', music: '', busy: '', view: null};
+  const DIR = {brief: '', project: '', aspect: '16:9', seconds: 45, language: 'Hindi', music: '', busy: '', view: null, model: '', res: '1080p'};
   const STEPS = [['brief', 'Brief'], ['plan', 'Storyboard'], ['cast', 'Cast'], ['keyframes', 'Pictures'], ['preview', 'Preview'], ['generate', 'Shots'], ['music', 'Music'], ['assemble', 'Final film']];
   function stepState(p) {
     const shots = p.shots || [], picked = shots.length && shots.every(s => s.picked);
@@ -555,7 +683,7 @@ ${SPRITE}`;
     if (!DIR.project || !p) return `<div class="dir">
   <div class="dhero">${art('film', 'dirhero')}<span class="tag hot">Director agent</span><h1>Brief in, finished film out</h1>
     <form class="compose" id="dirForm" style="width:min(760px,100%)"><label for="dirq" class="sr">Your film brief</label><textarea id="dirq" rows="3" placeholder="A 45-second Diwali ad for Newtika Chai: a family comes home, Dadi makes chai, ends on our logo">${esc(DIR.brief)}</textarea>
-      <div class="crow"><button type="button" class="dd" data-dcyc="aspect">${I('grid', 'width:15px;height:15px')}<span>${DIR.aspect}</span></button><button type="button" class="dd" data-dcyc="seconds"><span>${DIR.seconds} s</span></button><button type="button" class="dd" data-dcyc="language"><span>${DIR.language}</span></button><button type="button" class="dd" data-dcyc="music">${I('music', 'width:15px;height:15px')}<span>${DIR.music || 'No music'}</span></button><span class="sp"></span><button class="send" aria-label="Plan the film">${I('send')}</button></div></form>
+      <div class="crow"><button type="button" class="dd" data-dcyc="aspect">${I('grid', 'width:15px;height:15px')}<span>${DIR.aspect}</span></button><button type="button" class="dd" data-dcyc="seconds"><span>${DIR.seconds} s</span></button><button type="button" class="dd" data-dcyc="language"><span>${DIR.language}</span></button><button type="button" class="dd" data-dcyc="music">${I('music', 'width:15px;height:15px')}<span>${DIR.music || 'No music'}</span></button><button type="button" class="dd" data-dnewmodel>${I('spark', 'width:15px;height:15px')}<span>${esc(mOf(DIR.model)?.name || 'Hoola Auto')}</span>${I('down', 'width:14px;height:14px')}</button><button type="button" class="dd" data-dnewres><span>${DIR.res}</span>${I('down', 'width:14px;height:14px')}</button><span class="sp"></span><button class="send" aria-label="Plan the film">${I('send')}</button></div></form>
     <p class="mut" style="max-width:560px">Hoola writes the storyboard for free. Pictures, shots and music each show their price first; nothing is spent until you tap Haan.</p></div>
   ${DIR.busy ? `<div class="box"><b>${esc(DIR.busy)}…</b><div class="bar"><i class="indet"></i></div></div>` : ''}
   <section><div class="sec-h"><h2>Your films</h2><span class="dim" style="font-size:13px">${(D.studio?.projects || []).length} projects</span></div><div class="scenes" id="films"></div></section></div>`;
@@ -563,7 +691,7 @@ ${SPRITE}`;
     const nx = p.next || {};
     return `<div class="dir">
   <div class="sec-h" style="margin:0;align-items:center"><div style="min-width:0"><button class="lnk" data-dirback>${I('left', 'width:14px;height:14px')} All films</button><h2 style="font:400 26px/1.25 var(--serif);margin-top:4px">${esc(p.project)}</h2><p class="mut" style="margin-top:4px;max-width:760px">${esc((p.brief || '').slice(0, 280))}</p></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">${p.working ? `<button class="btn sec" data-dcancel>${I('x', 'width:15px;height:15px')}Stop</button>` : ''}<button class="btn pri" data-next="${esc(nx.kind || '')}" ${['wait', 'done'].includes(nx.kind) ? 'disabled' : ''}>${esc(nextLabel(nx))}${nx.inr ? ` <small class="num">${inr(nx.inr)}</small>` : ''}</button></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="dd" data-pmodel title="The model for the whole film">${I('spark', 'width:15px;height:15px')}<span>${esc(mOf(p.prefs?.model)?.name || 'Hoola Auto')}</span>${I('down', 'width:14px;height:14px')}</button><button class="dd" data-pres title="Resolution of the shots"><span>${esc(p.prefs?.resolution || 'By quality')}</span>${I('down', 'width:14px;height:14px')}</button>${p.working ? `<button class="btn sec" data-dcancel>${I('x', 'width:15px;height:15px')}Stop</button>` : ''}<button class="btn pri" data-next="${esc(nx.kind || '')}" ${['wait', 'done'].includes(nx.kind) ? 'disabled' : ''}>${esc(nextLabel(nx))}${nx.inr ? ` <small class="num">${inr(nx.inr)}</small>` : ''}</button></div></div>
   <div class="pipe" role="list">${STEPS.map(([k, t], i) => `<button role="listitem" class="${st[k] ? 'done' : ''}" ${k === cur ? 'aria-current="step"' : ''} data-step="${k}"><i>${st[k] ? '✓' : i + 1}</i>${t}</button>`).join('')}</div>
   ${(p.approvals || []).length ? `<section class="box"><h3>Waiting for your Haan</h3>${p.approvals.map(approvalRow).join('')}</section>` : ''}
   ${p.progress && p.working ? `<div class="box"><div style="display:flex;justify-content:space-between"><b>Making ${p.progress.total} shot${p.progress.total === 1 ? '' : 's'} · ${esc(p.progress.quality || '')}</b><span class="num mut">${p.progress.pct}%${p.progress.eta_s ? ' · about ' + Math.ceil(p.progress.eta_s / 60) + ' min' : ''}</span></div><div class="bar"><i style="width:${p.progress.pct}%"></i></div></div>` : ''}
@@ -588,7 +716,7 @@ ${SPRITE}`;
     return `<div class="scene" data-shot="${esc(s.id)}"><div class="one">${media}${['paint', 'video', 'queued', 'lipsync', 'retrying'].includes(s.phase) ? `<span class="ring"></span><span class="pct">${s.pct != null ? s.pct + '%' : ph}</span>` : ''}</div>
       <div class="sb"><b>${i + 1} · ${esc(s.kind)}${ph ? ` <span class="tag${s.phase === 'failed' ? ' hot' : ''}">${ph}</span>` : ''}</b>
         <small class="clamp" data-ptext>${esc(s.prompt)}</small>${s.dialogue ? `<small>“${esc(s.dialogue)}”</small>` : ''}${s.error ? `<small class="bad clamp" title="${esc(s.error)}">${esc(s.error.slice(0, 160))}</small>` : ''}
-        <div class="sm"><span class="tag">${s.duration} s</span>${(s.characters || []).map(c => `<span class="mention">@${esc(c)}</span>`).join('')}<span style="flex:1"></span>
+        <div class="sm"><span class="tag">${s.duration} s</span><button class="tag mchip" data-smodel="${esc(s.id)}" title="Model for this scene">${esc(s.model_label || 'Auto')} ▾</button>${(s.characters || []).map(c => `<span class="mention">@${esc(c)}</span>`).join('')}<span style="flex:1"></span>
           ${(s.take_list || []).length > 1 ? (s.take_list || []).map(t => `<button class="tk${t.picked ? ' on' : ''}" data-take="${t.n}" aria-label="Use take ${t.n}">${t.n}</button>`).join('') : ''}
           <button class="ib" style="width:28px;height:28px" aria-label="Edit scene" data-edit>${I('pen', 'width:14px;height:14px')}</button></div></div></div>`;
   }
@@ -609,7 +737,8 @@ ${SPRITE}`;
     DIR.brief = brief; DIR.busy = 'Writing your storyboard (about a minute)'; go('director');
     const name = brief.replace(/[^\p{L}\p{N} ]/gu, ' ').trim().split(/\s+/).slice(0, 5).join(' ').slice(0, 50) || 'My film';
     try {
-      const p = await api('POST', '/api/studio/projects', {name, brief, aspect: DIR.aspect, seconds: DIR.seconds, language: DIR.language, music: DIR.music, quality: 'final'});
+      const p = await api('POST', '/api/studio/projects', {name, brief, aspect: DIR.aspect, seconds: DIR.seconds, language: DIR.language, music: DIR.music,
+        quality: QOF(DIR.res), model: DIR.model, resolution: DIR.res});
       DIR.project = p.project; DIR.view = p; DIR.busy = ''; await load('studio', true); toast('Storyboard ready. Check it, then paint the pictures.');
     } catch (e) { DIR.busy = ''; toast(e.message, true); }
     if (VIEW === 'director') go('director');
@@ -628,6 +757,19 @@ ${SPRITE}`;
       const b = e.target.closest('button'); if (!b) return;
       const P = DIR.project ? `/api/studio/projects/${encodeURIComponent(DIR.project)}` : '';
       const act = async (label, fn) => { b.disabled = true; try { const r = await fn(); if (r?.waiting_owner) toast(`Price ${inr(r.inr)}: tap Haan above to start`); else if (label) toast(label); } catch (er) { toast(er.status === 428 ? fp : er.message, true); } await dirLoad(); if (VIEW === 'director') go('director'); };
+      const resItems = m => resSort(m ? m.resolutions : ['480p', '720p', '1080p', '2k', '4k']).map(r => ({v: r, label: r, sub: m ? money(rateAt(m, r)) + ' per second' : ({'480p': 'Drafts', '720p': 'Quick and cheap', '1080p': 'HD, for posting', '2k': 'Premium', '4k': 'Premium 4K'})[r]}));
+      if (b.hasAttribute('data-dnewmodel')) { await models(); picker({current: DIR.model, seconds: DIR.seconds, res: DIR.res, title: 'Choose the model for this film',
+        onPick: k => { DIR.model = k; DIR.brief = $('#dirq')?.value || DIR.brief; go('director'); }}); return; }
+      if (b.hasAttribute('data-dnewres')) { await models(); menu(b, resItems(mOf(DIR.model)), DIR.res, v => { DIR.res = v; b.querySelector('span').textContent = v; }, 'Resolution'); return; }
+      if (b.hasAttribute('data-pmodel')) { await models(); const p = DIR.view;
+        picker({current: p.prefs?.model || '', seconds: p.seconds || DIR.seconds, res: p.prefs?.resolution || '1080p', title: 'The model for the whole film',
+          onPick: k => act('', () => api('POST', P + '/settings', {model: k}))}); return; }
+      if (b.hasAttribute('data-pres')) { await models(); const p = DIR.view;
+        menu(b, [{v: '', label: 'By quality', sub: 'Draft 720p, HD 1080p'}, ...resItems(mOf(p.prefs?.model))], p.prefs?.resolution || '', v => act('', () => api('POST', P + '/settings', {resolution: v})), 'Resolution'); return; }
+      if (b.dataset.smodel) { await models(); const sid = b.dataset.smodel, s = DIR.view.shots.find(x => x.id === sid), res = DIR.view.prefs?.resolution || '1080p';
+        const ready = (D.models?.models || []).filter(m => m.ready && m.tier !== 'talk');
+        menu(b, [{v: '', label: 'Same as the film', sub: 'Hoola Auto or the film model'}, ...ready.map(m => ({v: m.key, label: m.name, sub: `${money(rateAt(m, res) * s.duration)} for this ${s.duration} s scene`}))],
+          s.model || '', v => act('Scene model set', () => api('PATCH', `${P}/shots/${encodeURIComponent(sid)}`, {model: v})), 'Model for scene'); return; }
       if (b.dataset.dcyc) { const k = b.dataset.dcyc, L = cyc[k];
         const fmt = {aspect: v => ({'16:9': '16:9 · Wide (YouTube)', '9:16': '9:16 · Reel / Short', '1:1': '1:1 · Square post'})[v], seconds: v => v < 60 ? v + ' seconds' : v / 60 + ' minute' + (v > 60 ? 's' : ''),
           music: v => v ? v[0].toUpperCase() + v.slice(1) : 'No music'}[k];
@@ -1066,6 +1208,9 @@ ${SPRITE}`;
   <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V5M7 9.5l5-5 5 5M5 19.5h14"/></symbol>
   <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M9 19h6"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 4l2.4 5 5.4.7-4 3.8 1 5.4L12 16.3 7.2 19l1-5.4-4-3.8 5.4-.7z"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="i-chat" viewBox="0 0 24 24"><path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17.5H5A1.5 1.5 0 0 1 3.5 16V7A1.5 1.5 0 0 1 5 5.5z"/></symbol>
   <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.5 3.5 5.5 3.5 8.5s-1 6-3.5 8.5c-2.5-2.5-3.5-5.5-3.5-8.5s1-6 3.5-8.5z"/></symbol>
@@ -1081,13 +1226,15 @@ ${SPRITE}`;
     R.innerHTML = shellHTML(); drawNav(); drawCredits();
     R.addEventListener('pointerdown', e => { if (popFor && !e.target.closest('#pop') && !popFor.contains(e.target)) closeMenu(); });
     R.addEventListener('scroll', e => { if (popFor && !e.target.closest?.('#pop')) closeMenu(); }, true);
+    $('#picker').addEventListener('click', onPickerClick);
     R.addEventListener('click', e => {
+      if (e.target.closest('#picker')) return;
       const t = e.target.closest('[data-close]'); if (t) { close(); return; }
       if (e.target.closest('[data-lbclose]') || e.target.id === 'lightbox') { const lb = $('#lightbox'); lb.hidden = true; lb.querySelectorAll('video,audio').forEach(m => m.pause()); lb.innerHTML = ''; return; }
       const lbdl = e.target.closest('#lightbox [data-dl]'); if (lbdl) { itemAction(lbdl); return; }
       const g = e.target.closest('[data-go]'); if (g) { e.preventDefault(); go(g.dataset.go); return; }
     });
-    R.addEventListener('keydown', e => { if (e.key === 'Escape') { const lb = $('#lightbox'); if (!lb.hidden) { lb.hidden = true; lb.innerHTML = ''; } else if ($('#shell').classList.contains('navon')) $('#shell').classList.remove('navon'); } });
+    R.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#picker').hidden && !popFor) { closePicker(); return; } if (e.key === 'Escape') { const lb = $('#lightbox'); if (!lb.hidden) { lb.hidden = true; lb.innerHTML = ''; } else if ($('#shell').classList.contains('navon')) $('#shell').classList.remove('navon'); } });
     $('#collapse').addEventListener('click', () => $('#shell').classList.toggle('collapsed'));
     $('#menuBtn').addEventListener('click', () => $('#shell').classList.toggle('navon'));
     load('studio').then(drawCredits); load('conf');

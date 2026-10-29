@@ -69,6 +69,7 @@ class Studio:
         self.home = Path(home or os.environ.get("HOOLA_STUDIO_HOME") or Path.home() / ".hoola-studio").expanduser().resolve()
         (self.home / "projects").mkdir(parents=True, exist_ok=True)
         self.models = catalog.load_models()
+        self.synced_at = ""                         # v0.262 when the live OpenRouter list (and its prices) was last read
         self.providers = all_providers()
         self.sem = asyncio.Semaphore(int(os.environ.get("HOOLA_STUDIO_CONCURRENCY", "3")))
         self.poll_s = float(os.environ.get("HOOLA_STUDIO_POLL_S", "5"))
@@ -345,6 +346,11 @@ class Studio:
                          "no subtitles, no watermark, no logos.")
         q = catalog.QUALITY[quality]
         res = q["resolution"] if q["resolution"] in cfg["resolutions"] else cfg["resolutions"][0]
+        want = catalog.norm_res((p.get("prefs") or {}).get("resolution") or "")     # v0.262 her resolution pick
+        if want and quality != "preview":
+            res = want if want in cfg["resolutions"] else min(
+                cfg["resolutions"], key=lambda r: abs(catalog.RES_ORDER.index(catalog.norm_res(r)) - catalog.RES_ORDER.index(want))
+                if catalog.norm_res(r) in catalog.RES_ORDER and want in catalog.RES_ORDER else 99)
         lo, hi = cfg["durations"]
         dur = max(lo, min(hi, int(s["duration"])))
         if cfg.get("allowed_durations"):
@@ -368,11 +374,19 @@ class Studio:
             return False
         return kind == "dialogue" or str(p.get("language", "")).lower() not in catalog.NATIVE_SPEECH
 
-    def model_for(self, s: dict, quality: str, override: str | None) -> str:
+    def pref_model(self, p: dict) -> str | None:
+        """v0.262 the model she chose for the whole project (Director / Video page), when it can run here."""
+        m = (p.get("prefs") or {}).get("model") or ""
+        if m in self.models and self.providers[self.models[m]["provider"]].ready():
+            return m
+        return None
+
+    def model_for(self, s: dict, quality: str, override: str | None, pref: str | None = None) -> str:
+        """This run's model > the scene's own model > the film's model (v0.262) > the best ready model for the shot."""
         if quality == "preview":
             return "offline-preview"
-        if override or s.get("model"):
-            return override or s.get("model")
+        if override or s.get("model") or pref:
+            return override or s.get("model") or pref
         route = catalog.ROUTES.get(s.get("kind") or "scene", catalog.ROUTES["scene"]).get(quality) or []
         for m in route:                                  # v0.157 best model for this kind of shot whose key is set
             if m in self.models and self.providers[self.models[m]["provider"]].ready():
@@ -387,18 +401,21 @@ class Studio:
         p = self.load(project)
         if quality not in catalog.QUALITY:
             raise StudioError(f"quality must be one of {list(catalog.QUALITY)}")
+        pref = self.pref_model(p)
         rows, total = [], 0.0
         for s in p["shots"]:
             if shot_ids and s["id"] not in shot_ids:
                 continue
-            m = self.model_for(s, quality, model)
+            m = self.model_for(s, quality, model, pref)
             q = self.build(p, s, m, quality)
-            c = q.duration * self.models[m]["usd_per_s"] * variants
+            c = max(q.duration * catalog.rate(self.models[m], q.resolution, q.audio),
+                    float(self.models[m].get("min_usd") or 0)) * variants
             sync = self.models[m]["provider"] != "sync" and self.needs_lipsync(p, s, quality)
             if sync:
-                c += q.duration * self.models["sync-3"]["usd_per_s"] * variants
+                c += q.duration * catalog.rate(self.models["sync-3"], q.resolution) * variants
             total += c
-            rows.append({"shot": s["id"], "model": m, "seconds": q.duration, "resolution": q.resolution, "usd": round(c, 3),
+            rows.append({"shot": s["id"], "model": m, "seconds": q.duration, "resolution": q.resolution, "usd": round(c, 4),
+                         "audio": bool(q.audio), "variants": variants,
                          "kind": s.get("kind") or "scene", "lipsync": sync or self.models[m]["provider"] == "sync"})
         left = p["budget_usd"] - p["spent_usd"] - self._reserved(p)
         return {"quality": quality, "usd": round(total, 3), "budget_left_usd": round(left, 3), "fits_budget": total <= left + 1e-9,
@@ -432,9 +449,10 @@ class Studio:
             if not p["shots"]:
                 raise StudioError("No storyboard yet. Call storyboard_set first.")
             targets = [s for s in p["shots"] if not shot_ids or s["id"] in shot_ids]
+            pref = self.pref_model(p)
             if shot_ids and len(targets) != len(set(shot_ids)):
                 raise StudioError(f"Unknown shot ids: {sorted(set(shot_ids) - {s['id'] for s in targets})}")
-            need = {self.models[self.model_for(s, quality, model)]["provider"] for s in targets}
+            need = {self.models[self.model_for(s, quality, model, pref)]["provider"] for s in targets}
             missing = [n for n in need if not self.providers[n].ready()]
             if missing:
                 keys = {"fal": "FAL_KEY", "byteplus": "ARK_API_KEY", "google": "GEMINI_API_KEY", "sync": "SYNC_API_KEY",
@@ -445,7 +463,7 @@ class Studio:
             await self._check_budget(p, est["usd"], max_cost_usd)
             started = []
             for s in targets:
-                m = self.model_for(s, quality, model)
+                m = self.model_for(s, quality, model, pref)
                 if self.models[m]["provider"] == "sync" and not (s.get("keyframe") or s.get("start_image")):
                     raise StudioError(f"shot {s['id']} (talk) needs its picture first: paint the keyframe (keyframes) "
                                       "or give a start image.")
@@ -453,7 +471,9 @@ class Studio:
                     req = self.build(p, s, m, quality)
                     jid = f"j{int(time.time() * 1000) % 10**9}{len(p['jobs'])}"
                     sync = self.models[m]["provider"] != "sync" and self.needs_lipsync(p, s, quality)
-                    cost = req.duration * (self.models[m]["usd_per_s"] + (self.models["sync-3"]["usd_per_s"] if sync else 0))
+                    cost = (max(req.duration * catalog.rate(self.models[m], req.resolution, req.audio),
+                                float(self.models[m].get("min_usd") or 0))
+                            + (req.duration * catalog.rate(self.models["sync-3"], req.resolution) if sync else 0))
                     p["jobs"][jid] = {"shot": s["id"], "model": m, "quality": quality, "state": "queued", "attempts": 0,
                                       "cost_est": round(cost, 4), "lipsync": sync, "prompt": req.prompt,
                                       "mode": req.mode, "duration": req.duration, "resolution": req.resolution,
@@ -948,16 +968,24 @@ class Studio:
                 durs = sorted(int(x) for x in durs)
                 m["durations"], m["allowed_durations"] = [durs[0], durs[-1]], durs
             if d.get("supported_resolutions"):
-                m["resolutions"] = list(d["supported_resolutions"])
+                m["resolutions"] = [catalog.norm_res(r) for r in d["supported_resolutions"]]
             if d.get("supported_aspect_ratios"):
                 m["aspects"] = list(d["supported_aspect_ratios"])
             if d.get("supported_frame_images") is not None:
                 m["frame_images"] = d["supported_frame_images"]
             if d.get("pricing_skus") is not None:
                 m["pricing_skus"] = d["pricing_skus"]
+                w, wo, minimum = catalog.parse_skus(d["pricing_skus"], m.get("resolutions"))
+                if w:                                    # v0.262 the live price replaces the estimate
+                    m["usd_by_res"], m["price_note"], m["price_live"] = w, "live price from OpenRouter", True
+                    m["usd_per_s"] = max(w.values())
+                if wo:
+                    m["usd_by_res_noaudio"] = wo
+                m["min_usd"] = minimum
             (updated if key in self.models else added).append(key)
             self.models[key] = m
         (self.home / "openrouter_models.json").write_text(json.dumps(data, indent=1))
+        self.synced_at = now()
         return {"updated": updated, "added": added, "total_openrouter_models": len(data)}
 
     def models_info(self) -> list[dict]:
@@ -965,5 +993,8 @@ class Studio:
         for k, m in self.models.items():
             out.append({"model": k, "label": m["label"], "provider": m["provider"], "ready": self.providers[m["provider"]].ready(),
                         "usd_per_second": m["usd_per_s"], "price": m.get("price_note"), "durations_s": m["durations"],
-                        "resolutions": m["resolutions"], "aspects": m["aspects"], "audio": m["audio"]})
+                        "resolutions": m["resolutions"], "aspects": m["aspects"], "audio": m["audio"],
+                        "allowed_durations": m.get("allowed_durations"), "references": m.get("references", 0),
+                        "usd_by_res": {r: catalog.rate(m, r) for r in m["resolutions"]}, "price_live": bool(m.get("price_live")),
+                        "remote_id": m.get("model") or ""})
         return out

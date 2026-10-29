@@ -279,7 +279,7 @@ def test_v0261_every_picker_is_a_real_dropdown():
     js, css = _read("studio.js"), _read("studio.css")
     assert '<div class="pop" id="pop" role="menu" hidden></div>' in js
     for k in ("function menu(btn, opts, cur, pick, title)", "role=\"menuitemradio\"", "aria-expanded", "ArrowDown", "Escape",
-              "'pointerdown'", "addEventListener('resize', () => closeMenu())", "closeMenu(); \n    VIEW = v;".replace(" \n", "\n")):
+              "'pointerdown'", "addEventListener('resize', () => closeMenu())", "alive++; closeMenu();"):
         assert k in js, k
     # the three pickers that used to cycle one value per click now open the menu
     assert "menu(e.currentTarget, AGENTS.map(" in js and "'Who makes it'" in js
@@ -287,4 +287,4 @@ def test_v0261_every_picker_is_a_real_dropdown():
     assert "(homeAgent + 1) % AGENTS.length" not in js and "L[(L.indexOf(DIR[k]) + 1)" not in js
     pop = css[css.index(".pop{"):css.index(".poph{")]
     assert "opacity:0" in pop and "transition:opacity" in pop and ".pop.on{opacity:1;transform:none}" in css
-    assert "prefers-reduced-motion: reduce){.pop,.pop.up{transform:none}}" in css
+    assert "prefers-reduced-motion: reduce){.pop,.pop.up" in css

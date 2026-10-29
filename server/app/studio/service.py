@@ -272,7 +272,8 @@ def _typical_s(seconds: float) -> float:
     return 70.0 + 14.0 * float(seconds or 5)
 
 
-DEFAULT_PREFS = {"voice": "", "captions": True, "caption_style": "bold", "music": "", "quality": "final"}
+DEFAULT_PREFS = {"voice": "", "captions": True, "caption_style": "bold", "music": "", "quality": "final",
+                 "model": "", "resolution": ""}       # v0.262 her model / resolution pick ("" = Hoola Auto / by quality)
 
 
 def prefs_of(p: dict) -> dict:
@@ -309,7 +310,13 @@ def quote(st: Studio, p: dict, quality: str, shot_ids: list[str] | None = None, 
     pic = KEYFRAME_USD * len(paint)
     mus = MUSIC_USD if mood else 0.0
     total = round(e["usd"] + pic + mus, 4)
-    return {"quality": quality, "usd": total, "inr": _inr(total), "cap_usd": round(e["usd"], 4),
+    k = float(_st().studio_usd_inr or 85)
+    rows_out = [{"shot": r["shot"], "model": r["model"], "name": _label(st, r["model"]), "seconds": r["seconds"],
+                 "resolution": r["resolution"], "audio": r.get("audio", True), "takes": r.get("variants", variants),
+                 "lipsync": bool(r.get("lipsync")), "inr_per_s": round(catalog.rate(st.models[r["model"]], r["resolution"],
+                                                                                  r.get("audio", True)) * k, 2),
+                 "inr": round(r["usd"] * k, 1)} for r in e["shots"]]
+    return {"quality": quality, "usd": total, "inr": _inr(total), "cap_usd": round(e["usd"], 4), "rows": rows_out,
             "video_usd": round(video, 4), "video_inr": _inr(video), "lipsync_usd": round(lips, 4), "lipsync_inr": _inr(lips),
             "lipsync_shots": lip_shots, "lipsync_seconds": lip_secs, "keyframes": len(paint), "paint_ids": paint,
             "keyframes_inr": _inr(pic), "music": mood, "music_inr": _inr(mus), "shots": len(e["shots"]),
@@ -326,7 +333,7 @@ def _label(st: Studio, m: str | None) -> str:
 LABELS = {"or-wan-3": "Wan 3.0", "or-seedance-2.5": "Seedance 2.5", "or-minimax-h3": "MiniMax H3", "or-minimax-h3-max":
           "MiniMax H3 Max", "gemini-omni-flash": "Gemini Omni Flash", "sync-3": "Sync 3 lip sync", "or-seedance-2-fast":
           "Seedance 2 Fast", "or-seedance-2": "Seedance 2.0", "or-flux-3-video": "FLUX 3 Video", "offline-preview": "Free preview",
-          "nano-banana-pro": "Nano Banana Pro", "lyria-3.5": "Google Lyria"}
+          "nano-banana-pro": "Nano Banana Pro", "lyria-3.5": "Google Lyria", **{k: v["name"] for k, v in catalog.CARDS.items()}}
 
 
 def view(tenant: str, p: dict) -> dict[str, Any]:
@@ -378,7 +385,7 @@ def view(tenant: str, p: dict) -> dict[str, Any]:
         elif kf:
             phase = "pictured"
         try:
-            m = st.model_for(s, want, None)
+            m = st.model_for(s, want, None, st.pref_model(p))
         except Exception:
             m = None
         text, _v, _l, line = st.speech_plan(p, s)
@@ -602,6 +609,11 @@ def _clean_prefs(d: dict, base: dict | None = None) -> dict:
         out["music"] = m
     if d.get("quality") in ("draft", "final", "premium"):
         out["quality"] = d["quality"]
+    if "model" in d and d["model"] is not None:          # v0.262 checked against the studio's models when used
+        out["model"] = re.sub(r"[^\w.\-/]", "", str(d["model"]))[:80]
+    if "resolution" in d and d["resolution"] is not None:
+        r = catalog.norm_res(d["resolution"])
+        out["resolution"] = r if r in catalog.RES_ORDER else ""
     return out
 
 
@@ -1503,3 +1515,113 @@ async def speak_line(tenant: str, project: str, shot_id: str) -> dict:
         raise StudioJobError(f"Awaaz nahi ban payi: {str(e)[:150]}") from None
     _changed(tenant, project)
     return {"url": link(tenant, f, 3)}
+
+
+# ---------------------------------------------------------------- v0.262 EVERY MODEL, PRICE FIRST
+KEY_OF = {"fal": "FAL_KEY", "byteplus": "ARK_API_KEY", "google": "GEMINI_API_KEY", "sync": "SYNC_API_KEY",
+          "openrouter": "OPENROUTER_API_KEY", "offline": ""}
+
+
+SKIP_RE = re.compile(r"(edit|upscale|aleph)", re.I)
+AVATAR_RE = re.compile(r"(avatar|heygen)", re.I)
+
+
+def _watch_card(m: dict) -> dict:
+    """A model the live OpenRouter list brought in: the market card it matches, else its own name split as 'Maker: Name'."""
+    rid = str(m.get("model") or "").lower()
+    for w in catalog.WATCH:
+        if re.search(w["match"], rid):
+            return {k: w[k] for k in ("name", "maker", "tier", "best")}
+    label = str(m.get("label") or rid).replace(" via OpenRouter", "")
+    maker, _, name = label.partition(": ")
+    return {"name": name or label, "maker": maker if name else rid.split("/")[0], "tier": "strong", "best": ""} if name \
+        else {"name": label, "maker": rid.split("/")[0], "tier": "strong", "best": ""}
+
+
+def catalogue(tenant: str) -> dict:
+    """Every video model for her picker: the ones Hoola can call (ready, or the server key that switches them on) and
+    the rest of the market (and what it would take), each with its price per second at every resolution in rupees."""
+    st = studio_sync(tenant)
+    k = float(_st().studio_usd_inr or 85)
+    live_ids = [str(m.get("model") or "").lower() for m in st.models.values() if m.get("provider") == "openrouter"]
+    cards = []
+    for key, m in st.models.items():
+        if key in ("offline-preview", "sync-3") or SKIP_RE.search(str(m.get("model") or "")):
+            continue                                       # edit / upscale models need a video in, not a new clip
+        c = catalog.CARDS.get(key) or _watch_card(m)
+        ready = st.providers[m["provider"]].ready()
+        avatar = AVATAR_RE.search(str(m.get("model") or ""))
+        if avatar:                                         # photo + script avatars: the Voice / Editor pages, a later phase
+            c = {**c, "tier": "talk"}
+            ready = False
+        cards.append({
+            "key": key, "name": c.get("name") or _label(st, key), "maker": c.get("maker") or (m.get("model", "").split("/")[0] or m["provider"]),
+            "tier": c.get("tier") or "strong", "best": c.get("best") or m.get("label", ""), "rank": c.get("rank", ""),
+            "via": m["provider"], "ready": ready, "status": "ready" if ready else ("coming" if avatar else "needs_key"),
+            "why": "" if ready else ("Talking avatars from a photo come to the Voice studio in the next phase" if avatar
+                                     else f"Switch on with {KEY_OF.get(m['provider'], 'its key')} on the server"),
+            "resolutions": [catalog.norm_res(r) for r in m["resolutions"]], "durations": m["durations"],
+            "allowed_durations": m.get("allowed_durations"), "aspects": m["aspects"], "audio": bool(m.get("audio", True)),
+            "references": m.get("references", 0),
+            "inr_per_s": {catalog.norm_res(r): round(catalog.rate(m, r) * k, 2) for r in m["resolutions"]},
+            "inr_per_s_silent": ({catalog.norm_res(r): round(catalog.rate(m, r, False) * k, 2) for r in m["resolutions"]}
+                                 if m.get("usd_by_res_noaudio") else None),
+            "price_live": bool(m.get("price_live")), "listed": bool(c)})
+    for w in catalog.WATCH:
+        if any(re.search(w["match"], i) for i in live_ids):
+            continue                                       # carried live by OpenRouter: it is already in the list above
+        cards.append({"key": "", "name": w["name"], "maker": w["maker"], "tier": w["tier"], "best": w["best"], "rank": "",
+                      "via": "", "ready": False, "status": "coming", "why": "Needs " + w["needs"], "resolutions": [],
+                      "durations": [], "allowed_durations": None, "aspects": [], "audio": True, "references": 0,
+                      "inr_per_s": {"1080p": round(w["usd_s"] * k, 2)}, "inr_per_s_silent": None, "price_live": False,
+                      "listed": True, "estimate_only": True})
+    for c in cards:
+        c["q"] = catalog.quality_rank(c["name"])
+    order = {"top": 0, "strong": 1, "budget": 2, "talk": 3}
+    cards.sort(key=lambda c: (not c["ready"], c["status"] == "coming", order.get(c["tier"], 4), c["q"], c["name"]))
+    return {"models": cards, "usd_inr": k, "prices_checked": catalog.PRICES_CHECKED, "synced_at": st.synced_at,
+            "not_offered": [{"name": n, "why": y} for n, y in catalog.NOT_OFFERED],
+            "lipsync": {"name": "Sync 3", "inr_per_s": round(catalog.rate(st.models["sync-3"], "1080p") * k, 2)} if "sync-3" in st.models else None,
+            "note": "Prices are per second of finished video. The card before every paid run shows the exact total; "
+                    "you are never charged more than the card."}
+
+
+QUALITY_OF_RES = {"360p": "draft", "480p": "draft", "540p": "draft", "720p": "draft", "768p": "draft",
+                  "1080p": "final", "2k": "premium", "4k": "premium"}
+
+
+def clip_price(tenant: str, model: str = "", seconds: int = 8, resolution: str = "1080p", audio: bool = True,
+               takes: int = 1, kind: str = "scene") -> dict:
+    """The live price on the Create button: one clip of `seconds` at `resolution` with this model (or what Hoola Auto
+    would pick), `takes` times. The same rate table the price card and the run use."""
+    st = studio_sync(tenant)
+    res = catalog.norm_res(resolution) or "1080p"
+    quality = QUALITY_OF_RES.get(res, "final")
+    if model and model not in st.models:
+        raise StudioJobError("Yeh model is server par nahi hai")
+    m = model or st.model_for({"kind": kind}, quality, None)
+    cfg = st.models[m]
+    lo, hi = cfg["durations"]
+    secs = max(lo, min(hi, int(seconds or 8)))
+    if cfg.get("allowed_durations"):
+        secs = min(cfg["allowed_durations"], key=lambda x: (abs(x - int(seconds or 8)), -x))
+    ress = [catalog.norm_res(r) for r in cfg["resolutions"]]
+    got = res if res in ress else min(ress, key=lambda r: abs(catalog.RES_ORDER.index(r) - catalog.RES_ORDER.index(res))
+                                      if r in catalog.RES_ORDER and res in catalog.RES_ORDER else 99)
+    takes = max(1, min(int(takes or 1), 4))
+    usd = catalog.rate(cfg, got, audio) * secs * takes
+    k = float(_st().studio_usd_inr or 85)
+    return {"model": m, "name": _label(st, m), "auto": not model, "seconds": secs, "resolution": got, "audio": audio,
+            "takes": takes, "inr_per_s": round(catalog.rate(cfg, got, audio) * k, 2), "usd": round(usd, 4),
+            "inr": round(usd * k, 1), "ready": st.providers[cfg["provider"]].ready(),
+            "changed": [x for x, a, b in (("seconds", secs, int(seconds or 8)), ("resolution", got, res)) if a != b]}
+
+
+async def models_refresh(tenant: str) -> dict:
+    """Read OpenRouter's live model list and prices now (also done when the studio starts)."""
+    st = await studio(tenant)
+    try:
+        r = await asyncio.wait_for(st.models_sync(), 30)
+    except Exception as e:
+        raise StudioJobError(f"Abhi model list nahi mili: {str(e)[:120]}") from None
+    return {**r, "synced_at": st.synced_at}
