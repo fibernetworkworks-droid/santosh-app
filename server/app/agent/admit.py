@@ -319,6 +319,17 @@ def _match(text: str) -> set[str]:
 _D = r"(?:pdf|पीडीएफ|report|रिपोर्ट|proposal|profile|brochure|quotation|invoice|resume|\bcv\b|presentation|\bppt|deck|" \
      r"document|dastavez|दस्तावेज़|docx|word file|excel|xlsx|spreadsheet|certificate|catalogue|letter ?head|" \
      r"\bslides?\b|स्लाइड|प्रस्ताव|बायोडाटा|printable|menu card|flyer|pamphlet|leaflet|visiting card)"
+# v0.257 REVERSE-ENGINEER ANYTHING: every program / app / package / library / model / firmware file kind REA reads,
+# plus the words for the job itself. Shared with agent/pick.py (a PC call for this job is refused there).
+_EXT = (r"exe|dll|sys|ocx|scr|msi|msix|appx|apk|apks|xapk|apkm|aab|dex|odex|oat|ipa|dmg|pkg|app|deb|rpm|appimage|snap|"
+        r"jar|war|aar|class|so|elf|ko|dylib|bin|img|hex|elf|firmware|rom|wasm|pyc|pyd|pyo|whl|egg|gguf|onnx|tflite|"
+        r"pt|pth|safetensors|h5|keras|mlmodel|asar|node|nupkg|beam|db|sqlite|sqlite3|realm|ips|dtb|unitypackage|pak")
+APPFILE = re.compile(r"\.(?:" + _EXT + r")\b|\b(?:exe|dll|apk|apks|xapk|ipa|jar|msi|dmg|elf|binar(?:y|ies)|firmware|"
+                     r"bytecode|executable|installer|setup file|library file|gguf|onnx|tflite|asar|wasm)\b|decompil|"
+                     r"disassembl|reverse[ -]?engineer|revers(?:e|ing) kar|reverce|smali|\bendpoints?\b|"
+                     r"\bhardcoded\b|\bsdk\b.{0,30}(?:kaun|which|list)|\btrackers?\b.{0,30}(?:app|apk|exe)|"
+                     r"(?:app|apk|program|software|game|tool|file|exe|model)\b.{0,40}(?:kaise kaam|kaise bana|andar kya|"
+                     r"kya karta|kya hota|ke andar|internals?|how (?:does it|it) works?|under the hood)", re.I)
 INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
     # a file to MAKE (pdf / word / excel / ppt): the design studio
     (re.compile(_D, re.I), ("docstudio",), "document"),
@@ -348,6 +359,9 @@ INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
     # her business numbers
     (re.compile(r"p&l|profit\s*(?:and|&)?\s*loss|balance sheet|trial balance|business analysis|ratios?", re.I),
      ("analyst",), "business numbers"),
+    # REVERSE-ENGINEER ANYTHING (v0.257, owner): a program / app / package / model / firmware file to read -> REA,
+    # statically, on the server; the data desk rides along for the endpoint list. Never the cloud PC.
+    (APPFILE, ("rea", "data"), "reverse engineer"),
     # other avatars on the Hoola Network
     (re.compile(r"(?:ke|ki|ka|ko)\s+avatar|avatar\s+(?:ko|se)|hoola network|network pe", re.I), ("hoola",), "network"),
     # research / comparison that splits into parts -> the team (core) + the web (core); nothing extra to load

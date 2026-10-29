@@ -96,7 +96,7 @@ def run(name, args, ctx):
 # ---------------------------------------------------------------- unit: version + registry
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.257.0"
+    assert APP_VERSION == "0.258.0"
 
 
 def test_rea_khoj_registry():
@@ -106,7 +106,7 @@ def test_rea_khoj_registry():
     assert set(t["input_schema"]["properties"]) >= {"action", "file_id", "email_id", "attachment_id", "drive",
                                                      "query", "class_name", "method_name", "overload_index"}
     assert t["input_schema"]["properties"]["action"]["enum"] == ["overview", "classes", "class", "method", "refs",
-                                                                  "signature", "status"]
+                                                                  "signature", "status", "endpoints"]   # v0.257
     assert set(rt.REA_HANDLERS) == {"rea_khoj"}
     assert set(rt.REA_LABELS) == {"rea_khoj"}
 

@@ -9950,7 +9950,41 @@ Owner: a screenshot of Claude's sidebar with "I WANT THIS TYPE OF FONT AND FONT 
 - Tests: test_v0256_sidebar_type.py; v0.249 dark chat-paper pin + v0.255 --fd pin moved.
 - NOT VERIFIED on her Windows screen (headless Linux has no ClearType to look at); the layer facts are what Chrome uses.
 
-## v0.257.0 CHALTE CHALTE BOLO — Hoola talks while it works, the way Claude does (owner, with a screenshot of Claude mid-task: "CHECK HOW CLAUDE GIVE PROPER RESPONSE IN BETWEEN AND A FINAL RESULT PERFECTLY AND IN USER PROPER ENGLISH FRIENDLY. HOOLA DIRECTLY LOADS THE RESULT OR GIVE THE BULK BACKEND UNWANTED RESPONSES ... ALSO FIND FLAWS IN HOOLA AI", then "GO")
+## v0.257.0 REVERSE-ENGINEER ANYTHING with REA (29 Oct 2026)
+Owner: "STILL HOOLA IS NOT CHOOSING TOOLS PROPERLY. I TOLD HOOLA TO READ THIS EXE FILE END TO END AND EXTRACT ENDPOINTS
+BUT AGAIN HOOLA OPENS ITS OWN PC FOR SOLVING THIS WORK INSTEAD USING REA", then "REVERSE ENGINEER ANYTHING", "REA ALREADY
+DEVELOPED FOR HOOLA".
+- Root cause (measured with the v0.245 router): "Read this exe file end to end and extract endpoints" admitted no REA -
+  rea_khoj's only router keys were its own name ('rea khoj', 'khoj'); its description is dieted to one sentence; and
+  REA's allowlisted static tools (runner.ALLOWED: manifests, PE imports / certs / resources, .NET members, ELF notes,
+  model headers...) have no way to list the URLs / endpoints written in a file. So Hoola reached for its cloud PC
+  (install strings / binutils there).
+- Router (`agent/admit.py`): `APPFILE` = every program / app / package / library / model / firmware extension REA reads
+  (.exe .dll .msi .apk .xapk .aab .dex .ipa .dmg .deb .rpm .jar .class .so .elf .ko .dylib .bin .wasm .pyc .whl .gguf
+  .onnx .tflite .safetensors .asar .beam .db / .sqlite .ips .dtb ...) + the job words (decompile, disassemble, reverse
+  engineer, endpoints, hardcoded, smali, "app kaise kaam karta / kaise bana / ke andar kya", under the hood) -> intent
+  "reverse engineer" loads `rea` + `data`.
+- REA stays the engine; rea_khoj gains ONE action, `endpoints` (`app/appcheck/endpoints.py`, khoj.endpoints): every
+  printable ASCII + UTF-16LE string (6+ chars) of the staged file - inside apk / jar / ipa / xapk / nupkg / whl members
+  too (pictures / fonts skipped), up to 200 MB - is scanned for URLs (http / https / ws / wss / ftp), API paths
+  (/api, /v1, /graphql, /auth, /oauth, /login, /token ...), hosts and IPs; a URL must have a real host (lowercase
+  labels, known or two-letter TLD, localhost, IP) - packed-string fragments are counted as skipped, not listed; secrets
+  are masked (key= / token= / sig= / password= values, user:pass@, AIza / sk- / ghp_ / xox / AKIA / JWT); the file is
+  never run; pure Python, so it works even where the REA engine is not installed. The full list (kind, value, host,
+  count, found_in) is saved as a data-desk dataset -> data_read / doc_studio data=<id>; the reply = counts, top hosts,
+  top 25 URLs, 20 API paths, 10 IPs, limits.
+- `agent/pick.py`: a pc_do / hoola_pc_do task that is reverse-engineering (APPFILE, objdump / readelf / ghidra / jadx /
+  apktool / binwalk / strings on a file) is refused with the REA route unless she named that PC in THIS ask (an old
+  cloud-PC lock in the chat does not count).
+- Prompt: TOOL CHOOSER "REVERSE-ENGINEER ANYTHING ... = rea_khoj on the server, statically, never run ... never the
+  cloud PC"; the REA guide names action=endpoints. rea_khoj description's first sentence (what survives the diet) now
+  names .exe .apk .dll .so .jar and endpoints.
+- Tool-choice set + 8 reverse-engineering asks (163): right tool in view 163/163, wrong families 0. Real binaries:
+  curl / git clean; Chromium 1750 URLs (DoH endpoints...) with 148 fragments skipped.
+- Tests `server/tests/test_v0257_reverse_engineer.py`; `test_rea_khoj.py` enum pin + "endpoints". No PC file changed.
+  Version 0.257.0 (pubspec 0.257.0+297, console ?v=0.257.0 x13, pins). Server-only deploy.
+
+## v0.258.0 CHALTE CHALTE BOLO — Hoola talks while it works, the way Claude does (owner, with a screenshot of Claude mid-task: "CHECK HOW CLAUDE GIVE PROPER RESPONSE IN BETWEEN AND A FINAL RESULT PERFECTLY AND IN USER PROPER ENGLISH FRIENDLY. HOOLA DIRECTLY LOADS THE RESULT OR GIVE THE BULK BACKEND UNWANTED RESPONSES ... ALSO FIND FLAWS IN HOOLA AI", then "GO")
 - CLAUDE'S RHYTHM, read off her screenshot (one turn, four tool groups, four lines):
   - BEFORE any tool, one sentence of intent: *"I'll save this as a known-good checkpoint, the same way the 22 Oct one
     was saved: a separate branch at this exact commit... First confirming what's live."*
@@ -9993,6 +10027,6 @@ Owner: a screenshot of Claude's sidebar with "I WANT THIS TYPE OF FONT AND FONT 
   The four v0.240 pins and two v0.228 pins that encoded the old silence were UPDATED to the owner's new decision,
   not deleted. One real bug caught by those tests: `_watched` was already a function in `santosh.py`, so the new
   local shadowed it and broke every turn - renamed `_narrate_lane`.
-- Version 0.257.0 (pubspec 0.257.0+297, console ?v=0.257.0, pins -> 0.257.0).
+- Version 0.257.0 (pubspec 0.258.0+298, console ?v=0.257.0, pins -> 0.257.0).
 - NOT VERIFIED: how it reads on a real long job. The cap is 6 lines a turn; if that feels chatty, `agent_narrate_every`
   2 halves it without touching anything else.

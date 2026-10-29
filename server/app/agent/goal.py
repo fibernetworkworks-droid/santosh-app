@@ -373,7 +373,7 @@ PLAN_FIRST = ("[System: yeh kaam kai steps ka lagta hai. Sabse PEHLA tool call `
               "kya hua aur aage kya. Aakhir mein `kaam_plan finish` (made = links / files jo bane).]")
 PLAN_NOW = ("[System: tum kai steps se kaam kar rahe ho par plan nahi likha. Abhi `kaam_plan set` karo (jo ho chuka "
             "use done likho), taaki use card par dikhe kya ho raha hai aur kya baaki hai. Phir aage badho.]")
-# v0.257 CHALTE CHALTE BOLO. v0.240 told this line to carry no number and no link, which left it empty filler
+# v0.258 CHALTE CHALTE BOLO. v0.240 told this line to carry no number and no link, which left it empty filler
 # ("Bills ban rahe hain"). Claude's between-step line IS the number - "the live site is on v0.256.0, the same commit
 # as main (213d505). Creating the checkpoint branch next." One sentence: what the tool really returned + what you are
 # doing now. Still no bullets, no headings, no step dumps - that part of CHHOTA JAWAB stands.

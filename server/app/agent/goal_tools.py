@@ -99,7 +99,7 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
         out["note"] = ("Steps baaki hain: tools se kaam karte raho, text par mat ruko. Poora hone par kaam_plan finish done. "
                        "Sirf uska tap / OTP / uska fact chahiye to finish blocked_on_her.")
     if action == "step" and state == "done" and left:
-        # v0.257 CHALTE CHALTE BOLO: v0.240 said "write no line for this step", which contradicted PLAN_FIRST in the
+        # v0.258 CHALTE CHALTE BOLO: v0.240 said "write no line for this step", which contradicted PLAN_FIRST in the
         # same turn and left her staring at a silent card. Claude writes one line per step - the finding, not the dump.
         out["note"] += (" Ab ek chhoti line: is step se jo asli cheez mili (number / id / link) aur ab kya kar rahe "
                         "ho - ek vaakya, koi bullet ya heading nahi. Phir agla tool.")

@@ -477,7 +477,22 @@ def signature(tenant: str, src: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-KHOJ_ACTIONS = {"overview", "classes", "class", "method", "refs", "signature", "status"}
+KHOJ_ACTIONS = {"overview", "classes", "class", "method", "refs", "signature", "status", "endpoints"}
+
+
+def endpoints(tenant: str, src: dict[str, Any]) -> dict[str, Any]:
+    """v0.257 the URLs / hosts / API paths / IPs written inside the file, read statically in Python (works even
+    when the REA engine is not installed); the full list is saved as a data-desk dataset."""
+    from .. import datasets
+    from . import endpoints as ep
+    name, path, kind = _stage(tenant, src)
+    res = ep.extract(path, name, kind)
+    rows = ep.rows_of(res["found"])
+    doc = None
+    if rows:
+        doc = datasets.save(tenant, rows, f"Endpoints - {name}"[:120], f"REA endpoints scan of {name}",
+                            {"sha256": an.sha256_file(path), "kind": kind})
+    return {"kind": kind, "size": path.stat().st_size, **ep.summary(name, res, doc)}
 
 
 def run(tenant: str, src: dict[str, Any], action: str, **kw: Any) -> dict[str, Any]:
@@ -497,4 +512,6 @@ def run(tenant: str, src: dict[str, Any], action: str, **kw: Any) -> dict[str, A
                     int(kw.get("overload_index") or 0))
     if action == "signature":
         return signature(tenant, src)
+    if action == "endpoints":
+        return endpoints(tenant, src)
     return status()

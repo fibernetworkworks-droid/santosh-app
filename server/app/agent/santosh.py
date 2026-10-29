@@ -895,7 +895,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 try:   # v0.187 one true line about the result, out while the next model call thinks
                     _s = _say.line_for(label, shown, out)
                     if _s:
-                        # v0.257 CHALTE CHALTE BOLO: the whisper used to die with the turn (livereply.feed_say:
+                        # v0.258 CHALTE CHALTE BOLO: the whisper used to die with the turn (livereply.feed_say:
                         # "gone the moment the reply arrives"). The same true fact now also rides into the
                         # narration line, so what she reads between the steps is the tool's own number, not a guess.
                         said_now = state.setdefault("saylines", [])
@@ -982,7 +982,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             # v0.228 PHASE B (Claude-style): a long job narrates as it goes and has its plan early. In goal mode, a
             # run of tool rounds with no line to her asks for ONE progress line; without a plan, N tool steps ask for
             # the plan now (it used to come only at step 24).
-            # v0.257 CHALTE CHALTE BOLO: narration is no longer goal-only. v0.228 put it behind `state["goal"]`,
+            # v0.258 CHALTE CHALTE BOLO: narration is no longer goal-only. v0.228 put it behind `state["goal"]`,
             # so an ordinary ask that ran five tools without a kaam_plan said NOTHING until the answer appeared -
             # the owner's "HOOLA DIRECTLY LOADS THE RESULT". Claude writes a line after every tool group whether or
             # not there is a plan. Only a human-watched lane gets it; a routine talking to itself stays quiet.

@@ -1,4 +1,4 @@
-"""v0.257 CHALTE CHALTE BOLO (owner, with a screenshot of Claude working: "CHECK HOW CLAUDE GIVE PROPER RESPONSE
+"""v0.258 CHALTE CHALTE BOLO (owner, with a screenshot of Claude working: "CHECK HOW CLAUDE GIVE PROPER RESPONSE
 IN BETWEEN AND A FINAL RESULT PERFECTLY ... HOOLA DIRECTLY LOADS THE RESULT OR GIVE THE BULK BACKEND UNWANTED
 RESPONSES"; then "GO").
 
@@ -63,7 +63,7 @@ def test_the_cadence_is_claudes_one_per_group_still_capped():
     st = get_settings()
     assert st.agent_narrate_every == 1 and st.agent_narrate_max == 6
     src = (ROOT / "server/app/config.py").read_text()
-    assert "v0.257" in src and "8 in v0.240 = silence" in src
+    assert "v0.258" in src and "8 in v0.240 = silence" in src
 
 
 # ---------------------------------------------------------------- flaw 3: the line must carry the finding
@@ -141,5 +141,5 @@ def test_the_console_already_folds_the_tool_noise_like_claude():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.257.0"
-    assert "0.257.0+297" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.258.0"
+    assert "0.258.0+298" in (ROOT / "pubspec.yaml").read_text()
