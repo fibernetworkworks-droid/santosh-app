@@ -81,7 +81,7 @@ def test_silent_goal_rounds_ask_for_one_progress_line(gz, monkeypatch):  # noqa:
     brain = _set_brain(monkeypatch, FakeBrain([
         ([txt("Plan."), tu(1, "kaam_plan", action="set", goal="Bada kaam",
                            steps=["a", "b", "c", "d", "e", "f"])], "tool_use"),
-        # v0.240 the owner: "it must work on background" - 8 silent rounds, not 3, and at most 2 lines per job
+        # v0.257 CHALTE CHALTE BOLO: a line after EVERY silent round (v0.240 had it at 8 rounds, max 2 = silence)
         *[([tu(i, "kaam_plan", action="step", n=min(i - 1, 6), state="done")], "tool_use") for i in range(2, 11)],
         ([txt("Sab ho gaya."), tu(11, "kaam_plan", action="finish", outcome="done", reason="poora")], "tool_use"),
         ([txt("Sab ho gaya.")], "end_turn"),
@@ -89,11 +89,13 @@ def test_silent_goal_rounds_ask_for_one_progress_line(gz, monkeypatch):  # noqa:
     from app.agent.santosh import STATS_LONG, run_turn
     before = STATS_LONG["narrate"]
     asyncio.run(run_turn(conv, "bada kaam karo", tenant_id="default"))
-    assert "kaafi der se tumne use kuch nahi bataya" in _texts(brain)
-    assert STATS_LONG["narrate"] == before + 1         # asked once - and v0.240 caps a whole job at 2
-    # v0.240 a finished step now asks for NO chat line: the card already shows it
-    assert "EK chhoti line mein use batao" not in _texts(brain)
-    assert "chat mein iska koi line mat likho" in _texts(brain)
+    seen = _texts(brain)
+    assert "ab use EK chhoti line batao" in seen
+    # every silent round asks, up to the cap of 6 (9 silent rounds here)
+    assert STATS_LONG["narrate"] == before + 6
+    # v0.257 a finished step asks for the line again - and asks for the FINDING, not a dump
+    assert "chat mein iska koi line mat likho" not in seen
+    assert "is step se jo asli cheez mili" in seen
 
 
 # ---------------------------------------------------------------- (3) milestones
@@ -175,12 +177,14 @@ def test_phone_and_console_show_report_and_continue():
     assert "function goalReport" in js and "goalReport(p.report)" in js
     assert ".greport" in (ROOT / "server/app/static/console/v2.css").read_text()
     prompt = (ROOT / "server/app/agent/prompts.py").read_text()
-    # v0.240 the prompt now orders the opposite: work in the background, one short line in chat
-    assert "CHUPCHAP background mein karo" in prompt
-    assert "Aakhri jawab hamesha chaar hisson mein" not in prompt
+    # v0.257 the prompt orders Claude's rhythm: say it first, then one finding-line per step
+    assert "CHALTE CHALTE BOLO" in prompt
+    assert "bade kaam se PEHLE ek vaakya" in prompt
+    assert "har step ka koi line chat mein mat likho" not in prompt    # v0.240's silence is gone
+    assert "Aakhri jawab hamesha chaar hisson mein" not in prompt      # ...and v0.228's bullet dump stays gone
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.256.0"
-    assert "0.256.0+296" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.257.0"
+    assert "0.257.0+297" in (ROOT / "pubspec.yaml").read_text()

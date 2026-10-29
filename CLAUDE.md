@@ -106,9 +106,14 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.256.0 (pubspec 0.256.0+296). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.257.0 (pubspec 0.257.0+297). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (13 now: theme.js, pdfview.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.257 CHALTE CHALTE BOLO: Hoola talks WHILE it works, like Claude - one sentence of intent before the first
+  tool, then a line per tool group: the tool's own number / id / link + what it is doing now. Three flaws fixed:
+  narration was goal-only (a plain multi-tool ask was silent), v0.240's cadence 8/2 was silence (now 1/6, still
+  capped), and NARRATE banned the very numbers that make the line useful (now it demands them, fed by say.py).
+  CHHOTA JAWAB's win stands: no bullet report in the chat, one short final answer. UI needed no change.
 - v0.256 console: Schibsted Grotesk = interface sans (measured closest to Claude's), Claude sidebar sizes; CRISP TEXT rule = no held
   animations, no backdrop blur, no transform-spinning rings, solid backgrounds under text (Windows ClearType).
 - v0.255 console type swept on EVERY page: no weight > 600, no all-caps, nothing < 12px, Sora only on the logo (`--logo`; `--fd` = sans).

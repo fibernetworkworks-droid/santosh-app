@@ -9949,3 +9949,50 @@ Owner: a screenshot of Claude's sidebar with "I WANT THIS TYPE OF FONT AND FONT 
   all solid (13 layers before -> 4 content layers, none transparent under text).
 - Tests: test_v0256_sidebar_type.py; v0.249 dark chat-paper pin + v0.255 --fd pin moved.
 - NOT VERIFIED on her Windows screen (headless Linux has no ClearType to look at); the layer facts are what Chrome uses.
+
+## v0.257.0 CHALTE CHALTE BOLO — Hoola talks while it works, the way Claude does (owner, with a screenshot of Claude mid-task: "CHECK HOW CLAUDE GIVE PROPER RESPONSE IN BETWEEN AND A FINAL RESULT PERFECTLY AND IN USER PROPER ENGLISH FRIENDLY. HOOLA DIRECTLY LOADS THE RESULT OR GIVE THE BULK BACKEND UNWANTED RESPONSES ... ALSO FIND FLAWS IN HOOLA AI", then "GO")
+- CLAUDE'S RHYTHM, read off her screenshot (one turn, four tool groups, four lines):
+  - BEFORE any tool, one sentence of intent: *"I'll save this as a known-good checkpoint, the same way the 22 Oct one
+    was saved: a separate branch at this exact commit... First confirming what's live."*
+  - a collapsed, expandable tool row: `Ran a command ▸` · `Used github: List GitHub Actions workflows ▸`
+  - AFTER each group, one line = **the real finding with its number + what it is doing now**: *"The live site is on
+    v0.256.0, the same commit as main (213d505). Creating the checkpoint branch and looking up the phone app build."*
+  - while a tool runs: `⋯ Running a command 46s`
+  Shape: one or two sentences, no bullets, no headings, no emoji; the tool noise is COLLAPSED, not deleted.
+- THE UI NEEDED NO WORK. `v2.js:316-339` already builds exactly Claude's row: `<details class="tools">` with a
+  summary of "N steps", each step expandable to its arguments; and interleaved text blocks already render between the
+  groups. Every flaw was in the policy layer - what the model is told to say.
+- FLAW 1, THE BIG ONE: NARRATION WAS GOAL-ONLY. v0.228 put the whole thing behind `if state.get("goal")`
+  (`santosh.py`), so an ordinary ask that ran five tools without a `kaam_plan` said **nothing** between the steps -
+  exactly her "HOOLA DIRECTLY LOADS THE RESULT". The gate is now the ACTOR, not the plan: `_narrate_lane` = owner or
+  goal, so a routine talking to itself still stays quiet. (The PLAN_NOW nudge keeps its own `not state.get("goal")`.)
+- FLAW 2: THE CADENCE WAS SILENCE, AND THAT ONE WAS MINE. v0.240 CHHOTA JAWAB set `agent_narrate_every` 3 -> 8 and
+  added `agent_narrate_max: 2`, so a 12-step job got at most two lines. Her complaint then was the BULK DETAIL; the
+  fix removed the TALKING along with it. Now 1 and 6 - a line per tool group, still capped so a 40-step job cannot
+  produce 40 lines.
+- FLAW 3: THE LINE WAS FORBIDDEN FROM SAYING ANYTHING. `NARRATE` read *"Koi detail, koi bullet, koi number ya link
+  nahi"*, which left empty filler ("Bills ban rahe hain"). Claude's line IS the number. Rewritten to demand the
+  opposite: (1) the real thing this tool returned - number / id / name / link, from the result, never invented;
+  (2) what you are doing now. Still no bullets, headings, step lists or emoji, and it says to SKIP the line when the
+  work is finished (no filler right before the answer).
+- AND THE FACTS WERE ALREADY THERE, BEING THROWN AWAY. `app/agent/say.py` (v0.187) already reads one true line out of
+  every tool result with no model call ("12 naye mails aaye", "video taiyar — drive.google.com"), but `livereply.
+  feed_say` published it as a whisper that is, in its own words, "gone the moment the reply arrives". Those lines are
+  now also kept on the turn state (`state["saylines"]`, last 4, deduped) and handed back to the model by the new
+  `goal.narrate_line(facts)`, so the line she reads is grounded in the tool's own output. The live whisper still runs.
+- ALSO: the opener (`replystyle.CHAT` "work out silently what done looks like" -> "say it in ONE sentence before you
+  touch a tool"), a new keep-talking rule in the CHAT rulebook only (the call keeps its v0.230 news queue and murmur
+  timing; the quick lane runs no tools), and the CONTRADICTIONS removed - `PLAN_FIRST` asked for "har bade step ke
+  baad ek chhoti line" while `prompts.py` and `kaam_plan step` both forbade one, in the same turn.
+- NOTHING v0.240 WON IS LOST: no four-part bullet report in the chat, one short human final answer, the report still
+  rendered on the card, `card_shows` unchanged. A test pins each of those.
+- Tests: NEW `server/tests/test_v0257_chalte_chalte.py` (11) - a plain no-plan four-tool ask now narrates (the case
+  she wrote in about), background actors stay quiet, the cadence, the line carrying the tool's fact and never an
+  empty tail, the saylines plumbing bounded at 4, the opener + per-step line in the prompt, no prompt contradicting
+  another, the rulebook brace-free and chat-only, CHHOTA JAWAB's wins intact, and the console's collapsed step group.
+  The four v0.240 pins and two v0.228 pins that encoded the old silence were UPDATED to the owner's new decision,
+  not deleted. One real bug caught by those tests: `_watched` was already a function in `santosh.py`, so the new
+  local shadowed it and broke every turn - renamed `_narrate_lane`.
+- Version 0.257.0 (pubspec 0.257.0+297, console ?v=0.257.0, pins -> 0.257.0).
+- NOT VERIFIED: how it reads on a real long job. The cap is 6 lines a turn; if that feels chatty, `agent_narrate_every`
+  2 halves it without touching anything else.
