@@ -8798,3 +8798,40 @@ holds), the AI limit refuses a routine round but never hers, goal round text nev
 (pubspec 0.222.0+257, console ?v=0.222.0 x9, pins ->0.222.0). Built on the live v0.221 KAAM KHAATA branch
 (clever-thompson, incl. the merged MCP sign-in fix). CONSOLE R1 (serene-dijkstra, also numbered 0.221.0, not deployed)
 is NOT in this release - it needs a rebase as v0.223. Server-only deploy; old APKs keep working.
+
+## v0.226.0 LONG JOBS PHASE A — restart-proof, steerable, and they ASK instead of failing (owner: "START PHASE A", after the Claude-vs-Hoola long-task report; numbered 0.226 because a parallel console-redesign session holds 0.221-0.225 on branch serene-dijkstra, not on main)
+THE REPORT'S TOP 3 FLAWS (checked in code on live v0.222): (1) a server restart mid-round left a background long job
+half-done for ever - `resume_tick` only restarted goals PAUSED for her; a `working` goal whose round died just sat
+there ("atka lag raha hai" after 15 min, nothing more); (2) a message she sent mid-job got a quick side-reply and the
+real instruction waited until the WHOLE turn ended (up to 45 min) while the job kept the old plan - only Rokiye could
+change it; (3) when rounds (6) / working minutes (180) ran out the job was marked `failed` and she had to ask again.
+THE FIX, like Claude: (1) `goal.recover_tick` (worker `goal_resume_jobs`, every 10 s): a goal `working`, not paused,
+not moved for `agent_goal_recover_after_s` (600) and younger than `agent_goal_resume_hours`, no turn holding the chat,
+no round of it pending in this process (`goal._PENDING`, a counter so a round that schedules the next one never
+clears it), nothing waiting on her (else `_pause` for the resume sweep) -> `_schedule(count_round=False)` with a chat
+line "Server dobara chalu hua — aapka kaam ... wahin se aage badha raha hoon (x/y steps)"; `GoalRun.recovered` counts,
+at `agent_goal_recover_max` (3) it stops and ASKS instead of looping; Rokiye'd goals (DB status stopped) are never
+touched. `_continuation` re-checks after its 2.5 s settle that the goal is still the active one with steps left.
+(2) NEW `agent/steer.py`: her owner message (no files, not voice) arriving while a turn holds the chat -> the quick lane
+(new `steering=True` line: "chal rahe kaam mein yeh abhi jod raha hoon") answers; a queued instruction is `offer`ed;
+the running turn `take`s it at its next step boundary (after tool results, before the next model call) as a text
+block riding WITH the tool_result message (`steer.note`: acknowledge in one line, then change course; kaam_plan
+add / set; stop if she says stop) and her words are saved as a display row (in_history False, never a 2nd model
+turn); her message's own queued turn `claim`s on getting the lock: taken = return "" (nothing else runs), not taken
+(the job ended first) = runs exactly as before. Console take-backs (`_held`) never reach the job.
+(3) `_schedule`: budget used up + `agent_goal_ask_on_limit` -> `_hold_for_limit`: status `blocked`, `GoalRun.hold` =
+"limit", reason "Itna kaam ho gaya (x/y steps). Baaki: ... Aage badhaun? Bas 'haan aage badho' likhiye / boliye."
+(kaamwatch maps blocked -> waiting = her push + chat line + call note). Her owner message with `wants_continue`
+(aage badho / continue / jaari rakho / a pure yes) -> `goal.reopen` = the SAME goal `working` again, done steps kept,
+rounds 1, fresh started_at, before the turn starts (so the turn gets the GOAL JAARI block). Console card button
+"Aage badhao" -> `POST /api/conversations/{id}/goal/continue` (`continue_now`: reopen + start the next round at once
+as actor goal; 409 when nothing waits). The goal event carries `hold`. Off-switch keeps the old `failed`.
+Config: agent_goal_recover / _recover_after_s / _recover_max, agent_steer, agent_goal_ask_on_limit.
+Phone: the old APK shows the asking card's reason text and push; she replies "haan aage badho" in chat (the button on
+the phone card is Phase B). Tests NEW test_v0226_long_jobs.py (10): restart pickup with her authority + chat line + no
+round used + never doubled; lock / her card / cap / Rokiye respected; used-up budget asks, only real "carry on" words
+reopen, done steps kept; continue API (409 / 200 + next round as goal); card event carries hold; switch-off keeps
+failed; a mid-job message reaches the running job at its next step (results first, her words in the record, no 2nd
+model turn); a message after the job ended runs normally; quick lane line; version. test_v0186 rounds-cap test now
+expects the asking card. Version 0.226.0 (pubspec 0.226.0+262 - build 261 left free for the console chain, console
+?v=0.226.0 x9, pins -> 0.226.0). Server-only deploy; old APKs keep working.
