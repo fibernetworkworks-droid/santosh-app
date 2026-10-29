@@ -420,7 +420,7 @@ class Api {
   /// v0.242 "Chat chhoti karo": write the checkpoint now ({} = nothing old enough to fold yet).
   Future<Map<String, dynamic>> compactNow(String id) async => Map<String, dynamic>.from(
       (await _send('POST', '/api/conversations/$id/compact', timeout: const Duration(seconds: 150)) as Map)['compact'] as Map? ?? {});
-  // ---- v0.248 Hoola ki yaad: "Mere baare mein" (her memory page) + her two memory switches ----
+  // ---- v0.250 Hoola ki yaad: "Mere baare mein" (her memory page) + her two memory switches ----
   Future<Map<String, dynamic>> aboutMe() async => Map<String, dynamic>.from(await _send('GET', '/api/memory/about') as Map);
   Future<Map<String, dynamic>> aboutMeSave(String text) async => Map<String, dynamic>.from(
       (await _send('PUT', '/api/memory/about', body: {'text': text}) as Map)['about'] as Map? ?? {});

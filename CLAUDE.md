@@ -101,9 +101,17 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.247.0 (pubspec 0.247.0+287). Version ritual = main.py APP_VERSION + pubspec version(+build) +
-  console `?v=` stamps in `server/app/static/console/v2.html` (12 now, theme.js added) + the version pins in tests (grep the old number in
+- Current version: v0.250.0 (pubspec 0.250.0+290). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+  console `?v=` stamps in `server/app/static/console/v2.html` (13 now: theme.js, pdfview.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.250 FULL CLAUDE MODE 3B MEMORY: "Mere baare mein" page (`app/aboutme.py`, daily for active owners, editable),
+  `haal_ki_chats` (chats by time), incognito chats, her memory switches (Profile > Hoola ki yaad).
+- v0.249 CLAUDE JAISA AKSHAR: the chat is set like Claude's - the REPLY in a serif at 16px / 400 / 1.5 (Source
+  Serif 4; Anthropic Serif is not ours), her own message in the sans at the same 16 / 1.5, reply headings serif 600,
+  bold 600 not 800, code mono 14. Both surfaces (console `--fr` in v2.css, phone `replyText()` in lib/ui/glass.dart);
+  the serif rule stays SCOPED to the chat block (`.txt` is also the sidebar nav label). Console chrome unchanged; her Small / Default / Large size setting still works (Default = 16px).
+- v0.248 console workspace: our own PDF reader (`console/pdfview.js` + vendored PDF.js in `vendor/pdfjs`, no browser toolbar),
+  one header row when one item is open (`panel.js` syncHead / .pnslot).
 - v0.247 console workspace edge: no width bar, drag the left edge like the sidebar (full width at the chat's edge, edge button,
   Esc), PDFs/Office open full-size with no thumbnail strip (`panel.js` docView).
 - v0.246 FULL CLAUDE MODE 3C FENCED SESSIONS: `app/fence.py` - auto facts / diary / jobs / search stay in their Session

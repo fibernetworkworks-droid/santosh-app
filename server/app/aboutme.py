@@ -1,4 +1,4 @@
-"""v0.248 FULL CLAUDE MODE Phase 3B: "Mere baare mein" - Claude's memory summary, for Hoola.
+"""v0.250 FULL CLAUDE MODE Phase 3B: "Mere baare mein" - Claude's memory summary, for Hoola.
 
 ONE short page of what Hoola knows about HER (work and role, people, preferences, ongoing work), loaded into every
 chat's and every call's system prompt (`life.context_block`), so a new chat already knows her without searching. She

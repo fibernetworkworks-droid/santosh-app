@@ -233,7 +233,7 @@ async function loadRecents() {
 }
 $('#recents').addEventListener('click', e => { if (CH) return; const b = e.target.closest('[data-conv]'); if (b) { openConv(b.dataset.conv); go('chat'); } });
 $('#searchBtn').addEventListener('click', () => CH?.openSearch());
-/* v0.248 incognito chat: Hoola reads her memory there but keeps nothing from it (no facts, search, diary, page) */
+/* v0.250 incognito chat: Hoola reads her memory there but keeps nothing from it (no facts, search, diary, page) */
 var INCOG = new Set();   // var: drawHead may run before this line during start-up
 async function newIncognito() {
   try { const c = await api('POST', '/api/conversations?incognito=1'); INCOG.add(c.id); go('chat'); await openConv(c.id, true);
@@ -273,7 +273,7 @@ function drawHead() {
   const on = !$('#thread').hidden; $('#chead').hidden = !on; if (!on) return;
   const c = CH?.find(CONV), p = c?.project_id && PJ?.nameOf(c.project_id);
   $('#ctitle').textContent = c?.title || 'New chat';
-  const inc = !!(c?.incognito || INCOG?.has(CONV));   // v0.248
+  const inc = !!(c?.incognito || INCOG?.has(CONV));   // v0.250
   const t = $('#ctag'); t.hidden = !p && !inc; t.textContent = p ? `${p.emoji || '📁'} ${p.name}` : inc ? '🕶 Incognito' : '';
   $('#cMore').hidden = !c;
   meter();

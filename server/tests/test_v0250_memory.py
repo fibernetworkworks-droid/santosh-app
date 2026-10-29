@@ -1,4 +1,4 @@
-"""v0.248 PHASE 3B CLAUDE-STYLE MEMORY: "Mere baare mein" (her memory page: built for active owners from GLOBAL
+"""v0.250 PHASE 3B CLAUDE-STYLE MEMORY: "Mere baare mein" (her memory page: built for active owners from GLOBAL
 facts + general chats only, her edits win, loaded in every chat / call), haal_ki_chats (her other chats by time,
 fenced, never incognito), incognito chats (read memory, write nothing), and her two switches."""
 import asyncio

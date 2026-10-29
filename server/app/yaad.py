@@ -794,7 +794,7 @@ def search(tenant: str, query: str, top: int = 8, days: int | None = None, kinds
     allowed = chats_in(tenant, conversation_id) if conversation_id else None
     if allowed is not None:
         items = [x for x in items if visible(x[6], allowed)]
-    if conversation_id:   # v0.248 Hoola's recall never draws on her incognito chats (her own search screen still can)
+    if conversation_id:   # v0.250 Hoola's recall never draws on her incognito chats (her own search screen still can)
         hidden = incognito_ids(tenant) - {conversation_id}
         if hidden:
             items = [x for x in items if x[6] not in hidden]
@@ -857,7 +857,7 @@ def _word_search(tenant: str, query: str, top: int, since: datetime | None,
         convs = s.scalars(select(Conversation.id).where(Conversation.tenant_id == tenant)).all()
         if allowed is not None:   # v0.246 fenced: only chats of the same Session
             convs = [c for c in convs if c in allowed]
-        if exclude:   # v0.248 never her incognito chats in Hoola's recall
+        if exclude:   # v0.250 never her incognito chats in Hoola's recall
             convs = [c for c in convs if c not in exclude]
         if not convs:
             return []
@@ -1120,7 +1120,7 @@ def turn_block(tenant: str, conversation_id: str, user_text: str) -> str:
         log.exception("relevant facts failed")
     try:
         from .fence import prefs
-        if len((user_text or "").split()) >= 2 and prefs(tenant)["recall"]:   # v0.248 her "purani chats se yaad" switch
+        if len((user_text or "").split()) >= 2 and prefs(tenant)["recall"]:   # v0.250 her "purani chats se yaad" switch
             past = refers_to_past(user_text)
             start = window_start_id(conversation_id)
             hits = search(tenant, user_text, top=5 if past else 3, before_ref=start, words=past,
@@ -1248,11 +1248,11 @@ def after_turn(tenant: str, conversation_id: str, user_text: str, reply: str, ac
         try:
             from .fence import is_incognito, prefs
             secret = await asyncio.to_thread(is_incognito, conversation_id)
-            if not secret:   # v0.248 an incognito chat is never indexed for other chats' recall
+            if not secret:   # v0.250 an incognito chat is never indexed for other chats' recall
                 await asyncio.to_thread(index_recent, tenant, conversation_id)
             await refresh_summary(tenant, conversation_id)   # this chat's own summary (it stays inside the chat)
             if actor == "owner" and user_text and not user_text.lstrip().startswith("[Hoola Network]") \
-                    and not secret and prefs(tenant)["auto"]:   # v0.248 no facts from incognito / when she said no
+                    and not secret and prefs(tenant)["auto"]:   # v0.250 no facts from incognito / when she said no
                 await extract_facts(tenant, conversation_id, user_text, reply)
         except Exception:
             log.exception("yaad after_turn failed")

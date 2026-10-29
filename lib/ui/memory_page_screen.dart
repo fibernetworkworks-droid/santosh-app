@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../state.dart';
 import 'glass.dart';
 
-/// v0.248 "Hoola ki yaad" (Claude's memory settings): the page Hoola keeps about her ("Mere baare mein") which she
+/// v0.250 "Hoola ki yaad" (Claude's memory settings): the page Hoola keeps about her ("Mere baare mein") which she
 /// can read, correct or clear, a "naya likho" tap, and her two switches - "Khud yaad rakhna" (Hoola picks up facts and
 /// writes this page by itself) and "Purani chats se yaad" (search, recent chats and this page are used).
 class MemoryPageScreen extends StatefulWidget {

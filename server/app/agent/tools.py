@@ -655,7 +655,7 @@ TOOLS.extend(DESK_TOOLS)
 TOOL_LABELS.update(DESK_LABELS)
 HANDLERS.update(DESK_HANDLERS)
 
-# v0.248 FULL CLAUDE MODE 3B: haal_ki_chats - her other recent chats by time (Claude's "recent chats")
+# v0.250 FULL CLAUDE MODE 3B: haal_ki_chats - her other recent chats by time (Claude's "recent chats")
 from .recall_tools import RECALL_HANDLERS, RECALL_LABELS, RECALL_TOOLS  # noqa: E402
 
 TOOLS.extend(RECALL_TOOLS)

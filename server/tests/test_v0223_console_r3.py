@@ -57,10 +57,10 @@ def test_chat_chrome_speaks_english():
                   "['kaam','Tools'],['main','Account']", "Reply to ${AV}"):
         assert label in js, label
     # the slash menu still runs every command
-    assert len(re.findall(r"^\s*\['\w+', '[^']+', '[^']+', \(\) =>", js, re.M)) == 13   # v0.243 + appearance / light / dark / system, v0.248 + incognito
+    assert len(re.findall(r"^\s*\['\w+', '[^']+', '[^']+', \(\) =>", js, re.M)) == 13   # v0.243 + appearance / light / dark / system, v0.250 + incognito
 
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.247.0"
-    assert "0.247.0+287" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.250.0"
+    assert "0.250.0+290" in (ROOT / "pubspec.yaml").read_text()

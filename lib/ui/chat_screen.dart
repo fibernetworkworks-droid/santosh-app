@@ -692,7 +692,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       padding: const EdgeInsets.fromLTRB(18, 14, 8, 4),
                       child: Row(children: [
                         Expanded(child: Text(app.g('Aapki chats'), style: display(18, w: FontWeight.w700))),
-                        IconButton(   // v0.242 this chat's checkpoint summary + "Chat chhoti karo"
+                        IconButton(   // v0.248 this chat's checkpoint summary + "Chat chhoti karo"
                           tooltip: app.g('Is chat ka saar'),
                           onPressed: () {
                             Navigator.pop(ctx);
@@ -708,7 +708,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           icon: const Icon(Icons.add_comment_outlined, size: 18),
                           label: Text(app.g('Naya chat')),
                         ),
-                        TextButton(   // v0.248 a chat Hoola never remembers
+                        TextButton(   // v0.250 a chat Hoola never remembers
                           onPressed: () {
                             Navigator.pop(ctx);
                             app.connect(fresh: true, incognito: true);
@@ -865,9 +865,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     if (f is Map && f['codes'] is List) QrNote(codes: f['codes'] as List),
                   if ((it.data['files'] as List? ?? const []).isNotEmpty) const SizedBox(height: 6),
                   if (selecting)
-                    SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45))
+                    SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.5))
                   else
-                    Text(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45)),
+                    Text(text, style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.5)),
                 ]),
               )
             : Glass(flat: true,
@@ -876,9 +876,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                   // v0.222 SAAF CHAT: Hoola's reply rendered (lists, headings, bold, code, tables, links), not raw marks
                   fresh
-                      ? _Reveal(text: text, builder: (t) => MdText(t, style: const TextStyle(fontSize: 15, height: 1.45, color: C.ink),
+                      ? _Reveal(text: text, builder: (t) => MdText(t, style: replyText(),
                           streaming: t.length < text.length, selectable: selecting))
-                      : MdText(text, style: const TextStyle(fontSize: 15, height: 1.45, color: C.ink), selectable: selecting),
+                      : MdText(text, style: replyText(), selectable: selecting),
                 ]));
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -941,7 +941,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 radius: 22,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
                 // v0.222 the half-written reply is rendered too: an open mark styles what follows, never shows
-                child: MdText(t, style: const TextStyle(fontSize: 15, height: 1.45, color: C.ink), streaming: true,
+                child: MdText(t, style: replyText(), streaming: true,
                     trailing: const WidgetSpan(child: _Caret())),
               ),
             ),

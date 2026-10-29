@@ -47,7 +47,7 @@ def scope_of(conversation_id: str) -> str | None:
 
 
 def is_incognito(conversation_id: str) -> bool:
-    """v0.248 an incognito chat: Hoola reads her memory there but writes nothing from it."""
+    """v0.250 an incognito chat: Hoola reads her memory there but writes nothing from it."""
     if not conversation_id:
         return False
     try:
@@ -60,14 +60,14 @@ def is_incognito(conversation_id: str) -> bool:
 
 
 def incognito_ids(tenant: str) -> set[str]:
-    """Her incognito chats: never a source of memory for any other chat (v0.248)."""
+    """Her incognito chats: never a source of memory for any other chat (v0.250)."""
     with session() as s:
         return set(s.scalars(select(Conversation.id).where(Conversation.tenant_id == tenant,
                                                            Conversation.incognito.is_(True))).all())
 
 
 def prefs(tenant: str) -> dict[str, bool]:
-    """v0.248 her memory switches: auto = Hoola picks up facts / writes her page by itself; recall = Hoola uses her
+    """v0.250 her memory switches: auto = Hoola picks up facts / writes her page by itself; recall = Hoola uses her
     past chats (search, recent chats, her page). Both on unless she turned them off (Profile > Hoola ki yaad)."""
     try:
         from .db import Profile
@@ -92,7 +92,7 @@ def chats_in(tenant: str, conversation_id: str) -> set[str] | None:
                                           or_(Conversation.incognito.is_(None), Conversation.incognito.is_(False)))
         q = q.where(Conversation.project_id == scope) if scope else \
             q.where(or_(Conversation.project_id.is_(None), Conversation.project_id == ""))
-        out = set(s.scalars(q).all())   # v0.248 incognito chats are never a source
+        out = set(s.scalars(q).all())   # v0.250 incognito chats are never a source
     out.add(conversation_id)
     STATS["scoped"] += 1
     return out

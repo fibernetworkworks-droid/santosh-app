@@ -47,17 +47,38 @@ function close() { appEl.classList.remove('pn'); }
 const isOpen = () => appEl.classList.contains('pn');
 new MutationObserver(() => { if (appEl.classList.contains('st') && isOpen()) appEl.classList.remove('pn'); }).observe(appEl, {attributes: true, attributeFilter: ['class']});
 
+/* v0.248 one item open = ONE header row: its actions bar (name, Share, Download, view switches) moves up beside the
+   close button and the tab pill hides; two or more items = the tab row again. q / qa find a tab's controls wherever
+   its bar sits right now. */
+const slotOf = () => box.querySelector('.pnslot');
+const q = (t, s) => t.el.querySelector(s) || (slotOf()?.firstElementChild?._owner === t.el ? slotOf().querySelector(s) : null);
+const qa = (t, s) => [...t.el.querySelectorAll(s), ...(slotOf()?.firstElementChild?._owner === t.el ? slotOf().querySelectorAll(s) : [])];
+let syncing = false;
+function syncHead() {
+  const slot = slotOf(); if (!slot || syncing) return; syncing = true;
+  try {
+    const one = TABS.length === 1 && CUR, held = slot.firstElementChild;
+    const fresh = one ? CUR.el.querySelector(':scope>.pnbar') : null;
+    if (held && (!one || held._owner !== CUR.el || fresh)) {          // send it home, or drop it when a newer render replaced it
+      if (!fresh && held._owner?.isConnected && !held._owner.querySelector(':scope>.pnbar')) held._owner.prepend(held); else held.remove();
+    }
+    if (fresh) { fresh._owner = CUR.el; slot.replaceChildren(fresh); }
+    box.classList.toggle('one', !!one);
+  } finally { syncing = false; }
+}
 function drawTabs() {
   box.querySelector('.pntabs').innerHTML = TABS.map(t => `<div class="pntab${t === CUR ? ' on' : ''}" role="tab" aria-selected="${t === CUR}">
     <button type="button" data-tab="${esc(t.key)}" title="${esc(t.item.title)}"><span aria-hidden="true">${ICON[t.item.type] || '📎'}</span><span class="pnt">${esc(t.item.title)}</span></button>
     <button type="button" class="pnx" data-close="${esc(t.key)}" aria-label="Close: ${esc(t.item.title)}">✕</button></div>`).join('');
+  syncHead();
 }
 function shell() {
   if (box.dataset.ready) return;
   box.dataset.ready = '1';
-  box.innerHTML = `<div class="pnhd"><div class="pntabs" role="tablist" aria-label="Open items"></div>
+  box.innerHTML = `<div class="pnhd"><div class="pntabs" role="tablist" aria-label="Open items"></div><div class="pnslot"></div>
       <button type="button" class="ib" id="pnLib" aria-label="Creations" title="Creations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v5H4zM4 11h7v9H4zM13 11h7v9h-7z"/></svg></button><button type="button" class="ib" id="pnClose" aria-label="Close panel">✕</button></div>
     <div class="pnbody"></div>`;
+  new MutationObserver(syncHead).observe(box.querySelector('.pnbody'), {childList: true, subtree: true});
   box.addEventListener('click', e => {
     const t = e.target.closest('[data-tab]'); if (t) { select(TABS.find(x => x.key === t.dataset.tab)); return; }
     const x = e.target.closest('[data-close]'); if (x) { drop(x.dataset.close); return; }
@@ -85,7 +106,7 @@ function select(t) {
 }
 function drop(key) {
   const i = TABS.findIndex(x => x.key === key); if (i < 0) return;
-  const [t] = TABS.splice(i, 1); t.closed = true; t.controller?.abort(); t.el.querySelectorAll('audio,video').forEach(m => m.pause()); t.blobs.forEach(u => URL.revokeObjectURL(u)); t.el.remove();
+  const [t] = TABS.splice(i, 1); t.closed = true; t.controller?.abort(); t.pdf?.destroy(); t.el.querySelectorAll('audio,video').forEach(m => m.pause()); t.blobs.forEach(u => URL.revokeObjectURL(u)); t.el.remove();
   if (CUR === t) CUR = TABS[Math.max(0, i - 1)] || null;
   if (!TABS.length) { close(); drawTabs(); return; }
   select(CUR);
@@ -143,7 +164,7 @@ async function renderPage(t) {
       ${devSeg(false)}<span class="sp"></span><button type="button" class="btn soft" data-a="share">Share</button><button type="button" class="btn soft" data-a="dl">Download</button>`)
     + `<div class="pnerr" hidden></div><div class="pnview"></div>
     <form class="pnchg"><input placeholder="What should change? (you can select part of the code too)" aria-label="Change request"><button class="btn go" type="submit">Edit</button></form>`;
-  const sel = t.el.querySelector('.pnsel'), view = t.el.querySelector('.pnview');
+  const sel = q(t, '.pnsel'), view = q(t, '.pnview');
   try {
     const d = await api('GET', `/api/artifacts/${encodeURIComponent(t.aid)}`);
     t.ver = d.version; it.title = d.title || it.title; drawTabs();
@@ -151,14 +172,14 @@ async function renderPage(t) {
     sel.value = String(t.ver);
   } catch (e) { view.innerHTML = err(e.message); return; }
   sel.addEventListener('change', () => { t.ver = +sel.value; pageView(t); });
-  t.el.querySelector('.bseg').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; t.view = b.dataset.v;
-    t.el.querySelectorAll('.bseg button').forEach(x => x.setAttribute('aria-pressed', x === b)); pageView(t); });
+  q(t, '.bseg').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; t.view = b.dataset.v;
+    qa(t, '.bseg button').forEach(x => x.setAttribute('aria-pressed', x === b)); pageView(t); });
   wireDev(t);
-  t.el.querySelector('[data-a="share"]').addEventListener('click', () => share('page', t.aid));
-  t.el.querySelector('[data-a="dl"]').addEventListener('click', async () => {
+  q(t, '[data-a="share"]').addEventListener('click', () => share('page', t.aid));
+  q(t, '[data-a="dl"]').addEventListener('click', async () => {
     try { const s = await api('GET', `/api/panel/pages/${encodeURIComponent(t.aid)}/source?version=${t.ver}`); saveBlob(new Blob([s.html], {type: 'text/html'}), `${(s.title || 'page').replace(/[^\w-]+/g, '-')}-v${s.version}.html`); }
     catch (e) { toast(e.message, true); } });
-  t.el.querySelector('.pnchg').addEventListener('submit', async e => {
+  q(t, '.pnchg').addEventListener('submit', async e => {
     e.preventDefault(); const inp = e.target.querySelector('input'), want = inp.value.trim(); if (!want) return;
     const part = selectionIn(view);
     const request = part ? `Is hisse ko badlo:\n"""\n${part}\n"""\nBadlav: ${want}` : want;
@@ -167,7 +188,7 @@ async function renderPage(t) {
   pageView(t);
 }
 async function pageView(t) {
-  const view = t.el.querySelector('.pnview'); t.el.querySelector('.pnerr').hidden = true;
+  const view = q(t, '.pnview'); q(t, '.pnerr').hidden = true;
   view.innerHTML = '<div class="pnempty skel-page" style="width:100%"><i class="skel" style="height:46px"></i><i class="skel" style="height:240px"></i></div>';
   try {
     if (t.view === 'code') {
@@ -202,7 +223,7 @@ addEventListener('message', async e => {
   } catch (er) { reply(false, er.message); }
 });
 function showError(t, d) {
-  const box = t.el.querySelector('.pnerr'); if (!box) return;
+  const box = q(t, '.pnerr'); if (!box) return;
   box.hidden = false;
   box.innerHTML = `<span>⚠️ Page error: <code>${esc(String(d.message || '').slice(0, 160))}</code></span><button type="button" class="btn go">Fix</button>`;
   box.querySelector('button').onclick = () => {
@@ -216,10 +237,10 @@ function devSeg(phone) {
   return `<div class="bseg dev" role="group" aria-label="Device"><button type="button" data-d="desk" aria-pressed="${!phone}">Desktop</button><button type="button" data-d="phone" aria-pressed="${phone}">Phone</button></div>`;
 }
 function wireDev(t) {
-  const seg = t.el.querySelector('.bseg.dev'); if (!seg) return;
+  const seg = q(t, '.bseg.dev'); if (!seg) return;
   seg.addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return;
     seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
-    t.el.querySelector('.pnview')?.classList.toggle('phone', b.dataset.d === 'phone'); });
+    q(t, '.pnview')?.classList.toggle('phone', b.dataset.d === 'phone'); });
 }
 function browserFrame(f, label) {
   const w = document.createElement('div'); w.className = 'pnbrowser';
@@ -237,9 +258,9 @@ function renderPreview(t) {
     + `<div class="pnview ${it.type === 'app' ? 'phone' : ''}"></div>`;
   const f = document.createElement('iframe');
   f.className = 'pnframe'; f.title = it.title; f.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups'); f.setAttribute('referrerpolicy', 'no-referrer');
-  f.src = it.preview; t.el.querySelector('.pnview').appendChild(browserFrame(f, it.preview));
+  f.src = it.preview; q(t, '.pnview').appendChild(browserFrame(f, it.preview));
   wireDev(t);
-  t.el.querySelector('[data-a="studio"]')?.addEventListener('click', () => { close(); ctx.studio(it.kind, it.payload); });
+  q(t, '[data-a="studio"]')?.addEventListener('click', () => { close(); ctx.studio(it.kind, it.payload); });
 }
 
 /* a reel / edited video: its own signed link */
@@ -249,35 +270,45 @@ function renderUrlVideo(t) {
     + `<div class="pnview center"><video class="pnmedia" controls playsinline preload="metadata" src="${esc(it.url)}"></video></div>`;
 }
 
-/* v0.244 a document fills the whole workspace: no page-thumbnail side strip (navpanes / pagemode), fitted to the width */
-const PDF_VIEW = '#navpanes=0&pagemode=none&view=FitH&zoom=page-width';
-function docView(view, name, u) {
+/* v0.248 a document fills the whole workspace on our own background: drawn by pdfview.js (no browser toolbar, no grey
+   canvas, no thumbnail strip). If the reader cannot start, the browser's viewer is the fallback (toolbar / strip hidden). */
+const PDF_VIEW = '#toolbar=0&navpanes=0&pagemode=none&view=FitH&zoom=page-width';
+async function docView(t, view, name, path) {
   view.classList.remove('center'); view.classList.add('doc');
-  view.innerHTML = `<iframe class="pnframe" title="${esc(name)}" src="${u}${PDF_VIEW}"></iframe>`;
+  const r = await fetch(path, {headers: {Authorization: 'Bearer ' + ctx.token()}, cache: 'no-store', credentials: 'omit', signal: t.controller.signal});
+  if (!r.ok) { let m = ''; try { m = (await r.json()).detail; } catch {} throw new Error(m || `Could not open (${r.status})`); }
+  const bytes = await r.arrayBuffer(); if (t.closed) return;
+  try {
+    if (!window.HoolaPdf) throw new Error('no reader');
+    t.pdf?.destroy(); t.pdf = await window.HoolaPdf.mount(view, bytes.slice(0), name);
+  } catch (e) {
+    const u = URL.createObjectURL(new Blob([bytes], {type: 'application/pdf'})); t.blobs.push(u);
+    view.innerHTML = `<iframe class="pnframe" title="${esc(name)}" src="${u}${PDF_VIEW}"></iframe>`;
+  }
 }
 /* her file: viewable types as blob:, Office as PDF, text as code, the rest download */
 async function renderFile(t) {
   const it = t.item, fid = it.ref, P = `/api/panel/files/${encodeURIComponent(fid)}`;
   t.el.innerHTML = `<div class="pnview center"><div class="skel-page" style="width:100%;padding:16px" aria-label="Loading"><i class="skel" style="height:46px"></i><i class="skel" style="height:260px"></i></div></div>`;
   let info;
-  try { info = await api('GET', P + '/info'); if(t.closed)return; } catch (e) { if(t.closed)return; t.el.querySelector('.pnview').innerHTML = err(e.message); return; }
+  try { info = await api('GET', P + '/info'); if(t.closed)return; } catch (e) { if(t.closed)return; q(t, '.pnview').innerHTML = err(e.message); return; }
   if (!it.title || it.title === it.name) it.title = info.name || it.title; drawTabs();
   t.el.innerHTML = bar(t, `<span class="pnnote">${esc(info.name)} · ${Math.max(1, Math.round((info.size || 0) / 1024))} KB</span><span class="sp"></span>
       <button type="button" class="btn soft" data-a="share">Share</button><button type="button" class="btn soft" data-a="dl">Download</button>`)
     + '<div class="pnview center"><div class="skel-page" style="width:100%;padding:16px" aria-label="Loading"><i class="skel" style="height:46px"></i><i class="skel" style="height:260px"></i></div></div>';
-  t.el.querySelector('[data-a="dl"]').addEventListener('click', () => download(P + '?download=1', info.name));
-  t.el.querySelector('[data-a="share"]').addEventListener('click', () => share('file', fid));
-  const view = t.el.querySelector('.pnview');
+  q(t, '[data-a="dl"]').addEventListener('click', () => download(P + '?download=1', info.name));
+  q(t, '[data-a="share"]').addEventListener('click', () => share('file', fid));
+  const view = q(t, '.pnview');
   try {
+    if (info.inline && info.media === 'pdf') { await docView(t, view, info.name, P); return; }
     if (info.inline && info.mime) {
       const u = await blobOf(t, P, info.mime);
       if (info.media === 'image') view.innerHTML = `<img class="pnmedia" alt="${esc(info.name)}" src="${u}">`;
       else if (info.media === 'video') view.innerHTML = `<video class="pnmedia" controls playsinline src="${u}"></video>`;
       else if (info.media === 'audio') view.innerHTML = `<audio controls src="${u}"></audio>`;
-      else if (info.media === 'pdf') docView(view, info.name, u);
       return;
     }
-    if (info.office) { const u = await blobOf(t, P + '/pdf', 'application/pdf'); docView(view, info.name, u); return; }
+    if (info.office) { await docView(t, view, info.name, P + '/pdf'); return; }
     if (info.text) { const s = await api('GET', P + '/text'); view.classList.remove('center'); view.innerHTML = code(s.text, s.lang); return; }
     view.innerHTML = `<div class="pnempty">This file cannot be previewed here. <b>Download</b> it to open.</div>`;
   } catch (e) { view.innerHTML = err(e.message); }

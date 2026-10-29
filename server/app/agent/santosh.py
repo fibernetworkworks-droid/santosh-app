@@ -640,7 +640,7 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
                    "talk" if not state["calls"] else "partial" if state.get("left") else "done" if ok else "partial")
         LAST_OUTCOME[conversation_id] = {"outcome": outcome, "left": state.get("left", ""),
                                          "goal": (g or state.get("goal") or {}).get("goal", ""), "at": time.time()}
-        from ..fence import is_incognito   # v0.248 an incognito chat leaves no line in the work diary
+        from ..fence import is_incognito   # v0.250 an incognito chat leaves no line in the work diary
         if not await asyncio.to_thread(is_incognito, conversation_id):
             await asyncio.to_thread(pakka.record, tenant_id, user_text, outcome, state["calls"], state,
                                     time.time() - state["t0"], state.get("left", ""))
@@ -716,7 +716,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     mcp_defs, mcp_route = mcp_live.tool_defs(mcp_snap, settings.mcp_native_tools)
     tail += "\n\n" + mcp_live.prompt_block(mcp_snap, mcp_route)
     tail += state.get("hint") or ""
-    if _secret:   # v0.248 incognito: she knows nothing from here is kept; never promise it is
+    if _secret:   # v0.250 incognito: she knows nothing from here is kept; never promise it is
         tail += ("\n\nINCOGNITO CHAT: she opened this chat in incognito. Nothing from it goes into her memory (no facts, "
                  "no diary, no search, no memory page) and other chats will not know it. Never say 'yaad rakh liya'; if "
                  "she wants something remembered, tell her to say it in a normal chat.")

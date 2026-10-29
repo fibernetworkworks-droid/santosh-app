@@ -1,4 +1,4 @@
-"""v0.248 FULL CLAUDE MODE Phase 3B: haal_ki_chats - Claude's "recent chats" tool. Finds her chats BY TIME ("kal shaam
+"""v0.250 FULL CLAUDE MODE Phase 3B: haal_ki_chats - Claude's "recent chats" tool. Finds her chats BY TIME ("kal shaam
 ki chat", "aaj subah wali baat", "pichhle hafte") - yaad_khojo finds by meaning and misses time questions. Returns
 short snippets (title, when, her words, the last reply, the chat's checkpoint summary), never whole chats.
 Fenced like all of Hoola's memory (v0.246: same Session only), never her incognito chats, never the chat it is

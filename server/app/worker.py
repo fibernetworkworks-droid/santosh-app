@@ -351,7 +351,7 @@ _about_task: "asyncio.Task | None" = None
 
 
 def aboutme_jobs() -> None:
-    """v0.248 "Mere baare mein": once an hour, a few owners active today whose page is a day old get it rewritten -
+    """v0.250 "Mere baare mein": once an hour, a few owners active today whose page is a day old get it rewritten -
     in the BACKGROUND (a model call must never hold up reminders and the rest of this tick)."""
     global _about_last, _about_task
     if time.time() - _about_last < 3600 or (_about_task is not None and not _about_task.done()):

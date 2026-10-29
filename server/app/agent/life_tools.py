@@ -188,7 +188,7 @@ async def add_calendar_event(ctx: Ctx, title, start, end=None, location=None, no
 
 async def remember(ctx: Ctx, fact, pin=False, **_):
     from ..fence import is_incognito
-    if is_incognito(getattr(ctx, "conversation_id", "") or ""):   # v0.248 an incognito chat saves nothing
+    if is_incognito(getattr(ctx, "conversation_id", "") or ""):   # v0.250 an incognito chat saves nothing
         raise ToolError("Yeh incognito chat hai: yahan se kuch yaad nahi rakha jaata. Ise yaad rakhwana ho to "
                         "normal chat mein boliye.")
     from ..idvault import capture

@@ -225,7 +225,7 @@ class Santosh extends ChangeNotifier {
 
   Api? api;
   String? conversationId;
-  bool incognito = false;   // v0.248 the open chat is incognito: nothing from it goes into her memory
+  bool incognito = false;   // v0.250 the open chat is incognito: nothing from it goes into her memory
   bool connected = false;
   bool dryRun = true;
   bool brainReady = true;
@@ -1201,7 +1201,7 @@ class Santosh extends ChangeNotifier {
   Future<void> openChat(String id) async {
     if (id == conversationId || api == null) return;
     conversationId = id;
-    incognito = chatList.any((c) => c['id'] == id && c['incognito'] == true);   // v0.248
+    incognito = chatList.any((c) => c['id'] == id && c['incognito'] == true);   // v0.250
     await _prefs.setString('conv', id);
     unawaited(api!.openChat(id).catchError((_) {}));
     unawaited(Native.chatLink(serverUrl, apiKey, id));

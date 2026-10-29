@@ -1286,7 +1286,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ]),
       ),
       const SizedBox(height: 18),
-      Glass(   // v0.248 Claude-style memory: her page + switches
+      Glass(   // v0.250 Claude-style memory: her page + switches
         child: ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.psychology_outlined, color: C.teal),
