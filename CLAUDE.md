@@ -8981,3 +8981,15 @@ expects the asking card. Version 0.226.0 (pubspec 0.226.0+262 - build 261 left f
   - The progress row is always the last row. When it sits right under Hoola's own reply it gets the `tail` class (no avatar, lined up with the reply text).
   - The progress row hides while the words stream.
 - Tests: NEW `test_v0227_single_avatar.py` (3). Ritual: APP_VERSION 0.227.3, pubspec 0.227.3+266, console ?v=0.227.3 x11, pins →0.227.3.
+
+## v0.227.4 Each console chat keeps its own cards (owner: "UNWANTED CHAT SESSION DATA AND ALL LANDING ON SAME CHAT PANEL")
+- Root cause: the v0.158 rule "a card from ANY of her chats shows in every chat" was built for the phone's single chat. The console (many chats since v0.162) used it too, twice:
+  - its timeline load had no way to ask for one chat only;
+  - its account stream copied every other chat's live card into the open chat.
+  So files, pages and briefings from one chat showed up in whichever chat was open.
+- Fix:
+  - `GET /api/conversations/{id}/timeline` takes `own=1` (only this chat's events); the console always sends it.
+  - In the console, another chat's card no longer lands in the open chat. That chat gets the unread dot instead, and Today still counts every approval.
+  - The fallback per-chat stream drops events whose `conv` is another chat.
+  - The phone timeline (no `own`) is unchanged.
+- Tests: NEW `test_v0227_own_chat.py` (3). Ritual: APP_VERSION 0.227.4, pubspec 0.227.4+267, console ?v=0.227.4 x11, pins →0.227.4.

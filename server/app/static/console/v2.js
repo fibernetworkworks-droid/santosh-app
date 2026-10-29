@@ -745,6 +745,7 @@ function stream(conv) {
     onState: setConn, onAuth: () => logout(true),
     onEvent: ev => {
       if (STREAM !== s || CONV !== conv) return;
+      if (ev.conv && ev.conv !== conv) return;   // v0.227.4 another chat's card never lands here
       if (ev.kind === 'resync') { setTimeout(() => openConv(conv), 0); return; }
       if (!ev.live) LAST = ev.id;
       onEvent(ev);
@@ -854,7 +855,7 @@ async function openConv(id, fresh, opts = {}) {
   col.innerHTML = '<div class="skel-chat" aria-hidden="true"><i class="skel r"></i><i class="skel l"></i><i class="skel l s"></i><i class="skel r s"></i><i class="skel l"></i></div>';
   // the chat in order from the server: messages and each card once where it happened (latest state)
   let tl = {events: [], last_event_id: 0};
-  try { tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=${fresh ? 10 : 80}&steps=1`); }
+  try { tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=${fresh ? 10 : 80}&steps=1&own=1`); }
   catch (e) { LOADING = false; col.innerHTML = ''; if (e.status === 404 && opts.fallback) return opts.fallback(); toast(e.message, true); }
   if (CONV !== id) return;
   col.innerHTML = '';
@@ -894,7 +895,7 @@ async function loadOlder() {
   if (OLDER || !HAS_MORE || !BEFORE || !CONV) return false;
   OLDER = true; const id = CONV;
   try {
-    const tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=60&before=${BEFORE}&steps=1`);
+    const tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=60&before=${BEFORE}&steps=1&own=1`);
     if (CONV !== id) return false;
     const box = document.createElement('div'), saveTurn = TURN, saveLast = LAST_TURN;
     SINK = box; TURN = null;
@@ -1048,7 +1049,8 @@ $('#jrail').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key ==
 addEventListener('resize', drawRail);
 
 /* ================= one stream for all her chats (CHAT_SESSIONS; on with CONSOLE_V2) ================= */
-// kinds that belong to their own chat only (events.LOCAL_KINDS); every other card of another chat shows here too
+// kinds that belong to their own chat only (events.LOCAL_KINDS). v0.227.4 a card of another chat never lands in the open chat;
+// that chat gets the unread dot instead (Today still counts every approval)
 const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 'delta_reset', 'reply_end', 'think', 'say', 'message', 'upload',
   'reminders', 'routines', 'lists', 'email_sent', 'hoola_update', 'galla', 'mshop', 'office', 'employee', 'darzi_order',
   'phonedoc_open', 'phonedoc_check', 'device_action', 'device_action_result', 'home_device', 'bt_request', 'bazar_open',
@@ -1066,7 +1068,7 @@ function accountStream() {
       if (ev.kind === 'typing') { CH.busy(c, !!ev.payload?.on); if (!ev.payload?.on) setTimeout(() => CH.load(), 1500); }   // a new auto title
       if (c === CONV) { if (LOADING) PENDING.push(ev); else onEvent(ev); return; }
       if (ev.kind === 'message' && ev.payload?.role === 'assistant') CH.unread(c);
-      if (!ev.live && !LOCAL.has(ev.kind) && !PROGRESS_POLICY.quiet(ev.kind,ev.payload) && !LOADING && CONV) onEvent(ev);
+      if (!ev.live && !LOCAL.has(ev.kind) && !PROGRESS_POLICY.quiet(ev.kind,ev.payload)) CH.unread(c);   // v0.227.4 stays in its own chat
     }});
   ACC = s;
 }
