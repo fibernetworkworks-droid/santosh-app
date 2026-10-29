@@ -106,7 +106,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.260.0 (pubspec 0.260.0+301). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.261.0 (pubspec 0.260.0+301). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (14 now: theme.js, pdfview.js, studio.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.260 SAAF KAAM (from her own live test run): `kaam_plan`'s description named a parameter that did not exist
@@ -118,6 +118,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   tool, then a line per tool group carrying the tool's own number / id / link + what it is doing now. Narration
   was goal-only (a plain multi-tool ask was silent), v0.240's cadence 8/2 was silence (now 1/6, still capped),
   and NARRATE banned the numbers that make the line useful (now it demands them, fed by say.py).
+- v0.261 Create Studio pickers are real dropdowns (`studio.js` menu(): home agent, Director options, Music settings).
 - v0.259 CREATE STUDIO: Create opens a full-screen OpenArt-style studio (`console/studio.js` + `studio.css`, shadow root) - Image,
   Video + Director (Video Studio API, price cards tapped in the studio), Music (Lyria), Voice, Dubbing, Editor (Video Editor API),
   Script writer, AI casting, Brand kit, My creations; engines `app/create/` (`/api/create/*`), agent tool `create_studio`.

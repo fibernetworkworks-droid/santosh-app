@@ -272,3 +272,19 @@ def test_every_page_reaches_a_real_engine():
 
 def test_results_mark_create_cards_ai_made():
     assert "kind === 'photo_made' || p.ai ? 'AI-generated'" in _read("results.js")
+
+
+# ---------------------------------------------------------------- v0.261 dropdowns
+def test_v0261_every_picker_is_a_real_dropdown():
+    js, css = _read("studio.js"), _read("studio.css")
+    assert '<div class="pop" id="pop" role="menu" hidden></div>' in js
+    for k in ("function menu(btn, opts, cur, pick, title)", "role=\"menuitemradio\"", "aria-expanded", "ArrowDown", "Escape",
+              "'pointerdown'", "addEventListener('resize', () => closeMenu())", "closeMenu(); \n    VIEW = v;".replace(" \n", "\n")):
+        assert k in js, k
+    # the three pickers that used to cycle one value per click now open the menu
+    assert "menu(e.currentTarget, AGENTS.map(" in js and "'Who makes it'" in js
+    assert "menu(b, opt(L, fmt), DIR[k]" in js and "menu(b, opt(CYC[k]), MU[k]" in js
+    assert "(homeAgent + 1) % AGENTS.length" not in js and "L[(L.indexOf(DIR[k]) + 1)" not in js
+    pop = css[css.index(".pop{"):css.index(".poph{")]
+    assert "opacity:0" in pop and "transition:opacity" in pop and ".pop.on{opacity:1;transform:none}" in css
+    assert "prefers-reduced-motion: reduce){.pop,.pop.up{transform:none}}" in css

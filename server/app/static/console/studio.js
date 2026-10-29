@@ -180,6 +180,7 @@ window.HoolaCreate = ctx => {
     <div class="view" id="view"></div>
   </main>
 </div>
+<div class="pop" id="pop" role="menu" hidden></div>
 <div class="lightbox" id="lightbox" hidden></div>
 ${SPRITE}`;
   }
@@ -199,7 +200,7 @@ ${SPRITE}`;
   }
   function go(v, opts) {
     if (!V[v]) v = 'studio';
-    clearTimeout(poll); poll = 0; alive++;
+    clearTimeout(poll); poll = 0; alive++; closeMenu();
     VIEW = v; const old = $('#view'), el = old.cloneNode(false); old.replaceWith(el);
     el.className = 'view enter'; el.innerHTML = V[v](opts || {}); el.scrollTop = 0;
     $$('#snav [data-go]').forEach(b => b.setAttribute('aria-current', b.dataset.go === v ? 'page' : 'false'));
@@ -211,6 +212,47 @@ ${SPRITE}`;
   const V = {}, W = {};
   const redraw = (v, fn) => { if (VIEW === v) fn(); };
   const empty = (title, line, cta = '') => `<div class="empty"><div><h2>${title}</h2><p class="mut">${line}</p>${cta}</div></div>`;
+
+  /* ---------------- v0.261 dropdown menus (owner: "WHEN CLICK ON DIRECTOR IT MUST OPEN DROPDOWN PROPERLY AND SMOOTHLY") ----------------
+     One popover for every picker: anchored under its button (above when there is no room), fades + slides in, the
+     current choice ticked, Arrow keys / Home / End / Enter / Esc, closes on a pick, an outside click, scroll or resize. */
+  let popFor = null;
+  function closeMenu(focus) {
+    const pop = $('#pop'); if (!pop || pop.hidden) return;
+    pop.classList.remove('on'); popFor?.setAttribute('aria-expanded', 'false');
+    const b = popFor; popFor = null;
+    setTimeout(() => { if (!popFor) { pop.hidden = true; pop.innerHTML = ''; } }, 160);
+    if (focus) b?.focus();
+  }
+  // opts: [{v, label, sub?, icon?}]; cur: the current value; pick(v, opt) runs after the menu closes
+  function menu(btn, opts, cur, pick, title) {
+    const pop = $('#pop');
+    if (popFor === btn) { closeMenu(true); return; }
+    closeMenu(); popFor = btn;
+    pop.innerHTML = (title ? `<div class="poph">${esc(title)}</div>` : '') + opts.map((o, i) => `<button type="button" role="menuitemradio" aria-checked="${String(o.v) === String(cur)}" data-i="${i}" tabindex="-1">${o.icon ? `<span class="pic">${I(o.icon, 'width:16px;height:16px')}</span>` : ''}<span class="ptx"><b>${esc(o.label)}</b>${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</span><span class="tick">${I('check', 'width:15px;height:15px')}</span></button>`).join('');
+    pop.hidden = false; pop.classList.remove('on');
+    const r = btn.getBoundingClientRect(), w = Math.max(r.width, opts.some(o => o.sub) ? 280 : 200);
+    pop.style.minWidth = w + 'px';
+    const ph = pop.offsetHeight, below = innerHeight - r.bottom - 12, up = below < Math.min(ph, 320) && r.top > below;
+    pop.style.maxHeight = Math.max(160, (up ? r.top : below) - 12) + 'px';
+    pop.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px';
+    pop.style.top = up ? '' : (r.bottom + 6) + 'px'; pop.style.bottom = up ? (innerHeight - r.top + 6) + 'px' : '';
+    pop.classList.toggle('up', up);
+    btn.setAttribute('aria-haspopup', 'menu'); btn.setAttribute('aria-expanded', 'true');
+    requestAnimationFrame(() => pop.classList.add('on'));
+    const items = $$('[role=menuitemradio]', pop);
+    (items.find(x => x.getAttribute('aria-checked') === 'true') || items[0])?.focus({preventScroll: true});
+    pop.onclick = e => { const b = e.target.closest('[data-i]'); if (!b) return; const o = opts[+b.dataset.i]; closeMenu(true); pick(o.v, o); };
+    pop.onkeydown = e => {
+      const i = items.indexOf(R.activeElement);
+      const to = {ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: items.length - 1}[e.key];
+      if (to !== undefined) { e.preventDefault(); items[(to + items.length) % items.length].focus(); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeMenu(true); }
+      else if (e.key === 'Tab') closeMenu();
+    };
+  }
+  addEventListener('resize', () => closeMenu());
+  const opt = (L, fmt) => L.map(v => ({v, label: fmt ? fmt(v) : String(v)}));
 
   /* ---------------- shared result tiles ---------------- */
   function jobTile(j, tall) {
@@ -266,7 +308,7 @@ ${SPRITE}`;
     ['dubbing','Dubbing','Your video in another language','portrait','new'],['editor','Video editor','Your clips, edited by your words','film',''],
     ['director','Director','From a one-line brief to a finished film','city','hot'],['script','Script writer','Ads, short films and web episodes','abstract',''],
     ['casting','AI casting','Characters that look the same in every shot','cast','']];
-  const AGENTS = [['director','Director','clap'],['image','Image','image'],['video','Video','video'],['music','Song','music'],['voice','Voice-over','mic']];
+  const AGENTS = [['director','Director','clap','A whole film: story, shots, music'],['image','Image','image','Posters, product shots, characters'],['video','Video','video','One clip from your words'],['music','Song','music','A full song or a jingle'],['voice','Voice-over','mic','Your script in any voice']];
   let homeAgent = 0;
   V.studio = () => `
 <div class="home">
@@ -302,7 +344,8 @@ ${SPRITE}`;
   W.studio = el => {
     load('items').then(() => redraw('studio', drawRecent));
     const agent = i => { homeAgent = i; $('#homeAgent').innerHTML = `${I(AGENTS[i][2], 'width:15px;height:15px')}<span>${AGENTS[i][1]}</span>${I('down', 'width:14px;height:14px')}`; };
-    $('#homeAgent', el).addEventListener('click', () => agent((homeAgent + 1) % AGENTS.length));
+    $('#homeAgent', el).addEventListener('click', e => menu(e.currentTarget, AGENTS.map(([v, label, icon, sub]) => ({v, label, icon, sub})), AGENTS[homeAgent][0],
+      v => { agent(AGENTS.findIndex(a => a[0] === v)); $('#homeq').focus(); }, 'Who makes it'));
     $('#homeForm', el).addEventListener('submit', e => {
       e.preventDefault(); const q = $('#homeq').value.trim(); if (!q) { $('#homeq').focus(); return; }
       const a = AGENTS[homeAgent][0];
@@ -585,7 +628,11 @@ ${SPRITE}`;
       const b = e.target.closest('button'); if (!b) return;
       const P = DIR.project ? `/api/studio/projects/${encodeURIComponent(DIR.project)}` : '';
       const act = async (label, fn) => { b.disabled = true; try { const r = await fn(); if (r?.waiting_owner) toast(`Price ${inr(r.inr)}: tap Haan above to start`); else if (label) toast(label); } catch (er) { toast(er.status === 428 ? fp : er.message, true); } await dirLoad(); if (VIEW === 'director') go('director'); };
-      if (b.dataset.dcyc) { const k = b.dataset.dcyc, L = cyc[k]; DIR[k] = L[(L.indexOf(DIR[k]) + 1) % L.length]; b.querySelector('span').textContent = k === 'seconds' ? DIR[k] + ' s' : (DIR[k] || 'No music'); return; }
+      if (b.dataset.dcyc) { const k = b.dataset.dcyc, L = cyc[k];
+        const fmt = {aspect: v => ({'16:9': '16:9 · Wide (YouTube)', '9:16': '9:16 · Reel / Short', '1:1': '1:1 · Square post'})[v], seconds: v => v < 60 ? v + ' seconds' : v / 60 + ' minute' + (v > 60 ? 's' : ''),
+          music: v => v ? v[0].toUpperCase() + v.slice(1) : 'No music'}[k];
+        menu(b, opt(L, fmt), DIR[k], v => { DIR[k] = v; b.querySelector('span').textContent = k === 'seconds' ? v + ' s' : (v || 'No music'); },
+          {aspect: 'Shape', seconds: 'Length', language: 'Spoken language', music: 'Music (Google Lyria)'}[k]); return; }
       if (b.dataset.openproj) { DIR.project = b.dataset.openproj; DIR.view = null; go('director'); return; }
       if (b.hasAttribute('data-dirback')) { DIR.project = ''; DIR.view = null; go('director'); return; }
       if (b.dataset.yes || b.dataset.no) { b.disabled = true; await decide(b.dataset.yes || b.dataset.no, !!b.dataset.yes); await dirLoad(); go('director'); return; }
@@ -764,7 +811,8 @@ ${SPRITE}`;
       if (b.dataset.seen) { const j = D.jobs.get(b.dataset.seen); if (j) j.seen = true; refresh(); return; }
       if (b.dataset.mtab) { MU.tab = b.dataset.mtab; MU.brief = q.value; go('music'); return; }
       if (b.dataset.genre) { MU.genre = b.dataset.genre; $$('[data-genre]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
-      if (b.dataset.cyc) { const L = CYC[b.dataset.cyc]; MU[b.dataset.cyc] = L[(L.indexOf(MU[b.dataset.cyc]) + 1) % L.length]; b.querySelector('b').textContent = MU[b.dataset.cyc]; return; }
+      if (b.dataset.cyc) { const k = b.dataset.cyc;
+        menu(b, opt(CYC[k]), MU[k], v => { MU[k] = v; b.querySelector('b').textContent = v; }, {lang: 'Language', vox: 'Singers', mood: 'Mood', len: 'Length'}[k]); return; }
       if (b.hasAttribute('data-write')) { const idea = q.value.trim(); if (idea.length < 4) { q.focus(); toast('Describe the song first, then Hoola writes the words'); return; }
         MU.writing = true; MU.brief = idea; go('music');
         try { const r = await api('POST', '/api/create/write', {kind: 'lyrics', brief: idea, genre: MU.genre, language: MU.lang, mood: MU.mood}); MU.lyrics = r.text; } catch (er) { toast(er.message, true); }
@@ -993,7 +1041,7 @@ ${SPRITE}`;
   <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></symbol>
   <symbol id="i-dub" viewBox="0 0 24 24"><path d="M4 6h9M8.5 4v2c0 4-2 7-5 8M6 9c1 2.5 3.5 4.5 6 5M13 20l4-9 4 9M14.5 17h5"/></symbol>
   <symbol id="i-cut" viewBox="0 0 24 24"><circle cx="6" cy="7" r="2.5"/><circle cx="6" cy="17" r="2.5"/><path d="M8 8.5L20 17M8 15.5L20 7"/></symbol>
-  <symbol id="i-clap" viewBox="0 0 24 24"><path d="M4 10h16v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19z"/><path d="M4 10l1.5-5.5 15 3.5L20 10M9 5.5l-1.8 4.4M14 6.7l-1.8 3.3"/></symbol>
+  <symbol id="i-clap" viewBox="0 0 24 24"><path d="M4 10h16v8.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M4 10L3.3 7a1.3 1.3 0 0 1 1-1.6l12.9-2.8a1.3 1.3 0 0 1 1.6 1L19.4 6.5 4 10"/><path d="M8.2 4.7l2.4 3.7M12.6 3.7l2.4 3.7M4 14h16"/></symbol>
   <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></symbol>
   <symbol id="i-cast" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17.5" cy="9" r="2.5"/><path d="M16 14.5a5 5 0 0 1 6 4.5"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></symbol>
@@ -1031,6 +1079,8 @@ ${SPRITE}`;
     document.body.appendChild(host);
     R = host.attachShadow({mode: 'open'});
     R.innerHTML = shellHTML(); drawNav(); drawCredits();
+    R.addEventListener('pointerdown', e => { if (popFor && !e.target.closest('#pop') && !popFor.contains(e.target)) closeMenu(); });
+    R.addEventListener('scroll', e => { if (popFor && !e.target.closest?.('#pop')) closeMenu(); }, true);
     R.addEventListener('click', e => {
       const t = e.target.closest('[data-close]'); if (t) { close(); return; }
       if (e.target.closest('[data-lbclose]') || e.target.id === 'lightbox') { const lb = $('#lightbox'); lb.hidden = true; lb.querySelectorAll('video,audio').forEach(m => m.pause()); lb.innerHTML = ''; return; }

@@ -10131,3 +10131,19 @@ follow OpenArt; their logo, art and wording are not used.
 - Version 0.259.0 (pubspec 0.259.0+299, console ?v=0.259.0, pins -> 0.259.0).
 - NOT VERIFIED: flaws 3 and 4 are prompt / timing fixes whose proof is her next live run - a Hinglish ask that ends
   in Hinglish, with exactly one final answer.
+
+
+## v0.261.0 CREATE DROPDOWNS (29 Oct 2026)
+Owner, with a screenshot of the Create home: "CHECK WHEN CLICK ON DIRECTOR IT MUST OPEN DROPDOWN PROPERLY AND SMOOTHLY".
+The v0.259 studio's pickers cycled to the next value on every click - no list, no way to see the choices.
+- `studio.js` menu(btn, opts, cur, pick, title): one popover (`#pop`, role=menu, items role=menuitemradio) anchored under
+  its button, flipped above when there is no room, height capped to the window; opens with a 160-200 ms fade + slide
+  (a transition that ends at no transform - crisp-text rule), the current choice highlighted and ticked, focus on it;
+  Arrow Up / Down, Home / End, Enter, Esc (back to the button), Tab; closes on a pick, an outside pointer, any scroll
+  outside it, a resize or a page change. The button shows aria-expanded and its chevron turns.
+- Used by: the Create home's "Who makes it" picker (Director / Image / Video / Song / Voice-over, each with a line),
+  the Director's shape / length / language / music, and the Music studio's language / singers / mood / length.
+- The Director icon is now a clapperboard (it read as a folder at 15 px).
+- Tests: `test_v0261_every_picker_is_a_real_dropdown` in test_v0259_create_studio.py; Playwright run in light and dark:
+  opens, keyboard pick (ArrowDown x2 + Enter = Video), outside click closes, Director length pick, Esc closes, no errors.
+- Version 0.261.0 (pubspec 0.261.0+301, console ?v=0.261.0 x14, pins -> 0.261.0).
