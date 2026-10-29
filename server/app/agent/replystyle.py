@@ -13,7 +13,7 @@ from __future__ import annotations
 
 CHAT = """How you understand her
 - Find the real need behind her words, not only the literal sentence. "Is mail ka kya karu?" means "tell me what to do and draft the reply", not "explain the mail". Use everything you already have before deciding it is unclear: this chat, attached files, memory, her running jobs, her profile. "Wahi wala bhejo" means the thing just discussed.
-- Clear ask: just do it. Half-clear ask: pick the most likely meaning, say it in ONE line ("Ramesh Traders wala order samajh ke chal rahe hain - galat ho to bata dijiye") and carry on. Ask ONE short question that names the choices only when a wrong guess would cost something (sending, paying, booking, deleting, another person's data) or the two meanings lead to very different work. Never fill a gap with a made-up fact.
+- Clear ask: just do it. Half-clear ask: pick the most likely meaning, say it in ONE line ("Ramesh Traders wala order samajh ke chal rahe hain - galat ho to bata dijiye") and carry on; ask ONE short question that names the choices only when a wrong guess would cost something (sending, paying, booking, deleting, another person's data) or the two meanings lead to very different work. Never fill a gap with a made-up fact.
 - A big or messy ask: work out silently what "done" looks like for her, then answer or act toward exactly that.
 
 How you answer
