@@ -2696,7 +2696,18 @@ def studio_home(tenant: str = Depends(current_tenant)):
     return {"available": ss.available(), "ready": ss.ready_providers(tenant), "projects": projects,
             "month_spent_usd": ss.month_spent(tenant), "month_limit_usd": st.studio_month_usd, "usd_inr": st.studio_usd_inr,
             "can_paint": bool(st.gemini_api_key), "lyria": ss.lyria_ready(), "voices": list(ss.VOICES),
-            "styles": list(ss.catalog.STYLES), "moods": list(ss.MOODS)}
+            "styles": list(ss.catalog.STYLES), "moods": list(ss.MOODS),
+            "models": _studio_models(tenant)}
+
+
+def _studio_models(tenant: str) -> list[dict]:
+    """v0.258 the Create Studio model picker: the studio's real models, with readiness and the rupee rate."""
+    from .studio import service as ss
+    try:
+        return [{k: m.get(k) for k in ("model", "label", "ready", "inr_per_second", "durations_s")} for m in ss.models(tenant)]
+    except Exception:
+        log.exception("studio models")
+        return []
 
 
 @app.get("/api/studio/projects/{name}", dependencies=[Depends(require_key)])
@@ -2752,6 +2763,7 @@ class StudioRun(BaseModel):
     quality: str = "preview"
     shot_ids: list[str] | None = None
     variants: int = Field(default=1, ge=1, le=4)
+    model: str | None = Field(default=None, max_length=80)     # v0.258 Create Studio's model picker ('' / None = best per shot)
 
 
 class StudioPick(BaseModel):
@@ -2866,7 +2878,7 @@ async def studio_keyframes(name: str, body: StudioRun, tenant: str = Depends(cur
 @app.post("/api/studio/projects/{name}/generate", dependencies=[Depends(require_key)])
 async def studio_generate(name: str, body: StudioRun, tenant: str = Depends(current_tenant)):
     from .studio import service as ss
-    return await _studio_call(ss.generate)(tenant, name, body.quality, body.shot_ids, body.variants, None, "")
+    return await _studio_call(ss.generate)(tenant, name, body.quality, body.shot_ids, body.variants, body.model or None, "")
 
 
 @app.post("/api/studio/projects/{name}/pick", dependencies=[Depends(require_key)])
@@ -2976,6 +2988,140 @@ async def studio_improve(body: StudioImprove):
 async def studio_voice_sample(voice: str = "male", language: str = "Hindi", tenant: str = Depends(current_tenant)):
     from .studio import service as ss
     return await _studio_call(ss.voice_sample)(tenant, voice, language)
+
+
+# ---------------------------------------------------------------- v0.258 CREATE STUDIO (song / voice / dub / image jobs)
+class CreateJob(BaseModel):
+    kind: str = Field(pattern="^(image|cast|song|voice|dub)$")
+    name: str = Field(default="", max_length=40)              # cast
+    conversation_id: str = Field(default="", max_length=80)    # the chat that also gets the result cards
+    title: str = Field(default="", max_length=80)
+    prompt: str = Field(default="", max_length=4000)         # image
+    file_ids: list[str] = Field(default_factory=list, max_length=4)
+    aspect: str = Field(default="", max_length=8)
+    quality: str = Field(default="fast", max_length=8)
+    style: str = Field(default="", max_length=60)
+    count: int = Field(default=1, ge=1, le=4)
+    brief: str = Field(default="", max_length=1200)          # song
+    genre: str = Field(default="", max_length=60)
+    language: str = Field(default="Hindi", max_length=30)
+    vocals: str = Field(default="duet", max_length=20)
+    mood: str = Field(default="", max_length=60)
+    bpm: int = Field(default=0, ge=0, le=220)
+    seconds: int = Field(default=0, ge=0, le=600)
+    lyrics: str = Field(default="", max_length=3000)
+    text: str = Field(default="", max_length=5000)           # voice
+    voice: str = Field(default="", max_length=40)
+    speed: float = Field(default=1.0, ge=0.6, le=1.6)
+    file_id: str = Field(default="", max_length=80)          # dub
+    languages: list[str] = Field(default_factory=list, max_length=4)
+    keep_sound: bool = True
+
+
+@app.get("/api/create", dependencies=[Depends(require_key)])
+def create_home(tenant: str = Depends(current_tenant)):
+    from .create import service as cs
+    return {"ready": cs.ready(), "voices": cs.voices(), "styles": list(cs.STYLES), "languages": list(cs.LANGS)}
+
+
+@app.post("/api/create/jobs", dependencies=[Depends(require_key)])
+async def create_job(body: CreateJob, tenant: str = Depends(current_tenant)):
+    from .create import jobs
+    if body.conversation_id:
+        _conv_or_404(body.conversation_id, tenant)
+    try:
+        return jobs.start(tenant, body.kind, body.model_dump(), body.conversation_id)
+    except jobs.JobError as e:
+        raise HTTPException(400, str(e))
+
+
+class CreateWrite(BaseModel):
+    kind: str = Field(pattern="^(script|lyrics)$")
+    brief: str = Field(min_length=4, max_length=3000)
+    format: str = Field(default="", max_length=40)
+    length: str = Field(default="", max_length=20)
+    language: str = Field(default="Hinglish", max_length=30)
+    tone: str = Field(default="", max_length=40)
+    genre: str = Field(default="", max_length=60)
+    mood: str = Field(default="", max_length=60)
+    title: str = Field(default="", max_length=80)
+
+
+@app.post("/api/create/write", dependencies=[Depends(require_key)])
+async def create_write(body: CreateWrite, tenant: str = Depends(current_tenant)):
+    """v0.258 the Script writer / Write-with-Hoola lyrics: the words come back to the page; a script is also kept."""
+    from . import usage
+    from .create import jobs, service as cs
+    try:
+        with usage.scope(tenant, "create"):
+            text = await cs.write(body.kind, body.brief, body.format, body.length, body.language, body.tone, body.genre, body.mood)
+    except cs.CreateError as e:
+        raise HTTPException(400, str(e))
+    item = None
+    if body.kind == "script":
+        it = jobs.keep(tenant, "script", body.title or ("Script · " + body.brief[:40]), ".txt", text.encode("utf-8"),
+                       {"format": body.format, "length": body.length, "language": body.language, "tone": body.tone})
+        item = {k: v for k, v in it.items() if k != "file"}
+    return {"text": text, "item": item}
+
+
+@app.put("/api/create/items/{item_id}/text", dependencies=[Depends(require_key)])
+async def create_item_text(item_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her edits to a kept script (plain text, up to 40 000 characters)."""
+    from .create import jobs
+    text = str((body or {}).get("text") or "")[:40000]
+    try:
+        path, it = jobs.item_file(tenant, item_id)
+    except jobs.JobError as e:
+        raise HTTPException(404, str(e))
+    if it["kind"] != "script":
+        raise HTTPException(400, "Sirf script badli ja sakti hai")
+    path.write_text(text, encoding="utf-8")
+    return {"ok": True, "size": len(text.encode("utf-8"))}
+
+
+@app.get("/api/create/jobs", dependencies=[Depends(require_key)])
+def create_jobs(tenant: str = Depends(current_tenant)):
+    from .create import jobs
+    return {"jobs": jobs.recent(tenant)}
+
+
+@app.get("/api/create/jobs/{job_id}", dependencies=[Depends(require_key)])
+def create_job_get(job_id: str, tenant: str = Depends(current_tenant)):
+    from .create import jobs
+    try:
+        return jobs.get(tenant, job_id)
+    except jobs.JobError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.get("/api/create/items", dependencies=[Depends(require_key)])
+def create_items(kind: str = "", tenant: str = Depends(current_tenant)):
+    from .create import jobs
+    items = jobs.shelf(tenant)
+    if kind:
+        items = [i for i in items if i["kind"] == kind]
+    return {"items": [{k: v for k, v in i.items() if k != "file"} for i in items[:300]]}
+
+
+@app.get("/api/create/items/{item_id}", dependencies=[Depends(require_key)])
+def create_item_file(item_id: str, tenant: str = Depends(current_tenant)):
+    from .create import jobs
+    try:
+        path, it = jobs.item_file(tenant, item_id)
+    except jobs.JobError as e:
+        raise HTTPException(404, str(e))
+    return FileResponse(path, media_type=it["mime"], headers={"Cache-Control": "private, max-age=86400",
+                                                              "X-Content-Type-Options": "nosniff",
+                                                              "Content-Security-Policy": "default-src 'none'; sandbox"})
+
+
+@app.delete("/api/create/items/{item_id}", dependencies=[Depends(require_key)])
+def create_item_delete(item_id: str, tenant: str = Depends(current_tenant)):
+    from .create import jobs
+    if not jobs.forget(tenant, item_id):
+        raise HTTPException(404, "Yeh creation nahi mili")
+    return {"ok": True}
 
 
 @app.get("/api/studio/files/{tenant_key}/{exp}/{sig}/{name}")

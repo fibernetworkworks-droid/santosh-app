@@ -77,6 +77,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "reel": ("reel", "short", "instagram", "status video"),
     "motion": ("motion", "animat", "animate"),
     "studio": ("studio", "ai video", "video shoot"),
+    # v0.258 Create Studio: song / voice-over / dubbing (the Create page names the tool; these cover her own words)
+    "create": ("song", "gaana", "gaane", "jingle", "lyrics", "music studio", "voice-over", "voiceover", "voice over",
+               "dub", "dubbing", "create studio", "गाना", "डब"),
     "blender": ("blender", "3d", "three d"),
     "youtube": ("youtube", "channel", "vlog", "subscriber"),
     "tv": ("tv", "channel", "dth"),

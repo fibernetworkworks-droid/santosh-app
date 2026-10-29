@@ -84,7 +84,7 @@ $('#kbtn').addEventListener('click', async () => {
 async function logout(expired) {
   stopStream(); endCall(); ACC?.abort(); ACC = null;
   RESULTS?.reset();
-  WORKSPACE?.reset(); PN?.reset(); clearSimpleProgress();
+  WORKSPACE?.reset(); CREATE?.reset(); PN?.reset(); clearSimpleProgress();
   clearTimeout(DRAFT_T); FILES = []; CONV = null; ACC_LAST = 0; msg.value = ''; drawFiles();
   clearInterval(GAUGE_T); clearInterval(PENDING_TIMER); clearInterval(JOBS_T); JOBS = [];
   if (TOKEN && !expired) { try { await api('POST', '/api/logout'); } catch {} }
@@ -93,6 +93,7 @@ async function logout(expired) {
 
 /* ================= state + shell ================= */
 let ME = null, CONV = null, VIEW = 'chat', AV = 'Santosh';
+let CREATE = null;      // v0.258 the Create Studio (studio.js): the Create button lands on it, OpenArt-style
 /* v0.222 R2: the sidebar is Claude-style - New chat + Search on top, then the places; Chat is the brand mark (home),
    Account is the user card at the bottom. The phone tabbar keeps its own five. */
 const SMOOTH = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';   // v0.226 R6: no smooth scroll under reduced motion
@@ -113,6 +114,7 @@ function drawNav() {
     : `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k])}<span>${n}</span></button>`).join('');
 }
 function go(v) {
+  if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.258 Create = the full-screen Create Studio
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
   $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder'}[v] || '';
   if (v !== 'project') PJ?.draw();
@@ -620,10 +622,7 @@ const RESULTS = window.HoolaResults ? HoolaResults({api, esc, toast,
   reuse: item => WORKSPACE?.reuse(item), resize: () => scrollDown()}) : null;
 const WORKSPACE = window.HoolaWorkspace ? HoolaWorkspace({api, esc, toast, conv: () => CONV,
   gallery: () => !!PN, open: item => PN?.open(item),
-  library: () => PN ? go('bana') : toast('Creations workspace is not enabled on this server.',true), show: () => {
-    VIEW = 'creative'; $$('.view').forEach(x => x.hidden = x.id !== 'v-creative'); drawNav();
-    $('#ttl').textContent = '· Creative workspace'; $('#app').classList.remove('drawer');
-  },
+  library: () => PN ? go('bana') : toast('Creations workspace is not enabled on this server.',true), show: () => showWorkspace(),
   openChat: id => { go('chat'); openConv(id, false, {noPush: true}); },
   submit: async (id, text, files) => {
     const auth = TOKEN;
@@ -634,10 +633,23 @@ const WORKSPACE = window.HoolaWorkspace ? HoolaWorkspace({api, esc, toast, conv:
       catch(e) { if(i===2 || (e.status && e.status<500)) throw e; await new Promise(r=>setTimeout(r,600*(i+1))); }
     }
   }}) : null;
-// The home action pills (data-create) open the creative studio on the same conversation and its real output events.
+// v0.243 the research / document workspace (workspace.js) keeps its own view; Create itself is the studio below.
+function showWorkspace() {
+  VIEW = 'creative'; $$('.view').forEach(x => x.hidden = x.id !== 'v-creative'); drawNav();
+  $('#ttl').textContent = '· Creative workspace'; $('#app').classList.remove('drawer');
+}
+// v0.258 CREATE STUDIO: Create (sidebar, slash command, the home pills for pictures and video) opens the full-screen
+// studio; Research and Document pills keep the brief workspace on the same conversation.
+CREATE = window.HoolaCreate ? HoolaCreate({api, esc, toast, conv: () => CONV,
+  newConv: async () => { const c = await api('POST', '/api/conversations'); await openConv(c.id, false, {noPush: true}); return c.id; },
+  avatar: () => ME?.avatar?.gender === 'f' ? '/static/santosh-happy.png' : '/static/santosh-head.png',
+  version: (document.querySelector('script[src*="/studio.js"]')?.getAttribute('src') || '').split('v=')[1] || '',
+  onClose: () => drawNav()}) : null;
 document.addEventListener('click', e => {
-  const b=e.target.closest('[data-create]'); if(!b || !WORKSPACE)return;
-  go('creative'); WORKSPACE.open(b.dataset.create);
+  const b=e.target.closest('[data-create]'); if(!b)return;
+  if (CREATE && (b.dataset.create === 'image' || b.dataset.create === 'video')) { CREATE.open(b.dataset.create); return; }
+  if (!WORKSPACE) return;
+  showWorkspace(); WORKSPACE.open(b.dataset.create);
 });
 function chatFolder() { const c = CH?.find(CONV), p = c?.project_id && PJ?.nameOf(c.project_id); return p ? `· ${p.emoji || '📁'} ${p.name}` : ''; }
 const SKIP_FIELDS = /(^id$|_id$|^tenant|token|secret|^sig|hash|nonce|^at$|_at$|preview|thumb|^b64|^data$|^raw)/i;
@@ -1354,7 +1366,7 @@ const comboOf = e => {
 };
 const KEYMAP = KEYS.map(x => ({...x, c: normCombo(x.k)}));
 document.addEventListener('keydown', e => {
-  if (e.isComposing || $('#app').hidden) return;
+  if (e.isComposing || $('#app').hidden || CREATE?.isOpen()) return;    // the Create Studio owns the keys while open
   const c = comboOf(e); if (!c) return;
   const hit = KEYMAP.find(x => x.c === c && (!x.when || x.when(e)));
   if (hit) { e.preventDefault(); hit.fn(); }

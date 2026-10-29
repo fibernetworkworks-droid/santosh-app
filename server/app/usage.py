@@ -60,6 +60,7 @@ PRICES: dict[str, dict[str, float]] = {
     "gemini-3.6-flash": {"in": 0.75, "out": 3.75},
     "gemini-2.5-flash-preview-tts": {"in": 0.50, "out": 10.0, "audio_out": 10.0},
     "gemini-3.1-flash-tts": {"in": 1.0, "out": 20.0, "audio_out": 20.0},
+    "lyria": {"audio_out_min": 0.08},          # v0.258 a Lyria song is counted as one "minute" = studio MUSIC_USD per song
     "gemini-2.5-flash-image": {"in": 0.30, "out": 30.0},
     "gemini-3.1-flash-lite-image": {"in": 0.25, "out": 30.0},       # ~$0.034 per 1K picture
     "gemini-nano-banana-2.1": {"in": 1.50, "out": 30.0},
@@ -76,7 +77,7 @@ STATS = {"recorded": 0, "flushes": 0, "paused": 0, "warned": 0, "unknown_models"
 BACKGROUND = {"routine", "employee", "website", "video", "motion", "studio", "network", "draft_check"}
 FEATURE_LABEL = {"chat": "Chat", "call": "Voice call", "routine": "Routines", "employee": "Team / graahak", "website":
                  "Website jobs", "pc": "PC par kaam", "video": "Video editor", "motion": "Motion reels", "studio":
-                 "Video Studio", "network": "Hoola Network", "lekhak": "Typist / translator", "reels": "Reels",
+                 "Video Studio", "create": "Create Studio", "network": "Hoola Network", "lekhak": "Typist / translator", "reels": "Reels",
                  "notebook": "Notebook", "voiceid": "Awaaz Pehchaan", "other": "Baaki"}
 
 _CTX: contextvars.ContextVar[dict | None] = contextvars.ContextVar("hoola_usage", default=None)
@@ -149,7 +150,7 @@ def current() -> tuple[str, str]:
 def feature_for_path(path: str) -> str:
     p = path.split("?")[0]
     for prefix, feat in (("/api/voice", "call"), ("/api/lekhak", "lekhak"), ("/api/reels", "reels"), ("/api/net", "network"),
-                         ("/api/video", "video"), ("/api/motion", "motion"), ("/api/studio", "studio"),
+                         ("/api/video", "video"), ("/api/motion", "motion"), ("/api/studio", "studio"), ("/api/create", "create"),
                          ("/api/operator", "website"), ("/api/sites", "site"), ("/api/apps", "app"), ("/api/blender3d", "3d"), ("/api/notebook", "notebook"), ("/api/voiceid", "voiceid"), ("/api/gyaan", "gyaan"),
                          ("/api/conversations", "chat"), ("/api/forms", "chat")):
         if p.startswith(prefix):
