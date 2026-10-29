@@ -6,6 +6,8 @@ import 'glass.dart';
 /// v0.231 "Call ki jaanch": how the voice calls really went (numbers saved per call on the server, so they survive
 /// updates), a grade per call with what went wrong in plain words, the same numbers per app version, and her own
 /// kaan-test + phone checklist for this version (pass / fail / skip per scenario).
+/// v0.234 Phase 5: the slowest 1% (p99), dead air, talk-over and repeats, the slow-tail alert, and each ear-test
+/// scenario compared with the previous version she marked (pehle se behtar / kharab / waisa hi).
 class CallQualityScreen extends StatefulWidget {
   const CallQualityScreen({super.key, required this.app});
   final Santosh app;
@@ -117,6 +119,10 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
         _row('Calls / minute', '${o['calls'] ?? 0} calls, ${o['minutes'] ?? 0} minute'),
         _row('Jawab shuru (aam)', '${_ms(o['reply_start_ms_p50'])}  (lakshya ${t['reply_start_ms_p50'] ?? 1200} ms se kam)'),
         _row('Jawab shuru (dheemi 10%)', '${_ms(o['reply_start_ms_p90'])}  (${t['reply_start_ms_p90'] ?? 2500} ms se kam)'),
+        _row('Jawab shuru (sabse dheema 1%)', '${_ms(o['reply_start_ms_p99'])}  (${t['reply_start_ms_p99'] ?? 4000} ms se kam)'),
+        _row('Khamoshi mein intezaar', '${o['dead_air_s'] ?? 0} s kul, ${_n(o['dead_air_s_per_call'])} s / call'),
+        _row('Aapke bolte hue bola / 100 baat', _n(o['talk_over_per_100'])),
+        _row('Ek hi baat dobara / 100 baat', _n(o['repeats_per_100'])),
         _row('Beech mein tooti', '${o['broken_calls'] ?? 0}'),
         _row('Connection badla', o['goaway'] == 0 || o['goaway'] == null
             ? 'nahi badla'
@@ -197,8 +203,34 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
     return n < 60 ? '${n.round()} sec' : '${(n / 60).toStringAsFixed(1)} min';
   }
 
+  Widget _alert(Map<String, dynamic> a) => Glass(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.all(14),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Icon(Icons.warning_amber_rounded, color: C.bad, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+              child: Text('Dhyaan dijiye: ${((a['why'] as List?) ?? const []).join('; ')}',
+                  style: const TextStyle(fontSize: 13.5))),
+        ]),
+      );
+
+  Widget? _before(String id) {
+    final rows = Map<String, dynamic>.from(((_ear?['compare'] as Map?)?['rows'] as Map?) ?? const {});
+    switch (rows[id]) {
+      case 'better':
+        return Pill('pehle se behtar', fg: C.ok, bg: C.ok.withOpacity(.16));
+      case 'worse':
+        return Pill('pehle se kharab', fg: C.bad, bg: C.bad.withOpacity(.16));
+      case 'same':
+        return Pill('pehle jaisa', fg: C.muted, bg: C.muted.withOpacity(.16));
+    }
+    return null;
+  }
+
   Widget _earItem(Map<String, dynamic> t) {
     final r = t['result'] as String?;
+    final before = _before('${t['id']}');
     Widget btn(String res, String label, Color col) => Padding(
           padding: const EdgeInsets.only(right: 6),
           child: ChoiceChip(
@@ -216,6 +248,7 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
           Icon(t['kind'] == 'phone' ? Icons.smartphone_rounded : Icons.hearing_rounded, size: 18, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${t['title']}', style: const TextStyle(fontWeight: FontWeight.w700))),
+          if (before != null) before,
         ]),
         const SizedBox(height: 6),
         Text('Kya karein: ${t['do']}', style: const TextStyle(fontSize: 13)),
@@ -238,6 +271,8 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
     final vs = (q?['versions'] as List?) ?? const [];
     final rs = (q?['recent'] as List?) ?? const [];
     final items = ((ear?['items'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    final alert = Map<String, dynamic>.from((q?['alert'] as Map?) ?? const {});
+    final cmp = Map<String, dynamic>.from((ear?['compare'] as Map?) ?? const {});
     return Scaffold(
       appBar: AppBar(title: const Text('Call ki jaanch')),
       body: q == null
@@ -256,6 +291,7 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
                       },
                     ),
                 ]),
+                if (alert['on'] == true) _alert(alert),
                 _title('Kul milaakar'),
                 _overall(o, t),
                 if (vs.length > 1) ...[_title('Har version'), _versions(vs)],
@@ -268,6 +304,14 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
                   child: Text('Har cheez apne phone par call karke aazmaaiye, phir Sahi / Galat dabaaiye. Har naye version par yeh list nayi shuru hoti hai.',
                       style: TextStyle(color: C.muted, fontSize: 12.5)),
                 ),
+                if (cmp['against'] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Text(
+                        'v${cmp['against']} ke muqable: ${(cmp['better'] as List?)?.length ?? 0} behtar, '
+                        '${(cmp['worse'] as List?)?.length ?? 0} kharab, ${cmp['same'] ?? 0} waisa hi.',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  ),
                 for (final it in items) _earItem(it),
               ]),
             ),

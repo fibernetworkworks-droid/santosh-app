@@ -9277,3 +9277,30 @@ Tests: NEW `test_v0232_voice_phase4.py` (12). Version 0.232.0 (pubspec 0.232.0+2
   nothing changes. A greeting-only chat opens on the home screen; the greeting never marks a chat unread.
 - Old empty "Naya chat" rows already made stay in the list (delete from the chat menu).
 - Tests: NEW `test_v0233_new_chat.py` (4). Version 0.233.0 (pubspec 0.233.0+273, console ?v=0.233.0, pins -> 0.233.0).
+
+## v0.234.0 VOICE PHASE 5 — the plan's leftovers (owner: "START PHASE 5")
+The voice plan had four phases plus "later: full-duplex on our own GPUs" (still not buildable: no Hindi full-duplex
+model / vendor). Phase 5 = everything the plan promised that Phases 1-4 had not shipped:
+1. **The slow tail** (`callquality._p99`, nearest rank, rounds up): `reply_start_ms_p99` in the roll-up and per version,
+   target `P99_ALERT_MS` 4,000 ms; the `say` line names it when it is over. A call now keeps 120 latencies (was 60).
+2. **Dead air** (`dead_air_s`): seconds she waited past a person-like start (1,200 ms), summed; total + per call; a call
+   with 20 s+ is graded ok with "kul N second khamoshi mein intezaar".
+3. **Talk-over** (`stats["talk_over"]`, `voice.TALK_OVER_S` 0.25): his first audio of a turn while her mic was loud
+   that recently (not during a tool). **Repeats** (`is_repeat`, `REPEAT_LOOKBACK` 6, word overlap >= 0.8, 6+ words):
+   only word sets in memory, only the count saved. Both per 100 turns; 2+ in a call = ok grade with a plain problem.
+4. **Alert** (`alert_state`, `maybe_alert` after each saved call): newest 30 calls, p99 > 4 s (20+ turns) or 3 of the
+   last 10 broken (error / stall) -> ONE `voice_alert` event + FCM push to her home chat, at most once a day
+   (`data/voice_calls/<tenant>.alert.json`). `/api/voice/quality` and `/api/voice/stats` carry `alert`.
+5. **Ear test before / after** (`eartest_compare`): this version's marks vs the newest OLDER version she marked:
+   better (fail -> pass), worse (pass -> fail), same, new, not_yet. `GET /api/voice/eartest` adds `compare`.
+6. **Stall watchdog ignores noise** (`real_words`): a transcript of only "<noise>", punctuation or a lone "hmm" no longer
+   nudges him into answering the fan (`stall_noise_skips`, once per turn).
+7. **"Ek second" clips at his live loudness** (`_rms`, `_level`, `Call._hear_him`, `Call._clip`): the TTS-made clips
+   are scaled to his running Gemini Live loudness in this call (0.5x-2x, no clipping, after 24 chunks heard) for acks,
+   murmurs and progress sounds (`level_matched`).
+8. **No silent swallows**: the ack TTS falling back to the legacy model (a different-sounding voice) logs a warning and
+   counts `TTS_FALLBACKS` (`/api/voice/stats` `ack_tts_fallbacks`); the names lookup, OTP listener and last-outcome
+   read log instead of hiding.
+9. **Phone** (Call ki jaanch): p99, dead air, talk-over, repeats rows; the alert banner; "pehle se behtar / kharab /
+   pehle jaisa" on each ear-test card and a "vX ke muqable" line. New APK; the server part works without it.
+Tests: NEW `test_v0234_voice_phase5.py` (13). Version 0.234.0 (pubspec 0.234.0+274, console ?v=0.234.0, pins -> 0.234.0).
