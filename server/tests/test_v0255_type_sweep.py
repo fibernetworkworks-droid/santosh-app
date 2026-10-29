@@ -9,8 +9,8 @@ CSS = (CON / "v2.css").read_text()
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.255.0"
-    assert "0.255.0+295" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.256.0"
+    assert "0.256.0+296" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_no_heavy_weights_caps_or_tiny_text():
@@ -27,7 +27,7 @@ def test_no_heavy_weights_caps_or_tiny_text():
 
 def test_sora_only_on_the_logo():
     root = CSS[CSS.index(":root{"):CSS.index("*,*::before")]
-    assert "--fd:'Manrope'" in root and "--logo:'Sora'" in root
+    assert "--fd:'Schibsted Grotesk'" in root and "--logo:'Sora'" in root   # v0.256 the interface sans
     assert CSS.count("var(--logo)") == 1 and "#app .mk,#app .mk span{font-family:var(--logo)}" in CSS
     for f in ("v2.js", "panel.js", "build.js"):
         assert 'style="font-weight:700"' not in (CON / f).read_text(), f

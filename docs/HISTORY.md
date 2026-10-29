@@ -9929,3 +9929,23 @@ Today's numbers and page headings, 800-900 on the call status, Live pill, counte
   build.js -> 500 / 600.
 - Verified: the scan (every visible text element on chat, home, Today, Tools, Create, Library, call, Account, a Session)
   reports nothing above 600, no caps, no Sora outside the logo, nothing under 12px. Tests: test_v0255_type_sweep.py.
+
+## v0.256.0 CLAUDE'S SIDEBAR TYPE, MEASURED + CRISP TEXT (console)
+Owner: a screenshot of Claude's sidebar with "I WANT THIS TYPE OF FONT AND FONT SIZE LIKE CLAUDE TO HOOLA", then mid-build
+"HOOLA HAS SLIGHTLY BLURRED LETTERS".
+- Measured her screenshot (298x721, 125% Windows scaling): item caps 13px tall -> 14px text, "Recents" 11px -> 12px, row pitch
+  42.5px -> 34px. Twelve free sans faces rendered at 14px / dpr 1.25 and compared with her pixels: word widths (HOOLA CONSOLE,
+  Claude context issue, Read folder files, ...) and glyph-shape difference on ink-aligned crops. Best: Schibsted Grotesk 400
+  (width error ~1%, shape diff 11.4%), Instrument Sans 12.7%, Public Sans 13.8%, Geist 14.1%, Manrope (ours) 14.3%, Inter 15.7%.
+  `--fb` / `--fd` = 'Schibsted Grotesk' (variable 400..700 from Google Fonts; Manrope dropped from the HTML); sidebar items
+  14 / 400 (current 500), chat rows 14 / 400, labels 12 / 400, rows 34px.
+- BLUR root cause: Windows Chrome renders text with greyscale (not ClearType) smoothing when the text sits on a composited
+  layer without a solid background. CDP LayerTree on the console showed: an always-present scrim with a backdrop blur over
+  the page; the home avatar ring + progress ring + spinners rotating by `transform` (an active transform animation) so the
+  composer FORM and the sidebar got layers by overlap; 8 entry animations held with `fill-mode: both`; and the dark chat
+  background transparent. Fixed: fills removed, `backdrop-filter:none` everywhere, rings animate a registered angle
+  (`--a`, paint only), `.dock` / `.main` / `.view` on var(--bg), dark `--chat-paper` = var(--bg) (same colour, now solid),
+  `.dock` its own stacking context. After: chat view at rest = document + sidebar scroller + thread scroller + composer,
+  all solid (13 layers before -> 4 content layers, none transparent under text).
+- Tests: test_v0256_sidebar_type.py; v0.249 dark chat-paper pin + v0.255 --fd pin moved.
+- NOT VERIFIED on her Windows screen (headless Linux has no ClearType to look at); the layer facts are what Chrome uses.

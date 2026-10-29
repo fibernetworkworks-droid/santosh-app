@@ -139,8 +139,8 @@ def test_nothing_lost_the_reply_is_still_rendered_markdown():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.255.0"
-    assert "0.255.0+295" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.256.0"
+    assert "0.256.0+296" in (ROOT / "pubspec.yaml").read_text()
     assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 13   # grows as main adds console files
 
 
@@ -149,7 +149,7 @@ def test_chat_reads_at_claudes_contrast_in_light_and_is_untouched_in_dark():
     """Measured off her two screenshots: Hoola 15.5:1 (navy on lavender), Claude 17.6:1 (near-black on white)."""
     css = _css()
     assert "--chat-ink:#1A1A1F; --chat-paper:#FFFFFF;" in css          # light: 17.3:1
-    assert css.count("--chat-ink:var(--ink); --chat-paper:transparent;") == 2   # system-dark AND chosen-dark
+    assert css.count("--chat-ink:var(--ink); --chat-paper:var(--bg);") == 2   # system-dark AND chosen-dark (v0.256: solid page colour, same look, keeps ClearType)
     assert "#app .thread{background:var(--chat-paper)}" in css
     # the reply takes the chat ink in BOTH places, so the later theme rule cannot undo it
     inked = [ln for ln in css.splitlines() if ln.startswith("#app .mh .txt{")]
