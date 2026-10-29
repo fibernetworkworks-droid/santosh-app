@@ -241,7 +241,8 @@ def _api_ready(history: list[dict]) -> list[dict]:
     return merged
 
 
-STATS_LONG: dict[str, int] = {"extended": 0, "wake_saved": 0, "deadline_extended": 0}   # v0.221 long-job counters
+STATS_LONG: dict[str, int] = {"extended": 0, "wake_saved": 0, "deadline_extended": 0, "narrate": 0, "plan_now": 0,
+                               "plan_first": 0}   # v0.221 long-job counters
 _LONG_TURN: set[str] = set()     # v0.221 turns that moved to the long-job caps mid-way (no plan when they began)
 
 
@@ -797,6 +798,25 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                                            in_history=False, delivered_to_agent=True))
             except Exception:
                 log.exception("steering delivery failed")
+        if settings.agent_goal and getattr(settings, "agent_plan_early", True):
+            # v0.228 PHASE B (Claude-style): a long job narrates as it goes and has its plan early. In goal mode, a
+            # run of tool rounds with no line to her asks for ONE progress line; without a plan, N tool steps ask for
+            # the plan now (it used to come only at step 24).
+            if state.get("goal"):
+                spoke = any(b.get("type") == "text" and (b.get("text") or "").strip() for b in blocks)
+                state["quiet"] = 0 if spoke else state.get("quiet", 0) + 1
+                every = int(getattr(settings, "agent_narrate_every", 3) or 0)
+                if every and state["quiet"] >= every:
+                    state["quiet"] = 0
+                    STATS_LONG["narrate"] += 1
+                    results.append({"type": "text", "text": _goal.NARRATE})
+            elif (not state.get("plan_nudged") and not state.get("extended")
+                  and ran_steps >= int(getattr(settings, "agent_plan_after_steps", 6) or 0) > 0
+                  and (getattr(ctx, "actor", "owner") or "owner") in ("owner", "goal", "routine")
+                  and not any(b.get("name") == "kaam_plan" for b in tblocks)):
+                state["plan_nudged"] = True
+                STATS_LONG["plan_now"] += 1
+                results.append({"type": "text", "text": _goal.PLAN_NOW})
         history.append({"role": "user", "content": results})
         if state["breaker"].rescue_note:   # v0.187 the replan rescue rides with the results, as data for the model
             note = state["breaker"].rescue_note
@@ -1199,6 +1219,11 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                     gb = _goalb.goal_block(conversation_id)
                     if gb:
                         block = (gb + "\n\n" + block) if block else gb
+                    elif (who == "owner" and getattr(settings, "agent_plan_early", True)
+                          and _goalb.looks_big(user_text)):
+                        # v0.228 a clearly big ask: the plan comes FIRST, before any work (Claude's todo list)
+                        STATS_LONG["plan_first"] += 1
+                        block = (_goalb.PLAN_FIRST + "\n\n" + block) if block else _goalb.PLAN_FIRST
             except Exception:
                 log.exception("memory block failed")
             if block:

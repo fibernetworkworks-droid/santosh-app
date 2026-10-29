@@ -1,4 +1,4 @@
-"""v0.227.3 one Hoola at a time. The 5-second comfort line (server `ack` message) used to draw its own reply row with
+"""v0.228.0 one Hoola at a time. The 5-second comfort line (server `ack` message) used to draw its own reply row with
 a second avatar beside the progress row; now it is the progress line itself. The progress row under Hoola's own reply
 drops its avatar (tail), and it hides while the words stream."""
 from pathlib import Path
@@ -29,5 +29,5 @@ def test_progress_row_never_shows_a_second_avatar():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.227.3"
-    assert "0.227.3+266" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.228.0"
+    assert "0.228.0+267" in (ROOT / "pubspec.yaml").read_text()

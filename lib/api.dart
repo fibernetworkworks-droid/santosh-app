@@ -408,6 +408,8 @@ class Api {
       Map<String, dynamic>.from((await _send('GET', '/api/conversations/$id/goal') as Map)['goal'] as Map? ?? {});
   /// v0.186 Rokiye for the goal only: the plan stops, the chat itself stays free.
   Future<void> stopGoal(String id) async => _send('POST', '/api/conversations/$id/goal/stop');
+  // v0.228 the job ran out of budget and ASKS: her tap carries it on with a fresh budget (done steps kept)
+  Future<void> continueGoal(String id) async => _send('POST', '/api/conversations/$id/goal/continue');
   /// Sends a message. A flaky mobile network is retried (same client_id, so the server runs it only once).
   /// Uploads one file (multipart) with retries on a bad network and plain-words errors, whatever the server or
   /// nginx answers (an HTML 404/413 page never shows up as "Not Found" / a JSON crash).

@@ -605,6 +605,16 @@ function decisionRow(el, {yes, no, yesLabel = 'Slide for Haan', noLabel = 'Mana'
 }
 const fingerprintMsg = 'This card moves money: Haan needs your phone’s fingerprint. Open this card in the Hoola app to approve.';
 
+// v0.228 the four-part final report of a long job: what was done / what was made / what is left / her part
+function goalReport(r) {
+  if (!r || typeof r !== 'object') return '';
+  const part = (h, xs) => (Array.isArray(xs) && xs.length) ? `<div class="grep"><small>${h}</small>` +
+    xs.slice(0, 10).map(x => { const u = safeLink(x); return `<div>\u2022 ${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(x)}</a>` : esc(x)}</div>`; }).join('') + `</div>` : '';
+  return `<div class="greport">` + (r.summary ? `<div class="note">${esc(r.summary)}</div>` : '') +
+    part('✅ What was done', r.hua) + part('📎 What was made', r.bana) +
+    part('⏳ What is left', r.baaki) + (r.aapka ? part('👉 Your part', [r.aapka]) : '') + `</div>`;
+}
+
 function renderCard(kind, p, at, live) {
   if(PROGRESS_POLICY.quiet(kind,p)){if(live)simpleProgress(kind,p);return;}
   if (B && B.kinds.has(kind)) { const el = cardShell(kind, p); B.card(kind, p, el, !!live); scrollDown(); return; }
@@ -625,7 +635,8 @@ function renderCard(kind, p, at, live) {
       (total ? `<div class="pbar"><i style="width:${Math.max(0, Math.min(100, p.pct ?? Math.round(100 * done / total)))}%"></i></div>` : '') +
       steps.slice(0, 15).map(x => `<div class="gstep ${esc(x.state || 'pending')}"><span>${ico[x.state] || '\u2022'}</span> ${esc(x.text || '')}` +
         (x.note ? ` <small>(${esc(x.note)})</small>` : '') + `</div>`).join('') +
-      (p.reason && st !== 'working' ? `<div class="note">${esc(p.reason)}</div>` : '') +
+      (p.reason && st !== 'working' && !p.report ? `<div class="note">${esc(p.reason)}</div>` : '') +
+      goalReport(p.report) +
       (st === 'blocked' && p.hold === 'limit' ? `<div class="row" style="margin-top:8px"><button class="btn" type="button" data-goal-go>Continue</button></div>` : '') + `</div>`;
     const go = el.querySelector('[data-goal-go]');   // v0.223 the budget ran out: the job ASKS, her tap carries it on
     if (go) go.onclick = async () => {
