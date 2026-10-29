@@ -195,7 +195,7 @@ def test_stall_watch_ignores_noise(monkeypatch):
 
 def test_wiring_in_voice_and_api(env, qdir, monkeypatch):
     src = (ROOT / "server/app/voice.py").read_text()
-    assert "self._hear_him(blob.data)" in src and src.count("send_audio(self._clip(clips[i]))") == 3
+    assert "self._hear_him(blob.data)" in src and src.count("send_audio(matched_clip(self, clips[i]))") == 3
     assert "TTS_FALLBACKS[\"count\"] += 1" in src and "self._noise_skipped = False" in src
     monkeypatch.setenv("API_KEY", "owner-key-phase5")
     from app.config import get_settings

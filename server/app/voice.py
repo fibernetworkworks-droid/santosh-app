@@ -1078,6 +1078,17 @@ def _level(pcm: bytes, target: float) -> bytes:
     return a.tobytes()
 
 
+def matched_clip(call, pcm: bytes) -> bytes:
+    """A clip (ack / murmur / progress) at his live loudness in this call, once enough of his voice was heard."""
+    rms = getattr(call, "_his_rms", 0)
+    if getattr(call, "_his_n", 0) < 24 or not rms:
+        return pcm
+    out = _level(pcm, rms)
+    if out is not pcm:
+        call.stats["level_matched"] = call.stats.get("level_matched", 0) + 1
+    return out
+
+
 def _build_acks(key: str, voice: str, gender: str) -> None:
     from .avatar.service import gendered
     clips: list[bytes] = []
@@ -1858,13 +1869,7 @@ class Call:
             self._his_rms = r if not self._his_rms else self._his_rms * .9 + r * .1
 
     def _clip(self, pcm: bytes) -> bytes:
-        """A clip (ack / murmur / progress) at his live loudness, once enough of his voice was heard."""
-        if getattr(self, "_his_n", 0) < 24 or not getattr(self, "_his_rms", 0):
-            return pcm
-        out = _level(pcm, self._his_rms)
-        if out is not pcm:
-            self.stats["level_matched"] = self.stats.get("level_matched", 0) + 1
-        return out
+        return matched_clip(self, pcm)
 
     async def _stall_watch(self, session) -> None:
         """v0.211 NEVER SILENT (the owner: 'IF STUCK NO REPLY'): Gemini sometimes just stops sending anything
@@ -2049,7 +2054,7 @@ class Call:
         self._bc_at = now
         self._bc_this_turn += 1
         self.stats["backchannels"] += 1
-        await self.send_audio(self._clip(clips[i]))
+        await self.send_audio(matched_clip(self, clips[i]))
 
     async def _otp_listen(self, piece: str = "", final: bool = False) -> None:
         """v0.83 a website job is waiting for an OTP and she SAYS it on the call: the system catches the digits from
@@ -2820,7 +2825,7 @@ class Call:
         if i == self._last_ack_i and len(cand) > 1:
             i = cand[(cand.index(i) + 1) % len(cand)]
         self._last_ack_i = i
-        await self.send_audio(self._clip(clips[i]))
+        await self.send_audio(matched_clip(self, clips[i]))
 
     PROG_AFTER_S = 8.0   # the tool still runs, nobody has spoken this long: one honest progress sound
 
@@ -2845,7 +2850,7 @@ class Call:
         self._last_prog_i = i
         self._last_ack = now                     # one clock for every clip: acks, murmurs, progress
         self.stats["progress"] += 1
-        await self.send_audio(self._clip(clips[i]))
+        await self.send_audio(matched_clip(self, clips[i]))
 
     # ---- the call ----
     async def run(self) -> None:
