@@ -145,6 +145,15 @@ ASKS: list[dict] = [
     {"id": "seo", "text": "Meri website Google pe upar kaise aayegi, SEO check karo", "ok": ["seo"], "bad": PC},
     {"id": "tv", "text": "TV pe Aaj Tak laga do", "ok": ["tv_channel", "tv_remote"], "bad": PC},
     {"id": "phone_health", "text": "Mera phone itna slow kyu chal raha hai", "ok": ["phone_health", "phone_doctor"], "bad": PC},
+    # ---------------------------------------------------------------- reverse-engineer anything (v0.257): REA, never a PC
+    {"id": "rea_exe_endpoints", "text": "Read this exe file end to end and extract endpoints", "ok": ["rea_khoj"], "bad": PC},
+    {"id": "rea_exe_hinglish", "text": "Is exe file ko end to end padho aur saare endpoints nikalo", "ok": ["rea_khoj"], "bad": PC},
+    {"id": "rea_apk_api", "text": "Is APK ke andar kaun kaun se API aur trackers hain", "ok": ["rea_khoj"], "bad": PC},
+    {"id": "rea_feature", "text": "Yeh app ka login feature kaise kaam karta hai, saboot ke saath", "ok": ["rea_khoj"], "bad": PC},
+    {"id": "rea_dll", "text": "Decompile this dll and tell me what it does", "ok": ["rea_khoj"], "bad": PC},
+    {"id": "rea_model", "text": "Yeh model.gguf file ke andar kya hai", "ok": ["rea_khoj"], "bad": PC},
+    {"id": "rea_reverse", "text": "Reverse engineer this game for me", "ok": ["rea_khoj"], "bad": PC},
+    {"id": "rea_hindi", "text": "इस exe फाइल के endpoints निकालो", "ok": ["rea_khoj"], "bad": PC},
     # ---------------------------------------------------------------- set 2 (written fresh to test the router, not tuned on)
     {"id": "h01", "text": 'Board meeting ke liye annual report ka PDF tayyar karo', "ok": ['doc_studio'], "bad": PC},
     {"id": "h02", "text": 'Meri bakery ka menu card bana do printable', "ok": ['doc_studio', 'graphic', 'photo_banao'], "bad": PC},

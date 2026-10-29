@@ -106,9 +106,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.256.0 (pubspec 0.256.0+296). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.257.0 (pubspec 0.257.0+297). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (13 now: theme.js, pdfview.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.257 REVERSE-ENGINEER ANYTHING: admit.APPFILE loads REA for any program / app / model / firmware file, rea_khoj
+  action=endpoints (`appcheck/endpoints.py`, static, masked, dataset), pick.py refuses such a job on a PC.
 - v0.256 console: Schibsted Grotesk = interface sans (measured closest to Claude's), Claude sidebar sizes; CRISP TEXT rule = no held
   animations, no backdrop blur, no transform-spinning rings, solid backgrounds under text (Windows ClearType).
 - v0.255 console type swept on EVERY page: no weight > 600, no all-caps, nothing < 12px, Sora only on the logo (`--logo`; `--fd` = sans).

@@ -19,8 +19,10 @@ from .tools import Ctx, ToolError
 
 REA_TOOLS = [
     {"name": "rea_khoj", "description": (
-        "Reverse-engineer an app / program / file the user has, on the back-end, WITHOUT running it: REA static "
-        "analysis. Use it when the user asks 'yeh app ka X feature kaise kaam karta hai', 'is app mein yeh kya hota hai', "
+        "Read a program / app file (.exe .apk .dll .so .jar) on the server WITHOUT running it: what it does, its "
+        "endpoints / URLs. Reverse-engineering = REA static analysis, never the cloud PC. action=endpoints lists every "
+        "URL, host, API path and IP written inside it (works even without the REA engine; full list saved as a "
+        "dataset for data_read / doc_studio data=). Use it when the user asks 'yeh app ka X feature kaise kaam karta hai', 'is app mein yeh kya hota hai', "
         "'yeh .exe / .dll / .so / .db / model file kya karta hai?', or 'saboot ke saath samjhao'. The avatar drives the "
         "investigation itself: call action=overview first, then for an APK run action=classes (query a name), "
         "action=class (class_name -> methods/fields), action=method (class_name + method_name + overload_index -> "
@@ -35,7 +37,8 @@ REA_TOOLS = [
         "dump credentials, or copy code byte-for-byte - REA Khoj is to LEARN and reimplement, never to steal. If REA is "
         "not installed on this server, action=status says so and you tell the user plainly."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["overview", "classes", "class", "method", "refs", "signature", "status"]},
+         "action": {"type": "string", "enum": ["overview", "classes", "class", "method", "refs", "signature", "status",
+                                                      "endpoints"]},
          "file_id": {"type": "string"}, "email_id": {"type": "string"}, "attachment_id": {"type": "string"},
          "drive": {"type": "string", "description": "Drive file name, id or link"},
          "query": {"type": "string", "description": "for action=classes: class-name substring to search (empty = all)"},
