@@ -87,30 +87,41 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   (MainActivity, SantoshService background stream, SantoshPush FCM, PhoneJobs, HomeDevices, HidRemote, BtControl,
   RemoteService, CallService, VoiceAudio, Actions, Store, Notify…). Manifest: `tool/AndroidManifest.xml`.
 
+## Where the details live (READ THIS — keeps every session small)
+- This file is loaded into EVERY Claude session, so it must stay SHORT (target < 30 KB). It used to hold the whole
+  version history (1.16 MB, ~477k tokens = half the context window) and every session started "context full".
+- The full per-version notes (v0.26 → now: what each feature does, file names, API routes, sources, "not verified")
+  are in `docs/HISTORY.md`. Do NOT read it whole. Search it: `grep -n "v0.155" docs/HISTORY.md`,
+  `grep -n "Notebook" docs/HISTORY.md`, then `sed -n 'START,ENDp'` only the section you need.
+- When you ship a version: add its detailed section to the END of `docs/HISTORY.md`, and AT MOST one line to the
+  "Current state" list below. Never paste long sections into this file again.
 
-## Current state
-- Live / main: **v0.230.0** (pubspec 0.230.0+270), checked on https://hoola.ainewtika.com/healthz on 29 Oct 2026.
-- Full per-version record (every feature, its files, tests, sources, what is not verified yet): **`docs/HISTORY.md`**.
-  Read the section for the area you touch before changing it (search it for the module name, e.g. `voice.py`, `goal.py`).
-- Release ritual (current): `server/app/main.py` APP_VERSION (+ its story comment), `pubspec.yaml` version+build, the
-  version pins in the pinned test suites (`grep -rl 'APP_VERSION ==' server/tests`), console cache-busters
-  `?v=<APP_VERSION>` on every asset in `server/app/static/console/v2.html`, a short section appended to
-  `docs/HISTORY.md`, commit `vX.Y.Z: <summary>`. Parallel sessions often take the same number first: on a collision,
-  rebase, re-version yours and keep both works (never force-push over theirs).
-- Deploy: vps-ops workflow (git pull, copy `server/app` to `~/apps/santosh-core`, `pm2 restart santosh --kill-timeout 12000`).
-  Check the live version with `/healthz`.
+## Current state (latest first, one line each)
+- Current version: v0.230.0 (pubspec 0.230.0+270). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+  console `?v=` stamps in `server/app/static/console/v2.html` + the version pins in tests (grep the old number in
+  `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.230 voice Phase 3 (news queue, slimmer call persona / tools, murmur timing) · v0.229 voice Phase 1+2 (no affective
+  on 3.x live models, BLOCKING/NON_BLOCKING tools, GoAway graceful move, gap audio, drop notes) · v0.228 long jobs
+  Phase B (narrate, plan first, milestones, 4-part report) · v0.227 console redesign R1–R6 · v0.226 long jobs Phase A
+  (restart pickup, steering, ask on limit) · v0.222 goal rounds keep her authority · v0.221 KAAM KHAATA.
+- Web console v2 = `server/app/static/console/` (v2.html/v2.css/v2.js + chatlist/panel/projects/workspace/build.js);
+  legacy at `/console/?legacy=1`. Console chrome is English; Haan / Mana and lines sent TO Hoola stay Hinglish.
 
-## Rules for new code (learned the hard way)
-- Any column added to an existing table must work on old rows (default or nullable); `db._add_missing_columns` adds it.
-- New model modules must be imported in `db.init_db`; a lazily imported model also gets an `ensure_table()` self-heal
-  (v0.190.1: `kaam_followups` never existed on the live DB).
-- Never call `send_client_content` mid-call: use `Call._tell_quietly` (v0.150). Business / Sahayak tools go into
-  `voice.VOICE_VIA_KAAM` as well as `VOICE_TOOL_NAMES` (v0.149); the voice tool budget test must stay green.
-- A schema rewrite must keep property names (v0.152.1); call tool schemas are checked with `schema_problems`.
-- The system prompt may be cached blocks, not a string (tests flatten it).
-- Every model call ends with a user message and every tool_use has its tool_result (`_api_ready`, v0.215/v0.216).
-- Console: one stylesheet (`v2.css`), English chrome; Haan / Mana and lines sent TO Hoola stay in her words.
-- Money / send / delete / public changes are cards on her tap; Mera PC files stay frozen (above).
+## Rules learned the hard way (code rules)
+- Voice: a new tool goes into `VOICE_TOOL_NAMES` only if it is everyday call work; Sahayak / business / heavy tools
+  also go into `VOICE_VIA_KAAM` (never declared to Gemini Live; call hands them to `santosh_kaam`). Keep the declared
+  call tool JSON under `VOICE_TOOL_BUDGET`; a persona line only for a declared tool.
+- Voice: never call `send_client_content` mid-call; use `_tell_quietly` / `push_news`. Never send
+  `enable_affective_dialog` to a 3.x live model. Any schema rewrite must keep property names (`schema_problems` test).
+- DB: any column added to an existing table must work on old rows (default or nullable). A model module that is only
+  imported lazily must be registered in `db.init_db` AND self-heal with `ensure_table()` (else "no such table" live).
+- Model calls must end with a user message and every `tool_use` must have its `tool_result` right after
+  (`santosh._api_ready` enforces it — don't bypass `_call_brain`).
+- Tests: run in background (`cd server && python -m pytest -q <files>`); some suites are sandbox-only red (Playwright,
+  google.genai voice, desktop exe pins) — check on pristine HEAD before blaming your change.
+- VPS deploy: the checkout must be on `main` (`git fetch && git checkout main && git reset --hard origin/main`), then
+  copy `server/app` + `pm2 restart santosh --update-env --kill-timeout 12000`. vps-ops workflow has deploy / status /
+  errors / mem / pc_* jobs.
 
 ## NON-NEGOTIABLE RULES
 - Official routes only: no scraping, no unofficial MCP, no consumer-subscription OAuth. **Never** personal WhatsApp
