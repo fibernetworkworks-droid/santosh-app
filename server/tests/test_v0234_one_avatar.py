@@ -20,6 +20,7 @@ def test_greeting_never_drawn():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.234.0"
-    assert "0.234.0+274" in (ROOT / "pubspec.yaml").read_text()
-    assert (CON / "v2.html").read_text().count("?v=0.234.0") == 11
+    assert APP_VERSION == "0.235.0"
+    assert "0.235.0+275" in (ROOT / "pubspec.yaml").read_text()
+    # v0.235: follow the release instead of a hardcoded number, so a version bump cannot fail this
+    assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 11

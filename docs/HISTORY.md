@@ -9286,3 +9286,48 @@ Tests: NEW `test_v0232_voice_phase4.py` (12). Version 0.232.0 (pubspec 0.232.0+2
   arrive; the progress row keeps its avatar while the reply row is still empty (`tail` only under a reply with content);
   the console never draws a `source: greeting` message (the home screen greets).
 - Tests: NEW `test_v0234_one_avatar.py` (3). Version 0.234.0 (pubspec 0.234.0+274, console ?v=0.234.0, pins -> 0.234.0).
+
+## v0.235.0 CHHOTA JAWAB — a long job works in the background; the chat gets one short human line (owner: "IT GIVE HUGE REPLY FOR EVERY SMALL WORK IN BACKEND -- EVERY MINUE DETAILS --- IT MUST WORK ON BACKGOUD AND ON CHAT SCREEN IT MUST SHOW JUST A SMALL PERFECT HUMAN UNDERSTANDABLE [line] PERFECLY LIKE CLAUDE DOES")
+Research first (how Claude's chat gives a reply in the chat space): the assistant's answer is short prose; the tool
+work sits collapsed in its own rows, and the detail is available without being in the sentence. Hoola was doing the
+opposite — and the detail it put in the chat was not missing information, it was a DUPLICATE: the four-part report
+(kya hua / kya bana / kya baaki / aapko kya karna hai) already renders on her goal card (phone `_Report` in
+`lib/ui/goal_card.dart`, console `goalReport` in `v2.js`), and v0.228 ALSO ordered the model to write those same four
+parts as its chat answer. A 12-step job therefore produced: 12 per-step lines + ~4 narration lines + a wall of bullets
+she was already looking at on the card.
+- FIVE sites pushed detail into the chat space; all five now point the other way:
+  1. `prompts.SYSTEM` (the strongest one): "Aakhri jawab hamesha chaar hisson mein: ✅ Kya hua · 📎 Kya bana · ⏳ Kya
+     baaki hai · 👉 Aapko kya karna hai" → "Kaam CHUPCHAP background mein karo ... uska card har step live dikha raha
+     hai, isliye har step ka koi line chat mein mat likho ... chat mein aakhri jawab EK chhoti insaani line ho — ek ya
+     do vaakya, jaise ek sathi batata hai ('Ho gaya, teeno bill ban gaye') — koi bullet list, koi ✅ / 📎 / ⏳ / 👉
+     heading, koi step-by-step detail nahi."
+  2. `goal_tools.kaam_plan` action=finish: the bulleted `report_text()` no longer rides as `report` (which reads as a
+     template to echo) but as `card_shows` (what she is already looking at), and the note forbids the bullets and the
+     four headings BY NAME: "Yeh report uske CARD par pehle se dikh rahi hai. Chat mein sirf EK chhoti insaani line do."
+  3. `goal_tools.kaam_plan` action=step: a finished step used to add "Ab EK chhoti line mein use batao is step mein kya
+     mila / kya bana" → now "Card par yeh step apne aap done dikh gaya - chat mein iska koi line mat likho, bas agla
+     tool chalao."
+  4. The narration cadence (`santosh._steps_inner` + `goal.NARRATE`): `agent_narrate_every` 3 → 8 AND a new
+     `agent_narrate_max` 2 (`state["narrated"]`), so a 40-step job can never produce 13 progress lines; NARRATE itself
+     now asks for one sentence like a person's, with no number, link or bullet ("Bills ban rahe hain, do ho gaye").
+  5. `agent/replystyle.py` (the v0.231 rulebook, chat AND voice): "Results of work: say what was really done with the
+     real details from the tool (name, number, amount, date, link)" → "Results of work, the short way: one or two
+     sentences, the way a person tells a colleague it is done ... the step-by-step detail, the numbers and the links are
+     ALREADY on her card: never repeat them in the reply, never a bullet list of the steps you ran, never 'Kya hua /
+     Kya bana / Kya baaki' headings ... a twenty-step job gets the same short line as a one-step job." The voice rule
+     gets the same discipline ("never a list of the steps you ran, never every number — she can see the card").
+- NOTHING IS LOST: `goal.build_report` and both cards are untouched, so every link, step, note and number is still one
+  tap away — it simply stops being pasted into the conversation. The push body and the call note were already short.
+- Language: "perfect human understandable English" is read as plain, clear sentences instead of a bulleted technical
+  dump, in her own language (Claude answers in the user's language, and the v0.231 rulebook's "her style wins" stands).
+  If she means literally English for result lines, that is a one-line change to the rulebook.
+- Tests: NEW `server/tests/test_v0235_chhota_jawab.py` (10) — the finish note no longer orders the four parts and
+  forbids each shape of the dump by name; the bulleted text rides as `card_shows` and `report` is gone from the tool
+  result; nothing is lost from the card (all four parts still built, `report_text` still renders them); a finished step
+  asks for no chat line; the cadence defaults (8 / max 2); NARRATE's wording; the loop stops narrating at the cap over
+  60 silent rounds + a source pin; the rulebook on both surfaces (and still brace-free, so `voice.PERSONA.format()`
+  holds); the rulebook rides in the slim per-turn guide. The two v0.228 assertions that pinned the old behaviour
+  (`test_silent_goal_rounds_ask_for_one_progress_line`, `test_kaam_plan_finish_returns_the_report_for_her_final_answer`)
+  were UPDATED to the owner's decision, not deleted, so the change of intent is visible in git.
+- Not covered by the Phase 5 scorecard: its 24 asks are single-turn, so a goal-mode long job's reply length is not
+  measured by it. The natural next step is a 25th ask that runs a scripted multi-step job and scores the final line.

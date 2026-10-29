@@ -97,9 +97,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.234.0 (pubspec 0.234.0+274). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.235.0 (pubspec 0.235.0+275). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.235 CHHOTA JAWAB: a long job works in the BACKGROUND and the chat gets one short human line. The four-part
+  report (kya hua / kya bana / kya baaki / aapko kya karna hai) lives on the CARD only - the prompt, kaam_plan's
+  finish + step notes, the narration cadence (every 3 -> 8, max 2 a job) and the reply rulebook all stop pushing
+  step detail, bullets and ✅/📎/⏳ headings into the chat space. Nothing lost: build_report + the card untouched.
 - v0.234 console: one avatar while replying, no greeting row · v0.233 console New chat reuses her untouched empty chat and opens on the home · v0.232 voice Phase 4 (call scorecards saved per call in data/voice_calls, grade + end reason, /api/voice/quality per
   version, ear test + phone checklist /api/voice/eartest, Profile > Call ki jaanch).
 - v0.231 SAHI JAWAB, the Claude-style reply end to end (one reply rulebook for chat / console / quick lane /
