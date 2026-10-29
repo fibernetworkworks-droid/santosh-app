@@ -980,3 +980,130 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 @keyframes progress-dot{0%,70%,100%{opacity:.3;transform:translateY(0)}35%{opacity:1;transform:translateY(-3px)}}
 @keyframes progress-enter{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){#app .simple-progress,#app .progress-avatar:before,#app .progress-dots i{animation:none}#app .progress-dots i{opacity:.7}}
+
+/* ================================================================================================
+   v0.222 R2: new sidebar + home (approved canvas "Hoola Console Redesign", Main board). Brand tokens unchanged.
+   Sidebar: New chat (saffron edge + shortcut), Search, Create / Library / Today / Tools / Voice call, sessions +
+   recents, AI spend card, user card. Home: ringed avatar, greeting with her name in the brand gradient, the
+   composer with Deep research / Hoola PC / Call, action pills, and the "In progress" row of her live jobs.
+   ================================================================================================ */
+/* width stays the dev's resizable --sidebar-width (default 224, drag 220-420); labels keep their 15px bold */
+#app .side{gap:6px;background:rgba(13,10,30,.72)}
+#app .mk{display:flex;align-items:center;gap:10px;padding:4px 6px 12px;background:none;border:0;color:var(--ink);cursor:pointer;font-family:var(--fd);font-size:21px;font-weight:700;letter-spacing:-.5px}
+#app .mk img{width:30px;height:30px;border-radius:50%}
+#app .newc{height:44px;padding:0 14px;gap:10px;border-radius:14px;border:1px solid rgba(255,177,92,.35);background:linear-gradient(135deg,rgba(255,177,92,.14),rgba(192,85,245,.12));color:var(--ink);font-size:14px;font-weight:700;box-shadow:none}
+#app .newc:hover{border-color:rgba(255,177,92,.6);filter:none;background:linear-gradient(135deg,rgba(255,177,92,.2),rgba(192,85,245,.16))}
+#app .newc svg{width:18px;height:18px;flex:none;color:var(--saffron)}
+#app .newc kbd,#app .sn.srch kbd{margin-left:auto;font:600 10.5px ui-monospace,'SF Mono',Menlo,monospace;color:var(--dim);border:0;padding:0}
+#app .sn{font-size:14px;padding:9px 12px;font-weight:600;color:var(--lit);border-radius:12px}
+#app .sn svg{width:18px;height:18px}
+#app .sn:hover{background:var(--glass);color:var(--ink)}
+#app .sn[aria-current="true"]{background:rgba(124,92,255,.14);color:var(--ink);box-shadow:inset 2px 0 0 var(--saffron)}
+#app .sn .lv{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--saffron2)}
+#app .sn .lv i{width:7px;height:7px;border-radius:50%;background:var(--saffron);box-shadow:0 0 10px var(--saffron)}
+#app .sn .lv+.ct{margin-left:6px}
+#app .slabel{font-size:10.5px;letter-spacing:.12em;padding:16px 12px 4px}
+#app .spend{padding:11px 13px;border-radius:14px;background:rgba(244,242,255,.04);border:1px solid rgba(244,242,255,.08);flex:none}
+#app .spend .sp1{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--mut)}
+#app .spend .sp1 b{color:var(--ink);font-weight:700;white-space:nowrap}
+#app .spend .spbar{margin-top:8px;height:5px;border-radius:3px;background:rgba(244,242,255,.1);overflow:hidden}
+#app .spend .spbar i{display:block;height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,#FFD9A8,#FF9A3C 45%,#C055F5);transition:width .6s ease}
+#app .spend.warn .spbar i{background:linear-gradient(90deg,#FFD9A8,#FF9A3C)}
+#app .spend.over{border-color:rgba(248,113,113,.35)}
+#app .spend.over .spbar i{background:linear-gradient(90deg,#F87171,#FF9A3C)}
+#app #gauge{display:none}   /* the spend lives in the sidebar card now; the composer stays clean */
+#app .user{background:none;border:0;padding:8px;border-radius:14px;gap:10px;flex:none}
+#app .user:hover{background:var(--glass)}
+#app .user .av{display:none}
+#app .user .uini{width:36px;height:36px;border-radius:50%;flex:none;display:inline-grid;place-items:center;background:linear-gradient(135deg,#7C5CFF,#C055F5);font:700 14px var(--fd);color:#fff}
+#app .user b{font-size:13.5px}
+#app .user span:not(.uini){font-size:12px}
+#app.collapsed .side .spend,#app.collapsed .side .newc kbd{display:none}
+
+/* ---------- home ---------- */
+#app .landing{position:relative;gap:24px;padding:40px 24px 56px;justify-content:center}
+#app .lhead{position:absolute;top:14px;right:20px;display:flex;gap:10px}
+#app .pcpill{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:999px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.28);color:#8EF0C6;font-size:12.5px;font-weight:700}
+#app .pcpill i{width:7px;height:7px;border-radius:50%;background:#34D399;box-shadow:0 0 8px #34D399}
+#app .pcpill.off{background:var(--glass);border-color:var(--line);color:var(--dim)}
+#app .pcpill.off i{background:var(--dim);box-shadow:none}
+#app .landing .hi{gap:22px}
+#app .halo{position:relative;width:92px;height:92px;padding:0;background:none;box-shadow:none;display:grid;place-items:center}
+#app .halo::before{content:"";position:absolute;inset:-18px;border-radius:50%;background:radial-gradient(circle,rgba(192,85,245,.35),transparent 70%);pointer-events:none}
+#app .halo .ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,#FFD9A8,#FF9A3C,#C055F5,#7C5CFF,#FFD9A8);animation:hring 8s linear infinite}
+#app .halo .av{position:relative;width:84px;height:84px;box-shadow:0 0 0 3px var(--bg1);background:#1B1030}
+@keyframes hring{to{transform:rotate(360deg)}}
+#app .landing h1{font-size:clamp(30px,4vw,46px);font-weight:600;letter-spacing:-1.4px;line-height:1.1}
+#app .gname{background:linear-gradient(93deg,#FFD9A8,#FF9A3C 45%,#C055F5);-webkit-background-clip:text;background-clip:text;color:transparent}
+#app .tagline{font-size:16px;max-width:52ch;margin:-8px 0 0}
+#app .landing .slot{width:min(760px,100%)}
+#app .landing .box{border-radius:26px;padding:16px 16px 12px;background:rgba(28,21,47,.82);border-color:rgba(244,242,255,.14);box-shadow:0 24px 60px rgba(6,4,20,.55),inset 0 1px 0 rgba(255,255,255,.06)}
+#app .landing .box textarea{font-size:16.5px;min-height:56px}
+#app .landing .box .who{display:none}
+#app .box .row{flex-wrap:wrap}
+#app .qchips{display:inline-flex;gap:8px;flex-wrap:wrap}
+#app .qc{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--mut);font-size:12.5px;font-weight:600;transition:background .15s,border-color .15s,color .15s}
+#app .qc svg{width:14px;height:14px}
+#app .qc:hover{background:var(--glass);color:var(--ink)}
+#app .qc[aria-pressed="true"]{color:var(--ink);border-color:rgba(124,92,255,.5);background:rgba(124,92,255,.18)}
+#app .qc.pc[aria-pressed="true"]{color:var(--saffron2);border-color:rgba(255,177,92,.45);background:rgba(255,177,92,.1)}
+#app .dock .qc{padding:0 9px;height:30px}
+#app .landing .qchips{margin-right:auto}
+#app .callb{display:none;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:12px;border:1px solid rgba(244,242,255,.14);background:rgba(244,242,255,.06);color:var(--ink);font-size:13px;font-weight:700}
+#app .callb svg{width:18px;height:18px}
+#app .callb:hover{background:var(--glass2)}
+#app .landing .callb{display:inline-flex}
+#app .landing .box .send{width:40px;height:40px;border-radius:12px;box-shadow:0 6px 18px rgba(255,154,60,.35)}
+#app .landing .box .send:disabled{box-shadow:none}
+#app .pills{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;max-width:820px}
+#app .pill{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:999px;border:1px solid rgba(244,242,255,.12);background:rgba(244,242,255,.05);color:var(--soft);font-size:13.5px;font-weight:600;transition:background .15s,border-color .15s,transform .15s}
+#app .pill svg{width:16px;height:16px;flex:none}
+#app .pill:hover{background:rgba(244,242,255,.09);border-color:rgba(255,177,92,.4);transform:translateY(-1px)}
+#app .pill.more{color:var(--dim)}
+#app .pill.more svg{width:14px;height:14px}
+#app .jobs{width:min(980px,100%);margin-top:10px;text-align:left}
+#app .jhd{display:flex;align-items:baseline;justify-content:space-between;padding:0 4px 12px}
+#app .jhd h2{font-size:15px;font-weight:600;color:var(--soft)}
+#app .jall{background:none;border:0;color:var(--saffron2);font-size:13px;font-weight:600;cursor:pointer}
+#app .jall:hover{color:#FFD9A8}
+#app .jgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+#app .job{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:20px;text-align:left;color:inherit;background:rgba(244,242,255,.05);border:1px solid rgba(244,242,255,.1);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);transition:border-color .15s,transform .15s}
+#app .job:hover{border-color:rgba(244,242,255,.2);transform:translateY(-1px)}
+#app .job .jt{display:flex;align-items:center;gap:10px;min-width:0}
+#app .job .ji{width:34px;height:34px;border-radius:10px;flex:none;display:inline-grid;place-items:center;background:rgba(124,92,255,.22);color:#C9BDFF}
+#app .job .ji svg{width:17px;height:17px}
+#app .job .jn{display:flex;flex-direction:column;min-width:0}
+#app .job .jn b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#app .job .jn span{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#app .job .jbar{display:block;height:6px;border-radius:3px;background:rgba(244,242,255,.08);overflow:hidden}
+#app .job .jbar i{display:block;height:100%;border-radius:3px;background:repeating-linear-gradient(90deg,#7C5CFF 0 20px,#A98BFF 20px 40px);background-size:40px 100%;animation:jbar 1.6s linear infinite}
+@keyframes jbar{to{background-position:40px 0}}
+#app .job.wait{background:rgba(255,177,92,.07);border-color:rgba(255,177,92,.32)}
+#app .job.wait .ji{background:rgba(255,177,92,.2);color:var(--saffron2)}
+#app .job .jact{align-self:flex-start;height:30px;padding:0 12px;border-radius:999px;background:linear-gradient(135deg,#FFD9A8,#FF9A3C);color:#1B1030;font-size:12.5px;font-weight:800;display:inline-flex;align-items:center}
+@media(max-width:820px){
+ #app .landing{padding:28px 14px 64px;gap:18px}
+ #app .lhead{position:static;justify-content:center}
+ #app .halo{width:80px;height:80px}
+ #app .halo .av{width:72px;height:72px}
+ #app .pill{height:36px;padding:0 13px;font-size:13px}
+ #app .callb span{display:none}
+ #app .callb{padding:0 11px}
+}
+@media(max-width:560px){
+ #app .landing .qc{padding:0 10px}
+ #app .dock .qc{font-size:0;gap:0;width:30px;padding:0;justify-content:center}
+}
+@media(prefers-reduced-motion:reduce){#app .halo .ring,#app .job .jbar i{animation:none}}
+/* R2 fit-and-finish: labels never wrap, the home never cuts its top off, the session "+" sits on its label row */
+#app .side .sn>.txt:not(.lv):not(.ct){flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#app .sn .lv{font-size:12px;gap:5px}
+#app .landing{justify-content:safe center}
+#app .pjl{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:8px}
+#app .pjl .pjadd{border:0;padding:0;width:26px;height:26px;justify-content:center;border-radius:8px;font-size:16px;color:var(--dim)}
+#app .pjl .pjadd:hover{background:var(--glass2);color:var(--saffron2)}
+@media(max-width:560px){
+ #app .landing .qc{font-size:0;gap:0;width:32px;padding:0;justify-content:center}
+ #app .landing .box .row{flex-wrap:nowrap}
+}
+@media(max-width:560px){#app .qchips{flex-wrap:nowrap}}

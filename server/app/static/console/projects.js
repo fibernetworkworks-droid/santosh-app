@@ -18,7 +18,7 @@ async function load() {
 function draw() {
   const box = $('#projects'); if (!box) return;
   /* v0.193 the folder rows moved into the chat list as session sections — this box stays the "+ New" entry */
-  box.innerHTML = `<div class="slabel pjl"><span>Sessions</span><button type="button" class="pjadd" id="pjNew" aria-label="New project">+</button></div>`
+  box.innerHTML = `<div class="slabel pjl"><span>Sessions</span><button type="button" class="pjadd" id="pjNew" aria-label="New session" title="New session">+</button></div>`
     + (LIST.length ? '' : '<div class="empty pjempty">Kaam ke hisaab se session banaiye — App design, Research…</div>');
   box.querySelector('#pjNew').addEventListener('click', create);
 }

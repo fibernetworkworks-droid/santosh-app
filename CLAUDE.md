@@ -8764,3 +8764,28 @@ pins ->0.220.0 in 32 suites); Mera PC freeze respected; desktop untouched 1.4.0.
   `test_v0194_sessions` pins moved to the English copy and to 11 stamps; `test_v164_projects` SystemSpy flattens the cached
   system blocks (pre-existing red since v0.190, the str-vs-blocks trap). Ritual: APP_VERSION 0.221.0, pubspec 0.221.0+256, pins
   ->0.221.0 in 33 suites. Server-only / console-only deploy; old APKs and the desktop untouched; Mera PC freeze respected.
+
+## v0.222.0 CONSOLE R2 — web console redesign, phase 2: new sidebar + home (owner: "START R2")
+- Sidebar (Claude-style): the brand mark is home (`data-v="chat"`); New chat with a saffron edge and `Ctrl ⇧ O`; Search
+  (`Ctrl K`); places Create / Library (when SIDE_PANEL) / Today / Tools / Voice call (`NAV` in v2.js; Chat and Account
+  left the list: brand mark and user card cover them; the phone tabbar keeps its own five). Today carries two badges:
+  live jobs (saffron dot + count, from /api/kaam working + waiting) and approvals waiting (count, /api/console/pending).
+  Sessions + recents as before (`Pinned` group label, `Show archived`, session "+" on its label row). Bottom: AI spend
+  card (`#spend`, same /api/usage month numbers the old composer gauge used, now in rupees: spent_inr / limit_inr;
+  hidden without a limit; the composer gauge line is hidden) and the user card with her initial. Width stays the dev's
+  resizable `--sidebar-width` (224 default, drag 220-420); labels keep their 15px bold.
+- Home: ringed avatar (conic ring turns, still under reduced motion), "Good morning, <her first name in the brand
+  gradient>" (escaped), tagline, the big glass composer with one-message chips Deep research / Hoola PC and a Call button
+  (→ Voice). Chips ride the NEXT message only as `[Web console mode: ...]` / `[Web console place: do this on Hoola PC
+  (your own cloud computer)]` hints (where.py reads the place as `hoolapc`), added in `api()` like the language note and
+  stripped from her bubble by `stripHints` on live echo and history; they switch off after each send. Action pills:
+  Create image / Make a video / Research / Write a document (open the creative studio, `data-create`), Build a website /
+  Design an app (prefill the composer, `data-fill`), All tools (→ Tools). "In progress" row: up to 3 working / waiting
+  jobs (waiting first, saffron "Review & approve"), striped progress bars, a tap opens the job's chat
+  (`kaamwatch._row_view` now returns `conversation_id`, additive); refreshes every 20 s. "Hoola PC online / offline"
+  pill top-right from /api/pc/hoola (hidden when no Hoola PC). The landing ideas row (#cats / #sugs) and the injected
+  `.workflow-entry` buttons are gone — the ideas live in the Tools view. Home centring is `safe center` (a tall home on a
+  phone no longer cuts its top off).
+- Tests: NEW `test_v0222_console_r2.py` (6); `test_v162_console_e2e` follows "Pinned". Ritual: APP_VERSION 0.222.0, pubspec
+  0.222.0+257, console ?v=0.222.0 x11, pins →0.222.0 in 34 suites. Console-only + one additive server key; old APKs,
+  desktop and Mera PC untouched.

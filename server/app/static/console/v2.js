@@ -23,20 +23,24 @@ const timeOf = iso => { try { return new Date(iso).toLocaleString('en-IN', {day:
 
 /* ================= API ================= */
 let TOKEN = store.get('hoola.console.token') || '';
+// v0.222 what the console adds to her words for Hoola (language, deep research, Hoola PC) never shows in her bubble
+const stripHints = t => t.replace(/(?:\n\n\[Web console [^\]\n]*\])+$/, '');
 class ApiError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
 async function api(method, path, body, {raw = false, form = null, signal} = {}) {
   const headers = {};
   if (TOKEN) headers.Authorization = 'Bearer ' + TOKEN;
   let payload;
   if (method === 'POST' && /\/conversations\/[^/]+\/(messages|edit)$/.test(path) && body && typeof body.text === 'string') {
-    body = {...body, text: body.text + '\n\n[Web console language preference: Reply in English unless I explicitly request another language.]'};
+    const hints = (body.hints || []).map(h => '\n\n[Web console ' + h + ']').join('');
+    body = {...body, text: body.text + hints + '\n\n[Web console language preference: Reply in English unless I explicitly request another language.]'};
+    delete body.hints;
   }
   if (form) payload = form; else if (body !== undefined) { headers['Content-Type'] = 'application/json'; payload = JSON.stringify(body); }
   const r = await fetch(path, {method, headers, body: payload, signal, credentials: 'omit', cache: 'no-store'});
   if (raw) { if (!r.ok) throw new ApiError(r.status, await r.text()); return r; }
   let data = null; try { data = await r.json(); } catch {}
   if (!r.ok) {
-    const msg = (data && (data.detail?.message || (typeof data.detail === 'string' ? data.detail : '') || data.message)) || `Server ne mana kiya (${r.status})`;
+    const msg = (data && (data.detail?.message || (typeof data.detail === 'string' ? data.detail : '') || data.message)) || `The server refused the request (${r.status})`;
     if (r.status === 401 && path !== '/api/console/login' && path !== '/api/console/exchange') logout(true);
     throw new ApiError(r.status, msg);
   }
@@ -82,18 +86,27 @@ async function logout(expired) {
   RESULTS?.reset();
   WORKSPACE?.reset(); PN?.reset(); clearSimpleProgress();
   clearTimeout(DRAFT_T); FILES = []; CONV = null; ACC_LAST = 0; msg.value = ''; drawFiles();
-  clearInterval(GAUGE_T); clearInterval(PENDING_TIMER);
+  clearInterval(GAUGE_T); clearInterval(PENDING_TIMER); clearInterval(JOBS_T); JOBS = [];
   if (TOKEN && !expired) { try { await api('POST', '/api/logout'); } catch {} }
   setToken(''); showLogin(expired ? 'Your session expired. Please sign in again.' : '');
 }
 
 /* ================= state + shell ================= */
 let ME = null, CONV = null, VIEW = 'chat', AV = 'Santosh';
-const NAV = [['chat','Chat'],['creative','Creative studio'],['aaj','Today'],['kaam','Tools'],['baat','Voice'],['main','Account']];
-IC.creative = '<path d="M4 4h16v16H4zM8 4v16M4 10h16M4 16h16"/>';
-IC.bana = '<path d="M4 4h16v5H4zM4 11h7v9H4zM13 11h7v9h-7z"/>';
+/* v0.222 R2: the sidebar is Claude-style - New chat + Search on top, then the places; Chat is the brand mark (home),
+   Account is the user card at the bottom. The phone tabbar keeps its own five. */
+const NAV = [['creative','Create'],['aaj','Today'],['kaam','Tools'],['baat','Voice call']];
+IC.creative = '<path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4z"/>';
+IC.bana = '<path d="M4 5h16v14H4zM4 10h16M10 10v9"/>';
+IC.call = '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>';
+let JOBS = [];          // v0.222 her live jobs (working / waiting) for the home row and the Today badge
+function navBadge(k) {
+  if (k !== 'aaj') return '';
+  const live = JOBS.length ? `<span class="lv txt" title="${JOBS.length} running now"><i></i>${JOBS.length}</span>` : '';
+  return live + (QUEUE.length ? `<span class="ct txt" title="Waiting for your approval">${QUEUE.length}</span>` : '');
+}
 function drawNav() {
-  $('#snav').innerHTML = NAV.map(([k, n]) => `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k])}<span class="txt">${n}</span>${k === 'aaj' && QUEUE.length ? `<span class="ct txt">${QUEUE.length}</span>` : ''}</button>`).join('');
+  $('#snav').innerHTML = NAV.map(([k, n]) => `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k === 'baat' ? 'call' : k])}<span class="txt">${n}</span>${navBadge(k)}</button>`).join('');
   const T = [['chat','Chat'],['aaj','Today'],['baat',''],['kaam','Kaam'],['main','Main']];
   $('#tabbar').innerHTML = T.map(([k, n]) => k === 'baat' ? `<div class="mid"><button class="baat" data-v="baat" aria-label="Baat, live voice">${svg(IC.baat).replace('currentColor', '#1B1030')}</button></div>`
     : `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k])}<span>${n}</span></button>`).join('');
@@ -129,9 +142,10 @@ async function enter() {
   $$('.aname').forEach(e => e.textContent = AV);
   const img = ME.avatar?.gender === 'f' ? '/static/santosh-happy.png' : '/static/santosh-head.png';
   $$('.aimg').forEach(e => e.src = img); $('#uimg').src = img;
-  $('#uname').textContent = ME.owner || ME.email || 'Aap'; $('#uhandle').textContent = `${AV} · ${ME.handle || ''}`;
+  $('#uname').textContent = ME.owner || ME.email || 'You'; $('#uhandle').textContent = `${AV} · ${ME.handle || ''}`;
+  $('#uini').textContent = (ME.owner || ME.email || 'H').trim().charAt(0).toUpperCase();
   const h = new Date().getHours(), first = (ME.owner && ME.owner !== 'Hoola user') ? ME.owner.split(' ')[0] : '';
-  $('#greet').textContent = `${h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening'}${first ? ', ' + first : ''}`;
+  $('#greet').innerHTML = esc(h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening') + (first ? `, <span class="gname">${esc(first)}</span>` : '');
   $('#login').hidden = true; $('#app').hidden = false; drawNav(); drawKaam(); go('chat');
   if (CONFIG.sessions && window.HoolaChats && window.HoolaStream && !CH) {   // v0.162 many chats (v0.170: on with CONSOLE_V2)
     CH = HoolaChats({api, esc, toast, current: () => CONV, open: id => { go('chat'); openConv(id); },
@@ -155,7 +169,7 @@ async function enter() {
       say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); },
       closeStudio: () => { if (B?.isOpen()) B.close(); },
       studio: (kind, p) => { go('chat'); const b = col.querySelector(`[data-key="${CSS.escape(kind + ':' + p.id)}"] [data-ba="studio"]`); if (b) b.click(); else toast('To open the studio, open that job’s card in the chat.'); }});
-    NAV.splice(3, 0, ['bana', 'Creations']); drawNav();
+    NAV.splice(1, 0, ['bana', 'Library']); drawNav();
   }
   const list = await loadRecents();
   const fromUrl = (location.pathname.match(/^\/console\/c\/([^/?#]+)/) || [])[1];
@@ -166,6 +180,7 @@ async function enter() {
     toast('That chat was not found (it may have been deleted). Opening your latest chat.'); await openConv(await firstChat()); }});
   else await openConv(await firstChat());
   refreshPending(); clearInterval(PENDING_TIMER); PENDING_TIMER = setInterval(refreshPending, 30000);
+  loadJobs(); clearInterval(JOBS_T); JOBS_T = setInterval(loadJobs, 20000); loadPcPill();
 }
 
 /* ================= recents ================= */
@@ -525,8 +540,7 @@ const WORKSPACE = window.HoolaWorkspace ? HoolaWorkspace({api, esc, toast, conv:
       catch(e) { if(i===2 || (e.status && e.status<500)) throw e; await new Promise(r=>setTimeout(r,600*(i+1))); }
     }
   }}) : null;
-// Workflow entry points stay connected to the same conversation and its real output events.
-$('#slotLand').insertAdjacentHTML('beforebegin', '<div class="workflow-entry" aria-label="Create with Hoola"><button type="button" data-create="image">Image creation</button><button type="button" data-create="video">Video & motion</button><button type="button" data-create="research">Research</button><button type="button" data-create="document">Documents</button></div>');
+// The home action pills (data-create) open the creative studio on the same conversation and its real output events.
 document.addEventListener('click', e => {
   const b=e.target.closest('[data-create]'); if(!b || !WORKSPACE)return;
   go('creative'); WORKSPACE.open(b.dataset.create);
@@ -715,7 +729,7 @@ function stream(conv) {
 }
 function onEvent(ev) {
   const p = {...(ev.payload || {})};
-    if (p.role === 'user' && typeof p.text === 'string') p.text = p.text.replace(/\n\n\[Web console language preference: Reply in English unless I explicitly request another language\.\]$/, '');
+    if (p.role === 'user' && typeof p.text === 'string') p.text = stripHints(p.text);
   switch (ev.kind) {
     case 'reply_start': {
       simpleProgress('reply_start',p);
@@ -774,7 +788,7 @@ function renderEvents(events, any) {
   flushStepBuf();
   for (const ev of events) {
     const p = {...(ev.payload || {})};
-    if (p.role === 'user' && typeof p.text === 'string') p.text = p.text.replace(/\n\n\[Web console language preference: Reply in English unless I explicitly request another language\.\]$/, '');
+    if (p.role === 'user' && typeof p.text === 'string') p.text = stripHints(p.text);
     if (ev.kind === 'message') {
       flushStepBuf();
       if (p.role === 'user') userBubble(p.text, p.files, ev.id, null, ev.at);
@@ -1095,12 +1109,17 @@ async function loadGauge() {
   try {
     const r = await api('GET', '/api/usage?days=1');
     const m = r.month || {};
-    const g = $('#gauge');
-    if (!m.limit_usd) { g.hidden = true; return; }   // no limit set: nothing to gauge
-    g.hidden = false;
-    g.className = 'gauge' + (m.over ? ' over' : m.warn ? ' warn' : '');
-    g.querySelector('i').style.width = Math.max(1.5, Math.min(100, m.pct || 0)) + '%';
-    g.title = `Is mahine ka AI kharcha: $${m.spent_usd.toFixed(2)} / $${m.limit_usd.toFixed(2)} (${Math.round(m.pct)}%)${m.over ? ' — seema paar' : ''}`;
+    const g = $('#gauge'), sp = $('#spend');
+    if (!m.limit_usd) { g.hidden = true; sp.hidden = true; return; }   // no limit set: nothing to gauge
+    const pct = Math.max(1.5, Math.min(100, m.pct || 0)), cls = m.over ? ' over' : m.warn ? ' warn' : '';
+    const money = (usd, inr) => inr != null ? '₹' + Math.round(inr).toLocaleString('en-IN') : '$' + usd.toFixed(2);
+    const tip = `This month's AI spend: ${money(m.spent_usd, m.spent_inr)} / ${money(m.limit_usd, m.limit_inr)} (${Math.round(m.pct)}%)${m.over ? ' — over the limit' : ''}`;
+    g.hidden = false; g.className = 'gauge' + cls; g.querySelector('i').style.width = pct + '%'; g.title = tip;
+    // v0.222 R2: the same numbers as a card at the bottom of the sidebar
+    sp.hidden = false; sp.className = 'spend' + cls; sp.title = tip;
+    $('#spMonth').textContent = new Date().toLocaleString('en-IN', {month: 'short'});
+    $('#spAmt').textContent = `${money(m.spent_usd, m.spent_inr)} / ${money(m.limit_usd, m.limit_inr)}`;
+    sp.querySelector('.spbar i').style.width = pct + '%';
   } catch {}
 }
 composer.addEventListener('submit', async e => {
@@ -1109,7 +1128,7 @@ composer.addEventListener('submit', async e => {
   const origin = CONV, auth = TOKEN; clearTimeout(DRAFT_T);
   const files = FILES.splice(0); drawFiles(); msg.value = ''; msg.style.height = 'auto'; $('#sendBtn').disabled = true;
   store.del('hoola.draft.' + origin);   // v0.173 the draft went out with the message
-  const body = {text: text || 'Ye file dekho', client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), files: files.map(f => f.file_id)};
+  const body = {text: text || 'Ye file dekho', client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), files: files.map(f => f.file_id), hints: takeHints()};
   landing(false); const bbl = userBubble(body.text, files, null, body.client_id);
   if (TYPING) receipt(bbl, body.client_id, 'queue');   // v0.173 steering: she sees it is queued and can take it back
   USER_ECHO.push(body.text);
@@ -1273,11 +1292,6 @@ $('#micBtn').addEventListener('click', () => {
 
 /* ================= landing ideas + "All tools" (real prompts) ================= */
 const KAAM = window.KAAM || [], KI = window.KAAM_ICON || {};
-let CAT = null;
-$('#cats').innerHTML = KAAM.map(g => `<button class="cat" type="button" data-cat="${g[0]}" aria-pressed="false"><span>${g[1]}</span>${esc(g[2])}</button>`).join('');
-$('#cats').addEventListener('click', e => { const b = e.target.closest('.cat'); if (!b) return; CAT = CAT === b.dataset.cat ? null : b.dataset.cat;
-  $$('.cat').forEach(x => x.setAttribute('aria-pressed', x.dataset.cat === CAT));
-  const g = KAAM.find(x => x[0] === CAT); $('#sugs').innerHTML = g ? g[4].map((t, i) => `<button class="sug" type="button" data-say="${esc(t[0])}" style="animation-delay:${i * 30}ms"><span>${KI[t[0]] || '↗'}</span>${esc(t[3])}<em>${esc(t[1])}</em></button>`).join('') : ''; });
 function usePrompt(id) {
   const t = KAAM.flatMap(g => g[4]).find(x => x[0] === id); if (!t) return;
   go('chat'); msg.value = t[3].replace(/^\[[^\]]+\]\s*/, ''); msg.dispatchEvent(new Event('input'));
@@ -1287,11 +1301,64 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-say]
 function drawKaam(q = '') {
   const qq = q.trim().toLowerCase(), total = KAAM.reduce((n, g) => n + g[4].length, 0);
   $('#kaam').innerHTML = `<div class="vh"><h2>What ${esc(AV)} can do</h2><span class="faint" style="font-weight:700">${total} jobs · a tap sends it to the real ${esc(AV)}</span></div>
-    <label class="ksearch gl"><span aria-hidden="true">⌕</span><input id="kq" placeholder="Dhoondhiye: GST, reel, OTP, TV…" value="${esc(q)}" aria-label="Search"></label>
+    <label class="ksearch gl"><span aria-hidden="true">⌕</span><input id="kq" placeholder="Search: GST, reel, OTP, TV…" value="${esc(q)}" aria-label="Search"></label>
     <div class="kchips">${KAAM.map(g => `<a class="chip" href="#k-${g[0]}" style="text-decoration:none"><span>${g[1]}</span>${esc(g[2])}</a>`).join('')}</div>
     ${KAAM.map(g => { const items = g[4].filter(t => !qq || (t[1] + ' ' + t[2] + ' ' + t[3] + ' ' + g[2]).toLowerCase().includes(qq)); if (!items.length) return '';
       return `<div class="kgroup" id="k-${g[0]}"><h3><span>${g[1]}</span>${esc(g[2])}<small>${items.length}</small></h3><div class="kgrid">${items.map(t => `<button class="kt" type="button" data-say="${esc(t[0])}"><i style="background:${g[3]}22">${KI[t[0]] || g[1]}</i><b>${esc(t[1])}</b><span>${esc(t[2])}</span></button>`).join('')}</div></div>`; }).join('')}`;
   const kq = $('#kq'); kq.addEventListener('input', () => { const p = kq.selectionStart; drawKaam(kq.value); const n = $('#kq'); n.focus(); n.setSelectionRange(p, p); });
+}
+
+/* ================= v0.222 R2: home - quick chips, action pills, live jobs, Hoola PC pill ================= */
+// Deep research / Hoola PC ride ONE message as a hint for Hoola (never in her bubble), then switch off again.
+$$('.qc').forEach(b => b.addEventListener('click', () => b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'))));
+function takeHints() {
+  const h = [];
+  if ($('#qDeep').getAttribute('aria-pressed') === 'true') h.push('mode: deep research - research this thoroughly from several good sources and cite them');
+  if ($('#qPc').getAttribute('aria-pressed') === 'true') h.push('place: do this on Hoola PC (your own cloud computer)');
+  $$('.qc').forEach(b => b.setAttribute('aria-pressed', 'false'));
+  return h;
+}
+$('#callBtn').addEventListener('click', () => go('baat'));
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-fill]'); if (!b) return;
+  go('chat'); msg.value = b.dataset.fill; msg.dispatchEvent(new Event('input')); msg.focus();
+  msg.setSelectionRange(msg.value.length, msg.value.length);
+});
+let JOBS_T = 0;
+const JOB_IC = {site_board: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18"/>',
+  app_board: '<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/>',
+  video_job: '<rect x="2" y="5" width="15" height="14" rx="2"/><path d="M17 10l5-3v10l-5-3"/>',
+  motion: '<rect x="2" y="5" width="15" height="14" rx="2"/><path d="M17 10l5-3v10l-5-3"/>',
+  studio: '<rect x="2" y="5" width="15" height="14" rx="2"/><path d="M17 10l5-3v10l-5-3"/>',
+  browser: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>'};
+async function loadJobs() {
+  let list = [];
+  try { list = ((await api('GET', '/api/kaam')).jobs || []).filter(j => j.state === 'working' || j.state === 'waiting'); } catch { return; }
+  JOBS = list; drawJobs(); drawNav();
+}
+function drawJobs() {
+  const box = $('#liveJobs'); box.hidden = !JOBS.length; if (!JOBS.length) return;
+  const show = JOBS.slice().sort((a, b) => (b.state === 'waiting') - (a.state === 'waiting')).slice(0, 3);
+  $('#jobGrid').innerHTML = show.map(j => {
+    const wait = j.state === 'waiting', pct = Math.max(4, Math.min(100, +j.pct || 0));
+    const icon = wait ? '<path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/>' : (JOB_IC[j.kind] || IC.kaam);
+    const sub = j.stage || j.detail || (wait ? 'Waiting for you' : 'Working…');
+    return `<button type="button" class="job${wait ? ' wait' : ''}" data-job="${esc(j.conversation_id || '')}">
+      <span class="jt"><span class="ji">${svg(icon)}</span><span class="jn"><b>${esc(j.title || j.label || 'Job')}</b><span>${esc(j.label && j.title ? j.label + ' · ' : '')}${esc(sub)}</span></span></span>
+      ${wait ? '<span class="jact">Review &amp; approve</span>'
+             : `<span class="jbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Progress"><i style="width:${pct}%"></i></span>`}
+    </button>`;
+  }).join('');
+}
+$('#jobGrid').addEventListener('click', e => {
+  const b = e.target.closest('[data-job]'); if (!b) return;
+  if (b.dataset.job) { go('chat'); openConv(b.dataset.job); } else go('aaj');
+});
+async function loadPcPill() {
+  try { const d = (await api('GET', '/api/pc/hoola')).devices || []; const pc = d[0];
+    const el = $('#pcPill'); el.hidden = !pc; if (!pc) return;
+    el.classList.toggle('off', !pc.online); el.querySelector('span').textContent = pc.online ? 'Hoola PC online' : 'Hoola PC offline';
+  } catch {}
 }
 
 /* ================= pending queue (Haan list) ================= */

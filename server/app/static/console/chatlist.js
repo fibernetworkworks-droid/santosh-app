@@ -21,14 +21,14 @@ let SECS = [];                        // v0.193 sessions (projects), server orde
 
 const DAY = 86400000;
 function group(c) {
-  if (c.pinned) return 'Pin kiye hue';
+  if (c.pinned) return 'Pinned';
   const t = new Date(c.updated_at || 0), now = new Date(), start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   if (t >= start) return 'Today';
   if (t >= start - DAY) return 'Yesterday';
   if (t >= start - 6 * DAY) return 'Previous 7 days';
   return 'Older';
 }
-const ORDER = ['Pin kiye hue', 'Today', 'Yesterday', 'Previous 7 days', 'Older'];
+const ORDER = ['Pinned', 'Today', 'Yesterday', 'Previous 7 days', 'Older'];
 
 /* v0.193 which sessions are collapsed: {"<pid>": 1} — survives reloads, per browser */
 const OPEN_KEY = 'hoola.sessions.v1';
@@ -91,7 +91,7 @@ function draw() {
      a session always has a target (it also labels the day groups when they are non-empty) */
   html += (drag ? `<div class="rg sgb" data-rest title="Drop a chat here to take it out of its session">Other chats</div>` : '') + rest;
   box.innerHTML = html || `<div class="empty" style="padding:8px 12px">No conversations yet.</div>`;
-  box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">🗄 Archive dekhiye</button>`);
+  box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">🗄 Show archived</button>`);
   $('#archTog').addEventListener('click', () => { ARCH = !ARCH; load(); });
 }
 
