@@ -1,4 +1,4 @@
-"""v0.242 SAHI AUZAAR - the last check on Hoola's pick, in code, before a tool runs.
+"""v0.245 SAHI AUZAAR - the last check on Hoola's pick, in code, before a tool runs.
 
 The router (agent/admit.py) decides what Hoola SEES; this decides what may RUN when the pick is plainly wrong.
 Only two cases, both from real failures, and each refusal names the right tool so the next step is the right one:

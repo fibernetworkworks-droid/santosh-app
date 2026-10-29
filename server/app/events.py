@@ -33,7 +33,7 @@ LOCAL_KINDS = LIVE_ONLY | {
     "message", "upload", "reminders", "routines", "lists", "email_sent", "email_new", "email_snooze", "hoola_update",
     "galla", "mshop", "office",
     "employee", "darzi_order", "phonedoc_open", "phonedoc_check", "device_action", "device_action_result", "home_device",
-    "bt_request", "bazar_open", "bazar_link", "gyaan_sources", "memory_saved", "procedure", "open", "link",
+    "bt_request", "bazar_open", "bazar_link", "gyaan_sources", "memory_saved", "procedure", "compact", "open", "link",
     "call_receipt", "speaker", "voice", "biz_inbox", "biz_appointment", "propagent_listing", "chai_order",
 }
 # phone actions are done once, live (or through pending actions): never replayed as chat history

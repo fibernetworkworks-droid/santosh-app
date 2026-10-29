@@ -66,8 +66,8 @@ def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: st
     v0.235 `hide_empty` (the console): a chat she never wrote in ("Naya chat") is not listed at all; it shows up
     with her first message. Pinned or renamed chats always stay."""
     first = (select(Message.display).where(Message.conversation_id == Conversation.id, Message.role == "user",
-                                           Message.display.is_not(None)).order_by(Message.id).limit(1)
-             .correlate(Conversation).scalar_subquery())
+                                           Message.display.is_not(None), Message.display != "")
+             .order_by(Message.id).limit(1).correlate(Conversation).scalar_subquery())
     count = (select(func.count(Message.id)).where(Message.conversation_id == Conversation.id, Message.role == "user",
                                                   Message.display.is_not(None)).correlate(Conversation).scalar_subquery())
     at = func.coalesce(Conversation.last_at, Conversation.created_at)
@@ -85,7 +85,8 @@ def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: st
     out = []
     with session() as s:
         for c, first_text, n in s.execute(q).all():
-            title = (c.title or plain(first_text).strip().replace("\n", " ")[:80] or "Naya chat")
+            title = (c.title or plain(first_text).strip().replace("\n", " ")[:80]
+                     or ("Untitled chat" if n else "Naya chat"))   # v0.237 a chat with words but no readable title
             when = _utc(c.last_at or c.created_at)
             out.append({"id": c.id, "title": title, "auto_title": bool(c.title), "pinned": bool(c.pinned),
                         "archived": bool(c.archived), "messages": int(n or 0), "empty": not n,

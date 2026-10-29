@@ -333,13 +333,25 @@ def history(conversation_id: str) -> list[dict]:
 def full_history(conversation_id: str) -> list[dict]:
     """v0.237 FULL CLAUDE MODE: the WHOLE chat, every message word for word (tool steps included), nothing compressed
     in advance. agent/context.py measures it before every model call and only then decides whether anything must give.
-    A chat longer than ROWS_MAX messages starts with its rolling summary, so the part the row limit cut is not lost."""
+    A chat longer than ROWS_MAX messages starts with its rolling summary, so the part the row limit cut is not lost.
+    v0.242 Phase 2: a compacted chat = its checkpoint summary first, then every message AFTER it, word for word."""
     rows = _rows(conversation_id)
+    head, upto = None, 0
+    try:
+        from .agent import compact
+        head, upto = compact.head_message(conversation_id)
+    except Exception:
+        log.exception("compact checkpoint read failed")
+    cut = bool(rows) and len(rows) >= ROWS_MAX
+    if upto:
+        rows = [r for r in rows if r["id"] > upto]
     exs = exchanges(rows)
     msgs: list[dict] = [{"role": m["role"], "content": m["content"]} for ex in exs for m in ex]
     while msgs and not (msgs[0]["role"] == "user" and isinstance(msgs[0]["content"], str)):
         msgs.pop(0)
-    if len(rows) >= ROWS_MAX:
+    if head is not None:
+        msgs.insert(0, head)
+    elif cut:
         summ = summary_block(conversation_id)
         if summ:
             msgs.insert(0, {"role": "user", "content": SUMMARY_OPEN + summ})
@@ -1110,6 +1122,10 @@ def _news_pending(conversation_id: str, minutes: int, skip_newest: bool, limit: 
         return [_scrub(_clip(r.text or "", clip)) for r in rows[:limit] if (r.text or "").strip()]
 
 
+CALL_MAX_WITH_CHECKPOINT = 16000   # v0.244 a compacted chat's call brief (the checkpoint needs the room)
+CALL_CHECKPOINT_CHARS = 6000       # the checkpoint's share of it (diary + facts after it must still fit)
+
+
 def voice_block(tenant: str, conversation_id: str, recent: int = 14, max_chars: int = 10000,
                 news_skip_newest: bool = True) -> str:
     """For a voice call session: everything a coworker who was in the room would know.
@@ -1131,11 +1147,29 @@ def voice_block(tenant: str, conversation_id: str, recent: int = 14, max_chars: 
             parts.append(fb)
     except Exception:
         log.exception("voice focus failed")
-    summ = summary_block(conversation_id)
-    if summ:
-        parts.append("Purani baaton ka saar:\n" + summ)
+    # v0.244 PHASE 3A ONE MEMORY: a compacted chat's call starts from the SAME checkpoint the chat reads (Phase 2),
+    # and its recent exchanges are the ones AFTER that checkpoint (never the same work twice); else the rolling summary
+    upto = 0
     try:
-        exs = exchanges(_rows(conversation_id, 1500))[-recent:]
+        from .agent import compact as _compact
+        cp = _compact.active(conversation_id) if conversation_id else None
+    except Exception:
+        log.exception("voice checkpoint read failed")
+        cp = None
+    if cp and cp.get("summary"):
+        upto = int(cp.get("upto_id") or 0)
+        max_chars = max(max_chars, CALL_MAX_WITH_CHECKPOINT)
+        parts.append("IS CHAT KA SAAR (checkpoint - chat mein jo kaam hua, uski poori yaad):\n"
+                     + _clip_block(cp["summary"], CALL_CHECKPOINT_CHARS))
+    else:
+        summ = summary_block(conversation_id)
+        if summ:
+            parts.append("Purani baaton ka saar:\n" + summ)
+    try:
+        rows = _rows(conversation_id, 1500)
+        if upto:
+            rows = [r for r in rows if r["id"] > upto]
+        exs = exchanges(rows)[-recent:]
         if exs:
             parts.append("Haal ki baatein (chat aur calls, purane se naye; ⟦kiya⟧ = jo kaam hua):\n" +
                          "\n".join("- " + one_line(ex, 360) for ex in exs))

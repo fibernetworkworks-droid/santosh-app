@@ -126,6 +126,10 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-v]')
 $('#menu').addEventListener('click', () => $('#app').classList.add('drawer'));
 $('#scrim').addEventListener('click', () => $('#app').classList.remove('drawer'));
 $('#collapse').addEventListener('click', () => $('#app').classList.toggle('collapsed'));
+/* v0.237 the sidebar adapts to its own width (drag / collapse / small screens): under ~260px (236 inside the padding) the shortcut hints hide so
+   New chat, Search and every label stay on one line instead of wrapping */
+if (window.ResizeObserver) { const SB = document.querySelector('#app .side');
+  if (SB) new ResizeObserver(([e]) => SB.classList.toggle('narrow', e.contentRect.width < 236)).observe(SB); }
 $('#collapse').addEventListener('click', () => {
   $('#collapse').setAttribute('aria-expanded', String(!$('#app').classList.contains('collapsed')));
 });
@@ -136,6 +140,40 @@ $('#liveBtn').addEventListener('click', () => {
 });
 $('#liveClose').addEventListener('click', () => $('#app').classList.remove('open'));
 $('#model').addEventListener('click', () => go('main'));
+
+/* ================= v0.240 CALM BRAND: Light / Dark / System, text size, reduce motion, live border glow ================= */
+const TH = window.HoolaTheme;
+function themeSync() {
+  if (!TH) return;
+  const t = TH.theme(), z = TH.size();
+  $$('[data-theme-set]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.themeSet === t)));
+  $$('[data-size-set]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.sizeSet === z)));
+  const c = $('#calmSw'); if (c) c.setAttribute('aria-checked', String(TH.calm()));
+  const g = $('#glowSw'); if (g) g.setAttribute('aria-checked', String(TH.glow()));
+  $$('.themeseg').forEach(seg => { const bs = $$('button', seg), i = Math.max(0, bs.findIndex(b => b.getAttribute('aria-checked') === 'true'));
+    const p = seg.querySelector('.tpill'), on = bs[i]; if (p && on) { p.style.width = on.offsetWidth + 'px'; p.style.transform = `translateX(${on.offsetLeft - 3}px)`; } });
+}
+TH?.onChange(themeSync); themeSync();
+if (window.ResizeObserver) new ResizeObserver(() => themeSync()).observe(document.querySelector('#app .side') || document.body);
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-theme-set],[data-size-set],#calmSw,#glowSw'); if (!b || !TH) return;
+  if (b.dataset.themeSet) TH.setTheme(b.dataset.themeSet, e);
+  else if (b.dataset.sizeSet) TH.setSize(b.dataset.sizeSet);
+  else if (b.id === 'calmSw') TH.setCalm(!TH.calm());
+  else if (b.id === 'glowSw') TH.setGlow(!TH.glow());
+});
+function appearanceHTML() {
+  const card = (k, n, pv) => `<button type="button" class="tcard" role="radio" data-theme-set="${k}" aria-checked="false"><span class="pv">${pv}</span><span class="nm">${n}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>`;
+  const mini = c => `<span class="pvm ${c}"><i></i><b></b><u></u></span>`;
+  return `<div class="tile gl appear" id="appearance"><h3>Appearance</h3>
+    <p class="muted" style="font-size:13.5px;margin:-2px 0 12px">System follows your computer: light by day, dark at night.</p>
+    <div class="tcards" role="radiogroup" aria-label="Theme">${card('light', 'Light', `<span class="pvs pvL"></span>${mini('pvL')}`)}${card('dark', 'Dark', `<span class="pvs pvD"></span>${mini('pvD')}`)}${card('system', 'System', mini('pvL') + mini('pvD'))}</div>
+    <div class="aprow"><div><b>Text size</b><span>Chat text and the sidebar.</span></div>
+      <div class="themeseg sizeseg" role="radiogroup" aria-label="Text size"><span class="tpill" aria-hidden="true"></span><button type="button" role="radio" data-size-set="sm" aria-checked="false">Small</button><button type="button" role="radio" data-size-set="md" aria-checked="false">Default</button><button type="button" role="radio" data-size-set="lg" aria-checked="false">Large</button></div></div>
+    <div class="aprow"><div><b>Reduce motion</b><span>Replies appear at once. No glow, fades or moving borders.</span></div><button type="button" class="swt" role="switch" id="calmSw" aria-checked="false" aria-label="Reduce motion"><i></i></button></div>
+    <div class="aprow"><div><b>Live border glow</b><span>The soft light that runs round a card while Hoola works or waits for you.</span></div><button type="button" class="swt" role="switch" id="glowSw" aria-checked="true" aria-label="Live border glow"><i></i></button></div>
+  </div>`;
+}
 
 async function enter() {
   ME = await api('GET', '/api/console/me');
@@ -230,7 +268,37 @@ function drawHead() {
   $('#ctitle').textContent = c?.title || 'New chat';
   const t = $('#ctag'); t.hidden = !p; if (p) t.textContent = `${p.emoji || '📁'} ${p.name}`;
   $('#cMore').hidden = !c;
+  meter();
 }
+/* v0.244 PHASE 3A the "how full" meter (Claude Code's context meter): % of the window, compaction at 75% */
+let METER_T = 0;
+async function meter() {
+  const el = $('#cMeter'); if (!el) return;
+  const id = CONV; if (!id) { el.hidden = true; return; }
+  clearTimeout(METER_T);
+  METER_T = setTimeout(async () => {
+    try {
+      const r = (await api('GET', `/api/conversations/${encodeURIComponent(id)}/context`)).context || {};
+      if (id !== CONV) return;
+      if (r.mode !== 'claude') { el.hidden = true; return; }
+      const pct = Math.round(Number(r.percent || 0));
+      el.textContent = `Memory ${pct}%`; el.hidden = false;
+      el.classList.toggle('hot', pct >= 60);
+    } catch (e) { el.hidden = true; }
+  }, 300);
+}
+$('#cMeter')?.addEventListener('click', async () => {
+  if (!CONV) return;
+  let text = 'This chat has not been summarised yet - every message still goes to Hoola word for word.';
+  try { const r = await api('GET', `/api/conversations/${encodeURIComponent(CONV)}/compact`); if (r.active?.summary) text = r.active.summary; }
+  catch (e) { toast(e.message, true); return; }
+  const d = document.createElement('dialog'); d.className = 'gl cmdlg';
+  d.innerHTML = `<h3 style="margin:0 0 8px">Older messages, summarised</h3><div class="faint" style="white-space:pre-wrap;font-size:13px;max-height:60vh;overflow:auto"></div><p style="text-align:right;margin:10px 0 0"><button class="btn soft" type="button">Close</button></p>`;
+  d.querySelector('div').textContent = text;
+  d.querySelector('button').addEventListener('click', () => d.close());
+  d.addEventListener('close', () => d.remove());
+  document.body.appendChild(d); d.showModal();
+});
 let TURN = null;          // the open Hoola turn: {bd, tools, tl, text, steps:{}}
 let USER_ECHO = [];       // texts she sent from here (their echo from the server is not drawn twice)
 const RCPTS = new Map();  // v0.173 client_id -> {el, chip} receipts of messages sent while Hoola was busy
@@ -666,6 +734,19 @@ function renderCard(kind, p, at, live) {
     });
     turn().bd.appendChild(el); return;
   }
+  if (kind === 'compact') {   // v0.242 FULL CLAUDE MODE Phase 2: older messages folded into one checkpoint summary
+    const el = document.createElement('details'); el.className = 'note';
+    const n = Number(p.exchanges || 0);
+    el.innerHTML = `<summary>🗜 Older messages summarised${n ? ` (${n} exchanges)` : ''} · ${esc(String(p.before_pct ?? '?'))}% → ${esc(String(p.after_pct ?? '?'))}% full · View</summary><div class="faint" style="white-space:pre-wrap;font-size:13px;margin-top:6px">${esc(p.preview || '')}…</div>`;
+    let loaded = false;
+    el.addEventListener('toggle', async () => {
+      if (!el.open || loaded) return; loaded = true;
+      try { const r = await api('GET', `/api/conversations/${encodeURIComponent(CONV)}/compact`);
+            if (r.active?.summary) el.querySelector('div').textContent = r.active.summary; }
+      catch (e) { loaded = false; }
+    });
+    turn().bd.appendChild(el); return;
+  }
   if (kind === 'memory_saved' || kind === 'procedure') {
     const el = document.createElement('div'); el.className = 'note'; el.textContent = (kind === 'memory_saved' ? '📌 Saved to memory: ' : '🎓 Learned: ') + (p.text || p.title || ''); turn().bd.appendChild(el); return;
   }
@@ -782,6 +863,7 @@ function onEvent(ev) {
       const R = REPLIES.get(p.turn); if (!R) return;
       R.segs.forEach(S => S.pacer.flush()); R.done = true; R.stopped = !!p.stopped; drawActs(R); closeTurnTools(R.t);
       closeThinks(p.turn);   // v0.171 the Soch cards fold when the reply is over
+      meter();               // v0.244 the meter moves after every reply
       return; }
     case 'message':
       if (p.role === 'user') {
@@ -1067,7 +1149,7 @@ addEventListener('resize', drawRail);
 const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 'delta_reset', 'reply_end', 'think', 'say', 'message', 'upload',
   'reminders', 'routines', 'lists', 'email_sent', 'hoola_update', 'galla', 'mshop', 'office', 'employee', 'darzi_order',
   'phonedoc_open', 'phonedoc_check', 'device_action', 'device_action_result', 'home_device', 'bt_request', 'bazar_open',
-  'bazar_link', 'gyaan_sources', 'memory_saved', 'procedure', 'open', 'link', 'call_receipt', 'speaker', 'voice',
+  'bazar_link', 'gyaan_sources', 'memory_saved', 'procedure', 'compact', 'open', 'link', 'call_receipt', 'speaker', 'voice',
   'biz_inbox', 'biz_appointment', 'propagent_listing', 'chai_order']);
 let ACC = null, ACC_LAST = 0;
 function accountStream() {
@@ -1115,6 +1197,10 @@ const SLASH_CMDS = [
   ['tools', 'All tools', 'everything Hoola can do', () => go('kaam')],
   ['call', 'Voice call', 'live voice call', () => go('baat')],
   ['account', 'Account', 'profile, password, AI spend', () => go('main')],
+  ['appearance', 'Appearance', 'Light, Dark or System', () => { go('main'); setTimeout(() => $('#appearance')?.scrollIntoView({block: 'center', behavior: SMOOTH()}), 60); }],
+  ['light', 'Light theme', 'switch to light', () => TH?.setTheme('light')],
+  ['dark', 'Dark theme', 'switch to dark', () => TH?.setTheme('dark')],
+  ['system', 'System theme', 'follow the computer', () => TH?.setTheme('system')],
 ];
 function slashMaybe() {
   const v = msg.value;
@@ -1450,7 +1536,7 @@ async function drawToday() {
 const gOn = m => { const g = m.google_apps || {}; return !!(g.gmail && g.calendar && g.drive); };
 async function drawMain() {
   const m = ME || {}; const box = $('#mainp');
-  box.innerHTML = `<div class="prof gl"><span class="av"><img src="${$('#uimg').src}" alt=""></span><div><h2>${esc(AV)}</h2><div class="muted">${esc(m.handle || '')} · ${esc(m.owner || '')}${m.email ? ' · ' + esc(m.email) : ''}</div></div></div>
+  box.innerHTML = appearanceHTML() + `<div class="prof gl"><span class="av"><img src="${$('#uimg').src}" alt=""></span><div><h2>${esc(AV)}</h2><div class="muted">${esc(m.handle || '')} · ${esc(m.owner || '')}${m.email ? ' · ' + esc(m.email) : ''}</div></div></div>
     <div class="grid2">
       <div class="tile gl"><h3>Console password <span class="tag ${m.has_password ? 'ok' : 'warn'}">${m.has_password ? 'set' : 'not set'}</span></h3>
         <p class="muted" style="font-size:13.5px">Sign in on any computer with <b>${esc(m.handle || 'Hoola ID')}</b> + this password. Every sign-in is reported in your chat.</p>
@@ -1467,6 +1553,7 @@ async function drawMain() {
     </div>
     <div class="acts" style="margin-top:22px"><button class="btn soft" type="button" id="logoutBtn">Logout</button>
       ${CONFIG.v2 ? '<a class="btn soft" href="/console/?legacy=1" style="text-decoration:none">Legacy console</a>' : ''}</div>`;
+  themeSync();
   $('#logoutBtn').addEventListener('click', () => logout(false));
   $('#gAppsBtn').addEventListener('click', () => { if (!CONFIG.google) return toast('Google sign-in is not configured.', true); location.href = '/auth/google/start?web=1&apps=1'; });
   $('#pwf').addEventListener('submit', async e => { e.preventDefault(); const n = $('#pwn').value, n2 = $('#pwn2').value;

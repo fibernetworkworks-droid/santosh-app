@@ -279,6 +279,120 @@ class _MemorySavedChipState extends State<MemorySavedChip> {
   }
 }
 
+/// v0.242 FULL CLAUDE MODE Phase 2: Hoola folded the older part of this chat into one checkpoint summary (Claude's
+/// "compact"). Nothing was deleted - the chip opens the summary the model now reads in place of those messages.
+class CompactChip extends StatelessWidget {
+  const CompactChip({super.key, required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+
+  @override
+  Widget build(BuildContext context) {
+    final n = (v['exchanges'] as num?)?.toInt() ?? 0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: ActionChip(
+          avatar: const Icon(Icons.unfold_less_rounded, size: 16, color: C.teal),
+          label: Text(n > 0 ? 'Purani baatein saar mein rakh di ($n) · Dekho' : 'Purani baatein saar mein rakh di · Dekho',
+              style: const TextStyle(fontSize: 12)),
+          onPressed: () => showCompactSheet(context, app),
+        ),
+      ),
+    );
+  }
+}
+
+/// The chat's checkpoint summary, with "Chat chhoti karo" (compact now).
+Future<void> showCompactSheet(BuildContext context, Santosh app) async {
+  final conv = app.conversationId;
+  if (conv == null || app.api == null) return;
+  var first = <String, dynamic>{};
+  try {
+    first = await app.api!.compactInfo(conv);
+  } catch (_) {}
+  if (!context.mounted) return;
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: const Color(0xF2141029),
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (ctx) => _CompactSheet(app: app, conv: conv, first: first),
+  );
+}
+
+class _CompactSheet extends StatefulWidget {
+  const _CompactSheet({required this.app, required this.conv, required this.first});
+  final Santosh app;
+  final String conv;
+  final Map<String, dynamic> first;
+  @override
+  State<_CompactSheet> createState() => _CompactSheetState();
+}
+
+class _CompactSheetState extends State<_CompactSheet> {
+  late Map<String, dynamic> _d = widget.first;
+  bool _busy = false;
+  String _note = '';
+
+  Future<void> _now() async {
+    setState(() => _busy = true);
+    try {
+      final r = await widget.app.api!.compactNow(widget.conv);
+      if (r.isEmpty) {
+        _note = 'Chat abhi chhoti hi hai - saar banane layak purani baatein nahi hain.';
+      } else {
+        _d = r;
+        _note = 'Ho gaya - chat mein phir se jagah hai.';
+      }
+    } catch (_) {
+      _note = 'Abhi nahi ho saka. Hoola kaam kar raha ho to reply ke baad phir try karein.';
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = '${_d['summary'] ?? ''}'.trim();
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .8),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Pichhli baaton ka saar', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: C.ink)),
+            const SizedBox(height: 4),
+            const Text('Purane messages mitaaye nahi gaye. Hoola ab unki jagah yeh saar padhta hai.',
+                style: TextStyle(fontSize: 12, color: C.muted)),
+            const SizedBox(height: 10),
+            Flexible(
+              child: SingleChildScrollView(
+                child: SelectableText(summary.isEmpty ? 'Is chat ka abhi koi saar nahi bana.' : summary,
+                    style: const TextStyle(fontSize: 13, height: 1.4, color: C.chip)),
+              ),
+            ),
+            if (_note.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(_note, style: const TextStyle(fontSize: 12, color: C.teal)),
+            ],
+            const SizedBox(height: 8),
+            Row(children: [
+              TextButton.icon(
+                onPressed: _busy ? null : _now,
+                icon: const Icon(Icons.unfold_less_rounded, size: 18),
+                label: Text(_busy ? 'Ho raha hai...' : 'Chat chhoti karo'),
+              ),
+              const Spacer(),
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Band karo')),
+            ]),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
 class _StatusChip extends StatelessWidget {
   const _StatusChip(this.status);
   final String status;

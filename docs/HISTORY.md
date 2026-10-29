@@ -9553,10 +9553,110 @@ model / vendor). Phase 5 = everything the plan promised that Phases 1-4 had not 
    pehle jaisa" on each ear-test card and a "vX ke muqable" line. New APK; the server part works without it.
 Tests: NEW `test_v0234_voice_phase5.py` (13). Version 0.241.0 (pubspec 0.241.0+281, console ?v=0.241.0, pins -> 0.241.0). End-to-end test plan: docs/VOICE_E2E_TEST_PLAN.md.
 
-## v0.242.0 SAHI AUZAAR — the right tool for every ask (29 Oct 2026)
+## v0.242.0 FULL CLAUDE MODE — Phase 2: COMPACT, Claude's way of keeping a long chat alive (owner: "START PHASE 2")
+- WHY: Phase 1 sends the whole chat word for word; when it no longer fits, its safety net shortened the oldest
+  exchanges to one-line gists. Claude instead writes ONE careful summary of the older part when the window is nearly
+  full and keeps going. Phase 2 does exactly that.
+- NEW `agent/compact.py` + table `chat_compact` (registered in `db.init_db`, self-heals with `ensure_table`): rows are
+  checkpoints (status active), background drafts (draft) or older checkpoints (replaced); upto_id = the last Message.id
+  a summary covers, tokens before / after, reason auto | manual | overflow, who wrote it (claude / glm / plain).
+- WHEN: `compact.before_turn` runs in `santosh._run_turn` under the chat lock, BEFORE her message is saved:
+  estimate = the chat after its checkpoint + the prompt / tools overhead the gauge measured last time (60,000 chars
+  before the first call). Over CHAT_CONTEXT_FULL_AT (75%) -> compact now (typing dots on); past
+  CHAT_COMPACT_PREPARE_AT (60%) -> a background draft, so the 75% switch normally needs no model call at all (only
+  exchanges newer than the draft are folded). A long job compacts between its rounds (each round is a turn); inside
+  one turn the Phase 1 net / squeeze still protects the call. A "too long" answer puts the chat in `compact.FORCE`, so
+  the next turn compacts first (reason overflow).
+- WHAT: every exchange but the newest CHAT_COMPACT_KEEP (4) folds into the summary; each new checkpoint is written on
+  top of the previous one (nothing older is lost). Claude writes it (system prompt with 7 sections: LAKSHYA, USKE SHABD
+  in her exact words, FAISLE, KAAM HUA with ids / files / links exactly, DIKKAT AUR HAL, BAAKI, ABHI), the cheap brain if
+  Claude is down, plain one-line-per-exchange text if no model answers - a compaction never fails. Big older parts go
+  in 60,000-char pieces, each folded into the summary so far. `scrub`: OTP / PIN / CVV / password next to their word
+  -> ****, any 10+ digit run (cards, accounts, Aadhaar) -> ######. Max CHAT_COMPACT_MAX_CHARS (8000).
+- HISTORY: `yaad.full_history` = the checkpoint as the first message ("[PICHHLI BAATON KA SAAR ...]") + every row after
+  upto_id word for word. `context.fit` / `squeeze` split that head off (`_split_head`, also after `_sanitize` merged it
+  with her first words) and never shorten or drop it; the gauge's reading now keeps `fixed` (prompt + tools chars).
+- SHE SEES: event `compact` (LOCAL_KINDS, no push) {exchanges, total, before_pct, after_pct, preview}. Phone: `CompactChip`
+  "Purani baatein saar mein rakh di (n) · Dekho" -> `showCompactSheet` (the summary, selectable, + "Chat chhoti karo");
+  the same sheet from the "Aapki chats" sheet header (unfold-less icon). Console: a <details> note "Older messages
+  summarised · X% -> Y% full · View" (loads the full summary on open) and "🗜 Compact chat" in each chat's menu.
+- ROUTES: GET /api/conversations/{id}/compact (active + recent + health); POST = compact now (409 while Hoola works in
+  that chat or when compaction is off; {compact: null, say} when nothing old enough to fold).
+- SETTINGS: chat_compact true, chat_compact_prepare_at 0.6, chat_compact_keep 4, chat_compact_max_chars 8000.
+  CHAT_COMPACT=false = Phase 1 only; CHAT_CONTEXT=hoola = the old window (no compaction).
+- Tests: NEW `test_v0242_compact.py` (10): compacts before the turn at 90% + newest 4 word for word + summary first +
+  event + fits again, history after a checkpoint survives a restart, the second checkpoint builds on the first, a 60%
+  draft switched in at 75% with no new writing, secrets scrubbed, plain fallback, overflow -> next turn compacts, off
+  switches, the net / squeeze never cut the checkpoint, manual endpoints (+409 while busy). The Phase 1 net test runs
+  with CHAT_COMPACT=false. Version 0.242.0 (pubspec 0.242.0+282, console ?v=0.242.0, pins -> 0.242.0).
+- Phone chip / sheet need the new APK; the server part works with old APKs (they just do not draw the chip).
+  Mera PC / desktop untouched.
+## v0.237.0 The console sidebar adapts to its width (owner: "WHEN SIDE BAR SHRINKS NEW CHAT AND OTHERS GET MISPLACED - IT MUST BE AUTOMATICALLY ADJUSTED")
+- Cause: at the default / dragged-narrow sidebar width (~220px) "New chat" + its "Ctrl ⇧ O" hint did not fit, so the label
+  wrapped onto two lines and the row grew.
+- Fix (console): a ResizeObserver on `.side` sets `.narrow` under 236px of content width (~260px sidebar); there the
+  shortcut hints hide; New chat / Search / every nav item are one line (nowrap, ellipsis); Search's "Ctrl K" sits at the
+  right edge like New chat's. Wider sidebars get the hints back.
+- Chat list titles: the first-message title skips empty messages; a chat with words but no readable title (e.g. a file-only
+  first message) is "Untitled chat", never "Naya chat".
+- Tests: NEW `test_v0237_sidebar.py` (3). Version 0.237.0 (pubspec 0.237.0+277, console ?v=0.237.0, pins -> 0.237.0).
+
+## v0.243.0 CALM BRAND console (built as 0.240.0; re-versioned past the parallel v0.240-v0.242) (Light / Dark / System) + the sidebar fit
+Owner: "NOW CHECK CONSOL LOOK LIKE A FULLY AI MADE -- MAKE IT HUMAN NATIVE WEB DESIGN WORK. ALSO INCLUDE MODES ::: DARK , LIGHT ,
+SYSTEM", then on the prototype "PUT THE COLOUR ON BUT ORANGE -- MAKE IT APP BRAND DESIGN ... MORE PREMIUM WITH ANIMATIONS AND
+SHEDING ON BORDERS", then "PERFECT NOW --- DEPLOY IT END TO END SAME AS PROTOTYPE SHOWN". Prototype artifact: claude.ai/artifact/9PXUc9MZyRLnox2VisS9zN.
+- Themes: `server/app/static/console/theme.js` (new, loaded in <head> before v2.css - the console CSP is script-src 'self', so no
+  inline script) reads localStorage `hoola.theme` (light | dark | system, default system), `hoola.size` (sm | md | lg),
+  `hoola.calm` (reduce motion), `hoola.glow` (live border glow) and sets `html[data-theme]`, `data-size`, `.calm`, `.noglow`
+  before the first paint. `window.HoolaTheme` = setTheme(t, clickEvent) (View Transition circle from her click unless reduced
+  motion), setSize, setCalm, setGlow, onChange. System follows `prefers-color-scheme` live.
+- Tokens (top of v2.css): bare `:root` = LIGHT (#F5F4FA paper-lavender, ink #1D1A2E, violet #5B45E0); `@media (prefers-color-scheme:
+  dark) :root:not([data-theme="light"])` and `:root[data-theme="dark"]` = DARK (#110F20 indigo night, violet #9C88FF). The old
+  names (--bg0/--bg1/--panel/--ink/--mut/--dim/--lit/--soft/--saffron/--saffron2/--glass*/--line/--hair*) are kept and mapped,
+  so every existing rule follows the theme. Every literal dark-only colour in v2.css was rewritten by property: white / ink
+  overlays -> `rgb(var(--fg-rgb) / a)`, dark panel fills -> `rgb(var(--surf-rgb) / a)`, shadows -> `rgb(var(--sh-rgb) /
+  calc(a * var(--sh-k)))` (light shadows at a third), saffron + violet -> `rgb(var(--acc-rgb) / a)` (actions are violet now),
+  red / green -> --bad-rgb / --ok-rgb, text-on-accent #1B1030 -> --on-acc, gradient buttons -> `var(--btn)` (solid violet).
+  The brand gradient (saffron -> magenta -> violet) stays only for the avatar ring, progress bars, the login headline and live edges.
+- Components (the "v0.240 CALM BRAND" block at the END of v2.css): no aurora / glass blur; solid surfaces with a top-lit edge
+  (lighter top border fading into the hairline) on cards, composer, New chat, spend, tiles; the live sheen (a slow conic
+  light, `@property --a`, round `.cd.ask`, `.job.wait`, and the composer while hovered / typing); quiet sidebar (500 weight,
+  current item = white card with violet icon), her bubble a soft grey-violet, Hoola's reply as plain text (no bubble),
+  folded steps on a raised strip, approval card with the sheen and a violet slide knob, red Stop -> ink Stop; thinking line
+  shimmers; pages fade in; theme circle reveal. Reduce motion (`:root.calm`) and the OS reduced-motion setting stop all of it.
+- Controls: a Light / Dark / System segmented switch in the sidebar (`#themeSeg`, sliding highlight placed in px by v2.js
+  themeSync; icons hide when the sidebar is narrow, only the chosen one shows when collapsed); an Appearance card first on
+  Account (theme cards with mini previews, text size, reduce motion, live border glow); slash commands /appearance /light
+  /dark /system.
+- Also carries the v0.237 sidebar fit built on this branch earlier (see the v0.237 section above: narrow sidebar hides
+  shortcut hints, one line per item; "Untitled chat").
+- Tests: test_v0240_calm_brand.py (version, theme.js before first paint and served, token blocks x3, no dark-only literals left,
+  edge / sheen / motion switches, sidebar switch + Account Appearance + commands); pins moved: 12 `?v=` stamps, 12 slash
+  commands, the R1 token anchor, the R4 accent edge as a token.
+- Not verified on her real screen yet: Safari's View Transition (falls back to an instant switch), very old browsers without
+  `@property` (the sheen then shows as a still light on the border).
+
+## v0.244.0 FULL CLAUDE MODE — Phase 3A: ONE MEMORY everywhere (owner: "START PHASE 3A")
+- VOICE (`yaad.voice_block`, the only voice-side change; voice.py untouched): a call in a compacted chat starts with
+  "IS CHAT KA SAAR (checkpoint ...)" = the Phase 2 checkpoint (`compact.active`, up to CALL_CHECKPOINT_CHARS 6,000 so the
+  diary + facts after it still fit) instead of the rolling summary, and "Haal ki baatein" lists only exchanges AFTER the
+  checkpoint (never the same work twice). The brief may grow to CALL_MAX_WITH_CHECKPOINT 16,000 chars (was 10,000) only
+  then. No checkpoint = exactly as before.
+- QUICK LANE (`agent/quick.py` `_checkpoint`): "CHAT KA SAAR" with the newest 2,500 chars of the checkpoint (where the
+  current work is) between the running job and the chat lines; nothing when never compacted.
+- COST CAP (`config.chat_context_max_tokens`, 0 = off; `context.window`): the window Hoola plans with =
+  min(model window, cap / CHAT_CONTEXT_FULL_AT), so the cap IS the compaction line and the 60% draft / net target scale
+  with it. Readings carry window, budget, percent (of the window) and full (% of the way to compaction).
+- CONSOLE: "Memory N%" button in the chat header (`#cMeter`, v2.js `meter()` after opening a chat and after every reply,
+  warm colour from 60%, hidden in hoola mode); click = a dialog with the checkpoint summary.
+- GREETING: a new chat says "Namaskar! Main <her avatar's name> hoon ..." (`avatar.service.persona`), not "Santosh".
+- Tests NEW `test_v0244_one_memory.py` (7). Version 0.244.0 (pubspec 0.244.0+284, console ?v=0.244.0, pins).
+  Server + console only (no APK needed). Mera PC / desktop untouched.
+
+## v0.245.0 SAHI AUZAAR — the right tool for every ask (29 Oct 2026)
 Owner: "AGAIN MAIN ISSUE --- CHECK IS HOOLA IS CAPABLE OF CHOOSING PROPER TOOL FOR PROPER WORK", then "I WANT IT
-UNIVERSALLY, NOT FOR PDF ONLY - HOOLA MUST CHOOSE PERFECT TOOL FOR THAT PARTICULAR PROMPT". Built as 0.239.0, re-versioned
-0.242.0 past the parallel v0.239.0 FULL CLAUDE MODE, v0.240.0 CHHOTA JAWAB, v0.241.0 voice Phase 5 (all kept).
+UNIVERSALLY, NOT FOR PDF ONLY - HOOLA MUST CHOOSE PERFECT TOOL FOR THAT PARTICULAR PROMPT". Built as 0.239.0 / 0.242.0, re-versioned
+0.245.0 past the parallel v0.239.0-v0.244.0 (FULL CLAUDE MODE 1 / 2 / 3A, CHHOTA JAWAB, voice Phase 5, CALM BRAND; all kept).
 - Measured root cause (router, `agent/admit.py`): a turn sees ~60 of 425 tools, picked by single words. Auto-keys came
   from every word in tool names, so "pdf" (pdf_tools) loaded India holidays, "make" loaded notebook + Hoola Network +
   artifact, "hoola" (hoola_pc_do, in nearly every message) loaded 35 network tools AND the PC tools, "search" / "phone" /
@@ -9575,7 +9675,7 @@ UNIVERSALLY, NOT FOR PDF ONLY - HOOLA MUST CHOOSE PERFECT TOOL FOR THAT PARTICUL
 - `agent/pick.py` (called first in dispatch): a PC-family tool not in view this turn (she named no PC) is refused with the
   right server tools named and "tool_search 'pc' if she really meant a PC"; a data task sent to pc_do / hoola_pc_do she
   did not name is refused with the data-desk route. No PC file changed.
-- Prompt: pinned "- TOOL CHOOSER (v0.242)" maps every common job to its tool and says: not in your list = tool_search,
+- Prompt: pinned "- TOOL CHOOSER (v0.245)" maps every common job to its tool and says: not in your list = tool_search,
   never a nearby tool.
 - Measurement: `app/quality/tool_asks.py` = 155 asks (95 written with the fix, 60 written fresh as a holdout before any
   tuning) with the right first tools and the families that must stay out. Old router on the holdout: right tool in view
@@ -9585,5 +9685,5 @@ UNIVERSALLY, NOT FOR PDF ONLY - HOOLA MUST CHOOSE PERFECT TOOL FOR THAT PARTICUL
   router_card (free) + live_card (one real model call per ask with the exact turn prompt + tools, first tool_use scored,
   a tool_search pick followed once, NOTHING dispatched); `python -m app.quality tools [--live] [--brain claude|glm]`,
   GET /api/quality/tools. The live card was not run in the sandbox (no model key) - run it on the VPS.
-- Tests `server/tests/test_v0242_tool_choice.py`. Version 0.242.0 (pubspec 0.242.0+282, console ?v=0.242.0 x11, pins).
+- Tests `server/tests/test_v0245_tool_choice.py`. Version 0.245.0 (pubspec 0.245.0+285, console ?v=0.245.0 x12, pins).
   Server-only deploy.

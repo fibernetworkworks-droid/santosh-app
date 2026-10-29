@@ -1,4 +1,4 @@
-"""v0.242 SAHI AUZAAR - the tool-choice set: real asks (Hinglish / English / Hindi) with the RIGHT tool for each.
+"""v0.245 SAHI AUZAAR - the tool-choice set: real asks (Hinglish / English / Hindi) with the RIGHT tool for each.
 
 Each ask: text, ok = the tools that are a right FIRST pick (any one), bad = tool families that must NOT be loaded
 for it (a wrong family in view is how Hoola ended up on the cloud PC for a data job). The router test pins that

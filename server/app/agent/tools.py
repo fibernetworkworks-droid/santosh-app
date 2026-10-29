@@ -269,7 +269,7 @@ async def dispatch(name: str, args: dict, ctx: Ctx):
         raise ToolError(f"Unknown tool {name}")
     moved = ""
     from . import pick, where
-    pick.check(name, args or {}, ctx)   # v0.242 a plainly wrong pick (a PC not in view, data sent to a PC) never runs
+    pick.check(name, args or {}, ctx)   # v0.245 a plainly wrong pick (a PC not in view, data sent to a PC) never runs
     # v0.93 her words decide: her PC vs Hoola's own browser (never mixed up); v0.104 else the place where this chat's
     # website work is already running, so a job never jumps to another browser half way
     place_now = getattr(ctx, "place", "") or where.working(getattr(ctx, "conversation_id", "") or "")

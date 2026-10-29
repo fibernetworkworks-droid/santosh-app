@@ -1,4 +1,4 @@
-"""v0.242 SAHI AUZAAR - the tool-choice card: does Hoola pick the RIGHT tool for each ask?
+"""v0.245 SAHI AUZAAR - the tool-choice card: does Hoola pick the RIGHT tool for each ask?
 
 Two cards over app/quality/tool_asks.py:
 - router_card(): free, no model - for every ask, is a right tool IN VIEW and is a wrong family kept out?

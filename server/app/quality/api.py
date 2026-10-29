@@ -35,7 +35,7 @@ def make_router(require_key) -> APIRouter:
 
     @r.get("/tools")
     async def tools():
-        """v0.242 tool choice: the free router card now + the saved live cards (python -m app.quality tools --live)."""
+        """v0.245 tool choice: the free router card now + the saved live cards (python -m app.quality tools --live)."""
         from . import toolchoice as T
         card = await asyncio.to_thread(T.router_card)
         return {"router": {k: v for k, v in card.items() if k != "rows"}, "lines": T.lines(card),
