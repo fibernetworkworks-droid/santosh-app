@@ -9095,3 +9095,14 @@ Tests: NEW `test_v0230_voice_phase3.py` (11); v0206 backchannel fakes follow the
 `push_news`; v150 checks form_create's nested title through `_compact`. Version 0.230.0 (pubspec 0.230.0+270, console
 ?v=0.230.0, pins -> 0.230.0). Server + APK (Dart / Kotlin) - old APKs keep working with the server part.
 
+
+## v0.231.0 New chat lands on a clean chat (owner: "WHEN CLICK ON NEW CHAT IT LANDS ON ANY RANDOM CHAT")
+- Cause: every console New chat tap made one more identical "Naya chat" row, opened as a thread with the greeting, and
+  the greeting (published before the console switched to that chat) put an unread dot on it - so she could not tell which
+  of many identical chats she was in.
+- Fix: `POST /api/conversations?reuse=1` (console New chat and the session "+") returns her newest UNTOUCHED empty chat
+  (`main._untouched_chat`: same session, not archived / deleted, only the greeting event, no message of hers - a chat a
+  card or note landed in is never reused) and makes a new one only when there is none; without `reuse` (phone, bootstrap)
+  nothing changes. A chat with only the greeting opens on the home screen; the greeting never marks a chat unread.
+- Old empty "Naya chat" rows already made stay in the list (delete from the chat menu).
+- Tests: NEW `test_v0231_new_chat.py` (4). Version 0.231.0 (pubspec 0.231.0+271, console ?v=0.231.0, pins -> 0.231.0).
