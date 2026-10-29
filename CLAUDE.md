@@ -8828,3 +8828,33 @@ Phases 2-4 (hosting off the main process, builder quality on Opus like App Sahay
 - Tests `server/tests/test_v0223_site_fixes.py`. Version 0.223.0 (pubspec 0.223.0+258, console ?v=0.223.0 x9, pins).
   Server-only deploy; old APKs keep working. NOTE: the parallel Console R1 work (serene-dijkstra) planned to be v0.223 -
   it now needs v0.224.
+
+## v0.224.0 WEBSITE PHASE 2 — live websites no longer go down with Hoola (owner: "START PHASE 2")
+Phase 2 of the web-development audit: hosting moved off Hoola's own process, an outside watcher, an off-server backup.
+- **nginx serves the live sites** (`app/site/edge.py`): `sync()` keeps `data/hosted_enabled/<host>` symlinks (atomic
+  replace) for exactly the addresses that may be served (active / pending with a live version; apex left out, junk names
+  refused); runs on every `host_map(force=True)` (launch, rollback, take-down, domain) and every worker tick - nginx
+  never needs a reload. `python -m app.site.edge conf [--cert --key --app --no-ssl]` writes the default_server block:
+  `root <enabled>/$host`, the same security headers as `build.security_headers` + HSTS, gzip, assets 7 days / pages 5 min,
+  directory -> trailing-slash 301, own 404 page, `_headers` 404, bare domain -> www when only www is live, only
+  `/api/site-forms/` proxied to Hoola (every other `/api/` 404), a host not in the folder proxied to Hoola (the Python
+  serving stays as fallback; `proxy_set_header` at server level because it is not allowed inside `if`). Tested with REAL
+  nginx 1.24: all of that, plus the sites keep opening with the Hoola app stopped. VPS gotcha: nginx's `www-data` must be
+  able to read data/hosted (+ hosted_enabled) and write the access log - ACL steps in `deploy/sites_hosting.md`.
+- **Visits from nginx's log**: format `hoola_sites` (host, status, method, $request_uri, content type, UA), written only
+  for requests nginx served itself (`if=$hoola_live`, no double counting with the Python fallback); `edge.ingest_log()`
+  (worker) reads new lines from a saved offset (rotation / new inode restart at 0), counts GET/HEAD HTML 200 / 404, skips
+  bots (`hosting.is_bot`) into the same `care.count_view` counters.
+- **Outside uptime check** `.github/workflows/site-uptime.yml` (every 15 min on GitHub; secrets HOOLA_URL +
+  SITES_UPTIME_KEY; not set = a notice, never a failure): GET `/api/sites-uptime` (X-Uptime-Key, constant-time; no key
+  set = 404) -> opens every live main / www address -> POST results -> `hosting.outside_report` -> the same `_record`
+  as Hoola's own check (two misses = one card + push "bahar se jaanch", back up = note). Hoola unreachable / a site down =
+  failed run = GitHub emails the owner. `/api/hosting/ask` no longer forces a DB read + folder sync per public call.
+- **Daily off-server backup** `app/site/backup.py`: after 03:00 IST, one tar.gz of data/hosted (address links stored as
+  relative links) + every site's `src` -> `hoola/sites/<date>.tar.gz` on S3 / R2 / B2 / Spaces with AWS SigV4 written here
+  (UNSIGNED-PAYLOAD, streamed; matched botocore on GET / PUT / list / continuation / escaped DELETE - botocore is not a
+  dependency); older than SITES_BACKUP_KEEP_DAYS (14) deleted; `restore` never writes outside its folder (path / link
+  escapes skipped). Settings SITES_BACKUP_BUCKET / _ENDPOINT / _REGION / _KEY_ID / _SECRET / _KEEP_DAYS; off when empty.
+- Python fallback: ETag + 304 for repeat visits; `_link` now makes relative links. `.env.example` lists every SITES_ setting.
+- Tests `server/tests/test_v0224_site_edge.py` (real nginx test skips where nginx is missing). Version 0.224.0
+  (pubspec 0.224.0+259, console ?v=0.224.0 x9, pins). Server + VPS nginx step; old APKs keep working.

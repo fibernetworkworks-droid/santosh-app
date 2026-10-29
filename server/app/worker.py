@@ -793,6 +793,14 @@ async def employee_jobs() -> None:
         await asyncio.to_thread(site_domains.tick)
     except Exception:
         log.exception("site domains tick failed")
+    try:                                   # v0.224 visits nginx served (its own log), the daily website files backup
+        from .site import edge as site_edge
+        from .site import backup as site_backup
+        await asyncio.to_thread(site_edge.ingest_log)
+        await asyncio.to_thread(site_edge.sync)
+        await asyncio.to_thread(site_backup.daily)
+    except Exception:
+        log.exception("site edge / backup failed")
     try:                                   # v0.124 care: visit counters to the DB, monthly care note on the 1st
         from .site import care as site_care
         await asyncio.to_thread(site_care.flush)

@@ -187,6 +187,13 @@ class Settings(BaseSettings):
     sites_porkbun_key: str = ""            # v0.123 Newtika's Porkbun API key / secret (only with sites_resell)
     sites_porkbun_secret: str = ""
     sites_domain_month_inr: float = 5000   # v0.123 ceiling per owner per month for domain purchases
+    sites_uptime_key: str = ""             # v0.224 shared secret for the outside uptime checker (GitHub Actions), >= 16 chars
+    sites_backup_bucket: str = ""          # v0.224 S3-compatible bucket for the daily website files backup (off = empty)
+    sites_backup_endpoint: str = ""        # e.g. https://<account>.r2.cloudflarestorage.com (empty = AWS S3)
+    sites_backup_region: str = "auto"
+    sites_backup_key_id: str = ""
+    sites_backup_secret: str = ""
+    sites_backup_keep_days: int = 14
     app_build_mode: str = ""               # v0.132 native Android builds: worker | github | local | "" (project ZIP only)
     app_build_url: str = ""                # v0.132 worker: https://build.example.com (server/app_builder on a separate machine)
     app_build_secret: str = ""             # v0.132 worker shared secret (HMAC of every request)
