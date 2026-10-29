@@ -9241,3 +9241,24 @@ Phase 1 put "check your draft once" in the rulebook; this is the part that does 
 - Version 0.231.0 (pubspec 0.231.0+271, console ?v=0.231.0, pins -> 0.231.0). Server-only — old APKs
   keep working. Mera PC freeze respected; desktop untouched 1.4.0; the scorecard never touches her data, her chats or
   her budget.
+
+
+## v0.232.0 LONG JOBS PHASE C — she SEES Hoola think (owner: "NOW START PHASE C END TO END"; fix 6 of the Claude-vs-Hoola long-task report)
+- THE GAP (found in code): the server could stream thinking since v0.171 (`think` live events, `livereply.feed_think`,
+  `/live` snapshot `think`), but `_call_brain` never asked Claude to think and the production GLM has thinking
+  disabled, so no Soch card could ever appear — not on the console, not on the phone (the phone had no card at all).
+- SERVER (`agent/santosh.py`, `config.py`): setting `chat_thinking` = goal (default) | on | off. `think_wanted`: goal =
+  only while a long job runs (an open goal, or a clearly big ask by her from its FIRST call — `goal.looks_big`, since
+  Claude cannot start thinking inside a tool loop and the plan comes first); short chats stay fast. Claude calls carry
+  `thinking: {type: adaptive}` (Claude decides how much) only when `_loop_ok` (a tool_result being answered needs its
+  assistant message to carry a thinking block, Claude's rule; a loop started on the cheap brain finishes without).
+  A 400 naming thinking = `THINK.ok` off for the process, `think_reset` empties the card, the same call goes again
+  without it (never a dead turn). Thinking blocks (`thinking`, `redacted_thinking`) stay in the in-turn history for
+  the tool loop but `_save` strips them (`_no_think`) and the GLM / OmniRoute path never sees them.
+- PHONE (`lib/state.dart`, NEW `lib/ui/think_card.dart`, `lib/ui/chat_screen.dart`): `think` events build ONE card per
+  turn:seg (`_onThink`, newest 6,000 chars kept), inserted above the growing reply; `clear` empties it; live = open
+  with a ticking clock "Soch raha hoon · 12s" and the newest lines; reply_end / typing off / the next reply folds it
+  to "<name> ne socha · 12s" (tap opens all of it); a reload mid-thought reopens it from `/live`. Never stored.
+- Tests NEW `test_v0232_phase_c.py` (9). Version 0.232.0 (pubspec 0.232.0+272, console ?v=0.232.0, pins -> 0.232.0).
+  Server deploy turns thinking on (console shows it in its progress line); the phone card needs the new APK. Mera PC
+  freeze respected; desktop untouched.
