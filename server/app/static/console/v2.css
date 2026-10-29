@@ -1604,3 +1604,44 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 #app .callav::before{content:"";position:absolute;inset:-26px;border-radius:50%;background:conic-gradient(from var(--a),transparent,rgb(196 107 242 / .35),transparent 40%,rgb(255 177 92 / .35),transparent 75%);filter:blur(12px);animation:cspin 7s linear infinite;pointer-events:none}
 #app .callav .av{box-shadow:0 0 0 3px var(--bg),0 0 0 5.5px var(--mag);background:var(--surface)}
 :root.noglow #app .callav::before,:root.noglow #app .halo::before{display:none}
+
+/* ================================================================================================
+   v0.244 WORKSPACE EDGE (owner: "AT TOP THERE IS WIDTH SECTION WE DONT WANT THAT - A SMOOTH SLIDER LIKE SIDE BAR ...
+   DOCUMENTS TO BE LOADED FULLY WITHOUT SIDE PAGE INFORMATION. SAME FOR ALL WORKSPACE TASKS"): the width bar is gone;
+   the workspace's left edge drags like the sidebar (a hairline that lights up violet, a grip in the middle), a small
+   round button on the edge toggles full width, and documents / previews fill every pixel of the workspace.
+   ================================================================================================ */
+#app .studio,#app .panel{position:relative}
+#app .workspace-handle{position:absolute;left:0;top:0;bottom:0;width:12px;padding:0;margin:0;border:0;background:none;z-index:60;cursor:col-resize;display:block;touch-action:none}
+#app .workspace-handle::before{content:"";position:absolute;left:0;top:0;bottom:0;width:1px;background:var(--line);transition:background .2s,width .2s}
+#app .workspace-handle:hover::before,#app .workspace-handle:focus-visible::before,#app.workspace-resizing .workspace-handle::before{width:2px;background:var(--pri)}
+#app .workspace-handle:focus-visible{outline:none}
+#app .workspace-handle .wsgrip{position:absolute;left:-3px;top:50%;width:8px;height:44px;margin-top:-22px;border-radius:99px;background:var(--surface);border:1px solid var(--hair2);box-shadow:var(--sh2);transition:background .2s,border-color .2s,transform .2s var(--ease)}
+#app .workspace-handle .wsgrip::after{content:"";position:absolute;left:2px;right:2px;top:14px;bottom:14px;border-left:1.5px dotted var(--dim);border-right:1.5px dotted var(--dim)}
+#app .workspace-handle:hover .wsgrip,#app.workspace-resizing .workspace-handle .wsgrip{background:var(--pri);border-color:var(--pri);transform:scaleY(1.12)}
+#app .workspace-handle:hover .wsgrip::after,#app.workspace-resizing .workspace-handle .wsgrip::after{border-color:rgb(255 255 255 / .8)}
+#app .workspace-handle button{position:absolute;left:-1px;top:50%;margin-top:34px;width:26px;height:26px;padding:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  background:var(--surface);border:1px solid var(--hair2);color:var(--mut);box-shadow:var(--sh2);opacity:0;transform:translateX(-2px);transition:opacity .2s,transform .2s var(--ease),color .2s,border-color .2s;font-size:0}
+#app .workspace-handle button svg{width:13px;height:13px}
+#app .studio:hover .workspace-handle button,#app .panel:hover .workspace-handle button,#app .workspace-handle:focus-within button,#app .workspace-handle button[aria-pressed="true"]{opacity:1;transform:none}
+#app .workspace-handle button:hover{color:var(--pri);border-color:var(--pri)}
+#app .workspace-handle label{display:none}
+#app.workspace-resizing,#app.workspace-resizing *{user-select:none;cursor:col-resize !important}
+#app.workspace-resizing iframe,#app.workspace-resizing video{pointer-events:none}
+#app.st .studio,#app.pn .panel{width:min(var(--workspace-width,clamp(420px,46vw,900px)),calc(100vw - var(--sidebar-width,224px) - 380px));transition:width .28s var(--ease)}
+#app.workspace-resizing .studio,#app.workspace-resizing .panel{transition:none}
+#app.collapsed.st .studio,#app.collapsed.pn .panel{width:min(var(--workspace-width,clamp(420px,46vw,900px)),calc(100vw - 72px - 380px))}
+#app.workspace-full .studio,#app.workspace-full .panel{transition:none}
+@media(max-width:1100px){#app .workspace-handle{display:none}}
+
+/* documents fill the workspace: no padding, no rounded frame, the whole height */
+#app .pnview.doc{display:flex;flex-direction:column;padding:0;background:var(--sunk);overflow:hidden}
+#app .pnview.doc .pnframe{flex:1;width:100%;height:auto;min-height:0;border:0;border-radius:0;margin:0;background:var(--sunk)}
+#app .pnview.center .pnmedia{max-width:100%;max-height:100%;object-fit:contain;border-radius:10px}
+#app .pnview.center:has(>.pnmedia){padding:12px;background:var(--sunk)}
+#app .pnview:not(.center):not(.doc){background:var(--sunk)}
+#app.workspace-full.st .studio,#app.workspace-full.pn .panel{width:calc(100% - var(--sidebar-width,224px))}
+#app.workspace-full.collapsed.st .studio,#app.workspace-full.collapsed.pn .panel{width:calc(100% - 72px)}
+@media(max-width:1100px){#app.st .studio,#app.pn .panel,#app.collapsed.st .studio,#app.collapsed.pn .panel{width:min(780px,96vw)}}
+@media(max-width:820px){#app.st .studio,#app.pn .panel,#app.collapsed.st .studio,#app.collapsed.pn .panel,#app.workspace-full.st .studio,#app.workspace-full.pn .panel{width:100%}}
+@media(max-width:1100px){#app.workspace-full.st .studio,#app.workspace-full.pn .panel,#app.workspace-full.collapsed.st .studio,#app.workspace-full.collapsed.pn .panel{width:100%}}

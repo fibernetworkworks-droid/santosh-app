@@ -249,6 +249,12 @@ function renderUrlVideo(t) {
     + `<div class="pnview center"><video class="pnmedia" controls playsinline preload="metadata" src="${esc(it.url)}"></video></div>`;
 }
 
+/* v0.244 a document fills the whole workspace: no page-thumbnail side strip (navpanes / pagemode), fitted to the width */
+const PDF_VIEW = '#navpanes=0&pagemode=none&view=FitH&zoom=page-width';
+function docView(view, name, u) {
+  view.classList.remove('center'); view.classList.add('doc');
+  view.innerHTML = `<iframe class="pnframe" title="${esc(name)}" src="${u}${PDF_VIEW}"></iframe>`;
+}
 /* her file: viewable types as blob:, Office as PDF, text as code, the rest download */
 async function renderFile(t) {
   const it = t.item, fid = it.ref, P = `/api/panel/files/${encodeURIComponent(fid)}`;
@@ -268,10 +274,10 @@ async function renderFile(t) {
       if (info.media === 'image') view.innerHTML = `<img class="pnmedia" alt="${esc(info.name)}" src="${u}">`;
       else if (info.media === 'video') view.innerHTML = `<video class="pnmedia" controls playsinline src="${u}"></video>`;
       else if (info.media === 'audio') view.innerHTML = `<audio controls src="${u}"></audio>`;
-      else if (info.media === 'pdf') view.innerHTML = `<iframe class="pnframe" title="${esc(info.name)}" src="${u}"></iframe>`;
+      else if (info.media === 'pdf') docView(view, info.name, u);
       return;
     }
-    if (info.office) { const u = await blobOf(t, P + '/pdf', 'application/pdf'); view.innerHTML = `<iframe class="pnframe" title="${esc(info.name)}" src="${u}"></iframe>`; return; }
+    if (info.office) { const u = await blobOf(t, P + '/pdf', 'application/pdf'); docView(view, info.name, u); return; }
     if (info.text) { const s = await api('GET', P + '/text'); view.classList.remove('center'); view.innerHTML = code(s.text, s.lang); return; }
     view.innerHTML = `<div class="pnempty">This file cannot be previewed here. <b>Download</b> it to open.</div>`;
   } catch (e) { view.innerHTML = err(e.message); }
