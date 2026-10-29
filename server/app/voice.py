@@ -911,6 +911,44 @@ def stats_summary(tenant: str) -> dict:
     }
 
 
+# ---- v0.234 VOICE PHASE 5: talk-over, repeats, noise ----
+TALK_OVER_S = 0.25        # his first audio while her mic was loud this recently = he talked over her
+REPEAT_LOOKBACK = 6       # his last six replies are compared
+REPEAT_MIN_WORDS = 6
+REPEAT_SAME = 0.8         # word overlap this high = the same thing again
+_NOISE = re.compile(r"<[^>]*>|\[[^\]]*\]")
+_FILLER = {"hmm", "hm", "mm", "uh", "um", "ah", "aa", "haan", "ha", "ok", "okay"}
+
+
+def _words(text: str) -> list[str]:
+    """Words of any script: letters plus their vowel signs (Devanagari matras are Unicode M*, not \\w)."""
+    import unicodedata
+    out = []
+    for tok in _NOISE.sub(" ", text or "").split():
+        w = "".join(ch for ch in tok if unicodedata.category(ch)[0] in "LM").lower()
+        if len(w) >= 2:
+            out.append(w)
+    return out
+
+
+def real_words(text: str) -> bool:
+    """Did the transcript hear actual words (not '<noise>', punctuation or a lone 'hmm')?"""
+    ws = _words(text)
+    return any(w not in _FILLER for w in ws) or len(ws) >= 2
+
+
+def _wordset(text: str) -> set[str]:
+    return set(_words(text))
+
+
+def is_repeat(reply: str, before: list[set[str]]) -> bool:
+    """His reply says nearly the same words as one of his recent replies (Jaccard >= REPEAT_SAME)."""
+    w = _wordset(reply)
+    if len(w) < REPEAT_MIN_WORDS:
+        return False
+    return any(len(w & b) / len(w | b) >= REPEAT_SAME for b in before if b)
+
+
 # ---- "ek second": short clips in his own voice for a tool that runs while he is silent ----
 ACK_LINES = ["Haan, ek second.", "Achha, dekhta hoon.", "Ruko, check karta hoon.", "Hmm, ek minute.", "Haan, kar raha hoon.",
              "Ek minute, dekh leta hoon.", "Haan haan, ho raha hai.", "Achha achha, wait.", "Haan, mil gaya... ek second.",
@@ -978,13 +1016,19 @@ def _tts_clip(ask: str, voice: str, client=None) -> bytes:
             resp = (client or Client(api_key=st.gemini_api_key)).models.generate_content(model=model, config=cfg, contents=ask)
             if any(getattr(p, "inline_data", None) and p.inline_data.data for p in resp.candidates[0].content.parts):
                 break
-        except Exception:
+        except Exception as e:
             if model == "gemini-2.5-flash-preview-tts":
                 raise
+            # v0.234 never silent: the legacy TTS speaks in a different-sounding voice, so say it happened
+            TTS_FALLBACKS["count"] += 1
+            log.warning("ack TTS %s failed (%r): the legacy TTS renders this clip", model, e)
     for part in resp.candidates[0].content.parts:
         if getattr(part, "inline_data", None) and part.inline_data.data:
             return part.inline_data.data
     raise RuntimeError("TTS gave no audio")
+
+
+TTS_FALLBACKS = {"count": 0}   # v0.234 clips the call's own TTS model could not render (the legacy one did)
 
 
 def _ack_tts(text: str, voice: str, gender: str, client=None) -> bytes:
@@ -1005,6 +1049,44 @@ def _trim(pcm: bytes, rate: int = 24000) -> bytes:
         a[i] = int(a[i] * i / fade)
         a[-1 - i] = int(a[-1 - i] * i / fade)
     return a.tobytes()
+
+
+def _rms(pcm: bytes, step: int = 8) -> float:
+    """Rough loudness of a PCM16 chunk (every `step`-th sample: cheap enough for the audio loop)."""
+    a = array("h")
+    a.frombytes(pcm[: len(pcm) // 2 * 2])
+    xs = a[::step]
+    return (sum(x * x for x in xs) / len(xs)) ** .5 if len(xs) else 0.0
+
+
+LEVEL_MIN, LEVEL_MAX = 0.5, 2.0   # a clip is never made more than twice as loud / half as quiet
+
+
+def _level(pcm: bytes, target: float) -> bytes:
+    """v0.234 the 'ek second' clips come from the TTS model, his live voice from Gemini Live, so a clip often
+    sounded louder or quieter than him. Scale the clip to his running loudness in THIS call (clamped, no clipping)."""
+    cur = _rms(pcm, 4)
+    if target <= 0 or cur <= 0:
+        return pcm
+    g = min(LEVEL_MAX, max(LEVEL_MIN, target / cur))
+    if abs(g - 1) < .08:
+        return pcm
+    a = array("h")
+    a.frombytes(pcm[: len(pcm) // 2 * 2])
+    for i, x in enumerate(a):
+        a[i] = max(-32768, min(32767, int(x * g)))
+    return a.tobytes()
+
+
+def matched_clip(call, pcm: bytes) -> bytes:
+    """A clip (ack / murmur / progress) at his live loudness in this call, once enough of his voice was heard."""
+    rms = getattr(call, "_his_rms", 0)
+    if getattr(call, "_his_n", 0) < 24 or not rms:
+        return pcm
+    out = _level(pcm, rms)
+    if out is not pcm:
+        call.stats["level_matched"] = call.stats.get("level_matched", 0) + 1
+    return out
 
 
 def _build_acks(key: str, voice: str, gender: str) -> None:
@@ -1277,10 +1359,14 @@ class Call:
         try:
             self._names = sidetalk.names_for(self.tenant, self.name)
         except Exception:
+            log.warning("call names lookup failed, using the defaults", exc_info=True)
             self._names = [self.name, "Hoola"]
         self.stats.update({"holds": 0, "hold_reasons": {}, "held_turns": 0, "dropped_replies": 0, "released_by": {},
                            "hold_refused_tools": 0, "hold_s": 0.0,
-                           "stall_nudges": 0, "stall_reconnects": 0, "auto_rescues": 0, "orphan_notes": 0})
+                           "stall_nudges": 0, "stall_reconnects": 0, "auto_rescues": 0, "orphan_notes": 0,
+                           "talk_over": 0, "repeats": 0, "stall_noise_skips": 0, "level_matched": 0})
+        self._his_rms, self._his_n = 0.0, 0     # v0.234 his live voice loudness (the clips are matched to it)
+        self._his_said: list[set[str]] = []      # v0.234 word sets of his last replies (repeats; never saved)
         if st.voice_tool_ack and st.gemini_api_key:
             ack_clips(self.voice, self.gender)   # get his "ek second" clips ready
             if st.voice_backchannel:             # v0.205 the murmurs and progress sounds render too
@@ -1641,6 +1727,7 @@ class Call:
                                     self._hold_turn_audio.append(blob.data)
                                 continue
                             self._mark_audio()
+                            self._hear_him(blob.data)
                             await self.send_audio(blob.data)
                 if sc.output_transcription is not None and sc.output_transcription.text:
                     self.reply_buf += sc.output_transcription.text
@@ -1763,11 +1850,26 @@ class Call:
         if self._turn_audio:
             return
         self._turn_audio = True
+        if (now - self._last_voice_at < TALK_OVER_S and self._last_voice_at > self._turn_end_at
+                and self.user_buf.strip() and not getattr(self, "_tool_runs", 0)):
+            self.stats["talk_over"] = self.stats.get("talk_over", 0) + 1   # v0.234 he started while she was still talking
         if self._last_voice_at > self._turn_end_at:
             gap = now - self._last_voice_at
             if 0 <= gap < 15:
                 self._latency = int(gap * 1000)
                 self.stats["latency_ms"].append(self._latency)
+
+    def _hear_him(self, pcm: bytes) -> None:
+        """v0.234 a running loudness of his live voice (every 4th chunk, slow average)."""
+        self._his_n = getattr(self, "_his_n", 0) + 1
+        if self._his_n % 4:
+            return
+        r = _rms(pcm)
+        if r > 300:                            # speech, not the silence between words
+            self._his_rms = r if not self._his_rms else self._his_rms * .9 + r * .1
+
+    def _clip(self, pcm: bytes) -> bytes:
+        return matched_clip(self, pcm)
 
     async def _stall_watch(self, session) -> None:
         """v0.211 NEVER SILENT (the owner: 'IF STUCK NO REPLY'): Gemini sometimes just stops sending anything
@@ -1787,6 +1889,12 @@ class Call:
                 continue
             if not (self.user_buf.strip() or self._turn_audio):
                 continue                       # nobody is waiting for an answer: quiet is fine
+            if not self._turn_audio and not real_words(self.user_buf):
+                # v0.234 only noise was heard ("<noise>", ".", "hmm"): a nudge would make him answer the fan
+                if not getattr(self, "_noise_skipped", False):
+                    self._noise_skipped = True
+                    self.stats["stall_noise_skips"] = self.stats.get("stall_noise_skips", 0) + 1
+                continue
             if self._tool_runs > 0:
                 continue                       # a tool is running: the ack/progress clips own this silence
             now = time.monotonic()
@@ -1946,7 +2054,7 @@ class Call:
         self._bc_at = now
         self._bc_this_turn += 1
         self.stats["backchannels"] += 1
-        await self.send_audio(clips[i])
+        await self.send_audio(matched_clip(self, clips[i]))
 
     async def _otp_listen(self, piece: str = "", final: bool = False) -> None:
         """v0.83 a website job is waiting for an OTP and she SAYS it on the call: the system catches the digits from
@@ -1957,6 +2065,7 @@ class Call:
             from .operator.otpwords import find_otp
             a = ops.pending_otp(self.tenant)
         except Exception:
+            log.debug("otp listen: no operator", exc_info=True)
             return
         if a is None:
             self._otp_req, self._otp_heard = "", ""
@@ -2054,6 +2163,7 @@ class Call:
             for v in self._otp_said:
                 user, reply = mask(user, v), mask(reply, v)
         self.user_buf = self.reply_buf = ""
+        self._noise_skipped = False
         if user:   # v0.93 a place she named ("mere PC pe") holds for her short answers in the next turns
             try:
                 from .agent import where
@@ -2126,6 +2236,10 @@ class Call:
             if reply.rstrip(" .…").endswith("?"):
                 self.stats["question_endings"] += 1
             self.stats["assistantisms"] += len(ASSISTANTISMS.findall(reply))
+            said = getattr(self, "_his_said", [])
+            if is_repeat(reply, said):
+                self.stats["repeats"] = self.stats.get("repeats", 0) + 1   # v0.234 the same thing twice in one call
+            self._his_said = (said + [_wordset(reply)])[-REPEAT_LOOKBACK:]
         if user or reply:
             # a transcript in a script she never speaks is a mis-hearing: it never re-briefs a session or becomes memory
             self.recent.append(("(awaaz saaf nahi thi)" if unclear else user, reply))
@@ -2219,6 +2333,7 @@ class Call:
             from .agent import santosh
             oc = dict(santosh.LAST_OUTCOME.get(self.conv) or {})
         except Exception:
+            log.warning("voice: last outcome unreadable", exc_info=True)
             oc = {}
         outcome = str(oc.get("outcome") or "")
         left = str(oc.get("left") or "")[:220]
@@ -2710,7 +2825,7 @@ class Call:
         if i == self._last_ack_i and len(cand) > 1:
             i = cand[(cand.index(i) + 1) % len(cand)]
         self._last_ack_i = i
-        await self.send_audio(clips[i])
+        await self.send_audio(matched_clip(self, clips[i]))
 
     PROG_AFTER_S = 8.0   # the tool still runs, nobody has spoken this long: one honest progress sound
 
@@ -2735,7 +2850,7 @@ class Call:
         self._last_prog_i = i
         self._last_ack = now                     # one clock for every clip: acks, murmurs, progress
         self.stats["progress"] += 1
-        await self.send_audio(clips[i])
+        await self.send_audio(matched_clip(self, clips[i]))
 
     # ---- the call ----
     async def run(self) -> None:

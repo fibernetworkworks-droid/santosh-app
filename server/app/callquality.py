@@ -8,6 +8,10 @@ line to `data/voice_calls/<tenant>.jsonl` (last 300 kept). Numbers and labels on
 `grade()` turns a scorecard into good / ok / bad + plain Hinglish problems. `quality()` rolls the saved calls up
 (per version too, so a release can be compared with the one before). The ear test and the phone checklist are fixed
 scenarios she plays on her own phone; her pass / fail is saved per app version.
+
+v0.234.0 VOICE PHASE 5 (the plan's leftovers): the slowest 1% (p99) of reply starts, dead-air seconds, how often he
+talked over her or said the same thing twice, a once-a-day alert when the slow tail or broken calls get bad, and the
+ear test compared with the previous version scenario by scenario ("before and after").
 """
 from __future__ import annotations
 
@@ -32,13 +36,19 @@ NUM_KEYS = ("turns", "interruptions", "tools", "silent_tools", "acks", "false_st
             "affect_notes", "affect_vetoed", "affect_confirmed", "affect_pauses_rider", "affect_transitions",
             "tone_soft_acks", "goaway", "goaway_graceful", "goaway_forced", "prebuilt", "gap_audio_kept_s",
             "missed_replayed_s", "news_deduped", "news_merged", "voice_approvals", "setup_refusals", "breaker",
-            "question_endings", "assistantisms", "silence_ms", "cost_usd")
+            "question_endings", "assistantisms", "silence_ms", "cost_usd",
+            # v0.234 Phase 5
+            "talk_over", "repeats", "stall_noise_skips", "level_matched")
 
 END_WORDS = {"hung_up": "aapne kaata", "dropped": "line toot gayi", "error": "connection error",
              "stall": "Gemini chup ho gaya", "server_restart": "server update", "hold_timeout": "hold bahut lamba"}
 
 # good reply start for a phone call: under ~1.2 s feels like a person, past ~2.5 s feels broken
 LAT_GOOD_MS, LAT_BAD_MS = 1200, 2500
+# v0.234 the slow tail: one reply in a hundred starting after ~4 s is the "is he even there?" moment she remembers
+P99_ALERT_MS = 4000
+ALERT_LAST = 30            # the alert looks at the newest 30 saved calls
+ALERT_EVERY_S = 86400      # ... and speaks at most once a day
 
 
 def _slug(tenant: str) -> str:
@@ -58,6 +68,20 @@ def _pct(xs: list[float], q: float) -> float | None:
     return xs[min(len(xs) - 1, int(round(q * (len(xs) - 1))))]
 
 
+def _p99(xs: list[float]) -> float | None:
+    """The slowest 1% by nearest rank (rounds UP: with few turns the single slowest one still shows)."""
+    if not xs:
+        return None
+    import math
+    xs = sorted(xs)
+    return xs[max(0, math.ceil(.99 * len(xs)) - 1)]
+
+
+def dead_air_s(lat: list) -> float:
+    """Seconds she waited beyond a person-like reply start (LAT_GOOD_MS), summed over the turns."""
+    return round(sum(max(0, x - LAT_GOOD_MS) for x in lat if isinstance(x, (int, float))) / 1000, 1)
+
+
 def compact(stats: dict[str, Any]) -> dict[str, Any]:
     """The on-disk form of one call (numbers and labels only)."""
     lat = [int(x) for x in (stats.get("latency_ms") or []) if isinstance(x, (int, float))]
@@ -67,7 +91,7 @@ def compact(stats: dict[str, Any]) -> dict[str, Any]:
         "started": stats.get("started"), "ended": stats.get("ended"),
         "seconds": round((stats.get("ended") or 0) - (stats.get("started") or 0), 1) if stats.get("ended") else None,
         "end": stats.get("end") or "", "lang": stats.get("lang") or "", "version": _version(),
-        "latency_ms": lat[-60:], "words": words[-60:],
+        "latency_ms": lat[-120:], "words": words[-120:],   # v0.234 120: a long call's slow tail stays
         "gate": {k: int(v) for k, v in (stats.get("gate") or {}).items() if isinstance(v, (int, float))},
     }
     for k in NUM_KEYS:
@@ -94,6 +118,11 @@ def record(stats: dict[str, Any]) -> None:
         tmp = p.with_suffix(".tmp")
         tmp.write_text("\n".join(lines[-KEEP:]) + "\n", encoding="utf-8")
         tmp.replace(p)
+    try:
+        maybe_alert(c["tenant"])
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("voice quality alert failed")
 
 
 def load(tenant: str) -> list[dict[str, Any]]:
@@ -151,6 +180,12 @@ def grade(c: dict[str, Any]) -> dict[str, Any]:
         meh.append("baar baar dobara poochha")
     if c.get("false_stops") and c["false_stops"] >= 3:
         meh.append("shor se baar baar ruka")
+    if (c.get("talk_over") or 0) >= 2:
+        meh.append(f"{c['talk_over']} baar aapke bolte hue bol pada")
+    if (c.get("repeats") or 0) >= 2:
+        meh.append(f"{c['repeats']} baar ek hi baat dobara boli")
+    if lat and dead_air_s(lat) >= 20:
+        meh.append(f"kul {int(dead_air_s(lat))} second khamoshi mein intezaar")
     if c.get("rating") is False:
         bad.append("aapne 👎 diya")
     level = "bad" if bad else ("ok" if meh else "good")
@@ -182,6 +217,9 @@ def _roll(cs: list[dict]) -> dict[str, Any]:
         "calls": n, "turns": turns,
         "minutes": round(sum((c.get("seconds") or 0) for c in cs) / 60, 1),
         "reply_start_ms_p50": _pct(lat, .5), "reply_start_ms_p90": _pct(lat, .9),
+        "reply_start_ms_p99": _p99(lat),
+        "dead_air_s": dead_air_s(lat),
+        "dead_air_s_per_call": round(dead_air_s(lat) / n, 1) if n else None,
         "grades": {"good": grades.get("good", 0), "ok": grades.get("ok", 0), "bad": grades.get("bad", 0)},
         "good_pct": round(100 * grades.get("good", 0) / n, 1) if n else None,
         "ends": dict(Counter(c.get("end") or "?" for c in cs)),
@@ -206,6 +244,10 @@ def _roll(cs: list[dict]) -> dict[str, Any]:
         "asked_again_per_100": round(100 * _sum(cs, "asked_again") / turns, 1) if turns else None,
         "silent_tools_pct": round(100 * _sum(cs, "silent_tools") / tools, 1) if tools else None,
         "voice_approvals": int(_sum(cs, "voice_approvals")),
+        # Phase 5: he talked over her / said the same thing twice; noise the stall watchdog ignored
+        "talk_over_per_100": round(100 * _sum(cs, "talk_over") / turns, 1) if turns else None,
+        "repeats_per_100": round(100 * _sum(cs, "repeats") / turns, 1) if turns else None,
+        "stall_noise_skips": int(_sum(cs, "stall_noise_skips")),
         "cost_usd": round(_sum(cs, "cost_usd"), 3),
     }
 
@@ -218,6 +260,8 @@ def _say(r: dict[str, Any]) -> str:
         parts.append(f"Jawab aam taur par {int(r['reply_start_ms_p50'])} ms mein shuru hota hai.")
     if r["broken_calls"]:
         parts.append(f"{r['broken_calls']} call beech mein tooti.")
+    if r.get("reply_start_ms_p99") is not None and r["reply_start_ms_p99"] > P99_ALERT_MS:
+        parts.append(f"Sabse dheema 1% jawab {round(r['reply_start_ms_p99'] / 1000, 1)} second mein - yeh sudharna hai.")
     if r["goaway"]:
         parts.append(f"Connection {r['goaway']} baar badla, {r['goaway_graceful']} baar baat kate bina.")
     return " ".join(parts)
@@ -246,8 +290,53 @@ def quality(tenant: str, days: int = 30, live: list[dict[str, Any]] | None = Non
                        "version": c.get("version") or "", "reply_start_ms_p50": _pct(lat, .5),
                        "rating": c.get("rating"), **c["_g"]})
     return {"days": days, "version": _version(), "overall": overall, "versions": versions[:6], "recent": recent,
-            "targets": {"reply_start_ms_p50": LAT_GOOD_MS, "reply_start_ms_p90": LAT_BAD_MS, "good_pct": 80},
-            "say": _say(overall), "eartest": eartest_summary(tenant)}
+            "targets": {"reply_start_ms_p50": LAT_GOOD_MS, "reply_start_ms_p90": LAT_BAD_MS,
+                        "reply_start_ms_p99": P99_ALERT_MS, "good_pct": 80},
+            "say": _say(overall), "eartest": eartest_summary(tenant), "alert": alert_state(tenant, live)}
+
+
+# ---- v0.234 the alert: the slow tail or broken calls got bad -> one push a day, never more ----
+def _alert_file(tenant: str) -> Path:
+    return DIR / f"{_slug(tenant)}.alert.json"
+
+
+def alert_state(tenant: str, live: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """What the newest ALERT_LAST calls say right now: {on, why[], p99, broken, calls, last_sent}."""
+    cs = calls(tenant, live)[-ALERT_LAST:]
+    lat = [x for c in cs for x in (c.get("latency_ms") or [])]
+    p99 = _p99(lat) if len(lat) >= 20 else None
+    broken = sum(1 for c in cs[-10:] if c.get("end") in ("error", "stall"))
+    why = []
+    if p99 is not None and p99 > P99_ALERT_MS:
+        why.append(f"sabse dheema 1% jawab {round(p99 / 1000, 1)} second mein shuru hua (had {P99_ALERT_MS // 1000} s)")
+    if broken >= 3:
+        why.append(f"pichhli 10 mein se {broken} call beech mein tooti")
+    try:
+        last = float(json.loads(_alert_file(tenant).read_text(encoding="utf-8")).get("at") or 0)
+    except Exception:
+        last = 0.0
+    return {"on": bool(why), "why": why, "p99": p99, "broken": broken, "calls": len(cs), "last_sent": last or None}
+
+
+def maybe_alert(tenant: str) -> bool:
+    """After a call is saved: if the alert is on and none went out in the last day, tell her once (push + feed)."""
+    if len(load(tenant)) < 5:
+        return False
+    a = alert_state(tenant)
+    if not a["on"] or (a["last_sent"] and time.time() - a["last_sent"] < ALERT_EVERY_S):
+        return False
+    text = "Call ki jaanch: " + "; ".join(a["why"]) + ". Profile > Call ki jaanch mein dekhiye."
+    try:
+        from .events import bus
+        from .net.service import home_conv
+        bus.publish(home_conv(tenant), "voice_alert", {"text": text, "why": a["why"]})
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("voice alert publish failed")
+        return False
+    DIR.mkdir(parents=True, exist_ok=True)
+    _alert_file(tenant).write_text(json.dumps({"at": time.time(), "why": a["why"]}), encoding="utf-8")
+    return True
 
 
 # ---- the ear test + real-phone checklist (she plays each one on her own phone, then marks it) ----
@@ -330,7 +419,34 @@ def eartest(tenant: str, version: str | None = None) -> dict[str, Any]:
     items = [{**t, **({"result": saved[t["id"]]["result"], "note": saved[t["id"]].get("note", ""),
                        "at": saved[t["id"]].get("at")} if t["id"] in saved else {"result": None, "note": ""})}
              for t in EAR_TESTS]
-    return {"version": v, "items": items, **_count(saved)}
+    return {"version": v, "items": items, **_count(saved), "compare": eartest_compare(tenant, v)}
+
+
+def _vkey(v: str) -> list[int]:
+    return [int(p) if p.isdigit() else 0 for p in str(v).split(".")]
+
+
+def eartest_compare(tenant: str, version: str | None = None) -> dict[str, Any]:
+    """v0.234 before / after: this version's marks against the newest OLDER version she marked, per scenario.
+    better = fail -> pass, worse = pass -> fail, same = both marked alike; new / not_yet when one side is missing."""
+    v = version or _version()
+    d = _ear_load(tenant)
+    older = sorted((x for x in d if isinstance(d.get(x), dict) and d[x] and _vkey(x) < _vkey(v)), key=_vkey)
+    if not older:
+        return {"against": None, "better": [], "worse": [], "same": 0, "rows": {}}
+    prev, now_, before = older[-1], d.get(v) or {}, d[older[-1]]
+    rows: dict[str, str] = {}
+    for t in EAR_TESTS:
+        a, b = (before.get(t["id"]) or {}).get("result"), (now_.get(t["id"]) or {}).get("result")
+        if a not in ("pass", "fail"):
+            rows[t["id"]] = "new" if b else ""
+        elif b not in ("pass", "fail"):
+            rows[t["id"]] = "not_yet"
+        else:
+            rows[t["id"]] = "same" if a == b else ("better" if b == "pass" else "worse")
+    return {"against": prev, "better": [k for k, x in rows.items() if x == "better"],
+            "worse": [k for k, x in rows.items() if x == "worse"],
+            "same": sum(1 for x in rows.values() if x == "same"), "rows": {k: x for k, x in rows.items() if x}}
 
 
 def _count(saved: dict) -> dict[str, Any]:
@@ -364,5 +480,5 @@ def eartest_summary(tenant: str) -> list[dict[str, Any]]:
     """Per app version: how many scenarios she passed / failed (newest first) - the 'did this release sound better' line."""
     d = _ear_load(tenant)
     rows = [{"version": v, **_count(x)} for v, x in d.items() if isinstance(x, dict)]
-    rows.sort(key=lambda r: [int(p) if p.isdigit() else 0 for p in str(r["version"]).split(".")], reverse=True)
+    rows.sort(key=lambda r: _vkey(r["version"]), reverse=True)
     return rows[:6]

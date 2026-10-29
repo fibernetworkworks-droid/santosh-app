@@ -373,8 +373,9 @@ PLAN_FIRST = ("[System: yeh kaam kai steps ka lagta hai. Sabse PEHLA tool call `
               "kya hua aur aage kya. Aakhir mein `kaam_plan finish` (made = links / files jo bane).]")
 PLAN_NOW = ("[System: tum kai steps se kaam kar rahe ho par plan nahi likha. Abhi `kaam_plan set` karo (jo ho chuka "
             "use done likho), taaki use card par dikhe kya ho raha hai aur kya baaki hai. Phir aage badho.]")
-NARRATE = ("[System: kaafi der se tumne use kuch nahi bataya. Ab EK chhoti line likho — abhi tak kya hua / kya mila, "
-           "aur ab kya kar rahe ho — phir agla tool. Lamba mat likho.]")
+NARRATE = ("[System: kaafi der se tumne use kuch nahi bataya. Ab EK chhoti line likho — ek hi vaakya, jaise ek "
+           "insaan bolta hai ('Bills ban rahe hain, do ho gaye') — phir agla tool. Koi detail, koi bullet, koi "
+           "number ya link nahi: woh sab card par dikh raha hai. v0.240: yeh line kaam mein se sirf do baar aati hai.]")
 
 
 # ---------------------------------------------------------------- carry on across turns
