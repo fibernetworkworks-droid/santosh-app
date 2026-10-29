@@ -523,10 +523,16 @@ def _norm(t: str) -> str:
     return re.sub(r"[^a-z0-9ऀ-ॿ]+", " ", (t or "").lower()).strip()
 
 
-def _known(tenant: str, limit: int = 600) -> list[tuple[int, str]]:
+def _known(tenant: str, limit: int = 600, conversation_id: str = "") -> list[tuple[int, str]]:
+    """Her facts (newest first). v0.246 with a chat: only those that chat may see (fence.py)."""
+    from .fence import chats_in
+    allowed = chats_in(tenant, conversation_id) if conversation_id else None
     with session() as s:
-        rows = s.scalars(select(MemoryFact).where(MemoryFact.tenant_id == tenant).order_by(MemoryFact.id.desc())
-                         .limit(limit)).all()
+        q = select(MemoryFact).where(MemoryFact.tenant_id == tenant)
+        if allowed is not None:
+            q = q.where(MemoryFact.pinned.is_(True) | MemoryFact.conversation_id.is_(None)
+                        | MemoryFact.conversation_id.in_(allowed))
+        rows = s.scalars(q.order_by(MemoryFact.id.desc()).limit(limit)).all()
         return [(r.id, r.text) for r in rows]
 
 
@@ -547,16 +553,17 @@ def is_dupe(tenant: str, text: str, known: list[tuple[int, str]] | None = None) 
     return False
 
 
-def save_fact(tenant: str, text: str, source: str = "auto") -> dict | None:
+def save_fact(tenant: str, text: str, source: str = "auto", conversation_id: str = "") -> dict | None:
+    """v0.246 `conversation_id` = the chat an AUTO fact was picked up in: it stays inside that chat's Session."""
     why = fact_ok(text)
     if why:
         STATS["facts_refused"] += 1
         return None
-    if is_dupe(tenant, text):
+    if is_dupe(tenant, text, _known(tenant, conversation_id=conversation_id) if conversation_id else None):
         STATS["facts_dupe"] += 1
         return None
     with session() as s:
-        row = MemoryFact(tenant_id=tenant, text=text.strip()[:480], source=source)
+        row = MemoryFact(tenant_id=tenant, text=text.strip()[:480], source=source, conversation_id=conversation_id or None)
         s.add(row)
         s.flush()
         STATS["facts_saved"] += 1
@@ -591,7 +598,7 @@ async def extract_facts(tenant: str, conversation_id: str, user_text: str, reply
     if time.time() - last < FACT_GAP_S:
         return []
     _LAST_EXTRACT[tenant] = time.time()
-    known = _known(tenant)
+    known = _known(tenant, conversation_id=conversation_id)   # v0.246 what THIS chat's Session already knows
     from . import semantic
     near = [t for _, t, _ in semantic.rank(user_text, known, top=15, floor=0.2)] if known else []
     prompt = ("Already known:\n" + "\n".join(f"- {k}" for k in near[:15]) + "\n\n" if near else "") + \
@@ -599,7 +606,7 @@ async def extract_facts(tenant: str, conversation_id: str, user_text: str, reply
     raw = await _ask(FACT_SYSTEM, prompt)
     saved = []
     for f in _parse_facts(raw):
-        got = await asyncio.to_thread(save_fact, tenant, f, "auto")
+        got = await asyncio.to_thread(save_fact, tenant, f, "auto", conversation_id)
         if got:
             saved.append(got)
     if saved:
@@ -609,11 +616,13 @@ async def extract_facts(tenant: str, conversation_id: str, user_text: str, reply
     return saved
 
 
-def relevant_facts(tenant: str, query: str, skip: set[int] | None = None, top: int = 8) -> list[tuple[int, str]]:
-    """Her facts closest in MEANING to this message (beyond the newest ones already in the prompt)."""
+def relevant_facts(tenant: str, query: str, skip: set[int] | None = None, top: int = 8,
+                   conversation_id: str = "") -> list[tuple[int, str]]:
+    """Her facts closest in MEANING to this message (beyond the newest ones already in the prompt).
+    v0.246 with a chat: fenced to its Session."""
     if not (query or "").strip():
         return []
-    known = [k for k in _known(tenant, 2000) if not skip or k[0] not in skip]
+    known = [k for k in _known(tenant, 2000, conversation_id) if not skip or k[0] not in skip]
     if not known:
         return []
     from . import semantic
@@ -758,8 +767,10 @@ def refers_to_past(text: str) -> bool:
 
 
 def search(tenant: str, query: str, top: int = 8, days: int | None = None, kinds: list[str] | None = None,
-           before_ref: int = 0, words: bool = True) -> list[dict]:
-    """Puri yaad: meaning search over the index + word search over the raw saved messages (tool outputs too)."""
+           before_ref: int = 0, words: bool = True, conversation_id: str = "") -> list[dict]:
+    """Puri yaad: meaning search over the index + word search over the raw saved messages (tool outputs too).
+    v0.246 `conversation_id`: only chats in the same Session as that chat (fence.py); '' = every chat (her own
+    search screen)."""
     STATS["searches"] += 1
     if not (query or "").strip():
         return []
@@ -778,6 +789,10 @@ def search(tenant: str, query: str, top: int = 8, days: int | None = None, kinds
         items = [(r.id, r.kind, r.text, as_utc(r.at), r.ref, r.vec, r.conversation_id) for r in rows]
     if before_ref:
         items = [x for x in items if not (x[4].startswith("m") and x[4][1:].isdigit() and int(x[4][1:]) >= before_ref)]
+    from .fence import chats_in, visible
+    allowed = chats_in(tenant, conversation_id) if conversation_id else None
+    if allowed is not None:
+        items = [x for x in items if visible(x[6], allowed)]
     out: list[dict] = []
     seen: set[int] = set()
     if items:
@@ -816,7 +831,7 @@ def search(tenant: str, query: str, top: int = 8, days: int | None = None, kinds
                 out.append(_view(x, sc))
                 seen.add(i)
     if words and len(out) < top:
-        out += _word_search(tenant, query, top - len(out), since)
+        out += _word_search(tenant, query, top - len(out), since, allowed)
     return out[:top]
 
 
@@ -825,7 +840,8 @@ def _view(x: tuple, score: float) -> dict:
             "ref": x[4], "conversation_id": x[6]}
 
 
-def _word_search(tenant: str, query: str, top: int, since: datetime | None) -> list[dict]:
+def _word_search(tenant: str, query: str, top: int, since: datetime | None,
+                 allowed: set[str] | None = None) -> list[dict]:
     """Exact words in the raw saved messages (incl. tool outputs that the model no longer sees)."""
     terms = [w for w in re.findall(r"[\w@.:-]{3,}", query) if w.lower() not in {"kya", "hai", "tha", "the", "and", "aur",
                                                                               "wala", "wali", "file", "kaam"}][:4]
@@ -833,6 +849,8 @@ def _word_search(tenant: str, query: str, top: int, since: datetime | None) -> l
         return []
     with session() as s:
         convs = s.scalars(select(Conversation.id).where(Conversation.tenant_id == tenant)).all()
+        if allowed is not None:   # v0.246 fenced: only chats of the same Session
+            convs = [c for c in convs if c in allowed]
         if not convs:
             return []
         q = select(Message).where(Message.conversation_id.in_(convs))
@@ -875,9 +893,12 @@ def diary(tenant: str, conversation_id: str = "", days: int = DIARY_DAYS) -> dic
     since = datetime.now(timezone.utc) - timedelta(days=days)
     out: dict[str, list[str]] = {"jobs": [], "web": [], "files": [], "calls": []}
     from .agent.pakka import TaskRun
+    from .fence import chats_in, keep
+    allowed = chats_in(tenant, conversation_id) if conversation_id else None   # v0.246 the Session fence
     with session() as s:
         runs = s.scalars(select(TaskRun).where(TaskRun.tenant_id == tenant, TaskRun.created_at >= since,
-                                               TaskRun.outcome != "talk").order_by(TaskRun.created_at.desc()).limit(30)).all()
+                                               TaskRun.outcome != "talk").order_by(TaskRun.created_at.desc()).limit(60)).all()
+        runs = keep(runs, allowed)[:30]
         for r in runs:
             line = f"{_when(r.created_at, tenant)} · {_clip(r.request, 110)} → {OUTCOME.get(r.outcome, r.outcome)}"
             if r.steps:
@@ -888,7 +909,8 @@ def diary(tenant: str, conversation_id: str = "", days: int = DIARY_DAYS) -> dic
         try:
             from .operator.models import OperatorTask
             ops = s.scalars(select(OperatorTask).where(OperatorTask.tenant_id == tenant, OperatorTask.created_at >= since)
-                            .order_by(OperatorTask.created_at.desc()).limit(12)).all()
+                            .order_by(OperatorTask.created_at.desc()).limit(30)).all()
+            ops = keep(ops, allowed)[:12]
             for o in ops:
                 res = _clip(o.summary or o.error or o.stage, 110)
                 out["web"].append(f"{_when(o.created_at, tenant)} · website job {o.id}: {_clip(o.task, 90)} → {o.status}"
@@ -909,6 +931,8 @@ def diary(tenant: str, conversation_id: str = "", days: int = DIARY_DAYS) -> dic
         except Exception:
             log.debug("diary: doc desk unavailable", exc_info=True)
         convs = s.scalars(select(Conversation.id).where(Conversation.tenant_id == tenant)).all()
+        if allowed is not None:
+            convs = [c for c in convs if c in allowed]
         if convs:
             rec = s.scalars(select(Message).where(Message.conversation_id.in_(convs), Message.role == "assistant",
                                                   Message.display.is_not(None), Message.display != "")
@@ -1080,8 +1104,8 @@ def turn_block(tenant: str, conversation_id: str, user_text: str) -> str:
         log.exception("diary failed")
     try:
         from .life import RECENT_FACTS, memory_facts
-        shown = {f.id for f in memory_facts(tenant, RECENT_FACTS)}
-        rel = relevant_facts(tenant, user_text, shown)
+        shown = {f.id for f in memory_facts(tenant, RECENT_FACTS, conversation_id)}
+        rel = relevant_facts(tenant, user_text, shown, conversation_id=conversation_id)
         if rel:
             parts.append("Is baat se jude purane facts (her memory):\n" + "\n".join(f"- {i}: {t}" for i, t in rel))
     except Exception:
@@ -1090,7 +1114,8 @@ def turn_block(tenant: str, conversation_id: str, user_text: str) -> str:
         if len((user_text or "").split()) >= 2:
             past = refers_to_past(user_text)
             start = window_start_id(conversation_id)
-            hits = search(tenant, user_text, top=5 if past else 3, before_ref=start, words=past)
+            hits = search(tenant, user_text, top=5 if past else 3, before_ref=start, words=past,
+                          conversation_id=conversation_id)
             if not past:
                 hits = [h for h in hits if h["score"] >= 0.62]
             if hits:
@@ -1183,13 +1208,13 @@ def voice_block(tenant: str, conversation_id: str, recent: int = 14, max_chars: 
         log.exception("voice diary failed")
     try:
         from .life import RECENT_FACTS, memory_facts
-        shown = {f.id for f in memory_facts(tenant, RECENT_FACTS)}
+        shown = {f.id for f in memory_facts(tenant, RECENT_FACTS, conversation_id)}
         last_user = ""
         for ex in reversed(exchanges(_rows(conversation_id, 200))):
             last_user = _user_text(ex)
             if last_user:
                 break
-        rel = relevant_facts(tenant, last_user, shown, top=6)
+        rel = relevant_facts(tenant, last_user, shown, top=6, conversation_id=conversation_id)
         if rel:
             parts.append("Jude hue facts:\n" + "\n".join(f"- {t}" for _, t in rel))
     except Exception:

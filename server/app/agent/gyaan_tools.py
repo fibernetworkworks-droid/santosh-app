@@ -68,7 +68,8 @@ async def gyaan_khojo(ctx: Ctx, query: str = "", queries: list | None = None, so
     top = max(1, min(int(top or 6), 10))
     r = await asyncio.to_thread(search.search, ctx.tenant_id, str(query or ""),
                                 [str(q) for q in (queries or [])][:4], [str(s) for s in (sources or [])] or None,
-                                int(days) if days else None, top, bool(fast))
+                                int(days) if days else None, top, bool(fast), True,
+                                getattr(ctx, "conversation_id", "") or "")   # v0.246 Session fence on her chats
     if r["status"] != "found":
         return {"status": "nahi_mila", "say": r.get("say"), "close_titles": r.get("near") or [],
                 "next": "Say it is not in her files / Drive / mail. Don't guess. Offer: web search, or she sends the file."}

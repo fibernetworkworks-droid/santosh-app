@@ -101,11 +101,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.246.0 (pubspec 0.246.0+286). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.247.0 (pubspec 0.247.0+287). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (12 now, theme.js added) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.246 console workspace edge: no width bar, drag the left edge like the sidebar (full width at the chat's edge, edge button,
+- v0.247 console workspace edge: no width bar, drag the left edge like the sidebar (full width at the chat's edge, edge button,
   Esc), PDFs/Office open full-size with no thumbnail strip (`panel.js` docView).
+- v0.246 FULL CLAUDE MODE 3C FENCED SESSIONS: `app/fence.py` - auto facts / diary / jobs / search stay in their Session
+  (her own + pinned facts global; `MEMORY_FENCE`); GET /api/context/report; `server/tools/memory_quiz.py` (next: 3B).
 - v0.245 SAHI AUZAAR (built as 0.242): the right tool for every ask - router intents + PC gate + clean auto-keys
   (`agent/admit.py`), `agent/pick.py` refuses a PC not in view / data sent to a PC, pinned TOOL CHOOSER; card `python -m app.quality tools [--live]`.
 - v0.244 FULL CLAUDE MODE 3A ONE MEMORY: call + quick lane read the checkpoint, `CHAT_CONTEXT_MAX_TOKENS` cost cap,

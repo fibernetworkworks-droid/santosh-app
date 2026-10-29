@@ -121,9 +121,14 @@ async def memory_search(ctx: Ctx, query, **_):
     from sqlalchemy import select
 
     def load():
+        from ..fence import chats_in   # v0.246 FENCE: another Session's auto facts stay there
+        allowed = chats_in(ctx.tenant_id, getattr(ctx, "conversation_id", "") or "")
         with session() as s:
-            return [(m.id, m.text) for m in s.scalars(select(MemoryFact).where(MemoryFact.tenant_id == ctx.tenant_id)
-                                                       .order_by(MemoryFact.id.desc()).limit(3000)).all()]
+            q = select(MemoryFact).where(MemoryFact.tenant_id == ctx.tenant_id)
+            if allowed is not None:
+                q = q.where(MemoryFact.pinned.is_(True) | MemoryFact.conversation_id.is_(None)
+                            | MemoryFact.conversation_id.in_(allowed))
+            return [(m.id, m.text) for m in s.scalars(q.order_by(MemoryFact.id.desc()).limit(3000)).all()]
     items = await asyncio.to_thread(load)
     hits = await asyncio.to_thread(semantic.rank, str(query), items, 8)
     return {"found": [{"fact_id": i, "text": t, "match": round(sc, 2)} for i, t, sc in hits],

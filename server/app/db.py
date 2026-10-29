@@ -233,6 +233,8 @@ class MemoryFact(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     pinned: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=False)   # v0.63 "hamesha yaad"
     source: Mapped[str | None] = mapped_column(String(20), nullable=True)   # v0.108 None = she asked | auto = picked by Hoola
+    # v0.246 FENCE: the chat an AUTO fact was picked up in (its Session = its fence); None = global (she asked / pinned / old)
+    conversation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class ListItem(Base):

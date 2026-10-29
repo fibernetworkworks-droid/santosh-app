@@ -98,7 +98,8 @@ def _coverage(qwords: list[list[str]], text: str) -> float:
 
 
 def search(tenant: str, query: str, queries: list[str] | None = None, sources: list[str] | None = None,
-           days: int | None = None, top: int = 8, fast: bool = False, memory: bool = True) -> dict[str, Any]:
+           days: int | None = None, top: int = 8, fast: bool = False, memory: bool = True,
+           conversation_id: str = "") -> dict[str, Any]:
     from ..config import get_settings
     st = get_settings()
     t0 = time.time()
@@ -219,7 +220,8 @@ def search(tenant: str, query: str, queries: list[str] | None = None, sources: l
     if memory and (not sources or "chat" in sources):
         try:
             from .. import yaad
-            for i, y in enumerate(yaad.search(tenant, query, top=5, days=days)):
+            # v0.246 FENCE: from a chat, only chats of the same Session
+            for i, y in enumerate(yaad.search(tenant, query, top=5, days=days, conversation_id=conversation_id)):
                 cover = _coverage(qwords, y.get("text") or "")
                 hits.append({"chunk_id": f"y{y.get('ref') or i}", "doc_id": "yaad", "title": "Pichhli baat (" + (y.get("kind") or "chat") + ")",
                              "source": "chat", "kind": y.get("kind") or "chat", "page": 0, "at": (y.get("at") or "")[:10],

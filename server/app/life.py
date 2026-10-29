@@ -99,14 +99,20 @@ PINNED_CHARS = 1500     # "hamesha yaad": always in the prompt, kept short (idea
 RECENT_FACTS = 40       # newest other facts in the prompt; older ones are found with memory_search
 
 
-def memory_facts(tenant_id: str, limit: int = 60) -> list[MemoryFact]:
-    """Pinned facts first (all of them), then the newest others, oldest of those first."""
+def memory_facts(tenant_id: str, limit: int = 60, conversation_id: str = "") -> list[MemoryFact]:
+    """Pinned facts first (all of them), then the newest others, oldest of those first.
+    v0.246 FENCE: with a chat, facts Hoola picked up in ANOTHER Session (or in a general chat, for a Session chat) are
+    left out; her own / pinned / older facts are global."""
+    from .fence import chats_in
+    allowed = chats_in(tenant_id, conversation_id) if conversation_id else None
     with session() as s:
         pinned = s.scalars(select(MemoryFact).where(MemoryFact.tenant_id == tenant_id, MemoryFact.pinned.is_(True))
                            .order_by(MemoryFact.id)).all()
-        rest = s.scalars(select(MemoryFact).where(MemoryFact.tenant_id == tenant_id,
-                                                  (MemoryFact.pinned.is_(None)) | (MemoryFact.pinned.is_(False)))
-                         .order_by(MemoryFact.id.desc()).limit(max(0, limit))).all()
+        q = select(MemoryFact).where(MemoryFact.tenant_id == tenant_id,
+                                     (MemoryFact.pinned.is_(None)) | (MemoryFact.pinned.is_(False)))
+        if allowed is not None:
+            q = q.where(MemoryFact.conversation_id.is_(None) | MemoryFact.conversation_id.in_(allowed))
+        rest = s.scalars(q.order_by(MemoryFact.id.desc()).limit(max(0, limit))).all()
         for r in list(pinned) + list(rest):
             s.expunge(r)
         return list(pinned) + list(reversed(rest))
@@ -134,8 +140,9 @@ def pin_fact(tenant_id: str, fact_id: int, pinned: bool) -> MemoryFact:
         return f
 
 
-def context_block(tenant_id: str) -> str:
-    """What Santosh should always know about this user; added to the system prompt."""
+def context_block(tenant_id: str, conversation_id: str = "") -> str:
+    """What Santosh should always know about this user; added to the system prompt.
+    v0.246 `conversation_id`: the facts are fenced to that chat's Session (fence.py)."""
     p = get_profile(tenant_id)
     tz = tz_of(tenant_id)
     lines = []
@@ -152,7 +159,7 @@ def context_block(tenant_id: str) -> str:
     if jobs:
         lines.append("Your automatic jobs for this user (id: title, repeat, next run):")
         lines += [f"- {j['id']}: {j['title']}, {j['repeat']}, {j['next_run_local']}" for j in jobs]
-    facts = memory_facts(tenant_id, RECENT_FACTS)
+    facts = memory_facts(tenant_id, RECENT_FACTS, conversation_id)
     pins = [f for f in facts if f.pinned]
     if pins:
         lines.append("ALWAYS keep in mind (the user pinned these; id: fact):")
