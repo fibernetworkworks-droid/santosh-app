@@ -33,7 +33,9 @@ from .tools import ToolError
 KEEP_S = 15 * 60
 FOLLOW_UP_WORDS = 8              # a message this short with no place = a follow-up of the last request
 WORK_KEEP_S = 45 * 60            # a running website job keeps its place this long after its last step / result
-STATS = {"named": 0, "kept": 0, "steered": 0, "refused": 0, "stuck": 0}
+HOOLAPC_KEEP_S = 20 * 60         # v0.238 the cloud PC holds the chat this long from when it STARTED, never renewed
+                                 # (one cloud-PC job's results used to pull every later job there)
+STATS = {"named": 0, "kept": 0, "steered": 0, "refused": 0, "stuck": 0, "not_stuck": 0}
 _PLACE: dict[str, tuple[str, float]] = {}
 _WORK: dict[str, tuple[str, float]] = {}      # conv -> (place where website work is really running, last touch)
 _WHY: dict[str, str] = {}                    # conv -> named | follow | work (for the line the model gets)
@@ -73,6 +75,23 @@ _HOOLAPC = [
     re.compile(r"\bhoola\s+ka\s+(?:apna\s+)?(?:pc|computer|laptop|desktop)\b|\bhoola\s+(?:pc|laptop)\b", re.I),
     re.compile(r"(?:अपने|तुम्हारे|आपके|होला\s+के)\s*(?:पीसी|कंप्यूटर|कम्प्यूटर|लैपटॉप|डेस्कटॉप)"),
 ]
+# v0.238 data / API jobs are not website work: they never lock the chat onto a place (they belong to data_fetch)
+_DATA = re.compile(r"\bapi\b|\bapi\.|/api/|\bjson\b|\brepos?\b|repositor|\bcsv\b|dataset|\btop\s*\d+|scrap|"
+                   r"\bcollect|\bfetch|\bstats?\b|\bdata\b", re.I)
+
+
+def _form_job(task: str) -> bool:
+    """A real website job (a page to open / fill / click), not data collection."""
+    t = str(task or "")
+    return bool(_WEBBY.search(t)) and not _DATA.search(t)
+
+
+def _asked(conv: str, where: str) -> bool:
+    """She herself named this place for the work (now, or a moment ago)."""
+    old = _PLACE.get(conv)
+    return bool(old and old[0] == where and time.time() - old[1] <= KEEP_S)
+
+
 # names of features, not places: "computer operator" is Hoola's own browser, "PC operator" is her PC (kept)
 _FEATURE = re.compile(r"\bcomputer\s+operator\b", re.I)
 _WEBBY = re.compile(r"https?://|www\.|\.(?:com|in|org|net|gov|co)\b|\b(?:chrome|browser|website|site|portal|web\s*page|"
@@ -140,26 +159,36 @@ def working(conv: str) -> str:
     w = _WORK.get(conv)
     if not w:
         return ""
-    if time.time() - w[1] > WORK_KEEP_S:
+    if time.time() - w[1] > (HOOLAPC_KEEP_S if w[0] == "hoolapc" else WORK_KEEP_S):
         _WORK.pop(conv, None)
         return ""
     return w[0]
 
 
 def touch(conv: str, where: str) -> None:
-    """A step or a result of website work just happened in this place (keeps the job where it is)."""
-    if conv and where in ("pc", "hoola", "hoolapc"):
-        _WORK[conv] = (where, time.time())
+    """A step or a result of website work just happened in this place (keeps the job where it is).
+    v0.238: the cloud PC (hoolapc) locks the chat only when she herself asked for it - Hoola's own choice of the
+    cloud PC never sticks - and its lock is never EXTENDED by the running job (her PC / Hoola's browser still are)."""
+    if not conv or where not in ("pc", "hoola", "hoolapc"):
+        return
+    if where == "hoolapc" and not (_asked(conv, "hoolapc") or (_WORK.get(conv) or ("",))[0] == "hoolapc"):
+        STATS["not_stuck"] += 1
+        return
+    if where == "hoolapc" and working(conv) == "hoolapc":
+        return                        # already held: the window counts from the start, never renewed
+    _WORK[conv] = (where, time.time())
 
 
 def worked(conv: str, name: str, args: dict[str, Any], out: Any = None) -> None:
     """Called by dispatch with the tool that REALLY ran: remembers where the website work is going on."""
     args = args or {}
     w = ""
-    if name == "pc_do" and _WEBBY.search(str(args.get("task") or "")):
+    if name == "pc_do" and _form_job(str(args.get("task") or "")):
         w = "pc"
-    elif name == "hoola_pc_do" and _WEBBY.search(str(args.get("task") or "")):
-        w = "hoolapc"
+    elif name == "hoola_pc_do" and _form_job(str(args.get("task") or "")) and _asked(conv, "hoolapc"):
+        w = "hoolapc"                 # v0.238 only when SHE asked for the cloud PC
+    elif name in ("pc_do", "hoola_pc_do"):
+        STATS["not_stuck"] += 1
     elif name == "browse_web":
         w = "hoola"
     elif name == "computer_operator" and str(args.get("action") or "") == "start":

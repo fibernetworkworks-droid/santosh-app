@@ -9402,7 +9402,38 @@ Phase 3 of the web-development audit: the website builder works like App Sahayak
 - Tests run with SITE_ART=false / SITE_CRITIQUE=off (conftest). Tests `server/tests/test_v0225_site_quality.py`.
   Version 0.225.0 (pubspec 0.225.0+260, console ?v=0.225.0 x9, pins). Server-only deploy; old APKs keep working.
 
-## v0.238.0 VOICE PHASE 5 (built as 0.234.0; re-versioned past the parallel v0.234.0-v0.237.0 work) — the plan's leftovers (owner: "START PHASE 5")
+## v0.238.0 DATA DESK — big data stays on the server (29 Oct 2026)
+Owner: pasted the failed "top 100 AI repos -> PDF" chat ("NOT ABLE TO COMPLETE TASK ---- FIND FIRST THE ROOT CAUSE"),
+asked how Claude would do it, compared it with Hoola's flow, asked "WHY FOR EVERY JOB HOOLA GOING TO CLOUD PC", then
+"GO for 1–3 (server only)".
+- Root cause: `_short` cuts every tool result reaching the model at 6,000 chars, so a GitHub search reply showed ~2 repos;
+  Hoola then escaped to its cloud PC (the hoola_pc_do text called it the place for "heavy/clean work"); `where.touch`
+  locked the chat on the cloud PC for 45 min, renewed by every result note, so every later job went there too; the goal
+  spun rounds that only said "still running"; the VM's PDF never reached the chat (no delivery path).
+- (1) DATA DESK: `server/app/datasets.py` (dataset = flat rows + meta, JSON at DATASETS_DIR/<sha(tenant)[:16]>/ds_xxx.json,
+  kept 14 days, 5000 rows, 600 chars a cell; `find_items`, `pick` with 'name=dot.path' fields, `annotate`, `rows_slice`,
+  `to_csv`, `as_text`). Tools in `agent/data_tools.py` (family "data", in `admit.CORE_FAMILIES`): data_fetch (public
+  JSON API via publicapis.call(full=True) which keeps the whole reply as `_data`; pages 1-10, stops on a short page; the
+  model sees id + count + columns + first 8 rows), data_read (slices, sort, q, fields; export=csv = file card; no id =
+  list), data_note (her row text in batches, saved at once, says which rows are still empty). doc_studio: `data=<id>`
+  (pdf/docx: ranking table + one card per row with its note + source line, at `[[data]]` or the end; xlsx: a sheet),
+  `data_fields`, `data_layout` both|table|cards, `data_heading`, and `part=add` (draft kept on the server per chat+title,
+  joined and removed on build). Pinned prompt block "- DATA DESK" with the GitHub recipe (tool descriptions are dieted
+  to 140 chars, so the recipe lives in the guide).
+- (2) `hoola_pc_do` text (owner-approved change to a frozen PC file, description only): ONLY desktop software / a desktop
+  app / she said "aapke PC pe"; NOT for data (use the data desk); a VM file does NOT come back to the chat. The rule sits
+  in the first 700 chars so the schema diet keeps it. Routing item 3 + the "Hoola ka apna PC" line in prompts.py match.
+- (3) `agent/where.py`: data / API jobs (`_DATA`) never lock a place; the cloud PC locks the chat only when SHE named it
+  (`_asked`), for HOOLAPC_KEEP_S 20 min from the start, never renewed; her PC / Hoola's browser keep the v0.104 45-min
+  renewed rule. STATS not_stuck.
+- Goal: `goal._waiting_on_job` (a KaamJob of this chat still "working" that moved in the last hour) pauses the goal in
+  `maybe_continue` (STATS waited_job; waiting never counts), and resume_tick / recover_tick wait on it too; the job's
+  finish wakes the chat as before.
+- Not done (needs "GO WITH PC"): fix 4, VM files sent back to the chat.
+- Tests `server/tests/test_v0238_data_desk.py`. Version 0.238.0 (pubspec 0.238.0+278, console ?v=0.238.0 x11, pins).
+  Server-only deploy; old APKs keep working.
+
+## v0.239.0 VOICE PHASE 5 (built as 0.234.0; re-versioned past the parallel v0.234.0-v0.238.0 work) — the plan's leftovers (owner: "START PHASE 5")
 The voice plan had four phases plus "later: full-duplex on our own GPUs" (still not buildable: no Hindi full-duplex
 model / vendor). Phase 5 = everything the plan promised that Phases 1-4 had not shipped:
 1. **The slow tail** (`callquality._p99`, nearest rank, rounds up): `reply_start_ms_p99` in the roll-up and per version,
@@ -9427,4 +9458,4 @@ model / vendor). Phase 5 = everything the plan promised that Phases 1-4 had not 
    read log instead of hiding.
 9. **Phone** (Call ki jaanch): p99, dead air, talk-over, repeats rows; the alert banner; "pehle se behtar / kharab /
    pehle jaisa" on each ear-test card and a "vX ke muqable" line. New APK; the server part works without it.
-Tests: NEW `test_v0234_voice_phase5.py` (13). Version 0.238.0 (pubspec 0.238.0+278, console ?v=0.238.0, pins -> 0.238.0).
+Tests: NEW `test_v0234_voice_phase5.py` (13). Version 0.239.0 (pubspec 0.239.0+279, console ?v=0.239.0, pins -> 0.239.0).

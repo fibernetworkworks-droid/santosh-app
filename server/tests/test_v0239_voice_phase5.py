@@ -1,4 +1,4 @@
-"""v0.238.0 VOICE PHASE 5 - the plan's leftovers: the slowest 1% (p99), dead air, talk-over and repeats, the once-a-day
+"""v0.239.0 VOICE PHASE 5 - the plan's leftovers: the slowest 1% (p99), dead air, talk-over and repeats, the once-a-day
 slow-tail alert, the ear test compared with the previous version, the stall watchdog ignoring noise, the clips matched
 to his live loudness and no silently swallowed TTS fallback."""
 import asyncio
@@ -79,17 +79,17 @@ def test_eartest_compare_before_after(qdir):
     cq.eartest_mark("t1", "hello_speed", "fail", version="0.232.0")
     cq.eartest_mark("t1", "interrupt", "pass", version="0.232.0")
     cq.eartest_mark("t1", "list_pace", "pass", version="0.232.0")
-    cq.eartest_mark("t1", "hello_speed", "pass", version="0.238.0")
-    cq.eartest_mark("t1", "interrupt", "fail", version="0.238.0")
-    cq.eartest_mark("t1", "list_pace", "pass", version="0.238.0")
-    cq.eartest_mark("t1", "headset", "pass", version="0.238.0")
-    c = cq.eartest("t1", "0.238.0")["compare"]
+    cq.eartest_mark("t1", "hello_speed", "pass", version="0.239.0")
+    cq.eartest_mark("t1", "interrupt", "fail", version="0.239.0")
+    cq.eartest_mark("t1", "list_pace", "pass", version="0.239.0")
+    cq.eartest_mark("t1", "headset", "pass", version="0.239.0")
+    c = cq.eartest("t1", "0.239.0")["compare"]
     assert c["against"] == "0.232.0"
     assert c["better"] == ["hello_speed"] and c["worse"] == ["interrupt"] and c["same"] == 1
     assert c["rows"]["headset"] == "new"
     assert cq.eartest("t1", "0.232.0")["compare"]["against"] is None   # nothing older
     cq.eartest_mark("t1", "hello_speed", "pass", version="0.240.0")
-    assert cq.eartest_compare("t1", "0.240.0")["against"] == "0.238.0"   # newest older version, numeric order
+    assert cq.eartest_compare("t1", "0.240.0")["against"] == "0.239.0"   # newest older version, numeric order
 
 
 def test_real_words_and_repeats():
@@ -219,5 +219,5 @@ def test_phone_screen_wired():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.238.0"
-    assert "0.238.0+278" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.239.0"
+    assert "0.239.0+279" in (ROOT / "pubspec.yaml").read_text()

@@ -34,7 +34,7 @@ from ..events import bus
 log = logging.getLogger("santosh.goal")
 
 MAX_STEPS = 15               # kaam_plan set cap
-STATS = {"set": 0, "finished": 0, "blocked": 0, "continued": 0, "refused": 0, "stopped_by_her": 0, "paused": 0,
+STATS = {"waited_job": 0, "set": 0, "finished": 0, "blocked": 0, "continued": 0, "refused": 0, "stopped_by_her": 0, "paused": 0,
          "resumed": 0, "recovered": 0, "limit_asked": 0, "limit_reopened": 0,
          "milestones": 0, "reports": 0, "plan_early": 0}
 
@@ -420,6 +420,26 @@ def _waiting_on_her(conv: str) -> bool:
         return False
 
 
+JOB_WAIT_S = 60 * 60     # v0.238 a job that has not moved for an hour no longer holds the goal (it may be dead)
+
+
+def _waiting_on_job(conv: str) -> bool:
+    """v0.238 a background job of this chat (cloud PC, website, video...) is still running and moving: the goal
+    WAITS for it instead of starting a round every few seconds that only says "still running" (the 100-repo PDF
+    loop). The job's own finish wakes the chat (kaam_followup) and resume_tick picks the goal up again."""
+    try:
+        from datetime import timedelta
+        from ..kaamwatch import KaamJob
+        cut = now() - timedelta(seconds=JOB_WAIT_S)
+        with session() as s:
+            rows = s.scalars(select(KaamJob).where(KaamJob.conversation_id == conv, KaamJob.state == "working")
+                             .limit(20)).all()
+            return any((_aware(r.moved_at) or _aware(r.updated_at) or now()) >= cut for r in rows)
+    except Exception:
+        log.exception("waiting_on_job check failed")
+        return False
+
+
 def maybe_continue(conv: str, tenant: str, actor: str = "owner") -> bool:
     """The turn ended with the goal still working: schedule ONE background continuation turn.
     Refuses: blocked on her (a waiting card), Rokiye, rounds / minutes limits, budget, non-owner/routine turns."""
@@ -436,6 +456,11 @@ def maybe_continue(conv: str, tenant: str, actor: str = "owner") -> bool:
         log.info("goal %s waits on her; paused until she answers", view["id"])
         STATS["refused"] += 1
         _pause(view["id"])         # v0.221 the resume sweep restarts it once her card is answered
+        return False
+    if _waiting_on_job(conv):
+        log.info("goal %s waits for a running job; paused until it finishes", view["id"])
+        STATS["waited_job"] += 1
+        _pause(view["id"])         # v0.238 waiting time never counts; resume_tick restarts it when the job ends
         return False
     return _schedule(conv, tenant, view, count_round=True)
 
@@ -515,7 +540,7 @@ def resume_tick() -> int:
             continue                     # too old: she moved on; her next message still sees the GOAL JAARI block
         if conv in _locks and _locks[conv].locked():
             continue                     # a turn is running in this chat: it carries the goal itself
-        if _waiting_on_her(conv):
+        if _waiting_on_her(conv) or _waiting_on_job(conv):
             continue
         view = active_for(conv)
         if view is None or view["id"] != gid or not steps_left(view):
@@ -655,7 +680,7 @@ def recover_tick() -> int:
             continue                         # still moving, or so old she has moved on (her next message carries it)
         if conv in _locks and _locks[conv].locked():
             continue                         # a turn is running it right now
-        if _waiting_on_her(conv):
+        if _waiting_on_her(conv) or _waiting_on_job(conv):
             _pause(gid)                      # the resume sweep restarts it once she answers
             continue
         view = active_for(conv)

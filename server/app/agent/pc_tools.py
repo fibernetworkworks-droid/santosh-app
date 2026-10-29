@@ -55,12 +55,14 @@ PC_LABELS.update({"pc_do": "Aapke PC par kaam kar raha hoon", "pc_task_result": 
 
 # ---- v0.193 HOOLA KA APNA PC: the Linux cloud computer that belongs to Hoola (the coworker VM) ----
 PC_TOOLS.append({"name": "hoola_pc_do", "description": (
-    "[HOOLA KA APNA PC - the cloud computer that belongs to YOU, the coworker] Hoola uses its OWN Linux computer "
-    "in the cloud like a person: sees the screen, opens apps, clicks, types, INSTALLS SOFTWARE (apt/pip, no "
-    "permission needed - it is Hoola's own VM) and runs shell commands. Use when the job needs a computer that "
-    "is NOT her PC: software she does not have installed ('ffmpeg se video compress karo', 'LibreOffice mein "
-    "sheet banao', 'pandoc se convert karo'), heavy/clean work, a second browser session, downloads that should "
-    "not touch her laptop, or anything where the user said 'aapke computer pe / tumhare PC pe / Hoola ke PC pe'. "
+    "[HOOLA KA APNA PC - the cloud computer that belongs to YOU, the coworker] Use ONLY when the job needs desktop "
+    "software she does not have ('ffmpeg se video compress karo', 'LibreOffice mein sheet banao', 'pandoc se "
+    "convert karo'), a desktop app on screen, or when the user said 'aapke computer pe / tumhare PC pe / Hoola ke "
+    "PC pe'. NOT for fetching, collecting or processing data / API lists / reports: use data_fetch, data_read, "
+    "data_note and doc_studio on the server (faster, and the file reaches the chat). A file made here stays on "
+    "this VM, it does NOT come back to the chat (only user_pc_push sends one to HER PC). Hoola uses its OWN Linux "
+    "computer in the cloud like a person: sees the screen, opens apps, clicks, types, INSTALLS SOFTWARE (apt/pip, "
+    "no permission needed - it is Hoola's own VM) and runs shell commands. "
     "While working there it can also use HER PC for FILES through the bridge: user_pc_search / user_pc_read / "
     "user_pc_pull bring one of her files into its VM (put that in the task when her file is the input: 'meri "
     "Excel Hoola ke PC pe kholo' = pull it first), user_pc_push hands a finished file back to her PC (she "
