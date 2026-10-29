@@ -182,7 +182,7 @@ window.HoolaWorkspace = ctx => {
       :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';});};
   const full=on=>{app.classList.toggle('workspace-full',on);label(on);};
   const set=(box,w,save)=>{const max=room(box);
-    if(w>=max-320){full(true);}            // dragged nearly to the chat's edge: the whole screen
+    if(w>=max-200){full(true);}            // dragged nearly to the chat's edge: the whole screen
     else{full(false);width=Math.max(MIN,Math.round(w));app.style.setProperty('--workspace-width',width+'px');}
     app.querySelectorAll('.workspace-handle').forEach(h=>h.setAttribute('aria-valuenow',String(Math.round(box.getBoundingClientRect().width))));
     if(save){try{localStorage.setItem(KEY,String(width||''));}catch{}}};

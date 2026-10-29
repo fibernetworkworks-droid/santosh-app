@@ -9687,3 +9687,23 @@ UNIVERSALLY, NOT FOR PDF ONLY - HOOLA MUST CHOOSE PERFECT TOOL FOR THAT PARTICUL
   GET /api/quality/tools. The live card was not run in the sandbox (no model key) - run it on the VPS.
 - Tests `server/tests/test_v0245_tool_choice.py`. Version 0.245.0 (pubspec 0.245.0+285, console ?v=0.245.0 x12, pins).
   Server-only deploy.
+
+## v0.246.0 WORKSPACE EDGE (console)
+Owner (screenshot of the workspace with a PDF): "AT TOP THERE IS WIDTH SECTION WE DONT WANT THAT - A SMOOTH SLIDER LIKE SIDE BAR
+FOR INCRESING / DECRESING WIDTH FULLY AS USER REQUIRED ... MAKE A WORKSPACE PREMIUM HUMAN NATIVE. DOCUMENTS TO BE LOADED FULLY
+WITHOUT SIDE PAGE INFORMATION. SAME FOR ALL WORKSPACE TASKS".
+- `workspace.js`: the "Workspace width" range + "Expand workspace" text bar is gone. `.workspace-handle` (same class, mounted
+  inside #studio / #panel after each render) is now the LEFT EDGE: role=separator, pointer drag (iframes stop eating the
+  pointer while dragging: `#app.workspace-resizing iframe{pointer-events:none}`), arrow keys (Shift = bigger steps), Home =
+  full, End = smallest, double-click = toggle full width. Dragging within 200px of the chat's left edge switches to
+  `.workspace-full` (whole screen beside the sidebar); Esc restores. A small round button on the edge (shown on hover / focus,
+  always while full) toggles full width with expand / restore icons. Width remembered in localStorage
+  `hoola.web.workspace.width` (min 360px; the chat keeps at least 380px).
+- `panel.js` docView(): PDFs and Office-as-PDF open with `#navpanes=0&pagemode=none&view=FitH&zoom=page-width` (no thumbnail
+  strip, fitted to the width) in a `.pnview.doc` that fills the workspace edge to edge (no padding / frame); images fit with
+  object-fit contain.
+- CSS: "v0.244 WORKSPACE EDGE" block at the end of v2.css (hairline -> violet 2px on hover / drag, grip pill with dots,
+  width transition, full-width overrides incl. the 1100px / 820px breakpoints).
+- Tests: test_v0246_workspace_edge.py.
+- Not verified: Chrome's PDF viewer honours navpanes=0 / view=FitH (Firefox pdf.js uses pagemode / zoom); headless Chromium
+  draws no PDF, so the frame size was measured instead (fills the panel: 1215 x 776 at full width on 1440 x 900).
