@@ -41,6 +41,13 @@ class C {
 TextStyle display(double size, {FontWeight w = FontWeight.w700, Color color = C.ink}) =>
     GoogleFonts.sora(fontSize: size, fontWeight: w, color: color, height: 1.12, letterSpacing: -size * .015);
 
+/// v0.242 CLAUDE JAISA AKSHAR: Hoola's reply is set the way Claude sets its own - a serif at 16px / 1.5,
+/// weight 400 (Claude's own token is `--font-claude-response: Anthropic Serif; 1rem; 400; 1.5`).
+/// Anthropic Serif is not ours to use, so this is Source Serif 4: the closest free one, with the same
+/// optical-size axis. Her OWN message stays sans (Manrope), exactly as Claude keeps the user message sans.
+TextStyle replyText({double size = 16, Color color = C.ink}) =>
+    GoogleFonts.sourceSerif4(fontSize: size, fontWeight: FontWeight.w400, color: color, height: 1.5);
+
 ThemeData santoshTheme() {
   final scheme = ColorScheme.fromSeed(seedColor: C.accent, brightness: Brightness.dark).copyWith(
     primary: C.accent, onPrimary: C.onAccent, secondary: C.violet, surface: const Color(0xFF17122F), onSurface: C.ink,

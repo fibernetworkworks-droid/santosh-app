@@ -169,7 +169,7 @@ List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const 
     }
   }
 
-  const code = TextStyle(fontFamily: 'monospace', fontSize: 13.5, backgroundColor: Color(0x26FFFFFF));
+  const code = TextStyle(fontFamily: 'monospace', fontSize: 14, backgroundColor: Color(0x26FFFFFF));
   var i = 0;
   final n = s.length;
   while (i < n) {
@@ -196,7 +196,7 @@ List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const 
       final j = s.indexOf(mk, i + 2);
       final style = mk == '~~'
           ? const TextStyle(decoration: TextDecoration.lineThrough)
-          : const TextStyle(fontWeight: FontWeight.w800);
+          : const TextStyle(fontWeight: FontWeight.w600);   // v0.242 Claude's bold is 600, not 800
       if (j > i + 2) {
         flush();
         spans.add(TextSpan(style: style, children: mdInline(s.substring(i + 2, j), link: link)));
@@ -351,8 +351,9 @@ class MdText extends StatelessWidget {
       if (kids.isNotEmpty) kids.add(SizedBox(height: (b.kind == 'li' || b.kind == 'ol') ? 4 : 9));
       switch (b.kind) {
         case 'h':
-          final size = b.level <= 1 ? 19.0 : b.level == 2 ? 17.5 : 16.0;
-          kids.add(_rich(mdInline(b.text, streaming: live), style.copyWith(fontSize: size, fontWeight: FontWeight.w800, height: 1.3), tail));
+          // v0.242 CLAUDE JAISA AKSHAR: sized against the 16px serif body, at Claude's heading weight 600
+          final size = b.level <= 1 ? 22.0 : b.level == 2 ? 20.0 : 17.0;
+          kids.add(_rich(mdInline(b.text, streaming: live), style.copyWith(fontSize: size, fontWeight: FontWeight.w600, height: 1.3), tail));
           break;
         case 'li':
         case 'ol':
@@ -383,7 +384,7 @@ class MdText extends StatelessWidget {
                 border: Border.all(color: C.line)),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: Text(b.text, style: style.copyWith(fontFamily: 'monospace', fontSize: 13, height: 1.4)),
+              child: Text(b.text, style: style.copyWith(fontFamily: 'monospace', fontSize: 14, height: 1.45)),
             ),
           ));
           break;
@@ -404,7 +405,7 @@ class MdText extends StatelessWidget {
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 220),
                             child: _rich(mdInline(c < b.rows[r].length ? b.rows[r][c] : ''),
-                                r == 0 ? style.copyWith(fontWeight: FontWeight.w800, fontSize: 13.5) : style.copyWith(fontSize: 13.5), null),
+                                r == 0 ? style.copyWith(fontWeight: FontWeight.w600, fontSize: 14) : style.copyWith(fontSize: 14), null),
                           ),
                         ),
                     ],

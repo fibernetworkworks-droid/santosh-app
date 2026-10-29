@@ -9552,3 +9552,46 @@ model / vendor). Phase 5 = everything the plan promised that Phases 1-4 had not 
 9. **Phone** (Call ki jaanch): p99, dead air, talk-over, repeats rows; the alert banner; "pehle se behtar / kharab /
    pehle jaisa" on each ear-test card and a "vX ke muqable" line. New APK; the server part works without it.
 Tests: NEW `test_v0234_voice_phase5.py` (13). Version 0.241.0 (pubspec 0.241.0+281, console ?v=0.241.0, pins -> 0.241.0). End-to-end test plan: docs/VOICE_E2E_TEST_PLAN.md.
+
+## v0.242.0 CLAUDE JAISA AKSHAR — the chat is set the way Claude sets it (owner: "NOW CHECK THE FONT AND ITS SIZE.... OF CLAUDE CHAT ----- TELL ME", then "MAKE IT SAME LIKE CLAUDE - FONT AND SIZE BOTH")
+- MEASURED, NOT REMEMBERED. Claude's live stylesheet was fetched and read
+  (`assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c6a992d55-CGuUmOei.css`, 493 KB, 29 Oct 2026):
+  - `--font-anthropic-sans: "Anthropic Sans", system-ui, …` · `--font-anthropic-serif: "Anthropic Serif", Georgia, …`
+    · `--font-anthropic-mono: "Anthropic Mono", ui-monospace, …`
+  - `--font-claude-response: var(--font-anthropic-serif)` and `--font-user-message: var(--font-ui)` (= the sans)
+  - `.font-claude-response-body{font-size:1rem;font-weight:400;line-height:1.5}`, `-small{.875rem}`,
+    `-title{1.75rem;600;1.3;font-variation-settings:"opsz" 28}`; UI chrome `.font-base{var(--font-ui);.875rem;430;1.4}`
+  - no `html{font-size}` override, so 1rem = 16px; the scale is plain 12 / 14 / 16 / 18 / 20 / 24 / 30px
+  So Claude's REPLY is a serif at 16px / 400 / 1.5 and HER message is the UI sans. The older "Styrene + Tiempos"
+  write-ups are out of date: the current CSS has replaced both with Anthropic's own families.
+- WHERE HOOLA STOOD: sans on both surfaces. Console `#app .mh .txt` 15.5px / 1.7 (Manrope), `#app .mu .mut` 15 / 1.55,
+  reply headings `.textmd .mdh` in Sora at weight 800. Phone: three `MdText` sites at `fontSize: 15, height: 1.45`,
+  her bubble 15 / 1.45, md_text headings 19 / 17.5 / 16 at w800, inline bold w800, code 13–13.5px.
+- THE FONT: Anthropic Serif is not ours to use, so **Source Serif 4** — the closest free one, a transitional serif
+  with the same optical-size axis — loaded the way Sora / Manrope already are. Console: `Source+Serif+4:opsz,wght@8..60,400;8..60,600`
+  on the existing Google Fonts link in `v2.html`, as `--fr` in `v2.css`. Phone: `GoogleFonts.sourceSerif4` through the
+  `google_fonts` package already in pubspec, as one shared `replyText({size = 16})` in `lib/ui/glass.dart`.
+- CONSOLE (`v2.css`): `#app .mh .txt` → `var(--fr)` 16px / 400 / 1.5 (was 15.5 / 1.7); the legacy `.mh .txt` carries the
+  same tokens; `#app .mu .mut` → `var(--fb)` 16 / 1.5 (sans, as Claude keeps the user message); `.textmd .mdh` → serif
+  20px / 600 / 1.3 (was Sora 16.5 / 800), `h3.mdh` 17px. The serif rule is SCOPED to `.mh .txt`, never the bare `.txt`,
+  because `.txt` is also the sidebar nav label (`<span class="txt">` inside `.sn`) — a global rule would have turned the
+  whole left rail serif.
+- PHONE: the three reply sites in `chat_screen.dart` (saved reply, revealed reply, streaming reply) all take
+  `replyText()`; her own bubble stays the theme sans at 16 / 1.5. `md_text.dart` scaled to the bigger body — headings
+  22 / 20 / 17 at w600, inline bold w600 (Claude's bold is 600, not 800), code and tables mono at 14px.
+- NOTHING ELSE MOVED: the console's Night Glass chrome keeps its own sizes and weights (Claude's UI sits at 14px / 430,
+  Hoola's at 11–14.5px / 700–900 — matching that would be a redesign of the whole console, not a chat-font change, and
+  was deliberately left alone). The markdown renderer, the streaming caret and `mdPlain()` for copy / quote are untouched.
+- A JUDGEMENT CALL, STATED: Source Serif 4 is a near match, not the same typeface — Anthropic Serif is custom and not
+  licensed to us. If the owner wants a different free serif (Literata is the other good one), it is a one-line change in
+  two places (`--fr` and `replyText()`).
+- Tests: NEW `server/tests/test_v0242_claude_akshar.py` (10) — the font loads with its opsz axis, the live console rule
+  carries all four tokens and the old shape is gone, her own message is pinned SANS (never the serif), the headings are
+  serif 600, the bare `.txt` is pinned NOT serif (the nav-label trap), the phone's shared style is Source Serif 4 at
+  16 / 400 / 1.5, all three phone reply sites use it, the markdown is scaled, and nothing is lost (mdBlocks / mdInline /
+  mdPlain / MdText / the caret all still there). The two `test/md_text_test.dart` assertions that pinned bold at `w800`
+  were updated to the owner's decision, not deleted. `dart analyze` 0 errors on Flutter 3.24.5 (CI's version),
+  `flutter test test/md_text_test.dart` 7/7.
+- Version 0.242.0 (pubspec 0.242.0+282, console ?v=0.242.0, pins → 0.242.0).
+- NOT VERIFIED: nobody has seen this on a real screen yet. The serif at 16px will look bigger and airier than the old
+  15px sans — that is Claude's shape, but it is a visible change to every reply on both surfaces.

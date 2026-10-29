@@ -101,9 +101,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.241.0 (pubspec 0.241.0+281). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.242.0 (pubspec 0.242.0+282). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.242 CLAUDE JAISA AKSHAR: the chat is set like Claude's - the REPLY in a serif at 16px / 400 / 1.5 (Source
+  Serif 4; Anthropic Serif is not ours), her own message in the sans at the same 16 / 1.5, reply headings serif 600,
+  bold 600 not 800, code mono 14. Both surfaces (console `--fr` in v2.css, phone `replyText()` in lib/ui/glass.dart);
+  the serif rule stays SCOPED to the chat block (`.txt` is also the sidebar nav label). Console chrome unchanged.
 - v0.241 voice Phase 5 (p99 + dead air + talk-over + repeats, once-a-day voice_alert, ear test vs previous version,
   stall watchdog ignores noise, clips at his live loudness, TTS fallback logged).
 - v0.240 CHHOTA JAWAB: a long job works in the BACKGROUND and the chat gets one short human line. The four-part
