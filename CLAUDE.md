@@ -8788,3 +8788,51 @@ no filler; honest gaps; and keeps its working context small ("more context can m
   download Flutter from storage.googleapis.com and pub.dev now - use the exact CI version 3.24.5).
 - Version 0.222.0 (pubspec 0.222.0+257, console ?v=0.222.0 x9, pins -> 0.222.0). NEEDS A NEW APK for the rendering;
   the server half works with old APKs. Mera PC freeze respected; desktop untouched.
+
+## v0.223.0 DRAFT JAANCH — Phase 4 of the Claude-style reply plan: the last look at a reply, with no visible delay (owner: "START PHASE 4")
+Phase 1 put "check your draft once" in the rulebook; this is the part that does not depend on the model remembering to.
+`server/app/agent/draftcheck.py`, two checks, both built so nothing waits for them.
+- **A claim with nothing behind it (free, in code, inside the turn)**: the reply says the work happened — "bhej diya",
+  "book ho gaya", "save kar diya", "order kar diya", "reminder lag gaya" — while every tool that finished ok this turn
+  was a READ (`READS` + `pakka.SKIP` + the whole `<name>_dekho` Sahayak convention), so nothing was really sent, saved or
+  booked. The model is nudged ONCE ("do it now with the right tool, every card / approval / OTP rule as usual, or say
+  plainly it is NOT done"); if it claims again, `state["correct"]` adds "(Saaf baat: yeh kaam abhi hua nahi hai - ab bhi
+  karna baaki hai.)" AFTER the words she already read. The same words about HER ("aapne bhej diya"), in the future
+  ("card par haan karte hi bhej diya jayega"), as an offer ("chahiye to bhej doon?") or as a denial ("nahi bheja hai")
+  are never a claim (`_NOT_A_CLAIM`), and "bana diya / ban gaya" is deliberately NOT in the pattern (in Hinglish a
+  plan, a list or a draft is legitimately "bana diya" inside the reply itself, with no tool behind it). `pakka` (v0.78)
+  still owns every case where tools DID run — its guard was split, not changed — and goal mode is skipped entirely
+  (`_goal_open`): a kaam_plan goal has its own steps and its own honest "X/Y steps ho gaye" line (v0.186), so this
+  check stays out of its way and never spends an extra round there.
+- **The draft check (one cheap-brain call, AFTER the words are on her screen)**: code gates it for FREE —
+  `hard_facts` = amounts (Rs / ₹ / rupaye / lakh / crore), dates (15/11, 15 Nov, 20 tareekh), times (4 baje, 4:30 pm)
+  and 5+ digit ids; percentages and small counts are deliberately NOT facts. A fact whose digits appear nowhere in
+  `sources_text` (her message + `_chat_tail` = her own words and tool results of the last 8 messages, never Hoola's own
+  prose, least of all the reply being checked + this turn's tool args / results / errors) is "loose"; `many_parts` spots
+  a question with 2+ "?" or a numbered second part. No loose fact and no second part = NOT ONE model call. Then
+  `ask_model` asks for JSON `{ok, missed, unsupported}` with the precision rules in `CHECK_SYSTEM`: a figure Hoola
+  WORKED OUT from the given numbers is fine, a public rule / standard rate / statutory due date is NEVER unsupported,
+  `missed` only for a clearly separate question, and never a word about tone / length / formatting.
+- **The code only DECIDES to look; the model is the only thing that may SPEAK.** That is what keeps a legitimate total
+  (3 x 150 = 450, loose in code because the digits are nowhere) from ever becoming a wrong warning. And `note_of` may
+  only name figures the code ALSO saw as unbacked, so the note can never invent a worry of its own.
+- One short line follows the reply through the normal note path (`events.notify`: Message `in_history=False` + SSE +
+  FCM) plus the same quiet line into her live call (`kaamwatch._voice`, v0.193): "(Dhyaan: Rs 7,250 - yeh mujhe kisi
+  pakke source se nahi mila; ek baar khud dekh lijiye.)" or "(Ek baat reh gayi: late fee kitni hai - bataun?)".
+  It NEVER rewrites what she has already read.
+- Scheduled in `_steps` with `_bg` after `_steps_inner` returned, so the reply is out first (the test proves the turn
+  returns before the check has even finished thinking). Owner turns only, `draft_check_max_hour` (4) notes per chat per
+  hour (`_SPOKE`), silent when she tapped Stop / the turn was halted, when the reply already carries a
+  "(Saaf baat: / (Dhyaan: / (Ek baat reh gayi:" note, on an error reply, and when the month's AI budget is used up
+  (new `usage.BACKGROUND` feature "draft_check"). `draft_check=false` = the v0.222 behaviour exactly.
+- Tests: NEW `server/tests/test_v0223_draft_jaanch.py` (17): the fake claim caught then said plainly, her / future /
+  offer wordings are not claims, a real tool run is never called a fake claim but a read is, hard facts vs percentages
+  and counts, a figure from a real source is not loose, the free gate spends nothing on a greeting / a tiny reply / a
+  reply that already carries a note, `many_parts`, a worked-out total never becomes a warning (the model looks once and
+  stays quiet), an unbacked figure gets ONE note in chat + in the call with `in_history=False`, the note can only name
+  figures the code also saw (a flagged NAME too: dropped when her own words name them, kept when nowhere), a missed
+  part, the hourly cap, silence on Stop / error reply / budget over / switch off
+  without a single model call spent, goal mode keeping its own truth (and the very same reply being caught outside it),
+  and the end-to-end proof that the reply is back before the check finishes.
+- Version 0.223.0 (pubspec 0.223.0+258, console ?v=0.223.0 x9, pins -> 0.223.0 in 35 suites). Server-only — old APKs
+  keep working. Mera PC freeze respected; desktop untouched 1.4.0; every money / OTP / card / approval gate untouched.

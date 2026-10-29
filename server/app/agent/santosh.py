@@ -523,7 +523,28 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
         learned = await asyncio.to_thread(procedures.after_turn, tenant_id, user_text, state["calls"], state["used"], ok, actor)
         if learned and learned.get("learned"):
             bus.publish(conversation_id, "procedure", {"event": "learned", "id": learned["learned"], "title": learned["title"]})
+    if user_text and actor == "owner" and settings.draft_check:
+        # v0.223 the last look, in the background: the reply is already on her screen, so nothing waits for this
+        from . import draftcheck
+        state["chat_tail"] = _chat_tail(history)
+        _bg(draftcheck.after_turn(conversation_id, tenant_id, user_text, text, state, settings))
     return text
+
+
+def _chat_tail(history: list[dict], keep: int = 8) -> str:
+    """What the chat really GAVE: her own words and the tool results of the last few messages (v0.223). Hoola's own
+    prose is never a source for itself - least of all the reply being checked, which sits at the end of history."""
+    out = []
+    for m in (history or [])[-keep:]:
+        if m.get("role") != "user":
+            continue
+        for b in _as_blocks(m.get("content")):
+            if not isinstance(b, dict):
+                continue
+            t = b.get("text") or (b.get("content") if b.get("type") == "tool_result" else None)
+            if t:
+                out.append(_short(t, 1500) if not isinstance(t, str) else t)
+    return "\n".join(out)[-4000:]
 
 
 async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str,
@@ -901,15 +922,33 @@ def _key(name: str, args) -> str:
     return k(name, args)
 
 
+def _goal_open(state: dict, conversation_id: str, settings) -> bool:
+    """A kaam_plan goal is open for this chat (v0.186): its steps and its honest "X/Y steps ho gaye" line are the
+    truth machinery there, so v0.223's free claim check stays out of its way."""
+    if state.get("goal"):
+        return True
+    if not settings.agent_goal:
+        return False
+    from . import goal as _g
+    return _g.active_for(conversation_id) is not None
+
+
 async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, conversation_id: str) -> str:
     """v0.78 self-check before the turn ends: real results vs. her request. Returns a nudge to keep working, or ''.
     Sets state['correct'] when the answer claims more than was done, state['left'] when something stays open.
     v0.187 goal mode: 4 self-checks a turn instead of 2."""
-    from . import pakka
+    from . import draftcheck, pakka
     cap = pakka.SELF_CHECKS_GOAL if state.get("goal") else pakka.SELF_CHECKS_PER_TURN
+    if conversation_id in _stopped or state["breaker"].stopped or state.get("halted"):
+        return ""
+    if settings.draft_check and not _goal_open(state, conversation_id, settings):
+        # v0.223 free, in code: the reply claims work that never ran. pakka below owns the case where tools DID run,
+        # and goal mode (v0.186) owns its own truth - its steps and its honest "X/Y steps ho gaye" line.
+        fake = draftcheck.fake_done(state, final_text)
+        if fake:
+            return fake
     calls = state.get("calls") or []
-    if (not ran_tools or not calls or conversation_id in _stopped or state["breaker"].stopped or state.get("halted")
-            or state.get("checks", 0) >= cap):
+    if not ran_tools or not calls or state.get("checks", 0) >= cap:
         return ""
     real = [c for c in calls if c.get("tool") not in pakka.SKIP]
     if not real:

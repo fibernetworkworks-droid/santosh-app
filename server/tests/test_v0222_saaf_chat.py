@@ -46,5 +46,5 @@ def test_phone_renders_markdown():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.222.0"
-    assert "0.222.0+257" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.223.0"
+    assert "0.223.0+258" in (REPO / "pubspec.yaml").read_text()
