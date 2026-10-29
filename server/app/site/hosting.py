@@ -168,10 +168,30 @@ def host_map(force: bool = False) -> dict[str, dict[str, Any]]:
         for k, v in hosts.items():
             v["main"] = main.get(v["site"], k)
         _MAP.update(at=time.time(), hosts=hosts)
-        return hosts
+    if force:
+        _edge_sync(hosts)
+    return hosts
 
 
-def serve(host: str, path: str) -> tuple[int, bytes, str, dict[str, str]] | None:
+def _edge_sync(hosts: dict[str, dict[str, Any]]) -> None:
+    """v0.224 the folder nginx serves from follows every launch / rollback / take-down at once."""
+    try:
+        from . import edge
+        edge.sync(hosts)
+    except Exception:
+        log.exception("edge sync failed")
+
+
+BOTS = re.compile(r"hoolauptime|bot\b|bot/|crawl|spider|slurp|lighthouse|headlesschrome|python-httpx|python-requests|"
+                  r"curl/|wget/|uptime|monitor|preview|facebookexternalhit|whatsapp", re.I)
+
+
+def is_bot(ua: str) -> bool:
+    """v0.223 Hoola's own uptime check (every 5 min = ~288 'visits' a day per address) and crawlers are not her visitors."""
+    return bool(BOTS.search(ua or ""))
+
+
+def serve(host: str, path: str, ua: str = "", inm: str = "") -> tuple[int, bytes, str, dict[str, str]] | None:
     """(status, body, content type, headers) for a hosted site, or None when this host is not one of ours."""
     host = (host or "").lower().split(":")[0].strip(".")
     m = host_map().get(host)
@@ -197,7 +217,8 @@ def serve(host: str, path: str) -> tuple[int, bytes, str, dict[str, str]] | None
         f = f / "index.html"
     if not f.is_file() or f.name == "_headers":
         nf = root / "404.html"
-        _count(m, path, 404)
+        if not is_bot(ua):
+            _count(m, path, 404)
         return 404, (nf.read_bytes() if nf.exists() else b"not found"), "text/html; charset=utf-8", _sec_headers(m)
     ctype = mimetypes.guess_type(f.name)[0] or "application/octet-stream"
     if f.suffix == ".avif":
@@ -208,8 +229,13 @@ def serve(host: str, path: str) -> tuple[int, bytes, str, dict[str, str]] | None
         ctype += "; charset=utf-8"
     h = _sec_headers(m)
     h["Cache-Control"] = "public, max-age=604800" if "/assets/" in f.as_posix() else "public, max-age=300, must-revalidate"
-    if ctype.startswith("text/html"):
+    if ctype.startswith("text/html") and not is_bot(ua):
         _count(m, path, 200)
+    st = f.stat()
+    etag = f'"{st.st_mtime_ns:x}-{st.st_size:x}"'      # v0.224 repeat visits get 304 instead of the whole file
+    h["ETag"] = etag
+    if inm and etag in [x.strip() for x in inm.split(",")]:
+        return 304, b"", ctype, h
     return 200, f.read_bytes(), ctype, h
 
 
@@ -386,7 +412,7 @@ def _link(main: str, other: str) -> None:
         else:
             shutil.rmtree(p)
     try:
-        p.symlink_to(root / main, target_is_directory=True)
+        p.symlink_to(main, target_is_directory=True)        # v0.224 relative: survives a move / a backup restore
     except OSError:
         shutil.copytree(root / main, p)
 
@@ -432,28 +458,49 @@ def rollback(tenant: str, ref: str, version: int, hash_: str) -> dict[str, Any]:
     return out
 
 
+def has_hosts(site_id: str) -> bool:
+    with session() as s:
+        return s.scalars(select(SiteHost).where(SiteHost.site_id == site_id, SiteHost.status != "removed")).first() is not None
+
+
+class _Gone:
+    """A removed address, copied out of its session (its row's status change commits)."""
+    def __init__(self, hostname: str, cf_id: str):
+        self.hostname, self.cf_id = hostname, cf_id
+
+
+def _drop_host(row: "_Gone | SiteHost", files: bool = True) -> None:
+    """v0.223 one address leaves for good: its Cloudflare custom hostname (quota / bill) and its served files.
+    Caller marks the row removed in its own session. files=False when another live address may still point at
+    this folder (the free address is a link to the main one)."""
+    if row.cf_id and saas_on():
+        try:
+            from .cf import Cloudflare
+            Cloudflare(cfg()["cf_token"]).custom_hostname_delete(cfg()["cf_zone"], row.cf_id)
+        except Exception:
+            log.info("custom hostname delete failed", exc_info=True)
+    if not files:
+        return
+    p = hosted_root() / row.hostname
+    if p.is_symlink():
+        p.unlink()
+    elif p.exists():
+        shutil.rmtree(p, ignore_errors=True)
+
+
 def take_down(tenant: str, ref: str) -> dict[str, Any]:
     from . import service as S
     with session() as s:
         r = S._find(s, tenant, ref)
         rows = s.scalars(select(SiteHost).where(SiteHost.site_id == r.id, SiteHost.status != "removed")).all()
         names = [x.hostname for x in rows]
+        drop = [_Gone(x.hostname, x.cf_id or "") for x in rows]     # plain copies: the status change must commit
         for x in rows:
             x.status = "removed"
-            if x.cf_id and saas_on():
-                try:
-                    from .cf import Cloudflare
-                    Cloudflare(cfg()["cf_token"]).custom_hostname_delete(cfg()["cf_zone"], x.cf_id)
-                except Exception:
-                    log.info("custom hostname delete failed", exc_info=True)
-    for n in names:
-        p = hosted_root() / n
-        if p.is_symlink():
-            p.unlink()
-        elif p.exists():
-            shutil.rmtree(p, ignore_errors=True)
+    for x in drop:
+        _drop_host(x)
     host_map(force=True)
-    return {"ok": True, "say": f"Website band kar di ({', '.join(names)})."}
+    return {"ok": True, "say": f"Website band kar di ({', '.join(names)})." if names else "Website kahin live nahi thi."}
 
 
 # ---------------------------------------------------------------- her own domain
@@ -505,12 +552,19 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "") -> dict[s
     else:
         raise HostError("Aapka domain jodne ke liye: ya to server par Hoola Hosting (Cloudflare for SaaS) chalu ho, ya domain "
                         "ka DNS aapke apne Cloudflare account mein ho aur uska token Hoola mein juda ho (Website > Hosting).")
+    keep = {x.hostname for x in rows}
+    gone: list[_Gone] = []
     with session() as s:
         for old in s.scalars(select(SiteHost).where(SiteHost.site_id == r.id, SiteHost.kind == "custom",
                                                     SiteHost.status != "removed")).all():
             old.status = "removed"
+            if not (old.hostname in keep and old.cf_id and any(x.cf_id == old.cf_id for x in rows)):
+                gone.append(_Gone(old.hostname, old.cf_id or ""))
         for x in rows:
             s.add(x)
+    for x in gone:          # v0.223 the old domain's Cloudflare hostname goes too (it stayed, costing quota)
+        _drop_host(x, files=False)
+    host_map(force=True)
     desired = D.website_records(d, mode, target, verify, apex_flatten=apex_ok)
     try:
         pl = D.make_plan(tenant, r.id, d, desired, "website")
@@ -595,7 +649,12 @@ def _fetch_ok(host: str) -> bool:
 
 
 def _check_up(h: SiteHost) -> None:
-    ok = _fetch_ok(h.hostname)
+    _record(h, _fetch_ok(h.hostname))
+
+
+def _record(h: SiteHost, ok: bool, why: str = "", source: str = "inside") -> None:
+    """One uptime answer for an address (Hoola's own check every 5 min, or the outside checker). Two misses in a row =
+    one card + push; back up = one note."""
     if h.role == "main":
         try:
             from . import care
@@ -605,20 +664,62 @@ def _check_up(h: SiteHost) -> None:
     with session() as s:
         row = s.get(SiteHost, h.id)
         row.last_check = now()
+        back = False
         if ok:
             back = row.down_told
             row.fails, row.down_told, row.problem = 0, False, ""
         else:
             row.fails = (row.fails or 0) + 1
-            row.problem = "site nahi khuli (DNS / SSL / server)"
+            row.problem = why or "site nahi khuli (DNS / SSL / server)"
         fails, told = row.fails, row.down_told
         if not ok and fails >= 2 and not told:
             row.down_told = True
     if not ok and fails >= 2 and not told:
-        why = _why_down(h.hostname)
-        _publish(h.tenant_id, "site_down", {"host": h.hostname, "say": f"{h.hostname} nahi khul rahi: {why}", "push": True})
+        why = why or _why_down(h.hostname)
+        where = " (bahar se jaanch)" if source == "outside" else ""
+        _publish(h.tenant_id, "site_down", {"host": h.hostname, "say": f"{h.hostname} nahi khul rahi{where}: {why}", "push": True})
     elif ok and back:
         _publish(h.tenant_id, "site_down", {"host": h.hostname, "ok": True, "say": f"{h.hostname} phir se chal rahi hai.", "push": False})
+
+
+# ---------------------------------------------------------------- v0.224 the outside checker (GitHub Actions, off this box)
+def uptime_key_ok(key: str) -> bool:
+    import hmac
+    want = getattr(_st(), "sites_uptime_key", "") or ""
+    return bool(want) and len(want) >= 16 and hmac.compare_digest(want, key or "")
+
+
+def uptime_targets() -> list[str]:
+    """The live addresses the outside checker should open (main + www only; nothing about her)."""
+    with session() as s:
+        rows = s.scalars(select(SiteHost).where(SiteHost.status == "active", SiteHost.live_version > 0)).all()
+        return sorted({x.hostname for x in rows if x.role != "apex"})
+
+
+def outside_report(results: list[dict[str, Any]]) -> int:
+    """What the outside checker saw (ok / status / error per address). Same counters and cards as Hoola's own check;
+    the outside view also sees the times this whole server was down. Unknown addresses are ignored."""
+    n = 0
+    seen = set()
+    for r in results[:500]:
+        host = str(r.get("host") or "").lower().strip(".")
+        if not host or host in seen:
+            continue
+        seen.add(host)
+        with session() as s:
+            h = s.scalars(select(SiteHost).where(SiteHost.hostname == host, SiteHost.status == "active")).first()
+            if h is None:
+                continue
+            s.expunge(h)
+        ok = bool(r.get("ok"))
+        why = "" if ok else re_clean(f"HTTP {r.get('status') or '-'} {r.get('error') or ''}")
+        _record(h, ok, why, source="outside")
+        n += 1
+    return n
+
+
+def re_clean(t: str) -> str:
+    return re.sub(r"[^\w .:/()-]+", "", t).strip()[:120]
 
 
 def _why_down(host: str) -> str:

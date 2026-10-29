@@ -142,7 +142,10 @@ def test_where_touch_worked_note_for_hoolapc():
     from app.agent import where
     where.forget("c-hp")
     where.touch("c-hp", "hoolapc")
-    assert where.working("c-hp") == "hoolapc"
+    assert where.working("c-hp") == ""          # v0.238 Hoola's own choice of the cloud PC never sticks
+    where.remember("c-hp", "apne PC pe irctc website kholo")
+    where.touch("c-hp", "hoolapc")
+    assert where.working("c-hp") == "hoolapc"   # she named it: it holds
     where.worked("c-hp", "hoola_pc_do", {"task": "open irctc website"})
     assert where.working("c-hp") == "hoolapc"
     n = where.note("hoolapc", "c-hp")

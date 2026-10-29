@@ -42,6 +42,7 @@ class Site(Base):
     staff: Mapped[str] = mapped_column(String(60), default="")            # agency: staff member id who may work on it
     conv: Mapped[str] = mapped_column(String(64), default="")
     cost_usd: Mapped[float] = mapped_column(default=0.0)
+    recovered: Mapped[int | None] = mapped_column(Integer, nullable=True)  # v0.223 auto-restarts after a dead job
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 

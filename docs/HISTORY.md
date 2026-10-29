@@ -9315,6 +9315,171 @@ Tests: NEW `test_v0232_voice_phase4.py` (12). Version 0.232.0 (pubspec 0.232.0+2
   first-message title and from the auto-title prompt (`chats.plain`).
 - Tests: NEW `test_v0236_no_empty_rows.py` (3). Version 0.236.0 (pubspec 0.236.0+276, console ?v=0.236.0, pins -> 0.236.0).
 
+
+> NOTE: the three WEBSITE phases below were built on the branch claude/vigilant-lamport-0hvbp3 as v0.223.0 / v0.224.0 / v0.225.0 while main moved to v0.236.0 (console redesign, long jobs A-C, voice phases 1-4, SAHI JAWAB, New-chat fix, one avatar). They reached main together as **v0.237.0** (re-versioned on merge, all works kept). The version numbers inside the sections are the branch numbers.
+
+## v0.223.0 -> v0.237.0 WEBSITE PHASE 1 — the Website Sahayak bugs from the web-development audit (owner: "FIRST CHECK HOW HOOLA DO THIS FIND FLAWS" -> "START PHASE 1")
+The audit of `server/app/site/` (build, hosting, care, domains) found bugs that break real use; Phase 1 fixes them.
+Phases 2-4 (hosting off the main process, builder quality on Opus like App Sahayak, editable content) are not in this.
+- **Queued change never ran, site stuck in "building"**: a change asked during a build was started from INSIDE the build
+  thread at its end, `_start` saw that thread alive and returned. Now `_start` returns True/False, the queue runs in
+  `_after_job` only after the thread is gone, and `change()` queues (never loses) when a job slipped in first; `resume`
+  refuses while a job runs; `busy(site_id)`.
+- **Restart mid-build = stuck forever**: `service.recover_stuck` (worker tick): a building / checking / generating-looks site
+  whose job no thread of this process runs, last touched before this process started or 30 min ago, is restarted ONCE
+  (`Site.recovered`, nullable, reset when a build finishes); a second death = "failed" with "Phir se chalao"; Rokiye'd =
+  "stopped". `approve_plan` empties `looks` so "generating looks" is told apart from "3 looks waiting for her choice".
+- **No limit on builds**: a `BoundedSemaphore(SITE_WORKERS, default 2)` around every job (the old unused pool removed).
+- **Deleted site stayed live**: `delete` refuses while a job runs, then `hosting.take_down` (addresses removed, served files
+  gone, Cloudflare custom hostnames deleted) before the records go; failure = nothing deleted, plain line.
+- **Her answers never reached the written pages** (launch blocked by blanks for ever): `answer()` on a built site calls
+  `fill_blanks`: `<em class="blank">[phone|email|address|hours|name|city|whatsapp|tagline]</em>` filled in place from the
+  exact fact (`BLANK_FACTS`, exact labels only; "registration number" never becomes a phone), sections with blanks still
+  left are rewritten with a FILL BLANKS note, then assembled + checked = a new version.
+- **Uptime check counted as visitors** (~288 a day per address): `hosting.is_bot` (HoolaUptime, bots, crawlers, link
+  previews, curl / httpx) skips `care.count_view`; `serve(host, path, ua)`.
+- **Site addresses reached Hoola's API for non-GET**: the `_hosted_sites` middleware answers 404 to any other method on a
+  site host except `POST /api/site-forms/...` (her enquiry form).
+- **Re-joining a domain left old Cloudflare hostnames** (quota / bill): `connect_domain` deletes the old custom hostnames
+  that are not reused (same domain again keeps them); files stay (the free address may link to that folder).
+  `_drop_host(row, files)` shared with `take_down`; `has_hosts`.
+- **Site numbers repeated after a delete**: next number = highest + 1. Form rate dict pruned past 5,000 entries.
+- Tests `server/tests/test_v0223_site_fixes.py`. Version 0.223.0 (pubspec 0.223.0+258, console ?v=0.223.0 x9, pins).
+  Server-only deploy; old APKs keep working. NOTE: the parallel Console R1 work (serene-dijkstra) planned to be v0.223 -
+  it now needs v0.224.
+
+## v0.224.0 WEBSITE PHASE 2 — live websites no longer go down with Hoola (owner: "START PHASE 2")
+Phase 2 of the web-development audit: hosting moved off Hoola's own process, an outside watcher, an off-server backup.
+- **nginx serves the live sites** (`app/site/edge.py`): `sync()` keeps `data/hosted_enabled/<host>` symlinks (atomic
+  replace) for exactly the addresses that may be served (active / pending with a live version; apex left out, junk names
+  refused); runs on every `host_map(force=True)` (launch, rollback, take-down, domain) and every worker tick - nginx
+  never needs a reload. `python -m app.site.edge conf [--cert --key --app --no-ssl]` writes the default_server block:
+  `root <enabled>/$host`, the same security headers as `build.security_headers` + HSTS, gzip, assets 7 days / pages 5 min,
+  directory -> trailing-slash 301, own 404 page, `_headers` 404, bare domain -> www when only www is live, only
+  `/api/site-forms/` proxied to Hoola (every other `/api/` 404), a host not in the folder proxied to Hoola (the Python
+  serving stays as fallback; `proxy_set_header` at server level because it is not allowed inside `if`). Tested with REAL
+  nginx 1.24: all of that, plus the sites keep opening with the Hoola app stopped. VPS gotcha: nginx's `www-data` must be
+  able to read data/hosted (+ hosted_enabled) and write the access log - ACL steps in `deploy/sites_hosting.md`.
+- **Visits from nginx's log**: format `hoola_sites` (host, status, method, $request_uri, content type, UA), written only
+  for requests nginx served itself (`if=$hoola_live`, no double counting with the Python fallback); `edge.ingest_log()`
+  (worker) reads new lines from a saved offset (rotation / new inode restart at 0), counts GET/HEAD HTML 200 / 404, skips
+  bots (`hosting.is_bot`) into the same `care.count_view` counters.
+- **Outside uptime check** `.github/workflows/site-uptime.yml` (every 15 min on GitHub; secrets HOOLA_URL +
+  SITES_UPTIME_KEY; not set = a notice, never a failure): GET `/api/sites-uptime` (X-Uptime-Key, constant-time; no key
+  set = 404) -> opens every live main / www address -> POST results -> `hosting.outside_report` -> the same `_record`
+  as Hoola's own check (two misses = one card + push "bahar se jaanch", back up = note). Hoola unreachable / a site down =
+  failed run = GitHub emails the owner. `/api/hosting/ask` no longer forces a DB read + folder sync per public call.
+- **Daily off-server backup** `app/site/backup.py`: after 03:00 IST, one tar.gz of data/hosted (address links stored as
+  relative links) + every site's `src` -> `hoola/sites/<date>.tar.gz` on S3 / R2 / B2 / Spaces with AWS SigV4 written here
+  (UNSIGNED-PAYLOAD, streamed; matched botocore on GET / PUT / list / continuation / escaped DELETE - botocore is not a
+  dependency); older than SITES_BACKUP_KEEP_DAYS (14) deleted; `restore` never writes outside its folder (path / link
+  escapes skipped). Settings SITES_BACKUP_BUCKET / _ENDPOINT / _REGION / _KEY_ID / _SECRET / _KEEP_DAYS; off when empty.
+- Python fallback: ETag + 304 for repeat visits; `_link` now makes relative links. `.env.example` lists every SITES_ setting.
+- Tests `server/tests/test_v0224_site_edge.py` (real nginx test skips where nginx is missing). Version 0.224.0
+  (pubspec 0.224.0+259, console ?v=0.224.0 x9, pins). Server + VPS nginx step; old APKs keep working.
+
+## v0.225.0 WEBSITE PHASE 3 — builder quality (owner: "START PHASE 3 , DEPLOY")
+Phase 3 of the web-development audit: the website builder works like App Sahayak (v0.140).
+- **Opus path for websites** (`site/ai.py`): kinds `build` (sections), `site_art`, `site_critique`, `site_edit` (fix rounds +
+  the change router) go through `_ask_app` when `SITE_OPUS` (default true): `site_model` (claude-opus-5-5), adaptive
+  thinking, effort per job (art xhigh, sections / critique high, edits medium), busy retries, NO quiet fallback (a plain
+  "Website Claude Opus 5.5 se ..." error). `SITE_OPUS=false` = the v0.121 path (Sonnet / cheap brain fallback).
+- **Art direction** (`site/quality.py`, `SITE_ART` default true): before each look's hero Opus writes a design DNA (concept,
+  idea, layout system / hero / rhythm / density, a SIGNATURE element, type, colour use, motion + entrance, imagery, avoid,
+  one line per section type); `clean_dna` makes any answer safe; a look whose fingerprint is too close to a sibling
+  (`closeness` >= 2.5) is asked again once. The DNA is stored on each look, carried by `choose_look`, and `dna_block` rides
+  in every section prompt. View: looks carry concept / idea / signature, the site carries `design`.
+- **Andaaza before the build**: `Q.estimate(plan)` = sections to write + looks + fix rounds + critique at the model's
+  usage price -> `estimate` {inr, inr_low, inr_high, say} in the view of planned / looks / stopped / failed sites and in
+  the say line ("Andaaza: ₹a–₹b AI kharcha ..."). Her tap (plan Haan / look choice) stays the start; nothing new to approve.
+- **Parallel sections** (`_write_sections`): sections still to write go out `SITE_PARALLEL` (3, max 6) at a time, board and
+  preview update after each under one lock; Rokiye = the rest never starts -> "stopped"; one failed section fails the
+  build plainly (no section left "building").
+- **Opus looks at its own work** (`_critique_round`, `SITE_CRITIQUE` home | off, `SITE_CRITIQUE_MIN` 7.5): after the check
+  rounds Opus sees the real home page screenshots (390 + 1440) with the DNA, scores each section, the up to 3 weakest are
+  redrawn once with its notes, checks run again and Opus scores again: a redraw that scores lower or adds a blocking
+  check is thrown away (old section back). Board `critique` {before, redrawn {type: before / after / kept}}.
+- Tests run with SITE_ART=false / SITE_CRITIQUE=off (conftest). Tests `server/tests/test_v0225_site_quality.py`.
+  Version 0.225.0 (pubspec 0.225.0+260, console ?v=0.225.0 x9, pins). Server-only deploy; old APKs keep working.
+
+## v0.238.0 DATA DESK — big data stays on the server (29 Oct 2026)
+Owner: pasted the failed "top 100 AI repos -> PDF" chat ("NOT ABLE TO COMPLETE TASK ---- FIND FIRST THE ROOT CAUSE"),
+asked how Claude would do it, compared it with Hoola's flow, asked "WHY FOR EVERY JOB HOOLA GOING TO CLOUD PC", then
+"GO for 1–3 (server only)".
+- Root cause: `_short` cuts every tool result reaching the model at 6,000 chars, so a GitHub search reply showed ~2 repos;
+  Hoola then escaped to its cloud PC (the hoola_pc_do text called it the place for "heavy/clean work"); `where.touch`
+  locked the chat on the cloud PC for 45 min, renewed by every result note, so every later job went there too; the goal
+  spun rounds that only said "still running"; the VM's PDF never reached the chat (no delivery path).
+- (1) DATA DESK: `server/app/datasets.py` (dataset = flat rows + meta, JSON at DATASETS_DIR/<sha(tenant)[:16]>/ds_xxx.json,
+  kept 14 days, 5000 rows, 600 chars a cell; `find_items`, `pick` with 'name=dot.path' fields, `annotate`, `rows_slice`,
+  `to_csv`, `as_text`). Tools in `agent/data_tools.py` (family "data", in `admit.CORE_FAMILIES`): data_fetch (public
+  JSON API via publicapis.call(full=True) which keeps the whole reply as `_data`; pages 1-10, stops on a short page; the
+  model sees id + count + columns + first 8 rows), data_read (slices, sort, q, fields; export=csv = file card; no id =
+  list), data_note (her row text in batches, saved at once, says which rows are still empty). doc_studio: `data=<id>`
+  (pdf/docx: ranking table + one card per row with its note + source line, at `[[data]]` or the end; xlsx: a sheet),
+  `data_fields`, `data_layout` both|table|cards, `data_heading`, and `part=add` (draft kept on the server per chat+title,
+  joined and removed on build). Pinned prompt block "- DATA DESK" with the GitHub recipe (tool descriptions are dieted
+  to 140 chars, so the recipe lives in the guide).
+- (2) `hoola_pc_do` text (owner-approved change to a frozen PC file, description only): ONLY desktop software / a desktop
+  app / she said "aapke PC pe"; NOT for data (use the data desk); a VM file does NOT come back to the chat. The rule sits
+  in the first 700 chars so the schema diet keeps it. Routing item 3 + the "Hoola ka apna PC" line in prompts.py match.
+- (3) `agent/where.py`: data / API jobs (`_DATA`) never lock a place; the cloud PC locks the chat only when SHE named it
+  (`_asked`), for HOOLAPC_KEEP_S 20 min from the start, never renewed; her PC / Hoola's browser keep the v0.104 45-min
+  renewed rule. STATS not_stuck.
+- Goal: `goal._waiting_on_job` (a KaamJob of this chat still "working" that moved in the last hour) pauses the goal in
+  `maybe_continue` (STATS waited_job; waiting never counts), and resume_tick / recover_tick wait on it too; the job's
+  finish wakes the chat as before.
+- Not done (needs "GO WITH PC"): fix 4, VM files sent back to the chat.
+- Tests `server/tests/test_v0238_data_desk.py`. Version 0.238.0 (pubspec 0.238.0+278, console ?v=0.238.0 x11, pins).
+  Server-only deploy; old APKs keep working.
+
+
+## v0.239.0 FULL CLAUDE MODE — Phase 1 (built as 0.237.0, re-versioned past the parallel v0.237.0 WEBSITE PHASES 1-3 and v0.238.0 DATA DESK): the whole chat, word for word, with a gauge (owner: "FULL CLAUDE MODE -- MAKE PLAN" / "START PHASE 1")
+- THE GAP (found in code): every turn the model saw only the newest 40-49 exchanges (`yaad.history`), the newest 4 in
+  full and the rest cut to her words + one line per step + the final reply, so file names, ids and exact words faded
+  early. Nothing ever measured the whole request: no cap on system + tools + history, and a model's "prompt is too long"
+  went to `_friendly_error` -> every later message of that chat failed the same way (stuck chat), with the raw error
+  text shown to her.
+- HOW CLAUDE DOES IT: the whole conversation word for word every turn (prompt cache makes it cheap), old tool output
+  cleared when space runs low, one summary only when the window is nearly full. Phase 1 copies the first two parts and
+  the never-stuck promise; Phase 2 (planned) adds the Claude-style compaction summary in place of the safety net.
+- SERVER:
+  - `config.py`: `chat_context` = claude (default) | hoola (the v0.108 window byte for byte, instant rollback);
+    `chat_context_limit_glm` 200000, `chat_context_limit_claude` 200000, `chat_context_limit_omniroute` 128000,
+    `chat_context_full_at` 0.75.
+  - `yaad.full_history`: every message of the chat, tool blocks intact; a chat longer than ROWS_MAX (5000 rows) starts
+    with its rolling summary (`SUMMARY_OPEN`). `agent/santosh._load_history` picks it in claude mode.
+  - NEW `agent/context.py` (the gauge): `fit` measures system + tools + history (JSON chars / a per-brain chars-per-token
+    ratio, careful default 3.0) before EVERY model call of the step loop (`santosh._request`, after the v0.189 prune).
+    Fits -> sent as loaded ("full"). Too big -> the SAFETY NET ("net"): the oldest exchanges are shortened with
+    `yaad.compress` in blocks of 10 (prefix stable turn to turn, cache-friendly) down to full_at - 15%; if that is not
+    enough the oldest blocks leave and the rolling summary stands in for them. THIS turn's messages (from
+    `state["turn_start"]`) are never shortened. Pure projections, `_sanitize`d; the caller's history is never edited.
+  - Overflow rescue: `context.is_overflow` (Anthropic / OpenAI-style "too long" wordings) -> `overflowed` (ratio x0.75,
+    the window the error names is believed: smallest number >= 8000 in the message) -> `squeeze` (summary + the last 6
+    exchanges shortened + this turn's older tool results cut to 1,500) -> retried ONCE; the rest of the turn stays
+    squeezed. Works in hoola mode too. The next turn starts fresh, so a chat can no longer get stuck on its size.
+  - The gauge learns: `_call_brain` (GLM / OmniRoute `usage.prompt_tokens`, never the made-up `estimated` count) and
+    `_learn_claude` (input + cache read + cache write, streamed and plain) call `context.after_call`: the first real count
+    replaces the guess, later ones move it 30%. `context.CONV` (set only around the step loop's model call) records the
+    real count on that chat's reading.
+  - `_friendly_error`: never the raw text; a "too long" line ("Yeh chat bahut lambi ho gayi hai ..."), the busy line or
+    the gadbad line, plus `(code 503 · ref 1a2b3c)`; the raw error is logged under the same ref (and the turn_failed
+    event still keeps it).
+  - `GET /api/conversations/{id}/context` (last measured call: brain, limit, budget, estimate, real, percent, form
+    full | net | squeezed | hoola; else an estimate of the chat alone) and `context` in `GET /api/yaad` health.
+  - The guide line on memory (`prompts.py`) now says the history is the whole chat while it fits.
+  - In claude mode the rolling summary no longer rides the system prompt (the whole chat is there; the net brings it in
+    when it drops blocks). `refresh_summary` keeps running after turns (voice calls and the net use it).
+- NOT CHANGED: quick lane, voice call memory (`voice_block`), long-job rounds' own logic, phone app, Mera PC / desktop
+  (freeze respected). Cost: long chats send more tokens per step until the net runs; watch `/api/usage` and lower
+  CHAT_CONTEXT_FULL_AT or set CHAT_CONTEXT=hoola to roll back.
+- Tests: NEW `test_v0237_full_context.py` (10): whole chat word for word (63 exchanges, oldest tool steps intact, no
+  summary in the prompt), hoola mode byte for byte, net shortens the oldest in blocks + keeps this turn whole + lands
+  under budget, net drops blocks with the summary in front, "too long" retried once + the next turn works, still too
+  long -> clean line, no raw text in errors, the gauge learns (first count, 30% moves, estimated counts ignored, named
+  window), Claude's real count on the reading, the context endpoint. The v0.108 window test pins
+  CHAT_CONTEXT=hoola. Version 0.239.0 (pubspec 0.239.0+279, console ?v=0.239.0, pins -> 0.239.0).
 ## v0.237.0 The console sidebar adapts to its width (owner: "WHEN SIDE BAR SHRINKS NEW CHAT AND OTHERS GET MISPLACED - IT MUST BE AUTOMATICALLY ADJUSTED")
 - Cause: at the default / dragged-narrow sidebar width (~220px) "New chat" + its "Ctrl ⇧ O" hint did not fit, so the label
   wrapped onto two lines and the row grew.
