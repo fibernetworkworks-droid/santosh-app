@@ -1170,3 +1170,50 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
  #app .box .row .ib{width:36px;height:36px}
  #app #composer .stopb{padding:0 10px}
 }
+
+/* ================================================================================================
+   v0.224 R4: the work panel. Outlined tab chips (saffron edge on the open one), pill segmented
+   Preview / Code and Desktop / Phone, live previews inside a browser frame, a tidy change footer,
+   and the composer row that never wraps while the panel or the studio is open.
+   ================================================================================================ */
+#app .pnhd{padding:10px 12px;gap:8px}
+#app .pntab{border-radius:12px;border:1px solid var(--line);background:var(--glass);color:var(--mut)}
+#app .pntab.on{background:rgba(255,177,92,.08);border-color:rgba(255,177,92,.55);color:var(--ink)}
+#app .pntab.on .pnt{color:var(--ink)}
+#app .pnbar{padding:10px 14px;gap:8px;align-items:center}
+#app .bseg{display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+#app .bseg button{font-size:12px;font-weight:750;color:var(--mut);padding:6px 12px;border-radius:999px;background:transparent;border:0;cursor:pointer}
+#app .bseg button[aria-pressed="true"]{background:rgba(255,255,255,.12);color:var(--ink)}
+#app .pnsel{font-size:12.5px;font-weight:700;color:var(--ink);background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:6px 10px}
+#app .pnview:not(.center){padding:14px;background:rgba(6,4,20,.35)}
+#app .pnbrowser{display:flex;flex-direction:column;min-height:100%;border:1px solid var(--hair);border-radius:14px;overflow:hidden;
+  background:#fff;box-shadow:0 18px 40px rgba(0,0,0,.35);transition:width .25s ease}
+#app .pnview.phone .pnbrowser{width:min(390px,100%);margin:0 auto;border-radius:22px}
+#app .pnchrome{display:flex;align-items:center;gap:6px;padding:9px 12px;background:#15122B;border-bottom:1px solid var(--line)}
+#app .pnchrome>i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.18);flex:none}
+#app .pnchrome>i:first-child{background:#FF6B6B}#app .pnchrome>i:nth-child(2){background:#FFB15C}#app .pnchrome>i:nth-child(3){background:#34D399}
+#app .pnurl{flex:1;min-width:0;margin-left:8px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.06);color:var(--mut);
+  font-size:11.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#app .pnbrowser .pnframe{flex:1;width:100%;min-height:420px;margin:0}
+#app .pnview.phone .pnbrowser .pnframe{width:100%}
+#app .pnchg{margin:10px 14px 14px;padding:6px 6px 6px 12px;border-radius:14px;background:var(--glass);border:1px solid var(--line);align-items:center}
+#app .pnchg input{border:0;padding:8px 4px;color:var(--ink);font-size:13.5px;outline:none}
+#app .pnchg .btn{flex:none}
+#app.pn .dock .who,#app.st .dock .who{display:none}
+#app.pn .box .row,#app.st .box .row{flex-wrap:nowrap}
+@media(max-width:820px){#app .pnview:not(.center){padding:8px}#app .pnbrowser .pnframe{min-height:280px}#app .bseg button{padding:6px 9px}}
+#app .pnbar .btn{font-size:12px;padding:7px 12px;border-radius:999px}
+@media(min-width:821px){#app .pnbar{flex-wrap:nowrap;overflow-x:auto}}
+/* build studio: `.studio>div` (column) also hit the head, the tabs and the workspace handle - rows again */
+#app .studio>.workspace-handle,#app .studio>.sthd,#app .studio>.sttabs{flex-direction:row;flex:none;overflow:visible}
+#app .studio>.sthd{align-items:center;flex-wrap:wrap;gap:10px;padding:14px 16px 6px}
+#app .studio>.sthd .stti h3{font-size:16px;margin:0}
+#app .studio>.stnow,#app .studio>.stst{flex:none;padding:4px 16px}
+#app .studio>.stnow:empty,#app .studio>.stst:empty{display:none}
+#app .studio>.sttabs{flex-wrap:nowrap;overflow-x:auto;gap:6px;padding:8px 16px 10px;border-bottom:1px solid var(--line)}
+#app .studio>.sttabs button{flex:none;border-radius:12px;border:1px solid var(--line);background:var(--glass);color:var(--mut);padding:7px 14px}
+#app .studio>.sttabs button[aria-selected="true"],#app .studio>.sttabs button.on{background:rgba(255,177,92,.08);border-color:rgba(255,177,92,.55);color:var(--ink)}
+#app .studio>.stpanes{padding:14px 16px}
+#app .studio .stchg{flex-wrap:nowrap;margin:10px 14px 14px;padding:6px 6px 6px 12px;border:1px solid var(--line);border-radius:14px;background:var(--glass)}
+#app .studio .stchg input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font-size:13.5px;padding:8px 4px;outline:none}
+#app .studio .stchg .stq:empty{display:none}

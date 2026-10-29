@@ -55,8 +55,8 @@ function drawTabs() {
 function shell() {
   if (box.dataset.ready) return;
   box.dataset.ready = '1';
-  box.innerHTML = `<div class="pnhd"><div class="pntabs" role="tablist" aria-label="Khule hue kaam"></div>
-      <button type="button" class="ib" id="pnLib" aria-label="Creations" title="Creations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v5H4zM4 11h7v9H4zM13 11h7v9h-7z"/></svg></button><button type="button" class="ib" id="pnClose" aria-label="Panel band karo">✕</button></div>
+  box.innerHTML = `<div class="pnhd"><div class="pntabs" role="tablist" aria-label="Open items"></div>
+      <button type="button" class="ib" id="pnLib" aria-label="Creations" title="Creations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v5H4zM4 11h7v9H4zM13 11h7v9h-7z"/></svg></button><button type="button" class="ib" id="pnClose" aria-label="Close panel">✕</button></div>
     <div class="pnbody"></div>`;
   box.addEventListener('click', e => {
     const t = e.target.closest('[data-tab]'); if (t) { select(TABS.find(x => x.key === t.dataset.tab)); return; }
@@ -94,7 +94,7 @@ function drop(key) {
 /* ---------- helpers ---------- */
 async function blobOf(t, path, type) {
   const r = await fetch(path, {headers: {Authorization: 'Bearer ' + ctx.token()}, cache: 'no-store', credentials: 'omit', signal: t.controller.signal});
-  if (!r.ok) { let m = ''; try { m = (await r.json()).detail; } catch {} throw new Error(m || `Nahi khula (${r.status})`); }
+  if (!r.ok) { let m = ''; try { m = (await r.json()).detail; } catch {} throw new Error(m || `Could not open (${r.status})`); }
   const bytes = await r.arrayBuffer(); if (t.closed) throw new Error('Workspace closed');
   const u = URL.createObjectURL(new Blob([bytes], {type}));
   t.blobs.push(u); return u;
@@ -139,8 +139,8 @@ function render(t) {
 async function renderPage(t) {
   const it = t.item; t.aid = it.ref; t.view = 'preview';
   t.el.innerHTML = bar(t, `<select class="pnsel" aria-label="Version"></select>
-      <div class="bseg" role="group" aria-label="Dikhao"><button type="button" data-v="preview" aria-pressed="true">Preview</button><button type="button" data-v="code" aria-pressed="false">Code</button></div>
-      <span class="sp"></span><button type="button" class="btn soft" data-a="share">Share</button><button type="button" class="btn soft" data-a="dl">Download</button>`)
+      <div class="bseg" role="group" aria-label="View"><button type="button" data-v="preview" aria-pressed="true">Preview</button><button type="button" data-v="code" aria-pressed="false">Code</button></div>
+      ${devSeg(false)}<span class="sp"></span><button type="button" class="btn soft" data-a="share">Share</button><button type="button" class="btn soft" data-a="dl">Download</button>`)
     + `<div class="pnerr" hidden></div><div class="pnview"></div>
     <form class="pnchg"><input placeholder="What should change? (you can select part of the code too)" aria-label="Change request"><button class="btn go" type="submit">Edit</button></form>`;
   const sel = t.el.querySelector('.pnsel'), view = t.el.querySelector('.pnview');
@@ -153,6 +153,7 @@ async function renderPage(t) {
   sel.addEventListener('change', () => { t.ver = +sel.value; pageView(t); });
   t.el.querySelector('.bseg').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; t.view = b.dataset.v;
     t.el.querySelectorAll('.bseg button').forEach(x => x.setAttribute('aria-pressed', x === b)); pageView(t); });
+  wireDev(t);
   t.el.querySelector('[data-a="share"]').addEventListener('click', () => share('page', t.aid));
   t.el.querySelector('[data-a="dl"]').addEventListener('click', async () => {
     try { const s = await api('GET', `/api/panel/pages/${encodeURIComponent(t.aid)}/source?version=${t.ver}`); saveBlob(new Blob([s.html], {type: 'text/html'}), `${(s.title || 'page').replace(/[^\w-]+/g, '-')}-v${s.version}.html`); }
@@ -180,7 +181,7 @@ async function pageView(t) {
     const f = document.createElement('iframe');
     f.className = 'pnframe'; f.title = t.item.title; f.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups');
     f.setAttribute('referrerpolicy', 'no-referrer'); f.src = v.url + '&panel=1';
-    view.appendChild(f); t.frame = f;
+    view.appendChild(browserFrame(f, `${t.item.title} · v${t.ver}`)); t.frame = f;
   } catch (e) { view.innerHTML = err(e.message); }
 }
 /* the page bridge: only messages from this tab's own frame, answered for this page only */
@@ -210,16 +211,34 @@ function showError(t, d) {
   };
 }
 
+/* desktop / phone width for a live preview, and a browser frame around it */
+function devSeg(phone) {
+  return `<div class="bseg dev" role="group" aria-label="Device"><button type="button" data-d="desk" aria-pressed="${!phone}">Desktop</button><button type="button" data-d="phone" aria-pressed="${phone}">Phone</button></div>`;
+}
+function wireDev(t) {
+  const seg = t.el.querySelector('.bseg.dev'); if (!seg) return;
+  seg.addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return;
+    seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    t.el.querySelector('.pnview')?.classList.toggle('phone', b.dataset.d === 'phone'); });
+}
+function browserFrame(f, label) {
+  const w = document.createElement('div'); w.className = 'pnbrowser';
+  w.innerHTML = `<div class="pnchrome" aria-hidden="true"><i></i><i></i><i></i><span class="pnurl"></span></div>`;
+  w.querySelector('.pnurl').textContent = String(label || '').slice(0, 120);
+  w.appendChild(f); return w;
+}
+
 /* website / app prototype: live preview in a sandboxed frame */
 function renderPreview(t) {
   const it = t.item;
   t.el.innerHTML = bar(t, `<span class="pnnote">${it.type === 'app' ? 'App prototype' : 'Website preview'} · live</span><span class="sp"></span>
-      ${ctx.studio && it.payload ? '<button type="button" class="btn soft" data-a="studio">Open build studio</button>' : ''}
+      ${devSeg(it.type === 'app')}${ctx.studio && it.payload ? '<button type="button" class="btn soft" data-a="studio">Open build studio</button>' : ''}
       <a class="btn soft" href="${esc(it.preview)}" target="_blank" rel="noopener noreferrer">Open in new tab</a>`)
     + `<div class="pnview ${it.type === 'app' ? 'phone' : ''}"></div>`;
   const f = document.createElement('iframe');
   f.className = 'pnframe'; f.title = it.title; f.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups'); f.setAttribute('referrerpolicy', 'no-referrer');
-  f.src = it.preview; t.el.querySelector('.pnview').appendChild(f);
+  f.src = it.preview; t.el.querySelector('.pnview').appendChild(browserFrame(f, it.preview));
+  wireDev(t);
   t.el.querySelector('[data-a="studio"]')?.addEventListener('click', () => { close(); ctx.studio(it.kind, it.payload); });
 }
 
@@ -254,7 +273,7 @@ async function renderFile(t) {
     }
     if (info.office) { const u = await blobOf(t, P + '/pdf', 'application/pdf'); view.innerHTML = `<iframe class="pnframe" title="${esc(info.name)}" src="${u}"></iframe>`; return; }
     if (info.text) { const s = await api('GET', P + '/text'); view.classList.remove('center'); view.innerHTML = code(s.text, s.lang); return; }
-    view.innerHTML = `<div class="pnempty">This file cannot be previewed here. <b>Download</b> karke kholiye.</div>`;
+    view.innerHTML = `<div class="pnempty">This file cannot be previewed here. <b>Download</b> it to open.</div>`;
   } catch (e) { view.innerHTML = err(e.message); }
 }
 

@@ -142,7 +142,7 @@ window.HoolaBuild = function (C) {
       ${bl.slice(0, 8).map(x => `<div class="badc bln">⛔ ${where(x)}${esc(x.text)}</div>`).join('')}
       ${wa.slice(0, 8).map(x => `<div class="warnc bln">⚠ ${where(x)}${esc(x.text)}</div>`).join('')}
       ${!bl.length && c.passed === true ? '<div class="okc bln" style="font-weight:700">✓ All required checks passed</div>' : ''}
-      ${N(c.blanks) ? `<div class="faint bln">${N(c.blanks)} jagah aapki jaankari baaki ([…] wale khane)</div>` : ''}</section>`;
+      ${N(c.blanks) ? `<div class="faint bln">${N(c.blanks)} spot(s) still need your details (the […] boxes)</div>` : ''}</section>`;
   }
   function scoresBlock(sc) {
     sc = M(sc); if (!Object.keys(sc).length) return '';
@@ -170,7 +170,7 @@ window.HoolaBuild = function (C) {
   const IC_WEB = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>';
   const IC_APP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>';
   const IC_AND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="9" width="14" height="10" rx="2"/><path d="M8 9V7a4 4 0 0 1 8 0v2M9 14h.01M15 14h.01"/></svg>';
-  function nowLine(text, run) { return text ? `<div class="bnow">${run ? spin() : ''}<span>Abhi: <b>${esc(text)}</b></span></div>` : ''; }
+  function nowLine(text, run) { return text ? `<div class="bnow">${run ? spin() : ''}<span>Now: <b>${esc(text)}</b></span></div>` : ''; }
   function siteCard(o) {
     const v = o.v, s = S(v.status), b = M(v.board), pv = previewPath(v.preview);
     let body = '';
@@ -180,21 +180,21 @@ window.HoolaBuild = function (C) {
     else if (working(o)) body = nowLine(b.now, true) + progress(o)
       + `<div class="acts">${btn('stop', 'Stop')}${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Preview in new tab</a>` : ''}${btn('studio', 'Open studio', 'go')}</div>`;
     else if (s === 'ready') body = scoresBlock(v.scores)
-      + `<div class="acts">${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Open preview</a>` : ''}${btn('studio', 'Badlav / dekho', 'go')}</div>`;
-    else if (s === 'failed' || s === 'stopped') body = (v.error ? `<div class="badc bln">${esc(v.error)}</div>` : '') + `<div class="acts">${btn('studio', 'Studio')}${btn('resume', 'Aage badhao', 'go')}</div>`;
+      + `<div class="acts">${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Open preview</a>` : ''}${btn('studio', 'Review / change', 'go')}</div>`;
+    else if (s === 'failed' || s === 'stopped') body = (v.error ? `<div class="badc bln">${esc(v.error)}</div>` : '') + `<div class="acts">${btn('studio', 'Studio')}${btn('resume', 'Continue', 'go')}</div>`;
     return cardHead(o, IC_WEB) + stages(o, true) + (v.say ? `<p class="bsay">${esc(v.say)}</p>` : '') + body;
   }
   function appCard(o) {
     const v = o.v, s = S(v.status), b = M(v.board), pv = previewPath(v.preview);
     let body = '';
-    if (s === 'planned') body = `<div class="bln faint">${L(v.plan?.screens).length + L(v.plan?.code_screens).length} screens · neeche tabs: ${esc(L(v.plan?.tabs).join(' · '))}</div>`
+    if (s === 'planned') body = `<div class="bln faint">${L(v.plan?.screens).length + L(v.plan?.code_screens).length} screens · bottom tabs: ${esc(L(v.plan?.tabs).join(' · '))}</div>`
       + `<div class="acts">${btn('studio', 'Review / answer')}${btn('plan', 'Haan, make 3 looks', 'go')}</div>`;
     else if (s === 'looks') body = lookThumbs(o) + `<div class="acts">${btn('studio', 'Pick in studio', 'go')}</div>`;
     else if (working(o)) body = nowLine(b.now, true) + progress(o) + miniScreens(o)
       + `<div class="acts">${btn('stop', 'Stop')}${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Prototype</a>` : ''}${btn('studio', 'Open studio', 'go')}</div>`;
     else if (s === 'ready' || s === 'approved') body = miniScreens(o)
       + `<div class="acts">${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Try the prototype</a>` : ''}${btn('studio', 'Studio')}${s === 'ready' ? btn('approve', 'Approve design', 'go') : (!o.an || !S(o.an.status) ? btn('android', 'Build Android app', 'go') : '')}</div>`;
-    else if (s === 'failed' || s === 'stopped') body = (v.error ? `<div class="badc bln">${esc(v.error)}</div>` : '') + `<div class="acts">${btn('studio', 'Studio')}${btn('resume', 'Aage badhao', 'go')}</div>`;
+    else if (s === 'failed' || s === 'stopped') body = (v.error ? `<div class="badc bln">${esc(v.error)}</div>` : '') + `<div class="acts">${btn('studio', 'Studio')}${btn('resume', 'Continue', 'go')}</div>`;
     return cardHead(o, IC_APP) + stages(o, true) + (v.say ? `<p class="bsay">${esc(v.say)}</p>` : '') + body;
   }
   function androidCard(o) {
@@ -208,7 +208,7 @@ window.HoolaBuild = function (C) {
   }
   const mb = n => N(n) ? (N(n) / 1048576).toFixed(1) + ' MB' : '';
   function lookThumbs(o) {
-    const looks = L(o.v.looks); if (!looks.length) return `<div class="bln faint">${spin()} Looks ban rahe hain…</div>`;
+    const looks = L(o.v.looks); if (!looks.length) return `<div class="bln faint">${spin()} Making the looks…</div>`;
     return `<div class="blooks">${looks.slice(0, 3).map((lk, i) => `<figure>${pic(shotPath(o.type, o.id, o.type === 'site' ? M(lk.shots)['390'] : M(lk.shots).android), `Look ${i + 1}`)}<figcaption>${i + 1}. ${esc(lk.label)}</figcaption></figure>`).join('')}</div>`;
   }
   function miniScreens(o) {
@@ -240,8 +240,8 @@ window.HoolaBuild = function (C) {
     if (s === 'planned') pre.push(['plan', 'Plan']);
     if (s === 'looks') pre.push(['looks', 'Looks']);
     return o.type === 'site'
-      ? [...pre, ['preview', 'Preview'], ['board', 'Board'], ['kadam', 'Steps'], ['jaanch', 'Jaanch']]
-      : [...pre, ['screens', 'Screens'], ['prototype', 'Prototype'], ['dhaancha', 'Dhaancha'], ['android', 'Android'], ['kadam', 'Steps']];
+      ? [...pre, ['preview', 'Preview'], ['board', 'Board'], ['kadam', 'Steps'], ['jaanch', 'Checks']]
+      : [...pre, ['screens', 'Screens'], ['prototype', 'Prototype'], ['dhaancha', 'Structure'], ['android', 'Android'], ['kadam', 'Steps']];
   }
   function draw(rebuild) {
     const o = P.get(CUR); if (!o || !studio) return;
@@ -258,8 +258,8 @@ window.HoolaBuild = function (C) {
         if (e.target.dataset.form !== 'answers') return;
         e.preventDefault(); const cur = P.get(CUR); if (!cur) return;
         const answers = {}; new FormData(e.target).forEach((val, key) => { if (String(val).trim()) answers[key] = String(val).trim(); });
-        if (!Object.keys(answers).length) return toast('Kam se kam ek jawab likhiye.', true);
-        try { await api('POST', base(cur) + '/answers', {answers}); toast('Jawab rakh liye.'); } catch (er) { toast(er.message, true); }
+        if (!Object.keys(answers).length) return toast('Write at least one answer.', true);
+        try { await api('POST', base(cur) + '/answers', {answers}); toast('Answers saved.'); } catch (er) { toast(er.message, true); }
       };
       o.framesFor = '';
     }
@@ -268,8 +268,8 @@ window.HoolaBuild = function (C) {
     studio.querySelector('.sthd').innerHTML = `<button class="ib" type="button" data-ba="close" aria-label="Close studio">✕</button>
       <div class="stti"><h3>${o.type === 'site' ? 'Website studio' : 'App studio'}</h3><span>${esc(title(o))}</span></div>
       <span class="tag ${c === 'ok' ? 'ok' : c === 'bad' ? 'bad' : c === 'ask' ? 'warn' : 'v'}">${busy(o) ? '● LIVE · ' : ''}${esc(t)}</span>
-      ${others.length > 1 ? `<label class="sr" for="stPick">Project</label><select id="stPick" class="stpick">${others.map(x => `<option value="${esc(x.k)}"${x.k === o.k ? ' selected' : ''}>${esc(title(x))}${busy(x) ? ' · ban raha' : ''}</option>`).join('')}</select>` : ''}
-      ${working(o) ? btn('stop', '■ Stop') : ['failed', 'stopped'].includes(S(o.v?.status)) ? btn('resume', 'Aage badhao', 'go') : ''}`;
+      ${others.length > 1 ? `<label class="sr" for="stPick">Project</label><select id="stPick" class="stpick">${others.map(x => `<option value="${esc(x.k)}"${x.k === o.k ? ' selected' : ''}>${esc(title(x))}${busy(x) ? ' · building' : ''}</option>`).join('')}</select>` : ''}
+      ${working(o) ? btn('stop', '■ Stop') : ['failed', 'stopped'].includes(S(o.v?.status)) ? btn('resume', 'Continue', 'go') : ''}`;
     const pick = studio.querySelector('#stPick'); if (pick) pick.onchange = () => open(pick.value);
     // now line
     const b = M(o.v?.board), an = o.an || {};
@@ -318,7 +318,7 @@ window.HoolaBuild = function (C) {
            <figure class="pvph"><div class="pvfit phone" data-w="390" data-h="844"><iframe title="Website preview, phone" sandbox="${fsb}" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div><figcaption>Phone par (390 px)</figcaption></figure></div>
            <div class="acts"><a class="btn soft" href="${esc(path)}" target="_blank" rel="noopener">Open in new tab</a>${btn('reload', 'Refresh')}</div>`
         : `<div class="pvrow center"><figure class="pvph big"><div class="pvfit phone" data-w="390" data-h="844"><iframe title="App prototype" sandbox="${fsb}" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div>
-             <figcaption>Tap karke chalaiye: asli raasta, asli screens</figcaption></figure></div>
+             <figcaption>Tap to try it: the real flow, the real screens</figcaption></figure></div>
            <div class="acts" style="justify-content:center"><a class="btn soft" href="${esc(path)}" target="_blank" rel="noopener">Open in new tab</a>${btn('reload', 'Refresh')}</div>`;
       fit(box); o.loadedAt = Date.now();
     }
@@ -378,13 +378,13 @@ window.HoolaBuild = function (C) {
     const v = o.v || {}, pl = M(v.plan), qs = L(v.questions);
     const list = o.type === 'site'
       ? L(pl.pages).map(p => `<div class="bln">• <b>${esc(p.title)}</b>: ${esc(L(p.sections).join(', '))}</div>`).join('')
-      : `<div class="bln"><b>${L(pl.screens).length + L(pl.code_screens).length} screens</b>${L(pl.tabs).length ? ` · neeche tabs: ${esc(L(pl.tabs).join(' · '))}` : ''}</div>`
+      : `<div class="bln"><b>${L(pl.screens).length + L(pl.code_screens).length} screens</b>${L(pl.tabs).length ? ` · bottom tabs: ${esc(L(pl.tabs).join(' · '))}` : ''}</div>`
         + (L(pl.flow).length ? `<div class="bln faint">Raasta: ${esc(L(pl.flow).join(' → '))}</div>` : '')
         + L(pl.screens).map(s => `<div class="bln">• ${esc(s.label)}${s.tab ? ' <span class="tag v">tab</span>' : ''}${s.design ? ` <span class="faint">${esc(S(s.design).slice(0, 90))}</span>` : ''}</div>`).join('')
         + L(pl.code_screens).map(s => `<div class="bln">• ${esc(s.label)} <span class="tag ok">kanoon</span> <span class="faint">${esc(s.why)}</span></div>`).join('')
         + (M(pl.scope).request ? `<div class="bln faint" style="font-style:italic">Aapne kaha: "${esc(pl.scope.request)}"</div>` : '');
     return `<section class="bbox"><h4>Plan</h4>${list || '<div class="stempty">Writing the plan…</div>'}</section>`
-      + (qs.length ? `<section class="bbox"><h4>A few questions (answer what you know)</h4><form class="bqs" data-form="answers">${qs.map((q, i) => `<label>${esc(q)}<input name="${i}" autocomplete="off"></label>`).join('')}<div class="acts"><button class="btn soft" type="submit">Jawab bhejo</button></div></form></section>` : '')
+      + (qs.length ? `<section class="bbox"><h4>A few questions (answer what you know)</h4><form class="bqs" data-form="answers">${qs.map((q, i) => `<label>${esc(q)}<input name="${i}" autocomplete="off"></label>`).join('')}<div class="acts"><button class="btn soft" type="submit">Send answers</button></div></form></section>` : '')
       + (S(v.status) === 'planned' ? `<div class="acts">${btn('plan', 'Haan, make 3 looks', 'go')}</div>` : '');
   }
   function looksPane(o) {
@@ -398,16 +398,16 @@ window.HoolaBuild = function (C) {
         return `<article class="blook${cf === i ? ' cf' : ''}">
           <div class="blkpics">${o.type === 'site' ? pic(shotPath('site', o.id, sh['390']), `Look ${i + 1} phone`, 'ph') + pic(shotPath('site', o.id, sh['1440']), `Look ${i + 1} computer`, 'pc') : pic(shotPath('app', o.id, sh.android), `Look ${i + 1}`, 'ph')}</div>
           <b>${i + 1} · ${esc(lk.label)}</b>${art.concept ? `<span class="faint">${esc(art.concept)}</span>` : ''}
-          <div class="bsw">${cols.map(c => `<i style="background:${c}" role="img" aria-label="Rang ${esc(c)}"></i>`).join('')}</div>
+          <div class="bsw">${cols.map(c => `<i style="background:${c}" role="img" aria-label="Colour ${esc(c)}"></i>`).join('')}</div>
           <div class="acts">${btn('look', 'This one', 'go', ` data-i="${i}"`)}${btn('colors', cf === i ? '✓ Its colours' : 'Its colours', 'soft', ` data-i="${i}" aria-pressed="${cf === i}"`)}</div></article>`;
-      }).join('')}</div>${cf != null ? `<p class="acc" style="font-size:13px;font-weight:700">Rang look ${cf + 1} ke lagenge. Ab jo look chunoge uska dhaancha, inke rang.</p>` : ''}`;
+      }).join('')}</div>${cf != null ? `<p class="acc" style="font-size:13px;font-weight:700">Look ${cf + 1}&rsquo;s colours will be used. The look you pick now gives the structure, these give the colours.</p>` : ''}`;
   }
   function sitePane(o) {
     const v = o.v || {}, sh = M(v.shots);
     const phone = shotPath('site', o.id, sh['home-390.jpg']), pc = shotPath('site', o.id, sh['home-1440.jpg']), vid = shotPath('site', o.id, sh['scroll.mp4']);
     const pv = previewPath(v.preview);
     return (Object.keys(M(v.scores)).length ? `<section class="bbox"><h4>Number (Lighthouse)</h4>${scoresBlock(v.scores)}</section>` : '')
-      + ((phone || pc) ? `<section class="bbox"><h4>Phone aur computer par (asli screenshot)</h4><div class="bshots">${pic(phone, 'Phone screenshot', 'ph')}${pic(pc, 'Computer screenshot', 'pc')}</div>
+      + ((phone || pc) ? `<section class="bbox"><h4>On phone and computer (real screenshots)</h4><div class="bshots">${pic(phone, 'Phone screenshot', 'ph')}${pic(pc, 'Computer screenshot', 'pc')}</div>
           ${vid ? `<video class="bvid" data-src="${esc(vid)}" controls muted playsinline preload="none" aria-label="Scroll video"></video>` : ''}</section>` : '')
       + (checksBlock(o, 'Checks (small phone, contrast, buttons, links)') || `<div class="stempty">${working(o) ? spin() + ' Checks run after the website is built.' : 'Checks have not run yet.'}</div>`)
       + (S(v.status) === 'ready' ? `<section class="bbox next"><h4>Next: Domain → Hosting + DNS → Live</h4><p class="faint" style="font-size:13px">Buying a domain and going live need your Haan (the card comes in the chat).</p>
@@ -417,7 +417,7 @@ window.HoolaBuild = function (C) {
     const v = o.v || {}, b = M(v.board), ov = M(b.overview), plat = o.plat && ov[o.plat] ? o.plat : 'android';
     const labels = Object.fromEntries(L(v.plan?.screens).map(s => [s.id, s.label]));
     const sc = M(b.scores);
-    return `<section class="bbox"><h4>Har screen, asli tasveer ke saath</h4>${progress(o)}
+    return `<section class="bbox"><h4>Every screen, as a real screenshot</h4>${progress(o)}
       ${L(b.pages).map(p => `<div class="bpg"><b>${esc(p.title)}</b><div class="bscr">${L(p.sections).map(s => {
         const cls = s.state === 'done' ? 'ok' : s.state === 'building' ? 'run' : s.state === 'fixing' ? 'fix' : s.state === 'failed' ? 'bad' : 'todo';
         const th = shotPath('app', o.id, s.thumb), full = shotPath('app', o.id, S(s.thumb).replace(/^thumb\//, ''));
@@ -429,19 +429,19 @@ window.HoolaBuild = function (C) {
           <button type="button" class="bov" data-ba="zoom" data-full="${esc(shotPath('app', o.id, ov[plat]))}" data-cap="All screens">${pic(shotPath('app', o.id, ov[plat]), 'All screens')}</button></section>` : ''}
       ${Object.keys(sc).length ? `<section class="bbox"><h4>Opus’s own scores for its screens</h4><div class="bchips">${Object.entries(sc).map(([k, x]) => { x = M(x); const n = +x.score || 0;
           return `<span class="bchip ${n >= 8 ? 'ok' : n >= 6 ? 'run' : 'bad'}">${esc(labels[k] || k)}: ${x.before ? esc(x.before) + ' → ' : ''}${n.toFixed(1)}/10</span>`; }).join('')}</div></section>` : ''}
-      ${checksBlock(o, 'Jaanch (Android + iPhone, chhota phone)')}
+      ${checksBlock(o, 'Checks (Android + iPhone, small phone)')}
       ${S(v.status) === 'ready' ? `<div class="acts">${btn('approve', 'Approve design', 'go')}</div>` : ''}`;
   }
   function dnaPane(o) {
     const v = o.v || {}, art = M(v.art), d = M(v.design), pl = M(v.plan);
     const line = (k, t) => t ? `<div class="bkv"><span>${k}</span><b>${esc(t)}</b></div>` : '';
     const cols = L(d.colors).map(hex).filter(Boolean);
-    return `<section class="bbox"><h4>${esc(art.concept || 'Design ki soch')}${v.model ? ` <span class="tag v">${esc(v.model)}</span>` : ''}</h4>
+    return `<section class="bbox"><h4>${esc(art.concept || 'Design idea')}${v.model ? ` <span class="tag v">${esc(v.model)}</span>` : ''}</h4>
         ${art.idea ? `<p style="font-style:italic;font-size:13.5px">${esc(art.idea)}</p>` : ''}
-        ${line('Pehchaan', art.signature)}${line('Layout', art.layout)}${line('Shuruaat', art.hero)}${line('Motion', art.motion)}${art.three_d ? line('3D', L(art.scenes).join(', ') || 'haan') : ''}</section>
-      ${Object.keys(d).length ? `<section class="bbox"><h4>Design ka dhaancha</h4>${cols.length ? `<div class="bsw lg">${cols.map(c => `<i style="background:${c}" role="img" aria-label="Rang ${esc(c)}"></i>`).join('')}</div>` : ''}
-        ${line('Navigation', d.nav)}${line('Bada button', d.fab)}${line('Card', d.card)}${line('Button', d.button)}${line('Upar ka hissa', d.header)}${line('Chalaav', d.transition)}${line('Font', L(d.fonts).filter(Boolean).join(' / '))}${line('Mode', d.dark ? 'dark' : d.mode)}</section>` : ''}
-      ${L(pl.tabs).length || L(pl.flow).length ? `<section class="bbox"><h4>Raasta</h4>${line('Neeche tabs', L(pl.tabs).join(' · '))}${line('Raasta', L(pl.flow).join(' → '))}${L(pl.rules).length ? line('Niyam', L(pl.rules).join(' · ')) : ''}</section>` : ''}`;
+        ${line('Signature', art.signature)}${line('Layout', art.layout)}${line('Hero', art.hero)}${line('Motion', art.motion)}${art.three_d ? line('3D', L(art.scenes).join(', ') || 'yes') : ''}</section>
+      ${Object.keys(d).length ? `<section class="bbox"><h4>Design structure</h4>${cols.length ? `<div class="bsw lg">${cols.map(c => `<i style="background:${c}" role="img" aria-label="Colour ${esc(c)}"></i>`).join('')}</div>` : ''}
+        ${line('Navigation', d.nav)}${line('Main button', d.fab)}${line('Card', d.card)}${line('Button', d.button)}${line('Header', d.header)}${line('Transition', d.transition)}${line('Font', L(d.fonts).filter(Boolean).join(' / '))}${line('Mode', d.dark ? 'dark' : d.mode)}</section>` : ''}
+      ${L(pl.tabs).length || L(pl.flow).length ? `<section class="bbox"><h4>Flow</h4>${line('Bottom tabs', L(pl.tabs).join(' · '))}${line('Flow', L(pl.flow).join(' → '))}${L(pl.rules).length ? line('Rules', L(pl.rules).join(' · ')) : ''}</section>` : ''}`;
   }
   function androidPane(o) {
     const v = o.v || {}, a = o.an || {}, s = S(a.status);
@@ -449,7 +449,7 @@ window.HoolaBuild = function (C) {
     if (!s) return `<section class="bbox"><h4>Real Android app</h4><p class="muted" style="font-size:13.5px">Every screen is written in Kotlin + Jetpack Compose and compiled on the build machine into an APK for your phone.</p><div class="acts">${btn('android', 'Build Android app', 'go')}</div></section>`;
     const step = {writing: 0, building: 1, fixing: 2, ready: 4, zip: 4, failed: -1}[s] ?? 0;
     const failAt = s === 'failed' ? (N(a.rounds) ? 2 : L(a.screens).every(x => ['written', 'done', 'code'].includes(x.state)) ? 1 : 0) : -1;
-    const pipe = [['Screens likhna', `Kotlin + Compose · ${L(a.screens).filter(x => ['written', 'done', 'code', 'compiling'].includes(x.state)).length} / ${L(a.screens).length}`],
+    const pipe = [['Writing screens', `Kotlin + Compose · ${L(a.screens).filter(x => ['written', 'done', 'code', 'compiling'].includes(x.state)).length} / ${L(a.screens).length}`],
       ['Compile', S(a.where) || 'build machine'], ['Error fixes', N(a.rounds) ? `${a.rounds} round(s)` : 'automatic after each round'], ['APK', s === 'zip' ? 'no build machine: project ZIP' : 'for your phone']]
       .map(([t, sub], i) => { const st = failAt === i ? 'bad' : (step === 4 || i < step) ? 'ok' : i === step ? 'run' : 'todo';
         return `<li class="${st}"><i>${st === 'ok' ? '✓' : st === 'bad' ? '✕' : i + 1}</i><b>${t}</b><span>${esc(sub)}</span></li>`; }).join('');
@@ -481,7 +481,7 @@ window.HoolaBuild = function (C) {
   }
   async function change(o) {
     const inp = studio.querySelector('#stIn'), t = inp.value.trim(); if (!t) return;
-    inp.value = ''; const r = await call(o, '/change', {instruction: t}, 'Badlav le liya: ' + t); if (!r) inp.value = t;
+    inp.value = ''; const r = await call(o, '/change', {instruction: t}, 'Change noted: ' + t); if (!r) inp.value = t;
   }
   async function act(e, o) {
     const tab = e.target.closest('[data-tab]');
@@ -496,12 +496,12 @@ window.HoolaBuild = function (C) {
         case 'studio-android': o.tab = 'android'; open(o.k); o.tab = 'android'; draw(); break;
         case 'stop': await call(o, '/stop', {}, 'Stopping: it finishes the current part, then stops.'); break;
         case 'resume': await call(o, '/resume', {}, 'Continuing from where it stopped.'); break;
-        case 'plan': await call(o, '/plan', {}, '3 looks ban rahe hain, yahin dikhenge.'); break;
-        case 'look': await call(o, '/look', {index: +b.dataset.i, ...(o.colorsFrom != null ? {colors_from: o.colorsFrom} : {})}, 'Look chun liya: banana shuru.'); o.colorsFrom = null; break;
+        case 'plan': await call(o, '/plan', {}, 'Making 3 looks — they will appear here.'); break;
+        case 'look': await call(o, '/look', {index: +b.dataset.i, ...(o.colorsFrom != null ? {colors_from: o.colorsFrom} : {})}, 'Look chosen: building starts.'); o.colorsFrom = null; break;
         case 'colors': o.colorsFrom = o.colorsFrom === +b.dataset.i ? null : +b.dataset.i; draw(); break;
         case 'approve': {
           if (!confirm('Approve this design? The real Android / iPhone app is built from it. Later changes make a new version.')) break;
-          try { const r = await api('POST', base(o) + '/approve', {hash: S(o.v?.hash)}); toast(r?.say || 'Design pakka!'); } catch (er) { toast(er.message, true); }
+          try { const r = await api('POST', base(o) + '/approve', {hash: S(o.v?.hash)}); toast(r?.say || 'Design approved!'); } catch (er) { toast(er.message, true); }
           break; }
         case 'android': await call(o, '/android', {}, 'Building the Android app: every screen in Kotlin, then compile.'); o.tab = 'android'; break;
         case 'redo': await call(o, '/android', {redo: S(b.dataset.ids).split(',').filter(Boolean)}, 'Rewriting the simple screens.'); break;
