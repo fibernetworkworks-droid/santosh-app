@@ -315,6 +315,7 @@ function editBubble(d, text) {
   const cancel = () => { d.classList.remove('editing'); d.innerHTML = keep; bindUserBar(d, text); };
   const save = async () => {
     const t = ta.value.trim(); if (!t || t === text) return cancel();
+    if (t.length > 32000) return toast('An edited message can be up to 32,000 characters. Send longer text as a new message (it goes as a file).', true);
     d.querySelector('[data-s]').disabled = true;
     try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/edit`, {event_id: +d.dataset.eid, text: t}); await openConv(CONV, false, {noPush: true}); }
     catch (e) { toast(e.message, true); cancel(); }
@@ -1143,9 +1144,18 @@ async function loadGauge() {
     sp.querySelector('.spbar i').style.width = pct + '%';
   } catch {}
 }
+const INLINE_MAX = 30000;   // v0.227.2 the server takes 32000 (room for the console hints); longer = an attached file
 composer.addEventListener('submit', async e => {
-  e.preventDefault(); const text = msg.value.trim(); if ((!text && !FILES.length) || !CONV) return;
+  e.preventDefault(); let text = msg.value.trim(); if ((!text && !FILES.length) || !CONV) return;
   if (FILES.some(f => !f.file_id)) return toast('File upload in progress…');
+  if (text.length > INLINE_MAX) {   // v0.227.2 very long text rides as an attached .txt file, like a pasted-text chip
+    if (FILES.length >= 6) return toast('This text is very long. Remove a file so it can go as an attachment.', true);
+    const origin0 = CONV, pasted = new File([text], `pasted-text-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.txt`, {type: 'text/plain'});
+    msg.value = ''; await addFiles([pasted]);
+    if (CONV !== origin0 || !FILES.some(f => f.name === pasted.name && f.file_id)) { msg.value = text; return; }
+    toast(`Long text (${text.length.toLocaleString('en-IN')} characters) attached as ${pasted.name}.`);
+    text = 'Please read the attached text file (my full message) and follow it.';
+  }
   const origin = CONV, auth = TOKEN; clearTimeout(DRAFT_T);
   const files = FILES.splice(0); drawFiles(); msg.value = ''; msg.style.height = 'auto'; $('#sendBtn').disabled = true;
   store.del('hoola.draft.' + origin);   // v0.173 the draft went out with the message
@@ -1156,7 +1166,7 @@ composer.addEventListener('submit', async e => {
   for (let i = 0; i < 3; i++) {
     if (!auth || TOKEN !== auth) return;
     try { await api('POST', `/api/conversations/${encodeURIComponent(origin)}/messages`, body); loadRecents(); return; }
-    catch (er) { if (i === 2 || er.status === 401 || er.status === 400) { toast('Could not send: ' + er.message, true); store.set('hoola.draft.' + origin, text); if (CONV === origin) { msg.value = text; FILES.push(...files); drawFiles(); } return; } await new Promise(r => setTimeout(r, 800 * (i + 1))); }
+    catch (er) { if (i === 2 || (er.status >= 400 && er.status < 500)) { toast('Could not send: ' + er.message, true); store.set('hoola.draft.' + origin, text); if (CONV === origin) { msg.value = text; FILES.push(...files); drawFiles(); } return; } await new Promise(r => setTimeout(r, 800 * (i + 1))); }
   }
 });
 $('#stopBtn').addEventListener('click', async () => { try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/stop`); toast('Stopping. The step that was running may stop halfway.'); } catch (e) { toast(e.message, true); } });

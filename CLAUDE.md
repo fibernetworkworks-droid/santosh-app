@@ -8964,3 +8964,12 @@ expects the asking card. Version 0.226.0 (pubspec 0.226.0+262 - build 261 left f
   - Dimaag aur suraksha → Memory & safety
 - Phone / Hoola Network / Hoola Employee are unchanged. Ids and anchors (`#k-<id>`) are unchanged. The tool names, one-line descriptions and starter prompts inside each category stay as they were.
 - Tests: NEW `test_v0227_tools_english.py` (2). Ritual: APP_VERSION 0.227.1, pubspec 0.227.1+264, console ?v=0.227.1 x11, pins →0.227.1. Console-only.
+
+## v0.227.2 Long pasted messages (owner: the console showed "Could not send: The server refused the request (422)" for a long pasted brief)
+- Cause: `NewMessage.text` (and the edit body `ChatEditIn.text`) had `max_length=4000`, so FastAPI answered 422 for any longer message. Storage was never the limit: `messages.display` is Text and `content` is JSON. The create studio even allowed 12,000 characters in its own box.
+- Fix:
+  - The server limit is now `MESSAGE_MAX = 32000` for send and edit.
+  - The console sends anything over `INLINE_MAX = 30000` (room for the console hints) as an attached `pasted-text-<time>.txt` file through the normal files endpoint. The message then asks Hoola to read and follow it, so a long brief never fails.
+  - An edit over 32,000 shows a plain toast.
+  - Any 4xx now stops the console's 3-try retry loop (before, only 400/401 did, so a 422 was sent three times).
+- Tests: NEW `test_v0227_long_message.py` (3). Ritual: APP_VERSION 0.227.2, pubspec 0.227.2+265, console ?v=0.227.2 x11, pins →0.227.2. Server + console (needs the normal deploy).
