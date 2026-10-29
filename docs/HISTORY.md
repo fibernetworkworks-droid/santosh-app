@@ -9898,3 +9898,21 @@ CHAT SPACE IN CLAUDE --- THE CHAT SPACE WORDING IS EXTENDED TO CHAT TYPING SECTI
 - Version 0.253.0 (pubspec 0.253.0+293, console ?v=0.253.0, pins -> 0.253.0).
 - NOT VERIFIED: not seen on a real phone screen. On the phone this is the font swap only - the serif gets bigger-looking
   at the same size, nothing else moves.
+
+## v0.254.0 WHITE LIKE CLAUDE + CLAUDE-STYLE INTERFACE TYPE (console)
+Owner: "NOW LETS WORK ON ENTIRE WEB CONSOLE SIDE FONT AND ITS SIZE AND CSS - FIRST CHECK WHICH FONT AND SIZE IS USED BY CLAUDE",
+then "ALSO MAKE ENTIRE WEB CONSOLE WHITE SAME AS CLAUDE -- JUST KEEP BUTTON, ANIMATION ETC AS BRAND --- SHOW PREVIEW FIRST".
+- Research: claude.ai uses Anthropic Sans (UI), Anthropic Serif (default chat font on desktop, user-switchable: Serif / Sans /
+  System / Dyslexic friendly), Anthropic Mono; Anthropic's MCP-app guide gives a 12-20px text scale, body line height 1.4.
+  Exact claude.ai pixel sizes could NOT be read: Cloudflare blocks automated browsers ("Just a moment..."), so the
+  interface sizes below are matched to Claude's scale by eye, not measured. Anthropic's fonts are not licensed to us.
+- Light tokens (top of v2.css) now white + neutral: --bg #FFFFFF, --side-bg #F8F8F7, --raise #FAFAF9, --sunk #F3F3F2,
+  --line #ECECEA / --hair #E4E4E1 / --hair2 #DCDCD8, ink #1A1A1F / mut #5C5C63 / dim #8B8B92, bubble #F1F1EF, neutral black
+  shadows (--sh-rgb 0 0 0, --sh-k .16); v0.253's --chat-ink / --chat-paper kept. Brand kept: violet --pri, saffron /
+  magenta / violet ring + sheen + motion. Dark blocks untouched. theme-color light #FFFFFF; Appearance mini previews white.
+- Interface type ("v0.254 CLAUDE-STYLE INTERFACE TYPE" block at the end of v2.css): headings sans (Sora only on the logo),
+  chat title 14 / 500, composer 16px (chat and home), chips + model line 13 / 500, disclaimer 12, sidebar 14 / 500 (sm 13,
+  lg 15), labels 12 / 500 sentence case (no all-caps), chat rows 13.5 / 400, reply actions icon-only with a hover label,
+  card title 14 / 600, amount 22 / 600, tables sans 14 tabular, buttons 600, home greeting + login headline in Literata 400.
+- Tests: test_v0254_white_like_claude.py; pins moved (R1 / calm-brand anchor --bg:#FFFFFF, v0.249 light ink now neutral).
+- Preview screenshots shown to the owner before merge.

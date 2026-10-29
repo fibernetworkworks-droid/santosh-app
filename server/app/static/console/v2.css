@@ -10,20 +10,23 @@
    Brand kept from the app: indigo night, violet for actions, the saffron -> magenta -> violet glow only on the avatar
    ring, progress and the live edge. Every old literal colour in this file now reads one of these tokens. */
 :root{
-  --bg:#F5F4FA; --side-bg:#EEECF7; --surface:#FFFFFF; --raise:#FAF9FE; --sunk:#ECEAF5; --edge-hi:#FFFFFF;
-  --bg0:var(--bg); --bg1:var(--bg); --panel:var(--surface); --deep:var(--sunk); --code-bg:#F3F1FA;
-  --ink:#1D1A2E; --mut:#5E5977; --dim:#857FA0; --lit:#36314D; --soft:#2A263D;
-  --chat-ink:#1A1A1F; --chat-paper:#FFFFFF;   /* v0.253 the chat reading surface, Claude's 17.3:1 */
-  --pri:#5B45E0; --pri-hover:#4E39D2; --pri-soft:#ECE8FE; --pri-ink:#3E2CB5; --on-acc:#FFFFFF; --btn:var(--pri);
+  /* v0.254 WHITE LIKE CLAUDE (owner: "MAKE ENTIRE WEB CONSOLE WHITE SAME AS CLAUDE - JUST KEEP BUTTON, ANIMATION ETC AS
+     BRAND"): the light theme is white with neutral greys (no lavender tint); violet actions, the avatar ring, the live
+     sheen and the motion stay the brand. Dark is untouched. */
+  --bg:#FFFFFF; --side-bg:#F8F8F7; --surface:#FFFFFF; --raise:#FAFAF9; --sunk:#F3F3F2; --edge-hi:#FFFFFF;
+  --bg0:var(--bg); --bg1:var(--bg); --panel:var(--surface); --deep:var(--sunk); --code-bg:#F6F6F5;
+  --ink:#1A1A1F; --mut:#5C5C63; --dim:#8B8B92; --lit:#34343A; --soft:#26262B;
+  --pri:#5B45E0; --pri-hover:#4E39D2; --pri-soft:#EEEBFD; --pri-ink:#3E2CB5; --on-acc:#FFFFFF; --btn:var(--pri);
   --saffron:var(--pri); --saffron2:var(--pri-ink); --violet:#6E55F0; --violet2:#9B4FE0; --magenta:#B347E6;
   --saf:#EE8F35; --mag:#B347E6; --vio:#6E55F0;
-  --ok:#13875F; --bad:#C94343; --teal:#0F8F80; --warn:#A76312; --warn-soft:#FBEEDB; --ok-soft:#E2F4EC;
-  --fg-rgb:29 26 46; --surf-rgb:255 255 255; --sh-rgb:38 28 92; --sh-k:.32; --acc-rgb:91 69 224; --ok-rgb:19 135 95; --bad-rgb:201 67 67;
-  --line:#E2DFEF; --hair:#D9D5EA; --hair2:#D3CEE6;
-  --glass:var(--surface); --glass2:var(--sunk); --glass3:#E3E0F0;
-  --you:var(--sunk); --bubble:#EAE7F5; --seg-on:#FFFFFF;
+  --ok:#13875F; --bad:#C94343; --teal:#0F8F80; --warn:#A76312; --warn-soft:#FBF0DF; --ok-soft:#E5F4ED;
+  --fg-rgb:26 26 31; --surf-rgb:255 255 255; --sh-rgb:0 0 0; --sh-k:.16; --acc-rgb:91 69 224; --ok-rgb:19 135 95; --bad-rgb:201 67 67;
+  --line:#ECECEA; --hair:#E4E4E1; --hair2:#DCDCD8;
+  --glass:var(--surface); --glass2:var(--sunk); --glass3:#EBEBE9;
+  --you:var(--sunk); --bubble:#F1F1EF; --seg-on:#FFFFFF;
+  --chat-ink:#1A1A1F; --chat-paper:#FFFFFF;   /* v0.253 Claude's reading contrast (17.3:1); v0.254 the whole light page is this white */
   --blur:none;
-  --sh:0 1px 2px rgb(38 28 92 / .06),0 14px 36px -18px rgb(38 28 92 / .22); --sh2:0 1px 2px rgb(38 28 92 / .05),0 8px 22px -14px rgb(38 28 92 / .2);
+  --sh:0 1px 2px rgb(0 0 0 / .04),0 10px 30px -16px rgb(0 0 0 / .14); --sh2:0 1px 2px rgb(0 0 0 / .04),0 6px 18px -12px rgb(0 0 0 / .12);
   color-scheme:light;
   --grad:linear-gradient(110deg,var(--saf),#F27A52 32%,var(--mag) 66%,var(--vio));
   --ring:conic-gradient(from 0deg,var(--saf),#F27A52,var(--mag),var(--vio),var(--saf));
@@ -1587,11 +1590,11 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 #app .tcard .nm{display:flex;justify-content:space-between;align-items:center;padding:0 4px;font-weight:600;font-size:14px}
 #app .tcard .nm svg{width:16px;height:16px;color:var(--pri);opacity:0;transition:opacity .2s}
 #app .tcard[aria-checked="true"] .nm svg{opacity:1}
-.pvs{width:28%;flex:none}.pvs.pvL{background:#EEECF7;border-right:1px solid #E2DFEF}.pvs.pvD{background:#0D0C19;border-right:1px solid #2A2644}
+.pvs{width:28%;flex:none}.pvs.pvL{background:#F8F8F7;border-right:1px solid #ECECEA}.pvs.pvD{background:#0D0C19;border-right:1px solid #2A2644}
 .pvm{flex:1;display:flex;flex-direction:column;gap:6px;padding:12px 9px}
 .pvm i,.pvm b,.pvm u{display:block;border-radius:4px}
 .pvm i{height:6px;width:60%}.pvm b{height:22px;border-radius:6px}.pvm u{height:6px;width:30%}
-.pvm.pvL{background:#F5F4FA}.pvm.pvL i{background:#D3CEE6}.pvm.pvL b{background:#fff;border:1px solid #E2DFEF}.pvm.pvL u{background:#5B45E0}
+.pvm.pvL{background:#FFFFFF}.pvm.pvL i{background:#DCDCD8}.pvm.pvL b{background:#fff;border:1px solid #ECECEA}.pvm.pvL u{background:#5B45E0}
 .pvm.pvD{background:#110F20}.pvm.pvD i{background:#383259}.pvm.pvD b{background:#18152B;border:1px solid #2A2644}.pvm.pvD u{background:#9C88FF}
 #app .aprow{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--line)}
 #app .aprow>div:first-child{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -1688,7 +1691,7 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 .pdfv.wide .pdfpages{align-items:flex-start}
 .pdfpage{position:relative;flex:none;background:#fff;border-radius:4px;overflow:hidden;
   box-shadow:0 0 0 1px rgb(var(--fg-rgb) / .06),0 2px 4px rgb(var(--sh-rgb) / calc(.18 * var(--sh-k))),0 12px 28px -14px rgb(var(--sh-rgb) / calc(.5 * var(--sh-k)))}
-.pdfpage:not(.in)::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#f4f3f8 0,#ebe9f3 50%,#f4f3f8 100%);background-size:200% 100%;animation:cshim 1.4s linear infinite}
+.pdfpage:not(.in)::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#f4f4f3 0,#ebebe9 50%,#f4f4f3 100%);background-size:200% 100%;animation:cshim 1.4s linear infinite}
 .pdfpage canvas{display:block;width:100%;height:100%;animation:center .3s var(--ease) both}
 .pdfpage .textLayer{position:absolute;inset:0;overflow:hidden;line-height:1;text-align:initial;opacity:1;text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0;z-index:2}
 .pdfpage .textLayer span,.pdfpage .textLayer br{color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0% 0%}
@@ -1720,3 +1723,57 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 @container thread (min-width: 980px){
   #app .mh{margin-left:-44px;width:calc(100% + 44px);max-width:none}
 }
+
+/* ================================================================================================
+   v0.254 CLAUDE-STYLE INTERFACE TYPE (owner: "ENTIRE WEB CONSOLE SIDE FONT AND ITS SIZE ... SAME AS CLAUDE"): one sans for
+   the whole interface (Manrope; Sora stays only on the Hoola logo), medium weights instead of bold / extra-bold, no
+   all-caps labels, a 12-16px scale; the reply stays Literata (v0.253), the home greeting turns serif like Claude's.
+   Sizes follow Claude's scale where it is known (12-20px, normal-medium weights); exact claude.ai values could not be
+   read (Cloudflare blocks automated browsers), so these are matched by eye, not measured.
+   ================================================================================================ */
+#app h1,#app h2,#app h3,#app .vh h2,#app .nm2,#app .lhd h3,#app .pnbar h3{font-family:var(--fb);letter-spacing:-.01em}
+#app .vh h2{font-size:22px;font-weight:600}
+#app .mk,#app .mk span{font-family:var(--fd)}
+/* chat header */
+#app .chead h1{font-family:var(--fb);font-size:14px;font-weight:500;letter-spacing:0}
+/* composer */
+#app .dock .box textarea,#app .landing .box textarea{font-size:16px;line-height:1.5}
+#app .qc{font-size:13px;font-weight:500}
+#app .box .who{font-size:13px;font-weight:500;color:var(--dim)}
+#app .disclaim{font-size:12px;color:var(--dim)}
+/* sidebar */
+#app .side .sn,#app .side .sn .txt,#app .side .newc .txt{font-size:14px}
+#app .side .newc .txt{font-weight:500}
+#app .side .sn[aria-current="true"] .txt{font-weight:500}
+:root[data-size="sm"] #app .side .sn,:root[data-size="sm"] #app .side .sn .txt,:root[data-size="sm"] #app .side .newc .txt{font-size:13px}
+:root[data-size="lg"] #app .side .sn,:root[data-size="lg"] #app .side .sn .txt,:root[data-size="lg"] #app .side .newc .txt{font-size:15px}
+#app .side .slabel,#app .side .rg,#app .side .sgh .sgn{font-size:12px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--dim)}
+#app .side .rc,#app .side .rct,#app .side .rcarch{font-size:13.5px;font-weight:400}
+#app .side .rcw.cur .rc{font-weight:500}
+#app .side .user b{font-size:14px;font-weight:500}
+#app .side .themeseg .txt{font-weight:500}
+#app .side kbd.txt,#app .newc kbd,#app .sn.srch kbd{font-weight:500}
+/* reply actions: icons only, the word on hover like Claude */
+#app .ra{font-size:0;gap:0;width:30px;padding:0;justify-content:center;position:relative}
+#app .ra svg{width:15px;height:15px}
+#app .ra>span{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);font-size:11.5px;font-weight:500;white-space:nowrap;
+  padding:3px 8px;border-radius:6px;background:var(--ink);color:var(--bg);opacity:0;pointer-events:none;transition:opacity .15s}
+#app .ra:hover>span,#app .ra:focus-visible>span{opacity:1}
+/* cards, tables, buttons, tags */
+#app .cd .hd b{font-family:var(--fb);font-size:14px;font-weight:600}
+#app .cd .big{font-family:var(--fb);font-size:22px;font-weight:600;letter-spacing:-.01em}
+#app .cd .kvg b,#app .cd .kv b{font-weight:500}
+#app .mdt{font-family:var(--fb);font-size:14px;font-variant-numeric:tabular-nums}
+#app .mdt th{font-weight:600}
+.btn,#app .btn{font-weight:600}
+#app .tag{font-weight:600;letter-spacing:0}
+#app .chip,#app .kchips .chip{font-weight:500}
+#app .jhd h2{font:600 12px var(--fb);letter-spacing:0;text-transform:none;color:var(--dim)}
+#app .job .jn b{font-weight:600}
+#app .pill{font-weight:500}
+/* home greeting: serif, like Claude's */
+#app .landing h1{font-family:var(--fr);font-weight:400;font-size:clamp(28px,3.2vw,38px);letter-spacing:-.4px;line-height:1.2}
+#app .tagline{font-size:15px}
+/* login */
+.lhero h1{font-family:var(--fr);font-weight:400;letter-spacing:-.5px}
+.lcard .brand{font-weight:600}

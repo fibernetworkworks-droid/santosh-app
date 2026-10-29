@@ -139,8 +139,8 @@ def test_nothing_lost_the_reply_is_still_rendered_markdown():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.253.0"
-    assert "0.253.0+293" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.254.0"
+    assert "0.254.0+294" in (ROOT / "pubspec.yaml").read_text()
     assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 13   # grows as main adds console files
 
 
@@ -160,7 +160,7 @@ def test_chat_reads_at_claudes_contrast_in_light_and_is_untouched_in_dark():
 def test_the_dark_theme_tokens_were_not_touched():
     css = _css()
     assert css.count("--ink:#ECEAF8; --mut:#ABA6C8; --dim:#8A85AC; --lit:#D3CFEA; --soft:#E2DFF4;") == 2
-    assert "--ink:#1D1A2E; --mut:#5E5977" in css                        # the light brand ink itself is unchanged
+    assert "--ink:#1A1A1F; --mut:#5C5C63" in css                        # v0.254 the light ink went neutral with the white page
 
 
 def test_literata_is_loaded_with_its_optical_axis():

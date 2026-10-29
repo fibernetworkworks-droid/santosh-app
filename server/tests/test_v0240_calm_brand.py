@@ -12,9 +12,9 @@ def _read(name):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.253.0"
-    assert "0.253.0+293" in (ROOT / "pubspec.yaml").read_text()
-    assert _read("v2.html").count("?v=0.253.0") == 13
+    assert APP_VERSION == "0.254.0"
+    assert "0.254.0+294" in (ROOT / "pubspec.yaml").read_text()
+    assert _read("v2.html").count("?v=0.254.0") == 13
 
 
 def test_theme_loads_before_first_paint_without_inline_script():
@@ -34,7 +34,7 @@ def test_light_dark_and_system_tokens():
     css = _read("v2.css")
     assert css.count("{") == css.count("}")
     root = css[css.index(":root{"):css.index("*,*::before")]
-    assert "--bg:#F5F4FA" in root and "--pri:#5B45E0" in root                         # light is the bare :root
+    assert "--bg:#FFFFFF" in root and "--pri:#5B45E0" in root   # v0.254 white like Claude                         # light is the bare :root
     assert '@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){' in root   # System on a dark computer
     assert ':root[data-theme="dark"]{' in root and "--bg:#110F20" in root            # her explicit Dark
     for tok in ("--fg-rgb", "--surf-rgb", "--sh-rgb", "--acc-rgb", "--ok-rgb", "--bad-rgb", "--on-acc", "--edge-hi"):
