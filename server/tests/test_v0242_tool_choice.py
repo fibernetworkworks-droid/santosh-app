@@ -1,4 +1,4 @@
-"""v0.239 SAHI AUZAAR - Hoola picks the right tool for EVERY ask, not just PDFs (owner: "I WANT IT UNIVERSALLY, NOT
+"""v0.242 SAHI AUZAAR - Hoola picks the right tool for EVERY ask, not just PDFs (owner: "I WANT IT UNIVERSALLY, NOT
 FOR PDF ONLY - HOOLA MUST CHOOSE THE PERFECT TOOL FOR THAT PARTICULAR PROMPT").
 
 Measured root causes: the router admitted families on single words - 'pdf' -> India holidays, 'make' -> notebook +
@@ -203,4 +203,4 @@ def test_cards_save_and_list(env, monkeypatch, tmp_path):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.239.0"
+    assert APP_VERSION == "0.242.0"

@@ -1,5 +1,5 @@
 """python -m app.quality [--live] [--judge] [--label "..."] | compare <before.json> <after.json>
-   | tools [--live] [--brain claude|glm] [--label "..."]   (v0.239 tool-choice card)"""
+   | tools [--live] [--brain claude|glm] [--label "..."]   (v0.242 tool-choice card)"""
 from __future__ import annotations
 
 import asyncio

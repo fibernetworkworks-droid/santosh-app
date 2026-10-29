@@ -101,9 +101,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.241.0 (pubspec 0.241.0+281). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.242.0 (pubspec 0.242.0+282). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.242 SAHI AUZAAR: the right tool for every ask - router intents + PC gate + clean auto-keys (`agent/admit.py`),
+  `agent/pick.py` refuses a PC not in view / data sent to a PC, pinned TOOL CHOOSER; card `python -m app.quality tools [--live]`.
 - v0.241 voice Phase 5 (p99 + dead air + talk-over + repeats, once-a-day voice_alert, ear test vs previous version,
   stall watchdog ignores noise, clips at his live loudness, TTS fallback logged).
 - v0.240 CHHOTA JAWAB: a long job works in the BACKGROUND and the chat gets one short human line. The four-part

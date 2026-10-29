@@ -50,7 +50,7 @@ CORE_FAMILIES = frozenset({
     "id",         # Pehchaan Locker
     "usage",      # ai_kharcha
     "device",     # phone_health
-    "docstudio",  # v0.239 doc_studio / doc_preview: a document ask in any words finds the design studio
+    "docstudio",  # v0.242 doc_studio / doc_preview: a document ask in any words finds the design studio
     "data",       # v0.238 data_fetch / data_read: big data stays in a server file (never escape to the cloud PC)
     "team",       # v0.193 deploy_agents / agent_status / session_log - the agent team is a first-class tool now
 })
@@ -58,14 +58,14 @@ CORE_FAMILIES = frozenset({
 # Hand-written keywords per family (lowercase substrings matched against her words). Tool names add their own
 # auto-keys below - this map carries the natural language the names cannot cover.
 EXTRA_KEYS: dict[str, tuple[str, ...]] = {
-    # v0.239 generic verbs (bhej / send / reply / draft / label) removed: they loaded 23 mail tools for every send
+    # v0.242 generic verbs (bhej / send / reply / draft / label) removed: they loaded 23 mail tools for every send
     "email": ("mail", "email", "gmail", "inbox", "khat", "newsletter", "unsubscribe", "attachment",
               "fwd", "snooze", "vacation", "spam", "ईमेल", "मेल", "इनबॉक्स"),
     "gcal": ("calendar", "kalandar", "meeting", "meeeting", "event", "agenda", "slot", "schedule", "invite",
              "invitation", "rsvp", "appointment", "madh", "free busy", "milne", "मीटिंग", "कैलेंडर", "अपॉइंटमेंट",
              "बैठक"),
     "sheets": ("sheet", "excel", "spreadsheet", "csv", "row", "column"),
-    "gdrive": ("google doc", "gdoc", "drive", "google sheet"),      # v0.239 'document' / 'docx' = doc_studio now
+    "gdrive": ("google doc", "gdoc", "drive", "google sheet"),      # v0.242 'document' / 'docx' = doc_studio now
     "drive": ("drive", "folder", "storage"),
     "slides": ("slide", "ppt", "presentation", "deck"),
     "forms": ("form", "survey", "respons"),
@@ -81,7 +81,7 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "tv": ("tv", "channel", "dth"),
     "bt": ("bluetooth", "speaker", "music", "song", "gaana", "gaane", "volume", "ac ", "air condition", "remote",
            "ganna", "गाना", "गाने"),
-    # v0.239 "pc" is not keyword-admitted any more: _pc_wanted() decides (her PC / Hoola's PC named, or desktop software)
+    # v0.242 "pc" is not keyword-admitted any more: _pc_wanted() decides (her PC / Hoola's PC named, or desktop software)
     "operator": ("computer operator", "operator"),
     "jaanch": ("jaanch", "test karo"),
     "shop": ("order", "amazon", "flipkart", "zomato", "swiggy", "kharid", "shopping", "pizza", "grocer"),
@@ -90,7 +90,7 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                 "delhivery"),
     "india": ("holiday", "chhutti", "ifsc", "pincode", "bank holiday", "panchang", "tithi", "muhurat", "ekadashi"),
     "notebook": ("notebook", "notebooklm", "padhai", "study guide", "mind map", "podcast banao"),
-    # v0.239 bare 'hoola' removed: she says it in every message (it loaded 35 network tools + the PC tools)
+    # v0.242 bare 'hoola' removed: she says it in every message (it loaded 35 network tools + the PC tools)
     "hoola": ("avatar", "hoola network", "samaj", "dosti", "community", "connection", "business page", "network pe"),
     "employee": ("employee", "staff", "naukar"),
     "pgdb": ("postgres", "sql", "database"),
@@ -198,7 +198,7 @@ def _hit(key: str, text: str) -> bool:
     return key in text
 
 
-# v0.239 tags / name-words that are everyday words: never auto-keys ('make' loaded notebook + network + artifact,
+# v0.242 tags / name-words that are everyday words: never auto-keys ('make' loaded notebook + network + artifact,
 # 'search' / 'phone' / 'report' / 'print' loaded the PC tools, 'file' loaded Drive)
 _GENERIC = frozenset({
     "make", "file", "files", "life", "desk", "note", "notes", "report", "print", "phone", "search", "task", "entry",
@@ -214,7 +214,7 @@ _GENERIC = frozenset({
 
 
 def _auto_keys() -> dict[str, set[str]]:
-    """family -> keywords derived from its own tag + tool names (built once). v0.239: a name-word is a key only when
+    """family -> keywords derived from its own tag + tool names (built once). v0.242: a name-word is a key only when
     it belongs to ONE family and is not an everyday word; the joined tool name ('computer operator') always is."""
     words_of: dict[str, set[str]] = {}
     for name, fam in FAMILY_OF.items():
@@ -247,7 +247,7 @@ class AdmitSet:
         self.settings = settings
         self.families: set[str] = set(CORE_FAMILIES)
         self.extra: set[str] = set()          # tool names admitted directly (beyond their family)
-        self.why: dict[str, str] = {}         # v0.239 family -> how it got in (word / intent / meaning / place)
+        self.why: dict[str, str] = {}         # v0.242 family -> how it got in (word / intent / meaning / place)
 
     def admit_families(self, tags) -> list[str]:
         """Add families, return the tool names that became visible (for the tool_search answer)."""
@@ -265,7 +265,7 @@ class AdmitSet:
 
     def _seen(self, name: str) -> bool:
         fam = FAMILY_OF.get(name)
-        return fam is None or fam in self.families or name in self.extra   # v0.239 unmapped = always (as documented)
+        return fam is None or fam in self.families or name in self.extra   # v0.242 unmapped = always (as documented)
 
     def size(self) -> int:
         return 1 + sum(1 for t in TOOLS if self._seen(t["name"]))
@@ -308,7 +308,7 @@ def _match(text: str) -> set[str]:
     return hits & set(FAMILY_OF.values())   # only families that really exist in the registry
 
 
-# ---------------------------------------------------------------- v0.239 SAHI AUZAAR: the right tool, every ask
+# ---------------------------------------------------------------- v0.242 SAHI AUZAAR: the right tool, every ask
 # The keyword list alone routed on single words ("pdf" -> India holidays, "make" -> notebook, "hoola" -> the PC):
 # the right tool was often NOT in view and the wrong one was. Two more signals now decide what Hoola sees:
 #  1. INTENTS - the job TYPE in her words (a document, a data list, a web form, writing / translation...),

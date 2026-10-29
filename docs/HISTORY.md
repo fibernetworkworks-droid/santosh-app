@@ -9552,3 +9552,38 @@ model / vendor). Phase 5 = everything the plan promised that Phases 1-4 had not 
 9. **Phone** (Call ki jaanch): p99, dead air, talk-over, repeats rows; the alert banner; "pehle se behtar / kharab /
    pehle jaisa" on each ear-test card and a "vX ke muqable" line. New APK; the server part works without it.
 Tests: NEW `test_v0234_voice_phase5.py` (13). Version 0.241.0 (pubspec 0.241.0+281, console ?v=0.241.0, pins -> 0.241.0). End-to-end test plan: docs/VOICE_E2E_TEST_PLAN.md.
+
+## v0.242.0 SAHI AUZAAR — the right tool for every ask (29 Oct 2026)
+Owner: "AGAIN MAIN ISSUE --- CHECK IS HOOLA IS CAPABLE OF CHOOSING PROPER TOOL FOR PROPER WORK", then "I WANT IT
+UNIVERSALLY, NOT FOR PDF ONLY - HOOLA MUST CHOOSE PERFECT TOOL FOR THAT PARTICULAR PROMPT". Built as 0.239.0, re-versioned
+0.242.0 past the parallel v0.239.0 FULL CLAUDE MODE, v0.240.0 CHHOTA JAWAB, v0.241.0 voice Phase 5 (all kept).
+- Measured root cause (router, `agent/admit.py`): a turn sees ~60 of 425 tools, picked by single words. Auto-keys came
+  from every word in tool names, so "pdf" (pdf_tools) loaded India holidays, "make" loaded notebook + Hoola Network +
+  artifact, "hoola" (hoola_pc_do, in nearly every message) loaded 35 network tools AND the PC tools, "search" / "phone" /
+  "report" / "print" loaded the PC tools; "document" loaded Drive; "banao" loaded photo. doc_studio was missing for "make
+  a PDF". Tools with no family (WhatsApp campaigns, haan_karo) were filtered out of every admitted turn (the code
+  contradicted its own docstring). Diet: tools with safety words keep 700 chars (pc_do, browse_web, computer_operator,
+  hoola_pc_do read as "do anything"), the rest 140.
+- Router now: auto-keys only from words owned by ONE family and not in `_GENERIC`; EXTRA_KEYS cleaned (no bhej / send /
+  reply for mail, no 'pdf' for India, no 'banao' for photo, no bare 'hoola'), Devanagari words for mail / calendar / music;
+  `INTENTS` by job type (document to make -> docstudio; work on a PDF -> pdf_tools; many records / top N / GitHub / API ->
+  data + docstudio + publicapi; a website form / application / status -> computer_operator; writing / translation ->
+  lekhak; EMI / tracker / calculator -> artifact; P&L / balance sheet -> paisa; another avatar -> network); the PC gate
+  `_pc_wanted` (where.place pc / hoolapc, or desktop software: Tally, Busy, Marg, ffmpeg, LibreOffice, pandoc, printer);
+  `docstudio` in CORE_FAMILIES; family-less tools always in view; `route()` returns family -> why (word / intent:x /
+  place / software), kept on the turn as `adm.why`.
+- `agent/pick.py` (called first in dispatch): a PC-family tool not in view this turn (she named no PC) is refused with the
+  right server tools named and "tool_search 'pc' if she really meant a PC"; a data task sent to pc_do / hoola_pc_do she
+  did not name is refused with the data-desk route. No PC file changed.
+- Prompt: pinned "- TOOL CHOOSER (v0.242)" maps every common job to its tool and says: not in your list = tool_search,
+  never a nearby tool.
+- Measurement: `app/quality/tool_asks.py` = 155 asks (95 written with the fix, 60 written fresh as a holdout before any
+  tuning) with the right first tools and the families that must stay out. Old router on the holdout: right tool in view
+  50/60, wrong family 9/60; new router on the holdout before its 3 vocabulary fixes 57/60 and 0/60; now 155/155 and
+  0/155, median 66 tools a turn. A meaning router (multilingual MiniLM over family cards / tool descriptions) was built and
+  measured: right family in its top 3 for 79/155, and it added wrong families - dropped. `app/quality/toolchoice.py`:
+  router_card (free) + live_card (one real model call per ask with the exact turn prompt + tools, first tool_use scored,
+  a tool_search pick followed once, NOTHING dispatched); `python -m app.quality tools [--live] [--brain claude|glm]`,
+  GET /api/quality/tools. The live card was not run in the sandbox (no model key) - run it on the VPS.
+- Tests `server/tests/test_v0242_tool_choice.py`. Version 0.242.0 (pubspec 0.242.0+282, console ?v=0.242.0 x11, pins).
+  Server-only deploy.
