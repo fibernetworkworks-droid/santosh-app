@@ -45,8 +45,11 @@ TextStyle display(double size, {FontWeight w = FontWeight.w700, Color color = C.
 /// weight 400 (Claude's own token is `--font-claude-response: Anthropic Serif; 1rem; 400; 1.5`).
 /// Anthropic Serif is not ours to use, so this is Source Serif 4: the closest free one, with the same
 /// optical-size axis. Her OWN message stays sans (Manrope), exactly as Claude keeps the user message sans.
+/// v0.253: Source Serif 4 -> Literata. Measured at the same 16px, Source Serif 4 gives an x-height of 8 and a
+/// cap of 11, Literata 9 and 12 - and Claude's own reply measures a 17px glyph band against our 16px. Literata
+/// (the Google Play Books screen face) closes that gap without changing the size, so nothing reflows.
 TextStyle replyText({double size = 16, Color color = C.ink}) =>
-    GoogleFonts.sourceSerif4(fontSize: size, fontWeight: FontWeight.w400, color: color, height: 1.5);
+    GoogleFonts.literata(fontSize: size, fontWeight: FontWeight.w400, color: color, height: 1.5);
 
 ThemeData santoshTheme() {
   final scheme = ColorScheme.fromSeed(seedColor: C.accent, brightness: Brightness.dark).copyWith(

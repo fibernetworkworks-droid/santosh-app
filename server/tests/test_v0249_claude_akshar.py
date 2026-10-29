@@ -10,8 +10,12 @@ Read off Claude's own live stylesheet, not from memory:
 So: Hoola's reply is a serif at 16px / 400 / 1.5 on both surfaces, her own message stays sans at the
 same 16 / 1.5, headings are serif at weight 600, and bold is 600 (Claude's), not 800.
 
-Anthropic Serif is not ours to use. Source Serif 4 is the closest free one (a transitional serif with
-the same optical-size axis), loaded the way Sora / Manrope already are.
+Anthropic Serif is not ours to use. v0.249 shipped Source Serif 4; v0.253 moved to Literata after
+measuring BOTH screenshots side by side: at the same 16px, Source Serif 4 gives an x-height of 8 and a
+cap of 11, Literata 9 and 12, and Claude's own reply measures a 17px glyph band against our 16px. Same
+version also fixed the reading surface: the chat was navy #1D1A2E on the lavender page #F5F4FA (15.5:1),
+Claude is near-black on white (17.6:1); now --chat-ink / --chat-paper give 17.3:1 in the light theme and
+leave the dark theme exactly as it was.
 """
 from pathlib import Path
 
@@ -26,9 +30,9 @@ def _css() -> str:
 # ---------------------------------------------------------------- the console
 def test_console_loads_the_serif():
     html = (CON / "v2.html").read_text()
-    assert "Source+Serif+4" in html                      # the font actually arrives
+    assert "Literata" in html                             # the font actually arrives (v0.253: was Source Serif 4)
     assert "opsz" in html                                # the variable optical-size axis, like Claude's
-    assert "--fr:'Source Serif 4'" in _css()
+    assert "--fr:'Literata'" in _css()
     assert "serif" in _css().split("--fr:")[1].split(";")[0]   # a real serif fallback chain, not sans
 
 
@@ -99,7 +103,7 @@ def test_phone_reply_style_is_the_same_serif():
     glass = (ROOT / "lib/ui/glass.dart").read_text()
     assert "TextStyle replyText(" in glass
     body = glass.split("TextStyle replyText(")[1].split(";")[0]
-    assert "GoogleFonts.sourceSerif4" in body            # the same family as the console
+    assert "GoogleFonts.literata" in body                # the same family as the console (v0.253)
     assert "fontSize: size" in body and "size = 16" in glass.split("TextStyle replyText(")[1][:80]
     assert "FontWeight.w400" in body and "height: 1.5" in body
 
@@ -135,6 +139,33 @@ def test_nothing_lost_the_reply_is_still_rendered_markdown():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.252.0"
-    assert "0.252.0+292" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.253.0"
+    assert "0.253.0+293" in (ROOT / "pubspec.yaml").read_text()
     assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 13   # grows as main adds console files
+
+
+# ---------------------------------------------------------------- v0.253 the reading surface
+def test_chat_reads_at_claudes_contrast_in_light_and_is_untouched_in_dark():
+    """Measured off her two screenshots: Hoola 15.5:1 (navy on lavender), Claude 17.6:1 (near-black on white)."""
+    css = _css()
+    assert "--chat-ink:#1A1A1F; --chat-paper:#FFFFFF;" in css          # light: 17.3:1
+    assert css.count("--chat-ink:var(--ink); --chat-paper:transparent;") == 2   # system-dark AND chosen-dark
+    assert "#app .thread{background:var(--chat-paper)}" in css
+    # the reply takes the chat ink in BOTH places, so the later theme rule cannot undo it
+    inked = [ln for ln in css.splitlines() if ln.startswith("#app .mh .txt{")]
+    assert len(inked) == 2 and all("var(--chat-ink)" in ln for ln in inked), inked
+    assert not any("color:var(--ink)}" in ln for ln in inked)
+
+
+def test_the_dark_theme_tokens_were_not_touched():
+    css = _css()
+    assert css.count("--ink:#ECEAF8; --mut:#ABA6C8; --dim:#8A85AC; --lit:#D3CFEA; --soft:#E2DFF4;") == 2
+    assert "--ink:#1D1A2E; --mut:#5E5977" in css                        # the light brand ink itself is unchanged
+
+
+def test_literata_is_loaded_with_its_optical_axis():
+    html = (CON / "v2.html").read_text()
+    assert "Literata:opsz,wght@7..72,400;7..72,600" in html
+    assert "Source+Serif+4" not in html                                  # the old family is gone, not left loading
+    assert "Source Serif 4" not in _css()
+    assert "GoogleFonts.sourceSerif4" not in (ROOT / "lib/ui/glass.dart").read_text()

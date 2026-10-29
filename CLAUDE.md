@@ -101,9 +101,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.252.0 (pubspec 0.252.0+292). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.253.0 (pubspec 0.253.0+293). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (13 now: theme.js, pdfview.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.253 CLAUDE JAISA PADHAI: measured her two screenshots side by side - pitch / measure / paragraph gaps already
+  matched, two things did not. Source Serif 4 -> **Literata** (x-height 9 vs 8 at the same 16px, so the words render
+  at Claude's 17px band and nothing reflows), and new `--chat-ink` / `--chat-paper` give the LIGHT chat near-black on
+  white (17.3:1, was navy on lavender 15.5:1). Dark theme byte-identical; brand tokens untouched.
 - v0.252 console: the chat column = the composer's width (880px), words line up with the typing box like Claude; avatar hangs outside.
 - v0.251 SIRF LINE: voice clips that read their English TTS ask aloud ("say this quietly...") are rejected by length,
   re-rendered from the bare line; all cached clips regenerate (a3/b2/p2); two English mid-call notes now Hinglish.

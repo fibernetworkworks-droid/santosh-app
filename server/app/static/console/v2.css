@@ -13,6 +13,7 @@
   --bg:#F5F4FA; --side-bg:#EEECF7; --surface:#FFFFFF; --raise:#FAF9FE; --sunk:#ECEAF5; --edge-hi:#FFFFFF;
   --bg0:var(--bg); --bg1:var(--bg); --panel:var(--surface); --deep:var(--sunk); --code-bg:#F3F1FA;
   --ink:#1D1A2E; --mut:#5E5977; --dim:#857FA0; --lit:#36314D; --soft:#2A263D;
+  --chat-ink:#1A1A1F; --chat-paper:#FFFFFF;   /* v0.253 the chat reading surface, Claude's 17.3:1 */
   --pri:#5B45E0; --pri-hover:#4E39D2; --pri-soft:#ECE8FE; --pri-ink:#3E2CB5; --on-acc:#FFFFFF; --btn:var(--pri);
   --saffron:var(--pri); --saffron2:var(--pri-ink); --violet:#6E55F0; --violet2:#9B4FE0; --magenta:#B347E6;
   --saf:#EE8F35; --mag:#B347E6; --vio:#6E55F0;
@@ -30,13 +31,14 @@
   --fd:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif;
   --fb:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
   --fs:15px;
-  --fr:'Source Serif 4',Georgia,'Times New Roman',Times,serif;
+  --fr:'Literata',Georgia,'Times New Roman',Times,serif;
   --side:292px; --right:min(430px,38vw);
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --bg:#110F20; --side-bg:#0D0C19; --surface:#18152B; --raise:#1D1A33; --sunk:#141226; --edge-hi:#433C6B;
   --code-bg:#0F0D1D;
   --ink:#ECEAF8; --mut:#ABA6C8; --dim:#8A85AC; --lit:#D3CFEA; --soft:#E2DFF4;
+  --chat-ink:var(--ink); --chat-paper:transparent;   /* v0.253 dark reads 15.9:1 already */
   --pri:#9C88FF; --pri-hover:#AD9CFF; --pri-soft:#251F45; --pri-ink:#CFC4FF; --on-acc:#120E2A;
   --violet:#8C74FF; --violet2:#B44CF0; --magenta:#C46BF2;
   --saf:#FFB15C; --mag:#C46BF2; --vio:#8C74FF;
@@ -51,6 +53,7 @@
   --bg:#110F20; --side-bg:#0D0C19; --surface:#18152B; --raise:#1D1A33; --sunk:#141226; --edge-hi:#433C6B;
   --code-bg:#0F0D1D;
   --ink:#ECEAF8; --mut:#ABA6C8; --dim:#8A85AC; --lit:#D3CFEA; --soft:#E2DFF4;
+  --chat-ink:var(--ink); --chat-paper:transparent;   /* v0.253 dark reads 15.9:1 already */
   --pri:#9C88FF; --pri-hover:#AD9CFF; --pri-soft:#251F45; --pri-ink:#CFC4FF; --on-acc:#120E2A;
   --violet:#8C74FF; --violet2:#B44CF0; --magenta:#C46BF2;
   --saf:#FFB15C; --mag:#C46BF2; --vio:#8C74FF;
@@ -1171,13 +1174,16 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 #app .cacts .ib svg{width:17px;height:17px}
 #app .cacts .xmenu{position:absolute;top:calc(100% + 6px);right:0;left:auto;bottom:auto;min-width:170px;z-index:40}
 #app .chead~.thread{padding-top:0}
+/* v0.253 CLAUDE JAISA PADHAI: the chat reads on white like Claude's, so the words sit at 17.3:1 instead
+   of 15.5:1 on the lavender page. Light theme only - --chat-paper is transparent in the dark one. */
+#app .thread{background:var(--chat-paper)}
 #app .col{max-width:760px;gap:22px;padding-top:28px}
 #app .mu{background:linear-gradient(135deg,rgb(var(--acc-rgb) / .34),rgba(192,85,245,.2));border:1px solid rgb(var(--acc-rgb) / .22);border-radius:20px 20px 6px 20px;max-width:min(78%,600px)}
 #app .mu .mut{font-family:var(--fb);font-size:16px;line-height:1.5}
 #app .mh{gap:14px}
 #app .mh>.av{width:30px;height:30px;margin-top:0;box-shadow:0 0 0 2px rgb(var(--acc-rgb) / .45)}
 #app .mh .bd{flex:1;gap:12px}
-#app .mh .txt{font-family:var(--fr);font-size:16px;font-weight:400;line-height:1.5;color:var(--ink)}
+#app .mh .txt{font-family:var(--fr);font-size:16px;font-weight:400;line-height:1.5;color:var(--chat-ink)}
 #app .racts{gap:2px}
 #app .ra{height:30px;padding:0 10px;border-radius:9px;font-size:12px;font-weight:600}
 /* approval card */
@@ -1537,7 +1543,7 @@ a{color:var(--pri-ink)}
 #app .mu .mut{color:var(--ink)}
 #app .mu .utbar .ua{color:var(--dim)}
 #app .mh .bd{background:none;border:0;box-shadow:none;padding:2px 0 0;border-radius:0;backdrop-filter:none;-webkit-backdrop-filter:none}
-#app .mh .txt{color:var(--ink)}
+#app .mh .txt{color:var(--chat-ink)}
 #app .mh>.av{box-shadow:0 0 0 2px var(--bg),0 0 0 3.5px var(--mag)}
 #app .ra{color:var(--dim)}
 #app .ra:hover{background:var(--glass2);color:var(--ink)}

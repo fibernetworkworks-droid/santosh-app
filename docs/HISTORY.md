@@ -9857,3 +9857,44 @@ CHAT SPACE IN CLAUDE --- THE CHAT SPACE WORDING IS EXTENDED TO CHAT TYPING SECTI
   composer's left edge. Measured after: text 392-1272 at 1440, 110-990 at 1100, 20-880 / 20-370 (avatar inline) at 900 / 390,
   each equal to the composer.
 - Tests: test_v0252_reading_width.py.
+
+## v0.253.0 CLAUDE JAISA PADHAI — the reading experience, measured against Claude's own chat (owner, with the two screenshots side by side: "CLAUDE LOOKS PERFECT VISIBLE AND EVERY WORD VISBLE PROPERLY. FOR HOOLA IT NEED TO LOOK SAME ... FIRST CHECK WHAT WE CAN DO THAT USER CAN READING EXPERENCE TO BE PERFECTLY AS CLAUDE CHAT", then "GO C")
+- MEASURED, NOT EYEBALLED. Her two screenshots were measured pixel by pixel (row ink profiles for the lines, column
+  ink spans for the measure, text-pixel sampling for the colours) and both stylesheets were read:
+
+  | | Hoola v0.249 | Claude |
+  |---|---|---|
+  | line pitch | 24px | 24px |
+  | reading measure | 668px | 634px |
+  | paragraph gaps | ~42px | 35-41px |
+  | ink coverage | 12.93% | 13.41% |
+  | **glyph band (asc->desc)** | **16px** | **17px** |
+  | **background** | **#F5F4FA** | **#FFFFFF** |
+  | **ink** | **#1D1A2E (navy)** | **#191919 (neutral)** |
+  | **contrast** | **15.49:1** | **17.58:1** |
+
+  So the v0.249 geometry was already right - the pitch, the measure and the paragraph rhythm all matched. Only two
+  things were wrong, and both were about the words themselves being smaller and greyer.
+- (1) THE FONT RENDERED SMALLER. Browser-measured at the same 16px, weight 400:
+  Source Serif 4 x-height 8 / cap 11 · **Literata x-height 9 / cap 12** · Noto Serif 9 / 12 · Lora 8 / 12 · Georgia 8 / 11.
+  Literata is the Google Play Books screen face: bigger x-height, sturdier strokes, same optical-size axis (opsz 7..72).
+  At the SAME 16px it reaches Claude's measured 17px band, so nothing reflows - four options (A now, B Literata same
+  colours, C Literata + near-black on white, D Source Serif 4 at 17px) were rendered for her and she picked **C**.
+  D would have matched the size too, but by inflating a face whose shape is wrong for the job; its line breaks moved.
+- (2) THE READING SURFACE WAS TINTED AT BOTH ENDS. Navy ink on a lavender page pulls both ends together. Two new tokens
+  carry the chat reading surface, so the CALM BRAND tokens (`--ink`, `--bg`, `--surface`) are untouched:
+  - light `:root`: `--chat-ink:#1A1A1F; --chat-paper:#FFFFFF` -> **17.3:1** (Claude 17.58:1, ink alone would be 15.85:1)
+  - BOTH dark blocks (system-dark and chosen-dark): `--chat-ink:var(--ink); --chat-paper:transparent` - the dark theme
+    already reads 15.9:1 and comes out byte-identical.
+  - `#app .thread{background:var(--chat-paper)}` and `#app .mh .txt{...color:var(--chat-ink)}` in BOTH places it is set
+    (the typography rule and the later theme rule), so the later one cannot undo the first. A test pins that.
+- PHONE: `replyText()` in `lib/ui/glass.dart` -> `GoogleFonts.literata` (the package was already a dependency). The phone
+  is dark-themed, so it takes the font change only; its colours are untouched.
+- Tests: `test_v0249_claude_akshar.py` grew 12 -> 15 - the contrast tokens in light and dark, the dark tokens proven
+  unchanged, both `#app .mh .txt` rules carrying `--chat-ink`, Literata loaded with its opsz axis, and the old family
+  gone from the HTML, the CSS and glass.dart (not left loading). Verified in a real browser in BOTH colour schemes:
+  light = Literata 16px/400/24px, ink rgb(26,26,31), thread #FFFFFF; dark = same font, ink rgb(236,234,248), thread
+  transparent; sidebar label still Manrope in both.
+- Version 0.253.0 (pubspec 0.253.0+293, console ?v=0.253.0, pins -> 0.253.0).
+- NOT VERIFIED: not seen on a real phone screen. On the phone this is the font swap only - the serif gets bigger-looking
+  at the same size, nothing else moves.
