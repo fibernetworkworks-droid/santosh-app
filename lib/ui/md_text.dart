@@ -196,7 +196,7 @@ List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const 
       final j = s.indexOf(mk, i + 2);
       final style = mk == '~~'
           ? const TextStyle(decoration: TextDecoration.lineThrough)
-          : const TextStyle(fontWeight: FontWeight.w600);   // v0.248 Claude's bold is 600, not 800
+          : const TextStyle(fontWeight: FontWeight.w600);   // v0.249 Claude's bold is 600, not 800
       if (j > i + 2) {
         flush();
         spans.add(TextSpan(style: style, children: mdInline(s.substring(i + 2, j), link: link)));
@@ -351,7 +351,7 @@ class MdText extends StatelessWidget {
       if (kids.isNotEmpty) kids.add(SizedBox(height: (b.kind == 'li' || b.kind == 'ol') ? 4 : 9));
       switch (b.kind) {
         case 'h':
-          // v0.248 CLAUDE JAISA AKSHAR: sized against the 16px serif body, at Claude's heading weight 600
+          // v0.249 CLAUDE JAISA AKSHAR: sized against the 16px serif body, at Claude's heading weight 600
           final size = b.level <= 1 ? 22.0 : b.level == 2 ? 20.0 : 17.0;
           kids.add(_rich(mdInline(b.text, streaming: live), style.copyWith(fontSize: size, fontWeight: FontWeight.w600, height: 1.3), tail));
           break;

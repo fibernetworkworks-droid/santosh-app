@@ -1,4 +1,4 @@
-"""v0.248 CLAUDE JAISA AKSHAR (owner: "NOW CHECK THE FONT AND ITS SIZE.... OF CLAUDE CHAT" then
+"""v0.249 CLAUDE JAISA AKSHAR (owner: "NOW CHECK THE FONT AND ITS SIZE.... OF CLAUDE CHAT" then
 "MAKE IT SAME LIKE CLAUDE - FONT AND SIZE BOTH").
 
 Read off Claude's own live stylesheet, not from memory:
@@ -135,6 +135,6 @@ def test_nothing_lost_the_reply_is_still_rendered_markdown():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.248.0"
-    assert "0.248.0+288" in (ROOT / "pubspec.yaml").read_text()
-    assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 12   # theme.js added on main
+    assert APP_VERSION == "0.249.0"
+    assert "0.249.0+289" in (ROOT / "pubspec.yaml").read_text()
+    assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 13   # grows as main adds console files

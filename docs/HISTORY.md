@@ -9732,7 +9732,25 @@ WITHOUT SIDE PAGE INFORMATION. SAME FOR ALL WORKSPACE TASKS".
 - Not verified: Chrome's PDF viewer honours navpanes=0 / view=FitH (Firefox pdf.js uses pagemode / zoom); headless Chromium
   draws no PDF, so the frame size was measured instead (fills the panel: 1215 x 776 at full width on 1440 x 900).
 
-## v0.248.0 CLAUDE JAISA AKSHAR — the chat is set the way Claude sets it (owner: "NOW CHECK THE FONT AND ITS SIZE.... OF CLAUDE CHAT ----- TELL ME", then "MAKE IT SAME LIKE CLAUDE - FONT AND SIZE BOTH")
+## v0.248.0 CLEAN WORKSPACE (console PDF reader + one header row)
+Owner (screenshot of a PDF in the workspace): "CHECK AT PDF TOP A BLACK STRIP, WE DONT NEED IT. IN WORKSPACE WE ONLY WANT A FULL
+PDF ONLY WITH MATCHING BACKGROUND OF OUR DESIGN. ALSO CHECK AT TOP UNWANTED TAB. SHOW ME THE PREVIEW FIRST BEFORE DEPLOYMENT".
+- The black strip + grey canvas were Chrome's own PDF viewer (cannot be styled from the page). NEW `console/pdfview.js`
+  (window.HoolaPdf.mount(host, bytes, name)) draws the PDF with PDF.js 3.11.174 (Apache-2.0, vendored in
+  `static/console/vendor/pdfjs/` with its LICENSE; same-origin worker; isEvalSupported:false for the console CSP; loaded
+  only when a PDF opens): white pages fitted to the workspace width on the theme's --sunk background with a soft shadow,
+  shimmer placeholders, pages drawn as they near the view (IntersectionObserver, 800px margin) at device-pixel sharpness,
+  redrawn on resize / zoom, selectable text (text layer), a floating pill (zoom -, page n / N, zoom +, Fit; shows on hover /
+  focus, always on touch) and keys + / - / 0. `panel.js` docView(t, view, name, path) fetches the bytes with her token and
+  mounts it for PDFs and Office-as-PDF; if the reader cannot start, the browser viewer is the fallback with
+  `#toolbar=0&navpanes=0&pagemode=none&view=FitH&zoom=page-width`. Closing the tab destroys the document.
+- One item open = ONE header row: `panel.js` syncHead() moves the item's actions bar (name, Share, Download, view switches)
+  into `.pnhd .pnslot` beside Creations / close and hides the tab pill (`#panel.one`); two or more items = the tab row back,
+  the bar returns home. q(t, sel) / qa(t, sel) find a tab's controls wherever its bar sits.
+- Tests: test_v0248_clean_workspace.py; 13 `?v=` stamps now (pdfview.js).
+- Preview shown to the owner before deploy (owner asked).
+
+## v0.249.0 CLAUDE JAISA AKSHAR — the chat is set the way Claude sets it (owner: "NOW CHECK THE FONT AND ITS SIZE.... OF CLAUDE CHAT ----- TELL ME", then "MAKE IT SAME LIKE CLAUDE - FONT AND SIZE BOTH")
 - MEASURED, NOT REMEMBERED. Claude's live stylesheet was fetched and read
   (`assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c6a992d55-CGuUmOei.css`, 493 KB, 29 Oct 2026):
   - `--font-anthropic-sans: "Anthropic Sans", system-ui, …` · `--font-anthropic-serif: "Anthropic Serif", Georgia, …`

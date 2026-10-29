@@ -225,7 +225,7 @@ mark{background:rgb(var(--acc-rgb) / .32);color:var(--ink);border-radius:3px;pad
 .mh>.av{margin-top:2px}
 .mh .bd{min-width:0;background:var(--glass);border:1px solid var(--line);border-radius:6px 20px 20px 20px;padding:13px 17px;backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);box-shadow:var(--sh2);display:flex;flex-direction:column;gap:8px;flex:1}
 .txt{overflow-wrap:anywhere;font-size:15px}
-/* v0.248 CLAUDE JAISA AKSHAR: Hoola's reply reads like Claude's - serif 16px/1.5 at weight 400.
+/* v0.249 CLAUDE JAISA AKSHAR: Hoola's reply reads like Claude's - serif 16px/1.5 at weight 400.
    Scoped to the chat block, because .txt is also the sidebar nav label. */
 .mh .txt{font-family:var(--fr);font-size:16px;font-weight:400;line-height:1.5}
 .txt.stopped{opacity:.8}
@@ -299,7 +299,7 @@ mark{background:rgb(var(--acc-rgb) / .32);color:var(--ink);border-radius:3px;pad
 
 /* ================= MARKDOWN ================= */
 .textmd p{margin:0 0 2px}
-.textmd code,.textmd kbd{font-size:14px}   /* v0.248 Claude's small token (.875rem) */
+.textmd code,.textmd kbd{font-size:14px}   /* v0.249 Claude's small token (.875rem) */
 .textmd .mdh{font-family:var(--fr);font-size:20px;font-weight:600;line-height:1.3;margin:8px 0 4px}
 .textmd h3.mdh{font-size:17px}
 .textmd a{text-decoration:underline}
@@ -1397,7 +1397,7 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 a{color:var(--pri-ink)}
 :focus-visible{outline:2px solid var(--pri)}
 #app :is(button,a,select,input,textarea,[tabindex]):focus-visible{outline-color:var(--pri)}
-/* v0.248 CLAUDE JAISA AKSHAR x her text-size setting: Default (--fs 15px) lands on Claude's exact 16px,
+/* v0.249 CLAUDE JAISA AKSHAR x her text-size setting: Default (--fs 15px) lands on Claude's exact 16px,
    and Small / Large still move it (15 / 17.5px) keeping Claude's 1.5 ratio. */
 #app .mh .txt,#app .mu .mut{font-size:calc(var(--fs) + 1px);line-height:1.5}
 :root[data-size="sm"]{--fs:14px} :root[data-size="lg"]{--fs:16.5px}
@@ -1657,3 +1657,46 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 .cmdlg{max-width:min(640px,92vw);border:0;border-radius:16px;padding:18px;color:var(--ink);background:var(--surface);box-shadow:var(--sh2)}
 .cmdlg::backdrop{background:rgb(var(--sh-rgb) / .45)}
 #app .cmeter.hot{background:var(--warn-soft)}
+
+/* ================================================================================================
+   v0.248 CLEAN WORKSPACE (owner: "AT PDF TOP A BLACK STRIP, WE DONT NEED IT ... A FULL PDF ONLY WITH MATCHING BACKGROUND
+   OF OUR DESIGN. ALSO CHECK AT TOP UNWANTED TAB"): one item open = one header row (its name, Share / Download, close);
+   PDFs drawn by pdfview.js on the theme background - white pages with a soft shadow, a floating page / zoom pill.
+   ================================================================================================ */
+#app .pnslot{display:none;min-width:0}
+#app .panel.one .pntabs{display:none}
+#app .panel.one .pnslot{display:flex;flex:1;min-width:0}
+#app .panel.one .pnhd{padding:8px 10px 8px 16px;min-height:56px}
+#app .panel.one .pnslot .pnbar{flex:1;min-width:0;padding:0;border:0;background:none;flex-wrap:nowrap;overflow:visible}
+#app .panel.one .pnslot .pnbar>.pnnote:first-child{background:none;border:0;padding:0;color:var(--ink);font:600 14.5px var(--fd);min-width:0;flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#app .panel.one .pnslot .pnbar .btn{height:34px;padding:0 13px;font-size:12.5px;border-radius:10px}
+#app .panel.one .pnhd>.ib{flex:none}
+#app .panel .pnhd .ib{width:34px;height:34px;border-radius:10px;color:var(--mut)}
+#app .panel .pnhd .ib:hover{background:var(--glass2);color:var(--ink)}
+#app .pnbar>.pnnote:first-child{background:none;border:0;padding:0 2px;color:var(--mut)}
+
+/* our PDF reader */
+#app .pnview.doc{background:var(--sunk)}
+.pdfv{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;outline:none}
+.pdfpages{flex:1;min-height:0;overflow:auto;padding:16px;display:flex;flex-direction:column;align-items:center;gap:14px;scroll-behavior:auto;scrollbar-width:thin}
+.pdfv.wide .pdfpages{align-items:flex-start}
+.pdfpage{position:relative;flex:none;background:#fff;border-radius:4px;overflow:hidden;
+  box-shadow:0 0 0 1px rgb(var(--fg-rgb) / .06),0 2px 4px rgb(var(--sh-rgb) / calc(.18 * var(--sh-k))),0 12px 28px -14px rgb(var(--sh-rgb) / calc(.5 * var(--sh-k)))}
+.pdfpage:not(.in)::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#f4f3f8 0,#ebe9f3 50%,#f4f3f8 100%);background-size:200% 100%;animation:cshim 1.4s linear infinite}
+.pdfpage canvas{display:block;width:100%;height:100%;animation:center .3s var(--ease) both}
+.pdfpage .textLayer{position:absolute;inset:0;overflow:hidden;line-height:1;text-align:initial;opacity:1;text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0;z-index:2}
+.pdfpage .textLayer span,.pdfpage .textLayer br{color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0% 0%}
+.pdfpage .textLayer span.markedContent{top:0;height:0}
+.pdfpage .textLayer ::selection{background:rgb(var(--acc-rgb) / .28);color:transparent}
+.pdfpage .textLayer .endOfContent{display:block;position:absolute;inset:100% 0 0;z-index:-1;cursor:default;user-select:none}
+.pdfpill{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;
+  background:rgb(var(--surf-rgb) / .92);border:1px solid var(--line);box-shadow:var(--sh);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  opacity:.0;transition:opacity .25s var(--ease),transform .25s var(--ease);z-index:5}
+.pdfv:hover .pdfpill,.pdfv:focus-within .pdfpill{opacity:1}
+.pdfpill button{min-width:30px;height:30px;padding:0 9px;border-radius:999px;font:600 15px var(--fb);color:var(--mut);display:grid;place-items:center}
+.pdfpill button:hover{background:var(--glass2);color:var(--ink)}
+.pdfpill .pdffit{font-size:12px}
+.pdfpill .pdffit.on{color:var(--pri-ink);background:var(--pri-soft)}
+.pdfpill i{width:1px;height:16px;background:var(--line);margin:0 3px}
+.pdfpg{min-width:58px;text-align:center;font:600 12.5px var(--fb);color:var(--ink);font-variant-numeric:tabular-nums}
+@media (hover:none){.pdfpill{opacity:1}}
