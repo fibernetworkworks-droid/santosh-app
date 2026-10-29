@@ -8798,3 +8798,33 @@ holds), the AI limit refuses a routine round but never hers, goal round text nev
 (pubspec 0.222.0+257, console ?v=0.222.0 x9, pins ->0.222.0). Built on the live v0.221 KAAM KHAATA branch
 (clever-thompson, incl. the merged MCP sign-in fix). CONSOLE R1 (serene-dijkstra, also numbered 0.221.0, not deployed)
 is NOT in this release - it needs a rebase as v0.223. Server-only deploy; old APKs keep working.
+
+## v0.223.0 WEBSITE PHASE 1 — the Website Sahayak bugs from the web-development audit (owner: "FIRST CHECK HOW HOOLA DO THIS FIND FLAWS" -> "START PHASE 1")
+The audit of `server/app/site/` (build, hosting, care, domains) found bugs that break real use; Phase 1 fixes them.
+Phases 2-4 (hosting off the main process, builder quality on Opus like App Sahayak, editable content) are not in this.
+- **Queued change never ran, site stuck in "building"**: a change asked during a build was started from INSIDE the build
+  thread at its end, `_start` saw that thread alive and returned. Now `_start` returns True/False, the queue runs in
+  `_after_job` only after the thread is gone, and `change()` queues (never loses) when a job slipped in first; `resume`
+  refuses while a job runs; `busy(site_id)`.
+- **Restart mid-build = stuck forever**: `service.recover_stuck` (worker tick): a building / checking / generating-looks site
+  whose job no thread of this process runs, last touched before this process started or 30 min ago, is restarted ONCE
+  (`Site.recovered`, nullable, reset when a build finishes); a second death = "failed" with "Phir se chalao"; Rokiye'd =
+  "stopped". `approve_plan` empties `looks` so "generating looks" is told apart from "3 looks waiting for her choice".
+- **No limit on builds**: a `BoundedSemaphore(SITE_WORKERS, default 2)` around every job (the old unused pool removed).
+- **Deleted site stayed live**: `delete` refuses while a job runs, then `hosting.take_down` (addresses removed, served files
+  gone, Cloudflare custom hostnames deleted) before the records go; failure = nothing deleted, plain line.
+- **Her answers never reached the written pages** (launch blocked by blanks for ever): `answer()` on a built site calls
+  `fill_blanks`: `<em class="blank">[phone|email|address|hours|name|city|whatsapp|tagline]</em>` filled in place from the
+  exact fact (`BLANK_FACTS`, exact labels only; "registration number" never becomes a phone), sections with blanks still
+  left are rewritten with a FILL BLANKS note, then assembled + checked = a new version.
+- **Uptime check counted as visitors** (~288 a day per address): `hosting.is_bot` (HoolaUptime, bots, crawlers, link
+  previews, curl / httpx) skips `care.count_view`; `serve(host, path, ua)`.
+- **Site addresses reached Hoola's API for non-GET**: the `_hosted_sites` middleware answers 404 to any other method on a
+  site host except `POST /api/site-forms/...` (her enquiry form).
+- **Re-joining a domain left old Cloudflare hostnames** (quota / bill): `connect_domain` deletes the old custom hostnames
+  that are not reused (same domain again keeps them); files stay (the free address may link to that folder).
+  `_drop_host(row, files)` shared with `take_down`; `has_hosts`.
+- **Site numbers repeated after a delete**: next number = highest + 1. Form rate dict pruned past 5,000 entries.
+- Tests `server/tests/test_v0223_site_fixes.py`. Version 0.223.0 (pubspec 0.223.0+258, console ?v=0.223.0 x9, pins).
+  Server-only deploy; old APKs keep working. NOTE: the parallel Console R1 work (serene-dijkstra) planned to be v0.223 -
+  it now needs v0.224.

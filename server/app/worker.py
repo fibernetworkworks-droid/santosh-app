@@ -778,6 +778,11 @@ async def employee_jobs() -> None:
             await asyncio.to_thread(_svc.tick)
         except Exception:
             log.exception("%s tick failed", _mod)
+    try:                                   # v0.223 Website: a build / looks job that died with the process restarts once
+        from .site import service as site_service
+        await asyncio.to_thread(site_service.recover_stuck)
+    except Exception:
+        log.exception("site recover failed")
     try:                                   # v0.122 Website: her domain's DNS / SSL coming up, uptime of live sites
         from .site import hosting as site_hosting
         await asyncio.to_thread(site_hosting.watch)

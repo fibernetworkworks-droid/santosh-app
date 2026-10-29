@@ -171,7 +171,16 @@ def host_map(force: bool = False) -> dict[str, dict[str, Any]]:
         return hosts
 
 
-def serve(host: str, path: str) -> tuple[int, bytes, str, dict[str, str]] | None:
+BOTS = re.compile(r"hoolauptime|bot\b|bot/|crawl|spider|slurp|lighthouse|headlesschrome|python-httpx|python-requests|"
+                  r"curl/|wget/|uptime|monitor|preview|facebookexternalhit|whatsapp", re.I)
+
+
+def is_bot(ua: str) -> bool:
+    """v0.223 Hoola's own uptime check (every 5 min = ~288 'visits' a day per address) and crawlers are not her visitors."""
+    return bool(BOTS.search(ua or ""))
+
+
+def serve(host: str, path: str, ua: str = "") -> tuple[int, bytes, str, dict[str, str]] | None:
     """(status, body, content type, headers) for a hosted site, or None when this host is not one of ours."""
     host = (host or "").lower().split(":")[0].strip(".")
     m = host_map().get(host)
@@ -197,7 +206,8 @@ def serve(host: str, path: str) -> tuple[int, bytes, str, dict[str, str]] | None
         f = f / "index.html"
     if not f.is_file() or f.name == "_headers":
         nf = root / "404.html"
-        _count(m, path, 404)
+        if not is_bot(ua):
+            _count(m, path, 404)
         return 404, (nf.read_bytes() if nf.exists() else b"not found"), "text/html; charset=utf-8", _sec_headers(m)
     ctype = mimetypes.guess_type(f.name)[0] or "application/octet-stream"
     if f.suffix == ".avif":
@@ -208,7 +218,7 @@ def serve(host: str, path: str) -> tuple[int, bytes, str, dict[str, str]] | None
         ctype += "; charset=utf-8"
     h = _sec_headers(m)
     h["Cache-Control"] = "public, max-age=604800" if "/assets/" in f.as_posix() else "public, max-age=300, must-revalidate"
-    if ctype.startswith("text/html"):
+    if ctype.startswith("text/html") and not is_bot(ua):
         _count(m, path, 200)
     return 200, f.read_bytes(), ctype, h
 
@@ -432,6 +442,30 @@ def rollback(tenant: str, ref: str, version: int, hash_: str) -> dict[str, Any]:
     return out
 
 
+def has_hosts(site_id: str) -> bool:
+    with session() as s:
+        return s.scalars(select(SiteHost).where(SiteHost.site_id == site_id, SiteHost.status != "removed")).first() is not None
+
+
+def _drop_host(row: SiteHost, files: bool = True) -> None:
+    """v0.223 one address leaves for good: its Cloudflare custom hostname (quota / bill) and its served files.
+    Caller marks the row removed in its own session. files=False when another live address may still point at
+    this folder (the free address is a link to the main one)."""
+    if row.cf_id and saas_on():
+        try:
+            from .cf import Cloudflare
+            Cloudflare(cfg()["cf_token"]).custom_hostname_delete(cfg()["cf_zone"], row.cf_id)
+        except Exception:
+            log.info("custom hostname delete failed", exc_info=True)
+    if not files:
+        return
+    p = hosted_root() / row.hostname
+    if p.is_symlink():
+        p.unlink()
+    elif p.exists():
+        shutil.rmtree(p, ignore_errors=True)
+
+
 def take_down(tenant: str, ref: str) -> dict[str, Any]:
     from . import service as S
     with session() as s:
@@ -440,20 +474,12 @@ def take_down(tenant: str, ref: str) -> dict[str, Any]:
         names = [x.hostname for x in rows]
         for x in rows:
             x.status = "removed"
-            if x.cf_id and saas_on():
-                try:
-                    from .cf import Cloudflare
-                    Cloudflare(cfg()["cf_token"]).custom_hostname_delete(cfg()["cf_zone"], x.cf_id)
-                except Exception:
-                    log.info("custom hostname delete failed", exc_info=True)
-    for n in names:
-        p = hosted_root() / n
-        if p.is_symlink():
-            p.unlink()
-        elif p.exists():
-            shutil.rmtree(p, ignore_errors=True)
+        for x in rows:
+            s.expunge(x)
+    for x in rows:
+        _drop_host(x)
     host_map(force=True)
-    return {"ok": True, "say": f"Website band kar di ({', '.join(names)})."}
+    return {"ok": True, "say": f"Website band kar di ({', '.join(names)})." if names else "Website kahin live nahi thi."}
 
 
 # ---------------------------------------------------------------- her own domain
@@ -505,12 +531,21 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "") -> dict[s
     else:
         raise HostError("Aapka domain jodne ke liye: ya to server par Hoola Hosting (Cloudflare for SaaS) chalu ho, ya domain "
                         "ka DNS aapke apne Cloudflare account mein ho aur uska token Hoola mein juda ho (Website > Hosting).")
+    keep = {x.hostname for x in rows}
+    gone: list[SiteHost] = []
     with session() as s:
         for old in s.scalars(select(SiteHost).where(SiteHost.site_id == r.id, SiteHost.kind == "custom",
                                                     SiteHost.status != "removed")).all():
             old.status = "removed"
+            if not (old.hostname in keep and old.cf_id and any(x.cf_id == old.cf_id for x in rows)):
+                gone.append(old)
+        for x in gone:
+            s.expunge(x)
         for x in rows:
             s.add(x)
+    for x in gone:          # v0.223 the old domain's Cloudflare hostname goes too (it stayed, costing quota)
+        _drop_host(x, files=False)
+    host_map(force=True)
     desired = D.website_records(d, mode, target, verify, apex_flatten=apex_ok)
     try:
         pl = D.make_plan(tenant, r.id, d, desired, "website")

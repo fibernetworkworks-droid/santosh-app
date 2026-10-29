@@ -23,7 +23,6 @@ import secrets
 import shutil
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -51,8 +50,8 @@ PAGE_SECTIONS: dict[str, list[str]] = {
     "donate": ["donate_impact", "certificates_trust"], "careers": ["features_split", "contact_block"],
     "coverage": ["coverage_areas", "contact_block"], "certificates": ["certificates_trust"]}
 MAX_FIX_ROUNDS = 3
-_POOL: ThreadPoolExecutor | None = None
 _RUNNING: dict[str, threading.Thread] = {}
+_SLOTS: threading.BoundedSemaphore | None = None
 _LOCK = threading.Lock()
 
 
@@ -86,13 +85,6 @@ def _inline() -> bool:
     return os.environ.get("SITE_WORKER", "true").lower() in ("0", "false", "off", "inline")
 
 
-def _pool() -> ThreadPoolExecutor:
-    global _POOL
-    if _POOL is None:
-        _POOL = ThreadPoolExecutor(max_workers=int(os.environ.get("SITE_WORKERS", "2")), thread_name_prefix="site")
-    return _POOL
-
-
 def _publish(tenant: str, kind: str, payload: dict, conv: str = "") -> None:
     from ..events import bus
     try:
@@ -122,8 +114,13 @@ def sec_id(slug: str, typ: str) -> str:
 
 
 def _number(s, tenant: str) -> str:
-    n = s.scalar(select(func.count()).select_from(Site).where(Site.tenant_id == tenant)) or 0
-    return f"S-{n + 1:04d}"
+    """v0.223 the next free number: the highest one used + 1 (a count gave two sites the same number after a delete)."""
+    top = 0
+    for n in s.scalars(select(Site.number).where(Site.tenant_id == tenant)).all():
+        m = re.match(r"S-(\d+)$", n or "")
+        if m:
+            top = max(top, int(m.group(1)))
+    return f"S-{top + 1:04d}"
 
 
 def _find(s, tenant: str, ref: str) -> Site:
@@ -438,11 +435,78 @@ def answer(tenant: str, ref: str, answers: dict[str, Any]) -> dict[str, Any]:
             else:
                 facts.setdefault("answers", {})[_tidy(k, 80)] = v
         ans["_questions"] = [q for q in qs if q not in ans]
+        changed = facts != _j(r.facts, {})
         r.facts, r.answers, r.updated_at = _jd(facts), _jd(ans), now()
         s.flush()
         s.expunge(r)
     _emit(r)
-    return view(r)
+    v = view(r)
+    if changed and r.version and r.status in ("ready", "failed", "stopped") and not busy(r.id):
+        filled = fill_blanks(r)            # v0.223 her answers reach the pages already written
+        if filled.get("started"):
+            v = {**view(_load(r.id)), "say": filled["say"]}
+    return v
+
+
+# v0.223 blank labels the model writes (<em class="blank">[phone]</em>) -> the fact that fills them, exactly
+BLANK_FACTS = {
+    "phone": ("phone", "mobile", "phone number", "mobile number", "contact number", "number", "call", "phone no",
+              "mobile no", "contact"),
+    "whatsapp": ("whatsapp", "whatsapp number", "whatsapp no"),
+    "email": ("email", "e-mail", "email address", "mail", "email id"),
+    "address": ("address", "pata", "shop address", "full address", "location"),
+    "hours": ("hours", "timings", "timing", "opening hours", "samay", "time"),
+    "name": ("name", "business name", "shop name", "naam", "brand name"),
+    "city": ("city", "shahar", "town"),
+    "tagline": ("tagline",),
+}
+_BLANK = re.compile(r'<em class="blank">\[([^\]<]{1,60})\]</em>')
+
+
+def _blank_fact(label: str, facts: dict[str, Any]) -> str:
+    low = re.sub(r"[^a-z0-9 -]+", "", label.lower()).strip()
+    for key, words in BLANK_FACTS.items():
+        if low in words:
+            v = facts.get(key) or (facts.get("phone") if key == "whatsapp" else "")
+            return _tidy(v, 300) if isinstance(v, str) else ""
+    return ""
+
+
+def fill_blanks(r: Site) -> dict[str, Any]:
+    """Blanks in the written sections: the ones a known fact fills are filled in place (no model call); sections that
+    still have blanks are rewritten with her new facts. Then the site is assembled + checked again (a new version), so
+    launch is no longer blocked by a blank she already answered. Before v0.223 her answer was only saved."""
+    import html as _html
+    facts = _j(r.facts, {})
+    remaining: list[str] = []
+    swapped = 0
+    secs = _sections(r)
+    for k, sec in secs.items():
+        if "class=\"blank\"" not in sec.get("html", ""):
+            continue
+
+        def fill(m):
+            nonlocal swapped
+            val = _blank_fact(m.group(1), facts)
+            if not val:
+                return m.group(0)
+            swapped += 1
+            return _html.escape(val)
+        new = _BLANK.sub(fill, sec["html"])
+        if new != sec["html"]:
+            sec["html"] = new
+            _sec_path(r, k).write_text(json.dumps(sec))
+        if "class=\"blank\"" in new:
+            remaining.append(k)
+    if not swapped and not remaining:
+        return {"started": False}
+    note = "FILL BLANKS: the owner has now answered. Replace every <em class=\"blank\"> you can with the real fact from " \
+           "FACTS; keep everything else (design, words, motion) exactly. Leave a blank only when FACTS still don't have it."
+    _save(r.id, status="building", stage="build", error="")
+    _start(r.id, "build", only=remaining, note="Aapke jawab website mein bhar diye", extra={k: note for k in remaining})
+    say = "Aapke jawab website mein bhar raha hoon" + (f" ({swapped} jagah turant)" if swapped else "") + \
+        (f"; {len(remaining)} hisse dobara likh raha hoon" if remaining else "") + ". Phir jaanch karke naya version."
+    return {"started": True, "swapped": swapped, "rewrite": remaining, "say": say}
 
 
 # ---------------------------------------------------------------- 2. her Haan on the plan -> 3 looks
@@ -458,6 +522,7 @@ def approve_plan(tenant: str, ref: str, conv: str = "", pages: list[str] | None 
             plan["pages"] = keep
             r.plan = _jd(plan)
         r.status, r.stage, r.stop, r.error = "looks", "look", False, ""
+        r.looks = "[]"                       # v0.223 empty while generating (recover_stuck tells a dead job by it)
         if conv:
             r.conv = conv
         r.board = _jd(_board(r, now_line="3 looks bana raha hoon"))
@@ -469,27 +534,105 @@ def approve_plan(tenant: str, ref: str, conv: str = "", pages: list[str] | None 
     return view(r)
 
 
-def _start(site_id: str, job: str, **kw) -> None:
+def _slots() -> threading.BoundedSemaphore:
+    """v0.223 at most SITE_WORKERS builds at once on this server (each = Opus calls + Chromium, beside live calls)."""
+    global _SLOTS
+    if _SLOTS is None:
+        _SLOTS = threading.BoundedSemaphore(max(1, int(os.environ.get("SITE_WORKERS", "2") or 2)))
+    return _SLOTS
+
+
+def busy(site_id: str) -> bool:
+    with _LOCK:
+        t = _RUNNING.get(site_id)
+        return bool(t is not None and t.is_alive())
+
+
+def _after_job(site_id: str) -> None:
+    """v0.223 a change she asked while the build ran: started only AFTER this job's thread is gone (before, the
+    queued change was started from inside the running thread, the 'already busy' check skipped it and the site sat
+    in 'building' forever)."""
+    try:
+        r = _load(site_id)
+    except SiteError:
+        return
+    q = _j(r.queued, [])
+    if not q or r.status in ("building", "checking") or r.stop:
+        return
+    _save(site_id, queued=[])
+    try:
+        change(r.tenant_id, site_id, " ".join(q), r.conv)
+    except Exception as e:
+        log.exception("queued change failed")
+        r = _save(site_id, error=_tidy(f"Queue wala badlav nahi ho paya: {e}", 300))
+        _emit(r, push=True)
+
+
+def _start(site_id: str, job: str, **kw) -> bool:
+    """Start a looks / build job. False = this site already has a job running (the caller queues or says so)."""
     fn = {"looks": make_looks, "build": run_build}[job]
     if _inline():
         fn(site_id, **kw)
-        return
+        _after_job(site_id)
+        return True
     with _LOCK:
         t = _RUNNING.get(site_id)
         if t is not None and t.is_alive():
             log.info("site %s already busy", site_id)
-            return
+            return False
 
     def go():
         try:
-            fn(site_id, **kw)
+            with _slots():
+                fn(site_id, **kw)
         finally:
             with _LOCK:
                 _RUNNING.pop(site_id, None)
+        _after_job(site_id)
     th = threading.Thread(target=go, name=f"site-{site_id}", daemon=True)
     with _LOCK:
         _RUNNING[site_id] = th
     th.start()
+    return True
+
+
+STALE_S = 30 * 60
+_BOOT = time.time()
+
+
+def recover_stuck(now_ts: float | None = None) -> int:
+    """v0.223 a build / looks job that died with the process (pm2 restart, crash): its site was left in 'building' /
+    'checking' / generating looks with no thread behind it - nothing could ever move it again. A job is stuck when no
+    thread of this process runs it and its row was last touched before this process started, or 30 minutes ago.
+    Restarted ONCE by itself; a second death = 'failed' with a plain line (her 'Phir se chalao' / resume works)."""
+    t = now_ts or time.time()
+    out = 0
+    with session() as s:
+        rows = s.scalars(select(Site).where(Site.status.in_(("building", "checking", "looks")))).all()
+        for r in rows:
+            s.expunge(r)
+    for r in rows:
+        if r.status == "looks" and _j(r.looks, []):
+            continue                                  # 3 looks ready: waiting for her choice, not a job
+        if busy(r.id):
+            continue
+        upd = r.updated_at.replace(tzinfo=r.updated_at.tzinfo or timezone.utc).timestamp() if r.updated_at else 0
+        if upd >= _BOOT and t - upd < STALE_S:
+            continue
+        job = "looks" if r.status == "looks" or not _j(r.look, {}).get("tokens") else "build"
+        out += 1
+        if (r.recovered or 0) < 1 and not r.stop:
+            _save(r.id, recovered=(r.recovered or 0) + 1, error="")
+            log.info("site %s stuck in %s: restarting %s", r.id, r.status, job)
+            _start(r.id, job)
+        elif r.stop:
+            r = _save(r.id, status="stopped")
+            _emit(r)
+        else:
+            r = _save(r.id, status="failed", error="Server ruk gaya tha, kaam beech mein ruk gaya. 'Phir se chalao' dabaiye.")
+            _work(r, "error", "Kaam beech mein ruk gaya", r.error)
+            _emit(r, push=True)
+    return out
 
 
 def _load(site_id: str) -> Site:
@@ -808,10 +951,7 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
     _work(r, "done", "Website taiyaar", f"v{ver} · speed {scores.get('performance', '-')} · access {scores.get('accessibility', '-')}")
     _emit(r, push=True)
     _keep_versions(r, 20)
-    q = _j(_load(r.id).queued, [])
-    if q:
-        _save(r.id, queued=[])
-        change(r.tenant_id, r.id, " ".join(q), r.conv)
+    _save(r.id, recovered=0)       # v0.223 a finished build earns a fresh auto-restart; queued changes run in _after_job
 
 
 def _fixable(report: dict[str, Any]) -> dict[str, list[str]]:
@@ -845,7 +985,7 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
         raise SiteError(bad)
     with session() as s:
         r = _find(s, tenant, ref)
-        if r.status in ("building", "checking"):
+        if r.status in ("building", "checking") or busy(r.id):
             q = _j(r.queued, [])
             q.append(instruction)
             r.queued = _jd(q[-10:])
@@ -920,7 +1060,9 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
                     sec["html"] = sec["html"].replace(old_d, new_d)
                     f.write_text(json.dumps(sec))
     _save(r.id, plan=plan, look=look, facts=facts, conv=conv or r.conv, status="building")
-    _start(r.id, "build", only=only, note=_tidy(res.get("say") or instruction, 200), extra=extra)
+    if not _start(r.id, "build", only=only, note=_tidy(res.get("say") or instruction, 200), extra=extra):
+        q = _j(_load(r.id).queued, [])     # v0.223 a job slipped in first: queue it instead of losing it
+        _save(r.id, queued=(q + [instruction])[-10:])
     r = _load(r.id)
     return {**view(r, False), "say": res.get("say") or "Badal raha hoon."}
 
@@ -942,6 +1084,8 @@ def resume(tenant: str, ref: str) -> dict[str, Any]:
         r = _find(s, tenant, ref)
         if r.status not in ("stopped", "failed"):
             raise SiteError(f"Website abhi '{r.status}' hai.")
+        if busy(r.id):
+            raise SiteError("Pichla kaam abhi ruk raha hai; ek minute baad 'Phir se chalao' dabaiye.")
         r.stop, r.error = False, ""
         has_look = bool(_j(r.look, {}).get("tokens"))
         s.flush()
@@ -1007,11 +1151,25 @@ def delete(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         r = _find(s, tenant, ref)
         sid, name = r.id, r.name
+    if busy(sid):
+        raise SiteError("Website abhi ban rahi hai; pehle 'Rokiye', phir delete kijiye.")
+    # v0.223 a deleted site must not stay live: its addresses, served files and Cloudflare hostnames go first
+    # (before, only the Hoola records went and the site kept answering on the internet, unmanageable)
+    took = ""
+    try:
+        from . import hosting as H
+        if H.has_hosts(sid):
+            took = " " + H.take_down(tenant, sid)["say"]
+    except Exception:
+        log.exception("take down before delete failed")
+        raise SiteError("Website ko internet se hatane mein dikkat aayi; abhi delete nahi ki. Thodi der baad dobara.")
+    with session() as s:
+        r = s.get(Site, sid)
         s.delete(r)
         for v in s.scalars(select(SiteVersion).where(SiteVersion.site_id == sid)).all():
             s.delete(v)
     shutil.rmtree(B.site_dir(tenant, sid), ignore_errors=True)
-    return {"ok": True, "say": f"{name or 'Website'} hata di."}
+    return {"ok": True, "say": f"{name or 'Website'} hata di.{took}"}
 
 
 def export(tenant: str, ref: str) -> dict[str, Any]:
@@ -1100,6 +1258,9 @@ def form_post(site_id: str, data: dict[str, Any], ip: str = "") -> dict[str, Any
         return {"ok": True}
     iph = hashlib.sha256(f"{ip}|{site_id}".encode()).hexdigest()[:24]
     t = time.time()
+    if len(_RATE) > 5000:                 # v0.223 old entries go (the dict grew without end)
+        for key in [k for k, v in _RATE.items() if not v or t - v[-1] >= 600]:
+            _RATE.pop(key, None)
     hits = [x for x in _RATE.get(iph, []) if t - x < 600]
     if len(hits) >= 5:
         raise SiteError("Bahut zyada baar bheja; thodi der baad.")

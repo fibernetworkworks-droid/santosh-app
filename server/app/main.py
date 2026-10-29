@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.222.0"   # v0.222.0 GOAL HERS - a long job SHE asked for keeps her authority in its background rounds (owner: "FIX 1 AND 2 THEN DEPLOY V0.222"): every round ran as actor "routine", so (1) with Employee mode on the gate held her own job's steps for approval at trust 'seekh' and (2) the monthly AI limit refused the rounds as background work. The goal now remembers who asked (origin); rounds of her job run as actor "goal" = her own authority at the gate and her own chat lane in the budget; a routine's job stays routine. Previous: v0.221.0 KAAM KHAATA - long jobs keep their progress and keep going (owner: "NOT ABLE TO PERFORM COMPLEX LONG TASK AND FORGOT THE WORK IN BETWEEN"). Root causes found on v0.220 and reproduced: (1) one message after a long job yaad squeezed it to its FIRST 13 steps, values cut at 60 chars, truncated results unreadable - the newest progress vanished; (2) the GLM / OmniRoute brain's finish_reason was never read: cut answers counted as finished and half-written tool calls ran with empty inputs; (3) without a kaam_plan the turn died at step 24 and that line was never saved; (4) a goal paused on her tap never restarted; (5) a finished job's result was never saved into history. Fixes: rich compress (every step of the newest 3 work exchanges + an open goal's turns, newest kept first, ids / links whole, truncated JSON salvaged), cut answers = max_tokens with more room, one-time move to long-job caps + deadline, the step-cap line saved, goal resume sweep (waiting time and resumes never count against it; rounds 3->6, working minutes 60->180), wake results saved (display None). Tests: test_v0221_kaam_khaata.py.
+APP_VERSION = "0.223.0"   # v0.223.0 WEBSITE PHASE 1 - the Website Sahayak bugs found in the web-development audit (owner: "FIRST CHECK HOW HOOLA DO THIS FIND FLAWS" -> "START PHASE 1"): a change asked during a build ran from inside the build thread and was skipped, leaving the site stuck in "building"; a restart mid-build left it stuck too; builds had no limit; a deleted site stayed live on the internet; her answers never filled the blanks already written (launch stayed blocked); the uptime check counted as ~288 visits a day; non-GET requests on a site address reached Hoola API; re-joining a domain left old Cloudflare hostnames; site numbers repeated after a delete. Previous: v0.222.0 v0.222.0 GOAL HERS - a long job SHE asked for keeps her authority in its background rounds (owner: "FIX 1 AND 2 THEN DEPLOY V0.222"): every round ran as actor "routine", so (1) with Employee mode on the gate held her own job's steps for approval at trust 'seekh' and (2) the monthly AI limit refused the rounds as background work. The goal now remembers who asked (origin); rounds of her job run as actor "goal" = her own authority at the gate and her own chat lane in the budget; a routine's job stays routine. Previous: v0.221.0 KAAM KHAATA - long jobs keep their progress and keep going (owner: "NOT ABLE TO PERFORM COMPLEX LONG TASK AND FORGOT THE WORK IN BETWEEN"). Root causes found on v0.220 and reproduced: (1) one message after a long job yaad squeezed it to its FIRST 13 steps, values cut at 60 chars, truncated results unreadable - the newest progress vanished; (2) the GLM / OmniRoute brain's finish_reason was never read: cut answers counted as finished and half-written tool calls ran with empty inputs; (3) without a kaam_plan the turn died at step 24 and that line was never saved; (4) a goal paused on her tap never restarted; (5) a finished job's result was never saved into history. Fixes: rich compress (every step of the newest 3 work exchanges + an open goal's turns, newest kept first, ids / links whole, truncated JSON salvaged), cut answers = max_tokens with more room, one-time move to long-job caps + deadline, the step-cap line saved, goal resume sweep (waiting time and resumes never count against it; rounds 3->6, working minutes 60->180), wake results saved (display None). Tests: test_v0221_kaam_khaata.py.
 
 
 def _quiet_http_logs() -> None:
@@ -110,15 +110,21 @@ app = FastAPI(title="Santosh Core", version=APP_VERSION, lifespan=lifespan)
 async def _hosted_sites(request: Request, call_next):
     """v0.122 Websites Hoola launched are served from this server by their hostname (free Hoola address or her domain)."""
     host = (request.headers.get("host") or "").split(":")[0].lower()
-    if host and "." in host and not host.startswith(("127.", "localhost")) and request.method in ("GET", "HEAD"):
+    if host and "." in host and not host.startswith(("127.", "localhost")):
         from .site import hosting as _hosting
         hm = _hosting.host_map()
         if host in hm:
-            res = await asyncio.to_thread(_hosting.serve, host, request.url.path)
-            if res is not None:
-                code, body, ctype, headers = res
-                return Response(content=b"" if request.method == "HEAD" else body, status_code=code, media_type=ctype,
-                                headers=headers)
+            if request.method in ("GET", "HEAD"):
+                res = await asyncio.to_thread(_hosting.serve, host, request.url.path,
+                                              request.headers.get("user-agent") or "")
+                if res is not None:
+                    code, body, ctype, headers = res
+                    return Response(content=b"" if request.method == "HEAD" else body, status_code=code, media_type=ctype,
+                                    headers=headers)
+            elif not request.url.path.startswith("/api/site-forms/"):
+                # v0.223 a site's address never reaches Hoola's API: only its own enquiry form may POST here (before,
+                # every non-GET fell through, e.g. POST https://her-domain/api/console/login answered)
+                return Response(content=b"not found", status_code=404, media_type="text/plain")
     return await call_next(request)
 
 
