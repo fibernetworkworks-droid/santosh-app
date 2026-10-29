@@ -102,7 +102,7 @@ async function open(pid) {
 async function pick(chat) {
   if (!LIST.length) await load();
   const choices = LIST.map((p, i) => `${i + 1}. ${p.emoji || '📁'} ${p.name}`).join('\n');
-  const inFolder = chat.project_id ? `\n0. Session se bahar nikalo` : '';
+  const inFolder = chat.project_id ? `\n0. Remove from session` : '';
   const ans = prompt(`Move to which session? Type its number:\n${choices}${inFolder}`, '');
   if (ans === null || ans.trim() === '') return;
   const n = parseInt(ans, 10);

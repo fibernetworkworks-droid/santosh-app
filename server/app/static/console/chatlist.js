@@ -47,7 +47,7 @@ async function load() {
   LIST = list;
   if (pj) SECS = pj;
   for (const c of LIST) if (c.busy) BUSY.add(c.id);
-  draw();
+  draw(); ctx.loaded?.();                          // v0.222 the chat header follows renames / moves
   return LIST;
 }
 function item(c, drag) {
@@ -141,10 +141,10 @@ function openMenu(id, btn) {
   closeMenu();
   const c = LIST.find(x => x.id === id); if (!c) return;
   const m = document.createElement('div'); m.className = 'rmenu gl'; m.setAttribute('role', 'menu');
-  m.innerHTML = `<button role="menuitem" data-a="rename">✎ Naam badlo</button>
+  m.innerHTML = `<button role="menuitem" data-a="rename">✎ Rename</button>
     ${c.archived ? '' : `<button role="menuitem" data-a="pin">${c.pinned ? '📌 Unpin' : '📌 Pin'}</button>`}
     ${ctx.pickProject ? `<button role="menuitem" data-a="folder">🗂 ${c.project_id ? 'Change / leave session' : 'Move to session'}</button>` : ''}
-    <button role="menuitem" data-a="archive">${c.archived ? '↩ Archive se wapas' : '🗄 Archive'}</button>
+    <button role="menuitem" data-a="archive">${c.archived ? '↩ Restore from archive' : '🗄 Archive'}</button>
     <button role="menuitem" data-a="delete" class="bad">🗑 Delete</button>`;
   document.body.appendChild(m);
   const r = btn.getBoundingClientRect();
@@ -169,7 +169,7 @@ async function act(c, a) {
     if (a === 'archive') { await api('PATCH', `/api/conversations/${encodeURIComponent(c.id)}`, {archived: !c.archived}); toast(c.archived ? 'Chat restored.' : 'Chat archived.'); }
     if (a === 'delete') {
       if (!confirm(`Delete "${c.title}"? It leaves the chat list, search and its link.`)) return;
-      await api('DELETE', `/api/conversations/${encodeURIComponent(c.id)}`); toast('Chat delete ho gayi.');
+      await api('DELETE', `/api/conversations/${encodeURIComponent(c.id)}`); toast('Chat deleted.');
       if (c.id === ctx.current()) ctx.newChat();
     }
     load();
@@ -196,7 +196,7 @@ let SBOX = null, ST = 0;
 function openSearch() {
   if (SBOX) { SBOX.querySelector('input').focus(); return; }
   const w = document.createElement('div'); w.className = 'sbg'; w.setAttribute('role', 'dialog'); w.setAttribute('aria-modal', 'true'); w.setAttribute('aria-label', 'Search chats');
-  w.innerHTML = `<div class="sbox gl"><label class="sin"><span aria-hidden="true">⌕</span><input placeholder="Search all chats…" aria-label="Search" autocomplete="off"><kbd>Esc</kbd></label><div class="sres" role="listbox"><div class="empty">Kam se kam 2 akshar likhiye.</div></div></div>`;
+  w.innerHTML = `<div class="sbox gl"><label class="sin"><span aria-hidden="true">⌕</span><input placeholder="Search all chats…" aria-label="Search" autocomplete="off"><kbd>Esc</kbd></label><div class="sres" role="listbox"><div class="empty">Type at least 2 letters.</div></div></div>`;
   document.body.appendChild(w); SBOX = w;
   const inp = w.querySelector('input'), res = w.querySelector('.sres'); inp.focus();
   const close = () => { w.remove(); SBOX = null; };
@@ -211,7 +211,7 @@ function openSearch() {
   res.addEventListener('click', e => { const b = e.target.closest('.sr'); if (!b) return; close(); UNREAD.delete(b.dataset.c); ctx.jump(b.dataset.c, +b.dataset.e || 0); });
 }
 async function find(q, res) {
-  q = q.trim(); if (q.length < 2) { res.innerHTML = '<div class="empty">Kam se kam 2 akshar likhiye.</div>'; return; }
+  q = q.trim(); if (q.length < 2) { res.innerHTML = '<div class="empty">Type at least 2 letters.</div>'; return; }
   res.innerHTML = '<div class="empty"><span class="spin"></span> Searching…</div>';
   const me = ++FIND_SEQ;                              // v0.178 only the newest query may paint
   let r = []; try { r = (await api('GET', `/api/conversations/search?q=${encodeURIComponent(q)}`)).results || []; } catch (e) { if (me === FIND_SEQ) res.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
@@ -221,7 +221,7 @@ async function find(q, res) {
   const who = h => h.role === 'user' ? 'Aap' : h.role === 'title' ? 'Naam' : (ctx.avatar ? ctx.avatar() : 'Hoola');
   const chip = cid => { const p = secOf(LIST.find(x => x.id === cid) || {}); return p ? `<i class="srsec" aria-hidden="true">📁 ${esc(p.name)}</i>` : ''; };   // v0.193
   res.innerHTML = r.length
-    ? `<div class="scount">${r.length} jagah mila · Enter se khologiye</div>` + r.map(h => `<button type="button" class="sr" role="option" data-c="${esc(h.conversation_id)}" data-e="${h.event_id || 0}">
+    ? `<div class="scount">${r.length} matches · press Enter to open</div>` + r.map(h => `<button type="button" class="sr" role="option" data-c="${esc(h.conversation_id)}" data-e="${h.event_id || 0}">
       <b><i class="rwho">${esc(who(h))}</i>${esc(h.title || 'Chat')}${chip(h.conversation_id)}</b><span>${mark(h.snippet || '')}</span>
       <time>${esc(new Date(h.at).toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}))}</time></button>`).join('')
     : '<div class="empty">No results found.</div>';
@@ -236,5 +236,6 @@ return {
   unread(id) { if (id !== ctx.current() && !UNREAD.has(id)) { UNREAD.add(id); draw(); } },
   isBusy: id => BUSY.has(id),
   find: id => LIST.find(x => x.id === id),
+  menu: (id, btn) => openMenu(id, btn),              // v0.222 R3 the chat header's ⋯ opens the same menu
 };
 };

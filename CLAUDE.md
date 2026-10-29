@@ -8789,3 +8789,23 @@ pins ->0.220.0 in 32 suites); Mera PC freeze respected; desktop untouched 1.4.0.
 - Tests: NEW `test_v0222_console_r2.py` (6); `test_v162_console_e2e` follows "Pinned". Ritual: APP_VERSION 0.222.0, pubspec
   0.222.0+257, console ?v=0.222.0 x11, pins →0.222.0 in 34 suites. Console-only + one additive server key; old APKs,
   desktop and Mera PC untouched.
+
+## v0.223.0 CONSOLE R3 — web console redesign, phase 3: the conversation (owner: "START R3")
+- Chat header (`#chead`, inside the chat view above the thread; hidden on the home): title from the chat list, a session
+  tag, export (`#cShare` → its own Markdown / JSON menu; `exportChat(fmt)` serves both menus) and `#cMore` = the chat's
+  own Rename / Pin / Session / Archive / Delete menu (`HoolaChats.menu(id, btn)`; chatlist `ctx.loaded` keeps the header
+  in step with renames and moves). On ≤1100 px it leaves room for the drawer button.
+- Looks (canvas Chat board, brand tokens unchanged): her bubble in the violet gradient; replies with a 30 px avatar in a
+  saffron ring, 15.5 px / 1.7 text, 760 px column; approval cards with a saffron wash, facts as a 2-column grid
+  (`.kvg`, bazar disclosures) and the slider + Mana on ONE row (`.decrow`; the slider is a pill with a gradient knob and
+  its label no longer hides under the knob); the working line's avatar in a turning conic ring; a red Stop; the dock
+  composer says "Reply to <avatar>… (/ for commands)"; the phone composer stays on one row.
+- English chat chrome: N steps · Xs, "<avatar> thought for", Good / Bad reply, Edit message, Send / Open / Declined /
+  Sent / Learned, Who / Why / What, long-job card heads, live-panel places (Your PC, Hoola’s browser, Home devices),
+  find bar labels, slash commands /new /search /export /stop /today /tools /call /account, chat menu (Rename, Restore
+  from archive, Chat deleted.), tab bar Tools / Account. Haan / Mana stay.
+- Kept on purpose: tool steps and goal cards stay quiet in the console (the developer's HoolaProgressPolicy +
+  tests/web/progress.test.cjs) — the canvas's folded "6 steps" row is not brought back.
+- Fix: a /live answer without a turn no longer draws an empty reply row.
+- Tests: NEW `test_v0223_console_r3.py` (5). Ritual: APP_VERSION 0.223.0, pubspec 0.223.0+258, console ?v=0.223.0 x11, pins
+  →0.223.0. Console-only; old APKs, desktop and Mera PC untouched.

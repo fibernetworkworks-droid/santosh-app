@@ -1107,3 +1107,66 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
  #app .landing .box .row{flex-wrap:nowrap}
 }
 @media(max-width:560px){#app .qchips{flex-wrap:nowrap}}
+
+/* ================================================================================================
+   v0.223 R3: the conversation (approved canvas, Chat board). Header with title + session + export + menu;
+   her bubble in the violet gradient, Hoola's reply with a ringed avatar and reading-size text; approval
+   card with a soft saffron wash, facts in a 2-column grid, slide + Mana on one row; a working line with a
+   turning ring; a red Stop. Tool steps / goal cards stay quiet here (HoolaProgressPolicy, the dev's rule).
+   ================================================================================================ */
+#app #v-chat{display:flex;flex-direction:column}
+#app .chead{display:flex;align-items:center;gap:10px;padding:12px 22px;border-bottom:1px solid rgba(244,242,255,.06);background:rgba(11,10,26,.35);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);flex:none;position:relative;z-index:5;min-height:58px}
+#app .chead h1{font-family:var(--fd);font-size:15.5px;font-weight:600;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#app .ctag{flex:none;height:24px;padding:0 9px;border-radius:999px;background:rgba(124,92,255,.18);color:#C9BDFF;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#app .cacts{margin-left:auto;display:inline-flex;gap:4px;position:relative;flex:none}
+#app .cacts .ib{width:36px;height:36px;border-radius:10px}
+#app .cacts .ib svg{width:17px;height:17px}
+#app .cacts .xmenu{position:absolute;top:calc(100% + 6px);right:0;left:auto;bottom:auto;min-width:170px;z-index:40}
+#app .chead~.thread{padding-top:0}
+#app .col{max-width:760px;gap:22px;padding-top:28px}
+#app .mu{background:linear-gradient(135deg,rgba(124,92,255,.34),rgba(192,85,245,.2));border:1px solid rgba(180,150,255,.22);border-radius:20px 20px 6px 20px;max-width:min(78%,600px)}
+#app .mu .mut{font-size:15px;line-height:1.55}
+#app .mh{gap:14px}
+#app .mh>.av{width:30px;height:30px;margin-top:0;box-shadow:0 0 0 2px rgba(255,177,92,.45)}
+#app .mh .bd{flex:1;gap:12px}
+#app .mh .txt{font-size:15.5px;line-height:1.7;color:#EDEAFB}
+#app .racts{gap:2px}
+#app .ra{height:30px;padding:0 10px;border-radius:9px;font-size:12px;font-weight:600}
+/* approval card */
+#app .cd.ask{background:linear-gradient(180deg,rgba(255,177,92,.1),rgba(244,242,255,.04));border:1px solid rgba(255,177,92,.38);border-radius:20px;padding:16px;gap:12px;box-shadow:0 16px 40px rgba(6,4,20,.4)}
+#app .cd .kvg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;font-size:13px}
+#app .cd .kvg span{display:flex;flex-direction:column;gap:2px;color:var(--dim);min-width:0}
+#app .cd .kvg b{color:var(--ink);font-size:13.5px;overflow-wrap:anywhere}
+#app .decrow{display:flex;gap:10px;align-items:center}
+#app .decrow .slidec{flex:1;min-width:0}
+#app .decrow .acts.dec{margin-top:0;flex:none}
+#app .decrow .acts.dec .btn{height:48px;padding:0 18px;border-radius:999px;background:none;border:1px solid rgba(244,242,255,.14);color:var(--lit);font-weight:700}
+#app .slidec{height:48px;border-radius:999px;background:rgba(244,242,255,.07);border:1px solid rgba(244,242,255,.12);color:var(--lit);justify-content:center}
+#app .slidec .fill{background:linear-gradient(90deg,rgba(255,177,92,.22),rgba(192,85,245,.18));border-radius:999px}
+#app .slidec span:not(.fill){margin:0;padding-left:44px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#app .slidec .knob{width:40px;height:40px;border-radius:50%;top:3px;background:linear-gradient(135deg,#FFD9A8,#FF9A3C 50%,#C055F5);color:#1B1030;box-shadow:0 4px 14px rgba(255,154,60,.45)}
+#app .slidec:focus-visible{outline:2px solid rgba(255,177,92,.7);outline-offset:3px}
+/* working line */
+#app .simple-progress{gap:14px}
+#app .progress-avatar{width:34px;height:34px}
+#app .progress-avatar:before{inset:-2px;background:conic-gradient(#FFD9A8,#FF9A3C,#C055F5,#7C5CFF,#FFD9A8);animation-duration:2.4s}
+#app .progress-avatar:after{inset:0;border:2px solid var(--bg1)}
+#app .progress-avatar img{width:30px;height:30px;margin:2px}
+#app .progress-label{font-size:14px;color:var(--soft);font-weight:600}
+/* dock composer */
+#app .dock .box{border-radius:22px;padding:12px 12px 10px;background:rgba(28,21,47,.9);box-shadow:0 18px 44px rgba(6,4,20,.5)}
+#app .dock .box textarea{min-height:44px;font-size:15px}
+#app #composer .stopb{height:36px;padding:0 14px;border-radius:11px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.1);color:#FCA5A5;font-size:12.5px;font-weight:700}
+@media(max-width:1100px){#app .chead{padding-left:64px}}
+@media(max-width:820px){
+ #app .chead{padding:10px 14px 10px 64px;min-height:56px}
+ #app .ctag{display:none}
+ #app .mu{max-width:86%}
+ #app .cd .kvg{grid-template-columns:1fr}
+}
+@media(max-width:1100px){#app .chead~.thread{padding-top:0}}
+@media(max-width:560px){
+ #app .box .row{flex-wrap:nowrap;gap:4px}
+ #app .box .row .ib{width:36px;height:36px}
+ #app #composer .stopb{padding:0 10px}
+}
