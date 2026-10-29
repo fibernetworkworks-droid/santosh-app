@@ -275,7 +275,7 @@ def _shrink(obj: Any, depth: int = 0) -> Any:
 
 
 async def call(tenant: str, url: str, params: dict[str, Any] | None = None, api_id: str = "",
-               headers: dict[str, str] | None = None) -> dict[str, Any]:
+               headers: dict[str, str] | None = None, full: bool = False) -> dict[str, Any]:
     from .. import web
     url = str(url or "").strip()
     if not url.lower().startswith("https://"):
@@ -339,6 +339,8 @@ async def call(tenant: str, url: str, params: dict[str, Any] | None = None, api_
             data = json.loads(text)
         except ValueError:
             data = None
+    if data is not None and full:      # v0.238 data_fetch keeps the whole reply on the server (never to the model)
+        out["_data"] = data
     if data is not None:
         shown = json.dumps(_shrink(data), ensure_ascii=False)
         out["json"] = json.loads(shown) if len(shown) <= MAX_OUT_CHARS else None

@@ -50,6 +50,7 @@ CORE_FAMILIES = frozenset({
     "id",         # Pehchaan Locker
     "usage",      # ai_kharcha
     "device",     # phone_health
+    "data",       # v0.238 data_fetch / data_read: big data stays in a server file (never escape to the cloud PC)
     "team",       # v0.193 deploy_agents / agent_status / session_log - the agent team is a first-class tool now
 })
 

@@ -41,7 +41,17 @@ DOCSTUDIO_TOOLS = [
          "subject": {"type": "string", "description": "one-line subtitle / purpose"},
          "filename": {"type": "string", "description": "output file name"},
          "cover": {"type": "boolean", "description": "cover page (auto by size)"},
-         "toc": {"type": "boolean", "description": "table of contents (auto when 4+ sections)"}},
+         "toc": {"type": "boolean", "description": "table of contents (auto when 4+ sections)"},
+         "data": {"type": "string", "description": "v0.238 a dataset id from data_fetch: the rows are laid out BY CODE "
+                  "(ranking table + one card per row with its data_note text) - no need to write them yourself; "
+                  "'[[data]]' in text marks where they go (else at the end)"},
+         "data_fields": {"type": "array", "items": {"type": "string"},
+                         "description": "columns to show (default: the first 6); the first is each card's title"},
+         "data_layout": {"type": "string", "enum": ["both", "table", "cards"], "description": "default both"},
+         "data_heading": {"type": "string", "description": "heading above the data part"},
+         "part": {"type": "string", "enum": ["build", "add"],
+                  "description": "add = keep this text for later (long documents written over several calls, same "
+                  "title); build (default) = the saved parts + this text become the file"}},
          "required": ["kind", "title"]}},
     {"name": "doc_preview",
      "description": (
@@ -55,11 +65,86 @@ DOCSTUDIO_LABELS = {"doc_studio": "Design ke saath file bana raha hoon",
                     "doc_preview": "File andar se dekh raha hoon"}
 
 
+def _draft_path(ctx: Ctx, title: str) -> Path:
+    import hashlib
+    import re as _re
+    from ..datasets import _root
+    d = _root(ctx.tenant_id) / "_drafts"
+    d.mkdir(parents=True, exist_ok=True)
+    slug = _re.sub(r"[^a-z0-9]+", "-", str(title or "doc").lower())[:40].strip("-") or "doc"
+    key = hashlib.sha256(f"{ctx.conversation_id}|{slug}".encode()).hexdigest()[:12]
+    return d / f"{slug}-{key}.md"
+
+
+def _cell(v: Any) -> str:
+    if isinstance(v, list):
+        v = ", ".join(map(str, v[:8]))
+    return str("" if v is None else v).replace("|", "/").replace("\n", " ").strip()
+
+
+def data_markdown(doc: dict, fields: list[str] | None = None, layout: str = "both", heading: str = "") -> str:
+    """v0.238 rows of a dataset laid out by code: a ranking table + one card per row (its 'note' column = the text
+    Hoola wrote for it with data_note). Any length - the model never has to fit 100 entries in one reply."""
+    rows = list(doc.get("rows") or [])
+    cols = [c for c in (fields or []) if c in (doc.get("columns") or [])] or \
+        [c for c in (doc.get("columns") or []) if c != "note"][:6]
+    out: list[str] = []
+    if heading:
+        out.append(f"# {heading}")
+    if layout in ("both", "table") and rows:
+        tcols = cols[:5]
+        out.append("| # | " + " | ".join(tcols) + " |")
+        for i, r in enumerate(rows, 1):
+            out.append(f"| {i} | " + " | ".join(_cell(r.get(c))[:80] for c in tcols) + " |")
+        out.append("")
+    if layout in ("both", "cards"):
+        for i, r in enumerate(rows, 1):
+            out.append(f"### {i}. {_cell(r.get(cols[0])) if cols else i}")
+            for c in cols[1:]:
+                val = _cell(r.get(c))
+                if val:
+                    out.append(f"- **{c}:** {val[:400]}")
+            note = _cell(r.get("note"))
+            if note:
+                out.append(note)
+            out.append("")
+    src = doc.get("source")
+    if src:
+        import time as _t
+        out.append(f"> Data: {src} - liya gaya {_t.strftime('%d %b %Y', _t.localtime(doc.get('saved_at') or 0))}.")
+    return "\n".join(out)
+
+
 async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, charts=None,
-                     filename="", style="auto", cover="auto", toc="auto", subject="", **_):
+                     filename="", style="auto", cover="auto", toc="auto", subject="", data="",
+                     data_fields=None, data_layout="both", data_heading="", part="build", **_):
     kind = str(kind or "").lower().strip()
     if kind not in ("pdf", "docx", "xlsx", "pptx"):
         raise ToolError("kind: pdf | docx | xlsx | pptx")
+    # v0.238 long documents over several calls: 'add' keeps this part on the server, 'build' joins every part
+    dp = _draft_path(ctx, str(title))
+    if str(part or "build") == "add":
+        old = dp.read_text() if dp.exists() else ""
+        dp.write_text((old + "\n\n" + str(text or "")).strip())
+        return {"part": "saved", "draft_chars": len(dp.read_text()),
+                "note": "Part saved. Keep adding with part=add (same title); finish with part=build."}
+    if dp.exists() and kind in ("pdf", "docx"):
+        text = (dp.read_text() + "\n\n" + str(text or "")).strip()
+    if data:
+        from .. import datasets as D
+        try:
+            dsd = await asyncio.to_thread(D.load, ctx.tenant_id, str(data))
+        except D.DataError as e:
+            raise ToolError(str(e))
+        if kind == "xlsx":
+            cols = [c for c in (data_fields or []) if c in dsd["columns"]] or dsd["columns"]
+            sheets = dict(sheets or {})
+            sheets.setdefault((str(data_heading) or "Data")[:31], [cols] + [[_cell(r.get(c)) for c in cols]
+                                                                            for r in dsd["rows"]])
+        elif kind in ("pdf", "docx"):
+            md = data_markdown(dsd, data_fields, str(data_layout or "both"), str(data_heading or ""))
+            text = str(text or "")
+            text = text.replace("[[data]]", md) if "[[data]]" in text else (text + "\n\n" + md).strip()
     from ..pii import describe, find
     blob = f"{title}\n{text}\n{sheets}\n{slides}\n{charts}"
     bad = [k for k in find(blob) if k in ("otp_pin", "password", "cvv")]
@@ -87,6 +172,8 @@ async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, c
     except (ValueError, TypeError) as e:
         raise ToolError(str(e))
     data = res.pop("data", b"")
+    if dp.exists():
+        dp.unlink(missing_ok=True)       # v0.238 the parts are now in the file
     view = await asyncio.to_thread(_deliver, ctx, _safe(str(filename or title), "." + kind), data, "docstudio")
     prev = await asyncio.to_thread(preview.preview, kind, data, res)
     prev.pop("images", None)
