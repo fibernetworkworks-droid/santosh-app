@@ -605,6 +605,16 @@ function decisionRow(el, {yes, no, yesLabel = 'Slide for Haan', noLabel = 'Mana'
 }
 const fingerprintMsg = 'This card moves money: Haan needs your phone’s fingerprint. Open this card in the Hoola app to approve.';
 
+// v0.228 the four-part final report of a long job: what was done / what was made / what is left / her part
+function goalReport(r) {
+  if (!r || typeof r !== 'object') return '';
+  const part = (h, xs) => (Array.isArray(xs) && xs.length) ? `<div class="grep"><small>${h}</small>` +
+    xs.slice(0, 10).map(x => { const u = safeLink(x); return `<div>\u2022 ${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(x)}</a>` : esc(x)}</div>`; }).join('') + `</div>` : '';
+  return `<div class="greport">` + (r.summary ? `<div class="note">${esc(r.summary)}</div>` : '') +
+    part('✅ What was done', r.hua) + part('📎 What was made', r.bana) +
+    part('⏳ What is left', r.baaki) + (r.aapka ? part('👉 Your part', [r.aapka]) : '') + `</div>`;
+}
+
 function renderCard(kind, p, at, live) {
   if(PROGRESS_POLICY.quiet(kind,p)){if(live)simpleProgress(kind,p);return;}
   if (B && B.kinds.has(kind)) { const el = cardShell(kind, p); B.card(kind, p, el, !!live); scrollDown(); return; }
@@ -625,7 +635,8 @@ function renderCard(kind, p, at, live) {
       (total ? `<div class="pbar"><i style="width:${Math.max(0, Math.min(100, p.pct ?? Math.round(100 * done / total)))}%"></i></div>` : '') +
       steps.slice(0, 15).map(x => `<div class="gstep ${esc(x.state || 'pending')}"><span>${ico[x.state] || '\u2022'}</span> ${esc(x.text || '')}` +
         (x.note ? ` <small>(${esc(x.note)})</small>` : '') + `</div>`).join('') +
-      (p.reason && st !== 'working' ? `<div class="note">${esc(p.reason)}</div>` : '') +
+      (p.reason && st !== 'working' && !p.report ? `<div class="note">${esc(p.reason)}</div>` : '') +
+      goalReport(p.report) +
       (st === 'blocked' && p.hold === 'limit' ? `<div class="row" style="margin-top:8px"><button class="btn" type="button" data-goal-go>Continue</button></div>` : '') + `</div>`;
     const go = el.querySelector('[data-goal-go]');   // v0.223 the budget ran out: the job ASKS, her tap carries it on
     if (go) go.onclick = async () => {
@@ -745,6 +756,7 @@ function stream(conv) {
     onState: setConn, onAuth: () => logout(true),
     onEvent: ev => {
       if (STREAM !== s || CONV !== conv) return;
+      if (ev.conv && ev.conv !== conv) return;   // v0.227.4 another chat's card never lands here
       if (ev.kind === 'resync') { setTimeout(() => openConv(conv), 0); return; }
       if (!ev.live) LAST = ev.id;
       onEvent(ev);
@@ -854,7 +866,7 @@ async function openConv(id, fresh, opts = {}) {
   col.innerHTML = '<div class="skel-chat" aria-hidden="true"><i class="skel r"></i><i class="skel l"></i><i class="skel l s"></i><i class="skel r s"></i><i class="skel l"></i></div>';
   // the chat in order from the server: messages and each card once where it happened (latest state)
   let tl = {events: [], last_event_id: 0};
-  try { tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=${fresh ? 10 : 80}&steps=1`); }
+  try { tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=${fresh ? 10 : 80}&steps=1&own=1`); }
   catch (e) { LOADING = false; col.innerHTML = ''; if (e.status === 404 && opts.fallback) return opts.fallback(); toast(e.message, true); }
   if (CONV !== id) return;
   col.innerHTML = '';
@@ -894,7 +906,7 @@ async function loadOlder() {
   if (OLDER || !HAS_MORE || !BEFORE || !CONV) return false;
   OLDER = true; const id = CONV;
   try {
-    const tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=60&before=${BEFORE}&steps=1`);
+    const tl = await api('GET', `/api/conversations/${encodeURIComponent(id)}/timeline?limit=60&before=${BEFORE}&steps=1&own=1`);
     if (CONV !== id) return false;
     const box = document.createElement('div'), saveTurn = TURN, saveLast = LAST_TURN;
     SINK = box; TURN = null;
@@ -1048,7 +1060,8 @@ $('#jrail').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key ==
 addEventListener('resize', drawRail);
 
 /* ================= one stream for all her chats (CHAT_SESSIONS; on with CONSOLE_V2) ================= */
-// kinds that belong to their own chat only (events.LOCAL_KINDS); every other card of another chat shows here too
+// kinds that belong to their own chat only (events.LOCAL_KINDS). v0.227.4 a card of another chat never lands in the open chat;
+// that chat gets the unread dot instead (Today still counts every approval)
 const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 'delta_reset', 'reply_end', 'think', 'say', 'message', 'upload',
   'reminders', 'routines', 'lists', 'email_sent', 'hoola_update', 'galla', 'mshop', 'office', 'employee', 'darzi_order',
   'phonedoc_open', 'phonedoc_check', 'device_action', 'device_action_result', 'home_device', 'bt_request', 'bazar_open',
@@ -1066,7 +1079,7 @@ function accountStream() {
       if (ev.kind === 'typing') { CH.busy(c, !!ev.payload?.on); if (!ev.payload?.on) setTimeout(() => CH.load(), 1500); }   // a new auto title
       if (c === CONV) { if (LOADING) PENDING.push(ev); else onEvent(ev); return; }
       if (ev.kind === 'message' && ev.payload?.role === 'assistant') CH.unread(c);
-      if (!ev.live && !LOCAL.has(ev.kind) && !PROGRESS_POLICY.quiet(ev.kind,ev.payload) && !LOADING && CONV) onEvent(ev);
+      if (!ev.live && !LOCAL.has(ev.kind) && !PROGRESS_POLICY.quiet(ev.kind,ev.payload)) CH.unread(c);   // v0.227.4 stays in its own chat
     }});
   ACC = s;
 }

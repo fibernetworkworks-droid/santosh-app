@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -34,7 +35,8 @@ log = logging.getLogger("santosh.goal")
 
 MAX_STEPS = 15               # kaam_plan set cap
 STATS = {"set": 0, "finished": 0, "blocked": 0, "continued": 0, "refused": 0, "stopped_by_her": 0, "paused": 0,
-         "resumed": 0, "recovered": 0, "limit_asked": 0, "limit_reopened": 0}
+         "resumed": 0, "recovered": 0, "limit_asked": 0, "limit_reopened": 0,
+         "milestones": 0, "reports": 0, "plan_early": 0}
 
 # v0.223 goals whose background round is scheduled / running in THIS process (the recovery sweep never doubles them)
 _PENDING: dict[str, int] = {}
@@ -68,6 +70,8 @@ class GoalRun(Base):
     origin: Mapped[str | None] = mapped_column(String(16), nullable=True)      # v0.222 who asked: owner | routine
     recovered: Mapped[int | None] = mapped_column(Integer, nullable=True)      # v0.223 picked up after a restart (times)
     hold: Mapped[str | None] = mapped_column(String(16), nullable=True)        # v0.223 "limit" = waiting for her "aage badho"
+    report: Mapped[str | None] = mapped_column(Text, nullable=True)            # v0.228 the four-part final report (JSON)
+    milestones: Mapped[int | None] = mapped_column(Integer, nullable=True)     # v0.228 milestone pushes sent for this job
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -82,8 +86,16 @@ def _row_view(r: GoalRun) -> dict[str, Any]:
     return {"id": r.id, "conversation_id": r.conversation_id, "goal": r.goal or "", "steps": steps,
             "status": r.status or "working",
             "reason": r.reason or "", "rounds": r.rounds or 1, "done": done, "total": len(steps),
-            "stage": stage, "pct": pct, "hold": r.hold or "",
+            "stage": stage, "pct": pct, "hold": r.hold or "", "report": _report_of(r),
             "updated_at": (_aware(r.updated_at) or now()).isoformat()}
+
+
+def _report_of(r: GoalRun) -> dict[str, Any] | None:
+    try:
+        v = json.loads(r.report) if r.report else None
+    except ValueError:
+        v = None
+    return v if isinstance(v, dict) else None
 
 
 def _aware(d: datetime | None) -> datetime | None:
@@ -98,10 +110,12 @@ def _publish(conv: str, view: dict[str, Any]) -> None:
     bus.publish(conv, "goal", {"id": view["id"], "title": view["goal"], "status": view["status"],
                                "stage": stage[:120], "pct": view["pct"], "steps": view["steps"][:15],
                                "done": view["done"], "total": view["total"], "reason": view["reason"][:200],
-                               "hold": view.get("hold", "")})   # v0.223 "limit" = the card asks "Aage badhaun?"
+                               "hold": view.get("hold", ""),   # v0.223 "limit" = the card asks "Aage badhaun?"
+                               "report": view.get("report"),   # v0.228 kya hua / kya bana / kya baaki / aapko kya karna hai
+                               "milestone": view.get("milestone", "")})   # v0.228 set ONLY on the one event that pushes
 
 
-def _mutate(tenant: str, goal_id: str, fn) -> dict[str, Any]:
+def _mutate(tenant: str, goal_id: str, fn, milestone: list[str] | None = None) -> dict[str, Any]:
     """Load, mutate, save in ONE write txn; publish after it closes (SQLite one writer)."""
     with session() as s:
         r = s.get(GoalRun, goal_id)
@@ -111,6 +125,8 @@ def _mutate(tenant: str, goal_id: str, fn) -> dict[str, Any]:
         r.updated_at = now()
         view = _row_view(r)
         conv = r.conversation_id
+    if milestone:
+        view = {**view, "milestone": milestone[0]}
     _publish(conv, view)
     return view
 
@@ -168,8 +184,29 @@ def mark_step(tenant: str, goal_id: str, n: int, state: str, note: str = "", con
             raise ValueError(f"step {n} plan mein nahi hai (1..{len(steps)})")
         hit["state"], hit["note"] = state, str(note or "")[:200]
         r.steps = json.dumps(steps, ensure_ascii=False)
+        if state == "done" and (r.status or "working") == "working":
+            mark = _milestone(sum(1 for x in steps if x.get("state") == "done"), len(steps), r.milestones or 0)
+            if mark:
+                r.milestones = (r.milestones or 0) + 1
+                ms.append(mark)
+                STATS["milestones"] += 1
 
-    return _mutate(tenant, goal_id, fn)
+    ms: list[str] = []
+    view = _mutate(tenant, goal_id, fn, milestone=ms)
+    return view
+
+
+def _milestone(done: int, total: int, sent: int) -> str:
+    """v0.228 a long job she is not watching tells her when it crosses a real milestone - never every step.
+    Jobs of 4+ steps only; thresholds 1/2 (4-5 steps) or 1/3 and 2/3 (6+); at most agent_goal_milestones per job;
+    never on the last step (the done push says that)."""
+    cap = int(getattr(get_settings(), "agent_goal_milestones", 2) or 0)
+    if total < 4 or done >= total or sent >= cap:
+        return ""
+    marks = [total / 2] if total < 6 else [total / 3, 2 * total / 3]
+    if sent >= len(marks) or done < marks[sent]:
+        return ""
+    return f"{done}/{total}"
 
 
 def add_step(tenant: str, goal_id: str, text: str, conv: str = "") -> dict[str, Any]:
@@ -200,8 +237,54 @@ def show(tenant: str, goal_id: str) -> dict[str, Any]:
     return _row_view(r)
 
 
-def finish(tenant: str, goal_id: str, outcome: str, reason: str = "", conv: str = "") -> dict[str, Any]:
-    """done | blocked_on_her | failed | stopped. blocked_on_her = only a real dependency on her (tap / OTP / fact)."""
+_LINK = re.compile(r"https?://[^\s)\]>\"']+|\b[\w./-]+\.(?:pdf|docx|xlsx|pptx|csv|zip|png|jpe?g|mp4|html)\b", re.I)
+
+
+def build_report(steps: list[dict[str, Any]], status: str, summary: str = "", made: list[str] | None = None,
+                 left: str = "", your_turn: str = "") -> dict[str, Any]:
+    """v0.228 the standard four-part final report, like Claude's end-of-job summary:
+    kya hua (what was done) / kya bana (links, files) / kya baaki (what is left) / aapko kya karna hai (her part).
+    Built by code from the plan itself, so it is never empty or invented: done steps ARE what happened, steps not done
+    ARE what is left, links / file names come from her model's own list plus the step notes."""
+    done = [x for x in steps if x.get("state") == "done"]
+    not_done = [x for x in steps if x.get("state") in ("pending", "current", "failed")]
+    hua = [f"{x['text']}" + (f" — {x['note']}" if x.get("note") else "") for x in done][:10]
+    bana: list[str] = []
+    for m in list(made or []) + [x.get("note") or "" for x in done]:
+        for hit in _LINK.findall(str(m)) or ([str(m).strip()] if m in (made or []) else []):
+            hit = hit.strip()[:240]
+            if hit and hit not in bana:
+                bana.append(hit)
+    baaki = [f"{x['text']}" + (" (atka)" if x.get("state") == "failed" else "") for x in not_done][:10]
+    if left.strip():
+        baaki.append(left.strip()[:300])
+    turn = your_turn.strip()[:300] or (
+        "Kuch nahi — sab ho gaya." if status == "done" and not baaki else
+        "Aage badhane ke liye bas 'haan aage badho' likhiye ya boliye." if baaki and status != "blocked" else "")
+    return {"summary": str(summary or "").strip()[:400], "hua": hua, "bana": bana[:10], "baaki": baaki[:10],
+            "aapka": turn}
+
+
+def report_text(rep: dict[str, Any]) -> str:
+    """The same report as plain chat text (her final message, the push body, the call note)."""
+    out = []
+    if rep.get("summary"):
+        out.append(rep["summary"])
+    if rep.get("hua"):
+        out.append("✅ Kya hua:\n" + "\n".join(f"• {x}" for x in rep["hua"]))
+    if rep.get("bana"):
+        out.append("📎 Kya bana:\n" + "\n".join(f"• {x}" for x in rep["bana"]))
+    if rep.get("baaki"):
+        out.append("⏳ Kya baaki hai:\n" + "\n".join(f"• {x}" for x in rep["baaki"]))
+    if rep.get("aapka"):
+        out.append("👉 Aapko kya karna hai: " + rep["aapka"])
+    return "\n\n".join(out)
+
+
+def finish(tenant: str, goal_id: str, outcome: str, reason: str = "", conv: str = "", made: list[str] | None = None,
+           left: str = "", your_turn: str = "") -> dict[str, Any]:
+    """done | blocked_on_her | failed | stopped. blocked_on_her = only a real dependency on her (tap / OTP / fact).
+    v0.228 every finish carries the four-part report (kya hua / kya bana / kya baaki / aapko kya karna hai)."""
     del conv
     why = {"done": "done", "blocked_on_her": "blocked", "failed": "failed", "stopped": "stopped"}.get(outcome)
     if why is None:
@@ -209,6 +292,13 @@ def finish(tenant: str, goal_id: str, outcome: str, reason: str = "", conv: str 
 
     def fn(r: GoalRun):
         r.status, r.reason = why, str(reason or "")[:400]
+        try:
+            steps = json.loads(r.steps or "[]")
+        except ValueError:
+            steps = []
+        mine = your_turn or (reason if why == "blocked" else "")
+        r.report = json.dumps(build_report(steps, why, reason, made, left, mine), ensure_ascii=False)
+        STATS["reports"] += 1
         STATS["finished" if why == "done" else "blocked" if why == "blocked" else "refused"] += 1
 
     return _mutate(tenant, goal_id, fn)
@@ -251,7 +341,40 @@ def nudge_text(view: dict[str, Any]) -> str:
     return (f"[System: goal \"{view['goal']}\" ke yeh steps baaki hain: {lines}. Agle step par kaam karo tools se. "
             "Atke ho to doosra tareeka: pichhla fix -> google_search/web_sources -> docs padho (open_website) -> "
             "doosra tool/route. Har step hone par kaam_plan step n done/failed likho. Sirf sach mein uski zaroorat ho "
-            "tabhi kaam_plan finish blocked_on_her (uska tap / OTP / ek fact jo tumhare paas nahi). Text mein mat ruko.]")
+            "tabhi kaam_plan finish blocked_on_her (uska tap / OTP / ek fact jo tumhare paas nahi). Text mein mat ruko. "
+            "Har bade step ke baad EK chhoti line likho (kya mila / kya bana, aur ab kya kar rahe ho), phir agla tool.]")
+
+
+# ---------------------------------------------------------------- v0.228 plan up front for clearly big asks
+_SEQ = re.compile(r"\b(?:phir|fir|uske\s+baad|iske\s+baad|then|after\s+that|and\s+then|aur\s+phir|saath\s+hi|"
+                  r"next|finally|aakhir\s+mein|end\s+to\s+end|step\s+by\s+step|poora\s+(?:kaam|project|setup)|"
+                  r"sab\s+kuch|फिर|उसके\s+बाद)\b", re.I)
+_LIST = re.compile(r"(?m)^\s*(?:\d{1,2}[.)]|[-*•])\s+\S")
+_VERB = re.compile(r"\b(?:bana|banao|bhej|bhejo|likh|likho|nikal|nikalo|dhoondh|dhundh|check|compare|update|"
+                   r"download|upload|book|order|create|make|send|write|find|research|analy[sz]e|fill|set\s*up|"
+                   r"install|deploy|report|summary|list)\w*", re.I)
+
+
+def looks_big(text: str) -> bool:
+    """v0.228 does her ask clearly need several steps? Then the plan comes FIRST (Claude writes its todo list before
+    the work, not at step 24). Word rules only, never a model call: sequence words / a list / many actions."""
+    t = (text or "").strip()
+    if not t or t.startswith("["):
+        return False
+    words = len(t.split())
+    seq = len(_SEQ.findall(t))
+    items = len(_LIST.findall(t))
+    verbs = len(_VERB.findall(t))
+    return items >= 3 or seq >= 2 or (seq >= 1 and verbs >= 3) or (verbs >= 4 and words >= 25) or words >= 80
+
+
+PLAN_FIRST = ("[System: yeh kaam kai steps ka lagta hai. Sabse PEHLA tool call `kaam_plan set` ho — goal uske shabdon "
+              "mein, concrete steps. Phir step by step kaam karo, aur har bade step ke baad ek chhoti line mein batao "
+              "kya hua aur aage kya. Aakhir mein `kaam_plan finish` (made = links / files jo bane).]")
+PLAN_NOW = ("[System: tum kai steps se kaam kar rahe ho par plan nahi likha. Abhi `kaam_plan set` karo (jo ho chuka "
+            "use done likho), taaki use card par dikhe kya ho raha hai aur kya baaki hai. Phir aage badho.]")
+NARRATE = ("[System: kaafi der se tumne use kuch nahi bataya. Ab EK chhoti line likho — abhi tak kya hua / kya mila, "
+           "aur ab kya kar rahe ho — phir agla tool. Lamba mat likho.]")
 
 
 # ---------------------------------------------------------------- carry on across turns
