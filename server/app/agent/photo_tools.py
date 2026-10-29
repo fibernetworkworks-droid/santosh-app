@@ -36,7 +36,7 @@ async def photo_banao(ctx: Ctx, action="make", prompt="", file_ids=None, aspect=
     if action == "edit" and not ids:
         raise ToolError("Kaunsi photo badalni hai? Pehle photo bhejne ko kahiye (chat ka paperclip / call mein 'Photo "
                         "dikhaiye'), phir uska file_id do.")
-    if not str(getattr(ctx, "actor", "owner") or "owner").startswith(("owner", "approved")):
+    if not str(getattr(ctx, "actor", "owner") or "owner").startswith(("owner", "approved", "goal")):
         if not usage.allowed(ctx.tenant_id, "routine"):
             raise ToolError(usage.blocked_text(ctx.tenant_id))
     why = photogen.problem(prompt, edit=bool(ids))

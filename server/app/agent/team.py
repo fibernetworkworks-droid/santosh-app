@@ -92,7 +92,7 @@ def _clip(t: Any, n: int) -> str:
 
 
 def _allowed_actors(actor: str) -> bool:
-    return actor in ("owner", "routine") or actor.startswith("approved:")
+    return actor in ("owner", "routine", "goal") or actor.startswith("approved:")
 
 
 # ---------------------------------------------------------------- the sub-agent loop

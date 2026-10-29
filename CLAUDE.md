@@ -8772,3 +8772,29 @@ as described there: scopes from the 401 challenge / resource metadata, client au
 (none > post > basic, `invalid_client` drops the cached registration, REG_VERSION v2), refresh with `resource`, a refused
 token refreshed once then "phir 'Link' dabaiye" (no more 'unhandled errors in a TaskGroup'), PayPal /mcp, Ramp / Square
 / Figma / Gamma / Vercel one-tap, payment servers always ask before writes. Tests test_v162_mcp_fix.py (7).
+
+## v0.222.0 GOAL HERS — a long job SHE asked for keeps her authority in its background rounds (owner: "FIX 1 AND 2 THEN DEPLOY V0.222")
+THE RCA (found reading the live v0.221 KAAM KHAATA code): every background round of a long job (`goal._continuation`,
+and the v0.221 resume sweep after her answer) ran as actor "routine". So (1) with Employee mode on, `employee.gate`
+treated HER own job like a scheduled routine: at trust 'seekh' every job-duty step became an approval card and the job
+stalled after round 1; (2) once the month's AI limit hit 100%, `run_turn` put the round in the "routine" usage lane and
+refused it as background work - her own job stopped half-way (her own chat and calls always ran).
+THE FIX: `GoalRun.origin` (nullable column, auto-added) = who asked: `set_goal(..., origin=ctx.actor)` from kaam_plan,
+`goal.hers(actor)` (owner / goal / approved:) -> "owner", anything else -> "routine". `goal.round_actor(origin)`: her
+job's rounds run as the new actor **"goal"**, a routine's job stays "routine", goals written before v0.222 (origin None)
+keep the old routine behaviour. Actor "goal" = her authority where it matters and nothing more: `employee.gate` treats
+it like the owner (job duties run; Pause still holds them exactly like her own turns; label "Owner ka lamba kaam"),
+`run_turn` puts it in the "chat" usage lane (never refused by the background limit), photo / 3D tools' background
+check skip it, `_halt_reason` / paused0 like her own turns, procedure hints + memory + gyaan / team permissions like a
+routine (its "[Goal jaari...]" text is never her words: display None, no auto facts, procedures learn as routine).
+Owner-only tool actions that check actor == "owner" (money decisions, rules) are NOT opened to "goal" - those stay her
+tap. `maybe_continue` accepts owner / goal / approved: / routine (staff / customers never). Admission: goal rounds keep
+the FULL tool set like routine rounds did.
+Not changed (stated plainly): website / video / motion jobs started inside her own chat are still refused by their own
+services when the month's limit is used up (v0.98 rule for every actor). Tests NEW test_v0222_goal_hers.py (7): origin
+remembered (owner / routine / approved / replan inside her job), kaam_plan from her turn vs a routine's, rounds run as
+goal vs routine incl. the resume sweep and staff never, gate holds a routine but runs her goal round (+ Pause still
+holds), the AI limit refuses a routine round but never hers, goal round text never her words, version. Version 0.222.0
+(pubspec 0.222.0+257, console ?v=0.222.0 x9, pins ->0.222.0). Built on the live v0.221 KAAM KHAATA branch
+(clever-thompson, incl. the merged MCP sign-in fix). CONSOLE R1 (serene-dijkstra, also numbered 0.221.0, not deployed)
+is NOT in this release - it needs a rebase as v0.223. Server-only deploy; old APKs keep working.

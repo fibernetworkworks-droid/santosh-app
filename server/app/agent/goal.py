@@ -53,6 +53,7 @@ class GoalRun(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # v0.221 waiting on her
     paused_s: Mapped[int | None] = mapped_column(Integer, nullable=True)       # v0.221 seconds spent waiting on her
+    origin: Mapped[str | None] = mapped_column(String(16), nullable=True)      # v0.222 who asked: owner | routine
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -100,8 +101,23 @@ def _mutate(tenant: str, goal_id: str, fn) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------- kaam_plan actions (called from goal_tools)
-def set_goal(tenant: str, conv: str, goal: str, steps: list[str]) -> dict[str, Any]:
-    """A new goal for this conversation: any previous working goal is marked stopped (one plan at a time)."""
+def hers(actor: str) -> bool:
+    """v0.222 a turn that carries HER own authority: her words, her tap (approved:), or a background round of a long
+    job SHE asked for (actor "goal"). Routines, wake turns, staff and customers are not hers."""
+    a = actor or "owner"
+    return a in ("owner", "goal") or a.startswith("approved:")
+
+
+def round_actor(origin: str | None) -> str:
+    """v0.222 the actor a background round runs as: her own job keeps her authority ("goal" - the employee gate and
+    the monthly background limit treat it as her own chat); a routine's job stays a routine. Goals written before
+    v0.222 (origin unknown) keep the old routine behaviour."""
+    return "goal" if origin in ("owner", "goal") else "routine"
+
+
+def set_goal(tenant: str, conv: str, goal: str, steps: list[str], origin: str = "") -> dict[str, Any]:
+    """A new goal for this conversation: any previous working goal is marked stopped (one plan at a time).
+    v0.222 `origin` = whose job it is (the actor of the turn that wrote the plan)."""
     steps = [str(x).strip()[:200] for x in (steps or []) if str(x).strip()][:MAX_STEPS]
     if not goal.strip() or not steps:
         raise ValueError("goal aur kam se kam ek step chahiye")
@@ -111,7 +127,8 @@ def set_goal(tenant: str, conv: str, goal: str, steps: list[str]) -> dict[str, A
             r.status, r.reason, r.updated_at = "stopped", "naya plan ban gaya", now()
         r = GoalRun(tenant_id=tenant, conversation_id=conv, goal=goal.strip()[:500],
                     steps=json.dumps([{"n": i + 1, "text": t, "state": "pending", "note": ""} for i, t in enumerate(steps)],
-                                     ensure_ascii=False))
+                                     ensure_ascii=False),
+                    origin=("owner" if hers(origin) else "routine") if origin else None)
         s.add(r)
         s.flush()                       # the id default lands before the card is published
         STATS["set"] += 1
@@ -271,7 +288,7 @@ def maybe_continue(conv: str, tenant: str, actor: str = "owner") -> bool:
     st = get_settings()
     if not st.agent_goal:
         return False
-    if actor not in ("owner", "routine") or actor.startswith("approved:"):
+    if not (hers(actor) or actor == "routine"):
         STATS["refused"] += 1
         return False
     view = active_for(conv)
@@ -304,7 +321,7 @@ def _pause(goal_id: str) -> None:
 
 def _schedule(conv: str, tenant: str, view: dict[str, Any], count_round: bool) -> bool:
     st = get_settings()
-    rounds, mins = 0, 0.0
+    rounds, mins, who = 0, 0.0, "routine"
     with session() as s:               # bookkeeping txn closes BEFORE finish() opens its own (SQLite one writer)
         r = s.get(GoalRun, view["id"])
         if r is None:
@@ -313,6 +330,7 @@ def _schedule(conv: str, tenant: str, view: dict[str, Any], count_round: bool) -
             r.paused_s = int(r.paused_s or 0) + max(0, int((now() - _aware(r.paused_at)).total_seconds()))
             r.paused_at = None
         rounds, mins = r.rounds, _working_minutes(r)
+        who = round_actor(r.origin)
         if not count_round:
             rounds = min(rounds, st.agent_goal_rounds - 1)   # a resume after her answer never uses up a round
         elif rounds < st.agent_goal_rounds and mins < st.agent_goal_minutes:
@@ -327,7 +345,7 @@ def _schedule(conv: str, tenant: str, view: dict[str, Any], count_round: bool) -
     from .santosh import _bg, run_turn, LAST_OUTCOME
     ask = f"[Goal jaari: {view['goal']} — baaki steps: " + "; ".join(f"{x['n']}. {x['text']}" for x in left[:8]) + \
         ". Aage badho, har step kaam_plan se likho, poora hone par finish done.]"
-    _bg(_continuation(conv, tenant, ask, view["id"]))
+    _bg(_continuation(conv, tenant, ask, view["id"], who))
     LAST_OUTCOME[conv] = {"outcome": "continuing", "left": f"{view['done']}/{view['total']} steps done, {len(left)} baaki",
                           "goal": view["goal"], "at": time.time()}
     STATS["continued"] += 1
@@ -376,12 +394,12 @@ def _clear_pause(goal_id: str) -> None:
             r.paused_at = None
 
 
-async def _continuation(conv: str, tenant: str, ask: str, goal_id: str) -> None:
+async def _continuation(conv: str, tenant: str, ask: str, goal_id: str, actor: str = "routine") -> None:
     """One background turn that keeps the goal going. Never raises into the caller's context."""
     await asyncio.sleep(2.5)          # let the original turn's final writes / events settle first
     try:
         from .santosh import run_turn, LAST_OUTCOME
-        out = await run_turn(conv, ask, tenant_id=tenant, actor="routine")
+        out = await run_turn(conv, ask, tenant_id=tenant, actor=actor)
         LAST_OUTCOME[conv] = {"outcome": "continuing", "left": str(out or "")[:300], "goal": goal_id, "at": time.time()}
         v = active_for(conv)
         if v is not None and steps_left(v):

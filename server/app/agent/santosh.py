@@ -409,7 +409,7 @@ def _halt_reason(conversation_id: str, ctx: Ctx, state: dict | None = None) -> s
     if conversation_id in _stopped:
         return "stop"
     actor = getattr(ctx, "actor", "owner") or "owner"
-    if actor == "owner" or actor.startswith("approved:") or state is None or state.get("paused0") is None:
+    if actor in ("owner", "goal") or actor.startswith("approved:") or state is None or state.get("paused0") is None:
         return ""                      # her own turns: Pause holds job tools at the gate, her personal work goes on
     try:
         from ..employee import service as emp
@@ -517,13 +517,13 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
                                        rescue=True)
             state["max_tokens"] = settings.agent_goal_max_tokens
     actor = getattr(ctx, "actor", "owner") or "owner"
-    if actor != "owner" and not actor.startswith("approved:"):
+    if actor not in ("owner", "goal") and not actor.startswith("approved:"):
         try:   # v0.91 remember whether the job was paused when this turn began: turning Pause on mid-turn stops it
             from ..employee import service as _emp
             state["paused0"] = _emp.paused_now(tenant_id)
         except Exception:
             state["paused0"] = None
-    if user_text and actor in ("owner", "routine"):
+    if user_text and actor in ("owner", "routine", "goal"):
         try:
             state["hint"], state["used"] = await asyncio.to_thread(procedures.hint, tenant_id, user_text)
         except Exception:
@@ -548,7 +548,8 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
                                          "goal": (g or state.get("goal") or {}).get("goal", ""), "at": time.time()}
         await asyncio.to_thread(pakka.record, tenant_id, user_text, outcome, state["calls"], state,
                                 time.time() - state["t0"], state.get("left", ""))
-        learned = await asyncio.to_thread(procedures.after_turn, tenant_id, user_text, state["calls"], state["used"], ok, actor)
+        learned = await asyncio.to_thread(procedures.after_turn, tenant_id, user_text, state["calls"], state["used"], ok,
+                                          "routine" if actor == "goal" else actor)
         if learned and learned.get("learned"):
             bus.publish(conversation_id, "procedure", {"event": "learned", "id": learned["learned"], "title": learned["title"]})
     return text
@@ -805,7 +806,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             return final_text
         if (settings.agent_goal and not state.get("goal") and not state.get("extended")
                 and ran_steps >= settings.agent_max_steps
-                and (getattr(ctx, "actor", "owner") or "owner") in ("owner", "routine", "wake")):
+                and (getattr(ctx, "actor", "owner") or "owner") in ("owner", "routine", "wake", "goal")):
             # v0.221 the short-job cap is reached while work is still going (the model never wrote a plan): instead of
             # "Yeh kaam lamba ho gaya, yahin ruk raha hoon" the turn moves to the long-job caps ONCE and the model is
             # told to write the plan of what is left - long jobs no longer die at step 24.
@@ -1048,7 +1049,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     _turn_id = new_id("turn")
     _t_turn0 = time.time()
     _evlog.CURRENT.set({"turn_id": _turn_id, "actor": who})
-    feature = ("call" if usage.current()[1] == "call" else "chat") if who.startswith(("owner", "approved:")) else \
+    # v0.222 a background round of HER long job ("goal") is her own chat: never refused by the monthly background limit
+    feature = ("call" if usage.current()[1] == "call" else "chat") if (who == "goal" or who.startswith(("owner", "approved:"))) else \
         ("routine" if who in ("routine", "wake") else "employee")   # v0.191 wake = routine lane (never the employee budget)
     usage.bind(tenant_id, feature)       # v0.98 what this turn's model calls cost, and for whom
     if not usage.allowed(tenant_id, feature):
@@ -1129,7 +1131,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         if save_user:
             # v0.221 a goal's background round is not her words: kept in history, but never shown as her message
             _save(conversation_id, "user", agent_text,
-                  display=None if (who == "routine" and user_text.startswith("[Goal jaari")) else user_text)
+                  display=None if (who in ("routine", "goal") and user_text.startswith("[Goal jaari")) else user_text)
         elif who == "wake" and agent_text.strip():
             # v0.221 a finished job's RESULT is saved into the chat history (display None = never shown as her words,
             # never in her focus words). Before, only Hoola's reply about it was kept: from the next turn on the real
@@ -1154,7 +1156,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             # In-memory only: nothing is double-saved, the next turn still loads the DB fresh.
             history.append({"role": "user", "content": agent_text})
         block = ""
-        if who == "owner" or who in ("routine", "wake") or who.startswith("approved:"):
+        if who == "owner" or who in ("routine", "wake", "goal") or who.startswith("approved:"):
             try:   # v0.108 work diary, facts by meaning, recalled old exchanges: for this message only
                 from .. import yaad
                 block = await asyncio.to_thread(yaad.turn_block, tenant_id, conversation_id, user_text)
@@ -1222,10 +1224,11 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _evlog.log_event(tenant_id, conversation_id, "turn_finished",
                              {"line": str(final_text or "")[:160], "seconds": round(time.time() - _t_turn0, 1)},
                              turn_id=_turn_id, actor=who)
-        if who == "owner" or who == "routine" or who.startswith("approved:"):
+        if who in ("owner", "routine", "goal") or who.startswith("approved:"):
             try:   # v0.108 index this exchange, fold old ones into the summary, pick lasting facts (background)
-                from .. import yaad
-                yaad.after_turn(tenant_id, conversation_id, user_text, final_text, "owner" if who == "owner" else who)
+                from .. import yaad   # a goal round's "[Goal jaari...]" text is never her words: no facts from it
+                yaad.after_turn(tenant_id, conversation_id, user_text, final_text,
+                                "owner" if who == "owner" else ("routine" if who == "goal" else who))
             except Exception:
                 log.exception("memory after turn failed")
         if who == "owner":
