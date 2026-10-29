@@ -101,9 +101,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.247.0 (pubspec 0.247.0+287). Version ritual = main.py APP_VERSION + pubspec version(+build) +
-  console `?v=` stamps in `server/app/static/console/v2.html` (12 now, theme.js added) + the version pins in tests (grep the old number in
+- Current version: v0.248.0 (pubspec 0.248.0+288). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+  console `?v=` stamps in `server/app/static/console/v2.html` (13 now: theme.js, pdfview.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.248 console workspace: our own PDF reader (`console/pdfview.js` + vendored PDF.js in `vendor/pdfjs`, no browser toolbar),
+  one header row when one item is open (`panel.js` syncHead / .pnslot).
 - v0.247 console workspace edge: no width bar, drag the left edge like the sidebar (full width at the chat's edge, edge button,
   Esc), PDFs/Office open full-size with no thumbnail strip (`panel.js` docView).
 - v0.246 FULL CLAUDE MODE 3C FENCED SESSIONS: `app/fence.py` - auto facts / diary / jobs / search stay in their Session

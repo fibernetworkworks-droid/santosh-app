@@ -7,8 +7,8 @@ CON = ROOT / "server" / "app" / "static" / "console"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.247.0"
-    assert "0.247.0+287" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.248.0"
+    assert "0.248.0+288" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_no_width_bar_and_a_drag_edge():
@@ -22,7 +22,7 @@ def test_no_width_bar_and_a_drag_edge():
 def test_documents_fill_without_the_page_strip():
     js = (CON / "panel.js").read_text()
     assert "navpanes=0" in js and "pagemode=none" in js and "view=FitH" in js
-    assert js.count("docView(view,") == 3                    # the helper + PDFs + Office-as-PDF
+    assert js.count("docView(t, view,") == 3                 # the helper + PDFs + Office-as-PDF (v0.248 draws them itself)
     css = (CON / "v2.css").read_text()
     assert css.count("{") == css.count("}")
     tail = css[css.index("v0.244 WORKSPACE EDGE"):]
