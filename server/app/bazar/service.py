@@ -967,7 +967,7 @@ def mcp_connect_featured(tenant_id: str, fid: str, url: str = "", key: str = "",
     if c.get("native"):
         raise ToolError(f"{c['name']} is built into Santosh: {c['native']}")
     if c["auth"] == "oauth_partner":
-        raise ToolError(f"{c['name']} only lets approved apps sign in. Santosh's partner access is pending.")
+        raise ToolError(f"{c['name']} only lets approved apps sign in. Hoola's partner access is pending.")
     if c["auth"] == "per_user_url":
         if not url:
             raise ToolError(f"Paste your personal {c['name']} MCP address (from your {c['name']} account).")
@@ -1082,7 +1082,7 @@ def mcp_add(tenant_id: str, url: str, name: str = "", ref: str = "", key: str = 
         else:
             row.status = "removed"
             raise ToolError(note)
-        if row.caution:
+        if row.caution or custom_mcp._featured_caution(row.directory_ref):
             out["caution"] = "This server can act on money, crypto, code or the computer; every action needs the user's tap."
         status = out["status"]
         conv = conversation_id or latest_conversation(s, tenant_id)
@@ -1126,7 +1126,7 @@ def mcp_tools(tenant_id: str, pack_id: str) -> dict[str, Any]:
         except ToolError as e:
             raise ToolError(str(e).replace("NOT_LINKED: ", ""))
         tools = [{"name": sp.name, "description": sp.description.split("] ", 1)[-1]} for sp in specs]
-        caution = bool(row.caution)
+        caution = bool(pack.config.get("caution"))
     return {"pack_id": pack_id, "name": row.name, "caution": caution,
             "tools": mcp_prefs.view(tenant_id, pack_id, tools, caution)}
 

@@ -8767,3 +8767,8 @@ waiting on her, `resume_tick` (worker `goal_resume_jobs` every 10 s: not Rokiye,
 agent_goal_resume_hours 24) restarts it without using a round, `_working_minutes` never counts waiting; defaults rounds
 6, minutes 180 (config agent_goal_resume / agent_goal_resume_hours). Tests NEW test_v0221_kaam_khaata.py (12).
 Version 0.221.0 (pubspec 0.221.0+256, console ?v=0.221.0 x9, pins ->0.221.0). Server-only deploy; old APKs keep working.
+MERGED IN (no force-push): the MCP sign-in fix first built as v0.162 on an old base (branch commit b9cd23f) - code only, same
+as described there: scopes from the 401 challenge / resource metadata, client auth method by what the server allows
+(none > post > basic, `invalid_client` drops the cached registration, REG_VERSION v2), refresh with `resource`, a refused
+token refreshed once then "phir 'Link' dabaiye" (no more 'unhandled errors in a TaskGroup'), PayPal /mcp, Ramp / Square
+/ Figma / Gamma / Vercel one-tap, payment servers always ask before writes. Tests test_v162_mcp_fix.py (7).

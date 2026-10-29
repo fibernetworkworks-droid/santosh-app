@@ -56,7 +56,8 @@ def provider_of(row_id: str) -> str:
 
 def to_pack(row: CustomMcp) -> Pack:
     reads = _featured_reads(row.directory_ref)
-    if reads and not row.caution:
+    caution = bool(row.caution) or _featured_caution(row.directory_ref)   # v0.162 also rows joined before the flag
+    if reads and not caution:
         from ..mcp_prefs import HINTS
         for t in reads:                     # so the Tools screen shows them as "seedha chalega" too
             HINTS.setdefault((row.id, t), True)
@@ -65,11 +66,21 @@ def to_pack(row: CustomMcp) -> Pack:
     return Pack(id=row.id, name=row.name, category="My MCP servers", sub_category=(entry or {}).get("f", "MCP server"),
                 pack_type="Custom MCP", layer="L1", phase="MVP", priority="P1",
                 description=(row.description or (entry or {}).get("d", "") or "MCP server you added")[:400],
-                notes="caution" if row.caution else "", master_list_row=0, executor="mcp",
+                notes="caution" if caution else "", master_list_row=0, executor="mcp",
                 config={"provider": provider_of(row.id), "endpoint": row.url, "custom": True, "auth": row.auth,
-                        "key_header": row.key_header, "owner": row.user_id, "caution": row.caution,
+                        "key_header": row.key_header, "owner": row.user_id, "caution": caution,
                         "reads": reads},
                 tools=[], keywords=sorted(words)[:20])
+
+
+def _featured_caution(ref: str | None) -> bool:
+    if not ref or not ref.startswith("featured:"):
+        return False
+    try:
+        from . import featured
+        return bool((featured.get(ref.split(":", 1)[1]) or {}).get("caution"))
+    except Exception:
+        return False
 
 
 def _featured_reads(ref: str | None) -> list[str]:
@@ -137,7 +148,7 @@ def create(s, user_id: str, url: str, name: str = "", ref: str = "", description
     return row
 
 
-def headers_for(s, pack: Pack, user_id: str) -> dict[str, str] | None:
+def headers_for(s, pack: Pack, user_id: str, force: bool = False) -> dict[str, str] | None:
     """Auth headers for a custom server. None = the user must still link it (OAuth) or add its key."""
     cfg = pack.config
     if cfg.get("auth") == "none":
@@ -154,7 +165,7 @@ def headers_for(s, pack: Pack, user_id: str) -> dict[str, str] | None:
             v = "Bearer " + v
         return {**{str(k): str(x) for k, x in (b.get("extra") or {}).items()}, h: v}
     from .mcp_auth import access_token
-    return {"Authorization": "Bearer " + access_token(s, conn)}
+    return {"Authorization": "Bearer " + access_token(s, conn, force=force)}
 
 
 def clean_extra(extra: dict | None) -> dict[str, str]:
