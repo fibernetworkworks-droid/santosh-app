@@ -213,6 +213,8 @@ class Settings(BaseSettings):
     voice_prosody: bool = True             # v0.208 AWAAZ-3: her TurnMeter prosody sharpens the feeling note - vetoes a glad her voice contradicts, confirms a low, adds the thinking-pauses rider (kill switch; off = the v0.202 words-only engine)
     voice_soorat: bool = True              # v0.220 SOORAT: his energy follows her transitions - a state flip names the move, the fresh tone tints the scripted moments (acks skip the bright clips while she is heavy/tense, stall/result/reconnect notes carry the tone); off = the v0.219 engine
     voice_ack_tts_model: str = "gemini-3.8-flash-tts"   # v0.181 (was gemini-2.5-flash-preview-tts): new TTS, far more natural delivery; legacy model is the automatic fallback
+    voice_compress_trigger: int = 60000    # v0.224 Gemini Live context compression starts here (0 = Google's default near the limit)
+    voice_compress_target: int = 35000     # ...and slides the window back to about this many tokens
     voice_tool_behavior: bool = True       # v0.221 slow call tools NON_BLOCKING (he keeps talking), quick ones BLOCKING (exact answer, no guessing); false = model default for all
     voice_affective: bool = True           # v0.181 affective dialog: he answers with the emotional tone he HEARS (happy with her, gentle when she is low). If Gemini refuses the field for a model, the call retries without it and remembers (voice.py _AFFECTIVE_OK)
     # --- Awaaz Pehchaan: who is talking (owner / family) from the voice; free models, CPU (sherpa-onnx) ---

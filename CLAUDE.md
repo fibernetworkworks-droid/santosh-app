@@ -8825,3 +8825,24 @@ Tests: NEW `test_v0221_voice_phase1.py` (11). Older affective heal suites pin an
 ?v=0.224.0 x9, pins → 0.224.0). Server-only deploy, old APKs keep working; Mera PC freeze respected.
 Next (report Phase 2): GoAway graceful finish + pre-built reconnect + keep her gap audio, compression trigger,
 drop-note on every abnormal end, replay his audio after a phone blip.
+
+## v0.225.0 VOICE PHASE 2 — long calls that never break (owner: "MERGE TO MAIN AND START PHASE 2")
+1. **GoAway, gracefully** (`Call._goaway_on / _goaway_deadline / _receive`): Gemini moves connections about every 10
+   minutes and warns first (`go_away.time_left`). Before: an instant hard cut mid-sentence, then a slow full rebuild.
+   Now: the next brief is built in the background the moment the warning lands (`_prebuild` -> `_prebuilt`, used by
+   `run()` if < 60 s old); nobody talking = move at once; he (or she) is talking = his sentence finishes first and the
+   move happens at `turn_complete` (`goaway_graceful`), at the latest `min(8 s, time_left - 1.5 s)` when a timer closes
+   the old connection quietly (`goaway_forced`; the forced close never counts as an error). `_build_context` is the
+   one brief builder; a resumed session reuses the last MCP tool list (`_last_mcp_defs`) instead of a new snapshot.
+2. **Her gap words survive**: `_drop_stale_audio(keep_recent=True)` on a Gemini reconnect keeps her last 2 s
+   (`GAP_KEEP_BYTES`); a phone re-attach still drops the old backlog.
+3. **Compression early**: `voice_compress_trigger` 60,000 / `voice_compress_target` 35,000 tokens (0 = Google default).
+4. **Continuation note on every non-hang-up end**: `_hung_up` is set only by her "end"; `run()`'s finally saves the
+   drop note otherwise (connection error, stall close, phone gone), `shutdown_watchdog` saves it for every live call
+   before closing the phone, `_drop_saved` = one note per call.
+5. **His missed voice is replayed**: while the phone's line is down `send_audio` keeps up to 10 s (`MISSED_MAX`); on
+   `attach` it is played if fresh (`MISSED_KEEP_S` 20 s). Stats: goaway, goaway_graceful, goaway_forced, prebuilt,
+   gap_audio_kept_s, missed_replayed_s.
+Tests: NEW `test_v0225_voice_phase2.py` (14). Version 0.225.0 (pubspec 0.225.0+259, console ?v=0.225.0, pins).
+Server-only deploy, old APKs keep working. Next (report Phase 3): one quiet-aware note queue with job de-dup,
+prompt + tool diet, phone gate / echo timing (APK), murmur timing.

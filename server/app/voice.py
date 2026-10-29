@@ -702,7 +702,10 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
             )),
         session_resumption=types.SessionResumptionConfig(handle=handle),
         context_window_compression=None if "compression" in without else
-        types.ContextWindowCompressionConfig(sliding_window=types.SlidingWindow()),
+        types.ContextWindowCompressionConfig(   # v0.224 compress early: long calls stay fast, never hit the 128k wall
+            trigger_tokens=max(8000, st.voice_compress_trigger) if st.voice_compress_trigger else None,
+            sliding_window=types.SlidingWindow(
+                target_tokens=max(4000, st.voice_compress_target) if st.voice_compress_target else None)),
     )
     # v0.181 affective dialog is back: the model HEARS her tone (laugh, stress, excitement) and answers with a matching
     # one - happy with her, gentle when she is low. If this model generation refuses the field, the first connect
@@ -809,6 +812,10 @@ async def shutdown_watchdog(stop: asyncio.Event) -> None:
         return   # lifespan ended (tests) without a process signal: normal teardown, no goodbye
     calls = list(CALLS.values())
     for call in calls:
+        try:   # v0.224 the work in this call survives the restart: the next call continues it
+            await asyncio.to_thread(call._save_drop_note)
+        except Exception:
+            log.exception("shutdown drop note failed")
         try:
             await call.send_json({"type": "status", "state": "restarting",
                                   "message": "Server update ho raha hai - call yahin rukti hai, thodi der mein dobara bulaao."})
@@ -821,6 +828,22 @@ async def shutdown_watchdog(stop: asyncio.Event) -> None:
             pass
     if calls:
         log.warning("shutdown: %d live call(s) told + closed cleanly", len(calls))
+
+
+def _seconds(v) -> float | None:
+    """GoAway.time_left: a protobuf Duration string ('9.5s', '1s') or a number. None when unknown."""
+    if v is None:
+        return None
+    try:
+        if isinstance(v, (int, float)):
+            return float(v)
+        m = re.match(r"\s*([\d.]+)\s*s?\s*$", str(v))
+        if m:
+            return float(m.group(1))
+        sec = getattr(v, "total_seconds", None)
+        return float(sec()) if sec else None
+    except (TypeError, ValueError):
+        return None
 
 
 def greeting(tenant: str, gender: str = "m", continuation: str = "", followup: str = "") -> str:
@@ -1241,6 +1264,15 @@ class Call:
         self._grace: asyncio.Task | None = None
         self._seen_calls: set[str] = set()     # tool call ids already run (Gemini may re-send after a reconnect)
         self._cancelled: set[str] = set()      # tool calls Gemini withdrew (the user spoke over them)
+        # v0.224 PHASE 2 long calls that never break
+        self._goaway_at = 0.0                  # Gemini said this connection ends soon (0 = no)
+        self._goaway_force = False             # the GoAway deadline passed: move now, even mid-sentence
+        self._prebuilt: tuple | None = None    # (made_at, context, mcp_defs) built while the old connection still ran
+        self._last_mcp_defs = None             # her MCP tools of the last connect: a resumed session keeps them
+        self._missed: list[bytes] = []         # his voice the phone missed while its line was down (replayed on return)
+        self._missed_at = 0.0
+        self._hung_up = False                  # SHE ended the call (the only end that needs no continuation note)
+        self._drop_saved = False
         # timing, for answering at human speed and for the quality numbers
         self._last_voice_at = 0.0              # last mic chunk with speech in it
         self._last_model_audio = 0.0           # last audio Gemini sent
@@ -1325,9 +1357,20 @@ class Call:
             with contextlib.suppress(Exception):
                 await ws.send_text(json.dumps(obj, ensure_ascii=False))
 
+    MISSED_MAX = 24000 * 2 * 10    # v0.224 at most his last 10 s of voice are kept for a phone that comes back
+    MISSED_KEEP_S = 20.0           # older than this = the moment has passed: not replayed
+
     async def send_audio(self, data: bytes) -> None:
         ws = self.ws
-        if ws is None or self.closed.is_set():
+        if self.closed.is_set():
+            return
+        if ws is None:
+            # v0.224 the phone's line is down (grace window): keep what he says so she hears it when she is back
+            if not self._missed:
+                self._missed_at = time.monotonic()
+            self._missed.append(data)
+            while sum(len(b) for b in self._missed) > self.MISSED_MAX and len(self._missed) > 1:
+                self._missed.pop(0)
             return
         async with self._send_lock:
             with contextlib.suppress(Exception):
@@ -1352,10 +1395,29 @@ class Call:
                 return
         self.audio.put_nowait((kind, data))
 
-    def _drop_stale_audio(self) -> None:
-        """Mic audio that waited through a reconnect is old news: Gemini must not hear it as a burst."""
+    GAP_KEEP_BYTES = 16000 * 2 * 2   # v0.224 her last 2 s of mic audio survive a Gemini reconnect
+
+    def _drop_stale_audio(self, keep_recent: bool = False) -> None:
+        """Mic audio that waited through a reconnect is old news: Gemini must not hear it as a burst.
+        v0.224 keep_recent (a Gemini connection move): her LAST 2 s stay - what she said in the gap is not lost;
+        only the older backlog goes. A phone that came back (attach) still drops it all (that audio is from before
+        her own line broke)."""
         q = self.audio._queue
-        keep = [x for x in q if x[0] != "audio"]
+        items = list(q)
+        keep = [x for x in items if x[0] != "audio"]
+        if keep_recent:
+            audio, total = [], 0
+            for x in reversed(items):
+                if x[0] != "audio":
+                    continue
+                total += len(x[1])
+                if total > self.GAP_KEEP_BYTES:
+                    break
+                audio.append(x)
+            keep += list(reversed(audio))
+            if audio:
+                self.stats["gap_audio_kept_s"] = round(self.stats.get("gap_audio_kept_s", 0)
+                                                       + sum(len(x[1]) for x in audio) / 32000, 2)
         q.clear()
         q.extend(keep)
 
@@ -1396,6 +1458,7 @@ class Call:
                     t = m.get("type")
                     if t == "end":
                         ended = True
+                        self._hung_up = True   # v0.224 her own hang-up: no continuation note needed
                         break
                     if t == "mute":
                         self.muted = True
@@ -1453,8 +1516,11 @@ class Call:
         """v0.200 FOCUSED WORD-LEVEL MEMORY, call-drop half: the phone never came back. What she said and
         what she was still saying go to yaad's focus memory, so the next call on this chat CONTINUES the
         work ('haan, line aa gayi - wahi kaam pe chalte hain') instead of greeting her like a stranger."""
+        if self._drop_saved:
+            return   # v0.224 one note per call (grace timer, shutdown and the call's end may all try)
         if not (self.recent or self.user_buf.strip() or self.stats.get("turns")):
             return   # nobody said anything: nothing to remember, no note (an abandoned dial is not a dropped chat)
+        self._drop_saved = True
         user = self.recent[-1][0] if self.recent else ""
         partial = self.user_buf.strip()
         if self._otp_said:   # OTPs she said never land in any memory (the finish_turn rule)
@@ -1485,6 +1551,13 @@ class Call:
             await self.send_json({"type": "user_text", "text": self.user_buf.strip()})
         if self.reply_buf.strip():
             await self.send_json({"type": "santosh_text", "text": self.reply_buf.strip()})
+        missed, self._missed = self._missed, []
+        if missed and time.monotonic() - self._missed_at <= self.MISSED_KEEP_S:
+            # v0.224 what he said while her line was down: she hears it now instead of only a caption
+            self.stats["missed_replayed_s"] = round(self.stats.get("missed_replayed_s", 0)
+                                                    + sum(len(b) for b in missed) / 48000, 2)
+            for b in missed:
+                await self.send_audio(b)
         return reader
 
     # ---- model side ----
@@ -1504,13 +1577,23 @@ class Call:
     async def downlink(self, session) -> str:
         """Returns 'reconnect' when Gemini asks us to move to a new connection."""
         while True:
+            if self._goaway_force:
+                return "reconnect"
             got_any = False
-            async for m in session.receive():
+            async for m in self._receive(session):   # v0.224 a GoAway deadline close ends it quietly
                 got_any = True
                 upd = getattr(m, "session_resumption_update", None)
                 if upd is not None and getattr(upd, "resumable", False) and getattr(upd, "new_handle", None):
                     self.handle = upd.new_handle
                 if getattr(m, "go_away", None) is not None:
+                    # v0.224 Gemini moves connections ~every 10 min and warns first. Before: an instant hard cut
+                    # mid-sentence + a slow rebuild + her gap words thrown away. Now: the next connection's context
+                    # is built in the background at once; if nobody is talking we move straight away, else his
+                    # sentence / her turn finishes first (at the latest just before the deadline).
+                    if self._goaway_on(session, getattr(m.go_away, "time_left", None)):
+                        return "reconnect"
+                    continue
+                if self._goaway_force:
                     return "reconnect"
                 if getattr(m, "tool_call", None) is not None:
                     for fc in m.tool_call.function_calls or []:
@@ -1578,8 +1661,99 @@ class Call:
                         await self._held_turn_done()
                     else:
                         await self.finish_turn()
+                    if self._goaway_at:
+                        self.stats["goaway_graceful"] = self.stats.get("goaway_graceful", 0) + 1
+                        return "reconnect"   # v0.224 his sentence is finished: now move to the new connection
             if not got_any:
                 return "reconnect"   # the stream ended without messages: connection is gone
+
+    async def _receive(self, session):
+        """session.receive(), except that the GoAway deadline closing the connection ends it quietly."""
+        try:
+            async for m in session.receive():
+                yield m
+        except Exception:
+            if not self._goaway_force:
+                raise
+
+    GOAWAY_MAX_WAIT_S = 8.0   # never hold a dying connection longer than this for a sentence to end
+
+    def _goaway_on(self, session, time_left) -> bool:
+        """v0.224 Gemini's GoAway. Starts building the next connection's context now (so the reconnect is just a
+        connect), and says whether to move at once: yes when nobody is talking; else a timer forces the move just
+        before Gemini's own cut, and turn_complete moves it as soon as his sentence ends."""
+        self.stats["goaway"] = self.stats.get("goaway", 0) + 1
+        now = time.monotonic()
+        self._goaway_at = now
+        if self._prebuilt is None:
+            t = asyncio.create_task(self._prebuild())
+            self._tools.add(t)
+            t.add_done_callback(self._tools.discard)
+        left = _seconds(time_left)
+        wait = min(self.GOAWAY_MAX_WAIT_S, (left - 1.5) if left is not None else 5.0)
+        talking = (now - self._last_model_audio < 0.6) or bool(self.reply_buf.strip()) or \
+                  (now - self._last_voice_at < 0.6) or bool(self.user_buf.strip())
+        if not talking or wait <= 0.3:
+            return True
+        t = asyncio.create_task(self._goaway_deadline(session, wait))
+        self._tools.add(t)
+        t.add_done_callback(self._tools.discard)
+        return False
+
+    async def _goaway_deadline(self, session, wait: float) -> None:
+        await asyncio.sleep(wait)
+        if self.closed.is_set() or self._session is not session or not self._goaway_at:
+            return
+        self._goaway_force = True       # downlink sees it on the next message, or the close below ends receive()
+        self.stats["goaway_forced"] = self.stats.get("goaway_forced", 0) + 1
+        with contextlib.suppress(Exception):
+            await session.close()
+
+    async def _build_context(self, first: bool) -> tuple[str, list]:
+        """The call brief for a (re)connect: facts + yaad + running jobs + her MCP servers. v0.224 a resumed
+        Gemini session keeps the MCP tool list of the last connect (no slow MCP snapshot on every move)."""
+        async def _yaad_block() -> str:
+            try:
+                from . import yaad
+                # v0.216 KAAM YAAD: a fresh call's greeting speaks the newest news, so the block hides that
+                # one and lists the REST; a reconnect hides nothing (its news was already spoken).
+                return await asyncio.to_thread(yaad.voice_block, self.ctx.tenant_id, self.ctx.conversation_id,
+                                               news_skip_newest=first) or ""
+            except Exception:
+                log.exception("voice memory block failed")
+                return ""
+
+        async def _kaam_block() -> str:
+            try:
+                from . import kaamwatch
+                return await asyncio.to_thread(kaamwatch.block, self.ctx.tenant_id) or ""
+            except Exception:
+                log.exception("voice kaam block failed")
+                return ""
+
+        async def _mcp():
+            if not first and self.handle is not None and self._last_mcp_defs is not None:
+                return self._last_mcp_defs
+            return await self._load_mcp()
+
+        if self._safe >= 1:
+            self._mcp_off = True      # v0.150 her MCP servers are listed, used through bazar_run
+        ymem, kb, mcp_defs = await asyncio.gather(_yaad_block(), _kaam_block(), _mcp())
+        self._last_mcp_defs = mcp_defs
+        context = await asyncio.to_thread(life.context_block, self.ctx.tenant_id)   # v0.221 off the audio loop
+        if ymem:
+            context += "\n\n" + ymem
+        if kb:
+            context += "\n\n" + kb
+        context += "\n\n" + self._mcp_block
+        return context, mcp_defs
+
+    async def _prebuild(self) -> None:
+        try:
+            ctx, defs = await self._build_context(False)
+            self._prebuilt = (time.monotonic(), ctx, defs)
+        except Exception:
+            log.exception("voice prebuild failed")
 
     def _mark_audio(self) -> None:
         """Gemini's voice is coming. The first audio of a turn after the user spoke = how long he took to answer."""
@@ -2566,34 +2740,14 @@ class Call:
         await self._setup_voiceid()
         try:
             while not self.closed.is_set():
-                # v0.181 the context blocks now load in PARALLEL (yaad + kaamwatch + MCP together): the call goes
-                # "ready" several hundred ms sooner instead of stacking three awaits before the Gemini connect.
-                async def _yaad_block() -> str:
-                    try:
-                        from . import yaad
-                        # v0.216 KAAM YAAD: a fresh call's greeting speaks the newest news, so the block hides that
-                        # one and lists the REST; a reconnect hides nothing (its news was already spoken).
-                        return await asyncio.to_thread(yaad.voice_block, self.ctx.tenant_id, self.ctx.conversation_id,
-                                                       news_skip_newest=first) or ""
-                    except Exception:
-                        log.exception("voice memory block failed")
-                        return ""
-                async def _kaam_block() -> str:
-                    try:
-                        from . import kaamwatch
-                        return await asyncio.to_thread(kaamwatch.block, self.ctx.tenant_id) or ""
-                    except Exception:
-                        log.exception("voice kaam block failed")
-                        return ""
-                if self._safe >= 1:
-                    self._mcp_off = True      # v0.150 her MCP servers are listed, used through bazar_run
-                ymem, kb, mcp_defs = await asyncio.gather(_yaad_block(), _kaam_block(), self._load_mcp())
-                context = await asyncio.to_thread(life.context_block, self.ctx.tenant_id)   # v0.221 off the audio loop
-                if ymem:
-                    context += "\n\n" + ymem
-                if kb:
-                    context += "\n\n" + kb
-                context += "\n\n" + self._mcp_block
+                # v0.181 the context blocks load in PARALLEL; v0.224 a GoAway already built them in the background
+                pre, self._prebuilt = self._prebuilt, None
+                if pre is not None and not first and time.monotonic() - pre[0] < 60:
+                    context, mcp_defs = pre[1], pre[2]
+                    self.stats["prebuilt"] = self.stats.get("prebuilt", 0) + 1
+                else:
+                    context, mcp_defs = await self._build_context(first)
+                self._goaway_at, self._goaway_force = 0.0, False
                 started = loop.time()
                 err: Exception | None = None
                 try:
@@ -2645,7 +2799,7 @@ class Call:
                                 followup=drop if drop_kind == "followup" else ""))
                             first = False
                         else:
-                            self._drop_stale_audio()
+                            self._drop_stale_audio(keep_recent=True)   # v0.224 her last 2 s of the gap survive
                             if degraded:
                                 degraded = False
                                 await self.send_json({"type": "status", "state": "live"})
@@ -2761,6 +2915,13 @@ class Call:
                 self._grace.cancel()
             for t in [*self._tools, *self._readers]:
                 t.cancel()
+            if not self._hung_up:
+                # v0.224 the call ended without HER hang-up (server restart, connection error, stall close, phone
+                # gone): the next call continues the work instead of starting cold. Before, only a phone drop did.
+                try:
+                    await asyncio.to_thread(self._save_drop_note)
+                except Exception:
+                    log.exception("focus drop note failed")
             if self.user_buf or self.reply_buf:
                 await self.finish_turn()
             if self._quiet_pending:   # v0.211 quiet notes that never found a ride: saved for the next call, not lost
