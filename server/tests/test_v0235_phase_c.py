@@ -1,4 +1,4 @@
-"""v0.234 (built as v0.232) LONG JOBS PHASE C - she SEES Hoola think (fix 6 of the long-task report).
+"""v0.235 (built as v0.232) LONG JOBS PHASE C - she SEES Hoola think (fix 6 of the long-task report).
 
 The server could stream thinking since v0.171, but the chat brain never asked Claude to think, so no Soch card could
 ever appear. Now: adaptive thinking on Claude while a long job runs (chat_thinking = goal), from the FIRST call of a
@@ -139,5 +139,5 @@ def test_phone_soch_card_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.234.0"
-    assert "0.234.0+274" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.235.0"
+    assert "0.235.0+275" in (ROOT / "pubspec.yaml").read_text()

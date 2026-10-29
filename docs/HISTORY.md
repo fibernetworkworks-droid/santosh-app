@@ -9278,7 +9278,16 @@ Tests: NEW `test_v0232_voice_phase4.py` (12). Version 0.232.0 (pubspec 0.232.0+2
 - Old empty "Naya chat" rows already made stay in the list (delete from the chat menu).
 - Tests: NEW `test_v0233_new_chat.py` (4). Version 0.233.0 (pubspec 0.233.0+273, console ?v=0.233.0, pins -> 0.233.0).
 
-## v0.234.0 LONG JOBS PHASE C (built as 0.232.0, re-versioned after the parallel v0.232.0 voice Phase 4 + v0.233.0) — she SEES Hoola think (owner: "NOW START PHASE C END TO END"; fix 6 of the Claude-vs-Hoola long-task report)
+## v0.234.0 One avatar while Hoola replies (owner: "WHEN USER SEND THE PROMPT AVATAR COMES TWO TIMES ... MAKE IT PERFECT LIKE A CLAUDE CHAT DOES")
+- Cause: at `reply_start` the console opened the reply row (`.mh`, with its avatar) before any words, right under the
+  "Preparing your response…" progress row, which has its own avatar - two avatars, one of them empty. The old greeting
+  could also be drawn twice (timeline + live stream).
+- Fix (console only): `#app .mh:has(>.bd:empty){display:none}` - an empty reply row stays hidden until words or steps
+  arrive; the progress row keeps its avatar while the reply row is still empty (`tail` only under a reply with content);
+  the console never draws a `source: greeting` message (the home screen greets).
+- Tests: NEW `test_v0234_one_avatar.py` (3). Version 0.234.0 (pubspec 0.234.0+274, console ?v=0.234.0, pins -> 0.234.0).
+
+## v0.235.0 LONG JOBS PHASE C (built as 0.232.0, re-versioned past the parallel v0.232.0 voice Phase 4, v0.233.0 and v0.234.0) — she SEES Hoola think (owner: "NOW START PHASE C END TO END"; fix 6 of the Claude-vs-Hoola long-task report)
 - THE GAP (found in code): the server could stream thinking since v0.171 (`think` live events, `livereply.feed_think`,
   `/live` snapshot `think`), but `_call_brain` never asked Claude to think and the production GLM has thinking
   disabled, so no Soch card could ever appear — not on the console, not on the phone (the phone had no card at all).
@@ -9294,6 +9303,6 @@ Tests: NEW `test_v0232_voice_phase4.py` (12). Version 0.232.0 (pubspec 0.232.0+2
   turn:seg (`_onThink`, newest 6,000 chars kept), inserted above the growing reply; `clear` empties it; live = open
   with a ticking clock "Soch raha hoon · 12s" and the newest lines; reply_end / typing off / the next reply folds it
   to "<name> ne socha · 12s" (tap opens all of it); a reload mid-thought reopens it from `/live`. Never stored.
-- Tests NEW `test_v0234_phase_c.py` (9). Version 0.234.0 (pubspec 0.234.0+274, console ?v=0.234.0, pins -> 0.234.0). Sub-agents never think (contextvar `_THINK_NOW`, not a new keyword, so every `_think` / `_call_brain` caller keeps its signature).
+- Tests NEW `test_v0235_phase_c.py` (9). Version 0.235.0 (pubspec 0.235.0+275, console ?v=0.235.0, pins -> 0.235.0). Sub-agents never think (contextvar `_THINK_NOW`, not a new keyword, so every `_think` / `_call_brain` caller keeps its signature).
   Server deploy turns thinking on (console shows it in its progress line); the phone card needs the new APK. Mera PC
   freeze respected; desktop untouched.
