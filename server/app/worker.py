@@ -339,12 +339,28 @@ async def tick() -> None:
     await employee_jobs()
     kaam_jobs()
     await followup_jobs()
+    goal_resume_jobs()
     await inbox_jobs()
     await team_jobs()
     eventlog_jobs()
 
 
 _fu_last = 0.0
+_gr_last = 0.0
+
+
+def goal_resume_jobs() -> None:
+    """v0.221 a long job (kaam_plan goal) that paused for her tap / OTP / answer restarts once she has answered."""
+    global _gr_last
+    import time
+    if time.time() - _gr_last < 10:
+        return
+    _gr_last = time.time()
+    try:
+        from .agent import goal
+        goal.resume_tick()
+    except Exception:
+        log.exception("goal resume tick failed")
 
 
 async def followup_jobs() -> None:

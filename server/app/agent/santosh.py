@@ -241,6 +241,34 @@ def _api_ready(history: list[dict]) -> list[dict]:
     return merged
 
 
+STATS_LONG: dict[str, int] = {"extended": 0, "wake_saved": 0, "deadline_extended": 0}   # v0.221 long-job counters
+_LONG_TURN: set[str] = set()     # v0.221 turns that moved to the long-job caps mid-way (no plan when they began)
+
+
+async def _with_deadline(coro, conversation_id: str, first: float, long: float):
+    """v0.221 the turn's lock deadline. A turn that became a long job mid-way (kaam_plan written, or the short cap
+    reached with work going) gets the long-job deadline instead of being killed at the short one."""
+    task = asyncio.ensure_future(coro)
+    try:
+        done, _ = await asyncio.wait({task}, timeout=first)
+        if not done and long > first:
+            from . import goal as _g
+            if conversation_id in _LONG_TURN or _g.active_for(conversation_id) is not None:
+                STATS_LONG["deadline_extended"] += 1
+                done, _ = await asyncio.wait({task}, timeout=long - first)
+        if not done:
+            task.cancel()
+            try:
+                await task
+            except BaseException:
+                pass
+            raise asyncio.TimeoutError()
+        return task.result()
+    except asyncio.CancelledError:
+        task.cancel()
+        raise
+
+
 def _save(conversation_id: str, role: str, content, display: str | None = None) -> None:
     with session() as s:
         s.add(Message(conversation_id=conversation_id, role=role, content=content, display=display, in_history=True))
@@ -571,7 +599,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     from .. import livereply
     live = None if conversation_id in _NO_STREAM else livereply.current(conversation_id)
     ran_steps = 0
-    while ran_steps < (settings.agent_goal_max_steps if state.get("goal") else settings.agent_max_steps):
+    while ran_steps < (settings.agent_goal_max_steps if (state.get("goal") or state.get("extended"))
+                       else settings.agent_max_steps):
         ran_steps += 1
         tools = (adm.specs()) + mcp_defs if adm is not None else TOOLS + mcp_defs   # v0.191 after tool_search
         if settings.agent_goal and "goal" not in state:
@@ -630,6 +659,9 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         if stop != "tool_use":
             if stop == "max_tokens":
                 # v0.187 the words were cut mid-thought: continue exactly where the cut happened, in goal mode and out
+                # v0.221 and give the next call more room (a big tool input cut at 2,000 tokens would be cut again)
+                state["max_tokens"] = min(16000, 2 * (state.get("max_tokens") or settings.agent_max_tokens))
+                state["cuts"] = state.get("cuts", 0) + 1
                 nudge = "[System: aapka jawab beech mein cut gaya (max_tokens). Wahi se exactly aage badho — kaam ya " \
                         "baaki baat poore karo, dobara shuru mat karo.]"
                 history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
@@ -771,6 +803,21 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                                                   "label": "Atak gaya, roka gaya", "data": {}})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
             return final_text
+        if (settings.agent_goal and not state.get("goal") and not state.get("extended")
+                and ran_steps >= settings.agent_max_steps
+                and (getattr(ctx, "actor", "owner") or "owner") in ("owner", "routine", "wake")):
+            # v0.221 the short-job cap is reached while work is still going (the model never wrote a plan): instead of
+            # "Yeh kaam lamba ho gaya, yahin ruk raha hoon" the turn moves to the long-job caps ONCE and the model is
+            # told to write the plan of what is left - long jobs no longer die at step 24.
+            state["extended"] = True
+            _LONG_TURN.add(conversation_id)
+            STATS_LONG["extended"] += 1
+            b = state["breaker"]
+            b.max_calls, b.fails_in_row, b.rescue = settings.agent_goal_max_calls, FAILS_IN_ROW_GOAL, True
+            state["max_tokens"] = max(state.get("max_tokens") or 0, settings.agent_goal_max_tokens)
+            ext = ("[System: yeh kaam lamba hai aur abhi poora nahi hua. Ruko mat. Abhi `kaam_plan set` se baaki kaam ke "
+                   "steps likho (jo ho chuka use done likho), phir aage badho jab tak poora na ho.]")
+            history[-1] = {"role": "user", "content": list(history[-1]["content"]) + [{"type": "text", "text": ext}]}
         if conversation_id in _stopped or state.get("halted"):
             final_text = HALTED_TEXT.get(state.get("halted") or "stop", HALTED_TEXT["stop"])
             if state.get("halted"):
@@ -794,6 +841,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             final_text = "Yeh kaam lamba ho gaya, main yahin ruk raha hoon. Aage kya karoon?"
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
                                                      **_tag(live, True)})
+            # v0.221 saved too: the next turn must know the work stopped half-way (before, only she saw this line)
+            _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         return final_text
     if not final_text.strip():
         # the model finished without a word: never leave the user staring at a silent chat
@@ -1076,8 +1125,18 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             agent_text += "\n\n" + where.note(ctx.place, conversation_id)
         if notes:
             agent_text = "\n".join(f"[Santosh worker update] {n}" for n in notes) + "\n\n" + agent_text
+        saved_wake = False
         if save_user:
-            _save(conversation_id, "user", agent_text, display=user_text)
+            # v0.221 a goal's background round is not her words: kept in history, but never shown as her message
+            _save(conversation_id, "user", agent_text,
+                  display=None if (who == "routine" and user_text.startswith("[Goal jaari")) else user_text)
+        elif who == "wake" and agent_text.strip():
+            # v0.221 a finished job's RESULT is saved into the chat history (display None = never shown as her words,
+            # never in her focus words). Before, only Hoola's reply about it was kept: from the next turn on the real
+            # result - ids, links, what failed - was gone.
+            _save(conversation_id, "user", agent_text, display=None)
+            saved_wake = True
+            STATS_LONG["wake_saved"] += 1
         bus.publish(conversation_id, "typing", {"on": True})
         if (actor or "owner") == "owner" and not voice:   # v0.187 the first words come fast (see _ack_later)
             _ACKED.add(conversation_id)
@@ -1087,7 +1146,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                          turn_id=_turn_id, actor=who)
 
         history = _load_history(conversation_id)
-        if not save_user and agent_text.strip():
+        if not save_user and not saved_wake and agent_text.strip():
             # v0.213 wake / inbox re-run turns: this turn's words were deliberately NOT saved (save_user=False,
             # kaam_followup._wake_turn / turn_inbox re-runs), so the array below used to end with the PREVIOUS
             # turn's assistant reply - the production model refuses assistant-final arrays (400 'assistant
@@ -1128,9 +1187,11 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             # one stuck call must never keep this conversation locked forever (v0.187: an open goal gets the longer cap)
             from . import goal as _goalt
             goal_on = settings.agent_goal and _goalt.active_for(conversation_id) is not None
-            final_text = await asyncio.wait_for(
-                _steps(conversation_id, ctx, _gender, history, settings, tenant_id, user_text),
-                timeout=max(30, settings.agent_goal_turn_s if goal_on else settings.agent_turn_timeout_s))
+            _LONG_TURN.discard(conversation_id)
+            final_text = await _with_deadline(
+                _steps(conversation_id, ctx, _gender, history, settings, tenant_id, user_text), conversation_id,
+                max(30, settings.agent_goal_turn_s if goal_on else settings.agent_turn_timeout_s),
+                max(30, settings.agent_goal_turn_s) if settings.agent_goal else 0)
         except asyncio.TimeoutError:
             log.error("agent turn timed out after %ss", settings.agent_turn_timeout_s)
             final_text = "Yeh kaam bahut der se chal raha tha, isliye maine ise rok diya. Thoda chhota karke phir bolein?"

@@ -33,7 +33,8 @@ from ..events import bus
 log = logging.getLogger("santosh.goal")
 
 MAX_STEPS = 15               # kaam_plan set cap
-STATS = {"set": 0, "finished": 0, "blocked": 0, "continued": 0, "refused": 0, "stopped_by_her": 0}
+STATS = {"set": 0, "finished": 0, "blocked": 0, "continued": 0, "refused": 0, "stopped_by_her": 0, "paused": 0,
+         "resumed": 0}
 
 # conversations whose owner pressed Rokiye on the goal (the goal stops, the chat stays usable)
 _STOPPED: set[str] = set()
@@ -50,6 +51,8 @@ class GoalRun(Base):
     reason: Mapped[str] = mapped_column(Text, default="")             # why it ended / what it needs from her
     rounds: Mapped[int] = mapped_column(Integer, default=1)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # v0.221 waiting on her
+    paused_s: Mapped[int | None] = mapped_column(Integer, nullable=True)       # v0.221 seconds spent waiting on her
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -189,6 +192,13 @@ def active_for(conv: str) -> dict[str, Any] | None:
         return _row_view(r) if r is not None else None
 
 
+def started_at(goal_id: str) -> datetime | None:
+    """v0.221 when this goal began (yaad keeps every exchange since then in the rich form)."""
+    with session() as s:
+        r = s.get(GoalRun, goal_id)
+        return _aware(r.started_at) if r is not None else None
+
+
 def mark_stopped(conv: str) -> None:
     """She pressed Rokiye on the goal: the working goal stops now (continuations refuse this conversation)."""
     _STOPPED.add(conv)
@@ -268,16 +278,44 @@ def maybe_continue(conv: str, tenant: str, actor: str = "owner") -> bool:
     if view is None:
         return False
     if _waiting_on_her(conv):
-        log.info("goal %s waits on her; no continuation", view["id"])
+        log.info("goal %s waits on her; paused until she answers", view["id"])
         STATS["refused"] += 1
+        _pause(view["id"])         # v0.221 the resume sweep restarts it once her card is answered
         return False
+    return _schedule(conv, tenant, view, count_round=True)
+
+
+def _working_minutes(r: GoalRun) -> float:
+    """v0.221 minutes the goal really worked: time spent waiting on her (paused) never counts."""
+    total = (now() - (_aware(r.started_at) or now())).total_seconds()
+    waited = int(r.paused_s or 0)
+    if r.paused_at is not None:
+        waited += max(0, int((now() - _aware(r.paused_at)).total_seconds()))
+    return max(0.0, total - waited) / 60
+
+
+def _pause(goal_id: str) -> None:
+    with session() as s:
+        r = s.get(GoalRun, goal_id)
+        if r is not None and r.paused_at is None:
+            r.paused_at = now()
+            STATS["paused"] += 1
+
+
+def _schedule(conv: str, tenant: str, view: dict[str, Any], count_round: bool) -> bool:
+    st = get_settings()
     rounds, mins = 0, 0.0
     with session() as s:               # bookkeeping txn closes BEFORE finish() opens its own (SQLite one writer)
         r = s.get(GoalRun, view["id"])
         if r is None:
             return False
-        rounds, mins = r.rounds, (now() - (_aware(r.started_at) or now())).total_seconds() / 60
-        if rounds < st.agent_goal_rounds and mins < st.agent_goal_minutes:
+        if r.paused_at is not None:    # waiting is over: bank the waited time
+            r.paused_s = int(r.paused_s or 0) + max(0, int((now() - _aware(r.paused_at)).total_seconds()))
+            r.paused_at = None
+        rounds, mins = r.rounds, _working_minutes(r)
+        if not count_round:
+            rounds = min(rounds, st.agent_goal_rounds - 1)   # a resume after her answer never uses up a round
+        elif rounds < st.agent_goal_rounds and mins < st.agent_goal_minutes:
             r.rounds += 1
     if rounds >= st.agent_goal_rounds:
         finish(tenant, view["id"], "failed", f"{rounds} rounds poore; baaki: {view['stage'] or 'steps'}")
@@ -294,6 +332,48 @@ def maybe_continue(conv: str, tenant: str, actor: str = "owner") -> bool:
                           "goal": view["goal"], "at": time.time()}
     STATS["continued"] += 1
     return True
+
+
+def resume_tick() -> int:
+    """v0.221 worker sweep: a goal that paused because it needed HER (a card, an OTP, an answer) restarts by itself
+    once nothing waits on her any more - before, the job sat half-done until she happened to type again.
+    Never when she pressed Rokiye, never while a turn holds the chat, never for goals paused longer than
+    agent_goal_resume_hours."""
+    st = get_settings()
+    if not (st.agent_goal and st.agent_goal_resume):
+        return 0
+    from datetime import timedelta
+    cutoff = now() - timedelta(hours=max(1, st.agent_goal_resume_hours))
+    with session() as s:
+        rows = s.scalars(select(GoalRun).where(GoalRun.status == "working", GoalRun.paused_at.is_not(None))
+                         .limit(50)).all()
+        todo = [(r.id, r.tenant_id, r.conversation_id, _aware(r.paused_at)) for r in rows]
+    n = 0
+    from .santosh import _locks
+    for gid, tenant, conv, at in todo:
+        if conv in _STOPPED:
+            continue
+        if at is not None and at < cutoff:
+            continue                     # too old: she moved on; her next message still sees the GOAL JAARI block
+        if conv in _locks and _locks[conv].locked():
+            continue                     # a turn is running in this chat: it carries the goal itself
+        if _waiting_on_her(conv):
+            continue
+        view = active_for(conv)
+        if view is None or view["id"] != gid or not steps_left(view):
+            _clear_pause(gid)
+            continue
+        if _schedule(conv, tenant, view, count_round=False):
+            STATS["resumed"] += 1
+            n += 1
+    return n
+
+
+def _clear_pause(goal_id: str) -> None:
+    with session() as s:
+        r = s.get(GoalRun, goal_id)
+        if r is not None:
+            r.paused_at = None
 
 
 async def _continuation(conv: str, tenant: str, ask: str, goal_id: str) -> None:

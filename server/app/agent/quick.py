@@ -57,6 +57,8 @@ def _context(conv: str, limit: int = 12) -> tuple[list[str], str]:
         t = re.sub(r"\s+", " ", (r.display or _text(r.content) or "")).strip()
         if not t:
             continue
+        if r.role == "user" and isinstance(r.content, str) and r.display is None:
+            continue    # v0.221 a saved job result / goal round, not her words
         if isinstance(r.content, list) and r.role == "user" and any(
                 isinstance(b, dict) and b.get("type") == "tool_result" for b in r.content):
             continue

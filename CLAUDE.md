@@ -8740,3 +8740,30 @@ all-bright fallback, kill-switch never filters, flip clause + re-anchor / first 
 scripted notes (result, reseed, stall, late result) carry the tone fresh and drop it stale, scorecard
 counters, version. Version 0.220.0 (APP_VERSION story, pubspec 0.220.0+255, console ?v=0.220.0 x9,
 pins ->0.220.0 in 32 suites); Mera PC freeze respected; desktop untouched 1.4.0.
+
+## v0.221.0 KAAM KHAATA — long jobs keep their progress and keep going (owner: "NOT ABLE TO PERFORM COMPLEX LONG TASK AND FORGOT THE WORK IN BETWEEN --- FIRST FIND THE EXACT ROOT CAUSE")
+THE RCA (reproduced on v0.220 with a 40-step job + "haan aage badho"): (1) `yaad.history` keeps full tool blocks only for
+the newest 4 exchanges within 60,000 chars, so ONE message later a long job was compressed - and `compress()` kept the
+FIRST 13 steps ("… +27 aur kadam"), values clipped at 60 chars, and a result cut by `_short` at 6,000 chars was no longer
+JSON so its ids / links fell to a 120-char clip: 240 KB -> 2 KB, step 5's file remembered, step 40's gone; (2) the
+production brain is GLM / OmniRoute and `llm.from_openai` never read `finish_reason`: a cut answer counted as finished
+('end_turn') and a half-written tool call ran with `{}` inputs - the v0.187 max_tokens continuation only worked on Claude;
+(3) long-job mode needed the model to write `kaam_plan`; otherwise the turn died at step 24 with "Yeh kaam lamba ho
+gaya…", and that line was published but never saved; (4) a goal paused on her tap / OTP / answer was never restarted -
+`maybe_continue` refused while a card waited and nothing ran after she tapped; rounds 3 / 60 minutes (waiting counted);
+(5) a wake turn (finished background job) never saved its input, so the job's real result left history after that turn.
+THE FIX: `yaad` rich form (`compress(rich=True)`, `_rich_set`: the newest RICH_WORK_EX=3 work exchanges + every exchange
+since the open goal began keep up to 80 step lines, 320 chars each, reply 3,000), `keep_steps` (head 2 + the NEWEST, the
+middle goes - short form too, and `one_line`), `gist` keeps id / url / path / name values whole (200) and `_salvage`
+reads key: value pairs out of truncated JSON; `llm.from_openai` (+ stream `_assemble(finish)`): `finish_reason=length`
+or unparsable tool arguments = stop "max_tokens", broken calls dropped (never run with `{}`), whole calls still run;
+`llm.STATS` cut / broken_calls; santosh: every max_tokens cut doubles the next call's room (cap 16,000); a turn that
+reaches agent_max_steps with no goal moves ONCE to the goal caps (steps / breaker / tokens) with a "kaam_plan set now"
+note riding the last tool results (`STATS_LONG.extended`), and `_with_deadline` gives such turns (and turns whose goal
+was written mid-turn) the long-job deadline; the step-cap line is saved; wake turns save their digest as a user row
+with display None (never her words: focus / titles / search / quick lane / turn_inbox skip display-None rows); goal
+continuation rows also display None. `goal.py`: `paused_at` / `paused_s` columns (nullable, auto-added), `_pause` when
+waiting on her, `resume_tick` (worker `goal_resume_jobs` every 10 s: not Rokiye, chat lock free, no card waiting, paused <
+agent_goal_resume_hours 24) restarts it without using a round, `_working_minutes` never counts waiting; defaults rounds
+6, minutes 180 (config agent_goal_resume / agent_goal_resume_hours). Tests NEW test_v0221_kaam_khaata.py (12).
+Version 0.221.0 (pubspec 0.221.0+256, console ?v=0.221.0 x9, pins ->0.221.0). Server-only deploy; old APKs keep working.
