@@ -145,16 +145,14 @@ def test_refused_setup_heals_step_by_step_and_is_remembered(env, monkeypatch):
         with c.websocket_connect(f"/api/voice/ws?conv={conv}") as ws:
             evs = read_events(ws, lambda e: e["type"] == "turn_done", limit=80)
             ws.send_text(json.dumps({"type": "end"}))
-        # v0.185.2 the affective heal adds ONE connect: the generic 1007 while enable_affective_dialog is on
-        # drops it and retries the same rung BEFORE the ladder moves (v0.150-era shape was exactly 2 connects)
-        assert len(configs) == 3
-        assert configs[0].enable_affective_dialog is True
+        # v0.221 3.8-live never gets enable_affective_dialog, so the heal's extra connect is gone: back to the
+        # v0.150 shape - the refused extra (vocab) is left out on the second connect, nothing else
+        assert len(configs) == 2
+        assert all(cfg.enable_affective_dialog is None for cfg in configs)
         assert configs[0].input_audio_transcription.custom_vocabulary == ["Rameshwar", "Akot"]
-        assert configs[1].enable_affective_dialog is None             # the heal's same-rung retry
-        assert configs[1].input_audio_transcription.custom_vocabulary == ["Rameshwar", "Akot"]
-        assert configs[2].input_audio_transcription.custom_vocabulary is None
-        assert configs[2].input_audio_transcription.language_codes      # only the refused extra is left out
-        assert configs[2].context_window_compression is not None
+        assert configs[1].input_audio_transcription.custom_vocabulary is None
+        assert configs[1].input_audio_transcription.language_codes      # only the refused extra is left out
+        assert configs[1].context_window_compression is not None
         assert evs[0]["type"] == "ready"
         assert voice.SETUP["step"] == 2 and json.loads(open("data/voice_setup.json").read())["step"] == 2
         # the next call starts straight from what worked: one connect, no refusal

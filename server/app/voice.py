@@ -167,6 +167,7 @@ Language
 
 Doing real work
 - Use your tools instead of only talking about it. Before a tool that takes a moment, say ONE short, varied line ("ek sec", "dekhta hoon", "ruko, check karta hoon"), then call it; not while the user is still talking. When the result comes, lead with the answer and do not repeat the filler.
+- Slow tools (a website, her PC, a search, mail, Drive, santosh_kaam) run in the background: say ONE short line ("dekh raha hoon"), keep talking with her normally, and give the result only when it arrives - never guess or invent it meanwhile. Quick tools (reminders, lists, weather, alarms) answer at once.
 - Never say something is done before the tool says so. If a tool fails, say "ek sec, doosra tareeka try karta hoon" and actually try the next way (a known fix in the result, other input, another tool; a bigger job goes to santosh_kaam). Never read an error out.
 - A MULTI-STEP goal ("order kar do...", "ye pura kaam kar do...") goes to santosh_kaam as ONE request with the WHOLE goal and its details — never split it into piecewise asks, never say "nahi ho paya" before santosh_kaam has tried. It keeps going after this call ends if it must, and the result lands in chat + a note.
 - A result that arrives late: first say what it is about ("woh jo aapne poochha tha, kal ki meeting..."), then the answer.
@@ -424,6 +425,15 @@ UNSUPPORTED: set[str] = set()
 _AFFECTIVE = {"ok": True}   # v0.181 stays true until Gemini refuses enable_affective_dialog for this model generation
 
 
+def affective_allowed(model: str | None = None) -> bool:
+    """v0.221 Google's gemini-3.8-live page (Sept 2026): 'Affective dialogue is removed from the API. Remove any
+    enable_affective_dialog configurations.' Sending it to a 3.x live model made the FIRST connect of every process
+    fail with a vague 1007 and heal itself (v0.185.1/.3) - a lost connect, sometimes a silent call. 3.x models get
+    tone from the prompt (voiceaffect notes); only older generations (2.5 native audio) still take the field."""
+    m = (model if model is not None else get_settings().gemini_live_model or "").strip().lower()
+    return not re.match(r"(models/)?gemini-([3-9]|\d\d)", m)
+
+
 def _affective_refused(e: BaseException) -> bool:
     s = str(e).lower()
     return "affect" in s or "enable_affective" in s
@@ -615,6 +625,37 @@ DELIVERY_END = ("(Awaaz ki yaad, har jawab mein: thoda dheere, apni hi raftaar; 
                 "har item ke baad ek saans; uski baat bhaari ho to awaaz naram aur neeche, acchi khabar ho to garmi.)")
 
 
+# v0.221 each call tool says how it runs. SLOW work (a website, her PC, a search, a big job) is NON_BLOCKING: he keeps
+# talking with her while it runs and the result comes back at a pause (FunctionResponse scheduling WHEN_IDLE).
+# Everything else is BLOCKING: quick look-ups and actions (reminders, weather, lists, haan_karo, side_talk...) return
+# in a moment, and he waits for the REAL answer instead of guessing one. gemini-3.8-live made NON_BLOCKING the default
+# for every tool, so a reminder could be "confirmed" before it existed; older models blocked on everything, so a
+# website job froze his voice. Explicit on both sides fixes both. Her MCP servers' tools count as slow.
+SLOW_TOOLS = {
+    "santosh_kaam", "browse_web", "browse_result", "pc_do", "pc_task_result", "hoola_pc_do", "computer_operator",
+    "google_search", "open_website", "youtube_search", "youtube_video", "youtube_watch", "youtube_channel",
+    "gyaan_khojo", "yaad_khojo", "memory_search", "file_read", "doc_desk",
+    "email_check", "email_read", "email_triage", "email_contacts", "email_attachment",
+    "drive_find", "drive_list_folder", "drive_read_file", "drive_send_file", "drive_upload", "drive_storage",
+    "sheet_read", "sheets_find", "sheet_info", "sheet_query", "sheet_export", "form_find", "form_summary",
+    "form_responses", "slides_find", "slides_read", "photos_picked", "photos_albums",
+    "notebook_ask", "notebook_open", "notebook_list", "order_karo", "video_edit", "photo_banao", "photo_clean",
+    "id_photo", "make_document", "motion_video", "artifact_make", "api_find", "api_docs", "api_call",
+    "maps_search", "maps_directions", "pc_search", "pc_read", "pc_send_to_phone", "tally_report",
+    "hoola_look", "hoola_make", "hoola_jaanch", "pdf_tools", "reel", "bazar_run", "bazar_mcp",
+}
+
+
+def is_slow(name: str) -> bool:
+    return name in SLOW_TOOLS or name.startswith("mcp_")
+
+
+def _behavior_kw(types, name: str) -> dict:
+    if not get_settings().voice_tool_behavior or "behavior" not in types.FunctionDeclaration.model_fields:
+        return {}
+    return {"behavior": types.Behavior.NON_BLOCKING if is_slow(name) else types.Behavior.BLOCKING}
+
+
 def live_config(voice: str, lang: str, context: str, handle: str | None, name: str = "Santosh", gender: str = "m",
                 extra_tools: list[dict] | None = None, langst=None, style: dict | None = None, safe: int = 0):
     from google.genai import types
@@ -639,7 +680,8 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
         specs = [t for t in specs if t["name"] == "santosh_kaam"]
     elif "core_tools" in without:
         specs = [t for t in specs if t["name"] in CORE_TOOLS or t["name"] in ("santosh_kaam", "side_talk")]
-    decls = [types.FunctionDeclaration(name=t["name"], description=t["description"], parameters_json_schema=t["input_schema"])
+    decls = [types.FunctionDeclaration(name=t["name"], description=t["description"], parameters_json_schema=t["input_schema"],
+                                       **_behavior_kw(types, t["name"]))
              for t in specs]
     cfg = types.LiveConnectConfig(
         response_modalities=["AUDIO"],
@@ -665,7 +707,8 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
     # v0.181 affective dialog is back: the model HEARS her tone (laugh, stress, excitement) and answers with a matching
     # one - happy with her, gentle when she is low. If this model generation refuses the field, the first connect
     # fails, _AFFECTIVE turns it off for the process and the call retries immediately without it (no SETUP step burnt).
-    if _AFFECTIVE["ok"] and get_settings().voice_affective and "enable_affective_dialog" in type(cfg).model_fields:
+    if _AFFECTIVE["ok"] and get_settings().voice_affective and affective_allowed() \
+            and "enable_affective_dialog" in type(cfg).model_fields:
         cfg.enable_affective_dialog = True
     for f in UNSUPPORTED:
         if f == "sliding_window":
@@ -1245,6 +1288,8 @@ class Call:
         self._otp_heard = ""                   # what she said since that box asked (only while it waits)
         self._otp_said: set[str] = set()       # OTPs filled in this call: hidden from the saved transcript
         self._appr_heard = ""                  # v0.191 what she said since a PC/browser step asked her yes/no
+        from .db import now as _now
+        self._appr_since = _now()              # v0.221 when her previous turn ended: the passive listener only answers cards newer than it
         self.turns_log: list[tuple[str, str]] = []   # v0.91 the whole call (masked), for the call receipt
         self.did: list[dict] = []              # v0.91 tools that really ran in this call, with their real outcome
         # v0.142 doosre se baat: while on hold the talk Gemini hears is not for Hoola (her phone call, people in the room)
@@ -1787,10 +1832,13 @@ class Call:
                     return
                 act = "approve"
             from .bazar import service
+            # v0.221 her yes / no answers a card that came up since her LAST turn - a "haan" to his own question
+            # ("chai bana doon?") never approves a step card from minutes ago (that is haan_karo's judgment call)
+            since = self._appr_since          # starts at the call's own start
             if act == "approve":
-                got = await asyncio.to_thread(service.voice_approve, self.tenant, self.conv, t, False, "voice")
+                got = await asyncio.to_thread(service.voice_approve, self.tenant, self.conv, t, False, "voice", since)
             else:
-                got = await asyncio.to_thread(service.voice_reject, self.tenant, self.conv)
+                got = await asyncio.to_thread(service.voice_reject, self.tenant, self.conv, since)
         except Exception:
             log.exception("approval by voice failed")
             return
@@ -1803,6 +1851,10 @@ class Call:
 
     async def finish_turn(self, interrupted: bool = False) -> None:
         await self._approval_listen(final=True)   # v0.191 poora uttar: 'haan, address yeh raha' jaisi manzoori bhi
+        self._appr_heard = ""                     # v0.221 one turn's words never combine with the next turn's
+        if self.user_buf.strip():
+            from .db import now as _now
+            self._appr_since = _now()             # the next card she can answer by voice is one that appears after this
         await self._otp_listen(final=True)
         user, reply = self.user_buf.strip(), self.reply_buf.strip()
         name_prompt, self._name_prompt = self._name_prompt, False
@@ -1897,7 +1949,7 @@ class Call:
             if interrupted and reply:
                 reply += " …"   # he was cut off: the chat history shows it
             try:
-                _save_turn(self.conv, user, reply)
+                await asyncio.to_thread(_save_turn, self.conv, user, reply)   # v0.221 off the audio loop
             except Exception:
                 log.exception("could not save voice turn")
             try:   # v0.108 the call turn is indexed + lasting facts picked (only when the owner herself is talking)
@@ -2199,8 +2251,10 @@ class Call:
                 self._note_result(name, out)
             return
         try:
+            fr = {"scheduling": types.FunctionResponseScheduling.WHEN_IDLE} if (
+                is_slow(name) or not get_settings().voice_tool_behavior) else {}   # v0.221 scheduling = non-blocking only
             await session.send_tool_response(function_responses=[types.FunctionResponse(
-                id=fc.id, name=name, response=resp, scheduling=types.FunctionResponseScheduling.WHEN_IDLE)])
+                id=fc.id, name=name, response=resp, **fr)])
         except Exception:
             log.warning("tool result for %s could not be delivered (session moved on)", name)
             self._note_result(name, out)
@@ -2534,7 +2588,7 @@ class Call:
                 if self._safe >= 1:
                     self._mcp_off = True      # v0.150 her MCP servers are listed, used through bazar_run
                 ymem, kb, mcp_defs = await asyncio.gather(_yaad_block(), _kaam_block(), self._load_mcp())
-                context = life.context_block(self.ctx.tenant_id)
+                context = await asyncio.to_thread(life.context_block, self.ctx.tenant_id)   # v0.221 off the audio loop
                 if ymem:
                     context += "\n\n" + ymem
                 if kb:
@@ -2557,7 +2611,7 @@ class Call:
                             # and died with 0 turns (seen live on the VPS, 26 Oct). A generic setup refusal while affective
                             # is on now drops affective once, process-wide, and retries immediately; the named-field case
                             # still heals exactly as before, and a refusal with affective already off climbs the ladder.
-                            if _AFFECTIVE["ok"] and get_settings().voice_affective and (
+                            if _AFFECTIVE["ok"] and get_settings().voice_affective and affective_allowed() and (
                                     _affective_refused(connect_err) or setup_refused(connect_err)):
                                 _AFFECTIVE["ok"] = False
                                 log.warning("Gemini refused the setup with affective dialog on (%s); calls continue "
@@ -2650,7 +2704,7 @@ class Call:
                     # heal, at the place the refusal actually arrives: drop affective process-wide and retry
                     # the SAME setup once. With affective already off (or disabled in .env) the ladder climbs
                     # exactly as before - no loop, no hang.
-                    if _AFFECTIVE["ok"] and get_settings().voice_affective:
+                    if _AFFECTIVE["ok"] and get_settings().voice_affective and affective_allowed():
                         _AFFECTIVE["ok"] = False
                         log.warning("Gemini refused the setup with affective dialog on (%s); dropping it for the "
                                     "process and retrying the same setup", str(err)[:160])

@@ -104,7 +104,7 @@ def test_voice_call_end_to_end(env, monkeypatch):
     # config: male voice, patient turn-taking, tone-aware
     cfg = seen_cfg[0]
     assert cfg.speech_config.voice_config.prebuilt_voice_config.voice_name == "Achird"
-    assert cfg.enable_affective_dialog is True and cfg.proactivity is None   # v0.181 affective dialog back (hears her tone)
+    assert cfg.enable_affective_dialog is None and cfg.proactivity is None   # v0.221 3.8-live removed affective dialog
     aad = cfg.realtime_input_config.automatic_activity_detection
     # answers at human speed: Gemini's own end-of-speech default and a 500-800 ms pause, not 1100
     assert aad.end_of_speech_sensitivity is None and 500 <= aad.silence_duration_ms <= 800

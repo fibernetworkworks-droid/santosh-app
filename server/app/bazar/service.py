@@ -520,7 +520,7 @@ VOICE_OK_EXECUTORS = ("pcop", "browser")   # aapka PC + Hoola ka browser: step a
 VOICE_WINDOW_MIN = 15                      # itni nayi manzoori par hi uske shabd kaam karte hain
 
 
-def voice_pending(tenant_id: str, conversation_id: str) -> list[Approval]:
+def voice_pending(tenant_id: str, conversation_id: str, since=None) -> list[Approval]:
     """Is baat-cheet ke young (<= 15 min), pending, NON-MONEY PC/browser step approvals — jinko uske shabd
     resolve kar sakte hain. Money / UPI / tier>=3 / password-OTP wali manzoori yahan KABHI nahi aati."""
     from datetime import timedelta
@@ -529,7 +529,7 @@ def voice_pending(tenant_id: str, conversation_id: str) -> list[Approval]:
     with session() as s:
         rows = s.scalars(select(Approval).where(
             Approval.conversation_id == conversation_id, Approval.decision == "pending",
-            Approval.created_at >= now() - timedelta(minutes=VOICE_WINDOW_MIN))
+            Approval.created_at >= max(now() - timedelta(minutes=VOICE_WINDOW_MIN), since or now() - timedelta(days=1)))
             .order_by(Approval.created_at.desc()).limit(5)).all()
         s.expunge_all()
     out: list[Approval] = []
@@ -546,7 +546,7 @@ def voice_pending(tenant_id: str, conversation_id: str) -> list[Approval]:
 
 
 def voice_approve(tenant_id: str, conversation_id: str, text: str, pure_only: bool = False,
-                  source: str = "voice") -> dict[str, Any] | None:
+                  source: str = "voice", since=None) -> dict[str, Any] | None:
     """Usne 'haan karo' / 'approve hai' / 'confirm' / 'theek hai' kaha ya likha: pending NON-MONEY PC/browser
     step approval card ke tap ke bina resolve ho jaati hai (owner: 'NOT ONLY HAAN — ANY KARDO, APPROVE HAI ETC').
 
@@ -558,11 +558,11 @@ def voice_approve(tenant_id: str, conversation_id: str, text: str, pure_only: bo
     text = (text or "").strip()
     if not text:
         return None
-    pending = voice_pending(tenant_id, conversation_id)
+    pending = voice_pending(tenant_id, conversation_id, since)
     if not pending:
         return None
     if approval_words.is_pure_rejection(text):
-        return voice_reject(tenant_id, conversation_id)
+        return voice_reject(tenant_id, conversation_id, since)
     pure = approval_words.is_pure_approval(text)
     if not pure and not (approval_words.approve_lead(text) and not pure_only):
         return None
@@ -596,9 +596,10 @@ def voice_approve(tenant_id: str, conversation_id: str, text: str, pure_only: bo
     return {"approved": said, "pure": pure, "say": say}
 
 
-def voice_reject(tenant_id: str, conversation_id: str) -> dict[str, Any] | None:
-    """Usne saaf mana kar diya ('nahi' / 'mat karo'): is baat-cheet ki young step manzooriyan cancel ho jaati hain."""
-    pending = voice_pending(tenant_id, conversation_id)
+def voice_reject(tenant_id: str, conversation_id: str, since=None) -> dict[str, Any] | None:
+    """Usne saaf mana kar diya ('nahi' / 'mat karo'): is baat-cheet ki young step manzooriyan cancel ho jaati hain.
+    v0.221 `since`: only cards that appeared after that moment (the passive call listener's 'her answer to THIS card')."""
+    pending = voice_pending(tenant_id, conversation_id, since)
     said: list[str] = []
     for ap in pending:
         try:
