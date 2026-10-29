@@ -102,6 +102,9 @@ def main() -> None:
     sys.path.insert(0, str(HERE))
     os.environ.setdefault("MEMORY_AUTO", "false")      # the quiz measures the chat window, not the fact picker
     os.environ.setdefault("KAAM_WATCH", "false")
+    os.environ["FCM_SERVICE_ACCOUNT_FILE"] = ""         # never a push to her phone from a quiz
+    os.environ["WA_DRY_RUN"] = "true"                   # never a real WhatsApp message
+    os.environ["CALL_RECEIPT"] = "false"
     results = []
     for m in [x.strip() for x in a.modes.split(",") if x.strip() in MODES]:
         print(f"== {m} ==", flush=True)
