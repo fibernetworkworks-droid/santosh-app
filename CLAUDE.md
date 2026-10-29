@@ -8858,3 +8858,27 @@ Phase 2 of the web-development audit: hosting moved off Hoola's own process, an 
 - Python fallback: ETag + 304 for repeat visits; `_link` now makes relative links. `.env.example` lists every SITES_ setting.
 - Tests `server/tests/test_v0224_site_edge.py` (real nginx test skips where nginx is missing). Version 0.224.0
   (pubspec 0.224.0+259, console ?v=0.224.0 x9, pins). Server + VPS nginx step; old APKs keep working.
+
+## v0.225.0 WEBSITE PHASE 3 — builder quality (owner: "START PHASE 3 , DEPLOY")
+Phase 3 of the web-development audit: the website builder works like App Sahayak (v0.140).
+- **Opus path for websites** (`site/ai.py`): kinds `build` (sections), `site_art`, `site_critique`, `site_edit` (fix rounds +
+  the change router) go through `_ask_app` when `SITE_OPUS` (default true): `site_model` (claude-opus-5-5), adaptive
+  thinking, effort per job (art xhigh, sections / critique high, edits medium), busy retries, NO quiet fallback (a plain
+  "Website Claude Opus 5.5 se ..." error). `SITE_OPUS=false` = the v0.121 path (Sonnet / cheap brain fallback).
+- **Art direction** (`site/quality.py`, `SITE_ART` default true): before each look's hero Opus writes a design DNA (concept,
+  idea, layout system / hero / rhythm / density, a SIGNATURE element, type, colour use, motion + entrance, imagery, avoid,
+  one line per section type); `clean_dna` makes any answer safe; a look whose fingerprint is too close to a sibling
+  (`closeness` >= 2.5) is asked again once. The DNA is stored on each look, carried by `choose_look`, and `dna_block` rides
+  in every section prompt. View: looks carry concept / idea / signature, the site carries `design`.
+- **Andaaza before the build**: `Q.estimate(plan)` = sections to write + looks + fix rounds + critique at the model's
+  usage price -> `estimate` {inr, inr_low, inr_high, say} in the view of planned / looks / stopped / failed sites and in
+  the say line ("Andaaza: ₹a–₹b AI kharcha ..."). Her tap (plan Haan / look choice) stays the start; nothing new to approve.
+- **Parallel sections** (`_write_sections`): sections still to write go out `SITE_PARALLEL` (3, max 6) at a time, board and
+  preview update after each under one lock; Rokiye = the rest never starts -> "stopped"; one failed section fails the
+  build plainly (no section left "building").
+- **Opus looks at its own work** (`_critique_round`, `SITE_CRITIQUE` home | off, `SITE_CRITIQUE_MIN` 7.5): after the check
+  rounds Opus sees the real home page screenshots (390 + 1440) with the DNA, scores each section, the up to 3 weakest are
+  redrawn once with its notes, checks run again and Opus scores again: a redraw that scores lower or adds a blocking
+  check is thrown away (old section back). Board `critique` {before, redrawn {type: before / after / kept}}.
+- Tests run with SITE_ART=false / SITE_CRITIQUE=off (conftest). Tests `server/tests/test_v0225_site_quality.py`.
+  Version 0.225.0 (pubspec 0.225.0+260, console ?v=0.225.0 x9, pins). Server-only deploy; old APKs keep working.

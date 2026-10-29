@@ -163,6 +163,11 @@ class Settings(BaseSettings):
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)
+    site_opus: bool = True                 # v0.225 every website section / fix / change on the App Sahayak Opus path (thinking, effort, retries, no quiet fallback)
+    site_art: bool = True                  # v0.225 Opus writes a design DNA per look before the hero (art direction)
+    site_critique: str = "home"            # v0.225 Opus looks at the built home page screenshots: home | off
+    site_critique_min: float = 7.5         # v0.225 a section scoring below this (out of 10) is redrawn once with the notes
+    site_parallel: int = 3                 # v0.225 sections written at the same time inside one build
     app_model: str = "claude-opus-5-5"     # v0.140 App Sahayak: EVERY design / screen / fix / change / Kotlin call (owner: Opus 5.5)
     app_model_fallback: bool = False       # v0.140 true = when Opus can't be reached, use the chat model / cheap brain instead
     app_model_tries: int = 5               # v0.140 tries per call when Opus is busy (429 / 5xx / overloaded / timeouts)
