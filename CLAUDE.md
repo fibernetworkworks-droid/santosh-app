@@ -8740,3 +8740,28 @@ all-bright fallback, kill-switch never filters, flip clause + re-anchor / first 
 scripted notes (result, reseed, stall, late result) carry the tone fresh and drop it stale, scorecard
 counters, version. Version 0.220.0 (APP_VERSION story, pubspec 0.220.0+255, console ?v=0.220.0 x9,
 pins ->0.220.0 in 32 suites); Mera PC freeze respected; desktop untouched 1.4.0.
+
+## v0.221.0 SAHI JAWAB + PATLA PROMPT — Phase 1 + 2 of the Claude-style reply plan (owner: "START PHASE 1 AND PHASE 2")
+Research first (Anthropic's published system prompts + prompting guides + the context-engineering post): Claude finds
+the real need behind the words, acts on a clear ask, states its assumption on a half-clear one, asks only when a wrong
+guess costs something; answers first; length fits the question; prose by default with lists only for real lists;
+no filler; honest gaps; and keeps its working context small ("more context can make it worse").
+- PHASE 1 — one reply rulebook, `server/app/agent/replystyle.py` (no braces: voice.PERSONA is .format()ed):
+  `CHAT` (How you understand her + How you answer) replaces the old fixed "Two to four sentences in chat" rule inside
+  `prompts.SYSTEM` (marker `{REPLY_RULES}`, swapped once at import; the "repeat the key values once before send / pay /
+  book / delete" rule kept) - phone and web console share it because they share the brain; `QUICK` rides the quick
+  lane's SYSTEM; `VOICE` (the spoken version: answer in the first breath, spoken length follows the question, no
+  symbols) is inserted into `voice.PERSONA` just before "When to speak". Chat shows NO bold / headings / tables (the
+  phone app has no markdown renderer yet - Phase 3), lists only as plain "-" / "1." lines.
+- PHASE 2 — `prompts.system_text(families)` + `prompts._guide()`: SYSTEM (~131 KB) is cut into its "- Feature: ..."
+  blocks once; a block naming a tool of a NON-core family (names with "_" anywhere; one-word names like gst / office /
+  product only when written as a tool: `gst`, "gst action=", "gst(") is that family's guide and rides only on turns that
+  admitted the family (v0.191 admission); untagged blocks, core-family blocks and `PINNED` routing rules always ride; a
+  one-line index ("More skills you have ... call tool_search ...") names every guide left out. `_steps_inner` computes
+  admission first, builds the system prompt from `adm.families`, and rebuilds it once when tool_search opens a family
+  mid-turn. families=None (admission off / valve / routine, staff, customer actors / direct callers) = the full SYSTEM
+  byte-identical. Setting `prompt_slim` (default true; false = full guide). Measured: 131 KB -> ~32-43 KB per owner turn.
+- RULE for new Sahayaks: write the prompt line as "- NAME: ... `toolname action=...`" so it is tagged to its family; a
+  rule every turn needs and that names a non-core tool goes into `PINNED`.
+- Tests `server/tests/test_v0221_sahi_jawab.py` (11). Version 0.221.0 (pubspec 0.221.0+256, console ?v=0.221.0 x9, pins
+  -> 0.221.0). Server-only deploy; old APKs keep working; Mera PC freeze respected; desktop untouched.

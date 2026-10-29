@@ -1,4 +1,4 @@
-"""v0.220.0 SOORAT - Wave 3 of the voice-to-voice PERFECT plan (Phase C's last remainder: prosody AT the moment).
+"""v0.221.0 SOORAT - Wave 3 of the voice-to-voice PERFECT plan (Phase C's last remainder: prosody AT the moment).
 
 The v0.201 note speaks once and dies; around it the scripted moments keep their fixed energy - after heavy
 news a tool's ack clip can still go bright on 'mil gaya!', and when SHE MOVES (heavy to light, anger to
@@ -348,4 +348,4 @@ def test_scorecard_counts_soorat():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.220.0"
+    assert APP_VERSION == "0.221.0"
