@@ -101,11 +101,17 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.239.0 (pubspec 0.239.0+279). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.241.0 (pubspec 0.241.0+281). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.239 voice Phase 5 (p99 + dead air + talk-over + repeats, once-a-day voice_alert, ear test vs previous version,
+- v0.241 voice Phase 5 (p99 + dead air + talk-over + repeats, once-a-day voice_alert, ear test vs previous version,
   stall watchdog ignores noise, clips at his live loudness, TTS fallback logged).
+- v0.240 CHHOTA JAWAB: a long job works in the BACKGROUND and the chat gets one short human line. The four-part
+  report (kya hua / kya bana / kya baaki / aapko kya karna hai) lives on the CARD only - the prompt, kaam_plan's
+  finish + step notes, the narration cadence (every 3 -> 8, max 2 a job) and the reply rulebook all stop pushing
+  step detail, bullets and ✅/📎/⏳ headings into the chat space. Nothing lost: build_report + the card untouched.
+- v0.239 FULL CLAUDE MODE Phase 1 (built as 0.237): whole chat word for word (`CHAT_CONTEXT=claude|hoola`), `agent/context.py`
+  gauge + safety net + one retry on "too long", clean error lines, GET /api/conversations/{id}/context (Phase 2 = compaction).
 - v0.238 DATA DESK: big data stays in a server file (`app/datasets.py`, tools data_fetch / data_read / data_note,
   doc_studio data= + part=add); cloud PC = desktop software only, sticks only when she asked; goal waits on a running job.
 - v0.237 WEBSITE PHASES 1-3 (bug fixes, nginx-served sites + outside uptime check + off-server backup, Opus art

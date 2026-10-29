@@ -1,12 +1,12 @@
-# Voice call: end-to-end test plan (v0.239.0, voice Phases 1-5)
+# Voice call: end-to-end test plan (v0.241.0, voice Phases 1-5)
 
 Who: the owner, on her own Android phone, with the new APK. Time: about 75 minutes in one sitting, or the four
 rounds on different days. Every test has a "pass if" line. Mark each one in **Profile > Call ki jaanch** where it
 exists there (the 18 ear / phone checks); the rest are noted here.
 
 ## 0. Setup (5 min)
-1. VPS: deploy v0.239.0 (commands below), then `pm2 logs santosh --lines 50` shows no errors at start.
-2. Install the APK for v0.239.0 and open Hoola. Profile shows v0.239.0.
+1. VPS: deploy v0.241.0 (commands below), then `pm2 logs santosh --lines 50` shows no errors at start.
+2. Install the APK for v0.241.0 and open Hoola. Profile shows v0.241.0.
 3. Profile > Call ki jaanch opens. Before any call it says "Abhi koi call record nahi hui" or shows older calls.
 4. A quiet room for Round A. Earphones and a second phone (or a friend) for Round C.
 
