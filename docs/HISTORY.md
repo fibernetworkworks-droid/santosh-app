@@ -9845,3 +9845,15 @@ PDF ONLY WITH MATCHING BACKGROUND OF OUR DESIGN. ALSO CHECK AT TOP UNWANTED TAB.
 - `/api/voice/stats` adds `clips_rejected`.
 Tests: NEW `test_v0250_sirf_line.py` (7); generation pins in `test_v0201_feeling.py` / `test_v0206_backchannels.py` moved.
 Version 0.251.0 (pubspec 0.251.0+291, console ?v=0.251.0, pins -> 0.251.0). Server only; no new APK needed.
+
+## v0.252.0 ONE READING WIDTH (console)
+Owner (screenshots of Claude and the Hoola console side by side): "CHECK THE CHAT TYPING SECTION AND A CHAT SPACE IN HOOLA AND
+CHAT SPACE IN CLAUDE --- THE CHAT SPACE WORDING IS EXTENDED TO CHAT TYPING SECTION IN CLAUDE --- SAME FOR HOOLA."
+- Measured before: composer 880px (392-1272 at 1440), Hoola's reply text 676px (516-1192) - narrower and indented.
+- v2.css "v0.249 ONE READING WIDTH" block: `#app .col{width:min(880px,calc(100% - 20px))}` (the thread keeps
+  scrollbar-gutter: stable both-edges, so -20px lands on the dock's 20px padding), her bubble max min(78%,640px), cards
+  inside a reply up to the full column; `.thread` is a size container and at >= 980px the reply row shifts 44px left
+  (`#app .mh{margin-left:-44px;width:calc(100% + 44px)}`) so the avatar sits outside and the words start exactly at the
+  composer's left edge. Measured after: text 392-1272 at 1440, 110-990 at 1100, 20-880 / 20-370 (avatar inline) at 900 / 390,
+  each equal to the composer.
+- Tests: test_v0252_reading_width.py.

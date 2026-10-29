@@ -101,9 +101,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.251.0 (pubspec 0.251.0+291). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.252.0 (pubspec 0.252.0+292). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (13 now: theme.js, pdfview.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.252 console: the chat column = the composer's width (880px), words line up with the typing box like Claude; avatar hangs outside.
 - v0.251 SIRF LINE: voice clips that read their English TTS ask aloud ("say this quietly...") are rejected by length,
   re-rendered from the bare line; all cached clips regenerate (a3/b2/p2); two English mid-call notes now Hinglish.
 - v0.250 FULL CLAUDE MODE 3B MEMORY: "Mere baare mein" page (`app/aboutme.py`, daily for active owners, editable),
