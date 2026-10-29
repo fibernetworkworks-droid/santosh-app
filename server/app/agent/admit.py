@@ -50,6 +50,7 @@ CORE_FAMILIES = frozenset({
     "id",         # Pehchaan Locker
     "usage",      # ai_kharcha
     "device",     # phone_health
+    "docstudio",  # v0.239 doc_studio / doc_preview: a document ask in any words finds the design studio
     "data",       # v0.238 data_fetch / data_read: big data stays in a server file (never escape to the cloud PC)
     "team",       # v0.193 deploy_agents / agent_status / session_log - the agent team is a first-class tool now
 })
@@ -57,17 +58,19 @@ CORE_FAMILIES = frozenset({
 # Hand-written keywords per family (lowercase substrings matched against her words). Tool names add their own
 # auto-keys below - this map carries the natural language the names cannot cover.
 EXTRA_KEYS: dict[str, tuple[str, ...]] = {
-    "email": ("mail", "email", "gmail", "inbox", "khat", "patra", "newsletter", "unsubscribe", "attachment",
-              "attach", "forward", "fwd", "snooze", "vacation", "label", "spam", "draft", "bhej", "send", "reply"),
+    # v0.239 generic verbs (bhej / send / reply / draft / label) removed: they loaded 23 mail tools for every send
+    "email": ("mail", "email", "gmail", "inbox", "khat", "newsletter", "unsubscribe", "attachment",
+              "fwd", "snooze", "vacation", "spam", "ईमेल", "मेल", "इनबॉक्स"),
     "gcal": ("calendar", "kalandar", "meeting", "meeeting", "event", "agenda", "slot", "schedule", "invite",
-             "invitation", "rsvp", "appointment", "madh", "free busy", "milne"),
+             "invitation", "rsvp", "appointment", "madh", "free busy", "milne", "मीटिंग", "कैलेंडर", "अपॉइंटमेंट",
+             "बैठक"),
     "sheets": ("sheet", "excel", "spreadsheet", "csv", "row", "column"),
-    "gdrive": ("doc", "document", "docx", "word file", "padh"),
-    "drive": ("drive", "folder", "upload", "storage", "bhej", "send"),
+    "gdrive": ("google doc", "gdoc", "drive", "google sheet"),      # v0.239 'document' / 'docx' = doc_studio now
+    "drive": ("drive", "folder", "storage"),
     "slides": ("slide", "ppt", "presentation", "deck"),
     "forms": ("form", "survey", "respons"),
-    "photos": ("photo", "photo", "tasveer", "image", "picture", "album", "pic"),
-    "photo": ("photo", "photo", "tasveer", "image", "picture", "banao", "generate"),
+    "photos": ("google photos", "album", "gallery"),
+    "photo": ("photo", "tasveer", "image", "picture", "wish", "greeting", "फोटो", "तस्वीर"),
     "graphic": ("graphic", "banner", "poster", "logo", "thumbnail", "design", "creativ"),
     "video": ("video", "clip", "trim", "subtitle", "edit", "reel"),
     "reel": ("reel", "short", "instagram", "status video"),
@@ -76,23 +79,24 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "blender": ("blender", "3d", "three d"),
     "youtube": ("youtube", "channel", "vlog", "subscriber"),
     "tv": ("tv", "channel", "dth"),
-    "bt": ("bluetooth", "speaker", "music", "song", "gaana", "ac ", "air condition", "remote", "ganna"),
-    "pc": ("pc", "laptop", "computer", "browser", "screenshot", "tally", "print", "krom", "mera pc"),
+    "bt": ("bluetooth", "speaker", "music", "song", "gaana", "gaane", "volume", "ac ", "air condition", "remote",
+           "ganna", "गाना", "गाने"),
+    # v0.239 "pc" is not keyword-admitted any more: _pc_wanted() decides (her PC / Hoola's PC named, or desktop software)
     "operator": ("computer operator", "operator"),
     "jaanch": ("jaanch", "test karo"),
     "shop": ("order", "amazon", "flipkart", "zomato", "swiggy", "kharid", "shopping", "pizza", "grocer"),
-    "mshop": ("mobile", "sim", "repair", "phone shop"),
+    "mshop": ("mobile shop", "sim card", "phone repair", "phone shop"),
     "courier": ("courier", "parcel", "deliver", "track", "shipment", "speed post", "speedpost", "bluedart",
                 "delhivery"),
-    "india": ("pdf", "india", "holiday", "chhutti", "ifsc", "pincode", "bank holiday", "govt"),
-    "notebook": ("notebook", "note"),
-    "hoola": ("hoola", "samaj", "dosti", "community", "deal", "market", "booking", "group", "connection",
-              "connection", "post karo", "business page"),
+    "india": ("holiday", "chhutti", "ifsc", "pincode", "bank holiday", "panchang", "tithi", "muhurat", "ekadashi"),
+    "notebook": ("notebook", "notebooklm", "padhai", "study guide", "mind map", "podcast banao"),
+    # v0.239 bare 'hoola' removed: she says it in every message (it loaded 35 network tools + the PC tools)
+    "hoola": ("avatar", "hoola network", "samaj", "dosti", "community", "connection", "business page", "network pe"),
     "employee": ("employee", "staff", "naukar"),
     "pgdb": ("postgres", "sql", "database"),
     "publicapi": ("api",),
     "handoff": ("digilocker", "ondc", "a2a", "consent"),
-    "artifact": ("artifact",),
+    "artifact": ("artifact", "tracker", "hisaab", "calculator", "planner", "checklist", "dashboard"),
     "army": ("army", "agent army"),
     "desk": ("yaad khojo", "doc desk", "milaan"),
     "website": ("website", "web site", "site banao", "landing page", "domain"),
@@ -125,7 +129,8 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "editdesk": ("edit desk", "editing desk"),
     "filmdesk": ("film desk", "shoot"),
     "kalam": ("kalam", "writer", "lekha"),
-    "lekhak": ("lekhak", "script", "story"),
+    "lekhak": ("lekhak", "anuvaad", "translate", "translation", "grammar", "application likh", "kruti", "affidavit",
+               "अनुवाद", "आवेदन"),
     "kitab": ("kitab", "book"),
     "podcast": ("podcast",),
     "telecall": ("telecall", "cold call", "call list"),
@@ -136,7 +141,7 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "feedback": ("feedback", "review aaya"),
     "shikayat": ("shikayat", "complaint"),
     "wapsi": ("wapsi", "return", "refund"),
-    "analyst": ("paisa", "analysis", "report banao"),
+    "analyst": ("p&l", "profit loss", "balance sheet", "business analysis", "trial balance"),
     "product": ("product", "catalogue", "catalog"),
     "thok": ("thok", "wholesale", "bulk order"),
     "warehouse": ("warehouse", "godam", "stock", "inventory"),
@@ -193,17 +198,40 @@ def _hit(key: str, text: str) -> bool:
     return key in text
 
 
+# v0.239 tags / name-words that are everyday words: never auto-keys ('make' loaded notebook + network + artifact,
+# 'search' / 'phone' / 'report' / 'print' loaded the PC tools, 'file' loaded Drive)
+_GENERIC = frozenset({
+    "make", "file", "files", "life", "desk", "note", "notes", "report", "print", "phone", "search", "task", "entry",
+    "photo", "video", "edit", "share", "export", "copy", "upload", "comments", "threads", "thread", "answer", "reply",
+    "call", "docs", "doc", "sheet", "form", "event", "cancel", "settings", "sources", "studio", "plan", "office",
+    "product", "seva", "biz", "kaam", "jaanch", "agent", "google", "website", "drive", "hoola", "app", "channel",
+    "shop", "data", "team", "web", "site", "maps", "usage", "device", "goal", "procedure", "handoff", "rea", "qa",
+    "dev", "chain", "deal", "market", "group", "groups", "handle", "decide", "pick", "look", "learn", "learned",
+    "act", "skills", "business", "connect", "find", "me", "inbox", "send", "post", "digest", "booking", "remove",
+    "detail", "action", "status", "list", "my", "chat", "config", "output", "discover", "open", "ask", "add",
+    "pdf",       # making a pdf = docstudio; working ON a pdf = the "pdf work" intent
+})
+
+
 def _auto_keys() -> dict[str, set[str]]:
-    """family -> keywords derived from its own tag + tool names (built once)."""
+    """family -> keywords derived from its own tag + tool names (built once). v0.239: a name-word is a key only when
+    it belongs to ONE family and is not an everyday word; the joined tool name ('computer operator') always is."""
+    words_of: dict[str, set[str]] = {}
+    for name, fam in FAMILY_OF.items():
+        words_of.setdefault(fam, set()).update(_WORD_RE.findall(fam) + _WORD_RE.findall(name))
+    owners: dict[str, set[str]] = {}
+    for fam, ws in words_of.items():
+        for w in ws:
+            owners.setdefault(w, set()).add(fam)
     out: dict[str, set[str]] = {}
     for name, fam in FAMILY_OF.items():
-        words = set(_WORD_RE.findall(fam)) | set(_WORD_RE.findall(name))
-        keys = {w for w in words if w not in _STOP and len(w) >= 3}
-        # multi-word tool names also admit their joined form ("computer_operator" -> "computer operator")
+        keys = {w for w in words_of[fam] if w not in _STOP and w not in _GENERIC and len(w) >= 3
+                and len(owners.get(w, ())) == 1}
         joined = name.replace("_", " ")
         if len(joined) >= 5 and joined not in joined.split():
             keys.add(joined)
-        keys.add(fam)
+        if fam not in _GENERIC and len(fam) >= 3:
+            keys.add(fam)
         out.setdefault(fam, set()).update(keys)
     return out
 
@@ -219,6 +247,7 @@ class AdmitSet:
         self.settings = settings
         self.families: set[str] = set(CORE_FAMILIES)
         self.extra: set[str] = set()          # tool names admitted directly (beyond their family)
+        self.why: dict[str, str] = {}         # v0.239 family -> how it got in (word / intent / meaning / place)
 
     def admit_families(self, tags) -> list[str]:
         """Add families, return the tool names that became visible (for the tool_search answer)."""
@@ -234,14 +263,18 @@ class AdmitSet:
         STATS["families_added"] += len(fresh)
         return sorted(fresh)
 
+    def _seen(self, name: str) -> bool:
+        fam = FAMILY_OF.get(name)
+        return fam is None or fam in self.families or name in self.extra   # v0.239 unmapped = always (as documented)
+
     def size(self) -> int:
-        return 1 + sum(1 for t in TOOLS if FAMILY_OF.get(t["name"]) in self.families or t["name"] in self.extra)
+        return 1 + sum(1 for t in TOOLS if self._seen(t["name"]))
 
     def specs(self) -> list[dict]:
         """The tool list for the model: tool_search first, then the admitted specs in the registry's own order."""
         out = [dict(TOOL_SEARCH)]
         for t in TOOLS:
-            if FAMILY_OF.get(t["name"]) in self.families or t["name"] in self.extra:
+            if self._seen(t["name"]):
                 out.append(t)
         return out
 
@@ -275,16 +308,97 @@ def _match(text: str) -> set[str]:
     return hits & set(FAMILY_OF.values())   # only families that really exist in the registry
 
 
+# ---------------------------------------------------------------- v0.239 SAHI AUZAAR: the right tool, every ask
+# The keyword list alone routed on single words ("pdf" -> India holidays, "make" -> notebook, "hoola" -> the PC):
+# the right tool was often NOT in view and the wrong one was. Two more signals now decide what Hoola sees:
+#  1. INTENTS - the job TYPE in her words (a document, a data list, a web form, writing / translation...),
+#  2. the PC gate - her PC / Hoola's cloud PC tools only when she names a PC or the job needs desktop software.
+# Measured on app/quality/tool_asks.py (the test pins it). A meaning (embedding) router was tried and measured: the
+# multilingual MiniLM found the right family in its top 3 for only 79 of 155 asks and added wrong ones, so it is not used.
+_D = r"(?:pdf|पीडीएफ|report|रिपोर्ट|proposal|profile|brochure|quotation|invoice|resume|\bcv\b|presentation|\bppt|deck|" \
+     r"document|dastavez|दस्तावेज़|docx|word file|excel|xlsx|spreadsheet|certificate|catalogue|letter ?head|" \
+     r"\bslides?\b|स्लाइड|प्रस्ताव|बायोडाटा|printable|menu card|flyer|pamphlet|leaflet|visiting card)"
+INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
+    # a file to MAKE (pdf / word / excel / ppt): the design studio
+    (re.compile(_D, re.I), ("docstudio",), "document"),
+    # work ON a pdf she has: merge / split / shrink / rotate / pages / lock
+    (re.compile(r"(?:pdf|पीडीएफ)\w*.{0,70}(?:jod|merge|mila|chhot|compress|split|alag|page|rotate|ghuma|small|"
+                r"lock|password|unlock|watermark|size|badi)|(?:jod|merge|chhot|compress|split|rotate).{0,30}(?:pdf|पीडीएफ)",
+                re.I),
+     ("india",), "pdf work"),
+    # many records: a list / ranking / API / dataset -> the data desk (+ the studio to print it)
+    (re.compile(r"\btop\s*\d+|\b\d{2,}\s+(?:\w+\s+){0,2}(?:ki|ka|ke|of)?\s*(?:list|price|names?|companies|repos?)|"
+                r"list of|price list|github|\brepos?\b|repositor|\bapi\b|dataset|\bcsv\b|statistic|\bstats\b|"
+                r"market cap|ranking|table mein|data (?:la|nikal|collect|fetch)", re.I),
+     ("data", "docstudio", "publicapi"), "data"),
+    # a job ON a website: forms, applications, status, downloads, bookings -> the computer operator
+    (re.compile(r"form bhar|fill (?:the |this |my )?(?:\w+ )?form|(?:website|portal|site|seva)\b.{0,40}(?:form|apply|"
+                r"appointment|status|download|registration|application)|(?:apply|application|registration|appointment)"
+                r".{0,40}(?:online|website|portal|site)|status check|online apply", re.I),
+     ("operator",), "web job"),
+    # writing / typing / translating in Indian languages
+    (re.compile(r"(?:application|arzi|letter|patra|complaint|shikayat|affidavit)\s+(?:\w+\s+){0,3}likh|likh\w*\s+(?:\w+\s+)"
+                r"{0,2}(?:application|letter|patra|arzi)|anuvaad|translat|grammar|marathi|tamil|telugu|bangla|bengali|"
+                r"gujarati|kannada|malayalam|punjabi|odia|kruti dev|type kar|अनुवाद|आवेदन|पत्र लिख", re.I),
+     ("lekhak",), "writing"),
+    # money maths / trackers she opens and uses
+    (re.compile(r"\bemi\b|calculator|hisaab|tracker|planner|checklist|dashboard|kitna banega|kitni banegi", re.I),
+     ("artifact",), "calculator / tracker"),
+    # her business numbers
+    (re.compile(r"p&l|profit\s*(?:and|&)?\s*loss|balance sheet|trial balance|business analysis|ratios?", re.I),
+     ("analyst",), "business numbers"),
+    # other avatars on the Hoola Network
+    (re.compile(r"(?:ke|ki|ka|ko)\s+avatar|avatar\s+(?:ko|se)|hoola network|network pe", re.I), ("hoola",), "network"),
+    # research / comparison that splits into parts -> the team (core) + the web (core); nothing extra to load
+]
+# her PC (Santosh Desktop) or Hoola's own cloud PC: only when she names it or the job needs desktop software
+_DESKTOP = re.compile(r"\btally\b|busy software|\bmarg\b|ffmpeg|libreoffice|pandoc|imagemagick|\bapt\b|pip install|"
+                      r"printer|printout|\bprint\s+(?:kar\s+do|kar\s+dena|nikal|karwa|out)|पीसी|santosh desktop", re.I)
+
+
+def _pc_wanted(text: str) -> str:
+    """'place' / 'software' when the PC tools belong in view, '' when they don't."""
+    from . import where
+    p = where.place(text)
+    if p in ("pc", "hoolapc"):
+        return "place"
+    if _DESKTOP.search(text):
+        return "software"
+    return ""
+
+
+def route(text: str, settings=None) -> dict[str, str]:
+    """family -> why, for one ask (no admission state). The single source for plan_for and the tool-choice card."""
+    low = str(text or "").lower()
+    why: dict[str, str] = {}
+    for fam in _match(low):
+        why.setdefault(fam, "word")
+    for pat, fams, label in INTENTS:
+        if pat.search(text or ""):
+            for f in fams:
+                why.setdefault(f, "intent:" + label)
+    pc = _pc_wanted(text or "")
+    why.pop("pc", None)
+    why.pop("operator", None) if pc == "place" and not any(v.startswith("intent:web") for v in why.values()) else None
+    if pc:
+        why["pc"] = "place" if pc == "place" else "software"
+    why = {f: w for f, w in why.items() if f in set(FAMILY_OF.values())}
+    return why
+
+
 def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
     """The admitted set for one turn, routed on her words (+ goal steps / worker notes).
     None = admission is off or the valve tripped: caller uses the FULL registry (v0.190 behaviour)."""
     if not getattr(settings, "agent_tool_admission", True):
         return None
-    blob = f"{text or ''}\n{extra_text or ''}".lower()
     adm = AdmitSet(settings)
-    hits = _match(blob)
-    if hits:
-        adm.admit_families(hits)
+    why = route(text, settings)
+    if extra_text:
+        for f, w in route(extra_text, settings).items():
+            why.setdefault(f, w)
+    if why:
+        adm.admit_families(why)
+        adm.why = why
     STATS["turns"] += 1
     if adm.size() > max(40, int(getattr(settings, "tool_admit_cap", 220))):
         STATS["full_fallback"] += 1     # router over-matched: never worse than the full registry

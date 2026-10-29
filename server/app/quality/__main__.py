@@ -1,4 +1,5 @@
-"""python -m app.quality [--live] [--judge] [--label "..."] | compare <before.json> <after.json>"""
+"""python -m app.quality [--live] [--judge] [--label "..."] | compare <before.json> <after.json>
+   | tools [--live] [--brain claude|glm] [--label "..."]   (v0.239 tool-choice card)"""
 from __future__ import annotations
 
 import asyncio
@@ -8,7 +9,20 @@ import sys
 from . import run as R
 
 
+def _tools(argv: list[str]) -> int:
+    from . import toolchoice as T
+    label = argv[argv.index("--label") + 1] if "--label" in argv and len(argv) > argv.index("--label") + 1 else ""
+    brain = argv[argv.index("--brain") + 1] if "--brain" in argv and len(argv) > argv.index("--brain") + 1 else ""
+    card = asyncio.run(T.live_card(brain=brain)) if "--live" in argv else T.router_card()
+    card = T.save(card, label)
+    print("\n".join(T.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 0
+
+
 def main(argv: list[str]) -> int:
+    if argv and argv[0] == "tools":
+        return _tools(argv[1:])
     if argv and argv[0] == "compare":
         if len(argv) != 3:
             print("usage: python -m app.quality compare <before.json> <after.json>")
