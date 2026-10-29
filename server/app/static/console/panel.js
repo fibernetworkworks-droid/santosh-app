@@ -288,7 +288,7 @@ function update(kind, p) {
 const FILTERS = [['', 'All'], ['pages', 'Pages'], ['sites', 'Websites'], ['apps', 'Apps'], ['photos', 'Photos'], ['videos', 'Videos'], ['files', 'Files']];
 async function library(el, kind = '', q = '') {
   el.innerHTML = `<div class="vh"><h2>Creations</h2><span class="faint" style="font-weight:700">Your creations — select an item to open it in the workspace.</span></div>
-    <label class="ksearch gl"><span aria-hidden="true">⌕</span><input id="libq" placeholder="Dhoondhiye: EMI, poster, bill…" value="${esc(q)}" aria-label="Search"></label>
+    <label class="ksearch gl"><span aria-hidden="true">⌕</span><input id="libq" placeholder="Search: EMI, poster, bill…" value="${esc(q)}" aria-label="Search"></label>
     <div class="kchips" role="group" aria-label="Filter">${FILTERS.map(([k, n]) => `<button type="button" class="chip${k === kind ? ' on' : ''}" data-f="${k}" aria-pressed="${k === kind}">${n}</button>`).join('')}</div>
     <div class="libgrid" id="libgrid"><div class="skel-grid" aria-hidden="true">${'<i class="skel"></i>'.repeat(6)}</div></div>`;
   el.querySelector('.kchips').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) library(el, b.dataset.f, el.querySelector('#libq').value); });

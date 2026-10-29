@@ -80,7 +80,7 @@ def test_cache_busts_follow_the_version():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.224.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert APP_VERSION == "0.225.0"    # conscious-bump guard: moves with every release (bump with pubspec)
 
 
 # ---------- the server surface, end to end ----------

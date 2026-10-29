@@ -8814,3 +8814,24 @@ pins ->0.220.0 in 32 suites); Mera PC freeze respected; desktop untouched 1.4.0.
 - Panel (panel.js): tab chips are outlined, and the open one gets a saffron edge instead of the gradient fill. Preview / Code is now a pill segmented control. A new Desktop / Phone switch (`devSeg` / `wireDev`, toggles `.pnview.phone`) appears on pages and on website / app previews (apps start on Phone). Every live preview sits inside a browser frame (`browserFrame`: three dots plus a title / URL line, set as text, never as HTML). The change footer is one rounded row. The bar buttons are compact and don't wrap on desktop. While the panel or studio is open, the composer row doesn't wrap and hides the avatar/language line. The iframe sandboxes are unchanged (`allow-scripts allow-forms allow-popups`, never allow-same-origin).
 - Build studio (build.js): the old rule `.studio>div{flex-direction:column}` also hit the head, the tabs and the workspace handle, which stacked them into columns. R4 makes those three rows again. Tabs are outlined chips with the same saffron edge, the change footer matches the panel's, and the tab labels are now Checks / Structure. The remaining Hinglish chrome is English: "bottom tabs", "Every screen, as a real screenshot", "On phone and computer (real screenshots)", "Tap to try it…", the colour-borrow line, and "· building". Lines sent TO Hoola (`C.say`) stay in her words.
 - Tests: NEW `test_v0224_console_r4.py` (4). Ritual: APP_VERSION 0.224.0, pubspec 0.224.0+259, console ?v=0.224.0 x11, pins →0.224.0. Console-only; old APKs, desktop and Mera PC untouched.
+
+## v0.225.0 CONSOLE R5 — web console redesign, phase 5: the create studio (owner: "START R5")
+- Create studio (workspace.js) has two columns, like OpenArt:
+  - **Left rail (the form):**
+    - Type tabs (Image / Video & motion / Research / Document) as one segmented row.
+    - A one-line description of the tool.
+    - The prompt box with a character counter (`#cw-count`) and "Try an example".
+    - Reference photos / source files.
+    - Image only: Style chips (optional: Festive glow, Cinematic, Product studio, Watercolour, Indian folk, 3D clay). The chosen style rides the brief to photo_banao as `Style: X.`
+    - Image and video: Shape chips with a small ratio icon and a name (Wide / Square / Status-Reel / Insta post / Portrait / Classic).
+    - Image only: Quality chips, Standard ~₹3 and Best ~₹12. These are the v0.129 photo_banao estimates; the real cost shows in AI spend.
+    - A sticky Create button that shows the estimated price ("Create image · ~₹12", "Prepare storyboard · free").
+    - The chips drive the existing hidden `#cw-aspect` / `#cw-quality` selects, so `take()` / `request()` and the browser walkthrough are unchanged. Every `#cw-*` id stays.
+  - **Right side, "Your creations"** (only when SIDE_PANEL is on; otherwise the old guide shows):
+    - Data comes from `/api/panel/library`.
+    - Filter chips All / Images / Videos / Pages / Files, plus search.
+    - Picture tiles get real thumbnails from `/api/panel/files/{id}`, fetched with her login as blob: URLs. Only `image/*` responses are shown, and the URLs are revoked on every refill and on reset.
+    - Tapping a tile opens it in the work panel. "Open library" goes to Library.
+    - WORKSPACE ctx gains `gallery` / `open`.
+- Library search placeholder is now in English.
+- Tests: NEW `test_v0225_console_r5.py` (5). Ritual: APP_VERSION 0.225.0, pubspec 0.225.0+260, console ?v=0.225.0 x11, pins →0.225.0. Console-only; old APKs, desktop and Mera PC untouched.

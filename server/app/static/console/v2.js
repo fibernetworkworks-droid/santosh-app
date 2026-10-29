@@ -536,6 +536,7 @@ const RESULTS = window.HoolaResults ? HoolaResults({api, esc, toast,
   itemOf: (kind, p) => PN?.itemOf(kind, p), open: item => PN?.open(item),
   reuse: item => WORKSPACE?.reuse(item), resize: () => scrollDown()}) : null;
 const WORKSPACE = window.HoolaWorkspace ? HoolaWorkspace({api, esc, toast, conv: () => CONV,
+  gallery: () => !!PN, open: item => PN?.open(item),
   library: () => PN ? go('bana') : toast('Creations workspace is not enabled on this server.',true), show: () => {
     VIEW = 'creative'; $$('.view').forEach(x => x.hidden = x.id !== 'v-creative'); drawNav();
     $('#ttl').textContent = '· Creative workspace'; $('#app').classList.remove('drawer');
