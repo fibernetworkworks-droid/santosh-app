@@ -8765,3 +8765,26 @@ no filler; honest gaps; and keeps its working context small ("more context can m
   rule every turn needs and that names a non-core tool goes into `PINNED`.
 - Tests `server/tests/test_v0221_sahi_jawab.py` (11). Version 0.221.0 (pubspec 0.221.0+256, console ?v=0.221.0 x9, pins
   -> 0.221.0). Server-only deploy; old APKs keep working; Mera PC freeze respected; desktop untouched.
+
+## v0.222.0 SAAF CHAT — Phase 3 of the Claude-style reply plan: the phone renders replies (owner: "START PHASE 3")
+- `lib/ui/md_text.dart`: our OWN small markdown renderer (no pub package; text is never run, links go through
+  `openInApp`): `mdBlocks` (paragraph, heading, bullet / numbered lists with nesting, fenced code, quote, table with a
+  separator row, rule), `mdInline` (**bold**, __bold__, _italic_ / *italic* only at word edges so snake_case and "2 * 3"
+  stay as written, ~~strike~~, `code`, [label](http/https/mailto/tel), bare links as "🔗 host"), `mdPlain` (words
+  without marks), `MdText` widget (`streaming`, `selectable` via SelectionArea, `trailing` = the typing caret on the
+  last text block).
+- STREAMING rule: a half-written mark never shows - an open ** / ` / ~~ already styles what follows, a lone trailing
+  * / _ / ~, a marker-only last line (#, -, 1.), "[label" without its address and a pipe row without its separator
+  row wait for the next words; an open code fence is a code block at once. A FINISHED message keeps an unmatched mark
+  as written.
+- chat_screen: assistant bubbles (fresh `_Reveal`, history, the streaming bubble with `_Caret`) use MdText; the
+  long-press menu, Copy, Quote and swipe-to-reply get `mdPlain(text)` for Hoola's messages (hers stay as typed).
+- Server: `replystyle.plain()` strips the marks for places that show raw text - `push.render` message bodies (so the
+  lock-screen notification, the bubble and the home-screen widget read clean). The rulebook now allows LIGHT
+  formatting: bold only for the one or two must-not-miss values, a heading only in long answers, a small table only to
+  compare a few items (bigger data = a file), `code` only for ids / codes / commands.
+- Tests: `server/tests/test_v0222_saaf_chat.py` + Dart `test/md_text_test.dart` (7; run `flutter test
+  test/md_text_test.dart` - green on CI's Flutter 3.24.5, `dart analyze` clean on the changed files; the sandbox CAN
+  download Flutter from storage.googleapis.com and pub.dev now - use the exact CI version 3.24.5).
+- Version 0.222.0 (pubspec 0.222.0+257, console ?v=0.222.0 x9, pins -> 0.222.0). NEEDS A NEW APK for the rendering;
+  the server half works with old APKs. Mera PC freeze respected; desktop untouched.

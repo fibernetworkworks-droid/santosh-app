@@ -12,7 +12,7 @@ def test_rulebook_replaces_the_fixed_length_rule():
     assert "{REPLY_RULES}" not in s
     for pin in ("How you understand her", "How you answer", "Answer first", "Length follows the question",
                 "Half-clear ask", "Never fill a gap with a made-up fact", "check your draft once",
-                "No bold, no ### headings"):
+                "Formatting stays light"):
         assert pin in s, pin
     # the key-values-before-acting rule survived the rewrite
     assert "repeat the key values once" in s
@@ -118,4 +118,4 @@ def test_prompt_slim_off_sends_the_full_guide(bz, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.221.0"
+    assert APP_VERSION == "0.222.0"

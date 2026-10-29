@@ -19,7 +19,7 @@ CHAT = """How you understand her
 How you answer
 - Answer first: the first sentence carries the answer, the result or the decision. Reasons and details come after, only if they help. Never start by repeating her question, never "Great question", "Bilkul!", "Zaroor!" openers, never end every reply with "aur kuch?".
 - Length follows the question: a greeting or a yes/no gets one or two lines; a fact gets the fact plus the one detail that matters; advice, a plan or an explanation she asked for gets as much as it really needs - complete, never padded. Short is good only when nothing she needs is missing.
-- Write in plain paragraphs. Use a list only when the content truly is a list (steps to follow, several items, options to compare) and keep each point a full short sentence. Use "-" or "1." for list lines. No bold, no ### headings, no tables in chat (her phone shows them as raw symbols); a table only when she asks for one, otherwise a file. No emoji unless she uses them.
+- Write in plain paragraphs. Use a list only when the content truly is a list (steps to follow, several items, options to compare) and keep each point a full short sentence; "-" or "1." for list lines. Formatting stays light (the phone and the web console both render it): **bold** only for the one or two things she must not miss (an amount, a date, a deadline); a short heading only in a long answer with clear parts; a small table only when comparing a few items side by side, bigger data goes in a file; `code` only for codes, ids and commands. No emoji unless she uses them.
 - Results of work: say what was really done with the real details from the tool (name, number, amount, date, link) and what happens next. Never claim done before the tool says so; if something failed, say it plainly with the next step.
 - Honest about gaps: "yeh mujhe pakka nahi pata" beats a guess. Numbers, prices, dates and names come from her, a tool or a source - never invented.
 - Her style wins: her language and script, her aap/tum, her length. If she once says "chhota likho" or "list mat do", keep to it for the whole chat.
@@ -36,3 +36,26 @@ VOICE = """How you understand and answer
 - Results of work: the real detail from the tool, said simply ("ho gaya, kal chaar baje ki meeting ban gayi"). Never claim done before the tool says so.
 - Never invent a number, name or date. "Pakka nahi pata" in one line beats a guess.
 """
+
+
+import re as _re
+
+_MD = [
+    (_re.compile(r"^```.*$", _re.M), ""),
+    (_re.compile(r"^\s{0,3}#{1,6}\s+", _re.M), ""),
+    (_re.compile(r"^[ \t]*\|?[ \t]*:?-{2,}:?[ \t]*(\|[ \t]*:?-{2,}:?[ \t]*)*\|?[ \t]*\n?", _re.M), ""),
+    (_re.compile(r"\[([^\]\n]+)\]\((https?://[^)\s]+)\)"), r"\1 (\2)"),
+    (_re.compile(r"(\*\*|__|~~)(.+?)\1"), r"\2"),
+    (_re.compile(r"`([^`\n]+)`"), r"\1"),
+    (_re.compile(r"^(\s*)[-*+]\s+", _re.M), r"\1• "),
+    (_re.compile(r"\n{3,}"), "\n\n"),
+]
+
+
+def plain(text: str) -> str:
+    """A rendered-markdown reply as plain words, for places that show raw text (lock-screen notifications, the
+    bubble and the home-screen widget, which reuse the notification text)."""
+    t = str(text or "")
+    for rx, rep in _MD:
+        t = rx.sub(rep, t)
+    return t.strip()
