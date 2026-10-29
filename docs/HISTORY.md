@@ -9635,3 +9635,20 @@ SHEDING ON BORDERS", then "PERFECT NOW --- DEPLOY IT END TO END SAME AS PROTOTYP
   commands, the R1 token anchor, the R4 accent edge as a token.
 - Not verified on her real screen yet: Safari's View Transition (falls back to an instant switch), very old browsers without
   `@property` (the sheen then shows as a still light on the border).
+
+## v0.244.0 FULL CLAUDE MODE — Phase 3A: ONE MEMORY everywhere (owner: "START PHASE 3A")
+- VOICE (`yaad.voice_block`, the only voice-side change; voice.py untouched): a call in a compacted chat starts with
+  "IS CHAT KA SAAR (checkpoint ...)" = the Phase 2 checkpoint (`compact.active`, up to CALL_CHECKPOINT_CHARS 6,000 so the
+  diary + facts after it still fit) instead of the rolling summary, and "Haal ki baatein" lists only exchanges AFTER the
+  checkpoint (never the same work twice). The brief may grow to CALL_MAX_WITH_CHECKPOINT 16,000 chars (was 10,000) only
+  then. No checkpoint = exactly as before.
+- QUICK LANE (`agent/quick.py` `_checkpoint`): "CHAT KA SAAR" with the newest 2,500 chars of the checkpoint (where the
+  current work is) between the running job and the chat lines; nothing when never compacted.
+- COST CAP (`config.chat_context_max_tokens`, 0 = off; `context.window`): the window Hoola plans with =
+  min(model window, cap / CHAT_CONTEXT_FULL_AT), so the cap IS the compaction line and the 60% draft / net target scale
+  with it. Readings carry window, budget, percent (of the window) and full (% of the way to compaction).
+- CONSOLE: "Memory N%" button in the chat header (`#cMeter`, v2.js `meter()` after opening a chat and after every reply,
+  warm colour from 60%, hidden in hoola mode); click = a dialog with the checkpoint summary.
+- GREETING: a new chat says "Namaskar! Main <her avatar's name> hoon ..." (`avatar.service.persona`), not "Santosh".
+- Tests NEW `test_v0244_one_memory.py` (7). Version 0.244.0 (pubspec 0.244.0+284, console ?v=0.244.0, pins).
+  Server + console only (no APK needed). Mera PC / desktop untouched.

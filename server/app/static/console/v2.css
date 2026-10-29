@@ -1604,3 +1604,8 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 #app .callav::before{content:"";position:absolute;inset:-26px;border-radius:50%;background:conic-gradient(from var(--a),transparent,rgb(196 107 242 / .35),transparent 40%,rgb(255 177 92 / .35),transparent 75%);filter:blur(12px);animation:cspin 7s linear infinite;pointer-events:none}
 #app .callav .av{box-shadow:0 0 0 3px var(--bg),0 0 0 5.5px var(--mag);background:var(--surface)}
 :root.noglow #app .callav::before,:root.noglow #app .halo::before{display:none}
+/* v0.244 PHASE 3A memory meter + summary dialog */
+#app .cmeter{border:0;cursor:pointer;font:inherit;font-size:11.5px;font-weight:700}
+.cmdlg{max-width:min(640px,92vw);border:0;border-radius:16px;padding:18px;color:var(--ink);background:var(--surface);box-shadow:var(--sh2)}
+.cmdlg::backdrop{background:rgb(var(--sh-rgb) / .45)}
+#app .cmeter.hot{background:var(--warn-soft)}

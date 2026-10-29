@@ -268,7 +268,37 @@ function drawHead() {
   $('#ctitle').textContent = c?.title || 'New chat';
   const t = $('#ctag'); t.hidden = !p; if (p) t.textContent = `${p.emoji || '📁'} ${p.name}`;
   $('#cMore').hidden = !c;
+  meter();
 }
+/* v0.244 PHASE 3A the "how full" meter (Claude Code's context meter): % of the window, compaction at 75% */
+let METER_T = 0;
+async function meter() {
+  const el = $('#cMeter'); if (!el) return;
+  const id = CONV; if (!id) { el.hidden = true; return; }
+  clearTimeout(METER_T);
+  METER_T = setTimeout(async () => {
+    try {
+      const r = (await api('GET', `/api/conversations/${encodeURIComponent(id)}/context`)).context || {};
+      if (id !== CONV) return;
+      if (r.mode !== 'claude') { el.hidden = true; return; }
+      const pct = Math.round(Number(r.percent || 0));
+      el.textContent = `Memory ${pct}%`; el.hidden = false;
+      el.classList.toggle('hot', pct >= 60);
+    } catch (e) { el.hidden = true; }
+  }, 300);
+}
+$('#cMeter')?.addEventListener('click', async () => {
+  if (!CONV) return;
+  let text = 'This chat has not been summarised yet - every message still goes to Hoola word for word.';
+  try { const r = await api('GET', `/api/conversations/${encodeURIComponent(CONV)}/compact`); if (r.active?.summary) text = r.active.summary; }
+  catch (e) { toast(e.message, true); return; }
+  const d = document.createElement('dialog'); d.className = 'gl cmdlg';
+  d.innerHTML = `<h3 style="margin:0 0 8px">Older messages, summarised</h3><div class="faint" style="white-space:pre-wrap;font-size:13px;max-height:60vh;overflow:auto"></div><p style="text-align:right;margin:10px 0 0"><button class="btn soft" type="button">Close</button></p>`;
+  d.querySelector('div').textContent = text;
+  d.querySelector('button').addEventListener('click', () => d.close());
+  d.addEventListener('close', () => d.remove());
+  document.body.appendChild(d); d.showModal();
+});
 let TURN = null;          // the open Hoola turn: {bd, tools, tl, text, steps:{}}
 let USER_ECHO = [];       // texts she sent from here (their echo from the server is not drawn twice)
 const RCPTS = new Map();  // v0.173 client_id -> {el, chip} receipts of messages sent while Hoola was busy
@@ -833,6 +863,7 @@ function onEvent(ev) {
       const R = REPLIES.get(p.turn); if (!R) return;
       R.segs.forEach(S => S.pacer.flush()); R.done = true; R.stopped = !!p.stopped; drawActs(R); closeTurnTools(R.t);
       closeThinks(p.turn);   // v0.171 the Soch cards fold when the reply is over
+      meter();               // v0.244 the meter moves after every reply
       return; }
     case 'message':
       if (p.role === 'user') {

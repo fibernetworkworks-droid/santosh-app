@@ -1122,6 +1122,10 @@ def _news_pending(conversation_id: str, minutes: int, skip_newest: bool, limit: 
         return [_scrub(_clip(r.text or "", clip)) for r in rows[:limit] if (r.text or "").strip()]
 
 
+CALL_MAX_WITH_CHECKPOINT = 16000   # v0.244 a compacted chat's call brief (the checkpoint needs the room)
+CALL_CHECKPOINT_CHARS = 6000       # the checkpoint's share of it (diary + facts after it must still fit)
+
+
 def voice_block(tenant: str, conversation_id: str, recent: int = 14, max_chars: int = 10000,
                 news_skip_newest: bool = True) -> str:
     """For a voice call session: everything a coworker who was in the room would know.
@@ -1143,11 +1147,29 @@ def voice_block(tenant: str, conversation_id: str, recent: int = 14, max_chars: 
             parts.append(fb)
     except Exception:
         log.exception("voice focus failed")
-    summ = summary_block(conversation_id)
-    if summ:
-        parts.append("Purani baaton ka saar:\n" + summ)
+    # v0.244 PHASE 3A ONE MEMORY: a compacted chat's call starts from the SAME checkpoint the chat reads (Phase 2),
+    # and its recent exchanges are the ones AFTER that checkpoint (never the same work twice); else the rolling summary
+    upto = 0
     try:
-        exs = exchanges(_rows(conversation_id, 1500))[-recent:]
+        from .agent import compact as _compact
+        cp = _compact.active(conversation_id) if conversation_id else None
+    except Exception:
+        log.exception("voice checkpoint read failed")
+        cp = None
+    if cp and cp.get("summary"):
+        upto = int(cp.get("upto_id") or 0)
+        max_chars = max(max_chars, CALL_MAX_WITH_CHECKPOINT)
+        parts.append("IS CHAT KA SAAR (checkpoint - chat mein jo kaam hua, uski poori yaad):\n"
+                     + _clip_block(cp["summary"], CALL_CHECKPOINT_CHARS))
+    else:
+        summ = summary_block(conversation_id)
+        if summ:
+            parts.append("Purani baaton ka saar:\n" + summ)
+    try:
+        rows = _rows(conversation_id, 1500)
+        if upto:
+            rows = [r for r in rows if r["id"] > upto]
+        exs = exchanges(rows)[-recent:]
         if exs:
             parts.append("Haal ki baatein (chat aur calls, purane se naye; ⟦kiya⟧ = jo kaam hua):\n" +
                          "\n".join("- " + one_line(ex, 360) for ex in exs))
