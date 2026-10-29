@@ -97,10 +97,12 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.230.0 (pubspec 0.230.0+270). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.231.0 (pubspec 0.231.0+271). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.230 voice Phase 3 (news queue, slimmer call persona / tools, murmur timing) · v0.229 voice Phase 1+2 (no affective
+- v0.231 voice Phase 4 (call scorecards saved per call in data/voice_calls, grade + end reason, /api/voice/quality per
+  version, ear test + phone checklist /api/voice/eartest, Profile > Call ki jaanch) ·
+  v0.230 voice Phase 3 (news queue, slimmer call persona / tools, murmur timing) · v0.229 voice Phase 1+2 (no affective
   on 3.x live models, BLOCKING/NON_BLOCKING tools, GoAway graceful move, gap audio, drop notes) · v0.228 long jobs
   Phase B (narrate, plan first, milestones, 4-part report) · v0.227 console redesign R1–R6 · v0.226 long jobs Phase A
   (restart pickup, steering, ask on limit) · v0.222 goal rounds keep her authority · v0.221 KAAM KHAATA.
