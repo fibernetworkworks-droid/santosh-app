@@ -95,6 +95,7 @@ async function logout(expired) {
 let ME = null, CONV = null, VIEW = 'chat', AV = 'Santosh';
 /* v0.222 R2: the sidebar is Claude-style - New chat + Search on top, then the places; Chat is the brand mark (home),
    Account is the user card at the bottom. The phone tabbar keeps its own five. */
+const SMOOTH = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';   // v0.226 R6: no smooth scroll under reduced motion
 const NAV = [['creative','Create'],['aaj','Today'],['kaam','Tools'],['baat','Voice call']];
 IC.creative = '<path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4z"/>';
 IC.bana = '<path d="M4 5h16v14H4zM4 10h16M10 10v9"/>';
@@ -213,7 +214,7 @@ thread.addEventListener('touchstart', e => { touchY = e.touches[0]?.clientY || 0
 thread.addEventListener('touchmove', e => { if ((e.touches[0]?.clientY || 0) > touchY + 6) unstick(); }, {passive: true});
 thread.addEventListener('keydown', e => { if (['PageUp', 'ArrowUp', 'Home'].includes(e.key)) unstick(); });
 if (window.ResizeObserver) new ResizeObserver(() => { if (STICK) thread.scrollTop = thread.scrollHeight; }).observe(col);
-$('#jump').addEventListener('click', () => { thread.scrollTo({top: thread.scrollHeight, behavior: 'smooth'}); STICK = true; $('#jump').hidden = true; });
+$('#jump').addEventListener('click', () => { thread.scrollTo({top: thread.scrollHeight, behavior: SMOOTH()}); STICK = true; $('#jump').hidden = true; });
 function landing(on) {
   $('#landing').hidden = !on; $('#thread').hidden = on; $('#dock').hidden = on;
   (on ? $('#slotLand') : $('#slotDock')).appendChild(composer);
@@ -908,7 +909,7 @@ async function jumpTo(conv, eventId) {
     if (!(await loadOlder())) break;
   }
   if (!el) return toast('That message is not in this chat any more (it may be in another version).');
-  STICK = false; el.scrollIntoView({block: 'center', behavior: 'smooth'});
+  STICK = false; el.scrollIntoView({block: 'center', behavior: SMOOTH()});
   el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 2200);
   drawRail();
 }
@@ -1029,9 +1030,9 @@ function drawRail() {
 $('#v-chat').insertAdjacentHTML('beforeend', '<div class="jrail" id="jrail" hidden aria-label="Jump to a day"></div>');
 $('#jrail').addEventListener('click', e => {
   const b = e.target.closest('b[data-top]'); if (!b) return;
-  thread.scrollTo({top: +b.dataset.top - 76, behavior: 'smooth'}); STICK = false;
+  thread.scrollTo({top: +b.dataset.top - 76, behavior: SMOOTH()}); STICK = false;
 });
-$('#jrail').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { const b = e.target.closest('b[data-top]'); if (b) { e.preventDefault(); thread.scrollTo({top: +b.dataset.top - 76, behavior: 'smooth'}); } } });
+$('#jrail').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { const b = e.target.closest('b[data-top]'); if (b) { e.preventDefault(); thread.scrollTo({top: +b.dataset.top - 76, behavior: SMOOTH()}); } } });
 addEventListener('resize', drawRail);
 
 /* ================= one stream for all her chats (CHAT_SESSIONS; on with CONSOLE_V2) ================= */
@@ -1396,7 +1397,7 @@ async function refreshPending() {
 /* ================= Today ================= */
 async function drawToday() {
   const box = $('#aaj'); box.innerHTML = '<div class="vh"><h2>Today</h2></div><div class="empty">Loading…</div>';
-  let d = {reminders: [], lists: {}, pending: []}; try { d = await api('GET', '/api/console/today'); } catch (e) { box.innerHTML += `<p class="badc">${esc(e.message)}</p>`; return; }
+  let d = {reminders: [], lists: {}, pending: []}; try { d = {...d, ...(await api('GET', '/api/console/today') || {})}; d.reminders ||= []; d.lists ||= {}; d.pending ||= []; } catch (e) { box.innerHTML += `<p class="badc">${esc(e.message)}</p>`; return; }
   const date = new Date().toLocaleDateString('en-IN', {weekday: 'long', day: 'numeric', month: 'long'});
   box.innerHTML = `<div class="vh"><h2>Today · ${esc(date)}</h2></div>
     <div class="kpis"><div class="kpi gl"><b>${d.pending.length}</b><span>waiting for your Haan</span></div><div class="kpi gl"><b>${d.reminders.length}</b><span>upcoming reminders</span></div>

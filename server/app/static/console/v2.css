@@ -1298,3 +1298,21 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 @media(max-width:980px){#app .cw-rail{max-height:none;overflow:visible}#app .cw-rail .cw-send{position:static;margin:0;padding:12px 0 0;background:none}}
 #app .cw-box #cw-prompt{min-height:120px;background:transparent;border:0;border-radius:0;padding:0;line-height:1.6;font-size:14.5px}
 #app .cw-box #cw-prompt:focus{outline:none}
+
+/* ================================================================================================
+   v0.226 R6: phone width, motion, accessibility. Small links get a real tap area, every scrollable
+   view can take keyboard focus, keyboard focus is always visible, and a phone keeps 44px targets.
+   ================================================================================================ */
+#app .cw-link{min-height:32px;padding:6px 2px}
+#app .pad:focus{outline:none}
+#app .pad:focus-visible{outline:2px solid rgba(255,177,92,.55);outline-offset:-2px}
+#app :is(button,a,select,input,textarea,[tabindex]):focus-visible{outline:2px solid var(--saffron);outline-offset:2px}
+#app .box textarea:focus-visible,#app .cw-box #cw-prompt:focus-visible,#app .cw-gq input:focus-visible,#app .pnchg input:focus-visible{outline:none}
+@media(max-width:820px){
+ #app .ra{min-height:36px;padding-inline:10px}
+ #app .ua{min-width:36px;min-height:36px}
+ #app .qc{min-width:36px;min-height:36px}
+ #app .kchips .chip,#app .cw-chip,#app .bseg button,#app .pntab>button{min-height:36px}
+ #app .mu .utbar{position:static;opacity:1;gap:2px;width:max-content;margin:6px -8px -8px auto;padding:0;background:none;border:0;box-shadow:none}
+ #app .mu .utbar .ua{color:rgba(255,255,255,.72)}
+}

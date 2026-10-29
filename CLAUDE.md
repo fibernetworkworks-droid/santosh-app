@@ -8835,3 +8835,16 @@ pins ->0.220.0 in 32 suites); Mera PC freeze respected; desktop untouched 1.4.0.
     - WORKSPACE ctx gains `gallery` / `open`.
 - Library search placeholder is now in English.
 - Tests: NEW `test_v0225_console_r5.py` (5). Ritual: APP_VERSION 0.225.0, pubspec 0.225.0+260, console ?v=0.225.0 x11, pins →0.225.0. Console-only; old APKs, desktop and Mera PC untouched.
+
+## v0.226.0 CONSOLE R6 — web console redesign, phase 6: phone width, motion, accessibility, checks (owner: "START R6")
+- Audit: home, chat, create, library, today, tools and account were checked at 1440, 1024, 430, 390 and 360 px against mocked APIs. The checks were axe-core 4.10.2 (WCAG 2.0/2.1 A + AA), elements overflowing the viewport sideways, and tap targets under 32 px on phones. After the fixes below, all 35 combinations are clean: no sideways scroll, no axe violations, no small targets, no page errors. The audit script lives in the scratchpad, not the repo.
+- Fixes:
+  - The scrollable view pads take keyboard focus (`tabindex="0"`, axe scrollable-region-focusable).
+  - One global `:focus-visible` saffron ring.
+  - "Try an example" gets a 32 px tap area.
+  - On a phone, the reply actions, her message's Copy / Edit, the Deep research / Hoola PC chips and every chip / segment / tab are at least 36 px. Her message toolbar sits under the text instead of over it.
+  - `SMOOTH()` turns JS smooth scrolling off under `prefers-reduced-motion`. The existing global CSS rule already stops every animation and transition.
+  - View labels are now Tools / Account / Session / Create.
+  - Today no longer throws when the server leaves a field out.
+- Not covered: the legacy Playwright e2e tests (`test_v16x_console_e2e`) skip here because the Python Playwright build doesn't match the sandbox Chromium. The Tools category names and kaam.js prompts stay in Hinglish (her words to Hoola, by the R1 rule).
+- Tests: NEW `test_v0226_console_r6.py` (5). Ritual: APP_VERSION 0.226.0, pubspec 0.226.0+261, console ?v=0.226.0 x11, pins →0.226.0. Console-only.
