@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     agent_goal_ask_on_limit: bool = True    # rounds / minutes used up = "Aage badhaun?" (her yes = a fresh budget), not 'failed'
     agent_plan_early: bool = True           # v0.228 a clearly big ask gets "plan first" up front; no plan after N steps = asked again
     agent_plan_after_steps: int = 6         # ... tool steps without a kaam_plan before the plan is asked for (was only at 24)
+    chat_thinking: str = "goal"             # v0.232 PHASE C: Claude thinks out loud (adaptive) - goal = only while a long job runs, on = every turn, off = never
     agent_narrate_every: int = 3            # v0.228 goal mode: after this many silent tool rounds, ask for one progress line
     agent_goal_milestones: int = 2          # v0.228 at most this many 'aadha kaam ho gaya' pushes per long job (0 = off)
     agent_ack_after_s: float = 5.0          # v0.187 a turn silent this long first says "ek second, dekh raha hoon…" (0 = off)
@@ -176,6 +177,11 @@ class Settings(BaseSettings):
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)
+    site_opus: bool = True                 # v0.225 every website section / fix / change on the App Sahayak Opus path (thinking, effort, retries, no quiet fallback)
+    site_art: bool = True                  # v0.225 Opus writes a design DNA per look before the hero (art direction)
+    site_critique: str = "home"            # v0.225 Opus looks at the built home page screenshots: home | off
+    site_critique_min: float = 7.5         # v0.225 a section scoring below this (out of 10) is redrawn once with the notes
+    site_parallel: int = 3                 # v0.225 sections written at the same time inside one build
     app_model: str = "claude-opus-5-5"     # v0.140 App Sahayak: EVERY design / screen / fix / change / Kotlin call (owner: Opus 5.5)
     app_model_fallback: bool = False       # v0.140 true = when Opus can't be reached, use the chat model / cheap brain instead
     app_model_tries: int = 5               # v0.140 tries per call when Opus is busy (429 / 5xx / overloaded / timeouts)
@@ -200,6 +206,13 @@ class Settings(BaseSettings):
     sites_porkbun_key: str = ""            # v0.123 Newtika's Porkbun API key / secret (only with sites_resell)
     sites_porkbun_secret: str = ""
     sites_domain_month_inr: float = 5000   # v0.123 ceiling per owner per month for domain purchases
+    sites_uptime_key: str = ""             # v0.224 shared secret for the outside uptime checker (GitHub Actions), >= 16 chars
+    sites_backup_bucket: str = ""          # v0.224 S3-compatible bucket for the daily website files backup (off = empty)
+    sites_backup_endpoint: str = ""        # e.g. https://<account>.r2.cloudflarestorage.com (empty = AWS S3)
+    sites_backup_region: str = "auto"
+    sites_backup_key_id: str = ""
+    sites_backup_secret: str = ""
+    sites_backup_keep_days: int = 14
     app_build_mode: str = ""               # v0.132 native Android builds: worker | github | local | "" (project ZIP only)
     app_build_url: str = ""                # v0.132 worker: https://build.example.com (server/app_builder on a separate machine)
     app_build_secret: str = ""             # v0.132 worker shared secret (HMAC of every request)

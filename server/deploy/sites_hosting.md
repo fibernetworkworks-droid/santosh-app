@@ -6,23 +6,21 @@ Nothing goes live until the owner taps "Haan, live karo".
 ## 1. Free Hoola addresses (`<name>.<SITES_BASE_DOMAIN>`)
 1. Pick a domain Newtika owns only for customer sites (NOT the API domain), e.g. `hoolasites.in`.
 2. Put it on Cloudflare. DNS: `*` and `@` → A record → the VPS IP, **proxied (orange cloud)**. SSL mode: Full.
-3. nginx: a server block that accepts any host and proxies to the app (keep the API block as it is):
+3. nginx (v0.224): nginx itself serves the live sites, so a Hoola restart / deploy / crash no longer takes them down.
+   Generate the server block on the VPS and include it inside `http { }` (keep the API block as it is):
    ```
-   server {
-       listen 80 default_server;
-       listen 443 ssl default_server;            # Cloudflare origin certificate for *.hoolasites.in
-       server_name _;
-       ssl_certificate     /etc/ssl/hoolasites-origin.pem;
-       ssl_certificate_key /etc/ssl/hoolasites-origin.key;
-       client_max_body_size 1m;
-       location / {
-           proxy_pass http://172.18.0.1:8077;
-           proxy_set_header Host $host;
-           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-           proxy_set_header X-Forwarded-Proto https;
-       }
-   }
+   cd ~/apps/santosh-core && .venv/bin/python -m app.site.edge conf \
+       --cert /etc/ssl/hoolasites-origin.pem --key /etc/ssl/hoolasites-origin.key > /tmp/hoola-sites.conf
+   sudo cp /tmp/hoola-sites.conf /etc/nginx/conf.d/hoola-sites.conf && sudo nginx -t && sudo systemctl reload nginx
    ```
+   It serves `data/hosted_enabled/$host` (Hoola keeps that folder in step with every launch / rollback / take-down: no
+   nginx reload ever needed), sends her bare domain to www, lets only `/api/site-forms/` reach Hoola (every other
+   `/api/` is 404) and hands any host it doesn't know to Hoola (the old Python serving stays as the fallback).
+   **nginx's user (`www-data`) must be able to read the files**: `sudo setfacl -R -m u:www-data:rX ~/apps/santosh-core/data/hosted
+   ~/apps/santosh-core/data/hosted_enabled && sudo setfacl -m u:www-data:x ~ ~/apps ~/apps/santosh-core ~/apps/santosh-core/data`
+   and `sudo setfacl -R -d -m u:www-data:rX ~/apps/santosh-core/data/hosted` (new sites inherit it). nginx also writes
+   `data/hosted_access.log` (visits): `sudo setfacl -m u:www-data:rwx ~/apps/santosh-core/data`. Check from the VPS:
+   `curl -H 'Host: <slug>.hoolasites.in' http://127.0.0.1/` returns the site with `pm2 stop santosh` too.
 4. `.env`: `SITES_BASE_DOMAIN=hoolasites.in` and `PUBLIC_BASE_URL=https://<api host>` (site forms post there).
 
 ## 2. Her own domain through Cloudflare for SaaS (recommended)
@@ -39,3 +37,14 @@ Without SaaS: if her domain is in HER Cloudflare account, Hoola proxies it to `S
 `cd ~/santosh_app && git pull && cp -r server/app ~/apps/santosh-core/ && pm2 restart santosh --update-env`
 
 Check: `curl -H 'Host: <slug>.hoolasites.in' http://172.18.0.1:8077/` after a launch returns the site.
+
+## 4. Outside uptime check (v0.224)
+`.github/workflows/site-uptime.yml` opens every live site every 15 minutes from GitHub's machines (it also sees the times
+the whole server is down) and reports back; a failed run = GitHub emails the repo owner. Set the same long random value
+as `SITES_UPTIME_KEY` in the VPS `.env` and as a repo secret, plus the repo secret `HOOLA_URL=https://<api host>`.
+
+## 5. Daily backup of the website files (v0.224)
+Litestream backs up only the database. Set `SITES_BACKUP_BUCKET`, `SITES_BACKUP_ENDPOINT` (R2 / B2 / Spaces; empty = AWS),
+`SITES_BACKUP_KEY_ID`, `SITES_BACKUP_SECRET` (a key limited to that bucket) in `.env`: every day after 03:00 IST one
+tar.gz of `data/hosted` + every site's `src` goes to `hoola/sites/<date>.tar.gz`; older than `SITES_BACKUP_KEEP_DAYS`
+(14) is deleted. Restore into a folder first: `.venv/bin/python -m app.site.backup restore 2026-10-29 /tmp/sites-restore`.

@@ -1,4 +1,4 @@
-"""v0.232.0 VOICE PHASE 4 (built as 0.231.0): call quality you can measure - scorecards saved per call (survive restarts), a grade per
+"""v0.234.0 VOICE PHASE 4 (built as 0.231.0): call quality you can measure - scorecards saved per call (survive restarts), a grade per
 call, roll-ups per version, the ear test / phone checklist marks."""
 import json
 import time
@@ -150,4 +150,4 @@ def test_phone_screen_wired():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.235.0"
+    assert APP_VERSION == "0.238.0"
