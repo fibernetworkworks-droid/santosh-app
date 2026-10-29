@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     agent_max_tokens: int = 2000
     chat_heal_ai: bool = True              # v0.158 after a call, a cheap model judges if its cards were relevant
     agent_self_check: bool = True          # v0.78 Pakka kaam: check the real results before saying done
+    draft_check: bool = True               # v0.223 Draft jaanch: the last look at a reply (free in code + one
+    draft_check_max_hour: int = 4          #   small check after the words are out); notes per chat per hour
     memory_auto: bool = True               # v0.108 lasting facts picked after her turns ("yaad rakha" chip)
     agent_fix_search: bool = True          # v0.78: a failed step with no known fix -> search the web for the solution
     agent_tool_timeout_s: int = 300         # a tool that hangs never blocks a chat turn longer than this (browser waits go up to 270 s)
@@ -47,6 +49,7 @@ class Settings(BaseSettings):
     # tool families her words (and any open goal) actually need; the rest stay one tool_search away. Stable for the
     # WHOLE turn, so the Anthropic prompt cache holds; a family admitted mid-turn re-caches once, by design.
     agent_tool_admission: bool = True
+    prompt_slim: bool = True               # v0.221 PATLA PROMPT: only the admitted families' guides ride in the system prompt (false = the full ~130 KB guide, as before)
     tool_admit_cap: int = 220               # admitted specs above this = router over-matched: send the FULL set instead
     # v0.191 HARNESS-2: job-completion WAKE turns (dsh completionDelivery + maxConsecutiveWakes) - a finished job whose
     # chat is idle wakes the real brain (tools allowed) instead of only the v0.187 one-shot line; budget keeps it finite.

@@ -227,6 +227,10 @@ Which tool (details are in each tool's description)
 About the user
 {context}"""
 
+from .agent.replystyle import VOICE as _VOICE_RULES   # v0.221 SAHI JAWAB: the same rulebook as chat, spoken
+assert "\n\nWhen to speak\n" in PERSONA
+PERSONA = PERSONA.replace("\n\nWhen to speak\n", "\n\n" + _VOICE_RULES + "\nWhen to speak\n", 1)
+
 
 # v0.149 The big Sahayak / builder tools are NOT declared to Gemini Live any more: 280 tools (~395 KB of JSON, ~110k
 # tokens) filled the live model's context before she said a word, so sessions died and the call sat on "Connection thoda
@@ -740,6 +744,7 @@ async def shutdown_watchdog(stop: asyncio.Event) -> None:
         return   # lifespan ended (tests) without a process signal: normal teardown, no goodbye
     calls = list(CALLS.values())
     for call in calls:
+        call._end_reason = getattr(call, "_end_reason", "") or "server_restart"   # v0.231
         try:   # v0.224 the work in this call survives the restart: the next call continues it
             await asyncio.to_thread(call._save_drop_note)
         except Exception:
@@ -1205,6 +1210,7 @@ class Call:
         self._news_told: list = []             # (when, words) of news told lately: the same news never twice
         self._news_task: asyncio.Task | None = None
         self._hung_up = False                  # SHE ended the call (the only end that needs no continuation note)
+        self._end_reason = ""                  # v0.231 why the call ended (callquality): error | stall | server_restart | hold_timeout
         self._drop_saved = False
         # timing, for answering at human speed and for the quality numbers
         self._last_voice_at = 0.0              # last mic chunk with speech in it
@@ -1805,6 +1811,7 @@ class Call:
             if self._stall_reconnects >= 3:
                 log.warning("call %s: Gemini silent through %d reconnects, ending the call honestly",
                             self.call_id, self._stall_reconnects)
+                self._end_reason = getattr(self, "_end_reason", "") or "stall"
                 await self.send_json({"type": "error", "message": "Voice connection atak gaya - dobara bulaaiye."})
                 self.closed.set()
                 return
@@ -2666,6 +2673,7 @@ class Call:
         if self.hold and self._hold_at == at and not self.closed.is_set():
             log.info("call %s: on hold for %s s, ending the call", self.call_id, limit)
             self.stats["hold_ended_call"] = True
+            self._end_reason = getattr(self, "_end_reason", "") or "hold_timeout"
             await self.send_json({"type": "error", "code": "gone", "message":
                                   f"{self.name} kaafi der se chup tha, isliye call band kar di. Zarurat ho to phir bulaiye."})
             self.closed.set()
@@ -2904,6 +2912,7 @@ class Call:
                 self.first_error = self.first_error or str(err)
                 if failures >= 3:
                     detail = str(err) if self.first_error == str(err) else f"{self.first_error} (phir: {err})"
+                    self._end_reason = getattr(self, "_end_reason", "") or "error"
                     await self.send_json({"type": "error", "message": f"Voice connection toot gaya: {detail}"})
                     break
                 if not degraded:
@@ -2936,6 +2945,7 @@ class Call:
                                   + " | ".join(self._quiet_pending)[:900])
                 self._quiet_pending.clear()
             self.stats["ended"] = time.time()
+            self.stats["end"] = getattr(self, "_end_reason", "") or ("hung_up" if self._hung_up else "dropped")   # v0.231
             if self.hold:
                 self.stats["hold_s"] = round(self.stats["hold_s"] + time.monotonic() - self._hold_at, 1)
             self.stats["lang_state"] = self.langst.summary()
@@ -2954,6 +2964,11 @@ class Call:
             except Exception:
                 log.exception("voice style save failed")
             STATS.append(self.stats)
+            try:   # v0.231 the scorecard survives restarts / deploys (in-memory STATS did not)
+                from . import callquality
+                await asyncio.to_thread(callquality.record, self.stats)
+            except Exception:
+                log.exception("call scorecard save failed")
             try:   # v0.98 Gemini Live is billed per minute of audio each way: 16 kHz in, 24 kHz out (16-bit mono)
                 from . import usage
                 sec_in, sec_out = getattr(self, "audio_in_bytes", 0) / 32000, getattr(self, "audio_out_bytes", 0) / 48000

@@ -184,4 +184,4 @@ async def test_pc_search_endpoint_goes_to_the_personal_pc(hub2, monkeypatch):
 
 def test_version_pin():
     import app.main as m
-    assert m.APP_VERSION == "0.231.0"
+    assert m.APP_VERSION == "0.233.0"
