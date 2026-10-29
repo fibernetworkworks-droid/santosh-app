@@ -47,5 +47,5 @@ def test_console_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.23")
-    assert "+27" in (ROOT / "pubspec.yaml").read_text()
+    assert tuple(int(x) for x in APP_VERSION.split(".")) >= (0, 233, 0)
+    assert f"version: {APP_VERSION}+" in (ROOT / "pubspec.yaml").read_text()

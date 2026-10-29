@@ -23,7 +23,7 @@ def test_one_stylesheet():
     for rule in ("#app #slotDock{width:min(880px,100%);margin-inline:auto}", "#app #slotDock #composer{width:100%}",
                  "#app .progress-avatar", "#app .side{width:224px"):
         assert rule in tail, rule
-    assert css.index("--bg0:#0B0A1A") < css.index("v0.221 R1")   # brand tokens untouched, first
+    assert css.index("--bg:#F5F4FA") < css.index("v0.221 R1")   # brand tokens first (v0.240 Light / Dark / System)
     assert css.count("{") == css.count("}")                       # the merged file still balances
 
 
@@ -71,5 +71,5 @@ def test_console_chrome_speaks_english():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.239.0"    # conscious-bump guard: moves with every release (bump with pubspec)
-    assert "0.239.0+279" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.240.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert "0.240.0+280" in (ROOT / "pubspec.yaml").read_text()

@@ -9489,3 +9489,38 @@ asked how Claude would do it, compared it with Hoola's flow, asked "WHY FOR EVER
 - Chat list titles: the first-message title skips empty messages; a chat with words but no readable title (e.g. a file-only
   first message) is "Untitled chat", never "Naya chat".
 - Tests: NEW `test_v0237_sidebar.py` (3). Version 0.237.0 (pubspec 0.237.0+277, console ?v=0.237.0, pins -> 0.237.0).
+
+## v0.240.0 CALM BRAND console (Light / Dark / System) + the sidebar fit
+Owner: "NOW CHECK CONSOL LOOK LIKE A FULLY AI MADE -- MAKE IT HUMAN NATIVE WEB DESIGN WORK. ALSO INCLUDE MODES ::: DARK , LIGHT ,
+SYSTEM", then on the prototype "PUT THE COLOUR ON BUT ORANGE -- MAKE IT APP BRAND DESIGN ... MORE PREMIUM WITH ANIMATIONS AND
+SHEDING ON BORDERS", then "PERFECT NOW --- DEPLOY IT END TO END SAME AS PROTOTYPE SHOWN". Prototype artifact: claude.ai/artifact/9PXUc9MZyRLnox2VisS9zN.
+- Themes: `server/app/static/console/theme.js` (new, loaded in <head> before v2.css - the console CSP is script-src 'self', so no
+  inline script) reads localStorage `hoola.theme` (light | dark | system, default system), `hoola.size` (sm | md | lg),
+  `hoola.calm` (reduce motion), `hoola.glow` (live border glow) and sets `html[data-theme]`, `data-size`, `.calm`, `.noglow`
+  before the first paint. `window.HoolaTheme` = setTheme(t, clickEvent) (View Transition circle from her click unless reduced
+  motion), setSize, setCalm, setGlow, onChange. System follows `prefers-color-scheme` live.
+- Tokens (top of v2.css): bare `:root` = LIGHT (#F5F4FA paper-lavender, ink #1D1A2E, violet #5B45E0); `@media (prefers-color-scheme:
+  dark) :root:not([data-theme="light"])` and `:root[data-theme="dark"]` = DARK (#110F20 indigo night, violet #9C88FF). The old
+  names (--bg0/--bg1/--panel/--ink/--mut/--dim/--lit/--soft/--saffron/--saffron2/--glass*/--line/--hair*) are kept and mapped,
+  so every existing rule follows the theme. Every literal dark-only colour in v2.css was rewritten by property: white / ink
+  overlays -> `rgb(var(--fg-rgb) / a)`, dark panel fills -> `rgb(var(--surf-rgb) / a)`, shadows -> `rgb(var(--sh-rgb) /
+  calc(a * var(--sh-k)))` (light shadows at a third), saffron + violet -> `rgb(var(--acc-rgb) / a)` (actions are violet now),
+  red / green -> --bad-rgb / --ok-rgb, text-on-accent #1B1030 -> --on-acc, gradient buttons -> `var(--btn)` (solid violet).
+  The brand gradient (saffron -> magenta -> violet) stays only for the avatar ring, progress bars, the login headline and live edges.
+- Components (the "v0.240 CALM BRAND" block at the END of v2.css): no aurora / glass blur; solid surfaces with a top-lit edge
+  (lighter top border fading into the hairline) on cards, composer, New chat, spend, tiles; the live sheen (a slow conic
+  light, `@property --a`, round `.cd.ask`, `.job.wait`, and the composer while hovered / typing); quiet sidebar (500 weight,
+  current item = white card with violet icon), her bubble a soft grey-violet, Hoola's reply as plain text (no bubble),
+  folded steps on a raised strip, approval card with the sheen and a violet slide knob, red Stop -> ink Stop; thinking line
+  shimmers; pages fade in; theme circle reveal. Reduce motion (`:root.calm`) and the OS reduced-motion setting stop all of it.
+- Controls: a Light / Dark / System segmented switch in the sidebar (`#themeSeg`, sliding highlight placed in px by v2.js
+  themeSync; icons hide when the sidebar is narrow, only the chosen one shows when collapsed); an Appearance card first on
+  Account (theme cards with mini previews, text size, reduce motion, live border glow); slash commands /appearance /light
+  /dark /system.
+- Also carries the v0.237 sidebar fit built on this branch earlier (see the v0.237 section above: narrow sidebar hides
+  shortcut hints, one line per item; "Untitled chat").
+- Tests: test_v0240_calm_brand.py (version, theme.js before first paint and served, token blocks x3, no dark-only literals left,
+  edge / sheen / motion switches, sidebar switch + Account Appearance + commands); pins moved: 12 `?v=` stamps, 12 slash
+  commands, the R1 token anchor, the R4 accent edge as a token.
+- Not verified on her real screen yet: Safari's View Transition (falls back to an instant switch), very old browsers without
+  `@property` (the sheen then shows as a still light on the border).

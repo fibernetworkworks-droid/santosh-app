@@ -141,6 +141,40 @@ $('#liveBtn').addEventListener('click', () => {
 $('#liveClose').addEventListener('click', () => $('#app').classList.remove('open'));
 $('#model').addEventListener('click', () => go('main'));
 
+/* ================= v0.240 CALM BRAND: Light / Dark / System, text size, reduce motion, live border glow ================= */
+const TH = window.HoolaTheme;
+function themeSync() {
+  if (!TH) return;
+  const t = TH.theme(), z = TH.size();
+  $$('[data-theme-set]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.themeSet === t)));
+  $$('[data-size-set]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.sizeSet === z)));
+  const c = $('#calmSw'); if (c) c.setAttribute('aria-checked', String(TH.calm()));
+  const g = $('#glowSw'); if (g) g.setAttribute('aria-checked', String(TH.glow()));
+  $$('.themeseg').forEach(seg => { const bs = $$('button', seg), i = Math.max(0, bs.findIndex(b => b.getAttribute('aria-checked') === 'true'));
+    const p = seg.querySelector('.tpill'), on = bs[i]; if (p && on) { p.style.width = on.offsetWidth + 'px'; p.style.transform = `translateX(${on.offsetLeft - 3}px)`; } });
+}
+TH?.onChange(themeSync); themeSync();
+if (window.ResizeObserver) new ResizeObserver(() => themeSync()).observe(document.querySelector('#app .side') || document.body);
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-theme-set],[data-size-set],#calmSw,#glowSw'); if (!b || !TH) return;
+  if (b.dataset.themeSet) TH.setTheme(b.dataset.themeSet, e);
+  else if (b.dataset.sizeSet) TH.setSize(b.dataset.sizeSet);
+  else if (b.id === 'calmSw') TH.setCalm(!TH.calm());
+  else if (b.id === 'glowSw') TH.setGlow(!TH.glow());
+});
+function appearanceHTML() {
+  const card = (k, n, pv) => `<button type="button" class="tcard" role="radio" data-theme-set="${k}" aria-checked="false"><span class="pv">${pv}</span><span class="nm">${n}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>`;
+  const mini = c => `<span class="pvm ${c}"><i></i><b></b><u></u></span>`;
+  return `<div class="tile gl appear" id="appearance"><h3>Appearance</h3>
+    <p class="muted" style="font-size:13.5px;margin:-2px 0 12px">System follows your computer: light by day, dark at night.</p>
+    <div class="tcards" role="radiogroup" aria-label="Theme">${card('light', 'Light', `<span class="pvs pvL"></span>${mini('pvL')}`)}${card('dark', 'Dark', `<span class="pvs pvD"></span>${mini('pvD')}`)}${card('system', 'System', mini('pvL') + mini('pvD'))}</div>
+    <div class="aprow"><div><b>Text size</b><span>Chat text and the sidebar.</span></div>
+      <div class="themeseg sizeseg" role="radiogroup" aria-label="Text size"><span class="tpill" aria-hidden="true"></span><button type="button" role="radio" data-size-set="sm" aria-checked="false">Small</button><button type="button" role="radio" data-size-set="md" aria-checked="false">Default</button><button type="button" role="radio" data-size-set="lg" aria-checked="false">Large</button></div></div>
+    <div class="aprow"><div><b>Reduce motion</b><span>Replies appear at once. No glow, fades or moving borders.</span></div><button type="button" class="swt" role="switch" id="calmSw" aria-checked="false" aria-label="Reduce motion"><i></i></button></div>
+    <div class="aprow"><div><b>Live border glow</b><span>The soft light that runs round a card while Hoola works or waits for you.</span></div><button type="button" class="swt" role="switch" id="glowSw" aria-checked="true" aria-label="Live border glow"><i></i></button></div>
+  </div>`;
+}
+
 async function enter() {
   ME = await api('GET', '/api/console/me');
   AV = ME.avatar?.name || 'Santosh';
@@ -1119,6 +1153,10 @@ const SLASH_CMDS = [
   ['tools', 'All tools', 'everything Hoola can do', () => go('kaam')],
   ['call', 'Voice call', 'live voice call', () => go('baat')],
   ['account', 'Account', 'profile, password, AI spend', () => go('main')],
+  ['appearance', 'Appearance', 'Light, Dark or System', () => { go('main'); setTimeout(() => $('#appearance')?.scrollIntoView({block: 'center', behavior: SMOOTH()}), 60); }],
+  ['light', 'Light theme', 'switch to light', () => TH?.setTheme('light')],
+  ['dark', 'Dark theme', 'switch to dark', () => TH?.setTheme('dark')],
+  ['system', 'System theme', 'follow the computer', () => TH?.setTheme('system')],
 ];
 function slashMaybe() {
   const v = msg.value;
@@ -1454,7 +1492,7 @@ async function drawToday() {
 const gOn = m => { const g = m.google_apps || {}; return !!(g.gmail && g.calendar && g.drive); };
 async function drawMain() {
   const m = ME || {}; const box = $('#mainp');
-  box.innerHTML = `<div class="prof gl"><span class="av"><img src="${$('#uimg').src}" alt=""></span><div><h2>${esc(AV)}</h2><div class="muted">${esc(m.handle || '')} · ${esc(m.owner || '')}${m.email ? ' · ' + esc(m.email) : ''}</div></div></div>
+  box.innerHTML = appearanceHTML() + `<div class="prof gl"><span class="av"><img src="${$('#uimg').src}" alt=""></span><div><h2>${esc(AV)}</h2><div class="muted">${esc(m.handle || '')} · ${esc(m.owner || '')}${m.email ? ' · ' + esc(m.email) : ''}</div></div></div>
     <div class="grid2">
       <div class="tile gl"><h3>Console password <span class="tag ${m.has_password ? 'ok' : 'warn'}">${m.has_password ? 'set' : 'not set'}</span></h3>
         <p class="muted" style="font-size:13.5px">Sign in on any computer with <b>${esc(m.handle || 'Hoola ID')}</b> + this password. Every sign-in is reported in your chat.</p>
@@ -1471,6 +1509,7 @@ async function drawMain() {
     </div>
     <div class="acts" style="margin-top:22px"><button class="btn soft" type="button" id="logoutBtn">Logout</button>
       ${CONFIG.v2 ? '<a class="btn soft" href="/console/?legacy=1" style="text-decoration:none">Legacy console</a>' : ''}</div>`;
+  themeSync();
   $('#logoutBtn').addEventListener('click', () => logout(false));
   $('#gAppsBtn').addEventListener('click', () => { if (!CONFIG.google) return toast('Google sign-in is not configured.', true); location.href = '/auth/google/start?web=1&apps=1'; });
   $('#pwf').addEventListener('submit', async e => { e.preventDefault(); const n = $('#pwn').value, n2 = $('#pwn2').value;

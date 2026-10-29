@@ -33,7 +33,7 @@ def test_panel_and_studio_styles():
                  "#app .studio>.workspace-handle,#app .studio>.sthd,#app .studio>.sttabs{flex-direction:row",
                  "#app .studio .stchg{"):
         assert rule in tail, rule
-    assert "rgba(255,177,92,.55)" in tail                                   # the saffron edge, not the gradient fill
+    assert "rgb(var(--acc-rgb) / .55)" in tail                              # the accent edge (v0.240 token), not the gradient fill
     assert css.count("{") == css.count("}")
 
 
@@ -48,5 +48,5 @@ def test_studio_speaks_english():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.239.0"
-    assert "0.239.0+279" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.240.0"
+    assert "0.240.0+280" in (ROOT / "pubspec.yaml").read_text()

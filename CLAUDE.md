@@ -101,9 +101,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.239.0 (pubspec 0.239.0+279). Version ritual = main.py APP_VERSION + pubspec version(+build) +
-  console `?v=` stamps in `server/app/static/console/v2.html` + the version pins in tests (grep the old number in
+- Current version: v0.240.0 (pubspec 0.240.0+280). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+  console `?v=` stamps in `server/app/static/console/v2.html` (12 now, theme.js added) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.240 CALM BRAND console: Light / Dark / System (`console/theme.js` before first paint, tokens at the top of v2.css, every
+  colour a token), brand violet actions, card edge + live sheen, Appearance card in Account; also the v0.237 sidebar fit.
 - v0.239 FULL CLAUDE MODE Phase 1 (built as 0.237): whole chat word for word (`CHAT_CONTEXT=claude|hoola`), `agent/context.py`
   gauge + safety net + one retry on "too long", clean error lines, GET /api/conversations/{id}/context (Phase 2 = compaction).
 - v0.238 DATA DESK: big data stays in a server file (`app/datasets.py`, tools data_fetch / data_read / data_note,
