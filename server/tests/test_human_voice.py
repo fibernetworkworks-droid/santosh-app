@@ -133,6 +133,7 @@ def _no_followup(fake):
 
 def test_no_ack_when_he_already_said_ek_second(env, monkeypatch):
     from app import main
+    voice.STATS.clear()   # v0.221 the previous test's call (1 tool, 1 ack) must not satisfy the wait below
     _gemini_env(monkeypatch, VOICE_TOOL_ACK="true")
     _ack_setup(monkeypatch)
     fake = FakeSession([[
