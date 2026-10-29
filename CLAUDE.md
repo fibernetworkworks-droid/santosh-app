@@ -97,9 +97,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.236.0 (pubspec 0.236.0+276). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.237.0 (pubspec 0.237.0+277). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.237 FULL CLAUDE MODE Phase 1: whole chat word for word (`CHAT_CONTEXT=claude|hoola`), `agent/context.py` gauge +
+  safety net + one retry on "too long", clean error lines, GET /api/conversations/{id}/context (Phase 2 = compaction).
 - v0.236 console list shows only chats she wrote in (no empty "Naya chat" rows) · v0.235 long jobs Phase C (built as 0.232): she sees Hoola think (adaptive thinking on Claude for long jobs / big
   asks, setting `chat_thinking` goal|on|off; thinking never saved or sent to GLM; phone Soch card `lib/ui/think_card.dart`).
 - v0.234 console: one avatar while replying, no greeting row · v0.233 console New chat reuses her untouched empty chat and opens on the home · v0.232 voice Phase 4 (call scorecards saved per call in data/voice_calls, grade + end reason, /api/voice/quality per

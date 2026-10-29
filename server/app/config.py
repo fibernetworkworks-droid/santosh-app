@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     # WHOLE turn, so the Anthropic prompt cache holds; a family admitted mid-turn re-caches once, by design.
     agent_tool_admission: bool = True
     prompt_slim: bool = True               # v0.221 PATLA PROMPT: only the admitted families' guides ride in the system prompt (false = the full ~130 KB guide, as before)
+    # v0.237 FULL CLAUDE MODE Phase 1 (agent/context.py): the whole chat word for word while it fits the model's window
+    chat_context: str = "claude"           # claude = whole chat, gauge + safety net | hoola = the v0.108 40-49 exchange window (instant rollback)
+    chat_context_limit_glm: int = 200000   # GLM's context window in tokens (check your Z.ai plan)
+    chat_context_limit_claude: int = 200000
+    chat_context_limit_omniroute: int = 128000   # the smallest window your OmniRoute combo can land on
+    chat_context_full_at: float = 0.75     # the request may fill this share of the window; above it the safety net runs
     tool_admit_cap: int = 220               # admitted specs above this = router over-matched: send the FULL set instead
     # v0.191 HARNESS-2: job-completion WAKE turns (dsh completionDelivery + maxConsecutiveWakes) - a finished job whose
     # chat is idle wakes the real brain (tools allowed) instead of only the v0.187 one-shot line; budget keeps it finite.
