@@ -9314,3 +9314,13 @@ Tests: NEW `test_v0232_voice_phase4.py` (12). Version 0.232.0 (pubspec 0.232.0+2
 - Titles: the console's own notes (`[Web console language preference ...]`, mode / place hints) are stripped from the
   first-message title and from the auto-title prompt (`chats.plain`).
 - Tests: NEW `test_v0236_no_empty_rows.py` (3). Version 0.236.0 (pubspec 0.236.0+276, console ?v=0.236.0, pins -> 0.236.0).
+
+## v0.237.0 The console sidebar adapts to its width (owner: "WHEN SIDE BAR SHRINKS NEW CHAT AND OTHERS GET MISPLACED - IT MUST BE AUTOMATICALLY ADJUSTED")
+- Cause: at the default / dragged-narrow sidebar width (~220px) "New chat" + its "Ctrl ⇧ O" hint did not fit, so the label
+  wrapped onto two lines and the row grew.
+- Fix (console): a ResizeObserver on `.side` sets `.narrow` under 236px of content width (~260px sidebar); there the
+  shortcut hints hide; New chat / Search / every nav item are one line (nowrap, ellipsis); Search's "Ctrl K" sits at the
+  right edge like New chat's. Wider sidebars get the hints back.
+- Chat list titles: the first-message title skips empty messages; a chat with words but no readable title (e.g. a file-only
+  first message) is "Untitled chat", never "Naya chat".
+- Tests: NEW `test_v0237_sidebar.py` (3). Version 0.237.0 (pubspec 0.237.0+277, console ?v=0.237.0, pins -> 0.237.0).

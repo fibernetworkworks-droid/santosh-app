@@ -126,6 +126,10 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-v]')
 $('#menu').addEventListener('click', () => $('#app').classList.add('drawer'));
 $('#scrim').addEventListener('click', () => $('#app').classList.remove('drawer'));
 $('#collapse').addEventListener('click', () => $('#app').classList.toggle('collapsed'));
+/* v0.237 the sidebar adapts to its own width (drag / collapse / small screens): under ~260px (236 inside the padding) the shortcut hints hide so
+   New chat, Search and every label stay on one line instead of wrapping */
+if (window.ResizeObserver) { const SB = document.querySelector('#app .side');
+  if (SB) new ResizeObserver(([e]) => SB.classList.toggle('narrow', e.contentRect.width < 236)).observe(SB); }
 $('#collapse').addEventListener('click', () => {
   $('#collapse').setAttribute('aria-expanded', String(!$('#app').classList.contains('collapsed')));
 });

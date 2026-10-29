@@ -1329,3 +1329,9 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 /* v0.234 one Hoola at a time: a reply row with nothing in it yet (the turn opened, no words / steps) stays hidden,
    so the "Preparing your response…" line is the only avatar until the words arrive */
 #app .mh:has(>.bd:empty){display:none}
+
+/* v0.237 the sidebar never wraps: one line per item, shortcut hints only when there is room (.narrow set by v2.js) */
+#app .side .newc,#app .side .sn{white-space:nowrap;min-width:0}
+#app .side .newc>.txt:not(kbd){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:left}
+#app .side.narrow .newc kbd,#app .side.narrow .sn kbd{display:none}
+#app .side .sn>kbd.txt:not(.lv):not(.ct){flex:none;margin-left:auto}
