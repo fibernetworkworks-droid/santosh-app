@@ -1817,3 +1817,9 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 #app .dock,#app .main,#app .view{background:var(--bg)}
 #app .thread{background:var(--chat-paper)}
 #app .dock{position:relative;z-index:2}
+/* Claude's sidebar: items in the reading ink (not grey), the current one on a soft grey pill, hover a lighter grey */
+#app .side .sn,#app .side .rc{color:var(--ink)}
+#app .side .sn svg{color:var(--lit)}
+#app .side .sn:hover,#app .side .rcw .rc:hover{background:rgb(var(--fg-rgb) / .05)}
+#app .side .sn[aria-current="true"],#app .side .rcw.cur .rc{background:rgb(var(--fg-rgb) / .08);box-shadow:none;color:var(--ink)}
+#app .side .sn[aria-current="true"] svg{color:var(--ink)}

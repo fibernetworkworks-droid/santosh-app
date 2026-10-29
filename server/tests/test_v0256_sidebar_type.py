@@ -31,3 +31,8 @@ def test_crisp_text_rules():
     assert CSS.count("--chat-paper:var(--bg);") == 2 and "--chat-paper:transparent" not in CSS
     assert "#app .dock{position:relative;z-index:2}" in CSS
     assert CSS.count("{") == CSS.count("}")
+
+
+def test_sidebar_ink_and_grey_pill_like_claude():
+    assert "#app .side .sn,#app .side .rc{color:var(--ink)}" in CSS
+    assert '#app .side .sn[aria-current="true"],#app .side .rcw.cur .rc{background:rgb(var(--fg-rgb) / .08);box-shadow:none' in CSS
