@@ -253,6 +253,18 @@ class Settings(BaseSettings):
     voice_backchannel: bool = True         # v0.205 KAAN KAAPI: tiny listener murmurs in her pauses + one progress sound on a long silent tool (kill switch)
     voice_prosody: bool = True             # v0.208 AWAAZ-3: her TurnMeter prosody sharpens the feeling note - vetoes a glad her voice contradicts, confirms a low, adds the thinking-pauses rider (kill switch; off = the v0.202 words-only engine)
     voice_soorat: bool = True              # v0.220 SOORAT: his energy follows her transitions - a state flip names the move, the fresh tone tints the scripted moments (acks skip the bright clips while she is heavy/tense, stall/result/reconnect notes carry the tone); off = the v0.219 engine
+    # v0.264 OPENAI VOICE (Phase 1 of "two engines, she chooses"): a second call engine for "real voice" (breaths,
+    # hmm, light laughs). Gemini stays the default and untouched; OpenAI is used only when the owner picks it, a key is
+    # set, and the month's budget / her minutes allow - otherwise the call quietly runs on Gemini.
+    openai_api_key: str = ""                          # VPS .env only (OPENAI_API_KEY), never in chat or the repo
+    voice_openai_model: str = "gpt-realtime-2.1-mini"   # the mini only: the full model costs 4-10x Gemini
+    voice_openai_voice_m: str = "cedar"
+    voice_openai_voice_f: str = "marin"
+    voice_openai_transcribe: str = "gpt-4o-mini-transcribe"
+    voice_openai_month_usd: float = 10.0              # whole app, per calendar month (IST); 0 = no OpenAI calls
+    voice_openai_user_min: int = 120                  # minutes per user per month on OpenAI; 0 = unlimited
+    voice_openai_tenants: str = ""                    # who may pick it ("" = only the main tenant: the owner's trial; "*" = all)
+    voice_openai_session_min: int = 50                # OpenAI sessions end at 60 min: move to a fresh one before that
     voice_ack_tts_model: str = "gemini-3.8-flash-tts"   # v0.181 (was gemini-2.5-flash-preview-tts): new TTS, far more natural delivery; legacy model is the automatic fallback
     voice_compress_trigger: int = 60000    # v0.224 Gemini Live context compression starts here (0 = Google's default near the limit)
     voice_compress_target: int = 35000     # ...and slides the window back to about this many tokens

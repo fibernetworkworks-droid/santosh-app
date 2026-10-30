@@ -3073,86 +3073,95 @@ class Call:
                     await self.send_json({"type": "status", "state": "reconnecting"})
                 await asyncio.sleep(min(0.5 * failures, 3))
         finally:
-            with contextlib.suppress(ValueError, KeyError):
-                ACTIVE[self.ctx.conversation_id].remove(me)
-            CALLS.pop(self.call_id, None)
-            self.closed.set()
-            if self._grace is not None:
-                self._grace.cancel()
-            for t in [*self._tools, *self._readers]:
-                t.cancel()
-            if not self._hung_up:
-                # v0.224 the call ended without HER hang-up (server restart, connection error, stall close, phone
-                # gone): the next call continues the work instead of starting cold. Before, only a phone drop did.
-                try:
-                    await asyncio.to_thread(self._save_drop_note)
-                except Exception:
-                    log.exception("focus drop note failed")
-            if self.user_buf or self.reply_buf:
-                await self.finish_turn()
-            if self._news:            # v0.230 job news still waiting for a pause: the next call opens with it
-                self._orphan_note("call ke ant tak yeh kaam ki khabar nahi batayi ja saki: " + " | ".join(self._news)[:900])
-                self._news.clear()
-            if self._quiet_pending:   # v0.211 quiet notes that never found a ride: saved for the next call, not lost
-                self._orphan_note("call ke ant tak yeh notes useh nahi bataye ja sake: "
-                                  + " | ".join(self._quiet_pending)[:900])
-                self._quiet_pending.clear()
-            self.stats["ended"] = time.time()
-            self.stats["end"] = getattr(self, "_end_reason", "") or ("hung_up" if self._hung_up else "dropped")   # v0.231
-            if self.hold:
-                self.stats["hold_s"] = round(self.stats["hold_s"] + time.monotonic() - self._hold_at, 1)
-            self.stats["lang_state"] = self.langst.summary()
-            try:   # v0.114 the language she really spoke carries to her next call (owner / unknown speaker only)
-                from . import voicelang
-                cur = (self.vid.current or {}) if self.vid is not None else {}
-                if not cur or cur.get("relation") == "self":
-                    voicelang.remember(self.tenant, self.langst)
+            await self._wrap_up(me)
+
+    async def _wrap_up(self, me) -> None:
+        """The end of every call, whatever engine spoke it (v0.264: moved out of run() unchanged so the second
+        engine shares it): drop notes, the last turn, orphan news, stats, the scorecard, usage, the call receipt."""
+        with contextlib.suppress(ValueError, KeyError):
+            ACTIVE[self.ctx.conversation_id].remove(me)
+        CALLS.pop(self.call_id, None)
+        self.closed.set()
+        if self._grace is not None:
+            self._grace.cancel()
+        for t in [*self._tools, *self._readers]:
+            t.cancel()
+        if not self._hung_up:
+            # v0.224 the call ended without HER hang-up (server restart, connection error, stall close, phone
+            # gone): the next call continues the work instead of starting cold. Before, only a phone drop did.
+            try:
+                await asyncio.to_thread(self._save_drop_note)
             except Exception:
-                log.exception("voice language memory failed")
-            try:   # v0.119 how she speaks + her corrections, saved once (numbers and words only, never audio)
-                from . import voicestyle
-                cur = (self.vid.current or {}) if self.vid is not None else {}
-                if get_settings().voice_adapt and (not cur or cur.get("relation") == "self"):
-                    self.stats["style_saved"] = voicestyle.save_call(self.tenant, self.callstyle)   # no await: a cancel here would lose the stats
-            except Exception:
-                log.exception("voice style save failed")
-            STATS.append(self.stats)
-            try:   # v0.231 the scorecard survives restarts / deploys (in-memory STATS did not)
-                from . import callquality
-                await asyncio.to_thread(callquality.record, self.stats)
-            except Exception:
-                log.exception("call scorecard save failed")
-            try:   # v0.98 Gemini Live is billed per minute of audio each way: 16 kHz in, 24 kHz out (16-bit mono)
-                from . import usage
-                sec_in, sec_out = getattr(self, "audio_in_bytes", 0) / 32000, getattr(self, "audio_out_bytes", 0) / 48000
-                if sec_in or sec_out:
-                    self.stats["cost_usd"] = usage.record(get_settings().gemini_live_model, sec_in=sec_in, sec_out=sec_out,
-                                                          tenant=self.ctx.tenant_id, feature="call")
-            except Exception:
-                log.exception("call usage failed")
-            if get_settings().call_receipt and (self.turns_log or self.did):
-                from . import callreceipt   # v0.91 the chat gets a short card of what came out of this call
-                rt = asyncio.create_task(callreceipt.make(self.conv, self.call_id, list(self.turns_log), list(self.did),
-                                                          self.stats["ended"] - self.stats["started"], self.name))
-                _JOBS.add(rt)
-                rt.add_done_callback(_JOBS.discard)
-            lat = self.stats["latency_ms"]
-            log.info("call %s done: %s turns, reply start p50 %s ms, %s interruptions (%s noise), %s/%s silent tools, "
-                     "%s acks (%s tone-soft), %s backchannels, %s progress, %s affect notes (%s vetoed, %s confirmed, "
-                     "%s pauserider, %s transitions), "
-                     "%s/%s stall nudges/reconnects, %s auto-rescues, %s orphan notes",
-                     self.call_id, self.stats["turns"], _pct(lat, .5), self.stats["interruptions"], self.stats["false_stops"],
-                     self.stats["silent_tools"], self.stats["tools"], self.stats["acks"],
-                     self.stats.get("tone_soft_acks", 0),
-                     self.stats.get("backchannels", 0), self.stats.get("progress", 0), self.stats.get("affect_notes", 0),
-                     self.stats.get("affect_vetoed", 0), self.stats.get("affect_confirmed", 0),
-                     self.stats.get("affect_pauses_rider", 0), self.stats.get("affect_transitions", 0),
-                     self.stats.get("stall_nudges", 0), self.stats.get("stall_reconnects", 0),
-                     self.stats.get("auto_rescues", 0), self.stats.get("orphan_notes", 0))
-            ws, self.ws = self.ws, None
-            if ws is not None:
-                with contextlib.suppress(Exception):
-                    await ws.close()
+                log.exception("focus drop note failed")
+        if self.user_buf or self.reply_buf:
+            await self.finish_turn()
+        if self._news:            # v0.230 job news still waiting for a pause: the next call opens with it
+            self._orphan_note("call ke ant tak yeh kaam ki khabar nahi batayi ja saki: " + " | ".join(self._news)[:900])
+            self._news.clear()
+        if self._quiet_pending:   # v0.211 quiet notes that never found a ride: saved for the next call, not lost
+            self._orphan_note("call ke ant tak yeh notes useh nahi bataye ja sake: "
+                              + " | ".join(self._quiet_pending)[:900])
+            self._quiet_pending.clear()
+        self.stats["ended"] = time.time()
+        self.stats["end"] = getattr(self, "_end_reason", "") or ("hung_up" if self._hung_up else "dropped")   # v0.231
+        if self.hold:
+            self.stats["hold_s"] = round(self.stats["hold_s"] + time.monotonic() - self._hold_at, 1)
+        self.stats["lang_state"] = self.langst.summary()
+        try:   # v0.114 the language she really spoke carries to her next call (owner / unknown speaker only)
+            from . import voicelang
+            cur = (self.vid.current or {}) if self.vid is not None else {}
+            if not cur or cur.get("relation") == "self":
+                voicelang.remember(self.tenant, self.langst)
+        except Exception:
+            log.exception("voice language memory failed")
+        try:   # v0.119 how she speaks + her corrections, saved once (numbers and words only, never audio)
+            from . import voicestyle
+            cur = (self.vid.current or {}) if self.vid is not None else {}
+            if get_settings().voice_adapt and (not cur or cur.get("relation") == "self"):
+                self.stats["style_saved"] = voicestyle.save_call(self.tenant, self.callstyle)   # no await: a cancel here would lose the stats
+        except Exception:
+            log.exception("voice style save failed")
+        STATS.append(self.stats)
+        try:   # v0.231 the scorecard survives restarts / deploys (in-memory STATS did not)
+            from . import callquality
+            await asyncio.to_thread(callquality.record, self.stats)
+        except Exception:
+            log.exception("call scorecard save failed")
+        try:
+            self._record_usage()
+        except Exception:
+            log.exception("call usage failed")
+        if get_settings().call_receipt and (self.turns_log or self.did):
+            from . import callreceipt   # v0.91 the chat gets a short card of what came out of this call
+            rt = asyncio.create_task(callreceipt.make(self.conv, self.call_id, list(self.turns_log), list(self.did),
+                                                      self.stats["ended"] - self.stats["started"], self.name))
+            _JOBS.add(rt)
+            rt.add_done_callback(_JOBS.discard)
+        lat = self.stats["latency_ms"]
+        log.info("call %s done: %s turns, reply start p50 %s ms, %s interruptions (%s noise), %s/%s silent tools, "
+                 "%s acks (%s tone-soft), %s backchannels, %s progress, %s affect notes (%s vetoed, %s confirmed, "
+                 "%s pauserider, %s transitions), "
+                 "%s/%s stall nudges/reconnects, %s auto-rescues, %s orphan notes",
+                 self.call_id, self.stats["turns"], _pct(lat, .5), self.stats["interruptions"], self.stats["false_stops"],
+                 self.stats["silent_tools"], self.stats["tools"], self.stats["acks"],
+                 self.stats.get("tone_soft_acks", 0),
+                 self.stats.get("backchannels", 0), self.stats.get("progress", 0), self.stats.get("affect_notes", 0),
+                 self.stats.get("affect_vetoed", 0), self.stats.get("affect_confirmed", 0),
+                 self.stats.get("affect_pauses_rider", 0), self.stats.get("affect_transitions", 0),
+                 self.stats.get("stall_nudges", 0), self.stats.get("stall_reconnects", 0),
+                 self.stats.get("auto_rescues", 0), self.stats.get("orphan_notes", 0))
+        ws, self.ws = self.ws, None
+        if ws is not None:
+            with contextlib.suppress(Exception):
+                await ws.close()
+
+    def _record_usage(self) -> None:
+        """v0.98 Gemini Live is billed per minute of audio each way: 16 kHz in, 24 kHz out (16-bit mono)."""
+        from . import usage
+        sec_in, sec_out = getattr(self, "audio_in_bytes", 0) / 32000, getattr(self, "audio_out_bytes", 0) / 48000
+        if sec_in or sec_out:
+            self.stats["cost_usd"] = usage.record(get_settings().gemini_live_model, sec_in=sec_in, sec_out=sec_out,
+                                                  tenant=self.ctx.tenant_id, feature="call")
 
 
 async def serve(call: Call) -> None:

@@ -10221,3 +10221,31 @@ Owner: "BUILD PHASE 2" (the video plan: daily price sync, actual vs estimate, sa
 - Version 0.263.0 (pubspec 0.263.0+303, console ?v=0.263.0 x14, pins -> 0.263.0).
 - NOT VERIFIED: real provider-reported costs (needs a live OpenRouter key and a paid run); Phase 3 (Credits wallet,
   margin + GST, refunds) still waits on her decisions.
+
+## v0.264.0 OPENAI VOICE Phase 1 — a second, optional "real voice" engine (owner: "KEEP EXISTING VOICE INTACT ... IF USER WANT REAL VOICE THEY CAN USE OPENAI LEVEL ... IF GEMINI THEN GEMINI LEVEL", then "START PHASE 1" after "OPEN AI COSTING IS VERY HIGH")
+- Research (30 Oct 2026): Gemini 3.8 Live has no control for breaths / "hmm" / laughs (affective dialog removed, no tags);
+  OpenAI Realtime produces them from instructions. Cost: gpt-realtime-2.1 full $32/$64 per 1M audio tokens (~4-10x Gemini),
+  **gpt-realtime-2.1-mini $10/$20 (~Gemini's price)** - so only the mini is used.
+- **`app/voice_openai.py` `OpenAICall(voice.Call)`**: everything that is not the wire is inherited unchanged (phone protocol =
+  same APK, hold / side talk, OTP by voice, bol-kar-haan, news at a pause, acks / murmurs, stall watchdog, turn saver,
+  language state, scorecard, drop note, resume). Its own pieces: `run()` (connect, `session.update` with the SAME persona,
+  language lock, her style block and tools + the `EMOTION` block written as behaviour, never tags; greeting; a fresh
+  session after a drop or before OpenAI's 60-minute limit at `VOICE_OPENAI_SESSION_MIN` 50), `uplink()` (her 16 kHz mic
+  -> 24 kHz by `up16to24`, evenly spaced, seam-safe; notes as system messages + response.create when free), `downlink()`
+  (OpenAI events -> the same handlers; `response.done` = turn end; `speech_started` while his audio is still playing on
+  her phone (`_play_until`, OpenAI streams faster than real time) -> phone "interrupted" + `conversation.item.truncate`
+  at what she really heard), `_answer_tool()` (function_call_output), `_count()` (exact cost from every response.done,
+  cached tokens at the cached-audio rate).
+- **`app/voiceengine.py`**: her choice (`data/voice_engine/<tenant>.json`), trial gate `VOICE_OPENAI_TENANTS` ("" = owner
+  only, "*" = all), month budget `VOICE_OPENAI_MONTH_USD` (10) app-wide and `VOICE_OPENAI_USER_MIN` (120) per user in
+  `usage-YYYY-MM.json`; `pick()` -> OpenAI only when chosen + key + allowed + under budget/minutes, else Gemini with one
+  plain reason line. GET / PUT `/api/voice/engine`.
+- Gemini untouched: `main.py` routes through `voiceengine.pick()`; `voice.Call.run`'s finally moved unchanged into
+  `_wrap_up()` + `_record_usage()` so both engines share it (two source-reading tests now read both). usage.PRICES gains
+  gpt-realtime-2.1(-mini); call scorecards carry `engine`.
+- Settings: `OPENAI_API_KEY` (VPS .env only), `VOICE_OPENAI_MODEL`, `VOICE_OPENAI_VOICE_M` cedar / `_F` marin,
+  `VOICE_OPENAI_TRANSCRIBE` gpt-4o-mini-transcribe.
+- Not verified here: a real OpenAI connection (no key in the sandbox; the protocol follows the official Realtime docs read
+  on 30 Oct 2026), Hinglish quality and the real rupees per minute - that is the owner's 10-call trial.
+Tests: NEW `test_v0264_openai_voice.py` (11). Version 0.264.0 (pubspec 0.264.0+304, console ?v=0.264.0, pins -> 0.264.0).
+Server only; no new APK needed (the phone picker is Phase 3).

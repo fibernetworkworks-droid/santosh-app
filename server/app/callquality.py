@@ -91,6 +91,7 @@ def compact(stats: dict[str, Any]) -> dict[str, Any]:
         "started": stats.get("started"), "ended": stats.get("ended"),
         "seconds": round((stats.get("ended") or 0) - (stats.get("started") or 0), 1) if stats.get("ended") else None,
         "end": stats.get("end") or "", "lang": stats.get("lang") or "", "version": _version(),
+        "engine": stats.get("engine") or "gemini",   # v0.264 which engine spoke this call
         "latency_ms": lat[-120:], "words": words[-120:],   # v0.234 120: a long call's slow tail stays
         "gate": {k: int(v) for k, v in (stats.get("gate") or {}).items() if isinstance(v, (int, float))},
     }

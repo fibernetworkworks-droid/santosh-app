@@ -213,7 +213,7 @@ def test_drop_note_once_and_on_every_non_hangup_end(env):
     c._save_drop_note()                                # grace timer + shutdown + run() end: one note
     assert "GST return" in yaad.take_call_drop(c.conv, 60)
     assert yaad.take_call_drop(c.conv, 60) == ""
-    src = inspect.getsource(voice.Call.run)
+    src = (inspect.getsource(voice.Call.run) + inspect.getsource(voice.Call._wrap_up))
     assert "if not self._hung_up:" in src and "self._save_drop_note" in src
     assert "self._hung_up = True" in inspect.getsource(voice.Call.phone_reader)
 
@@ -239,4 +239,4 @@ def test_server_restart_saves_the_continuation_note(env):
 
 def test_version():
     from app import main
-    assert main.APP_VERSION == "0.263.0"
+    assert main.APP_VERSION == "0.264.0"

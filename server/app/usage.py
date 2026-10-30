@@ -54,6 +54,10 @@ PRICES: dict[str, dict[str, float]] = {
     "claude-sonnet-4": {"in": 3.0, "out": 15.0, "cache_write": 3.75, "cache_read": 0.30},
     "claude-opus-4": {"in": 5.0, "out": 25.0, "cache_write": 6.25, "cache_read": 0.50},
     "claude": {"in": 2.0, "out": 10.0, "cache_write": 2.5, "cache_read": 0.10},
+    # v0.264 OpenAI Realtime (developers.openai.com/api/docs/pricing, 30 Oct 2026): audio $10/$20 mini, $32/$64 full;
+    # cached input counted at the cached AUDIO rate (the larger of the two cached rates: never under-counted)
+    "gpt-realtime-2.1-mini": {"in": 0.60, "out": 2.40, "audio_in": 10.0, "audio_out": 20.0, "cache_read": 0.30},
+    "gpt-realtime-2.1": {"in": 4.0, "out": 16.0, "audio_in": 32.0, "audio_out": 64.0, "cache_read": 0.40},
     "gemini-3.8-live": {"in": 0.75, "out": 4.5, "audio_in": 3.0, "audio_out": 12.0, "audio_in_min": 0.005, "audio_out_min": 0.018},
     "gemini-3.1-flash-live": {"in": 0.75, "out": 4.5, "audio_in": 3.0, "audio_out": 12.0, "audio_in_min": 0.005, "audio_out_min": 0.018},
     "gemini-3.8-flash": {"in": 0.75, "out": 3.75},

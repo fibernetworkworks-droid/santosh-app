@@ -29,7 +29,7 @@ def test_affective_never_for_3x_live_models(env):
 
 
 def test_generic_refusal_on_3x_never_flips_affective(env):
-    src = inspect.getsource(voice.Call.run)
+    src = (inspect.getsource(voice.Call.run) + inspect.getsource(voice.Call._wrap_up))
     # both heal sites are gated on the model: a 1007 on 3.8 is about something else and climbs the ladder
     assert src.count("voice_affective and affective_allowed()") == 2
 
@@ -150,4 +150,4 @@ def test_persona_teaches_slow_tools_and_still_formats(env):
 
 def test_version():
     from app import main
-    assert main.APP_VERSION == "0.263.0"
+    assert main.APP_VERSION == "0.264.0"
