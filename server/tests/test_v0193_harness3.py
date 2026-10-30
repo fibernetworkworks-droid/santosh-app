@@ -513,7 +513,7 @@ def test_admission_carries_the_team_family():
 
 def test_version_and_config():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.281.0"
+    assert APP_VERSION == "0.282.0"
     s = get_settings()
     assert s.agent_team is True
     assert s.team_max_agents == 4

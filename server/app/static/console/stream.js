@@ -1,7 +1,7 @@
 /* v0.161 Hoola Console: the event stream and the word pacer.
    HoolaStream.open(): SSE read with fetch (Bearer header, Last-Event-ID, backoff reconnect). `live=1` asks for the reply
    being written (reply_start / delta / delta_reset / reply_end): those come without an id and never move the cursor.
-   HoolaStream.Pacer: words come out at a steady pace (~10 ms a word) with requestAnimationFrame, split with
+   HoolaStream.Pacer: words come out at a steady pace (v0.282: ~20 ms a word, a capped catch-up) with requestAnimationFrame, split with
    Intl.Segmenter so Hindi / Devanagari and mixed Hinglish break at real word edges; a big backlog is caught up faster;
    a hidden tab or the reply's end shows everything at once. */
 'use strict';
@@ -72,7 +72,11 @@ class Pacer {
     if (this.raf) return;
     this.t = performance.now();
     const tick = now => {
-      const n = Math.max(1, Math.floor((now - this.t) / 10) + Math.floor(this.queue.length / 25));   // ~10 ms a word, faster when far behind
+      // v0.282: measured with this very code - 10 ms a word with an uncapped catch-up ran a 300-word answer at
+      // 244 words a second (1.2 s), and even a properly streamed one at 165. Claude lands at roughly 40-80.
+      // 20 ms a word, and the catch-up only once more than 80 words are waiting, capped at 2 extra a frame:
+      // 300 words take 3.8 s instead of 1.2, while a 30-word reply is unchanged (0.5 s).
+      const n = Math.max(1, Math.floor((now - this.t) / 20) + Math.min(2, Math.floor(this.queue.length / 80)));
       this.t = now;
       this.shown += this.queue.splice(0, n).join('');
       const fin = this.finalText !== null && !this.queue.length;

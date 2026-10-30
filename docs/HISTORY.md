@@ -10722,3 +10722,47 @@ Unable to verify / Offline.
   that way.
 - Tests: NEW `server/tests/test_v0281_bullet_gutter.py` (4).
 - Version 0.281.0 (pubspec 0.281.0+321, console ?v=0.281.0, pins -> 0.281.0).
+
+## v0.282.0 DHEERE UTRE — the reply lands at reading speed, not in a flash
+Owner: *"ALSO A RESULT SPEED :: CURRENTLY HOOLA SHOW RESULT INSTANTLY IN FLASH IT MUST LAND SMOTLY LIKE CLAUDE"*.
+
+### What was measured
+Not guessed — Hoola's own pacer (`server/app/static/console/stream.js`, `HoolaStream.Pacer`) was driven in a real
+browser with Playwright at four lengths, before and after the change:
+
+| case | before (10 ms, `/25`) | after (20 ms, `/80` capped 2) | Claude |
+|---|---|---|---|
+| 300 words, delivered in one piece | 244 w/s (1.2 s) | 79 w/s (3.8 s) | ~40–80 w/s |
+| 300 words, properly streamed | 165 w/s | 72 w/s | |
+| 80 words | 105 w/s | 60 w/s | |
+| 30 words | 67 w/s (0.5 s) | 60 w/s (0.5 s) | |
+
+### The cause
+The pacer released `(elapsed / 10) + (queue.length / 25)` words a frame. The second term was **uncapped**, so the
+bigger the backlog the faster it drained — the longer the answer, the more it dumped. That is the opposite of what a
+pace is for. Now:
+
+```js
+const n = Math.max(1, Math.floor((now - this.t) / 20) + Math.min(2, Math.floor(this.queue.length / 80)));
+```
+
+20 ms a word, and the catch-up only once more than 80 words are waiting, capped at 2 extra a frame. The result is
+inside Claude's band at **every** length — the pace no longer depends on how long the answer is.
+
+### The phone had the same bug from the other side
+`lib/ui/chat_screen.dart` `_Reveal` used `(_words.length * 28).clamp(250, 1600)`. 28 ms a word is a sane pace, but
+the **1600 ms ceiling** overrode it, so anything past ~57 words landed in 1.6 s (a 300-word reply = 188 w/s). Now
+`(_words.length * 14).clamp(250, 5000)` — ~70 w/s at every length, matching the console.
+
+### Left alone on purpose
+- **The server.** `api.stream` → `livereply.feed()` was re-checked and is correct: batched every 50 ms (`FLUSH_S`),
+  `TAIL=24`. The browser was emptying the queue too fast, not the server filling it too fast.
+- **The three instant paths.** A hidden tab, `flush()` at the reply's end and `reset()` still show everything at
+  once. Pacing is for live words only; a reloaded or backgrounded conversation must never animate.
+
+### Files
+`server/app/static/console/stream.js` · `lib/ui/chat_screen.dart` · `server/tests/test_v0282_dheere_utre.py` (4 tests).
+
+### A process note worth recording
+The first attempt at this version was lost: the commit silently failed and a following `git reset --hard origin/main`
+wiped the uncommitted work. The rule learned: **check `git log -1` shows your commit before running any reset.**
