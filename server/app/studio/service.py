@@ -1479,12 +1479,27 @@ invent prices, phone numbers, dates, real people or brand names. Write in simple
 spoken line, which stays in her language and script. Max 90 words. Output only the brief."""
 
 
-async def improve_brief(brief: str, language: str = "Hindi", seconds: int = 30) -> dict:
+IMAGE_IMPROVE_SYSTEM = """You help an Indian small-business owner describe ONE picture for an AI image engine. Rewrite her
+idea as a rich, concrete picture description: the subject, what it is doing, the setting, the light, the camera (angle,
+lens, framing), the mood, the colours and - if she wants words on the picture - the exact words in quotes in her script.
+Keep every fact she gave (names, prices, offers, dates, phone numbers, text) exactly; never invent prices, phone numbers,
+dates, real people or brand names. One paragraph, max 70 words, in English except quoted text. Output only the description."""
+
+
+async def improve_brief(brief: str, language: str = "Hindi", seconds: int = 30, kind: str = "video") -> dict:
     brief = (brief or "").strip()
     if len(brief) < 4:
-        raise StudioJobError("Pehle thoda sa likhiye ki video kis baare mein hai.")
-    out = await _write(IMPROVE_SYSTEM, f"Her idea: {brief[:1500]}\nLanguage of the spoken line: {language}\n"
-                                       f"Length: about {int(seconds)} seconds.", 900)
+        raise StudioJobError("Pehle thoda sa likhiye ki video kis baare mein hai."
+                             if kind != "image" else "Pehle thoda sa likhiye ki picture kis baare mein hai.")
+    try:
+        if kind == "image":       # v0.304 the Image page's Enhance: a picture description, not a film brief
+            out = await _write(IMAGE_IMPROVE_SYSTEM, f"Her idea: {brief[:1500]}\nLanguage of any words on the picture: {language}", 600)
+        else:
+            out = await _write(IMPROVE_SYSTEM, f"Her idea: {brief[:1500]}\nLanguage of the spoken line: {language}\n"
+                                               f"Length: about {int(seconds)} seconds.", 900)
+    except Exception as e:     # a model outage is a plain line on the page, not a 500
+        log.warning("improve_brief: %s", e)
+        raise StudioJobError("Abhi behtar nahi ho paya; thodi der baad dobara try kijiye.") from None
     out = re.sub(r"^\s*(brief|Brief)\s*:\s*", "", out).strip().strip('"')
     if not out:
         raise StudioJobError("Abhi behtar nahi ho paya; dobara try kijiye.")

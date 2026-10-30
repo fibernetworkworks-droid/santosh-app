@@ -1,4 +1,4 @@
-"""v0.303 React export (web design Phase 4): the built version as a React + Vite project a developer can carry on with.
+"""v0.305 React export (web design Phase 4): the built version as a React + Vite project a developer can carry on with.
 
 Every page of the version becomes a route component (`src/pages/*.jsx`) that renders that page's body exactly as Hoola
 built it; the site's CSS, fonts, photos and scripts move to `public/assets`; `src/hoola.js` re-starts the site's motion /

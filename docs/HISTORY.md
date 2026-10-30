@@ -11401,7 +11401,46 @@ A, B, C and D all end with the loader **visible**. The control case — a reply 
 ### Files
 `server/app/static/console/v2.js` · `server/tests/test_v0302_chup_nahi.py` (7 tests).
 
-## v0.303.0 WEB DESIGN PHASE 4 — web apps, like Lovable's backend (owner: "START PHASE 4")
+## v0.303.0 SAAF CONNECT (30 Oct 2026, owner: "NOW CHECK IN APP CONNECTOR SHOW UNWANTED NON WORKING MCP, PLUG IN ETC --- REMOVE ALL JUST KEEP COMPOSO MCPS AND WORKING PLUG IN")
+Counted on a fresh server: 694 packs = 226 handoff (only open a website), 142 BBPS demo (bills not live), 142 shop
+templates with no shop, 10 "core" duplicates, 4 not_configured, and ~170 that really work (UPI 16, rides 7, native
+helpers 30, SMS readers 94, Google 8, home devices 6, food MCPs that can be linked, IndiaMART, Notebook, Shopping, PC).
+- `bazar/service.py`: `HIDDEN_STATUSES` {demo, no_shop_yet, not_configured, core, unavailable} + `HIDDEN_EXECUTORS`
+  {handoff}, `shown()`; applied to `catalog()` (+ top sections, `clean: true`), `connections()` and `find()` (also no
+  featured_connectors / mcp_directory hits); `mcp_directory()` returns an empty list with a note pointing to Composio.
+- Setting `CONNECT_CLEAN` (default true); false = the old full catalogue. Nothing deleted (packs, rows, directory files).
+- Phone: Connect tab - "MCP servers 50,000+" tile -> "Apps 1,600+", Agent Army tile removed, chips App kholega / Bills /
+  Dukaan removed, demo note removed. MCP screen -> "Apps": Composio apps (search, categories, logos) + her joined
+  servers + Postgres; the directory, the non-Composio popular list and "Pata daal kar jodiye" removed (chat can still
+  add a server by its address). Apps load even if the server list fails; "not on" message instead of a spinner.
+- Tests: conftest sets CONNECT_CLEAN=false for the older suites that count the full catalogue; test_v0303_saaf_connect.py
+  covers the clean view and the switch.
+
+## v0.304.0 PREMIUM + ADVANCED CREATE (30 Oct 2026, built as 0.303.0; re-versioned on merge)
+Owner: "NOW LETS WORK ON HOOLA CREATE SECTION --- MAKE IT MORE PREMIUM AND ADVANCE --- SHOW THE PREVIEW FIRST BEFORE DEPLOYMENT".
+Screenshots of every Create page first. What read as plain: a white hero; the maker hidden in a small "Director" dropdown;
+every template / film start in the SAME green (rng seeded 'q0'..'q7' with a weak hash landed on one palette); a lone
+"Festival greeting" card on its own row; Image style a cycling "Style: Auto" chip; shape / quality buttons plain text
+boxes; no camera control on Video; My creations with filters only.
+Built (studio.js + studio.css block "v0.304 PREMIUM + ADVANCED CREATE"; one small server change), every control real:
+- Home: a soft static light behind the hero (three radial gradients, theme-aware tokens), an eyebrow "Hoola Create", a
+  one-line promise, the five makers as visible tabs above the prompt (each tab its own example placeholder; the
+  dropdown stays for narrow screens), "Direct your film" and "Start from a template" as sideways rails with arrow
+  buttons (scroll-snap, arrows on hover, hidden on touch). rng() now FNV-1a + a mix, so the art varies.
+- Image: style presets as 76px picture tiles (Auto, Photoreal, Cinematic, Festive glow, Product studio, Watercolour,
+  Anime, 3D clay, Indian folk art - the same STYLES the job already appends to the prompt); shape buttons draw their
+  shape (ratioI); "Enhance" rewrites the prompt via POST /api/studio/improve kind=image (new IMAGE_IMPROVE_SYSTEM:
+  one rich picture description, her facts / quoted text kept, nothing invented); an Advanced fold with "Keep out of
+  the picture" that rides the prompt as "Avoid: ...".
+- Video: camera presets (Auto, Static, Dolly in, Pan, Orbit, Drone, Handheld, Slow motion) ride the brief as
+  "Camera: ..."; shape buttons draw their shape.
+- My creations: search (title, in the browser) + sort (Newest / Oldest / Name A-Z, the studio dropdown), "Nothing
+  matches" state.
+- Server: StudioImprove.kind (video | image); improve_brief turns a model failure into StudioJobError (a plain line)
+  instead of a 500 - this also covers the Video page's existing Improve.
+Tests: tests/test_v0304_create_premium.py.
+
+## v0.305.0 WEB DESIGN PHASE 4 — web apps, like Lovable's backend (owner: "START PHASE 4")
 Flaws 14-16 of the web design audit: static brochure sites only (no login, database, portal, staff panel), a fixed menu of
 section types, export as static HTML only.
 - **Design from her words** (`server/app/site/webapp.py`, `DESIGN_SYSTEM`, kind site_edit): "customers login karke apna
@@ -11432,7 +11471,7 @@ section types, export as static HTML only.
   assets in public/, `src/hoola.js` restarts the site's scripts after a route change and holds the app API address.
 - **Bug found in the Chromium run and fixed**: a field named `item` (the first thing an order form has) posted nothing -
   `form.elements['item']` is the collection's own `item()` method; fields are now read by `[name=...]`.
-- Tests `server/tests/test_v0303_web_apps.py` (5) + a Chromium run of sign up, form, list and the staff panel.
-- Built as 0.302.0, re-versioned 0.303.0 on merge past the parallel v0.302.0 CHUP NAHI.
+- Tests `server/tests/test_v0305_web_apps.py` (5) + a Chromium run of sign up, form, list and the staff panel.
+- Built as 0.302.0, re-versioned 0.305.0 on merge past the parallel v0.302-v0.304 work.
 - Not done yet: the phone app's own Data screen (the console has it; on the phone the site's /admin/ page works in
   the browser), file / photo fields, emails to members (password reset is "ask the shop" for now).

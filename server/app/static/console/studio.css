@@ -535,3 +535,63 @@ p{margin:0}
 @media (max-width:900px){.sec-h{flex-wrap:wrap}.crow{flex-wrap:nowrap}.crow .dd{min-width:0;white-space:nowrap;overflow:hidden}.ruler span:nth-child(even){display:none}.dhero{padding:26px 14px 18px}}
 @media (prefers-reduced-motion: reduce){.pop,.pop.up,.pkin{transform:none}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.001s!important}}
+
+/* ---------- v0.304 PREMIUM + ADVANCED CREATE (owner: "MAKE IT MORE PREMIUM AND ADVANCE") ----------
+   Home: a soft light behind the hero (static gradients, nothing held), an eyebrow + one-line promise, the five makers as
+   visible tabs above the prompt, film starts and templates on sideways rails with arrows (no lone card on a row).
+   Image: style presets as picture tiles, shape buttons that draw their shape, Enhance on the prompt, an Advanced fold
+   with "Keep out of the picture". Video: camera presets. My creations: search + sort. */
+.hero{position:relative;isolation:isolate;padding:46px 16px 34px;margin:-30px -16px 0;border-radius:0 0 28px 28px}
+.hero::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(60% 70% at 18% 8%,rgb(255 154 98 / .16),transparent 70%),radial-gradient(55% 65% at 82% 0%,rgb(108 75 216 / .16),transparent 70%),radial-gradient(70% 60% at 50% 100%,rgb(194 65 122 / .08),transparent 70%)}
+.hero .eyebrow{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px;border-radius:99px;font-size:12.5px;font-weight:500;color:var(--priInk);background:var(--priSoft)}
+.hero h1{font-size:clamp(30px,3.6vw,44px)}
+.hero .hsub{max-width:560px;color:var(--mut);font-size:15px;line-height:1.5;margin-top:-6px}
+.modes{display:inline-flex;gap:2px;padding:4px;border-radius:14px;background:var(--surface);border:1px solid var(--line);box-shadow:0 1px 2px rgb(0 0 0 / .04);max-width:100%;overflow-x:auto;scrollbar-width:none}
+.modes button{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:10px;font-size:13.5px;font-weight:500;color:var(--mut);white-space:nowrap}
+.modes button:hover{color:var(--ink);background:rgb(127 127 140 / .08)}
+.modes button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+@media (min-width:641px){#homeAgent{display:none}}
+.rail{position:relative}
+.rail .rtrack{display:grid;grid-auto-flow:column;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 2px 8px;scroll-padding:2px}
+.rail .rtrack::-webkit-scrollbar{display:none}
+.rail .rtrack>*{scroll-snap-align:start}
+.rail .qs{grid-template-columns:none;grid-auto-columns:minmax(168px,172px)}
+.rail .row{grid-auto-columns:minmax(200px,210px)}
+.rarr{position:absolute;top:calc(50% - 30px);z-index:2;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 6px 18px -6px rgb(0 0 0 / .3);opacity:0;transition:opacity .15s}
+.rarr.prev{left:-12px}.rarr.next{right:-12px}
+.rail:hover .rarr,.rarr:focus-visible{opacity:1}
+@media (hover:none){.rarr{display:none}}
+.qcard .thumb,.tpl .thumb,.tool .thumb{border-radius:14px}
+/* image: style tiles, drawn shapes, enhance, advanced */
+.lbl{display:flex;align-items:center;gap:6px}
+.stys{display:grid;grid-auto-flow:column;grid-auto-columns:76px;gap:8px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin}
+.sty{display:flex;flex-direction:column;gap:5px;text-align:center;font-size:12px;color:var(--mut)}
+.sty .thumb{position:relative;display:block;width:76px;height:76px;border-radius:12px;overflow:hidden;outline:1px solid var(--line);outline-offset:-1px}
+.sty .thumb .art{width:100%;height:100%;display:block}
+.sty[aria-pressed="true"] .thumb{outline:2px solid var(--pri);outline-offset:1px}
+.sty[aria-pressed="true"] small{color:var(--ink);font-weight:500}
+.sty small{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.go.shp{display:flex;align-items:center;justify-content:center;gap:8px;height:40px}
+.rbox{display:inline-block;border:1.6px solid currentColor;border-radius:3px;opacity:.7;flex:none}
+.go[aria-pressed="true"] .rbox{opacity:1}
+.box h3{display:flex;align-items:center;gap:10px}
+.lnk.busy{opacity:.5;pointer-events:none}
+.adv{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:0 12px}
+.adv summary{list-style:none;display:flex;align-items:center;gap:8px;height:40px;cursor:pointer;font-size:13px;color:var(--mut)}
+.adv summary::-webkit-details-marker{display:none}
+.adv summary .ic{transition:transform .15s}
+.adv[open] summary .ic{transform:rotate(180deg)}
+.adv .fld{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--dim);padding:0 0 12px}
+.adv input{height:38px;border-radius:9px;border:1px solid var(--line);background:var(--bg);padding:0 11px;font-size:13.5px;color:var(--ink);outline:0}
+.adv input:focus{border-color:var(--pri)}
+/* video: camera presets */
+.cams .chip{height:32px}
+/* my creations: search + sort */
+.libbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.libbar .sp{flex:1}
+.lsearch{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--dim);min-width:200px}
+.lsearch:focus-within{border-color:var(--pri)}
+.lsearch input{border:0;outline:0;background:transparent;font-size:13.5px;color:var(--ink);width:100%}
+.libbar .dd{border:1px solid var(--line);background:var(--surface);height:36px}
+@media (prefers-reduced-motion:reduce){.rarr,.adv summary .ic{transition:none}}

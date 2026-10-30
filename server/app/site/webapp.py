@@ -1,4 +1,4 @@
-"""v0.303 Web apps on a Hoola website (web design Phase 4): logins, a database and an admin panel, like Lovable's
+"""v0.305 Web apps on a Hoola website (web design Phase 4): logins, a database and an admin panel, like Lovable's
 backend - built for a small Indian business (order tracking, student portal, member directory, service requests).
 
 - The APP SCHEMA (Site.app, JSON) is designed by Opus from her words (`design`), then cleaned by code (`clean_schema`):

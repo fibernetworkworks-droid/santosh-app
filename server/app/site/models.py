@@ -21,7 +21,7 @@ class Site(Base):
     style: Mapped[str] = mapped_column(String(30), default="")
     styles: Mapped[str] = mapped_column(Text, default="[]")               # the 3 looks offered
     languages: Mapped[str] = mapped_column(Text, default='["en"]')
-    app: Mapped[str | None] = mapped_column(Text, nullable=True, default="")   # v0.303 web app schema (webapp.clean_schema)
+    app: Mapped[str | None] = mapped_column(Text, nullable=True, default="")   # v0.305 web app schema (webapp.clean_schema)
     facts: Mapped[str] = mapped_column(Text, default="{}")                # what Hoola knows (her words + profile)
     answers: Mapped[str] = mapped_column(Text, default="{}")              # her answers to the questions
     plan: Mapped[str] = mapped_column(Text, default="{}")                 # pages, sections, sitemap

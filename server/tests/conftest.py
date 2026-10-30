@@ -28,7 +28,8 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENT_FIX_SEARCH", "false")
     monkeypatch.setenv("GYAAN_GROUND", "false")      # v0.135: no extra grounding call in scripted model tests
     monkeypatch.setenv("MEMORY_AUTO", "false")       # v0.108: no background fact-picking model calls in scripted tests
-    monkeypatch.setenv("SEMANTIC_OFF", "1")          # no 40 s embedding-model download attempt (the sandbox has no HF)
+    monkeypatch.setenv("SEMANTIC_OFF", "1")
+    monkeypatch.setenv("CONNECT_CLEAN", "false")     # v0.303: older suites count the full catalogue; test_v0303 covers clean          # no 40 s embedding-model download attempt (the sandbox has no HF)
     monkeypatch.setenv("SITE_ART", "false")         # v0.225: no art-direction / critique Opus calls in scripted site tests
     monkeypatch.setenv("SITE_CRITIQUE", "off")
     monkeypatch.setenv("SITE_AI_PHOTOS", "0")       # v0.292: no image-model calls in scripted site tests

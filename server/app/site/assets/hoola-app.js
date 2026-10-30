@@ -1,4 +1,4 @@
-/* Hoola web app (v0.303, MIT, Newtika): login / sign up, forms, lists and the staff panel of a Hoola-built website.
+/* Hoola web app (v0.305, MIT, Newtika): login / sign up, forms, lists and the staff panel of a Hoola-built website.
    Talks only to Hoola's API (meta[name=hoola-app]); the login token lives in this browser only. Every value from the
    server is put on the page as TEXT (never as HTML), and the server checks every rule again on every call. */
 (function () {

@@ -28,7 +28,9 @@ window.HoolaCreate = ctx => {
   const fp = 'This card spends money: Haan needs your phone’s fingerprint. Approve it in the Hoola app.';
 
   /* ---------------- decorative artwork (quick starts and templates only; her results are always her real files) ---------------- */
-  function rng(seed) { let s = 0; for (const c of String(seed)) s = (s * 31 + c.charCodeAt(0)) >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+  function rng(seed) {   // v0.304 FNV-1a + a mix: neighbouring seeds ('q0', 'q1'...) used to land on the same palette
+    let s = 2166136261; for (const c of String(seed)) { s ^= c.charCodeAt(0); s = Math.imul(s, 16777619) >>> 0; }
+    s ^= s >>> 15; s = Math.imul(s, 2246822519) >>> 0; s ^= s >>> 13; s >>>= 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
   const PAL = [['#FF9A62','#C2417A','#2B1B54'],['#7FD1C7','#2F6F8F','#13233F'],['#FFD27A','#E2603C','#5B1E3F'],['#B7A6FF','#6C4BD8','#1E1646'],['#9BE3A4','#2E8A6B','#0F2D2A'],['#F6B7C8','#B4537A','#3A1630'],['#FFE2A8','#D98E3B','#3B2412'],['#A9D2FF','#4D74D6','#16234A']];
   function paint(cv) {
     const kind = cv.dataset.art, r = rng(cv.dataset.seed || kind);
@@ -76,6 +78,9 @@ window.HoolaCreate = ctx => {
       for (let i = 0; i < 5; i++) blob(w * r(), h * r(), Math.max(w, h) * (.25 + r() * .4), p[Math.floor(r() * 3)], .75);
     }
   }
+  // v0.304 a shape button draws its shape; a rail scrolls sideways with arrows (no orphan card on its own row)
+  const ratioI = a => { const [w, h] = a.split(':').map(Number), k = 16 / Math.max(w, h); return `<i class="rbox" style="width:${Math.round(w * k)}px;height:${Math.round(h * k)}px" aria-hidden="true"></i>`; };
+  const rail = (inner, cls) => `<div class="rail"><button type="button" class="rarr prev" data-rail="-1" aria-label="Scroll back">${I('down', 'width:16px;height:16px;transform:rotate(90deg)')}</button><div class="${cls} rtrack">${inner}</div><button type="button" class="rarr next" data-rail="1" aria-label="Scroll on">${I('down', 'width:16px;height:16px;transform:rotate(-90deg)')}</button></div>`;
   const art = (kind, seed, extra = '') => `<canvas class="art" data-art="${kind}" data-seed="${esc(seed)}" aria-hidden="true" ${extra}></canvas>`;
   const paintAll = (root = R) => requestAnimationFrame(() => $$('canvas[data-art]', root).forEach(c => { if (c.clientWidth) paint(c); }));
 
@@ -311,10 +316,18 @@ ${SPRITE}`;
     ['casting','AI casting','Characters that look the same in every shot','cast','']];
   const AGENTS = [['director','Director','clap','A whole film: story, shots, music'],['image','Image','image','Posters, product shots, characters'],['video','Video','video','One clip from your words'],['music','Song','music','A full song or a jingle'],['voice','Voice-over','mic','Your script in any voice']];
   let homeAgent = 0;
+  const MODE_HINT = {director: 'A 30-second Diwali ad for my chai brand, warm family moments, ends on our logo…',
+    image: 'A premium poster of a clay kulhad of masala chai on a wooden table, steam rising, warm morning light…',
+    video: 'Steam rising from a kulhad of chai on a rainy Mumbai balcony, slow dolly in, warm evening light…',
+    music: 'A happy Bollywood-style jingle for my sweet shop, dhol and shehnai, 30 seconds…',
+    voice: 'Namaste! Is Diwali, Newtika Chai laaya hai ek khaas offer…'};
   V.studio = () => `
 <div class="home">
   <div class="hero">
+    <span class="eyebrow">${I('spark', 'width:13px;height:13px')}Hoola Create</span>
     <h1>What shall we create today?</h1>
+    <p class="hsub">Films, pictures, songs and voice-overs from one line. Every price shows before anything is spent.</p>
+    <div class="modes" role="tablist" aria-label="What to make">${AGENTS.map(([, label, icon], i) => `<button type="button" role="tab" aria-selected="${i === homeAgent}" data-mode="${i}">${I(icon, 'width:15px;height:15px')}<span>${label}</span></button>`).join('')}</div>
     <form class="compose" id="homeForm">
       <label for="homeq" class="sr">Describe what to make</label>
       <textarea id="homeq" rows="2" placeholder="A 30-second Diwali ad for my chai brand, warm family moments, ends on our logo…"></textarea>
@@ -329,12 +342,12 @@ ${SPRITE}`;
     </div>
   </div>
   <section><div class="sec-h"><h2>Direct your film</h2><a data-go="director">Open Director</a></div>
-    <div class="qs">${QUICK.map(([t, k, d], i) => `<button class="qcard" data-quick="${i}"><span class="thumb">${art(k, 'q' + i)}<span class="dur">${d}</span></span><b>${t}</b></button>`).join('')}</div></section>
+    ${rail(QUICK.map(([t, k, d], i) => `<button class="qcard" data-quick="${i}"><span class="thumb">${art(k, 'q' + i)}<span class="dur">${d}</span></span><b>${t}</b></button>`).join(''), 'qs')}</section>
   <section id="tools"><div class="sec-h"><h2>Studio tools</h2><span class="dim" style="font-size:13px">Every tool shares your cast and brand kit</span></div>
     <div class="tools">${ALLTOOLS.map(([v, t, s, k, tag], i) => `<button class="tool" data-go="${v}"><span class="thumb">${art(k, 't' + i)}</span><div style="min-width:0"><b>${t}${tag ? ` <span class="tag ${tag}">${tag === 'hot' ? 'Popular' : 'New'}</span>` : ''}</b><small>${s}</small></div></button>`).join('')}</div></section>
   <section><div class="sec-h"><h2>Your recent creations</h2><a data-go="library">See all</a></div><div class="row" id="recent"></div></section>
   <section><div class="sec-h"><h2>Start from a template</h2><a data-go="templates">See all</a></div>
-    <div class="row">${STARTERS.map(([t, v, k], i) => `<button class="tpl" data-start="${i}"><span class="thumb">${art(k, 'tp' + i)}<span class="use">Use</span></span><b>${t}</b><small>${TITLE[v]}</small></button>`).join('')}</div></section>
+    ${rail(STARTERS.map(([t, v, k], i) => `<button class="tpl" data-start="${i}"><span class="thumb">${art(k, 'tp' + i)}<span class="use">Use</span></span><b>${t}</b><small>${TITLE[v]}</small></button>`).join(''), 'row')}</section>
 </div>`;
   function drawRecent() {
     const el = $('#recent'); if (!el) return;
@@ -344,7 +357,9 @@ ${SPRITE}`;
   }
   W.studio = el => {
     load('items').then(() => redraw('studio', drawRecent));
-    const agent = i => { homeAgent = i; $('#homeAgent').innerHTML = `${I(AGENTS[i][2], 'width:15px;height:15px')}<span>${AGENTS[i][1]}</span>${I('down', 'width:14px;height:14px')}`; };
+    const agent = i => { homeAgent = i; $('#homeAgent').innerHTML = `${I(AGENTS[i][2], 'width:15px;height:15px')}<span>${AGENTS[i][1]}</span>${I('down', 'width:14px;height:14px')}`;
+      $$('[data-mode]', el).forEach(t => t.setAttribute('aria-selected', String(+t.dataset.mode === i)));
+      $('#homeq').placeholder = MODE_HINT[AGENTS[i][0]] || ''; };
     $('#homeAgent', el).addEventListener('click', e => menu(e.currentTarget, AGENTS.map(([v, label, icon, sub]) => ({v, label, icon, sub})), AGENTS[homeAgent][0],
       v => { agent(AGENTS.findIndex(a => a[0] === v)); $('#homeq').focus(); }, 'Who makes it'));
     $('#homeForm', el).addEventListener('submit', e => {
@@ -358,6 +373,8 @@ ${SPRITE}`;
     });
     el.addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.mode) { agent(+b.dataset.mode); $('#homeq').focus(); return; }
+      if (b.dataset.rail) { const t = b.parentElement.querySelector('.rtrack'); t.scrollBy({left: +b.dataset.rail * t.clientWidth * .8, behavior: 'smooth'}); return; }
       if (b.dataset.fill) { agent(+b.dataset.agent); const t = $('#homeq'); t.value = b.dataset.fill + ': '; t.focus(); }
       if (b.dataset.quick) { const q = QUICK[+b.dataset.quick]; DIR.brief = q[3]; DIR.project = ''; DIR.seconds = parseInt(q[2]) * (q[2].includes('min') ? 60 : 1); go('director', {focus: true}); }
       if (b.dataset.start) starter(+b.dataset.start);
@@ -370,7 +387,8 @@ ${SPRITE}`;
   }
 
   /* ---------------- image ---------------- */
-  const IMG = {prompt: '', refs: [], aspect: '1:1', quality: 'fast', count: 1, style: '', brand: false};
+  const IMG = {prompt: '', refs: [], aspect: '1:1', quality: 'fast', count: 1, style: '', brand: false, avoid: ''};
+  const STYLE_ART = {'': 'abstract', Photoreal: 'portrait', Cinematic: 'film', 'Festive glow': 'abstract', 'Product studio': 'product', Watercolour: 'world', Anime: 'cast', '3D clay': 'product', 'Indian folk art': 'city'};
   const STYLES = ['', 'Photoreal', 'Cinematic', 'Festive glow', 'Product studio', 'Watercolour', 'Anime', '3D clay', 'Indian folk art'];
   const ASPECTS = ['1:1', '4:5', '9:16', '16:9', '3:4', '4:3'];
   const imgCost = () => (IMG.quality === 'best' ? 12 : 3) * IMG.count;
@@ -381,17 +399,19 @@ ${SPRITE}`;
     <div class="seg" role="group" aria-label="Kind"><button aria-pressed="${!IMG.refs.length}" data-imode="new">New picture</button><button aria-pressed="${!!IMG.refs.length}" data-imode="edit">Change my photo</button></div>
     <div class="prow"><span class="pi">${I('spark', 'width:16px;height:16px')}</span><div><small>Engine</small><b>Hoola image engine</b></div><span class="tag">Readable Indian scripts</span></div>
     <div class="box">
-      <h3>Describe your picture <span class="dim num" style="font-size:12px;font-weight:400" id="imgCount">${IMG.prompt.length} / 4000</span></h3>
+      <h3>Describe your picture <span class="dim num" style="font-size:12px;font-weight:400;margin-left:auto" id="imgCount">${IMG.prompt.length} / 4000</span><button type="button" class="lnk" data-ienh>${I('wand', 'width:14px;height:14px')} Enhance</button></h3>
       <button class="refs" type="button" data-addref><span class="stack">${IMG.refs.length ? IMG.refs.map(r => `<i><img alt="" ${r.local ? `src="${esc(r.local)}"` : `data-src="${itemPath(r.file_id)}"`}></i>`).join('') : `<i>${I('image', 'width:16px;height:16px;margin:10px 6px')}</i>`}</span><div><b>${IMG.refs.length ? IMG.refs.length + ' reference' + (IMG.refs.length > 1 ? 's' : '') : 'Add references'}</b> <span class="dim" style="font-size:12px">${IMG.refs.length ? '' : 'optional'}</span><small>Your photo, product or character · PNG, JPG, WebP · up to 3</small></div>${IMG.refs.length ? `<span class="ib" data-clearrefs aria-label="Remove references">${I('x', 'width:15px;height:15px')}</span>` : ''}</button>
       <textarea id="imgq" rows="5" maxlength="4000" placeholder="A festive Diwali poster for Newtika Chai: a clay kulhad with steam, diyas, marigold, headline 'Har shaam khaas' in Hindi">${esc(IMG.prompt)}</textarea>
       <div class="btool">
-        <button class="chip" data-istyle>${I('wand', 'width:15px;height:15px')}<span>Style: ${IMG.style || 'Auto'}</span></button>
         <button class="ib" aria-label="Clear" data-iclear>${I('trash', 'width:16px;height:16px')}</button>
         <span style="flex:1"></span><span class="dim" style="font-size:12.5px">Brand colours</span><button class="sw" role="switch" aria-checked="${IMG.brand}" data-ibrand aria-label="Use my brand colours"><i></i></button>
       </div>
     </div>
-    <div class="lbl">Shape</div><div class="grid-opts">${ASPECTS.map(a => `<button class="go" aria-pressed="${a === IMG.aspect}" data-iasp="${a}">${a}</button>`).join('')}</div>
+    <div class="lbl">Style <span class="dim" style="margin-left:auto">${esc(IMG.style || 'Auto')}</span></div><div class="stys" role="group" aria-label="Style">${STYLES.map((st, i) => `<button class="sty" aria-pressed="${st === IMG.style}" data-isty="${i}"><span class="thumb">${art(STYLE_ART[st] || 'abstract', 'sty' + i)}</span><small>${st || 'Auto'}</small></button>`).join('')}</div>
+    <div class="lbl">Shape</div><div class="grid-opts">${ASPECTS.map(a => `<button class="go shp" aria-pressed="${a === IMG.aspect}" data-iasp="${a}">${ratioI(a)}<span>${a}</span></button>`).join('')}</div>
     <div class="lbl">Quality</div><div class="grid-opts" style="grid-template-columns:1fr 1fr"><button class="go" aria-pressed="${IMG.quality === 'fast'}" data-iq="fast">Standard · ₹3</button><button class="go" aria-pressed="${IMG.quality === 'best'}" data-iq="best">Best · ₹12</button></div>
+    <details class="adv"${IMG.avoid ? ' open' : ''}><summary>${I('down', 'width:14px;height:14px')}Advanced</summary>
+      <label class="fld">Keep out of the picture<input id="iavoid" maxlength="300" value="${esc(IMG.avoid)}" placeholder="text errors, extra fingers, watermark, blur"></label></details>
     <p class="note">Every picture carries a small “AI se bana” label. Prices are estimates; the real cost shows in AI spend.</p>
   </div>
   <div class="pfoot">
@@ -415,6 +435,7 @@ ${SPRITE}`;
     const create = async () => {
       IMG.prompt = q.value.trim(); if (!IMG.prompt) { q.focus(); toast('Describe the picture first'); return; }
       let prompt = IMG.prompt;
+      IMG.avoid = ($('#iavoid')?.value || '').trim(); if (IMG.avoid) prompt += `\nAvoid: ${IMG.avoid}.`;
       if (IMG.brand) { const k = await load('kit'); if (k?.colors) prompt += `\nUse these brand colours: primary ${k.colors.primary}, accent ${k.colors.accent}.${k.name ? ' Brand: ' + k.name + '.' : ''}`; }
       try { await startJob({kind: 'image', prompt, file_ids: IMG.refs.map(r => r.file_id), aspect: IMG.aspect, quality: IMG.quality, count: IMG.count, style: IMG.style, title: IMG.prompt.slice(0, 48)}, refresh); }
       catch (e) { toast(e.message, true); }
@@ -429,7 +450,10 @@ ${SPRITE}`;
         for (const f of fs.slice(0, 3 - IMG.refs.length)) { try { toast('Uploading ' + f.name); IMG.refs.push(await upload(f, /^image\/(png|jpeg|webp)$/)); } catch (er) { toast(er.message, true); } }
         IMG.prompt = q.value; go('image'); return; }
       if (b.dataset.imode === 'new') { IMG.refs = []; IMG.prompt = q.value; go('image'); return; }
-      if (b.hasAttribute('data-istyle')) { IMG.style = STYLES[(STYLES.indexOf(IMG.style) + 1) % STYLES.length]; b.querySelector('span').textContent = 'Style: ' + (IMG.style || 'Auto'); return; }
+      if (b.dataset.isty) { IMG.style = STYLES[+b.dataset.isty]; $$('[data-isty]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); const l = b.closest('.pbody').querySelector('.stys')?.previousElementSibling?.querySelector('.dim'); if (l) l.textContent = IMG.style || 'Auto'; return; }
+      if (b.hasAttribute('data-ienh')) { if (!q.value.trim()) { q.focus(); toast('Write a few words first'); return; } b.disabled = true; b.classList.add('busy');
+        try { const r = await api('POST', '/api/studio/improve', {brief: q.value.trim(), language: 'Hindi', seconds: 30, kind: 'image'}); q.value = IMG.prompt = r.brief; $('#imgCount').textContent = q.value.length + ' / 4000'; toast('Prompt enhanced: edit it or press Create'); } catch (er) { toast(er.message, true); }
+        b.disabled = false; b.classList.remove('busy'); return; }
       if (b.hasAttribute('data-iclear')) { q.value = IMG.prompt = ''; q.focus(); return; }
       if (b.hasAttribute('data-ibrand')) { IMG.brand = !IMG.brand; b.setAttribute('aria-checked', String(IMG.brand)); return; }
       if (b.dataset.iasp) { IMG.aspect = b.dataset.iasp; $$('[data-iasp]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
@@ -550,7 +574,8 @@ ${SPRITE}`;
   }
 
   /* ---------------- video (Video Studio, one clip per project) ---------------- */
-  const VID = {prompt: '', aspect: '9:16', seconds: 8, res: '1080p', model: '', audio: true, takes: 1, language: 'Hindi', price: null, auto: 'quality', compare: []};
+  const CAMS = [['Auto', ''], ['Static', 'the camera holds still on a tripod'], ['Dolly in', 'slow dolly in towards the subject'], ['Pan', 'smooth slow pan across the scene'], ['Orbit', 'the camera orbits around the subject'], ['Drone', 'a high aerial drone shot moving forward'], ['Handheld', 'natural handheld camera, slight movement'], ['Slow motion', 'slow motion, smooth and dreamy']];
+  const VID = {camera: 'Auto', prompt: '', aspect: '9:16', seconds: 8, res: '1080p', model: '', audio: true, takes: 1, language: 'Hindi', price: null, auto: 'quality', compare: []};
   const vm = () => mOf(VID.model);
   const lenOpts = m => { const a = m?.allowed_durations; if (a?.length) return a; const [lo, hi] = m?.durations?.length ? m.durations : [4, 30];
     return [4, 5, 6, 8, 10, 12, 15, 20, 25, 30].filter(x => x >= lo && x <= hi); };
@@ -565,7 +590,8 @@ ${SPRITE}`;
       <h3>Describe your shot <button type="button" class="lnk" data-improve>${I('wand', 'width:14px;height:14px')} Improve</button></h3>
       <textarea id="vidq" rows="5" maxlength="2000" placeholder="Steam rising from a clay kulhad of chai on a rainy balcony in Mumbai, slow dolly in, warm evening light">${esc(VID.prompt)}</textarea>
     </div>
-    <div class="lbl">Shape</div><div class="grid-opts">${['9:16', '16:9', '1:1'].map(a => `<button class="go" aria-pressed="${a === VID.aspect}" data-vasp="${a}">${a}</button>`).join('')}</div>
+    <div class="lbl">Camera</div><div class="chips cams">${CAMS.map(([c, d]) => `<button class="chip" aria-pressed="${c === VID.camera}" data-vcam="${esc(c)}" title="${esc(d)}">${esc(c)}</button>`).join('')}</div>
+    <div class="lbl">Shape</div><div class="grid-opts">${['9:16', '16:9', '1:1'].map(a => `<button class="go shp" aria-pressed="${a === VID.aspect}" data-vasp="${a}">${ratioI(a)}<span>${a}</span></button>`).join('')}</div>
     <div class="lbl">Length</div><div class="grid-opts" style="grid-template-columns:repeat(4,1fr)">${lenOpts(m).map(s => `<button class="go" aria-pressed="${s === VID.seconds}" data-vsec="${s}">${s} s</button>`).join('')}</div>
     <div class="lbl">Resolution</div><div class="grid-opts" style="grid-template-columns:repeat(4,1fr)">${resOpts(m).map(r => `<button class="go" aria-pressed="${r === VID.res}" data-vres="${r}">${r}</button>`).join('')}</div>
     <div class="prow2"><div class="prow"><span class="pi">${I('sound', 'width:16px;height:16px')}</span><div><small>Sound</small><b>${VID.audio ? 'On' : 'Off'}</b></div><button class="sw" role="switch" aria-checked="${VID.audio}" data-vaudio aria-label="Sound"><i></i></button></div>
@@ -644,7 +670,8 @@ ${SPRITE}`;
     }, 220);
   }
   async function newClip(preview) {
-    const brief = VID.prompt.trim(); if (!brief) { $('#vidq')?.focus(); toast('Describe the shot first'); return; }
+    let brief = VID.prompt.trim(); if (!brief) { $('#vidq')?.focus(); toast('Describe the shot first'); return; }
+    const cam = (CAMS.find(c => c[0] === VID.camera) || [])[1]; if (cam) brief += `\nCamera: ${cam}.`;   // v0.304 the camera preset rides the brief
     if (VID.busy) return;
     VID.busy = 'Writing the plan'; drawVideos();
     const name = 'Clip ' + new Date().toLocaleString('en-IN', {day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false}).replace(',', '');
@@ -670,6 +697,7 @@ ${SPRITE}`;
     models().then(() => { if (VIEW === 'video' && VID.model && !vm()) { VID.model = ''; } livePrice(); });
     el.addEventListener('click', async e => {
       const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.vcam) { VID.camera = b.dataset.vcam; $$('[data-vcam]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
       if (b.dataset.vasp) { VID.aspect = b.dataset.vasp; $$('[data-vasp]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
       if (b.dataset.vsec) { VID.seconds = +b.dataset.vsec; $$('[data-vsec]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); livePrice(); return; }
       if (b.dataset.vres) { VID.res = b.dataset.vres; $$('[data-vres]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); livePrice(); return; }
@@ -1150,20 +1178,29 @@ ${SPRITE}`;
     if (b.dataset.start) starter(+b.dataset.start);
     if (b.dataset.quick) { const q = QUICK[+b.dataset.quick]; DIR.brief = q[3]; DIR.project = ''; DIR.view = null; go('director', {focus: true}); } });
   let libF = 'all';
+  let libQ = '', libSort = 'new';
+  const LIBS = {new: 'Newest first', old: 'Oldest first', az: 'Name A–Z'};
   const LIBF = [['all', 'All'], ['image', 'Pictures'], ['cast', 'Cast'], ['song', 'Songs'], ['voice', 'Voice-overs'], ['dub', 'Dubs'], ['script', 'Scripts'], ['film', 'Films']];
   V.library = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 28px/1.2 var(--serif)">My creations</h2><span class="dim" style="font-size:13px">Kept until you delete them</span></div>
-    <div class="chips">${LIBF.map(([k, n]) => `<button class="chip" aria-pressed="${k === libF}" data-lib="${k}">${n}</button>`).join('')}</div>
+    <div class="libbar"><div class="chips">${LIBF.map(([k, n]) => `<button class="chip" aria-pressed="${k === libF}" data-lib="${k}">${n}</button>`).join('')}</div>
+      <span class="sp"></span><label class="lsearch">${I('search', 'width:15px;height:15px')}<span class="sr">Search my creations</span><input id="libq" type="search" placeholder="Search" value="${esc(libQ)}"></label>
+      <button type="button" class="dd" id="libSort" aria-label="Sort">${I('layers', 'width:15px;height:15px')}<span>${LIBS[libSort]}</span>${I('down', 'width:14px;height:14px')}</button></div>
     <div class="sgrid lib" id="results"></div></div>`;
   function drawLib() {
     const el = $('#results'); if (!el) return;
-    const its = libF === 'film' ? [] : items(libF === 'all' ? '' : libF).filter(i => i.kind !== 'script' || libF === 'script' || libF === 'all');
-    const films = (libF === 'all' || libF === 'film') ? (D.studio?.projects || []).filter(p => (p.outputs || []).length) : [];
+    const q = libQ.trim().toLowerCase(), hit = t => !q || String(t || '').toLowerCase().includes(q);   // v0.304 search + sort, in the browser
+    const order = (L, t, k) => L.sort((a, b) => libSort === 'az' ? String(t(a)).localeCompare(String(t(b))) : libSort === 'old' ? k(a) - k(b) : k(b) - k(a));
+    const its = order((libF === 'film' ? [] : items(libF === 'all' ? '' : libF).filter(i => i.kind !== 'script' || libF === 'script' || libF === 'all')).filter(i => hit(i.title)), i => i.title, i => i.created || 0);
+    const films = order(((libF === 'all' || libF === 'film') ? (D.studio?.projects || []).filter(p => (p.outputs || []).length) : []).filter(p => hit(p.title || p.name)), p => p.title || p.name, p => p.updated || p.created || 0);
     el.innerHTML = films.map(projTile).join('') + its.map(it => it.kind === 'script' ? `<div class="res" data-item="${it.id}"><button class="thumb doc-th" data-scopen="${it.id}">${I('pen', 'width:26px;height:26px')}</button><span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button><button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span><b class="rt">${esc(it.title)}</b><small>${when(it.created)}</small></div>` : it.kind === 'song' || it.kind === 'voice' ? `<div class="res" data-item="${it.id}"><button class="thumb" data-open="${it.id}">${art(it.kind === 'voice' ? 'voice' : 'music', it.id)}</button><span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button><button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span><b class="rt">${esc(it.title)}</b><small>${esc(it.kind === 'song' ? 'Song' : 'Voice-over')} · ${when(it.created)}</small></div>` : itemTile(it)).join('')
-      || `<div class="empty" style="grid-column:1/-1"><div><h2>Nothing here yet</h2><p class="mut">Pictures, songs, voice-overs, dubs, scripts and films you make in Create are kept here.</p></div></div>`;
+      || (q ? `<div class="empty" style="grid-column:1/-1"><div><h2>Nothing matches “${esc(libQ)}”</h2><p class="mut">Try another word, or clear the search.</p></div></div>` : '') || `<div class="empty" style="grid-column:1/-1"><div><h2>Nothing here yet</h2><p class="mut">Pictures, songs, voice-overs, dubs, scripts and films you make in Create are kept here.</p></div></div>`;
     paintAll(el); hydrate(el);
   }
   W.library = el => {
     Promise.all([load('items'), load('studio')]).then(() => redraw('library', drawLib));
+    $('#libq', el).addEventListener('input', e => { libQ = e.target.value; drawLib(); });
+    $('#libSort', el).addEventListener('click', e => menu(e.currentTarget, Object.entries(LIBS).map(([v, label]) => ({v, label})), libSort,
+      v => { libSort = v; $('#libSort span').textContent = LIBS[v]; drawLib(); }, 'Sort by'));
     el.addEventListener('click', async e => { const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.lib) { libF = b.dataset.lib; $$('[data-lib]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); drawLib(); return; }
       if (b.dataset.scopen) { try { const r = await api('GET', itemPath(b.dataset.scopen), undefined, {raw: true}); SC.text = await r.text(); SC.id = b.dataset.scopen; go('script'); } catch (er) { toast(er.message, true); } return; }

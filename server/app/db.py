@@ -757,7 +757,7 @@ def init_db(url: str | None = None):
     from .site import domains as _site_domains  # noqa: F401  (v0.123 domains she bought through Hoola)
     from .site import care as _site_care  # noqa: F401  (v0.124 visits / uptime per day, monthly care notes)
     from .site import github as _site_github  # noqa: F401  (v0.124 GitHub export of her site)
-    from .site import webapp as _site_webapp  # noqa: F401  (v0.303 web apps: members + rows)
+    from .site import webapp as _site_webapp  # noqa: F401  (v0.305 web apps: members + rows)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
     from .appmaker import models as _app_models  # noqa: F401  (v0.128 App Sahayak designs)

@@ -533,7 +533,7 @@ window.HoolaBuild = function (C) {
     d.addEventListener('click', shut); addEventListener('keydown', key); document.body.appendChild(d);
     blob(path).then(u => { d.querySelector('img').src = u; }).catch(() => { d.querySelector('span').textContent = 'Picture not found.'; });
   }
-  /* ---------------- v0.303 web app: her lists, entries, members (her own login = admin) ---------------- */
+  /* ---------------- v0.305 web app: her lists, entries, members (her own login = admin) ---------------- */
   async function loadData(o, root) {
     const box = root.querySelector('.stdata'); if (!box) return;
     let info;

@@ -2030,7 +2030,7 @@ body.albon{overflow:hidden}
 .sted-ph{display:flex;flex-wrap:wrap;gap:8px;max-height:46vh;overflow:auto}
 .sted-ph [aria-pressed=true]{outline:2px solid var(--pri);outline-offset:1px}
 
-/* v0.303 website studio: App & data tab */
+/* v0.305 website studio: App & data tab */
 .stdata{display:grid;gap:14px}
 .stapp{display:grid;gap:8px;padding:12px;border:1px solid var(--hair);border-radius:12px;background:var(--raise)}
 .stapp label{display:grid;gap:3px;font-size:13px}.stapp label span{color:var(--mut)}

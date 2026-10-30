@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../state.dart';
-import 'agents_screen.dart';
 import 'glass.dart';
 import 'mcp_screen.dart';
 import 'plugin_widgets.dart';
@@ -327,8 +326,9 @@ class _BazarScreenState extends State<BazarScreen> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(children: [
-              _chip('Sab', ''), _chip('Hoola karega', 'does'), _chip('App kholega', 'open'), _chip('SMS padhega', 'sms'),
-              _chip('Bills', 'bbps'), _chip('Dukaan', 'shop'), _chip('UPI', 'upi'), _chip('Cab', 'ride'), _chip('Food apps', 'mcp'),
+              // v0.303 SAAF CONNECT: only groups that still have working plugins (handoffs, demo bills, empty shops are hidden)
+              _chip('Sab', ''), _chip('Hoola karega', 'does'), _chip('SMS padhega', 'sms'),
+              _chip('UPI', 'upi'), _chip('Cab', 'ride'), _chip('Food apps', 'mcp'),
             ]),
           ),
           const SizedBox(height: 18),
@@ -393,10 +393,8 @@ class _BazarScreenState extends State<BazarScreen> {
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.hub_rounded, color: C.teal),
-                title: Text('MCP servers · 50,000+', style: display(15.5)),
-                subtitle: Text(_apps.any((a) => a['custom'] == true)
-                    ? '${_apps.where((a) => a['custom'] == true).length} jude hue · GitHub, Notion, Jira, Zerodha, Tally aur bahut kuch'
-                    : 'GitHub, Notion, Jira, Zerodha, Tally, database… koi bhi MCP server Hoola se jodiye'),
+                title: Text('Apps · 1,600+', style: display(15.5)),
+                subtitle: const Text('Slack, Notion, Jira, HubSpot, Zoom, Tally… apne account se jodiye, koi naya account nahi'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () async {
                   await Navigator.of(context).push(MaterialPageRoute(builder: (_) => McpScreen(app: app)));
@@ -413,17 +411,6 @@ class _BazarScreenState extends State<BazarScreen> {
                 subtitle: const Text('Free APIs: mausam, IFSC, pincode, holidays, cricket, currency, news… Hoola khud use karta hai'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PublicApisScreen(app: app))),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Glass(
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.groups_rounded, color: C.accent2),
-                title: Text('Agent Army · 36,336 agents', style: display(15.5)),
-                subtitle: const Text('Duniya ke open-source AI agents, 37 fields: coding, call centre, accounting, legal, sales…'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AgentsScreen(app: app))),
               ),
             ),
             const SizedBox(height: 14),
@@ -498,8 +485,8 @@ class _BazarScreenState extends State<BazarScreen> {
               ),
             ),
           const SizedBox(height: 14),
-          const Text('Kisi bhi plugin par tap kijiye: woh kya karta hai aur Hoola se kaise kahein. '
-              'Demo = test bill, asli paise nahi.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+          const Text('Kisi bhi plugin par tap kijiye: woh kya karta hai aur Hoola se kaise kahein.',
+              style: TextStyle(color: C.muted, fontSize: 12.5)),
         ]),
       );
     if (widget.embedded) return list;
