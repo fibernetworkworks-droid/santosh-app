@@ -80,7 +80,7 @@ def test_cache_busts_follow_the_version():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.293.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert APP_VERSION == "0.294.0"    # conscious-bump guard: moves with every release (bump with pubspec)
 
 
 def _wrote(*convs):   # v0.236 the console lists a chat only once she wrote in it

@@ -73,6 +73,10 @@ WRITE_WORDS = {"SEND", "POST", "CREATE", "UPDATE", "DELETE", "REMOVE", "ARCHIVE"
                "INSERT", "COMMENT", "REPLY", "FORWARD", "DRAFT", "SUBSCRIBE", "UNSUBSCRIBE", "MUTE"}
 
 
+SETUP_TEXT = ("{name} ka login Composio khud nahi deta (API-key / company app). Newtika ko ek baar Composio dashboard > "
+              "Auth Configs mein {name} jodna hoga; uske baad sab users ke liye 'Jodiye' chalega.")
+
+
 class ComposioError(Exception):
     """Composio refused or failed. `auth` = her sign-in is gone (she links again)."""
 
@@ -86,14 +90,118 @@ def configured() -> bool:
 
 
 def toolkits() -> dict[str, tuple[str, str]]:
+    """Every app she may connect: Composio's live catalogue when the key works (about 1,600), else the built-in 21.
+    COMPOSIO_TOOLKITS (comma list) narrows it. Hoola's own apps and scraping apps are never in it."""
+    cat = catalog()
+    base = {s: (a["name"], a["desc"] or "its tools") for s, a in cat.items()} if cat else dict(DEFAULT_TOOLKITS)
     raw = (core_settings().composio_toolkits or "").strip()
     if not raw:
-        return dict(DEFAULT_TOOLKITS)
+        return base
     out: dict[str, tuple[str, str]] = {}
     for slug in re.split(r"[,\s]+", raw.lower()):
-        if re.fullmatch(r"[a-z0-9_]{2,40}", slug or "") and slug not in NEVER:
-            out[slug] = DEFAULT_TOOLKITS.get(slug, (slug.replace("_", " ").title(), "its tools"))
+        if re.fullmatch(r"[a-z0-9_]{2,60}", slug or "") and slug not in NEVER:
+            out[slug] = base.get(slug) or DEFAULT_TOOLKITS.get(slug, (slug.replace("_", " ").title(), "its tools"))
     return out
+
+
+# ---------------------------------------------------------------- v0.294 the live catalogue (GET /toolkits)
+CATALOG_TTL = 12 * 3600
+CATALOG_RETRY = 600          # Composio down / key wrong: try again after 10 min, built-in list meanwhile
+_catalog: tuple[float, dict[str, dict[str, Any]]] | None = None
+_catalog_fail = 0.0
+_configs: tuple[float, set[str]] | None = None
+
+
+def _clean_app(it: dict[str, Any]) -> dict[str, Any] | None:
+    slug = str(it.get("slug") or "").strip().lower()
+    if not re.fullmatch(r"[a-z0-9_]{2,60}", slug) or slug in NEVER or str(it.get("type") or "native") == "custom":
+        return None
+    meta = it.get("meta") or {}
+    cats = [str(c.get("name") or c.get("slug") or "") if isinstance(c, dict) else str(c)
+            for c in (meta.get("categories") or [])]
+    managed = bool(it.get("composio_managed_auth_schemes"))
+    return {"slug": slug, "name": str(it.get("name") or slug.replace("_", " ").title())[:80],
+            "desc": re.sub(r"\s+", " ", str(meta.get("description") or ""))[:220],
+            "logo": str(meta.get("logo") or "")[:400], "cats": [c for c in cats if c][:4],
+            "tools": int(meta.get("tools_count") or 0), "managed": managed, "no_auth": bool(it.get("no_auth")),
+            "schemes": [str(x) for x in (it.get("auth_schemes") or [])][:4]}
+
+
+def catalog(force: bool = False) -> dict[str, dict[str, Any]]:
+    """slug -> app, in Composio's own usage order. {} when not configured or never reachable."""
+    global _catalog, _catalog_fail
+    if not configured():
+        return {}
+    now = time.time()
+    if not force and _catalog and now - _catalog[0] < CATALOG_TTL:
+        return _catalog[1]
+    if not force and now - _catalog_fail < CATALOG_RETRY:
+        return _catalog[1] if _catalog else {}
+    try:
+        items: list[dict[str, Any]] = []
+        cursor = None
+        for _ in range(10):
+            params: dict[str, Any] = {"limit": 1000, "sort_by": "usage"}
+            if cursor:
+                params["cursor"] = cursor
+            res = client()._req("GET", "/toolkits", params=params)
+            items += res.get("items") or []
+            cursor = res.get("next_cursor")
+            if not cursor:
+                break
+    except ComposioError as e:
+        log.warning("composio catalogue failed: %s", e)
+        _catalog_fail = now
+        return _catalog[1] if _catalog else {}
+    out: dict[str, dict[str, Any]] = {}
+    for it in items:
+        a = _clean_app(it) if isinstance(it, dict) else None
+        if a and a["slug"] not in out:
+            out[a["slug"]] = a
+    if out:
+        _catalog = (now, out)
+    else:
+        _catalog_fail = now
+    return out or (_catalog[1] if _catalog else {})
+
+
+def configured_apps(force: bool = False) -> set[str]:
+    """Apps Newtika set up in the Composio dashboard (an ENABLED auth config): API-key apps become connectable."""
+    global _configs
+    if _configs and not force and time.time() - _configs[0] < 600:
+        return _configs[1]
+    slugs: set[str] = set()
+    try:
+        cursor = None
+        for _ in range(5):
+            params: dict[str, Any] = {"limit": 200}
+            if cursor:
+                params["cursor"] = cursor
+            res = client()._req("GET", "/auth_configs", params=params)
+            for i in res.get("items") or []:
+                if str(i.get("status", "ENABLED")).upper() == "ENABLED":
+                    slugs.add(str((i.get("toolkit") or {}).get("slug") or "").lower())
+            cursor = res.get("next_cursor")
+            if not cursor:
+                break
+    except ComposioError as e:
+        log.warning("composio auth configs failed: %s", e)
+        return _configs[1] if _configs else set()
+    _configs = (time.time(), slugs)
+    return slugs
+
+
+def mode(toolkit: str) -> str:
+    """managed = her own sign-in works now; no_auth = nothing to connect; setup = Newtika must add this app's
+    API-key / OAuth app once in the Composio dashboard; unknown = not in the live catalogue."""
+    a = catalog().get(toolkit)
+    if a is None:
+        return "managed" if toolkit in DEFAULT_TOOLKITS and not catalog() else "unknown"
+    if a["no_auth"]:
+        return "no_auth"
+    if a["managed"] or toolkit in configured_apps():
+        return "managed"
+    return "setup"
 
 
 def composio_user(tenant_id: str) -> str:
@@ -151,6 +259,8 @@ class Client:
                if i.get("id") and str(i.get("status", "ENABLED")).upper() == "ENABLED"
                and ((i.get("toolkit") or {}).get("slug", toolkit) == toolkit)]
         if not ids:
+            if mode(toolkit) != "managed":
+                raise ComposioError(SETUP_TEXT.format(name=toolkits().get(toolkit, (toolkit, ""))[0]))
             made = self._req("POST", "/auth_configs", body={"toolkit": {"slug": toolkit},
                                                             "auth_config": {"type": "use_composio_managed_auth"}})
             ids = [(made.get("auth_config") or {}).get("id")]
@@ -185,9 +295,10 @@ class Client:
         return self._req("GET", f"/tools/{slug}", params={"toolkit_versions": "latest"})
 
     def execute(self, slug: str, user_id: str, ca_id: str, arguments: dict[str, Any]) -> dict[str, Any]:
-        return self._req("POST", f"/tools/execute/{slug}",
-                         body={"user_id": user_id, "connected_account_id": ca_id, "arguments": arguments,
-                               "version": "latest"})
+        body: dict[str, Any] = {"user_id": user_id, "arguments": arguments, "version": "latest"}
+        if ca_id:                       # a no-login app (weather, maths ...) has no account to name
+            body["connected_account_id"] = ca_id
+        return self._req("POST", f"/tools/execute/{slug}", body=body)
 
 
 _client: Client | None = None
@@ -204,8 +315,9 @@ def client() -> Client:
 
 
 def set_client(c: Client | None) -> None:   # tests
-    global _client
+    global _client, _catalog, _catalog_fail, _configs
     _client = c
+    _catalog, _catalog_fail, _configs = None, 0.0, None
     TOOL_CACHE.clear()
 
 
@@ -224,8 +336,14 @@ def _cached(key: str, fn):
 
 
 def tool_list(toolkit: str, query: str = "", important: bool = True, limit: int = 25) -> list[dict[str, Any]]:
-    return _cached(f"list:{toolkit}:{query}:{important}:{limit}",
-                   lambda: client().tools(toolkit, query=query, important=important, limit=limit))
+    """v0.294 many apps mark no tool 'important': then the first tools of the app (it was an empty list before,
+    so Hoola had nothing to run)."""
+    def go():
+        items = client().tools(toolkit, query=query, important=important, limit=limit)
+        if not items and important:
+            items = client().tools(toolkit, query=query, important=False, limit=limit)
+        return items
+    return _cached(f"list:{toolkit}:{query}:{important}:{limit}", go)
 
 
 def tool_info(slug: str) -> dict[str, Any]:
@@ -245,6 +363,7 @@ def pack_for(toolkit: str) -> Pack | None:
     if toolkit not in kits:
         return None
     name, what = kits[toolkit]
+    what = (what or "its tools")[:160]
     return Pack(id=PREFIX + toolkit, name=name, category="Apps via Composio", sub_category="App connection",
                 pack_type="Composio", layer="L1", phase="MVP", priority="P1",
                 description=f"{name}: {what} (her own {name} account, official sign-in via Composio)",
@@ -262,11 +381,17 @@ def _resolve(pack_id: str) -> Pack | None:
 add_resolver(_resolve)
 
 
-def match(query: str, limit: int = 4) -> list[Pack]:
-    """Apps whose name / slug appears in her words ('slack pe message', 'notion page')."""
+def match(query: str, limit: int = 4, mine: tuple[str, ...] = ()) -> list[Pack]:
+    """Apps her words name ('slack pe message', 'notion page'). Only the well-known apps and the ones she already
+    joined are matched by name - with 1,600 apps a plain word ('box', 'news', 'weather') would pick a random one;
+    the rest are found with composio_apps action=list query=...."""
     q = query.lower()
+    kits = toolkits()
     out = []
-    for slug, (name, _) in toolkits().items():
+    for slug in list(DEFAULT_TOOLKITS) + [m for m in mine if m not in DEFAULT_TOOLKITS]:
+        if slug not in kits:
+            continue
+        name = kits[slug][0]
         if re.search(rf"\b({re.escape(slug)}|{re.escape(name.lower())})\b", q):
             p = pack_for(slug)
             if p:
@@ -324,12 +449,25 @@ def account(s, user_id: str, toolkit: str, check: bool = True) -> tuple[Connecti
 
 
 def status(s, user_id: str, toolkit: str) -> str:
+    """ready / pending / needs_link / needs_setup (Newtika must set the app up once) / not_configured."""
     if not configured():
         return "not_configured"
     rows = _rows(s, user_id, toolkit)
     if any(r.status == "active" for r in rows):
         return "ready"
+    m = mode(toolkit)
+    if m == "no_auth":
+        return "ready"
+    if m in ("setup", "unknown"):
+        return "needs_setup"
     return "pending" if rows else "needs_link"
+
+
+def joined(s, user_id: str) -> list[str]:
+    rows = s.scalars(select(Connection.provider).where(Connection.user_id == user_id,
+                                                       Connection.provider.like(PROVIDER + "%"),
+                                                       Connection.status.in_(("active", "pending")))).all()
+    return sorted({r[len(PROVIDER):] for r in rows})
 
 
 def mark_expired(s, user_id: str, toolkit: str) -> None:
@@ -431,9 +569,59 @@ def disconnect(s, user_id: str, toolkit: str) -> bool:
     return bool(rows)
 
 
-def apps(s, user_id: str) -> list[dict[str, Any]]:
-    return [{"toolkit": slug, "pack_id": PREFIX + slug, "name": name, "does": what, "status": status(s, user_id, slug)}
-            for slug, (name, what) in toolkits().items()]
+def apps(s, user_id: str, q: str = "", category: str = "", offset: int = 0, limit: int = 40) -> dict[str, Any]:
+    """The catalogue for her screen / the chat: her joined apps first, then Composio's usage order; search + category."""
+    cat = catalog()
+    kits = toolkits()
+    mine = set(joined(s, user_id))
+    q = (q or "").strip().lower()[:60]
+    category = (category or "").strip().lower()
+    rows = []
+    for slug, (name, what) in kits.items():
+        a = cat.get(slug) or {"logo": "", "cats": [], "tools": 0}
+        if q and q not in slug and q not in name.lower() and q not in (what or "").lower():
+            continue
+        if category and category not in [c.lower() for c in a["cats"]]:
+            continue
+        rows.append((slug, name, what, a))
+    rows.sort(key=lambda r: (r[0] not in mine, q and not (r[0].startswith(q) or r[1].lower().startswith(q))))
+    counts: dict[str, int] = {}
+    for a in cat.values():
+        for c in a["cats"]:
+            counts[c] = counts.get(c, 0) + 1
+    offset, limit = max(0, int(offset or 0)), max(1, min(int(limit or 40), 200))
+    page = [{"toolkit": slug, "pack_id": PREFIX + slug, "name": name, "does": (what or "")[:160], "logo": a["logo"],
+             "category": (a["cats"] or [""])[0], "tools": a["tools"], "status": status(s, user_id, slug)}
+            for slug, name, what, a in rows[offset:offset + limit]]
+    return {"total": len(rows), "all": len(kits), "offset": offset, "apps": page, "live": bool(cat),
+            "categories": sorted(counts.items(), key=lambda x: -x[1])[:40]}
+
+
+def check() -> dict[str, Any]:
+    """v0.294 the self-check she runs on the VPS (python -m app.bazar.composio check): no secrets in the output."""
+    out: dict[str, Any] = {"key_set": configured()}
+    if not configured():
+        out["fix"] = "COMPOSIO_API_KEY ~/apps/santosh-core/.env mein nahi hai."
+        return out
+    try:
+        res = client()._req("GET", "/toolkits", params={"limit": 1})
+        out["key_works"] = True
+        out["composio_says_total"] = res.get("total_items")
+    except ComposioError as e:
+        out["key_works"] = False
+        out["error"] = str(e)
+        out["fix"] = ("Key galat / purani hai: platform.composio.dev > project > Settings > API Keys se project key "
+                      "copy karke .env mein dobara daaliye." if e.status in (401, 403) else "Composio tak pahunch nahi.")
+        return out
+    cat = catalog(force=True)
+    conf = configured_apps(force=True)
+    modes = {"managed": 0, "no_auth": 0, "setup": 0}
+    for slug in cat:
+        modes[mode(slug)] = modes.get(mode(slug), 0) + 1
+    out.update({"apps_in_catalogue": len(cat), "connect_now": modes["managed"], "no_login_needed": modes["no_auth"],
+                "need_newtika_setup": modes["setup"], "dashboard_auth_configs": len(conf)})
+    out["built_in_21"] = {slug: (mode(slug) if slug in cat else "NOT IN COMPOSIO") for slug in DEFAULT_TOOLKITS}
+    return out
 
 
 # ---------------------------------------------------------------- webhook: a sign-in expired at the app
@@ -472,3 +660,15 @@ def on_expired(s, ca: str) -> tuple[str, str] | None:
             kit = c.provider[len(PROVIDER):]
             return c.user_id, toolkits().get(kit, (kit, ""))[0]
     return None
+
+
+if __name__ == "__main__":   # python -m app.bazar.composio check | list [query]
+    import sys
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "check"
+    if cmd == "list":
+        q = " ".join(sys.argv[2:]).lower()
+        for slug, a in catalog(force=True).items():
+            if not q or q in slug or q in a["name"].lower() or q in a["desc"].lower():
+                print(f"{slug:32} {a['name'][:30]:30} {mode(slug):8} {a['tools']:4} tools  {', '.join(a['cats'][:2])}")
+    else:
+        print(json.dumps(check(), indent=2, ensure_ascii=False))

@@ -11146,3 +11146,25 @@ disk cleanup earlier in the session. CI's analyze step is the check for the phon
 ### Files
 `server/app/static/console/v2.js` · `server/app/static/console/v2.css` · `lib/ui/chat_screen.dart` ·
 `server/tests/test_v0293_kitna_samay.py` (8 tests).
+
+## v0.294.0 COMPOSIO SAB APPS (30 Oct 2026, owner: "NOW CHECK IN APP --- PROPERLY MOST OF APPS NOT FUCTIONING --- LIST ALL 1200 APPS")
+Why most apps failed in v0.291: (1) the 21 app slugs were hard-coded from memory, never checked against Composio's
+catalogue; (2) API-key / company apps (Zendesk, Freshdesk ...) have no Composio-managed sign-in, and Hoola tried to
+create a managed auth config anyway -> an error on "Jodiye"; (3) tools were asked with important=true only, which is
+empty for many apps -> Hoola had nothing to run.
+- `composio.catalog()`: GET /toolkits (limit 1000, cursor, sort_by usage) cached 12 h, retry after 10 min on failure
+  (built-in 21 meanwhile); custom toolkits and the NEVER list dropped. `configured_apps()`: ENABLED auth configs in
+  Newtika's project (an app she adds in the dashboard becomes connectable for everyone). `mode()` = managed / no_auth /
+  setup / unknown. `toolkits()` = the live catalogue (COMPOSIO_TOOLKITS still narrows it).
+- Status: ready (joined, or a no-login app), needs_link, needs_setup (connect returns the SETUP_TEXT line, no link, no
+  auth-config create). No-login apps execute without a connected_account_id.
+- `tool_list` falls back to the first tools when none is important.
+- `match()` names only the 21 well-known apps + her joined ones (1,600 names would hijack plain words); the rest via
+  composio_apps action=list query=.
+- GET /api/composio/apps?q=&category=&offset=&limit= -> {total, all, apps, categories, live}. Phone: search box,
+  category chips, 40 at a time ("Aur dikhao"), "Setup baaki" chip, tools count.
+- VPS self-check: `cd ~/apps/santosh-core && .venv/bin/python -m app.bazar.composio check` (key works? catalogue size,
+  connect-now / no-login / needs-setup counts, the 21 built-ins), `... list [query]` prints every app with its mode.
+- NOT VERIFIED live: the toolkits response field names come from Composio's API reference (composio_managed_auth_schemes,
+  meta.categories[].name, meta.tools_count); whether the hosted Connect Link asks the end user for an API key.
+  Tests: test_v0276_composio.py now 19 (catalogue, setup, no-login, fallback, match, check).

@@ -256,7 +256,8 @@ def find(tenant_id: str, query: str = "", category: str = "", limit: int = 6) ->
         else:
             mine_hits = []
         from . import composio as _cmp
-        hits = mine_hits + (_cmp.match(query) if _cmp.configured() else []) + [p for p, _ in reg.match(query, limit=limit)]
+        hits = mine_hits + (_cmp.match(query, mine=tuple(_cmp.joined(s, user.id))) if _cmp.configured() else []) \
+            + [p for p, _ in reg.match(query, limit=limit)]
         if len(hits) < 2:
             for p in _fallback_match(query, limit):
                 if p not in hits:
@@ -1441,14 +1442,16 @@ def _cmp():
     return composio
 
 
-def composio_apps(tenant_id: str) -> dict[str, Any]:
+def composio_apps(tenant_id: str, q: str = "", category: str = "", offset: int = 0, limit: int = 40) -> dict[str, Any]:
     from . import composio
     with session() as s:
         user = ensure_user(s, tenant_id)
         st = core_settings()
-        return {"configured": composio.configured(), "apps": composio.apps(s, user.id),
+        res = composio.apps(s, user.id, q, category, offset, limit) if composio.configured() else {"apps": [], "total": 0}
+        return {"configured": composio.configured(), **res,
                 "calls_this_month": composio.used(s, user.id), "monthly_cap": st.composio_user_monthly_calls,
-                "how": "ready = bazar_run pack_id=cmp-<app> tool=<SLUG>; needs_link = action=connect toolkit=<app>."}
+                "how": "ready = bazar_run pack_id=cmp-<app> tool=<SLUG>; needs_link = action=connect toolkit=<app>; "
+                       "needs_setup = Newtika must add this app once in the Composio dashboard (tell her, don't retry)."}
 
 
 def composio_connect(tenant_id: str, toolkit: str, conversation_id: str = "") -> dict[str, Any]:
@@ -1456,8 +1459,13 @@ def composio_connect(tenant_id: str, toolkit: str, conversation_id: str = "") ->
     toolkit = (toolkit or "").strip().lower()
     with session() as s:
         user = ensure_user(s, tenant_id)
-        if cmp.status(s, user.id, toolkit) == "ready":
-            return {"status": "ready", "pack_id": cmp.PREFIX + toolkit, "say": "Yeh app pehle se juda hai."}
+        st_now = cmp.status(s, user.id, toolkit)
+        if st_now == "ready":
+            return {"status": "ready", "pack_id": cmp.PREFIX + toolkit, "url": "", "say": "Yeh app pehle se juda hai."}
+        if st_now == "needs_setup":
+            name = cmp.toolkits().get(toolkit, (toolkit, ""))[0]
+            return {"status": "needs_setup", "pack_id": cmp.PREFIX + toolkit, "url": "",
+                    "say": cmp.SETUP_TEXT.format(name=name)}
         try:
             link = cmp.start_link(s, user.id, toolkit)
         except cmp.ComposioError as e:
@@ -1475,7 +1483,7 @@ def composio_tools(tenant_id: str, toolkit: str, query: str = "") -> dict[str, A
     cmp = _cmp()
     toolkit = (toolkit or "").strip().lower()
     if toolkit not in cmp.toolkits():
-        raise ToolError(f"'{toolkit}' Hoola ki app list mein nahi hai.")
+        raise ToolError(f"'{toolkit}' Hoola ki app list mein nahi hai. composio_apps action=list query=<naam> se dhoondhiye.")
     try:
         items = cmp.tool_list(toolkit, query=str(query or "")[:120], important=not query, limit=10 if query else 25)
     except cmp.ComposioError as e:
