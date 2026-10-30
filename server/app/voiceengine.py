@@ -110,11 +110,6 @@ def pick(tenant: str) -> tuple[str, str]:
     return "openai", ""
 
 
-def _inr() -> float:
-    from .usage import usd_inr
-    return usd_inr()
-
-
 def view(tenant: str) -> dict[str, Any]:
     st = get_settings()
     u = _usage()
@@ -122,7 +117,5 @@ def view(tenant: str) -> dict[str, Any]:
     return {"chosen": chosen(tenant), "will_use": eng, "why": why, "allowed": allowed(tenant),
             "openai_ready": bool(st.openai_api_key), "model": st.voice_openai_model,
             "month": _month(), "month_usd": round(float(u.get("usd") or 0), 4), "month_budget_usd": st.voice_openai_month_usd,
-            "month_inr": round(float(u.get("usd") or 0) * _inr(), 2),                     # v0.274 the phone shows rupees
-            "month_budget_inr": round(st.voice_openai_month_usd * _inr()),
             "my_minutes": round(float((u.get("seconds") or {}).get(tenant) or 0) / 60, 1),
             "my_minutes_cap": st.voice_openai_user_min}

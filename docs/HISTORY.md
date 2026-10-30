@@ -10450,110 +10450,34 @@ Owner: "NOW LETS WORK ON HARD, COMPLEX, REASONING WORK --- FIRST CHECK WHAT ACTU
   scorecard, draft jaanch, chhota jawab, tool choice, compact, one memory...): 299 pass, same as main. No PC file.
   Version 0.272.0 (pubspec 0.272.0+312, console ?v=0.272.0, pins). Server-only deploy.
 
-## v0.273.0 SATH SATH (built as 0.272.0; re-versioned after the parallel v0.272.0 SOCH KE JAWAB step 1) — call captions appear as he says them (owner: "BUT IN APP IT SHOW TEXT FIRST" -> "SYNC CAPTIONS")
-- Cause: both engines stream his words as text AND audio together. The phone shows text the moment it arrives, but
-  audio plays in real time from its queue - and OpenAI sends a whole reply in about a second, so the caption ran seconds
-  ahead of his voice (it looked like "text first, then speech"; the speech is still made directly, audio to audio).
-- Fix (server only, both engines, audio untouched): `Call.send_audio` keeps ONE playback clock (`_play_until`, 24 kHz
-  PCM16 = 48,000 bytes a second) - the OpenAI engine's own clock updates were removed. `Call._caption(obj)` sends a
-  `santosh_text` (and the `turn_done` that follows it) at once when nothing is queued, else waits until his queued audio
-  reaches those words (`CAPTION_EARLY_S` 0.15 s early, never out of order, `_cap_run`). `_cap_flush()` on her new words
-  (`user_text`) or an interruption: stale captions are dropped (an old reply never overwrites what she is saying), a
-  waiting `turn_done` still goes at once. Gemini streams near real time, so its captions barely move.
-Tests: NEW `test_v0272_sath_sath.py` (6); `test_v0264_openai_voice.py` breath test follows the one clock.
-Version 0.273.0 (pubspec 0.273.0+313, console ?v=0.273.0, pins -> 0.273.0).
-
-## v0.274.0 SAAF JAGAH — the air between the blocks (owner: "ALSO SEE A VISUAL PROPER PLACEMENT OF SENTANCE THAT USER CAN READ IT REALIBLY. ALSO A PERFECT PARAGRAP, SPALCING ETC. CHECK THIS FIRST", then "GO SPACING")
-- MEASURED FIRST, from her three Claude screenshots (the Indian-government-API answer), block by block:
-
-  | | Claude | Hoola before |
-  |---|---|---|
-  | line pitch | 22-24px (16px x 1.5) | 24px |
-  | paragraph length | 1-3 lines | — |
-  | gap BETWEEN paragraphs | 22-32px | **2px** |
-  | gap between lines INSIDE one | 6-8px | ~7px |
-  | **ratio between / inside** | **3.2x - 4.3x** | **0.3x** |
-  | line length | median ~600px, max 674px (65-75 chars) | 880px (~95 chars) |
-
-  That ratio is the whole trick: a block reads as a block only when the space around it is several times the space
-  inside it. Hoola's space BETWEEN paragraphs was SMALLER than the space between the lines inside them, so no
-  paragraph was ever visible. This is why, after v0.249 (the serif), v0.253 (Literata + near-black on white at
-  17.3:1) and v0.256 (the Claude sidebar type), every word was right and the page still read as one wall.
-- FOUR NUMBERS (console `v2.css`), each verified in a real browser after the change:
-  - `.textmd p` margin-bottom **2 -> 16px**, with `p:last-child` at 0 so a reply has no dead space under it;
-  - `.textmd .mdh` margin **8px 0 4px -> 24px 0 8px** — a heading belongs to the text UNDER it, so most of the air
-    goes above; `.mdh:first-child` keeps margin-top 0 so there is never a hole at the top of a reply;
-  - `.textmd ul,ol` item gap **3 -> 8px** and the list's own bottom margin **2 -> 16px**, with `:last-child` at 0.
-  Rendered after: paragraph 16px, above a heading 24px, below it 8px, list items 8px.
-- THE PHONE TAKES THE SAME AIR: `md_text.dart`'s block spacer **9 -> 16px** and list items **4 -> 8px**.
-- NOT TOUCHED, ON PURPOSE: the reading width. The column is 880px where Claude's text measures ~674px, about 95
-  characters a line against a comfortable 65-75. But v0.252 set that width deliberately ("the chat column = the
-  composer's width"), so it is the owner's call, not a thing to undo from here. A test records it as a decision so
-  the next session does not read it as an oversight. She was offered "GO SPACING + WIDTH" and chose spacing only.
-- NOTHING ELSE MOVED: the type is pinned by its own test - Literata, 16px / 400 / 1.5, `--chat-ink` on
-  `--chat-paper`, and `GoogleFonts.literata` on the phone.
-- Tests: NEW `server/tests/test_v0274_saaf_jagah.py` (8), including one that asserts the paragraph gap can never
-  fall back below ~14px, where it would vanish against the line gap again. `dart analyze` 0 errors,
-  `flutter test test/md_text_test.dart` 7/7.
-- Version 0.274.0 (pubspec 0.274.0+314, console ?v=0.274.0, pins -> 0.274.0).
-- NOT VERIFIED: how it reads on a real phone screen; the console was checked in a browser at 1000px wide.
-
-## v0.275.0 OPENAI VOICE Phase 2 + 3 (built as 0.274.0; re-versioned after the parallel v0.274.0 SAAF JAGAH) — every call feature on the real voice, and the picker on the phone (owner: "DEPLOYED, WORKING GOOD NOW. MOVE FURTHER")
-- Phase 2, parity (`test_v0274_openai_parity.py`): job news pushed into the call (`push("text")`) reaches OpenAI as a
-  system item with exactly ONE `response.create`; while she is on hold (her phone call) his OpenAI audio is held back
-  (`_hold_turn_audio`, never played) and the hold note goes quietly (`_tell_quietly` = item, no reply); a dropped
-  OpenAI connection is rebuilt by `OpenAICall.run` with a fresh `session.update` (same persona / tools / brief) and the
-  reseed of the talk so far. OTP by voice, bol-kar-haan approvals, side talk and the stall watchdog are the shared
-  `voice.Call` code both engines run (`_heard_her` feeds the same listeners). Only a real phone can prove a real network
-  switch / GSM call - they stay in docs/VOICE_E2E_TEST_PLAN.md Round C.
-- Phase 3, phone (new APK): Profile > **Call ki awaaz** (`lib/ui/voice_engine_screen.dart`, api `voiceEngine` /
-  `voiceEngineSet`): Gemini awaaz or Real voice (OpenAI) - picked from the next call; disabled with "trial" for users
-  the trial gate does not allow; the reason line when the server falls back to Gemini; this month's spend in rupees
-  (`month_inr` / `month_budget_inr`, new in `voiceengine.view`) and her minutes. The call screen shows a "Real voice"
-  badge (`CallSession.engine` from the `ready` event's `engine`).
-Tests: NEW `test_v0274_openai_parity.py` (6). Version 0.275.0 (pubspec 0.275.0+315, console ?v=0.275.0, pins -> 0.275.0).
-
-## v0.276.0 PADHNE KI CHAUDAI — the reading width, the one thing v0.274 left on the table (owner: "GO WIDTH")
-- v0.274 SAAF JAGAH fixed the spacing and deliberately did NOT touch the width, because v0.252 had set the column
-  to match the composer on purpose. She was offered the choice and said "GO WIDTH".
-- MEASURED PROPERLY THIS TIME, Literata 16px in a real browser: one character averages **7.45px**, so
-
-  | width | characters a line |
-  |---|---|
-  | 880px (what we had) | **118** |
-  | 760px | 102 |
-  | 720px | 97 |
-  | **680px (this version)** | **91** |
-  | 674px (Claude's own) | 90 |
-
-  A correction worth recording: v0.274's note put the old column at "~95 characters". That estimate was wrong -
-  it is 118. Anything past about 90 loses the eye on the way back to the start of the next line, which is why the
-  page still felt heavy even after the serif (v0.249), Literata + contrast (v0.253) and the spacing (v0.274).
-- THE COLUMN STAYS 880px. v0.252's point was that the words begin at the composer's left edge, and that still
-  holds - the left edge is untouched, only the line is shorter. The composer dock keeps `width:min(880px,100%)`
-  and a test asserts the two still agree.
-- ONLY THE PROSE IS CAPPED, at 680px, through one rule scoped to the reply's own children:
-  `#app .mh .txt>p, >ul, >ol, >.mdh, >blockquote {max-width:680px}`.
-  A TABLE, a code block, a card or a tool group is NOT capped: those are read by scanning across rather than line
-  by line, and squeezing their columns would make them worse. Claude's own answer does the same - her screenshot
-  of the government-API table runs wider than the prose above it.
-- THE PHONE NEEDS NOTHING: a phone screen is 360-430px wide, far under the cap, so `md_text.dart` keeps only
-  v0.274's spacing (block 16px, list items 8px) and no width rule at all.
-- Verified in a browser after the change: column 880px, paragraph 680px (91 characters), heading 680px, list
-  658px, table uncapped.
-- Tests: NEW `server/tests/test_v0276_padhne_ki_chaudai.py` (7) - the cap and exactly which children it covers,
-  that tables / code / cards are NOT in the rule, that the column and the composer still share 880px, and that
-  v0.274's spacing and the v0.249 / v0.253 type are untouched. v0.274's "width left alone" test now records that
-  the owner made the call, so the two versions read as one decision rather than a contradiction.
-- Version 0.276.0 (pubspec 0.276.0+316, console ?v=0.276.0, pins -> 0.276.0).
-- NOT VERIFIED: how it reads on her own screen at her own window width.
-
-## CHECKPOINT 30 Oct 2026 — FULL CLAUDE MODE verified by the owner ("PERFECT")
-- Shipped: v0.239 Phase 1 (whole chat word for word + gauge), v0.242 Phase 2 (compact checkpoint), v0.244 3A (one memory
-  for calls / quick lane + cost cap + meter), v0.246 3C (fenced Sessions), v0.250 3B (Mere baare mein, haal_ki_chats,
-  incognito, memory switches). Branch `checkpoint-full-claude-mode-2026-10-30` = commit 87a2046 (v0.250.0).
-- Proof on the VPS with the real brain (`server/tools/memory_quiz.py`, 300 exchanges, 20 planted details), run twice:
-  old 40-49 window (hoola) 16/20 · whole chat (full) 20/20 · real checkpoint first (compact: 296 exchanges -> ~3,000
-  chars) 20/20. Rollback switches: CHAT_CONTEXT=hoola, CHAT_COMPACT=false, MEMORY_FENCE=false, ABOUT_ME=false.
-- Seen in the quiz, not fixed: the v0.231 draft check sometimes prefixes the NEXT reply with a correction of the
-  previous one ("Ek sudhaar: ...").
+## v0.273.0 INDIAMART (30 Oct 2026)
+Owner: "MAKE A PLAN AND DEPLOY IT PERFECTLY FOR HOOLA. IT WILL SHOW CITY WISE PRODUCT, PRICE, DETAILS, BRAND, IMAGES"
+then "IN APP SIDE JUST SHOW INDIAMART LOGO WITH CONNECTED. BACKEND IF USER ASK GO TO INDIAMART AND TELL THIS PRODUCT IT
+MUST WORK DIRECTLY".
+- Source: IndiaMART's OWN MCP server `https://imgpt.indiamart.com/mcp` (streamable HTTP, server `indiamart-marketplace`
+  1.0.0, protocol 2025-06-18). Probed live: no login, no key, no session id - every call is one JSON-RPC POST. Three
+  tools: `search_products` (query, search_term required; city, brand, specifications, min_price / max_price INR strict,
+  biztype manufacturer|exporter|wholesaler|retailer), `get_product_detail` (displayid), `log_client_event` (their
+  widget's logging, "Not for model use" - never called; `call_tool` refuses it). Buyer side only: no seller leads,
+  no replies, no orders.
+- `app/indiamart.py`: the transport (SSE or JSON answer), 15-min search / 60-min detail cache, product shaping
+  (price + unit, MOQ, brand, specs from `isq` "k==v", seller, city, GST / TrustSeal, rating, phone, page link,
+  direct imimg.com photo unwrapped from their image-proxy), `price_stats` (band in the MAIN unit only - a per-tonne
+  listing never stretches a per-bag band), `by_city`, `search_cities` (2-5 cities in parallel, deduped), signed image
+  proxy (`img_url` / `img_ok` / `fetch_image`: IndiaMART hosts only, https, no SVG, <= 4 MB).
+- Agent tools `app/agent/indiamart_tools.py`: `indiamart_khoj` (city / cities / near_me / all India city wise) and
+  `indiamart_detail`; answers are TEXT (city price bands + best 3-5 with price, MOQ, brand, seller + city, GST,
+  phone, link). Seller text = data. Never orders / calls / messages a seller. Read-only: PARALLEL_SAFE + draftcheck READS.
+- Routing (`agent/admit.py`): family keys (indiamart, supplier, wholesale, thok, moq, bulk, सप्लायर, थोक, भाव, रेट)
+  + a "sourcing" INTENT (rate / bhav / kitne ka / price of / where to buy / suppliers / dealers ...). Guide line in
+  prompts.py scoped to the family.
+- Connectors page: pack `indiamart` is now executor `indiamart` (bazar/connectors/indiamart.py, tools search_products /
+  product_detail tier 0), status always "ready" (INDIAMART_ENABLED off -> not_configured); `/api/bazar/connections`
+  lists it with `no_login: true` + the logo, and the phone shows "Connected" with no link / unlink
+  (lib/ui/bazar_screen.dart `_appAction`).
+- Routes: GET /api/indiamart/img (public, signed), GET /api/indiamart/product/{id} (key).
+- Settings: `INDIAMART_ENABLED` (default true), `INDIAMART_MCP_URL`.
+- Also read: `techmatic-sys/indiamart-mcp-server` (third party, MIT, stdio, seller Lead Manager: one endpoint
+  `mapi.indiamart.com/wservce/crm/crmListing/v2/?glusr_crm_key=...`, key in the query string, a `.env` committed in
+  its repo). NOT used. Seller leads would be built on IndiaMART's own CRM API with her own key, when she asks.
+- Tests: tests/test_v0273_indiamart.py (11). Live check from the sandbox: Pune vs Delhi cement 4.9 s, detail + photo OK.

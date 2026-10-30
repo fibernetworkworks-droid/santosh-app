@@ -175,15 +175,6 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
             ]),
           ),
           if (call.inCall && call.lockIssue != null) LockSafeBanner(text: call.lockIssue!),
-          if (call.inCall && call.engine == 'openai')
-            const Padding(
-              padding: EdgeInsets.only(top: 6),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.auto_awesome_rounded, size: 15, color: C.accentSoft),
-                SizedBox(width: 6),
-                Text('Real voice', style: TextStyle(color: C.accentSoft, fontSize: 12.5, fontWeight: FontWeight.w700)),
-              ]),
-            ),
           if (call.inCall && call.speaker != null)
             Padding(
               padding: const EdgeInsets.only(top: 6),

@@ -235,7 +235,11 @@ class _BazarScreenState extends State<BazarScreen> {
     if (err != null && mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
   }
 
-  Widget _appAction(Map<String, dynamic> a) => switch (a['status'] as String? ?? '') {
+  // v0.273 IndiaMART (and any no-login app): connected for everyone, nothing to link or unlink
+  Widget _appAction(Map<String, dynamic> a) => a['no_login'] == true
+      ? PluginAction(kind: a['status'] == 'ready' ? ActionKind.linked : ActionKind.soon,
+          label: a['status'] == 'ready' ? 'Connected' : 'Abhi band hai')
+      : switch (a['status'] as String? ?? '') {
         'ready' => PluginAction(kind: ActionKind.linked, label: 'Juda hai', onTap: () => _unlink(a)),
         'needs_link' => PluginAction(kind: ActionKind.add, label: 'Jodiye', onTap: () => _link(a['pack_id'] as String)),
         _ => const PluginAction(kind: ActionKind.soon, label: 'Jald aa raha'),
@@ -245,7 +249,7 @@ class _BazarScreenState extends State<BazarScreen> {
         name: a['name'] as String? ?? '',
         does: (a['does'] as String?)?.isNotEmpty == true ? a['does'] as String : 'Order, cart aur tracking Hoola se',
         logo: a['logo'] as String?,
-        category: 'Food & Dining',
+        category: a['no_login'] == true ? 'Business & SMB' : 'Food & Dining',
         executor: 'mcp',
         badge: a['status'] == 'ready' ? 'LIVE' : null,
         badgeColor: C.ok,

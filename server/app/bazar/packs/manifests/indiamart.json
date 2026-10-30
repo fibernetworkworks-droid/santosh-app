@@ -4,35 +4,39 @@
   "category": "Business & SMB",
   "sub_category": "Sell online & B2B",
   "pack_type": "Connector pack",
-  "layer": "L3",
-  "phase": "Phase 3",
-  "priority": "P1",
-  "description": "List products, reply to enquiries, restock from IndiaMART",
-  "notes": "Verify the app's agent / API / deep-link access before build",
+  "layer": "L1",
+  "phase": "MVP",
+  "priority": "P0",
+  "description": "Live IndiaMART prices, products and suppliers city wise: photo, price, MOQ, brand, specs, seller, GST / TrustSeal, phone. Connected for everyone, no login",
+  "notes": "v0.273 IndiaMART's own MCP server https://imgpt.indiamart.com/mcp (read-only, no key). Agent tools indiamart_khoj / indiamart_detail; seller leads (Lead Manager CRM key) are not part of this pack",
   "master_list_row": 730,
-  "wave": "P1",
-  "executor": "handoff",
+  "wave": "MVP",
+  "executor": "indiamart",
   "config": {
     "web": "https://www.indiamart.com",
     "web_verified": true,
-    "play_search": "https://play.google.com/store/search?q=IndiaMART&c=apps",
-    "steps": [
-      "Santosh drafts listings and replies",
-      "Publish and accept orders in the seller app"
-    ],
-    "partner_pending": false
+    "no_login": true,
+    "mcp": "https://imgpt.indiamart.com/mcp"
   },
   "tools": [
     {
-      "name": "prepare",
-      "tier": 1
+      "name": "search_products",
+      "tier": 0
     },
     {
-      "name": "remind",
-      "tier": 1
+      "name": "product_detail",
+      "tier": 0
     }
   ],
   "keywords": [
-    "indiamart"
+    "indiamart",
+    "india mart",
+    "supplier",
+    "manufacturer",
+    "wholesale",
+    "b2b",
+    "rate",
+    "bhav",
+    "thok"
   ]
 }

@@ -329,6 +329,8 @@ class Settings(BaseSettings):
     notebook_image_size: str = "2K"           # 1K | 2K | 4K (4K costs ~2x)
     youtube_api_key: str = ""               # YouTube Data API v3 key for search / public video stats (Google Cloud)
     pagespeed_api_key: str = ""             # optional: PageSpeed Insights API key (higher quota for SEO checks)
+    indiamart_enabled: bool = True           # v0.273 IndiaMART's own MCP (buyer search: products, prices, suppliers)
+    indiamart_mcp_url: str = "https://imgpt.indiamart.com/mcp"   # no key / sign-in; read-only tools only
     motion_dir: str = "./data/motion"         # Hoola Motion MP4s (kept until the owner deletes them)
     motion_keep: int = 60                      # newest videos kept per owner
     reels_gemini_model: str = ""          # Hoola Reels: understands shared reels ("" = youtube_gemini_model)

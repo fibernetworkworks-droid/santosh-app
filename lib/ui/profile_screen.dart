@@ -121,7 +121,6 @@ import 'gyaan_screen.dart';
 import 'postgres_screen.dart';
 import 'voice_learned_screen.dart';
 import 'call_quality_screen.dart';
-import 'voice_engine_screen.dart';
 import 'screen_link.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -992,14 +991,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Aapki bhasha, raftaar, kitna rukti hain, aapke shabd, jo galat suna tha'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VoiceLearnedScreen(app: app))),
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.record_voice_over_rounded, color: C.accentSoft),
-              title: const Text('Call ki awaaz', style: TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: const Text('Gemini awaaz ya Real voice (OpenAI) - aur is mahine ka kharcha'),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VoiceEngineScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

@@ -13,16 +13,16 @@ from app.bazar.packs.registry import registry
 def test_159_mvp_packs_load():
     reg = registry()
     assert len(reg.packs) == 694   # 159 MVP + 515 P1 + 6 devices + shopping + Mera PC + Santosh Browser + PC operator + Santosh Email + Santosh Calendar + Santosh Sheets + Drive + Forms + Slides + Photos + Notebook + YouTube + App Jaanch
-    assert len(reg.all(wave="MVP")) == 170   # + Santosh Email + Calendar + Sheets + Drive + Forms + Slides + Photos + Notebook + YouTube + App Jaanch
+    assert len(reg.all(wave="MVP")) == 171   # + IndiaMART (v0.273) + Santosh Email + Calendar + Sheets + Drive + Forms + Slides + Photos + Notebook + YouTube + App Jaanch
     by = {}
     for p in reg.all(wave="MVP"):
         by[p.executor] = by.get(p.executor, 0) + 1
-    assert by == {"bbps": 98, "shop": 20, "upi": 15, "native": 13, "ride": 7, "mcp": 6, "pc": 1, "mail": 1, "cal": 1, "sheets": 1, "drive": 1, "forms": 1, "slides": 1, "photos": 1, "notebook": 1, "youtube": 1, "appcheck": 1}
+    assert by == {"bbps": 98, "shop": 20, "upi": 15, "native": 13, "ride": 7, "mcp": 6, "pc": 1, "mail": 1, "cal": 1, "sheets": 1, "drive": 1, "forms": 1, "slides": 1, "photos": 1, "notebook": 1, "youtube": 1, "appcheck": 1, "indiamart": 1}
     by = {}
     for p in reg.packs.values():
         by[p.executor] = by.get(p.executor, 0) + 1
     assert by == {"bbps": 142, "shop": 142, "upi": 16, "native": 40, "ride": 7, "mcp": 6, "pc": 1,
-                  "handoff": 227, "reader": 94, "device": 6, "commerce": 1, "browser": 1, "pcop": 1, "mail": 1, "cal": 1, "sheets": 1, "drive": 1, "forms": 1, "slides": 1, "photos": 1, "notebook": 1, "youtube": 1, "appcheck": 1}
+                  "handoff": 226, "reader": 94, "device": 6, "commerce": 1, "browser": 1, "pcop": 1, "mail": 1, "cal": 1, "sheets": 1, "drive": 1, "forms": 1, "slides": 1, "photos": 1, "notebook": 1, "youtube": 1, "appcheck": 1, "indiamart": 1}
 
 
 def test_rupees_and_paise():

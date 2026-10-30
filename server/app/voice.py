@@ -1437,54 +1437,6 @@ class Call:
         async with self._send_lock:
             with contextlib.suppress(Exception):
                 await ws.send_bytes(data)
-        # v0.272 SATH SATH: when her phone will have played everything he has sent so far (24 kHz PCM16)
-        self._play_until = max(time.monotonic(), getattr(self, "_play_until", 0.0)) + len(data) / 48000
-
-    # ---- v0.272 SATH SATH: captions appear as he SAYS them, not when the model sends them ----
-    # The model streams his text and his audio together; text shows at once, audio plays in real time from her
-    # phone's queue (a fast engine sends a whole reply in about a second), so the caption ran seconds ahead of his voice.
-    # A caption (and the turn_done after it) now waits for as long as his audio is queued ahead of it.
-    CAPTION_EARLY_S = 0.15     # a caption may land this much before its words (reading is a beat ahead of hearing)
-
-    async def _caption(self, obj: dict) -> None:
-        lag = getattr(self, "_play_until", 0.0) - time.monotonic() - self.CAPTION_EARLY_S
-        q = getattr(self, "_cap_q", None)
-        if lag <= 0 and not q:
-            await self.send_json(obj)
-            return
-        if q is None:
-            q = self._cap_q = []
-        due = time.monotonic() + max(0.0, lag)
-        if q:
-            due = max(due, q[-1][0])               # captions never overtake each other
-        q.append((due, obj))
-        t = getattr(self, "_cap_task", None)
-        if t is None or t.done():
-            self._cap_task = asyncio.create_task(self._cap_run())
-
-    async def _cap_run(self) -> None:
-        q = self._cap_q
-        while q:
-            wait = q[0][0] - time.monotonic()
-            if wait > 0:
-                await asyncio.sleep(min(wait, 0.5))
-                continue
-            _, obj = q.pop(0)
-            await self.send_json(obj)
-
-    async def _cap_flush(self) -> None:
-        """She talks or cut him off: his waiting captions are stale (never overwrite her new words); a waiting
-        turn_done still goes, now."""
-        q = getattr(self, "_cap_q", None)
-        if not q:
-            return
-        t = getattr(self, "_cap_task", None)
-        if t is not None:
-            t.cancel()
-        pending, q[:] = list(q), []
-        for _, obj in pending:
-            if obj.get("type") != "santosh_text":
-                await self.send_json(obj)
 
     # ---- the queue towards Gemini ----
     def push(self, kind: str, data, force: bool = False) -> None:
@@ -1779,7 +1731,6 @@ class Call:
                         self._hold_turn_audio.clear()   # nothing of a held turn was played: nothing to cut off
                     else:
                         self.stats["interruptions"] += 1
-                        await self._cap_flush()
                         await self.send_json({"type": "interrupted"})
                         if self.reply_buf.strip():
                             self._watch_false_stop(self.reply_buf.strip())
@@ -1793,7 +1744,6 @@ class Call:
                     if self.hold and get_settings().voice_side_talk:
                         await self._hold_heard()            # did she call Hoola by name? (else nothing is shown)
                     elif not self.hold:
-                        await self._cap_flush()
                         await self.send_json({"type": "user_text", "text": self.user_buf.strip()})
                         await self._otp_listen(sc.input_transcription.text)
                         await self._approval_listen(sc.input_transcription.text)   # v0.191 boli hui manzoori
@@ -1821,7 +1771,7 @@ class Call:
                     if self.hold:
                         self._hold_turn_reply = True
                     else:
-                        await self._caption({"type": "santosh_text", "text": self.reply_buf.strip()})
+                        await self.send_json({"type": "santosh_text", "text": self.reply_buf.strip()})
                 if sc.turn_complete:
                     if self.hold:
                         await self._held_turn_done()
@@ -2271,7 +2221,7 @@ class Call:
             self._bc_task.cancel()
             self._bc_task = None
         self._bc_this_turn = 0
-        await self._caption(done)   # v0.272 after his last caption, when she has heard it
+        await self.send_json(done)
         unclear = False
         try:   # v0.114 her language: sticky on the server; Hoola's own drift gets one quiet correction
             from . import voicelang
@@ -2828,7 +2778,7 @@ class Call:
                 self._mark_audio()
                 await self.send_audio(b)
             if self.reply_buf.strip():
-                await self._caption({"type": "santosh_text", "text": self.reply_buf.strip()})
+                await self.send_json({"type": "santosh_text", "text": self.reply_buf.strip()})
             self._after_release = texts
             self._name_prompt = True
         else:

@@ -91,7 +91,6 @@ class CallSession extends ChangeNotifier {
   String? holdSay;
   bool get onHold => holdReason != null;
   bool speakerIsOwner = true;
-  String engine = 'gemini';   // v0.274 which voice engine speaks this call (from 'ready')
   DateTime? startedAt;
   DateTime _lastHeard = DateTime.fromMillisecondsSinceEpoch(0);
   bool _turnOpen = false;
@@ -336,7 +335,6 @@ class CallSession extends ChangeNotifier {
           _ratedCallId ??= e['call_id'] as String;
           callId = e['call_id'] as String;
         }
-        if (e['resumed'] != true) engine = (e['engine'] as String?) ?? 'gemini';
         act = CallAct.listening;
         linkNote = null;
         speaker = null;
