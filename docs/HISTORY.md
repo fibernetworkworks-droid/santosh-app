@@ -10878,3 +10878,16 @@ layer can win): nav 14px / 500 in the ink, chat titles 14px / 450 in the ink (th
 Live in --mut. Schibsted Grotesk is loaded as a 400..700 variable face, so 450 and 550 are real weights. Text-size
 setting (Small / Large) still moves the titles 13 / 15px. Rules kept: nothing over 600, nothing under 12px, no --dim.
 Tests: tests/test_v0286_sidebar_visible.py.
+PREMIUM pass, same version (owner: "STILL SAME MAKE IT MORE PREMIUM AND PERFECT" - the live site was still v0.284, so
+none of v0.285 / v0.286 had reached her yet; this pass goes further anyway):
+- line icons instead of emoji chrome in the sidebar: the session folder (her OWN chosen emoji is kept), Show archived,
+  the row ⋯ (three dots, 16px), the session chevron (turns 90° when open);
+- one row rhythm: nav 36px, chats 34px, 8px corners, hover rgb(fg / .045), selected rgb(fg / .075); chat titles
+  14px / 470, the open chat 560;
+- the ⋯ sits INSIDE the row's pill (absolute, right 4px; the title makes room only on hover / open / focus) - it hung
+  outside, so the pill stopped short of it;
+- a session is a ROW like a chat (14px / 500 ink, folder icon), not a small grey label;
+- "Sessions" is one tight row with its + (it was a 50px empty block), "Other chats" + a day label stay together;
+- default sidebar width 224 -> 272px (Claude ~288; at 224 every title was cut at ~20 characters); drag 220-420 and
+  double-click reset (now 272) unchanged; a width she saved herself is kept.
+

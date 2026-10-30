@@ -222,7 +222,7 @@ window.HoolaWorkspace = ctx => {
   divider.setAttribute('aria-valuemax','420');divider.title='Drag to resize sidebar · double-click to reset';
   side.id='console-sidebar';divider.setAttribute('aria-controls',side.id);side.after(divider);
   const narrow=()=>matchMedia('(max-width:1100px)').matches;
-  let width=224,drag=null;
+  let width=272,drag=null;   // v0.286 default 224 -> 272 (Claude ~288): titles were cut at 20 characters
   try{const saved=Number(localStorage.getItem('hoola.web.sidebar.width'));if(saved>=220&&saved<=420)width=saved;}catch{}
   const set=value=>{width=Math.max(220,Math.min(420,Math.round(value)));app.style.setProperty('--sidebar-width',width+'px');divider.setAttribute('aria-valuenow',String(width));};
   const save=()=>{try{localStorage.setItem('hoola.web.sidebar.width',String(width));}catch{}};
@@ -236,7 +236,7 @@ window.HoolaWorkspace = ctx => {
   function finish(cancel=false){if(!drag)return;const current=drag;drag=null;if(cancel)set(current.width);else save();app.classList.remove('sidebar-resizing');if(divider.hasPointerCapture(current.id))divider.releasePointerCapture(current.id);}
   divider.addEventListener('pointerup',()=>finish());divider.addEventListener('pointercancel',()=>finish(true));
   divider.addEventListener('lostpointercapture',()=>finish(true));
-  divider.addEventListener('dblclick',()=>{set(224);save();});
+  divider.addEventListener('dblclick',()=>{set(272);save();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drag){e.preventDefault();e.stopImmediatePropagation();finish(true);}});
   divider.addEventListener('keydown',e=>{
     if(narrow()||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
