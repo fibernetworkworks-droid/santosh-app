@@ -11400,3 +11400,28 @@ A, B, C and D all end with the loader **visible**. The control case — a reply 
 
 ### Files
 `server/app/static/console/v2.js` · `server/tests/test_v0302_chup_nahi.py` (7 tests).
+
+
+## v0.303.0 PREMIUM + ADVANCED CREATE (30 Oct 2026)
+Owner: "NOW LETS WORK ON HOOLA CREATE SECTION --- MAKE IT MORE PREMIUM AND ADVANCE --- SHOW THE PREVIEW FIRST BEFORE DEPLOYMENT".
+Screenshots of every Create page first. What read as plain: a white hero; the maker hidden in a small "Director" dropdown;
+every template / film start in the SAME green (rng seeded 'q0'..'q7' with a weak hash landed on one palette); a lone
+"Festival greeting" card on its own row; Image style a cycling "Style: Auto" chip; shape / quality buttons plain text
+boxes; no camera control on Video; My creations with filters only.
+Built (studio.js + studio.css block "v0.303 PREMIUM + ADVANCED CREATE"; one small server change), every control real:
+- Home: a soft static light behind the hero (three radial gradients, theme-aware tokens), an eyebrow "Hoola Create", a
+  one-line promise, the five makers as visible tabs above the prompt (each tab its own example placeholder; the
+  dropdown stays for narrow screens), "Direct your film" and "Start from a template" as sideways rails with arrow
+  buttons (scroll-snap, arrows on hover, hidden on touch). rng() now FNV-1a + a mix, so the art varies.
+- Image: style presets as 76px picture tiles (Auto, Photoreal, Cinematic, Festive glow, Product studio, Watercolour,
+  Anime, 3D clay, Indian folk art - the same STYLES the job already appends to the prompt); shape buttons draw their
+  shape (ratioI); "Enhance" rewrites the prompt via POST /api/studio/improve kind=image (new IMAGE_IMPROVE_SYSTEM:
+  one rich picture description, her facts / quoted text kept, nothing invented); an Advanced fold with "Keep out of
+  the picture" that rides the prompt as "Avoid: ...".
+- Video: camera presets (Auto, Static, Dolly in, Pan, Orbit, Drone, Handheld, Slow motion) ride the brief as
+  "Camera: ..."; shape buttons draw their shape.
+- My creations: search (title, in the browser) + sort (Newest / Oldest / Name A-Z, the studio dropdown), "Nothing
+  matches" state.
+- Server: StudioImprove.kind (video | image); improve_brief turns a model failure into StudioJobError (a plain line)
+  instead of a 500 - this also covers the Video page's existing Improve.
+Tests: tests/test_v0303_create_premium.py.
