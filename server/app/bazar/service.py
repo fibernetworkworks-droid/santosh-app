@@ -919,7 +919,7 @@ def mcp_featured(tenant_id: str) -> list[dict[str, Any]]:
             if r:
                 item["pack_id"] = r.id
                 if (c.get("options") or {}).get("kind") == "supabase":
-                    item["settings"] = featured.supabase_settings(r.url)
+                    item["settings"] = featured.supabase_settings(custom_mcp.real_url(r))
                 elif c.get("options"):
                     item["settings"] = _featured_settings(s, user.id, r)
             if (c.get("options") or {}).get("reuse"):
@@ -988,6 +988,11 @@ def mcp_connect_featured(tenant_id: str, fid: str, url: str = "", key: str = "",
     if c["auth"] == "per_user_url":
         if not url:
             raise ToolError(f"Paste your personal {c['name']} MCP address (from your {c['name']} account).")
+        if (c.get("options") or {}).get("kind") == "zoho":
+            try:
+                url = featured.zoho_url(c, url)   # v0.289 only Zoho's own server addresses; clear words otherwise
+            except ValueError as e:
+                raise ToolError(str(e))
     else:
         url = c["url"]
     kind = (c.get("options") or {}).get("kind")
@@ -1047,7 +1052,7 @@ def _featured_row_url(tenant_id: str, ref: str) -> str:
         user = ensure_user(s, tenant_id)
         for r in custom_mcp.user_rows(s, user.id):
             if r.directory_ref == ref:
-                return r.url
+                return custom_mcp.real_url(r)
     return ""
 
 
@@ -1146,6 +1151,30 @@ def mcp_tools(tenant_id: str, pack_id: str) -> dict[str, Any]:
         caution = bool(pack.config.get("caution"))
     return {"pack_id": pack_id, "name": row.name, "caution": caution,
             "tools": mcp_prefs.view(tenant_id, pack_id, tools, caution)}
+
+
+def mcp_find_tools(tenant_id: str, pack_id: str, query: str = "", limit: int = 12) -> dict[str, Any]:
+    """v0.289 Search one of her servers' tools by the words of the job (Zoho MCP can carry hundreds; only a share of them
+    are given to the model each turn). Only tools she left on; each comes with its arguments, ready for bazar_run."""
+    from ..agent.mcp_live import rank
+    limit = max(1, min(int(limit or 12), 25))
+    with session() as s:
+        user = ensure_user(s, tenant_id)
+        if pack_id.startswith("mcp-"):
+            pack = custom_mcp.to_pack(_my_custom(s, tenant_id, pack_id))
+        else:
+            pack = registry().lookup(pack_id)
+            if pack is None or pack.executor != "mcp" or pack_status(s, user, pack) != "ready":
+                raise ToolError("Yeh MCP server aapki list mein ready nahi hai (bazar_mcp action=list dekho).")
+        try:
+            specs = executors()["mcp"].tool_specs(pack, _ctx(s, user, None))
+        except ToolError as e:
+            raise ToolError(str(e).replace("NOT_LINKED: ", ""))
+    tools = [{"name": sp.name, "description": sp.description.split("] ", 1)[-1][:300],
+              "args": sp.input_schema or {"type": "object"}, "needs_tap": sp.tier >= 2} for sp in specs]
+    hits = rank(tools, query)[:limit]
+    return {"pack_id": pack_id, "name": pack.name, "total_tools": len(tools), "tools": hits,
+            "say": f"Call with bazar_run pack_id={pack_id} tool=<name> args={{...}}. needs_tap = confirm card first."}
 
 
 def mcp_tool_set(tenant_id: str, pack_id: str, tool: str, enabled: bool | None = None,

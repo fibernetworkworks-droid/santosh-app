@@ -1,5 +1,5 @@
 {
- "source": "Official vendor MCP endpoints for apps in Claude's connector directory, researched 2026-10-19",
+ "source": "Official vendor MCP endpoints for apps in Claude's connector directory, researched 2026-10-19; Zoho MCP (all apps, India data centre) added 2026-10-30 from help.zoho.com",
  "connectors": [
   {
    "id": "razorpay",
@@ -19,6 +19,115 @@
    "key_format": "basic",
    "india": true,
    "caution": true
+  },
+  {
+   "id": "zoho-mcp",
+   "name": "Zoho (all apps)",
+   "category": "Business apps",
+   "url": "",
+   "url_hint": "https://<your-server>.zohomcp.in/mcp/<key>/message",
+   "auth": "per_user_url",
+   "does": "Zoho Books, Invoice, Inventory, CRM, Bigin, Mail, Calendar, Desk, Cliq, Projects, People, Payroll, WorkDrive, Sign and more: only the tools she ticks",
+   "source": "https://help.zoho.com/portal/en/kb/mcp/implementation-guide/articles/zoho-mcp-implementation-guide",
+   "confidence": "high",
+   "india": true,
+   "caution": true,
+   "keywords": [
+    "zoho",
+    "zoho books",
+    "books",
+    "invoice",
+    "inventory",
+    "gst",
+    "accounting",
+    "crm",
+    "bigin",
+    "zoho mail",
+    "desk",
+    "cliq",
+    "projects",
+    "payroll",
+    "people",
+    "workdrive",
+    "sign",
+    "bookings",
+    "pos",
+    "expense"
+   ],
+   "options": {
+    "kind": "zoho",
+    "hosts": [
+     "zohomcp.in",
+     "zohomcp.com",
+     "zohomcp.eu",
+     "zohomcp.com.au",
+     "zohomcp.jp",
+     "zohomcp.sa",
+     "zohomcp.ae",
+     "zohomcp.com.cn"
+    ],
+    "console": {
+     "in": "https://mcp.zoho.in",
+     "com": "https://mcp.zoho.com",
+     "eu": "https://mcp.zoho.eu",
+     "com.au": "https://mcp.zoho.com.au",
+     "jp": "https://mcp.zoho.jp",
+     "sa": "https://mcp.zoho.sa",
+     "ae": "https://mcp.zoho.ae",
+     "com.cn": "https://mcp.zoho.com.cn"
+    },
+    "max_tools_tip": 60,
+    "starter": {
+     "Books / Invoice (accounting, GST)": [
+      "list_invoices",
+      "get_invoice",
+      "create_invoice",
+      "email_invoice",
+      "list_contacts",
+      "create_contact",
+      "list_bills",
+      "list_expenses",
+      "get_profit_and_loss_report",
+      "get_balance_sheet_report",
+      "get_cash_flow_report",
+      "get_ar_aging_summary_report",
+      "generate_invoice_payment_link"
+     ],
+     "CRM / Bigin (customers, deals)": [
+      "searchRecords",
+      "getContactsRecords",
+      "createContactsRecords",
+      "getDealsRecords",
+      "createDealsRecords",
+      "executeCOQLQuery"
+     ],
+     "Mail": [
+      "listEmails",
+      "SearchEmails",
+      "getMessageContent",
+      "sendEmail",
+      "sendReplyEmail"
+     ],
+     "Calendar / Bookings": [
+      "getEventsInRange",
+      "findTimeSlots",
+      "addEvent",
+      "getAvailability",
+      "bookAppointment"
+     ],
+     "Desk (support)": [
+      "getTickets",
+      "getTicket",
+      "sendReply",
+      "updateTicket"
+     ],
+     "Cliq (team chat)": [
+      "list_channels",
+      "send_message_to_channel",
+      "send_message_to_user"
+     ]
+    }
+   }
   },
   {
    "id": "bigin-by-zoho",
@@ -46,7 +155,7 @@
    "url_hint": "",
    "auth": "per_user_url",
    "does": "Leads, deals, contacts and modules",
-   "source": "https://www.zoho.com/analytics/api/v2/zoho-analytics-mcp-server/remote-mcp/zoho-mcp.html",
+   "source": "https://www.zoho.com/crm/developer/docs/mcp/overview.html",
    "confidence": "high",
    "keywords": [
     "zoho",

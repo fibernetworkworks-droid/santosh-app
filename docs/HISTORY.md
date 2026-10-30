@@ -11000,7 +11000,55 @@ Found by reading `voice_openai.py` + the shared `voice.Call` it rides on (built 
    calls show whether his own voice leaks back into the mic.
 Scorecard adds `early_cuts`, `held_for_her`, `finish_waited`. Gemini untouched.
 Tests: NEW `test_v0285_sahi_kram.py` (8); `test_v0264_openai_voice.py` VAD pin -> medium. Version 0.289.0 (pubspec 0.289.0+329).
-## v0.290.0 COMPOSIO (built as 0.276.0, re-versioned after main reached 0.289.0; 30 Oct 2026, owner: "GO COMPOSIO")
+
+## v0.290.0 ZOHO FOR HOOLA (built as v0.241.0 / v0.273.0 / v0.286.0 / v0.288.0 / v0.289.0, re-versioned past main v0.289.0): every user adds her own Zoho MCP (only the tools she needs)
+- Owner: "LETS START WITH ZOHO", "SIMPLE MULTITANET USER WILL ADD ZOHO MCP AS PER THERE REQUIREMENT RIGHT", "PERFECT
+  DDEPLOY ZOHO FOR HOOLA". Research first (scratchpad reports, not in the repo): Zoho MCP is official, free for now, India
+  data centre mcp.zoho.in; ~15,500 tools in 75 sections (Books 1132, CRM 1319, Desk 837, Inventory 814, Mail 184...);
+  each user makes her own server, ticks tools, copies a PRIVATE address that carries a key
+  (`https://<server>.zohomcp.in/mcp/<key>/message`), OAuth once on first use; Zoho advises <= ~100-300 tools per server.
+- Multi-tenant model unchanged: one bz_custom_mcp row per user (`user_id`), max 50 servers each, other users can't see or
+  run it (existing isolation tests). What was missing, and is now fixed:
+  1. KEY IN THE ADDRESS WAS STORED IN CLEAR. `custom_mcp.has_secret / masked / set_url / real_url / seal_old`: an address
+     with a key in it (long random path part, or ?key= / token= / api_key=...) is sealed with the vault in the NEW nullable
+     column `bz_custom_mcp.url_enc`; `url` keeps a masked copy (`.../mcp/•••/message`) for listings, logos, the model and
+     dedupe display. `to_pack` endpoint = `real_url` (the only place that opens it); dedupe compares real addresses; Supabase
+     settings + `_featured_row_url` read the real address. Rows from before v0.290 are sealed on their first read
+     (`user_rows`). A rotated SECRET_KEY falls back to the masked address (fails cleanly; she pastes it again).
+     Plain addresses (Notion, Supabase project_ref, GitHub) are stored exactly as before.
+  2. BAZAR TABLES NEVER GOT NEW COLUMNS: `db._add_missing_columns(engine, metadata=None)` now also runs on the Bazar
+     metadata after `init_tables`, so old VPS databases get `url_enc` (and any later Bazar column) automatically.
+  3. OAuth sign-in state (`mcp_state:<state>` in bz_kv: PKCE verifier + the server address) is sealed; a state saved by an
+     older version (plain JSON) still finishes.
+  4. ONE BIG SERVER ATE THE WHOLE TOOL BUDGET: `mcp_live.tool_defs(snap, limit, query)` shares `mcp_native_tools` (40)
+     fairly (`shares`: small servers keep all their tools, big ones split the rest) and, inside a server over its share,
+     `rank` puts the tools her latest words name first (camelCase / snake_case split, plural folded; stable). With no words
+     or a small setup the order is exactly the old one. `santosh._last_user_text(history)` feeds it; voice keeps its
+     own min(25, ...) budget without a query.
+  5. THE REST WERE UNFINDABLE (only 25 names in the prompt): NEW `bazar_mcp action=tools pack_id=<id> query=<words>` ->
+     `service.mcp_find_tools`: up to 12 (max 25) of her enabled tools ranked by the words, each with description, argument
+     schema and `needs_tap`; the prompt block points to it whenever a server has more than 25 tools or overflowed.
+     Only her own servers (custom) or a READY built-in MCP pack.
+- Featured card `zoho-mcp` "Zoho (all apps)" (featured_mcp.json, India, caution because Books / Payments move money):
+  per_user_url, url_hint `https://<your-server>.zohomcp.in/mcp/<key>/message`, five-step India guide (featured.ZOHO_HOW),
+  options.hosts = Zoho's MCP domains per data centre, options.console, options.starter = ~38 suggested tools across
+  Books / Invoice, CRM / Bigin, Mail, Calendar / Bookings, Desk, Cliq, max_tools_tip 60. `featured.zoho_url` accepts only
+  https on *.zohomcp.{in,com,eu,com.au,jp,sa,ae,com.cn}; the console page (mcp.zoho.*) gets "open your server > Connect tab"
+  instead. The old `zoho-crm` / `bigin-by-zoho` cards stay (their docs link fixed for CRM).
+- Safety unchanged: reads run straight; anything not plainly a read (create / send / email / delete / payment link /
+  refund) becomes the confirm card with the exact call; her per-tool on/off switches apply.
+- Tests: NEW `server/tests/test_v0290_zoho_mcp.py` (12): mask/detect (plain addresses untouched), Zoho card connects with
+  the key sealed and never in any listing / featured view, real address used to connect, write = card, re-adding = same
+  row; only Zoho server addresses (console page / other host / http refused); card guide + starter + search; old row sealed
+  on read; Bazar column added on an old DB; sign-in state sealed; fair budget + her words pick the tools + prompt points to
+  action=tools + unchanged order without words; action=tools ranks, flags needs_tap, works through the agent tool, refuses
+  another user's server; version. Version pins 0.289.0 -> 0.290.0 across the suites.
+- Not verified live: a real Zoho MCP server (no Zoho account in the sandbox): the address shapes come from Zoho's own help
+  pages (CRM docs `<name>-<orgid>.zohomcp.in/mcp/<key>/message`, Projects help `<org>.zohomcp.com/mcp/message?key=`, both
+  masked). Whether Zoho needs the one-time browser sign-in or accepts the key alone from a server is unknown; both paths
+  work (needs_link -> Link button, or ready). The phone / console Bazar screens show the card from the API as before (no
+  Flutter change in this version).
+## v0.291.0 COMPOSIO (built as 0.276.0, re-versioned after main reached 0.290.0; 30 Oct 2026, owner: "GO COMPOSIO")
 Her own Slack, Notion, Jira, Confluence, Trello, Asana, ClickUp, Linear, Airtable, HubSpot, Salesforce, Pipedrive,
 Zendesk, Freshdesk, Mailchimp, Zoom, Calendly, Dropbox, Todoist, Figma, Miro (21 apps) through ONE Newtika Composio
 project. Users never make a Composio account.
