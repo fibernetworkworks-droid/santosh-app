@@ -239,4 +239,4 @@ def test_server_restart_saves_the_continuation_note(env):
 
 def test_version():
     from app import main
-    assert main.APP_VERSION == "0.304.0"
+    assert main.APP_VERSION == "0.305.0"

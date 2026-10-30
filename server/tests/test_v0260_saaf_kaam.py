@@ -114,8 +114,8 @@ def test_the_between_step_narration_still_stands():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.304.0"
-    assert "0.304.0+344" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.305.0"
+    assert "0.305.0+345" in (ROOT / "pubspec.yaml").read_text()
 
 
 from tests.test_bazar import bz  # noqa: E402,F401

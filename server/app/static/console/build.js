@@ -240,7 +240,7 @@ window.HoolaBuild = function (C) {
     if (s === 'planned') pre.push(['plan', 'Plan']);
     if (s === 'looks') pre.push(['looks', 'Looks']);
     return o.type === 'site'
-      ? [...pre, ['preview', 'Preview'], ['board', 'Board'], ['kadam', 'Steps'], ['jaanch', 'Checks']]
+      ? [...pre, ['preview', 'Preview'], ['board', 'Board'], ['kadam', 'Steps'], ['jaanch', 'Checks'], ...(o.v?.version ? [['data', 'App & data']] : [])]
       : [...pre, ['screens', 'Screens'], ['prototype', 'Prototype'], ['dhaancha', 'Structure'], ['android', 'Android'], ['kadam', 'Steps']];
   }
   function draw(rebuild) {
@@ -289,7 +289,7 @@ window.HoolaBuild = function (C) {
     const fr = studio.querySelector('[data-pane=frames]'), ot = studio.querySelector('[data-pane=other]');
     const framed = (o.type === 'site' && o.tab === 'preview') || (o.type === 'app' && o.tab === 'prototype');
     fr.hidden = !framed; ot.hidden = framed;
-    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); }
+    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); }
     showBtn();
   }
 
@@ -361,6 +361,7 @@ window.HoolaBuild = function (C) {
       case 'board': return `<section class="bbox"><h4>Board: pages and their parts</h4>${progress(o)}${L(b.pages).map(p => `<div class="bpg"><b>${esc(p.title)}</b><div class="bchips">${L(p.sections).map(s => chip(s.label, s.state)).join('')}</div></div>`).join('') || '<div class="stempty">Plan pakka hote hi hisse yahan dikhenge.</div>'}</section>`;
       case 'kadam': return kadamPane(o);
       case 'jaanch': return sitePane(o);
+      case 'data': return `<div class="stdata"><div class="stempty">${spin()} Loading the app…</div></div>`;
       case 'screens': return screensPane(o);
       case 'dhaancha': return dnaPane(o);
       case 'android': return androidPane(o);
@@ -532,6 +533,66 @@ window.HoolaBuild = function (C) {
     d.addEventListener('click', shut); addEventListener('keydown', key); document.body.appendChild(d);
     blob(path).then(u => { d.querySelector('img').src = u; }).catch(() => { d.querySelector('span').textContent = 'Picture not found.'; });
   }
+  /* ---------------- v0.305 web app: her lists, entries, members (her own login = admin) ---------------- */
+  async function loadData(o, root) {
+    const box = root.querySelector('.stdata'); if (!box) return;
+    let info;
+    try { info = await api('GET', base(o) + '/app'); } catch (er) { box.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; return; }
+    const sc = M(info.app), cols = L(sc.collections), counts = M(info.counts);
+    const design = `<form class="stapp" autocomplete="off"><label for="stApp"><b>${cols.length ? 'Change the app' : 'Make this website an app'}</b>
+        <span>Logins, lists of data with rules, a My account page and a staff panel at /admin/. Say who logs in, what they fill and who sees it.</span></label>
+        <div class="row"><input id="stApp" placeholder="e.g. customers log in and track their order; staff update the status"><button class="btn go" type="submit">${cols.length ? 'Update app' : 'Make app'}</button></div></form>
+      <div class="acts"><button class="btn soft" type="button" data-x="react">Export as React project</button></div>`;
+    box.innerHTML = design + (cols.length ? `<p class="stnote">${N(counts.members)} members · ${cols.map(c => `${esc(S(c.label))}: ${N(counts[c.key])}`).join(' · ')}</p><div class="stcols"></div><div class="stmem"></div>` : '');
+    box.querySelector('.stapp').addEventListener('submit', async e => {
+      e.preventDefault(); const w = box.querySelector('#stApp').value.trim(); if (!w) return;
+      const b = e.target.querySelector('button'); b.disabled = true;
+      try { const r = await api('POST', base(o) + '/app-design', {words: w, conversation_id: C.conv() || ''}); toast(S(r?.say) || 'App updated.'); loadData(o, root); }
+      catch (er) { toast(er.message, true); b.disabled = false; }
+    });
+    box.querySelector('[data-x=react]').addEventListener('click', async e => {
+      e.target.disabled = true;
+      try { const r = await api('POST', base(o) + '/export', {format: 'react'}); toast(S(r?.say) || 'React project ready.'); if (r?.file_id) C.say && toast('The ZIP is in your files: ' + S(r.name)); }
+      catch (er) { toast(er.message, true); } finally { e.target.disabled = false; }
+    });
+    const cbox = box.querySelector('.stcols');
+    for (const c of cols) {
+      let rows = [];
+      try { rows = L((await api('GET', `${base(o)}/app/rows/${encodeURIComponent(c.key)}`)).rows); } catch (er) { toast(er.message, true); }
+      const fields = L(c.fields);
+      const sec = document.createElement('section'); sec.className = 'stcol';
+      sec.innerHTML = `<h4>${esc(S(c.label))} <span>${rows.length}</span></h4>` + (rows.length ? `<div class="sttbl"><table><thead><tr>${fields.map(f => `<th>${esc(S(f.label))}</th>`).join('')}<th></th></tr></thead><tbody>${rows.map(r => `<tr data-r="${esc(S(r.id))}">${fields.map(f => {
+        const v = r[f.key];
+        if (f.type === 'choice') return `<td><select data-f="${esc(S(f.key))}" aria-label="${esc(S(f.label))}">${L(f.options).map(op => `<option${S(op) === S(v) ? ' selected' : ''}>${esc(S(op))}</option>`).join('')}</select></td>`;
+        return `<td>${esc(f.type === 'yes_no' ? (v ? 'Yes' : 'No') : S(v))}</td>`;
+      }).join('')}<td><button class="ib" type="button" data-del aria-label="Delete">✕</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No entries yet.</p>');
+      sec.addEventListener('change', async e => {
+        const s = e.target.closest('select[data-f]'), tr = e.target.closest('tr[data-r]'); if (!s || !tr) return;
+        try { await api('PATCH', `${base(o)}/app/rows/${encodeURIComponent(c.key)}/${encodeURIComponent(tr.dataset.r)}`, {[s.dataset.f]: s.value}); toast('Saved.'); }
+        catch (er) { toast(er.message, true); }
+      });
+      sec.addEventListener('click', async e => {
+        const b = e.target.closest('[data-del]'), tr = e.target.closest('tr[data-r]'); if (!b || !tr || !confirm('Delete this entry?')) return;
+        try { await api('DELETE', `${base(o)}/app/rows/${encodeURIComponent(c.key)}/${encodeURIComponent(tr.dataset.r)}`); tr.remove(); toast('Deleted.'); }
+        catch (er) { toast(er.message, true); }
+      });
+      cbox.appendChild(sec);
+    }
+    const mbox = box.querySelector('.stmem');
+    if (mbox) {
+      try {
+        const ms = L((await api('GET', base(o) + '/app/members')).members);
+        mbox.innerHTML = `<h4>Members <span>${ms.length}</span></h4>` + (ms.length ? `<ul class="stmems">${ms.map(m => `<li data-m="${esc(S(m.id))}"><span>${esc(S(m.name) || S(m.email))} · ${esc(S(m.email))}</span>
+          <select aria-label="Role">${['member', 'staff', 'admin'].map(r => `<option${r === S(m.role) ? ' selected' : ''}>${r}</option>`).join('')}</select></li>`).join('')}</ul>` : '<p class="stempty">Nobody has signed up yet.</p>');
+        mbox.addEventListener('change', async e => {
+          const s = e.target.closest('select'), li = e.target.closest('li[data-m]'); if (!s || !li) return;
+          try { await api('POST', `${base(o)}/app/members/${encodeURIComponent(li.dataset.m)}/role`, {role: s.value}); toast('Role changed: they log in again.'); }
+          catch (er) { toast(er.message, true); }
+        });
+      } catch (er) { /* no members list */ }
+    }
+  }
+
   /* ---------------- v0.295 edit mode: her own hands in the preview, no AI ---------------- */
   function dialog(title, inner) {
     return new Promise(done => {

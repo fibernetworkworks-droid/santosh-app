@@ -2029,3 +2029,17 @@ body.albon{overflow:hidden}
 .sted-note{margin:0;font-size:12px;color:var(--dim)}
 .sted-ph{display:flex;flex-wrap:wrap;gap:8px;max-height:46vh;overflow:auto}
 .sted-ph [aria-pressed=true]{outline:2px solid var(--pri);outline-offset:1px}
+
+/* v0.305 website studio: App & data tab */
+.stdata{display:grid;gap:14px}
+.stapp{display:grid;gap:8px;padding:12px;border:1px solid var(--hair);border-radius:12px;background:var(--raise)}
+.stapp label{display:grid;gap:3px;font-size:13px}.stapp label span{color:var(--mut)}
+.stapp .row{display:flex;gap:8px}.stapp input{flex:1;min-width:0;padding:9px 11px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit}
+.stnote{margin:0;color:var(--mut);font-size:13px}
+.stcol h4,.stmem h4{margin:0 0 8px;font-size:14px;font-weight:600}.stcol h4 span,.stmem h4 span{color:var(--dim);font-weight:500}
+.sttbl{overflow:auto;border:1px solid var(--hair);border-radius:10px}
+.sttbl table{border-collapse:collapse;width:100%;font-size:13px}
+.sttbl th,.sttbl td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.sttbl th{font-weight:600;color:var(--mut);background:var(--raise)}
+.stmems{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.stmems li{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}

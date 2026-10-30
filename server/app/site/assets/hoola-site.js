@@ -246,5 +246,6 @@
     });
   }
   function start() { nav(); forms(); lightbox(); compare(); embeds(); booking(); motion(); }
+  W.HoolaSite = { start: start };      // v0.305 the React export starts it again after a route change
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', start); else start();
 })();

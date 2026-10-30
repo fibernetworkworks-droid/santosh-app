@@ -184,5 +184,5 @@ def _has(html, e):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.304.0"
-    assert "0.304.0+344" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.305.0"
+    assert "0.305.0+345" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

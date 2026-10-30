@@ -241,4 +241,4 @@ def test_the_reply_never_waits_for_the_check(bz, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.304.0"
+    assert APP_VERSION == "0.305.0"
