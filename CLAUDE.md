@@ -110,9 +110,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.265.0 (pubspec 0.265.0+305). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.266.0 (pubspec 0.266.0+306). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (14 now: theme.js, pdfview.js, studio.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.266 ASLI SAANS: OpenAI said "main saans le rahi hoon" - words never ask for a breath now; the breath is a real sound
+  (`app/breath.py`: TTS <breath> kept only if voiceless, else generated) played before his first word; leak guard.
 - v0.265 SAANS AUR HMM: OpenAI real voice gets its voice block at the TOP + a one-time delivery cue per reply
   (`voice_openai.delivery_cue`, create_response false, cue deleted after the reply); scorecard delivery_cues / filler_starts.
 - v0.264 OPENAI VOICE Phase 1: optional "real voice" engine (`app/voice_openai.py` OpenAICall, gpt-realtime-2.1-mini), her choice

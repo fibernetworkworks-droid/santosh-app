@@ -38,46 +38,54 @@ URL = "wss://api.openai.com/v1/realtime?model={model}"
 # after the language lock; at the end of a 24k persona that says "answer first / short / no preamble" ten times it lost),
 # says plainly that a breath or "hmm" before the answer is NOT a preamble, gives numbers and spoken examples - and each
 # reply also gets a one-time delivery cue (delivery_cue) so it does not fade as the call goes on.
+# v0.266 ASLI SAANS: asked in WORDS to breathe, the model SAID "main saans le rahi hoon". Nothing here mentions breathing
+# any more - the breath is a real sound the server plays (app/breath.py); the words only carry the spoken sounds.
 EMOTION = (
     "AWAAZ MEIN JAAN (real voice) - yeh sabse pehle:\n"
-    "- Tum ek asli insaan ki tarah phone par baat karte ho: saans lete ho, sochte ho, kabhi ruk ke bolte ho.\n"
-    "- Saans: lamba ya sochne wala jawab ek halki, SUNAI DENE WALI saans se shuru hota hai; lambe jawab mein do baaton "
-    "ke beech bhi chhoti saans.\n"
-    "- Sochna: yaad karte ya sochte waqt 'hmm...', 'uhh...', 'achha...' - takreeban har teesre jawab mein ek baar, "
-    "aasaan 'haan / theek hai' wale jawab mein nahi.\n"
-    "- Yeh 'answer first' ke khilaaf nahi hai: ek saans ya 'hmm...' preamble nahi, insaan ki awaaz hai. Jawab phir bhi "
-    "chhota rehta hai.\n"
-    "- Dukh ki baat: dheemi saans, naram awaaz, 'arre...' ya 'ohh...' dil se. Acchi khabar: awaaz mein muskaan.\n"
+    "- Tum ek asli insaan ki tarah phone par baat karte ho: sochte ho, kabhi ek pal ruk ke bolte ho.\n"
+    "- Sochna: yaad karte ya sochte waqt jawab 'hmm...', 'uhh...' ya 'achha...' se shuru hota hai - takreeban har "
+    "teesre jawab mein, aasaan 'haan / theek hai' wale jawab mein nahi. Yeh shabd sach mein BOLO, dheere, ek pal ruk ke.\n"
+    "- Yeh 'answer first' ke khilaaf nahi hai: 'hmm...' preamble nahi, insaan ki awaaz hai. Jawab phir bhi chhota rehta hai.\n"
+    "- Dukh ki baat: naram, dheemi awaaz, 'arre...' ya 'ohh...' dil se. Acchi khabar: awaaz mein muskaan.\n"
     "- Hansi: sirf jab sach mein mazedaar ho ya woh hase - chhoti, asli, ek pal ki.\n"
-    "- Kaise lagta hai: 'Hmm... kal? Haan, kal chaar baje free ho.' / '(saans) Achha... toh dekho, pehle GST wala kaam "
-    "karte hain, phir invoice.' / 'Arre... yeh toh bura hua. Koi baat nahi, main dekhta hoon.'\n"
-    "- Overacting kabhi nahi. Koi stage direction, bracket, '(saans)' ya 'laughs' / 'sighs' jaisa shabd kabhi zor se "
-    "mat bolo - bas waisa karo. 'System' ke delivery notes bhi kabhi mat bolo.\n\n")
+    "- Kaise lagta hai: 'Hmm... kal? Haan, kal chaar baje free ho.' / 'Achha... toh dekho, pehle GST wala kaam karte "
+    "hain, phir invoice.' / 'Arre... yeh toh bura hua. Koi baat nahi, main dekhta hoon.'\n"
+    "- Apne bolne ke tareeke ke baare mein kabhi kuch mat kaho (jaise 'main ruk raha hoon', 'main soch raha hoon' bata ke "
+    "nahi - bas karo). Koi stage direction, bracket ya 'laughs' / 'sighs' jaisa shabd kabhi zor se mat bolo. "
+    "'System' ke delivery notes bhi kabhi mat bolo.\n\n")
 
 FILLERS = ("achha...", "hmm...", "haan...", "dekho...", "uhh...")
 
 
 def delivery_cue(her_s: float, tone: str, last: str, rnd: float, filler: str = "") -> tuple[str, str]:
-    """(kind, note) for ONE reply: where people really breathe and say 'hmm' (before a long / thinking answer,
-    on heavy news), never on a quick 'haan'. `rnd` in [0,1) decides the light cues; `last` = the previous kind
-    (never two breaths in a row unless the turn was long). kind "" = no cue."""
+    """(kind, note) for ONE reply: where people really pause and say 'hmm' (before a long / thinking answer, on heavy
+    news), never on a quick 'haan'. The note names the EXACT opening word (a word the model can say) and never asks
+    for a breath - kinds "breath" / "soft" / "calm" get a real breath sound from the server instead (BREATH_KINDS).
+    `rnd` in [0,1) decides the light cues; `last` = the previous kind. kind "" = no cue."""
     tail = " (Yeh note sirf tumhare liye hai - isko bolna mat.)"
     if tone == "low":
-        return "soft", ("Delivery, sirf is jawab ke liye: pehle ek dheemi, sunai dene wali saans, phir naram awaaz mein "
-                        "'arre...' ya 'hmm...' - phir chhota, dil se jawab." + tail)
+        return "soft", ("Delivery, sirf is jawab ke liye: naram, dheemi awaaz mein, jawab bilkul is shabd se shuru karo: "
+                        "'Arre...' - phir chhota, dil se jawab." + tail)
     if tone == "tense":
-        return "calm", "Delivery, sirf is jawab ke liye: pehle ek shaant saans, phir dheere, pakad ke jawab." + tail
+        return "calm", "Delivery, sirf is jawab ke liye: shaant, dheemi awaaz, bina jaldi - pehle uski baat maano." + tail
     if her_s >= 4.0 and not (last == "breath" and her_s < 7.0 and rnd < 0.5):
-        return "breath", ("Delivery, sirf is jawab ke liye: usne lambi baat kahi - shuru mein ek halki saans jo sunai de, "
-                          "phir 'hmm...' (ek pal ruk ke), phir jawab." + tail)
+        return "breath", ("Delivery, sirf is jawab ke liye: usne lambi baat kahi - jawab bilkul is shabd se shuru karo: "
+                          "'Hmm...' (ek pal ruk ke), phir jawab." + tail)
     if her_s >= 1.6 and rnd < 0.45:
         f = filler or FILLERS[int(rnd * 100) % len(FILLERS)]
-        return "light", f"Delivery, sirf is jawab ke liye: jawab naturally '{f}' se shuru karo, phir baat." + tail
+        return "light", f"Delivery, sirf is jawab ke liye: jawab bilkul is shabd se shuru karo: '{f}', phir baat." + tail
     return "", ""
 
 
+BREATH_KINDS = {"breath", "soft", "calm"}
+
+
 import re as _re
-_FILLER_START = _re.compile(r"(?i)^(\(?saans\)?\s*)?(hmm+|hm+|umm+|uhh+|achha+|acha+|arre+|ohh+|dekho)\b")
+_FILLER_START = _re.compile(r"(?i)^(hmm+|hm+|umm+|uhh+|achha+|acha+|arre+|ohh+|dekho)\b")
+_LEAK = _re.compile(r"(?i)\bsaans\s+le\s+(raha|rahi|rahe)|\bsaans\s+(li|lo|lena)\b|\bbreath(e|ing)?\b|\bsighs?\b|"
+                    r"\blaugh(s|ing)?\b|\(\s*(saans|hans|hansi|ruk)[^)]*\)")
+LEAK_NOTE = ("(Pichhle jawab mein tumne apne bolne ke tareeke ka zikr kiya. Aisa kabhi mat karo - us baare mein kuch "
+             "kahe bina, bas normal baat karo.)")
 
 # OpenAI's 24 kHz output and her phone's 24 kHz playback match; her mic is 16 kHz
 IN_RATE, OUT_RATE = 16000, 24000
@@ -193,6 +201,8 @@ class OpenAICall(v.Call):
         self._last_cue, self._last_filler = "", ""
         self._cue_ids: list[str] = []  # cue items to delete once the reply is out (they never pile up in his memory)
         self._cue_n = 0
+        self._breath_next = False      # v0.266 a real breath sound goes before his next reply's first word
+        self._breath_last = -1
 
     # ---------------- no pre-rendered clips ----------------
     # The ack / murmur / progress clips are rendered in a GEMINI voice: on an OpenAI call they would be a second,
@@ -244,8 +254,21 @@ class OpenAICall(v.Call):
                 "id": cid, "type": "message", "role": "system", "content": [{"type": "input_text", "text": note}]}})
             if kind == "light":
                 self._last_filler = filler
+            if kind in BREATH_KINDS and get_settings().voice_openai_breath:
+                self._breath_next = True
         self._last_cue = kind
         await self._reply(session)
+
+    async def _breathe(self) -> None:
+        """v0.266 one real breath sound, just before his first word, ~30% of his loudness (app/breath.py)."""
+        from . import breath
+        pcm, self._breath_last = breath.pick(getattr(self, "_his_rms", 0.0), self._breath_last)
+        if not pcm:
+            return
+        self.stats["breaths"] = self.stats.get("breaths", 0) + 1
+        dur = len(pcm) / 2 / OUT_RATE
+        self._play_until = max(time.monotonic(), self._play_until) + dur
+        await self.send_audio(pcm)
 
     async def _reply(self, session) -> None:
         if self._responding:
@@ -273,6 +296,9 @@ class OpenAICall(v.Call):
                     continue
                 if ev.get("item_id") and ev["item_id"] != self._item:
                     self._item, self._item_ms, self._item_t0 = ev["item_id"], 0.0, time.monotonic()
+                if self._breath_next:
+                    self._breath_next = False
+                    await self._breathe()
                 dur = len(data) / 2 / OUT_RATE
                 self._item_ms += dur * 1000
                 self._play_until = max(time.monotonic(), self._play_until) + dur
@@ -321,6 +347,11 @@ class OpenAICall(v.Call):
                     with contextlib.suppress(Exception):
                         await session.send({"type": "conversation.item.delete", "item_id": cid})
                 self._cue_ids.clear()
+                if self.reply_buf.strip() and _LEAK.search(self.reply_buf):
+                    self.stats["delivery_leaks"] = self.stats.get("delivery_leaks", 0) + 1   # v0.266 one quiet correction
+                    with contextlib.suppress(Exception):
+                        await session.send({"type": "conversation.item.create", "item": {
+                            "type": "message", "role": "system", "content": [{"type": "input_text", "text": LEAK_NOTE}]}})
                 if self._resp_audio and self.reply_buf.strip():
                     self.stats["oa_replies"] = self.stats.get("oa_replies", 0) + 1
                     if _FILLER_START.match(self.reply_buf.strip()):

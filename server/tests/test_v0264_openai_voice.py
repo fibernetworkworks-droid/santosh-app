@@ -253,10 +253,10 @@ def test_delivery_cue_rules():
     assert dc(2.5, "", "", 0.9)[0] == ""                      # a normal turn: only sometimes
     k, note = dc(2.5, "", "", 0.2, "hmm...")
     assert k == "light" and "'hmm...'" in note and "bolna mat" in note
-    assert dc(5.0, "", "", 0.9)[0] == "breath" and "saans" in dc(5.0, "", "", 0.9)[1]
+    assert dc(5.0, "", "", 0.9)[0] == "breath" and "'Hmm...'" in dc(5.0, "", "", 0.9)[1]
     assert dc(5.0, "", "breath", 0.2)[0] != "breath"          # never two breaths in a row on a medium-long turn
     assert dc(9.0, "", "breath", 0.2)[0] == "breath"          # ...unless she really talked long
-    assert dc(0.5, "low", "", 0.9)[0] == "soft" and "arre" in dc(0.5, "low", "", 0.9)[1]
+    assert dc(0.5, "low", "", 0.9)[0] == "soft" and "Arre" in dc(0.5, "low", "", 0.9)[1]
     assert dc(0.5, "tense", "", 0.9)[0] == "calm"
 
 
@@ -271,12 +271,14 @@ def test_her_turn_end_sends_cue_then_reply_and_cleans_up():
     c = voice_openai.OpenAICall.__new__(voice_openai.OpenAICall)
     c.stats, c._her_s, c._last_cue, c._last_filler = {}, 6.0, "", ""
     c._cue_ids, c._cue_n, c._responding, c._want_response = [], 0, False, False
+    c._breath_next = False
     c._tone_now = lambda: ""
     s = S()
     asyncio.run(c._her_turn_reply(s))
     item, create = s.sent
     assert item["type"] == "conversation.item.create" and item["item"]["role"] == "system"
-    assert item["item"]["id"] == "hoolacue1" and "saans" in item["item"]["content"][0]["text"]
+    assert item["item"]["id"] == "hoolacue1" and "'Hmm...'" in item["item"]["content"][0]["text"]
+    assert c._breath_next is True                              # the breath is a SOUND the server plays, not a word
     assert create == {"type": "response.create"} and c._cue_ids == ["hoolacue1"]
     assert c.stats["delivery_cues"] == 1 and c.stats["cue_kinds"] == {"breath": 1}
 
@@ -292,6 +294,48 @@ def test_voice_block_leads_and_openai_waits_for_us():
     assert "preamble nahi" in ins
     assert cfg["audio"]["input"]["turn_detection"]["create_response"] is False
     assert cfg["audio"]["input"]["turn_detection"]["interrupt_response"] is True
+
+
+def test_nothing_asks_him_to_breathe_in_words():
+    """v0.266: asked in words, the model SAID 'main saans le rahi hoon' - no text he reads may mention breathing."""
+    from app import voicelang
+    c = voice_openai.OpenAICall.__new__(voice_openai.OpenAICall)
+    c.langst, c.lang, c.name, c.gender, c.style = voicelang.LangState("hi-IN"), "hi-IN", "Santosh", "m", {}
+    texts = [voice_openai.EMOTION] + [voice_openai.delivery_cue(h, t, "", r)[1]
+                                     for h in (0.5, 2.0, 5.0, 9.0) for t in ("", "low", "tense") for r in (0.1, 0.9)]
+    for t in texts:
+        assert "saans" not in t.lower() and "breath" not in t.lower(), t
+
+
+def test_breath_sound_plays_before_his_first_word():
+    import time as _t
+    sent = []
+
+    class C(voice_openai.OpenAICall):
+        def __init__(self):
+            self.stats, self._breath_last, self._his_rms, self._play_until = {}, -1, 0.0, 0.0
+
+        async def send_audio(self, pcm):
+            sent.append(pcm)
+    c = C()
+    asyncio.run(c._breathe())
+    from app import breath
+    assert sent and breath.is_breath(sent[0]) and c.stats["breaths"] == 1 and c._play_until > _t.monotonic()
+
+
+def test_breath_detector_refuses_spoken_sounds():
+    from app import breath
+    assert all(breath.is_breath(breath.synth(s, d)) for s, d in ((1, .38), (2, .45), (3, .52)))
+    vowel = array("h", [int(6000 * math.sin(2 * math.pi * 180 * i / 24000) * (0.5 - 0.5 * math.cos(2 * math.pi * i / 12000)))
+                        for i in range(12000)]).tobytes()
+    assert not breath.is_breath(vowel)                          # a voiced word ("saans", "breath") is never a breath
+    assert not breath.is_breath(b"\x00\x00" * 12000) and not breath.is_breath(breath.synth(4, 2.0))
+
+
+def test_leak_guard_pattern():
+    leak = voice_openai._LEAK.search
+    assert leak("Main saans le rahi hoon, ek second") and leak("(saans) achha") and leak("he laughs")
+    assert not leak("Haan, kal chaar baje free ho") and not leak("Hmm... achha theek hai")
 
 
 def test_filler_start_counter():
@@ -316,5 +360,5 @@ def test_gemini_file_has_only_the_routing_seam():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.265.0"
-    assert "0.265.0+305" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.266.0"
+    assert "0.266.0+306" in (ROOT / "pubspec.yaml").read_text()

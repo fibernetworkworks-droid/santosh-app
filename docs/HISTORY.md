@@ -10267,3 +10267,24 @@ Server only; no new APK needed (the phone picker is Phase 3).
   `cue_kinds` in the live stats. Breaths themselves are only measurable by ear (the ear test).
 - Gemini untouched. Tests: `test_v0264_openai_voice.py` +4 (cue rules, cue -> reply -> cleanup, block at the top +
   create_response false, filler counter). Version 0.265.0 (pubspec 0.265.0+305, console ?v=0.265.0, pins -> 0.265.0).
+
+## v0.266.0 ASLI SAANS — a real breath sound, not the words "main saans le rahi hoon" (owner: "DEPLOYED, BREATH AND HMM ----------- NOT AVAILBLE --- INSTED IT TALK MAI SAAS LE RAHI HU")
+- Root cause: v0.265's instructions and per-reply cues asked for a breath IN WORDS ("halki saans lo"). A realtime speech
+  model turns words into speech: it SAID "main saans le rahi hoon" instead of breathing. It cannot make a breath sound on
+  request at all.
+- Fix 1, words: `EMOTION` and every `delivery_cue` note no longer mention breathing (a test sweeps all of them). The cue now
+  names the EXACT opening word, which the model reliably says: breath turns -> "'Hmm...' (ek pal ruk ke)", low tone ->
+  "'Arre...'", light turns -> one of achha / hmm / haan / dekho / uhh. The block also says never to describe his own
+  delivery ("main soch raha hoon" etc.).
+- Fix 2, a real sound: NEW `app/breath.py`. Cue kinds breath / soft / calm set `_breath_next`; the server plays ONE breath
+  right before the first audio of that reply (`OpenAICall._breathe`, ~30% of his running loudness, never the same take
+  twice, counted in `_play_until` so interruptions stay exact). Takes: Gemini 3.8 TTS with the official `<breath>` tag
+  (4 takes, cached `data/voice_acks/breath_N_br1.pcm`), each kept only if `is_breath()` says it is 0.2-1.4 s and voiceless
+  (>= 70% of its loud 20 ms frames have a high zero-crossing rate - a spoken "breath" / "saans" has voiced vowels and is
+  refused); until those exist, or if none pass, `synth()` = band-limited noise (350-2600 Hz) with a rise-and-fall envelope.
+  A breath is voiceless, so it does not have to match his voice. `VOICE_OPENAI_BREATH` (on) switches it.
+- Fix 3, leak guard: his reply matching `_LEAK` ("saans le rahi", "breathing", "laughs", "(saans)" ...) -> `delivery_leaks`
+  + one quiet system note (`LEAK_NOTE`).
+- Scorecard: `breaths`, `delivery_leaks` added. Gemini untouched.
+Tests: `test_v0264_openai_voice.py` 18 (+4: no breathing words anywhere, breath sound before his first word, the detector
+refuses voiced sounds, leak pattern). Version 0.266.0 (pubspec 0.266.0+306, console ?v=0.266.0, pins -> 0.266.0).
