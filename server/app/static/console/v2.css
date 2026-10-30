@@ -317,6 +317,10 @@ mark{background:rgb(var(--acc-rgb) / .32);color:var(--ink);border-radius:3px;pad
 .textmd a{text-decoration:underline}
 .textmd ul,.textmd ol{margin:0 0 16px;padding-left:22px;display:flex;flex-direction:column;gap:8px}
 .textmd ul:last-child,.textmd ol:last-child{margin-bottom:0}
+/* v0.277 PURA SAANS: a table, a quote and a code block need the same 16px under them as a paragraph.
+   Measured before this: 0px after a table, 4px after a quote, 6px after a code block. */
+.textmd table,.textmd blockquote,.textmd .cb,.textmd pre{margin:0 0 16px}
+.textmd table:last-child,.textmd blockquote:last-child,.textmd .cb:last-child{margin-bottom:0}
 .cb{background:var(--code-bg);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:6px 0}
 .cbh{display:flex;align-items:center;justify-content:space-between;padding:7px 13px;border-bottom:1px solid var(--line);font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim)}
 .cbcopy{font-size:12px;font-weight:600;color:var(--lit);background:var(--glass2);border:1px solid var(--line);border-radius:8px;padding:3px 10px}
@@ -1725,6 +1729,9 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
    ================================================================================================ */
 #app .thread{container-type:inline-size;container-name:thread}
 #app .col{width:min(880px,calc(100% - 20px));max-width:none;margin-inline:auto;padding-left:0;padding-right:0}
+/* v0.277 PURA SAANS: the space between one turn and the next. Measured ink to ink, Claude leaves 60px between
+   her message and the first line of the reply; ours was 39px, so a new turn did not read as a new turn. */
+#app .col{gap:44px}
 /* v0.276 PADHNE KI CHAUDAI: the column stays 880px so the words still start at the composer's left edge (v0.252),
    but the PROSE wraps at 680px. Measured with Literata 16px: one character is 7.45px, so 880px ran 118 characters
    a line where Claude's own text measures 674px = 90. A table, a code block or a card still takes the full width -

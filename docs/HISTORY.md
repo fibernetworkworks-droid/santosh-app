@@ -10557,3 +10557,41 @@ Tests: NEW `test_v0274_openai_parity.py` (6). Version 0.275.0 (pubspec 0.275.0+3
   chars) 20/20. Rollback switches: CHAT_CONTEXT=hoola, CHAT_COMPACT=false, MEMORY_FENCE=false, ABOUT_ME=false.
 - Seen in the quiz, not fixed: the v0.231 draft check sometimes prefixes the NEXT reply with a correction of the
   previous one ("Ek sudhaar: ...").
+
+## v0.277.0 PURA SAANS — the gaps v0.274 missed, and the paragraph itself (owner: "NOW LETS WORK ON PARAGRAP AND GAPS")
+- Measured in a real browser against her Claude screenshots, ink to ink, the same way v0.274 was measured. Four
+  things were still wrong, and three of them only became visible once v0.274's gaps were right:
+
+  | | before | now | Claude |
+  |---|---|---|---|
+  | after a table | **0px** | 16px | — |
+  | after a quote | **4px** | 16px | — |
+  | after a code block | **6px** | 16px | — |
+  | one turn to the next | **39px** | **61px** | **60px** |
+
+  The first three are the same 16px a paragraph gets: v0.274 had set the bottom margin on `p`, `.mdh`, `ul` and
+  `ol` but a table, a blockquote and a code block had none of their own, so the next line sat on the table's last
+  row. `.textmd table,blockquote,.cb,pre{margin:0 0 16px}` with `:last-child` at 0.
+  The fourth is the turn: `#app .col{gap:44px}` gives 61px ink to ink, so a new turn reads as a new turn.
+- TWO THINGS WERE CHECKED AND DELIBERATELY LEFT ALONE, because measuring showed they were already right:
+  - the gap ABOVE a table / quote / code is already 16px — the paragraph before it carries its own bottom margin;
+  - narration to tool row is 23px against Claude's 23-26px. The `#app .mh .bd{gap:12px}` that looked too tight on
+    paper measures correctly on screen, because the tool group carries its own padding. Changing it would have
+    broken a gap that was already Claude's. A test records both so the next session does not "fix" them.
+- THE PARAGRAPH ITSELF. Nothing in the rulebook had ever said how LONG a paragraph may be - only that prose should
+  be plain. `replystyle.CHAT` now asks for one idea per paragraph, two to four sentences, a new paragraph the
+  moment the idea changes, and explicitly allows a single sentence to stand as a paragraph when it carries the
+  point. Measured on Claude's own answers: the lines it writes while working run two lines, its summing-up
+  paragraph runs four sentences. Chat and console only - a spoken answer has no paragraphs.
+- THE PHONE NEEDS NOTHING: `md_text.dart` puts the same SizedBox between every block whatever it is, so a table
+  and a code block already get the 16px a paragraph gets (v0.274).
+- A SCARE WORTH RECORDING. Mid-measurement the paragraph margin read 2px and v0.274 looked lost. What had
+  happened: another session shipped `e86306a v0.273.0 INDIAMART` built on an OLD tree, which reverted this file
+  wholesale; someone had already pushed `f26dfe9 Revert e86306a`, and the first measurements were taken against
+  the clobbered checkout before that revert was fetched. Re-measured on the real tip - v0.274 and v0.276 were both
+  intact. The lesson for the next session: when a measurement contradicts a shipped version, re-fetch and check
+  whether main moved under you before changing anything.
+- Tests: NEW `server/tests/test_v0277_pura_saans.py` (7), including one that pins the two gaps that must NOT be
+  touched.
+- Version 0.277.0 (pubspec 0.277.0+317, console ?v=0.277.0, pins -> 0.277.0).
+- NOT VERIFIED: how the turn gap feels on a long scroll on her own screen.

@@ -168,4 +168,4 @@ def test_the_rulebook_still_rides_in_the_prompt():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.276.0"
+    assert APP_VERSION == "0.277.0"
