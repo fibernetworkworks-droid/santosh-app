@@ -116,9 +116,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.273.0 (pubspec 0.273.0+313). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.274.0 (pubspec 0.274.0+314). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (14 now: theme.js, pdfview.js, studio.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.274 OPENAI VOICE Phase 2+3: call features checked on OpenAI (news, hold, dropped-connection rebuild); phone
+  Profile > Call ki awaaz (`lib/ui/voice_engine_screen.dart`: Gemini / Real voice, rupees, minutes) + "Real voice" call badge.
 - v0.273 SATH SATH: call captions appear as he says them - one playback clock in `Call.send_audio`, captions + turn_done
   wait for the queued audio (`Call._caption`), her words / an interruption drop stale ones (`_cap_flush`); both engines.
 - v0.272 SOCH KE JAWAB 1/7: `agent/hard.py` spots hard reasoning asks (rules + a tiny Haiku judge for 'maybe'); they think

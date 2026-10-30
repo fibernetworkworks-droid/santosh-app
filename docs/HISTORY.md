@@ -10462,3 +10462,18 @@ Owner: "NOW LETS WORK ON HARD, COMPLEX, REASONING WORK --- FIRST CHECK WHAT ACTU
   waiting `turn_done` still goes at once. Gemini streams near real time, so its captions barely move.
 Tests: NEW `test_v0272_sath_sath.py` (6); `test_v0264_openai_voice.py` breath test follows the one clock.
 Version 0.273.0 (pubspec 0.273.0+313, console ?v=0.273.0, pins -> 0.273.0).
+
+## v0.274.0 OPENAI VOICE Phase 2 + 3 — every call feature on the real voice, and the picker on the phone (owner: "DEPLOYED, WORKING GOOD NOW. MOVE FURTHER")
+- Phase 2, parity (`test_v0274_openai_parity.py`): job news pushed into the call (`push("text")`) reaches OpenAI as a
+  system item with exactly ONE `response.create`; while she is on hold (her phone call) his OpenAI audio is held back
+  (`_hold_turn_audio`, never played) and the hold note goes quietly (`_tell_quietly` = item, no reply); a dropped
+  OpenAI connection is rebuilt by `OpenAICall.run` with a fresh `session.update` (same persona / tools / brief) and the
+  reseed of the talk so far. OTP by voice, bol-kar-haan approvals, side talk and the stall watchdog are the shared
+  `voice.Call` code both engines run (`_heard_her` feeds the same listeners). Only a real phone can prove a real network
+  switch / GSM call - they stay in docs/VOICE_E2E_TEST_PLAN.md Round C.
+- Phase 3, phone (new APK): Profile > **Call ki awaaz** (`lib/ui/voice_engine_screen.dart`, api `voiceEngine` /
+  `voiceEngineSet`): Gemini awaaz or Real voice (OpenAI) - picked from the next call; disabled with "trial" for users
+  the trial gate does not allow; the reason line when the server falls back to Gemini; this month's spend in rupees
+  (`month_inr` / `month_budget_inr`, new in `voiceengine.view`) and her minutes. The call screen shows a "Real voice"
+  badge (`CallSession.engine` from the `ready` event's `engine`).
+Tests: NEW `test_v0274_openai_parity.py` (6). Version 0.274.0 (pubspec 0.274.0+314, console ?v=0.274.0, pins -> 0.274.0).
