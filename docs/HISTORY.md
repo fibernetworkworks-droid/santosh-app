@@ -11366,3 +11366,38 @@ load anything; map / video embeds were stripped with no safe way back; one langu
 - Built as 0.296.0, re-versioned 0.301.0 on merge past the parallel v0.296-v0.300 work.
 - Not verified on the VPS: Google's map embed URL without a key from a real site; slots for an owner whose booking
   rules were never set (defaults: Mon-Sat 9-6).
+
+## v0.302.0 WEB DESIGN PHASE 4 — web apps, like Lovable's backend (owner: "START PHASE 4")
+Flaws 14-16 of the web design audit: static brochure sites only (no login, database, portal, staff panel), a fixed menu of
+section types, export as static HTML only.
+- **Design from her words** (`server/app/site/webapp.py`, `DESIGN_SYSTEM`, kind site_edit): "customers login karke apna
+  order track karein" -> lists (collections) with typed fields (text, long_text, number, phone, email, date, choice,
+  yes_no; `admin_only` = staff fills it, e.g. status) and RULES from a fixed vocabulary (create public|member|admin, read
+  public|members|own|admin, update / delete own|admin). `clean_schema` keeps only that vocabulary (unknown type -> text,
+  unknown rule -> the safe one, reserved keys and empty choices dropped, 12 lists x 24 fields). It never asks for
+  passwords, OTP, PIN, card / bank numbers, Aadhaar / PAN or health records. Stored on `sites.app` (new nullable column).
+- **Members**: `site_app_members` (email + PBKDF2-SHA256 200k with its own salt, role member | staff | admin, `gen`
+  counter), tokens = `site.member.gen.expiry.HMAC(SECRET_KEY)` for 30 days, dead on logout-all or a role change.
+  Her own Hoola login is always admin (`Who(owner=True)`).
+- **Rows**: `site_app_rows` (JSON, owner = member id), every value validated per type (phone -> 10 digits, choice in
+  its options, ...), 8 KB a row, 50,000 a site, rate limits per visitor (sign up 5 / hour, login 10 / 15 min, create 30 /
+  10 min). EVERY rule is checked by the server on every call (read own = only her rows, staff-only fields ignored for
+  members, update / delete own vs admin, members list staff-only, roles admin-only and never one's own).
+- **Public API** `/api/site-app/<site>/schema | signup | login | me | logout | c/<list>[/<row>] | members[/<id>/role]`
+  (CORS with Authorization; answers carry no password hash). **Owner API** `/api/sites/<id>/app-design | app |
+  app/rows/<list>[/<row>] | app/members[/<id>/role]`; website tool action=app (+ instruction).
+- **The site** (`build.with_app_pages` / `app_page`, code only): "My account" in the menu (login / sign up, a form per
+  list she may create in, her entries) and the staff panel `/admin/` (not in the menu, noindex; every list editable,
+  members and roles for an admin). `assets/hoola-app.js` fills them from the live schema; every value goes on the page
+  as TEXT (checked in Chromium: an `<img onerror>` typed into a form shows as text). Section writers may place the same
+  `data-hoola-app` containers where they fit (`_app_line` in the section prompt) and never write their own login form.
+- **Console** studio tab "App & data": describe / change the app, every list as a table (choice fields editable in
+  place, delete), members with role pickers, "Export as React project".
+- **React export** (`server/app/site/reactx.py`, `/api/sites/<id>/export {format: react}`, website action=export
+  format=react): a Vite + React 18 + react-router project, one component per built page (body as Hoola built it),
+  assets in public/, `src/hoola.js` restarts the site's scripts after a route change and holds the app API address.
+- **Bug found in the Chromium run and fixed**: a field named `item` (the first thing an order form has) posted nothing -
+  `form.elements['item']` is the collection's own `item()` method; fields are now read by `[name=...]`.
+- Tests `server/tests/test_v0302_web_apps.py` (5) + a Chromium run of sign up, form, list and the staff panel.
+- Not done yet: the phone app's own Data screen (the console has it; on the phone the site's /admin/ page works in
+  the browser), file / photo fields, emails to members (password reset is "ask the shop" for now).

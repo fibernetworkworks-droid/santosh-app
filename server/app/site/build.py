@@ -419,7 +419,54 @@ ICON_CALL = ('<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><p
 
 # ---------------------------------------------------------------- page chrome (code, not the model)
 def nav_pages(plan: dict[str, Any]) -> list[dict[str, Any]]:
-    return [p for p in plan.get("pages", []) if p["slug"] not in LEGAL_PAGES]
+    return [p for p in plan.get("pages", []) if p["slug"] not in LEGAL_PAGES and p["slug"] != "admin"]
+
+
+# ---------------------------------------------------------------- v0.302 web app pages (code only, never the model)
+APP_WORDS = {
+    "en": {"account": "My account", "nav": "Account", "admin": "Staff", "admin_h": "Staff panel",
+           "admin_p": "Only staff of this business can see this. Log in with your staff account.", "staff": "Staff login"},
+    "hinglish": {"account": "Mera account", "nav": "Account", "admin": "Staff", "admin_h": "Staff panel",
+                 "admin_p": "Yeh sirf dukaan ke staff ke liye hai. Apne staff account se login kijiye.", "staff": "Staff login"},
+    "hi": {"account": "मेरा अकाउंट", "nav": "अकाउंट", "admin": "स्टाफ", "admin_h": "स्टाफ पैनल",
+           "admin_p": "यह सिर्फ़ स्टाफ के लिए है। अपने स्टाफ अकाउंट से लॉगिन कीजिए।", "staff": "स्टाफ लॉगिन"},
+}
+APP_WORDS["mr"] = APP_WORDS["hi"]
+
+
+def app_words(site: dict[str, Any]) -> dict[str, str]:
+    return APP_WORDS.get(site.get("language") or "en", APP_WORDS["en"])
+
+
+def with_app_pages(site: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
+    """A site with an app gets 'My account' (in the menu) and the staff page /admin/ (not in the menu)."""
+    if not (site.get("app") or {}).get("collections") or any(p["slug"] == "account" for p in plan.get("pages", [])):
+        return plan
+    w = app_words(site)
+    pages = list(plan.get("pages", []))
+    at = next((i for i, p in enumerate(pages) if p["slug"] in LEGAL_PAGES), len(pages))
+    pages[at:at] = [{"slug": "account", "title": w["account"], "nav": w["nav"], "sections": []},
+                    {"slug": "admin", "title": w["admin"], "nav": w["admin"], "sections": []}]
+    return {**plan, "pages": pages}
+
+
+def app_page(kind: str, site: dict[str, Any]) -> str:
+    """The account / staff pages: containers the app script fills from the live schema (no data in the HTML)."""
+    w = app_words(site)
+    if kind == "admin":
+        return (f'<section class="hs"><div class="wrap"><h1>{esc(w["admin_h"])}</h1><p class="lead">{esc(w["admin_p"])}</p>'
+                f'<div data-hoola-app="login"></div><div data-hoola-app="admin"></div></div></section>')
+    parts = [f'<section class="hs"><div class="wrap"><h1>{esc(w["account"])}</h1><div data-hoola-app="login"></div></div></section>']
+    for c in (site.get("app") or {}).get("collections", []):
+        r = c["rules"]
+        inner = ""
+        if r["create"] != "admin":
+            inner += f'<div data-hoola-app="form" data-c="{esc(c["key"])}"></div>'
+        if r["read"] != "admin":
+            inner += f'<div data-hoola-app="list" data-c="{esc(c["key"])}"></div>'
+        if inner:
+            parts.append(f'<section class="hs hs-alt"><div class="wrap"><h2>{esc(c["label"])}</h2>{inner}</div></section>')
+    return "\n".join(parts)
 
 
 def header(site: dict[str, Any], plan: dict[str, Any], slug: str, rel: str, logo: bool) -> str:
@@ -542,8 +589,10 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
             '<meta name="generator" content="Hoola">']
     if canon:
         meta.append(f'<link rel="canonical" href="{esc(canon)}">')
-    if site.get("noindex"):
+    if site.get("noindex") or page["slug"] in ("admin", "account"):
         meta.append('<meta name="robots" content="noindex">')
+    if site.get("app_api"):                      # v0.302 where the app script talks to (Hoola's API, never the site host)
+        meta.append(f'<meta name="hoola-app" content="{esc(site["app_api"])}" data-lang="{esc(site.get("language") or "en")}">')
     pre = [fn for fam, sub, w, fn in font_files(site["tokens"]) if sub == "latin" and fam == site["tokens"]["head"] and w == 700][:1]
     links = "".join(f'<link rel="preload" href="{rel}assets/fonts/{fn}" as="font" type="font/woff2" crossorigin>' for fn in pre)
     links += f'<link rel="icon" href="{rel}assets/img/{"logo.png" if logo else "icon.svg"}">'
@@ -558,7 +607,8 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
             f'<body class="look-{esc(site["tokens"]["style"])}">{header(site, plan, page["slug"], rel, logo)}{notice}'
             f'<main id="main">{body}</main>{footer(site, plan, rel)}{floats(site)}'
             f'<script src="{rel}assets/hoola-site.js" defer></script><script src="{rel}assets/site.js" defer></script>'
-            f'</body></html>')
+            + (f'<script src="{rel}assets/hoola-app.js" defer></script>' if site.get("app_api") else "")
+            + '</body></html>')
 
 
 # ---------------------------------------------------------------- legal pages (code only)
@@ -616,6 +666,9 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     for fam, sub, w, fn in font_files(tk):
         shutil.copy(ASSETS / "fonts" / fn, out / "assets" / "fonts" / fn)
     shutil.copy(ASSETS / "hoola-site.js", out / "assets" / "hoola-site.js")
+    if site.get("app_api"):
+        shutil.copy(ASSETS / "hoola-app.js", out / "assets" / "hoola-app.js")
+    plan = with_app_pages(site, plan)
     logo = False
     if site.get("logo_path") and Path(site["logo_path"]).exists():
         try:
@@ -660,6 +713,8 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
         slug, rel = page["slug"], rel_of(page["slug"])
         if slug in LEGAL_PAGES:
             body = legal_page(slug, site)
+        elif slug in ("account", "admin") and (site.get("app") or {}).get("collections") and not page.get("sections"):
+            body = app_page(slug, site)
         else:
             parts = []
             for i, s in enumerate(page.get("sections", [])):
