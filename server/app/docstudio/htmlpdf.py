@@ -1,4 +1,4 @@
-"""v0.303.0 HOOLA PRINT - PDFs made the way Claude makes them: a designed HTML page printed by Chromium.
+"""v0.305.0 HOOLA PRINT - PDFs made the way Claude makes them: a designed HTML page printed by Chromium.
 
 The owner sent three PDFs Claude made (a business plan, a 46-page delivery plan, a research thesis) and asked for the
 same. Their metadata settled the method: all three are HTML + CSS printed by Chrome (Skia/PDF, Liberation / Arial
@@ -38,7 +38,7 @@ from . import designs
 
 log = logging.getLogger("santosh.docstudio.print")
 
-ENGINE_VERSION = "v0.303.0"
+ENGINE_VERSION = "v0.305.0"
 FONT_DIR = Path(__file__).resolve().parent.parent / "fonts"
 PRINT_FONTS = FONT_DIR / "print"
 STATS = {"printed": 0, "fallback": 0, "art_opus": 0, "art_router": 0, "review": 0, "review_changed": 0,
@@ -439,122 +439,161 @@ def _stack(fam: str) -> str:
     return f"'{fam}','Inter',{INDIC},'DejaVu Sans',{tail}"
 
 
+GUTTER = 10.0   # mm inside the 8 mm page margin = text 18 mm from the paper; the numbers hang in this strip
+GRID = {   # v0.305.0 THE PAGE SYSTEM - every measure below comes from these (measured audit: 8 text edges -> 2)
+    "inset": 5.0,       # mm: the ONE indent - text inside any box (note, key number, code, quote, filled table) and lists
+    "hang": 3.0,        # mm: gap between a hanging heading number (in the margin) and the heading text
+    "scale": (1.125, 1.35, 1.8),   # h3, h2, h1 as multiples of the body size (one ratio ladder, nothing in between)
+}
+
+
+def line_mm(spec: dict[str, Any]) -> float:
+    """One body line in mm - the unit every vertical space is a multiple of."""
+    size, lh, _gap = DENSITY.get(spec["density"], DENSITY["normal"])
+    return round(size * lh * 25.4 / 72, 2)
+
+
 def _css(spec: dict[str, Any], P: dict[str, str]) -> str:
+    """The inside pages as ONE system (v0.305.0, from a measured audit of the printed layout):
+    - two left edges only: the text edge (0) and the inset (GRID inset) - paragraphs, headings, plain tables and the
+      contents titles start on the text edge; text inside every box and every list starts on the inset; heading and
+      contents numbers hang in the margin so they never push the words right;
+    - every box spans the full column, text inside it keeps the same inset on the right, so box edges and numbers
+      line up down the page;
+    - vertical space = multiples of one body line (L): paragraph .5L, around every box .8L (same above and below),
+      h3 1L/.3L, h2 1.5L/.4L, h1 2L/.55L (space above a heading always 2.5x+ the space below it);
+    - type sizes from one ratio ladder (GRID scale)."""
     head, body = TYPES.get(spec["type"], TYPES["sans"])
-    size, lh, gap = DENSITY.get(spec["density"], DENSITY["normal"])
+    size, lh, _gap = DENSITY.get(spec["density"], DENSITY["normal"])
+    L = line_mm(spec)
+    IN, HANG = GRID["inset"], GRID["hang"]
+    h3, h2, h1 = (round(size * k, 1) for k in GRID["scale"])
     table = spec["table"]
     th = {"dark": f"background:{P['primary']};color:#fff;border-bottom:0",
           "tint": f"background:{P['soft2']};color:{P['ink']};border-bottom:1.2pt solid {P['primary']}",
           "lines": f"background:transparent;color:{P['ink']};border-bottom:1.4pt solid {P['ink']}"}[table]
     zebra = f"tbody tr:nth-child(even) td{{background:{P['zebra']}}}" if table != "lines" else ""
+    edge = "0" if table == "lines" else f"{IN}mm"       # a filled table insets like every box; a plain one sits on the edge
+    bar = 3.0 * 25.4 / 72                                # the 3pt coloured edge of notes / key numbers, in mm
     return f"""{_font_css()}
 :root{{--p:{P['primary']};--a:{P['accent']};--ink:{P['ink']};--mut:{P['muted']};--line:{P['line']};--soft:{P['soft']};
---soft2:{P['soft2']};--deep2:{P['deep2']};--zebra:{P['zebra']};--hf:{_stack(head)};--bf:{_stack(body)};--gap:{gap}mm}}
+--soft2:{P['soft2']};--deep2:{P['deep2']};--zebra:{P['zebra']};--hf:{_stack(head)};--bf:{_stack(body)};
+--L:{L}mm;--in:{IN}mm;--hang:{HANG}mm}}
 @page{{size:A4}}
 *{{box-sizing:border-box}}
 html{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-body{{margin:0;font-family:var(--bf);font-size:{size}pt;line-height:{lh};color:var(--ink);font-kerning:normal;
+body{{margin:0;padding:0 {GUTTER}mm;font-family:var(--bf);font-size:{size}pt;line-height:{lh};color:var(--ink);font-kerning:normal;
 font-variant-numeric:lining-nums;text-rendering:optimizeLegibility;orphans:3;widows:3;hyphens:manual}}
-p{{margin:0 0 var(--gap)}} b,strong{{font-weight:650}} a{{color:var(--a);text-decoration:none}}
-h1,h2,h3{{font-family:var(--hf);color:var(--ink);break-after:avoid;page-break-after:avoid;line-height:1.22}}
-h1{{font-size:{size * 1.72:.1f}pt;font-weight:700;margin:{gap * 3.2:.1f}mm 0 {gap * 1.3:.1f}mm;letter-spacing:-.01em}}
-h2{{font-size:{size * 1.3:.1f}pt;font-weight:650;margin:{gap * 2.4:.1f}mm 0 {gap:.1f}mm}}
-h3{{font-size:{size * 1.08:.1f}pt;font-weight:650;margin:{gap * 1.8:.1f}mm 0 {gap * .6:.1f}mm}}
-h1 .no{{color:var(--a);margin-right:.45em;font-variant-numeric:tabular-nums}}
-h1.banner{{background:var(--p);color:#fff;padding:3.2mm 5mm;border-radius:1.5mm;font-size:{size * 1.45:.1f}pt}}
-h1.banner .no{{color:#fff;opacity:.7}}
+p{{margin:0 0 calc(var(--L)*.5)}} b,strong{{font-weight:650}} a{{color:var(--a);text-decoration:none}}
+h1,h2,h3{{font-family:var(--hf);color:var(--ink);break-after:avoid;page-break-after:avoid;line-height:1.22;position:relative}}
+h1{{font-size:{h1}pt;font-weight:700;margin:calc(var(--L)*2) 0 calc(var(--L)*.55);letter-spacing:-.01em}}
+h2{{font-size:{h2}pt;font-weight:650;margin:calc(var(--L)*1.5) 0 calc(var(--L)*.4)}}
+h3{{font-size:{h3}pt;font-weight:650;margin:calc(var(--L)*1) 0 calc(var(--L)*.3)}}
+h1 .no{{display:inline-block;width:{GUTTER - .5}mm;margin-left:-{GUTTER - .5}mm;padding-right:var(--hang);
+text-align:right;font-size:.6em;color:var(--a);font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:0}}
+h1.banner{{background:var(--p);color:#fff;padding:calc(var(--L)*.45) var(--in);border-radius:1.2mm;font-size:{h2}pt}}
+h1.banner .no{{width:auto;margin:0 .55em 0 0;padding:0;font-size:1em;color:#fff;opacity:.7}}
 .body>h1:first-child,.body>.lh+h1{{margin-top:0}}
-ul,ol{{margin:0 0 var(--gap);padding-left:6mm}} li{{margin:0 0 {gap * .45:.1f}mm}} li.l1{{margin-left:6mm;list-style:circle}}
-li::marker{{color:var(--a)}}
+.body :is(h1,h2,h3)+*{{margin-top:0}}   /* a heading binds to whatever follows: only its own space below counts */
+ul,ol{{margin:0 0 calc(var(--L)*.5);padding-left:var(--in)}}
+li{{margin:0 0 calc(var(--L)*.2);padding-left:0}} li.l1{{margin-left:var(--in);list-style:circle}}
+li::marker{{color:var(--a)}} ol>li::marker{{font-variant-numeric:tabular-nums}}
 code{{font-family:'Hoola Mono','DejaVu Sans Mono',monospace;font-size:.86em;background:var(--soft2);border-radius:1mm;
-padding:.15em .35em}}
-pre{{font-family:'Hoola Mono','DejaVu Sans Mono',monospace;font-size:{max(7.6, size * .8):.1f}pt;line-height:1.45;
-background:#141821;color:#e8eaf0;border-radius:2mm;padding:4mm 5mm;margin:0 0 {gap * 1.4:.1f}mm;white-space:pre-wrap;
+padding:.1em .3em}}
+.box,pre,blockquote,.callout,.stats,table{{margin:calc(var(--L)*.8) 0}}
+pre{{font-family:'Hoola Mono','DejaVu Sans Mono',monospace;font-size:{max(7.6, size * .82):.1f}pt;line-height:1.5;
+background:#141821;color:#e8eaf0;border-radius:1.2mm;padding:calc(var(--L)*.5) var(--in);white-space:pre-wrap;
 overflow-wrap:anywhere;break-inside:avoid}}
 pre code{{background:none;padding:0;color:inherit;font-size:1em}}
-blockquote{{margin:0 0 {gap * 1.4:.1f}mm;padding:1mm 0 1mm 5mm;border-left:2.2pt solid var(--a);color:var(--mut);
-font-style:italic;break-inside:avoid}}
-hr{{border:0;border-top:.8pt solid var(--line);margin:{gap * 2:.1f}mm 0}}
-.callout{{border-left:3pt solid var(--a);background:var(--soft);padding:3mm 5mm;margin:0 0 {gap * 1.4:.1f}mm;
-border-radius:0 1.5mm 1.5mm 0;break-inside:avoid}}
-.callout .ct{{font-family:var(--hf);font-weight:700;font-size:.82em;letter-spacing:.06em;text-transform:uppercase;
-color:var(--a);margin-bottom:1mm}}
-.callout p:last-child{{margin:0}}
+blockquote{{padding:calc(var(--L)*.15) var(--in) calc(var(--L)*.15) calc(var(--in) - {bar:.2f}mm);
+border-left:{bar:.2f}mm solid var(--a);color:var(--mut);font-style:italic;break-inside:avoid}}
+hr{{border:0;border-top:.8pt solid var(--line);margin:calc(var(--L)*1) 0}}
+.callout{{border-left:{bar:.2f}mm solid var(--a);background:var(--soft);
+padding:calc(var(--L)*.45) var(--in) calc(var(--L)*.45) calc(var(--in) - {bar:.2f}mm);border-radius:0 1.2mm 1.2mm 0;
+break-inside:avoid}}
+.callout .ct{{font-family:var(--hf);font-weight:700;font-size:.8em;letter-spacing:.08em;text-transform:uppercase;
+color:var(--a);margin-bottom:calc(var(--L)*.15)}}
+.callout p{{margin:0 0 calc(var(--L)*.3)}} .callout p:last-child{{margin:0}}
 .callout.warning,.callout.caution,.callout.important{{border-color:#b45309;background:#fff7ea}}
 .callout.warning .ct,.callout.caution .ct,.callout.important .ct{{color:#9a3f07}}
 .callout.success,.callout.check,.callout.gate{{border-color:#15803d;background:#effaf2}}
 .callout.success .ct,.callout.check .ct,.callout.gate .ct{{color:#166534}}
 .callout.human{{border-color:#c2410c;background:#fff4ec}} .callout.human .ct{{color:#9a3412}}
-.stats{{display:flex;gap:4mm;margin:{gap:.1f}mm 0 {gap * 1.6:.1f}mm;break-inside:avoid}}
-.stat{{flex:1;background:var(--soft);border-left:3pt solid var(--a);padding:3.6mm 4.5mm;border-radius:0 1.5mm 1.5mm 0}}
-.stat .v{{display:block;font-family:var(--hf);font-size:{size * 1.9:.1f}pt;font-weight:700;color:var(--a);line-height:1.1;
-font-variant-numeric:tabular-nums}}
-.stat .l{{display:block;font-size:.84em;color:var(--mut);margin-top:1.2mm}}
-table{{width:100%;border-collapse:collapse;margin:{gap * .6:.1f}mm 0 {gap * 1.6:.1f}mm;font-size:{size * .9:.1f}pt;
-line-height:1.42}}
+.stats{{display:grid;grid-template-columns:repeat(var(--n,3),1fr);gap:4mm;break-inside:avoid}}
+.stat{{background:var(--soft);border-left:{bar:.2f}mm solid var(--a);border-radius:0 1.2mm 1.2mm 0;
+padding:calc(var(--L)*.45) var(--in) calc(var(--L)*.45) calc(var(--in) - {bar:.2f}mm)}}
+.stat .v{{display:block;font-family:var(--hf);font-size:{h1}pt;font-weight:700;color:var(--a);line-height:1.1;
+font-variant-numeric:tabular-nums;letter-spacing:-.01em}}
+.stat .l{{display:block;font-size:.84em;color:var(--mut);margin-top:calc(var(--L)*.15);line-height:1.35}}
+table{{width:100%;border-collapse:collapse;font-size:{size * .9:.1f}pt;line-height:1.42}}
 table.keep{{break-inside:avoid}}
 thead{{display:table-header-group}} tr{{break-inside:avoid}}
-th{{{th};text-align:left;font-weight:650;padding:2.4mm 3mm;font-family:var(--hf);vertical-align:bottom}}
-td{{padding:2.1mm 3mm;border-bottom:.6pt solid var(--line);vertical-align:top;overflow-wrap:anywhere}}
+th{{{th};text-align:left;font-weight:650;padding:2.2mm 3mm;font-family:var(--hf);vertical-align:bottom}}
+td{{padding:2mm 3mm;border-bottom:.6pt solid var(--line);vertical-align:top;overflow-wrap:anywhere}}
+th:first-child,td:first-child{{padding-left:{edge}}} th:last-child,td:last-child{{padding-right:{edge}}}
 {zebra}
 td.k,th.k{{white-space:nowrap}}
-td.n,th.n{{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}}
+td.n,th.n{{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;width:1%}}
 tr.tot td{{font-weight:700;border-top:1.4pt solid var(--ink);border-bottom:0;background:transparent}}
 .toc{{break-after:page}}
-.toc h1{{margin-top:0}}
-.toc .row{{display:flex;align-items:baseline;gap:2mm;padding:1.6mm 0;color:var(--ink);break-inside:avoid}}
+.toc h1{{margin-top:0;margin-bottom:calc(var(--L)*1)}}
+.toc .row{{display:flex;align-items:baseline;gap:2mm;color:var(--ink);break-inside:avoid;position:relative;
+padding:calc(var(--L)*.18) 0}}
 .toc .row .t{{flex:0 1 auto}} .toc .row .d{{flex:1;border-bottom:.8pt dotted var(--line);transform:translateY(-1mm)}}
-.toc .row .pg{{flex:0 0 auto;font-variant-numeric:tabular-nums;color:var(--mut)}}
-.toc .r1{{font-weight:650;margin-top:1.4mm}} .toc .r2{{padding-left:7mm;font-size:.93em}}
-.toc .r1 .no{{color:var(--a);margin-right:.5em}}
+.toc .row .pg{{flex:0 0 auto;font-variant-numeric:tabular-nums;color:var(--mut);min-width:6mm;text-align:right}}
+.toc .r1{{font-weight:650;margin-top:calc(var(--L)*.3)}} .toc .r2{{padding-left:var(--in);font-size:.93em}}
+.toc .row .no{{display:inline-block;width:{GUTTER - .5}mm;margin-left:-{GUTTER - .5}mm;padding-right:var(--hang);
+text-align:right;color:var(--a);font-variant-numeric:tabular-nums}}
 .pb{{break-after:page}}
 .coverslot{{height:1mm;break-after:page}}
 .mk{{font-size:1px;color:#fff;letter-spacing:0}}
-.lh{{border-bottom:2pt solid var(--p);padding-bottom:4mm;margin-bottom:7mm;display:flex;justify-content:space-between;
-align-items:flex-end;gap:8mm}}
+.lh{{border-bottom:2pt solid var(--p);padding-bottom:calc(var(--L)*.6);margin-bottom:calc(var(--L)*1.2);display:flex;
+justify-content:space-between;align-items:flex-end;gap:8mm}}
 .lh .k{{font-size:8pt;letter-spacing:.16em;text-transform:uppercase;color:var(--a);font-weight:650}}
-.lh h1{{margin:1.5mm 0 0;font-size:{size * 2.1:.1f}pt}}
-.lh .s{{color:var(--mut);margin-top:1.5mm}}
-.lh .m{{text-align:right;font-size:8.5pt;color:var(--mut);white-space:nowrap}}
+.lh h1{{margin:calc(var(--L)*.2) 0 0;font-size:{round(h1 * 1.15, 1)}pt}}
+.lh .s{{color:var(--mut);margin-top:calc(var(--L)*.2)}}
+.lh .m{{text-align:right;font-size:8.5pt;color:var(--mut);white-space:nowrap;line-height:1.5}}
 """
 
 
 def _cover_css(spec: dict[str, Any], P: dict[str, str]) -> str:
     head, _body = TYPES.get(spec["type"], TYPES["sans"])
+    EDGE = GUTTER + 8      # v0.305.0 the cover's text edge = the inside pages' text edge (18 mm from the paper)
     return f"""
 @page{{size:A4;margin:0}}
+body{{padding:0}}          /* the inside pages' gutter must never reach the full-bleed cover */
 .cv{{width:210mm;height:296.6mm;position:relative;overflow:hidden;font-family:var(--bf);color:var(--ink)}}
 .cv .k{{font-size:9pt;letter-spacing:.2em;text-transform:uppercase;font-weight:600}}
 .cv h1{{font-family:{_stack(head)};font-weight:700;line-height:1.08;letter-spacing:-.015em;margin:0;max-width:160mm}}
 .cv .s{{font-size:13pt;line-height:1.45;max-width:150mm}}
 .cv .tags span{{display:inline-block;border:.8pt solid currentColor;border-radius:20pt;padding:1.2mm 3.6mm;
 margin:0 2mm 2mm 0;font-size:8.6pt;opacity:.92}}
-.cv .meta{{position:absolute;left:24mm;right:24mm;bottom:26mm;font-size:9.4pt;line-height:1.75}}
+.cv .meta{{position:absolute;left:{EDGE}mm;right:{EDGE}mm;bottom:26mm;font-size:9.4pt;line-height:1.75}}
 .cv .meta b{{font-weight:650}}
 .cv-gradient{{background:linear-gradient(158deg,var(--p) 0%,var(--deep2) 100%);color:#fff}}
-.cv-gradient .in{{position:absolute;left:24mm;right:24mm;top:40mm}}
+.cv-gradient .in{{position:absolute;left:{EDGE}mm;right:{EDGE}mm;top:40mm}}
 .cv-gradient h1{{color:#fff;font-size:34pt;margin:8mm 0 6mm}} .cv-gradient .k{{opacity:.78}}
 .cv-gradient .s{{opacity:.9;margin-bottom:9mm}} .cv-gradient .meta{{border-top:.7pt solid rgba(255,255,255,.38);padding-top:6mm}}
-.cv-swiss{{background:#fff}} .cv-swiss .in{{position:absolute;left:26mm;right:24mm;top:62mm}}
+.cv-swiss{{background:#fff}} .cv-swiss .in{{position:absolute;left:{EDGE}mm;right:{EDGE}mm;top:62mm}}
 .cv-swiss h1{{font-size:44pt;color:#111;letter-spacing:-.025em}} .cv-swiss .k{{color:var(--a);margin-bottom:9mm}}
 .cv-swiss .rule{{width:56mm;border-top:1.4pt solid #111;margin:11mm 0 7mm}} .cv-swiss .s{{color:#333}}
-.cv-swiss .tags{{color:#333;margin-top:7mm}} .cv-swiss .meta{{left:26mm;color:#333}}
-.cv-band .top{{background:var(--p);color:#fff;height:128mm;padding:30mm 24mm 0;position:relative}}
+.cv-swiss .tags{{color:#333;margin-top:7mm}} .cv-swiss .meta{{left:{EDGE}mm;color:#333}}
+.cv-band .top{{background:var(--p);color:#fff;height:128mm;padding:30mm {EDGE}mm 0;position:relative}}
 .cv-band h1{{color:#fff;font-size:34pt;margin-top:8mm}} .cv-band .k{{opacity:.75}}
-.cv-band .bar{{position:absolute;left:24mm;bottom:-2.2mm;width:44mm;height:4.4mm;background:var(--a)}}
-.cv-band .low{{padding:16mm 24mm 0}} .cv-band .s{{color:var(--ink)}} .cv-band .tags{{color:var(--p);margin-top:7mm}}
+.cv-band .bar{{position:absolute;left:{EDGE}mm;bottom:-2.2mm;width:44mm;height:4.4mm;background:var(--a)}}
+.cv-band .low{{padding:16mm {EDGE}mm 0}} .cv-band .s{{color:var(--ink)}} .cv-band .tags{{color:var(--p);margin-top:7mm}}
 .cv-band .meta{{color:var(--mut);border-top:.7pt solid var(--line);padding-top:6mm}}
 .cv-rail .rail{{position:absolute;left:0;top:0;bottom:0;width:22mm;background:linear-gradient(180deg,var(--p),var(--deep2))}}
-.cv-rail .in{{position:absolute;left:42mm;right:24mm;top:58mm}}
+.cv-rail .in{{position:absolute;left:42mm;right:{EDGE}mm;top:58mm}}
 .cv-rail h1{{font-size:36pt;margin:7mm 0 7mm}} .cv-rail .k{{color:var(--a)}}
 .cv-rail .acc{{width:16mm;height:2.6mm;background:var(--a);margin:0 0 8mm}} .cv-rail .s{{color:var(--mut)}}
 .cv-rail .tags{{color:var(--p);margin-top:8mm}} .cv-rail .meta{{left:42mm;color:var(--mut)}}
-.cv-editorial{{background:#faf7f1}} .cv-editorial .in{{position:absolute;left:26mm;right:26mm;top:70mm}}
+.cv-editorial{{background:#faf7f1}} .cv-editorial .in{{position:absolute;left:{EDGE}mm;right:{EDGE}mm;top:70mm}}
 .cv-editorial .k{{color:var(--a);border-top:.8pt solid var(--ink);border-bottom:.8pt solid var(--ink);padding:2.4mm 0;
 display:inline-block}}
 .cv-editorial h1{{font-family:{_stack('Source Serif')};font-size:40pt;font-weight:600;margin:12mm 0 8mm;color:var(--ink)}}
 .cv-editorial .s{{font-family:{_stack('Source Serif')};font-style:italic;font-size:14pt;color:var(--mut)}}
-.cv-editorial .tags{{color:var(--ink);margin-top:9mm}} .cv-editorial .meta{{left:26mm;color:var(--mut)}}
+.cv-editorial .tags{{color:var(--ink);margin-top:9mm}} .cv-editorial .meta{{left:{EDGE}mm;color:var(--mut)}}
 .cv-split .left{{position:absolute;left:0;top:0;bottom:0;width:78mm;background:var(--p);color:#fff;padding:30mm 12mm 0 14mm}}
 .cv-split .left .k{{opacity:.8;line-height:1.7}} .cv-split .left .meta{{left:14mm;right:10mm;color:#fff;opacity:.9}}
 .cv-split .in{{position:absolute;left:94mm;right:18mm;top:84mm}}
@@ -565,9 +604,9 @@ display:inline-block}}
 .cv .inside .ir{{font-size:10pt;padding:1.7mm 0;border-top:.6pt solid var(--line);color:var(--ink)}}
 .cv .inside .ir span{{display:inline-block;width:9mm;color:var(--a);font-variant-numeric:tabular-nums;font-weight:600}}
 .cv-split .inside{{max-width:none}} .cv-minimal .in{{bottom:58mm}}
-.cv-minimal{{background:#fff}} .cv-minimal .hair{{position:absolute;left:24mm;right:24mm;top:30mm;border-top:.7pt solid var(--line)}}
-.cv-minimal .k{{position:absolute;left:24mm;top:36mm;color:var(--mut)}}
-.cv-minimal .in{{position:absolute;left:24mm;right:24mm;bottom:72mm}}
+.cv-minimal{{background:#fff}} .cv-minimal .hair{{position:absolute;left:{EDGE}mm;right:{EDGE}mm;top:30mm;border-top:.7pt solid var(--line)}}
+.cv-minimal .k{{position:absolute;left:{EDGE}mm;top:36mm;color:var(--mut)}}
+.cv-minimal .in{{position:absolute;left:{EDGE}mm;right:{EDGE}mm;bottom:72mm}}
 .cv-minimal .dot{{width:7mm;height:7mm;border-radius:50%;background:var(--a);margin-bottom:9mm}}
 .cv-minimal h1{{font-size:36pt;color:var(--ink)}} .cv-minimal .s{{color:var(--mut);margin-top:6mm}}
 .cv-minimal .tags{{color:var(--ink);margin-top:7mm}} .cv-minimal .meta{{color:var(--mut);bottom:22mm;border-top:.7pt solid var(--line);padding-top:5mm}}
@@ -687,7 +726,7 @@ def body_html(blocks: list[dict[str, Any]], spec: dict[str, Any], heads: list[di
         elif k == "table":
             out.append(_table(b["rows"], keep=len(b["rows"]) <= 9))
         elif k == "stats":
-            out.append("<div class=stats>" + "".join(
+            out.append(f"<div class=stats style='--n:{len(b['items'])}'>" + "".join(
                 f"<div class=stat><span class=v>{_inline(v)}</span><span class=l>{_inline(lbl)}</span></div>"
                 for v, lbl in b["items"]) + "</div>")
         elif k == "callout":
@@ -715,7 +754,7 @@ def _header(title: str, spec: dict[str, Any], P: dict[str, str], right: str) -> 
     ok = lambda s: all(ord(c) < 0x2000 or c in "·—–₹" for c in s)  # noqa: E731
     e = _html.escape
     return (f"<div style=\"width:100%;font-size:7.4pt;font-family:'Liberation Sans','DejaVu Sans',sans-serif;"
-            f"color:{P['muted']};margin:0 18mm;padding-bottom:1.6mm;border-bottom:.5pt solid {P['line']};"
+            f"color:{P['muted']};margin:6mm 18mm 0;padding-bottom:1.6mm;border-bottom:.5pt solid {P['line']};"
             f"display:flex;justify-content:space-between\"><span>{e(left) if ok(left) else ''}</span>"
             f"<span>{e(right) if ok(right) else ''}</span></div>")
 
@@ -723,7 +762,7 @@ def _header(title: str, spec: dict[str, Any], P: dict[str, str], right: str) -> 
 def _footer(spec: dict[str, Any], P: dict[str, str], left: str) -> str:
     ok = all(ord(c) < 0x2000 or c in "·—–₹" for c in left)
     return (f"<div style=\"width:100%;font-size:7.4pt;font-family:'Liberation Sans','DejaVu Sans',sans-serif;"
-            f"color:{P['muted']};margin:0 18mm;display:flex;justify-content:space-between\">"
+            f"color:{P['muted']};margin:0 18mm 5mm;display:flex;justify-content:space-between\">"
             f"<span>{_html.escape(left) if ok else ''}</span>"
             f"<span>Page <span class=pageNumber></span> of <span class=totalPages></span></span></div>")
 
@@ -777,7 +816,10 @@ class Printer:
         if full_bleed:
             kw["margin"] = {"top": "0", "bottom": "0", "left": "0", "right": "0"}
         else:
-            kw["margin"] = {"top": "22mm", "bottom": "20mm", "left": "18mm", "right": "18mm"}
+            # v0.305.0 the page margin is 8 mm and the text column is padded 10 mm inside it (GUTTER): the words still
+            # start 18 mm from the paper edge, and the hanging section numbers live in that 10 mm strip - Chromium
+            # clips anything printed in the true page margin, which is where they vanished.
+            kw["margin"] = {"top": "22mm", "bottom": "20mm", "left": "8mm", "right": "8mm"}
             if header or footer:
                 kw.update(display_header_footer=True, header_template=header or "<span></span>",
                           footer_template=footer or "<span></span>")

@@ -1,4 +1,4 @@
-"""v0.303.0 HOOLA PRINT: PDFs made the way Claude makes them (designed HTML printed by Chromium).
+"""v0.305.0 HOOLA PRINT: PDFs made the way Claude makes them (designed HTML printed by Chromium).
 
 Pure parts (parser, colours, art-direction guard rails, HTML) always run; the print tests run where Chromium can print
 (the VPS, this sandbox) and skip elsewhere.
@@ -252,3 +252,129 @@ def test_doc_studio_tool_delivers_a_printed_pdf(chrome, monkeypatch):
                                    author="Mehta Furniture", prepared_for="Newtika"))
     assert out["made"] == "pdf" and got["data"][:5] == b"%PDF-" and got["name"].endswith(".pdf")
     assert out["design"]["engine"] == "chromium" and "Design matched" in out["note"]
+
+
+# ---------------------------------------------------------------- v0.305.0 THE PAGE SYSTEM (measured, not eyeballed)
+ALL_PARTS = """# Executive Summary
+Revenue of **Rs 4.2 crore**, up 18% on last year, because raw material costs fell in the second half of the year.
+[stat: Rs 4.2 Cr | Revenue]
+[stat: 18% | Growth]
+## Key numbers
+- Net profit Rs 38 lakh, the best year since the business started and well above the plan for the year
+  - Nagpur distributor pays in 30 days
+### What drove it
+Festive demand.
+# Quarterly Revenue
+| Quarter | Revenue | Profit |
+|---|---|---|
+| Q1 | 92 | 8 |
+| Total | 190 | 17 |
+Q3 and Q4 carried the year.
+# Cash Flow
+Operating cash flow stayed positive.
+> [!WARNING] Two customers make up 31% of sales.
+
+> A quote from the auditor.
+```
+ssh root@vps
+```
+# Risks
+1. Concentration.
+"""
+
+MEASURE = r"""() => {
+ const mm = v => v / (96 / 25.4);
+ const first = el => { const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT,
+     {acceptNode: n => n.textContent.trim() && !n.parentElement.closest('.no,.mk') ? 1 : 3});
+   const n = w.nextNode(); if (!n) return null; const r = document.createRange();
+   const i = n.textContent.search(/\S/); r.setStart(n, i); r.setEnd(n, i + 1); return r.getClientRects()[0]; };
+ const col = document.querySelector('.body').getBoundingClientRect();
+ const out = [];
+ document.querySelectorAll('.body > *, .body li, .body td:first-child, .body .stat, .body .callout p, .toc .row').forEach(el => {
+   const b = el.getBoundingClientRect(); const t = first(el);
+   const no = el.querySelector(':scope > .no, :scope .t > .no');
+   out.push({k: el.tagName.toLowerCase() + '.' + (el.className || ''), textL: t ? mm(t.left - col.left) : null,
+             top: mm(b.top), bot: mm(b.bottom), boxL: mm(b.left - col.left), boxR: mm(b.right - col.left),
+             noL: no ? mm(no.getBoundingClientRect().left) : null});
+ }); return {rows: out, colW: mm(col.width), colL: mm(col.left)}; }"""
+
+
+def _measure(H, table="dark", headings="numbered"):
+    import pathlib
+    spec = H._sane(H._route("Report", ALL_PARTS, "auto"), {"table": table, "headings": headings})
+    P = H.palette(spec["primary"], spec["accent"])
+    blocks = H.parse(ALL_PARTS)
+    heads = H.headings(blocks, True)
+    html = H._doc(H._css(spec, P), H.body_html(blocks, spec, heads, toc_pages={h["id"]: 3 for h in heads},
+                                                markers=False), "t")
+    with H.Printer() as pr:
+        f = pathlib.Path(pr._tmp.name) / "m.html"
+        f.write_text(html)
+        pg = pr._page
+        pg.set_viewport_size({"width": round(194 * 96 / 25.4), "height": 1400})   # A4 minus the 8 mm page margins
+        pg.emulate_media(media="print")
+        pg.goto(f.as_uri())
+        pg.evaluate("document.fonts.ready")
+        return pg.evaluate(MEASURE)
+
+
+@pytest.mark.parametrize("table", ["dark", "lines"])
+def test_two_text_edges_only(chrome, table):
+    m = _measure(chrome, table=table)
+    IN = chrome.GRID["inset"]
+    edges = {round(r["textL"], 1) for r in m["rows"] if r["textL"] is not None and not r["k"].startswith("div.stat")}
+    allowed = {0.0, IN, 2 * IN}
+    assert all(any(abs(e - a) <= 0.3 for a in allowed) for e in edges), edges
+    for k in ("h1.", "h2.", "h3.", "p.", "a.row r1"):
+        assert all(abs(r["textL"]) <= 0.3 for r in m["rows"] if r["k"].startswith(k) and r["textL"] is not None
+                   and r["boxL"] == 0), k                    # headings, paragraphs, contents titles on the text edge
+    first_cell = [r["textL"] for r in m["rows"] if r["k"].startswith("td.")]
+    assert all(abs(x - (0 if table == "lines" else IN)) <= 0.3 for x in first_cell)
+    for r in m["rows"]:                                       # every block spans the full column
+        if r["k"].split(".")[0] in ("table", "pre", "blockquote") or r["k"].startswith(("div.callout", "div.stats")):
+            assert abs(r["boxL"]) <= 0.3 and abs(r["boxR"] - m["colW"]) <= 0.3, r
+
+
+def test_numbers_hang_inside_the_printable_strip(chrome):
+    m = _measure(chrome)
+    nos = [r["noL"] for r in m["rows"] if r["noL"] is not None]
+    assert nos and all(n >= 0 for n in nos)                   # never pushed into the clipped page margin
+    assert all(n < m["colL"] for n in nos)                    # ... and still left of the text edge (hanging)
+
+
+def test_vertical_rhythm(chrome):
+    rows = [r for r in _measure(chrome)["rows"] if not r["k"].startswith(("li", "td", "div.stat.", "p.", "a."))
+            or r["k"] == "p."]
+    top = [r for r in rows if r["boxL"] == 0]
+    after_head = []
+    for a, b in zip(top, top[1:]):
+        if a["k"].startswith(("h1", "h2", "h3")):
+            after_head.append((a["k"][:2], round(b["top"] - a["bot"], 1)))
+    by = {}
+    for h, g in after_head:
+        by.setdefault(h, set()).add(g)
+    assert all(len(v) == 1 for v in by.values()), by          # a heading sits the same distance from whatever follows
+    gaps = {}
+    for a, b, c in zip(top, top[1:], top[2:]):
+        if b["k"].startswith(("div.callout", "div.stats", "pre", "blockquote")) and a["k"] == "p." and c["k"] in ("p.", "pre."):
+            gaps[b["k"]] = (round(b["top"] - a["bot"], 1), round(c["top"] - b["bot"], 1))
+    assert all(abs(x - y) <= 0.3 for x, y in gaps.values()), gaps   # same space above and below a box
+
+
+def test_cover_is_full_bleed_and_bands_sit_12mm_from_the_edge(chrome):
+    import pypdfium2 as pdfium
+    r = chrome.make_pdf("Annual report", LONG, art=lambda *a: {"cover": "gradient", "primary": "#0b2a4a",
+                                                                 "accent": "#0e8f6a"})
+    doc = pdfium.PdfDocument(io.BytesIO(r["data"]))
+    im = doc[0].render(scale=0.4).to_pil().convert("RGB")
+    w, h = im.size
+    assert all(sum(im.getpixel(p)) < 600 for p in ((1, 1), (w - 2, 1), (1, h - 2), (w - 2, h - 2)))
+    page = doc[2]
+    H_mm = page.get_height() * 25.4 / 72
+    tp = page.get_textpage()
+    txt = tp.get_text_range()
+    i = txt.index("Page 3 of")
+    _l, b, _r, t = tp.get_charbox(i)
+    assert 9 <= b * 25.4 / 72 <= 15                          # footer baseline 9-15 mm above the paper's bottom edge
+    _l, b, _r, t = tp.get_charbox(txt.index("Annual report"))   # the running header carries the title
+    assert 9 <= H_mm - t * 25.4 / 72 <= 15                   # header 9-15 mm below the top edge
