@@ -10882,3 +10882,45 @@ a renderer she never sees. Both bugs survived four rounds of careful measurement
 ### Files
 `server/app/static/console/md.js` (the `Live` class) · `server/app/static/console/v2.css` (two dead rules removed)
 · `server/tests/test_v0285_ek_hi_dom.py` (6 tests).
+
+## v0.286.0 APNE AAP SE BEHAS — the honesty guard stops arguing with itself
+Found in her own live test run: three of seven replies ended with a "nothing was actually done" disclaimer she
+never asked for, on asks that requested no action at all.
+
+### The guard wrote the disclaimer itself
+Reproduced on her exact text:
+
+| her reply | `claims_done()` |
+|---|---|
+| "I **haven't sent**, saved, submitted or created anything" | `'sent'` |
+| "Nothing **has been sent**, saved, submitted or created" | `'sent'` |
+
+`_DONE` matches the bare English word `sent`. `_NOT_A_CLAIM` — the list of phrasings that are *not* a claim — was
+**Hinglish only**: `aap ne`, `nahi bhej`, `hoga`, `agar`. It contained no English negation whatsoever.
+
+So the loop ran:
+
+1. She asks for an explanation; Hoola writes a clean four-paragraph answer.
+2. The guard reads it as a false claim and nudges: *"say plainly in one line that it is NOT done yet."*
+3. The model obeys and writes "I haven't sent anything" — **which contains `sent`**.
+4. That matches a second time, and the second match staples `(Saaf baat: yeh kaam abhi hua nahi hai...)` onto a
+   pure explainer.
+
+The guard created exactly the thing it exists to prevent, then blamed the model for it.
+
+### Three fixes
+- **English negation, future and offer forms** in `_NOT_A_CLAIM`: `not`, `n't`, `nothing`, `never`, `without`,
+  `yet`, plus `will`, `can`, `once`, `if`, `I'll`, `your approval`, `say the word`.
+- **`_ALREADY_HONEST`** — a reply that already says the work is not done is never nudged to say it again. This
+  cuts the loop at its root rather than only widening the filter.
+- **The note speaks the reply's language.** `SAID_EN` beside `SAID`, chosen by `said_line()`. v0.260 made HER
+  LANGUAGE the first rule of a reply, and this note is part of the reply — it was following her into English
+  conversations as a Hinglish line.
+
+### What did not change
+The guard still does its job. A real claim with only reads behind it is caught in both languages
+("Maine mail bhej diya", "your invoice has been sent"), and a claim with a real doing-tool behind it is still left
+alone. 77 tests across the existing claim-check suites pass untouched.
+
+### Files
+`server/app/agent/draftcheck.py` · `server/tests/test_v0286_apne_aap_se_behas.py` (7 tests).

@@ -116,11 +116,17 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.285.0 (pubspec 0.285.0+325). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.286.0 (pubspec 0.286.0+326). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (15 now: theme.js, pdfview.js, studio.js, attach.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - CHECKPOINT 30 Oct: FULL CLAUDE MODE (v0.239-v0.250) owner-verified "PERFECT"; memory quiz 16/20 -> 20/20; branch
   `checkpoint-full-claude-mode-2026-10-30` = 87a2046 (grep "CHECKPOINT 30 Oct" docs/HISTORY.md).
+- v0.286 APNE AAP SE BEHAS: her live run ended 3 of 7 replies with a "nothing was done" disclaimer nobody
+  asked for - the honesty guard WROTE it. draftcheck._DONE matches bare English `sent` and _NOT_A_CLAIM was
+  Hinglish-only, so "I haven't sent anything" read as a CLAIM; the nudge told the model to deny it, the denial
+  contained `sent`, matched again, and the 2nd match stapled SAID onto a pure explainer. Fixed: English
+  negation/future/offer in _NOT_A_CLAIM, a new _ALREADY_HONEST guard (cuts the loop at the root), and the
+  note now speaks the reply's language (SAID_EN / said_line) per v0.260. Real claims still caught.
 - v0.285 EK HI DOM: her screenshot showed a LIVE reply with the paragraphs fused and the lines at full width.
   The console had TWO render paths and only the one she never sees was right: HoolaMD.Live wrapped each block
   in <div class="mdb">, so every <p> became a :last-child (v0.274's margin-trim zeroed EVERY gap) and stopped
