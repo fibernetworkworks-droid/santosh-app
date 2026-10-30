@@ -110,9 +110,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.264.0 (pubspec 0.264.0+304). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.265.0 (pubspec 0.265.0+305). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (14 now: theme.js, pdfview.js, studio.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.265 SAANS AUR HMM: OpenAI real voice gets its voice block at the TOP + a one-time delivery cue per reply
+  (`voice_openai.delivery_cue`, create_response false, cue deleted after the reply); scorecard delivery_cues / filler_starts.
 - v0.264 OPENAI VOICE Phase 1: optional "real voice" engine (`app/voice_openai.py` OpenAICall, gpt-realtime-2.1-mini), her choice
   `app/voiceengine.py` + GET/PUT /api/voice/engine, trial = owner only, monthly USD + per-user minute caps -> else Gemini (untouched).
 - v0.260 SAAF KAAM (from her own live test run): `kaam_plan`'s description named a parameter that did not exist

@@ -38,7 +38,9 @@ NUM_KEYS = ("turns", "interruptions", "tools", "silent_tools", "acks", "false_st
             "missed_replayed_s", "news_deduped", "news_merged", "voice_approvals", "setup_refusals", "breaker",
             "question_endings", "assistantisms", "silence_ms", "cost_usd",
             # v0.234 Phase 5
-            "talk_over", "repeats", "stall_noise_skips", "level_matched")
+            "talk_over", "repeats", "stall_noise_skips", "level_matched",
+            # v0.265 real voice: delivery cues sent, replies that opened with a thinking sound
+            "delivery_cues", "filler_starts", "oa_replies")
 
 END_WORDS = {"hung_up": "aapne kaata", "dropped": "line toot gayi", "error": "connection error",
              "stall": "Gemini chup ho gaya", "server_restart": "server update", "hold_timeout": "hold bahut lamba"}

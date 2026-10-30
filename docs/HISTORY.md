@@ -10249,3 +10249,21 @@ Owner: "BUILD PHASE 2" (the video plan: daily price sync, actual vs estimate, sa
   on 30 Oct 2026), Hinglish quality and the real rupees per minute - that is the owner's 10-call trial.
 Tests: NEW `test_v0264_openai_voice.py` (11). Version 0.264.0 (pubspec 0.264.0+304, console ?v=0.264.0, pins -> 0.264.0).
 Server only; no new APK needed (the phone picker is Phase 3).
+
+## v0.265.0 SAANS AUR HMM — breaths and thinking sounds on the OpenAI real voice (owner after the trial: "CALL WORKING, HINGLISH GOOD ---- NEED WORK ON BREATH AND HMM's --------- otherwise open ai does good work then gemini")
+- Root cause: the v0.264 `EMOTION` block sat at the END of a 24k-character persona that says "answer first / in the first
+  breath / short / never a preamble" again and again, with only "a small filler now and then" on the other side - the
+  model followed the majority and spoke clean; and nothing reminded it per turn, so it faded as the call went on.
+- Fix 1, instructions: `EMOTION` moved to the TOP (right after the language lock), rewritten with numbers ("takreeban har
+  teesre jawab mein"), spoken Hinglish examples with the sounds written in, and the explicit line that a breath or "hmm"
+  is NOT a preamble. It still forbids saying stage directions / brackets / the system notes aloud.
+- Fix 2, a cue per reply: `turn_detection.create_response` is now false - on `input_audio_buffer.committed` the server
+  sends ONE system item for that reply and then `response.create` (`OpenAICall._her_turn_reply`). `delivery_cue(her_s,
+  tone, last, rnd, filler)`: her tone low -> soft breath + "arre/hmm"; tense -> a calm breath; her turn >= 4 s -> breath +
+  "hmm" (not twice in a row unless >= 7 s); >= 1.6 s -> 45% a light opener (achha / hmm / haan / dekho / uhh, never the
+  same as last time); a quick "haan" -> nothing. Her turn length = speech_started -> speech_stopped. The cue items carry
+  our own ids (`hoolacueN`) and are deleted after `response.done`, so they never pile up in his memory.
+- Measured: scorecard `delivery_cues`, `filler_starts` (his reply opened with hmm / achha / arre ...), `oa_replies`;
+  `cue_kinds` in the live stats. Breaths themselves are only measurable by ear (the ear test).
+- Gemini untouched. Tests: `test_v0264_openai_voice.py` +4 (cue rules, cue -> reply -> cleanup, block at the top +
+  create_response false, filler counter). Version 0.265.0 (pubspec 0.265.0+305, console ?v=0.265.0, pins -> 0.265.0).

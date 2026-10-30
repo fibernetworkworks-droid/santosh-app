@@ -247,6 +247,58 @@ def test_no_gemini_voice_clips_on_an_openai_call():
     assert voice_openai.OpenAICall._ack_watch is not voice.Call._ack_watch
 
 
+def test_delivery_cue_rules():
+    dc = voice_openai.delivery_cue
+    assert dc(0.6, "", "", 0.1)[0] == ""                      # a quick "haan": no cue
+    assert dc(2.5, "", "", 0.9)[0] == ""                      # a normal turn: only sometimes
+    k, note = dc(2.5, "", "", 0.2, "hmm...")
+    assert k == "light" and "'hmm...'" in note and "bolna mat" in note
+    assert dc(5.0, "", "", 0.9)[0] == "breath" and "saans" in dc(5.0, "", "", 0.9)[1]
+    assert dc(5.0, "", "breath", 0.2)[0] != "breath"          # never two breaths in a row on a medium-long turn
+    assert dc(9.0, "", "breath", 0.2)[0] == "breath"          # ...unless she really talked long
+    assert dc(0.5, "low", "", 0.9)[0] == "soft" and "arre" in dc(0.5, "low", "", 0.9)[1]
+    assert dc(0.5, "tense", "", 0.9)[0] == "calm"
+
+
+def test_her_turn_end_sends_cue_then_reply_and_cleans_up():
+    class S:
+        def __init__(self):
+            self.sent = []
+
+        async def send(self, ev):
+            self.sent.append(ev)
+
+    c = voice_openai.OpenAICall.__new__(voice_openai.OpenAICall)
+    c.stats, c._her_s, c._last_cue, c._last_filler = {}, 6.0, "", ""
+    c._cue_ids, c._cue_n, c._responding, c._want_response = [], 0, False, False
+    c._tone_now = lambda: ""
+    s = S()
+    asyncio.run(c._her_turn_reply(s))
+    item, create = s.sent
+    assert item["type"] == "conversation.item.create" and item["item"]["role"] == "system"
+    assert item["item"]["id"] == "hoolacue1" and "saans" in item["item"]["content"][0]["text"]
+    assert create == {"type": "response.create"} and c._cue_ids == ["hoolacue1"]
+    assert c.stats["delivery_cues"] == 1 and c.stats["cue_kinds"] == {"breath": 1}
+
+
+def test_voice_block_leads_and_openai_waits_for_us():
+    from app.config import get_settings
+    c = voice_openai.OpenAICall.__new__(voice_openai.OpenAICall)
+    from app import voicelang
+    c.langst, c.lang, c.name, c.gender, c.style = voicelang.LangState("hi-IN"), "hi-IN", "Santosh", "m", {}
+    cfg = voice_openai.session_config(c, "")
+    ins = cfg["instructions"]
+    assert ins.index("AWAAZ MEIN JAAN") < 3000                 # at the top, not after the 24k persona
+    assert "preamble nahi" in ins
+    assert cfg["audio"]["input"]["turn_detection"]["create_response"] is False
+    assert cfg["audio"]["input"]["turn_detection"]["interrupt_response"] is True
+
+
+def test_filler_start_counter():
+    m = voice_openai._FILLER_START.match
+    assert m("Hmm... kal free ho") and m("Achha, dekhte hain") and m("arre yeh toh") and not m("Kal chaar baje")
+
+
 def test_prices_and_engine_label():
     from app import usage, callquality
     p, known = usage.price_of("gpt-realtime-2.1-mini")
@@ -264,5 +316,5 @@ def test_gemini_file_has_only_the_routing_seam():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.264.0"
-    assert "0.264.0+304" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.265.0"
+    assert "0.265.0+305" in (ROOT / "pubspec.yaml").read_text()

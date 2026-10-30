@@ -34,13 +34,50 @@ log = logging.getLogger("santosh.voice.openai")
 URL = "wss://api.openai.com/v1/realtime?model={model}"
 
 # Real voice = how a person sounds, written as BEHAVIOUR (never as tags: the model would read "[laughs]" aloud).
+# v0.265 SAANS AUR HMM (owner after the trial: "NEED WORK ON BREATH AND HMM's"): the block now sits at the TOP (right
+# after the language lock; at the end of a 24k persona that says "answer first / short / no preamble" ten times it lost),
+# says plainly that a breath or "hmm" before the answer is NOT a preamble, gives numbers and spoken examples - and each
+# reply also gets a one-time delivery cue (delivery_cue) so it does not fade as the call goes on.
 EMOTION = (
-    "\n\nAWAAZ MEIN JAAN (real voice): tum ek asli insaan ki tarah phone par baat karte ho. Lambe jawab se pehle kabhi "
-    "kabhi ek chhoti si saans lo. Kuch yaad karte ya sochte waqt halka sa 'hmm...' ya 'uhh...' aata hai, par aasaan "
-    "sawaal par nahi. Dukh ki baat par awaaz dheemi aur naram, 'arre...' ya 'ohh...' dil se; acchi khabar par awaaz "
-    "mein muskaan. Sach mein mazedaar baat ho ya woh hase, tabhi halka sa hans do - chhota, asli. Yeh sab kam aur "
-    "sahi jagah: har jawab mein nahi, overacting kabhi nahi. Koi stage direction, bracket ya 'laughs' / 'sighs' jaisa "
-    "shabd kabhi zor se mat bolo - bas waisa karo.")
+    "AWAAZ MEIN JAAN (real voice) - yeh sabse pehle:\n"
+    "- Tum ek asli insaan ki tarah phone par baat karte ho: saans lete ho, sochte ho, kabhi ruk ke bolte ho.\n"
+    "- Saans: lamba ya sochne wala jawab ek halki, SUNAI DENE WALI saans se shuru hota hai; lambe jawab mein do baaton "
+    "ke beech bhi chhoti saans.\n"
+    "- Sochna: yaad karte ya sochte waqt 'hmm...', 'uhh...', 'achha...' - takreeban har teesre jawab mein ek baar, "
+    "aasaan 'haan / theek hai' wale jawab mein nahi.\n"
+    "- Yeh 'answer first' ke khilaaf nahi hai: ek saans ya 'hmm...' preamble nahi, insaan ki awaaz hai. Jawab phir bhi "
+    "chhota rehta hai.\n"
+    "- Dukh ki baat: dheemi saans, naram awaaz, 'arre...' ya 'ohh...' dil se. Acchi khabar: awaaz mein muskaan.\n"
+    "- Hansi: sirf jab sach mein mazedaar ho ya woh hase - chhoti, asli, ek pal ki.\n"
+    "- Kaise lagta hai: 'Hmm... kal? Haan, kal chaar baje free ho.' / '(saans) Achha... toh dekho, pehle GST wala kaam "
+    "karte hain, phir invoice.' / 'Arre... yeh toh bura hua. Koi baat nahi, main dekhta hoon.'\n"
+    "- Overacting kabhi nahi. Koi stage direction, bracket, '(saans)' ya 'laughs' / 'sighs' jaisa shabd kabhi zor se "
+    "mat bolo - bas waisa karo. 'System' ke delivery notes bhi kabhi mat bolo.\n\n")
+
+FILLERS = ("achha...", "hmm...", "haan...", "dekho...", "uhh...")
+
+
+def delivery_cue(her_s: float, tone: str, last: str, rnd: float, filler: str = "") -> tuple[str, str]:
+    """(kind, note) for ONE reply: where people really breathe and say 'hmm' (before a long / thinking answer,
+    on heavy news), never on a quick 'haan'. `rnd` in [0,1) decides the light cues; `last` = the previous kind
+    (never two breaths in a row unless the turn was long). kind "" = no cue."""
+    tail = " (Yeh note sirf tumhare liye hai - isko bolna mat.)"
+    if tone == "low":
+        return "soft", ("Delivery, sirf is jawab ke liye: pehle ek dheemi, sunai dene wali saans, phir naram awaaz mein "
+                        "'arre...' ya 'hmm...' - phir chhota, dil se jawab." + tail)
+    if tone == "tense":
+        return "calm", "Delivery, sirf is jawab ke liye: pehle ek shaant saans, phir dheere, pakad ke jawab." + tail
+    if her_s >= 4.0 and not (last == "breath" and her_s < 7.0 and rnd < 0.5):
+        return "breath", ("Delivery, sirf is jawab ke liye: usne lambi baat kahi - shuru mein ek halki saans jo sunai de, "
+                          "phir 'hmm...' (ek pal ruk ke), phir jawab." + tail)
+    if her_s >= 1.6 and rnd < 0.45:
+        f = filler or FILLERS[int(rnd * 100) % len(FILLERS)]
+        return "light", f"Delivery, sirf is jawab ke liye: jawab naturally '{f}' se shuru karo, phir baat." + tail
+    return "", ""
+
+
+import re as _re
+_FILLER_START = _re.compile(r"(?i)^(\(?saans\)?\s*)?(hmm+|hm+|umm+|uhh+|achha+|acha+|arre+|ohh+|dekho)\b")
 
 # OpenAI's 24 kHz output and her phone's 24 kHz playback match; her mic is 16 kHz
 IN_RATE, OUT_RATE = 16000, 24000
@@ -75,7 +112,7 @@ def session_config(call: "OpenAICall", context: str, extra_tools: list[dict] | N
     prompt = v.persona_prompt(call.name, call.gender).format(
         lang=langst.name, now=datetime.now(tz).strftime("%A %d %B %Y, %I:%M %p"), context=context or "(nothing saved yet)")
     style = call.style or {}
-    prompt = (voicelang.lock_block(langst, "top") + prompt + (style.get("block") or "") + EMOTION
+    prompt = (voicelang.lock_block(langst, "top") + EMOTION + prompt + (style.get("block") or "")
               + voicelang.lock_block(langst, "end") + "\n" + v.DELIVERY_END)
     specs = v._tool_specs() + [{**t, "input_schema": v._compact_schema(t.get("input_schema") or {"type": "object"})}
                                for t in (extra_tools or [])]
@@ -92,7 +129,7 @@ def session_config(call: "OpenAICall", context: str, extra_tools: list[dict] | N
                           "turn_detection": {"type": "server_vad", "threshold": 0.5,
                                              "prefix_padding_ms": min(max(st.voice_prefix_padding_ms, 0), 1000),
                                              "silence_duration_ms": min(max(int(silence), 300), 3000),
-                                             "create_response": True, "interrupt_response": True}},
+                                             "create_response": False, "interrupt_response": True}},   # v0.265 we start each reply (with its cue)
                 "output": {"format": {"type": "audio/pcm", "rate": OUT_RATE},
                            "voice": st.voice_openai_voice_f if call.gender == "f" else st.voice_openai_voice_m}},
             "tools": tools, "tool_choice": "auto"}
@@ -151,6 +188,11 @@ class OpenAICall(v.Call):
         self._heard: dict[str, str] = {}   # her transcript items already streamed as deltas
         self._usd = 0.0
         self._resp_audio = False
+        self._her_t0 = 0.0             # v0.265 when her current speech started (her turn length decides the cue)
+        self._her_s = 0.0
+        self._last_cue, self._last_filler = "", ""
+        self._cue_ids: list[str] = []  # cue items to delete once the reply is out (they never pile up in his memory)
+        self._cue_n = 0
 
     # ---------------- no pre-rendered clips ----------------
     # The ack / murmur / progress clips are rendered in a GEMINI voice: on an OpenAI call they would be a second,
@@ -180,6 +222,30 @@ class OpenAICall(v.Call):
                 await session.send({"type": "conversation.item.create", "item": {
                     "type": "message", "role": "system", "content": [{"type": "input_text", "text": str(data)}]}})
                 await self._reply(session)
+
+    async def _her_turn_reply(self, session) -> None:
+        """Her turn is over (OpenAI committed her audio): one delivery cue for THIS reply, then response.create."""
+        import random
+        tone = ""
+        with contextlib.suppress(Exception):
+            tone = self._tone_now() or ""
+        rnd = random.random()
+        choices = [f for f in FILLERS if f != self._last_filler]
+        filler = choices[int(rnd * 1000) % len(choices)]
+        kind, note = delivery_cue(self._her_s, tone, self._last_cue, rnd, filler)
+        self._her_s = 0.0
+        if note:
+            self._cue_n += 1
+            cid = f"hoolacue{self._cue_n}"
+            self._cue_ids.append(cid)
+            self.stats["delivery_cues"] = self.stats.get("delivery_cues", 0) + 1
+            self.stats.setdefault("cue_kinds", {})[kind] = self.stats.get("cue_kinds", {}).get(kind, 0) + 1
+            await session.send({"type": "conversation.item.create", "item": {
+                "id": cid, "type": "message", "role": "system", "content": [{"type": "input_text", "text": note}]}})
+            if kind == "light":
+                self._last_filler = filler
+        self._last_cue = kind
+        await self._reply(session)
 
     async def _reply(self, session) -> None:
         if self._responding:
@@ -227,7 +293,12 @@ class OpenAICall(v.Call):
                     await self._heard_her((ev.get("transcript") or "") + " ")
                 self._heard.pop(ev.get("item_id") or "", None)
             elif t == "input_audio_buffer.speech_started":
+                self._her_t0 = time.monotonic()
                 await self._she_cut_in(session)
+            elif t == "input_audio_buffer.speech_stopped":
+                self._her_s = time.monotonic() - self._her_t0 if self._her_t0 else 0.0
+            elif t == "input_audio_buffer.committed":
+                await self._her_turn_reply(session)   # v0.265 her turn ended: his reply, with its delivery cue
             elif t == "response.function_call_arguments.done":
                 cid = ev.get("call_id") or ""
                 if cid and cid in self._seen_calls:
@@ -246,6 +317,14 @@ class OpenAICall(v.Call):
                 r = ev.get("response") or {}
                 self._responding = False
                 self._count(r.get("usage") or {})
+                for cid in self._cue_ids:
+                    with contextlib.suppress(Exception):
+                        await session.send({"type": "conversation.item.delete", "item_id": cid})
+                self._cue_ids.clear()
+                if self._resp_audio and self.reply_buf.strip():
+                    self.stats["oa_replies"] = self.stats.get("oa_replies", 0) + 1
+                    if _FILLER_START.match(self.reply_buf.strip()):
+                        self.stats["filler_starts"] = self.stats.get("filler_starts", 0) + 1
                 status = r.get("status") or ""
                 if self.hold and (self._hold_turn_reply or self.reply_buf):
                     await self._held_turn_done()
