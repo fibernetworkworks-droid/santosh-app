@@ -1982,7 +1982,10 @@ class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
   late final List<String> _words = widget.text.split(RegExp(r'(?<=\s)'));
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: Duration(milliseconds: (_words.length * 28).clamp(250, 1600)),
+    // v0.283: 28 ms a word was right, but the 1600 ms ceiling dumped anything long - a 300-word reply landed
+    // in 1.6 s = 188 words a second. 14 ms a word with a 5 s ceiling holds ~70 a second at every length,
+    // which is what the console now does and what Claude reads like.
+    duration: Duration(milliseconds: (_words.length * 14).clamp(250, 5000)),
   )..forward();
 
   @override

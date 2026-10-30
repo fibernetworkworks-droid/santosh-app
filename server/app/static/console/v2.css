@@ -313,7 +313,13 @@ mark{background:rgb(var(--acc-rgb) / .32);color:var(--ink);border-radius:3px;pad
 /* a heading belongs to the text UNDER it: plenty of air above, little below */
 .textmd .mdh{font-family:var(--fr);font-size:20px;font-weight:600;line-height:1.3;margin:24px 0 8px}
 .textmd .mdh:first-child{margin-top:0}
-.textmd h3.mdh{font-size:17px}
+/* v0.284: md.js maps # -> h3, ## -> h4, ### -> h5, so h3 is the BIGGEST heading a reply can have. It was pinned
+   at 17px while h4 and h5 kept the 20px default, which put the hierarchy upside down - a reply's own title came
+   out smaller than the sections under it. 22 / 20 / 17 at weight 600, the same three sizes the phone already uses
+   (md_text.dart sizes by level), so a heading reads the same on both surfaces. */
+.textmd h3.mdh{font-size:22px}
+.textmd h4.mdh{font-size:20px}
+.textmd h5.mdh,.textmd h6.mdh{font-size:17px}
 .textmd a{text-decoration:underline}
 /* v0.281: the bullet gutter. Measured off her Claude screenshots, the list text sits ~30px in from the
    paragraph's left edge; ours was 22px, so a bullet list did not step in far enough to read as one. */
@@ -340,8 +346,6 @@ code:not(pre code){background:rgb(var(--acc-rgb) / .16);border:1px solid rgb(var
 .mdt th,.mdt td{border:1px solid var(--line);padding:7px 11px;text-align:left}
 .mdt th{background:var(--glass2);font-weight:600}
 blockquote{margin:4px 0;padding:8px 14px;border-left:3px solid rgb(var(--acc-rgb) / .55);background:rgb(var(--acc-rgb) / .08);border-radius:0 12px 12px 0;color:var(--lit)}
-.mdb{min-width:0}
-.mdb.tail{min-height:4px}
 hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 .srcs{display:flex;flex-wrap:wrap;gap:6px}
 .note{font-size:13.5px;font-weight:600;color:var(--lit);background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.25);border-radius:12px;padding:9px 13px}
@@ -481,10 +485,6 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 .rcarch:hover{background:var(--glass2);color:var(--ink)}
 .rcren{display:flex;gap:4px;align-items:center;width:100%;padding:2px 4px}
 .rcren input{flex:1;min-width:0;background:rgb(var(--surf-rgb) / .6);border:1px solid rgb(var(--acc-rgb) / .5);border-radius:9px;padding:6px 9px;font-size:13px}
-.rmenu{position:fixed;z-index:80;min-width:210px;background:rgb(var(--surf-rgb) / .92);border:1px solid var(--hair2);border-radius:16px;backdrop-filter:blur(24px) saturate(1.4);-webkit-backdrop-filter:blur(24px) saturate(1.4);box-shadow:var(--sh);padding:6px;display:flex;flex-direction:column}
-.rmenu button{text-align:left;font-size:13.5px;font-weight:600;padding:9px 12px;border-radius:10px}
-.rmenu button:hover{background:var(--glass2)}
-.rmenu button.bad{color:var(--bad)}
 .sbg{position:fixed;inset:0;z-index:70;background:rgba(6,4,20,.66);backdrop-filter:blur(6px);display:grid;place-items:start center;padding-top:12vh}
 .sbox{width:min(640px,92vw);max-height:64vh;display:flex;flex-direction:column;overflow:hidden;background:rgb(var(--surf-rgb) / .92);box-shadow:var(--sh)}
 .sin{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
@@ -649,10 +649,6 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 .mu.editing .utbar{display:none}
 
 /* export menu under the top bar */
-.xmenu{position:absolute;top:calc(100% - 2px);right:10px;z-index:60;padding:6px;display:flex;flex-direction:column;min-width:190px;box-shadow:var(--sh)}
-.xmenu button{text-align:left;padding:9px 12px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--mut)}
-.xmenu button:hover{background:var(--glass2);color:var(--ink)}
-@media (max-width:560px){.xmenu{right:6px;min-width:170px}}
 
 /* ---------- v0.173 composer steering: receipts, slash menu, kharcha gauge, dictation ---------- */
 .rq{display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:4px 10px;border-radius:999px;background:rgb(var(--acc-rgb) / .14);border:1px solid rgb(var(--acc-rgb) / .3);color:var(--lit);font-size:12px;font-weight:600}
@@ -973,7 +969,6 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 
 /* No header row: conversation tools live in the sidebar and Stop stays beside Send. */
 #app .console-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;position:relative}
-#app .console-controls .xmenu{top:auto;bottom:calc(100% + 8px);left:0;right:auto;min-width:170px}
 #app .console-controls .livebtn{font-size:12px;padding:7px 10px}
 #app .console-controls .ib{width:32px;height:32px}
 #app .user{width:100%;text-align:left;color:var(--ink);cursor:pointer;flex:none}
@@ -1006,18 +1001,18 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 #app .side .console-controls .livebtn{font-size:13px;font-weight:600}
 
 /* A separate drag target stays fixed while the sidebar content scrolls. */
-#app .side{width:var(--sidebar-width,224px);scrollbar-color:rgba(182,144,231,.22) transparent}
+#app .side{width:var(--sidebar-width,272px);scrollbar-color:rgba(182,144,231,.22) transparent}
 #app .side::-webkit-scrollbar{width:6px}
 #app .side::-webkit-scrollbar-thumb{background:rgba(182,144,231,.22);border:0}
 #app .side:hover{scrollbar-color:rgba(182,144,231,.5) transparent}
 #app .side:hover::-webkit-scrollbar-thumb{background:rgba(182,144,231,.5)}
-#app .sidebar-divider{position:absolute;top:0;bottom:0;left:calc(var(--sidebar-width,224px) - 4px);width:8px;z-index:38;cursor:col-resize;touch-action:none}
+#app .sidebar-divider{position:absolute;top:0;bottom:0;left:calc(var(--sidebar-width,272px) - 4px);width:8px;z-index:38;cursor:col-resize;touch-action:none}
 #app .sidebar-divider:after{content:'';position:absolute;inset:0 3px;background:transparent;transition:background .15s}
 #app .sidebar-divider:hover:after,#app .sidebar-divider:focus-visible:after,#app.sidebar-resizing .sidebar-divider:after{background:var(--saffron)}
 #app.collapsed .sidebar-divider{left:68px}
 #app.sidebar-resizing,#app.sidebar-resizing *{cursor:col-resize!important;user-select:none!important}
 #app.sidebar-resizing .side{transition:none}
-#app.workspace-full .studio,#app.workspace-full .panel{width:calc(100% - var(--sidebar-width,224px))}
+#app.workspace-full .studio,#app.workspace-full .panel{width:calc(100% - var(--sidebar-width,272px))}
 #app.workspace-full.collapsed .studio,#app.workspace-full.collapsed .panel{width:calc(100% - 72px)}
 @media(max-width:1100px){
  #app .sidebar-divider{display:none}
@@ -1188,7 +1183,6 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 #app .cacts{margin-left:auto;display:inline-flex;gap:4px;position:relative;flex:none}
 #app .cacts .ib{width:36px;height:36px;border-radius:10px}
 #app .cacts .ib svg{width:17px;height:17px}
-#app .cacts .xmenu{position:absolute;top:calc(100% + 6px);right:0;left:auto;bottom:auto;min-width:170px;z-index:40}
 #app .chead~.thread{padding-top:0}
 /* v0.253 CLAUDE JAISA PADHAI: the chat reads on white like Claude's, so the words sit at 17.3:1 instead
    of 15.5:1 on the lavender page. Light theme only - --chat-paper is transparent in the dark one. */
@@ -1589,7 +1583,6 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 
 /* ---------- right columns, menus, toast ---------- */
 .live,.studio,.panel{background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
-.xmenu,#app .xmenu{background:var(--surface);border:1px solid var(--line);box-shadow:var(--sh);backdrop-filter:none}
 .scrim{background:rgb(20 16 40 / .32);backdrop-filter:blur(2px)}
 
 /* ---------- account: Appearance ---------- */
@@ -1656,7 +1649,7 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 #app .workspace-handle label{display:none}
 #app.workspace-resizing,#app.workspace-resizing *{user-select:none;cursor:col-resize !important}
 #app.workspace-resizing iframe,#app.workspace-resizing video{pointer-events:none}
-#app.st .studio,#app.pn .panel{width:min(var(--workspace-width,clamp(420px,46vw,900px)),calc(100vw - var(--sidebar-width,224px) - 380px));transition:width .28s var(--ease)}
+#app.st .studio,#app.pn .panel{width:min(var(--workspace-width,clamp(420px,46vw,900px)),calc(100vw - var(--sidebar-width,272px) - 380px));transition:width .28s var(--ease)}
 #app.workspace-resizing .studio,#app.workspace-resizing .panel{transition:none}
 #app.collapsed.st .studio,#app.collapsed.pn .panel{width:min(var(--workspace-width,clamp(420px,46vw,900px)),calc(100vw - 72px - 380px))}
 #app.workspace-full .studio,#app.workspace-full .panel{transition:none}
@@ -1668,7 +1661,7 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 #app .pnview.center .pnmedia{max-width:100%;max-height:100%;object-fit:contain;border-radius:10px}
 #app .pnview.center:has(>.pnmedia){padding:12px;background:var(--sunk)}
 #app .pnview:not(.center):not(.doc){background:var(--sunk)}
-#app.workspace-full.st .studio,#app.workspace-full.pn .panel{width:calc(100% - var(--sidebar-width,224px))}
+#app.workspace-full.st .studio,#app.workspace-full.pn .panel{width:calc(100% - var(--sidebar-width,272px))}
 #app.workspace-full.collapsed.st .studio,#app.workspace-full.collapsed.pn .panel{width:calc(100% - 72px)}
 @media(max-width:1100px){#app.st .studio,#app.pn .panel,#app.collapsed.st .studio,#app.collapsed.pn .panel{width:min(780px,96vw)}}
 @media(max-width:820px){#app.st .studio,#app.pn .panel,#app.collapsed.st .studio,#app.collapsed.pn .panel,#app.workspace-full.st .studio,#app.workspace-full.pn .panel{width:100%}}
@@ -1753,6 +1746,11 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
    read (Cloudflare blocks automated browsers), so these are matched by eye, not measured.
    ================================================================================================ */
 #app h1,#app h2,#app h3,#app .vh h2,#app .nm2,#app .lhd h3,#app .pnbar h3{font-family:var(--fb);letter-spacing:-.01em}
+/* v0.284: that rule is for the console CHROME, but it also caught the chat. md.js maps # -> h3, so a reply's own
+   top heading came out in the interface sans with tightened tracking while ## and ### (h4 / h5) stayed in the
+   serif - two typefaces inside one reply. v0.249 settled that the reply, headings included, is the serif. This
+   wins on specificity (1,2,0 over 1,0,1) and touches nothing outside a rendered message. */
+#app .textmd .mdh{font-family:var(--fr);letter-spacing:normal}
 #app .vh h2{font-size:22px;font-weight:600}
 #app .mk,#app .mk span{font-family:var(--logo)}
 /* chat header */
@@ -1920,3 +1918,102 @@ body.albon{overflow:hidden}
   .albnav{position:absolute;top:50%;margin-top:-22px;z-index:2}.albnav.prev{left:8px}.albnav.next{right:8px}
 }
 @media (prefers-reduced-motion:reduce){.at .ax,.at .aup i{transition:none}}
+
+/* ===== v0.285 MENUS LIKE CLAUDE (menu.js): one dropdown for the whole console. Plain surface, hairline border,
+   soft shadow, 12px corners; rows 32px at 14px / 400 in the interface sans; 16px muted line icons; grey hover;
+   hairline separators; Delete in red; the current choice ticked on the right. One-shot 120ms open (CRISP TEXT:
+   nothing held, no blur, solid background under the words). */
+.hmenu{position:fixed;z-index:1100;min-width:208px;max-width:min(320px,calc(100vw - 16px));padding:6px;display:flex;flex-direction:column;gap:1px;
+  overflow-y:auto;overscroll-behavior:contain;background:var(--surface);border:1px solid var(--hair2);border-radius:12px;outline:0;
+  box-shadow:0 1px 2px rgb(var(--sh-rgb) / .05),0 6px 24px rgb(var(--sh-rgb) / .10);font-family:var(--fb);color:var(--ink);
+  opacity:0;transform:scale(.97);transition:opacity .12s ease,transform .12s ease}
+.hmenu.on{opacity:1;transform:none}
+.hmenu .mi{display:flex;align-items:center;gap:10px;width:100%;min-height:32px;padding:6px 8px;border:0;border-radius:8px;background:none;
+  font:400 14px/20px var(--fb);color:var(--ink);text-align:left;cursor:default;outline:0}
+.hmenu .mi:focus,.hmenu .mi:hover{background:rgb(var(--fg-rgb) / .06)}
+.hmenu .mi:focus-visible{box-shadow:inset 0 0 0 1px rgb(var(--fg-rgb) / .14)}
+.hmenu .mi .ic{width:16px;height:16px;flex:none;color:var(--mut)}
+.hmenu .mi .mt{flex:1;min-width:0;display:flex;flex-direction:column}
+.hmenu .mi .mt>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hmenu .mi .mt small{font-size:12px;line-height:16px;color:var(--dim)}
+.hmenu .mi:has(small){align-items:flex-start}
+.hmenu .mi:has(small) .ic{margin-top:2px}
+.hmenu .mi .mk{margin-left:auto;font:400 12px/16px var(--fb);color:var(--dim);background:none;border:0;padding:0}
+.hmenu .mi .mc{width:16px;height:16px;flex:none;margin-left:auto;color:var(--ink)}
+.hmenu .mi .mc .ic{color:inherit}
+.hmenu .mi.danger,.hmenu .mi.danger .ic{color:var(--bad)}
+.hmenu .mi.danger:focus,.hmenu .mi.danger:hover{background:rgb(var(--bad-rgb) / .08)}
+.hmenu .mi[aria-disabled="true"]{opacity:.45}
+.hmenu .msep{height:1px;margin:5px -6px;background:var(--hair);flex:none}
+.hmenu .mh{padding:6px 8px 4px;font-size:12px;line-height:16px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none}
+.hmenu.acctm{min-width:0}
+@media (prefers-reduced-motion:reduce){.hmenu{transition:none;transform:none}}
+/* the / command list above the typing box: the same dropdown look */
+#app .slash,.slash{background:var(--surface);border:1px solid var(--hair2);border-radius:12px;backdrop-filter:none;-webkit-backdrop-filter:none;
+  box-shadow:0 1px 2px rgb(var(--sh-rgb) / .05),0 6px 24px rgb(var(--sh-rgb) / .10);gap:1px}
+.slash button{min-height:32px;padding:6px 8px;border-radius:8px;font:400 14px/20px var(--fb);color:var(--dim)}
+.slash button b{color:var(--ink);font-weight:500;min-width:84px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
+.slash button span{color:var(--ink);font-weight:400}
+.slash button[aria-selected="true"],.slash button:hover{background:rgb(var(--fg-rgb) / .06)}
+
+/* ===== v0.288 SIDEBAR FULLY VISIBLE (owner, with a screenshot: "CHECK THE SIDE BAR FONT AND FONT SIZE AND THE HIDDEN
+   LOOK SECTIONS - MAKE THIS SAME AS CLAUDE, FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS"). Measured before: the section
+   labels (Sessions / Recent chats / Today / Yesterday / Other chats / a session's name) were 12px / 400 in --dim
+   #8B8B92 (3.3:1 on the sidebar - the "hidden" look), chat titles 13.5px / 400, nav rows 14px / 400: a thin face on
+   Windows ClearType reads grey. Claude's sidebar has the same sizes but a MEDIUM weight and darker labels. Now (Schibsted
+   Grotesk is loaded as a 400-700 variable face, so in-between weights are real, not faked): nav 14px / 500 in the ink,
+   chat titles 14px / 470 in the ink (the open one 560), labels 13px / 500 in --mut (6.4:1 light), session name the same,
+   counts and "Show archived" in --mut too. Nothing over 600, nothing under 12px (v0.255). */
+#app .side .sn,#app .side .sn .txt,#app .side .newc .txt{font-weight:500;color:var(--ink)}
+#app .side .sn svg{color:var(--lit)}
+#app .side .rc,#app .side .rct{font-size:14px;font-weight:470;color:var(--ink)}
+#app .side .rcw.cur .rc,#app .side .rcw.cur .rct{font-weight:560}
+#app .side .slabel,#app .side .rg,#app .side .sgh .sgn{font-size:13px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--mut)}
+#app .side .sgh .sgn-n{font-size:12px;font-weight:500;color:var(--mut);opacity:1}
+#app .side .pjadd,#app .side .rcm{color:var(--mut)}
+#app .side .rcarch{font-size:13px;font-weight:450;color:var(--mut)}
+#app .side .rcarch:hover{color:var(--ink)}
+#app .side .sn kbd,#app .side .newc kbd{color:var(--mut)}
+:root[data-size="sm"] #app .side .rc,:root[data-size="sm"] #app .side .rct{font-size:13px}
+:root[data-size="lg"] #app .side .rc,:root[data-size="lg"] #app .side .rct{font-size:15px}
+#app .side #uhandle,#app .side .conn span{color:var(--mut)}
+/* PREMIUM pass (owner: "STILL SAME MAKE IT MORE PREMIUM AND PERFECT"): one rhythm for every row (36px nav, 34px chats,
+   8px corners, the same soft hover / selected greys), line icons instead of emoji chrome (📁 🗄 ⋯ ▸), a session is a ROW
+   like a chat (14px / 500 ink, folder icon, chevron that turns), sections breathe (18px above a label). */
+#app .side{text-rendering:optimizeLegibility;font-kerning:normal}
+#app .side .sn,#app .side .newc{min-height:36px;border-radius:8px;padding:7px 10px;gap:10px}
+#app .side .sn svg{width:18px;height:18px;stroke-width:1.75}
+#app .side .rcw{border-radius:8px;margin:1px 0}
+#app .side .rc{min-height:34px;padding:7px 8px 7px 10px;border-radius:8px}
+#app .side .sn:hover,#app .side .rcw .rc:hover,#app .side .sgh:hover,#app .side .rcarch:hover{background:rgb(var(--fg-rgb) / .045)}
+#app .side .sn[aria-current="true"],#app .side .rcw.cur .rc{background:rgb(var(--fg-rgb) / .075);box-shadow:none}
+#app .side .slabel{padding:18px 10px 6px}
+#app .side .rg{padding:16px 10px 5px}
+#app .side .sgh{margin-top:2px;padding:0 2px 0 2px;min-height:34px;gap:2px;border-radius:8px;color:var(--ink)}
+#app .side .sgh .sgn{font-size:14px;font-weight:500;color:var(--ink);gap:9px}
+#app .side .sgh .sgn .sic{width:16px;height:16px;color:var(--mut);flex:none}
+#app .side .sgh .semo{width:16px;text-align:center;font-size:14px;line-height:1;flex:none}
+#app .side .sgh .sgc{width:22px;height:22px;color:var(--mut);border-radius:6px}
+#app .side .sgh .sgc .sic{width:14px;height:14px;transition:transform .15s ease}
+#app .side .sgh:not(.closed) .sgc .sic{transform:rotate(90deg)}
+#app .side .rcm{width:28px;height:28px;border-radius:6px;color:var(--mut);font-size:0}
+#app .side .rcm svg{width:16px;height:16px}
+#app .side .rcm:hover{background:rgb(var(--fg-rgb) / .07);color:var(--ink)}
+#app .side .rcarch{display:flex;align-items:center;gap:9px;margin:10px 0 4px;padding:7px 10px;width:100%;border-radius:8px}
+#app .side .rcarch .sic{width:16px;height:16px;flex:none}
+@media (prefers-reduced-motion:reduce){#app .side .sgh .sgc .sic{transition:none}}
+/* the ⋯ sits INSIDE the row's pill on the right, like Claude (it hung outside, so the pill stopped short of it) */
+#app .side .rcw{position:relative}
+#app .side .rcw .rc{padding-right:10px}
+#app .side .rcw:hover .rc,#app .side .rcw.cur .rc,#app .side .rcw:focus-within .rc{padding-right:38px}
+#app .side .rcm{position:absolute;right:4px;top:50%;margin-top:-14px}
+#app .side .rcw:focus-within .rcm{opacity:1}
+/* "Sessions" is a heading with only its + beside it (the sessions themselves sit in the list below): one tight row,
+   then "Recent chats" close under it; "Other chats" followed straight by a day label keeps them together */
+#app .side .slabel.pjl{display:flex;align-items:center;padding:16px 4px 0 10px}
+#app .side .slabel.pjl .pjadd{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;margin-left:auto}
+#app .side .slabel.pjl .pjadd:hover{background:rgb(var(--fg-rgb) / .07);color:var(--ink)}
+#app .side .slabel.pjl+.slabel,#app .side .slabel.pjl~.slabel{padding-top:10px}
+#app .side .rg.sgb+.rg{padding-top:4px}
+/* the account button stays at the bottom of the sidebar like Claude's, however long the chat list grows (it scrolled away) */
+#app .side #model{position:sticky;bottom:-22px;z-index:3;margin-top:auto;background:var(--side-bg);box-shadow:0 -10px 12px -6px var(--side-bg);border-radius:10px}

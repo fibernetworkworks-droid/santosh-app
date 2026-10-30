@@ -271,7 +271,7 @@ class Settings(BaseSettings):
     voice_openai_month_usd: float = 10.0              # whole app, per calendar month (IST); 0 = no OpenAI calls
     voice_openai_user_min: int = 120                  # minutes per user per month on OpenAI; 0 = unlimited
     voice_openai_tenants: str = ""                    # who may pick it ("" = only the main tenant: the owner's trial; "*" = all)
-    voice_openai_eagerness: str = "low"               # v0.267 semantic VAD: low = waits until her sentence is done
+    voice_openai_eagerness: str = "medium"            # v0.285 semantic VAD: medium waits at most ~4 s (low = up to 8 s, felt like not listening)
     # v0.276 COMPOSIO: one Newtika project key gives every user Slack / Notion / Jira ... through Composio's official
     # OAuth; users never make a Composio account. Each user is a separate Composio user_id fixed by the server.
     composio_api_key: str = ""                        # VPS .env only (COMPOSIO_API_KEY), never in chat or the repo

@@ -257,7 +257,7 @@ def test_voice_block_leads_and_openai_waits_for_us():
     assert ins.index("AWAAZ MEIN JAAN") < 3000                 # at the top, not after the 24k persona
     assert "preamble nahi" in ins
     td = cfg["audio"]["input"]["turn_detection"]
-    assert td["type"] == "semantic_vad" and td["eagerness"] == "low"     # v0.267 waits until her sentence is done
+    assert td["type"] == "semantic_vad" and td["eagerness"] == "medium"  # v0.283 waits at most ~4 s (low felt like not listening)
     assert td["create_response"] is True and td["interrupt_response"] is True   # OpenAI owns turn-taking again
     assert "saans" not in voice_openai.EMOTION.lower() and "breath" not in voice_openai.EMOTION.lower()
 
@@ -349,7 +349,9 @@ def test_a_busy_error_is_retried_only_for_an_answer_we_owe():
 
 def test_committed_segments_do_not_start_replies():
     src = (ROOT / "server/app/voice_openai.py").read_text()
-    assert '"input_audio_buffer.committed"' not in src and "_her_turn_reply" not in src
+    assert "_her_turn_reply" not in src                     # v0.283 committed only tracks her pending transcript
+    i = src.index('t == "input_audio_buffer.committed"')
+    assert "response.create" not in src[i:i + 400]
 
 
 def test_breath_planned_after_a_long_turn_never_twice():
@@ -387,5 +389,5 @@ def test_gemini_file_has_only_the_routing_seam():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.283.0"
-    assert "0.283.0+323" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.290.0"
+    assert "0.290.0+330" in (ROOT / "pubspec.yaml").read_text()
