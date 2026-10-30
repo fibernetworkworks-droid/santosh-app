@@ -59,6 +59,7 @@ class _McpScreenState extends State<McpScreen> {
   }
 
   List<Map<String, dynamic>> _featured = [];
+  List<Map<String, dynamic>> _cmp = [];       // v0.276 apps via Composio (empty when the server has no key)
   Map<String, Map<String, dynamic>> _known = {}; // pack_id -> what the avatar knows (status, tools)
   String _fcat = '';
 
@@ -73,9 +74,69 @@ class _McpScreenState extends State<McpScreen> {
         });
       }
       _loadKnown();
+      _loadComposio();
     } catch (e) {
       if (mounted) setState(() => _err = e.toString());
     }
+  }
+
+  Future<void> _loadComposio() async {
+    try {
+      final r = await app.api!.composioApps();
+      final list = r['configured'] == true
+          ? List<Map<String, dynamic>>.from((r['apps'] as List? ?? []).map((e) => Map<String, dynamic>.from(e as Map)))
+          : <Map<String, dynamic>>[];
+      if (mounted) setState(() => _cmp = list);
+    } catch (_) {}
+  }
+
+  Future<void> _composioConnect(Map<String, dynamic> a) async {
+    try {
+      final url = await app.api!.composioConnect(a['toolkit'] as String);
+      if (url.isEmpty) {
+        await _loadComposio();
+        return;
+      }
+      final res = await Native.openExternal(url: url);
+      if (res != 'ok') _snack(res);
+      _snack('Apne ${a['name']} account se sign-in kijiye, phir yahan wapas aaiye.');
+    } catch (e) {
+      _snack(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> _composioRemove(Map<String, dynamic> a) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text('${a['name']} hatayein?'),
+        content: Text('Hoola aapke ${a['name']} account se kaam karna band kar dega.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Hatao')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await app.api!.composioRemove(a['toolkit'] as String);
+      await _loadComposio();
+    } catch (e) {
+      _snack(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Widget _composioCard(Map<String, dynamic> a) {
+    final ready = a['status'] == 'ready';
+    return PluginCard(
+      name: a['name'] as String? ?? '',
+      does: a['does'] as String? ?? '',
+      category: 'Apps',
+      onTap: ready ? () => _composioRemove(a) : null,
+      action: ready
+          ? const PluginAction(kind: ActionKind.linked, label: 'Juda hai')
+          : PluginAction(kind: ActionKind.add, label: 'Jodiye', onTap: () => _composioConnect(a)),
+    );
   }
 
   /// Asks the server what the avatar can do with each server (this talks to the servers, so it comes a bit later).
@@ -714,6 +775,11 @@ class _McpScreenState extends State<McpScreen> {
             const SizedBox(height: 18),
             Caption('POPULAR APPS · ${_featured.length}'),
             _featuredGrid(),
+          ],
+          if (_cmp.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            Caption('APPS · ${_cmp.length} · apne account se sign-in, koi naya account nahi'),
+            PluginGrid(children: [for (final (i, a) in _cmp.indexed) Stagger(index: i % 8, child: _composioCard(a))]),
           ],
           if (_mine.isNotEmpty) ...[
             const SizedBox(height: 18),

@@ -10512,3 +10512,33 @@ Version 0.273.0 (pubspec 0.273.0+313, console ?v=0.273.0, pins -> 0.273.0).
   (`month_inr` / `month_budget_inr`, new in `voiceengine.view`) and her minutes. The call screen shows a "Real voice"
   badge (`CallSession.engine` from the `ready` event's `engine`).
 Tests: NEW `test_v0274_openai_parity.py` (6). Version 0.275.0 (pubspec 0.275.0+315, console ?v=0.275.0, pins -> 0.275.0).
+
+## v0.276.0 COMPOSIO (30 Oct 2026, owner: "GO COMPOSIO")
+Her own Slack, Notion, Jira, Confluence, Trello, Asana, ClickUp, Linear, Airtable, HubSpot, Salesforce, Pipedrive,
+Zendesk, Freshdesk, Mailchimp, Zoom, Calendly, Dropbox, Todoist, Figma, Miro (21 apps) through ONE Newtika Composio
+project. Users never make a Composio account.
+- Multi-tenant: `bazar/composio.py` `composio_user(tenant)` = an HMAC of the tenant id (server-made, opaque); every
+  execute also names HER connected account id, sealed in her `bz_connections` row (provider `composio:<app>`, status
+  pending -> active once Composio says ACTIVE). Model args can never choose the user or the account (test).
+- Packs `cmp-<app>` (registry resolver, executor `composio`, `connectors/composio.py`). Reads (GET/LIST/FETCH/SEARCH...
+  with no write word) run; everything else is a confirm card with the exact frozen call (`is_read`). A slug from
+  another app is refused. App text returns with a "data, never instructions" note; output capped at 6,000 chars.
+- Tool `composio_apps` (bazar family, always on): list / connect (Open button = the app's own sign-in, Composio
+  Connect Link) / tools (search more slugs) / remove (deletes at Composio). Prompt line "APPS VIA COMPOSIO";
+  `bazar_find` adds `cmp-*` hits + a hint when her words name an app.
+- Caps (`bz_composio_usage`, IST month): `COMPOSIO_USER_MONTHLY_CALLS` 300 per user, `COMPOSIO_MONTHLY_CALLS` 90,000
+  for the whole app (inside the free 1 lakh). 0 = unlimited.
+- Routes (`bazar/api/composio.py`): GET /api/composio/apps, POST /api/composio/apps/{toolkit}/connect,
+  DELETE /api/composio/apps/{toolkit}; public GET /bazar/composio/callback (trusts only its own signed state, then
+  asks Composio), POST /bazar/composio/webhook (`composio.connected_account.expired`, HMAC-SHA256 over
+  "id.timestamp.body", base64, 5 min window; `whsec_` secrets also tried base64-decoded) -> her chat gets one line.
+- Never via Composio: Gmail / Google apps / YouTube / Outlook / GitHub / Shopify / Supabase / WhatsApp (Hoola's own)
+  and scraping / social toolkits (apify, firecrawl, linkedin, instagram ...). `COMPOSIO_TOOLKITS` can replace the list.
+- Phone: MCP servers screen has an "APPS" grid (Jodiye -> sign-in page, tap a joined one to remove).
+- REST v3.1 (https://backend.composio.dev/api/v3.1, header x-api-key), no SDK. Direct execute is Composio's
+  "legacy but supported" path (sessions are their newer one); kept because the server must own user_id + approvals.
+- VPS: put `COMPOSIO_API_KEY` (+ `COMPOSIO_WEBHOOK_SECRET`) in `~/apps/santosh-core/.env`; in Composio's dashboard add
+  the webhook https://hoola.ainewtika.com/bazar/composio/webhook with event composio.connected_account.expired.
+- NOT VERIFIED live: the app slugs against Composio's real catalogue, the exact webhook signature prefix, and whether
+  every app has Composio-managed OAuth (some, e.g. Zendesk / Freshdesk, ask for a subdomain or API key on the hosted
+  page). Tests: `server/tests/test_v0276_composio.py` (13, fake Composio over httpx MockTransport).

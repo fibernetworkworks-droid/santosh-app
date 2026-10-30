@@ -116,9 +116,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.275.0 (pubspec 0.275.0+315). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.276.0 (pubspec 0.276.0+316). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (14 now: theme.js, pdfview.js, studio.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.276 COMPOSIO: 21 apps (Slack, Notion, Jira, HubSpot, Zoom...) via ONE Newtika Composio project (`bazar/composio.py`, packs
+  cmp-<app>, tool composio_apps); server-made user_id + her sealed account id, reads run / writes = card, monthly caps.
 - v0.275 OPENAI VOICE Phase 2+3: call features checked on OpenAI (news, hold, dropped-connection rebuild); phone
   Profile > Call ki awaaz (`lib/ui/voice_engine_screen.dart`: Gemini / Real voice, rupees, minutes) + "Real voice" call badge.
 - v0.274 SAAF JAGAH: measured her Claude screenshots - gap BETWEEN paragraphs 22-32px vs 6-8px INSIDE one
