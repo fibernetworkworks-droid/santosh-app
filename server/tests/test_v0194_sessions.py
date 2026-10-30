@@ -74,13 +74,13 @@ def test_cache_busts_follow_the_version():
     app = [s for s in stamps if s != "1.4.4"]                           # vendor qrcode keeps its own version
     from app.main import APP_VERSION
     # v0.221 R1: ONE stylesheet + 10 scripts, every one on the release version (no hand tags like &web=)
-    assert len(app) == 15 and set(app) == {APP_VERSION}   # v0.243 + theme.js, v0.248 + pdfview.js, v0.259 + studio.js, v0.277 + attach.js, stamps
+    assert len(app) == 15 and set(app) == {APP_VERSION}   # v0.243 + theme.js, v0.248 + pdfview.js, v0.259 + studio.js, v0.279 + attach.js, stamps
     assert "&web=" not in html and "?web=" not in html
 
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.277.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert APP_VERSION == "0.279.0"    # conscious-bump guard: moves with every release (bump with pubspec)
 
 
 def _wrote(*convs):   # v0.236 the console lists a chat only once she wrote in it

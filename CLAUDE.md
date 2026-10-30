@@ -116,11 +116,19 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.277.0 (pubspec 0.277.0+317). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.279.0 (pubspec 0.279.0+319). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (15 now: theme.js, pdfview.js, studio.js, attach.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.277 ATTACHMENTS LIKE CLAUDE (built as 0.275): console `attach.js` - her files are tiles (composer tray with upload % +
+- CHECKPOINT 30 Oct: FULL CLAUDE MODE (v0.239-v0.250) owner-verified "PERFECT"; memory quiz 16/20 -> 20/20; branch
+  `checkpoint-full-claude-mode-2026-10-30` = 87a2046 (grep "CHECKPOINT 30 Oct" docs/HISTORY.md).
+- v0.279 ATTACHMENTS LIKE CLAUDE (built as 0.275): console `attach.js` - her files are tiles (composer tray with upload % +
   Retry, above her sent bubble, one picture large), full-screen viewer for picture / video / audio, PDF / Office / text in the workspace reader.
+- v0.278 PURA SAANS: the gaps v0.274 missed, measured ink to ink - after a table 0->16px, after a quote 4->16,
+  after a code block 6->16, and one turn to the next 39->61px (Claude leaves 60). Checked and LEFT ALONE because
+  they already measured right: the gap above those blocks, and narration-to-tool-row (23px). Plus the first rule
+  on paragraph LENGTH: one idea, two to four sentences, new paragraph when the idea changes.
+- v0.277 INDIAMART: IndiaMART's own MCP (imgpt.indiamart.com/mcp, no login) -> `indiamart_khoj` / `indiamart_detail` (city
+  wise price, MOQ, brand, seller, phone, link; text answers), Connectors shows IndiaMART Connected (executor `indiamart`).
 - v0.276 PADHNE KI CHAUDAI: the 880px column ran 118 characters a line (Literata 16px = 7.45px a character);
   Claude's own text is 674px = 90. The column STAYS 880 so the words keep the composer's left edge (v0.252);
   only the prose wraps, at 680px = 91 characters. Tables, code blocks and cards keep the full width.

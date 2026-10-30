@@ -13,7 +13,7 @@ from typing import Any
 
 MAX_BYTES = 25 * 1024 * 1024
 LEADS_MAX = 10 * 1024 * 1024
-SNIPPET_CHARS = 280                   # v0.277 first characters of a text file shown on its chat tile
+SNIPPET_CHARS = 280                   # v0.279 first characters of a text file shown on its chat tile
 _META: "OrderedDict[str, dict]" = OrderedDict()      # file_id -> what was found when it was attached
 _LOCK = threading.Lock()
 
@@ -50,7 +50,7 @@ def store(tenant: str, name: str, data: bytes, content_type: str = "") -> dict[s
     out.pop("pc_path", None)
     out["mime"] = mt
     if out.get("media") == "text":
-        # v0.277 the first lines of a text / code / pasted file, for the chat tile (like Claude's PASTED card)
+        # v0.279 the first lines of a text / code / pasted file, for the chat tile (like Claude's PASTED card)
         out["snippet"] = snippet(data)
     if rt["label"]:
         out["real_type"] = rt["label"]
