@@ -693,9 +693,9 @@ class Santosh extends ChangeNotifier {
   }
 
   /// The chat paperclip (v0.44.1): any file goes up and waits in the box until the message is sent.
-  Future<Map<String, dynamic>> attachChatFile(String name, List<int> bytes) async {
+  Future<Map<String, dynamic>> attachChatFile(String name, List<int> bytes, {void Function(double)? onProgress}) async {
     if (api == null || conversationId == null) throw Exception('Abhi server se nahi jude');
-    return api!.chatFile(conversationId!, name, bytes);
+    return api!.chatFile(conversationId!, name, bytes, onProgress: onProgress);
   }
 
   Future<String?> uploadLeads(String name, List<int> bytes) async {

@@ -441,14 +441,27 @@ class Api {
   /// Sends a message. A flaky mobile network is retried (same client_id, so the server runs it only once).
   /// Uploads one file (multipart) with retries on a bad network and plain-words errors, whatever the server or
   /// nginx answers (an HTML 404/413 page never shows up as "Not Found" / a JSON crash).
+  static Stream<List<int>> _pieces(List<int> bytes, void Function(double) onProgress) async* {
+    const n = 64 * 1024;
+    for (var i = 0; i < bytes.length; i += n) {
+      final end = math.min(i + n, bytes.length);
+      yield bytes.sublist(i, end);
+      onProgress(bytes.isEmpty ? 1 : end / bytes.length * .96);   // the last 4% = the server reading it
+    }
+  }
+
   Future<Map<String, dynamic>> uploadFile(String path, String filename, List<int> bytes,
-      {Map<String, String> fields = const {}, Duration timeout = const Duration(seconds: 300), int tries = 3}) async {
+      {Map<String, String> fields = const {}, Duration timeout = const Duration(seconds: 300), int tries = 3,
+      void Function(double)? onProgress}) async {
     Object? last;
     for (var attempt = 0; attempt < tries; attempt++) {
       try {
+        // v0.282 onProgress: the bytes go up in 64 KB pieces and each piece moves the tile's bar (0..1)
         final req = http.MultipartRequest('POST', _u(path))
           ..fields.addAll(fields)
-          ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+          ..files.add(onProgress == null
+              ? http.MultipartFile.fromBytes('file', bytes, filename: filename)
+              : http.MultipartFile('file', _pieces(bytes, onProgress), bytes.length, filename: filename));
         if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
         final res = await http.Response.fromStream(await req.send().timeout(timeout));
         dynamic body;
@@ -492,8 +505,8 @@ class Api {
   }
 
   /// v0.44.1 chat / call paperclip: any file; returns {file_id, name, url, media, preview, pages, leads?...}.
-  Future<Map<String, dynamic>> chatFile(String conv, String filename, List<int> bytes) =>
-      uploadFile('/api/conversations/$conv/files', filename, bytes);
+  Future<Map<String, dynamic>> chatFile(String conv, String filename, List<int> bytes, {void Function(double)? onProgress}) =>
+      uploadFile('/api/conversations/$conv/files', filename, bytes, onProgress: onProgress);
 
   Future<void> sendMessage(String conv, String text, {bool voice = false, List<String> files = const []}) async {
     final id = '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}${math.Random().nextInt(1 << 30).toRadixString(36)}';
