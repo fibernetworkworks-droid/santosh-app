@@ -11400,3 +11400,18 @@ A, B, C and D all end with the loader **visible**. The control case — a reply 
 
 ### Files
 `server/app/static/console/v2.js` · `server/tests/test_v0302_chup_nahi.py` (7 tests).
+
+## v0.303.0 SAAF CONNECT (30 Oct 2026, owner: "NOW CHECK IN APP CONNECTOR SHOW UNWANTED NON WORKING MCP, PLUG IN ETC --- REMOVE ALL JUST KEEP COMPOSO MCPS AND WORKING PLUG IN")
+Counted on a fresh server: 694 packs = 226 handoff (only open a website), 142 BBPS demo (bills not live), 142 shop
+templates with no shop, 10 "core" duplicates, 4 not_configured, and ~170 that really work (UPI 16, rides 7, native
+helpers 30, SMS readers 94, Google 8, home devices 6, food MCPs that can be linked, IndiaMART, Notebook, Shopping, PC).
+- `bazar/service.py`: `HIDDEN_STATUSES` {demo, no_shop_yet, not_configured, core, unavailable} + `HIDDEN_EXECUTORS`
+  {handoff}, `shown()`; applied to `catalog()` (+ top sections, `clean: true`), `connections()` and `find()` (also no
+  featured_connectors / mcp_directory hits); `mcp_directory()` returns an empty list with a note pointing to Composio.
+- Setting `CONNECT_CLEAN` (default true); false = the old full catalogue. Nothing deleted (packs, rows, directory files).
+- Phone: Connect tab - "MCP servers 50,000+" tile -> "Apps 1,600+", Agent Army tile removed, chips App kholega / Bills /
+  Dukaan removed, demo note removed. MCP screen -> "Apps": Composio apps (search, categories, logos) + her joined
+  servers + Postgres; the directory, the non-Composio popular list and "Pata daal kar jodiye" removed (chat can still
+  add a server by its address). Apps load even if the server list fails; "not on" message instead of a spinner.
+- Tests: conftest sets CONNECT_CLEAN=false for the older suites that count the full catalogue; test_v0303_saaf_connect.py
+  covers the clean view and the switch.
