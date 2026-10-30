@@ -110,11 +110,16 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.268.0 (pubspec 0.268.0+308). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.269.0 (pubspec 0.269.0+309). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (14 now: theme.js, pdfview.js, studio.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.268 SIRF JO POOCHA: OpenAI recited all pending / recent work on every ask (Gemini keeps the "news once" rule); OpenAI
+- v0.269 SIRF JO POOCHA: OpenAI recited all pending / recent work on every ask (Gemini keeps the "news once" rule); OpenAI
   gets `BAAT_KA_DHANG` at the top: answer only what she asked, work lists are background, one untold news once.
+- v0.268 DO HISSE: her Claude screenshot and her own Hoola run were measured (Claude 16-35 words/line, 2
+  sentences, 2 facts, 3/4 ending in a next action). Every update line is now TWO HALVES by rule - the fact as a
+  full sentence whose subject is the THING, carrying a real figure, then a short tail ending in the doing word -
+  plus 15-30 words, no third sentence, calm bad news, and a never-list (opener words, "lagta hai", bullets,
+  emoji, and any word from inside the machine: tool names, Python errors, schemas, internal ids).
 - v0.267 SUNO PEHLE: OpenAI owns turn-taking again (semantic VAD low), quiet notes never start a reply, no reply
   chains - v0.265 cues answered pauses / noise / echo. Rule: never send response.create for her turns on OpenAI.
 - v0.266 ASLI SAANS: OpenAI said "main saans le rahi hoon" - words never ask for a breath now; the breath is a real sound
