@@ -10557,3 +10557,42 @@ Tests: NEW `test_v0274_openai_parity.py` (6). Version 0.275.0 (pubspec 0.275.0+3
   chars) 20/20. Rollback switches: CHAT_CONTEXT=hoola, CHAT_COMPACT=false, MEMORY_FENCE=false, ABOUT_ME=false.
 - Seen in the quiz, not fixed: the v0.231 draft check sometimes prefixes the NEXT reply with a correction of the
   previous one ("Ek sudhaar: ...").
+
+## v0.277.0 DIRECT DOMAINS — her domain straight to Hoola, the way Lovable does it (owner: "CHECK THE PREVIOUS DEPLOYMENT WORK ON WEB HOSTING" -> "FIRST CHECK HOW LOVABLE DO THIS" -> "GO, BUILD DIRECT MODE LIKE LOVABLE")
+Found first: the v0.122 domain joining knew only Cloudflare for SaaS (needs a sites zone ON Cloudflare; ainewtika.com is on
+GoDaddy) or her own Cloudflare zone + SITES_ORIGIN_IP; neither was set on the VPS, so a domain Hoola could already BUY
+(Cloudflare Registrar on Newtika's account: checked live, $10.46 / year for a .com) could never reach its website. The VPS
+edge is a Caddy container (fnwconnect_caddy), not nginx. Lovable (docs.lovable.dev/features/custom-domain): one A record to
+its edge IP + TXT `_lovable` = `lovable_verify=...`, its edge issues the certificate, "turn the orange cloud off", Entri
+for automatic DNS, buying sets A + TXT + SSL itself, root + www with one primary, statuses Verifying / Setting up / Live /
+Unable to verify / Offline.
+- **Direct mode** (`site/hosting.py`, setting `SITES_DIRECT_IP`; Cloudflare for SaaS still wins when configured):
+  `connect_domain(..., primary="root"|"www")` makes both addresses (`mode="direct"`, new nullable column
+  `site_hosts.mode`), records = `A @ -> IP` + `A www -> IP` (DNS only, never proxied) + `TXT _hoola.<domain>` =
+  `verify_token` (HMAC of SECRET_KEY over tenant + domain: the same for her every time, useless for anyone else). The card
+  and `status()` carry the records; manual steps for any registrar, applied on her tap for her Cloudflare / Porkbun.
+- **Ladder** (`_check_direct`, worker, also before launch): Verifying (`direct_records_seen`: A answers from the 3 DoH
+  resolvers must ALL be the IP; TXT must carry her token; the exact missing thing in her words; Cloudflare-proxy IPs get
+  the "orange cloud band kijiye" hint; after 1 hour "Unable to verify: ...") -> Setting up (records seen; only now
+  `ask_ok` lets the edge's on-demand TLS make a certificate; before launch it says "live karte hi https") -> Live (the
+  first https fetch works; one site_live note). `_stage()` gives the app one word (Verifying / Setting up / Live /
+  Unable to verify / Offline).
+- **Primary**: the chosen address has role main, the other role `redirect` (301, like `apex`); `_main_host` honours it;
+  `set_primary` (POST `/api/sites/{id}/primary` {host}, app "Main banao") re-publishes the live copy under the new main
+  and re-links the others (free address too). Uptime watches main + free only.
+- **DNS** (`site/dns.py`): an A record that already points here but is proxied (orange cloud) becomes an `update` to DNS
+  only with a risk line; `website_records(mode="direct")`. A domain SHE bought through Hoola on Newtika's Cloudflare
+  account (`site_domains.account="hoola"`, registrar cloudflare) is provider `hoola_cf`: its zone is read and changed with
+  Newtika's registrar token (she has no login there, so before this the card could only say "do it yourself").
+- **Buy -> live** (`domains._join_site`): for that Newtika-held fresh zone, when the plan only ADDS records (nothing of hers
+  changed or deleted), the records are applied at once after her fingerprint purchase for this site, like Lovable; any
+  other plan still waits for her tap.
+- Edge: `/api/hosting/ask` = `H.ask_ok` (a launched address, and for direct mode only from Setting up). Caddy catch-all
+  block with `on_demand_tls { ask http://172.18.0.1:8077/api/hosting/ask }` in `server/deploy/sites_hosting.md`.
+- App (`lib/ui/site_hosting.dart`): each address shows its stage chip + Main + the records still missing (selectable),
+  "Main banao", and a "bina www / www" choice when joining a domain (only when the server runs direct mode).
+- Tests `server/tests/test_v0277_direct_domains.py` (7): ladder + ask gate + 301 + uptime targets, someone else's TXT /
+  a proxied IP never verifies, primary switch, orange cloud -> DNS only on her tap with her MX untouched, Newtika-held
+  domain gets its records at once (her own account never does), SaaS still wins / no route = plain error.
+- Built as 0.276.0, re-versioned 0.277.0 on merge (the parallel v0.276.0 PADHNE KI CHAUDAI took the number).
+- Not verified yet: a real Caddy issuing a real certificate through the ask endpoint (owner's VPS step).

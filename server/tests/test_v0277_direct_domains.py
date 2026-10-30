@@ -1,4 +1,4 @@
-"""v0.276 DIRECT MODE, how Lovable does it: with SITES_DIRECT_IP her domain points straight at Hoola's server (A @ + A www,
+"""v0.277 DIRECT MODE, how Lovable does it: with SITES_DIRECT_IP her domain points straight at Hoola's server (A @ + A www,
 DNS only) and a `_hoola` TXT proves it is hers; the worker walks Verifying -> Setting up -> Live; the edge (Caddy on-demand
 TLS) may only ask for a certificate once her records point here; one address is primary and the other 301-redirects; an
 orange-cloud A record becomes DNS only; a domain bought through Hoola on Newtika's Cloudflare account gets its records at
@@ -230,5 +230,5 @@ def test_saas_still_wins_and_nothing_without_a_route(host_env):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.276.0"
-    assert "0.276.0+316" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.277.0"
+    assert "0.277.0+317" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

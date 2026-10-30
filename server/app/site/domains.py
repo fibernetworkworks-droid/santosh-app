@@ -495,7 +495,7 @@ def buy(tenant: str, oid: str, hash_: str) -> dict[str, Any]:
 
 def _join_site(tenant: str, o: SiteDomain) -> str:
     """A bought domain is joined to its site at once. Usually that only PREPARES the DNS card (her tap applies it).
-    v0.276 like Lovable: a domain she bought for THIS site with her fingerprint, held on Newtika's Cloudflare account (she
+    v0.277 like Lovable: a domain she bought for THIS site with her fingerprint, held on Newtika's Cloudflare account (she
     has no login there), gets its website records at once when the plan only ADDS records to the fresh zone (nothing of
     hers is changed or deleted); anything else still waits for her tap."""
     if not o.site_id:
