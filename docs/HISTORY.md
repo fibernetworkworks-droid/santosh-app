@@ -11259,3 +11259,15 @@ Live check on her VPS (v0.294 `check`): 1,709 apps in Composio, 1,687 offered, 1
   config it creates; no user key used). `check` now reports key_apps_user_types_own_key.
 - NOT VERIFIED live: the exact field item keys from /toolkits/{slug}; the POST /connected_accounts response shape (id at
   top level assumed, connected_account.id also read). Tests: test_v0276_composio.py 22.
+
+## v0.298.0 NO RADIO — no static before the real voice speaks (owner: "WHEN HOOLA AI INITIAT TALK BEFORE THAT GET THE RADIO LIKE SOUND --- CHECK FIRST THEN FIX")
+- Checked first: on the OpenAI real voice the ONLY audio the server adds before his voice is v0.266's breath
+  (`OpenAICall._breathe`, before the first audio of a reply after her turn of 4 s+ or a low tone). `breath.clips()`
+  returns the Gemini-TTS `<breath>` takes only once they are rendered AND pass `is_breath`; until then - every first call
+  after a restart, and always if no take passes - it fell back to `breath.synth()`: band-limited noise with a rise and
+  fall, which on a phone speaker sounds like radio static. Gemini calls never play it (the acks there are words).
+- Fix: `VOICE_OPENAI_BREATH` default false (his own voice starts clean), and `breath.clips()` no longer returns the
+  generated noise at all (`STATS["synth_refused"]`) - if she switches breath back on, only a recorded take that passed
+  the voiceless check can ever play. `synth()` stays only as test material for the detector.
+Tests: NEW `test_v0298_no_radio.py` (4); `test_v0264_openai_voice.py` breath tests follow the new default.
+Version 0.298.0 (pubspec 0.298.0+338, console ?v=0.298.0, pins -> 0.298.0).
