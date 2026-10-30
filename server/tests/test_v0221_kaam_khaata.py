@@ -180,4 +180,4 @@ def test_waiting_time_never_counts_against_the_goal(gz):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.276.0"
+    assert APP_VERSION == "0.283.0"

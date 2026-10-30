@@ -24,7 +24,8 @@ SITE_TOOLS = [
         "GOING LIVE (each a card SHE taps, never live by itself): action=launch (free: true = also on the free Hoola "
         "address <name>.<hoola sites domain>) sends the 'live karo' card; action=domain + domain ('sharmasweets.in') joins "
         "her own domain and sends the DNS card (Hoola applies it only on her tap when her DNS is on her Cloudflare, else "
-        "the card lists the records for her registrar); action=dns_check + plan (is it visible worldwide?); action=email_dns "
+        "the card lists the records for her registrar; + primary root|www = which address is main, default root, the other "
+        "redirects); status then goes Verifying -> Setting up -> Live by itself (website_dekho what=hosting); action=dns_check + plan (is it visible worldwide?); action=email_dns "
         "+ domain + provider (google|zoho) + report_to = mail records card; action=rollback + version = card to put an "
         "older version live; action=takedown* stops the live site. "
         "DOMAINS (her name, her account; you NEVER buy): action=domain_ideas (+ name / city) = free names with first-year AND "
@@ -45,7 +46,7 @@ SITE_TOOLS = [
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
          "instruction": {"type": "string"}, "file_id": {"type": "string"}, "about": {"type": "string"},
          "pages": {"type": "array", "items": {"type": "string"}}, "client": {"type": "string"},
-         "free": {"type": "boolean"}, "domain": {"type": "string"}, "plan": {"type": "string"},
+         "free": {"type": "boolean"}, "domain": {"type": "string"}, "primary": {"type": "string", "enum": ["root", "www"]}, "plan": {"type": "string"},
          "provider": {"type": "string"}, "report_to": {"type": "string"}, "version": {"type": "integer"},
          "city": {"type": "string"}, "domains": {"type": "array", "items": {"type": "string"}},
          "auto_renew": {"type": "boolean"}, "days": {"type": "integer"},
@@ -162,9 +163,9 @@ def _hosting(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         c = H.launch_request(t, site, a.get("free", True) is not False, conv)
         return {"hosts": c["hosts"], "blockers": c["blockers"], "say": c["say"] + " (Card par 'Haan, live karo' unhe hi dabana hai.)"}
     if action == "domain":
-        c = H.connect_domain(t, site, str(a.get("domain") or ""), conv)
+        c = H.connect_domain(t, site, str(a.get("domain") or ""), conv, str(a.get("primary") or ""))
         return {"domain": c["domain"], "provider": c["plan"]["provider"], "changes": c["plan"]["words"],
-                "manual_steps": c["plan"]["manual_steps"], "say": c["say"]}
+                "manual_steps": c["plan"]["manual_steps"], "records": c.get("records", []), "say": c["say"]}
     if action == "dns_check":
         return D.check(t, str(a.get("plan") or ""))
     if action == "email_dns":

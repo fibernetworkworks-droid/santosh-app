@@ -10513,7 +10513,237 @@ Version 0.273.0 (pubspec 0.273.0+313, console ?v=0.273.0, pins -> 0.273.0).
   badge (`CallSession.engine` from the `ready` event's `engine`).
 Tests: NEW `test_v0274_openai_parity.py` (6). Version 0.275.0 (pubspec 0.275.0+315, console ?v=0.275.0, pins -> 0.275.0).
 
-## v0.276.0 COMPOSIO (30 Oct 2026, owner: "GO COMPOSIO")
+## v0.276.0 PADHNE KI CHAUDAI — the reading width, the one thing v0.274 left on the table (owner: "GO WIDTH")
+- v0.274 SAAF JAGAH fixed the spacing and deliberately did NOT touch the width, because v0.252 had set the column
+  to match the composer on purpose. She was offered the choice and said "GO WIDTH".
+- MEASURED PROPERLY THIS TIME, Literata 16px in a real browser: one character averages **7.45px**, so
+
+  | width | characters a line |
+  |---|---|
+  | 880px (what we had) | **118** |
+  | 760px | 102 |
+  | 720px | 97 |
+  | **680px (this version)** | **91** |
+  | 674px (Claude's own) | 90 |
+
+  A correction worth recording: v0.274's note put the old column at "~95 characters". That estimate was wrong -
+  it is 118. Anything past about 90 loses the eye on the way back to the start of the next line, which is why the
+  page still felt heavy even after the serif (v0.249), Literata + contrast (v0.253) and the spacing (v0.274).
+- THE COLUMN STAYS 880px. v0.252's point was that the words begin at the composer's left edge, and that still
+  holds - the left edge is untouched, only the line is shorter. The composer dock keeps `width:min(880px,100%)`
+  and a test asserts the two still agree.
+- ONLY THE PROSE IS CAPPED, at 680px, through one rule scoped to the reply's own children:
+  `#app .mh .txt>p, >ul, >ol, >.mdh, >blockquote {max-width:680px}`.
+  A TABLE, a code block, a card or a tool group is NOT capped: those are read by scanning across rather than line
+  by line, and squeezing their columns would make them worse. Claude's own answer does the same - her screenshot
+  of the government-API table runs wider than the prose above it.
+- THE PHONE NEEDS NOTHING: a phone screen is 360-430px wide, far under the cap, so `md_text.dart` keeps only
+  v0.274's spacing (block 16px, list items 8px) and no width rule at all.
+- Verified in a browser after the change: column 880px, paragraph 680px (91 characters), heading 680px, list
+  658px, table uncapped.
+- Tests: NEW `server/tests/test_v0276_padhne_ki_chaudai.py` (7) - the cap and exactly which children it covers,
+  that tables / code / cards are NOT in the rule, that the column and the composer still share 880px, and that
+  v0.274's spacing and the v0.249 / v0.253 type are untouched. v0.274's "width left alone" test now records that
+  the owner made the call, so the two versions read as one decision rather than a contradiction.
+- Version 0.276.0 (pubspec 0.276.0+316, console ?v=0.276.0, pins -> 0.276.0).
+- NOT VERIFIED: how it reads on her own screen at her own window width.
+
+## CHECKPOINT 30 Oct 2026 — FULL CLAUDE MODE verified by the owner ("PERFECT")
+- Shipped: v0.239 Phase 1 (whole chat word for word + gauge), v0.242 Phase 2 (compact checkpoint), v0.244 3A (one memory
+  for calls / quick lane + cost cap + meter), v0.246 3C (fenced Sessions), v0.250 3B (Mere baare mein, haal_ki_chats,
+  incognito, memory switches). Branch `checkpoint-full-claude-mode-2026-10-30` = commit 87a2046 (v0.250.0).
+- Proof on the VPS with the real brain (`server/tools/memory_quiz.py`, 300 exchanges, 20 planted details), run twice:
+  old 40-49 window (hoola) 16/20 · whole chat (full) 20/20 · real checkpoint first (compact: 296 exchanges -> ~3,000
+  chars) 20/20. Rollback switches: CHAT_CONTEXT=hoola, CHAT_COMPACT=false, MEMORY_FENCE=false, ABOUT_ME=false.
+- Seen in the quiz, not fixed: the v0.231 draft check sometimes prefixes the NEXT reply with a correction of the
+  previous one ("Ek sudhaar: ...").
+
+## v0.277.0 INDIAMART (re-versioned twice: parallel sessions took 0.273-0.276) (30 Oct 2026)
+Owner: "MAKE A PLAN AND DEPLOY IT PERFECTLY FOR HOOLA. IT WILL SHOW CITY WISE PRODUCT, PRICE, DETAILS, BRAND, IMAGES"
+then "IN APP SIDE JUST SHOW INDIAMART LOGO WITH CONNECTED. BACKEND IF USER ASK GO TO INDIAMART AND TELL THIS PRODUCT IT
+MUST WORK DIRECTLY".
+- Source: IndiaMART's OWN MCP server `https://imgpt.indiamart.com/mcp` (streamable HTTP, server `indiamart-marketplace`
+  1.0.0, protocol 2025-06-18). Probed live: no login, no key, no session id - every call is one JSON-RPC POST. Three
+  tools: `search_products` (query, search_term required; city, brand, specifications, min_price / max_price INR strict,
+  biztype manufacturer|exporter|wholesaler|retailer), `get_product_detail` (displayid), `log_client_event` (their
+  widget's logging, "Not for model use" - never called; `call_tool` refuses it). Buyer side only: no seller leads,
+  no replies, no orders.
+- `app/indiamart.py`: the transport (SSE or JSON answer), 15-min search / 60-min detail cache, product shaping
+  (price + unit, MOQ, brand, specs from `isq` "k==v", seller, city, GST / TrustSeal, rating, phone, page link,
+  direct imimg.com photo unwrapped from their image-proxy), `price_stats` (band in the MAIN unit only - a per-tonne
+  listing never stretches a per-bag band), `by_city`, `search_cities` (2-5 cities in parallel, deduped), signed image
+  proxy (`img_url` / `img_ok` / `fetch_image`: IndiaMART hosts only, https, no SVG, <= 4 MB).
+- Agent tools `app/agent/indiamart_tools.py`: `indiamart_khoj` (city / cities / near_me / all India city wise) and
+  `indiamart_detail`; answers are TEXT (city price bands + best 3-5 with price, MOQ, brand, seller + city, GST,
+  phone, link). Seller text = data. Never orders / calls / messages a seller. Read-only: PARALLEL_SAFE + draftcheck READS.
+- Routing (`agent/admit.py`): family keys (indiamart, supplier, wholesale, thok, moq, bulk, सप्लायर, थोक, भाव, रेट)
+  + a "sourcing" INTENT (rate / bhav / kitne ka / price of / where to buy / suppliers / dealers ...). Guide line in
+  prompts.py scoped to the family.
+- Connectors page: pack `indiamart` is now executor `indiamart` (bazar/connectors/indiamart.py, tools search_products /
+  product_detail tier 0), status always "ready" (INDIAMART_ENABLED off -> not_configured); `/api/bazar/connections`
+  lists it with `no_login: true` + the logo, and the phone shows "Connected" with no link / unlink
+  (lib/ui/bazar_screen.dart `_appAction`).
+- Routes: GET /api/indiamart/img (public, signed), GET /api/indiamart/product/{id} (key).
+- Settings: `INDIAMART_ENABLED` (default true), `INDIAMART_MCP_URL`.
+- Also read: `techmatic-sys/indiamart-mcp-server` (third party, MIT, stdio, seller Lead Manager: one endpoint
+  `mapi.indiamart.com/wservce/crm/crmListing/v2/?glusr_crm_key=...`, key in the query string, a `.env` committed in
+  its repo). NOT used. Seller leads would be built on IndiaMART's own CRM API with her own key, when she asks.
+- Tests: tests/test_v0277_indiamart.py (11). Live check from the sandbox: Pune vs Delhi cement 4.9 s, detail + photo OK.
+
+## v0.278.0 PURA SAANS — the gaps v0.274 missed, and the paragraph itself (owner: "NOW LETS WORK ON PARAGRAP AND GAPS")
+- Measured in a real browser against her Claude screenshots, ink to ink, the same way v0.274 was measured. Four
+  things were still wrong, and three of them only became visible once v0.274's gaps were right:
+
+  | | before | now | Claude |
+  |---|---|---|---|
+  | after a table | **0px** | 16px | — |
+  | after a quote | **4px** | 16px | — |
+  | after a code block | **6px** | 16px | — |
+  | one turn to the next | **39px** | **61px** | **60px** |
+
+  The first three are the same 16px a paragraph gets: v0.274 had set the bottom margin on `p`, `.mdh`, `ul` and
+  `ol` but a table, a blockquote and a code block had none of their own, so the next line sat on the table's last
+  row. `.textmd table,blockquote,.cb,pre{margin:0 0 16px}` with `:last-child` at 0.
+  The fourth is the turn: `#app .col{gap:44px}` gives 61px ink to ink, so a new turn reads as a new turn.
+- TWO THINGS WERE CHECKED AND DELIBERATELY LEFT ALONE, because measuring showed they were already right:
+  - the gap ABOVE a table / quote / code is already 16px — the paragraph before it carries its own bottom margin;
+  - narration to tool row is 23px against Claude's 23-26px. The `#app .mh .bd{gap:12px}` that looked too tight on
+    paper measures correctly on screen, because the tool group carries its own padding. Changing it would have
+    broken a gap that was already Claude's. A test records both so the next session does not "fix" them.
+- THE PARAGRAPH ITSELF. Nothing in the rulebook had ever said how LONG a paragraph may be - only that prose should
+  be plain. `replystyle.CHAT` now asks for one idea per paragraph, two to four sentences, a new paragraph the
+  moment the idea changes, and explicitly allows a single sentence to stand as a paragraph when it carries the
+  point. Measured on Claude's own answers: the lines it writes while working run two lines, its summing-up
+  paragraph runs four sentences. Chat and console only - a spoken answer has no paragraphs.
+- THE PHONE NEEDS NOTHING: `md_text.dart` puts the same SizedBox between every block whatever it is, so a table
+  and a code block already get the 16px a paragraph gets (v0.274).
+- A SCARE WORTH RECORDING. Mid-measurement the paragraph margin read 2px and v0.274 looked lost. What had
+  happened: another session shipped `e86306a v0.273.0 INDIAMART` built on an OLD tree, which reverted this file
+  wholesale; someone had already pushed `f26dfe9 Revert e86306a`, and the first measurements were taken against
+  the clobbered checkout before that revert was fetched. Re-measured on the real tip - v0.274 and v0.276 were both
+  intact. The lesson for the next session: when a measurement contradicts a shipped version, re-fetch and check
+  whether main moved under you before changing anything.
+- Tests: NEW `server/tests/test_v0277_pura_saans.py` (7), including one that pins the two gaps that must NOT be
+  touched.
+- Version 0.277.0 (pubspec 0.277.0+317, console ?v=0.277.0, pins -> 0.277.0).
+- NOT VERIFIED: how the turn gap feels on a long scroll on her own screen.
+
+## v0.279.0 ATTACHMENTS LIKE CLAUDE (30 Oct 2026, built as 0.275.0; re-versioned on merge)
+Owner: "CHECK HOW CLAUDE LOAD THE IMAGES FILES, PDF, VIDEOS ETC IN CHAT FIRST - PREPARE A PLAN FOR HOOLA SAME. THEN A
+PERFECT PREVIEW BEFORE DEPLOYMENT" (with a screenshot of Claude's chat).
+Before: the composer and her sent message showed every file as one "📎 name" pill inside the bubble; the server already
+sent preview / pages / duration / size with each file, the console ignored them.
+What Claude does, and Hoola now does (web console, `server/app/static/console/attach.js`, window.HoolaAttach):
+- Composer tray: square tiles above the typing box. A picture shows itself the moment she picks it (local blob:), a PDF
+  its first page (server preview) + "PDF · 4 pages", a video its frame + play mark + length, audio its length, a text /
+  pasted file its first lines (new `chatfiles.snippet`, kept in `shown()`), any other file an icon + type + size.
+  Each tile shows the real upload % (XMLHttpRequest upload progress, uploads run side by side); a failed upload stays
+  red with Retry; ✕ removes (and cancels a running upload). Send waits for uploads, refuses while one has failed.
+- Sent message: the same tiles sit ABOVE her bubble, right-aligned (`.mua`, a sibling before `.mu`; `d._tiles`); one
+  picture alone shows large in its own shape; a files-only message ("Ye file dekho", FILE_ONLY) shows just the tiles.
+  Old messages render the same from the event's `files` (preview data: URL; a picture with no preview loads its file
+  when scrolled into view). A taken-back queued message removes its tiles too.
+- Click: picture / video / audio = full-screen viewer (`.albx`: name, n of N, size, ← → between the message's media,
+  Esc, click outside closes, click the picture to zoom, Download, Open in workspace). PDF / Word / Excel / text open in
+  the workspace's own reader (panel.js, pdfview.js). Her file comes with her login into blob: URLs, never a URL token.
+- CRISP TEXT kept: solid backgrounds, no blur, no held animation. Phone width: 88px tray tiles, viewer header in two rows.
+Not changed: the phone app (Flutter) - same idea there is the next step if she wants it; upload limits (25 MB, 6 files).
+Tests: tests/test_v0279_attachments.py.
+
+## v0.280.0 DIRECT DOMAINS — her domain straight to Hoola, the way Lovable does it (owner: "CHECK THE PREVIOUS DEPLOYMENT WORK ON WEB HOSTING" -> "FIRST CHECK HOW LOVABLE DO THIS" -> "GO, BUILD DIRECT MODE LIKE LOVABLE")
+Found first: the v0.122 domain joining knew only Cloudflare for SaaS (needs a sites zone ON Cloudflare; ainewtika.com is on
+GoDaddy) or her own Cloudflare zone + SITES_ORIGIN_IP; neither was set on the VPS, so a domain Hoola could already BUY
+(Cloudflare Registrar on Newtika's account: checked live, $10.46 / year for a .com) could never reach its website. The VPS
+edge is a Caddy container (fnwconnect_caddy), not nginx. Lovable (docs.lovable.dev/features/custom-domain): one A record to
+its edge IP + TXT `_lovable` = `lovable_verify=...`, its edge issues the certificate, "turn the orange cloud off", Entri
+for automatic DNS, buying sets A + TXT + SSL itself, root + www with one primary, statuses Verifying / Setting up / Live /
+Unable to verify / Offline.
+- **Direct mode** (`site/hosting.py`, setting `SITES_DIRECT_IP`; Cloudflare for SaaS still wins when configured):
+  `connect_domain(..., primary="root"|"www")` makes both addresses (`mode="direct"`, new nullable column
+  `site_hosts.mode`), records = `A @ -> IP` + `A www -> IP` (DNS only, never proxied) + `TXT _hoola.<domain>` =
+  `verify_token` (HMAC of SECRET_KEY over tenant + domain: the same for her every time, useless for anyone else). The card
+  and `status()` carry the records; manual steps for any registrar, applied on her tap for her Cloudflare / Porkbun.
+- **Ladder** (`_check_direct`, worker, also before launch): Verifying (`direct_records_seen`: A answers from the 3 DoH
+  resolvers must ALL be the IP; TXT must carry her token; the exact missing thing in her words; Cloudflare-proxy IPs get
+  the "orange cloud band kijiye" hint; after 1 hour "Unable to verify: ...") -> Setting up (records seen; only now
+  `ask_ok` lets the edge's on-demand TLS make a certificate; before launch it says "live karte hi https") -> Live (the
+  first https fetch works; one site_live note). `_stage()` gives the app one word (Verifying / Setting up / Live /
+  Unable to verify / Offline).
+- **Primary**: the chosen address has role main, the other role `redirect` (301, like `apex`); `_main_host` honours it;
+  `set_primary` (POST `/api/sites/{id}/primary` {host}, app "Main banao") re-publishes the live copy under the new main
+  and re-links the others (free address too). Uptime watches main + free only.
+- **DNS** (`site/dns.py`): an A record that already points here but is proxied (orange cloud) becomes an `update` to DNS
+  only with a risk line; `website_records(mode="direct")`. A domain SHE bought through Hoola on Newtika's Cloudflare
+  account (`site_domains.account="hoola"`, registrar cloudflare) is provider `hoola_cf`: its zone is read and changed with
+  Newtika's registrar token (she has no login there, so before this the card could only say "do it yourself").
+- **Buy -> live** (`domains._join_site`): for that Newtika-held fresh zone, when the plan only ADDS records (nothing of hers
+  changed or deleted), the records are applied at once after her fingerprint purchase for this site, like Lovable; any
+  other plan still waits for her tap.
+- Edge: `/api/hosting/ask` = `H.ask_ok` (a launched address, and for direct mode only from Setting up). Caddy catch-all
+  block with `on_demand_tls { ask http://172.18.0.1:8077/api/hosting/ask }` in `server/deploy/sites_hosting.md`.
+- App (`lib/ui/site_hosting.dart`): each address shows its stage chip + Main + the records still missing (selectable),
+  "Main banao", and a "bina www / www" choice when joining a domain (only when the server runs direct mode).
+- Tests `server/tests/test_v0280_direct_domains.py` (7): ladder + ask gate + 301 + uptime targets, someone else's TXT /
+  a proxied IP never verifies, primary switch, orange cloud -> DNS only on her tap with her MX untouched, Newtika-held
+  domain gets its records at once (her own account never does), SaaS still wins / no route = plain error.
+- Built as 0.276.0, re-versioned 0.280.0 on merge past the parallel v0.276-v0.279 (PADHNE KI CHAUDAI, INDIAMART, PURA SAANS, ATTACHMENTS).
+- Not verified yet: a real Caddy issuing a real certificate through the ask endpoint (owner's VPS step).
+
+## v0.281.0 — the bullet gutter, and what the "not exactly as Claude" report really was (owner: "OUR PARAGRAP WORK DEPLOYED BUT NOT EXACTLY AS CLAUDE DOES ---- LOT OF ISSUES ARE THERE FIND THE DIFREENCE ... FIRST", then "FIX THE BULLET INDENT 22 TO 30")
+- CHECKED AGAINST THE LIVE SERVER, NOT THE REPO. Her `v2.css` was fetched from hoola.ainewtika.com (live was
+  v0.279.0, which carries v0.278) and a full turn - user message, tool group, narration, tool group, answer with a
+  heading and a list - was rendered through the REAL `console/md.js`, not hand-written markup. Measured:
+
+  | | Hoola (live) | Claude |
+  |---|---|---|
+  | paragraph pitch | 40px (24 line + 16 gap) | 40-46px |
+  | paragraph width | 680px | 674px |
+  | reply text / tool rows / headings | all flush at 237px | all flush |
+  | avatar | 44px outside the text | outside |
+  | turn gap | 61px | 60px |
+  | after a table / quote / code | 16px | — |
+  | **bullet gutter** | **22px** | **~30px** |
+
+  So the spacing work HAD deployed and was rendering correctly; one mismatch was left, and this version fixes it:
+  `.textmd ul,ol` padding-left 22 -> 30px.
+- A WRONG LEAD, RECORDED SO IT IS NOT CHASED AGAIN. `md.js` line 137 ends its paragraph builder with
+  `.replace(/<\/p><p>/g, '<br>')`, which reads like it collapses every paragraph into a single `<p>` with line
+  breaks - which would have explained everything. It does NOT fire on the reply path: the real render produced
+  **3 separate `<p>` elements and 0 `<br>`**, with a 40px pitch. The finding was verified before reporting and
+  dropped.
+- THE PHONE KEEPS ITS OWN NARROWER GUTTER, on purpose. `md_text.dart` puts list text 20px in (4px padding + a 16px
+  bullet column). 30px of a 360px phone screen is 8% of the width, where Claude's 30px is 4.5% of a 674px column -
+  the phone is already proportionally right, and forcing 30 would eat the narrow screen. A test records that.
+- STILL UNEXPLAINED, and said plainly to her rather than papered over: she reports "lot of issues" that this rig
+  cannot reproduce. What the rig cannot see - her own browser width, zoom or cache; a streaming reply mid-flight
+  (the live-typing path rather than the finished one); dark mode, which was deliberately left untouched; and the
+  PHONE, whose v0.274 spacing needs the APK installed (newest at the time: v0.279.0-b633). She was asked for a
+  screenshot of the actual screen and for which surface it is, because every earlier round of this work was solved
+  that way.
+- Tests: NEW `server/tests/test_v0281_bullet_gutter.py` (4).
+- Version 0.281.0 (pubspec 0.281.0+321, console ?v=0.281.0, pins -> 0.281.0).
+
+
+## v0.282.0 ATTACHMENTS LIKE CLAUDE ON THE PHONE (30 Oct 2026)
+Owner: "BUILD SAME FOR PHONE APP" (after v0.279 did it for the web console).
+Before: the typing box showed each file as a chip (a spinner chip while uploading, no %), and her sent files were
+stacked preview cards INSIDE her purple bubble; a files-only message read "📎 name" lines; tapping a photo showed only
+the server's small 360px preview, anything else opened in an outside app.
+Now (`lib/ui/chat_attach.dart`, used by chat_screen.dart):
+- TrayFile + AttachTray: 84px square tiles above the typing box. A photo shows itself from her own bytes the moment she
+  picks it; after upload a PDF shows its first page + "PDF · 4 pages", a video its frame + play mark + length, a text /
+  pasted file its first lines (server `snippet`), anything else a coloured icon + name + type. Real upload bar per tile:
+  `api.uploadFile(onProgress:)` sends the bytes as 64 KB pieces and reports 0..0.96 (the last 4% = the server reading
+  it). Failed upload = red tile with Dobara; X removes. Send refuses while a file is uploading or failed.
+- SentFiles: her files sit ABOVE her bubble, right-aligned (104px tiles in a Wrap); one photo / video alone shows large
+  in its own shape (max 250 x 320). A files-only message ("Ye file dekho" now, or an old "📎 name" one) shows only
+  the tiles. A QR read from a photo (QrNote) still shows in the bubble.
+- openAttachment / AttachViewer: photo / video / audio open full screen - swipe between the message's media, pinch to
+  zoom (InteractiveViewer), the small preview at once and the FULL photo over it from the signed link; video / audio
+  with play / pause, scrub bar and time. PDF / Word / Excel / other files open in the phone's own app (signed link, as
+  before) - an in-app PDF reader is not built on the phone.
+Server unchanged. Not verified on a device in the sandbox (no Flutter here): CI analyze + the APK are the check.
+## v0.283.0 COMPOSIO (built as 0.276.0, re-versioned after main reached 0.282.0; 30 Oct 2026, owner: "GO COMPOSIO")
 Her own Slack, Notion, Jira, Confluence, Trello, Asana, ClickUp, Linear, Airtable, HubSpot, Salesforce, Pipedrive,
 Zendesk, Freshdesk, Mailchimp, Zoom, Calendly, Dropbox, Todoist, Figma, Miro (21 apps) through ONE Newtika Composio
 project. Users never make a Composio account.

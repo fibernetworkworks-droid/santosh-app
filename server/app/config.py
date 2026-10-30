@@ -218,6 +218,8 @@ class Settings(BaseSettings):
     sites_base_domain: str = ""            # v0.122 free addresses <name>.<this> (wildcard DNS proxied to this server)
     sites_origin: str = ""                 # v0.122 Cloudflare for SaaS fallback origin hostname (points at this server)
     sites_origin_ip: str = ""              # v0.122 this server's public IP (her own Cloudflare zone proxies to it)
+    sites_direct_ip: str = ""              # v0.280 DIRECT MODE (like Lovable): her domain points straight at this IP (A @ + A www,
+                                           # DNS only) + a _hoola TXT proves it is hers; the edge (Caddy on-demand TLS) makes the cert
     sites_cf_token: str = ""               # v0.122 Newtika's Cloudflare token: custom hostnames on the Hoola sites zone
     sites_cf_zone_id: str = ""             # v0.122 the Hoola sites zone id (Cloudflare for SaaS)
     sites_resell: bool = False             # v0.123 Hoola (Newtika) registers domains on its own registrar account
@@ -337,6 +339,8 @@ class Settings(BaseSettings):
     notebook_image_size: str = "2K"           # 1K | 2K | 4K (4K costs ~2x)
     youtube_api_key: str = ""               # YouTube Data API v3 key for search / public video stats (Google Cloud)
     pagespeed_api_key: str = ""             # optional: PageSpeed Insights API key (higher quota for SEO checks)
+    indiamart_enabled: bool = True           # v0.280 IndiaMART's own MCP (buyer search: products, prices, suppliers)
+    indiamart_mcp_url: str = "https://imgpt.indiamart.com/mcp"   # no key / sign-in; read-only tools only
     motion_dir: str = "./data/motion"         # Hoola Motion MP4s (kept until the owner deletes them)
     motion_keep: int = 60                      # newest videos kept per owner
     reels_gemini_model: str = ""          # Hoola Reels: understands shared reels ("" = youtube_gemini_model)

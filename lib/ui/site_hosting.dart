@@ -202,6 +202,7 @@ class _SiteHostingPanelState extends State<SiteHostingPanel> {
   Map<String, dynamic>? _h;
   final _domain = TextEditingController();
   bool _busy = false;
+  bool _wwwMain = false;      // v0.280 like Lovable: the bare domain is main by default, www redirects to it
 
   @override
   void initState() {
@@ -240,18 +241,7 @@ class _SiteHostingPanelState extends State<SiteHostingPanel> {
         Row(children: [Text('Live / hosting', style: display(16)), const Spacer(),
           IconButton(icon: const Icon(Icons.refresh_rounded, size: 20), onPressed: _load)]),
         if (hosts.isEmpty) const Text('Abhi live nahi.', style: TextStyle(color: C.faint)),
-        for (final x in hosts)
-          ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(x['status'] == 'active' ? Icons.check_circle_rounded : Icons.hourglass_top_rounded,
-                color: x['status'] == 'active' ? C.ok : C.warn, size: 20),
-            title: Text(_s(x['host'])),
-            subtitle: Text('${x['status']}${_s(x['ssl']).isEmpty ? '' : ' · SSL ${x['ssl']}'} · v${x['live_version']}'
-                '${_s(x['problem']).isEmpty ? '' : '\n${x['problem']}'}', style: const TextStyle(fontSize: 11.5, color: C.muted)),
-            trailing: x['status'] == 'active' ? IconButton(icon: const Icon(Icons.open_in_new_rounded),
-                onPressed: () => _open('https://${x['host']}/')) : null,
-          ),
+        for (final x in hosts) _hostTile(x),
         const SizedBox(height: 6),
         Wrap(spacing: 8, runSpacing: 8, children: [
           if (widget.ready)
@@ -268,9 +258,15 @@ class _SiteHostingPanelState extends State<SiteHostingPanel> {
           TextButton(onPressed: _busy ? null : () {
             final d = _domain.text.trim();
             if (d.isEmpty) return;
-            _run(() => widget.app.api!.siteAct(widget.siteId, 'domain', {'domain': d}));
+            _run(() => widget.app.api!.siteAct(widget.siteId, 'domain', {'domain': d, 'primary': _wwwMain ? 'www' : 'root'}));
           }, child: const Text('Jodo')),
         ]),
+        if (h['direct'] == true)
+          Wrap(spacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            const Text('Main address:', style: TextStyle(fontSize: 12, color: C.muted)),
+            ChoiceChip(label: const Text('bina www'), selected: !_wwwMain, onSelected: (_) => setState(() => _wwwMain = false)),
+            ChoiceChip(label: const Text('www'), selected: _wwwMain, onSelected: (_) => setState(() => _wwwMain = true)),
+          ]),
         const SizedBox(height: 6),
         Row(children: [
           Icon(hasCf ? Icons.verified_rounded : Icons.key_rounded, color: hasCf ? C.ok : C.faint, size: 18),
@@ -299,6 +295,36 @@ class _SiteHostingPanelState extends State<SiteHostingPanel> {
                     onPressed: () => _run(() => widget.app.api!.siteDns(_s(p['id']), 'undo', {}))),
             ]),
           ),
+      ]),
+    );
+  }
+
+  // v0.280 one address: Verifying / Setting up / Live chip, the records still missing, Main banao
+  Widget _hostTile(Map<String, dynamic> x) {
+    final stage = _s(x['stage']).isEmpty ? (x['status'] == 'active' ? 'Live' : 'Verifying') : _s(x['stage']);
+    final live = stage == 'Live';
+    final bad = stage == 'Unable to verify' || stage == 'Offline';
+    final color = live ? C.ok : (bad ? C.bad : C.warn);
+    final recs = _list(x['records']);
+    final waiting = stage == 'Verifying' || stage == 'Unable to verify';
+    final lines = <String>[
+      '$stage${x['primary'] == true ? ' · Main' : ''}${(x['live_version'] ?? 0) == 0 ? '' : ' · v${x['live_version']}'}',
+      if (_s(x['problem']).isNotEmpty) _s(x['problem']),
+      if (waiting && recs.isNotEmpty) 'Domain company mein yeh records daaliye (DNS only):',
+      if (waiting) for (final r in recs) '  ${r['type']}  ${r['name']}  ->  ${r['value']}',
+    ];
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(live ? Icons.check_circle_rounded : (bad ? Icons.error_outline_rounded : Icons.hourglass_top_rounded),
+          color: color, size: 20),
+      title: Text(_s(x['host'])),
+      subtitle: SelectableText(lines.join('\n'), style: const TextStyle(fontSize: 11.5, color: C.muted)),
+      trailing: Wrap(children: [
+        if (x['kind'] == 'custom' && x['primary'] != true)
+          TextButton(onPressed: _busy ? null : () => _run(() => widget.app.api!.siteAct(widget.siteId, 'primary', {'host': _s(x['host'])})),
+              child: const Text('Main banao')),
+        if (live) IconButton(icon: const Icon(Icons.open_in_new_rounded), onPressed: () => _open('https://${x['host']}/')),
       ]),
     );
   }

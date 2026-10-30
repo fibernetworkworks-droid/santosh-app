@@ -119,6 +119,7 @@ import 'dosti_screen.dart';
 import 'handoff_screen.dart';
 import 'hoola_media.dart';
 import 'attach.dart';
+import 'chat_attach.dart';
 import 'forms_screen.dart';
 import 'glass.dart';
 import 'notebook_screen.dart';
@@ -186,15 +187,12 @@ class _ChatScreenState extends State<ChatScreen> {
     for (final f in List<Map<String, dynamic>>.from((s['files'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)))) {
       if (_files.length >= 6) break;
       final name = f['name'] as String? ?? 'file';
-      setState(() => _uploading.add(name));
       try {
         final bytes = await File(f['path'] as String).readAsBytes();
-        final r = await app.attachChatFile(name, bytes);
-        if (mounted) setState(() => _files.add(r));
+        if (!mounted) return;
+        _addTray(TrayFile(name, bytes));
       } catch (e) {
         if (mounted) _snack('$name: $e');
-      } finally {
-        if (mounted) setState(() => _uploading.remove(name));
       }
     }
   }
@@ -367,49 +365,55 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   /// Files waiting in the box (uploaded, sent with the next message). Any type: photo, PDF, video, Excel...
-  final List<Map<String, dynamic>> _files = [];
-  final Set<String> _uploading = {};
+  /// v0.282 each one is a tile with its own upload bar (chat_attach.dart), like Claude.
+  final List<TrayFile> _files = [];
 
   Future<void> _attach() async {
     final picked = await pickAttachments(context, max: 6 - _files.length, lang: app.language);
     for (final f in picked) {
-      setState(() => _uploading.add(f.name));
-      try {
-        final r = await app.attachChatFile(f.name, f.bytes);
-        if (mounted) setState(() => _files.add(r));
-      } catch (e) {
-        if (mounted) _snack('${f.name}: $e');
-      } finally {
-        if (mounted) setState(() => _uploading.remove(f.name));
-      }
+      if (!mounted) return;
+      _addTray(TrayFile(f.name, f.bytes));
     }
   }
 
-  Widget _pendingFiles() => (_files.isEmpty && _uploading.isEmpty)
-      ? const SizedBox.shrink()
-      : SizedBox(
-          height: 40,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 18), children: [
-            for (final n in _uploading)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: Chip(
-                  avatar: const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
-                  label: Text(n, style: const TextStyle(fontSize: 12)),
-                ),
-              ),
-            for (final f in List<Map<String, dynamic>>.from(_files))
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: InputChip(
-                  avatar: Icon(hoolaFileIcon(f['media'] as String? ?? ''), size: 16, color: C.accentSoft),
-                  label: Text('${f['name']}${f['leads'] != null ? ' · ${(f['leads'] as Map)['valid']} number' : ''}',
-                      style: const TextStyle(fontSize: 12)),
-                  onDeleted: () => setState(() => _files.remove(f)),
-                ),
-              ),
-          ]),
-        );
+  void _addTray(TrayFile t) {
+    if (_files.length >= 6) return;
+    setState(() => _files.add(t));
+    _upload(t);
+  }
+
+  Future<void> _upload(TrayFile t) async {
+    setState(() {
+      t.err = null;
+      t.pct = 0;
+    });
+    var last = 0.0;
+    try {
+      final r = await app.attachChatFile(t.name, t.bytes, onProgress: (p) {
+        if (!mounted || p - last < .03 && p < .96) return;   // the bar moves in steps, not 400 rebuilds
+        last = p;
+        setState(() => t.pct = p);
+      });
+      if (!mounted || !_files.contains(t)) return;
+      setState(() {
+        t.sent = r;
+        t.pct = 1;
+        t.media = attachKind(t.name, r['media'] as String? ?? '');
+      });
+    } catch (e) {
+      if (!mounted || !_files.contains(t)) return;
+      setState(() => t.err = '$e');
+      _snack('${t.name}: $e');
+    }
+  }
+
+  Widget _pendingFiles() => AttachTray(
+        files: _files,
+        retryLabel: app.g('Dobara'),
+        onRemove: (f) => setState(() => _files.remove(f)),
+        onRetry: _upload,
+        onOpen: (f) => openAttachment(context, app, [for (final x in _files) if (x.done) x.view], [for (final x in _files) if (x.done) x].indexOf(f)),
+      );
 
   void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
@@ -417,10 +421,18 @@ class _ChatScreenState extends State<ChatScreen> {
   /// sent, so nothing typed is lost on a bad network.
   Future<void> _send() async {
     var t = _text.text;
-    final files = List<Map<String, dynamic>>.from(_files);
+    if (_files.any((f) => f.err != null)) {
+      _snack(app.g('Ek file upload nahi hui. Uspar Dobara dabaiye ya hata dijiye.'));
+      return;
+    }
+    if (_files.any((f) => f.uploading)) {
+      _snack(app.g('File abhi upload ho rahi hai…'));
+      return;
+    }
+    final files = List<TrayFile>.from(_files);
     final reply = _replyTo;   // v0.178 the quoted message rides above this one
     if (t.trim().isEmpty && files.isEmpty) return;
-    if (t.trim().isEmpty) t = files.map((f) => '📎 ${f['name']}').join('\n');
+    if (t.trim().isEmpty) t = fileOnlyText;   // v0.282 a files-only message shows just the tiles
     if (reply != null && reply.isNotEmpty) {
       final q = reply.trim().split('\n').map((l) => '> $l').join('\n');
       t = '$q\n\n$t';
@@ -436,7 +448,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _files.clear();
       _replyTo = null;
     });
-    final ok = await app.send(t, files: [for (final f in files) '${f['file_id']}'], voice: voice);
+    final ok = await app.send(t, files: [for (final f in files) '${f.sent!['file_id']}'], voice: voice);
     if (ok) {
       HapticFeedback.lightImpact();   // v0.178 the send lands with a small tick in the hand
     } else if (mounted) {
@@ -859,11 +871,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 decoration: BoxDecoration(gradient: C.youGradient, boxShadow: const [BoxShadow(color: Color(0x597C5CFF), blurRadius: 18, offset: Offset(0, 6))], borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(22), topRight: Radius.circular(22), bottomLeft: Radius.circular(22), bottomRight: Radius.circular(8))),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
-                  for (final f in (it.data['files'] as List? ?? const []))
-                    if (f is Map) HoolaMediaTile(body: {'local': Map<String, dynamic>.from(f)}, app: app, maxWidth: 230),
+                  // v0.282 her files sit ABOVE the bubble now (SentFiles); a QR read from a photo stays here
                   for (final f in (it.data['files'] as List? ?? const []))
                     if (f is Map && f['codes'] is List) QrNote(codes: f['codes'] as List),
-                  if ((it.data['files'] as List? ?? const []).isNotEmpty) const SizedBox(height: 6),
+                  if ((it.data['files'] as List? ?? const []).any((f) => f is Map && f['codes'] is List)) const SizedBox(height: 6),
                   if (selecting)
                     SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.5))
                   else
@@ -890,6 +901,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: me ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                 children: [
+                  if (me && (it.data['files'] as List? ?? const []).isNotEmpty)
+                    SentFiles(files: it.data['files'] as List, app: app),
+                  if (!(me && filesOnlyText(text, it.data['files'] as List? ?? const []) && !(it.data['files'] as List).any((f) => f is Map && f['codes'] is List)))
                   GestureDetector(
                     onLongPress: () => _msgMenu(it, me ? text : mdPlain(text), me),
                     behavior: HitTestBehavior.opaque,

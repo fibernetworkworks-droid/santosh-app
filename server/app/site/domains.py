@@ -494,12 +494,22 @@ def buy(tenant: str, oid: str, hash_: str) -> dict[str, Any]:
 
 
 def _join_site(tenant: str, o: SiteDomain) -> str:
-    """A bought domain is joined to its site at once; that only PREPARES the DNS card (her tap applies it)."""
+    """A bought domain is joined to its site at once. Usually that only PREPARES the DNS card (her tap applies it).
+    v0.280 like Lovable: a domain she bought for THIS site with her fingerprint, held on Newtika's Cloudflare account (she
+    has no login there), gets its website records at once when the plan only ADDS records to the fresh zone (nothing of
+    hers is changed or deleted); anything else still waits for her tap."""
     if not o.site_id:
         return ""
     try:
+        from . import dns as D
         from . import hosting as H
-        H.connect_domain(tenant, o.site_id, o.domain)
+        card = H.connect_domain(tenant, o.site_id, o.domain)
+        pl = card.get("plan") or {}
+        fresh = pl.get("provider") == D.HOOLA_CF and pl.get("todo") and all(
+            c["op"] in ("add", "keep") for c in pl.get("changes") or [])
+        if fresh:
+            H.dns_apply(tenant, pl["id"], pl["hash"])
+            return " Website ke DNS records bhi laga diye: Verifying -> Setting up -> Live, Hoola batayega."
         return " DNS ka card bhi bhej diya: haan dabaate hi website is naam par khulegi."
     except Exception as e:
         log.info("join after buy failed for %s: %s", o.domain, e)

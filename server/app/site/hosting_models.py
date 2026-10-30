@@ -16,11 +16,12 @@ class SiteHost(Base):
     site_id: Mapped[str] = mapped_column(String(40), index=True)
     hostname: Mapped[str] = mapped_column(String(253), index=True)
     kind: Mapped[str] = mapped_column(String(12), default="free")          # free (<slug>.<base>) | custom (her domain)
-    role: Mapped[str] = mapped_column(String(10), default="main")          # main | apex (redirects to main) | www
+    role: Mapped[str] = mapped_column(String(10), default="main")          # main | apex / redirect (redirects to main) | www
     status: Mapped[str] = mapped_column(String(14), default="pending")
     # pending (waiting DNS / SSL) | active | error | removed
     ssl_status: Mapped[str] = mapped_column(String(30), default="")
     cf_id: Mapped[str] = mapped_column(String(64), default="")             # Cloudflare for SaaS custom hostname id
+    mode: Mapped[str | None] = mapped_column(String(10), nullable=True, default="")   # v0.280 saas | proxy | direct
     verify: Mapped[str] = mapped_column(Text, default="[]")                # records Cloudflare asks for (TXT / CNAME)
     live_version: Mapped[int] = mapped_column(Integer, default=0)
     launched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
