@@ -62,6 +62,19 @@ STATUS_TEXT = {
     "needs_key": "add this server's API key once in the Santosh app (Connect > MCP servers); never in chat",
 }
 
+# v0.303 SAAF CONNECT: what a user never sees in the Connect tab / bazar_find (nothing is deleted; CONNECT_CLEAN=false
+# brings it all back). Demo bills (BBPS not live), shop templates no shop has joined, providers not set up, duplicates of
+# Hoola's own tools, and handoffs (they only open a website: Hoola does not do the job).
+HIDDEN_STATUSES = frozenset({"demo", "no_shop_yet", "not_configured", "core", "unavailable"})
+HIDDEN_EXECUTORS = frozenset({"handoff"})
+
+
+def shown(executor: str, status: str) -> bool:
+    if not core_settings().connect_clean:
+        return True
+    return status not in HIDDEN_STATUSES and executor not in HIDDEN_EXECUTORS
+
+
 _executors = None
 
 
@@ -262,6 +275,8 @@ def find(tenant_id: str, query: str = "", category: str = "", limit: int = 6) ->
             for p in _fallback_match(query, limit):
                 if p not in hits:
                     hits.append(p)
+        if core_settings().connect_clean:     # v0.303 only plugins that really work
+            hits = [p for p in hits if shown(p.executor, pack_status(s, user, p))]
         hits = hits[:limit]
         out = [_pack_out(s, user, p, with_tools=i < 4) for i, p in enumerate(hits)]
         res: dict[str, Any] = {"packs": out}
@@ -269,12 +284,14 @@ def find(tenant_id: str, query: str = "", category: str = "", limit: int = 6) ->
             res["composio_hint"] = ("cmp-<app> packs are her own app accounts via Composio. needs_link = call composio_apps "
                                     "action=connect toolkit=<app> (an Open button for her sign-in); ready = bazar_run with "
                                     "the pack_id and a tool slug; more tools: composio_apps action=tools.")
-        feat = [f for f in featured.search(query, limit=4) if f["id"] not in {p.get("name", "").lower() for p in out}]
+        clean = core_settings().connect_clean
+        feat = [] if clean else [f for f in featured.search(query, limit=4)
+                                 if f["id"] not in {p.get("name", "").lower() for p in out}]
         if feat:
             res["featured_connectors"] = feat
             res["featured_hint"] = ("Official app connectors. One-tap ones: call bazar_mcp action=connect with featured=<id>; "
                                     "API-key ones are connected by the user in the app.")
-        if len(out) < 3 or re.search(r"\bmcp\b", query.lower()):
+        if not clean and (len(out) < 3 or re.search(r"\bmcp\b", query.lower())):
             dir_hits = directory.search(query, limit=5)
             if dir_hits:
                 res["mcp_directory"] = dir_hits
@@ -282,7 +299,8 @@ def find(tenant_id: str, query: str = "", category: str = "", limit: int = 6) ->
                                          "https MCP address (or you call bazar_mcp action=add with url and ref); local "
                                          "servers must run on a computer first. Never guess an address.")
         if not out and not res.get("mcp_directory"):
-            res["message"] = "No Santosh connector does this yet."
+            res["message"] = ("No Hoola plugin does this. Try composio_apps action=list query=<app or job> (her own "
+                              "accounts in ~1,600 apps)." if clean else "No Santosh connector does this yet.")
         return res
 
 
@@ -807,7 +825,10 @@ def connections(tenant_id: str) -> list[dict[str, Any]]:
         user = ensure_user(s, tenant_id)
         out = []
         for p in mcp_packs():
-            out.append({"pack_id": p.id, "name": p.name, "provider": p.config["provider"], "status": pack_status(s, user, p),
+            st_p = pack_status(s, user, p)
+            if not shown(p.executor, st_p):
+                continue
+            out.append({"pack_id": p.id, "name": p.name, "provider": p.config["provider"], "status": st_p,
                         "configured": bool(getattr(st, p.config["endpoint_setting"], "")), "logo": logos.pack_logo(p.id),
                         "does": (p.description or "")[:160]})
         im = registry().lookup("indiamart")     # v0.277 no login: shown as Connected for everyone
@@ -889,6 +910,9 @@ def unlink(tenant_id: str, pack_id: str) -> bool:
 
 # ---------------------------------------------------------------- MCP servers the user adds
 def mcp_directory(query: str = "", field: str = "", limit: int = 8) -> dict[str, Any]:
+    if core_settings().connect_clean:   # v0.303 the 63,700-server directory is off: most of it never worked for her
+        return {"servers": [], "note": "MCP directory band hai. Apps ke liye composio_apps action=list query=<naam> "
+                                       "(her own account in ~1,600 apps); ek server ka https pata ho to bazar_mcp action=add."}
     if not query and not field:
         return directory.stats()
     return {"servers": directory.search(query, limit=limit, field=field)}
@@ -1420,6 +1444,7 @@ def catalog(tenant_id: str) -> dict[str, Any]:
                   **({"android_package": p.config["android_package"]} if p.executor == "upi"
                      and p.config.get("android_package") else {})}
                  for p in reg.all()]
+        packs = [p for p in packs if shown(p["executor"], p["status"])]
         packs += [{"pack_id": r.id, "name": r.name, "category": "My MCP servers", "kind": "MCP server", "executor": "mcp",
                    "status": pack_status(s, user, custom_mcp.to_pack(r)), "does": (r.description or "")[:220],
                    "logo": logos.custom_logo(r)} for r in custom_mcp.user_rows(s, user.id)]
@@ -1431,7 +1456,8 @@ def catalog(tenant_id: str) -> dict[str, Any]:
     for p in packs:
         counts[p["status"]] = counts.get(p["status"], 0) + 1
     from . import top
-    return {"total": len(packs), "by_status": counts, "packs": packs, "top": top.sections(packs, pincode, used)}
+    return {"total": len(packs), "by_status": counts, "packs": packs, "top": top.sections(packs, pincode, used),
+            "clean": core_settings().connect_clean}
 
 
 # ---------------------------------------------------------------- v0.276 COMPOSIO: apps via Newtika's one project

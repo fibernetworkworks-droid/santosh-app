@@ -41,7 +41,6 @@ class _McpScreenState extends State<McpScreen> {
     super.initState();
     app.addListener(_onApp);
     _loadMine();
-    _search();
   }
 
   @override
@@ -67,22 +66,18 @@ class _McpScreenState extends State<McpScreen> {
   String _cmpCat = '';
   List<String> _cmpCats = [];
   bool _cmpBusy = false;
+  bool _cmpLoaded = false;                    // v0.303 first answer arrived (spinner until then)
   Timer? _cmpDeb;
   Map<String, Map<String, dynamic>> _known = {}; // pack_id -> what the avatar knows (status, tools)
   String _fcat = '';
 
   Future<void> _loadMine() async {
     _seenTick = app.bazarLinkedTick;
+    _loadComposio();                  // v0.303 the apps load on their own, even if the server list fails
     try {
-      final r = await Future.wait([app.api!.mcpList(), app.api!.mcpFeatured()]);
-      if (mounted) {
-        setState(() {
-          _mine = r[0];
-          _featured = r[1];
-        });
-      }
+      final mine = await app.api!.mcpList();
+      if (mounted) setState(() => _mine = mine);
       _loadKnown();
-      _loadComposio();
     } catch (e) {
       if (mounted) setState(() => _err = e.toString());
     }
@@ -110,6 +105,7 @@ class _McpScreenState extends State<McpScreen> {
     } catch (_) {
     } finally {
       _cmpBusy = false;
+      if (mounted && !_cmpLoaded) setState(() => _cmpLoaded = true);
     }
   }
 
@@ -890,86 +886,45 @@ class _McpScreenState extends State<McpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // v0.303 SAAF CONNECT (owner: "REMOVE ALL JUST KEEP COMPOSIO MCPS AND WORKING PLUG IN"): the Composio apps, the
+    // servers she already joined and her own Postgres. The 63,700-server directory, the non-Composio popular list and
+    // "add by address" are gone from the screen (Hoola can still add a server she names in chat).
     BrandLogo.base = app.api?.baseUrl ?? app.serverUrl;
-    final fields = (_stats?['fields'] as Map?)?.cast<String, dynamic>();
     return Scaffold(
-      appBar: AppBar(title: const Text('MCP servers'), backgroundColor: Colors.transparent),
+      appBar: AppBar(title: const Text('Apps'), backgroundColor: Colors.transparent),
       body: Aurora(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-          Text('${_stats?['total'] ?? 63655} servers ki directory · jo chahiye jodiye, Hoola unse kaam karega',
-              style: const TextStyle(color: C.muted, fontSize: 13)),
-          const SizedBox(height: 12),
-          GradientButton(label: _busy ? 'Jod raha hoon…' : 'Pata daal kar jodiye', icon: Icons.add_rounded, height: 48,
-              onTap: _busy ? null : () => _addDialog()),
-          if (_err != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
-          const SizedBox(height: 12),
-          Glass(
-            padding: const EdgeInsets.all(4),
-            child: ListTile(
-              leading: const Icon(Icons.storage_rounded, color: C.accent),
-              title: const Text('Postgres (apna database)', style: TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: const Text('Kisi bhi PostgreSQL ko jodiye: tables, read-only query, explain, sehat; badlav aapki haan se',
-                  style: TextStyle(color: C.muted, fontSize: 12)),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PostgresScreen(app: app))),
+        child: RefreshIndicator(
+          onRefresh: _loadMine,
+          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+            const Text('Apne Slack, Notion, Jira, HubSpot, Zoom… accounts jodiye: Hoola unme aapka kaam karega.',
+                style: TextStyle(color: C.muted, fontSize: 13)),
+            if (_err != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
+            if (_cmp.isNotEmpty || _cmpQ.isNotEmpty || _cmpCat.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _composioSection(),
+            ] else if (!_cmpLoaded)
+              const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+            else
+              const Padding(padding: EdgeInsets.all(16), child: Text('Apps abhi server par chalu nahi hain.', style: TextStyle(color: C.muted))),
+            if (_mine.isNotEmpty) ...[
+              const SizedBox(height: 18),
+              const Caption('AAPKE JUDE HUE SERVERS'),
+              for (final m in _mine) _mineCard(m),
+            ],
+            const SizedBox(height: 18),
+            Glass(
+              padding: const EdgeInsets.all(4),
+              child: ListTile(
+                leading: const Icon(Icons.storage_rounded, color: C.accent),
+                title: const Text('Postgres (apna database)', style: TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: const Text('Kisi bhi PostgreSQL ko jodiye: tables, read-only query, explain, sehat; badlav aapki haan se',
+                    style: TextStyle(color: C.muted, fontSize: 12)),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PostgresScreen(app: app))),
+              ),
             ),
-          ),
-          if (_featured.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            Caption('POPULAR APPS · ${_featured.length}'),
-            _featuredGrid(),
-          ],
-          if (_cmp.isNotEmpty || _cmpQ.isNotEmpty || _cmpCat.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            _composioSection(),
-          ],
-          if (_mine.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            const Caption('AAPKE SERVERS'),
-            for (final m in _mine) _mineCard(m),
-          ],
-          const SizedBox(height: 18),
-          const Caption('DIRECTORY'),
-          Glass(
-            radius: 18,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-            child: TextField(
-              style: const TextStyle(color: C.ink, fontSize: 15),
-              decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded, color: C.muted), hintText: 'GitHub, Notion, Zerodha, Tally, Postgres…',
-                  border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none),
-              onChanged: (v) {
-                _q = v.trim();
-                _deb?.cancel();
-                _deb = Timer(const Duration(milliseconds: 350), _search);
-              },
-            ),
-          ),
-          const SizedBox(height: 10),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(children: [
-              for (final f in _fields)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(fields?[f] != null ? '$f · ${fields![f]}' : f),
-                    selected: _field == f,
-                    showCheckmark: false,
-                    onSelected: (on) {
-                      setState(() => _field = on ? f : '');
-                      _search();
-                    },
-                  ),
-                ),
-            ]),
-          ),
-          const SizedBox(height: 12),
-          if (_found.isEmpty && (_q.isNotEmpty || _field.isNotEmpty))
-            const Padding(padding: EdgeInsets.all(20), child: Center(child: Text('Kuch nahi mila', style: TextStyle(color: C.muted)))),
-          if (_found.isEmpty && _q.isEmpty && _field.isEmpty)
-            const Padding(padding: EdgeInsets.all(12), child: Text('Upar dhoondhiye ya koi category chuniye.', style: TextStyle(color: C.faint))),
-          for (final e in _found) _entryCard(e),
-        ]),
+          ]),
+        ),
       ),
     );
   }

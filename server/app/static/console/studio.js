@@ -28,7 +28,7 @@ window.HoolaCreate = ctx => {
   const fp = 'This card spends money: Haan needs your phone’s fingerprint. Approve it in the Hoola app.';
 
   /* ---------------- decorative artwork (quick starts and templates only; her results are always her real files) ---------------- */
-  function rng(seed) {   // v0.303 FNV-1a + a mix: neighbouring seeds ('q0', 'q1'...) used to land on the same palette
+  function rng(seed) {   // v0.304 FNV-1a + a mix: neighbouring seeds ('q0', 'q1'...) used to land on the same palette
     let s = 2166136261; for (const c of String(seed)) { s ^= c.charCodeAt(0); s = Math.imul(s, 16777619) >>> 0; }
     s ^= s >>> 15; s = Math.imul(s, 2246822519) >>> 0; s ^= s >>> 13; s >>>= 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
   const PAL = [['#FF9A62','#C2417A','#2B1B54'],['#7FD1C7','#2F6F8F','#13233F'],['#FFD27A','#E2603C','#5B1E3F'],['#B7A6FF','#6C4BD8','#1E1646'],['#9BE3A4','#2E8A6B','#0F2D2A'],['#F6B7C8','#B4537A','#3A1630'],['#FFE2A8','#D98E3B','#3B2412'],['#A9D2FF','#4D74D6','#16234A']];
@@ -78,7 +78,7 @@ window.HoolaCreate = ctx => {
       for (let i = 0; i < 5; i++) blob(w * r(), h * r(), Math.max(w, h) * (.25 + r() * .4), p[Math.floor(r() * 3)], .75);
     }
   }
-  // v0.303 a shape button draws its shape; a rail scrolls sideways with arrows (no orphan card on its own row)
+  // v0.304 a shape button draws its shape; a rail scrolls sideways with arrows (no orphan card on its own row)
   const ratioI = a => { const [w, h] = a.split(':').map(Number), k = 16 / Math.max(w, h); return `<i class="rbox" style="width:${Math.round(w * k)}px;height:${Math.round(h * k)}px" aria-hidden="true"></i>`; };
   const rail = (inner, cls) => `<div class="rail"><button type="button" class="rarr prev" data-rail="-1" aria-label="Scroll back">${I('down', 'width:16px;height:16px;transform:rotate(90deg)')}</button><div class="${cls} rtrack">${inner}</div><button type="button" class="rarr next" data-rail="1" aria-label="Scroll on">${I('down', 'width:16px;height:16px;transform:rotate(-90deg)')}</button></div>`;
   const art = (kind, seed, extra = '') => `<canvas class="art" data-art="${kind}" data-seed="${esc(seed)}" aria-hidden="true" ${extra}></canvas>`;
@@ -671,7 +671,7 @@ ${SPRITE}`;
   }
   async function newClip(preview) {
     let brief = VID.prompt.trim(); if (!brief) { $('#vidq')?.focus(); toast('Describe the shot first'); return; }
-    const cam = (CAMS.find(c => c[0] === VID.camera) || [])[1]; if (cam) brief += `\nCamera: ${cam}.`;   // v0.303 the camera preset rides the brief
+    const cam = (CAMS.find(c => c[0] === VID.camera) || [])[1]; if (cam) brief += `\nCamera: ${cam}.`;   // v0.304 the camera preset rides the brief
     if (VID.busy) return;
     VID.busy = 'Writing the plan'; drawVideos();
     const name = 'Clip ' + new Date().toLocaleString('en-IN', {day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false}).replace(',', '');
@@ -1188,7 +1188,7 @@ ${SPRITE}`;
     <div class="sgrid lib" id="results"></div></div>`;
   function drawLib() {
     const el = $('#results'); if (!el) return;
-    const q = libQ.trim().toLowerCase(), hit = t => !q || String(t || '').toLowerCase().includes(q);   // v0.303 search + sort, in the browser
+    const q = libQ.trim().toLowerCase(), hit = t => !q || String(t || '').toLowerCase().includes(q);   // v0.304 search + sort, in the browser
     const order = (L, t, k) => L.sort((a, b) => libSort === 'az' ? String(t(a)).localeCompare(String(t(b))) : libSort === 'old' ? k(a) - k(b) : k(b) - k(a));
     const its = order((libF === 'film' ? [] : items(libF === 'all' ? '' : libF).filter(i => i.kind !== 'script' || libF === 'script' || libF === 'all')).filter(i => hit(i.title)), i => i.title, i => i.created || 0);
     const films = order(((libF === 'all' || libF === 'film') ? (D.studio?.projects || []).filter(p => (p.outputs || []).length) : []).filter(p => hit(p.title || p.name)), p => p.title || p.name, p => p.updated || p.created || 0);

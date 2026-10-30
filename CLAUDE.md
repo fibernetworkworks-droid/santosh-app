@@ -129,11 +129,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.303.0 (pubspec 0.303.0+343). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.304.0 (pubspec 0.304.0+344). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.303 PREMIUM CREATE: hero tabs (Director / Image / Video / Song / Voice-over), rails, varied art; Image style tiles, drawn shapes,
-  Enhance (/api/studio/improve kind=image), Keep-out field; Video camera presets; My creations search + sort. Every control is real.
+- v0.304 PREMIUM CREATE (built as 0.303): hero tabs (Director / Image / Video / Song / Voice-over), rails, varied art; Image style tiles,
+  drawn shapes, Enhance (/api/studio/improve kind=image), Keep-out field; Video camera presets; My creations search + sort.
+- v0.303 SAAF CONNECT: Connect tab / bazar_find show only working plugins (~170 of 694) + Composio apps; handoffs, demo
+  bills, empty shops, directory, Agent Army hidden (`service.shown`, `CONNECT_CLEAN`; tests run with it false in conftest).
 - v0.301 WEB DESIGN PHASE 3 live features (`site/live.py`, `site/lang.py`): real booking slots (she confirms), tap-to-load map /
   YouTube, Pay by UPI to her UPI ID + QR, second language under /<lang>/ with a switch; FIXED launched sites losing every photo.
 - v0.300 APP LOGOS: every Composio app has a Hoola-served logo (`/api/logo/cmp/<slug>`, `logos.cmp_logo`: Composio logo,

@@ -278,6 +278,9 @@ class Settings(BaseSettings):
     voice_openai_eagerness: str = "medium"            # v0.285 semantic VAD: medium waits at most ~4 s (low = up to 8 s, felt like not listening)
     # v0.276 COMPOSIO: one Newtika project key gives every user Slack / Notion / Jira ... through Composio's official
     # OAuth; users never make a Composio account. Each user is a separate Composio user_id fixed by the server.
+    # v0.303 SAAF CONNECT (owner: "REMOVE ALL JUST KEEP COMPOSIO MCPS AND WORKING PLUG IN"): the Connect tab and
+    # bazar_find show only what really works (Composio apps + working plugins); false = the old full catalogue
+    connect_clean: bool = True
     composio_api_key: str = ""                        # VPS .env only (COMPOSIO_API_KEY), never in chat or the repo
     composio_webhook_secret: str = ""                 # COMPOSIO_WEBHOOK_SECRET: signs "connection expired" events
     composio_base_url: str = "https://backend.composio.dev/api/v3.1"

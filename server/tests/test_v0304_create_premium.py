@@ -1,4 +1,4 @@
-"""v0.303 PREMIUM + ADVANCED CREATE: hero with the makers as tabs, sideways rails, varied art; Image: style tiles,
+"""v0.304 PREMIUM + ADVANCED CREATE: hero with the makers as tabs, sideways rails, varied art; Image: style tiles,
 drawn shapes, Enhance (a picture description from the server), "Keep out of the picture"; Video: camera presets;
 My creations: search + sort. Every control does real work - nothing is decoration."""
 from __future__ import annotations
@@ -70,6 +70,6 @@ def test_library_search_and_sort():
 
 def test_css_is_crisp():
     css = (CON / "studio.css").read_text()
-    blk = css[css.index("v0.303 PREMIUM + ADVANCED CREATE"):]
+    blk = css[css.index("v0.304 PREMIUM + ADVANCED CREATE"):]
     assert ".modes{" in blk and ".rail .rtrack{" in blk and ".stys{" in blk and ".rbox{" in blk and ".libbar{" in blk
     assert "backdrop-filter" not in blk and "infinite" not in blk

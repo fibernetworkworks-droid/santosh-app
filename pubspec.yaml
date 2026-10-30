@@ -1,7 +1,7 @@
 name: santosh
 description: Santosh, your AI coworker. Android app for the Santosh Core backend.
 publish_to: "none"
-version: 0.303.0+343
+version: 0.304.0+344
 
 environment:
   sdk: ">=3.4.0 <4.0.0"

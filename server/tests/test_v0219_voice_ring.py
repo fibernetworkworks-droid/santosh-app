@@ -129,4 +129,4 @@ def test_state_dart_auto_calls_on_a_fresh_ring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.303.0"
+    assert APP_VERSION == "0.304.0"

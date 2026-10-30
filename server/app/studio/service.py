@@ -1492,7 +1492,7 @@ async def improve_brief(brief: str, language: str = "Hindi", seconds: int = 30, 
         raise StudioJobError("Pehle thoda sa likhiye ki video kis baare mein hai."
                              if kind != "image" else "Pehle thoda sa likhiye ki picture kis baare mein hai.")
     try:
-        if kind == "image":       # v0.303 the Image page's Enhance: a picture description, not a film brief
+        if kind == "image":       # v0.304 the Image page's Enhance: a picture description, not a film brief
             out = await _write(IMAGE_IMPROVE_SYSTEM, f"Her idea: {brief[:1500]}\nLanguage of any words on the picture: {language}", 600)
         else:
             out = await _write(IMPROVE_SYSTEM, f"Her idea: {brief[:1500]}\nLanguage of the spoken line: {language}\n"
