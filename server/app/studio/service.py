@@ -1195,7 +1195,7 @@ async def plan(tenant: str, project: str, brief: str = "", seconds: int = 30, co
     brief = (brief or p.get("brief") or "").strip()
     if not brief:
         raise StudioJobError("Video kis baare mein hai? (brief)")
-    seconds = max(6, min(int(seconds or 30), 600))
+    seconds = max(2, min(int(seconds or 30), 600))   # v0.310 a 4-5 s clip is one short shot, not a 6 s minimum
     if project in _planning and not _planning[project].done():
         return {"status": "already planning"}
     if brief != p.get("brief"):

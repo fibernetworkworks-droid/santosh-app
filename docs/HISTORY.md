@@ -11571,3 +11571,13 @@ Fix:
 Checked on a local server through the real route: planning true -> (fake key) "The shot plan could not be written"
 on the tile, the click stays on Video. With her real keys the same path ends in the price card.
 Tests: tests/test_v0309_clip_create.py.
+
+
+## v0.310.0 SHORT CLIPS (30 Oct 2026)
+Owner, right after v0.309 went live: "The server refused the request (422) -- ERROR" on Video page Create.
+Cause, reproduced on a local server: the Video page offers 4 s and 5 s (each model's own allowed durations, and the
+prompts suggested "5 s · 720p" for cheap tests), but StudioNew, StudioPlan and StudioImprove all had
+seconds Field(ge=6) - POST /api/studio/projects seconds=5 -> 422 before anything ran (8 -> 200). Improve at 4-5 s had the
+same 422. Fix: ge=2 on the three forms; plan() clamps at 2 instead of 6 (a 5 s clip is one short shot); the console's
+api() turns a 422 detail list into "field: reason" instead of "The server refused the request (422)". Re-checked through
+the real route: 4 s / 5 s / 8 s -> 200. Tests: tests/test_v0310_short_clips.py.

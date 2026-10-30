@@ -40,7 +40,10 @@ async function api(method, path, body, {raw = false, form = null, signal} = {}) 
   if (raw) { if (!r.ok) throw new ApiError(r.status, await r.text()); return r; }
   let data = null; try { data = await r.json(); } catch {}
   if (!r.ok) {
-    const msg = (data && (data.detail?.message || (typeof data.detail === 'string' ? data.detail : '') || data.message)) || `The server refused the request (${r.status})`;
+    // v0.310 a 422 lists the field it did not like: say which and why ("seconds: must be 6 or more"), never a bare code
+    const bad = data && Array.isArray(data.detail) && data.detail[0];
+    const why = bad ? `${(bad.loc || []).filter(x => x !== 'body').join(' ') || 'value'}: ${String(bad.msg || '').replace(/^Input should be /, 'must be ').replace(/^Value error, /, '')}` : '';
+    const msg = (data && (data.detail?.message || (typeof data.detail === 'string' ? data.detail : '') || why || data.message)) || `The server refused the request (${r.status})`;
     if (r.status === 401 && path !== '/api/console/login' && path !== '/api/console/exchange') logout(true);
     throw new ApiError(r.status, msg);
   }
