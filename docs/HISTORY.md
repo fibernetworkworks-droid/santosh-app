@@ -10982,7 +10982,26 @@ menu.js closed a menu on ANY scroll, so a click that first scrolled its button i
 once - now only a scroll that really moved the button (> 2px) closes it.
 
 
-## v0.289.0 ZOHO FOR HOOLA (built as v0.241.0 / v0.273.0 / v0.286.0 / v0.288.0, re-versioned past main v0.288.0): every user adds her own Zoho MCP (only the tools she needs)
+## v0.289.0 SAHI KRAM (re-versioned past the parallel v0.284.0-v0.288.0) — the real voice code review, all flaws fixed (owner: "REAL VOICE LOT OF ISSUE --- FIRST CHECK THE CODE DO U FIND ANY FLAW IN IT" -> "FIX ALL")
+Found by reading `voice_openai.py` + the shared `voice.Call` it rides on (built as 0.283.0; main moved to 0.284.0):
+1-3. **Her words arrive late.** OpenAI transcribes her speech separately, only after the audio is committed - often after
+   his reply is already done. `finish_turn` ran at `response.done`, so (a) her sentence was saved with his NEXT reply,
+   (b) her late `user_text` reached the phone after `turn_done` and reset his caption, (c) the leftover `user_buf` made
+   the never-silent watchdog nudge him after 14 s - he talked to nobody. Fix: `input_audio_buffer.committed` records
+   her pending item (`_her_items`); `response.done` -> `_finish_when_heard()` waits up to `FINISH_WAIT_S` 3 s for its
+   transcript (`.completed` / `.failed` -> `_her_item_done`); a new `speech_started` closes a waiting turn first.
+   Her late words no longer `_cap_flush()` his captions (a real cut-in still flushes in `_she_cut_in`).
+4. **A tool result talked over her.** `_reply()` sent `response.create` even mid-sentence (Gemini has WHEN_IDLE). Now no
+   reply starts while `_she_speaking` (speech_started -> stopped / committed / response.created); the item is already
+   in the conversation and her own turn's reply carries it. A lost speech_stopped self-heals after `SPEAKING_STALE_S` 20 s.
+5. **Script switch** - checked, not a flaw: `voicelang.hear` treats Devanagari Hindi as the same hi-IN as Hinglish.
+6. **Long waits** - semantic VAD `eagerness` low (up to 8 s) -> medium (~4 s), `VOICE_OPENAI_EAGERNESS`.
+7. **Echo self-cuts** - counted: a cut within `EARLY_CUT_S` 1 s of his first word -> `early_cuts` (scorecard), so her
+   calls show whether his own voice leaks back into the mic.
+Scorecard adds `early_cuts`, `held_for_her`, `finish_waited`. Gemini untouched.
+Tests: NEW `test_v0285_sahi_kram.py` (8); `test_v0264_openai_voice.py` VAD pin -> medium. Version 0.289.0 (pubspec 0.289.0+329).
+
+## v0.290.0 ZOHO FOR HOOLA (built as v0.241.0 / v0.273.0 / v0.286.0 / v0.288.0 / v0.289.0, re-versioned past main v0.289.0): every user adds her own Zoho MCP (only the tools she needs)
 - Owner: "LETS START WITH ZOHO", "SIMPLE MULTITANET USER WILL ADD ZOHO MCP AS PER THERE REQUIREMENT RIGHT", "PERFECT
   DDEPLOY ZOHO FOR HOOLA". Research first (scratchpad reports, not in the repo): Zoho MCP is official, free for now, India
   data centre mcp.zoho.in; ~15,500 tools in 75 sections (Books 1132, CRM 1319, Desk 837, Inventory 814, Mail 184...);
@@ -10994,7 +11013,7 @@ once - now only a scroll that really moved the button (> 2px) closes it.
      with a key in it (long random path part, or ?key= / token= / api_key=...) is sealed with the vault in the NEW nullable
      column `bz_custom_mcp.url_enc`; `url` keeps a masked copy (`.../mcp/•••/message`) for listings, logos, the model and
      dedupe display. `to_pack` endpoint = `real_url` (the only place that opens it); dedupe compares real addresses; Supabase
-     settings + `_featured_row_url` read the real address. Rows from before v0.289 are sealed on their first read
+     settings + `_featured_row_url` read the real address. Rows from before v0.290 are sealed on their first read
      (`user_rows`). A rotated SECRET_KEY falls back to the masked address (fails cleanly; she pastes it again).
      Plain addresses (Notion, Supabase project_ref, GitHub) are stored exactly as before.
   2. BAZAR TABLES NEVER GOT NEW COLUMNS: `db._add_missing_columns(engine, metadata=None)` now also runs on the Bazar
@@ -11018,12 +11037,12 @@ once - now only a scroll that really moved the button (> 2px) closes it.
   instead. The old `zoho-crm` / `bigin-by-zoho` cards stay (their docs link fixed for CRM).
 - Safety unchanged: reads run straight; anything not plainly a read (create / send / email / delete / payment link /
   refund) becomes the confirm card with the exact call; her per-tool on/off switches apply.
-- Tests: NEW `server/tests/test_v0289_zoho_mcp.py` (12): mask/detect (plain addresses untouched), Zoho card connects with
+- Tests: NEW `server/tests/test_v0290_zoho_mcp.py` (12): mask/detect (plain addresses untouched), Zoho card connects with
   the key sealed and never in any listing / featured view, real address used to connect, write = card, re-adding = same
   row; only Zoho server addresses (console page / other host / http refused); card guide + starter + search; old row sealed
   on read; Bazar column added on an old DB; sign-in state sealed; fair budget + her words pick the tools + prompt points to
   action=tools + unchanged order without words; action=tools ranks, flags needs_tap, works through the agent tool, refuses
-  another user's server; version. Version pins 0.288.0 -> 0.289.0 across the suites.
+  another user's server; version. Version pins 0.289.0 -> 0.290.0 across the suites.
 - Not verified live: a real Zoho MCP server (no Zoho account in the sandbox): the address shapes come from Zoho's own help
   pages (CRM docs `<name>-<orgid>.zohomcp.in/mcp/<key>/message`, Projects help `<org>.zohomcp.com/mcp/message?key=`, both
   masked). Whether Zoho needs the one-time browser sign-in or accepts the key alone from a server is unknown; both paths
