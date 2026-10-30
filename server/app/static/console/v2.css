@@ -346,8 +346,6 @@ code:not(pre code){background:rgb(var(--acc-rgb) / .16);border:1px solid rgb(var
 .mdt th,.mdt td{border:1px solid var(--line);padding:7px 11px;text-align:left}
 .mdt th{background:var(--glass2);font-weight:600}
 blockquote{margin:4px 0;padding:8px 14px;border-left:3px solid rgb(var(--acc-rgb) / .55);background:rgb(var(--acc-rgb) / .08);border-radius:0 12px 12px 0;color:var(--lit)}
-.mdb{min-width:0}
-.mdb.tail{min-height:4px}
 hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 .srcs{display:flex;flex-wrap:wrap;gap:6px}
 .note{font-size:13.5px;font-weight:600;color:var(--lit);background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.25);border-radius:12px;padding:9px 13px}

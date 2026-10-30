@@ -10837,3 +10837,48 @@ at normal tracking, 22 / 20 / 17 · block gaps 16 (p to p) / 24 (above a heading
 `server/app/static/console/md.js` · `server/app/static/console/v2.css` · `lib/ui/md_text.dart` ·
 `server/tests/test_v0284_claude_jaisa_paragraph.py` (7 tests) · `test/md_text_test.dart` (the old test asserted the
 `\n` join — it had locked the bug in; updated and extended).
+
+## v0.285.0 EK HI DOM — a live reply and a reloaded one are the same page
+Owner sent a screenshot of a live reply whose four paragraphs were fused into one wall:
+*"CHECK NO PARAGRAPH IN CHAT SPACE IN HOOLA"*.
+
+### Two rendering paths, and only the one she never looks at was correct
+| | when it runs | what it did |
+|---|---|---|
+| `HoolaMD.Live` | a reply while it **arrives** | wrapped every finished block in `<div class="mdb">` |
+| `HoolaMD.render` | a reply after a **reload** | no wrapper |
+
+That wrapper broke the chat's entire measured layout, because two rules depend on a block being a **direct child**
+of the message:
+
+- `.textmd p:last-child{margin-bottom:0}` (v0.274, to trim dead space under the last block of a reply). A `<p>`
+  alone inside a wrapper **is** a `:last-child` — so every paragraph gap went to **0**.
+- `#app .mh .txt>p{max-width:680px}` (v0.276, the reading width). A **child** rule, so a wrapped `<p>` stopped
+  matching it and ran the full **880px** column — about 118 characters a line, exactly what v0.276 fixed.
+
+Measured in a real browser:
+
+| | gap between paragraphs | prose width |
+|---|---|---|
+| live path — **what she reads** | **0px** | **880px** |
+| reload path — what every probe measured | 16px | 680px |
+
+So v0.274, v0.276, v0.278, v0.281 and v0.284 were all real, all correct, and all **invisible to her**, because
+every probe page ever built for them went through `render()`.
+
+### The fix
+`Live` now puts each block's nodes straight into the message with **no wrapper**, so a live reply and a reloaded
+one have the same DOM. Finished blocks keep their own element(s); the streaming block's nodes are tracked in
+`tailNodes` and replaced on each tick. Verified by feeding the text **one character at a time**: the final markup
+is byte-identical to `render()`, with 0 wrappers and no duplicated or lost nodes. The two dead `.mdb` rules went
+with it.
+
+Nothing in the CSS changed. Those rules were right all along — this stopped the DOM from hiding them.
+
+### The lesson, now twice over
+**Test the path the user takes.** v0.284 found the probes were using text no model emits; v0.285 found them using
+a renderer she never sees. Both bugs survived four rounds of careful measurement for the same reason.
+
+### Files
+`server/app/static/console/md.js` (the `Live` class) · `server/app/static/console/v2.css` (two dead rules removed)
+· `server/tests/test_v0285_ek_hi_dom.py` (6 tests).

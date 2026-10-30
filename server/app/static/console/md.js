@@ -163,23 +163,42 @@ function render(text, streaming) {
   return bs.map((b, i) => block(b, streaming && i === bs.length - 1)).join('');
 }
 
-/* ---------- live: finished blocks stay, the last one re-renders ---------- */
+/* ---------- live: finished blocks stay, the last one re-renders ----------
+   v0.285: this used to wrap every block in its own <div class="mdb">, which quietly broke the chat's whole
+   layout - and only on the path she actually reads. A <p> alone inside a wrapper is a :last-child, so
+   `.textmd p:last-child{margin-bottom:0}` (meant to trim dead space under the LAST block of a reply) zeroed the
+   gap under EVERY paragraph; and `#app .mh .txt>p{max-width:680px}` is a CHILD rule, so a wrapped <p> stopped
+   matching it and ran the full 880px column. A reply arriving live had 0px paragraph gaps at 118 characters a
+   line; the same reply after a reload - and every probe page ever built for v0.274 / v0.276 - went through
+   render() instead, with 16px gaps at 680px, and measured perfect.
+   So the nodes now go straight into the message, giving live and reloaded replies the SAME DOM. Nothing is
+   wrapped: finished blocks keep their own element(s), the streaming block's nodes are tracked and replaced. */
+function nodesOf(html) {
+  const holder = document.createElement('div'); holder.innerHTML = html;
+  return [...holder.childNodes];
+}
+
 class Live {
-  constructor(el) { this.el = el; this.done = []; this.tail = null; this.text = ''; }
+  constructor(el) { this.el = el; this.done = []; this.tailNodes = []; this.text = ''; }
   update(text, streaming) {
     this.text = text;
     const bs = splitBlocks(text), fin = streaming ? bs.length - 1 : bs.length;
     let i = 0;
     while (i < this.done.length && i < fin && this.done[i].src === bs[i]) i++;
-    for (const d of this.done.splice(i)) d.node.remove();          // changed (a reset or a final text that differs)
+    for (const d of this.done.splice(i)) for (const n of d.nodes) n.remove();   // changed (a reset, or a final text that differs)
+    for (const n of this.tailNodes) n.remove();                                 // the block being written, re-rendered each tick
+    this.tailNodes = [];
     for (; i < fin; i++) {
-      const node = document.createElement('div'); node.className = 'mdb'; node.innerHTML = block(bs[i], false);
-      this.el.insertBefore(node, this.tail); this.done.push({src: bs[i], node});
+      const nodes = nodesOf(block(bs[i], false));
+      for (const n of nodes) this.el.appendChild(n);
+      this.done.push({src: bs[i], nodes});
     }
-    if (!this.tail) { this.tail = document.createElement('div'); this.tail.className = 'mdb tail'; this.el.appendChild(this.tail); }
-    this.tail.innerHTML = streaming && bs.length ? block(bs[bs.length - 1], true) : '';
+    if (streaming && bs.length) {
+      this.tailNodes = nodesOf(block(bs[bs.length - 1], true));
+      for (const n of this.tailNodes) this.el.appendChild(n);
+    }
   }
-  clear() { this.done = []; this.tail = null; this.text = ''; this.el.innerHTML = ''; }
+  clear() { this.done = []; this.tailNodes = []; this.text = ''; this.el.innerHTML = ''; }
 }
 
 window.HoolaMD = {render, Live, esc, splitBlocks, closeInline, inline};
