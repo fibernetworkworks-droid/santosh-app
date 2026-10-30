@@ -10547,3 +10547,13 @@ Tests: NEW `test_v0274_openai_parity.py` (6). Version 0.275.0 (pubspec 0.275.0+3
   the owner made the call, so the two versions read as one decision rather than a contradiction.
 - Version 0.276.0 (pubspec 0.276.0+316, console ?v=0.276.0, pins -> 0.276.0).
 - NOT VERIFIED: how it reads on her own screen at her own window width.
+
+## CHECKPOINT 30 Oct 2026 — FULL CLAUDE MODE verified by the owner ("PERFECT")
+- Shipped: v0.239 Phase 1 (whole chat word for word + gauge), v0.242 Phase 2 (compact checkpoint), v0.244 3A (one memory
+  for calls / quick lane + cost cap + meter), v0.246 3C (fenced Sessions), v0.250 3B (Mere baare mein, haal_ki_chats,
+  incognito, memory switches). Branch `checkpoint-full-claude-mode-2026-10-30` = commit 87a2046 (v0.250.0).
+- Proof on the VPS with the real brain (`server/tools/memory_quiz.py`, 300 exchanges, 20 planted details), run twice:
+  old 40-49 window (hoola) 16/20 · whole chat (full) 20/20 · real checkpoint first (compact: 296 exchanges -> ~3,000
+  chars) 20/20. Rollback switches: CHAT_CONTEXT=hoola, CHAT_COMPACT=false, MEMORY_FENCE=false, ABOUT_ME=false.
+- Seen in the quiz, not fixed: the v0.231 draft check sometimes prefixes the NEXT reply with a correction of the
+  previous one ("Ek sudhaar: ...").

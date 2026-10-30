@@ -119,6 +119,8 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - Current version: v0.276.0 (pubspec 0.276.0+316). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (14 now: theme.js, pdfview.js, studio.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- CHECKPOINT 30 Oct: FULL CLAUDE MODE (v0.239-v0.250) owner-verified "PERFECT"; memory quiz 16/20 -> 20/20; branch
+  `checkpoint-full-claude-mode-2026-10-30` = 87a2046 (grep "CHECKPOINT 30 Oct" docs/HISTORY.md).
 - v0.276 PADHNE KI CHAUDAI: the 880px column ran 118 characters a line (Literata 16px = 7.45px a character);
   Claude's own text is 674px = 90. The column STAYS 880 so the words keep the composer's left edge (v0.252);
   only the prose wraps, at 680px = 91 characters. Tables, code blocks and cards keep the full width.
