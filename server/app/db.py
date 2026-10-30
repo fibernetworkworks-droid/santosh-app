@@ -901,7 +901,7 @@ def init_db(url: str | None = None):
     _add_missing_columns(_engine)
     from .bazar.db import Base as _BazarBase, init_tables as _bazar_tables
     _bazar_tables(_engine)
-    _add_missing_columns(_engine, _BazarBase.metadata)   # v0.288 Bazar tables get new columns too (bz_custom_mcp.url_enc)
+    _add_missing_columns(_engine, _BazarBase.metadata)   # v0.289 Bazar tables get new columns too (bz_custom_mcp.url_enc)
     _Session = sessionmaker(_engine, expire_on_commit=False)
     return _engine
 

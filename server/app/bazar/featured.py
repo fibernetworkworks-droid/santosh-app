@@ -73,7 +73,7 @@ ZOHO_HOW = ("Zoho (India): 1) open mcp.zoho.in and sign in with your Zoho accoun
 
 
 def zoho_url(c: dict[str, Any], url: str) -> str:
-    """v0.288 her Zoho MCP server address: https on Zoho's MCP domains only (the console page itself is not the server)."""
+    """v0.289 her Zoho MCP server address: https on Zoho's MCP domains only (the console page itself is not the server)."""
     from urllib.parse import urlparse
     url = (url or "").strip()
     u = urlparse(url)

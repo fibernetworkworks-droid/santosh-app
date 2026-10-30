@@ -10949,7 +10949,40 @@ alone. 77 tests across the existing claim-check suites pass untouched.
 ### Files
 `server/app/agent/draftcheck.py` · `server/tests/test_v0286_apne_aap_se_behas.py` (7 tests).
 
-## v0.288.0 ZOHO FOR HOOLA (built as v0.241.0 / v0.273.0 / v0.286.0, re-versioned past main v0.287.0): every user adds her own Zoho MCP (only the tools she needs)
+## v0.288.0 SIDEBAR FULLY VISIBLE (30 Oct 2026, built as 0.286.0; re-versioned on merge)
+Owner, with a screenshot of the sidebar: "CHECK THE SIDE BAR FONT AND FONT SIZE -- AND THE HIDDEN LOOK SECTIONS ----
+FIX THIS PERFECTLY MAKE THIS SAME AS CLAUDE CHAT HAS FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS".
+Measured in a real browser (computed styles, every text node in the sidebar), before:
+- section labels (Sessions, Recent chats, Today / Yesterday / Other chats, a session's name): 12px / 400 in --dim
+  #8B8B92 = 3.3:1 on the sidebar - the "hidden" look; session count at opacity .85;
+- chat titles 13.5px / 400 (.rct kept an older 13.5px while .rc was 14px); nav rows 14px / 400; the handle under her
+  name and the Live chip in --dim.
+v0.256 had matched Claude's SIZES at weight 400; on Windows ClearType a thin face reads grey. Claude's sidebar is a
+medium weight with darker labels. After (block "v0.288 SIDEBAR FULLY VISIBLE" at the very end of v2.css, so no older
+layer can win): nav 14px / 500 in the ink, chat titles 14px / 450 in the ink (the open chat 550), labels + session name
+13px / 500 in --mut (#5C5C63 light = 6.4:1, #ABA6C8 dark), count / + / ⋯ / Show archived (13px / 450) / handle /
+Live in --mut. Schibsted Grotesk is loaded as a 400..700 variable face, so 450 and 550 are real weights. Text-size
+setting (Small / Large) still moves the titles 13 / 15px. Rules kept: nothing over 600, nothing under 12px, no --dim.
+Tests: tests/test_v0288_sidebar_visible.py.
+PREMIUM pass, same version (owner: "STILL SAME MAKE IT MORE PREMIUM AND PERFECT" - the live site was still v0.284, so
+none of v0.285 / v0.286 had reached her yet; this pass goes further anyway):
+- line icons instead of emoji chrome in the sidebar: the session folder (her OWN chosen emoji is kept), Show archived,
+  the row ⋯ (three dots, 16px), the session chevron (turns 90° when open);
+- one row rhythm: nav 36px, chats 34px, 8px corners, hover rgb(fg / .045), selected rgb(fg / .075); chat titles
+  14px / 470, the open chat 560;
+- the ⋯ sits INSIDE the row's pill (absolute, right 4px; the title makes room only on hover / open / focus) - it hung
+  outside, so the pill stopped short of it;
+- a session is a ROW like a chat (14px / 500 ink, folder icon), not a small grey label;
+- "Sessions" is one tight row with its + (it was a 50px empty block), "Other chats" + a day label stay together;
+- default sidebar width 224 -> 272px (Claude ~288; at 224 every title was cut at ~20 characters); drag 220-420 and
+  double-click reset (now 272) unchanged; a width she saved herself is kept.
+Found while checking the merge in a real browser with a real-length chat list: the account button scrolled away under
+the chats (Claude keeps it at the bottom) - now `#app .side #model` is sticky at the bottom on the sidebar colour; and
+menu.js closed a menu on ANY scroll, so a click that first scrolled its button into view opened and shut the menu at
+once - now only a scroll that really moved the button (> 2px) closes it.
+
+
+## v0.289.0 ZOHO FOR HOOLA (built as v0.241.0 / v0.273.0 / v0.286.0 / v0.288.0, re-versioned past main v0.288.0): every user adds her own Zoho MCP (only the tools she needs)
 - Owner: "LETS START WITH ZOHO", "SIMPLE MULTITANET USER WILL ADD ZOHO MCP AS PER THERE REQUIREMENT RIGHT", "PERFECT
   DDEPLOY ZOHO FOR HOOLA". Research first (scratchpad reports, not in the repo): Zoho MCP is official, free for now, India
   data centre mcp.zoho.in; ~15,500 tools in 75 sections (Books 1132, CRM 1319, Desk 837, Inventory 814, Mail 184...);
@@ -10961,7 +10994,7 @@ alone. 77 tests across the existing claim-check suites pass untouched.
      with a key in it (long random path part, or ?key= / token= / api_key=...) is sealed with the vault in the NEW nullable
      column `bz_custom_mcp.url_enc`; `url` keeps a masked copy (`.../mcp/•••/message`) for listings, logos, the model and
      dedupe display. `to_pack` endpoint = `real_url` (the only place that opens it); dedupe compares real addresses; Supabase
-     settings + `_featured_row_url` read the real address. Rows from before v0.288 are sealed on their first read
+     settings + `_featured_row_url` read the real address. Rows from before v0.289 are sealed on their first read
      (`user_rows`). A rotated SECRET_KEY falls back to the masked address (fails cleanly; she pastes it again).
      Plain addresses (Notion, Supabase project_ref, GitHub) are stored exactly as before.
   2. BAZAR TABLES NEVER GOT NEW COLUMNS: `db._add_missing_columns(engine, metadata=None)` now also runs on the Bazar
@@ -10985,12 +11018,12 @@ alone. 77 tests across the existing claim-check suites pass untouched.
   instead. The old `zoho-crm` / `bigin-by-zoho` cards stay (their docs link fixed for CRM).
 - Safety unchanged: reads run straight; anything not plainly a read (create / send / email / delete / payment link /
   refund) becomes the confirm card with the exact call; her per-tool on/off switches apply.
-- Tests: NEW `server/tests/test_v0288_zoho_mcp.py` (12): mask/detect (plain addresses untouched), Zoho card connects with
+- Tests: NEW `server/tests/test_v0289_zoho_mcp.py` (12): mask/detect (plain addresses untouched), Zoho card connects with
   the key sealed and never in any listing / featured view, real address used to connect, write = card, re-adding = same
   row; only Zoho server addresses (console page / other host / http refused); card guide + starter + search; old row sealed
   on read; Bazar column added on an old DB; sign-in state sealed; fair budget + her words pick the tools + prompt points to
   action=tools + unchanged order without words; action=tools ranks, flags needs_tap, works through the agent tool, refuses
-  another user's server; version. Version pins 0.287.0 -> 0.288.0 across the suites.
+  another user's server; version. Version pins 0.288.0 -> 0.289.0 across the suites.
 - Not verified live: a real Zoho MCP server (no Zoho account in the sandbox): the address shapes come from Zoho's own help
   pages (CRM docs `<name>-<orgid>.zohomcp.in/mcp/<key>/message`, Projects help `<org>.zohomcp.com/mcp/message?key=`, both
   masked). Whether Zoho needs the one-time browser sign-in or accepts the key alone from a server is unknown; both paths

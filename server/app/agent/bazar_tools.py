@@ -159,7 +159,7 @@ async def bazar_mcp(ctx: Ctx, action, query="", field="", url="", ref="", name="
         return await _call(service.mcp_directory, str(query or ""), str(field or ""))
     if action == "list":
         return {"servers": await _call(service.mcp_list, ctx.tenant_id)}
-    if action == "tools":       # v0.288 find the right tool on a big server (Zoho MCP)
+    if action == "tools":       # v0.289 find the right tool on a big server (Zoho MCP)
         return await _call(service.mcp_find_tools, ctx.tenant_id, str(pack_id or ""), str(query or ""))
     if action == "remove":
         return {"removed": await _call(service.mcp_remove, ctx.tenant_id, str(pack_id or ""))}

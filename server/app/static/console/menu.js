@@ -45,7 +45,11 @@ function close(focusBack) {
 }
 function outside(e) { if (M && !M.el.contains(e.target) && !M.anchor.contains(e.target)) close(false); }
 function onResize() { close(false); }
-function onScroll(e) { if (M && !M.el.contains(e.target)) close(false); }
+function onScroll(e) {            // only a scroll that really moved the button closes the menu (a late scroll-into-view does not)
+  if (!M || M.el.contains(e.target)) return;
+  const r = M.anchor.getBoundingClientRect();
+  if (Math.abs(r.top - M.at.top) > 2 || Math.abs(r.left - M.at.left) > 2) close(false);
+}
 function onBlur() { close(false); }
 
 function open(anchor, items, opts = {}) {
@@ -79,7 +83,7 @@ function open(anchor, items, opts = {}) {
   el.style.transformOrigin = `${opts.align === 'start' ? 'left' : 'right'} ${up ? 'bottom' : 'top'}`;
   el.classList.toggle('up', up);
   anchor.setAttribute('aria-haspopup', 'menu'); anchor.setAttribute('aria-expanded', 'true');
-  M = {el, anchor, items: live, onClose: opts.onClose};
+  M = {el, anchor, items: live, onClose: opts.onClose, at: anchor.getBoundingClientRect()};
   requestAnimationFrame(() => el.classList.add('on'));
 
   const btns = () => [...el.querySelectorAll('.mi:not([aria-disabled="true"])')];

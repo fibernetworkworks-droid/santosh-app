@@ -981,7 +981,7 @@ def mcp_connect_featured(tenant_id: str, fid: str, url: str = "", key: str = "",
             raise ToolError(f"Paste your personal {c['name']} MCP address (from your {c['name']} account).")
         if (c.get("options") or {}).get("kind") == "zoho":
             try:
-                url = featured.zoho_url(c, url)   # v0.288 only Zoho's own server addresses; clear words otherwise
+                url = featured.zoho_url(c, url)   # v0.289 only Zoho's own server addresses; clear words otherwise
             except ValueError as e:
                 raise ToolError(str(e))
     else:
@@ -1145,7 +1145,7 @@ def mcp_tools(tenant_id: str, pack_id: str) -> dict[str, Any]:
 
 
 def mcp_find_tools(tenant_id: str, pack_id: str, query: str = "", limit: int = 12) -> dict[str, Any]:
-    """v0.288 Search one of her servers' tools by the words of the job (Zoho MCP can carry hundreds; only a share of them
+    """v0.289 Search one of her servers' tools by the words of the job (Zoho MCP can carry hundreds; only a share of them
     are given to the model each turn). Only tools she left on; each comes with its arguments, ready for bazar_run."""
     from ..agent.mcp_live import rank
     limit = max(1, min(int(limit or 12), 25))

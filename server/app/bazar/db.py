@@ -258,8 +258,8 @@ class CustomMcp(Base):
     id: Mapped[str] = mapped_column(String(24), primary_key=True)          # "mcp-<hex>", also the pack id
     user_id: Mapped[str] = mapped_column(String(64), ForeignKey("bz_users.id"), index=True)
     name: Mapped[str] = mapped_column(String(120))
-    url: Mapped[str] = mapped_column(String(500))                          # v0.288 secrets masked (see url_enc)
-    url_enc: Mapped[str | None] = mapped_column(Text, nullable=True)       # v0.288 the full address, sealed, when it carries a key
+    url: Mapped[str] = mapped_column(String(500))                          # v0.289 secrets masked (see url_enc)
+    url_enc: Mapped[str | None] = mapped_column(Text, nullable=True)       # v0.289 the full address, sealed, when it carries a key
     directory_ref: Mapped[str] = mapped_column(String(160), default="")   # owner/repo from the directory
     description: Mapped[str] = mapped_column(Text, default="")
     caution: Mapped[bool] = mapped_column(Boolean, default=False)

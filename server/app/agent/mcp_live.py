@@ -131,7 +131,7 @@ def _words(text: str) -> set[str]:
 
 
 def rank(tools: list[dict], query: str) -> list[dict]:
-    """v0.288 a server's tools, the ones her words name first (stable: the server's own order breaks ties)."""
+    """v0.289 a server's tools, the ones her words name first (stable: the server's own order breaks ties)."""
     q = _words(query)
     if not q:
         return list(tools)
@@ -141,7 +141,7 @@ def rank(tools: list[dict], query: str) -> list[dict]:
 
 
 def shares(counts: list[int], limit: int) -> list[int]:
-    """v0.288 fair split of the native-tool budget: a small server keeps all its tools, big ones (Zoho MCP can carry
+    """v0.289 fair split of the native-tool budget: a small server keeps all its tools, big ones (Zoho MCP can carry
     hundreds) share what is left, so one big server never pushes every other server's tools out."""
     out = [0] * len(counts)
     left, open_ = max(0, limit), [i for i, c in enumerate(counts) if c > 0]
@@ -162,7 +162,7 @@ def shares(counts: list[int], limit: int) -> list[int]:
 
 def tool_defs(snap: list[dict], limit: int, query: str = "") -> tuple[list[dict], dict[str, tuple[str, str]]]:
     """Real tools for ready servers: ([{name, description, input_schema}], {tool_name: (pack_id, server_tool)}).
-    v0.288: the budget is shared fairly between servers and, inside a server with more tools than its share, the
+    v0.289: the budget is shared fairly between servers and, inside a server with more tools than its share, the
     tools her message names come first; the rest stay reachable (bazar_mcp action=tools finds them)."""
     defs: list[dict] = []
     route: dict[str, tuple[str, str]] = {}
