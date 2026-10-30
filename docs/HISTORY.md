@@ -10787,3 +10787,53 @@ the **1600 ms ceiling** overrode it, so anything past ~57 words landed in 1.6 s 
 ### A process note worth recording
 The first attempt at this version was lost: the commit silently failed and a following `git reset --hard origin/main`
 wiped the uncommitted work. The rule learned: **check `git log -1` shows your commit before running any reset.**
+
+## v0.284.0 CLAUDE JAISA PARAGRAPH — the three faults no CSS measurement could see
+Owner: *"STILL PARAGRAP, WORD SETUP AND GAP AT PROPER INTERVAL IN NOT PROPER --- CHECK HOW CLUDE CHAT DO THIS
+PROPERLY --- PERFECT PARAGRAP, WORDING, GAP, SPACING ETC --- CLONE SAME AS IT IS FOR HOOLA"*.
+
+### Why four earlier versions "matched" and the reply still read wrong
+v0.274, v0.276, v0.278 and v0.281 each measured a NUMBER against her Claude screenshots and matched it: 16px
+between paragraphs, 24 above a heading and 8 below, 680px of prose, a 61px turn gap, a 30px bullet gutter. All of
+that was true and all of it is still true. The faults that remained were in the **renderer**, and every probe page
+those versions used wrote each paragraph as a **single source line** — so the bug never fired in the rig.
+
+**The lesson, written down:** a layout probe must use the text the model actually emits, wraps and all, or it
+measures a page the user never sees.
+
+### Fault 1 — the soft break (this one is both halves of her report)
+`md.js` built one `<p>` per source line and then glued them together with `.replace(/<\/p><p>/g, '<br>')`.
+
+CommonMark — which Claude's chat follows — calls a single newline inside a paragraph a **soft break**: the lines
+join with a **space** and the paragraph reflows to the column. Hoola instead froze the model's own line wrapping
+into the page. The result, verified by running her own `md.js`:
+
+    <p>...the checkpoint branch is created. Everything<br>measurable already matched...</p>
+
+Short ragged lines that stop mid-sentence wherever the model happened to wrap, with **no gap** under them, sitting
+directly beside real paragraphs that had 16px. That is "word setup" and "gap at proper interval" in one defect.
+
+Now: a single newline joins with a space; only an explicit hard break (two trailing spaces, or a backslash) stays a
+`<br>`. A wrapped **list item** and a wrapped **quote** join the same way. The **phone** had the identical bug from
+a different direction — `md_text.dart` joined paragraph and quote lines with `'\n'`, which Flutter renders as a
+real break — fixed with a shared `_soft()` helper following the same rule.
+
+### Fault 2 — the heading hierarchy was upside down
+`md.js` maps `#` to `h3`, `##` to `h4`, `###` to `h5`. `.textmd h3.mdh` was pinned at **17px** while `h4` and `h5`
+kept the 20px default, so a reply's own title rendered **smaller than the sections under it**. Now 22 / 20 / 17 at
+weight 600 — the same three sizes the phone already used, so a heading reads the same on both surfaces.
+
+### Fault 3 — two typefaces inside one reply
+`#app h1,#app h2,#app h3{font-family:var(--fb)}` (console **chrome**) outranks `.textmd .mdh` on specificity
+(1,0,1 beats 0,2,0). So the `#` heading came out in the interface **sans** with tightened tracking while `##` and
+`###` stayed in the **serif**. v0.249 settled that the reply, headings included, is the serif. Corrected with
+`#app .textmd .mdh`, which wins at 1,2,0 and touches nothing outside a rendered message.
+
+### Measured after, in a real browser
+`0` `<br>` in a wrapped reply · paragraphs reflowing to 625-658px of the 680px column · every heading Literata 600
+at normal tracking, 22 / 20 / 17 · block gaps 16 (p to p) / 24 (above a heading) / 8 (below one).
+
+### Files
+`server/app/static/console/md.js` · `server/app/static/console/v2.css` · `lib/ui/md_text.dart` ·
+`server/tests/test_v0284_claude_jaisa_paragraph.py` (7 tests) · `test/md_text_test.dart` (the old test asserted the
+`\n` join — it had locked the bug in; updated and extended).
