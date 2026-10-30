@@ -481,9 +481,17 @@ let SIMPLE_PROGRESS = null;
    every phase, so it reads total elapsed, not time-in-this-step. It stays blank for the first second so a quick
    reply never flashes "0s". */
 let PROGRESS_T0 = 0, PROGRESS_TIMER = 0;
+let LAST_WORD_AT = 0;   // v0.302: when a word was last written into the chat, for the watchdog above
 function fmtSecs(s) { return s < 60 ? s + 's' : Math.floor(s / 60) + 'm ' + String(s % 60).padStart(2, '0') + 's'; }
 function progressTick() {
-  const el = SIMPLE_PROGRESS && SIMPLE_PROGRESS.querySelector('.progress-secs');
+  if (!SIMPLE_PROGRESS) return;
+  // v0.302: the watchdog. Hooking "the block finished" (fin) was not enough, because fin only fires when the
+  // pacer was given a FINAL text. Measured against the real pacer, two shapes never reach it: deltas followed by
+  // reply_end's flush(), and - her case - deltas that simply stop while Hoola goes off to run a long tool. In
+  // both the queue drains, no fin ever comes, and the row stays hidden. "No words for a moment" is the signal
+  // that actually means the screen has gone quiet, whatever the delivery shape.
+  if (TYPING && SIMPLE_PROGRESS.hidden && Date.now() - LAST_WORD_AT > 600) placeProgress();
+  const el = SIMPLE_PROGRESS.querySelector('.progress-secs');
   if (!el) return;
   const s = Math.floor((Date.now() - PROGRESS_T0) / 1000);
   const want = s >= 1 ? fmtSecs(s) : '';
@@ -574,8 +582,10 @@ function seg(R, n) {
   const view = new HoolaMD.Live(el);
   S = {el, view, pacer: new HoolaStream.Pacer((text, fin) => {
     view.update(text, !fin);
-    // v0.299: the block is written and the turn is still going - show the loader again instead of leaving the
-    // screen dead until the next step event arrives.
+    LAST_WORD_AT = Date.now();                       // v0.302 feeds the watchdog in progressTick
+    // v0.299: the block is finished and the turn is still going - bring the loader straight back rather than
+    // leaving the screen dead until the next step event. This covers the shapes that DO end in a final text;
+    // the watchdog covers the ones that do not (deltas that just stop while a long tool runs).
     if (fin && TYPING) placeProgress();
     scrollDown();
   })};
