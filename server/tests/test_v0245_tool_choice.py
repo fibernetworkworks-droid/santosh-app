@@ -64,11 +64,11 @@ def test_saying_hoola_or_search_or_phone_never_loads_the_pc_or_the_network():
         assert "hoola" not in fams, text
 
 
-def test_the_pc_comes_into_view_only_when_she_names_it_or_desktop_software_is_needed():
+def test_the_pc_comes_into_view_only_when_she_names_it():
     _, fams, plan = _view("Mere PC pe Tally kholo")
     assert "pc" in fams and plan.why["pc"] == "place"
     _, fams, plan = _view("ffmpeg se yeh video chhota kar do")
-    assert "pc" in fams and plan.why["pc"] == "software"
+    assert "pc" not in fams                               # v0.271 SAB SERVER PAR: software words alone never open a PC
     _, fams, _ = _view("Hoola ke PC pe pandoc se convert karo")
     assert "pc" in fams
 
@@ -123,7 +123,9 @@ def test_a_data_job_sent_to_a_pc_she_did_not_name_is_refused(env):
     with pytest.raises(ToolError) as e:
         pick.check("hoola_pc_do", {"task": "collect top 100 github repos and make a pdf"}, ctx)
     assert "DATA job" in str(e.value)
-    pick.check("hoola_pc_do", {"task": "compress this video with ffmpeg"}, ctx)   # desktop software: fine
+    with pytest.raises(ToolError) as e:                    # v0.271 desktop software alone: ask her first
+        pick.check("hoola_pc_do", {"task": "compress this video with ffmpeg"}, ctx)
+    assert "Yeh aapke PC pe karun?" in str(e.value)
     ctx.place = "hoolapc"
     pick.check("hoola_pc_do", {"task": "collect top 100 github repos"}, ctx)      # she named Hoola's PC: her call
     ctx.place = "pc"
@@ -203,4 +205,4 @@ def test_cards_save_and_list(env, monkeypatch, tmp_path):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.270.0"
+    assert APP_VERSION == "0.271.0"

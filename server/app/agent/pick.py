@@ -8,8 +8,9 @@ Three cases, all from real failures, and each refusal names the right tool so th
    If she really meant a PC, tool_search opens the family and the call goes through.
 2. A data job (lists, top N, API / repos, collecting) sent to a PC she did not name: data stays on the server
    (data_fetch -> data_read / data_note -> doc_studio data=) and its file reaches the chat; a VM file does not.
-4. (v0.270) Any other PC job she did not place on a PC (no PC named this turn, no running PC job in the chat, no
-   desktop software): deep research + PDF went to her PC / the cloud PC; it belongs to the server tools.
+4. (v0.270, v0.271 SAB SERVER PAR) Any PC job she did not place on a PC (no PC named this turn or a moment ago, no
+   running PC job of hers in the chat): every job runs on the server; desktop software in the task only makes
+   Hoola ASK her first ("Yeh aapke PC pe karun?") - it never picks a PC by itself.
 3. (v0.257) Reading / analysing a program or app file (.exe / .apk / .dll, endpoints, decompiling) sent to a PC
    without her saying so in THIS ask: that is rea_khoj (action=endpoints / overview), on the server, never run.
 """
@@ -64,23 +65,27 @@ def check(name: str, args: dict[str, Any], ctx) -> None:
             STATS["file_to_pc"] += 1
             raise ToolError("Reading / analysing a program or app file is REA's job, not a PC's: use " + _REA_WAY +
                             ". Never install tools on the cloud PC for it.")
-        if where._DATA.search(task) and not admit._DESKTOP.search(task) and not named:
+        if where._DATA.search(task) and not named:
             STATS["data_to_pc"] += 1
             raise ToolError("This is a DATA job and she did not ask for a PC: do it on the server - " + _DATA_WAY +
                             ". A file made on a PC does not come back to the chat.")
-        # v0.270 a PC is HER choice or the job's software, never Hoola's: a research / website / writing job on a PC
-        # she did not name this turn (and no running PC job of this chat) is refused with the server route
+        # v0.270 / v0.271 SAB SERVER PAR: a PC is HER choice only - she named it this turn (or a moment ago), or a PC
+        # job SHE started is still running in this chat. Desktop software in the task no longer counts on its own:
+        # Hoola does the job on the server, or ASKS her first.
         place_now = place or where.working(conv)
         if place == "server":
             place_now = ""
-        if place_now not in ("pc", "hoolapc") and not where._asked(conv, "pc") and not where._asked(conv, "hoolapc") \
-                and not admit._DESKTOP.search(task) and not _DESKTOP_APPS.search(task):
+        if place_now not in ("pc", "hoolapc") and not where._asked(conv, "pc") and not where._asked(conv, "hoolapc"):
             STATS["pc_not_hers"] += 1
             if place_now == "hoola":
                 raise ToolError("She asked for YOUR OWN browser (Hoola's browser on the server), not a PC: use "
                                 "browse_web / computer_operator there, and doc_studio for a PDF.")
-            raise ToolError(f"{name}: she did not put this job on a PC and it needs no desktop software. Do it on "
-                            "the server: research = web_sources / google_search / open_website (browse_web for a "
+            needs = admit._DESKTOP.search(task) or _DESKTOP_APPS.search(task)
+            raise ToolError(f"{name}: she did not ask for a PC - every job runs on the SERVER unless she says 'PC pe "
+                            "karo'. " + ("This task names desktop software: ASK her first in one line ('Yeh aapke PC "
+                                         "pe karun?') and wait for her yes; until then do what the server can. "
+                                         if needs else "") +
+                            "Server route: research = web_sources / google_search / open_website (browse_web for a "
                             "site that needs clicks; deploy_agents when it splits into parts); a PDF / Word / Excel "
-                            "= doc_studio; lists / API data = " + _DATA_WAY + ". A file made on a PC never reaches "
-                            "the chat.")
+                            "= doc_studio; lists / API data = " + _DATA_WAY + "; video = video_edit; a program file "
+                            "= rea_khoj. A file made on a PC never reaches the chat.")

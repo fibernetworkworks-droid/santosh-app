@@ -85,7 +85,7 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "tv": ("tv", "channel", "dth"),
     "bt": ("bluetooth", "speaker", "music", "song", "gaana", "gaane", "volume", "ac ", "air condition", "remote",
            "ganna", "गाना", "गाने"),
-    # v0.245 "pc" is not keyword-admitted any more: _pc_wanted() decides (her PC / Hoola's PC named, or desktop software)
+    # v0.245 "pc" is not keyword-admitted any more: _pc_wanted() decides (v0.271: only her PC / Hoola's PC named)
     "operator": ("computer operator", "operator"),
     "jaanch": ("jaanch", "test karo"),
     "shop": ("order", "amazon", "flipkart", "zomato", "swiggy", "kharid", "shopping", "pizza", "grocer"),
@@ -369,19 +369,20 @@ INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
     (re.compile(r"(?:ke|ki|ka|ko)\s+avatar|avatar\s+(?:ko|se)|hoola network|network pe", re.I), ("hoola",), "network"),
     # research / comparison that splits into parts -> the team (core) + the web (core); nothing extra to load
 ]
-# her PC (Santosh Desktop) or Hoola's own cloud PC: only when she names it or the job needs desktop software
+# desktop-software words (v0.271: they no longer bring a PC into view by themselves - only her words do)
 _DESKTOP = re.compile(r"\btally\b|busy software|\bmarg\b|ffmpeg|libreoffice|pandoc|imagemagick|\bapt\b|pip install|"
                       r"printer|printout|\bprint\s+(?:kar\s+do|kar\s+dena|nikal|karwa|out)|पीसी|santosh desktop", re.I)
 
 
 def _pc_wanted(text: str) -> str:
-    """'place' / 'software' when the PC tools belong in view, '' when they don't."""
+    """'place' when the PC tools belong in view, '' when they don't. v0.271 SAB SERVER PAR (owner: "WE WANT HOOLA FOR
+    EVERY TASK ON SERVER ... IF SHE TELLS TO DO THE TASK ON PC THEN ONLY HE WILL DO"): only HER words naming her PC /
+    Hoola's PC bring a PC into view. Desktop-software words (Tally, ffmpeg, printer ...) no longer do - for those
+    Hoola works on the server or ASKS her "Yeh aapke PC pe karun?" first."""
     from . import where
     p = where.place(text)
     if p in ("pc", "hoolapc"):
         return "place"
-    if _DESKTOP.search(text):
-        return "software"
     return ""
 
 

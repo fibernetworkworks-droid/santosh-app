@@ -88,8 +88,9 @@ def test_hoolas_browser_is_never_her_pc(env, monkeypatch):
     ctx = Ctx(tenant_id="default", conversation_id="c", place="hoola")
     with pytest.raises(ToolError, match="YOUR OWN browser"):
         asyncio.run(dispatch("pc_do", {"task": "Chrome mein irctc.co.in kholo"}, ctx))
-    asyncio.run(dispatch("pc_do", {"task": "Excel mein sales sheet kholo"}, ctx))   # not a website: allowed
-    assert [c[0] for c in calls] == ["pc_do"]
+    with pytest.raises(ToolError, match="YOUR OWN browser"):                        # v0.271 SAB SERVER PAR: a PC
+        asyncio.run(dispatch("pc_do", {"task": "Excel mein sales sheet kholo"}, ctx))  # only when SHE names one
+    assert [c[0] for c in calls] == []
 
 
 def test_operator_asks_before_moving_her_browser_job_to_her_pc(env, monkeypatch):

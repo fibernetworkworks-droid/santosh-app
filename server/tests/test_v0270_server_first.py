@@ -97,9 +97,8 @@ def test_her_own_pc_jobs_still_run(env):
     from app.agent import pick, where
     where.forget("c-srv")
     pick.check("pc_do", {"task": "Open irctc.co.in in Chrome"}, _Ctx(place="pc"))                  # she named her PC
-    pick.check("pc_do", {"task": "Tally mein aaj ki sale entry karo"}, _Ctx())                   # desktop software
-    pick.check("pc_do", {"task": "Excel mein sales sheet kholo"}, _Ctx(place="hoola"))            # a desktop app
-    pick.check("hoola_pc_do", {"task": "compress video with ffmpeg"}, _Ctx())                     # software
+    pick.check("pc_do", {"task": "Tally mein aaj ki sale entry karo"}, _Ctx(place="pc"))         # her PC, her Tally
+    pick.check("hoola_pc_do", {"task": "compress video with ffmpeg"}, _Ctx(place="hoolapc"))      # she named Hoola's
     pick.check("hoola_pc_do", {"task": "open example.com in Chromium"}, _Ctx(place="hoolapc"))    # she named it
     where.touch("c-srv", "pc")                                                                     # her running PC job
     pick.check("pc_do", {"task": "now open the next page of the IRCTC site"}, _Ctx())
@@ -165,4 +164,41 @@ def test_tool_chooser_says_deep_research_is_server_work():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.270.0"
+    assert APP_VERSION == "0.271.0"
+
+
+# ---------------------------------------------------------------- v0.271 SAB SERVER PAR: a PC only on her word
+@pytest.mark.parametrize("name,task", [
+    ("pc_do", "Tally mein aaj ki sale entry karo"),
+    ("pc_do", "Excel mein sales sheet banao"),
+    ("pc_do", "print this bill on the printer"),
+    ("hoola_pc_do", "compress this video with ffmpeg"),
+    ("hoola_pc_do", "pip install pandoc and convert the docx"),
+])
+def test_desktop_software_alone_never_opens_a_pc_hoola_asks_her(env, name, task):
+    from app.agent import pick, where
+    from app.agent.tools import ToolError
+    where.forget("c-srv")
+    with pytest.raises(ToolError) as e:
+        pick.check(name, {"task": task}, _Ctx())
+    assert "Yeh aapke PC pe karun?" in str(e.value) and "SERVER" in str(e.value)
+
+
+@pytest.mark.parametrize("text", ["Tally mein aaj ki sale dikhao", "ffmpeg se video chhota karo",
+                                  "Excel mein sales sheet banao", "is bill ka printout nikal do"])
+def test_software_words_alone_do_not_load_the_pc(text):
+    from app.agent import admit
+    assert "pc" not in admit.plan_for(text, _st()).families
+
+
+@pytest.mark.parametrize("text", ["Mere PC pe Tally kholo", "mere laptop pe excel file kholo",
+                                  "Hoola ke PC pe ffmpeg se video compress karo", "apne computer pe pandoc chalao"])
+def test_her_words_still_load_the_pc(text):
+    from app.agent import admit
+    assert "pc" in admit.plan_for(text, _st()).families
+
+
+def test_the_guide_says_server_first_and_ask_before_a_pc():
+    from app.agent import prompts
+    slim = prompts.system_text(["core"])
+    assert "EVERY job runs on the SERVER" in slim and "Yeh aapke PC pe karun?" in slim

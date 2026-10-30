@@ -10400,3 +10400,23 @@ parallel v0.269.0.
   it splits into independent parts), then doc_studio for the PDF - all on the server, never a PC."
 - Tests `server/tests/test_v0270_server_first.py` (10). No PC file changed. Version 0.270.0 (pubspec 0.270.0+310,
   console ?v=0.270.0, pins). Server-only deploy.
+
+## v0.271.0 SAB SERVER PAR — every job on the server, a PC only on her word (30 Oct 2026)
+Owner: "WE WANT HOOLA FOR EVERY TASK ON SERVER ... IF HOOLA TELL TO DO THE TASK ON PC THEN ONLY HE WILL DO" (= if SHE
+tells Hoola to do it on a PC).
+- After v0.270 one automatic door to a PC was left: desktop-software words. "Tally / ffmpeg / pandoc / printer" made
+  `admit._pc_wanted` return "software" (PC tools in view without her asking), and pick.py rule 4 let a PC call through
+  when the task named Tally / Busy / Marg / ffmpeg / LibreOffice / pandoc / printer / Excel / Word / PowerPoint /
+  Outlook / Photoshop / AutoCAD.
+- Now: `_pc_wanted` = her place only (where.place: her PC / Hoola's PC named in her words). pick.py rule 4 refuses
+  pc_do / hoola_pc_do unless she named that PC this turn / a moment ago (where._asked, KEEP_S) or a PC job she started
+  is still running in the chat (where.working); a sub-agent ("server") never. When the task names desktop software the
+  refusal says: ASK her first in one line "Yeh aapke PC pe karun?", wait for her yes, do what the server can meanwhile.
+  The data rule no longer has a desktop-software exception.
+- Guide: TOOL CHOOSER "EVERY job runs on the SERVER: a PC ... only when SHE says so in her words ...; when a job seems
+  to need one (her Tally, a file only on her computer, desktop software), ask her one line 'Yeh aapke PC pe karun?'";
+  where-block item 3 (Hoola's PC only when SHE says so), "Hoola ka apna PC" line (never your own choice), "Her PC"
+  line (only when she asks, else ask first). Voice calls already set the place from her spoken words.
+- Tests: test_v0270_server_first.py (+14: software words alone never open a PC / never pass the check, her words do,
+  guide), test_v0245_tool_choice.py + test_v093_place.py updated to the new rule. No PC file changed.
+  Version 0.271.0 (pubspec 0.271.0+311, console ?v=0.271.0, pins). Server-only deploy.
