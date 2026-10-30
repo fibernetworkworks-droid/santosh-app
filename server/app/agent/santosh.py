@@ -603,6 +603,16 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     # v0.232 PHASE C a clearly big ask by her thinks from its FIRST call (the plan comes first, and Claude can't start
     # thinking in the middle of a tool loop, so waiting for kaam_plan set would keep this whole turn silent)
     state["big"] = bool(ctx.actor in ("owner", "goal") and settings.agent_goal and _goal.looks_big(user_text or ""))
+    # v0.272 SOCH KE JAWAB step 1: a HARD question (analysis, calculation, decision, plan, root cause, proof, deep
+    # explanation) is not a long job - looks_big missed 50 of 50 of them - but it needs thinking from its first call
+    state["hard"] = False
+    if ctx.actor == "owner" and getattr(settings, "hard_detect", True):
+        try:
+            from . import hard as _hard
+            _hv = await _hard.decide(user_text or "", settings)
+            state["hard"], state["hard_why"] = bool(_hv["hard"]), _hv
+        except Exception:
+            log.exception("hard check failed")
     if settings.agent_goal:
         g0 = _goal.active_for(conversation_id)
         if g0 is not None:   # goal open when the turn began: the goal caps apply from the first step
@@ -771,7 +781,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 state["max_tokens"] = settings.agent_goal_max_tokens
         # v0.232 PHASE C: this step's model call thinks out loud when a long job runs (read by _think; a contextvar so
         # sub-agents and every caller of _think keep their signature, and the team's own calls never think)
-        _THINK_NOW.set(think_wanted(settings, bool(state.get("goal") or state.get("big"))))
+        _THINK_NOW.set(think_wanted(settings, bool(state.get("goal") or state.get("big") or
+                                                   (state.get("hard") and getattr(settings, "hard_thinking", True)))))
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
             live.block(stream=not _gyaan.used(conversation_id))
         _conv_tok = _ctx.CONV.set(conversation_id)   # v0.237 the model's real token count lands on this chat's reading

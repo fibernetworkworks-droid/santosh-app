@@ -23,6 +23,10 @@ def _tools(argv: list[str]) -> int:
 def main(argv: list[str]) -> int:
     if argv and argv[0] == "tools":
         return _tools(argv[1:])
+    if argv and argv[0] == "hard":          # v0.272 the hard-reasoning detector card (free, no model)
+        from . import hard_asks as HA
+        print("\n".join(HA.lines(HA.card())))
+        return 0
     if argv and argv[0] == "compare":
         if len(argv) != 3:
             print("usage: python -m app.quality compare <before.json> <after.json>")
