@@ -731,7 +731,9 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     # hint) actually need, computed ONCE for the whole turn - byte-stable across every step, so the Anthropic
     # prompt cache holds. tool_search may admit a family mid-turn; the next loop iteration rebuilds the list.
     adm = None
-    if (getattr(ctx, "actor", "owner") or "owner") in ("owner", "wake") or \
+    # v0.270 the background rounds of HER long job ("goal") are routed too: they used to see the whole 425-tool
+    # registry (pc_do / hoola_pc_do with their long "do anything" text), so a deep-research + PDF job drifted onto a PC
+    if (getattr(ctx, "actor", "owner") or "owner") in ("owner", "wake", "goal") or \
             str(getattr(ctx, "actor", "owner") or "owner").startswith("approved:"):
         _extra = state.get("hint") or ""
         _g0 = state.get("goal")
@@ -1337,7 +1339,12 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             log.exception("id capture failed")
         try:   # v0.93 "mere PC pe" vs "apne browser mein": the place she named holds for this turn's tools
             from . import where
-            ctx.place = place or where.remember(conversation_id, user_text)
+            # v0.270 only HER own words can name a place: a job note "(Result from HER PC ...)", a goal nudge that
+            # lists a plan step "... Hoola ke PC pe ..." or a wake report used to count as her naming that PC, and
+            # whichever note came last moved the next website step there - Hoola flip-flopped between the two PCs
+            _hers = (getattr(ctx, "actor", "owner") or "owner") == "owner" and \
+                not str(user_text or "").lstrip().startswith(("[", "("))
+            ctx.place = place or where.remember(conversation_id, user_text if _hers else "")
         except Exception:
             log.exception("place check failed")
         try:   # v0.223 PHASE A: her "haan aage badho" after a used-up budget reopens the SAME job (fresh budget)

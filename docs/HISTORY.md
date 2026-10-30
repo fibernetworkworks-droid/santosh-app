@@ -10369,3 +10369,34 @@ committed handler, breath planning; VAD semantic + create_response true). Versio
   call; never the whole list or a summary; no "aur kuch?" / work reminder at the end of every reply. The example is now
   an everyday one. Gemini's prompt is untouched (a test checks voice.py has no BAAT_KA_DHANG).
 Tests: `test_v0264_openai_voice.py` 20 (+1). Version 0.269.0 (pubspec 0.269.0+309, console ?v=0.269.0, pins -> 0.269.0).
+
+## v0.270.0 SERVER PEHLE — deep research + PDF stays on the server (30 Oct 2026)
+Owner: "I HAVE GIVEN A HOOLA A TASK --- DO DEEP RESEARCH AND GIVE PDF ---- INSTEAD OF USING SERVER FOR IT HOOLA IS
+WONDERING BETWEEN HIS PC AND MERA PC ------ FIND ROOT CAUSE FOR THIS BEHAVOR". Built as 0.269.0, re-versioned past the
+parallel v0.269.0.
+- Checked first: the main turn's router is clean - "Do deep research and give PDF" (4 phrasings) loads web_sources /
+  google_search / open_website / deploy_agents / doc_studio and NO PC tool. The PCs came in four other ways:
+  1. Long-job rounds: `santosh.py` admitted tools only for actors owner / wake / approved; her long job's background
+     rounds (actor "goal", v0.222) skipped the router and saw all 425 tools - pc_do / hoola_pc_do keep 500-700 chars
+     of "do anything end to end" text after the diet, research tools ~140. Now "goal" rounds are routed (the nudge
+     carries the goal + its steps); routines keep the full set as before.
+  2. The agent team: deploy_agents' schema said sub-agents may use "(mail, sheets, web, pc...)", so a research crew
+     asked for "pc" and every sub-agent saw both PC tools; pick.py let a research task through. Now `_agent_admit`
+     drops "pc" unless the main turn had it, sub-agents run with ctx.place = her place for the turn when it is a PC,
+     else "server" (no chat PC lock steers their browse_web), and the schema says "A PC only when she put the job on
+     a PC". Parallel agents used to land on both PCs at once.
+  3. Hoola's own notes named the place: `where.remember` ran on every turn's text, so "(Result from HER PC ...)" set
+     place pc, a goal nudge listing a step "... Hoola ke PC pe ..." set hoolapc, and dispatch then steered the next
+     browse_web / computer_operator there - whichever note came last won: the flip-flop. Now only HER own words
+     (actor owner, text not starting with "[" / "(") can name a place; other turns keep her earlier place / the
+     running job's lock.
+  4. `agent/pick.py` rule 4: pc_do / hoola_pc_do is refused when she named no PC this turn (and not in the last
+     15 min), no PC job of this chat is running, and the task names no desktop software (Tally / Busy / Marg /
+     ffmpeg / LibreOffice / pandoc / printer / Excel / Word / PowerPoint / Outlook / Photoshop / AutoCAD ...) -
+     with the server route in the error (research = web_sources / google_search / open_website, browse_web for
+     clicks, deploy_agents for parts, PDF = doc_studio, data = data desk). A sub-agent ("server") is refused even
+     under a chat PC lock. `where.steer` now refuses hoola_pc_do when she named HER PC (pc_do only).
+- TOOL CHOOSER: "Deep research / a report on a topic = web_sources + google_search + open_website (deploy_agents when
+  it splits into independent parts), then doc_studio for the PDF - all on the server, never a PC."
+- Tests `server/tests/test_v0270_server_first.py` (10). No PC file changed. Version 0.270.0 (pubspec 0.270.0+310,
+  console ?v=0.270.0, pins). Server-only deploy.

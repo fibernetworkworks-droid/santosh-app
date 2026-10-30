@@ -8,6 +8,8 @@ Three cases, all from real failures, and each refusal names the right tool so th
    If she really meant a PC, tool_search opens the family and the call goes through.
 2. A data job (lists, top N, API / repos, collecting) sent to a PC she did not name: data stays on the server
    (data_fetch -> data_read / data_note -> doc_studio data=) and its file reaches the chat; a VM file does not.
+4. (v0.270) Any other PC job she did not place on a PC (no PC named this turn, no running PC job in the chat, no
+   desktop software): deep research + PDF went to her PC / the cloud PC; it belongs to the server tools.
 3. (v0.257) Reading / analysing a program or app file (.exe / .apk / .dll, endpoints, decompiling) sent to a PC
    without her saying so in THIS ask: that is rea_khoj (action=endpoints / overview), on the server, never run.
 """
@@ -17,7 +19,11 @@ from typing import Any
 
 from .tools import FAMILY_OF, ToolError
 
-STATS = {"checked": 0, "pc_not_in_view": 0, "data_to_pc": 0, "file_to_pc": 0}
+STATS = {"checked": 0, "pc_not_in_view": 0, "data_to_pc": 0, "file_to_pc": 0, "pc_not_hers": 0}
+# v0.270 desktop apps that only exist on a computer (a job in one of them may go to a PC without the word "PC")
+_DESKTOP_APPS = __import__("re").compile(r"\b(?:excel|ms word|word mein|word file|powerpoint|outlook|notepad|tally|"
+                                         r"busy|marg|photoshop|corel|autocad|vlc|file explorer|desktop app|"
+                                         r"control panel)\b", __import__("re").I)
 
 _PC_TOOLS = frozenset(n for n, f in FAMILY_OF.items() if f == "pc")
 # v0.257 reading a program / app file (owner: "READ THIS EXE FILE END TO END AND EXTRACT ENDPOINTS ... HOOLA OPENS ITS OWN
@@ -62,3 +68,19 @@ def check(name: str, args: dict[str, Any], ctx) -> None:
             STATS["data_to_pc"] += 1
             raise ToolError("This is a DATA job and she did not ask for a PC: do it on the server - " + _DATA_WAY +
                             ". A file made on a PC does not come back to the chat.")
+        # v0.270 a PC is HER choice or the job's software, never Hoola's: a research / website / writing job on a PC
+        # she did not name this turn (and no running PC job of this chat) is refused with the server route
+        place_now = place or where.working(conv)
+        if place == "server":
+            place_now = ""
+        if place_now not in ("pc", "hoolapc") and not where._asked(conv, "pc") and not where._asked(conv, "hoolapc") \
+                and not admit._DESKTOP.search(task) and not _DESKTOP_APPS.search(task):
+            STATS["pc_not_hers"] += 1
+            if place_now == "hoola":
+                raise ToolError("She asked for YOUR OWN browser (Hoola's browser on the server), not a PC: use "
+                                "browse_web / computer_operator there, and doc_studio for a PDF.")
+            raise ToolError(f"{name}: she did not put this job on a PC and it needs no desktop software. Do it on "
+                            "the server: research = web_sources / google_search / open_website (browse_web for a "
+                            "site that needs clicks; deploy_agents when it splits into parts); a PDF / Word / Excel "
+                            "= doc_studio; lists / API data = " + _DATA_WAY + ". A file made on a PC never reaches "
+                            "the chat.")

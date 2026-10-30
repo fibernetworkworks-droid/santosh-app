@@ -134,6 +134,8 @@ def _agent_admit(spec: dict, main_families: set[str] | None, settings):
             fams.add(FAMILY_OF[cand])
         elif t in FAMILY_OF.values():
             fams.add(t)
+    if not (main_families and "pc" in main_families):
+        fams.discard("pc")                  # v0.270 a sub-agent gets a PC only when the main turn had one (she asked)
     if fams:
         adm.admit_families(fams)
     if adm.size() > 160:                    # the requested families over-opened: back to CORE + main
@@ -179,6 +181,9 @@ async def _run_agent(spec: dict, team_id: str, mission: str, main_families: set[
     ok, stopped, deliverable, tools_used = False, False, "", []
     try:
         ctx = Ctx(tenant_id=tenant, conversation_id=conv, actor="owner")   # the delegating brain's own trust level
+        # v0.270 a sub-agent works on the SERVER unless the main turn's place was a PC she named: no chat lock or
+        # old note steers its browse_web onto her PC / the cloud PC (parallel agents used to land on both PCs)
+        ctx.place = (shared or {}).get("place") if (shared or {}).get("place") in ("pc", "hoolapc") else "server"
         ctx.admit = _agent_admit(spec, main_families, settings)
         history = [{"role": "user", "content": [{"type": "text", "text":
                     f"[Main agent se - owner ki baat, tumhare brief ke roop mein - NOT the owner speaking]\n"
@@ -324,7 +329,7 @@ async def deploy_agents(ctx, mission: str = "", agents: list[dict] | None = None
     team_id = new_id("tm")
     STATS["inline"] += 1
     per_agent_cap = min(int(settings.team_agent_timeout_s), 260)   # the main turn's tool clock is 300 s
-    shared: dict = {}
+    shared: dict = {"place": getattr(ctx, "place", "") or ""}    # v0.270 her place for this turn rides to the crew
     tasks = [asyncio.ensure_future(_run_agent(s, team_id, mission, main_fams, tenant, conv, turn_id,
                                               settings, shared)) for s in specs]
     try:
@@ -614,7 +619,8 @@ TEAM_TOOLS = [
              "name": {"type": "string", "description": "Short name, e.g. 'price-checker'"},
              "task": {"type": "string", "description": "What THIS agent must deliver - complete, self-contained"},
              "tools": {"type": "array", "items": {"type": "string"},
-                        "description": "Optional tool families it may use (mail, sheets, web, pc...)"}},
+                        "description": "Optional tool families it may use (web, data, docstudio, mail, sheets...). "
+                                       "A PC only when she put the job on a PC"}},
              "required": ["name", "task"]}},
          "mode": {"type": "string", "enum": ["inline", "background"],
                   "description": "inline = wait here, merge now; background = reply fast, the crew reports itself"}},

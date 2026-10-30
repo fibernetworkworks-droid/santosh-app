@@ -238,6 +238,10 @@ def steer(name: str, args: dict[str, Any], where: str) -> tuple[str, dict[str, A
             STATS["steered"] += 1
             return "hoola_pc_do", {"task": task}, "She asked for HOOLA KA APNA PC: this website job runs in Chromium on the Hoola PC."
     if where == "pc":
+        if name == "hoola_pc_do":   # v0.270 she named HER PC: never Hoola's cloud PC behind her back
+            STATS["refused"] += 1
+            raise ToolError("She asked for HER PC (Santosh Desktop on her own computer), not your cloud PC. Use "
+                            "pc_do for this task.")
         if name == "browse_web":
             url = _url(args.get("start_url"))
             task = (str(args.get("task") or "").strip() + (f" Website: {url}." if url else "") +
