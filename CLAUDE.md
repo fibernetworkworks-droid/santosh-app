@@ -116,17 +116,26 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.286.0 (pubspec 0.286.0+326). Version ritual = main.py APP_VERSION + pubspec version(+build) +
-  console `?v=` stamps in `server/app/static/console/v2.html` (15 now: theme.js, pdfview.js, studio.js, attach.js) + the version pins in tests (grep the old number in
-  `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- CHECKPOINT 30 Oct: FULL CLAUDE MODE (v0.239-v0.250) owner-verified "PERFECT"; memory quiz 16/20 -> 20/20; branch
-  `checkpoint-full-claude-mode-2026-10-30` = 87a2046 (grep "CHECKPOINT 30 Oct" docs/HISTORY.md).
-- v0.286 SAHI KRAM (real voice code review): her late OpenAI transcript joins HER turn (finish waits <=3 s), no reply
-  while she speaks, late words never wipe captions, early self-cuts counted, semantic VAD medium. Gemini untouched.
+- Current version: v0.288.0 (pubspec 0.288.0+328). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.288 SAHI KRAM (real voice code review): her late OpenAI transcript joins HER turn (finish waits <=3 s), no reply
+  while she speaks, late words never wipe captions, early self-cuts counted, semantic VAD medium. Gemini untouched.
 - CHECKPOINT 30 Oct: FULL CLAUDE MODE (v0.239-v0.250) owner-verified "PERFECT"; memory quiz 16/20 -> 20/20; branch
   `checkpoint-full-claude-mode-2026-10-30` = 87a2046 (grep "CHECKPOINT 30 Oct" docs/HISTORY.md).
+- v0.287 APNE AAP SE BEHAS: her live run ended 3 of 7 replies with a "nothing was done" disclaimer nobody
+  asked for - the honesty guard WROTE it. draftcheck._DONE matches bare English `sent` and _NOT_A_CLAIM was
+  Hinglish-only, so "I haven't sent anything" read as a CLAIM; the nudge told the model to deny it, the denial
+  contained `sent`, matched again, and the 2nd match stapled SAID onto a pure explainer. Fixed: English
+  negation/future/offer in _NOT_A_CLAIM, a new _ALREADY_HONEST guard (cuts the loop at the root), and the
+  note now speaks the reply's language (SAID_EN / said_line) per v0.260. Real claims still caught.
+- v0.286 EK HI DOM: her screenshot showed a LIVE reply with the paragraphs fused and the lines at full width.
+  The console had TWO render paths and only the one she never sees was right: HoolaMD.Live wrapped each block
+  in <div class="mdb">, so every <p> became a :last-child (v0.274's margin-trim zeroed EVERY gap) and stopped
+  matching the child rule `.txt>p` (v0.276's 680px cap lost -> 880px). Live now inserts nodes with NO wrapper,
+  so live and reloaded replies share one DOM (char-by-char stream = byte-identical to render()). No CSS number
+  changed; the DOM had been hiding them. RULE: test the path the USER takes - v0.284 and v0.286 are the same
+  miss twice (wrong text, then wrong renderer).
 - v0.285 MENUS LIKE CLAUDE: `console/menu.js` (HoolaMenu) = every console dropdown (chat ⋯, Export, NEW account menu on the bottom-left
   button); 32px rows 14/400, line icons, red Delete, tick for the choice; Studio pickers + / list restyled to match.
 - v0.284 CLAUDE JAISA PARAGRAPH: her "still not proper" was right and v0.274-v0.281 had measured the wrong

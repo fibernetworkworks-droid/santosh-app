@@ -45,9 +45,30 @@ _DONE = re.compile(
     r"|reminder\s*(?:lag\s*gaya|laga\s*diya)|upload\s*kar\s*d|download\s*kar\s*l|kaam\s*ho\s*gaya"
     r"|likh\s*kar\s*bhej|draft\s*bhej)", re.I)
 # the same words are fine about HER, in the future, or as a condition
+# v0.287: the English half of this list was missing entirely, and that one gap turned the whole check into a loop.
+# "I haven't sent anything" contains `sent`, so a perfectly honest sentence read as a CLAIM; the nudge then told
+# the model to "say plainly that it is NOT done", the model obeyed, its denial matched a second time, and the
+# second match stapled SAID onto a reply that had never claimed anything. Negation, the future and an offer are
+# never a claim in any language.
 _NOT_A_CLAIM = re.compile(r"(aap\s*ne|aapne|aap\s+khud|jayega|jaayega|jaega|jaye|hoga|hogi|karunga|karungi|karoonga|doon"
                           r"|dunga|dungi|denge|agar\b|jaise\s*hi|haan\s*kar|tap\s*kar|card\s*par|baad\s*mein"
-                          r"|nahi\s*bhej|nahi\s*hua|mat\b|chahiye\s*to|kahiye\s*to|bolo\s*to|bataiye\s*to)", re.I)
+                          r"|nahi\s*bhej|nahi\s*hua|nahi\s*kiya|mat\b|chahiye\s*to|kahiye\s*to|bolo\s*to|bataiye\s*to"
+                          # English: negation
+                          r"|\bnot\b|n't\b|\bnothing\b|\bnever\b|\bno\s|\bwithout\b|\byet\b|\bneither\b|\bnor\b"
+                          # English: the future, a condition, or an offer - all about work NOT yet done
+                          r"|\bwill\b|\bshall\b|\bwould\b|\bcould\b|\bcan\b|\bonce\s|\bif\s|\bwhen\s+you\b"
+                          r"|\bafter\s+you\b|\bbefore\s|\bi'?ll\b|\bready\s+to\b|\bwant\s+me\b|\bsay\s+the\s+word\b"
+                          r"|\byour\s+approval\b|\byou\s+approve\b|\byou\s+tap\b)", re.I)
+
+# The reply already says, in its own words, that the work is not done. Nothing is gained by nudging it to say so
+# again - that is exactly the loop above - so the check stays completely silent.
+_ALREADY_HONEST = re.compile(
+    r"(yeh\s*kaam\s*abhi\s*hua\s*nahi|abhi\s*hua\s*nahi\s*hai|abhi\s*tak\s*nahi\s*kiya|kuch\s*(?:bhi\s*)?nahi\s*(?:kiya|bheja|bhej)"
+    r"|(?:nothing|no\s+\w+)\s+(?:has|have|was|were)\s+been?\s*\w*\s*(?:sent|saved|created|submitted)"
+    r"|i\s+(?:have\s*n[o']t|haven'?t|did\s*n[o']t|didn'?t|has\s*n[o']t)\s+(?:yet\s+)?(?:actually\s+)?(?:sent|saved|created|submitted|done|made)"
+    r"|nothing\s+(?:has\s+been\s+)?(?:sent|saved|created|submitted|done)"
+    r"|(?:this|that)\s+was\s+only\s+(?:an?\s+)?\w+"
+    r"|not\s+(?:yet\s+)?(?:sent|saved|created|submitted|done))", re.I)
 
 
 def claims_done(text: str) -> str:
@@ -88,11 +109,24 @@ NUDGE = ("[System check, not the user] Your message says the work is already don
          "approval and OTP rule as usual), or say plainly in one line that it is NOT done yet and what the next "
          "step is. Never say done for something that did not happen.")
 SAID = "(Saaf baat: yeh kaam abhi hua nahi hai - ab bhi karna baaki hai.)"
+# v0.287: the note followed her into English conversations as a Hinglish line. v0.260 made HER LANGUAGE the first
+# rule of a reply, and this note is part of the reply.
+SAID_EN = "(To be clear: this is not done yet - it still has to be carried out.)"
+_HINGLISH = re.compile(r"[ऀ-ॿ]|\b(hai|hain|nahi|kar|karo|kiya|aap|main|maine|diya|gaya|raha|rahi|ho|ka|ki|ke)\b", re.I)
+
+
+def said_line(text: str) -> str:
+    """The honest line, in the language the reply is written in."""
+    return SAID if _HINGLISH.search(text or "") else SAID_EN
 
 
 def fake_done(state: dict, text: str) -> str:
     """Inside the turn, free: returns a nudge the first time the reply claims work that never ran. The second time
     it sets state['correct'] (added after the words she already read) and returns ''."""
+    if _ALREADY_HONEST.search(text or ""):
+        # it already says it is not done - saying so again is the loop this check used to create
+        STATS["quiet"] += 1
+        return ""
     if not claims_done(text) or not nothing_ran(state.get("calls")):
         return ""
     seen = state.get("fake_done", 0) + 1
@@ -102,7 +136,7 @@ def fake_done(state: dict, text: str) -> str:
         return NUDGE
     if seen == 2 and not state.get("correct"):
         STATS["fake_done_said"] += 1
-        state["correct"] = SAID
+        state["correct"] = said_line(text)
     return ""
 
 
