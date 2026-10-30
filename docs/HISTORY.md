@@ -10862,8 +10862,94 @@ Now - one dropdown, `server/app/static/console/menu.js` (window.HoolaMenu.open(a
   shown by a tick only (no coloured row). The / command list above the typing box: same surface, rows and hover.
 Tests: tests/test_v0285_menus.py; test_v0223_console_r3 pins moved to the new export menu.
 
+## v0.286.0 EK HI DOM — a live reply and a reloaded one are the same page
+Owner sent a screenshot of a live reply whose four paragraphs were fused into one wall:
+*"CHECK NO PARAGRAPH IN CHAT SPACE IN HOOLA"*.
 
-## v0.286.0 SIDEBAR FULLY VISIBLE (30 Oct 2026)
+### Two rendering paths, and only the one she never looks at was correct
+| | when it runs | what it did |
+|---|---|---|
+| `HoolaMD.Live` | a reply while it **arrives** | wrapped every finished block in `<div class="mdb">` |
+| `HoolaMD.render` | a reply after a **reload** | no wrapper |
+
+That wrapper broke the chat's entire measured layout, because two rules depend on a block being a **direct child**
+of the message:
+
+- `.textmd p:last-child{margin-bottom:0}` (v0.274, to trim dead space under the last block of a reply). A `<p>`
+  alone inside a wrapper **is** a `:last-child` — so every paragraph gap went to **0**.
+- `#app .mh .txt>p{max-width:680px}` (v0.276, the reading width). A **child** rule, so a wrapped `<p>` stopped
+  matching it and ran the full **880px** column — about 118 characters a line, exactly what v0.276 fixed.
+
+Measured in a real browser:
+
+| | gap between paragraphs | prose width |
+|---|---|---|
+| live path — **what she reads** | **0px** | **880px** |
+| reload path — what every probe measured | 16px | 680px |
+
+So v0.274, v0.276, v0.278, v0.281 and v0.284 were all real, all correct, and all **invisible to her**, because
+every probe page ever built for them went through `render()`.
+
+### The fix
+`Live` now puts each block's nodes straight into the message with **no wrapper**, so a live reply and a reloaded
+one have the same DOM. Finished blocks keep their own element(s); the streaming block's nodes are tracked in
+`tailNodes` and replaced on each tick. Verified by feeding the text **one character at a time**: the final markup
+is byte-identical to `render()`, with 0 wrappers and no duplicated or lost nodes. The two dead `.mdb` rules went
+with it.
+
+Nothing in the CSS changed. Those rules were right all along — this stopped the DOM from hiding them.
+
+### The lesson, now twice over
+**Test the path the user takes.** v0.284 found the probes were using text no model emits; v0.286 found them using
+a renderer she never sees. Both bugs survived four rounds of careful measurement for the same reason.
+
+### Files
+`server/app/static/console/md.js` (the `Live` class) · `server/app/static/console/v2.css` (two dead rules removed)
+· `server/tests/test_v0285_ek_hi_dom.py` (6 tests).
+
+## v0.287.0 APNE AAP SE BEHAS — the honesty guard stops arguing with itself
+Found in her own live test run: three of seven replies ended with a "nothing was actually done" disclaimer she
+never asked for, on asks that requested no action at all.
+
+### The guard wrote the disclaimer itself
+Reproduced on her exact text:
+
+| her reply | `claims_done()` |
+|---|---|
+| "I **haven't sent**, saved, submitted or created anything" | `'sent'` |
+| "Nothing **has been sent**, saved, submitted or created" | `'sent'` |
+
+`_DONE` matches the bare English word `sent`. `_NOT_A_CLAIM` — the list of phrasings that are *not* a claim — was
+**Hinglish only**: `aap ne`, `nahi bhej`, `hoga`, `agar`. It contained no English negation whatsoever.
+
+So the loop ran:
+
+1. She asks for an explanation; Hoola writes a clean four-paragraph answer.
+2. The guard reads it as a false claim and nudges: *"say plainly in one line that it is NOT done yet."*
+3. The model obeys and writes "I haven't sent anything" — **which contains `sent`**.
+4. That matches a second time, and the second match staples `(Saaf baat: yeh kaam abhi hua nahi hai...)` onto a
+   pure explainer.
+
+The guard created exactly the thing it exists to prevent, then blamed the model for it.
+
+### Three fixes
+- **English negation, future and offer forms** in `_NOT_A_CLAIM`: `not`, `n't`, `nothing`, `never`, `without`,
+  `yet`, plus `will`, `can`, `once`, `if`, `I'll`, `your approval`, `say the word`.
+- **`_ALREADY_HONEST`** — a reply that already says the work is not done is never nudged to say it again. This
+  cuts the loop at its root rather than only widening the filter.
+- **The note speaks the reply's language.** `SAID_EN` beside `SAID`, chosen by `said_line()`. v0.260 made HER
+  LANGUAGE the first rule of a reply, and this note is part of the reply — it was following her into English
+  conversations as a Hinglish line.
+
+### What did not change
+The guard still does its job. A real claim with only reads behind it is caught in both languages
+("Maine mail bhej diya", "your invoice has been sent"), and a claim with a real doing-tool behind it is still left
+alone. 77 tests across the existing claim-check suites pass untouched.
+
+### Files
+`server/app/agent/draftcheck.py` · `server/tests/test_v0286_apne_aap_se_behas.py` (7 tests).
+
+## v0.288.0 SIDEBAR FULLY VISIBLE (30 Oct 2026, built as 0.286.0; re-versioned on merge)
 Owner, with a screenshot of the sidebar: "CHECK THE SIDE BAR FONT AND FONT SIZE -- AND THE HIDDEN LOOK SECTIONS ----
 FIX THIS PERFECTLY MAKE THIS SAME AS CLAUDE CHAT HAS FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS".
 Measured in a real browser (computed styles, every text node in the sidebar), before:
@@ -10872,12 +10958,12 @@ Measured in a real browser (computed styles, every text node in the sidebar), be
 - chat titles 13.5px / 400 (.rct kept an older 13.5px while .rc was 14px); nav rows 14px / 400; the handle under her
   name and the Live chip in --dim.
 v0.256 had matched Claude's SIZES at weight 400; on Windows ClearType a thin face reads grey. Claude's sidebar is a
-medium weight with darker labels. After (block "v0.286 SIDEBAR FULLY VISIBLE" at the very end of v2.css, so no older
+medium weight with darker labels. After (block "v0.288 SIDEBAR FULLY VISIBLE" at the very end of v2.css, so no older
 layer can win): nav 14px / 500 in the ink, chat titles 14px / 450 in the ink (the open chat 550), labels + session name
 13px / 500 in --mut (#5C5C63 light = 6.4:1, #ABA6C8 dark), count / + / ⋯ / Show archived (13px / 450) / handle /
 Live in --mut. Schibsted Grotesk is loaded as a 400..700 variable face, so 450 and 550 are real weights. Text-size
 setting (Small / Large) still moves the titles 13 / 15px. Rules kept: nothing over 600, nothing under 12px, no --dim.
-Tests: tests/test_v0286_sidebar_visible.py.
+Tests: tests/test_v0288_sidebar_visible.py.
 PREMIUM pass, same version (owner: "STILL SAME MAKE IT MORE PREMIUM AND PERFECT" - the live site was still v0.284, so
 none of v0.285 / v0.286 had reached her yet; this pass goes further anyway):
 - line icons instead of emoji chrome in the sidebar: the session folder (her OWN chosen emoji is kept), Show archived,
@@ -10890,4 +10976,8 @@ none of v0.285 / v0.286 had reached her yet; this pass goes further anyway):
 - "Sessions" is one tight row with its + (it was a 50px empty block), "Other chats" + a day label stay together;
 - default sidebar width 224 -> 272px (Claude ~288; at 224 every title was cut at ~20 characters); drag 220-420 and
   double-click reset (now 272) unchanged; a width she saved herself is kept.
+Found while checking the merge in a real browser with a real-length chat list: the account button scrolled away under
+the chats (Claude keeps it at the bottom) - now `#app .side #model` is sticky at the bottom on the sidebar colour; and
+menu.js closed a menu on ANY scroll, so a click that first scrolled its button into view opened and shut the menu at
+once - now only a scroll that really moved the button (> 2px) closes it.
 

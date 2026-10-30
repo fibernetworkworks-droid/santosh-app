@@ -346,8 +346,6 @@ code:not(pre code){background:rgb(var(--acc-rgb) / .16);border:1px solid rgb(var
 .mdt th,.mdt td{border:1px solid var(--line);padding:7px 11px;text-align:left}
 .mdt th{background:var(--glass2);font-weight:600}
 blockquote{margin:4px 0;padding:8px 14px;border-left:3px solid rgb(var(--acc-rgb) / .55);background:rgb(var(--acc-rgb) / .08);border-radius:0 12px 12px 0;color:var(--lit)}
-.mdb{min-width:0}
-.mdb.tail{min-height:4px}
 hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 .srcs{display:flex;flex-wrap:wrap;gap:6px}
 .note{font-size:13.5px;font-weight:600;color:var(--lit);background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.25);border-radius:12px;padding:9px 13px}
@@ -1958,7 +1956,7 @@ body.albon{overflow:hidden}
 .slash button span{color:var(--ink);font-weight:400}
 .slash button[aria-selected="true"],.slash button:hover{background:rgb(var(--fg-rgb) / .06)}
 
-/* ===== v0.286 SIDEBAR FULLY VISIBLE (owner, with a screenshot: "CHECK THE SIDE BAR FONT AND FONT SIZE AND THE HIDDEN
+/* ===== v0.288 SIDEBAR FULLY VISIBLE (owner, with a screenshot: "CHECK THE SIDE BAR FONT AND FONT SIZE AND THE HIDDEN
    LOOK SECTIONS - MAKE THIS SAME AS CLAUDE, FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS"). Measured before: the section
    labels (Sessions / Recent chats / Today / Yesterday / Other chats / a session's name) were 12px / 400 in --dim
    #8B8B92 (3.3:1 on the sidebar - the "hidden" look), chat titles 13.5px / 400, nav rows 14px / 400: a thin face on
@@ -2017,3 +2015,5 @@ body.albon{overflow:hidden}
 #app .side .slabel.pjl .pjadd:hover{background:rgb(var(--fg-rgb) / .07);color:var(--ink)}
 #app .side .slabel.pjl+.slabel,#app .side .slabel.pjl~.slabel{padding-top:10px}
 #app .side .rg.sgb+.rg{padding-top:4px}
+/* the account button stays at the bottom of the sidebar like Claude's, however long the chat list grows (it scrolled away) */
+#app .side #model{position:sticky;bottom:-22px;z-index:3;margin-top:auto;background:var(--side-bg);box-shadow:0 -10px 12px -6px var(--side-bg);border-radius:10px}

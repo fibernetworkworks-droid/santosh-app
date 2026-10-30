@@ -1,4 +1,4 @@
-"""v0.286 SIDEBAR FULLY VISIBLE: section labels were 12px / 400 in the faint --dim grey (the "hidden" look); now the
+"""v0.288 SIDEBAR FULLY VISIBLE: section labels were 12px / 400 in the faint --dim grey (the "hidden" look); now the
 labels are 13px / 500 in --mut, chat titles 14px / 470 and nav rows 14px / 500 in the ink - Claude's medium weight."""
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ CSS = (Path(__file__).resolve().parents[1] / "app" / "static" / "console" / "v2.
 
 
 def _block() -> str:
-    return CSS[CSS.index("v0.286 SIDEBAR FULLY VISIBLE"):]
+    return CSS[CSS.index("v0.288 SIDEBAR FULLY VISIBLE"):]
 
 
 def test_last_word_on_the_sidebar():
@@ -20,7 +20,7 @@ def test_last_word_on_the_sidebar():
             "text-transform:none;color:var(--mut)}") in b
     assert "#app .side .rcarch{font-size:13px;font-weight:450;color:var(--mut)}" in b
     # nothing after this block takes the sidebar back to the thin / faint values
-    assert "v0.286 SIDEBAR FULLY VISIBLE" in CSS[-9000:]
+    assert "v0.288 SIDEBAR FULLY VISIBLE" in CSS[-9000:]
 
 
 def test_type_rules_kept():
@@ -49,3 +49,9 @@ def test_premium_pass():
     # a wider default sidebar (Claude ~288): 224 cut every title at ~20 characters
     assert "let width=272,drag=null;" in ws and "set(272)" in ws
     assert "var(--sidebar-width,224px)" not in CSS
+
+
+def test_account_stays_put_and_its_menu_survives_a_late_scroll():
+    assert "#app .side #model{position:sticky;bottom:-22px" in CSS
+    js = (Path(__file__).resolve().parents[1] / "app" / "static" / "console" / "menu.js").read_text()
+    assert "at: anchor.getBoundingClientRect()" in js and "Math.abs(r.top - M.at.top) > 2" in js

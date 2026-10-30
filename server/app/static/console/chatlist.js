@@ -50,7 +50,7 @@ async function load() {
   draw(); ctx.loaded?.();                          // v0.222 the chat header follows renames / moves
   return LIST;
 }
-// v0.286 line icons in the sidebar (no emoji chrome, like Claude); a session keeps the emoji SHE picked
+// v0.288 line icons in the sidebar (no emoji chrome, like Claude); a session keeps the emoji SHE picked
 const SVG = d => `<svg class="sic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const IC = {
   folder: SVG('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),

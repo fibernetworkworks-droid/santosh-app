@@ -222,7 +222,7 @@ window.HoolaWorkspace = ctx => {
   divider.setAttribute('aria-valuemax','420');divider.title='Drag to resize sidebar · double-click to reset';
   side.id='console-sidebar';divider.setAttribute('aria-controls',side.id);side.after(divider);
   const narrow=()=>matchMedia('(max-width:1100px)').matches;
-  let width=272,drag=null;   // v0.286 default 224 -> 272 (Claude ~288): titles were cut at 20 characters
+  let width=272,drag=null;   // v0.288 default 224 -> 272 (Claude ~288): titles were cut at 20 characters
   try{const saved=Number(localStorage.getItem('hoola.web.sidebar.width'));if(saved>=220&&saved<=420)width=saved;}catch{}
   const set=value=>{width=Math.max(220,Math.min(420,Math.round(value)));app.style.setProperty('--sidebar-width',width+'px');divider.setAttribute('aria-valuenow',String(width));};
   const save=()=>{try{localStorage.setItem('hoola.web.sidebar.width',String(width));}catch{}};
