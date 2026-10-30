@@ -48,6 +48,7 @@ class _McpScreenState extends State<McpScreen> {
   void dispose() {
     app.removeListener(_onApp);
     _deb?.cancel();
+    _cmpDeb?.cancel();
     super.dispose();
   }
 
@@ -60,6 +61,13 @@ class _McpScreenState extends State<McpScreen> {
 
   List<Map<String, dynamic>> _featured = [];
   List<Map<String, dynamic>> _cmp = [];       // v0.276 apps via Composio (empty when the server has no key)
+  int _cmpTotal = 0;                          // v0.294 the live catalogue: search + category + 40 at a time
+  int _cmpAll = 0;
+  String _cmpQ = '';
+  String _cmpCat = '';
+  List<String> _cmpCats = [];
+  bool _cmpBusy = false;
+  Timer? _cmpDeb;
   Map<String, Map<String, dynamic>> _known = {}; // pack_id -> what the avatar knows (status, tools)
   String _fcat = '';
 
@@ -80,20 +88,37 @@ class _McpScreenState extends State<McpScreen> {
     }
   }
 
-  Future<void> _loadComposio() async {
+  Future<void> _loadComposio({bool more = false}) async {
+    if (_cmpBusy) return;
+    _cmpBusy = true;
     try {
-      final r = await app.api!.composioApps();
-      final list = r['configured'] == true
-          ? List<Map<String, dynamic>>.from((r['apps'] as List? ?? []).map((e) => Map<String, dynamic>.from(e as Map)))
-          : <Map<String, dynamic>>[];
-      if (mounted) setState(() => _cmp = list);
-    } catch (_) {}
+      final r = await app.api!.composioApps(q: _cmpQ, category: _cmpCat, offset: more ? _cmp.length : 0);
+      if (r['configured'] != true) {
+        if (mounted) setState(() => _cmp = []);
+        return;
+      }
+      final list = List<Map<String, dynamic>>.from((r['apps'] as List? ?? []).map((e) => Map<String, dynamic>.from(e as Map)));
+      final cats = [for (final c in (r['categories'] as List? ?? [])) (c as List).first.toString()];
+      if (mounted) {
+        setState(() {
+          _cmp = more ? [..._cmp, ...list] : list;
+          _cmpTotal = (r['total'] as num?)?.toInt() ?? _cmp.length;
+          _cmpAll = (r['all'] as num?)?.toInt() ?? _cmpTotal;
+          if (cats.isNotEmpty) _cmpCats = cats;
+        });
+      }
+    } catch (_) {
+    } finally {
+      _cmpBusy = false;
+    }
   }
 
   Future<void> _composioConnect(Map<String, dynamic> a) async {
     try {
-      final url = await app.api!.composioConnect(a['toolkit'] as String);
+      final r = await app.api!.composioConnect(a['toolkit'] as String);
+      final url = r['url'] as String? ?? '';
       if (url.isEmpty) {
+        _snack(r['say'] as String? ?? '${a['name']} abhi nahi jud sakta.');
         await _loadComposio();
         return;
       }
@@ -127,17 +152,73 @@ class _McpScreenState extends State<McpScreen> {
   }
 
   Widget _composioCard(Map<String, dynamic> a) {
-    final ready = a['status'] == 'ready';
+    final st = a['status'] as String? ?? '';
+    final tools = (a['tools'] as num?)?.toInt() ?? 0;
+    final PluginAction action;
+    if (st == 'ready') {
+      action = const PluginAction(kind: ActionKind.linked, label: 'Juda hai');
+    } else if (st == 'needs_setup') {
+      action = PluginAction(kind: ActionKind.soon, label: 'Setup baaki',
+          onTap: () => _snack('${a['name']}: Newtika ko ek baar Composio mein is app ka setup karna hai, phir yeh judega.'));
+    } else {
+      action = PluginAction(kind: ActionKind.add, label: 'Jodiye', onTap: () => _composioConnect(a));
+    }
     return PluginCard(
       name: a['name'] as String? ?? '',
       does: a['does'] as String? ?? '',
-      category: 'Apps',
-      onTap: ready ? () => _composioRemove(a) : null,
-      action: ready
-          ? const PluginAction(kind: ActionKind.linked, label: 'Juda hai')
-          : PluginAction(kind: ActionKind.add, label: 'Jodiye', onTap: () => _composioConnect(a)),
+      category: [if ((a['category'] as String? ?? '').isNotEmpty) a['category'], if (tools > 0) '$tools tools'].join(' · '),
+      onTap: st == 'ready' ? () => _composioRemove(a) : null,
+      action: action,
     );
   }
+
+  Widget _composioSection() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Caption('APPS · ${_cmpAll > 0 ? _cmpAll : _cmp.length} · apne account se sign-in, koi naya account nahi'),
+        Glass(
+          radius: 18,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          child: TextField(
+            style: const TextStyle(color: C.ink, fontSize: 15),
+            decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded, color: C.muted), hintText: 'Slack, Zoho, Tally, invoice, CRM…',
+                border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none),
+            onChanged: (v) {
+              _cmpQ = v.trim();
+              _cmpDeb?.cancel();
+              _cmpDeb = Timer(const Duration(milliseconds: 350), () => _loadComposio());
+            },
+          ),
+        ),
+        if (_cmpCats.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              for (final c in ['', ..._cmpCats])
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(label: Text(c.isEmpty ? 'Sab' : c), selected: _cmpCat == c, showCheckmark: false,
+                      onSelected: (_) {
+                        setState(() => _cmpCat = c);
+                        _loadComposio();
+                      }),
+                ),
+            ]),
+          ),
+        ],
+        const SizedBox(height: 12),
+        if (_cmp.isEmpty)
+          const Padding(padding: EdgeInsets.all(12), child: Text('Kuch nahi mila', style: TextStyle(color: C.muted)))
+        else
+          PluginGrid(children: [for (final (i, a) in _cmp.indexed) Stagger(index: i % 8, child: _composioCard(a))]),
+        if (_cmp.length < _cmpTotal)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Center(
+              child: TextButton(onPressed: () => _loadComposio(more: true),
+                  child: Text('Aur dikhao (${_cmpTotal - _cmp.length} aur)')),
+            ),
+          ),
+      ]);
 
   /// Asks the server what the avatar can do with each server (this talks to the servers, so it comes a bit later).
   Future<void> _loadKnown() async {
@@ -776,10 +857,9 @@ class _McpScreenState extends State<McpScreen> {
             Caption('POPULAR APPS · ${_featured.length}'),
             _featuredGrid(),
           ],
-          if (_cmp.isNotEmpty) ...[
+          if (_cmp.isNotEmpty || _cmpQ.isNotEmpty || _cmpCat.isNotEmpty) ...[
             const SizedBox(height: 18),
-            Caption('APPS · ${_cmp.length} · apne account se sign-in, koi naya account nahi'),
-            PluginGrid(children: [for (final (i, a) in _cmp.indexed) Stagger(index: i % 8, child: _composioCard(a))]),
+            _composioSection(),
           ],
           if (_mine.isNotEmpty) ...[
             const SizedBox(height: 18),

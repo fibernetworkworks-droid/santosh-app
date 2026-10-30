@@ -3,6 +3,8 @@
 /// site, updated in place (also inside calls).
 library;
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -609,7 +611,7 @@ class _SitePageState extends State<SitePage> {
         actions: [
           if (_s(v['preview']).isNotEmpty)
             IconButton(tooltip: 'Preview', icon: const Icon(Icons.open_in_new_rounded),
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SitePreview(app: app, url: _s(v['preview']), title: _s(v['name']))))),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SitePreview(app: app, url: _s(v['preview']), title: _s(v['name']), siteId: widget.id, canEdit: const ['ready', 'failed', 'stopped'].contains(st))))),
           PopupMenuButton<String>(onSelected: (a) async {
             if (a == 'export') {
               await _act('export');
@@ -750,22 +752,32 @@ class _SitePageState extends State<SitePage> {
 }
 
 class SitePreview extends StatefulWidget {
-  const SitePreview({super.key, required this.app, required this.url, required this.title});
+  const SitePreview({super.key, required this.app, required this.url, required this.title, this.siteId = '', this.canEdit = false});
   final Santosh app;
   final String url;
   final String title;
+  final String siteId;
+  final bool canEdit;
   @override
   State<SitePreview> createState() => _SitePreviewState();
 }
 
+/// v0.295 Edit mode like Lovable: tap words on the page and type, tap a picture / link to change it, Undo - her own
+/// hands, no AI, no cost. The page tells the app what changed through the HoolaEdit channel; the app sends it with her login.
 class _SitePreviewState extends State<SitePreview> {
   late final WebViewController _web;
   int _progress = 0;
+  bool _edit = false;
+  String _editUrl = '';
+  List<Map<String, dynamic>> _photos = const [];
+  Map<String, dynamic> _tokens = const {};
+
   @override
   void initState() {
     super.initState();
     _web = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..addJavaScriptChannel('HoolaEdit', onMessageReceived: (m) => _onEdit(m.message))
       ..setNavigationDelegate(NavigationDelegate(onProgress: (p) {
         if (mounted) setState(() => _progress = p);
       }, onNavigationRequest: (r) {
@@ -779,11 +791,155 @@ class _SitePreviewState extends State<SitePreview> {
       ..loadRequest(Uri.parse(widget.app.api!.absolute(widget.url)));
   }
 
+  void _snack(String t) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t)));
+  }
+
+  Future<void> _startEdit() async {
+    try {
+      final r = await widget.app.api!.siteAct(widget.siteId, 'edit-mode');
+      _editUrl = _s(r['url']);
+      _photos = _list(r['photos']);
+      _tokens = _map(r['tokens']);
+      setState(() => _edit = true);
+      await _web.loadRequest(Uri.parse(widget.app.api!.absolute(_editUrl)));
+      _snack('Edit mode: kisi bhi shabd par tap karke likhiye. Free, bina AI.');
+    } catch (e) {
+      _snack('$e');
+    }
+  }
+
+  Future<void> _stopEdit() async {
+    setState(() => _edit = false);
+    await _web.loadRequest(Uri.parse(widget.app.api!.absolute(widget.url)));
+  }
+
+  Future<void> _reload(String page, int y) async {
+    final u = '${widget.app.api!.absolute(_editUrl)}${RegExp(r'^[\w\-/]*$').hasMatch(page) ? page : ''}'
+        '?r=${DateTime.now().millisecondsSinceEpoch}#y=$y';
+    await _web.loadRequest(Uri.parse(u));
+  }
+
+  Future<void> _send(Map<String, dynamic> body, String page, int y) async {
+    try {
+      final r = await widget.app.api!.siteAct(widget.siteId, 'edit', body);
+      _snack(_s(r['say']).isEmpty ? 'Badal diya.' : _s(r['say']));
+    } catch (e) {
+      _snack('$e');
+    }
+    await _reload(page, y);
+  }
+
+  Future<String?> _ask(String title, String initial, String hint) async {
+    final c = TextEditingController(text: initial);
+    return showDialog<String>(context: context, builder: (d) => AlertDialog(
+          title: Text(title),
+          content: TextField(controller: c, autofocus: true, decoration: InputDecoration(hintText: hint)),
+          actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Rehne do')),
+            TextButton(onPressed: () => Navigator.pop(d, c.text.trim()), child: const Text('Save'))]));
+  }
+
+  Future<void> _onEdit(String raw) async {
+    Map<String, dynamic> d;
+    try {
+      d = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+    } catch (_) {
+      return;
+    }
+    if (!_edit || d['hoola'] != 'edit') return;
+    final k = _s(d['k']), e = _s(d['e']), page = _s(d['page']), y = _i(d['y']);
+    switch (_s(d['t'])) {
+      case 'text':
+        await _send({'k': k, 'e': e, 'op': 'text', 'value': _s(d['value'])}, page, y);
+        break;
+      case 'link':
+        final h = await _ask('Link kahan jaye?', _s(d['href']), 'https://… · tel:+91… · contact/');
+        if (h != null && h.isNotEmpty) await _send({'k': k, 'e': e, 'op': 'link', 'value': h}, page, y);
+        break;
+      case 'remove':
+        final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
+              title: const Text('Page se hata dein?'),
+              content: Text('"${_s(d['text'])}"\nUndo se wapas aa jayega.'),
+              actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
+                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, hatao'))]));
+        if (yes == true) await _send({'k': k, 'e': e, 'op': 'remove'}, page, y);
+        break;
+      case 'image':
+        if (_photos.isEmpty) return _snack('Abhi koi photo nahi: chat mein photo bhejiye aur bataiye kahan lagani hai.');
+        final pick = await showModalBottomSheet<String>(context: context, builder: (c) => SafeArea(
+              child: ListView(shrinkWrap: true, children: [
+                const ListTile(title: Text('Kaunsi photo lagayein?')),
+                for (final p in _photos)
+                  ListTile(leading: Icon(p['ai'] == true ? Icons.auto_awesome_rounded : Icons.photo_rounded),
+                      title: Text(_s(p['about']).isEmpty ? _s(p['name']) : _s(p['about'])),
+                      selected: _s(p['name']) == _s(d['img']), onTap: () => Navigator.pop(c, _s(p['name']))),
+              ])));
+        if (pick != null && pick != _s(d['img'])) await _send({'k': k, 'e': e, 'op': 'image', 'value': pick}, page, y);
+        break;
+      case 'ai':
+        final w = await _ask('AI se kya badlein?', '"${_s(d['text'])}" ko ', 'jaise: aur chhota aur mazedaar likho');
+        if (w != null && w.isNotEmpty) {
+          try {
+            await widget.app.api!.siteAct(widget.siteId, 'change', {'instruction': w});
+            _snack('Hoola AI se badal raha hai; nayi version banegi.');
+          } catch (er) {
+            _snack('$er');
+          }
+        }
+        break;
+    }
+  }
+
+  Future<void> _undo() async {
+    try {
+      final r = await widget.app.api!.siteAct(widget.siteId, 'undo');
+      _snack(_s(r['say']).isEmpty ? 'Wapas kar diya.' : _s(r['say']));
+    } catch (e) {
+      _snack('$e');
+    }
+    await _reload('', 0);
+  }
+
+  Future<void> _colours() async {
+    final p = TextEditingController(text: _s(_tokens['primary'])), a = TextEditingController(text: _s(_tokens['accent']));
+    final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
+          title: const Text('Rang'),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: p, decoration: const InputDecoration(labelText: 'Mukhya rang (jaise #7C5CFF)')),
+            TextField(controller: a, decoration: const InputDecoration(labelText: 'Doosra rang (accent)')),
+            const SizedBox(height: 8),
+            const Text('Shabd hamesha padhne layak rahenge: Hoola text ka rang khud sambhalta hai.', style: TextStyle(fontSize: 12)),
+          ]),
+          actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Rehne do')),
+            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Lagao'))]));
+    if (ok != true) return;
+    final want = <String, dynamic>{};
+    if (p.text.trim().isNotEmpty && p.text.trim() != _s(_tokens['primary'])) want['primary'] = p.text.trim();
+    if (a.text.trim().isNotEmpty && a.text.trim() != _s(_tokens['accent'])) want['accent'] = a.text.trim();
+    if (want.isEmpty) return;
+    try {
+      final r = await widget.app.api!.siteAct(widget.siteId, 'theme', {'tokens': want});
+      _tokens = {..._tokens, ..._map(r['tokens'])};
+      _snack(_s(r['say']).isEmpty ? 'Rang badal diye.' : _s(r['say']));
+    } catch (e) {
+      _snack('$e');
+    }
+    await _reload('', 0);
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(widget.title.isEmpty ? 'Preview' : widget.title), actions: [
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: () => _web.reload()),
-          IconButton(icon: const Icon(Icons.open_in_browser_rounded), onPressed: () => _openUrl(context, widget.app, widget.url)),
+        appBar: AppBar(title: Text(_edit ? 'Edit mode' : (widget.title.isEmpty ? 'Preview' : widget.title)), actions: [
+          if (_edit) ...[
+            IconButton(tooltip: 'Undo', icon: const Icon(Icons.undo_rounded), onPressed: _undo),
+            IconButton(tooltip: 'Rang', icon: const Icon(Icons.palette_rounded), onPressed: _colours),
+            TextButton(onPressed: _stopEdit, child: const Text('Done')),
+          ] else ...[
+            if (widget.canEdit && widget.siteId.isNotEmpty)
+              IconButton(tooltip: 'Edit', icon: const Icon(Icons.edit_rounded), onPressed: _startEdit),
+            IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: () => _web.reload()),
+            IconButton(icon: const Icon(Icons.open_in_browser_rounded), onPressed: () => _openUrl(context, widget.app, widget.url)),
+          ],
         ]),
         body: Stack(children: [
           WebViewWidget(controller: _web),

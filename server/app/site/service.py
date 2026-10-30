@@ -34,6 +34,7 @@ from . import ai as AI
 from . import build as B
 from . import library as L
 from . import pictures as P
+from . import edit as E
 from . import quality as Q
 from . import taxonomy as T
 from .models import Site, SiteLead, SiteVersion
@@ -585,6 +586,10 @@ def _after_job(site_id: str) -> None:
         r = _load(site_id)
     except SiteError:
         return
+    if site_id in _SAVE_PENDING and r.status not in ("building", "checking"):
+        _SAVE_PENDING.discard(site_id)          # v0.295 edits made while a job ran get their version now
+        _start(site_id, "save")
+        return
     q = _j(r.queued, [])
     if not q or r.status in ("building", "checking") or r.stop:
         return
@@ -599,7 +604,7 @@ def _after_job(site_id: str) -> None:
 
 def _start(site_id: str, job: str, **kw) -> bool:
     """Start a looks / build job. False = this site already has a job running (the caller queues or says so)."""
-    fn = {"looks": make_looks, "build": run_build}[job]
+    fn = {"looks": make_looks, "build": run_build, "save": save_version}[job]
     if _inline():
         fn(site_id, **kw)
         _after_job(site_id)
@@ -621,6 +626,7 @@ def _start(site_id: str, job: str, **kw) -> bool:
     th = threading.Thread(target=go, name=f"site-{site_id}", daemon=True)
     with _LOCK:
         _RUNNING[site_id] = th
+        _JOBS[site_id] = job
     th.start()
     return True
 
@@ -748,6 +754,7 @@ def write_section(r: Site, slug: str, s: dict[str, Any], others: list[str], extr
     if not raw.get("html"):
         raise SiteError(f"{s['type']} section nahi ban paya (model ne khaali diya).")
     h, css, js, problems = B.sanitize_section(sec_id(slug, s["type"]), raw)
+    h, _n = E.tag(h)                  # v0.295 every word / link / picture she may edit gets its number
     return {"html": h, "css": css, "js": js, "notes": _tidy(raw.get("notes"), 200), "cleaned": problems,
             "at": datetime.now(timezone.utc).isoformat()}
 
@@ -916,6 +923,15 @@ def _assemble_live(r: Site) -> Path:
     return live if res else live
 
 
+def _assemble_edit(r: Site) -> Path:
+    """v0.295 the edit preview: the same site with the edit numbers kept (the live copy and every version never have them)."""
+    ctx = _ctx(r)
+    ctx["edit"] = True
+    out = B.site_dir(r.tenant_id, r.id) / "edit"
+    B.assemble(ctx, ctx["plan"], _sections(r), {p["name"]: p for p in _j(r.photos, [])}, out, "", form_endpoint(r))
+    return out
+
+
 def form_endpoint(r: Site) -> str:
     base = (_settings().public_base_url or "").rstrip("/")
     return f"{base}/api/site-forms/{r.id}"
@@ -1035,7 +1051,13 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
         C.media(_assemble_live(r), shots)
     except Exception:
         log.info("og / scroll video skipped", exc_info=True)
-    # version
+    _make_version(r, plan, report, shots, states, note or "pehla version", crit)
+    _save(r.id, recovered=0)       # v0.223 a finished build earns a fresh auto-restart; queued changes run in _after_job
+
+
+def _make_version(r: Site, plan: dict[str, Any], report: dict[str, Any], shots: Path, states: dict[str, str] | None,
+                  note: str, crit: dict | None = None, push: bool = True) -> int:
+    """The checked live copy becomes the next version (files, screenshots, scores, the board)."""
     with session() as s:
         row = s.get(Site, r.id)
         row.version = (row.version or 0) + 1
@@ -1059,15 +1081,15 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
     if crit:
         board["critique"] = crit
     with session() as s:
-        s.add(SiteVersion(site_id=r.id, tenant_id=r.tenant_id, version=ver, note=_tidy(note or "pehla version", 300),
+        s.add(SiteVersion(site_id=r.id, tenant_id=r.tenant_id, version=ver, note=_tidy(note, 300),
                           files=sum(1 for p in vdir.rglob("*") if p.is_file()),
                           bytes=sum(p.stat().st_size for p in vdir.rglob("*") if p.is_file()),
                           scores=_jd(scores), passed=bool(report.get("passed"))))
     r = _save(r.id, status="ready", stage="preview", checks=report, scores=scores, board=board, error="")
     _work(r, "done", "Website taiyaar", f"v{ver} · speed {scores.get('performance', '-')} · access {scores.get('accessibility', '-')}")
-    _emit(r, push=True)
+    _emit(r, push=push)
     _keep_versions(r, 20)
-    _save(r.id, recovered=0)       # v0.223 a finished build earns a fresh auto-restart; queued changes run in _after_job
+    return ver
 
 
 def _critique_round(r: Site, plan: dict[str, Any], shots: Path, report: dict[str, Any]) -> tuple[dict[str, Any], dict]:
@@ -1375,6 +1397,158 @@ def _ensure_pictures(r: Site) -> int:
     return made
 
 
+# ---------------------------------------------------------------- v0.295 editing like Lovable: her own hands, no AI
+_SAVE_PENDING: set[str] = set()
+_JOBS: dict[str, str] = {}          # site -> the job its thread runs (looks / build / save)
+EDIT_HISTORY = 50
+
+
+def _edits_path(r: Site) -> Path:
+    return B.src_dir(r.tenant_id, r.id) / "edits.json"
+
+
+def _edits(r: Site) -> list[dict[str, Any]]:
+    f = _edits_path(r)
+    try:
+        return json.loads(f.read_text()) if f.exists() else []
+    except ValueError:
+        return []
+
+
+def _push_edit(r: Site, item: dict[str, Any]) -> None:
+    h = _edits(r)
+    h.append({**item, "at": datetime.now(timezone.utc).isoformat()})
+    _edits_path(r).write_text(json.dumps(h[-EDIT_HISTORY:]))
+
+
+def _ensure_tags(r: Site) -> int:
+    """Sections written before v0.295 get their edit numbers the first time she opens edit mode."""
+    n = 0
+    for k, sec in _sections(r).items():
+        h, added = E.tag(sec.get("html") or "")
+        if added:
+            _put_sec(r, k, {**sec, "html": h})
+            n += added
+    return n
+
+
+def _editable(tenant: str, ref: str) -> Site:
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    if busy(r.id) and _JOBS.get(r.id) != "save":      # her edits may go on while her last edits are being checked
+        raise SiteError("Website abhi ban rahi hai; khatam hote hi badal sakti hain.")
+    if r.status in ("planned", "looks", "draft") or not _sections(r):
+        raise SiteError("Pehle website banne dijiye; phir khud badal sakti hain.")
+    return r
+
+
+def _after_edit(r: Site, note: str) -> dict[str, Any]:
+    """Both previews at once (edit + live), then one checked version in the background (edits close together = one)."""
+    r = _load(r.id)
+    _assemble_edit(r)
+    if busy(r.id):                     # her last edits are being checked from the live copy: the next save rebuilds it
+        _SAVE_PENDING.add(r.id)
+    elif not _start(r.id, "save", note=note):
+        _SAVE_PENDING.add(r.id)
+    r = _load(r.id)
+    _emit(r)
+    return {**view(r, False), "edits": len(_edits(r))}
+
+
+def edit_mode(tenant: str, ref: str) -> dict[str, Any]:
+    """She opened edit mode: numbers on every section + the edit preview, and its link."""
+    r = _editable(tenant, ref)
+    _ensure_tags(r)
+    _assemble_edit(_load(r.id))
+    return {"url": preview_url(r).rstrip("/") + "/__edit/", "edits": len(_edits(r)),
+            "photos": [{"name": p["name"], "about": p.get("about", ""), "ai": bool(p.get("ai"))} for p in _j(r.photos, [])],
+            "tokens": {k: (_j(r.look, {}).get("tokens") or {}).get(k) for k in ("primary", "accent", "bg", "surface", "ink", "radius")}}
+
+
+def edit_element(tenant: str, ref: str, key: str, e: str, op: str, value: str = "") -> dict[str, Any]:
+    """ONE change she made with her own hands in the preview (words / link / picture / remove). No AI call."""
+    r = _editable(tenant, ref)
+    secs = _sections(r)
+    if key not in secs:
+        raise SiteError("Yeh section ab nahi hai; preview taaza kijiye.")
+    before = secs[key]
+    try:
+        h, what = E.apply(before["html"], str(e), op, value, {p["name"] for p in _j(r.photos, [])}, B._ok_href)
+    except E.EditError as er:
+        raise SiteError(str(er))
+    if h == before["html"]:
+        return {**view(r, False), "say": "Kuch badla nahi."}
+    _put_sec(r, key, {**before, "html": h, "edited": True})
+    _push_edit(r, {"kind": "section", "key": key, "op": op, "what": what, "before": before})
+    out = _after_edit(r, f"Aapka badlav: {what}")
+    return {**out, "say": f"Badal diya: {what}. Wapas chahiye to Undo."}
+
+
+def set_theme(tenant: str, ref: str, tokens: dict[str, Any]) -> dict[str, Any]:
+    """Colours / corner roundness by her own hand (colour pickers): the token system keeps text readable. No AI."""
+    r = _editable(tenant, ref)
+    look = _j(r.look, {})
+    tk = dict(look.get("tokens") or {})
+    want = {k: v for k, v in (tokens or {}).items() if k in ("primary", "accent", "bg", "surface", "ink", "radius")}
+    if not want:
+        raise SiteError("Kaunsa rang badalna hai?")
+    for k, v in want.items():
+        if k != "radius" and not B._hex_ok(str(v)):
+            raise SiteError(f"{k}: '{v}' rang nahi lagta (jaise #7C5CFF).")
+    new_tk = B.tokens(r.style, tk.get("palette") or "paper_ink", None,
+                      {**{k: tk.get(k) for k in ("primary", "accent", "bg", "surface", "ink")}, **want,
+                       "radius": want.get("radius", tk.get("radius"))})
+    _push_edit(r, {"kind": "theme", "what": "rang / shape", "before": tk})
+    _save(r.id, look={**look, "tokens": new_tk})
+    out = _after_edit(r, "Aapke rang")
+    return {**out, "tokens": {k: new_tk.get(k) for k in want}, "say": "Rang badal diye. Wapas chahiye to Undo."}
+
+
+def undo_edit(tenant: str, ref: str) -> dict[str, Any]:
+    """Her last own-hand change goes back exactly as it was (one step at a time, last 50 kept)."""
+    r = _editable(tenant, ref)
+    h = _edits(r)
+    if not h:
+        raise SiteError("Wapas karne ko koi badlav nahi.")
+    last = h.pop()
+    if last["kind"] == "theme":
+        look = _j(r.look, {})
+        _save(r.id, look={**look, "tokens": last["before"]})
+    else:
+        _put_sec(r, last["key"], last["before"])
+    _edits_path(r).write_text(json.dumps(h))
+    out = _after_edit(r, f"Undo: {last.get('what', '')}")
+    return {**out, "say": f"Wapas kar diya: {last.get('what', '')}."}
+
+
+def edits(tenant: str, ref: str) -> dict[str, Any]:
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    return {"edits": [{"what": x.get("what"), "op": x.get("op", x.get("kind")), "at": x.get("at")} for x in reversed(_edits(r))]}
+
+
+def save_version(site_id: str, note: str = "") -> None:
+    """v0.295 her own-hand edits become a checked version: the same Chromium checks as a build, but no AI fix rounds
+    and no critique (her words are hers). A blocking problem shows on the Checks tab like after any build."""
+    from ..usage import scope
+    from . import checks as C
+    r = _load(site_id)
+    with scope(r.tenant_id, "site"):
+        plan = _j(r.plan, {})
+        r = _save(r.id, status="checking", stage="checks", board=_board(r, plan, None, "Aapke badlav jaanch raha hoon"))
+        _emit(r)
+        shots = B.site_dir(r.tenant_id, r.id) / "shots" / "live"
+        live = _assemble_live(r)
+        try:
+            report = C.run(live, plan, shots, video=False)
+        except C.CheckError as e:
+            report = {"blocking": [], "warnings": [{"kind": "checks", "text": str(e), "sections": []}], "scores": {},
+                      "passed": None, "source": "none", "pages": {}}
+        _make_version(r, plan, report, shots, None, note or "aapke badlav", None, push=False)
+
+
 # ---------------------------------------------------------------- reading
 def sites(tenant: str, limit: int = 40) -> list[dict[str, Any]]:
     with session() as s:
@@ -1466,6 +1640,15 @@ def preview_file(token: str, path: str) -> tuple[bytes, str, dict[str, str]]:
     elif path.startswith("__looks/"):
         root = base / "looks"
         rel = path[len("__looks/"):]
+    elif path == "__edit.js":                       # v0.295 the in-page editor (edit preview only)
+        return (B.ASSETS / "hoola-edit.js").read_bytes(), "application/javascript", {
+            **B.security_headers(form_endpoint(r)), "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
+    elif path.startswith("__edit/") or path == "__edit":
+        root = base / "edit"
+        if not root.exists():
+            _ensure_tags(r)
+            root = _assemble_edit(_load(r.id))
+        rel = path[len("__edit/"):] if path.startswith("__edit/") else ""
     else:
         live = base / "live"
         root = live if live.exists() else B.out_dir(r.tenant_id, r.id, r.version)
@@ -1489,10 +1672,13 @@ def preview_file(token: str, path: str) -> tuple[bytes, str, dict[str, str]]:
     if f.suffix == ".woff2":
         ctype = "font/woff2"
     headers = {**B.security_headers(form_endpoint(r)), "X-Robots-Tag": "noindex, nofollow", "Cache-Control": "no-store"}
+    data = f.read_bytes()
+    if path.startswith("__edit") and f.suffix == ".html":
+        data = data.replace(b"</body>", f'<script src="/api/site-preview/{token}/__edit.js"></script></body>'.encode(), 1)
     if "frame-ancestors" in headers["Content-Security-Policy"]:
         headers["Content-Security-Policy"] = headers["Content-Security-Policy"].replace("frame-ancestors 'self'", "frame-ancestors *")
         headers.pop("X-Frame-Options", None)
-    return f.read_bytes(), ctype, headers
+    return data, ctype, headers
 
 
 # ---------------------------------------------------------------- forms -> leads (public endpoint)

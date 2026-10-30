@@ -26,6 +26,10 @@ def _kit(pack: Pack) -> str:
 
 def _need_account(pack: Pack, ctx: Ctx) -> str:
     _, ca = cmp.account(ctx.session, ctx.user.id, _kit(pack))
+    if not ca and cmp.mode(_kit(pack)) == "no_auth":
+        return ""                      # no-login app: nothing to connect, nobody's account involved
+    if not ca and cmp.mode(_kit(pack)) in ("setup", "unknown"):
+        raise ToolError(cmp.SETUP_TEXT.format(name=pack.name))
     if not ca:
         raise ToolError(f"NOT_LINKED: {pack.name} abhi juda nahi hai. Hoola se '{pack.name} jodo' boliye ya "
                         f"Connect > Apps mein {pack.name} par Connect dabaiye; apne {pack.name} account se sign-in kijiye.")

@@ -129,9 +129,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.294.0 (pubspec 0.294.0+334). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.296.0 (pubspec 0.296.0+336). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.295 WEB DESIGN PHASE 2 edit like Lovable: preview Edit mode (`site/edit.py`, `assets/hoola-edit.js`, console studio + phone
+  WebView `HoolaEdit`): click words and type, link / picture / remove / colours, no AI, Undo, each edit a checked version.
+- v0.294 COMPOSIO SAB APPS: live Composio catalogue (~1,600, `composio.catalog()`), status per app (needs_link / ready no-login /
+  needs_setup = add in Composio dashboard), tools fallback, phone search + categories, `python -m app.bazar.composio check|list`.
 - v0.292 WEB DESIGN PHASE 1: real pictures before the looks (`site/pictures.py`: Opus shot list -> photogen, her photos first,
   Pexels fallback, footer AI note), one Lucide icon set (`<i data-icon>`), fonts 400-700, looks = hero + 2 sections, Opus reviews every page.
 - v0.291 COMPOSIO (built as 0.276): 21 apps (Slack, Notion, Jira, HubSpot, Zoom...) via ONE Newtika Composio project
@@ -140,7 +144,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   with a key in it is sealed (`bz_custom_mcp.url_enc`, masked `url`); fair native-tool budget + `bazar_mcp action=tools`.
 - v0.289 SAHI KRAM (real voice code review): her late OpenAI transcript joins HER turn (finish waits <=3 s), no reply
   while she speaks, late words never wipe captions, early self-cuts counted, semantic VAD medium. Gemini untouched.
-- v0.294 EK HI KINARA: the working row now starts on the reply's own left edge. Measured, and it was THREE
+- v0.296 EK HI KINARA: the working row now starts on the reply's own left edge. Measured, and it was THREE
   misalignments: the label 44px right of the sentence above it, the working avatar 46px right of the reply
   avatar, the row alone 48px. Cause = v0.252 pulls `.mh` margin-left:-44px (avatar outside the column) and
   `.simple-progress` never got that pull; the 2/4px extra was a 34px avatar box against the message row's 30.
