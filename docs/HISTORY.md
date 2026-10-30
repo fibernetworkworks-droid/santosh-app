@@ -10838,7 +10838,31 @@ at normal tracking, 22 / 20 / 17 · block gaps 16 (p to p) / 24 (above a heading
 `server/tests/test_v0284_claude_jaisa_paragraph.py` (7 tests) · `test/md_text_test.dart` (the old test asserted the
 `\n` join — it had locked the bug in; updated and extended).
 
-## v0.285.0 SAHI KRAM — the real voice code review, all flaws fixed (owner: "REAL VOICE LOT OF ISSUE --- FIRST CHECK THE CODE DO U FIND ANY FLAW IN IT" -> "FIX ALL")
+
+## v0.285.0 MENUS LIKE CLAUDE (30 Oct 2026)
+Owner: "NOW LETS WORK ON DROPDOWN FOR HOOLA MAKE IT SAME AS CLAUDE".
+Before (screenshots taken first): the chat ⋯ menu was a blurred glass panel with 16px corners, 13.5px BOLD (600) rows
+and emoji icons (✎ 📌 🗂 🗜 🗄 🗑); Export was two bold grey rows in a separate hand-made box; the header ⋯ button opened
+its menu and closed it on the SAME click (chatlist's document click handler saw a click outside `.rmenu`), so it did
+nothing; the account button only jumped to the Account page.
+Now - one dropdown, `server/app/static/console/menu.js` (window.HoolaMenu.open(anchor, items, opts)):
+- Look (block "v0.285 MENUS LIKE CLAUDE" at the end of v2.css): var(--surface), 1px hairline, soft two-layer shadow,
+  12px corners, 6px padding; rows 32px at 14px / 400 (never bold) with 8px corners, a 16px line icon in --mut, grey
+  hover; hairline separators; a small grey header line; Delete red with a red hover; a tick on the right for the
+  current choice (menuitemradio); sub-lines 12px grey. CRISP TEXT kept: a one-shot 120ms fade + 3% scale, no blur.
+- Behaviour: below the button or above when there is no room (or place: 'above'), start / end edge aligned, clamped
+  8px from the screen edge; the same button again closes it; closes on a pick, an outside press, Esc (focus back to
+  the button), Tab, scroll or resize; ↑ ↓ Home End, Enter / Space, a letter jumps to the next item; opened by keyboard
+  = the first row focused; Esc in the chat peels the open menu first (escLayer).
+- Used by: the chat ⋯ menu from the sidebar row AND the header (Pin, Rename, Change / Add to session, Compact chat,
+  Archive, separator, Delete), Export (header "Export this chat", Markdown / JSON with a line each), and a NEW account
+  menu on the bottom-left account button, opening above it like Claude's (her email, Settings, Library, Light / Dark /
+  System ticked, Keyboard shortcuts ?, Log out). The old #exportMenu / #cExportMenu markup and .rmenu / .xmenu CSS are gone.
+- Create Studio pickers (studio.css .pop) take the same look: 32px rows, 14px / 400, 16px plain icons, the choice
+  shown by a tick only (no coloured row). The / command list above the typing box: same surface, rows and hover.
+Tests: tests/test_v0285_menus.py; test_v0223_console_r3 pins moved to the new export menu.
+
+## v0.286.0 SAHI KRAM (re-versioned after the parallel v0.285.0 MENUS LIKE CLAUDE) — the real voice code review, all flaws fixed (owner: "REAL VOICE LOT OF ISSUE --- FIRST CHECK THE CODE DO U FIND ANY FLAW IN IT" -> "FIX ALL")
 Found by reading `voice_openai.py` + the shared `voice.Call` it rides on (built as 0.283.0; main moved to 0.284.0):
 1-3. **Her words arrive late.** OpenAI transcribes her speech separately, only after the audio is committed - often after
    his reply is already done. `finish_turn` ran at `response.done`, so (a) her sentence was saved with his NEXT reply,
@@ -10855,4 +10879,4 @@ Found by reading `voice_openai.py` + the shared `voice.Call` it rides on (built 
 7. **Echo self-cuts** - counted: a cut within `EARLY_CUT_S` 1 s of his first word -> `early_cuts` (scorecard), so her
    calls show whether his own voice leaks back into the mic.
 Scorecard adds `early_cuts`, `held_for_her`, `finish_waited`. Gemini untouched.
-Tests: NEW `test_v0285_sahi_kram.py` (8); `test_v0264_openai_voice.py` VAD pin -> medium. Version 0.285.0 (pubspec 0.285.0+325).
+Tests: NEW `test_v0285_sahi_kram.py` (8); `test_v0264_openai_voice.py` VAD pin -> medium. Version 0.286.0 (pubspec 0.286.0+326).
