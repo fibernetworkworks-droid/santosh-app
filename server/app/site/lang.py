@@ -1,4 +1,4 @@
-"""v0.296 A second language for one website (web design Phase 3): English + Hindi (or Marathi / Hinglish) with a
+"""v0.299 A second language for one website (web design Phase 3): English + Hindi (or Marathi / Hinglish) with a
 switch in the header, the way Indian visitors expect it.
 
 The site is written in her first language as before. For the second one Opus (kind site_edit) translates every section

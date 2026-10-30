@@ -430,7 +430,7 @@ def header(site: dict[str, Any], plan: dict[str, Any], slug: str, rel: str, logo
         links.append(f'<li><a href="{page_url(p["slug"], rel)}"{cur}>{esc(p.get("nav") or p["title"])}</a></li>')
     cta = cta_button(site, rel, "btn btn-primary hs-cta")
     sw = site.get("switch")
-    if sw:                                   # v0.296 the same page in the other language
+    if sw:                                   # v0.299 the same page in the other language
         tgt = rel + sw["to"] + ("" if slug == "home" else f"{slug}/")
         hl = {"hinglish": "hi-Latn"}.get(sw["lang"], sw["lang"])
         cta = f'<a class="hs-lang" href="{tgt}" hreflang="{esc(hl)}" lang="{esc(hl)}">{esc(sw["label"])}</a>' + cta
@@ -609,7 +609,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     (out / "assets" / "img").mkdir(parents=True)
     (out / "assets" / "fonts").mkdir(parents=True)
     tk = site["tokens"]
-    alt = site.get("alt") if not site.get("edit") else None   # v0.296 {lang, label, back, sections, plan} of the 2nd language
+    alt = site.get("alt") if not site.get("edit") else None   # v0.299 {lang, label, back, sections, plan} of the 2nd language
     if alt:
         site = {**site, "switch": {"label": alt["label"], "to": f'{alt["lang"]}/', "lang": alt["lang"]}}
     problems: list[str] = []
@@ -630,7 +630,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="{tk["primary"]}"/>'
         f'<text x="32" y="42" font-size="30" text-anchor="middle" fill="{tk["on_primary"]}" font-family="sans-serif" '
         f'font-weight="700">{esc((site["facts"].get("name") or "H")[:1].upper())}</text></svg>')
-    # v0.296 her photos come from the site's own source folder: before, a launch (built in the hosting folder) looked
+    # v0.299 her photos come from the site's own source folder: before, a launch (built in the hosting folder) looked
     # next to ITSELF, found nothing and every picture of the live site came out empty
     src_root = Path(site["src_root"]) if site.get("src_root") else out.parent / "src"
     srcdir = src_root / "photos"
@@ -671,7 +671,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                 h, missing = expand_images(h, photos, rel, first_eager=(i == 0))
                 if missing:
                     problems.append(f"{key}: photo not found: {', '.join(m for m in missing if m)}")
-                from . import live as LV            # v0.296 booking / map / video / UPI placeholders -> the real things
+                from . import live as LV            # v0.299 booking / map / video / UPI placeholders -> the real things
                 h, lprob = LV.expand(h, site, form_endpoint, lambda n: expand_icons(f'<i data-icon="{n}"></i>')[0])
                 problems += [f"{key}: {x}" for x in lprob]
                 h, unknown = expand_icons(h)
@@ -682,7 +682,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                 else:                          # the real site never carries the edit numbers
                     from .edit import strip
                     h = strip(h)
-                if form_endpoint:          # every enquiry form that has no endpoint yet (v0.296: a booking form may sit beside it)
+                if form_endpoint:          # every enquiry form that has no endpoint yet (v0.299: a booking form may sit beside it)
                     h = re.sub(r'data-hoola-form(?![^>]*data-endpoint)', f'data-hoola-form data-endpoint="{esc(form_endpoint)}"', h)
                 parts.append(h)
             body = "\n".join(parts)
@@ -705,7 +705,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
         robots += f"Sitemap: {base_url.rstrip('/')}/sitemap.xml\n"
     (out / "robots.txt").write_text(robots)
     (out / "_headers").write_text("/*\n  " + "\n  ".join(f"{k}: {v}" for k, v in security_headers(form_endpoint).items()) + "\n")
-    if alt:                                  # v0.296 the second language under /<lang>/, its switch leads back
+    if alt:                                  # v0.299 the second language under /<lang>/, its switch leads back
         sub = {**site, "language": alt["lang"], "alt": None, "src_root": str(src_root),
                "switch": {"label": alt["back"], "to": "../", "lang": site.get("language") or "en"}}
         res = assemble(sub, alt["plan"], alt["sections"], dict(photos), out / alt["lang"],

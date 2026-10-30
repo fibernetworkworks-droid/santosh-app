@@ -284,7 +284,7 @@ class Settings(BaseSettings):
     composio_toolkits: str = ""                       # comma list to replace the built-in app list ("" = the default list)
     composio_user_monthly_calls: int = 300            # per user per calendar month; 0 = unlimited
     composio_monthly_calls: int = 90000               # whole app per month (stays inside the free 1 lakh); 0 = unlimited
-    voice_openai_breath: bool = True                  # v0.266 a real breath SOUND before a cued reply (app/breath.py)
+    voice_openai_breath: bool = False                 # v0.290 OFF: the generated breath sounded like radio static before his first word (owner)
     voice_openai_session_min: int = 50                # OpenAI sessions end at 60 min: move to a fresh one before that
     voice_ack_tts_model: str = "gemini-3.8-flash-tts"   # v0.181 (was gemini-2.5-flash-preview-tts): new TTS, far more natural delivery; legacy model is the automatic fallback
     voice_compress_trigger: int = 60000    # v0.224 Gemini Live context compression starts here (0 = Google's default near the limit)

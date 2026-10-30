@@ -1029,7 +1029,7 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 
 /* A single assistant activity row in the transcript, never part of the input dock. */
 #app .simple-progress{width:100%;margin:0;padding:4px 0;display:flex;align-items:center;gap:11px;min-height:42px;color:var(--mut);font-size:14px;font-weight:600;animation:progress-enter .22s ease-out}
-#app .progress-avatar{width:34px;height:34px;overflow:visible;isolation:isolate;position:relative}
+#app .progress-avatar{width:30px;height:30px;overflow:visible;isolation:isolate;position:relative}
 #app .progress-avatar img{border-radius:50%;overflow:hidden;position:relative;z-index:1}
 #app .progress-avatar:before{content:'';position:absolute;inset:-3px;border-radius:50%;background:conic-gradient(from 0deg,transparent 15%,rgb(var(--acc-rgb) / .7),var(--saffron),transparent 80%);animation:progress-orbit 3s linear infinite;z-index:-1}
 #app .progress-avatar:after{content:'';position:absolute;inset:-1px;border-radius:50%;background:var(--bg1);z-index:0}
@@ -1215,10 +1215,13 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 #app .slidec:focus-visible{outline:2px solid rgb(var(--acc-rgb) / .7);outline-offset:3px}
 /* working line */
 #app .simple-progress{gap:14px}
-#app .progress-avatar{width:34px;height:34px}
+/* v0.296: the working avatar is 30px, the same box as the message row's .av, so the face sits exactly where
+   the reply's face sits and 30 + the 14px gap = the 44px the message row uses for that space. The glow ring
+   is drawn OUTSIDE the box by :before{inset:-2px}, so the circle still reads 34px wide - only the slot it
+   occupies changed. Set once, at the base rule above. */
 #app .progress-avatar:before{inset:-2px;background:conic-gradient(#FFD9A8,#FF9A3C,#C055F5,#7C5CFF,#FFD9A8);animation-duration:2.4s}
 #app .progress-avatar:after{inset:0;border:2px solid var(--bg1)}
-#app .progress-avatar img{width:30px;height:30px;margin:2px}
+#app .progress-avatar img{width:30px;height:30px;margin:0}   /* v0.296: the 2px inset went with the 34px box */
 #app .progress-label{font-size:14px;color:var(--soft);font-weight:600}
 /* dock composer */
 #app .dock .box{border-radius:22px;padding:12px 12px 10px;background:rgb(var(--surf-rgb) / .9);box-shadow:0 18px 44px rgb(var(--sh-rgb) / calc(.5 * var(--sh-k)))}
@@ -1739,6 +1742,12 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 #app .mh .cd,#app .mh .appr{max-width:100%}
 @container thread (min-width: 980px){
   #app .mh{margin-left:-44px;width:calc(100% + 44px);max-width:none}
+  /* v0.296: the working row has to be pulled with it. v0.252 hangs the avatar OUTSIDE the column so the reply's
+     words start at the column edge; the progress row was left behind, so "Working on it..." began exactly 44px
+     to the right of the sentence above it (measured, not guessed). Same pull, same slot: 30px avatar + 14px gap
+     = the 44px the message row uses, so the label lands on the reply's own left edge and the working avatar sits
+     exactly where the reply avatar sits. */
+  #app .simple-progress{margin-left:-44px;width:calc(100% + 44px)}
 }
 
 /* ================================================================================================

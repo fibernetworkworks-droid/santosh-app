@@ -316,7 +316,7 @@ class SiteLeadCard extends StatefulWidget {
   State<SiteLeadCard> createState() => _SiteLeadCardState();
 }
 
-/// v0.296 an enquiry, or a BOOKING request for one of her real free times: she taps Pakka or Mana.
+/// v0.299 an enquiry, or a BOOKING request for one of her real free times: she taps Pakka or Mana.
 class _SiteLeadCardState extends State<SiteLeadCard> {
   String _done = '';
   bool _busy = false;

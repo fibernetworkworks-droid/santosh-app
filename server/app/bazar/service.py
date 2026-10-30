@@ -1462,6 +1462,15 @@ def composio_connect(tenant_id: str, toolkit: str, conversation_id: str = "") ->
         st_now = cmp.status(s, user.id, toolkit)
         if st_now == "ready":
             return {"status": "ready", "pack_id": cmp.PREFIX + toolkit, "url": "", "say": "Yeh app pehle se juda hai."}
+        if st_now == "needs_key":
+            name = cmp.toolkits().get(toolkit, (toolkit, ""))[0]
+            try:
+                fields = cmp.key_fields(toolkit)
+            except cmp.ComposioError as e:
+                raise ToolError(str(e))
+            return {"status": "needs_key", "pack_id": cmp.PREFIX + toolkit, "url": "", "fields": fields,
+                    "say": f"{name} apni API key se judta hai: Hoola app > Connect > MCP servers > Apps > {name} > "
+                           f"'Key daaliye' mein apni key daaliye. Key chat mein kabhi mat bhejiye."}
         if st_now == "needs_setup":
             name = cmp.toolkits().get(toolkit, (toolkit, ""))[0]
             return {"status": "needs_setup", "pack_id": cmp.PREFIX + toolkit, "url": "",
@@ -1477,6 +1486,22 @@ def composio_connect(tenant_id: str, toolkit: str, conversation_id: str = "") ->
     return {"status": "open_link", "pack_id": link["pack_id"], "url": link["url"],
             "say": f"An Open button is in the chat: she signs in to her own {link['name']} account there (official "
                    f"{link['name']} page, no Composio account needed). Then {link['name']} is ready."}
+
+
+def composio_key(tenant_id: str, toolkit: str, values: dict[str, Any]) -> dict[str, Any]:
+    """v0.296 her own key for a key app, from the Hoola app only (the API route; never a chat tool)."""
+    cmp = _cmp()
+    toolkit = (toolkit or "").strip().lower()
+    with session() as s:
+        user = ensure_user(s, tenant_id)
+        try:
+            out = cmp.connect_key(s, user.id, toolkit, values if isinstance(values, dict) else {})
+        except cmp.ComposioError as e:
+            raise ToolError(str(e))
+        conv = latest_conversation(s, user.id) if out["status"] == "ready" else ""
+    if conv:
+        notify(conv, f"{out['name']} jud gaya. Ab {out['name']} ke kaam bataiye.")
+    return out
 
 
 def composio_tools(tenant_id: str, toolkit: str, query: str = "") -> dict[str, Any]:

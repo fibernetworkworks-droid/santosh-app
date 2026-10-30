@@ -261,7 +261,7 @@ SITE SYSTEM YOU WRITE FOR (already on every page, do not repeat it):
   briefcase, file-text, receipt, credit-card, wallet, lock, key, bell, send, share-2, download, external-link
   (any other Lucide name works too). NEVER draw your own icon SVG paths - drawn icons never match each other.
   Inline SVG is only for illustrations, patterns and decorative shapes.
-- LIVE THINGS (v0.296) - write the placeholder, Hoola builds the real thing; never write your own map / video / booking
+- LIVE THINGS (v0.299) - write the placeholder, Hoola builds the real thing; never write your own map / video / booking
   widget / payment link:
   * <div data-hoola-booking></div> = a booking form with HER real free times (booking pages / booking_slots sections).
   * <div data-hoola-map></div> = her address + a map that loads on tap (map_hours / contact sections; only with an address).

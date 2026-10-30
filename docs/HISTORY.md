@@ -11205,7 +11205,74 @@ and the design she liked could drift), no undo per change, nothing she could cha
 - Not verified on a real phone yet: contenteditable inside the Android WebView with the keyboard (the console flow is
   the same script).
 
-## v0.296.0 WEB DESIGN PHASE 3 — live features (owner: "START PHASE 3")
+## v0.296.0 EK HI KINARA — the working row lines up with the reply above it
+Owner, with a screenshot of the new clock: *"now check the position of working after one responce by hoola — make
+all the rsponsece inline with that woing now from both side properly"*.
+
+### Three misalignments, not one
+Measured in a browser against the real stylesheet:
+
+| | before | after |
+|---|---|---|
+| "Working on it…" vs the sentence above it | **44.0px** right | **0.0px** |
+| the working avatar vs the reply avatar | **46.0px** right | **0.0px** |
+| the working row standing on its own | **48.0px** right | **0.0px** |
+
+### The cause
+v0.252. At a thread width of 980px and up, `#app .mh` is pulled `margin-left:-44px` so the reply's words begin at
+the column edge and the avatar hangs **outside** the column. `.simple-progress` was never given that pull, so it
+stayed where the column starts — exactly 44px to the right. The extra 2px and 4px came from `.progress-avatar`
+being a **34px** box where the message row's `.av` is **30px**.
+
+### The fix
+The same pull and the same slot:
+
+- `#app .simple-progress{margin-left:-44px;width:calc(100% + 44px)}` inside the same container query.
+- `.progress-avatar` is 30px, set **once** at its base rule rather than overridden later — so `30 + 14px gap` is
+  exactly the 44px the message row uses. The glow ring is drawn outside the box by `:before{inset:-2px}`, so the
+  circle still *reads* 34px wide; only the space it occupies changed. The image's `margin:2px` inset went with the
+  34px box.
+
+### The phone was deliberately left alone
+Its typing indicator is a 74px bouncing avatar beside a rounded bubble, not a flush row, so the same alignment
+doesn't translate. That was put to her rather than changed quietly.
+
+### Files
+`server/app/static/console/v2.css` · `server/tests/test_v0294_ek_hi_kinara.py` (6 tests).
+
+## v0.297.0 COMPOSIO KEY APPS (30 Oct 2026, owner: "GO API KEY APPS")
+Live check on her VPS (v0.294 `check`): 1,709 apps in Composio, 1,687 offered, 111 managed sign-in, 33 no login,
+1,543 "need setup". Most of those use API keys (each user's own), which need NO Newtika credentials.
+- `composio.mode()` gains `key` (auth_schemes has API_KEY / BEARER_TOKEN / BASIC and no Composio-managed OAuth);
+  `setup` now means only OAuth apps without a Composio login (Newtika's own developer app, dashboard > Auth Configs).
+- Auth config for a key app is created automatically: POST /auth_configs {"toolkit":{"slug"},"auth_config":{"type":
+  "use_custom_auth","authScheme":"API_KEY","name":"Hoola <App>","credentials":{}}} (Composio programmatic-auth-configs
+  page: "For a toolkit whose key the user supplies at connect time, pass empty credentials").
+- `key_fields()`: GET /toolkits/{slug} auth_config_details[mode].fields.connected_account_initiation required/optional
+  (item keys not documented: name/key, displayName/label, description read tolerantly; fallback api_key / token /
+  username+password). Status `needs_key`; phone card "Key daaliye" opens a form (secret fields hidden).
+- `connect_key()` / POST /api/composio/apps/{toolkit}/key {"values":{...}}: unknown field names dropped, required ones
+  checked, then POST /connected_accounts {"auth_config":{"id"},"connection":{"user_id": server-made,"state":
+  {"authScheme","val":{"status":"ACTIVE",...}}}}; Composio checks the key with the app (400 -> "nahi maani"). Hoola
+  never stores or logs the key, only the sealed account id. The chat tool never takes a key: it points to the app form.
+- Live check of one app on the VPS: `.venv/bin/python -m app.bazar.composio trykey <slug>` (mode, fields, and the auth
+  config it creates; no user key used). `check` now reports key_apps_user_types_own_key.
+- NOT VERIFIED live: the exact field item keys from /toolkits/{slug}; the POST /connected_accounts response shape (id at
+  top level assumed, connected_account.id also read). Tests: test_v0276_composio.py 22.
+
+## v0.298.0 NO RADIO — no static before the real voice speaks (owner: "WHEN HOOLA AI INITIAT TALK BEFORE THAT GET THE RADIO LIKE SOUND --- CHECK FIRST THEN FIX")
+- Checked first: on the OpenAI real voice the ONLY audio the server adds before his voice is v0.266's breath
+  (`OpenAICall._breathe`, before the first audio of a reply after her turn of 4 s+ or a low tone). `breath.clips()`
+  returns the Gemini-TTS `<breath>` takes only once they are rendered AND pass `is_breath`; until then - every first call
+  after a restart, and always if no take passes - it fell back to `breath.synth()`: band-limited noise with a rise and
+  fall, which on a phone speaker sounds like radio static. Gemini calls never play it (the acks there are words).
+- Fix: `VOICE_OPENAI_BREATH` default false (his own voice starts clean), and `breath.clips()` no longer returns the
+  generated noise at all (`STATS["synth_refused"]`) - if she switches breath back on, only a recorded take that passed
+  the voiceless check can ever play. `synth()` stays only as test material for the detector.
+Tests: NEW `test_v0298_no_radio.py` (4); `test_v0264_openai_voice.py` breath tests follow the new default.
+Version 0.298.0 (pubspec 0.298.0+338, console ?v=0.298.0, pins -> 0.298.0).
+
+## v0.299.0 WEB DESIGN PHASE 3 — live features (owner: "START PHASE 3")
 Flaws 10-13 of the web design audit: the booking section promised "next free slots from Hoola" on a page that could not
 load anything; map / video embeds were stripped with no safe way back; one language per site; no way to take a payment.
 - **Placeholders, built by Hoola** (`server/app/site/live.py`, `expand` runs in `build.assemble` after the photos):
@@ -11235,6 +11302,7 @@ load anything; map / video embeds were stripped with no safe way back; one langu
 - **FIXED, found while building this**: a LAUNCHED site lost every photo. `assemble` looked for photos at
   `out.parent/src`, right for the preview (site folder) but wrong for a launch (built inside the hosting folder),
   so `picture()` got no sizes and returned "". Photos now come from `site["src_root"]` (`_ctx`), every build.
-- Tests `server/tests/test_v0296_live_features.py` (5) + a real-Chromium run of the booking form, map and video.
+- Tests `server/tests/test_v0299_live_features.py` (5) + a real-Chromium run of the booking form, map and video.
+- Built as 0.296.0, re-versioned 0.299.0 on merge past the parallel v0.296-v0.298 work.
 - Not verified on the VPS: Google's map embed URL without a key from a real site; slots for an owner whose booking
   rules were never set (defaults: Mon-Sat 9-6).
