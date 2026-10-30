@@ -52,6 +52,19 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- NEWEST (30 Oct 2026, owner: "NOW PERFECT. SAVE THE STATE" after the reply-rendering work): branch
+  `stable-2026-10-30-v292` = commit 70f3bde7 = v0.292.0, live on hoola.ainewtika.com (healthz 0.292.0), pubspec
+  0.292.0+332. The chat reads like Claude end to end, and the last four versions of it were all found by testing
+  THE PATH SHE TAKES after four earlier ones measured the wrong layer and "matched": v0.283 the reply lands at
+  reading speed (60-79 words a second at every length), v0.284 a soft newline reflows instead of freezing the
+  model's own wrap + heading sizes 22/20/17 the right way up + one serif in a reply, v0.286 EK HI DOM (the live
+  and reloaded render paths now build the SAME DOM - the <div class="mdb"> wrapper had been zeroing every
+  paragraph gap and losing the 680px cap, which is why four versions of spacing work were invisible to her), and
+  v0.287 the honesty guard stopped stapling "yeh kaam abhi hua nahi hai" onto pure explainers. Also carries other
+  sessions' v0.285 MENUS, v0.288-v0.291 and WEB DESIGN PHASE 1 / COMPOSIO. All ten markers re-verified in this
+  exact commit before the branch was cut. APK release `v0.292.0-b671`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.292.0-b671/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-10-30-v292` as the branch.
 - NEWEST (30 Oct 2026, owner: "SAVE THE STATE" after the tool-choice work): branch `stable-2026-10-30-v271` =
   commit 2828407 = v0.271.0, live on hoola.ainewtika.com (healthz 0.271.0). Right tool for every ask (v0.245 SAHI AUZAAR),
   DATA DESK (v0.238), REA reverse-engineer anything (v0.257), SERVER PEHLE + SAB SERVER PAR (v0.270 / v0.271: every job on
