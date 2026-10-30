@@ -16,7 +16,7 @@ window.HoolaChats = ctx => {
 const {api, esc, toast} = ctx;
 const $ = s => document.querySelector(s);
 const BUSY = new Set(), UNREAD = new Set();
-let LIST = [], ARCH = false, MENU = null;
+let LIST = [], ARCH = false;
 let SECS = [];                        // v0.193 sessions (projects), server order — last-touched first
 
 const DAY = 86400000;
@@ -136,30 +136,20 @@ document.addEventListener('drop', e => {
 });
 
 /* ---------- menu ---------- */
-function closeMenu() { MENU?.remove(); MENU = null; }
-function openMenu(id, btn) {
-  closeMenu();
-  const c = LIST.find(x => x.id === id); if (!c) return;
-  const m = document.createElement('div'); m.className = 'rmenu gl'; m.setAttribute('role', 'menu');
-  m.innerHTML = `<button role="menuitem" data-a="rename">✎ Rename</button>
-    ${c.archived ? '' : `<button role="menuitem" data-a="pin">${c.pinned ? '📌 Unpin' : '📌 Pin'}</button>`}
-    ${ctx.pickProject ? `<button role="menuitem" data-a="folder">🗂 ${c.project_id ? 'Change / leave session' : 'Move to session'}</button>` : ''}
-    ${c.archived ? '' : '<button role="menuitem" data-a="compact">🗜 Compact chat</button>'}
-    <button role="menuitem" data-a="archive">${c.archived ? '↩ Restore from archive' : '🗄 Archive'}</button>
-    <button role="menuitem" data-a="delete" class="bad">🗑 Delete</button>`;
-  document.body.appendChild(m);
-  const r = btn.getBoundingClientRect();
-  m.style.top = Math.min(innerHeight - m.offsetHeight - 8, r.bottom + 4) + 'px';
-  m.style.left = Math.max(8, Math.min(innerWidth - m.offsetWidth - 8, r.right - m.offsetWidth)) + 'px';
-  m.querySelector('button').focus();
-  m.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (b) act(c, b.dataset.a); });
-  m.addEventListener('keydown', e => {
-    const items = [...m.querySelectorAll('button')], i = items.indexOf(document.activeElement);
-    if (e.key === 'Escape') { closeMenu(); btn.focus(); }
-    else if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
-  });
-  MENU = m;
+// v0.283 the chat's ⋯ menu is the console's one Claude-style dropdown (menu.js); the old hand-made one is gone
+function closeMenu() { window.HoolaMenu?.close(); }
+function openMenu(id, btn, keyboard) {
+  const c = LIST.find(x => x.id === id); if (!c || !window.HoolaMenu) return;
+  const go = a => () => act(c, a);
+  HoolaMenu.open(btn, [
+    ...(c.archived ? [] : [{label: c.pinned ? 'Unpin' : 'Pin', icon: c.pinned ? 'unpin' : 'pin', run: go('pin')}]),
+    {label: 'Rename', icon: 'pencil', run: go('rename')},
+    ...(ctx.pickProject ? [{label: c.project_id ? 'Change session' : 'Add to session', icon: 'folder', run: go('folder')}] : []),
+    ...(c.archived ? [] : [{label: 'Compact chat', icon: 'compress', run: go('compact')}]),
+    {label: c.archived ? 'Restore from archive' : 'Archive', icon: c.archived ? 'restore' : 'archive', run: go('archive')},
+    {sep: true},
+    {label: 'Delete', icon: 'trash', danger: true, run: go('delete')},
+  ], {align: btn.closest('#recents') ? 'start' : 'end', cls: 'rmenu', label: `Chat options: ${c.title}`, keyboard});
 }
 async function act(c, a) {
   closeMenu();
@@ -191,8 +181,7 @@ function rename(c) {
   inp.addEventListener('blur', () => setTimeout(() => { if (row.contains(f)) save(); }, 120));
 }
 document.addEventListener('click', e => {
-  const m = e.target.closest('[data-menu]'); if (m) { e.preventDefault(); openMenu(m.dataset.menu, m); return; }
-  if (MENU && !e.target.closest('.rmenu')) closeMenu();
+  const m = e.target.closest('[data-menu]'); if (m) { e.preventDefault(); openMenu(m.dataset.menu, m, e.detail === 0); return; }
   const a = e.target.closest('#recents a[data-conv]');
   if (a && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) { e.preventDefault(); UNREAD.delete(a.dataset.conv); ctx.open(a.dataset.conv); }
 });
@@ -242,6 +231,6 @@ return {
   unread(id) { if (id !== ctx.current() && !UNREAD.has(id)) { UNREAD.add(id); draw(); } },
   isBusy: id => BUSY.has(id),
   find: id => LIST.find(x => x.id === id),
-  menu: (id, btn) => openMenu(id, btn),              // v0.222 R3 the chat header's ⋯ opens the same menu
+  menu: (id, btn, keyboard) => openMenu(id, btn, keyboard),              // v0.222 R3 the chat header's ⋯ opens the same menu
 };
 };

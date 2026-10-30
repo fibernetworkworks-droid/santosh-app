@@ -481,10 +481,6 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 .rcarch:hover{background:var(--glass2);color:var(--ink)}
 .rcren{display:flex;gap:4px;align-items:center;width:100%;padding:2px 4px}
 .rcren input{flex:1;min-width:0;background:rgb(var(--surf-rgb) / .6);border:1px solid rgb(var(--acc-rgb) / .5);border-radius:9px;padding:6px 9px;font-size:13px}
-.rmenu{position:fixed;z-index:80;min-width:210px;background:rgb(var(--surf-rgb) / .92);border:1px solid var(--hair2);border-radius:16px;backdrop-filter:blur(24px) saturate(1.4);-webkit-backdrop-filter:blur(24px) saturate(1.4);box-shadow:var(--sh);padding:6px;display:flex;flex-direction:column}
-.rmenu button{text-align:left;font-size:13.5px;font-weight:600;padding:9px 12px;border-radius:10px}
-.rmenu button:hover{background:var(--glass2)}
-.rmenu button.bad{color:var(--bad)}
 .sbg{position:fixed;inset:0;z-index:70;background:rgba(6,4,20,.66);backdrop-filter:blur(6px);display:grid;place-items:start center;padding-top:12vh}
 .sbox{width:min(640px,92vw);max-height:64vh;display:flex;flex-direction:column;overflow:hidden;background:rgb(var(--surf-rgb) / .92);box-shadow:var(--sh)}
 .sin{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
@@ -649,10 +645,6 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 .mu.editing .utbar{display:none}
 
 /* export menu under the top bar */
-.xmenu{position:absolute;top:calc(100% - 2px);right:10px;z-index:60;padding:6px;display:flex;flex-direction:column;min-width:190px;box-shadow:var(--sh)}
-.xmenu button{text-align:left;padding:9px 12px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--mut)}
-.xmenu button:hover{background:var(--glass2);color:var(--ink)}
-@media (max-width:560px){.xmenu{right:6px;min-width:170px}}
 
 /* ---------- v0.173 composer steering: receipts, slash menu, kharcha gauge, dictation ---------- */
 .rq{display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:4px 10px;border-radius:999px;background:rgb(var(--acc-rgb) / .14);border:1px solid rgb(var(--acc-rgb) / .3);color:var(--lit);font-size:12px;font-weight:600}
@@ -973,7 +965,6 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 
 /* No header row: conversation tools live in the sidebar and Stop stays beside Send. */
 #app .console-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;position:relative}
-#app .console-controls .xmenu{top:auto;bottom:calc(100% + 8px);left:0;right:auto;min-width:170px}
 #app .console-controls .livebtn{font-size:12px;padding:7px 10px}
 #app .console-controls .ib{width:32px;height:32px}
 #app .user{width:100%;text-align:left;color:var(--ink);cursor:pointer;flex:none}
@@ -1188,7 +1179,6 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 #app .cacts{margin-left:auto;display:inline-flex;gap:4px;position:relative;flex:none}
 #app .cacts .ib{width:36px;height:36px;border-radius:10px}
 #app .cacts .ib svg{width:17px;height:17px}
-#app .cacts .xmenu{position:absolute;top:calc(100% + 6px);right:0;left:auto;bottom:auto;min-width:170px;z-index:40}
 #app .chead~.thread{padding-top:0}
 /* v0.253 CLAUDE JAISA PADHAI: the chat reads on white like Claude's, so the words sit at 17.3:1 instead
    of 15.5:1 on the lavender page. Light theme only - --chat-paper is transparent in the dark one. */
@@ -1589,7 +1579,6 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 
 /* ---------- right columns, menus, toast ---------- */
 .live,.studio,.panel{background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
-.xmenu,#app .xmenu{background:var(--surface);border:1px solid var(--line);box-shadow:var(--sh);backdrop-filter:none}
 .scrim{background:rgb(20 16 40 / .32);backdrop-filter:blur(2px)}
 
 /* ---------- account: Appearance ---------- */
@@ -1920,3 +1909,40 @@ body.albon{overflow:hidden}
   .albnav{position:absolute;top:50%;margin-top:-22px;z-index:2}.albnav.prev{left:8px}.albnav.next{right:8px}
 }
 @media (prefers-reduced-motion:reduce){.at .ax,.at .aup i{transition:none}}
+
+/* ===== v0.283 MENUS LIKE CLAUDE (menu.js): one dropdown for the whole console. Plain surface, hairline border,
+   soft shadow, 12px corners; rows 32px at 14px / 400 in the interface sans; 16px muted line icons; grey hover;
+   hairline separators; Delete in red; the current choice ticked on the right. One-shot 120ms open (CRISP TEXT:
+   nothing held, no blur, solid background under the words). */
+.hmenu{position:fixed;z-index:1100;min-width:208px;max-width:min(320px,calc(100vw - 16px));padding:6px;display:flex;flex-direction:column;gap:1px;
+  overflow-y:auto;overscroll-behavior:contain;background:var(--surface);border:1px solid var(--hair2);border-radius:12px;outline:0;
+  box-shadow:0 1px 2px rgb(var(--sh-rgb) / .05),0 6px 24px rgb(var(--sh-rgb) / .10);font-family:var(--fb);color:var(--ink);
+  opacity:0;transform:scale(.97);transition:opacity .12s ease,transform .12s ease}
+.hmenu.on{opacity:1;transform:none}
+.hmenu .mi{display:flex;align-items:center;gap:10px;width:100%;min-height:32px;padding:6px 8px;border:0;border-radius:8px;background:none;
+  font:400 14px/20px var(--fb);color:var(--ink);text-align:left;cursor:default;outline:0}
+.hmenu .mi:focus,.hmenu .mi:hover{background:rgb(var(--fg-rgb) / .06)}
+.hmenu .mi:focus-visible{box-shadow:inset 0 0 0 1px rgb(var(--fg-rgb) / .14)}
+.hmenu .mi .ic{width:16px;height:16px;flex:none;color:var(--mut)}
+.hmenu .mi .mt{flex:1;min-width:0;display:flex;flex-direction:column}
+.hmenu .mi .mt>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hmenu .mi .mt small{font-size:12px;line-height:16px;color:var(--dim)}
+.hmenu .mi:has(small){align-items:flex-start}
+.hmenu .mi:has(small) .ic{margin-top:2px}
+.hmenu .mi .mk{margin-left:auto;font:400 12px/16px var(--fb);color:var(--dim);background:none;border:0;padding:0}
+.hmenu .mi .mc{width:16px;height:16px;flex:none;margin-left:auto;color:var(--ink)}
+.hmenu .mi .mc .ic{color:inherit}
+.hmenu .mi.danger,.hmenu .mi.danger .ic{color:var(--bad)}
+.hmenu .mi.danger:focus,.hmenu .mi.danger:hover{background:rgb(var(--bad-rgb) / .08)}
+.hmenu .mi[aria-disabled="true"]{opacity:.45}
+.hmenu .msep{height:1px;margin:5px -6px;background:var(--hair);flex:none}
+.hmenu .mh{padding:6px 8px 4px;font-size:12px;line-height:16px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none}
+.hmenu.acctm{min-width:0}
+@media (prefers-reduced-motion:reduce){.hmenu{transition:none;transform:none}}
+/* the / command list above the typing box: the same dropdown look */
+#app .slash,.slash{background:var(--surface);border:1px solid var(--hair2);border-radius:12px;backdrop-filter:none;-webkit-backdrop-filter:none;
+  box-shadow:0 1px 2px rgb(var(--sh-rgb) / .05),0 6px 24px rgb(var(--sh-rgb) / .10);gap:1px}
+.slash button{min-height:32px;padding:6px 8px;border-radius:8px;font:400 14px/20px var(--fb);color:var(--dim)}
+.slash button b{color:var(--ink);font-weight:500;min-width:84px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
+.slash button span{color:var(--ink);font-weight:400}
+.slash button[aria-selected="true"],.slash button:hover{background:rgb(var(--fg-rgb) / .06)}

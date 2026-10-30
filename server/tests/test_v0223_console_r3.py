@@ -14,15 +14,15 @@ def _read(name: str) -> str:
 
 def test_chat_header():
     html = _read("v2.html")
-    for needle in ('id="chead"', 'id="ctitle"', 'id="ctag"', 'id="cShare"', 'id="cExportMenu"', 'id="cMore"'):
+    for needle in ('id="chead"', 'id="ctitle"', 'id="ctag"', 'id="cShare"', 'id="cMore"'):   # v0.283 export = menu.js
         assert needle in html, needle
     assert html.index('id="chead"') < html.index('id="thread"')          # inside the chat view, above the thread
     js = _read("v2.js")
-    assert "function drawHead()" in js and "CH?.menu(CONV, e.currentTarget)" in js
-    assert "async function exportChat(fmt)" in js and js.count("exportChat(b.dataset.fmt)") == 2
+    assert "function drawHead()" in js and "CH?.menu(CONV, e.currentTarget, e.detail === 0)" in js
+    assert "async function exportChat(fmt)" in js and "run: () => exportChat('md')" in js and "run: () => exportChat('json')" in js
     assert "loaded: () => drawHead()" in js
     cl = _read("chatlist.js")
-    assert "menu: (id, btn) => openMenu(id, btn)" in cl and "ctx.loaded?.()" in cl
+    assert "menu: (id, btn, keyboard) => openMenu(id, btn, keyboard)" in cl and "ctx.loaded?.()" in cl
 
 
 def test_approval_card_layout():
