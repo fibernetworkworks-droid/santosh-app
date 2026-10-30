@@ -141,7 +141,7 @@ $('#liveBtn').addEventListener('click', () => {
   $('#app').classList.toggle('open');
 });
 $('#liveClose').addEventListener('click', () => $('#app').classList.remove('open'));
-// v0.283 the account button opens Claude's account menu (above it): who is signed in, Settings, Library, the theme,
+// v0.285 the account button opens Claude's account menu (above it): who is signed in, Settings, Library, the theme,
 // keyboard shortcuts, Log out
 $('#model').addEventListener('click', e => {
   if (!window.HoolaMenu) { go('main'); return; }
@@ -1443,7 +1443,7 @@ function openKeys() {           // the cheat sheet: toggle, glass, English
 }
 
 /* ================= export (v0.171): this chat as a Markdown file to read, or JSON to keep ================= */
-// v0.283 export = the console's Claude-style dropdown (menu.js), like every other menu
+// v0.285 export = the console's Claude-style dropdown (menu.js), like every other menu
 const exportMenu = e => window.HoolaMenu?.open(e.currentTarget, [
   {header: 'Export this chat'},
   {label: 'Markdown', sub: 'A .md file to read or share', icon: 'doc', run: () => exportChat('md')},

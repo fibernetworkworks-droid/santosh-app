@@ -1,4 +1,4 @@
-"""v0.283 MENUS LIKE CLAUDE: one dropdown (console/menu.js) for the chat ⋯ menus, export and the new account menu;
+"""v0.285 MENUS LIKE CLAUDE: one dropdown (console/menu.js) for the chat ⋯ menus, export and the new account menu;
 the Create Studio pickers and the / list take the same look."""
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ def test_every_console_menu_uses_it():
 
 def test_claude_look_is_crisp():
     css = _r("v2.css")
-    blk = css[css.index("v0.283 MENUS LIKE CLAUDE"):]
+    blk = css[css.index("v0.285 MENUS LIKE CLAUDE"):]
     assert ".hmenu{" in blk and "border-radius:12px" in blk and "font:400 14px/20px var(--fb)" in blk
     assert "min-height:32px" in blk and ".hmenu .msep{" in blk and ".hmenu .mi.danger" in blk
     assert "backdrop-filter:blur" not in blk and "infinite" not in blk

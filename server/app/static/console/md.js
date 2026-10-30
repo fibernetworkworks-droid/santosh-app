@@ -97,7 +97,9 @@ function list(lines, streaming) {
   let open = false;
   for (let k = 0; k < lines.length; k++) {
     const l = lines[k], m = l.match(LI);
-    if (!m) { if (open) html = html.replace(/<\/li>$/, '') + '<br>' + inline(streaming && k === lines.length - 1 ? closeInline(l.trim()) : l.trim()) + '</li>'; continue; }
+    // v0.284: a continuation line with no marker of its own is part of the item's own paragraph, so it joins with
+    // a SPACE (lazy continuation, same soft-break rule as a paragraph) instead of being broken onto its own line.
+    if (!m) { if (open) html = html.replace(/<\/li>$/, '') + ' ' + inline(streaming && k === lines.length - 1 ? closeInline(l.trim()) : l.trim()) + '</li>'; continue; }
     const ind = m[1].replace(/\t/g, '    ').length, ordered = /\d/.test(m[2]), tag = ordered ? 'ol' : 'ul';
     let txt = m[3]; if (streaming && k === lines.length - 1) txt = closeInline(txt);
     while (stack.length && ind < stack[stack.length - 1].indent) { html += `</${stack.pop().tag}></li>`; }
@@ -130,11 +132,31 @@ function block(src, streaming) {
   if (streaming && TROW.test(lines[lines.length - 1]) && lines.every(l => TROW.test(l) || TSEP.test(l) || /^\s*\|?[\s:|-]*$/.test(l))) return '';   // a table still arriving
   if (LI.test(first)) return list(lines, streaming);
   // paragraph (a heading line inside is still a heading)
-  return lines.map((l, k) => {
-    const hh = l.match(HEAD); const t = streaming && k === lines.length - 1 ? closeInline(l) : l;
-    if (hh) return `<h${Math.min(6, hh[1].length + 2)} class="mdh">${inline(streaming && k === lines.length - 1 ? closeInline(hh[2]) : hh[2])}</h${Math.min(6, hh[1].length + 2)}>`;
-    return `<p>${inline(t)}</p>`;
-  }).join('').replace(/<\/p><p>/g, '<br>');
+  // v0.284: a single newline inside a paragraph is a SOFT break - the lines join with a SPACE and the paragraph
+  // reflows to the column, which is what CommonMark says and what Claude's chat does. This used to emit one <p>
+  // per source line and then glue them with <br>, so wherever the model happened to wrap its own output that
+  // break froze into the page: short ragged lines, and no 16px gap between them, right beside real paragraphs
+  // that had one. Only an explicit hard break - two spaces or a backslash at the end of the line - gets a <br>.
+  const out = [];
+  let para = [], hard = false;
+  const flushPara = () => { if (para.length) { out.push(`<p>${para.join('')}</p>`); para = []; hard = false; } };
+  lines.forEach((l, k) => {
+    const live = streaming && k === lines.length - 1;
+    const hh = l.match(HEAD);
+    if (hh) {
+      flushPara();
+      const n = Math.min(6, hh[1].length + 2);
+      out.push(`<h${n} class="mdh">${inline(live ? closeInline(hh[2]) : hh[2])}</h${n}>`);
+      return;
+    }
+    const breaks = /(\s{2,}|\\)$/.test(l);
+    let t = l.replace(/(\s{2,}|\\)$/, '');
+    if (live) t = closeInline(t);
+    para.push((para.length ? (hard ? '<br>' : ' ') : '') + inline(t));
+    hard = breaks;
+  });
+  flushPara();
+  return out.join('');
 }
 function render(text, streaming) {
   const bs = splitBlocks(text);

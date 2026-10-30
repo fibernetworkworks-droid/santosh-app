@@ -1,4 +1,4 @@
-/* v0.283 MENUS LIKE CLAUDE: one dropdown for the whole console (chat ⋯ menus, export, the account menu).
+/* v0.285 MENUS LIKE CLAUDE: one dropdown for the whole console (chat ⋯ menus, export, the account menu).
    Claude's look: a plain surface with a hairline border and a soft shadow, 12px corners, rows 32px high in the
    interface sans at 14px / 400 (never bold), a 16px line icon in a muted grey, 8px row corners, a grey hover,
    hairline separators, a small grey header line, Delete in red, a tick on the right for the current choice.

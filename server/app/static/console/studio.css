@@ -424,7 +424,7 @@ p{margin:0}
   max-width:min(360px,calc(100vw - 16px))}
 .pop.up{transform-origin:bottom left;transform:scale(.97)}
 .pop.on{opacity:1;transform:none}
-/* v0.283 the same dropdown as the console's menu.js (Claude's): 32px rows, 14px / 400, 16px muted icons, grey hover, tick only */
+/* v0.285 the same dropdown as the console's menu.js (Claude's): 32px rows, 14px / 400, 16px muted icons, grey hover, tick only */
 .poph{font-size:12px;line-height:16px;color:var(--dim);padding:6px 8px 4px}
 .pop button{display:flex;align-items:center;gap:10px;width:100%;min-height:32px;padding:6px 8px;border-radius:8px;text-align:left;color:var(--ink);outline:0;cursor:default}
 .pop button:hover,.pop button:focus{background:rgb(127 127 140 / .1)}

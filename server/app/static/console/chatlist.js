@@ -136,7 +136,7 @@ document.addEventListener('drop', e => {
 });
 
 /* ---------- menu ---------- */
-// v0.283 the chat's ⋯ menu is the console's one Claude-style dropdown (menu.js); the old hand-made one is gone
+// v0.285 the chat's ⋯ menu is the console's one Claude-style dropdown (menu.js); the old hand-made one is gone
 function closeMenu() { window.HoolaMenu?.close(); }
 function openMenu(id, btn, keyboard) {
   const c = LIST.find(x => x.id === id); if (!c || !window.HoolaMenu) return;
