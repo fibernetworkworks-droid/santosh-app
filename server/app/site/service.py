@@ -700,7 +700,7 @@ def _ctx(r: Site) -> dict[str, Any]:
             "plan": _j(r.plan, {}), "cta": _j(r.plan, {}).get("cta") or "call", "industry": ind,
             "legal": (L.fields().get(r.field) or {}).get("legal", []), "language": _j(r.languages, ["en"])[0],
             "logo_path": logo, "noindex": True,
-            "ai_photos": any(p.get("ai") for p in _j(r.photos, []))}       # v0.291 the footer says so
+            "ai_photos": any(p.get("ai") for p in _j(r.photos, []))}       # v0.292 the footer says so
 
 
 def _facts_text(f: dict[str, Any]) -> str:
@@ -791,7 +791,7 @@ def make_looks(site_id: str) -> None:
 
 
 def _look_sections(r: Site) -> list[dict[str, Any]]:
-    """v0.291 the home sections a look shows: the hero + the next ones (SITE_LOOK_SECTIONS), so she chooses from real
+    """v0.292 the home sections a look shows: the hero + the next ones (SITE_LOOK_SECTIONS), so she chooses from real
     page tops, not from a hero alone."""
     n = max(1, min(4, int(getattr(_settings(), "site_look_sections", 3) or 1)))
     home = next((p for p in _j(r.plan, {}).get("pages", []) if p["slug"] == "home"), {"sections": []})
@@ -823,7 +823,7 @@ def _make_looks(r: Site) -> None:
         (d / "hero.json").write_text(json.dumps(hero))
         secs = {"home__hero": hero}
         labels = [T.SECTIONS[s["type"]]["label"] for s in more]
-        for s in more:                       # v0.291 the page top under the hero, in this look's own art direction
+        for s in more:                       # v0.292 the page top under the hero, in this look's own art direction
             k = sec_key("home", s["type"])
             try:
                 secs[k] = write_section(r, "home", s, [x for x in labels if x != T.SECTIONS[s["type"]]["label"]])
@@ -875,7 +875,7 @@ def choose_look(tenant: str, ref: str, index: int, colors_from: int | None = Non
         if hero.exists():
             shutil.copy(hero, B.src_dir(tenant, r.id) / "sections" / "home__hero.json")
             done["home__hero"] = "done"
-        for f in ld.glob("home__*.json"):     # v0.291 the look's other sections are kept, not written again
+        for f in ld.glob("home__*.json"):     # v0.292 the look's other sections are kept, not written again
             shutil.copy(f, B.src_dir(tenant, r.id) / "sections" / f.name)
             done[f.stem] = "done"
         r.board = _jd(_board(r, states=done, now_line="Banana shuru"))
@@ -1072,7 +1072,7 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
 
 def _critique_round(r: Site, plan: dict[str, Any], shots: Path, report: dict[str, Any]) -> tuple[dict[str, Any], dict]:
     """v0.225 Opus looks at the REAL screenshots, redraws the weakest sections once with its own notes, then looks again:
-    a redraw that scores lower (or breaks a check) is thrown away and the old section comes back. v0.291: every page
+    a redraw that scores lower (or breaks a check) is thrown away and the old section comes back. v0.292: every page
     (site_critique=all, up to site_critique_pages), not only the home page."""
     if not Q.critique_on() or not report.get("pages"):
         return report, {}
@@ -1334,7 +1334,7 @@ def add_photo(tenant: str, ref: str, data: bytes | None = None, file_id: str = "
 
 def _store_photo(site_id: str, jpg: bytes, size: tuple[int, int], about: str = "", name: str = "",
                  extra: dict[str, Any] | None = None) -> str:
-    """One picture into src/photos + the photos list (her upload, or v0.291 an AI / stock picture with extra fields)."""
+    """One picture into src/photos + the photos list (her upload, or v0.292 an AI / stock picture with extra fields)."""
     with session() as s:
         r = s.get(Site, site_id)
         ph = _j(r.photos, [])
@@ -1348,7 +1348,7 @@ def _store_photo(site_id: str, jpg: bytes, size: tuple[int, int], about: str = "
 
 
 def _ensure_pictures(r: Site) -> int:
-    """v0.291 before the looks: her own photos first, then AI pictures (or licensed stock) up to SITE_AI_PHOTOS, so no
+    """v0.292 before the looks: her own photos first, then AI pictures (or licensed stock) up to SITE_AI_PHOTOS, so no
     site starts as drawn shapes. Fails soft: no key / a refusal / a slow model = the build goes on with what there is."""
     if not P.on():
         return 0

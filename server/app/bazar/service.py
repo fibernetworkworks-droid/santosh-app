@@ -181,6 +181,10 @@ def pack_status(s, user: User, pack: Pack) -> str:
         c = s.scalars(select(Connection).where(Connection.user_id == user.id, Connection.provider == pack.config["provider"],
                                                Connection.status == "active")).first()
         return "ready" if c else "needs_link"
+    if pack.executor == "composio":   # v0.276 apps through Newtika's Composio project (her own sign-in per app)
+        from . import composio
+        st_c = composio.status(s, user.id, pack.config["toolkit"])
+        return "needs_link" if st_c == "pending" else st_c
     if pack.executor == "device":
         from .devices import device_pack_status
         return device_pack_status(s, user, pack)
@@ -251,7 +255,8 @@ def find(tenant_id: str, query: str = "", category: str = "", limit: int = 6) ->
                                                     for w in re.findall(r"[a-z0-9]{4,}", query.lower()))][:3]
         else:
             mine_hits = []
-        hits = mine_hits + [p for p, _ in reg.match(query, limit=limit)]
+        from . import composio as _cmp
+        hits = mine_hits + (_cmp.match(query) if _cmp.configured() else []) + [p for p, _ in reg.match(query, limit=limit)]
         if len(hits) < 2:
             for p in _fallback_match(query, limit):
                 if p not in hits:
@@ -259,6 +264,10 @@ def find(tenant_id: str, query: str = "", category: str = "", limit: int = 6) ->
         hits = hits[:limit]
         out = [_pack_out(s, user, p, with_tools=i < 4) for i, p in enumerate(hits)]
         res: dict[str, Any] = {"packs": out}
+        if any(p.executor == "composio" for p in hits):
+            res["composio_hint"] = ("cmp-<app> packs are her own app accounts via Composio. needs_link = call composio_apps "
+                                    "action=connect toolkit=<app> (an Open button for her sign-in); ready = bazar_run with "
+                                    "the pack_id and a tool slug; more tools: composio_apps action=tools.")
         feat = [f for f in featured.search(query, limit=4) if f["id"] not in {p.get("name", "").lower() for p in out}]
         if feat:
             res["featured_connectors"] = feat
@@ -427,7 +436,7 @@ def _run(tenant_id: str, conversation_id: str, pack_id: str, tool: str, args: di
             raise ToolError(f"Use Santosh's own tools for this: {CORE_EQUIVALENT[pack.config['skill']]}.")
         if status in ("not_configured", "no_device"):
             raise ToolError(f"{pack.name}: {STATUS_TEXT[status]}.")
-        if pack.executor != "mcp" and tool not in {t.name for t in pack.tools}:
+        if pack.executor not in ("mcp", "composio") and tool not in {t.name for t in pack.tools}:
             raise ToolError(f"{pack.name} has no tool '{tool}'. Its tools: {', '.join(t.name for t in pack.tools)}")
         task = _task(s, user, conversation_id)
         runner = Runner(s, get_settings(), reg, executors())
@@ -1422,3 +1431,88 @@ def catalog(tenant_id: str) -> dict[str, Any]:
         counts[p["status"]] = counts.get(p["status"], 0) + 1
     from . import top
     return {"total": len(packs), "by_status": counts, "packs": packs, "top": top.sections(packs, pincode, used)}
+
+
+# ---------------------------------------------------------------- v0.276 COMPOSIO: apps via Newtika's one project
+def _cmp():
+    from . import composio
+    if not composio.configured():
+        raise ToolError("Composio apps abhi server par chalu nahi hain (COMPOSIO_API_KEY nahi hai).")
+    return composio
+
+
+def composio_apps(tenant_id: str) -> dict[str, Any]:
+    from . import composio
+    with session() as s:
+        user = ensure_user(s, tenant_id)
+        st = core_settings()
+        return {"configured": composio.configured(), "apps": composio.apps(s, user.id),
+                "calls_this_month": composio.used(s, user.id), "monthly_cap": st.composio_user_monthly_calls,
+                "how": "ready = bazar_run pack_id=cmp-<app> tool=<SLUG>; needs_link = action=connect toolkit=<app>."}
+
+
+def composio_connect(tenant_id: str, toolkit: str, conversation_id: str = "") -> dict[str, Any]:
+    cmp = _cmp()
+    toolkit = (toolkit or "").strip().lower()
+    with session() as s:
+        user = ensure_user(s, tenant_id)
+        if cmp.status(s, user.id, toolkit) == "ready":
+            return {"status": "ready", "pack_id": cmp.PREFIX + toolkit, "say": "Yeh app pehle se juda hai."}
+        try:
+            link = cmp.start_link(s, user.id, toolkit)
+        except cmp.ComposioError as e:
+            raise ToolError(str(e))
+    if conversation_id:
+        bus.publish(conversation_id, "bazar_open", {"kind": "app", "url": link["url"], "package": "",
+                                                    "label": f"{link['name']} se jodiye", "pack": link["name"],
+                                                    "message": f"Apne {link['name']} account se sign-in kijiye."})
+    return {"status": "open_link", "pack_id": link["pack_id"], "url": link["url"],
+            "say": f"An Open button is in the chat: she signs in to her own {link['name']} account there (official "
+                   f"{link['name']} page, no Composio account needed). Then {link['name']} is ready."}
+
+
+def composio_tools(tenant_id: str, toolkit: str, query: str = "") -> dict[str, Any]:
+    cmp = _cmp()
+    toolkit = (toolkit or "").strip().lower()
+    if toolkit not in cmp.toolkits():
+        raise ToolError(f"'{toolkit}' Hoola ki app list mein nahi hai.")
+    try:
+        items = cmp.tool_list(toolkit, query=str(query or "")[:120], important=not query, limit=10 if query else 25)
+    except cmp.ComposioError as e:
+        raise ToolError(f"Composio se tools nahi mile: {e}")
+    tools = [cmp.spec_of(t, toolkit) for t in items]
+    for t in tools:
+        if t["tier"] >= 2:
+            t["description"] += " [needs the user's tap on a confirm card]"
+    return {"pack_id": cmp.PREFIX + toolkit, "tools": tools}
+
+
+def composio_remove(tenant_id: str, toolkit: str) -> bool:
+    cmp = _cmp()
+    with session() as s:
+        user = ensure_user(s, tenant_id)
+        return cmp.disconnect(s, user.id, (toolkit or "").strip().lower())
+
+
+def composio_callback(state: str) -> tuple[str, bool]:
+    """Her browser came back from the app's sign-in page: (app name, linked?). Tells her chat when it worked."""
+    cmp = _cmp()
+    with session() as s:
+        try:
+            uid, name, ok = cmp.finish_link(s, state)
+        except cmp.ComposioError as e:
+            raise ToolError(str(e))
+        conv = latest_conversation(s, uid) if ok else ""
+    if conv:
+        notify(conv, f"{name} jud gaya. Ab {name} ke kaam bataiye.")
+    return name, ok
+
+
+def composio_expired(ca: str) -> bool:
+    from . import composio
+    with session() as s:
+        got = composio.on_expired(s, ca)
+        conv = latest_conversation(s, got[0]) if got else ""
+    if got and conv:
+        notify(conv, f"{got[1]} ka sign-in khatam ho gaya. '{got[1]} jodo' boliye, ek baar phir sign-in kar lijiye.")
+    return bool(got)

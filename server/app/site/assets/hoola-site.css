@@ -116,6 +116,6 @@ details.faq[open] summary::after{transform:rotate(45deg)}
   .hm-pre{opacity:1!important}[data-m~=progress]{transform:none}
 }
 @media print{.hs-head,.hs-float,.hs-foot{display:none}}
-/* v0.291 one icon set (Lucide) */
+/* v0.292 one icon set (Lucide) */
 .hs-ic{display:inline-block;width:1.25em;height:1.25em;flex:none;vertical-align:-.22em;stroke-width:2}
 .hs-ai-note{font-size:.85rem;margin:.8em 0 0}

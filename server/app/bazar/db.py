@@ -492,6 +492,15 @@ class PackageCheck(Base):
 
 # ---------------- engine / session (shared with Santosh core) ----------------
 
+class ComposioUsage(Base):
+    """v0.276 Composio tool calls per user per calendar month (IST), for her cap and the whole-app cap."""
+    __tablename__ = "bz_composio_usage"
+    id: Mapped[str] = mapped_column(String(16), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    month: Mapped[str] = mapped_column(String(7), index=True)      # "2026-10"
+    calls: Mapped[int] = mapped_column(Integer, default=0)
+
+
 def init_tables(engine) -> None:
     Base.metadata.create_all(engine)
 

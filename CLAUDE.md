@@ -116,11 +116,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.291.0 (pubspec 0.291.0+331). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.292.0 (pubspec 0.292.0+332). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.291 WEB DESIGN PHASE 1: real pictures before the looks (`site/pictures.py`: Opus shot list -> photogen, her photos first,
+- v0.292 WEB DESIGN PHASE 1: real pictures before the looks (`site/pictures.py`: Opus shot list -> photogen, her photos first,
   Pexels fallback, footer AI note), one Lucide icon set (`<i data-icon>`), fonts 400-700, looks = hero + 2 sections, Opus reviews every page.
+- v0.291 COMPOSIO (built as 0.276): 21 apps (Slack, Notion, Jira, HubSpot, Zoom...) via ONE Newtika Composio project
+  (`bazar/composio.py`, packs cmp-<app>, tool composio_apps); server-made user_id + her sealed account id, writes = card, caps.
 - v0.290 ZOHO FOR HOOLA: each user adds her own Zoho MCP (card `zoho-mcp`, mcp.zoho.in, tools she ticks); an MCP address
   with a key in it is sealed (`bz_custom_mcp.url_enc`, masked `url`); fair native-tool budget + `bazar_mcp action=tools`.
 - v0.289 SAHI KRAM (real voice code review): her late OpenAI transcript joins HER turn (finish waits <=3 s), no reply

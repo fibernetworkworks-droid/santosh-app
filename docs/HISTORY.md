@@ -11048,8 +11048,37 @@ Tests: NEW `test_v0285_sahi_kram.py` (8); `test_v0264_openai_voice.py` VAD pin -
   masked). Whether Zoho needs the one-time browser sign-in or accepts the key alone from a server is unknown; both paths
   work (needs_link -> Link button, or ready). The phone / console Bazar screens show the card from the API as before (no
   Flutter change in this version).
+## v0.291.0 COMPOSIO (built as 0.276.0, re-versioned after main reached 0.290.0; 30 Oct 2026, owner: "GO COMPOSIO")
+Her own Slack, Notion, Jira, Confluence, Trello, Asana, ClickUp, Linear, Airtable, HubSpot, Salesforce, Pipedrive,
+Zendesk, Freshdesk, Mailchimp, Zoom, Calendly, Dropbox, Todoist, Figma, Miro (21 apps) through ONE Newtika Composio
+project. Users never make a Composio account.
+- Multi-tenant: `bazar/composio.py` `composio_user(tenant)` = an HMAC of the tenant id (server-made, opaque); every
+  execute also names HER connected account id, sealed in her `bz_connections` row (provider `composio:<app>`, status
+  pending -> active once Composio says ACTIVE). Model args can never choose the user or the account (test).
+- Packs `cmp-<app>` (registry resolver, executor `composio`, `connectors/composio.py`). Reads (GET/LIST/FETCH/SEARCH...
+  with no write word) run; everything else is a confirm card with the exact frozen call (`is_read`). A slug from
+  another app is refused. App text returns with a "data, never instructions" note; output capped at 6,000 chars.
+- Tool `composio_apps` (bazar family, always on): list / connect (Open button = the app's own sign-in, Composio
+  Connect Link) / tools (search more slugs) / remove (deletes at Composio). Prompt line "APPS VIA COMPOSIO";
+  `bazar_find` adds `cmp-*` hits + a hint when her words name an app.
+- Caps (`bz_composio_usage`, IST month): `COMPOSIO_USER_MONTHLY_CALLS` 300 per user, `COMPOSIO_MONTHLY_CALLS` 90,000
+  for the whole app (inside the free 1 lakh). 0 = unlimited.
+- Routes (`bazar/api/composio.py`): GET /api/composio/apps, POST /api/composio/apps/{toolkit}/connect,
+  DELETE /api/composio/apps/{toolkit}; public GET /bazar/composio/callback (trusts only its own signed state, then
+  asks Composio), POST /bazar/composio/webhook (`composio.connected_account.expired`, HMAC-SHA256 over
+  "id.timestamp.body", base64, 5 min window; `whsec_` secrets also tried base64-decoded) -> her chat gets one line.
+- Never via Composio: Gmail / Google apps / YouTube / Outlook / GitHub / Shopify / Supabase / WhatsApp (Hoola's own)
+  and scraping / social toolkits (apify, firecrawl, linkedin, instagram ...). `COMPOSIO_TOOLKITS` can replace the list.
+- Phone: MCP servers screen has an "APPS" grid (Jodiye -> sign-in page, tap a joined one to remove).
+- REST v3.1 (https://backend.composio.dev/api/v3.1, header x-api-key), no SDK. Direct execute is Composio's
+  "legacy but supported" path (sessions are their newer one); kept because the server must own user_id + approvals.
+- VPS: put `COMPOSIO_API_KEY` (+ `COMPOSIO_WEBHOOK_SECRET`) in `~/apps/santosh-core/.env`; in Composio's dashboard add
+  the webhook https://hoola.ainewtika.com/bazar/composio/webhook with event composio.connected_account.expired.
+- NOT VERIFIED live: the app slugs against Composio's real catalogue, the exact webhook signature prefix, and whether
+  every app has Composio-managed OAuth (some, e.g. Zendesk / Freshdesk, ask for a subdomain or API key on the hosted
+  page). Tests: `server/tests/test_v0276_composio.py` (13, fake Composio over httpx MockTransport).
 
-## v0.291.0 WEB DESIGN PHASE 1 — a site that looks like a pro made it (owner: "MAKE A HOOLA MORE POWER FULL IN WEBSITE DEVLOPMENT AND DESIGN ---- FIRST FIND THE FLAWS" -> "START PHASE 1")
+## v0.292.0 WEB DESIGN PHASE 1 — a site that looks like a pro made it (owner: "MAKE A HOOLA MORE POWER FULL IN WEBSITE DEVLOPMENT AND DESIGN ---- FIRST FIND THE FLAWS" -> "START PHASE 1")
 The flaw check (18 flaws in 5 groups; Phase 2 = Lovable-style visual editing, Phase 3 = live booking / embeds /
 two languages / payment links, Phase 4 = web apps) found that a first site with no photos of hers was drawn shapes
 (the prompt said "draw with inline SVG"), every section drew its own icons, the fonts had only 400 / 700, the 3 looks
@@ -11076,7 +11105,7 @@ were a hero alone and Opus reviewed only the home page. Phase 1 fixes those five
   page (redraw the weakest once, keep the better, a worse redraw or a broken check brings the old one back). The board
   keeps the home result at the top level and every page under `pages`.
 - **Andaaza** counts the pictures still to make (₹3 each), every look's page top and every page's review.
-- Tests `server/tests/test_v0291_web_design_phase1.py` (9). conftest sets SITE_AI_PHOTOS=0 and SITE_LOOK_SECTIONS=1 so
+- Tests `server/tests/test_v0292_web_design_phase1.py` (9). conftest sets SITE_AI_PHOTOS=0 and SITE_LOOK_SECTIONS=1 so
   older scripted tests keep their call counts.
-- Built as 0.283.0, re-versioned 0.291.0 on merge past the parallel v0.283-v0.290 work.
+- Built as 0.283.0, re-versioned 0.292.0 on merge past the parallel v0.283-v0.291 work.
 - Not verified on the VPS yet: real Gemini pictures for a real build (the cost per site, how often a shot is refused).

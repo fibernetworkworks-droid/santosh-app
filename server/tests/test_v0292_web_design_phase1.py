@@ -1,4 +1,4 @@
-"""v0.291 WEB DESIGN PHASE 1, a site that looks like a pro made it: real pictures before the looks (her photos first,
+"""v0.292 WEB DESIGN PHASE 1, a site that looks like a pro made it: real pictures before the looks (her photos first,
 AI fills the gap, licensed stock as the fallback, the footer says AI pictures are AI), ONE icon set (Lucide) put in by
 Hoola instead of icons the model draws, the fonts in 400 / 500 / 600 / 700, three looks that show the page top (hero +
 the next sections) and are kept when chosen, and Opus reviewing every page, not only the home page."""
@@ -226,5 +226,5 @@ def test_critique_reviews_every_page(site_env, monkeypatch, tmp_path):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.291.0"
-    assert "0.291.0+331" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.292.0"
+    assert "0.292.0+332" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
