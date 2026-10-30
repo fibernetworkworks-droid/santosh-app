@@ -1029,10 +1029,6 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 
 /* A single assistant activity row in the transcript, never part of the input dock. */
 #app .simple-progress{width:100%;margin:0;padding:4px 0;display:flex;align-items:center;gap:11px;min-height:42px;color:var(--mut);font-size:14px;font-weight:600;animation:progress-enter .22s ease-out}
-#app .progress-avatar{width:30px;height:30px;overflow:visible;isolation:isolate;position:relative}
-#app .progress-avatar img{border-radius:50%;overflow:hidden;position:relative;z-index:1}
-#app .progress-avatar:before{content:'';position:absolute;inset:-3px;border-radius:50%;background:conic-gradient(from 0deg,transparent 15%,rgb(var(--acc-rgb) / .7),var(--saffron),transparent 80%);animation:progress-orbit 3s linear infinite;z-index:-1}
-#app .progress-avatar:after{content:'';position:absolute;inset:-1px;border-radius:50%;background:var(--bg1);z-index:0}
 #app .progress-label{line-height:1.6;color:var(--lit)}
 #app .progress-dots{display:inline-flex;align-items:center;gap:4px;margin-left:2px}
 #app .progress-dots i{width:4px;height:4px;border-radius:50%;background:var(--saffron);animation:progress-dot 1.4s ease-in-out infinite}
@@ -1044,7 +1040,7 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 @keyframes progress-orbit{to{transform:rotate(360deg)}}
 @keyframes progress-dot{0%,70%,100%{opacity:.3;transform:translateY(0)}35%{opacity:1;transform:translateY(-3px)}}
 @keyframes progress-enter{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-@media(prefers-reduced-motion:reduce){#app .simple-progress,#app .progress-avatar:before,#app .progress-dots i{animation:none}#app .progress-dots i{opacity:.7}}
+@media(prefers-reduced-motion:reduce){#app .simple-progress,#app .progress-dots i{animation:none}#app .progress-dots i{opacity:.7}}
 
 /* ================================================================================================
    v0.222 R2: new sidebar + home (approved canvas "Hoola Console Redesign", Main board). Brand tokens unchanged.
@@ -1194,7 +1190,6 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 #app .mu{background:linear-gradient(135deg,rgb(var(--acc-rgb) / .34),rgba(192,85,245,.2));border:1px solid rgb(var(--acc-rgb) / .22);border-radius:20px 20px 6px 20px;max-width:min(78%,600px)}
 #app .mu .mut{font-family:var(--fb);font-size:16px;line-height:1.5}
 #app .mh{gap:14px}
-#app .mh>.av{width:30px;height:30px;margin-top:0;box-shadow:0 0 0 2px rgb(var(--acc-rgb) / .45)}
 #app .mh .bd{flex:1;gap:12px}
 #app .mh .txt{font-family:var(--fr);font-size:16px;font-weight:400;line-height:1.5;color:var(--chat-ink)}
 #app .racts{gap:2px}
@@ -1219,9 +1214,6 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
    the reply's face sits and 30 + the 14px gap = the 44px the message row uses for that space. The glow ring
    is drawn OUTSIDE the box by :before{inset:-2px}, so the circle still reads 34px wide - only the slot it
    occupies changed. Set once, at the base rule above. */
-#app .progress-avatar:before{inset:-2px;background:conic-gradient(#FFD9A8,#FF9A3C,#C055F5,#7C5CFF,#FFD9A8);animation-duration:2.4s}
-#app .progress-avatar:after{inset:0;border:2px solid var(--bg1)}
-#app .progress-avatar img{width:30px;height:30px;margin:0}   /* v0.296: the 2px inset went with the 34px box */
 #app .progress-label{font-size:14px;color:var(--soft);font-weight:600}
 /* dock composer */
 #app .dock .box{border-radius:22px;padding:12px 12px 10px;background:rgb(var(--surf-rgb) / .9);box-shadow:0 18px 44px rgb(var(--sh-rgb) / calc(.5 * var(--sh-k)))}
@@ -1388,8 +1380,6 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 }
 
 /* v0.227.3 one Hoola at a time: the progress row under Hoola's own reply drops its avatar and lines up with the reply text */
-#app .simple-progress.tail{gap:14px}
-#app .simple-progress.tail .progress-avatar{visibility:hidden;width:30px;height:20px}
 #app .simple-progress[hidden]{display:none}
 
 /* v0.234 one Hoola at a time: a reply row with nothing in it yet (the turn opened, no words / steps) stays hidden,
@@ -1560,15 +1550,12 @@ a{color:var(--pri-ink)}
 #app .mu .utbar .ua{color:var(--dim)}
 #app .mh .bd{background:none;border:0;box-shadow:none;padding:2px 0 0;border-radius:0;backdrop-filter:none;-webkit-backdrop-filter:none}
 #app .mh .txt{color:var(--chat-ink)}
-#app .mh>.av{box-shadow:0 0 0 2px var(--bg),0 0 0 3.5px var(--mag)}
 #app .ra{color:var(--dim)}
 #app .ra:hover{background:var(--glass2);color:var(--ink)}
 #app .tools{border-radius:12px;box-shadow:none;background:var(--raise);border:1px solid var(--line)}
 #app .tools summary{font-weight:600}
 #app .ts .ic{background:var(--ok-soft)}
 #app .ts{animation:cpop .3s var(--ease)}
-#app .progress-avatar:before{background:var(--ring)}
-#app .progress-avatar:after{border-color:var(--bg)}
 #app .progress-label{color:var(--mut);background:linear-gradient(90deg,var(--dim) 0 35%,var(--ink) 50%,var(--dim) 65% 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:cshim 1.8s linear infinite}
 #app .caret{background:var(--pri)}
 #app .cd{border-radius:16px}
@@ -1729,7 +1716,10 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
    hangs just outside the left edge (the words start where the composer starts); on narrow screens it stays inline.
    ================================================================================================ */
 #app .thread{container-type:inline-size;container-name:thread}
-#app .col{width:min(880px,calc(100% - 20px));max-width:none;margin-inline:auto;padding-left:0;padding-right:0}
+/* v0.298 (owner: "PANEL WHERE CHAT LANDS ... IS EXCEEDING THE SIZE LENGHT OF CHAT BOX MAKE IT SLIGH INSIDE"):
+   the composer dock is min(880px,100%); the chat column is now 16px inside it on each side, so the words and
+   her bubble sit just within the box she types in instead of running past its left edge. */
+#app .col{width:min(848px,calc(100% - 20px));max-width:none;margin-inline:auto;padding-left:0;padding-right:0}
 /* v0.278 PURA SAANS: the space between one turn and the next. Measured ink to ink, Claude leaves 60px between
    her message and the first line of the reply; ours was 39px, so a new turn did not read as a new turn. */
 #app .col{gap:44px}
@@ -1740,15 +1730,9 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 #app .mh .txt>p,#app .mh .txt>ul,#app .mh .txt>ol,#app .mh .txt>.mdh,#app .mh .txt>blockquote{max-width:680px}
 #app .mu{max-width:min(78%,640px)}
 #app .mh .cd,#app .mh .appr{max-width:100%}
-@container thread (min-width: 980px){
-  #app .mh{margin-left:-44px;width:calc(100% + 44px);max-width:none}
-  /* v0.296: the working row has to be pulled with it. v0.252 hangs the avatar OUTSIDE the column so the reply's
-     words start at the column edge; the progress row was left behind, so "Working on it..." began exactly 44px
-     to the right of the sentence above it (measured, not guessed). Same pull, same slot: 30px avatar + 14px gap
-     = the 44px the message row uses, so the label lands on the reply's own left edge and the working avatar sits
-     exactly where the reply avatar sits. */
-  #app .simple-progress{margin-left:-44px;width:calc(100% + 44px)}
-}
+/* v0.298: the 44px overhang is GONE with the avatar. It existed only so the face could hang outside the column
+   while the words still started at the composer's left edge; with no face there is nothing to hang, and the pull
+   was also what made the reply row 44px WIDER than the box she types in. Rows now sit inside the column. */
 
 /* ================================================================================================
    v0.254 CLAUDE-STYLE INTERFACE TYPE (owner: "ENTIRE WEB CONSOLE SIDE FONT AND ITS SIZE ... SAME AS CLAUDE"): one sans for
@@ -1838,10 +1822,9 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 /* spinning rings repaint their colours (an animated angle) instead of rotating the element: a running transform animation
    gives the element its own layer, and Chrome then puts its neighbours (the composer, the sidebar) on layers too */
 #app .halo .ring{background:conic-gradient(from var(--a),var(--saf),#F27A52,var(--mag),var(--vio),var(--saf));animation:cspin 8s linear infinite;transform:none}
-#app .progress-avatar:before{background:conic-gradient(from var(--a),var(--saf),#F27A52,var(--mag),var(--vio),var(--saf));animation:cspin 2.4s linear infinite;transform:none}
 .spin{border:0;background:conic-gradient(from var(--a),var(--pri) 0 28%,rgb(var(--fg-rgb) / .16) 28% 100%);
   -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2px));mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2px));animation:cspin 1s linear infinite}
-:root.calm #app .halo .ring,:root.calm #app .progress-avatar:before{animation:none}
+:root.calm #app .halo .ring{animation:none}
 /* a scrolling or overlapping layer keeps ClearType only when its background is solid: the composer strip and the main column
    get the page colour (they were transparent over the same colour, so nothing changes to the eye) */
 #app .dock,#app .main,#app .view{background:var(--bg)}

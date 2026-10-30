@@ -129,7 +129,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.297.0 (pubspec 0.297.0+337). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.298.0 (pubspec 0.298.0+338). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.297 COMPOSIO KEY APPS: API-key / bearer / basic apps = "Key daaliye" (her key typed in the app, POST /connected_accounts
@@ -146,6 +146,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   with a key in it is sealed (`bz_custom_mcp.url_enc`, masked `url`); fair native-tool budget + `bazar_mcp action=tools`.
 - v0.289 SAHI KRAM (real voice code review): her late OpenAI transcript joins HER turn (finish waits <=3 s), no reply
   while she speaks, late words never wipe captions, early self-cuts counted, semantic VAD medium. Gemini untouched.
+- v0.298 KHULI JAGAH: (1)+(3) were ONE problem - v0.252's -44px pull existed only to hang the AVATAR outside
+  the column, which is why the reply row ran 924px against the composer's 880 and stuck out 44px. Avatar is
+  no longer DRAWN (not CSS-hidden), overhang gone, column 880->848 so the chat sits 16px INSIDE the typing
+  box both sides. Reverses v0.252's flush edge on her ask. (2) LOADER ROOT CAUSE: seg() hides the progress
+  row when words start streaming but NOTHING un-hid it - only the next progress event did, so a long tool
+  ran with a dead screen. placeProgress() now re-shows it the moment a block finishes while the turn lives.
+  Four older suites pinned the reversed decisions and were rewritten to the new truth, not deleted.
 - v0.296 EK HI KINARA: the working row now starts on the reply's own left edge. Measured, and it was THREE
   misalignments: the label 44px right of the sentence above it, the working avatar 46px right of the reply
   avatar, the row alone 48px. Cause = v0.252 pulls `.mh` margin-left:-44px (avatar outside the column) and

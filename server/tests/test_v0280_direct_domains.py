@@ -230,5 +230,5 @@ def test_saas_still_wins_and_nothing_without_a_route(host_env):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.297.0"
-    assert "0.297.0+337" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.298.0"
+    assert "0.298.0+338" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

@@ -18,16 +18,18 @@ def test_ack_is_the_progress_line_not_a_reply():
 
 
 def test_progress_row_never_shows_a_second_avatar():
+    """v0.298 settled this differently: the owner asked for the avatar to go from the chat entirely, so there is
+    no second face to avoid and no `tail` class to toggle. What still matters from v0.227 is the OTHER half of the
+    rule - the progress row hides while the words stream, so there is only ever one thing saying "busy"."""
     js = _read("v2.js")
-    assert "SIMPLE_PROGRESS.classList.toggle('tail'," in js
     assert "if (SIMPLE_PROGRESS) SIMPLE_PROGRESS.hidden = true;" in js
     css = _read("v2.css")
-    assert "#app .simple-progress.tail .progress-avatar{visibility:hidden" in css
+    assert "progress-avatar" not in css and "#app .mh>.av" not in css      # gone, not merely hidden
     assert "#app .simple-progress[hidden]{display:none}" in css
     assert css.count("{") == css.count("}")
 
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.297.0"
-    assert "0.297.0+337" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.298.0"
+    assert "0.298.0+338" in (ROOT / "pubspec.yaml").read_text()
