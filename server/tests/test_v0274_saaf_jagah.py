@@ -77,12 +77,13 @@ def test_the_type_itself_is_untouched():
 
 
 def test_the_reading_width_was_deliberately_left_alone():
-    """v0.252 made the column match the composer. 880px is wider than Claude's ~674px, but changing it is the
-    owner's call - this test exists so the next session knows it was a decision, not an oversight."""
+    """v0.252 made the column match the composer. v0.274 left 880px alone and put the choice to the owner; she
+    said "GO WIDTH", so v0.276 capped the PROSE at 680px while this column stays 880 and keeps the composer's
+    left edge. Both are true at once - see test_v0276_padhne_ki_chaudai.py."""
     assert "#app .col{max-width:880px" in _css() or "max-width:880px" in _css()
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.275.0"
-    assert "0.275.0+315" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.276.0"
+    assert "0.276.0+316" in (ROOT / "pubspec.yaml").read_text()

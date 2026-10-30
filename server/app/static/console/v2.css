@@ -1725,6 +1725,11 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
    ================================================================================================ */
 #app .thread{container-type:inline-size;container-name:thread}
 #app .col{width:min(880px,calc(100% - 20px));max-width:none;margin-inline:auto;padding-left:0;padding-right:0}
+/* v0.276 PADHNE KI CHAUDAI: the column stays 880px so the words still start at the composer's left edge (v0.252),
+   but the PROSE wraps at 680px. Measured with Literata 16px: one character is 7.45px, so 880px ran 118 characters
+   a line where Claude's own text measures 674px = 90. A table, a code block or a card still takes the full width -
+   those are read by scanning, not by the line. */
+#app .mh .txt>p,#app .mh .txt>ul,#app .mh .txt>ol,#app .mh .txt>.mdh,#app .mh .txt>blockquote{max-width:680px}
 #app .mu{max-width:min(78%,640px)}
 #app .mh .cd,#app .mh .appr{max-width:100%}
 @container thread (min-width: 980px){
