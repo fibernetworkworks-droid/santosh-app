@@ -116,11 +116,24 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.282.0 (pubspec 0.282.0+322). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.284.0 (pubspec 0.284.0+324). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (15 now: theme.js, pdfview.js, studio.js, attach.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - CHECKPOINT 30 Oct: FULL CLAUDE MODE (v0.239-v0.250) owner-verified "PERFECT"; memory quiz 16/20 -> 20/20; branch
   `checkpoint-full-claude-mode-2026-10-30` = 87a2046 (grep "CHECKPOINT 30 Oct" docs/HISTORY.md).
+- v0.284 CLAUDE JAISA PARAGRAPH: her "still not proper" was right and v0.274-v0.281 had measured the wrong
+  LAYER - every CSS number matched; the faults were in the RENDERER, invisible because every probe page wrote a
+  paragraph as ONE source line. (1) a single newline became a <br>, so the model's own wrap froze into the page
+  as a short ragged line with no gap, beside real paragraphs with 16px - it is a SOFT break (join with a space,
+  reflow), only two trailing spaces / a backslash is a real break; lists, quotes and the phone (which joined
+  with '\n') too. (2) # maps to h3 and h3 was pinned 17px under h4/h5's 20px - the title was SMALLER than its
+  sections; now 22/20/17 like the phone. (3) the chrome rule #app h1,h2,h3 outranked .textmd .mdh, so # came
+  out sans while ##/### stayed serif. RULE: a layout probe must use the text the MODEL emits, wraps and all.
+- v0.283 DHEERE UTRE: the reply LANDS at reading speed. Measured through Hoola's own pacer - a 300-word answer
+  ran at 244 words a second because the catch-up term was uncapped (longer answer = faster dump); now 20 ms a
+  word, catch-up only above 80 waiting words and capped at 2 = 60-79 w/s at EVERY length (Claude is 40-80).
+  Phone `_Reveal` had the mirror bug: a 1600 ms clamp ceiling overrode a sane 28 ms/word -> 14 ms, 5 s ceiling.
+  Server untouched (it was already right); hidden tab / flush / reset still instant.
 - v0.282 ATTACHMENTS ON THE PHONE: `lib/ui/chat_attach.dart` - the same tiles as the console (tray with upload bar + Dobara, above her
   bubble, one photo large), full-screen viewer (swipe, pinch, full photo, video / audio player); docs open in the phone's app.
 - v0.281 bullet gutter 22->30px (console). Her "not exactly as Claude" report was checked against the LIVE

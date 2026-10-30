@@ -22,7 +22,9 @@ void main() {
     expect(b.map((x) => x.kind).toList(),
         ['h', 'p', 'li', 'li', 'li', 'ol', 'ol', 'code', 'quote', 'table', 'hr', 'p']);
     expect(b[0].text, 'Aaj ka plan');
-    expect(b[1].text, 'Pehle yeh.\nPhir woh.');
+    // v0.284: a single newline inside a paragraph is a SOFT break - the two lines are now one paragraph
+    // joined by a space, so the words reflow to the screen instead of keeping the model's own wrap.
+    expect(b[1].text, 'Pehle yeh. Phir woh.');
     expect(b[4].level, 1);
     expect(b[6].marker, '2');
     expect(b[7].text, 'print(1);');
@@ -84,5 +86,22 @@ void main() {
     ));
     expect(find.textContaining('**'), findsNothing);
     expect(find.byKey(const Key('caret')), findsOneWidget);
+  });
+
+  // v0.284 CLAUDE JAISA PARAGRAPH: the soft / hard break rule, the one thing that made a reply read as ragged
+  // short lines with uneven gaps. A single newline joins with a space; only two trailing spaces or a backslash
+  // keep a real break. Same rule in the console's md.js.
+  test('a soft newline joins with a space, a hard break stays a break', () {
+    expect(mdBlocks('The live site is on v0.256.0 and everything\nmeasurable already matched.')[0].text,
+        'The live site is on v0.256.0 and everything measurable already matched.');
+    expect(mdBlocks('Kya hua: 20 mails mile.\nAb kya: reply draft kar raha hoon.').length, 1);
+    expect(mdBlocks('Pehli line.  \nDoosri line.')[0].text, 'Pehli line.\nDoosri line.');
+    expect(mdBlocks('Pehli line.\\\nDoosri line.')[0].text, 'Pehli line.\nDoosri line.');
+    // a blank line still starts a new paragraph, and a quote reflows the same way
+    final two = mdBlocks('Ek.\n\nDo.');
+    expect(two.length, 2);
+    expect(two.map((b) => b.text).toList(), ['Ek.', 'Do.']);
+    expect(mdBlocks('> a quoted line that the model\n> wrapped as it wrote')[0].text,
+        'a quoted line that the model wrapped as it wrote');
   });
 }

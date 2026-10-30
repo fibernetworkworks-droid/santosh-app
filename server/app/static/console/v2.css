@@ -313,7 +313,13 @@ mark{background:rgb(var(--acc-rgb) / .32);color:var(--ink);border-radius:3px;pad
 /* a heading belongs to the text UNDER it: plenty of air above, little below */
 .textmd .mdh{font-family:var(--fr);font-size:20px;font-weight:600;line-height:1.3;margin:24px 0 8px}
 .textmd .mdh:first-child{margin-top:0}
-.textmd h3.mdh{font-size:17px}
+/* v0.284: md.js maps # -> h3, ## -> h4, ### -> h5, so h3 is the BIGGEST heading a reply can have. It was pinned
+   at 17px while h4 and h5 kept the 20px default, which put the hierarchy upside down - a reply's own title came
+   out smaller than the sections under it. 22 / 20 / 17 at weight 600, the same three sizes the phone already uses
+   (md_text.dart sizes by level), so a heading reads the same on both surfaces. */
+.textmd h3.mdh{font-size:22px}
+.textmd h4.mdh{font-size:20px}
+.textmd h5.mdh,.textmd h6.mdh{font-size:17px}
 .textmd a{text-decoration:underline}
 /* v0.281: the bullet gutter. Measured off her Claude screenshots, the list text sits ~30px in from the
    paragraph's left edge; ours was 22px, so a bullet list did not step in far enough to read as one. */
@@ -1753,6 +1759,11 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
    read (Cloudflare blocks automated browsers), so these are matched by eye, not measured.
    ================================================================================================ */
 #app h1,#app h2,#app h3,#app .vh h2,#app .nm2,#app .lhd h3,#app .pnbar h3{font-family:var(--fb);letter-spacing:-.01em}
+/* v0.284: that rule is for the console CHROME, but it also caught the chat. md.js maps # -> h3, so a reply's own
+   top heading came out in the interface sans with tightened tracking while ## and ### (h4 / h5) stayed in the
+   serif - two typefaces inside one reply. v0.249 settled that the reply, headings included, is the serif. This
+   wins on specificity (1,2,0 over 1,0,1) and touches nothing outside a rendered message. */
+#app .textmd .mdh{font-family:var(--fr);letter-spacing:normal}
 #app .vh h2{font-size:22px;font-weight:600}
 #app .mk,#app .mk span{font-family:var(--logo)}
 /* chat header */

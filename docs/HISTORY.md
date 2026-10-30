@@ -10743,3 +10743,97 @@ Now (`lib/ui/chat_attach.dart`, used by chat_screen.dart):
   with play / pause, scrub bar and time. PDF / Word / Excel / other files open in the phone's own app (signed link, as
   before) - an in-app PDF reader is not built on the phone.
 Server unchanged. Not verified on a device in the sandbox (no Flutter here): CI analyze + the APK are the check.
+
+## v0.283.0 DHEERE UTRE — the reply lands at reading speed, not in a flash
+Owner: *"ALSO A RESULT SPEED :: CURRENTLY HOOLA SHOW RESULT INSTANTLY IN FLASH IT MUST LAND SMOTLY LIKE CLAUDE"*.
+
+### What was measured
+Not guessed — Hoola's own pacer (`server/app/static/console/stream.js`, `HoolaStream.Pacer`) was driven in a real
+browser with Playwright at four lengths, before and after the change:
+
+| case | before (10 ms, `/25`) | after (20 ms, `/80` capped 2) | Claude |
+|---|---|---|---|
+| 300 words, delivered in one piece | 244 w/s (1.2 s) | 79 w/s (3.8 s) | ~40–80 w/s |
+| 300 words, properly streamed | 165 w/s | 72 w/s | |
+| 80 words | 105 w/s | 60 w/s | |
+| 30 words | 67 w/s (0.5 s) | 60 w/s (0.5 s) | |
+
+### The cause
+The pacer released `(elapsed / 10) + (queue.length / 25)` words a frame. The second term was **uncapped**, so the
+bigger the backlog the faster it drained — the longer the answer, the more it dumped. That is the opposite of what a
+pace is for. Now:
+
+```js
+const n = Math.max(1, Math.floor((now - this.t) / 20) + Math.min(2, Math.floor(this.queue.length / 80)));
+```
+
+20 ms a word, and the catch-up only once more than 80 words are waiting, capped at 2 extra a frame. The result is
+inside Claude's band at **every** length — the pace no longer depends on how long the answer is.
+
+### The phone had the same bug from the other side
+`lib/ui/chat_screen.dart` `_Reveal` used `(_words.length * 28).clamp(250, 1600)`. 28 ms a word is a sane pace, but
+the **1600 ms ceiling** overrode it, so anything past ~57 words landed in 1.6 s (a 300-word reply = 188 w/s). Now
+`(_words.length * 14).clamp(250, 5000)` — ~70 w/s at every length, matching the console.
+
+### Left alone on purpose
+- **The server.** `api.stream` → `livereply.feed()` was re-checked and is correct: batched every 50 ms (`FLUSH_S`),
+  `TAIL=24`. The browser was emptying the queue too fast, not the server filling it too fast.
+- **The three instant paths.** A hidden tab, `flush()` at the reply's end and `reset()` still show everything at
+  once. Pacing is for live words only; a reloaded or backgrounded conversation must never animate.
+
+### Files
+`server/app/static/console/stream.js` · `lib/ui/chat_screen.dart` · `server/tests/test_v0282_dheere_utre.py` (4 tests).
+
+### A process note worth recording
+The first attempt at this version was lost: the commit silently failed and a following `git reset --hard origin/main`
+wiped the uncommitted work. The rule learned: **check `git log -1` shows your commit before running any reset.**
+
+## v0.284.0 CLAUDE JAISA PARAGRAPH — the three faults no CSS measurement could see
+Owner: *"STILL PARAGRAP, WORD SETUP AND GAP AT PROPER INTERVAL IN NOT PROPER --- CHECK HOW CLUDE CHAT DO THIS
+PROPERLY --- PERFECT PARAGRAP, WORDING, GAP, SPACING ETC --- CLONE SAME AS IT IS FOR HOOLA"*.
+
+### Why four earlier versions "matched" and the reply still read wrong
+v0.274, v0.276, v0.278 and v0.281 each measured a NUMBER against her Claude screenshots and matched it: 16px
+between paragraphs, 24 above a heading and 8 below, 680px of prose, a 61px turn gap, a 30px bullet gutter. All of
+that was true and all of it is still true. The faults that remained were in the **renderer**, and every probe page
+those versions used wrote each paragraph as a **single source line** — so the bug never fired in the rig.
+
+**The lesson, written down:** a layout probe must use the text the model actually emits, wraps and all, or it
+measures a page the user never sees.
+
+### Fault 1 — the soft break (this one is both halves of her report)
+`md.js` built one `<p>` per source line and then glued them together with `.replace(/<\/p><p>/g, '<br>')`.
+
+CommonMark — which Claude's chat follows — calls a single newline inside a paragraph a **soft break**: the lines
+join with a **space** and the paragraph reflows to the column. Hoola instead froze the model's own line wrapping
+into the page. The result, verified by running her own `md.js`:
+
+    <p>...the checkpoint branch is created. Everything<br>measurable already matched...</p>
+
+Short ragged lines that stop mid-sentence wherever the model happened to wrap, with **no gap** under them, sitting
+directly beside real paragraphs that had 16px. That is "word setup" and "gap at proper interval" in one defect.
+
+Now: a single newline joins with a space; only an explicit hard break (two trailing spaces, or a backslash) stays a
+`<br>`. A wrapped **list item** and a wrapped **quote** join the same way. The **phone** had the identical bug from
+a different direction — `md_text.dart` joined paragraph and quote lines with `'\n'`, which Flutter renders as a
+real break — fixed with a shared `_soft()` helper following the same rule.
+
+### Fault 2 — the heading hierarchy was upside down
+`md.js` maps `#` to `h3`, `##` to `h4`, `###` to `h5`. `.textmd h3.mdh` was pinned at **17px** while `h4` and `h5`
+kept the 20px default, so a reply's own title rendered **smaller than the sections under it**. Now 22 / 20 / 17 at
+weight 600 — the same three sizes the phone already used, so a heading reads the same on both surfaces.
+
+### Fault 3 — two typefaces inside one reply
+`#app h1,#app h2,#app h3{font-family:var(--fb)}` (console **chrome**) outranks `.textmd .mdh` on specificity
+(1,0,1 beats 0,2,0). So the `#` heading came out in the interface **sans** with tightened tracking while `##` and
+`###` stayed in the **serif**. v0.249 settled that the reply, headings included, is the serif. Corrected with
+`#app .textmd .mdh`, which wins at 1,2,0 and touches nothing outside a rendered message.
+
+### Measured after, in a real browser
+`0` `<br>` in a wrapped reply · paragraphs reflowing to 625-658px of the 680px column · every heading Literata 600
+at normal tracking, 22 / 20 / 17 · block gaps 16 (p to p) / 24 (above a heading) / 8 (below one).
+
+### Files
+`server/app/static/console/md.js` · `server/app/static/console/v2.css` · `lib/ui/md_text.dart` ·
+`server/tests/test_v0284_claude_jaisa_paragraph.py` (7 tests) · `test/md_text_test.dart` (the old test asserted the
+`\n` join — it had locked the bug in; updated and extended).

@@ -32,6 +32,23 @@ class MdBlock {
   final List<List<String>> rows;
 }
 
+final _hardBreak = RegExp(r'(\s{2,}|\\)$');
+
+/// v0.284: the lines of one paragraph (or quote) joined the way CommonMark says and Claude's chat does - a single
+/// newline is a SOFT break, so the lines join with a SPACE and the words reflow to the screen's width. They used to
+/// be joined with '\n', which Flutter renders as a real line break, so wherever the model happened to wrap its own
+/// output that break froze into the reply: short ragged lines with no gap between them, sitting right beside real
+/// paragraphs that had 16px. Only an explicit hard break - two spaces or a backslash ending the line - stays a break.
+String _soft(List<String> lines) {
+  final b = StringBuffer();
+  for (var i = 0; i < lines.length; i++) {
+    final hard = _hardBreak.hasMatch(lines[i]);
+    b.write(lines[i].replaceFirst(_hardBreak, ''));
+    if (i < lines.length - 1) b.write(hard ? '\n' : ' ');
+  }
+  return b.toString();
+}
+
 List<String> _cells(String line) {
   var t = line.trim();
   if (t.startsWith('|')) t = t.substring(1);
@@ -46,7 +63,7 @@ List<MdBlock> mdBlocks(String src, {bool streaming = false}) {
   final para = <String>[];
   void flushPara() {
     if (para.isNotEmpty) {
-      out.add(MdBlock('p', para.join('\n')));
+      out.add(MdBlock('p', _soft(para)));
       para.clear();
     }
   }
@@ -128,7 +145,7 @@ List<MdBlock> mdBlocks(String src, {bool streaming = false}) {
         q.add(lines[j].trimLeft().replaceFirst(RegExp(r'^>\s?'), ''));
         j++;
       }
-      out.add(MdBlock('quote', q.join('\n')));
+      out.add(MdBlock('quote', _soft(q)));
       i = j;
       continue;
     }
