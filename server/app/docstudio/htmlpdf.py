@@ -1,4 +1,4 @@
-"""v0.305.0 HOOLA PRINT - PDFs made the way Claude makes them: a designed HTML page printed by Chromium.
+"""v0.307.0 HOOLA PRINT - PDFs made the way Claude makes them: a designed HTML page printed by Chromium.
 
 The owner sent three PDFs Claude made (a business plan, a 46-page delivery plan, a research thesis) and asked for the
 same. Their metadata settled the method: all three are HTML + CSS printed by Chrome (Skia/PDF, Liberation / Arial
@@ -38,7 +38,7 @@ from . import designs
 
 log = logging.getLogger("santosh.docstudio.print")
 
-ENGINE_VERSION = "v0.305.0"
+ENGINE_VERSION = "v0.307.0"
 FONT_DIR = Path(__file__).resolve().parent.parent / "fonts"
 PRINT_FONTS = FONT_DIR / "print"
 STATS = {"printed": 0, "fallback": 0, "art_opus": 0, "art_router": 0, "review": 0, "review_changed": 0,
@@ -462,7 +462,7 @@ def _stack(fam: str) -> str:
 
 
 GUTTER = 10.0   # mm inside the 8 mm page margin = text 18 mm from the paper; the numbers hang in this strip
-GRID = {   # v0.305.0 THE PAGE SYSTEM - every measure below comes from these (measured audit: 8 text edges -> 2)
+GRID = {   # v0.307.0 THE PAGE SYSTEM - every measure below comes from these (measured audit: 8 text edges -> 2)
     "inset": 5.0,       # mm: the ONE indent - text inside any box (note, key number, code, quote, filled table) and lists
     "hang": 3.0,        # mm: gap between a hanging heading number (in the margin) and the heading text
     "scale": (1.125, 1.35, 1.8),   # h3, h2, h1 as multiples of the body size (one ratio ladder, nothing in between)
@@ -476,7 +476,7 @@ def line_mm(spec: dict[str, Any]) -> float:
 
 
 def _css(spec: dict[str, Any], P: dict[str, str]) -> str:
-    """The inside pages as ONE system (v0.305.0, from a measured audit of the printed layout):
+    """The inside pages as ONE system (v0.307.0, from a measured audit of the printed layout):
     - two left edges only: the text edge (0) and the inset (GRID inset) - paragraphs, headings, plain tables and the
       contents titles start on the text edge; text inside every box and every list starts on the inset; heading and
       contents numbers hang in the margin so they never push the words right;
@@ -582,7 +582,7 @@ justify-content:space-between;align-items:flex-end;gap:8mm}}
 
 def _cover_css(spec: dict[str, Any], P: dict[str, str]) -> str:
     head, _body = TYPES.get(spec["type"], TYPES["sans"])
-    EDGE = GUTTER + 8      # v0.305.0 the cover's text edge = the inside pages' text edge (18 mm from the paper)
+    EDGE = GUTTER + 8      # v0.307.0 the cover's text edge = the inside pages' text edge (18 mm from the paper)
     return f"""
 @page{{size:A4;margin:0}}
 body{{padding:0}}          /* the inside pages' gutter must never reach the full-bleed cover */
@@ -859,7 +859,7 @@ class Printer:
         if full_bleed:
             kw["margin"] = {"top": "0", "bottom": "0", "left": "0", "right": "0"}
         else:
-            # v0.305.0 the page margin is 8 mm and the text column is padded 10 mm inside it (GUTTER): the words still
+            # v0.307.0 the page margin is 8 mm and the text column is padded 10 mm inside it (GUTTER): the words still
             # start 18 mm from the paper edge, and the hanging section numbers live in that 10 mm strip - Chromium
             # clips anything printed in the true page margin, which is where they vanished.
             kw["margin"] = {"top": "22mm", "bottom": "20mm", "left": "8mm", "right": "8mm"}
