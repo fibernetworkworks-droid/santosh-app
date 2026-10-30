@@ -1,4 +1,4 @@
-"""v0.302 WEB DESIGN PHASE 4, web apps like Lovable's backend: Opus designs the lists / fields / rules from her words
+"""v0.303 WEB DESIGN PHASE 4, web apps like Lovable's backend: Opus designs the lists / fields / rules from her words
 (cleaned to a fixed vocabulary), the site gets My account + a staff panel, members sign up / log in (PBKDF2, signed
 tokens, revoked on a role change), every rule is enforced by the server (own rows, staff-only fields, roles), the owner
 sees and edits everything from her console, and the version exports as a React + Vite project."""
@@ -168,5 +168,5 @@ def test_tool_and_version():
     assert "app" in ST.SITE_TOOLS[0]["input_schema"]["properties"]["action"]["enum"]
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.302.0"
-    assert "0.302.0+342" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.303.0"
+    assert "0.303.0+343" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

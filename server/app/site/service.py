@@ -716,12 +716,12 @@ def _ctx(r: Site) -> dict[str, Any]:
             "ai_photos": any(p.get("ai") for p in _j(r.photos, [])),       # v0.292 the footer says so
             "src_root": str(B.src_dir(r.tenant_id, r.id)),                 # v0.301 photos always from here (launch too)
             "alt": _alt(r),
-            "app": app_schema(r) or None,                                   # v0.302 the web app (account + staff pages)
+            "app": app_schema(r) or None,                                   # v0.303 the web app (account + staff pages)
             "app_api": app_api(r) if app_schema(r) else ""}
 
 
 def _app_line(r: Site) -> str:
-    """v0.302 the section writer may place the app where it fits the design (the account page always has it)."""
+    """v0.303 the section writer may place the app where it fits the design (the account page always has it)."""
     s = app_schema(r)
     if not s:
         return ""
@@ -1499,7 +1499,7 @@ def _ensure_pictures(r: Site) -> int:
     return made
 
 
-# ---------------------------------------------------------------- v0.302 web apps: logins, data, staff panel
+# ---------------------------------------------------------------- v0.303 web apps: logins, data, staff panel
 def design_app(tenant: str, ref: str, words: str, conv: str = "") -> dict[str, Any]:
     """Her words ('customers apna order track karein', 'students login karke marks dekhein') -> the app's lists, fields
     and rules (Opus), cleaned by code; the site gets its account + staff pages in a new checked version."""
@@ -1851,7 +1851,7 @@ def export(tenant: str, ref: str, fmt: str = "zip") -> dict[str, Any]:
     if not r.version:
         raise SiteError("Abhi koi version nahi bana.")
     out = B.out_dir(tenant, r.id, r.version)
-    if fmt == "react":                    # v0.302 a React (Vite) project a developer can carry on with
+    if fmt == "react":                    # v0.303 a React (Vite) project a developer can carry on with
         from . import reactx
         data = reactx.react_zip(out, r.name or "website", app_api(r) if app_schema(r) else "")
     else:

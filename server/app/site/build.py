@@ -422,7 +422,7 @@ def nav_pages(plan: dict[str, Any]) -> list[dict[str, Any]]:
     return [p for p in plan.get("pages", []) if p["slug"] not in LEGAL_PAGES and p["slug"] != "admin"]
 
 
-# ---------------------------------------------------------------- v0.302 web app pages (code only, never the model)
+# ---------------------------------------------------------------- v0.303 web app pages (code only, never the model)
 APP_WORDS = {
     "en": {"account": "My account", "nav": "Account", "admin": "Staff", "admin_h": "Staff panel",
            "admin_p": "Only staff of this business can see this. Log in with your staff account.", "staff": "Staff login"},
@@ -591,7 +591,7 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
         meta.append(f'<link rel="canonical" href="{esc(canon)}">')
     if site.get("noindex") or page["slug"] in ("admin", "account"):
         meta.append('<meta name="robots" content="noindex">')
-    if site.get("app_api"):                      # v0.302 where the app script talks to (Hoola's API, never the site host)
+    if site.get("app_api"):                      # v0.303 where the app script talks to (Hoola's API, never the site host)
         meta.append(f'<meta name="hoola-app" content="{esc(site["app_api"])}" data-lang="{esc(site.get("language") or "en")}">')
     pre = [fn for fam, sub, w, fn in font_files(site["tokens"]) if sub == "latin" and fam == site["tokens"]["head"] and w == 700][:1]
     links = "".join(f'<link rel="preload" href="{rel}assets/fonts/{fn}" as="font" type="font/woff2" crossorigin>' for fn in pre)

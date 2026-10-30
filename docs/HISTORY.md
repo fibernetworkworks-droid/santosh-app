@@ -11367,7 +11367,41 @@ load anything; map / video embeds were stripped with no safe way back; one langu
 - Not verified on the VPS: Google's map embed URL without a key from a real site; slots for an owner whose booking
   rules were never set (defaults: Mon-Sat 9-6).
 
-## v0.302.0 WEB DESIGN PHASE 4 — web apps, like Lovable's backend (owner: "START PHASE 4")
+## v0.302.0 CHUP NAHI — the loader comes back whatever shape the words arrived in
+Owner, on the **deployed** v0.299 fix: *"WORKING NOW SECTION DISAPPER FOR WHILE DRUING THE HOOLA BACKEND WORK —
+FEEL NO WORK IN PROGRESS AFTER HOOLA SHORT FEED REGARDING WORK"*, with two screenshots.
+
+### v0.299 fixed half of it
+That version brought the row back when a block **finished**, hooking the pacer's `fin` flag. Driving the **real
+pacer** through every delivery shape in a browser showed `fin` only fires when the pacer was handed a final text:
+
+| shape | `fin` | loader after |
+|---|---|---|
+| A — message event (`pacer.final`) | fires | came back |
+| B — deltas, then `reply_end`'s `flush()` | **never** | **stayed hidden** |
+| C — deltas, then a message final | fires | came back |
+| D — deltas that simply **stop** while a long tool runs | **never** | **stayed hidden** ← her screenshot |
+
+`flush()` passes `show(shown, this.finalText !== null)`, so with no final text it reports `fin=false`; and in D the
+queue just drains with nothing following. Both leave the screen dead for the whole silent stretch — exactly what
+she photographed: narration written, no loader, no clock, while the backend worked.
+
+### `fin` was the wrong signal
+"No words have arrived for a moment" is true whatever the delivery shape. `LAST_WORD_AT` is stamped every time the
+pacer writes, and **the clock interval already running for the seconds doubles as the watchdog** — if the turn is
+live, the row is hidden and nothing has been written for 600ms, it comes back. No second timer.
+
+The `fin` hook is kept as well: when a block genuinely is finished, the row returns at once rather than waiting up
+to ~1.6s for the watchdog.
+
+### Re-measured, all five shapes
+A, B, C and D all end with the loader **visible**. The control case — a reply still streaming — correctly keeps it
+**hidden**, so it never flickers on between the words of a sentence.
+
+### Files
+`server/app/static/console/v2.js` · `server/tests/test_v0302_chup_nahi.py` (7 tests).
+
+## v0.303.0 WEB DESIGN PHASE 4 — web apps, like Lovable's backend (owner: "START PHASE 4")
 Flaws 14-16 of the web design audit: static brochure sites only (no login, database, portal, staff panel), a fixed menu of
 section types, export as static HTML only.
 - **Design from her words** (`server/app/site/webapp.py`, `DESIGN_SYSTEM`, kind site_edit): "customers login karke apna
@@ -11398,6 +11432,7 @@ section types, export as static HTML only.
   assets in public/, `src/hoola.js` restarts the site's scripts after a route change and holds the app API address.
 - **Bug found in the Chromium run and fixed**: a field named `item` (the first thing an order form has) posted nothing -
   `form.elements['item']` is the collection's own `item()` method; fields are now read by `[name=...]`.
-- Tests `server/tests/test_v0302_web_apps.py` (5) + a Chromium run of sign up, form, list and the staff panel.
+- Tests `server/tests/test_v0303_web_apps.py` (5) + a Chromium run of sign up, form, list and the staff panel.
+- Built as 0.302.0, re-versioned 0.303.0 on merge past the parallel v0.302.0 CHUP NAHI.
 - Not done yet: the phone app's own Data screen (the console has it; on the phone the site's /admin/ page works in
   the browser), file / photo fields, emails to members (password reset is "ask the shop" for now).
