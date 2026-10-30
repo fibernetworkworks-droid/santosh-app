@@ -10838,7 +10838,31 @@ at normal tracking, 22 / 20 / 17 · block gaps 16 (p to p) / 24 (above a heading
 `server/tests/test_v0284_claude_jaisa_paragraph.py` (7 tests) · `test/md_text_test.dart` (the old test asserted the
 `\n` join — it had locked the bug in; updated and extended).
 
-## v0.285.0 EK HI DOM — a live reply and a reloaded one are the same page
+
+## v0.285.0 MENUS LIKE CLAUDE (30 Oct 2026)
+Owner: "NOW LETS WORK ON DROPDOWN FOR HOOLA MAKE IT SAME AS CLAUDE".
+Before (screenshots taken first): the chat ⋯ menu was a blurred glass panel with 16px corners, 13.5px BOLD (600) rows
+and emoji icons (✎ 📌 🗂 🗜 🗄 🗑); Export was two bold grey rows in a separate hand-made box; the header ⋯ button opened
+its menu and closed it on the SAME click (chatlist's document click handler saw a click outside `.rmenu`), so it did
+nothing; the account button only jumped to the Account page.
+Now - one dropdown, `server/app/static/console/menu.js` (window.HoolaMenu.open(anchor, items, opts)):
+- Look (block "v0.285 MENUS LIKE CLAUDE" at the end of v2.css): var(--surface), 1px hairline, soft two-layer shadow,
+  12px corners, 6px padding; rows 32px at 14px / 400 (never bold) with 8px corners, a 16px line icon in --mut, grey
+  hover; hairline separators; a small grey header line; Delete red with a red hover; a tick on the right for the
+  current choice (menuitemradio); sub-lines 12px grey. CRISP TEXT kept: a one-shot 120ms fade + 3% scale, no blur.
+- Behaviour: below the button or above when there is no room (or place: 'above'), start / end edge aligned, clamped
+  8px from the screen edge; the same button again closes it; closes on a pick, an outside press, Esc (focus back to
+  the button), Tab, scroll or resize; ↑ ↓ Home End, Enter / Space, a letter jumps to the next item; opened by keyboard
+  = the first row focused; Esc in the chat peels the open menu first (escLayer).
+- Used by: the chat ⋯ menu from the sidebar row AND the header (Pin, Rename, Change / Add to session, Compact chat,
+  Archive, separator, Delete), Export (header "Export this chat", Markdown / JSON with a line each), and a NEW account
+  menu on the bottom-left account button, opening above it like Claude's (her email, Settings, Library, Light / Dark /
+  System ticked, Keyboard shortcuts ?, Log out). The old #exportMenu / #cExportMenu markup and .rmenu / .xmenu CSS are gone.
+- Create Studio pickers (studio.css .pop) take the same look: 32px rows, 14px / 400, 16px plain icons, the choice
+  shown by a tick only (no coloured row). The / command list above the typing box: same surface, rows and hover.
+Tests: tests/test_v0285_menus.py; test_v0223_console_r3 pins moved to the new export menu.
+
+## v0.286.0 EK HI DOM — a live reply and a reloaded one are the same page
 Owner sent a screenshot of a live reply whose four paragraphs were fused into one wall:
 *"CHECK NO PARAGRAPH IN CHAT SPACE IN HOOLA"*.
 
@@ -10876,14 +10900,14 @@ with it.
 Nothing in the CSS changed. Those rules were right all along — this stopped the DOM from hiding them.
 
 ### The lesson, now twice over
-**Test the path the user takes.** v0.284 found the probes were using text no model emits; v0.285 found them using
+**Test the path the user takes.** v0.284 found the probes were using text no model emits; v0.286 found them using
 a renderer she never sees. Both bugs survived four rounds of careful measurement for the same reason.
 
 ### Files
 `server/app/static/console/md.js` (the `Live` class) · `server/app/static/console/v2.css` (two dead rules removed)
 · `server/tests/test_v0285_ek_hi_dom.py` (6 tests).
 
-## v0.286.0 APNE AAP SE BEHAS — the honesty guard stops arguing with itself
+## v0.287.0 APNE AAP SE BEHAS — the honesty guard stops arguing with itself
 Found in her own live test run: three of seven replies ended with a "nothing was actually done" disclaimer she
 never asked for, on asks that requested no action at all.
 

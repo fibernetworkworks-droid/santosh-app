@@ -1,4 +1,4 @@
-"""v0.285 EK HI DOM - a live reply and a reloaded one are the same page (owner sent a screenshot of a live reply
+"""v0.286 EK HI DOM - a live reply and a reloaded one are the same page (owner sent a screenshot of a live reply
 whose four paragraphs were fused into one wall: "CHECK NO PARAGRAPH IN CHAT SPACE IN HOOLA").
 
 The console had TWO rendering paths, and only the one she never looks at was correct.
@@ -25,7 +25,7 @@ every probe page went through render(). After: both paths 16px at 680px, and fee
 time leaves markup byte-identical to render() with 0 wrappers.
 
 THE LESSON, now twice over: test the path the USER takes. v0.284 found the probes were using text no model emits;
-this found them using a renderer she never sees.
+v0.286 found them using a renderer she never sees.
 """
 from pathlib import Path
 
@@ -89,5 +89,5 @@ def test_v0284_and_v0283_are_untouched():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.286.0"
-    assert "0.286.0+326" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.287.0"
+    assert "0.287.0+327" in (ROOT / "pubspec.yaml").read_text()

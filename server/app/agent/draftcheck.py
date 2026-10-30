@@ -45,7 +45,7 @@ _DONE = re.compile(
     r"|reminder\s*(?:lag\s*gaya|laga\s*diya)|upload\s*kar\s*d|download\s*kar\s*l|kaam\s*ho\s*gaya"
     r"|likh\s*kar\s*bhej|draft\s*bhej)", re.I)
 # the same words are fine about HER, in the future, or as a condition
-# v0.286: the English half of this list was missing entirely, and that one gap turned the whole check into a loop.
+# v0.287: the English half of this list was missing entirely, and that one gap turned the whole check into a loop.
 # "I haven't sent anything" contains `sent`, so a perfectly honest sentence read as a CLAIM; the nudge then told
 # the model to "say plainly that it is NOT done", the model obeyed, its denial matched a second time, and the
 # second match stapled SAID onto a reply that had never claimed anything. Negation, the future and an offer are
@@ -109,7 +109,7 @@ NUDGE = ("[System check, not the user] Your message says the work is already don
          "approval and OTP rule as usual), or say plainly in one line that it is NOT done yet and what the next "
          "step is. Never say done for something that did not happen.")
 SAID = "(Saaf baat: yeh kaam abhi hua nahi hai - ab bhi karna baaki hai.)"
-# v0.286: the note followed her into English conversations as a Hinglish line. v0.260 made HER LANGUAGE the first
+# v0.287: the note followed her into English conversations as a Hinglish line. v0.260 made HER LANGUAGE the first
 # rule of a reply, and this note is part of the reply.
 SAID_EN = "(To be clear: this is not done yet - it still has to be carried out.)"
 _HINGLISH = re.compile(r"[ऀ-ॿ]|\b(hai|hain|nahi|kar|karo|kiya|aap|main|maine|diya|gaya|raha|rahi|ho|ka|ki|ke)\b", re.I)

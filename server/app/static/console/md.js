@@ -164,7 +164,7 @@ function render(text, streaming) {
 }
 
 /* ---------- live: finished blocks stay, the last one re-renders ----------
-   v0.285: this used to wrap every block in its own <div class="mdb">, which quietly broke the chat's whole
+   v0.286: this used to wrap every block in its own <div class="mdb">, which quietly broke the chat's whole
    layout - and only on the path she actually reads. A <p> alone inside a wrapper is a :last-child, so
    `.textmd p:last-child{margin-bottom:0}` (meant to trim dead space under the LAST block of a reply) zeroed the
    gap under EVERY paragraph; and `#app .mh .txt>p{max-width:680px}` is a CHILD rule, so a wrapped <p> stopped

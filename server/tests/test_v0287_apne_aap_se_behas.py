@@ -1,4 +1,4 @@
-"""v0.286 APNE AAP SE BEHAS - the honesty guard stops arguing with itself (found in her own live test run: three
+"""v0.287 APNE AAP SE BEHAS - the honesty guard stops arguing with itself (found in her own live test run: three
 of seven replies ended with a "nothing was actually done" disclaimer she never asked for).
 
 What really happened, reproduced on her exact text: the guard WROTE that disclaimer.
@@ -89,5 +89,5 @@ def test_the_note_speaks_the_language_of_the_reply():
 def test_version():
     from app.main import APP_VERSION
     from pathlib import Path
-    assert APP_VERSION == "0.286.0"
-    assert "0.286.0+326" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.287.0"
+    assert "0.287.0+327" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

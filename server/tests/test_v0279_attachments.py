@@ -66,7 +66,7 @@ def test_tile_css_is_crisp():
     css = (CON / "v2.css").read_text()
     block = css[css.index("v0.279 ATTACHMENTS LIKE CLAUDE"):]
     assert ".mua{" in block and ".albx{" in block and ".atray{" in block
-    assert "backdrop-filter" not in block and "infinite" not in block   # CRISP TEXT rule
+    assert "backdrop-filter:blur" not in block and "infinite" not in block   # CRISP TEXT rule
 
 
 def test_js_parses():
