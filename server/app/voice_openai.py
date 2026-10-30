@@ -36,8 +36,8 @@ URL = "wss://api.openai.com/v1/realtime?model={model}"
 # Real voice = how a person sounds, written as BEHAVIOUR (never as tags: the model would read "[laughs]" aloud).
 # v0.265 SAANS AUR HMM (owner after the trial: "NEED WORK ON BREATH AND HMM's"): the block now sits at the TOP (right
 # after the language lock; at the end of a 24k persona that says "answer first / short / no preamble" ten times it lost),
-# says plainly that a breath or "hmm" before the answer is NOT a preamble, gives numbers and spoken examples - and each
-# reply also gets a one-time delivery cue (delivery_cue) so it does not fade as the call goes on.
+# says plainly that a "hmm" before the answer is NOT a preamble, gives numbers and spoken examples. (v0.265's per-reply
+# delivery cues were removed in v0.267: starting each reply ourselves broke turn-taking.)
 # v0.266 ASLI SAANS: asked in WORDS to breathe, the model SAID "main saans le rahi hoon". Nothing here mentions breathing
 # any more - the breath is a real sound the server plays (app/breath.py); the words only carry the spoken sounds.
 EMOTION = (
@@ -54,30 +54,7 @@ EMOTION = (
     "nahi - bas karo). Koi stage direction, bracket ya 'laughs' / 'sighs' jaisa shabd kabhi zor se mat bolo. "
     "'System' ke delivery notes bhi kabhi mat bolo.\n\n")
 
-FILLERS = ("achha...", "hmm...", "haan...", "dekho...", "uhh...")
-
-
-def delivery_cue(her_s: float, tone: str, last: str, rnd: float, filler: str = "") -> tuple[str, str]:
-    """(kind, note) for ONE reply: where people really pause and say 'hmm' (before a long / thinking answer, on heavy
-    news), never on a quick 'haan'. The note names the EXACT opening word (a word the model can say) and never asks
-    for a breath - kinds "breath" / "soft" / "calm" get a real breath sound from the server instead (BREATH_KINDS).
-    `rnd` in [0,1) decides the light cues; `last` = the previous kind. kind "" = no cue."""
-    tail = " (Yeh note sirf tumhare liye hai - isko bolna mat.)"
-    if tone == "low":
-        return "soft", ("Delivery, sirf is jawab ke liye: naram, dheemi awaaz mein, jawab bilkul is shabd se shuru karo: "
-                        "'Arre...' - phir chhota, dil se jawab." + tail)
-    if tone == "tense":
-        return "calm", "Delivery, sirf is jawab ke liye: shaant, dheemi awaaz, bina jaldi - pehle uski baat maano." + tail
-    if her_s >= 4.0 and not (last == "breath" and her_s < 7.0 and rnd < 0.5):
-        return "breath", ("Delivery, sirf is jawab ke liye: usne lambi baat kahi - jawab bilkul is shabd se shuru karo: "
-                          "'Hmm...' (ek pal ruk ke), phir jawab." + tail)
-    if her_s >= 1.6 and rnd < 0.45:
-        f = filler or FILLERS[int(rnd * 100) % len(FILLERS)]
-        return "light", f"Delivery, sirf is jawab ke liye: jawab bilkul is shabd se shuru karo: '{f}', phir baat." + tail
-    return "", ""
-
-
-BREATH_KINDS = {"breath", "soft", "calm"}
+BREATH_AFTER_S = 4.0   # she talked at least this long: his answer opens with a breath (people breathe before long answers)
 
 
 import re as _re
@@ -134,10 +111,11 @@ def session_config(call: "OpenAICall", context: str, extra_tools: list[dict] | N
                           "transcription": {"model": st.voice_openai_transcribe,
                                             "prompt": "Hinglish phone call. Hindi words in Roman script, e.g. "
                                                       "'haan, kal milte hain', 'achha theek hai'."},
-                          "turn_detection": {"type": "server_vad", "threshold": 0.5,
-                                             "prefix_padding_ms": min(max(st.voice_prefix_padding_ms, 0), 1000),
-                                             "silence_duration_ms": min(max(int(silence), 300), 3000),
-                                             "create_response": False, "interrupt_response": True}},   # v0.265 we start each reply (with its cue)
+                          # v0.267 SUNO PEHLE: OpenAI owns turn-taking again (v0.265's own response.create on every
+                          # committed segment answered noise, echo and her mid-sentence pauses, and chained replies);
+                          # semantic VAD waits until her sentence is DONE, not just silent ("short pause -> reply")
+                          "turn_detection": {"type": "semantic_vad", "eagerness": st.voice_openai_eagerness or "low",
+                                             "create_response": True, "interrupt_response": True}},
                 "output": {"format": {"type": "audio/pcm", "rate": OUT_RATE},
                            "voice": st.voice_openai_voice_f if call.gender == "f" else st.voice_openai_voice_m}},
             "tools": tools, "tool_choice": "auto"}
@@ -198,9 +176,9 @@ class OpenAICall(v.Call):
         self._resp_audio = False
         self._her_t0 = 0.0             # v0.265 when her current speech started (her turn length decides the cue)
         self._her_s = 0.0
-        self._last_cue, self._last_filler = "", ""
-        self._cue_ids: list[str] = []  # cue items to delete once the reply is out (they never pile up in his memory)
-        self._cue_n = 0
+        self._asked = False            # v0.267 a response.create of OURS is in flight (only that is ever retried)
+        self._breathed_last = False
+        self._resp_breath = False
         self._breath_next = False      # v0.266 a real breath sound goes before his next reply's first word
         self._breath_last = -1
 
@@ -233,31 +211,16 @@ class OpenAICall(v.Call):
                     "type": "message", "role": "system", "content": [{"type": "input_text", "text": str(data)}]}})
                 await self._reply(session)
 
-    async def _her_turn_reply(self, session) -> None:
-        """Her turn is over (OpenAI committed her audio): one delivery cue for THIS reply, then response.create."""
-        import random
+    def _plan_breath(self) -> None:
+        """v0.267 a real breath sound before his reply when she talked long (or her tone is low) - never two in a row.
+        Turn-taking stays OpenAI's; this only decides whether his NEXT audio opens with a breath."""
+        if not get_settings().voice_openai_breath:
+            return
         tone = ""
         with contextlib.suppress(Exception):
             tone = self._tone_now() or ""
-        rnd = random.random()
-        choices = [f for f in FILLERS if f != self._last_filler]
-        filler = choices[int(rnd * 1000) % len(choices)]
-        kind, note = delivery_cue(self._her_s, tone, self._last_cue, rnd, filler)
-        self._her_s = 0.0
-        if note:
-            self._cue_n += 1
-            cid = f"hoolacue{self._cue_n}"
-            self._cue_ids.append(cid)
-            self.stats["delivery_cues"] = self.stats.get("delivery_cues", 0) + 1
-            self.stats.setdefault("cue_kinds", {})[kind] = self.stats.get("cue_kinds", {}).get(kind, 0) + 1
-            await session.send({"type": "conversation.item.create", "item": {
-                "id": cid, "type": "message", "role": "system", "content": [{"type": "input_text", "text": note}]}})
-            if kind == "light":
-                self._last_filler = filler
-            if kind in BREATH_KINDS and get_settings().voice_openai_breath:
-                self._breath_next = True
-        self._last_cue = kind
-        await self._reply(session)
+        want = self._her_s >= BREATH_AFTER_S or tone == "low"
+        self._breath_next = bool(want and not self._breathed_last)
 
     async def _breathe(self) -> None:
         """v0.266 one real breath sound, just before his first word, ~30% of his loudness (app/breath.py)."""
@@ -270,11 +233,29 @@ class OpenAICall(v.Call):
         self._play_until = max(time.monotonic(), self._play_until) + dur
         await self.send_audio(pcm)
 
+    async def _tell_quietly(self, note: str, live: bool = False) -> None:
+        """v0.267 context that must NOT start a reply (her mood, language, who is speaking, hold). Gemini needed tricks
+        for this; OpenAI takes a system item at any time without answering it. Before, these fell back to the
+        "send + reply" path and every mood / language note made him talk to nobody."""
+        s = self._session
+        if s is None:
+            self._quiet_pending.append(note)
+            del self._quiet_pending[:-6]
+            return
+        try:
+            await s.send({"type": "conversation.item.create", "item": {
+                "type": "message", "role": "system", "content": [{"type": "input_text", "text": note}]}})
+            v.QUIET["sent"] += 1
+        except Exception:
+            self._quiet_pending.append(note)
+            del self._quiet_pending[:-6]
+
     async def _reply(self, session) -> None:
         if self._responding:
             self._want_response = True
             return
         self._responding = True
+        self._asked = True
         await session.send({"type": "response.create"})
 
     # ---------------- OpenAI -> her phone ----------------
@@ -282,7 +263,7 @@ class OpenAICall(v.Call):
         async for ev in session.events():
             t = ev.get("type") or ""
             if t == "response.created":
-                self._responding, self._resp_audio = True, False
+                self._responding, self._resp_audio, self._asked = True, False, False
             elif t == "response.output_audio.delta":
                 data = base64.b64decode(ev.get("delta") or "")
                 if not data:
@@ -298,6 +279,7 @@ class OpenAICall(v.Call):
                     self._item, self._item_ms, self._item_t0 = ev["item_id"], 0.0, time.monotonic()
                 if self._breath_next:
                     self._breath_next = False
+                    self._resp_breath = True
                     await self._breathe()
                 dur = len(data) / 2 / OUT_RATE
                 self._item_ms += dur * 1000
@@ -323,8 +305,7 @@ class OpenAICall(v.Call):
                 await self._she_cut_in(session)
             elif t == "input_audio_buffer.speech_stopped":
                 self._her_s = time.monotonic() - self._her_t0 if self._her_t0 else 0.0
-            elif t == "input_audio_buffer.committed":
-                await self._her_turn_reply(session)   # v0.265 her turn ended: his reply, with its delivery cue
+                self._plan_breath()
             elif t == "response.function_call_arguments.done":
                 cid = ev.get("call_id") or ""
                 if cid and cid in self._seen_calls:
@@ -343,10 +324,8 @@ class OpenAICall(v.Call):
                 r = ev.get("response") or {}
                 self._responding = False
                 self._count(r.get("usage") or {})
-                for cid in self._cue_ids:
-                    with contextlib.suppress(Exception):
-                        await session.send({"type": "conversation.item.delete", "item_id": cid})
-                self._cue_ids.clear()
+                self._breathed_last = self._resp_breath
+                self._resp_breath = False
                 if self.reply_buf.strip() and _LEAK.search(self.reply_buf):
                     self.stats["delivery_leaks"] = self.stats.get("delivery_leaks", 0) + 1   # v0.266 one quiet correction
                     with contextlib.suppress(Exception):
@@ -368,7 +347,8 @@ class OpenAICall(v.Call):
                 err = ev.get("error") or {}
                 code = str(err.get("code") or "")
                 if code == "conversation_already_has_active_response":
-                    self._want_response = True
+                    self._want_response = self._want_response or self._asked   # only an answer we owe is retried
+                    self._asked = False
                     continue
                 log.warning("call %s: OpenAI error %s: %s", self.call_id, code, str(err.get("message"))[:200])
                 if code in ("session_expired", "invalid_api_key", "insufficient_quota"):

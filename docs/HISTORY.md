@@ -10288,3 +10288,22 @@ Server only; no new APK needed (the phone picker is Phase 3).
 - Scorecard: `breaths`, `delivery_leaks` added. Gemini untouched.
 Tests: `test_v0264_openai_voice.py` 18 (+4: no breathing words anywhere, breath sound before his first word, the detector
 refuses voiced sounds, leak pattern). Version 0.266.0 (pubspec 0.266.0+306, console ?v=0.266.0, pins -> 0.266.0).
+
+## v0.267.0 SUNO PEHLE — the OpenAI call listens again (owner: "NOW GETTING VERY BAD --- 1) VOICE AI TALK CONTINUOSLY 2) UNNESSASARY TALK WITH OUT USER INTERACTION 3) NOT LISTENING THE USER VOICE PROPERLY AND FOR SHORT PAUSE BY USER VOCIE AI GIVE REPLY 4) VERY BAD EXPERNCE FROM LAST 2 UPDATES")
+- Root cause 1 (v0.265 regression): to add a per-reply delivery cue, `create_response` was turned OFF and the server sent
+  `response.create` on EVERY `input_audio_buffer.committed`. OpenAI commits a segment for her mid-sentence pauses, for
+  background noise and for his own voice echoing into the mic - each got an answer. A commit while he was already speaking
+  set `_want_response`, and the "already has an active response" error set it too, so after each reply ANOTHER one started:
+  he talked on and on with nobody speaking. v0.264 (which she rated good) let OpenAI decide, which handles all of this.
+- Root cause 2: `voice.Call._tell_quietly` (mood notes, language corrections, who is speaking, hold) has no quiet path on
+  the OpenAI session, so it fell back to `push("text")` = system item + `response.create` - every mood note made him speak.
+- Fix: `turn_detection` = `semantic_vad`, `eagerness` `VOICE_OPENAI_EAGERNESS` (low = waits until her sentence is done,
+  not just a pause), `create_response` true, `interrupt_response` true. The committed handler and the whole per-reply cue
+  system (`delivery_cue`, cue items, deletes) are gone. `OpenAICall._tell_quietly` = a system item with NO reply.
+  A busy error is retried only when the server itself asked (`_asked`, a tool answer we owe) - never chained.
+- Kept: the top `EMOTION` block (no breathing words), the real breath SOUND (`_plan_breath` at speech_stopped: her turn
+  >= 4 s or low tone, never two in a row), the leak guard, the cost meter. Gemini untouched.
+- Rule for next sessions: on the OpenAI engine never send `response.create` for her turns - only for our own notes that
+  need an answer (greeting, news, nudge) and for tool results.
+Tests: `test_v0264_openai_voice.py` 19 (cue tests removed; new: quiet notes never reply, busy error never chains, no
+committed handler, breath planning; VAD semantic + create_response true). Version 0.267.0 (pubspec 0.267.0+307).

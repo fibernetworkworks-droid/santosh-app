@@ -127,7 +127,7 @@ def test_openai_call_end_to_end(oa):
     assert upd["model"] == "gpt-realtime-2.1-mini" and upd["type"] == "realtime"
     assert upd["audio"]["input"]["format"] == {"type": "audio/pcm", "rate": 24000}
     assert upd["audio"]["output"]["voice"] == get_settings().voice_openai_voice_m      # Achird = male avatar
-    assert upd["audio"]["input"]["turn_detection"]["type"] == "server_vad"
+    assert upd["audio"]["input"]["turn_detection"]["type"] == "semantic_vad"
     assert "AWAAZ MEIN JAAN" in upd["instructions"] and "laughs" in upd["instructions"]
     names = {t["name"] for t in upd["tools"]}
     assert {"set_phone_alarm", "santosh_kaam"} <= names and all(t["type"] == "function" for t in upd["tools"])
@@ -247,42 +247,6 @@ def test_no_gemini_voice_clips_on_an_openai_call():
     assert voice_openai.OpenAICall._ack_watch is not voice.Call._ack_watch
 
 
-def test_delivery_cue_rules():
-    dc = voice_openai.delivery_cue
-    assert dc(0.6, "", "", 0.1)[0] == ""                      # a quick "haan": no cue
-    assert dc(2.5, "", "", 0.9)[0] == ""                      # a normal turn: only sometimes
-    k, note = dc(2.5, "", "", 0.2, "hmm...")
-    assert k == "light" and "'hmm...'" in note and "bolna mat" in note
-    assert dc(5.0, "", "", 0.9)[0] == "breath" and "'Hmm...'" in dc(5.0, "", "", 0.9)[1]
-    assert dc(5.0, "", "breath", 0.2)[0] != "breath"          # never two breaths in a row on a medium-long turn
-    assert dc(9.0, "", "breath", 0.2)[0] == "breath"          # ...unless she really talked long
-    assert dc(0.5, "low", "", 0.9)[0] == "soft" and "Arre" in dc(0.5, "low", "", 0.9)[1]
-    assert dc(0.5, "tense", "", 0.9)[0] == "calm"
-
-
-def test_her_turn_end_sends_cue_then_reply_and_cleans_up():
-    class S:
-        def __init__(self):
-            self.sent = []
-
-        async def send(self, ev):
-            self.sent.append(ev)
-
-    c = voice_openai.OpenAICall.__new__(voice_openai.OpenAICall)
-    c.stats, c._her_s, c._last_cue, c._last_filler = {}, 6.0, "", ""
-    c._cue_ids, c._cue_n, c._responding, c._want_response = [], 0, False, False
-    c._breath_next = False
-    c._tone_now = lambda: ""
-    s = S()
-    asyncio.run(c._her_turn_reply(s))
-    item, create = s.sent
-    assert item["type"] == "conversation.item.create" and item["item"]["role"] == "system"
-    assert item["item"]["id"] == "hoolacue1" and "'Hmm...'" in item["item"]["content"][0]["text"]
-    assert c._breath_next is True                              # the breath is a SOUND the server plays, not a word
-    assert create == {"type": "response.create"} and c._cue_ids == ["hoolacue1"]
-    assert c.stats["delivery_cues"] == 1 and c.stats["cue_kinds"] == {"breath": 1}
-
-
 def test_voice_block_leads_and_openai_waits_for_us():
     from app.config import get_settings
     c = voice_openai.OpenAICall.__new__(voice_openai.OpenAICall)
@@ -292,19 +256,10 @@ def test_voice_block_leads_and_openai_waits_for_us():
     ins = cfg["instructions"]
     assert ins.index("AWAAZ MEIN JAAN") < 3000                 # at the top, not after the 24k persona
     assert "preamble nahi" in ins
-    assert cfg["audio"]["input"]["turn_detection"]["create_response"] is False
-    assert cfg["audio"]["input"]["turn_detection"]["interrupt_response"] is True
-
-
-def test_nothing_asks_him_to_breathe_in_words():
-    """v0.266: asked in words, the model SAID 'main saans le rahi hoon' - no text he reads may mention breathing."""
-    from app import voicelang
-    c = voice_openai.OpenAICall.__new__(voice_openai.OpenAICall)
-    c.langst, c.lang, c.name, c.gender, c.style = voicelang.LangState("hi-IN"), "hi-IN", "Santosh", "m", {}
-    texts = [voice_openai.EMOTION] + [voice_openai.delivery_cue(h, t, "", r)[1]
-                                     for h in (0.5, 2.0, 5.0, 9.0) for t in ("", "low", "tense") for r in (0.1, 0.9)]
-    for t in texts:
-        assert "saans" not in t.lower() and "breath" not in t.lower(), t
+    td = cfg["audio"]["input"]["turn_detection"]
+    assert td["type"] == "semantic_vad" and td["eagerness"] == "low"     # v0.267 waits until her sentence is done
+    assert td["create_response"] is True and td["interrupt_response"] is True   # OpenAI owns turn-taking again
+    assert "saans" not in voice_openai.EMOTION.lower() and "breath" not in voice_openai.EMOTION.lower()
 
 
 def test_breath_sound_plays_before_his_first_word():
@@ -338,6 +293,64 @@ def test_leak_guard_pattern():
     assert not leak("Haan, kal chaar baje free ho") and not leak("Hmm... achha theek hai")
 
 
+class _Rec:
+    def __init__(self):
+        self.sent = []
+
+    async def send(self, ev):
+        self.sent.append(ev)
+
+
+def _bare():
+    c = voice_openai.OpenAICall.__new__(voice_openai.OpenAICall)
+    c.stats, c._quiet_pending = {}, []
+    c._responding, c._want_response, c._asked = False, False, False
+    c._her_s, c._breath_next, c._breathed_last = 0.0, False, False
+    c._tone_now = lambda: ""
+    return c
+
+
+def test_quiet_notes_never_start_a_reply():
+    """v0.267: mood / language / speaker notes made him talk to nobody - they are now an item, no response.create."""
+    c, s = _bare(), _Rec()
+    c._session = s
+    asyncio.run(c._tell_quietly("(Deli ka note: uski baat mein dukh hai)"))
+    assert len(s.sent) == 1 and s.sent[0]["type"] == "conversation.item.create"
+    assert not any(e["type"] == "response.create" for e in s.sent)
+
+
+def test_a_busy_error_is_retried_only_for_an_answer_we_owe():
+    async def go(asked):
+        c, s = _bare(), _Rec()
+        c._asked = asked
+
+        class One:
+            async def events(self):
+                yield {"type": "error", "error": {"code": "conversation_already_has_active_response"}}
+        await voice_openai.OpenAICall.downlink(c, One())
+        return c._want_response
+    assert asyncio.run(go(False)) is False          # OpenAI's own turn is busy: nothing chained (no talking on and on)
+    assert asyncio.run(go(True)) is True            # our tool answer is owed: asked again when he is free
+
+
+def test_committed_segments_do_not_start_replies():
+    src = (ROOT / "server/app/voice_openai.py").read_text()
+    assert '"input_audio_buffer.committed"' not in src and "_her_turn_reply" not in src
+
+
+def test_breath_planned_after_a_long_turn_never_twice():
+    c = _bare()
+    c._her_s = 5.0
+    c._plan_breath()
+    assert c._breath_next is True
+    c._breathed_last, c._her_s = True, 6.0
+    c._plan_breath()
+    assert c._breath_next is False                  # never two breaths in a row
+    c._breathed_last, c._her_s = False, 1.2
+    c._plan_breath()
+    assert c._breath_next is False                  # a short turn: no breath
+
+
 def test_filler_start_counter():
     m = voice_openai._FILLER_START.match
     assert m("Hmm... kal free ho") and m("Achha, dekhte hain") and m("arre yeh toh") and not m("Kal chaar baje")
@@ -360,5 +373,5 @@ def test_gemini_file_has_only_the_routing_seam():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.266.0"
-    assert "0.266.0+306" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.267.0"
+    assert "0.267.0+307" in (ROOT / "pubspec.yaml").read_text()

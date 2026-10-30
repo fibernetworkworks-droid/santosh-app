@@ -264,6 +264,7 @@ class Settings(BaseSettings):
     voice_openai_month_usd: float = 10.0              # whole app, per calendar month (IST); 0 = no OpenAI calls
     voice_openai_user_min: int = 120                  # minutes per user per month on OpenAI; 0 = unlimited
     voice_openai_tenants: str = ""                    # who may pick it ("" = only the main tenant: the owner's trial; "*" = all)
+    voice_openai_eagerness: str = "low"               # v0.267 semantic VAD: low = waits until her sentence is done
     voice_openai_breath: bool = True                  # v0.266 a real breath SOUND before a cued reply (app/breath.py)
     voice_openai_session_min: int = 50                # OpenAI sessions end at 60 min: move to a fresh one before that
     voice_ack_tts_model: str = "gemini-3.8-flash-tts"   # v0.181 (was gemini-2.5-flash-preview-tts): new TTS, far more natural delivery; legacy model is the automatic fallback
