@@ -116,11 +116,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.285.0 (pubspec 0.285.0+325). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.286.0 (pubspec 0.286.0+326). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - CHECKPOINT 30 Oct: FULL CLAUDE MODE (v0.239-v0.250) owner-verified "PERFECT"; memory quiz 16/20 -> 20/20; branch
   `checkpoint-full-claude-mode-2026-10-30` = 87a2046 (grep "CHECKPOINT 30 Oct" docs/HISTORY.md).
+- v0.286 SIDEBAR FULLY VISIBLE: labels 12/400 faint --dim -> 13/500 --mut, chat titles 13.5/400 -> 14/450 ink, nav 14/400 -> 14/500
+  (block at the end of v2.css; the variable face makes 450 / 550 real). Her "hidden look" was the faint thin labels.
 - v0.285 MENUS LIKE CLAUDE: `console/menu.js` (HoolaMenu) = every console dropdown (chat ⋯, Export, NEW account menu on the bottom-left
   button); 32px rows 14/400, line icons, red Delete, tick for the choice; Studio pickers + / list restyled to match.
 - v0.284 CLAUDE JAISA PARAGRAPH: her "still not proper" was right and v0.274-v0.281 had measured the wrong

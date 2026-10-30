@@ -10861,3 +10861,20 @@ Now - one dropdown, `server/app/static/console/menu.js` (window.HoolaMenu.open(a
 - Create Studio pickers (studio.css .pop) take the same look: 32px rows, 14px / 400, 16px plain icons, the choice
   shown by a tick only (no coloured row). The / command list above the typing box: same surface, rows and hover.
 Tests: tests/test_v0285_menus.py; test_v0223_console_r3 pins moved to the new export menu.
+
+
+## v0.286.0 SIDEBAR FULLY VISIBLE (30 Oct 2026)
+Owner, with a screenshot of the sidebar: "CHECK THE SIDE BAR FONT AND FONT SIZE -- AND THE HIDDEN LOOK SECTIONS ----
+FIX THIS PERFECTLY MAKE THIS SAME AS CLAUDE CHAT HAS FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS".
+Measured in a real browser (computed styles, every text node in the sidebar), before:
+- section labels (Sessions, Recent chats, Today / Yesterday / Other chats, a session's name): 12px / 400 in --dim
+  #8B8B92 = 3.3:1 on the sidebar - the "hidden" look; session count at opacity .85;
+- chat titles 13.5px / 400 (.rct kept an older 13.5px while .rc was 14px); nav rows 14px / 400; the handle under her
+  name and the Live chip in --dim.
+v0.256 had matched Claude's SIZES at weight 400; on Windows ClearType a thin face reads grey. Claude's sidebar is a
+medium weight with darker labels. After (block "v0.286 SIDEBAR FULLY VISIBLE" at the very end of v2.css, so no older
+layer can win): nav 14px / 500 in the ink, chat titles 14px / 450 in the ink (the open chat 550), labels + session name
+13px / 500 in --mut (#5C5C63 light = 6.4:1, #ABA6C8 dark), count / + / ⋯ / Show archived (13px / 450) / handle /
+Live in --mut. Schibsted Grotesk is loaded as a 400..700 variable face, so 450 and 550 are real weights. Text-size
+setting (Small / Large) still moves the titles 13 / 15px. Rules kept: nothing over 600, nothing under 12px, no --dim.
+Tests: tests/test_v0286_sidebar_visible.py.

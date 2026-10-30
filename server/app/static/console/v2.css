@@ -1957,3 +1957,25 @@ body.albon{overflow:hidden}
 .slash button b{color:var(--ink);font-weight:500;min-width:84px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
 .slash button span{color:var(--ink);font-weight:400}
 .slash button[aria-selected="true"],.slash button:hover{background:rgb(var(--fg-rgb) / .06)}
+
+/* ===== v0.286 SIDEBAR FULLY VISIBLE (owner, with a screenshot: "CHECK THE SIDE BAR FONT AND FONT SIZE AND THE HIDDEN
+   LOOK SECTIONS - MAKE THIS SAME AS CLAUDE, FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS"). Measured before: the section
+   labels (Sessions / Recent chats / Today / Yesterday / Other chats / a session's name) were 12px / 400 in --dim
+   #8B8B92 (3.3:1 on the sidebar - the "hidden" look), chat titles 13.5px / 400, nav rows 14px / 400: a thin face on
+   Windows ClearType reads grey. Claude's sidebar has the same sizes but a MEDIUM weight and darker labels. Now (Schibsted
+   Grotesk is loaded as a 400-700 variable face, so in-between weights are real, not faked): nav 14px / 500 in the ink,
+   chat titles 14px / 450 in the ink (the open one 550), labels 13px / 500 in --mut (6.4:1 light), session name the same,
+   counts and "Show archived" in --mut too. Nothing over 600, nothing under 12px (v0.255). */
+#app .side .sn,#app .side .sn .txt,#app .side .newc .txt{font-weight:500;color:var(--ink)}
+#app .side .sn svg{color:var(--lit)}
+#app .side .rc,#app .side .rct{font-size:14px;font-weight:450;color:var(--ink)}
+#app .side .rcw.cur .rc,#app .side .rcw.cur .rct{font-weight:550}
+#app .side .slabel,#app .side .rg,#app .side .sgh .sgn{font-size:13px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--mut)}
+#app .side .sgh .sgn-n{font-size:12px;font-weight:500;color:var(--mut);opacity:1}
+#app .side .pjadd,#app .side .rcm{color:var(--mut)}
+#app .side .rcarch{font-size:13px;font-weight:450;color:var(--mut)}
+#app .side .rcarch:hover{color:var(--ink)}
+#app .side .sn kbd,#app .side .newc kbd{color:var(--mut)}
+:root[data-size="sm"] #app .side .rc,:root[data-size="sm"] #app .side .rct{font-size:13px}
+:root[data-size="lg"] #app .side .rc,:root[data-size="lg"] #app .side .rct{font-size:15px}
+#app .side #uhandle,#app .side .conn span{color:var(--mut)}
