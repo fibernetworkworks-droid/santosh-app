@@ -94,7 +94,8 @@ def test_the_prompt_asks_for_the_opener_and_the_per_step_line():
     assert "bade kaam se PEHLE ek vaakya" in p                          # say it before touching a tool
     assert "har tool ke baad ek chhoti line" in p
     assert "har step ka koi line chat mein mat likho" not in p          # v0.240's order is gone
-    for ban in ("koi bullet", "koi heading", "step-by-step list"):
+    # v0.268 reworded the ban list into the never-list; the bans themselves are stronger, not weaker
+    for ban in ("bullet / heading / emoji", "machine ke", "15-30 shabd"):
         assert ban in p, ban
 
 
@@ -141,5 +142,5 @@ def test_the_console_already_folds_the_tool_noise_like_claude():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.267.0"
-    assert "0.267.0+307" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.268.0"
+    assert "0.268.0+308" in (ROOT / "pubspec.yaml").read_text()

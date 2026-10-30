@@ -377,11 +377,24 @@ PLAN_NOW = ("[System: tum kai steps se kaam kar rahe ho par plan nahi likha. Abh
 # ("Bills ban rahe hain"). Claude's between-step line IS the number - "the live site is on v0.256.0, the same commit
 # as main (213d505). Creating the checkpoint branch next." One sentence: what the tool really returned + what you are
 # doing now. Still no bullets, no headings, no step dumps - that part of CHHOTA JAWAB stands.
-_NARRATE = ("[System: ab use EK chhoti line batao — ek ya do vaakya, jaise ek sathi kaam karte hue bolta hai. "
-            "Do cheezein us line mein: (1) abhi ke tool se jo SACH mila — asli number / id / naam / link, tool ke "
-            "result se, banaya hua nahi; (2) ab turant kya kar rahe ho. Jaise: 'Live site v0.256.0 par hai, wahi "
-            "commit jo main par hai — ab checkpoint branch bana raha hoon.' Koi bullet, koi heading, koi step-by-step "
-            "list, koi emoji nahi. Agar kaam ab POORA ho gaya hai to yeh line mat likho — seedha aakhri jawab do.{fact}]")
+# v0.268 DO HISSE: the owner asked for the exact recipe Claude and ChatGPT use, so her own screenshot and her
+# Hoola run were measured line by line. Claude's update lines: 16-35 words, 2 sentences, 2 hard facts, and 3 of 4
+# end in a next action. The grammar is always the same two halves - the FACT gets a real verb with the THING as its
+# subject ("The live site is on v0.256.0"), the NEXT STEP is an -ing fragment ("Creating the checkpoint branch").
+# Her Hoola lines already matched on shape (median 20 words, 2 facts, 4 of 4 with a next action); what was missing
+# was the ban list, so the halves and the nevers are now spelled out instead of left to the model's taste.
+_NARRATE = ("[System: ab use EK chhoti line batao. Us line ke THEEK DO HISSE hain:\n"
+            "(1) KYA MILA — ek poora vaakya jiska subject CHEEZ ho, tum nahi, aur usmein asli number / id / naam / "
+            "link ho jo abhi tool ne diya (banaya hua nahi). Jaise: 'Live site v0.256.0 par hai, wahi commit jo main "
+            "par hai.' Bina number wali line bekaar hai.\n"
+            "(2) AB KYA — ek chhota tukda, '…kar raha hoon' / '…nikal raha hoon' par khatam. Jaise: 'Ab checkpoint "
+            "branch bana raha hoon.' 'Main karunga', 'chaliye ab', 'ek second' — nahi.\n"
+            "Bas itna: 15-30 shabd, do vaakya, ek hi baat. Teesra vaakya mat jodo.\n"
+            "KABHI NAHI: 'Bilkul!' / 'Perfect!' / 'Theek hai!' jaise shuruaati shabd; 'lagta hai' / 'shayad' jab "
+            "tumne dekh liya hai; bullet, heading, emoji; tool ke naam ya andar ki galti (kaam_plan, TypeError, "
+            "thread-level listing) — woh uske kaam ki baat nahi. Kharaab khabar bhi isi shaant tareeke se: "
+            "'Build abhi chal raha hai, isliye checkpoint ab likh raha hoon.' Maafi ya drama nahi.\n"
+            "Agar kaam ab POORA ho gaya hai to yeh line mat likho — seedha aakhri jawab do.{fact}]")
 
 
 def narrate_line(facts: object = None) -> str:

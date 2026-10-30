@@ -100,11 +100,13 @@ def test_narration_keeps_claudes_cadence_by_default():
 def test_narrate_text_asks_for_the_real_finding_plus_what_is_next():
     """v0.240 forbade numbers and links, which left the line empty filler. Claude's line IS the number."""
     n = G.NARRATE
-    assert "ek ya do vaakya" in n
+    # v0.268 rewrote this ask into the measured two halves; the demand for the REAL figure only got stronger
+    assert "do vaakya" in n
     assert "asli number / id / naam / link" in n and "banaya hua nahi" in n
-    assert "ab turant kya kar rahe ho" in n
-    assert "koi number ya link nahi" not in n                    # the v0.240 ban is gone
-    for ban in ("Koi bullet", "koi heading", "step-by-step list"):
+    assert "AB KYA" in n and "KYA MILA" in n                     # what it found + what it is doing now
+    assert "koi number ya link nahi" not in n                    # the v0.240 ban is still gone
+    assert "Bina number wali line bekaar hai" in n               # ...and the opposite is now demanded
+    for ban in ("bullet, heading, emoji",):
         assert ban in n, ban
     assert "kaam ab POORA ho gaya hai to yeh line mat likho" in n   # never filler right before the answer
     # the true facts the tools returned ride into the ask (app/agent/say.py), never invented
@@ -166,4 +168,4 @@ def test_the_rulebook_still_rides_in_the_prompt():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.267.0"
+    assert APP_VERSION == "0.268.0"

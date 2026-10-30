@@ -10307,3 +10307,50 @@ refuses voiced sounds, leak pattern). Version 0.266.0 (pubspec 0.266.0+306, cons
   need an answer (greeting, news, nudge) and for tool results.
 Tests: `test_v0264_openai_voice.py` 19 (cue tests removed; new: quiet notes never reply, busy error never chains, no
 committed handler, breath planning; VAD semantic + create_response true). Version 0.267.0 (pubspec 0.267.0+307).
+
+## v0.268.0 DO HISSE — the update line gets the recipe Claude and ChatGPT actually use (owner: "NOW LETS WORK ON RESPONSE / REPLY BY CHAT GPT OR CLAUDE ---- GIVE ME STEP BY STEP HOW THEY USE PERFECT SHORT ENGLISH UPDATE REPLY FOR ANY TASK. DEEP RESEARCH FIRST AND THEN PLAIN ENGLISH SHORT AND SWEET DETAILS", then "GO")
+- RESEARCH: the web documents none of this. OpenAI's agent post and the third-party guides describe permissions and
+  interruption, not wording; the only vendor lines about style ("keep messages concise and action-oriented") belong
+  to other products. So the primary sources were used instead: her screenshot of Claude mid-task, and her own Hoola
+  run from the v0.258 test. Both were measured line by line:
+
+  | | Claude | Hoola (her run) |
+  |---|---|---|
+  | words per line | 16-35, median 28 | 16-28, median 20 |
+  | sentences | 2 | 2 |
+  | hard facts per line | 2 | 2 |
+  | ends in a next action | 3 of 4 | 4 of 4 |
+
+  The SHAPE was already right after v0.258. What had never been written down was the grammar and the ban list.
+- THE GRAMMAR, read off Claude's own lines: every update is the same TWO HALVES.
+  - HALF 1, the fact: a full sentence whose subject is the THING, not the assistant, carrying the real figure the
+    tool just returned. *"The live site is on v0.256.0, the same commit as main (213d505)."* · *"The phone app list
+    shows builds up to v0.255."* · *"The checkpoint branch stable-2026-10-29 is created."*
+  - HALF 2, the next step: a short tail that ends in the doing word, never "I will" or "let me now".
+    *"Creating the checkpoint branch and looking up the matching phone app build."* · *"Checking whether the v0.256
+    build has finished."* · *"Adding it to the project notes."*
+  In Hinglish the same two halves: *"20 mails mile hain, sabse naya Groww Digest. Ab har ek ki ek line likh raha hoon."*
+- SHIPPED AS HARD RULES in all three places that steer a reply - `goal.NARRATE` (the between-steps ask),
+  `replystyle.CHAT` (the shared rulebook for chat + console) and the pinned block in `prompts.py`:
+  (a) both halves named, with the subject rule spelled out ("subject CHEEZ ho, tum nahi");
+  (b) a real figure REQUIRED in the first half - "bina asli figure wali line mat likho", because a line with no
+      number is the filler v0.240 used to produce;
+  (c) 15-30 words, two sentences, one idea, no third sentence;
+  (d) bad news in the same calm shape, with no apology: *"Build abhi chal raha hai, isliye checkpoint ab likh raha
+      hoon."*;
+  (e) a NEVER-LIST taken from what her own run actually leaked: opener words ("Bilkul!", "Perfect!", "Theek hai!"),
+      "let me go ahead and", "lagta hai" / "it seems" about something already checked, a closing "aur kuch?",
+      bullets / headings / emoji, and ANY word from inside the machine - a tool name, a Python error, a schema, an
+      internal id. Her transcript had carried "kaam_plan() got an unexpected keyword argument 'note'" and
+      "Thread-level listing Gmail par hai" onto her screen; v0.260 stopped the error path, and this stops the model
+      from writing such words itself. A failed step is now described by what it means for HER work.
+  (f) the opener also names the first move, like Claude's *"First confirming what's live."*
+- CHAT AND CONSOLE ONLY. The voice call keeps its v0.230 pacing (news queue, murmur timing) and the quick lane runs
+  no tools, so neither takes the keep-talking rule; a test pins that.
+- NOTHING EARLIER IS UNDONE, each pinned by a test: the v0.258 cadence (narrate_every 1, max 6), the v0.240 short
+  final answer with no bullet report in the chat, and v0.260's language-first rule plus its three fixes (the
+  kaam_plan description, the human ladder line, `_answered_since`).
+- Tests: NEW `server/tests/test_v0268_do_hisse.py` (9).
+- Version 0.268.0 (pubspec 0.268.0+308, console ?v=0.268.0, pins -> 0.268.0).
+- NOT VERIFIED: this is a prompt change, so the proof is her next live run - update lines of two halves, each with a
+  real figure, and no machine words anywhere in the chat.
