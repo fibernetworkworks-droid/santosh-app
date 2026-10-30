@@ -428,7 +428,7 @@ function editBubble(d, text) {
   ta.addEventListener('keydown', e => { if (e.key === 'Escape') cancel(); if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); save(); } });
 }
 function hoolaBlock() {
-  // v0.298: no avatar in the chat space (owner: "REMOVE AVATHAR ICON ENTIERLY FROM CHAT SPACE"). The face is not
+  // v0.299: no avatar in the chat space (owner: "REMOVE AVATHAR ICON ENTIERLY FROM CHAT SPACE"). The face is not
   // drawn at all rather than hidden with CSS, so nothing holds a 44px slot and nothing has to hang outside the
   // column to make the words line up - which is also what put the reply row 44px wider than the composer.
   const d = document.createElement('div'); d.className = 'mh';
@@ -494,7 +494,7 @@ function simpleProgress(kind,p={}) {
   if (!SIMPLE_PROGRESS) {
     SIMPLE_PROGRESS=document.createElement('div');SIMPLE_PROGRESS.className='simple-progress';
     SIMPLE_PROGRESS.setAttribute('role','status');SIMPLE_PROGRESS.setAttribute('aria-live','polite');SIMPLE_PROGRESS.setAttribute('aria-atomic','true');
-    const label=document.createElement('span');label.className='progress-label';   // v0.298: no avatar here either
+    const label=document.createElement('span');label.className='progress-label';   // v0.299: no avatar here either
     const dots=document.createElement('span');dots.className='progress-dots';dots.setAttribute('aria-hidden','true');dots.innerHTML='<i></i><i></i><i></i>';
     const secs=document.createElement('span');secs.className='progress-secs';secs.setAttribute('aria-hidden','true');   // v0.293 the clock is decoration; the label is what a screen reader reads
     SIMPLE_PROGRESS.append(label,dots,secs);
@@ -505,7 +505,7 @@ function simpleProgress(kind,p={}) {
   const text=SIMPLE_PROGRESS.querySelector('.progress-label');if(text.textContent!==label)text.textContent=label;
   scrollDown();
 }
-/* v0.298 (owner: "WHEN HOOLA PERFECOM LONG TASK THE LODING, THINGING SECTION GET HIDE FOR WHILE - FIND ROUTE
+/* v0.299 (owner: "WHEN HOOLA PERFECOM LONG TASK THE LODING, THINGING SECTION GET HIDE FOR WHILE - FIND ROUTE
    CAUSE AND FIX THIS"). The root cause: seg() hides this row the moment a text block starts streaming - right,
    because the words themselves show it is working - but NOTHING brought it back when those words ended. It was
    only ever un-hidden by the NEXT progress event. So on a long job the shape was: narration line arrives, row
@@ -574,7 +574,7 @@ function seg(R, n) {
   const view = new HoolaMD.Live(el);
   S = {el, view, pacer: new HoolaStream.Pacer((text, fin) => {
     view.update(text, !fin);
-    // v0.298: the block is written and the turn is still going - show the loader again instead of leaving the
+    // v0.299: the block is written and the turn is still going - show the loader again instead of leaving the
     // screen dead until the next step event arrives.
     if (fin && TYPING) placeProgress();
     scrollDown();

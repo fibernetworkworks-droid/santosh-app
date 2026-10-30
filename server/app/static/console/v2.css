@@ -1716,7 +1716,7 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
    hangs just outside the left edge (the words start where the composer starts); on narrow screens it stays inline.
    ================================================================================================ */
 #app .thread{container-type:inline-size;container-name:thread}
-/* v0.298 (owner: "PANEL WHERE CHAT LANDS ... IS EXCEEDING THE SIZE LENGHT OF CHAT BOX MAKE IT SLIGH INSIDE"):
+/* v0.299 (owner: "PANEL WHERE CHAT LANDS ... IS EXCEEDING THE SIZE LENGHT OF CHAT BOX MAKE IT SLIGH INSIDE"):
    the composer dock is min(880px,100%); the chat column is now 16px inside it on each side, so the words and
    her bubble sit just within the box she types in instead of running past its left edge. */
 #app .col{width:min(848px,calc(100% - 20px));max-width:none;margin-inline:auto;padding-left:0;padding-right:0}
@@ -1730,7 +1730,7 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 #app .mh .txt>p,#app .mh .txt>ul,#app .mh .txt>ol,#app .mh .txt>.mdh,#app .mh .txt>blockquote{max-width:680px}
 #app .mu{max-width:min(78%,640px)}
 #app .mh .cd,#app .mh .appr{max-width:100%}
-/* v0.298: the 44px overhang is GONE with the avatar. It existed only so the face could hang outside the column
+/* v0.299: the 44px overhang is GONE with the avatar. It existed only so the face could hang outside the column
    while the words still started at the composer's left edge; with no face there is nothing to hang, and the pull
    was also what made the reply row 44px WIDER than the box she types in. Rows now sit inside the column. */
 

@@ -9,8 +9,8 @@ CSS = (CON / "v2.css").read_text()
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.298.0"
-    assert "0.298.0+338" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.299.0"
+    assert "0.299.0+339" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_no_heavy_weights_caps_or_tiny_text():

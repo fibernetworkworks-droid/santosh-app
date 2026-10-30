@@ -22,7 +22,7 @@ CON = ROOT / "server/app/static/console"
 def test_the_row_carries_a_clock():
     js = (CON / "v2.js").read_text()
     assert "secs.className='progress-secs'" in js
-    assert "SIMPLE_PROGRESS.append(label,dots,secs)" in js      # v0.298 dropped the avatar from this row
+    assert "SIMPLE_PROGRESS.append(label,dots,secs)" in js      # v0.299 dropped the avatar from this row
     assert "PROGRESS_TIMER=setInterval(progressTick,1000)" in js
 
 
@@ -81,5 +81,5 @@ def test_the_two_older_clocks_still_exist():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.298.0"
-    assert "0.298.0+338" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.299.0"
+    assert "0.299.0+339" in (ROOT / "pubspec.yaml").read_text()

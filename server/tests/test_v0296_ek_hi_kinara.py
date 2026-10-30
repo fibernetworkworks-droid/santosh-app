@@ -27,7 +27,7 @@ def _css() -> str:
     return CSS.read_text()
 
 
-# v0.298 SUPERSEDED THE MECHANISM, NOT THE GOAL. The owner then asked for the avatar to go from the chat
+# v0.299 SUPERSEDED THE MECHANISM, NOT THE GOAL. The owner then asked for the avatar to go from the chat
 # entirely, so there is no face to align and no 44px slot to match: the row simply sits in the column like every
 # other row, and the label starts on the reply's own left edge because nothing is pulled any more. The four tests
 # that pinned the pull, the 30px avatar box, its glow ring and the hidden tail slot are gone with the thing they
@@ -57,5 +57,5 @@ def test_v0293_clock_is_untouched():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.298.0"
-    assert "0.298.0+338" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.299.0"
+    assert "0.299.0+339" in (ROOT / "pubspec.yaml").read_text()

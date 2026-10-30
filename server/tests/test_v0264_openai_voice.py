@@ -262,8 +262,8 @@ def test_voice_block_leads_and_openai_waits_for_us():
     assert "saans" not in voice_openai.EMOTION.lower() and "breath" not in voice_openai.EMOTION.lower()
 
 
-def test_breath_sound_plays_before_his_first_word():
-    import time as _t
+def test_breath_sound_plays_before_his_first_word(monkeypatch):
+    """v0.290: only a REAL recorded breath plays (the generated one sounded like radio static); none ready = silence."""
     sent = []
 
     class C(voice_openai.OpenAICall):
@@ -272,12 +272,16 @@ def test_breath_sound_plays_before_his_first_word():
 
         async def send_audio(self, pcm):
             sent.append(pcm)
+    from app import breath
+    monkeypatch.setattr(breath, "_READY", [])
+    monkeypatch.setattr(breath, "_BUSY", {"on": True, "done": False})   # no takes rendered (and none started here)
+    asyncio.run(C()._breathe())
+    assert sent == []                                       # no static before his first word
+    real = breath.synth(7, 0.4)                             # stands in for a validated TTS take
+    monkeypatch.setattr(breath, "_READY", [real])
     c = C()
     asyncio.run(c._breathe())
-    from app import breath
-    assert sent and breath.is_breath(sent[0]) and c.stats["breaths"] == 1   # (send_audio moves the playback clock)
-
-
+    assert sent and breath.is_breath(sent[0]) and c.stats["breaths"] == 1
 def test_breath_detector_refuses_spoken_sounds():
     from app import breath
     assert all(breath.is_breath(breath.synth(s, d)) for s, d in ((1, .38), (2, .45), (3, .52)))
@@ -354,7 +358,10 @@ def test_committed_segments_do_not_start_replies():
     assert "response.create" not in src[i:i + 400]
 
 
-def test_breath_planned_after_a_long_turn_never_twice():
+def test_breath_planned_after_a_long_turn_never_twice(monkeypatch):
+    monkeypatch.setenv("VOICE_OPENAI_BREATH", "true")           # v0.290 off by default; the planning rule itself
+    from app.config import get_settings
+    get_settings.cache_clear()
     c = _bare()
     c._her_s = 5.0
     c._plan_breath()
@@ -389,5 +396,5 @@ def test_gemini_file_has_only_the_routing_seam():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.298.0"
-    assert "0.298.0+338" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.299.0"
+    assert "0.299.0+339" in (ROOT / "pubspec.yaml").read_text()

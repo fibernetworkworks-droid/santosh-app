@@ -41,7 +41,7 @@ def test_a_table_and_a_code_block_keep_the_full_width():
 
 
 def test_the_column_still_lines_up_with_the_composer():
-    """v0.276 left the column flush with the composer and shortened only the PROSE. In v0.298 the owner asked for
+    """v0.276 left the column flush with the composer and shortened only the PROSE. In v0.299 the owner asked for
     the chat to sit slightly INSIDE the box she types in, so the column is 848 against the composer's 880 - 16px
     in on each side. The prose cap below is untouched and is still the thing that sets the reading line."""
     css = _css()
@@ -72,5 +72,5 @@ def test_the_phone_needs_no_cap():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.298.0"
-    assert "0.298.0+338" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.299.0"
+    assert "0.299.0+339" in (ROOT / "pubspec.yaml").read_text()

@@ -129,9 +129,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.298.0 (pubspec 0.298.0+338). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.299.0 (pubspec 0.299.0+339). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.298 NO RADIO: the "radio" sound before the real voice spoke = the generated noise breath (v0.266); breath OFF by
+  default (`VOICE_OPENAI_BREATH`), the generated noise never plays - only a recorded take that passed `breath.is_breath`.
 - v0.297 COMPOSIO KEY APPS: API-key / bearer / basic apps = "Key daaliye" (her key typed in the app, POST /connected_accounts
   state.val, Composio validates, Hoola keeps only the account id); only OAuth apps without Composio login need setup. `... composio trykey <app>`.
 - v0.295 WEB DESIGN PHASE 2 edit like Lovable: preview Edit mode (`site/edit.py`, `assets/hoola-edit.js`, console studio + phone
@@ -146,7 +148,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   with a key in it is sealed (`bz_custom_mcp.url_enc`, masked `url`); fair native-tool budget + `bazar_mcp action=tools`.
 - v0.289 SAHI KRAM (real voice code review): her late OpenAI transcript joins HER turn (finish waits <=3 s), no reply
   while she speaks, late words never wipe captions, early self-cuts counted, semantic VAD medium. Gemini untouched.
-- v0.298 KHULI JAGAH: (1)+(3) were ONE problem - v0.252's -44px pull existed only to hang the AVATAR outside
+- v0.299 KHULI JAGAH: (1)+(3) were ONE problem - v0.252's -44px pull existed only to hang the AVATAR outside
   the column, which is why the reply row ran 924px against the composer's 880 and stuck out 44px. Avatar is
   no longer DRAWN (not CSS-hidden), overhang gone, column 880->848 so the chat sits 16px INSIDE the typing
   box both sides. Reverses v0.252's flush edge on her ask. (2) LOADER ROOT CAUSE: seg() hides the progress

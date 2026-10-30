@@ -18,7 +18,7 @@ def test_ack_is_the_progress_line_not_a_reply():
 
 
 def test_progress_row_never_shows_a_second_avatar():
-    """v0.298 settled this differently: the owner asked for the avatar to go from the chat entirely, so there is
+    """v0.299 settled this differently: the owner asked for the avatar to go from the chat entirely, so there is
     no second face to avoid and no `tail` class to toggle. What still matters from v0.227 is the OTHER half of the
     rule - the progress row hides while the words stream, so there is only ever one thing saying "busy"."""
     js = _read("v2.js")
@@ -31,5 +31,5 @@ def test_progress_row_never_shows_a_second_avatar():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.298.0"
-    assert "0.298.0+338" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.299.0"
+    assert "0.299.0+339" in (ROOT / "pubspec.yaml").read_text()

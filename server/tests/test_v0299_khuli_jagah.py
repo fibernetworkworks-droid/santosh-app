@@ -1,4 +1,4 @@
-"""v0.298 KHULI JAGAH - three asks in one message, and the first and third were one problem.
+"""v0.299 KHULI JAGAH - three asks in one message, and the first and third were one problem.
 
     1) "PANEL WHERE CHAT LANDS ... IS EXCEEDING THE SIZE LENGHT OF CHAT BOX MAKE IT SLIGH INSIDE"
     2) "WHEN HOOLA PERFECOM LONG TASK THE LODING, THINGING SECTION GET HIDE FOR WHILE - FIND ROUTE CAUSE AND FIX"
@@ -88,5 +88,5 @@ def test_v0293_clock_and_v0286_renderer_still_stand():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.298.0"
-    assert "0.298.0+338" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.299.0"
+    assert "0.299.0+339" in (ROOT / "pubspec.yaml").read_text()

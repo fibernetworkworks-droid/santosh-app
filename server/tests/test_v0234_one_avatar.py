@@ -6,7 +6,7 @@ CON = ROOT / "server/app/static/console"
 
 
 def test_empty_reply_row_hidden():
-    """The empty-row rule still stands. The avatar half of v0.234 does not: v0.298 removed the face from the chat
+    """The empty-row rule still stands. The avatar half of v0.234 does not: v0.299 removed the face from the chat
     on the owner's ask, so there is no avatar for the progress row to borrow or avoid."""
     css = (CON / "v2.css").read_text()
     assert "#app .mh:has(>.bd:empty){display:none}" in css
@@ -22,7 +22,7 @@ def test_greeting_never_drawn():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.298.0"
-    assert "0.298.0+338" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.299.0"
+    assert "0.299.0+339" in (ROOT / "pubspec.yaml").read_text()
     # v0.240: follow the release instead of a hardcoded number, so a version bump cannot fail this
     assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 16   # v0.243 + theme.js, v0.248 + pdfview.js, v0.259 + studio.js, v0.285 + menu.js, v0.279 + attach.js
