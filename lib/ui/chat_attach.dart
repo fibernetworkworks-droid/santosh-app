@@ -7,7 +7,7 @@ import '../state.dart';
 import 'glass.dart';
 import 'hoola_media.dart';
 
-/// v0.281 ATTACHMENTS LIKE CLAUDE on the phone (same as the web console's attach.js).
+/// v0.282 ATTACHMENTS LIKE CLAUDE on the phone (same as the web console's attach.js).
 /// Typing box: square tiles - a photo shows itself the moment she picks it (her own bytes), a PDF its first page and
 /// a video its frame + length once uploaded (the server's small preview), text its first lines; a real upload bar on
 /// each tile, a failed upload stays red with Retry, ✕ removes.

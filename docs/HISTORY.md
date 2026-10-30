@@ -10722,3 +10722,24 @@ Unable to verify / Offline.
   that way.
 - Tests: NEW `server/tests/test_v0281_bullet_gutter.py` (4).
 - Version 0.281.0 (pubspec 0.281.0+321, console ?v=0.281.0, pins -> 0.281.0).
+
+
+## v0.282.0 ATTACHMENTS LIKE CLAUDE ON THE PHONE (30 Oct 2026)
+Owner: "BUILD SAME FOR PHONE APP" (after v0.279 did it for the web console).
+Before: the typing box showed each file as a chip (a spinner chip while uploading, no %), and her sent files were
+stacked preview cards INSIDE her purple bubble; a files-only message read "📎 name" lines; tapping a photo showed only
+the server's small 360px preview, anything else opened in an outside app.
+Now (`lib/ui/chat_attach.dart`, used by chat_screen.dart):
+- TrayFile + AttachTray: 84px square tiles above the typing box. A photo shows itself from her own bytes the moment she
+  picks it; after upload a PDF shows its first page + "PDF · 4 pages", a video its frame + play mark + length, a text /
+  pasted file its first lines (server `snippet`), anything else a coloured icon + name + type. Real upload bar per tile:
+  `api.uploadFile(onProgress:)` sends the bytes as 64 KB pieces and reports 0..0.96 (the last 4% = the server reading
+  it). Failed upload = red tile with Dobara; X removes. Send refuses while a file is uploading or failed.
+- SentFiles: her files sit ABOVE her bubble, right-aligned (104px tiles in a Wrap); one photo / video alone shows large
+  in its own shape (max 250 x 320). A files-only message ("Ye file dekho" now, or an old "📎 name" one) shows only
+  the tiles. A QR read from a photo (QrNote) still shows in the bubble.
+- openAttachment / AttachViewer: photo / video / audio open full screen - swipe between the message's media, pinch to
+  zoom (InteractiveViewer), the small preview at once and the FULL photo over it from the signed link; video / audio
+  with play / pause, scrub bar and time. PDF / Word / Excel / other files open in the phone's own app (signed link, as
+  before) - an in-app PDF reader is not built on the phone.
+Server unchanged. Not verified on a device in the sandbox (no Flutter here): CI analyze + the APK are the check.

@@ -365,7 +365,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   /// Files waiting in the box (uploaded, sent with the next message). Any type: photo, PDF, video, Excel...
-  /// v0.281 each one is a tile with its own upload bar (chat_attach.dart), like Claude.
+  /// v0.282 each one is a tile with its own upload bar (chat_attach.dart), like Claude.
   final List<TrayFile> _files = [];
 
   Future<void> _attach() async {
@@ -432,7 +432,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final files = List<TrayFile>.from(_files);
     final reply = _replyTo;   // v0.178 the quoted message rides above this one
     if (t.trim().isEmpty && files.isEmpty) return;
-    if (t.trim().isEmpty) t = fileOnlyText;   // v0.281 a files-only message shows just the tiles
+    if (t.trim().isEmpty) t = fileOnlyText;   // v0.282 a files-only message shows just the tiles
     if (reply != null && reply.isNotEmpty) {
       final q = reply.trim().split('\n').map((l) => '> $l').join('\n');
       t = '$q\n\n$t';
@@ -871,7 +871,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 decoration: BoxDecoration(gradient: C.youGradient, boxShadow: const [BoxShadow(color: Color(0x597C5CFF), blurRadius: 18, offset: Offset(0, 6))], borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(22), topRight: Radius.circular(22), bottomLeft: Radius.circular(22), bottomRight: Radius.circular(8))),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
-                  // v0.281 her files sit ABOVE the bubble now (SentFiles); a QR read from a photo stays here
+                  // v0.282 her files sit ABOVE the bubble now (SentFiles); a QR read from a photo stays here
                   for (final f in (it.data['files'] as List? ?? const []))
                     if (f is Map && f['codes'] is List) QrNote(codes: f['codes'] as List),
                   if ((it.data['files'] as List? ?? const []).any((f) => f is Map && f['codes'] is List)) const SizedBox(height: 6),

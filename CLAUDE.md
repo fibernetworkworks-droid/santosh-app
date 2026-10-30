@@ -116,11 +116,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.281.0 (pubspec 0.281.0+321). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.282.0 (pubspec 0.282.0+322). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (15 now: theme.js, pdfview.js, studio.js, attach.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - CHECKPOINT 30 Oct: FULL CLAUDE MODE (v0.239-v0.250) owner-verified "PERFECT"; memory quiz 16/20 -> 20/20; branch
   `checkpoint-full-claude-mode-2026-10-30` = 87a2046 (grep "CHECKPOINT 30 Oct" docs/HISTORY.md).
+- v0.282 ATTACHMENTS ON THE PHONE: `lib/ui/chat_attach.dart` - the same tiles as the console (tray with upload bar + Dobara, above her
+  bubble, one photo large), full-screen viewer (swipe, pinch, full photo, video / audio player); docs open in the phone's app.
 - v0.281 bullet gutter 22->30px (console). Her "not exactly as Claude" report was checked against the LIVE
   server - her own v2.css + the real md.js - and everything else already matched (pitch 40px, prose 680px, all
   left edges flush, turn gap 61px). The phone keeps its narrower 20px gutter: 30px of a 360px screen is 8% of
