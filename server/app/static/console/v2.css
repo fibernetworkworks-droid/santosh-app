@@ -1038,6 +1038,9 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 #app .progress-dots i{width:4px;height:4px;border-radius:50%;background:var(--saffron);animation:progress-dot 1.4s ease-in-out infinite}
 #app .progress-dots i:nth-child(2){animation-delay:.16s}
 #app .progress-dots i:nth-child(3){animation-delay:.32s}
+/* v0.293 KITNA SAMAY: the seconds next to the working avatar. Tabular figures so the row does not jiggle as the
+   number grows, and quieter than the label - it is a reassurance, not the message. */
+#app .progress-secs{margin-left:4px;color:var(--dim);font-weight:500;font-size:13px;font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;min-width:26px}
 @keyframes progress-orbit{to{transform:rotate(360deg)}}
 @keyframes progress-dot{0%,70%,100%{opacity:.3;transform:translateY(0)}35%{opacity:1;transform:translateY(-3px)}}
 @keyframes progress-enter{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}

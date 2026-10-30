@@ -85,5 +85,5 @@ def test_the_reading_width_was_deliberately_left_alone():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.292.0"
-    assert "0.292.0+332" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.293.0"
+    assert "0.293.0+333" in (ROOT / "pubspec.yaml").read_text()

@@ -11109,3 +11109,40 @@ were a hero alone and Opus reviewed only the home page. Phase 1 fixes those five
   older scripted tests keep their call counts.
 - Built as 0.283.0, re-versioned 0.292.0 on merge past the parallel v0.283-v0.291 work.
 - Not verified on the VPS yet: real Gemini pictures for a real build (the cost per site, how often a shot is refused).
+
+## v0.293.0 KITNA SAMAY — the seconds beside the working avatar
+Owner: *"NOW A TIMING ON AVATAR THINKING"*.
+
+### Two clocks already existed, and neither answered the question
+| clock | shows | the catch |
+|---|---|---|
+| tool group (v0.228) | `4 steps · 12 s` | only **after** the work finishes |
+| Soch card (v0.171 / v0.235) | counts live | only when the model actually **reasoned** — adaptive thinking means an ordinary ask has no card at all |
+
+So for a plain wait there was no number anywhere on either surface, and **a slow turn and a stuck turn looked
+exactly the same**. That is the real cost, and it is why she asked.
+
+### What it does
+The clock starts with the **turn**, not the phase, so it reads total elapsed rather than time-in-this-step — it
+keeps counting across thinking, tool calls and narration. It stays blank for the first second, so a quick reply
+never flashes `0s`. Under a minute it reads `7s`; above it, `1m 05s`.
+
+- **Console** — `v2.js`: `progressTick()` on a 1s interval, started when the progress row is built and cleared
+  with it in `clearSimpleProgress()`. `.progress-secs` uses tabular figures so the row doesn't jiggle as the
+  number grows, and sits quieter than the label (`--dim`). It is `aria-hidden`: a number changing every second is
+  not something a screen reader should announce — the label already says what is happening.
+- **Phone** — `lib/ui/chat_screen.dart` `_Typing`: a `Timer.periodic` with the same format and the same blank
+  first second, cancelled in `dispose()`. `FontFeature` is imported explicitly from `dart:ui` rather than relied
+  on through `material.dart`'s re-exports.
+
+### Verified
+The real code was driven in a browser: it ticked 1s / 2s / 3s / 4s, computed style reported `tabular-nums`, and
+the label's left edge stayed at 68px across every tick. The format rule was checked at its boundaries —
+blank / 1s / 59s / 1m 00s / 1m 05s / 60m 00s.
+
+**Not verified locally:** `dart analyze` could not be run — the Flutter SDK in the scratchpad was deleted during a
+disk cleanup earlier in the session. CI's analyze step is the check for the phone change.
+
+### Files
+`server/app/static/console/v2.js` · `server/app/static/console/v2.css` · `lib/ui/chat_screen.dart` ·
+`server/tests/test_v0293_kitna_samay.py` (8 tests).

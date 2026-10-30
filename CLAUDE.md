@@ -129,7 +129,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.292.0 (pubspec 0.292.0+332). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.293.0 (pubspec 0.293.0+333). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.292 WEB DESIGN PHASE 1: real pictures before the looks (`site/pictures.py`: Opus shot list -> photogen, her photos first,
@@ -140,6 +140,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   with a key in it is sealed (`bz_custom_mcp.url_enc`, masked `url`); fair native-tool budget + `bazar_mcp action=tools`.
 - v0.289 SAHI KRAM (real voice code review): her late OpenAI transcript joins HER turn (finish waits <=3 s), no reply
   while she speaks, late words never wipe captions, early self-cuts counted, semantic VAD medium. Gemini untouched.
+- v0.293 KITNA SAMAY: the seconds tick beside the working avatar on both surfaces. A tool group only shows its
+  total AFTER the work and a Soch card only exists when the model reasoned, so an ordinary wait had no number
+  at all - a slow turn and a stuck one looked the same. The clock starts with the TURN (total elapsed, not
+  time-in-step), is blank for the first second, reads 7s / 1m 05s, tabular figures, aria-hidden.
 - CHECKPOINT 30 Oct: FULL CLAUDE MODE (v0.239-v0.250) owner-verified "PERFECT"; memory quiz 16/20 -> 20/20; branch
   `checkpoint-full-claude-mode-2026-10-30` = 87a2046 (grep "CHECKPOINT 30 Oct" docs/HISTORY.md).
 - v0.288 SIDEBAR FULLY VISIBLE: labels 12/400 faint --dim -> 13/500 --mut, chat titles 13.5/400 -> 14/450 ink, nav 14/400 -> 14/500

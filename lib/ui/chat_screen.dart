@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' show File;
 import 'dart:math' as math;
+import 'dart:ui' show FontFeature;   // v0.293 tabular figures for the working clock, so the row does not jiggle
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -2058,8 +2059,29 @@ class _Typing extends StatefulWidget {
 
 class _TypingState extends State<_Typing> with SingleTickerProviderStateMixin {
   late final AnimationController _t = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat();
+
+  // v0.293 KITNA SAMAY: the same clock the console now shows beside the working avatar. The Soch card already
+  // counts while the model reasons, but that card only appears when it actually reasoned - an ordinary wait had
+  // no number at all, so a slow turn and a stuck one looked identical. Blank for the first second so a quick
+  // reply never flashes "0s".
+  Timer? _clock;
+  final DateTime _t0 = DateTime.now();
+  int _secs = 0;
+
+  static String fmtSecs(int s) => s < 60 ? '${s}s' : '${s ~/ 60}m ${(s % 60).toString().padLeft(2, '0')}s';
+
+  @override
+  void initState() {
+    super.initState();
+    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _secs = DateTime.now().difference(_t0).inSeconds);
+    });
+  }
+
   @override
   void dispose() {
+    _clock?.cancel();
     _t.dispose();
     super.dispose();
   }
@@ -2097,6 +2119,11 @@ class _TypingState extends State<_Typing> with SingleTickerProviderStateMixin {
                 if (widget.step != null) ...[
                   const SizedBox(width: 10),
                   Flexible(child: Text(widget.step!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.chip))),
+                ],
+                if (_secs >= 1) ...[
+                  const SizedBox(width: 8),
+                  Text(fmtSecs(_secs),
+                      style: const TextStyle(fontSize: 12, color: C.muted, fontFeatures: [FontFeature.tabularFigures()])),
                 ],
               ]),
             ),
