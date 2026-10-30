@@ -596,7 +596,7 @@ p{margin:0}
 .libbar .dd{border:1px solid var(--line);background:var(--surface);height:36px}
 @media (prefers-reduced-motion:reduce){.rarr,.adv summary .ic{transition:none}}
 
-/* ---------- v0.305 PREMIUM STUDIO SIDEBAR (owner, with a screenshot: "MAKE SIDE BAR MORE PREMIUM AND ADVANCE WITH PERFECT
+/* ---------- v0.306 PREMIUM STUDIO SIDEBAR (owner, with a screenshot: "MAKE SIDE BAR MORE PREMIUM AND ADVANCE WITH PERFECT
    ANIMATIONS ON BUTTONS"). Every motion is short and ends (no held animation fill, no blur: CRISP TEXT); all of it
    switches off under reduced motion and the calm setting. */
 #shell{--spring:cubic-bezier(.34,1.56,.64,1);--out:cubic-bezier(.22,1,.36,1)}

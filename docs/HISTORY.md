@@ -11475,3 +11475,24 @@ section types, export as static HTML only.
 - Built as 0.302.0, re-versioned 0.305.0 on merge past the parallel v0.302-v0.304 work.
 - Not done yet: the phone app's own Data screen (the console has it; on the phone the site's /admin/ page works in
   the browser), file / photo fields, emails to members (password reset is "ask the shop" for now).
+
+
+## v0.306.0 PREMIUM STUDIO SIDEBAR (30 Oct 2026)
+Owner, with a screenshot of the Create Studio sidebar: "NOW MAKE SIDE BAR MORE PREMIUM AND ADVNCE WITH PERFECT AMINATIONS ON
+BUTTONS -- SHOW THE VIRTUAL PREVIEW FIRST THEN DEPLOY". Her screenshot: a thick always-on scrollbar, faint labels, the list
+cut off hard under the spend meter ("Inspire" half hidden), and nothing that answered a hover or a press.
+Built (studio.css block "v0.306 PREMIUM STUDIO SIDEBAR", a few lines of studio.js):
+- labels 12px / 500 in --mut; the scrollbar is invisible until the pointer is over the list; the list fades out at the
+  bottom only while more of it is below (JS toggles `.fadeb` on scroll / resize) - first named `.more`, which the
+  studio already uses for its violet links, so the whole nav turned violet: caught in the browser and renamed.
+- the open page: violet pill (--priSoft / --priInk, 500) with a 3px accent bar that grows in (scaleY, spring).
+- agent cards: lift 1px with a soft shadow and a violet-tinted border, the colour tile tilts -6deg and pops 1.07 on a
+  spring, a small arrow slides in from the left (absolute, so it never steals the subtitle's width).
+- tool tiles: a grey tint and the icon pops 1.14 in the brand colour; every button presses to .97 on click; the Back to
+  chat arrow leans home; the collapse icon turns when the sidebar folds.
+- one entrance when the studio opens: rows fade + slide in top to bottom, 22ms apart (fill backwards: nothing is held
+  after it ends - CRISP TEXT); drawNav runs only on mount, so changing pages does not replay it.
+- spend meter: fills from empty (0.9s ease-out), says "N% of this month's limit used"; "Studio" beside the logo is a pill.
+- all motion off under prefers-reduced-motion and under her Calm setting (:host-context(.calm)).
+Preview: before / after stills (rest, hover agent, hover tool, active page; light + dark) and a recorded video of the
+animations. Tests: tests/test_v0306_studio_sidebar.py.

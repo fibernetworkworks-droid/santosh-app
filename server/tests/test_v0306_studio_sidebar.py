@@ -1,4 +1,4 @@
-"""v0.305 PREMIUM STUDIO SIDEBAR: readable labels, scrollbar only on hover, a fade only while more list is below,
+"""v0.306 PREMIUM STUDIO SIDEBAR: readable labels, scrollbar only on hover, a fade only while more list is below,
 the open page a violet pill with a growing bar, agent cards lift + tilt + arrow, tool icons pop, a press on every
 button, one top-to-bottom entrance, a meter that fills and says the %; all of it off under reduced motion / calm."""
 from __future__ import annotations
@@ -10,7 +10,7 @@ CON = Path(__file__).resolve().parents[1] / "app" / "static" / "console"
 
 def _blk() -> str:
     css = (CON / "studio.css").read_text()
-    return css[css.index("v0.305 PREMIUM STUDIO SIDEBAR"):]
+    return css[css.index("v0.306 PREMIUM STUDIO SIDEBAR"):]
 
 
 def test_motion_is_short_and_switchable():

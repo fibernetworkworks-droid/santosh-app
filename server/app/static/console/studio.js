@@ -190,7 +190,7 @@ window.HoolaCreate = ctx => {
 <div class="lightbox" id="lightbox" hidden></div>
 ${SPRITE}`;
   }
-  function drawNav() {      // v0.305 each row carries --i so the sidebar fades in top to bottom once, when the studio opens
+  function drawNav() {      // v0.306 each row carries --i so the sidebar fades in top to bottom once, when the studio opens
     let i = 0; const st = () => ` style="--i:${i++}"`;
     $('#snav').innerHTML = NAV.map(n => {
       if (n[0] === 'l') return `<div class="sl"${st()}>${n[1]}</div>`;
@@ -203,7 +203,7 @@ ${SPRITE}`;
     const s = D.studio, el = $('#credits'); if (!el) return;
     if (!s || !s.month_limit_usd) { el.innerHTML = '<span class="mut">Your AI spend is in Account</span>'; return; }
     const k = s.usd_inr || 85, used = (s.month_spent_usd || 0) * k, lim = s.month_limit_usd * k;
-    const pct = Math.min(100, used / lim * 100);   // v0.305 the meter fills from empty, and says how much is used
+    const pct = Math.min(100, used / lim * 100);   // v0.306 the meter fills from empty, and says how much is used
     el.innerHTML = `<div class="crow1"><span class="mut">Video Studio</span><b class="num">${inr(used)} <span class="dim">/ ${inr(lim)}</span></b></div><div class="bar"><i style="width:0%"></i></div><small class="dim">${pct < 1 && used > 0 ? '<1' : Math.round(pct)}% of this month’s limit used</small>`;
     requestAnimationFrame(() => requestAnimationFrame(() => { const b = el.querySelector('.bar i'); if (b) b.style.width = pct.toFixed(1) + '%'; }));
   }
@@ -1294,7 +1294,7 @@ ${SPRITE}`;
     document.body.appendChild(host);
     R = host.attachShadow({mode: 'open'});
     R.innerHTML = shellHTML(); drawNav(); drawCredits();
-    { const sn = $('#snav'), fade = () => sn.classList.toggle('fadeb', sn.scrollTop + sn.clientHeight < sn.scrollHeight - 4);   // v0.305 fade only while more list is below
+    { const sn = $('#snav'), fade = () => sn.classList.toggle('fadeb', sn.scrollTop + sn.clientHeight < sn.scrollHeight - 4);   // v0.306 fade only while more list is below
       sn.addEventListener('scroll', fade, {passive: true}); addEventListener('resize', fade); requestAnimationFrame(fade); }
     R.addEventListener('pointerdown', e => { if (popFor && !e.target.closest('#pop') && !popFor.contains(e.target)) closeMenu(); });
     R.addEventListener('scroll', e => { if (popFor && !e.target.closest?.('#pop')) closeMenu(); }, true);
