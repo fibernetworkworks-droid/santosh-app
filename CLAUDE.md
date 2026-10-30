@@ -110,7 +110,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.262.0 (pubspec 0.262.0+302). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.263.0 (pubspec 0.263.0+303). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (14 now: theme.js, pdfview.js, studio.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.260 SAAF KAAM (from her own live test run): `kaam_plan`'s description named a parameter that did not exist
@@ -122,6 +122,8 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   tool, then a line per tool group carrying the tool's own number / id / link + what it is doing now. Narration
   was goal-only (a plain multi-tool ask was silent), v0.240's cadence 8/2 was silence (now 1/6, still capped),
   and NARRATE banned the numbers that make the line useful (now it demands them, fed by say.py).
+- v0.263 VIDEO PHASE 2: daily live price re-read + price-move log, estimate vs actual per take (billed = min, never above
+  the card), her clips per model, Hoola Auto quality / value / lowest price, same shot by 2-3 models on one card (`compare`).
 - v0.262 VIDEO PHASE 1 EVERY MODEL, PRICE FIRST: live OpenRouter video list + real prices (`studio/catalog.parse_skus`, `rate`),
   GET /api/studio/models (41 cards incl. market "coming"), POST /api/studio/price (live Create price), itemised price card;
   her model / resolution = project prefs, scene model wins over film model (`Studio.model_for(..., pref)`); console picker + compare.

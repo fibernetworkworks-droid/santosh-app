@@ -273,7 +273,7 @@ def _typical_s(seconds: float) -> float:
 
 
 DEFAULT_PREFS = {"voice": "", "captions": True, "caption_style": "bold", "music": "", "quality": "final",
-                 "model": "", "resolution": ""}       # v0.262 her model / resolution pick ("" = Hoola Auto / by quality)
+                 "model": "", "resolution": "", "auto": "quality"}   # v0.263 auto = quality | value | cheap       # v0.262 her model / resolution pick ("" = Hoola Auto / by quality)
 
 
 def prefs_of(p: dict) -> dict:
@@ -281,10 +281,10 @@ def prefs_of(p: dict) -> dict:
 
 
 def quote(st: Studio, p: dict, quality: str, shot_ids: list[str] | None = None, variants: int = 1,
-          model: str | None = None) -> dict:
+          model: str | None = None, compare: list[str] | None = None) -> dict:
     """v0.159 The price of one generate run, line by line (video / opening pictures / lip sync / music): the same numbers
     on the app's price sheet and on the card she taps."""
-    e = st.estimate(p["name"], quality, shot_ids, variants, model)
+    e = st.estimate(p["name"], quality, shot_ids, variants, model, compare)
     sync_ps = st.models["sync-3"]["usd_per_s"] if "sync-3" in st.models else 0.0
     video = lips = 0.0
     lip_shots, lip_secs = 0, 0
@@ -317,6 +317,7 @@ def quote(st: Studio, p: dict, quality: str, shot_ids: list[str] | None = None, 
                                                                                   r.get("audio", True)) * k, 2),
                  "inr": round(r["usd"] * k, 1)} for r in e["shots"]]
     return {"quality": quality, "usd": total, "inr": _inr(total), "cap_usd": round(e["usd"], 4), "rows": rows_out,
+            "compare": list(dict.fromkeys(compare)) if compare else None,
             "video_usd": round(video, 4), "video_inr": _inr(video), "lipsync_usd": round(lips, 4), "lipsync_inr": _inr(lips),
             "lipsync_shots": lip_shots, "lipsync_seconds": lip_secs, "keyframes": len(paint), "paint_ids": paint,
             "keyframes_inr": _inr(pic), "music": mood, "music_inr": _inr(mus), "shots": len(e["shots"]),
@@ -361,6 +362,9 @@ def view(tenant: str, p: dict) -> dict[str, Any]:
                               "problems": (v.get("look") or {}).get("problems") or [], "good": (v.get("look") or {}).get("good") or [],
                               "fix": (v.get("look") or {}).get("fix") or "", "lipsync": v.get("lipsync"),
                               "lipsync_error": v.get("lipsync_error"), "cost_inr": _inr(v.get("cost_usd") or 0),
+                              "est_inr": round((v.get("est_usd") or 0) * _rate(), 1) if v.get("est_usd") is not None else None,
+                              "actual_inr": round(v["actual_usd"] * _rate(), 1) if v.get("actual_usd") is not None else None,
+                              "billed_inr": round((v.get("billed_usd") if v.get("billed_usd") is not None else v.get("cost_usd") or 0) * _rate(), 1),
                               "picked": v["n"] == picked})
         phase, pct = "new", None
         lj = live[-1] if live else None
@@ -385,7 +389,7 @@ def view(tenant: str, p: dict) -> dict[str, Any]:
         elif kf:
             phase = "pictured"
         try:
-            m = st.model_for(s, want, None, st.pref_model(p))
+            m = st.model_for(s, want, None, st.pref_model(p), st.auto_of(p, want))
         except Exception:
             m = None
         text, _v, _l, line = st.speech_plan(p, s)
@@ -492,6 +496,7 @@ def view(tenant: str, p: dict) -> dict[str, Any]:
             "logo_info": ({"url": link(tenant, lg["src"], 3) if Path(lg["src"]).is_file() else "", "position": lg.get("position")}
                           if lg else None),
             "progress": prog, "step": step, "phase": phase, "next": nxt, "painting": sorted(painting),
+            "money": money_of(p),
             "reviewing": key in _reviewing, "can_paint": bool(st.painter), "lyria": lyria_ready(),
             "cameras": list(catalog.CAMERA), "kinds": list(catalog.KINDS),
             "month": {"spent_inr": _inr(month_spent(tenant)), "limit_inr": _inr(float(_st().studio_month_usd or 0))}}
@@ -611,6 +616,8 @@ def _clean_prefs(d: dict, base: dict | None = None) -> dict:
         out["quality"] = d["quality"]
     if "model" in d and d["model"] is not None:          # v0.262 checked against the studio's models when used
         out["model"] = re.sub(r"[^\w.\-/]", "", str(d["model"]))[:80]
+    if d.get("auto") in ("quality", "value", "cheap"):
+        out["auto"] = d["auto"]
     if "resolution" in d and d["resolution"] is not None:
         r = catalog.norm_res(d["resolution"])
         out["resolution"] = r if r in catalog.RES_ORDER else ""
@@ -658,21 +665,25 @@ async def storyboard(tenant: str, project: str, shots: list[dict]) -> dict:
 
 
 async def generate(tenant: str, project: str, quality: str = "preview", shot_ids: list[str] | None = None,
-                   variants: int = 1, model: str | None = None, conversation_id: str = "") -> dict:
+                   variants: int = 1, model: str | None = None, conversation_id: str = "",
+                   compare: list[str] | None = None) -> dict:
     """Preview = free, runs now. Draft / final = a card for her tap; nothing paid runs before it."""
+    if compare and not (2 <= len(set(compare)) <= 3):
+        raise StudioJobError("Ek saath 2 ya 3 model compare ho sakte hain")
     st = await studio(tenant)
     if quality not in catalog.QUALITY:
         raise StudioJobError(f"quality = {list(catalog.QUALITY)}")
     p = st.load(project)
     try:
-        q = quote(st, p, quality, shot_ids, max(1, min(int(variants or 1), 4)), model)
+        q = quote(st, p, quality, shot_ids, max(1, min(int(variants or 1), 4)), model, compare)
     except StudioError as e:
         raise StudioJobError(str(e)) from None
     if q["usd"] <= 0:
         return await _run_generate(tenant, st, project, quality, shot_ids, variants, model, None)
     return await _ask(tenant, st, project, {**{k: v for k, v in q.items() if k != "quality"}, "kind": "generate",
                                             "quality": quality, "shot_ids": shot_ids or [],
-                                            "variants": max(1, min(int(variants or 1), 4)), "model": model})
+                                            "variants": max(1, min(int(variants or 1), 4)), "model": model,
+                                            "compare": q.get("compare")})
 
 
 async def keyframes(tenant: str, project: str, shot_ids: list[str] | None = None) -> dict:
@@ -927,7 +938,8 @@ def _cap(a: dict) -> float:
 async def _run_generate(tenant: str, st: Studio, project: str, quality: str, shot_ids, variants, model, max_cost,
                         card: dict | None = None) -> dict:
     try:
-        r = await st.generate(project, quality, shot_ids or None, variants, model, max_cost, 0)
+        r = await st.generate(project, quality, shot_ids or None, variants, model, max_cost, 0,
+                              (card or {}).get("compare") or None)
     except StudioError as e:
         raise StudioJobError(str(e)) from None
     usd = float((card or {}).get("usd") or r["estimate_usd"])
@@ -1590,8 +1602,13 @@ QUALITY_OF_RES = {"360p": "draft", "480p": "draft", "540p": "draft", "720p": "dr
                   "1080p": "final", "2k": "premium", "4k": "premium"}
 
 
+AUTO_WHY = {"quality": "the best ready model for this kind of shot",
+            "value": "the cheapest of the three best ready models for this kind of shot",
+            "cheap": "the lowest price among the ready models for this kind of shot"}
+
+
 def clip_price(tenant: str, model: str = "", seconds: int = 8, resolution: str = "1080p", audio: bool = True,
-               takes: int = 1, kind: str = "scene") -> dict:
+               takes: int = 1, kind: str = "scene", auto: str = "quality") -> dict:
     """The live price on the Create button: one clip of `seconds` at `resolution` with this model (or what Hoola Auto
     would pick), `takes` times. The same rate table the price card and the run use."""
     st = studio_sync(tenant)
@@ -1599,7 +1616,8 @@ def clip_price(tenant: str, model: str = "", seconds: int = 8, resolution: str =
     quality = QUALITY_OF_RES.get(res, "final")
     if model and model not in st.models:
         raise StudioJobError("Yeh model is server par nahi hai")
-    m = model or st.model_for({"kind": kind}, quality, None)
+    auto = auto if auto in AUTO_WHY else "quality"
+    m = model or st.model_for({"kind": kind}, quality, None, None, (auto, res))
     cfg = st.models[m]
     lo, hi = cfg["durations"]
     secs = max(lo, min(hi, int(seconds or 8)))
@@ -1614,7 +1632,9 @@ def clip_price(tenant: str, model: str = "", seconds: int = 8, resolution: str =
     return {"model": m, "name": _label(st, m), "auto": not model, "seconds": secs, "resolution": got, "audio": audio,
             "takes": takes, "inr_per_s": round(catalog.rate(cfg, got, audio) * k, 2), "usd": round(usd, 4),
             "inr": round(usd * k, 1), "ready": st.providers[cfg["provider"]].ready(),
-            "changed": [x for x, a, b in (("seconds", secs, int(seconds or 8)), ("resolution", got, res)) if a != b]}
+            "changed": [x for x, a, b in (("seconds", secs, int(seconds or 8)), ("resolution", got, res)) if a != b],
+            "auto_mode": auto if not model else None,
+            "why": "" if model else f"Hoola Auto chose {_label(st, m)}: {AUTO_WHY[auto]}."}
 
 
 async def models_refresh(tenant: str) -> dict:
@@ -1625,3 +1645,60 @@ async def models_refresh(tenant: str) -> dict:
     except Exception as e:
         raise StudioJobError(f"Abhi model list nahi mili: {str(e)[:120]}") from None
     return {**r, "synced_at": st.synced_at}
+
+
+# ---------------------------------------------------------------- v0.263 VIDEO PHASE 2
+def _rate() -> float:
+    return float(_st().studio_usd_inr or 85)
+
+
+def money_of(p: dict) -> dict:
+    """Approved on her cards vs what she pays for the takes vs what the providers really reported."""
+    k = _rate()
+    approved = sum(float(a.get("usd") or 0) for a in (p.get("approvals") or {}).values() if a.get("status") == "approved")
+    vs = [v for vv in (p.get("variants") or {}).values() for v in vv if v.get("quality") != "preview"]
+    billed = sum(float(v.get("billed_usd") if v.get("billed_usd") is not None else v.get("cost_usd") or 0) for v in vs)
+    est = sum(float(v.get("est_usd") or 0) for v in vs if v.get("est_usd") is not None)
+    actual = [float(v["actual_usd"]) for v in vs if v.get("actual_usd") is not None]
+    return {"approved_inr": round(approved * k, 1), "billed_inr": round(billed * k, 1), "estimate_inr": round(est * k, 1),
+            "actual_inr": round(sum(actual) * k, 1) if actual else None, "saved_inr": round(max(0.0, est - billed) * k, 1),
+            "takes": len(vs)}
+
+
+def _her_clips(tenant: str, st: Studio, per: int = 3) -> dict:
+    """Her own finished takes per model (newest first): the picker's 'your clips with this model'."""
+    out: dict[str, list] = {}
+    for x in listing(tenant)[:30]:
+        try:
+            p = st.load(x["project"])
+        except Exception:
+            continue
+        for vv in (p.get("variants") or {}).values():
+            for v in vv:
+                if v.get("quality") == "preview" or not v.get("model"):
+                    continue
+                f = Path(v["file"])
+                if f.is_file():
+                    out.setdefault(v["model"], []).append((v.get("created") or "", link(tenant, f, 3), p["name"]))
+    return {m: [{"url": u, "project": n} for _c, u, n in sorted(L, reverse=True)[:per]] for m, L in out.items()}
+
+
+STALE_S = 24 * 3600
+
+
+async def catalogue_fresh(tenant: str) -> dict:
+    """The picker's list, with OpenRouter's prices re-read when the last read is older than a day (Phase 2: prices
+    stay current without anyone pressing anything)."""
+    st = await studio(tenant)
+    age = time.time() - _ts(st.synced_at) if st.synced_at else None
+    if st.providers["openrouter"].ready() and (age is None or age > STALE_S):
+        try:
+            await asyncio.wait_for(st.models_sync(), 15)
+        except Exception as e:
+            log.info("studio price refresh: %s", e)
+    c = catalogue(tenant)
+    mine = _her_clips(tenant, st)
+    for card in c["models"]:
+        card["mine"] = mine.get(card["key"], []) if card["key"] else []
+    c["price_changes"] = list(reversed(getattr(st, "price_changes", [])[-12:]))
+    return c

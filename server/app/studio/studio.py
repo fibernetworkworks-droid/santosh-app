@@ -70,6 +70,10 @@ class Studio:
         (self.home / "projects").mkdir(parents=True, exist_ok=True)
         self.models = catalog.load_models()
         self.synced_at = ""                         # v0.262 when the live OpenRouter list (and its prices) was last read
+        try:                                        # v0.263 the price moves the daily read found (newest last)
+            self.price_changes = json.loads((self.home / "price_changes.json").read_text())
+        except (OSError, ValueError):
+            self.price_changes = []
         self.providers = all_providers()
         self.sem = asyncio.Semaphore(int(os.environ.get("HOOLA_STUDIO_CONCURRENCY", "3")))
         self.poll_s = float(os.environ.get("HOOLA_STUDIO_POLL_S", "5"))
@@ -345,12 +349,9 @@ class Studio:
             parts.append("High detail, natural motion, coherent hands and faces, stable identity, no on-screen text, "
                          "no subtitles, no watermark, no logos.")
         q = catalog.QUALITY[quality]
-        res = q["resolution"] if q["resolution"] in cfg["resolutions"] else cfg["resolutions"][0]
         want = catalog.norm_res((p.get("prefs") or {}).get("resolution") or "")     # v0.262 her resolution pick
-        if want and quality != "preview":
-            res = want if want in cfg["resolutions"] else min(
-                cfg["resolutions"], key=lambda r: abs(catalog.RES_ORDER.index(catalog.norm_res(r)) - catalog.RES_ORDER.index(want))
-                if catalog.norm_res(r) in catalog.RES_ORDER and want in catalog.RES_ORDER else 99)
+        # v0.263 the closest resolution the model makes (it used to fall back to its LOWEST one)
+        res = catalog.nearest_res(want if want and quality != "preview" else q["resolution"], cfg["resolutions"])
         lo, hi = cfg["durations"]
         dur = max(lo, min(hi, int(s["duration"])))
         if cfg.get("allowed_durations"):
@@ -374,6 +375,28 @@ class Studio:
             return False
         return kind == "dialogue" or str(p.get("language", "")).lower() not in catalog.NATIVE_SPEECH
 
+    def auto_of(self, p: dict, quality: str) -> tuple[str, str]:
+        """v0.263 how Hoola Auto chooses for this film: quality | value | cheap, at her resolution."""
+        pr = p.get("prefs") or {}
+        mode = pr.get("auto") if pr.get("auto") in ("quality", "value", "cheap") else "quality"
+        return mode, catalog.norm_res(pr.get("resolution") or catalog.QUALITY[quality]["resolution"])
+
+    def _plan_models(self, p: dict, quality: str, shot_ids, model, pref, auto, compare) -> list[tuple[dict, str]]:
+        """(shot, model) pairs for a run: one model per shot, or every model in `compare` for each shot (v0.263: the
+        same shot made by two or three models side by side, on one price card)."""
+        out = []
+        for s in p["shots"]:
+            if shot_ids and s["id"] not in shot_ids:
+                continue
+            if compare and quality != "preview":
+                for m in dict.fromkeys(compare):
+                    if m not in self.models:
+                        raise StudioError(f"Unknown model {m}")
+                    out.append((s, m))
+            else:
+                out.append((s, self.model_for(s, quality, model, pref, auto)))
+        return out
+
     def pref_model(self, p: dict) -> str | None:
         """v0.262 the model she chose for the whole project (Director / Video page), when it can run here."""
         m = (p.get("prefs") or {}).get("model") or ""
@@ -381,32 +404,35 @@ class Studio:
             return m
         return None
 
-    def model_for(self, s: dict, quality: str, override: str | None, pref: str | None = None) -> str:
-        """This run's model > the scene's own model > the film's model (v0.262) > the best ready model for the shot."""
+    def model_for(self, s: dict, quality: str, override: str | None, pref: str | None = None,
+                  auto: tuple[str, str] | None = None) -> str:
+        """This run's model > the scene's own model > the film's model (v0.262) > Hoola Auto: the best ready model for
+        the shot (v0.263: or the best value / the lowest price among the ready ones, auto = (mode, resolution))."""
         if quality == "preview":
             return "offline-preview"
         if override or s.get("model") or pref:
             return override or s.get("model") or pref
         route = catalog.ROUTES.get(s.get("kind") or "scene", catalog.ROUTES["scene"]).get(quality) or []
-        for m in route:                                  # v0.157 best model for this kind of shot whose key is set
-            if m in self.models and self.providers[self.models[m]["provider"]].ready():
-                return m
+        ready = [m for m in route if m in self.models and self.providers[self.models[m]["provider"]].ready()]
+        mode, res = auto or ("quality", "")
+        if ready and mode in ("value", "cheap"):
+            pool = ready[:3] if mode == "value" else ready    # value = the cheapest of the 3 best for this shot
+            return min(pool, key=lambda m: (catalog.rate(self.models[m], res or catalog.QUALITY[quality]["resolution"]), pool.index(m)))
+        for m in ready:                                  # v0.157 best model for this kind of shot whose key is set
+            return m
         for prov in ("openrouter", "fal", "byteplus"):  # first provider with a key decides draft/final models
             if self.providers[prov].ready():
                 return catalog.QUALITY_BY_PROVIDER[prov][quality]
         return route[0] if route else catalog.QUALITY[quality]["model"]
 
     def estimate(self, project: str, quality: str = "final", shot_ids: list[str] | None = None, variants: int = 1,
-                 model: str | None = None) -> dict:
+                 model: str | None = None, compare: list[str] | None = None) -> dict:
         p = self.load(project)
         if quality not in catalog.QUALITY:
             raise StudioError(f"quality must be one of {list(catalog.QUALITY)}")
-        pref = self.pref_model(p)
+        pref, auto = self.pref_model(p), self.auto_of(p, quality)
         rows, total = [], 0.0
-        for s in p["shots"]:
-            if shot_ids and s["id"] not in shot_ids:
-                continue
-            m = self.model_for(s, quality, model, pref)
+        for s, m in self._plan_models(p, quality, shot_ids, model, pref, auto, compare):
             q = self.build(p, s, m, quality)
             c = max(q.duration * catalog.rate(self.models[m], q.resolution, q.audio),
                     float(self.models[m].get("min_usd") or 0)) * variants
@@ -440,7 +466,8 @@ class Studio:
 
     # ------------------------------------------------------------------ generation
     async def generate(self, project: str, quality: str = "preview", shot_ids: list[str] | None = None, variants: int = 1,
-                       model: str | None = None, max_cost_usd: float | None = None, wait_s: float = 0) -> dict:
+                       model: str | None = None, max_cost_usd: float | None = None, wait_s: float = 0,
+                       compare: list[str] | None = None) -> dict:
         if quality not in catalog.QUALITY:
             raise StudioError(f"quality must be one of {list(catalog.QUALITY)}")
         variants = max(1, min(int(variants), 4))
@@ -449,21 +476,21 @@ class Studio:
             if not p["shots"]:
                 raise StudioError("No storyboard yet. Call storyboard_set first.")
             targets = [s for s in p["shots"] if not shot_ids or s["id"] in shot_ids]
-            pref = self.pref_model(p)
+            pref, auto = self.pref_model(p), self.auto_of(p, quality)
             if shot_ids and len(targets) != len(set(shot_ids)):
                 raise StudioError(f"Unknown shot ids: {sorted(set(shot_ids) - {s['id'] for s in targets})}")
-            need = {self.models[self.model_for(s, quality, model, pref)]["provider"] for s in targets}
+            plan = self._plan_models(p, quality, [s["id"] for s in targets], model, pref, auto, compare)
+            need = {self.models[m]["provider"] for _s, m in plan}
             missing = [n for n in need if not self.providers[n].ready()]
             if missing:
                 keys = {"fal": "FAL_KEY", "byteplus": "ARK_API_KEY", "google": "GEMINI_API_KEY", "sync": "SYNC_API_KEY",
                         "openrouter": "OPENROUTER_API_KEY"}
                 raise StudioError(f"Missing API key for {missing}: set {[keys[m] for m in missing]} on the server, "
                                   "or use quality='preview' for a free animatic.")
-            est = self.estimate(project, quality, [s["id"] for s in targets], variants, model)
+            est = self.estimate(project, quality, [s["id"] for s in targets], variants, model, compare)
             await self._check_budget(p, est["usd"], max_cost_usd)
             started = []
-            for s in targets:
-                m = self.model_for(s, quality, model, pref)
+            for s, m in plan:
                 if self.models[m]["provider"] == "sync" and not (s.get("keyframe") or s.get("start_image")):
                     raise StudioError(f"shot {s['id']} (talk) needs its picture first: paint the keyframe (keyframes) "
                                       "or give a start image.")
@@ -475,7 +502,7 @@ class Studio:
                                 float(self.models[m].get("min_usd") or 0))
                             + (req.duration * catalog.rate(self.models["sync-3"], req.resolution) if sync else 0))
                     p["jobs"][jid] = {"shot": s["id"], "model": m, "quality": quality, "state": "queued", "attempts": 0,
-                                      "cost_est": round(cost, 4), "lipsync": sync, "prompt": req.prompt,
+                                      "cost_est": round(cost, 4), "lipsync": sync, "prompt": req.prompt, "compare": bool(compare),
                                       "mode": req.mode, "duration": req.duration, "resolution": req.resolution,
                                       "aspect": req.aspect, "created": now(), "handle": None, "error": None}
                     started.append(jid)
@@ -567,6 +594,9 @@ class Studio:
                                      f"shot {j['shot']} v{n} ({j['quality']})" + (" [actual]" if real is not None else " [estimate]"),
                                      j["model"])
                         v["cost_usd"] = real if real is not None else j["cost_est"]
+                        v["est_usd"] = j["cost_est"]                      # v0.263 the card's price for this take
+                        v["actual_usd"] = real                            # what the provider reported (None = unknown)
+                        v["billed_usd"] = round(min(v["cost_usd"], j["cost_est"]), 4)   # she never pays above the card
                         cur = q["picked"].get(j["shot"])
                         rank = catalog.RANK
                         cur_q = next((x["quality"] for x in q["variants"][j["shot"]] if x["n"] == cur), None)
@@ -953,6 +983,11 @@ class Studio:
         """Read OpenRouter's live video model list: update durations/sizes of known models and add new ones."""
         orp = self.providers["openrouter"]
         data = await orp.list_models()
+        try:                                        # v0.263 the last saved list = the prices to compare against
+            prev = {d.get("id"): catalog.parse_skus(d.get("pricing_skus"), d.get("supported_resolutions"))[0]
+                    for d in json.loads((self.home / "openrouter_models.json").read_text())}
+        except (OSError, ValueError):
+            prev = {}
         by_slug = {m.get("model"): k for k, m in self.models.items() if m.get("provider") == "openrouter"}
         updated, added = [], []
         for d in data:
@@ -976,6 +1011,11 @@ class Studio:
             if d.get("pricing_skus") is not None:
                 m["pricing_skus"] = d["pricing_skus"]
                 w, wo, minimum = catalog.parse_skus(d["pricing_skus"], m.get("resolutions"))
+                old = prev.get(mid) or {}
+                for res, new in w.items():               # v0.263 a live price that moved since the last read
+                    if res in old and abs(float(old[res]) - new) > 1e-6:
+                        self.price_changes.append({"model": key, "name": catalog.CARDS.get(key, {}).get("name") or d.get("name", mid),
+                                                   "resolution": res, "old_usd": old[res], "new_usd": new, "at": now()})
                 if w:                                    # v0.262 the live price replaces the estimate
                     m["usd_by_res"], m["price_note"], m["price_live"] = w, "live price from OpenRouter", True
                     m["usd_per_s"] = max(w.values())
@@ -986,6 +1026,8 @@ class Studio:
             self.models[key] = m
         (self.home / "openrouter_models.json").write_text(json.dumps(data, indent=1))
         self.synced_at = now()
+        self.price_changes = self.price_changes[-30:]
+        (self.home / "price_changes.json").write_text(json.dumps(self.price_changes))
         return {"updated": updated, "added": added, "total_openrouter_models": len(data)}
 
     def models_info(self) -> list[dict]:

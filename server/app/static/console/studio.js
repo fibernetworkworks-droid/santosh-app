@@ -462,7 +462,8 @@ ${SPRITE}`;
   const money = n => '₹' + (n < 100 ? (Math.round(n * 10) / 10).toLocaleString('en-IN') : Math.round(n).toLocaleString('en-IN'));
   const TIERS = [['all', 'All models'], ['top', 'Top quality'], ['strong', 'Strong'], ['budget', 'Budget'], ['talk', 'Talking people']];
   const MP = {tier: 'all', only: false, sort: 'quality', feat: new Set(), q: '', cmp: [], view: 'grid', ctx: null};
-  /* open the picker. ctx = {current, seconds, res, onPick(key), title} */
+  /* open the picker. ctx = {current, seconds, res, onPick(key), title, auto, onAuto(mode)?, onCompare(keys)?} */
+  const AUTOS = [['quality', 'Best quality', 'The best ready model for each shot'], ['value', 'Best value', 'The cheapest of the 3 best for each shot'], ['cheap', 'Lowest price', 'The cheapest ready model']];
   async function picker(ctx) {
     MP.ctx = ctx; MP.view = 'grid'; MP.cmp = [];
     const pk = $('#picker'); pk.hidden = false; pk.innerHTML = `<div class="pkin"><p class="mut" style="padding:30px">Loading every model…</p></div>`;
@@ -483,12 +484,14 @@ ${SPRITE}`;
   function modelCard(m) {
     const c = MP.ctx, res = (m.resolutions || []).includes(c.res) || !m.resolutions?.length ? c.res : resSort(m.resolutions).find(r => RES.indexOf(r) >= RES.indexOf(c.res)) || topRes(m);
     const ps = rateAt(m, res), clip = ps * c.seconds, on = m.key && m.key === c.current, ck = MP.cmp.includes(m.name);
+    const mine = (m.mine || []).length ? `<div class="mine"><small>Your clips with it</small><div>${m.mine.map(x => `<video muted playsinline preload="metadata" src="${esc(x.url)}" title="${esc(x.project)}"></video>`).join('')}</div></div>` : '';
     const st = m.status === 'ready' ? '' : m.status === 'coming' ? '<span class="tag">Coming</span>' : '<span class="tag hot">Not switched on</span>';
     return `<div class="mcard${on ? ' on' : ''}${m.ready ? '' : ' off'}">
       <div class="mh"><div><b>${esc(m.name)}</b><small>${esc(m.maker)}${m.via ? ' · via ' + esc(m.via) : ''}</small></div>${st}<label class="cmpck" title="Compare"><input type="checkbox" data-cmp="${esc(m.name)}" ${ck ? 'checked' : ''}><span>Compare</span></label></div>
       ${m.rank ? `<span class="rank">${I('star', 'width:13px;height:13px')}${esc(m.rank)}</span>` : ''}
       <p class="mbest">${esc(m.best)}</p>
       <div class="specs">${m.durations?.length ? `<span>${I('video', 'width:13px;height:13px')}up to ${m.durations[1]} s</span>` : ''}${topRes(m) ? `<span>${I('grid', 'width:13px;height:13px')}${topRes(m)}</span>` : ''}${m.audio ? `<span>${I('sound', 'width:13px;height:13px')}sound</span>` : ''}${m.references ? `<span>${I('layers', 'width:13px;height:13px')}${m.references} refs</span>` : ''}</div>
+      ${mine}
       <div class="mprice"><div><b class="num">${money(ps)}</b><small>/ second at ${esc(res)}${m.estimate_only ? ' · about' : m.price_live ? ' · live price' : ''}</small></div><div><b class="num">${money(clip)}</b><small>for your ${c.seconds} s clip</small></div></div>
       ${m.ready ? `<button class="btn ${on ? 'sec' : 'pri'}" data-mpick="${esc(m.key)}">${on ? I('check', 'width:15px;height:15px') + 'Chosen' : 'Choose'}</button>` : `<p class="why">${esc(m.why)}</p>`}
     </div>`;
@@ -496,7 +499,10 @@ ${SPRITE}`;
   function drawPicker() {
     const pk = $('#picker'), c = MP.ctx; if (!pk || !c) return;
     const L = pickerList(), dm = D.models || {};
-    const auto = `<div class="mcard auto${!c.current ? ' on' : ''}"><div class="mh"><div><b>Hoola Auto</b><small>Recommended</small></div></div><p class="mbest">Hoola picks the best ready model for each shot: scenes, products, talking people and Hindi lip sync. The price card shows which one and the exact price.</p><button class="btn ${!c.current ? 'sec' : 'pri'}" data-mpick="">${!c.current ? I('check', 'width:15px;height:15px') + 'Chosen' : 'Use Hoola Auto'}</button></div>`;
+    const am = c.auto || 'quality';
+    const auto = `<div class="mcard auto${!c.current ? ' on' : ''}"><div class="mh"><div><b>Hoola Auto</b><small>Recommended</small></div></div><p class="mbest">Hoola picks for each shot: scenes, products, talking people and Hindi lip sync. The price card shows which model and the exact price.</p>
+      ${c.onAuto ? `<div class="amodes" role="radiogroup" aria-label="How Hoola Auto chooses">${AUTOS.map(([k, t, d]) => `<button role="radio" aria-checked="${k === am}" data-amode="${k}" title="${esc(d)}">${t}</button>`).join('')}</div><small class="mut">${esc(AUTOS.find(a => a[0] === am)[2])}</small>` : ''}
+      <button class="btn ${!c.current ? 'sec' : 'pri'}" data-mpick="">${!c.current ? I('check', 'width:15px;height:15px') + 'Chosen' : 'Use Hoola Auto'}</button></div>`;
     const body = MP.view === 'compare' ? compareHTML() : `<div class="mgrid">${MP.tier === 'all' || MP.tier === 'top' ? auto : ''}${L.map(modelCard).join('') || '<p class="mut">No model matches these filters.</p>'}</div>
       ${(dm.not_offered || []).length ? `<p class="note" style="margin-top:14px">Not offered: ${dm.not_offered.map(x => `<b>${esc(x.name)}</b> (${esc(x.why)})`).join(' · ')}</p>` : ''}`;
     pk.innerHTML = `<div class="pkin" role="dialog" aria-modal="true" aria-label="Choose a video model">
@@ -505,8 +511,9 @@ ${SPRITE}`;
       <div class="pkf"><div class="chips">${TIERS.map(([k, n]) => `<button class="chip" aria-pressed="${k === MP.tier}" data-tier="${k}">${n}</button>`).join('')}</div>
         <div class="chips">${[['sound', 'Sound'], ['4k', '4K'], ['long', '20 s or longer'], ['refs', '4+ references']].map(([k, n]) => `<button class="chip" aria-pressed="${MP.feat.has(k)}" data-feat="${k}">${n}</button>`).join('')}<button class="chip" aria-pressed="${MP.only}" data-only>Ready only</button>
         <button class="dd" data-sort>${I('filter', 'width:14px;height:14px')}<span>${{quality: 'Best quality first', price: 'Lowest price first', long: 'Longest clips first'}[MP.sort]}</span>${I('down', 'width:14px;height:14px')}</button></div></div>
+      ${(dm.price_changes || []).length ? `<div class="pchg">${I('redo', 'width:14px;height:14px')}<span>Prices changed: ${dm.price_changes.slice(0, 3).map(x => `<b>${esc(x.name)}</b> ${esc(x.resolution)} ${money(x.old_usd * dm.usd_inr)} → ${money(x.new_usd * dm.usd_inr)}`).join(' · ')}${dm.price_changes.length > 3 ? ` · and ${dm.price_changes.length - 3} more` : ''}</span></div>` : ''}
       <div class="pkb">${body}</div>
-      <div class="pkfoot"><span class="mut">${dm.note ? esc(dm.note) : ''}</span><span class="sp"></span>${MP.view === 'compare' ? `<button class="btn sec" data-pkgrid>Back to all models</button>` : `<button class="btn sec" data-pkcmp ${MP.cmp.length < 2 ? 'disabled' : ''}>Compare ${MP.cmp.length ? '(' + MP.cmp.length + ')' : ''}</button>`}</div></div>`;
+      <div class="pkfoot"><span class="mut">${c.onCompare && MP.view !== 'compare' ? 'Tick 2 or 3 models and press Compare to make the same shot with each. ' : ''}${dm.note ? esc(dm.note) : ''}</span><span class="sp"></span>${MP.view === 'compare' ? `<button class="btn sec" data-pkgrid>Back to all models</button>` : `<button class="btn sec" data-pkcmp ${MP.cmp.length < 2 ? 'disabled' : ''}>Compare ${MP.cmp.length ? '(' + MP.cmp.length + ')' : ''}</button>`}</div></div>`;
     $('#pkq', pk)?.addEventListener('input', e => { MP.q = e.target.value; const y = $('.pkb', pk).scrollTop; drawPicker(); const i = $('#pkq', pk); i.focus(); i.setSelectionRange(i.value.length, i.value.length); $('.pkb', pk).scrollTop = y; });
   }
   function compareHTML() {
@@ -521,7 +528,8 @@ ${SPRITE}`;
       ${row('References', m => m.references || '—')}
       ${row('Ranking', m => esc(m.rank || '—'))}
       ${row('Best for', m => esc(m.best))}
-      ${row('', m => m.ready ? `<button class="btn pri" data-mpick="${esc(m.key)}">Choose</button>` : `<span class="why">${esc(m.why)}</span>`)}</tbody></table>`;
+      ${row('', m => m.ready ? `<button class="btn pri" data-mpick="${esc(m.key)}">Choose</button>` : `<span class="why">${esc(m.why)}</span>`)}</tbody></table>
+      ${c.onCompare ? (L.filter(m => m.ready).length >= 2 ? `<div class="cmpgo"><div><b>Make it with ${L.filter(m => m.ready).length} models side by side</b><small>One price card: ${money(L.filter(m => m.ready).reduce((t, m) => t + rateAt(m, c.res) * c.seconds, 0))} for all of them. You keep the take you like.</small></div><button class="btn pri" data-cmpgo>${I('layers', 'width:15px;height:15px')}Make them side by side</button></div>` : '<p class="note">Pick at least 2 models that are switched on to make them side by side.</p>') : ''}`;
   }
   async function onPickerClick(e) {
     const b = e.target.closest('button,input'); const pk = $('#picker');
@@ -536,11 +544,13 @@ ${SPRITE}`;
     if (b.hasAttribute('data-sort')) { menu(b, [{v: 'quality', label: 'Best quality first'}, {v: 'price', label: 'Lowest price first'}, {v: 'long', label: 'Longest clips first'}], MP.sort, v => { MP.sort = v; drawPicker(); }, 'Sort'); return; }
     if (b.hasAttribute('data-pkcmp')) { MP.view = 'compare'; drawPicker(); return; }
     if (b.hasAttribute('data-pkgrid')) { MP.view = 'grid'; drawPicker(); return; }
+    if (b.dataset.amode) { MP.ctx.auto = b.dataset.amode; MP.ctx.onAuto?.(b.dataset.amode); drawPicker(); return; }
+    if (b.hasAttribute('data-cmpgo')) { const keys = MP.cmp.map(n => (D.models?.models || []).find(m => m.name === n)).filter(m => m?.ready).map(m => m.key), cb = MP.ctx.onCompare; closePicker(); cb(keys); return; }
     if (b.dataset.mpick !== undefined) { const k = b.dataset.mpick, cb = MP.ctx.onPick; closePicker(); cb(k); }
   }
 
   /* ---------------- video (Video Studio, one clip per project) ---------------- */
-  const VID = {prompt: '', aspect: '9:16', seconds: 8, res: '1080p', model: '', audio: true, takes: 1, language: 'Hindi', price: null};
+  const VID = {prompt: '', aspect: '9:16', seconds: 8, res: '1080p', model: '', audio: true, takes: 1, language: 'Hindi', price: null, auto: 'quality', compare: []};
   const vm = () => mOf(VID.model);
   const lenOpts = m => { const a = m?.allowed_durations; if (a?.length) return a; const [lo, hi] = m?.durations?.length ? m.durations : [4, 30];
     return [4, 5, 6, 8, 10, 12, 15, 20, 25, 30].filter(x => x >= lo && x <= hi); };
@@ -549,7 +559,8 @@ ${SPRITE}`;
     return `<div class="gen">
   <div class="panel" style="position:relative"><div class="pbody">
     ${toolTabs('video')}
-    <button class="prow" data-pickmodel><span class="pi">${I('spark', 'width:16px;height:16px')}</span><div><small>Model</small><b>${m ? esc(m.name) : 'Hoola Auto · best model per shot'}</b></div>${m ? `<span class="tag num">${money(rateAt(m, VID.res))}/s</span>` : '<span class="tag">Recommended</span>'}${I('chev', 'color:var(--dim)')}</button>
+    <button class="prow" data-pickmodel><span class="pi">${I('spark', 'width:16px;height:16px')}</span><div><small>Model</small><b>${VID.compare.length ? VID.compare.map(k => esc(mOf(k)?.name || k)).join(' vs ') : m ? esc(m.name) : 'Hoola Auto · ' + {quality: 'best quality', value: 'best value', cheap: 'lowest price'}[VID.auto]}</b></div>${VID.compare.length ? '<span class="tag">Side by side</span>' : m ? `<span class="tag num">${money(rateAt(m, VID.res))}/s</span>` : '<span class="tag">Recommended</span>'}${I('chev', 'color:var(--dim)')}</button>
+    ${VID.compare.length ? `<button class="lnk" data-uncompare style="align-self:flex-start">${I('x', 'width:13px;height:13px')} Stop comparing, use one model</button>` : ''}
     <div class="box">
       <h3>Describe your shot <button type="button" class="lnk" data-improve>${I('wand', 'width:14px;height:14px')} Improve</button></h3>
       <textarea id="vidq" rows="5" maxlength="2000" placeholder="Steam rising from a clay kulhad of chai on a rainy balcony in Mumbai, slow dolly in, warm evening light">${esc(VID.prompt)}</textarea>
@@ -586,7 +597,12 @@ ${SPRITE}`;
   function projTile(p) {
     const busy = p.working || p.planning || (p.painting || []).length;
     return `<div class="res${busy ? ' gening' : ''}" data-proj="${esc(p.project)}"><button class="thumb" data-openproj="${esc(p.project)}" aria-label="Open ${esc(p.project)}">${projMedia(p)}${busy ? `<span class="ring"></span><span class="pct">${p.progress?.pct != null ? p.progress.pct + '%' : p.planning ? 'Writing the plan' : 'Working'}</span>` : `<span class="badge">${I('play', 'width:11px;height:11px')}${esc(p.aspect)}</span><span class="dur num">${p.seconds || 0} s</span>`}</button>
-      <b class="rt">${esc(p.project)}</b><small>${esc((p.brief || '').slice(0, 80))}</small>${(p.approvals || []).map(approvalRow).join('')}</div>`;
+      <b class="rt">${esc(p.project)}</b><small>${esc((p.brief || '').slice(0, 80))}</small>${moneyLine(p.money)}${(p.approvals || []).map(approvalRow).join('')}</div>`;
+  }
+  // v0.263 estimate vs what she pays vs what the providers reported, for a film / clip
+  function moneyLine(mo) {
+    if (!mo || !mo.takes) return '';
+    return `<small class="moneyl num">You pay ${money(mo.billed_inr)}${mo.estimate_inr > mo.billed_inr + 0.05 ? ` · estimate was ${money(mo.estimate_inr)} · saved ${money(mo.saved_inr)}` : ''}${mo.actual_inr != null ? ` · provider charged ${money(mo.actual_inr)}` : ''}</small>`;
   }
   async function decide(aid, yes) {
     try { await api('POST', `/api/studio/approvals/${encodeURIComponent(aid)}`, {yes}); toast(yes ? 'Started. Nothing more is spent without you.' : 'Declined, nothing spent'); return true; }
@@ -614,10 +630,13 @@ ${SPRITE}`;
   function livePrice() {
     clearTimeout(priceT); const n = ++priceN; const c = $('#vidCost'); if (c) c.textContent = '…';
     priceT = setTimeout(async () => {
-      try { const r = await api('POST', '/api/studio/price', {model: VID.model, seconds: VID.seconds, resolution: VID.res, audio: VID.audio, takes: VID.takes});
-        if (n !== priceN || VIEW !== 'video') return; VID.price = r;
-        $('#vidCost').textContent = '≈ ' + money(r.inr);
-        $('#vprice').innerHTML = `<div><b class="num">≈ ${money(r.inr)}</b><small>${esc(r.name)}${r.auto ? ' (Hoola Auto)' : ''} · ${r.seconds} s × ${money(r.inr_per_s)}/s at ${esc(r.resolution)}${r.takes > 1 ? ' × ' + r.takes + ' takes' : ''}${r.audio ? '' : ' · silent'}</small></div>
+      try {
+        const ask = mdl => api('POST', '/api/studio/price', {model: mdl, seconds: VID.seconds, resolution: VID.res, audio: VID.audio, takes: VID.takes, auto: VID.auto});
+        const rs = VID.compare.length ? await Promise.all(VID.compare.map(ask)) : [await ask(VID.model)];
+        if (n !== priceN || VIEW !== 'video') return; const r = rs[0], tot = rs.reduce((t, x) => t + x.inr, 0); VID.price = r;
+        $('#vidCost').textContent = '≈ ' + money(tot);
+        $('#vprice').innerHTML = `<div><b class="num">≈ ${money(tot)}</b>${rs.map(x => `<small>${esc(x.name)} · ${x.seconds} s × ${money(x.inr_per_s)}/s at ${esc(x.resolution)}${x.takes > 1 ? ' × ' + x.takes + ' takes' : ''}${x.audio ? '' : ' · silent'} = ${money(x.inr)}</small>`).join('')}</div>
+          ${r.why ? `<small>${esc(r.why)}</small>` : ''}${rs.length > 1 ? '<small>The same shot is made by each model; one price card for all, and you keep the take you like.</small>' : ''}
           ${r.changed?.length ? `<small class="warnl">This model makes ${r.changed.map(k => k === 'seconds' ? r.seconds + ' s' : r.resolution).join(' and ')}, so the price is for that.</small>` : ''}
           ${r.ready ? '' : '<small class="warnl">This model is not switched on on the server yet.</small>'}
           <small>You see the exact price card before anything is spent, and you are never charged more than it.</small>`;
@@ -632,9 +651,10 @@ ${SPRITE}`;
     const quality = preview ? 'preview' : QOF(VID.res);
     try {
       const p = await api('POST', '/api/studio/projects', {name, brief, aspect: VID.aspect, seconds: VID.seconds, language: VID.language,
-        quality: preview ? 'draft' : quality, model: VID.model, resolution: VID.res});
+        quality: preview ? 'draft' : quality, model: VID.model, resolution: VID.res, auto: VID.auto});
       VID.busy = preview ? 'Making the free preview' : 'Working out the price';
-      const r = await api('POST', `/api/studio/projects/${encodeURIComponent(p.project)}/generate`, {quality, model: VID.model || null, variants: preview ? 1 : VID.takes});
+      const r = await api('POST', `/api/studio/projects/${encodeURIComponent(p.project)}/generate`, {quality, model: VID.model || null, variants: preview ? 1 : VID.takes,
+        compare: !preview && VID.compare.length > 1 ? VID.compare : null});
       toast(r.waiting_owner ? `Price ${inr(r.inr)}: tap Haan on the tile to make it.` : 'Making your free preview');
     } catch (e) { toast(e.status === 428 ? fp : e.message, true); }
     VID.busy = ''; await load('studio', true); redraw('video', drawVideos);
@@ -656,8 +676,11 @@ ${SPRITE}`;
       if (b.hasAttribute('data-vaudio')) { VID.audio = !VID.audio; b.setAttribute('aria-checked', String(VID.audio)); b.closest('.prow').querySelector('b').textContent = VID.audio ? 'On' : 'Off'; livePrice(); return; }
       if (b.dataset.vtake) { VID.takes = Math.max(1, Math.min(4, VID.takes + +b.dataset.vtake)); b.closest('.prow').querySelector('b').textContent = VID.takes; livePrice(); return; }
       if (b.dataset.vlang) { VID.language = b.dataset.vlang; $$('[data-vlang]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
-      if (b.hasAttribute('data-pickmodel')) { VID.prompt = q.value; picker({current: VID.model, seconds: VID.seconds, res: VID.res, title: 'Choose the model for this video',
-        onPick: k => { VID.model = k; fitToModel(); go('video'); }}); return; }
+      if (b.hasAttribute('data-pickmodel')) { VID.prompt = q.value; picker({current: VID.compare.length ? null : VID.model, seconds: VID.seconds, res: VID.res, title: 'Choose the model for this video',
+        auto: VID.auto, onAuto: mode => { VID.auto = mode; },
+        onPick: k => { VID.model = k; VID.compare = []; fitToModel(); go('video'); },
+        onCompare: keys => { VID.compare = keys.slice(0, 3); VID.model = ''; go('video'); }}); return; }
+      if (b.hasAttribute('data-uncompare')) { VID.compare = []; VID.prompt = q.value; go('video'); return; }
       if (b.hasAttribute('data-improve')) { if (!q.value.trim()) { q.focus(); return; } b.disabled = true;
         try { const r = await api('POST', '/api/studio/improve', {brief: q.value.trim(), language: VID.language, seconds: VID.seconds}); q.value = VID.prompt = r.brief; } catch (er) { toast(er.message, true); } b.disabled = false; return; }
       if (b.dataset.yes || b.dataset.no) { b.disabled = true; await decide(b.dataset.yes || b.dataset.no, !!b.dataset.yes); await load('studio', true); drawVideos(); return; }
@@ -692,6 +715,7 @@ ${SPRITE}`;
     return `<div class="dir">
   <div class="sec-h" style="margin:0;align-items:center"><div style="min-width:0"><button class="lnk" data-dirback>${I('left', 'width:14px;height:14px')} All films</button><h2 style="font:400 26px/1.25 var(--serif);margin-top:4px">${esc(p.project)}</h2><p class="mut" style="margin-top:4px;max-width:760px">${esc((p.brief || '').slice(0, 280))}</p></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="dd" data-pmodel title="The model for the whole film">${I('spark', 'width:15px;height:15px')}<span>${esc(mOf(p.prefs?.model)?.name || 'Hoola Auto')}</span>${I('down', 'width:14px;height:14px')}</button><button class="dd" data-pres title="Resolution of the shots"><span>${esc(p.prefs?.resolution || 'By quality')}</span>${I('down', 'width:14px;height:14px')}</button>${p.working ? `<button class="btn sec" data-dcancel>${I('x', 'width:15px;height:15px')}Stop</button>` : ''}<button class="btn pri" data-next="${esc(nx.kind || '')}" ${['wait', 'done'].includes(nx.kind) ? 'disabled' : ''}>${esc(nextLabel(nx))}${nx.inr ? ` <small class="num">${inr(nx.inr)}</small>` : ''}</button></div></div>
+  ${moneyLine(p.money) ? `<div class="moneybar">${moneyLine(p.money)}</div>` : ''}
   <div class="pipe" role="list">${STEPS.map(([k, t], i) => `<button role="listitem" class="${st[k] ? 'done' : ''}" ${k === cur ? 'aria-current="step"' : ''} data-step="${k}"><i>${st[k] ? '✓' : i + 1}</i>${t}</button>`).join('')}</div>
   ${(p.approvals || []).length ? `<section class="box"><h3>Waiting for your Haan</h3>${p.approvals.map(approvalRow).join('')}</section>` : ''}
   ${p.progress && p.working ? `<div class="box"><div style="display:flex;justify-content:space-between"><b>Making ${p.progress.total} shot${p.progress.total === 1 ? '' : 's'} · ${esc(p.progress.quality || '')}</b><span class="num mut">${p.progress.pct}%${p.progress.eta_s ? ' · about ' + Math.ceil(p.progress.eta_s / 60) + ' min' : ''}</span></div><div class="bar"><i style="width:${p.progress.pct}%"></i></div></div>` : ''}
@@ -715,9 +739,9 @@ ${SPRITE}`;
     const ph = {paint: 'Painting', video: 'Making', queued: 'Queued', lipsync: 'Lip sync', retrying: 'Retrying', failed: 'Failed', done: 'Picked', pictured: 'Picture ready'}[s.phase] || '';
     return `<div class="scene" data-shot="${esc(s.id)}"><div class="one">${media}${['paint', 'video', 'queued', 'lipsync', 'retrying'].includes(s.phase) ? `<span class="ring"></span><span class="pct">${s.pct != null ? s.pct + '%' : ph}</span>` : ''}</div>
       <div class="sb"><b>${i + 1} · ${esc(s.kind)}${ph ? ` <span class="tag${s.phase === 'failed' ? ' hot' : ''}">${ph}</span>` : ''}</b>
-        <small class="clamp" data-ptext>${esc(s.prompt)}</small>${s.dialogue ? `<small>“${esc(s.dialogue)}”</small>` : ''}${s.error ? `<small class="bad clamp" title="${esc(s.error)}">${esc(s.error.slice(0, 160))}</small>` : ''}
+        <small class="clamp" data-ptext>${esc(s.prompt)}</small>${take && take.billed_inr != null && take.quality !== 'preview' ? `<small class="moneyl num">${esc(take.model_label || '')} · you pay ${money(take.billed_inr)}${take.est_inr != null && take.est_inr > take.billed_inr + 0.05 ? ` (card ${money(take.est_inr)})` : ''}${take.actual_inr != null ? ` · provider ${money(take.actual_inr)}` : ''}</small>` : ''}${s.dialogue ? `<small>“${esc(s.dialogue)}”</small>` : ''}${s.error ? `<small class="bad clamp" title="${esc(s.error)}">${esc(s.error.slice(0, 160))}</small>` : ''}
         <div class="sm"><span class="tag">${s.duration} s</span><button class="tag mchip" data-smodel="${esc(s.id)}" title="Model for this scene">${esc(s.model_label || 'Auto')} ▾</button>${(s.characters || []).map(c => `<span class="mention">@${esc(c)}</span>`).join('')}<span style="flex:1"></span>
-          ${(s.take_list || []).length > 1 ? (s.take_list || []).map(t => `<button class="tk${t.picked ? ' on' : ''}" data-take="${t.n}" aria-label="Use take ${t.n}">${t.n}</button>`).join('') : ''}
+          ${(s.take_list || []).length > 1 ? (s.take_list || []).map(t => `<button class="tk${t.picked ? ' on' : ''}" data-take="${t.n}" aria-label="Use take ${t.n}${t.model_label ? ' by ' + esc(t.model_label) : ''}" title="${esc(t.model_label || '')}">${t.n}${new Set((s.take_list || []).map(x => x.model)).size > 1 && t.model_label ? ' · ' + esc(t.model_label) : ''}</button>`).join('') : ''}
           <button class="ib" style="width:28px;height:28px" aria-label="Edit scene" data-edit>${I('pen', 'width:14px;height:14px')}</button></div></div></div>`;
   }
   async function dirLoad() {
@@ -763,13 +787,19 @@ ${SPRITE}`;
       if (b.hasAttribute('data-dnewres')) { await models(); menu(b, resItems(mOf(DIR.model)), DIR.res, v => { DIR.res = v; b.querySelector('span').textContent = v; }, 'Resolution'); return; }
       if (b.hasAttribute('data-pmodel')) { await models(); const p = DIR.view;
         picker({current: p.prefs?.model || '', seconds: p.seconds || DIR.seconds, res: p.prefs?.resolution || '1080p', title: 'The model for the whole film',
+          auto: p.prefs?.auto || 'quality', onAuto: mode => act('', () => api('POST', P + '/settings', {auto: mode, model: ''})),
           onPick: k => act('', () => api('POST', P + '/settings', {model: k}))}); return; }
       if (b.hasAttribute('data-pres')) { await models(); const p = DIR.view;
         menu(b, [{v: '', label: 'By quality', sub: 'Draft 720p, HD 1080p'}, ...resItems(mOf(p.prefs?.model))], p.prefs?.resolution || '', v => act('', () => api('POST', P + '/settings', {resolution: v})), 'Resolution'); return; }
       if (b.dataset.smodel) { await models(); const sid = b.dataset.smodel, s = DIR.view.shots.find(x => x.id === sid), res = DIR.view.prefs?.resolution || '1080p';
         const ready = (D.models?.models || []).filter(m => m.ready && m.tier !== 'talk');
-        menu(b, [{v: '', label: 'Same as the film', sub: 'Hoola Auto or the film model'}, ...ready.map(m => ({v: m.key, label: m.name, sub: `${money(rateAt(m, res) * s.duration)} for this ${s.duration} s scene`}))],
-          s.model || '', v => act('Scene model set', () => api('PATCH', `${P}/shots/${encodeURIComponent(sid)}`, {model: v})), 'Model for scene'); return; }
+        menu(b, [{v: '', label: 'Same as the film', sub: 'Hoola Auto or the film model'}, {v: '__cmp', label: 'Try 2 or 3 models side by side…', sub: 'One price card, keep the take you like'}, ...ready.map(m => ({v: m.key, label: m.name, sub: `${money(rateAt(m, res) * s.duration)} for this ${s.duration} s scene`}))],
+          s.model || '', v => {
+            if (v !== '__cmp') return act('Scene model set', () => api('PATCH', `${P}/shots/${encodeURIComponent(sid)}`, {model: v}));
+            picker({current: null, seconds: s.duration, res, title: `Scene ${DIR.view.shots.indexOf(s) + 1}: tick 2-3 models, then Compare`,
+              onPick: k => act('Scene model set', () => api('PATCH', `${P}/shots/${encodeURIComponent(sid)}`, {model: k})),
+              onCompare: keys => act('', () => api('POST', P + '/generate', {quality: DIR.view.quality_pref || 'final', shot_ids: [sid], compare: keys}))});
+          }, 'Model for scene'); return; }
       if (b.dataset.dcyc) { const k = b.dataset.dcyc, L = cyc[k];
         const fmt = {aspect: v => ({'16:9': '16:9 · Wide (YouTube)', '9:16': '9:16 · Reel / Short', '1:1': '1:1 · Square post'})[v], seconds: v => v < 60 ? v + ' seconds' : v / 60 + ' minute' + (v > 60 ? 's' : ''),
           music: v => v ? v[0].toUpperCase() + v.slice(1) : 'No music'}[k];

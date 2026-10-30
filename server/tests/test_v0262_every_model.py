@@ -160,7 +160,7 @@ def test_new_project_keeps_her_picks_and_shots_take_a_model():
     src = (ROOT / "server" / "app" / "main.py").read_text()
     new = src[src.index("class StudioNew(BaseModel):"):src.index("class StudioPlan(BaseModel):")]
     assert "model: str = Field(" in new and "resolution: str = Field(" in new
-    assert '"model": body.model,' in src and '"resolution": body.resolution})' in src
+    assert '"model": body.model,' in src and '"resolution": body.resolution' in src
     shot = src[src.index("class StudioShot(BaseModel):"):src.index("class StudioMusic(BaseModel):")]
     assert "model: str | None" in shot
     sets = src[src.index("class StudioSettings(BaseModel):"):src.index("class StudioAddShot(BaseModel):")]

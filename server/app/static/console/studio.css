@@ -497,6 +497,21 @@ p{margin:0}
 .appr .apb{display:flex;flex-direction:row;gap:8px;justify-content:flex-end;flex:none}
 .mchip{cursor:pointer;border:0}
 .mchip:hover{background:var(--pri);color:var(--onPri)}
+/* ---------- v0.263 video phase 2 ---------- */
+.amodes{display:flex;gap:2px;padding:3px;border-radius:10px;background:var(--sunk)}
+.amodes button{flex:1;height:30px;border-radius:8px;font-size:12.5px;color:var(--mut)}
+.amodes button[aria-checked="true"]{background:var(--surface);color:var(--ink);font-weight:500;box-shadow:0 1px 2px rgb(0 0 0 / .08)}
+.mine small{font-size:11.5px;color:var(--dim)}
+.mine div{display:flex;gap:4px;margin-top:4px}
+.mine video{width:64px;height:40px;object-fit:cover;border-radius:7px;background:#000}
+.pchg{display:flex;align-items:center;gap:8px;margin:0 18px;padding:8px 10px;border-radius:10px;background:var(--warnSoft);color:var(--warn);font-size:12.5px}
+.pchg b{font-weight:600}
+.cmpgo{display:flex;align-items:center;gap:12px;margin-top:14px;padding:12px;border-radius:14px;border:1px solid var(--pri);background:var(--priSoft)}
+.cmpgo div{flex:1;display:flex;flex-direction:column}
+.cmpgo small{color:var(--mut);font-size:12.5px}
+.moneyl{display:block;color:var(--ok)!important;font-size:12px!important}
+.moneybar{padding:8px 12px;border-radius:12px;background:var(--okSoft)}
+.tk{width:auto;min-width:24px;padding:0 6px;white-space:nowrap}
 @media (max-width:1100px){.ed{grid-template-columns:1fr;grid-template-rows:auto auto 260px}.bin,.insp{display:none}.viewer{grid-row:auto}.timeline{grid-column:1;grid-row:auto}}
 @media (max-width:900px){
   .gen>*,.pbody,.split>*{min-width:0}.pkh h2{font-size:18px}.pkh{flex-wrap:wrap}.pks{order:3;width:100%}

@@ -392,3 +392,19 @@ QUALITY_ORDER = ["Gemini Omni 1.1 Flash", "Wan 3.0 Prime", "Wan 3.0", "Kling 4.0
 def quality_rank(name: str) -> int:
     base = re.sub(r"\s*\((fal|BytePlus)\)$", "", name or "")
     return QUALITY_ORDER.index(base) if base in QUALITY_ORDER else 99
+
+
+def nearest_res(target: str, options: list[str]) -> str:
+    """The resolution in `options` closest to `target` (ties go to the higher one); v0.263."""
+    opts = [norm_res(o) for o in options or []]
+    t = norm_res(target)
+    if not opts:
+        return t
+    if t in opts:
+        return t
+    if t not in RES_ORDER:
+        return opts[0]
+    known = [o for o in opts if o in RES_ORDER]
+    if not known:
+        return opts[0]
+    return min(known, key=lambda o: (abs(RES_ORDER.index(o) - RES_ORDER.index(t)), -RES_ORDER.index(o)))

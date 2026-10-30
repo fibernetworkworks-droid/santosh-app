@@ -10190,3 +10190,34 @@ decided yet; Phase 1 needs none of them (prices are pass-through, as before).
 - Version 0.262.0 (pubspec 0.262.0+302, console ?v=0.262.0 x14, pins -> 0.262.0).
 - NOT VERIFIED: a real paid generation through each newly listed OpenRouter model (the sandbox key is a placeholder);
   OpenRouter's request schema is the same for all (`/videos`), and the price list came from the live endpoint.
+
+
+## v0.263.0 VIDEO PHASE 2 (30 Oct 2026)
+Owner: "BUILD PHASE 2" (the video plan: daily price sync, actual vs estimate, samples, smarter Auto, two models side by side).
+- PRICES STAY CURRENT: GET /api/studio/models is now `catalogue_fresh` (async): when OpenRouter's list was last read more
+  than a day ago (or never) it is re-read first (15 s cap; the old list stays if it fails). `Studio.models_sync` compares
+  the new per-second prices with the PREVIOUS SAVED list (`openrouter_models.json`, so a restart does not forget) and logs
+  each move in `price_changes.json` (last 30); the picker shows the newest three ("Prices changed: Wan 3.0 1080p ₹17 → ₹12.75").
+- ESTIMATE VS ACTUAL, NEVER ABOVE THE CARD: each take records `est_usd` (its share of the card), `actual_usd` (the cost the
+  provider reported, OpenRouter usage.cost) and `billed_usd = min(cost, estimate)`; the project ledger still records the
+  real spend. `money_of(p)` = approved on cards / she pays / estimate / provider / saved; shown on Video tiles, the
+  Director's bar and each scene ("Wan 3.0 · you pay ₹102 (card ₹110) · provider ₹98"). Failed takes stay free (never charged).
+- HER CLIPS PER MODEL: `_her_clips` (newest 3 finished, non-preview takes per model across her last 30 projects, signed
+  links) on each picker card - the honest "samples" (no provider publishes sample clips through the API).
+- HOOLA AUTO MODES: prefs `auto` = quality (as before: the first ready model in the shot-kind route) | value (the cheapest
+  of the 3 best ready for the shot) | cheap (the cheapest ready); `Studio.model_for(..., auto=(mode, resolution))`,
+  `Studio.auto_of(p, quality)`; POST /api/studio/price takes `auto` and returns `why` ("Hoola Auto chose X: ...").
+  Picker Auto card has the three-way switch (Video page and the Director's film model).
+- SIDE BY SIDE: `compare` (2-3 model keys) on POST /api/studio/projects/{name}/generate and ?compare=a,b on the quote:
+  `Studio._plan_models` makes each chosen shot with each model; ONE price card lists every model's line and the total;
+  each job capped by its own line; the takes come back labelled by model and she picks one. Console: tick 2-3 in the
+  picker -> Compare -> "Make them side by side" (Video page: "A vs B", the price is the sum; Director: a scene's model
+  menu -> "Try 2 or 3 models side by side…").
+- FIX: a model that cannot make the asked resolution got its LOWEST one (Seedance 2.5 asked for 1080p ran at 480p);
+  now `catalog.nearest_res` picks the closest (720p), ties going up.
+- Tests: NEW `test_v0263_video_phase2.py` (7): the three Auto modes, compare = one card + one job per model, billed never
+  above the card + the money line, price moves recorded across a restart, stale prices re-read once + her clips, the
+  console pieces, the nearest resolution. v0.262 pin loosened for the new `auto` field.
+- Version 0.263.0 (pubspec 0.263.0+303, console ?v=0.263.0 x14, pins -> 0.263.0).
+- NOT VERIFIED: real provider-reported costs (needs a live OpenRouter key and a paid run); Phase 3 (Credits wallet,
+  margin + GST, refunds) still waits on her decisions.

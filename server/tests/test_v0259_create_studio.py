@@ -203,7 +203,8 @@ def test_studio_api_lists_models_and_passes_her_pick(env, monkeypatch):
     from app.studio import service as ss
     got = {}
 
-    async def fake_generate(tenant, project, quality="preview", shot_ids=None, variants=1, model=None, conversation_id=""):
+    async def fake_generate(tenant, project, quality="preview", shot_ids=None, variants=1, model=None, conversation_id="",
+                            compare=None):
         got.update(quality=quality, model=model)
         return {"waiting_owner": "sa1", "inr": 120}
     monkeypatch.setattr(ss, "generate", fake_generate)
