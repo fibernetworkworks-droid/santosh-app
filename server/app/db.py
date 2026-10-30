@@ -899,8 +899,9 @@ def init_db(url: str | None = None):
     from . import docdesk as _docdesk  # noqa: F401  (v0.108 document desk + Sheet Milaan)
     Base.metadata.create_all(_engine)
     _add_missing_columns(_engine)
-    from .bazar.db import init_tables as _bazar_tables
+    from .bazar.db import Base as _BazarBase, init_tables as _bazar_tables
     _bazar_tables(_engine)
+    _add_missing_columns(_engine, _BazarBase.metadata)   # v0.286 Bazar tables get new columns too (bz_custom_mcp.url_enc)
     _Session = sessionmaker(_engine, expire_on_commit=False)
     return _engine
 
@@ -928,14 +929,14 @@ def _col_default(col):
     return None
 
 
-def _add_missing_columns(engine) -> None:
+def _add_missing_columns(engine, metadata=None) -> None:
     """create_all() makes new tables but never new columns: add columns added in later versions to old tables.
     v0.116.1: NOT NULL columns were skipped before (e.g. hoola_links.trust from v0.112) -> every query on that table
     failed with 500 on databases older than the column. They are now added too (without NOT NULL, which SQLite can't add
     to existing rows) and old rows get the column's default."""
     from sqlalchemy import inspect, text
     insp = inspect(engine)
-    for table in Base.metadata.sorted_tables:
+    for table in (metadata or Base.metadata).sorted_tables:
         if not insp.has_table(table.name):
             continue
         have = {c["name"] for c in insp.get_columns(table.name)}

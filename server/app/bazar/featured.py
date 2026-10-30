@@ -58,9 +58,34 @@ def how(c: dict[str, Any]) -> str:
         " Supabase: one tap and sign in with your Supabase account (or a personal access token sbp_... from "
         "supabase.com/dashboard/account/tokens). Best: pick one project (project ref) and keep read-only on; writes "
         "(migrations, SQL changes, Edge Function deploys) always wait for your tap." if c["id"] == "supabase" else "") + (
+        " " + ZOHO_HOW if c["id"] == "zoho-mcp" else "") + (
         " 21st.dev Magic: sign in at 21st.dev/mcp, make an API key there (old Magic keys no longer work) and paste it here. "
         "Hoola can then make premium UI components from a few words, find design inspiration and brand logos (SVG). It only "
         "returns code; it never changes your site by itself. Uses your 21st.dev credits." if c["id"] == "21st-magic" else "")
+
+
+ZOHO_HOW = ("Zoho (India): 1) open mcp.zoho.in and sign in with your Zoho account (zoho.com accounts: mcp.zoho.com). "
+            "2) Create MCP Server, give it a name. 3) Tools > Add Tools: tick only what your work needs (Books, CRM, Mail, "
+            "Desk...); keep it under about 60 tools, Hoola's starter list shows the useful ones. 4) Connect tab: copy the "
+            "server address and paste it here. It carries a private key: Hoola keeps it locked and never shows it; never "
+            "paste it in chat. 5) The first time, sign in to Zoho once. Reads run straight; creating, sending, deleting and "
+            "payments always wait for your tap. Leaked? Regenerate API Key in the Connect tab and paste the new address.")
+
+
+def zoho_url(c: dict[str, Any], url: str) -> str:
+    """v0.286 her Zoho MCP server address: https on Zoho's MCP domains only (the console page itself is not the server)."""
+    from urllib.parse import urlparse
+    url = (url or "").strip()
+    u = urlparse(url)
+    host = (u.hostname or "").lower()
+    hosts = (c.get("options") or {}).get("hosts") or []
+    if host.startswith("mcp.zoho."):
+        raise ValueError("Yeh Zoho MCP ka console page hai. Wahan apna server kholo > Connect tab > server address copy karke "
+                          "yahan daalo (…zohomcp.in/… jaisa).")
+    if u.scheme != "https" or not any(host == h or host.endswith("." + h) for h in hosts):
+        raise ValueError("Zoho MCP address …zohomcp.in (ya .com / .eu) par hota hai: mcp.zoho.in > apna server > Connect "
+                          "tab se copy karo.")
+    return url
 
 
 SUPA_REF = re.compile(r"^[a-z]{20}$")

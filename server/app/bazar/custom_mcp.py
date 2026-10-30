@@ -5,7 +5,10 @@ Safety:
   (checked when added and again before every call), so a server address can never reach our own network;
 - tools are read-only unless their name plainly reads (get/list/search...); everything else becomes a confirm
   card that shows the exact call, and only the frozen call runs after the user taps Approve;
-- API keys are entered in the app (never in chat) and stored encrypted, like every other account link.
+- API keys are entered in the app (never in chat) and stored encrypted, like every other account link;
+- v0.286 an address that itself carries a key (Zoho MCP .../mcp/<key>/message, ?key=, Zapier / Make tokens) is sealed in
+  url_enc and only a masked copy sits in `url`, so the key is never in the database in clear, in a listing or in the
+  model's context. real_url() is the one place that opens it, for the actual connection.
 """
 from __future__ import annotations
 
@@ -29,6 +32,59 @@ BLOCKED_HOSTS = {"localhost", "metadata.google.internal", "metadata"}
 
 class UrlError(ValueError):
     pass
+
+
+SECRET_QUERY = {"key", "api_key", "apikey", "token", "access_token", "auth", "secret", "mcp_key", "sig", "signature"}
+SECRET_SEG = re.compile(r"^(?=.*\d)(?=.*[a-zA-Z])[A-Za-z0-9_\-]{24,}$")   # long random-looking path parts (keys, tokens)
+MASK = "•••"
+
+
+def _split(url: str):
+    from urllib.parse import parse_qsl
+    u = urlparse(url)
+    return u, u.path.split("/"), parse_qsl(u.query, keep_blank_values=True)
+
+
+def has_secret(url: str) -> bool:
+    """Does the address itself carry a key? (Zoho MCP: https://<server>.zohomcp.in/mcp/<key>/message)"""
+    u, segs, q = _split(url or "")
+    return any(SECRET_SEG.match(s) for s in segs) or any(k.lower() in SECRET_QUERY and v for k, v in q)
+
+
+def masked(url: str) -> str:
+    """The address with its key parts replaced by •••, safe to store, list and show."""
+    from urllib.parse import urlencode
+    u, segs, q = _split(url or "")
+    path = "/".join(MASK if SECRET_SEG.match(s) else s for s in segs)
+    query = urlencode([(k, "MASKED0" if k.lower() in SECRET_QUERY and v else v) for k, v in q]).replace("MASKED0", MASK)
+    return u._replace(path=path, query=query).geturl()
+
+
+def set_url(row: CustomMcp, url: str) -> None:
+    """Store an address: plain when it has no key in it, else masked + sealed."""
+    if has_secret(url):
+        from .security import vault
+        row.url, row.url_enc = masked(url)[:500], vault().seal(url)
+    else:
+        row.url, row.url_enc = url, None
+
+
+def real_url(row: CustomMcp) -> str:
+    """The address to actually connect to (opens the sealed one)."""
+    if row.url_enc:
+        from .security import vault
+        try:
+            return vault().open(row.url_enc)
+        except ValueError:          # key rotated: the masked address fails cleanly; she pastes it again
+            return row.url
+    return row.url
+
+
+def seal_old(rows: list[CustomMcp]) -> None:
+    """Rows saved before v0.286 with a key in the address get sealed the first time they are read."""
+    for r in rows:
+        if not r.url_enc and has_secret(r.url):
+            set_url(r, r.url)
 
 
 def check_url(url: str) -> str:
@@ -67,7 +123,7 @@ def to_pack(row: CustomMcp) -> Pack:
                 pack_type="Custom MCP", layer="L1", phase="MVP", priority="P1",
                 description=(row.description or (entry or {}).get("d", "") or "MCP server you added")[:400],
                 notes="caution" if caution else "", master_list_row=0, executor="mcp",
-                config={"provider": provider_of(row.id), "endpoint": row.url, "custom": True, "auth": row.auth,
+                config={"provider": provider_of(row.id), "endpoint": real_url(row), "custom": True, "auth": row.auth,
                         "key_header": row.key_header, "owner": row.user_id, "caution": caution,
                         "reads": reads},
                 tools=[], keywords=sorted(words)[:20])
@@ -111,8 +167,10 @@ add_resolver(_resolve)
 
 
 def user_rows(s, user_id: str) -> list[CustomMcp]:
-    return list(s.scalars(select(CustomMcp).where(CustomMcp.user_id == user_id, CustomMcp.status == "active")
+    rows = list(s.scalars(select(CustomMcp).where(CustomMcp.user_id == user_id, CustomMcp.status == "active")
                           .order_by(CustomMcp.created_at)).all())
+    seal_old(rows)
+    return rows
 
 
 def create(s, user_id: str, url: str, name: str = "", ref: str = "", description: str = "", caution: bool = False) -> CustomMcp:
@@ -123,12 +181,12 @@ def create(s, user_id: str, url: str, name: str = "", ref: str = "", description
         # row, new address, sign-in kept
         for r in rows:
             if r.directory_ref == ref and urlparse(r.url).hostname == urlparse(url).hostname:
-                r.url = url
+                set_url(r, url)
                 if caution and not r.caution:
                     r.caution = True
                 return r
     for r in rows:
-        if r.url.rstrip("/") == url.rstrip("/"):
+        if real_url(r).rstrip("/") == url.rstrip("/"):
             if caution and not r.caution:
                 r.caution = True
             return r
@@ -139,10 +197,11 @@ def create(s, user_id: str, url: str, name: str = "", ref: str = "", description
         raise UrlError(directory.NOT_ALLOWED.get(entry["blocked"], directory.NOT_ALLOWED["whatsapp"]))
     if not name:
         name = (entry.get("t") or entry["r"].split("/")[-1]) if entry else (urlparse(url).hostname or "MCP server")
-    row = CustomMcp(id="mcp-" + secrets.token_hex(5), user_id=user_id, name=name[:120], url=url,
+    row = CustomMcp(id="mcp-" + secrets.token_hex(5), user_id=user_id, name=name[:120], url="",
                     directory_ref=entry["r"] if entry else (ref if ref.startswith("featured:") else ""),
                     description=(description or (entry or {}).get("d", ""))[:1000],
                     caution=bool(entry and entry["c"]) or bool(caution))
+    set_url(row, url)
     s.add(row)
     s.flush()
     return row

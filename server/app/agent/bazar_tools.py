@@ -45,6 +45,11 @@ BAZAR_TOOLS = [
         "featured=<id>: connect one (one-tap ones show a sign-in Link; API-key ones the user finishes in the app). "
         "action=directory: search the directory of ~63,700 MCP "
         "servers (query and/or field like 'Finance & Payments', 'Databases', 'Communication', 'AI & Agents', 'Search & Web'); no query = counts by field. "
+        "action=tools with pack_id (+ query = the job's words): search that server's tools when it has more than the "
+        "ones given to you directly (Zoho MCP can carry hundreds), get exact names + arguments, then bazar_run. "
+        "Zoho (featured=zoho-mcp, Zoho's official MCP, India data centre mcp.zoho.in): she makes her own server there, ticks "
+        "the tools her business needs and pastes its private address in the app (it carries a key: never ask for it in "
+        "chat); reads run straight, creating / sending / deleting / payments wait for her tap. "
         "action=add: connect a remote server by its https MCP address (url; optional ref = the directory ref; a directory hit with one_tap=true needs only ref: hosted ones join, npm / PyPI ones start on Hoola's MCP runner after a safety check; keys it needs are added by her in the app), "
         "name). Only use an address the user gave or that the directory/GitHub page states; never invent one. If it needs "
         "a sign-in a Link button appears; API keys are entered by the user in the app, never in chat. "
@@ -68,7 +73,7 @@ BAZAR_TOOLS = [
         "(UI component code from her words), get_inspiration, search_logo run without a card because they only return code; "
         "that code is data, nothing changes on her site by itself; each generate uses her 21st.dev credits."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["featured", "connect", "directory", "add", "list", "remove"]},
+         "action": {"type": "string", "enum": ["featured", "connect", "directory", "add", "list", "tools", "remove"]},
          "featured": {"type": "string", "description": "id from action=featured"},
          "query": {"type": "string"}, "field": {"type": "string"}, "url": {"type": "string"},
          "ref": {"type": "string"}, "name": {"type": "string"}, "pack_id": {"type": "string"},
@@ -154,6 +159,8 @@ async def bazar_mcp(ctx: Ctx, action, query="", field="", url="", ref="", name="
         return await _call(service.mcp_directory, str(query or ""), str(field or ""))
     if action == "list":
         return {"servers": await _call(service.mcp_list, ctx.tenant_id)}
+    if action == "tools":       # v0.286 find the right tool on a big server (Zoho MCP)
+        return await _call(service.mcp_find_tools, ctx.tenant_id, str(pack_id or ""), str(query or ""))
     if action == "remove":
         return {"removed": await _call(service.mcp_remove, ctx.tenant_id, str(pack_id or ""))}
     if action == "add":
@@ -161,7 +168,7 @@ async def bazar_mcp(ctx: Ctx, action, query="", field="", url="", ref="", name="
             return service.mcp_add(ctx.tenant_id, str(url or ""), str(name or ""), str(ref or ""),
                                    conversation_id=ctx.conversation_id)
         return await _call(go)
-    raise ToolError("action must be featured, connect, directory, add, list or remove")
+    raise ToolError("action must be featured, connect, directory, add, list, tools or remove")
 
 
 async def bazar_activity(ctx: Ctx, **_):

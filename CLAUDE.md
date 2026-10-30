@@ -116,9 +116,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.285.0 (pubspec 0.285.0+325). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.286.0 (pubspec 0.286.0+326). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.286 ZOHO FOR HOOLA: each user adds her own Zoho MCP (card `zoho-mcp`, mcp.zoho.in, tools she ticks); an MCP address
+  with a key in it is sealed (`bz_custom_mcp.url_enc`, masked `url`); fair native-tool budget + `bazar_mcp action=tools`.
 - CHECKPOINT 30 Oct: FULL CLAUDE MODE (v0.239-v0.250) owner-verified "PERFECT"; memory quiz 16/20 -> 20/20; branch
   `checkpoint-full-claude-mode-2026-10-30` = 87a2046 (grep "CHECKPOINT 30 Oct" docs/HISTORY.md).
 - v0.285 MENUS LIKE CLAUDE: `console/menu.js` (HoolaMenu) = every console dropdown (chat ⋯, Export, NEW account menu on the bottom-left
