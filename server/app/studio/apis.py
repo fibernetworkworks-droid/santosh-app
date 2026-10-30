@@ -1,4 +1,4 @@
-"""v0.307 STUDIO APIS: which real engine behind Create is switched on, checked for real, without ever showing a key.
+"""v0.308 STUDIO APIS: which real engine behind Create is switched on, checked for real, without ever showing a key.
 
 Keys stay where the rules put them - the VPS .env, read at start (`app/config.py`). This module only reads WHETHER a
 key is set and asks each provider one free question (a key / model listing, never a paid call), so she sees:

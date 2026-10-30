@@ -1212,7 +1212,7 @@ ${SPRITE}`;
       if (b.dataset.yes || b.dataset.no) { b.disabled = true; await decide(b.dataset.yes || b.dataset.no, !!b.dataset.yes); await load('studio', true); drawLib(); return; }
       await itemAction(b); });
   };
-  /* ---------------- v0.307 ENGINES: the real AI services behind Create, checked live; keys never come to the browser ---------------- */
+  /* ---------------- v0.308 ENGINES: the real AI services behind Create, checked live; keys never come to the browser ---------------- */
   const EST = {ready: ['Ready', 'ok'], unchecked: ['Key set', 'ok'], missing: ['No key', 'off'], refused: ['Key refused', 'bad'], unreachable: ['Not reachable', 'bad']};
   V.engines = () => `<div class="home eng">
     <div class="sec-h" style="margin:0"><div><h2 style="font:400 28px/1.2 var(--serif)">Engines</h2><p class="mut" style="margin-top:6px">The real AI services behind Create. Keys live only on your server (the .env), never in the app or the chat.</p></div>

@@ -129,11 +129,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.307.0 (pubspec 0.307.0+347). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.308.0 (pubspec 0.308.0+348). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.307 STUDIO APIS: `app/studio/apis.py` checks each Create engine with one FREE call (OpenRouter /key, Gemini /models, Anthropic
-  /models), keys never shown; GET /api/studio/apis, `python -m app.studio.apis`, vps-ops `studio_apis`, Create > Setup > Engines page.
+- v0.308 STUDIO APIS (built as 0.307): `app/studio/apis.py` checks each Create engine with one FREE call (OpenRouter /key, Gemini
+  /models, Anthropic /models), keys never shown; GET /api/studio/apis, `python -m app.studio.apis`, vps-ops `studio_apis`, Create > Setup > Engines.
+- v0.307 DESIGN ARENA (`site/arena.py`, owner-only `/api/arena/*`): 1,000 fixed briefs, runs build n as `__arena__` + Opus judge /
+  checks / originality / rupees score card, budget ceiling SITE_ARENA_MAX_INR, version compare, blind duels vs a rival's public URL.
 - v0.306 PREMIUM STUDIO SIDEBAR (Create): readable labels, hover-only scrollbar, fade only while more is below, active pill + growing bar,
   agent lift/tilt/arrow, tool icon pop, press on every button, one-time entrance, meter fills + %; off under reduced motion / calm.
 - v0.305 WEB DESIGN PHASE 4 web apps (`site/webapp.py`, `assets/hoola-app.js`, `site/reactx.py`): Opus-designed lists + rules,

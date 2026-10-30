@@ -655,7 +655,7 @@ p{margin:0}
 :host-context(.calm) #shell .snav>*{animation:none}
 :host-context(.calm) .agent:hover,:host-context(.calm) .agent:hover .ai,:host-context(.calm) .tg:hover .ic,:host-context(.calm) .sn:hover .ic{transform:none}
 
-/* ---------- v0.307 ENGINES: what is switched on behind Create ---------- */
+/* ---------- v0.308 ENGINES: what is switched on behind Create ---------- */
 .eng .sec-h{align-items:flex-start;gap:16px}
 .eg-feats{display:flex;flex-wrap:wrap;gap:8px}
 .eg-feat{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:99px;font-size:13px;border:1px solid var(--line);color:var(--dim);background:var(--surface)}

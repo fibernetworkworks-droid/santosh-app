@@ -1,4 +1,4 @@
-"""v0.307 STUDIO APIS: which real engine behind Create is on - checked with one FREE call per provider, keys never shown."""
+"""v0.308 STUDIO APIS: which real engine behind Create is on - checked with one FREE call per provider, keys never shown."""
 from __future__ import annotations
 
 import asyncio
@@ -68,5 +68,5 @@ def test_engines_page():
     css = (ROOT / "server" / "app" / "static" / "console" / "studio.css").read_text()
     assert "['engines', 'Engines', 'sliders']" in js and "V.engines = () =>" in js and "'/api/studio/apis'" in js
     assert "Never paste a key into the chat" in js
-    blk = css[css.index("v0.307 ENGINES"):]
+    blk = css[css.index("v0.308 ENGINES"):]
     assert ".eg-card{" in blk and ".ed{" not in blk and ".bad{" not in blk   # no clash with the editor's .ed / red .bad
