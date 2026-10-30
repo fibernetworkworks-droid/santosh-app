@@ -32,6 +32,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("SITE_ART", "false")         # v0.225: no art-direction / critique Opus calls in scripted site tests
     monkeypatch.setenv("SITE_CRITIQUE", "off")
     monkeypatch.setenv("KAAM_WATCH", "false")        # v0.136: job-watch notes only in its own tests
+    monkeypatch.setenv("HARD_JUDGE", "false")        # v0.272: no tiny judge model call in tests (the rules still run)
     monkeypatch.setenv("CALL_RECEIPT", "false")      # v0.91: scripted calls don't expect the extra receipt message
     monkeypatch.setenv("BLENDER3D_WORKER", "false")   # v0.141: tests run 3D jobs themselves
     monkeypatch.setenv("BLENDER_LOOK", "false")

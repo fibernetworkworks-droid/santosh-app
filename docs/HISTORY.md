@@ -10421,7 +10421,36 @@ tells Hoola to do it on a PC).
   guide), test_v0245_tool_choice.py + test_v093_place.py updated to the new rule. No PC file changed.
   Version 0.271.0 (pubspec 0.271.0+311, console ?v=0.271.0, pins). Server-only deploy.
 
-## v0.272.0 SATH SATH — call captions appear as he says them (owner: "BUT IN APP IT SHOW TEXT FIRST" -> "SYNC CAPTIONS")
+## v0.272.0 SOCH KE JAWAB step 1 — spotting hard reasoning (30 Oct 2026)
+Owner: "NOW LETS WORK ON HARD, COMPLEX, REASONING WORK --- FIRST CHECK WHAT ACTUALLY HOOLA HANDLE THIS", then (on the
+7-step plan) "GO ONE BY ONE".
+- The check (reported to the owner): chat is always Claude Sonnet 5.5 (Opus only for websites / apps / notebook / studio
+  / 3D); no effort setting in chat; thinking only while a long job runs or goal.looks_big fires; 2,000 output tokens a
+  step (a cut answer continues); no calculator / code tool among 425; tool results cut at 6,000 chars; research crew
+  4 agents x 8 steps x 1,500 tokens; the reply rulebook has no reasoning recipe; the draft check is a cheap model,
+  nothing recomputes. The 7-step plan: 1 spot hard asks, 2 Opus + thinking + effort + room, 3 a safe calculator /
+  analysis tool, 4 a reasoning recipe, 5 a self-check, 6 deep research, 7 a scored set with answers.
+- Step 1 (this version): `agent/hard.py`. looks_big (lists / sequence words / action verbs = a multi-step JOB) caught
+  0 of 50 hard QUESTIONS. assess() scores the reasoning an ask needs - signals: analysis 2, diagnosis 2, why 1,
+  decision 2, plan 2, calculation 2, maths 2, deep 2, rules 2, fix 2; general shapes: what-if 1, impact 2, difference 2,
+  design 2, reasons 2, how-to-improve 2, judgement 2, how-long 2, explain 1; numbers +1, many questions +1, long ask +1,
+  a word problem (2+ numbers + how much / how many / when) +2; a plain action (send / remind / alarm / book / order /
+  open / play / call / share / delete / save / add) or a [ / ( note scores 0. score >= 2 = hard; "maybe" = one weak
+  signal or a real question (8+ words with ? or 2+ numbers) -> `judge()`: one Haiku call (max_tokens 3, 2.5 s,
+  cached 500, any failure = None = fast path). `decide()` = rules first, judge only for maybe.
+- `santosh._steps`: state["hard"] for HER turns (actor owner, hard_detect) -> think_wanted(... or hard) when
+  hard_thinking. Settings hard_detect / hard_thinking / hard_judge / hard_judge_model (claude-haiku-5-5) /
+  hard_judge_timeout_s. conftest sets HARD_JUDGE=false (no model call in tests).
+- Measured: `app/quality/hard_asks.py` HARD 50 (8 kinds, Hinglish / English / Hindi) + EASY 25: 50/50, 0 false.
+  HOLDOUT (25 + 25 written after tuning, never tuned on): rules 21/25, 4 to the judge, 0 missed outright, 0 everyday
+  marked hard, 1 everyday to the judge. A fresh set 2 had first scored 10/20 - general shapes were added, then set 3
+  (the holdout) was written. Tool-choice asks: 6/163 hard (EMI, P&L analysis, price comparison...), 6 to the judge.
+  Card `python -m app.quality hard` (free).
+- Tests `server/tests/test_v0272_hard.py` (15). Suites around the turn (harness, long jobs, phase C, sahi jawab,
+  scorecard, draft jaanch, chhota jawab, tool choice, compact, one memory...): 299 pass, same as main. No PC file.
+  Version 0.272.0 (pubspec 0.272.0+312, console ?v=0.272.0, pins). Server-only deploy.
+
+## v0.273.0 SATH SATH (built as 0.272.0; re-versioned after the parallel v0.272.0 SOCH KE JAWAB step 1) — call captions appear as he says them (owner: "BUT IN APP IT SHOW TEXT FIRST" -> "SYNC CAPTIONS")
 - Cause: both engines stream his words as text AND audio together. The phone shows text the moment it arrives, but
   audio plays in real time from its queue - and OpenAI sends a whole reply in about a second, so the caption ran seconds
   ahead of his voice (it looked like "text first, then speech"; the speech is still made directly, audio to audio).
@@ -10432,4 +10461,4 @@ tells Hoola to do it on a PC).
   (`user_text`) or an interruption: stale captions are dropped (an old reply never overwrites what she is saying), a
   waiting `turn_done` still goes at once. Gemini streams near real time, so its captions barely move.
 Tests: NEW `test_v0272_sath_sath.py` (6); `test_v0264_openai_voice.py` breath test follows the one clock.
-Version 0.272.0 (pubspec 0.272.0+312, console ?v=0.272.0, pins -> 0.272.0).
+Version 0.273.0 (pubspec 0.273.0+313, console ?v=0.273.0, pins -> 0.273.0).

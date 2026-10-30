@@ -1,4 +1,4 @@
-"""v0.272.0 SATH SATH - captions appear as he SAYS them (owner: "BUT IN APP IT SHOWS TEXT FIRST" -> "SYNC CAPTIONS").
+"""v0.273.0 SATH SATH - captions appear as he SAYS them (owner: "BUT IN APP IT SHOWS TEXT FIRST" -> "SYNC CAPTIONS").
 The model streams text and audio together; text showed at once while the audio played from her phone's queue."""
 import asyncio
 import json
@@ -90,5 +90,5 @@ def test_both_engines_pace_captions():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.272.0"
-    assert "0.272.0+312" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.273.0"
+    assert "0.273.0+313" in (ROOT / "pubspec.yaml").read_text()

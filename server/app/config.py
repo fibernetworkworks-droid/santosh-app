@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     agent_plan_early: bool = True           # v0.228 a clearly big ask gets "plan first" up front; no plan after N steps = asked again
     agent_plan_after_steps: int = 6         # ... tool steps without a kaam_plan before the plan is asked for (was only at 24)
     chat_thinking: str = "goal"             # v0.232 PHASE C: Claude thinks out loud (adaptive) - goal = only while a long job runs, on = every turn, off = never
+    hard_detect: bool = True                # v0.272 SOCH KE JAWAB: spot hard reasoning asks (agent/hard.py)
+    hard_thinking: bool = True              # v0.272 a hard ask thinks (adaptive) from its first call, like a long job
+    hard_judge: bool = True                 # v0.272 the 'not sure' zone asks one tiny model call (1 token, time-limited)
+    hard_judge_model: str = "claude-haiku-5-5"
+    hard_judge_timeout_s: float = 2.5
     agent_narrate_every: int = 1            # v0.258 after this many tool rounds with no word to her, ONE short line (8 in v0.240 = silence)
     agent_narrate_max: int = 6              # v0.258 at most this many such lines in a turn (2 in v0.240; Claude writes one per tool group)
     agent_goal_milestones: int = 2          # v0.228 at most this many 'aadha kaam ho gaya' pushes per long job (0 = off)
