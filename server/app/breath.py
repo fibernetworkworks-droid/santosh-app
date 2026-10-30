@@ -150,8 +150,10 @@ def clips() -> list[bytes]:
             _BUSY["on"] = True
     if start:
         threading.Thread(target=_build, daemon=True, name="santosh-breath").start()
-    STATS["synth"] += 1
-    return [synth(seed, dur) for seed, dur in ((1, 0.38), (2, 0.45), (3, 0.52))]
+    # v0.290 the generated noise inhale sounded like RADIO STATIC on her phone just before his first word (owner:
+    # "BEFORE HOOLA TALKS I GET A RADIO LIKE SOUND"). Only a real recorded breath that passed is_breath may play.
+    STATS["synth_refused"] = STATS.get("synth_refused", 0) + 1
+    return []
 
 
 def pick(level: float = 0.0, last: int = -1) -> tuple[bytes, int]:
