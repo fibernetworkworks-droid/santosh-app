@@ -10558,7 +10558,39 @@ Tests: NEW `test_v0274_openai_parity.py` (6). Version 0.275.0 (pubspec 0.275.0+3
 - Seen in the quiz, not fixed: the v0.231 draft check sometimes prefixes the NEXT reply with a correction of the
   previous one ("Ek sudhaar: ...").
 
-## v0.277.0 PURA SAANS — the gaps v0.274 missed, and the paragraph itself (owner: "NOW LETS WORK ON PARAGRAP AND GAPS")
+## v0.277.0 INDIAMART (re-versioned twice: parallel sessions took 0.273-0.276) (30 Oct 2026)
+Owner: "MAKE A PLAN AND DEPLOY IT PERFECTLY FOR HOOLA. IT WILL SHOW CITY WISE PRODUCT, PRICE, DETAILS, BRAND, IMAGES"
+then "IN APP SIDE JUST SHOW INDIAMART LOGO WITH CONNECTED. BACKEND IF USER ASK GO TO INDIAMART AND TELL THIS PRODUCT IT
+MUST WORK DIRECTLY".
+- Source: IndiaMART's OWN MCP server `https://imgpt.indiamart.com/mcp` (streamable HTTP, server `indiamart-marketplace`
+  1.0.0, protocol 2025-06-18). Probed live: no login, no key, no session id - every call is one JSON-RPC POST. Three
+  tools: `search_products` (query, search_term required; city, brand, specifications, min_price / max_price INR strict,
+  biztype manufacturer|exporter|wholesaler|retailer), `get_product_detail` (displayid), `log_client_event` (their
+  widget's logging, "Not for model use" - never called; `call_tool` refuses it). Buyer side only: no seller leads,
+  no replies, no orders.
+- `app/indiamart.py`: the transport (SSE or JSON answer), 15-min search / 60-min detail cache, product shaping
+  (price + unit, MOQ, brand, specs from `isq` "k==v", seller, city, GST / TrustSeal, rating, phone, page link,
+  direct imimg.com photo unwrapped from their image-proxy), `price_stats` (band in the MAIN unit only - a per-tonne
+  listing never stretches a per-bag band), `by_city`, `search_cities` (2-5 cities in parallel, deduped), signed image
+  proxy (`img_url` / `img_ok` / `fetch_image`: IndiaMART hosts only, https, no SVG, <= 4 MB).
+- Agent tools `app/agent/indiamart_tools.py`: `indiamart_khoj` (city / cities / near_me / all India city wise) and
+  `indiamart_detail`; answers are TEXT (city price bands + best 3-5 with price, MOQ, brand, seller + city, GST,
+  phone, link). Seller text = data. Never orders / calls / messages a seller. Read-only: PARALLEL_SAFE + draftcheck READS.
+- Routing (`agent/admit.py`): family keys (indiamart, supplier, wholesale, thok, moq, bulk, सप्लायर, थोक, भाव, रेट)
+  + a "sourcing" INTENT (rate / bhav / kitne ka / price of / where to buy / suppliers / dealers ...). Guide line in
+  prompts.py scoped to the family.
+- Connectors page: pack `indiamart` is now executor `indiamart` (bazar/connectors/indiamart.py, tools search_products /
+  product_detail tier 0), status always "ready" (INDIAMART_ENABLED off -> not_configured); `/api/bazar/connections`
+  lists it with `no_login: true` + the logo, and the phone shows "Connected" with no link / unlink
+  (lib/ui/bazar_screen.dart `_appAction`).
+- Routes: GET /api/indiamart/img (public, signed), GET /api/indiamart/product/{id} (key).
+- Settings: `INDIAMART_ENABLED` (default true), `INDIAMART_MCP_URL`.
+- Also read: `techmatic-sys/indiamart-mcp-server` (third party, MIT, stdio, seller Lead Manager: one endpoint
+  `mapi.indiamart.com/wservce/crm/crmListing/v2/?glusr_crm_key=...`, key in the query string, a `.env` committed in
+  its repo). NOT used. Seller leads would be built on IndiaMART's own CRM API with her own key, when she asks.
+- Tests: tests/test_v0277_indiamart.py (11). Live check from the sandbox: Pune vs Delhi cement 4.9 s, detail + photo OK.
+
+## v0.278.0 PURA SAANS — the gaps v0.274 missed, and the paragraph itself (owner: "NOW LETS WORK ON PARAGRAP AND GAPS")
 - Measured in a real browser against her Claude screenshots, ink to ink, the same way v0.274 was measured. Four
   things were still wrong, and three of them only became visible once v0.274's gaps were right:
 

@@ -1,4 +1,4 @@
-"""v0.277 PURA SAANS - the gaps v0.274 missed, and the paragraph itself (owner: "NOW LETS WORK ON PARAGRAP AND GAPS").
+"""v0.278 PURA SAANS - the gaps v0.274 missed, and the paragraph itself (owner: "NOW LETS WORK ON PARAGRAP AND GAPS").
 
 Measured in a real browser against her Claude screenshots, ink to ink. v0.274 gave paragraphs, headings and lists
 their air; four things were still wrong, and three of them only showed up once the others were right:
@@ -74,5 +74,5 @@ def test_the_phone_already_spaces_every_block_the_same():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.277.0"
-    assert "0.277.0+317" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.278.0"
+    assert "0.278.0+318" in (ROOT / "pubspec.yaml").read_text()
