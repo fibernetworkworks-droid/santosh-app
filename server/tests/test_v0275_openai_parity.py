@@ -1,4 +1,4 @@
-"""v0.274.0 OPENAI VOICE Phase 2 + 3: every call feature behaves on the OpenAI engine as on Gemini (news at a pause,
+"""v0.275.0 OPENAI VOICE Phase 2 + 3: every call feature behaves on the OpenAI engine as on Gemini (news at a pause,
 hold for her phone call, a dropped OpenAI connection rebuilt with the talk so far), and the phone gets its own
 "Call ki awaaz" picker instead of a curl command."""
 import asyncio
@@ -118,5 +118,5 @@ def test_phone_picker_and_call_badge_wired():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.274.0"
-    assert "0.274.0+314" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.275.0"
+    assert "0.275.0+315" in (ROOT / "pubspec.yaml").read_text()

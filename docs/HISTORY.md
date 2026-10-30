@@ -10463,7 +10463,42 @@ Owner: "NOW LETS WORK ON HARD, COMPLEX, REASONING WORK --- FIRST CHECK WHAT ACTU
 Tests: NEW `test_v0272_sath_sath.py` (6); `test_v0264_openai_voice.py` breath test follows the one clock.
 Version 0.273.0 (pubspec 0.273.0+313, console ?v=0.273.0, pins -> 0.273.0).
 
-## v0.274.0 OPENAI VOICE Phase 2 + 3 — every call feature on the real voice, and the picker on the phone (owner: "DEPLOYED, WORKING GOOD NOW. MOVE FURTHER")
+## v0.274.0 SAAF JAGAH — the air between the blocks (owner: "ALSO SEE A VISUAL PROPER PLACEMENT OF SENTANCE THAT USER CAN READ IT REALIBLY. ALSO A PERFECT PARAGRAP, SPALCING ETC. CHECK THIS FIRST", then "GO SPACING")
+- MEASURED FIRST, from her three Claude screenshots (the Indian-government-API answer), block by block:
+
+  | | Claude | Hoola before |
+  |---|---|---|
+  | line pitch | 22-24px (16px x 1.5) | 24px |
+  | paragraph length | 1-3 lines | — |
+  | gap BETWEEN paragraphs | 22-32px | **2px** |
+  | gap between lines INSIDE one | 6-8px | ~7px |
+  | **ratio between / inside** | **3.2x - 4.3x** | **0.3x** |
+  | line length | median ~600px, max 674px (65-75 chars) | 880px (~95 chars) |
+
+  That ratio is the whole trick: a block reads as a block only when the space around it is several times the space
+  inside it. Hoola's space BETWEEN paragraphs was SMALLER than the space between the lines inside them, so no
+  paragraph was ever visible. This is why, after v0.249 (the serif), v0.253 (Literata + near-black on white at
+  17.3:1) and v0.256 (the Claude sidebar type), every word was right and the page still read as one wall.
+- FOUR NUMBERS (console `v2.css`), each verified in a real browser after the change:
+  - `.textmd p` margin-bottom **2 -> 16px**, with `p:last-child` at 0 so a reply has no dead space under it;
+  - `.textmd .mdh` margin **8px 0 4px -> 24px 0 8px** — a heading belongs to the text UNDER it, so most of the air
+    goes above; `.mdh:first-child` keeps margin-top 0 so there is never a hole at the top of a reply;
+  - `.textmd ul,ol` item gap **3 -> 8px** and the list's own bottom margin **2 -> 16px**, with `:last-child` at 0.
+  Rendered after: paragraph 16px, above a heading 24px, below it 8px, list items 8px.
+- THE PHONE TAKES THE SAME AIR: `md_text.dart`'s block spacer **9 -> 16px** and list items **4 -> 8px**.
+- NOT TOUCHED, ON PURPOSE: the reading width. The column is 880px where Claude's text measures ~674px, about 95
+  characters a line against a comfortable 65-75. But v0.252 set that width deliberately ("the chat column = the
+  composer's width"), so it is the owner's call, not a thing to undo from here. A test records it as a decision so
+  the next session does not read it as an oversight. She was offered "GO SPACING + WIDTH" and chose spacing only.
+- NOTHING ELSE MOVED: the type is pinned by its own test - Literata, 16px / 400 / 1.5, `--chat-ink` on
+  `--chat-paper`, and `GoogleFonts.literata` on the phone.
+- Tests: NEW `server/tests/test_v0274_saaf_jagah.py` (8), including one that asserts the paragraph gap can never
+  fall back below ~14px, where it would vanish against the line gap again. `dart analyze` 0 errors,
+  `flutter test test/md_text_test.dart` 7/7.
+- Version 0.274.0 (pubspec 0.274.0+314, console ?v=0.274.0, pins -> 0.274.0).
+- NOT VERIFIED: how it reads on a real phone screen; the console was checked in a browser at 1000px wide.
+
+## v0.275.0 OPENAI VOICE Phase 2 + 3 (built as 0.274.0; re-versioned after the parallel v0.274.0 SAAF JAGAH) — every call feature on the real voice, and the picker on the phone (owner: "DEPLOYED, WORKING GOOD NOW. MOVE FURTHER")
 - Phase 2, parity (`test_v0274_openai_parity.py`): job news pushed into the call (`push("text")`) reaches OpenAI as a
   system item with exactly ONE `response.create`; while she is on hold (her phone call) his OpenAI audio is held back
   (`_hold_turn_audio`, never played) and the hold note goes quietly (`_tell_quietly` = item, no reply); a dropped
@@ -10476,4 +10511,4 @@ Version 0.273.0 (pubspec 0.273.0+313, console ?v=0.273.0, pins -> 0.273.0).
   the trial gate does not allow; the reason line when the server falls back to Gemini; this month's spend in rupees
   (`month_inr` / `month_budget_inr`, new in `voiceengine.view`) and her minutes. The call screen shows a "Real voice"
   badge (`CallSession.engine` from the `ready` event's `engine`).
-Tests: NEW `test_v0274_openai_parity.py` (6). Version 0.274.0 (pubspec 0.274.0+314, console ?v=0.274.0, pins -> 0.274.0).
+Tests: NEW `test_v0274_openai_parity.py` (6). Version 0.275.0 (pubspec 0.275.0+315, console ?v=0.275.0, pins -> 0.275.0).
