@@ -26,8 +26,9 @@ DOCSTUDIO_TOOLS = [
                   "description": "file type to build"},
          "title": {"type": "string", "description": "document title (drives the palette)"},
          "text": {"type": "string", "description": "content: '# ' h1, '## ' h2, '- ' bullets, '1. ' steps, "
-                  "'| a | b |' table rows (a 'Total' row is bolded), '> ' quote, '> [!NOTE|TIP|WARNING|SUCCESS|"
-                  "HUMAN|GATE] text' callout box, '[stat: 12% | label]' key number (2-4 in a row), ``` code"},
+                  "'| a | b |' table rows (a 'Total' row is bolded), '> ' quote, '> [!KEY|NOTE|TIP|WARNING|"
+                  "SUCCESS|HUMAN|GATE] text' box, '[stat: 12% | label]' key number, '[chart: bar|hbar|line|donut | "
+                  "title]' above a table, 'Table: caption' / 'Source: ...', footnotes '[^1]' + '[^1]: text', ``` code"},
          "sheets": {"type": "object", "description": "xlsx: {'Sheet': [[header...], [row...]]} - up to "
                    "16,384 cols/sheet (wider auto-splits to -P1/-P2 + Index), 100K rows; a sheet may "
                    "be a dict {rows, conditional_formatting, validation, merges, defined_names}"},

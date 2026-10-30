@@ -60,7 +60,25 @@ DENSITY = {   # body pt, line height, paragraph gap mm
 HEADINGS = ("numbered", "plain", "banner")
 TABLES = ("dark", "tint", "lines")
 CALLOUTS = {"note": "Note", "tip": "Tip", "info": "Note", "important": "Important", "warning": "Warning",
-            "caution": "Caution", "success": "Done", "check": "Check", "human": "Your step", "gate": "Gate"}
+            "caution": "Caution", "success": "Done", "check": "Check", "human": "Your step", "gate": "Gate",
+            "key": "Key takeaways", "summary": "Summary"}
+# v0.307 every word Hoola itself prints on the page, in the document's language (a Hindi report used to say
+# 'Contents', 'Inside', 'Prepared by' in English); other scripts fall back to English until they get their set
+LABELS = {
+    "en": {"contents": "Contents", "inside": "Inside", "for": "Prepared for", "by": "Prepared by", "date": "Date",
+           "version": "Version", "page": "Page", "of": "of", "notes": "Notes", "table": "Table", "figure": "Figure",
+           "source": "Source", "callouts": CALLOUTS},
+    "hi": {"contents": "विषय सूची", "inside": "अंदर", "for": "किसके लिए", "by": "द्वारा तैयार", "date": "तारीख",
+           "version": "संस्करण", "page": "पृष्ठ", "of": "/", "notes": "टिप्पणियाँ", "table": "तालिका",
+           "figure": "चित्र", "source": "स्रोत",
+           "callouts": {"note": "नोट", "tip": "सुझाव", "info": "जानकारी", "important": "ज़रूरी", "warning": "सावधान",
+                        "caution": "सावधानी", "success": "पूरा हुआ", "check": "जाँच", "human": "आपका कदम",
+                        "gate": "पड़ाव", "key": "मुख्य बातें", "summary": "सार"}},
+}
+
+
+def label(spec: dict[str, Any], key: str) -> Any:
+    return LABELS.get(spec.get("lang") or "en", LABELS["en"]).get(key, LABELS["en"][key])
 
 # family -> the look Claude's PDFs use for that kind of document (router fallback + Opus's starting point)
 FAMILY_LOOK: dict[str, dict[str, str]] = {
@@ -155,6 +173,11 @@ def router_colours(title: str, family: str, hue: float) -> tuple[str, str]:
 
 # ---------------------------------------------------------------- content -> blocks
 _CALLOUT = re.compile(r"^\[!(\w+)\]\s*(.*)$")
+_CHART = re.compile(r"^\[chart:\s*(bar|hbar|line|donut|pie)\s*(?:\|\s*([^|\]]*?))?\s*(?:\|\s*(table))?\s*\]\s*$", re.I)
+_CAPTION = re.compile(r"^(table|figure|fig\.|chart|source|sources|तालिका|चित्र|स्रोत)(?:\s+\d+[a-z]?)?\s*[:.\u2014\u2013-]\s*(.+)$",
+                      re.I)      # 'Table: x', 'Table 2: x', 'Figure 3 - x' (Hoola numbers them itself)
+_FNDEF = re.compile(r"^\[\^([^\]]+)\]:\s*(.+)$")
+_FNREF = re.compile(r"\[\^([^\]]+)\]")
 _STAT = re.compile(r"^\[stat:\s*(.+?)\s*\|\s*(.+?)\]\s*$", re.I)
 _OL = re.compile(r"^(\d{1,3})[.)]\s+")      # 1-999: "2025. was a good year" stays a sentence
 _UL = re.compile(r"^[-*•]\s+")
@@ -220,6 +243,25 @@ def parse(text: str) -> list[dict[str, Any]]:
             continue
         if s.lower() in ("[[pagebreak]]", "\\pagebreak", "<pagebreak>"):
             out.append({"k": "pagebreak"})
+        elif _CHART.match(s):
+            m = _CHART.match(s)
+            kind = m.group(1).lower().replace("pie", "donut")
+            out.append({"k": "chart", "kind": kind, "t": (m.group(2) or "").strip(), "show_table": bool(m.group(3))})
+        elif _FNDEF.match(s):
+            m = _FNDEF.match(s)
+            out.append({"k": "fndef", "id": m.group(1).strip(), "t": m.group(2).strip()})
+        elif _CAPTION.match(s):
+            m = _CAPTION.match(s)
+            role = m.group(1).lower()
+            key = "source" if role in ("source", "sources", "स्रोत") else "caption"
+            nxt = next((ln.strip() for ln in lines[i:] if ln.strip()), "")
+            above = key == "caption" and (nxt.startswith("|") or nxt.lower().startswith("[chart:"))
+            if out and out[-1]["k"] in ("table", "chart") and not above:
+                out[-1][key] = m.group(2).strip()
+            elif key == "caption":          # 'Table 3: ...' written ABOVE its table
+                out.append({"k": "capnext", "t": m.group(2).strip()})
+            else:
+                out.append({"k": "p", "t": s})
         elif s in ("---", "***", "___"):
             out.append({"k": "divider"})
         elif s.startswith("#### "):
@@ -261,7 +303,25 @@ def parse(text: str) -> list[dict[str, Any]]:
                 out.append({"k": kind, "items": [(level, item)], "start": start})
         else:
             out.append({"k": "p", "t": s})      # one line = one paragraph (the make_document rule)
-    return out
+    # a chart takes the table right under it (the table stays too only with '| table')
+    merged: list[dict[str, Any]] = []
+    for b in out:
+        prev = merged[-1] if merged else None
+        if b["k"] in ("table", "chart") and prev is not None and prev["k"] == "capnext":
+            merged.pop()
+            b = dict(b, caption=b.get("caption") or prev["t"])
+            prev = merged[-1] if merged else None
+        if b["k"] == "table" and prev is not None and prev["k"] == "chart" and "rows" not in prev:
+            prev["rows"] = b["rows"]
+            for key in ("caption", "source"):
+                if b.get(key) and not prev.get(key):
+                    prev[key] = b[key]
+            if prev.get("show_table"):
+                merged.append(dict(b, from_chart=True))
+            continue
+        merged.append(b)
+    return [({"k": "p", "t": b["t"]} if b["k"] == "capnext" else b)
+            for b in merged if not (b["k"] == "chart" and not b.get("rows"))]
 
 
 _LONG = re.compile(r"\S{22,}")
@@ -278,11 +338,45 @@ def _soft(text: str) -> str:
     return _LONG.sub(cut, text)
 
 
+_PROTECT = re.compile(r"(`[^`]+`|\]\(https?://[^)\s]+\)|https?://\S+|\[\^[^\]]+\])")
+
+
+def typo(text: str) -> str:
+    """Typographer's punctuation on plain prose: “curly” quotes, ’ apostrophes, — for --, – for a spaced hyphen and
+    for year / unit ranges (FY 2025–26, 10–12 days), … for three dots. Code spans, link addresses and bare URLs are
+    left exactly as written."""
+    parts = _PROTECT.split(text or "")
+    out = []
+    for i, x in enumerate(parts):
+        if i % 2:
+            out.append(x)
+            continue
+        x = x.replace("...", "\u2026").replace(" -- ", " \u2014 ").replace("--", "\u2014").replace(" - ", " \u2013 ")
+        x = re.sub(r"\b((?:19|20)\d{2})-((?:19|20)?\d{2})\b", "\\1\u2013\\2", x)
+        x = re.sub(r"\b(\d{1,3})-(\d{1,3})(?=\s*(?:%|(?:days?|weeks?|months?|years?|hrs?|hours?|mins?|minutes?|lakh|"
+                   r"crore|cr|pages?|people|units?)\b))", "\\1\u2013\\2", x)
+        x = re.sub(r'(^|[\s(\[{\u2014\u2013/])"', "\\1\u201c", x)
+        x = x.replace('"', "\u201d")
+        x = re.sub(r"(?<=\w)'(?=\w)", "\u2019", x)
+        x = re.sub(r"(^|[\s(\[{\u2014\u2013/])'", "\\1\u2018", x)
+        x = x.replace("'", "\u2019")
+        out.append(x)
+    return "".join(out)
+
+
+_FN: dict[str, int] = {}     # footnote id -> its number, for the document being drawn (set by body_html)
+
+
+def _fn_ref(m: re.Match) -> str:
+    n = _FN.get(m.group(1).strip())
+    return f"<sup class=fn><a href='#fn-{n}'>{n}</a></sup>" if n else ""
+
+
 def _inline(text: str) -> str:
     """Escape (quotes too: a link can never grow an attribute), then **bold**, *italic*, `code`,
     [text](https://...) - nothing else turns into markup. LAST, long tokens in the plain text get break chances
     (_soft) - only between tags and entities, never inside an href or an &amp;."""
-    s = _html.escape(_clean(text), quote=True)
+    s = _html.escape(typo(_clean(text)), quote=True)
     codes: list[str] = []
 
     def keep(m: re.Match) -> str:
@@ -293,6 +387,7 @@ def _inline(text: str) -> str:
     s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s)
     s = re.sub(r"(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])", r"<i>\1</i>", s)
     s = re.sub(r"\x00(\d+)\x00", lambda m: f"<code>{codes[int(m.group(1))]}</code>", s)
+    s = _FNREF.sub(_fn_ref, s)
     parts = re.split(r"(<[^>]+>|&[#\w]+;)", s)
     return "".join(x if (x.startswith("<") or (x.startswith("&") and x.endswith(";"))) else _soft(x)
                    for x in parts).replace(SOFT, "<wbr>")
@@ -466,6 +561,7 @@ GRID = {   # v0.307.0 THE PAGE SYSTEM - every measure below comes from these (me
     "inset": 5.0,       # mm: the ONE indent - text inside any box (note, key number, code, quote, filled table) and lists
     "hang": 3.0,        # mm: gap between a hanging heading number (in the margin) and the heading text
     "scale": (1.125, 1.35, 1.8),   # h3, h2, h1 as multiples of the body size (one ratio ladder, nothing in between)
+    "measure": 84,      # characters a prose line may hold (Butterick: 45-90)
 }
 
 
@@ -489,6 +585,12 @@ def _css(spec: dict[str, Any], P: dict[str, str]) -> str:
     size, lh, _gap = DENSITY.get(spec["density"], DENSITY["normal"])
     L = line_mm(spec)
     IN, HANG = GRID["inset"], GRID["hang"]
+    # v0.307 MEASURE: Butterick's 45-90 characters a line; prose is capped at ~84 (an average letter is ~.483 em in
+    # Inter / Source Serif - measured: 97 characters filled the 174 mm column at 10.5 pt). Tables, boxes, code and
+    # key numbers keep the full column.
+    measure = min(174.0, round(GRID["measure"] * .483 * size * 25.4 / 72, 1))
+    hyph = (".body p,.body li,.callout p{{hyphens:auto;hyphenate-limit-chars:7 3 3}}".replace("{{", "{").replace("}}", "}")
+            if (spec.get("lang") or "en") == "en" else "")
     h3, h2, h1 = (round(size * k, 1) for k in GRID["scale"])
     table = spec["table"]
     th = {"dark": f"background:{P['primary']};color:#fff;border-bottom:0",
@@ -501,21 +603,23 @@ def _css(spec: dict[str, Any], P: dict[str, str]) -> str:
 :root{{--p:{P['primary']};--a:{P['accent']};--ink:{P['ink']};--mut:{P['muted']};--line:{P['line']};--soft:{P['soft']};
 --soft2:{P['soft2']};--deep2:{P['deep2']};--zebra:{P['zebra']};--hf:{_stack(head)};--bf:{_stack(body)};
 --L:{L}mm;--in:{IN}mm;--hang:{HANG}mm}}
-@page{{size:A4}}
 *{{box-sizing:border-box}}
 html{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 body{{margin:0;padding:0 {GUTTER}mm;font-family:var(--bf);font-size:{size}pt;line-height:{lh};color:var(--ink);font-kerning:normal;
 font-variant-numeric:lining-nums;text-rendering:optimizeLegibility;orphans:3;widows:3;hyphens:manual}}
 p,li,td,th,.callout,blockquote{{overflow-wrap:break-word}}
+.body>p,.body>ul,.body>ol,.body>blockquote,.callout p{{max-width:{measure}mm}}
+{hyph}
 p{{margin:0 0 calc(var(--L)*.5)}} b,strong{{font-weight:650}} a{{color:var(--a);text-decoration:none}}
 h1,h2,h3{{font-family:var(--hf);color:var(--ink);break-after:avoid;page-break-after:avoid;line-height:1.22;position:relative}}
 h1{{font-size:{h1}pt;font-weight:700;margin:calc(var(--L)*2) 0 calc(var(--L)*.55);letter-spacing:-.01em}}
 h2{{font-size:{h2}pt;font-weight:650;margin:calc(var(--L)*1.5) 0 calc(var(--L)*.4)}}
 h3{{font-size:{h3}pt;font-weight:650;margin:calc(var(--L)*1) 0 calc(var(--L)*.3)}}
-h1 .no{{display:inline-block;width:{GUTTER - .5}mm;margin-left:-{GUTTER - .5}mm;padding-right:var(--hang);
-text-align:right;font-size:.6em;color:var(--a);font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:0}}
+h1[data-no]::before{{content:attr(data-no);display:inline-block;box-sizing:border-box;width:{GUTTER - .5}mm;margin-left:-{GUTTER - .5}mm;
+padding-right:var(--hang);text-align:right;font-size:.6em;color:var(--a);font-variant-numeric:tabular-nums;
+white-space:nowrap;letter-spacing:0}}
 h1.banner{{background:var(--p);color:#fff;padding:calc(var(--L)*.45) var(--in);border-radius:1.2mm;font-size:{h2}pt}}
-h1.banner .no{{width:auto;margin:0 .55em 0 0;padding:0;font-size:1em;color:#fff;opacity:.7}}
+h1.banner[data-no]::before{{width:auto;margin:0 .55em 0 0;padding:0;font-size:1em;color:#fff;opacity:.7}}
 .body>h1:first-child,.body>.lh+h1{{margin-top:0}}
 .body :is(h1,h2,h3)+*{{margin-top:0}}   /* a heading binds to whatever follows: only its own space below counts */
 ul,ol{{margin:0 0 calc(var(--L)*.5);padding-left:var(--in)}}
@@ -559,6 +663,21 @@ table th:first-child,table td:first-child{{padding-left:{edge}}} table th:last-c
 td.k,th.k{{white-space:nowrap}}
 td.n,th.n{{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;width:1%}}
 tr.tot td{{font-weight:700;border-top:1.4pt solid var(--ink);border-bottom:0;background:transparent}}
+.cap{{font-size:.86em;color:var(--ink);margin:calc(var(--L)*.8) 0 calc(var(--L)*.25);break-after:avoid;
+font-family:var(--hf);font-weight:600}}
+.cap .cn{{color:var(--a);margin-right:.6em;font-variant-numeric:tabular-nums;letter-spacing:.02em}}
+.cap+table{{margin-top:0}}
+.src{{font-size:.78em;color:var(--mut);margin:calc(var(--L)*-.5) 0 calc(var(--L)*.8)}}
+figure.chart{{margin:calc(var(--L)*.8) 0;break-inside:avoid}} figure.chart .cap{{margin-top:0}}
+figure.chart svg{{display:block;width:100%;height:auto}} figure.chart .src{{margin-top:calc(var(--L)*.2)}}
+.chart text{{font-family:var(--bf);fill:var(--mut);font-variant-numeric:tabular-nums}}
+.chart .vl{{fill:var(--ink);font-weight:600}} .chart .ax{{stroke:var(--line);stroke-width:1}}
+.chart .grid{{stroke:var(--line);stroke-width:.6;stroke-dasharray:2 3}}
+sup.fn{{font-size:.68em;line-height:0;margin-left:.08em}} sup.fn a{{color:var(--a)}}
+.notes{{margin-top:calc(var(--L)*2);border-top:.8pt solid var(--line);padding-top:calc(var(--L)*.4);font-size:.86em}}
+.notes h2{{font-size:1em;margin-top:0}} .notes li{{margin-bottom:calc(var(--L)*.15)}}
+.callout.key,.callout.summary{{border-color:var(--p);background:var(--soft2)}}
+.callout.key .ct,.callout.summary .ct{{color:var(--p)}}
 .toc{{break-after:page}}
 .toc h1{{margin-top:0;margin-bottom:calc(var(--L)*1)}}
 .toc .row{{display:flex;align-items:baseline;gap:2mm;color:var(--ink);break-inside:avoid;position:relative;
@@ -586,7 +705,7 @@ def _cover_css(spec: dict[str, Any], P: dict[str, str]) -> str:
     return f"""
 @page{{size:A4;margin:0}}
 body{{padding:0}}          /* the inside pages' gutter must never reach the full-bleed cover */
-.cv{{width:210mm;height:296.6mm;position:relative;overflow:hidden;font-family:var(--bf);color:var(--ink)}}
+.cv{{width:210mm;height:296.6mm;position:relative;overflow:hidden;background:#fff;font-family:var(--bf);color:var(--ink)}}
 .cv .k{{font-size:9pt;letter-spacing:.2em;text-transform:uppercase;font-weight:600}}
 .cv h1{{font-family:{_stack(head)};font-weight:700;line-height:1.08;letter-spacing:-.015em;margin:0;max-width:160mm}}
 .cv .s{{font-size:13pt;line-height:1.45;max-width:150mm}}
@@ -643,7 +762,7 @@ def _cover_html(spec: dict[str, Any], title: str, meta_html: str, inside: list[s
     e = _html.escape
     ins = ""
     if inside and spec["cover"] in ("band", "rail", "minimal", "split", "swiss"):
-        ins = "<div class=inside><div class=il>Inside</div>" + "".join(
+        ins = f"<div class=inside><div class=il>{e(label(spec, 'inside'))}</div>" + "".join(
             f"<div class=ir><span>{i:02d}</span>{_inline(t)}</div>" for i, t in enumerate(inside[:7], 1)) + "</div>"
     k = e(spec.get("kicker") or "")
     sub = f"<div class=s>{e(spec['subtitle'])}</div>" if spec.get("subtitle") else ""
@@ -690,6 +809,209 @@ def _table(rows: list[list[str]], keep: bool) -> str:
             f"<tbody>{''.join(body)}</tbody></table>")
 
 
+# ---------------------------------------------------------------- charts (inline SVG, drawn from her table)
+def _num(cell: str) -> float | None:
+    """'₹12,40,000' / 'Rs 4.2' / '18%' / '(1,200)' / '−5' -> a number; None when the cell is not one."""
+    c = re.sub(r"\*\*|₹|rs\.?|inr|\$|usd|€|%|,|\s|lakhs?|crores?|cr\b|days?", "", str(cell or ""), flags=re.I)
+    neg = c.startswith("(") and c.endswith(")")
+    c = c.strip("()").replace("\u2212", "-")
+    try:
+        v = float(c)
+    except ValueError:
+        return None
+    return -v if neg else v
+
+
+def indian(v: float, unit: str = "") -> str:
+    """Compact Indian number for a chart label: 1.2 Cr, 12.4 L, 45.6k, 980, 12.5."""
+    a = abs(v)
+    if a >= 1e7:
+        t = f"{v / 1e7:.1f} Cr"
+    elif a >= 1e5:
+        t = f"{v / 1e5:.1f} L"
+    elif a >= 1e4:
+        t = f"{v / 1e3:.0f}k"
+    elif a >= 1000:
+        t = f"{v / 1e3:.1f}k"
+    elif a >= 100 or float(v).is_integer():
+        t = f"{v:.0f}"
+    else:
+        t = f"{v:.1f}"
+    t = t.replace(".0 ", " ").replace(".0k", "k")
+    return f"₹{t}" if unit == "₹" else f"{t}%" if unit == "%" else t
+
+
+def _nice(lo: float, hi: float, n: int = 4) -> list[float]:
+    """Round gridline values that cover lo..hi (1 / 2 / 2.5 / 5 x 10^k steps)."""
+    import math
+    lo, hi = min(lo, 0.0), max(hi, 0.0)
+    span = (hi - lo) or abs(hi) or 1.0
+    raw = span / n
+    mag = 10 ** math.floor(math.log10(raw))
+    step = next(m * mag for m in (1, 2, 2.5, 5, 10) if m * mag >= raw)
+    start = math.floor(lo / step) * step
+    ticks, v = [], start
+    while v < hi + step * .999:
+        ticks.append(round(v, 10))
+        v += step
+    return ticks
+
+
+def chart_colours(P: dict[str, str], n: int) -> list[str]:
+    """Series colours from the document's own two colours: accent, primary, then their mixes and lighter tints."""
+    base = [P["accent"], P["primary"], P["deep2"]]
+    out = list(base)
+    for c in base:
+        r, g, b = _rgb(c)
+        h, l, s_ = colorsys.rgb_to_hls(r, g, b)
+        out.append(_hex(colorsys.hls_to_rgb(h, min(.78, l + .28), s_ * .8)))
+    out.append(P["muted"])
+    return (out * 3)[:max(1, n)]
+
+
+def chart_svg(kind: str, rows: list[list[str]], P: dict[str, str], spec: dict[str, Any], title: str) -> str:
+    """Bar / horizontal bar / line / donut from a table: first column = categories, every numeric column = a series
+    (a 'Total' row is left out). '' when there is nothing numeric to draw."""
+    if not rows or len(rows) < 2:
+        return ""
+    width = max(len(r) for r in rows)
+    rows = [r + [""] * (width - len(r)) for r in rows]
+    body = [r for r in rows[1:] if not _TOTAL.match(r[0] or "")]
+    cols = [c for c, f in enumerate(numeric_columns(rows)) if f]
+    if not body or not cols:
+        return ""
+    cats = [re.sub(r"\*\*", "", r[0]).strip() for r in body]
+    series = [(re.sub(r"\*\*", "", rows[0][c]).strip(), [(_num(r[c]) or 0.0) for r in body]) for c in cols[:4]]
+    cells = " ".join(r[c] for r in body for c in cols)
+    unit = "₹" if re.search(r"₹|\brs\b|inr", cells, re.I) else "%" if "%" in cells else ""
+    e = _html.escape
+    if kind == "bar" and (len(cats) > 10 or sum(len(c) for c in cats) / len(cats) > 11):
+        kind = "hbar"                               # long or many labels read better sideways
+    W = 640.0
+    col = chart_colours(P, max(len(series), len(cats)))
+    legend = ""
+    if len(series) > 1 and kind != "donut":
+        x = 0.0
+        items = []
+        for i, (name, _v) in enumerate(series):
+            items.append(f"<rect x='{x:.1f}' y='0' width='9' height='9' rx='2' fill='{col[i]}'/>"
+                         f"<text x='{x + 13:.1f}' y='8.5' font-size='10'>{e(name[:28])}</text>")
+            x += 13 + 6.2 * min(28, len(name)) + 18
+        legend = f"<g transform='translate(0,2)'>{''.join(items)}</g>"
+    top = 22.0 if legend else 6.0
+    svg: list[str] = []
+    if kind == "donut":
+        import math
+        name, vals = series[0]
+        pairs = [(c, v) for c, v in zip(cats, vals) if v > 0]
+        if not pairs:
+            return ""
+        if len(pairs) > 7:
+            pairs = sorted(pairs, key=lambda kv: -kv[1])
+            pairs = pairs[:6] + [("Other", sum(v for _c, v in pairs[6:]))]
+        tot = sum(v for _c, v in pairs)
+        H, cx, cy, R, r0 = 220.0, 110.0, 110.0, 96.0, 58.0
+        a = -math.pi / 2
+        for i, (c, v) in enumerate(pairs):
+            a2 = a + 2 * math.pi * v / tot
+            large = 1 if a2 - a > math.pi else 0
+            p1 = (cx + R * math.cos(a), cy + R * math.sin(a))
+            p2 = (cx + R * math.cos(a2), cy + R * math.sin(a2))
+            q1 = (cx + r0 * math.cos(a2), cy + r0 * math.sin(a2))
+            q2 = (cx + r0 * math.cos(a), cy + r0 * math.sin(a))
+            if len(pairs) == 1:
+                svg.append(f"<circle cx='{cx}' cy='{cy}' r='{(R + r0) / 2}' fill='none' stroke='{col[0]}' "
+                           f"stroke-width='{R - r0}'/>")
+            else:
+                svg.append(f"<path d='M{p1[0]:.2f},{p1[1]:.2f} A{R},{R} 0 {large} 1 {p2[0]:.2f},{p2[1]:.2f} "
+                           f"L{q1[0]:.2f},{q1[1]:.2f} A{r0},{r0} 0 {large} 0 {q2[0]:.2f},{q2[1]:.2f} Z' "
+                           f"fill='{col[i]}' stroke='#fff' stroke-width='1.5'/>")
+            a = a2
+        svg.append(f"<text x='{cx}' y='{cy - 2}' text-anchor='middle' font-size='17' class=vl>{e(indian(tot, unit))}</text>"
+                   f"<text x='{cx}' y='{cy + 15}' text-anchor='middle' font-size='9.5'>{e(name[:22])}</text>")
+        for i, (c, v) in enumerate(pairs):
+            y = 30 + i * 24
+            svg.append(f"<rect x='250' y='{y - 9}' width='11' height='11' rx='2' fill='{col[i]}'/>"
+                       f"<text x='268' y='{y}' font-size='11' fill='var(--ink)'>{e(c[:34])}</text>"
+                       f"<text x='{W}' y='{y}' font-size='11' text-anchor='end' class=vl>"
+                       f"{e(indian(v, unit))} · {100 * v / tot:.0f}%</text>")
+    elif kind == "hbar":
+        lab = min(170.0, 12 + 6.0 * max(len(c) for c in cats))
+        bar_h = 15.0 if len(series) == 1 else 9.0
+        gap = 8.0
+        group = bar_h * len(series) + gap
+        H = top + group * len(cats) + 22
+        lo = min(min(v) for _n, v in series)
+        hi = max(max(v) for _n, v in series)
+        ticks = _nice(lo, hi)
+        t0, t1 = ticks[0], ticks[-1]
+        x0, x1 = lab, W - 58
+        sx = lambda v: x0 + (v - t0) / ((t1 - t0) or 1) * (x1 - x0)   # noqa: E731
+        for t in ticks:
+            svg.append(f"<line class=grid x1='{sx(t):.1f}' x2='{sx(t):.1f}' y1='{top}' y2='{H - 18}'/>"
+                       f"<text x='{sx(t):.1f}' y='{H - 4}' font-size='9.5' text-anchor='middle'>{e(indian(t, unit))}</text>")
+        for j, c in enumerate(cats):
+            y = top + j * group + gap / 2
+            svg.append(f"<text x='{lab - 8}' y='{y + group / 2 - gap / 2 + 3.5:.1f}' font-size='10.5' text-anchor='end' "
+                       f"fill='var(--ink)'>{e(c[:30])}</text>")
+            for i, (_n, vals) in enumerate(series):
+                v = vals[j]
+                a_, b_ = sorted((sx(0), sx(v)))
+                svg.append(f"<rect x='{a_:.1f}' y='{y + i * bar_h:.1f}' width='{max(.5, b_ - a_):.1f}' "
+                           f"height='{bar_h - 1.5:.1f}' rx='1.5' fill='{col[i]}'/>")
+                if len(cats) * len(series) <= 24:
+                    svg.append(f"<text class=vl x='{b_ + 4:.1f}' y='{y + i * bar_h + bar_h / 2 + 2.5:.1f}' "
+                               f"font-size='9.5'>{e(indian(v, unit))}</text>")
+        svg.append(f"<line class=ax x1='{sx(0):.1f}' x2='{sx(0):.1f}' y1='{top}' y2='{H - 18}'/>")
+    else:   # bar / line
+        H = 250.0
+        lo = min(min(v) for _n, v in series)
+        hi = max(max(v) for _n, v in series)
+        ticks = _nice(lo, hi)
+        t0, t1 = ticks[0], ticks[-1]
+        x0, x1, y0, y1 = 52.0, W - 6, top + 8, H - 26
+        sy = lambda v: y1 - (v - t0) / ((t1 - t0) or 1) * (y1 - y0)   # noqa: E731
+        for t in ticks:
+            svg.append(f"<line class=grid x1='{x0}' x2='{x1}' y1='{sy(t):.1f}' y2='{sy(t):.1f}'/>"
+                       f"<text x='{x0 - 7}' y='{sy(t) + 3.5:.1f}' font-size='9.5' text-anchor='end'>{e(indian(t, unit))}</text>")
+        n = len(cats)
+        slot = (x1 - x0) / n
+        every = max(1, -(-n // 12))
+        for j, c in enumerate(cats):
+            if j % every == 0:
+                svg.append(f"<text x='{x0 + slot * (j + .5):.1f}' y='{H - 9}' font-size='10' text-anchor='middle' "
+                           f"fill='var(--ink)'>{e(c[:14])}</text>")
+        if kind == "line":
+            for i, (_n, vals) in enumerate(series):
+                pts = " ".join(f"{x0 + slot * (j + .5):.1f},{sy(v):.1f}" for j, v in enumerate(vals))
+                svg.append(f"<polyline points='{pts}' fill='none' stroke='{col[i]}' stroke-width='2.2' "
+                           f"stroke-linejoin='round' stroke-linecap='round'/>")
+                for j, v in enumerate(vals):
+                    svg.append(f"<circle cx='{x0 + slot * (j + .5):.1f}' cy='{sy(v):.1f}' r='2.6' fill='#fff' "
+                               f"stroke='{col[i]}' stroke-width='1.6'/>")
+                last = vals[-1]
+                svg.append(f"<text class=vl x='{x0 + slot * (n - .5):.1f}' y='{sy(last) - 7:.1f}' font-size='9.5' "
+                           f"text-anchor='middle'>{e(indian(last, unit))}</text>")
+        else:
+            inner = slot * .72
+            bw = inner / len(series)
+            for j in range(n):
+                for i, (_n, vals) in enumerate(series):
+                    v = vals[j]
+                    x = x0 + slot * j + (slot - inner) / 2 + i * bw
+                    a_, b_ = sorted((sy(0), sy(v)))
+                    svg.append(f"<rect x='{x:.1f}' y='{a_:.1f}' width='{bw - 1.2:.1f}' height='{max(.5, b_ - a_):.1f}' "
+                               f"rx='1.5' fill='{col[i]}'/>")
+                    if n * len(series) <= 16:
+                        svg.append(f"<text class=vl x='{x + (bw - 1.2) / 2:.1f}' y='{(a_ - 4) if v >= 0 else (b_ + 11):.1f}' "
+                                   f"font-size='9' text-anchor='middle'>{e(indian(v, unit))}</text>")
+        svg.append(f"<line class=ax x1='{x0}' x2='{x1}' y1='{sy(0):.1f}' y2='{sy(0):.1f}'/>")
+    desc = "; ".join(f"{name}: " + ", ".join(f"{c} {indian(v, unit)}" for c, v in zip(cats, vals))
+                     for name, vals in series)[:600]
+    return (f"<svg viewBox='0 0 {W:.0f} {H:.0f}' role='img' aria-label='{e(title or 'Chart')}'>"
+            f"<title>{e(title or 'Chart')}</title><desc>{e(desc)}</desc>{legend}{''.join(svg)}</svg>")
+
+
 def stat_rows(items: list) -> list[list]:
     """Key numbers in balanced rows of at most 4: 5 -> 3+2, 6 -> 3+3, 7 -> 4+3, 9 -> 3+3+3 (never a lonely one)."""
     n = len(items)
@@ -727,6 +1049,19 @@ def body_html(blocks: list[dict[str, Any]], spec: dict[str, Any], heads: list[di
     """The inside pages. toc_pages=None -> no contents page; {} -> pass 1 (blank numbers, markers on)."""
     by_i = {h["i"]: h for h in heads}
     out: list[str] = []
+    notes = [b for b in blocks if b["k"] == "fndef"]
+    _FN.clear()
+    _FN.update({b["id"]: n for n, b in enumerate(notes, 1)})
+    P = palette(spec["primary"], spec["accent"])
+    count = {"table": 0, "figure": 0}
+
+    def cap(kind: str, text: str) -> str:
+        count[kind] += 1
+        return (f"<div class='cap {kind}'><span class=cn>{_html.escape(label(spec, kind))} {count[kind]}</span>"
+                f"{_inline(text)}</div>")
+
+    def src(text: str) -> str:
+        return f"<div class=src>{_html.escape(label(spec, 'source'))}: {_inline(text)}</div>" if text else ""
     if toc_pages is not None:
         rows = []
         show2 = sum(1 for h in heads) <= 26
@@ -737,7 +1072,7 @@ def body_html(blocks: list[dict[str, Any]], spec: dict[str, Any], heads: list[di
             no = f"<span class=no>{h['no']}</span>" if h["no"] else ""
             rows.append(f"<a class='row r{h['level']}' href='#{h['id']}'><span class=t>{no}{_inline(h['t'])}</span>"
                         f"<span class=d></span><span class=pg>{pg}</span></a>")
-        out.append(f"<section class=toc><h1>{_html.escape(spec.get('toc_title') or 'Contents')}</h1>{''.join(rows)}</section>")
+        out.append(f"<section class=toc><h1>{_html.escape(label(spec, 'contents'))}</h1>{''.join(rows)}</section>")
     out.append(f"<div class=body>{letterhead}")
     for i, b in enumerate(blocks):
         k = b["k"]
@@ -746,8 +1081,8 @@ def body_html(blocks: list[dict[str, Any]], spec: dict[str, Any], heads: list[di
             mk = f"<span class=mk>HQX{h['id']}QXH</span>" if (markers and h) else ""
             if k == "h1":
                 cls = " class=banner" if spec["headings"] == "banner" else ""
-                no = f"<span class=no>{h['no']}</span>" if h and h["no"] else ""
-                out.append(f"<h1 id='{h['id']}'{cls}>{no}{_inline(b['t'])}{mk}</h1>")
+                no = f" data-no='{h['no']}'" if h and h["no"] else ""
+                out.append(f"<h1 id='{h['id']}'{cls}{no}>{_inline(b['t'])}{mk}</h1>")
             elif k == "h2":
                 out.append(f"<h2 id='{h['id']}'>{_inline(b['t'])}{mk}</h2>")
             else:
@@ -757,7 +1092,15 @@ def body_html(blocks: list[dict[str, Any]], spec: dict[str, Any], heads: list[di
         elif k in ("ul", "ol"):
             out.append(_list(b))
         elif k == "table":
-            out.append(_table(b["rows"], keep=len(b["rows"]) <= 9))
+            head = cap("table", b["caption"]) if b.get("caption") and not b.get("from_chart") else ""
+            out.append(head + _table(b["rows"], keep=len(b["rows"]) <= 9) + ("" if b.get("from_chart") else src(b.get("source", ""))))
+        elif k == "chart":
+            svg = chart_svg(b["kind"], b["rows"], P, spec, b.get("t") or b.get("caption") or "")
+            if svg:
+                out.append(f"<figure class=chart>{cap('figure', b.get('t') or b.get('caption') or '')}{svg}"
+                           f"{src(b.get('source', ''))}</figure>")
+            else:                       # nothing numeric to draw: the table itself
+                out.append(_table(b["rows"], keep=len(b["rows"]) <= 9))
         elif k == "stats":
             for row in stat_rows(b["items"]):
                 out.append(f"<div class=stats style='--n:{len(row)}'>" + "".join(
@@ -765,7 +1108,7 @@ def body_html(blocks: list[dict[str, Any]], spec: dict[str, Any], heads: list[di
                     for v, lbl in row) + "</div>")
         elif k == "callout":
             paras = "".join(f"<p>{_inline(x)}</p>" for x in b["t"].split("\n") if x.strip())
-            out.append(f"<div class='callout {b['kind']}{' keep' if len(b['t']) < 700 else ''}'><div class=ct>{_html.escape(CALLOUTS[b['kind']])}</div>{paras}</div>")
+            out.append(f"<div class='callout {b['kind']}{' keep' if len(b['t']) < 700 else ''}'><div class=ct>{_html.escape(label(spec, 'callouts').get(b['kind'], CALLOUTS[b['kind']]))}</div>{paras}</div>")
         elif k == "quote":
             out.append(f"<blockquote{' class=keep' if len(b['t']) < 700 else ''}>" + "<br>".join(_inline(x) for x in b["t"].split("\n")) + "</blockquote>")
         elif k == "code":
@@ -774,12 +1117,41 @@ def body_html(blocks: list[dict[str, Any]], spec: dict[str, Any], heads: list[di
             out.append("<hr>")
         elif k == "pagebreak":
             out.append("<div class=pb></div>")
+    if notes:
+        out.append(f"<section class=notes><h2>{_html.escape(label(spec, 'notes'))}</h2><ol>" + "".join(
+            f"<li id='fn-{n}'>{_inline(b['t'])}</li>" for n, b in enumerate(notes, 1)) + "</ol></section>")
     out.append("</div>")
     return "".join(out)
 
 
-def _doc(css: str, inner: str, title: str) -> str:
-    return (f"<!doctype html><html><head><meta charset='utf-8'><title>{_html.escape(title)}</title>"
+SCRIPT_LANG = ((0x0900, 0x097F, "hi"), (0x0980, 0x09FF, "bn"), (0x0A00, 0x0A7F, "pa"), (0x0A80, 0x0AFF, "gu"),
+               (0x0B00, 0x0B7F, "or"), (0x0B80, 0x0BFF, "ta"), (0x0C00, 0x0C7F, "te"), (0x0C80, 0x0CFF, "kn"),
+               (0x0D00, 0x0D7F, "ml"))
+
+
+def doc_lang(*texts: str) -> str:
+    """The document's main language from its script: an Indian script that makes up a fifth or more of the letters
+    names it (hi also covers Marathi - same script, same reading rules for a screen reader); otherwise en."""
+    counts: dict[str, int] = {}
+    letters = 0
+    for ch in "".join(texts):
+        if not ch.isalpha():
+            continue
+        letters += 1
+        o = ord(ch)
+        for a, b, code in SCRIPT_LANG:
+            if a <= o <= b:
+                counts[code] = counts.get(code, 0) + 1
+                break
+    if counts:
+        code, n = max(counts.items(), key=lambda kv: kv[1])
+        if n >= letters * 0.2:
+            return code
+    return "en"
+
+
+def _doc(css: str, inner: str, title: str, lang: str = "en") -> str:
+    return (f"<!doctype html><html lang='{lang}'><head><meta charset='utf-8'><title>{_html.escape(title)}</title>"
             f"<style>{css}</style></head><body>{inner}</body></html>")
 
 
@@ -789,6 +1161,34 @@ def band_safe(text: str) -> str:
     bundled Noto fonts work; '' when nothing printable is left."""
     t = (text or "").replace("\u20b9", "Rs ")
     return t if all(ord(c) < 0x0250 or c in "\u00b7\u2014\u2013\u2018\u2019\u201c\u201d\u2026" for c in t) else ""
+
+
+def _css_str(text: str) -> str:
+    return '"' + str(text).replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ") + '"'
+
+
+def page_bands_css(title: str, right: str, left_foot: str, P: dict[str, str], spec: dict[str, Any],
+                   cover_slot: bool) -> str:
+    """v0.307 The running header and footer as CSS page-margin boxes (Chrome 131+). Unlike the old header templates
+    they are drawn with the document's OWN fonts (measured: a Hindi title prints correctly), they line up with the
+    18 mm text edge through their own margins, and page 1 stays bare when it is the cover's slot."""
+    _head, body = TYPES.get(spec["type"], TYPES["sans"])
+    fam = _stack(body if body != "Source Serif" else "Inter")
+    t = title if len(title) <= 80 else title[:77] + "..."
+    common = f"font-family:{fam};font-size:7.4pt;color:{P['muted']};"
+    top = common + f"vertical-align:bottom;padding-bottom:1.6mm;margin-bottom:6.5mm;border-bottom:.5pt solid {P['line']};"
+    bot = common + "vertical-align:top;margin-top:7mm;"
+    first = ("@page :first{@top-left{content:none;border:0}@top-center{content:none;border:0}"
+             "@top-right{content:none;border:0}@bottom-left{content:none}@bottom-right{content:none}}"
+             if cover_slot else "")
+    return (f"@page{{size:A4;margin:22mm 8mm 20mm 8mm;"
+            f"@top-left{{content:{_css_str(t)};{top}margin-left:{GUTTER}mm;text-align:left}}"
+            f"@top-center{{content:'';{top}}}"
+            f"@top-right{{content:{_css_str(right)};{top}margin-right:{GUTTER}mm;text-align:right}}"
+            f"@bottom-left{{content:{_css_str(left_foot)};{bot}margin-left:{GUTTER}mm;text-align:left}}"
+            f"@bottom-right{{content:{_css_str(label(spec, 'page') + ' ')} counter(page) "
+            f"{_css_str(' ' + label(spec, 'of') + ' ')} counter(pages);{bot}margin-right:{GUTTER}mm;"
+            f"text-align:right;font-variant-numeric:tabular-nums}}}}{first}")
 
 
 def _header(title: str, spec: dict[str, Any], P: dict[str, str], right: str) -> str:
@@ -845,17 +1245,29 @@ class Printer:
         self._ctx.route("**/*", lambda r: r.continue_() if r.request.url.startswith(("file:", "data:"))
                         else r.abort())
         self._page = self._ctx.new_page()
+        try:
+            self.major = int(str(self._browser.version).split(".")[0])
+        except (ValueError, IndexError):
+            self.major = 0
+        self.margin_boxes = self.major >= 131        # Chrome 131 added @page margin boxes
         self._n = 0
         self.fonts: set[str] = set()          # the @font-face families the last page really loaded
         return self
 
-    def pdf(self, html_text: str, *, header: str = "", footer: str = "", full_bleed: bool = False) -> bytes:
+    def pdf(self, html_text: str, *, header: str = "", footer: str = "", full_bleed: bool = False,
+            css_page: bool = False) -> bytes:
+        """css_page = the page size, margins and running bands come from the document's own @page rules (margin
+        boxes); the result is a TAGGED PDF with a bookmark outline from the headings (PDF/UA basics) whenever this
+        Playwright can do it."""
         self._n += 1
         f = Path(self._tmp.name) / f"p{self._n}.html"
         f.write_text(html_text, encoding="utf-8")
         self._page.goto(f.as_uri(), wait_until="load", timeout=60000)
         self.fonts = self._rendered_fonts()
         kw: dict[str, Any] = {"format": "A4", "print_background": True, "prefer_css_page_size": False}
+        if css_page:
+            kw = {"print_background": True, "prefer_css_page_size": True}
+            return self._print(kw, rich=True)
         if full_bleed:
             kw["margin"] = {"top": "0", "bottom": "0", "left": "0", "right": "0"}
         else:
@@ -866,6 +1278,14 @@ class Printer:
             if header or footer:
                 kw.update(display_header_footer=True, header_template=header or "<span></span>",
                           footer_template=footer or "<span></span>")
+        return self._print(kw, rich=not full_bleed)
+
+    def _print(self, kw: dict[str, Any], rich: bool) -> bytes:
+        if rich:
+            try:
+                return self._page.pdf(**kw, tagged=True, outline=True)
+            except TypeError:          # an older Playwright: a plain PDF is still a good PDF
+                pass
         return self._page.pdf(**kw)
 
     def _rendered_fonts(self) -> set[str]:
@@ -944,12 +1364,30 @@ def swap_cover(body: bytes, cover: bytes) -> bytes:
     return out.getvalue()
 
 
+def merge_cover(body: bytes, cover: bytes) -> bytes:
+    """The full-bleed cover drawn onto page 1 (an empty slot with no bands) of the body print. Unlike swap_cover the
+    document object stays the same, so its bookmark outline, tag tree and language survive."""
+    from pypdf import PdfReader, PdfWriter
+    w = PdfWriter(clone_from=PdfReader(io.BytesIO(body)))
+    w.pages[0].merge_page(PdfReader(io.BytesIO(cover)).pages[0])
+    out = io.BytesIO()
+    w.write(out)
+    return out.getvalue()
+
+
 def set_meta(data: bytes, title: str, author: str, subject: str) -> bytes:
     from pypdf import PdfReader, PdfWriter
     w = PdfWriter(clone_from=PdfReader(io.BytesIO(data)))
     w.add_metadata({"/Title": title[:200] or "Hoola document", "/Author": author[:120] or "Hoola",
                     "/Subject": subject[:200], "/Creator": f"Hoola Print {ENGINE_VERSION}",
                     "/Producer": "Hoola Print (Chromium)"})
+    from pypdf.generic import BooleanObject, DictionaryObject, NameObject
+    root = w._root_object
+    prefs = root.get("/ViewerPreferences") or DictionaryObject()
+    prefs[NameObject("/DisplayDocTitle")] = BooleanObject(True)    # PDF/UA: the viewer shows the title, not the file
+    root[NameObject("/ViewerPreferences")] = prefs
+    if "/Outlines" in root:
+        root[NameObject("/PageMode")] = NameObject("/UseOutlines")  # long documents open with the bookmark panel
     out = io.BytesIO()
     w.write(out)
     return out.getvalue()
@@ -1030,13 +1468,14 @@ def review_pages(data: bytes, fills: list[float]) -> list[bytes]:
 
 
 # ---------------------------------------------------------------- the whole job
-def _meta_html(author: str, prepared_for: str, date: str, version: str = "1.0") -> str:
+def _meta_html(author: str, prepared_for: str, date: str, version: str = "1.0", spec: dict | None = None) -> str:
     e = _html.escape
+    L = (lambda k: label(spec or {}, k))
     lines = []
     if prepared_for:
-        lines.append(f"<b>Prepared for:</b> {e(prepared_for)}")
-    lines.append(f"<b>Prepared by:</b> {e(author)}")
-    lines.append(f"<b>Date:</b> {e(date)} &nbsp;·&nbsp; <b>Version:</b> {e(version)}")
+        lines.append(f"<b>{e(L('for'))}:</b> {e(prepared_for)}")
+    lines.append(f"<b>{e(L('by'))}:</b> {e(author)}")
+    lines.append(f"<b>{e(L('date'))}:</b> {e(date)} &nbsp;·&nbsp; <b>{e(L('version'))}:</b> {e(version)}")
     return "<br>".join(lines)
 
 
@@ -1046,6 +1485,13 @@ def _letterhead(spec: dict[str, Any], title: str, author: str, prepared_for: str
     s = f"<div class=s>{e(spec['subtitle'])}</div>" if spec.get("subtitle") else ""
     who = f"For {e(prepared_for)}<br>" if prepared_for else ""
     return f"<div class=lh><div>{k}<h1>{e(title)}</h1>{s}</div><div class=m>{who}{e(author)}<br>{e(date)}</div></div>"
+
+
+def kicker_case(k: str) -> str:
+    """'ANNUAL REVIEW · FY 2025-26' -> 'Annual Review · FY 2025-26': words get a capital, but short all-capital words
+    and anything with a digit (FY, SBI, GST, Q3, 2025-26) stay exactly as written."""
+    return " ".join(w if (any(c.isdigit() for c in w) or (w.isupper() and len(w) <= 3) or not w.isupper())
+                    else w.capitalize() for w in (k or "").split(" "))
 
 
 def render(title: str, text: str, spec: dict[str, Any], *, cover: bool, toc: bool, author: str, prepared_for: str,
@@ -1058,15 +1504,25 @@ def render(title: str, text: str, spec: dict[str, Any], *, cover: bool, toc: boo
     heads = headings(blocks, spec["headings"] in ("numbered", "banner"))
     date = _dt.date.today().strftime("%d %b %Y")
     css = _css(spec, P)
+    lang = doc_lang(title, text)
+    spec = dict(spec, lang=lang)
     lh = "" if cover else _letterhead(spec, title, author, prepared_for, date)
     slot = "<div class=coverslot></div>" if cover else ""
     use_toc = toc and bool(heads)
-    head_tpl = _header(title, spec, P, " · ".join(x for x in (spec.get("kicker", "").title(), date) if x))
-    foot_tpl = _footer(spec, P, author if not prepared_for else f"{author} · for {prepared_for}")
+    right = " · ".join(x for x in (kicker_case(spec.get("kicker", "")), date) if x)
+    foot_left = author if not prepared_for else f"{author} · for {prepared_for}"
+    bands = printer.margin_boxes
+    css_base = css
+    if bands:      # Chrome 131+: the bands are part of the page, in our fonts
+        css = css + page_bands_css(title, right, foot_left, P, spec, cover_slot=cover)
+    head_tpl = "" if bands else _header(title, spec, P, right)
+    foot_tpl = "" if bands else _footer(spec, P, foot_left)
 
     def one(toc_pages: dict | None, markers: bool) -> bytes:
         inner = slot + body_html(blocks, spec, heads, toc_pages=toc_pages, markers=markers, letterhead=lh)
-        return printer.pdf(_doc(css, inner, title), header=head_tpl, footer=foot_tpl)
+        if bands:
+            return printer.pdf(_doc(css, inner, title, lang), css_page=True)
+        return printer.pdf(_doc(css, inner, title, lang), header=head_tpl, footer=foot_tpl)
 
     toc_n = 0
     if use_toc:
@@ -1080,9 +1536,9 @@ def render(title: str, text: str, spec: dict[str, Any], *, cover: bool, toc: boo
     loaded = set(printer.fonts)
     if cover:
         inside = [h["t"] for h in heads if h["level"] == 1]
-        cv = printer.pdf(_doc(css + _cover_css(spec, P), _cover_html(spec, title, _meta_html(
-            author, prepared_for, date), inside if len(inside) >= 2 else None), title), full_bleed=True)
-        data = swap_cover(data, cv)
+        cv = printer.pdf(_doc(css_base + _cover_css(spec, P), _cover_html(spec, title, _meta_html(
+            author, prepared_for, date, spec=spec), inside if len(inside) >= 2 else None), title, lang), full_bleed=True)
+        data = merge_cover(data, cv) if bands else swap_cover(data, cv)
     data = set_meta(data, title, author, subject or spec.get("subtitle") or "")
     report = qa(data, cover=cover, toc_pages=toc_n, title=title)
     head, bodyf = TYPES.get(spec["type"], TYPES["sans"])

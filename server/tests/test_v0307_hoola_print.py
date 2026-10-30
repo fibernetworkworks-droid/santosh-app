@@ -177,7 +177,7 @@ def test_long_report_cover_contents_real_page_numbers(chrome):
     assert not any("HQX" in p for p in pages)           # pass-1 markers never reach her file
     toc = pages[1]
     for head in ("Quarterly Revenue", "Recommendations", "Annex 4"):
-        m = re.search(re.escape(head) + r"[ .…]*?(\d+)\s", toc)
+        m = re.search(re.escape(head) + r"[ .…]*?(\d+)(?:\s|$)", toc)
         assert m, head
         real = next(i + 1 for i, p in enumerate(pages) if i > 1 and head in p)
         assert int(m.group(1)) == real, (head, m.group(1), real)
@@ -331,7 +331,7 @@ def test_two_text_edges_only(chrome, table):
     first_cell = [r["textL"] for r in m["rows"] if r["k"].startswith("td.")]
     assert all(abs(x - (0 if table == "lines" else IN)) <= 0.3 for x in first_cell)
     for r in m["rows"]:                                       # every block spans the full column
-        if r["k"].split(".")[0] in ("table", "pre", "blockquote") or r["k"].startswith(("div.callout", "div.stats")):
+        if r["k"].split(".")[0] in ("table", "pre") or r["k"].startswith(("div.callout", "div.stats")):
             assert abs(r["boxL"]) <= 0.3 and abs(r["boxR"] - m["colW"]) <= 0.3, r
 
 
@@ -454,3 +454,89 @@ def test_chromium_no_is_asked_again_after_ten_minutes(monkeypatch):
     H._AVAILABLE["at"] -= 601
     assert H.available() is False and len(calls) == 2
     H._AVAILABLE.clear()
+
+
+# ---------------------------------------------------------------- v0.307 world-class round (research -> deployed)
+def test_prose_lines_stay_within_90_characters(chrome):
+    para = ("Operating cash flow stayed positive in all four quarters of the year, and the largest single outflow was "
+            "the new packing machine bought in the third quarter, paid partly from an SBI term loan. ") * 6
+    r = chrome.make_pdf("Line length", "# Cash\n" + para, cover=False)
+    lines = [ln for ln in _text_pages(r["data"])[0].split("\r\n") if len(ln) > 50 and "Page" not in ln]
+    assert lines and max(len(ln) for ln in lines) <= 90, max(len(ln) for ln in lines)   # Butterick: 45-90
+
+
+def test_pdf_has_bookmarks_tags_language_and_shows_its_title(chrome):
+    from pypdf import PdfReader
+    r = chrome.make_pdf("Annual report", LONG)
+    R = PdfReader(io.BytesIO(r["data"]))
+    root = R.trailer["/Root"]
+    titles = [o.title for o in R.outline if not isinstance(o, list)]
+    assert "Quarterly Revenue" in titles and "Annex 4" in titles   # heading words only - no glued '02'
+    assert "/StructTreeRoot" in root and root["/MarkInfo"]["/Marked"]
+    assert root["/Lang"] == "en" and root["/ViewerPreferences"]["/DisplayDocTitle"]
+    assert root["/PageMode"] == "/UseOutlines"
+
+
+def test_hindi_document_speaks_hindi(chrome):
+    from pypdf import PdfReader
+    text = "# सारांश\nइस महीने बिक्री बढ़ी।\n> [!KEY] नए ग्राहक 40 जुड़े।\n" * 10
+    r = chrome.make_pdf("मासिक बिक्री रिपोर्ट", text, cover=True, toc=True)
+    assert PdfReader(io.BytesIO(r["data"])).trailer["/Root"]["/Lang"] == "hi"
+    pages = _text_pages(r["data"])
+    flat = re.sub(r"\s+", "", "".join(pages))
+    for word in ("विषय", "मुख्यबातें", "पृष्ठ"):
+        assert word in flat, word                           # Hoola's own labels in Hindi, footer included
+    assert re.search(r"2/\d", flat)                         # 'पृष्ठ 2 / 4' (the text layer repeats some letters)
+    assert "Contents" not in flat and "Page 2" not in flat
+
+
+def test_typographic_punctuation_never_touches_code_or_links():
+    from app.docstudio.htmlpdf import typo
+    assert typo('He said "FY 2025-26 was good" -- it\'s true...') == "He said \u201cFY 2025\u201326 was good\u201d \u2014 it\u2019s true\u2026"
+    assert typo("Delivery in 10-12 days, 20-30% off - see") == "Delivery in 10\u201312 days, 20\u201330% off \u2013 see"
+    assert typo('`a-b "c"` and https://x.in/a-b?q="1"') == '`a-b "c"` and https://x.in/a-b?q="1"'
+    assert typo("GSTIN 27AAACS1234F1Z5, phone 98220-12345") == "GSTIN 27AAACS1234F1Z5, phone 98220-12345"
+
+
+def test_chart_syntax_takes_its_table_caption_and_source():
+    from app.docstudio.htmlpdf import parse
+    b = parse("[chart: bar | Revenue by quarter]\n| Q | Revenue |\n| Q1 | 92 |\n| Q2 | 98 |\nSource: Tally\n"
+              "Table 2: Costs\n| Head | Amount |\n| Rent | 22 |\n[chart: pie | Share | table]\n| C | V |\n| A | 1 |\n"
+              "[chart: line | nothing under me]\nplain text")
+    k = [x["k"] for x in b]
+    assert k == ["chart", "table", "chart", "table", "p"], k
+    assert b[0]["rows"][1] == ["Q1", "92"] and b[0]["source"] == "Tally" and b[0]["t"] == "Revenue by quarter"
+    assert b[1]["caption"] == "Costs"                            # a caption written ABOVE its table
+    assert b[2]["kind"] == "donut" and b[3].get("from_chart")    # '| table' keeps the table under the chart
+
+
+def test_chart_svg_draws_every_kind_with_indian_numbers():
+    from app.docstudio.htmlpdf import chart_svg, indian, palette
+    P = palette("#123a5c", "#0f8a6a")
+    rows = [["Quarter", "Revenue", "Profit"], ["Q1", "₹92,00,000", "₹8,00,000"], ["Q2", "₹1,20,00,000", "₹9,00,000"],
+            ["Total", "₹2,12,00,000", "₹17,00,000"]]
+    for kind in ("bar", "hbar", "line", "donut"):
+        svg = chart_svg(kind, rows, P, {}, "Revenue")
+        assert svg.startswith("<svg") and "role='img'" in svg and "<title>Revenue</title>" in svg, kind
+        assert "Total" not in svg.split("<desc>")[1].split("</desc>")[0]      # the total row is not a bar
+    assert "₹1.2 Cr" in chart_svg("bar", rows, P, {}, "R")
+    assert indian(1240000, "₹") == "₹12.4 L" and indian(45600) == "46k" and indian(4560) == "4.6k" and indian(18, "%") == "18%"
+    assert chart_svg("bar", [["Name", "City"], ["A", "Pune"]], P, {}, "x") == ""    # nothing numeric -> no chart
+    long_labels = [["Head", "Amount"]] + [[f"Expense head number {i}", str(i * 10)] for i in range(1, 6)]
+    assert "<rect x='" in chart_svg("bar", long_labels, P, {}, "x")     # long labels switch to sideways bars
+
+
+def test_footnotes_and_key_takeaways_print(chrome):
+    text = ("# Summary\n> [!KEY] Revenue grew 18%.\nBest year since 2019[^a]. Costs fell[^b].\n"
+            "[^a]: FY 2019-20 was the previous high.\n[^b]: Steel fell 9%.\n"
+            "[chart: bar | Revenue]\n| Q | Revenue |\n| Q1 | 92 |\n| Q2 | 98 |\nSource: Tally")
+    r = chrome.make_pdf("Annual review", text, cover=False)
+    flat = _text_pages(r["data"])[0]
+    assert "KEY TAKEAWAYS" in flat.upper() and "Notes" in flat and "Figure 1" in flat and "Source: Tally" in flat
+    assert "[^a]" not in flat and "previous high" in flat
+
+
+def test_kicker_case_keeps_short_capitals():
+    from app.docstudio.htmlpdf import kicker_case
+    assert kicker_case("ANNUAL REVIEW · FY 2025-26") == "Annual Review · FY 2025-26"
+    assert kicker_case("GST NOTICE") == "GST Notice"
