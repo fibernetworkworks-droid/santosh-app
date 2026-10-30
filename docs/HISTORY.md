@@ -11109,3 +11109,38 @@ were a hero alone and Opus reviewed only the home page. Phase 1 fixes those five
   older scripted tests keep their call counts.
 - Built as 0.283.0, re-versioned 0.292.0 on merge past the parallel v0.283-v0.291 work.
 - Not verified on the VPS yet: real Gemini pictures for a real build (the cost per site, how often a shot is refused).
+
+## v0.293.0 WEB DESIGN PHASE 2 — edit like Lovable (owner: "START PHASE 2")
+Flaw 7-9 + 17 of the web design audit: every change, even a typo, was a full Opus rewrite of a section (cost, waiting,
+and the design she liked could drift), no undo per change, nothing she could change by hand. Lovable's Visual Edits
+(click an element, change it, no prompt, no credits) is the model.
+- **Edit numbers** (`server/app/site/edit.py`): `tag(html)` gives every editable element of a section `data-e="n"` (text
+  elements with words and no block children: headings, p, li, a, button, figcaption, blockquote, dt/dd, th/td, label,
+  small/strong/em/span with words, summary, cite, q; and `img[data-hoola-img]`), numbered once, stable across passes.
+  `write_section` numbers every new section; sections from before get numbers the first time she opens edit mode
+  (`_ensure_tags`). `apply` = text (her words are TEXT, never markup; an icon / picture inside a button stays), link
+  (`_ok_href`: https / tel / mailto / own page only), image (only her site's photos), remove (never the page's h1);
+  plain-words `EditError`s.
+- **Edit preview** = its own copy (`site_dir/edit`, `_assemble_edit`, ctx edit=True: sections keep `data-e` and get
+  `data-k="page__type"`); the live copy, every version, the published site and every export strip the numbers
+  (`assemble` -> `edit.strip`). `/api/site-preview/<token>/__edit/...` serves it with `<script src=".../__edit.js">`
+  (`assets/hoola-edit.js`): outline on hover, click = type in place (contenteditable, Enter / click outside saves,
+  Esc cancels), a small toolbar (Link / AI se badlo / Hatao), pictures open the picker; it holds no login and only says
+  WHAT changed, by postMessage to the console (checked: the message must come from the studio's own frame) or the
+  phone's `HoolaEdit` JavaScript channel; scroll position comes back through `#y=`.
+- **Server** (`site/service.py`): `edit_mode`, `edit_element`, `set_theme` (colour pickers + corner radius through
+  `B.tokens`, so text stays readable), `undo_edit` (one step at a time, last 50 in `src/edits.json`, sections and
+  colours), `edits`. No AI call anywhere on this path. After each change: the edit preview is rebuilt at once and a
+  `save` job (`save_version`: the same Chromium checks as a build, NO AI fix rounds and no critique - her words are hers)
+  makes a checked version (`_make_version`, now shared with `_run_build`). Edits close together become one version
+  (`_SAVE_PENDING`, run from `_after_job`); she may keep editing while the last edits are checked (`_JOBS` knows a
+  running job is only a save); a real build blocks edits with a plain line.
+- **API**: POST `/api/sites/{id}/edit-mode`, `/edit` {k, e, op, value}, `/theme` {tokens}, `/undo`; GET `/edits`.
+  Tool `website` action=undo + a prompt line: small word / price / link fixes -> tell her to tap Edit (free, instant).
+- **Console** (`static/console/build.js` + v2.css `.sted*`): "✏️ Edit" on the preview, an Edit-mode bar (Undo,
+  Colours dialog with 5 colour pickers + roundness, Done), link / picture dialogs, remove confirm, "AI se badlo" fills
+  the change box. **Phone** (`lib/ui/site_screen.dart` SitePreview): Edit / Undo / Rang / Done in the app bar, the same
+  dialogs as bottom sheets.
+- Tests `server/tests/test_v0293_edit_like_lovable.py` (4).
+- Not verified on a real phone yet: contenteditable inside the Android WebView with the keyboard (the console flow is
+  the same script).

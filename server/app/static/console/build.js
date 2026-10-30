@@ -295,7 +295,7 @@ window.HoolaBuild = function (C) {
 
   /* live preview frames */
   function frames(o, box) {
-    const path = previewPath(o.v?.preview), want = o.k + '|' + o.tab + '|' + path;
+    const path = previewPath(o.v?.preview), want = o.k + '|' + o.tab + '|' + path + '|' + (o.edit ? 'edit' : '');
     if (!path) { box.innerHTML = `<div class="stempty">${spin()} The preview appears here as soon as it starts.</div>`; o.framesFor = ''; return; }
     if (o.pvPath !== path) { o.pvPath = path; o.pvOk = false; }
     if (!o.pvOk) {           // the preview link exists before its first page: open the frame only once it is really there
@@ -309,14 +309,17 @@ window.HoolaBuild = function (C) {
     }
     if (o.framesFor !== want) {
       o.framesFor = want; o.reloadN = 0;
-      const src = path;
+      const src = o.edit ? path + '__edit/' : path;
+      const canEdit = o.type === 'site' && ['ready', 'failed', 'stopped'].includes(S(o.v?.status));
+      const edBar = o.edit ? `<div class="sted" role="toolbar" aria-label="Edit mode"><b>✏️ Edit mode</b><span>Click any words to type · click a picture to change it · free, no AI</span>
+             ${btn('undo', '↶ Undo')}${btn('theme', 'Colours')}${btn('edit-done', 'Done', 'go')}</div>` : '';
       const fsb = 'allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox';
       box.innerHTML = o.type === 'site'
-        ? `<div class="pvrow"><figure class="pvpc"><div class="pvbar"><i></i><i></i><i></i><span class="pvurl">${esc(location.host + path)}</span><span class="pvage okc"></span></div>
+        ? `${edBar}<div class="pvrow"><figure class="pvpc"><div class="pvbar"><i></i><i></i><i></i><span class="pvurl">${esc(location.host + path)}</span><span class="pvage okc"></span></div>
              <div class="pvfit" data-w="1280" data-h="800"><iframe title="Website preview, computer" sandbox="${fsb}" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div>
              <figcaption>Desktop · refreshes by itself as each part is built</figcaption></figure>
            <figure class="pvph"><div class="pvfit phone" data-w="390" data-h="844"><iframe title="Website preview, phone" sandbox="${fsb}" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div><figcaption>Phone par (390 px)</figcaption></figure></div>
-           <div class="acts"><a class="btn soft" href="${esc(path)}" target="_blank" rel="noopener">Open in new tab</a>${btn('reload', 'Refresh')}</div>`
+           <div class="acts">${canEdit && !o.edit ? btn('edit', '✏️ Edit', 'go') : ''}<a class="btn soft" href="${esc(path)}" target="_blank" rel="noopener">Open in new tab</a>${btn('reload', 'Refresh')}</div>`
         : `<div class="pvrow center"><figure class="pvph big"><div class="pvfit phone" data-w="390" data-h="844"><iframe title="App prototype" sandbox="${fsb}" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div>
              <figcaption>Tap to try it: the real flow, the real screens</figcaption></figure></div>
            <div class="acts" style="justify-content:center"><a class="btn soft" href="${esc(path)}" target="_blank" rel="noopener">Open in new tab</a>${btn('reload', 'Refresh')}</div>`;
@@ -341,7 +344,8 @@ window.HoolaBuild = function (C) {
     studio.querySelectorAll('[data-pane=frames] .pvfit').forEach(w => {
       const old = w.querySelector('iframe:last-of-type'); if (!old) return;
       w.querySelectorAll('iframe.next').forEach(x => x.remove());
-      const nf = old.cloneNode(false); nf.classList.add('next'); nf.src = path + '?r=' + o.reloadN;
+      const nf = old.cloneNode(false); nf.classList.add('next');
+      nf.src = o.edit ? path + '__edit/' + S(o.editPage) + '?r=' + o.reloadN + '#y=' + N(o.editY) : path + '?r=' + o.reloadN;
       nf.addEventListener('load', () => { setTimeout(() => { nf.classList.remove('next'); w.querySelectorAll('iframe').forEach(x => { if (x !== nf) x.remove(); }); }, 250); }, {once: true});
       w.appendChild(nf); scaleOne(w);
     });
@@ -506,6 +510,13 @@ window.HoolaBuild = function (C) {
         case 'android': await call(o, '/android', {}, 'Building the Android app: every screen in Kotlin, then compile.'); o.tab = 'android'; break;
         case 'redo': await call(o, '/android', {redo: S(b.dataset.ids).split(',').filter(Boolean)}, 'Rewriting the simple screens.'); break;
         case 'reload': reloadFrames(o, true); break;
+        case 'edit': {
+          const r = await call(o, '/edit-mode', {}, '');
+          if (r) { o.edit = true; o.photos = L(r.photos); o.tokens = M(r.tokens); o.editPage = ''; o.editY = 0; o.framesFor = ''; draw(); toast('Edit mode: click any words on the page and type. Free, no AI.'); }
+          break; }
+        case 'edit-done': o.edit = false; o.framesFor = ''; draw(); break;
+        case 'undo': { const r = await call(o, '/undo', {}, 'Undone.'); if (r) reloadFrames(o, true); break; }
+        case 'theme': await themeDialog(o); break;
         case 'plat': o.plat = b.dataset.p; draw(); break;
         case 'zoom': zoom(b.dataset.full, b.dataset.cap); break;
         case 'say-domain': C.say(`${title(o)} website ke liye achha domain dhoondho`); break;
@@ -521,6 +532,55 @@ window.HoolaBuild = function (C) {
     d.addEventListener('click', shut); addEventListener('keydown', key); document.body.appendChild(d);
     blob(path).then(u => { d.querySelector('img').src = u; }).catch(() => { d.querySelector('span').textContent = 'Picture not found.'; });
   }
+  /* ---------------- v0.293 edit mode: her own hands in the preview, no AI ---------------- */
+  function dialog(title, inner) {
+    return new Promise(done => {
+      const d = document.createElement('div'); d.className = 'blb sted-dlg'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', title);
+      d.innerHTML = `<form class="sted-card" autocomplete="off"><h3>${esc(title)}</h3>${inner}<div class="acts"><button class="btn soft" type="button" data-x>Cancel</button><button class="btn go" type="submit">Save</button></div></form>`;
+      const f = d.querySelector('form'), shut = v => { d.remove(); removeEventListener('keydown', key); done(v); };
+      const key = e => { if (e.key === 'Escape') shut(null); };
+      d.addEventListener('click', e => { if (e.target === d || e.target.closest('[data-x]')) shut(null); });
+      f.addEventListener('submit', e => { e.preventDefault(); shut(new FormData(f)); });
+      f.addEventListener('click', e => { const c = e.target.closest('[data-pick]'); if (!c) return; f.querySelectorAll('[data-pick]').forEach(x => x.setAttribute('aria-pressed', String(x === c))); f.elements.pick.value = c.dataset.pick; });
+      addEventListener('keydown', key); document.body.appendChild(d);
+      const first = f.querySelector('input,button'); if (first) first.focus();
+    });
+  }
+  async function editSend(o, body) {
+    try { const r = await api('POST', base(o) + '/edit', body); toast(S(r?.say) || 'Saved.'); reloadFrames(o, true); }
+    catch (er) { toast(er.message, true); reloadFrames(o, true); }
+  }
+  async function themeDialog(o) {
+    const tk = M(o.tokens), row = (k, label) => `<label class="sted-c"><span>${label}</span><input type="color" name="${k}" value="${esc(hex(tk[k]) || '#888888')}"></label>`;
+    const f = await dialog('Colours', `<div class="sted-cs">${row('primary', 'Main colour')}${row('accent', 'Accent')}${row('bg', 'Page background')}${row('surface', 'Card background')}${row('ink', 'Text')}</div>
+      <label class="sted-c"><span>Corner roundness</span><input type="range" name="radius" min="0" max="32" value="${N(tk.radius)}"></label>
+      <p class="sted-note">Hoola keeps text readable: if a colour would make words hard to read, the text colour adjusts.</p>`);
+    if (!f) return;
+    const tokens = {}; ['primary', 'accent', 'bg', 'surface', 'ink'].forEach(k => { const v = S(f.get(k)); if (v && v.toLowerCase() !== S(tk[k]).toLowerCase()) tokens[k] = v; });
+    if (N(f.get('radius')) !== N(tk.radius)) tokens.radius = N(f.get('radius'));
+    if (!Object.keys(tokens).length) return;
+    try { const r = await api('POST', base(o) + '/theme', {tokens}); o.tokens = Object.assign({}, tk, M(r?.tokens)); toast(S(r?.say) || 'Colours changed.'); reloadFrames(o, true); }
+    catch (er) { toast(er.message, true); }
+  }
+  addEventListener('message', async ev => {
+    const d = ev.data, o = P.get(CUR);
+    if (!d || d.hoola !== 'edit' || !o || !o.edit || !studio) return;
+    if (![...studio.querySelectorAll('[data-pane=frames] iframe')].some(f => f.contentWindow === ev.source)) return;   // only our own preview
+    o.editPage = /^[\w\-/]*$/.test(S(d.page)) ? S(d.page) : ''; o.editY = N(d.y);
+    const k = S(d.k), e = S(d.e);
+    if (d.t === 'text') return editSend(o, {k, e, op: 'text', value: S(d.value)});
+    if (d.t === 'remove') { if (confirm(`Remove "${S(d.text).slice(0, 60)}" from the page? (Undo brings it back)`)) editSend(o, {k, e, op: 'remove'}); return; }
+    if (d.t === 'link') {
+      const f = await dialog('Link', `<label class="sted-c wide"><span>Where should "${esc(S(d.text).slice(0, 40))}" go?</span><input name="href" value="${esc(S(d.href))}" placeholder="https://… · tel:+91… · mailto:… · contact/"></label>`);
+      if (f) editSend(o, {k, e, op: 'link', value: S(f.get('href')).trim()}); return;
+    }
+    if (d.t === 'image') {
+      const ph = L(o.photos); if (!ph.length) return toast('No photos yet: send photos in the chat and say which section they are for.', true);
+      const f = await dialog('Choose a picture', `<input type="hidden" name="pick" value="${esc(S(d.img))}"><div class="sted-ph">${ph.map(p => `<button type="button" class="btn soft" data-pick="${esc(S(p.name))}" aria-pressed="${S(p.name) === S(d.img)}">${esc(S(p.about) || S(p.name))}${p.ai ? ' · AI' : ''}</button>`).join('')}</div>`);
+      if (f && S(f.get('pick')) && S(f.get('pick')) !== S(d.img)) editSend(o, {k, e, op: 'image', value: S(f.get('pick'))}); return;
+    }
+    if (d.t === 'ai') { const inp = studio.querySelector('#stIn'); if (inp) { inp.value = `"${S(d.text).slice(0, 80)}" ko `; inp.focus(); } }
+  });
   function reset() { appEl.classList.remove('st'); P.clear(); CUR = null; showBtn(); if (studio) { studio.innerHTML = ''; delete studio.dataset.k; } }
 
   /* refresh hooks: a finished part reloads the preview; the "taaza" age ticks */

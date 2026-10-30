@@ -2017,3 +2017,20 @@ body.albon{overflow:hidden}
 #app .side .rg.sgb+.rg{padding-top:4px}
 /* the account button stays at the bottom of the sidebar like Claude's, however long the chat list grows (it scrolled away) */
 #app .side #model{position:sticky;bottom:-22px;z-index:3;margin-top:auto;background:var(--side-bg);box-shadow:0 -10px 12px -6px var(--side-bg);border-radius:10px}
+
+/* v0.293 website edit mode (studio): her own hands in the preview, no AI */
+.sted{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:10px 12px;margin:0 0 12px;border:1px solid var(--pri);
+  border-radius:12px;background:var(--pri-soft);color:var(--ink);font-size:13px}
+.sted b{font-weight:600}.sted span{color:var(--mut);flex:1 1 220px}
+.sted-dlg{cursor:default}
+.sted-card{width:min(440px,92vw);background:var(--surface);color:var(--ink);border-radius:16px;padding:20px;display:grid;gap:14px;
+  box-shadow:0 18px 48px rgb(var(--sh-rgb) / .28)}
+.sted-card h3{margin:0;font-size:16px;font-weight:600}
+.sted-cs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.sted-c{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--mut)}
+.sted-c.wide{display:grid;gap:6px}.sted-c.wide input{width:100%}
+.sted-c input[type=color]{width:44px;height:32px;border:1px solid var(--hair);border-radius:8px;background:none;padding:2px}
+.sted-c input[type=text],.sted-c input:not([type]){padding:9px 11px;border:1px solid var(--hair);border-radius:10px;background:var(--raise);color:var(--ink);font:inherit}
+.sted-note{margin:0;font-size:12px;color:var(--dim)}
+.sted-ph{display:flex;flex-wrap:wrap;gap:8px;max-height:46vh;overflow:auto}
+.sted-ph [aria-pressed=true]{outline:2px solid var(--pri);outline-offset:1px}

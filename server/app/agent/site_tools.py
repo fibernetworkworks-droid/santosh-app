@@ -20,7 +20,9 @@ SITE_TOOLS = [
         "(0-2) she chose (+ colors_from index for 'pehle wala, doosre ke rang') -> building starts; she watches the live board. "
         "action=change: site + instruction (her words: 'hero mein meri photo', 'rang halka', 'price list hatao', 'Hindi "
         "version') -> only those parts are rebuilt, new version. action=photo: site + file_id (+ about: 'shop front', "
-        "'owner'). action=stop / resume. action=export: ZIP of the built site (file_id). "
+        "'owner'). action=undo: her last own-hand edit (words / link / photo / colours she changed in the preview's Edit "
+        "mode, free, no AI) goes back. Small word / price / link fixes: tell her to tap Edit on the preview and type it there "
+        "(instant, free). action=stop / resume. action=export: ZIP of the built site (file_id). "
         "GOING LIVE (each a card SHE taps, never live by itself): action=launch (free: true = also on the free Hoola "
         "address <name>.<hoola sites domain>) sends the 'live karo' card; action=domain + domain ('sharmasweets.in') joins "
         "her own domain and sends the DNS card (Hoola applies it only on her tap when her DNS is on her Cloudflare, else "
@@ -37,7 +39,7 @@ SITE_TOOLS = [
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "photo", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "photo", "undo", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
@@ -106,6 +108,8 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.change(t, site, str(a.get("instruction") or ""), conv)
     if action == "photo":
         return S.add_photo(t, site, None, str(a.get("file_id") or ""), str(a.get("about") or ""))
+    if action == "undo":
+        return S.undo_edit(t, site)
     if action == "stop":
         return S.stop(t, site)
     if action == "resume":

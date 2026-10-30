@@ -116,9 +116,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.292.0 (pubspec 0.292.0+332). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.293.0 (pubspec 0.293.0+333). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.293 WEB DESIGN PHASE 2 edit like Lovable: preview Edit mode (`site/edit.py`, `assets/hoola-edit.js`, console studio + phone
+  WebView `HoolaEdit`): click words and type, link / picture / remove / colours, no AI, Undo, each edit a checked version.
 - v0.292 WEB DESIGN PHASE 1: real pictures before the looks (`site/pictures.py`: Opus shot list -> photogen, her photos first,
   Pexels fallback, footer AI note), one Lucide icon set (`<i data-icon>`), fonts 400-700, looks = hero + 2 sections, Opus reviews every page.
 - v0.291 COMPOSIO (built as 0.276): 21 apps (Slack, Notion, Jira, HubSpot, Zoom...) via ONE Newtika Composio project
