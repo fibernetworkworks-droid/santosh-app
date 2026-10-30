@@ -129,9 +129,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.298.0 (pubspec 0.298.0+338). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.299.0 (pubspec 0.299.0+339). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.299 APP LOGOS: every Composio app has a Hoola-served logo (`/api/logo/cmp/<slug>`, `logos.cmp_logo`: Composio logo,
+  SVG via resvg-py, else app_url icon, else drawn tile), warmed after start. VPS needs `pip install resvg-py`.
 - v0.298 NO RADIO: the "radio" sound before the real voice spoke = the generated noise breath (v0.266); breath OFF by
   default (`VOICE_OPENAI_BREATH`), the generated noise never plays - only a recorded take that passed `breath.is_breath`.
 - v0.297 COMPOSIO KEY APPS: API-key / bearer / basic apps = "Key daaliye" (her key typed in the app, POST /connected_accounts

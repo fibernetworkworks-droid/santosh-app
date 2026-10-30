@@ -96,7 +96,7 @@ def run(name, args, ctx):
 # ---------------------------------------------------------------- unit: version + registry
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.298.0"
+    assert APP_VERSION == "0.299.0"
 
 
 def test_rea_khoj_registry():

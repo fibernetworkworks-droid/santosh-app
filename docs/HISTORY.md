@@ -11271,3 +11271,16 @@ Live check on her VPS (v0.294 `check`): 1,709 apps in Composio, 1,687 offered, 1
   the voiceless check can ever play. `synth()` stays only as test material for the detector.
 Tests: NEW `test_v0298_no_radio.py` (4); `test_v0264_openai_voice.py` breath tests follow the new default.
 Version 0.298.0 (pubspec 0.298.0+338, console ?v=0.298.0, pins -> 0.298.0).
+
+## v0.299.0 APP LOGOS (30 Oct 2026, owner: "NOW A REAL LOGO ICON FOR EVERY APP --- WORK ON IT AND DEPLOY")
+- Every Composio app card carries `logo: /api/logo/cmp/<slug>?v=2`, served by Hoola like every other plugin logo
+  (phones never call third parties). `logos.resolve("cmp", slug)` only for slugs in Composio's live catalogue.
+- `logos.cmp_logo()`: sources from the catalogue only - `meta.logo` (Composio's logo address), then the app's own
+  website (`meta.app_url` -> Google's 256 px favicon, apple-touch-icon); 12 s budget; else `monogram()` in the
+  category colour (`CMP_FIELD`). Drawn tiles are retried after 3 days like directory logos.
+- SVG: `_svg_png()` renders SVG with resvg-py (512 px) before the usual 256 px PNG step; optional import, so without it
+  the next source is used. `_get` accepts an SVG even when served as text/html.
+- Warm-up: after the plugin logos, every Composio app logo is fetched once in the background (cached files make later
+  starts instant). Phone: `PluginCard(logo: a['logo'])`.
+- VPS: `~/apps/santosh-core/.venv/bin/pip install resvg-py` (added to requirements.txt). Tests: 3 more in
+  test_v0276_composio.py.
