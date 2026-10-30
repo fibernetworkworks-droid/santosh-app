@@ -11146,3 +11146,38 @@ disk cleanup earlier in the session. CI's analyze step is the check for the phon
 ### Files
 `server/app/static/console/v2.js` · `server/app/static/console/v2.css` · `lib/ui/chat_screen.dart` ·
 `server/tests/test_v0293_kitna_samay.py` (8 tests).
+
+## v0.294.0 EK HI KINARA — the working row lines up with the reply above it
+Owner, with a screenshot of the new clock: *"now check the position of working after one responce by hoola — make
+all the rsponsece inline with that woing now from both side properly"*.
+
+### Three misalignments, not one
+Measured in a browser against the real stylesheet:
+
+| | before | after |
+|---|---|---|
+| "Working on it…" vs the sentence above it | **44.0px** right | **0.0px** |
+| the working avatar vs the reply avatar | **46.0px** right | **0.0px** |
+| the working row standing on its own | **48.0px** right | **0.0px** |
+
+### The cause
+v0.252. At a thread width of 980px and up, `#app .mh` is pulled `margin-left:-44px` so the reply's words begin at
+the column edge and the avatar hangs **outside** the column. `.simple-progress` was never given that pull, so it
+stayed where the column starts — exactly 44px to the right. The extra 2px and 4px came from `.progress-avatar`
+being a **34px** box where the message row's `.av` is **30px**.
+
+### The fix
+The same pull and the same slot:
+
+- `#app .simple-progress{margin-left:-44px;width:calc(100% + 44px)}` inside the same container query.
+- `.progress-avatar` is 30px, set **once** at its base rule rather than overridden later — so `30 + 14px gap` is
+  exactly the 44px the message row uses. The glow ring is drawn outside the box by `:before{inset:-2px}`, so the
+  circle still *reads* 34px wide; only the space it occupies changed. The image's `margin:2px` inset went with the
+  34px box.
+
+### The phone was deliberately left alone
+Its typing indicator is a 74px bouncing avatar beside a rounded bubble, not a flush row, so the same alignment
+doesn't translate. That was put to her rather than changed quietly.
+
+### Files
+`server/app/static/console/v2.css` · `server/tests/test_v0294_ek_hi_kinara.py` (6 tests).
