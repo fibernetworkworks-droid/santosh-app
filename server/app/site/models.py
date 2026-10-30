@@ -72,7 +72,9 @@ class SiteLead(Base):
     message: Mapped[str] = mapped_column(Text, default="")
     page: Mapped[str] = mapped_column(String(160), default="")
     ip_hash: Mapped[str] = mapped_column(String(32), default="")
-    status: Mapped[str] = mapped_column(String(12), default="new")       # new | called | done | spam
+    status: Mapped[str] = mapped_column(String(12), default="new")       # new | called | done | spam (+ booking: confirmed | declined)
+    kind: Mapped[str | None] = mapped_column(String(10), nullable=True, default="enquiry")   # v0.296 enquiry | booking
+    slot: Mapped[str | None] = mapped_column(String(40), nullable=True, default="")          # v0.296 the time a visitor asked for
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

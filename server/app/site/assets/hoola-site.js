@@ -200,6 +200,51 @@
       if (r) r.addEventListener('input', function () { c.style.setProperty('--hs-pos', r.value + '%'); });
     });
   }
-  function start() { nav(); forms(); lightbox(); compare(); motion(); }
+  // v0.296 the map / the video load only when the visitor taps (no third party before she asks)
+  function embeds() {
+    $$('.hs-map, .hs-video').forEach(function (fig) {
+      var b = fig.querySelector('.hs-load');
+      if (!b) return;
+      b.addEventListener('click', function () {
+        var f = d.createElement('iframe'), yt = fig.getAttribute('data-hs-yt');
+        f.src = yt ? 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(yt) + '?autoplay=1&rel=0' : fig.getAttribute('data-hs-map');
+        f.title = yt ? (fig.getAttribute('data-title') || 'Video') : 'Map';
+        f.loading = 'lazy'; f.referrerPolicy = 'strict-origin-when-cross-origin';
+        if (yt) { f.allow = 'autoplay; encrypted-media; picture-in-picture'; f.allowFullscreen = true; }
+        fig.classList.add('on'); fig.innerHTML = ''; fig.appendChild(f);
+      });
+    });
+  }
+  // v0.296 booking: her REAL free times from Hoola; the visitor asks for one, the owner confirms it
+  function booking() {
+    $$('form[data-hoola-book]').forEach(function (f) {
+      var ep = f.getAttribute('data-endpoint'), box = f.querySelector('.hs-slots'), btn = f.querySelector('[type=submit]'),
+        out = f.querySelector('.hs-form-msg');
+      var none = function () { box.innerHTML = ''; var p = d.createElement('p'); p.className = 'muted'; p.textContent = f.getAttribute('data-none'); box.appendChild(p); if (btn) btn.disabled = true; };
+      if (!ep) { none(); return; }
+      fetch(ep + '/slots').then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); }).then(function (j) {
+        var list = (j && j.slots) || [];
+        if (!list.length) return none();
+        box.innerHTML = '';
+        list.forEach(function (s, i) {
+          var l = d.createElement('label'), r = d.createElement('input'), sp = d.createElement('span');
+          l.className = 'hs-slot'; r.type = 'radio'; r.name = 'slot'; r.value = s.slot; r.required = true;
+          sp.textContent = s.label; l.appendChild(r); l.appendChild(sp); box.appendChild(l);
+        });
+      }).catch(none);
+      f.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var data = {};
+        new FormData(f).forEach(function (v, k) { data[k] = String(v).slice(0, 2000); });
+        data.page = location.pathname;
+        if (btn) btn.disabled = true;
+        fetch(ep + '/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+          .then(function () { f.reset(); if (out) { out.textContent = f.getAttribute('data-ok'); out.className = 'hs-form-msg ok'; } })
+          .catch(function () { if (out) { out.textContent = f.getAttribute('data-fail'); out.className = 'hs-form-msg bad'; } if (btn) btn.disabled = false; });
+      });
+    });
+  }
+  function start() { nav(); forms(); lightbox(); compare(); embeds(); booking(); motion(); }
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', start); else start();
 })();

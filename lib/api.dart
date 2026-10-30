@@ -1179,6 +1179,9 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/sites-domains/$id/cancel') as Map);
   Future<Map<String, dynamic>> siteDomainKyc(String domain) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/sites-domains/kyc', body: {'domain': domain}) as Map);
+  // v0.296 her answer to a website booking request
+  Future<Map<String, dynamic>> siteBookingDecide(String leadId, bool yes) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/sites-bookings/$leadId/decide', body: {'yes': yes}) as Map);
   // ---- v0.124 Website care, agency, GitHub export ----
   Future<Map<String, dynamic>> siteCare(String id, {int days = 30}) async => Map<String, dynamic>.from(
       await _send('GET', '/api/sites/$id/care', query: {'days': '$days'}, timeout: const Duration(seconds: 60)) as Map);

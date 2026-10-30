@@ -261,6 +261,13 @@ SITE SYSTEM YOU WRITE FOR (already on every page, do not repeat it):
   briefcase, file-text, receipt, credit-card, wallet, lock, key, bell, send, share-2, download, external-link
   (any other Lucide name works too). NEVER draw your own icon SVG paths - drawn icons never match each other.
   Inline SVG is only for illustrations, patterns and decorative shapes.
+- LIVE THINGS (v0.296) - write the placeholder, Hoola builds the real thing; never write your own map / video / booking
+  widget / payment link:
+  * <div data-hoola-booking></div> = a booking form with HER real free times (booking pages / booking_slots sections).
+  * <div data-hoola-map></div> = her address + a map that loads on tap (map_hours / contact sections; only with an address).
+  * <div data-hoola-video="YOUTUBE LINK" data-title="..."></div> = a video that plays on tap (only a link from FACTS).
+  * <a class="btn btn-primary" data-hoola-pay="499" data-for="Kaju katli 1 kg">Pay ₹499</a> = pay by UPI to her UPI ID,
+    ONLY when FACTS has "upi" and only her own prices; never invent an amount.
 - Type weights available for both fonts: 400, 500, 600, 700 (use 500 / 600 for UI labels, eyebrows, buttons, sub-heads;
   700 for big display headings).
 - Contact actions: tel:+91..., https://wa.me/91XXXXXXXXXX?text=..., mailto:, https://maps.google.com/?q=... ONLY with values

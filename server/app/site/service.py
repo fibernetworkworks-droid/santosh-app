@@ -35,6 +35,7 @@ from . import build as B
 from . import library as L
 from . import pictures as P
 from . import edit as E
+from . import lang as LG
 from . import quality as Q
 from . import taxonomy as T
 from .models import Site, SiteLead, SiteVersion
@@ -444,7 +445,12 @@ def answer(tenant: str, ref: str, answers: dict[str, Any]) -> dict[str, Any]:
             v = _tidy(v, 600)
             if not v:
                 continue
-            if k in ("name", "phone", "whatsapp", "email", "address", "city", "hours", "tagline", "about", "owner"):
+            if k == "upi":                     # v0.296 her UPI ID for Pay buttons (only hers, only in her words)
+                from . import live as LV
+                if not LV.vpa_ok(v):
+                    raise SiteError("UPI ID sahi nahi lagta (jaise sharmasweets@okicici).")
+                facts[k] = v.strip()
+            elif k in ("name", "phone", "whatsapp", "email", "address", "city", "hours", "tagline", "about", "owner", "youtube"):
                 facts[k] = v
                 if k == "name":
                     r.name = v
@@ -604,7 +610,7 @@ def _after_job(site_id: str) -> None:
 
 def _start(site_id: str, job: str, **kw) -> bool:
     """Start a looks / build job. False = this site already has a job running (the caller queues or says so)."""
-    fn = {"looks": make_looks, "build": run_build, "save": save_version}[job]
+    fn = {"looks": make_looks, "build": run_build, "save": save_version, "translate": translate_job}[job]
     if _inline():
         fn(site_id, **kw)
         _after_job(site_id)
@@ -706,7 +712,69 @@ def _ctx(r: Site) -> dict[str, Any]:
             "plan": _j(r.plan, {}), "cta": _j(r.plan, {}).get("cta") or "call", "industry": ind,
             "legal": (L.fields().get(r.field) or {}).get("legal", []), "language": _j(r.languages, ["en"])[0],
             "logo_path": logo, "noindex": True,
-            "ai_photos": any(p.get("ai") for p in _j(r.photos, []))}       # v0.292 the footer says so
+            "ai_photos": any(p.get("ai") for p in _j(r.photos, [])),       # v0.292 the footer says so
+            "src_root": str(B.src_dir(r.tenant_id, r.id)),                 # v0.296 photos always from here (launch too)
+            "alt": _alt(r)}
+
+
+def second_language(r: Site) -> str:
+    langs = _j(r.languages, ["en"])
+    return langs[1] if len(langs) > 1 and langs[1] in LG.LANGS and langs[1] != langs[0] else ""
+
+
+def _alt(r: Site) -> dict[str, Any] | None:
+    """v0.296 the second language for build.assemble (translated sections where they exist, else the source)."""
+    lang = second_language(r)
+    if not lang:
+        return None
+    secs, plan2 = LG.alt_site(r.tenant_id, r.id, lang, _sections(r), _j(r.plan, {}))
+    first = _j(r.languages, ["en"])[0]
+    return {"lang": lang, "label": LG.LANGS[lang], "back": LG.LANGS.get(first, "English"), "sections": secs, "plan": plan2}
+
+
+def _translate(r: Site) -> int:
+    """Sections whose second-language copy is missing or out of date (Opus, kind site_edit)."""
+    lang = second_language(r)
+    if not lang:
+        return 0
+    secs = _sections(r)
+    if not LG.stale(r.tenant_id, r.id, lang, secs):
+        return 0
+    _work(r, "start", f"{LG.LANGS[lang]} mein likh raha hoon", f"{len(LG.stale(r.tenant_id, r.id, lang, secs))} hisse")
+    width = max(1, min(6, int(getattr(_settings(), "site_parallel", 3) or 1)))
+    return LG.translate(r.tenant_id, r.id, lang, secs, _j(r.plan, {}), _facts_text(_j(r.facts, {})),
+                        lambda k: sec_id(*k.split("__", 1)), width)
+
+
+def set_language(tenant: str, ref: str, second: str) -> dict[str, Any]:
+    """Her choice: a second language for the whole site (or none). Translation runs as a job, then a new version."""
+    second = (second or "").strip().lower()
+    with session() as s:
+        r = _find(s, tenant, ref)
+        first = _j(r.languages, ["en"])[0]
+        if second and (second not in LG.LANGS or second == first):
+            raise SiteError("Doosri bhasha: en / hi / mr / hinglish (pehli se alag).")
+        r.languages = _jd([first, second] if second else [first])
+        s.flush()
+        s.expunge(r)
+    if r.status in ("planned", "looks", "draft") or not _sections(r):
+        return {**view(r, False), "say": f"Theek hai: website {LG.LANGS.get(second, '')} mein bhi banegi." if second else "Ek hi bhasha rahegi."}
+    if not _start(r.id, "translate"):
+        _SAVE_PENDING.add(r.id)
+    return {**view(_load(r.id), False),
+            "say": (f"{LG.LANGS[second]} version bana raha hoon; har hissa Opus likhega, phir nayi version." if second
+                    else "Doosri bhasha hata raha hoon; nayi version banegi.")}
+
+
+def translate_job(site_id: str) -> None:
+    from ..usage import scope
+    r = _load(site_id)
+    with scope(r.tenant_id, "site"):
+        try:
+            _translate(r)
+        except Exception:
+            log.exception("translation failed")
+    save_version(site_id, "doosri bhasha")
 
 
 def _facts_text(f: dict[str, Any]) -> str:
@@ -841,7 +909,7 @@ def _make_looks(r: Site) -> None:
         mini_plan = {"pages": [{"slug": "home", "title": "Home", "sections": [{"type": "hero"}] + [
             {"type": s["type"]} for s in more if sec_key("home", s["type"]) in secs]}], "cta": _j(r.plan, {}).get("cta")}
         ctx = _ctx(r)
-        ctx["tokens"], ctx["plan"] = tk, mini_plan
+        ctx["tokens"], ctx["plan"], ctx["alt"] = tk, mini_plan, None
         out = d / "site"
         B.assemble(ctx, mini_plan, secs, {p["name"]: p for p in _j(r.photos, [])}, out)
         shots = {}
@@ -1014,6 +1082,10 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
     _emit(r)
     if not _write_sections(r, plan, states, extra):
         return
+    try:                                      # v0.296 the second language follows every change
+        _translate(_load(r.id))
+    except Exception:
+        log.exception("translation during build failed")
     # checks + fix rounds
     r = _save(r.id, status="checking", stage="checks", board=_board(r, plan, states, "Jaanch: speed, mobile, contrast, links"))
     _work(r, "start", "Jaanch chal rahi hai", "speed · mobile · contrast · links")
@@ -1251,8 +1323,12 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
     facts = _j(r.facts, {})
     old_facts = dict(facts)
     for k, v in (res.get("facts") or {}).items():
-        if k in ("phone", "whatsapp", "email", "address", "hours", "name", "tagline", "city") and v:
+        if k in ("phone", "whatsapp", "email", "address", "hours", "name", "tagline", "city", "youtube") and v:
             facts[k] = _tidy(v, 300)
+        elif k == "upi" and v:                 # v0.296 only a real UPI ID she gave
+            from . import live as LV
+            if LV.vpa_ok(str(v)):
+                facts[k] = str(v).strip()
     for x in res.get("sections") or []:
         if x.get("key") in keys:
             only.append(x["key"])
@@ -1397,6 +1473,54 @@ def _ensure_pictures(r: Site) -> int:
     return made
 
 
+# ---------------------------------------------------------------- v0.296 bookings from the website (her real slots)
+def site_slots(site_id: str) -> dict[str, Any]:
+    from . import live as LV
+    return {"slots": LV.slots(site_id)}
+
+
+def book_post(site_id: str, data: dict[str, Any], ip: str = "") -> dict[str, Any]:
+    """Public: a visitor asks for one of her free times. It is a REQUEST: she confirms or declines it (card + push);
+    the time is kept aside meanwhile so a second visitor can't ask for it."""
+    from ..net import booking as BK
+    from . import live as LV
+    if not isinstance(data, dict):
+        raise SiteError("bad form")
+    slot = _tidy(data.get("slot"), 40)
+    if not slot or not LV.slot_ok(site_id, slot):
+        raise SiteError("Yeh samay ab khaali nahi; doosra chuniye.")
+    out = _lead_post(site_id, {**data, "message": data.get("message") or ""}, ip, kind="booking", slot=slot)
+    if not out.get("id"):
+        return out
+    with session() as s:
+        r = s.get(Site, site_id)
+        tenant, sname, conv = r.tenant_id, r.name, r.conv
+    label = BK.say_slot(tenant, slot)
+    _publish(tenant, "site_lead", {"id": out["id"], "site": sname, "booking": True, "slot": slot, "when": label,
+                                   "name": _tidy(data.get("name"), 120), "phone": B.digits(str(data.get("phone") or "")),
+                                   "message": _tidy(data.get("message"), 300), "push": True,
+                                   "say": f"{sname or 'Website'} par booking ki request: {label}. Pakka karein?"}, conv)
+    return {"ok": True}
+
+
+def booking_decide(tenant: str, lead_id: str, yes: bool) -> dict[str, Any]:
+    """HER answer to a website booking request: confirmed (the time stays taken) or declined (the time is free again)."""
+    from ..net import booking as BK
+    with session() as s:
+        x = s.get(SiteLead, lead_id)
+        if x is None or x.tenant_id != tenant or (x.kind or "") != "booking":
+            raise SiteError("Yeh booking request nahi mili.")
+        if x.status not in ("new",):
+            raise SiteError(f"Yeh request pehle hi '{x.status}' hai.")
+        x.status = "confirmed" if yes else "declined"
+        name, phone, slot = x.name, x.phone, x.slot
+    when = BK.say_slot(tenant, slot) if slot else ""
+    wa = f"https://wa.me/91{phone}" if phone else ""
+    return {"ok": True, "status": "confirmed" if yes else "declined", "whatsapp": wa,
+            "say": (f"Pakka: {name or phone}, {when}. Unhe call / WhatsApp karke bata dijiye." if yes
+                    else f"Mana kar diya ({when} phir khaali hai). Unhe bata dijiye.")}
+
+
 # ---------------------------------------------------------------- v0.295 editing like Lovable: her own hands, no AI
 _SAVE_PENDING: set[str] = set()
 _JOBS: dict[str, str] = {}          # site -> the job its thread runs (looks / build / save)
@@ -1539,6 +1663,10 @@ def save_version(site_id: str, note: str = "") -> None:
         plan = _j(r.plan, {})
         r = _save(r.id, status="checking", stage="checks", board=_board(r, plan, None, "Aapke badlav jaanch raha hoon"))
         _emit(r)
+        try:                                  # v0.296 her edits reach the second language too
+            _translate(r)
+        except Exception:
+            log.exception("translation during save failed")
         shots = B.site_dir(r.tenant_id, r.id) / "shots" / "live"
         live = _assemble_live(r)
         try:
@@ -1686,6 +1814,12 @@ _RATE: dict[str, list[float]] = {}
 
 
 def form_post(site_id: str, data: dict[str, Any], ip: str = "") -> dict[str, Any]:
+    """Public: what the visitor's browser gets back (never her lead id)."""
+    _lead_post(site_id, data, ip)
+    return {"ok": True}
+
+
+def _lead_post(site_id: str, data: dict[str, Any], ip: str = "", kind: str = "enquiry", slot: str = "") -> dict[str, Any]:
     if not isinstance(data, dict):
         raise SiteError("bad form")
     if str(data.get("website") or "").strip():          # honeypot filled = a bot
@@ -1716,7 +1850,7 @@ def form_post(site_id: str, data: dict[str, Any], ip: str = "") -> dict[str, Any
         if n >= 200:
             raise SiteError("Aaj ke liye bahut enquiries; kal dobara.")
         lead = SiteLead(site_id=site_id, tenant_id=r.tenant_id, name=name, phone=phone, email=email, message=msg,
-                        page=_tidy(data.get("page"), 160), ip_hash=iph)
+                        page=_tidy(data.get("page"), 160), ip_hash=iph, kind=kind, slot=slot)
         s.add(lead)
         s.flush()
         tenant, sname, conv, lid = r.tenant_id, r.name, r.conv, lead.id
@@ -1726,9 +1860,10 @@ def form_post(site_id: str, data: dict[str, Any], ip: str = "") -> dict[str, Any
             tc.add_lead(tenant, name=name, phone=phone, source="website", need=msg[:300], notes=f"Website {sname}", by="website")
     except Exception:
         log.info("lead to telecall skipped", exc_info=True)
-    _publish(tenant, "site_lead", {"id": lid, "site": sname, "name": name, "phone": phone, "email": email,
-                                   "message": msg[:300], "say": f"{sname or 'Website'} par nayi enquiry: {name or phone}"}, conv)
-    return {"ok": True}
+    if kind == "enquiry":
+        _publish(tenant, "site_lead", {"id": lid, "site": sname, "name": name, "phone": phone, "email": email,
+                                       "message": msg[:300], "say": f"{sname or 'Website'} par nayi enquiry: {name or phone}"}, conv)
+    return {"ok": True, "id": lid}
 
 
 def leads(tenant: str, ref: str = "", limit: int = 100) -> list[dict[str, Any]]:

@@ -119,3 +119,22 @@ details.faq[open] summary::after{transform:rotate(45deg)}
 /* v0.292 one icon set (Lucide) */
 .hs-ic{display:inline-block;width:1.25em;height:1.25em;flex:none;vertical-align:-.22em;stroke-width:2}
 .hs-ai-note{font-size:.85rem;margin:.8em 0 0}
+/* v0.296 live features: map / video load on tap, booking slots, UPI pay */
+.hs-map,.hs-video{margin:0;border-radius:var(--radius);overflow:hidden;background:var(--c-surface);border:1px solid var(--c-line)}
+.hs-map.on iframe,.hs-video.on iframe{display:block;width:100%;border:0;aspect-ratio:16/9;min-height:260px}
+.hs-map-face{display:grid;gap:.6em;padding:clamp(18px,4vw,32px);justify-items:start}
+.hs-map-face .hs-ic{width:2em;height:2em;color:var(--c-primary-text)}
+.hs-play{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6em;
+  width:100%;aspect-ratio:16/9;background:color-mix(in srgb,var(--c-ink) 88%,var(--c-primary));color:var(--c-bg);font-weight:600;text-align:center;padding:16px}
+.hs-play .hs-ic{width:3.2em;height:3.2em;padding:.7em;border-radius:50%;background:var(--c-primary);color:var(--c-on-primary)}
+.hs-play:focus-visible{outline:3px solid var(--c-accent);outline-offset:-3px}
+.hs-slots-wrap{border:0;padding:0;margin:0 0 .4em}.hs-slots-wrap legend{font-weight:600;margin-bottom:.5em}
+.hs-slots{display:flex;flex-wrap:wrap;gap:8px}
+.hs-slot{display:inline-flex;align-items:center;gap:.4em;min-height:44px;padding:.5em .9em;border:1px solid var(--c-line);border-radius:999px;cursor:pointer;background:var(--c-surface)}
+.hs-slot:has(input:checked){border-color:var(--c-primary);background:color-mix(in srgb,var(--c-primary) 12%,var(--c-surface))}
+.hs-slot input{accent-color:var(--c-primary)}
+.hs-pay{display:inline-grid;justify-items:center;gap:6px}
+.hs-qr{display:none;width:132px;height:132px;border-radius:8px;background:#fff;padding:4px}
+.hs-pay small{display:none;color:var(--c-muted)}
+@media (min-width:900px) and (hover:hover){.hs-qr,.hs-pay small{display:block}}
+.hs-lang{display:inline-flex;align-items:center;min-height:44px;padding:0 .8em;border:1px solid var(--c-line);border-radius:999px;font-weight:600;font-size:.9rem;text-decoration:none;margin-right:.5em}

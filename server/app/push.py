@@ -445,7 +445,7 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
             return None
         return (f"{name}: Android app {p.get('number', '')}", str(p.get("say") or "")[:300])
     if kind == "site_lead":
-        return (f"{name}: website par enquiry", str(p.get("say") or "")[:300])
+        return (f"{name}: website par {'booking request' if p.get('booking') else 'enquiry'}", str(p.get("say") or "")[:300])
     if kind in ("site_launch", "site_dns", "site_down"):
         if not p.get("push"):
             return None

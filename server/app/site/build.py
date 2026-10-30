@@ -429,6 +429,11 @@ def header(site: dict[str, Any], plan: dict[str, Any], slug: str, rel: str, logo
         cur = ' aria-current="page"' if p["slug"] == slug else ""
         links.append(f'<li><a href="{page_url(p["slug"], rel)}"{cur}>{esc(p.get("nav") or p["title"])}</a></li>')
     cta = cta_button(site, rel, "btn btn-primary hs-cta")
+    sw = site.get("switch")
+    if sw:                                   # v0.296 the same page in the other language
+        tgt = rel + sw["to"] + ("" if slug == "home" else f"{slug}/")
+        hl = {"hinglish": "hi-Latn"}.get(sw["lang"], sw["lang"])
+        cta = f'<a class="hs-lang" href="{tgt}" hreflang="{esc(hl)}" lang="{esc(hl)}">{esc(sw["label"])}</a>' + cta
     brand = (f'<img src="{rel}assets/img/logo.png" alt="{esc(f.get("name"))} logo" width="120" height="40">' if logo else "")
     return (f'<a class="skip" href="#main">Skip to content</a><header class="hs-head"><div class="wrap hs-bar">'
             f'<a class="hs-brand" href="{page_url("home", rel)}">{brand}<span>{esc(f.get("name") or "")}</span></a>'
@@ -604,6 +609,9 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     (out / "assets" / "img").mkdir(parents=True)
     (out / "assets" / "fonts").mkdir(parents=True)
     tk = site["tokens"]
+    alt = site.get("alt") if not site.get("edit") else None   # v0.296 {lang, label, back, sections, plan} of the 2nd language
+    if alt:
+        site = {**site, "switch": {"label": alt["label"], "to": f'{alt["lang"]}/', "lang": alt["lang"]}}
     problems: list[str] = []
     for fam, sub, w, fn in font_files(tk):
         shutil.copy(ASSETS / "fonts" / fn, out / "assets" / "fonts" / fn)
@@ -622,8 +630,12 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="{tk["primary"]}"/>'
         f'<text x="32" y="42" font-size="30" text-anchor="middle" fill="{tk["on_primary"]}" font-family="sans-serif" '
         f'font-weight="700">{esc((site["facts"].get("name") or "H")[:1].upper())}</text></svg>')
-    srcdir = out.parent / "src" / "photos"
-    cache = out.parent / "src" / "img"
+    # v0.296 her photos come from the site's own source folder: before, a launch (built in the hosting folder) looked
+    # next to ITSELF, found nothing and every picture of the live site came out empty
+    src_root = Path(site["src_root"]) if site.get("src_root") else out.parent / "src"
+    srcdir = src_root / "photos"
+    cache = src_root / "img"
+    cache.mkdir(parents=True, exist_ok=True)
     for name, meta in photos.items():
         src = srcdir / f"{name}.jpg"
         if not src.exists():
@@ -659,6 +671,9 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                 h, missing = expand_images(h, photos, rel, first_eager=(i == 0))
                 if missing:
                     problems.append(f"{key}: photo not found: {', '.join(m for m in missing if m)}")
+                from . import live as LV            # v0.296 booking / map / video / UPI placeholders -> the real things
+                h, lprob = LV.expand(h, site, form_endpoint, lambda n: expand_icons(f'<i data-icon="{n}"></i>')[0])
+                problems += [f"{key}: {x}" for x in lprob]
                 h, unknown = expand_icons(h)
                 if unknown:
                     problems.append(f"{key}: unknown icon: {', '.join(sorted(set(unknown)))}")
@@ -667,9 +682,8 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                 else:                          # the real site never carries the edit numbers
                     from .edit import strip
                     h = strip(h)
-                if form_endpoint:
-                    h = h.replace("data-hoola-form", f'data-hoola-form data-endpoint="{esc(form_endpoint)}"', 1) \
-                        if 'data-endpoint=' not in h else h
+                if form_endpoint:          # every enquiry form that has no endpoint yet (v0.296: a booking form may sit beside it)
+                    h = re.sub(r'data-hoola-form(?![^>]*data-endpoint)', f'data-hoola-form data-endpoint="{esc(form_endpoint)}"', h)
                 parts.append(h)
             body = "\n".join(parts)
         dest = out / page_path(slug)
@@ -691,6 +705,13 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
         robots += f"Sitemap: {base_url.rstrip('/')}/sitemap.xml\n"
     (out / "robots.txt").write_text(robots)
     (out / "_headers").write_text("/*\n  " + "\n  ".join(f"{k}: {v}" for k, v in security_headers(form_endpoint).items()) + "\n")
+    if alt:                                  # v0.296 the second language under /<lang>/, its switch leads back
+        sub = {**site, "language": alt["lang"], "alt": None, "src_root": str(src_root),
+               "switch": {"label": alt["back"], "to": "../", "lang": site.get("language") or "en"}}
+        res = assemble(sub, alt["plan"], alt["sections"], dict(photos), out / alt["lang"],
+                       (base_url.rstrip("/") + "/" + alt["lang"]) if base_url else "", form_endpoint)
+        problems += [f'{alt["lang"]}: {x}' for x in res["problems"]]
+        files += res["pages"]
     total = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())
     return {"files": sum(1 for p in out.rglob("*") if p.is_file()), "pages": files, "bytes": total, "problems": problems,
             "photos": photos}
@@ -703,6 +724,7 @@ def security_headers(form_endpoint: str = "") -> dict[str, str]:
         connect += " " + m.group(0)
     return {"Content-Security-Policy": ("default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
                                         f"script-src 'self'; font-src 'self'; connect-src {connect}; frame-ancestors 'self'; "
+                                        "frame-src https://www.google.com https://maps.google.com https://www.youtube-nocookie.com; "
                                         "base-uri 'self'; form-action 'self'; object-src 'none'"),
             "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin",
             "Permissions-Policy": "camera=(), microphone=(), geolocation=()", "X-Frame-Options": "SAMEORIGIN"}

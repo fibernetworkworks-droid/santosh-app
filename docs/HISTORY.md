@@ -11204,3 +11204,37 @@ and the design she liked could drift), no undo per change, nothing she could cha
 - Built as 0.293.0, re-versioned 0.295.0 on merge past the parallel v0.293.0 KITNA SAMAY and v0.294.0 COMPOSIO SAB APPS.
 - Not verified on a real phone yet: contenteditable inside the Android WebView with the keyboard (the console flow is
   the same script).
+
+## v0.296.0 WEB DESIGN PHASE 3 — live features (owner: "START PHASE 3")
+Flaws 10-13 of the web design audit: the booking section promised "next free slots from Hoola" on a page that could not
+load anything; map / video embeds were stripped with no safe way back; one language per site; no way to take a payment.
+- **Placeholders, built by Hoola** (`server/app/site/live.py`, `expand` runs in `build.assemble` after the photos):
+  Opus writes `<div data-hoola-booking>`, `<div data-hoola-map>`, `<div data-hoola-video="YouTube link">`,
+  `<a data-hoola-pay="499" data-for="...">` (RUNTIME_GUIDE: never its own widget / embed / payment link) and the build
+  makes the real thing in the site's language (`WORDS` en / hi / mr / hinglish).
+- **Booking with her real slots**: the form reads `GET /api/site-forms/<id>/slots` = `net/booking.free_slots` (her
+  days, hours, slot length, jobs already held) minus times other visitors already asked for (`site_leads.kind=booking`,
+  status new / confirmed); `POST /api/site-forms/<id>/book` re-checks the time, keeps it aside, saves the request
+  (`site_leads.kind` / `slot`, new nullable columns) and pushes a `site_lead` card with `booking: true`; SHE answers
+  Pakka / Mana (`POST /api/sites-bookings/<lead>/decide`, phone `SiteLeadCard` buttons, website action=booking): a
+  decline frees the time. Public answers never carry her lead id (`form_post` -> `_lead_post`). CORS GET/POST/OPTIONS.
+- **Map / YouTube on tap**: a facade (address + "Map dekhiye" + open-in-Google-Maps; a play button with the title);
+  `hoola-site.js embeds()` puts the iframe in only on the tap (google.com/maps ... output=embed, youtube-nocookie);
+  CSP `frame-src` allows exactly google.com, maps.google.com, youtube-nocookie.com.
+- **Pay by UPI**: `facts.upi` = HER UPI ID (validated `VPA`, only via her own answer / change words), `upi://pay`
+  link with her name / amount / note + an SVG QR as a data: URL (segno; shown on computers); no UPI ID = "Order on
+  WhatsApp". Hoola never touches the money and never asks for a PIN; the site is public only after her launch tap.
+  A model-written `upi:` link is still stripped by the sanitizer.
+- **Second language** (`server/app/site/lang.py`): `set_language` (website action=language, second en | hi | mr |
+  hinglish | '') -> a `translate` job: Opus (site_edit) translates every section whose translation is missing or
+  out of date (each remembers the hash of its source), only words move; a translation whose tag count moved is
+  dropped (`kept_source`), an out-of-date one never shows (the fresh source instead); page titles / menu translated
+  once (`_pages.json`). `build.assemble` writes the language under `/<lang>/` (same assets, its own pages) and a
+  header switch `.hs-lang` to the same page in the other language (hreflang). Builds and her own-hand edits
+  translate the changed sections before the checks.
+- **FIXED, found while building this**: a LAUNCHED site lost every photo. `assemble` looked for photos at
+  `out.parent/src`, right for the preview (site folder) but wrong for a launch (built inside the hosting folder),
+  so `picture()` got no sizes and returned "". Photos now come from `site["src_root"]` (`_ctx`), every build.
+- Tests `server/tests/test_v0296_live_features.py` (5) + a real-Chromium run of the booking form, map and video.
+- Not verified on the VPS: Google's map embed URL without a key from a real site; slots for an owner whose booking
+  rules were never set (defaults: Mon-Sat 9-6).

@@ -22,7 +22,10 @@ SITE_TOOLS = [
         "version') -> only those parts are rebuilt, new version. action=photo: site + file_id (+ about: 'shop front', "
         "'owner'). action=undo: her last own-hand edit (words / link / photo / colours she changed in the preview's Edit "
         "mode, free, no AI) goes back. Small word / price / link fixes: tell her to tap Edit on the preview and type it there "
-        "(instant, free). action=stop / resume. action=export: ZIP of the built site (file_id). "
+        "(instant, free). action=language + second (en | hi | mr | hinglish, '' = remove) = the whole site in a second "
+        "language with a switch (Opus translates, new version). action=booking + lead + yes = HER answer to a website booking "
+        "request (only when she said pakka / mana). Her UPI ID for Pay buttons: action=answer with answers {upi: 'name@bank'} "
+        "(only the ID she typed; never a PIN). action=stop / resume. action=export: ZIP of the built site (file_id). "
         "GOING LIVE (each a card SHE taps, never live by itself): action=launch (free: true = also on the free Hoola "
         "address <name>.<hoola sites domain>) sends the 'live karo' card; action=domain + domain ('sharmasweets.in') joins "
         "her own domain and sends the DNS card (Hoola applies it only on her tap when her DNS is on her Cloudflare, else "
@@ -39,7 +42,7 @@ SITE_TOOLS = [
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "photo", "undo", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "booking", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
@@ -48,7 +51,8 @@ SITE_TOOLS = [
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
          "instruction": {"type": "string"}, "file_id": {"type": "string"}, "about": {"type": "string"},
          "pages": {"type": "array", "items": {"type": "string"}}, "client": {"type": "string"},
-         "free": {"type": "boolean"}, "domain": {"type": "string"}, "primary": {"type": "string", "enum": ["root", "www"]}, "plan": {"type": "string"},
+         "free": {"type": "boolean"}, "second": {"type": "string", "enum": ["", "en", "hi", "mr", "hinglish"]},
+         "lead": {"type": "string"}, "yes": {"type": "boolean"}, "domain": {"type": "string"}, "primary": {"type": "string", "enum": ["root", "www"]}, "plan": {"type": "string"},
          "provider": {"type": "string"}, "report_to": {"type": "string"}, "version": {"type": "integer"},
          "city": {"type": "string"}, "domains": {"type": "array", "items": {"type": "string"}},
          "auto_renew": {"type": "boolean"}, "days": {"type": "integer"},
@@ -110,6 +114,10 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.add_photo(t, site, None, str(a.get("file_id") or ""), str(a.get("about") or ""))
     if action == "undo":
         return S.undo_edit(t, site)
+    if action == "language":
+        return S.set_language(t, site, str(a.get("second") or ""))
+    if action == "booking":
+        return S.booking_decide(t, str(a.get("lead") or ""), bool(a.get("yes")))
     if action == "stop":
         return S.stop(t, site)
     if action == "resume":

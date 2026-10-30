@@ -308,24 +308,67 @@ class _SiteLooksState extends State<SiteLooks> {
   }
 }
 
-class SiteLeadCard extends StatelessWidget {
+class SiteLeadCard extends StatefulWidget {
   const SiteLeadCard({super.key, required this.v, required this.app});
   final Map<String, dynamic> v;
   final Santosh app;
   @override
-  Widget build(BuildContext context) => Glass(
-        child: Row(children: [
-          const Icon(Icons.mark_email_unread_rounded, color: C.ok),
+  State<SiteLeadCard> createState() => _SiteLeadCardState();
+}
+
+/// v0.296 an enquiry, or a BOOKING request for one of her real free times: she taps Pakka or Mana.
+class _SiteLeadCardState extends State<SiteLeadCard> {
+  String _done = '';
+  bool _busy = false;
+
+  Future<void> _decide(bool yes) async {
+    setState(() => _busy = true);
+    try {
+      final r = await widget.app.api!.siteBookingDecide(_s(widget.v['id']), yes);
+      if (!mounted) return;
+      setState(() => _done = _s(r['status']));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s(r['say']))));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = widget.v;
+    final booking = v['booking'] == true;
+    return Glass(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(booking ? Icons.event_available_rounded : Icons.mark_email_unread_rounded, color: C.ok),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${v['site']}: ${_s(v['name']).isEmpty ? v['phone'] : v['name']}', style: display(14)),
+            if (booking && _s(v['when']).isNotEmpty) Text('Booking: ${v['when']}', style: const TextStyle(color: C.accent, fontSize: 13)),
             if (_s(v['message']).isNotEmpty) Text(_s(v['message']), style: const TextStyle(color: C.muted, fontSize: 12.5), maxLines: 3),
           ])),
           if (_s(v['phone']).isNotEmpty)
             IconButton(icon: const Icon(Icons.call_rounded, color: C.accent),
                 onPressed: () => launchUrl(Uri.parse('tel:${v['phone']}'))),
         ]),
-      );
+        if (booking && _done.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(children: [
+              Expanded(child: GlassButton(label: 'Pakka', icon: Icons.check_rounded, color: C.ok, height: 40,
+                  onTap: _busy ? null : () => _decide(true))),
+              const SizedBox(width: 8),
+              TextButton(onPressed: _busy ? null : () => _decide(false), child: const Text('Mana')),
+            ]),
+          ),
+        if (_done.isNotEmpty)
+          Padding(padding: const EdgeInsets.only(top: 6),
+              child: Text(_done == 'confirmed' ? 'Pakka kar diya' : 'Mana kar diya', style: const TextStyle(color: C.muted, fontSize: 12.5))),
+      ]),
+    );
+  }
 }
 
 // ---------------------------------------------------------------- Profile > Website
