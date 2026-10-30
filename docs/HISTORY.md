@@ -10837,3 +10837,22 @@ at normal tracking, 22 / 20 / 17 · block gaps 16 (p to p) / 24 (above a heading
 `server/app/static/console/md.js` · `server/app/static/console/v2.css` · `lib/ui/md_text.dart` ·
 `server/tests/test_v0284_claude_jaisa_paragraph.py` (7 tests) · `test/md_text_test.dart` (the old test asserted the
 `\n` join — it had locked the bug in; updated and extended).
+
+## v0.285.0 SAHI KRAM — the real voice code review, all flaws fixed (owner: "REAL VOICE LOT OF ISSUE --- FIRST CHECK THE CODE DO U FIND ANY FLAW IN IT" -> "FIX ALL")
+Found by reading `voice_openai.py` + the shared `voice.Call` it rides on (built as 0.283.0; main moved to 0.284.0):
+1-3. **Her words arrive late.** OpenAI transcribes her speech separately, only after the audio is committed - often after
+   his reply is already done. `finish_turn` ran at `response.done`, so (a) her sentence was saved with his NEXT reply,
+   (b) her late `user_text` reached the phone after `turn_done` and reset his caption, (c) the leftover `user_buf` made
+   the never-silent watchdog nudge him after 14 s - he talked to nobody. Fix: `input_audio_buffer.committed` records
+   her pending item (`_her_items`); `response.done` -> `_finish_when_heard()` waits up to `FINISH_WAIT_S` 3 s for its
+   transcript (`.completed` / `.failed` -> `_her_item_done`); a new `speech_started` closes a waiting turn first.
+   Her late words no longer `_cap_flush()` his captions (a real cut-in still flushes in `_she_cut_in`).
+4. **A tool result talked over her.** `_reply()` sent `response.create` even mid-sentence (Gemini has WHEN_IDLE). Now no
+   reply starts while `_she_speaking` (speech_started -> stopped / committed / response.created); the item is already
+   in the conversation and her own turn's reply carries it. A lost speech_stopped self-heals after `SPEAKING_STALE_S` 20 s.
+5. **Script switch** - checked, not a flaw: `voicelang.hear` treats Devanagari Hindi as the same hi-IN as Hinglish.
+6. **Long waits** - semantic VAD `eagerness` low (up to 8 s) -> medium (~4 s), `VOICE_OPENAI_EAGERNESS`.
+7. **Echo self-cuts** - counted: a cut within `EARLY_CUT_S` 1 s of his first word -> `early_cuts` (scorecard), so her
+   calls show whether his own voice leaks back into the mic.
+Scorecard adds `early_cuts`, `held_for_her`, `finish_waited`. Gemini untouched.
+Tests: NEW `test_v0285_sahi_kram.py` (8); `test_v0264_openai_voice.py` VAD pin -> medium. Version 0.285.0 (pubspec 0.285.0+325).

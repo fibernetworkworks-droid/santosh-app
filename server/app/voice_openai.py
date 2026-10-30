@@ -68,9 +68,9 @@ BAAT_KA_DHANG = (
     "kabhi nahi. Pending ya purane kaam ki poori list kabhi mat sunao, summary bhi nahi.\n"
     "- Har jawab ke ant mein 'aur kuch?' ya kaam ki yaad dilana zaroori nahi.\n\n")
 
-FINISH_WAIT_S = 3.0    # v0.283 his finished turn waits at most this long for her late transcript
+FINISH_WAIT_S = 3.0    # v0.285 his finished turn waits at most this long for her late transcript
 EARLY_CUT_S = 1.0
-SPEAKING_STALE_S = 20.0   # v0.283 "she is speaking" older than this without a stop = a lost event, not a long sentence      # v0.283 she "interrupts" within this of his first word: counted as a likely echo cut
+SPEAKING_STALE_S = 20.0   # v0.285 "she is speaking" older than this without a stop = a lost event, not a long sentence      # v0.285 she "interrupts" within this of his first word: counted as a likely echo cut
 
 BREATH_AFTER_S = 4.0   # she talked at least this long: his answer opens with a breath (people breathe before long answers)
 
@@ -199,7 +199,7 @@ class OpenAICall(v.Call):
         self._resp_breath = False
         self._breath_next = False      # v0.266 a real breath sound goes before his next reply's first word
         self._breath_last = -1
-        # v0.283 SAHI KRAM: OpenAI writes HER words out separately and only after her audio is committed - often after
+        # v0.285 SAHI KRAM: OpenAI writes HER words out separately and only after her audio is committed - often after
         # his reply is already done. Her pending transcript items; his finished turn waits for them (max FINISH_WAIT_S).
         self._her_items: list[str] = []
         self._finish_wait: asyncio.Task | None = None
@@ -276,7 +276,7 @@ class OpenAICall(v.Call):
         if self._she_speaking and time.monotonic() - self._her_t0 > SPEAKING_STALE_S:
             self._she_speaking = False         # a lost speech_stopped must never mute him for good
         if self._she_speaking:
-            # v0.283 a tool result / note while she is mid-sentence: it is already in the conversation; the reply to
+            # v0.285 a tool result / note while she is mid-sentence: it is already in the conversation; the reply to
             # HER turn (OpenAI makes it when she stops) carries it. Before, he answered right over her.
             self.stats["held_for_her"] = self.stats.get("held_for_her", 0) + 1
             return
@@ -379,7 +379,7 @@ class OpenAICall(v.Call):
                 if self.hold and (self._hold_turn_reply or self.reply_buf):
                     await self._held_turn_done()
                 elif status != "cancelled" and (self._resp_audio or self.reply_buf.strip()):
-                    await self._finish_when_heard()   # v0.283 her late words join THIS turn
+                    await self._finish_when_heard()   # v0.285 her late words join THIS turn
                 if self._want_response and not self.closed.is_set():
                     self._want_response = False
                     await self._reply(session)
@@ -439,7 +439,7 @@ class OpenAICall(v.Call):
         if self.hold and get_settings().voice_side_talk:
             await self._hold_heard()
         elif not self.hold:
-            # v0.283 no _cap_flush here: on OpenAI her words arrive while he is ALREADY answering - flushing threw
+            # v0.285 no _cap_flush here: on OpenAI her words arrive while he is ALREADY answering - flushing threw
             # his own captions away. A real cut-in flushes in _she_cut_in (speech_started).
             await self.send_json({"type": "user_text", "text": self.user_buf.strip()})
             await self._otp_listen(piece)
@@ -462,7 +462,7 @@ class OpenAICall(v.Call):
             return
         self.stats["interruptions"] += 1
         if getattr(self, "_reply_t0", 0.0) and now - self._reply_t0 < EARLY_CUT_S:
-            # v0.283 cut within a second of his first word: usually his own voice leaking back into her mic (echo)
+            # v0.285 cut within a second of his first word: usually his own voice leaking back into her mic (echo)
             self.stats["early_cuts"] = self.stats.get("early_cuts", 0) + 1
         await self._cap_flush()
         await self.send_json({"type": "interrupted"})
