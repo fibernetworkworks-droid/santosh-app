@@ -48,10 +48,13 @@ EFFORT = {"app_art": "xhigh", "app_critique": "high", "app": "high", "app_code":
           "build": "high", "site_art": "xhigh", "site_critique": "high", "site_edit": "medium"}
 APP_KINDS = APP_KINDS + ("app_art", "app_critique")
 SITE_KINDS = ("build", "site_art", "site_critique", "site_edit")   # v0.225 Website Sahayak on the same Opus path
+DOC_KINDS = ("doc_art", "doc_critique")       # v0.303 HOOLA PRINT: the PDF look + the page review, same Opus path
+EFFORT.update({"doc_art": "medium", "doc_critique": "medium"})
 
 
 def _opus_kind(kind: str) -> bool:
-    return kind in APP_KINDS or (kind in SITE_KINDS and bool(getattr(get_settings(), "site_opus", True)))
+    return kind in APP_KINDS or kind in DOC_KINDS or \
+        (kind in SITE_KINDS and bool(getattr(get_settings(), "site_opus", True)))
 
 
 def _app_client():
@@ -101,7 +104,8 @@ def _app_request(model: str, system: str, prompt: str, max_tokens: int, kind: st
     if think == "adaptive" and "thinking" not in _EXTRAS_OFF:
         kw["thinking"] = {"type": "adaptive"}
         room = max_tokens + {"app_art": 9000, "app_critique": 5000, "app_edit": 3000, "site_art": 9000,
-                             "site_critique": 5000, "site_edit": 3000}.get(kind, 8000)
+                             "site_critique": 5000, "site_edit": 3000, "doc_art": 3000,
+                             "doc_critique": 4000}.get(kind, 8000)
     eff = effort or (getattr(st, "app_art_effort", "") if kind == "app_art" else "") or \
         (getattr(st, "app_effort", "") if kind in ("app", "app_code") else "") or EFFORT.get(kind, "high")
     if eff in ("low", "medium", "high", "xhigh", "max") and "output_config" not in _EXTRAS_OFF:
@@ -115,14 +119,14 @@ def _ask_app(system: str, prompt: str, max_tokens: int, kind: str, images: list[
     """v0.140 Owner's rule: App Sahayak designs and builds with Claude Opus 5.5. Busy / overloaded / timeouts are tried
     again with growing waits; nothing falls back to another model unless APP_MODEL_FALLBACK is switched on."""
     st = get_settings()
-    model = model_for(kind) if kind in SITE_KINDS else app_model()
+    model = model_for(kind) if kind in SITE_KINDS + DOC_KINDS else app_model()
     tries = max(1, int(getattr(st, "app_model_tries", 5) or 5))
     if not st.anthropic_api_key:
         if getattr(st, "app_model_fallback", False) and not images:
             STATS["app_fallback"] += 1
             from ..net.ai import llm
             return llm(system, prompt, min(max_tokens, 8000), timeout=240)
-        what = "Website" if kind in SITE_KINDS else "App design"
+        what = "Website" if kind in SITE_KINDS else "PDF design" if kind in DOC_KINDS else "App design"
         raise AiError(f"{what} {app_model_label()} se hota hai, par server par ANTHROPIC_API_KEY nahi hai.")
     STATS["app_calls"] += 1
     last: Exception | None = None
@@ -158,6 +162,8 @@ def _ask_app(system: str, prompt: str, max_tokens: int, kind: str, images: list[
 
 def model_for(kind: str) -> str:
     st = get_settings()
+    if kind in DOC_KINDS:
+        return getattr(st, "doc_model", "") or app_model()
     if _opus_kind(kind):
         return app_model() if kind in APP_KINDS else (getattr(st, "site_model", "") or app_model())
     if kind == "build":

@@ -124,6 +124,11 @@ class Settings(BaseSettings):
     studio_sync_url: str = ""              # base URL override (tests)
     studio_music_model: str = "lyria-3.5"  # v0.157 Google Lyria music for the final video ('' = Hoola's own free beds)
     studio_plan_model: str = "claude-opus-5-5"   # v0.157 writes storyboards (shot prompts tuned per video model)
+    # v0.303 HOOLA PRINT: PDFs made like Claude makes them (designed HTML printed by Chromium, docstudio/htmlpdf.py)
+    doc_engine: str = "chromium"            # chromium | reportlab (the v0.192 Document Studio drawing)
+    doc_art: bool = True                    # Opus picks the look per document (off = the topic router picks)
+    doc_review: bool = True                 # Opus looks at the printed pages and may ask for one change
+    doc_model: str = ""                     # model for doc_art / doc_critique ("" = app_model, Claude Opus 5.5)
     studio_project_usd: float = 5.0        # starting budget of a new project
     studio_usd_inr: float = 85.0           # shown next to dollar prices on her cards
     studio_image_mode: str = "data"        # data = character photos inline; public = short-lived signed links from this server
