@@ -1849,7 +1849,7 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 .at .aico.k-pdf{color:#C8463D}.at .aico.k-sheet{color:#1F8A5B}.at .aico.k-doc{color:#2F62C9}.at .aico.k-slides{color:#C76A1E}.at .aico.k-audio,.at .aico.k-video{color:rgb(var(--acc-rgb))}
 .at .apage{flex:1;min-height:0;overflow:hidden;background:#fff;border-bottom:1px solid var(--hair)}
 .at .apage img{width:100%;display:block;object-fit:cover;object-position:top}
-.at .asnip{flex:1;min-height:0;overflow:hidden;padding:8px 9px 0;font:11px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--mut);white-space:pre-wrap;word-break:break-word;background:var(--sunk);border-bottom:1px solid var(--hair)}
+.at .asnip{flex:1;min-height:0;overflow:hidden;padding:8px 9px 0;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--mut);white-space:pre-wrap;word-break:break-word;background:var(--sunk);border-bottom:1px solid var(--hair)}
 .at .aname{display:flex;flex-direction:column;gap:2px;padding:6px 9px 7px;background:var(--raise);min-width:0}
 .at .aname b{font-size:12px;font-weight:500;line-height:1.3;color:var(--ink);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
 .at .aname i{font-style:normal;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1857,7 +1857,7 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 .at .aplay{position:absolute;left:50%;top:50%;width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;background:rgba(17,15,32,.72);color:#fff;display:grid;place-items:center;pointer-events:none}
 .at .aplay svg{width:16px;height:16px;margin-left:2px}
 .at .adur{position:absolute;right:6px;bottom:6px;padding:1px 6px;border-radius:6px;background:rgba(17,15,32,.78);color:#fff;font-size:12px;font-variant-numeric:tabular-nums;pointer-events:none}
-.at .ax{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;background:var(--surface);color:var(--mut);border:1px solid var(--hair2);box-shadow:0 1px 3px rgb(var(--sh-rgb) / .18);opacity:0;transition:opacity .12s;z-index:2}
+.at .ax{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;background:var(--surface);color:var(--mut);border:1px solid var(--hair2);box-shadow:0 1px 3px rgb(var(--sh-rgb) / .18);opacity:0;transition:opacity .12s;z-index:2}
 .at:hover .ax,.at:focus-within .ax,.at.up .ax,.at.bad .ax{opacity:1}
 .at .ax:hover{color:var(--ink);background:var(--raise)}
 .at.up .ab{opacity:.62}

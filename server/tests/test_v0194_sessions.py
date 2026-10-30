@@ -74,7 +74,7 @@ def test_cache_busts_follow_the_version():
     app = [s for s in stamps if s != "1.4.4"]                           # vendor qrcode keeps its own version
     from app.main import APP_VERSION
     # v0.221 R1: ONE stylesheet + 10 scripts, every one on the release version (no hand tags like &web=)
-    assert len(app) == 14 and set(app) == {APP_VERSION}   # v0.243 + theme.js, v0.248 + pdfview.js, v0.259 + studio.js, stamps
+    assert len(app) == 15 and set(app) == {APP_VERSION}   # v0.243 + theme.js, v0.248 + pdfview.js, v0.259 + studio.js, v0.275 + attach.js, stamps
     assert "&web=" not in html and "?web=" not in html
 
 

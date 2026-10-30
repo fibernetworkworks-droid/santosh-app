@@ -141,7 +141,7 @@ def test_version():
     from app.main import APP_VERSION
     assert APP_VERSION == "0.275.0"
     assert "0.275.0+315" in (ROOT / "pubspec.yaml").read_text()
-    assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 14   # grows as main adds console files
+    assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 15   # grows as main adds console files
 
 
 # ---------------------------------------------------------------- v0.253 the reading surface
