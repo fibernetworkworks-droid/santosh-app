@@ -47,7 +47,7 @@ def _vendor(name: str) -> Path | None:
 
 
 def url_shots(url: str) -> list[bytes]:
-    """v0.306 phone (390) + desktop (1440) screenshots of a PUBLIC web page (a rival builder's site in a blind duel).
+    """v0.307 phone (390) + desktop (1440) screenshots of a PUBLIC web page (a rival builder's site in a blind duel).
     Only public internet addresses, for the page AND everything it loads (no peeking into private networks)."""
     from urllib.parse import urlparse
 

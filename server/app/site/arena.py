@@ -1,4 +1,4 @@
-"""v0.306 HOOLA DESIGN ARENA (web design Phase 5): "more powerful" as NUMBERS, not claims.
+"""v0.307 HOOLA DESIGN ARENA (web design Phase 5): "more powerful" as NUMBERS, not claims.
 
 1. A FIXED SET of Indian business briefs (SET_V; never changed without a bump): 1,000 trades from the website library,
    each with a seeded goal / style / city / name. A run picks n of them spread across industries (the same n briefs for

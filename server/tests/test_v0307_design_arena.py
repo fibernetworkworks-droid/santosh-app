@@ -1,4 +1,4 @@
-"""v0.306 HOOLA DESIGN ARENA: a fixed, seeded set of 1,000 Indian business briefs; a run builds n of them end to end as
+"""v0.307 HOOLA DESIGN ARENA: a fixed, seeded set of 1,000 Indian business briefs; a run builds n of them end to end as
 the hidden __arena__ tenant and scores each (independent judge, checks, originality, rupees, minutes); runs compare
 metric by metric the right way round; blind duels against another builder's site keep Hoola's side hidden from the
 judge; owner only; only public addresses are ever screenshotted."""
@@ -109,6 +109,6 @@ def test_api_is_owner_only(site_env, monkeypatch):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.306.0"
-    assert "0.306.0+346" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.307.0"
+    assert "0.307.0+347" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
     assert json  # noqa
