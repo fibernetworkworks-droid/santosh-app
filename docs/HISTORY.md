@@ -10307,3 +10307,18 @@ refuses voiced sounds, leak pattern). Version 0.266.0 (pubspec 0.266.0+306, cons
   need an answer (greeting, news, nudge) and for tool results.
 Tests: `test_v0264_openai_voice.py` 19 (cue tests removed; new: quiet notes never reply, busy error never chains, no
 committed handler, breath planning; VAD semantic + create_response true). Version 0.267.0 (pubspec 0.267.0+307).
+
+## v0.268.0 SIRF JO POOCHA — OpenAI answers only what she asked (owner: "GOOD BUT FOR EVERY ASK IT GIVE FULL WORK DETAILS FROM PENDING WORK TO RECENT WORK --- CHECK HOW HOOLA GEMINI HANDLE THIS -- HOOLA GEMEINI SIDE CHECK THE CODE AND AI REPLY FUCTINOS FIRST PROPERLY")
+- Checked the Gemini side first: there is no code filter there. `voice.Call._build_context` gives BOTH engines the same
+  brief - `life.context_block` + `yaad.voice_block` (HOOLA KI YAAD, KAAM KA HAAL news still to tell) + `kaamwatch.block`
+  (KAAM KI HAALAT: live / last-6-h jobs) - and the persona's rule (voice.py "KAAM KA HAAL + HOOLA KI YAAD are your memory
+  ... bring it up ONCE yourself at a natural pause ... no repeating"; "Running jobs ... Asked 'kya hua?', say it straight")
+  sits deep inside the 24k persona. Gemini 3.8 Live keeps to it; the OpenAI mini reads the lists as a report to give and
+  recited pending -> recent work on every ask. v0.265's own example line ("pehle GST wala kaam karte hain, phir invoice")
+  primed it too.
+- Fix (OpenAI only): `voice_openai.BAAT_KA_DHANG` at the very top of the instructions (before EMOTION and the brief):
+  answer only what she asked now in 1-2 short sentences; the three lists are background, not something to recite -
+  speak of a job only when she asks about it, and then only that job in one line; one untold news at most once per
+  call; never the whole list or a summary; no "aur kuch?" / work reminder at the end of every reply. The example is now
+  an everyday one. Gemini's prompt is untouched (a test checks voice.py has no BAAT_KA_DHANG).
+Tests: `test_v0264_openai_voice.py` 20 (+1). Version 0.268.0 (pubspec 0.268.0+308, console ?v=0.268.0, pins -> 0.268.0).

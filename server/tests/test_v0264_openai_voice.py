@@ -310,6 +310,20 @@ def _bare():
     return c
 
 
+def test_work_lists_are_background_not_a_report():
+    """v0.268: OpenAI read KAAM KI HAALAT / KAAM KA HAAL as a report and recited all work on every ask."""
+    from app import voicelang
+    c = voice_openai.OpenAICall.__new__(voice_openai.OpenAICall)
+    c.langst, c.lang, c.name, c.gender, c.style = voicelang.LangState("hi-IN"), "hi-IN", "Santosh", "m", {}
+    ins = voice_openai.session_config(c, "KAAM KI HALAT (live): - Video: chal raha hai")["instructions"]
+    top = ins.index("BAAT KA DHANG")
+    assert top < ins.index("AWAAZ MEIN JAAN") < ins.index("KAAM KI HALAT")      # the rule leads, before the brief
+    assert "sunane ki list NAHI" in ins and "sirf EK baar" in ins
+    assert "GST wala kaam" not in voice_openai.EMOTION                         # no example that recites work
+    vsrc = (ROOT / "server/app/voice.py").read_text()
+    assert "BAAT_KA_DHANG" not in vsrc                                         # Gemini's prompt untouched
+
+
 def test_quiet_notes_never_start_a_reply():
     """v0.267: mood / language / speaker notes made him talk to nobody - they are now an item, no response.create."""
     c, s = _bare(), _Rec()
@@ -373,5 +387,5 @@ def test_gemini_file_has_only_the_routing_seam():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.267.0"
-    assert "0.267.0+307" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.268.0"
+    assert "0.268.0+308" in (ROOT / "pubspec.yaml").read_text()

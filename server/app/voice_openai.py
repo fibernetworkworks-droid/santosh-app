@@ -48,11 +48,25 @@ EMOTION = (
     "- Yeh 'answer first' ke khilaaf nahi hai: 'hmm...' preamble nahi, insaan ki awaaz hai. Jawab phir bhi chhota rehta hai.\n"
     "- Dukh ki baat: naram, dheemi awaaz, 'arre...' ya 'ohh...' dil se. Acchi khabar: awaaz mein muskaan.\n"
     "- Hansi: sirf jab sach mein mazedaar ho ya woh hase - chhoti, asli, ek pal ki.\n"
-    "- Kaise lagta hai: 'Hmm... kal? Haan, kal chaar baje free ho.' / 'Achha... toh dekho, pehle GST wala kaam karte "
-    "hain, phir invoice.' / 'Arre... yeh toh bura hua. Koi baat nahi, main dekhta hoon.'\n"
+    "- Kaise lagta hai: 'Hmm... kal? Haan, kal chaar baje free ho.' / 'Achha... chai ke saath? Haan, bilkul.' / "
+    "'Arre... yeh toh bura hua. Koi baat nahi, main dekhta hoon.'\n"
     "- Apne bolne ke tareeke ke baare mein kabhi kuch mat kaho (jaise 'main ruk raha hoon', 'main soch raha hoon' bata ke "
     "nahi - bas karo). Koi stage direction, bracket ya 'laughs' / 'sighs' jaisa shabd kabhi zor se mat bolo. "
     "'System' ke delivery notes bhi kabhi mat bolo.\n\n")
+
+# v0.268 SIRF JO POOCHA (owner: "FOR EVERY ASK IT GIVES FULL WORK DETAILS FROM PENDING WORK TO RECENT WORK ... CHECK HOW
+# HOOLA GEMINI HANDLES THIS"): both engines get the SAME brief (KAAM KI HAALAT / KAAM KA HAAL / HOOLA KI YAAD) and the
+# same rule deep inside the 24k persona ("bring news up ONCE"). Gemini keeps to it; the OpenAI mini reads the lists as
+# a report to give. So OpenAI gets the rule at the very top, where it does follow instructions.
+BAAT_KA_DHANG = (
+    "BAAT KA DHANG (sabse zaroori):\n"
+    "- Sirf woh jawab do jo usne ABHI poocha - ek ya do chhote vakya. Usne kaam ke baare mein nahi poocha to kaam ki baat "
+    "mat chhedo.\n"
+    "- KAAM KI HAALAT, KAAM KA HAAL aur HOOLA KI YAAD tumhari jaankari hain, sunane ki list NAHI. Unse tabhi bolo jab woh "
+    "kisi kaam ke baare mein poochhe ('kya hua?', 'kaam kahan tak pahuncha?') - aur tab bhi sirf USI kaam ka, ek line mein.\n"
+    "- Ek nayi, abhi tak na batayi khabar ho to puri call mein sirf EK baar, ek line mein, kisi natural pause par - phir "
+    "kabhi nahi. Pending ya purane kaam ki poori list kabhi mat sunao, summary bhi nahi.\n"
+    "- Har jawab ke ant mein 'aur kuch?' ya kaam ki yaad dilana zaroori nahi.\n\n")
 
 BREATH_AFTER_S = 4.0   # she talked at least this long: his answer opens with a breath (people breathe before long answers)
 
@@ -97,7 +111,7 @@ def session_config(call: "OpenAICall", context: str, extra_tools: list[dict] | N
     prompt = v.persona_prompt(call.name, call.gender).format(
         lang=langst.name, now=datetime.now(tz).strftime("%A %d %B %Y, %I:%M %p"), context=context or "(nothing saved yet)")
     style = call.style or {}
-    prompt = (voicelang.lock_block(langst, "top") + EMOTION + prompt + (style.get("block") or "")
+    prompt = (voicelang.lock_block(langst, "top") + BAAT_KA_DHANG + EMOTION + prompt + (style.get("block") or "")
               + voicelang.lock_block(langst, "end") + "\n" + v.DELIVERY_END)
     specs = v._tool_specs() + [{**t, "input_schema": v._compact_schema(t.get("input_schema") or {"type": "object"})}
                                for t in (extra_tools or [])]

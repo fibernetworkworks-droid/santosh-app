@@ -110,9 +110,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.267.0 (pubspec 0.267.0+307). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.268.0 (pubspec 0.268.0+308). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (14 now: theme.js, pdfview.js, studio.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.268 SIRF JO POOCHA: OpenAI recited all pending / recent work on every ask (Gemini keeps the "news once" rule); OpenAI
+  gets `BAAT_KA_DHANG` at the top: answer only what she asked, work lists are background, one untold news once.
 - v0.267 SUNO PEHLE: OpenAI owns turn-taking again (semantic VAD low), quiet notes never start a reply, no reply
   chains - v0.265 cues answered pauses / noise / echo. Rule: never send response.create for her turns on OpenAI.
 - v0.266 ASLI SAANS: OpenAI said "main saans le rahi hoon" - words never ask for a breath now; the breath is a real sound
