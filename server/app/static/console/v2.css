@@ -1001,18 +1001,18 @@ hr{border:0;border-top:1px solid var(--line);margin:10px 0}
 #app .side .console-controls .livebtn{font-size:13px;font-weight:600}
 
 /* A separate drag target stays fixed while the sidebar content scrolls. */
-#app .side{width:var(--sidebar-width,224px);scrollbar-color:rgba(182,144,231,.22) transparent}
+#app .side{width:var(--sidebar-width,272px);scrollbar-color:rgba(182,144,231,.22) transparent}
 #app .side::-webkit-scrollbar{width:6px}
 #app .side::-webkit-scrollbar-thumb{background:rgba(182,144,231,.22);border:0}
 #app .side:hover{scrollbar-color:rgba(182,144,231,.5) transparent}
 #app .side:hover::-webkit-scrollbar-thumb{background:rgba(182,144,231,.5)}
-#app .sidebar-divider{position:absolute;top:0;bottom:0;left:calc(var(--sidebar-width,224px) - 4px);width:8px;z-index:38;cursor:col-resize;touch-action:none}
+#app .sidebar-divider{position:absolute;top:0;bottom:0;left:calc(var(--sidebar-width,272px) - 4px);width:8px;z-index:38;cursor:col-resize;touch-action:none}
 #app .sidebar-divider:after{content:'';position:absolute;inset:0 3px;background:transparent;transition:background .15s}
 #app .sidebar-divider:hover:after,#app .sidebar-divider:focus-visible:after,#app.sidebar-resizing .sidebar-divider:after{background:var(--saffron)}
 #app.collapsed .sidebar-divider{left:68px}
 #app.sidebar-resizing,#app.sidebar-resizing *{cursor:col-resize!important;user-select:none!important}
 #app.sidebar-resizing .side{transition:none}
-#app.workspace-full .studio,#app.workspace-full .panel{width:calc(100% - var(--sidebar-width,224px))}
+#app.workspace-full .studio,#app.workspace-full .panel{width:calc(100% - var(--sidebar-width,272px))}
 #app.workspace-full.collapsed .studio,#app.workspace-full.collapsed .panel{width:calc(100% - 72px)}
 @media(max-width:1100px){
  #app .sidebar-divider{display:none}
@@ -1649,7 +1649,7 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 #app .workspace-handle label{display:none}
 #app.workspace-resizing,#app.workspace-resizing *{user-select:none;cursor:col-resize !important}
 #app.workspace-resizing iframe,#app.workspace-resizing video{pointer-events:none}
-#app.st .studio,#app.pn .panel{width:min(var(--workspace-width,clamp(420px,46vw,900px)),calc(100vw - var(--sidebar-width,224px) - 380px));transition:width .28s var(--ease)}
+#app.st .studio,#app.pn .panel{width:min(var(--workspace-width,clamp(420px,46vw,900px)),calc(100vw - var(--sidebar-width,272px) - 380px));transition:width .28s var(--ease)}
 #app.workspace-resizing .studio,#app.workspace-resizing .panel{transition:none}
 #app.collapsed.st .studio,#app.collapsed.pn .panel{width:min(var(--workspace-width,clamp(420px,46vw,900px)),calc(100vw - 72px - 380px))}
 #app.workspace-full .studio,#app.workspace-full .panel{transition:none}
@@ -1661,7 +1661,7 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 #app .pnview.center .pnmedia{max-width:100%;max-height:100%;object-fit:contain;border-radius:10px}
 #app .pnview.center:has(>.pnmedia){padding:12px;background:var(--sunk)}
 #app .pnview:not(.center):not(.doc){background:var(--sunk)}
-#app.workspace-full.st .studio,#app.workspace-full.pn .panel{width:calc(100% - var(--sidebar-width,224px))}
+#app.workspace-full.st .studio,#app.workspace-full.pn .panel{width:calc(100% - var(--sidebar-width,272px))}
 #app.workspace-full.collapsed.st .studio,#app.workspace-full.collapsed.pn .panel{width:calc(100% - 72px)}
 @media(max-width:1100px){#app.st .studio,#app.pn .panel,#app.collapsed.st .studio,#app.collapsed.pn .panel{width:min(780px,96vw)}}
 @media(max-width:820px){#app.st .studio,#app.pn .panel,#app.collapsed.st .studio,#app.collapsed.pn .panel,#app.workspace-full.st .studio,#app.workspace-full.pn .panel{width:100%}}
@@ -1955,3 +1955,65 @@ body.albon{overflow:hidden}
 .slash button b{color:var(--ink);font-weight:500;min-width:84px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
 .slash button span{color:var(--ink);font-weight:400}
 .slash button[aria-selected="true"],.slash button:hover{background:rgb(var(--fg-rgb) / .06)}
+
+/* ===== v0.288 SIDEBAR FULLY VISIBLE (owner, with a screenshot: "CHECK THE SIDE BAR FONT AND FONT SIZE AND THE HIDDEN
+   LOOK SECTIONS - MAKE THIS SAME AS CLAUDE, FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS"). Measured before: the section
+   labels (Sessions / Recent chats / Today / Yesterday / Other chats / a session's name) were 12px / 400 in --dim
+   #8B8B92 (3.3:1 on the sidebar - the "hidden" look), chat titles 13.5px / 400, nav rows 14px / 400: a thin face on
+   Windows ClearType reads grey. Claude's sidebar has the same sizes but a MEDIUM weight and darker labels. Now (Schibsted
+   Grotesk is loaded as a 400-700 variable face, so in-between weights are real, not faked): nav 14px / 500 in the ink,
+   chat titles 14px / 470 in the ink (the open one 560), labels 13px / 500 in --mut (6.4:1 light), session name the same,
+   counts and "Show archived" in --mut too. Nothing over 600, nothing under 12px (v0.255). */
+#app .side .sn,#app .side .sn .txt,#app .side .newc .txt{font-weight:500;color:var(--ink)}
+#app .side .sn svg{color:var(--lit)}
+#app .side .rc,#app .side .rct{font-size:14px;font-weight:470;color:var(--ink)}
+#app .side .rcw.cur .rc,#app .side .rcw.cur .rct{font-weight:560}
+#app .side .slabel,#app .side .rg,#app .side .sgh .sgn{font-size:13px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--mut)}
+#app .side .sgh .sgn-n{font-size:12px;font-weight:500;color:var(--mut);opacity:1}
+#app .side .pjadd,#app .side .rcm{color:var(--mut)}
+#app .side .rcarch{font-size:13px;font-weight:450;color:var(--mut)}
+#app .side .rcarch:hover{color:var(--ink)}
+#app .side .sn kbd,#app .side .newc kbd{color:var(--mut)}
+:root[data-size="sm"] #app .side .rc,:root[data-size="sm"] #app .side .rct{font-size:13px}
+:root[data-size="lg"] #app .side .rc,:root[data-size="lg"] #app .side .rct{font-size:15px}
+#app .side #uhandle,#app .side .conn span{color:var(--mut)}
+/* PREMIUM pass (owner: "STILL SAME MAKE IT MORE PREMIUM AND PERFECT"): one rhythm for every row (36px nav, 34px chats,
+   8px corners, the same soft hover / selected greys), line icons instead of emoji chrome (📁 🗄 ⋯ ▸), a session is a ROW
+   like a chat (14px / 500 ink, folder icon, chevron that turns), sections breathe (18px above a label). */
+#app .side{text-rendering:optimizeLegibility;font-kerning:normal}
+#app .side .sn,#app .side .newc{min-height:36px;border-radius:8px;padding:7px 10px;gap:10px}
+#app .side .sn svg{width:18px;height:18px;stroke-width:1.75}
+#app .side .rcw{border-radius:8px;margin:1px 0}
+#app .side .rc{min-height:34px;padding:7px 8px 7px 10px;border-radius:8px}
+#app .side .sn:hover,#app .side .rcw .rc:hover,#app .side .sgh:hover,#app .side .rcarch:hover{background:rgb(var(--fg-rgb) / .045)}
+#app .side .sn[aria-current="true"],#app .side .rcw.cur .rc{background:rgb(var(--fg-rgb) / .075);box-shadow:none}
+#app .side .slabel{padding:18px 10px 6px}
+#app .side .rg{padding:16px 10px 5px}
+#app .side .sgh{margin-top:2px;padding:0 2px 0 2px;min-height:34px;gap:2px;border-radius:8px;color:var(--ink)}
+#app .side .sgh .sgn{font-size:14px;font-weight:500;color:var(--ink);gap:9px}
+#app .side .sgh .sgn .sic{width:16px;height:16px;color:var(--mut);flex:none}
+#app .side .sgh .semo{width:16px;text-align:center;font-size:14px;line-height:1;flex:none}
+#app .side .sgh .sgc{width:22px;height:22px;color:var(--mut);border-radius:6px}
+#app .side .sgh .sgc .sic{width:14px;height:14px;transition:transform .15s ease}
+#app .side .sgh:not(.closed) .sgc .sic{transform:rotate(90deg)}
+#app .side .rcm{width:28px;height:28px;border-radius:6px;color:var(--mut);font-size:0}
+#app .side .rcm svg{width:16px;height:16px}
+#app .side .rcm:hover{background:rgb(var(--fg-rgb) / .07);color:var(--ink)}
+#app .side .rcarch{display:flex;align-items:center;gap:9px;margin:10px 0 4px;padding:7px 10px;width:100%;border-radius:8px}
+#app .side .rcarch .sic{width:16px;height:16px;flex:none}
+@media (prefers-reduced-motion:reduce){#app .side .sgh .sgc .sic{transition:none}}
+/* the ⋯ sits INSIDE the row's pill on the right, like Claude (it hung outside, so the pill stopped short of it) */
+#app .side .rcw{position:relative}
+#app .side .rcw .rc{padding-right:10px}
+#app .side .rcw:hover .rc,#app .side .rcw.cur .rc,#app .side .rcw:focus-within .rc{padding-right:38px}
+#app .side .rcm{position:absolute;right:4px;top:50%;margin-top:-14px}
+#app .side .rcw:focus-within .rcm{opacity:1}
+/* "Sessions" is a heading with only its + beside it (the sessions themselves sit in the list below): one tight row,
+   then "Recent chats" close under it; "Other chats" followed straight by a day label keeps them together */
+#app .side .slabel.pjl{display:flex;align-items:center;padding:16px 4px 0 10px}
+#app .side .slabel.pjl .pjadd{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;margin-left:auto}
+#app .side .slabel.pjl .pjadd:hover{background:rgb(var(--fg-rgb) / .07);color:var(--ink)}
+#app .side .slabel.pjl+.slabel,#app .side .slabel.pjl~.slabel{padding-top:10px}
+#app .side .rg.sgb+.rg{padding-top:4px}
+/* the account button stays at the bottom of the sidebar like Claude's, however long the chat list grows (it scrolled away) */
+#app .side #model{position:sticky;bottom:-22px;z-index:3;margin-top:auto;background:var(--side-bg);box-shadow:0 -10px 12px -6px var(--side-bg);border-radius:10px}

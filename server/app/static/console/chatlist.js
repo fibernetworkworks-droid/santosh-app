@@ -50,20 +50,30 @@ async function load() {
   draw(); ctx.loaded?.();                          // v0.222 the chat header follows renames / moves
   return LIST;
 }
+// v0.288 line icons in the sidebar (no emoji chrome, like Claude); a session keeps the emoji SHE picked
+const SVG = d => `<svg class="sic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const IC = {
+  folder: SVG('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+  archive: SVG('<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 12h4"/>'),
+  back: SVG('<path d="M15 18l-6-6 6-6"/>'),
+  dots: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg>',
+  chev: SVG('<path d="M9 6l6 6-6 6"/>'),
+};
+const secIcon = p => p.emoji && p.emoji !== '📁' ? `<span class="semo" aria-hidden="true">${esc(p.emoji)}</span>` : IC.folder;
 function item(c, drag) {
   const cur = c.id === ctx.current();
   return `<div class="rcw${cur ? ' cur' : ''}" data-row="${esc(c.id)}"${drag ? ' draggable="true"' : ''}>
     <a class="rc" href="/console/c/${encodeURIComponent(c.id)}" data-conv="${esc(c.id)}"${cur ? ' aria-current="true"' : ''} title="${esc(c.title)}">
       ${BUSY.has(c.id) ? '<span class="spin" aria-label="working"></span>' : UNREAD.has(c.id) ? '<i class="udot" aria-label="new reply"></i>' : ''}<span class="rct">${esc(c.title)}</span></a>
-    <button type="button" class="rcm" data-menu="${esc(c.id)}" aria-label="Chat options: ${esc(c.title)}" aria-haspopup="menu">⋯</button></div>`;
+    <button type="button" class="rcm" data-menu="${esc(c.id)}" aria-label="Chat options: ${esc(c.title)}" aria-haspopup="menu">${IC.dots}</button></div>`;
 }
 /* v0.193 one session header: chevron collapses, the name opens the session page, "+" starts a chat inside,
    the count lives at the right; a collapsed session that still has a busy/unread chat shows the dot. */
 function secHead(p, rows, closed) {
   const live = closed && rows.some(r => BUSY.has(r.id) || UNREAD.has(r.id));
   return `<div class="sgh${closed ? ' closed' : ''}" data-sec="${esc(p.id)}">
-    <button type="button" class="sgc" data-a="tog" aria-expanded="${!closed}" aria-label="${closed ? 'Open project' : 'Collapse project'}: ${esc(p.name)}"><i class="chev" aria-hidden="true"></i></button>
-    <button type="button" class="sgn" data-a="open" title="${esc(p.name)} — session kholiye"><span aria-hidden="true">${esc(p.emoji || '📁')}</span><span class="sgnt">${esc(p.name)}</span></button>
+    <button type="button" class="sgc" data-a="tog" aria-expanded="${!closed}" aria-label="${closed ? 'Open project' : 'Collapse project'}: ${esc(p.name)}">${IC.chev}</button>
+    <button type="button" class="sgn" data-a="open" title="${esc(p.name)} — session kholiye">${secIcon(p)}<span class="sgnt">${esc(p.name)}</span></button>
     ${live ? '<i class="udot" aria-label="something is running"></i>' : ''}<small class="sgn-n">${rows.length || ''}</small>
     <span class="sgacts"><button type="button" class="ib" data-a="new" aria-label="New chat: ${esc(p.name)}">+</button></span>
   </div>`;
@@ -73,7 +83,7 @@ function draw() {
   if (ARCH) {                                     // archive stays one flat list, nothing to drag into
     box.innerHTML = `<div class="rg">Archive</div>` + LIST.map(c => item(c)).join('')
       || `<div class="empty" style="padding:8px 12px">Archive is empty.</div>`;
-    box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">← All chats</button>`);
+    box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">${IC.back}<span>All chats</span></button>`);
     $('#archTog').addEventListener('click', () => { ARCH = !ARCH; load(); });
     return;
   }
@@ -91,7 +101,7 @@ function draw() {
      a session always has a target (it also labels the day groups when they are non-empty) */
   html += (drag ? `<div class="rg sgb" data-rest title="Drop a chat here to take it out of its session">Other chats</div>` : '') + rest;
   box.innerHTML = html || `<div class="empty" style="padding:8px 12px">No conversations yet.</div>`;
-  box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">🗄 Show archived</button>`);
+  box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">${IC.archive}<span>Show archived</span></button>`);
   $('#archTog').addEventListener('click', () => { ARCH = !ARCH; load(); });
 }
 

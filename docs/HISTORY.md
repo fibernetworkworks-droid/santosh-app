@@ -10949,7 +10949,40 @@ alone. 77 tests across the existing claim-check suites pass untouched.
 ### Files
 `server/app/agent/draftcheck.py` · `server/tests/test_v0286_apne_aap_se_behas.py` (7 tests).
 
-## v0.288.0 SAHI KRAM (re-versioned past the parallel v0.284.0-v0.287.0) — the real voice code review, all flaws fixed (owner: "REAL VOICE LOT OF ISSUE --- FIRST CHECK THE CODE DO U FIND ANY FLAW IN IT" -> "FIX ALL")
+## v0.288.0 SIDEBAR FULLY VISIBLE (30 Oct 2026, built as 0.286.0; re-versioned on merge)
+Owner, with a screenshot of the sidebar: "CHECK THE SIDE BAR FONT AND FONT SIZE -- AND THE HIDDEN LOOK SECTIONS ----
+FIX THIS PERFECTLY MAKE THIS SAME AS CLAUDE CHAT HAS FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS".
+Measured in a real browser (computed styles, every text node in the sidebar), before:
+- section labels (Sessions, Recent chats, Today / Yesterday / Other chats, a session's name): 12px / 400 in --dim
+  #8B8B92 = 3.3:1 on the sidebar - the "hidden" look; session count at opacity .85;
+- chat titles 13.5px / 400 (.rct kept an older 13.5px while .rc was 14px); nav rows 14px / 400; the handle under her
+  name and the Live chip in --dim.
+v0.256 had matched Claude's SIZES at weight 400; on Windows ClearType a thin face reads grey. Claude's sidebar is a
+medium weight with darker labels. After (block "v0.288 SIDEBAR FULLY VISIBLE" at the very end of v2.css, so no older
+layer can win): nav 14px / 500 in the ink, chat titles 14px / 450 in the ink (the open chat 550), labels + session name
+13px / 500 in --mut (#5C5C63 light = 6.4:1, #ABA6C8 dark), count / + / ⋯ / Show archived (13px / 450) / handle /
+Live in --mut. Schibsted Grotesk is loaded as a 400..700 variable face, so 450 and 550 are real weights. Text-size
+setting (Small / Large) still moves the titles 13 / 15px. Rules kept: nothing over 600, nothing under 12px, no --dim.
+Tests: tests/test_v0288_sidebar_visible.py.
+PREMIUM pass, same version (owner: "STILL SAME MAKE IT MORE PREMIUM AND PERFECT" - the live site was still v0.284, so
+none of v0.285 / v0.286 had reached her yet; this pass goes further anyway):
+- line icons instead of emoji chrome in the sidebar: the session folder (her OWN chosen emoji is kept), Show archived,
+  the row ⋯ (three dots, 16px), the session chevron (turns 90° when open);
+- one row rhythm: nav 36px, chats 34px, 8px corners, hover rgb(fg / .045), selected rgb(fg / .075); chat titles
+  14px / 470, the open chat 560;
+- the ⋯ sits INSIDE the row's pill (absolute, right 4px; the title makes room only on hover / open / focus) - it hung
+  outside, so the pill stopped short of it;
+- a session is a ROW like a chat (14px / 500 ink, folder icon), not a small grey label;
+- "Sessions" is one tight row with its + (it was a 50px empty block), "Other chats" + a day label stay together;
+- default sidebar width 224 -> 272px (Claude ~288; at 224 every title was cut at ~20 characters); drag 220-420 and
+  double-click reset (now 272) unchanged; a width she saved herself is kept.
+Found while checking the merge in a real browser with a real-length chat list: the account button scrolled away under
+the chats (Claude keeps it at the bottom) - now `#app .side #model` is sticky at the bottom on the sidebar colour; and
+menu.js closed a menu on ANY scroll, so a click that first scrolled its button into view opened and shut the menu at
+once - now only a scroll that really moved the button (> 2px) closes it.
+
+
+## v0.289.0 SAHI KRAM (re-versioned past the parallel v0.284.0-v0.288.0) — the real voice code review, all flaws fixed (owner: "REAL VOICE LOT OF ISSUE --- FIRST CHECK THE CODE DO U FIND ANY FLAW IN IT" -> "FIX ALL")
 Found by reading `voice_openai.py` + the shared `voice.Call` it rides on (built as 0.283.0; main moved to 0.284.0):
 1-3. **Her words arrive late.** OpenAI transcribes her speech separately, only after the audio is committed - often after
    his reply is already done. `finish_turn` ran at `response.done`, so (a) her sentence was saved with his NEXT reply,
@@ -10966,4 +10999,4 @@ Found by reading `voice_openai.py` + the shared `voice.Call` it rides on (built 
 7. **Echo self-cuts** - counted: a cut within `EARLY_CUT_S` 1 s of his first word -> `early_cuts` (scorecard), so her
    calls show whether his own voice leaks back into the mic.
 Scorecard adds `early_cuts`, `held_for_her`, `finish_waited`. Gemini untouched.
-Tests: NEW `test_v0285_sahi_kram.py` (8); `test_v0264_openai_voice.py` VAD pin -> medium. Version 0.288.0 (pubspec 0.288.0+328).
+Tests: NEW `test_v0285_sahi_kram.py` (8); `test_v0264_openai_voice.py` VAD pin -> medium. Version 0.289.0 (pubspec 0.289.0+329).

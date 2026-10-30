@@ -1,4 +1,4 @@
-"""v0.288.0 SAHI KRAM - the real-voice flaws from the code review (owner: "REAL VOICE LOT OF ISSUE --- FIRST CHECK THE
+"""v0.289.0 SAHI KRAM - the real-voice flaws from the code review (owner: "REAL VOICE LOT OF ISSUE --- FIRST CHECK THE
 CODE" -> "FIX ALL"): her late transcript joins HER turn, a tool result never talks over her, her late words never wipe
 his captions, early self-cuts are counted, semantic VAD waits at most ~4 s."""
 import asyncio
@@ -104,5 +104,5 @@ def test_vad_waits_at_most_about_four_seconds():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.288.0"
-    assert "0.288.0+328" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.289.0"
+    assert "0.289.0+329" in (ROOT / "pubspec.yaml").read_text()
