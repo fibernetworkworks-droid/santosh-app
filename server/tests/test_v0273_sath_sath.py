@@ -84,7 +84,7 @@ def test_both_engines_pace_captions():
     o = (ROOT / "server/app/voice_openai.py").read_text()
     assert 'await self._caption({"type": "santosh_text"' in v and "await self._caption(done)" in v
     assert 'await self._caption({"type": "santosh_text"' in o
-    assert v.count("await self._cap_flush()") >= 2 and o.count("await self._cap_flush()") >= 2
+    assert v.count("await self._cap_flush()") >= 2 and o.count("await self._cap_flush()") >= 1   # v0.285 OpenAI: only a real cut-in flushes
     assert "self._play_until = max(time.monotonic(), self._play_until) + dur" not in o   # one clock, in send_audio
 
 

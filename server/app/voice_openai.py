@@ -273,9 +273,10 @@ class OpenAICall(v.Call):
             del self._quiet_pending[:-6]
 
     async def _reply(self, session) -> None:
-        if self._she_speaking and time.monotonic() - self._her_t0 > SPEAKING_STALE_S:
-            self._she_speaking = False         # a lost speech_stopped must never mute him for good
-        if self._she_speaking:
+        speaking = getattr(self, "_she_speaking", False)
+        if speaking and time.monotonic() - getattr(self, "_her_t0", 0.0) > SPEAKING_STALE_S:
+            self._she_speaking = speaking = False   # a lost speech_stopped must never mute him for good
+        if speaking:
             # v0.285 a tool result / note while she is mid-sentence: it is already in the conversation; the reply to
             # HER turn (OpenAI makes it when she stops) carries it. Before, he answered right over her.
             self.stats["held_for_her"] = self.stats.get("held_for_her", 0) + 1
