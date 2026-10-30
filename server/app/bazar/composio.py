@@ -126,6 +126,7 @@ def _clean_app(it: dict[str, Any]) -> dict[str, Any] | None:
     return {"slug": slug, "name": str(it.get("name") or slug.replace("_", " ").title())[:80],
             "desc": re.sub(r"\s+", " ", str(meta.get("description") or ""))[:220],
             "logo": str(meta.get("logo") or "")[:400], "cats": [c for c in cats if c][:4],
+            "app_url": str(meta.get("app_url") or "")[:300],
             "tools": int(meta.get("tools_count") or 0), "managed": managed, "no_auth": bool(it.get("no_auth")),
             "schemes": schemes[:4], "key_scheme": key_scheme}
 
@@ -684,7 +685,9 @@ def apps(s, user_id: str, q: str = "", category: str = "", offset: int = 0, limi
         for c in a["cats"]:
             counts[c] = counts.get(c, 0) + 1
     offset, limit = max(0, int(offset or 0)), max(1, min(int(limit or 40), 200))
-    page = [{"toolkit": slug, "pack_id": PREFIX + slug, "name": name, "does": (what or "")[:160], "logo": a["logo"],
+    from .logos import composio_logo
+    page = [{"toolkit": slug, "pack_id": PREFIX + slug, "name": name, "does": (what or "")[:160],
+             "logo": composio_logo(slug) if slug in cat else None,
              "category": (a["cats"] or [""])[0], "tools": a["tools"], "status": status(s, user_id, slug)}
             for slug, name, what, a in rows[offset:offset + limit]]
     return {"total": len(rows), "all": len(kits), "offset": offset, "apps": page, "live": bool(cat),

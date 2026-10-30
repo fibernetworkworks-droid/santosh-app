@@ -75,6 +75,11 @@ def directory_logo(github_url: str | None) -> str | None:
     return f"/api/logo/gh/{owner}?v={VERSION}" if owner else None
 
 
+def composio_logo(slug: str) -> str:
+    """v0.298 every Composio app gets a tile: its own logo, else its website's icon, else a drawn HD tile."""
+    return f"/api/logo/cmp/{slug}?v={VERSION}"
+
+
 def custom_logo(row) -> str | None:
     """An MCP server the owner added: its directory publisher's avatar, else the server host's own site."""
     from . import directory
@@ -112,6 +117,9 @@ def resolve(kind: str, key: str) -> tuple[str, str] | None:
     if kind == "dir":
         from . import directory
         return ("dir", key) if directory.logo_sources(key) is not None else None
+    if kind == "cmp":
+        from . import composio
+        return ("cmp", key) if key in composio.catalog() else None
     if kind == "mcp":
         from .db import CustomMcp, session_factory
         s = session_factory()
@@ -141,9 +149,28 @@ def _client():
         "Accept-Language": "en-IN,en;q=0.9,hi;q=0.8"})
 
 
+def _svg_png(data: bytes) -> bytes | None:
+    """v0.298 an SVG logo (Composio's are SVG) -> a 512 px PNG. resvg-py is optional: without it SVGs are skipped and
+    the next source is used."""
+    head = data[:1200].lstrip().lower()
+    if not (head.startswith(b"<svg") or (head.startswith(b"<?xml") and b"<svg" in head) or b"<svg" in head[:300]):
+        return None
+    try:
+        import resvg_py
+    except ImportError:
+        return None
+    try:
+        return bytes(resvg_py.svg_to_bytes(svg_string=data.decode("utf-8", "ignore"), width=512, height=512))
+    except Exception:
+        return None
+
+
 def _png(data: bytes) -> tuple[bytes, int] | None:
     """Any image -> square 128 px PNG (transparent padding). Returns (png, original width) or None."""
     from PIL import Image
+    svg = _svg_png(data)
+    if svg:
+        data = svg
     try:
         im = Image.open(io.BytesIO(data))
         if getattr(im, "n_frames", 1) > 1 or im.format == "ICO":
@@ -180,7 +207,7 @@ def _get(client, url: str) -> bytes | None:
         return None
     if r.status_code != 200 or not r.content or len(r.content) > MAX_BYTES:
         return None
-    if "html" in r.headers.get("content-type", ""):
+    if "html" in r.headers.get("content-type", "") and b"<svg" not in r.content[:400].lower():
         return None
     return r.content
 
@@ -241,6 +268,8 @@ def fetch(kind: str, target: str, client=None) -> bytes | None:
     its brand site, the listing's picture, its GitHub organisation, else a drawn HD tile."""
     if kind == "dir":
         return dir_logo(target, client)
+    if kind == "cmp":
+        return cmp_logo(target, client)
     got = fetch_sized(kind, target, client)
     return got[0] if got else None
 
@@ -297,6 +326,57 @@ def dir_logo(eid: str, client=None) -> bytes:
             client.close()
     title, field = directory.monogram_of(eid)
     return monogram(title, field)
+
+
+def cmp_sources(slug: str) -> list[str]:
+    """Where a Composio app's logo may come from, all from Composio's own catalogue: its logo address, then the icon of
+    the app's own website (app_url), the way Google indexes it, then the site's touch icon."""
+    from . import composio
+    a = composio.catalog().get(slug) or {}
+    out = []
+    if str(a.get("logo") or "").startswith("https://"):
+        out.append(a["logo"])
+    host = urlparse(str(a.get("app_url") or "")).hostname or ""
+    d = _registrable(host) if host else ""
+    if d and _DOMAIN.match(d):
+        out += [f"https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL"
+                f"&url=https://{d}&size=256", f"https://{d}/apple-touch-icon.png", f"https://www.{d}/apple-touch-icon.png"]
+    return out
+
+
+def cmp_logo(slug: str, client=None) -> bytes:
+    from . import composio
+    own = client is None
+    client = client or _client()
+    try:
+        deadline = time.time() + DIR_BUDGET_S          # a phone is waiting: never hang on a slow site
+        for url in cmp_sources(slug):
+            if time.time() > deadline:
+                break
+            try:
+                got = fetch_sized("url", url, client)
+            except Exception:
+                got = None
+            if got and got[1] >= 48:
+                return got[0]
+    finally:
+        if own:
+            client.close()
+    return monogram(*cmp_monogram(slug))
+
+
+def cmp_monogram(slug: str) -> tuple[str, str]:
+    from . import composio
+    a = composio.catalog().get(slug) or {}
+    return str(a.get("name") or slug), CMP_FIELD.get((a.get("cats") or [""])[0].lower(), "")
+
+
+CMP_FIELD = {"communication": "Communication", "productivity": "Productivity", "crm": "Business & CRM",
+             "developer tools": "Developer Tools", "marketing": "Marketing & SEO", "finance": "Finance & Payments",
+             "accounting": "Finance & Payments", "ai": "AI & Agents", "analytics": "Data & Analytics",
+             "design": "Design & Media", "e-commerce": "E-commerce", "ecommerce": "E-commerce", "security": "Security",
+             "social media": "Social Media", "storage": "Files & Documents", "documents": "Files & Documents",
+             "education": "Education & Research", "health": "Health & Science", "travel": "Maps & Travel"}
 
 
 CAT_COLORS = {  # two-stop gradients per category (deep -> bright), so a drawn tile still says what kind of server it is
@@ -425,6 +505,21 @@ def warm_in_background(pause_s: float = 0.4) -> None:
                 log.exception("logo %s failed", k)
             time.sleep(pause_s)
         log.info("logos ready: %s of %s", n, len(domains()))
+        try:                     # v0.298 then every Composio app's logo, gently (cached files make later starts instant)
+            from . import composio
+            slugs = list(composio.catalog()) if composio.configured() else []
+        except Exception:
+            slugs = []
+        m = 0
+        for slug in slugs:
+            try:
+                if logo("cmp", slug):
+                    m += 1
+            except Exception:
+                log.exception("logo cmp:%s failed", slug)
+            time.sleep(pause_s)
+        if slugs:
+            log.info("composio logos ready: %s of %s", m, len(slugs))
     threading.Thread(target=go, daemon=True, name="logo-warm").start()
 
 
@@ -450,9 +545,9 @@ def logo(kind: str, key: str) -> bytes | None:
         if data:
             png.write_bytes(data)
             miss.unlink(missing_ok=True)
-            if kind == "dir":
+            if kind in ("dir", "cmp"):
                 from . import directory
-                is_drawn = data == monogram(*directory.monogram_of(key))
+                is_drawn = data == (monogram(*directory.monogram_of(key)) if kind == "dir" else monogram(*cmp_monogram(key)))
                 if is_drawn:
                     drawn.touch()
                 else:
