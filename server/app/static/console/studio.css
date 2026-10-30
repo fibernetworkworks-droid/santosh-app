@@ -654,3 +654,33 @@ p{margin:0}
   .agent:hover,.agent:hover .ai,.tg:hover .ic,.sn:hover .ic,.back:hover .ic{transform:none}}
 :host-context(.calm) #shell .snav>*{animation:none}
 :host-context(.calm) .agent:hover,:host-context(.calm) .agent:hover .ai,:host-context(.calm) .tg:hover .ic,:host-context(.calm) .sn:hover .ic{transform:none}
+
+/* ---------- v0.307 ENGINES: what is switched on behind Create ---------- */
+.eng .sec-h{align-items:flex-start;gap:16px}
+.eg-feats{display:flex;flex-wrap:wrap;gap:8px}
+.eg-feat{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:99px;font-size:13px;border:1px solid var(--line);color:var(--dim);background:var(--surface)}
+.eg-feat.eg-on{color:var(--ink);border-color:transparent;background:var(--okSoft)}
+.eg-feat.eg-on .ic{color:var(--ok)}
+.eg-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;align-items:start}
+.eg-card{display:flex;flex-direction:column;gap:9px;padding:16px;border-radius:16px;border:1px solid var(--line);background:var(--surface);transition:border-color .18s,box-shadow .22s}
+.eg-card:hover{border-color:var(--line2);box-shadow:0 8px 22px -14px rgb(0 0 0 / .3)}
+.eg-card.eg-bad{border-color:rgb(220 70 70 / .35)}
+.eg-h{display:flex;align-items:center;gap:10px}
+.eg-h b{font-weight:600;font-size:15px;flex:1;min-width:0}
+.eg-st{height:24px;padding:0 10px;border-radius:99px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;white-space:nowrap}
+.eg-st.eg-ok{background:var(--okSoft);color:var(--ok)}
+.eg-st.eg-off{background:var(--sunk);color:var(--mut)}
+.eg-st.eg-bad{background:rgb(220 70 70 / .12);color:var(--bad)}
+.eg-d{font-size:13px}
+.eg-p{display:flex;flex-wrap:wrap;gap:6px}
+.eg-p span{font-size:12px;padding:3px 9px;border-radius:8px;background:var(--sunk);color:var(--mut)}
+.eg-c{font-size:12.5px}
+.eg-how{border-top:1px solid var(--line);padding-top:8px}
+.eg-how summary{list-style:none;display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:500;color:var(--priInk)}
+.eg-how summary::-webkit-details-marker{display:none}
+.eg-how summary .ic{transition:transform .15s}
+.eg-how[open] summary .ic{transform:rotate(180deg)}
+.eg-how ol{margin:8px 0 6px;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--mut)}
+.eg-how a{color:var(--priInk)}
+.eg-how code{font:12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--sunk);padding:1px 6px;border-radius:6px;color:var(--ink);word-break:break-all}
+@media (prefers-reduced-motion:reduce){.eg-card,.eg-how summary .ic{transition:none}}

@@ -11496,3 +11496,27 @@ Built (studio.css block "v0.306 PREMIUM STUDIO SIDEBAR", a few lines of studio.j
 - all motion off under prefers-reduced-motion and under her Calm setting (:host-context(.calm)).
 Preview: before / after stills (rest, hover agent, hover tool, active page; light + dark) and a recorded video of the
 animations. Tests: tests/test_v0306_studio_sidebar.py.
+
+
+## v0.307.0 STUDIO APIS (30 Oct 2026)
+Owner: "NOW REAL APIS SETUP FOR STUDIO WORK".
+Create runs on six outside services, all keyed from the VPS .env (app/config.py): Google Gemini (pictures, voice-overs,
+Lyria songs, dubbing, video understanding), OpenRouter (every video model + live prices), Anthropic (storyboards,
+scripts, Enhance / Improve), Sync Labs (lip sync), fal and BytePlus ModelArk (backup video routes). Nothing showed which
+of them was really switched on, so a missing or dead key only surfaced as a failed job.
+Built - keys stay ONLY in the VPS .env (rule), nothing here ever reads one out:
+- app/studio/apis.py: per engine, is a key set, then ONE free question to the provider (never a generation):
+  OpenRouter GET /api/v1/key (also gives credit left), Gemini GET /v1beta/models (a bad key answers 400 with
+  API_KEY_INVALID - read as refused), Anthropic GET /v1/models. Sync / fal / ARK have no free check: "Key set".
+  States: ready / unchecked (key set) / missing / refused (401/403/invalid; 402 = no credit) / unreachable. Plus what
+  she can make right now (Pictures, Voice-overs, Songs, Dubbing, Video clips, Director films, Storyboards and scripts,
+  Lip sync, Video editor) and whether ffmpeg is on the server. 10-minute cache; base-URL overrides respected.
+- GET /api/studio/apis (fresh=1 at most once a minute); `python -m app.studio.apis` prints the table.
+- vps-ops job `studio_apis`: which key NAMES are in ~/apps/santosh-core/.env (values never printed), ffmpeg, then the
+  running app's live check.
+- Create Studio: Setup > Engines page - what she can make now (chips), a card per engine (status, the reason, what it
+  powers, cost note, optional tag) and, when not ready, "How to switch it on": get a key (link) -> one line in
+  ~/apps/santosh-core/.env -> pm2 restart santosh --update-env -> Check again; "never paste a key into the chat".
+- Class names prefixed eg- after the preview caught .ed (the video editor's page grid) and .bad (red text) clashing.
+Checked from the sandbox against the REAL providers with fake keys: OpenRouter 401, Anthropic 401, Gemini 400
+API_KEY_INVALID all reported as "Key refused". Tests: tests/test_v0307_studio_apis.py (MockTransport, no network).

@@ -162,9 +162,10 @@ window.HoolaCreate = ctx => {
     ['l', 'Tools'], ['t'],
     ['l', 'Assets'], ['projects', 'Film projects', 'folder'], ['brand', 'Brand kit', 'brand'], ['library', 'My creations', 'lib'],
     ['l', 'Inspire'], ['templates', 'Templates', 'tpl'], ['learn', 'How-to guides', 'book'],
+    ['l', 'Setup'], ['engines', 'Engines', 'sliders'],
   ];
   const TOOLS = [['video','Video','video'],['image','Image','image'],['music','Music','music'],['voice','Voice','mic'],['dubbing','Dubbing','dub'],['editor','Editor','cut']];
-  const TITLE = {studio:'Studio home', video:'Video', image:'Image', music:'Music studio', voice:'Voice studio', dubbing:'Dubbing', editor:'Video editor', director:'Director', script:'Script writer', casting:'AI casting', templates:'Templates', library:'My creations', projects:'Film projects', brand:'Brand kit', learn:'How-to guides'};
+  const TITLE = {engines:'Engines', studio:'Studio home', video:'Video', image:'Image', music:'Music studio', voice:'Voice studio', dubbing:'Dubbing', editor:'Video editor', director:'Director', script:'Script writer', casting:'AI casting', templates:'Templates', library:'My creations', projects:'Film projects', brand:'Brand kit', learn:'How-to guides'};
   function shellHTML() {
     return `<link rel="stylesheet" href="/static/console/studio.css?v=${esc(ctx.version || '')}">
 <div id="shell">
@@ -1210,6 +1211,34 @@ ${SPRITE}`;
       if (b.dataset.openproj) { DIR.project = b.dataset.openproj; DIR.view = null; go('director'); return; }
       if (b.dataset.yes || b.dataset.no) { b.disabled = true; await decide(b.dataset.yes || b.dataset.no, !!b.dataset.yes); await load('studio', true); drawLib(); return; }
       await itemAction(b); });
+  };
+  /* ---------------- v0.307 ENGINES: the real AI services behind Create, checked live; keys never come to the browser ---------------- */
+  const EST = {ready: ['Ready', 'ok'], unchecked: ['Key set', 'ok'], missing: ['No key', 'off'], refused: ['Key refused', 'bad'], unreachable: ['Not reachable', 'bad']};
+  V.engines = () => `<div class="home eng">
+    <div class="sec-h" style="margin:0"><div><h2 style="font:400 28px/1.2 var(--serif)">Engines</h2><p class="mut" style="margin-top:6px">The real AI services behind Create. Keys live only on your server (the .env), never in the app or the chat.</p></div>
+      <button class="btn sec" data-recheck>${I('redo', 'width:15px;height:15px')}Check again</button></div>
+    <div id="engs"><p class="mut">Checking each engine…</p></div></div>`;
+  function drawEngines(r) {
+    const el = $('#engs'); if (!el) return;
+    if (!r) { el.innerHTML = '<p class="mut">Could not check the engines just now.</p>'; return; }
+    el.innerHTML = `<div class="eg-feats">${r.features.map(f => `<span class="eg-feat ${f.ready ? 'eg-on' : ''}" title="${esc(f.why || 'Ready')}">${I(f.ready ? 'check' : 'x', 'width:13px;height:13px')}${esc(f.name)}</span>`).join('')}</div>
+      <p class="dim" style="font-size:12.5px;margin:10px 0 2px">Checked ${when(r.checked_at).replace('Just now', 'just now')} with free calls only (a key or model list), never a paid job.${r.ffmpeg ? '' : ' ffmpeg is missing on the server: dubbing and the editor need it.'}</p>
+      <div class="eg-list">${r.engines.map(e => { const [label, tone] = EST[e.state] || [e.state, 'off'], good = tone === 'ok';
+        return `<div class="eg-card eg-${tone}"><div class="eg-h"><b>${esc(e.name)}</b><span class="eg-st eg-${tone}">${label}</span></div>
+          <p class="mut eg-d">${esc(e.detail)}</p>
+          <div class="eg-p">${e.powers.map(p => `<span>${esc(p)}</span>`).join('')}</div>
+          <p class="dim eg-c">${esc(e.cost)}${e.need ? '' : ' · optional'}</p>
+          ${good ? '' : `<details class="eg-how"${e.need ? ' open' : ''}><summary>${I('down', 'width:14px;height:14px')}How to switch it on</summary><ol>
+            <li>Get a key: <a href="${esc(e.get)}" target="_blank" rel="noopener noreferrer">${esc(e.get.replace(/^https:\/\//, ''))}</a></li>
+            <li>On the VPS, add one line to <code>~/apps/santosh-core/.env</code>: <code>${esc(e.env[0])}=your-key</code></li>
+            <li>Restart: <code>pm2 restart santosh --update-env</code></li>
+            <li>Press <b>Check again</b> (or run the VPS ops job <code>studio_apis</code>).</li></ol>
+            <p class="dim" style="font-size:12px">Never paste a key into the chat. If one was ever shared, make a new one and delete the old.</p></details>`}</div>`; }).join('')}</div>`;
+  }
+  W.engines = el => {
+    const run = async fresh => { try { drawEngines(await api('GET', '/api/studio/apis' + (fresh ? '?fresh=1' : ''))); } catch (e) { drawEngines(null); toast(e.message, true); } };
+    run(false);
+    el.addEventListener('click', async e => { const b = e.target.closest('[data-recheck]'); if (!b) return; b.disabled = true; $('#engs').style.opacity = '.55'; await run(true); $('#engs').style.opacity = ''; b.disabled = false; });
   };
   V.projects = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 28px/1.2 var(--serif)">Film projects</h2><button class="btn pri" data-newfilm>${I('plus', 'width:16px;height:16px')}New film</button></div><div class="scenes" id="films"></div></div>`;
   W.projects = el => { load('studio', true).then(() => redraw('projects', drawFilms));
