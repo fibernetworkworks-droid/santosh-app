@@ -1,4 +1,4 @@
-"""v0.299.0 NO RADIO (owner: "WHEN HOOLA AI INITIATES TALK, BEFORE THAT I GET A RADIO LIKE SOUND --- CHECK FIRST THEN FIX"):
+"""v0.298.0 NO RADIO (owner: "WHEN HOOLA AI INITIATES TALK, BEFORE THAT I GET A RADIO LIKE SOUND --- CHECK FIRST THEN FIX"):
 the sound was v0.266's breath - when no real recorded breath was ready (every first call after a restart) the server
 played a GENERATED one, band-limited noise, which on a phone sounds like radio static right before his first word."""
 from pathlib import Path
@@ -31,5 +31,5 @@ def test_plan_breath_does_nothing_when_off():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.299.0"
-    assert "0.299.0+339" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.301.0"
+    assert "0.301.0+341" in (ROOT / "pubspec.yaml").read_text()

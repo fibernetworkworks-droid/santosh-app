@@ -1,4 +1,4 @@
-"""v0.299 WEB DESIGN PHASE 3, live features: a booking form with her REAL free slots (the visitor asks, she confirms),
+"""v0.301 WEB DESIGN PHASE 3, live features: a booking form with her REAL free slots (the visitor asks, she confirms),
 a map / YouTube video that load only on a tap (frame-src allows only those two), Pay-by-UPI buttons to HER UPI ID
 with a QR code (WhatsApp order without one), a second language under /<lang>/ with a switch (Opus translates, a
 broken translation is dropped, edits reach it), and the launch bug where a live site lost every photo."""
@@ -184,5 +184,5 @@ def _has(html, e):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.299.0"
-    assert "0.299.0+339" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.301.0"
+    assert "0.301.0+341" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

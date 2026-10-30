@@ -11272,7 +11272,67 @@ Live check on her VPS (v0.294 `check`): 1,709 apps in Composio, 1,687 offered, 1
 Tests: NEW `test_v0298_no_radio.py` (4); `test_v0264_openai_voice.py` breath tests follow the new default.
 Version 0.298.0 (pubspec 0.298.0+338, console ?v=0.298.0, pins -> 0.298.0).
 
-## v0.299.0 WEB DESIGN PHASE 3 — live features (owner: "START PHASE 3")
+## v0.299.0 KHULI JAGAH — three asks, and two of them were one problem
+Owner, in one message: *"PANEL WHERE CHAT LANDS … IS EXCEEDING THE SIZE LENGHT OF CHAT BOX MAKE IT SLIGH INSIDE"*,
+*"WHEN HOOLA PERFECOM LONG TASK THE LODING, THINGING SECTION GET HIDE FOR WHILE — FIND ROUTE CAUSE AND FIX THIS"*,
+*"REMOVE AVATHAR ICON ENTIERLY FROM CHAT SPACE"*.
+
+### (1) and (3) were the same thing
+v0.252 pulled the reply row `margin-left:-44px` so the **avatar** could hang outside the column while the words
+still began at the composer's left edge. That pull is exactly why the row measured 924px against the composer's
+880 and stuck 44px past its left edge. Remove the face and the overhang has no reason to exist.
+
+Measured in a browser, composer `236.5..1116.5` in both runs:
+
+| | row | past the composer | avatars |
+|---|---|---|---|
+| before | 192.5..1116.5 (**924px**) | **44px out** on the left | 2 |
+| after | 252.5..1100.5 (**848px**) | **16px inside**, both sides | 0 |
+
+The avatar is **not drawn** — `hoolaBlock()` and the progress row both stop making one — rather than hidden with
+CSS, so nothing holds an empty 44px slot. Every dead `.progress-avatar`, `#app .mh>.av` and `.simple-progress.tail`
+rule was deleted rather than left to mislead the next change (the v0.294 lesson). The loader label still lands on
+the reply text's own left edge, now because nothing is pulled at all.
+
+**This reverses v0.252's flush edge, on her explicit ask.** The pairing survives: the chat's width is still
+derived from the composer's (848 against 880), not chosen independently.
+
+### (2) The loader going quiet — root cause
+`seg()` hides the progress row the moment a text block starts streaming. That is correct: the words themselves
+show it is working, and v0.227 put it there so only one thing says "busy". **But nothing ever brought it back.**
+The row was only un-hidden by the *next* progress event. So a long job read:
+
+> narration line arrives → row hides → a 40-second tool runs with no events to send → the screen sits dead, no
+> loader and no clock, until the next step lands
+
+`placeProgress()` is now called again the moment a block finishes streaming while the turn is still live
+(`fin && TYPING`), so the gap between "what I'm doing" and the next step is never silent. The hiding itself is
+kept — it was never the bug.
+
+### Tests that had to change
+Four suites pinned decisions the owner has now reversed, so they were **rewritten to the new truth rather than
+deleted**, each recording what changed and why: `test_v0252_reading_width.py` and `test_v0276_padhne_ki_chaudai.py`
+(column was flush, now 16px inside), `test_v0227_single_avatar.py` and `test_v0234_one_avatar.py` (no second
+avatar to avoid when there is no avatar), and `test_v0296_ek_hi_kinara.py`, whose four avatar-alignment tests went
+with the avatar — replaced by two that keep the **goal** they protected: one left edge for the whole turn.
+
+### Files
+`server/app/static/console/v2.js` · `server/app/static/console/v2.css` ·
+`server/tests/test_v0298_khuli_jagah.py` (8 tests).
+## v0.300.0 APP LOGOS (built as 0.299.0, re-versioned after main reached 0.299.0; 30 Oct 2026, owner: "NOW A REAL LOGO ICON FOR EVERY APP --- WORK ON IT AND DEPLOY")
+- Every Composio app card carries `logo: /api/logo/cmp/<slug>?v=2`, served by Hoola like every other plugin logo
+  (phones never call third parties). `logos.resolve("cmp", slug)` only for slugs in Composio's live catalogue.
+- `logos.cmp_logo()`: sources from the catalogue only - `meta.logo` (Composio's logo address), then the app's own
+  website (`meta.app_url` -> Google's 256 px favicon, apple-touch-icon); 12 s budget; else `monogram()` in the
+  category colour (`CMP_FIELD`). Drawn tiles are retried after 3 days like directory logos.
+- SVG: `_svg_png()` renders SVG with resvg-py (512 px) before the usual 256 px PNG step; optional import, so without it
+  the next source is used. `_get` accepts an SVG even when served as text/html.
+- Warm-up: after the plugin logos, every Composio app logo is fetched once in the background (cached files make later
+  starts instant). Phone: `PluginCard(logo: a['logo'])`.
+- VPS: `~/apps/santosh-core/.venv/bin/pip install resvg-py` (added to requirements.txt). Tests: 3 more in
+  test_v0276_composio.py.
+
+## v0.301.0 WEB DESIGN PHASE 3 — live features (owner: "START PHASE 3")
 Flaws 10-13 of the web design audit: the booking section promised "next free slots from Hoola" on a page that could not
 load anything; map / video embeds were stripped with no safe way back; one language per site; no way to take a payment.
 - **Placeholders, built by Hoola** (`server/app/site/live.py`, `expand` runs in `build.assemble` after the photos):
@@ -11302,7 +11362,7 @@ load anything; map / video embeds were stripped with no safe way back; one langu
 - **FIXED, found while building this**: a LAUNCHED site lost every photo. `assemble` looked for photos at
   `out.parent/src`, right for the preview (site folder) but wrong for a launch (built inside the hosting folder),
   so `picture()` got no sizes and returned "". Photos now come from `site["src_root"]` (`_ctx`), every build.
-- Tests `server/tests/test_v0299_live_features.py` (5) + a real-Chromium run of the booking form, map and video.
-- Built as 0.296.0, re-versioned 0.299.0 on merge past the parallel v0.296-v0.298 work.
+- Tests `server/tests/test_v0301_live_features.py` (5) + a real-Chromium run of the booking form, map and video.
+- Built as 0.296.0, re-versioned 0.301.0 on merge past the parallel v0.296-v0.300 work.
 - Not verified on the VPS: Google's map embed URL without a key from a real site; slots for an owner whose booking
   rules were never set (defaults: Mon-Sat 9-6).

@@ -445,7 +445,7 @@ def answer(tenant: str, ref: str, answers: dict[str, Any]) -> dict[str, Any]:
             v = _tidy(v, 600)
             if not v:
                 continue
-            if k == "upi":                     # v0.299 her UPI ID for Pay buttons (only hers, only in her words)
+            if k == "upi":                     # v0.301 her UPI ID for Pay buttons (only hers, only in her words)
                 from . import live as LV
                 if not LV.vpa_ok(v):
                     raise SiteError("UPI ID sahi nahi lagta (jaise sharmasweets@okicici).")
@@ -713,7 +713,7 @@ def _ctx(r: Site) -> dict[str, Any]:
             "legal": (L.fields().get(r.field) or {}).get("legal", []), "language": _j(r.languages, ["en"])[0],
             "logo_path": logo, "noindex": True,
             "ai_photos": any(p.get("ai") for p in _j(r.photos, [])),       # v0.292 the footer says so
-            "src_root": str(B.src_dir(r.tenant_id, r.id)),                 # v0.299 photos always from here (launch too)
+            "src_root": str(B.src_dir(r.tenant_id, r.id)),                 # v0.301 photos always from here (launch too)
             "alt": _alt(r)}
 
 
@@ -723,7 +723,7 @@ def second_language(r: Site) -> str:
 
 
 def _alt(r: Site) -> dict[str, Any] | None:
-    """v0.299 the second language for build.assemble (translated sections where they exist, else the source)."""
+    """v0.301 the second language for build.assemble (translated sections where they exist, else the source)."""
     lang = second_language(r)
     if not lang:
         return None
@@ -1082,7 +1082,7 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
     _emit(r)
     if not _write_sections(r, plan, states, extra):
         return
-    try:                                      # v0.299 the second language follows every change
+    try:                                      # v0.301 the second language follows every change
         _translate(_load(r.id))
     except Exception:
         log.exception("translation during build failed")
@@ -1325,7 +1325,7 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
     for k, v in (res.get("facts") or {}).items():
         if k in ("phone", "whatsapp", "email", "address", "hours", "name", "tagline", "city", "youtube") and v:
             facts[k] = _tidy(v, 300)
-        elif k == "upi" and v:                 # v0.299 only a real UPI ID she gave
+        elif k == "upi" and v:                 # v0.301 only a real UPI ID she gave
             from . import live as LV
             if LV.vpa_ok(str(v)):
                 facts[k] = str(v).strip()
@@ -1473,7 +1473,7 @@ def _ensure_pictures(r: Site) -> int:
     return made
 
 
-# ---------------------------------------------------------------- v0.299 bookings from the website (her real slots)
+# ---------------------------------------------------------------- v0.301 bookings from the website (her real slots)
 def site_slots(site_id: str) -> dict[str, Any]:
     from . import live as LV
     return {"slots": LV.slots(site_id)}
@@ -1663,7 +1663,7 @@ def save_version(site_id: str, note: str = "") -> None:
         plan = _j(r.plan, {})
         r = _save(r.id, status="checking", stage="checks", board=_board(r, plan, None, "Aapke badlav jaanch raha hoon"))
         _emit(r)
-        try:                                  # v0.299 her edits reach the second language too
+        try:                                  # v0.301 her edits reach the second language too
             _translate(r)
         except Exception:
             log.exception("translation during save failed")

@@ -27,41 +27,25 @@ def _css() -> str:
     return CSS.read_text()
 
 
-def test_the_working_row_is_pulled_with_the_message_row():
+# v0.299 SUPERSEDED THE MECHANISM, NOT THE GOAL. The owner then asked for the avatar to go from the chat
+# entirely, so there is no face to align and no 44px slot to match: the row simply sits in the column like every
+# other row, and the label starts on the reply's own left edge because nothing is pulled any more. The four tests
+# that pinned the pull, the 30px avatar box, its glow ring and the hidden tail slot are gone with the thing they
+# described. What is kept below is the GOAL they existed to protect - one left edge for the whole turn.
+
+
+def test_the_working_row_starts_on_the_reply_s_own_left_edge():
     css = _css()
-    m = re.search(r"@container thread \(min-width: 980px\)\{(.+?)\n\}", css, re.S)
-    assert m, "the container query moved"
-    body = m.group(1)
-    assert "#app .mh{margin-left:-44px;width:calc(100% + 44px);max-width:none}" in body
-    assert "#app .simple-progress{margin-left:-44px;width:calc(100% + 44px)}" in body
+    js = (ROOT / "server/app/static/console/v2.js").read_text()
+    assert "margin-left:-44px" not in css                  # nothing is pulled outside the column any more
+    assert "progress-avatar" not in css                    # and nothing holds a slot the reply row does not
+    assert "function placeProgress()" in js                # the row is positioned in one place, as the last child
+    assert "col.appendChild(SIMPLE_PROGRESS)" in js
 
 
-def test_the_working_avatar_takes_the_same_slot_as_the_reply_avatar():
-    """30px box + the 14px gap = the 44px the message row uses. The ring is drawn outside, so it still reads 34."""
+def test_the_column_is_the_one_that_sets_the_edge():
     css = _css()
-    av = [ln for ln in css.splitlines() if ln.startswith("#app .progress-avatar{")]
-    assert len(av) == 1 and "width:30px;height:30px" in av[0], av
-    assert "34px" not in av[0]
-    msg = [ln for ln in css.splitlines() if ln.startswith("#app .mh>.av{")]
-    assert msg and "width:30px;height:30px" in msg[0], msg          # the two now match
-    img = [ln for ln in css.splitlines() if ln.startswith("#app .progress-avatar img{width:30px")]
-    assert len(img) == 1 and "margin:0" in img[0], img              # the 2px inset went with the 34px box
-    gap = [ln for ln in css.splitlines() if ln.startswith("#app .simple-progress{gap:")]
-    assert gap and "gap:14px" in gap[0], gap
-
-
-def test_the_glow_ring_still_sits_outside_the_box():
-    """The circle must still LOOK 34px wide - only the slot changed."""
-    css = _css()
-    ring = [ln for ln in css.splitlines() if ln.startswith("#app .progress-avatar:before{")]
-    assert ring, "the ring rule moved"
-    assert any("inset:-2px" in ln or "inset:-3px" in ln for ln in ring), ring
-
-
-def test_the_hidden_avatar_in_tail_mode_still_holds_the_same_44px():
-    css = _css()
-    tail = [ln for ln in css.splitlines() if ".simple-progress.tail .progress-avatar{" in ln]
-    assert tail and "width:30px" in tail[0], tail
+    assert "#app .col{width:min(848px,calc(100% - 20px))" in css
 
 
 def test_v0293_clock_is_untouched():
@@ -73,5 +57,5 @@ def test_v0293_clock_is_untouched():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.299.0"
-    assert "0.299.0+339" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.301.0"
+    assert "0.301.0+341" in (ROOT / "pubspec.yaml").read_text()

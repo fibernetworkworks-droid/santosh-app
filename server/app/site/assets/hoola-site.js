@@ -200,7 +200,7 @@
       if (r) r.addEventListener('input', function () { c.style.setProperty('--hs-pos', r.value + '%'); });
     });
   }
-  // v0.299 the map / the video load only when the visitor taps (no third party before she asks)
+  // v0.301 the map / the video load only when the visitor taps (no third party before she asks)
   function embeds() {
     $$('.hs-map, .hs-video').forEach(function (fig) {
       var b = fig.querySelector('.hs-load');
@@ -215,7 +215,7 @@
       });
     });
   }
-  // v0.299 booking: her REAL free times from Hoola; the visitor asks for one, the owner confirms it
+  // v0.301 booking: her REAL free times from Hoola; the visitor asks for one, the owner confirms it
   function booking() {
     $$('form[data-hoola-book]').forEach(function (f) {
       var ep = f.getAttribute('data-endpoint'), box = f.querySelector('.hs-slots'), btn = f.querySelector('[type=submit]'),

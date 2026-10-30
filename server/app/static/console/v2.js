@@ -428,8 +428,11 @@ function editBubble(d, text) {
   ta.addEventListener('keydown', e => { if (e.key === 'Escape') cancel(); if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); save(); } });
 }
 function hoolaBlock() {
+  // v0.299: no avatar in the chat space (owner: "REMOVE AVATHAR ICON ENTIERLY FROM CHAT SPACE"). The face is not
+  // drawn at all rather than hidden with CSS, so nothing holds a 44px slot and nothing has to hang outside the
+  // column to make the words line up - which is also what put the reply row 44px wider than the composer.
   const d = document.createElement('div'); d.className = 'mh';
-  d.innerHTML = `<span class="av"><img src="${$('#uimg').src}" alt=""></span><div class="bd"></div>`;
+  d.innerHTML = `<div class="bd"></div>`;
   SINK.appendChild(d); return d.querySelector('.bd');
 }
 function turn() { if (!TURN) TURN = {bd: hoolaBlock(), groups: [], text: null, afterText: false, t0: Date.now()}; return TURN; }
@@ -491,21 +494,28 @@ function simpleProgress(kind,p={}) {
   if (!SIMPLE_PROGRESS) {
     SIMPLE_PROGRESS=document.createElement('div');SIMPLE_PROGRESS.className='simple-progress';
     SIMPLE_PROGRESS.setAttribute('role','status');SIMPLE_PROGRESS.setAttribute('aria-live','polite');SIMPLE_PROGRESS.setAttribute('aria-atomic','true');
-    const avatar=document.createElement('span');avatar.className='progress-avatar av';avatar.setAttribute('aria-hidden','true');
-    const img=document.createElement('img');img.src=$('#uimg').src;img.alt='';avatar.appendChild(img);
-    const label=document.createElement('span');label.className='progress-label';
+    const label=document.createElement('span');label.className='progress-label';   // v0.299: no avatar here either
     const dots=document.createElement('span');dots.className='progress-dots';dots.setAttribute('aria-hidden','true');dots.innerHTML='<i></i><i></i><i></i>';
     const secs=document.createElement('span');secs.className='progress-secs';secs.setAttribute('aria-hidden','true');   // v0.293 the clock is decoration; the label is what a screen reader reads
-    SIMPLE_PROGRESS.append(avatar,label,dots,secs);
+    SIMPLE_PROGRESS.append(label,dots,secs);
     PROGRESS_T0=Date.now();clearInterval(PROGRESS_TIMER);PROGRESS_TIMER=setInterval(progressTick,1000);
   }
-  if(SIMPLE_PROGRESS.parentElement!==col||SIMPLE_PROGRESS.nextElementSibling)col.appendChild(SIMPLE_PROGRESS);   // v0.227.3 always the last row
-  const prev=SIMPLE_PROGRESS.previousElementSibling;   // right under Hoola's own reply row: no second avatar
-  SIMPLE_PROGRESS.classList.toggle('tail',!!prev&&prev.classList.contains('mh')&&!!TURN&&prev.contains(TURN.bd)&&TURN.bd.childElementCount>0);   // v0.234 an empty (hidden) reply row lends no avatar
-  SIMPLE_PROGRESS.hidden=false;
+  placeProgress();
   const label=PROGRESS_POLICY.phase(kind,p);
   const text=SIMPLE_PROGRESS.querySelector('.progress-label');if(text.textContent!==label)text.textContent=label;
   scrollDown();
+}
+/* v0.299 (owner: "WHEN HOOLA PERFECOM LONG TASK THE LODING, THINGING SECTION GET HIDE FOR WHILE - FIND ROUTE
+   CAUSE AND FIX THIS"). The root cause: seg() hides this row the moment a text block starts streaming - right,
+   because the words themselves show it is working - but NOTHING brought it back when those words ended. It was
+   only ever un-hidden by the NEXT progress event. So on a long job the shape was: narration line arrives, row
+   hides, Hoola runs a 40-second tool with no events to send, and the screen sits dead with no loader and no
+   clock until the next step. placeProgress() is now called again the moment a block finishes streaming while the
+   turn is still running, so the gap between "what I'm doing" and the next step is never silent. */
+function placeProgress(){
+  if(!SIMPLE_PROGRESS)return;
+  if(SIMPLE_PROGRESS.parentElement!==col||SIMPLE_PROGRESS.nextElementSibling)col.appendChild(SIMPLE_PROGRESS);   // v0.227.3 always the last row
+  SIMPLE_PROGRESS.hidden=false;
 }
 function clearSimpleProgress(){SIMPLE_PROGRESS?.remove();SIMPLE_PROGRESS=null;clearInterval(PROGRESS_TIMER);PROGRESS_TIMER=0;}
 function stepEvent(p) { simpleProgress('step',p); }
@@ -562,7 +572,13 @@ function seg(R, n) {
   if (TYPING && TYPING.parentNode === R.t.bd) TYPING.hidden = true;    // the words themselves show that it is working
   if (SIMPLE_PROGRESS) SIMPLE_PROGRESS.hidden = true;                    // v0.227.3 one row: the streaming words replace the progress line
   const view = new HoolaMD.Live(el);
-  S = {el, view, pacer: new HoolaStream.Pacer((text, fin) => { view.update(text, !fin); scrollDown(); })};
+  S = {el, view, pacer: new HoolaStream.Pacer((text, fin) => {
+    view.update(text, !fin);
+    // v0.299: the block is written and the turn is still going - show the loader again instead of leaving the
+    // screen dead until the next step event arrives.
+    if (fin && TYPING) placeProgress();
+    scrollDown();
+  })};
   R.segs.set(n, S);
   return S;
 }

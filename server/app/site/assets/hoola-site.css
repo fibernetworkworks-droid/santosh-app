@@ -119,7 +119,7 @@ details.faq[open] summary::after{transform:rotate(45deg)}
 /* v0.292 one icon set (Lucide) */
 .hs-ic{display:inline-block;width:1.25em;height:1.25em;flex:none;vertical-align:-.22em;stroke-width:2}
 .hs-ai-note{font-size:.85rem;margin:.8em 0 0}
-/* v0.299 live features: map / video load on tap, booking slots, UPI pay */
+/* v0.301 live features: map / video load on tap, booking slots, UPI pay */
 .hs-map,.hs-video{margin:0;border-radius:var(--radius);overflow:hidden;background:var(--c-surface);border:1px solid var(--c-line)}
 .hs-map.on iframe,.hs-video.on iframe{display:block;width:100%;border:0;aspect-ratio:16/9;min-height:260px}
 .hs-map-face{display:grid;gap:.6em;padding:clamp(18px,4vw,32px);justify-items:start}

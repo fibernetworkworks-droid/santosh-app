@@ -369,3 +369,49 @@ def test_v0296_key_app_in_chat_never_asks_for_the_key(cz):
     from app.bazar.connectors.base import ToolError
     with pytest.raises(ToolError, match="chat mein kabhi nahi"):
         cz["svc"].run("default", cz["conv"]["default"], "cmp-zendesk", "ZENDESK_LIST_ALL_CHANNELS", {})
+
+
+class _Resp:
+    def __init__(self, status, content, ctype):
+        self.status_code, self.content, self.headers = status, content, {"content-type": ctype}
+
+
+class _LogoClient:
+    def __init__(self, svg_ok=True):
+        self.svg_ok, self.urls = svg_ok, []
+
+    def get(self, url):
+        self.urls.append(url)
+        if url.startswith("https://logos.composio.dev/") and self.svg_ok:
+            return _Resp(200, b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
+                              b'<rect width="24" height="24" rx="5" fill="#4A154B"/></svg>', "image/svg+xml")
+        return _Resp(404, b"", "text/html")
+
+    def close(self):
+        pass
+
+
+def test_v0298_every_app_card_carries_a_hoola_served_logo(cz):
+    apps = cz["svc"].composio_apps("default")["apps"]
+    assert all(a["logo"] == f"/api/logo/cmp/{a['toolkit']}?v=2" for a in apps)
+
+
+def test_v0298_svg_logo_becomes_a_crisp_png(cz):
+    pytest.importorskip("resvg_py")
+    from PIL import Image
+    import io
+    from app.bazar import logos
+    png = logos.cmp_logo("slack", _LogoClient())
+    im = Image.open(io.BytesIO(png))
+    assert im.format == "PNG" and im.size == (256, 256)
+    assert png != logos.monogram(*logos.cmp_monogram("slack"))       # the real mark, not a drawn tile
+
+
+def test_v0298_no_logo_anywhere_still_gets_a_drawn_tile(cz):
+    from app.bazar import logos
+    c = _LogoClient(svg_ok=False)
+    png = logos.cmp_logo("slack", c)
+    assert png == logos.monogram(*logos.cmp_monogram("slack"))
+    assert c.urls[0] == "https://logos.composio.dev/slack"
+    assert logos.resolve("cmp", "slack") == ("cmp", "slack")
+    assert logos.resolve("cmp", "gmail") is None and logos.resolve("cmp", "not-a-real-app") is None

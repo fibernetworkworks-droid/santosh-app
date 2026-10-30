@@ -227,6 +227,7 @@ class _McpScreenState extends State<McpScreen> {
     return PluginCard(
       name: a['name'] as String? ?? '',
       does: a['does'] as String? ?? '',
+      logo: a['logo'] as String?,       // v0.298 Hoola-served path: the app's own logo, cached on the server
       category: [if ((a['category'] as String? ?? '').isNotEmpty) a['category'], if (tools > 0) '$tools tools'].join(' · '),
       onTap: st == 'ready' ? () => _composioRemove(a) : null,
       action: action,

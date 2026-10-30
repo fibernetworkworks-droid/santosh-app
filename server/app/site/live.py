@@ -1,4 +1,4 @@
-"""v0.299 Website live features (web design Phase 3): things a static page could not do before.
+"""v0.301 Website live features (web design Phase 3): things a static page could not do before.
 
 Opus writes a placeholder, Hoola builds the real thing (so the model never invents an embed, a slot or a payment link):
 - `<div data-hoola-booking></div>` -> a booking form that reads her REAL free slots from Hoola's booking book
