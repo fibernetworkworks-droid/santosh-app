@@ -202,7 +202,7 @@ class _SiteHostingPanelState extends State<SiteHostingPanel> {
   Map<String, dynamic>? _h;
   final _domain = TextEditingController();
   bool _busy = false;
-  bool _wwwMain = false;      // v0.277 like Lovable: the bare domain is main by default, www redirects to it
+  bool _wwwMain = false;      // v0.280 like Lovable: the bare domain is main by default, www redirects to it
 
   @override
   void initState() {
@@ -299,7 +299,7 @@ class _SiteHostingPanelState extends State<SiteHostingPanel> {
     );
   }
 
-  // v0.277 one address: Verifying / Setting up / Live chip, the records still missing, Main banao
+  // v0.280 one address: Verifying / Setting up / Live chip, the records still missing, Main banao
   Widget _hostTile(Map<String, dynamic> x) {
     final stage = _s(x['stage']).isEmpty ? (x['status'] == 'active' ? 'Live' : 'Verifying') : _s(x['stage']);
     final live = stage == 'Live';

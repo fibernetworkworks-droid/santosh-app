@@ -23,7 +23,7 @@ Nothing goes live until the owner taps "Haan, live karo".
    `curl -H 'Host: <slug>.hoolasites.in' http://127.0.0.1/` returns the site with `pm2 stop santosh` too.
 4. `.env`: `SITES_BASE_DOMAIN=hoolasites.in` and `PUBLIC_BASE_URL=https://<api host>` (site forms post there).
 
-## 1b. Caddy instead of nginx (the Hoola VPS: the 443 edge is the `fnwconnect_caddy` container) (v0.277)
+## 1b. Caddy instead of nginx (the Hoola VPS: the 443 edge is the `fnwconnect_caddy` container) (v0.280)
 Caddy asks Hoola before making any certificate (`/api/hosting/ask`: 200 only for addresses of launched sites, and for a
 direct-mode domain only once its records point here). Caddy allows ONE global `{ }` block, at the top of the file: put
 `on_demand_tls` inside the existing one. Edit the bind-mounted Caddyfile IN PLACE (a replaced file is not seen by the
@@ -48,7 +48,7 @@ https:// {
 The catch-all `https://` only takes names no other site block of the file names. Free addresses need the DNS wildcard
 `*.sites` A -> the VPS IP (GoDaddy) and `SITES_BASE_DOMAIN=sites.ainewtika.com`.
 
-## 2a. Her own domain, DIRECT MODE (v0.277, like Lovable; no Cloudflare needed)
+## 2a. Her own domain, DIRECT MODE (v0.280, like Lovable; no Cloudflare needed)
 `.env`: `SITES_DIRECT_IP=<the VPS public IP>`. Joining her domain gives her three records for ANY registrar (GoDaddy,
 Hostinger, BigRock, Cloudflare with the orange cloud OFF, Porkbun): `A @ -> IP`, `A www -> IP`, `TXT _hoola -> hoola_verify=...`
 (applied by Hoola on her tap when her DNS is on her Cloudflare / Porkbun, or on Newtika's Cloudflare for a domain bought

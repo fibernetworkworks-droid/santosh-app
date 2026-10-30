@@ -10558,7 +10558,99 @@ Tests: NEW `test_v0274_openai_parity.py` (6). Version 0.275.0 (pubspec 0.275.0+3
 - Seen in the quiz, not fixed: the v0.231 draft check sometimes prefixes the NEXT reply with a correction of the
   previous one ("Ek sudhaar: ...").
 
-## v0.277.0 DIRECT DOMAINS — her domain straight to Hoola, the way Lovable does it (owner: "CHECK THE PREVIOUS DEPLOYMENT WORK ON WEB HOSTING" -> "FIRST CHECK HOW LOVABLE DO THIS" -> "GO, BUILD DIRECT MODE LIKE LOVABLE")
+## v0.277.0 INDIAMART (re-versioned twice: parallel sessions took 0.273-0.276) (30 Oct 2026)
+Owner: "MAKE A PLAN AND DEPLOY IT PERFECTLY FOR HOOLA. IT WILL SHOW CITY WISE PRODUCT, PRICE, DETAILS, BRAND, IMAGES"
+then "IN APP SIDE JUST SHOW INDIAMART LOGO WITH CONNECTED. BACKEND IF USER ASK GO TO INDIAMART AND TELL THIS PRODUCT IT
+MUST WORK DIRECTLY".
+- Source: IndiaMART's OWN MCP server `https://imgpt.indiamart.com/mcp` (streamable HTTP, server `indiamart-marketplace`
+  1.0.0, protocol 2025-06-18). Probed live: no login, no key, no session id - every call is one JSON-RPC POST. Three
+  tools: `search_products` (query, search_term required; city, brand, specifications, min_price / max_price INR strict,
+  biztype manufacturer|exporter|wholesaler|retailer), `get_product_detail` (displayid), `log_client_event` (their
+  widget's logging, "Not for model use" - never called; `call_tool` refuses it). Buyer side only: no seller leads,
+  no replies, no orders.
+- `app/indiamart.py`: the transport (SSE or JSON answer), 15-min search / 60-min detail cache, product shaping
+  (price + unit, MOQ, brand, specs from `isq` "k==v", seller, city, GST / TrustSeal, rating, phone, page link,
+  direct imimg.com photo unwrapped from their image-proxy), `price_stats` (band in the MAIN unit only - a per-tonne
+  listing never stretches a per-bag band), `by_city`, `search_cities` (2-5 cities in parallel, deduped), signed image
+  proxy (`img_url` / `img_ok` / `fetch_image`: IndiaMART hosts only, https, no SVG, <= 4 MB).
+- Agent tools `app/agent/indiamart_tools.py`: `indiamart_khoj` (city / cities / near_me / all India city wise) and
+  `indiamart_detail`; answers are TEXT (city price bands + best 3-5 with price, MOQ, brand, seller + city, GST,
+  phone, link). Seller text = data. Never orders / calls / messages a seller. Read-only: PARALLEL_SAFE + draftcheck READS.
+- Routing (`agent/admit.py`): family keys (indiamart, supplier, wholesale, thok, moq, bulk, सप्लायर, थोक, भाव, रेट)
+  + a "sourcing" INTENT (rate / bhav / kitne ka / price of / where to buy / suppliers / dealers ...). Guide line in
+  prompts.py scoped to the family.
+- Connectors page: pack `indiamart` is now executor `indiamart` (bazar/connectors/indiamart.py, tools search_products /
+  product_detail tier 0), status always "ready" (INDIAMART_ENABLED off -> not_configured); `/api/bazar/connections`
+  lists it with `no_login: true` + the logo, and the phone shows "Connected" with no link / unlink
+  (lib/ui/bazar_screen.dart `_appAction`).
+- Routes: GET /api/indiamart/img (public, signed), GET /api/indiamart/product/{id} (key).
+- Settings: `INDIAMART_ENABLED` (default true), `INDIAMART_MCP_URL`.
+- Also read: `techmatic-sys/indiamart-mcp-server` (third party, MIT, stdio, seller Lead Manager: one endpoint
+  `mapi.indiamart.com/wservce/crm/crmListing/v2/?glusr_crm_key=...`, key in the query string, a `.env` committed in
+  its repo). NOT used. Seller leads would be built on IndiaMART's own CRM API with her own key, when she asks.
+- Tests: tests/test_v0277_indiamart.py (11). Live check from the sandbox: Pune vs Delhi cement 4.9 s, detail + photo OK.
+
+## v0.278.0 PURA SAANS — the gaps v0.274 missed, and the paragraph itself (owner: "NOW LETS WORK ON PARAGRAP AND GAPS")
+- Measured in a real browser against her Claude screenshots, ink to ink, the same way v0.274 was measured. Four
+  things were still wrong, and three of them only became visible once v0.274's gaps were right:
+
+  | | before | now | Claude |
+  |---|---|---|---|
+  | after a table | **0px** | 16px | — |
+  | after a quote | **4px** | 16px | — |
+  | after a code block | **6px** | 16px | — |
+  | one turn to the next | **39px** | **61px** | **60px** |
+
+  The first three are the same 16px a paragraph gets: v0.274 had set the bottom margin on `p`, `.mdh`, `ul` and
+  `ol` but a table, a blockquote and a code block had none of their own, so the next line sat on the table's last
+  row. `.textmd table,blockquote,.cb,pre{margin:0 0 16px}` with `:last-child` at 0.
+  The fourth is the turn: `#app .col{gap:44px}` gives 61px ink to ink, so a new turn reads as a new turn.
+- TWO THINGS WERE CHECKED AND DELIBERATELY LEFT ALONE, because measuring showed they were already right:
+  - the gap ABOVE a table / quote / code is already 16px — the paragraph before it carries its own bottom margin;
+  - narration to tool row is 23px against Claude's 23-26px. The `#app .mh .bd{gap:12px}` that looked too tight on
+    paper measures correctly on screen, because the tool group carries its own padding. Changing it would have
+    broken a gap that was already Claude's. A test records both so the next session does not "fix" them.
+- THE PARAGRAPH ITSELF. Nothing in the rulebook had ever said how LONG a paragraph may be - only that prose should
+  be plain. `replystyle.CHAT` now asks for one idea per paragraph, two to four sentences, a new paragraph the
+  moment the idea changes, and explicitly allows a single sentence to stand as a paragraph when it carries the
+  point. Measured on Claude's own answers: the lines it writes while working run two lines, its summing-up
+  paragraph runs four sentences. Chat and console only - a spoken answer has no paragraphs.
+- THE PHONE NEEDS NOTHING: `md_text.dart` puts the same SizedBox between every block whatever it is, so a table
+  and a code block already get the 16px a paragraph gets (v0.274).
+- A SCARE WORTH RECORDING. Mid-measurement the paragraph margin read 2px and v0.274 looked lost. What had
+  happened: another session shipped `e86306a v0.273.0 INDIAMART` built on an OLD tree, which reverted this file
+  wholesale; someone had already pushed `f26dfe9 Revert e86306a`, and the first measurements were taken against
+  the clobbered checkout before that revert was fetched. Re-measured on the real tip - v0.274 and v0.276 were both
+  intact. The lesson for the next session: when a measurement contradicts a shipped version, re-fetch and check
+  whether main moved under you before changing anything.
+- Tests: NEW `server/tests/test_v0277_pura_saans.py` (7), including one that pins the two gaps that must NOT be
+  touched.
+- Version 0.277.0 (pubspec 0.277.0+317, console ?v=0.277.0, pins -> 0.277.0).
+- NOT VERIFIED: how the turn gap feels on a long scroll on her own screen.
+
+## v0.279.0 ATTACHMENTS LIKE CLAUDE (30 Oct 2026, built as 0.275.0; re-versioned on merge)
+Owner: "CHECK HOW CLAUDE LOAD THE IMAGES FILES, PDF, VIDEOS ETC IN CHAT FIRST - PREPARE A PLAN FOR HOOLA SAME. THEN A
+PERFECT PREVIEW BEFORE DEPLOYMENT" (with a screenshot of Claude's chat).
+Before: the composer and her sent message showed every file as one "📎 name" pill inside the bubble; the server already
+sent preview / pages / duration / size with each file, the console ignored them.
+What Claude does, and Hoola now does (web console, `server/app/static/console/attach.js`, window.HoolaAttach):
+- Composer tray: square tiles above the typing box. A picture shows itself the moment she picks it (local blob:), a PDF
+  its first page (server preview) + "PDF · 4 pages", a video its frame + play mark + length, audio its length, a text /
+  pasted file its first lines (new `chatfiles.snippet`, kept in `shown()`), any other file an icon + type + size.
+  Each tile shows the real upload % (XMLHttpRequest upload progress, uploads run side by side); a failed upload stays
+  red with Retry; ✕ removes (and cancels a running upload). Send waits for uploads, refuses while one has failed.
+- Sent message: the same tiles sit ABOVE her bubble, right-aligned (`.mua`, a sibling before `.mu`; `d._tiles`); one
+  picture alone shows large in its own shape; a files-only message ("Ye file dekho", FILE_ONLY) shows just the tiles.
+  Old messages render the same from the event's `files` (preview data: URL; a picture with no preview loads its file
+  when scrolled into view). A taken-back queued message removes its tiles too.
+- Click: picture / video / audio = full-screen viewer (`.albx`: name, n of N, size, ← → between the message's media,
+  Esc, click outside closes, click the picture to zoom, Download, Open in workspace). PDF / Word / Excel / text open in
+  the workspace's own reader (panel.js, pdfview.js). Her file comes with her login into blob: URLs, never a URL token.
+- CRISP TEXT kept: solid backgrounds, no blur, no held animation. Phone width: 88px tray tiles, viewer header in two rows.
+Not changed: the phone app (Flutter) - same idea there is the next step if she wants it; upload limits (25 MB, 6 files).
+Tests: tests/test_v0279_attachments.py.
+
+## v0.280.0 DIRECT DOMAINS — her domain straight to Hoola, the way Lovable does it (owner: "CHECK THE PREVIOUS DEPLOYMENT WORK ON WEB HOSTING" -> "FIRST CHECK HOW LOVABLE DO THIS" -> "GO, BUILD DIRECT MODE LIKE LOVABLE")
 Found first: the v0.122 domain joining knew only Cloudflare for SaaS (needs a sites zone ON Cloudflare; ainewtika.com is on
 GoDaddy) or her own Cloudflare zone + SITES_ORIGIN_IP; neither was set on the VPS, so a domain Hoola could already BUY
 (Cloudflare Registrar on Newtika's account: checked live, $10.46 / year for a .com) could never reach its website. The VPS
@@ -10591,8 +10683,8 @@ Unable to verify / Offline.
   block with `on_demand_tls { ask http://172.18.0.1:8077/api/hosting/ask }` in `server/deploy/sites_hosting.md`.
 - App (`lib/ui/site_hosting.dart`): each address shows its stage chip + Main + the records still missing (selectable),
   "Main banao", and a "bina www / www" choice when joining a domain (only when the server runs direct mode).
-- Tests `server/tests/test_v0277_direct_domains.py` (7): ladder + ask gate + 301 + uptime targets, someone else's TXT /
+- Tests `server/tests/test_v0280_direct_domains.py` (7): ladder + ask gate + 301 + uptime targets, someone else's TXT /
   a proxied IP never verifies, primary switch, orange cloud -> DNS only on her tap with her MX untouched, Newtika-held
   domain gets its records at once (her own account never does), SaaS still wins / no route = plain error.
-- Built as 0.276.0, re-versioned 0.277.0 on merge (the parallel v0.276.0 PADHNE KI CHAUDAI took the number).
+- Built as 0.276.0, re-versioned 0.280.0 on merge past the parallel v0.276-v0.279 (PADHNE KI CHAUDAI, INDIAMART, PURA SAANS, ATTACHMENTS).
 - Not verified yet: a real Caddy issuing a real certificate through the ask endpoint (owner's VPS step).

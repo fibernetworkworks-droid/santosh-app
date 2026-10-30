@@ -21,7 +21,7 @@ class SiteHost(Base):
     # pending (waiting DNS / SSL) | active | error | removed
     ssl_status: Mapped[str] = mapped_column(String(30), default="")
     cf_id: Mapped[str] = mapped_column(String(64), default="")             # Cloudflare for SaaS custom hostname id
-    mode: Mapped[str | None] = mapped_column(String(10), nullable=True, default="")   # v0.277 saas | proxy | direct
+    mode: Mapped[str | None] = mapped_column(String(10), nullable=True, default="")   # v0.280 saas | proxy | direct
     verify: Mapped[str] = mapped_column(Text, default="[]")                # records Cloudflare asks for (TXT / CNAME)
     live_version: Mapped[int] = mapped_column(Integer, default=0)
     launched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

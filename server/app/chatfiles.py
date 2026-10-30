@@ -13,6 +13,7 @@ from typing import Any
 
 MAX_BYTES = 25 * 1024 * 1024
 LEADS_MAX = 10 * 1024 * 1024
+SNIPPET_CHARS = 280                   # v0.279 first characters of a text file shown on its chat tile
 _META: "OrderedDict[str, dict]" = OrderedDict()      # file_id -> what was found when it was attached
 _LOCK = threading.Lock()
 
@@ -48,6 +49,9 @@ def store(tenant: str, name: str, data: bytes, content_type: str = "") -> dict[s
     out = public_file(row) | {k: v for k, v in info.items() if v not in (None, "")}
     out.pop("pc_path", None)
     out["mime"] = mt
+    if out.get("media") == "text":
+        # v0.279 the first lines of a text / code / pasted file, for the chat tile (like Claude's PASTED card)
+        out["snippet"] = snippet(data)
     if rt["label"]:
         out["real_type"] = rt["label"]
     if rt["mismatch"]:
@@ -68,7 +72,7 @@ def store(tenant: str, name: str, data: bytes, content_type: str = "") -> dict[s
         except Exception:
             pass                       # not a contact list: it is just a file
     meta = {k: out.get(k) for k in ("file_id", "name", "size", "url", "media", "preview", "width", "height", "pages",
-                                    "duration", "leads", "codes") if out.get(k) is not None}
+                                    "duration", "leads", "codes", "snippet") if out.get(k) is not None}
     with _LOCK:
         _META[row.id] = meta
         while len(_META) > 300:
@@ -79,6 +83,11 @@ def store(tenant: str, name: str, data: bytes, content_type: str = "") -> dict[s
     except Exception:
         pass
     return out
+
+
+def snippet(data: bytes) -> str:
+    text = data[:4096].decode("utf-8", "replace").replace("\r\n", "\n").strip("\ufeff\n ")
+    return "\n".join(text.split("\n")[:8])[:SNIPPET_CHARS]
 
 
 def _meta(tenant: str, fid: str) -> dict[str, Any] | None:

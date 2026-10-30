@@ -544,6 +544,7 @@ HALTED_TEXT = {"stop": "Theek hai, maine kaam rok diya.",
 PARALLEL_SAFE = frozenset({
     "google_search", "youtube_search", "open_website", "web_sources", "get_weather",
     "maps_search", "hoola_community_search", "memory_search", "kaam_status",
+    "indiamart_khoj", "indiamart_detail",      # v0.277 read-only IndiaMART look-ups
 })
 
 

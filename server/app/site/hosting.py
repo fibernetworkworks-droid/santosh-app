@@ -6,7 +6,7 @@ to Hoola's server). The files are served by Hoola's server (`serve`, used by the
 Every launch keeps the previous live copy, so rollback is instant (also only on her tap). Uptime is checked every 5 min;
 two misses in a row = a card + push with the reason.
 
-v0.277 DIRECT MODE (how Lovable does it): with SITES_DIRECT_IP set and no Cloudflare for SaaS, her domain points straight at
+v0.280 DIRECT MODE (how Lovable does it): with SITES_DIRECT_IP set and no Cloudflare for SaaS, her domain points straight at
 this server (A @ + A www, DNS only) and a TXT `_hoola.<domain>` = `hoola_verify=<token>` proves it is hers. The worker walks
 each address Verifying (records not seen yet) -> Setting up (records seen; the edge makes the https certificate on the first
 visit, allowed by `/api/hosting/ask` only from this stage on) -> Live. One address is primary, the other 301-redirects to it."""
@@ -78,7 +78,7 @@ def direct_on() -> bool:
 
 
 def verify_token(tenant: str, domain: str) -> str:
-    """v0.277 the ownership value for `_hoola.<domain>`: the same for her each time (a re-join keeps her record valid),
+    """v0.280 the ownership value for `_hoola.<domain>`: the same for her each time (a re-join keeps her record valid),
     different for anyone else, so nobody can take a domain whose DNS they do not control."""
     import hmac
     secret = (getattr(_st(), "secret_key", "") or "hoola-sites").encode()
@@ -211,7 +211,7 @@ def _edge_sync(hosts: dict[str, dict[str, Any]]) -> None:
 
 
 def ask_ok(domain: str) -> bool:
-    """v0.277 the edge's on-demand TLS question: a certificate only for an address of a launched site, and for a direct
+    """v0.280 the edge's on-demand TLS question: a certificate only for an address of a launched site, and for a direct
     domain only once its records were seen (her DNS really points here) - never for any name someone points at us."""
     m = host_map().get((domain or "").lower().strip("."))
     return bool(m) and not m.get("direct_wait")
@@ -393,7 +393,7 @@ def _is_pending(hostname: str) -> bool:
 
 
 def _main_host(r: Site, hosts: list[str]) -> str:
-    with session() as s:      # v0.277 the address she made primary wins (root or www)
+    with session() as s:      # v0.280 the address she made primary wins (root or www)
         chosen = [x.hostname for x in s.scalars(select(SiteHost).where(SiteHost.site_id == r.id, SiteHost.kind == "custom",
                                                                          SiteHost.role == "main", SiteHost.status != "removed")).all()]
     chosen = [h for h in hosts if h in chosen]
@@ -565,7 +565,7 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "", primary: 
     loc = D.where_is(tenant, d)
     c = cfg()
     apex_ok = (loc["provider"] in ("cloudflare", D.HOOLA_CF) or (loc["provider"] == "porkbun" and saas_on())   # Porkbun: ALIAS
-               or direct_on())                                       # v0.277 direct: a plain A record works at the apex
+               or direct_on())                                       # v0.280 direct: a plain A record works at the apex
     verify: list[dict[str, Any]] = []
     rows: list[SiteHost] = []
     names = [f"www.{d}"] + ([d] if apex_ok else [])
@@ -641,7 +641,7 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "", primary: 
 
 
 def set_primary(tenant: str, ref: str, host: str) -> dict[str, Any]:
-    """v0.277 her choice: which address of her domain is the main one (root or www); the other 301-redirects to it."""
+    """v0.280 her choice: which address of her domain is the main one (root or www); the other 301-redirects to it."""
     from . import service as S
     host = (host or "").lower().strip(".")
     with session() as s:
@@ -755,7 +755,7 @@ def direct_records_seen(h: SiteHost) -> tuple[bool, str]:
 
 
 def _check_direct(h: SiteHost) -> None:
-    """v0.277 Verifying -> Setting up -> Live for a direct-mode address (Lovable's ladder)."""
+    """v0.280 Verifying -> Setting up -> Live for a direct-mode address (Lovable's ladder)."""
     stage, prob, st = h.ssl_status or "dns", "", "pending"
     if stage == "dns":
         ok, prob = direct_records_seen(h)
@@ -908,7 +908,7 @@ def status(tenant: str, ref: str) -> dict[str, Any]:
 
 
 def _stage(h: SiteHost) -> str:
-    """v0.277 one word for the app's status chip: Verifying / Setting up / Live / Unable to verify / Offline."""
+    """v0.280 one word for the app's status chip: Verifying / Setting up / Live / Unable to verify / Offline."""
     if h.status == "active":
         return "Offline" if (h.fails or 0) >= 2 else "Live"
     if h.status != "pending":

@@ -93,6 +93,10 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "courier": ("courier", "parcel", "deliver", "track", "shipment", "speed post", "speedpost", "bluedart",
                 "delhivery"),
     "india": ("holiday", "chhutti", "ifsc", "pincode", "bank holiday", "panchang", "tithi", "muhurat", "ekadashi"),
+    # v0.277 IndiaMART: B2B buying / sourcing words (the SOURCING intent below carries the sentence shapes)
+    "indiamart": ("indiamart", "india mart", "supplier", "manufacturer", "wholesale", "wholesaler", "exporter",
+                  "distributor", "dealer", "moq", "bulk", "thok", "sourcing", "सप्लायर", "थोक", "होलसेल", "भाव",
+                  "रेट"),
     "notebook": ("notebook", "notebooklm", "padhai", "study guide", "mind map", "podcast banao"),
     # v0.245 bare 'hoola' removed: she says it in every message (it loaded 35 network tools + the PC tools)
     "hoola": ("avatar", "hoola network", "samaj", "dosti", "community", "connection", "business page", "network pe"),
@@ -365,6 +369,12 @@ INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
     # REVERSE-ENGINEER ANYTHING (v0.257, owner): a program / app / package / model / firmware file to read -> REA,
     # statically, on the server; the data desk rides along for the endpoint list. Never the cloud PC.
     (APPFILE, ("rea", "data"), "reverse engineer"),
+    # v0.277 a product to buy / source / price -> live IndiaMART listings (city wise)
+    (re.compile(r"\b(?:rate|bhav|bhaav|daam|dam)\b|kitne ka|kitne ki|kitne mein|price of|cost of|ka price|ki price|"
+                r"ke price|kaha(?:n)? (?:se )?(?:milega|milegi|milte|kharid)|where (?:can i |to )?buy|"
+                r"\b(?:suppliers?|manufacturers?|wholesal\w*|exporters?|distributors?|dealers?|vendors?)\b|"
+                r"\bmoq\b|\bbulk\b|\bthok\b|भाव|रेट|कितने का|थोक|सप्लायर", re.I),
+     ("indiamart",), "sourcing"),
     # other avatars on the Hoola Network
     (re.compile(r"(?:ke|ki|ka|ko)\s+avatar|avatar\s+(?:ko|se)|hoola network|network pe", re.I), ("hoola",), "network"),
     # research / comparison that splits into parts -> the team (core) + the web (core); nothing extra to load

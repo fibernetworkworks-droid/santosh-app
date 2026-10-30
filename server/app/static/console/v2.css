@@ -317,6 +317,10 @@ mark{background:rgb(var(--acc-rgb) / .32);color:var(--ink);border-radius:3px;pad
 .textmd a{text-decoration:underline}
 .textmd ul,.textmd ol{margin:0 0 16px;padding-left:22px;display:flex;flex-direction:column;gap:8px}
 .textmd ul:last-child,.textmd ol:last-child{margin-bottom:0}
+/* v0.278 PURA SAANS: a table, a quote and a code block need the same 16px under them as a paragraph.
+   Measured before this: 0px after a table, 4px after a quote, 6px after a code block. */
+.textmd table,.textmd blockquote,.textmd .cb,.textmd pre{margin:0 0 16px}
+.textmd table:last-child,.textmd blockquote:last-child,.textmd .cb:last-child{margin-bottom:0}
 .cb{background:var(--code-bg);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:6px 0}
 .cbh{display:flex;align-items:center;justify-content:space-between;padding:7px 13px;border-bottom:1px solid var(--line);font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim)}
 .cbcopy{font-size:12px;font-weight:600;color:var(--lit);background:var(--glass2);border:1px solid var(--line);border-radius:8px;padding:3px 10px}
@@ -1725,6 +1729,9 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
    ================================================================================================ */
 #app .thread{container-type:inline-size;container-name:thread}
 #app .col{width:min(880px,calc(100% - 20px));max-width:none;margin-inline:auto;padding-left:0;padding-right:0}
+/* v0.278 PURA SAANS: the space between one turn and the next. Measured ink to ink, Claude leaves 60px between
+   her message and the first line of the reply; ours was 39px, so a new turn did not read as a new turn. */
+#app .col{gap:44px}
 /* v0.276 PADHNE KI CHAUDAI: the column stays 880px so the words still start at the composer's left edge (v0.252),
    but the PROSE wraps at 680px. Measured with Literata 16px: one character is 7.45px, so 880px ran 118 characters
    a line where Claude's own text measures 674px = 90. A table, a code block or a card still takes the full width -
@@ -1834,3 +1841,80 @@ code:not(pre code){background:var(--pri-soft);border-color:transparent;color:var
 #app .side .sn:hover,#app .side .rcw .rc:hover{background:rgb(var(--fg-rgb) / .05)}
 #app .side .sn[aria-current="true"],#app .side .rcw.cur .rc{background:rgb(var(--fg-rgb) / .08);box-shadow:none;color:var(--ink)}
 #app .side .sn[aria-current="true"] svg{color:var(--ink)}
+
+/* ===== v0.279 ATTACHMENTS LIKE CLAUDE (attach.js): square tiles in the composer tray and above her sent bubble,
+   one picture large, a full-screen viewer. Solid backgrounds under text, no held animation, no blur (CRISP TEXT). */
+#app .box .files:not(:empty){padding:2px 2px 10px}
+.atray{display:flex;gap:10px;overflow-x:auto;padding:6px 6px 2px 2px;scrollbar-width:thin}
+.at{position:relative;flex:none;width:104px;height:104px;border-radius:12px;background:var(--raise);border:1px solid var(--hair);color:var(--ink);overflow:visible}
+.at .ab{position:absolute;inset:0;border-radius:11px;overflow:hidden;display:flex;flex-direction:column;cursor:default}
+.at .ab[data-view]{cursor:pointer}
+.at .ab[data-view]:hover{box-shadow:inset 0 0 0 1px rgb(var(--fg-rgb) / .14)}
+.at .ab[data-view]:focus-visible{outline:2px solid rgb(var(--acc-rgb) / .7);outline-offset:2px}
+.at.media .ab>img{width:100%;height:100%;object-fit:cover;display:block}
+.at .aph{flex:1;display:grid;place-items:center;color:var(--dim);background:var(--sunk)}
+.at .aph.dark{background:#1B1830;color:#CFCBE6}
+.at .aph.gone{opacity:.5}
+.at .ai{width:22px;height:22px}
+.at .aico{flex:1;display:grid;place-items:center;color:var(--mut)}
+.at .aico .ai{width:26px;height:26px}
+.at .aico.k-pdf{color:#C8463D}.at .aico.k-sheet{color:#1F8A5B}.at .aico.k-doc{color:#2F62C9}.at .aico.k-slides{color:#C76A1E}.at .aico.k-audio,.at .aico.k-video{color:rgb(var(--acc-rgb))}
+.at .apage{flex:1;min-height:0;overflow:hidden;background:#fff;border-bottom:1px solid var(--hair)}
+.at .apage img{width:100%;display:block;object-fit:cover;object-position:top}
+.at .asnip{flex:1;min-height:0;overflow:hidden;padding:8px 9px 0;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--mut);white-space:pre-wrap;word-break:break-word;background:var(--sunk);border-bottom:1px solid var(--hair)}
+.at .aname{display:flex;flex-direction:column;gap:2px;padding:6px 9px 7px;background:var(--raise);min-width:0}
+.at .aname b{font-size:12px;font-weight:500;line-height:1.3;color:var(--ink);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
+.at .aname i{font-style:normal;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.at .apage+.aname b,.at .asnip+.aname b{-webkit-line-clamp:1;white-space:nowrap;text-overflow:ellipsis;display:block}
+.at .aplay{position:absolute;left:50%;top:50%;width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;background:rgba(17,15,32,.72);color:#fff;display:grid;place-items:center;pointer-events:none}
+.at .aplay svg{width:16px;height:16px;margin-left:2px}
+.at .adur{position:absolute;right:6px;bottom:6px;padding:1px 6px;border-radius:6px;background:rgba(17,15,32,.78);color:#fff;font-size:12px;font-variant-numeric:tabular-nums;pointer-events:none}
+.at .ax{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;background:var(--surface);color:var(--mut);border:1px solid var(--hair2);box-shadow:0 1px 3px rgb(var(--sh-rgb) / .18);opacity:0;transition:opacity .12s;z-index:2}
+.at:hover .ax,.at:focus-within .ax,.at.up .ax,.at.bad .ax{opacity:1}
+.at .ax:hover{color:var(--ink);background:var(--raise)}
+.at.up .ab{opacity:.62}
+.at .aup{position:absolute;left:0;right:0;bottom:0;height:4px;border-radius:0 0 11px 11px;background:rgb(var(--fg-rgb) / .12);overflow:hidden}
+.at .aup i{display:block;height:100%;border-radius:0 4px 4px 0;background:rgb(var(--acc-rgb));transition:width .2s}
+.at.bad{border-color:rgb(var(--bad-rgb) / .55)}
+.at.bad .ab{opacity:.45}
+.at .abad{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-radius:11px;background:rgb(var(--surf-rgb) / .9);text-align:center;padding:6px}
+.at .abad b{font-size:12px;font-weight:500;color:var(--bad)}
+.at .abad button{font-size:12px;font-weight:500;padding:3px 10px;border-radius:8px;border:1px solid var(--hair2);background:var(--surface);color:var(--ink)}
+@media (hover:none){.at .ax{opacity:1}}
+
+/* above her sent bubble */
+.mua{align-self:flex-end;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;max-width:min(86%,560px);margin-bottom:-4px}
+.mua .at{width:120px;height:120px}
+.mua.solo .at{width:auto;height:auto;border:0;background:none}
+.mua.solo .ab{position:relative;width:min(320px,62vw);max-height:340px;border-radius:14px;border:1px solid var(--hair)}
+.mua.solo .ab>img{width:100%;height:100%;object-fit:cover}
+#app .mu.fonly{background:none;border:0;box-shadow:none;padding:0;min-height:0;animation:none}
+#app .mu.fonly .mut{display:none}
+
+/* full-screen viewer */
+body.albon{overflow:hidden}
+.albx{position:fixed;inset:0;z-index:1000;background:rgba(10,9,18,.97);display:flex;flex-direction:column;color:#F2F1F8}
+.albhd{display:flex;align-items:center;gap:10px;padding:12px 14px 12px 18px;min-height:56px}
+.albn{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.albc{font-size:13px;color:#B9B5D0;white-space:nowrap;margin-right:auto}
+.albb{font-size:13px;font-weight:500;padding:7px 12px;border-radius:9px;background:#26233A;color:#F2F1F8;border:1px solid #3A3654}
+.albb:hover{background:#312D4A}
+.albi{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:#F2F1F8;font-size:15px}
+.albi:hover{background:#26233A}
+.albst{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 10px 28px}
+.albm{flex:1;min-width:0;height:100%;display:flex;align-items:center;justify-content:center;overflow:auto;position:relative}
+.albimg{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;cursor:zoom-in;display:block}
+.albimg.low{filter:none;opacity:.85;width:min(100%,900px);height:auto}
+.albimg.zoom{max-width:none;max-height:none;cursor:zoom-out}
+.albvid{max-width:100%;max-height:100%;border-radius:8px;background:#000}
+.albaud{width:min(520px,90%)}
+.albwait{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);font-size:13px;color:#D9D6EA;background:#26233A;padding:6px 12px;border-radius:8px}
+.albnav{flex:none;width:44px;height:44px;border-radius:50%;background:#26233A;color:#F2F1F8;font-size:26px;line-height:1;display:grid;place-items:center;border:1px solid #3A3654}
+.albnav:hover{background:#312D4A}
+.albnav[hidden]{display:none}
+@media (max-width:640px){
+  .at{width:88px;height:88px}.mua .at{width:104px;height:104px}
+  .albhd{flex-wrap:wrap;gap:8px;padding:10px 10px 10px 16px}.albc{display:none}.albn{order:1;flex:1 1 calc(100% - 52px)}.albi{order:2}.albb{order:3;padding:6px 10px}
+  .albnav{position:absolute;top:50%;margin-top:-22px;z-index:2}.albnav.prev{left:8px}.albnav.next{right:8px}
+}
+@media (prefers-reduced-motion:reduce){.at .ax,.at .aup i{transition:none}}

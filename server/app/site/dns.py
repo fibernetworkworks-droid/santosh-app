@@ -184,7 +184,7 @@ def where_is(tenant: str, domain: str) -> dict[str, Any]:
     return {"provider": "manual", "nameservers": names}
 
 
-HOOLA_CF = "hoola_cf"       # v0.277 a domain she bought through Hoola on Newtika's Cloudflare account: Newtika's token
+HOOLA_CF = "hoola_cf"       # v0.280 a domain she bought through Hoola on Newtika's Cloudflare account: Newtika's token
 
 
 def _hoola_token() -> str:
@@ -193,7 +193,7 @@ def _hoola_token() -> str:
 
 
 def _hoola_zone(tenant: str, domain: str) -> dict[str, Any] | None:
-    """v0.277 the zone of a domain SHE bought through Hoola on Newtika's Cloudflare Registrar account. She has no login
+    """v0.280 the zone of a domain SHE bought through Hoola on Newtika's Cloudflare Registrar account. She has no login
     there, so before this the DNS card could only say "do it yourself" and the domain could never reach her site."""
     tok = _hoola_token()
     if not tok:
@@ -286,7 +286,7 @@ def plan(current: list[dict[str, Any]], desired: list[dict[str, Any]], purpose: 
         same_name = [r for r in cur if (r.get("name") or "").lower().rstrip(".") == d["name"]]
         if d["type"] in ("CNAME", "A", "AAAA"):
             exact = [r for r in same_name if r["type"] == d["type"] and (r.get("content") or "").lower().rstrip(".") == d["content"].lower()]
-            if exact and d.get("proxied") is False and exact[0].get("proxied") is True:     # v0.277 orange cloud -> DNS only
+            if exact and d.get("proxied") is False and exact[0].get("proxied") is True:     # v0.280 orange cloud -> DNS only
                 out.append({**d, "op": "update", "id": exact[0].get("id"), "old": {"type": d["type"], "content": d["content"]},
                             "risk": f"{d['name']} Cloudflare proxy (orange cloud) se hatkar seedha (DNS only) hoga"})
                 continue
@@ -345,7 +345,7 @@ def plan(current: list[dict[str, Any]], desired: list[dict[str, Any]], purpose: 
 def website_records(domain: str, mode: str, target: str, verify: list[dict[str, Any]] | None = None,
                     apex_flatten: bool = True) -> list[dict[str, Any]]:
     """mode saas: www (and apex when her DNS can flatten) CNAME -> Hoola's origin, DNS only; + the TXT / CNAME Cloudflare
-    asks for. mode proxy: her own Cloudflare zone proxies to Hoola's server IP (A @, CNAME www -> @). mode direct (v0.277,
+    asks for. mode proxy: her own Cloudflare zone proxies to Hoola's server IP (A @, CNAME www -> @). mode direct (v0.280,
     like Lovable): A @ and A www -> Hoola's server IP, DNS only (never proxied), + the _hoola ownership TXT."""
     recs: list[dict[str, Any]] = []
     if mode == "direct":
