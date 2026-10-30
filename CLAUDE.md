@@ -63,6 +63,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - VPS rollback (server only, data kept): `cd ~/santosh_app && git fetch origin stable-2026-10-22 && git checkout stable-2026-10-22 &&
   cp -r ~/santosh_app/server/app ~/apps/santosh-core/ && pm2 restart santosh --update-env`; back to latest: `git checkout main && git pull`
   then the same copy + restart. New tables added after this point are left in the DB untouched (SQLAlchemy ignores them).
+- NEWER CHECKPOINT (30 Oct 2026, owner: "IT IS PERFECT NOW SAVE THE STATE" after the voice work): branch `stable-2026-10-30` =
+  commit 77b5eb2 = v0.251.0 (voice Phases 1-5 + SIRF LINE, the Hinglish-only clips), APK release `v0.251.0-b542`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.251.0-b542/app-release.apk
+  Roll back to it exactly like the one above, with `stable-2026-10-30` in place of `stable-2026-10-22`.
 - Before risky changes on the VPS: `cp ~/apps/santosh-core/santosh.db ~/apps/santosh-core/santosh.db.bak-$(date +%F)`.
 
 ## Repo / CI / deploy
