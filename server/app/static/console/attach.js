@@ -1,4 +1,4 @@
-/* v0.275 ATTACHMENTS LIKE CLAUDE: how her pictures, PDFs, videos and files look in the chat.
+/* v0.277 ATTACHMENTS LIKE CLAUDE: how her pictures, PDFs, videos and files look in the chat.
    Composer tray: square tiles above the typing box - a picture shows itself the moment she picks it (local blob:),
    a PDF its first page once uploaded, a video its frame + length, text its first lines; a real upload % on each
    tile, a failed one stays red with Retry, ✕ removes.

@@ -380,6 +380,11 @@ class Api {
       Map<String, dynamic>.from(await _send('GET', '/api/voice/eartest') as Map);
   Future<Map<String, dynamic>> voiceEarMark(String id, String result, {String note = ''}) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/voice/eartest/$id', body: {'result': result, 'note': note}) as Map);
+  // ---- v0.274 call voice engine: Gemini (default) or OpenAI real voice ----
+  Future<Map<String, dynamic>> voiceEngine() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/voice/engine') as Map);
+  Future<Map<String, dynamic>> voiceEngineSet(String engine) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/voice/engine', body: {'engine': engine}) as Map);
   // ---- v0.119 "<name> ne kya seekha": how she speaks, words misheard before, her words ----
   Future<Map<String, dynamic>> voiceLearned() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/voice/learned') as Map);

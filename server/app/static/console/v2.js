@@ -339,13 +339,13 @@ function flushStepBuf() {
   else STEPBUF.querySelector('.sm').textContent = `${n} step${n > 1 ? "s" : ""}`;
   STEPBUF = null;
 }
-// v0.275 attach.js: her files as Claude-style tiles (composer tray, above her sent bubble, full-screen viewer)
+// v0.277 attach.js: her files as Claude-style tiles (composer tray, above her sent bubble, full-screen viewer)
 const ATT = window.HoolaAttach ? HoolaAttach({api, esc, toast, token: () => TOKEN,
   itemOf: (kind, p) => PN?.itemOf(kind, p), open: item => PN ? (PN.open(item), true) : false}) : null;
 const FILE_ONLY = 'Ye file dekho';   // the words a files-only message carries to Hoola
 function userBubble(text, files, eid, cid, at) {
   const d = document.createElement('div'); d.className = 'mu';
-  const tiles = files?.length && ATT ? ATT.sent(files) : null;   // v0.275 her files sit above the bubble, like Claude
+  const tiles = files?.length && ATT ? ATT.sent(files) : null;   // v0.277 her files sit above the bubble, like Claude
   d.innerHTML = (files?.length && !ATT ? `<div class="att">${files.map(f => `<span class="chip">📎 ${esc(f.name || f)}</span>`).join('')}</div>` : '') + `<span class="mut">${esc(text)}</span>`;
   if (tiles && text === FILE_ONLY) d.classList.add('fonly');    // a files-only message shows just the tiles
   if (cid) d.dataset.cid = cid;
@@ -1318,7 +1318,7 @@ async function addFiles(list) {     // paperclip, drag and drop, pasted screensh
     const up = await shrink(f);   // v0.173 big pictures shrink here: upload fast, phone data saved
     if (up !== f) toast(`${f.name}: shrunk (${Math.round(f.size / 1024)} KB → ${Math.round(up.size / 1024)} KB).`);
     if (CONV !== origin || FILES !== target) return;
-    // v0.275 the tile shows her picture at once (local blob:), then the real upload %
+    // v0.277 the tile shows her picture at once (local blob:), then the real upload %
     const item = {name: up.name, file_id: null, size: up.size, type: up.type, pct: 0, local: up,
                   url: up.type.startsWith('image/') ? URL.createObjectURL(up) : ''};
     target.push(item); drawFiles();
@@ -1450,7 +1450,7 @@ function drawFiles() {
     : FILES.map((f, i) => `<span class="fchip${f.file_id ? '' : ' up'}">📎 ${esc(f.name)}${f.file_id ? '' : ' · upload…'}<button type="button" data-rm="${i}" aria-label="Remove ${esc(f.name)}">✕</button></span>`).join('');
   $('#sendBtn').disabled = !msg.value.trim() && !FILES.length;
 }
-function drawPct(item) {      // v0.275 only the bar moves while bytes go up (no re-draw, no flicker)
+function drawPct(item) {      // v0.277 only the bar moves while bytes go up (no re-draw, no flicker)
   const i = FILES.indexOf(item), bar = i < 0 ? null : $('#files').querySelectorAll('.at')[i]?.querySelector('.aup');
   if (!bar) return;
   const pct = Math.max(4, Math.min(100, Math.round(item.pct)));

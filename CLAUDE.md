@@ -116,11 +116,16 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.275.0 (pubspec 0.275.0+315). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.277.0 (pubspec 0.277.0+317). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (15 now: theme.js, pdfview.js, studio.js, attach.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.275 ATTACHMENTS LIKE CLAUDE: console `attach.js` - her files are tiles (composer tray with upload % + Retry, above her
-  sent bubble, one picture large), full-screen viewer for picture / video / audio, PDF / Office / text in the workspace reader.
+- v0.277 ATTACHMENTS LIKE CLAUDE (built as 0.275): console `attach.js` - her files are tiles (composer tray with upload % +
+  Retry, above her sent bubble, one picture large), full-screen viewer for picture / video / audio, PDF / Office / text in the workspace reader.
+- v0.276 PADHNE KI CHAUDAI: the 880px column ran 118 characters a line (Literata 16px = 7.45px a character);
+  Claude's own text is 674px = 90. The column STAYS 880 so the words keep the composer's left edge (v0.252);
+  only the prose wraps, at 680px = 91 characters. Tables, code blocks and cards keep the full width.
+- v0.275 OPENAI VOICE Phase 2+3: call features checked on OpenAI (news, hold, dropped-connection rebuild); phone
+  Profile > Call ki awaaz (`lib/ui/voice_engine_screen.dart`: Gemini / Real voice, rupees, minutes) + "Real voice" call badge.
 - v0.274 SAAF JAGAH: measured her Claude screenshots - gap BETWEEN paragraphs 22-32px vs 6-8px INSIDE one
   (3.2-4.3x). Hoola had 2px vs ~7px (0.3x), so the type was right and the page still read as a wall. Four
   numbers, both surfaces: paragraph gap 2->16px, above a heading 8->24px, below it 4->8px, list items 3->8px

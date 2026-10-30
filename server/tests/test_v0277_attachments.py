@@ -1,4 +1,4 @@
-"""v0.275 ATTACHMENTS LIKE CLAUDE: her files as tiles in the composer tray and above her sent bubble, a full-screen
+"""v0.277 ATTACHMENTS LIKE CLAUDE: her files as tiles in the composer tray and above her sent bubble, a full-screen
 viewer for pictures / video, documents in the workspace reader, a snippet for text tiles."""
 from __future__ import annotations
 
@@ -64,7 +64,7 @@ def test_v2_uses_the_tiles():
 
 def test_tile_css_is_crisp():
     css = (CON / "v2.css").read_text()
-    block = css[css.index("v0.275 ATTACHMENTS LIKE CLAUDE"):]
+    block = css[css.index("v0.277 ATTACHMENTS LIKE CLAUDE"):]
     assert ".mua{" in block and ".albx{" in block and ".atray{" in block
     assert "backdrop-filter" not in block and "infinite" not in block   # CRISP TEXT rule
 

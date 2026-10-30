@@ -10498,8 +10498,57 @@ Version 0.273.0 (pubspec 0.273.0+313, console ?v=0.273.0, pins -> 0.273.0).
 - Version 0.274.0 (pubspec 0.274.0+314, console ?v=0.274.0, pins -> 0.274.0).
 - NOT VERIFIED: how it reads on a real phone screen; the console was checked in a browser at 1000px wide.
 
+## v0.275.0 OPENAI VOICE Phase 2 + 3 (built as 0.274.0; re-versioned after the parallel v0.274.0 SAAF JAGAH) — every call feature on the real voice, and the picker on the phone (owner: "DEPLOYED, WORKING GOOD NOW. MOVE FURTHER")
+- Phase 2, parity (`test_v0274_openai_parity.py`): job news pushed into the call (`push("text")`) reaches OpenAI as a
+  system item with exactly ONE `response.create`; while she is on hold (her phone call) his OpenAI audio is held back
+  (`_hold_turn_audio`, never played) and the hold note goes quietly (`_tell_quietly` = item, no reply); a dropped
+  OpenAI connection is rebuilt by `OpenAICall.run` with a fresh `session.update` (same persona / tools / brief) and the
+  reseed of the talk so far. OTP by voice, bol-kar-haan approvals, side talk and the stall watchdog are the shared
+  `voice.Call` code both engines run (`_heard_her` feeds the same listeners). Only a real phone can prove a real network
+  switch / GSM call - they stay in docs/VOICE_E2E_TEST_PLAN.md Round C.
+- Phase 3, phone (new APK): Profile > **Call ki awaaz** (`lib/ui/voice_engine_screen.dart`, api `voiceEngine` /
+  `voiceEngineSet`): Gemini awaaz or Real voice (OpenAI) - picked from the next call; disabled with "trial" for users
+  the trial gate does not allow; the reason line when the server falls back to Gemini; this month's spend in rupees
+  (`month_inr` / `month_budget_inr`, new in `voiceengine.view`) and her minutes. The call screen shows a "Real voice"
+  badge (`CallSession.engine` from the `ready` event's `engine`).
+Tests: NEW `test_v0274_openai_parity.py` (6). Version 0.275.0 (pubspec 0.275.0+315, console ?v=0.275.0, pins -> 0.275.0).
 
-## v0.275.0 ATTACHMENTS LIKE CLAUDE (30 Oct 2026)
+## v0.276.0 PADHNE KI CHAUDAI — the reading width, the one thing v0.274 left on the table (owner: "GO WIDTH")
+- v0.274 SAAF JAGAH fixed the spacing and deliberately did NOT touch the width, because v0.252 had set the column
+  to match the composer on purpose. She was offered the choice and said "GO WIDTH".
+- MEASURED PROPERLY THIS TIME, Literata 16px in a real browser: one character averages **7.45px**, so
+
+  | width | characters a line |
+  |---|---|
+  | 880px (what we had) | **118** |
+  | 760px | 102 |
+  | 720px | 97 |
+  | **680px (this version)** | **91** |
+  | 674px (Claude's own) | 90 |
+
+  A correction worth recording: v0.274's note put the old column at "~95 characters". That estimate was wrong -
+  it is 118. Anything past about 90 loses the eye on the way back to the start of the next line, which is why the
+  page still felt heavy even after the serif (v0.249), Literata + contrast (v0.253) and the spacing (v0.274).
+- THE COLUMN STAYS 880px. v0.252's point was that the words begin at the composer's left edge, and that still
+  holds - the left edge is untouched, only the line is shorter. The composer dock keeps `width:min(880px,100%)`
+  and a test asserts the two still agree.
+- ONLY THE PROSE IS CAPPED, at 680px, through one rule scoped to the reply's own children:
+  `#app .mh .txt>p, >ul, >ol, >.mdh, >blockquote {max-width:680px}`.
+  A TABLE, a code block, a card or a tool group is NOT capped: those are read by scanning across rather than line
+  by line, and squeezing their columns would make them worse. Claude's own answer does the same - her screenshot
+  of the government-API table runs wider than the prose above it.
+- THE PHONE NEEDS NOTHING: a phone screen is 360-430px wide, far under the cap, so `md_text.dart` keeps only
+  v0.274's spacing (block 16px, list items 8px) and no width rule at all.
+- Verified in a browser after the change: column 880px, paragraph 680px (91 characters), heading 680px, list
+  658px, table uncapped.
+- Tests: NEW `server/tests/test_v0276_padhne_ki_chaudai.py` (7) - the cap and exactly which children it covers,
+  that tables / code / cards are NOT in the rule, that the column and the composer still share 880px, and that
+  v0.274's spacing and the v0.249 / v0.253 type are untouched. v0.274's "width left alone" test now records that
+  the owner made the call, so the two versions read as one decision rather than a contradiction.
+- Version 0.276.0 (pubspec 0.276.0+316, console ?v=0.276.0, pins -> 0.276.0).
+- NOT VERIFIED: how it reads on her own screen at her own window width.
+
+## v0.277.0 ATTACHMENTS LIKE CLAUDE (30 Oct 2026, built as 0.275.0; re-versioned on merge)
 Owner: "CHECK HOW CLAUDE LOAD THE IMAGES FILES, PDF, VIDEOS ETC IN CHAT FIRST - PREPARE A PLAN FOR HOOLA SAME. THEN A
 PERFECT PREVIEW BEFORE DEPLOYMENT" (with a screenshot of Claude's chat).
 Before: the composer and her sent message showed every file as one "📎 name" pill inside the bubble; the server already
@@ -10519,4 +10568,4 @@ What Claude does, and Hoola now does (web console, `server/app/static/console/at
   the workspace's own reader (panel.js, pdfview.js). Her file comes with her login into blob: URLs, never a URL token.
 - CRISP TEXT kept: solid backgrounds, no blur, no held animation. Phone width: 88px tray tiles, viewer header in two rows.
 Not changed: the phone app (Flutter) - same idea there is the next step if she wants it; upload limits (25 MB, 6 files).
-Tests: tests/test_v0275_attachments.py.
+Tests: tests/test_v0277_attachments.py.
