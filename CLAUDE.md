@@ -116,9 +116,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.271.0 (pubspec 0.271.0+311). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.272.0 (pubspec 0.272.0+312). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (14 now: theme.js, pdfview.js, studio.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.272 SATH SATH: call captions appear as he says them - one playback clock in `Call.send_audio`, captions + turn_done
+  wait for the queued audio (`Call._caption`), her words / an interruption drop stale ones (`_cap_flush`); both engines.
 - v0.271 SAB SERVER PAR: every job on the server; a PC only on HER words (or her running PC job) - desktop-software
   words no longer open a PC, Hoola asks "Yeh aapke PC pe karun?" first (admit._pc_wanted, pick.py rule 4).
 - v0.270 SERVER PEHLE: deep research + PDF stays on the server - goal rounds routed, sub-agents no PC unless she

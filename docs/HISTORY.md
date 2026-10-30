@@ -10420,3 +10420,16 @@ tells Hoola to do it on a PC).
 - Tests: test_v0270_server_first.py (+14: software words alone never open a PC / never pass the check, her words do,
   guide), test_v0245_tool_choice.py + test_v093_place.py updated to the new rule. No PC file changed.
   Version 0.271.0 (pubspec 0.271.0+311, console ?v=0.271.0, pins). Server-only deploy.
+
+## v0.272.0 SATH SATH — call captions appear as he says them (owner: "BUT IN APP IT SHOW TEXT FIRST" -> "SYNC CAPTIONS")
+- Cause: both engines stream his words as text AND audio together. The phone shows text the moment it arrives, but
+  audio plays in real time from its queue - and OpenAI sends a whole reply in about a second, so the caption ran seconds
+  ahead of his voice (it looked like "text first, then speech"; the speech is still made directly, audio to audio).
+- Fix (server only, both engines, audio untouched): `Call.send_audio` keeps ONE playback clock (`_play_until`, 24 kHz
+  PCM16 = 48,000 bytes a second) - the OpenAI engine's own clock updates were removed. `Call._caption(obj)` sends a
+  `santosh_text` (and the `turn_done` that follows it) at once when nothing is queued, else waits until his queued audio
+  reaches those words (`CAPTION_EARLY_S` 0.15 s early, never out of order, `_cap_run`). `_cap_flush()` on her new words
+  (`user_text`) or an interruption: stale captions are dropped (an old reply never overwrites what she is saying), a
+  waiting `turn_done` still goes at once. Gemini streams near real time, so its captions barely move.
+Tests: NEW `test_v0272_sath_sath.py` (6); `test_v0264_openai_voice.py` breath test follows the one clock.
+Version 0.272.0 (pubspec 0.272.0+312, console ?v=0.272.0, pins -> 0.272.0).

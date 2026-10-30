@@ -275,7 +275,7 @@ def test_breath_sound_plays_before_his_first_word():
     c = C()
     asyncio.run(c._breathe())
     from app import breath
-    assert sent and breath.is_breath(sent[0]) and c.stats["breaths"] == 1 and c._play_until > _t.monotonic()
+    assert sent and breath.is_breath(sent[0]) and c.stats["breaths"] == 1   # (send_audio moves the playback clock)
 
 
 def test_breath_detector_refuses_spoken_sounds():
@@ -387,5 +387,5 @@ def test_gemini_file_has_only_the_routing_seam():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.271.0"
-    assert "0.271.0+311" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.272.0"
+    assert "0.272.0+312" in (ROOT / "pubspec.yaml").read_text()

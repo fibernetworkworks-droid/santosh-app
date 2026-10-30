@@ -243,9 +243,7 @@ class OpenAICall(v.Call):
         if not pcm:
             return
         self.stats["breaths"] = self.stats.get("breaths", 0) + 1
-        dur = len(pcm) / 2 / OUT_RATE
-        self._play_until = max(time.monotonic(), self._play_until) + dur
-        await self.send_audio(pcm)
+        await self.send_audio(pcm)          # send_audio moves the playback clock (v0.272)
 
     async def _tell_quietly(self, note: str, live: bool = False) -> None:
         """v0.267 context that must NOT start a reply (her mood, language, who is speaking, hold). Gemini needed tricks
@@ -295,9 +293,7 @@ class OpenAICall(v.Call):
                     self._breath_next = False
                     self._resp_breath = True
                     await self._breathe()
-                dur = len(data) / 2 / OUT_RATE
-                self._item_ms += dur * 1000
-                self._play_until = max(time.monotonic(), self._play_until) + dur
+                self._item_ms += len(data) / 2 / OUT_RATE * 1000   # (send_audio moves the playback clock)
                 self._mark_audio()
                 self._hear_him(data)
                 await self.send_audio(data)
@@ -306,7 +302,7 @@ class OpenAICall(v.Call):
                 if self.hold:
                     self._hold_turn_reply = True
                 else:
-                    await self.send_json({"type": "santosh_text", "text": self.reply_buf.strip()})
+                    await self._caption({"type": "santosh_text", "text": self.reply_buf.strip()})   # v0.272 as he says it
             elif t == "conversation.item.input_audio_transcription.delta":
                 self._heard[ev.get("item_id") or ""] = "1"
                 await self._heard_her(ev.get("delta") or "")
@@ -379,6 +375,7 @@ class OpenAICall(v.Call):
         if self.hold and get_settings().voice_side_talk:
             await self._hold_heard()
         elif not self.hold:
+            await self._cap_flush()
             await self.send_json({"type": "user_text", "text": self.user_buf.strip()})
             await self._otp_listen(piece)
             await self._approval_listen(piece)
@@ -399,6 +396,7 @@ class OpenAICall(v.Call):
             self._hold_turn_audio.clear()
             return
         self.stats["interruptions"] += 1
+        await self._cap_flush()
         await self.send_json({"type": "interrupted"})
         if self._item:
             heard = self._item_ms - max(0.0, self._play_until - now) * 1000   # what really reached her ears
