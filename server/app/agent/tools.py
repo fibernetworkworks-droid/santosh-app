@@ -468,13 +468,6 @@ TOOLS.extend(INDIA_TOOLS)
 TOOL_LABELS.update(INDIA_LABELS)
 HANDLERS.update(INDIA_HANDLERS)
 
-# v0.273 INDIAMART: live B2B products / prices / suppliers from IndiaMART's own MCP server (read-only)
-from .indiamart_tools import INDIAMART_HANDLERS, INDIAMART_LABELS, INDIAMART_TOOLS  # noqa: E402
-
-TOOLS.extend(INDIAMART_TOOLS)
-TOOL_LABELS.update(INDIAMART_LABELS)
-HANDLERS.update(INDIAMART_HANDLERS)
-
 # v0.63 seekhe hue kaam (procedures Hoola learned)
 from .procedure_tools import PROCEDURE_HANDLERS, PROCEDURE_LABELS, PROCEDURE_TOOLS  # noqa: E402
 

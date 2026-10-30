@@ -116,11 +116,22 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.273.0 (pubspec 0.273.0+313). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.276.0 (pubspec 0.276.0+316). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (14 now: theme.js, pdfview.js, studio.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.273 INDIAMART: IndiaMART's own MCP (imgpt.indiamart.com/mcp, no login) -> `indiamart_khoj` / `indiamart_detail` (city
-  wise price, MOQ, brand, seller, phone, link; text answers), Connectors shows IndiaMART Connected (executor `indiamart`).
+- CHECKPOINT 30 Oct: FULL CLAUDE MODE (v0.239-v0.250) owner-verified "PERFECT"; memory quiz 16/20 -> 20/20; branch
+  `checkpoint-full-claude-mode-2026-10-30` = 87a2046 (grep "CHECKPOINT 30 Oct" docs/HISTORY.md).
+- v0.276 PADHNE KI CHAUDAI: the 880px column ran 118 characters a line (Literata 16px = 7.45px a character);
+  Claude's own text is 674px = 90. The column STAYS 880 so the words keep the composer's left edge (v0.252);
+  only the prose wraps, at 680px = 91 characters. Tables, code blocks and cards keep the full width.
+- v0.275 OPENAI VOICE Phase 2+3: call features checked on OpenAI (news, hold, dropped-connection rebuild); phone
+  Profile > Call ki awaaz (`lib/ui/voice_engine_screen.dart`: Gemini / Real voice, rupees, minutes) + "Real voice" call badge.
+- v0.274 SAAF JAGAH: measured her Claude screenshots - gap BETWEEN paragraphs 22-32px vs 6-8px INSIDE one
+  (3.2-4.3x). Hoola had 2px vs ~7px (0.3x), so the type was right and the page still read as a wall. Four
+  numbers, both surfaces: paragraph gap 2->16px, above a heading 8->24px, below it 4->8px, list items 3->8px
+  (phone md_text.dart 9->16 / 4->8). Reading width 880px left alone on purpose - v0.252 matched the composer.
+- v0.273 SATH SATH: call captions appear as he says them - one playback clock in `Call.send_audio`, captions + turn_done
+  wait for the queued audio (`Call._caption`), her words / an interruption drop stale ones (`_cap_flush`); both engines.
 - v0.272 SOCH KE JAWAB 1/7: `agent/hard.py` spots hard reasoning asks (rules + a tiny Haiku judge for 'maybe'); they think
   from the first call. Sets `app/quality/hard_asks.py` (+ HOLDOUT), card `python -m app.quality hard`. Next: step 2 Opus + effort.
 - v0.271 SAB SERVER PAR: every job on the server; a PC only on HER words (or her running PC job) - desktop-software

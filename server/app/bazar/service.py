@@ -128,8 +128,6 @@ def pack_status(s, user: User, pack: Pack) -> str:
         return "ready" if (core_settings().youtube_api_key or has_youtube(user.id)) else "not_connected"
     if pack.executor == "notebook":
         return "ready"
-    if pack.executor == "indiamart":       # v0.273 IndiaMART's own MCP: no sign-in, connected for everyone
-        return "ready" if getattr(core_settings(), "indiamart_enabled", True) else "not_configured"
     if pack.executor == "appcheck":
         from ..appcheck.runner import configured
         return "ready" if configured() else "not_configured"
@@ -800,11 +798,6 @@ def connections(tenant_id: str) -> list[dict[str, Any]]:
             out.append({"pack_id": p.id, "name": p.name, "provider": p.config["provider"], "status": pack_status(s, user, p),
                         "configured": bool(getattr(st, p.config["endpoint_setting"], "")), "logo": logos.pack_logo(p.id),
                         "does": (p.description or "")[:160]})
-        im = registry().lookup("indiamart")     # v0.273 no login: shown as Connected for everyone
-        if im is not None and im.executor == "indiamart":
-            out.append({"pack_id": im.id, "name": im.name, "provider": "indiamart", "status": pack_status(s, user, im),
-                        "configured": True, "no_login": True, "logo": logos.pack_logo(im.id),
-                        "does": (im.description or "")[:160]})
         for r in custom_mcp.user_rows(s, user.id):
             p = custom_mcp.to_pack(r)
             out.append({"pack_id": p.id, "name": p.name, "provider": p.config["provider"], "status": pack_status(s, user, p),
