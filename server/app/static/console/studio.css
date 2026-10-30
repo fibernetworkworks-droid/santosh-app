@@ -595,3 +595,62 @@ p{margin:0}
 .lsearch input{border:0;outline:0;background:transparent;font-size:13.5px;color:var(--ink);width:100%}
 .libbar .dd{border:1px solid var(--line);background:var(--surface);height:36px}
 @media (prefers-reduced-motion:reduce){.rarr,.adv summary .ic{transition:none}}
+
+/* ---------- v0.305 PREMIUM STUDIO SIDEBAR (owner, with a screenshot: "MAKE SIDE BAR MORE PREMIUM AND ADVANCE WITH PERFECT
+   ANIMATIONS ON BUTTONS"). Every motion is short and ends (no held animation fill, no blur: CRISP TEXT); all of it
+   switches off under reduced motion and the calm setting. */
+#shell{--spring:cubic-bezier(.34,1.56,.64,1);--out:cubic-bezier(.22,1,.36,1)}
+/* labels readable, scrollbar only while the pointer is over the list, the list fades into the meter instead of a hard cut */
+.sl{font-size:12px;font-weight:500;color:var(--mut);padding:14px 8px 5px}
+.snav{scrollbar-width:thin;scrollbar-color:transparent transparent;transition:scrollbar-color .2s;padding-bottom:6px}
+.snav.fadeb{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent)}
+.snav:hover{scrollbar-color:var(--line2) transparent}
+.snav::-webkit-scrollbar{width:6px}.snav::-webkit-scrollbar-thumb{background:transparent;border-radius:9px}
+.snav:hover::-webkit-scrollbar-thumb{background:var(--line2)}
+/* entrance: top to bottom, once */
+@keyframes sidein{from{opacity:0;transform:translateX(-6px)}}
+#shell .snav>*{animation:sidein .42s var(--out) backwards;animation-delay:calc(var(--i,0) * 22ms + 40ms)}
+/* every button: a small press */
+.sn,.agent,.tg,.back,.ib,.credits{transition:background-color .18s ease,border-color .18s ease,box-shadow .22s ease,color .18s ease,transform .18s var(--out)}
+.sn:active,.agent:active,.tg:active,.back:active,.ib:active{transform:scale(.97);transition-duration:.08s}
+/* nav rows: grey hover, the icon steps forward; the open page = violet pill with an accent bar that grows in */
+.sn{position:relative;font-weight:450}
+.sn .ic{transition:transform .25s var(--spring),color .18s}
+.sn:hover .ic{transform:translateX(2px)}
+.sn::before{content:"";position:absolute;left:-4px;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--pri);transform:scaleY(0);opacity:0;transition:transform .28s var(--spring),opacity .18s}
+.sn[aria-current="page"]{background:var(--priSoft);color:var(--priInk);font-weight:500}
+.sn[aria-current="page"]::before{transform:scaleY(1);opacity:1}
+/* agent cards: lift, soft shadow, the colour tile tilts and pops, an arrow slides in */
+.agent{position:relative;gap:10px;padding:9px 8px 9px 9px}
+.agent .ai{box-shadow:0 4px 10px -4px rgb(0 0 0 / .35),inset 0 0 0 1px rgb(255 255 255 / .18);transition:transform .32s var(--spring)}
+.agent .ago{position:absolute;right:8px;top:50%;margin-top:-10px;height:20px;display:grid;place-items:center;width:20px;color:var(--dim);opacity:0;transform:translateX(-6px);transition:opacity .18s,transform .25s var(--out)}
+.agent:hover{border-color:rgb(var(--acc-rgb,108 75 216) / .35);box-shadow:0 8px 20px -12px rgb(0 0 0 / .35);transform:translateY(-1px)}
+.agent:hover .ai{transform:rotate(-6deg) scale(1.07)}
+.agent:hover .ago{opacity:1;transform:none;color:var(--pri)}
+.agent:hover small,.agent[aria-current="page"] small{padding-right:18px}
+.agent[aria-current="page"]{box-shadow:0 0 0 3px var(--priSoft)}
+.agent[aria-current="page"] .ago{opacity:1;transform:none;color:var(--pri)}
+/* tool tiles: tint + icon pop */
+.tg .ic{transition:transform .3s var(--spring),color .18s}
+.tg:hover{background:rgb(127 127 140 / .07)}
+.tg:hover .ic{transform:scale(1.14);color:var(--pri)}
+.tg[aria-current="page"] .ic{color:var(--pri)}
+/* back to chat: the arrow leans home */
+.back .ic{transition:transform .25s var(--spring)}
+.back:hover .ic{transform:translateX(-3px)}
+/* collapse button turns */
+#collapse .ic{transition:transform .3s var(--out)}
+#shell.collapsed #collapse .ic{transform:scaleX(-1)}
+/* the meter: fills smoothly, a light runs along the bar once */
+.credits{gap:7px;padding:11px 12px}
+.credits .crow1{display:flex;justify-content:space-between;gap:8px;white-space:nowrap}
+.credits small{font-size:12px}
+.credits .bar{height:6px;position:relative}
+.credits .bar i{transition:width .9s var(--out);box-shadow:0 0 10px -1px rgb(194 65 122 / .55)}
+.credits:hover{border-color:var(--line2)}
+.mark small{padding:2px 7px;border-radius:99px;background:var(--priSoft);color:var(--priInk);font-weight:500}
+@media (prefers-reduced-motion:reduce){#shell .snav>*{animation:none}
+  .sn,.agent,.tg,.back,.ib,.sn .ic,.agent .ai,.agent .ago,.tg .ic,.back .ic,#collapse .ic,.credits .bar i,.sn::before{transition:none}
+  .agent:hover,.agent:hover .ai,.tg:hover .ic,.sn:hover .ic,.back:hover .ic{transform:none}}
+:host-context(.calm) #shell .snav>*{animation:none}
+:host-context(.calm) .agent:hover,:host-context(.calm) .agent:hover .ai,:host-context(.calm) .tg:hover .ic,:host-context(.calm) .sn:hover .ic{transform:none}
