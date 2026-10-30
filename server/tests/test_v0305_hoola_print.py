@@ -181,7 +181,7 @@ def test_long_report_cover_contents_real_page_numbers(chrome):
         assert m, head
         real = next(i + 1 for i, p in enumerate(pages) if i > 1 and head in p)
         assert int(m.group(1)) == real, (head, m.group(1), real)
-    assert {"Inter", "Source Serif"} <= set(r["qa"]["fonts"])      # humanist: Inter heads + Source Serif body
+    assert {"Inter", "Source Serif 4"} <= set(r["qa"]["fonts"])    # humanist: Inter heads + Source Serif body (as drawn)
     assert not any("fonts not loaded" in i for i in r["qa"]["issues"])
     from pypdf import PdfReader
     meta = PdfReader(io.BytesIO(r["data"])).metadata
@@ -310,7 +310,7 @@ def _measure(H, table="dark", headings="numbered"):
     with H.Printer() as pr:
         f = pathlib.Path(pr._tmp.name) / "m.html"
         f.write_text(html)
-        pg = pr._page
+        pg = pr._browser.new_context().new_page()     # a measuring page WITH script (the print page has none)
         pg.set_viewport_size({"width": round(194 * 96 / 25.4), "height": 1400})   # A4 minus the 8 mm page margins
         pg.emulate_media(media="print")
         pg.goto(f.as_uri())
@@ -378,3 +378,79 @@ def test_cover_is_full_bleed_and_bands_sit_12mm_from_the_edge(chrome):
     assert 9 <= b * 25.4 / 72 <= 15                          # footer baseline 9-15 mm above the paper's bottom edge
     _l, b, _r, t = tp.get_charbox(txt.index("Annual report"))   # the running header carries the title
     assert 9 <= H_mm - t * 25.4 / 72 <= 15                   # header 9-15 mm below the top edge
+
+
+# ---------------------------------------------------------------- v0.305 review round: faults found by stress inputs
+def test_link_cannot_grow_an_attribute():
+    from app.docstudio.htmlpdf import _inline
+    out = _inline('[x](https://a.in/"onfocus="alert(1)"autofocus=")')
+    assert '"onfocus' not in out and "&quot;onfocus" in out
+    assert re.fullmatch(r'<a href="[^"]*">x</a>.*', out)       # exactly one attribute, quote-free
+
+
+def test_print_page_runs_no_script_and_reaches_no_network(chrome, tmp_path):
+    seen = []
+    html = ("<!doctype html><p id=x>static</p><img src='https://example.com/leak.png'>"
+            "<script>document.getElementById('x').textContent='SCRIPT RAN'</script>")
+    with chrome.Printer() as pr:
+        pr._ctx.on("requestfailed", lambda r: seen.append(r.url))
+        data = pr.pdf(html)
+    text = _text_pages(data)[0]
+    assert "static" in text and "SCRIPT RAN" not in text
+    assert any("example.com" in u for u in seen)               # the outside request was refused
+
+
+def test_long_tokens_wrap_inside_the_column_and_words_stay_whole(chrome):
+    url = "https://www.example.com/this/is/a/really/long/path/that/never/breaks/naturally/at/all?query=1234567890"
+    text = (f"# Links\nSee {url} and Supercalifragilisticexpialidociousandevenlongerthanthatwordhere.\n"
+            "| Sr | Name | City | State | GSTIN | Phone | Orders | Value | Status |\n"
+            "| 1 | Sharma Traders Private Limited | Nagpur | Maharashtra | 27AAACS1234F1Z5 | +91 98220 12345 | 120 | "
+            "₹12,40,000 | Active |\n| 2 | Rao & Sons | Hyderabad | Telangana | 36AAACR1111L1Z9 | +91 90000 11111 | 8 | "
+            "₹45,000 | Active |")
+    r = chrome.make_pdf("Wrap test", text, cover=False)
+    import pypdfium2 as pdfium
+    page = pdfium.PdfDocument(io.BytesIO(r["data"]))[0]
+    tp = page.get_textpage()
+    right = max(tp.get_charbox(i)[2] for i in range(tp.count_chars())
+                if tp.get_text_range(i, 1).strip()) * 25.4 / 72  # line breaks have boxes too - ink only
+    assert right <= 192.8, right                                # nothing past the text column (18 mm from the edge)
+    flat = tp.get_text_range()
+    for word in ("Maharashtra", "Hyderabad", "Telangana", "27AAACS1234F1Z5"):
+        assert word in flat, word                               # no word cut in the middle by the table
+    assert "<wbr>" not in flat and "\x01" not in flat
+
+
+def test_parser_and_number_column_edge_cases():
+    from app.docstudio.htmlpdf import numeric_columns, parse, stat_rows
+    assert [b["k"] for b in parse("2025. was a good year.\n12. Twelfth step")] == ["p", "ol"]
+    assert [len(r) for r in stat_rows(list(range(5)))] == [3, 2]
+    assert [len(r) for r in stat_rows(list(range(8)))] == [4, 4]
+    assert [len(r) for r in stat_rows(list(range(9)))] == [3, 3, 3]
+    assert len(parse("[stat: 1 | a]\n[stat: 2 | b]\n[stat: 3 | c]\n[stat: 4 | d]\n[stat: 5 | e]")) == 1
+    rows = [["Name", "Value"], ["A", "—"], ["B", "-"], ["C", "₹10"], ["D", "n/a"]]
+    assert numeric_columns(rows) == [False, True]               # placeholders don't vote
+
+
+def test_header_footer_carry_latin_only():
+    from app.docstudio.htmlpdf import band_safe
+    assert band_safe("मासिक बिक्री रिपोर्ट") == ""
+    assert band_safe("Price ₹500 · Q3 — “final”") == "Price Rs 500 · Q3 — “final”"
+
+
+def test_chromium_no_is_asked_again_after_ten_minutes(monkeypatch):
+    from app.docstudio import htmlpdf as H
+    calls = []
+
+    class Boom:
+        def __enter__(self):
+            calls.append(1)
+            raise H.PrintError("no chromium")
+
+        def __exit__(self, *a):
+            return False
+    monkeypatch.setattr(H, "Printer", Boom)
+    H._AVAILABLE.clear()
+    assert H.available() is False and H.available() is False and len(calls) == 1
+    H._AVAILABLE["at"] -= 601
+    assert H.available() is False and len(calls) == 2
+    H._AVAILABLE.clear()

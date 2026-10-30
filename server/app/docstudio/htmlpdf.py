@@ -156,7 +156,7 @@ def router_colours(title: str, family: str, hue: float) -> tuple[str, str]:
 # ---------------------------------------------------------------- content -> blocks
 _CALLOUT = re.compile(r"^\[!(\w+)\]\s*(.*)$")
 _STAT = re.compile(r"^\[stat:\s*(.+?)\s*\|\s*(.+?)\]\s*$", re.I)
-_OL = re.compile(r"^(\d+)[.)]\s+")
+_OL = re.compile(r"^(\d{1,3})[.)]\s+")      # 1-999: "2025. was a good year" stays a sentence
 _UL = re.compile(r"^[-*•]\s+")
 _TOTAL = re.compile(r"^\s*(\*\*)?\s*(grand\s+total|total|net\s+total|sub\s*-?total|kul|kul\s+jod|net|कुल|योग)\b", re.I)
 _NUMERIC = re.compile(r"^[\s(+\-−~≈<>]*(?:₹|rs\.?|inr|\$|usd|€)?\s*[\d.,]+\s*"
@@ -245,7 +245,7 @@ def parse(text: str) -> list[dict[str, Any]]:
         elif _STAT.match(s):
             m = _STAT.match(s)
             row = last("stats")
-            if row is not None and len(row["items"]) < 4:
+            if row is not None:
                 row["items"].append((m.group(1), m.group(2)))
             else:
                 out.append({"k": "stats", "items": [(m.group(1), m.group(2))]})
@@ -264,9 +264,25 @@ def parse(text: str) -> list[dict[str, Any]]:
     return out
 
 
+_LONG = re.compile(r"\S{22,}")
+SOFT = "\x01"
+
+
+def _soft(text: str) -> str:
+    """A break chance (later <wbr>) inside any token of 22+ characters - after / . - _ ? & = and every 16 characters
+    - so a URL, a GSTIN run or a long word wraps at a sensible place instead of running off the column or forcing a
+    table wider than the page; ordinary words are never split."""
+    def cut(m: re.Match) -> str:
+        tok = re.sub(r"([/.\-_?&=])(?=\S)", lambda x: x.group(1) + SOFT, m.group(0))
+        return re.sub(r"([^" + SOFT + r"]{16})(?=[^" + SOFT + r"])", lambda x: x.group(1) + SOFT, tok)
+    return _LONG.sub(cut, text)
+
+
 def _inline(text: str) -> str:
-    """Escape, then **bold**, *italic*, `code`, [text](https://...) - nothing else turns into markup."""
-    s = _html.escape(_clean(text), quote=False)
+    """Escape (quotes too: a link can never grow an attribute), then **bold**, *italic*, `code`,
+    [text](https://...) - nothing else turns into markup. LAST, long tokens in the plain text get break chances
+    (_soft) - only between tags and entities, never inside an href or an &amp;."""
+    s = _html.escape(_clean(text), quote=True)
     codes: list[str] = []
 
     def keep(m: re.Match) -> str:
@@ -277,7 +293,12 @@ def _inline(text: str) -> str:
     s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s)
     s = re.sub(r"(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])", r"<i>\1</i>", s)
     s = re.sub(r"\x00(\d+)\x00", lambda m: f"<code>{codes[int(m.group(1))]}</code>", s)
-    return s
+    parts = re.split(r"(<[^>]+>|&[#\w]+;)", s)
+    return "".join(x if (x.startswith("<") or (x.startswith("&") and x.endswith(";"))) else _soft(x)
+                   for x in parts).replace(SOFT, "<wbr>")
+
+
+PLACEHOLDER = {"-", "\u2014", "\u2013", "n/a", "na", "nil", "none", "--", "\u2212"}
 
 
 def _numeric(cell: str) -> bool:
@@ -292,7 +313,8 @@ def numeric_columns(rows: list[list[str]]) -> list[bool]:
     width = max(len(r) for r in rows)
     flags = []
     for c in range(width):
-        cells = [r[c] for r in rows[1:] if c < len(r) and r[c].strip()]
+        cells = [r[c] for r in rows[1:] if c < len(r) and r[c].strip()
+                 and re.sub(r"\*\*", "", r[c]).strip().lower() not in PLACEHOLDER]
         flags.append(c > 0 and bool(cells) and sum(_numeric(x) for x in cells) / len(cells) >= 0.6)
     return flags
 
@@ -484,6 +506,7 @@ def _css(spec: dict[str, Any], P: dict[str, str]) -> str:
 html{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 body{{margin:0;padding:0 {GUTTER}mm;font-family:var(--bf);font-size:{size}pt;line-height:{lh};color:var(--ink);font-kerning:normal;
 font-variant-numeric:lining-nums;text-rendering:optimizeLegibility;orphans:3;widows:3;hyphens:manual}}
+p,li,td,th,.callout,blockquote{{overflow-wrap:break-word}}
 p{{margin:0 0 calc(var(--L)*.5)}} b,strong{{font-weight:650}} a{{color:var(--a);text-decoration:none}}
 h1,h2,h3{{font-family:var(--hf);color:var(--ink);break-after:avoid;page-break-after:avoid;line-height:1.22;position:relative}}
 h1{{font-size:{h1}pt;font-weight:700;margin:calc(var(--L)*2) 0 calc(var(--L)*.55);letter-spacing:-.01em}}
@@ -503,14 +526,14 @@ padding:.1em .3em}}
 .box,pre,blockquote,.callout,.stats,table{{margin:calc(var(--L)*.8) 0}}
 pre{{font-family:'Hoola Mono','DejaVu Sans Mono',monospace;font-size:{max(7.6, size * .82):.1f}pt;line-height:1.5;
 background:#141821;color:#e8eaf0;border-radius:1.2mm;padding:calc(var(--L)*.5) var(--in);white-space:pre-wrap;
-overflow-wrap:anywhere;break-inside:avoid}}
+overflow-wrap:anywhere}}
+pre.keep,blockquote.keep,.callout.keep{{break-inside:avoid}}
 pre code{{background:none;padding:0;color:inherit;font-size:1em}}
 blockquote{{padding:calc(var(--L)*.15) var(--in) calc(var(--L)*.15) calc(var(--in) - {bar:.2f}mm);
-border-left:{bar:.2f}mm solid var(--a);color:var(--mut);font-style:italic;break-inside:avoid}}
+border-left:{bar:.2f}mm solid var(--a);color:var(--mut);font-style:italic}}
 hr{{border:0;border-top:.8pt solid var(--line);margin:calc(var(--L)*1) 0}}
 .callout{{border-left:{bar:.2f}mm solid var(--a);background:var(--soft);
-padding:calc(var(--L)*.45) var(--in) calc(var(--L)*.45) calc(var(--in) - {bar:.2f}mm);border-radius:0 1.2mm 1.2mm 0;
-break-inside:avoid}}
+padding:calc(var(--L)*.45) var(--in) calc(var(--L)*.45) calc(var(--in) - {bar:.2f}mm);border-radius:0 1.2mm 1.2mm 0}}
 .callout .ct{{font-family:var(--hf);font-weight:700;font-size:.8em;letter-spacing:.08em;text-transform:uppercase;
 color:var(--a);margin-bottom:calc(var(--L)*.15)}}
 .callout p{{margin:0 0 calc(var(--L)*.3)}} .callout p:last-child{{margin:0}}
@@ -529,8 +552,9 @@ table{{width:100%;border-collapse:collapse;font-size:{size * .9:.1f}pt;line-heig
 table.keep{{break-inside:avoid}}
 thead{{display:table-header-group}} tr{{break-inside:avoid}}
 th{{{th};text-align:left;font-weight:650;padding:2.2mm 3mm;font-family:var(--hf);vertical-align:bottom}}
-td{{padding:2mm 3mm;border-bottom:.6pt solid var(--line);vertical-align:top;overflow-wrap:anywhere}}
-th:first-child,td:first-child{{padding-left:{edge}}} th:last-child,td:last-child{{padding-right:{edge}}}
+td{{padding:2mm 3mm;border-bottom:.6pt solid var(--line);vertical-align:top}}
+table.wide{{font-size:{size * .8:.1f}pt}} table.wide th,table.wide td{{padding-left:1.8mm;padding-right:1.8mm}}
+table th:first-child,table td:first-child{{padding-left:{edge}}} table th:last-child,table td:last-child{{padding-right:{edge}}}
 {zebra}
 td.k,th.k{{white-space:nowrap}}
 td.n,th.n{{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;width:1%}}
@@ -661,8 +685,17 @@ def _table(rows: list[list[str]], keep: bool) -> str:
         cells = "".join(f"<td class={cls(i)}>{_inline(c.replace('**', '') if tot else c)}</td>"
                         for i, c in enumerate(r))
         body.append(f"<tr{' class=tot' if tot else ''}>{cells}</tr>")
-    return (f"<table{' class=keep' if keep else ''}><thead><tr>{head}</tr></thead>"
+    cls_t = " ".join(c for c in ("keep" if keep else "", "wide" if width >= 7 else "") if c)
+    return (f"<table{' class=' + chr(39) + cls_t + chr(39) if cls_t else ''}><thead><tr>{head}</tr></thead>"
             f"<tbody>{''.join(body)}</tbody></table>")
+
+
+def stat_rows(items: list) -> list[list]:
+    """Key numbers in balanced rows of at most 4: 5 -> 3+2, 6 -> 3+3, 7 -> 4+3, 9 -> 3+3+3 (never a lonely one)."""
+    n = len(items)
+    rows = -(-n // 4)
+    per = -(-n // rows)
+    return [items[i:i + per] for i in range(0, n, per)]
 
 
 def _list(b: dict[str, Any]) -> str:
@@ -726,16 +759,17 @@ def body_html(blocks: list[dict[str, Any]], spec: dict[str, Any], heads: list[di
         elif k == "table":
             out.append(_table(b["rows"], keep=len(b["rows"]) <= 9))
         elif k == "stats":
-            out.append(f"<div class=stats style='--n:{len(b['items'])}'>" + "".join(
-                f"<div class=stat><span class=v>{_inline(v)}</span><span class=l>{_inline(lbl)}</span></div>"
-                for v, lbl in b["items"]) + "</div>")
+            for row in stat_rows(b["items"]):
+                out.append(f"<div class=stats style='--n:{len(row)}'>" + "".join(
+                    f"<div class=stat><span class=v>{_inline(v)}</span><span class=l>{_inline(lbl)}</span></div>"
+                    for v, lbl in row) + "</div>")
         elif k == "callout":
             paras = "".join(f"<p>{_inline(x)}</p>" for x in b["t"].split("\n") if x.strip())
-            out.append(f"<div class='callout {b['kind']}'><div class=ct>{_html.escape(CALLOUTS[b['kind']])}</div>{paras}</div>")
+            out.append(f"<div class='callout {b['kind']}{' keep' if len(b['t']) < 700 else ''}'><div class=ct>{_html.escape(CALLOUTS[b['kind']])}</div>{paras}</div>")
         elif k == "quote":
-            out.append("<blockquote>" + "<br>".join(_inline(x) for x in b["t"].split("\n")) + "</blockquote>")
+            out.append(f"<blockquote{' class=keep' if len(b['t']) < 700 else ''}>" + "<br>".join(_inline(x) for x in b["t"].split("\n")) + "</blockquote>")
         elif k == "code":
-            out.append(f"<pre><code>{_html.escape(b['t'])}</code></pre>")
+            out.append(f"<pre{' class=keep' if b['t'].count(chr(10)) < 18 else ''}><code>{_html.escape(b['t'])}</code></pre>")
         elif k == "divider":
             out.append("<hr>")
         elif k == "pagebreak":
@@ -749,9 +783,18 @@ def _doc(css: str, inner: str, title: str) -> str:
             f"<style>{css}</style></head><body>{inner}</body></html>")
 
 
+def band_safe(text: str) -> str:
+    """Header / footer templates are drawn by Chromium with SYSTEM fonts only (measured: an embedded @font-face is
+    ignored there), so only Latin goes in - an Indian-script title stays on the cover and in the body, where the
+    bundled Noto fonts work; '' when nothing printable is left."""
+    t = (text or "").replace("\u20b9", "Rs ")
+    return t if all(ord(c) < 0x0250 or c in "\u00b7\u2014\u2013\u2018\u2019\u201c\u201d\u2026" for c in t) else ""
+
+
 def _header(title: str, spec: dict[str, Any], P: dict[str, str], right: str) -> str:
     left = title if len(title) <= 70 else title[:67] + "..."
-    ok = lambda s: all(ord(c) < 0x2000 or c in "·—–₹" for c in s)  # noqa: E731
+    ok = lambda s: bool(band_safe(s))  # noqa: E731
+    left, right = band_safe(left), band_safe(right)
     e = _html.escape
     return (f"<div style=\"width:100%;font-size:7.4pt;font-family:'Liberation Sans','DejaVu Sans',sans-serif;"
             f"color:{P['muted']};margin:6mm 18mm 0;padding-bottom:1.6mm;border-bottom:.5pt solid {P['line']};"
@@ -760,7 +803,8 @@ def _header(title: str, spec: dict[str, Any], P: dict[str, str], right: str) -> 
 
 
 def _footer(spec: dict[str, Any], P: dict[str, str], left: str) -> str:
-    ok = all(ord(c) < 0x2000 or c in "·—–₹" for c in left)
+    left = band_safe(left)
+    ok = bool(left)
     return (f"<div style=\"width:100%;font-size:7.4pt;font-family:'Liberation Sans','DejaVu Sans',sans-serif;"
             f"color:{P['muted']};margin:0 18mm 5mm;display:flex;justify-content:space-between\">"
             f"<span>{_html.escape(left) if ok else ''}</span>"
@@ -795,7 +839,12 @@ class Printer:
             self._pw.stop()
             self._tmp.cleanup()
             raise PrintError(f"chromium did not start: {e}")
-        self._page = self._browser.new_page()
+        # the page is DATA (her words, web text): no script runs in it and nothing leaves the machine - only the
+        # local HTML and the bundled fonts load (file: / data:)
+        self._ctx = self._browser.new_context(java_script_enabled=False)
+        self._ctx.route("**/*", lambda r: r.continue_() if r.request.url.startswith(("file:", "data:"))
+                        else r.abort())
+        self._page = self._ctx.new_page()
         self._n = 0
         self.fonts: set[str] = set()          # the @font-face families the last page really loaded
         return self
@@ -805,13 +854,7 @@ class Printer:
         f = Path(self._tmp.name) / f"p{self._n}.html"
         f.write_text(html_text, encoding="utf-8")
         self._page.goto(f.as_uri(), wait_until="load", timeout=60000)
-        try:
-            self._page.evaluate("document.fonts.ready")
-            self.fonts = set(self._page.evaluate(
-                "() => { const o = []; document.fonts.forEach(f => { if (f.status === 'loaded') o.push(f.family) });"
-                " return o }") or [])
-        except Exception:
-            self.fonts = set()
+        self.fonts = self._rendered_fonts()
         kw: dict[str, Any] = {"format": "A4", "print_background": True, "prefer_css_page_size": False}
         if full_bleed:
             kw["margin"] = {"top": "0", "bottom": "0", "left": "0", "right": "0"}
@@ -825,6 +868,27 @@ class Printer:
                           footer_template=footer or "<span></span>")
         return self._page.pdf(**kw)
 
+    def _rendered_fonts(self) -> set[str]:
+        """The font families Chromium REALLY drew the first heading / paragraph / cell / list item / key number with
+        (DevTools CSS.getPlatformFontsForNode). Script is off in the page, so document.fonts callbacks can't run -
+        and this is the better truth anyway: what was drawn, not what was asked for."""
+        try:
+            cdp = self._ctx.new_cdp_session(self._page)
+            cdp.send("DOM.enable")
+            cdp.send("CSS.enable")
+            root = cdp.send("DOM.getDocument")["root"]["nodeId"]
+            got: set[str] = set()
+            for sel in ("h1", "h2", "h3", "p", "td", "li", ".stat .v", ".cv h1"):
+                nid = cdp.send("DOM.querySelector", {"nodeId": root, "selector": sel}).get("nodeId")
+                if nid:
+                    for f in cdp.send("CSS.getPlatformFontsForNode", {"nodeId": nid}).get("fonts", []):
+                        got.add(f.get("familyName", ""))
+            cdp.detach()
+            return {g for g in got if g}
+        except Exception as e:     # noqa: BLE001 - a QA probe never breaks the print
+            log.info("font probe failed: %s", e)
+            return set()
+
     def __exit__(self, *exc: Any) -> None:
         for step in (lambda: self._browser.close(), lambda: self._pw.stop(), lambda: self._tmp.cleanup()):
             try:
@@ -834,8 +898,13 @@ class Printer:
 
 
 def available() -> bool:
-    """Chromium can print here (checked once per process)."""
+    """Chromium can print here. A yes is kept for the process; a no is asked again after 10 minutes (one bad
+    moment - memory, a stuck launch - must not send every PDF to ReportLab until the next restart)."""
+    import time as _t
+    if _AVAILABLE.get("ok") is False and _t.time() - _AVAILABLE.get("at", 0) > 600:
+        _AVAILABLE.clear()
     if "ok" not in _AVAILABLE:
+        _AVAILABLE["at"] = _t.time()
         try:
             with Printer() as p:
                 p.pdf("<!doctype html><p>ok</p>")
@@ -1008,7 +1077,7 @@ def render(title: str, text: str, spec: dict[str, Any], *, cover: bool, toc: boo
             toc_n = max(0, pages[heads[0]["id"]] - (2 if cover else 1))
     else:
         data = one(None, False)
-    loaded = {f.strip("'\"") for f in printer.fonts}
+    loaded = set(printer.fonts)
     if cover:
         inside = [h["t"] for h in heads if h["level"] == 1]
         cv = printer.pdf(_doc(css + _cover_css(spec, P), _cover_html(spec, title, _meta_html(
@@ -1018,7 +1087,8 @@ def render(title: str, text: str, spec: dict[str, Any], *, cover: bool, toc: boo
     report = qa(data, cover=cover, toc_pages=toc_n, title=title)
     head, bodyf = TYPES.get(spec["type"], TYPES["sans"])
     report["fonts"] = sorted(loaded)
-    missing = [f for f in dict.fromkeys((head, bodyf)) if f not in loaded and _font_used(blocks, f, head, bodyf)]
+    missing = [f for f in dict.fromkeys((head, bodyf))      # 'Source Serif' is drawn as 'Source Serif 4'
+               if not any(x.startswith(f) for x in loaded) and _font_used(blocks, f, head, bodyf)]
     if missing:      # the page fell back to a system font: say so (a deploy without app/fonts/print)
         report["issues"].append(f"fonts not loaded: {missing}")
         report["status"] = "warn"
