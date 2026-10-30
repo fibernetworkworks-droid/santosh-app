@@ -11110,7 +11110,66 @@ were a hero alone and Opus reviewed only the home page. Phase 1 fixes those five
 - Built as 0.283.0, re-versioned 0.292.0 on merge past the parallel v0.283-v0.291 work.
 - Not verified on the VPS yet: real Gemini pictures for a real build (the cost per site, how often a shot is refused).
 
-## v0.293.0 WEB DESIGN PHASE 2 — edit like Lovable (owner: "START PHASE 2")
+## v0.293.0 KITNA SAMAY — the seconds beside the working avatar
+Owner: *"NOW A TIMING ON AVATAR THINKING"*.
+
+### Two clocks already existed, and neither answered the question
+| clock | shows | the catch |
+|---|---|---|
+| tool group (v0.228) | `4 steps · 12 s` | only **after** the work finishes |
+| Soch card (v0.171 / v0.235) | counts live | only when the model actually **reasoned** — adaptive thinking means an ordinary ask has no card at all |
+
+So for a plain wait there was no number anywhere on either surface, and **a slow turn and a stuck turn looked
+exactly the same**. That is the real cost, and it is why she asked.
+
+### What it does
+The clock starts with the **turn**, not the phase, so it reads total elapsed rather than time-in-this-step — it
+keeps counting across thinking, tool calls and narration. It stays blank for the first second, so a quick reply
+never flashes `0s`. Under a minute it reads `7s`; above it, `1m 05s`.
+
+- **Console** — `v2.js`: `progressTick()` on a 1s interval, started when the progress row is built and cleared
+  with it in `clearSimpleProgress()`. `.progress-secs` uses tabular figures so the row doesn't jiggle as the
+  number grows, and sits quieter than the label (`--dim`). It is `aria-hidden`: a number changing every second is
+  not something a screen reader should announce — the label already says what is happening.
+- **Phone** — `lib/ui/chat_screen.dart` `_Typing`: a `Timer.periodic` with the same format and the same blank
+  first second, cancelled in `dispose()`. `FontFeature` is imported explicitly from `dart:ui` rather than relied
+  on through `material.dart`'s re-exports.
+
+### Verified
+The real code was driven in a browser: it ticked 1s / 2s / 3s / 4s, computed style reported `tabular-nums`, and
+the label's left edge stayed at 68px across every tick. The format rule was checked at its boundaries —
+blank / 1s / 59s / 1m 00s / 1m 05s / 60m 00s.
+
+**Not verified locally:** `dart analyze` could not be run — the Flutter SDK in the scratchpad was deleted during a
+disk cleanup earlier in the session. CI's analyze step is the check for the phone change.
+
+### Files
+`server/app/static/console/v2.js` · `server/app/static/console/v2.css` · `lib/ui/chat_screen.dart` ·
+`server/tests/test_v0293_kitna_samay.py` (8 tests).
+
+## v0.294.0 COMPOSIO SAB APPS (30 Oct 2026, owner: "NOW CHECK IN APP --- PROPERLY MOST OF APPS NOT FUCTIONING --- LIST ALL 1200 APPS")
+Why most apps failed in v0.291: (1) the 21 app slugs were hard-coded from memory, never checked against Composio's
+catalogue; (2) API-key / company apps (Zendesk, Freshdesk ...) have no Composio-managed sign-in, and Hoola tried to
+create a managed auth config anyway -> an error on "Jodiye"; (3) tools were asked with important=true only, which is
+empty for many apps -> Hoola had nothing to run.
+- `composio.catalog()`: GET /toolkits (limit 1000, cursor, sort_by usage) cached 12 h, retry after 10 min on failure
+  (built-in 21 meanwhile); custom toolkits and the NEVER list dropped. `configured_apps()`: ENABLED auth configs in
+  Newtika's project (an app she adds in the dashboard becomes connectable for everyone). `mode()` = managed / no_auth /
+  setup / unknown. `toolkits()` = the live catalogue (COMPOSIO_TOOLKITS still narrows it).
+- Status: ready (joined, or a no-login app), needs_link, needs_setup (connect returns the SETUP_TEXT line, no link, no
+  auth-config create). No-login apps execute without a connected_account_id.
+- `tool_list` falls back to the first tools when none is important.
+- `match()` names only the 21 well-known apps + her joined ones (1,600 names would hijack plain words); the rest via
+  composio_apps action=list query=.
+- GET /api/composio/apps?q=&category=&offset=&limit= -> {total, all, apps, categories, live}. Phone: search box,
+  category chips, 40 at a time ("Aur dikhao"), "Setup baaki" chip, tools count.
+- VPS self-check: `cd ~/apps/santosh-core && .venv/bin/python -m app.bazar.composio check` (key works? catalogue size,
+  connect-now / no-login / needs-setup counts, the 21 built-ins), `... list [query]` prints every app with its mode.
+- NOT VERIFIED live: the toolkits response field names come from Composio's API reference (composio_managed_auth_schemes,
+  meta.categories[].name, meta.tools_count); whether the hosted Connect Link asks the end user for an API key.
+  Tests: test_v0276_composio.py now 19 (catalogue, setup, no-login, fallback, match, check).
+
+## v0.295.0 WEB DESIGN PHASE 2 — edit like Lovable (owner: "START PHASE 2")
 Flaw 7-9 + 17 of the web design audit: every change, even a typo, was a full Opus rewrite of a section (cost, waiting,
 and the design she liked could drift), no undo per change, nothing she could change by hand. Lovable's Visual Edits
 (click an element, change it, no prompt, no credits) is the model.
@@ -11141,6 +11200,7 @@ and the design she liked could drift), no undo per change, nothing she could cha
   Colours dialog with 5 colour pickers + roundness, Done), link / picture dialogs, remove confirm, "AI se badlo" fills
   the change box. **Phone** (`lib/ui/site_screen.dart` SitePreview): Edit / Undo / Rang / Done in the app bar, the same
   dialogs as bottom sheets.
-- Tests `server/tests/test_v0293_edit_like_lovable.py` (4).
+- Tests `server/tests/test_v0295_edit_like_lovable.py` (4).
+- Built as 0.293.0, re-versioned 0.295.0 on merge past the parallel v0.293.0 KITNA SAMAY and v0.294.0 COMPOSIO SAB APPS.
 - Not verified on a real phone yet: contenteditable inside the Android WebView with the keyboard (the console flow is
   the same script).

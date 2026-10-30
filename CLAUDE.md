@@ -52,6 +52,19 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- NEWEST (30 Oct 2026, owner: "NOW PERFECT. SAVE THE STATE" after the reply-rendering work): branch
+  `stable-2026-10-30-v292` = commit 70f3bde7 = v0.292.0, live on hoola.ainewtika.com (healthz 0.292.0), pubspec
+  0.292.0+332. The chat reads like Claude end to end, and the last four versions of it were all found by testing
+  THE PATH SHE TAKES after four earlier ones measured the wrong layer and "matched": v0.283 the reply lands at
+  reading speed (60-79 words a second at every length), v0.284 a soft newline reflows instead of freezing the
+  model's own wrap + heading sizes 22/20/17 the right way up + one serif in a reply, v0.286 EK HI DOM (the live
+  and reloaded render paths now build the SAME DOM - the <div class="mdb"> wrapper had been zeroing every
+  paragraph gap and losing the 680px cap, which is why four versions of spacing work were invisible to her), and
+  v0.287 the honesty guard stopped stapling "yeh kaam abhi hua nahi hai" onto pure explainers. Also carries other
+  sessions' v0.285 MENUS, v0.288-v0.291 and WEB DESIGN PHASE 1 / COMPOSIO. All ten markers re-verified in this
+  exact commit before the branch was cut. APK release `v0.292.0-b671`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.292.0-b671/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-10-30-v292` as the branch.
 - NEWEST (30 Oct 2026, owner: "SAVE THE STATE" after the tool-choice work): branch `stable-2026-10-30-v271` =
   commit 2828407 = v0.271.0, live on hoola.ainewtika.com (healthz 0.271.0). Right tool for every ask (v0.245 SAHI AUZAAR),
   DATA DESK (v0.238), REA reverse-engineer anything (v0.257), SERVER PEHLE + SAB SERVER PAR (v0.270 / v0.271: every job on
@@ -116,11 +129,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.293.0 (pubspec 0.293.0+333). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.295.0 (pubspec 0.295.0+335). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.293 WEB DESIGN PHASE 2 edit like Lovable: preview Edit mode (`site/edit.py`, `assets/hoola-edit.js`, console studio + phone
+- v0.295 WEB DESIGN PHASE 2 edit like Lovable: preview Edit mode (`site/edit.py`, `assets/hoola-edit.js`, console studio + phone
   WebView `HoolaEdit`): click words and type, link / picture / remove / colours, no AI, Undo, each edit a checked version.
+- v0.294 COMPOSIO SAB APPS: live Composio catalogue (~1,600, `composio.catalog()`), status per app (needs_link / ready no-login /
+  needs_setup = add in Composio dashboard), tools fallback, phone search + categories, `python -m app.bazar.composio check|list`.
 - v0.292 WEB DESIGN PHASE 1: real pictures before the looks (`site/pictures.py`: Opus shot list -> photogen, her photos first,
   Pexels fallback, footer AI note), one Lucide icon set (`<i data-icon>`), fonts 400-700, looks = hero + 2 sections, Opus reviews every page.
 - v0.291 COMPOSIO (built as 0.276): 21 apps (Slack, Notion, Jira, HubSpot, Zoom...) via ONE Newtika Composio project
@@ -129,6 +144,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   with a key in it is sealed (`bz_custom_mcp.url_enc`, masked `url`); fair native-tool budget + `bazar_mcp action=tools`.
 - v0.289 SAHI KRAM (real voice code review): her late OpenAI transcript joins HER turn (finish waits <=3 s), no reply
   while she speaks, late words never wipe captions, early self-cuts counted, semantic VAD medium. Gemini untouched.
+- v0.293 KITNA SAMAY: the seconds tick beside the working avatar on both surfaces. A tool group only shows its
+  total AFTER the work and a Soch card only exists when the model reasoned, so an ordinary wait had no number
+  at all - a slow turn and a stuck one looked the same. The clock starts with the TURN (total elapsed, not
+  time-in-step), is blank for the first second, reads 7s / 1m 05s, tabular figures, aria-hidden.
 - CHECKPOINT 30 Oct: FULL CLAUDE MODE (v0.239-v0.250) owner-verified "PERFECT"; memory quiz 16/20 -> 20/20; branch
   `checkpoint-full-claude-mode-2026-10-30` = 87a2046 (grep "CHECKPOINT 30 Oct" docs/HISTORY.md).
 - v0.288 SIDEBAR FULLY VISIBLE: labels 12/400 faint --dim -> 13/500 --mut, chat titles 13.5/400 -> 14/450 ink, nav 14/400 -> 14/500

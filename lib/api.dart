@@ -1713,9 +1713,11 @@ class Api {
   Future<String> bazarFileUrl(String docId) async => absolute((await _send('GET', '/api/bazar/files/$docId/link'))['url'] as String);
   Future<void> bazarUnlink(String packId) async => _send('DELETE', '/api/bazar/connections/$packId');
   // v0.276 COMPOSIO: her own Slack / Notion / Jira ... through Hoola's one Composio project (no Composio account for her)
-  Future<Map<String, dynamic>> composioApps() async => Map<String, dynamic>.from(await _send('GET', '/api/composio/apps') as Map);
-  Future<String> composioConnect(String toolkit) async =>
-      (await _send('POST', '/api/composio/apps/$toolkit/connect', timeout: const Duration(seconds: 40)))['url'] as String? ?? '';
+  Future<Map<String, dynamic>> composioApps({String q = '', String category = '', int offset = 0}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/composio/apps',
+          query: {'q': q, 'category': category, 'offset': '$offset', 'limit': '40'}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> composioConnect(String toolkit) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/composio/apps/$toolkit/connect', timeout: const Duration(seconds: 40)) as Map);
   Future<void> composioRemove(String toolkit) async => _send('DELETE', '/api/composio/apps/$toolkit');
   Future<Map<String, dynamic>> bazarSettings() async => Map<String, dynamic>.from(await _send('GET', '/api/bazar/settings'));
   Future<Map<String, dynamic>> saveBazarSettings(Map<String, dynamic> s) async =>

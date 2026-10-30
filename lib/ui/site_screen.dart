@@ -762,7 +762,7 @@ class SitePreview extends StatefulWidget {
   State<SitePreview> createState() => _SitePreviewState();
 }
 
-/// v0.293 Edit mode like Lovable: tap words on the page and type, tap a picture / link to change it, Undo - her own
+/// v0.295 Edit mode like Lovable: tap words on the page and type, tap a picture / link to change it, Undo - her own
 /// hands, no AI, no cost. The page tells the app what changed through the HoolaEdit channel; the app sends it with her login.
 class _SitePreviewState extends State<SitePreview> {
   late final WebViewController _web;

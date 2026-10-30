@@ -587,7 +587,7 @@ def _after_job(site_id: str) -> None:
     except SiteError:
         return
     if site_id in _SAVE_PENDING and r.status not in ("building", "checking"):
-        _SAVE_PENDING.discard(site_id)          # v0.293 edits made while a job ran get their version now
+        _SAVE_PENDING.discard(site_id)          # v0.295 edits made while a job ran get their version now
         _start(site_id, "save")
         return
     q = _j(r.queued, [])
@@ -754,7 +754,7 @@ def write_section(r: Site, slug: str, s: dict[str, Any], others: list[str], extr
     if not raw.get("html"):
         raise SiteError(f"{s['type']} section nahi ban paya (model ne khaali diya).")
     h, css, js, problems = B.sanitize_section(sec_id(slug, s["type"]), raw)
-    h, _n = E.tag(h)                  # v0.293 every word / link / picture she may edit gets its number
+    h, _n = E.tag(h)                  # v0.295 every word / link / picture she may edit gets its number
     return {"html": h, "css": css, "js": js, "notes": _tidy(raw.get("notes"), 200), "cleaned": problems,
             "at": datetime.now(timezone.utc).isoformat()}
 
@@ -924,7 +924,7 @@ def _assemble_live(r: Site) -> Path:
 
 
 def _assemble_edit(r: Site) -> Path:
-    """v0.293 the edit preview: the same site with the edit numbers kept (the live copy and every version never have them)."""
+    """v0.295 the edit preview: the same site with the edit numbers kept (the live copy and every version never have them)."""
     ctx = _ctx(r)
     ctx["edit"] = True
     out = B.site_dir(r.tenant_id, r.id) / "edit"
@@ -1397,7 +1397,7 @@ def _ensure_pictures(r: Site) -> int:
     return made
 
 
-# ---------------------------------------------------------------- v0.293 editing like Lovable: her own hands, no AI
+# ---------------------------------------------------------------- v0.295 editing like Lovable: her own hands, no AI
 _SAVE_PENDING: set[str] = set()
 _JOBS: dict[str, str] = {}          # site -> the job its thread runs (looks / build / save)
 EDIT_HISTORY = 50
@@ -1422,7 +1422,7 @@ def _push_edit(r: Site, item: dict[str, Any]) -> None:
 
 
 def _ensure_tags(r: Site) -> int:
-    """Sections written before v0.293 get their edit numbers the first time she opens edit mode."""
+    """Sections written before v0.295 get their edit numbers the first time she opens edit mode."""
     n = 0
     for k, sec in _sections(r).items():
         h, added = E.tag(sec.get("html") or "")
@@ -1530,7 +1530,7 @@ def edits(tenant: str, ref: str) -> dict[str, Any]:
 
 
 def save_version(site_id: str, note: str = "") -> None:
-    """v0.293 her own-hand edits become a checked version: the same Chromium checks as a build, but no AI fix rounds
+    """v0.295 her own-hand edits become a checked version: the same Chromium checks as a build, but no AI fix rounds
     and no critique (her words are hers). A blocking problem shows on the Checks tab like after any build."""
     from ..usage import scope
     from . import checks as C
@@ -1640,7 +1640,7 @@ def preview_file(token: str, path: str) -> tuple[bytes, str, dict[str, str]]:
     elif path.startswith("__looks/"):
         root = base / "looks"
         rel = path[len("__looks/"):]
-    elif path == "__edit.js":                       # v0.293 the in-page editor (edit preview only)
+    elif path == "__edit.js":                       # v0.295 the in-page editor (edit preview only)
         return (B.ASSETS / "hoola-edit.js").read_bytes(), "application/javascript", {
             **B.security_headers(form_endpoint(r)), "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
     elif path.startswith("__edit/") or path == "__edit":

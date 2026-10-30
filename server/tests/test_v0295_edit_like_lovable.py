@@ -1,4 +1,4 @@
-"""v0.293 WEB DESIGN PHASE 2, editing like Lovable: every word / link / picture of a built site has an edit number, the
+"""v0.295 WEB DESIGN PHASE 2, editing like Lovable: every word / link / picture of a built site has an edit number, the
 edit preview carries the in-page editor, her own changes (words, link, picture, remove, colours) need no AI call, each
 one can be undone, each becomes a checked version, and the live site / versions / exports never carry the edit numbers."""
 import json
@@ -117,7 +117,7 @@ def test_edits_wait_for_a_running_build_and_old_sections_get_numbers(site_env, m
     k = "home__hero"
     sec = S._sections(r)[k]
     from app.site import edit as E
-    S._put_sec(r, k, {**sec, "html": E.strip(sec["html"])})                  # a section from before v0.293
+    S._put_sec(r, k, {**sec, "html": E.strip(sec["html"])})                  # a section from before v0.295
     assert "data-e=" not in S._sections(r)[k]["html"]
     S.edit_mode(T, sid)
     assert "data-e=" in S._sections(S._load(sid))[k]["html"]
@@ -138,5 +138,5 @@ def test_tool_undo_and_version():
     assert "undo" in ST.SITE_TOOLS[0]["input_schema"]["properties"]["action"]["enum"]
     from app.main import APP_VERSION
     from pathlib import Path
-    assert APP_VERSION == "0.293.0"
-    assert "0.293.0+333" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.295.0"
+    assert "0.295.0+335" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

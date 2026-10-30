@@ -17,6 +17,23 @@ def _fake_composio(calls):
         path = req.url.path.removeprefix("/api/v3.1")
         body = json.loads(req.content) if req.content else {}
         calls.append((req.method, path, dict(req.url.params), body, req.headers.get("x-api-key")))
+        if path == "/toolkits":
+            return httpx.Response(200, json={"items": [
+                {"slug": "slack", "name": "Slack", "type": "native", "composio_managed_auth_schemes": ["OAUTH2"],
+                 "auth_schemes": ["OAUTH2"], "meta": {"description": "Team chat", "categories": [{"name": "Communication"}],
+                                                      "tools_count": 150, "logo": "https://logos.composio.dev/slack"}},
+                {"slug": "zendesk", "name": "Zendesk", "type": "native", "composio_managed_auth_schemes": [],
+                 "auth_schemes": ["API_KEY"], "meta": {"description": "Support tickets",
+                                                       "categories": [{"name": "Customer Support"}], "tools_count": 40}},
+                {"slug": "weathermap", "name": "OpenWeather", "type": "native", "no_auth": True,
+                 "meta": {"description": "Weather", "categories": [{"name": "Data"}], "tools_count": 2}},
+                {"slug": "gmail", "name": "Gmail", "type": "native", "composio_managed_auth_schemes": ["OAUTH2"],
+                 "meta": {"description": "Mail"}},
+                {"slug": "notion", "name": "Notion", "type": "native", "composio_managed_auth_schemes": ["OAUTH2"],
+                 "meta": {"description": "Notes", "categories": [{"name": "Productivity"}], "tools_count": 30}},
+            ], "next_cursor": None, "total_items": 5})
+        if path == "/auth_configs" and req.method == "GET" and "toolkit_slug" not in req.url.params:
+            return httpx.Response(200, json={"items": [], "next_cursor": None})
         if path == "/auth_configs" and req.method == "GET":
             return httpx.Response(200, json={"items": [{"id": f"ac_{req.url.params['toolkit_slug']}",
                                                         "status": "ENABLED",
@@ -34,6 +51,8 @@ def _fake_composio(calls):
             return httpx.Response(200, json={})
         if path == "/tools":
             kit = req.url.params["toolkit_slug"]
+            if req.url.params.get("important") == "true":     # many apps mark no tool important
+                return httpx.Response(200, json={"items": []})
             return httpx.Response(200, json={"items": [
                 {"slug": f"{kit.upper()}_LIST_ALL_CHANNELS", "name": "List channels", "description": "list",
                  "input_parameters": {"type": "object", "properties": {}}, "toolkit": {"slug": kit}},
@@ -109,7 +128,7 @@ def test_users_never_need_a_composio_account_and_user_id_is_server_made(cz):
                                            Event.kind == "bazar_open")).first()
     assert ev and ev.payload["url"] == out["url"]
     apps = {a["toolkit"]: a["status"] for a in cz["svc"].composio_apps("default")["apps"]}
-    assert apps["slack"] == "ready" or apps["slack"] == "pending"
+    assert apps["slack"] in ("ready", "pending")
 
 
 def test_read_runs_with_her_own_account_only(cz):
@@ -239,3 +258,51 @@ def test_not_configured_says_so(env, monkeypatch):
     from app.bazar.connectors.base import ToolError
     with pytest.raises(ToolError, match="chalu nahi"):
         service.composio_connect("default", "slack")
+
+
+def _st(cz, tenant="default", **kw):
+    return {a["toolkit"]: a["status"] for a in cz["svc"].composio_apps(tenant, **kw)["apps"]}
+
+
+def test_v0294_whole_live_catalogue_with_honest_status(cz):
+    res = cz["svc"].composio_apps("default")
+    assert res["live"] is True and res["all"] == 4                       # gmail never offered
+    st = {a["toolkit"]: a["status"] for a in res["apps"]}
+    assert st == {"slack": "needs_link", "zendesk": "needs_setup", "weathermap": "ready", "notion": "needs_link"}
+    assert dict(res["categories"])["Communication"] == 1
+    assert [a["toolkit"] for a in cz["svc"].composio_apps("default", q="support")["apps"]] == ["zendesk"]
+    assert [a["toolkit"] for a in cz["svc"].composio_apps("default", category="Productivity")["apps"]] == ["notion"]
+
+
+def test_v0294_api_key_app_says_setup_instead_of_failing(cz):
+    out = cz["svc"].composio_connect("default", "zendesk", cz["conv"]["default"])
+    assert out["status"] == "needs_setup" and out["url"] == "" and "dashboard" in out["say"]
+    assert not [c for c in cz["calls"] if c[1] == "/connected_accounts/link"]
+    assert not [c for c in cz["calls"] if c[0] == "POST" and c[1] == "/auth_configs"]
+
+
+def test_v0294_no_login_app_runs_without_any_account(cz):
+    res = cz["svc"].run("default", cz["conv"]["default"], "cmp-weathermap", "WEATHERMAP_GET_WEATHER", {"city": "Akola"})
+    assert res["data"]["ok"] is True
+    ex = [c for c in cz["calls"] if c[1].startswith("/tools/execute/")][-1]
+    assert "connected_account_id" not in ex[3] and ex[3]["user_id"] == cz["cmp"].composio_user("default")
+
+
+def test_v0294_tools_fall_back_when_none_is_important(cz):
+    _link(cz)
+    out = cz["svc"].composio_tools("default", "slack")
+    assert {t["tool"] for t in out["tools"]} == {"SLACK_LIST_ALL_CHANNELS", "SLACK_SEND_MESSAGE"}
+
+
+def test_v0294_find_matches_known_names_not_random_words(cz):
+    from app.bazar import composio
+    assert [p.id for p in composio.match("slack pe message bhejo")] == ["cmp-slack"]
+    assert composio.match("aaj weather kaisa hai") == []                 # a plain word never picks an app
+
+
+def test_v0294_self_check_has_no_secrets(cz):
+    out = cz["cmp"].check()
+    assert out["key_works"] is True and out["apps_in_catalogue"] == 4
+    assert out["connect_now"] == 2 and out["need_newtika_setup"] == 1 and out["no_login_needed"] == 1
+    assert out["built_in_21"]["slack"] == "managed" and out["built_in_21"]["jira"] == "NOT IN COMPOSIO"
+    assert "ak_test_project" not in json.dumps(out)

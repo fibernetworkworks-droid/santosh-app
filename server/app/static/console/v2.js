@@ -471,6 +471,21 @@ function stepArgsHtml(id) {
 }
 const PROGRESS_POLICY = window.HoolaProgressPolicy;
 let SIMPLE_PROGRESS = null;
+/* v0.293 KITNA SAMAY: while Hoola works, the row next to the avatar counts the seconds, like Claude. The turn's
+   own tool groups already fold to "4 steps · 12 s" and a Soch card to "thought for 8s", but those only appear
+   AFTER the work, and a think card only when the model actually reasoned - so for an ordinary wait there was no
+   number at all and no way to tell a slow turn from a stuck one. The clock starts with the turn and runs across
+   every phase, so it reads total elapsed, not time-in-this-step. It stays blank for the first second so a quick
+   reply never flashes "0s". */
+let PROGRESS_T0 = 0, PROGRESS_TIMER = 0;
+function fmtSecs(s) { return s < 60 ? s + 's' : Math.floor(s / 60) + 'm ' + String(s % 60).padStart(2, '0') + 's'; }
+function progressTick() {
+  const el = SIMPLE_PROGRESS && SIMPLE_PROGRESS.querySelector('.progress-secs');
+  if (!el) return;
+  const s = Math.floor((Date.now() - PROGRESS_T0) / 1000);
+  const want = s >= 1 ? fmtSecs(s) : '';
+  if (el.textContent !== want) el.textContent = want;
+}
 function simpleProgress(kind,p={}) {
   if(kind!=='typing' && !TYPING)return;
   if (!SIMPLE_PROGRESS) {
@@ -480,7 +495,9 @@ function simpleProgress(kind,p={}) {
     const img=document.createElement('img');img.src=$('#uimg').src;img.alt='';avatar.appendChild(img);
     const label=document.createElement('span');label.className='progress-label';
     const dots=document.createElement('span');dots.className='progress-dots';dots.setAttribute('aria-hidden','true');dots.innerHTML='<i></i><i></i><i></i>';
-    SIMPLE_PROGRESS.append(avatar,label,dots);
+    const secs=document.createElement('span');secs.className='progress-secs';secs.setAttribute('aria-hidden','true');   // v0.293 the clock is decoration; the label is what a screen reader reads
+    SIMPLE_PROGRESS.append(avatar,label,dots,secs);
+    PROGRESS_T0=Date.now();clearInterval(PROGRESS_TIMER);PROGRESS_TIMER=setInterval(progressTick,1000);
   }
   if(SIMPLE_PROGRESS.parentElement!==col||SIMPLE_PROGRESS.nextElementSibling)col.appendChild(SIMPLE_PROGRESS);   // v0.227.3 always the last row
   const prev=SIMPLE_PROGRESS.previousElementSibling;   // right under Hoola's own reply row: no second avatar
@@ -490,7 +507,7 @@ function simpleProgress(kind,p={}) {
   const text=SIMPLE_PROGRESS.querySelector('.progress-label');if(text.textContent!==label)text.textContent=label;
   scrollDown();
 }
-function clearSimpleProgress(){SIMPLE_PROGRESS?.remove();SIMPLE_PROGRESS=null;}
+function clearSimpleProgress(){SIMPLE_PROGRESS?.remove();SIMPLE_PROGRESS=null;clearInterval(PROGRESS_TIMER);PROGRESS_TIMER=0;}
 function stepEvent(p) { simpleProgress('step',p); }
 function closeTurnTools(t = TURN) {
   if (!t) return;

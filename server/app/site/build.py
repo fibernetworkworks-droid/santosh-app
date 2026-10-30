@@ -662,7 +662,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                 h, unknown = expand_icons(h)
                 if unknown:
                     problems.append(f"{key}: unknown icon: {', '.join(sorted(set(unknown)))}")
-                if site.get("edit"):           # v0.293 the edit preview knows which section a click belongs to
+                if site.get("edit"):           # v0.295 the edit preview knows which section a click belongs to
                     h = h.replace("<section ", f'<section data-k="{esc(key)}" ', 1)
                 else:                          # the real site never carries the edit numbers
                     from .edit import strip

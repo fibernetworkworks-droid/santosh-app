@@ -80,10 +80,12 @@ BAZAR_TOOLS = [
          "readonly": {"type": "boolean"}, "toolsets": {"type": "array", "items": {"type": "string"}},
          "project": {"type": "string", "description": "Supabase project ref"}}, "required": ["action"]}},
     {"name": "composio_apps", "description": (
-        "Her own Slack, Notion, Jira, Confluence, Trello, Asana, ClickUp, Linear, Airtable, HubSpot, Salesforce, "
-        "Pipedrive, Zendesk, Freshdesk, Mailchimp, Zoom, Calendly, Dropbox, Todoist, Figma, Miro accounts, linked through "
-        "Hoola's Composio connection (she never makes a Composio account; she signs in on the app's own page). "
-        "action=list: apps + status (ready / needs_link) + her calls this month. action=connect toolkit=<slug, e.g. slack>: "
+        "Her own accounts in ~1,600 apps (Slack, Notion, Jira, Trello, Asana, HubSpot, Salesforce, Zoom, Calendly, "
+        "Dropbox, Figma, Airtable, Zendesk, CRMs, accounting, HR, marketing ...) linked through Hoola's "
+        "Composio connection (she never makes a Composio account; she signs in on the app's own page). "
+        "action=list [query=app name or job, e.g. 'zoho', 'invoice', 'crm']: matching apps + status (ready / needs_link / "
+        "needs_setup = Newtika must add it once in the Composio dashboard, say so in one line) + her calls this month. "
+        "action=connect toolkit=<slug, e.g. slack>: "
         "an Open button in the chat for her sign-in. action=tools toolkit=<slug> [query]: tool slugs with input_schema "
         "(query finds more, e.g. 'reply in thread'). action=remove toolkit=<slug>: disconnect. To RUN one: bazar_run "
         "pack_id=cmp-<slug> tool=<TOOL_SLUG> args=<per input_schema>. Reads run; send / create / update / delete show a "
@@ -187,7 +189,7 @@ async def bazar_mcp(ctx: Ctx, action, query="", field="", url="", ref="", name="
 
 async def composio_apps(ctx: Ctx, action, toolkit="", query="", **_):
     if action == "list":
-        return await _call(service.composio_apps, ctx.tenant_id)
+        return await _call(service.composio_apps, ctx.tenant_id, str(query or ""), "", 0, 20)
     if action == "connect":
         return await _call(service.composio_connect, ctx.tenant_id, str(toolkit or ""), ctx.conversation_id)
     if action == "tools":

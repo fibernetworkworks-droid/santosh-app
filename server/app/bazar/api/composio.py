@@ -24,8 +24,9 @@ def make_router(require_key, current_tenant) -> APIRouter:
             raise HTTPException(400, str(e))
 
     @r.get("/api/composio/apps", dependencies=[Depends(require_key)])
-    async def apps(tenant: str = Depends(current_tenant)):
-        return await asyncio.to_thread(_do, service.composio_apps, tenant)
+    async def apps(q: str = "", category: str = "", offset: int = 0, limit: int = 40,
+                   tenant: str = Depends(current_tenant)):
+        return await asyncio.to_thread(_do, service.composio_apps, tenant, q, category, offset, limit)
 
     @r.post("/api/composio/apps/{toolkit}/connect", dependencies=[Depends(require_key)])
     async def connect(toolkit: str, tenant: str = Depends(current_tenant)):

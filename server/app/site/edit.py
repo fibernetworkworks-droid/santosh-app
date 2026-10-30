@@ -1,4 +1,4 @@
-"""v0.293 Website editing like Lovable (web design Phase 2): she clicks a thing in the preview and changes it herself -
+"""v0.295 Website editing like Lovable (web design Phase 2): she clicks a thing in the preview and changes it herself -
 words, a link, a picture, or removes it - with no AI call, no cost and no waiting for Opus; every change can be undone.
 
 Every element she may edit carries `data-e="<n>"` inside its section's source html (numbered once per section, kept

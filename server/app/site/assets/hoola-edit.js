@@ -1,4 +1,4 @@
-/* Hoola website editor (v0.293, MIT, Newtika). Loaded ONLY in the edit preview (/api/site-preview/<token>/__edit/...).
+/* Hoola website editor (v0.295, MIT, Newtika). Loaded ONLY in the edit preview (/api/site-preview/<token>/__edit/...).
    Hover = outline, click = edit: words are typed in place (Enter / click outside saves, Esc cancels); pictures, links
    and "remove" go to the console / phone through postMessage (or the phone's HoolaEdit channel). This page holds no
    login: it only says WHAT she changed; the console / app sends it to Hoola with her login. */

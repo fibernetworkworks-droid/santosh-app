@@ -532,7 +532,7 @@ window.HoolaBuild = function (C) {
     d.addEventListener('click', shut); addEventListener('keydown', key); document.body.appendChild(d);
     blob(path).then(u => { d.querySelector('img').src = u; }).catch(() => { d.querySelector('span').textContent = 'Picture not found.'; });
   }
-  /* ---------------- v0.293 edit mode: her own hands in the preview, no AI ---------------- */
+  /* ---------------- v0.295 edit mode: her own hands in the preview, no AI ---------------- */
   function dialog(title, inner) {
     return new Promise(done => {
       const d = document.createElement('div'); d.className = 'blb sted-dlg'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', title);
