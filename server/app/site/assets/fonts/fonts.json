@@ -2,7 +2,9 @@
  "Archivo": {
   "files": [
    "archivo-latin-400.woff2",
-   "archivo-latin-700.woff2"
+   "archivo-latin-700.woff2",
+   "archivo-latin-500.woff2",
+   "archivo-latin-600.woff2"
   ],
   "license": "Copyright 2020 The Archivo Project Authors (https://github.com/Omnibus-Type/Archivo) Archivo-Italic[wdth,wght].ttf: Copy"
  },
@@ -11,28 +13,38 @@
    "baloo-2-latin-400.woff2",
    "baloo-2-latin-700.woff2",
    "baloo-2-devanagari-400.woff2",
-   "baloo-2-devanagari-700.woff2"
+   "baloo-2-devanagari-700.woff2",
+   "baloo-2-devanagari-500.woff2",
+   "baloo-2-devanagari-600.woff2",
+   "baloo-2-latin-500.woff2",
+   "baloo-2-latin-600.woff2"
   ],
   "license": "Copyright 2019 The Baloo 2 Project Authors (https://github.com/EkType/Baloo2)"
  },
  "Bricolage Grotesque": {
   "files": [
    "bricolage-grotesque-latin-400.woff2",
-   "bricolage-grotesque-latin-700.woff2"
+   "bricolage-grotesque-latin-700.woff2",
+   "bricolage-grotesque-latin-500.woff2",
+   "bricolage-grotesque-latin-600.woff2"
   ],
   "license": "Copyright 2022 The Bricolage Grotesque Project Authors (https://github.com/ateliertriay/bricolage)"
  },
  "Cormorant Garamond": {
   "files": [
    "cormorant-garamond-latin-400.woff2",
-   "cormorant-garamond-latin-700.woff2"
+   "cormorant-garamond-latin-700.woff2",
+   "cormorant-garamond-latin-500.woff2",
+   "cormorant-garamond-latin-600.woff2"
   ],
   "license": "Copyright 2015 The Cormorant Project Authors (github.com/CatharsisFonts/Cormorant) CormorantGaramond-Italic[wght].ttf: C"
  },
  "DM Sans": {
   "files": [
    "dm-sans-latin-400.woff2",
-   "dm-sans-latin-700.woff2"
+   "dm-sans-latin-700.woff2",
+   "dm-sans-latin-500.woff2",
+   "dm-sans-latin-600.woff2"
   ],
   "license": "Copyright 2014 The DM Sans Project Authors (https://github.com/googlefonts/dm-fonts) DMSans-Italic[opsz,wght].ttf: Copyr"
  },
@@ -48,14 +60,20 @@
    "eczar-latin-400.woff2",
    "eczar-latin-700.woff2",
    "eczar-devanagari-400.woff2",
-   "eczar-devanagari-700.woff2"
+   "eczar-devanagari-700.woff2",
+   "eczar-devanagari-500.woff2",
+   "eczar-devanagari-600.woff2",
+   "eczar-latin-500.woff2",
+   "eczar-latin-600.woff2"
   ],
   "license": "Copyright 2014 The Eczar Project Authors (https://github.com/rosettatype/eczar)"
  },
  "Fraunces": {
   "files": [
    "fraunces-latin-400.woff2",
-   "fraunces-latin-700.woff2"
+   "fraunces-latin-700.woff2",
+   "fraunces-latin-500.woff2",
+   "fraunces-latin-600.woff2"
   ],
   "license": "Copyright 2020 The Fraunces Project Authors (github.com/undercasetype/Fraunces) Fraunces-Italic[SOFT,WONK,opsz,wght].ttf"
  },
@@ -64,7 +82,11 @@
    "hind-latin-400.woff2",
    "hind-latin-700.woff2",
    "hind-devanagari-400.woff2",
-   "hind-devanagari-700.woff2"
+   "hind-devanagari-700.woff2",
+   "hind-devanagari-500.woff2",
+   "hind-devanagari-600.woff2",
+   "hind-latin-500.woff2",
+   "hind-latin-600.woff2"
   ],
   "license": "Copyright (c) 2014 Indian Type Foundry (info@indiantypefoundry.com) Hind-Regular.ttf: Copyright (c) 2014 Indian Type Fou"
  },
@@ -78,14 +100,18 @@
  "Inter": {
   "files": [
    "inter-latin-400.woff2",
-   "inter-latin-700.woff2"
+   "inter-latin-700.woff2",
+   "inter-latin-500.woff2",
+   "inter-latin-600.woff2"
   ],
   "license": "Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter) Inter-Italic[opsz,wght].ttf: Copyright 2016 The"
  },
  "Josefin Sans": {
   "files": [
    "josefin-sans-latin-400.woff2",
-   "josefin-sans-latin-700.woff2"
+   "josefin-sans-latin-700.woff2",
+   "josefin-sans-latin-500.woff2",
+   "josefin-sans-latin-600.woff2"
   ],
   "license": "Copyright 2010 The Josefin Sans Project Authors (https://github.com/ThomasJockin/JosefinSansFont-master), with Reserved "
  },
@@ -103,7 +129,11 @@
    "khand-latin-400.woff2",
    "khand-latin-700.woff2",
    "khand-devanagari-400.woff2",
-   "khand-devanagari-700.woff2"
+   "khand-devanagari-700.woff2",
+   "khand-devanagari-500.woff2",
+   "khand-devanagari-600.woff2",
+   "khand-latin-500.woff2",
+   "khand-latin-600.woff2"
   ],
   "license": "Copyright (c) 2014 Indian Type Foundry (info@indiantypefoundry.com) Khand-Regular.ttf: Copyright (c) 2014 Indian Type Fo"
  },
@@ -112,7 +142,11 @@
    "laila-latin-400.woff2",
    "laila-latin-700.woff2",
    "laila-devanagari-400.woff2",
-   "laila-devanagari-700.woff2"
+   "laila-devanagari-700.woff2",
+   "laila-devanagari-500.woff2",
+   "laila-devanagari-600.woff2",
+   "laila-latin-500.woff2",
+   "laila-latin-600.woff2"
   ],
   "license": "Copyright (c) 2014 Indian Type Foundry (info@indiantypefoundry.com) Laila-Regular.ttf: Copyright (c) 2014 Indian Type Fo"
  },
@@ -126,14 +160,18 @@
  "Lora": {
   "files": [
    "lora-latin-400.woff2",
-   "lora-latin-700.woff2"
+   "lora-latin-700.woff2",
+   "lora-latin-500.woff2",
+   "lora-latin-600.woff2"
   ],
   "license": "Copyright 2011 The Lora Project Authors (https://github.com/cyrealtype/Lora-Cyrillic), with Reserved Font Name \"Lora\". L"
  },
  "Manrope": {
   "files": [
    "manrope-latin-400.woff2",
-   "manrope-latin-700.woff2"
+   "manrope-latin-700.woff2",
+   "manrope-latin-500.woff2",
+   "manrope-latin-600.woff2"
   ],
   "license": "Copyright 2019 The Manrope Project Authors (https://github.com/sharanda/manrope)"
  },
@@ -142,7 +180,9 @@
    "martel-latin-400.woff2",
    "martel-latin-700.woff2",
    "martel-devanagari-400.woff2",
-   "martel-devanagari-700.woff2"
+   "martel-devanagari-700.woff2",
+   "martel-devanagari-600.woff2",
+   "martel-latin-600.woff2"
   ],
   "license": "Copyright (c) 2015 Dan Reynolds. Copyright (c) 2010-2015, Sorkin Type Co (www.sorkintype.com) with Reserved Font Name 'M"
  },
@@ -151,21 +191,29 @@
    "mukta-latin-400.woff2",
    "mukta-latin-700.woff2",
    "mukta-devanagari-400.woff2",
-   "mukta-devanagari-700.woff2"
+   "mukta-devanagari-700.woff2",
+   "mukta-devanagari-500.woff2",
+   "mukta-devanagari-600.woff2",
+   "mukta-latin-500.woff2",
+   "mukta-latin-600.woff2"
   ],
   "license": "Copyright (c) 2014, Girish Dalvi, Ek Type. All rights reserved. Mukta-Light.ttf: Copyright (c) 2014, Girish Dalvi, Ek Ty"
  },
  "Nunito": {
   "files": [
    "nunito-latin-400.woff2",
-   "nunito-latin-700.woff2"
+   "nunito-latin-700.woff2",
+   "nunito-latin-500.woff2",
+   "nunito-latin-600.woff2"
   ],
   "license": "Copyright 2014 The Nunito Project Authors (https://github.com/googlefonts/nunito) Nunito-Italic[wght].ttf: Copyright 201"
  },
  "Outfit": {
   "files": [
    "outfit-latin-400.woff2",
-   "outfit-latin-700.woff2"
+   "outfit-latin-700.woff2",
+   "outfit-latin-500.woff2",
+   "outfit-latin-600.woff2"
   ],
   "license": "Copyright 2021 The Outfit Project Authors (https://github.com/Outfitio/Outfit-Fonts)"
  },
@@ -174,7 +222,11 @@
    "palanquin-latin-400.woff2",
    "palanquin-latin-700.woff2",
    "palanquin-devanagari-400.woff2",
-   "palanquin-devanagari-700.woff2"
+   "palanquin-devanagari-700.woff2",
+   "palanquin-devanagari-500.woff2",
+   "palanquin-devanagari-600.woff2",
+   "palanquin-latin-500.woff2",
+   "palanquin-latin-600.woff2"
   ],
   "license": "Copyright 2014 Pria Ravichandran (pria.ravichandran@gmail.com) Palanquin-ExtraLight.ttf: Copyright 2014 Pria Ravichandra"
  },
@@ -183,21 +235,29 @@
    "palanquin-dark-latin-400.woff2",
    "palanquin-dark-latin-700.woff2",
    "palanquin-dark-devanagari-400.woff2",
-   "palanquin-dark-devanagari-700.woff2"
+   "palanquin-dark-devanagari-700.woff2",
+   "palanquin-dark-devanagari-500.woff2",
+   "palanquin-dark-devanagari-600.woff2",
+   "palanquin-dark-latin-500.woff2",
+   "palanquin-dark-latin-600.woff2"
   ],
   "license": "Copyright 2014 Pria Ravichandran (pria.ravichandran@gmail.com) PalanquinDark-Medium.ttf: Copyright 2014 Pria Ravichandra"
  },
  "Playfair Display": {
   "files": [
    "playfair-display-latin-400.woff2",
-   "playfair-display-latin-700.woff2"
+   "playfair-display-latin-700.woff2",
+   "playfair-display-latin-500.woff2",
+   "playfair-display-latin-600.woff2"
   ],
   "license": "Copyright 2017 The Playfair Display Project Authors (https://github.com/clauseggers/Playfair-Display), with Reserved Fon"
  },
  "Plus Jakarta Sans": {
   "files": [
    "plus-jakarta-sans-latin-400.woff2",
-   "plus-jakarta-sans-latin-700.woff2"
+   "plus-jakarta-sans-latin-700.woff2",
+   "plus-jakarta-sans-latin-500.woff2",
+   "plus-jakarta-sans-latin-600.woff2"
   ],
   "license": "Copyright 2020 The Plus Jakarta Sans Project Authors (https://github.com/tokotype/PlusJakartaSans) PlusJakartaSans-Itali"
  },
@@ -206,7 +266,11 @@
    "poppins-latin-400.woff2",
    "poppins-latin-700.woff2",
    "poppins-devanagari-400.woff2",
-   "poppins-devanagari-700.woff2"
+   "poppins-devanagari-700.woff2",
+   "poppins-devanagari-500.woff2",
+   "poppins-devanagari-600.woff2",
+   "poppins-latin-500.woff2",
+   "poppins-latin-600.woff2"
   ],
   "license": "Copyright 2020 The Poppins Project Authors (https://github.com/itfoundry/Poppins) Poppins-ThinItalic.ttf: Copyright 2020"
  },
@@ -222,28 +286,36 @@
  "Sora": {
   "files": [
    "sora-latin-400.woff2",
-   "sora-latin-700.woff2"
+   "sora-latin-700.woff2",
+   "sora-latin-500.woff2",
+   "sora-latin-600.woff2"
   ],
   "license": "Copyright 2019 The Sora Project Authors (https://github.com/sora-xor/sora-font)"
  },
  "Space Grotesk": {
   "files": [
    "space-grotesk-latin-400.woff2",
-   "space-grotesk-latin-700.woff2"
+   "space-grotesk-latin-700.woff2",
+   "space-grotesk-latin-500.woff2",
+   "space-grotesk-latin-600.woff2"
   ],
   "license": "Copyright 2020 The Space Grotesk Project Authors (https://github.com/floriankarsten/space-grotesk)"
  },
  "Spectral": {
   "files": [
    "spectral-latin-400.woff2",
-   "spectral-latin-700.woff2"
+   "spectral-latin-700.woff2",
+   "spectral-latin-500.woff2",
+   "spectral-latin-600.woff2"
   ],
   "license": "Copyright 2017 The Spectral Project Authors (https://github.com/productiontype/Spectral) Spectral-ExtraLightItalic.ttf: "
  },
  "Syne": {
   "files": [
    "syne-latin-400.woff2",
-   "syne-latin-700.woff2"
+   "syne-latin-700.woff2",
+   "syne-latin-500.woff2",
+   "syne-latin-600.woff2"
   ],
   "license": "Copyright 2019 The Syne Project Authors (https://gitlab.com/bonjour-monde/fonderie/syne-typeface)"
  },
@@ -252,7 +324,11 @@
    "teko-latin-400.woff2",
    "teko-latin-700.woff2",
    "teko-devanagari-400.woff2",
-   "teko-devanagari-700.woff2"
+   "teko-devanagari-700.woff2",
+   "teko-devanagari-500.woff2",
+   "teko-devanagari-600.woff2",
+   "teko-latin-500.woff2",
+   "teko-latin-600.woff2"
   ],
   "license": "Copyright 2023 The Teko Project Authors (https://www.github.com/googlefonts/teko)"
  },
@@ -268,7 +344,9 @@
  "Urbanist": {
   "files": [
    "urbanist-latin-400.woff2",
-   "urbanist-latin-700.woff2"
+   "urbanist-latin-700.woff2",
+   "urbanist-latin-500.woff2",
+   "urbanist-latin-600.woff2"
   ],
   "license": "Copyright 2021 The Urbanist Project Authors (https://github.com/coreyhu/Urbanist) Urbanist-Italic[wght].ttf: Copyright 2"
  },

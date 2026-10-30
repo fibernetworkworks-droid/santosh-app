@@ -22,6 +22,8 @@ from . import taxonomy as T
 log = logging.getLogger("santosh.site")
 ASSETS = Path(__file__).resolve().parent / "assets"
 LEGAL_PAGES = ("privacy", "refund", "disclaimer", "terms")
+WEIGHTS = (400, 500, 600, 700)        # v0.283 medium + semibold too (only the weights a page uses are downloaded)
+_ICONS: dict[str, str] = {}
 WIDTHS = (480, 960, 1600)
 
 
@@ -114,7 +116,7 @@ def font_files(tk: dict[str, Any]) -> list[tuple[str, str, int, str]]:
     out = []
     for fam in dict.fromkeys([tk["head"], tk["body"], tk["deva"]]):
         for sub in ("latin", "devanagari"):
-            for w in (400, 700):
+            for w in WEIGHTS:
                 fn = f"{_font_slug(fam)}-{sub}-{w}.woff2"
                 if (ASSETS / "fonts" / fn).exists():
                     out.append((fam, sub, w, fn))
@@ -341,6 +343,45 @@ def expand_images(html: str, photos: dict[str, dict[str, Any]], rel: str, first_
     return re.sub(r"<img\b[^>]*data-hoola-img=[^>]*>", rep, html), missing
 
 
+# ---------------------------------------------------------------- v0.283 one icon set (Lucide, ISC) for the whole site
+def icons() -> dict[str, str]:
+    """name -> the inner SVG of a Lucide icon (assets/icons.json, 2,275 icons)."""
+    if not _ICONS:
+        _ICONS.update(json.loads((ASSETS / "icons.json").read_text())["icons"])
+    return _ICONS
+
+
+ICON_ALIASES = {"whatsapp": "message-circle", "call": "phone", "email": "mail", "location": "map-pin", "address": "map-pin",
+                "time": "clock", "hours": "clock", "rupee": "indian-rupee", "price": "indian-rupee", "tick": "check",
+                "done": "circle-check", "rating": "star", "home": "house", "doctor": "stethoscope", "delivery": "truck",
+                "food": "utensils", "cart": "shopping-cart", "cake": "cake-slice", "instagram": "camera", "facebook": "users"}
+
+
+def expand_icons(html: str) -> tuple[str, list[str]]:
+    """<i data-icon="phone" class="x" aria-label="Call"></i> -> one inline Lucide SVG (same stroke, same size rules
+    everywhere). An unknown name becomes a plain dot and is reported."""
+    unknown: list[str] = []
+    ic = icons()
+
+    def rep(m: re.Match) -> str:
+        tag = m.group(1)
+        nm = re.search(r'data-icon=["\']([\w-]+)["\']', tag)
+        name = (nm.group(1) if nm else "").lower()
+        name = name if name in ic else ICON_ALIASES.get(name, name)
+        inner = ic.get(name)
+        if inner is None:
+            unknown.append(name)
+            inner = '<circle cx="12" cy="12" r="3"/>'
+        cls = re.search(r'class=["\']([^"\']*)["\']', tag)
+        lab = re.search(r'aria-label=["\']([^"\']*)["\']', tag)
+        a11y = f'role="img" aria-label="{esc(lab.group(1))}"' if lab else 'aria-hidden="true" focusable="false"'
+        return (f'<svg class="hs-ic{(" " + esc(cls.group(1))) if cls else ""}" viewBox="0 0 24 24" fill="none" '
+                f'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" {a11y}>{inner}</svg>')
+    out = re.sub(r"(<i\b[^>]*data-icon=[^>]*>)\s*</i>", rep, html)
+    out = re.sub(r"(<i\b[^>]*data-icon=[^>]*/>)", rep, out)
+    return out, unknown
+
+
 # ---------------------------------------------------------------- facts helpers
 def digits(s: str) -> str:
     d = re.sub(r"\D", "", str(s or ""))
@@ -430,7 +471,9 @@ def footer(site: dict[str, Any], plan: dict[str, Any], rel: str) -> str:
             f'<div><h3>{esc(f.get("name") or "")}</h3><p>{esc(f.get("tagline") or "")}</p></div>'
             f'<div><h3>Links</h3><ul>{quick}</ul></div><div><h3>Contact</h3><ul>{"".join(contact)}</ul></div></div>'
             f'<div class="hs-legal"><span>© <span data-year>2026</span> {esc(f.get("name") or "")}'
-            f'{" · " + " · ".join(regs) if regs else ""}</span><span>{legal}</span></div></div></footer>')
+            f'{" · " + " · ".join(regs) if regs else ""}</span><span>{legal}</span></div>'
+            + ('<p class="hs-ai-note">Is website ki kuch tasveeren AI se banayi gayi hain. / Some pictures on this site are '
+               'AI-generated.</p>' if site.get("ai_photos") else "") + '</div></footer>')
 
 
 def floats(site: dict[str, Any]) -> str:
@@ -616,6 +659,9 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                 h, missing = expand_images(h, photos, rel, first_eager=(i == 0))
                 if missing:
                     problems.append(f"{key}: photo not found: {', '.join(m for m in missing if m)}")
+                h, unknown = expand_icons(h)
+                if unknown:
+                    problems.append(f"{key}: unknown icon: {', '.join(sorted(set(unknown)))}")
                 if form_endpoint:
                     h = h.replace("data-hoola-form", f'data-hoola-form data-endpoint="{esc(form_endpoint)}"', 1) \
                         if 'data-endpoint=' not in h else h

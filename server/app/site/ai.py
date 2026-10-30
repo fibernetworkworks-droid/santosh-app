@@ -245,8 +245,24 @@ SITE SYSTEM YOU WRITE FOR (already on every page, do not repeat it):
   data-m="magnetic" on buttons, data-m="tilt" on cards, data-m="zoom" on an image wrapper, data-m="float" on a shape,
   data-m="progress" on a thin bar. Content must read fine with motion off.
 - Photos: <img data-hoola-img="NAME" alt="what it shows"> where NAME is one of the photo names given (Hoola turns it
-  into a responsive <picture>). With no photos: draw with inline SVG (simple original shapes, illustrations, patterns,
-  gradients), never a stock-photo URL, never an external image.
+  into a responsive <picture>). When photos are given, USE them: the hero and every section the photo list names
+  ("for") carry a real picture, big and confident (full-bleed, split, framed, cropped with --ratio), never a tiny
+  thumbnail. Only with no photos at all: draw with inline SVG (original shapes, patterns, gradients). Never a
+  stock-photo URL, never an external image.
+- Icons: ONE icon set for the whole site. Write <i data-icon="NAME"></i> (optional class="..." for size / colour,
+  aria-label="..." when the icon alone carries meaning) and Hoola puts in the matching Lucide icon. Names: phone,
+  message-circle, mail, map-pin, clock, calendar, calendar-check, star, check, circle-check, shield-check, badge-check,
+  award, heart, sparkles, truck, package, shopping-bag, shopping-cart, indian-rupee, percent, tag, gift, utensils,
+  chef-hat, coffee, cake-slice, pizza, leaf, flower-2, scissors, stethoscope, heart-pulse, pill, syringe, smile,
+  graduation-cap, book-open, pencil, laptop, monitor, smartphone, wifi, wrench, hammer, paint-roller, ruler, house,
+  building-2, store, warehouse, car, bike, bus, plane, map, navigation, users, user, baby, dog, dumbbell, music,
+  camera, image, video, play, globe, languages, zap, sun, moon, droplets, flame, snowflake, recycle, lightbulb,
+  thumbs-up, quote, arrow-right, arrow-up-right, chevron-right, plus, minus, x, menu, search, info, circle-help,
+  briefcase, file-text, receipt, credit-card, wallet, lock, key, bell, send, share-2, download, external-link
+  (any other Lucide name works too). NEVER draw your own icon SVG paths - drawn icons never match each other.
+  Inline SVG is only for illustrations, patterns and decorative shapes.
+- Type weights available for both fonts: 400, 500, 600, 700 (use 500 / 600 for UI labels, eyebrows, buttons, sub-heads;
+  700 for big display headings).
 - Contact actions: tel:+91..., https://wa.me/91XXXXXXXXXX?text=..., mailto:, https://maps.google.com/?q=... ONLY with values
   given in FACTS. Otherwise write the label with <em class="blank">[phone]</em>.
 - Forms: <form class="hs-form" data-hoola-form> with name / phone (required) / message fields, a hidden honeypot

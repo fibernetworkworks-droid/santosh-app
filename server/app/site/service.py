@@ -33,6 +33,7 @@ from ..db import now, session
 from . import ai as AI
 from . import build as B
 from . import library as L
+from . import pictures as P
 from . import quality as Q
 from . import taxonomy as T
 from .models import Site, SiteLead, SiteVersion
@@ -338,7 +339,8 @@ def _estimate(r: Site, plan: dict[str, Any]) -> dict[str, Any] | None:
         return None
     try:
         have = len(_sections(r)) if r.status != "planned" else 0
-        return Q.estimate(plan, have, looks=0 if r.status != "planned" else 3)
+        pics = max(0, P.wanted() - len(_j(r.photos, []))) if r.status == "planned" and P.on() else 0
+        return Q.estimate(plan, have, looks=0 if r.status != "planned" else 3, photos=pics)
     except Exception:
         log.info("site estimate skipped", exc_info=True)
         return None
@@ -697,7 +699,8 @@ def _ctx(r: Site) -> dict[str, Any]:
     return {"facts": facts, "tokens": look.get("tokens") or B.tokens(r.style or "editorial_calm", "paper_ink"),
             "plan": _j(r.plan, {}), "cta": _j(r.plan, {}).get("cta") or "call", "industry": ind,
             "legal": (L.fields().get(r.field) or {}).get("legal", []), "language": _j(r.languages, ["en"])[0],
-            "logo_path": logo, "noindex": True}
+            "logo_path": logo, "noindex": True,
+            "ai_photos": any(p.get("ai") for p in _j(r.photos, []))}       # v0.283 the footer says so
 
 
 def _facts_text(f: dict[str, Any]) -> str:
@@ -787,10 +790,21 @@ def make_looks(site_id: str) -> None:
             _emit(r, push=True)
 
 
+def _look_sections(r: Site) -> list[dict[str, Any]]:
+    """v0.283 the home sections a look shows: the hero + the next ones (SITE_LOOK_SECTIONS), so she chooses from real
+    page tops, not from a hero alone."""
+    n = max(1, min(4, int(getattr(_settings(), "site_look_sections", 3) or 1)))
+    home = next((p for p in _j(r.plan, {}).get("pages", []) if p["slug"] == "home"), {"sections": []})
+    return [s for s in home.get("sections", []) if s["type"] != "hero" and s["type"] in T.SECTIONS][:n - 1]
+
+
 def _make_looks(r: Site) -> None:
     from . import checks as C
+    if _ensure_pictures(r):
+        r = _load(r.id)
     facts = _j(r.facts, {})
     looks = []
+    more = _look_sections(r)
     styles = _j(r.styles, [])[:3] or [r.style]
     for i, style in enumerate(styles):
         if _load(r.id).stop:
@@ -807,11 +821,22 @@ def _make_looks(r: Site) -> None:
         d = B.site_dir(r.tenant_id, r.id) / "looks" / str(i)
         d.mkdir(parents=True, exist_ok=True)
         (d / "hero.json").write_text(json.dumps(hero))
-        mini_plan = {"pages": [{"slug": "home", "title": "Home", "sections": [{"type": "hero"}]}], "cta": _j(r.plan, {}).get("cta")}
+        secs = {"home__hero": hero}
+        labels = [T.SECTIONS[s["type"]]["label"] for s in more]
+        for s in more:                       # v0.283 the page top under the hero, in this look's own art direction
+            k = sec_key("home", s["type"])
+            try:
+                secs[k] = write_section(r, "home", s, [x for x in labels if x != T.SECTIONS[s["type"]]["label"]])
+            except Exception as e:
+                log.info("look %s section %s skipped: %s", i, k, e)
+                continue
+            (d / f"{k}.json").write_text(json.dumps(secs[k]))
+        mini_plan = {"pages": [{"slug": "home", "title": "Home", "sections": [{"type": "hero"}] + [
+            {"type": s["type"]} for s in more if sec_key("home", s["type"]) in secs]}], "cta": _j(r.plan, {}).get("cta")}
         ctx = _ctx(r)
         ctx["tokens"], ctx["plan"] = tk, mini_plan
         out = d / "site"
-        B.assemble(ctx, mini_plan, {"home__hero": hero}, {p["name"]: p for p in _j(r.photos, [])}, out)
+        B.assemble(ctx, mini_plan, secs, {p["name"]: p for p in _j(r.photos, [])}, out)
         shots = {}
         try:
             rep = C.run(out, mini_plan, d / "shots", video=False)
@@ -844,10 +869,16 @@ def choose_look(tenant: str, ref: str, index: int, colors_from: int | None = Non
         r.status, r.stage, r.stop, r.error = "building", "build", False, ""
         if conv:
             r.conv = conv
-        hero = B.site_dir(tenant, r.id) / "looks" / str(int(index)) / "hero.json"
+        ld = B.site_dir(tenant, r.id) / "looks" / str(int(index))
+        hero = ld / "hero.json"
+        done: dict[str, str] = {}
         if hero.exists():
             shutil.copy(hero, B.src_dir(tenant, r.id) / "sections" / "home__hero.json")
-        r.board = _jd(_board(r, states={"home__hero": "done"} if hero.exists() else {}, now_line="Banana shuru"))
+            done["home__hero"] = "done"
+        for f in ld.glob("home__*.json"):     # v0.283 the look's other sections are kept, not written again
+            shutil.copy(f, B.src_dir(tenant, r.id) / "sections" / f.name)
+            done[f.stem] = "done"
+        r.board = _jd(_board(r, states=done, now_line="Banana shuru"))
         r.updated_at = now()
         s.flush()
         s.expunge(r)
@@ -1040,44 +1071,65 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
 
 
 def _critique_round(r: Site, plan: dict[str, Any], shots: Path, report: dict[str, Any]) -> tuple[dict[str, Any], dict]:
-    """v0.225 Opus looks at the REAL home page screenshots, redraws the weakest sections once with its own notes, then
-    looks again: a redraw that scores lower (or breaks a check) is thrown away and the old section comes back."""
-    from . import checks as C
+    """v0.225 Opus looks at the REAL screenshots, redraws the weakest sections once with its own notes, then looks again:
+    a redraw that scores lower (or breaks a check) is thrown away and the old section comes back. v0.283: every page
+    (site_critique=all, up to site_critique_pages), not only the home page."""
     if not Q.critique_on() or not report.get("pages"):
         return report, {}
-    home = next((p for p in plan.get("pages", []) if p["slug"] == "home"), None)
-    if not home:
-        return report, {}
-    types = [s["type"] for s in home.get("sections", [])]
+    mode = (getattr(_settings(), "site_critique", "all") or "all").lower()
+    limit = max(1, int(getattr(_settings(), "site_critique_pages", 6) or 1))
+    pages = [p for p in plan.get("pages", []) if p["slug"] not in B.LEGAL_PAGES and p.get("sections")]
+    pages = sorted(pages, key=lambda p: p["slug"] != "home")
+    pages = [p for p in pages if p["slug"] == "home"] if mode == "home" else pages[:limit]
+    out: dict[str, Any] = {}
+    for pg in pages:
+        report, res = _critique_page(r, plan, pg, shots, report)
+        if not res:
+            continue
+        if pg["slug"] == "home":
+            out.update(res)
+        out.setdefault("pages", {})[pg["slug"]] = res
+    return report, out
+
+
+def _critique_page(r: Site, plan: dict[str, Any], page: dict[str, Any], shots: Path,
+                   report: dict[str, Any]) -> tuple[dict[str, Any], dict]:
+    from . import checks as C
+    slug = page["slug"]
+    types = [s["type"] for s in page.get("sections", [])]
     dna = _j(_load(r.id).look, {}).get("dna")
 
-    def pics(rep: dict[str, Any]) -> list[bytes]:
+    def pics(rep: dict[str, Any] | None) -> list[bytes]:
         out = []
         for vw in ("390", "1440"):
-            name = (rep.get("pages", {}).get("home", {}).get("shots") or {}).get(vw)
+            name = ((rep or {}).get("pages", {}).get(slug, {}).get("shots") or {}).get(vw)
             f = shots / name if name else None
             if f and f.exists():
                 out.append(f.read_bytes())
         return out
 
-    crit = Q.critique(pics(report), dna, types, r.brief or "")
+    first = pics(report)
+    if not first:
+        return report, {}
+    crit = Q.critique(first, dna, types, r.brief or "")
     weak = Q.weak(crit)
     if not weak:
         return report, ({"before": {k: v["score"] for k, v in crit["sections"].items()}} if crit else {})
     olds: dict[str, str] = {}
     others = [T.SECTIONS[t]["label"] for t in types]
+    where = (page.get("title") or slug.title())
     for typ, notes in weak:
-        k = sec_key("home", typ)
+        k = sec_key(slug, typ)
         f = _sec_path(r, k)
         if not f.exists():
             continue
         olds[k] = f.read_text()
-        r = _save(r.id, board=_board(r, plan, None, f"Behtar kar raha hoon: Home → {T.SECTIONS[typ]['label']}"))
-        _work(r, "start", "Apna kaam dekh ke behtar kar raha hoon", f"Home → {T.SECTIONS[typ]['label']}")
+        r = _save(r.id, board=_board(r, plan, None, f"Behtar kar raha hoon: {where} → {T.SECTIONS[typ]['label']}"))
+        _work(r, "start", "Apna kaam dekh ke behtar kar raha hoon", f"{where} → {T.SECTIONS[typ]['label']}")
         _emit(r)
-        sec_def = next(s for s in home["sections"] if s["type"] == typ)
+        sec_def = next(s for s in page["sections"] if s["type"] == typ)
         try:
-            sec = write_section(_load(r.id), "home", sec_def, [o for o in others if o != T.SECTIONS[typ]["label"]],
+            sec = write_section(_load(r.id), slug, sec_def, [o for o in others if o != T.SECTIONS[typ]["label"]],
                                 f"OPUS LOOKED AT THE REAL SCREENSHOT of this section: score {crit['sections'][typ]['score']}/10. "
                                 f"Redraw it to premium studio quality. Change: {notes}")
         except Exception as e:
@@ -1273,17 +1325,54 @@ def add_photo(tenant: str, ref: str, data: bytes | None = None, file_id: str = "
         raise SiteError("Yeh photo khul nahi rahi (JPEG / PNG / WebP bhejiye).")
     with session() as s:
         r = _find(s, tenant, ref)
+        s.expunge(r)
+    nm = _store_photo(r.id, jpg, size, about, name)
+    r = _load(r.id)
+    return {"ok": True, "name": nm, "photos": [p["name"] for p in _j(r.photos, [])],
+            "say": f"Photo '{nm}' rakh li. Kahan lagani hai bataiye (jaise 'hero mein {nm} lagao')."}
+
+
+def _store_photo(site_id: str, jpg: bytes, size: tuple[int, int], about: str = "", name: str = "",
+                 extra: dict[str, Any] | None = None) -> str:
+    """One picture into src/photos + the photos list (her upload, or v0.283 an AI / stock picture with extra fields)."""
+    with session() as s:
+        r = s.get(Site, site_id)
         ph = _j(r.photos, [])
         nm = re.sub(r"[^a-z0-9]+", "-", (name or about or "").lower()).strip("-")[:24] or f"photo{len(ph) + 1}"
         if any(p["name"] == nm for p in ph):
             nm = f"{nm}-{len(ph) + 1}"
-        (B.src_dir(tenant, r.id) / "photos" / f"{nm}.jpg").write_bytes(jpg)
-        ph.append({"name": nm, "about": _tidy(about, 120), "w": size[0], "h": size[1]})
+        (B.src_dir(r.tenant_id, r.id) / "photos" / f"{nm}.jpg").write_bytes(jpg)
+        ph.append({"name": nm, "about": _tidy(about, 120), "w": size[0], "h": size[1], **(extra or {})})
         r.photos = _jd(ph[-40:])
-        s.flush()
-        s.expunge(r)
-    return {"ok": True, "name": nm, "photos": [p["name"] for p in _j(r.photos, [])],
-            "say": f"Photo '{nm}' rakh li. Kahan lagani hai bataiye (jaise 'hero mein {nm} lagao')."}
+    return nm
+
+
+def _ensure_pictures(r: Site) -> int:
+    """v0.283 before the looks: her own photos first, then AI pictures (or licensed stock) up to SITE_AI_PHOTOS, so no
+    site starts as drawn shapes. Fails soft: no key / a refusal / a slow model = the build goes on with what there is."""
+    if not P.on():
+        return 0
+    have = _j(r.photos, [])
+    need = P.wanted() - len(have)
+    if need <= 0:
+        return 0
+    _work(r, "start", "Tasveeren bana raha hoon", f"{need} photos is business ke liye")
+    br = L.brief(r.field, r.goal, r.style)
+    try:
+        shots = P.plan_shots(br["text"], r.style, _facts_text(_j(r.facts, {})), r.brief or "", need,
+                             {p["name"] for p in have})
+    except Exception as e:
+        log.info("shot list failed: %s", e)
+        return 0
+    made = 0
+    for shot, data, extra in P.make_set(shots):
+        try:
+            jpg, size = B.make_photo(data)
+        except Exception:
+            continue
+        _store_photo(r.id, jpg, size, shot["about"], shot["name"], {**extra, "for": shot["for"]})
+        made += 1
+    return made
 
 
 # ---------------------------------------------------------------- reading

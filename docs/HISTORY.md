@@ -10743,3 +10743,34 @@ Now (`lib/ui/chat_attach.dart`, used by chat_screen.dart):
   with play / pause, scrub bar and time. PDF / Word / Excel / other files open in the phone's own app (signed link, as
   before) - an in-app PDF reader is not built on the phone.
 Server unchanged. Not verified on a device in the sandbox (no Flutter here): CI analyze + the APK are the check.
+
+## v0.283.0 WEB DESIGN PHASE 1 — a site that looks like a pro made it (owner: "MAKE A HOOLA MORE POWER FULL IN WEBSITE DEVLOPMENT AND DESIGN ---- FIRST FIND THE FLAWS" -> "START PHASE 1")
+The flaw check (18 flaws in 5 groups; Phase 2 = Lovable-style visual editing, Phase 3 = live booking / embeds /
+two languages / payment links, Phase 4 = web apps) found that a first site with no photos of hers was drawn shapes
+(the prompt said "draw with inline SVG"), every section drew its own icons, the fonts had only 400 / 700, the 3 looks
+were a hero alone and Opus reviewed only the home page. Phase 1 fixes those five:
+- **Real pictures** (`server/app/site/pictures.py`): before the looks, `_ensure_pictures` asks Opus for a SHOT LIST
+  (`SHOTS_SYSTEM`, kind site_edit: place, products, food, tools, work in progress, hands; never a recognisable face, a
+  famous person, text, logo, certificate, money, flag or religious symbol; nothing the facts do not support; one light
+  and colour mood) and makes them with Hoola's own image models (`photogen.generate`, fast, after `photogen.problem`),
+  3 at a time. Her own photos come first: AI only fills up to `SITE_AI_PHOTOS` (6; 0 = off) and never runs again for a
+  site that has them. When the image models fail and `PEXELS_API_KEY` is set, a licensed Pexels photo (official API,
+  orientation from the aspect) takes the place, credit kept. Pictures land like her uploads (`_store_photo`, now shared
+  with `add_photo`) marked `ai` / `source` / `for`; the footer of a site with AI pictures says so in Hinglish + English
+  (`.hs-ai-note`). The section prompt now says USE the photos big (hero + the sections they are "for").
+- **One icon set**: 2,275 Lucide icons (lucide-static 1.65.0, ISC, `assets/icons.json`, 477 KB). The model writes
+  `<i data-icon="phone">` (class / aria-label kept) and `build.expand_icons` puts in the same-stroke SVG (`.hs-ic`);
+  aliases (whatsapp, rupee, call...), an unknown name = a dot + a build problem line. The prompt lists ~120 names and
+  bans hand-drawn icon paths (inline SVG stays for illustrations / patterns).
+- **Fonts 400 / 500 / 600 / 700**: 78 more OFL woff2 files from Fontsource (`fonts.json` updated); `build.WEIGHTS`; a
+  page only downloads the weights it uses.
+- **Looks show the page top**: each of the 3 looks writes the hero + the next home sections (`SITE_LOOK_SECTIONS`=3)
+  in its own DNA; `choose_look` copies all of the chosen look's sections, so they are never written twice.
+- **Opus reviews every page** (`site_critique` default `all`, up to `site_critique_pages`=6, `home` / `off` still
+  work): `_critique_round` walks the pages (home first, legal pages never), `_critique_page` is the v0.225 logic per
+  page (redraw the weakest once, keep the better, a worse redraw or a broken check brings the old one back). The board
+  keeps the home result at the top level and every page under `pages`.
+- **Andaaza** counts the pictures still to make (₹3 each), every look's page top and every page's review.
+- Tests `server/tests/test_v0283_web_design_phase1.py` (9). conftest sets SITE_AI_PHOTOS=0 and SITE_LOOK_SECTIONS=1 so
+  older scripted tests keep their call counts.
+- Not verified on the VPS yet: real Gemini pictures for a real build (the cost per site, how often a shot is refused).

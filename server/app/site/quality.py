@@ -197,24 +197,37 @@ def _usd(model: str, t: dict[str, int], n: int = 1) -> float:
     return n * (t["in"] * p.get("in", 4.0) + t["out"] * p.get("out", 20.0)) / 1_000_000
 
 
-def estimate(plan: dict[str, Any], have: int = 0, looks: int = 3) -> dict[str, Any]:
-    """Rupee andaaza for the build she is about to start (sections still to write + art + critique + fix rounds)."""
+def estimate(plan: dict[str, Any], have: int = 0, looks: int = 3, photos: int = 0) -> dict[str, Any]:
+    """Rupee andaaza for the build she is about to start (sections still to write + art + critique + fix rounds; v0.283
+    also the pictures still to make, the page-top sections of every look and the review of every page)."""
     st = get_settings()
     model = AI.model_for("build")
     total = sum(len(p.get("sections", [])) for p in plan.get("pages", []))
     todo = max(0, total - have)
     usd = _usd(model, SECTION_TOKENS, todo)
     usd += _usd(model, SECTION_TOKENS, max(1, todo // 6))           # fix rounds, usually a few sections
-    if art_on():
-        usd += _usd(model, ART_TOKENS, looks) + _usd(model, SECTION_TOKENS, looks)   # looks: DNA + hero each
-    if (getattr(st, "site_critique", "home") or "off") != "off":
-        usd += _usd(model, CRITIQUE_TOKENS) + _usd(model, SECTION_TOKENS, 3)
+    if looks:
+        per_look = max(1, min(4, int(getattr(st, "site_look_sections", 3) or 1)))
+        usd += _usd(model, SECTION_TOKENS, looks * per_look)         # hero + the page top of every look
+        if art_on():
+            usd += _usd(model, ART_TOKENS, looks)                    # one DNA per look
+    mode = (getattr(st, "site_critique", "all") or "off").lower()
+    if mode != "off":
+        pages = [p for p in plan.get("pages", []) if p.get("sections")]
+        n = 1 if mode == "home" else max(1, min(len(pages), int(getattr(st, "site_critique_pages", 6) or 1)))
+        usd += n * (_usd(model, CRITIQUE_TOKENS, 2) + _usd(model, SECTION_TOKENS, 1))   # look, redraw ~1, look again
     rate = float(getattr(st, "usage_usd_inr", 88) or 88)
-    inr = round(usd * rate)
+    pic_inr = 0
+    if photos:
+        from . import pictures as P
+        pic_inr = P.cost_inr(photos)
+    inr = round(usd * rate) + pic_inr
     lo, hi = max(1, round(inr * 0.7)), round(inr * 1.4)
+    pics = f", {photos} photos" if photos else ""
     return {"sections": total, "to_write": todo, "usd": round(usd, 2), "inr": inr, "inr_low": lo, "inr_high": hi,
+            "photos": photos, "photos_inr": pic_inr,
             "model": AI.app_model_label() if AI._opus_kind("build") else model,
-            "say": f"Andaaza: ₹{lo}–₹{hi} AI kharcha ({todo} sections, {AI.app_model_label()})"}
+            "say": f"Andaaza: ₹{lo}–₹{hi} AI kharcha ({todo} sections{pics}, {AI.app_model_label()})"}
 
 
 # ---------------------------------------------------------------- Opus looks at its own home page
