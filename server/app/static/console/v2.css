@@ -315,7 +315,9 @@ mark{background:rgb(var(--acc-rgb) / .32);color:var(--ink);border-radius:3px;pad
 .textmd .mdh:first-child{margin-top:0}
 .textmd h3.mdh{font-size:17px}
 .textmd a{text-decoration:underline}
-.textmd ul,.textmd ol{margin:0 0 16px;padding-left:22px;display:flex;flex-direction:column;gap:8px}
+/* v0.281: the bullet gutter. Measured off her Claude screenshots, the list text sits ~30px in from the
+   paragraph's left edge; ours was 22px, so a bullet list did not step in far enough to read as one. */
+.textmd ul,.textmd ol{margin:0 0 16px;padding-left:30px;display:flex;flex-direction:column;gap:8px}
 .textmd ul:last-child,.textmd ol:last-child{margin-bottom:0}
 /* v0.278 PURA SAANS: a table, a quote and a code block need the same 16px under them as a paragraph.
    Measured before this: 0px after a table, 4px after a quote, 6px after a code block. */
