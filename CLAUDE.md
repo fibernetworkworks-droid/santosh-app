@@ -52,6 +52,12 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- NEWEST (30 Oct 2026, owner: "SAVE THE STATE" after the tool-choice work): branch `stable-2026-10-30-v271` =
+  commit 2828407 = v0.271.0, live on hoola.ainewtika.com (healthz 0.271.0). Right tool for every ask (v0.245 SAHI AUZAAR),
+  DATA DESK (v0.238), REA reverse-engineer anything (v0.257), SERVER PEHLE + SAB SERVER PAR (v0.270 / v0.271: every job on
+  the server, a PC only on her word). APK release `v0.271.0-b597`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.271.0-b597/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-10-30-v271` as the branch.
 - LATEST (29 Oct 2026, owner: "PERFECT NOW SAVE THE STATE"): branch `stable-2026-10-29` = commit 213d505 = v0.256.0,
   live on hoola.ainewtika.com (healthz 0.256.0). Web console: CALM BRAND white like Claude, Schibsted Grotesk interface sans +
   Literata replies, Claude sidebar sizes, crisp text, chat column = composer width, workspace edge + own PDF reader.
