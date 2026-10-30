@@ -10862,7 +10862,94 @@ Now - one dropdown, `server/app/static/console/menu.js` (window.HoolaMenu.open(a
   shown by a tick only (no coloured row). The / command list above the typing box: same surface, rows and hover.
 Tests: tests/test_v0285_menus.py; test_v0223_console_r3 pins moved to the new export menu.
 
-## v0.286.0 ZOHO FOR HOOLA (built as v0.241.0 / v0.273.0, re-versioned past main v0.285.0): every user adds her own Zoho MCP (only the tools she needs)
+## v0.286.0 EK HI DOM — a live reply and a reloaded one are the same page
+Owner sent a screenshot of a live reply whose four paragraphs were fused into one wall:
+*"CHECK NO PARAGRAPH IN CHAT SPACE IN HOOLA"*.
+
+### Two rendering paths, and only the one she never looks at was correct
+| | when it runs | what it did |
+|---|---|---|
+| `HoolaMD.Live` | a reply while it **arrives** | wrapped every finished block in `<div class="mdb">` |
+| `HoolaMD.render` | a reply after a **reload** | no wrapper |
+
+That wrapper broke the chat's entire measured layout, because two rules depend on a block being a **direct child**
+of the message:
+
+- `.textmd p:last-child{margin-bottom:0}` (v0.274, to trim dead space under the last block of a reply). A `<p>`
+  alone inside a wrapper **is** a `:last-child` — so every paragraph gap went to **0**.
+- `#app .mh .txt>p{max-width:680px}` (v0.276, the reading width). A **child** rule, so a wrapped `<p>` stopped
+  matching it and ran the full **880px** column — about 118 characters a line, exactly what v0.276 fixed.
+
+Measured in a real browser:
+
+| | gap between paragraphs | prose width |
+|---|---|---|
+| live path — **what she reads** | **0px** | **880px** |
+| reload path — what every probe measured | 16px | 680px |
+
+So v0.274, v0.276, v0.278, v0.281 and v0.284 were all real, all correct, and all **invisible to her**, because
+every probe page ever built for them went through `render()`.
+
+### The fix
+`Live` now puts each block's nodes straight into the message with **no wrapper**, so a live reply and a reloaded
+one have the same DOM. Finished blocks keep their own element(s); the streaming block's nodes are tracked in
+`tailNodes` and replaced on each tick. Verified by feeding the text **one character at a time**: the final markup
+is byte-identical to `render()`, with 0 wrappers and no duplicated or lost nodes. The two dead `.mdb` rules went
+with it.
+
+Nothing in the CSS changed. Those rules were right all along — this stopped the DOM from hiding them.
+
+### The lesson, now twice over
+**Test the path the user takes.** v0.284 found the probes were using text no model emits; v0.286 found them using
+a renderer she never sees. Both bugs survived four rounds of careful measurement for the same reason.
+
+### Files
+`server/app/static/console/md.js` (the `Live` class) · `server/app/static/console/v2.css` (two dead rules removed)
+· `server/tests/test_v0285_ek_hi_dom.py` (6 tests).
+
+## v0.287.0 APNE AAP SE BEHAS — the honesty guard stops arguing with itself
+Found in her own live test run: three of seven replies ended with a "nothing was actually done" disclaimer she
+never asked for, on asks that requested no action at all.
+
+### The guard wrote the disclaimer itself
+Reproduced on her exact text:
+
+| her reply | `claims_done()` |
+|---|---|
+| "I **haven't sent**, saved, submitted or created anything" | `'sent'` |
+| "Nothing **has been sent**, saved, submitted or created" | `'sent'` |
+
+`_DONE` matches the bare English word `sent`. `_NOT_A_CLAIM` — the list of phrasings that are *not* a claim — was
+**Hinglish only**: `aap ne`, `nahi bhej`, `hoga`, `agar`. It contained no English negation whatsoever.
+
+So the loop ran:
+
+1. She asks for an explanation; Hoola writes a clean four-paragraph answer.
+2. The guard reads it as a false claim and nudges: *"say plainly in one line that it is NOT done yet."*
+3. The model obeys and writes "I haven't sent anything" — **which contains `sent`**.
+4. That matches a second time, and the second match staples `(Saaf baat: yeh kaam abhi hua nahi hai...)` onto a
+   pure explainer.
+
+The guard created exactly the thing it exists to prevent, then blamed the model for it.
+
+### Three fixes
+- **English negation, future and offer forms** in `_NOT_A_CLAIM`: `not`, `n't`, `nothing`, `never`, `without`,
+  `yet`, plus `will`, `can`, `once`, `if`, `I'll`, `your approval`, `say the word`.
+- **`_ALREADY_HONEST`** — a reply that already says the work is not done is never nudged to say it again. This
+  cuts the loop at its root rather than only widening the filter.
+- **The note speaks the reply's language.** `SAID_EN` beside `SAID`, chosen by `said_line()`. v0.260 made HER
+  LANGUAGE the first rule of a reply, and this note is part of the reply — it was following her into English
+  conversations as a Hinglish line.
+
+### What did not change
+The guard still does its job. A real claim with only reads behind it is caught in both languages
+("Maine mail bhej diya", "your invoice has been sent"), and a claim with a real doing-tool behind it is still left
+alone. 77 tests across the existing claim-check suites pass untouched.
+
+### Files
+`server/app/agent/draftcheck.py` · `server/tests/test_v0286_apne_aap_se_behas.py` (7 tests).
+
+## v0.288.0 ZOHO FOR HOOLA (built as v0.241.0 / v0.273.0 / v0.286.0, re-versioned past main v0.287.0): every user adds her own Zoho MCP (only the tools she needs)
 - Owner: "LETS START WITH ZOHO", "SIMPLE MULTITANET USER WILL ADD ZOHO MCP AS PER THERE REQUIREMENT RIGHT", "PERFECT
   DDEPLOY ZOHO FOR HOOLA". Research first (scratchpad reports, not in the repo): Zoho MCP is official, free for now, India
   data centre mcp.zoho.in; ~15,500 tools in 75 sections (Books 1132, CRM 1319, Desk 837, Inventory 814, Mail 184...);
@@ -10874,7 +10961,7 @@ Tests: tests/test_v0285_menus.py; test_v0223_console_r3 pins moved to the new ex
      with a key in it (long random path part, or ?key= / token= / api_key=...) is sealed with the vault in the NEW nullable
      column `bz_custom_mcp.url_enc`; `url` keeps a masked copy (`.../mcp/•••/message`) for listings, logos, the model and
      dedupe display. `to_pack` endpoint = `real_url` (the only place that opens it); dedupe compares real addresses; Supabase
-     settings + `_featured_row_url` read the real address. Rows from before v0.286 are sealed on their first read
+     settings + `_featured_row_url` read the real address. Rows from before v0.288 are sealed on their first read
      (`user_rows`). A rotated SECRET_KEY falls back to the masked address (fails cleanly; she pastes it again).
      Plain addresses (Notion, Supabase project_ref, GitHub) are stored exactly as before.
   2. BAZAR TABLES NEVER GOT NEW COLUMNS: `db._add_missing_columns(engine, metadata=None)` now also runs on the Bazar
@@ -10898,12 +10985,12 @@ Tests: tests/test_v0285_menus.py; test_v0223_console_r3 pins moved to the new ex
   instead. The old `zoho-crm` / `bigin-by-zoho` cards stay (their docs link fixed for CRM).
 - Safety unchanged: reads run straight; anything not plainly a read (create / send / email / delete / payment link /
   refund) becomes the confirm card with the exact call; her per-tool on/off switches apply.
-- Tests: NEW `server/tests/test_v0286_zoho_mcp.py` (12): mask/detect (plain addresses untouched), Zoho card connects with
+- Tests: NEW `server/tests/test_v0288_zoho_mcp.py` (12): mask/detect (plain addresses untouched), Zoho card connects with
   the key sealed and never in any listing / featured view, real address used to connect, write = card, re-adding = same
   row; only Zoho server addresses (console page / other host / http refused); card guide + starter + search; old row sealed
   on read; Bazar column added on an old DB; sign-in state sealed; fair budget + her words pick the tools + prompt points to
   action=tools + unchanged order without words; action=tools ranks, flags needs_tap, works through the agent tool, refuses
-  another user's server; version. Version pins 0.285.0 -> 0.286.0 across the suites.
+  another user's server; version. Version pins 0.287.0 -> 0.288.0 across the suites.
 - Not verified live: a real Zoho MCP server (no Zoho account in the sandbox): the address shapes come from Zoho's own help
   pages (CRM docs `<name>-<orgid>.zohomcp.in/mcp/<key>/message`, Projects help `<org>.zohomcp.com/mcp/message?key=`, both
   masked). Whether Zoho needs the one-time browser sign-in or accepts the key alone from a server is unknown; both paths

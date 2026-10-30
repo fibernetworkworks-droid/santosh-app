@@ -170,7 +170,7 @@ def start(session, user_id: str, provider: str, resource_url: str, client: httpx
             session.merge(KVState(key=cache_key, value=json.dumps(reg)))
         verifier, challenge = _pkce()
         state = secrets.token_urlsafe(24)
-        # v0.286 sealed: it holds the PKCE verifier and the server address (a Zoho address carries its key)
+        # v0.288 sealed: it holds the PKCE verifier and the server address (a Zoho address carries its key)
         session.merge(KVState(key=f"mcp_state:{state}", value=vault().seal(json.dumps({
             "user_id": user_id, "provider": provider, "verifier": verifier, "client_id": reg["client_id"],
             "client_secret": reg.get("client_secret", ""), "token_endpoint": meta["token_endpoint"], "resource": resource_url,
@@ -214,7 +214,7 @@ def finish(session, state: str, code: str, client: httpx.Client | None = None) -
         raise LinkError("This sign-in link expired. Please try again from the Hoola app.")
     try:
         st = json.loads(vault().open(row.value))
-    except ValueError:             # a sign-in started before v0.286 (plain JSON)
+    except ValueError:             # a sign-in started before v0.288 (plain JSON)
         st = json.loads(row.value)
     session.delete(row)
     if time.time() > st["exp"]:

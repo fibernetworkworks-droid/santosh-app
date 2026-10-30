@@ -6,7 +6,7 @@ Safety:
 - tools are read-only unless their name plainly reads (get/list/search...); everything else becomes a confirm
   card that shows the exact call, and only the frozen call runs after the user taps Approve;
 - API keys are entered in the app (never in chat) and stored encrypted, like every other account link;
-- v0.286 an address that itself carries a key (Zoho MCP .../mcp/<key>/message, ?key=, Zapier / Make tokens) is sealed in
+- v0.288 an address that itself carries a key (Zoho MCP .../mcp/<key>/message, ?key=, Zapier / Make tokens) is sealed in
   url_enc and only a masked copy sits in `url`, so the key is never in the database in clear, in a listing or in the
   model's context. real_url() is the one place that opens it, for the actual connection.
 """
@@ -81,7 +81,7 @@ def real_url(row: CustomMcp) -> str:
 
 
 def seal_old(rows: list[CustomMcp]) -> None:
-    """Rows saved before v0.286 with a key in the address get sealed the first time they are read."""
+    """Rows saved before v0.288 with a key in the address get sealed the first time they are read."""
     for r in rows:
         if not r.url_enc and has_secret(r.url):
             set_url(r, r.url)

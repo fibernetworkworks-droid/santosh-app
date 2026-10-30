@@ -1,4 +1,4 @@
-"""v0.286 ZOHO FOR HOOLA: every user adds her own Zoho MCP server (only the tools she ticks).
+"""v0.288 ZOHO FOR HOOLA: every user adds her own Zoho MCP server (only the tools she ticks).
 
 - the private Zoho address carries its key: sealed in the database, masked everywhere else, opened only to connect;
 - old rows with a key in the address are sealed the first time they are read; Bazar tables get new columns on old DBs;
@@ -97,7 +97,7 @@ def test_old_row_with_key_in_address_gets_sealed(zoho):
     from app.bazar.db import CustomMcp
     from app.db import session
     out = zoho["svc"].mcp_add("default", "https://tools.example.com/mcp", probe_client=_probe(200))
-    with session() as s:                       # as saved before v0.286: key in clear, nothing sealed
+    with session() as s:                       # as saved before v0.288: key in clear, nothing sealed
         r = s.get(CustomMcp, out["pack_id"])
         r.url, r.url_enc = ZURL, None
     zoho["svc"].mcp_list("default")            # any read seals it
@@ -179,4 +179,4 @@ def test_tools_action_finds_the_right_tool(zoho):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.286.0"
+    assert APP_VERSION == "0.288.0"

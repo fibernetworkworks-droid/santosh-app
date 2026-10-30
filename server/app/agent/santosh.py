@@ -89,7 +89,7 @@ def _with_memory(history: list[dict], block: str) -> None:
 
 
 def _last_user_text(history: list[dict]) -> str:
-    """v0.286 her latest words (skipping tool-result turns): which of a big MCP server's tools come first."""
+    """v0.288 her latest words (skipping tool-result turns): which of a big MCP server's tools come first."""
     for m in reversed(history or []):
         if m.get("role") != "user":
             continue
