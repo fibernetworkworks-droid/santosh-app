@@ -1718,6 +1718,10 @@ class Api {
           query: {'q': q, 'category': category, 'offset': '$offset', 'limit': '40'}, timeout: const Duration(seconds: 60)) as Map);
   Future<Map<String, dynamic>> composioConnect(String toolkit) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/composio/apps/$toolkit/connect', timeout: const Duration(seconds: 40)) as Map);
+  /// v0.296 her own key for a key app: straight to Composio through the server, never kept on the phone.
+  Future<Map<String, dynamic>> composioKey(String toolkit, Map<String, String> values) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/composio/apps/$toolkit/key', body: {'values': values},
+          timeout: const Duration(seconds: 40)) as Map);
   Future<void> composioRemove(String toolkit) async => _send('DELETE', '/api/composio/apps/$toolkit');
   Future<Map<String, dynamic>> bazarSettings() async => Map<String, dynamic>.from(await _send('GET', '/api/bazar/settings'));
   Future<Map<String, dynamic>> saveBazarSettings(Map<String, dynamic> s) async =>

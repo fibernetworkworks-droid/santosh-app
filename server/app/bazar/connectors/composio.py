@@ -30,6 +30,9 @@ def _need_account(pack: Pack, ctx: Ctx) -> str:
         return ""                      # no-login app: nothing to connect, nobody's account involved
     if not ca and cmp.mode(_kit(pack)) in ("setup", "unknown"):
         raise ToolError(cmp.SETUP_TEXT.format(name=pack.name))
+    if not ca and cmp.mode(_kit(pack)) == "key":
+        raise ToolError(f"NOT_LINKED: {pack.name} apni API key se judta hai. Hoola app > Connect > MCP servers > Apps > "
+                        f"{pack.name} > 'Key daaliye' mein apni {pack.name} key daaliye (chat mein kabhi nahi).")
     if not ca:
         raise ToolError(f"NOT_LINKED: {pack.name} abhi juda nahi hai. Hoola se '{pack.name} jodo' boliye ya "
                         f"Connect > Apps mein {pack.name} par Connect dabaiye; apne {pack.name} account se sign-in kijiye.")

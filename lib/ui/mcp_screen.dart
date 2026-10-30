@@ -130,6 +130,65 @@ class _McpScreenState extends State<McpScreen> {
     }
   }
 
+  /// v0.296 key apps: she types HER key for that app here (never in chat); the server hands it to Composio.
+  Future<void> _composioKey(Map<String, dynamic> a) async {
+    Map<String, dynamic> r;
+    try {
+      r = await app.api!.composioConnect(a['toolkit'] as String);
+    } catch (e) {
+      _snack(e.toString().replaceFirst('Exception: ', ''));
+      return;
+    }
+    if (r['status'] != 'needs_key') {
+      _snack(r['say'] as String? ?? '');
+      await _loadComposio();
+      return;
+    }
+    final fields = List<Map<String, dynamic>>.from((r['fields'] as List? ?? []).map((e) => Map<String, dynamic>.from(e as Map)));
+    final ctl = {for (final f in fields) f['name'] as String: TextEditingController()};
+    if (!mounted) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text('${a['name']} jodiye'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Apne ${a['name']} account ki key yahan daaliye. Yeh seedha ${a['name']} ke saath jaanchi jaati hai; Hoola ise save nahi karta.',
+                style: const TextStyle(fontSize: 13)),
+            for (final f in fields)
+              TextField(
+                controller: ctl[f['name'] as String],
+                obscureText: f['secret'] == true,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: InputDecoration(
+                  labelText: '${f['label']}${f['required'] == true ? '' : ' (optional)'}',
+                  helperText: (f['hint'] as String? ?? '').isEmpty ? null : f['hint'] as String,
+                  helperMaxLines: 3,
+                ),
+              ),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Jodiye')),
+        ],
+      ),
+    );
+    final values = {for (final e in ctl.entries) if (e.value.text.trim().isNotEmpty) e.key: e.value.text.trim()};
+    for (final c in ctl.values) {
+      c.dispose();
+    }
+    if (ok != true) return;
+    try {
+      final res = await app.api!.composioKey(a['toolkit'] as String, values);
+      _snack(res['status'] == 'ready' ? '${a['name']} jud gaya. Ab Hoola se kahiye.' : '${a['name']} jud raha hai…');
+      await _loadComposio();
+    } catch (e) {
+      _snack(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
   Future<void> _composioRemove(Map<String, dynamic> a) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -157,6 +216,8 @@ class _McpScreenState extends State<McpScreen> {
     final PluginAction action;
     if (st == 'ready') {
       action = const PluginAction(kind: ActionKind.linked, label: 'Juda hai');
+    } else if (st == 'needs_key') {
+      action = PluginAction(kind: ActionKind.attention, label: 'Key daaliye', onTap: () => _composioKey(a));
     } else if (st == 'needs_setup') {
       action = PluginAction(kind: ActionKind.soon, label: 'Setup baaki',
           onTap: () => _snack('${a['name']}: Newtika ko ek baar Composio mein is app ka setup karna hai, phir yeh judega.'));

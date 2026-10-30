@@ -11239,3 +11239,23 @@ doesn't translate. That was put to her rather than changed quietly.
 
 ### Files
 `server/app/static/console/v2.css` · `server/tests/test_v0294_ek_hi_kinara.py` (6 tests).
+
+## v0.297.0 COMPOSIO KEY APPS (30 Oct 2026, owner: "GO API KEY APPS")
+Live check on her VPS (v0.294 `check`): 1,709 apps in Composio, 1,687 offered, 111 managed sign-in, 33 no login,
+1,543 "need setup". Most of those use API keys (each user's own), which need NO Newtika credentials.
+- `composio.mode()` gains `key` (auth_schemes has API_KEY / BEARER_TOKEN / BASIC and no Composio-managed OAuth);
+  `setup` now means only OAuth apps without a Composio login (Newtika's own developer app, dashboard > Auth Configs).
+- Auth config for a key app is created automatically: POST /auth_configs {"toolkit":{"slug"},"auth_config":{"type":
+  "use_custom_auth","authScheme":"API_KEY","name":"Hoola <App>","credentials":{}}} (Composio programmatic-auth-configs
+  page: "For a toolkit whose key the user supplies at connect time, pass empty credentials").
+- `key_fields()`: GET /toolkits/{slug} auth_config_details[mode].fields.connected_account_initiation required/optional
+  (item keys not documented: name/key, displayName/label, description read tolerantly; fallback api_key / token /
+  username+password). Status `needs_key`; phone card "Key daaliye" opens a form (secret fields hidden).
+- `connect_key()` / POST /api/composio/apps/{toolkit}/key {"values":{...}}: unknown field names dropped, required ones
+  checked, then POST /connected_accounts {"auth_config":{"id"},"connection":{"user_id": server-made,"state":
+  {"authScheme","val":{"status":"ACTIVE",...}}}}; Composio checks the key with the app (400 -> "nahi maani"). Hoola
+  never stores or logs the key, only the sealed account id. The chat tool never takes a key: it points to the app form.
+- Live check of one app on the VPS: `.venv/bin/python -m app.bazar.composio trykey <slug>` (mode, fields, and the auth
+  config it creates; no user key used). `check` now reports key_apps_user_types_own_key.
+- NOT VERIFIED live: the exact field item keys from /toolkits/{slug}; the POST /connected_accounts response shape (id at
+  top level assumed, connected_account.id also read). Tests: test_v0276_composio.py 22.

@@ -25,15 +25,34 @@ def _fake_composio(calls):
                 {"slug": "zendesk", "name": "Zendesk", "type": "native", "composio_managed_auth_schemes": [],
                  "auth_schemes": ["API_KEY"], "meta": {"description": "Support tickets",
                                                        "categories": [{"name": "Customer Support"}], "tools_count": 40}},
+                {"slug": "pipedrive", "name": "Pipedrive", "type": "native", "composio_managed_auth_schemes": [],
+                 "auth_schemes": ["OAUTH2"], "meta": {"description": "Sales CRM", "categories": [{"name": "CRM"}]}},
                 {"slug": "weathermap", "name": "OpenWeather", "type": "native", "no_auth": True,
                  "meta": {"description": "Weather", "categories": [{"name": "Data"}], "tools_count": 2}},
                 {"slug": "gmail", "name": "Gmail", "type": "native", "composio_managed_auth_schemes": ["OAUTH2"],
                  "meta": {"description": "Mail"}},
                 {"slug": "notion", "name": "Notion", "type": "native", "composio_managed_auth_schemes": ["OAUTH2"],
                  "meta": {"description": "Notes", "categories": [{"name": "Productivity"}], "tools_count": 30}},
-            ], "next_cursor": None, "total_items": 5})
+            ], "next_cursor": None, "total_items": 6})
+        if path.startswith("/toolkits/"):
+            return httpx.Response(200, json={"slug": path.rsplit("/", 1)[1], "auth_config_details": [
+                {"mode": "API_KEY", "fields": {"connected_account_initiation": {
+                    "required": [{"name": "generic_api_key", "displayName": "API Key", "description": "From Admin > API"},
+                                 {"name": "subdomain", "displayName": "Subdomain"}],
+                    "optional": []}}}]})
+        if path == "/auth_configs" and req.method == "POST":
+            return httpx.Response(201, json={"auth_config": {"id": "ac_new_" + body["toolkit"]["slug"]}})
+        if path == "/connected_accounts" and req.method == "POST":
+            val = body["connection"]["state"]["val"]
+            if val.get("generic_api_key") == "wrong":
+                return httpx.Response(400, json={"error": {"message": "ConnectedAccount_CredentialValidationRejected"}})
+            ca = f"ca_key_{len(ACCOUNTS) + 1}"
+            ACCOUNTS[ca] = "ACTIVE"
+            return httpx.Response(201, json={"id": ca, "status": "ACTIVE"})
         if path == "/auth_configs" and req.method == "GET" and "toolkit_slug" not in req.url.params:
             return httpx.Response(200, json={"items": [], "next_cursor": None})
+        if path == "/auth_configs" and req.method == "GET" and req.url.params["toolkit_slug"] == "zendesk":
+            return httpx.Response(200, json={"items": []})
         if path == "/auth_configs" and req.method == "GET":
             return httpx.Response(200, json={"items": [{"id": f"ac_{req.url.params['toolkit_slug']}",
                                                         "status": "ENABLED",
@@ -266,16 +285,17 @@ def _st(cz, tenant="default", **kw):
 
 def test_v0294_whole_live_catalogue_with_honest_status(cz):
     res = cz["svc"].composio_apps("default")
-    assert res["live"] is True and res["all"] == 4                       # gmail never offered
+    assert res["live"] is True and res["all"] == 5                       # gmail never offered
     st = {a["toolkit"]: a["status"] for a in res["apps"]}
-    assert st == {"slack": "needs_link", "zendesk": "needs_setup", "weathermap": "ready", "notion": "needs_link"}
+    assert st == {"slack": "needs_link", "zendesk": "needs_key", "pipedrive": "needs_setup", "weathermap": "ready",
+                  "notion": "needs_link"}
     assert dict(res["categories"])["Communication"] == 1
     assert [a["toolkit"] for a in cz["svc"].composio_apps("default", q="support")["apps"]] == ["zendesk"]
     assert [a["toolkit"] for a in cz["svc"].composio_apps("default", category="Productivity")["apps"]] == ["notion"]
 
 
-def test_v0294_api_key_app_says_setup_instead_of_failing(cz):
-    out = cz["svc"].composio_connect("default", "zendesk", cz["conv"]["default"])
+def test_v0294_oauth_app_without_login_says_setup_instead_of_failing(cz):
+    out = cz["svc"].composio_connect("default", "pipedrive", cz["conv"]["default"])
     assert out["status"] == "needs_setup" and out["url"] == "" and "dashboard" in out["say"]
     assert not [c for c in cz["calls"] if c[1] == "/connected_accounts/link"]
     assert not [c for c in cz["calls"] if c[0] == "POST" and c[1] == "/auth_configs"]
@@ -302,7 +322,50 @@ def test_v0294_find_matches_known_names_not_random_words(cz):
 
 def test_v0294_self_check_has_no_secrets(cz):
     out = cz["cmp"].check()
-    assert out["key_works"] is True and out["apps_in_catalogue"] == 4
+    assert out["key_works"] is True and out["apps_in_catalogue"] == 5
     assert out["connect_now"] == 2 and out["need_newtika_setup"] == 1 and out["no_login_needed"] == 1
+    assert out["key_apps_user_types_own_key"] == 1
     assert out["built_in_21"]["slack"] == "managed" and out["built_in_21"]["jira"] == "NOT IN COMPOSIO"
+    assert out["built_in_21"]["zendesk"] == "key" and out["built_in_21"]["pipedrive"] == "setup"
     assert "ak_test_project" not in json.dumps(out)
+
+
+def test_v0296_key_app_her_key_goes_to_composio_never_to_hoola(cz):
+    out = cz["svc"].composio_connect("default", "zendesk", cz["conv"]["default"])
+    assert out["status"] == "needs_key" and out["url"] == "" and "chat mein kabhi" in out["say"]
+    f = {x["name"]: x for x in out["fields"]}
+    assert f["generic_api_key"]["secret"] is True and f["subdomain"]["secret"] is False and f["generic_api_key"]["label"] == "API Key"
+    res = cz["svc"].composio_key("default", "zendesk", {"generic_api_key": "zd-secret-123", "subdomain": "newtika",
+                                                        "user_id": "someone-else"})
+    assert res["status"] == "ready"
+    made = [c for c in cz["calls"] if c[0] == "POST" and c[1] == "/auth_configs"][0][3]
+    assert made["auth_config"] == {"type": "use_custom_auth", "authScheme": "API_KEY", "name": "Hoola Zendesk", "credentials": {}}
+    acc = [c for c in cz["calls"] if c[0] == "POST" and c[1] == "/connected_accounts"][0][3]
+    assert acc["connection"]["user_id"] == cz["cmp"].composio_user("default")
+    assert acc["connection"]["state"] == {"authScheme": "API_KEY", "val": {"status": "ACTIVE", "generic_api_key": "zd-secret-123",
+                                                                             "subdomain": "newtika"}}   # unknown field dropped
+    from app.bazar.db import Connection
+    from app.db import session
+    with session() as s:
+        rows = s.query(Connection).filter(Connection.provider == "composio:zendesk").all()
+        assert rows and all("zd-secret-123" not in (r.token_enc or "") for r in rows)
+    assert _st(cz)["zendesk"] == "ready"
+    run = cz["svc"].run("default", cz["conv"]["default"], "cmp-zendesk", "ZENDESK_LIST_ALL_CHANNELS", {})
+    assert run["data"]["ok"] is True
+
+
+def test_v0296_wrong_or_missing_key_is_refused_plainly(cz):
+    from app.bazar.connectors.base import ToolError
+    with pytest.raises(ToolError, match="Subdomain"):
+        cz["svc"].composio_key("default", "zendesk", {"generic_api_key": "x"})
+    with pytest.raises(ToolError, match="nahi maani"):
+        cz["svc"].composio_key("default", "zendesk", {"generic_api_key": "wrong", "subdomain": "a"})
+    assert _st(cz)["zendesk"] == "needs_key"
+    with pytest.raises(ToolError, match="sign-in hota hai"):
+        cz["svc"].composio_key("default", "slack", {"api_key": "x"})
+
+
+def test_v0296_key_app_in_chat_never_asks_for_the_key(cz):
+    from app.bazar.connectors.base import ToolError
+    with pytest.raises(ToolError, match="chat mein kabhi nahi"):
+        cz["svc"].run("default", cz["conv"]["default"], "cmp-zendesk", "ZENDESK_LIST_ALL_CHANNELS", {})

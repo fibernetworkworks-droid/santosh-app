@@ -32,6 +32,12 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def connect(toolkit: str, tenant: str = Depends(current_tenant)):
         return await asyncio.to_thread(_do, service.composio_connect, tenant, toolkit, "")
 
+    @r.post("/api/composio/apps/{toolkit}/key", dependencies=[Depends(require_key)])
+    async def key(toolkit: str, body: dict, tenant: str = Depends(current_tenant)):
+        # her own key for that app goes straight to Composio; never logged, never stored in Hoola
+        values = body.get("values") if isinstance(body, dict) else None
+        return await asyncio.to_thread(_do, service.composio_key, tenant, toolkit, values or {})
+
     @r.delete("/api/composio/apps/{toolkit}", dependencies=[Depends(require_key)])
     async def remove(toolkit: str, tenant: str = Depends(current_tenant)):
         return {"removed": await asyncio.to_thread(_do, service.composio_remove, tenant, toolkit)}

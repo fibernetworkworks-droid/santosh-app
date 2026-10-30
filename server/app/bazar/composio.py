@@ -73,6 +73,7 @@ WRITE_WORDS = {"SEND", "POST", "CREATE", "UPDATE", "DELETE", "REMOVE", "ARCHIVE"
                "INSERT", "COMMENT", "REPLY", "FORWARD", "DRAFT", "SUBSCRIBE", "UNSUBSCRIBE", "MUTE"}
 
 
+KEY_SCHEMES = ("API_KEY", "BEARER_TOKEN", "BASIC")   # v0.296 she types her own key; Newtika needs no credentials
 SETUP_TEXT = ("{name} ka login Composio khud nahi deta (API-key / company app). Newtika ko ek baar Composio dashboard > "
               "Auth Configs mein {name} jodna hoga; uske baad sab users ke liye 'Jodiye' chalega.")
 
@@ -120,11 +121,13 @@ def _clean_app(it: dict[str, Any]) -> dict[str, Any] | None:
     cats = [str(c.get("name") or c.get("slug") or "") if isinstance(c, dict) else str(c)
             for c in (meta.get("categories") or [])]
     managed = bool(it.get("composio_managed_auth_schemes"))
+    schemes = [str(x).upper() for x in (it.get("auth_schemes") or [])]
+    key_scheme = next((x for x in KEY_SCHEMES if x in schemes), "")
     return {"slug": slug, "name": str(it.get("name") or slug.replace("_", " ").title())[:80],
             "desc": re.sub(r"\s+", " ", str(meta.get("description") or ""))[:220],
             "logo": str(meta.get("logo") or "")[:400], "cats": [c for c in cats if c][:4],
             "tools": int(meta.get("tools_count") or 0), "managed": managed, "no_auth": bool(it.get("no_auth")),
-            "schemes": [str(x) for x in (it.get("auth_schemes") or [])][:4]}
+            "schemes": schemes[:4], "key_scheme": key_scheme}
 
 
 def catalog(force: bool = False) -> dict[str, dict[str, Any]]:
@@ -192,16 +195,59 @@ def configured_apps(force: bool = False) -> set[str]:
 
 
 def mode(toolkit: str) -> str:
-    """managed = her own sign-in works now; no_auth = nothing to connect; setup = Newtika must add this app's
-    API-key / OAuth app once in the Composio dashboard; unknown = not in the live catalogue."""
+    """managed = her own sign-in works now; no_auth = nothing to connect; key = she types HER key for that app in the
+    Hoola app (v0.296, Newtika needs nothing); setup = an OAuth app Composio has no login for (Newtika's own developer
+    app once in the dashboard); unknown = not in the live catalogue."""
     a = catalog().get(toolkit)
     if a is None:
         return "managed" if toolkit in DEFAULT_TOOLKITS and not catalog() else "unknown"
     if a["no_auth"]:
         return "no_auth"
-    if a["managed"] or toolkit in configured_apps():
+    if a["managed"]:
+        return "managed"
+    if a.get("key_scheme"):
+        return "key"
+    if toolkit in configured_apps():
         return "managed"
     return "setup"
+
+
+def key_fields(toolkit: str) -> list[dict[str, Any]]:
+    """What she types for a key app, from GET /toolkits/{slug} (auth_config_details[mode].fields
+    .connected_account_initiation). Composio documents the list but not each item's keys, so every common spelling is
+    read; when nothing usable comes back, the scheme's plain fields are used."""
+    a = catalog().get(toolkit) or {}
+    scheme = a.get("key_scheme") or "API_KEY"
+
+    def go() -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        try:
+            det = client()._req("GET", f"/toolkits/{toolkit}")
+        except ComposioError:
+            det = {}
+        for d in det.get("auth_config_details") or []:
+            if str(d.get("mode") or "").upper().replace("-", "_") != scheme:
+                continue
+            init = ((d.get("fields") or {}).get("connected_account_initiation") or {})
+            for need, items in ((True, init.get("required") or []), (False, init.get("optional") or [])):
+                for f in items:
+                    if not isinstance(f, dict):
+                        continue
+                    name = str(f.get("name") or f.get("key") or "").strip()
+                    if not re.fullmatch(r"[A-Za-z0-9_]{1,60}", name):
+                        continue
+                    label = str(f.get("displayName") or f.get("display_name") or f.get("label") or name.replace("_", " ").title())
+                    secret = bool(f.get("is_secret") or f.get("isSecret") or f.get("secret")) or bool(
+                        re.search(r"key|token|secret|password", name, re.I))
+                    out.append({"name": name, "label": label[:60], "required": need, "secret": secret,
+                                "hint": str(f.get("description") or "")[:200]})
+        if not out:
+            out = {"BEARER_TOKEN": [{"name": "token", "label": "Token", "required": True, "secret": True, "hint": ""}],
+                   "BASIC": [{"name": "username", "label": "Username", "required": True, "secret": False, "hint": ""},
+                             {"name": "password", "label": "Password", "required": True, "secret": True, "hint": ""}],
+                   }.get(scheme, [{"name": "api_key", "label": "API key", "required": True, "secret": True, "hint": ""}])
+        return out[:8]
+    return _cached("fields:" + toolkit, go)
 
 
 def composio_user(tenant_id: str) -> str:
@@ -259,10 +305,17 @@ class Client:
                if i.get("id") and str(i.get("status", "ENABLED")).upper() == "ENABLED"
                and ((i.get("toolkit") or {}).get("slug", toolkit) == toolkit)]
         if not ids:
-            if mode(toolkit) != "managed":
-                raise ComposioError(SETUP_TEXT.format(name=toolkits().get(toolkit, (toolkit, ""))[0]))
-            made = self._req("POST", "/auth_configs", body={"toolkit": {"slug": toolkit},
-                                                            "auth_config": {"type": "use_composio_managed_auth"}})
+            m = mode(toolkit)
+            name = toolkits().get(toolkit, (toolkit, ""))[0]
+            if m == "key":   # v0.296 her key comes at connect time: no Newtika credentials (empty credentials)
+                body = {"toolkit": {"slug": toolkit},
+                        "auth_config": {"type": "use_custom_auth", "authScheme": catalog()[toolkit]["key_scheme"],
+                                        "name": f"Hoola {name}"[:60], "credentials": {}}}
+            elif m == "managed":
+                body = {"toolkit": {"slug": toolkit}, "auth_config": {"type": "use_composio_managed_auth"}}
+            else:
+                raise ComposioError(SETUP_TEXT.format(name=name))
+            made = self._req("POST", "/auth_configs", body=body)
             ids = [(made.get("auth_config") or {}).get("id")]
         if not ids or not ids[0]:
             raise ComposioError(f"Composio has no sign-in set up for {toolkit}.")
@@ -460,6 +513,8 @@ def status(s, user_id: str, toolkit: str) -> str:
         return "ready"
     if m in ("setup", "unknown"):
         return "needs_setup"
+    if m == "key":
+        return "needs_key"
     return "pending" if rows else "needs_link"
 
 
@@ -545,6 +600,45 @@ def start_link(s, user_id: str, toolkit: str) -> dict[str, Any]:
     return {"url": str(res["redirect_url"]), "name": toolkits()[toolkit][0], "pack_id": PREFIX + toolkit}
 
 
+def connect_key(s, user_id: str, toolkit: str, values: dict[str, Any]) -> dict[str, Any]:
+    """v0.296 her own key for a key app, typed in the Hoola app (never in chat), goes straight to Composio, which checks
+    it with the app before saving. Hoola keeps only the account id (sealed), never the key."""
+    if mode(toolkit) != "key":
+        raise ComposioError("Is app mein key nahi, sign-in hota hai: 'Jodiye' dabaiye.")
+    fields = {f["name"]: f for f in key_fields(toolkit)}
+    clean: dict[str, str] = {}
+    for k, v in (values or {}).items():
+        if k in fields and isinstance(v, (str, int)) and str(v).strip():
+            val = str(v).strip()
+            if len(val) > 4000:
+                raise ComposioError(f"{fields[k]['label']} bahut lamba hai.")
+            clean[k] = val
+    missing = [f["label"] for f in fields.values() if f["required"] and f["name"] not in clean]
+    if missing:
+        raise ComposioError("Yeh bhi chahiye: " + ", ".join(missing))
+    scheme = catalog()[toolkit]["key_scheme"]
+    cl = client()
+    try:
+        res = cl._req("POST", "/connected_accounts",
+                      body={"auth_config": {"id": cl.auth_config_id(toolkit)},
+                            "connection": {"user_id": composio_user(user_id),
+                                           "state": {"authScheme": scheme, "val": {"status": "ACTIVE", **clean}}}})
+    except ComposioError as e:
+        if "Validation" in str(e) or e.status in (400, 422):
+            raise ComposioError(f"{toolkits()[toolkit][0]} ne yeh key nahi maani. Sahi key dobara daaliye.", e.status)
+        raise
+    ca = str(res.get("id") or (res.get("connected_account") or {}).get("id") or "")
+    if not ca:
+        raise ComposioError("Composio ne account nahi banaya; thodi der baad try kijiye.")
+    for c in _rows(s, user_id, toolkit):
+        c.status = "replaced"
+    st = _status_of(res) or "ACTIVE"
+    s.add(Connection(user_id=user_id, provider=PROVIDER + toolkit, token_enc=_seal({"ca": ca}),
+                     status="active" if st == "ACTIVE" else "pending"))
+    s.flush()
+    return {"status": "ready" if st == "ACTIVE" else "pending", "name": toolkits()[toolkit][0], "pack_id": PREFIX + toolkit}
+
+
 def finish_link(s, state: str) -> tuple[str, str, bool]:
     """Her browser came back. (user_id, app name, linked?) - linked only when Composio says ACTIVE."""
     got = read_state(state)
@@ -615,11 +709,12 @@ def check() -> dict[str, Any]:
         return out
     cat = catalog(force=True)
     conf = configured_apps(force=True)
-    modes = {"managed": 0, "no_auth": 0, "setup": 0}
+    modes = {"managed": 0, "no_auth": 0, "key": 0, "setup": 0}
     for slug in cat:
         modes[mode(slug)] = modes.get(mode(slug), 0) + 1
     out.update({"apps_in_catalogue": len(cat), "connect_now": modes["managed"], "no_login_needed": modes["no_auth"],
-                "need_newtika_setup": modes["setup"], "dashboard_auth_configs": len(conf)})
+                "key_apps_user_types_own_key": modes["key"], "need_newtika_setup": modes["setup"],
+                "dashboard_auth_configs": len(conf)})
     out["built_in_21"] = {slug: (mode(slug) if slug in cat else "NOT IN COMPOSIO") for slug in DEFAULT_TOOLKITS}
     return out
 
@@ -665,6 +760,17 @@ def on_expired(s, ca: str) -> tuple[str, str] | None:
 if __name__ == "__main__":   # python -m app.bazar.composio check | list [query]
     import sys
     cmd = sys.argv[1] if len(sys.argv) > 1 else "check"
+    if cmd == "trykey":   # live check of one key app: mode, fields, and the auth config Hoola creates (no user key used)
+        slug = (sys.argv[2] if len(sys.argv) > 2 else "").lower()
+        catalog(force=True)
+        out: dict[str, Any] = {"app": slug, "mode": mode(slug), "fields": key_fields(slug) if mode(slug) == "key" else []}
+        if out["mode"] == "key":
+            try:
+                out["auth_config_id"] = client().auth_config_id(slug)
+            except ComposioError as e:
+                out["auth_config_error"] = str(e)
+        print(json.dumps(out, indent=2, ensure_ascii=False))
+        sys.exit(0)
     if cmd == "list":
         q = " ".join(sys.argv[2:]).lower()
         for slug, a in catalog(force=True).items():
