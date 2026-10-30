@@ -35,6 +35,7 @@ _studios: dict[str, tuple[Any, Studio]] = {}
 _watchers: dict[str, asyncio.Task] = {}
 _assembling: dict[str, asyncio.Task] = {}
 _planning: dict[str, asyncio.Task] = {}
+_then: dict[str, asyncio.Task] = {}      # v0.309 a clip's next step (its price card) waiting for its storyboard
 _painting: dict[str, set[str]] = {}         # v0.159 "tenant:project" -> shots whose opening picture is being painted
 _reviewing: set[str] = set()                # "tenant:project" while the AI looks at fresh takes
 VOICES = ("male", "female")
@@ -450,7 +451,7 @@ def view(tenant: str, p: dict) -> dict[str, Any]:
                 "inr": batch.get("inr") or _inr(batch.get("usd") or 0), "spent_inr": _inr(spent), "at": batch.get("at")}
     working = any(x["state"] == "working" for x in shots)
     assembling = p["name"] in _assembling
-    planning = p["name"] in _planning
+    planning = p["name"] in _planning or key in _then      # v0.309 still "writing the plan" until the card is out
     step = (0 if painting else 1 if any(x["phase"] in ("video", "queued", "retrying") for x in shots)
             else 2 if any(x["phase"] == "lipsync" for x in shots) else 3 if key in _reviewing else 4 if assembling else 5)
     phase = ("planning" if planning and not shots else "painting" if painting else "working" if working
@@ -487,7 +488,7 @@ def view(tenant: str, p: dict) -> dict[str, Any]:
             "budget_usd": p["budget_usd"], "spent_usd": round(p["spent_usd"], 3), "spent_inr": _inr(p["spent_usd"]),
             "characters": list(p.get("characters", {})), "shots": shots, "outputs": outs,
             "working": working or assembling, "assembling": assembling, "approvals": pend, "updated": p.get("updated"),
-            "created": p.get("created"), "estimates": est, "planning": planning,
+            "created": p.get("created"), "estimates": est, "planning": planning, "error": p.get("error") or "",
             "seconds": sum(int(x["duration"]) for x in p.get("shots", [])),
             "keyframes": sum(1 for x in p.get("shots", []) if x.get("keyframe")),
             "music": bool(mu), "logo": bool(lg), "character_list": chars, "prefs": pr, "quality_pref": want,
@@ -1252,6 +1253,40 @@ async def _plan(tenant: str, st: Studio, project: str, brief: str, seconds: int)
     finally:
         _planning.pop(project, None)
         _changed(tenant, project)
+
+
+def after_plan(tenant: str, project: str, run) -> None:
+    """v0.309 Video page "Create": the storyboard is written in the BACKGROUND (plan() returns at once), and the page used
+    to ask for the price card in the same breath - the project had no shots yet, generate() answered "Pehle storyboard
+    banaiye", and the clip sat with a plan and no card. Now the server waits for its own storyboard, then runs the next
+    step (`run`, e.g. the price card), and any failure is written ON the clip (view()["error"]) - not just a toast."""
+    key = _key(tenant, project)
+
+    async def go():
+        try:
+            t = _planning.get(project)
+            if t is not None:
+                try:
+                    await asyncio.shield(t)
+                except Exception:  # noqa: BLE001,S110 - _plan logs its own failure; we only wait for it to end
+                    pass
+            st = await studio(tenant)
+            if not st.load(project).get("shots"):
+                await st.update(project, lambda q: q.update(error="The shot plan could not be written. Press Create again."))
+                return
+            try:
+                await run()
+                await st.update(project, lambda q: q.update(error=""))
+            except StudioJobError as e:
+                msg = str(e)[:240]
+                await st.update(project, lambda q: q.update(error=msg))
+        except Exception:
+            log.exception("studio after_plan")
+        finally:
+            _then.pop(key, None)
+            _changed(tenant, project)
+
+    _then[key] = asyncio.ensure_future(go())
 
 
 async def logo(tenant: str, project: str, file_id: str, position: str = "top-right") -> dict:

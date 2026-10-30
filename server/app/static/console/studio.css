@@ -684,3 +684,6 @@ p{margin:0}
 .eg-how a{color:var(--priInk)}
 .eg-how code{font:12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--sunk);padding:1px 6px;border-radius:6px;color:var(--ink);word-break:break-all}
 @media (prefers-reduced-motion:reduce){.eg-card,.eg-how summary .ic{transition:none}}
+/* v0.309 a clip that could not get its price card says why, on its own tile */
+.res small.perr,.perr{display:flex;align-items:flex-start;gap:6px;margin-top:4px;color:var(--bad);font-size:12.5px;line-height:1.4}
+.perr .ic{flex:none;margin-top:2px}

@@ -11548,3 +11548,26 @@ Built - keys stay ONLY in the VPS .env (rule), nothing here ever reads one out:
 - Class names prefixed eg- after the preview caught .ed (the video editor's page grid) and .bad (red text) clashing.
 Checked from the sandbox against the REAL providers with fake keys: OpenRouter 401, Anthropic 401, Gemini 400
 API_KEY_INVALID all reported as "Key refused". Tests: tests/test_v0308_studio_apis.py (MockTransport, no network).
+
+
+## v0.309.0 CLIP CREATE FIX (30 Oct 2026)
+Owner, with a screenshot of the Video page: "WHEN CLICK ON CREATE IN VIDEO IT LOADS FOR CREATING BUT WONT CREATE ANYTHING AND
+WHEN CLICK ON THAT IT OPENS DIRECTOR SECTION". Her screenshot: "Clip 30 Oct 22:22" (her chai prompt, 8 s) on the art
+placeholder, no price card under it.
+Root cause: newClip() did POST /api/studio/projects (studio_new -> ss.plan(), which only STARTS the storyboard as a
+background task and returns) and then at once POST /projects/{name}/generate. The project had no shots yet, generate()
+raised StudioJobError("Pehle storyboard banaiye (plan)."), the page showed it as one toast and cleared its busy tile;
+the storyboard landed a minute later with nothing asking for its price. Clicking the tile always went to Director
+(data-openproj), so it looked like Create had opened Director.
+Fix:
+- ONE call. StudioNew gains then = "" | generate | preview (+ variants, compare). studio_new calls
+  ss.after_plan(tenant, name, run): waits for its own _planning task, then runs generate (price card) or the free
+  preview, and records any failure on the project (`error`, cleared on success; "The shot plan could not be written.
+  Press Create again." when no shots came back). While it waits the clip reads planning (`_then`), so the tile shows
+  "Writing the plan" until the card is out, and the page's 4 s poll brings the card in. Works if she leaves the page.
+- The tile: a failed clip shows its reason in red; clicking a clip on the Video page PLAYS it (lightbox, "Edit in
+  Director" button), says what is happening while it is planned / priced / made, shows its error, and goes to
+  Director only when there is nothing to play and nothing waiting.
+Checked on a local server through the real route: planning true -> (fake key) "The shot plan could not be written"
+on the tile, the click stays on Video. With her real keys the same path ends in the price card.
+Tests: tests/test_v0309_clip_create.py.

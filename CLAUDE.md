@@ -129,9 +129,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.308.0 (pubspec 0.308.0+348). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.309.0 (pubspec 0.309.0+349). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.309 CLIP CREATE FIX: Video page Create asked for the price before the background storyboard existed ("Pehle storyboard banaiye",
+  no card ever). Now one call (then=generate), `studio.service.after_plan` waits for the plan then makes the card; errors on the tile.
 - v0.308 STUDIO APIS (built as 0.307): `app/studio/apis.py` checks each Create engine with one FREE call (OpenRouter /key, Gemini
   /models, Anthropic /models), keys never shown; GET /api/studio/apis, `python -m app.studio.apis`, vps-ops `studio_apis`, Create > Setup > Engines.
 - v0.307 DESIGN ARENA (`site/arena.py`, owner-only `/api/arena/*`): 1,000 fixed briefs, runs build n as `__arena__` + Opus judge /

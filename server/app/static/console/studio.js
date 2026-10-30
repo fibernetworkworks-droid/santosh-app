@@ -626,8 +626,8 @@ ${SPRITE}`;
   }
   function projTile(p) {
     const busy = p.working || p.planning || (p.painting || []).length;
-    return `<div class="res${busy ? ' gening' : ''}" data-proj="${esc(p.project)}"><button class="thumb" data-openproj="${esc(p.project)}" aria-label="Open ${esc(p.project)}">${projMedia(p)}${busy ? `<span class="ring"></span><span class="pct">${p.progress?.pct != null ? p.progress.pct + '%' : p.planning ? 'Writing the plan' : 'Working'}</span>` : `<span class="badge">${I('play', 'width:11px;height:11px')}${esc(p.aspect)}</span><span class="dur num">${p.seconds || 0} s</span>`}</button>
-      <b class="rt">${esc(p.project)}</b><small>${esc((p.brief || '').slice(0, 80))}</small>${moneyLine(p.money)}${(p.approvals || []).map(approvalRow).join('')}</div>`;
+    return `<div class="res${busy ? ' gening' : ''}" data-proj="${esc(p.project)}"><button class="thumb" data-openproj="${esc(p.project)}" aria-label="Open ${esc(p.project)}" title="${VIEW === 'video' ? 'Play' : 'Open in Director'}">${projMedia(p)}${busy ? `<span class="ring"></span><span class="pct">${p.progress?.pct != null ? p.progress.pct + '%' : p.planning ? 'Writing the plan' : 'Working'}</span>` : `<span class="badge">${I('play', 'width:11px;height:11px')}${esc(p.aspect)}</span><span class="dur num">${p.seconds || 0} s</span>`}</button>
+      <b class="rt">${esc(p.project)}</b><small>${esc((p.brief || '').slice(0, 80))}</small>${p.error && !busy ? `<small class="perr">${I('x', 'width:13px;height:13px')}${esc(p.error)}</small>` : ''}${moneyLine(p.money)}${(p.approvals || []).map(approvalRow).join('')}</div>`;
   }
   // v0.263 estimate vs what she pays vs what the providers reported, for a film / clip
   function moneyLine(mo) {
@@ -681,14 +681,32 @@ ${SPRITE}`;
     const name = 'Clip ' + new Date().toLocaleString('en-IN', {day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false}).replace(',', '');
     const quality = preview ? 'preview' : QOF(VID.res);
     try {
-      const p = await api('POST', '/api/studio/projects', {name, brief, aspect: VID.aspect, seconds: VID.seconds, language: VID.language,
-        quality: preview ? 'draft' : quality, model: VID.model, resolution: VID.res, auto: VID.auto});
-      VID.busy = preview ? 'Making the free preview' : 'Working out the price';
-      const r = await api('POST', `/api/studio/projects/${encodeURIComponent(p.project)}/generate`, {quality, model: VID.model || null, variants: preview ? 1 : VID.takes,
-        compare: !preview && VID.compare.length > 1 ? VID.compare : null});
-      toast(r.waiting_owner ? `Price ${inr(r.inr)}: tap Haan on the tile to make it.` : 'Making your free preview');
+      // v0.309 ONE call: the server writes the shot plan in the background and, when it is ready, makes the price card
+      // itself (asking for the price in the same breath used to fail: "Pehle storyboard banaiye", and nothing came)
+      await api('POST', '/api/studio/projects', {name, brief, aspect: VID.aspect, seconds: VID.seconds, language: VID.language,
+        quality: preview ? 'draft' : quality, model: VID.model, resolution: VID.res, auto: VID.auto,
+        then: preview ? 'preview' : 'generate', variants: preview ? 1 : VID.takes, compare: !preview && VID.compare.length > 1 ? VID.compare : null});
+      toast(preview ? 'Writing the shot plan, then your free preview starts on the tile.' : 'Writing the shot plan (about a minute). The price card appears on the tile; nothing is spent until you tap Haan.');
     } catch (e) { toast(e.status === 428 ? fp : e.message, true); }
     VID.busy = ''; await load('studio', true); redraw('video', drawVideos);
+  }
+  // v0.309 a clip tile on the Video page PLAYS the clip; while it is still being planned / priced it says so; only a clip
+  // with nothing to play and nothing waiting goes to Director (it used to jump there every time)
+  function clipOpen(name) {
+    const p = (D.studio?.projects || []).find(x => x.project === name); if (!p) return;
+    const out = (p.outputs || []).slice(-1)[0];
+    let url = out?.url || '';
+    if (!url) for (const s of p.shots || []) { const t = (s.take_list || []).find(x => x.picked) || (s.take_list || []).slice(-1)[0]; if (t?.url) { url = t.url; break; } }
+    if (url) {
+      const lb = $('#lightbox');
+      lb.innerHTML = `<div class="lbin" role="dialog" aria-modal="true" aria-label="${esc(name)}"><div class="lbh"><b>${esc(name)}</b><button class="pillbtn" data-openproj-dir="${esc(name)}">${I('clap', 'width:15px;height:15px')}Edit in Director</button><button class="ib" data-lbclose aria-label="Close">${I('x')}</button></div><div class="lbm"><video controls autoplay playsinline src="${esc(url)}"></video></div></div>`;
+      lb.hidden = false; $('[data-lbclose]', lb).focus(); return;
+    }
+    if (p.planning) { toast('Hoola is still writing the shot plan. The price card appears on this tile in a moment.'); return; }
+    if ((p.approvals || []).length) { R.querySelector(`[data-proj="${CSS.escape(name)}"] .appr`)?.scrollIntoView({block: 'nearest', behavior: 'smooth'}); toast('Check the price card under the picture, then tap Haan to make it.'); return; }
+    if (p.working || (p.painting || []).length) { toast('Your clip is being made. It plays here when it is ready.'); return; }
+    if (p.error) { toast(p.error, true); return; }
+    DIR.project = name; DIR.view = null; go('director');
   }
   function fitToModel() {          // keep length / resolution inside what the chosen model makes
     const m = vm(); if (!m) return;
@@ -716,7 +734,7 @@ ${SPRITE}`;
       if (b.hasAttribute('data-improve')) { if (!q.value.trim()) { q.focus(); return; } b.disabled = true;
         try { const r = await api('POST', '/api/studio/improve', {brief: q.value.trim(), language: VID.language, seconds: VID.seconds}); q.value = VID.prompt = r.brief; } catch (er) { toast(er.message, true); } b.disabled = false; return; }
       if (b.dataset.yes || b.dataset.no) { b.disabled = true; await decide(b.dataset.yes || b.dataset.no, !!b.dataset.yes); await load('studio', true); drawVideos(); return; }
-      if (b.dataset.openproj) { DIR.project = b.dataset.openproj; DIR.view = null; go('director'); return; }
+      if (b.dataset.openproj) { clipOpen(b.dataset.openproj); return; }
       if (b.hasAttribute('data-reload')) { await load('studio', true); drawVideos(); return; }
       if (b.id === 'vidPrev') { VID.prompt = q.value; newClip(true); return; }
       if (b.id === 'vidGo') { VID.prompt = q.value; newClip(false); }
@@ -1331,6 +1349,7 @@ ${SPRITE}`;
     R.addEventListener('click', e => {
       if (e.target.closest('#picker')) return;
       const t = e.target.closest('[data-close]'); if (t) { close(); return; }
+      const ed = e.target.closest('[data-openproj-dir]'); if (ed) { const lb = $('#lightbox'); lb.hidden = true; lb.innerHTML = ''; DIR.project = ed.dataset.openprojDir; DIR.view = null; go('director'); return; }
       if (e.target.closest('[data-lbclose]') || e.target.id === 'lightbox') { const lb = $('#lightbox'); lb.hidden = true; lb.querySelectorAll('video,audio').forEach(m => m.pause()); lb.innerHTML = ''; return; }
       const lbdl = e.target.closest('#lightbox [data-dl]'); if (lbdl) { itemAction(lbdl); return; }
       const g = e.target.closest('[data-go]'); if (g) { e.preventDefault(); go(g.dataset.go); return; }
