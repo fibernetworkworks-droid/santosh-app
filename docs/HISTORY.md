@@ -10688,3 +10688,37 @@ Unable to verify / Offline.
   domain gets its records at once (her own account never does), SaaS still wins / no route = plain error.
 - Built as 0.276.0, re-versioned 0.280.0 on merge past the parallel v0.276-v0.279 (PADHNE KI CHAUDAI, INDIAMART, PURA SAANS, ATTACHMENTS).
 - Not verified yet: a real Caddy issuing a real certificate through the ask endpoint (owner's VPS step).
+
+## v0.281.0 — the bullet gutter, and what the "not exactly as Claude" report really was (owner: "OUR PARAGRAP WORK DEPLOYED BUT NOT EXACTLY AS CLAUDE DOES ---- LOT OF ISSUES ARE THERE FIND THE DIFREENCE ... FIRST", then "FIX THE BULLET INDENT 22 TO 30")
+- CHECKED AGAINST THE LIVE SERVER, NOT THE REPO. Her `v2.css` was fetched from hoola.ainewtika.com (live was
+  v0.279.0, which carries v0.278) and a full turn - user message, tool group, narration, tool group, answer with a
+  heading and a list - was rendered through the REAL `console/md.js`, not hand-written markup. Measured:
+
+  | | Hoola (live) | Claude |
+  |---|---|---|
+  | paragraph pitch | 40px (24 line + 16 gap) | 40-46px |
+  | paragraph width | 680px | 674px |
+  | reply text / tool rows / headings | all flush at 237px | all flush |
+  | avatar | 44px outside the text | outside |
+  | turn gap | 61px | 60px |
+  | after a table / quote / code | 16px | — |
+  | **bullet gutter** | **22px** | **~30px** |
+
+  So the spacing work HAD deployed and was rendering correctly; one mismatch was left, and this version fixes it:
+  `.textmd ul,ol` padding-left 22 -> 30px.
+- A WRONG LEAD, RECORDED SO IT IS NOT CHASED AGAIN. `md.js` line 137 ends its paragraph builder with
+  `.replace(/<\/p><p>/g, '<br>')`, which reads like it collapses every paragraph into a single `<p>` with line
+  breaks - which would have explained everything. It does NOT fire on the reply path: the real render produced
+  **3 separate `<p>` elements and 0 `<br>`**, with a 40px pitch. The finding was verified before reporting and
+  dropped.
+- THE PHONE KEEPS ITS OWN NARROWER GUTTER, on purpose. `md_text.dart` puts list text 20px in (4px padding + a 16px
+  bullet column). 30px of a 360px phone screen is 8% of the width, where Claude's 30px is 4.5% of a 674px column -
+  the phone is already proportionally right, and forcing 30 would eat the narrow screen. A test records that.
+- STILL UNEXPLAINED, and said plainly to her rather than papered over: she reports "lot of issues" that this rig
+  cannot reproduce. What the rig cannot see - her own browser width, zoom or cache; a streaming reply mid-flight
+  (the live-typing path rather than the finished one); dark mode, which was deliberately left untouched; and the
+  PHONE, whose v0.274 spacing needs the APK installed (newest at the time: v0.279.0-b633). She was asked for a
+  screenshot of the actual screen and for which surface it is, because every earlier round of this work was solved
+  that way.
+- Tests: NEW `server/tests/test_v0281_bullet_gutter.py` (4).
+- Version 0.281.0 (pubspec 0.281.0+321, console ?v=0.281.0, pins -> 0.281.0).
