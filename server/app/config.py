@@ -218,6 +218,8 @@ class Settings(BaseSettings):
     sites_base_domain: str = ""            # v0.122 free addresses <name>.<this> (wildcard DNS proxied to this server)
     sites_origin: str = ""                 # v0.122 Cloudflare for SaaS fallback origin hostname (points at this server)
     sites_origin_ip: str = ""              # v0.122 this server's public IP (her own Cloudflare zone proxies to it)
+    sites_direct_ip: str = ""              # v0.276 DIRECT MODE (like Lovable): her domain points straight at this IP (A @ + A www,
+                                           # DNS only) + a _hoola TXT proves it is hers; the edge (Caddy on-demand TLS) makes the cert
     sites_cf_token: str = ""               # v0.122 Newtika's Cloudflare token: custom hostnames on the Hoola sites zone
     sites_cf_zone_id: str = ""             # v0.122 the Hoola sites zone id (Cloudflare for SaaS)
     sites_resell: bool = False             # v0.123 Hoola (Newtika) registers domains on its own registrar account

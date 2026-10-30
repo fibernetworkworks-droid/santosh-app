@@ -4,7 +4,12 @@ SSL issued by Cloudflare, her visitors' traffic proxied to Hoola's server), or t
 to Hoola's server). The files are served by Hoola's server (`serve`, used by the HTTP middleware) from data/hosted/<host>.
 
 Every launch keeps the previous live copy, so rollback is instant (also only on her tap). Uptime is checked every 5 min;
-two misses in a row = a card + push with the reason."""
+two misses in a row = a card + push with the reason.
+
+v0.276 DIRECT MODE (how Lovable does it): with SITES_DIRECT_IP set and no Cloudflare for SaaS, her domain points straight at
+this server (A @ + A www, DNS only) and a TXT `_hoola.<domain>` = `hoola_verify=<token>` proves it is hers. The worker walks
+each address Verifying (records not seen yet) -> Setting up (records seen; the edge makes the https certificate on the first
+visit, allowed by `/api/hosting/ask` only from this stage on) -> Live. One address is primary, the other 301-redirects to it."""
 from __future__ import annotations
 
 import hashlib
@@ -59,12 +64,34 @@ def cfg() -> dict[str, Any]:
     return {"base": (getattr(st, "sites_base_domain", "") or "").lower().strip("."),
             "origin": (getattr(st, "sites_origin", "") or "").lower().strip("."),
             "origin_ip": getattr(st, "sites_origin_ip", "") or "",
-            "cf_token": getattr(st, "sites_cf_token", "") or "", "cf_zone": getattr(st, "sites_cf_zone_id", "") or ""}
+            "cf_token": getattr(st, "sites_cf_token", "") or "", "cf_zone": getattr(st, "sites_cf_zone_id", "") or "",
+            "direct_ip": (getattr(st, "sites_direct_ip", "") or "").strip()}
 
 
 def saas_on() -> bool:
     c = cfg()
     return bool(c["cf_token"] and c["cf_zone"] and c["origin"])
+
+
+def direct_on() -> bool:
+    return bool(cfg()["direct_ip"]) and not saas_on()
+
+
+def verify_token(tenant: str, domain: str) -> str:
+    """v0.276 the ownership value for `_hoola.<domain>`: the same for her each time (a re-join keeps her record valid),
+    different for anyone else, so nobody can take a domain whose DNS they do not control."""
+    import hmac
+    secret = (getattr(_st(), "secret_key", "") or "hoola-sites").encode()
+    return "hoola_verify=" + hmac.new(secret, f"site-domain|{tenant}|{domain}".encode(), hashlib.sha256).hexdigest()[:32]
+
+
+def apex_of(host: str) -> str:
+    return host[4:] if host.startswith("www.") else host
+
+
+REDIRECT_ROLES = ("apex", "redirect")
+STAGE_WORDS = {"dns": "Verifying - DNS records dekh rahe hain", "ssl": "Setting up - https certificate ban raha hai",
+               "active": "Live"}
 
 
 def hosted_root() -> Path:
@@ -161,7 +188,8 @@ def host_map(force: bool = False) -> dict[str, dict[str, Any]]:
             with session() as s:
                 for h in s.scalars(select(SiteHost).where(SiteHost.status.in_(("active", "pending")),
                                                           SiteHost.live_version > 0)).all():
-                    hosts[h.hostname] = {"site": h.site_id, "role": h.role, "tenant": h.tenant_id}
+                    hosts[h.hostname] = {"site": h.site_id, "role": h.role, "tenant": h.tenant_id,
+                                         "direct_wait": (h.mode or "") == "direct" and h.status == "pending" and h.ssl_status == "dns"}
         except Exception:
             log.debug("host map failed", exc_info=True)
         main = {v["site"]: k for k, v in hosts.items() if v["role"] == "main"}
@@ -182,6 +210,13 @@ def _edge_sync(hosts: dict[str, dict[str, Any]]) -> None:
         log.exception("edge sync failed")
 
 
+def ask_ok(domain: str) -> bool:
+    """v0.276 the edge's on-demand TLS question: a certificate only for an address of a launched site, and for a direct
+    domain only once its records were seen (her DNS really points here) - never for any name someone points at us."""
+    m = host_map().get((domain or "").lower().strip("."))
+    return bool(m) and not m.get("direct_wait")
+
+
 BOTS = re.compile(r"hoolauptime|bot\b|bot/|crawl|spider|slurp|lighthouse|headlesschrome|python-httpx|python-requests|"
                   r"curl/|wget/|uptime|monitor|preview|facebookexternalhit|whatsapp", re.I)
 
@@ -197,7 +232,7 @@ def serve(host: str, path: str, ua: str = "", inm: str = "") -> tuple[int, bytes
     m = host_map().get(host)
     if not m:
         return None
-    if m["role"] == "apex" and m["main"] != host:
+    if m["role"] in REDIRECT_ROLES and m["main"] != host:
         return 301, b"", "text/plain", {"Location": f"https://{m['main']}{path or '/'}"}
     root = hosted_root() / host
     if not root.exists():
@@ -358,6 +393,12 @@ def _is_pending(hostname: str) -> bool:
 
 
 def _main_host(r: Site, hosts: list[str]) -> str:
+    with session() as s:      # v0.276 the address she made primary wins (root or www)
+        chosen = [x.hostname for x in s.scalars(select(SiteHost).where(SiteHost.site_id == r.id, SiteHost.kind == "custom",
+                                                                         SiteHost.role == "main", SiteHost.status != "removed")).all()]
+    chosen = [h for h in hosts if h in chosen]
+    if chosen:
+        return chosen[0]
     custom_www = [h for h in hosts if h.startswith("www.")]
     custom = [h for h in hosts if not (cfg()["base"] and h.endswith("." + cfg()["base"]))]
     return (custom_www or custom or hosts)[0]
@@ -504,8 +545,9 @@ def take_down(tenant: str, ref: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------- her own domain
-def connect_domain(tenant: str, ref: str, domain: str, conv: str = "") -> dict[str, Any]:
-    """Her domain -> pending hosts + the DNS plan card (applied only on her tap)."""
+def connect_domain(tenant: str, ref: str, domain: str, conv: str = "", primary: str = "") -> dict[str, Any]:
+    """Her domain -> pending hosts + the DNS plan card (applied only on her tap). primary (direct mode): "root" (Lovable's
+    default: sharmasweets.in, www redirects to it) or "www"."""
     from . import service as S
     from .cf import CfError, Cloudflare
     from .guard import name_problem
@@ -522,11 +564,22 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "") -> dict[s
         raise HostError(f"{d} pehle se ek doosri Hoola website se juda hai.")
     loc = D.where_is(tenant, d)
     c = cfg()
-    apex_ok = loc["provider"] == "cloudflare" or (loc["provider"] == "porkbun" and saas_on())   # Porkbun: ALIAS at the apex
+    apex_ok = (loc["provider"] in ("cloudflare", D.HOOLA_CF) or (loc["provider"] == "porkbun" and saas_on())   # Porkbun: ALIAS
+               or direct_on())                                       # v0.276 direct: a plain A record works at the apex
     verify: list[dict[str, Any]] = []
     rows: list[SiteHost] = []
     names = [f"www.{d}"] + ([d] if apex_ok else [])
-    if saas_on():
+    if direct_on():
+        mode, target = "direct", c["direct_ip"]
+        main_name = f"www.{d}" if (primary or "").lower() == "www" else d
+        verify.append({"type": "TXT", "name": f"_hoola.{d}", "value": verify_token(tenant, d),
+                       "why": "Hoola ko dikhana ki domain aapka hai"})
+        shown = [{"type": "A", "name": n, "value": target, "why": "website seedha Hoola par (DNS only)"} for n in (d, f"www.{d}")]
+        for n in names:
+            rows.append(SiteHost(tenant_id=tenant, site_id=r.id, hostname=n, kind="custom", mode="direct",
+                                 role="main" if n == main_name else "redirect", status="pending", ssl_status="dns",
+                                 verify=json.dumps(shown + verify)))
+    elif saas_on():
         mode, target = "saas", c["origin"]
         cf = Cloudflare(c["cf_token"])
         for n in names:
@@ -541,17 +594,17 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "") -> dict[s
             for vr in (ch.get("ssl") or {}).get("validation_records") or []:
                 if vr.get("txt_name") and vr.get("txt_value"):
                     verify.append({"type": "TXT", "name": vr["txt_name"], "value": vr["txt_value"], "why": "SSL (https) jaanch"})
-            rows.append(SiteHost(tenant_id=tenant, site_id=r.id, hostname=n, kind="custom",
+            rows.append(SiteHost(tenant_id=tenant, site_id=r.id, hostname=n, kind="custom", mode="saas",
                                  role="main" if n.startswith("www.") else "apex", status="pending", cf_id=ch.get("id", ""),
                                  ssl_status=(ch.get("ssl") or {}).get("status", ""), verify=json.dumps(verify)))
     elif loc["provider"] == "cloudflare" and c["origin_ip"]:
         mode, target = "proxy", c["origin_ip"]
         for n in names:
-            rows.append(SiteHost(tenant_id=tenant, site_id=r.id, hostname=n, kind="custom",
+            rows.append(SiteHost(tenant_id=tenant, site_id=r.id, hostname=n, kind="custom", mode="proxy",
                                  role="main" if n.startswith("www.") else "apex", status="pending"))
     else:
-        raise HostError("Aapka domain jodne ke liye: ya to server par Hoola Hosting (Cloudflare for SaaS) chalu ho, ya domain "
-                        "ka DNS aapke apne Cloudflare account mein ho aur uska token Hoola mein juda ho (Website > Hosting).")
+        raise HostError("Aapka domain jodne ke liye server par Hoola Hosting chalu honi chahiye (SITES_DIRECT_IP, ya Cloudflare "
+                        "for SaaS), ya domain ka DNS aapke apne Cloudflare account mein ho aur uska token Hoola mein juda ho.")
     keep = {x.hostname for x in rows}
     gone: list[_Gone] = []
     with session() as s:
@@ -571,12 +624,47 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "") -> dict[s
     except D.DnsError as e:
         raise HostError(str(e))
     card = {"kind": "dns", "site": S.view(r, False), "domain": d, "plan": pl, "mode": mode,
-            "say": (f"{d} ke liye {pl['todo']} DNS badlav: aapki haan par Hoola laga dega." if pl["provider"] in ("cloudflare", "porkbun")
+            "say": (f"{d} ke liye {pl['todo']} DNS badlav: aapki haan par Hoola laga dega." if D.can_apply(pl["provider"])
                     else f"{d} ke liye yeh {pl['todo']} records apne domain ki company ki site par daaliye (steps card mein).")}
+    if mode == "direct":
+        main_name = next(x.hostname for x in rows if x.role == "main")
+        card["primary"] = main_name
+        card["records"] = [{"type": x["type"], "name": x["name"], "value": x["content"]} for x in desired]
+        card["say"] += (f" Main address {main_name} hoga, doosra uspar le jayega. Records dikhte hi Hoola khud https banayega "
+                        "aur batayega (Verifying -> Setting up -> Live).")
+        if pl["provider"] == "cloudflare":
+            card["say"] += " Cloudflare mein in records ka orange cloud band (DNS only) rahega."
     if not apex_ok:
         card["say"] += f" Bina www wala {d} kholne ke liye apni domain company mein '{d} -> www.{d}' forwarding laga dijiye."
     _publish(tenant, "site_dns", {**card, "push": True}, conv or r.conv)
     return card
+
+
+def set_primary(tenant: str, ref: str, host: str) -> dict[str, Any]:
+    """v0.276 her choice: which address of her domain is the main one (root or www); the other 301-redirects to it."""
+    from . import service as S
+    host = (host or "").lower().strip(".")
+    with session() as s:
+        r = S._find(s, tenant, ref)
+        s.expunge(r)
+        rows = s.scalars(select(SiteHost).where(SiteHost.site_id == r.id, SiteHost.kind == "custom",
+                                                SiteHost.status != "removed")).all()
+        if host not in {x.hostname for x in rows}:
+            raise HostError(f"{host} is website se juda nahi hai.")
+        for x in rows:
+            x.role = "main" if x.hostname == host else "redirect"
+        live = max([x.live_version or 0 for x in rows] or [0])
+        others = [x.hostname for x in rows if x.hostname != host]
+    if live:
+        _publish_files(r, host, live)
+        for o in others:
+            _link(host, o)
+        with session() as s:            # the free address follows the main copy too
+            for x in s.scalars(select(SiteHost).where(SiteHost.site_id == r.id, SiteHost.kind == "free",
+                                                      SiteHost.status != "removed")).all():
+                _link(host, x.hostname)
+    host_map(force=True)
+    return {"ok": True, "primary": host, "say": f"Ab main address {host} hai; baaki wahan le jayenge."}
 
 
 def dns_apply(tenant: str, plan_id: str, hash_: str) -> dict[str, Any]:
@@ -591,7 +679,8 @@ def watch(tenant: str = "") -> int:
     """Pending custom hosts -> active when DNS + SSL are ready; active hosts -> uptime. Returns hosts checked."""
     n = 0
     with session() as s:
-        q = select(SiteHost).where(SiteHost.status.in_(("pending", "active")), SiteHost.live_version > 0)
+        q = select(SiteHost).where(SiteHost.status.in_(("pending", "active")),
+                                   (SiteHost.live_version > 0) | ((SiteHost.mode == "direct") & (SiteHost.status == "pending")))
         if tenant:
             q = q.where(SiteHost.tenant_id == tenant)
         rows = s.scalars(q).all()
@@ -615,6 +704,8 @@ def watch(tenant: str = "") -> int:
 
 def _check_pending(h: SiteHost) -> None:
     from .cf import CfError, Cloudflare
+    if (h.mode or "") == "direct":
+        return _check_direct(h)
     st, ssl_st, prob = "pending", h.ssl_status, ""
     if h.cf_id and saas_on():
         try:
@@ -633,6 +724,62 @@ def _check_pending(h: SiteHost) -> None:
     with session() as s:
         row = s.get(SiteHost, h.id)
         row.status, row.ssl_status, row.problem, row.last_check = st, ssl_st, prob, now()
+    if st == "active":
+        host_map(force=True)
+        _publish(h.tenant_id, "site_live", {"ok": True, "url": f"https://{h.hostname}/", "hosts": [h.hostname],
+                                            "say": f"{h.hostname} par website khul gayi (https ke saath)."})
+
+
+def direct_records_seen(h: SiteHost) -> tuple[bool, str]:
+    """Her records as the world sees them (3 public resolvers): A -> this server for the address, the _hoola TXT on the
+    domain. Returns (ok, the exact thing still missing, in her words)."""
+    ip = cfg()["direct_ip"]
+    d = apex_of(h.hostname)
+    a = D.lookup(h.hostname, "A")
+    asked = {k: v for k, v in a.items() if v != ["?"]}
+    if not asked:
+        return False, "DNS abhi poochh nahi paaye (thodi der mein phir dekhenge)"
+    got = sorted({x for v in asked.values() for x in v})
+    if not all(ip in v for v in asked.values()):
+        if not got:
+            return False, f"{h.hostname} ka A record abhi nahi dikh raha (chahiye: A -> {ip})"
+        hint = (" Cloudflare mein orange cloud band karke 'DNS only' kijiye." if not any(ip == x for x in got) and
+                any(x.startswith(("104.", "172.6", "188.114.")) for x in got) else "")
+        return False, f"{h.hostname} abhi {', '.join(got[:3])} par ja raha hai; chahiye sirf {ip}.{hint}"
+    want = verify_token(h.tenant_id, d)
+    txt = D.lookup(f"_hoola.{d}", "TXT")
+    seen = [k for k, v in txt.items() if v != ["?"] and any(want in x for x in v)]
+    if not seen:
+        return False, f"TXT record _hoola.{d} = {want} abhi nahi dikh raha"
+    return True, ""
+
+
+def _check_direct(h: SiteHost) -> None:
+    """v0.276 Verifying -> Setting up -> Live for a direct-mode address (Lovable's ladder)."""
+    stage, prob, st = h.ssl_status or "dns", "", "pending"
+    if stage == "dns":
+        ok, prob = direct_records_seen(h)
+        if ok:
+            stage = "ssl"
+            prob = "" if h.live_version else "Records sahi hain; website live karte hi https ban jayega"
+            if h.live_version:
+                with session() as s:          # the edge may ask for a certificate from now on
+                    row = s.get(SiteHost, h.id)
+                    row.ssl_status = "ssl"
+                host_map(force=True)
+        else:
+            age = (datetime.now(timezone.utc) - h.created_at.replace(tzinfo=h.created_at.tzinfo or timezone.utc)).total_seconds() \
+                if h.created_at else 0
+            if age > 3600:
+                prob = "Unable to verify (1 ghante se): " + prob
+    if stage == "ssl" and h.live_version:
+        if _fetch_ok(h.hostname):
+            st, stage, prob = "active", "active", ""
+        else:
+            prob = "https certificate ban raha hai (pehli baar 1-2 min); CAA record ho to Let's Encrypt ko allow kijiye"
+    with session() as s:
+        row = s.get(SiteHost, h.id)
+        row.status, row.ssl_status, row.problem, row.last_check = st, stage, prob[:300], now()
     if st == "active":
         host_map(force=True)
         _publish(h.tenant_id, "site_live", {"ok": True, "url": f"https://{h.hostname}/", "hosts": [h.hostname],
@@ -693,7 +840,7 @@ def uptime_targets() -> list[str]:
     """The live addresses the outside checker should open (main + www only; nothing about her)."""
     with session() as s:
         rows = s.scalars(select(SiteHost).where(SiteHost.status == "active", SiteHost.live_version > 0)).all()
-        return sorted({x.hostname for x in rows if x.role != "apex"})
+        return sorted({x.hostname for x in rows if x.role not in REDIRECT_ROLES})
 
 
 def outside_report(results: list[dict[str, Any]]) -> int:
@@ -752,7 +899,22 @@ def status(tenant: str, ref: str) -> dict[str, Any]:
         s.expunge(r)
     hs = _hosts_of(r)
     return {"hosts": [{"host": h.hostname, "kind": h.kind, "role": h.role, "status": h.status, "ssl": h.ssl_status,
-                       "live_version": h.live_version, "problem": h.problem,
+                       "live_version": h.live_version, "problem": h.problem, "mode": h.mode or "",
+                       "stage": _stage(h), "primary": h.kind == "custom" and h.role == "main",
+                       "records": _j(h.verify, []) if (h.mode or "") == "direct" else [],
                        "launched_at": h.launched_at.isoformat() if h.launched_at else ""} for h in hs],
-            "dns": D.plans(tenant, r.id, 10), "saas": saas_on(), "free_base": cfg()["base"],
-            "keys": D.keys(tenant)}
+            "dns": D.plans(tenant, r.id, 10), "saas": saas_on(), "direct": direct_on(), "direct_ip": cfg()["direct_ip"],
+            "free_base": cfg()["base"], "keys": D.keys(tenant)}
+
+
+def _stage(h: SiteHost) -> str:
+    """v0.276 one word for the app's status chip: Verifying / Setting up / Live / Unable to verify / Offline."""
+    if h.status == "active":
+        return "Offline" if (h.fails or 0) >= 2 else "Live"
+    if h.status != "pending":
+        return h.status.capitalize()
+    if (h.mode or "") == "direct":
+        if (h.problem or "").startswith("Unable to verify"):
+            return "Unable to verify"
+        return "Setting up" if h.ssl_status == "ssl" else "Verifying"
+    return "Setting up" if h.cf_id else "Verifying"

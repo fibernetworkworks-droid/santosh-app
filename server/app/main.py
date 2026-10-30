@@ -7696,7 +7696,14 @@ async def sites_takedown(ref: str, tenant: str = Depends(current_tenant)):
 async def sites_domain(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     from .site import hosting as H
     return await asyncio.to_thread(_host, H.connect_domain, tenant, ref, str(body.get("domain") or ""),
-                                   str(body.get("conversation_id") or ""))
+                                   str(body.get("conversation_id") or ""), str(body.get("primary") or ""))
+
+
+@app.post("/api/sites/{ref}/primary", dependencies=[Depends(require_key)])
+async def sites_primary(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.276 her choice of the main address of her domain (root or www); the other redirects to it."""
+    from .site import hosting as H
+    return await asyncio.to_thread(_host, H.set_primary, tenant, ref, str(body.get("host") or ""))
 
 
 @app.post("/api/sites-dns/{plan_id}/apply", dependencies=[Depends(require_key)])
@@ -7759,7 +7766,8 @@ async def hosting_ask(domain: str = ""):
     from .site import hosting as H
     # v0.224 the cached map (refreshed every 20 s and on every launch): a public endpoint must not force a DB read +
     # folder sync on every call
-    return Response(status_code=200 if domain.lower() in await asyncio.to_thread(H.host_map) else 404)
+    # v0.276 a direct-mode domain only once its records point here (H.ask_ok)
+    return Response(status_code=200 if await asyncio.to_thread(H.ask_ok, domain) else 404)
 
 
 @app.get("/api/sites-uptime")

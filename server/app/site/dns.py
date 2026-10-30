@@ -168,6 +168,9 @@ def where_is(tenant: str, domain: str) -> dict[str, Any]:
                         "nameservers": z.get("name_servers") or [], "status": z.get("status")}
         except CfError as e:
             return {"provider": "manual", "why": str(e)}
+    z = _hoola_zone(tenant, domain)
+    if z:
+        return z
     pk, ps = key(tenant, "porkbun")
     if pk and ps:
         from .domains import DomainError, Porkbun
@@ -179,6 +182,43 @@ def where_is(tenant: str, domain: str) -> dict[str, Any]:
     ns = lookup(domain, "NS")
     names = sorted({x for v in ns.values() for x in v if x != "?"})
     return {"provider": "manual", "nameservers": names}
+
+
+HOOLA_CF = "hoola_cf"       # v0.276 a domain she bought through Hoola on Newtika's Cloudflare account: Newtika's token
+
+
+def _hoola_token() -> str:
+    from ..config import get_settings
+    return getattr(get_settings(), "sites_reg_cf_token", "") or ""
+
+
+def _hoola_zone(tenant: str, domain: str) -> dict[str, Any] | None:
+    """v0.276 the zone of a domain SHE bought through Hoola on Newtika's Cloudflare Registrar account. She has no login
+    there, so before this the DNS card could only say "do it yourself" and the domain could never reach her site."""
+    tok = _hoola_token()
+    if not tok:
+        return None
+    from .domains import SiteDomain
+    with session() as s:
+        o = s.scalars(select(SiteDomain).where(SiteDomain.tenant_id == tenant, SiteDomain.domain == domain,
+                                               SiteDomain.account == "hoola", SiteDomain.registrar == "cloudflare",
+                                               SiteDomain.status.in_(("registering", "registered", "kyc")))).first()
+    if o is None:
+        return None
+    from .cf import CfError, Cloudflare
+    try:
+        z = Cloudflare(tok).zone_for(domain)
+    except CfError as e:
+        log.info("newtika zone for %s: %s", domain, e)
+        return None
+    if not z:
+        return None
+    return {"provider": HOOLA_CF, "zone": z["id"], "zone_name": z.get("name"), "nameservers": z.get("name_servers") or [],
+            "status": z.get("status")}
+
+
+def can_apply(provider: str) -> bool:
+    return provider in ("cloudflare", "porkbun", HOOLA_CF)
 
 
 class _PorkbunZone:
@@ -221,6 +261,8 @@ def _client(tenant: str, provider: str):
         from .domains import Porkbun
         return _PorkbunZone(Porkbun(*key(tenant, "porkbun")))
     from .cf import Cloudflare
+    if provider == HOOLA_CF:
+        return Cloudflare(_hoola_token())
     return Cloudflare(key(tenant, "cloudflare")[0])
 
 
@@ -244,6 +286,10 @@ def plan(current: list[dict[str, Any]], desired: list[dict[str, Any]], purpose: 
         same_name = [r for r in cur if (r.get("name") or "").lower().rstrip(".") == d["name"]]
         if d["type"] in ("CNAME", "A", "AAAA"):
             exact = [r for r in same_name if r["type"] == d["type"] and (r.get("content") or "").lower().rstrip(".") == d["content"].lower()]
+            if exact and d.get("proxied") is False and exact[0].get("proxied") is True:     # v0.276 orange cloud -> DNS only
+                out.append({**d, "op": "update", "id": exact[0].get("id"), "old": {"type": d["type"], "content": d["content"]},
+                            "risk": f"{d['name']} Cloudflare proxy (orange cloud) se hatkar seedha (DNS only) hoga"})
+                continue
             if exact:
                 out.append({**d, "op": "keep", "id": exact[0].get("id"), "risk": ""})
                 continue
@@ -299,9 +345,13 @@ def plan(current: list[dict[str, Any]], desired: list[dict[str, Any]], purpose: 
 def website_records(domain: str, mode: str, target: str, verify: list[dict[str, Any]] | None = None,
                     apex_flatten: bool = True) -> list[dict[str, Any]]:
     """mode saas: www (and apex when her DNS can flatten) CNAME -> Hoola's origin, DNS only; + the TXT / CNAME Cloudflare
-    asks for. mode proxy: her own Cloudflare zone proxies to Hoola's server IP (A @, CNAME www -> @)."""
+    asks for. mode proxy: her own Cloudflare zone proxies to Hoola's server IP (A @, CNAME www -> @). mode direct (v0.276,
+    like Lovable): A @ and A www -> Hoola's server IP, DNS only (never proxied), + the _hoola ownership TXT."""
     recs: list[dict[str, Any]] = []
-    if mode == "saas":
+    if mode == "direct":
+        recs.append(_rec("A", domain, target, "website (bina www) seedha Hoola ke server par (DNS only, orange cloud nahi)", proxied=False))
+        recs.append(_rec("A", f"www.{domain}", target, "website (www) seedha Hoola ke server par (DNS only)", proxied=False))
+    elif mode == "saas":
         recs.append(_rec("CNAME", f"www.{domain}", target, "website (www) Hoola par", proxied=False))
         if apex_flatten:
             recs.append(_rec("CNAME", domain, target, "website (bina www) Hoola par; Cloudflare ise flatten karta hai", proxied=False))
@@ -331,7 +381,7 @@ def _hash(changes: list[dict[str, Any]], domain: str) -> str:
 
 def make_plan(tenant: str, site_id: str, domain: str, desired: list[dict[str, Any]], purpose: str = "website") -> dict[str, Any]:
     loc = where_is(tenant, domain)
-    if loc["provider"] in ("cloudflare", "porkbun"):
+    if can_apply(loc["provider"]):
         if loc["provider"] == "porkbun":           # Porkbun can't proxy; a proxied record there is a plain record
             desired = [{**d, "proxied": None} for d in desired]
         current = zone_records(tenant, loc["zone"], loc["provider"])
@@ -392,7 +442,7 @@ def apply(tenant: str, pid: str, hash_: str) -> dict[str, Any]:
         raise DnsError(f"Yeh plan '{p.status}' hai.")
     if hash_ != p.hash:
         raise DnsError("Plan badal gaya hai; naya card dekhiye.")
-    if p.provider not in ("cloudflare", "porkbun"):
+    if not can_apply(p.provider):
         raise DnsError("Is domain ka DNS Hoola badal nahi sakta; card ke steps se khud daaliye.")
     from .domains import DomainError
     cf = _client(tenant, p.provider)
