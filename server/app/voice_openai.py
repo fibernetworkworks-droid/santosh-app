@@ -68,6 +68,10 @@ BAAT_KA_DHANG = (
     "kabhi nahi. Pending ya purane kaam ki poori list kabhi mat sunao, summary bhi nahi.\n"
     "- Har jawab ke ant mein 'aur kuch?' ya kaam ki yaad dilana zaroori nahi.\n\n")
 
+FINISH_WAIT_S = 3.0    # v0.283 his finished turn waits at most this long for her late transcript
+EARLY_CUT_S = 1.0
+SPEAKING_STALE_S = 20.0   # v0.283 "she is speaking" older than this without a stop = a lost event, not a long sentence      # v0.283 she "interrupts" within this of his first word: counted as a likely echo cut
+
 BREATH_AFTER_S = 4.0   # she talked at least this long: his answer opens with a breath (people breathe before long answers)
 
 
@@ -195,6 +199,12 @@ class OpenAICall(v.Call):
         self._resp_breath = False
         self._breath_next = False      # v0.266 a real breath sound goes before his next reply's first word
         self._breath_last = -1
+        # v0.283 SAHI KRAM: OpenAI writes HER words out separately and only after her audio is committed - often after
+        # his reply is already done. Her pending transcript items; his finished turn waits for them (max FINISH_WAIT_S).
+        self._her_items: list[str] = []
+        self._finish_wait: asyncio.Task | None = None
+        self._she_speaking = False
+        self._reply_t0 = 0.0           # when his current reply's first audio went out (early self-cut count)
 
     # ---------------- no pre-rendered clips ----------------
     # The ack / murmur / progress clips are rendered in a GEMINI voice: on an OpenAI call they would be a second,
@@ -263,6 +273,13 @@ class OpenAICall(v.Call):
             del self._quiet_pending[:-6]
 
     async def _reply(self, session) -> None:
+        if self._she_speaking and time.monotonic() - self._her_t0 > SPEAKING_STALE_S:
+            self._she_speaking = False         # a lost speech_stopped must never mute him for good
+        if self._she_speaking:
+            # v0.283 a tool result / note while she is mid-sentence: it is already in the conversation; the reply to
+            # HER turn (OpenAI makes it when she stops) carries it. Before, he answered right over her.
+            self.stats["held_for_her"] = self.stats.get("held_for_her", 0) + 1
+            return
         if self._responding:
             self._want_response = True
             return
@@ -276,6 +293,7 @@ class OpenAICall(v.Call):
             t = ev.get("type") or ""
             if t == "response.created":
                 self._responding, self._resp_audio, self._asked = True, False, False
+                self._she_speaking = False     # OpenAI answers only once her turn is over
             elif t == "response.output_audio.delta":
                 data = base64.b64decode(ev.get("delta") or "")
                 if not data:
@@ -289,6 +307,8 @@ class OpenAICall(v.Call):
                     continue
                 if ev.get("item_id") and ev["item_id"] != self._item:
                     self._item, self._item_ms, self._item_t0 = ev["item_id"], 0.0, time.monotonic()
+                if not self._turn_audio:
+                    self._reply_t0 = time.monotonic()
                 if self._breath_next:
                     self._breath_next = False
                     self._resp_breath = True
@@ -310,11 +330,21 @@ class OpenAICall(v.Call):
                 if (ev.get("item_id") or "") not in self._heard:   # this model sent no deltas: the whole line at once
                     await self._heard_her((ev.get("transcript") or "") + " ")
                 self._heard.pop(ev.get("item_id") or "", None)
+                await self._her_item_done(ev.get("item_id") or "")
+            elif t == "conversation.item.input_audio_transcription.failed":
+                self._heard.pop(ev.get("item_id") or "", None)
+                await self._her_item_done(ev.get("item_id") or "")
+            elif t == "input_audio_buffer.committed":
+                self._she_speaking = False     # her turn's audio is in: she is not mid-sentence any more
+                if ev.get("item_id"):
+                    self._her_items.append(ev["item_id"])   # her words for this item are still being written out
             elif t == "input_audio_buffer.speech_started":
-                self._her_t0 = time.monotonic()
+                self._her_t0, self._she_speaking = time.monotonic(), True
+                await self._finish_now()        # a turn still waiting for her late words closes before a new one
                 await self._she_cut_in(session)
             elif t == "input_audio_buffer.speech_stopped":
                 self._her_s = time.monotonic() - self._her_t0 if self._her_t0 else 0.0
+                self._she_speaking = False
                 self._plan_breath()
             elif t == "response.function_call_arguments.done":
                 cid = ev.get("call_id") or ""
@@ -349,7 +379,7 @@ class OpenAICall(v.Call):
                 if self.hold and (self._hold_turn_reply or self.reply_buf):
                     await self._held_turn_done()
                 elif status != "cancelled" and (self._resp_audio or self.reply_buf.strip()):
-                    await self.finish_turn()
+                    await self._finish_when_heard()   # v0.283 her late words join THIS turn
                 if self._want_response and not self.closed.is_set():
                     self._want_response = False
                     await self._reply(session)
@@ -365,6 +395,40 @@ class OpenAICall(v.Call):
                     raise RuntimeError(f"OpenAI: {code}")
         return "reconnect"
 
+    async def _finish_when_heard(self) -> None:
+        """His reply is done. If her words for this turn are still being written out, wait for them (up to
+        FINISH_WAIT_S) so the turn is saved WITH her words, her caption lands while the turn is open, and the
+        stall watchdog never sees 'her words, no answer' afterwards."""
+        if not self._her_items:
+            await self.finish_turn()
+            return
+        self.stats["finish_waited"] = self.stats.get("finish_waited", 0) + 1
+
+        async def later():
+            try:
+                await asyncio.sleep(FINISH_WAIT_S)
+            except asyncio.CancelledError:
+                return
+            self._her_items.clear()                  # the transcript never came: close the turn anyway
+            self._finish_wait = None
+            await self.finish_turn()
+        if self._finish_wait is None or self._finish_wait.done():
+            self._finish_wait = asyncio.create_task(later())
+
+    async def _finish_now(self) -> None:
+        t = self._finish_wait
+        if t is not None and not t.done():
+            t.cancel()
+            self._finish_wait = None
+            self._her_items.clear()
+            await self.finish_turn()
+
+    async def _her_item_done(self, item_id: str) -> None:
+        if item_id in self._her_items:
+            self._her_items.remove(item_id)
+        if not self._her_items:
+            await self._finish_now()
+
     async def _heard_her(self, piece: str) -> None:
         """Her words, exactly the Gemini input_transcription branch (shared listeners)."""
         if not piece:
@@ -375,7 +439,8 @@ class OpenAICall(v.Call):
         if self.hold and get_settings().voice_side_talk:
             await self._hold_heard()
         elif not self.hold:
-            await self._cap_flush()
+            # v0.283 no _cap_flush here: on OpenAI her words arrive while he is ALREADY answering - flushing threw
+            # his own captions away. A real cut-in flushes in _she_cut_in (speech_started).
             await self.send_json({"type": "user_text", "text": self.user_buf.strip()})
             await self._otp_listen(piece)
             await self._approval_listen(piece)
@@ -396,6 +461,9 @@ class OpenAICall(v.Call):
             self._hold_turn_audio.clear()
             return
         self.stats["interruptions"] += 1
+        if getattr(self, "_reply_t0", 0.0) and now - self._reply_t0 < EARLY_CUT_S:
+            # v0.283 cut within a second of his first word: usually his own voice leaking back into her mic (echo)
+            self.stats["early_cuts"] = self.stats.get("early_cuts", 0) + 1
         await self._cap_flush()
         await self.send_json({"type": "interrupted"})
         if self._item:
