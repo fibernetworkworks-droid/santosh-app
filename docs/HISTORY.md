@@ -11272,7 +11272,54 @@ Live check on her VPS (v0.294 `check`): 1,709 apps in Composio, 1,687 offered, 1
 Tests: NEW `test_v0298_no_radio.py` (4); `test_v0264_openai_voice.py` breath tests follow the new default.
 Version 0.298.0 (pubspec 0.298.0+338, console ?v=0.298.0, pins -> 0.298.0).
 
-## v0.299.0 APP LOGOS (30 Oct 2026, owner: "NOW A REAL LOGO ICON FOR EVERY APP --- WORK ON IT AND DEPLOY")
+## v0.299.0 KHULI JAGAH — three asks, and two of them were one problem
+Owner, in one message: *"PANEL WHERE CHAT LANDS … IS EXCEEDING THE SIZE LENGHT OF CHAT BOX MAKE IT SLIGH INSIDE"*,
+*"WHEN HOOLA PERFECOM LONG TASK THE LODING, THINGING SECTION GET HIDE FOR WHILE — FIND ROUTE CAUSE AND FIX THIS"*,
+*"REMOVE AVATHAR ICON ENTIERLY FROM CHAT SPACE"*.
+
+### (1) and (3) were the same thing
+v0.252 pulled the reply row `margin-left:-44px` so the **avatar** could hang outside the column while the words
+still began at the composer's left edge. That pull is exactly why the row measured 924px against the composer's
+880 and stuck 44px past its left edge. Remove the face and the overhang has no reason to exist.
+
+Measured in a browser, composer `236.5..1116.5` in both runs:
+
+| | row | past the composer | avatars |
+|---|---|---|---|
+| before | 192.5..1116.5 (**924px**) | **44px out** on the left | 2 |
+| after | 252.5..1100.5 (**848px**) | **16px inside**, both sides | 0 |
+
+The avatar is **not drawn** — `hoolaBlock()` and the progress row both stop making one — rather than hidden with
+CSS, so nothing holds an empty 44px slot. Every dead `.progress-avatar`, `#app .mh>.av` and `.simple-progress.tail`
+rule was deleted rather than left to mislead the next change (the v0.294 lesson). The loader label still lands on
+the reply text's own left edge, now because nothing is pulled at all.
+
+**This reverses v0.252's flush edge, on her explicit ask.** The pairing survives: the chat's width is still
+derived from the composer's (848 against 880), not chosen independently.
+
+### (2) The loader going quiet — root cause
+`seg()` hides the progress row the moment a text block starts streaming. That is correct: the words themselves
+show it is working, and v0.227 put it there so only one thing says "busy". **But nothing ever brought it back.**
+The row was only un-hidden by the *next* progress event. So a long job read:
+
+> narration line arrives → row hides → a 40-second tool runs with no events to send → the screen sits dead, no
+> loader and no clock, until the next step lands
+
+`placeProgress()` is now called again the moment a block finishes streaming while the turn is still live
+(`fin && TYPING`), so the gap between "what I'm doing" and the next step is never silent. The hiding itself is
+kept — it was never the bug.
+
+### Tests that had to change
+Four suites pinned decisions the owner has now reversed, so they were **rewritten to the new truth rather than
+deleted**, each recording what changed and why: `test_v0252_reading_width.py` and `test_v0276_padhne_ki_chaudai.py`
+(column was flush, now 16px inside), `test_v0227_single_avatar.py` and `test_v0234_one_avatar.py` (no second
+avatar to avoid when there is no avatar), and `test_v0296_ek_hi_kinara.py`, whose four avatar-alignment tests went
+with the avatar — replaced by two that keep the **goal** they protected: one left edge for the whole turn.
+
+### Files
+`server/app/static/console/v2.js` · `server/app/static/console/v2.css` ·
+`server/tests/test_v0298_khuli_jagah.py` (8 tests).
+## v0.300.0 APP LOGOS (built as 0.299.0, re-versioned after main reached 0.299.0; 30 Oct 2026, owner: "NOW A REAL LOGO ICON FOR EVERY APP --- WORK ON IT AND DEPLOY")
 - Every Composio app card carries `logo: /api/logo/cmp/<slug>?v=2`, served by Hoola like every other plugin logo
   (phones never call third parties). `logos.resolve("cmp", slug)` only for slugs in Composio's live catalogue.
 - `logos.cmp_logo()`: sources from the catalogue only - `meta.logo` (Composio's logo address), then the app's own

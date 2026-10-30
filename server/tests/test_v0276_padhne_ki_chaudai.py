@@ -41,10 +41,12 @@ def test_a_table_and_a_code_block_keep_the_full_width():
 
 
 def test_the_column_still_lines_up_with_the_composer():
-    """v0.252's decision stands: the words start at the composer's left edge. Only the line is shorter."""
+    """v0.276 left the column flush with the composer and shortened only the PROSE. In v0.299 the owner asked for
+    the chat to sit slightly INSIDE the box she types in, so the column is 848 against the composer's 880 - 16px
+    in on each side. The prose cap below is untouched and is still the thing that sets the reading line."""
     css = _css()
-    assert "#app .col{width:min(880px,calc(100% - 20px))" in css
-    assert "#app #slotDock{width:min(880px,100%)" in css          # same 880, so the left edges still agree
+    assert "#app .col{width:min(848px,calc(100% - 20px))" in css
+    assert "#app #slotDock{width:min(880px,100%)" in css          # the composer itself never moved
 
 
 def test_v0274_spacing_is_untouched():
@@ -70,5 +72,5 @@ def test_the_phone_needs_no_cap():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.299.0"
-    assert "0.299.0+339" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.300.0"
+    assert "0.300.0+340" in (ROOT / "pubspec.yaml").read_text()
