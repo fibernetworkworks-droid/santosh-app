@@ -10512,3 +10512,38 @@ Version 0.273.0 (pubspec 0.273.0+313, console ?v=0.273.0, pins -> 0.273.0).
   (`month_inr` / `month_budget_inr`, new in `voiceengine.view`) and her minutes. The call screen shows a "Real voice"
   badge (`CallSession.engine` from the `ready` event's `engine`).
 Tests: NEW `test_v0274_openai_parity.py` (6). Version 0.275.0 (pubspec 0.275.0+315, console ?v=0.275.0, pins -> 0.275.0).
+
+## v0.276.0 PADHNE KI CHAUDAI — the reading width, the one thing v0.274 left on the table (owner: "GO WIDTH")
+- v0.274 SAAF JAGAH fixed the spacing and deliberately did NOT touch the width, because v0.252 had set the column
+  to match the composer on purpose. She was offered the choice and said "GO WIDTH".
+- MEASURED PROPERLY THIS TIME, Literata 16px in a real browser: one character averages **7.45px**, so
+
+  | width | characters a line |
+  |---|---|
+  | 880px (what we had) | **118** |
+  | 760px | 102 |
+  | 720px | 97 |
+  | **680px (this version)** | **91** |
+  | 674px (Claude's own) | 90 |
+
+  A correction worth recording: v0.274's note put the old column at "~95 characters". That estimate was wrong -
+  it is 118. Anything past about 90 loses the eye on the way back to the start of the next line, which is why the
+  page still felt heavy even after the serif (v0.249), Literata + contrast (v0.253) and the spacing (v0.274).
+- THE COLUMN STAYS 880px. v0.252's point was that the words begin at the composer's left edge, and that still
+  holds - the left edge is untouched, only the line is shorter. The composer dock keeps `width:min(880px,100%)`
+  and a test asserts the two still agree.
+- ONLY THE PROSE IS CAPPED, at 680px, through one rule scoped to the reply's own children:
+  `#app .mh .txt>p, >ul, >ol, >.mdh, >blockquote {max-width:680px}`.
+  A TABLE, a code block, a card or a tool group is NOT capped: those are read by scanning across rather than line
+  by line, and squeezing their columns would make them worse. Claude's own answer does the same - her screenshot
+  of the government-API table runs wider than the prose above it.
+- THE PHONE NEEDS NOTHING: a phone screen is 360-430px wide, far under the cap, so `md_text.dart` keeps only
+  v0.274's spacing (block 16px, list items 8px) and no width rule at all.
+- Verified in a browser after the change: column 880px, paragraph 680px (91 characters), heading 680px, list
+  658px, table uncapped.
+- Tests: NEW `server/tests/test_v0276_padhne_ki_chaudai.py` (7) - the cap and exactly which children it covers,
+  that tables / code / cards are NOT in the rule, that the column and the composer still share 880px, and that
+  v0.274's spacing and the v0.249 / v0.253 type are untouched. v0.274's "width left alone" test now records that
+  the owner made the call, so the two versions read as one decision rather than a contradiction.
+- Version 0.276.0 (pubspec 0.276.0+316, console ?v=0.276.0, pins -> 0.276.0).
+- NOT VERIFIED: how it reads on her own screen at her own window width.
