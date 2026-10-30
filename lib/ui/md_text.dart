@@ -348,7 +348,10 @@ class MdText extends StatelessWidget {
           : null;
       if (tail != null) caretUsed = true;
       final live = streaming && lastBlock;
-      if (kids.isNotEmpty) kids.add(SizedBox(height: (b.kind == 'li' || b.kind == 'ol') ? 4 : 9));
+      // v0.274 SAAF JAGAH: the same air the console got. Claude's gap between paragraphs measures 22-32px
+      // against 6-8px between the lines inside one; ours was 9px here (and 4px between list items), so the
+      // blocks never separated. 16 / 8 puts the ratio back where the eye can use it.
+      if (kids.isNotEmpty) kids.add(SizedBox(height: (b.kind == 'li' || b.kind == 'ol') ? 8 : 16));
       switch (b.kind) {
         case 'h':
           // v0.249 CLAUDE JAISA AKSHAR: sized against the 16px serif body, at Claude's heading weight 600
