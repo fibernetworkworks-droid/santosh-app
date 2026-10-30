@@ -11475,3 +11475,31 @@ section types, export as static HTML only.
 - Built as 0.302.0, re-versioned 0.305.0 on merge past the parallel v0.302-v0.304 work.
 - Not done yet: the phone app's own Data screen (the console has it; on the phone the site's /admin/ page works in
   the browser), file / photo fields, emails to members (password reset is "ask the shop" for now).
+
+## v0.306.0 HOOLA DESIGN ARENA (web design Phase 5, owner: "START PHASE 5")
+Why: every earlier website phase was judged by eye on a few sites. The Arena gives a number that can move version to
+version and an honest head-to-head against other builders, so "better than Lovable" is measured, not claimed.
+- **Fixed brief set** (`server/app/site/arena.py`, `brief_set()`): 1,000 seeded Indian business briefs (every industry
+  from `library.fields()`, cities, name / phone / services facts), ids `s1-...` (`SET_V` bumps only when the set changes on
+  purpose). `pick(n, seed)` takes one per industry before any repeats, so a 12-site run covers 12 trades.
+- **A run** (`start(n, seed, budget_inr, note)`, background thread, one at a time): builds each brief END TO END like her
+  own flow (new -> approve plan -> looks -> look 0 -> build) as the hidden tenant `__arena__` (never her sites), then
+  scores it (`card`): an independent Opus judge on phone + desktop shots of the home page (six criteria 0-10: first
+  impression, typography, layout originality, imagery, clear action, trust + best / worst line), the existing checks
+  (blocking issues, performance, accessibility, SEO, LCP, CLS, KB), photo count, rupees (usage of the arena tenant x
+  usd_inr) and minutes. After the run, `sameness` = how close each site's layout DNA is to the nearest other site of the
+  run (`quality.closeness`, lower = more original). `summarize` -> one score card per run.
+- **Money**: `SITE_ARENA_MAX_INR` (default 3000) is a CEILING; a run stops between sites when its spend reaches the budget
+  (status "stopped"), never mid-site.
+- **Version vs version**: `compare(a, b)` metric by metric with the right direction (LCP, rupees, blocking, sameness:
+  lower = behtar) -> behtar / bura / same.
+- **Blind duels**: `duel(brief_id, rival, url)` screenshots the rival's PUBLIC page (`checks.url_shots`, every request
+  through `web._public_host`, never a private address), shuffles the two sites as A / B and asks Opus which is better;
+  the judge never learns which one is Hoola. Stored per rival; `duel_table()` = win / loss / tie per builder.
+- **API (owner only, 403 for any other user)**: POST `/api/arena/start {n, seed, budget_inr, note}`, GET `/api/arena/runs`
+  (runs + duel table), GET `/api/arena/runs/<id>` (cards + summary line), POST `/api/arena/runs/<id>/stop`,
+  GET `/api/arena/compare?a=<run>&b=<run>`, GET `/api/arena/briefs?n=&seed=`, POST `/api/arena/duel {brief_id, rival, url}`.
+- Tests `server/tests/test_v0306_design_arena.py` (6): the set is fixed and spread, compare reads the right way round, a
+  run builds real sites with the real builder and stops at the budget, the duel hides Hoola's side, owner-only API.
+- Not done yet: a console screen for the Arena (API only for now), a scheduled nightly run, rival sites built by hand on
+  Lovable / v0 / Emergent for the same briefs (the duel takes any public URL she gives).

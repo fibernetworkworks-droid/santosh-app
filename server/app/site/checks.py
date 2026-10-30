@@ -46,6 +46,45 @@ def _vendor(name: str) -> Path | None:
     return None
 
 
+def url_shots(url: str) -> list[bytes]:
+    """v0.306 phone (390) + desktop (1440) screenshots of a PUBLIC web page (a rival builder's site in a blind duel).
+    Only public internet addresses, for the page AND everything it loads (no peeking into private networks)."""
+    from urllib.parse import urlparse
+
+    from playwright.sync_api import sync_playwright
+
+    from .. import web as WB
+    url = WB._check_url(url)
+    ok: dict[str, bool] = {}
+
+    def route(r):
+        host = urlparse(r.request.url).hostname or ""
+        if r.request.url.startswith("data:"):
+            return r.continue_()
+        if host not in ok:
+            try:
+                WB._public_host(host)
+                ok[host] = True
+            except Exception:
+                ok[host] = False
+        return r.continue_() if ok[host] else r.abort()
+    out: list[bytes] = []
+    with sync_playwright() as p:
+        b = _launch(p)
+        try:
+            for vw in (390, 1440):
+                ctx = b.new_context(viewport={"width": vw, "height": 844 if vw < 800 else 900}, device_scale_factor=1)
+                page = ctx.new_page()
+                page.route("**/*", route)
+                page.goto(url, wait_until="load", timeout=45000)
+                page.wait_for_timeout(1500)
+                out.append(page.screenshot(type="jpeg", quality=80))
+                ctx.close()
+        finally:
+            b.close()
+    return out
+
+
 def _launch(p):
     kw: dict[str, Any] = {"args": ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--font-render-hinting=none",
                                    "--force-color-profile=srgb",

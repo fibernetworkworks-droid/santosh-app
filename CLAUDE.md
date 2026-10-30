@@ -129,9 +129,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.305.0 (pubspec 0.305.0+345). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.306.0 (pubspec 0.306.0+346). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.306 DESIGN ARENA (`site/arena.py`, owner-only `/api/arena/*`): 1,000 fixed briefs, runs build n as `__arena__` + Opus judge /
+  checks / originality / rupees score card, budget ceiling SITE_ARENA_MAX_INR, version compare, blind duels vs a rival's public URL.
 - v0.305 WEB DESIGN PHASE 4 web apps (`site/webapp.py`, `assets/hoola-app.js`, `site/reactx.py`): Opus-designed lists + rules,
   member logins, My account + /admin/ staff panel, every rule server-side, console App & data tab, React + Vite export.
 - v0.304 PREMIUM CREATE (built as 0.303): hero tabs (Director / Image / Video / Song / Voice-over), rails, varied art; Image style tiles,
