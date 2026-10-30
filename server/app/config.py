@@ -199,13 +199,13 @@ class Settings(BaseSettings):
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)
     site_opus: bool = True                 # v0.225 every website section / fix / change on the App Sahayak Opus path (thinking, effort, retries, no quiet fallback)
     site_art: bool = True                  # v0.225 Opus writes a design DNA per look before the hero (art direction)
-    site_critique: str = "all"             # v0.225 Opus looks at the built screenshots: all (v0.290, every page) | home | off
+    site_critique: str = "all"             # v0.225 Opus looks at the built screenshots: all (v0.291, every page) | home | off
     site_critique_min: float = 7.5         # v0.225 a section scoring below this (out of 10) is redrawn once with the notes
     site_parallel: int = 3                 # v0.225 sections written at the same time inside one build
-    site_ai_photos: int = 6                # v0.290 pictures a site gets before its looks (her own photos first, AI fills the gap; 0 = off)
-    pexels_api_key: str = ""               # v0.290 optional licensed stock photos (official Pexels API) when the image models fail
-    site_look_sections: int = 3            # v0.290 sections of the home page each of the 3 looks shows (hero + the next ones)
-    site_critique_pages: int = 6           # v0.290 pages Opus reviews from their real screenshots (site_critique=all)
+    site_ai_photos: int = 6                # v0.291 pictures a site gets before its looks (her own photos first, AI fills the gap; 0 = off)
+    pexels_api_key: str = ""               # v0.291 optional licensed stock photos (official Pexels API) when the image models fail
+    site_look_sections: int = 3            # v0.291 sections of the home page each of the 3 looks shows (hero + the next ones)
+    site_critique_pages: int = 6           # v0.291 pages Opus reviews from their real screenshots (site_critique=all)
     app_model: str = "claude-opus-5-5"     # v0.140 App Sahayak: EVERY design / screen / fix / change / Kotlin call (owner: Opus 5.5)
     app_model_fallback: bool = False       # v0.140 true = when Opus can't be reached, use the chat model / cheap brain instead
     app_model_tries: int = 5               # v0.140 tries per call when Opus is busy (429 / 5xx / overloaded / timeouts)

@@ -1,4 +1,4 @@
-"""v0.290 Website pictures (web design Phase 1): a site never starts as drawn shapes.
+"""v0.291 Website pictures (web design Phase 1): a site never starts as drawn shapes.
 
 Before the looks are made Opus writes a SHOT LIST for this business (what a good photographer would shoot for it: the
 place, the products, the food, the work in progress, hands at work - never a made-up face of her staff or customers,

@@ -120,17 +120,60 @@ def _clean_schema(schema: Any) -> tuple[dict, str]:
     return sc, ""
 
 
-def tool_defs(snap: list[dict], limit: int) -> tuple[list[dict], dict[str, tuple[str, str]]]:
-    """Real tools for ready servers: ([{name, description, input_schema}], {tool_name: (pack_id, server_tool)})."""
+_WORD = re.compile(r"[a-z0-9]{3,}")
+
+
+def _words(text: str) -> set[str]:
+    """Words of a request / tool, with Zoho-style camelCase and snake_case split (getInvoiceList -> get invoice list)."""
+    text = re.sub(r"([a-z])([A-Z])", r"\1 \2", text or "").replace("_", " ").lower()
+    out = set(_WORD.findall(text))
+    return out | {w[:-1] for w in out if w.endswith("s") and len(w) > 4}     # invoices -> invoice
+
+
+def rank(tools: list[dict], query: str) -> list[dict]:
+    """v0.289 a server's tools, the ones her words name first (stable: the server's own order breaks ties)."""
+    q = _words(query)
+    if not q:
+        return list(tools)
+    def score(t: dict) -> int:
+        return 3 * len(q & _words(t.get("name", ""))) + len(q & _words(t.get("description", "")[:300]))
+    return [t for _, t in sorted(enumerate(tools), key=lambda it: (-score(it[1]), it[0]))]
+
+
+def shares(counts: list[int], limit: int) -> list[int]:
+    """v0.289 fair split of the native-tool budget: a small server keeps all its tools, big ones (Zoho MCP can carry
+    hundreds) share what is left, so one big server never pushes every other server's tools out."""
+    out = [0] * len(counts)
+    left, open_ = max(0, limit), [i for i, c in enumerate(counts) if c > 0]
+    while open_ and left > 0:
+        each = max(1, left // len(open_))
+        nxt = []
+        for i in open_:
+            give = min(each, counts[i] - out[i], left)
+            out[i] += give
+            left -= give
+            if out[i] < counts[i]:
+                nxt.append(i)
+            if left <= 0:
+                break
+        open_ = nxt
+    return out
+
+
+def tool_defs(snap: list[dict], limit: int, query: str = "") -> tuple[list[dict], dict[str, tuple[str, str]]]:
+    """Real tools for ready servers: ([{name, description, input_schema}], {tool_name: (pack_id, server_tool)}).
+    v0.289: the budget is shared fairly between servers and, inside a server with more tools than its share, the
+    tools her message names come first; the rest stay reachable (bazar_mcp action=tools finds them)."""
     defs: list[dict] = []
     route: dict[str, tuple[str, str]] = {}
-    for srv in snap:
-        if srv["status"] != "ready":
-            continue
-        for t in srv["tools"]:
-            if len(defs) >= limit:
-                srv["overflow"] = True
-                break
+    ready = [srv for srv in snap if srv["status"] == "ready"]
+    quota = shares([len(srv["tools"]) for srv in ready], limit)
+    for srv, q in zip(ready, quota):
+        tools = srv["tools"]
+        if len(tools) > q:
+            srv["overflow"] = True
+            tools = rank(tools, query)[:q]
+        for t in tools:
             base = f"mcp_{_slug(srv['name'], 18)}__{_slug(t['name'], 40)}"[:60]
             name, n = base, 2
             while name in route:
@@ -168,6 +211,9 @@ def prompt_block(snap: list[dict], native: dict[str, tuple[str, str]]) -> str:
             row += f". Tools: {shown}"
             if s.get("overflow") or not by_pack.get(s["pack_id"]):
                 row += f". Inke liye bazar_run pack_id={s['pack_id']} tool=<naam> args={{...}}"
+            if len(names) > 25 or s.get("overflow"):
+                row += (f". Sahi tool na dikhe to pehle bazar_mcp action=tools pack_id={s['pack_id']} query=<kaam ke shabd> "
+                        "(naam + arguments milenge)")
         if s.get("error"):
             row += f" ({s['error'][:120]})"
         lines.append(row)
