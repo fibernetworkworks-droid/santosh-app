@@ -418,22 +418,23 @@ p{margin:0}
 .dd[aria-expanded="true"] .ic:last-child{transform:rotate(180deg)}
 .dd .ic:last-child{transition:transform .2s var(--ease)}
 .prow[aria-expanded="true"]{border-color:var(--pri);box-shadow:0 0 0 3px var(--priSoft)}
-.pop{position:fixed;z-index:30;display:flex;flex-direction:column;gap:2px;padding:6px;border-radius:14px;border:1px solid var(--line);
-  background:var(--surface);box-shadow:0 1px 2px rgb(0 0 0 / .06),0 18px 40px -16px rgb(0 0 0 / .32);overflow:auto;scrollbar-width:thin;
-  opacity:0;transform:translateY(-6px) scale(.98);transform-origin:top left;transition:opacity .16s var(--ease),transform .2s var(--ease);
+.pop{position:fixed;z-index:30;display:flex;flex-direction:column;gap:1px;padding:6px;border-radius:12px;border:1px solid var(--line);
+  background:var(--surface);box-shadow:0 1px 2px rgb(0 0 0 / .05),0 6px 24px rgb(0 0 0 / .10);overflow:auto;scrollbar-width:thin;
+  opacity:0;transform:scale(.97);transform-origin:top left;transition:opacity .12s ease,transform .12s ease;
   max-width:min(360px,calc(100vw - 16px))}
-.pop.up{transform-origin:bottom left;transform:translateY(6px) scale(.98)}
+.pop.up{transform-origin:bottom left;transform:scale(.97)}
 .pop.on{opacity:1;transform:none}
-.poph{font-size:12px;color:var(--dim);padding:6px 8px 4px}
-.pop button{display:flex;align-items:center;gap:10px;width:100%;min-height:36px;padding:7px 8px;border-radius:9px;text-align:left;color:var(--ink);outline:0}
-.pop button:hover,.pop button:focus-visible{background:rgb(127 127 140 / .1)}
-.pop button[aria-checked="true"]{background:var(--priSoft);color:var(--priInk)}
-.pop .pic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--sunk);color:var(--mut);flex:none}
-.pop button[aria-checked="true"] .pic{background:var(--pri);color:var(--onPri)}
+/* v0.285 the same dropdown as the console's menu.js (Claude's): 32px rows, 14px / 400, 16px muted icons, grey hover, tick only */
+.poph{font-size:12px;line-height:16px;color:var(--dim);padding:6px 8px 4px}
+.pop button{display:flex;align-items:center;gap:10px;width:100%;min-height:32px;padding:6px 8px;border-radius:8px;text-align:left;color:var(--ink);outline:0;cursor:default}
+.pop button:hover,.pop button:focus{background:rgb(127 127 140 / .1)}
+.pop .pic{width:16px;height:16px;display:grid;place-items:center;color:var(--mut);flex:none}
 .pop .ptx{flex:1;min-width:0;display:flex;flex-direction:column}
-.pop .ptx b{font-weight:500;font-size:14px}
-.pop .ptx small{font-size:12px;color:var(--dim)}
-.pop .tick{visibility:hidden;color:var(--pri);flex:none}
+.pop .ptx b{font-weight:400;font-size:14px;line-height:20px}
+.pop .ptx small{font-size:12px;line-height:16px;color:var(--dim)}
+.pop button:has(small){align-items:flex-start}
+.pop button:has(small) .pic{margin-top:2px}
+.pop .tick{visibility:hidden;color:var(--ink);flex:none;margin-left:auto}
 .pop button[aria-checked="true"] .tick{visibility:visible}
 /* ---------- v0.262 every model, price first ---------- */
 .picker{position:fixed;inset:0;z-index:25;background:rgb(10 9 20 / .5);display:grid;place-items:center;padding:20px;opacity:0;transition:opacity .18s var(--ease)}

@@ -199,13 +199,13 @@ class Settings(BaseSettings):
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)
     site_opus: bool = True                 # v0.225 every website section / fix / change on the App Sahayak Opus path (thinking, effort, retries, no quiet fallback)
     site_art: bool = True                  # v0.225 Opus writes a design DNA per look before the hero (art direction)
-    site_critique: str = "all"             # v0.225 Opus looks at the built screenshots: all (v0.283, every page) | home | off
+    site_critique: str = "all"             # v0.225 Opus looks at the built screenshots: all (v0.290, every page) | home | off
     site_critique_min: float = 7.5         # v0.225 a section scoring below this (out of 10) is redrawn once with the notes
     site_parallel: int = 3                 # v0.225 sections written at the same time inside one build
-    site_ai_photos: int = 6                # v0.283 pictures a site gets before its looks (her own photos first, AI fills the gap; 0 = off)
-    pexels_api_key: str = ""               # v0.283 optional licensed stock photos (official Pexels API) when the image models fail
-    site_look_sections: int = 3            # v0.283 sections of the home page each of the 3 looks shows (hero + the next ones)
-    site_critique_pages: int = 6           # v0.283 pages Opus reviews from their real screenshots (site_critique=all)
+    site_ai_photos: int = 6                # v0.290 pictures a site gets before its looks (her own photos first, AI fills the gap; 0 = off)
+    pexels_api_key: str = ""               # v0.290 optional licensed stock photos (official Pexels API) when the image models fail
+    site_look_sections: int = 3            # v0.290 sections of the home page each of the 3 looks shows (hero + the next ones)
+    site_critique_pages: int = 6           # v0.290 pages Opus reviews from their real screenshots (site_critique=all)
     app_model: str = "claude-opus-5-5"     # v0.140 App Sahayak: EVERY design / screen / fix / change / Kotlin call (owner: Opus 5.5)
     app_model_fallback: bool = False       # v0.140 true = when Opus can't be reached, use the chat model / cheap brain instead
     app_model_tries: int = 5               # v0.140 tries per call when Opus is busy (429 / 5xx / overloaded / timeouts)
@@ -275,7 +275,7 @@ class Settings(BaseSettings):
     voice_openai_month_usd: float = 10.0              # whole app, per calendar month (IST); 0 = no OpenAI calls
     voice_openai_user_min: int = 120                  # minutes per user per month on OpenAI; 0 = unlimited
     voice_openai_tenants: str = ""                    # who may pick it ("" = only the main tenant: the owner's trial; "*" = all)
-    voice_openai_eagerness: str = "low"               # v0.267 semantic VAD: low = waits until her sentence is done
+    voice_openai_eagerness: str = "medium"            # v0.285 semantic VAD: medium waits at most ~4 s (low = up to 8 s, felt like not listening)
     voice_openai_breath: bool = True                  # v0.266 a real breath SOUND before a cued reply (app/breath.py)
     voice_openai_session_min: int = 50                # OpenAI sessions end at 60 min: move to a fresh one before that
     voice_ack_tts_model: str = "gemini-3.8-flash-tts"   # v0.181 (was gemini-2.5-flash-preview-tts): new TTS, far more natural delivery; legacy model is the automatic fallback

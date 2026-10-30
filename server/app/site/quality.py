@@ -198,7 +198,7 @@ def _usd(model: str, t: dict[str, int], n: int = 1) -> float:
 
 
 def estimate(plan: dict[str, Any], have: int = 0, looks: int = 3, photos: int = 0) -> dict[str, Any]:
-    """Rupee andaaza for the build she is about to start (sections still to write + art + critique + fix rounds; v0.283
+    """Rupee andaaza for the build she is about to start (sections still to write + art + critique + fix rounds; v0.290
     also the pictures still to make, the page-top sections of every look and the review of every page)."""
     st = get_settings()
     model = AI.model_for("build")

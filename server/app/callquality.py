@@ -40,7 +40,7 @@ NUM_KEYS = ("turns", "interruptions", "tools", "silent_tools", "acks", "false_st
             # v0.234 Phase 5
             "talk_over", "repeats", "stall_noise_skips", "level_matched",
             # v0.265 real voice: delivery cues sent, replies that opened with a thinking sound
-            "delivery_cues", "filler_starts", "oa_replies", "breaths", "delivery_leaks")
+            "delivery_cues", "filler_starts", "oa_replies", "breaths", "delivery_leaks", "early_cuts", "held_for_her", "finish_waited")
 
 END_WORDS = {"hung_up": "aapne kaata", "dropped": "line toot gayi", "error": "connection error",
              "stall": "Gemini chup ho gaya", "server_restart": "server update", "hold_timeout": "hold bahut lamba"}

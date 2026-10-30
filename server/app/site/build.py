@@ -22,7 +22,7 @@ from . import taxonomy as T
 log = logging.getLogger("santosh.site")
 ASSETS = Path(__file__).resolve().parent / "assets"
 LEGAL_PAGES = ("privacy", "refund", "disclaimer", "terms")
-WEIGHTS = (400, 500, 600, 700)        # v0.283 medium + semibold too (only the weights a page uses are downloaded)
+WEIGHTS = (400, 500, 600, 700)        # v0.290 medium + semibold too (only the weights a page uses are downloaded)
 _ICONS: dict[str, str] = {}
 WIDTHS = (480, 960, 1600)
 
@@ -343,7 +343,7 @@ def expand_images(html: str, photos: dict[str, dict[str, Any]], rel: str, first_
     return re.sub(r"<img\b[^>]*data-hoola-img=[^>]*>", rep, html), missing
 
 
-# ---------------------------------------------------------------- v0.283 one icon set (Lucide, ISC) for the whole site
+# ---------------------------------------------------------------- v0.290 one icon set (Lucide, ISC) for the whole site
 def icons() -> dict[str, str]:
     """name -> the inner SVG of a Lucide icon (assets/icons.json, 2,275 icons)."""
     if not _ICONS:

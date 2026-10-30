@@ -16,7 +16,7 @@ window.HoolaChats = ctx => {
 const {api, esc, toast} = ctx;
 const $ = s => document.querySelector(s);
 const BUSY = new Set(), UNREAD = new Set();
-let LIST = [], ARCH = false, MENU = null;
+let LIST = [], ARCH = false;
 let SECS = [];                        // v0.193 sessions (projects), server order — last-touched first
 
 const DAY = 86400000;
@@ -50,20 +50,30 @@ async function load() {
   draw(); ctx.loaded?.();                          // v0.222 the chat header follows renames / moves
   return LIST;
 }
+// v0.288 line icons in the sidebar (no emoji chrome, like Claude); a session keeps the emoji SHE picked
+const SVG = d => `<svg class="sic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const IC = {
+  folder: SVG('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+  archive: SVG('<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 12h4"/>'),
+  back: SVG('<path d="M15 18l-6-6 6-6"/>'),
+  dots: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg>',
+  chev: SVG('<path d="M9 6l6 6-6 6"/>'),
+};
+const secIcon = p => p.emoji && p.emoji !== '📁' ? `<span class="semo" aria-hidden="true">${esc(p.emoji)}</span>` : IC.folder;
 function item(c, drag) {
   const cur = c.id === ctx.current();
   return `<div class="rcw${cur ? ' cur' : ''}" data-row="${esc(c.id)}"${drag ? ' draggable="true"' : ''}>
     <a class="rc" href="/console/c/${encodeURIComponent(c.id)}" data-conv="${esc(c.id)}"${cur ? ' aria-current="true"' : ''} title="${esc(c.title)}">
       ${BUSY.has(c.id) ? '<span class="spin" aria-label="working"></span>' : UNREAD.has(c.id) ? '<i class="udot" aria-label="new reply"></i>' : ''}<span class="rct">${esc(c.title)}</span></a>
-    <button type="button" class="rcm" data-menu="${esc(c.id)}" aria-label="Chat options: ${esc(c.title)}" aria-haspopup="menu">⋯</button></div>`;
+    <button type="button" class="rcm" data-menu="${esc(c.id)}" aria-label="Chat options: ${esc(c.title)}" aria-haspopup="menu">${IC.dots}</button></div>`;
 }
 /* v0.193 one session header: chevron collapses, the name opens the session page, "+" starts a chat inside,
    the count lives at the right; a collapsed session that still has a busy/unread chat shows the dot. */
 function secHead(p, rows, closed) {
   const live = closed && rows.some(r => BUSY.has(r.id) || UNREAD.has(r.id));
   return `<div class="sgh${closed ? ' closed' : ''}" data-sec="${esc(p.id)}">
-    <button type="button" class="sgc" data-a="tog" aria-expanded="${!closed}" aria-label="${closed ? 'Open project' : 'Collapse project'}: ${esc(p.name)}"><i class="chev" aria-hidden="true"></i></button>
-    <button type="button" class="sgn" data-a="open" title="${esc(p.name)} — session kholiye"><span aria-hidden="true">${esc(p.emoji || '📁')}</span><span class="sgnt">${esc(p.name)}</span></button>
+    <button type="button" class="sgc" data-a="tog" aria-expanded="${!closed}" aria-label="${closed ? 'Open project' : 'Collapse project'}: ${esc(p.name)}">${IC.chev}</button>
+    <button type="button" class="sgn" data-a="open" title="${esc(p.name)} — session kholiye">${secIcon(p)}<span class="sgnt">${esc(p.name)}</span></button>
     ${live ? '<i class="udot" aria-label="something is running"></i>' : ''}<small class="sgn-n">${rows.length || ''}</small>
     <span class="sgacts"><button type="button" class="ib" data-a="new" aria-label="New chat: ${esc(p.name)}">+</button></span>
   </div>`;
@@ -73,7 +83,7 @@ function draw() {
   if (ARCH) {                                     // archive stays one flat list, nothing to drag into
     box.innerHTML = `<div class="rg">Archive</div>` + LIST.map(c => item(c)).join('')
       || `<div class="empty" style="padding:8px 12px">Archive is empty.</div>`;
-    box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">← All chats</button>`);
+    box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">${IC.back}<span>All chats</span></button>`);
     $('#archTog').addEventListener('click', () => { ARCH = !ARCH; load(); });
     return;
   }
@@ -91,7 +101,7 @@ function draw() {
      a session always has a target (it also labels the day groups when they are non-empty) */
   html += (drag ? `<div class="rg sgb" data-rest title="Drop a chat here to take it out of its session">Other chats</div>` : '') + rest;
   box.innerHTML = html || `<div class="empty" style="padding:8px 12px">No conversations yet.</div>`;
-  box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">🗄 Show archived</button>`);
+  box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">${IC.archive}<span>Show archived</span></button>`);
   $('#archTog').addEventListener('click', () => { ARCH = !ARCH; load(); });
 }
 
@@ -136,30 +146,20 @@ document.addEventListener('drop', e => {
 });
 
 /* ---------- menu ---------- */
-function closeMenu() { MENU?.remove(); MENU = null; }
-function openMenu(id, btn) {
-  closeMenu();
-  const c = LIST.find(x => x.id === id); if (!c) return;
-  const m = document.createElement('div'); m.className = 'rmenu gl'; m.setAttribute('role', 'menu');
-  m.innerHTML = `<button role="menuitem" data-a="rename">✎ Rename</button>
-    ${c.archived ? '' : `<button role="menuitem" data-a="pin">${c.pinned ? '📌 Unpin' : '📌 Pin'}</button>`}
-    ${ctx.pickProject ? `<button role="menuitem" data-a="folder">🗂 ${c.project_id ? 'Change / leave session' : 'Move to session'}</button>` : ''}
-    ${c.archived ? '' : '<button role="menuitem" data-a="compact">🗜 Compact chat</button>'}
-    <button role="menuitem" data-a="archive">${c.archived ? '↩ Restore from archive' : '🗄 Archive'}</button>
-    <button role="menuitem" data-a="delete" class="bad">🗑 Delete</button>`;
-  document.body.appendChild(m);
-  const r = btn.getBoundingClientRect();
-  m.style.top = Math.min(innerHeight - m.offsetHeight - 8, r.bottom + 4) + 'px';
-  m.style.left = Math.max(8, Math.min(innerWidth - m.offsetWidth - 8, r.right - m.offsetWidth)) + 'px';
-  m.querySelector('button').focus();
-  m.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (b) act(c, b.dataset.a); });
-  m.addEventListener('keydown', e => {
-    const items = [...m.querySelectorAll('button')], i = items.indexOf(document.activeElement);
-    if (e.key === 'Escape') { closeMenu(); btn.focus(); }
-    else if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
-  });
-  MENU = m;
+// v0.285 the chat's ⋯ menu is the console's one Claude-style dropdown (menu.js); the old hand-made one is gone
+function closeMenu() { window.HoolaMenu?.close(); }
+function openMenu(id, btn, keyboard) {
+  const c = LIST.find(x => x.id === id); if (!c || !window.HoolaMenu) return;
+  const go = a => () => act(c, a);
+  HoolaMenu.open(btn, [
+    ...(c.archived ? [] : [{label: c.pinned ? 'Unpin' : 'Pin', icon: c.pinned ? 'unpin' : 'pin', run: go('pin')}]),
+    {label: 'Rename', icon: 'pencil', run: go('rename')},
+    ...(ctx.pickProject ? [{label: c.project_id ? 'Change session' : 'Add to session', icon: 'folder', run: go('folder')}] : []),
+    ...(c.archived ? [] : [{label: 'Compact chat', icon: 'compress', run: go('compact')}]),
+    {label: c.archived ? 'Restore from archive' : 'Archive', icon: c.archived ? 'restore' : 'archive', run: go('archive')},
+    {sep: true},
+    {label: 'Delete', icon: 'trash', danger: true, run: go('delete')},
+  ], {align: btn.closest('#recents') ? 'start' : 'end', cls: 'rmenu', label: `Chat options: ${c.title}`, keyboard});
 }
 async function act(c, a) {
   closeMenu();
@@ -191,8 +191,7 @@ function rename(c) {
   inp.addEventListener('blur', () => setTimeout(() => { if (row.contains(f)) save(); }, 120));
 }
 document.addEventListener('click', e => {
-  const m = e.target.closest('[data-menu]'); if (m) { e.preventDefault(); openMenu(m.dataset.menu, m); return; }
-  if (MENU && !e.target.closest('.rmenu')) closeMenu();
+  const m = e.target.closest('[data-menu]'); if (m) { e.preventDefault(); openMenu(m.dataset.menu, m, e.detail === 0); return; }
   const a = e.target.closest('#recents a[data-conv]');
   if (a && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) { e.preventDefault(); UNREAD.delete(a.dataset.conv); ctx.open(a.dataset.conv); }
 });
@@ -242,6 +241,6 @@ return {
   unread(id) { if (id !== ctx.current() && !UNREAD.has(id)) { UNREAD.add(id); draw(); } },
   isBusy: id => BUSY.has(id),
   find: id => LIST.find(x => x.id === id),
-  menu: (id, btn) => openMenu(id, btn),              // v0.222 R3 the chat header's ⋯ opens the same menu
+  menu: (id, btn, keyboard) => openMenu(id, btn, keyboard),              // v0.222 R3 the chat header's ⋯ opens the same menu
 };
 };

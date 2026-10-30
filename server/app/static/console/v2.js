@@ -141,7 +141,24 @@ $('#liveBtn').addEventListener('click', () => {
   $('#app').classList.toggle('open');
 });
 $('#liveClose').addEventListener('click', () => $('#app').classList.remove('open'));
-$('#model').addEventListener('click', () => go('main'));
+// v0.285 the account button opens Claude's account menu (above it): who is signed in, Settings, Library, the theme,
+// keyboard shortcuts, Log out
+$('#model').addEventListener('click', e => {
+  if (!window.HoolaMenu) { go('main'); return; }
+  const t = TH?.theme() || 'system', setT = v => () => TH?.setTheme(v);
+  HoolaMenu.open(e.currentTarget, [
+    {header: ME.email || ME.owner || 'Signed in'},
+    {label: 'Settings', icon: 'settings', run: () => go('main')},
+    ...(PN ? [{label: 'Library', icon: 'library', run: () => go('bana')}] : []),
+    {sep: true},
+    {label: 'Light', icon: 'sun', checked: t === 'light', run: setT('light')},
+    {label: 'Dark', icon: 'moon', checked: t === 'dark', run: setT('dark')},
+    {label: 'System', icon: 'monitor', checked: t === 'system', run: setT('system')},
+    {sep: true},
+    {label: 'Keyboard shortcuts', icon: 'keyboard', kbd: '?', run: () => openKeys()},
+    {label: 'Log out', icon: 'logout', run: () => logout()},
+  ], {align: 'start', place: 'above', width: 'anchor', cls: 'acctm', label: 'Account', keyboard: e.detail === 0});
+});
 
 /* ================= v0.240 CALM BRAND: Light / Dark / System, text size, reduce motion, live border glow ================= */
 const TH = window.HoolaTheme;
@@ -1408,7 +1425,7 @@ function chatStep(d) {          // Alt+↑/↓: walk the sidebar's order without
 function escLayer() {           // one Esc peels one layer, deepest first
   if (FIND) { closeFind(); return; }
   const kb = document.querySelector('.kbg'); if (kb) { kb.remove(); return; }
-  if (!$('#exportMenu').hidden) { $('#exportMenu').hidden = true; return; }
+  if (window.HoolaMenu?.isOpen()) { HoolaMenu.close(true); return; }
   if (SLASH.open) { slashClose(); return; }
   if (!$('#stopBtn').hidden) $('#stopBtn').click();
 }
@@ -1426,13 +1443,15 @@ function openKeys() {           // the cheat sheet: toggle, glass, English
 }
 
 /* ================= export (v0.171): this chat as a Markdown file to read, or JSON to keep ================= */
-$('#exportBtn').addEventListener('click', () => { const m = $('#exportMenu'); m.hidden = !m.hidden; });
-document.addEventListener('click', e => { if (!e.target.closest('#exportMenu, #exportBtn')) $('#exportMenu').hidden = true; });
-$('#cShare').addEventListener('click', () => { const m = $('#cExportMenu'); m.hidden = !m.hidden; });
-document.addEventListener('click', e => { if (!e.target.closest('#cExportMenu, #cShare')) $('#cExportMenu').hidden = true; });
-$('#cMore').addEventListener('click', e => { if (CONV) CH?.menu(CONV, e.currentTarget); });
-$('#cExportMenu').addEventListener('click', e => { const b = e.target.closest('[data-fmt]'); if (b) { $('#cExportMenu').hidden = true; exportChat(b.dataset.fmt); } });
-$('#exportMenu').addEventListener('click', e => { const b = e.target.closest('[data-fmt]'); if (b) { $('#exportMenu').hidden = true; exportChat(b.dataset.fmt); } });
+// v0.285 export = the console's Claude-style dropdown (menu.js), like every other menu
+const exportMenu = e => window.HoolaMenu?.open(e.currentTarget, [
+  {header: 'Export this chat'},
+  {label: 'Markdown', sub: 'A .md file to read or share', icon: 'doc', run: () => exportChat('md')},
+  {label: 'JSON', sub: 'Every message and card, to keep', icon: 'braces', run: () => exportChat('json')},
+], {align: 'end', label: 'Export format', keyboard: e.detail === 0});
+$('#exportBtn').addEventListener('click', exportMenu);
+$('#cShare').addEventListener('click', exportMenu);
+$('#cMore').addEventListener('click', e => { if (CONV) CH?.menu(CONV, e.currentTarget, e.detail === 0); });
 async function exportChat(fmt) {
   if (!CONV) return;
   const b = {dataset: {fmt}};

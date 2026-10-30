@@ -10744,7 +10744,264 @@ Now (`lib/ui/chat_attach.dart`, used by chat_screen.dart):
   before) - an in-app PDF reader is not built on the phone.
 Server unchanged. Not verified on a device in the sandbox (no Flutter here): CI analyze + the APK are the check.
 
-## v0.283.0 WEB DESIGN PHASE 1 — a site that looks like a pro made it (owner: "MAKE A HOOLA MORE POWER FULL IN WEBSITE DEVLOPMENT AND DESIGN ---- FIRST FIND THE FLAWS" -> "START PHASE 1")
+## v0.283.0 DHEERE UTRE — the reply lands at reading speed, not in a flash
+Owner: *"ALSO A RESULT SPEED :: CURRENTLY HOOLA SHOW RESULT INSTANTLY IN FLASH IT MUST LAND SMOTLY LIKE CLAUDE"*.
+
+### What was measured
+Not guessed — Hoola's own pacer (`server/app/static/console/stream.js`, `HoolaStream.Pacer`) was driven in a real
+browser with Playwright at four lengths, before and after the change:
+
+| case | before (10 ms, `/25`) | after (20 ms, `/80` capped 2) | Claude |
+|---|---|---|---|
+| 300 words, delivered in one piece | 244 w/s (1.2 s) | 79 w/s (3.8 s) | ~40–80 w/s |
+| 300 words, properly streamed | 165 w/s | 72 w/s | |
+| 80 words | 105 w/s | 60 w/s | |
+| 30 words | 67 w/s (0.5 s) | 60 w/s (0.5 s) | |
+
+### The cause
+The pacer released `(elapsed / 10) + (queue.length / 25)` words a frame. The second term was **uncapped**, so the
+bigger the backlog the faster it drained — the longer the answer, the more it dumped. That is the opposite of what a
+pace is for. Now:
+
+```js
+const n = Math.max(1, Math.floor((now - this.t) / 20) + Math.min(2, Math.floor(this.queue.length / 80)));
+```
+
+20 ms a word, and the catch-up only once more than 80 words are waiting, capped at 2 extra a frame. The result is
+inside Claude's band at **every** length — the pace no longer depends on how long the answer is.
+
+### The phone had the same bug from the other side
+`lib/ui/chat_screen.dart` `_Reveal` used `(_words.length * 28).clamp(250, 1600)`. 28 ms a word is a sane pace, but
+the **1600 ms ceiling** overrode it, so anything past ~57 words landed in 1.6 s (a 300-word reply = 188 w/s). Now
+`(_words.length * 14).clamp(250, 5000)` — ~70 w/s at every length, matching the console.
+
+### Left alone on purpose
+- **The server.** `api.stream` → `livereply.feed()` was re-checked and is correct: batched every 50 ms (`FLUSH_S`),
+  `TAIL=24`. The browser was emptying the queue too fast, not the server filling it too fast.
+- **The three instant paths.** A hidden tab, `flush()` at the reply's end and `reset()` still show everything at
+  once. Pacing is for live words only; a reloaded or backgrounded conversation must never animate.
+
+### Files
+`server/app/static/console/stream.js` · `lib/ui/chat_screen.dart` · `server/tests/test_v0282_dheere_utre.py` (4 tests).
+
+### A process note worth recording
+The first attempt at this version was lost: the commit silently failed and a following `git reset --hard origin/main`
+wiped the uncommitted work. The rule learned: **check `git log -1` shows your commit before running any reset.**
+
+## v0.284.0 CLAUDE JAISA PARAGRAPH — the three faults no CSS measurement could see
+Owner: *"STILL PARAGRAP, WORD SETUP AND GAP AT PROPER INTERVAL IN NOT PROPER --- CHECK HOW CLUDE CHAT DO THIS
+PROPERLY --- PERFECT PARAGRAP, WORDING, GAP, SPACING ETC --- CLONE SAME AS IT IS FOR HOOLA"*.
+
+### Why four earlier versions "matched" and the reply still read wrong
+v0.274, v0.276, v0.278 and v0.281 each measured a NUMBER against her Claude screenshots and matched it: 16px
+between paragraphs, 24 above a heading and 8 below, 680px of prose, a 61px turn gap, a 30px bullet gutter. All of
+that was true and all of it is still true. The faults that remained were in the **renderer**, and every probe page
+those versions used wrote each paragraph as a **single source line** — so the bug never fired in the rig.
+
+**The lesson, written down:** a layout probe must use the text the model actually emits, wraps and all, or it
+measures a page the user never sees.
+
+### Fault 1 — the soft break (this one is both halves of her report)
+`md.js` built one `<p>` per source line and then glued them together with `.replace(/<\/p><p>/g, '<br>')`.
+
+CommonMark — which Claude's chat follows — calls a single newline inside a paragraph a **soft break**: the lines
+join with a **space** and the paragraph reflows to the column. Hoola instead froze the model's own line wrapping
+into the page. The result, verified by running her own `md.js`:
+
+    <p>...the checkpoint branch is created. Everything<br>measurable already matched...</p>
+
+Short ragged lines that stop mid-sentence wherever the model happened to wrap, with **no gap** under them, sitting
+directly beside real paragraphs that had 16px. That is "word setup" and "gap at proper interval" in one defect.
+
+Now: a single newline joins with a space; only an explicit hard break (two trailing spaces, or a backslash) stays a
+`<br>`. A wrapped **list item** and a wrapped **quote** join the same way. The **phone** had the identical bug from
+a different direction — `md_text.dart` joined paragraph and quote lines with `'\n'`, which Flutter renders as a
+real break — fixed with a shared `_soft()` helper following the same rule.
+
+### Fault 2 — the heading hierarchy was upside down
+`md.js` maps `#` to `h3`, `##` to `h4`, `###` to `h5`. `.textmd h3.mdh` was pinned at **17px** while `h4` and `h5`
+kept the 20px default, so a reply's own title rendered **smaller than the sections under it**. Now 22 / 20 / 17 at
+weight 600 — the same three sizes the phone already used, so a heading reads the same on both surfaces.
+
+### Fault 3 — two typefaces inside one reply
+`#app h1,#app h2,#app h3{font-family:var(--fb)}` (console **chrome**) outranks `.textmd .mdh` on specificity
+(1,0,1 beats 0,2,0). So the `#` heading came out in the interface **sans** with tightened tracking while `##` and
+`###` stayed in the **serif**. v0.249 settled that the reply, headings included, is the serif. Corrected with
+`#app .textmd .mdh`, which wins at 1,2,0 and touches nothing outside a rendered message.
+
+### Measured after, in a real browser
+`0` `<br>` in a wrapped reply · paragraphs reflowing to 625-658px of the 680px column · every heading Literata 600
+at normal tracking, 22 / 20 / 17 · block gaps 16 (p to p) / 24 (above a heading) / 8 (below one).
+
+### Files
+`server/app/static/console/md.js` · `server/app/static/console/v2.css` · `lib/ui/md_text.dart` ·
+`server/tests/test_v0284_claude_jaisa_paragraph.py` (7 tests) · `test/md_text_test.dart` (the old test asserted the
+`\n` join — it had locked the bug in; updated and extended).
+
+
+## v0.285.0 MENUS LIKE CLAUDE (30 Oct 2026)
+Owner: "NOW LETS WORK ON DROPDOWN FOR HOOLA MAKE IT SAME AS CLAUDE".
+Before (screenshots taken first): the chat ⋯ menu was a blurred glass panel with 16px corners, 13.5px BOLD (600) rows
+and emoji icons (✎ 📌 🗂 🗜 🗄 🗑); Export was two bold grey rows in a separate hand-made box; the header ⋯ button opened
+its menu and closed it on the SAME click (chatlist's document click handler saw a click outside `.rmenu`), so it did
+nothing; the account button only jumped to the Account page.
+Now - one dropdown, `server/app/static/console/menu.js` (window.HoolaMenu.open(anchor, items, opts)):
+- Look (block "v0.285 MENUS LIKE CLAUDE" at the end of v2.css): var(--surface), 1px hairline, soft two-layer shadow,
+  12px corners, 6px padding; rows 32px at 14px / 400 (never bold) with 8px corners, a 16px line icon in --mut, grey
+  hover; hairline separators; a small grey header line; Delete red with a red hover; a tick on the right for the
+  current choice (menuitemradio); sub-lines 12px grey. CRISP TEXT kept: a one-shot 120ms fade + 3% scale, no blur.
+- Behaviour: below the button or above when there is no room (or place: 'above'), start / end edge aligned, clamped
+  8px from the screen edge; the same button again closes it; closes on a pick, an outside press, Esc (focus back to
+  the button), Tab, scroll or resize; ↑ ↓ Home End, Enter / Space, a letter jumps to the next item; opened by keyboard
+  = the first row focused; Esc in the chat peels the open menu first (escLayer).
+- Used by: the chat ⋯ menu from the sidebar row AND the header (Pin, Rename, Change / Add to session, Compact chat,
+  Archive, separator, Delete), Export (header "Export this chat", Markdown / JSON with a line each), and a NEW account
+  menu on the bottom-left account button, opening above it like Claude's (her email, Settings, Library, Light / Dark /
+  System ticked, Keyboard shortcuts ?, Log out). The old #exportMenu / #cExportMenu markup and .rmenu / .xmenu CSS are gone.
+- Create Studio pickers (studio.css .pop) take the same look: 32px rows, 14px / 400, 16px plain icons, the choice
+  shown by a tick only (no coloured row). The / command list above the typing box: same surface, rows and hover.
+Tests: tests/test_v0285_menus.py; test_v0223_console_r3 pins moved to the new export menu.
+
+## v0.286.0 EK HI DOM — a live reply and a reloaded one are the same page
+Owner sent a screenshot of a live reply whose four paragraphs were fused into one wall:
+*"CHECK NO PARAGRAPH IN CHAT SPACE IN HOOLA"*.
+
+### Two rendering paths, and only the one she never looks at was correct
+| | when it runs | what it did |
+|---|---|---|
+| `HoolaMD.Live` | a reply while it **arrives** | wrapped every finished block in `<div class="mdb">` |
+| `HoolaMD.render` | a reply after a **reload** | no wrapper |
+
+That wrapper broke the chat's entire measured layout, because two rules depend on a block being a **direct child**
+of the message:
+
+- `.textmd p:last-child{margin-bottom:0}` (v0.274, to trim dead space under the last block of a reply). A `<p>`
+  alone inside a wrapper **is** a `:last-child` — so every paragraph gap went to **0**.
+- `#app .mh .txt>p{max-width:680px}` (v0.276, the reading width). A **child** rule, so a wrapped `<p>` stopped
+  matching it and ran the full **880px** column — about 118 characters a line, exactly what v0.276 fixed.
+
+Measured in a real browser:
+
+| | gap between paragraphs | prose width |
+|---|---|---|
+| live path — **what she reads** | **0px** | **880px** |
+| reload path — what every probe measured | 16px | 680px |
+
+So v0.274, v0.276, v0.278, v0.281 and v0.284 were all real, all correct, and all **invisible to her**, because
+every probe page ever built for them went through `render()`.
+
+### The fix
+`Live` now puts each block's nodes straight into the message with **no wrapper**, so a live reply and a reloaded
+one have the same DOM. Finished blocks keep their own element(s); the streaming block's nodes are tracked in
+`tailNodes` and replaced on each tick. Verified by feeding the text **one character at a time**: the final markup
+is byte-identical to `render()`, with 0 wrappers and no duplicated or lost nodes. The two dead `.mdb` rules went
+with it.
+
+Nothing in the CSS changed. Those rules were right all along — this stopped the DOM from hiding them.
+
+### The lesson, now twice over
+**Test the path the user takes.** v0.284 found the probes were using text no model emits; v0.286 found them using
+a renderer she never sees. Both bugs survived four rounds of careful measurement for the same reason.
+
+### Files
+`server/app/static/console/md.js` (the `Live` class) · `server/app/static/console/v2.css` (two dead rules removed)
+· `server/tests/test_v0285_ek_hi_dom.py` (6 tests).
+
+## v0.287.0 APNE AAP SE BEHAS — the honesty guard stops arguing with itself
+Found in her own live test run: three of seven replies ended with a "nothing was actually done" disclaimer she
+never asked for, on asks that requested no action at all.
+
+### The guard wrote the disclaimer itself
+Reproduced on her exact text:
+
+| her reply | `claims_done()` |
+|---|---|
+| "I **haven't sent**, saved, submitted or created anything" | `'sent'` |
+| "Nothing **has been sent**, saved, submitted or created" | `'sent'` |
+
+`_DONE` matches the bare English word `sent`. `_NOT_A_CLAIM` — the list of phrasings that are *not* a claim — was
+**Hinglish only**: `aap ne`, `nahi bhej`, `hoga`, `agar`. It contained no English negation whatsoever.
+
+So the loop ran:
+
+1. She asks for an explanation; Hoola writes a clean four-paragraph answer.
+2. The guard reads it as a false claim and nudges: *"say plainly in one line that it is NOT done yet."*
+3. The model obeys and writes "I haven't sent anything" — **which contains `sent`**.
+4. That matches a second time, and the second match staples `(Saaf baat: yeh kaam abhi hua nahi hai...)` onto a
+   pure explainer.
+
+The guard created exactly the thing it exists to prevent, then blamed the model for it.
+
+### Three fixes
+- **English negation, future and offer forms** in `_NOT_A_CLAIM`: `not`, `n't`, `nothing`, `never`, `without`,
+  `yet`, plus `will`, `can`, `once`, `if`, `I'll`, `your approval`, `say the word`.
+- **`_ALREADY_HONEST`** — a reply that already says the work is not done is never nudged to say it again. This
+  cuts the loop at its root rather than only widening the filter.
+- **The note speaks the reply's language.** `SAID_EN` beside `SAID`, chosen by `said_line()`. v0.260 made HER
+  LANGUAGE the first rule of a reply, and this note is part of the reply — it was following her into English
+  conversations as a Hinglish line.
+
+### What did not change
+The guard still does its job. A real claim with only reads behind it is caught in both languages
+("Maine mail bhej diya", "your invoice has been sent"), and a claim with a real doing-tool behind it is still left
+alone. 77 tests across the existing claim-check suites pass untouched.
+
+### Files
+`server/app/agent/draftcheck.py` · `server/tests/test_v0286_apne_aap_se_behas.py` (7 tests).
+
+## v0.288.0 SIDEBAR FULLY VISIBLE (30 Oct 2026, built as 0.286.0; re-versioned on merge)
+Owner, with a screenshot of the sidebar: "CHECK THE SIDE BAR FONT AND FONT SIZE -- AND THE HIDDEN LOOK SECTIONS ----
+FIX THIS PERFECTLY MAKE THIS SAME AS CLAUDE CHAT HAS FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS".
+Measured in a real browser (computed styles, every text node in the sidebar), before:
+- section labels (Sessions, Recent chats, Today / Yesterday / Other chats, a session's name): 12px / 400 in --dim
+  #8B8B92 = 3.3:1 on the sidebar - the "hidden" look; session count at opacity .85;
+- chat titles 13.5px / 400 (.rct kept an older 13.5px while .rc was 14px); nav rows 14px / 400; the handle under her
+  name and the Live chip in --dim.
+v0.256 had matched Claude's SIZES at weight 400; on Windows ClearType a thin face reads grey. Claude's sidebar is a
+medium weight with darker labels. After (block "v0.288 SIDEBAR FULLY VISIBLE" at the very end of v2.css, so no older
+layer can win): nav 14px / 500 in the ink, chat titles 14px / 450 in the ink (the open chat 550), labels + session name
+13px / 500 in --mut (#5C5C63 light = 6.4:1, #ABA6C8 dark), count / + / ⋯ / Show archived (13px / 450) / handle /
+Live in --mut. Schibsted Grotesk is loaded as a 400..700 variable face, so 450 and 550 are real weights. Text-size
+setting (Small / Large) still moves the titles 13 / 15px. Rules kept: nothing over 600, nothing under 12px, no --dim.
+Tests: tests/test_v0288_sidebar_visible.py.
+PREMIUM pass, same version (owner: "STILL SAME MAKE IT MORE PREMIUM AND PERFECT" - the live site was still v0.284, so
+none of v0.285 / v0.286 had reached her yet; this pass goes further anyway):
+- line icons instead of emoji chrome in the sidebar: the session folder (her OWN chosen emoji is kept), Show archived,
+  the row ⋯ (three dots, 16px), the session chevron (turns 90° when open);
+- one row rhythm: nav 36px, chats 34px, 8px corners, hover rgb(fg / .045), selected rgb(fg / .075); chat titles
+  14px / 470, the open chat 560;
+- the ⋯ sits INSIDE the row's pill (absolute, right 4px; the title makes room only on hover / open / focus) - it hung
+  outside, so the pill stopped short of it;
+- a session is a ROW like a chat (14px / 500 ink, folder icon), not a small grey label;
+- "Sessions" is one tight row with its + (it was a 50px empty block), "Other chats" + a day label stay together;
+- default sidebar width 224 -> 272px (Claude ~288; at 224 every title was cut at ~20 characters); drag 220-420 and
+  double-click reset (now 272) unchanged; a width she saved herself is kept.
+Found while checking the merge in a real browser with a real-length chat list: the account button scrolled away under
+the chats (Claude keeps it at the bottom) - now `#app .side #model` is sticky at the bottom on the sidebar colour; and
+menu.js closed a menu on ANY scroll, so a click that first scrolled its button into view opened and shut the menu at
+once - now only a scroll that really moved the button (> 2px) closes it.
+
+
+## v0.289.0 SAHI KRAM (re-versioned past the parallel v0.284.0-v0.288.0) — the real voice code review, all flaws fixed (owner: "REAL VOICE LOT OF ISSUE --- FIRST CHECK THE CODE DO U FIND ANY FLAW IN IT" -> "FIX ALL")
+Found by reading `voice_openai.py` + the shared `voice.Call` it rides on (built as 0.283.0; main moved to 0.284.0):
+1-3. **Her words arrive late.** OpenAI transcribes her speech separately, only after the audio is committed - often after
+   his reply is already done. `finish_turn` ran at `response.done`, so (a) her sentence was saved with his NEXT reply,
+   (b) her late `user_text` reached the phone after `turn_done` and reset his caption, (c) the leftover `user_buf` made
+   the never-silent watchdog nudge him after 14 s - he talked to nobody. Fix: `input_audio_buffer.committed` records
+   her pending item (`_her_items`); `response.done` -> `_finish_when_heard()` waits up to `FINISH_WAIT_S` 3 s for its
+   transcript (`.completed` / `.failed` -> `_her_item_done`); a new `speech_started` closes a waiting turn first.
+   Her late words no longer `_cap_flush()` his captions (a real cut-in still flushes in `_she_cut_in`).
+4. **A tool result talked over her.** `_reply()` sent `response.create` even mid-sentence (Gemini has WHEN_IDLE). Now no
+   reply starts while `_she_speaking` (speech_started -> stopped / committed / response.created); the item is already
+   in the conversation and her own turn's reply carries it. A lost speech_stopped self-heals after `SPEAKING_STALE_S` 20 s.
+5. **Script switch** - checked, not a flaw: `voicelang.hear` treats Devanagari Hindi as the same hi-IN as Hinglish.
+6. **Long waits** - semantic VAD `eagerness` low (up to 8 s) -> medium (~4 s), `VOICE_OPENAI_EAGERNESS`.
+7. **Echo self-cuts** - counted: a cut within `EARLY_CUT_S` 1 s of his first word -> `early_cuts` (scorecard), so her
+   calls show whether his own voice leaks back into the mic.
+Scorecard adds `early_cuts`, `held_for_her`, `finish_waited`. Gemini untouched.
+Tests: NEW `test_v0285_sahi_kram.py` (8); `test_v0264_openai_voice.py` VAD pin -> medium. Version 0.289.0 (pubspec 0.289.0+329).
+
+## v0.290.0 WEB DESIGN PHASE 1 — a site that looks like a pro made it (owner: "MAKE A HOOLA MORE POWER FULL IN WEBSITE DEVLOPMENT AND DESIGN ---- FIRST FIND THE FLAWS" -> "START PHASE 1")
 The flaw check (18 flaws in 5 groups; Phase 2 = Lovable-style visual editing, Phase 3 = live booking / embeds /
 two languages / payment links, Phase 4 = web apps) found that a first site with no photos of hers was drawn shapes
 (the prompt said "draw with inline SVG"), every section drew its own icons, the fonts had only 400 / 700, the 3 looks
@@ -10771,6 +11028,7 @@ were a hero alone and Opus reviewed only the home page. Phase 1 fixes those five
   page (redraw the weakest once, keep the better, a worse redraw or a broken check brings the old one back). The board
   keeps the home result at the top level and every page under `pages`.
 - **Andaaza** counts the pictures still to make (₹3 each), every look's page top and every page's review.
-- Tests `server/tests/test_v0283_web_design_phase1.py` (9). conftest sets SITE_AI_PHOTOS=0 and SITE_LOOK_SECTIONS=1 so
+- Tests `server/tests/test_v0290_web_design_phase1.py` (9). conftest sets SITE_AI_PHOTOS=0 and SITE_LOOK_SECTIONS=1 so
   older scripted tests keep their call counts.
+- Built as 0.283.0, re-versioned 0.290.0 on merge past the parallel v0.283-v0.289 work.
 - Not verified on the VPS yet: real Gemini pictures for a real build (the cost per site, how often a shot is refused).
