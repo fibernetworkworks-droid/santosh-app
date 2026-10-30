@@ -339,12 +339,19 @@ function flushStepBuf() {
   else STEPBUF.querySelector('.sm').textContent = `${n} step${n > 1 ? "s" : ""}`;
   STEPBUF = null;
 }
+// v0.275 attach.js: her files as Claude-style tiles (composer tray, above her sent bubble, full-screen viewer)
+const ATT = window.HoolaAttach ? HoolaAttach({api, esc, toast, token: () => TOKEN,
+  itemOf: (kind, p) => PN?.itemOf(kind, p), open: item => PN ? (PN.open(item), true) : false}) : null;
+const FILE_ONLY = 'Ye file dekho';   // the words a files-only message carries to Hoola
 function userBubble(text, files, eid, cid, at) {
   const d = document.createElement('div'); d.className = 'mu';
-  d.innerHTML = (files?.length ? `<div class="att">${files.map(f => `<span class="chip">📎 ${esc(f.name || f)}</span>`).join('')}</div>` : '') + `<span class="mut">${esc(text)}</span>`;
+  const tiles = files?.length && ATT ? ATT.sent(files) : null;   // v0.275 her files sit above the bubble, like Claude
+  d.innerHTML = (files?.length && !ATT ? `<div class="att">${files.map(f => `<span class="chip">📎 ${esc(f.name || f)}</span>`).join('')}</div>` : '') + `<span class="mut">${esc(text)}</span>`;
+  if (tiles && text === FILE_ONLY) d.classList.add('fonly');    // a files-only message shows just the tiles
   if (cid) d.dataset.cid = cid;
   if (eid && !files?.length) attachEdit(d, text, eid);
   if (at) d.dataset.at = at;                             // v0.178 the jump rail reads the day off this
+  if (tiles) { if (at) tiles.dataset.at = at; SINK.appendChild(tiles); d._tiles = tiles; }
   SINK.appendChild(d); if (SINK === col) scrollDown(true); TURN = null; return d;
 }
 /* v0.173 receipts: a message sent while Hoola works shows what became of it — queue mein (take-back possible),
@@ -359,7 +366,7 @@ function receipt(d, cid, state) {
       e.stopPropagation();
       try { await api('POST', `/api/conversations/${encodeURIComponent(CONV)}/takeback`, {client_id: cid});
         d.style.transition = 'opacity .25s, transform .25s'; d.style.opacity = '0'; d.style.transform = 'translateY(6px)';
-        setTimeout(() => d.remove(), 240); RCPTS.delete(cid); toast('Taken back — it never reached Hoola.'); }
+        setTimeout(() => { d._tiles?.remove(); d.remove(); }, 240); RCPTS.delete(cid); toast('Taken back — it never reached Hoola.'); }
       catch (er) { receipt(d, cid, 'sent'); toast(er.status === 409 ? 'It has already started — press Stop.' : er.message, er.status !== 200); }
     });
   } else if (state === 'quick') {
@@ -1273,6 +1280,7 @@ async function loadGauge() {
 const INLINE_MAX = 30000;   // v0.227.2 the server takes 32000 (room for the console hints); longer = an attached file
 composer.addEventListener('submit', async e => {
   e.preventDefault(); let text = msg.value.trim(); if ((!text && !FILES.length) || !CONV) return;
+  if (FILES.some(f => f.err)) return toast('A file did not upload. Tap Retry on it, or remove it.', true);
   if (FILES.some(f => !f.file_id)) return toast('File upload in progress…');
   if (text.length > INLINE_MAX) {   // v0.227.2 very long text rides as an attached .txt file, like a pasted-text chip
     if (FILES.length >= 6) return toast('This text is very long. Remove a file so it can go as an attachment.', true);
@@ -1285,7 +1293,7 @@ composer.addEventListener('submit', async e => {
   const origin = CONV, auth = TOKEN; clearTimeout(DRAFT_T);
   const files = FILES.splice(0); drawFiles(); msg.value = ''; msg.style.height = 'auto'; $('#sendBtn').disabled = true;
   store.del('hoola.draft.' + origin);   // v0.173 the draft went out with the message
-  const body = {text: text || 'Ye file dekho', client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), files: files.map(f => f.file_id), hints: takeHints()};
+  const body = {text: text || FILE_ONLY, client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), files: files.map(f => f.file_id), hints: takeHints()};
   landing(false); const bbl = userBubble(body.text, files, null, body.client_id);
   if (TYPING) receipt(bbl, body.client_id, 'queue');   // v0.173 steering: she sees it is queued and can take it back
   USER_ECHO.push(body.text);
@@ -1304,16 +1312,35 @@ async function addFiles(list) {     // paperclip, drag and drop, pasted screensh
   const picked = list.slice(0, Math.max(0, 6 - target.length));
   if (list.length > picked.length) toast('Up to 6 files at a time.');
   if (picked.length) msg.focus();
+  const jobs = [];
   for (const f of picked) {
     if (f.size > 25 * 1024 * 1024) { toast(`${f.name}: files over 25 MB are not supported.`, true); continue; }
     const up = await shrink(f);   // v0.173 big pictures shrink here: upload fast, phone data saved
     if (up !== f) toast(`${f.name}: shrunk (${Math.round(f.size / 1024)} KB → ${Math.round(up.size / 1024)} KB).`);
     if (CONV !== origin || FILES !== target) return;
-    const item = {name: up.name, file_id: null}; target.push(item); drawFiles();
-    try { const fd = new FormData(); fd.append('file', up, up.name); const r = await api('POST', `/api/conversations/${encodeURIComponent(origin)}/files`, undefined, {form: fd}); item.file_id = r.file_id; }
-    catch (er) { if (target.includes(item)) target.splice(target.indexOf(item), 1); toast(`${up.name}: ${er.message}`, true); }
-    drawFiles();
+    // v0.275 the tile shows her picture at once (local blob:), then the real upload %
+    const item = {name: up.name, file_id: null, size: up.size, type: up.type, pct: 0, local: up,
+                  url: up.type.startsWith('image/') ? URL.createObjectURL(up) : ''};
+    target.push(item); drawFiles();
+    jobs.push(sendOne(origin, target, item));   // uploads run side by side; the long-text path waits for them
   }
+  await Promise.all(jobs);
+}
+async function sendOne(origin, target, item) {
+  item.err = ''; item.pct = 0; drawFiles();
+  try {
+    const r = ATT ? await ATT.upload(origin, item.local, p => { item.pct = p; drawPct(item); })
+      : await api('POST', `/api/conversations/${encodeURIComponent(origin)}/files`, undefined, {form: (() => { const fd = new FormData(); fd.append('file', item.local, item.name); return fd; })()});
+    if (!target.includes(item)) return;
+    Object.assign(item, {file_id: r.file_id, media: r.media, preview: r.preview, pages: r.pages, duration: r.duration,
+                         width: r.width, height: r.height, snippet: r.snippet, size: r.size || item.size});
+    ATT?.remember(r.file_id, item.url);
+  } catch (er) {
+    if (!target.includes(item)) return;
+    if (er.status === 401) { target.splice(target.indexOf(item), 1); }
+    else { item.err = er.message || 'Upload failed'; toast(`${item.name}: ${item.err}`, true); }
+  }
+  drawFiles();
 }
 async function shrink(f) {
   if (!f.type.startsWith('image/') || f.type === 'image/gif' || !window.createImageBitmap) return f;
@@ -1419,10 +1446,24 @@ async function exportChat(fmt) {
   } catch (er) { toast('Export failed: ' + er.message, true); }
 }
 function drawFiles() {
-  $('#files').innerHTML = FILES.map((f, i) => `<span class="fchip${f.file_id ? '' : ' up'}">📎 ${esc(f.name)}${f.file_id ? '' : ' · upload…'}<button type="button" data-rm="${i}" aria-label="Remove ${esc(f.name)}">✕</button></span>`).join('');
+  $('#files').innerHTML = ATT ? ATT.tray(FILES)
+    : FILES.map((f, i) => `<span class="fchip${f.file_id ? '' : ' up'}">📎 ${esc(f.name)}${f.file_id ? '' : ' · upload…'}<button type="button" data-rm="${i}" aria-label="Remove ${esc(f.name)}">✕</button></span>`).join('');
   $('#sendBtn').disabled = !msg.value.trim() && !FILES.length;
 }
-$('#files').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (b) { FILES.splice(+b.dataset.rm, 1); drawFiles(); } });
+function drawPct(item) {      // v0.275 only the bar moves while bytes go up (no re-draw, no flicker)
+  const i = FILES.indexOf(item), bar = i < 0 ? null : $('#files').querySelectorAll('.at')[i]?.querySelector('.aup');
+  if (!bar) return;
+  const pct = Math.max(4, Math.min(100, Math.round(item.pct)));
+  bar.firstElementChild.style.width = pct + '%'; bar.setAttribute('aria-valuenow', pct);
+}
+$('#files').addEventListener('click', e => {
+  const b = e.target.closest('[data-rm]');
+  if (b) { const [f] = FILES.splice(+b.dataset.rm, 1); f?.local?._xhr?.abort(); if (f && !f.file_id) ATT?.forget(f); drawFiles(); return; }
+  const r = e.target.closest('[data-retry]');
+  if (r) { const f = FILES[+r.dataset.retry]; if (f?.local) sendOne(CONV, FILES, f); return; }
+  const v = e.target.closest('[data-view]');
+  if (v && ATT) ATT.view(FILES, +v.dataset.view);
+});
 $('#micBtn').title = 'Bolo karke likhiye (dictation)';
 $('#toolsBtn').addEventListener('click', () => go('kaam'));
 

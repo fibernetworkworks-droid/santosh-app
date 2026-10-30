@@ -116,9 +116,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.274.0 (pubspec 0.274.0+314). Version ritual = main.py APP_VERSION + pubspec version(+build) +
-  console `?v=` stamps in `server/app/static/console/v2.html` (14 now: theme.js, pdfview.js, studio.js) + the version pins in tests (grep the old number in
+- Current version: v0.275.0 (pubspec 0.275.0+315). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+  console `?v=` stamps in `server/app/static/console/v2.html` (15 now: theme.js, pdfview.js, studio.js, attach.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.275 ATTACHMENTS LIKE CLAUDE: console `attach.js` - her files are tiles (composer tray with upload % + Retry, above her
+  sent bubble, one picture large), full-screen viewer for picture / video / audio, PDF / Office / text in the workspace reader.
 - v0.274 SAAF JAGAH: measured her Claude screenshots - gap BETWEEN paragraphs 22-32px vs 6-8px INSIDE one
   (3.2-4.3x). Hoola had 2px vs ~7px (0.3x), so the type was right and the page still read as a wall. Four
   numbers, both surfaces: paragraph gap 2->16px, above a heading 8->24px, below it 4->8px, list items 3->8px

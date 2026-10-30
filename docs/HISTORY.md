@@ -10497,3 +10497,26 @@ Version 0.273.0 (pubspec 0.273.0+313, console ?v=0.273.0, pins -> 0.273.0).
   `flutter test test/md_text_test.dart` 7/7.
 - Version 0.274.0 (pubspec 0.274.0+314, console ?v=0.274.0, pins -> 0.274.0).
 - NOT VERIFIED: how it reads on a real phone screen; the console was checked in a browser at 1000px wide.
+
+
+## v0.275.0 ATTACHMENTS LIKE CLAUDE (30 Oct 2026)
+Owner: "CHECK HOW CLAUDE LOAD THE IMAGES FILES, PDF, VIDEOS ETC IN CHAT FIRST - PREPARE A PLAN FOR HOOLA SAME. THEN A
+PERFECT PREVIEW BEFORE DEPLOYMENT" (with a screenshot of Claude's chat).
+Before: the composer and her sent message showed every file as one "📎 name" pill inside the bubble; the server already
+sent preview / pages / duration / size with each file, the console ignored them.
+What Claude does, and Hoola now does (web console, `server/app/static/console/attach.js`, window.HoolaAttach):
+- Composer tray: square tiles above the typing box. A picture shows itself the moment she picks it (local blob:), a PDF
+  its first page (server preview) + "PDF · 4 pages", a video its frame + play mark + length, audio its length, a text /
+  pasted file its first lines (new `chatfiles.snippet`, kept in `shown()`), any other file an icon + type + size.
+  Each tile shows the real upload % (XMLHttpRequest upload progress, uploads run side by side); a failed upload stays
+  red with Retry; ✕ removes (and cancels a running upload). Send waits for uploads, refuses while one has failed.
+- Sent message: the same tiles sit ABOVE her bubble, right-aligned (`.mua`, a sibling before `.mu`; `d._tiles`); one
+  picture alone shows large in its own shape; a files-only message ("Ye file dekho", FILE_ONLY) shows just the tiles.
+  Old messages render the same from the event's `files` (preview data: URL; a picture with no preview loads its file
+  when scrolled into view). A taken-back queued message removes its tiles too.
+- Click: picture / video / audio = full-screen viewer (`.albx`: name, n of N, size, ← → between the message's media,
+  Esc, click outside closes, click the picture to zoom, Download, Open in workspace). PDF / Word / Excel / text open in
+  the workspace's own reader (panel.js, pdfview.js). Her file comes with her login into blob: URLs, never a URL token.
+- CRISP TEXT kept: solid backgrounds, no blur, no held animation. Phone width: 88px tray tiles, viewer header in two rows.
+Not changed: the phone app (Flutter) - same idea there is the next step if she wants it; upload limits (25 MB, 6 files).
+Tests: tests/test_v0275_attachments.py.
