@@ -375,7 +375,7 @@ ${SPRITE}`;
     <div class="tools">${ALLTOOLS.map(([v, t, s, k, tag], i) => `<button class="tool" data-go="${v}"><span class="thumb">${art(k, 't' + i)}</span><div style="min-width:0"><b>${t}${tag ? ` <span class="tag ${tag}">${tag === 'hot' ? 'Popular' : 'New'}</span>` : ''}</b><small>${s}</small></div></button>`).join('')}</div></section>
   <section><div class="sec-h"><h2>Your recent creations</h2><a data-go="library">See all</a></div><div class="row" id="recent"></div></section>
   <section><div class="sec-h"><h2>Start from a template</h2><a data-go="templates">See all</a></div>
-    ${rail(STARTERS.map(([t, v, k], i) => `<button class="tpl" data-start="${i}"><span class="thumb">${art(k, 'tp' + i)}<span class="use">Use</span></span><b>${t}</b><small>${TITLE[v]}</small></button>`).join(''), 'row')}</section>
+    ${rail(STARTERS.map(([t, v, k], i) => `<button class="tpl" data-start="${i}"><span class="thumb">${art(k, 'tp' + i)}<span class="use">Use this</span></span><b>${t}</b><small>${TITLE[v]}</small></button>`).join(''), 'row')}</section>
 </div>`;
   function drawRecent() {
     const el = $('#recent'); if (!el) return;
@@ -1291,7 +1291,7 @@ ${SPRITE}`;
   let tplCat = 'All';
   const TCAT = {All: () => true, Video: s => s[1] === 'video', Image: s => s[1] === 'image', Music: s => s[1] === 'music', Voice: s => s[1] === 'voice'};
   V.templates = () => `<div class="home"><div class="hero" style="padding-top:0"><h1>Templates</h1><p class="mut">Pick one, change the words, press Create.</p><div class="chips" style="justify-content:center">${Object.keys(TCAT).map(c => `<button class="chip" aria-pressed="${c === tplCat}" data-cat="${c}">${c}</button>`).join('')}</div></div>
-    <section><div class="sec-h"><h2>Starters</h2></div><div class="qs">${STARTERS.map((s, i) => [s, i]).filter(([s]) => TCAT[tplCat](s)).map(([[t, v, k], i]) => `<button class="tpl" data-start="${i}"><span class="thumb">${art(k, 'tt' + i)}<span class="use">Use</span></span><b>${t}</b><small>${TITLE[v]}</small></button>`).join('')}</div></section>
+    <section><div class="sec-h"><h2>Starters</h2></div><div class="qs">${STARTERS.map((s, i) => [s, i]).filter(([s]) => TCAT[tplCat](s)).map(([[t, v, k], i]) => `<button class="tpl" data-start="${i}"><span class="thumb">${art(k, 'tt' + i)}<span class="use">Use this</span></span><b>${t}</b><small>${TITLE[v]}</small></button>`).join('')}</div></section>
     <section><div class="sec-h"><h2>Films with the Director</h2></div><div class="qs">${QUICK.map(([t, k, d], i) => `<button class="qcard" data-quick="${i}"><span class="thumb">${art(k, 'tq' + i)}<span class="dur">${d}</span></span><b>${t}</b></button>`).join('')}</div></section></div>`;
   W.templates = el => el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.cat) { tplCat = b.dataset.cat; go('templates'); }
@@ -1305,6 +1305,7 @@ ${SPRITE}`;
     <div class="libbar"><div class="chips">${LIBF.map(([k, n]) => `<button class="chip" aria-pressed="${k === libF}" data-lib="${k}">${n}</button>`).join('')}</div>
       <span class="sp"></span><label class="lsearch">${I('search', 'width:15px;height:15px')}<span class="sr">Search my creations</span><input id="libq" type="search" placeholder="Search" value="${esc(libQ)}"></label>
       <button type="button" class="dd" id="libSort" aria-label="Sort">${I('layers', 'width:15px;height:15px')}<span>${LIBS[libSort]}</span>${I('down', 'width:14px;height:14px')}</button></div>
+    <div class="selbar" id="selbar" hidden></div>
     <div class="sgrid lib" id="results"></div></div>`;
   function drawLib() {
     const el = $('#results'); if (!el) return;
@@ -1312,16 +1313,29 @@ ${SPRITE}`;
     const order = (L, t, k) => L.sort((a, b) => libSort === 'az' ? String(t(a)).localeCompare(String(t(b))) : libSort === 'old' ? k(a) - k(b) : k(b) - k(a));
     const its = order((libF === 'film' ? [] : items(libF === 'all' ? '' : libF).filter(i => i.kind !== 'script' || libF === 'script' || libF === 'all')).filter(i => hit(i.title)), i => i.title, i => i.created || 0);
     const films = order(((libF === 'all' || libF === 'film') ? (D.studio?.projects || []).filter(p => (p.outputs || []).length) : []).filter(p => hit(p.title || p.name)), p => p.title || p.name, p => p.updated || p.created || 0);
-    el.innerHTML = films.map(projTile).join('') + its.map(it => it.kind === 'script' ? `<div class="res" data-item="${it.id}"><button class="thumb doc-th" data-scopen="${it.id}">${I('pen', 'width:26px;height:26px')}</button><span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button><button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span><b class="rt">${esc(it.title)}</b><small>${when(it.created)}</small></div>` : it.kind === 'song' || it.kind === 'voice' ? `<div class="res" data-item="${it.id}"><button class="thumb" data-open="${it.id}">${art(it.kind === 'voice' ? 'voice' : 'music', it.id)}</button><span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button><button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span><b class="rt">${esc(it.title)}</b><small>${esc(it.kind === 'song' ? 'Song' : 'Voice-over')} · ${when(it.created)}</small></div>` : itemTile(it)).join('')
+    el.innerHTML = films.map(projTile).join('') + its.map(it => it.kind === 'script' ? `<div class="res" data-item="${it.id}"><button class="thumb doc-th" data-scopen="${it.id}"><span class="paper"><small>Script</small><b>${esc(it.title)}</b><i></i><i></i><i></i><i></i></span></button><span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button><button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span><b class="rt">${esc(it.title)}</b><small>${when(it.created)}</small></div>` : it.kind === 'song' || it.kind === 'voice' ? `<div class="res" data-item="${it.id}"><button class="thumb" data-open="${it.id}">${art(it.kind === 'voice' ? 'voice' : 'music', it.id)}</button><span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button><button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span><b class="rt">${esc(it.title)}</b><small>${esc(it.kind === 'song' ? 'Song' : 'Voice-over')} · ${when(it.created)}</small></div>` : itemTile(it)).join('')
       || (q ? `<div class="empty" style="grid-column:1/-1"><div><h2>Nothing matches “${esc(libQ)}”</h2><p class="mut">Try another word, or clear the search.</p></div></div>` : '') || `<div class="empty" style="grid-column:1/-1"><div><h2>Nothing here yet</h2><p class="mut">Pictures, songs, voice-overs, dubs, scripts and films you make in Create are kept here.</p></div></div>`;
-    paintAll(el); hydrate(el);
+    // v0.327 every tile can be ticked; a bar appears with Download / Delete for all of them at once
+    $$('.res[data-item]', el).forEach(t => { const id = t.dataset.item; if ($('.pick', t)) return;
+      t.insertAdjacentHTML('afterbegin', `<button type="button" class="pick" data-pick="${esc(id)}" aria-pressed="${LSEL.has(id)}" aria-label="Select">${I('check', 'width:14px;height:14px')}</button>`); });
+    selBar(); paintAll(el); hydrate(el);
   }
+  const LSEL = new Set();
+  function selBar() { const bar = $('#selbar'); if (!bar) return; const n = [...LSEL].filter(id => (D.items || []).some(x => x.id === id)).length;
+    bar.hidden = !n; if (n) bar.innerHTML = `<b class="num">${n} selected</b><span class="sp"></span><button class="btn sec" data-seldl>${I('dl', 'width:15px;height:15px')}Download</button><button class="btn sec danger" data-seldel>${I('trash', 'width:15px;height:15px')}Delete</button><button class="ib" data-selclear aria-label="Clear the selection">${I('x', 'width:16px;height:16px')}</button>`; }
   W.library = el => {
     Promise.all([load('items'), load('studio')]).then(() => redraw('library', drawLib));
     $('#libq', el).addEventListener('input', e => { libQ = e.target.value; drawLib(); });
     $('#libSort', el).addEventListener('click', e => menu(e.currentTarget, Object.entries(LIBS).map(([v, label]) => ({v, label})), libSort,
       v => { libSort = v; $('#libSort span').textContent = LIBS[v]; drawLib(); }, 'Sort by'));
     el.addEventListener('click', async e => { const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.pick) { const id = b.dataset.pick; LSEL.has(id) ? LSEL.delete(id) : LSEL.add(id); b.setAttribute('aria-pressed', String(LSEL.has(id))); b.closest('.res')?.classList.toggle('picked', LSEL.has(id)); selBar(); return; }
+      if (b.hasAttribute('data-selclear')) { LSEL.clear(); drawLib(); return; }
+      if (b.hasAttribute('data-seldl')) { for (const id of LSEL) { const it = (D.items || []).find(x => x.id === id); if (it) download(itemPath(id), it.title + '.' + (it.mime.split('/')[1] || 'bin').replace('mpeg', 'mp3').replace('x-wav', 'wav')); } return; }
+      if (b.hasAttribute('data-seldel')) { const ids = [...LSEL].filter(id => (D.items || []).some(x => x.id === id));
+        if (!ids.length || !confirm(`Delete ${ids.length} item${ids.length > 1 ? 's' : ''}? This cannot be undone.`)) return; b.disabled = true; let gone = 0;
+        for (const id of ids) { try { await api('DELETE', itemPath(id)); D.items = D.items.filter(x => x.id !== id); LSEL.delete(id); gone++; } catch (er) { toast(er.message, true); } }
+        toast(`Deleted ${gone}`); drawLib(); return; }
       if (b.dataset.lib) { libF = b.dataset.lib; $$('[data-lib]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); drawLib(); return; }
       if (b.dataset.scopen) { try { const r = await api('GET', itemPath(b.dataset.scopen), undefined, {raw: true}); SC.text = await r.text(); SC.id = b.dataset.scopen; go('script'); } catch (er) { toast(er.message, true); } return; }
       if (b.dataset.openproj) { DIR.project = b.dataset.openproj; DIR.view = null; go('director'); return; }
@@ -1329,9 +1343,10 @@ ${SPRITE}`;
       await itemAction(b); });
   };
   /* ---------------- v0.308 ENGINES: the real AI services behind Create, checked live; keys never come to the browser ---------------- */
+  const OWNER = () => !!ctx.owner?.();     // v0.327 the console tells the studio when the viewer is the owner
   const EST = {ready: ['Ready', 'ok'], unchecked: ['Key set', 'ok'], missing: ['No key', 'off'], refused: ['Key refused', 'bad'], unreachable: ['Not reachable', 'bad']};
   V.engines = () => `<div class="home eng">
-    <div class="sec-h" style="margin:0"><div><h2 style="font:400 26px/1.2 var(--serif)">Engines</h2><p class="mut" style="margin-top:6px">The real AI services behind Create. Keys live only on your server (the .env), never in the app or the chat.</p></div>
+    <div class="sec-h" style="margin:0"><div><h2 style="font:400 26px/1.2 var(--serif)">${OWNER() ? 'Engines' : 'What you can make'}</h2><p class="mut" style="margin-top:6px">${OWNER() ? 'The real AI services behind Create. Keys live only on your server (the .env), never in the app or the chat.' : 'Everything ticked is ready to use in Create right now.'}</p></div>
       <button class="btn sec" data-recheck>${I('redo', 'width:15px;height:15px')}Check again</button></div>
     <div id="engs"><p class="mut">Checking each engine…</p></div></div>`;
   function drawEngines(r) {
@@ -1339,12 +1354,12 @@ ${SPRITE}`;
     if (!r) { el.innerHTML = '<p class="mut">Could not check the engines just now.</p>'; return; }
     el.innerHTML = `<div class="eg-feats">${r.features.map(f => `<span class="eg-feat ${f.ready ? 'eg-on' : ''}" title="${esc(f.why || 'Ready')}">${I(f.ready ? 'check' : 'x', 'width:13px;height:13px')}${esc(f.name)}</span>`).join('')}</div>
       <p class="dim" style="font-size:12.5px;margin:10px 0 2px">Checked ${when(r.checked_at).replace('Just now', 'just now')} with free calls only (a key or model list), never a paid job.${r.ffmpeg ? '' : ' ffmpeg is missing on the server: dubbing and the editor need it.'}</p>
-      <div class="eg-list">${r.engines.map(e => { const [label, tone] = EST[e.state] || [e.state, 'off'], good = tone === 'ok';
+      ${OWNER() ? '' : '<!-- engines: owner only -->'}<div class="eg-list"${OWNER() ? '' : ' hidden'}>${r.engines.map(e => { const [label, tone] = EST[e.state] || [e.state, 'off'], good = tone === 'ok';
         return `<div class="eg-card eg-${tone}"><div class="eg-h"><b>${esc(e.name)}</b><span class="eg-st eg-${tone}">${label}</span></div>
           <p class="mut eg-d">${esc(e.detail)}</p>
           <div class="eg-p">${e.powers.map(p => `<span>${esc(p)}</span>`).join('')}</div>
           <p class="dim eg-c">${esc(e.cost)}${e.need ? '' : ' · optional'}</p>
-          ${good ? '' : `<details class="eg-how"${e.need ? ' open' : ''}><summary>${I('down', 'width:14px;height:14px')}How to switch it on</summary><ol>
+          ${good ? '' : `<details class="eg-how"><summary>${I('down', 'width:14px;height:14px')}How to switch it on</summary><ol>
             <li>Get a key: <a href="${esc(e.get)}" target="_blank" rel="noopener noreferrer">${esc(e.get.replace(/^https:\/\//, ''))}</a></li>
             <li>On the VPS, add one line to <code>~/apps/santosh-core/.env</code>: <code>${esc(e.env[0])}=your-key</code></li>
             <li>Restart: <code>pm2 restart santosh --update-env</code></li>
@@ -1361,28 +1376,73 @@ ${SPRITE}`;
     el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
       if (b.hasAttribute('data-newfilm')) { DIR.project = ''; DIR.view = null; go('director', {focus: true}); }
       if (b.dataset.openproj) { DIR.project = b.dataset.openproj; DIR.view = null; go('director'); } }); };
+  // v0.327 BRAND KIT: her logo uploaded right here, real colour pickers with names, the font shown in her own tagline,
+  // phone + website, and a LIVE preview (a poster and a reel end card) that changes as she types. Saved with one button.
+  const BK_ROLES = [['primary', 'Main colour'], ['accent', 'Highlight'], ['dark', 'Dark text'], ['light', 'Light background']];
+  const BK_FAM = {poppins: "'Poppins', var(--sans)", mukta: "'Mukta', var(--sans)"};
+  const BK = {d: null, logo: ''};
+  const lum = h => { const m = /^#?([0-9a-f]{6})$/i.exec(h || ''); if (!m) return 1; const n = parseInt(m[1], 16);
+    return [n >> 16 & 255, n >> 8 & 255, n & 255].map(v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [.2126, .7152, .0722][i], 0); };
+  const onCol = (bg, d, l) => { const x = lum(bg), cr = c => { const y = lum(c); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); }; return cr(d) >= cr(l) ? d : l; };
+  function bkDraft() { const k = D.kit || {};
+    return BK.d || (BK.d = {name: k.name || '', tagline: k.tagline || '', tone: k.tone || '', font: k.font || 'poppins', colors: {...(k.colors || {})},
+      phone: k.contact?.phone || '', website: k.contact?.website || ''}); }
+  function bkPreview() { const d = bkDraft(), c = d.colors, p = c.primary || '#1565C0', a = c.accent || '#F5A623', dk = c.dark || '#111111', lt = c.light || '#FFFFFF';
+    const tp = onCol(p, dk, lt), ta = onCol(a, dk, lt), fam = BK_FAM[d.font] || 'var(--sans)', name = esc(d.name || 'Your business'), tag = esc(d.tagline || 'Your tagline here');
+    const logo = BK.logo ? `<img alt="" src="${esc(BK.logo)}">` : `<i>${esc((d.name || 'H').trim()[0] || 'H')}</i>`;
+    return `<div class="bkph"><b>Live preview</b><small>Changes as you type. Saved only when you press Save.</small></div>
+      <div class="bkpv"><div class="bkposter" style="background:${p};color:${tp};font-family:${fam}"><div class="bkp-top"><span class="bkp-logo">${logo}</span><b>${name}</b></div>
+        <div class="bkp-mid"><small>Festive offer</small><h4>${tag}</h4></div><span class="bkp-cta" style="background:${a};color:${ta}">Order now</span>
+        <small class="bkp-foot">${esc([d.phone, d.website].filter(Boolean).join(' · ') || 'Phone · website')}</small></div>
+      <div class="bkend" style="background:${dk};color:${onCol(dk, dk, lt)};font-family:${fam}"><span class="bkp-logo">${logo}</span><b>${name}</b><small>${tag}</small><i style="background:${a}"></i></div></div>
+      <small class="dim">Poster and reel end card, in your colours and font${d.font === 'mukta' ? ' (Mukta also writes Hindi and Marathi)' : ''}.</small>`; }
   V.brand = () => { const k = D.kit; if (!k) return `<div class="home"><p class="mut">Loading your brand kit…</p></div>`;
-    const c = k.colors || {};
-    return `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 26px/1.2 var(--serif)">Brand kit</h2><span class="dim" style="font-size:14px">Pictures can use it with one switch; the Brand tool in chat uses it everywhere</span></div>
-    <div class="tools">
-      <div class="box"><h3>Name</h3><input id="bkname" maxlength="120" value="${esc(k.name || '')}" placeholder="Your business name"></div>
-      <div class="box"><h3>Tagline</h3><input id="bktag" maxlength="160" value="${esc(k.tagline || '')}" placeholder="Har shaam khaas"></div>
-      <div class="box"><h3>Colours</h3><div style="display:flex;gap:8px;flex-wrap:wrap">${['primary', 'accent', 'dark', 'light'].filter(x => c[x]).map(x => `<span class="swatch"><i style="background:${esc(c[x])}"></i><small>${x} ${esc(c[x])}</small></span>`).join('')}</div></div>
-      <div class="box"><h3>Font</h3><b>${esc((k.fonts || {})[k.font] || k.font || 'Default')}</b></div>
-      <div class="box"><h3>Tone</h3><input id="bktone" maxlength="200" value="${esc(k.tone || '')}" placeholder="Warm, simple Hinglish"></div>
-      <div class="box"><h3>Logo</h3><span class="mut">${k.logo ? 'Your logo is set ✓' : 'No logo yet: send it in chat and say “brand logo set karo”.'}</span></div>
-    </div><div><button class="btn pri" data-bksave>${I('check', 'width:16px;height:16px')}Save</button></div></div>`; };
-  W.brand = el => { if (!D.kit) load('kit').then(() => { if (VIEW === 'brand') go('brand'); });
-    el.addEventListener('click', async e => { const b = e.target.closest('[data-bksave]'); if (!b) return; b.disabled = true;
-      try { D.kit = await api('PUT', '/api/brand/kit', {name: $('#bkname').value.trim(), tagline: $('#bktag').value.trim(), tone: $('#bktone').value.trim()}); toast('Brand kit saved'); } catch (er) { toast(er.message, true); } b.disabled = false; }); };
+    const d = bkDraft(), c = d.colors;
+    return `<div class="home bk"><div class="sec-h" style="margin:0"><div><h2 style="font:400 26px/1.2 var(--serif)">Brand kit</h2><p class="mut" style="margin-top:6px">Pictures, posters and films use it with one switch; the Brand tool in chat uses it everywhere.</p></div>
+      <button class="btn pri" data-bksave>${I('check', 'width:16px;height:16px')}Save</button></div>
+    <div class="bkgrid"><div class="bkform">
+      <section class="box"><h3>Logo</h3><div class="bklogo"><span class="bklimg" id="bkLogo">${BK.logo ? `<img alt="Your logo" src="${esc(BK.logo)}">` : I('image', 'width:22px;height:22px')}</span>
+        <div><b>${k.logo ? 'Your logo' : 'No logo yet'}</b><small>PNG, JPG, WebP or SVG, up to 15 MB. Hoola reads its colours.</small>
+          <div class="bkbtns"><button class="btn sec" data-bklogo>${I('upload', 'width:15px;height:15px')}${k.logo ? 'Replace logo' : 'Upload logo'}</button><label class="bkchk"><input type="checkbox" id="bkclean"> Remove a plain background</label></div></div></div></section>
+      <section class="box"><h3>Name and words</h3>
+        <label class="fld">Business name<input id="bkname" maxlength="120" value="${esc(d.name)}" placeholder="Newtika Chai"></label>
+        <label class="fld">Tagline<input id="bktag" maxlength="160" value="${esc(d.tagline)}" placeholder="Har shaam khaas"></label>
+        <label class="fld">Tone<input id="bktone" maxlength="200" value="${esc(d.tone)}" placeholder="Warm, simple Hinglish"></label>
+        <div class="prow2"><label class="fld">Phone<input id="bkphone" maxlength="40" inputmode="tel" value="${esc(d.phone)}" placeholder="98xxxxxx10"></label><label class="fld">Website<input id="bkweb" maxlength="140" value="${esc(d.website)}" placeholder="newtika.in"></label></div></section>
+      <section class="box"><h3>Colours</h3><div class="bkcols">${BK_ROLES.map(([r, n]) => `<label class="bkcol"><input type="color" id="bkc-${r}" value="${esc((c[r] || '#888888').toLowerCase())}" aria-label="${n}"><span><b>${n}</b><small class="num" id="bkh-${r}">${esc((c[r] || '').toUpperCase())}</small></span></label>`).join('')}</div></section>
+      <section class="box"><h3>Font</h3><div class="bkfonts">${Object.entries(k.fonts || {}).map(([f, l]) => `<button type="button" class="bkfont" aria-pressed="${f === d.font}" data-bkfont="${esc(f)}"><span style="font-family:${BK_FAM[f] || 'var(--sans)'}">${esc(d.tagline || d.name || 'Har shaam khaas')}</span><small>${esc(l)}</small></button>`).join('')}</div></section>
+    </div><aside class="bkprev" id="bkPrev">${bkPreview()}</aside></div></div>`; };
+  W.brand = el => {
+    if (!D.kit) { load('kit').then(() => { if (VIEW === 'brand') go('brand'); }); return; }
+    const redrawPrev = () => { const pv = $('#bkPrev'); if (pv) pv.innerHTML = bkPreview(); };
+    if (D.kit.logo && !BK.logo) blobURL('/api/brand/logo?t=' + (D.kit.updated || 0)).then(u => { BK.logo = u; const L = $('#bkLogo'); if (L) L.innerHTML = `<img alt="Your logo" src="${esc(u)}">`; redrawPrev(); }).catch(() => {});
+    const d = bkDraft();
+    for (const [id, k] of [['bkname', 'name'], ['bktag', 'tagline'], ['bktone', 'tone'], ['bkphone', 'phone'], ['bkweb', 'website']])
+      $('#' + id, el).addEventListener('input', e => { d[k] = e.target.value; redrawPrev(); });
+    for (const [r] of BK_ROLES) $('#bkc-' + r, el).addEventListener('input', e => { d.colors[r] = e.target.value.toUpperCase(); $('#bkh-' + r).textContent = d.colors[r]; redrawPrev(); });
+    el.addEventListener('click', async e => { const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.bkfont) { d.font = b.dataset.bkfont; $$('[data-bkfont]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); redrawPrev(); return; }
+      if (b.hasAttribute('data-bklogo')) { const [f] = await pick('image/png,image/jpeg,image/webp,image/svg+xml'); if (!f) return;
+        if (f.size > 15 * 1024 * 1024) { toast('The logo is bigger than 15 MB', true); return; }
+        b.disabled = true; const fd = new FormData(); fd.append('file', f, f.name); fd.append('clean_bg', String(!!$('#bkclean')?.checked));
+        try { const r = await api('POST', '/api/brand/logo', undefined, {form: fd}); D.kit = r.kit; BK.d = null; BK.logo = URL.createObjectURL(f); toast('Logo saved. Colours read from it.'); go('brand'); }
+        catch (er) { toast(er.message, true); b.disabled = false; } return; }
+      if (b.hasAttribute('data-bksave')) { b.disabled = true;
+        try { D.kit = await api('PUT', '/api/brand/kit', {name: d.name.trim(), tagline: d.tagline.trim(), tone: d.tone.trim(), font: d.font,
+            colors: Object.fromEntries(BK_ROLES.map(([r]) => [r, d.colors[r]]).filter(([, v]) => v)), contact: {phone: d.phone.trim(), website: d.website.trim()}});
+          BK.d = null; toast('Brand kit saved'); go('brand'); } catch (er) { toast(er.message, true); b.disabled = false; } }
+    });
+  };
   const GUIDES = [['Make your first ad film', 'director', 'film', 'Write one line in Director. Hoola writes the storyboard for free. Paint the opening pictures, watch the free preview, then make the HD shots and the final film. Every paid step shows its price first.'],
     ['Keep a character the same in every shot', 'casting', 'cast', 'Cast the character once in AI casting. In your film, add it from Cast: Hoola keeps the face, hair and outfit the same in every shot.'],
     ['Write and sing a Hindi song', 'music', 'music', 'Describe the song, press Write with Hoola for the lyrics (or paste yours), pick the singers and mood, and press Create song.'],
     ['Dub a video into Tamil', 'dubbing', 'portrait', 'Upload your video (up to 3 minutes), pick up to 4 languages and press Dub now. Every language comes back as its own video with its words on screen here.'],
     ['Edit with words, not clicks', 'editor', 'city', 'Add your clips in order, say what you want (a 30 s reel, cuts on the beat, Hindi captions) and press Make the edit. Ask for changes in plain words.'],
     ['A voice-over in your Hoola’s voice', 'voice', 'voice', 'Write the script, pick Your Hoola’s voice or any of 22 voices, the language and the style, and press Make voice-over.']];
-  V.learn = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 26px/1.2 var(--serif)">How-to guides</h2></div>
-    <div class="guides">${GUIDES.map(([t, v, k, s], i) => `<div class="guide"><span class="thumb">${art(k, 'lr' + i)}</span><div><b>${t}</b><p class="mut">${s}</p><button class="btn sec" data-go="${v}">Open ${TITLE[v]}</button></div></div>`).join('')}</div></div>`;
+  // v0.327 each guide is a few numbered steps (the steps were buried in one paragraph) and the button that starts it
+  const steps = t => t.split(/(?<=\.)\s+(?=[A-Z])/).filter(Boolean);
+  V.learn = () => `<div class="home"><div class="sec-h" style="margin:0"><div><h2 style="font:400 26px/1.2 var(--serif)">How-to guides</h2><p class="mut" style="margin-top:6px">Short steps for each tool. Every paid step shows its price first.</p></div></div>
+    <div class="guides">${GUIDES.map(([t, v, k, s], i) => `<div class="guide"><span class="thumb">${art(k, 'lr' + i)}</span><div><b>${t}</b><ol class="gsteps">${steps(s).map(x => `<li>${esc(x)}</li>`).join('')}</ol><button class="btn sec" data-go="${v}">Open ${TITLE[v]}${I('down', 'width:14px;height:14px;transform:rotate(-90deg)')}</button></div></div>`).join('')}</div></div>`;
 
   /* ---------------- icons ---------------- */
   const SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidden="true">

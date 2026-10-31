@@ -884,3 +884,75 @@ small{font-size:12.5px}
 .vmore:not([open]){padding-bottom:0}
 /* a voice is a colour mark with its initial, not a drawn face that does not match the voice (her own Hoola voice keeps its wave) */
 .opt .thumb .finit b{font-size:18px}
+
+/* ---------- v0.327 PHASE 4: ASSETS + HELP (design audit). Brand kit with logo upload + live preview, My creations select-several,
+   visible "Use this" on templates, step-by-step guides, Engines details only for the owner. */
+.bkgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,420px);gap:24px;align-items:start}
+.bkform{display:flex;flex-direction:column;gap:16px;min-width:0}
+.bk .box{display:flex;flex-direction:column;gap:12px}
+.bk .box h3{font-size:15px;font-weight:600}
+.bk .fld{font-size:14px;color:var(--mut)}
+.bk .fld input{height:40px;font-size:15px;color:var(--ink)}
+.bklogo{display:flex;gap:16px;align-items:center}
+.bklimg{width:88px;height:88px;flex:none;border-radius:16px;border:1px dashed var(--line2);background:var(--sunk);display:grid;place-items:center;color:var(--mut);overflow:hidden}
+.bklimg img{width:100%;height:100%;object-fit:contain;background:#fff}
+.bklogo>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.bklogo small{color:var(--mut)}
+.bkbtns{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:6px}
+.bkchk{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--mut);cursor:pointer}
+.bkchk input{width:16px;height:16px;accent-color:var(--pri)}
+.bkcols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.bkcol{display:flex;align-items:center;gap:12px;padding:8px;border:1px solid var(--line);border-radius:12px;cursor:pointer}
+.bkcol:hover{border-color:var(--line2)}
+.bkcol input[type=color]{width:48px;height:48px;flex:none;padding:0;border:1px solid var(--line);border-radius:12px;background:none;cursor:pointer}
+.bkcol input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+.bkcol input[type=color]::-webkit-color-swatch{border:0;border-radius:12px}
+.bkcol span{display:flex;flex-direction:column;min-width:0}
+.bkcol b{font-size:14px;font-weight:500}
+.bkcol small{color:var(--mut)}
+.bkfonts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.bkfont{display:flex;flex-direction:column;gap:6px;text-align:left;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.bkfont span{font-size:18px;line-height:1.3;color:var(--ink);overflow-wrap:anywhere}
+.bkfont small{color:var(--mut)}
+.bkfont[aria-pressed="true"]{border-color:var(--pri);box-shadow:0 0 0 3px var(--priSoft)}
+.bkprev{position:sticky;top:0;display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.bkph{display:flex;flex-direction:column;gap:2px}
+.bkph b{font-size:15px;font-weight:600}.bkph small{color:var(--mut)}
+.bkpv{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:12px;align-items:end}
+.bkposter{aspect-ratio:4/5;border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--sh2);overflow:hidden}
+.bkp-top{display:flex;align-items:center;gap:8px;font-size:14px}
+.bkp-logo{width:32px;height:32px;flex:none;border-radius:8px;background:rgb(255 255 255 / .9);display:grid;place-items:center;overflow:hidden}
+.bkp-logo img{width:100%;height:100%;object-fit:contain}
+.bkp-logo i{font-style:normal;font-weight:600;color:#222}
+.bkp-mid{margin-top:auto;display:flex;flex-direction:column;gap:4px}
+.bkp-mid small{font-size:12.5px;opacity:.85}
+.bkp-mid h4{margin:0;font-size:26px;line-height:1.15;font-weight:600;overflow-wrap:anywhere}
+.bkp-cta{align-self:flex-start;height:32px;padding:0 14px;border-radius:99px;font-size:14px;font-weight:600;display:inline-flex;align-items:center}
+.bkp-foot{font-size:12.5px;opacity:.85}
+.bkend{aspect-ratio:9/16;border-radius:12px;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;box-shadow:var(--sh2);overflow:hidden}
+.bkend b{font-size:14px;font-weight:600;overflow-wrap:anywhere}.bkend small{font-size:12.5px;opacity:.8;overflow-wrap:anywhere}
+.bkend i{width:28px;height:3px;border-radius:99px;margin-top:4px}
+@media (max-width:1100px){.bkgrid{grid-template-columns:1fr}.bkprev{position:static}}
+@media (max-width:640px){.bkcols,.bkfonts{grid-template-columns:1fr}}
+/* My creations: a script looks like a page; tick tiles, then act on all of them */
+.doc-th .paper{width:62%;aspect-ratio:3/4;border-radius:8px;background:var(--surface);box-shadow:var(--sh2);padding:12px;display:flex;flex-direction:column;gap:6px;text-align:left;color:var(--ink)}
+.doc-th .paper small{font-size:12.5px;color:var(--priInk);font-weight:500}
+.doc-th .paper b{font:400 14px/1.3 var(--serif);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.doc-th .paper i{display:block;height:4px;border-radius:99px;background:var(--sunk)}
+.doc-th .paper i:nth-child(odd){width:72%}
+.res{position:relative}
+.res .pick{position:absolute;left:8px;top:8px;z-index:3;width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:rgb(0 0 0 / .45);color:transparent;border:1.5px solid rgb(255 255 255 / .85);opacity:0;transition:opacity .15s}
+.res:hover .pick,.res .pick:focus-visible,.res .pick[aria-pressed="true"],.sgrid.lib:has(.pick[aria-pressed="true"]) .pick{opacity:1}
+.res .pick[aria-pressed="true"]{background:var(--pri);border-color:var(--pri);color:#fff}
+.res.picked .thumb{box-shadow:0 0 0 3px var(--pri)}
+@media (hover:none){.res .pick{opacity:1}}
+.selbar{position:sticky;top:0;z-index:4;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);box-shadow:var(--sh2)}
+.selbar .sp{flex:1}
+.btn.danger{color:color-mix(in srgb,var(--bad) 85%,var(--ink))}
+/* Templates: "Use this" is always visible */
+.tpl .use{opacity:1;transform:none}
+/* How-to guides: numbered steps */
+.gsteps{margin:2px 0 4px;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--mut)}
+.gsteps li{padding-left:2px}
+.gsteps li::marker{color:var(--priInk);font-weight:600}
+.guide .btn .ic{margin-left:2px}
