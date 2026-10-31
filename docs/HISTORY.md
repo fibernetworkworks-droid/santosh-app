@@ -12466,3 +12466,18 @@ Webmaster API (needs her own key typed somewhere; IndexNow covers Bing), their C
   local), _SpeedCard (+ phone screenshot), IndexNow card, Check Google index, priority on fixes, "How we'll know".
 - Tests: `test_v0319_seo_pro.py` (16). `test_v103_seo` now expects the stuffing finding on its fixture page (the phrase repeats
   60 times). Not verified live: Google's URL Inspection / Sitemaps / CrUX answers (shapes from Google's docs, mocked in tests).
+
+## v0.335.0 UPI SEEDHA (31 Oct 2026, owner: "IT OPEN PAYMENT APP BUT WONT ABLE TO PAY SHOWING ERROR :: SERVER NOT RESPONDING OR LIMIT EXCEED. THIS ISSUE IS FULLY A HOOLA APP REQUEST")
+Root cause: Hoola paid a person by opening the UPI app with a `upi://pay?pa=<her friend's VPA>&am=...` link. Since
+2023-24 Google Pay, PhonePe, Paytm and others accept such links started by another app only from verified merchants
+(signed, with a merchant code); for a person's UPI ID they fail with a vague message ("server not responding", "limit
+exceeded", "security reasons"). v0.120 had the copy-and-pay way, but `P2P_LINK_BLOCKED` held PhonePe only.
+- `bazar/upiresult.py`: `P2P_LINK_DEFAULT_BLOCKED = True` - `link_blocked()` is true for every app unless this owner's
+  profile marks it "ok" (a link that really worked there, recorded by the UPI result). So send_money to a person =
+  status copy_pay: the app opens on its home screen, the phone copies the UPI ID, she pastes it in "Pay to UPI ID",
+  types the amount, enters the PIN, then taps "Ho gaya" on Hoola's card. Shop / merchant flows untouched.
+- `BLOCK_WORDS` also matches "not responding" / "exceed", so such a failure marks the app blocked.
+- Tests: test_bazar / test_v109_upi updated to the new default (link path still tested via an app marked ok) + new
+  test_v0322_google_pay_to_a_person_goes_copy_and_pay. Phone code unchanged (copy path exists since v0.120).
+- Real fix for one-tap pay to people needs a UPI merchant / PSP partnership (signed intents) - not something an app can
+  do alone.
