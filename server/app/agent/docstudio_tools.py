@@ -10,23 +10,25 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
-from ..docstudio import docxgen, pdfgen, pptxgen, preview, xlsxgen
+from ..docstudio import docxgen, htmlpdf, pdfgen, pptxgen, preview, xlsxgen
 from .make_tools import _deliver, _owner_bytes, _safe  # the v0.51 delivery path, reused
 from .tools import Ctx, ToolError
 
 DOCSTUDIO_TOOLS = [
     {"name": "doc_studio",
      "description": (
-         "Make a PERFECT PDF / Word / Excel / PowerPoint file: real design system (palette from the "
-         "title, cover, clickable TOC, styled tables, live formulas), QA + deep preview before delivery. "
-         "For reports, quotations, invoices, proposals, decks - anything formal. Same content format as "
-         "make_document; details in your prompt notes."),
+         "Make a PERFECT PDF / Word / Excel / PowerPoint file. PDFs are designed per topic like Claude's own "
+         "(cover, contents with real page numbers, stat rows, callouts, money right-aligned, page review before "
+         "delivery). For reports, plans, quotations, invoices, proposals, decks - anything formal. Content format "
+         "in your prompt notes."),
      "input_schema": {"type": "object", "properties": {
          "kind": {"type": "string", "enum": ["pdf", "docx", "xlsx", "pptx"],
                   "description": "file type to build"},
          "title": {"type": "string", "description": "document title (drives the palette)"},
-         "text": {"type": "string", "description": "content: '# ' h1, '## ' h2, '- ' bullets, "
-                  "'| a | b |' table rows, '> ' quote, '[stat: 12% | label]' callout"},
+         "text": {"type": "string", "description": "content: '# ' h1, '## ' h2, '- ' bullets, '1. ' steps, "
+                  "'| a | b |' table rows (a 'Total' row is bolded), '> ' quote, '> [!KEY|NOTE|TIP|WARNING|"
+                  "SUCCESS|HUMAN|GATE] text' box, '[stat: 12% | label]' key number, '[chart: bar|hbar|line|donut | "
+                  "title]' above a table, 'Table: caption' / 'Source: ...', footnotes '[^1]' + '[^1]: text', ``` code"},
          "sheets": {"type": "object", "description": "xlsx: {'Sheet': [[header...], [row...]]} - up to "
                    "16,384 cols/sheet (wider auto-splits to -P1/-P2 + Index), 100K rows; a sheet may "
                    "be a dict {rows, conditional_formatting, validation, merges, defined_names}"},
@@ -39,6 +41,9 @@ DOCSTUDIO_TOOLS = [
                    "description": "design (auto = matched to the topic: cover, fonts, palette; "
                    "or force a look)"},
          "subject": {"type": "string", "description": "one-line subtitle / purpose"},
+         "author": {"type": "string", "description": "pdf: who prepared it - her business / name when known "
+                    "(default Hoola)"},
+         "prepared_for": {"type": "string", "description": "pdf: the client / reader it is for, when known"},
          "filename": {"type": "string", "description": "output file name"},
          "cover": {"type": "boolean", "description": "cover page (auto by size)"},
          "toc": {"type": "boolean", "description": "table of contents (auto when 4+ sections)"},
@@ -117,7 +122,8 @@ def data_markdown(doc: dict, fields: list[str] | None = None, layout: str = "bot
 
 async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, charts=None,
                      filename="", style="auto", cover="auto", toc="auto", subject="", data="",
-                     data_fields=None, data_layout="both", data_heading="", part="build", **_):
+                     data_fields=None, data_layout="both", data_heading="", part="build", author="",
+                     prepared_for="", **_):
     kind = str(kind or "").lower().strip()
     if kind not in ("pdf", "docx", "xlsx", "pptx"):
         raise ToolError("kind: pdf | docx | xlsx | pptx")
@@ -159,7 +165,8 @@ async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, c
         kw["toc"] = toc if isinstance(toc, bool) else str(toc or "auto")
     try:
         if kind == "pdf":
-            res = await asyncio.to_thread(pdfgen.make_pdf, str(title), str(text or ""), **kw)
+            res = await asyncio.to_thread(make_pdf, str(title), str(text or ""), kw, str(author or ""),
+                                          str(prepared_for or ""))
         elif kind == "docx":
             res = await asyncio.to_thread(docxgen.make_docx, str(title), str(text or ""), **kw)
         elif kind == "xlsx":
@@ -185,6 +192,9 @@ async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, c
         d = res["design"]
         notes.append(f"Design matched to the topic: {d['label']} ({d['cover']} cover, "
                      f"{d['fonts']['head']} headings).")
+        rv = (qa.get("review") or {}) if isinstance(qa, dict) else {}
+        if rv.get("score"):
+            notes.append(f"Page review {rv['score']}/10" + (f", changed {list(rv['changed'])}" if rv.get("changed") else "") + ".")
     if kind == "xlsx" and res.get("formulas"):
         notes.append(f"{res['formulas']} live formulas.")
     if kind == "xlsx" and res.get("splits"):
@@ -193,6 +203,19 @@ async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, c
                      f"{len(sp['parts'])} parts + Index bane.")
     return view | {"made": kind, "style": res.get("style"), "design": res.get("design"),
                    "preview": prev, "note": " ".join(notes)}
+
+
+def make_pdf(title: str, text: str, kw: dict[str, Any], author: str = "", prepared_for: str = "") -> dict[str, Any]:
+    """v0.313 HOOLA PRINT: designed HTML printed by Chromium (docstudio/htmlpdf.py), the Claude way. Chromium missing,
+    DOC_ENGINE=reportlab, or any print failure -> the v0.192 ReportLab Document Studio, so a PDF always comes back."""
+    from ..config import get_settings
+    if (getattr(get_settings(), "doc_engine", "chromium") or "chromium") == "chromium" and htmlpdf.available():
+        try:
+            return htmlpdf.make_pdf(title, text, author=author or "Hoola", prepared_for=prepared_for, **kw)
+        except Exception as e:     # noqa: BLE001 - the file must still reach her
+            htmlpdf.STATS["fallback"] += 1
+            htmlpdf.log.warning("Hoola Print failed, ReportLab instead: %s", e)
+    return pdfgen.make_pdf(title, text, author=author or "Hoola", **kw)
 
 
 async def doc_preview(ctx: Ctx, file_id, **_):
