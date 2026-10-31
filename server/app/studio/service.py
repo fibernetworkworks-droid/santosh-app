@@ -275,7 +275,7 @@ def _typical_s(seconds: float) -> float:
 
 
 DEFAULT_PREFS = {"voice": "", "captions": True, "caption_style": "bold", "music": "", "quality": "final",
-                 "model": "", "resolution": "", "auto": "quality", "cast_skip": False}   # v0.311 cast_skip = no fixed characters   # v0.263 auto = quality | value | cheap       # v0.262 her model / resolution pick ("" = Hoola Auto / by quality)
+                 "model": "", "resolution": "", "auto": "quality", "cast_skip": False, "pics_skip": False}   # v0.311 cast_skip = no fixed characters   # v0.263 auto = quality | value | cheap       # v0.262 her model / resolution pick ("" = Hoola Auto / by quality)
 
 
 def prefs_of(p: dict) -> dict:
@@ -304,7 +304,7 @@ def quote(st: Studio, p: dict, quality: str, shot_ids: list[str] | None = None, 
             lip_secs += r["seconds"]
     rows = {r["shot"] for r in e["shots"]}
     paint = []
-    if st.painter and quality != "preview":
+    if st.painter and quality != "preview" and not prefs_of(p).get("pics_skip"):
         paint = [x["id"] for x in p["shots"] if x["id"] in rows and not x.get("keyframe") and not x.get("start_image")
                  and (quality in ("final", "premium") or (x.get("kind") or "scene") == "talk")]
     pr = prefs_of(p)
@@ -468,7 +468,7 @@ def view(tenant: str, p: dict) -> dict[str, Any]:
         newer = any(_ts(v.get("created")) > last_out for vs in p.get("variants", {}).values() for v in vs) if outs else True
         if working or painting:
             nxt = {"kind": "wait", "label": "Ban raha hai", "inr": 0}
-        elif nokf and st.painter:
+        elif nokf and st.painter and not prefs_of(p).get("pics_skip"):
             nxt = {"kind": "keyframes", "label": "Pehli tasveerein", "inr": _inr(KEYFRAME_USD * len(nokf))}
         elif unpicked or all(x["quality"] == "preview" for x in shots):
             nxt = {"kind": "generate", "label": "Video banao", "inr": (est.get(want) or {}).get("inr", 0)}
@@ -492,6 +492,7 @@ def view(tenant: str, p: dict) -> dict[str, Any]:
             "created": p.get("created"), "estimates": est, "planning": planning, "error": p.get("error") or "",
             "casting": sorted(_casting.get(key, ())), "cast_error": p.get("cast_error") or "",
             "cast_last": p.get("cast_last") if p.get("cast_error") else None,
+            "pics_error": p.get("pics_error") or "",
             "seconds": sum(int(x["duration"]) for x in p.get("shots", [])),
             "keyframes": sum(1 for x in p.get("shots", []) if x.get("keyframe")),
             "music": bool(mu), "logo": bool(lg), "character_list": chars, "prefs": pr, "quality_pref": want,
@@ -618,6 +619,8 @@ def _clean_prefs(d: dict, base: dict | None = None) -> dict:
         out["music"] = m
     if d.get("cast_skip") is not None:
         out["cast_skip"] = bool(d["cast_skip"])
+    if d.get("pics_skip") is not None:      # v0.312 no opening pictures: the shots are made from the words
+        out["pics_skip"] = bool(d["pics_skip"])
     if d.get("quality") in ("draft", "final", "premium"):
         out["quality"] = d["quality"]
     if "model" in d and d["model"] is not None:          # v0.262 checked against the studio's models when used
@@ -877,7 +880,18 @@ async def _do_keyframes(tenant: str, st: Studio, project: str, ids: list[str]) -
         _painting.pop(key, None)
         log.exception("studio keyframes")
         _note(tenant, st.load(project), f"Video studio '{project}': tasveerein nahi ban payin: {str(e)[:160]}")
+        await _pics_error(st, project, f"The opening pictures could not be made: {_paint_why(e)} Nothing was charged.")
+        _changed(tenant, project)
         return {}
+    # v0.312 a failed picture is written ON the film (it reached only the chat, and the Director sat on Pictures);
+    # only the pictures that were made are charged (Studio.keyframes charges per painted picture)
+    if r["failed"]:
+        n, m = len(r["failed"]), len(ids)
+        why = _paint_why(RuntimeError(r["failed"][0].split(": ", 1)[-1]))
+        await _pics_error(st, project, f"{n} of {m} opening picture{'s' if m > 1 else ''} could not be made: {why} "
+                                       "Only the pictures that were made are charged.")
+    else:
+        await _pics_error(st, project, "")
     left = _painting.get(key, set()) - set(ids)
     if left:
         _painting[key] = left
@@ -888,6 +902,13 @@ async def _do_keyframes(tenant: str, st: Studio, project: str, ids: list[str]) -
     _note(tenant, p, f"Video studio '{project}': {len(r['painted'])} shots ki pehli tasveer taiyaar"
           + (f" ({len(r['failed'])} nahi bani)" if r["failed"] else "") + ". Free preview ('generate preview') ab inhi se banega.")
     return r
+
+
+async def _pics_error(st: Studio, project: str, msg: str) -> None:
+    try:
+        await st.update(project, lambda q: q.update(pics_error=msg))
+    except Exception:  # noqa: BLE001 - the chat note already carries it
+        log.exception("studio pics_error")
 
 
 async def _paint_then_generate(tenant: str, st: Studio, project: str, a: dict) -> None:

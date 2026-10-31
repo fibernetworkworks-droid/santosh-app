@@ -129,9 +129,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.311.0 (pubspec 0.311.0+351). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.312.0 (pubspec 0.312.0+352). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.312 DIRECTOR PICTURES FIX: failed opening pictures went only to the chat and Director sat on Pictures; now "Painting N…",
+  the reason on the film (pics_error, only painted ones charged), Try again for the missing ones, Skip = shots from the words (prefs.pics_skip).
 - v0.311 DIRECTOR CAST FIX: a failed character picture reported only to the chat and Director sat on Cast; now "Painting <name>…",
   the reason on the film (nothing charged), Try again refilled, Skip = no fixed characters (prefs.cast_skip).
 - v0.310 SHORT CLIPS: 4-5 s clips were refused with 422 (studio forms demanded seconds >= 6); now >= 2, and a 422 names its field.

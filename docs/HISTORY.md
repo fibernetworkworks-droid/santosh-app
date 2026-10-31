@@ -11600,3 +11600,18 @@ Fix (studio/service.py + studio.js / studio.css):
   _clean_prefs) and the Cast step counts as done - a film can go on without a fixed cast.
 Screens: the failed state (red reason, Try again, Skip) and the painting state, from the real page.
 Tests: tests/test_v0311_director_cast.py.
+
+## v0.312.0 DIRECTOR PICTURES FIX (31 Oct 2026)
+Owner: "NOW STUCK ON PICTURE CHECK" - the Director film sat on step 4 Pictures.
+- Root cause (same shape as v0.311 Cast): "Paint the opening pictures" -> price card -> Haan -> `service._do_keyframes` runs in
+  the background; when Gemini failed (bad key, quota, safety) the reason went ONLY to the chat (`_note`), the shots got no
+  keyframe and the page showed nothing - no "painting", no error. Reproduced locally: card ₹12 -> Haan -> failure invisible.
+- `service.py`: `_do_keyframes` writes `pics_error` on the project (all failed: "The opening pictures could not be made: <why>
+  Nothing was charged."; some failed: "n of m opening pictures could not be made: <why> Only the pictures that were made are
+  charged."; success clears it) via `_pics_error`; `view()` returns `pics_error`. `prefs.pics_skip` (DEFAULT_PREFS,
+  `_clean_prefs`, `StudioSettings.pics_skip` in main.py): `quote()` adds no pictures, `view`'s next step skips Pictures.
+- `studio.js`: "Painting N opening picture(s)…" box with the ring while `p.painting`; red box with "Try again for the missing
+  pictures" (POST /keyframes for shots without a keyframe) and "Skip pictures: make the shots from the words"; the Pictures
+  step counts as done when skipped; a skipped step (pictures or cast) hides its red box.
+- Test: `server/tests/test_v0312_director_pictures.py` (all failed / some failed charges only painted / success clears / skip
+  removes pictures from the card / page markers).

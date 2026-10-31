@@ -748,7 +748,7 @@ ${SPRITE}`;
   function stepState(p) {
     const shots = p.shots || [], picked = shots.length && shots.every(s => s.picked);
     const real = shots.length && shots.every(s => s.quality && s.quality !== 'preview');
-    return {brief: true, plan: shots.length > 0, cast: (p.character_list || []).length > 0 || !!p.prefs?.cast_skip, keyframes: shots.length && p.keyframes >= shots.length,
+    return {brief: true, plan: shots.length > 0, cast: (p.character_list || []).length > 0 || !!p.prefs?.cast_skip, keyframes: (shots.length && p.keyframes >= shots.length) || (shots.length > 0 && !!p.prefs?.pics_skip),
       preview: shots.some(s => (s.take_list || []).length), generate: picked && real, music: !!p.music, assemble: (p.outputs || []).some(o => !o.preview)};
   }
   V.director = o => {
@@ -777,8 +777,10 @@ ${SPRITE}`;
   <section><div class="sec-h"><h2>Storyboard · ${(p.shots || []).length} shots · ${p.seconds || 0} s</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" data-dpreview>${I('play', 'width:14px;height:14px')}Free preview</button><button class="btn sec" data-castopen>${I('cast', 'width:15px;height:15px')}Cast</button><button class="btn sec" data-dmusic>${I('music', 'width:15px;height:15px')}Music</button><button class="btn sec" data-replan>${I('redo', 'width:15px;height:15px')}Rewrite</button></div></div>
     ${p.planning && !(p.shots || []).length ? `<div class="box"><b>Writing the storyboard…</b><div class="bar"><i class="indet"></i></div></div>` : ''}
     <div class="scenes">${(p.shots || []).map((s, i) => sceneCard(s, i)).join('')}</div></section>
+  ${(p.painting || []).length ? `<div class="box castwait"><span class="cring"></span><div><b>Painting ${p.painting.length} opening picture${p.painting.length > 1 ? 's' : ''}…</b><small class="mut">About 20-40 seconds each, three at a time. Each shot then starts from its picture.</small></div></div>` : ''}
+  ${p.pics_error && !(p.painting || []).length && !p.prefs?.pics_skip ? `<div class="box casterr">${I('x', 'width:15px;height:15px')}<div><b>${esc(p.pics_error)}</b><div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">${(p.shots || []).some(x => !x.keyframe) ? '<button class="btn sec" data-picsretry>Try again for the missing pictures</button>' : ''}<button class="lnk" data-picsskip>Skip pictures: make the shots from the words</button></div></div></div>` : ''}
   ${(p.casting || []).length ? `<div class="box castwait"><span class="cring"></span><div><b>Painting ${p.casting.map(esc).join(', ')}'s picture…</b><small class="mut">About 20-40 seconds. The character then stays the same in every shot.</small></div></div>` : ''}
-  ${p.cast_error && !(p.casting || []).length ? `<div class="box casterr">${I('x', 'width:15px;height:15px')}<div><b>${esc(p.cast_error)}</b><div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap"><button class="btn sec" data-castretry>Try again</button><button class="lnk" data-castskip>Skip: no fixed characters</button></div></div></div>` : ''}
+  ${p.cast_error && !(p.casting || []).length && !p.prefs?.cast_skip ? `<div class="box casterr">${I('x', 'width:15px;height:15px')}<div><b>${esc(p.cast_error)}</b><div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap"><button class="btn sec" data-castretry>Try again</button><button class="lnk" data-castskip>Skip: no fixed characters</button></div></div></div>` : ''}
   ${(p.character_list || []).length ? `<section><div class="sec-h"><h2>Cast</h2></div><div class="cast">${p.character_list.map(c => `<div class="actor"><span class="thumb">${c.image ? `<img alt="" src="${esc(c.image)}">` : art('cast', c.name)}</span><div><b>${esc(c.name)}</b><small>${esc(c.description.slice(0, 80))}</small></div></div>`).join('')}</div></section>` : ''}
 </div>`;
   };
@@ -876,6 +878,9 @@ ${SPRITE}`;
         DIR.lastCast = {name, description}; DIR.castOpen = false; DIR.castDraft = null; return act('', () => api('POST', P + '/characters', {name, description, voice: $('#cvoice').value, kind: 'person'})); }
       // v0.311 a failed picture says why on the page; Try again re-opens the form as she filled it; Skip = no fixed cast
       if (b.hasAttribute('data-castretry')) { DIR.castOpen = true; DIR.castDraft = DIR.lastCast || DIR.view?.cast_last || null; go('director'); $('#cname')?.focus(); return; }
+      // v0.312 Pictures: repaint only the missing ones (a new card, only made pictures are charged), or go on without them
+      if (b.hasAttribute('data-picsretry')) { const miss = (DIR.view?.shots || []).filter(x => !x.keyframe).map(x => x.id); return act('', () => api('POST', P + '/keyframes', {shot_ids: miss})); }
+      if (b.hasAttribute('data-picsskip')) { return act('Going on without opening pictures', () => api('POST', P + '/settings', {pics_skip: true})); }
       if (b.hasAttribute('data-castskip')) { DIR.castOpen = false; DIR.castDraft = null; return act('Going on without a fixed cast', () => api('POST', P + '/settings', {cast_skip: true})); }
       if (b.dataset.take) { const sh = b.closest('[data-shot]').dataset.shot; return act('Take picked', () => api('POST', P + '/pick', {shot_id: sh, take: +b.dataset.take})); }
       if (b.hasAttribute('data-edit')) { const card = b.closest('[data-shot]'), sid = card.dataset.shot, s = DIR.view.shots.find(x => x.id === sid);
