@@ -369,11 +369,17 @@ def stop(rid: str) -> dict[str, Any]:
     return {"ok": True, "say": "Arena ruk jayega (chalti website poori hone ke baad)."}
 
 
+def _status(x: ArenaRun) -> str:
+    """A run marked running whose thread is gone (the server restarted mid-run) reads 'interrupted', not running forever."""
+    th = _RUNNING.get(x.id)
+    return "interrupted" if x.status == "running" and not (th and th.is_alive()) else x.status
+
+
 def runs(limit: int = 20) -> list[dict[str, Any]]:
     ensure_tables()
     with session() as s:
-        return [{"run": x.id, "version": x.version, "set": x.set_v, "seed": x.seed, "n": x.n, "status": x.status,
-                 "spent_inr": x.spent_inr, "summary": json.loads(x.summary or "{}"), "note": x.note,
+        return [{"run": x.id, "version": x.version, "set": x.set_v, "seed": x.seed, "n": x.n, "status": _status(x),
+                 "spent_inr": x.spent_inr, "budget_inr": x.budget_inr, "summary": json.loads(x.summary or "{}"), "note": x.note,
                  "started": x.started_at.isoformat() if x.started_at else ""}
                 for x in s.scalars(select(ArenaRun).order_by(ArenaRun.started_at.desc()).limit(limit)).all()]
 
@@ -455,6 +461,37 @@ def duel_table() -> dict[str, Any]:
         n = v["hoola"] + v["rival"] + v["tie"]
         v["duels"], v["win_pct"] = n, round(100 * v["hoola"] / n, 1) if n else None
     return out
+
+
+def recent_duels(limit: int = 12) -> list[dict[str, Any]]:
+    """The latest duels, newest first (for the console's Arena screen)."""
+    ensure_tables()
+    by = {b["id"]: b for b in brief_set()}
+    with session() as s:
+        rows = s.scalars(select(ArenaDuel).order_by(ArenaDuel.created_at.desc()).limit(limit)).all()
+        return [{**json.loads(d.result or "{}"), "brief": d.brief_id, "name": (by.get(d.brief_id) or {}).get("name", d.brief_id),
+                 "builder": d.rival, "url": d.rival_url, "site": d.hoola_site,
+                 "at": d.created_at.isoformat() if d.created_at else ""} for d in rows]
+
+
+def brief_info(brief_id: str) -> dict[str, Any]:
+    b = next((x for x in brief_set() if x["id"] == brief_id), None) or {}
+    return {"name": b.get("name", brief_id), "industry": b.get("industry", ""), "city": b.get("city", "")}
+
+
+def shot(site_id: str, width: str = "390") -> bytes | None:
+    """The home-page screenshot of an ARENA site (never anyone else's site)."""
+    from . import service as S
+    try:
+        r = S._load(site_id)
+    except Exception:
+        return None
+    if r is None or r.tenant_id != TENANT:
+        return None
+    shots = _home_shots(site_id)
+    if not shots:
+        return None
+    return shots[-1] if str(width) == "1440" and len(shots) > 1 else shots[0]
 
 
 def report_text(summary: dict[str, Any]) -> str:

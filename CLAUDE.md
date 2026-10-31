@@ -129,9 +129,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.310.0 (pubspec 0.310.0+350). Version ritual = main.py APP_VERSION + pubspec version(+build) +
-  console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
+- Current version: v0.311.0 (pubspec 0.311.0+351). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+  console `?v=` stamps in `server/app/static/console/v2.html` (17 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.311 ARENA SCREEN (console `arena.js`, sidebar Arena, owner only via console me `arena`): start / stop runs with a cost estimate,
+  runs table, per-site score cards with screenshots (`/api/arena/shot/<site>`), compare two runs, blind duels + win table.
 - v0.310 SHORT CLIPS: 4-5 s clips were refused with 422 (studio forms demanded seconds >= 6); now >= 2, and a 422 names its field.
 - v0.309 CLIP CREATE FIX: Video page Create asked for the price before the background storyboard existed ("Pehle storyboard banaiye",
   no card ever). Now one call (then=generate), `studio.service.after_plan` waits for the plan then makes the card; errors on the tile.

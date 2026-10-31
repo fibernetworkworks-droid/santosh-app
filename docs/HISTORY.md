@@ -11581,3 +11581,27 @@ seconds Field(ge=6) - POST /api/studio/projects seconds=5 -> 422 before anything
 same 422. Fix: ge=2 on the three forms; plan() clamps at 2 instead of 6 (a 5 s clip is one short shot); the console's
 api() turns a 422 detail list into "field: reason" instead of "The server refused the request (422)". Re-checked through
 the real route: 4 s / 5 s / 8 s -> 200. Tests: tests/test_v0310_short_clips.py.
+
+## v0.311.0 ARENA SCREEN (owner: "add an Arena screen to the console")
+The Design Arena (v0.307) was API-only. Now it has its own page in the web console.
+- **Who sees it**: `/api/console/me` returns `arena: true` only for the owner (tenant == TENANT_ID); the sidebar item
+  "Arena" (trophy icon) and the view `#v-arena` appear only then. Every `/api/arena/*` call is still refused (403) for anyone else.
+- **Page** (`server/app/static/console/arena.js`, `window.HoolaArena({api, esc, toast})`, CSS block "v0.311 DESIGN ARENA" at
+  the end of v2.css, theme tokens only):
+  - Score row: judge score of the latest finished run, % of sites with no blocking issue, median LCP, blind duels won.
+  - New run form: websites, brief-set seed, budget (capped at `SITE_ARENA_MAX_INR`), note, live cost estimate (₹100-300 a
+    site). While a run is going the form becomes a live card: budget meter, Stop after this website, auto refresh every 12 s.
+  - Runs table (started, version, sites ready, judge, no blocking, LCP, ₹ a site, spent, status) -> Open a run: one readable
+    summary line, the six judge criteria as bars, then one card per website: phone screenshot (Desktop view swaps in the
+    1440px shot), business + trade + city, judge score, chips (blocking, performance, LCP, ₹, minutes, sameness), the judge's
+    best and weakest line, Scores (six bars + accessibility / SEO / sections / photos). Failed builds show their reason.
+  - Compare two runs: Before / After pickers -> each measure with Better / Worse / Same the right way round.
+  - Blind duel: pick a business a run built, the builder (Lovable, v0, Bolt, Emergent, ChatGPT, Other) and its public
+    address -> verdict + why; win table per builder and the latest duels.
+- **Server**: `GET /api/arena/shot/<site>?w=390|1440` (owner only, Arena-tenant sites only - her own sites are never served),
+  run cards carry `name / industry / city` (`arena.brief_info`), `/api/arena/runs` adds `recent_duels` (with `builder`)
+  and `max_inr`, runs carry `budget_inr`; a run still marked running after a server restart reads **interrupted**
+  (`arena._status`) instead of running forever.
+- Everything from the server goes on the page through `esc()` (judge lines, business names, URLs); no inline handlers.
+- Tests `server/tests/test_v0311_arena_screen.py` (4): server side, wiring, and a real-browser walkthrough (light + dark
+  at 1440, open a run, scores, compare, duel picker; 390px phone with no sideways scroll; no page errors).
