@@ -1,0 +1,71 @@
+name: App Sahayak iPhone build check
+
+# v0.332 IPHONE (App Phase 6): generates the fixture app's iPhone project from the same spec the Android check uses,
+# compiles it with the real Xcode (simulator debug + device release, unsigned), then opens EVERY screen in an iPhone
+# simulator, photographs it and fails on a crash. Runs only when the iOS generator / kit changes (macOS minutes are dear).
+
+on:
+  push:
+    paths:
+      - "server/app/appmaker/ios/**"
+      - ".github/workflows/ios-check.yml"
+  workflow_dispatch:
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v5
+      - name: Xcode + XcodeGen
+        run: |
+          xcodebuild -version | tee xc.txt
+          while IFS= read -r l; do echo "::notice::${l}"; done < xc.txt
+          brew install xcodegen > /dev/null 2>&1 || brew upgrade xcodegen > /dev/null 2>&1 || true
+          xcodegen --version
+      - name: Generate the fixture iPhone project
+        run: |
+          python3 server/app/appmaker/ios/gen.py server/app/appmaker/android/fixture/spec.json "$RUNNER_TEMP/ios"
+          cd "$RUNNER_TEMP/ios" && xcodegen generate --quiet && ls
+      - name: Build (simulator debug + device release, unsigned)
+        working-directory: ${{ runner.temp }}/ios
+        run: |
+          set -o pipefail
+          P=$(ls -d *.xcodeproj | head -1)
+          xcodebuild -project "$P" -scheme App -configuration Debug -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath dd CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build.log | grep -E "error:|warning: .*Sources/(Kit|App|Screens)|BUILD" || true
+          grep -q "BUILD SUCCEEDED" build.log
+          xcodebuild -project "$P" -scheme App -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' -derivedDataPath ddr CODE_SIGNING_ALLOWED=NO build 2>&1 | tee release.log | grep -E "error:|BUILD" || true
+          grep -q "BUILD SUCCEEDED" release.log
+      - name: Swift errors as annotations
+        if: failure()
+        working-directory: ${{ runner.temp }}/ios
+        run: |
+          cat build.log release.log 2>/dev/null | grep -E "error:" | sort -u | head -60 | while IFS= read -r l; do echo "::error::${l}"; done
+      - name: Every screen on an iPhone simulator (no crash + pictures)
+        working-directory: ${{ runner.temp }}/ios
+        run: |
+          APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          bash hoola_qa/sim_check.sh "$APP" "$(cat hoola_qa/bundle.txt)" "$GITHUB_WORKSPACE/ios-shots" $(cat hoola_qa/screens.txt)
+      - name: HOOLA QA report
+        if: always()
+        run: |
+          [ -f ios-shots/report.json ] || { echo "::error::no simulator report"; exit 1; }
+          python3 - <<'PY'
+          import json, sys
+          r = json.load(open("ios-shots/report.json"))
+          print(json.dumps({k: r[k] for k in ("opened", "total", "crashed", "blank", "perf")}, indent=1))
+          if not r["passed"] or r["total"] < 13:
+              print("::error::simulator check failed: " + ", ".join(r["crashed"]))
+              sys.exit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-check
+          path: |
+            ios-shots
+            ${{ runner.temp }}/ios/build.log
+            ${{ runner.temp }}/ios/release.log
+          if-no-files-found: ignore
